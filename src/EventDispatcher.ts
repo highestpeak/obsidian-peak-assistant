@@ -6,6 +6,7 @@ type EventHandler<T = any> = (data: T) => void;
  * 2. 初始化 EventDispatcher => 监听所有 obsidian 事件 => 注册默认 dispatch 分发器.
  * 3. addNewHandler => 修改 dispatch 分发器
  * 4. 卸载所有监听事件
+ * todo 后续应该可以 push 事件，然后别人可以订阅，不一定只需要处理 obsidian 内部的事件，自己可以新建的，和 kafka 一样，这样就写代码写起来很方便了，插件扩展性很强。
  */
 export class EventDispatcher {
     /**
@@ -17,6 +18,7 @@ export class EventDispatcher {
 
     /**
      * handler
+     * key: eg: "dom-click" "workspace-editor-change"
      */
     private handlers: { [key: string]: EventHandler[] } = {};
 
@@ -28,127 +30,79 @@ export class EventDispatcher {
     private timeoutIds: { [key: string]: NodeJS.Timeout | null } = {};
 
     constructor(private app: App, private plugin: Plugin) {
-        this.init();
     }
 
     private async init() {
-        // 注册 Obsidian 事件
-        this.registerVaultEvents();
-        this.registerMetadataCacheEvents();
-        this.registerWorkspaceEvents();
+        // // 批量注册太损耗性能了 改为增量注册
+        // // 注册 Obsidian 事件
+        // this.registerVaultEvents();
+        // this.registerMetadataCacheEvents();
+        // this.registerWorkspaceEvents();
+    }
 
+    public addScriptFolderListener(scriptFolderPath: string) {
+        this.addNewHandler("vault-modify", (data) => {
+            this.onScriptFolderChange(data as TAbstractFile, scriptFolderPath)
+        })
+        this.addNewHandler("vault-create", (data) => {
+            this.onScriptFolderChange(data as TAbstractFile, scriptFolderPath)
+        })
+        this.addNewHandler("vault-delete", (data) => {
+            this.onScriptFolderChange(data as TAbstractFile, scriptFolderPath)
+        })
+    }
+
+    // todo
+    private async onScriptFolderChange(changedFile: TAbstractFile, scriptFolderPath: string) {
+        console.log(`文件已变动: `, changedFile, scriptFolderPath);
+        // // 检查文件是否在特定目录
+        // if (changedFile.path.startsWith('你的目录路径')) {
+        //     console.log(`文件已变动: ${changedFile.path}`);
+        //     // 这里可以添加您需要的逻辑
+        // }
+
+        // unload all
+        // load all from script folder
+        // make a notice to let user know event listener had been registered
     }
 
     /**
-     * @param eventName eg: "click"
+     * @param eventName eg:  "dom-click" "workspace-editor-change"
      */
-    private registerDomEvents(eventName: string) {
-        const validEventName = eventName as keyof DocumentEventMap;
-        this.plugin.registerDomEvent(document, validEventName, (evt) => {
-            this.bufferDispatch('dom-' + eventName, evt)
-        })
+    public addNewHandler<T>(eventName: string, handler: EventHandler<T>) {
+        if (!this.handlers[eventName]) {
+            this.handlers[eventName] = [];
+        }
+        this.handlers[eventName].push(handler);
+        const [firstPart, secondPart] = this.extractEventName(eventName)
+        console.log("addNewHandler: ", firstPart, " - ", secondPart);
+        switch (firstPart) {
+            case 'dom':
+                this.registerDomEvents(secondPart)
+                break;
+            case 'vault':
+                this.registerVaultEvents(secondPart)
+                break;
+            case 'metadataCache':
+                this.registerMetadataCacheEvents(secondPart)
+                break;
+            case 'workspace':
+                this.registerWorkspaceEvents(secondPart)
+                break;
+            default:
+                break;
+        }
     }
 
-    private registerVaultEvents() {
-        // This is also called when the vault is first loaded for each existing file.
-        // => which means there will trigger too many events after first load.
-        // => so we do not process this event
-        // "https://docs.obsidian.md/Reference/TypeScript+API/Vault/on('create')"
-        this.app.workspace.onLayoutReady(() => {
-            this.vaultEventRefs.push(
-                this.app.vault.on('create', (file: TAbstractFile) => this.bufferDispatch('create', file))
-            );
-        })
-        this.vaultEventRefs.push(
-            this.app.vault.on('modify', (file: TAbstractFile) => this.bufferDispatch('modify', file))
-        );
-        this.vaultEventRefs.push(
-            this.app.vault.on('delete', (file: TAbstractFile) => this.bufferDispatch('delete', file))
-        );
-        this.vaultEventRefs.push(
-            this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => this.bufferDispatch('rename', { file, oldPath }))
-        );
+    public removeHandler<T>(eventName: string, handler: EventHandler<T>) {
+        // 写 remove 太麻烦了. 可以直接全部清空再重新 load 一遍
     }
 
-    private registerMetadataCacheEvents() {
-        this.metadataCacheEventRefs.push(
-            this.app.metadataCache.on('changed', (file: TFile) => this.bufferDispatch('changed', file))
-        );
-        this.metadataCacheEventRefs.push(
-            this.app.metadataCache.on('deleted', (file: TFile, prevCache: CachedMetadata | null) => this.bufferDispatch('deleted', { file, prevCache }))
-        );
-        // // 不知道两个事件的用处. resolve 会在一开始启动的时候大量调用.
-        // // "https://docs.obsidian.md/Reference/TypeScript+API/MetadataCache/on('resolve')"
-        // this.metadataCacheEventRefs.push(
-        //     this.app.metadataCache.on('resolve', (file: TFile) => this.bufferDispatch('resolve', file))
-        // );
-        // this.metadataCacheEventRefs.push(
-        //     this.app.metadataCache.on('resolved', () => this.bufferDispatch('resolved', {}))
-        // );
-    }
-
-    private registerWorkspaceEvents() {
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('quick-preview', (file: TFile, data: string) => this.bufferDispatch('quick-preview', { file, data }))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('resize', () => this.bufferDispatch('resize', {}))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('active-leaf-change', (leaf: WorkspaceLeaf | null) => this.bufferDispatch('active-leaf-change', leaf))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('file-open', (file: TFile | null) => this.bufferDispatch('file-open', file))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('layout-change', () => this.bufferDispatch('layout-change', {}))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('window-open', (win: WorkspaceWindow, window: Window) => this.bufferDispatch('window-open', { win, window }))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('window-close', (win: WorkspaceWindow, window: Window) => this.bufferDispatch('window-close', { win, window }))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('css-change', () => this.bufferDispatch('css-change', {}))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('file-menu',
-                (menu: Menu, file: TAbstractFile, source: string, leaf?: WorkspaceLeaf) =>
-                    this.bufferDispatch('file-menu', { menu, file, source, leaf })
-            )
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('files-menu',
-                (menu: Menu, files: TAbstractFile[], source: string, leaf?: WorkspaceLeaf) =>
-                    this.bufferDispatch('files-menu', { menu, files, source, leaf }))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('url-menu', (menu: Menu, url: string) => this.bufferDispatch('url-menu', { menu, url }))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('editor-menu',
-                (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) =>
-                    this.bufferDispatch('editor-menu', { menu, editor, info }))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('editor-change',
-                (editor: Editor, info: MarkdownView | MarkdownFileInfo) =>
-                    this.bufferDispatch('editor-change', { editor, info }))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('editor-paste',
-                (evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) =>
-                    this.bufferDispatch('editor-paste', { evt, editor, info }))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('editor-drop',
-                (evt: DragEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) =>
-                    this.bufferDispatch('editor-drop', { evt, editor, info }))
-        );
-        this.workspaceEventRefs.push(
-            this.app.workspace.on('quit', (tasks: Tasks) => this.bufferDispatch('quit', tasks))
-        );
+    public unload() {
+        this.handlers = {};
+        this.vaultEventRefs.forEach(ref => this.app.vault.offref(ref));
+        this.metadataCacheEventRefs.forEach(ref => this.app.metadataCache.offref(ref));
+        this.workspaceEventRefs.forEach(ref => this.app.workspace.offref(ref));
     }
 
     /**
@@ -194,25 +148,228 @@ export class EventDispatcher {
         }
     }
 
-    public addNewHandler<T>(event: string, handler: EventHandler<T>) {
-        if (!this.handlers[event]) {
-            this.handlers[event] = [];
-        }
-        this.handlers[event].push(handler);
+    /**
+     * @param eventName eg: "click"
+     */
+    private registerDomEvents(eventName: string) {
+        const validEventName = eventName as keyof DocumentEventMap;
+        this.plugin.registerDomEvent(document, validEventName, (evt) => {
+            this.domBufferDispatch(eventName, evt)
+        })
     }
 
-    public removeHandler<T>(event: string, handler: EventHandler<T>) {
-        const eventHandlers = this.handlers[event];
-        if (eventHandlers) {
-            this.handlers[event] = eventHandlers.filter(h => h !== handler);
+    private domBufferDispatch(eventName: string, evt: any) {
+        this.bufferDispatch('dom-' + eventName, evt)
+    }
+
+    private registerVaultEvents(eventName: string) {
+        switch (eventName) {
+            case 'create':
+                // This is also called when the vault is first loaded for each existing file.
+                // => which means there will trigger too many events after first load.
+                // => so we do not process this event
+                // "https://docs.obsidian.md/Reference/TypeScript+API/Vault/on('create')"
+                this.app.workspace.onLayoutReady(() => {
+                    this.vaultEventRefs.push(
+                        this.app.vault.on('create', (file: TAbstractFile) => this.vaultBufferDispatch('create', file))
+                    );
+                })
+                break;
+            case 'modify':
+                this.vaultEventRefs.push(
+                    this.app.vault.on('modify', (file: TAbstractFile) => this.vaultBufferDispatch('modify', file))
+                );
+                break;
+            case 'delete':
+                this.vaultEventRefs.push(
+                    this.app.vault.on('delete', (file: TAbstractFile) => this.vaultBufferDispatch('delete', file))
+                );
+                break;
+            case 'rename':
+                this.vaultEventRefs.push(
+                    this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => this.vaultBufferDispatch('rename', { file, oldPath }))
+                );
+                break;
+            default:
+                break;
         }
     }
 
-    public unload() {
-        this.handlers = {};
-        this.vaultEventRefs.forEach(ref => this.app.vault.offref(ref));
-        this.metadataCacheEventRefs.forEach(ref => this.app.metadataCache.offref(ref));
-        this.workspaceEventRefs.forEach(ref => this.app.workspace.offref(ref));
+    private vaultBufferDispatch(eventName: string, evt: any) {
+        this.bufferDispatch('vault-' + eventName, evt)
+    }
+
+    private registerMetadataCacheEvents(eventName: string) {
+        switch (eventName) {
+            case 'changed':
+                this.metadataCacheEventRefs.push(
+                    this.app.metadataCache.on('changed', (file: TFile) => this.metadataCacheBufferDispatch('changed', file))
+                );
+                break;
+            case 'deleted':
+                this.metadataCacheEventRefs.push(
+                    this.app.metadataCache.on('deleted', (file: TFile, prevCache: CachedMetadata | null) => this.metadataCacheBufferDispatch('deleted', { file, prevCache }))
+                );
+                break;
+            case 'resolve':
+                // // 不知道两个事件的用处. resolve 会在一开始启动的时候大量调用.
+                // // "https://docs.obsidian.md/Reference/TypeScript+API/MetadataCache/on('resolve')"
+                // this.metadataCacheEventRefs.push(
+                //     this.app.metadataCache.on('resolve', (file: TFile) => this.metadataCacheBufferDispatch('resolve', file))
+                // );
+                break;
+            case 'resolved':
+                // this.metadataCacheEventRefs.push(
+                //     this.app.metadataCache.on('resolved', () => this.metadataCacheBufferDispatch('resolved', {}))
+                // );
+                break;
+            default:
+                break;
+        }
+
+    }
+
+    private metadataCacheBufferDispatch(eventName: string, evt: any) {
+        this.bufferDispatch('metadataCache-' + eventName, evt)
+    }
+
+    private registerWorkspaceEvents(eventName: string) {
+        switch (eventName) {
+            case 'quick-preview':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('quick-preview', (file: TFile, data: string) => {
+                        this.workspaceBufferDispatch('quick-preview', { file, data });
+                    })
+                );
+                break;
+
+            case 'resize':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('resize', () => {
+                        this.workspaceBufferDispatch('resize', {});
+                    })
+                );
+                break;
+
+            case 'active-leaf-change':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('active-leaf-change', (leaf: WorkspaceLeaf | null) => {
+                        this.workspaceBufferDispatch('active-leaf-change', leaf);
+                    })
+                );
+                break;
+
+            case 'file-open':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('file-open', (file: TFile | null) => {
+                        this.workspaceBufferDispatch('file-open', file);
+                    })
+                );
+                break;
+
+            case 'layout-change':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('layout-change', () => {
+                        this.workspaceBufferDispatch('layout-change', {});
+                    })
+                );
+                break;
+
+            case 'window-open':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('window-open', (win: WorkspaceWindow, window: Window) => {
+                        this.workspaceBufferDispatch('window-open', { win, window });
+                    })
+                );
+                break;
+
+            case 'window-close':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('window-close', (win: WorkspaceWindow, window: Window) => {
+                        this.workspaceBufferDispatch('window-close', { win, window });
+                    })
+                );
+                break;
+
+            case 'css-change':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('css-change', () => {
+                        this.workspaceBufferDispatch('css-change', {});
+                    })
+                );
+                break;
+
+            case 'file-menu':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile, source: string, leaf?: WorkspaceLeaf) => {
+                        this.workspaceBufferDispatch('file-menu', { menu, file, source, leaf });
+                    })
+                );
+                break;
+
+            case 'files-menu':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('files-menu', (menu: Menu, files: TAbstractFile[], source: string, leaf?: WorkspaceLeaf) => {
+                        this.workspaceBufferDispatch('files-menu', { menu, files, source, leaf });
+                    })
+                );
+                break;
+
+            case 'url-menu':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('url-menu', (menu: Menu, url: string) => {
+                        this.workspaceBufferDispatch('url-menu', { menu, url });
+                    })
+                );
+                break;
+
+            case 'editor-menu':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('editor-menu', (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
+                        this.workspaceBufferDispatch('editor-menu', { menu, editor, info });
+                    })
+                );
+                break;
+
+            case 'editor-change':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
+                        this.workspaceBufferDispatch('editor-change', { editor, info });
+                    })
+                );
+                break;
+
+            case 'editor-paste':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('editor-paste', (evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
+                        this.workspaceBufferDispatch('editor-paste', { evt, editor, info });
+                    })
+                );
+                break;
+
+            case 'editor-drop':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('editor-drop', (evt: DragEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
+                        this.workspaceBufferDispatch('editor-drop', { evt, editor, info });
+                    })
+                );
+                break;
+
+            case 'quit':
+                this.workspaceEventRefs.push(
+                    this.app.workspace.on('quit', (tasks: Tasks) => {
+                        this.workspaceBufferDispatch('quit', tasks);
+                    })
+                );
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    private workspaceBufferDispatch(eventName: string, evt: any) {
+        this.bufferDispatch('workspace-' + eventName, evt)
     }
 
     /**

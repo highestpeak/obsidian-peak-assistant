@@ -5,10 +5,12 @@ import { EventDispatcher } from 'src/EventDispatcher';
 
 interface MyPluginSettings {
 	mySetting: string;
+	scriptFolder: string;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+	mySetting: 'default',
+	scriptFolder: 'A-Control',
 }
 
 export default class MyPlugin extends Plugin {
@@ -18,6 +20,10 @@ export default class MyPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.eventHandler = new EventDispatcher(this.app, this);
+		this.eventHandler.addScriptFolderListener(this.settings.scriptFolder)
+
+		// This adds a settings tab so the user can configure various aspects of the plugin
+		this.addSettingTab(new SampleSettingTab(this.app, this));
 	}
 
 	onunload() {
@@ -64,13 +70,14 @@ class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
+			.setName('EventScriptFolder')
+			.setDesc('Script in this folder will be register to listen to target events.')
 			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
+				.setPlaceholder('Enter your Folder')
+				.setValue(this.plugin.settings.scriptFolder)
 				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.scriptFolder = value;
+					this.plugin.eventHandler.addScriptFolderListener(value)
 					await this.plugin.saveSettings();
 				}));
 	}
