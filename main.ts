@@ -1,6 +1,7 @@
 import { App, Modal, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { EventDispatcher } from 'src/EventDispatcher';
-
+import { Callback, loadScriptsForEvent } from 'src/ScriptLoader';
+import * as path from 'path';
 // Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
@@ -19,9 +20,10 @@ export default class MyPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+
+		// event dispatcher
 		this.eventHandler = new EventDispatcher(this.app, this);
 		this.eventHandler.addScriptFolderListener(this.settings.scriptFolder)
-
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 	}

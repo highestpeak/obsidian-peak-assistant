@@ -5,84 +5,153 @@
  * 3. python文件, 整个文件会被执行
  */
 
-// todo 没有验证，只是超过来了从 gpt，匆匆去玩游戏了
-
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 
-interface Context {
-  // 根据实际需要定义 context 的结构
-  [key: string]: any;
-}
-
-type Callback = (context: Context) => void;
-const handlerList: { [eventName: string]: Callback[] } = {};
+export type Callback<T = any> = (context: T) => void;
 
 // 加载指定目录的所有 script 文件，并根据事件注册回调函数
-function loadScriptsForEvent(directoryPath: string, eventName: string, context: Context) {
-  const files = fs.readdirSync(directoryPath);
+export function loadScriptsForEvent(directoryPath: string): Map<string, Callback[]> {
+  // console.log('directoryPath: ', directoryPath);
+
+  const handlerMap = new Map<string, Callback[]>();
+  const files = getAllFiles(directoryPath);
+  // console.log("scriptFolder files: ", files);
 
   files.forEach((file) => {
-    const filePath = path.join(directoryPath, file);
+    const filePath = file;
     const fileExtension = path.extname(file).toLowerCase();
 
     switch (fileExtension) {
       case '.md':
-        registerMarkdownCallback(filePath, eventName, context);
+        mergeHandlerMaps(handlerMap, registerMarkdownCallback(filePath));
         break;
       case '.js':
       case '.ts':
       case '.py':
-        registerScriptCallback(filePath, eventName, context);
+        mergeHandlerMaps(handlerMap, registerScriptCallback(filePath));
         break;
       default:
-        console.log(`不支持的文件格式: ${file}`);
+        console.log(`不支持的文件格式: ${fileExtension}, file: ${file}`);
     }
+  });
+
+  return handlerMap;
+}
+
+function getAllFiles(directoryPath: string): string[] {
+  let files: string[] = [];
+  const items = fs.readdirSync(directoryPath);
+
+  items.forEach((item) => {
+    const itemPath = path.join(directoryPath, item);
+    const itemStat = fs.statSync(itemPath);
+
+    if (itemStat.isDirectory()) {
+      // 如果是文件夹，递归调用
+      files = files.concat(getAllFiles(itemPath));
+    } else {
+      // 如果是文件，添加到文件列表
+      files.push(itemPath);
+    }
+  });
+
+  return files;
+}
+
+// 合并新的 handlerMap 到总的 handlerMap
+function mergeHandlerMaps(targetMap: Map<string, Callback[]>, sourceMap: Map<string, Callback[]>): void {
+  sourceMap.forEach((callbacks, eventName) => {
+    const existingCallbacks = targetMap.get(eventName) || [];
+    targetMap.set(eventName, existingCallbacks.concat(callbacks));
   });
 }
 
 // 为符合条件的 Markdown 文件注册回调
-function registerMarkdownCallback(filePath: string, eventName: string, context: Context) {
+function registerMarkdownCallback(filePath: string): Map<string, Callback[]> {
+  const handlerMap = new Map<string, Callback[]>();
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   const yamlMatch = fileContent.match(/^---\n([\s\S]*?)\n---/);
 
-  if (yamlMatch) {
-    const yamlContent = yaml.load(yamlMatch[1]) as { event?: string };
-    if (yamlContent.event === eventName) {
-      console.log(`注册事件 ${eventName} 的 Markdown 回调: ${filePath}`);
-      handlerList[eventName] = handlerList[eventName] || [];
-      handlerList[eventName].push(() => executeMarkdownCodeBlocks(fileContent, context));
-    }
+  if (!yamlMatch) {
+    return handlerMap
   }
+
+  const yamlContent = yaml.load(yamlMatch[1]) as { event?: string };
+  if (yamlContent.event) {
+    const eventName = yamlContent.event;
+    // console.log(`注册事件 ${eventName} 的 Markdown 回调: ${filePath}`);
+    const callbacks = handlerMap.get(eventName) || [];
+    callbacks.push((context) => executeMarkdownCodeBlocks(fileContent, context));
+    handlerMap.set(eventName, callbacks);
+  }
+
+  return handlerMap;
 }
 
 // 为符合条件的脚本文件注册回调
-function registerScriptCallback(filePath: string, eventName: string, context: Context) {
+function registerScriptCallback(filePath: string): Map<string, Callback[]> {
+  const handlerMap = new Map<string, Callback[]>();
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   const firstLine = fileContent.split('\n')[0].trim();
-  const eventMatch = firstLine.match(/^\/\/\s*event:\s*(\S+)/i);
+  const eventMatch = firstLine.match(/PeakAssistant-event:\s*(\S+)/i);
+  // console.log(filePath);
+  // console.log(eventMatch);
 
-  if (eventMatch && eventMatch[1] === eventName) {
-    console.log(`注册事件 ${eventName} 的脚本回调: ${filePath}`);
-    handlerList[eventName] = handlerList[eventName] || [];
-    handlerList[eventName].push(() => executeScriptFile(filePath, context));
+  if (!eventMatch) {
+    return handlerMap
   }
+
+  const eventName = eventMatch[1];
+  // console.log(`注册事件 ${eventName} 的脚本回调: ${filePath}`);
+  const callbacks = handlerMap.get(eventName) || [];
+  callbacks.push((context) => executeScriptFile(filePath, context));
+  handlerMap.set(eventName, callbacks);
+
+  return handlerMap;
 }
 
 // 执行 Markdown 文件中的代码块
-function executeMarkdownCodeBlocks(fileContent: string, context: Context) {
-  const codeBlocks = fileContent.match(/```([\s\S]*?)```/g);
-  if (codeBlocks) {
-    codeBlocks.forEach((codeBlock) => {
-      const code = codeBlock.replace(/```/g, '').trim();
-      executeJavaScriptCode(code, context);
-    });
+function executeMarkdownCodeBlocks(fileContent: string, context: any) {
+  // 匹配 Markdown 文件中的代码块
+  const codeBlocks = fileContent.match(/```([\s\S]*?)```|<%[\s\S]*?-%>/g);
+
+  if (!codeBlocks) {
+    return
   }
+
+  // console.log('executeMarkdownCodeBlocks: ', codeBlocks);
+
+  codeBlocks.forEach((codeBlock) => {
+    let code: string | null = null;
+
+    // 处理 Obsidian Templater 语法
+    if (codeBlock.startsWith('<%*')) {
+      code = codeBlock.replace(/^<%\*[\s\S]*?\n?/, '').replace(/-%>$/, '').trim();
+    } else {
+      // 去掉 Markdown 代码块的 ``` 和语言类型
+      code = codeBlock.replace(/```[\s\S]*?\n/, '').replace(/```/g, '').trim();
+    }
+    // console.log(code);
+
+    if (!code) {
+      return
+    }
+
+    // 只执行 JavaScript 代码块
+    // 可以根据需要添加对代码的语言类型的进一步检查
+    // 例如，检查是否为 JavaScript 代码
+    const isJavaScript = /```[\s\S]*?(javascript|js|typescript|ts)[\s\S]*?\n/.test(codeBlock) || codeBlock.startsWith('<%*');
+    if (isJavaScript) {
+      executeJavaScriptCode(code, context);
+    }
+  });
 }
 
+
 // 执行 JavaScript、TypeScript 文件
-function executeScriptFile(filePath: string, context: Context) {
+function executeScriptFile(filePath: string, context: any) {
   if (filePath.endsWith('.js') || filePath.endsWith('.ts')) {
     const script = require(filePath);
     if (typeof script === 'function') {
@@ -94,32 +163,23 @@ function executeScriptFile(filePath: string, context: Context) {
 }
 
 // 执行 Python 文件
-function executePythonFile(filePath: string, context: Context) {
+function executePythonFile(filePath: string, context: any) {
   const { execSync } = require('child_process');
   try {
     const contextString = JSON.stringify(context);
-    execSync(`python ${filePath} '${contextString}'`, { stdio: 'inherit' });
+    const result = execSync(`python ${filePath} '${contextString}'`, { stdio: 'pipe' });
+    console.log(`executePythonFile: ${filePath}, result: `, result.toString());    
   } catch (error) {
-    console.error(`Python 脚本执行失败: ${error}`);
+    console.error(`Python 脚本执行失败: `, error);
   }
 }
 
 // 执行代码块中的 JavaScript 代码
-function executeJavaScriptCode(code: string, context: Context) {
+function executeJavaScriptCode(code: string, context: any) {
   try {
     const func = new Function('context', code);
     func(context);
   } catch (error) {
-    console.error(`JavaScript 代码块执行失败: ${error}`);
+    console.error(`JavaScript 代码块执行失败:`, error);
   }
 }
-
-// 使用示例：传入目标目录路径、事件名称和 context 变量
-const context: Context = {
-  // Obsidian 的相关变量和自定义结构
-};
-const eventName = 'yourEventName';
-loadScriptsForEvent('./scripts', eventName, context);
-
-export { loadScriptsForEvent, handlerList };
-

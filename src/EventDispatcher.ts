@@ -1,4 +1,6 @@
-import { EventRef, Plugin, App, TAbstractFile, TFile, CachedMetadata, WorkspaceLeaf, WorkspaceWindow, Menu, Editor, MarkdownView, MarkdownFileInfo, Tasks } from "obsidian";
+import { EventRef, Plugin, App, TAbstractFile, TFile, CachedMetadata, WorkspaceLeaf, WorkspaceWindow, Menu, Editor, MarkdownView, MarkdownFileInfo, Tasks, Notice } from "obsidian";
+import * as path from "path";
+import { Callback, loadScriptsForEvent } from "./ScriptLoader";
 
 type EventHandler<T = any> = (data: T) => void;
 /**
@@ -41,6 +43,7 @@ export class EventDispatcher {
     }
 
     public addScriptFolderListener(scriptFolderPath: string) {
+        this.loadFromScriptFolder(scriptFolderPath)
         this.addNewHandler("vault-modify", (data) => {
             this.onScriptFolderChange(data, scriptFolderPath)
         })
@@ -52,23 +55,37 @@ export class EventDispatcher {
         })
     }
 
-    // todo
     private async onScriptFolderChange(changedFileParam: any, scriptFolderPath: string) {
         // console.log(`文件已变动1: `, changedFileParam, scriptFolderPath);
 
         let changedFileArray = changedFileParam as TAbstractFile[]
-        changedFileArray = changedFileArray.filter(changedFile => 
+        changedFileArray = changedFileArray.filter(changedFile =>
             changedFile.path.startsWith(scriptFolderPath)
         );
         if (changedFileArray.length <= 0) {
             return
         }
 
-        console.log(`文件已变动2:`, changedFileArray);
+        // console.log(`文件已变动2:`, changedFileArray);
         // 这里可以添加您需要的逻辑
-        // unload all
-        // load all from script folder
+        this.unload()
+        this.addScriptFolderListener(scriptFolderPath)
         // make a notice to let user know event listener had been registered
+        new Notice('Peak Assistant. Event Scripts Reload!');
+    }
+
+    private loadFromScriptFolder(scriptFolderPath: string) {
+        const basePath = (this.app.vault.adapter as any).basePath
+        // load events
+        let eventScripts: Map<string, Callback[]> = loadScriptsForEvent(
+            path.join(basePath, scriptFolderPath)
+        )
+        // console.log(eventScripts);
+        eventScripts.forEach((callbacks, event) => {
+            callbacks.forEach((callback, index) => {
+                this.addNewHandler(event, callback)
+            })
+        })
     }
 
     /**
@@ -80,6 +97,9 @@ export class EventDispatcher {
         }
         this.handlers[eventName].push(handler);
         const [firstPart, secondPart] = this.extractEventName(eventName)
+        if (secondPart.length <= 0) {
+            return
+        }
         console.log("addNewHandler: ", firstPart, " - ", secondPart);
         switch (firstPart) {
             case 'dom':
@@ -104,7 +124,9 @@ export class EventDispatcher {
     }
 
     public unload() {
+        // 将 handlers 置空同时会造成 dom events remove. 猜测是 dom 的 event handler 只要 handler 没有被持有就会被 vm 回收
         this.handlers = {};
+        // obsidian 的 event handler 回收
         this.vaultEventRefs.forEach(ref => this.app.vault.offref(ref));
         this.metadataCacheEventRefs.forEach(ref => this.app.metadataCache.offref(ref));
         this.workspaceEventRefs.forEach(ref => this.app.workspace.offref(ref));
@@ -137,8 +159,9 @@ export class EventDispatcher {
      */
     private realDispatch(event: string) {
         // 处理特定事件
+        // todo eventData 可能还是有点多 不应该全缓存的应该 应该允许每个不同事件自己去进行 merge 逻辑 但是考虑到1s也不好缓存太多 现在的情况也能handle很多情况了 先这样吧
         const eventData = this.eventBuffer[event];
-        console.log(`Triggering ${event} with data:`, eventData);
+        // console.log(`Triggering ${event} with data:`, eventData);
 
         try {
             const eventHandlers = this.handlers[event];
