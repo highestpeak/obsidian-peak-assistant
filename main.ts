@@ -10,7 +10,7 @@ interface MyPluginSettings {
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
 	mySetting: 'default',
-	scriptFolder: 'A-Control',
+	scriptFolder: 'A-control',
 }
 
 export default class MyPlugin extends Plugin {

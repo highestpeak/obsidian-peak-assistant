@@ -42,25 +42,30 @@ export class EventDispatcher {
 
     public addScriptFolderListener(scriptFolderPath: string) {
         this.addNewHandler("vault-modify", (data) => {
-            this.onScriptFolderChange(data as TAbstractFile, scriptFolderPath)
+            this.onScriptFolderChange(data, scriptFolderPath)
         })
         this.addNewHandler("vault-create", (data) => {
-            this.onScriptFolderChange(data as TAbstractFile, scriptFolderPath)
+            this.onScriptFolderChange(data, scriptFolderPath)
         })
         this.addNewHandler("vault-delete", (data) => {
-            this.onScriptFolderChange(data as TAbstractFile, scriptFolderPath)
+            this.onScriptFolderChange(data, scriptFolderPath)
         })
     }
 
     // todo
-    private async onScriptFolderChange(changedFile: TAbstractFile, scriptFolderPath: string) {
-        console.log(`文件已变动: `, changedFile, scriptFolderPath);
-        // // 检查文件是否在特定目录
-        // if (changedFile.path.startsWith('你的目录路径')) {
-        //     console.log(`文件已变动: ${changedFile.path}`);
-        //     // 这里可以添加您需要的逻辑
-        // }
+    private async onScriptFolderChange(changedFileParam: any, scriptFolderPath: string) {
+        // console.log(`文件已变动1: `, changedFileParam, scriptFolderPath);
 
+        let changedFileArray = changedFileParam as TAbstractFile[]
+        changedFileArray = changedFileArray.filter(changedFile => 
+            changedFile.path.startsWith(scriptFolderPath)
+        );
+        if (changedFileArray.length <= 0) {
+            return
+        }
+
+        console.log(`文件已变动2:`, changedFileArray);
+        // 这里可以添加您需要的逻辑
         // unload all
         // load all from script folder
         // make a notice to let user know event listener had been registered
