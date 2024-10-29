@@ -1,17 +1,18 @@
-import { App, Modal, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Modal, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, PaneType } from 'obsidian';
 import { EventDispatcher } from 'src/EventDispatcher';
-import { Callback, loadScriptsForEvent } from 'src/ScriptLoader';
-import * as path from 'path';
+import { registerHTMLView, registerHTMLViews } from 'src/HtmlView';
 // Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
 	mySetting: string;
 	scriptFolder: string;
+	htmlViewConfigFile: string;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
 	mySetting: 'default',
 	scriptFolder: 'A-control',
+	htmlViewConfigFile: 'A-control/PeakAssistantScript/HtmlViewConfig.json',
 }
 
 export default class MyPlugin extends Plugin {
@@ -26,6 +27,12 @@ export default class MyPlugin extends Plugin {
 		this.eventHandler.addScriptFolderListener(this.settings.scriptFolder)
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
+
+		// register home view
+		registerHTMLViews(
+			this.settings.htmlViewConfigFile,
+			this
+		)
 	}
 
 	onunload() {
