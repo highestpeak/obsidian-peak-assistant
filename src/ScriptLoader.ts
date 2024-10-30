@@ -68,9 +68,14 @@ function mergeHandlerMaps(targetMap: Map<string, Callback[]>, sourceMap: Map<str
   });
 }
 
+// 从代码块第一行检测是否存在 event 指定类型
+function extractEventMatchFromCodeFirstLine(lineStr:string) {
+  return lineStr.match(/PeakAssistantEvent:\s*(\S+)/i);
+}
+
 // 为符合条件的 Markdown 文件注册回调
 function registerMarkdownCallback(filePath: string): Map<string, Callback[]> {
-  const handlerMap = new Map<string, Callback[]>();
+  let handlerMap = new Map<string, Callback[]>();
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   const yamlMatch = fileContent.match(/^---\n([\s\S]*?)\n---/);
 
@@ -78,13 +83,9 @@ function registerMarkdownCallback(filePath: string): Map<string, Callback[]> {
     return handlerMap
   }
 
-  const yamlContent = yaml.load(yamlMatch[1]) as { event?: string };
-  if (yamlContent.event) {
-    const eventName = yamlContent.event;
-    // console.log(`注册事件 ${eventName} 的 Markdown 回调: ${filePath}`);
-    const callbacks = handlerMap.get(eventName) || [];
-    callbacks.push((context) => executeMarkdownCodeBlocks(fileContent, context));
-    handlerMap.set(eventName, callbacks);
+  const yamlContent = yaml.load(yamlMatch[1]) as { PeakAssistantEvent?: string };
+  if (yamlContent.PeakAssistantEvent) {
+    handlerMap = allMarkdownCodeBlocksExecutableScripts(fileContent)
   }
 
   return handlerMap;
@@ -95,7 +96,7 @@ function registerScriptCallback(filePath: string): Map<string, Callback[]> {
   const handlerMap = new Map<string, Callback[]>();
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   const firstLine = fileContent.split('\n')[0].trim();
-  const eventMatch = firstLine.match(/PeakAssistant-event:\s*(\S+)/i);
+  const eventMatch = extractEventMatchFromCodeFirstLine(firstLine);
   // console.log(filePath);
   // console.log(eventMatch);
 
@@ -104,7 +105,6 @@ function registerScriptCallback(filePath: string): Map<string, Callback[]> {
   }
 
   const eventName = eventMatch[1];
-  // console.log(`注册事件 ${eventName} 的脚本回调: ${filePath}`);
   const callbacks = handlerMap.get(eventName) || [];
   callbacks.push((context) => executeScriptFile(filePath, context));
   handlerMap.set(eventName, callbacks);
@@ -113,12 +113,13 @@ function registerScriptCallback(filePath: string): Map<string, Callback[]> {
 }
 
 // 执行 Markdown 文件中的代码块
-function executeMarkdownCodeBlocks(fileContent: string, context: any) {
+function allMarkdownCodeBlocksExecutableScripts(fileContent: string): Map<string, Callback[]> {
+  const handlerMap = new Map<string, Callback[]>();
   // 匹配 Markdown 文件中的代码块
   const codeBlocks = fileContent.match(/```([\s\S]*?)```|<%[\s\S]*?-%>/g);
 
   if (!codeBlocks) {
-    return
+    return handlerMap
   }
 
   // console.log('executeMarkdownCodeBlocks: ', codeBlocks);
@@ -143,10 +144,22 @@ function executeMarkdownCodeBlocks(fileContent: string, context: any) {
     // 可以根据需要添加对代码的语言类型的进一步检查
     // 例如，检查是否为 JavaScript 代码
     const isJavaScript = /```[\s\S]*?(javascript|js|typescript|ts)[\s\S]*?\n/.test(codeBlock) || codeBlock.startsWith('<%*');
-    if (isJavaScript) {
-      executeJavaScriptCode(code, context);
+    if (!isJavaScript) {
+      return
     }
+
+    const firstLine = fileContent.split('\n')[0].trim();
+    const eventMatch = extractEventMatchFromCodeFirstLine(firstLine);
+    if (!eventMatch) {
+      return
+    }
+    const eventName = eventMatch[1];
+    const callbacks = handlerMap.get(eventName) || [];
+    callbacks.push((context) => executeJavaScriptCode(code, context));
+    handlerMap.set(eventName, callbacks);
   });
+
+  return handlerMap
 }
 
 
