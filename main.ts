@@ -1,6 +1,6 @@
 import { App, Modal, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, PaneType } from 'obsidian';
-import { EventDispatcher } from 'src/EventDispatcher';
-import { registerHTMLView, registerHTMLViews } from 'src/HtmlView';
+import { EventDispatcher } from 'src/core/EventDispatcher';
+import { registerHTMLView, registerHTMLViews } from 'src/core/HtmlView';
 // Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
