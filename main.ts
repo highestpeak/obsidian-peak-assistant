@@ -1,4 +1,5 @@
 import { App, Modal, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, PaneType } from 'obsidian';
+import { buildStatisticsMetricListener } from 'src/business/StatisticsRegister';
 import { EventDispatcher } from 'src/core/EventDispatcher';
 import { registerHTMLView, registerHTMLViews } from 'src/core/HtmlView';
 // Remember to rename these classes and interfaces!
@@ -7,12 +8,14 @@ interface MyPluginSettings {
 	mySetting: string;
 	scriptFolder: string;
 	htmlViewConfigFile: string;
+	statisticsDataStoreFolder: string;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
 	mySetting: 'default',
 	scriptFolder: 'A-control',
 	htmlViewConfigFile: 'A-control/PeakAssistantScript/HtmlViewConfig.json',
+	statisticsDataStoreFolder: 'A-control/PeakAssistantDataStore/RepoStatistics',
 }
 
 export default class MyPlugin extends Plugin {
@@ -24,8 +27,13 @@ export default class MyPlugin extends Plugin {
 
 		// event dispatcher
 		this.eventHandler = new EventDispatcher(this.app, this);
+		// add external script listener
 		this.eventHandler.addScriptFolderListener(this.settings.scriptFolder)
-		// This adds a settings tab so the user can configure various aspects of the plugin
+		// add statistics listener
+		this.eventHandler.addNewHandlers(
+			buildStatisticsMetricListener(this.settings.statisticsDataStoreFolder)
+		)
+		// add setting ui
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 
 		// register home view

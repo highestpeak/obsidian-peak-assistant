@@ -90,6 +90,12 @@ export class EventDispatcher {
         })
     }
 
+    public addNewHandlers(eventHandlers: Map<string, EventHandler>) {
+        eventHandlers.forEach((eventHandlerIter, eventNameIter)=> {
+            this.addNewHandler(eventNameIter, eventHandlerIter)
+        })
+    }
+
     /**
      * @param eventName eg:  "dom-click" "workspace-editor-change"
      */
