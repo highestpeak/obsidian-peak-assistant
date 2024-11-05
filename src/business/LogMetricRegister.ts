@@ -3,7 +3,10 @@ import * as path from "path";
 import { Callback } from "src/core/ScriptLoader";
 import { ActivityRecord, ActivityRecordType, logMetrics } from "src/service/ActivityService";
 
-enum StatisticsMetric {
+// --------------------------------------------------------------------------------
+// LogMetricType
+
+export enum LogMetricType {
     FILE_OPEN = "FileOpen",
     FILE_EDIT = "FileEdit",
     FILE_CLOSE = "FileClose",
@@ -11,7 +14,19 @@ enum StatisticsMetric {
     WINDOW_LOSE = "WindowLose",
 }
 
-export function buildStatisticsMetricListener(data_store: string): Map<string, Callback> {
+// Helper function to check if an entry is a file action
+export function isFileAction(type: string) {
+    return type === LogMetricType.FILE_EDIT || type === LogMetricType.FILE_OPEN || type === LogMetricType.FILE_CLOSE;
+}
+
+export function isCloseAction(type: string) {
+    return type === LogMetricType.FILE_CLOSE || type === LogMetricType.WINDOW_LOSE;
+}
+
+// --------------------------------------------------------------------------------
+// register
+
+export function buildLogMetricListener(data_store: string): Map<string, Callback> {
     const handlerMap = new Map<string, Callback>();
 
     handlerMap.set("workspace-file-open", (params: any) => {
@@ -25,7 +40,7 @@ export function buildStatisticsMetricListener(data_store: string): Map<string, C
             }
 
             result.push({
-                type: StatisticsMetric.FILE_OPEN,
+                type: LogMetricType.FILE_OPEN,
                 value: fileFulePath,
             });
             processedFiles.add(fileFulePath);
@@ -45,7 +60,7 @@ export function buildStatisticsMetricListener(data_store: string): Map<string, C
             }
 
             result.push({
-                type: StatisticsMetric.FILE_EDIT, // Change to FILE_EDIT
+                type: LogMetricType.FILE_EDIT, // Change to FILE_EDIT
                 value: fileFulePath,
             });
             processedFiles.add(fileFulePath);
@@ -64,7 +79,7 @@ export function buildStatisticsMetricListener(data_store: string): Map<string, C
             }
 
             result.push({
-                type: StatisticsMetric.FILE_CLOSE,
+                type: LogMetricType.FILE_CLOSE,
                 value: fileFulePath,
             });
             processedFiles.add(fileFulePath);
@@ -74,21 +89,20 @@ export function buildStatisticsMetricListener(data_store: string): Map<string, C
 
     handlerMap.set("window-focus", () => {
         const record: ActivityRecord = {
-            type: StatisticsMetric.WINDOW_ACTIVE,
+            type: LogMetricType.WINDOW_ACTIVE,
         };
         logMetrics([record], data_store);
     });
 
     handlerMap.set("window-blur", () => {
         const record: ActivityRecord = {
-            type: StatisticsMetric.WINDOW_LOSE,
+            type: LogMetricType.WINDOW_LOSE,
         };
         logMetrics([record], data_store);
     });
 
     return handlerMap
 }
-
 
 function buildFileAbsolutePath(file: TAbstractFile): string {
     return path.join(file.path, file.name)

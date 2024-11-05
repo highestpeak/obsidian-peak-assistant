@@ -14,7 +14,7 @@ export interface ActivityRecord {
     desc?: string;
 }
 
-interface ActivityRecordAchieved {
+export interface ActivityRecordAchieved {
     // "YYYYMMDD-HH:mm:ss"
     time: string;
     // record type name. eg: OpenEditor
@@ -28,7 +28,6 @@ interface ActivityRecordAchieved {
 export function logMetric(record: ActivityRecord, data_store: string) {
     logMetrics([record], data_store)
 }
-
 
 export function logMetrics(records: ActivityRecord[], data_store: string) {
     // Ensure the directory for the data store exists
@@ -69,4 +68,29 @@ function convertToAchieved(record: ActivityRecord): ActivityRecordAchieved {
  */
 function formatDate(date: Date): string {
     return moment(date).format('YYYYMMDD-HH:mm:ss');
+}
+
+export function loadMetricEntries(data_store: string): ActivityRecordAchieved[] {
+    // Ensure the data_store file exists
+    if (!fs.existsSync(data_store)) {
+        console.error(`Data store file does not exist: ${data_store}`);
+        return [];
+    }
+
+    // Read the file and parse each line as JSON
+    const fileContent = fs.readFileSync(data_store, 'utf-8');
+    const entries: ActivityRecordAchieved[] = fileContent
+        .split('\n') // Split the content by new lines
+        .filter(line => line.trim() !== '') // Remove empty lines
+        .map(line => {
+            try {
+                return JSON.parse(line) as ActivityRecordAchieved; // Parse each line
+            } catch (error) {
+                console.error(`Error parsing line: ${line}`, error);
+                return null; // Return null for invalid lines
+            }
+        })
+        .filter(entry => entry !== null) as ActivityRecordAchieved[]; // Filter out null entries
+
+    return entries; // Return the array of parsed entries
 }

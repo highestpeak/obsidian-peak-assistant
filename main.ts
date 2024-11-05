@@ -1,5 +1,5 @@
 import { App, Modal, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, PaneType } from 'obsidian';
-import { buildStatisticsMetricListener } from 'src/business/StatisticsRegister';
+import { buildLogMetricListener } from 'src/business/LogMetricRegister';
 import { EventDispatcher } from 'src/core/EventDispatcher';
 import { registerHTMLView, registerHTMLViews } from 'src/core/HtmlView';
 // Remember to rename these classes and interfaces!
@@ -31,7 +31,7 @@ export default class MyPlugin extends Plugin {
 		this.eventHandler.addScriptFolderListener(this.settings.scriptFolder)
 		// add statistics listener
 		this.eventHandler.addNewHandlers(
-			buildStatisticsMetricListener(this.settings.statisticsDataStoreFolder)
+			buildLogMetricListener(this.settings.statisticsDataStoreFolder)
 		)
 		// add setting ui
 		this.addSettingTab(new SampleSettingTab(this.app, this));
