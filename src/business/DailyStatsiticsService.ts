@@ -1,9 +1,8 @@
 import * as fs from 'fs';
-import * as path from 'path';
-import { simpleGit, SimpleGit, CleanOptions } from 'simple-git';
 import * as moment from 'moment';
-import { isCloseAction, isFileAction, LogMetricType } from './LogMetricRegister';
+import { simpleGit, SimpleGit } from 'simple-git';
 import { ActivityRecordAchieved, loadMetricEntries } from 'src/service/ActivityService';
+import { isCloseAction, isFileAction, LogMetricType } from './LogMetricRegister';
 
 // --------------------------------------------------------------------------------
 // date functions
@@ -50,7 +49,23 @@ function iterateDatesBetween(startDateStr: string, endDateStr: string, func: (da
 // organize file process functions
 
 /**
- * 整理 data 文件.
+ * 整理数据文件,处理重复日期的数据并按日期排序
+ * 
+ * 数据文件格式为每行: YYYYMMDD,{json数据}
+ * 
+ * 处理规则:
+ * 1. 如果发现同一天有多条数据,会调用processFunc重新生成该天的数据
+ * 2. processFunc通常会重新读取该天的原始日志,重新计算统计数据
+ * 3. 这样可以修复由于程序中断等原因导致的数据重复或不完整问题
+ * 
+ * 最终效果:
+ * 1. 每个日期只保留一条最新的完整数据
+ * 2. 所有数据按日期升序排序存储
+ * 3. 重复的日期数据被正确合并
+ * 
+ * @param filePath 数据文件路径
+ * @param processFunc 处理重复日期的函数,入参为日期字符串,返回该天的新数据
+ *                   通常会重新读取该天的原始日志并重新计算统计信息
  */
 function organizeDataFile(filePath: string, processFunc: (dateStr: string) => any) {
     const dateDict: Record<string, any> = {};
