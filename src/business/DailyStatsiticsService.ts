@@ -367,7 +367,7 @@ interface AnalysisResult {
     documentActivities: DocumentActivity[];
 }
 
-type ProcessOneDayResult = {
+export type ProcessOneDayResult = {
     calcTime: string;   // Time of calculation in specified format
 } & GitAnalysisResult & AnalysisResult; // Merging results from Git analysis and log analysis
 

@@ -1,12 +1,42 @@
 import React, { useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 import { G2 } from '@antv/g2';
 import { Card, Typography, Button } from 'antd';
+import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { ProcessOneDayResult } from '@src/business/DailyStatsiticsService';
 
 const { Title, Paragraph } = Typography;
 
 // todo 比较后觉得 echat 太丑了 d3太复杂了 antv 还行 维护度也ok
 // 我喜欢这个 https://g2.antv.antgroup.com/examples/general/cell#cell-heatmap
 // 喜欢这个 https://g2.antv.antgroup.com/examples 的 热力图
+
+export const DAILY_ANALYSIS_VIEW_TYPE = 'daily-analysis-view';
+
+export class DailyAnalysisView extends ItemView {
+    constructor(leaf: WorkspaceLeaf) {
+        super(leaf);
+    }
+
+    getViewType() {
+        return DAILY_ANALYSIS_VIEW_TYPE;
+    }
+
+    getDisplayText() {
+        return 'Daily Analysis';
+    }
+
+    async onOpen() {
+        const container = this.containerEl.children[1];
+        container.empty();
+        container.createEl('div', { cls: 'daily-analysis-view' });
+        ReactDOM.render(<DailyAnalysis data={/* pass the required data here */} />, container);
+    }
+
+    async onClose() {
+        ReactDOM.unmountComponentAtNode(this.containerEl.children[1]);
+    }
+}
 const DailyAnalysis = ({ data }: { data: ProcessOneDayResult }) => {
     const [emotionalData, setEmotionalData] = useState<any[]>([]);
     const [activeDocs, setActiveDocs] = useState<any[]>([]);
@@ -14,8 +44,6 @@ const DailyAnalysis = ({ data }: { data: ProcessOneDayResult }) => {
     // Sample data processing function for emotional scores
     useEffect(() => {
         const processEmotionalScores = () => {
-            // Assuming data has emotional scores structured appropriately
-            // Transform data into a format suitable for the radar chart
             setEmotionalData(data.emotionalScores); // Update with actual score extraction logic
         };
         processEmotionalScores();
@@ -64,8 +92,6 @@ const DailyAnalysis = ({ data }: { data: ProcessOneDayResult }) => {
             .position('category*value')
             .size(4)
             .color('category');
-
-        chart.render();
     };
 
     useEffect(() => {
@@ -134,5 +160,3 @@ const DailyAnalysis = ({ data }: { data: ProcessOneDayResult }) => {
         </div>
     );
 };
-
-export default DailyAnalysis;

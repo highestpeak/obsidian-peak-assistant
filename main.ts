@@ -1,7 +1,7 @@
-import { App, Modal, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, PaneType } from 'obsidian';
+import { App, Modal, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { buildLogMetricListener } from 'src/business/LogMetricRegister';
 import { EventDispatcher } from 'src/core/EventDispatcher';
-import { registerHTMLView, registerHTMLViews } from 'src/core/HtmlView';
+import { DailyAnalysisView, DAILY_ANALYSIS_VIEW_TYPE } from 'src/view/DailyAnalysis';
 // Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
@@ -36,11 +36,7 @@ export default class MyPlugin extends Plugin {
 		// add setting ui
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 
-		// register home view
-		registerHTMLViews(
-			this.settings.htmlViewConfigFile,
-			this
-		)
+		registerDailyAnalysisView(this);
 	}
 
 	onunload() {
@@ -97,5 +93,45 @@ class SampleSettingTab extends PluginSettingTab {
 					this.plugin.eventHandler.addScriptFolderListener(value)
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl)
+			.setName('StatisticsDataStoreFolder')
+			.setDesc('Folder to store the statistics data.')
+			.addText(text => text
+				.setPlaceholder('Enter your Folder')
+				.setValue(this.plugin.settings.statisticsDataStoreFolder)
+				.onChange(async (value) => {
+					this.plugin.settings.statisticsDataStoreFolder = value;
+					await this.plugin.saveSettings();
+				}));
 	}
+}
+
+function registerDailyAnalysisView(plugin: MyPlugin) {
+	plugin.registerView(
+		DAILY_ANALYSIS_VIEW_TYPE,
+		(leaf) => new DailyAnalysisView(leaf)
+	);
+
+	plugin.addRibbonIcon('bar-chart', 'Daily Analysis', async () => {
+		const leaf = plugin.app.workspace.getLeaf(true);
+		await leaf.setViewState({
+			type: DAILY_ANALYSIS_VIEW_TYPE,
+			active: true,
+		});
+		plugin.app.workspace.revealLeaf(leaf);
+	});
+
+	plugin.addCommand({
+		id: 'open-daily-analysis-view',
+		name: 'Open Daily Analysis View',
+		callback: async () => {
+			const leaf = plugin.app.workspace.getLeaf(true);
+			await leaf.setViewState({
+				type: DAILY_ANALYSIS_VIEW_TYPE,
+				active: true,
+			});
+			plugin.app.workspace.revealLeaf(leaf);
+		},
+	});
 }
