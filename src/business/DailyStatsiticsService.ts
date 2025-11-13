@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { simpleGit, SimpleGit, CleanOptions } from 'simple-git';
-import * as moment from 'moment';
+import moment from 'moment';
 import { isCloseAction, isFileAction, LogMetricType } from './LogMetricRegister';
 import { ActivityRecordAchieved, loadMetricEntries } from 'src/service/ActivityService';
 

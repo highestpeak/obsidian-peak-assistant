@@ -6,3 +6,73 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+.peak-chat-view {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 12px;
+	gap: 12px;
+	box-sizing: border-box;
+}
+
+.peak-chat-view__header,
+.peak-chat-view__footer {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.peak-chat-view__body {
+	flex: 1;
+	overflow-y: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 12px;
+	background-color: var(--background-primary);
+}
+
+.peak-chat-view__message-container {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.peak-chat-view__message {
+	border-radius: 8px;
+	padding: 8px 12px;
+	background-color: var(--background-secondary);
+	position: relative;
+}
+
+.peak-chat-view__message--assistant {
+	align-self: flex-start;
+	background-color: var(--interactive-hover);
+}
+
+.peak-chat-view__message--user {
+	align-self: flex-end;
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.peak-chat-view__message-meta {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 6px;
+	font-size: var(--font-ui-small);
+	opacity: 0.8;
+}
+
+.peak-chat-view__star-button {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 14px;
+}
+
+.peak-chat-view__message-content {
+	white-space: pre-wrap;
+	word-break: break-word;
+}

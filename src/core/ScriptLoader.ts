@@ -155,7 +155,7 @@ function allMarkdownCodeBlocksExecutableScripts(fileContent: string): Map<string
     }
     const eventName = eventMatch[1];
     const callbacks = handlerMap.get(eventName) || [];
-    callbacks.push((context) => executeJavaScriptCode(code, context));
+    // callbacks.push((context) => executeJavaScriptCode(code, context));
     handlerMap.set(eventName, callbacks);
   });
 
