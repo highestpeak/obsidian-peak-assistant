@@ -54,15 +54,28 @@ class HtmlView extends ItemView {
 export function registerHTMLViews(congfigFilePath: string, plugin: Plugin) {
     // 读取内容
     const basePath = (plugin.app.vault.adapter as any).basePath
-    const configFileContent = fs.readFileSync(
-        path.join(basePath, congfigFilePath), 'utf-8'
-    );
+    const configFilePath = path.join(basePath, congfigFilePath);
+    
+    // Check if config file exists
+    if (!fs.existsSync(configFilePath)) {
+        console.warn(`HTML view config file not found: ${congfigFilePath}. Skipping HTML view registration.`);
+        return;
+    }
+    
+    let configFileContent: string;
+    try {
+        configFileContent = fs.readFileSync(configFilePath, 'utf-8');
+    } catch (error) {
+        console.error(`Failed to read HTML view config file: ${congfigFilePath}`, error);
+        return;
+    }
+    
     // 解析为 JSON 对象
     let configArray: HTMLViewConfig[] = [];
     try {
         configArray = JSON.parse(configFileContent);
         if (!Array.isArray(configArray)) {
-            throw new Error("配置文件内容不是数组");
+            throw new Error("Config file content is not an array");
         }
 
         // 验证每个配置项是否符合 HTMLViewConfig 接口
@@ -73,11 +86,12 @@ export function registerHTMLViews(congfigFilePath: string, plugin: Plugin) {
                 typeof item.iconTitle !== 'string' ||
                 typeof item.sideBar !== 'boolean' ||
                 (item.command && typeof item.command !== 'string')) {
-                throw new Error("配置文件中的某些项不符合 HTMLViewConfig 接口");
+                throw new Error("Some items in config file do not match HTMLViewConfig interface");
             }
         });
     } catch (error) {
-        console.error("解析配置文件内容时发生错误:", error.message);
+        console.error("Error parsing config file content:", error.message);
+        return;
     }
 
     // 注册 view

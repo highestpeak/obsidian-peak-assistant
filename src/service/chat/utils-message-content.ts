@@ -3,6 +3,11 @@ import { Buffer } from 'buffer';
 import { ChatMessage } from './types';
 import { ProviderContentPart } from './providers/types';
 
+// Type declaration for require in Node.js/Electron environment
+declare const require: {
+	resolve(id: string): string;
+} | undefined;
+
 const TEXT_ATTACHMENT_MAX_CHARACTERS = 8000;
 const BASE64_ATTACHMENT_MAX_LENGTH = 8000;
 const PDF_MAX_PAGES = 8;
@@ -94,10 +99,25 @@ async function ensurePdfJs(): Promise<PdfJsModule> {
 		cachedPdfModule = (await import('pdfjs-dist')) as PdfJsModule;
 		try {
 			if (cachedPdfModule.GlobalWorkerOptions) {
-				cachedPdfModule.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/build/pdf.worker.js';
+				// Use worker from installed pdfjs-dist package
+				// In Electron/Node.js environment, use require.resolve if available
+				// Otherwise, pdfjs-dist will fall back to main thread processing
+				if (typeof require !== 'undefined' && require.resolve) {
+					try {
+						const workerPath = require.resolve('pdfjs-dist/build/pdf.worker.min.mjs');
+						cachedPdfModule.GlobalWorkerOptions.workerSrc = workerPath;
+					} catch (resolveError) {
+						// If require.resolve fails, worker will run in main thread
+						console.warn('Could not resolve pdfjs worker path, using main thread', resolveError);
+					}
+				} else {
+					// In pure ESM environment, worker may not be available
+					// PDF processing will run in main thread (slower but works)
+					console.warn('require not available, pdfjs worker will run in main thread');
+				}
 			}
 		} catch (error) {
-			console.warn('Failed to configure pdfjs worker', error);
+			console.warn('Failed to configure pdfjs worker, PDF processing will run in main thread', error);
 		}
 	}
 	return cachedPdfModule;

@@ -127,7 +127,8 @@ export class ChatStorageService {
 
 		const result: ParsedConversationFile[] = [];
 		for (const child of folder.children) {
-			if (child instanceof TFile && child.extension === 'md') {
+			// Exclude Project-Summary.md file - it's not a conversation
+			if (child instanceof TFile && child.extension === 'md' && child.name !== 'Project-Summary.md') {
 				result.push(await this.readConversation(child));
 			}
 		}
