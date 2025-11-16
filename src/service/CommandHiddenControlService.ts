@@ -49,11 +49,13 @@ export class CommandHiddenControlService {
 	 * Initialize the service and register event listeners
 	 */
 	init(): void {
-		this.interceptMenuAddItem();
+		// Temporarily disabled: file-menu and editor-menu handling
+		// this.interceptMenuAddItem();
 		this.interceptEditorSuggest();
 		this.patchExistingEditorSuggests();
 		this.interceptCommandPalette();
-		this.registerMenuListeners();
+		// Temporarily disabled: file-menu and editor-menu handling
+		// this.registerMenuListeners();
 		this.observeRibbonIcons();
 		
 		// Purge polluted entries from discovered lists at startup
@@ -65,8 +67,9 @@ export class CommandHiddenControlService {
 	 */
 	updateSettings(settings: CommandHiddenSettings): void {
 		this.settings = settings;
-		this.unregisterMenuListeners();
-		this.registerMenuListeners();
+		// Temporarily disabled: file-menu and editor-menu handling
+		// this.unregisterMenuListeners();
+		// this.registerMenuListeners();
 		this.discoverRibbonIcons();
 		this.applyRibbonIconVisibility();
 		// Re-apply slash/command palette visibility to current DOM
@@ -843,17 +846,19 @@ export class CommandHiddenControlService {
 
 	/**
 	 * Register listeners for different menu types
+	 * Temporarily disabled: file-menu and editor-menu handling
 	 */
 	private registerMenuListeners(): void {
-		// File menu (right-click on file/folder in file explorer)
-		this.registerMenuListener('file-menu', (menu: Menu) => {
-			this.hideMenuItems(menu, 'file-menu');
-		});
+		// Temporarily disabled: file-menu and editor-menu handling
+		// // File menu (right-click on file/folder in file explorer)
+		// this.registerMenuListener('file-menu', (menu: Menu) => {
+		// 	this.hideMenuItems(menu, 'file-menu');
+		// });
 
-		// Editor menu (right-click in editor)
-		this.registerMenuListener('editor-menu', (menu: Menu) => {
-			this.hideMenuItems(menu, 'editor-menu');
-		});
+		// // Editor menu (right-click in editor)
+		// this.registerMenuListener('editor-menu', (menu: Menu) => {
+		// 	this.hideMenuItems(menu, 'editor-menu');
+		// });
 	}
 
 	/**

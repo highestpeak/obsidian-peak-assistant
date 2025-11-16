@@ -1663,3 +1663,73 @@ If your plugin does not need CSS, delete this file.
 	min-height: 200px;
 }
 
+/* Bulk actions wrapper - similar to Setting component layout */
+.peak-bulk-actions-wrapper {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 16px;
+	padding: 16px 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.peak-bulk-actions-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.peak-bulk-actions-name {
+	font-weight: 500;
+	color: var(--text-normal);
+	margin-bottom: 4px;
+	font-size: 14px;
+}
+
+.peak-bulk-actions-desc {
+	font-size: 12px;
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+
+/* Bulk actions bar */
+.peak-bulk-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	flex-shrink: 0;
+	align-items: center;
+}
+
+.peak-bulk-action {
+	padding: 6px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-size: 13px;
+	transition: all 0.2s ease;
+}
+
+.peak-bulk-action:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+/* Menu list container with collapse/expand */
+.peak-menu-list-container {
+	overflow: hidden;
+	transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+	            opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	max-height: 5000px;
+	opacity: 1;
+}
+
+.peak-menu-list-container.is-collapsed {
+	max-height: 0;
+	opacity: 0;
+	margin-top: 0;
+	margin-bottom: 0;
+}
+

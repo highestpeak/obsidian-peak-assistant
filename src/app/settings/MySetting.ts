@@ -263,8 +263,9 @@ export class MySettings extends PluginSettingTab {
 		const tabContainer = wrapper.createDiv({ cls: 'peak-ui-control-tabs' });
 		const tabContent = wrapper.createDiv({ cls: 'peak-ui-control-tab-content' });
 		const menuTypes = [
-			{ id: 'file-menu', label: 'File Explorer Menu', desc: 'Right-click menu on files/folders in file explorer' },
-			{ id: 'editor-menu', label: 'Editor Menu', desc: 'Right-click menu in the editor' },
+			// Temporarily disabled: file-menu and editor-menu handling
+			// { id: 'file-menu', label: 'File Explorer Menu', desc: 'Right-click menu on files/folders in file explorer' },
+			// { id: 'editor-menu', label: 'Editor Menu', desc: 'Right-click menu in the editor' },
 			{ id: 'slash-commands', label: 'Slash Commands', desc: 'Slash commands (/) in markdown editor' },
 			{ id: 'command-palette', label: 'Command Palette', desc: 'Commands in Command Palette (Cmd/Ctrl+P)' },
 			{ id: 'ribbon-icons', label: 'Ribbon Icons', desc: 'Icons in the left sidebar ribbon' },
@@ -306,6 +307,16 @@ export class MySettings extends PluginSettingTab {
 	 * Displays discovered items for any category (menus or ribbon-icons) with visibility toggles.
 	 */
 	private renderHiddenCategory(container: HTMLElement, categoryId: string, _desc: string): void {
+		// Create a content wrapper that can be safely cleared without affecting description
+		const contentWrapper = container.createDiv({ cls: 'peak-hidden-category-content' });
+		// Use renderHiddenCategoryContent to ensure buttons are always present
+		this.renderHiddenCategoryContent(contentWrapper, categoryId, _desc);
+	}
+
+	/**
+	 * Renders the content part of hidden category (buttons and list) without description.
+	 */
+	private renderHiddenCategoryContent(container: HTMLElement, categoryId: string, _desc: string): void {
 		const discovered = this.pluginRef.commandHiddenControlService?.getDiscovered(categoryId) || [];
 		const hiddenByType = this.pluginRef.settings.commandHidden.hiddenMenuItems;
 		const hiddenMap = hiddenByType[categoryId] || {};
@@ -313,10 +324,55 @@ export class MySettings extends PluginSettingTab {
 		const emptyText = 'No items discovered yet. They will appear once detected.';
 		const labels = { show: 'Show item', hide: 'Hide item' };
 
-		// Bulk actions: Hide All / Display All
-		const bulkBar = container.createDiv({ cls: 'peak-bulk-actions' });
+		// Bulk actions: Use Setting-like layout with description on left and buttons on right
+		const bulkActionsWrapper = container.createDiv({ cls: 'peak-bulk-actions-wrapper' });
+		const bulkActionsInfo = bulkActionsWrapper.createDiv({ cls: 'peak-bulk-actions-info' });
+		bulkActionsInfo.createEl('div', {
+			text: 'Bulk Actions',
+			cls: 'peak-bulk-actions-name'
+		});
+		bulkActionsInfo.createEl('div', {
+			text: 'Control visibility of all commands and icons',
+			cls: 'peak-bulk-actions-desc'
+		});
+
+		// Bulk actions buttons on the right
+		const bulkBar = bulkActionsWrapper.createDiv({ cls: 'peak-bulk-actions' });
 		const hideAllBtn = bulkBar.createEl('button', { text: 'Hide All', cls: 'peak-bulk-action hide-all' });
 		const showAllBtn = bulkBar.createEl('button', { text: 'Display All', cls: 'peak-bulk-action show-all' });
+		
+		// Collapse/Expand list buttons
+		const collapseBtn = bulkBar.createEl('button', { text: 'Collapse List', cls: 'peak-bulk-action collapse-list' });
+		const expandBtn = bulkBar.createEl('button', { text: 'Expand List', cls: 'peak-bulk-action expand-list' });
+		collapseBtn.style.display = 'none'; // Initially hide collapse button (list is collapsed by default)
+
+		// Create list container that can be collapsed/expanded
+		const listContainer = container.createDiv({ cls: 'peak-menu-list-container' });
+		let isCollapsed = true; // Default to collapsed state
+
+		const updateCollapseState = (collapsed: boolean) => {
+			isCollapsed = collapsed;
+			if (collapsed) {
+				listContainer.classList.add('is-collapsed');
+				collapseBtn.style.display = 'none';
+				expandBtn.style.display = '';
+			} else {
+				listContainer.classList.remove('is-collapsed');
+				collapseBtn.style.display = '';
+				expandBtn.style.display = 'none';
+			}
+		};
+
+		// Initialize to collapsed state
+		updateCollapseState(true);
+
+		collapseBtn.addEventListener('click', () => {
+			updateCollapseState(true);
+		});
+
+		expandBtn.addEventListener('click', () => {
+			updateCollapseState(false);
+		});
 
 		hideAllBtn.addEventListener('click', async () => {
 			if (!hiddenByType[categoryId]) hiddenByType[categoryId] = {};
@@ -328,8 +384,33 @@ export class MySettings extends PluginSettingTab {
 			});
 			this.pluginRef.commandHiddenControlService?.updateSettings(this.pluginRef.settings.commandHidden);
 			await this.pluginRef.saveSettings();
-			container.empty();
-			this.renderHiddenCategory(container, categoryId, _desc);
+			// Only refresh the list, keep buttons intact
+			listContainer.empty();
+			this.renderHiddenList(
+				listContainer,
+				discovered,
+				emptyText,
+				labels,
+				(title) => hiddenByType[categoryId][title] === true,
+				async (title, nextHidden) => {
+					// Prevent hiding "Delete" item for menu types
+					if ((categoryId === 'file-menu' || categoryId === 'editor-menu') && this.isDeleteItem(title) && nextHidden) {
+						return;
+					}
+					if (!hiddenByType[categoryId]) hiddenByType[categoryId] = {};
+					if (nextHidden) {
+						hiddenByType[categoryId][title] = true;
+					} else {
+						delete hiddenByType[categoryId][title];
+						if (Object.keys(hiddenByType[categoryId]).length === 0) {
+							delete hiddenByType[categoryId];
+						}
+					}
+					this.pluginRef.commandHiddenControlService?.updateSettings(this.pluginRef.settings.commandHidden);
+					await this.pluginRef.saveSettings();
+				},
+				categoryId
+			);
 		});
 
 		showAllBtn.addEventListener('click', async () => {
@@ -343,12 +424,37 @@ export class MySettings extends PluginSettingTab {
 			}
 			this.pluginRef.commandHiddenControlService?.updateSettings(this.pluginRef.settings.commandHidden);
 			await this.pluginRef.saveSettings();
-			container.empty();
-			this.renderHiddenCategory(container, categoryId, _desc);
+			// Only refresh the list, keep buttons intact
+			listContainer.empty();
+			this.renderHiddenList(
+				listContainer,
+				discovered,
+				emptyText,
+				labels,
+				(title) => hiddenByType[categoryId][title] === true,
+				async (title, nextHidden) => {
+					// Prevent hiding "Delete" item for menu types
+					if ((categoryId === 'file-menu' || categoryId === 'editor-menu') && this.isDeleteItem(title) && nextHidden) {
+						return;
+					}
+					if (!hiddenByType[categoryId]) hiddenByType[categoryId] = {};
+					if (nextHidden) {
+						hiddenByType[categoryId][title] = true;
+					} else {
+						delete hiddenByType[categoryId][title];
+						if (Object.keys(hiddenByType[categoryId]).length === 0) {
+							delete hiddenByType[categoryId];
+						}
+					}
+					this.pluginRef.commandHiddenControlService?.updateSettings(this.pluginRef.settings.commandHidden);
+					await this.pluginRef.saveSettings();
+				},
+				categoryId
+			);
 		});
 
 		this.renderHiddenList(
-			container,
+			listContainer,
 			discovered,
 			emptyText,
 			labels,
