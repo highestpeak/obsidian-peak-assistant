@@ -1,0 +1,442 @@
+import { App, PluginSettingTab, Setting } from 'obsidian';
+import type MyPlugin from 'main';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from 'src/service/chat/service-manager';
+import { coerceModelId } from 'src/service/chat/types-models';
+import { DEFAULT_SETTINGS, MyPluginSettings } from 'src/app/settings/config';
+
+/**
+ * Renders plugin settings UI with multiple tabs.
+ */
+export class MySettings extends PluginSettingTab {
+	private activeTab = 'general';
+	private readonly pluginRef: MyPlugin;
+
+	constructor(app: App, plugin: MyPlugin) {
+		super(app, plugin);
+		this.pluginRef = plugin;
+	}
+
+	/**
+	 * Builds the full settings layout and tab navigation.
+	 */
+	display(): void {
+		const { containerEl } = this;
+		containerEl.empty();
+
+		this.renderTabsNavigation(containerEl);
+		const contentArea = containerEl.createDiv({ cls: 'peak-settings-content' });
+		this.renderActiveTab(contentArea);
+	}
+
+	/**
+	 * Render settings tabs navigation.
+	 */
+	private renderTabsNavigation(containerEl: HTMLElement): void {
+		containerEl.addClass('peak-settings-tab');
+		const tabContainer = containerEl.createDiv({ cls: 'peak-settings-tabs' });
+		const tabs = [
+			{ id: 'general', label: 'General' },
+			{ id: 'ai-models', label: 'AI Models' },
+			{ id: 'folders', label: 'Folders' },
+			{ id: 'command-hidden', label: 'Command Hidden' },
+		];
+
+		tabs.forEach((tab) => {
+			const tabEl = tabContainer.createDiv({
+				cls: `peak-settings-tab-item ${this.activeTab === tab.id ? 'is-active' : ''}`,
+				text: tab.label,
+			});
+			tabEl.addEventListener('click', () => {
+				this.activeTab = tab.id;
+				this.display();
+			});
+		});
+	}
+
+	/**
+	 * Render active tab's content by current state.
+	 */
+	private renderActiveTab(container: HTMLElement): void {
+		switch (this.activeTab) {
+			case 'general':
+				this.renderGeneralTab(container);
+				break;
+			case 'ai-models':
+				this.renderAIModelsTab(container);
+				break;
+			case 'folders':
+				this.renderFoldersTab(container);
+				break;
+			case 'command-hidden':
+				this.renderCommandHiddenTab(container);
+				break;
+		}
+	}
+
+	/**
+	 * Shows general configuration options.
+	 */
+	private renderGeneralTab(container: HTMLElement): void {
+		container.empty();
+
+		const wrapper = container.createDiv({ cls: 'peak-settings-card' });
+
+		new Setting(wrapper)
+			.setName('Chat Root Mode')
+			.setDesc('Choose the default navigation mode')
+			.addDropdown((dropdown) => {
+				dropdown.addOption('project-first', 'Project First');
+				dropdown.addOption('conversation-first', 'Conversation First');
+				dropdown.setValue(this.pluginRef.settings.ai.rootMode);
+				dropdown.onChange(async (value) => {
+					this.pluginRef.settings.ai.rootMode = value as AIServiceSettings['rootMode'];
+					this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
+					this.pluginRef.aiManager?.refreshDefaultServices();
+					await this.pluginRef.aiManager?.init();
+					await this.pluginRef.saveSettings();
+				});
+			});
+
+		new Setting(wrapper)
+			.setName('EventScriptFolder')
+			.setDesc('Script in this folder will be register to listen to target events.')
+			.addText((text) =>
+				text
+					.setPlaceholder('Enter your Folder')
+					.setValue(this.pluginRef.settings.scriptFolder)
+					.onChange(async (value) => {
+						this.pluginRef.settings.scriptFolder = value;
+						if (this.pluginRef.eventHandler) {
+							this.pluginRef.eventHandler.addScriptFolderListener(value);
+						}
+						await this.pluginRef.saveSettings();
+					})
+			);
+	}
+
+	/**
+	 * Shows default model and provider credential settings.
+	 */
+	private renderAIModelsTab(container: HTMLElement): void {
+		container.empty();
+
+		const wrapper = container.createDiv({ cls: 'peak-settings-card' });
+
+		new Setting(wrapper)
+			.setName('Default Model Id')
+			.setDesc('Model used for new conversations')
+			.addText((text) =>
+				text
+					.setPlaceholder('e.g. gpt-4.1-mini')
+					.setValue(this.pluginRef.settings.ai.defaultModelId)
+					.onChange(async (value) => {
+						this.pluginRef.settings.ai.defaultModelId = coerceModelId(value);
+						this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
+						this.pluginRef.aiManager?.refreshDefaultServices();
+						await this.pluginRef.aiManager?.init();
+						await this.pluginRef.saveSettings();
+					})
+			);
+
+		wrapper.createEl('h3', { text: 'Provider API Keys' });
+
+		const providers = ['openai', 'anthropic', 'google'];
+		providers.forEach((provider) => {
+			const config = this.pluginRef.settings.ai.llmProviderConfigs[provider] || { apiKey: '', baseUrl: '' };
+			new Setting(wrapper)
+				.setName(`${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key`)
+				.setDesc(`API key for ${provider} provider`)
+				.addText((text) => {
+					text.setPlaceholder(`Enter ${provider} API key`);
+					text.setValue(config.apiKey || '');
+					text.inputEl.type = 'password';
+					text.onChange(async (value) => {
+						if (!this.pluginRef.settings.ai.llmProviderConfigs[provider]) {
+							this.pluginRef.settings.ai.llmProviderConfigs[provider] = { apiKey: '', baseUrl: '' };
+						}
+						this.pluginRef.settings.ai.llmProviderConfigs[provider].apiKey = value;
+						this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
+						this.pluginRef.aiManager?.refreshDefaultServices();
+						await this.pluginRef.aiManager?.init();
+						await this.pluginRef.saveSettings();
+					});
+				});
+
+			new Setting(container)
+				.setName(`${provider.charAt(0).toUpperCase() + provider.slice(1)} Base URL`)
+				.setDesc(`Optional custom base URL for ${provider} (leave empty for default)`)
+				.addText((text) => {
+					text.setPlaceholder('e.g. https://api.example.com/v1');
+					text.setValue(config.baseUrl || '');
+					text.onChange(async (value) => {
+						if (!this.pluginRef.settings.ai.llmProviderConfigs[provider]) {
+							this.pluginRef.settings.ai.llmProviderConfigs[provider] = { apiKey: '', baseUrl: '' };
+						}
+						this.pluginRef.settings.ai.llmProviderConfigs[provider].baseUrl = value;
+						this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
+						this.pluginRef.aiManager?.refreshDefaultServices();
+						await this.pluginRef.aiManager?.init();
+						await this.pluginRef.saveSettings();
+					});
+				});
+		});
+
+		container.createEl('h3', { text: 'Model Configuration' });
+		container.createEl('p', {
+			text: 'Configure available models. This section can be extended to add/edit models.',
+			cls: 'peak-settings-description',
+		});
+	}
+
+	/**
+	 * Shows folder and prompt location options.
+	 */
+	private renderFoldersTab(container: HTMLElement): void {
+		container.empty();
+
+		const wrapper = container.createDiv({ cls: 'peak-settings-card' });
+
+		new Setting(wrapper)
+			.setName('Chat Root Folder')
+			.setDesc('Root folder for AI conversation data')
+			.addText((text) =>
+				text
+					.setPlaceholder('e.g. ChatFolder')
+					.setValue(this.pluginRef.settings.ai.rootFolder)
+					.onChange(async (value) => {
+						this.pluginRef.settings.ai.rootFolder = value || DEFAULT_AI_SERVICE_SETTINGS.rootFolder;
+						this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
+						this.pluginRef.aiManager?.refreshDefaultServices();
+						await this.pluginRef.aiManager?.init();
+						await this.pluginRef.saveSettings();
+					})
+			);
+
+		new Setting(wrapper)
+			.setName('Prompt Folder')
+			.setDesc('Folder containing conversation and summary prompts')
+			.addText((text) =>
+				text
+					.setPlaceholder(DEFAULT_AI_SERVICE_SETTINGS.promptFolder)
+					.setValue(this.pluginRef.settings.ai.promptFolder)
+					.onChange(async (value) => {
+						const next = value?.trim() || DEFAULT_AI_SERVICE_SETTINGS.promptFolder;
+						this.pluginRef.settings.ai.promptFolder = next;
+						this.pluginRef.aiManager?.setPromptFolder(next);
+						this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
+						this.pluginRef.aiManager?.refreshDefaultServices();
+						await this.pluginRef.aiManager?.init();
+						await this.pluginRef.saveSettings();
+					})
+			);
+	}
+
+	/**
+	 * Renders UI visibility controls including menu discovery.
+	 */
+	private renderCommandHiddenTab(container: HTMLElement): void {
+		container.empty();
+		const wrapper = container.createDiv({ cls: 'peak-settings-card' });
+
+		// render header
+		wrapper.createEl('h3', { text: 'Command Hidden' });
+		wrapper.createEl('p', {
+			text: 'Control which command are hidden. Items are automatically discovered. Click the eye icon to toggle visibility.',
+			cls: 'peak-settings-description',
+		});
+
+		// refreshSetting
+		new Setting(wrapper)
+			.setName('Refresh Menu Items')
+			.setDesc(
+				'Click to manually refresh discovered menu items. You can also right-click in different contexts to automatically discover items.'
+			)
+			.addButton((button) => {
+				button.setButtonText('Refresh Now');
+				button.setCta();
+				button.onClick(async () => {
+					this.display();
+				});
+			})
+
+		// render tabs for different menu types
+		const tabContainer = wrapper.createDiv({ cls: 'peak-ui-control-tabs' });
+		const tabContent = wrapper.createDiv({ cls: 'peak-ui-control-tab-content' });
+		const menuTypes = [
+			{ id: 'file-menu', label: 'File Explorer Menu', desc: 'Right-click menu on files/folders in file explorer' },
+			{ id: 'editor-menu', label: 'Editor Menu', desc: 'Right-click menu in the editor' },
+			{ id: 'slash-commands', label: 'Slash Commands', desc: 'Slash commands (/) in markdown editor' },
+			{ id: 'command-palette', label: 'Command Palette', desc: 'Commands in Command Palette (Cmd/Ctrl+P)' },
+			{ id: 'ribbon-icons', label: 'Ribbon Icons', desc: 'Icons in the left sidebar ribbon' },
+		];
+		let activeTabId = menuTypes[0].id;
+		menuTypes.forEach((menuType) => {
+			const tab = tabContainer.createEl('button', {
+				cls: `peak-ui-control-tab ${menuType.id === activeTabId ? 'is-active' : ''}`,
+				text: menuType.label,
+			});
+
+			tab.addEventListener('click', () => {
+				tabContainer.querySelectorAll('.peak-ui-control-tab').forEach((t) => t.classList.remove('is-active'));
+				tab.classList.add('is-active');
+				activeTabId = menuType.id;
+
+				this.renderMenuTypeContent(tabContent, menuType);
+			});
+		});
+		// render first tab content
+		this.renderMenuTypeContent(tabContent, menuTypes[0]);
+	}
+
+	/**
+	 * Shows per menu-type configuration panels.
+	 */
+	private renderMenuTypeContent(container: HTMLElement, menuType: { id: string; label: string; desc: string }): void {
+		container.empty();
+
+		container.createEl('p', {
+			text: menuType.desc,
+			cls: 'peak-settings-description',
+		});
+
+		this.renderHiddenCategory(container, menuType.id, menuType.desc);
+	}
+
+	/**
+	 * Displays discovered items for any category (menus or ribbon-icons) with visibility toggles.
+	 */
+	private renderHiddenCategory(container: HTMLElement, categoryId: string, _desc: string): void {
+		const discovered = this.pluginRef.commandHiddenControlService?.getDiscovered(categoryId) || [];
+		const hiddenByType = this.pluginRef.settings.commandHidden.hiddenMenuItems;
+		const hiddenMap = hiddenByType[categoryId] || {};
+
+		const emptyText = 'No items discovered yet. They will appear once detected.';
+		const labels = { show: 'Show item', hide: 'Hide item' };
+
+		this.renderHiddenList(
+			container,
+			discovered,
+			emptyText,
+			labels,
+			(title) => hiddenMap[title] === true,
+			async (title, nextHidden) => {
+				if (!hiddenByType[categoryId]) hiddenByType[categoryId] = {};
+				if (nextHidden) {
+					hiddenByType[categoryId][title] = true;
+				} else {
+					delete hiddenByType[categoryId][title];
+					if (Object.keys(hiddenByType[categoryId]).length === 0) {
+						delete hiddenByType[categoryId];
+					}
+				}
+				this.pluginRef.commandHiddenControlService?.updateSettings(this.pluginRef.settings.commandHidden);
+				await this.pluginRef.saveSettings();
+			}
+		);
+	}
+
+
+	/**
+	 * Generic helper to render a list or an empty-state message.
+	 */
+	private renderListOrEmpty(
+		container: HTMLElement,
+		items: string[],
+		emptyText: string,
+		renderControls: (rowEl: HTMLElement, title: string) => void
+	): void {
+		const section = container.createDiv({ cls: 'peak-menu-section' });
+		if (items.length === 0) {
+			section.createDiv({
+				cls: 'peak-empty-state',
+				text: emptyText,
+			});
+			return;
+		}
+		const listEl = section.createDiv({ cls: 'peak-menu-items-list' });
+		items.forEach((title) => {
+			const row = listEl.createDiv({ cls: 'peak-menu-item-row' });
+			row.createSpan({ text: title, cls: 'peak-menu-item-title' });
+			renderControls(row, title);
+		});
+	}
+
+	/**
+	 * Create a generic eye toggle button and wire standard visual updates.
+	 */
+	private createVisibilityToggle(
+		parent: HTMLElement,
+		isHidden: boolean,
+		labels: { show: string; hide: string },
+		onToggle: (nextHidden: boolean) => Promise<void> | void
+	): HTMLButtonElement {
+		const toggleButton = parent.createEl('button', {
+			cls: `peak-menu-item-toggle ${isHidden ? 'is-hidden' : ''}`,
+			attr: { 'aria-label': isHidden ? labels.show : labels.hide },
+		});
+		const setVisual = (hidden: boolean) => {
+			if (hidden) {
+				toggleButton.classList.add('is-hidden');
+				toggleButton.innerHTML =
+					'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+				toggleButton.setAttribute('aria-label', labels.show);
+			} else {
+				toggleButton.classList.remove('is-hidden');
+				toggleButton.innerHTML =
+					'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+				toggleButton.setAttribute('aria-label', labels.hide);
+			}
+		};
+		setVisual(isHidden);
+		toggleButton.addEventListener('click', async () => {
+			const nextHidden = !isHidden;
+			await onToggle(nextHidden);
+			setVisual(nextHidden);
+			isHidden = nextHidden;
+		});
+		return toggleButton;
+	}
+
+	/**
+	 * Generic helper to render a toggle-able hidden list (menu/ribbon).
+	 */
+	private renderHiddenList(
+		container: HTMLElement,
+		items: string[],
+		emptyText: string,
+		labels: { show: string; hide: string },
+		isHiddenLookup: (title: string) => boolean,
+		applyChange: (title: string, nextHidden: boolean) => Promise<void>
+	): void {
+		this.renderListOrEmpty(container, items, emptyText, (row, title) => {
+			let currentHidden = isHiddenLookup(title);
+			this.createVisibilityToggle(row, currentHidden, labels, async (nextHidden) => {
+				await applyChange(title, nextHidden);
+				currentHidden = nextHidden;
+			});
+		});
+	}
+}
+
+/**
+ * Load and normalize plugin settings from persisted data.
+ */
+export function normalizePluginSettings(data: unknown): MyPluginSettings {
+	const raw = (data ?? {}) as Record<string, unknown>;
+	const settings: MyPluginSettings = Object.assign({}, DEFAULT_SETTINGS, raw);
+	const legacyChatSettings = raw?.chat as Partial<AIServiceSettings> | undefined;
+	settings.ai = Object.assign({}, DEFAULT_AI_SERVICE_SETTINGS, raw?.ai ?? legacyChatSettings ?? {});
+	if (!settings.ai.promptFolder) {
+		const legacyPromptFolder = typeof raw?.promptFolder === 'string' ? (raw.promptFolder as string) : undefined;
+		settings.ai.promptFolder = legacyPromptFolder || DEFAULT_AI_SERVICE_SETTINGS.promptFolder;
+	}
+	settings.ai.defaultModelId = coerceModelId(settings.ai.defaultModelId as unknown as string);
+	settings.ai.models = (settings.ai.models ?? []).map((model) => ({
+		...model,
+		id: coerceModelId(model.id as unknown as string),
+	}));
+	settings.commandHidden = Object.assign({}, settings.commandHidden, raw?.uiControl ?? {});
+	const settingsBag = settings as unknown as Record<string, unknown>;
+	delete settingsBag.chat;
+	return settings;
+}

@@ -3,51 +3,32 @@ import { App, Menu, MenuItem, Plugin } from 'obsidian';
 /**
  * Configuration for UI control settings
  */
-export interface UIControlSettings {
+export interface CommandHiddenSettings {
 	/**
 	 * Hidden context menu items by menu type and item title
 	 * Format: { menuType: { itemTitle: true } }
 	 * Menu types: 'file-menu', 'editor-menu', 'slash-commands', 'command-palette'
 	 */
 	hiddenMenuItems: Record<string, Record<string, boolean>>;
-	
+
 	/**
-	 * Discovered menu items by menu type (for UI display)
-	 * Format: { menuType: [itemTitle1, itemTitle2, ...] }
+	 * Unified discovered map by category (including 'ribbon-icons')
 	 */
-	discoveredMenuItems: Record<string, string[]>;
-	
-	/**
-	 * Hidden ribbon icons by icon name or title
-	 */
-	hiddenRibbonIcons: Record<string, boolean>;
-	
-	/**
-	 * Discovered ribbon icons (for UI display)
-	 */
-	discoveredRibbonIcons: string[];
-	
-	/**
-	 * Hidden ribbon icon categories (left/right)
-	 */
-	hiddenRibbonCategories: Record<string, boolean>;
+	discoveredByCategory?: Record<string, string[]>;
 }
 
-export const DEFAULT_UI_CONTROL_SETTINGS: UIControlSettings = {
+export const DEFAULT_COMMAND_HIDDEN_SETTINGS: CommandHiddenSettings = {
 	hiddenMenuItems: {},
-	discoveredMenuItems: {},
-	hiddenRibbonIcons: {},
-	discoveredRibbonIcons: [],
-	hiddenRibbonCategories: {},
+	discoveredByCategory: {},
 };
 
 /**
  * Service for controlling UI elements visibility (menus, ribbon icons)
  */
-export class UIControlService {
+export class CommandHiddenControlService {
 	private app: App;
 	private plugin: Plugin;
-	private settings: UIControlSettings;
+	private settings: CommandHiddenSettings;
 	private menuEventRefs: Array<{ type: string; ref: any }> = [];
 	private ribbonObserver?: MutationObserver;
 	private ribbonIntervalId?: number;
@@ -58,7 +39,7 @@ export class UIControlService {
 	private originalRegisterEditorSuggest?: (editorSuggest: any) => void;
 	private originalAddCommand?: (command: any) => void;
 
-	constructor(app: App, plugin: Plugin, settings: UIControlSettings) {
+	constructor(app: App, plugin: Plugin, settings: CommandHiddenSettings) {
 		this.app = app;
 		this.plugin = plugin;
 		this.settings = settings;
@@ -78,7 +59,7 @@ export class UIControlService {
 	/**
 	 * Update settings and reapply
 	 */
-	updateSettings(settings: UIControlSettings): void {
+	updateSettings(settings: CommandHiddenSettings): void {
 		this.settings = settings;
 		this.unregisterMenuListeners();
 		this.registerMenuListeners();
@@ -87,44 +68,17 @@ export class UIControlService {
 	}
 
 	/**
-	 * Get discovered menu items for a specific menu type
+	 * Get discovered items by category id (menus or 'ribbon-icons')
 	 */
-	getDiscoveredMenuItems(menuType: string): string[] {
-		return this.settings.discoveredMenuItems[menuType] || [];
+	getDiscovered(categoryId: string): string[] {
+		const byCat = this.settings.discoveredByCategory || {};
+		const list = byCat[categoryId];
+		if (Array.isArray(list)) return list;
+		// No legacy fallback
+		return [];
 	}
 
-	/**
-	 * Get discovered ribbon icons
-	 */
-	getDiscoveredRibbonIcons(): string[] {
-		return this.settings.discoveredRibbonIcons || [];
-	}
-
-	/**
-	 * Manually trigger discovery from visible menu in DOM
-	 * This can be called when user wants to refresh the list
-	 */
-	async discoverFromVisibleMenu(menuType: string): Promise<boolean> {
-		// Try to find any visible menu in DOM
-		const visibleMenus = Array.from(document.querySelectorAll('.menu')).filter(
-			(menu) => {
-				const el = menu as HTMLElement;
-				return el.offsetParent !== null && window.getComputedStyle(el).display !== 'none';
-			}
-		) as HTMLElement[];
-
-		if (visibleMenus.length > 0) {
-			// Create a dummy menu object to pass to discoverMenuItems
-			const dummyMenu = {} as Menu;
-			// Try to discover from the most recent visible menu
-			const menuEl = visibleMenus[visibleMenus.length - 1];
-			(dummyMenu as any).menuEl = menuEl;
-			
-			return this.discoverMenuItems(dummyMenu, menuType);
-		}
-
-		return false;
-	}
+	// =================================== interceptMenuAddItem ===================================
 
 	/**
 	 * Intercept Menu.addItem to automatically capture all menu items
@@ -186,6 +140,8 @@ export class UIControlService {
 			return self.originalAddItem!.call(this, wrappedCb);
 		};
 	}
+
+	// =================================== interceptEditorSuggest ===================================
 
 	/**
 	 * Intercept EditorSuggest (slash commands) to capture suggestions
@@ -341,6 +297,8 @@ export class UIControlService {
 
 		(editorSuggest as any).__peakPatched = true;
 	}
+
+	// =================================== interceptCommandPalette ===================================
 
 	/**
 	 * Intercept Command Palette to capture commands
@@ -499,15 +457,13 @@ export class UIControlService {
 	 */
 	private addDiscoveredItem(menuType: string, itemName: string, alsoMenuTypes: string[] = []): void {
 		if (!itemName) return;
-		
-		if (!this.settings.discoveredMenuItems[menuType]) {
-			this.settings.discoveredMenuItems[menuType] = [];
-		}
-		
-		if (!this.settings.discoveredMenuItems[menuType].includes(itemName)) {
-			this.settings.discoveredMenuItems[menuType].push(itemName);
-			this.settings.discoveredMenuItems[menuType].sort();
-			
+
+		// Write into unified discoveredByCategory
+		const byCat = (this.settings.discoveredByCategory = this.settings.discoveredByCategory || {});
+		if (!byCat[menuType]) byCat[menuType] = [];
+		if (!byCat[menuType].includes(itemName)) {
+			byCat[menuType].push(itemName);
+			byCat[menuType].sort();
 			setTimeout(() => {
 				(this.plugin as any).saveSettings?.();
 			}, 100);
@@ -559,11 +515,7 @@ export class UIControlService {
 	private captureSuggestions(suggestions: any[], menuType: string): void {
 		if (!suggestions || suggestions.length === 0) return;
 		
-		if (!this.settings.discoveredMenuItems[menuType]) {
-			this.settings.discoveredMenuItems[menuType] = [];
-		}
-		
-		let hasNewItems = false;
+		const before = this.getDiscovered(menuType).length;
 		suggestions.forEach((suggestion: any) => {
 			let title = '';
 			
@@ -582,15 +534,13 @@ export class UIControlService {
 			
 			if (title) {
 				const cleanTitle = title.trim();
-				if (cleanTitle && !this.settings.discoveredMenuItems[menuType].includes(cleanTitle)) {
-					this.settings.discoveredMenuItems[menuType].push(cleanTitle);
-					hasNewItems = true;
+				if (cleanTitle) {
+					this.addDiscoveredItem(menuType, cleanTitle);
 				}
 			}
 		});
 		
-		if (hasNewItems) {
-			this.settings.discoveredMenuItems[menuType].sort();
+		if (this.getDiscovered(menuType).length > before) {
 			setTimeout(() => {
 				(this.plugin as any).saveSettings?.();
 			}, 100);
@@ -610,20 +560,9 @@ export class UIControlService {
 					const itemEl = item as HTMLElement;
 					const title = itemEl.textContent?.trim() || '';
 					
-					// Capture for discovery
+					// Capture for discovery (use helper to keep unified map in sync)
 					if (title) {
-						if (!this.settings.discoveredMenuItems['slash-commands']) {
-							this.settings.discoveredMenuItems['slash-commands'] = [];
-						}
-						
-						if (!this.settings.discoveredMenuItems['slash-commands'].includes(title)) {
-							this.settings.discoveredMenuItems['slash-commands'].push(title);
-							this.settings.discoveredMenuItems['slash-commands'].sort();
-							
-							setTimeout(() => {
-								(this.plugin as any).saveSettings?.();
-							}, 100);
-						}
+						this.addDiscoveredItem('slash-commands', title);
 					}
 					
 					// Hide if needed
@@ -655,20 +594,9 @@ export class UIControlService {
 					const itemEl = item as HTMLElement;
 					const title = itemEl.textContent?.trim() || '';
 					
-					// Capture for discovery
+					// Capture for discovery (use helper to keep unified map in sync)
 					if (title) {
-						if (!this.settings.discoveredMenuItems['command-palette']) {
-							this.settings.discoveredMenuItems['command-palette'] = [];
-						}
-						
-						if (!this.settings.discoveredMenuItems['command-palette'].includes(title)) {
-							this.settings.discoveredMenuItems['command-palette'].push(title);
-							this.settings.discoveredMenuItems['command-palette'].sort();
-							
-							setTimeout(() => {
-								(this.plugin as any).saveSettings?.();
-							}, 100);
-						}
+						this.addDiscoveredItem('command-palette', title);
 					}
 					
 					// Hide if needed
@@ -686,6 +614,8 @@ export class UIControlService {
 			subtree: true,
 		});
 	}
+
+	// =================================== registerMenuListeners ===================================
 
 	/**
 	 * Register listeners for different menu types
@@ -738,11 +668,6 @@ export class UIControlService {
 		const menuInfo = this.menuItemMap.get(menu);
 		if (!menuInfo || menuInfo.items.length === 0) return;
 		
-		// Update discovered items
-		if (!this.settings.discoveredMenuItems[menuType]) {
-			this.settings.discoveredMenuItems[menuType] = [];
-		}
-		
 		let hasNewItems = false;
 		menuInfo.items.forEach(({ title, item }) => {
 			// If title wasn't captured initially, try to get it now
@@ -765,15 +690,15 @@ export class UIControlService {
 			
 			if (finalTitle) {
 				const cleanTitle = finalTitle.replace(/^[▶▸▹▻►]+\s*/, '').trim();
-				if (cleanTitle && !this.settings.discoveredMenuItems[menuType].includes(cleanTitle)) {
-					this.settings.discoveredMenuItems[menuType].push(cleanTitle);
-					hasNewItems = true;
+				if (cleanTitle) {
+					const before = this.getDiscovered(menuType).length;
+					this.addDiscoveredItem(menuType, cleanTitle);
+					if (this.getDiscovered(menuType).length > before) hasNewItems = true;
 				}
 			}
 		});
 		
 		if (hasNewItems) {
-			this.settings.discoveredMenuItems[menuType].sort();
 			setTimeout(() => {
 				(this.plugin as any).saveSettings?.();
 			}, 100);
@@ -889,22 +814,14 @@ export class UIControlService {
 			return false;
 		}
 
-		// Update discovered items (merge with existing)
-		if (!this.settings.discoveredMenuItems[menuType]) {
-			this.settings.discoveredMenuItems[menuType] = [];
-		}
-		
-		let hasNewItems = false;
-		// Merge new items with existing ones
+		// Update discovered items (merge with unified map)
+		const before = this.getDiscovered(menuType).length;
 		discoveredItems.forEach(item => {
-			if (item && !this.settings.discoveredMenuItems[menuType].includes(item)) {
-				this.settings.discoveredMenuItems[menuType].push(item);
-				hasNewItems = true;
+			if (item) {
+				this.addDiscoveredItem(menuType, item);
 			}
 		});
-		
-		// Sort alphabetically
-		this.settings.discoveredMenuItems[menuType].sort();
+		const hasNewItems = this.getDiscovered(menuType).length > before;
 		
 		// Return true if new items were added
 		return hasNewItems;
@@ -957,6 +874,8 @@ export class UIControlService {
 			}
 		});
 	}
+
+	// =================================== observeRibbonIcons ===================================
 
 	/**
 	 * Observe ribbon icons and hide them based on settings
@@ -1029,9 +948,7 @@ export class UIControlService {
 			if (plugin.manifest.name) {
 				// Try to find ribbon icon for this plugin
 				const iconTitle = plugin.manifest.name;
-				if (iconTitle && !this.settings.discoveredRibbonIcons.includes(iconTitle)) {
-					// Don't auto-add, wait for DOM discovery
-				}
+				// No direct add; wait for DOM discovery to populate unified map
 			}
 		});
 	}
@@ -1101,56 +1018,25 @@ export class UIControlService {
 		processRibbon(this.app.workspace.leftRibbon);
 		processRibbon(this.app.workspace.rightRibbon);
 		
-		let hasNewIcons = false;
-		// Update discovered icons
+		// Update unified discoveredByCategory
+		const byCat = (this.settings.discoveredByCategory = this.settings.discoveredByCategory || {});
+		const bucket = (byCat['ribbon-icons'] = byCat['ribbon-icons'] || []);
+		const before = bucket.length;
 		discoveredIcons.forEach(icon => {
-			if (icon && !this.settings.discoveredRibbonIcons.includes(icon)) {
-				this.settings.discoveredRibbonIcons.push(icon);
-				hasNewIcons = true;
+			if (icon && !bucket.includes(icon)) {
+				bucket.push(icon);
 			}
 		});
-		
-		// Sort alphabetically
-		this.settings.discoveredRibbonIcons.sort();
+		bucket.sort();
 		
 		// Return true if new icons were added
-		return hasNewIcons;
+		return bucket.length > before;
 	}
 
 	/**
 	 * Apply ribbon icon visibility based on settings
 	 */
 	private applyRibbonIconVisibility(): void {
-		// Hide left ribbon category if needed
-		if (this.settings.hiddenRibbonCategories['left']) {
-			const leftRibbon = this.app.workspace.leftRibbon;
-			if (leftRibbon && (leftRibbon as any).containerEl) {
-				(leftRibbon as any).containerEl.style.display = 'none';
-				return; // If entire ribbon is hidden, don't process individual icons
-			}
-		} else {
-			// Show left ribbon if it was previously hidden
-			const leftRibbon = this.app.workspace.leftRibbon;
-			if (leftRibbon && (leftRibbon as any).containerEl) {
-				(leftRibbon as any).containerEl.style.display = '';
-			}
-		}
-
-		// Hide right ribbon category if needed
-		if (this.settings.hiddenRibbonCategories['right']) {
-			const rightRibbon = this.app.workspace.rightRibbon;
-			if (rightRibbon && (rightRibbon as any).containerEl) {
-				(rightRibbon as any).containerEl.style.display = 'none';
-				return; // If entire ribbon is hidden, don't process individual icons
-			}
-		} else {
-			// Show right ribbon if it was previously hidden
-			const rightRibbon = this.app.workspace.rightRibbon;
-			if (rightRibbon && (rightRibbon as any).containerEl) {
-				(rightRibbon as any).containerEl.style.display = '';
-			}
-		}
-
 		// Hide individual icons - use same logic as discovery
 		const processRibbonIcons = (ribbon: any) => {
 			if (!ribbon || !ribbon.containerEl) return;
@@ -1189,7 +1075,8 @@ export class UIControlService {
 					}
 					
 					// Match against hidden icons
-					if (title && this.settings.hiddenRibbonIcons[title]) {
+					const hiddenIcons = this.settings.hiddenMenuItems['ribbon-icons'] || {};
+					if (title && hiddenIcons[title]) {
 						iconEl.style.display = 'none';
 					} else if (title) {
 						// Show icon if it's not in the hidden list
@@ -1203,15 +1090,7 @@ export class UIControlService {
 		processRibbonIcons(this.app.workspace.rightRibbon);
 	}
 
-	/**
-	 * Unregister all menu listeners
-	 */
-	private unregisterMenuListeners(): void {
-		this.menuEventRefs.forEach(({ ref }) => {
-			this.app.workspace.offref(ref);
-		});
-		this.menuEventRefs = [];
-	}
+	// =================================== unload ===================================
 
 	/**
 	 * Cleanup and unregister all listeners
@@ -1250,6 +1129,16 @@ export class UIControlService {
 		}
 		
 		this.menuItemMap.clear();
+	}
+
+	/**
+	 * Unregister all menu listeners
+	 */
+	private unregisterMenuListeners(): void {
+		this.menuEventRefs.forEach(({ ref }) => {
+			this.app.workspace.offref(ref);
+		});
+		this.menuEventRefs = [];
 	}
 }
 
