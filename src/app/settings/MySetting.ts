@@ -313,6 +313,40 @@ export class MySettings extends PluginSettingTab {
 		const emptyText = 'No items discovered yet. They will appear once detected.';
 		const labels = { show: 'Show item', hide: 'Hide item' };
 
+		// Bulk actions: Hide All / Display All
+		const bulkBar = container.createDiv({ cls: 'peak-bulk-actions' });
+		const hideAllBtn = bulkBar.createEl('button', { text: 'Hide All', cls: 'peak-bulk-action hide-all' });
+		const showAllBtn = bulkBar.createEl('button', { text: 'Display All', cls: 'peak-bulk-action show-all' });
+
+		hideAllBtn.addEventListener('click', async () => {
+			if (!hiddenByType[categoryId]) hiddenByType[categoryId] = {};
+			discovered.forEach((title) => {
+				// Exclude "Delete" item from hide all operation
+				if (title && !this.isDeleteItem(title)) {
+					hiddenByType[categoryId][title] = true;
+				}
+			});
+			this.pluginRef.commandHiddenControlService?.updateSettings(this.pluginRef.settings.commandHidden);
+			await this.pluginRef.saveSettings();
+			container.empty();
+			this.renderHiddenCategory(container, categoryId, _desc);
+		});
+
+		showAllBtn.addEventListener('click', async () => {
+			if (hiddenByType[categoryId]) {
+				discovered.forEach((title) => {
+					if (title) delete hiddenByType[categoryId][title];
+				});
+				if (Object.keys(hiddenByType[categoryId]).length === 0) {
+					delete hiddenByType[categoryId];
+				}
+			}
+			this.pluginRef.commandHiddenControlService?.updateSettings(this.pluginRef.settings.commandHidden);
+			await this.pluginRef.saveSettings();
+			container.empty();
+			this.renderHiddenCategory(container, categoryId, _desc);
+		});
+
 		this.renderHiddenList(
 			container,
 			discovered,
@@ -320,6 +354,10 @@ export class MySettings extends PluginSettingTab {
 			labels,
 			(title) => hiddenMap[title] === true,
 			async (title, nextHidden) => {
+				// Prevent hiding "Delete" item for menu types
+				if ((categoryId === 'file-menu' || categoryId === 'editor-menu') && this.isDeleteItem(title) && nextHidden) {
+					return;
+				}
 				if (!hiddenByType[categoryId]) hiddenByType[categoryId] = {};
 				if (nextHidden) {
 					hiddenByType[categoryId][title] = true;
@@ -331,7 +369,8 @@ export class MySettings extends PluginSettingTab {
 				}
 				this.pluginRef.commandHiddenControlService?.updateSettings(this.pluginRef.settings.commandHidden);
 				await this.pluginRef.saveSettings();
-			}
+			},
+			categoryId
 		);
 	}
 
@@ -398,7 +437,17 @@ export class MySettings extends PluginSettingTab {
 	}
 
 	/**
+	 * Check if a menu item title is "Delete" (case-insensitive)
+	 */
+	private isDeleteItem(title: string): boolean {
+		if (!title) return false;
+		const norm = title.trim().toLowerCase();
+		return norm === 'delete' || norm === '删除';
+	}
+
+	/**
 	 * Generic helper to render a toggle-able hidden list (menu/ribbon).
+	 * "Delete" item cannot be hidden for file-menu and editor-menu.
 	 */
 	private renderHiddenList(
 		container: HTMLElement,
@@ -406,14 +455,35 @@ export class MySettings extends PluginSettingTab {
 		emptyText: string,
 		labels: { show: string; hide: string },
 		isHiddenLookup: (title: string) => boolean,
-		applyChange: (title: string, nextHidden: boolean) => Promise<void>
+		applyChange: (title: string, nextHidden: boolean) => Promise<void>,
+		categoryId?: string
 	): void {
 		this.renderListOrEmpty(container, items, emptyText, (row, title) => {
+			const isDelete = this.isDeleteItem(title);
+			const isMenuType = categoryId === 'file-menu' || categoryId === 'editor-menu';
+			const cannotHide = isDelete && isMenuType;
+			
 			let currentHidden = isHiddenLookup(title);
-			this.createVisibilityToggle(row, currentHidden, labels, async (nextHidden) => {
+			// Force "Delete" to be visible for menu types
+			if (cannotHide) {
+				currentHidden = false;
+			}
+			
+			const toggleButton = this.createVisibilityToggle(row, currentHidden, labels, async (nextHidden) => {
+				// Prevent hiding "Delete" item for menu types
+				if (cannotHide && nextHidden) {
+					return;
+				}
 				await applyChange(title, nextHidden);
 				currentHidden = nextHidden;
 			});
+			
+			// Disable toggle button for "Delete" item in menu types
+			if (cannotHide) {
+				toggleButton.disabled = true;
+				toggleButton.classList.add('peak-menu-item-toggle-disabled');
+				toggleButton.setAttribute('title', 'Delete item cannot be hidden');
+			}
 		});
 	}
 }

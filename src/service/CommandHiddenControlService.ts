@@ -51,9 +51,13 @@ export class CommandHiddenControlService {
 	init(): void {
 		this.interceptMenuAddItem();
 		this.interceptEditorSuggest();
+		this.patchExistingEditorSuggests();
 		this.interceptCommandPalette();
 		this.registerMenuListeners();
 		this.observeRibbonIcons();
+		
+		// Purge polluted entries from discovered lists at startup
+		this.purgeNonSlashFromDiscovered();
 	}
 
 	/**
@@ -65,6 +69,11 @@ export class CommandHiddenControlService {
 		this.registerMenuListeners();
 		this.discoverRibbonIcons();
 		this.applyRibbonIconVisibility();
+		// Re-apply slash/command palette visibility to current DOM
+		this.applySlashVisibility();
+		this.pruneCommandPaletteDom();
+		// Also cleanup polluted discovered entries after settings changes
+		this.purgeNonSlashFromDiscovered();
 	}
 
 	/**
@@ -147,21 +156,15 @@ export class CommandHiddenControlService {
 	 * Intercept EditorSuggest (slash commands) to capture suggestions
 	 */
 	private interceptEditorSuggest(): void {
-		// Intercept registerEditorSuggest to capture all registered editor suggests
+		// Intercept registerEditorSuggest to patch filtering only in slash context
 		const self = this;
 		const pluginProto = Plugin.prototype as any;
-		
-		// First, try to get all existing editor suggests
-		this.captureAllEditorSuggests();
 		
 		if (!this.originalRegisterEditorSuggest && pluginProto.registerEditorSuggest) {
 			this.originalRegisterEditorSuggest = pluginProto.registerEditorSuggest;
 			pluginProto.registerEditorSuggest = function(editorSuggest: any) {
 				const result = self.originalRegisterEditorSuggest?.call(this, editorSuggest);
-				if (editorSuggest) {
-					self.captureEditorSuggestItems(editorSuggest);
-					self.patchEditorSuggest(editorSuggest);
-				}
+				if (editorSuggest) self.patchEditorSuggest(editorSuggest);
 				return result;
 			};
 		}
@@ -171,30 +174,47 @@ export class CommandHiddenControlService {
 	}
 
 	/**
-	 * Capture all existing editor suggests from scope
+	 * Patch existing EditorSuggest instances that were registered before our init
 	 */
-	private captureAllEditorSuggests(): void {
-		const visited = new Set<any>();
-		const scopeAny = this.app.scope as any;
-		const workspaceAny = this.app.workspace as any;
-		const possibleSources = [
-			scopeAny?.editorSuggests,
-			scopeAny?._editorSuggests,
-			scopeAny?.suggests,
-			scopeAny?.editorSuggestions,
-			workspaceAny?.editorSuggest,
-			workspaceAny?.editorSuggest?.suggests,
-			workspaceAny?._editorSuggests,
-			workspaceAny?.editorSuggestions,
-		];
-		
-		possibleSources.forEach((source) => this.collectEditorSuggestsFromSource(source, visited));
-		
-		// Also try to trigger slash commands to capture them
-		setTimeout(() => {
-			this.triggerSlashCommandsCapture();
-		}, 1000);
+	private patchExistingEditorSuggests(): void {
+		try {
+			const visited = new Set<any>();
+			const scopeAny = this.app.scope as any;
+			const workspaceAny = this.app.workspace as any;
+			const sources = [
+				scopeAny?.editorSuggests,
+				scopeAny?._editorSuggests,
+				scopeAny?.suggests,
+				scopeAny?.editorSuggestions,
+				workspaceAny?.editorSuggest,
+				workspaceAny?.editorSuggest?.suggests,
+				workspaceAny?._editorSuggests,
+				workspaceAny?.editorSuggestions,
+			];
+			const collect = (source: any) => {
+				if (!source || visited.has(source)) return;
+				visited.add(source);
+				if (Array.isArray(source)) {
+					source.forEach(collect);
+					return;
+				}
+				if (source instanceof Map) {
+					source.forEach(collect);
+					return;
+				}
+				if (source.getSuggestions && typeof source.getSuggestions === 'function') {
+					this.patchEditorSuggest(source);
+					return;
+				}
+				if (typeof source === 'object') {
+					Object.values(source).forEach(collect);
+				}
+			};
+			sources.forEach(collect);
+		} catch {}
 	}
+
+	// Remove broad initial capture to avoid polluting discovered list
 
 	private collectEditorSuggestsFromSource(source: any, visited: Set<any>): void {
 		if (!source || visited.has(source)) return;
@@ -211,7 +231,6 @@ export class CommandHiddenControlService {
 		}
 
 		if (source.getSuggestions && typeof source.getSuggestions === 'function') {
-			this.captureEditorSuggestItems(source);
 			this.patchEditorSuggest(source);
 			return;
 		}
@@ -242,32 +261,7 @@ export class CommandHiddenControlService {
 	/**
 	 * Capture items from an editor suggest
 	 */
-	private captureEditorSuggestItems(editorSuggest: any): void {
-		if (!editorSuggest || !editorSuggest.getSuggestions) return;
-		
-		// Try to get suggestions with a dummy context
-		try {
-			const dummyContext = {
-				query: '',
-				start: { line: 0, ch: 0 },
-				end: { line: 0, ch: 0 },
-			};
-			
-			const suggestions = editorSuggest.getSuggestions(dummyContext);
-			
-			if (suggestions instanceof Promise) {
-				suggestions.then((sugs: any[]) => {
-					this.captureSuggestions(sugs, 'slash-commands');
-				}).catch(() => {
-					// Ignore errors
-				});
-			} else if (Array.isArray(suggestions)) {
-				this.captureSuggestions(suggestions, 'slash-commands');
-			}
-		} catch (e) {
-			// Ignore errors - some suggests need real context
-		}
-	}
+	// Remove eager capture helper
 
 	/**
 	 * Patch an editor suggest to filter slash commands according to settings
@@ -282,14 +276,20 @@ export class CommandHiddenControlService {
 
 			if (suggestions instanceof Promise) {
 				return suggestions.then((sugs: any[]) => {
-					this.captureSuggestions(sugs, 'slash-commands');
-					return this.filterSuggestions(sugs, 'slash-commands');
+					if (this.isSlashContext()) {
+						this.captureSuggestions(sugs, 'slash-commands');
+						return this.filterSuggestions(sugs, 'slash-commands');
+					}
+					return sugs;
 				});
 			}
 
 			if (Array.isArray(suggestions)) {
-				this.captureSuggestions(suggestions, 'slash-commands');
-				return this.filterSuggestions(suggestions, 'slash-commands');
+				if (this.isSlashContext()) {
+					this.captureSuggestions(suggestions, 'slash-commands');
+					return this.filterSuggestions(suggestions, 'slash-commands');
+				}
+				return suggestions;
 			}
 
 			return suggestions;
@@ -312,19 +312,38 @@ export class CommandHiddenControlService {
 		this.captureAllCommands();
 		
 		// Intercept commands registration
-		if (!appAny.commands || !appAny.commands.addCommand) return;
-		this.originalAddCommand = appAny.commands.addCommand.bind(appAny.commands);
-		appAny.commands.addCommand = function(command: any) {
-			if (!self.originalAddCommand) return;
-			const result = self.originalAddCommand(command);
-			
-			// Capture command info
-			if (command && command.name) {
-				self.addDiscoveredItem('command-palette', command.name, ['slash-commands']);
-			}
-			
-			return result;
-		};
+		if (!appAny.commands) return;
+		if (appAny.commands.addCommand && !this.originalAddCommand) {
+			this.originalAddCommand = appAny.commands.addCommand.bind(appAny.commands);
+			appAny.commands.addCommand = function(command: any) {
+				if (!self.originalAddCommand) return;
+				const result = self.originalAddCommand(command);
+				
+				// Capture command info
+				if (command && command.name) {
+					self.addDiscoveredItem('command-palette', command.name);
+				}
+				
+				return result;
+			};
+		}
+		
+		// Intercept command execution and block hidden commands
+		if (appAny.commands.executeCommandById && !appAny.commands.__peakExecPatched) {
+			const originalExecute = appAny.commands.executeCommandById.bind(appAny.commands);
+			appAny.commands.executeCommandById = function(commandId: string) {
+				try {
+					const cmd = appAny.commands?.commands?.[commandId] || (appAny.commands.getCommand && appAny.commands.getCommand(commandId));
+					const name = cmd?.name as string | undefined;
+					if (name && self.isHidden('command-palette', name)) {
+						// Block execution for hidden commands
+						return false;
+					}
+				} catch {}
+				return originalExecute(commandId);
+			};
+			appAny.commands.__peakExecPatched = true;
+		}
 		
 		// Intercept command palette modal to capture all commands when opened
 		const originalOpenCommandPalette = appAny.commands?.openCommandPalette?.bind(appAny.commands);
@@ -332,7 +351,14 @@ export class CommandHiddenControlService {
 			appAny.commands.openCommandPalette = function() {
 				// Capture all commands when palette opens
 				self.captureAllCommands();
-				return originalOpenCommandPalette();
+				const res = originalOpenCommandPalette();
+				// After open, repeatedly prune hidden items for a short period
+				let count = 0;
+				const timer = window.setInterval(() => {
+					self.pruneCommandPaletteDom();
+					if (++count > 10) window.clearInterval(timer);
+				}, 50);
+				return res;
 			};
 		}
 		
@@ -347,9 +373,9 @@ export class CommandHiddenControlService {
 					if (Array.isArray(suggestions)) {
 						suggestions.forEach((sug: any) => {
 							if (sug.item && sug.item.name) {
-								self.addDiscoveredItem('command-palette', sug.item.name, ['slash-commands']);
+								self.addDiscoveredItem('command-palette', sug.item.name);
 							} else if (sug.name) {
-								self.addDiscoveredItem('command-palette', sug.name, ['slash-commands']);
+								self.addDiscoveredItem('command-palette', sug.name);
 							}
 						});
 						
@@ -364,6 +390,29 @@ export class CommandHiddenControlService {
 		
 		// Also observe command palette DOM
 		this.observeCommandPalette();
+	}
+
+	/**
+	 * Remove hidden items from command palette DOM if present
+	 */
+	private pruneCommandPaletteDom(): void {
+		const paletteEl = document.querySelector(
+			[
+				'.modal-container .suggestion-container',
+				'.modal-container .prompt-results',
+				'.modal-container .suggestion-container.mod-instance',
+				'.modal-container .prompt-results .suggestion-container',
+			].join(', ')
+		);
+		if (!paletteEl) return;
+		const items = paletteEl.querySelectorAll('.suggestion-item, .suggestion, .mod-search-result');
+		items.forEach((item: Element) => {
+			const el = item as HTMLElement;
+			const title = el.textContent?.trim() || '';
+			if (this.isHidden('command-palette', title)) {
+				el.style.display = 'none';
+			}
+		});
 	}
 
 	/**
@@ -386,7 +435,7 @@ export class CommandHiddenControlService {
 			if (commands instanceof Map) {
 				commands.forEach((command: any, commandId: string) => {
 					if (command && command.name) {
-						this.addDiscoveredItem('command-palette', command.name, ['slash-commands']);
+						this.addDiscoveredItem('command-palette', command.name);
 					}
 				});
 			} 
@@ -394,7 +443,7 @@ export class CommandHiddenControlService {
 			else if (Array.isArray(commands)) {
 				commands.forEach((command: any) => {
 					if (command && command.name) {
-						this.addDiscoveredItem('command-palette', command.name, ['slash-commands']);
+						this.addDiscoveredItem('command-palette', command.name);
 					}
 				});
 			}
@@ -403,7 +452,7 @@ export class CommandHiddenControlService {
 				Object.keys(commands).forEach((commandId: string) => {
 					const command = commands[commandId];
 					if (command && command.name) {
-						this.addDiscoveredItem('command-palette', command.name, ['slash-commands']);
+						this.addDiscoveredItem('command-palette', command.name);
 					}
 				});
 			}
@@ -457,6 +506,8 @@ export class CommandHiddenControlService {
 	 */
 	private addDiscoveredItem(menuType: string, itemName: string, alsoMenuTypes: string[] = []): void {
 		if (!itemName) return;
+		// Skip non-slash items when collecting slash commands
+		if (menuType === 'slash-commands' && this.isLikelyFileOrWiki(itemName)) return;
 
 		// Write into unified discoveredByCategory
 		const byCat = (this.settings.discoveredByCategory = this.settings.discoveredByCategory || {});
@@ -476,11 +527,156 @@ export class CommandHiddenControlService {
 	}
 
 	/**
+	 * Normalize titles for robust matching (remove arrows/hotkeys/extra spaces)
+	 */
+	private normalizeTitle(raw: string): string {
+		if (!raw) return '';
+		// remove common leading arrows
+		let s = raw.replace(/^[▶▸▹▻►]+\s*/, '');
+		// collapse whitespace
+		s = s.replace(/\s+/g, ' ').trim();
+		// remove trailing hotkey hints like "Ctrl+P", "⌘P", separated in same text
+		// common pattern: title + spaces + hotkey
+		s = s.replace(/\s+(Ctrl|Alt|Shift|Cmd|⌘|⌥|⇧|Enter|↵|Tab)[\w+\-\s]*$/i, '').trim();
+		// remove trailing separators like " - ..." or " — ..."
+		s = s.replace(/\s+[—-]\s+.*$/, '').trim();
+		return s;
+	}
+
+	/**
+	 * Check if a menu item title is "Delete" (case-insensitive, with normalization)
+	 */
+	private isDeleteItem(title: string): boolean {
+		if (!title) return false;
+		const norm = this.normalizeTitle(title).toLowerCase();
+		return norm === 'delete' || norm === '删除';
+	}
+
+	/**
+	 * Check hidden map with fuzzy match
+	 * Note: "Delete" item is always visible and cannot be hidden
+	 */
+	private isHidden(menuType: string, title: string): boolean {
+		// "Delete" item is always visible for file-menu and editor-menu
+		if ((menuType === 'file-menu' || menuType === 'editor-menu') && this.isDeleteItem(title)) {
+			return false;
+		}
+		
+		const map = this.settings.hiddenMenuItems[menuType] || {};
+		if (!title || Object.keys(map).length === 0) return false;
+		
+		const norm = this.normalizeTitle(title);
+		const titleLower = norm.toLowerCase();
+		
+		// exact match (normalized)
+		if (map[norm] || map[title]) return true;
+		
+		// For slash commands, we require exact match only to avoid accidental prefix collisions
+		if (menuType === 'slash-commands') return false;
+		
+		// fuzzy match: check all keys in the hidden map
+		for (const key of Object.keys(map)) {
+			if (!map[key]) continue; // skip if not actually hidden
+			
+			const keyNorm = this.normalizeTitle(key);
+			if (!keyNorm) continue;
+			const keyLower = keyNorm.toLowerCase();
+			
+			// Exact match after normalization
+			if (norm === keyNorm || titleLower === keyLower) return true;
+			
+			// Prefix match (either direction)
+			if (norm.startsWith(keyNorm) || keyNorm.startsWith(norm)) return true;
+			if (titleLower.startsWith(keyLower) || keyLower.startsWith(titleLower)) return true;
+			
+			// Contains match (more lenient)
+			if (norm.includes(keyNorm) || keyNorm.includes(norm)) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Return true only when caret is right after '/' in active editor
+	 */
+	private isSlashContext(): boolean {
+		try {
+			const anyApp = this.app as any;
+			const view = anyApp.workspace?.getActiveViewOfType?.(anyApp.MarkdownView || (anyApp as any).MarkdownView);
+			const editor = view?.editor || anyApp.workspace?.activeEditor?.editor;
+			if (!editor) return false;
+			const pos = editor.getCursor?.();
+			if (!pos) return false;
+			const line = editor.getLine?.(pos.line) || '';
+			const ch = pos.ch;
+			// Find token start (from cursor向左到空白/行首)
+			let i = ch - 1;
+			while (i >= 0 && !/\s/.test(line[i])) i--;
+			const token = line.slice(i + 1, ch);
+			// Strict: token 必须以 '/' 开头，且不是 '[[', '![', 'http'
+			if (!token.startsWith('/')) return false;
+			if (token.startsWith('http') || token.startsWith('[') || token.startsWith('![')) return false;
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Heuristic to detect non-slash items like wikilinks [[...]] or file paths
+	 */
+	private isLikelyFileOrWiki(title: string): boolean {
+		if (!title) return false;
+		const s = title.trim();
+		if (s.startsWith('[[') || /\[\[.*\]\]/.test(s)) return true;
+		if (/[\\/]/.test(s)) return true; // has path separator
+		if (/\.(md|canvas|pdf|png|jpg|jpeg|gif|webp)\b/i.test(s)) return true;
+		// common non-slash patterns that are actually filters/metadata, not commands
+		if (/^tag:/i.test(s)) return true;
+		if (/^section:/i.test(s)) return true;
+		if (/^url[-:]?/i.test(s)) return true;
+		if (/https?:\/\//i.test(s)) return true;
+		// bare hash tags like "#tag" or "tag:#xxx"
+		if (/(^|\s)#\S+/.test(s)) return true;
+		return false;
+	}
+
+	/**
+	 * Remove non-slash items mistakenly stored under 'slash-commands'
+	 */
+	private purgeNonSlashFromDiscovered(): void {
+		const byCat = (this.settings.discoveredByCategory = this.settings.discoveredByCategory || {});
+		const list = byCat['slash-commands'] || [];
+		const cleaned = list.filter((t) => !this.isLikelyFileOrWiki(t));
+		if (cleaned.length !== list.length) {
+			byCat['slash-commands'] = cleaned;
+			// Also clean hidden map to avoid orphaned keys
+			const hidden = this.settings.hiddenMenuItems['slash-commands'] || {};
+			Object.keys(hidden).forEach((k) => {
+				if (this.isLikelyFileOrWiki(k)) delete hidden[k];
+			});
+			this.settings.hiddenMenuItems['slash-commands'] = hidden;
+			setTimeout(() => {
+				(this.plugin as any).saveSettings?.();
+			}, 50);
+		}
+	}
+
+	/**
 	 * Filter suggestions based on hidden items
 	 */
-	private filterSuggestions(suggestions: any[], menuType: string): any[] {
+	private filterSuggestions(suggestions: any, menuType: string): any {
+		// Gracefully bypass if suggestions is not an array
+		if (!Array.isArray(suggestions)) return suggestions;
+
 		const hiddenItems = this.settings.hiddenMenuItems[menuType];
 		if (!hiddenItems || Object.keys(hiddenItems).length === 0) {
+			// Still filter out non-slash items from discovery in slash mode
+			if (menuType === 'slash-commands') {
+				return suggestions.filter((s: any) => {
+					const t = (typeof s === 'string' ? s : (s.title || s.name || s.text || s.label || '')).toString();
+					return !this.isLikelyFileOrWiki(t);
+				});
+			}
 			return suggestions;
 		}
 		
@@ -500,10 +696,11 @@ export class CommandHiddenControlService {
 				title = suggestion.label;
 			}
 			
-			if (title) {
-				const cleanTitle = title.trim();
-				return !hiddenItems[cleanTitle];
+			if (menuType === 'slash-commands' && this.isLikelyFileOrWiki(title)) {
+				return true; // do not hide non-slash items here; they will be ignored from discovery
 			}
+
+			if (title) return !this.isHidden(menuType, title);
 			
 			return true;
 		});
@@ -533,6 +730,9 @@ export class CommandHiddenControlService {
 			}
 			
 			if (title) {
+				if (menuType === 'slash-commands' && this.isLikelyFileOrWiki(title)) {
+					return; // ignore non-slash suggestions
+				}
 				const cleanTitle = title.trim();
 				if (cleanTitle) {
 					this.addDiscoveredItem(menuType, cleanTitle);
@@ -553,25 +753,25 @@ export class CommandHiddenControlService {
 	private observeSlashCommands(): void {
 		// Observe editor for slash command popup
 		this.slashCommandObserver = new MutationObserver((mutations) => {
-			const suggestEl = document.querySelector('.suggestion-container, .editor-suggest');
-			if (suggestEl) {
-				const items = suggestEl.querySelectorAll('.suggestion-item, .suggestion');
+			const containers = document.querySelectorAll('.editor-suggest, .suggestion-container');
+			containers.forEach((el) => {
+				// Skip command palette modals
+				if ((el as HTMLElement).closest('.modal-container')) return;
+				// Only act when the editor context is actually slash-triggered
+				if (!this.isSlashContext()) return;
+				const items = (el as HTMLElement).querySelectorAll('.suggestion-item, .suggestion');
 				items.forEach((item: Element) => {
 					const itemEl = item as HTMLElement;
 					const title = itemEl.textContent?.trim() || '';
-					
-					// Capture for discovery (use helper to keep unified map in sync)
-					if (title) {
-						this.addDiscoveredItem('slash-commands', title);
-					}
-					
-					// Hide if needed
-					const hiddenItems = this.settings.hiddenMenuItems['slash-commands'];
-					if (hiddenItems && hiddenItems[title]) {
+					if (title && !this.isLikelyFileOrWiki(title)) this.addDiscoveredItem('slash-commands', title);
+					// Apply DOM-level visibility to guarantee UX, while data source is also filtered.
+					if (title && this.isHidden('slash-commands', title)) {
 						itemEl.style.display = 'none';
+					} else {
+						itemEl.style.display = '';
 					}
 				});
-			}
+			});
 		});
 		
 		// Observe document body for suggestion containers
@@ -582,14 +782,39 @@ export class CommandHiddenControlService {
 	}
 
 	/**
+	 * Apply current visibility rules to any existing slash suggestion DOM
+	 */
+	private applySlashVisibility(): void {
+		const containers = document.querySelectorAll('.editor-suggest, .suggestion-container');
+		containers.forEach((el) => {
+			if ((el as HTMLElement).closest('.modal-container')) return;
+			if (!this.isSlashContext()) return;
+			const items = (el as HTMLElement).querySelectorAll('.suggestion-item, .suggestion');
+			items.forEach((item: Element) => {
+				const itemEl = item as HTMLElement;
+				const title = itemEl.textContent?.trim() || '';
+				if (!title) return;
+				itemEl.style.display = this.isHidden('slash-commands', title) ? 'none' : '';
+			});
+		});
+	}
+
+	/**
 	 * Observe command palette DOM
 	 */
 	private observeCommandPalette(): void {
 		// Observe command palette modal
 		this.commandPaletteObserver = new MutationObserver((mutations) => {
-			const paletteEl = document.querySelector('.modal-container .suggestion-container, .command-palette .suggestion, .suggestion-container.mod-instance');
+			const paletteEl = document.querySelector(
+				[
+					'.modal-container .suggestion-container',
+					'.modal-container .prompt-results',
+					'.modal-container .suggestion-container.mod-instance',
+					'.modal-container .prompt-results .suggestion-container',
+				].join(', ')
+			);
 			if (paletteEl) {
-				const items = paletteEl.querySelectorAll('.suggestion-item, .suggestion');
+				const items = paletteEl.querySelectorAll('.suggestion-item, .suggestion, .mod-search-result');
 				items.forEach((item: Element) => {
 					const itemEl = item as HTMLElement;
 					const title = itemEl.textContent?.trim() || '';
@@ -600,8 +825,7 @@ export class CommandHiddenControlService {
 					}
 					
 					// Hide if needed
-					const hiddenItems = this.settings.hiddenMenuItems['command-palette'];
-					if (hiddenItems && hiddenItems[title]) {
+					if (this.isHidden('command-palette', title)) {
 						itemEl.style.display = 'none';
 					}
 				});
@@ -640,6 +864,11 @@ export class CommandHiddenControlService {
 		callback: (menu: Menu) => void
 	): void {
 		const ref = this.app.workspace.on(menuType as any, (menu: Menu, ...args: any[]) => {
+			// Force DOM menu so we can control visibility (desktop native menus cannot be styled)
+			try {
+				(menu as any).setUseNativeMenu?.(false);
+			} catch {}
+			
 			// Store menu type for this menu
 			if (this.menuItemMap.has(menu)) {
 				this.menuItemMap.get(menu)!.menuType = menuType;
@@ -657,6 +886,12 @@ export class CommandHiddenControlService {
 			
 			// Hide items
 			callback(menu);
+			// Hide again after DOM settles (multiple times for robustness)
+			setTimeout(() => this.hideMenuItems(menu, menuType), 0);
+			setTimeout(() => this.hideMenuItems(menu, menuType), 30);
+			setTimeout(() => this.hideMenuItems(menu, menuType), 60);
+			setTimeout(() => this.hideMenuItems(menu, menuType), 100);
+			setTimeout(() => this.hideMenuItems(menu, menuType), 160);
 		});
 		this.menuEventRefs.push({ type: menuType, ref });
 	}
@@ -829,6 +1064,7 @@ export class CommandHiddenControlService {
 
 	/**
 	 * Hide menu items based on settings
+	 * Ensures "Delete" item is always visible and handles menu separators properly
 	 */
 	private hideMenuItems(menu: Menu, menuType: string): void {
 		const hiddenItems = this.settings.hiddenMenuItems[menuType];
@@ -855,8 +1091,15 @@ export class CommandHiddenControlService {
 
 		// Find all menu items
 		const menuItems = menuEl.querySelectorAll('.menu-item');
+		const visibleItems: HTMLElement[] = [];
+		
 		menuItems.forEach((itemEl) => {
 			const menuItem = itemEl as HTMLElement;
+			
+			// Skip separators for now, we'll handle them separately
+			if (menuItem.classList.contains('menu-separator')) {
+				return;
+			}
 			
 			// Try to find title in different ways
 			let title = '';
@@ -865,11 +1108,84 @@ export class CommandHiddenControlService {
 				title = titleEl.textContent?.trim() || '';
 			} else {
 				// Fallback: get text from the entire menu item
-				title = menuItem.textContent?.trim() || '';
+				// But exclude icon text and other non-title content
+				const textContent = menuItem.textContent?.trim() || '';
+				// Remove common icon characters and extra whitespace
+				title = textContent.replace(/^[▶▸▹▻►\s]+/, '').trim();
 			}
 
 			// Check if this item should be hidden
-			if (title && hiddenItems[title]) {
+			if (title && this.isHidden(menuType, title)) {
+				menuItem.style.display = 'none';
+			} else {
+				// Make sure item is visible if it shouldn't be hidden
+				menuItem.style.display = '';
+				// Keep track of visible items for separator handling
+				if (title) {
+					visibleItems.push(menuItem);
+				}
+			}
+		});
+
+		// Handle menu separators: hide separators that are between hidden items or at the end
+		// This ensures proper menu styling when items are hidden
+		this.cleanupMenuSeparators(menuEl, visibleItems);
+	}
+
+	/**
+	 * Clean up menu separators to ensure proper menu styling
+	 * Hides separators that don't have visible items on both sides
+	 */
+	private cleanupMenuSeparators(menuEl: HTMLElement, visibleItems: HTMLElement[]): void {
+		const allItems = Array.from(menuEl.querySelectorAll('.menu-item'));
+		const visibleSet = new Set(visibleItems);
+		
+		allItems.forEach((itemEl, index) => {
+			const menuItem = itemEl as HTMLElement;
+			
+			// Only process separators
+			if (!menuItem.classList.contains('menu-separator')) {
+				return;
+			}
+			
+			// Find the previous visible item (skip hidden items and separators)
+			let prevVisible = false;
+			for (let i = index - 1; i >= 0; i--) {
+				const prevItem = allItems[i] as HTMLElement;
+				if (prevItem.classList.contains('menu-separator')) {
+					continue;
+				}
+				if (visibleSet.has(prevItem)) {
+					prevVisible = true;
+					break;
+				}
+				// If we hit a hidden item, check if it's actually hidden
+				if (prevItem.style.display === 'none') {
+					continue;
+				}
+			}
+			
+			// Find the next visible item (skip hidden items and separators)
+			let nextVisible = false;
+			for (let i = index + 1; i < allItems.length; i++) {
+				const nextItem = allItems[i] as HTMLElement;
+				if (nextItem.classList.contains('menu-separator')) {
+					continue;
+				}
+				if (visibleSet.has(nextItem)) {
+					nextVisible = true;
+					break;
+				}
+				// If we hit a hidden item, check if it's actually hidden
+				if (nextItem.style.display === 'none') {
+					continue;
+				}
+			}
+			
+			// Show separator only if there are visible items on both sides
+			if (prevVisible && nextVisible) {
+				menuItem.style.display = '';
+			} else {
 				menuItem.style.display = 'none';
 			}
 		});
