@@ -1733,3 +1733,86 @@ If your plugin does not need CSS, delete this file.
 	margin-bottom: 0;
 }
 
+/* Provider Settings main group */
+.peak-provider-settings-group {
+	margin-top: 16px;
+	margin-bottom: 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background-color: var(--background-secondary);
+	overflow: hidden;
+}
+
+.peak-provider-settings-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 16px;
+	user-select: none;
+}
+
+.peak-provider-settings-icon {
+	font-size: 10px;
+	color: var(--text-muted);
+	width: 16px;
+	text-align: center;
+}
+
+.peak-provider-settings-title {
+	font-weight: 500;
+	font-size: 14px;
+	color: var(--text-normal);
+}
+
+.peak-provider-settings-content {
+	overflow: hidden;
+	transition: max-height 0.2s ease-out;
+	max-height: 10000px;
+}
+
+.peak-provider-settings-content.is-collapsed {
+	max-height: 0;
+}
+
+/* Provider group with collapse/expand */
+.peak-provider-group {
+	margin-bottom: 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background-color: var(--background-primary);
+	overflow: hidden;
+}
+
+.peak-provider-group-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 16px;
+	user-select: none;
+}
+
+.peak-provider-group-icon {
+	font-size: 10px;
+	color: var(--text-muted);
+	width: 16px;
+	text-align: center;
+}
+
+.peak-provider-group-title {
+	font-weight: 500;
+	font-size: 13px;
+	color: var(--text-normal);
+}
+
+.peak-provider-group-content {
+	overflow: hidden;
+	transition: max-height 0.2s ease-out;
+	max-height: 500px;
+	padding: 12px 16px;
+}
+
+.peak-provider-group-content.is-collapsed {
+	max-height: 0;
+	padding: 0 16px;
+}
+

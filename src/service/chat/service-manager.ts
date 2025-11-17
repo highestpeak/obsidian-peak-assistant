@@ -25,7 +25,7 @@ export interface AIServiceSettings {
 
 export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	rootFolder: 'ChatFolder',
-	rootMode: 'project-first',
+	rootMode: 'conversation-first',
 	defaultModelId: OpenAIModelId.GPT_4_1_MINI,
 	models: [],
 	llmProviderConfigs: {},

@@ -8,68 +8,15 @@ import { CHAT_VIEW_TYPE, PROJECT_LIST_VIEW_TYPE, MESSAGE_HISTORY_VIEW_TYPE, TRAC
  * views and others display document views at the same time.
  */
 export class ViewSwitchConsistentHandler {
-	private defaultLeftLeaf?: WorkspaceLeaf;
-	private defaultRightLeaf?: WorkspaceLeaf;
-	private defaultLeftState?: ViewState;
-	private defaultRightState?: ViewState;
 	private isChatLayoutActive = false;
+	private isActivating = false;
+	private isActivatingDocument = false;
 
 	constructor(app: App) {
 		this.app = app;
 	}
 
 	private readonly app: App;
-
-	/**
-	 * Ensures chat layout views are active and focused.
-	 */
-	async activateChatView(): Promise<void> {
-		if (this.isChatLayoutActive) return;
-
-		this.captureDocumentLayoutSnapshot();
-
-		const existingChatLeaves = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
-		const centerLeaf = existingChatLeaves[0] ?? this.app.workspace.getLeaf(true);
-		if (!centerLeaf) return;
-		await centerLeaf.setViewState({ type: CHAT_VIEW_TYPE, active: true });
-
-		const leftLeaf = this.defaultLeftLeaf ?? this.app.workspace.getLeftLeaf(true);
-		if (leftLeaf) {
-			await leftLeaf.setViewState({ type: PROJECT_LIST_VIEW_TYPE, active: false });
-			this.defaultLeftLeaf = leftLeaf;
-		}
-
-		const rightLeaf = this.defaultRightLeaf ?? this.app.workspace.getRightLeaf(true);
-		if (rightLeaf) {
-			await rightLeaf.setViewState({ type: MESSAGE_HISTORY_VIEW_TYPE, active: false });
-			this.defaultRightLeaf = rightLeaf;
-		}
-
-		this.app.workspace.revealLeaf(centerLeaf);
-		this.isChatLayoutActive = true;
-	}
-
-	/**
-	 * Returns to the regular document layout, restoring cached states.
-	 */
-	async enterDocumentLayout(): Promise<void> {
-		if (!this.isChatLayoutActive) return;
-
-		const fallbackLeft: ViewState = { type: 'file-explorer', state: {}, active: false } as ViewState;
-		const fallbackRight: ViewState = { type: 'outline', state: {}, active: false } as ViewState;
-
-		if (this.defaultLeftLeaf) {
-			const state = this.defaultLeftState ?? fallbackLeft;
-			await this.defaultLeftLeaf.setViewState({ ...state, active: false });
-		}
-
-		if (this.defaultRightLeaf) {
-			const state = this.defaultRightState ?? fallbackRight;
-			await this.defaultRightLeaf.setViewState({ ...state, active: false });
-		}
-
-		this.isChatLayoutActive = false;
-	}
 
 	/**
 	 * Mirrors Obsidian active leaf changes to toggle layouts automatically.
@@ -79,28 +26,76 @@ export class ViewSwitchConsistentHandler {
 		if (viewType && TRACKED_VIEW_TYPES.has(viewType)) {
 			void this.activateChatView();
 		} else {
-			void this.enterDocumentLayout();
+			void this.activeDocumentView();
 		}
 	}
 
-	private captureDocumentLayoutSnapshot(): void {
-		const leftLeaf = this.app.workspace.getLeftLeaf(false);
-		if (leftLeaf) {
-			this.defaultLeftLeaf = leftLeaf;
-			const state = leftLeaf.getViewState();
-			if (state && state.type !== PROJECT_LIST_VIEW_TYPE) {
-				this.defaultLeftState = state;
-			}
-		}
+	/**
+	 * Ensures chat layout views are active and focused.
+	 */
+	async activateChatView(): Promise<void> {
+		if (this.isChatLayoutActive || this.isActivating) return;
 
-		const rightLeaf = this.app.workspace.getRightLeaf(false);
-		if (rightLeaf) {
-			this.defaultRightLeaf = rightLeaf;
-			const state = rightLeaf.getViewState();
-			if (state && state.type !== MESSAGE_HISTORY_VIEW_TYPE) {
-				this.defaultRightState = state;
+		this.isActivating = true;
+		try {
+
+			const existingChatLeaves = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
+			const centerLeaf = existingChatLeaves[0] ?? this.app.workspace.getLeaf(false);
+			if(centerLeaf) {
+				await centerLeaf.setViewState({ type: CHAT_VIEW_TYPE, active: true });
 			}
+
+			// Find existing file-explorer leaf or create new one
+			const existingProjectListLeaves = this.app.workspace.getLeavesOfType(PROJECT_LIST_VIEW_TYPE);
+			const leftLeaf = existingProjectListLeaves[0] ?? this.app.workspace.getLeftLeaf(false);
+			if (leftLeaf) {
+				await leftLeaf.setViewState({ type: PROJECT_LIST_VIEW_TYPE, state: {}, active: true });
+			}
+
+			// Find existing message history leaf or create new one
+			const existingMessageHistoryLeaves = this.app.workspace.getLeavesOfType(MESSAGE_HISTORY_VIEW_TYPE);
+			const rightLeaf = existingMessageHistoryLeaves[0] ?? this.app.workspace.getRightLeaf(false);
+			if (rightLeaf) {
+				await rightLeaf.setViewState({ type: MESSAGE_HISTORY_VIEW_TYPE, state: {}, active: true });
+			}
+
+			this.app.workspace.revealLeaf(centerLeaf);
+			this.isChatLayoutActive = true;
+		} finally {
+			this.isActivating = false;
 		}
 	}
+
+	/**
+	 * Returns to the regular document layout, restoring cached states.
+	 */
+	async activeDocumentView(): Promise<void> {
+		if (!this.isChatLayoutActive || this.isActivatingDocument) return;
+
+		this.isActivatingDocument = true;
+		try {
+			const fallbackLeft: ViewState = { type: 'file-explorer', state: {}, active: true } as ViewState;
+			const fallbackRight: ViewState = { type: 'outline', state: {}, active: true } as ViewState;
+
+			// Find existing file-explorer leaf or create new one
+			const existingFileExplorerLeaves = this.app.workspace.getLeavesOfType('file-explorer');
+			const leftLeaf = existingFileExplorerLeaves[0] ?? this.app.workspace.getLeftLeaf(false);
+			if (leftLeaf) {
+				await leftLeaf.setViewState({ ...fallbackLeft, active: true });
+			}
+
+			// Find existing outline leaf or create new one
+			const existingOutlineLeaves = this.app.workspace.getLeavesOfType('outline');
+			const rightLeaf = existingOutlineLeaves[0] ?? this.app.workspace.getRightLeaf(false);
+			if (rightLeaf) {
+				await rightLeaf.setViewState({ ...fallbackRight, active: true });
+			}
+
+			this.isChatLayoutActive = false;
+		} finally {
+			this.isActivatingDocument = false;
+		}
+	}
+
 }
 
