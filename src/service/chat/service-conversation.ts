@@ -1,3 +1,4 @@
+import { TFile } from 'obsidian';
 import { generateUuidWithoutHyphens } from './utils';
 import { LLMProviderService } from './providers/types';
 import { LLMApplicationService } from './service-application';
@@ -173,7 +174,7 @@ export class ConversationService {
 	}
 
 	/**
-	 * Update conversation title and mark it as manually edited.
+	 * Update conversation title by renaming the file.
 	 */
 	async updateConversationTitle(params: {
 		conversation: ParsedConversationFile;
@@ -181,19 +182,38 @@ export class ConversationService {
 		title: string;
 	}): Promise<ParsedConversationFile> {
 		const { conversation, project, title } = params;
-		const updatedMeta: ChatConversationMeta = {
+		
+		// Build new filename with the new title
+		const newFileName = this.storage.buildConversationFileName({
 			...conversation.meta,
 			title,
+		});
+		const newPath = `${conversation.file.parent?.path ?? ''}/${newFileName}.md`;
+		
+		// Rename the file
+		await this.storage.app.vault.rename(conversation.file, newFileName + '.md');
+		
+		// Update meta to mark as manually edited
+		const updatedMeta: ChatConversationMeta = {
+			...conversation.meta,
 			titleManuallyEdited: true, // Mark as manually edited to disable auto-generation
 			updatedAtTimestamp: Date.now(),
 		};
+		
+		// Get the renamed file
+		const renamedFile = this.storage.app.vault.getAbstractFileByPath(newPath) as TFile | null;
+		if (!renamedFile) {
+			throw new Error('Failed to find renamed conversation file');
+		}
+		
+		// Save updated meta
 		const saved = await this.storage.saveConversation(
 			project?.meta ?? null,
 			updatedMeta,
 			conversation.messages,
 			conversation.context,
 			undefined,
-			conversation.file
+			renamedFile
 		);
 		return this.storage.readConversation(saved);
 	}

@@ -3,6 +3,7 @@ import type MyPlugin from 'main';
 import { parseFrontmatter } from 'src/service/chat/storage-markdown';
 import { createIcon } from 'src/core/IconHelper';
 import { ViewManager } from '../view/ViewManager';
+import { PROJECT_LIST_VIEW_TYPE } from 'src/ui/view/ProjectListView';
 
 /**
  * Registers workspace-level reactive events.
@@ -38,6 +39,14 @@ export function registerCoreEvents(plugin: MyPlugin, viewManager: ViewManager): 
 				const file = markdownView.file;
 				if (file && file.extension === 'md') {
 					handleConversationFileOpen(plugin, viewManager, file);
+				}
+			}
+
+			// Auto-refresh ProjectListView when it becomes active
+			if (leaf?.view?.getViewType() === PROJECT_LIST_VIEW_TYPE) {
+				const projectListView = leaf.view as any;
+				if (projectListView && typeof projectListView.handleRefresh === 'function') {
+					void projectListView.handleRefresh();
 				}
 			}
 		})

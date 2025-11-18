@@ -40,10 +40,8 @@ export class ProjectListView extends ItemView {
 		this.containerEl.empty();
 		this.containerEl.addClass('peak-project-list-view');
 
-		// Reset state and refresh data
-		this.expandedProjects.clear();
-		await this.hydrateData();
-		await this.render();
+		// Initial render
+		await this.handleRefresh();
 	}
 
 	async onClose(): Promise<void> {
@@ -63,9 +61,9 @@ export class ProjectListView extends ItemView {
 	}
 
 	/**
-	 * Handle manual refresh button click
+	 * Handle manual refresh button click or auto-refresh when view becomes active
 	 */
-	private async handleRefresh(): Promise<void> {
+	async handleRefresh(): Promise<void> {
 		try {
 			// Reset expanded state
 			this.expandedProjects.clear();
@@ -735,6 +733,15 @@ export class ProjectListView extends ItemView {
 
 			const menu = new Menu();
 
+			// Rename project option
+			menu.addItem((item) => {
+				item.setTitle('Rename project');
+				item.setIcon('pencil');
+				item.onClick(async () => {
+					await this.editProjectName(project);
+				});
+			});
+
 			// Open source file option
 			menu.addItem((item) => {
 				item.setTitle('Open source file');
@@ -747,6 +754,41 @@ export class ProjectListView extends ItemView {
 			// Show menu at cursor position
 			menu.showAtPosition({ x: e.clientX, y: e.clientY });
 		});
+	}
+
+	/**
+	 * Edit project name
+	 */
+	private async editProjectName(project: ParsedProjectFile): Promise<void> {
+		const modal = new InputModal(
+			this.app,
+			'Enter project name',
+			async (newName: string | null) => {
+				if (!newName || !newName.trim()) {
+					return; // User cancelled or entered empty name
+				}
+
+				try {
+					// Rename project
+					const updatedProject = await this.manager.renameProject(project, newName.trim());
+
+					// Update active project if it's the one being renamed
+					if (this.activeProject?.meta.id === project.meta.id) {
+						this.activeProject = updatedProject;
+					}
+
+					// Refresh data and render
+					await this.hydrateData();
+					await this.render();
+					await this.notifySelectionChange();
+				} catch (error) {
+					console.error('Failed to rename project', error);
+				}
+			},
+			project.meta.name // Pass current name as initial value
+		);
+
+		modal.open();
 	}
 
 	/**

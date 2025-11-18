@@ -371,5 +371,12 @@ export class AIServiceManager {
 		return this.projectService.summarizeProject(project, modelId);
 	}
 
+	/**
+	 * Rename a project by renaming its folder.
+	 */
+	async renameProject(project: ParsedProjectFile, newName: string): Promise<ParsedProjectFile> {
+		return this.projectService.renameProject(project, newName);
+	}
+
 }
 

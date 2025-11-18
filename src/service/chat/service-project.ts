@@ -1,4 +1,4 @@
-import { normalizePath } from 'obsidian';
+import { normalizePath, TFolder } from 'obsidian';
 import { generateUuidWithoutHyphens } from './utils';
 import { ChatProjectMeta, ParsedProjectFile, ParsedConversationFile } from './types';
 import { ChatStorageService } from './storage';
@@ -51,6 +51,34 @@ export class ProjectService {
 	async summarizeProject(project: ParsedProjectFile, modelId: AIModelId): Promise<string> {
 		// Mock implementation - return default summary
 		return 'defaultSummary';
+	}
+
+	/**
+	 * Rename a project by renaming its folder.
+	 */
+	async renameProject(project: ParsedProjectFile, newName: string): Promise<ParsedProjectFile> {
+		const folder = project.file.parent;
+		if (!(folder instanceof TFolder)) {
+			throw new Error('Project folder not found');
+		}
+
+		const slug = slugify(newName);
+		const newFolderName = `Project-${slug || project.meta.id}`;
+		const newFolderPath = normalizePath(`${this.rootFolder}/${newFolderName}`);
+
+		// Rename the folder
+		await this.storage.app.vault.rename(folder, newFolderName);
+
+		// Update project meta with new folder path
+		const updatedMeta: ChatProjectMeta = {
+			...project.meta,
+			folderPath: newFolderPath,
+			updatedAtTimestamp: Date.now(),
+		};
+
+		// Save updated project meta
+		const file = await this.storage.saveProject(updatedMeta, project.context, undefined);
+		return this.storage.readProject(file);
 	}
 }
 

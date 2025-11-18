@@ -64,18 +64,12 @@ export class ChatStorageService {
 		})();
 
 		const path = file?.path ?? this.join(folder, `${this.buildConversationFileName(conversation)}.md`);
-		// Get project name if project exists
-		let projectName: string | undefined;
-		if (project) {
-			projectName = project.name;
-		}
 		
 		const markdown = buildConversationMarkdown({
 			meta: conversation,
 			context,
 			messages,
 			bodySections: notes,
-			projectName,
 		});
 
 		return this.writeFile(file, path, markdown);
@@ -88,7 +82,7 @@ export class ChatStorageService {
 			throw new Error(`File is missing frontmatter: ${file.path}`);
 		}
 
-		const meta = this.pickConversationMeta(frontmatter.data);
+		const meta = this.pickConversationMeta(frontmatter.data, file);
 		// Try new format first (chat-conversation-summary), fallback to old format (chat-context)
 		let context = this.extractContext<ChatContextWindow>(frontmatter.body, 'chat-conversation-summary') 
 			?? this.extractContext<ChatContextWindow>(frontmatter.body, 'chat-context');
@@ -123,7 +117,7 @@ export class ChatStorageService {
 			throw new Error(`File is missing frontmatter: ${file.path}`);
 		}
 
-		const meta = this.pickProjectMeta(frontmatter.data);
+		const meta = this.pickProjectMeta(frontmatter.data, file);
 		const context = this.extractContext<ChatProjectContext>(frontmatter.body, 'chat-project-context');
 		return { meta, context, content: frontmatter.body, file };
 	}
@@ -319,10 +313,21 @@ export class ChatStorageService {
 			.filter((message): message is ChatMessage => !!message);
 	}
 
-	private pickConversationMeta(data: Record<string, unknown>): ChatConversationMeta {
+	private pickConversationMeta(data: Record<string, unknown>, file: TFile): ChatConversationMeta {
+		// Get title from filename (file name without extension)
+		const fileName = file.basename;
+		// Extract title from filename (format: Conv-{timestamp}-{title})
+		let title = '';
+		const match = fileName.match(/^Conv-\d+-(.+)$/);
+		if (match) {
+			title = match[1];
+		} else {
+			title = fileName;
+		}
+		
 		return {
 			id: String(data.id ?? ''),
-			title: String(data.title ?? ''),
+			title,
 			projectId: data.projectId ? String(data.projectId) : undefined,
 			createdAtTimestamp: Number(data.createdAtTimestamp ?? Date.now()),
 			updatedAtTimestamp: Number(data.updatedAtTimestamp ?? Date.now()),
@@ -332,21 +337,43 @@ export class ChatStorageService {
 		};
 	}
 
-	private pickProjectMeta(data: Record<string, unknown>): ChatProjectMeta {
+	private pickProjectMeta(data: Record<string, unknown>, file: TFile): ChatProjectMeta {
+		// Get name from folder name (parent folder of Project-Summary.md)
+		const folder = file.parent;
+		let name = '';
+		if (folder instanceof TFolder) {
+			// Extract name from folder name (format: Project-{name})
+			const folderName = folder.name;
+			const match = folderName.match(/^Project-(.+)$/);
+			if (match) {
+				name = match[1];
+			} else {
+				name = folderName;
+			}
+		} else {
+			name = String(data.name ?? '');
+		}
+		
 		return {
 			id: String(data.id ?? ''),
-			name: String(data.name ?? ''),
-			folderPath: this.pickProjectFolderPath(data),
+			name,
+			folderPath: this.pickProjectFolderPath(data, file),
 			createdAtTimestamp: Number(data.createdAtTimestamp ?? Date.now()),
 			updatedAtTimestamp: Number(data.updatedAtTimestamp ?? Date.now()),
 		};
 	}
 
-	private buildConversationFileName(meta: ChatConversationMeta): string {
+	buildConversationFileName(meta: ChatConversationMeta): string {
 		return buildTimestampedName('Conv', meta.title || meta.id, meta.createdAtTimestamp);
 	}
 
-	private pickProjectFolderPath(data: Record<string, unknown>): string | undefined {
+	private pickProjectFolderPath(data: Record<string, unknown>, file: TFile): string | undefined {
+		// Get folder path from file's parent folder
+		const folder = file.parent;
+		if (folder instanceof TFolder) {
+			return normalizePath(folder.path);
+		}
+		
 		const folderPath = typeof data.folderPath === 'string' ? data.folderPath.trim() : '';
 		if (folderPath) {
 			return normalizePath(folderPath);

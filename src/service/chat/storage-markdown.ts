@@ -50,19 +50,18 @@ export function buildConversationMarkdown(params: {
 	context?: ChatContextWindow;
 	messages: ChatMessage[];
 	bodySections?: string;
-	projectName?: string;
 }): string {
-	const { meta, messages, context, bodySections, projectName } = params;
+	const { meta, messages, context, bodySections } = params;
+	// Don't store title in frontmatter, it's derived from filename
+	const { title, ...metaWithoutTitle } = meta;
 	const frontmatter = buildFrontmatter({
-		id: meta.id,
-		projectId: meta.projectId ?? null,
-		projectName: projectName ?? null,
-		title: meta.title,
-		createdAtTimestamp: meta.createdAtTimestamp,
-		updatedAtTimestamp: meta.updatedAtTimestamp,
-		activeModel: meta.activeModel,
-		tokenUsageTotal: meta.tokenUsageTotal ?? 0,
-		titleManuallyEdited: meta.titleManuallyEdited ?? false,
+		id: metaWithoutTitle.id,
+		projectId: metaWithoutTitle.projectId ?? null,
+		createdAtTimestamp: metaWithoutTitle.createdAtTimestamp,
+		updatedAtTimestamp: metaWithoutTitle.updatedAtTimestamp,
+		activeModel: metaWithoutTitle.activeModel,
+		tokenUsageTotal: metaWithoutTitle.tokenUsageTotal ?? 0,
+		titleManuallyEdited: metaWithoutTitle.titleManuallyEdited ?? false,
 	});
 
 	const sections: string[] = [];
@@ -156,8 +155,10 @@ export function buildProjectMarkdown(params: {
 	bodySections?: string;
 }): string {
 	const { meta, context, bodySections } = params;
-	const frontmatter = buildFrontmatter(meta);
-	const sections: string[] = ['# Project Meta', codeBlock('chat-project', stringifyYaml(meta))];
+	// Don't store name in frontmatter, it's derived from folder name
+	const { name, ...metaWithoutName } = meta;
+	const frontmatter = buildFrontmatter(metaWithoutName);
+	const sections: string[] = ['# Project Meta', codeBlock('chat-project', stringifyYaml(metaWithoutName))];
 
 	if (context) {
 		sections.push('# Project Context');
