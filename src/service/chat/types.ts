@@ -21,6 +21,7 @@ export interface ChatConversationMeta {
 	updatedAtTimestamp: number;
 	activeModel: AIModelId;
 	tokenUsageTotal?: number;
+	titleManuallyEdited?: boolean; // If true, auto-title generation will be disabled
 }
 
 export interface ChatProjectMeta {

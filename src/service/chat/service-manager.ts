@@ -328,6 +328,17 @@ export class AIServiceManager {
 	}
 
 	/**
+	 * Update conversation title and mark it as manually edited.
+	 */
+	async updateConversationTitle(params: {
+		conversation: ParsedConversationFile;
+		project?: ParsedProjectFile | null;
+		title: string;
+	}): Promise<ParsedConversationFile> {
+		return this.conversationService.updateConversationTitle(params);
+	}
+
+	/**
 	 * Toggle star status on a message.
 	 */
 	async toggleStar(params: {

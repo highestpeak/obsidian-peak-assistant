@@ -9,36 +9,55 @@ export class InputModal extends Modal {
 	constructor(
 		app: App,
 		private readonly message: string,
-		private readonly onSubmit: (value: string | null) => void
+		private readonly onSubmit: (value: string | null) => void,
+		private readonly initialValue?: string
 	) {
 		super(app);
+		if (initialValue) {
+			this.inputValue = initialValue;
+		}
 	}
 
 	onOpen(): void {
 		const { contentEl } = this;
 		contentEl.empty();
-		contentEl.createEl('h2', { text: this.message });
+		contentEl.addClass('peak-input-modal');
+		
+		const titleEl = contentEl.createDiv({ cls: 'peak-input-modal__title' });
+		titleEl.createEl('h2', { text: this.message });
 
-		let input: TextComponent;
-		new Setting(contentEl).addText((text) => {
-			input = text;
-			text.setPlaceholder(this.message);
-			text.onChange((value) => {
-				this.inputValue = value;
-			});
-			text.inputEl.addEventListener('keydown', (evt) => {
-				if (evt.key === 'Enter' && !evt.shiftKey) {
-					evt.preventDefault();
-					this.handleSubmit();
-				}
-				if (evt.key === 'Escape') {
-					evt.preventDefault();
-					this.handleCancel();
-				}
-			});
+		const inputContainer = contentEl.createDiv({ cls: 'peak-input-modal__input-container' });
+		
+		// Create input directly without Setting component to avoid left spacing
+		const inputEl = inputContainer.createEl('input', {
+			type: 'text',
+			cls: 'peak-input-modal__input',
+			attr: {
+				placeholder: this.message,
+			}
+		});
+		
+		if (this.initialValue) {
+			inputEl.value = this.initialValue;
+		}
+		
+		inputEl.addEventListener('input', (e) => {
+			this.inputValue = (e.target as HTMLInputElement).value;
+		});
+		
+		inputEl.addEventListener('keydown', (evt) => {
+			if (evt.key === 'Enter' && !evt.shiftKey) {
+				evt.preventDefault();
+				this.handleSubmit();
+			}
+			if (evt.key === 'Escape') {
+				evt.preventDefault();
+				this.handleCancel();
+			}
 		});
 
-		new Setting(contentEl)
+		const buttonContainer = contentEl.createDiv({ cls: 'peak-input-modal__button-container' });
+		new Setting(buttonContainer)
 			.addButton((button) => {
 				button.setButtonText('OK');
 				button.setCta();
@@ -49,7 +68,12 @@ export class InputModal extends Modal {
 				button.onClick(() => this.handleCancel());
 			});
 
-		setTimeout(() => input.inputEl.focus(), 100);
+		setTimeout(() => {
+			inputEl.focus();
+			if (this.initialValue) {
+				inputEl.select(); // Select all text for easy editing
+			}
+		}, 100);
 	}
 
 	onClose(): void {

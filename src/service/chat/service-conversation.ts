@@ -1,4 +1,4 @@
-import { v4 as uuid } from 'uuid';
+import { generateUuidWithoutHyphens } from './utils';
 import { LLMProviderService } from './providers/types';
 import { LLMApplicationService } from './service-application';
 import { AIModelId, coerceModelId } from './types-models';
@@ -23,7 +23,7 @@ import { AIStreamEvent } from './providers/types-events';
 export function createDefaultMessage(role: ChatMessage['role'], content: string, model: AIModelId, timezone: string): ChatMessage {
 	const timestamp = Date.now();
 	return {
-		id: uuid(),
+		id: generateUuidWithoutHyphens(),
 		role,
 		content,
 		model,
@@ -63,7 +63,7 @@ export class ConversationService {
 	}): Promise<ParsedConversationFile> {
 		const timestamp = Date.now();
 		const meta: ChatConversationMeta = {
-			id: uuid(),
+			id: generateUuidWithoutHyphens(),
 			title: params.title,
 			projectId: params.project?.id,
 			createdAtTimestamp: timestamp,
@@ -173,6 +173,32 @@ export class ConversationService {
 	}
 
 	/**
+	 * Update conversation title and mark it as manually edited.
+	 */
+	async updateConversationTitle(params: {
+		conversation: ParsedConversationFile;
+		project?: ParsedProjectFile | null;
+		title: string;
+	}): Promise<ParsedConversationFile> {
+		const { conversation, project, title } = params;
+		const updatedMeta: ChatConversationMeta = {
+			...conversation.meta,
+			title,
+			titleManuallyEdited: true, // Mark as manually edited to disable auto-generation
+			updatedAtTimestamp: Date.now(),
+		};
+		const saved = await this.storage.saveConversation(
+			project?.meta ?? null,
+			updatedMeta,
+			conversation.messages,
+			conversation.context,
+			undefined,
+			conversation.file
+		);
+		return this.storage.readConversation(saved);
+	}
+
+	/**
 	 * Toggle star status on a message.
 	 */
 	async toggleStar(params: {
@@ -196,7 +222,7 @@ export class ConversationService {
 		}
 
 		const record: StarredMessageRecord = {
-			id: uuid(),
+			id: generateUuidWithoutHyphens(),
 			sourceMessageId: targetMessage.id,
 			conversationId: conversation.meta.id,
 			projectId: project?.meta.id,
@@ -228,9 +254,8 @@ export class ConversationService {
 	 * Summarize a conversation chunk with the configured model.
 	 */
 	async summarizeConversation(modelId: string, text: string): Promise<string> {
-		const summaryPrompt = await this.promptService.getPrompt(PromptTemplate.ConversationSummary);
-		const payload = summaryPrompt ? `${summaryPrompt}\n\n${text}` : text;
-		return this.application.summarize({ model: coerceModelId(modelId), text: payload });
+		// Mock implementation - return default summary
+		return 'defaultSummary';
 	}
 
 	/**
@@ -269,8 +294,33 @@ export class ConversationService {
 		tokenDelta: number;
 	}): Promise<ParsedConversationFile> {
 		const context = await this.buildContextWindow(params.messages, params.model);
+		
+		// Auto-generate title if not manually edited and we have messages
+		let title = params.conversation.meta.title;
+		const shouldAutoGenerateTitle = !params.conversation.meta.titleManuallyEdited && 
+		                                 params.messages.length > 0 &&
+		                                 (params.conversation.meta.title === 'New Conversation' || !params.conversation.meta.title);
+		
+		if (shouldAutoGenerateTitle) {
+			try {
+				// Convert ChatMessage[] to format expected by generateTitle
+				const messagesForTitle = params.messages.slice(0, 4).map(msg => ({
+					role: msg.role,
+					content: msg.content,
+				}));
+				title = await this.application.generateTitle({
+					model: params.model,
+					messages: messagesForTitle,
+				});
+			} catch (error) {
+				console.warn('Failed to auto-generate title', error);
+				// Keep existing title on error
+			}
+		}
+		
 		const updatedMeta: ChatConversationMeta = {
 			...params.conversation.meta,
+			title,
 			activeModel: params.model,
 			updatedAtTimestamp: Date.now(),
 			tokenUsageTotal: (params.conversation.meta.tokenUsageTotal ?? 0) + params.tokenDelta,
@@ -426,13 +476,11 @@ export class ConversationService {
 			return {
 				lastUpdatedTimestamp: Date.now(),
 				recentMessagesWindow: [],
-				summary: '',
+				summary: 'defaultSummary',
 			};
 		}
 
 		const recent = messages.slice(-10);
-		const summaryInput = recent.map((message) => `${message.role}: ${message.content}`).join('\n');
-		const summary = await this.summarizeConversation(modelId, summaryInput);
 		return {
 			lastUpdatedTimestamp: Date.now(),
 			recentMessagesWindow: [
@@ -441,7 +489,7 @@ export class ConversationService {
 					toMessageId: recent[recent.length - 1].id,
 				},
 			],
-			summary,
+			summary: 'defaultSummary',
 		};
 	}
 

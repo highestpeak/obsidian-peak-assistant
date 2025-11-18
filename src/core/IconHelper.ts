@@ -31,8 +31,8 @@ export function createIcon(
 		chevronDown: 'M6 9l6 6 6-6',
 		chevronUp: 'M18 15l-6-6-6 6',
 		// Arrow icons - more prominent than chevrons
-		'arrow-up': 'M18 15l-6-6-6 6\nM12 9v12',
-		'arrow-down': 'M6 9l6 6 6-6\nM12 15V3',
+		'arrow-up': 'M12 19V5M5 12l7-7 7 7',
+		'arrow-down': 'M12 5v14M19 12l-7 7-7-7',
 		folder: 'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z',
 		folderOpen: 'M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h12a2 2 0 0 1 2 2v1M5 19h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2z',
 		messageCircle: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z',
@@ -51,7 +51,21 @@ export function createIcon(
 		// Info icon - circle with 'i' (Lucide info)
 		info: 'M22 12A10 10 0 1 1 12 2a10 10 0 0 1 10 10z\nM12 16v-4\nM12 8h.01',
 		// File text icon (Lucide file-text)
-		'file-text': 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\nM14 2v6h6\nM16 13H8\nM16 17H8\nM10 9H8'
+		'file-text': 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\nM14 2v6h6\nM16 13H8\nM16 17H8\nM10 9H8',
+		// Database icon (Lucide database)
+		database: 'M21 5c0 1.657-3.134 3-7 3S7 6.657 7 5s3.134-3 7-3 7 1.343 7 3z\nM21 12c0 1.657-3.134 3-7 3s-7-1.343-7-3\nM21 19c0 1.657-3.134 3-7 3s-7-1.343-7-3\nM7 5v14\nM14 5v14',
+		// Book open icon (Lucide book-open)
+		'book-open': 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z\nM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z',
+		// Books icon - stacked books (Lucide library/books)
+		books: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20\nM6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z\nM8 7h6\nM8 11h6\nM8 15h6',
+		// List icon (Lucide list) - for resources
+		list: 'M8 6h13\nM8 12h13\nM8 18h13\nM3 6h.01\nM3 12h.01\nM3 18h.01',
+		// Lightbulb icon (Lucide lightbulb) - for insights/summary
+		lightbulb: 'M9 21h6\nM12 3a6 6 0 0 1 6 6c0 2.5-1.5 4.5-3 6\nM12 3a6 6 0 0 0-6 6c0 2.5 1.5 4.5 3 6',
+		// Lightbulb-on icon (alternative for insights)
+		'lightbulb-on': 'M9 21h6\nM12 3a6 6 0 0 1 6 6c0 2.5-1.5 4.5-3 6\nM12 3a6 6 0 0 0-6 6c0 2.5 1.5 4.5 3 6\nM12 9v6',
+		// Paperclip icon (Lucide paperclip)
+		paperclip: 'M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'
 	};
 
 	const pathData = iconPaths[iconName];

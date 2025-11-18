@@ -5,6 +5,7 @@ import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from 'src/ui/view/ProjectList
 import { MESSAGE_HISTORY_VIEW_TYPE, MessageHistoryView } from 'src/ui/view/MessageHistoryView';
 import { ViewSwitchConsistentHandler } from 'src/app/view/ViewSwitchConsistentHandler';
 import { InputModal } from 'src/ui/component/InputModal';
+import { App } from 'obsidian';
 
 /**
  * Manages view registrations, related commands, and lifecycle cleanup.
@@ -35,6 +36,13 @@ export class ViewManager {
 
 	getViewSwitchConsistentHandler(): ViewSwitchConsistentHandler {
 		return this.viewSwicthConsistenter;
+	}
+
+	/**
+	 * Get the Obsidian app instance
+	 */
+	getApp(): App {
+		return this.plugin.app;
 	}
 
 	/**

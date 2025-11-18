@@ -1,6 +1,6 @@
-import { ButtonComponent, IconName, ItemView, Setting, TextAreaComponent, WorkspaceLeaf } from 'obsidian';
+import { ButtonComponent, IconName, ItemView, Menu, Setting, TFile, TextAreaComponent, ViewState, WorkspaceLeaf } from 'obsidian';
 import { AIServiceManager } from 'src/service/chat/service-manager';
-import { ParsedConversationFile, ParsedProjectFile } from 'src/service/chat/types';
+import { ChatMessage, ParsedConversationFile, ParsedProjectFile } from 'src/service/chat/types';
 import { createIcon } from 'src/core/IconHelper';
 
 export const CHAT_VIEW_TYPE = 'peak-chat-view';
@@ -27,6 +27,7 @@ export class ChatView extends ItemView {
 	private bodyEl?: HTMLElement;
 	private inputArea?: TextAreaComponent;
 	private sendButton?: ButtonComponent;
+	private keydownHandler?: (e: KeyboardEvent) => void;
 
 	constructor(leaf: WorkspaceLeaf, private readonly manager: AIServiceManager) {
 		super(leaf);
@@ -50,9 +51,11 @@ export class ChatView extends ItemView {
 
 		await this.hydrateData();
 		this.render();
+		this.setupKeyboardShortcuts();
 	}
 
 	async onClose(): Promise<void> {
+		this.removeKeyboardShortcuts();
 		this.containerEl.empty();
 	}
 
@@ -224,6 +227,23 @@ export class ChatView extends ItemView {
 			this.scrollToBottom();
 		});
 		
+		// Resources button - show resources used in this conversation
+		const resourcesButton = statsContainer.createEl('button', { 
+			cls: 'peak-chat-view__resources-button',
+			attr: { 
+				title: 'View conversation resources',
+				'aria-label': 'View conversation resources'
+			}
+		});
+		createIcon(resourcesButton, 'list', {
+			size: 16,
+			strokeWidth: 2,
+			class: 'peak-icon'
+		});
+		resourcesButton.addEventListener('click', () => {
+			this.showResourcesModal();
+		});
+
 		// Summary button (if summary exists)
 		if (this.activeConversation.context?.summary) {
 			const summaryButton = statsContainer.createEl('button', { 
@@ -233,7 +253,7 @@ export class ChatView extends ItemView {
 					'aria-label': 'View conversation summary'
 				}
 			});
-			createIcon(summaryButton, 'file-text', {
+			createIcon(summaryButton, 'lightbulb', {
 				size: 16,
 				strokeWidth: 2,
 				class: 'peak-icon'
@@ -242,6 +262,23 @@ export class ChatView extends ItemView {
 				this.showSummaryModal(this.activeConversation!.context!.summary);
 			});
 		}
+
+		// Open source document button
+		const openSourceButton = statsContainer.createEl('button', { 
+			cls: 'peak-chat-view__open-source-button',
+			attr: { 
+				title: 'Open source document',
+				'aria-label': 'Open source document'
+			}
+		});
+		createIcon(openSourceButton, 'file-text', {
+			size: 16,
+			strokeWidth: 2,
+			class: 'peak-icon'
+		});
+		openSourceButton.addEventListener('click', async () => {
+			await this.openSourceFile();
+		});
 	}
 	
 	private formatTokenCount(count: number): string {
@@ -339,6 +376,230 @@ export class ChatView extends ItemView {
 		content.focus();
 	}
 
+	/**
+	 * Collect all resources (attachments) from conversation messages
+	 */
+	private collectConversationResources(): Array<{ path: string; type: 'pdf' | 'image' | 'file' }> {
+		if (!this.activeConversation) return [];
+		
+		const resourceMap = new Map<string, { path: string; type: 'pdf' | 'image' | 'file' }>();
+		
+		for (const message of this.activeConversation.messages) {
+			if (message.attachments && message.attachments.length > 0) {
+				for (const attachmentPath of message.attachments) {
+					if (!resourceMap.has(attachmentPath)) {
+						const ext = attachmentPath.split('.').pop()?.toLowerCase() || '';
+						let type: 'pdf' | 'image' | 'file' = 'file';
+						
+						if (ext === 'pdf') {
+							type = 'pdf';
+						} else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'heic', 'heif', 'ico'].includes(ext)) {
+							type = 'image';
+						}
+						
+						resourceMap.set(attachmentPath, { path: attachmentPath, type });
+					}
+				}
+			}
+		}
+		
+		return Array.from(resourceMap.values());
+	}
+
+	/**
+	 * Show modal displaying conversation resources
+	 */
+	private showResourcesModal(): void {
+		if (!this.activeConversation) return;
+		
+		const resources = this.collectConversationResources();
+		
+		// Create modal
+		const modal = document.createElement('div');
+		modal.className = 'peak-resources-modal';
+		
+		const overlay = document.createElement('div');
+		overlay.className = 'peak-resources-modal-overlay';
+		
+		const content = document.createElement('div');
+		content.className = 'peak-resources-modal-content';
+		
+		const header = document.createElement('div');
+		header.className = 'peak-resources-modal-header';
+		const title = document.createElement('h3');
+		title.textContent = 'Conversation Resources';
+		const closeBtn = document.createElement('button');
+		closeBtn.className = 'peak-resources-modal-close';
+		closeBtn.textContent = '×';
+		header.appendChild(title);
+		header.appendChild(closeBtn);
+		
+		const body = document.createElement('div');
+		body.className = 'peak-resources-modal-body';
+		
+		if (resources.length === 0) {
+			const emptyText = document.createElement('div');
+			emptyText.className = 'peak-resources-modal-empty';
+			emptyText.textContent = 'No resources attached to this conversation.';
+			body.appendChild(emptyText);
+		} else {
+			// Group resources by type
+			const pdfs = resources.filter(r => r.type === 'pdf');
+			const images = resources.filter(r => r.type === 'image');
+			const files = resources.filter(r => r.type === 'file');
+			
+			// Render PDFs
+			if (pdfs.length > 0) {
+				const pdfSection = document.createElement('div');
+				pdfSection.className = 'peak-resources-modal-section';
+				const pdfTitle = document.createElement('h4');
+				pdfTitle.textContent = `PDF Files (${pdfs.length})`;
+				pdfSection.appendChild(pdfTitle);
+				
+				const pdfList = document.createElement('div');
+				pdfList.className = 'peak-resources-modal-list';
+				for (const resource of pdfs) {
+					const item = this.createResourceItem(resource.path, 'pdf');
+					pdfList.appendChild(item);
+				}
+				pdfSection.appendChild(pdfList);
+				body.appendChild(pdfSection);
+			}
+			
+			// Render Images
+			if (images.length > 0) {
+				const imageSection = document.createElement('div');
+				imageSection.className = 'peak-resources-modal-section';
+				const imageTitle = document.createElement('h4');
+				imageTitle.textContent = `Images (${images.length})`;
+				imageSection.appendChild(imageTitle);
+				
+				const imageList = document.createElement('div');
+				imageList.className = 'peak-resources-modal-list';
+				for (const resource of images) {
+					const item = this.createResourceItem(resource.path, 'image');
+					imageList.appendChild(item);
+				}
+				imageSection.appendChild(imageList);
+				body.appendChild(imageSection);
+			}
+			
+			// Render Other Files
+			if (files.length > 0) {
+				const fileSection = document.createElement('div');
+				fileSection.className = 'peak-resources-modal-section';
+				const fileTitle = document.createElement('h4');
+				fileTitle.textContent = `Other Files (${files.length})`;
+				fileSection.appendChild(fileTitle);
+				
+				const fileList = document.createElement('div');
+				fileList.className = 'peak-resources-modal-list';
+				for (const resource of files) {
+					const item = this.createResourceItem(resource.path, 'file');
+					fileList.appendChild(item);
+				}
+				fileSection.appendChild(fileList);
+				body.appendChild(fileSection);
+			}
+		}
+		
+		content.appendChild(header);
+		content.appendChild(body);
+		modal.appendChild(overlay);
+		modal.appendChild(content);
+		
+		const closeModal = () => {
+			modal.remove();
+			window.removeEventListener('keydown', handleKeyDown, true);
+			document.removeEventListener('keydown', handleKeyDown, true);
+			modal.removeEventListener('keydown', handleKeyDown, true);
+		};
+		
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape' && document.body.contains(modal)) {
+				e.preventDefault();
+				e.stopPropagation();
+				e.stopImmediatePropagation();
+				closeModal();
+				return false;
+			}
+		};
+		
+		window.addEventListener('keydown', handleKeyDown, true);
+		document.addEventListener('keydown', handleKeyDown, true);
+		modal.addEventListener('keydown', handleKeyDown, true);
+		
+		overlay.addEventListener('click', closeModal);
+		closeBtn.addEventListener('click', closeModal);
+		
+		document.body.appendChild(modal);
+		
+		content.setAttribute('tabindex', '-1');
+		content.focus();
+	}
+
+	/**
+	 * Create a resource item element
+	 */
+	private createResourceItem(path: string, type: 'pdf' | 'image' | 'file'): HTMLElement {
+		const item = document.createElement('div');
+		item.className = 'peak-resources-modal-item';
+		
+		// Try to get file from vault
+		const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+		const file = this.app.vault.getAbstractFileByPath(normalizedPath);
+		
+		const iconContainer = document.createElement('div');
+		iconContainer.className = 'peak-resources-modal-item-icon';
+		
+		let iconName: string;
+		if (type === 'pdf') {
+			iconName = 'file-text';
+		} else if (type === 'image') {
+			iconName = 'image';
+		} else {
+			iconName = 'file';
+		}
+		
+		createIcon(iconContainer, iconName as any, {
+			size: 18,
+			strokeWidth: 2,
+			class: 'peak-icon'
+		});
+		
+		const textContainer = document.createElement('div');
+		textContainer.className = 'peak-resources-modal-item-text';
+		const fileName = document.createElement('div');
+		fileName.className = 'peak-resources-modal-item-name';
+		fileName.textContent = path.split('/').pop() || path;
+		textContainer.appendChild(fileName);
+		
+		const pathText = document.createElement('div');
+		pathText.className = 'peak-resources-modal-item-path';
+		pathText.textContent = path;
+		textContainer.appendChild(pathText);
+		
+		item.appendChild(iconContainer);
+		item.appendChild(textContainer);
+		
+		// Make item clickable to open file
+		if (file && file instanceof TFile) {
+			item.style.cursor = 'pointer';
+			item.addEventListener('click', async () => {
+				const leaf = this.app.workspace.getLeaf(false);
+				await leaf.openFile(file);
+			});
+		} else {
+			// If file doesn't exist in vault, try to open by path
+			item.style.cursor = 'pointer';
+			item.addEventListener('click', async () => {
+				await this.app.workspace.openLinkText(path, '', true);
+			});
+		}
+		
+		return item;
+	}
+
 
 	private renderMessages(container: HTMLElement): void {
 		this.messageContainer = container;
@@ -375,6 +636,9 @@ export class ChatView extends ItemView {
 
 			const contentEl = messageEl.createDiv({ cls: 'peak-chat-view__message-content' });
 			contentEl.setText(message.content);
+
+			// Add right-click context menu
+			this.setupMessageContextMenu(messageEl, message);
 
 			// Action buttons (star, copy, regenerate)
 			const actionsEl = messageEl.createDiv({ cls: 'peak-chat-view__message-actions' });
@@ -605,6 +869,9 @@ export class ChatView extends ItemView {
 						const contentEl = messageEl.createDiv({ cls: 'peak-chat-view__message-content' });
 						contentEl.setText(message.content);
 
+						// Add right-click context menu
+						this.setupMessageContextMenu(messageEl, message);
+
 						// Action buttons (star, copy, regenerate)
 						const actionsEl = messageEl.createDiv({ cls: 'peak-chat-view__message-actions' });
 						
@@ -779,7 +1046,7 @@ export class ChatView extends ItemView {
 	/**
 	 * Set active project and conversation from external source (e.g., ProjectListView)
 	 */
-		setActiveSelection(project: ParsedProjectFile | null, conversation: ParsedConversationFile | null): void {
+	setActiveSelection(project: ParsedProjectFile | null, conversation: ParsedConversationFile | null): void {
 		// Only update conversation if one is provided
 		if (conversation) {
 			this.activeProject = project;
@@ -796,6 +1063,8 @@ export class ChatView extends ItemView {
 					this.activeConversation = updated;
 					this.render();
 					this.notifyHistoryView();
+					// Auto-focus input after setting new conversation
+					this.focusInput();
 				}
 			});
 		} else {
@@ -813,6 +1082,59 @@ export class ChatView extends ItemView {
 			if (this.activeProject?.meta.id !== project?.meta.id) {
 				this.activeProject = project;
 			}
+		}
+	}
+
+	/**
+	 * Focus the input textarea
+	 */
+	focusInput(): void {
+		if (this.inputArea?.inputEl) {
+			// Use setTimeout to ensure DOM is ready
+			setTimeout(() => {
+				this.inputArea?.inputEl.focus();
+			}, 100);
+		}
+	}
+
+	/**
+	 * Setup keyboard shortcuts for this view
+	 */
+	private setupKeyboardShortcuts(): void {
+		this.keydownHandler = (e: KeyboardEvent) => {
+			// Only handle if this view is active
+			const activeView = this.app.workspace.getActiveViewOfType(ChatView);
+			if (activeView !== this) {
+				return;
+			}
+
+			// Command+K or Ctrl+K to focus input (handle both 'k' and 'K')
+			const isModKey = e.metaKey || e.ctrlKey;
+			const isKKey = e.key === 'k' || e.key === 'K' || e.keyCode === 75;
+			
+			if (isModKey && isKKey) {
+				// Only handle if not already in input or if input is not focused
+				const activeElement = document.activeElement;
+				if (activeElement !== this.inputArea?.inputEl) {
+					e.preventDefault();
+					e.stopPropagation();
+					e.stopImmediatePropagation();
+					this.focusInput();
+					return false;
+				}
+			}
+		};
+		// Use capture phase on window to intercept early, before Obsidian's handlers
+		window.addEventListener('keydown', this.keydownHandler, true);
+	}
+
+	/**
+	 * Remove keyboard shortcuts
+	 */
+	private removeKeyboardShortcuts(): void {
+		if (this.keydownHandler) {
+			window.removeEventListener('keydown', this.keydownHandler, true);
+			this.keydownHandler = undefined;
 		}
 	}
 
@@ -1325,6 +1647,118 @@ export class ChatView extends ItemView {
 			this.allConversations = [...this.allConversations, ...newConversations];
 			this.conversationsPage++;
 			this.render();
+		}
+	}
+
+	/**
+	 * Setup context menu for message bubble
+	 */
+	private setupMessageContextMenu(messageEl: HTMLElement, message: ChatMessage): void {
+		messageEl.addEventListener('contextmenu', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const menu = new Menu();
+
+			// Check if there's selected text
+			const selection = window.getSelection();
+			const selectedText = selection?.toString().trim();
+
+			// Copy selected text if there's a selection
+			if (selectedText && selectedText.length > 0) {
+				menu.addItem((item) => {
+					item.setTitle('Copy selection');
+					item.setIcon('copy');
+					item.onClick(async () => {
+						try {
+							await navigator.clipboard.writeText(selectedText);
+						} catch (err) {
+							console.error('Failed to copy selection:', err);
+						}
+					});
+				});
+				menu.addSeparator();
+			}
+
+			// Copy message content
+			menu.addItem((item) => {
+				item.setTitle('Copy message');
+				item.setIcon('copy');
+				item.onClick(async () => {
+					try {
+						await navigator.clipboard.writeText(message.content);
+					} catch (err) {
+						console.error('Failed to copy:', err);
+					}
+				});
+			});
+
+			// Toggle star
+			menu.addItem((item) => {
+				item.setTitle(message.starred ? 'Unstar message' : 'Star message');
+				item.setIcon('lucide-star');
+				item.onClick(async () => {
+					await this.toggleStar(message.id, !message.starred);
+				});
+			});
+
+			// Regenerate (only for assistant messages)
+			if (message.role === 'assistant') {
+				menu.addItem((item) => {
+					item.setTitle('Regenerate response');
+					item.setIcon('refresh-cw');
+					item.onClick(async () => {
+						await this.regenerateMessage(message.id);
+					});
+				});
+			}
+
+			// Show menu at cursor position
+			menu.showAtPosition({ x: e.clientX, y: e.clientY });
+		});
+	}
+
+	/**
+	 * Switch to document view and open the source file
+	 */
+	private async openSourceFile(): Promise<void> {
+		if (!this.activeConversation) return;
+		
+		const file = this.activeConversation.file;
+		
+		// Switch to document view by activating markdown view
+		const existingMarkdownLeaves = this.app.workspace.getLeavesOfType('markdown');
+		let centerLeaf: WorkspaceLeaf | null = null;
+
+		if (existingMarkdownLeaves.length > 0) {
+			centerLeaf = existingMarkdownLeaves[0];
+		} else {
+			centerLeaf = this.app.workspace.getLeaf(false);
+		}
+
+		if (centerLeaf) {
+			// Switch to document view layout
+			const fallbackLeft: ViewState = { type: 'file-explorer', state: {}, active: true } as ViewState;
+			const fallbackRight: ViewState = { type: 'outline', state: {}, active: true } as ViewState;
+
+			// Update left leaf to file explorer
+			const existingFileExplorerLeaves = this.app.workspace.getLeavesOfType('file-explorer');
+			const leftLeaf = existingFileExplorerLeaves[0] ?? this.app.workspace.getLeftLeaf(false);
+			if (leftLeaf) {
+				await leftLeaf.setViewState({ ...fallbackLeft, active: false });
+			}
+
+			// Update right leaf to outline
+			const existingOutlineLeaves = this.app.workspace.getLeavesOfType('outline');
+			const rightLeaf = existingOutlineLeaves[0] ?? this.app.workspace.getRightLeaf(false);
+			if (rightLeaf) {
+				await rightLeaf.setViewState({ ...fallbackRight, active: false });
+			}
+
+			// Open file in center leaf
+			await centerLeaf.openFile(file);
+			await centerLeaf.setViewState({ type: 'markdown', active: true });
+			this.app.workspace.revealLeaf(centerLeaf);
 		}
 	}
 

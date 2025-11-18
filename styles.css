@@ -52,7 +52,7 @@ If your plugin does not need CSS, delete this file.
 	background: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 4px;
-	padding: 4px 6px;
+	padding: 0;
 	cursor: pointer;
 	display: flex;
 	align-items: center;
@@ -73,6 +73,10 @@ If your plugin does not need CSS, delete this file.
 .peak-chat-view__scroll-button .peak-icon {
 	width: 16px;
 	height: 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
 }
 
 .peak-chat-view__header-stats {
@@ -247,6 +251,11 @@ If your plugin does not need CSS, delete this file.
 	box-sizing: border-box;
 	max-width: 100%;
 	transition: box-shadow 0.2s ease;
+	user-select: text;
+	-webkit-user-select: text;
+	-moz-user-select: text;
+	-ms-user-select: text;
+	cursor: text;
 }
 
 .peak-chat-view__message-wrapper--user .peak-chat-view__message-content {
@@ -606,7 +615,15 @@ If your plugin does not need CSS, delete this file.
 	color: var(--text-normal);
 }
 
-/* Removed is-active highlight - only use hover state */
+.peak-project-list-view__item.is-active {
+	color: var(--text-on-accent) !important;
+	background-color: var(--interactive-accent) !important;
+}
+
+.peak-project-list-view__item.is-active:hover {
+	color: var(--text-on-accent) !important;
+	background-color: var(--interactive-accent) !important;
+}
 
 .peak-project-list-view__empty {
 	padding: 12px;
@@ -759,6 +776,26 @@ If your plugin does not need CSS, delete this file.
 	opacity: 0.8;
 }
 
+.peak-project-list-view__conversation-item.is-active {
+	color: var(--text-on-accent) !important;
+	background-color: var(--interactive-accent) !important;
+}
+
+.peak-project-list-view__conversation-item.is-active::before {
+	opacity: 1;
+	background-color: var(--text-on-accent);
+}
+
+.peak-project-list-view__conversation-item.is-active:hover {
+	color: var(--text-on-accent) !important;
+	background-color: var(--interactive-accent) !important;
+}
+
+.peak-project-list-view__conversation-item.is-active:hover::before {
+	opacity: 1;
+	background-color: var(--text-on-accent);
+}
+
 .peak-project-list-view__new-conv-btn {
 	padding: 6px 10px;
 	border-radius: 4px;
@@ -818,6 +855,12 @@ If your plugin does not need CSS, delete this file.
 .peak-message-history-view__item:hover {
 	background-color: var(--background-modifier-hover);
 	border-color: var(--interactive-accent);
+	color: white;
+}
+
+.peak-message-history-view__item:hover .peak-message-history-view__item-role,
+.peak-message-history-view__item:hover .peak-message-history-view__item-preview {
+	color: white;
 }
 
 .peak-message-history-view__item-header {
@@ -1177,6 +1220,13 @@ If your plugin does not need CSS, delete this file.
 
 .peak-chat-view__conversation-item:hover {
 	background-color: var(--background-modifier-hover);
+	color: white;
+}
+
+.peak-chat-view__conversation-item:hover .peak-chat-view__conversation-title,
+.peak-chat-view__conversation-item:hover .peak-chat-view__conversation-preview,
+.peak-chat-view__conversation-item:hover .peak-chat-view__conversation-date {
+	color: white;
 }
 
 .peak-chat-view__conversation-item:focus,
@@ -1426,8 +1476,9 @@ If your plugin does not need CSS, delete this file.
 	bottom: 0;
 	z-index: 10000;
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: center;
+	padding-top: 80px;
 }
 
 .peak-summary-modal-overlay {
@@ -1436,8 +1487,9 @@ If your plugin does not need CSS, delete this file.
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background-color: rgba(0, 0, 0, 0.5);
-	backdrop-filter: blur(2px);
+	background-color: var(--background-modifier-cover);
+	opacity: 0.85;
+	backdrop-filter: blur(4px);
 }
 
 .peak-summary-modal-content {
@@ -1508,6 +1560,212 @@ If your plugin does not need CSS, delete this file.
 	word-break: break-word;
 	overflow-wrap: break-word;
 	max-width: 100%;
+}
+
+/* Resources Modal */
+.peak-resources-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 10000;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding-top: 80px;
+}
+
+.peak-resources-modal-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: var(--background-modifier-cover);
+	opacity: 0.85;
+	backdrop-filter: blur(4px);
+}
+
+.peak-resources-modal-content {
+	position: relative;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+	max-width: 900px;
+	width: 90%;
+	max-height: 80vh;
+	display: flex;
+	flex-direction: column;
+	z-index: 1;
+	overflow: hidden;
+}
+
+.peak-resources-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 20px 24px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.peak-resources-modal-header h3 {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.peak-resources-modal-close {
+	background: transparent;
+	border: none;
+	font-size: 24px;
+	line-height: 1;
+	color: var(--text-muted);
+	cursor: pointer;
+	padding: 4px 8px;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+}
+
+.peak-resources-modal-close:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.peak-resources-modal-body {
+	padding: 24px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	flex: 1;
+	min-width: 0;
+}
+
+.peak-resources-modal-empty {
+	text-align: center;
+	color: var(--text-muted);
+	font-size: 14px;
+	padding: 40px 20px;
+}
+
+.peak-resources-modal-section {
+	margin-bottom: 24px;
+}
+
+.peak-resources-modal-section:last-child {
+	margin-bottom: 0;
+}
+
+.peak-resources-modal-section h4 {
+	margin: 0 0 12px 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.peak-resources-modal-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.peak-resources-modal-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	transition: all 0.2s ease;
+}
+
+.peak-resources-modal-item:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+.peak-resources-modal-item-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	color: var(--text-muted);
+}
+
+.peak-resources-modal-item-text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.peak-resources-modal-item-name {
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text-normal);
+	word-break: break-word;
+}
+
+.peak-resources-modal-item-path {
+	font-size: 12px;
+	color: var(--text-muted);
+	word-break: break-all;
+	font-family: var(--font-monospace);
+}
+
+.peak-chat-view__resources-button {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 4px 8px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-muted);
+	transition: all 0.2s ease;
+	width: 24px;
+	height: 24px;
+}
+
+.peak-chat-view__resources-button:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+}
+
+.peak-chat-view__resources-button .peak-icon {
+	width: 16px;
+	height: 16px;
+}
+
+.peak-chat-view__open-source-button {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 4px 8px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-muted);
+	transition: all 0.2s ease;
+	width: 24px;
+	height: 24px;
+}
+
+.peak-chat-view__open-source-button:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+}
+
+.peak-chat-view__open-source-button .peak-icon {
+	width: 16px;
+	height: 16px;
 }
 
 /* UI Control Settings Styles */
@@ -1814,5 +2072,93 @@ If your plugin does not need CSS, delete this file.
 .peak-provider-group-content.is-collapsed {
 	max-height: 0;
 	padding: 0 16px;
+}
+
+/* Chat view button for conversation files in markdown view */
+.peak-chat-view-button-container {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	z-index: 100;
+}
+
+.peak-chat-view-button {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 8px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-muted);
+	transition: all 0.2s ease;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.peak-chat-view-button:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.peak-chat-view-button .peak-icon {
+	width: 16px;
+	height: 16px;
+}
+
+/* Input Modal Styles - ChatGPT style */
+.peak-input-modal {
+	padding: 0;
+	min-width: 500px;
+	max-width: 600px;
+}
+
+.peak-input-modal__title {
+	margin-bottom: 24px;
+}
+
+.peak-input-modal__title h2 {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.peak-input-modal__input-container {
+	margin-bottom: 32px;
+	width: 100%;
+	padding: 0;
+}
+
+.peak-input-modal__input {
+	width: 100% !important;
+	min-width: 100% !important;
+	min-height: 48px;
+	padding: 12px 16px;
+	font-size: 15px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	box-sizing: border-box;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.peak-input-modal__input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 3px rgba(var(--interactive-accent-rgb), 0.1);
+}
+
+.peak-input-modal__input::placeholder {
+	color: var(--text-muted);
+}
+
+.peak-input-modal__button-container {
+	display: flex;
+	justify-content: flex-end;
+	gap: 12px;
 }
 

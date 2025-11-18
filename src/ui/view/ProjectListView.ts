@@ -1,7 +1,8 @@
-import { App, IconName, ItemView, Modal, Setting, TextComponent, WorkspaceLeaf } from 'obsidian';
+import { App, IconName, ItemView, Menu, Modal, Setting, TFile, TextComponent, ViewState, WorkspaceLeaf } from 'obsidian';
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { ParsedConversationFile, ParsedProjectFile } from 'src/service/chat/types';
 import { createIcon, createChevronIcon } from 'src/core/IconHelper';
+import { InputModal } from 'src/ui/component/InputModal';
 
 export const PROJECT_LIST_VIEW_TYPE = 'peak-project-list-view';
 
@@ -351,6 +352,9 @@ export class ProjectListView extends ItemView {
 				// Notify selection change (with null conversation to maintain conversation list view)
 				await this.notifySelectionChange();
 			});
+			
+			// Add right-click context menu for project
+			this.setupProjectContextMenu(projectHeader, project);
 
 			// Make header clickable for expand/collapse (but not project name)
 			// This must be added after all child elements are created
@@ -402,8 +406,10 @@ export class ProjectListView extends ItemView {
 
 				// List conversations under this project
 				for (const conv of conversationsToShow) {
+					const isActive = this.activeConversation?.meta.id === conv.meta.id && 
+					                 this.activeProject?.meta.id === project.meta.id;
 					const convItem = projectConversations.createDiv({ 
-						cls: 'peak-project-list-view__conversation-item'
+						cls: `peak-project-list-view__conversation-item ${isActive ? 'is-active' : ''}`
 					});
 					convItem.createSpan({ text: conv.meta.title });
 					convItem.addEventListener('click', async (e) => {
@@ -413,6 +419,9 @@ export class ProjectListView extends ItemView {
 						await this.render();
 						await this.notifySelectionChange();
 					});
+					
+					// Add right-click context menu for conversation
+					this.setupConversationContextMenu(convItem, conv);
 				}
 				
 				// Add "See more" button if there are more conversations
@@ -493,6 +502,9 @@ export class ProjectListView extends ItemView {
 				await this.render();
 				await this.notifySelectionChange();
 			});
+			
+			// Add right-click context menu for conversation
+			this.setupConversationContextMenu(item, conversation);
 		}
 	}
 
@@ -578,10 +590,11 @@ export class ProjectListView extends ItemView {
 	}
 
 	private openCreateConversationModal(): void {
-		const modal = new CreateConversationModal(this.app, async (title: string) => {
-			// Always create root-level conversation (no project) when called from Conversations section
+		// Create conversation directly without modal, using default title
+		// Title will be auto-generated after first message exchange
+		void (async () => {
 			const conversation = await this.manager.createConversation({
-				title,
+				title: 'New Conversation',
 				project: null,
 			});
 			// Clear activeProject to ensure the new conversation is shown as root-level
@@ -590,14 +603,15 @@ export class ProjectListView extends ItemView {
 			this.activeConversation = conversation;
 			await this.render();
 			await this.notifySelectionChange();
-		});
-		modal.open();
+		})();
 	}
 
 	private openCreateConversationModalForProject(project: ParsedProjectFile): void {
-		const modal = new CreateConversationModal(this.app, async (title: string) => {
+		// Create conversation directly without modal, using default title
+		// Title will be auto-generated after first message exchange
+		void (async () => {
 			const conversation = await this.manager.createConversation({
-				title,
+				title: 'New Conversation',
 				project: project.meta,
 			});
 			this.activeProject = project;
@@ -606,8 +620,7 @@ export class ProjectListView extends ItemView {
 			// Don't call reloadConversations() as it would overwrite root-level conversations list
 			await this.render();
 			await this.notifySelectionChange();
-		});
-		modal.open();
+		})();
 	}
 
 
@@ -619,6 +632,205 @@ export class ProjectListView extends ItemView {
 			project: this.activeProject,
 			conversation: this.activeConversation,
 		};
+	}
+
+	/**
+	 * Set active project and conversation, expand the project, and collapse others
+	 */
+	async setActiveSelectionAndExpand(
+		project: ParsedProjectFile | null,
+		conversation: ParsedConversationFile | null
+	): Promise<void> {
+		// Refresh data to ensure we have the latest projects and conversations
+		await this.hydrateData();
+
+		// Update project reference if provided
+		let updatedProject = project;
+		if (updatedProject) {
+			const latestProject = this.projects.find(p => p.meta.id === updatedProject!.meta.id);
+			if (latestProject) {
+				updatedProject = latestProject;
+			}
+		}
+
+		// Update conversation reference if provided
+		let updatedConversation = conversation;
+		if (updatedConversation) {
+			const conversations = updatedProject 
+				? await this.manager.listConversations(updatedProject.meta)
+				: await this.manager.listConversations();
+			const latestConversation = conversations.find(c => c.meta.id === updatedConversation!.meta.id);
+			if (latestConversation) {
+				updatedConversation = latestConversation;
+			}
+		}
+
+		// Set active selection
+		this.activeProject = updatedProject;
+		this.activeConversation = updatedConversation;
+
+		// If conversation has a project, expand that project and collapse others
+		if (updatedProject) {
+			// Expand the project containing the conversation
+			this.expandedProjects.add(updatedProject.meta.id);
+			
+			// Collapse all other projects
+			for (const p of this.projects) {
+				if (p.meta.id !== updatedProject.meta.id) {
+					this.expandedProjects.delete(p.meta.id);
+				}
+			}
+		} else {
+			// If no project, collapse all projects
+			this.expandedProjects.clear();
+		}
+
+		// Re-render to reflect changes
+		await this.render();
+		
+		// Notify other views
+		await this.notifySelectionChange();
+	}
+
+	/**
+	 * Setup context menu for conversation item
+	 */
+	private setupConversationContextMenu(itemEl: HTMLElement, conversation: ParsedConversationFile): void {
+		itemEl.addEventListener('contextmenu', async (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const menu = new Menu();
+
+			// Edit title option
+			menu.addItem((item) => {
+				item.setTitle('Edit title');
+				item.setIcon('pencil');
+				item.onClick(async () => {
+					await this.editConversationTitle(conversation);
+				});
+			});
+
+			// Open source file option
+			menu.addItem((item) => {
+				item.setTitle('Open source file');
+				item.setIcon('file-text');
+				item.onClick(async () => {
+					await this.openSourceFile(conversation.file);
+				});
+			});
+
+			// Show menu at cursor position
+			menu.showAtPosition({ x: e.clientX, y: e.clientY });
+		});
+	}
+
+	/**
+	 * Setup context menu for project item
+	 */
+	private setupProjectContextMenu(itemEl: HTMLElement, project: ParsedProjectFile): void {
+		itemEl.addEventListener('contextmenu', async (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const menu = new Menu();
+
+			// Open source file option
+			menu.addItem((item) => {
+				item.setTitle('Open source file');
+				item.setIcon('file-text');
+				item.onClick(async () => {
+					await this.openSourceFile(project.file);
+				});
+			});
+
+			// Show menu at cursor position
+			menu.showAtPosition({ x: e.clientX, y: e.clientY });
+		});
+	}
+
+	/**
+	 * Edit conversation title
+	 */
+	private async editConversationTitle(conversation: ParsedConversationFile): Promise<void> {
+		const modal = new InputModal(
+			this.app,
+			'Enter conversation title',
+			async (newTitle: string | null) => {
+				if (!newTitle || !newTitle.trim()) {
+					return; // User cancelled or entered empty title
+				}
+
+				try {
+					// Find the project for this conversation
+					const project = conversation.meta.projectId
+						? this.projects.find(p => p.meta.id === conversation.meta.projectId)
+						: null;
+
+					// Update conversation title
+					const updatedConversation = await this.manager.updateConversationTitle({
+						conversation,
+						project: project ?? null,
+						title: newTitle.trim(),
+					});
+
+					// Update active conversation if it's the one being edited
+					if (this.activeConversation?.meta.id === conversation.meta.id) {
+						this.activeConversation = updatedConversation;
+					}
+
+					// Refresh data and render
+					await this.hydrateData();
+					await this.render();
+					await this.notifySelectionChange();
+				} catch (error) {
+					console.error('Failed to update conversation title', error);
+				}
+			},
+			conversation.meta.title // Pass current title as initial value
+		);
+
+		modal.open();
+	}
+
+	/**
+	 * Switch to document view and open the source file
+	 */
+	private async openSourceFile(file: TFile): Promise<void> {
+		// Switch to document view by activating markdown view
+		const existingMarkdownLeaves = this.app.workspace.getLeavesOfType('markdown');
+		let centerLeaf: WorkspaceLeaf | null = null;
+
+		if (existingMarkdownLeaves.length > 0) {
+			centerLeaf = existingMarkdownLeaves[0];
+		} else {
+			centerLeaf = this.app.workspace.getLeaf(false);
+		}
+
+		if (centerLeaf) {
+			// Switch to document view layout
+			const fallbackLeft: ViewState = { type: 'file-explorer', state: {}, active: true } as ViewState;
+			const fallbackRight: ViewState = { type: 'outline', state: {}, active: true } as ViewState;
+
+			// Update left leaf to file explorer
+			const existingFileExplorerLeaves = this.app.workspace.getLeavesOfType('file-explorer');
+			const leftLeaf = existingFileExplorerLeaves[0] ?? this.app.workspace.getLeftLeaf(false);
+			if (leftLeaf) {
+				await leftLeaf.setViewState({ ...fallbackLeft, active: false });
+			}
+
+			// Update right leaf to outline
+			const existingOutlineLeaves = this.app.workspace.getLeavesOfType('outline');
+			const rightLeaf = existingOutlineLeaves[0] ?? this.app.workspace.getRightLeaf(false);
+			if (rightLeaf) {
+				await rightLeaf.setViewState({ ...fallbackRight, active: false });
+			}
+
+			// Open file in center leaf
+			await centerLeaf.openFile(file);
+			await centerLeaf.setViewState({ type: 'markdown', active: true });
+			this.app.workspace.revealLeaf(centerLeaf);
+		}
 	}
 }
 

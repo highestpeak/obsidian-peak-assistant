@@ -58,5 +58,14 @@ export class NoopApplicationProvider {
 		console.warn('Application service not configured, returning truncated text', params.model);
 		return params.text.slice(0, 800);
 	}
+
+	async generateTitle(params: { model: AIModelId; messages: Array<{ role: string; content: string }> }): Promise<string> {
+		console.warn('Application service not configured, using fallback title', params.model);
+		const firstUserMessage = params.messages.find(m => m.role === 'user');
+		if (firstUserMessage) {
+			return firstUserMessage.content.slice(0, 50) || 'New Conversation';
+		}
+		return 'New Conversation';
+	}
 }
 

@@ -50,55 +50,104 @@ export function buildConversationMarkdown(params: {
 	context?: ChatContextWindow;
 	messages: ChatMessage[];
 	bodySections?: string;
+	projectName?: string;
 }): string {
-	const { meta, messages, context, bodySections } = params;
+	const { meta, messages, context, bodySections, projectName } = params;
 	const frontmatter = buildFrontmatter({
 		id: meta.id,
-		title: meta.title,
 		projectId: meta.projectId ?? null,
+		projectName: projectName ?? null,
+		title: meta.title,
 		createdAtTimestamp: meta.createdAtTimestamp,
 		updatedAtTimestamp: meta.updatedAtTimestamp,
 		activeModel: meta.activeModel,
 		tokenUsageTotal: meta.tokenUsageTotal ?? 0,
+		titleManuallyEdited: meta.titleManuallyEdited ?? false,
 	});
 
 	const sections: string[] = [];
-	sections.push('# Conversation Meta');
-	sections.push(
-		codeBlock('chat-conversation-meta', stringifyYaml({
-			...meta,
-		}))
-	);
-
+	
+	// Conversation Summary section
+	sections.push('# Conversation Summary');
+	sections.push('## meta');
 	if (context) {
-		sections.push('# Conversation Context');
-		sections.push(codeBlock('chat-context', stringifyYaml(context)));
+		sections.push(
+			codeBlock('chat-conversation-summary', stringifyYaml({
+				lastUpdatedTimestamp: context.lastUpdatedTimestamp,
+				recentMessagesWindow: context.recentMessagesWindow,
+			}))
+		);
+	} else {
+		sections.push(
+			codeBlock('chat-conversation-summary', stringifyYaml({
+				lastUpdatedTimestamp: Date.now(),
+				recentMessagesWindow: [],
+			}))
+		);
+	}
+	sections.push('## content');
+	sections.push('defaultSummary');
+
+	// Attachments section - collect all attachments from all messages
+	const allAttachments = new Set<string>();
+	for (const message of messages) {
+		if (message.attachments) {
+			for (const attachment of message.attachments) {
+				allAttachments.add(attachment);
+			}
+		}
+	}
+	
+	sections.push('# Attachments');
+	if (allAttachments.size > 0) {
+		const attachmentList = Array.from(allAttachments).map(att => `- [[${att}]]`).join('\n');
+		sections.push(attachmentList);
+	} else {
+		sections.push('');
 	}
 
-	sections.push('# Messages');
+	// Messages sections
 	sections.push(messages.map(buildMessageSection).join('\n\n'));
-
-	if (bodySections) {
-		sections.push('# Conversation Notes');
-		sections.push(bodySections);
-	}
 
 	return `${frontmatter}${sections.join('\n\n')}\n`;
 }
 
+/**
+ * Generate a short summary from message content for use in heading.
+ * Mock implementation - returns default summary.
+ */
+function generateMessageSummary(content: string, maxLength: number = 30): string {
+	return 'defaultSummary';
+}
+
 function buildMessageSection(message: ChatMessage): string {
-	const header = `## Message ${message.id}`;
-	const metaBlock = codeBlock('chat-message-meta', stringifyYaml({
-		id: message.id,
-		role: message.role,
-		createdAtTimestamp: message.createdAtTimestamp,
-		createdAtZone: message.createdAtZone,
-		starred: message.starred,
-		model: message.model,
-		attachments: message.attachments ?? [],
-	}));
-	const contentBlock = codeBlock('chat-message-content', message.content.trim());
-	return `${header}\n${metaBlock}\n\n${contentBlock}`;
+	const rolePrefix = message.role === 'assistant' ? 'Bot' : 
+	                   message.role === 'user' ? 'User' : 
+	                   'System';
+	const summary = generateMessageSummary(message.content);
+	const header = `# MS-${rolePrefix}-${summary}`;
+	
+	// Meta section in list format, wrapped in code block
+	const metaLines = [
+		`- id: ${message.id}`,
+		`  role: ${message.role}`,
+		`  createdAtZone: ${message.createdAtZone}`,
+		`  createdAtTimestamp: ${message.createdAtTimestamp}`,
+		`  starred: ${message.starred}`,
+		`  model: "${message.model}"`,
+		`  attachments: ${JSON.stringify(message.attachments ?? [])}`,
+	];
+	const metaSection = `## meta\n\n${codeBlock('yaml', metaLines.join('\n'))}`;
+	
+	// Thinking section - not available in current ChatMessage type, so skip for now
+	// If thinking is added to ChatMessage in the future, uncomment this:
+	// const thinkingSection = (message as any).thinking && Array.isArray((message as any).thinking)
+	// 	? `## Thinking\n\n${(message as any).thinking.map((t: string) => `- ${t}`).join('\n')}`
+	// 	: '';
+	
+	const contentSection = `## content\n\n${codeBlock('markdown', message.content.trim())}`;
+	
+	return `${header}\n\n${metaSection}\n\n${contentSection}`;
 }
 
 export function buildProjectMarkdown(params: {

@@ -64,11 +64,18 @@ export class ChatStorageService {
 		})();
 
 		const path = file?.path ?? this.join(folder, `${this.buildConversationFileName(conversation)}.md`);
+		// Get project name if project exists
+		let projectName: string | undefined;
+		if (project) {
+			projectName = project.name;
+		}
+		
 		const markdown = buildConversationMarkdown({
 			meta: conversation,
 			context,
 			messages,
 			bodySections: notes,
+			projectName,
 		});
 
 		return this.writeFile(file, path, markdown);
@@ -82,7 +89,29 @@ export class ChatStorageService {
 		}
 
 		const meta = this.pickConversationMeta(frontmatter.data);
-		const context = this.extractContext<ChatContextWindow>(frontmatter.body, 'chat-context');
+		// Try new format first (chat-conversation-summary), fallback to old format (chat-context)
+		let context = this.extractContext<ChatContextWindow>(frontmatter.body, 'chat-conversation-summary') 
+			?? this.extractContext<ChatContextWindow>(frontmatter.body, 'chat-context');
+		
+		// Extract summary from content section after meta code block
+		// New format: # Conversation Summary -> ## meta (with code block) -> ## content (with text)
+		if (context) {
+			// Look for ## content section within Conversation Summary section
+			const conversationSummaryMatch = frontmatter.body.match(/# Conversation Summary[\s\S]*?## content\n\n([\s\S]*?)(?=\n# |$)/);
+			if (conversationSummaryMatch) {
+				context.summary = conversationSummaryMatch[1].trim();
+			} else {
+				context.summary = 'defaultSummary';
+			}
+		} else {
+			// Create default context if none exists
+			context = {
+				lastUpdatedTimestamp: Date.now(),
+				recentMessagesWindow: [],
+				summary: 'defaultSummary',
+			};
+		}
+		
 		const messages = this.extractMessages(frontmatter.body);
 		return { meta, context, messages, content: frontmatter.body, file };
 	}
@@ -220,24 +249,72 @@ export class ChatStorageService {
 	}
 
 	private extractMessages(body: string): ChatMessage[] {
-		const sections = body.split('## Message ').slice(1);
+		// New format: # MS-Bot-{summary} or # MS-User-{summary} etc.
+		const messageHeaderRegex = /^# MS-(Bot|User|System)-/m;
+		const sections = body.split(/\n(?=# MS-)/).filter(section => messageHeaderRegex.test(section));
+		
 		return sections
 			.map((section) => {
-				const [idLine, ...rest] = section.split('\n');
-				const id = idLine.trim();
-				const metaMatch = section.match(/```chat-message-meta\n([\s\S]*?)```/);
-				const contentMatch = section.match(/```chat-message-content\n([\s\S]*?)```/);
-				if (!metaMatch || !contentMatch) {
+				// Extract meta section (## meta with code block containing YAML list format)
+				const metaMatch = section.match(/## meta\n\n```yaml\n([\s\S]*?)```/);
+				if (!metaMatch) return null;
+				
+				// Parse YAML-like list format from code block
+				const metaText = metaMatch[1];
+				const meta: Partial<ChatMessage> = {};
+				
+				// Extract id
+				const idMatch = metaText.match(/id:\s*([^\n]+)/);
+				if (!idMatch) return null;
+				meta.id = idMatch[1].trim();
+				
+				// Extract other fields
+				const roleMatch = metaText.match(/role:\s*([^\n]+)/);
+				if (roleMatch) meta.role = roleMatch[1].trim() as ChatMessage['role'];
+				
+				const zoneMatch = metaText.match(/createdAtZone:\s*([^\n]+)/);
+				if (zoneMatch) meta.createdAtZone = zoneMatch[1].trim();
+				
+				const timestampMatch = metaText.match(/createdAtTimestamp:\s*(\d+)/);
+				if (timestampMatch) meta.createdAtTimestamp = Number(timestampMatch[1]);
+				
+				const starredMatch = metaText.match(/starred:\s*(true|false)/);
+				if (starredMatch) meta.starred = starredMatch[1] === 'true';
+				
+				const modelMatch = metaText.match(/model:\s*"([^"]+)"/);
+				if (modelMatch) meta.model = coerceModelId(modelMatch[1]);
+				
+				// Extract attachments (JSON array format)
+				let attachments: string[] = [];
+				const attachmentsMatch = metaText.match(/attachments:\s*(\[[^\]]*\])/);
+				if (attachmentsMatch) {
+					try {
+						attachments = JSON.parse(attachmentsMatch[1]);
+					} catch (e) {
+						// If parsing fails, use empty array
+						attachments = [];
+					}
+				}
+				
+				// Extract content section (## content with markdown code block)
+				const contentMatch = section.match(/## content\n\n```markdown\n([\s\S]*?)```/);
+				if (!contentMatch) return null;
+				meta.content = contentMatch[1].trim();
+				
+				if (!meta.id || !meta.role || !meta.content || !meta.model) {
 					return null;
 				}
-				const meta = parseFrontmatter<ChatMessage>('---\n' + metaMatch[1] + '\n---\n')?.data;
-				if (!meta) return null;
+				
 				return {
-					...meta,
-					id,
-					model: coerceModelId(meta.model as unknown as string),
-					content: contentMatch[1].trim(),
-				};
+					id: meta.id,
+					role: meta.role,
+					content: meta.content,
+					createdAtTimestamp: meta.createdAtTimestamp ?? Date.now(),
+					createdAtZone: meta.createdAtZone ?? 'UTC',
+					starred: meta.starred ?? false,
+					model: meta.model,
+					attachments,
+				} as ChatMessage;
 			})
 			.filter((message): message is ChatMessage => !!message);
 	}
@@ -251,6 +328,7 @@ export class ChatStorageService {
 			updatedAtTimestamp: Number(data.updatedAtTimestamp ?? Date.now()),
 			activeModel: coerceModelId(data.activeModel as string | undefined),
 			tokenUsageTotal: data.tokenUsageTotal as number | undefined,
+			titleManuallyEdited: data.titleManuallyEdited === true,
 		};
 	}
 
