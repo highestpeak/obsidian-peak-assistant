@@ -91,6 +91,36 @@ export class ViewSwitchConsistentHandler {
 				await rightLeaf.setViewState({ ...fallbackRight, active: true });
 			}
 
+			// Handle center area: find last active markdown document or create new one
+			const existingMarkdownLeaves = this.app.workspace.getLeavesOfType('markdown');
+			let centerLeaf: WorkspaceLeaf | null = null;
+
+			if (existingMarkdownLeaves.length > 0) {
+				// Find the last active markdown leaf
+				// Check if any markdown leaf is currently active
+				const activeLeaf = this.app.workspace.activeLeaf;
+				if (activeLeaf && activeLeaf.view.getViewType() === 'markdown') {
+					centerLeaf = activeLeaf;
+				} else {
+					// Use the first existing markdown leaf
+					centerLeaf = existingMarkdownLeaves[0];
+				}
+			}
+
+			// If no markdown leaf exists, create a new one
+			if (!centerLeaf) {
+				centerLeaf = this.app.workspace.getLeaf(false);
+				if (centerLeaf) {
+					// Open a new empty markdown file
+					await centerLeaf.setViewState({ type: 'markdown', active: true });
+				}
+			} else {
+				// Activate the existing markdown leaf
+				const currentState = centerLeaf.getViewState();
+				await centerLeaf.setViewState({ ...currentState, active: true });
+				this.app.workspace.revealLeaf(centerLeaf);
+			}
+
 			this.isChatLayoutActive = false;
 		} finally {
 			this.isActivatingDocument = false;

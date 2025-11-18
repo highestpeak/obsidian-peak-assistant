@@ -15,6 +15,16 @@ export function buildCoreCommands(viewManager: ViewManager, aiManager: AIService
 			callback: () => void viewManager.getViewSwitchConsistentHandler().activateChatView(),
 		},
 		{
+			id: 'peak-chat-switch-to-chat-view',
+			name: 'Switch to Chat View',
+			callback: () => void viewManager.getViewSwitchConsistentHandler().activateChatView(),
+		},
+		{
+			id: 'peak-chat-switch-to-document-view',
+			name: 'Switch to Document View',
+			callback: () => void viewManager.getViewSwitchConsistentHandler().activeDocumentView(),
+		},
+		{
 			id: 'peak-chat-new-project',
 			name: 'New Chat Project',
 			callback: async () => {
