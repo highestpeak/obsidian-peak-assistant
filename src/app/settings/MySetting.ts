@@ -36,7 +36,7 @@ export class MySettings extends PluginSettingTab {
 		const tabContainer = containerEl.createDiv({ cls: 'peak-settings-tabs' });
 		const tabs = [
 			{ id: 'general', label: 'General' },
-			{ id: 'ai-models', label: 'AI Models' },
+			{ id: 'ai-models', label: 'Chat' },
 			{ id: 'command-hidden', label: 'Command Hidden' },
 		];
 
@@ -149,6 +149,21 @@ export class MySettings extends PluginSettingTab {
 						this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
 						this.pluginRef.aiManager?.refreshDefaultServices();
 						await this.pluginRef.aiManager?.init();
+						await this.pluginRef.saveSettings();
+					})
+			);
+
+		new Setting(wrapper)
+			.setName('Upload Folder')
+			.setDesc('Folder for storing uploaded files (PDFs, images, etc.)')
+			.addText((text) =>
+				text
+					.setPlaceholder(DEFAULT_AI_SERVICE_SETTINGS.uploadFolder)
+					.setValue(this.pluginRef.settings.ai.uploadFolder || DEFAULT_AI_SERVICE_SETTINGS.uploadFolder)
+					.onChange(async (value) => {
+						const next = value?.trim() || DEFAULT_AI_SERVICE_SETTINGS.uploadFolder;
+						this.pluginRef.settings.ai.uploadFolder = next;
+						this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
 						await this.pluginRef.saveSettings();
 					})
 			);

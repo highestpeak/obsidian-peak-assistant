@@ -144,7 +144,26 @@ function buildMessageSection(message: ChatMessage): string {
 	// 	? `## Thinking\n\n${(message as any).thinking.map((t: string) => `- ${t}`).join('\n')}`
 	// 	: '';
 	
-	const contentSection = `## content\n\n${codeBlock('markdown', message.content.trim())}`;
+	// Build content with attachments
+	let contentText = message.content.trim();
+	
+	// Add attachment references using Obsidian link syntax
+	if (message.attachments && message.attachments.length > 0) {
+		const attachmentLinks = message.attachments.map(att => {
+			// Use full path for Obsidian link (Obsidian handles file extensions automatically)
+			// Remove leading slash if present
+			const normalizedPath = att.startsWith('/') ? att.slice(1) : att;
+			return `[[${normalizedPath}]]`;
+		});
+		
+		if (contentText) {
+			contentText = `${contentText}\n\n${attachmentLinks.join(' ')}`;
+		} else {
+			contentText = attachmentLinks.join(' ');
+		}
+	}
+	
+	const contentSection = `## content\n\n${codeBlock('markdown', contentText)}`;
 	
 	return `${header}\n\n${metaSection}\n\n${contentSection}`;
 }

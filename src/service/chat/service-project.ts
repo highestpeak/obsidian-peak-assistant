@@ -23,10 +23,11 @@ export class ProjectService {
 	 */
 	async createProject(input: Omit<ChatProjectMeta, 'id' | 'createdAtTimestamp' | 'updatedAtTimestamp'>): Promise<ParsedProjectFile> {
 		const timestamp = Date.now();
-		const slug = slugify(input.name);
 		const projectId = generateUuidWithoutHyphens();
 		const normalizedRootFolder = normalizePath(this.rootFolder);
-		const projectFolder = normalizePath(input.folderPath?.trim() || `${normalizedRootFolder}/Project-${slug || projectId}`);
+		// Use projectId in folder path to ensure unique folder even with duplicate names
+		const slug = slugify(input.name);
+		const projectFolder = normalizePath(input.folderPath?.trim() || `${normalizedRootFolder}/Project-${slug || projectId}-${projectId}`);
 		const project: ChatProjectMeta = {
 			id: projectId,
 			createdAtTimestamp: timestamp,

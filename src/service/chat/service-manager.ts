@@ -21,6 +21,7 @@ export interface AIServiceSettings {
 	models: ModelConfig[];
 	llmProviderConfigs: Record<string, { apiKey: string; baseUrl?: string }>;
 	promptFolder: string;
+	uploadFolder: string;
 }
 
 export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
@@ -30,6 +31,7 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	models: [],
 	llmProviderConfigs: {},
 	promptFolder: 'A-control/PeakAssistantPrompts',
+	uploadFolder: 'ChatFolder/Attachments',
 };
 
 export interface AIServiceManagerDependencies {
@@ -254,6 +256,7 @@ export class AIServiceManager {
 		conversation: ParsedConversationFile;
 		project?: ParsedProjectFile | null;
 		userContent: string;
+		attachments?: string[];
 		autoSave?: boolean;
 	}): Promise<{ conversation: ParsedConversationFile; message: ChatMessage }> {
 		return this.conversationService.blockChat(params);

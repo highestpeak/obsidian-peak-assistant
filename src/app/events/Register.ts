@@ -4,6 +4,7 @@ import { parseFrontmatter } from 'src/service/chat/storage-markdown';
 import { createIcon } from 'src/core/IconHelper';
 import { ViewManager } from '../view/ViewManager';
 import { PROJECT_LIST_VIEW_TYPE } from 'src/ui/view/ProjectListView';
+import { IProjectListView, isProjectListView, IChatView, isChatView } from 'src/ui/view/view-interfaces';
 
 /**
  * Registers workspace-level reactive events.
@@ -42,13 +43,14 @@ export function registerCoreEvents(plugin: MyPlugin, viewManager: ViewManager): 
 				}
 			}
 
-			// Auto-refresh ProjectListView when it becomes active
-			if (leaf?.view?.getViewType() === PROJECT_LIST_VIEW_TYPE) {
-				const projectListView = leaf.view as any;
-				if (projectListView && typeof projectListView.handleRefresh === 'function') {
-					void projectListView.handleRefresh();
-				}
-			}
+			// // Auto-refresh ProjectListView when it becomes active
+			// if (leaf?.view?.getViewType() === PROJECT_LIST_VIEW_TYPE) {
+			// 	const projectListView = leaf.view as any;
+			// 	if (projectListView && typeof projectListView.handleRefresh === 'function') {
+			//      // will make project list view bugs, so disable it for now
+			// 		void projectListView.handleRefresh();
+			// 	}
+			// }
 		})
 	);
 }
@@ -177,18 +179,18 @@ function addChatViewButton(
 			// Notify chat view to open conversation
 			const chatViews = plugin.app.workspace.getLeavesOfType('peak-chat-view');
 			chatViews.forEach(leaf => {
-				const view = leaf.view as any;
-				if (view && typeof view.setActiveSelection === 'function') {
-					view.setActiveSelection(project, conversation);
+				const view = leaf.view;
+				if (isChatView(view)) {
+					view.showMessagesForOneConvsation(conversation);
 				}
 			});
 
 			// Notify project list view to highlight conversation and expand project
 			const projectListViews = plugin.app.workspace.getLeavesOfType('peak-project-list-view');
 			projectListViews.forEach(leaf => {
-				const view = leaf.view as any;
-				if (view && typeof view.setActiveSelectionAndExpand === 'function') {
-					view.setActiveSelectionAndExpand(project, conversation);
+				const view = leaf.view;
+				if (isProjectListView(view)) {
+					void view.setActiveSelectionAndExpand(project, conversation);
 				}
 			});
 		}

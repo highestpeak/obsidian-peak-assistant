@@ -65,7 +65,11 @@ export function createIcon(
 		// Lightbulb-on icon (alternative for insights)
 		'lightbulb-on': 'M9 21h6\nM12 3a6 6 0 0 1 6 6c0 2.5-1.5 4.5-3 6\nM12 3a6 6 0 0 0-6 6c0 2.5 1.5 4.5 3 6\nM12 9v6',
 		// Paperclip icon (Lucide paperclip)
-		paperclip: 'M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'
+		paperclip: 'M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48',
+		// More horizontal icon (Lucide more-horizontal) - three horizontal dots
+		moreHorizontal: 'M12 12h.01M19 12h.01M5 12h.01',
+		// Alternative name
+		'more-horizontal': 'M12 12h.01M19 12h.01M5 12h.01'
 	};
 
 	const pathData = iconPaths[iconName];

@@ -1,13 +1,14 @@
 import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { ParsedConversationFile } from 'src/service/chat/types';
+import { IMessageHistoryView, IChatView } from './view-interfaces';
 
 export const MESSAGE_HISTORY_VIEW_TYPE = 'peak-message-history-view';
 
 /**
  * Right sidebar view displaying conversation message history for quick navigation
  */
-export class MessageHistoryView extends ItemView {
+export class MessageHistoryView extends ItemView implements IMessageHistoryView {
 	private activeConversation: ParsedConversationFile | null = null;
 	private messageListEl?: HTMLElement;
 
@@ -132,10 +133,8 @@ export class MessageHistoryView extends ItemView {
 		// Notify chat view to scroll to specific message
 		const chatViews = this.app.workspace.getLeavesOfType('peak-chat-view');
 		chatViews.forEach(leaf => {
-			const view = leaf.view as any;
-			if (view && typeof view.scrollToMessage === 'function') {
+			const view = leaf.view as unknown as IChatView;
 				view.scrollToMessage(messageId);
-			}
 		});
 	}
 }

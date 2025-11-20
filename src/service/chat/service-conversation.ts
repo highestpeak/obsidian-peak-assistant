@@ -85,12 +85,16 @@ export class ConversationService {
 		conversation: ParsedConversationFile;
 		project?: ParsedProjectFile | null;
 		userContent: string;
+		attachments?: string[];
 		autoSave?: boolean;
 	}): Promise<{ conversation: ParsedConversationFile; message: ChatMessage }> {
-		const { conversation, project, userContent, autoSave = true } = params;
+		const { conversation, project, userContent, attachments, autoSave = true } = params;
 		const modelId = conversation.meta.activeModel || this.defaultModelId;
 		const timezone = this.detectTimezone();
 		const userMessage = createDefaultMessage('user', userContent, modelId, timezone);
+		if (attachments && attachments.length > 0) {
+			userMessage.attachments = attachments;
+		}
 		const messagesWithUser = [...conversation.messages, userMessage];
 		const llmMessages = await this.buildLLMRequestMessages(messagesWithUser);
 		const assistant = await this.chat.blockChat({
