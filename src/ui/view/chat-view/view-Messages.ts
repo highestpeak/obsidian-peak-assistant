@@ -21,6 +21,7 @@ export class MessagesView {
 	private statsRenderer: StatsRenderer;
 	private modalManager: ModalManager;
 	private chatInputArea?: ChatInputArea;
+	private pendingScrollMessageId?: string;
 
 	constructor(
 		private app: App,
@@ -44,8 +45,9 @@ export class MessagesView {
 	/**
 	 * Set active conversation
 	 */
-	setConversation(conversation: ParsedConversationFile | null): void {
+	setConversation(conversation: ParsedConversationFile | null, project?: ParsedProjectFile | null): void {
 		this.activeConversation = conversation;
+		this.activeProject = project ?? null;
 		// Clear pending conversation when setting an actual conversation
 		if (conversation) {
 			this.pendingConversation = null;
@@ -115,6 +117,7 @@ export class MessagesView {
 			this.scrollController.scrollToBottom();
 		}
 		this.scrollController.setMessageContainer(container);
+		this.applyPendingScroll();
 	}
 
 	/**
@@ -516,6 +519,12 @@ export class MessagesView {
 		this.chatInputArea.render(this.activeConversation);
 	}
 
+	requestScrollToMessage(messageId: string): void {
+		if (!messageId) return;
+		this.pendingScrollMessageId = messageId;
+		this.applyPendingScroll();
+	}
+
 	/**
 	 * Update conversation with incremental rendering optimization
 	 */
@@ -552,6 +561,14 @@ export class MessagesView {
 	 */
 	focusInput(): void {
 		this.chatInputArea?.focus();
+	}
+
+	private applyPendingScroll(): void {
+		if (!this.pendingScrollMessageId) return;
+		requestAnimationFrame(() => {
+			this.scrollController.scrollToMessage(this.pendingScrollMessageId!);
+			this.pendingScrollMessageId = undefined;
+		});
 	}
 
 	/**

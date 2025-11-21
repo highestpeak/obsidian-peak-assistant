@@ -257,7 +257,7 @@ export class ConversationService {
 			id: generateUuidWithoutHyphens(),
 			sourceMessageId: targetMessage.id,
 			conversationId: conversation.meta.id,
-			projectId: project?.meta.id,
+			projectId: project?.meta.id ?? conversation.meta.projectId,
 			createdAt: Date.now(),
 			active: starred,
 		};

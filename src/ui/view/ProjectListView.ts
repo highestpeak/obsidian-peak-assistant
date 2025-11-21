@@ -229,7 +229,11 @@ export class ProjectListView extends ItemView implements IProjectListView {
 			const view = leaf.view as unknown as IChatView;
 			const currentActiveConversation = this.conversationsSection.getActiveConversation();
 			if (currentActiveConversation) {
-				view.showMessagesForOneConvsation(currentActiveConversation);
+				const activeProject = this.projectsSection.getActiveProject();
+				const projectForConversation = activeProject?.meta.id === currentActiveConversation.meta.projectId
+					? activeProject
+					: this.projectsSection.getProjects().find(p => p.meta.id === currentActiveConversation.meta.projectId) ?? null;
+				view.showMessagesForOneConvsation(currentActiveConversation, projectForConversation);
 			}
 		});
 

@@ -7,7 +7,7 @@ export class ScrollController {
 	/**
 	 * Scroll to a specific message by ID
 	 */
-	scrollToMessage(messageId: string): void {
+	scrollToMessage(messageId: string, attempts = 3): void {
 		if (!this.messageContainer) return;
 		const messageEl = this.messageContainer.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement;
 		if (messageEl) {
@@ -16,6 +16,13 @@ export class ScrollController {
 			setTimeout(() => {
 				messageEl.classList.remove('peak-chat-view__message--highlighted');
 			}, 2000);
+			return;
+		}
+
+		if (attempts > 0) {
+			setTimeout(() => {
+				this.scrollToMessage(messageId, attempts - 1);
+			}, 60);
 		}
 	}
 

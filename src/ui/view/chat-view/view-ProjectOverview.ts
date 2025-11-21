@@ -1,4 +1,5 @@
-import { ParsedConversationFile, ParsedProjectFile } from 'src/service/chat/types';
+import { App } from 'obsidian';
+import { ParsedConversationFile, ParsedProjectFile, ChatMessage } from 'src/service/chat/types';
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { createIcon } from 'src/core/IconHelper';
 import { IChatView } from '../view-interfaces';
@@ -6,6 +7,7 @@ import { IChatView } from '../view-interfaces';
 export class ProjectOverviewView {
 	private manager: AIServiceManager;
 	private chatView: IChatView;
+	private app: App;
 
 	private project: ParsedProjectFile;
 	private conversations: ParsedConversationFile[] = [];
@@ -13,9 +15,11 @@ export class ProjectOverviewView {
 	private summaryExpanded = false;
 
 	constructor(
+		app: App,
 		manager: AIServiceManager,
 		chatView: IChatView
 	) {
+		this.app = app;
 		this.manager = manager;
 		this.chatView = chatView;
 	}
@@ -240,7 +244,7 @@ export class ProjectOverviewView {
 
 			// Click to open conversation
 			item.addEventListener('click', () => {
-				this.chatView.showMessagesForOneConvsation(conversation);
+				this.chatView.showMessagesForOneConvsation(conversation, this.project);
 			});
 		}
 	}
@@ -253,44 +257,43 @@ export class ProjectOverviewView {
 
 		if (!this.project) return;
 
+		const entries = this.collectStarredEntries();
 		const starredList = container.createDiv({ cls: 'peak-chat-view__starred-list' });
 
-		// Load starred messages for this project
-		const allStarred = await this.manager.loadStarred();
-		const projectStarred = allStarred.filter(
-			s => s.projectId === this.project!.meta.id && s.active
-		);
-
-		if (projectStarred.length === 0) {
+		if (entries.length === 0) {
 			starredList.createDiv({
 				cls: 'peak-chat-view__empty-text',
 				text: 'No starred messages yet.'
 			});
-		} else {
-			// Find starred messages in conversations
-			for (const starred of projectStarred) {
-				const conversation = this.conversations.find(c => c.meta.id === starred.conversationId);
-				if (conversation) {
-					const message = conversation.messages.find(m => m.id === starred.sourceMessageId);
-					if (message) {
-						const starredItem = starredList.createDiv({ cls: 'peak-chat-view__starred-item' });
-						starredItem.createDiv({
-							cls: 'peak-chat-view__starred-conversation',
-							text: conversation.meta.title
-						});
-						const starredContent = starredItem.createDiv({ cls: 'peak-chat-view__starred-content' });
-						const truncated = message.content.length > 150
-							? message.content.substring(0, 150) + '...'
-							: message.content;
-						starredContent.setText(truncated);
-						starredItem.addEventListener('click', () => {
-							this.chatView.showMessagesForOneConvsation(conversation);
-							this.chatView.scrollToMessage(message.id);
-						});
-					}
-				}
-			}
+			return;
 		}
+
+		for (const entry of entries) {
+			const starredItem = starredList.createDiv({ cls: 'peak-chat-view__starred-item' });
+			starredItem.createDiv({
+				cls: 'peak-chat-view__starred-conversation',
+				text: entry.conversation.meta.title
+			});
+			const starredContent = starredItem.createDiv({ cls: 'peak-chat-view__starred-content' });
+			const truncated = this.truncatePreview(entry.message.content, 150);
+			starredContent.setText(truncated);
+			starredItem.addEventListener('click', () => {
+				this.chatView.showMessagesForOneConvsation(entry.conversation, this.project);
+				requestAnimationFrame(() => {
+					this.chatView.scrollToMessage(entry.message.id);
+				});
+			});
+		}
+	}
+
+	private collectStarredEntries(): StarredEntry[] {
+		return this.conversations
+			.flatMap(conversation =>
+				conversation.messages
+					.filter(message => message.starred)
+					.map(message => ({ conversation, message }))
+			)
+			.sort((a, b) => (b.message.createdAtTimestamp ?? 0) - (a.message.createdAtTimestamp ?? 0));
 	}
 
 	/**
@@ -299,11 +302,87 @@ export class ProjectOverviewView {
 	private renderResourcesTab(container: HTMLElement): void {
 		container.empty();
 
-		const resourcesList = container.createDiv({ cls: 'peak-chat-view__resources-list' });
-		resourcesList.createDiv({
-			cls: 'peak-chat-view__empty-text',
-			text: 'No resources attached yet.'
+		if (!this.project) return;
+
+		const resources = this.collectProjectResources();
+
+		if (resources.length === 0) {
+			container.createDiv({
+				cls: 'peak-chat-view__empty-text',
+				text: 'No resources attached yet.'
+			});
+			return;
+		}
+
+		const resourcesList = container.createDiv({
+			cls: 'peak-chat-view__resources-list'
 		});
+
+		for (const entry of resources) {
+			const item = resourcesList.createDiv({ cls: 'peak-chat-view__resource-item' });
+			item.addEventListener('click', () => {
+				this.openAttachment(entry.attachment);
+			});
+
+			item.createDiv({
+				cls: 'peak-chat-view__resource-item-title',
+				text: `${entry.conversation.meta.title} · ${entry.attachmentLabel}`
+			});
+		}
 	}
+
+	private collectProjectResources(): ResourceAttachmentEntry[] {
+		const seen = new Set<string>();
+		const entries: ResourceAttachmentEntry[] = [];
+
+		for (const conversation of this.conversations) {
+			for (const message of conversation.messages) {
+				if (!message.attachments || message.attachments.length === 0) {
+					continue;
+				}
+				for (const attachment of message.attachments) {
+					const key = `${message.id}:${attachment}`;
+					if (seen.has(key)) continue;
+					seen.add(key);
+					const label = attachment.split('/').pop() || attachment;
+					entries.push({
+						conversation,
+						message,
+						attachment,
+						attachmentLabel: label
+					});
+				}
+			}
+		}
+
+		return entries.sort(
+			(a, b) =>
+				(b.message.createdAtTimestamp ?? 0) - (a.message.createdAtTimestamp ?? 0)
+		);
+	}
+
+	private truncatePreview(text: string, maxLength = 120): string {
+		if (!text) return '';
+		return text.length <= maxLength ? text : text.substring(0, maxLength) + '...';
+	}
+
+	private openAttachment(path: string): void {
+		if (!path) return;
+		const cleaned = path.replace(/^\[\[|\]\]$/g, '');
+		const normalized = cleaned.startsWith('/') ? cleaned.slice(1) : cleaned;
+		void this.app.workspace.openLinkText(normalized, '', true);
+	}
+}
+
+interface ResourceAttachmentEntry {
+	conversation: ParsedConversationFile;
+	message: ChatMessage;
+	attachment: string;
+	attachmentLabel: string;
+}
+
+interface StarredEntry {
+	conversation: ParsedConversationFile;
+	message: ChatMessage;
 }
 

@@ -181,7 +181,7 @@ function addChatViewButton(
 			chatViews.forEach(leaf => {
 				const view = leaf.view;
 				if (isChatView(view)) {
-					view.showMessagesForOneConvsation(conversation);
+								view.showMessagesForOneConvsation(conversation, project);
 				}
 			});
 

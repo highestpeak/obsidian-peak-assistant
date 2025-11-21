@@ -376,7 +376,8 @@ If your plugin does not need CSS, delete this file.
 .peak-chat-view__message-actions {
 	display: flex;
 	gap: 4px;
-	margin-top: 8px;
+	margin-top: 0;
+	margin-bottom: 0;
 	opacity: 1;
 	width: auto;
 	padding: 0;
@@ -392,31 +393,38 @@ If your plugin does not need CSS, delete this file.
 }
 
 .peak-chat-view__action-button {
-	background: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
+	background: transparent !important;
+	border: none !important;
+	box-shadow: none !important;
 	cursor: pointer;
 	font-size: 14px;
 	color: var(--text-muted);
-	padding: 4px 8px;
-	border-radius: 4px;
+	padding: 0;
+	border-radius: 0 !important;
 	transition: all 0.2s ease;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 28px;
-	height: 28px;
+	min-width: 24px;
+	height: 24px;
 	box-sizing: border-box;
+	outline: none;
+	line-height: 0;
 }
 
 .peak-chat-view__action-button:hover {
-	background-color: var(--background-modifier-hover);
-	border-color: var(--interactive-accent);
-	color: var(--text-normal);
+	background-color: var(--interactive-accent) !important;
+	color: #fff !important;
+}
+
+.peak-chat-view__action-button:focus-visible {
+	outline: none;
+	box-shadow: none;
 }
 
 .peak-chat-view__action-button .peak-icon {
-	width: 14px;
-	height: 14px;
+	width: 18px;
+	height: 18px;
 }
 
 .peak-chat-view__message--highlighted .peak-chat-view__message-content {
@@ -515,19 +523,21 @@ If your plugin does not need CSS, delete this file.
 	width: 100%;
 	max-width: none;
 	margin: 0;
-	background-color: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 24px;
-	padding: 12px 16px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-	transition: box-shadow 0.2s ease, border-color 0.2s ease;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
+	border: 1px solid rgba(255, 255, 255, 0.4);
+	border-radius: 28px;
+	padding: 14px 18px;
+	box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+	transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 	position: relative;
 	box-sizing: border-box;
 }
 
 .peak-chat-view__input-container:focus-within {
 	border-color: var(--interactive-accent);
-	box-shadow: 0 2px 12px rgba(var(--interactive-accent-rgb), 0.2);
+	box-shadow: 0 20px 30px rgba(var(--interactive-accent-rgb), 0.25), inset 0 0 0 1px rgba(var(--interactive-accent-rgb), 0.25);
+	transform: translateY(-1px);
+	background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.7));
 }
 
 .peak-chat-view__input-icon {
@@ -570,10 +580,18 @@ If your plugin does not need CSS, delete this file.
 	overflow-y: auto;
 	vertical-align: middle;
 	box-sizing: border-box;
+	caret-color: var(--text-normal);
+	text-shadow: 0 0 0 rgba(0, 0, 0, 0);
+	transition: color 0.2s ease, opacity 0.2s ease;
 }
 
 .peak-chat-view__textarea-wrapper textarea::placeholder {
 	color: var(--text-muted);
+}
+
+.peak-chat-view__textarea-wrapper textarea:focus-visible {
+	outline: none;
+	box-shadow: none;
 }
 
 .peak-chat-view__send-wrapper {
@@ -824,14 +842,9 @@ If your plugin does not need CSS, delete this file.
 
 .peak-icon {
 	flex-shrink: 0;
-	color: var(--text-muted);
 	vertical-align: middle;
 	display: inline-block;
 	transition: color 0.2s ease, transform 0.2s ease;
-}
-
-.peak-icon:hover {
-	color: var(--text-normal);
 }
 
 .peak-project-list-view__folder-icon {
@@ -1353,6 +1366,34 @@ If your plugin does not need CSS, delete this file.
 	font-weight: 600;
 	color: var(--text-normal);
 }
+
+.peak-chat-view__resources-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.peak-chat-view__resource-item {
+	padding: 12px 14px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background-color: var(--background-secondary);
+	cursor: pointer;
+	transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.peak-chat-view__resource-item:hover {
+	border-color: var(--interactive-accent);
+	background-color: var(--background-modifier-hover);
+}
+
+.peak-chat-view__resource-item-title {
+	font-weight: 600;
+	font-size: 14px;
+	color: var(--text-normal);
+	margin-bottom: 4px;
+}
+
 
 .peak-chat-view__resources-list {
 	display: flex;

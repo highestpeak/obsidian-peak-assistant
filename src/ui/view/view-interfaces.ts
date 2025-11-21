@@ -5,7 +5,10 @@ import { ParsedConversationFile, ParsedProjectFile, PendingConversation } from '
  * Used for type-safe cross-view communication
  */
 export interface IChatView {
-	showMessagesForOneConvsation(conversation: ParsedConversationFile): void;
+	showMessagesForOneConvsation(
+		conversation: ParsedConversationFile,
+		project?: ParsedProjectFile | null
+	): void;
 	showProjectOverview(project: ParsedProjectFile): Promise<void>;
 	showAllProjects(): Promise<void>;
 	showAllConversations(): Promise<void>;

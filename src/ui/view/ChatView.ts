@@ -59,6 +59,7 @@ export class ChatView extends ItemView implements IChatView {
 			this
 		);
 		this.projectOverviewView = new ProjectOverviewView(
+			this.app,
 			this.aiServiceManager,
 			this
 		);
@@ -121,19 +122,19 @@ export class ChatView extends ItemView implements IChatView {
 	 * Scroll to a specific message by ID
 	 */
 	scrollToMessage(messageId: string): void {
-		this.scrollController.scrollToMessage(messageId);
+		this.messagesView.requestScrollToMessage(messageId);
 	}
 
 	/**
 	 * Set active conversation and switch to conversation view mode
 	 */
-	showMessagesForOneConvsation(conversation: ParsedConversationFile): void {
+	showMessagesForOneConvsation(conversation: ParsedConversationFile, project?: ParsedProjectFile | null): void {
 		// Switch to conversation view mode
 		this.viewMode = conversation.meta.projectId
 			? ViewMode.CONVERSATION_IN_PROJECT
 			: ViewMode.STANDALONE_CONVERSATION;
 
-		this.messagesView.setConversation(conversation);
+		this.messagesView.setConversation(conversation, project ?? null);
 		this.updateMessageHistorySelection(conversation);
 		this.render();
 	}
