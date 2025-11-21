@@ -5,6 +5,7 @@ import { createIcon, createChevronIcon } from 'src/core/IconHelper';
 import { IChatView } from '../view-interfaces';
 import { InputModal } from 'src/ui/component/InputModal';
 import { openSourceFile } from '../shared/view-utils';
+import { CHAT_VIEW_TYPE } from '../ChatView';
 
 /**
  * Context interface for ConversationsSection to access ProjectListView state and methods
@@ -137,7 +138,7 @@ export class ConversationsSection {
 	/**
 	 * Render conversations list
 	 */
-	private renderConversations(): void {
+	renderConversations(): void {
 		if (!this.conversationListEl) return;
 		this.conversationListEl.empty();
 
@@ -153,18 +154,79 @@ export class ConversationsSection {
 		}
 
 		for (const conversation of conversationsWithoutProject) {
-			const item = this.conversationListEl.createDiv({
-				cls: `peak-project-list-view__item ${this.activeConversation?.meta.id === conversation.meta.id ? 'is-active' : ''}`
-			});
-			const itemText = item.createSpan({ text: conversation.meta.title });
-			item.addEventListener('click', async () => {
-				this.setActiveConversation(conversation);
-				await this.context.render();
-				await this.context.notifySelectionChange();
-			});
+			this.renderConversationItem(conversation);
+		}
+	}
 
-			// Add right-click context menu for conversation
-			this.setupConversationContextMenu(item, conversation);
+	/**
+	 * Render a single conversation item
+	 */
+	private renderConversationItem(conversation: ParsedConversationFile): void {
+		if (!this.conversationListEl) return;
+		
+		const item = this.conversationListEl.createDiv({
+			cls: `peak-project-list-view__item ${this.activeConversation?.meta.id === conversation.meta.id ? 'is-active' : ''}`,
+			attr: { 'data-conversation-id': conversation.meta.id }
+		});
+		const itemText = item.createSpan({ text: conversation.meta.title });
+		item.addEventListener('click', async () => {
+			this.setActiveConversation(conversation);
+			await this.context.render();
+			await this.context.notifySelectionChange();
+		});
+
+		// Add right-click context menu for conversation
+		this.setupConversationContextMenu(item, conversation);
+	}
+
+	/**
+	 * Update a single conversation item's title without re-rendering the entire list
+	 */
+	updateConversationTitle(conversation: ParsedConversationFile): void {
+		if (!this.conversationListEl) return;
+		
+		// Update the conversation in the array
+		const index = this.conversations.findIndex(c => c.meta.id === conversation.meta.id);
+		const isNewConversation = index < 0;
+		if (index >= 0) {
+			this.conversations[index] = conversation;
+		} else {
+			// New conversation, add to array and sort
+			this.conversations.push(conversation);
+			this.conversations.sort((a, b) => {
+				const timeA = a.meta.createdAtTimestamp || 0;
+				const timeB = b.meta.createdAtTimestamp || 0;
+				return timeB - timeA;
+			});
+		}
+		
+		// Find the item by conversation ID
+		const item = this.conversationListEl.querySelector(
+			`[data-conversation-id="${conversation.meta.id}"]`
+		) as HTMLElement | null;
+		
+		if (item) {
+			// Update the title text
+			const titleSpan = item.querySelector('span');
+			if (titleSpan) {
+				titleSpan.textContent = conversation.meta.title;
+			}
+			
+			// Update active state if needed
+			const isActive = this.activeConversation?.meta.id === conversation.meta.id;
+			item.classList.toggle('is-active', isActive);
+		} else {
+			// If item doesn't exist, it's a new conversation, need to render it
+			// Check if we should show it (root-level conversation without projectId)
+			if (!conversation.meta.projectId) {
+				// Clear empty state if exists
+				const emptyState = this.conversationListEl.querySelector('.peak-project-list-view__empty');
+				if (emptyState) {
+					emptyState.remove();
+				}
+				// Render the new conversation item at the top
+				this.renderConversationItem(conversation);
+			}
 		}
 	}
 
@@ -207,19 +269,22 @@ export class ConversationsSection {
 
 	/**
 	 * Open create conversation modal
+	 * Now only sets a pending state, actual creation happens on first message
 	 */
 	private openCreateConversationModal(): void {
-		// Create conversation directly without modal, using default title
-		// Title will be auto-generated after first message exchange
+		// Set pending conversation state instead of creating immediately
+		// Actual creation will happen when user sends first message
 		void (async () => {
-			const conversation = await this.manager.createConversation({
-				title: 'New Conversation',
-				project: null,
+			// Notify ChatView to set pending conversation state
+			const chatViews = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
+			chatViews.forEach(leaf => {
+				const view = leaf.view as unknown as IChatView;
+				view.setPendingConversation({
+					title: 'New Conversation',
+					project: null,
+				});
 			});
-			this.setActiveConversation(conversation);
-			// Refresh data to get updated conversations list
-			await this.hydrateConversations();
-			await this.context.render();
+			// Switch to conversation view to show input area
 			await this.context.notifySelectionChange();
 		})();
 	}

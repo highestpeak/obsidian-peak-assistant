@@ -302,5 +302,55 @@ export class ProjectListView extends ItemView implements IProjectListView {
 		await this.notifySelectionChange();
 	}
 
+	/**
+	 * Refresh conversation list after a new conversation is created
+	 * Only updates the specific conversation item, not the entire list
+	 */
+	async refreshConversationList(conversation: ParsedConversationFile): Promise<void> {
+		if (!conversation.meta.projectId) {
+			// Update ConversationsSection for root-level conversations
+			// First update the data
+			const conversations = this.conversationsSection.getConversations();
+			const index = conversations.findIndex(c => c.meta.id === conversation.meta.id);
+			if (index >= 0) {
+				conversations[index] = conversation;
+			} else {
+				// New conversation, add to list and sort
+				conversations.push(conversation);
+				conversations.sort((a, b) => {
+					const timeA = a.meta.createdAtTimestamp || 0;
+					const timeB = b.meta.createdAtTimestamp || 0;
+					return timeB - timeA;
+				});
+			}
+			// Update only the specific item (will render if new)
+			this.conversationsSection.updateConversationTitle(conversation);
+		} else {
+			// Update the specific project's conversation item
+			const projects = this.projectsSection.getProjects();
+			const project = projects.find(p => p.meta.id === conversation.meta.projectId);
+			if (project) {
+				// Update only the specific conversation item (will render if new)
+				this.projectsSection.updateProjectConversationTitle(project, conversation);
+			}
+		}
+	}
+
+	/**
+	 * Refresh project name after update
+	 * Only updates the specific project item, not the entire list
+	 */
+	async refreshProjectName(project: ParsedProjectFile): Promise<void> {
+		// Update the project in the list
+		const projects = this.projectsSection.getProjects();
+		const index = projects.findIndex(p => p.meta.id === project.meta.id);
+		if (index >= 0) {
+			projects[index] = project;
+		}
+		// Update only the specific project item
+		this.projectsSection.updateProjectName(project);
+	}
+
 }
+
 

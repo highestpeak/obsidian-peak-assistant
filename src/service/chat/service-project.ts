@@ -1,8 +1,7 @@
 import { normalizePath, TFolder } from 'obsidian';
-import { generateUuidWithoutHyphens } from './utils';
+import { buildTimestampedName, generateUuidWithoutHyphens } from './utils';
 import { ChatProjectMeta, ParsedProjectFile, ParsedConversationFile } from './types';
 import { ChatStorageService } from './storage';
-import { slugify } from './utils';
 import { LLMApplicationService } from './service-application';
 import { PromptService, PromptTemplate } from './service-prompt';
 import { AIModelId, coerceModelId } from './types-models';
@@ -25,9 +24,10 @@ export class ProjectService {
 		const timestamp = Date.now();
 		const projectId = generateUuidWithoutHyphens();
 		const normalizedRootFolder = normalizePath(this.rootFolder);
-		// Use projectId in folder path to ensure unique folder even with duplicate names
-		const slug = slugify(input.name);
-		const projectFolder = normalizePath(input.folderPath?.trim() || `${normalizedRootFolder}/Project-${slug || projectId}-${projectId}`);
+		const folderName = buildTimestampedName('Project', input.name, timestamp, projectId);
+		const projectFolder = normalizePath(
+			input.folderPath?.trim() || `${normalizedRootFolder}/${folderName}`
+		);
 		const project: ChatProjectMeta = {
 			id: projectId,
 			createdAtTimestamp: timestamp,
@@ -58,28 +58,59 @@ export class ProjectService {
 	 * Rename a project by renaming its folder.
 	 */
 	async renameProject(project: ParsedProjectFile, newName: string): Promise<ParsedProjectFile> {
-		const folder = project.file.parent;
-		if (!(folder instanceof TFolder)) {
+		const folder = this.resolveProjectFolder(project);
+		if (!folder) {
 			throw new Error('Project folder not found');
 		}
 
-		const slug = slugify(newName);
-		const newFolderName = `Project-${slug || project.meta.id}`;
-		const newFolderPath = normalizePath(`${this.rootFolder}/${newFolderName}`);
+		const timestamp = Date.now();
+		const newFolderName = buildTimestampedName('Project', newName, timestamp, project.meta.id);
+		const parentPath = folder.parent?.path ?? this.rootFolder;
+		const newFolderPath = normalizePath(`${parentPath}/${newFolderName}`);
 
 		// Rename the folder
-		await this.storage.app.vault.rename(folder, newFolderName);
+		await this.storage.getApp().vault.rename(folder, newFolderName);
 
-		// Update project meta with new folder path
+		// Update project meta with new folder path and name
 		const updatedMeta: ChatProjectMeta = {
 			...project.meta,
+			name: newName,
 			folderPath: newFolderPath,
-			updatedAtTimestamp: Date.now(),
+			updatedAtTimestamp: timestamp,
 		};
 
 		// Save updated project meta
 		const file = await this.storage.saveProject(updatedMeta, project.context, undefined);
 		return this.storage.readProject(file);
+	}
+
+	/**
+	 * Locate a project folder by id, falling back to the parsed project file when needed.
+	 */
+	private resolveProjectFolder(project: ParsedProjectFile): TFolder | null {
+		const folderById = this.findProjectFolderById(project.meta.id);
+		if (folderById) {
+			return folderById;
+		}
+		return project.file.parent instanceof TFolder ? project.file.parent : null;
+	}
+
+	/**
+	 * Search the configured root folder for a child folder whose name contains the project id suffix.
+	 */
+	private findProjectFolderById(projectId: string): TFolder | null {
+		const rootFolder = this.storage.getApp().vault.getAbstractFileByPath(this.rootFolder);
+		if (!(rootFolder instanceof TFolder)) {
+			return null;
+		}
+
+		for (const child of rootFolder.children) {
+			if (child instanceof TFolder && child.name.startsWith('Project-') && child.name.endsWith(`-${projectId}`)) {
+				return child;
+			}
+		}
+
+		return null;
 	}
 }
 

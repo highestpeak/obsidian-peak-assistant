@@ -229,6 +229,7 @@ If your plugin does not need CSS, delete this file.
 	position: relative;
 	display: flex;
 	flex-direction: column;
+	gap: 8px;
 }
 
 .peak-chat-view__message-wrapper--user .peak-chat-view__message {
@@ -256,6 +257,96 @@ If your plugin does not need CSS, delete this file.
 	-moz-user-select: text;
 	-ms-user-select: text;
 	cursor: text;
+}
+
+.peak-chat-view__message-attachments {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 6px;
+	width: 100%;
+	max-width: 420px;
+	padding-top: 6px;
+}
+
+.peak-chat-view__attachment-stats {
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.peak-chat-view__attachment-preview-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: 8px;
+	width: 100%;
+}
+
+.peak-chat-view__attachment-preview-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 96px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	padding: 10px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	cursor: pointer;
+}
+
+.peak-chat-view__attachment-preview-item:hover {
+	border-color: var(--interactive-accent);
+}
+
+.peak-chat-view__attachment-preview-image {
+	max-width: 100%;
+	max-height: 80px;
+	border-radius: 8px;
+	object-fit: contain;
+}
+
+.peak-chat-view__attachment-preview-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 1;
+}
+
+.peak-chat-view__attachment-preview-name {
+	font-size: 13px;
+	color: var(--text-normal);
+	text-align: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	width: 100%;
+}
+
+.peak-chat-view__file-preview-item--pdf,
+.peak-chat-view__attachment-preview-item--pdf {
+	background-color: #c92a2a;
+	border-color: #ca1f1f;
+	color: #ffffff;
+	box-shadow: 0 4px 12px rgba(201, 42, 42, 0.35);
+}
+
+.peak-chat-view__file-preview-item--pdf .peak-chat-view__file-preview-name,
+.peak-chat-view__attachment-preview-item--pdf .peak-chat-view__attachment-preview-name {
+	color: #ffffff;
+}
+
+.peak-chat-view__file-preview-item--image,
+.peak-chat-view__attachment-preview-item--image {
+	background-color: #ecfeff;
+	border-color: #67e8f9;
+}
+
+.peak-chat-view__file-preview-item--file,
+.peak-chat-view__attachment-preview-item--file {
+	background-color: var(--background-secondary);
+	border-color: var(--background-modifier-border);
 }
 
 .peak-chat-view__message-wrapper--user .peak-chat-view__message-content {
@@ -341,6 +432,80 @@ If your plugin does not need CSS, delete this file.
 	flex-shrink: 0;
 	width: 100%;
 	box-sizing: border-box;
+}
+
+.peak-chat-view__file-preview-container {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	margin-bottom: 12px;
+}
+
+.peak-chat-view__file-preview-list {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	overflow-x: auto;
+	padding-bottom: 4px;
+	min-height: 70px;
+}
+
+.peak-chat-view__file-preview-item {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 14px;
+	padding: 8px 12px;
+	min-height: 66px;
+	min-width: 160px;
+	max-width: 220px;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.peak-chat-view__file-preview-image {
+	height: 48px;
+	width: auto;
+	border-radius: 6px;
+	object-fit: contain;
+}
+
+.peak-chat-view__file-preview-name {
+	flex: 1;
+	font-size: 13px;
+	color: var(--text-normal);
+	font-weight: 500;
+	margin: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.peak-chat-view__file-preview-remove {
+	border: none;
+	background-color: var(--background-primary);
+	color: var(--text-muted);
+	width: 28px;
+	height: 28px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 14px;
+	border-radius: 50%;
+	box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+	cursor: pointer;
+	transition: all 0.2s ease;
+	padding: 0;
+}
+
+.peak-chat-view__file-preview-remove:hover,
+.peak-chat-view__file-preview-remove:focus-visible {
+	color: var(--text-normal);
+	background-color: var(--background-secondary);
+	box-shadow: inset 0 0 0 1px var(--interactive-accent);
 }
 
 .peak-chat-view__input-container {
@@ -1003,42 +1168,37 @@ If your plugin does not need CSS, delete this file.
 	color: var(--text-normal);
 }
 
-/* Project stats - Dashboard style cards */
+/* Project stats - simplified row */
 .peak-chat-view__project-stats {
-	margin-bottom: 32px;
+	margin-bottom: 16px;
 }
 
 .peak-chat-view__stats-row {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-	gap: 16px;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 12px;
 }
 
 .peak-chat-view__stat-card {
-	background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-modifier-hover) 100%);
+	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 12px;
-	padding: 20px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.peak-chat-view__stat-card:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	border-radius: 10px;
+	padding: 14px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
 }
 
 .peak-chat-view__stat-card-label {
-	font-size: 13px;
+	font-size: 12px;
 	color: var(--text-muted);
 	font-weight: 500;
-	margin-bottom: 8px;
 	text-transform: uppercase;
-	letter-spacing: 0.5px;
+	letter-spacing: 0.4px;
 }
 
 .peak-chat-view__stat-card-value {
-	font-size: 32px;
+	font-size: 28px;
 	font-weight: 700;
 	color: var(--text-normal);
 	line-height: 1.2;
@@ -1046,18 +1206,45 @@ If your plugin does not need CSS, delete this file.
 
 /* Project summary */
 .peak-chat-view__project-summary {
-	margin-bottom: 24px;
-	padding: 20px;
+	margin-bottom: 28px;
+	padding: 16px 20px;
 	background-color: var(--background-secondary);
-	border-radius: 8px;
+	border-radius: 10px;
 	border: 1px solid var(--background-modifier-border);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
 }
 
-.peak-chat-view__project-summary h3 {
-	margin: 0 0 12px 0;
+.peak-chat-view__project-summary-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.peak-chat-view__project-summary-header h3 {
+	margin: 0;
 	font-size: 16px;
 	font-weight: 600;
 	color: var(--text-normal);
+}
+
+.peak-chat-view__project-summary-toggle {
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	color: var(--interactive-accent);
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	padding: 4px 10px;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.peak-chat-view__project-summary-toggle:hover {
+	border-color: var(--interactive-accent);
+	background-color: var(--background-modifier-hover);
 }
 
 .peak-chat-view__summary-content {
@@ -1065,6 +1252,14 @@ If your plugin does not need CSS, delete this file.
 	line-height: 1.6;
 	color: var(--text-normal);
 	white-space: pre-wrap;
+}
+
+.peak-chat-view__project-summary.is-collapsed .peak-chat-view__summary-content {
+	display: none;
+}
+
+.peak-chat-view__project-summary.is-expanded .peak-chat-view__summary-content {
+	display: block;
 }
 
 /* Project tabs */

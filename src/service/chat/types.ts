@@ -76,7 +76,17 @@ export interface ParsedConversationFile {
 export interface ParsedProjectFile {
 	meta: ChatProjectMeta;
 	context?: ChatProjectContext;
+	shortSummary?: string;
 	content: string;
 	file: TFile;
+}
+
+/**
+ * Pending conversation creation state
+ * Used when user clicks "new conversation" but hasn't sent first message yet
+ */
+export interface PendingConversation {
+	title: string;
+	project: ParsedProjectFile | null;
 }
 

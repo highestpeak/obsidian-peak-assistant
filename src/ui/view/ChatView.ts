@@ -1,6 +1,6 @@
 import { IconName, ItemView, TFolder, WorkspaceLeaf } from 'obsidian';
 import { AIServiceManager } from 'src/service/chat/service-manager';
-import { ParsedConversationFile, ParsedProjectFile } from 'src/service/chat/types';
+import { ParsedConversationFile, ParsedProjectFile, PendingConversation } from 'src/service/chat/types';
 import { ScrollController } from './chat-view/ScrollController';
 import { ModalManager } from './chat-view/ModalManager';
 import { AllProjectsView } from './chat-view/view-AllProjects';
@@ -9,6 +9,7 @@ import { MessagesView } from './chat-view/view-Messages';
 import { ProjectOverviewView } from './chat-view/view-ProjectOverview';
 import { openSourceFile } from './shared/view-utils';
 import { IChatView, IMessageHistoryView } from './view-interfaces';
+import { MESSAGE_HISTORY_VIEW_TYPE } from './MessageHistoryView';
 
 export const CHAT_VIEW_TYPE = 'peak-chat-view';
 
@@ -133,10 +134,7 @@ export class ChatView extends ItemView implements IChatView {
 			: ViewMode.STANDALONE_CONVERSATION;
 
 		this.messagesView.setConversation(conversation);
-		this.app.workspace.getLeavesOfType('peak-message-history-view').forEach(leaf => {
-			const view = leaf.view as unknown as IMessageHistoryView;
-			view.setActiveConversation(conversation);
-		});
+		this.updateMessageHistorySelection(conversation);
 		this.render();
 	}
 
@@ -147,6 +145,7 @@ export class ChatView extends ItemView implements IChatView {
 		this.viewMode = ViewMode.PROJECT_OVERVIEW;
 
 		await this.projectOverviewView.setProject(project);
+		this.updateMessageHistorySelection(null);
 		this.render();
 	}
 
@@ -164,6 +163,16 @@ export class ChatView extends ItemView implements IChatView {
 	async showAllConversations(): Promise<void> {
 		this.viewMode = ViewMode.ALL_CONVERSATIONS;
 		this.render();
+	}
+
+	/**
+	 * Update sidebar history selection for the active conversation.
+	 */
+	private updateMessageHistorySelection(conversation: ParsedConversationFile | null): void {
+		this.app.workspace.getLeavesOfType(MESSAGE_HISTORY_VIEW_TYPE).forEach(leaf => {
+			const view = leaf.view as unknown as IMessageHistoryView;
+			view.setActiveConversation(conversation);
+		});
 	}
 
 	/**
@@ -205,6 +214,22 @@ export class ChatView extends ItemView implements IChatView {
 		if (this.keydownHandler) {
 			window.removeEventListener('keydown', this.keydownHandler, true);
 			this.keydownHandler = undefined;
+		}
+	}
+
+	/**
+	 * Set pending conversation state
+	 * This will be created when user sends first message
+	 */
+	setPendingConversation(pending: PendingConversation | null): void {
+		// Switch to conversation view mode to show input area
+		if (pending) {
+			this.viewMode = pending.project 
+				? ViewMode.CONVERSATION_IN_PROJECT 
+				: ViewMode.STANDALONE_CONVERSATION;
+			this.messagesView.setConversation(null);
+			this.messagesView.setPendingConversation(pending);
+			this.render();
 		}
 	}
 

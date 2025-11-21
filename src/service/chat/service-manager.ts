@@ -381,5 +381,12 @@ export class AIServiceManager {
 		return this.projectService.renameProject(project, newName);
 	}
 
+	/**
+	 * Get the application service for generating titles and names
+	 */
+	getApplicationService(): LLMApplicationService {
+		return this.application;
+	}
+
 }
 

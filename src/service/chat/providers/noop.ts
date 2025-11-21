@@ -67,5 +67,10 @@ export class NoopApplicationProvider {
 		}
 		return 'New Conversation';
 	}
+
+	async generateConvName(params: { conversation: { id: string; messages: Array<{ role: string; content: string }> } }): Promise<string> {
+		// Mock implementation - return example result
+		return 'exampleConvTitleResult';
+	}
 }
 

@@ -1,4 +1,4 @@
-import { ParsedConversationFile, ParsedProjectFile } from 'src/service/chat/types';
+import { ParsedConversationFile, ParsedProjectFile, PendingConversation } from 'src/service/chat/types';
 
 /**
  * Interface for ChatView public methods
@@ -10,6 +10,7 @@ export interface IChatView {
 	showAllProjects(): Promise<void>;
 	showAllConversations(): Promise<void>;
 	scrollToMessage(messageId: string): void;
+	setPendingConversation(pending: PendingConversation | null): void;
 }
 
 /**
@@ -21,6 +22,8 @@ export interface IProjectListView {
 		project: ParsedProjectFile | null,
 		conversation: ParsedConversationFile | null
 	): Promise<void>;
+	refreshConversationList(conversation: ParsedConversationFile): Promise<void>;
+	refreshProjectName(project: ParsedProjectFile): Promise<void>;
 }
 
 /**
@@ -41,7 +44,8 @@ export function isChatView(view: any): view is IChatView {
 		typeof view.showProjectOverview === 'function' &&
 		typeof view.showAllProjects === 'function' &&
 		typeof view.showAllConversations === 'function' &&
-		typeof view.scrollToMessage === 'function'
+		typeof view.scrollToMessage === 'function' &&
+		typeof view.setPendingConversation === 'function'
 	);
 }
 
@@ -51,7 +55,9 @@ export function isChatView(view: any): view is IChatView {
 export function isProjectListView(view: any): view is IProjectListView {
 	return (
 		view &&
-		typeof view.setActiveSelectionAndExpand === 'function'
+		typeof view.setActiveSelectionAndExpand === 'function' &&
+		typeof view.refreshConversationList === 'function' &&
+		typeof view.refreshProjectName === 'function'
 	);
 }
 

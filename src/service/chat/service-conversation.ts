@@ -1,4 +1,4 @@
-import { TFile } from 'obsidian';
+import { normalizePath, TFile, TFolder } from 'obsidian';
 import { generateUuidWithoutHyphens } from './utils';
 import { LLMProviderService } from './providers/types';
 import { LLMApplicationService } from './service-application';
@@ -187,29 +187,37 @@ export class ConversationService {
 	}): Promise<ParsedConversationFile> {
 		const { conversation, project, title } = params;
 		
-		// Build new filename with the new title
+		const folder = conversation.file.parent;
+		const fileToRename = this.findConversationFile(folder, conversation) ?? conversation.file;
+
+		// Build new filename with the updated title
 		const newFileName = this.storage.buildConversationFileName({
 			...conversation.meta,
 			title,
 		});
-		const newPath = `${conversation.file.parent?.path ?? ''}/${newFileName}.md`;
-		
-		// Rename the file
-		await this.storage.app.vault.rename(conversation.file, newFileName + '.md');
-		
+		const newPath = normalizePath(
+			folder?.path?.trim()
+				? `${folder!.path}/${newFileName}.md`
+				: `${newFileName}.md`
+		);
+
+		// Rename the file by id to keep names in sync
+		await this.storage.getApp().vault.rename(fileToRename, newPath);
+
 		// Update meta to mark as manually edited
 		const updatedMeta: ChatConversationMeta = {
 			...conversation.meta,
-			titleManuallyEdited: true, // Mark as manually edited to disable auto-generation
+			title,
+			titleManuallyEdited: true,
 			updatedAtTimestamp: Date.now(),
 		};
-		
+
 		// Get the renamed file
-		const renamedFile = this.storage.app.vault.getAbstractFileByPath(newPath) as TFile | null;
+		const renamedFile = this.storage.getApp().vault.getAbstractFileByPath(newPath) as TFile | null;
 		if (!renamedFile) {
 			throw new Error('Failed to find renamed conversation file');
 		}
-		
+
 		// Save updated meta
 		const saved = await this.storage.saveConversation(
 			project?.meta ?? null,
@@ -319,28 +327,9 @@ export class ConversationService {
 	}): Promise<ParsedConversationFile> {
 		const context = await this.buildContextWindow(params.messages, params.model);
 		
-		// Auto-generate title if not manually edited and we have messages
-		let title = params.conversation.meta.title;
-		const shouldAutoGenerateTitle = !params.conversation.meta.titleManuallyEdited && 
-		                                 params.messages.length > 0 &&
-		                                 (params.conversation.meta.title === 'New Conversation' || !params.conversation.meta.title);
-		
-		if (shouldAutoGenerateTitle) {
-			try {
-				// Convert ChatMessage[] to format expected by generateTitle
-				const messagesForTitle = params.messages.slice(0, 4).map(msg => ({
-					role: msg.role,
-					content: msg.content,
-				}));
-				title = await this.application.generateTitle({
-					model: params.model,
-					messages: messagesForTitle,
-				});
-			} catch (error) {
-				console.warn('Failed to auto-generate title', error);
-				// Keep existing title on error
-			}
-		}
+		// Keep the existing title, don't auto-generate from messages
+		// Title generation will be handled by a separate service later
+		const title = params.conversation.meta.title;
 		
 		const updatedMeta: ChatConversationMeta = {
 			...params.conversation.meta,
@@ -539,6 +528,30 @@ export class ConversationService {
 			console.error('Failed to load conversation prompt', error);
 			return null;
 		}
+	}
+
+	/**
+	 * Locate the conversation file under the provided folder by matching the id suffix.
+	 */
+	private findConversationFile(folder: TFolder | null | undefined, conversation: ParsedConversationFile): TFile | null {
+		if (!folder) {
+			return null;
+		}
+
+		const suffix = `-${conversation.meta.id}`;
+		for (const child of folder.children) {
+			if (!(child instanceof TFile) || child.extension !== 'md') {
+				continue;
+			}
+			if (child.basename === conversation.file.basename) {
+				return child;
+			}
+			if (child.basename.startsWith('Conv-') && child.basename.endsWith(suffix)) {
+				return child;
+			}
+		}
+
+		return null;
 	}
 }
 

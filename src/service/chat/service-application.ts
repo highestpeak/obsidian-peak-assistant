@@ -4,6 +4,7 @@ import { LLMProviderService } from './providers/types';
 export interface LLMApplicationService {
 	summarize(params: { model: AIModelId; text: string; }): Promise<string>;
 	generateTitle(params: { model: AIModelId; messages: Array<{ role: string; content: string }> }): Promise<string>;
+	generateConvName(params: { conversation: { id: string; messages: Array<{ role: string; content: string }> } }): Promise<string>;
 }
 
 export class PromptApplicationService implements LLMApplicationService {
@@ -63,5 +64,14 @@ export class PromptApplicationService implements LLMApplicationService {
 			}
 			return 'New Conversation';
 		}
+	}
+
+	/**
+	 * Generate conversation name based on conversation content
+	 * Mock implementation that returns exampleConvTitleResult
+	 */
+	async generateConvName(params: { conversation: { id: string; messages: Array<{ role: string; content: string }> } }): Promise<string> {
+		// Mock implementation - return example result
+		return 'exampleConvTitleResult';
 	}
 }

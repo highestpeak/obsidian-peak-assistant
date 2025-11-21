@@ -55,7 +55,9 @@ export class ChatStorageService {
 		existingFile?: TFile
 	): Promise<TFile> {
 		const folder = project ? this.getProjectFolderPath(project) : this.rootFolder;
+		console.log('[PeakAssistant] saveConversation target folder', folder, 'projectId', project?.id ?? 'none', 'conversationTitle', conversation.title);
 		await ensureFolder(this.app, folder);
+		console.log('[PeakAssistant] folder ensured', folder);
 
 		const file = existingFile ?? ((): TFile | null => {
 			const fileName = this.buildConversationFileName(conversation);
@@ -64,6 +66,7 @@ export class ChatStorageService {
 		})();
 
 		const path = file?.path ?? this.join(folder, `${this.buildConversationFileName(conversation)}.md`);
+		console.log('[PeakAssistant] saveConversation path', path);
 		
 		const markdown = buildConversationMarkdown({
 			meta: conversation,
@@ -118,8 +121,55 @@ export class ChatStorageService {
 		}
 
 		const meta = this.pickProjectMeta(frontmatter.data, file);
-		const context = this.extractContext<ChatProjectContext>(frontmatter.body, 'chat-project-context');
-		return { meta, context, content: frontmatter.body, file };
+		const normalizedBody = frontmatter.body.replace(/\r\n/g, '\n');
+		let context = this.extractContext<ChatProjectContext>(normalizedBody, 'chat-project-context');
+
+		const summaryHeadings = [
+			{ heading: 'Short Summary', blockLang: 'project-short-summary' },
+			{ heading: 'Project Summary', blockLang: 'chat-conversation-summary' },
+		];
+
+		let summaryText: string | undefined;
+		let summaryMeta: Record<string, unknown> | undefined;
+
+		for (const entry of summaryHeadings) {
+			if (summaryText === undefined) {
+				const value = this.extractSummarySection(normalizedBody, entry.heading);
+				if (value !== undefined) {
+					summaryText = value;
+				}
+			}
+
+			if (!summaryMeta) {
+				const metaCandidate = this.extractSummaryMeta(normalizedBody, entry.heading, entry.blockLang);
+				if (metaCandidate) {
+					summaryMeta = metaCandidate;
+				}
+			}
+
+			if (summaryText !== undefined && summaryMeta) {
+				break;
+			}
+		}
+
+		const summary = summaryText ?? context?.summary ?? 'defaultSummary';
+		const parsedTimestamp = summaryMeta
+			? this.parseLastUpdatedTimestamp(summaryMeta.lastUpdatedTimestamp)
+			: undefined;
+		const now = Date.now();
+
+		if (context) {
+			context.summary = summary;
+			context.lastUpdatedTimestamp = parsedTimestamp ?? context.lastUpdatedTimestamp ?? now;
+		} else {
+			context = {
+				lastUpdatedTimestamp: parsedTimestamp ?? now,
+				summary,
+			};
+		}
+
+		const finalContext: ChatProjectContext = context as ChatProjectContext;
+		return { meta, context: finalContext, content: frontmatter.body, file, shortSummary: summary };
 	}
 
 	async listProjects(): Promise<ParsedProjectFile[]> {
@@ -235,6 +285,38 @@ export class ChatStorageService {
 		);
 	}
 
+	private extractSummarySection(body: string, heading: string): string | undefined {
+		const normalized = body.replace(/\r\n/g, '\n');
+		const escapedHeading = this.escapeRegExp(heading);
+		const regex = new RegExp(`# ${escapedHeading}[\\s\\S]*?## content\\n+([\\s\\S]*?)(?=\\n# |$)`, 'm');
+		const match = normalized.match(regex);
+		if (!match) return undefined;
+		return match[1].trim();
+	}
+
+	private extractSummaryMeta(body: string, heading: string, blockLang: string): Record<string, unknown> | undefined {
+		const normalized = body.replace(/\r\n/g, '\n');
+		const escapedHeading = this.escapeRegExp(heading);
+		const regex = new RegExp(`# ${escapedHeading}[\\s\\S]*?## meta\\s*\`\`\`${this.escapeRegExp(blockLang)}\\n([\\s\\S]*?)\\n\`\`\``, 'm');
+		const match = normalized.match(regex);
+		if (!match) return undefined;
+		const yaml = match[1];
+		if (!yaml.trim()) return undefined;
+		return parseFrontmatter<Record<string, unknown>>('---\n' + yaml + '\n---\n')?.data ?? undefined;
+	}
+
+	private parseLastUpdatedTimestamp(value: unknown): number | undefined {
+		if (value === undefined || value === null) {
+			return undefined;
+		}
+		const timestamp = Number(value);
+		return Number.isFinite(timestamp) ? timestamp : undefined;
+	}
+
+	private escapeRegExp(value: string): string {
+		return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
+
 	private extractContext<T extends object>(body: string, block: string): T | undefined {
 		const regex = new RegExp('```' + block + '\\n([\\s\\S]*?)```', 'm');
 		const match = body.match(regex);
@@ -314,15 +396,24 @@ export class ChatStorageService {
 	}
 
 	private pickConversationMeta(data: Record<string, unknown>, file: TFile): ChatConversationMeta {
-		// Get title from filename (file name without extension)
-		const fileName = file.basename;
-		// Extract title from filename (format: Conv-{timestamp}-{title})
-		let title = '';
-		const match = fileName.match(/^Conv-\d+-(.+)$/);
-		if (match) {
-			title = match[1];
-		} else {
-			title = fileName;
+		// Get title from frontmatter first (this is the actual title, not slugified)
+		let title = String(data.title ?? '');
+		
+		// If title is not in frontmatter, extract from filename
+		// New format: Conv-{YYYYMMDD-HHMMSS}-{slugified-title}-{id}
+		if (!title) {
+			const fileName = file.basename;
+			const matchWithId = fileName.match(/^Conv-\d{8}-\d{6}-(.+)-([a-f0-9]{32})$/);
+			if (matchWithId) {
+				title = matchWithId[1];
+			} else {
+				const legacyMatch = fileName.match(/^Conv-\d{8}-\d{6}-(.+)$/);
+				if (legacyMatch) {
+					title = legacyMatch[1];
+				} else {
+					title = fileName;
+				}
+			}
 		}
 		
 		return {
@@ -338,20 +429,24 @@ export class ChatStorageService {
 	}
 
 	private pickProjectMeta(data: Record<string, unknown>, file: TFile): ChatProjectMeta {
-		// Get name from folder name (parent folder of Project-Summary.md)
-		const folder = file.parent;
-		let name = '';
-		if (folder instanceof TFolder) {
-			// Extract name from folder name (format: Project-{name})
-			const folderName = folder.name;
-			const match = folderName.match(/^Project-(.+)$/);
-			if (match) {
-				name = match[1];
+		// Get name from frontmatter first, fallback to folder name
+		let name = String(data.name ?? '');
+		
+		// If name is not in frontmatter or empty, extract from folder name
+		if (!name && file.parent instanceof TFolder) {
+			const folderName = file.parent.name;
+			// Extract name from folder name (format: Project-{timestamp}-{slug}-{uuid})
+			const matchWithTimestamp = folderName.match(/^Project-\d{8}-\d{6}-(.+)-([a-f0-9]{32})$/);
+			if (matchWithTimestamp) {
+				name = matchWithTimestamp[1];
 			} else {
-				name = folderName;
+				const legacyMatch = folderName.match(/^Project-(.+?)(?:-[a-f0-9]{32})?$/);
+				if (legacyMatch) {
+					name = legacyMatch[1];
+				} else {
+					name = folderName;
+				}
 			}
-		} else {
-			name = String(data.name ?? '');
 		}
 		
 		return {
@@ -364,7 +459,7 @@ export class ChatStorageService {
 	}
 
 	buildConversationFileName(meta: ChatConversationMeta): string {
-		return buildTimestampedName('Conv', meta.title || meta.id, meta.createdAtTimestamp);
+		return buildTimestampedName('Conv', meta.title || meta.id, meta.createdAtTimestamp, meta.id);
 	}
 
 	private pickProjectFolderPath(data: Record<string, unknown>, file: TFile): string | undefined {
@@ -416,6 +511,13 @@ export class ChatStorageService {
 			return file;
 		}
 		return this.app.vault.create(path, content);
+	}
+
+	/**
+	 * Get the app instance for vault operations
+	 */
+	getApp(): App {
+		return this.app;
 	}
 }
 

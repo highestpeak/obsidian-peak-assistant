@@ -122,18 +122,38 @@ export class MySettings extends PluginSettingTab {
 		new Setting(wrapper)
 			.setName('Chat Root Folder')
 			.setDesc('Root folder for AI conversation data')
-			.addText((text) =>
+			.addText((text) => {
+				let pendingRootFolder = this.pluginRef.settings.ai.rootFolder;
+				const commitRootFolder = async () => {
+					const next = (pendingRootFolder?.trim() || DEFAULT_AI_SERVICE_SETTINGS.rootFolder);
+					if (next === this.pluginRef.settings.ai.rootFolder) {
+						pendingRootFolder = next;
+						text.setValue(next);
+						return;
+					}
+					await this.applyChatRootFolder(next);
+					pendingRootFolder = this.pluginRef.settings.ai.rootFolder;
+					text.setValue(pendingRootFolder);
+				};
+
 				text
 					.setPlaceholder('e.g. ChatFolder')
-					.setValue(this.pluginRef.settings.ai.rootFolder)
-					.onChange(async (value) => {
-						this.pluginRef.settings.ai.rootFolder = value || DEFAULT_AI_SERVICE_SETTINGS.rootFolder;
-						this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
-						this.pluginRef.aiManager?.refreshDefaultServices();
-						await this.pluginRef.aiManager?.init();
-						await this.pluginRef.saveSettings();
-					})
-			);
+					.setValue(pendingRootFolder)
+					.onChange((value) => {
+						pendingRootFolder = value;
+					});
+
+				text.inputEl.addEventListener('blur', () => {
+					void commitRootFolder();
+				});
+				text.inputEl.addEventListener('keydown', (evt) => {
+					if (evt.key === 'Enter' && !evt.shiftKey) {
+						evt.preventDefault();
+						void commitRootFolder();
+						text.inputEl.blur();
+					}
+				});
+			});
 
 		new Setting(wrapper)
 			.setName('Prompt Folder')
@@ -170,6 +190,21 @@ export class MySettings extends PluginSettingTab {
 
 		// Provider Settings as a collapsible group
 		this.renderProviderSettingsGroup(wrapper);
+	}
+
+	/**
+	 * Apply a confirmed chat root folder so storage can reinitialize.
+	 */
+	private async applyChatRootFolder(value: string): Promise<void> {
+		const next = (value?.trim() || DEFAULT_AI_SERVICE_SETTINGS.rootFolder);
+		if (next === this.pluginRef.settings.ai.rootFolder) {
+			return;
+		}
+		this.pluginRef.settings.ai.rootFolder = next;
+		this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
+		this.pluginRef.aiManager?.refreshDefaultServices();
+		await this.pluginRef.aiManager?.init();
+		await this.pluginRef.saveSettings();
 	}
 
 	/**

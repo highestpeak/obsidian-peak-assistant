@@ -42,19 +42,21 @@ export async function ensureFolder(app: App, folderPath: string): Promise<TFolde
 }
 
 /**
- * Build a name with timestamp, prefix, and slugified title.
- * For example: buildTimestampedName('project', 'Test Project', 1717850450401)
- * Result: project-20240608-164050-test-project
+ * Build a name with timestamp, prefix, slugified title, and an optional id suffix.
+ * For example: buildTimestampedName('Project', 'Test Project', 1717850450401, 'abc123')
+ * Result: Project-20240608-164050-test-project-abc123
  * @param prefix The prefix string
  * @param title The title
  * @param timestamp The timestamp in milliseconds
- * @returns A name string with timestamp and slug
+ * @param id Optional identifier to append at the end
+ * @returns A name string with timestamp, slug, and optional id
  */
-export function buildTimestampedName(prefix: string, title: string, timestamp: number): string {
+export function buildTimestampedName(prefix: string, title: string, timestamp: number, id?: string): string {
 	const date = new Date(timestamp);
 	const formatted = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 	const slug = slugify(title);
-	return `${prefix}-${formatted}${slug ? '-' + slug : ''}`;
+	const idSegment = id ? `-${id}` : '';
+	return `${prefix}-${formatted}${slug ? '-' + slug : ''}${idSegment}`;
 }
 
 /**

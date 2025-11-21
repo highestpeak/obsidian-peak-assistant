@@ -10,6 +10,7 @@ export class ProjectOverviewView {
 	private project: ParsedProjectFile;
 	private conversations: ParsedConversationFile[] = [];
 	private activeTab: 'conversations' | 'starred' | 'resources' = 'conversations';
+	private summaryExpanded = false;
 
 	constructor(
 		manager: AIServiceManager,
@@ -24,6 +25,7 @@ export class ProjectOverviewView {
 	 */
 	async setProject(project: ParsedProjectFile): Promise<void> {
 		this.project = project;
+		this.summaryExpanded = Boolean(this.getProjectSummaryText());
 		// Load conversations for this project
 		this.conversations = await this.manager.listConversations(project.meta);
 		// Sort conversations by createdAtTimestamp descending (newest first)
@@ -75,42 +77,12 @@ export class ProjectOverviewView {
 
 		if (!this.project) return;
 
-		// Project summary section (above stats)
-		if (this.project.context?.summary) {
-			const summarySection = containerEl.createDiv({ cls: 'peak-chat-view__project-summary' });
-			summarySection.createEl('h3', { text: 'Project Summary' });
-			const summaryContent = summarySection.createDiv({ cls: 'peak-chat-view__summary-content' });
-			summaryContent.setText(this.project.context.summary || 'No summary available.');
+		this.renderStats(containerEl);
+
+		const summaryText = this.getProjectSummaryText();
+		if (summaryText) {
+			this.renderProjectSummary(containerEl, summaryText);
 		}
-
-		// Statistics section - Dashboard style cards
-		const statsSection = containerEl.createDiv({ cls: 'peak-chat-view__project-stats' });
-		const totalConversations = this.conversations.length;
-		const totalMessages = this.conversations.reduce((sum, conv) => sum + conv.messages.length, 0);
-
-		const statsRow = statsSection.createDiv({ cls: 'peak-chat-view__stats-row' });
-
-		// Conversations card
-		const conversationsCard = statsRow.createDiv({ cls: 'peak-chat-view__stat-card' });
-		conversationsCard.createDiv({
-			cls: 'peak-chat-view__stat-card-label',
-			text: 'Conversations'
-		});
-		conversationsCard.createDiv({
-			cls: 'peak-chat-view__stat-card-value',
-			text: totalConversations.toString()
-		});
-
-		// Messages card
-		const messagesCard = statsRow.createDiv({ cls: 'peak-chat-view__stat-card' });
-		messagesCard.createDiv({
-			cls: 'peak-chat-view__stat-card-label',
-			text: 'Messages'
-		});
-		messagesCard.createDiv({
-			cls: 'peak-chat-view__stat-card-value',
-			text: totalMessages.toString()
-		});
 
 		// Tab navigation
 		const tabContainer = containerEl.createDiv({ cls: 'peak-chat-view__project-tabs' });
@@ -146,6 +118,56 @@ export class ProjectOverviewView {
 				this.renderResourcesTab(tabContent);
 				break;
 		}
+	}
+
+	private renderStats(container: HTMLElement): void {
+		const statsSection = container.createDiv({ cls: 'peak-chat-view__project-stats' });
+		const statsRow = statsSection.createDiv({ cls: 'peak-chat-view__stats-row' });
+		const totalConversations = this.conversations.length;
+		const totalMessages = this.conversations.reduce((sum, conv) => sum + conv.messages.length, 0);
+
+		const stats = [
+			{ label: 'Conversations', value: totalConversations },
+			{ label: 'Messages', value: totalMessages },
+		];
+
+		for (const stat of stats) {
+			const statCard = statsRow.createDiv({ cls: 'peak-chat-view__stat-card' });
+			statCard.createDiv({
+				cls: 'peak-chat-view__stat-card-label',
+				text: stat.label,
+			});
+			statCard.createDiv({
+				cls: 'peak-chat-view__stat-card-value',
+				text: stat.value.toString(),
+			});
+		}
+	}
+
+	private renderProjectSummary(container: HTMLElement, summaryText: string): void {
+		const summarySection = container.createDiv({
+			cls: `peak-chat-view__project-summary ${this.summaryExpanded ? 'is-expanded' : 'is-collapsed'}`,
+		});
+		const header = summarySection.createDiv({ cls: 'peak-chat-view__project-summary-header' });
+		header.createEl('h3', { text: 'Project Summary' });
+		const toggleButton = header.createEl('button', {
+			cls: 'peak-chat-view__project-summary-toggle',
+			text: this.summaryExpanded ? 'Hide summary' : 'Show summary',
+			type: 'button',
+		});
+		toggleButton.addEventListener('click', () => {
+			this.summaryExpanded = !this.summaryExpanded;
+			void this.renderBody(container);
+		});
+		const summaryContent = summarySection.createDiv({ cls: 'peak-chat-view__summary-content' });
+		summaryContent.setText(summaryText);
+	}
+
+	private getProjectSummaryText(): string | undefined {
+		if (!this.project) return undefined;
+		const candidate = this.project.shortSummary ?? this.project.context?.summary;
+		const trimmed = candidate?.trim();
+		return trimmed || undefined;
 	}
 
 	/**

@@ -52,16 +52,16 @@ export function buildConversationMarkdown(params: {
 	bodySections?: string;
 }): string {
 	const { meta, messages, context, bodySections } = params;
-	// Don't store title in frontmatter, it's derived from filename
-	const { title, ...metaWithoutTitle } = meta;
+	// Store title in frontmatter to preserve original title (not slugified)
 	const frontmatter = buildFrontmatter({
-		id: metaWithoutTitle.id,
-		projectId: metaWithoutTitle.projectId ?? null,
-		createdAtTimestamp: metaWithoutTitle.createdAtTimestamp,
-		updatedAtTimestamp: metaWithoutTitle.updatedAtTimestamp,
-		activeModel: metaWithoutTitle.activeModel,
-		tokenUsageTotal: metaWithoutTitle.tokenUsageTotal ?? 0,
-		titleManuallyEdited: metaWithoutTitle.titleManuallyEdited ?? false,
+		id: meta.id,
+		title: meta.title,
+		projectId: meta.projectId ?? null,
+		createdAtTimestamp: meta.createdAtTimestamp,
+		updatedAtTimestamp: meta.updatedAtTimestamp,
+		activeModel: meta.activeModel,
+		tokenUsageTotal: meta.tokenUsageTotal ?? 0,
+		titleManuallyEdited: meta.titleManuallyEdited ?? false,
 	});
 
 	const sections: string[] = [];
@@ -144,26 +144,23 @@ function buildMessageSection(message: ChatMessage): string {
 	// 	? `## Thinking\n\n${(message as any).thinking.map((t: string) => `- ${t}`).join('\n')}`
 	// 	: '';
 	
-	// Build content with attachments
-	let contentText = message.content.trim();
+	const trimmedContent = message.content.trim();
 	
-	// Add attachment references using Obsidian link syntax
-	if (message.attachments && message.attachments.length > 0) {
-		const attachmentLinks = message.attachments.map(att => {
-			// Use full path for Obsidian link (Obsidian handles file extensions automatically)
-			// Remove leading slash if present
-			const normalizedPath = att.startsWith('/') ? att.slice(1) : att;
-			return `[[${normalizedPath}]]`;
-		});
-		
-		if (contentText) {
-			contentText = `${contentText}\n\n${attachmentLinks.join(' ')}`;
-		} else {
-			contentText = attachmentLinks.join(' ');
-		}
+	const attachmentLinks = (message.attachments ?? []).map((att) => {
+		const normalizedPath = att.startsWith('/') ? att.slice(1) : att;
+		return `[[${normalizedPath}]]`;
+	});
+
+	const contentPieces: string[] = [];
+	if (trimmedContent) {
+		contentPieces.push(trimmedContent);
 	}
-	
-	const contentSection = `## content\n\n${codeBlock('markdown', contentText)}`;
+	if (attachmentLinks.length > 0) {
+		contentPieces.push(attachmentLinks.join('\n'));
+	}
+
+	const contentText = contentPieces.join('\n\n');
+	const contentSection = `## content\n\n${codeBlock('markdown', contentText || '')}`;
 	
 	return `${header}\n\n${metaSection}\n\n${contentSection}`;
 }
@@ -177,7 +174,19 @@ export function buildProjectMarkdown(params: {
 	// Don't store name in frontmatter, it's derived from folder name
 	const { name, ...metaWithoutName } = meta;
 	const frontmatter = buildFrontmatter(metaWithoutName);
+	const summaryText = context?.summary ?? 'defaultSummary';
+	const summaryTimestamp = context?.lastUpdatedTimestamp ?? Date.now();
 	const sections: string[] = ['# Project Meta', codeBlock('chat-project', stringifyYaml(metaWithoutName))];
+
+	sections.push('# Short Summary');
+	sections.push('## meta');
+	sections.push(
+		codeBlock('project-short-summary', stringifyYaml({
+			lastUpdatedTimestamp: summaryTimestamp,
+		}))
+	);
+	sections.push('## content');
+	sections.push(summaryText);
 
 	if (context) {
 		sections.push('# Project Context');

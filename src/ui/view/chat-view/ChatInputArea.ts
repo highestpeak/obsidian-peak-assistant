@@ -1,16 +1,20 @@
 import { App, ButtonComponent, TextAreaComponent } from 'obsidian';
-import { ParsedConversationFile, ParsedProjectFile, ChatMessage } from 'src/service/chat/types';
+import { ParsedConversationFile, ParsedProjectFile, ChatMessage, PendingConversation } from 'src/service/chat/types';
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { FileUploadHandler } from './FileUploadHandler';
 import { createIcon } from 'src/core/IconHelper';
+import { PROJECT_LIST_VIEW_TYPE } from '../ProjectListView';
+import { IProjectListView, isProjectListView, IChatView } from '../view-interfaces';
 
 export class ChatInputArea {
 	// initialization parameters
 	private containerEl: HTMLElement;
+	private app: App;
 	private fileUploadHandler: FileUploadHandler;
 	private manager: AIServiceManager;
 	private activeConversation: ParsedConversationFile | null;
 	private activeProject: ParsedProjectFile | null;
+	private pendingConversation: PendingConversation | null;
 	private onConversationUpdated: (conversation: ParsedConversationFile, oldMessageIds: Set<string>) => void;
 
 	// created UI elements
@@ -25,13 +29,16 @@ export class ChatInputArea {
 		manager: AIServiceManager,
 		activeConversation: ParsedConversationFile | null,
 		activeProject: ParsedProjectFile | null,
+		pendingConversation: PendingConversation | null,
 		onConversationUpdated: (conversation: ParsedConversationFile, oldMessageIds: Set<string>) => void
 	) {
 		this.containerEl = containerEl;
+		this.app = app;
 		this.fileUploadHandler = new FileUploadHandler(app);
 		this.manager = manager;
 		this.activeConversation = activeConversation;
 		this.activeProject = activeProject;
+		this.pendingConversation = pendingConversation;
 		this.onConversationUpdated = onConversationUpdated;
 	}
 
@@ -150,7 +157,9 @@ export class ChatInputArea {
 		
 		for (let i = 0; i < pendingFiles.length; i++) {
 			const fileItem = pendingFiles[i];
-			const previewItem = previewList.createDiv({ cls: 'peak-chat-view__file-preview-item' });
+			const previewItem = previewList.createDiv({
+				cls: `peak-chat-view__file-preview-item peak-chat-view__file-preview-item--${fileItem.type}`
+			});
 			
 			if (fileItem.type === 'image' && fileItem.preview) {
 				const img = previewItem.createEl('img', {
@@ -206,10 +215,26 @@ export class ChatInputArea {
 	}
 
 	private async handleSend(): Promise<void> {
-		if (!this.inputArea || !this.activeConversation) return;
+		if (!this.inputArea) return;
 		const value = this.inputArea.getValue().trim();
 		const pendingFiles = this.fileUploadHandler.getPendingFiles();
 		if (!value && pendingFiles.length === 0) return;
+
+		// If there's a pending conversation, create it first
+		let conversation = this.activeConversation;
+		if (!conversation && this.pendingConversation) {
+			conversation = await this.manager.createConversation({
+				title: this.pendingConversation.title,
+				project: this.pendingConversation.project?.meta ?? null,
+			});
+			this.activeConversation = conversation;
+			this.pendingConversation = null; // Clear pending state
+			
+			// Update MessagesView to show the new conversation
+			// This will be handled by onConversationUpdated callback after message is sent
+		}
+
+		if (!conversation) return;
 
 		this.sendButton?.setDisabled(true);
 		try {
@@ -219,15 +244,66 @@ export class ChatInputArea {
 				uploadedPaths = await this.fileUploadHandler.uploadFiles(this.getUploadFolder());
 			}
 
-			const oldMessageIds = new Set(this.activeConversation.messages.map(m => m.id));
+			const oldMessageIds = new Set(conversation.messages.map(m => m.id));
 			const result = await this.manager.blockChat({
-				conversation: this.activeConversation,
+				conversation: conversation,
 				project: this.activeProject,
 				userContent: value,
 				attachments: uploadedPaths.length > 0 ? uploadedPaths : undefined,
 			});
 
+			// If this is a new conversation (title is still default), generate a new name
+			// Only generate after first message exchange (user + assistant)
+			if ((result.conversation.meta.title === 'New Conversation' || result.conversation.meta.title === 'new-conversation') &&
+			    result.conversation.messages.length >= 2) {
+				try {
+					const messagesForName = result.conversation.messages.map(msg => ({
+						role: msg.role,
+						content: msg.content,
+					}));
+					const generatedName = await this.manager.getApplicationService().generateConvName({
+						conversation: {
+							id: result.conversation.meta.id,
+							messages: messagesForName,
+						},
+					});
+					
+					// Update conversation title
+					const updatedConversation = await this.manager.updateConversationTitle({
+						conversation: result.conversation,
+						project: this.activeProject,
+						title: generatedName,
+					});
+					
+					// Update the result with the new conversation
+					result.conversation = updatedConversation;
+					this.activeConversation = updatedConversation;
+					
+					// Refresh the list to show the new title
+					const projectListViews = this.app.workspace.getLeavesOfType(PROJECT_LIST_VIEW_TYPE);
+					for (const leaf of projectListViews) {
+						const view = leaf.view as unknown;
+						if (isProjectListView(view)) {
+							await view.refreshConversationList(updatedConversation);
+						}
+					}
+				} catch (error) {
+					console.warn('Failed to generate conversation name', error);
+				}
+			}
+			
+			// Refresh the list to show the new conversation (if it was just created)
+			// This ensures the conversation appears in the list after first message
+			const projectListViews = this.app.workspace.getLeavesOfType(PROJECT_LIST_VIEW_TYPE);
+			for (const leaf of projectListViews) {
+				const view = leaf.view as unknown;
+				if (isProjectListView(view)) {
+					await view.refreshConversationList(result.conversation);
+				}
+			}
+
 			this.fileUploadHandler.clearPendingFiles();
+			this.renderFilePreviews();
 			this.inputArea?.setValue('');
 			this.updatePlaceholder(true);
 
@@ -238,9 +314,10 @@ export class ChatInputArea {
 		}
 	}
 
-	updateState(activeConversation: ParsedConversationFile | null, activeProject: ParsedProjectFile | null): void {
+	updateState(activeConversation: ParsedConversationFile | null, activeProject: ParsedProjectFile | null, pendingConversation: PendingConversation | null = null): void {
 		this.activeConversation = activeConversation;
 		this.activeProject = activeProject;
+		this.pendingConversation = pendingConversation;
 	}
 
 	updateContainer(containerEl: HTMLElement): void {

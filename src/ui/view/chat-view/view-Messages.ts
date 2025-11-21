@@ -1,5 +1,5 @@
 import { App, Menu, TFile } from 'obsidian';
-import { ParsedConversationFile, ParsedProjectFile, ChatMessage } from 'src/service/chat/types';
+import { ParsedConversationFile, ParsedProjectFile, ChatMessage, PendingConversation } from 'src/service/chat/types';
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { ScrollController } from './ScrollController';
 import { createIcon } from 'src/core/IconHelper';
@@ -17,6 +17,7 @@ export class MessagesView {
 	private containerEl?: HTMLElement;
 	private activeConversation: ParsedConversationFile | null = null;
 	private activeProject: ParsedProjectFile | null = null;
+	private pendingConversation: PendingConversation | null = null;
 	private statsRenderer: StatsRenderer;
 	private modalManager: ModalManager;
 	private chatInputArea?: ChatInputArea;
@@ -45,6 +46,21 @@ export class MessagesView {
 	 */
 	setConversation(conversation: ParsedConversationFile | null): void {
 		this.activeConversation = conversation;
+		// Clear pending conversation when setting an actual conversation
+		if (conversation) {
+			this.pendingConversation = null;
+		}
+	}
+
+	/**
+	 * Set pending conversation state
+	 */
+	setPendingConversation(pending: PendingConversation | null): void {
+		this.pendingConversation = pending;
+		if (pending) {
+			this.activeProject = pending.project;
+			this.activeConversation = null;
+		}
 	}
 
 	/**
@@ -71,7 +87,17 @@ export class MessagesView {
 		container.empty();
 		container.addClass('peak-chat-view__message-container');
 
+		if (!this.activeConversation && !this.pendingConversation) {
+			const emptyState = container.createDiv({ cls: 'peak-chat-view__empty-state' });
+			emptyState.createEl('div', { 
+				cls: 'peak-chat-view__empty-text',
+				text: 'Ready when you are.' 
+			});
+			return;
+		}
+
 		if (!this.activeConversation || this.activeConversation.messages.length === 0) {
+			// Show empty state for pending or new conversation
 			const emptyState = container.createDiv({ cls: 'peak-chat-view__empty-state' });
 			emptyState.createEl('div', { 
 				cls: 'peak-chat-view__empty-text',
@@ -110,17 +136,17 @@ export class MessagesView {
 			attr: { 'data-message-id': message.id }
 		});
 
-		const messageEl = messageWrapper.createDiv({ 
+		const messageEl = messageWrapper.createDiv({
 			cls: 'peak-chat-view__message'
 		});
-
-		const contentEl = messageEl.createDiv({ cls: 'peak-chat-view__message-content' });
-		contentEl.setText(message.content);
 
 		// Render attachments preview if any
 		if (message.attachments && message.attachments.length > 0) {
 			this.renderAttachments(messageEl, message.attachments);
 		}
+
+		const contentEl = messageEl.createDiv({ cls: 'peak-chat-view__message-content' });
+		contentEl.setText(message.content);
 
 		// Add right-click context menu
 		this.setupMessageContextMenu(messageEl, message);
@@ -149,8 +175,10 @@ export class MessagesView {
 		// Show attachment previews
 		const previewList = attachmentsEl.createDiv({ cls: 'peak-chat-view__attachment-preview-list' });
 		for (const attachmentPath of attachments) {
-			const previewItem = previewList.createDiv({ cls: 'peak-chat-view__attachment-preview-item' });
 			const type = getFileTypeFromPath(attachmentPath);
+			const previewItem = previewList.createDiv({
+				cls: `peak-chat-view__attachment-preview-item peak-chat-view__attachment-preview-item--${type}`
+			});
 			
 			if (type === 'image') {
 				// Try to load image preview
@@ -468,8 +496,10 @@ export class MessagesView {
 				this.manager,
 				this.activeConversation,
 				this.activeProject,
+				this.pendingConversation,
 				(conversation, oldMessageIds) => {
 					this.activeConversation = conversation;
+					this.pendingConversation = null; // Clear pending state after creation
 					// Update self and notify MessageHistoryView
 					this.updateConversation(conversation, oldMessageIds);
 					this.notifyMessageHistoryView();
@@ -481,7 +511,7 @@ export class MessagesView {
 			// Update container reference (container is recreated on each render)
 			this.chatInputArea.updateContainer(container);
 			// Update state when conversation or project changes
-			this.chatInputArea.updateState(this.activeConversation, this.activeProject);
+			this.chatInputArea.updateState(this.activeConversation, this.activeProject, this.pendingConversation);
 		}
 		this.chatInputArea.render(this.activeConversation);
 	}
@@ -491,6 +521,7 @@ export class MessagesView {
 	 */
 	private updateConversation(conversation: ParsedConversationFile, oldMessageIds: Set<string>): void {
 		this.activeConversation = conversation;
+		this.pendingConversation = null; // Clear pending state when conversation is set
 
 		// If container exists and has messages, try incremental update
 		if (this.containerEl && this.activeConversation) {
@@ -501,6 +532,14 @@ export class MessagesView {
 				// Scroll to bottom after appending new messages
 				this.scrollController.scrollToBottom();
 				return;
+			}
+			// If no new messages but conversation exists, re-render to show conversation header
+			// This handles the case when conversation is just created (no messages yet)
+			if (conversation.messages.length === 0 && oldMessageIds.size === 0) {
+				// Force re-render to show conversation header
+				if (this.containerEl) {
+					this.renderBody(this.containerEl);
+				}
 			}
 		}
 

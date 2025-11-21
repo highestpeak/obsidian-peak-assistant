@@ -6,6 +6,7 @@ import { IChatView } from '../view-interfaces';
 import { CreateProjectModal } from './CreateProjectModal';
 import { InputModal } from 'src/ui/component/InputModal';
 import { openSourceFile } from '../shared/view-utils';
+import { CHAT_VIEW_TYPE } from '../ChatView';
 
 /**
  * Context interface for ProjectsSection to access ProjectListView state and methods
@@ -241,7 +242,8 @@ export class ProjectsSection {
 		// Project name
 		const projectName = projectHeader.createSpan({
 			cls: 'peak-project-list-view__project-name',
-			text: project.meta.name
+			text: project.meta.name,
+			attr: { 'data-project-name': project.meta.id }
 		});
 
 		return projectHeader;
@@ -357,22 +359,7 @@ export class ProjectsSection {
 
 		// List conversations under this project
 		for (const conv of conversationsToShow) {
-			// Check if this conversation is active
-			// Active conversation should match the current active conversation and belong to this project
-			const isActive = this.context.isConversationActive(conv);
-			const convItem = container.createDiv({
-				cls: `peak-project-list-view__conversation-item ${isActive ? 'is-active' : ''}`
-			});
-			convItem.createSpan({ text: conv.meta.title });
-			convItem.addEventListener('click', async (e) => {
-				e.stopPropagation();
-				this.setActiveProject(project);
-				// notifySelectionChange will handle re-rendering conversations to update active state
-				await this.context.notifySelectionChange(conv);
-			});
-
-			// Add right-click context menu for conversation
-			this.setupConversationContextMenu(convItem, conv);
+			this.renderProjectConversationItem(container, project, conv);
 		}
 
 		// Add "See more" button if there are more conversations
@@ -382,9 +369,117 @@ export class ProjectsSection {
 	}
 
 	/**
+	 * Render a single conversation item under a project
+	 */
+	private renderProjectConversationItem(
+		container: HTMLElement,
+		project: ParsedProjectFile,
+		conv: ParsedConversationFile
+	): void {
+		// Check if this conversation is active
+		// Active conversation should match the current active conversation and belong to this project
+		const isActive = this.context.isConversationActive(conv);
+		
+		// Find the "New conversation" button to insert before it
+		const newConvBtn = container.querySelector('.peak-project-list-view__new-conv-btn');
+		const convItem = container.createDiv({
+			cls: `peak-project-list-view__conversation-item ${isActive ? 'is-active' : ''}`,
+			attr: { 'data-conversation-id': conv.meta.id }
+		});
+		
+		// Insert before the "New conversation" button if it exists
+		if (newConvBtn && newConvBtn.parentElement === container) {
+			container.insertAfter(convItem, newConvBtn);
+		}
+		
+		convItem.createSpan({ text: conv.meta.title });
+		convItem.addEventListener('click', async (e) => {
+			e.stopPropagation();
+			this.setActiveProject(project);
+			// notifySelectionChange will handle re-rendering conversations to update active state
+			await this.context.notifySelectionChange(conv);
+		});
+
+		// Add right-click context menu for conversation
+		this.setupConversationContextMenu(convItem, conv);
+	}
+
+	/**
+	 * Update a single conversation item's title in a project without re-rendering the entire list
+	 */
+	updateProjectConversationTitle(project: ParsedProjectFile, conversation: ParsedConversationFile): void {
+		if (!this.projectListEl) return;
+
+		const projectId = project.meta.id;
+		// Find the project item element by data attribute
+		const projectItem = this.projectListEl.querySelector(
+			`[data-project-id="${projectId}"]`
+		) as HTMLElement | null;
+
+		if (!projectItem) {
+			return;
+		}
+
+		// Find the conversations container
+		const conversationsContainer = projectItem.querySelector(
+			'.peak-project-list-view__project-conversations'
+		) as HTMLElement | null;
+
+		if (!conversationsContainer) {
+			// Project is not expanded, no need to update
+			return;
+		}
+
+		// Find the conversation item by ID
+		const convItem = conversationsContainer.querySelector(
+			`[data-conversation-id="${conversation.meta.id}"]`
+		) as HTMLElement | null;
+
+		if (convItem) {
+			// Update the title text
+			const titleSpan = convItem.querySelector('span');
+			if (titleSpan) {
+				titleSpan.textContent = conversation.meta.title;
+			}
+
+			// Update active state if needed
+			const isActive = this.context.isConversationActive(conversation);
+			convItem.classList.toggle('is-active', isActive);
+		} else {
+			// If item doesn't exist, it's a new conversation, need to render it
+			// Render the new conversation item before the "New conversation" button
+			this.renderProjectConversationItem(conversationsContainer, project, conversation);
+		}
+	}
+
+	/**
+	 * Update a single project's name without re-rendering the entire list
+	 */
+	updateProjectName(project: ParsedProjectFile): void {
+		if (!this.projectListEl) return;
+
+		const projectId = project.meta.id;
+		// Find the project item element by data attribute
+		const projectItem = this.projectListEl.querySelector(
+			`[data-project-id="${projectId}"]`
+		) as HTMLElement | null;
+
+		if (projectItem) {
+			// Find the project name span
+			const projectNameSpan = projectItem.querySelector(
+				'[data-project-name]'
+			) as HTMLElement | null;
+
+			if (projectNameSpan) {
+				projectNameSpan.textContent = project.meta.name;
+			}
+		}
+	}
+
+	/**
 	 * Re-render conversations list for a specific project only
 	 */
-	private async renderProjectConversationsOnly(project: ParsedProjectFile | null | undefined): Promise<void> {
+	async renderProjectConversationsOnly(project: ParsedProjectFile | null | undefined): Promise<void> {
 		if (!project) return;
 
 		if (!this.projectListEl) return;
@@ -503,7 +598,7 @@ export class ProjectsSection {
 	 * Notify ChatView to show conversation list for a project
 	 */
 	private async notifyChatViewShowConversationList(project: ParsedProjectFile): Promise<void> {
-		const chatViews = this.app.workspace.getLeavesOfType('peak-chat-view');
+		const chatViews = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
 		chatViews.forEach(leaf => {
 			const view = leaf.view as unknown as IChatView;
 			view.showProjectOverview(project);
@@ -514,7 +609,7 @@ export class ProjectsSection {
 	 * Notify ChatView to show all projects in card view
 	 */
 	private async notifyChatViewShowAllProjects(): Promise<void> {
-		const chatViews = this.app.workspace.getLeavesOfType('peak-chat-view');
+		const chatViews = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
 		chatViews.forEach(leaf => {
 			const view = leaf.view as unknown as IChatView;
 			view.showAllProjects();
@@ -525,7 +620,7 @@ export class ProjectsSection {
 	 * Notify ChatView to show all standalone conversations (not in any project)
 	 */
 	private async notifyChatViewShowAllConversations(): Promise<void> {
-		const chatViews = this.app.workspace.getLeavesOfType('peak-chat-view');
+		const chatViews = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
 		chatViews.forEach(leaf => {
 			const view = leaf.view as unknown as IChatView;
 			view.showAllConversations();
@@ -546,19 +641,24 @@ export class ProjectsSection {
 
 	/**
 	 * Open create conversation modal for a project
+	 * Now only sets a pending state, actual creation happens on first message
 	 */
 	private openCreateConversationModalForProject(project: ParsedProjectFile): void {
-		// Create conversation directly without modal, using default title
-		// Title will be auto-generated after first message exchange
+		// Set pending conversation state instead of creating immediately
+		// Actual creation will happen when user sends first message
 		void (async () => {
-			const conversation = await this.manager.createConversation({
-				title: 'New Conversation',
-				project: project.meta,
-			});
 			this.setActiveProject(project);
-			// Re-render only this project's conversations list
-			await this.renderProjectConversationsOnly(project);
-			await this.context.notifySelectionChange(conversation);
+			// Notify ChatView to set pending conversation state
+			const chatViews = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
+			chatViews.forEach(leaf => {
+				const view = leaf.view as unknown as IChatView;
+				view.setPendingConversation({
+					title: 'New Conversation',
+					project: project,
+				});
+			});
+			// Switch to conversation view to show input area
+			await this.context.notifySelectionChange(null);
 		})();
 	}
 
