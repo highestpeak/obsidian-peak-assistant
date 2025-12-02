@@ -4,10 +4,13 @@ import {
 	LLMMessage,
 	LLMRequest,
 	LLMUsage,
+	LLMProviderService,
+	LLMProvider,
+	ProviderModelInfo,
 } from './types';
 import { AIStreamEvent } from './types-events';
 import { trimTrailingSlash, safeReadError } from './helpers';
-import { LLMProviderService } from './types';
+import { AIModelId } from '../types-models';
 
 const DEFAULT_GEMINI_TIMEOUT_MS = 60000;
 
@@ -68,10 +71,13 @@ function normalizeGeminiUsage(
 export async function invokeGeminiBlock(params: {
 	request: LLMRequest;
 	baseUrl?: string;
-	apiKey: string;
+	apiKey?: string;
 	timeoutMs: number;
 }): Promise<LLMResponse> {
-	const { payload, url } = buildGeminiPayload(params, false);
+	if (!params.apiKey) {
+		throw new Error('Gemini API key is required');
+	}
+	const { payload, url } = buildGeminiPayload({ ...params, apiKey: params.apiKey }, false);
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), params.timeoutMs);
 
@@ -106,10 +112,13 @@ export async function invokeGeminiBlock(params: {
 export async function* invokeGeminiStream(params: {
 	request: LLMRequest;
 	baseUrl?: string;
-	apiKey: string;
+	apiKey?: string;
 	timeoutMs: number;
 }): AsyncGenerator<AIStreamEvent> {
-	const { payload, url } = buildGeminiPayload(params, true);
+	if (!params.apiKey) {
+		throw new Error('Gemini API key is required');
+	}
+	const { payload, url } = buildGeminiPayload({ ...params, apiKey: params.apiKey }, true);
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), params.timeoutMs);
 
@@ -207,10 +216,14 @@ function buildGeminiPayload(
 	params: {
 		request: LLMRequest;
 		baseUrl?: string;
-		apiKey: string;
+		apiKey?: string;
 	},
 	stream: boolean
 ) {
+	if (!params.apiKey) {
+		throw new Error('Gemini API key is required');
+	}
+
 	const systemPrompts: string[] = [];
 	const contents: GeminiContent[] = [];
 
@@ -311,14 +324,21 @@ function buildGeminiStreamUrl(baseUrl: string, modelId: string, apiKey: string):
 
 export interface GeminiChatServiceOptions {
 	baseUrl?: string;
-	apiKey: string;
+	apiKey?: string;
 	timeoutMs?: number;
 }
 
 export class GeminiChatService implements LLMProviderService {
 	constructor(private readonly options: GeminiChatServiceOptions) {}
 
+	getProviderId(): LLMProvider {
+		return 'gemini';
+	}
+
 	async blockChat(request: LLMRequest): Promise<LLMResponse> {
+		if (!this.options.apiKey) {
+			throw new Error('Gemini API key is required');
+		}
 		return invokeGeminiBlock({
 			request,
 			baseUrl: this.options.baseUrl,
@@ -328,12 +348,23 @@ export class GeminiChatService implements LLMProviderService {
 	}
 
 	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
+		if (!this.options.apiKey) {
+			throw new Error('Gemini API key is required');
+		}
 		return invokeGeminiStream({
 			request,
 			baseUrl: this.options.baseUrl,
 			apiKey: this.options.apiKey,
 			timeoutMs: this.options.timeoutMs ?? DEFAULT_GEMINI_TIMEOUT_MS,
 		});
+	}
+
+	async getAvailableModels(): Promise<ProviderModelInfo[]> {
+		return [
+			{ id: 'gemini-1.5-pro' as AIModelId, displayName: 'Gemini 1.5 Pro' },
+			{ id: 'gemini-1.5-flash' as AIModelId, displayName: 'Gemini 1.5 Flash' },
+			{ id: 'gemini-1.0-pro' as AIModelId, displayName: 'Gemini 1.0 Pro' },
+		];
 	}
 }
 

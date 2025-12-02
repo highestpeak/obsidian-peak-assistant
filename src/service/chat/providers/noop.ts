@@ -1,8 +1,11 @@
 import { AIModelId } from '../types-models';
-import { LLMResponse, ProviderContentPart, LLMMessage, LLMRequest } from './types';
+import { LLMResponse, ProviderContentPart, LLMMessage, LLMRequest, LLMProviderService, LLMProvider } from './types';
 import { AIStreamEvent } from './types-events';
 
-export class NoopChatProvider {
+export class NoopChatService implements LLMProviderService {
+	getProviderId(): LLMProvider {
+		return 'other';
+	}
 	async blockChat(request: LLMRequest): Promise<LLMResponse> {
 		console.warn('LLM chat service not configured, returning synthesized response', request);
 		return {
@@ -54,12 +57,12 @@ export class NoopChatProvider {
 }
 
 export class NoopApplicationProvider {
-	async summarize(params: { model: AIModelId; text: string }): Promise<string> {
+	async summarize(params: { provider: LLMProvider; model: AIModelId; text: string }): Promise<string> {
 		console.warn('Application service not configured, returning truncated text', params.model);
 		return params.text.slice(0, 800);
 	}
 
-	async generateTitle(params: { model: AIModelId; messages: Array<{ role: string; content: string }> }): Promise<string> {
+	async generateTitle(params: { provider: LLMProvider; model: AIModelId; messages: Array<{ role: string; content: string }> }): Promise<string> {
 		console.warn('Application service not configured, using fallback title', params.model);
 		const firstUserMessage = params.messages.find(m => m.role === 'user');
 		if (firstUserMessage) {

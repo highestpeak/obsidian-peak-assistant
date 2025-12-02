@@ -24,4 +24,3 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	ai: DEFAULT_AI_SERVICE_SETTINGS,
 	commandHidden: DEFAULT_COMMAND_HIDDEN_SETTINGS,
 };
-

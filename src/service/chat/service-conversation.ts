@@ -1,6 +1,6 @@
 import { normalizePath, TFile, TFolder } from 'obsidian';
 import { generateUuidWithoutHyphens } from './utils';
-import { LLMProviderService } from './providers/types';
+import { LLMProviderService, LLMProvider } from './providers/types';
 import { LLMApplicationService } from './service-application';
 import { AIModelId, coerceModelId } from './types-models';
 import { ChatStorageService } from './storage';
@@ -21,13 +21,14 @@ import { AIStreamEvent } from './providers/types-events';
 /**
  * Create a basic chat message with timestamps.
  */
-export function createDefaultMessage(role: ChatMessage['role'], content: string, model: AIModelId, timezone: string): ChatMessage {
+export function createDefaultMessage(role: ChatMessage['role'], content: string, model: AIModelId, provider: LLMProvider, timezone: string): ChatMessage {
 	const timestamp = Date.now();
 	return {
 		id: generateUuidWithoutHyphens(),
 		role,
 		content,
 		model,
+		provider,
 		createdAtTimestamp: timestamp,
 		createdAtZone: timezone,
 		starred: false,
@@ -63,6 +64,7 @@ export class ConversationService {
 		initialMessages?: ChatMessage[];
 	}): Promise<ParsedConversationFile> {
 		const timestamp = Date.now();
+		const defaultProvider = this.chat.getProviderId();
 		const meta: ChatConversationMeta = {
 			id: generateUuidWithoutHyphens(),
 			title: params.title,
@@ -70,6 +72,7 @@ export class ConversationService {
 			createdAtTimestamp: timestamp,
 			updatedAtTimestamp: timestamp,
 			activeModel: this.defaultModelId,
+			activeProvider: defaultProvider,
 			tokenUsageTotal: 0,
 		};
 
@@ -90,19 +93,21 @@ export class ConversationService {
 	}): Promise<{ conversation: ParsedConversationFile; message: ChatMessage }> {
 		const { conversation, project, userContent, attachments, autoSave = true } = params;
 		const modelId = conversation.meta.activeModel || this.defaultModelId;
+		const provider = conversation.meta.activeProvider || this.chat.getProviderId();
 		const timezone = this.detectTimezone();
-		const userMessage = createDefaultMessage('user', userContent, modelId, timezone);
+		const userMessage = createDefaultMessage('user', userContent, modelId, provider, timezone);
 		if (attachments && attachments.length > 0) {
 			userMessage.attachments = attachments;
 		}
 		const messagesWithUser = [...conversation.messages, userMessage];
 		const llmMessages = await this.buildLLMRequestMessages(messagesWithUser);
 		const assistant = await this.chat.blockChat({
+			provider,
 			model: modelId,
 			messages: llmMessages,
 		});
 
-		const assistantMessage = createDefaultMessage('assistant', assistant.content, assistant.model, timezone);
+		const assistantMessage = createDefaultMessage('assistant', assistant.content, assistant.model, provider, timezone);
 		
 		if (autoSave) {
 			const savedConversation = await this.persistExchange({
@@ -110,6 +115,7 @@ export class ConversationService {
 				project: project ?? null,
 				messages: [...messagesWithUser, assistantMessage],
 				model: assistant.model,
+				provider: provider,
 				tokenDelta: assistant.usage?.totalTokens ?? 0,
 			});
 			return { conversation: savedConversation, message: assistantMessage };
@@ -171,6 +177,39 @@ export class ConversationService {
 			updatedMeta,
 			messages,
 			context,
+			undefined,
+			conversation.file
+		);
+		return this.storage.readConversation(saved);
+	}
+
+	/**
+	 * Update conversation's active model.
+	 */
+	async updateConversationModel(params: {
+		conversation: ParsedConversationFile;
+		project?: ParsedProjectFile | null;
+		modelId: AIModelId;
+		provider?: LLMProvider;
+	}): Promise<ParsedConversationFile> {
+		const { conversation, project, modelId, provider } = params;
+		// Use provided provider or keep existing provider, fallback to chat service default
+		const finalProvider = provider || conversation.meta.activeProvider || this.chat.getProviderId();
+		
+		// Update meta with new active model and provider
+		const updatedMeta: ChatConversationMeta = {
+			...conversation.meta,
+			activeModel: modelId,
+			activeProvider: finalProvider,
+			updatedAtTimestamp: Date.now(),
+		};
+
+		// Save updated meta
+		const saved = await this.storage.saveConversation(
+			project?.meta ?? null,
+			updatedMeta,
+			conversation.messages,
+			conversation.context,
 			undefined,
 			conversation.file
 		);
@@ -290,6 +329,7 @@ export class ConversationService {
 		return 'defaultSummary';
 	}
 
+
 	/**
 	 * Compose the full messages array sent to the LLM.
 	 */
@@ -323,6 +363,7 @@ export class ConversationService {
 		project: ParsedProjectFile | null;
 		messages: ChatMessage[];
 		model: string;
+		provider?: LLMProvider;
 		tokenDelta: number;
 	}): Promise<ParsedConversationFile> {
 		const context = await this.buildContextWindow(params.messages, params.model);
@@ -331,10 +372,15 @@ export class ConversationService {
 		// Title generation will be handled by a separate service later
 		const title = params.conversation.meta.title;
 		
+		// Get provider from last message or params or conversation meta
+		const lastMessage = params.messages[params.messages.length - 1];
+		const provider = params.provider || lastMessage?.provider || params.conversation.meta.activeProvider || this.chat.getProviderId();
+		
 		const updatedMeta: ChatConversationMeta = {
 			...params.conversation.meta,
 			title,
 			activeModel: params.model,
+			activeProvider: provider,
 			updatedAtTimestamp: Date.now(),
 			tokenUsageTotal: (params.conversation.meta.tokenUsageTotal ?? 0) + params.tokenDelta,
 		};
@@ -391,16 +437,19 @@ export class ConversationService {
 		const self = this;
 		return (async function* (): AsyncGenerator<AIStreamEvent> {
 			const modelId = params.conversation.meta.activeModel || self.defaultModelId;
+			const provider = params.conversation.meta.activeProvider || self.chat.getProviderId();
 			const timezone = self.detectTimezone();
-			const userMessage = createDefaultMessage('user', params.userContent, modelId, timezone);
+			const userMessage = createDefaultMessage('user', params.userContent, modelId, provider, timezone);
 			const messagesWithUser = [...params.conversation.messages, userMessage];
 			const llmMessages = await self.buildLLMRequestMessages(messagesWithUser);
 			const stream = params.streamChat({
+				provider,
 				model: modelId,
 				messages: llmMessages,
 			});
 			yield* self.consumeLLMStream(stream, {
 				initialModel: modelId,
+				initialProvider: provider,
 				conversation: params.conversation,
 				project: params.project,
 				messagesWithUser,
@@ -417,6 +466,7 @@ export class ConversationService {
 		stream: AsyncGenerator<AIStreamEvent>,
 		context: {
 			initialModel: string;
+			initialProvider: LLMProvider;
 			conversation: ParsedConversationFile;
 			project: ParsedProjectFile | null;
 			messagesWithUser: ChatMessage[];
@@ -426,6 +476,7 @@ export class ConversationService {
 	): AsyncGenerator<AIStreamEvent> {
 		let assistantContent = '';
 		let currentModel = context.initialModel;
+		let currentProvider = context.initialProvider;
 		let tokenDelta = 0;
 		try {
 			for await (const chunk of stream) {
@@ -443,7 +494,7 @@ export class ConversationService {
 				}
 			}
 
-			const assistantMessage = createDefaultMessage('assistant', assistantContent, currentModel, context.timezone);
+			const assistantMessage = createDefaultMessage('assistant', assistantContent, currentModel, currentProvider, context.timezone);
 			
 			let finalConversation: ParsedConversationFile;
 			if (context.autoSave) {
@@ -452,6 +503,7 @@ export class ConversationService {
 					project: context.project,
 					messages: [...context.messagesWithUser, assistantMessage],
 					model: currentModel,
+					provider: currentProvider,
 					tokenDelta,
 				});
 			} else {

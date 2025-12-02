@@ -9,6 +9,9 @@ import { ChatInputArea } from './ChatInputArea';
 import { ModalManager } from './ModalManager';
 import { openSourceFile } from '../shared/view-utils';
 import { IMessageHistoryView } from '../view-interfaces';
+import { ModelSelector } from '../../component/ModelSelector';
+import { AIModelId } from 'src/service/chat/types-models';
+import { LLMProvider } from 'src/service/chat/providers/types';
 
 /**
  * Component for rendering and managing the messages list view
@@ -21,13 +24,19 @@ export class MessagesView {
 	private statsRenderer: StatsRenderer;
 	private modalManager: ModalManager;
 	private chatInputArea?: ChatInputArea;
+	private modelSelector?: ModelSelector;
 	private pendingScrollMessageId?: string;
+	private streamingMessageId?: string;
+	private streamingContentEl?: HTMLElement;
+	private streamingContent: string = '';
+	private manager: AIServiceManager;
 
 	constructor(
 		private app: App,
-		private manager: AIServiceManager,
+		manager: AIServiceManager,
 		private scrollController: ScrollController
 	) {
+		this.manager = manager;
 		this.modalManager = new ModalManager(this.app);
 		this.statsRenderer = new StatsRenderer(
 			() => this.scrollController.scrollToTop(),
@@ -42,6 +51,7 @@ export class MessagesView {
 		);
 	}
 
+
 	/**
 	 * Set active conversation
 	 */
@@ -51,6 +61,10 @@ export class MessagesView {
 		// Clear pending conversation when setting an actual conversation
 		if (conversation) {
 			this.pendingConversation = null;
+		}
+		// Update model selector
+		if (this.modelSelector) {
+			void this.modelSelector.updateConversation(conversation);
 		}
 	}
 
@@ -76,7 +90,7 @@ export class MessagesView {
 		this.renderBody(bodyEl);
 
 		// Render footer
-		this.renderInput(footerEl);
+		void this.renderInput(footerEl);
 		this.focusInput();
 	}
 
@@ -131,9 +145,101 @@ export class MessagesView {
 	}
 
 	/**
+	 * Create a streaming message placeholder for real-time updates
+	 */
+	createStreamingMessage(messageId: string, role: ChatMessage['role']): void {
+		if (!this.containerEl) return;
+		
+		this.streamingMessageId = messageId;
+		this.streamingContent = '';
+		
+		const messageWrapper = this.containerEl.createDiv({ 
+			cls: `peak-chat-view__message-wrapper peak-chat-view__message-wrapper--${role}`,
+			attr: { 'data-message-id': messageId }
+		});
+
+		const messageEl = messageWrapper.createDiv({
+			cls: 'peak-chat-view__message'
+		});
+
+		this.streamingContentEl = messageEl.createDiv({ cls: 'peak-chat-view__message-content' });
+		this.streamingContentEl.setText('');
+		
+		// Scroll to bottom when streaming starts
+		this.scrollController.scrollToBottom();
+	}
+
+	/**
+	 * Update streaming message content incrementally
+	 */
+	updateStreamingMessage(delta: string): void {
+		if (!this.streamingContentEl || !this.streamingMessageId) return;
+		
+		this.streamingContent += delta;
+		this.streamingContentEl.setText(this.streamingContent);
+		
+		// Auto-scroll during streaming
+		this.scrollController.scrollToBottom();
+	}
+
+	/**
+	 * Complete streaming message and render final state
+	 */
+	completeStreamingMessage(message: ChatMessage): void {
+		if (!this.streamingMessageId) return;
+		
+		// Find the message wrapper by streaming message ID
+		const messageWrapper = this.containerEl?.querySelector(`[data-message-id="${this.streamingMessageId}"]`) as HTMLElement;
+		if (!messageWrapper) return;
+		
+		const messageEl = messageWrapper.querySelector('.peak-chat-view__message') as HTMLElement;
+		if (!messageEl) return;
+		
+		// Update the message ID attribute to match the final message ID
+		messageWrapper.setAttribute('data-message-id', message.id);
+		
+		// Update content to final message content
+		if (this.streamingContentEl) {
+			this.streamingContentEl.setText(message.content);
+		}
+		
+		// Render attachments if any
+		if (message.attachments && message.attachments.length > 0) {
+			// Check if attachments already rendered
+			if (!messageEl.querySelector('.peak-chat-view__message-attachments')) {
+				this.renderAttachments(messageEl, message.attachments);
+			}
+		}
+		
+		// Add context menu and action buttons
+		this.setupMessageContextMenu(messageEl, message);
+		this.renderActionButtons(messageEl, message);
+		
+		// Clear streaming state
+		this.streamingMessageId = undefined;
+		this.streamingContentEl = undefined;
+		this.streamingContent = '';
+		
+		// Final scroll
+		this.scrollController.scrollToBottom();
+	}
+
+	/**
+	 * Clear streaming state (e.g., on error)
+	 */
+	clearStreamingState(): void {
+		this.streamingMessageId = undefined;
+		this.streamingContentEl = undefined;
+		this.streamingContent = '';
+	}
+
+	/**
 	 * Render a single message with attachments
 	 */
 	private renderMessage(container: HTMLElement, message: ChatMessage): void {
+		// Check if this message is currently streaming
+		const isStreaming = this.streamingMessageId === message.id;
+		
 		const messageWrapper = container.createDiv({ 
 			cls: `peak-chat-view__message-wrapper peak-chat-view__message-wrapper--${message.role}`,
 			attr: { 'data-message-id': message.id }
@@ -149,13 +255,24 @@ export class MessagesView {
 		}
 
 		const contentEl = messageEl.createDiv({ cls: 'peak-chat-view__message-content' });
-		contentEl.setText(message.content);
+		
+		// If this is the streaming message, use the streaming content
+		if (isStreaming && this.streamingContentEl) {
+			// Reuse existing streaming element
+			this.streamingContentEl = contentEl;
+			contentEl.setText(this.streamingContent);
+		} else {
+			// Normal rendering for completed messages
+			contentEl.setText(message.content);
+		}
 
 		// Add right-click context menu
 		this.setupMessageContextMenu(messageEl, message);
 
-		// Action buttons (star, copy, regenerate)
-		this.renderActionButtons(messageEl, message);
+		// Action buttons (star, copy, regenerate) - hide during streaming
+		if (!isStreaming) {
+			this.renderActionButtons(messageEl, message);
+		}
 	}
 
 	/**
@@ -479,19 +596,81 @@ export class MessagesView {
 				text: this.activeConversation.meta.title
 			});
 
+			this.renderModelSelector(headerContent, this.activeConversation, async (provider, modelId) => {
+				await this.handleModelChange(provider, modelId);
+			});
+
 			// Add statistics, scroll buttons and summary button on the right
 			this.statsRenderer.render(headerContent, this.activeConversation);
 		} else if (this.activeConversation) {
 			titleEl.createEl('h2', { text: this.activeConversation.meta.title });
+			
+			this.renderModelSelector(headerContent, this.activeConversation, async (provider, modelId) => {
+				await this.handleModelChange(provider, modelId);
+			});
+
 			// Add statistics, scroll buttons and summary button on the right
 			this.statsRenderer.render(headerContent, this.activeConversation);
+		} else {
+			// No active conversation, but still show model selector for pending conversation
+			this.renderModelSelector(headerContent, null, async (provider, modelId) => {
+				// For pending conversations, model will be set when conversation is created
+				// Just update the default model in settings for now
+				const settings = this.manager.getSettings();
+				settings.defaultModelId = modelId;
+				this.manager.updateSettings(settings);
+			});
+		}
+	}
+
+	/**
+	 * Render model selector component
+	 */
+	private renderModelSelector(
+		container: HTMLElement,
+		conversation: ParsedConversationFile | null,
+		onModelChange: (provider: string, modelId: AIModelId) => Promise<void>
+	): void {
+		const modelSelectorContainer = container.createDiv({ cls: 'peak-chat-view__model-selector-container' });
+		if (!this.modelSelector) {
+			this.modelSelector = new ModelSelector(
+				this.app,
+				this.manager.getSettings(),
+				conversation,
+				onModelChange
+			);
+		}
+		void this.modelSelector.updateConversation(conversation);
+		void this.modelSelector.render(modelSelectorContainer);
+	}
+
+	/**
+	 * Handle model change
+	 */
+	private async handleModelChange(provider: string, modelId: AIModelId): Promise<void> {
+		if (!this.activeConversation) return;
+
+		const oldMessageIds = new Set(this.activeConversation.messages.map(m => m.id));
+		const updated = await this.manager.updateConversationModel({
+			conversation: this.activeConversation,
+			project: this.activeProject,
+			modelId,
+			provider: provider as LLMProvider,
+		});
+		this.activeConversation = updated;
+		this.updateConversation(updated, oldMessageIds);
+		this.notifyMessageHistoryView();
+		
+		// Update model selector
+		if (this.modelSelector) {
+			void this.modelSelector.updateConversation(updated);
 		}
 	}
 
 	/**
 	 * Render input area for this view
 	 */
-	private renderInput(container: HTMLElement): void {
+	private async renderInput(container: HTMLElement): Promise<void> {
 		if (!this.chatInputArea) {
 			this.chatInputArea = new ChatInputArea(
 				container,
@@ -508,8 +687,14 @@ export class MessagesView {
 					this.notifyMessageHistoryView();
 					// Scroll to bottom after conversation update
 					this.scrollController.scrollToBottom();
-				}
+				},
+				// Streaming callbacks
+				(messageId, role) => this.createStreamingMessage(messageId, role),
+				(delta) => this.updateStreamingMessage(delta),
+				(message) => this.completeStreamingMessage(message),
+				() => this.clearStreamingState()
 			);
+			this.chatInputArea.render(this.activeConversation);
 		} else {
 			// Update container reference (container is recreated on each render)
 			this.chatInputArea.updateContainer(container);
@@ -534,7 +719,10 @@ export class MessagesView {
 
 		// If container exists and has messages, try incremental update
 		if (this.containerEl && this.activeConversation) {
-			const newMessages = conversation.messages.filter(m => !oldMessageIds.has(m.id));
+			// Filter out messages that are currently streaming (they will be handled separately)
+			const newMessages = conversation.messages.filter(m => 
+				!oldMessageIds.has(m.id) && m.id !== this.streamingMessageId
+			);
 			if (newMessages.length > 0) {
 				// Append only new messages for better performance
 				this.appendMessages(newMessages);

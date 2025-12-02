@@ -5,6 +5,7 @@ import { FileUploadHandler } from './FileUploadHandler';
 import { createIcon } from 'src/core/IconHelper';
 import { PROJECT_LIST_VIEW_TYPE } from '../ProjectListView';
 import { IProjectListView, isProjectListView, IChatView } from '../view-interfaces';
+import { generateUuidWithoutHyphens } from 'src/service/chat/utils';
 
 export class ChatInputArea {
 	// initialization parameters
@@ -16,6 +17,11 @@ export class ChatInputArea {
 	private activeProject: ParsedProjectFile | null;
 	private pendingConversation: PendingConversation | null;
 	private onConversationUpdated: (conversation: ParsedConversationFile, oldMessageIds: Set<string>) => void;
+	// Streaming callbacks
+	private onStreamingStart: (messageId: string, role: ChatMessage['role']) => void;
+	private onStreamingDelta: (delta: string) => void;
+	private onStreamingComplete: (message: ChatMessage) => void;
+	private onStreamingError: () => void;
 
 	// created UI elements
 	private filePreviewContainer?: HTMLElement;
@@ -30,7 +36,12 @@ export class ChatInputArea {
 		activeConversation: ParsedConversationFile | null,
 		activeProject: ParsedProjectFile | null,
 		pendingConversation: PendingConversation | null,
-		onConversationUpdated: (conversation: ParsedConversationFile, oldMessageIds: Set<string>) => void
+		onConversationUpdated: (conversation: ParsedConversationFile, oldMessageIds: Set<string>) => void,
+		// Streaming callbacks
+		onStreamingStart: (messageId: string, role: ChatMessage['role']) => void,
+		onStreamingDelta: (delta: string) => void,
+		onStreamingComplete: (message: ChatMessage) => void,
+		onStreamingError: () => void
 	) {
 		this.containerEl = containerEl;
 		this.app = app;
@@ -40,6 +51,10 @@ export class ChatInputArea {
 		this.activeProject = activeProject;
 		this.pendingConversation = pendingConversation;
 		this.onConversationUpdated = onConversationUpdated;
+		this.onStreamingStart = onStreamingStart;
+		this.onStreamingDelta = onStreamingDelta;
+		this.onStreamingComplete = onStreamingComplete;
+		this.onStreamingError = onStreamingError;
 	}
 
 	render(activeConversation: ParsedConversationFile | null): void {
@@ -210,6 +225,7 @@ export class ChatInputArea {
 	}
 
 	private getUploadFolder(): string {
+		// Use base manager for settings
 		const settings = this.manager.getSettings();
 		return settings.uploadFolder || 'ChatFolder/Attachments';
 	}
@@ -223,6 +239,7 @@ export class ChatInputArea {
 		// If there's a pending conversation, create it first
 		let conversation = this.activeConversation;
 		if (!conversation && this.pendingConversation) {
+			// Use base manager to create conversation
 			conversation = await this.manager.createConversation({
 				title: this.pendingConversation.title,
 				project: this.pendingConversation.project?.meta ?? null,
@@ -245,60 +262,120 @@ export class ChatInputArea {
 			}
 
 			const oldMessageIds = new Set(conversation.messages.map(m => m.id));
-			const result = await this.manager.blockChat({
+			
+			// Create temporary user message for immediate display
+			const modelId = conversation.meta.activeModel || this.manager.getSettings().defaultModelId;
+			const provider = conversation.meta.activeProvider || 'other';
+			const tempUserMessage: ChatMessage = {
+				id: generateUuidWithoutHyphens(),
+				role: 'user',
+				content: value,
+				model: modelId,
+				provider: provider,
+				createdAtTimestamp: Date.now(),
+				createdAtZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+				starred: false,
+				attachments: uploadedPaths.length > 0 ? uploadedPaths : undefined,
+			};
+			
+			// Show user message immediately
+			const tempConversation: ParsedConversationFile = {
+				...conversation,
+				messages: [...conversation.messages, tempUserMessage],
+			};
+			this.onConversationUpdated(tempConversation, oldMessageIds);
+			
+			// Create assistant message ID for streaming
+			const assistantMessageId = generateUuidWithoutHyphens();
+			this.onStreamingStart(assistantMessageId, 'assistant');
+			
+			// Use streamChat for real-time updates
+			const stream = this.manager.streamChat({
 				conversation: conversation,
 				project: this.activeProject,
 				userContent: value,
-				attachments: uploadedPaths.length > 0 ? uploadedPaths : undefined,
+				autoSave: true,
 			});
-
-			// If this is a new conversation (title is still default), generate a new name
-			// Only generate after first message exchange (user + assistant)
-			if ((result.conversation.meta.title === 'New Conversation' || result.conversation.meta.title === 'new-conversation') &&
-			    result.conversation.messages.length >= 2) {
-				try {
-					const messagesForName = result.conversation.messages.map(msg => ({
-						role: msg.role,
-						content: msg.content,
-					}));
-					const generatedName = await this.manager.getApplicationService().generateConvName({
-						conversation: {
-							id: result.conversation.meta.id,
-							messages: messagesForName,
-						},
-					});
-					
-					// Update conversation title
-					const updatedConversation = await this.manager.updateConversationTitle({
-						conversation: result.conversation,
-						project: this.activeProject,
-						title: generatedName,
-					});
-					
-					// Update the result with the new conversation
-					result.conversation = updatedConversation;
-					this.activeConversation = updatedConversation;
-					
-					// Refresh the list to show the new title
+			
+			let finalConversation: ParsedConversationFile | null = null;
+			let finalMessage: ChatMessage | null = null;
+			
+			try {
+				for await (const event of stream) {
+					if (event.type === 'delta') {
+						// Update streaming content
+						this.onStreamingDelta(event.text);
+					} else if (event.type === 'complete') {
+						// Stream complete, get final message
+						if (event.message) {
+							finalMessage = event.message;
+							this.onStreamingComplete(event.message);
+						}
+						if (event.conversation) {
+							finalConversation = event.conversation;
+						}
+					} else if (event.type === 'error') {
+						// Handle error
+						console.error('Streaming error:', event.error);
+						this.onStreamingError();
+						throw event.error;
+					}
+				}
+			} catch (error) {
+				this.onStreamingError();
+				throw error;
+			}
+			
+			// Use final conversation from stream, or re-read if needed
+			if (!finalConversation) {
+				// Re-read conversation to get updated state
+				const allConversations = await this.manager.listConversations(this.activeProject?.meta);
+				finalConversation = allConversations.find(c => c.meta.id === conversation.meta.id) || conversation;
+			}
+			
+			if (finalConversation) {
+				let needsListRefresh = false;
+				
+				// If this is a new conversation (title is still default), generate a new name
+				// Only generate after first message exchange (user + assistant)
+				if ((finalConversation.meta.title === 'New Conversation' || finalConversation.meta.title === 'new-conversation') &&
+				    finalConversation.messages.length >= 2) {
+					try {
+						const messagesForName = finalConversation.messages.map(msg => ({
+							role: msg.role,
+							content: msg.content,
+						}));
+						const generatedName = await this.manager.getApplicationService().generateConvName({
+							conversation: {
+								id: finalConversation.meta.id,
+								messages: messagesForName,
+							},
+						});
+						
+						// Update conversation title
+						finalConversation = await this.manager.updateConversationTitle({
+							conversation: finalConversation,
+							project: this.activeProject,
+							title: generatedName,
+						});
+						needsListRefresh = true;
+					} catch (error) {
+						console.warn('Failed to generate conversation name', error);
+					}
+				}
+				
+				this.activeConversation = finalConversation;
+				this.onConversationUpdated(finalConversation, oldMessageIds);
+				
+				// Refresh the list if title was updated
+				if (needsListRefresh && finalConversation) {
 					const projectListViews = this.app.workspace.getLeavesOfType(PROJECT_LIST_VIEW_TYPE);
 					for (const leaf of projectListViews) {
 						const view = leaf.view as unknown;
 						if (isProjectListView(view)) {
-							await view.refreshConversationList(updatedConversation);
+							await view.refreshConversationList(finalConversation);
 						}
 					}
-				} catch (error) {
-					console.warn('Failed to generate conversation name', error);
-				}
-			}
-			
-			// Refresh the list to show the new conversation (if it was just created)
-			// This ensures the conversation appears in the list after first message
-			const projectListViews = this.app.workspace.getLeavesOfType(PROJECT_LIST_VIEW_TYPE);
-			for (const leaf of projectListViews) {
-				const view = leaf.view as unknown;
-				if (isProjectListView(view)) {
-					await view.refreshConversationList(result.conversation);
 				}
 			}
 
@@ -306,9 +383,6 @@ export class ChatInputArea {
 			this.renderFilePreviews();
 			this.inputArea?.setValue('');
 			this.updatePlaceholder(true);
-
-			// Notify parent about conversation update
-			this.onConversationUpdated(result.conversation, oldMessageIds);
 		} finally {
 			this.sendButton?.setDisabled(false);
 		}

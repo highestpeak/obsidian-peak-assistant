@@ -1,10 +1,9 @@
 import { App } from 'obsidian';
-import { LLMProviderService } from './providers/types';
+import { LLMProviderService, LLMProvider } from './providers/types';
 import { LLMApplicationService } from './service-application';
 import { ModelConfig } from './types-models';
 import { MultiProviderChatService } from './providers/MultiProviderChatService';
 import { PromptApplicationService } from './service-application';
-import { NoopChatProvider as NoopChatService, NoopApplicationProvider as NoopApplicationService } from './providers/noop';
 import { AIModelId, OpenAIModelId, coerceModelId } from './types-models';
 import { ChatStorageService } from './storage';
 import { ChatContextWindow, ChatMessage, ChatProjectMeta, ParsedConversationFile, ParsedProjectFile, RootMode, StarredMessageRecord } from './types';
@@ -34,12 +33,6 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	uploadFolder: 'ChatFolder/Attachments',
 };
 
-export interface AIServiceManagerDependencies {
-	chatService?: LLMProviderService;
-	applicationService?: LLMApplicationService;
-	promptService?: PromptService;
-}
-
 /**
  * Manage AI conversations, storage, and model interactions.
  */
@@ -51,14 +44,10 @@ export class AIServiceManager {
 	private promptService: PromptService;
 	private projectService: ProjectService;
 	private conversationService: ConversationService;
-	private chatProvidedExternally: boolean;
-	private applicationProvidedExternally: boolean;
-	private promptProvidedExternally: boolean;
 
 	constructor(
 		private readonly app: App,
-		private settings: AIServiceSettings,
-		deps?: AIServiceManagerDependencies
+		private settings: AIServiceSettings
 	) {
 		// === Settings initialization ===
 		// Merge given settings with defaults
@@ -81,16 +70,14 @@ export class AIServiceManager {
 		// Message content composer utility
 		this.contentComposer = new MessageContentComposer(this.app);
 
-		// === External dependency flags ===
-		// Mark which services are provided externally (for DI/override)
-		this.chatProvidedExternally = !!deps?.chatService;
-		this.applicationProvidedExternally = !!deps?.applicationService;
-		this.promptProvidedExternally = !!deps?.promptService;
-
-		// === Service construction (use external if supplied, else use default builder) ===
-		this.chat = deps?.chatService ?? this.buildDefaultChatService();
-		this.application = deps?.applicationService ?? this.buildDefaultApplicationService(this.chat);
-		this.promptService = deps?.promptService ?? new PromptService(this.app, {
+		// === Service construction ===
+		const providerConfigs = this.settings.llmProviderConfigs ?? {};
+		this.chat = new MultiProviderChatService({
+			models: this.settings.models ?? [],
+			providerConfigs,
+		});
+		this.application = new PromptApplicationService(this.chat);
+		this.promptService = new PromptService(this.app, {
 			promptFolder: this.settings.promptFolder,
 		});
 
@@ -145,55 +132,12 @@ export class AIServiceManager {
 	}
 
 	refreshDefaultServices(): void {
-		if (!this.chatProvidedExternally) {
-			this.chat = this.buildDefaultChatService();
-		}
-		if (!this.applicationProvidedExternally) {
-			this.application = this.buildDefaultApplicationService(this.chat);
-		}
-		this.projectService = new ProjectService(this.storage, this.settings.rootFolder, this.promptService, this.application);
-		this.conversationService = new ConversationService(
-			this.storage,
-			this.chat,
-			this.application,
-			this.promptService,
-			this.contentComposer,
-			this.settings.defaultModelId
-		);
-	}
-
-	private buildDefaultChatService(): LLMProviderService {
 		const providerConfigs = this.settings.llmProviderConfigs ?? {};
-		if (!this.hasProviderKey(providerConfigs)) {
-			return new NoopChatService();
-		}
-		return new MultiProviderChatService({
+		this.chat = new MultiProviderChatService({
 			models: this.settings.models ?? [],
 			providerConfigs,
 		});
-	}
-
-	private buildDefaultApplicationService(chatService: LLMProviderService): LLMApplicationService {
-		const providerConfigs = this.settings.llmProviderConfigs ?? {};
-		if (!this.hasProviderKey(providerConfigs)) {
-			return new NoopApplicationService();
-		}
-		return new PromptApplicationService(chatService);
-	}
-
-	private hasProviderKey(providerConfigs: Record<string, { apiKey: string; baseUrl?: string } | undefined>): boolean {
-		return Object.values(providerConfigs).some((cfg) => cfg?.apiKey);
-	}
-
-	/**
-	 * Swap the underlying LLM service implementation.
-	 */
-	setChatService(service: LLMProviderService): void {
-		this.chat = service;
-		this.chatProvidedExternally = true;
-		if (!this.applicationProvidedExternally) {
-			this.application = this.buildDefaultApplicationService(this.chat);
-		}
+		this.application = new PromptApplicationService(this.chat);
 		this.projectService = new ProjectService(this.storage, this.settings.rootFolder, this.promptService, this.application);
 		this.conversationService = new ConversationService(
 			this.storage,
@@ -203,18 +147,6 @@ export class AIServiceManager {
 			this.contentComposer,
 			this.settings.defaultModelId
 		);
-	}
-
-	setApplicationService(service: LLMApplicationService): void {
-		this.application = service;
-		this.applicationProvidedExternally = true;
-		this.projectService = new ProjectService(this.storage, this.settings.rootFolder, this.promptService, this.application);
-	}
-
-	setPromptService(service: PromptService): void {
-		this.promptService = service;
-		this.promptProvidedExternally = true;
-		this.projectService = new ProjectService(this.storage, this.settings.rootFolder, this.promptService, this.application);
 	}
 
 	setPromptFolder(folder: string): void {
@@ -331,6 +263,18 @@ export class AIServiceManager {
 	}
 
 	/**
+	 * Update conversation's active model.
+	 */
+	async updateConversationModel(params: {
+		conversation: ParsedConversationFile;
+		project?: ParsedProjectFile | null;
+		modelId: AIModelId;
+		provider?: LLMProvider;
+	}): Promise<ParsedConversationFile> {
+		return this.conversationService.updateConversationModel(params);
+	}
+
+	/**
 	 * Update conversation title and mark it as manually edited.
 	 */
 	async updateConversationTitle(params: {
@@ -386,6 +330,18 @@ export class AIServiceManager {
 	 */
 	getApplicationService(): LLMApplicationService {
 		return this.application;
+	}
+
+	/**
+	 * Get all available models from all configured providers
+	 */
+	async getAllAvailableModels(): Promise<Array<{ id: AIModelId; displayName: string; provider: string }>> {
+		const models = await (this.chat as MultiProviderChatService).getAllAvailableModels();
+		return models.map(m => ({
+			id: m.id,
+			displayName: m.displayName,
+			provider: m.provider,
+		}));
 	}
 
 }

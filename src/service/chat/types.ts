@@ -1,4 +1,5 @@
 import { AIModelId } from './types-models';
+import { LLMProvider } from './providers/types';
 
 export type ChatRole = 'user' | 'assistant' | 'system';
 
@@ -10,6 +11,7 @@ export interface ChatMessage {
 	createdAtZone: string;
 	starred: boolean;
 	model: AIModelId;
+	provider: LLMProvider;
 	attachments?: string[];
 }
 
@@ -20,6 +22,7 @@ export interface ChatConversationMeta {
 	createdAtTimestamp: number;
 	updatedAtTimestamp: number;
 	activeModel: AIModelId;
+	activeProvider: LLMProvider;
 	tokenUsageTotal?: number;
 	titleManuallyEdited?: boolean; // If true, auto-title generation will be disabled
 }

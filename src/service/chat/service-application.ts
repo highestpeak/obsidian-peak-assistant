@@ -1,18 +1,21 @@
 import { AIModelId } from './types-models';
-import { LLMProviderService } from './providers/types';
+import { LLMProviderService, LLMProvider } from './providers/types';
 
 export interface LLMApplicationService {
-	summarize(params: { model: AIModelId; text: string; }): Promise<string>;
-	generateTitle(params: { model: AIModelId; messages: Array<{ role: string; content: string }> }): Promise<string>;
+	summarize(params: { provider: LLMProvider; model: AIModelId; text: string; }): Promise<string>;
+	generateTitle(params: { provider: LLMProvider; model: AIModelId; messages: Array<{ role: string; content: string }> }): Promise<string>;
 	generateConvName(params: { conversation: { id: string; messages: Array<{ role: string; content: string }> } }): Promise<string>;
 }
 
 export class PromptApplicationService implements LLMApplicationService {
-	constructor(private readonly chat: LLMProviderService) {}
+	constructor(
+		private readonly chat: LLMProviderService
+	) {}
 
-	async summarize(params: { model: AIModelId; text: string }): Promise<string> {
+	async summarize(params: { provider: LLMProvider; model: AIModelId; text: string }): Promise<string> {
 		try {
 			const completion = await this.chat.blockChat({
+				provider: params.provider,
 				model: params.model,
 				messages: [
 					{
@@ -32,7 +35,7 @@ export class PromptApplicationService implements LLMApplicationService {
 		}
 	}
 
-	async generateTitle(params: { model: AIModelId; messages: Array<{ role: string; content: string }> }): Promise<string> {
+	async generateTitle(params: { provider: LLMProvider; model: AIModelId; messages: Array<{ role: string; content: string }> }): Promise<string> {
 		try {
 			// Build conversation context from messages (limit to first few messages for efficiency)
 			const contextMessages = params.messages.slice(0, 4).map(msg => {
@@ -41,6 +44,7 @@ export class PromptApplicationService implements LLMApplicationService {
 			}).join('\n\n');
 
 			const completion = await this.chat.blockChat({
+				provider: params.provider,
 				model: params.model,
 				messages: [
 					{

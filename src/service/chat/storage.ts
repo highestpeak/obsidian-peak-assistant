@@ -1,6 +1,7 @@
 import { App, normalizePath, TFile, TFolder } from 'obsidian';
 import { buildConversationMarkdown, buildProjectMarkdown, parseFrontmatter } from './storage-markdown';
 import { coerceModelId } from './types-models';
+import { LLMProvider } from './providers/types';
 import {
 	ChatContextWindow,
 	ChatConversationMeta,
@@ -360,6 +361,10 @@ export class ChatStorageService {
 				const modelMatch = metaText.match(/model:\s*"([^"]+)"/);
 				if (modelMatch) meta.model = coerceModelId(modelMatch[1]);
 				
+				// Extract provider
+				const providerMatch = metaText.match(/provider:\s*"([^"]+)"/);
+				const provider = providerMatch ? (providerMatch[1] as LLMProvider) : 'other';
+				
 				// Extract attachments (JSON array format)
 				let attachments: string[] = [];
 				const attachmentsMatch = metaText.match(/attachments:\s*(\[[^\]]*\])/);
@@ -389,6 +394,7 @@ export class ChatStorageService {
 					createdAtZone: meta.createdAtZone ?? 'UTC',
 					starred: meta.starred ?? false,
 					model: meta.model,
+					provider: provider || 'other',
 					attachments,
 				} as ChatMessage;
 			})
@@ -416,17 +422,22 @@ export class ChatStorageService {
 			}
 		}
 		
+		const activeModel = coerceModelId(data.activeModel as string | undefined);
+		const activeProvider = (data.activeProvider as LLMProvider | undefined) || 'other';
+		
 		return {
 			id: String(data.id ?? ''),
 			title,
 			projectId: data.projectId ? String(data.projectId) : undefined,
 			createdAtTimestamp: Number(data.createdAtTimestamp ?? Date.now()),
 			updatedAtTimestamp: Number(data.updatedAtTimestamp ?? Date.now()),
-			activeModel: coerceModelId(data.activeModel as string | undefined),
+			activeModel,
+			activeProvider,
 			tokenUsageTotal: data.tokenUsageTotal as number | undefined,
 			titleManuallyEdited: data.titleManuallyEdited === true,
 		};
 	}
+
 
 	private pickProjectMeta(data: Record<string, unknown>, file: TFile): ChatProjectMeta {
 		// Get name from frontmatter first, fallback to folder name

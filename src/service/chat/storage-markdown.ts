@@ -60,6 +60,7 @@ export function buildConversationMarkdown(params: {
 		createdAtTimestamp: meta.createdAtTimestamp,
 		updatedAtTimestamp: meta.updatedAtTimestamp,
 		activeModel: meta.activeModel,
+		activeProvider: meta.activeProvider,
 		tokenUsageTotal: meta.tokenUsageTotal ?? 0,
 		titleManuallyEdited: meta.titleManuallyEdited ?? false,
 	});
@@ -134,6 +135,7 @@ function buildMessageSection(message: ChatMessage): string {
 		`  createdAtTimestamp: ${message.createdAtTimestamp}`,
 		`  starred: ${message.starred}`,
 		`  model: "${message.model}"`,
+		`  provider: "${message.provider}"`,
 		`  attachments: ${JSON.stringify(message.attachments ?? [])}`,
 	];
 	const metaSection = `## meta\n\n${codeBlock('yaml', metaLines.join('\n'))}`;

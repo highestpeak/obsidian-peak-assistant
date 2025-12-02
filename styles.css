@@ -2398,3 +2398,124 @@ If your plugin does not need CSS, delete this file.
 	gap: 12px;
 }
 
+/* Model Selector Styles */
+.peak-chat-view__model-selector-container {
+	flex-shrink: 0;
+	margin-left: 16px;
+}
+
+.peak-model-selector {
+	display: inline-block;
+	position: relative;
+}
+
+.peak-model-selector-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 6px 12px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	color: var(--text-normal);
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	white-space: nowrap;
+}
+
+.peak-model-selector-button:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+.peak-model-selector-icon {
+	flex-shrink: 0;
+	transition: transform 0.2s ease;
+}
+
+.peak-model-selector-button:hover .peak-model-selector-icon {
+	transform: translateY(1px);
+}
+
+.peak-model-selector-menu {
+	position: fixed;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	max-height: 400px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	z-index: 10000;
+	margin-top: 4px;
+}
+
+.peak-model-selector-group-header {
+	padding: 8px 14px 6px 14px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	background-color: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	position: sticky;
+	top: 0;
+	z-index: 1;
+}
+
+.peak-model-selector-group-header:first-child {
+	border-top-left-radius: 8px;
+	border-top-right-radius: 8px;
+}
+
+.peak-model-selector-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px 10px 24px;
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+	border-bottom: 1px solid var(--background-modifier-border);
+	min-width: 200px;
+}
+
+.peak-model-selector-item:last-child {
+	border-bottom: none;
+}
+
+.peak-model-selector-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.peak-model-selector-item.is-selected {
+	background-color: var(--background-modifier-active);
+}
+
+.peak-model-selector-item-name {
+	flex: 1;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.peak-model-selector-item-provider {
+	font-size: 11px;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	margin-left: 12px;
+	flex-shrink: 0;
+}
+
+.peak-model-selector-check {
+	flex-shrink: 0;
+	margin-left: 8px;
+	color: var(--interactive-accent);
+}
+

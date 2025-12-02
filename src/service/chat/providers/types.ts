@@ -2,10 +2,10 @@ import { AIModelId } from '../types-models';
 import { ChatRole } from '../types';
 import { AIStreamEvent } from './types-events';
 
-export type LLMProvider = 'openai' | 'gemini' | 'claude' | 'openrouter' | 'other';
+export type LLMProvider = 'openai' | 'gemini' | 'claude' | 'openrouter' | 'ollama' | 'other';
 
 export interface LLMProviderConfig {
-	apiKey: string;
+	apiKey?: string;
 	baseUrl?: string;
 }
 
@@ -37,7 +37,8 @@ export interface LLMMessage {
 }
 
 export interface LLMRequest {
-	model: AIModelId;
+	provider: LLMProvider;
+	model: string;
 	messages: LLMMessage[];
 }
 
@@ -53,7 +54,21 @@ export interface LLMResponse {
 	usage?: LLMUsage;
 }
 
+export interface ProviderModelInfo {
+	id: AIModelId;
+	displayName: string;
+}
+
 export interface LLMProviderService {
 	blockChat(request: LLMRequest): Promise<LLMResponse>;
 	streamChat?(request: LLMRequest): AsyncGenerator<AIStreamEvent>;
+	/**
+	 * Get provider ID
+	 */
+	getProviderId(): LLMProvider;
+	/**
+	 * Get list of available models for this provider
+	 * Returns empty array if models cannot be fetched or provider doesn't support listing
+	 */
+	getAvailableModels?(): Promise<ProviderModelInfo[]>;
 }

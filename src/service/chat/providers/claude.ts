@@ -3,10 +3,13 @@ import {
 	ProviderContentPart,
 	LLMRequest,
 	LLMUsage,
+	LLMProviderService,
+	LLMProvider,
+	ProviderModelInfo,
 } from './types';
 import { AIStreamEvent } from './types-events';
 import { safeReadError, trimTrailingSlash } from './helpers';
-import { LLMProviderService } from './types';
+import { AIModelId } from '../types-models';
 
 const DEFAULT_CLAUDE_TIMEOUT_MS = 60000;
 const DEFAULT_CLAUDE_MAX_OUTPUT_TOKENS = 1024;
@@ -112,10 +115,13 @@ function buildClaudePayload(params: { request: LLMRequest; maxOutputTokens: numb
 export async function invokeClaudeBlock(params: {
 	request: LLMRequest;
 	baseUrl?: string;
-	apiKey: string;
+	apiKey?: string;
 	maxOutputTokens: number;
 	timeoutMs: number;
 }): Promise<LLMResponse> {
+	if (!params.apiKey) {
+		throw new Error('Claude API key is required');
+	}
 	const { body } = buildClaudePayload({ request: params.request, maxOutputTokens: params.maxOutputTokens });
 
 	const url = `${trimTrailingSlash(params.baseUrl ?? 'https://api.anthropic.com/v1')}/messages`;
@@ -158,10 +164,13 @@ export async function invokeClaudeBlock(params: {
 export async function* invokeClaudeStream(params: {
 	request: LLMRequest;
 	baseUrl?: string;
-	apiKey: string;
+	apiKey?: string;
 	maxOutputTokens: number;
 	timeoutMs: number;
 }): AsyncGenerator<AIStreamEvent> {
+	if (!params.apiKey) {
+		throw new Error('Claude API key is required');
+	}
 	const { body } = buildClaudePayload({ request: params.request, maxOutputTokens: params.maxOutputTokens });
 	body.stream = true;
 
@@ -333,7 +342,7 @@ function collectTextParts(parts: ProviderContentPart[]): string[] {
 
 export interface ClaudeChatServiceOptions {
 	baseUrl?: string;
-	apiKey: string;
+	apiKey?: string;
 	timeoutMs?: number;
 	maxOutputTokens?: number;
 }
@@ -341,7 +350,14 @@ export interface ClaudeChatServiceOptions {
 export class ClaudeChatService implements LLMProviderService {
 	constructor(private readonly options: ClaudeChatServiceOptions) {}
 
+	getProviderId(): LLMProvider {
+		return 'claude';
+	}
+
 	async blockChat(request: LLMRequest): Promise<LLMResponse> {
+		if (!this.options.apiKey) {
+			throw new Error('Claude API key is required');
+		}
 		return invokeClaudeBlock({
 			request,
 			baseUrl: this.options.baseUrl,
@@ -352,6 +368,9 @@ export class ClaudeChatService implements LLMProviderService {
 	}
 
 	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
+		if (!this.options.apiKey) {
+			throw new Error('Claude API key is required');
+		}
 		return invokeClaudeStream({
 			request,
 			baseUrl: this.options.baseUrl,
@@ -359,6 +378,15 @@ export class ClaudeChatService implements LLMProviderService {
 			maxOutputTokens: this.options.maxOutputTokens ?? DEFAULT_CLAUDE_MAX_OUTPUT_TOKENS,
 			timeoutMs: this.options.timeoutMs ?? DEFAULT_CLAUDE_TIMEOUT_MS,
 		});
+	}
+
+	async getAvailableModels(): Promise<ProviderModelInfo[]> {
+		return [
+			{ id: 'claude-3-5-sonnet-20240620' as AIModelId, displayName: 'Claude 3.5 Sonnet' },
+			{ id: 'claude-3-opus-20240229' as AIModelId, displayName: 'Claude 3 Opus' },
+			{ id: 'claude-3-sonnet-20240229' as AIModelId, displayName: 'Claude 3 Sonnet' },
+			{ id: 'claude-3-haiku-20240307' as AIModelId, displayName: 'Claude 3 Haiku' },
+		];
 	}
 }
 
