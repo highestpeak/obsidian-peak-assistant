@@ -7,6 +7,7 @@ import { ViewManager } from 'src/app/view/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
 import { registerCoreEvents } from 'src/app/events/Register';
 import { MyPluginSettings } from 'src/app/settings/config';
+import 'src/ui/react/styles.css';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -58,7 +59,7 @@ export default class MyPlugin extends Plugin {
 		buildCoreCommands(this.viewManager, this.aiManager)
 			.forEach(command => this.addCommand(command));
 
-		// register events
+		// register workspace events
 		registerCoreEvents(this, this.viewManager);
 	}
 

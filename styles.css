@@ -2519,3 +2519,127 @@ If your plugin does not need CSS, delete this file.
 	color: var(--interactive-accent);
 }
 
+/* React Components Styles */
+.peak-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px;
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s;
+	border: 1px solid transparent;
+	padding: 8px 16px;
+	background: transparent;
+	color: var(--text-normal);
+}
+
+.peak-button--default {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.peak-button--default:hover {
+	background: var(--interactive-accent-hover);
+}
+
+.peak-button--outline {
+	border-color: var(--background-modifier-border);
+	background: transparent;
+}
+
+.peak-button--outline:hover {
+	background: var(--background-modifier-hover);
+}
+
+.peak-button--ghost {
+	background: transparent;
+}
+
+.peak-button--ghost:hover {
+	background: var(--background-modifier-hover);
+}
+
+.peak-button--icon {
+	padding: 8px;
+	width: auto;
+	height: auto;
+}
+
+.peak-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.peak-input {
+	width: 100%;
+	padding: 8px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 14px;
+}
+
+.peak-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.peak-error-message {
+	color: var(--text-error);
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.peak-dialog-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 50;
+	background: rgba(0, 0, 0, 0.5);
+}
+
+.peak-dialog-content {
+	position: fixed;
+	left: 50%;
+	top: 50%;
+	z-index: 50;
+	width: 90%;
+	max-width: 500px;
+	transform: translate(-50%, -50%);
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 24px;
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.peak-dialog-header {
+	margin-bottom: 16px;
+}
+
+.peak-dialog-title {
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--text-normal);
+	margin: 0;
+}
+
+.peak-dialog-description {
+	font-size: 14px;
+	color: var(--text-muted);
+	margin-top: 8px;
+}
+
+.peak-dialog-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 16px;
+}
+
+/* Tailwind CSS styles - generated from src/ui/react/styles.css */
+@import './styles-react.css';
+

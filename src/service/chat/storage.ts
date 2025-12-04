@@ -56,9 +56,9 @@ export class ChatStorageService {
 		existingFile?: TFile
 	): Promise<TFile> {
 		const folder = project ? this.getProjectFolderPath(project) : this.rootFolder;
-		console.log('[PeakAssistant] saveConversation target folder', folder, 'projectId', project?.id ?? 'none', 'conversationTitle', conversation.title);
+		// console.log('[PeakAssistant] saveConversation target folder', folder, 'projectId', project?.id ?? 'none', 'conversationTitle', conversation.title);
 		await ensureFolder(this.app, folder);
-		console.log('[PeakAssistant] folder ensured', folder);
+		// console.log('[PeakAssistant] folder ensured', folder);
 
 		const file = existingFile ?? ((): TFile | null => {
 			const fileName = this.buildConversationFileName(conversation);

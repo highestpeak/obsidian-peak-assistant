@@ -12,6 +12,7 @@ import { IMessageHistoryView } from '../view-interfaces';
 import { ModelSelector } from '../../component/ModelSelector';
 import { AIModelId } from 'src/service/chat/types-models';
 import { LLMProvider } from 'src/service/chat/providers/types';
+import { useProjectStore } from '../../store/projectStore';
 
 /**
  * Component for rendering and managing the messages list view
@@ -20,6 +21,8 @@ export class MessagesView {
 	private containerEl?: HTMLElement;
 	private activeConversation: ParsedConversationFile | null = null;
 	private activeProject: ParsedProjectFile | null = null;
+	private activeConversationId: string | null = null;
+	private activeProjectId: string | null = null;
 	private pendingConversation: PendingConversation | null = null;
 	private statsRenderer: StatsRenderer;
 	private modalManager: ModalManager;
@@ -58,6 +61,8 @@ export class MessagesView {
 	setConversation(conversation: ParsedConversationFile | null, project?: ParsedProjectFile | null): void {
 		this.activeConversation = conversation;
 		this.activeProject = project ?? null;
+		this.activeConversationId = conversation?.meta.id ?? null;
+		this.activeProjectId = project?.meta.id ?? null;
 		// Clear pending conversation when setting an actual conversation
 		if (conversation) {
 			this.pendingConversation = null;
@@ -69,13 +74,33 @@ export class MessagesView {
 	}
 
 	/**
+	 * Get current conversation from store (always latest data)
+	 */
+	private getActiveConversation(): ParsedConversationFile | null {
+		if (!this.activeConversationId) return null;
+		const conversations = useProjectStore.getState().conversations;
+		return conversations.get(this.activeConversationId) || null;
+	}
+
+	/**
+	 * Get current project from store (always latest data)
+	 */
+	private getActiveProject(): ParsedProjectFile | null {
+		if (!this.activeProjectId) return null;
+		const projects = useProjectStore.getState().projects;
+		return projects.get(this.activeProjectId) || null;
+	}
+
+	/**
 	 * Set pending conversation state
 	 */
 	setPendingConversation(pending: PendingConversation | null): void {
 		this.pendingConversation = pending;
 		if (pending) {
 			this.activeProject = pending.project;
+			this.activeProjectId = pending.project?.meta.id ?? null;
 			this.activeConversation = null;
+			this.activeConversationId = null;
 		}
 	}
 
@@ -573,7 +598,10 @@ export class MessagesView {
 		const headerContent = container.createDiv({ cls: 'peak-chat-view__header-content' });
 		const titleEl = headerContent.createDiv({ cls: 'peak-chat-view__title' });
 
-		if (this.activeConversation && this.activeProject) {
+		const activeConversation = this.getActiveConversation();
+		const activeProject = this.getActiveProject();
+
+		if (activeConversation && activeProject) {
 			// Project icon and name
 			const iconContainer = titleEl.createSpan({ cls: 'peak-chat-view__title-icon' });
 			createIcon(iconContainer, 'folder', {
@@ -583,7 +611,7 @@ export class MessagesView {
 			});
 			titleEl.createSpan({
 				cls: 'peak-chat-view__title-text',
-				text: this.activeProject.meta.name
+				text: activeProject.meta.name
 			});
 			// Separator
 			titleEl.createSpan({
@@ -593,24 +621,24 @@ export class MessagesView {
 			// Conversation name
 			titleEl.createSpan({
 				cls: 'peak-chat-view__title-text',
-				text: this.activeConversation.meta.title
+				text: activeConversation.meta.title
 			});
 
-			this.renderModelSelector(headerContent, this.activeConversation, async (provider, modelId) => {
+			this.renderModelSelector(headerContent, activeConversation, async (provider, modelId) => {
 				await this.handleModelChange(provider, modelId);
 			});
 
 			// Add statistics, scroll buttons and summary button on the right
-			this.statsRenderer.render(headerContent, this.activeConversation);
-		} else if (this.activeConversation) {
-			titleEl.createEl('h2', { text: this.activeConversation.meta.title });
+			this.statsRenderer.render(headerContent, activeConversation);
+		} else if (activeConversation) {
+			titleEl.createEl('h2', { text: activeConversation.meta.title });
 			
-			this.renderModelSelector(headerContent, this.activeConversation, async (provider, modelId) => {
+			this.renderModelSelector(headerContent, activeConversation, async (provider, modelId) => {
 				await this.handleModelChange(provider, modelId);
 			});
 
 			// Add statistics, scroll buttons and summary button on the right
-			this.statsRenderer.render(headerContent, this.activeConversation);
+			this.statsRenderer.render(headerContent, activeConversation);
 		} else {
 			// No active conversation, but still show model selector for pending conversation
 			this.renderModelSelector(headerContent, null, async (provider, modelId) => {

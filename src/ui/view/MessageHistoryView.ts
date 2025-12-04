@@ -2,6 +2,7 @@ import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { ParsedConversationFile } from 'src/service/chat/types';
 import { IMessageHistoryView, IChatView } from './view-interfaces';
+import { EventBus, ViewEventType, SelectionChangedEvent } from 'src/core/eventBus';
 
 export const MESSAGE_HISTORY_VIEW_TYPE = 'peak-message-history-view';
 
@@ -11,9 +12,12 @@ export const MESSAGE_HISTORY_VIEW_TYPE = 'peak-message-history-view';
 export class MessageHistoryView extends ItemView implements IMessageHistoryView {
 	private activeConversation: ParsedConversationFile | null = null;
 	private messageListEl?: HTMLElement;
+	private eventBus: EventBus;
+	private unsubscribeHandlers: (() => void)[] = [];
 
 	constructor(leaf: WorkspaceLeaf, private readonly manager: AIServiceManager) {
 		super(leaf);
+		this.eventBus = EventBus.getInstance(this.app);
 	}
 
 	getViewType(): string {
@@ -40,6 +44,25 @@ export class MessageHistoryView extends ItemView implements IMessageHistoryView 
 				this.checkChatViewAndUpdateVisibility();
 			})
 		);
+
+		// Subscribe to selection changed events
+		this.unsubscribeHandlers.push(
+			this.eventBus.on<SelectionChangedEvent>(ViewEventType.SELECTION_CHANGED, async (event) => {
+				if (event.conversationId) {
+					// Load conversation from ID
+					let project = null;
+					if (event.projectId) {
+						const projects = await this.manager.listProjects();
+						project = projects.find(p => p.meta.id === event.projectId) ?? null;
+					}
+					const conversations = await this.manager.listConversations(project?.meta);
+					const conversation = conversations.find(c => c.meta.id === event.conversationId);
+					this.setActiveConversation(conversation ?? null);
+				} else {
+					this.setActiveConversation(null);
+				}
+			})
+		);
 	}
 
 	private checkChatViewAndUpdateVisibility(): void {
@@ -55,6 +78,10 @@ export class MessageHistoryView extends ItemView implements IMessageHistoryView 
 	}
 
 	async onClose(): Promise<void> {
+		// Unsubscribe from events
+		this.unsubscribeHandlers.forEach(unsubscribe => unsubscribe());
+		this.unsubscribeHandlers = [];
+
 		this.containerEl.empty();
 	}
 

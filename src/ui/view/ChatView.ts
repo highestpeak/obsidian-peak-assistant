@@ -10,6 +10,8 @@ import { ProjectOverviewView } from './chat-view/view-ProjectOverview';
 import { openSourceFile } from './shared/view-utils';
 import { IChatView, IMessageHistoryView } from './view-interfaces';
 import { MESSAGE_HISTORY_VIEW_TYPE } from './MessageHistoryView';
+import { EventBus, SelectionChangedEvent, ViewEventType } from 'src/core/eventBus';
+import { useChatViewStore } from '../store/chatViewStore';
 
 export const CHAT_VIEW_TYPE = 'peak-chat-view';
 
@@ -41,9 +43,12 @@ export class ChatView extends ItemView implements IChatView {
 	private allConversationsView: AllConversationsView;
 	private messagesView: MessagesView;
 	private projectOverviewView: ProjectOverviewView;
+	private eventBus: EventBus;
+	private unsubscribeHandlers: (() => void)[] = [];
 
 	constructor(leaf: WorkspaceLeaf, private readonly aiServiceManager: AIServiceManager) {
 		super(leaf);
+		this.eventBus = EventBus.getInstance(this.app);
 		this.scrollController = new ScrollController();
 		this.messagesView = new MessagesView(
 			this.app,
@@ -81,11 +86,60 @@ export class ChatView extends ItemView implements IChatView {
 		this.containerEl.empty();
 		this.containerEl.addClass('peak-chat-view');
 
+		// Subscribe to selection changed events
+		this.unsubscribeHandlers.push(
+			this.eventBus.on<SelectionChangedEvent>(ViewEventType.SELECTION_CHANGED, async (event) => {
+				if (event.conversationId) {
+					// Load conversation and project from IDs
+					let project: ParsedProjectFile | null = null;
+					if (event.projectId) {
+						const projects = await this.aiServiceManager.listProjects();
+						project = projects.find(p => p.meta.id === event.projectId) ?? null;
+					}
+					const conversations = await this.aiServiceManager.listConversations(project?.meta);
+					const conversation = conversations.find(c => c.meta.id === event.conversationId);
+					if (conversation) {
+						this.showMessagesForOneConvsation(conversation, project);
+					}
+				}
+			})
+		);
+
+		// Subscribe to chat view store changes
+		// Only update if viewMode changes and doesn't match current viewMode
+		let lastViewMode: ViewMode | null = null;
+		let lastPendingConversation: PendingConversation | null = null;
+		const unsubscribeStore = useChatViewStore.subscribe((state) => {
+			// Handle pending conversation changes
+			if (state.pendingConversation !== lastPendingConversation) {
+				lastPendingConversation = state.pendingConversation;
+				this.setPendingConversation(state.pendingConversation);
+			}
+
+			// Skip if viewMode hasn't changed or is null
+			if (state.viewMode === null || state.viewMode === lastViewMode) return;
+			lastViewMode = state.viewMode;
+
+			if (state.viewMode === ViewMode.PROJECT_OVERVIEW && state.projectForOverview) {
+				// Use the existing method to maintain consistency
+				void this.showProjectOverview(state.projectForOverview);
+			} else if (state.viewMode === ViewMode.ALL_PROJECTS) {
+				void this.showAllProjects();
+			} else if (state.viewMode === ViewMode.ALL_CONVERSATIONS) {
+				void this.showAllConversations();
+			}
+		});
+		this.unsubscribeHandlers.push(unsubscribeStore);
+
 		this.render();
 		this.setupKeyboardShortcuts();
 	}
 
 	async onClose(): Promise<void> {
+		// Unsubscribe from events
+		this.unsubscribeHandlers.forEach(unsubscribe => unsubscribe());
+		this.unsubscribeHandlers = [];
+
 		this.removeKeyboardShortcuts();
 		this.containerEl.empty();
 	}

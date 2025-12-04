@@ -5,19 +5,23 @@ import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from 'src/ui/view/ProjectList
 import { MESSAGE_HISTORY_VIEW_TYPE, MessageHistoryView } from 'src/ui/view/MessageHistoryView';
 import { ViewSwitchConsistentHandler } from 'src/app/view/ViewSwitchConsistentHandler';
 import { InputModal } from 'src/ui/component/InputModal';
-import { App } from 'obsidian';
+import { App, ViewCreator } from 'obsidian';
 
 /**
  * Manages view registrations, related commands, and lifecycle cleanup.
  */
 export class ViewManager {
 	private readonly viewSwicthConsistenter: ViewSwitchConsistentHandler;
+	private readonly viewCreators: Map<string, ViewCreator> = new Map();
 
 	constructor(
 		private readonly plugin: MyPlugin,
 		private readonly aiManager: AIServiceManager,
 	) {
 		this.viewSwicthConsistenter = new ViewSwitchConsistentHandler(this.plugin.app);
+		this.viewCreators.set(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf, this.aiManager));
+		this.viewCreators.set(PROJECT_LIST_VIEW_TYPE, (leaf) => new ProjectListView(leaf, this.aiManager));
+		this.viewCreators.set(MESSAGE_HISTORY_VIEW_TYPE, (leaf) => new MessageHistoryView(leaf, this.aiManager));
 	}
 
 	/**
@@ -29,9 +33,9 @@ export class ViewManager {
 	}
 
 	private registerViews(): void {
-		this.plugin.registerView(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf, this.aiManager));
-		this.plugin.registerView(PROJECT_LIST_VIEW_TYPE, (leaf) => new ProjectListView(leaf, this.aiManager));
-		this.plugin.registerView(MESSAGE_HISTORY_VIEW_TYPE, (leaf) => new MessageHistoryView(leaf, this.aiManager));
+		this.viewCreators.forEach((creator, type) => {
+			this.plugin.registerView(type, creator);
+		});
 	}
 
 	getViewSwitchConsistentHandler(): ViewSwitchConsistentHandler {
@@ -49,9 +53,9 @@ export class ViewManager {
 	 * Detach plugin views on unload.
 	 */
 	unload(): void {
-		this.plugin.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE).forEach((leaf) => leaf.detach());
-		this.plugin.app.workspace.getLeavesOfType(PROJECT_LIST_VIEW_TYPE).forEach((leaf) => leaf.detach());
-		this.plugin.app.workspace.getLeavesOfType(MESSAGE_HISTORY_VIEW_TYPE).forEach((leaf) => leaf.detach());
+		this.viewCreators.forEach((creator, type) => {
+			this.plugin.app.workspace.getLeavesOfType(type).forEach((leaf) => leaf.detach());
+		});
 	}
 
 	private registerRibbon(): void {

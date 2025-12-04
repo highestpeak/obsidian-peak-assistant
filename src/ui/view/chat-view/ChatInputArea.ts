@@ -3,9 +3,9 @@ import { ParsedConversationFile, ParsedProjectFile, ChatMessage, PendingConversa
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { FileUploadHandler } from './FileUploadHandler';
 import { createIcon } from 'src/core/IconHelper';
-import { PROJECT_LIST_VIEW_TYPE } from '../ProjectListView';
-import { IProjectListView, isProjectListView, IChatView } from '../view-interfaces';
+import { IChatView } from '../view-interfaces';
 import { generateUuidWithoutHyphens } from 'src/service/chat/utils';
+import { EventBus } from 'src/core/eventBus';
 
 export class ChatInputArea {
 	// initialization parameters
@@ -13,6 +13,7 @@ export class ChatInputArea {
 	private app: App;
 	private fileUploadHandler: FileUploadHandler;
 	private manager: AIServiceManager;
+	private eventBus: EventBus;
 	private activeConversation: ParsedConversationFile | null;
 	private activeProject: ParsedProjectFile | null;
 	private pendingConversation: PendingConversation | null;
@@ -47,6 +48,7 @@ export class ChatInputArea {
 		this.app = app;
 		this.fileUploadHandler = new FileUploadHandler(app);
 		this.manager = manager;
+		this.eventBus = EventBus.getInstance(app);
 		this.activeConversation = activeConversation;
 		this.activeProject = activeProject;
 		this.pendingConversation = pendingConversation;
@@ -366,17 +368,6 @@ export class ChatInputArea {
 				
 				this.activeConversation = finalConversation;
 				this.onConversationUpdated(finalConversation, oldMessageIds);
-				
-				// Refresh the list if title was updated
-				if (needsListRefresh && finalConversation) {
-					const projectListViews = this.app.workspace.getLeavesOfType(PROJECT_LIST_VIEW_TYPE);
-					for (const leaf of projectListViews) {
-						const view = leaf.view as unknown;
-						if (isProjectListView(view)) {
-							await view.refreshConversationList(finalConversation);
-						}
-					}
-				}
 			}
 
 			this.fileUploadHandler.clearPendingFiles();

@@ -3,13 +3,14 @@ import { ParsedConversationFile, ParsedProjectFile, ChatMessage } from 'src/serv
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { createIcon } from 'src/core/IconHelper';
 import { IChatView } from '../view-interfaces';
+import { useProjectStore } from '../../store/projectStore';
 
 export class ProjectOverviewView {
 	private manager: AIServiceManager;
 	private chatView: IChatView;
 	private app: App;
 
-	private project: ParsedProjectFile;
+	private projectId: string;
 	private conversations: ParsedConversationFile[] = [];
 	private activeTab: 'conversations' | 'starred' | 'resources' = 'conversations';
 	private summaryExpanded = false;
@@ -28,8 +29,8 @@ export class ProjectOverviewView {
 	 * Show project overview with conversations
 	 */
 	async setProject(project: ParsedProjectFile): Promise<void> {
-		this.project = project;
-		this.summaryExpanded = Boolean(this.getProjectSummaryText());
+		this.projectId = project.meta.id;
+		this.summaryExpanded = Boolean(this.getProjectSummaryText(project));
 		// Load conversations for this project
 		this.conversations = await this.manager.listConversations(project.meta);
 		// Sort conversations by createdAtTimestamp descending (newest first)
@@ -41,15 +42,24 @@ export class ProjectOverviewView {
 	}
 
 	/**
+	 * Get current project from store (always latest data)
+	 */
+	private getProject(): ParsedProjectFile | null {
+		const projects = useProjectStore.getState().projects;
+		return this.projectId ? projects.get(this.projectId) || null : null;
+	}
+
+	/**
 	 * Render complete view with header, body and footer
 	 */
 	async render(headerEl: HTMLElement, bodyEl: HTMLElement, footerEl: HTMLElement): Promise<void> {
-		if (!this.project) return;
+		const project = this.getProject();
+		if (!project) return;
 
-		this.renderHeader(headerEl);
+		this.renderHeader(headerEl, project);
 
 		// Render body
-		await this.renderBody(bodyEl);
+		await this.renderBody(bodyEl, project);
 
 		// Render footer (empty for this view)
 		footerEl.empty();
@@ -58,7 +68,7 @@ export class ProjectOverviewView {
 	/**
 	 * Render header for this view
 	 */
-	private renderHeader(container: HTMLElement): void {
+	private renderHeader(container: HTMLElement, project: ParsedProjectFile): void {
 		container.empty();
 		const headerContent = container.createDiv({ cls: 'peak-chat-view__header-content' });
 		const titleEl = headerContent.createDiv({ cls: 'peak-chat-view__title' });
@@ -69,21 +79,19 @@ export class ProjectOverviewView {
 			strokeWidth: 2,
 			class: 'peak-icon'
 		});
-		titleEl.createEl('h2', { text: this.project.meta.name });
+		titleEl.createEl('h2', { text: project.meta.name });
 	}
 
 	/**
 	 * Render project overview body
 	 */
-	private async renderBody(containerEl: HTMLElement): Promise<void> {
+	private async renderBody(containerEl: HTMLElement, project: ParsedProjectFile): Promise<void> {
 		containerEl.empty();
 		containerEl.addClass('peak-chat-view__conversation-list-container');
 
-		if (!this.project) return;
-
 		this.renderStats(containerEl);
 
-		const summaryText = this.getProjectSummaryText();
+		const summaryText = this.getProjectSummaryText(project);
 		if (summaryText) {
 			this.renderProjectSummary(containerEl, summaryText);
 		}
@@ -101,9 +109,12 @@ export class ProjectOverviewView {
 				cls: `peak-chat-view__project-tab-item ${this.activeTab === tab.id ? 'is-active' : ''}`,
 				text: tab.label
 			});
-			tabEl.addEventListener('click', () => {
+			tabEl.addEventListener('click', async () => {
 				this.activeTab = tab.id as 'conversations' | 'starred' | 'resources';
-				void this.renderBody(containerEl);
+				const currentProject = this.getProject();
+				if (currentProject) {
+					await this.renderBody(containerEl, currentProject);
+				}
 			});
 		});
 
@@ -113,13 +124,13 @@ export class ProjectOverviewView {
 		// Render content based on active tab
 		switch (this.activeTab) {
 			case 'conversations':
-				this.renderConversationsTab(tabContent);
+				this.renderConversationsTab(tabContent, project);
 				break;
 			case 'starred':
-				await this.renderStarredTab(tabContent);
+				await this.renderStarredTab(tabContent, project);
 				break;
 			case 'resources':
-				this.renderResourcesTab(tabContent);
+				this.renderResourcesTab(tabContent, project);
 				break;
 		}
 	}
@@ -159,17 +170,19 @@ export class ProjectOverviewView {
 			text: this.summaryExpanded ? 'Hide summary' : 'Show summary',
 			type: 'button',
 		});
-		toggleButton.addEventListener('click', () => {
+		toggleButton.addEventListener('click', async () => {
 			this.summaryExpanded = !this.summaryExpanded;
-			void this.renderBody(container);
+			const currentProject = this.getProject();
+			if (currentProject) {
+				await this.renderBody(container, currentProject);
+			}
 		});
 		const summaryContent = summarySection.createDiv({ cls: 'peak-chat-view__summary-content' });
 		summaryContent.setText(summaryText);
 	}
 
-	private getProjectSummaryText(): string | undefined {
-		if (!this.project) return undefined;
-		const candidate = this.project.shortSummary ?? this.project.context?.summary;
+	private getProjectSummaryText(project: ParsedProjectFile): string | undefined {
+		const candidate = project.shortSummary ?? project.context?.summary;
 		const trimmed = candidate?.trim();
 		return trimmed || undefined;
 	}
@@ -177,10 +190,8 @@ export class ProjectOverviewView {
 	/**
 	 * Render conversations tab
 	 */
-	private renderConversationsTab(container: HTMLElement): void {
+	private renderConversationsTab(container: HTMLElement, project: ParsedProjectFile): void {
 		container.empty();
-
-		if (!this.project) return;
 
 		const listContainer = container.createDiv({ cls: 'peak-chat-view__conversation-list' });
 
@@ -244,7 +255,10 @@ export class ProjectOverviewView {
 
 			// Click to open conversation
 			item.addEventListener('click', () => {
-				this.chatView.showMessagesForOneConvsation(conversation, this.project);
+				const currentProject = this.getProject();
+				if (currentProject) {
+					this.chatView.showMessagesForOneConvsation(conversation, currentProject);
+				}
 			});
 		}
 	}
@@ -252,10 +266,8 @@ export class ProjectOverviewView {
 	/**
 	 * Render starred messages tab
 	 */
-	private async renderStarredTab(container: HTMLElement): Promise<void> {
+	private async renderStarredTab(container: HTMLElement, project: ParsedProjectFile): Promise<void> {
 		container.empty();
-
-		if (!this.project) return;
 
 		const entries = this.collectStarredEntries();
 		const starredList = container.createDiv({ cls: 'peak-chat-view__starred-list' });
@@ -278,7 +290,10 @@ export class ProjectOverviewView {
 			const truncated = this.truncatePreview(entry.message.content, 150);
 			starredContent.setText(truncated);
 			starredItem.addEventListener('click', () => {
-				this.chatView.showMessagesForOneConvsation(entry.conversation, this.project);
+				const currentProject = this.getProject();
+				if (currentProject) {
+					this.chatView.showMessagesForOneConvsation(entry.conversation, currentProject);
+				}
 				requestAnimationFrame(() => {
 					this.chatView.scrollToMessage(entry.message.id);
 				});
@@ -299,10 +314,8 @@ export class ProjectOverviewView {
 	/**
 	 * Render resources tab
 	 */
-	private renderResourcesTab(container: HTMLElement): void {
+	private renderResourcesTab(container: HTMLElement, project: ParsedProjectFile): void {
 		container.empty();
-
-		if (!this.project) return;
 
 		const resources = this.collectProjectResources();
 

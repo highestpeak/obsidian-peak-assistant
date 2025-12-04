@@ -8,10 +8,12 @@
     "allowJs": true,
     "noImplicitAny": true,
     "moduleResolution": "node",
+    "resolveJsonModule": true,
     "esModuleInterop": true,
     "importHelpers": true,
     "isolatedModules": true,
     "strictNullChecks": true,
+    "jsx": "react",
     "lib": [
       "DOM",
       "ES5",
@@ -20,6 +22,7 @@
     ]
   },
   "include": [
-    "**/*.ts"
+    "**/*.ts",
+    "**/*.tsx"
   ]
 }

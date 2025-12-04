@@ -3,56 +3,41 @@ import type MyPlugin from 'main';
 import { parseFrontmatter } from 'src/service/chat/storage-markdown';
 import { createIcon } from 'src/core/IconHelper';
 import { ViewManager } from '../view/ViewManager';
-import { PROJECT_LIST_VIEW_TYPE } from 'src/ui/view/ProjectListView';
-import { IProjectListView, isProjectListView, IChatView, isChatView } from 'src/ui/view/view-interfaces';
+import { IChatView, isChatView } from 'src/ui/view/view-interfaces';
+import { EventBus, SelectionChangedEvent } from 'src/core/eventBus';
 
 /**
- * Registers workspace-level reactive events.
+ * Register workspace-level reactive events
  */
 export function registerCoreEvents(plugin: MyPlugin, viewManager: ViewManager): void {
-	plugin.registerEvent(
-		plugin.app.workspace.on('active-leaf-change', (leaf) => {
-			viewManager.getViewSwitchConsistentHandler().handleActiveLeafChange(leaf);
-		})
-	);
+	const eventBus = EventBus.getInstance(plugin.app);
+
+	// Handle active leaf change for view switching
+	eventBus.on('active-leaf-change', (leaf) => {
+		viewManager.getViewSwitchConsistentHandler().handleActiveLeafChange(leaf);
+	});
 
 	// Handle file open to add chat view button for conversation files
-	plugin.registerEvent(
-		plugin.app.workspace.on('file-open', (file: TFile | null) => {
-			// Remove any existing buttons first
-			removeAllChatViewButtons();
-			
-			if (file && file.extension === 'md') {
-				handleConversationFileOpen(plugin, viewManager, file);
-			}
-		})
-	);
+	eventBus.on('file-open', (file) => {
+		removeAllChatViewButtons();
+		
+		if (file && file.extension === 'md') {
+			handleConversationFileOpen(plugin, viewManager, file, eventBus);
+		}
+	});
 
 	// Also handle active leaf change to update button when switching views
-	plugin.registerEvent(
-		plugin.app.workspace.on('active-leaf-change', (leaf) => {
-			// Remove existing buttons
-			removeAllChatViewButtons();
-			
-			// Check if new leaf is markdown view
-			const markdownView = leaf?.view;
-			if (markdownView && markdownView instanceof MarkdownView) {
-				const file = markdownView.file;
-				if (file && file.extension === 'md') {
-					handleConversationFileOpen(plugin, viewManager, file);
-				}
+	eventBus.on('active-leaf-change', (leaf) => {
+		removeAllChatViewButtons();
+		
+		const markdownView = leaf?.view;
+		if (markdownView && markdownView instanceof MarkdownView) {
+			const file = markdownView.file;
+			if (file && file.extension === 'md') {
+				handleConversationFileOpen(plugin, viewManager, file, eventBus);
 			}
-
-			// // Auto-refresh ProjectListView when it becomes active
-			// if (leaf?.view?.getViewType() === PROJECT_LIST_VIEW_TYPE) {
-			// 	const projectListView = leaf.view as any;
-			// 	if (projectListView && typeof projectListView.handleRefresh === 'function') {
-			//      // will make project list view bugs, so disable it for now
-			// 		void projectListView.handleRefresh();
-			// 	}
-			// }
-		})
-	);
+		}
+	});
 }
 
 /**
@@ -69,7 +54,8 @@ function removeAllChatViewButtons(): void {
 async function handleConversationFileOpen(
 	plugin: MyPlugin,
 	viewManager: ViewManager,
-	file: TFile
+	file: TFile,
+	eventBus: EventBus
 ): Promise<void> {
 	// Skip Project-Summary.md files
 	if (file.name === 'Project-Summary.md') {
@@ -87,7 +73,7 @@ async function handleConversationFileOpen(
 			
 			// Wait for markdown view to be ready
 			setTimeout(() => {
-				addChatViewButton(plugin, viewManager, file, conversationId);
+				addChatViewButton(plugin, viewManager, file, conversationId, eventBus);
 			}, 100);
 		}
 	} catch (error) {
@@ -102,7 +88,8 @@ function addChatViewButton(
 	plugin: MyPlugin,
 	viewManager: ViewManager,
 	file: TFile,
-	conversationId: string
+	conversationId: string,
+	eventBus: EventBus
 ): void {
 	// Find active markdown view for this file
 	const markdownView = plugin.app.workspace.getActiveViewOfType(MarkdownView);
@@ -148,7 +135,6 @@ function addChatViewButton(
 		await viewManager.getViewSwitchConsistentHandler().activateChatView();
 
 		// Find conversation and open it in chat view
-		// Access aiManager through plugin
 		const aiManager = plugin.aiManager;
 		if (!aiManager) {
 			return;
@@ -181,18 +167,15 @@ function addChatViewButton(
 			chatViews.forEach(leaf => {
 				const view = leaf.view;
 				if (isChatView(view)) {
-								view.showMessagesForOneConvsation(conversation, project);
+					view.showMessagesForOneConvsation(conversation, project);
 				}
 			});
 
-			// Notify project list view to highlight conversation and expand project
-			const projectListViews = plugin.app.workspace.getLeavesOfType('peak-project-list-view');
-			projectListViews.forEach(leaf => {
-				const view = leaf.view;
-				if (isProjectListView(view)) {
-					void view.setActiveSelectionAndExpand(project, conversation);
-				}
-			});
+			// Dispatch selection changed event to highlight conversation and expand project
+			eventBus.dispatch(new SelectionChangedEvent({
+				conversation: conversation,
+				project: project,
+			}));
 		}
 	});
 }
