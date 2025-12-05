@@ -6,8 +6,8 @@ import { ConversationsSection } from './ConversationsSection';
 import { useProjectStore } from '../../store/projectStore';
 import { EventBus, ViewEventType, SelectionChangedEvent } from 'src/core/eventBus';
 import { notifySelectionChange, hydrateProjects } from './utils';
-import { Button } from '../../component/shared-ui/button';
 import { RefreshCw, Minus } from 'lucide-react';
+import { IconButton } from '../../component/shared-ui/icon-button';
 
 interface ProjectListViewProps {
 	manager: AIServiceManager;
@@ -142,24 +142,20 @@ export const ProjectListViewComponent: React.FC<ProjectListViewProps> = ({
 		<div className="peak-project-list-view">
 			{/* Toolbar */}
 			<div className="peak-project-list-view__toolbar">
-				<Button
-					variant="ghost"
-					size="icon"
-					className="pktw-h-6 pktw-w-6"
+				<IconButton
+					size="xs"
 					onClick={handleRefresh}
 					title="Refresh projects and conversations"
 				>
-					<RefreshCw className="pktw-h-3.5 pktw-w-3.5" />
-				</Button>
-				<Button
-					variant="ghost"
-					size="icon"
-					className="pktw-h-6 pktw-w-6"
+					<RefreshCw className="pktw-h-2.5 pktw-w-2.5" />
+				</IconButton>
+				<IconButton
+					size="xs"
 					onClick={() => clearExpandedProjects()}
 					title="Collapse all projects"
 				>
-					<Minus className="pktw-h-3.5 pktw-w-3.5" />
-				</Button>
+					<Minus className="pktw-h-2.5 pktw-w-2.5" />
+				</IconButton>
 			</div>
 
 			{/* Projects Section */}

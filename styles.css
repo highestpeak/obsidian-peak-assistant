@@ -1,10 +1,13 @@
-/*
+/* Tailwind CSS styles - generated from src/ui/react/styles.css */
+@import './styles-react.css';
 
+/*
+ 
 This CSS file will be included with your plugin, and
 available in the app when your plugin is enabled.
-
+ 
 If your plugin does not need CSS, delete this file.
-
+ 
 */
 
 .peak-chat-view {
@@ -2639,7 +2642,4 @@ If your plugin does not need CSS, delete this file.
 	gap: 8px;
 	margin-top: 16px;
 }
-
-/* Tailwind CSS styles - generated from src/ui/react/styles.css */
-@import './styles-react.css';
 
