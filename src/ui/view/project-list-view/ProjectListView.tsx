@@ -139,22 +139,22 @@ export const ProjectListViewComponent: React.FC<ProjectListViewProps> = ({
 	}, [eventBus, manager]);
 
 	return (
-		<div className="peak-project-list-view">
+		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-p-4 pktw-box-border pktw-overflow-y-auto pktw-bg-background">
 			{/* Toolbar */}
-			<div className="peak-project-list-view__toolbar">
+			<div className="pktw-flex pktw-flex-row pktw-items-center pktw-gap-2 pktw-mb-2 pktw-pb-2 pktw-border-b pktw-border-border">
 				<IconButton
 					size="xs"
 					onClick={handleRefresh}
 					title="Refresh projects and conversations"
 				>
-					<RefreshCw className="pktw-h-2.5 pktw-w-2.5" />
+					<RefreshCw className="pktw-h-4 pktw-w-4" />
 				</IconButton>
 				<IconButton
 					size="xs"
 					onClick={() => clearExpandedProjects()}
 					title="Collapse all projects"
 				>
-					<Minus className="pktw-h-2.5 pktw-w-2.5" />
+					<Minus className="pktw-h-4 pktw-w-4" />
 				</IconButton>
 			</div>
 

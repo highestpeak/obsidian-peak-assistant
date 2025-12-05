@@ -4,10 +4,11 @@
 	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
 	"main": "main.js",
 	"scripts": {
-		"dev:css": "tailwindcss -i ./src/ui/react/styles.css -o ./styles-react.css --watch",
+		"dev:tailwind": "npx tailwindcss -i src/styles/tailwind.css -o styles.css --watch",
 		"dev:ts": "node esbuild.config.mjs",
-		"dev": "npm-run-all --parallel dev:css dev:ts",
-		"build:css": "tailwindcss -i ./src/ui/react/styles.css -o ./styles-react.css --minify",
+		"dev": "npm-run-all --parallel dev:*",
+		"build:tailwind": "npx tailwindcss -i src/styles/tailwind.css -o styles.css --minify",
+		"build:css": "npm run build:tailwind",
 		"build": "npm run build:css && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},

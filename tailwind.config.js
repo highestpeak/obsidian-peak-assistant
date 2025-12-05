@@ -1,10 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
 	content: [
-		'./src/ui/react/**/*.{ts,tsx}',
-		'./src/ui/component/shared-ui/**/*.{ts,tsx}',
+		'./src/**/*.{js,ts,jsx,tsx}',
+		'./src/styles/tailwind.css',
 	],
 	prefix: 'pktw-',
+	important: true, // Automatically add !important to all utilities to override Obsidian's global styles
 	theme: {
 		extend: {
 			colors: {

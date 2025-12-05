@@ -7,7 +7,6 @@ import { ViewManager } from 'src/app/view/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
 import { registerCoreEvents } from 'src/app/events/Register';
 import { MyPluginSettings } from 'src/app/settings/config';
-import 'src/ui/react/styles.css';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
