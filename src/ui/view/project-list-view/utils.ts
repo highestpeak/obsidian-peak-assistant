@@ -18,7 +18,7 @@ export async function notifySelectionChange(
 	app: App,
 	conversation?: ParsedConversationFile | null
 ): Promise<void> {
-	const { setActiveConversation, setActiveProject } = useProjectStore.getState();
+	const { setActiveConversation, setActiveProject, projects } = useProjectStore.getState();
 
 	// Update activeConversation if provided
 	if (conversation !== undefined) {
@@ -29,7 +29,19 @@ export async function notifySelectionChange(
 	const currentConv = conversation !== undefined ? conversation : useProjectStore.getState().activeConversation;
 
 	// Set activeProject based on conversation's projectId
-	setActiveProject(currentConv?.meta.projectId ?? null);
+	// Only set if projectId exists and project is in store
+	if (currentConv?.meta.projectId) {
+		const project = projects.get(currentConv.meta.projectId);
+		if (project) {
+			setActiveProject(project);
+		} else {
+			// Project not found in store, set to null
+			setActiveProject(null);
+		}
+	} else {
+		// No projectId, set to null
+		setActiveProject(null);
+	}
 
 	// Get final state for event
 	const { activeProject, activeConversation } = useProjectStore.getState();

@@ -122,12 +122,33 @@ export const ProjectListViewComponent: React.FC<ProjectListViewProps> = ({
 		const unsubscribeSelection = eventBus.on<SelectionChangedEvent>(
 			ViewEventType.SELECTION_CHANGED,
 			async (event) => {
-				const { setActiveProject, setActiveConversation, toggleProjectExpanded } = useProjectStore.getState();
+				const { setActiveProject, setActiveConversation, toggleProjectExpanded, expandedProjects, projects, conversations } = useProjectStore.getState();
 
 				// Set active selection by ID
-				setActiveProject(event.projectId ?? null);
-				setActiveConversation(event.conversationId ?? null);
+				// Only update if IDs are different to avoid unnecessary updates
 				if (event.projectId) {
+					const project = projects.get(event.projectId);
+					if (project) {
+						setActiveProject(project);
+					}
+				} else {
+					setActiveProject(null);
+				}
+
+				if (event.conversationId) {
+					const conversation = conversations.get(event.conversationId);
+					if (conversation) {
+						setActiveConversation(conversation);
+					} else {
+						// Conversation not found in store, this shouldn't happen but log for debugging
+						console.warn('Conversation not found in store:', event.conversationId);
+					}
+				} else {
+					setActiveConversation(null);
+				}
+
+				// Only expand if project is not already expanded (to avoid collapsing when clicking conversation)
+				if (event.projectId && !expandedProjects.has(event.projectId)) {
 					toggleProjectExpanded(event.projectId);
 				}
 			}
@@ -139,36 +160,40 @@ export const ProjectListViewComponent: React.FC<ProjectListViewProps> = ({
 	}, [eventBus, manager]);
 
 	return (
-		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-p-4 pktw-box-border pktw-overflow-y-auto pktw-bg-background">
+		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-p-0 pktw-box-border pktw-overflow-y-auto pktw-bg-background">
 			{/* Toolbar */}
-			<div className="pktw-flex pktw-flex-row pktw-items-center pktw-gap-2 pktw-mb-2 pktw-pb-2 pktw-border-b pktw-border-border">
+			<div className="pktw-flex pktw-flex-row pktw-items-center pktw-gap-1 pktw-pb-2 pktw-border-b pktw-border-border pktw-p-2">
 				<IconButton
-					size="xs"
+					size="lg"
+					className="pktw-shrink-0"
 					onClick={handleRefresh}
 					title="Refresh projects and conversations"
 				>
-					<RefreshCw className="pktw-h-4 pktw-w-4" />
+					<RefreshCw />
 				</IconButton>
 				<IconButton
-					size="xs"
+					size="lg"
+					className="pktw-shrink-0"
 					onClick={() => clearExpandedProjects()}
 					title="Collapse all projects"
 				>
-					<Minus className="pktw-h-4 pktw-w-4" />
+					<Minus />
 				</IconButton>
 			</div>
 
-			{/* Projects Section */}
-			<ProjectsSection
-				manager={manager}
-				app={app}
-			/>
+			<div className="pktw-pt-1 pktw-px-3 pktw-pb-6">
+				{/* Projects Section */}
+				<ProjectsSection
+					manager={manager}
+					app={app}
+				/>
 
-			{/* Conversations Section */}
-			<ConversationsSection
-				manager={manager}
-				app={app}
-			/>
+				{/* Conversations Section */}
+				<ConversationsSection
+					manager={manager}
+					app={app}
+				/>
+			</div>
 		</div>
 	);
 };

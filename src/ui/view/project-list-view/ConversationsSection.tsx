@@ -6,9 +6,11 @@ import { openSourceFile } from '../shared/view-utils';
 import { useProjectStore } from '../../store/projectStore';
 import { useChatViewStore } from '../../store/chatViewStore';
 import { notifySelectionChange, showContextMenu } from './utils';
-import { InputModal } from './InputModal';
+import { InputModal } from '../../component/shared-ui/InputModal';
 import { Button } from '../../component/shared-ui/button';
+import { IconButton } from '../../component/shared-ui/icon-button';
 import { ChevronDown, ChevronRight, Plus, Pencil, FileText } from 'lucide-react';
+import { cn } from '../../react/lib/utils';
 
 interface ConversationsSectionProps {
 	manager: AIServiceManager;
@@ -41,6 +43,8 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({
 		message: string;
 		onSubmit: (value: string | null) => Promise<void>;
 		initialValue?: string;
+		hintText?: string;
+		submitButtonText?: string;
 	} | null>(null);
 
 	const handleNewConversation = async () => {
@@ -118,58 +122,66 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({
 	}, [conversations]);
 
 	return (
-		<div
-			className={`peak-project-list-view__section ${isConversationsCollapsed ? 'is-collapsed' : ''}`}
-		>
+		<div className="pktw-flex pktw-flex-col">
 			{/* Header */}
 			<div
-				className="peak-project-list-view__header pktw-flex pktw-items-center pktw-gap-2 pktw-cursor-pointer"
+				className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2 pktw-cursor-pointer pktw-rounded pktw-transition-all hover:pktw-bg-muted hover:pktw-shadow-sm"
 				onClick={() => toggleConversationsCollapsed()}
 			>
-				{isConversationsCollapsed ? (
-					<ChevronRight className="peak-icon pktw-w-3 pktw-h-3" />
-				) : (
-					<ChevronDown className="peak-icon pktw-w-3 pktw-h-3" />
-				)}
-				<h3 className="pktw-flex-1">Conversations</h3>
-				<Button
-					variant="ghost"
-					size="icon"
-					className="pktw-h-6 pktw-w-6"
+				<div className="pktw-flex pktw-items-center pktw-gap-2">
+					{isConversationsCollapsed ? (
+						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-shrink-0" />
+					) : (
+						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0" />
+					)}
+					<h3 className="pktw-flex-1 pktw-m-0 pktw-text-[13px] pktw-font-semibold pktw-text-foreground pktw-uppercase pktw-tracking-wide">Conversations</h3>
+				</div>
+				<IconButton
+					size="lg"
+					className="pktw-shrink-0"
 					onClick={(e) => {
 						e.stopPropagation();
 						handleNewConversation();
 					}}
 					title="New Conversation"
 				>
-					<Plus className="pktw-h-3.5 pktw-w-3.5" />
-				</Button>
+					<Plus />
+				</IconButton>
 			</div>
 
 			{/* Conversations List */}
-			{!isConversationsCollapsed && (
-				<div className="peak-project-list-view__list">
-					{conversationsWithoutProject.length === 0 ? (
-						<div className="peak-project-list-view__empty">No conversations</div>
-					) : (
-						conversationsWithoutProject.map((conversation) => {
-							const isActive =
-								activeConversation?.meta.id === conversation.meta.id;
-							return (
-								<div
-									key={conversation.meta.id}
-									className={`peak-project-list-view__item ${isActive ? 'is-active' : ''}`}
-									data-conversation-id={conversation.meta.id}
-									onClick={() => handleConversationClick(conversation)}
-									onContextMenu={(e) => handleContextMenu(e, conversation)}
-								>
-									{conversation.meta.title}
-								</div>
-							);
-						})
-					)}
-				</div>
-			)}
+			<div className={cn(
+				'pktw-flex pktw-flex-col pktw-gap-px pktw-overflow-hidden pktw-transition-all pktw-duration-150 pktw-ease-in-out',
+				isConversationsCollapsed
+					? 'pktw-max-h-0 pktw-opacity-0'
+					: 'pktw-max-h-[5000px] pktw-opacity-100'
+			)}>
+				{conversationsWithoutProject.length === 0 ? (
+					<div className="pktw-p-3 pktw-text-muted-foreground pktw-text-[13px] pktw-italic pktw-text-center">No conversations</div>
+				) : (
+					conversationsWithoutProject.map((conversation) => {
+						const isActive =
+							activeConversation?.meta.id === conversation.meta.id;
+						return (
+							<div
+								key={conversation.meta.id}
+								className={cn(
+									'pktw-px-2 pktw-py-1.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors pktw-text-[13px] pktw-min-h-7 pktw-flex pktw-items-center pktw-break-words',
+									// Default state
+									!isActive && 'pktw-bg-transparent pktw-text-muted-foreground hover:pktw-bg-muted hover:pktw-text-foreground',
+									// Active state
+									isActive && '!pktw-bg-primary !pktw-text-primary-foreground hover:!pktw-bg-primary hover:!pktw-text-primary-foreground'
+								)}
+								data-conversation-id={conversation.meta.id}
+								onClick={() => handleConversationClick(conversation)}
+								onContextMenu={(e) => handleContextMenu(e, conversation)}
+							>
+								{conversation.meta.title}
+							</div>
+						);
+					})
+				)}
+			</div>
 
 			{/* Modal */}
 			{inputModalConfig && (
@@ -179,6 +191,8 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = ({
 					message={inputModalConfig.message}
 					onSubmit={inputModalConfig.onSubmit}
 					initialValue={inputModalConfig.initialValue}
+					hintText={inputModalConfig.hintText}
+					submitButtonText={inputModalConfig.submitButtonText}
 				/>
 			)}
 		</div>

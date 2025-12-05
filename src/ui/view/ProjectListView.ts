@@ -36,7 +36,6 @@ export class ProjectListView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		this.containerEl.empty();
-		this.containerEl.addClass('peak-project-list-view');
 
 		// Create React renderer - containerEl structure: [header, content]
 		// We render into the content area (children[1])

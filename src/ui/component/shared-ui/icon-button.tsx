@@ -10,7 +10,7 @@ export interface IconButtonProps
 	/**
 	 * Size of the icon button
 	 */
-	size?: 'xs' | 'sm' | 'md';
+	size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 /**
@@ -23,6 +23,14 @@ export const IconButton = React.forwardRef<HTMLDivElement, IconButtonProps>(
 			xs: 'pktw-h-3 pktw-w-3',
 			sm: 'pktw-h-4 pktw-w-4',
 			md: 'pktw-h-5 pktw-w-5',
+			lg: 'pktw-h-8 pktw-w-8',
+		};
+
+		const iconSizeClasses = {
+			xs: 'pktw-h-2.5 pktw-w-2.5',
+			sm: 'pktw-h-3.5 pktw-w-3.5',
+			md: 'pktw-h-4 pktw-w-4',
+			lg: 'pktw-h-5 pktw-w-5',
 		};
 
 		const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -32,6 +40,17 @@ export const IconButton = React.forwardRef<HTMLDivElement, IconButtonProps>(
 			}
 			onKeyDown?.(e);
 		};
+
+		// Clone children and add icon size class
+		const iconSizeClass = iconSizeClasses[size];
+		const childrenWithSize = React.Children.map(children, (child) => {
+			if (React.isValidElement(child)) {
+				return React.cloneElement(child as React.ReactElement<any>, {
+					className: cn(iconSizeClass, (child as any).props?.className),
+				});
+			}
+			return child;
+		});
 
 		return (
 			<div
@@ -49,7 +68,7 @@ export const IconButton = React.forwardRef<HTMLDivElement, IconButtonProps>(
 				tabIndex={0}
 				{...props}
 			>
-				{children}
+				{childrenWithSize}
 			</div>
 		);
 	}

@@ -17,7 +17,7 @@ const DialogOverlay = React.forwardRef<
 	<DialogPrimitive.Overlay
 		ref={ref}
 		className={cn(
-			'pktw-fixed pktw-inset-0 pktw-z-50 pktw-bg-black/80 data-[state=open]:pktw-animate-in data-[state=closed]:pktw-animate-out data-[state=closed]:pktw-fade-out-0 data-[state=open]:pktw-fade-in-0',
+			'pktw-fixed pktw-inset-0 pktw-z-50 pktw-bg-gray-500/20 data-[state=open]:pktw-animate-in data-[state=closed]:pktw-animate-out data-[state=closed]:pktw-fade-out-0 data-[state=open]:pktw-fade-in-0',
 			className
 		)}
 		{...props}
@@ -34,7 +34,7 @@ const DialogContent = React.forwardRef<
 		<DialogPrimitive.Content
 			ref={ref}
 			className={cn(
-				'pktw-fixed pktw-left-[50%] pktw-top-[50%] pktw-z-50 pktw-grid pktw-w-full pktw-max-w-lg pktw-translate-x-[-50%] pktw-translate-y-[-50%] pktw-gap-4 pktw-border pktw-bg-background pktw-p-6 pktw-shadow-lg pktw-duration-200 data-[state=open]:pktw-animate-in data-[state=closed]:pktw-animate-out data-[state=closed]:pktw-fade-out-0 data-[state=open]:pktw-fade-in-0 data-[state=closed]:pktw-zoom-out-95 data-[state=open]:pktw-zoom-in-95 data-[state=closed]:pktw-slide-out-to-left-1/2 data-[state=closed]:pktw-slide-out-to-top-[48%] data-[state=open]:pktw-slide-in-from-left-1/2 data-[state=open]:pktw-slide-in-from-top-[48%] sm:pktw-rounded-lg',
+				'pktw-fixed pktw-left-[50%] pktw-top-[50%] pktw-z-50 pktw-grid pktw-w-full pktw-max-w-lg pktw-translate-x-[-50%] pktw-translate-y-[-50%] pktw-gap-4 pktw-border pktw-bg-background pktw-p-6 pktw-shadow-xl pktw-duration-300 pktw-transition-all data-[state=open]:pktw-animate-in data-[state=closed]:pktw-animate-out data-[state=closed]:pktw-fade-out-0 data-[state=open]:pktw-fade-in-0 data-[state=closed]:pktw-zoom-out-95 data-[state=open]:pktw-zoom-in-95 data-[state=closed]:pktw-slide-out-to-left-1/2 data-[state=closed]:pktw-slide-out-to-top-[48%] data-[state=open]:pktw-slide-in-from-left-1/2 data-[state=open]:pktw-slide-in-from-top-[48%] sm:pktw-rounded-xl',
 				className
 			)}
 			{...props}
