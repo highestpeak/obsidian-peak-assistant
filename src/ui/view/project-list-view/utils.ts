@@ -1,8 +1,8 @@
 import { App, Menu } from 'obsidian';
-import { ParsedConversationFile, ParsedProjectFile } from 'src/service/chat/types';
-import { AIServiceManager } from 'src/service/chat/service-manager';
-import { useProjectStore } from '../../store/projectStore';
-import { EventBus, SelectionChangedEvent } from 'src/core/eventBus';
+import { ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
+import { AIServiceManager } from '@/service/chat/service-manager';
+import { useProjectStore } from '@/ui/store/projectStore';
+import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
 import React from 'react';
 
 interface MenuItem {

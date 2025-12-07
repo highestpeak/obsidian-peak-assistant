@@ -1,20 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { App } from 'obsidian';
-import { AIServiceManager } from 'src/service/chat/service-manager';
-import { ParsedConversationFile, ParsedProjectFile } from 'src/service/chat/types';
-import { openSourceFile } from '../shared/view-utils';
-import { useProjectStore } from '../../store/projectStore';
-import { useChatViewStore } from '../../store/chatViewStore';
+import { ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
+import { openSourceFile } from '@/ui/view/shared/view-utils';
+import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatViewStore } from '../chat-view/store/chatViewStore';
 import { notifySelectionChange, hydrateProjects as hydrateProjectsFromManager, showContextMenu } from './utils';
-import { InputModal } from '../../component/shared-ui/InputModal';
-import { Button } from '../../component/shared-ui/button';
-import { IconButton } from '../../component/shared-ui/icon-button';
+import { InputModal } from '@/ui/component/shared-ui/InputModal';
+import { Button } from '@/ui/component/shared-ui/button';
+import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, MoreHorizontal } from 'lucide-react';
-import { cn } from '../../react/lib/utils';
+import { cn } from '@/ui/react/lib/utils';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 interface ProjectsSectionProps {
-	manager: AIServiceManager;
-	app: App;
 }
 
 const MAX_PROJECTS_DISPLAY = 10;
@@ -24,8 +21,6 @@ interface ProjectItemProps {
 	project: ParsedProjectFile;
 	isExpanded: boolean;
 	conversations: ParsedConversationFile[];
-	app: App;
-	manager: AIServiceManager;
 	onShowAllConversations: () => void;
 }
 
@@ -33,10 +28,9 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	project,
 	isExpanded,
 	conversations,
-	app,
-	manager,
 	onShowAllConversations,
 }) => {
+	const { app, manager } = useServiceContext();
 	// Directly access store in component
 	const {
 		projects,
@@ -307,10 +301,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 /**
  * Projects section component
  */
-export const ProjectsSection: React.FC<ProjectsSectionProps> = ({
-	manager,
-	app,
-}) => {
+export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
+	const { manager } = useServiceContext();
 	const {
 		projects,
 		expandedProjects,
@@ -436,8 +428,6 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({
 						project={project}
 						isExpanded={expandedProjects.has(project.meta.id)}
 						conversations={projectConversations.get(project.meta.id) || []}
-						app={app}
-						manager={manager}
 						onShowAllConversations={setAllConversations}
 					/>
 				))}

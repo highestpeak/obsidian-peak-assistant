@@ -3,7 +3,7 @@ import * as path from 'path';
 import { simpleGit, SimpleGit, CleanOptions } from 'simple-git';
 import moment from 'moment';
 import { isCloseAction, isFileAction, LogMetricType } from './LogMetricRegister';
-import { ActivityRecordAchieved, loadMetricEntries } from 'src/service/ActivityService';
+import { ActivityRecordAchieved, loadMetricEntries } from '@/service/ActivityService';
 
 // --------------------------------------------------------------------------------
 // date functions

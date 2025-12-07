@@ -1,26 +1,19 @@
 import React, { useEffect, useCallback } from 'react';
-import { App } from 'obsidian';
-import { AIServiceManager } from 'src/service/chat/service-manager';
 import { ProjectsSection } from './ProjectsSection';
 import { ConversationsSection } from './ConversationsSection';
-import { useProjectStore } from '../../store/projectStore';
-import { EventBus, ViewEventType, SelectionChangedEvent } from 'src/core/eventBus';
+import { useProjectStore } from '@/ui/store/projectStore';
+import { ViewEventType, SelectionChangedEvent } from '@/core/eventBus';
 import { notifySelectionChange, hydrateProjects } from './utils';
 import { RefreshCw, Minus } from 'lucide-react';
-import { IconButton } from '../../component/shared-ui/icon-button';
-
-interface ProjectListViewProps {
-	manager: AIServiceManager;
-	app: App;
-}
+import { IconButton } from '@/ui/component/shared-ui/icon-button';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import { showToast } from '@/ui/utils/toast';
 
 /**
  * Main React component for ProjectListView
  */
-export const ProjectListViewComponent: React.FC<ProjectListViewProps> = ({
-	manager,
-	app,
-}) => {
+export const ProjectListViewComponent: React.FC = () => {
+	const { app, manager, eventBus } = useServiceContext();
 	const {
 		setProjects,
 		setConversations,
@@ -107,13 +100,21 @@ export const ProjectListViewComponent: React.FC<ProjectListViewProps> = ({
 
 	// Refresh projects and conversations
 	const handleRefresh = async () => {
-		clearExpandedProjects();
-		await hydrateData();
-		// Dispatch selection changed event
-		await notifySelectionChange(app);
+		try {
+			clearExpandedProjects();
+			await hydrateData();
+			// Dispatch selection changed event
+			await notifySelectionChange(app);
+			// Show success toast (will be displayed in ChatView)
+			showToast.success('Projects and conversations refreshed', { app });
+		} catch (error) {
+			// Show error toast
+			showToast.error('Failed to refresh data', { 
+				app,
+				description: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
 	};
-
-	const eventBus = EventBus.getInstance(app);
 
 	// Subscribe to conversation and project update events
 	useEffect(() => {
@@ -162,7 +163,7 @@ export const ProjectListViewComponent: React.FC<ProjectListViewProps> = ({
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-p-0 pktw-box-border pktw-overflow-y-auto pktw-bg-background">
 			{/* Toolbar */}
-			<div className="pktw-flex pktw-flex-row pktw-items-center pktw-gap-1 pktw-pb-2 pktw-border-b pktw-border-border pktw-p-2">
+			<div className="pktw-flex pktw-flex-row pktw-items-center pktw-gap-1 pktw-border-b pktw-border-border pktw-px-2 pktw-pt-1">
 				<IconButton
 					size="lg"
 					className="pktw-shrink-0"
@@ -181,18 +182,12 @@ export const ProjectListViewComponent: React.FC<ProjectListViewProps> = ({
 				</IconButton>
 			</div>
 
-			<div className="pktw-pt-1 pktw-px-3 pktw-pb-6">
+			<div className="pktw-px-3 pktw-pb-6">
 				{/* Projects Section */}
-				<ProjectsSection
-					manager={manager}
-					app={app}
-				/>
+				<ProjectsSection />
 
 				{/* Conversations Section */}
-				<ConversationsSection
-					manager={manager}
-					app={app}
-				/>
+				<ConversationsSection />
 			</div>
 		</div>
 	);

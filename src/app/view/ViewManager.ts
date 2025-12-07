@@ -1,10 +1,10 @@
 import type MyPlugin from 'main';
-import type { AIServiceManager } from 'src/service/chat/service-manager';
-import { CHAT_VIEW_TYPE, ChatView } from 'src/ui/view/ChatView';
-import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from 'src/ui/view/ProjectListView';
-import { MESSAGE_HISTORY_VIEW_TYPE, MessageHistoryView } from 'src/ui/view/MessageHistoryView';
-import { ViewSwitchConsistentHandler } from 'src/app/view/ViewSwitchConsistentHandler';
-import { InputModal } from 'src/ui/component/InputModal';
+import type { AIServiceManager } from '@/service/chat/service-manager';
+import { CHAT_VIEW_TYPE, ChatView } from '@/ui/view/ChatView';
+import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from '@/ui/view/ProjectListView';
+import { MESSAGE_HISTORY_VIEW_TYPE, MessageHistoryView } from '@/ui/view/MessageHistoryView';
+import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
+import { InputModal } from '@/ui/component/InputModal';
 import { App, ViewCreator } from 'obsidian';
 
 /**

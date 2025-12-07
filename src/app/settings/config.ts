@@ -1,5 +1,5 @@
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from 'src/service/chat/service-manager';
-import { CommandHiddenSettings, DEFAULT_COMMAND_HIDDEN_SETTINGS } from 'src/service/CommandHiddenControlService';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/service/chat/service-manager';
+import { CommandHiddenSettings, DEFAULT_COMMAND_HIDDEN_SETTINGS } from '@/service/CommandHiddenControlService';
 
 /**
  * Shape of plugin-level persisted settings.

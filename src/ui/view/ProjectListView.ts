@@ -1,11 +1,9 @@
-import { App, IconName, ItemView, WorkspaceLeaf } from 'obsidian';
-import { AIServiceManager } from 'src/service/chat/service-manager';
-import { ParsedConversationFile, ParsedProjectFile } from 'src/service/chat/types';
-import { ReactRenderer } from '../react/ReactRenderer';
+import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
+import { AIServiceManager } from '@/service/chat/service-manager';
+import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { ProjectListViewComponent } from './project-list-view/ProjectListView';
-import { useProjectStore } from '../store/projectStore';
-import { EventBus, ViewEventType, SelectionChangedEvent } from 'src/core/eventBus';
-import React from 'react';
+import { EventBus, ViewEventType } from '@/core/eventBus';
+import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 
 export const PROJECT_LIST_VIEW_TYPE = 'peak-project-list-view';
 
@@ -56,10 +54,12 @@ export class ProjectListView extends ItemView {
 		if (!this.reactRenderer) return;
 
 		this.reactRenderer.render(
-			React.createElement(ProjectListViewComponent, {
-				manager: this.manager,
-				app: this.app,
-			})
+			createReactElementWithServices(
+				ProjectListViewComponent,
+				{},
+				this.app,
+				this.manager
+			)
 		);
 	}
 

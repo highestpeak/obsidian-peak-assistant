@@ -1,5 +1,5 @@
 import { App, ViewState, WorkspaceLeaf } from 'obsidian';
-import { CHAT_VIEW_TYPE, PROJECT_LIST_VIEW_TYPE, MESSAGE_HISTORY_VIEW_TYPE, TRACKED_VIEW_TYPES } from 'src/app/view/types';
+import { CHAT_VIEW_TYPE, PROJECT_LIST_VIEW_TYPE, MESSAGE_HISTORY_VIEW_TYPE, TRACKED_VIEW_TYPES } from '@/app/view/types';
 
 /**
  * Ensures that when in chat view, the left, center, and right panes always maintain a consistent chat-related layout

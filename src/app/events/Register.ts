@@ -1,10 +1,10 @@
 import { MarkdownView, TFile } from 'obsidian';
 import type MyPlugin from 'main';
-import { parseFrontmatter } from 'src/service/chat/storage-markdown';
-import { createIcon } from 'src/core/IconHelper';
-import { ViewManager } from '../view/ViewManager';
-import { IChatView, isChatView } from 'src/ui/view/view-interfaces';
-import { EventBus, SelectionChangedEvent } from 'src/core/eventBus';
+import { parseFrontmatter } from '@/service/chat/storage-markdown';
+import { ViewManager } from '@/app/view/ViewManager';
+import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
+import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
+import { createElement, icons } from 'lucide';
 
 /**
  * Register workspace-level reactive events
@@ -122,12 +122,18 @@ function addChatViewButton(
 		}
 	});
 
-	// Add icon using IconHelper
-	createIcon(button, 'messageCircle', {
-		size: 16,
-		strokeWidth: 2,
-		class: 'peak-icon'
-	});
+	// Add icon using Lucide directly
+	const MessageCircleIcon = icons.MessageCircle;
+	if (MessageCircleIcon) {
+		const svg = createElement(MessageCircleIcon, {
+			class: 'peak-icon',
+			width: 16,
+			height: 16,
+			stroke: 'currentColor',
+			'stroke-width': 2
+		});
+		button.appendChild(svg as unknown as Node);
+	}
 
 	// Add click handler
 	button.addEventListener('click', async () => {
@@ -162,19 +168,14 @@ function addChatViewButton(
 		const conversation = conversations.find(c => c.meta.id === conversationId);
 		
 		if (conversation) {
-			// Notify chat view to open conversation
-			const chatViews = plugin.app.workspace.getLeavesOfType('peak-chat-view');
-			chatViews.forEach(leaf => {
-				const view = leaf.view;
-				if (isChatView(view)) {
-					view.showMessagesForOneConvsation(conversation, project);
-				}
-			});
+			// Notify chat view to open conversation - directly update store
+			const { setConversation } = useChatViewStore.getState();
+			setConversation(conversation);
 
 			// Dispatch selection changed event to highlight conversation and expand project
 			eventBus.dispatch(new SelectionChangedEvent({
-				conversation: conversation,
-				project: project,
+				conversationId: conversation.meta.id,
+				projectId: project?.meta.id ?? null,
 			}));
 		}
 	});

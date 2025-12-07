@@ -1,9 +1,9 @@
 
-import type { ChatProjectMeta } from 'src/service/chat/types';
-import { ViewManager } from '../view/ViewManager';
+import type { ChatProjectMeta } from '@/service/chat/types';
+import { ViewManager } from '@/app/view/ViewManager';
 import { Command } from 'obsidian';
-import { AIServiceManager } from 'src/service/chat/service-manager';
-import { useChatViewStore } from 'src/ui/store/chatViewStore';
+import { AIServiceManager } from '@/service/chat/service-manager';
+import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 
 /**
  * Registers core commands exposed via Obsidian command palette.

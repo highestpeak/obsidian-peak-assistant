@@ -1,29 +1,24 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { App } from 'obsidian';
-import { AIServiceManager } from 'src/service/chat/service-manager';
-import { ParsedConversationFile } from 'src/service/chat/types';
-import { openSourceFile } from '../shared/view-utils';
-import { useProjectStore } from '../../store/projectStore';
-import { useChatViewStore } from '../../store/chatViewStore';
+import { ParsedConversationFile } from '@/service/chat/types';
+import { openSourceFile } from '@/ui/view/shared/view-utils';
+import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatViewStore } from '../chat-view/store/chatViewStore';
 import { notifySelectionChange, showContextMenu } from './utils';
-import { InputModal } from '../../component/shared-ui/InputModal';
-import { Button } from '../../component/shared-ui/button';
-import { IconButton } from '../../component/shared-ui/icon-button';
+import { InputModal } from '@/ui/component/shared-ui/InputModal';
+import { Button } from '@/ui/component/shared-ui/button';
+import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ChevronDown, ChevronRight, Plus, Pencil, FileText } from 'lucide-react';
-import { cn } from '../../react/lib/utils';
+import { cn } from '@/ui/react/lib/utils';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 interface ConversationsSectionProps {
-	manager: AIServiceManager;
-	app: App;
 }
 
 /**
  * Conversations section component
  */
-export const ConversationsSection: React.FC<ConversationsSectionProps> = ({
-	manager,
-	app,
-}) => {
+export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
+	const { app, manager } = useServiceContext();
 	const {
 		conversations,
 		activeConversation,

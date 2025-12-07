@@ -1,8 +1,8 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type MyPlugin from 'main';
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from 'src/service/chat/service-manager';
-import { coerceModelId } from 'src/service/chat/types-models';
-import { DEFAULT_SETTINGS, MyPluginSettings } from 'src/app/settings/config';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/service/chat/service-manager';
+import { coerceModelId } from '@/service/chat/types-models';
+import { DEFAULT_SETTINGS, MyPluginSettings } from '@/app/settings/config';
 
 /**
  * Renders plugin settings UI with multiple tabs.

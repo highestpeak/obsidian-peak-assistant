@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { cn } from '../../react/lib/utils';
+import { cn } from '@/ui/react/lib/utils';
 
 export interface IconButtonProps
 	extends React.HTMLAttributes<HTMLDivElement> {

@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import { ParsedConversationFile, ParsedProjectFile } from 'src/service/chat/types';
+import { ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
 
 /**
  * Custom events for view communication
@@ -9,6 +9,9 @@ export enum ViewEventType {
 	CONVERSATION_UPDATED = 'peak:conversation-updated',
 	PROJECT_UPDATED = 'peak:project-updated',
 	DATA_REFRESHED = 'peak:data-refreshed',
+	SCROLL_TO_MESSAGE = 'peak:scroll-to-message',
+	OPEN_LINK = 'peak:open-link',
+	SHOW_TOAST = 'peak:show-toast',
 }
 
 /**
@@ -68,6 +71,62 @@ export class ProjectUpdatedEvent extends ViewEvent {
 export class DataRefreshedEvent extends ViewEvent {
 	constructor() {
 		super(ViewEventType.DATA_REFRESHED);
+	}
+}
+
+/**
+ * Scroll to message event
+ */
+export class ScrollToMessageEvent extends ViewEvent {
+	messageId: string;
+
+	constructor(data: { messageId: string }) {
+		super(ViewEventType.SCROLL_TO_MESSAGE);
+		this.messageId = data.messageId;
+	}
+}
+
+/**
+ * Open link event
+ */
+export class OpenLinkEvent extends ViewEvent {
+	path: string;
+
+	constructor(data: { path: string }) {
+		super(ViewEventType.OPEN_LINK);
+		this.path = data.path;
+	}
+}
+
+/**
+ * Toast event for cross-instance toast display
+ */
+export class ShowToastEvent extends ViewEvent {
+	message: string | React.ReactNode;
+	toastType: 'default' | 'success' | 'error' | 'warning' | 'info';
+	description?: string | React.ReactNode;
+	duration?: number;
+	action?: {
+		label: string;
+		onClick: () => void;
+	};
+
+	constructor(data: {
+		message: string | React.ReactNode;
+		type?: 'default' | 'success' | 'error' | 'warning' | 'info';
+		description?: string | React.ReactNode;
+		duration?: number;
+		action?: {
+			label: string;
+			onClick: () => void;
+		};
+	}) {
+		super(ViewEventType.SHOW_TOAST);
+		this.message = data.message;
+		this.toastType = data.type || 'default';
+		this.description = data.description;
+		this.duration = data.duration;
+		this.action = data.action;
 	}
 }
 

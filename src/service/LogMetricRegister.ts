@@ -1,7 +1,7 @@
 import { TAbstractFile, TFile } from "obsidian";
 import * as path from "path";
-import { Callback } from "src/core/ScriptLoader";
-import { ActivityRecord, ActivityRecordType, logMetrics } from "src/service/ActivityService";
+import { Callback } from "@/core/ScriptLoader";
+import { ActivityRecord, ActivityRecordType, logMetrics } from "@/service/ActivityService";
 
 // --------------------------------------------------------------------------------
 // LogMetricType

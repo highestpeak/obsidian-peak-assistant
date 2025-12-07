@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ParsedConversationFile, ParsedProjectFile } from 'src/service/chat/types';
+import { ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
 
 interface ProjectStore {
 	// State

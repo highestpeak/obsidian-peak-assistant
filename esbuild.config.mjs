@@ -1,6 +1,12 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import alias from "esbuild-plugin-alias";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const banner =
 `/*
@@ -17,6 +23,11 @@ const context = await esbuild.context({
 	},
 	entryPoints: ["main.ts"],
 	bundle: true,
+	plugins: [
+		alias({
+			"@": path.resolve(__dirname, "src"),
+		}),
+	],
 	external: [
 		"obsidian",
 		"electron",
