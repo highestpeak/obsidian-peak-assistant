@@ -25,9 +25,9 @@ export const ResourcesModal: React.FC = () => {
 	const app = (window as any).app as App;
 	const eventBus = EventBus.getInstance(app);
 
-	if (!conversation) return null;
-
 	const resources = React.useMemo(() => {
+		if (!conversation) return [];
+		
 		const resourceMap = new Map<string, FileType>();
 		
 		for (const message of conversation.messages) {
@@ -46,6 +46,8 @@ export const ResourcesModal: React.FC = () => {
 			type,
 		}));
 	}, [conversation]);
+
+	if (!conversation) return null;
 
 	const pdfs = resources.filter((r) => r.type === 'pdf');
 	const images = resources.filter((r) => r.type === 'image');

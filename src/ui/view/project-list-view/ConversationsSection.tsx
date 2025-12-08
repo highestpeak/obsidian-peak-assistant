@@ -5,7 +5,6 @@ import { useProjectStore } from '@/ui/store/projectStore';
 import { useChatViewStore } from '../chat-view/store/chatViewStore';
 import { notifySelectionChange, showContextMenu } from './utils';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
-import { Button } from '@/ui/component/shared-ui/button';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ChevronDown, ChevronRight, Plus, Pencil, FileText } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';

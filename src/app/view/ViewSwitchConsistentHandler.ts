@@ -19,13 +19,25 @@ export class ViewSwitchConsistentHandler {
 	private readonly app: App;
 
 	/**
+	 * Gets the first empty leaf with title 'New tab' if exists, otherwise returns null.
+	 */
+	private getNewTabLeaf(): WorkspaceLeaf | null {
+		const emptyLeaves = this.app.workspace.getLeavesOfType('empty');
+		const newTabLeaf = emptyLeaves.find(leaf => {
+			const state = leaf.getViewState() as any;
+			return state.title === 'New tab';
+		});
+		return newTabLeaf ?? null;
+	}
+
+	/**
 	 * Mirrors Obsidian active leaf changes to toggle layouts automatically.
 	 */
 	handleActiveLeafChange(leaf?: WorkspaceLeaf | null): void {
 		const viewType = leaf?.view?.getViewType();
 		if (viewType && TRACKED_VIEW_TYPES.has(viewType)) {
 			void this.activateChatView();
-		} else {
+		} else if (viewType !== 'empty') {
 			void this.activeDocumentView();
 		}
 	}
@@ -105,6 +117,12 @@ export class ViewSwitchConsistentHandler {
 					// Use the first existing markdown leaf
 					centerLeaf = existingMarkdownLeaves[0];
 				}
+
+			}
+
+			// If no markdown leaf, try to use new tab leaf
+			if (!centerLeaf) {
+				centerLeaf = this.getNewTabLeaf();
 			}
 
 			// If no markdown leaf exists, create a new one
@@ -128,4 +146,5 @@ export class ViewSwitchConsistentHandler {
 	}
 
 }
+
 
