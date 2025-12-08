@@ -4,6 +4,7 @@ import {
 	LLMProviderService,
 	LLMProvider,
 	ProviderModelInfo,
+	ProviderMetadata,
 } from './types';
 import { AIStreamEvent } from './types-events';
 import { trimTrailingSlash } from './helpers';
@@ -11,6 +12,7 @@ import { AIModelId } from '../types-models';
 import { invokeOpenAICompatibleBlock, invokeOpenAICompatibleStream } from './openai-compatible';
 
 const DEFAULT_OLLAMA_TIMEOUT_MS = 60000;
+const OLLAMA_DEFAULT_BASE = 'http://localhost:11434';
 
 /**
  * Normalize Ollama baseUrl to ensure it has /v1 path
@@ -107,6 +109,14 @@ export class OllamaChatService implements LLMProviderService {
 			{ id: 'starling-lm' as AIModelId, displayName: 'Starling LM' },
 			{ id: 'qwen' as AIModelId, displayName: 'Qwen' },
 		];
+	}
+
+	getProviderMetadata(): ProviderMetadata {
+		return {
+			id: 'ollama',
+			name: 'Ollama',
+			defaultBaseUrl: OLLAMA_DEFAULT_BASE,
+		};
 	}
 }
 

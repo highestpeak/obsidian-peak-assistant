@@ -6,6 +6,7 @@ import {
 	LLMProviderService,
 	LLMProvider,
 	ProviderModelInfo,
+	ProviderMetadata,
 } from './types';
 import { AIStreamEvent } from './types-events';
 import { safeReadError, trimTrailingSlash } from './helpers';
@@ -13,6 +14,7 @@ import { AIModelId } from '../types-models';
 
 const DEFAULT_CLAUDE_TIMEOUT_MS = 60000;
 const DEFAULT_CLAUDE_MAX_OUTPUT_TOKENS = 1024;
+const CLAUDE_DEFAULT_BASE = 'https://api.anthropic.com/v1';
 
 type AnthropicTextContent = {
 	type: 'text';
@@ -124,7 +126,7 @@ export async function invokeClaudeBlock(params: {
 	}
 	const { body } = buildClaudePayload({ request: params.request, maxOutputTokens: params.maxOutputTokens });
 
-	const url = `${trimTrailingSlash(params.baseUrl ?? 'https://api.anthropic.com/v1')}/messages`;
+	const url = `${trimTrailingSlash(params.baseUrl ?? CLAUDE_DEFAULT_BASE)}/messages`;
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), params.timeoutMs);
 
@@ -174,7 +176,7 @@ export async function* invokeClaudeStream(params: {
 	const { body } = buildClaudePayload({ request: params.request, maxOutputTokens: params.maxOutputTokens });
 	body.stream = true;
 
-	const url = `${trimTrailingSlash(params.baseUrl ?? 'https://api.anthropic.com/v1')}/messages`;
+	const url = `${trimTrailingSlash(params.baseUrl ?? CLAUDE_DEFAULT_BASE)}/messages`;
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), params.timeoutMs);
 
@@ -387,6 +389,14 @@ export class ClaudeChatService implements LLMProviderService {
 			{ id: 'claude-3-sonnet-20240229' as AIModelId, displayName: 'Claude 3 Sonnet' },
 			{ id: 'claude-3-haiku-20240307' as AIModelId, displayName: 'Claude 3 Haiku' },
 		];
+	}
+
+	getProviderMetadata(): ProviderMetadata {
+		return {
+			id: 'claude',
+			name: 'Claude',
+			defaultBaseUrl: CLAUDE_DEFAULT_BASE,
+		};
 	}
 }
 

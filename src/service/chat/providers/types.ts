@@ -59,6 +59,12 @@ export interface ProviderModelInfo {
 	displayName: string;
 }
 
+export interface ProviderMetadata {
+	id: LLMProvider;
+	name: string;
+	defaultBaseUrl: string;
+}
+
 export interface LLMProviderService {
 	blockChat(request: LLMRequest): Promise<LLMResponse>;
 	streamChat?(request: LLMRequest): AsyncGenerator<AIStreamEvent>;
@@ -71,4 +77,8 @@ export interface LLMProviderService {
 	 * Returns empty array if models cannot be fetched or provider doesn't support listing
 	 */
 	getAvailableModels?(): Promise<ProviderModelInfo[]>;
+	/**
+	 * Get provider metadata (name and default baseUrl)
+	 */
+	getProviderMetadata?(): ProviderMetadata;
 }

@@ -4,6 +4,7 @@ import {
 	LLMProviderService,
 	LLMProvider,
 	ProviderModelInfo,
+	ProviderMetadata,
 } from './types';
 import { AIStreamEvent } from './types-events';
 import { AIModelId } from '../types-models';
@@ -122,6 +123,14 @@ export class OpenRouterChatService implements LLMProviderService {
 			{ id: 'meta-llama/llama-3.1-70b-instruct' as AIModelId, displayName: 'Llama 3.1 70B' },
 			{ id: 'meta-llama/llama-3.1-8b-instruct' as AIModelId, displayName: 'Llama 3.1 8B' },
 		];
+	}
+
+	getProviderMetadata(): ProviderMetadata {
+		return {
+			id: 'openrouter',
+			name: 'OpenRouter',
+			defaultBaseUrl: OPENROUTER_DEFAULT_BASE,
+		};
 	}
 }
 

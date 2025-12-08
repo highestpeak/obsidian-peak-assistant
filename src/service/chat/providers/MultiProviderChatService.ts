@@ -1,4 +1,4 @@
-import { LLMProviderService, LLMProvider, LLMProviderConfig, ProviderModelInfo } from './types';
+import { LLMProviderService, LLMProvider, LLMProviderConfig, ProviderModelInfo, ProviderMetadata } from './types';
 import { ModelConfig } from '../types-models';
 import { LLMRequest } from './types';
 import { AIStreamEvent } from './types-events';
@@ -234,5 +234,41 @@ export class MultiProviderChatService implements LLMProviderService {
 		}
 
 		return allModels;
+	}
+
+	/**
+	 * Get metadata for all available providers
+	 */
+	getAllProviderMetadata(): ProviderMetadata[] {
+		const metadata: ProviderMetadata[] = [];
+		const processedProviders = new Set<LLMProvider>();
+
+		// Get metadata from initialized services
+		for (const [provider, service] of this.providerServiceMap.entries()) {
+			if (processedProviders.has(provider)) continue;
+			processedProviders.add(provider);
+
+			if (service.getProviderMetadata) {
+				metadata.push(service.getProviderMetadata());
+			}
+		}
+
+		// Also include providers that might not be initialized yet
+		// by creating temporary service instances to get their metadata
+		const allProviders: LLMProvider[] = ['openai', 'claude', 'gemini', 'openrouter', 'ollama'];
+		for (const provider of allProviders) {
+			if (processedProviders.has(provider)) continue;
+
+			try {
+				const tempService = this.createProviderService(provider, { apiKey: '', baseUrl: '' });
+				if (tempService && tempService.getProviderMetadata) {
+					metadata.push(tempService.getProviderMetadata());
+				}
+			} catch (error) {
+				// Ignore errors when creating temp service for metadata
+			}
+		}
+
+		return metadata;
 	}
 }

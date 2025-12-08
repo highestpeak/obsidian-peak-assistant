@@ -4,6 +4,7 @@ import {
 	LLMProviderService,
 	LLMProvider,
 	ProviderModelInfo,
+	ProviderMetadata,
 } from './types';
 import { AIStreamEvent } from './types-events';
 import { AIModelId } from '../types-models';
@@ -90,5 +91,13 @@ export class OpenAIChatService implements LLMProviderService {
 			{ id: 'o1-mini' as AIModelId, displayName: 'O1 Mini' },
 			{ id: 'o1-preview' as AIModelId, displayName: 'O1 Preview' },
 		];
+	}
+
+	getProviderMetadata(): ProviderMetadata {
+		return {
+			id: 'openai',
+			name: 'OpenAI',
+			defaultBaseUrl: OPENAI_DEFAULT_BASE,
+		};
 	}
 }

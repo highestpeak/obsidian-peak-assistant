@@ -7,6 +7,7 @@ import {
 	LLMProviderService,
 	LLMProvider,
 	ProviderModelInfo,
+	ProviderMetadata,
 } from './types';
 import { AIStreamEvent } from './types-events';
 import { trimTrailingSlash, safeReadError } from './helpers';
@@ -365,6 +366,14 @@ export class GeminiChatService implements LLMProviderService {
 			{ id: 'gemini-1.5-flash' as AIModelId, displayName: 'Gemini 1.5 Flash' },
 			{ id: 'gemini-1.0-pro' as AIModelId, displayName: 'Gemini 1.0 Pro' },
 		];
+	}
+
+	getProviderMetadata(): ProviderMetadata {
+		return {
+			id: 'gemini',
+			name: 'Gemini',
+			defaultBaseUrl: GEMINI_DEFAULT_BASE,
+		};
 	}
 }
 

@@ -3,6 +3,9 @@ import type MyPlugin from 'main';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/service/chat/service-manager';
 import { coerceModelId } from '@/service/chat/types-models';
 import { DEFAULT_SETTINGS, MyPluginSettings } from '@/app/settings/config';
+import React from 'react';
+import { ReactRenderer } from '@/ui/react/ReactRenderer';
+import { ProviderSettingsComponent } from '@/ui/view/settings/ProviderSettingsComponent';
 
 /**
  * Renders plugin settings UI with multiple tabs.
@@ -10,6 +13,7 @@ import { DEFAULT_SETTINGS, MyPluginSettings } from '@/app/settings/config';
 export class MySettings extends PluginSettingTab {
 	private activeTab = 'general';
 	private readonly pluginRef: MyPlugin;
+	private providerSettingsRenderer: ReactRenderer | null = null;
 
 	constructor(app: App, plugin: MyPlugin) {
 		super(app, plugin);
@@ -22,6 +26,12 @@ export class MySettings extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
+
+		// Clean up React renderer when switching tabs or re-rendering
+		if (this.providerSettingsRenderer) {
+			this.providerSettingsRenderer.unmount();
+			this.providerSettingsRenderer = null;
+		}
 
 		this.renderTabsNavigation(containerEl);
 		const contentArea = containerEl.createDiv({ cls: 'peak-settings-content' });
@@ -208,168 +218,53 @@ export class MySettings extends PluginSettingTab {
 	}
 
 	/**
-	 * Renders the main Provider Settings collapsible group containing Default Model Id and all provider configs.
+	 * Renders the main Provider Settings collapsible group using React component.
 	 */
 	private renderProviderSettingsGroup(container: HTMLElement): void {
-		const models = this.pluginRef.settings.ai.models || [];
-		const currentModelId = this.pluginRef.settings.ai.defaultModelId || '';
-
-		// Create main collapsible group
-		const mainGroup = container.createDiv({ cls: 'peak-provider-settings-group' });
-		const mainHeader = mainGroup.createDiv({ cls: 'peak-provider-settings-header' });
-		
-		// Collapse/expand icon
-		const collapseIcon = mainHeader.createSpan({ cls: 'peak-provider-settings-icon', text: '▶' });
-		mainHeader.createSpan({ cls: 'peak-provider-settings-title', text: 'Provider Settings' });
-		
-		// Content container (collapsible, default collapsed)
-		const mainContent = mainGroup.createDiv({ cls: 'peak-provider-settings-content is-collapsed' });
-		let isMainCollapsed = true;
-
-		const toggleMainCollapse = () => {
-			isMainCollapsed = !isMainCollapsed;
-			if (isMainCollapsed) {
-				mainContent.classList.add('is-collapsed');
-				collapseIcon.textContent = '▶';
-			} else {
-				mainContent.classList.remove('is-collapsed');
-				collapseIcon.textContent = '▼';
-			}
-		};
-
-		mainHeader.addEventListener('click', toggleMainCollapse);
-		mainHeader.style.cursor = 'pointer';
-
-		// Default Model Id inside Provider Settings
-		new Setting(mainContent)
-			.setName('Default Model Id')
-			.setDesc('Model used for new conversations')
-			.addDropdown((dropdown) => {
-				// Add all models from the list
-				if (models.length > 0) {
-					models.forEach((model) => {
-						dropdown.addOption(model.id, model.displayName || model.id);
-					});
-				} else {
-					// If no models, add common default models
-					dropdown.addOption('gpt-4.1-mini', 'GPT-4.1 Mini');
-					dropdown.addOption('gpt-4o', 'GPT-4o');
-					dropdown.addOption('claude-3-5-sonnet-20240620', 'Claude 3.5 Sonnet');
-					dropdown.addOption('gemini-1.5-pro', 'Gemini 1.5 Pro');
-				}
-				// If current model is not in list, add it
-				if (currentModelId && !models.some(m => m.id === currentModelId)) {
-					dropdown.addOption(currentModelId, currentModelId);
-				}
-				dropdown.setValue(currentModelId || (models.length > 0 ? models[0].id : 'gpt-4.1-mini'));
-				dropdown.onChange(async (value) => {
-					this.pluginRef.settings.ai.defaultModelId = coerceModelId(value);
-					this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
-					this.pluginRef.aiManager?.refreshDefaultServices();
-					await this.pluginRef.aiManager?.init();
-					await this.pluginRef.saveSettings();
-				});
-			});
-
-		// Group providers from models
-		const providerMap = new Map<string, string[]>();
-		models.forEach((model) => {
-			const provider = model.provider || 'other';
-			if (!providerMap.has(provider)) {
-				providerMap.set(provider, []);
-			}
-			providerMap.get(provider)!.push(model.id);
-		});
-
-		// Also include providers that have configs but no models
-		const allProviders = new Set<string>();
-		providerMap.forEach((_, provider) => allProviders.add(provider));
-		Object.keys(this.pluginRef.settings.ai.llmProviderConfigs || {}).forEach(provider => {
-			allProviders.add(provider);
-		});
-
-		// Default providers if none exist
-		if (allProviders.size === 0) {
-			['openai', 'claude', 'gemini', 'openrouter', 'other'].forEach(provider => allProviders.add(provider));
+		// Clean up previous renderer if exists
+		if (this.providerSettingsRenderer) {
+			this.providerSettingsRenderer.unmount();
+			this.providerSettingsRenderer = null;
 		}
 
-		// Render each provider group
-		Array.from(allProviders).sort().forEach((provider) => {
-			this.renderProviderGroup(mainContent, provider);
-		});
-	}
+		// Create container for React component
+		const reactContainer = container.createDiv({ cls: 'peak-provider-settings-react-container' });
 
-	/**
-	 * Renders a collapsible provider group with API Key and Base URL settings.
-	 */
-	private renderProviderGroup(container: HTMLElement, provider: string): void {
-		const providerConfig = this.pluginRef.settings.ai.llmProviderConfigs[provider] || { apiKey: '', baseUrl: '' };
-		const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+		// Create React renderer
+		this.providerSettingsRenderer = new ReactRenderer(reactContainer);
 
-		// Create collapsible group
-		const groupContainer = container.createDiv({ cls: 'peak-provider-group' });
-		const groupHeader = groupContainer.createDiv({ cls: 'peak-provider-group-header' });
-		
-		// Collapse/expand icon
-		const collapseIcon = groupHeader.createSpan({ cls: 'peak-provider-group-icon', text: '▶' });
-		groupHeader.createSpan({ cls: 'peak-provider-group-title', text: providerName });
-		
-		// Content container (collapsible, default collapsed)
-		const groupContent = groupContainer.createDiv({ cls: 'peak-provider-group-content is-collapsed' });
-		let isCollapsed = true;
+		// Handle settings updates
+		const handleUpdate = async (updates: Partial<AIServiceSettings>) => {
+			// Merge updates into current settings
+			this.pluginRef.settings.ai = {
+				...this.pluginRef.settings.ai,
+				...updates,
+			};
 
-		const toggleCollapse = () => {
-			isCollapsed = !isCollapsed;
-			if (isCollapsed) {
-				groupContent.classList.add('is-collapsed');
-				collapseIcon.textContent = '▶';
-			} else {
-				groupContent.classList.remove('is-collapsed');
-				collapseIcon.textContent = '▼';
+			// Update AI manager
+			this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
+			this.pluginRef.aiManager?.refreshDefaultServices();
+			await this.pluginRef.aiManager?.init();
+			await this.pluginRef.saveSettings();
+
+			// Re-render React component with updated settings
+			if (this.providerSettingsRenderer) {
+				this.providerSettingsRenderer.render(
+					React.createElement(ProviderSettingsComponent, {
+						settings: this.pluginRef.settings.ai,
+						onUpdate: handleUpdate,
+					})
+				);
 			}
 		};
 
-		groupHeader.addEventListener('click', toggleCollapse);
-		groupHeader.style.cursor = 'pointer';
-
-		// API Key setting
-		new Setting(groupContent)
-			.setName(`${providerName} API Key`)
-			.setDesc(`API key for ${provider} provider`)
-			.addText((text) => {
-				text.setPlaceholder(`Enter ${provider} API key`);
-				text.setValue(providerConfig.apiKey || '');
-				text.inputEl.type = 'password';
-				text.onChange(async (value) => {
-					if (!this.pluginRef.settings.ai.llmProviderConfigs[provider]) {
-						this.pluginRef.settings.ai.llmProviderConfigs[provider] = { apiKey: '', baseUrl: '' };
-					}
-					this.pluginRef.settings.ai.llmProviderConfigs[provider].apiKey = value;
-					this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
-					this.pluginRef.aiManager?.refreshDefaultServices();
-					await this.pluginRef.aiManager?.init();
-					await this.pluginRef.saveSettings();
-				});
-			});
-
-		// Base URL setting
-		new Setting(groupContent)
-			.setName(`${providerName} Base URL`)
-			.setDesc(`Optional custom base URL for ${provider} (leave empty for default)`)
-			.addText((text) => {
-				text.setPlaceholder('e.g. https://api.example.com/v1');
-				text.setValue(providerConfig.baseUrl || '');
-				text.onChange(async (value) => {
-					if (!this.pluginRef.settings.ai.llmProviderConfigs[provider]) {
-						this.pluginRef.settings.ai.llmProviderConfigs[provider] = { apiKey: '', baseUrl: '' };
-					}
-					this.pluginRef.settings.ai.llmProviderConfigs[provider].baseUrl = value;
-					this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
-					this.pluginRef.aiManager?.refreshDefaultServices();
-					await this.pluginRef.aiManager?.init();
-					await this.pluginRef.saveSettings();
-				});
-			});
+		// Render React component
+		this.providerSettingsRenderer.render(
+			React.createElement(ProviderSettingsComponent, {
+				settings: this.pluginRef.settings.ai,
+				onUpdate: handleUpdate,
+			})
+		);
 	}
 
 	/**
