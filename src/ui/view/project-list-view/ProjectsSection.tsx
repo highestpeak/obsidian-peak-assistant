@@ -21,14 +21,12 @@ interface ProjectItemProps {
 	project: ParsedProjectFile;
 	isExpanded: boolean;
 	conversations: ParsedConversationFile[];
-	onShowAllConversations: () => void;
 }
 
 const ProjectItem: React.FC<ProjectItemProps> = ({
 	project,
 	isExpanded,
 	conversations,
-	onShowAllConversations,
 }) => {
 	const { app, manager } = useServiceContext();
 	// Directly access store in component
@@ -42,7 +40,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		updateProject,
 		updateConversation,
 	} = useProjectStore();
-	const { setProjectOverview, setPendingConversation } = useChatViewStore();
+	const { setProjectOverview, setProjectConversationsList, setPendingConversation } = useChatViewStore();
 
 	const conversationsToShow = conversations.slice(0, MAX_CONVERSATIONS_DISPLAY);
 	const hasMoreConversations = conversations.length > MAX_CONVERSATIONS_DISPLAY;
@@ -70,7 +68,6 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	};
 
 	const handleConversationClick = async (conversation: ParsedConversationFile) => {
-		console.log('handleConversationClick', project, conversation);
 		// Don't set state here, let notifySelectionChange handle it
 		// This ensures the state is set correctly and consistently
 		await notifySelectionChange(app, conversation);
@@ -273,7 +270,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 						className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-mx-6 pktw-my-1 pktw-rounded-md pktw-text-muted-foreground pktw-text-xs pktw-transition-all pktw-cursor-pointer hover:pktw-bg-muted hover:pktw-text-foreground"
 						onClick={(e) => {
 							e.stopPropagation();
-							onShowAllConversations();
+							// Show all conversations for this project in list view
+							setProjectConversationsList(project);
 						}}
 					>
 						<MoreHorizontal className="pktw-w-3.5 pktw-h-3.5" />
@@ -309,7 +307,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 		isProjectsCollapsed,
 		toggleProjectsCollapsed,
 	} = useProjectStore();
-	const { setAllProjects, setAllConversations } = useChatViewStore();
+	const { setAllProjects } = useChatViewStore();
 
 	const [projectConversations, setProjectConversations] = useState<
 		Map<string, ParsedConversationFile[]>
@@ -428,7 +426,6 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 						project={project}
 						isExpanded={expandedProjects.has(project.meta.id)}
 						conversations={projectConversations.get(project.meta.id) || []}
-						onShowAllConversations={setAllConversations}
 					/>
 				))}
 

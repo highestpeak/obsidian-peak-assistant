@@ -9,23 +9,6 @@ import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 
 export const CHAT_VIEW_TYPE = 'peak-chat-view';
 
-/**
- * View modes for ChatView
- */
-export enum ViewMode {
-	// projects items list has max items to display. the overview of all projects need to show in a large card view in center area
-	ALL_PROJECTS = 'all-projects',
-	// conversations items list has max items to display. the overview of all conversations need to show in a large card view in center area
-	ALL_CONVERSATIONS = 'all-conversations',
-
-	// project overview with conversation list
-	PROJECT_OVERVIEW = 'project-overview',
-	// message view for a conversation within project
-	CONVERSATION_IN_PROJECT = 'conversation-in-project',
-	// message view for a conversation not in a project
-	STANDALONE_CONVERSATION = 'standalone-conversation',
-}
-
 export class ChatView extends ItemView {
 	// Views
 	private reactRenderer: ReactRenderer | null = null;

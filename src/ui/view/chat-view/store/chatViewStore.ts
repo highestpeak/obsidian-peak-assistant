@@ -1,7 +1,25 @@
 import { create } from 'zustand';
 import { ParsedProjectFile, PendingConversation, ParsedConversationFile } from '@/service/chat/types';
-import { ViewMode } from '../../ChatView';
 import { useProjectStore } from '@/ui/store/projectStore';
+
+/**
+ * View modes for ChatView
+ */
+export enum ViewMode {
+	// projects items list has max items to display. the overview of all projects need to show in a large card view in center area
+	ALL_PROJECTS = 'all-projects',
+	// conversations items list has max items to display. the overview of all conversations need to show in a large card view in center area
+	ALL_CONVERSATIONS = 'all-conversations',
+
+	// project overview with conversation list
+	PROJECT_OVERVIEW = 'project-overview',
+	// list view showing all conversations for a specific project
+	PROJECT_CONVERSATIONS_LIST = 'project-conversations-list',
+	// message view for a conversation within project
+	CONVERSATION_IN_PROJECT = 'conversation-in-project',
+	// message view for a conversation not in a project
+	STANDALONE_CONVERSATION = 'standalone-conversation',
+}
 
 interface ChatViewStore {
 	// State
@@ -13,6 +31,7 @@ interface ChatViewStore {
 
 	// Actions
 	setProjectOverview: (project: ParsedProjectFile) => void;
+	setProjectConversationsList: (project: ParsedProjectFile) => void;
 	setAllProjects: () => void;
 	setAllConversations: () => void;
 	setConversation: (conversation: ParsedConversationFile) => void;
@@ -36,6 +55,15 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 		useProjectStore.getState().setActiveConversation(null);
 		set({
 			viewMode: ViewMode.PROJECT_OVERVIEW,
+			projectForOverview: project,
+			pendingConversation: null,
+		});
+	},
+	setProjectConversationsList: (project: ParsedProjectFile) => {
+		useProjectStore.getState().setActiveProject(null);
+		useProjectStore.getState().setActiveConversation(null);
+		set({
+			viewMode: ViewMode.PROJECT_CONVERSATIONS_LIST,
 			projectForOverview: project,
 			pendingConversation: null,
 		});

@@ -34,6 +34,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 	};
 	return (
 		<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-4 pktw-w-full">
+			{/* Left side: Conversation name */}
 			<div className="pktw-m-0 pktw-flex pktw-items-center pktw-gap-2 pktw-flex-nowrap pktw-flex-1 pktw-min-w-0">
 				{activeConversation && activeProject ? (
 					<>
@@ -45,13 +46,14 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 				) : activeConversation ? (
 					<h2 className="pktw-m-0 pktw-font-medium pktw-text-foreground pktw-inline pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>{activeConversation.meta.title}</h2>
 				) : null}
+			</div>
 
-				<div className="pktw-flex-shrink-0 pktw-ml-4">
-					<LLMModelSelector />
-				</div>
+			{/* Right side: Model selector, stats, and action buttons */}
+			<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-flex-shrink-0">
+				<LLMModelSelector />
 
 				{activeConversation && (
-					<div className="pktw-flex pktw-items-center pktw-gap-4">
+					<>
 						<StatsRendererComponent />
 						
 						{/* Action buttons */}
@@ -101,7 +103,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 								<FileText className="pktw-w-4 pktw-h-4" />
 							</IconButton>
 						</div>
-					</div>
+					</>
 				)}
 			</div>
 		</div>

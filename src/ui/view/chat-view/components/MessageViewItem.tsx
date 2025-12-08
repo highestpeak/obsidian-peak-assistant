@@ -261,6 +261,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 				message.role === 'system' && "pktw-justify-center"
 			)}
 			data-message-id={message.id}
+			data-message-role={message.role}
 		>
 			<div
 				className={cn(
@@ -272,11 +273,14 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 			>
 				{message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
 				
-				<div className={cn(
-					"pktw-whitespace-pre-wrap pktw-break-words pktw-leading-[1.6] pktw-text-[15px] pktw-px-4 pktw-py-3 pktw-rounded-[18px] pktw-text-foreground pktw-shadow-sm pktw-box-border pktw-max-w-full pktw-transition-shadow pktw-duration-200 pktw-select-text pktw-cursor-text",
-					message.role === 'user' && "pktw-bg-accent pktw-text-[var(--text-on-accent)] pktw-rounded-br-[4px] pktw-shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:pktw-shadow-[0_2px_4px_rgba(0,0,0,0.12)]",
-					message.role === 'assistant' && "pktw-bg-secondary pktw-text-foreground pktw-border pktw-border-border pktw-rounded-bl-[4px] hover:pktw-shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:pktw-border-[var(--background-modifier-border-hover)]"
-				)}>
+				<div 
+					data-message-bubble
+					className={cn(
+						"pktw-whitespace-pre-wrap pktw-break-words pktw-leading-[1.6] pktw-text-[15px] pktw-px-4 pktw-py-3 pktw-rounded-[18px] pktw-shadow-sm pktw-box-border pktw-max-w-full pktw-transition-shadow pktw-duration-200 pktw-select-text pktw-cursor-text",
+						message.role === 'user' && "pktw-bg-accent pktw-text-white pktw-rounded-br-[4px] pktw-shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:pktw-shadow-[0_2px_4px_rgba(0,0,0,0.12)]",
+						message.role === 'assistant' && "pktw-bg-secondary pktw-text-foreground pktw-border pktw-border-border pktw-rounded-bl-[4px] hover:pktw-shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:pktw-border-[var(--background-modifier-border-hover)]"
+					)}
+				>
 					{isStreaming ? streamingContent : message.content}
 				</div>
 

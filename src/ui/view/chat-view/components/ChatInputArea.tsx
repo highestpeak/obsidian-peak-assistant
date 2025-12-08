@@ -323,7 +323,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	const placeholder = hasMessages ? 'Ask anything' : 'Ready when you are.';
 
 	return (
-		<div className="pktw-px-6 pktw-pt-5 pktw-pb-6 pktw-bg-primary pktw-border-t pktw-border-border pktw-flex-shrink-0 pktw-w-full pktw-box-border">
+		<div className="pktw-px-6 pktw-pt-5 pktw-pb-6 pktw-border-t pktw-border-border pktw-flex-shrink-0 pktw-w-full pktw-box-border">
 			{/* File preview container */}
 			{pendingFiles.length > 0 && (
 				<div className="pktw-flex pktw-items-center pktw-w-full pktw-mb-3">

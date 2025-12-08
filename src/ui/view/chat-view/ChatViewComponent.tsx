@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import { ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
-import { ViewMode } from '../ChatView';
+import { ViewMode } from './store/chatViewStore';
 import { AllConversationsViewComponent } from './view-AllConversations';
 import { AllProjectsViewComponent } from './view-AllProjects';
 import { ProjectOverviewViewComponent } from './view-ProjectOverview';
+import { ProjectConversationsListViewComponent } from './view-ProjectConversationsList';
 import { MessagesViewComponent } from './view-Messages';
 import { useChatViewStore } from './store/chatViewStore';
 import { ScrollToMessageEvent, ShowToastEvent, ViewEventType } from '@/core/eventBus';
@@ -98,6 +99,18 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 							requestAnimationFrame(() => {
 								eventBus.dispatch(new ScrollToMessageEvent({ messageId }));
 							});
+						}}
+					/>
+				);
+
+			case ViewMode.PROJECT_CONVERSATIONS_LIST:
+				if (!store.projectForOverview) return null;
+				const projectIdForList = store.projectForOverview.meta.id;
+				return (
+					<ProjectConversationsListViewComponent
+						projectId={projectIdForList}
+						onConversationClick={(conversation: ParsedConversationFile) => {
+							store.setConversation(conversation);
 						}}
 					/>
 				);

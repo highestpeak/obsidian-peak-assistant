@@ -29,13 +29,20 @@ export const MessagesViewComponent: React.FC = () => {
     const bodyScrollRef = useRef<HTMLDivElement>(null);
 
     // Scroll functions
+    // Use requestAnimationFrame to ensure DOM has been updated and layout is complete
+    // This is important when content is dynamically loaded or updated
     const scrollToTop = useCallback((instant: boolean = false) => {
         if (!bodyScrollRef.current) return;
+        if (instant) {
+            bodyScrollRef.current.scrollTop = 0;
+            return;
+        }
+        // Double requestAnimationFrame ensures browser has completed all rendering
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 bodyScrollRef.current?.scrollTo({
                     top: 0,
-                    behavior: instant ? 'auto' : 'smooth'
+                    behavior: 'smooth'
                 });
             });
         });
@@ -43,11 +50,18 @@ export const MessagesViewComponent: React.FC = () => {
 
     const scrollToBottom = useCallback((instant: boolean = false) => {
         if (!bodyScrollRef.current) return;
+        if (instant) {
+            bodyScrollRef.current.scrollTop = bodyScrollRef.current.scrollHeight;
+            return;
+        }
+        // Double requestAnimationFrame ensures browser has completed all rendering
+        // This is especially important for scrollHeight calculation when content is dynamic
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                bodyScrollRef.current?.scrollTo({
+                if (!bodyScrollRef.current) return;
+                bodyScrollRef.current.scrollTo({
                     top: bodyScrollRef.current.scrollHeight,
-                    behavior: instant ? 'auto' : 'smooth'
+                    behavior: 'smooth'
                 });
             });
         });
@@ -58,10 +72,28 @@ export const MessagesViewComponent: React.FC = () => {
         const messageEl = bodyContainerRef.current.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement;
         if (messageEl) {
             messageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            messageEl.classList.add('pktw-shadow-[0_0_0_2px_var(--interactive-accent)]');
-            setTimeout(() => {
-                messageEl.classList.remove('pktw-shadow-[0_0_0_2px_var(--interactive-accent)]');
-            }, 2000);
+            // Wait for scroll and DOM update, then apply highlight
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    // Find the message bubble within the message container
+                    const messageBubble = messageEl.querySelector('[data-message-bubble]') as HTMLElement;
+                    if (messageBubble) {
+                        // Determine highlight color based on message role
+                        const messageRole = messageEl.getAttribute('data-message-role');
+                        const isUserMessage = messageRole === 'user';
+                        
+                        // User messages use red outline, assistant messages use accent color
+                        const outlineClasses = isUserMessage
+                            ? ['pktw-outline', 'pktw-outline-2', 'pktw-outline-red-500', 'pktw-outline-offset-0']
+                            : ['pktw-outline', 'pktw-outline-2', 'pktw-outline-[var(--interactive-accent)]', 'pktw-outline-offset-0'];
+                        
+                        messageBubble.classList.add(...outlineClasses);
+                        setTimeout(() => {
+                            messageBubble.classList.remove(...outlineClasses);
+                        }, 800);
+                    }
+                });
+            });
             return;
         }
 
@@ -162,17 +194,21 @@ export const MessagesViewComponent: React.FC = () => {
     }, [activeConversation, streamingMessageId, streamingContent]);
 
     return (
-        <div className="pktw-flex pktw-flex-col pktw-h-full pktw-bg-primary pktw-relative pktw-overflow-hidden">
+        <div className="pktw-flex pktw-flex-col pktw-h-full pktw-relative pktw-overflow-hidden">
             {/* Header */}
-            <div className="pktw-px-6 pktw-py-4 pktw-border-b pktw-border-border pktw-bg-primary pktw-flex-shrink-0">
+            <div className="pktw-px-6 pktw-py-4 pktw-border-b pktw-border-border pktw-flex-shrink-0">
                 <MessageHeader
-                    onScrollToTop={scrollToTop}
-                    onScrollToBottom={scrollToBottom}
+                    onScrollToTop={() => scrollToTop(false)}
+                    onScrollToBottom={() => scrollToBottom(false)}
                 />
             </div>
 
             {/* Body - Messages List */}
-            <div className="pktw-flex-1 pktw-overflow-y-auto pktw-overflow-x-hidden pktw-bg-primary pktw-relative pktw-min-h-0 pktw-w-full" ref={bodyScrollRef}>
+            <div 
+                className="pktw-flex-1 pktw-overflow-y-auto pktw-overflow-x-hidden pktw-relative pktw-min-h-0 pktw-w-full" 
+                ref={bodyScrollRef}
+                style={{ scrollBehavior: 'smooth' }}
+            >
                 <div className="pktw-w-full">
                     <div
                         ref={bodyContainerRef}
