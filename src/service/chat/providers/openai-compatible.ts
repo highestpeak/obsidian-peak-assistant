@@ -223,15 +223,25 @@ export async function* invokeOpenAICompatibleStream(params: InvokeOpenAICompatib
 		if (params.apiKey) {
 			headers['Authorization'] = `Bearer ${params.apiKey}`;
 		}
+		const requestBody = {
+			model: params.request.model,
+			stream: true,
+			messages: mapMessagesToOpenAI(params.request.messages),
+		};
+		
+		// Debug: Log the actual request being sent to the API
+		console.log('[OpenAICompatible] Streaming request:', {
+			url,
+			model: params.request.model,
+			messagesCount: requestBody.messages.length,
+			messages: requestBody.messages,
+		});
+		
 		const response = await fetch(url, {
 			method: 'POST',
 			signal: controller.signal,
 			headers,
-			body: JSON.stringify({
-				model: params.request.model,
-				stream: true,
-				messages: mapMessagesToOpenAI(params.request.messages),
-			}),
+			body: JSON.stringify(requestBody),
 		});
 
 		if (!response.ok) {
@@ -275,6 +285,8 @@ export async function* invokeOpenAICompatibleStream(params: InvokeOpenAICompatib
 						const deltaRaw = parsed.choices?.[0]?.delta?.content;
 						const deltaText = extractOpenAIMessageContent(deltaRaw);
 						if (deltaText) {
+							// Debug: Log received delta
+							console.log('[OpenAICompatible] Received delta:', deltaText);
 							yield {
 								type: 'delta',
 								text: deltaText,

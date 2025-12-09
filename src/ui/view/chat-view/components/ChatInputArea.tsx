@@ -31,7 +31,6 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	onScrollToBottom,
 }) => {
 	const { app, manager, eventBus } = useServiceContext();
-	const { startStreaming, appendStreamingDelta, completeStreaming, errorStreaming } = useMessageStore();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 	const activeProject = useProjectStore((state) => state.activeProject);
 	const pendingConversation = useChatViewStore((state) => state.pendingConversation);
@@ -44,39 +43,34 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const inputContainerRef = useRef<HTMLDivElement>(null);
 
-	// Auto-resize textarea
-	useEffect(() => {
+	/**
+	 * Update textarea height based on content
+	 */
+	const updateTextareaHeight = useCallback((value: string) => {
 		if (!textareaRef.current) return;
 
 		const textarea = textareaRef.current;
 		const singleLineHeight = 22.5;
 
-		const updateHeight = () => {
-			if (!textarea.value || textarea.value.trim() === '') {
-				setTextareaHeight(singleLineHeight);
-			} else {
-				textarea.style.height = 'auto';
-				const newHeight = Math.min(textarea.scrollHeight, 200);
-				setTextareaHeight(Math.max(newHeight, singleLineHeight));
-			}
-		};
-
-		textarea.addEventListener('input', updateHeight);
-		updateHeight();
-
-		return () => {
-			textarea.removeEventListener('input', updateHeight);
-		};
+		if (!value || value.trim() === '') {
+			setTextareaHeight(singleLineHeight);
+		} else {
+			textarea.style.height = 'auto';
+			const newHeight = Math.min(textarea.scrollHeight, 200);
+			setTextareaHeight(Math.max(newHeight, singleLineHeight));
+		}
 	}, []);
 
-	// Focus textarea on mount
+	// Clear input and focus textarea when conversation changes
 	useEffect(() => {
+		setInputValue('');
+		setTextareaHeight(22.5);
 		if (textareaRef.current) {
 			setTimeout(() => {
 				textareaRef.current?.focus();
 			}, 100);
 		}
-	}, [activeConversation]);
+	}, [activeConversation?.meta.id]);
 
 	// Handle keyboard shortcuts (Cmd/Ctrl+K to focus input)
 	useEffect(() => {
@@ -160,20 +154,30 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	}, []);
 
 	const handleSend = useCallback(async () => {
-		if (!inputValue.trim() && pendingFiles.length === 0) return;
+		// Get current values to avoid closure issues
+		const currentInputValue = inputValue;
+		const currentPendingFiles = [...pendingFiles];
+		const currentActiveConversation = activeConversation;
+		const currentActiveProject = activeProject;
+		const currentPendingConversation = pendingConversation;
+
+		// Validate input
+		if (!currentInputValue.trim() && currentPendingFiles.length === 0) return;
 		if (isSending) return;
 
 		setIsSending(true);
+
+		// Get store methods directly to avoid dependency issues
+		const messageStore = useMessageStore.getState();
+
 		try {
 			// Create conversation if needed
-			let conversation = activeConversation;
-			let isNewConversation = false;
-			if (!conversation && pendingConversation) {
+			let conversation = currentActiveConversation;
+			if (!conversation && currentPendingConversation) {
 				conversation = await manager.createConversation({
-					title: pendingConversation.title,
-					project: pendingConversation.project?.meta ?? null,
+					title: currentPendingConversation.title,
+					project: currentPendingConversation.project?.meta ?? null,
 				});
-				isNewConversation = true;
 				// Add new conversation to projectStore
 				useProjectStore.getState().updateConversation(conversation);
 				// Dispatch event to notify listeners
@@ -185,10 +189,15 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				return;
 			}
 
+			// Clear input after conversation is ready (better UX)
+			setInputValue('');
+			setTextareaHeight(22.5);
+			setPendingFiles([]);
+
 			// Upload files if any
 			let uploadedPaths: string[] = [];
-			if (pendingFiles.length > 0) {
-				const files = pendingFiles.map(item => item.file);
+			if (currentPendingFiles.length > 0) {
+				const files = currentPendingFiles.map(item => item.file);
 				uploadedPaths = await uploadFilesToVault(app, files, manager.getSettings().uploadFolder);
 			}
 
@@ -198,7 +207,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 			const tempUserMessage: ChatMessage = {
 				id: generateUuidWithoutHyphens(),
 				role: 'user',
-				content: inputValue,
+				content: currentInputValue,
 				model: modelId,
 				provider: provider,
 				createdAtTimestamp: Date.now(),
@@ -218,13 +227,13 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 
 			// Create assistant message ID for streaming
 			const assistantMessageId = generateUuidWithoutHyphens();
-			startStreaming(assistantMessageId, 'assistant');
+			messageStore.startStreaming(assistantMessageId, 'assistant');
 
 			// Stream chat
 			const stream = manager.streamChat({
 				conversation: conversation,
-				project: activeProject,
-				userContent: inputValue,
+				project: currentActiveProject,
+				userContent: currentInputValue,
 				autoSave: true,
 			});
 
@@ -234,12 +243,12 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 			try {
 				for await (const event of stream) {
 					if (event.type === 'delta') {
-						appendStreamingDelta(event.text);
+						messageStore.appendStreamingDelta(event.text);
 						onScrollToBottom?.();
 					} else if (event.type === 'complete') {
 						if (event.message) {
 							finalMessage = event.message;
-							completeStreaming(event.message);
+							messageStore.completeStreaming(event.message);
 						}
 						if (event.conversation) {
 							finalConversation = event.conversation;
@@ -247,18 +256,18 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 						onScrollToBottom?.();
 					} else if (event.type === 'error') {
 						console.error('Streaming error:', event.error);
-						errorStreaming();
+						messageStore.errorStreaming();
 						throw event.error;
 					}
 				}
 			} catch (error) {
-				errorStreaming();
+				messageStore.errorStreaming();
 				throw error;
 			}
 
 			// Get final conversation
 			if (!finalConversation) {
-				const allConversations = await manager.listConversations(activeProject?.meta);
+				const allConversations = await manager.listConversations(currentActiveProject?.meta);
 				finalConversation = allConversations.find(c => c.meta.id === conversation.meta.id) || conversation;
 			}
 
@@ -280,7 +289,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 
 					finalConversation = await manager.updateConversationTitle({
 						conversation: finalConversation,
-						project: activeProject,
+						project: currentActiveProject,
 						title: generatedName,
 					});
 				} catch (error) {
@@ -295,15 +304,14 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				// Dispatch event to notify listeners (e.g., ProjectListView)
 				eventBus.dispatch(new ConversationUpdatedEvent({ conversation: finalConversation }));
 			}
-
-			// Clear state
-			setPendingFiles([]);
-			setInputValue('');
-			setTextareaHeight(22.5);
+		} catch (error) {
+			console.error('Error in handleSend:', error);
+			// Error is already handled by errorStreaming, no need to restore input
+			// User message is already displayed, so input should remain cleared
 		} finally {
 			setIsSending(false);
 		}
-	}, [inputValue, pendingFiles, activeConversation, activeProject, pendingConversation, manager, eventBus, startStreaming, appendStreamingDelta, completeStreaming, errorStreaming, onScrollToBottom, isSending]);
+	}, [inputValue, pendingFiles, activeConversation, activeProject, pendingConversation, manager, eventBus, onScrollToBottom, isSending]);
 
 	const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
 		if (e.key === 'Enter' && !e.shiftKey) {
@@ -442,7 +450,14 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 					<textarea
 						ref={textareaRef}
 						value={inputValue}
-						onChange={(e) => setInputValue(e.target.value)}
+						onChange={(e) => {
+							const newValue = e.target.value;
+							setInputValue(newValue);
+							// Update height immediately after state update
+							requestAnimationFrame(() => {
+								updateTextareaHeight(newValue);
+							});
+						}}
 						onKeyDown={handleKeyDown}
 						placeholder={placeholder}
 						className="pktw-w-full pktw-border-0 pktw-bg-transparent pktw-resize-none pktw-text-[15px] pktw-leading-[1.5] pktw-text-foreground pktw-p-0 pktw-outline-none pktw-font-inherit pktw-box-border pktw-caret-foreground pktw-transition-colors pktw-duration-200 placeholder:pktw-text-muted-foreground focus-visible:pktw-outline-none focus-visible:pktw-shadow-none"

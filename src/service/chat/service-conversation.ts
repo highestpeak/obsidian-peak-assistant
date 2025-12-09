@@ -441,6 +441,16 @@ export class ConversationService {
 			const userMessage = createDefaultMessage('user', params.userContent, modelId, provider, timezone);
 			const messagesWithUser = [...params.conversation.messages, userMessage];
 			const llmMessages = await self.buildLLMRequestMessages(messagesWithUser);
+			
+			// Debug: Log the request being sent
+			console.log('[StreamChat] Sending request:', {
+				provider,
+				model: modelId,
+				userContent: params.userContent,
+				messagesCount: llmMessages.length,
+				lastMessage: llmMessages[llmMessages.length - 1],
+			});
+			
 			const stream = params.streamChat({
 				provider,
 				model: modelId,
