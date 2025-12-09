@@ -1,5 +1,5 @@
 import { ChatMessage, ParsedConversationFile } from '../types';
-import { LLMUsage } from './types';
+import { LLMUsage } from '../providers/types';
 
 /**
  * Unified stream event type for both provider and application layers.

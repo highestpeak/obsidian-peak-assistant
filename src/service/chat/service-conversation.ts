@@ -1,10 +1,9 @@
 import { normalizePath, TFile, TFolder } from 'obsidian';
 import { generateUuidWithoutHyphens } from './utils';
-import { LLMProviderService, LLMProvider } from './providers/types';
+import { LLMProviderService } from './providers/types';
 import { LLMApplicationService } from './service-application';
-import { AIModelId, coerceModelId } from './types-models';
 import { ChatStorageService } from './storage';
-import { LLMMessage } from './providers/types';
+import { LLMRequestMessage } from './providers/types';
 import {
 	ChatContextWindow,
 	ChatConversationMeta,
@@ -15,13 +14,13 @@ import {
 	StarredMessageRecord,
 } from './types';
 import { PromptService, PromptTemplate } from './service-prompt';
-import { MessageContentComposer } from './utils-message-content';
-import { AIStreamEvent } from './providers/types-events';
+import { MessageContentComposer } from './messages/utils-message-content';
+import { AIStreamEvent } from './messages/types-events';
 
 /**
  * Create a basic chat message with timestamps.
  */
-export function createDefaultMessage(role: ChatMessage['role'], content: string, model: AIModelId, provider: LLMProvider, timezone: string): ChatMessage {
+export function createDefaultMessage(role: ChatMessage['role'], content: string, model: string, provider: string, timezone: string): ChatMessage {
 	const timestamp = Date.now();
 	return {
 		id: generateUuidWithoutHyphens(),
@@ -45,7 +44,7 @@ export class ConversationService {
 		private readonly application: LLMApplicationService,
 		private readonly promptService: PromptService,
 		private readonly contentComposer: MessageContentComposer,
-		private readonly defaultModelId: AIModelId
+		private readonly defaultModelId: string
 	) {}
 
 	/**
@@ -189,8 +188,8 @@ export class ConversationService {
 	async updateConversationModel(params: {
 		conversation: ParsedConversationFile;
 		project?: ParsedProjectFile | null;
-		modelId: AIModelId;
-		provider?: LLMProvider;
+		modelId: string;
+		provider?: string;
 	}): Promise<ParsedConversationFile> {
 		const { conversation, project, modelId, provider } = params;
 		// Use provided provider or keep existing provider, fallback to chat service default
@@ -333,9 +332,9 @@ export class ConversationService {
 	/**
 	 * Compose the full messages array sent to the LLM.
 	 */
-	private async buildLLMRequestMessages(messages: ChatMessage[]): Promise<LLMMessage[]> {
+	private async buildLLMRequestMessages(messages: ChatMessage[]): Promise<LLMRequestMessage[]> {
 		const systemPrompt = await this.loadConversationSystemPrompt();
-		const result: LLMMessage[] = [];
+		const result: LLMRequestMessage[] = [];
 
 		if (systemPrompt) {
 			result.push({
@@ -363,7 +362,7 @@ export class ConversationService {
 		project: ParsedProjectFile | null;
 		messages: ChatMessage[];
 		model: string;
-		provider?: LLMProvider;
+		provider?: string;
 		tokenDelta: number;
 	}): Promise<ParsedConversationFile> {
 		const context = await this.buildContextWindow(params.messages, params.model);
@@ -466,7 +465,7 @@ export class ConversationService {
 		stream: AsyncGenerator<AIStreamEvent>,
 		context: {
 			initialModel: string;
-			initialProvider: LLMProvider;
+			initialProvider: string;
 			conversation: ParsedConversationFile;
 			project: ParsedProjectFile | null;
 			messagesWithUser: ChatMessage[];

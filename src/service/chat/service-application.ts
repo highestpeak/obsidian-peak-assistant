@@ -1,9 +1,8 @@
-import { AIModelId } from './types-models';
-import { LLMProviderService, LLMProvider } from './providers/types';
+import { LLMProviderService } from './providers/types';
 
 export interface LLMApplicationService {
-	summarize(params: { provider: LLMProvider; model: AIModelId; text: string; }): Promise<string>;
-	generateTitle(params: { provider: LLMProvider; model: AIModelId; messages: Array<{ role: string; content: string }> }): Promise<string>;
+	summarize(params: { provider: string; model: string; text: string; }): Promise<string>;
+	generateTitle(params: { provider: string; model: string; messages: Array<{ role: string; content: string }> }): Promise<string>;
 	generateConvName(params: { conversation: { id: string; messages: Array<{ role: string; content: string }> } }): Promise<string>;
 }
 
@@ -12,7 +11,7 @@ export class PromptApplicationService implements LLMApplicationService {
 		private readonly chat: LLMProviderService
 	) {}
 
-	async summarize(params: { provider: LLMProvider; model: AIModelId; text: string }): Promise<string> {
+	async summarize(params: { provider: string; model: string; text: string }): Promise<string> {
 		try {
 			const completion = await this.chat.blockChat({
 				provider: params.provider,
@@ -35,7 +34,7 @@ export class PromptApplicationService implements LLMApplicationService {
 		}
 	}
 
-	async generateTitle(params: { provider: LLMProvider; model: AIModelId; messages: Array<{ role: string; content: string }> }): Promise<string> {
+	async generateTitle(params: { provider: string; model: string; messages: Array<{ role: string; content: string }> }): Promise<string> {
 		try {
 			// Build conversation context from messages (limit to first few messages for efficiency)
 			const contextMessages = params.messages.slice(0, 4).map(msg => {

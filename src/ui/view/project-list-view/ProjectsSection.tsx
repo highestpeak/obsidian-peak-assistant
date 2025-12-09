@@ -10,6 +10,7 @@ import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { ViewEventType, ConversationUpdatedEvent } from '@/core/eventBus';
 
 interface ProjectsSectionProps {
 }
@@ -300,7 +301,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
  * Projects section component
  */
 export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
-	const { manager } = useServiceContext();
+	const { manager, eventBus } = useServiceContext();
 	const {
 		projects,
 		expandedProjects,
@@ -358,6 +359,27 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 			}
 		});
 	}, [expandedProjects, projects, loadProjectConversations]);
+
+	// Listen for conversation updates and reload project conversations if needed
+	useEffect(() => {
+		const unsubscribe = eventBus.on<ConversationUpdatedEvent>(
+			ViewEventType.CONVERSATION_UPDATED,
+			async (event) => {
+				const conversation = event.conversation;
+				// If conversation belongs to a project and that project is expanded, reload its conversations
+				if (conversation.meta.projectId) {
+					const project = projects.get(conversation.meta.projectId);
+					if (project && expandedProjects.has(conversation.meta.projectId)) {
+						await loadProjectConversations(project);
+					}
+				}
+			}
+		);
+
+		return () => {
+			unsubscribe();
+		};
+	}, [eventBus, projects, expandedProjects, loadProjectConversations]);
 
 	const handleCreateProject = () => {
 		setInputModalConfig({

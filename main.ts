@@ -6,7 +6,7 @@ import { MySettings, normalizePluginSettings } from 'src/app/settings/MySetting'
 import { ViewManager } from 'src/app/view/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
 import { registerCoreEvents } from 'src/app/events/Register';
-import { MyPluginSettings } from 'src/app/settings/config';
+import { MyPluginSettings } from '@/app/settings/types';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -17,7 +17,7 @@ export default class MyPlugin extends Plugin {
 	commandHiddenControlService: CommandHiddenControlService;
 	viewManager: ViewManager;
 
-	aiManager: AIServiceManager;
+	aiServiceManager: AIServiceManager;
 
 	/**
 	 * Bootstraps services, views, commands, and layout handling.
@@ -41,21 +41,21 @@ export default class MyPlugin extends Plugin {
 		// // 	this
 		// // )
 
-		this.aiManager = new AIServiceManager(this.app, this.settings.ai);
-		await this.aiManager.init();
+		this.aiServiceManager = new AIServiceManager(this.app, this.settings.ai);
+		await this.aiServiceManager.init();
 
 		// Initialize UI control service
 		this.commandHiddenControlService = new CommandHiddenControlService(this.app, this, this.settings.commandHidden);
 		this.commandHiddenControlService.init();
 
-		this.viewManager = new ViewManager(this, this.aiManager);
+		this.viewManager = new ViewManager(this, this.aiServiceManager);
 		this.viewManager.init();
 
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this));
 
 		// register commands
-		buildCoreCommands(this.viewManager, this.aiManager)
+		buildCoreCommands(this.viewManager, this.aiServiceManager)
 			.forEach(command => this.addCommand(command));
 
 		// register workspace events

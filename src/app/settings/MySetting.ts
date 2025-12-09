@@ -1,11 +1,10 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type MyPlugin from 'main';
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/service/chat/service-manager';
-import { coerceModelId } from '@/service/chat/types-models';
-import { DEFAULT_SETTINGS, MyPluginSettings } from '@/app/settings/config';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings } from '@/app/settings/types';
 import React from 'react';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
-import { ProviderSettingsComponent } from '@/ui/view/settings/ProviderSettingsComponent';
+import { ProviderSettingsComponent } from '@/ui/view/settings/ProviderSettings';
+import { EventBus, SettingsUpdatedEvent } from '@/core/eventBus';
 
 /**
  * Renders plugin settings UI with multiple tabs.
@@ -14,10 +13,12 @@ export class MySettings extends PluginSettingTab {
 	private activeTab = 'general';
 	private readonly pluginRef: MyPlugin;
 	private providerSettingsRenderer: ReactRenderer | null = null;
+	private eventBus: EventBus;
 
 	constructor(app: App, plugin: MyPlugin) {
 		super(app, plugin);
 		this.pluginRef = plugin;
+		this.eventBus = EventBus.getInstance(app);
 	}
 
 	/**
@@ -122,9 +123,9 @@ export class MySettings extends PluginSettingTab {
 				dropdown.setValue(this.pluginRef.settings.ai.rootMode);
 				dropdown.onChange(async (value) => {
 					this.pluginRef.settings.ai.rootMode = value as AIServiceSettings['rootMode'];
-					this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
-					this.pluginRef.aiManager?.refreshDefaultServices();
-					await this.pluginRef.aiManager?.init();
+					this.pluginRef.aiServiceManager?.updateSettings(this.pluginRef.settings.ai);
+					this.pluginRef.aiServiceManager?.refreshDefaultServices();
+					await this.pluginRef.aiServiceManager?.init();
 					await this.pluginRef.saveSettings();
 				});
 			});
@@ -175,10 +176,10 @@ export class MySettings extends PluginSettingTab {
 					.onChange(async (value) => {
 						const next = value?.trim() || DEFAULT_AI_SERVICE_SETTINGS.promptFolder;
 						this.pluginRef.settings.ai.promptFolder = next;
-						this.pluginRef.aiManager?.setPromptFolder(next);
-						this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
-						this.pluginRef.aiManager?.refreshDefaultServices();
-						await this.pluginRef.aiManager?.init();
+						this.pluginRef.aiServiceManager?.setPromptFolder(next);
+						this.pluginRef.aiServiceManager?.updateSettings(this.pluginRef.settings.ai);
+						this.pluginRef.aiServiceManager?.refreshDefaultServices();
+						await this.pluginRef.aiServiceManager?.init();
 						await this.pluginRef.saveSettings();
 					})
 			);
@@ -193,7 +194,7 @@ export class MySettings extends PluginSettingTab {
 					.onChange(async (value) => {
 						const next = value?.trim() || DEFAULT_AI_SERVICE_SETTINGS.uploadFolder;
 						this.pluginRef.settings.ai.uploadFolder = next;
-						this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
+						this.pluginRef.aiServiceManager?.updateSettings(this.pluginRef.settings.ai);
 						await this.pluginRef.saveSettings();
 					})
 			);
@@ -211,9 +212,9 @@ export class MySettings extends PluginSettingTab {
 			return;
 		}
 		this.pluginRef.settings.ai.rootFolder = next;
-		this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
-		this.pluginRef.aiManager?.refreshDefaultServices();
-		await this.pluginRef.aiManager?.init();
+		this.pluginRef.aiServiceManager?.updateSettings(this.pluginRef.settings.ai);
+		this.pluginRef.aiServiceManager?.refreshDefaultServices();
+		await this.pluginRef.aiServiceManager?.init();
 		await this.pluginRef.saveSettings();
 	}
 
@@ -242,16 +243,20 @@ export class MySettings extends PluginSettingTab {
 			};
 
 			// Update AI manager
-			this.pluginRef.aiManager?.updateSettings(this.pluginRef.settings.ai);
-			this.pluginRef.aiManager?.refreshDefaultServices();
-			await this.pluginRef.aiManager?.init();
+			this.pluginRef.aiServiceManager?.updateSettings(this.pluginRef.settings.ai);
+			this.pluginRef.aiServiceManager?.refreshDefaultServices();
+			await this.pluginRef.aiServiceManager?.init();
 			await this.pluginRef.saveSettings();
+
+			// Dispatch settings updated event
+			this.eventBus.dispatch(new SettingsUpdatedEvent());
 
 			// Re-render React component with updated settings
 			if (this.providerSettingsRenderer) {
 				this.providerSettingsRenderer.render(
 					React.createElement(ProviderSettingsComponent, {
 						settings: this.pluginRef.settings.ai,
+						aiServiceManager: this.pluginRef.aiServiceManager,
 						onUpdate: handleUpdate,
 					})
 				);
@@ -262,6 +267,7 @@ export class MySettings extends PluginSettingTab {
 		this.providerSettingsRenderer.render(
 			React.createElement(ProviderSettingsComponent, {
 				settings: this.pluginRef.settings.ai,
+				aiServiceManager: this.pluginRef.aiServiceManager,
 				onUpdate: handleUpdate,
 			})
 		);
@@ -642,11 +648,7 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		const legacyPromptFolder = typeof raw?.promptFolder === 'string' ? (raw.promptFolder as string) : undefined;
 		settings.ai.promptFolder = legacyPromptFolder || DEFAULT_AI_SERVICE_SETTINGS.promptFolder;
 	}
-	settings.ai.defaultModelId = coerceModelId(settings.ai.defaultModelId as unknown as string);
-	settings.ai.models = (settings.ai.models ?? []).map((model) => ({
-		...model,
-		id: coerceModelId(model.id as unknown as string),
-	}));
+	settings.ai.defaultModelId = settings.ai.defaultModelId || 'gpt-4.1-mini';
 	settings.commandHidden = Object.assign({}, settings.commandHidden, raw?.uiControl ?? {});
 	const settingsBag = settings as unknown as Record<string, unknown>;
 	delete settingsBag.chat;

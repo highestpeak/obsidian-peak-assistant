@@ -1,7 +1,5 @@
 import { App, normalizePath, TFile, TFolder } from 'obsidian';
 import { buildConversationMarkdown, buildProjectMarkdown, parseFrontmatter } from './storage-markdown';
-import { coerceModelId } from './types-models';
-import { LLMProvider } from './providers/types';
 import {
 	ChatContextWindow,
 	ChatConversationMeta,
@@ -359,11 +357,11 @@ export class ChatStorageService {
 				if (starredMatch) meta.starred = starredMatch[1] === 'true';
 				
 				const modelMatch = metaText.match(/model:\s*"([^"]+)"/);
-				if (modelMatch) meta.model = coerceModelId(modelMatch[1]);
+				if (modelMatch) meta.model = modelMatch[1];
 				
 				// Extract provider
 				const providerMatch = metaText.match(/provider:\s*"([^"]+)"/);
-				const provider = providerMatch ? (providerMatch[1] as LLMProvider) : 'other';
+				const provider = providerMatch ? providerMatch[1] : 'other';
 				
 				// Extract attachments (JSON array format)
 				let attachments: string[] = [];
@@ -422,8 +420,8 @@ export class ChatStorageService {
 			}
 		}
 		
-		const activeModel = coerceModelId(data.activeModel as string | undefined);
-		const activeProvider = (data.activeProvider as LLMProvider | undefined) || 'other';
+		const activeModel = (data.activeModel as string | undefined) || '';
+		const activeProvider = (data.activeProvider as string | undefined) || 'other';
 		
 		return {
 			id: String(data.id ?? ''),

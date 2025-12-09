@@ -2,7 +2,7 @@ import React, { useEffect, useCallback } from 'react';
 import { ProjectsSection } from './ProjectsSection';
 import { ConversationsSection } from './ConversationsSection';
 import { useProjectStore } from '@/ui/store/projectStore';
-import { ViewEventType, SelectionChangedEvent } from '@/core/eventBus';
+import { ViewEventType, SelectionChangedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
 import { notifySelectionChange, hydrateProjects } from './utils';
 import { RefreshCw, Minus } from 'lucide-react';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
@@ -155,8 +155,33 @@ export const ProjectListViewComponent: React.FC = () => {
 			}
 		);
 
+		// Subscribe to conversation updated events to refresh the UI when a conversation is created or updated
+		const unsubscribeConversationUpdated = eventBus.on<ConversationUpdatedEvent>(
+			ViewEventType.CONVERSATION_UPDATED,
+			async (event) => {
+				const { updateConversation, expandedProjects, projects } = useProjectStore.getState();
+				const conversation = event.conversation;
+
+				// Update conversation in store
+				updateConversation(conversation);
+
+				// If conversation belongs to a project and that project is expanded,
+				// trigger a reload of project conversations to show the new/updated conversation
+				if (conversation.meta.projectId) {
+					const project = projects.get(conversation.meta.projectId);
+					if (project && expandedProjects.has(conversation.meta.projectId)) {
+						// Trigger reload by dispatching a custom event that ProjectsSection can listen to
+						// Or we can directly call the reload function if we have access to it
+						// For now, we'll rely on ProjectsSection to handle this via a separate mechanism
+						// The conversation is already in the store, so ProjectsSection should pick it up
+					}
+				}
+			}
+		);
+
 		return () => {
 			unsubscribeSelection();
+			unsubscribeConversationUpdated();
 		};
 	}, [eventBus, manager]);
 

@@ -1,37 +1,16 @@
 import { App } from 'obsidian';
-import { LLMProviderService, LLMProvider } from './providers/types';
+import { ModelInfoForSettings, ModelInfoForSwitch } from './providers/types';
 import { LLMApplicationService } from './service-application';
-import { ModelConfig } from './types-models';
 import { MultiProviderChatService } from './providers/MultiProviderChatService';
 import { PromptApplicationService } from './service-application';
-import { AIModelId, OpenAIModelId, coerceModelId } from './types-models';
 import { ChatStorageService } from './storage';
-import { ChatContextWindow, ChatMessage, ChatProjectMeta, ParsedConversationFile, ParsedProjectFile, RootMode, StarredMessageRecord } from './types';
+import { ChatContextWindow, ChatMessage, ChatProjectMeta, ParsedConversationFile, ParsedProjectFile, StarredMessageRecord } from './types';
 import { PromptService } from './service-prompt';
-import { MessageContentComposer } from './utils-message-content';
+import { MessageContentComposer } from './messages/utils-message-content';
 import { ProjectService } from './service-project';
 import { ConversationService } from './service-conversation';
-import { AIStreamEvent } from './providers/types-events';
-
-export interface AIServiceSettings {
-	rootFolder: string;
-	rootMode: RootMode;
-	defaultModelId: AIModelId;
-	models: ModelConfig[];
-	llmProviderConfigs: Record<string, { apiKey: string; baseUrl?: string }>;
-	promptFolder: string;
-	uploadFolder: string;
-}
-
-export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
-	rootFolder: 'ChatFolder',
-	rootMode: 'conversation-first',
-	defaultModelId: OpenAIModelId.GPT_4_1_MINI,
-	models: [],
-	llmProviderConfigs: {},
-	promptFolder: 'A-control/PeakAssistantPrompts',
-	uploadFolder: 'ChatFolder/Attachments',
-};
+import { AIStreamEvent } from './messages/types-events';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -39,7 +18,7 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 export class AIServiceManager {
 	private storage: ChatStorageService;
 	private contentComposer: MessageContentComposer;
-	private chat: LLMProviderService;
+	private multiChat: MultiProviderChatService;
 	private application: LLMApplicationService;
 	private promptService: PromptService;
 	private projectService: ProjectService;
@@ -53,13 +32,6 @@ export class AIServiceManager {
 		// Merge given settings with defaults
 		this.settings = { ...DEFAULT_AI_SERVICE_SETTINGS, ...settings };
 
-		// Coerce model IDs for safety/consistency
-		this.settings.defaultModelId = coerceModelId(this.settings.defaultModelId as unknown as string);
-		this.settings.models = (this.settings.models ?? []).map((model) => ({
-			...model,
-			id: coerceModelId(model.id as unknown as string),
-		}));
-
 		// === Core services initialization ===
 		// Storage service for chat data
 		this.storage = new ChatStorageService(this.app, {
@@ -72,11 +44,10 @@ export class AIServiceManager {
 
 		// === Service construction ===
 		const providerConfigs = this.settings.llmProviderConfigs ?? {};
-		this.chat = new MultiProviderChatService({
-			models: this.settings.models ?? [],
+		this.multiChat = new MultiProviderChatService({
 			providerConfigs,
 		});
-		this.application = new PromptApplicationService(this.chat);
+		this.application = new PromptApplicationService(this.multiChat);
 		this.promptService = new PromptService(this.app, {
 			promptFolder: this.settings.promptFolder,
 		});
@@ -90,7 +61,7 @@ export class AIServiceManager {
 		);
 		this.conversationService = new ConversationService(
 			this.storage,
-			this.chat,
+			this.multiChat,
 			this.application,
 			this.promptService,
 			this.contentComposer,
@@ -118,11 +89,6 @@ export class AIServiceManager {
 	 */
 	updateSettings(next: AIServiceSettings): void {
 		this.settings = { ...DEFAULT_AI_SERVICE_SETTINGS, ...next };
-		this.settings.defaultModelId = coerceModelId(this.settings.defaultModelId as unknown as string);
-		this.settings.models = (this.settings.models ?? []).map((model) => ({
-			...model,
-			id: coerceModelId(model.id as unknown as string),
-		}));
 		this.storage = new ChatStorageService(this.app, {
 			rootFolder: this.settings.rootFolder,
 			starredCsvPath: `${this.settings.rootFolder}/Starred.csv`,
@@ -133,15 +99,14 @@ export class AIServiceManager {
 
 	refreshDefaultServices(): void {
 		const providerConfigs = this.settings.llmProviderConfigs ?? {};
-		this.chat = new MultiProviderChatService({
-			models: this.settings.models ?? [],
+		this.multiChat = new MultiProviderChatService({
 			providerConfigs,
 		});
-		this.application = new PromptApplicationService(this.chat);
+		this.application = new PromptApplicationService(this.multiChat);
 		this.projectService = new ProjectService(this.storage, this.settings.rootFolder, this.promptService, this.application);
 		this.conversationService = new ConversationService(
 			this.storage,
-			this.chat,
+			this.multiChat,
 			this.application,
 			this.promptService,
 			this.contentComposer,
@@ -268,8 +233,8 @@ export class AIServiceManager {
 	async updateConversationModel(params: {
 		conversation: ParsedConversationFile;
 		project?: ParsedProjectFile | null;
-		modelId: AIModelId;
-		provider?: LLMProvider;
+		modelId: string;
+		provider?: string;
 	}): Promise<ParsedConversationFile> {
 		return this.conversationService.updateConversationModel(params);
 	}
@@ -314,7 +279,7 @@ export class AIServiceManager {
 	/**
 	 * Summarize a project by aggregating summaries from all conversations in the project.
 	 */
-	async summarizeProject(project: ParsedProjectFile, modelId: AIModelId): Promise<string> {
+	async summarizeProject(project: ParsedProjectFile, modelId: string): Promise<string> {
 		return this.projectService.summarizeProject(project, modelId);
 	}
 
@@ -334,14 +299,43 @@ export class AIServiceManager {
 
 	/**
 	 * Get all available models from all configured providers
+	 * Only returns models from enabled providers and enabled models
 	 */
-	async getAllAvailableModels(): Promise<Array<{ id: AIModelId; displayName: string; provider: string }>> {
-		const models = await (this.chat as MultiProviderChatService).getAllAvailableModels();
-		return models.map(m => ({
-			id: m.id,
-			displayName: m.displayName,
-			provider: m.provider,
-		}));
+	getAllAvailableModels(): ModelInfoForSwitch[] {
+		const allModels = this.multiChat.getAllAvailableModels();
+		const providerConfigs = this.settings.llmProviderConfigs ?? {};
+		console.log('getAllAvailableModels', allModels, providerConfigs);
+
+		// Filter models by provider and model enabled status
+		const filteredModels = allModels
+			.filter(model => {
+				const providerConfig = providerConfigs[model.provider];
+
+				// Skip if provider is not enabled
+				if (providerConfig?.enabled !== true) {
+					return false;
+				}
+
+				// Check model enabled status
+				// If modelConfigs doesn't exist or model is not in modelConfigs, default to enabled
+				const modelConfigs = providerConfig.modelConfigs;
+				if (!modelConfigs) {
+					return true; // Default enabled if no modelConfigs
+				}
+
+				const modelConfig = modelConfigs[model.id];
+				// If model is explicitly configured, check its enabled status
+				// If not configured, default to enabled
+				return modelConfig?.enabled !== false;
+			})
+			.map(m => ({
+				id: m.id,
+				displayName: m.displayName,
+				provider: m.provider,
+				icon: m.icon,
+			}));
+		console.log('getAllAvailableModels done', filteredModels);
+		return filteredModels;
 	}
 
 }

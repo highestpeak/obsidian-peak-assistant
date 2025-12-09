@@ -4,13 +4,11 @@ import {
 	LLMRequest,
 	LLMUsage,
 	LLMProviderService,
-	LLMProvider,
-	ProviderModelInfo,
-	ProviderMetadata,
+	ModelMetaData,
+	ProviderMetaData,
 } from './types';
-import { AIStreamEvent } from './types-events';
+import { AIStreamEvent } from '../messages/types-events';
 import { safeReadError, trimTrailingSlash } from './helpers';
-import { AIModelId } from '../types-models';
 
 const DEFAULT_CLAUDE_TIMEOUT_MS = 60000;
 const DEFAULT_CLAUDE_MAX_OUTPUT_TOKENS = 1024;
@@ -114,7 +112,7 @@ function buildClaudePayload(params: { request: LLMRequest; maxOutputTokens: numb
 	return { body };
 }
 
-export async function invokeClaudeBlock(params: {
+async function invokeClaudeBlock(params: {
 	request: LLMRequest;
 	baseUrl?: string;
 	apiKey?: string;
@@ -163,7 +161,7 @@ export async function invokeClaudeBlock(params: {
 	}
 }
 
-export async function* invokeClaudeStream(params: {
+async function* invokeClaudeStream(params: {
 	request: LLMRequest;
 	baseUrl?: string;
 	apiKey?: string;
@@ -347,12 +345,20 @@ export interface ClaudeChatServiceOptions {
 	apiKey?: string;
 	timeoutMs?: number;
 	maxOutputTokens?: number;
+	extra?: Record<string, any>;
 }
 
 export class ClaudeChatService implements LLMProviderService {
-	constructor(private readonly options: ClaudeChatServiceOptions) {}
+	private readonly options: ClaudeChatServiceOptions;
 
-	getProviderId(): LLMProvider {
+	constructor(options: ClaudeChatServiceOptions) {
+		this.options = {
+			...options,
+			maxOutputTokens: options.maxOutputTokens ?? options.extra?.maxOutputTokens ?? DEFAULT_CLAUDE_MAX_OUTPUT_TOKENS,
+		};
+	}
+
+	getProviderId(): string {
 		return 'claude';
 	}
 
@@ -382,20 +388,21 @@ export class ClaudeChatService implements LLMProviderService {
 		});
 	}
 
-	async getAvailableModels(): Promise<ProviderModelInfo[]> {
+	getAvailableModels(): ModelMetaData[] {
 		return [
-			{ id: 'claude-3-5-sonnet-20240620' as AIModelId, displayName: 'Claude 3.5 Sonnet' },
-			{ id: 'claude-3-opus-20240229' as AIModelId, displayName: 'Claude 3 Opus' },
-			{ id: 'claude-3-sonnet-20240229' as AIModelId, displayName: 'Claude 3 Sonnet' },
-			{ id: 'claude-3-haiku-20240307' as AIModelId, displayName: 'Claude 3 Haiku' },
+			{ id: 'claude-3-5-sonnet-20240620', displayName: 'Claude 3.5 Sonnet', icon: 'claude-3-5-sonnet' },
+			{ id: 'claude-3-opus-20240229', displayName: 'Claude 3 Opus', icon: 'claude-3-opus' },
+			{ id: 'claude-3-sonnet-20240229', displayName: 'Claude 3 Sonnet', icon: 'claude-3-sonnet' },
+			{ id: 'claude-3-haiku-20240307', displayName: 'Claude 3 Haiku', icon: 'claude-3-haiku' },
 		];
 	}
 
-	getProviderMetadata(): ProviderMetadata {
+	getProviderMetadata(): ProviderMetaData {
 		return {
 			id: 'claude',
 			name: 'Claude',
 			defaultBaseUrl: CLAUDE_DEFAULT_BASE,
+			icon: 'anthropic',
 		};
 	}
 }

@@ -2,18 +2,16 @@ import {
 	LLMRequest,
 	LLMResponse,
 	LLMProviderService,
-	LLMProvider,
-	ProviderModelInfo,
-	ProviderMetadata,
+	ModelMetaData,
+	ProviderMetaData,
 } from './types';
-import { AIStreamEvent } from './types-events';
-import { AIModelId } from '../types-models';
+import { AIStreamEvent } from '../messages/types-events';
 import { invokeOpenAICompatibleBlock, invokeOpenAICompatibleStream } from './openai-compatible';
 
 const DEFAULT_OPENROUTER_TIMEOUT_MS = 60000;
 const OPENROUTER_DEFAULT_BASE = 'https://openrouter.ai/api/v1';
 
-export async function invokeOpenRouterBlock(params: {
+async function invokeOpenRouterBlock(params: {
 	request: LLMRequest;
 	baseUrl?: string;
 	apiKey?: string;
@@ -41,7 +39,7 @@ export async function invokeOpenRouterBlock(params: {
 	});
 }
 
-export async function* invokeOpenRouterStream(params: {
+async function* invokeOpenRouterStream(params: {
 	request: LLMRequest;
 	baseUrl?: string;
 	apiKey?: string;
@@ -75,12 +73,24 @@ export interface OpenRouterChatServiceOptions {
 	referer?: string;
 	title?: string;
 	timeoutMs?: number;
+	extra?: Record<string, any>;
 }
 
-export class OpenRouterChatService implements LLMProviderService {
-	constructor(private readonly options: OpenRouterChatServiceOptions) {}
+const DEFAULT_OPENROUTER_REFERER = 'https://obsidian.md';
+const DEFAULT_OPENROUTER_TITLE = 'Peak Assistant';
 
-	getProviderId(): LLMProvider {
+export class OpenRouterChatService implements LLMProviderService {
+	private readonly options: OpenRouterChatServiceOptions;
+
+	constructor(options: OpenRouterChatServiceOptions) {
+		this.options = {
+			...options,
+			referer: options.referer ?? options.extra?.referer ?? DEFAULT_OPENROUTER_REFERER,
+			title: options.title ?? options.extra?.title ?? DEFAULT_OPENROUTER_TITLE,
+		};
+	}
+
+	getProviderId(): string {
 		return 'openrouter';
 	}
 
@@ -106,30 +116,31 @@ export class OpenRouterChatService implements LLMProviderService {
 		});
 	}
 
-	async getAvailableModels(): Promise<ProviderModelInfo[]> {
+	getAvailableModels(): ModelMetaData[] {
 		return [
-			{ id: 'openai/gpt-4.1' as AIModelId, displayName: 'GPT-4.1' },
-			{ id: 'openai/gpt-4.1-mini' as AIModelId, displayName: 'GPT-4.1 Mini' },
-			{ id: 'openai/gpt-4o' as AIModelId, displayName: 'GPT-4o' },
-			{ id: 'openai/gpt-4o-mini' as AIModelId, displayName: 'GPT-4o Mini' },
-			{ id: 'openai/gpt-3.5-turbo' as AIModelId, displayName: 'GPT-3.5 Turbo' },
-			{ id: 'anthropic/claude-3.5-sonnet' as AIModelId, displayName: 'Claude 3.5 Sonnet' },
-			{ id: 'anthropic/claude-3-opus' as AIModelId, displayName: 'Claude 3 Opus' },
-			{ id: 'anthropic/claude-3-sonnet' as AIModelId, displayName: 'Claude 3 Sonnet' },
-			{ id: 'anthropic/claude-3-haiku' as AIModelId, displayName: 'Claude 3 Haiku' },
-			{ id: 'google/gemini-pro-1.5' as AIModelId, displayName: 'Gemini Pro 1.5' },
-			{ id: 'google/gemini-flash-1.5' as AIModelId, displayName: 'Gemini Flash 1.5' },
-			{ id: 'meta-llama/llama-3.1-405b-instruct' as AIModelId, displayName: 'Llama 3.1 405B' },
-			{ id: 'meta-llama/llama-3.1-70b-instruct' as AIModelId, displayName: 'Llama 3.1 70B' },
-			{ id: 'meta-llama/llama-3.1-8b-instruct' as AIModelId, displayName: 'Llama 3.1 8B' },
+			{ id: 'openai/gpt-4.1', displayName: 'GPT-4.1', icon: 'gpt-4.1' },
+			{ id: 'openai/gpt-4.1-mini', displayName: 'GPT-4.1 Mini', icon: 'gpt-4.1-mini' },
+			{ id: 'openai/gpt-4o', displayName: 'GPT-4o', icon: 'gpt-4o' },
+			{ id: 'openai/gpt-4o-mini', displayName: 'GPT-4o Mini', icon: 'gpt-4o-mini' },
+			{ id: 'openai/gpt-3.5-turbo', displayName: 'GPT-3.5 Turbo', icon: 'gpt-3.5-turbo' },
+			{ id: 'anthropic/claude-3.5-sonnet', displayName: 'Claude 3.5 Sonnet', icon: 'claude-3-5-sonnet' },
+			{ id: 'anthropic/claude-3-opus', displayName: 'Claude 3 Opus', icon: 'claude-3-opus' },
+			{ id: 'anthropic/claude-3-sonnet', displayName: 'Claude 3 Sonnet', icon: 'claude-3-sonnet' },
+			{ id: 'anthropic/claude-3-haiku', displayName: 'Claude 3 Haiku', icon: 'claude-3-haiku' },
+			{ id: 'google/gemini-pro-1.5', displayName: 'Gemini Pro 1.5', icon: 'gemini-1.5-pro' },
+			{ id: 'google/gemini-flash-1.5', displayName: 'Gemini Flash 1.5', icon: 'gemini-1.5-flash' },
+			{ id: 'meta-llama/llama-3.1-405b-instruct', displayName: 'Llama 3.1 405B', icon: 'llama-3.1' },
+			{ id: 'meta-llama/llama-3.1-70b-instruct', displayName: 'Llama 3.1 70B', icon: 'llama-3.1' },
+			{ id: 'meta-llama/llama-3.1-8b-instruct', displayName: 'Llama 3.1 8B', icon: 'llama-3.1' },
 		];
 	}
 
-	getProviderMetadata(): ProviderMetadata {
+	getProviderMetadata(): ProviderMetaData {
 		return {
 			id: 'openrouter',
 			name: 'OpenRouter',
 			defaultBaseUrl: OPENROUTER_DEFAULT_BASE,
+			icon: 'openrouter',
 		};
 	}
 }

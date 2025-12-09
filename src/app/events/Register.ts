@@ -141,7 +141,7 @@ function addChatViewButton(
 		await viewManager.getViewSwitchConsistentHandler().activateChatView();
 
 		// Find conversation and open it in chat view
-		const aiManager = plugin.aiManager;
+		const aiManager = plugin.aiServiceManager;
 		if (!aiManager) {
 			return;
 		}

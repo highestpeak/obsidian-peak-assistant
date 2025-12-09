@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ParsedConversationFile } from '@/service/chat/types';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useProjectStore } from '@/ui/store/projectStore';
@@ -9,6 +9,7 @@ import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ChevronDown, ChevronRight, Plus, Pencil, FileText } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { ViewEventType, ConversationUpdatedEvent } from '@/core/eventBus';
 
 interface ConversationsSectionProps {
 }
@@ -17,7 +18,7 @@ interface ConversationsSectionProps {
  * Conversations section component
  */
 export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
-	const { app, manager } = useServiceContext();
+	const { app, manager, eventBus } = useServiceContext();
 	const {
 		conversations,
 		activeConversation,
@@ -103,6 +104,23 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 		const menuItems = conversationMenuItems(conversation);
 		showContextMenu(e, menuItems);
 	};
+
+	// Listen for conversation updates to ensure UI stays in sync
+	useEffect(() => {
+		const unsubscribe = eventBus.on<ConversationUpdatedEvent>(
+			ViewEventType.CONVERSATION_UPDATED,
+			async (event) => {
+				const conversation = event.conversation;
+				// Update conversation in store (if not already updated)
+				// This ensures the conversation list automatically updates
+				updateConversation(conversation);
+			}
+		);
+
+		return () => {
+			unsubscribe();
+		};
+	}, [eventBus, updateConversation]);
 
 	// Get root-level conversations (without projectId)
 	const conversationsWithoutProject = useMemo(() => {

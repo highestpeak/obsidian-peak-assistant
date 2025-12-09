@@ -9,6 +9,7 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { getFileType, FileType } from '@/ui/view/shared/file-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { FileText, Image, File } from 'lucide-react';
+import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
 
 /**
  * Pending file with preview for images
@@ -29,7 +30,7 @@ interface ChatInputAreaComponentProps {
 export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	onScrollToBottom,
 }) => {
-	const { app, manager } = useServiceContext();
+	const { app, manager, eventBus } = useServiceContext();
 	const { startStreaming, appendStreamingDelta, completeStreaming, errorStreaming } = useMessageStore();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 	const activeProject = useProjectStore((state) => state.activeProject);
@@ -166,11 +167,17 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 		try {
 			// Create conversation if needed
 			let conversation = activeConversation;
+			let isNewConversation = false;
 			if (!conversation && pendingConversation) {
 				conversation = await manager.createConversation({
 					title: pendingConversation.title,
 					project: pendingConversation.project?.meta ?? null,
 				});
+				isNewConversation = true;
+				// Add new conversation to projectStore
+				useProjectStore.getState().updateConversation(conversation);
+				// Dispatch event to notify listeners
+				eventBus.dispatch(new ConversationUpdatedEvent({ conversation }));
 			}
 			if (!conversation) {
 				console.error('Failed to create conversation');
@@ -206,6 +213,8 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				messages: [...conversation.messages, tempUserMessage],
 			};
 			useChatViewStore.getState().setConversation(tempConversation);
+			// Update conversation in store
+			useProjectStore.getState().updateConversation(tempConversation);
 
 			// Create assistant message ID for streaming
 			const assistantMessageId = generateUuidWithoutHyphens();
@@ -281,6 +290,10 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 
 			if (finalConversation) {
 				useChatViewStore.getState().setConversation(finalConversation);
+				// Update conversation in store
+				useProjectStore.getState().updateConversation(finalConversation);
+				// Dispatch event to notify listeners (e.g., ProjectListView)
+				eventBus.dispatch(new ConversationUpdatedEvent({ conversation: finalConversation }));
 			}
 
 			// Clear state
@@ -290,7 +303,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 		} finally {
 			setIsSending(false);
 		}
-	}, [inputValue, pendingFiles, activeConversation, activeProject, pendingConversation, manager, startStreaming, appendStreamingDelta, completeStreaming, errorStreaming, onScrollToBottom, isSending]);
+	}, [inputValue, pendingFiles, activeConversation, activeProject, pendingConversation, manager, eventBus, startStreaming, appendStreamingDelta, completeStreaming, errorStreaming, onScrollToBottom, isSending]);
 
 	const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
 		if (e.key === 'Enter' && !e.shiftKey) {

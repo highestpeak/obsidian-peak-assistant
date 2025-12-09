@@ -4,7 +4,6 @@ import { ChatProjectMeta, ParsedProjectFile, ParsedConversationFile } from './ty
 import { ChatStorageService } from './storage';
 import { LLMApplicationService } from './service-application';
 import { PromptService, PromptTemplate } from './service-prompt';
-import { AIModelId, coerceModelId } from './types-models';
 
 /**
  * Service for managing chat projects.
@@ -49,7 +48,7 @@ export class ProjectService {
 	/**
 	 * Summarize a project by aggregating summaries from all conversations in the project.
 	 */
-	async summarizeProject(project: ParsedProjectFile, modelId: AIModelId): Promise<string> {
+	async summarizeProject(project: ParsedProjectFile, modelId: string): Promise<string> {
 		// Mock implementation - return default summary
 		return 'defaultSummary';
 	}

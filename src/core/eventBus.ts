@@ -12,6 +12,7 @@ export enum ViewEventType {
 	SCROLL_TO_MESSAGE = 'peak:scroll-to-message',
 	OPEN_LINK = 'peak:open-link',
 	SHOW_TOAST = 'peak:show-toast',
+	SETTINGS_UPDATED = 'peak:settings-updated',
 }
 
 /**
@@ -95,6 +96,15 @@ export class OpenLinkEvent extends ViewEvent {
 	constructor(data: { path: string }) {
 		super(ViewEventType.OPEN_LINK);
 		this.path = data.path;
+	}
+}
+
+/**
+ * Settings updated event
+ */
+export class SettingsUpdatedEvent extends ViewEvent {
+	constructor() {
+		super(ViewEventType.SETTINGS_UPDATED);
 	}
 }
 

@@ -2,18 +2,16 @@ import {
 	LLMRequest,
 	LLMResponse,
 	LLMProviderService,
-	LLMProvider,
-	ProviderModelInfo,
-	ProviderMetadata,
+	ModelMetaData,
+	ProviderMetaData,
 } from './types';
-import { AIStreamEvent } from './types-events';
-import { AIModelId } from '../types-models';
+import { AIStreamEvent } from '../messages/types-events';
 import { invokeOpenAICompatibleBlock, invokeOpenAICompatibleStream } from './openai-compatible';
 
 const DEFAULT_OPENAI_TIMEOUT_MS = 60000;
 const OPENAI_DEFAULT_BASE = 'https://api.openai.com/v1';
 
-export async function invokeOpenAIBlock(params: {
+async function invokeOpenAIBlock(params: {
 	request: LLMRequest;
 	baseUrl?: string;
 	apiKey?: string;
@@ -31,7 +29,7 @@ export async function invokeOpenAIBlock(params: {
 	});
 }
 
-export async function* invokeOpenAIStream(params: {
+async function* invokeOpenAIStream(params: {
 	request: LLMRequest;
 	baseUrl?: string;
 	apiKey?: string;
@@ -53,12 +51,13 @@ export interface OpenAIChatServiceOptions {
 	baseUrl?: string;
 	apiKey?: string;
 	timeoutMs?: number;
+	extra?: Record<string, any>;
 }
 
 export class OpenAIChatService implements LLMProviderService {
 	constructor(private readonly options: OpenAIChatServiceOptions) {}
 
-	getProviderId(): LLMProvider {
+	getProviderId(): string {
 		return 'openai';
 	}
 
@@ -80,24 +79,25 @@ export class OpenAIChatService implements LLMProviderService {
 		});
 	}
 
-	async getAvailableModels(): Promise<ProviderModelInfo[]> {
+	getAvailableModels(): ModelMetaData[] {
 		return [
-			{ id: 'gpt-4.1' as AIModelId, displayName: 'GPT-4.1' },
-			{ id: 'gpt-4.1-mini' as AIModelId, displayName: 'GPT-4.1 Mini' },
-			{ id: 'gpt-4o' as AIModelId, displayName: 'GPT-4o' },
-			{ id: 'gpt-4o-mini' as AIModelId, displayName: 'GPT-4o Mini' },
-			{ id: 'gpt-3.5-turbo' as AIModelId, displayName: 'GPT-3.5 Turbo' },
-			{ id: 'o1' as AIModelId, displayName: 'O1' },
-			{ id: 'o1-mini' as AIModelId, displayName: 'O1 Mini' },
-			{ id: 'o1-preview' as AIModelId, displayName: 'O1 Preview' },
+			{ id: 'gpt-4.1', displayName: 'GPT-4.1', icon: 'gpt-4.1' },
+			{ id: 'gpt-4.1-mini', displayName: 'GPT-4.1 Mini', icon: 'gpt-4.1-mini' },
+			{ id: 'gpt-4o', displayName: 'GPT-4o', icon: 'gpt-4o' },
+			{ id: 'gpt-4o-mini', displayName: 'GPT-4o Mini', icon: 'gpt-4o-mini' },
+			{ id: 'gpt-3.5-turbo', displayName: 'GPT-3.5 Turbo', icon: 'gpt-3.5-turbo' },
+			{ id: 'o1', displayName: 'O1', icon: 'o1' },
+			{ id: 'o1-mini', displayName: 'O1 Mini', icon: 'o1-mini' },
+			{ id: 'o1-preview', displayName: 'O1 Preview', icon: 'o1-preview' },
 		];
 	}
 
-	getProviderMetadata(): ProviderMetadata {
+	getProviderMetadata(): ProviderMetaData {
 		return {
 			id: 'openai',
 			name: 'OpenAI',
 			defaultBaseUrl: OPENAI_DEFAULT_BASE,
+			icon: 'openai',
 		};
 	}
 }

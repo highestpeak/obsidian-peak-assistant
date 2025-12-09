@@ -2,17 +2,15 @@ import {
 	LLMRequest,
 	LLMResponse,
 	LLMProviderService,
-	LLMProvider,
-	ProviderModelInfo,
-	ProviderMetadata,
+	ModelMetaData,
+	ProviderMetaData,
 } from './types';
-import { AIStreamEvent } from './types-events';
+import { AIStreamEvent } from '../messages/types-events';
 import { trimTrailingSlash } from './helpers';
-import { AIModelId } from '../types-models';
 import { invokeOpenAICompatibleBlock, invokeOpenAICompatibleStream } from './openai-compatible';
 
 const DEFAULT_OLLAMA_TIMEOUT_MS = 60000;
-const OLLAMA_DEFAULT_BASE = 'http://localhost:11434';
+export const OLLAMA_DEFAULT_BASE = 'http://localhost:11434';
 
 /**
  * Normalize Ollama baseUrl to ensure it has /v1 path
@@ -22,7 +20,7 @@ function normalizeOllamaBaseUrl(baseUrl: string): string {
 	return `${trimTrailingSlash(cleaned)}/v1`;
 }
 
-export async function invokeOllamaBlock(params: {
+async function invokeOllamaBlock(params: {
 	request: LLMRequest;
 	baseUrl?: string;
 	apiKey?: string;
@@ -41,7 +39,7 @@ export async function invokeOllamaBlock(params: {
 	});
 }
 
-export async function* invokeOllamaStream(params: {
+async function* invokeOllamaStream(params: {
 	request: LLMRequest;
 	baseUrl?: string;
 	apiKey?: string;
@@ -64,12 +62,13 @@ export interface OllamaChatServiceOptions {
 	baseUrl?: string;
 	apiKey?: string;
 	timeoutMs?: number;
+	extra?: Record<string, any>;
 }
 
 export class OllamaChatService implements LLMProviderService {
 	constructor(private readonly options: OllamaChatServiceOptions) {}
 
-	getProviderId(): LLMProvider {
+	getProviderId(): string {
 		return 'ollama';
 	}
 
@@ -91,31 +90,32 @@ export class OllamaChatService implements LLMProviderService {
 		});
 	}
 
-	async getAvailableModels(): Promise<ProviderModelInfo[]> {
+	getAvailableModels(): ModelMetaData[] {
 		return [
-			{ id: 'llama3.1' as AIModelId, displayName: 'Llama 3.1' },
-			{ id: 'llama3.1:8b' as AIModelId, displayName: 'Llama 3.1 8B' },
-			{ id: 'llama3.1:70b' as AIModelId, displayName: 'Llama 3.1 70B' },
-			{ id: 'llama3.1:405b' as AIModelId, displayName: 'Llama 3.1 405B' },
-			{ id: 'llama3' as AIModelId, displayName: 'Llama 3' },
-			{ id: 'llama3:8b' as AIModelId, displayName: 'Llama 3 8B' },
-			{ id: 'llama3:70b' as AIModelId, displayName: 'Llama 3 70B' },
-			{ id: 'mistral' as AIModelId, displayName: 'Mistral' },
-			{ id: 'mixtral' as AIModelId, displayName: 'Mixtral' },
-			{ id: 'codellama' as AIModelId, displayName: 'CodeLlama' },
-			{ id: 'phi3' as AIModelId, displayName: 'Phi-3' },
-			{ id: 'gemma' as AIModelId, displayName: 'Gemma' },
-			{ id: 'neural-chat' as AIModelId, displayName: 'Neural Chat' },
-			{ id: 'starling-lm' as AIModelId, displayName: 'Starling LM' },
-			{ id: 'qwen' as AIModelId, displayName: 'Qwen' },
+			{ id: 'llama3.1', displayName: 'Llama 3.1', icon: 'llama-3.1' },
+			{ id: 'llama3.1:8b', displayName: 'Llama 3.1 8B', icon: 'llama-3.1' },
+			{ id: 'llama3.1:70b', displayName: 'Llama 3.1 70B', icon: 'llama-3.1' },
+			{ id: 'llama3.1:405b', displayName: 'Llama 3.1 405B', icon: 'llama-3.1' },
+			{ id: 'llama3', displayName: 'Llama 3', icon: 'llama-3' },
+			{ id: 'llama3:8b', displayName: 'Llama 3 8B', icon: 'llama-3' },
+			{ id: 'llama3:70b', displayName: 'Llama 3 70B', icon: 'llama-3' },
+			{ id: 'mistral', displayName: 'Mistral', icon: 'mistral' },
+			{ id: 'mixtral', displayName: 'Mixtral', icon: 'mixtral' },
+			{ id: 'codellama', displayName: 'CodeLlama', icon: 'codellama' },
+			{ id: 'phi3', displayName: 'Phi-3', icon: 'phi-3' },
+			{ id: 'gemma', displayName: 'Gemma', icon: 'gemma' },
+			{ id: 'neural-chat', displayName: 'Neural Chat', icon: 'neural-chat' },
+			{ id: 'starling-lm', displayName: 'Starling LM', icon: 'starling-lm' },
+			{ id: 'qwen', displayName: 'Qwen', icon: 'qwen' },
 		];
 	}
 
-	getProviderMetadata(): ProviderMetadata {
+	getProviderMetadata(): ProviderMetaData {
 		return {
 			id: 'ollama',
 			name: 'Ollama',
 			defaultBaseUrl: OLLAMA_DEFAULT_BASE,
+			icon: 'ollama',
 		};
 	}
 }

@@ -3,17 +3,16 @@ import {
 	LLMRequest,
 	LLMUsage,
 	ProviderContentPart,
-	LLMMessage,
-	ProviderModelInfo,
+	LLMRequestMessage,
+	ModelMetaData,
 } from './types';
-import { AIStreamEvent } from './types-events';
+import { AIStreamEvent } from '../messages/types-events';
 import { safeReadError, trimTrailingSlash } from './helpers';
-import { AIModelId } from '../types-models';
 
 /**
  * Extract message content from OpenAI-compatible response
  */
-export function extractOpenAIMessageContent(content: unknown): string {
+function extractOpenAIMessageContent(content: unknown): string {
 	if (typeof content === 'string') {
 		return content;
 	}
@@ -37,7 +36,7 @@ export function extractOpenAIMessageContent(content: unknown): string {
 /**
  * Normalize usage statistics from OpenAI-compatible response
  */
-export function normalizeUsage(usage?: {
+function normalizeUsage(usage?: {
 	prompt_tokens?: number;
 	completion_tokens?: number;
 	total_tokens?: number;
@@ -58,7 +57,7 @@ export function normalizeUsage(usage?: {
 /**
  * Map messages to OpenAI-compatible format
  */
-export function mapMessagesToOpenAI(messages: LLMMessage[]) {
+function mapMessagesToOpenAI(messages: LLMRequestMessage[]) {
 	return messages.map((message) => ({
 		role: message.role,
 		content: mapContentParts(message.content),
@@ -109,7 +108,7 @@ function mapContentParts(parts: ProviderContentPart[]) {
 	return mapped.length > 0 ? mapped : [{ type: 'text', text: '' }];
 }
 
-export type OpenAIChatCompletionResponse = {
+type OpenAIChatCompletionResponse = {
 	id: string;
 	model?: string;
 	choices?: Array<{
@@ -126,7 +125,7 @@ export type OpenAIChatCompletionResponse = {
 	};
 };
 
-export type OpenAIChatCompletionStreamResponse = {
+type OpenAIChatCompletionStreamResponse = {
 	id: string;
 	model?: string;
 	choices?: Array<{
@@ -143,7 +142,7 @@ export type OpenAIChatCompletionStreamResponse = {
 	};
 };
 
-export interface InvokeOpenAICompatibleBlockParams {
+interface InvokeOpenAICompatibleBlockParams {
 	request: LLMRequest;
 	baseUrl: string;
 	apiKey?: string;

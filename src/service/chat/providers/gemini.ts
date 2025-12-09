@@ -1,17 +1,14 @@
 import {
 	LLMResponse,
 	ProviderContentPart,
-	LLMMessage,
 	LLMRequest,
 	LLMUsage,
 	LLMProviderService,
-	LLMProvider,
-	ProviderModelInfo,
-	ProviderMetadata,
+	ModelMetaData,
+	ProviderMetaData,
 } from './types';
-import { AIStreamEvent } from './types-events';
+import { AIStreamEvent } from '../messages/types-events';
 import { trimTrailingSlash, safeReadError } from './helpers';
-import { AIModelId } from '../types-models';
 
 const DEFAULT_GEMINI_TIMEOUT_MS = 60000;
 
@@ -69,7 +66,7 @@ function normalizeGeminiUsage(
 	};
 }
 
-export async function invokeGeminiBlock(params: {
+async function invokeGeminiBlock(params: {
 	request: LLMRequest;
 	baseUrl?: string;
 	apiKey?: string;
@@ -110,7 +107,7 @@ export async function invokeGeminiBlock(params: {
 	}
 }
 
-export async function* invokeGeminiStream(params: {
+async function* invokeGeminiStream(params: {
 	request: LLMRequest;
 	baseUrl?: string;
 	apiKey?: string;
@@ -327,12 +324,13 @@ export interface GeminiChatServiceOptions {
 	baseUrl?: string;
 	apiKey?: string;
 	timeoutMs?: number;
+	extra?: Record<string, any>;
 }
 
 export class GeminiChatService implements LLMProviderService {
 	constructor(private readonly options: GeminiChatServiceOptions) {}
 
-	getProviderId(): LLMProvider {
+	getProviderId(): string {
 		return 'gemini';
 	}
 
@@ -360,19 +358,20 @@ export class GeminiChatService implements LLMProviderService {
 		});
 	}
 
-	async getAvailableModels(): Promise<ProviderModelInfo[]> {
+	getAvailableModels(): ModelMetaData[] {
 		return [
-			{ id: 'gemini-1.5-pro' as AIModelId, displayName: 'Gemini 1.5 Pro' },
-			{ id: 'gemini-1.5-flash' as AIModelId, displayName: 'Gemini 1.5 Flash' },
-			{ id: 'gemini-1.0-pro' as AIModelId, displayName: 'Gemini 1.0 Pro' },
+			{ id: 'gemini-1.5-pro', displayName: 'Gemini 1.5 Pro', icon: 'gemini-1.5-pro' },
+			{ id: 'gemini-1.5-flash', displayName: 'Gemini 1.5 Flash', icon: 'gemini-1.5-flash' },
+			{ id: 'gemini-1.0-pro', displayName: 'Gemini 1.0 Pro', icon: 'gemini-1.0-pro' },
 		];
 	}
 
-	getProviderMetadata(): ProviderMetadata {
+	getProviderMetadata(): ProviderMetaData {
 		return {
 			id: 'gemini',
 			name: 'Gemini',
 			defaultBaseUrl: GEMINI_DEFAULT_BASE,
+			icon: 'google',
 		};
 	}
 }

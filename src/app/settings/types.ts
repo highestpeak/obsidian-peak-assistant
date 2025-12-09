@@ -1,4 +1,5 @@
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/service/chat/service-manager';
+import { RootMode } from '@/service/chat/types';
+import { ProviderConfig } from '@/service/chat/providers/types';
 import { CommandHiddenSettings, DEFAULT_COMMAND_HIDDEN_SETTINGS } from '@/service/CommandHiddenControlService';
 
 /**
@@ -12,6 +13,30 @@ export interface MyPluginSettings {
 	ai: AIServiceSettings;
 	commandHidden: CommandHiddenSettings;
 }
+
+/**
+ * AI service configuration settings.
+ */
+export interface AIServiceSettings {
+	rootFolder: string;
+	rootMode: RootMode;
+	promptFolder: string;
+	uploadFolder: string;
+	defaultModelId: string;
+	llmProviderConfigs: Record<string, ProviderConfig>;
+}
+
+/**
+ * Default values for AI service settings.
+ */
+export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
+	rootFolder: 'ChatFolder',
+	rootMode: 'conversation-first',
+	promptFolder: 'A-control/PeakAssistantPrompts',
+	uploadFolder: 'ChatFolder/Attachments',
+	defaultModelId: 'gpt-4.1-mini',
+	llmProviderConfigs: {},
+};
 
 /**
  * Baseline settings applied when no persisted data exists.
