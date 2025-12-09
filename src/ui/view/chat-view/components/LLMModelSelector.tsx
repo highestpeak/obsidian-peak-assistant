@@ -24,10 +24,10 @@ export const LLMModelSelector: React.FC = () => {
 	const [isLoading, setIsLoading] = useState(true);
 
 	// Load models function
-	const loadModels = useCallback(() => {
+	const loadModels = useCallback(async () => {
 		setIsLoading(true);
 		try {
-			const allModels = manager.getAllAvailableModels();
+			const allModels = await manager.getAllAvailableModels();
 			setModels(allModels);
 		} catch (error) {
 			console.error('[ModelSelector] Error loading models:', error);

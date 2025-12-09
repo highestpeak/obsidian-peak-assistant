@@ -181,12 +181,12 @@ export class ProviderServiceFactory {
 		return metadata;
 	}
 
-	getProviderSupportModels(providerId: string): ModelMetaData[] {
+	async getProviderSupportModels(providerId: string): Promise<ModelMetaData[]> {
 		const factory = this.factories.get(providerId);
 		if (factory) {
 			const tempService = factory(tempConfig, this.defaultTimeout);
 			if (tempService) {
-				return tempService.getAvailableModels();
+				return await tempService.getAvailableModels();
 			}
 		}
 		throw new Error(`Provider ${providerId} not found`);

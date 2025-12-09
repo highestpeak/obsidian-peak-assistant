@@ -301,8 +301,8 @@ export class AIServiceManager {
 	 * Get all available models from all configured providers
 	 * Only returns models from enabled providers and enabled models
 	 */
-	getAllAvailableModels(): ModelInfoForSwitch[] {
-		const allModels = this.multiChat.getAllAvailableModels();
+	async getAllAvailableModels(): Promise<ModelInfoForSwitch[]> {
+		const allModels = await this.multiChat.getAllAvailableModels();
 		const providerConfigs = this.settings.llmProviderConfigs ?? {};
 		console.log('getAllAvailableModels', allModels, providerConfigs);
 

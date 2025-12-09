@@ -358,12 +358,12 @@ export class GeminiChatService implements LLMProviderService {
 		});
 	}
 
-	getAvailableModels(): ModelMetaData[] {
-		return [
+	async getAvailableModels(): Promise<ModelMetaData[]> {
+		return Promise.resolve([
 			{ id: 'gemini-1.5-pro', displayName: 'Gemini 1.5 Pro', icon: 'gemini-1.5-pro' },
 			{ id: 'gemini-1.5-flash', displayName: 'Gemini 1.5 Flash', icon: 'gemini-1.5-flash' },
 			{ id: 'gemini-1.0-pro', displayName: 'Gemini 1.0 Pro', icon: 'gemini-1.0-pro' },
-		];
+		]);
 	}
 
 	getProviderMetadata(): ProviderMetaData {

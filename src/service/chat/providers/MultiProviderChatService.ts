@@ -65,8 +65,9 @@ export class MultiProviderChatService implements LLMProviderService {
 	 * Get available models - returns empty array as MultiProviderChatService doesn't have its own models
 	 * Use getAllAvailableModels() instead to get models from all configured providers
 	 */
-	getAvailableModels(): ModelMetaData[] {
-		return this.getAllAvailableModels();
+	async getAvailableModels(): Promise<ModelMetaData[]> {
+		const allModels = await this.getAllAvailableModels();
+		return allModels;
 	}
 
 	/**
@@ -118,14 +119,14 @@ export class MultiProviderChatService implements LLMProviderService {
 	/**
 	 * Get all available models from all configured providers
 	 */
-	getAllAvailableModels(): Array<ModelMetaData & { provider: string }> {
+	async getAllAvailableModels(): Promise<Array<ModelMetaData & { provider: string }>> {
 		const allModels: Array<ModelMetaData & { provider: string }> = [];
 
 		// Get models from initialized services
 		for (const [provider, service] of this.providerServiceMap.entries()) {
 			try {
 				if (service.getAvailableModels) {
-					const models = service.getAvailableModels();
+					const models = await service.getAvailableModels();
 					models.forEach((model) => {
 						allModels.push({
 							...model,

@@ -388,13 +388,13 @@ export class ClaudeChatService implements LLMProviderService {
 		});
 	}
 
-	getAvailableModels(): ModelMetaData[] {
-		return [
+	async getAvailableModels(): Promise<ModelMetaData[]> {
+		return Promise.resolve([
 			{ id: 'claude-3-5-sonnet-20240620', displayName: 'Claude 3.5 Sonnet', icon: 'claude-3-5-sonnet' },
 			{ id: 'claude-3-opus-20240229', displayName: 'Claude 3 Opus', icon: 'claude-3-opus' },
 			{ id: 'claude-3-sonnet-20240229', displayName: 'Claude 3 Sonnet', icon: 'claude-3-sonnet' },
 			{ id: 'claude-3-haiku-20240307', displayName: 'Claude 3 Haiku', icon: 'claude-3-haiku' },
-		];
+		]);
 	}
 
 	getProviderMetadata(): ProviderMetaData {

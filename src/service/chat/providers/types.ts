@@ -149,7 +149,7 @@ export interface LLMProviderService {
 	 * Get list of available models for this provider
 	 * Returns empty array if models cannot be fetched or provider doesn't support listing
 	 */
-	getAvailableModels(): ModelMetaData[];
+	getAvailableModels(): Promise<ModelMetaData[]>;
 	/**
 	 * Get provider metadata (name and default baseUrl)
 	 */

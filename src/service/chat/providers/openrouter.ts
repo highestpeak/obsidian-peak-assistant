@@ -116,8 +116,8 @@ export class OpenRouterChatService implements LLMProviderService {
 		});
 	}
 
-	getAvailableModels(): ModelMetaData[] {
-		return [
+	async getAvailableModels(): Promise<ModelMetaData[]> {
+		return Promise.resolve([
 			{ id: 'openai/gpt-4.1', displayName: 'GPT-4.1', icon: 'gpt-4.1' },
 			{ id: 'openai/gpt-4.1-mini', displayName: 'GPT-4.1 Mini', icon: 'gpt-4.1-mini' },
 			{ id: 'openai/gpt-4o', displayName: 'GPT-4o', icon: 'gpt-4o' },
@@ -132,7 +132,7 @@ export class OpenRouterChatService implements LLMProviderService {
 			{ id: 'meta-llama/llama-3.1-405b-instruct', displayName: 'Llama 3.1 405B', icon: 'llama-3.1' },
 			{ id: 'meta-llama/llama-3.1-70b-instruct', displayName: 'Llama 3.1 70B', icon: 'llama-3.1' },
 			{ id: 'meta-llama/llama-3.1-8b-instruct', displayName: 'Llama 3.1 8B', icon: 'llama-3.1' },
-		];
+		]);
 	}
 
 	getProviderMetadata(): ProviderMetaData {

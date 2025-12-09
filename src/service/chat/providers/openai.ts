@@ -79,8 +79,8 @@ export class OpenAIChatService implements LLMProviderService {
 		});
 	}
 
-	getAvailableModels(): ModelMetaData[] {
-		return [
+	async getAvailableModels(): Promise<ModelMetaData[]> {
+		return Promise.resolve([
 			{ id: 'gpt-4.1', displayName: 'GPT-4.1', icon: 'gpt-4.1' },
 			{ id: 'gpt-4.1-mini', displayName: 'GPT-4.1 Mini', icon: 'gpt-4.1-mini' },
 			{ id: 'gpt-4o', displayName: 'GPT-4o', icon: 'gpt-4o' },
@@ -89,7 +89,7 @@ export class OpenAIChatService implements LLMProviderService {
 			{ id: 'o1', displayName: 'O1', icon: 'o1' },
 			{ id: 'o1-mini', displayName: 'O1 Mini', icon: 'o1-mini' },
 			{ id: 'o1-preview', displayName: 'O1 Preview', icon: 'o1-preview' },
-		];
+		]);
 	}
 
 	getProviderMetadata(): ProviderMetaData {

@@ -214,16 +214,18 @@ function ModelList({ selectedProvider: provider, settings, onModelConfigChange }
 	// Load models for selected provider
 	useEffect(() => {
 		setIsLoadingModels(true);
-		try {
-			const factory = ProviderServiceFactory.getInstance();
-			const models = factory.getProviderSupportModels(provider);
-			setAvailableModels(models);
-		} catch (error) {
-			console.error(`[ProviderSettings] Error loading models for ${provider}:`, error);
-			setAvailableModels([]);
-		} finally {
-			setIsLoadingModels(false);
-		}
+		(async () => {
+			try {
+				const factory = ProviderServiceFactory.getInstance();
+				const models = await factory.getProviderSupportModels(provider);
+				setAvailableModels(models);
+			} catch (error) {
+				console.error(`[ProviderSettings] Error loading models for ${provider}:`, error);
+				setAvailableModels([]);
+			} finally {
+				setIsLoadingModels(false);
+			}
+		})();
 	}, [provider]);
 
 	return (
