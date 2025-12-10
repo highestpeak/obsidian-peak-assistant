@@ -210,6 +210,12 @@ function ModelList({ selectedProvider: provider, settings, onModelConfigChange }
 	const [isLoadingModels, setIsLoadingModels] = useState(false);
 
 	const config = settings.llmProviderConfigs[provider];
+	
+	// Get provider metadata for fallback icon
+	const providerMetadata = useMemo(() => {
+		const allProviderMetadata = ProviderServiceFactory.getInstance().getAllProviderMetadata();
+		return allProviderMetadata.find(p => p.id === provider);
+	}, [provider]);
 
 	// Load models for selected provider
 	useEffect(() => {
@@ -217,7 +223,9 @@ function ModelList({ selectedProvider: provider, settings, onModelConfigChange }
 		(async () => {
 			try {
 				const factory = ProviderServiceFactory.getInstance();
-				const models = await factory.getProviderSupportModels(provider);
+				// Pass actual config to getProviderSupportModels so providers that need API key can fetch models
+				const providerConfig = config || {};
+				const models = await factory.getProviderSupportModels(provider, providerConfig);
 				setAvailableModels(models);
 			} catch (error) {
 				console.error(`[ProviderSettings] Error loading models for ${provider}:`, error);
@@ -226,7 +234,7 @@ function ModelList({ selectedProvider: provider, settings, onModelConfigChange }
 				setIsLoadingModels(false);
 			}
 		})();
-	}, [provider]);
+	}, [provider, config]);
 
 	return (
 		<div className="pktw-mt-8">
@@ -251,7 +259,7 @@ function ModelList({ selectedProvider: provider, settings, onModelConfigChange }
 								>
 									{model.icon && (
 										<div className="pktw-w-5 pktw-h-5 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
-											<ErrorBoundary fallback={null}>
+											<ErrorBoundary fallback={providerMetadata?.icon ? <ProviderIcon provider={providerMetadata.icon as any} size={20} /> : null}>
 												<ModelIcon model={model.icon} size={20} className="pktw-flex-shrink-0" />
 											</ErrorBoundary>
 										</div>
@@ -280,8 +288,19 @@ function ModelList({ selectedProvider: provider, settings, onModelConfigChange }
 					</div>
 				</div>
 			) : (
-				<div className="pktw-text-sm pktw-text-muted-foreground pktw-py-4 pktw-text-center">
-					No models available. Please check your API key and try again.
+				<div className="pktw-text-sm pktw-text-muted-foreground pktw-py-4">
+					{provider === 'openai' && !config?.apiKey ? (
+						<div className="pktw-space-y-2">
+							<div className="pktw-text-center pktw-font-medium">No models available</div>
+							<div className="pktw-text-xs pktw-leading-relaxed">
+								Please enter your OpenAI API key above to fetch available models. The model list will be automatically loaded from the OpenAI API once you provide a valid API key.
+							</div>
+						</div>
+					) : (
+						<div className="pktw-text-center">
+							No models available. Please check your API key and try again.
+						</div>
+					)}
 				</div>
 			)}
 		</div>

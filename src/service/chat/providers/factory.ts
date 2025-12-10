@@ -181,10 +181,18 @@ export class ProviderServiceFactory {
 		return metadata;
 	}
 
-	async getProviderSupportModels(providerId: string): Promise<ModelMetaData[]> {
+	/**
+	 * Get available models for a provider
+	 * @param providerId - Provider identifier
+	 * @param config - Optional provider config (required for providers that need API key)
+	 * @returns Promise resolving to array of ModelMetaData
+	 */
+	async getProviderSupportModels(providerId: string, config?: ProviderConfig): Promise<ModelMetaData[]> {
 		const factory = this.factories.get(providerId);
 		if (factory) {
-			const tempService = factory(tempConfig, this.defaultTimeout);
+			// Use provided config if available, otherwise use temp config
+			const serviceConfig = config || tempConfig;
+			const tempService = factory(serviceConfig, this.defaultTimeout);
 			if (tempService) {
 				return await tempService.getAvailableModels();
 			}

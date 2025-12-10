@@ -229,13 +229,13 @@ export async function* invokeOpenAICompatibleStream(params: InvokeOpenAICompatib
 			messages: mapMessagesToOpenAI(params.request.messages),
 		};
 		
-		// Debug: Log the actual request being sent to the API
-		console.log('[OpenAICompatible] Streaming request:', {
-			url,
-			model: params.request.model,
-			messagesCount: requestBody.messages.length,
-			messages: requestBody.messages,
-		});
+		// // Debug: Log the actual request being sent to the API
+		// console.log('[OpenAICompatible] Streaming request:', {
+		// 	url,
+		// 	model: params.request.model,
+		// 	messagesCount: requestBody.messages.length,
+		// 	messages: requestBody.messages,
+		// });
 		
 		const response = await fetch(url, {
 			method: 'POST',
@@ -286,7 +286,7 @@ export async function* invokeOpenAICompatibleStream(params: InvokeOpenAICompatib
 						const deltaText = extractOpenAIMessageContent(deltaRaw);
 						if (deltaText) {
 							// Debug: Log received delta
-							console.log('[OpenAICompatible] Received delta:', deltaText);
+							// console.log('[OpenAICompatible] Received delta:', deltaText);
 							yield {
 								type: 'delta',
 								text: deltaText,

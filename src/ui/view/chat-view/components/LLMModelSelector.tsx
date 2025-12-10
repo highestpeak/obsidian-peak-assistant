@@ -4,10 +4,11 @@ import { useChatViewStore } from '../store/chatViewStore';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { ChevronDown, Check, AlertTriangle } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { ModelIcon } from '@lobehub/icons';
+import { ModelIcon, ProviderIcon } from '@lobehub/icons';
 import { cn } from '@/ui/react/lib/utils';
 import { ErrorBoundary } from '@/ui/react/lib/ErrorBoundary';
 import { SettingsUpdatedEvent, ViewEventType } from '@/core/eventBus';
+import { ProviderServiceFactory } from '@/service/chat/providers/factory';
 
 /**
  * React component for model selector
@@ -22,6 +23,16 @@ export const LLMModelSelector: React.FC = () => {
 	const [currentModelName, setCurrentModelName] = useState<string>('');
 	const [currentModelIcon, setCurrentModelIcon] = useState<string | undefined>(undefined);
 	const [isLoading, setIsLoading] = useState(true);
+	
+	// Get provider metadata map for fallback icons
+	const providerMetadataMap = useMemo(() => {
+		const allProviderMetadata = ProviderServiceFactory.getInstance().getAllProviderMetadata();
+		const map = new Map<string, { icon?: string }>();
+		allProviderMetadata.forEach(meta => {
+			map.set(meta.id, { icon: meta.icon });
+		});
+		return map;
+	}, []);
 
 	// Load models function
 	const loadModels = useCallback(async () => {
@@ -159,7 +170,7 @@ export const LLMModelSelector: React.FC = () => {
 				>
 					{!isLoading && currentModelIcon && (
 						<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
-							<ErrorBoundary fallback={null}>
+							<ErrorBoundary fallback={currentProvider && providerMetadataMap.get(currentProvider)?.icon ? <ProviderIcon provider={providerMetadataMap.get(currentProvider)!.icon as any} size={16} /> : null}>
 								<ModelIcon model={currentModelIcon} size={16} className="pktw-flex-shrink-0" />
 							</ErrorBoundary>
 						</div>
@@ -218,7 +229,7 @@ export const LLMModelSelector: React.FC = () => {
 								<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-flex-1 pktw-min-w-0">
 									{model.icon && (
 										<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
-											<ErrorBoundary fallback={null}>
+											<ErrorBoundary fallback={providerMetadataMap.get(model.provider)?.icon ? <ProviderIcon provider={providerMetadataMap.get(model.provider)!.icon as any} size={16} /> : null}>
 												<ModelIcon model={model.icon} size={16} className="pktw-flex-shrink-0" />
 											</ErrorBoundary>
 										</div>

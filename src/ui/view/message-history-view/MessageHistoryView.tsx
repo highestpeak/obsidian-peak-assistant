@@ -1,9 +1,10 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { ScrollToMessageEvent } from '@/core/eventBus';
 import { cn } from '@/ui/react/lib/utils';
 import { Star } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { useScrollManager } from '../shared/scroll-utils';
 
 /**
  * Right sidebar view displaying conversation message history for quick navigation
@@ -13,10 +14,21 @@ export const MessageHistoryViewComponent: React.FC = () => {
 	// Directly subscribe to activeConversation from projectStore
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 
+	const messageListContainerRef = useRef<HTMLDivElement>(null);
+
+	// Scroll management - all scroll logic centralized here
+	const { scrollToMessage: scrollToMessageInView } = useScrollManager({
+		scrollRef: messageListContainerRef,
+		containerRef: messageListContainerRef,
+		eventBus,
+		autoScrollOnMessagesChange: true,
+		messagesCount: activeConversation?.messages.length,
+	});
+
 	const scrollToMessage = useCallback((messageId: string) => {
-		// Dispatch event to scroll to message
+		// Dispatch event to scroll to message in main view
 		eventBus.dispatch(new ScrollToMessageEvent({ messageId }));
-	}, []);
+	}, [eventBus]);
 
 	if (!activeConversation) {
 		return (
@@ -51,10 +63,15 @@ export const MessageHistoryViewComponent: React.FC = () => {
 			</div>
 
 			{/* Message List */}
-			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-p-2">
+			<div 
+				ref={messageListContainerRef}
+				className="pktw-flex-1 pktw-overflow-y-auto pktw-p-2"
+			>
 				{activeConversation.messages.map((message) => (
 					<div
 						key={message.id}
+						data-message-id={message.id}
+						data-message-role={message.role}
 						className={cn(
 							'pktw-p-2 pktw-rounded pktw-cursor-pointer pktw-transition-colors pktw-mb-1',
 							'hover:pktw-bg-muted'

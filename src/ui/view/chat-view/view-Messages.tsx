@@ -1,15 +1,16 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { ChatMessage } from '@/service/chat/types';
 import { useChatViewStore } from './store/chatViewStore';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { useMessageStore } from '@/ui/store/messageStore';
-import { ScrollToMessageEvent, OpenLinkEvent, ViewEventType } from '@/core/eventBus';
+import { OpenLinkEvent, ViewEventType } from '@/core/eventBus';
 import { SummaryModal } from './components/SummaryModal';
 import { ResourcesModal } from './components/ResourcesModal';
 import { MessageHeader } from './components/MessageViewHeader';
 import { MessageItem } from './components/MessageViewItem';
 import { ChatInputAreaComponent } from './components/ChatInputArea';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { useScrollManager } from '../shared/scroll-utils';
 
 /**
  * Main component for rendering and managing the messages list view
@@ -23,104 +24,23 @@ export const MessagesViewComponent: React.FC = () => {
     const streamingMessageId = useMessageStore((state) => state.streamingMessageId);
     const streamingContent = useMessageStore((state) => state.streamingContent);
 
-    const [pendingScrollMessageId, setPendingScrollMessageId] = useState<string | null>(null);
-
     const bodyContainerRef = useRef<HTMLDivElement>(null);
     const bodyScrollRef = useRef<HTMLDivElement>(null);
 
-    // Scroll functions
-    // Use requestAnimationFrame to ensure DOM has been updated and layout is complete
-    // This is important when content is dynamically loaded or updated
-    const scrollToTop = useCallback((instant: boolean = false) => {
-        if (!bodyScrollRef.current) return;
-        if (instant) {
-            bodyScrollRef.current.scrollTop = 0;
-            return;
-        }
-        // Double requestAnimationFrame ensures browser has completed all rendering
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                bodyScrollRef.current?.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'
-                });
-            });
-        });
-    }, []);
+    // Scroll management - all scroll logic centralized here
+    const { scrollToTop, scrollToBottom, scrollToMessage } = useScrollManager({
+        scrollRef: bodyScrollRef,
+        containerRef: bodyContainerRef,
+        eventBus,
+        autoScrollOnMessagesChange: true,
+        messagesCount: activeConversation?.messages.length,
+        autoScrollOnStreaming: true,
+        streamingContent,
+    });
 
-    const scrollToBottom = useCallback((instant: boolean = false) => {
-        if (!bodyScrollRef.current) return;
-        if (instant) {
-            bodyScrollRef.current.scrollTop = bodyScrollRef.current.scrollHeight;
-            return;
-        }
-        // Double requestAnimationFrame ensures browser has completed all rendering
-        // This is especially important for scrollHeight calculation when content is dynamic
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                if (!bodyScrollRef.current) return;
-                bodyScrollRef.current.scrollTo({
-                    top: bodyScrollRef.current.scrollHeight,
-                    behavior: 'smooth'
-                });
-            });
-        });
-    }, []);
-
-    const scrollToMessage = useCallback((messageId: string, attempts = 3) => {
-        if (!bodyContainerRef.current) return;
-        const messageEl = bodyContainerRef.current.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement;
-        if (messageEl) {
-            messageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Wait for scroll and DOM update, then apply highlight
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    // Find the message bubble within the message container
-                    const messageBubble = messageEl.querySelector('[data-message-bubble]') as HTMLElement;
-                    if (messageBubble) {
-                        // Determine highlight color based on message role
-                        const messageRole = messageEl.getAttribute('data-message-role');
-                        const isUserMessage = messageRole === 'user';
-                        
-                        // User messages use red outline, assistant messages use accent color
-                        const outlineClasses = isUserMessage
-                            ? ['pktw-outline', 'pktw-outline-2', 'pktw-outline-red-500', 'pktw-outline-offset-0']
-                            : ['pktw-outline', 'pktw-outline-2', 'pktw-outline-[var(--interactive-accent)]', 'pktw-outline-offset-0'];
-                        
-                        messageBubble.classList.add(...outlineClasses);
-                        setTimeout(() => {
-                            messageBubble.classList.remove(...outlineClasses);
-                        }, 800);
-                    }
-                });
-            });
-            return;
-        }
-
-        if (attempts > 0) {
-            setTimeout(() => {
-                scrollToMessage(messageId, attempts - 1);
-            }, 60);
-        }
-    }, []);
-
-    // Scroll to bottom - when streaming content changes
-    useEffect(() => {
-        if (streamingContent) {
-            scrollToBottom();
-        }
-    }, [streamingContent, scrollToBottom]);
-
-    // scroll to message - Listen to scroll to message events
+    // Handle open link events
     useEffect(() => {
         if (!eventBus) return;
-
-        const unsubscribeScroll = eventBus.on<ScrollToMessageEvent>(
-            ViewEventType.SCROLL_TO_MESSAGE,
-            (event) => {
-                setPendingScrollMessageId(event.messageId);
-            }
-        );
 
         const unsubscribeOpenLink = eventBus.on<OpenLinkEvent>(
             ViewEventType.OPEN_LINK,
@@ -130,31 +50,9 @@ export const MessagesViewComponent: React.FC = () => {
         );
 
         return () => {
-            unsubscribeScroll();
             unsubscribeOpenLink();
         };
     }, [eventBus, app]);
-
-    // scroll to message - Apply pending scroll when message is available
-    useEffect(() => {
-        if (!pendingScrollMessageId) return;
-
-        // Wait for message to render, then scroll
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                scrollToMessage(pendingScrollMessageId);
-                setPendingScrollMessageId(null);
-            });
-        });
-    }, [pendingScrollMessageId, scrollToMessage]);
-
-    // Scroll to bottom after messages render
-    useEffect(() => {
-        if (activeConversation && activeConversation.messages.length > 0) {
-            scrollToBottom();
-        }
-    }, [activeConversation?.messages.length, scrollToBottom]);
-
 
     // Clear streaming state when conversation changes
     useEffect(() => {
