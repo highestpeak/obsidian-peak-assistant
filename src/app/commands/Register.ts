@@ -1,15 +1,25 @@
 
 import type { ChatProjectMeta } from '@/service/chat/types';
 import { ViewManager } from '@/app/view/ViewManager';
-import { Command } from 'obsidian';
+import { Command, Modal } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
+import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
 
 /**
  * Registers core commands exposed via Obsidian command palette.
  */
 export function buildCoreCommands(viewManager: ViewManager, aiManager: AIServiceManager): Command[] {
 	return [
+		{
+			id: 'peak-quick-search',
+			name: 'Open Quick Search',
+			callback: () => {
+				const app = viewManager.getApp();
+				const modal: Modal = new QuickSearchModal(app, aiManager);
+				modal.open();
+			},
+		},
 		{
 			id: 'peak-chat-open-view',
 			name: 'Open Chat Mode Panel',

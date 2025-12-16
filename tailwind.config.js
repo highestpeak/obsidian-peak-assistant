@@ -36,9 +36,9 @@ module.exports = {
 				ring: 'var(--interactive-accent)',
 			},
 			borderRadius: {
-				lg: 'var(--radius)',
-				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)',
+				lg: '0.5rem', // 8px
+				md: '0.375rem', // 6px
+				sm: '0.25rem', // 4px
 			},
 		},
 	},
