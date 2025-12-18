@@ -4,6 +4,9 @@ import { AISearchTab } from './tab-AISearch';
 import { Search, Sparkles } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import type { SearchMode } from '@/service/search/types';
+import { parseQuickSearchInput } from '@/service/search/query/query-parser';
 
 type TabType = 'vault' | 'ai';
 
@@ -46,6 +49,11 @@ export const QuickSearchModalContent: React.FC = () => {
 	const [searchQuery, setSearchQuery] = useState('');
 	const [triggerAnalysis, setTriggerAnalysis] = useState(0);
 	const inputRef = useRef<HTMLInputElement | null>(null);
+	const { app, searchClient } = useServiceContext();
+
+	const [indexProgress, setIndexProgress] = useState<{ processed: number; total?: number } | null>(null);
+	const [modeOverride, setModeOverride] = useState<SearchMode | null>(null);
+	const [showModeList, setShowModeList] = useState(false);
 
 	const handleAnalyze = () => {
 		if (searchQuery.trim()) {
@@ -74,6 +82,17 @@ export const QuickSearchModalContent: React.FC = () => {
 			handleAnalyze();
 		}
 	};
+
+	const parsed = parseQuickSearchInput({
+		app,
+		rawInput: searchQuery,
+		modeOverride,
+		topK: 50,
+	});
+
+	useEffect(() => {
+		setShowModeList(parsed.showModeList);
+	}, [parsed.showModeList]);
 
 	useEffect(() => {
 		// Auto focus main search input when modal opens
@@ -130,6 +149,53 @@ export const QuickSearchModalContent: React.FC = () => {
 							}
 							className="pktw-w-full pktw-pl-11 pktw-pr-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border pktw-border-[#d1d5db] pktw-rounded-full pktw-text-[#2e3338] pktw-placeholder:text-[#999999] pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-[#7c3aed] pktw-focus:border-transparent pktw-transition-all"
 						/>
+
+						{/* Mode list */}
+						{activeTab === 'vault' && showModeList && (
+							<div className="pktw-absolute pktw-left-0 pktw-right-0 pktw-mt-2 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-shadow-lg pktw-overflow-hidden">
+								<div className="pktw-flex pktw-flex-col">
+									<Button
+										variant="ghost"
+										className="pktw-justify-start !pktw-rounded-none"
+										onClick={() => {
+											setModeOverride('vault');
+											setShowModeList(false);
+											if (searchQuery.trimStart().startsWith('/')) {
+												setSearchQuery(searchQuery.trimStart().slice(1).trimStart());
+											}
+										}}
+									>
+										<span className="pktw-text-sm">Vault</span>
+									</Button>
+									<Button
+										variant="ghost"
+										className="pktw-justify-start !pktw-rounded-none"
+										onClick={() => {
+											setModeOverride('inFile');
+											setShowModeList(false);
+											if (searchQuery.trimStart().startsWith('/')) {
+												setSearchQuery(searchQuery.trimStart().slice(1).trimStart());
+											}
+										}}
+									>
+										<span className="pktw-text-sm">In File</span>
+									</Button>
+									<Button
+										variant="ghost"
+										className="pktw-justify-start !pktw-rounded-none"
+										onClick={() => {
+											setModeOverride('inFolder');
+											setShowModeList(false);
+											if (searchQuery.trimStart().startsWith('/')) {
+												setSearchQuery(searchQuery.trimStart().slice(1).trimStart());
+											}
+										}}
+									>
+										<span className="pktw-text-sm">In Folder</span>
+									</Button>
+								</div>
+							</div>
+						)}
 					</div>
 					{activeTab === 'ai' && (
 						<Button
@@ -147,9 +213,15 @@ export const QuickSearchModalContent: React.FC = () => {
 			{/* Tab Content */}
 			<div className="pktw-bg-white pktw-flex-1 pktw-min-h-0 pktw-overflow-hidden pktw-flex pktw-flex-col">
 				{activeTab === 'ai' ? (
-					<AISearchTab searchQuery={searchQuery} triggerAnalysis={triggerAnalysis} />
+					<AISearchTab searchQuery={searchQuery} triggerAnalysis={triggerAnalysis} searchClient={searchClient} />
 				) : (
-					<VaultSearchTab searchQuery={searchQuery} onSwitchToAI={() => setActiveTab('ai')} />
+					<VaultSearchTab
+						searchInput={searchQuery}
+						searchQuery={parsed.query}
+						onSwitchToAI={() => setActiveTab('ai')}
+						searchClient={searchClient}
+						indexProgress={indexProgress}
+					/>
 				)}
 			</div>
 		</div>

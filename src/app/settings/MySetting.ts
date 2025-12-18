@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type MyPlugin from 'main';
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings } from '@/app/settings/types';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings } from '@/app/settings/types';
 import React from 'react';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { ProviderSettingsComponent } from '@/ui/view/settings/ProviderSettings';
@@ -103,6 +103,74 @@ export class MySettings extends PluginSettingTab {
 						await this.pluginRef.saveSettings();
 					})
 			);
+
+		new Setting(wrapper)
+			.setName('Data Storage Folder')
+			.setDesc('Folder for storing plugin data files (e.g., search database). Leave empty to use plugin directory.')
+			.addText((text) =>
+				text
+					.setPlaceholder('Leave empty for plugin directory')
+					.setValue(this.pluginRef.settings.dataStorageFolder || '')
+					.onChange(async (value) => {
+						this.pluginRef.settings.dataStorageFolder = value.trim();
+						await this.pluginRef.saveSettings();
+					})
+			);
+
+		// Search indexing settings
+		new Setting(wrapper)
+			.setName('Auto Index on Startup')
+			.setDesc('Automatically index files when Obsidian opens. If disabled, you can manually trigger indexing via command palette (Command+P: "Index Search").')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.pluginRef.settings.search.autoIndex)
+					.onChange(async (value) => {
+						this.pluginRef.settings.search.autoIndex = value;
+						await this.pluginRef.saveSettings();
+					}),
+			);
+
+		new Setting(wrapper)
+			.setName('Index Document Types')
+			.setDesc('Select which file types to include in search index.')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.pluginRef.settings.search.includeDocumentTypes.markdown)
+					.setTooltip('Index Markdown files')
+					.onChange(async (value) => {
+						this.pluginRef.settings.search.includeDocumentTypes.markdown = value;
+						await this.pluginRef.saveSettings();
+					}),
+			)
+			.addExtraButton((button) => button.setTooltip('Markdown files').setIcon('file-text'));
+
+		new Setting(wrapper)
+			.setName('')
+			.setDesc('')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.pluginRef.settings.search.includeDocumentTypes.pdf)
+					.setTooltip('Index PDF files')
+					.onChange(async (value) => {
+						this.pluginRef.settings.search.includeDocumentTypes.pdf = value;
+						await this.pluginRef.saveSettings();
+					}),
+			)
+			.addExtraButton((button) => button.setTooltip('PDF files').setIcon('file-text'));
+
+		new Setting(wrapper)
+			.setName('')
+			.setDesc('')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.pluginRef.settings.search.includeDocumentTypes.image)
+					.setTooltip('Index Image files')
+					.onChange(async (value) => {
+						this.pluginRef.settings.search.includeDocumentTypes.image = value;
+						await this.pluginRef.saveSettings();
+					}),
+			)
+			.addExtraButton((button) => button.setTooltip('Image files').setIcon('image'));
 	}
 
 	/**
@@ -644,6 +712,17 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	const settings: MyPluginSettings = Object.assign({}, DEFAULT_SETTINGS, raw);
 	const legacyChatSettings = raw?.chat as Partial<AIServiceSettings> | undefined;
 	settings.ai = Object.assign({}, DEFAULT_AI_SERVICE_SETTINGS, raw?.ai ?? legacyChatSettings ?? {});
+	settings.search = Object.assign({}, DEFAULT_SEARCH_SETTINGS, raw?.search ?? {});
+	// Migrate from legacy neverPromptAgain to autoIndex
+	if ('neverPromptAgain' in (raw?.search ?? {})) {
+		settings.search.autoIndex = !(raw?.search as any)?.neverPromptAgain;
+		delete (settings.search as any).neverPromptAgain;
+	}
+	settings.search.includeDocumentTypes = Object.assign(
+		{},
+		DEFAULT_SEARCH_SETTINGS.includeDocumentTypes,
+		(settings.search as any)?.includeDocumentTypes ?? {},
+	);
 	if (!settings.ai.promptFolder) {
 		const legacyPromptFolder = typeof raw?.promptFolder === 'string' ? (raw.promptFolder as string) : undefined;
 		settings.ai.promptFolder = legacyPromptFolder || DEFAULT_AI_SERVICE_SETTINGS.promptFolder;

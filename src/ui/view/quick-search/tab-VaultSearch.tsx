@@ -3,27 +3,19 @@ import { ChevronRight, Sparkles, SearchX } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { formatRelativeTime } from '@/ui/view/shared/date-utils';
 import { getFileIcon } from '@/ui/view/shared/file-utils';
-import { SearchResultType } from '@/core/Enums';
 import { KeyboardShortcut } from './components/KeyboardShortcut';
-
-interface SearchResult {
-	id: string;
-	type: SearchResultType;
-	title: string;
-	path: string;
-	snippet?: string | null;
-	highlightText?: string;
-	lastModified: number; // timestamp in milliseconds
-}
+import type { SearchQuery, SearchResultItem as SearchResultItemType } from '@/service/search/types';
+import type { SearchClient } from '@/service/search/SearchClient';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 // Mock recently accessed files
-const mockRecentlyAccessed: SearchResult[] = [
+const mockRecentlyAccessed: SearchResultItemType[] = [
 	{
 		id: 'ra-1',
 		type: 'markdown',
 		title: 'Daily Notes - 2024-12-15',
 		path: 'Daily',
-		snippet: 'Today\'s meeting notes and tasks',
+		snippet: { text: 'Today\'s meeting notes and tasks' },
 		lastModified: Date.now() - 30 * 60 * 1000, // 30 minutes ago
 	},
 	{
@@ -31,7 +23,7 @@ const mockRecentlyAccessed: SearchResult[] = [
 		type: 'markdown',
 		title: 'Project Planning',
 		path: 'Projects/Active',
-		snippet: 'Q1 2025 roadmap and milestones',
+		snippet: { text: 'Q1 2025 roadmap and milestones' },
 		lastModified: Date.now() - 2 * 60 * 60 * 1000, // 2 hours ago
 	},
 	{
@@ -39,7 +31,7 @@ const mockRecentlyAccessed: SearchResult[] = [
 		type: 'pdf',
 		title: 'Research Notes - AI Trends',
 		path: 'Research',
-		snippet: 'Key findings from recent AI research papers',
+		snippet: { text: 'Key findings from recent AI research papers' },
 		lastModified: Date.now() - 5 * 60 * 60 * 1000, // 5 hours ago
 	},
 	{
@@ -47,7 +39,7 @@ const mockRecentlyAccessed: SearchResult[] = [
 		type: 'markdown',
 		title: 'Meeting Notes - Team Sync',
 		path: 'Work/Meetings',
-		snippet: 'Weekly team synchronization discussion',
+		snippet: { text: 'Weekly team synchronization discussion' },
 		lastModified: Date.now() - 24 * 60 * 60 * 1000, // 1 day ago
 	},
 	{
@@ -55,78 +47,22 @@ const mockRecentlyAccessed: SearchResult[] = [
 		type: 'folder',
 		title: 'Personal',
 		path: 'Notes',
-		snippet: '8 notes inside',
+		snippet: { text: '8 notes inside' },
 		lastModified: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
-	},
-];
-
-// Mock search results (all available files)
-const mockVaultResults: SearchResult[] = [
-	{
-		id: '1',
-		type: 'markdown',
-		title: 'Machine Learning Fundamentals',
-		path: 'Notes/AI/Concepts',
-		snippet: 'Deep learning is a subset of machine learning that uses neural networks...',
-		highlightText: 'machine learning',
-		lastModified: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
-	},
-	{
-		id: '2',
-		type: 'markdown',
-		title: 'Project Meeting Notes - 2024-12-10',
-		path: 'Work/Meetings',
-		snippet: 'Discussed the new machine learning pipeline implementation and deployment strategy',
-		highlightText: 'machine learning',
-		lastModified: Date.now() - 5 * 24 * 60 * 60 * 1000, // 5 days ago
-	},
-	{
-		id: '3',
-		type: 'pdf',
-		title: 'Research Paper - Neural Networks',
-		path: 'References/Papers',
-		snippet: 'This paper explores advanced machine learning techniques for natural language...',
-		highlightText: 'machine learning',
-		lastModified: Date.now() - 3 * 7 * 24 * 60 * 60 * 1000, // 3 weeks ago
-	},
-	{
-		id: '4',
-		type: 'markdown',
-		title: 'Learning Resources',
-		path: 'Resources',
-		snippet: 'A curated list of machine learning courses, tutorials, and best practices',
-		highlightText: 'machine learning',
-		lastModified: Date.now() - 2 * 30 * 24 * 60 * 60 * 1000, // 2 months ago
-	},
-	{
-		id: '5',
-		type: 'image',
-		title: 'ML Architecture Diagram.png',
-		path: 'Assets/Diagrams',
-		snippet: null,
-		lastModified: Date.now() - 6 * 30 * 24 * 60 * 60 * 1000, // 6 months ago
-	},
-	{
-		id: '6',
-		type: 'folder',
-		title: 'Machine Learning Projects',
-		path: 'Projects',
-		snippet: '12 notes inside',
-		lastModified: Date.now() - 400 * 24 * 60 * 60 * 1000, // more than one year ago
 	},
 ];
 
 /**
  * Filter search results based on query.
  */
-const filterResults = (results: SearchResult[], query: string): SearchResult[] => {
+const filterResults = (results: SearchResultItemType[], query: string): SearchResultItemType[] => {
 	if (!query.trim()) return results;
 	const lowerQuery = query.toLowerCase();
 	return results.filter(
 		(result) =>
 			result.title.toLowerCase().includes(lowerQuery) ||
 			result.path.toLowerCase().includes(lowerQuery) ||
-			result.snippet?.toLowerCase().includes(lowerQuery),
+			result.snippet?.text?.toLowerCase().includes(lowerQuery),
 	);
 };
 
@@ -155,7 +91,7 @@ const highlightMatch = (text: string, highlight: string) => {
 /**
  * Empty state when no search results found
  */
-const NoResultsState: React.FC<{ searchQuery: string }> = ({ searchQuery }) => (
+const NoResultsState: React.FC<{ searchInput: string }> = ({ searchInput }) => (
 	<div className="pktw-h-full pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-8">
 		<div className="pktw-w-20 pktw-h-20 pktw-rounded-full pktw-bg-gray-50 pktw-flex pktw-items-center pktw-justify-center pktw-mb-4">
 			<SearchX className="pktw-w-10 pktw-h-10 pktw-text-gray-400" />
@@ -164,7 +100,7 @@ const NoResultsState: React.FC<{ searchQuery: string }> = ({ searchQuery }) => (
 			No results found
 		</span>
 		<span className="pktw-text-sm pktw-text-[#6c757d] pktw-max-w-md">
-			We couldn&apos;t find anything matching &quot;{searchQuery}&quot;. Try different keywords or check your spelling.
+			We couldn&apos;t find anything matching &quot;{searchInput}&quot;. Try different keywords or check your spelling.
 		</span>
 	</div>
 );
@@ -172,8 +108,8 @@ const NoResultsState: React.FC<{ searchQuery: string }> = ({ searchQuery }) => (
 /**
  * Individual search result item component
  */
-const SearchResultItem: React.FC<{
-	result: SearchResult;
+const SearchResultRow: React.FC<{
+	result: SearchResultItemType;
 	index: number;
 	isSelected: boolean;
 	isSearching: boolean;
@@ -212,9 +148,9 @@ const SearchResultItem: React.FC<{
 				</div>
 
 				{/* Snippet */}
-				{result.snippet && (
+				{result.snippet?.text && (
 					<span className="pktw-text-sm pktw-text-[#6c757d] pktw-line-clamp-2 pktw-mt-1">
-						{isSearching ? highlightMatch(result.snippet, searchQuery) : result.snippet}
+						{isSearching ? highlightMatch(result.snippet.text, searchQuery) : result.snippet.text}
 					</span>
 				)}
 			</div>
@@ -240,28 +176,79 @@ const VaultSearchFooterHints: React.FC = () => (
 );
 
 interface VaultSearchTabProps {
-	searchQuery: string;
+	searchInput: string;
+	searchQuery: SearchQuery;
 	onSwitchToAI: () => void;
+	searchClient: SearchClient | null;
+	indexProgress: { processed: number; total?: number } | null;
 }
 
 /**
  * Quick search tab for regular vault search results.
  */
-export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchQuery, onSwitchToAI }) => {
+export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, searchQuery, onSwitchToAI, searchClient, indexProgress }) => {
 	const [selectedIndex, setSelectedIndex] = React.useState(0);
+	const [remoteResults, setRemoteResults] = React.useState<SearchResultItemType[] | null>(null);
+	const [recentResults, setRecentResults] = React.useState<SearchResultItemType[] | null>(null);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+	const { app } = useServiceContext();
 
 	// Determine which results to show
-	const isSearching = searchQuery.trim().length > 0;
+	const isSearching = searchQuery.text.trim().length > 0;
 	const displayedResults = isSearching
-		? filterResults(mockVaultResults, searchQuery)
-		: mockRecentlyAccessed;
+		? (remoteResults ?? [])
+		: (recentResults && recentResults.length ? recentResults : mockRecentlyAccessed);
+
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			if (isSearching) return;
+			if (!searchClient) {
+				setRecentResults(null);
+				return;
+			}
+			try {
+				const items = await searchClient.getRecent(30);
+				if (!cancelled) setRecentResults(items);
+			} catch (e) {
+				console.error('Get recent failed:', e);
+				if (!cancelled) setRecentResults(null);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [isSearching, searchClient]);
+
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			if (!isSearching) {
+				setRemoteResults(null);
+				return;
+			}
+			if (!searchClient) {
+				setRemoteResults([]);
+				return;
+			}
+			try {
+				const res = await searchClient.search(searchQuery);
+				if (!cancelled) setRemoteResults(res.items);
+			} catch (e) {
+				console.error('Vault search failed:', e);
+				if (!cancelled) setRemoteResults([]);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [isSearching, searchQuery, searchClient]);
 
 	// Reset selected index when results change
 	useEffect(() => {
 		setSelectedIndex(0);
-	}, [isSearching, searchQuery]);
+	}, [isSearching, searchQuery.text, searchQuery.mode]);
 
 	// Handle keyboard navigation
 	useEffect(() => {
@@ -288,15 +275,24 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchQuery, onS
 					e.preventDefault();
 					setSelectedIndex((prev) => (prev < maxIndex ? prev + 1 : 0));
 					break;
-				case 'Enter':
+				case 'Enter': {
 					e.preventDefault();
 					// Open selected result
 					const selectedResult = displayedResults[selectedIndex];
 					if (selectedResult) {
-						// TODO: Implement actual file opening logic
-						console.log('Open result:', selectedResult);
+						try {
+							// Record open signal (best-effort)
+							void searchClient?.recordOpen(selectedResult.path);
+							const file = app.vault.getAbstractFileByPath(selectedResult.path);
+							if (file && (file as any).path) {
+								void app.workspace.getLeaf(false).openFile(file as any);
+							}
+						} catch (err) {
+							console.error('Open result failed:', err);
+						}
 					}
 					break;
+				}
 			}
 		};
 
@@ -333,7 +329,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchQuery, onS
 			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto">
 				{/* Empty State - No Results */}
 				{isSearching && displayedResults.length === 0 ? (
-					<NoResultsState searchQuery={searchQuery} />
+					<NoResultsState searchInput={searchInput} />
 				) : (
 					<>
 						{/* Show hint text for recently accessed */}
@@ -343,13 +339,13 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchQuery, onS
 							</div>
 						)}
 						{displayedResults.map((result, index) => (
-							<SearchResultItem
+							<SearchResultRow
 								key={result.id}
 								result={result}
 								index={index}
 								isSelected={index === selectedIndex}
 								isSearching={isSearching}
-								searchQuery={searchQuery}
+								searchQuery={searchQuery.text}
 								onSelect={setSelectedIndex}
 								itemRef={(el) => {
 									itemRefs.current[index] = el;
@@ -364,6 +360,11 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchQuery, onS
 			<div className="pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between">
 				<VaultSearchFooterHints />
 				<div className="pktw-flex pktw-items-center pktw-gap-3">
+					{!isSearching && indexProgress?.processed ? (
+						<span className="pktw-text-xs pktw-text-[#999999]">
+							Indexed: {indexProgress.processed}
+						</span>
+					) : null}
 					{isSearching && (
 						<span className="pktw-text-xs pktw-text-[#999999]">
 							{displayedResults.length} result{displayedResults.length !== 1 ? 's' : ''}

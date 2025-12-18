@@ -1,5 +1,6 @@
 import { App, normalizePath, TFile, TFolder } from 'obsidian';
-import { buildConversationMarkdown, buildProjectMarkdown, parseFrontmatter } from './storage-markdown';
+import { buildConversationMarkdown, buildProjectMarkdown } from './storage-markdown';
+import { parseFrontmatter } from '@/core/utils/markdown-utils';
 import {
 	ChatContextWindow,
 	ChatConversationMeta,

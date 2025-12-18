@@ -17,11 +17,8 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = (process.argv[2] === "production");
 
-const context = await esbuild.context({
-	banner: {
-		js: banner,
-	},
-	entryPoints: ["main.ts"],
+const shared = {
+	banner: { js: banner },
 	bundle: true,
 	plugins: [
 		alias({
@@ -42,19 +39,39 @@ const context = await esbuild.context({
 		"@lezer/common",
 		"@lezer/highlight",
 		"@lezer/lr",
-		...builtins],
-	format: "cjs",
+		...builtins,
+	],
 	target: "es2018",
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "main.js",
 	minify: prod,
+};
+
+const mainContext = await esbuild.context({
+	...shared,
+	entryPoints: ["main.ts"],
+	format: "cjs",
+	outfile: "main.js",
+});
+
+const workerContext = await esbuild.context({
+	...shared,
+	// Worker entry must not import obsidian runtime APIs.
+	entryPoints: ["src/service/search/worker/entry.ts"],
+	platform: "browser",
+	format: "iife",
+	loader: {
+		".wasm": "file",
+	},
+	outfile: "search-worker.js",
 });
 
 if (prod) {
-	await context.rebuild();
+	await mainContext.rebuild();
+	await workerContext.rebuild();
 	process.exit(0);
 } else {
-	await context.watch();
+	await mainContext.watch();
+	await workerContext.watch();
 }

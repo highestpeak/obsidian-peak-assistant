@@ -2,6 +2,7 @@ import React from 'react';
 import { App } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { ServiceProvider } from '@/ui/context/ServiceContext';
+import { SearchClient } from '@/service/search/SearchClient';
 
 /**
  * Factory function to create React elements wrapped with ServiceProvider
@@ -9,13 +10,14 @@ import { ServiceProvider } from '@/ui/context/ServiceContext';
  */
 export function createReactElementWithServices<T extends Record<string, any>>(
 	Component: React.ComponentType<T>,
-	props: Omit<T, 'app' | 'manager'>,
+	props: Omit<T, 'app' | 'manager' | 'searchClient'>,
 	app: App,
-	manager: AIServiceManager
+	manager: AIServiceManager,
+	searchClient?: SearchClient | null
 ): React.ReactElement {
 	return React.createElement(
 		ServiceProvider,
-		{ app, manager, children: React.createElement(Component, props as T) }
+		{ app, manager, searchClient, children: React.createElement(Component, props as T) }
 	);
 }
 

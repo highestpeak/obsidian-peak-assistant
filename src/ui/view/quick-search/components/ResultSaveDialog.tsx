@@ -2,27 +2,47 @@ import React, { useState } from 'react';
 import { X, FolderOpen, Sparkles, Check } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import type { AiAnalyzeResult } from '@/service/search/types';
+import { saveAiAnalyzeResultToMarkdown } from '@/ui/view/quick-search/features/save-ai-analyze-to-md';
 
 interface SaveDialogProps {
 	onClose: () => void;
+	query: string;
+	result: Pick<AiAnalyzeResult, 'summary' | 'sources' | 'insights' | 'usage'>;
+	webEnabled?: boolean;
 }
 
 /**
  * Mock save dialog for AI search results.
  */
-export const SaveDialog: React.FC<SaveDialogProps> = ({ onClose }) => {
-	const [fileName, setFileName] = useState('AI Search Results - Machine Learning - 2024-12-15');
+export const SaveDialog: React.FC<SaveDialogProps> = ({ onClose, query, result, webEnabled }) => {
+	const today = new Date().toISOString().slice(0, 10);
+	const defaultName = `AI Search Results - ${query.slice(0, 40) || 'Query'} - ${today}`;
+	const [fileName, setFileName] = useState(defaultName);
 	const [folderPath, setFolderPath] = useState('Analysis/AI Searches');
 	const [isSaving, setIsSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
+	const { app } = useServiceContext();
 
-	const handleSave = () => {
+	const handleSave = async () => {
+		if (isSaving || saved) return;
 		setIsSaving(true);
-		setTimeout(() => {
+		try {
+			await saveAiAnalyzeResultToMarkdown(app, {
+				folderPath,
+				fileName,
+				query,
+				result,
+				webEnabled,
+			});
 			setIsSaving(false);
 			setSaved(true);
-			setTimeout(onClose, 1500);
-		}, 1000);
+			setTimeout(onClose, 900);
+		} catch (e) {
+			console.error('Save failed:', e);
+			setIsSaving(false);
+		}
 	};
 
 	return (

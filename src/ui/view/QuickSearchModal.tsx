@@ -5,6 +5,7 @@ import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { QuickSearchModalContent } from './quick-search/SearchModal';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { SearchClient } from '@/service/search/SearchClient';
 
 /**
  * Obsidian modal wrapper for quick search React UI.
@@ -12,7 +13,7 @@ import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 export class QuickSearchModal extends Modal {
 	private reactRenderer: ReactRenderer | null = null;
 
-	constructor(app: App, private readonly manager: AIServiceManager) {
+	constructor(app: App, private readonly manager: AIServiceManager, private readonly searchClient: SearchClient | null) {
 		super(app);
 	}
 
@@ -33,7 +34,7 @@ export class QuickSearchModal extends Modal {
 
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 		this.reactRenderer.render(
-			createReactElementWithServices(QuickSearchModalContent, {}, this.app, this.manager)
+			createReactElementWithServices(QuickSearchModalContent, {}, this.app, this.manager, this.searchClient)
 		);
 	}
 

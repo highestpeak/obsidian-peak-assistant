@@ -1,6 +1,6 @@
 import { MarkdownView, TFile } from 'obsidian';
 import type MyPlugin from 'main';
-import { parseFrontmatter } from '@/service/chat/storage-markdown';
+import { parseFrontmatter } from '@/core/utils/markdown-utils';
 import { ViewManager } from '@/app/view/ViewManager';
 import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';

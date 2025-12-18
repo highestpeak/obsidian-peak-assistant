@@ -1,49 +1,11 @@
 import { stringifyYaml, TFile, Vault } from 'obsidian';
-import matter from 'gray-matter';
-import { marked, Tokens } from 'marked';
 import { ChatContextWindow, ChatConversationMeta, ChatMessage, ChatProjectContext, ChatProjectMeta } from './types';
-
-interface ParsedFrontmatter<T> {
-	data: T;
-	body: string;
-}
-
-export function parseFrontmatter<T extends object>(text: string): ParsedFrontmatter<T> | null {
-	const parsed = matter(text);
-	if (parsed.matter === '') {
-		return null;
-	}
-
-	return {
-		data: parsed.data as T,
-		body: parsed.content,
-	};
-}
-
-export function buildFrontmatter<T extends object>(data: T): string {
-	return matter.stringify('', data);
-}
-
-export function extractCodeBlock(content: string, codeBlockType: string): string | undefined {
-	const tokens = tokenizeMarkdown(content);
-	const token = findCodeToken(tokens, codeBlockType);
-	return token?.text?.trim();
-}
-
-export function replaceOrAppendCodeBlock(content: string, codeBlockType: string, nextBlock: string): string {
-	const tokens = tokenizeMarkdown(content);
-	const nextBlockTrimmed = nextBlock.trim();
-	const block = codeBlock(codeBlockType, nextBlockTrimmed);
-	const token = findCodeToken(tokens, codeBlockType);
-
-	if (token && token.raw) {
-		return content.replace(token.raw, block);
-	}
-
-	const trimmed = content.trimEnd();
-	const separator = trimmed.length > 0 ? '\n\n' : '';
-	return `${trimmed}${separator}${block}\n`;
-}
+import {
+	buildFrontmatter,
+	codeBlock,
+	extractCodeBlock,
+	replaceOrAppendCodeBlock,
+} from '@/core/utils/markdown-utils';
 
 export function buildConversationMarkdown(params: {
 	meta: ChatConversationMeta;
@@ -203,46 +165,6 @@ export function buildProjectMarkdown(params: {
 	return `${frontmatter}${sections.join('\n\n')}\n`;
 }
 
-function codeBlock(type: string, content: string): string {
-	return `\`\`\`${type}\n${content.trim()}\n\`\`\``;
-}
-
-function tokenizeMarkdown(content: string): LexerTokens {
-	return marked.lexer(content, { gfm: true });
-}
-
-type LexerTokens = ReturnType<typeof marked.lexer>;
-
-function findCodeToken(tokens: Tokens.Generic[] | undefined, lang: string): Tokens.Code | undefined {
-	if (!tokens) return undefined;
-
-	for (const token of tokens) {
-		if (token.type === 'code' && token.lang === lang) {
-			return token as Tokens.Code;
-		}
-
-		if (isListToken(token)) {
-			for (const item of token.items ?? []) {
-				const found = findCodeToken(item.tokens ?? [], lang);
-				if (found) return found;
-			}
-		}
-
-		if (hasNestedTokens(token)) {
-			const found = findCodeToken(token.tokens ?? [], lang);
-			if (found) return found;
-		}
-	}
-	return undefined;
-}
-
-function isListToken(token: Tokens.Generic): token is Tokens.List {
-	return token.type === 'list';
-}
-
-function hasNestedTokens(token: Tokens.Generic): token is Tokens.Generic & { tokens: Tokens.Generic[] } {
-	return Array.isArray((token as any).tokens);
-}
 
 export async function saveMarkdownFile(vault: Vault, file: TFile | null, path: string, content: string): Promise<TFile> {
 	if (file) {

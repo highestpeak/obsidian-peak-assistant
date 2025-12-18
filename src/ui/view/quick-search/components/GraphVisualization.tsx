@@ -3,55 +3,82 @@ import React from 'react';
 /**
  * Simple SVG-based knowledge graph preview.
  */
-export const GraphVisualization: React.FC = () => {
+export const GraphVisualization: React.FC<{
+	graph?: {
+		nodes: Array<{ id: string; label: string; kind: 'file' | 'tag' | 'heading' }>;
+		edges: Array<{ from: string; to: string; weight?: number }>;
+	} | null;
+}> = ({ graph }) => {
+	// Fallback to the old placeholder if no data yet.
+	if (!graph || !graph.nodes?.length) {
+		return (
+			<div className="pktw-w-full pktw-aspect-square pktw-bg-muted pktw-rounded-md pktw-border pktw-border-border pktw-relative pktw-overflow-hidden">
+				<svg width="100%" height="100%" viewBox="0 0 200 200" className="pktw-p-2">
+					{/* Edges */}
+					<line x1="100" y1="100" x2="60" y2="50" stroke="#d1d5db" strokeWidth="1.5" />
+					<line x1="100" y1="100" x2="140" y2="50" stroke="#d1d5db" strokeWidth="1.5" />
+					<line x1="100" y1="100" x2="50" y2="140" stroke="#d1d5db" strokeWidth="1.5" />
+					<line x1="100" y1="100" x2="150" y2="140" stroke="#d1d5db" strokeWidth="1.5" />
+					<line x1="60" y1="50" x2="140" y2="50" stroke="#e5e7eb" strokeWidth="1" />
+					<line x1="50" y1="140" x2="150" y2="140" stroke="#e5e7eb" strokeWidth="1" />
+
+					{/* Central Node */}
+					<circle cx="100" cy="100" r="16" fill="#7c3aed" />
+					<text x="100" y="105" textAnchor="middle" fill="white" fontSize="10" fontWeight="600">
+						KG
+					</text>
+				</svg>
+			</div>
+		);
+	}
+
+	const nodes = graph.nodes.slice(0, 20);
+	const center = { x: 100, y: 100 };
+	const radius = 70;
+	const positions = new Map<string, { x: number; y: number }>();
+	nodes.forEach((n, idx) => {
+		const angle = (2 * Math.PI * idx) / nodes.length;
+		positions.set(n.id, {
+			x: center.x + radius * Math.cos(angle),
+			y: center.y + radius * Math.sin(angle),
+		});
+	});
+
 	return (
 		<div className="pktw-w-full pktw-aspect-square pktw-bg-muted pktw-rounded-md pktw-border pktw-border-border pktw-relative pktw-overflow-hidden">
 			<svg width="100%" height="100%" viewBox="0 0 200 200" className="pktw-p-2">
 				{/* Edges */}
-				<line x1="100" y1="100" x2="60" y2="50" stroke="#d1d5db" strokeWidth="1.5" />
-				<line x1="100" y1="100" x2="140" y2="50" stroke="#d1d5db" strokeWidth="1.5" />
-				<line x1="100" y1="100" x2="50" y2="140" stroke="#d1d5db" strokeWidth="1.5" />
-				<line x1="100" y1="100" x2="150" y2="140" stroke="#d1d5db" strokeWidth="1.5" />
-				<line x1="60" y1="50" x2="140" y2="50" stroke="#e5e7eb" strokeWidth="1" />
-				<line x1="50" y1="140" x2="150" y2="140" stroke="#e5e7eb" strokeWidth="1" />
+				{graph.edges.slice(0, 40).map((e, idx) => {
+					const from = positions.get(e.from);
+					const to = positions.get(e.to);
+					if (!from || !to) return null;
+					return (
+						<line
+							key={idx}
+							x1={from.x}
+							y1={from.y}
+							x2={to.x}
+							y2={to.y}
+							stroke="#d1d5db"
+							strokeWidth={Math.max(1, Math.min(2.5, (e.weight ?? 1) / 2))}
+							opacity="0.8"
+						/>
+					);
+				})}
 
-				{/* Central Node */}
-				<circle cx="100" cy="100" r="16" fill="#7c3aed" />
-				<text x="100" y="105" textAnchor="middle" fill="white" fontSize="10" fontWeight="600">
-					ML
-				</text>
-
-				{/* Connected Nodes */}
-				<circle cx="60" cy="50" r="12" fill="#8b5cf6" />
-				<text x="60" y="54" textAnchor="middle" fill="white" fontSize="8">
-					DL
-				</text>
-
-				<circle cx="140" cy="50" r="12" fill="#8b5cf6" />
-				<text x="140" y="54" textAnchor="middle" fill="white" fontSize="8">
-					NN
-				</text>
-
-				<circle cx="50" cy="140" r="12" fill="#a78bfa" />
-				<text x="50" y="144" textAnchor="middle" fill="white" fontSize="8">
-					AI
-				</text>
-
-				<circle cx="150" cy="140" r="12" fill="#a78bfa" />
-				<text x="150" y="144" textAnchor="middle" fill="white" fontSize="7">
-					Data
-				</text>
-
-				{/* Peripheral Nodes */}
-				<circle cx="30" cy="100" r="8" fill="#c4b5fd" opacity="0.8" />
-				<circle cx="170" cy="100" r="8" fill="#c4b5fd" opacity="0.8" />
-				<circle cx="100" cy="30" r="8" fill="#c4b5fd" opacity="0.8" />
-				<circle cx="100" cy="170" r="8" fill="#c4b5fd" opacity="0.8" />
-
-				<line x1="100" y1="100" x2="30" y2="100" stroke="#e5e7eb" strokeWidth="1" opacity="0.5" />
-				<line x1="100" y1="100" x2="170" y2="100" stroke="#e5e7eb" strokeWidth="1" opacity="0.5" />
-				<line x1="100" y1="100" x2="100" y2="30" stroke="#e5e7eb" strokeWidth="1" opacity="0.5" />
-				<line x1="100" y1="100" x2="100" y2="170" stroke="#e5e7eb" strokeWidth="1" opacity="0.5" />
+				{/* Nodes */}
+				{nodes.map((n) => {
+					const p = positions.get(n.id)!;
+					const fill = n.kind === 'file' ? '#7c3aed' : n.kind === 'tag' ? '#8b5cf6' : '#a78bfa';
+					return (
+						<g key={n.id}>
+							<circle cx={p.x} cy={p.y} r={n.kind === 'file' ? 8 : 6} fill={fill} />
+							<text x={p.x} y={p.y + 3} textAnchor="middle" fill="white" fontSize="6">
+								{n.kind === 'tag' ? '#' : ''}
+							</text>
+						</g>
+					);
+				})}
 			</svg>
 		</div>
 	);

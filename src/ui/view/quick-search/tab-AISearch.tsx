@@ -5,10 +5,15 @@ import { TagCloud } from './components/TagCloud';
 import { SaveDialog } from './components/ResultSaveDialog';
 import { KeyboardShortcut } from './components/KeyboardShortcut';
 import { Button } from '@/ui/component/shared-ui/button';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import type { SearchClient } from '@/service/search/SearchClient';
+import type { RagSource } from '@/service/search/types';
+import { buildRagSummarizeText, pickDefaultModel } from '@/ui/view/quick-search/features/ai-rag';
 
 interface AISearchTabProps {
 	searchQuery: string;
 	triggerAnalysis: number;
+	searchClient: SearchClient | null;
 }
 
 /**
@@ -77,35 +82,17 @@ const EmptyState: React.FC = () => (
 /**
  * AI analysis result section component
  */
-const AnalysisSection: React.FC = () => (
+const AnalysisSection: React.FC<{ summary: string; modeLabel: string }> = ({ summary, modeLabel }) => (
 	<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
 		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
 			<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
 			<span className="pktw-font-semibold pktw-text-[#2e3338] pktw-text-lg">AI Analysis</span>
 			<span className="pktw-text-xs pktw-text-[#999999] pktw-bg-white pktw-px-2 pktw-py-0.5 pktw-rounded pktw-border pktw-border-[#e5e7eb]">
-				Auto-selected: Local RAG + Web
+				{modeLabel}
 			</span>
 		</div>
 		<div className="pktw-space-y-3 pktw-text-sm pktw-text-[#2e3338] pktw-leading-relaxed">
-			<span>
-				Based on your vault&apos;s content,{' '}
-				<mark className="pktw-bg-violet-100 pktw-text-violet-800 pktw-px-1 pktw-rounded">
-					machine learning
-				</mark>{' '}
-				is a recurring theme across multiple domains. The core concepts appear in your notes
-				about AI fundamentals, project implementations, and research materials.
-			</span>
-			<span>
-				Your notes emphasize the <strong>practical application</strong> of ML techniques,
-				with a focus on neural networks and deep learning architectures. The connection
-				between theoretical concepts and real-world deployment strategies is well
-				documented.
-			</span>
-			<span>
-				Key insights suggest you are actively working on ML pipeline implementation, with
-				cross-references between meeting notes, technical documentation, and research
-				papers.
-			</span>
+			<span className="pktw-whitespace-pre-wrap">{summary || 'No summary available.'}</span>
 		</div>
 	</div>
 );
@@ -129,15 +116,10 @@ const TagCloudSection: React.FC = () => (
 /**
  * Top sources section component showing relevant files
  */
-const TopSourcesSection: React.FC = () => {
-	const sources = [
-		{ title: 'Machine Learning Fundamentals', path: 'Notes/AI/Concepts', relevance: 95 },
-		{ title: 'Project Meeting Notes - 2024-12-10', path: 'Work/Meetings', relevance: 88 },
-		{ title: 'Research Paper - Neural Networks', path: 'References/Papers', relevance: 82 },
-		{ title: 'Learning Resources', path: 'Resources', relevance: 76 },
-		{ title: 'ML Best Practices', path: 'Notes/AI/Guidelines', relevance: 71 },
-	];
-
+const TopSourcesSection: React.FC<{
+	sources: RagSource[];
+	onOpen: (path: string) => void;
+}> = ({ sources, onOpen }) => {
 	return (
 		<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
@@ -150,10 +132,11 @@ const TopSourcesSection: React.FC = () => {
 					<div
 						key={index}
 						className="pktw-flex pktw-items-center pktw-gap-3 pktw-p-2 pktw-rounded hover:pktw-bg-[#f5f5f5] pktw-cursor-pointer pktw-transition-colors pktw-group"
+						onClick={() => onOpen(source.path)}
 					>
 						<div
 							className="pktw-w-1 pktw-h-8 pktw-bg-[#7c3aed] pktw-rounded-full"
-							style={{ opacity: source.relevance / 100 }}
+							style={{ opacity: Math.max(0.3, Math.min(1, (source.score ?? 1) / 10)) }}
 						/>
 						<div className="pktw-flex-1 pktw-min-w-0">
 							<div className="pktw-text-sm pktw-text-[#2e3338] pktw-truncate group-hover:pktw-text-[#7c3aed]">
@@ -164,7 +147,7 @@ const TopSourcesSection: React.FC = () => {
 							</div>
 						</div>
 						<div className="pktw-text-xs pktw-text-[#6c757d] pktw-font-medium">
-							{source.relevance}%
+							{source.score ? source.score.toFixed(2) : ''}
 						</div>
 					</div>
 				))}
@@ -176,7 +159,7 @@ const TopSourcesSection: React.FC = () => {
 /**
  * Knowledge graph section component
  */
-const KnowledgeGraphSection: React.FC = () => (
+const KnowledgeGraphSection: React.FC<{ graph?: any }> = ({ graph }) => (
 	<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
 		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
 			<TrendingUp className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
@@ -184,7 +167,7 @@ const KnowledgeGraphSection: React.FC = () => (
 				Knowledge Graph
 			</span>
 		</div>
-		<GraphVisualization />
+		<GraphVisualization graph={graph} />
 		<span className="pktw-text-xs pktw-text-[#999999] pktw-mt-2 pktw-text-center">
 			2-3 hop relationships
 		</span>
@@ -210,29 +193,36 @@ const AISearchFooterHints: React.FC = () => (
 /**
  * AI search tab, showing analysis summary, sources, and insights.
  */
-export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAnalysis }) => {
+export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAnalysis, searchClient }) => {
 	const [isAnalyzing, setIsAnalyzing] = useState(false);
 	const [hasAnalyzed, setHasAnalyzed] = useState(false);
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [retryTrigger, setRetryTrigger] = useState(0);
+	const [summary, setSummary] = useState('');
+	const [sources, setSources] = useState<RagSource[]>([]);
+	const [graph, setGraph] = useState<any>(null);
+	const [webEnabled, setWebEnabled] = useState(false);
+	const { app, manager } = useServiceContext();
 
 	const performAnalysis = async () => {
 		if (!searchQuery.trim()) return;
+		if (!searchClient) {
+			setError('Search service is not ready yet. Please try again.');
+			return;
+		}
 		setIsAnalyzing(true);
 		setError(null);
 
 		try {
-			// todo remove this after testing
-			// Manual error trigger for testing: if query contains "test-error" or "trigger-error"
-			if (searchQuery.toLowerCase().includes('test-error')) {
-				await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate some processing time
-				throw new Error('Failed to connect to AI service. Please check your network connection and try again.');
-			}
+			const retrieval = await searchClient.aiAnalyze({ query: searchQuery, topK: 8, webEnabled });
+			setSources(retrieval.sources);
+			setGraph(retrieval.insights?.graph ?? null);
 
-			// TODO: Replace with actual API call
-			// Example: const response = await aiService.analyze(searchQuery);
-			await new Promise(resolve => setTimeout(resolve, 2000));
+			const { provider, model } = await pickDefaultModel(manager);
+			const text = buildRagSummarizeText({ query: searchQuery, sources: retrieval.sources, webEnabled });
+			const s = await manager.getApplicationService().summarize({ provider, model, text });
+			setSummary(s);
 
 			setIsAnalyzing(false);
 			setHasAnalyzed(true);
@@ -265,6 +255,17 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 		setRetryTrigger(prev => prev + 1);
 	};
 
+	const handleOpenSource = async (path: string) => {
+		try {
+			const file = app.vault.getAbstractFileByPath(path);
+			if (file) {
+				await app.workspace.getLeaf(false).openFile(file as any);
+			}
+		} catch (e) {
+			console.error('Open source failed:', e);
+		}
+	};
+
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
 			{/* Main Content */}
@@ -276,11 +277,11 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 				) : (
 					// Analysis Results
 					<div className="pktw-flex pktw-flex-col pktw-gap-4">
-						<AnalysisSection />
+						<AnalysisSection summary={summary} modeLabel={webEnabled ? 'Local RAG + Web (planned)' : 'Local RAG'} />
 						<TagCloudSection />
 						<div className="pktw-grid pktw-grid-cols-2 pktw-gap-4">
-							<TopSourcesSection />
-							<KnowledgeGraphSection />
+							<TopSourcesSection sources={sources} onOpen={handleOpenSource} />
+							<KnowledgeGraphSection graph={graph} />
 						</div>
 					</div>
 				)}
@@ -308,11 +309,31 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 							</Button>
 						</>
 					)}
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setWebEnabled(v => !v)}
+						className="!pktw-rounded-md"
+					>
+						<span className="pktw-text-xs">{webEnabled ? 'Web: ON' : 'Web: OFF'}</span>
+					</Button>
 				</div>
 			</div>
 
 			{/* Save Dialog */}
-			{showSaveDialog && <SaveDialog onClose={() => setShowSaveDialog(false)} />}
+			{showSaveDialog && (
+				<SaveDialog
+					onClose={() => setShowSaveDialog(false)}
+					query={searchQuery}
+					webEnabled={webEnabled}
+					result={{
+						summary,
+						sources,
+						insights: graph ? { graph } : undefined,
+						usage: { estimatedTokens: Math.ceil((summary.length + searchQuery.length) / 4) },
+					}}
+				/>
+			)}
 		</div>
 	);
 };

@@ -3,3 +3,8 @@
  */
 export type SearchResultType = 'markdown' | 'pdf' | 'image' | 'folder' | 'heading';
 
+/**
+ * Document type for indexing and document loaders.
+ */
+export type DocumentType = 'markdown' | 'pdf' | 'image';
+
