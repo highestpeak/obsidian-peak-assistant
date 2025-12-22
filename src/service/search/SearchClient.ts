@@ -1,35 +1,23 @@
-import { v4 as uuidv4 } from 'uuid';
 import type { App } from 'obsidian';
-import type { AiAnalyzeRequest, AiAnalyzeResult, SearchQuery, SearchResponse } from '@/service/search/types';
 import type {
-	DeleteDocumentsRequest,
-	ExportStorageRequest,
-	ExportStorageResponse,
-	GetIndexStatusResponse,
-	GetIndexedPathsResponse,
-	GetRecentRequest,
-	GetRecentResponse,
-	IndexDocumentsRequest,
-	InitRequest,
-	IndexableDocument,
-	RecordOpenRequest,
-	RpcAnyResponse,
-	RpcRequestEnvelope,
-	RpcResponseEnvelope,
-	StorageType,
-	WorkerRequest,
-	WorkerResponse,
-} from '@/service/search/worker/types-rpc';
-
-const PLUGIN_ID = 'obsidian-peak-assistant';
+	AiAnalyzeRequest,
+	AiAnalyzeResult,
+	SearchQuery,
+	SearchResponse,
+} from '@/service/search/types';
+import type { StorageType } from '@/service/search/_deprecated/worker/types-rpc';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { QueryService } from './query/queryService';
+import { buildRagSources } from './query/ranking/rag-builder';
 
 /**
- * SearchClient runs in the main thread and talks to the Search Worker via postMessage.
- * It provides a typed async API for UI and services.
+ * SearchClient (main thread, Desktop-only).
+ *
+ * This replaces the old worker-based design so we can use file-backed SQLite
+ * without importing/exporting the entire DB bytes.
  */
 export class SearchClient {
-	private worker: Worker | null = null;
-	private readonly pending = new Map<string, { resolve: (v: any) => void; reject: (e: Error) => void }>();
+	private queryService: QueryService | null = null;
 
 	constructor(
 		private readonly app: App,
@@ -37,167 +25,78 @@ export class SearchClient {
 	) {}
 
 	/**
-	 * Create a Web Worker pointing to the bundled `search-worker.js` file in the plugin folder.
+	 * Initialize the file-backed SQLite database.
+	 * Note: sqliteStoreManager must be initialized before calling this method.
 	 */
-	private createWorker(): Worker {
-		const plugin = (this.app as any)?.plugins?.getPlugin?.(PLUGIN_ID);
-		const pluginDir = plugin?.manifest?.dir as string | undefined;
-		if (!pluginDir) {
-			throw new Error(`Search worker cannot be created: plugin '${PLUGIN_ID}' not found`);
+	async init(): Promise<void> {
+		this.queryService = new QueryService();
+	}
+	
+	async search(query: SearchQuery): Promise<SearchResponse> {
+		if (!this.queryService) {
+			throw new Error('SearchClient not initialized. Call init() first.');
 		}
 
-		const workerPath = `${pluginDir}/search-worker.js`;
-		const workerUrl = this.app.vault.adapter.getResourcePath(workerPath);
+		const termRaw = query?.text ?? '';
+		if (!termRaw) {
+			return { query, items: [] };
+		}
 
-		// Use classic worker for maximal compatibility in Obsidian desktop/mobile.
-		return new Worker(workerUrl);
+		// Execute search using the query service (ranking boosts are applied internally)
+		return await this.queryService.executeSearch({ query });
 	}
 
-	/**
-	 * Ensure the underlying worker is created and message handlers are registered.
-	 */
-	private ensureWorker(): Worker {
-		if (this.worker) return this.worker;
-		const worker = this.createWorker();
-		worker.onmessage = (ev: MessageEvent<RpcAnyResponse>) => {
-			const msg = ev.data;
-			const id = (msg as any)?.id;
-			if (!id) return;
-			const pending = this.pending.get(id);
-			if (!pending) return;
-			this.pending.delete(id);
+	async aiAnalyze(req: AiAnalyzeRequest): Promise<AiAnalyzeResult> {
+		const q = req?.query ?? '';
+		const topK = Number(req?.topK ?? 8);
+		const results = await this.search({ text: q, topK, searchMode: 'fulltext' } as any);
 
-			if ((msg as any).kind === 'error') {
-				const err = (msg as any).error;
-				pending.reject(new Error(err?.message ?? 'Search worker error'));
-				return;
-			}
-			pending.resolve((msg as RpcResponseEnvelope).payload);
+		const hits = results.items.map((i) => ({
+			path: i.path,
+			title: i.title,
+			content: i.snippet?.text ?? '',
+			score: i.score ?? 0,
+		}));
+
+		const sources = buildRagSources({ hits, query: q });
+		return {
+			summary: '',
+			sources,
+			insights: { graph: { nodes: [], edges: [] } },
+			usage: { estimatedTokens: 0 },
 		};
-		worker.onerror = (ev) => {
-			// Reject all inflight requests if the worker crashes.
-			const error = new Error((ev as any)?.message ?? 'Search worker crashed');
-			for (const [, pending] of this.pending) pending.reject(error);
-			this.pending.clear();
-		};
-		this.worker = worker;
-		return worker;
 	}
 
-	/**
-	 * Send a request to worker and wait for the typed response payload.
-	 */
-	private call<K extends WorkerRequest['kind']>(
-		kind: K,
-		payload: Extract<WorkerRequest, { kind: K }>['payload'],
-	): Promise<Extract<WorkerResponse, { kind: any }>['payload']> {
-		const worker = this.ensureWorker();
-		const id = uuidv4();
-		const envelope: RpcRequestEnvelope = { id, kind, payload } as any;
-
-		return new Promise((resolve, reject) => {
-			this.pending.set(id, { resolve, reject });
-			worker.postMessage(envelope);
+	async getRecent(topK?: number): Promise<SearchResponse['items']> {
+		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
+		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		const limit = Math.max(1, Number(topK ?? 20));
+		const recent = await docStatisticsRepo.getRecent(limit);
+		if (!recent.length) return [];
+		
+		// Fetch metadata separately (avoid JOIN)
+		const docIds = recent.map((r) => r.docId);
+		const metaRows = await docMetaRepo.getByIds(docIds);
+		const metaById = new Map(metaRows.map((m) => [m.id, m]));
+		
+		return recent.map((r) => {
+			const meta = metaById.get(r.docId);
+			return {
+				id: meta?.path ?? r.docId,
+				type: (meta?.type ?? 'markdown') as any,
+				title: meta?.title ?? r.docId,
+				path: meta?.path ?? r.docId,
+				lastModified: Number(meta?.mtime ?? 0),
+				snippet: null,
+				score: 0,
+				finalScore: 0,
+			};
 		});
 	}
 
-	/**
-	 * Initialize worker-side resources.
-	 */
-	async init(params: InitRequest): Promise<void> {
-		await this.call('init', params);
-	}
-
-	/**
-	 * Index a batch of documents. The main thread is responsible for reading vault content.
-	 */
-	async indexDocuments(docs: IndexableDocument[]): Promise<void> {
-		const payload: IndexDocumentsRequest = { docs };
-		await this.call('indexDocuments', payload);
-		this.onAfterMutation?.(['sqlite', 'orama', 'graph']);
-	}
-
-	/**
-	 * Remove documents by path.
-	 */
-	async deleteDocuments(paths: string[]): Promise<void> {
-		const payload: DeleteDocumentsRequest = { paths };
-		await this.call('deleteDocuments', payload);
-		this.onAfterMutation?.(['sqlite', 'orama', 'graph']);
-	}
-
-	/**
-	 * Execute a vault search query.
-	 */
-	async search(query: SearchQuery): Promise<SearchResponse> {
-		const payload = (await this.call('search', query)) as SearchResponse;
-		return payload;
-	}
-
-	/**
-	 * Run AI analysis (RAG + optional web).
-	 * The returned summary may be populated later by main thread LLM call in later phases.
-	 */
-	async aiAnalyze(req: AiAnalyzeRequest): Promise<AiAnalyzeResult> {
-		return (await this.call('aiAnalyze', req)) as AiAnalyzeResult;
-	}
-
-	/**
-	 * Record a file open event for ranking signals (recent/frequency).
-	 */
-	async recordOpen(path: string, ts?: number): Promise<void> {
-		const payload: RecordOpenRequest = { path, ts };
-		await this.call('recordOpen', payload);
-		this.onAfterMutation?.(['sqlite']);
-	}
-
-	/**
-	 * Fetch recent items (from SQLite signals inside worker).
-	 */
-	async getRecent(topK?: number): Promise<SearchResponse['items']> {
-		const payload: GetRecentRequest = { topK };
-		const result = (await this.call('getRecent', payload)) as GetRecentResponse;
-		return result.items;
-	}
-
-	/**
-	 * Get index status (built time, indexed count, ready state).
-	 */
-	async getIndexStatus(): Promise<GetIndexStatusResponse> {
-		return (await this.call('getIndexStatus', {})) as GetIndexStatusResponse;
-	}
-
-	/**
-	 * Get all indexed file paths with modification times.
-	 */
-	async getIndexedPaths(): Promise<Array<{ path: string; mtime: number }>> {
-		const result = (await this.call('getIndexedPaths', {})) as GetIndexedPathsResponse;
-		return result.paths;
-	}
-
-	/**
-	 * Export worker-side storage bytes for persistence on main thread.
-	 * @param types - Array of storage types to export. If not specified or empty, exports all types.
-	 */
-	async exportStorage(types?: StorageType[]): Promise<ExportStorageResponse> {
-		const payload: ExportStorageRequest = { types };
-		return (await this.call('exportStorage', payload)) as ExportStorageResponse;
-	}
-
-	/**
-	 * Terminate the worker and reject inflight requests.
-	 */
 	dispose(): void {
-		if (this.worker) {
-			try {
-				this.worker.terminate();
-			} finally {
-				this.worker = null;
-			}
-		}
-		const error = new Error('Search client disposed');
-		for (const [, pending] of this.pending) pending.reject(error);
-		this.pending.clear();
+		// Note: We don't close the global singleton here as it may be used by other components.
+		// The singleton should be closed at plugin unload.
 	}
 }
 

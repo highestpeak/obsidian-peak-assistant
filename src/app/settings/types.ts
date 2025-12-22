@@ -1,14 +1,32 @@
 import { RootMode } from '@/service/chat/types';
 import { ProviderConfig } from '@/service/chat/providers/types';
 import { CommandHiddenSettings, DEFAULT_COMMAND_HIDDEN_SETTINGS } from '@/service/CommandHiddenControlService';
+import type { DocumentType } from '@/core/document/types';
 
 /**
- * Document types included for indexing.
+ * Document chunking configuration.
  */
-export interface SearchDocumentTypeToggle {
-	markdown: boolean;
-	pdf: boolean;
-	image: boolean;
+export interface ChunkingSettings {
+	/**
+	 * Enable document chunking for long documents.
+	 * Default: true
+	 */
+	enabled: boolean;
+	/**
+	 * Maximum chunk size in characters.
+	 * Default: 1000
+	 */
+	maxChunkSize: number;
+	/**
+	 * Overlap between chunks in characters.
+	 * Default: 200
+	 */
+	chunkOverlap: number;
+	/**
+	 * Minimum document size to trigger chunking.
+	 * Default: 1500
+	 */
+	minDocumentSizeForChunking: number;
 }
 
 /**
@@ -23,7 +41,11 @@ export interface SearchSettings {
 	/**
 	 * File types to include in indexing.
 	 */
-	includeDocumentTypes: SearchDocumentTypeToggle;
+	includeDocumentTypes: Record<DocumentType, boolean>;
+	/**
+	 * Document chunking configuration for embedding and vector search.
+	 */
+	chunking: ChunkingSettings;
 }
 
 /**
@@ -65,6 +87,16 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 };
 
 /**
+ * Default chunking settings.
+ */
+export const DEFAULT_CHUNKING_SETTINGS: ChunkingSettings = {
+	enabled: true,
+	maxChunkSize: 1000,
+	chunkOverlap: 200,
+	minDocumentSizeForChunking: 1500,
+};
+
+/**
  * Default search settings.
  */
 export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
@@ -73,7 +105,26 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 		markdown: true,
 		pdf: true,
 		image: true,
-	},
+		// All other document types default to false
+		csv: false,
+		json: false,
+		html: false,
+		xml: false,
+		txt: false,
+		docx: false,
+		xlsx: false,
+		pptx: false,
+		conv: false,
+		project: false,
+		prompt: false,
+		excalidraw: false,
+		canvas: false,
+		dataloom: false,
+		folder: false,
+		url: false,
+		unknown: false,
+	} as Record<DocumentType, boolean>,
+	chunking: DEFAULT_CHUNKING_SETTINGS,
 };
 
 /**

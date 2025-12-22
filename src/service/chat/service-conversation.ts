@@ -3,7 +3,7 @@ import { generateUuidWithoutHyphens } from './utils';
 import { LLMProviderService } from './providers/types';
 import { LLMApplicationService } from './service-application';
 import { ChatStorageService } from './storage';
-import { LLMRequestMessage } from './providers/types';
+import { LLMRequestMessage, LLMUsage } from './providers/types';
 import {
 	ChatContextWindow,
 	ChatConversationMeta,
@@ -16,6 +16,8 @@ import {
 import { PromptService, PromptTemplate } from './service-prompt';
 import { MessageContentComposer } from './messages/utils-message-content';
 import { AIStreamEvent } from './messages/types-events';
+import { ResourceSummaryService } from './resources/ResourceSummaryService';
+import { ContextBuilder } from './context/ContextBuilder';
 
 /**
  * Create a basic chat message with timestamps.
@@ -38,14 +40,23 @@ export function createDefaultMessage(role: ChatMessage['role'], content: string,
  * Service for managing chat conversations.
  */
 export class ConversationService {
+	private readonly contextBuilder: ContextBuilder;
+
 	constructor(
 		private readonly storage: ChatStorageService,
 		private readonly chat: LLMProviderService,
 		private readonly application: LLMApplicationService,
 		private readonly promptService: PromptService,
 		private readonly contentComposer: MessageContentComposer,
-		private readonly defaultModelId: string
-	) {}
+		private readonly defaultModelId: string,
+		private readonly resourceSummaryService?: ResourceSummaryService
+	) {
+		// Initialize context builder
+		this.contextBuilder = new ContextBuilder(
+			this.promptService,
+			this.resourceSummaryService || new ResourceSummaryService(storage.getApp(), storage.getRootFolder())
+		);
+	}
 
 	/**
 	 * List conversations, optionally filtered by project.
@@ -95,11 +106,23 @@ export class ConversationService {
 		const provider = conversation.meta.activeProvider || this.chat.getProviderId();
 		const timezone = this.detectTimezone();
 		const userMessage = createDefaultMessage('user', userContent, modelId, provider, timezone);
+		// Convert legacy attachments to resources if provided
 		if (attachments && attachments.length > 0) {
-			userMessage.attachments = attachments;
+			if (!this.resourceSummaryService) {
+				console.warn('[ConversationService] ResourceSummaryService not available, attachments will be lost');
+			} else {
+				const resources = [];
+				for (const attachment of attachments) {
+					const resourceRef = this.resourceSummaryService.createResourceRef(attachment);
+					const summaryPath = this.resourceSummaryService.getResourceSummaryPath(resourceRef.id);
+					resourceRef.summaryNotePath = summaryPath;
+					resources.push(resourceRef);
+				}
+				userMessage.resources = resources;
+			}
 		}
 		const messagesWithUser = [...conversation.messages, userMessage];
-		const llmMessages = await this.buildLLMRequestMessages(messagesWithUser);
+		const llmMessages = await this.buildLLMRequestMessages(messagesWithUser, conversation, project);
 		const assistant = await this.chat.blockChat({
 			provider,
 			model: modelId,
@@ -107,6 +130,15 @@ export class ConversationService {
 		});
 
 		const assistantMessage = createDefaultMessage('assistant', assistant.content, assistant.model, provider, timezone);
+		
+		// Add token usage and generation time
+		if (assistant.usage) {
+			assistantMessage.tokenUsage = {
+				promptTokens: assistant.usage.promptTokens,
+				completionTokens: assistant.usage.completionTokens,
+				totalTokens: assistant.usage.totalTokens,
+			};
+		}
 		
 		if (autoSave) {
 			const savedConversation = await this.persistExchange({
@@ -332,26 +364,17 @@ export class ConversationService {
 	/**
 	 * Compose the full messages array sent to the LLM.
 	 */
-	private async buildLLMRequestMessages(messages: ChatMessage[]): Promise<LLMRequestMessage[]> {
-		const systemPrompt = await this.loadConversationSystemPrompt();
-		const result: LLMRequestMessage[] = [];
-
-		if (systemPrompt) {
-			result.push({
-				role: 'system',
-				content: [{ type: 'text', text: systemPrompt }],
-			});
-		}
-
-		for (const message of messages) {
-			const parts = await this.contentComposer.composeContentParts(message);
-			result.push({
-				role: message.role,
-				content: parts.length > 0 ? parts : [{ type: 'text', text: '' }],
-			});
-		}
-
-		return result;
+	private async buildLLMRequestMessages(
+		messages: ChatMessage[],
+		conversation: ParsedConversationFile,
+		project?: ParsedProjectFile | null
+	): Promise<LLMRequestMessage[]> {
+		// Use ContextBuilder to build messages with full context
+		return this.contextBuilder.buildContextMessages({
+			conversation,
+			project,
+			messages,
+		});
 	}
 
 	/**
@@ -440,7 +463,7 @@ export class ConversationService {
 			const timezone = self.detectTimezone();
 			const userMessage = createDefaultMessage('user', params.userContent, modelId, provider, timezone);
 			const messagesWithUser = [...params.conversation.messages, userMessage];
-			const llmMessages = await self.buildLLMRequestMessages(messagesWithUser);
+			const llmMessages = await self.buildLLMRequestMessages(messagesWithUser, params.conversation, params.project);
 			const stream = params.streamChat({
 				provider,
 				model: modelId,
@@ -494,6 +517,16 @@ export class ConversationService {
 			}
 
 			const assistantMessage = createDefaultMessage('assistant', assistantContent, currentModel, currentProvider, context.timezone);
+			
+			// Add token usage if available
+			if (tokenDelta > 0) {
+				// We don't have exact breakdown in streaming, so estimate
+				assistantMessage.tokenUsage = {
+					promptTokens: 0,
+					completionTokens: tokenDelta,
+					totalTokens: tokenDelta,
+				};
+			}
 			
 			let finalConversation: ParsedConversationFile;
 			if (context.autoSave) {

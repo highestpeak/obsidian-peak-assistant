@@ -135,10 +135,13 @@ export class MessageContentComposer {
 		if (trimmed) {
 			parts.push({ type: 'text', text: trimmed });
 		}
-		if (!message.attachments || message.attachments.length === 0) {
+		// Use resources field instead of attachments
+		if (!message.resources || message.resources.length === 0) {
 			return parts;
 		}
-		const attachmentParts = await this.createAttachmentParts(message.attachments);
+		// Extract sources from resources
+		const sources = message.resources.map(r => r.source);
+		const attachmentParts = await this.createAttachmentParts(sources);
 		parts.push(...attachmentParts);
 		return parts;
 	}

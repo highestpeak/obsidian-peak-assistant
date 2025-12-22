@@ -1,0 +1,264 @@
+/**
+ * Database schema definition for type safety.
+ */
+export interface Database {
+	doc_meta: {
+		id: string;
+		path: string;
+		type: string | null;
+		title: string | null;
+		size: number | null;
+		mtime: number | null;
+		ctime: number | null;
+		content_hash: string | null;
+		summary: string | null;
+		tags: string | null;
+		last_processed_at: number | null;
+		frontmatter_json?: string | null;
+	};
+	index_state: {
+		key: string;
+		value: string | null;
+	};
+	embedding: {
+		id: string;
+		doc_id: string;
+		chunk_id: string | null;
+		chunk_index: number | null;
+		content_hash: string;
+		ctime: number;
+		mtime: number;
+		embedding: Buffer; // BLOB: binary format for efficient storage
+		embedding_model: string;
+		embedding_len: number;
+	};
+	doc_statistics: {
+		doc_id: string;
+		word_count: number | null;
+		char_count: number | null;
+		language: string | null;
+		richness_score: number | null;
+		last_open_ts: number | null;
+		open_count: number | null;
+		updated_at: number;
+	};
+	graph_nodes: {
+		id: string;
+		type: string;
+		label: string;
+		attributes: string;
+		created_at: number;
+		updated_at: number;
+	};
+	graph_edges: {
+		id: string;
+		from_node_id: string;
+		to_node_id: string;
+		type: string;
+		weight: number;
+		attributes: string;
+		created_at: number;
+		updated_at: number;
+	};
+	doc_chunk: {
+		chunk_id: string;
+		doc_id: string;
+		chunk_index: number;
+		title: string | null;
+		mtime: number | null;
+		content_raw: string | null;
+		content_fts_norm: string | null;
+	};
+	/**
+	 * FTS5 virtual table.
+	 *
+	 * Notes:
+	 * - This is a virtual table; schema here is used for typing only.
+	 * - Some operations (MATCH/bm25) still require raw SQL.
+	 * - doc_id is stored for association, path is kept for display purposes only.
+	 */
+	doc_fts: {
+		chunk_id: string;
+		doc_id: string;
+		path: string;
+		title: string | null;
+		content: string | null;
+	};
+}
+
+
+/**
+ * Database interface that supports both sql.js and better-sqlite3.
+ * Both libraries provide an `exec()` method for running SQL statements.
+ */
+interface SqliteDatabaseLike {
+	exec(sql: string): void;
+}
+
+/**
+ * Apply schema migrations. Keep this idempotent.
+ *
+ * Supports both:
+ * - sql.js Database (from @/core/storage/sqlite/SqliteMetadataStore - deprecated)
+ * - better-sqlite3 Database (from @/core/storage/sqlite/BetterSqliteStore)
+ *
+ * Both implement the `exec()` method, so this migration works with either.
+ * Uses raw SQL for simplicity and full SQLite feature support (FTS5, etc.).
+ */
+export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
+	const tryExec = (sql: string) => {
+		try {
+			db.exec(sql);
+		} catch {
+			// Ignore migration errors for idempotency (e.g., "duplicate column name").
+		}
+	};
+
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS doc_meta (
+			id TEXT PRIMARY KEY,
+			path TEXT NOT NULL UNIQUE,
+			type TEXT,
+			title TEXT,
+			size INTEGER,
+			mtime INTEGER,
+			ctime INTEGER,
+			content_hash TEXT,
+			summary TEXT,
+			tags TEXT,
+			last_processed_at INTEGER
+		);
+		CREATE INDEX IF NOT EXISTS idx_doc_meta_path ON doc_meta(path);
+		CREATE INDEX IF NOT EXISTS idx_doc_meta_content_hash ON doc_meta(content_hash);
+		CREATE TABLE IF NOT EXISTS index_state (
+			key TEXT PRIMARY KEY,
+			value TEXT
+		);
+		CREATE TABLE IF NOT EXISTS embedding (
+			id TEXT PRIMARY KEY,
+			doc_id TEXT NOT NULL,
+			chunk_id TEXT,
+			chunk_index INTEGER,
+			content_hash TEXT NOT NULL,
+			ctime INTEGER NOT NULL,
+			mtime INTEGER NOT NULL,
+			embedding BLOB NOT NULL,
+			embedding_model TEXT NOT NULL,
+			embedding_len INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_embedding_doc_id ON embedding(doc_id);
+		CREATE INDEX IF NOT EXISTS idx_embedding_chunk_id ON embedding(chunk_id);
+		CREATE INDEX IF NOT EXISTS idx_embedding_content_hash ON embedding(content_hash);
+		CREATE TABLE IF NOT EXISTS doc_statistics (
+			doc_id TEXT PRIMARY KEY,
+			word_count INTEGER,
+			char_count INTEGER,
+			language TEXT,
+			richness_score REAL,
+			last_open_ts INTEGER,
+			open_count INTEGER,
+			updated_at INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_doc_statistics_doc_id ON doc_statistics(doc_id);
+		CREATE INDEX IF NOT EXISTS idx_doc_statistics_last_open_ts ON doc_statistics(last_open_ts);
+		CREATE TABLE IF NOT EXISTS graph_nodes (
+			id TEXT PRIMARY KEY,
+			type TEXT NOT NULL,
+			label TEXT NOT NULL,
+			attributes TEXT NOT NULL,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_graph_nodes_type ON graph_nodes(type);
+		CREATE INDEX IF NOT EXISTS idx_graph_nodes_updated_at ON graph_nodes(updated_at);
+		CREATE TABLE IF NOT EXISTS graph_edges (
+			id TEXT PRIMARY KEY,
+			from_node_id TEXT NOT NULL,
+			to_node_id TEXT NOT NULL,
+			type TEXT NOT NULL,
+			weight REAL NOT NULL DEFAULT 1.0,
+			attributes TEXT NOT NULL,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL,
+			FOREIGN KEY (from_node_id) REFERENCES graph_nodes(id) ON DELETE CASCADE,
+			FOREIGN KEY (to_node_id) REFERENCES graph_nodes(id) ON DELETE CASCADE
+		);
+		CREATE INDEX IF NOT EXISTS idx_graph_edges_from_node ON graph_edges(from_node_id);
+		CREATE INDEX IF NOT EXISTS idx_graph_edges_to_node ON graph_edges(to_node_id);
+		CREATE INDEX IF NOT EXISTS idx_graph_edges_type ON graph_edges(type);
+		CREATE INDEX IF NOT EXISTS idx_graph_edges_from_to ON graph_edges(from_node_id, to_node_id);
+	`);
+
+	// USKE extensions (idempotent adds).
+	// Dynamic metadata storage (frontmatter JSON).
+	tryExec(`ALTER TABLE doc_meta ADD COLUMN frontmatter_json TEXT;`);
+
+	// Chunk storage for FTS/vector/search snippets.
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS doc_chunk (
+			chunk_id TEXT PRIMARY KEY,
+			doc_id TEXT NOT NULL,
+			chunk_index INTEGER NOT NULL,
+			title TEXT,
+			mtime INTEGER,
+			content_raw TEXT,
+			content_fts_norm TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_doc_chunk_doc_id ON doc_chunk(doc_id);
+		CREATE INDEX IF NOT EXISTS idx_doc_chunk_doc_id_chunk ON doc_chunk(doc_id, chunk_index);
+	`);
+
+
+	// FTS5 virtual table (stores normalized text).
+	// Note: tokenize options may vary by SQLite build; keep it simple for compatibility.
+	// Kysely doesn't support virtual tables, so we use raw SQL.
+	// doc_id is stored for association, path is kept for display purposes only.
+	tryExec(`
+		CREATE VIRTUAL TABLE IF NOT EXISTS doc_fts USING fts5(
+			chunk_id UNINDEXED,
+			doc_id UNINDEXED,
+			path,
+			title,
+			content
+		);
+	`);
+
+	// sqlite-vec virtual table for vector similarity search.
+	// 
+	// WHY IS VEC0 VIRTUAL TABLE REQUIRED?
+	// ====================================
+	// SQLite's standard indexes (B-tree, Hash) can only handle scalar values (numbers, strings).
+	// They cannot efficiently handle vector similarity search (KNN) which requires:
+	// 1. Multi-dimensional distance calculations (cosine similarity, euclidean distance)
+	// 2. Approximate Nearest Neighbor (ANN) indexes (HNSW, IVF, etc.)
+	// 3. Custom operators like MATCH for KNN queries
+	//
+	// vec0 virtual table provides:
+	// - Custom storage optimized for vectors
+	// - Built-in ANN indexes (HNSW) for O(log n) search complexity
+	// - MATCH operator for efficient KNN queries
+	//
+	// SQLite's architecture does NOT allow:
+	// - Using virtual table indexes on regular tables
+	// - Adding custom operators to regular tables
+	// - Modifying regular table's index algorithms
+	//
+	// Therefore, vec0 virtual table is the ONLY way to achieve efficient vector search in SQLite.
+	//
+	// For detailed explanation, see: VEC0_VIRTUAL_TABLE_EXPLANATION.md
+	//
+	// Note: This requires sqlite-vec extension to be loaded first.
+	// The embedding dimension should match your embedding model (e.g., 1536 for OpenAI, 384 for sentence-transformers).
+	// We use a reasonable default of 1536, but this should be configurable.
+	//
+	// Important: vec_embeddings.rowid corresponds to embedding table's implicit rowid (integer).
+	// This allows direct association without a mapping table.
+	// When inserting into vec_embeddings, we use embedding table's rowid as vec_embeddings.rowid.
+	tryExec(`
+		CREATE VIRTUAL TABLE IF NOT EXISTS vec_embeddings USING vec0(
+			embedding float[1536]
+		);
+	`);
+}
+
+

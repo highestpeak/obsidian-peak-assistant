@@ -11,6 +11,8 @@ import { ProjectService } from './service-project';
 import { ConversationService } from './service-conversation';
 import { AIStreamEvent } from './messages/types-events';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
+import { ResourceSummaryService } from './resources/ResourceSummaryService';
+import { ChatMigrationService } from './migration';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -23,6 +25,8 @@ export class AIServiceManager {
 	private promptService: PromptService;
 	private projectService: ProjectService;
 	private conversationService: ConversationService;
+	private resourceSummaryService: ResourceSummaryService;
+	private migrationService: ChatMigrationService;
 
 	constructor(
 		private readonly app: App,
@@ -42,6 +46,9 @@ export class AIServiceManager {
 		// Message content composer utility
 		this.contentComposer = new MessageContentComposer(this.app);
 
+		// === Resource summary service ===
+		this.resourceSummaryService = new ResourceSummaryService(this.app, this.settings.rootFolder);
+
 		// === Service construction ===
 		const providerConfigs = this.settings.llmProviderConfigs ?? {};
 		this.multiChat = new MultiProviderChatService({
@@ -51,6 +58,13 @@ export class AIServiceManager {
 		this.promptService = new PromptService(this.app, {
 			promptFolder: this.settings.promptFolder,
 		});
+
+		// === Migration service ===
+		this.migrationService = new ChatMigrationService(
+			this.app,
+			this.storage,
+			this.resourceSummaryService
+		);
 
 		// === Project- and conversation-level services ===
 		this.projectService = new ProjectService(
@@ -65,16 +79,31 @@ export class AIServiceManager {
 			this.application,
 			this.promptService,
 			this.contentComposer,
-			this.settings.defaultModelId
+			this.settings.defaultModelId,
+			this.resourceSummaryService
 		);
 	}
 
 	/**
-	 * Initialize storage resources.
+	 * Initialize storage resources and run migration if needed.
 	 */
 	async init(): Promise<void> {
 		await this.storage.init();
 		await this.promptService.init();
+		await this.resourceSummaryService.init();
+		
+		// Run migration
+		try {
+			const migrationResult = await this.migrationService.migrateAll();
+			if (migrationResult.conversationsMigrated > 0 || migrationResult.projectsMigrated > 0) {
+				console.log(`[AIServiceManager] Migration completed: ${migrationResult.conversationsMigrated} conversations, ${migrationResult.projectsMigrated} projects, ${migrationResult.resourcesCreated} resources created`);
+				if (migrationResult.errors.length > 0) {
+					console.warn(`[AIServiceManager] Migration had ${migrationResult.errors.length} errors`);
+				}
+			}
+		} catch (error) {
+			console.error('[AIServiceManager] Migration failed:', error);
+		}
 	}
 
 	/**
@@ -104,13 +133,15 @@ export class AIServiceManager {
 		});
 		this.application = new PromptApplicationService(this.multiChat);
 		this.projectService = new ProjectService(this.storage, this.settings.rootFolder, this.promptService, this.application);
+		this.resourceSummaryService = new ResourceSummaryService(this.app, this.settings.rootFolder);
 		this.conversationService = new ConversationService(
 			this.storage,
 			this.multiChat,
 			this.application,
 			this.promptService,
 			this.contentComposer,
-			this.settings.defaultModelId
+			this.settings.defaultModelId,
+			this.resourceSummaryService
 		);
 	}
 

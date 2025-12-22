@@ -102,7 +102,9 @@ function renderMarkdown(params: {
 	return lines.join('\\n');
 }
 
-function renderMermaid(graph?: { nodes: Array<{ id: string; label: string; kind: string }>; edges: Array<{ from: string; to: string; weight?: number }> }): string {
+import type { GraphPreview } from '@/core/storage/graph/types';
+
+function renderMermaid(graph?: GraphPreview): string {
 	if (!graph || !graph.nodes?.length) {
 		return '```mermaid\\nflowchart TD\\n  A[No graph data]\\n```';
 	}
@@ -121,8 +123,8 @@ function renderMermaid(graph?: { nodes: Array<{ id: string; label: string; kind:
 		lines.push(`  ${id}["${label}"]`);
 	}
 	for (const e of graph.edges.slice(0, 80)) {
-		const from = nodeIds.get(e.from);
-		const to = nodeIds.get(e.to);
+		const from = nodeIds.get(e.from_node_id);
+		const to = nodeIds.get(e.to_node_id);
 		if (!from || !to) continue;
 		lines.push(`  ${from} --> ${to}`);
 	}

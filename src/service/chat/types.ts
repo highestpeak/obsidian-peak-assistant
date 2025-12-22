@@ -1,5 +1,21 @@
+import type { ChatResourceRef, ResourceSummaryMeta } from './resources/types';
+
 export type ChatRole = 'user' | 'assistant' | 'system';
 
+/**
+ * Token usage information for a message
+ */
+export interface MessageTokenUsage {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+}
+
+/**
+ * Base chat message structure (persisted to markdown).
+ * Runtime helper fields (displayText, processedText, contextText) should use ChatMessageVO.
+ * Assistant-specific fields (thinking, genTimeMs, tokenUsage) should use composition pattern.
+ */
 export interface ChatMessage {
 	id: string;
 	role: ChatRole;
@@ -9,7 +25,30 @@ export interface ChatMessage {
 	starred: boolean;
 	model: string;
 	provider: string;
-	attachments?: string[];
+	/**
+	 * Resource references attached to this message
+	 */
+	resources?: ChatResourceRef[];
+	/**
+	 * Token usage for this message (assistant messages only)
+	 */
+	tokenUsage?: MessageTokenUsage;
+	/**
+	 * Whether this message represents an error
+	 */
+	isErrorMessage?: boolean;
+	/**
+	 * Whether this message should be visible in UI
+	 */
+	isVisible?: boolean;
+	/**
+	 * Assistant-only: thinking process (if available from provider)
+	 */
+	thinking?: string;
+	/**
+	 * Assistant-only: generation time in milliseconds
+	 */
+	genTimeMs?: number;
 }
 
 export interface ChatConversationMeta {
@@ -40,12 +79,48 @@ export interface ChatContextWindow {
 		fromMessageId: string;
 		toMessageId: string;
 	}>;
+	/**
+	 * @deprecated Use shortSummary and fullSummary instead
+	 */
 	summary: string;
+	/**
+	 * Short summary (100-1000 characters)
+	 */
+	shortSummary?: string;
+	/**
+	 * Full summary with detailed analysis
+	 */
+	fullSummary?: string;
+	/**
+	 * Topics extracted from the conversation
+	 */
+	topics?: string[];
+	/**
+	 * Index of resources referenced in this conversation
+	 * Uses ResourceSummaryMeta for full resource information
+	 */
+	resourceIndex?: ResourceSummaryMeta[];
 }
 
 export interface ChatProjectContext {
 	lastUpdatedTimestamp: number;
+	/**
+	 * @deprecated Use shortSummary and fullSummary instead
+	 */
 	summary: string;
+	/**
+	 * Short summary (100-1000 characters)
+	 */
+	shortSummary?: string;
+	/**
+	 * Full summary with detailed analysis
+	 */
+	fullSummary?: string;
+	/**
+	 * Index of resources referenced in this project
+	 * Uses ResourceSummaryMeta for full resource information
+	 */
+	resourceIndex?: ResourceSummaryMeta[];
 }
 
 // todo 可以放到 storage 里面

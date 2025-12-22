@@ -28,6 +28,7 @@ const shared = {
 	external: [
 		"obsidian",
 		"electron",
+		"better-sqlite3",
 		"@codemirror/autocomplete",
 		"@codemirror/collab",
 		"@codemirror/commands",
@@ -55,23 +56,9 @@ const mainContext = await esbuild.context({
 	outfile: "main.js",
 });
 
-const workerContext = await esbuild.context({
-	...shared,
-	// Worker entry must not import obsidian runtime APIs.
-	entryPoints: ["src/service/search/worker/entry.ts"],
-	platform: "browser",
-	format: "iife",
-	loader: {
-		".wasm": "file",
-	},
-	outfile: "search-worker.js",
-});
-
 if (prod) {
 	await mainContext.rebuild();
-	await workerContext.rebuild();
 	process.exit(0);
 } else {
 	await mainContext.watch();
-	await workerContext.watch();
 }

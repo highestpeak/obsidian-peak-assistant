@@ -1,5 +1,6 @@
 import matter from 'gray-matter';
 import { marked, Tokens } from 'marked';
+import type { DocumentReferences } from '../document/types';
 
 /**
  * Best-effort markdown extractors and utilities for search signals.
@@ -185,5 +186,99 @@ function isListToken(token: Tokens.Generic): token is Tokens.List {
 
 function hasNestedTokens(token: Tokens.Generic): token is Tokens.Generic & { tokens: Tokens.Generic[] } {
 	return Array.isArray((token as any).tokens);
+}
+
+/**
+ * Generate MD5 hash of content for deduplication.
+ * 
+ * Note: This is a simple implementation. For production, use a proper MD5 library.
+ * The hash is used to:
+ * - Avoid duplicate embedding generation
+ * - Detect unchanged content
+ * - Cache invalidation
+ */
+export async function generateContentHash(content: string): Promise<string> {
+	// Simple hash function (not cryptographically secure, but fast)
+	// For production, consider using crypto.subtle.digest or a library like crypto-js
+	let hash = 0;
+	for (let i = 0; i < content.length; i++) {
+		const char = content.charCodeAt(i);
+		hash = ((hash << 5) - hash) + char;
+		hash = hash & hash; // Convert to 32-bit integer
+	}
+	return Math.abs(hash).toString(16);
+}
+
+/**
+ * Extract references from markdown content.
+ * 
+ * Finds:
+ * - Wiki links: [[path]]
+ * - Markdown links: [text](path)
+ */
+export function extractReferences(content: string): DocumentReferences {
+	const outgoing: string[] = [];
+
+	// Wiki links: [[path]] or [[path|alias]]
+	const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
+	let match;
+	while ((match = wikiLinkRegex.exec(content)) !== null) {
+		const link = match[1].split('|')[0].trim(); // Remove alias if present
+		if (link) {
+			// Check if it's an image embed (skip those, they're handled by extractEmbeddings)
+			const prevChar = content[match.index - 1];
+			if (prevChar !== '!') {
+				outgoing.push(link);
+			}
+		}
+	}
+
+	// Markdown links: [text](path)
+	const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+	while ((match = markdownLinkRegex.exec(content)) !== null) {
+		const path = match[2].trim();
+		if (path && !path.startsWith('http')) {
+			// Only local paths, not URLs
+			outgoing.push(path);
+		}
+	}
+
+	return {
+		outgoingDocIds: [...new Set(outgoing)], // Deduplicate
+		incomingDocIds: [], // Will be populated by indexing process
+	};
+}
+
+/**
+ * Extract embedded files/images from markdown content.
+ * 
+ * Finds:
+ * - Image embeds: ![[path]]
+ * - Markdown images: ![alt](path)
+ */
+export function extractEmbeddings(content: string): string[] {
+	const embeddings: string[] = [];
+
+	// Wiki image embeds: ![[path]]
+	const wikiImageRegex = /!\[\[([^\]]+)\]\]/g;
+	let match;
+	while ((match = wikiImageRegex.exec(content)) !== null) {
+		const link = match[1].split('|')[0].trim(); // Remove alias if present
+		if (link) {
+			embeddings.push(link);
+		}
+	}
+
+	// Markdown images: ![alt](path)
+	const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+	while ((match = imageRegex.exec(content)) !== null) {
+		const path = match[2].trim();
+		if (path && !path.startsWith('http')) {
+			// Only local paths, not URLs
+			embeddings.push(path);
+		}
+	}
+
+	return [...new Set(embeddings)]; // Deduplicate
 }
 

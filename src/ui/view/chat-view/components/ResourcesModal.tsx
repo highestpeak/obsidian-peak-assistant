@@ -10,7 +10,8 @@ import {
 	DialogClose,
 } from '@/ui/component/shared-ui/dialog';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { X, FileText, Image, File } from 'lucide-react';
+import { Button } from '@/ui/component/shared-ui/button';
+import { X, FileText, Image, File, ExternalLink } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { EventBus, OpenLinkEvent, ViewEventType } from '@/core/eventBus';
 import { App } from 'obsidian';
@@ -28,22 +29,24 @@ export const ResourcesModal: React.FC = () => {
 	const resources = React.useMemo(() => {
 		if (!conversation) return [];
 		
-		const resourceMap = new Map<string, FileType>();
+		const resourceMap = new Map<string, { type: FileType; summaryNotePath?: string }>();
 		
 		for (const message of conversation.messages) {
-			if (message.attachments && message.attachments.length > 0) {
-				for (const attachmentPath of message.attachments) {
-					if (!resourceMap.has(attachmentPath)) {
-						const type = getFileTypeFromPath(attachmentPath);
-						resourceMap.set(attachmentPath, type);
+			// Check resources field
+			if (message.resources && message.resources.length > 0) {
+				for (const resource of message.resources) {
+					if (!resourceMap.has(resource.source)) {
+						const type = getFileTypeFromPath(resource.source);
+						resourceMap.set(resource.source, { type, summaryNotePath: resource.summaryNotePath });
 					}
 				}
 			}
 		}
 		
-		return Array.from(resourceMap.entries()).map(([path, type]) => ({
+		return Array.from(resourceMap.entries()).map(([path, data]) => ({
 			path,
-			type,
+			type: data.type,
+			summaryNotePath: data.summaryNotePath,
 		}));
 	}, [conversation]);
 
@@ -95,6 +98,7 @@ export const ResourcesModal: React.FC = () => {
 												key={resource.path}
 												path={resource.path}
 												type={resource.type}
+												summaryNotePath={resource.summaryNotePath}
 												onClick={() => handleResourceClick(resource.path)}
 											/>
 										))}
@@ -150,10 +154,13 @@ export const ResourcesModal: React.FC = () => {
 interface ResourceItemProps {
 	path: string;
 	type: FileType;
+	summaryNotePath?: string;
 	onClick: () => void;
 }
 
-const ResourceItem: React.FC<ResourceItemProps> = ({ path, type, onClick }) => {
+const ResourceItem: React.FC<ResourceItemProps> = ({ path, type, summaryNotePath, onClick }) => {
+	const app = (window as any).app as App;
+	const eventBus = EventBus.getInstance(app);
 	const fileName = path.split('/').pop() || path;
 	
 	const getIcon = () => {
@@ -167,23 +174,48 @@ const ResourceItem: React.FC<ResourceItemProps> = ({ path, type, onClick }) => {
 		}
 	};
 
+	const handleOpenSummary = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		if (summaryNotePath) {
+			const normalized = summaryNotePath.startsWith('/') ? summaryNotePath.slice(1) : summaryNotePath;
+			eventBus.dispatch(new OpenLinkEvent({ path: normalized }));
+		}
+	};
+
 	return (
 		<div
 			className={cn(
-				'pktw-flex pktw-items-center pktw-gap-3 pktw-p-2 pktw-rounded pktw-cursor-pointer',
+				'pktw-flex pktw-items-center pktw-gap-3 pktw-p-2 pktw-rounded',
 				'pktw-transition-colors hover:pktw-bg-muted'
 			)}
-			onClick={onClick}
 		>
-			<div className="pktw-text-muted-foreground">{getIcon()}</div>
-			<div className="pktw-flex-1 pktw-min-w-0">
-				<div className="pktw-text-sm pktw-font-medium pktw-text-foreground pktw-truncate">
-					{fileName}
-				</div>
-				<div className="pktw-text-xs pktw-text-muted-foreground pktw-truncate">
-					{path}
+			<div
+				className={cn(
+					'pktw-flex pktw-items-center pktw-gap-3 pktw-flex-1 pktw-min-w-0 pktw-cursor-pointer'
+				)}
+				onClick={onClick}
+			>
+				<div className="pktw-text-muted-foreground">{getIcon()}</div>
+				<div className="pktw-flex-1 pktw-min-w-0">
+					<div className="pktw-text-sm pktw-font-medium pktw-text-foreground pktw-truncate">
+						{fileName}
+					</div>
+					<div className="pktw-text-xs pktw-text-muted-foreground pktw-truncate">
+						{path}
+					</div>
 				</div>
 			</div>
+			{summaryNotePath && (
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={handleOpenSummary}
+					className="pktw-shrink-0"
+				>
+					<ExternalLink className="pktw-w-4 pktw-h-4" />
+					<span className="pktw-sr-only">Open Resource Summary</span>
+				</Button>
+			)}
 		</div>
 	);
 };

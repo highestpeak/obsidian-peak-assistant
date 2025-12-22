@@ -1,4 +1,10 @@
-import type { SearchResultType } from '@/core/Enums';
+import type { DocumentType } from '@/core/document/types';
+import type { GraphPreview } from '@/core/storage/graph/types';
+
+/**
+ * File/Resource type for search results and file listing
+ */
+export type SearchResultType = DocumentType | 'heading';
 
 /**
  * Supported search modes in quick search.
@@ -129,10 +135,7 @@ export interface AiAnalyzeResult {
 	sources: RagSource[];
 	insights?: {
 		topics?: Array<{ label: string; weight: number }>;
-		graph?: {
-			nodes: Array<{ id: string; label: string; kind: 'file' | 'tag' | 'heading' }>;
-			edges: Array<{ from: string; to: string; weight?: number }>;
-		};
+		graph?: GraphPreview;
 	};
 	usage?: {
 		estimatedTokens?: number;

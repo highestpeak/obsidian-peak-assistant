@@ -94,18 +94,29 @@ export class ChatStorageService {
 		// New format: # Conversation Summary -> ## meta (with code block) -> ## content (with text)
 		if (context) {
 			// Look for ## content section within Conversation Summary section
-			const conversationSummaryMatch = frontmatter.body.match(/# Conversation Summary[\s\S]*?## content\n\n([\s\S]*?)(?=\n# |$)/);
+			const conversationSummaryMatch = frontmatter.body.match(/# Conversation Summary[\s\S]*?## content\n\n([\s\S]*?)(?=\n## |\n# |$)/);
 			if (conversationSummaryMatch) {
 				context.summary = conversationSummaryMatch[1].trim();
+				context.shortSummary = context.summary; // Use as shortSummary if fullSummary not found
 			} else {
 				context.summary = 'defaultSummary';
 			}
+			
+			// Extract full summary if available
+			const fullSummaryMatch = frontmatter.body.match(/# Conversation Summary[\s\S]*?## full\n\n([\s\S]*?)(?=\n# |$)/);
+			if (fullSummaryMatch) {
+				context.fullSummary = fullSummaryMatch[1].trim();
+			}
+			
+			// Extract topics and resourceIndex from context meta if available
+			// These would be in the YAML block within ## meta
 		} else {
 			// Create default context if none exists
 			context = {
 				lastUpdatedTimestamp: Date.now(),
 				recentMessagesWindow: [],
 				summary: 'defaultSummary',
+				shortSummary: 'defaultSummary',
 			};
 		}
 		
@@ -364,28 +375,63 @@ export class ChatStorageService {
 				const providerMatch = metaText.match(/provider:\s*"([^"]+)"/);
 				const provider = providerMatch ? providerMatch[1] : 'other';
 				
-				// Extract attachments (JSON array format)
-				let attachments: string[] = [];
-				const attachmentsMatch = metaText.match(/attachments:\s*(\[[^\]]*\])/);
-				if (attachmentsMatch) {
+				// Extract resources
+				let resources: any[] | undefined;
+				const resourcesMatch = metaText.match(/resources:\s*(\[[\s\S]*?\])/);
+				if (resourcesMatch) {
 					try {
-						attachments = JSON.parse(attachmentsMatch[1]);
+						resources = JSON.parse(resourcesMatch[1]);
 					} catch (e) {
-						// If parsing fails, use empty array
-						attachments = [];
+						// If parsing fails, skip
 					}
 				}
+				
+				// Legacy attachments support (convert to resources during migration)
+				const attachmentsMatch = metaText.match(/attachments:\s*(\[[^\]]*\])/);
+				if (attachmentsMatch && !resources) {
+					try {
+						const attachments = JSON.parse(attachmentsMatch[1]);
+						// Convert legacy attachments to resources (will be handled by migration)
+						resources = attachments.map((att: string) => ({
+							source: att,
+							id: '', // Will be generated during migration
+							kind: 'other',
+						}));
+					} catch (e) {
+						// If parsing fails, skip
+					}
+				}
+				
+				// Extract token usage
+				let tokenUsage: any;
+				const tokenUsageMatch = metaText.match(/tokenUsage:\s*(\{[\s\S]*?\})/);
+				if (tokenUsageMatch) {
+					try {
+						tokenUsage = JSON.parse(tokenUsageMatch[1]);
+					} catch (e) {
+						// If parsing fails, skip
+					}
+				}
+				
+				// Extract error and visibility flags
+				const isErrorMessageMatch = metaText.match(/isErrorMessage:\s*(true|false)/);
+				const isVisibleMatch = metaText.match(/isVisible:\s*(true|false)/);
+				const genTimeMsMatch = metaText.match(/genTimeMs:\s*(\d+)/);
 				
 				// Extract content section (## content with markdown code block)
 				const contentMatch = section.match(/## content\n\n```markdown\n([\s\S]*?)```/);
 				if (!contentMatch) return null;
 				meta.content = contentMatch[1].trim();
 				
+				// Extract thinking section (if available)
+				const thinkingMatch = section.match(/## Thinking\n\n```markdown\n([\s\S]*?)```/);
+				const thinking = thinkingMatch ? thinkingMatch[1].trim() : undefined;
+				
 				if (!meta.id || !meta.role || !meta.content || !meta.model) {
 					return null;
 				}
 				
-				return {
+				const message: ChatMessage = {
 					id: meta.id,
 					role: meta.role,
 					content: meta.content,
@@ -394,8 +440,28 @@ export class ChatStorageService {
 					starred: meta.starred ?? false,
 					model: meta.model,
 					provider: provider || 'other',
-					attachments,
-				} as ChatMessage;
+				};
+				
+				if (resources) {
+					message.resources = resources;
+				}
+				if (tokenUsage) {
+					message.tokenUsage = tokenUsage;
+				}
+				if (isErrorMessageMatch) {
+					message.isErrorMessage = isErrorMessageMatch[1] === 'true';
+				}
+				if (isVisibleMatch) {
+					message.isVisible = isVisibleMatch[1] === 'true';
+				}
+				if (thinking) {
+					message.thinking = thinking;
+				}
+				if (genTimeMsMatch) {
+					message.genTimeMs = Number(genTimeMsMatch[1]);
+				}
+				
+				return message;
 			})
 			.filter((message): message is ChatMessage => !!message);
 	}
@@ -528,6 +594,13 @@ export class ChatStorageService {
 	 */
 	getApp(): App {
 		return this.app;
+	}
+
+	/**
+	 * Get the root folder path
+	 */
+	getRootFolder(): string {
+		return this.rootFolder;
 	}
 }
 

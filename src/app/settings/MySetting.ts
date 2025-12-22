@@ -171,6 +171,64 @@ export class MySettings extends PluginSettingTab {
 					}),
 			)
 			.addExtraButton((button) => button.setTooltip('Image files').setIcon('image'));
+
+		// Document chunking settings
+		new Setting(wrapper)
+			.setName('Document Chunking')
+			.setDesc('Split long documents into chunks for better embedding quality and search precision.')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.pluginRef.settings.search.chunking?.enabled ?? true)
+					.onChange(async (value) => {
+						if (!this.pluginRef.settings.search.chunking) {
+							this.pluginRef.settings.search.chunking = {
+								enabled: value,
+								maxChunkSize: 1000,
+								chunkOverlap: 200,
+								minDocumentSizeForChunking: 1500,
+							};
+						} else {
+							this.pluginRef.settings.search.chunking.enabled = value;
+						}
+						await this.pluginRef.saveSettings();
+					}),
+			);
+
+		if (this.pluginRef.settings.search.chunking?.enabled) {
+			new Setting(wrapper)
+				.setName('Max Chunk Size')
+				.setDesc(`Maximum characters per chunk. Default: 1000`)
+				.addText((text) =>
+					text
+						.setPlaceholder('1000')
+						.setValue(String(this.pluginRef.settings.search.chunking?.maxChunkSize ?? 1000))
+						.onChange(async (value) => {
+							if (!this.pluginRef.settings.search.chunking) return;
+							const num = parseInt(value, 10);
+							if (!isNaN(num) && num > 0) {
+								this.pluginRef.settings.search.chunking.maxChunkSize = num;
+								await this.pluginRef.saveSettings();
+							}
+						}),
+				);
+
+			new Setting(wrapper)
+				.setName('Chunk Overlap')
+				.setDesc(`Characters of overlap between chunks. Default: 200`)
+				.addText((text) =>
+					text
+						.setPlaceholder('200')
+						.setValue(String(this.pluginRef.settings.search.chunking?.chunkOverlap ?? 200))
+						.onChange(async (value) => {
+							if (!this.pluginRef.settings.search.chunking) return;
+							const num = parseInt(value, 10);
+							if (!isNaN(num) && num >= 0) {
+								this.pluginRef.settings.search.chunking.chunkOverlap = num;
+								await this.pluginRef.saveSettings();
+							}
+						}),
+				);
+		}
 	}
 
 	/**
@@ -718,11 +776,23 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		settings.search.autoIndex = !(raw?.search as any)?.neverPromptAgain;
 		delete (settings.search as any).neverPromptAgain;
 	}
+	// Normalize includeDocumentTypes: merge with defaults, ensuring all DocumentTypes are present
+	const rawIncludeTypes = (settings.search as any)?.includeDocumentTypes ?? {};
 	settings.search.includeDocumentTypes = Object.assign(
 		{},
 		DEFAULT_SEARCH_SETTINGS.includeDocumentTypes,
-		(settings.search as any)?.includeDocumentTypes ?? {},
+		rawIncludeTypes,
 	);
+	// Ensure chunking settings exist
+	if (!settings.search.chunking) {
+		settings.search.chunking = DEFAULT_SEARCH_SETTINGS.chunking;
+	} else {
+		settings.search.chunking = Object.assign(
+			{},
+			DEFAULT_SEARCH_SETTINGS.chunking,
+			settings.search.chunking,
+		);
+	}
 	if (!settings.ai.promptFolder) {
 		const legacyPromptFolder = typeof raw?.promptFolder === 'string' ? (raw.promptFolder as string) : undefined;
 		settings.ai.promptFolder = legacyPromptFolder || DEFAULT_AI_SERVICE_SETTINGS.promptFolder;

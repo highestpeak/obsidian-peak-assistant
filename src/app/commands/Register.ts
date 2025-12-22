@@ -8,8 +8,8 @@ import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
 import { SearchClient } from '@/service/search/SearchClient';
 import type { SearchSettings } from '@/app/settings/types';
-import type { StoragePersistenceScheduler } from '@/service/storage/StoragePersistenceScheduler';
-import { IndexInitializer } from '@/service/search/index/index-initializer';
+import { IndexInitializer } from '@/service/search/index/indexInitializer';
+import { IndexService } from '@/service/search/index/indexService';
 
 /**
  * Registers core commands exposed via Obsidian command palette.
@@ -18,9 +18,9 @@ export function buildCoreCommands(
 	viewManager: ViewManager,
 	aiManager: AIServiceManager,
 	searchClient: SearchClient | null,
+	indexInitializer: IndexInitializer,
 	searchSettings?: SearchSettings,
 	storageFolder?: string,
-	storagePersistence?: StoragePersistenceScheduler,
 ): Command[] {
 	const app = viewManager.getApp();
 	return [
@@ -86,14 +86,7 @@ export function buildCoreCommands(
 					return;
 				}
 
-				const indexInitializer = new IndexInitializer(
-					app,
-					searchClient,
-					searchSettings,
-					storageFolder || '',
-					storagePersistence,
-				);
-				const indexStatus = await searchClient.getIndexStatus();
+				const indexStatus = await IndexService.getInstance().getIndexStatus();
 				const hasIndex = indexStatus.isReady && indexStatus.indexBuiltAt !== null;
 				
 				if (hasIndex) {

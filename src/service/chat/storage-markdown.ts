@@ -33,11 +33,18 @@ export function buildConversationMarkdown(params: {
 	sections.push('# Conversation Summary');
 	sections.push('## meta');
 	if (context) {
+		const contextMeta: any = {
+			lastUpdatedTimestamp: context.lastUpdatedTimestamp,
+			recentMessagesWindow: context.recentMessagesWindow,
+		};
+		if (context.topics && context.topics.length > 0) {
+			contextMeta.topics = context.topics;
+		}
+		if (context.resourceIndex && context.resourceIndex.length > 0) {
+			contextMeta.resourceIndex = context.resourceIndex;
+		}
 		sections.push(
-			codeBlock('chat-conversation-summary', stringifyYaml({
-				lastUpdatedTimestamp: context.lastUpdatedTimestamp,
-				recentMessagesWindow: context.recentMessagesWindow,
-			}))
+			codeBlock('chat-conversation-summary', stringifyYaml(contextMeta))
 		);
 	} else {
 		sections.push(
@@ -48,24 +55,30 @@ export function buildConversationMarkdown(params: {
 		);
 	}
 	sections.push('## content');
-	sections.push('defaultSummary');
+	// Use shortSummary if available, fallback to summary
+	const summaryText = context?.shortSummary || context?.summary || 'defaultSummary';
+	sections.push(summaryText);
+	
+	// Full summary section (if available)
+	if (context?.fullSummary) {
+		sections.push('## full');
+		sections.push(context.fullSummary);
+	}
 
-	// Attachments section - collect all attachments from all messages
-	const allAttachments = new Set<string>();
+	// Resources section - collect all resources from all messages
+	const allResources = new Set<string>();
 	for (const message of messages) {
-		if (message.attachments) {
-			for (const attachment of message.attachments) {
-				allAttachments.add(attachment);
+		if (message.resources) {
+			for (const resource of message.resources) {
+				allResources.add(resource.source);
 			}
 		}
 	}
 	
-	sections.push('# Attachments');
-	if (allAttachments.size > 0) {
-		const attachmentList = Array.from(allAttachments).map(att => `- [[${att}]]`).join('\n');
-		sections.push(attachmentList);
-	} else {
-		sections.push('');
+	if (allResources.size > 0) {
+		sections.push('# Resources');
+		const resourceList = Array.from(allResources).map(res => `- [[${res}]]`).join('\n');
+		sections.push(resourceList);
 	}
 
 	// Messages sections
@@ -98,35 +111,48 @@ function buildMessageSection(message: ChatMessage): string {
 		`  starred: ${message.starred}`,
 		`  model: "${message.model}"`,
 		`  provider: "${message.provider}"`,
-		`  attachments: ${JSON.stringify(message.attachments ?? [])}`,
 	];
+	
+	// Resources field
+	if (message.resources && message.resources.length > 0) {
+		metaLines.push(`  resources: ${JSON.stringify(message.resources)}`);
+	}
+	
+	// Token usage
+	if (message.tokenUsage) {
+		metaLines.push(`  tokenUsage: ${JSON.stringify(message.tokenUsage)}`);
+	}
+	
+	// Error and visibility flags
+	if (message.isErrorMessage !== undefined) {
+		metaLines.push(`  isErrorMessage: ${message.isErrorMessage}`);
+	}
+	if (message.isVisible !== undefined) {
+		metaLines.push(`  isVisible: ${message.isVisible}`);
+	}
+	
+	// Generation time (assistant only)
+	if (message.genTimeMs !== undefined) {
+		metaLines.push(`  genTimeMs: ${message.genTimeMs}`);
+	}
+	
 	const metaSection = `## meta\n\n${codeBlock('yaml', metaLines.join('\n'))}`;
 	
-	// Thinking section - not available in current ChatMessage type, so skip for now
-	// If thinking is added to ChatMessage in the future, uncomment this:
-	// const thinkingSection = (message as any).thinking && Array.isArray((message as any).thinking)
-	// 	? `## Thinking\n\n${(message as any).thinking.map((t: string) => `- ${t}`).join('\n')}`
-	// 	: '';
+	// Thinking section
+	const thinkingSection = message.thinking
+		? `## Thinking\n\n${codeBlock('markdown', message.thinking)}`
+		: '';
 	
-	const trimmedContent = message.content.trim();
+	// Content section - only store original content
+	const contentSection = `## content\n\n${codeBlock('markdown', message.content || '')}`;
 	
-	const attachmentLinks = (message.attachments ?? []).map((att) => {
-		const normalizedPath = att.startsWith('/') ? att.slice(1) : att;
-		return `[[${normalizedPath}]]`;
-	});
-
-	const contentPieces: string[] = [];
-	if (trimmedContent) {
-		contentPieces.push(trimmedContent);
+	const sections = [header, metaSection];
+	if (thinkingSection) {
+		sections.push(thinkingSection);
 	}
-	if (attachmentLinks.length > 0) {
-		contentPieces.push(attachmentLinks.join('\n'));
-	}
-
-	const contentText = contentPieces.join('\n\n');
-	const contentSection = `## content\n\n${codeBlock('markdown', contentText || '')}`;
+	sections.push(contentSection);
 	
-	return `${header}\n\n${metaSection}\n\n${contentSection}`;
+	return sections.join('\n\n');
 }
 
 export function buildProjectMarkdown(params: {
@@ -138,19 +164,29 @@ export function buildProjectMarkdown(params: {
 	// Don't store name in frontmatter, it's derived from folder name
 	const { name, ...metaWithoutName } = meta;
 	const frontmatter = buildFrontmatter(metaWithoutName);
-	const summaryText = context?.summary ?? 'defaultSummary';
+	const summaryText = context?.shortSummary || context?.summary || 'defaultSummary';
 	const summaryTimestamp = context?.lastUpdatedTimestamp ?? Date.now();
 	const sections: string[] = ['# Project Meta', codeBlock('chat-project', stringifyYaml(metaWithoutName))];
 
 	sections.push('# Short Summary');
 	sections.push('## meta');
+	const summaryMeta: any = {
+		lastUpdatedTimestamp: summaryTimestamp,
+	};
+	if (context?.resourceIndex && context.resourceIndex.length > 0) {
+		summaryMeta.resourceIndex = context.resourceIndex;
+	}
 	sections.push(
-		codeBlock('project-short-summary', stringifyYaml({
-			lastUpdatedTimestamp: summaryTimestamp,
-		}))
+		codeBlock('project-short-summary', stringifyYaml(summaryMeta))
 	);
 	sections.push('## content');
 	sections.push(summaryText);
+	
+	// Full summary section (if available)
+	if (context?.fullSummary) {
+		sections.push('## full');
+		sections.push(context.fullSummary);
+	}
 
 	if (context) {
 		sections.push('# Project Context');

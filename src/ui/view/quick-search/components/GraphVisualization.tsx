@@ -3,11 +3,10 @@ import React from 'react';
 /**
  * Simple SVG-based knowledge graph preview.
  */
+import type { GraphPreview } from '@/core/storage/graph/types';
+
 export const GraphVisualization: React.FC<{
-	graph?: {
-		nodes: Array<{ id: string; label: string; kind: 'file' | 'tag' | 'heading' }>;
-		edges: Array<{ from: string; to: string; weight?: number }>;
-	} | null;
+	graph?: GraphPreview | null;
 }> = ({ graph }) => {
 	// Fallback to the old placeholder if no data yet.
 	if (!graph || !graph.nodes?.length) {
@@ -49,8 +48,8 @@ export const GraphVisualization: React.FC<{
 			<svg width="100%" height="100%" viewBox="0 0 200 200" className="pktw-p-2">
 				{/* Edges */}
 				{graph.edges.slice(0, 40).map((e, idx) => {
-					const from = positions.get(e.from);
-					const to = positions.get(e.to);
+					const from = positions.get(e.from_node_id);
+					const to = positions.get(e.to_node_id);
 					if (!from || !to) return null;
 					return (
 						<line
@@ -69,12 +68,12 @@ export const GraphVisualization: React.FC<{
 				{/* Nodes */}
 				{nodes.map((n) => {
 					const p = positions.get(n.id)!;
-					const fill = n.kind === 'file' ? '#7c3aed' : n.kind === 'tag' ? '#8b5cf6' : '#a78bfa';
+					const fill = n.type === 'document' ? '#7c3aed' : n.type === 'tag' ? '#8b5cf6' : '#a78bfa';
 					return (
 						<g key={n.id}>
-							<circle cx={p.x} cy={p.y} r={n.kind === 'file' ? 8 : 6} fill={fill} />
+							<circle cx={p.x} cy={p.y} r={n.type === 'document' ? 8 : 6} fill={fill} />
 							<text x={p.x} y={p.y + 3} textAnchor="middle" fill="white" fontSize="6">
-								{n.kind === 'tag' ? '#' : ''}
+								{n.type === 'tag' ? '#' : ''}
 							</text>
 						</g>
 					);

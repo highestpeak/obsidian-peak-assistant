@@ -281,8 +281,6 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 					const selectedResult = displayedResults[selectedIndex];
 					if (selectedResult) {
 						try {
-							// Record open signal (best-effort)
-							void searchClient?.recordOpen(selectedResult.path);
 							const file = app.vault.getAbstractFileByPath(selectedResult.path);
 							if (file && (file as any).path) {
 								void app.workspace.getLeaf(false).openFile(file as any);

@@ -16,10 +16,8 @@
 	"author": "",
 	"license": "MIT",
 	"dependencies": {
+		"better-sqlite3": "^11.10.0",
 		"@lobehub/icons": "^2.44.0",
-		"@orama/orama": "^3.1.17",
-		"@orama/plugin-data-persistence": "^3.1.17",
-		"@orama/plugin-embeddings": "^3.1.17",
 		"@radix-ui/react-dialog": "^1.0.5",
 		"@radix-ui/react-slot": "^1.0.2",
 		"@tensorflow/tfjs-node": "^4.22.0",
@@ -41,12 +39,14 @@
 		"simple-git": "^3.27.0",
 		"sonner": "^2.0.7",
 		"sql.js": "^1.13.0",
+		"kysely": "0.27.6",
 		"tailwind-merge": "^2.1.0",
 		"tailwindcss": "^3.4.1",
 		"uuid": "^9.0.1",
 		"zustand": "^4.4.7"
 	},
 	"devDependencies": {
+		"@types/better-sqlite3": "^7.6.12",
 		"@types/js-yaml": "^4.0.9",
 		"@types/node": "^16.11.6",
 		"@types/react": "^18.2.43",
