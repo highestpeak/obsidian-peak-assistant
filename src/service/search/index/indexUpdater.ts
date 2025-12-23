@@ -1,6 +1,6 @@
 import type { App, TAbstractFile, EventRef } from 'obsidian';
 import { TFile } from 'obsidian';
-import { DocumentLoaderManager } from '@/service/search/index/document/DocumentLoaderManager';
+import { DocumentLoaderManager } from '@/core/document/loader/DocumentLoaderManager';
 import type { SearchSettings } from '@/app/settings/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { IndexService } from '@/service/search/index/indexService';

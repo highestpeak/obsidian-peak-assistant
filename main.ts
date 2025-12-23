@@ -11,7 +11,7 @@ import { SearchClient } from '@/service/search/SearchClient';
 import { SearchUpdateListener } from '@/service/search/index/indexUpdater';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { DocumentLoaderManager } from '@/service/search/index/document/DocumentLoaderManager';
+import { DocumentLoaderManager } from '@/service/search/index/loader/DocumentLoaderManager';
 import { IndexService } from '@/service/search/index/indexService';
 
 /**

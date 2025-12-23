@@ -4,8 +4,8 @@ import {
 	LLMProviderService,
 	ModelMetaData,
 	ProviderMetaData,
-} from './types';
-import { AIStreamEvent } from '../messages/types-events';
+} from '../types';
+import { AIStreamEvent } from '../types-events';
 import { invokeOpenAICompatibleBlock, invokeOpenAICompatibleStream } from './openai-compatible';
 
 const DEFAULT_OPENROUTER_TIMEOUT_MS = 60000;

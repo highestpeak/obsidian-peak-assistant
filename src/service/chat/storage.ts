@@ -28,7 +28,7 @@ export class ChatStorageService {
 		await this.ensureStarredCsv();
 	}
 
-	async ensureProjectFolders(project: ChatProjectMeta): Promise<void> {
+	private async ensureProjectFolders(project: ChatProjectMeta): Promise<void> {
 		await ensureFolder(this.app, this.rootFolder);
 		const projectFolder = this.getProjectFolderPath(project);
 		await ensureFolder(this.app, projectFolder);
@@ -502,7 +502,6 @@ export class ChatStorageService {
 			titleManuallyEdited: data.titleManuallyEdited === true,
 		};
 	}
-
 
 	private pickProjectMeta(data: Record<string, unknown>, file: TFile): ChatProjectMeta {
 		// Get name from frontmatter first, fallback to folder name

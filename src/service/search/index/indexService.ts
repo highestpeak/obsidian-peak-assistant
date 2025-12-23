@@ -1,11 +1,11 @@
-import type { Chunk } from './chunk/types';
+import type { Chunk } from './types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { GraphEdgeRepo } from '@/core/storage/sqlite/repositories/GraphEdgeRepo';
 import { normalizeTextForFts } from '../support/segmenter';
 import type { SearchSettings } from '@/app/settings/types';
 import type { Document } from '@/core/document/types';
 import { INDEX_STATE_KEYS } from '@/core/constant';
-import { DocumentLoaderManager } from './document/DocumentLoaderManager';
+import { DocumentLoaderManager } from '@/core/document/loader/DocumentLoaderManager';
 import { generateUuidWithoutHyphens } from '@/service/chat/utils';
 import { normalizePath } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';

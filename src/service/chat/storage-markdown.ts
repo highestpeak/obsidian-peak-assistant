@@ -3,8 +3,6 @@ import { ChatContextWindow, ChatConversationMeta, ChatMessage, ChatProjectContex
 import {
 	buildFrontmatter,
 	codeBlock,
-	extractCodeBlock,
-	replaceOrAppendCodeBlock,
 } from '@/core/utils/markdown-utils';
 
 export function buildConversationMarkdown(params: {
@@ -201,7 +199,6 @@ export function buildProjectMarkdown(params: {
 	return `${frontmatter}${sections.join('\n\n')}\n`;
 }
 
-
 export async function saveMarkdownFile(vault: Vault, file: TFile | null, path: string, content: string): Promise<TFile> {
 	if (file) {
 		await vault.modify(file, content);
@@ -209,4 +206,3 @@ export async function saveMarkdownFile(vault: Vault, file: TFile | null, path: s
 	}
 	return vault.create(path, content);
 }
-

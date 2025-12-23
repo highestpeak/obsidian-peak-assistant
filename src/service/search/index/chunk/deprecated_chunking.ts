@@ -16,7 +16,7 @@
 import type { Document } from '@/core/document/types';
 import type { DocumentChunkingOptions } from '../types';
 import type { ChunkingSettings } from '@/app/settings/types';
-import type { Chunk } from './types';
+import type { Chunk } from '../types';
 import { DEFAULT_CHUNKING_SETTINGS } from '@/app/settings/types';
 import { generateUuidWithoutHyphens } from '@/service/chat/utils';
 

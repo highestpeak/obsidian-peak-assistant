@@ -1,5 +1,5 @@
 import { RootMode } from '@/service/chat/types';
-import { ProviderConfig } from '@/service/chat/providers/types';
+import { ProviderConfig } from '@/core/providers/types';
 import { CommandHiddenSettings, DEFAULT_COMMAND_HIDDEN_SETTINGS } from '@/service/CommandHiddenControlService';
 import type { DocumentType } from '@/core/document/types';
 

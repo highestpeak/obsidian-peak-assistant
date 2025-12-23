@@ -1,6 +1,6 @@
 import type { DocumentType } from '@/core/document/types';
 import type { Document } from '@/core/document/types';
-import type { Chunk } from '../chunk/types';
+import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 
 /**

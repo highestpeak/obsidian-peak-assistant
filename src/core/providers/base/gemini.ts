@@ -6,8 +6,8 @@ import {
 	LLMProviderService,
 	ModelMetaData,
 	ProviderMetaData,
-} from './types';
-import { AIStreamEvent } from '../messages/types-events';
+} from '../types';
+import { AIStreamEvent } from '../types-events';
 import { trimTrailingSlash, safeReadError } from './helpers';
 
 const DEFAULT_GEMINI_TIMEOUT_MS = 60000;

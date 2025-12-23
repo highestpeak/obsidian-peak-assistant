@@ -1,4 +1,4 @@
-import { LLMProviderService, ModelMetaData, ProviderConfig, ProviderMetaData } from './types';
+import { LLMProviderService, ModelMetaData, ProviderConfig, ProviderMetaData } from '../types';
 import { OpenAIChatService } from './openai';
 import { OpenRouterChatService } from './openrouter';
 import { OLLAMA_DEFAULT_BASE, OllamaChatService } from './ollama';

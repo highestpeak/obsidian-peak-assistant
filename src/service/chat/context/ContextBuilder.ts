@@ -1,4 +1,4 @@
-import type { LLMRequestMessage } from '../providers/types';
+import type { LLMRequestMessage } from '@/core/providers/types';
 import type { ParsedConversationFile, ParsedProjectFile, ChatMessage } from '../types';
 import type { PromptService } from '../service-prompt';
 import type { ResourceSummaryService } from '../resources/ResourceSummaryService';

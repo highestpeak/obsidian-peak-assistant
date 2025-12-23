@@ -1,4 +1,4 @@
-import { LLMProviderService } from './providers/types';
+import { LLMProviderService } from '@/core/providers/types';
 
 export interface LLMApplicationService {
 	summarize(params: { provider: string; model: string; text: string; }): Promise<string>;

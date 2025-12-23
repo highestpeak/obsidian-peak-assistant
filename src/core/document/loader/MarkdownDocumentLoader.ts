@@ -5,7 +5,7 @@ import type { DocumentType } from '@/core/document/types';
 import type { Document } from '@/core/document/types';
 import { generateContentHash, extractReferences } from '@/core/utils/markdown-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import type { Chunk } from '../chunk/types';
+import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens } from '@/service/chat/utils';
 

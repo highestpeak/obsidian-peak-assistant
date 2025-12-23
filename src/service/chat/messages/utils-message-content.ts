@@ -1,7 +1,7 @@
 import { App, normalizePath, TFile } from 'obsidian';
 import { Buffer } from 'buffer';
 import { ChatMessage } from '../types';
-import { ProviderContentPart } from '../providers/types';
+import { ProviderContentPart } from '@/core/providers/types';
 
 // Type declaration for require in Node.js/Electron environment
 declare const require: {

@@ -1,9 +1,9 @@
 import { normalizePath, TFile, TFolder } from 'obsidian';
 import { generateUuidWithoutHyphens } from './utils';
-import { LLMProviderService } from './providers/types';
+import { LLMProviderService } from '@/core/providers/types';
 import { LLMApplicationService } from './service-application';
 import { ChatStorageService } from './storage';
-import { LLMRequestMessage, LLMUsage } from './providers/types';
+import { LLMRequestMessage } from '@/core/providers/types';
 import {
 	ChatContextWindow,
 	ChatConversationMeta,
@@ -15,7 +15,7 @@ import {
 } from './types';
 import { PromptService, PromptTemplate } from './service-prompt';
 import { MessageContentComposer } from './messages/utils-message-content';
-import { AIStreamEvent } from './messages/types-events';
+import { AIStreamEvent } from '@/core/providers/types-events';
 import { ResourceSummaryService } from './resources/ResourceSummaryService';
 import { ContextBuilder } from './context/ContextBuilder';
 

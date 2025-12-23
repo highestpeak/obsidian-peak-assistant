@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { AIServiceSettings } from '@/app/settings/types';
-import { ProviderServiceFactory } from '@/service/chat/providers/factory';
+import { ProviderServiceFactory } from '@/core/providers/base/factory';
 import { ProviderIcon, ModelIcon } from '@lobehub/icons';
-import { ModelConfig, ModelInfoForSettings, ModelMetaData, ProviderConfig, ProviderMetaData } from '@/service/chat/providers/types';
+import { ModelMetaData, ProviderMetaData } from '@/core/providers/types';
 import { cn } from '@/ui/react/lib/utils';
 import { ErrorBoundary } from '@/ui/react/lib/ErrorBoundary';
 

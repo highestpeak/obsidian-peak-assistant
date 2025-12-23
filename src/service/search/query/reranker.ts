@@ -2,8 +2,8 @@ import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { SearchSettings } from '@/app/settings/types';
 import type { SearchResultItem, SearchScopeValue } from '../types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { RerankProviderManager } from '@/service/chat/providers/rerank/factory';
-import type { RerankDocument } from '@/service/chat/providers/rerank/types';
+import { RerankProviderManager } from '@/core/providers/rerank/factory';
+import type { RerankDocument } from '@/core/providers/rerank/types';
 
 /**
  * Ranking signals for boosting search results.
@@ -228,9 +228,35 @@ export class Reranker {
 	/**
 	 * Apply metadata/graph based boosts to items and return a sorted copy.
 	 *
+	 * Current boost strategy:
+	 * 1. Frequency boost (freqBoost):
+	 *    - Formula: log1p(openCount) * 0.15
+	 *    - Uses logarithmic scaling to prevent over-weighting high-frequency items
+	 *    - Example: 1 open -> ~0.10, 10 opens -> ~0.38, 100 opens -> ~0.69
+	 *
+	 * 2. Recency boost (recencyBoost):
+	 *    - Formula: max(0, 0.3 - days * 0.01)
+	 *    - Clamped to [0, 0.3] to avoid unbounded negative drift
+	 *    - Linear decay: 0.3 for today, 0.2 for 10 days ago, 0 for 30+ days ago
+	 *    - Rewards recently accessed documents
+	 *
+	 * 3. Graph boost (graphBoost):
+	 *    - Fixed value: 0.2 if file is related to current file (within 2 hops), 0 otherwise
+	 *    - Binary boost: either related or not (no distance weighting currently)
+	 *
+	 * Final score: baseScore + freqBoost + recencyBoost + graphBoost
+	 *
+	 * Potential extensions (not yet implemented):
+	 * - Recent 2-week access count: track and boost based on opens within last 14 days
+	 * - Bookmark boost: add fixed boost for bookmarked documents
+	 * - Content richness boost: use richness_score from doc_statistics (word_count, link_count, etc.)
+	 * - Graph distance weighting: use actual hop distance (1 hop > 2 hops) instead of binary
+	 * - Keyword match boost: differentiate title matches (higher) vs content matches (lower)
+	 * - Match frequency boost: more query term matches in title/content should boost more
+	 *
 	 * Notes:
 	 * - This intentionally keeps the formula simple and stable.
-	 * - Minor tuning: clamp recency boost to [0, 0.3] to avoid unbounded negative drift.
+	 * - All boosts are additive to maintain interpretability.
 	 */
 	applyRankingBoosts(params: {
 		items: SearchResultItem[];
@@ -245,18 +271,23 @@ export class Reranker {
 			const s = params.signals.get(item.path);
 			if (!s) continue;
 
+			// Frequency boost: logarithmic scaling of total open count
 			const freqBoost = Math.log1p(s.openCount) * 0.15;
 
+			// Recency boost: linear decay based on days since last open
 			const dayMs = 1000 * 60 * 60 * 24;
 			const days = s.lastOpenTs ? Math.max(0, (now - s.lastOpenTs) / dayMs) : Infinity;
 			const recencyBoost = Number.isFinite(days) ? Math.max(0, 0.3 - days * 0.01) : 0;
 
+			// Graph boost: fixed boost for files related to current file (within 2 hops)
 			const graphBoost = params.relatedPaths.has(item.path) ? 0.2 : 0;
 
+			// Calculate final score as sum of base score and all boosts
 			const base = item.score ?? 0;
 			item.finalScore = base + freqBoost + recencyBoost + graphBoost;
 		}
 
+		// Sort by final score (descending)
 		items.sort((a, b) => (b.finalScore ?? b.score ?? 0) - (a.finalScore ?? a.score ?? 0));
 		return items;
 	}

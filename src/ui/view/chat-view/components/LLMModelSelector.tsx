@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ModelInfoForSwitch } from '@/service/chat/providers/types';
+import { ModelInfoForSwitch } from '@/core/providers/types';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { ChevronDown, Check, AlertTriangle } from 'lucide-react';
@@ -8,7 +8,7 @@ import { ModelIcon, ProviderIcon } from '@lobehub/icons';
 import { cn } from '@/ui/react/lib/utils';
 import { ErrorBoundary } from '@/ui/react/lib/ErrorBoundary';
 import { SettingsUpdatedEvent, ViewEventType } from '@/core/eventBus';
-import { ProviderServiceFactory } from '@/service/chat/providers/factory';
+import { ProviderServiceFactory } from '@/core/providers/base/factory';
 
 /**
  * React component for model selector

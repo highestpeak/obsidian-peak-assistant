@@ -1,7 +1,7 @@
 import { LLMProviderService, ProviderConfig, ModelMetaData, ProviderMetaData, ModelInfoForSettings } from './types';
 import { LLMRequest } from './types';
-import { AIStreamEvent } from '../messages/types-events';
-import { ProviderServiceFactory } from './factory';
+import { AIStreamEvent } from './types-events';
+import { ProviderServiceFactory } from './base/factory';
 
 export interface MultiProviderChatServiceOptions {
 	providerConfigs?: Record<string, ProviderConfig>;

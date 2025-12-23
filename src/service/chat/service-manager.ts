@@ -1,7 +1,7 @@
 import { App } from 'obsidian';
-import { ModelInfoForSettings, ModelInfoForSwitch } from './providers/types';
+import { ModelInfoForSwitch } from '@/core/providers/types';
 import { LLMApplicationService } from './service-application';
-import { MultiProviderChatService } from './providers/MultiProviderChatService';
+import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { PromptApplicationService } from './service-application';
 import { ChatStorageService } from './storage';
 import { ChatContextWindow, ChatMessage, ChatProjectMeta, ParsedConversationFile, ParsedProjectFile, StarredMessageRecord } from './types';
@@ -9,7 +9,7 @@ import { PromptService } from './service-prompt';
 import { MessageContentComposer } from './messages/utils-message-content';
 import { ProjectService } from './service-project';
 import { ConversationService } from './service-conversation';
-import { AIStreamEvent } from './messages/types-events';
+import { AIStreamEvent } from '@/core/providers/types-events';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { ResourceSummaryService } from './resources/ResourceSummaryService';
 import { ChatMigrationService } from './migration';

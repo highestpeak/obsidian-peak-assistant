@@ -4,9 +4,8 @@ import {
 	LLMUsage,
 	ProviderContentPart,
 	LLMRequestMessage,
-	ModelMetaData,
-} from './types';
-import { AIStreamEvent } from '../messages/types-events';
+} from '../types';
+import { AIStreamEvent } from '../types-events';
 import { safeReadError, trimTrailingSlash } from './helpers';
 
 /**

@@ -1,5 +1,5 @@
-import { ChatRole } from '../types';
-import { AIStreamEvent } from '../messages/types-events';
+import { ChatRole } from '@/service/chat/types';
+import { AIStreamEvent } from './types-events';
 
 export interface ProviderConfig {
 	enabled?: boolean;

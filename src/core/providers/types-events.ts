@@ -1,4 +1,4 @@
-import { ChatMessage, ParsedConversationFile } from '../types';
+import { ChatMessage, ParsedConversationFile } from '../../service/chat/types';
 import { LLMUsage } from '../providers/types';
 
 /**
