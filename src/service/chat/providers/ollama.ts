@@ -253,5 +253,60 @@ export class OllamaChatService implements LLMProviderService {
 			icon: 'ollama',
 		};
 	}
+
+	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
+		return generateOllamaEmbeddings({
+			texts,
+			model,
+			baseUrl: this.options.baseUrl,
+			timeoutMs: this.options.timeoutMs ?? DEFAULT_OLLAMA_TIMEOUT_MS,
+		});
+	}
+}
+
+/**
+ * Generate embeddings using Ollama API.
+ */
+async function generateOllamaEmbeddings(params: {
+	texts: string[];
+	model: string;
+	baseUrl?: string;
+	timeoutMs: number;
+}): Promise<number[][]> {
+	const baseUrl = trimTrailingSlash(params.baseUrl ?? OLLAMA_DEFAULT_BASE);
+	// Ollama uses /api/embeddings (not /v1/embeddings like OpenAI)
+	const url = `${baseUrl}/api/embeddings`;
+
+	const response = await fetch(url, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			input: params.texts,
+			model: params.model,
+		}),
+		signal: AbortSignal.timeout(params.timeoutMs),
+	});
+
+	if (!response.ok) {
+		const errorText = await response.text().catch(() => 'Unknown error');
+		throw new Error(`Ollama embedding API error: ${response.status} ${response.statusText}. ${errorText}`);
+	}
+
+	const data = await response.json();
+
+	if (!data.data || !Array.isArray(data.data)) {
+		throw new Error('Invalid embedding API response: missing data array');
+	}
+
+	const embeddings: number[][] = data.data.map((item: { embedding?: number[] }) => {
+		if (!item.embedding || !Array.isArray(item.embedding)) {
+			throw new Error('Invalid embedding format in API response');
+		}
+		return item.embedding;
+	});
+
+	return embeddings;
 }
 

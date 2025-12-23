@@ -1,6 +1,7 @@
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 import Database from 'better-sqlite3';
+import type { SearchScopeMode, SearchScopeValue } from '@/service/search/types';
 
 type BetterSqlite3Database = Database.Database;
 
@@ -50,6 +51,7 @@ export class EmbeddingRepo {
 		doc_id: string;
 		chunk_id?: string | null;
 		chunk_index?: number | null;
+		path?: string | null;
 		content_hash: string;
 		ctime: number;
 		mtime: number;
@@ -76,6 +78,7 @@ export class EmbeddingRepo {
 					doc_id: embedding.doc_id,
 					chunk_id: embedding.chunk_id ?? null,
 					chunk_index: embedding.chunk_index ?? null,
+					path: embedding.path ?? null,
 					content_hash: embedding.content_hash,
 					mtime: embedding.mtime,
 					embedding: embeddingBuffer,
@@ -93,6 +96,7 @@ export class EmbeddingRepo {
 				doc_id: embedding.doc_id,
 				chunk_id: embedding.chunk_id ?? null,
 				chunk_index: embedding.chunk_index ?? null,
+				path: embedding.path ?? null,
 				content_hash: embedding.content_hash,
 				ctime: embedding.ctime,
 				mtime: embedding.mtime,
@@ -190,9 +194,16 @@ export class EmbeddingRepo {
 	 * 
 	 * @param queryEmbedding The query embedding vector (as number[] or Buffer)
 	 * @param limit Maximum number of results to return
+	 * @param scopeMode Optional scope mode for filtering
+	 * @param scopeValue Optional scope value for filtering
 	 * @returns Array of results with embedding_id (from embedding table) and distance
 	 */
-	searchSimilar(queryEmbedding: number[] | Buffer, limit: number): Array<{
+	searchSimilar(
+		queryEmbedding: number[] | Buffer,
+		limit: number,
+		scopeMode?: SearchScopeMode,
+		scopeValue?: SearchScopeValue,
+	): Array<{
 		embedding_id: string;
 		distance: number;
 	}> {
@@ -201,20 +212,37 @@ export class EmbeddingRepo {
 			? queryEmbedding
 			: this.arrayToBuffer(queryEmbedding);
 
-		// Step 1: KNN search on vec_embeddings (no JOIN for better performance)
+		// Build path filter condition based on scope
+		let pathFilter = '';
+		const pathParams: string[] = [];
+
+		if (scopeMode === 'inFile' && scopeValue?.currentFilePath) {
+			pathFilter = 'AND e.path = ?';
+			pathParams.push(scopeValue.currentFilePath);
+		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
+			const folderPath = scopeValue.folderPath;
+			pathFilter = 'AND (e.path = ? OR e.path LIKE ?)';
+			pathParams.push(folderPath, `${folderPath}/%`);
+		}
+
+		// Step 1: KNN search on vec_embeddings with JOIN to embedding table for path filtering
 		// Returns vec_embeddings.rowid (integer) and distance
 		// vec_embeddings.rowid = embedding.rowid
 		// vec0 MATCH operator accepts BLOB format for float[]
-		const knnStmt = this.rawDb.prepare(`
+		// We JOIN embedding table to filter by path before limiting results
+		const sql = `
 			SELECT
-				rowid,
-				distance
-			FROM vec_embeddings
-			WHERE embedding MATCH ?
-			ORDER BY distance
+				ve.rowid,
+				ve.distance
+			FROM vec_embeddings ve
+			INNER JOIN embedding e ON ve.rowid = e.rowid
+			WHERE ve.embedding MATCH ?
+			${pathFilter}
+			ORDER BY ve.distance
 			LIMIT ?
-		`);
-		const knnResults = knnStmt.all(embeddingBuffer, limit) as Array<{
+		`;
+		const knnStmt = this.rawDb.prepare(sql);
+		const knnResults = knnStmt.all(embeddingBuffer, ...pathParams, limit) as Array<{
 			rowid: number;
 			distance: number;
 		}>;

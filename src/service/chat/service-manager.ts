@@ -13,6 +13,7 @@ import { AIStreamEvent } from './messages/types-events';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { ResourceSummaryService } from './resources/ResourceSummaryService';
 import { ChatMigrationService } from './migration';
+import { IndexService } from '@/service/search/index/indexService';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -114,6 +115,13 @@ export class AIServiceManager {
 	}
 
 	/**
+	 * Get MultiProviderChatService instance for embedding generation.
+	 */
+	getMultiChat(): MultiProviderChatService {
+		return this.multiChat;
+	}
+
+	/**
 	 * Update settings and rebuild storage handlers.
 	 */
 	updateSettings(next: AIServiceSettings): void {
@@ -143,6 +151,9 @@ export class AIServiceManager {
 			this.settings.defaultModelId,
 			this.resourceSummaryService
 		);
+
+		// Update IndexService with updated AIServiceManager instance
+		IndexService.getInstance().init(this);
 	}
 
 	setPromptFolder(folder: string): void {

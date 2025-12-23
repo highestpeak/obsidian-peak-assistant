@@ -174,61 +174,38 @@ export class MySettings extends PluginSettingTab {
 
 		// Document chunking settings
 		new Setting(wrapper)
-			.setName('Document Chunking')
-			.setDesc('Split long documents into chunks for better embedding quality and search precision.')
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.pluginRef.settings.search.chunking?.enabled ?? true)
+			.setName('Max Chunk Size')
+			.setDesc(`Maximum characters per chunk. Default: 1000`)
+			.addText((text) =>
+				text
+					.setPlaceholder('1000')
+					.setValue(String(this.pluginRef.settings.search.chunking?.maxChunkSize ?? 1000))
 					.onChange(async (value) => {
-						if (!this.pluginRef.settings.search.chunking) {
-							this.pluginRef.settings.search.chunking = {
-								enabled: value,
-								maxChunkSize: 1000,
-								chunkOverlap: 200,
-								minDocumentSizeForChunking: 1500,
-							};
-						} else {
-							this.pluginRef.settings.search.chunking.enabled = value;
+						if (!this.pluginRef.settings.search.chunking) return;
+						const num = parseInt(value, 10);
+						if (!isNaN(num) && num > 0) {
+							this.pluginRef.settings.search.chunking.maxChunkSize = num;
+							await this.pluginRef.saveSettings();
 						}
-						await this.pluginRef.saveSettings();
 					}),
 			);
 
-		if (this.pluginRef.settings.search.chunking?.enabled) {
-			new Setting(wrapper)
-				.setName('Max Chunk Size')
-				.setDesc(`Maximum characters per chunk. Default: 1000`)
-				.addText((text) =>
-					text
-						.setPlaceholder('1000')
-						.setValue(String(this.pluginRef.settings.search.chunking?.maxChunkSize ?? 1000))
-						.onChange(async (value) => {
-							if (!this.pluginRef.settings.search.chunking) return;
-							const num = parseInt(value, 10);
-							if (!isNaN(num) && num > 0) {
-								this.pluginRef.settings.search.chunking.maxChunkSize = num;
-								await this.pluginRef.saveSettings();
-							}
-						}),
-				);
-
-			new Setting(wrapper)
-				.setName('Chunk Overlap')
-				.setDesc(`Characters of overlap between chunks. Default: 200`)
-				.addText((text) =>
-					text
-						.setPlaceholder('200')
-						.setValue(String(this.pluginRef.settings.search.chunking?.chunkOverlap ?? 200))
-						.onChange(async (value) => {
-							if (!this.pluginRef.settings.search.chunking) return;
-							const num = parseInt(value, 10);
-							if (!isNaN(num) && num >= 0) {
-								this.pluginRef.settings.search.chunking.chunkOverlap = num;
-								await this.pluginRef.saveSettings();
-							}
-						}),
-				);
-		}
+		new Setting(wrapper)
+			.setName('Chunk Overlap')
+			.setDesc(`Characters of overlap between chunks. Default: 200`)
+			.addText((text) =>
+				text
+					.setPlaceholder('200')
+					.setValue(String(this.pluginRef.settings.search.chunking?.chunkOverlap ?? 200))
+					.onChange(async (value) => {
+						if (!this.pluginRef.settings.search.chunking) return;
+						const num = parseInt(value, 10);
+						if (!isNaN(num) && num >= 0) {
+							this.pluginRef.settings.search.chunking.chunkOverlap = num;
+							await this.pluginRef.saveSettings();
+						}
+					}),
+			);
 	}
 
 	/**

@@ -8,11 +8,6 @@ import type { DocumentType } from '@/core/document/types';
  */
 export interface ChunkingSettings {
 	/**
-	 * Enable document chunking for long documents.
-	 * Default: true
-	 */
-	enabled: boolean;
-	/**
 	 * Maximum chunk size in characters.
 	 * Default: 1000
 	 */
@@ -27,6 +22,22 @@ export interface ChunkingSettings {
 	 * Default: 1500
 	 */
 	minDocumentSizeForChunking: number;
+	/**
+	 * Embedding model configuration.
+	 * If not provided, embeddings will not be generated.
+	 */
+	embeddingModel?: {
+		provider: string;
+		modelId: string;
+	};
+	/**
+	 * Rerank model configuration for improving search result relevance.
+	 * If not provided, reranking will not be performed.
+	 */
+	rerankModel?: {
+		provider: string;
+		modelId: string;
+	};
 }
 
 /**
@@ -46,6 +57,14 @@ export interface SearchSettings {
 	 * Document chunking configuration for embedding and vector search.
 	 */
 	chunking: ChunkingSettings;
+	/**
+	 * Model configuration for AI search summary generation.
+	 * If not provided, will fallback to defaultModelId from AI settings.
+	 */
+	searchSummaryModel?: {
+		provider: string;
+		modelId: string;
+	};
 }
 
 /**
@@ -90,7 +109,6 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
  * Default chunking settings.
  */
 export const DEFAULT_CHUNKING_SETTINGS: ChunkingSettings = {
-	enabled: true,
 	maxChunkSize: 1000,
 	chunkOverlap: 200,
 	minDocumentSizeForChunking: 1500,

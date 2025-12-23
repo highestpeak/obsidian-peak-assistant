@@ -16,3 +16,47 @@ export const EMBEDDING_DIMENSION = 1536;
  */
 export const INDEX_CHECK_BATCH_SIZE = 100;
 
+/**
+ * Search database filename.
+ */
+export const SEARCH_DB_FILENAME = 'search.sqlite';
+
+/**
+ * Index state keys for storing index metadata.
+ */
+export const INDEX_STATE_KEYS = {
+	builtAt: 'index_built_at',
+	indexedDocs: 'indexed_docs',
+} as const;
+
+/**
+ * Default top K value for search results.
+ * Used when query.topK is not specified.
+ */
+export const DEFAULT_SEARCH_TOP_K = 50;
+
+/**
+ * As we may filter some results, we need to multiply the top K value by this factor. And get more results.
+ * Also, we want to get more results to improve the quality of the search.
+ */
+export const DEFAULT_SEARCH_TOP_K_MULTI_FACTOR = 2;
+
+/**
+ * Default search mode.
+ * Used when query.mode is not specified.
+ */
+export const DEFAULT_SEARCH_MODE = 'vault';
+
+/**
+ * RRF (Reciprocal Rank Fusion) configuration constants.
+ */
+export const RRF_K = 60;
+export const RRF_TEXT_WEIGHT = 0.6;
+export const RRF_VECTOR_WEIGHT = 0.4;
+
+/**
+ * AI Search graph generation constants.
+ */
+export const AI_SEARCH_GRAPH_MAX_NODES_PER_SOURCE = 50; // Max nodes per source when building graph
+export const AI_SEARCH_GRAPH_MAX_HOPS = 2; // Max hops from each source
+export const AI_SEARCH_GRAPH_FINAL_MAX_NODES = 30; // Final max nodes in merged graph

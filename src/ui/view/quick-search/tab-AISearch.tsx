@@ -7,8 +7,7 @@ import { KeyboardShortcut } from './components/KeyboardShortcut';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { SearchClient } from '@/service/search/SearchClient';
-import type { RagSource } from '@/service/search/types';
-import { buildRagSummarizeText, pickDefaultModel } from '@/ui/view/quick-search/features/ai-rag';
+import type { SearchResultItem } from '@/service/search/types';
 
 interface AISearchTabProps {
 	searchQuery: string;
@@ -117,7 +116,7 @@ const TagCloudSection: React.FC = () => (
  * Top sources section component showing relevant files
  */
 const TopSourcesSection: React.FC<{
-	sources: RagSource[];
+	sources: SearchResultItem[];
 	onOpen: (path: string) => void;
 }> = ({ sources, onOpen }) => {
 	return (
@@ -136,7 +135,7 @@ const TopSourcesSection: React.FC<{
 					>
 						<div
 							className="pktw-w-1 pktw-h-8 pktw-bg-[#7c3aed] pktw-rounded-full"
-							style={{ opacity: Math.max(0.3, Math.min(1, (source.score ?? 1) / 10)) }}
+							style={{ opacity: Math.max(0.3, Math.min(1, ((source.finalScore ?? source.score ?? 0) + 1) / 10)) }}
 						/>
 						<div className="pktw-flex-1 pktw-min-w-0">
 							<div className="pktw-text-sm pktw-text-[#2e3338] pktw-truncate group-hover:pktw-text-[#7c3aed]">
@@ -147,7 +146,7 @@ const TopSourcesSection: React.FC<{
 							</div>
 						</div>
 						<div className="pktw-text-xs pktw-text-[#6c757d] pktw-font-medium">
-							{source.score ? source.score.toFixed(2) : ''}
+							{(source.finalScore ?? source.score) ? (source.finalScore ?? source.score ?? 0).toFixed(2) : ''}
 						</div>
 					</div>
 				))}
@@ -200,8 +199,9 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 	const [error, setError] = useState<string | null>(null);
 	const [retryTrigger, setRetryTrigger] = useState(0);
 	const [summary, setSummary] = useState('');
-	const [sources, setSources] = useState<RagSource[]>([]);
+	const [sources, setSources] = useState<SearchResultItem[]>([]);
 	const [graph, setGraph] = useState<any>(null);
+	const [usage, setUsage] = useState<{ estimatedTokens?: number }>({});
 	const [webEnabled, setWebEnabled] = useState(false);
 	const { app, manager } = useServiceContext();
 
@@ -215,14 +215,11 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 		setError(null);
 
 		try {
-			const retrieval = await searchClient.aiAnalyze({ query: searchQuery, topK: 8, webEnabled });
-			setSources(retrieval.sources);
-			setGraph(retrieval.insights?.graph ?? null);
-
-			const { provider, model } = await pickDefaultModel(manager);
-			const text = buildRagSummarizeText({ query: searchQuery, sources: retrieval.sources, webEnabled });
-			const s = await manager.getApplicationService().summarize({ provider, model, text });
-			setSummary(s);
+			const result = await searchClient.aiAnalyze({ query: searchQuery, topK: 8, webEnabled });
+			setSources(result.sources);
+			setGraph(result.insights?.graph ?? null);
+			setSummary(result.summary);
+			setUsage(result.usage ?? {});
 
 			setIsAnalyzing(false);
 			setHasAnalyzed(true);
@@ -327,10 +324,10 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 					query={searchQuery}
 					webEnabled={webEnabled}
 					result={{
-						summary,
-						sources,
-						insights: graph ? { graph } : undefined,
-						usage: { estimatedTokens: Math.ceil((summary.length + searchQuery.length) / 4) },
+					summary,
+					sources,
+					insights: graph ? { graph } : undefined,
+					usage,
 					}}
 				/>
 			)}

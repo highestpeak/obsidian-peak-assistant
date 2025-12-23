@@ -81,6 +81,17 @@ export class MultiProviderChatService implements LLMProviderService {
 		};
 	}
 
+	async generateEmbeddings(texts: string[], model: string, provider?: string): Promise<number[][]> {
+		// If provider is specified, use that provider; otherwise use default or first available
+		const targetProvider = provider;
+		if (!targetProvider) {
+			throw new Error('No provider available for embedding generation');
+		}
+
+		const service = this.getProviderService(targetProvider);
+		return service.generateEmbeddings(texts, model);
+	}
+
 	/**
 	 * Get provider service by provider name
 	 */

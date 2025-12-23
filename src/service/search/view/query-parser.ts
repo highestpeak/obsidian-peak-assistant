@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import type { SearchMode, SearchQuery, SearchScope } from '@/service/search/types';
+import type { SearchScopeMode, SearchQuery, SearchScopeValue } from '@/service/search/types';
 
 /**
  * Parsed representation of quick search input.
@@ -15,7 +15,7 @@ export interface ParsedQuickSearchInput {
 	query: SearchQuery;
 }
 
-function getActiveFileScope(app: App): SearchScope {
+function getActiveFileScope(app: App): SearchScopeValue {
 	const active = app.workspace.getActiveFile();
 	const currentFilePath = active?.path ?? null;
 	const folderPath = currentFilePath ? currentFilePath.slice(0, currentFilePath.lastIndexOf('/')) : null;
@@ -33,7 +33,7 @@ function getActiveFileScope(app: App): SearchScope {
 export function parseQuickSearchInput(params: {
 	app: App;
 	rawInput: string;
-	modeOverride?: SearchMode | null;
+	modeOverride?: SearchScopeMode | null;
 	topK?: number;
 }): ParsedQuickSearchInput {
 	const { app, rawInput, modeOverride, topK } = params;
@@ -45,15 +45,15 @@ export function parseQuickSearchInput(params: {
 			showModeList: true,
 			query: {
 				text: '',
-				mode: modeOverride ?? 'vault',
-				scope: getActiveFileScope(app),
+				scopeMode: modeOverride ?? 'vault',
+				scopeValue: getActiveFileScope(app),
 				topK,
 			},
 		};
 	}
 
 	// Explicit prefix takes priority over override.
-	let mode: SearchMode = modeOverride ?? 'vault';
+	let mode: SearchScopeMode = modeOverride ?? 'vault';
 	let text = input;
 	if (trimmed.startsWith('#')) {
 		mode = 'inFile';
@@ -67,8 +67,8 @@ export function parseQuickSearchInput(params: {
 			showModeList: true,
 			query: {
 				text: trimmed.slice(1).trimStart(),
-				mode: modeOverride ?? 'vault',
-				scope: getActiveFileScope(app),
+				scopeMode: modeOverride ?? 'vault',
+				scopeValue: getActiveFileScope(app),
 				topK,
 			},
 		};
@@ -87,8 +87,8 @@ export function parseQuickSearchInput(params: {
 		showModeList: false,
 		query: {
 			text,
-			mode,
-			scope,
+			scopeMode: mode,
+			scopeValue: scope,
 			topK,
 		},
 	};

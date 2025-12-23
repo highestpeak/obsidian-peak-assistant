@@ -70,6 +70,13 @@ export class DocumentLoaderManager {
 	}
 
 	/**
+	 * Get the appropriate loader for a document type.
+	 */
+	getLoaderForDocumentType(documentType: DocumentType): DocumentLoader | null {
+		return this.loaderMap.get(documentType) || null;
+	}
+
+	/**
 	 * Get the appropriate loader for a file.
 	 */
 	getLoaderForFile(file: TAbstractFile): DocumentLoader | null {

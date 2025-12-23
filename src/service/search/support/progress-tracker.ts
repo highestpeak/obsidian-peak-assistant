@@ -7,6 +7,7 @@ import { App, Notice } from 'obsidian';
 export class IndexProgressTracker {
 	private notice: Notice | null = null;
 	private readonly totalFiles: number | null;
+	private startTime: number | null = null;
 
 	constructor(
 		private readonly app: App,
@@ -17,10 +18,12 @@ export class IndexProgressTracker {
 
 	/**
 	 * Show initial progress message.
+	 * Records the start time for automatic duration calculation.
 	 */
 	showStart(customMessage?: string): void {
 		const message = customMessage || 'Building search index...';
 		this.notice = new Notice(message, 0); // 0 = don't auto-hide
+		this.startTime = Date.now();
 	}
 
 	/**
@@ -44,29 +47,77 @@ export class IndexProgressTracker {
 
 	/**
 	 * Show completion message with statistics.
+	 * Accepts a record of key-value pairs for flexible statistics display.
+	 * 
+	 * Automatically calculates duration if startTime was recorded in showStart()
+	 * and duration is not provided in stats.
+	 * 
+	 * Supported field formatters:
+	 * - duration: formats as time (ms -> human readable)
+	 * - storageSize: formats as bytes (bytes -> human readable)
+	 * - memoryDelta: formats as memory (MB -> human readable with sign)
+	 * - Other fields: displayed as-is
 	 */
-	showComplete(stats: {
-		totalIndexed: number;
-		duration: number;
-		memoryDelta: number;
-		storageSize: number;
-	}): void {
+	showComplete(stats: Record<string, any>): void {
 		if (this.notice) {
 			this.notice.hide();
 		}
 
-		const durationText = this.formatDuration(stats.duration);
-		const memoryText = this.formatMemory(Math.abs(stats.memoryDelta));
-		const storageText = this.formatBytes(stats.storageSize);
-		const memorySign = stats.memoryDelta >= 0 ? '+' : '';
+		// Automatically calculate duration if not provided and startTime is available
+		const finalStats = { ...stats };
+		if (finalStats.duration === undefined && this.startTime !== null) {
+			finalStats.duration = Date.now() - this.startTime;
+		}
 
-		const message = `Indexing complete!\n` +
-			`Documents: ${stats.totalIndexed}\n` +
-			`Duration: ${durationText}\n` +
-			`Memory: ${memorySign}${memoryText}\n` +
-			`Storage: ${storageText}`;
+		const formattedStats: Array<{ label: string; value: string }> = [];
+
+		// Field formatters for common statistics
+		const formatters: Record<string, (value: any) => string> = {
+			duration: (ms: number) => this.formatDuration(ms),
+			storageSize: (bytes: number) => this.formatBytes(bytes),
+			memoryDelta: (mb: number) => {
+				const memoryText = this.formatMemory(Math.abs(mb));
+				const sign = mb >= 0 ? '+' : '';
+				return `${sign}${memoryText}`;
+			},
+		};
+
+		// Field labels for display
+		const labels: Record<string, string> = {
+			totalIndexed: 'Documents',
+			duration: 'Duration',
+			storageSize: 'Storage',
+			memoryDelta: 'Memory',
+		};
+
+		// Process each stat field
+		for (const [key, value] of Object.entries(finalStats)) {
+			if (value === undefined || value === null) {
+				continue;
+			}
+
+			const formatter = formatters[key];
+			const formattedValue = formatter ? formatter(value) : String(value);
+			const label = labels[key] || this.formatFieldName(key);
+
+			formattedStats.push({ label, value: formattedValue });
+		}
+
+		// Build message
+		const statLines = formattedStats.map(stat => `${stat.label}: ${stat.value}`);
+		const message = `Indexing complete!\n${statLines.join('\n')}`;
 
 		this.notice = new Notice(message, 8000);
+	}
+
+	/**
+	 * Format field name from camelCase to Title Case.
+	 */
+	private formatFieldName(fieldName: string): string {
+		return fieldName
+			.replace(/([A-Z])/g, ' $1')
+			.replace(/^./, str => str.toUpperCase())
+			.trim();
 	}
 
 	/**

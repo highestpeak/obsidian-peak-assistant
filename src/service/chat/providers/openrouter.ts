@@ -143,5 +143,79 @@ export class OpenRouterChatService implements LLMProviderService {
 			icon: 'openrouter',
 		};
 	}
+
+	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
+		return generateOpenRouterEmbeddings({
+			texts,
+			model,
+			baseUrl: this.options.baseUrl,
+			apiKey: this.options.apiKey,
+			referer: this.options.referer,
+			title: this.options.title,
+			timeoutMs: this.options.timeoutMs ?? DEFAULT_OPENROUTER_TIMEOUT_MS,
+		});
+	}
+}
+
+/**
+ * Generate embeddings using OpenRouter API (OpenAI-compatible).
+ */
+async function generateOpenRouterEmbeddings(params: {
+	texts: string[];
+	model: string;
+	baseUrl?: string;
+	apiKey?: string;
+	referer?: string;
+	title?: string;
+	timeoutMs: number;
+}): Promise<number[][]> {
+	if (!params.apiKey) {
+		throw new Error('OpenRouter API key is required');
+	}
+
+	const baseUrl = params.baseUrl ?? OPENROUTER_DEFAULT_BASE;
+	const url = `${baseUrl}/embeddings`;
+
+	const headers: Record<string, string> = {
+		'Authorization': `Bearer ${params.apiKey}`,
+		'Content-Type': 'application/json',
+	};
+
+	if (params.referer) {
+		headers['HTTP-Referer'] = params.referer;
+	}
+	if (params.title) {
+		headers['X-Title'] = params.title;
+	}
+
+	const response = await fetch(url, {
+		method: 'POST',
+		headers,
+		body: JSON.stringify({
+			input: params.texts,
+			model: params.model,
+		}),
+		signal: AbortSignal.timeout(params.timeoutMs),
+	});
+
+	if (!response.ok) {
+		const errorText = await response.text().catch(() => 'Unknown error');
+		throw new Error(`OpenRouter embedding API error: ${response.status} ${response.statusText}. ${errorText}`);
+	}
+
+	const data = await response.json();
+
+	if (!data.data || !Array.isArray(data.data)) {
+		throw new Error('Invalid embedding API response: missing data array');
+	}
+
+	const embeddings: number[][] = data.data.map((item: { embedding?: number[] }) => {
+		if (!item.embedding || !Array.isArray(item.embedding)) {
+			throw new Error('Invalid embedding format in API response');
+		}
+		return item.embedding;
+	});
+
+	return embeddings;
 }
 

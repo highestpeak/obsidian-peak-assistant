@@ -405,5 +405,9 @@ export class ClaudeChatService implements LLMProviderService {
 			icon: 'anthropic',
 		};
 	}
+
+	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
+		throw new Error('Claude provider does not support embedding generation');
+	}
 }
 

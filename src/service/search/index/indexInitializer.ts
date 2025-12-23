@@ -1,16 +1,14 @@
 import { Notice } from 'obsidian';
 import type { App } from 'obsidian';
 import type { SearchSettings } from '@/app/settings/types';
-import type { IndexableDocument } from '@/service/search/index/document/types';
 import { DocumentLoaderManager } from '@/service/search/index/document/DocumentLoaderManager';
-import { chunkDocument } from '@/service/search/index/chunk/chunking';
-import { documentToIndexable, chunkToIndexable } from '@/service/search/index/document/types';
 import type { Document as CoreDocument, DocumentType } from '@/core/document/types';
 import { IndexProgressTracker } from '../support/progress-tracker';
 import { IndexService } from '@/service/search/index/indexService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { generateContentHash } from '@/core/utils/markdown-utils';
-import { INDEX_CHECK_BATCH_SIZE } from '@/core/constant';
+import { INDEX_CHECK_BATCH_SIZE, SEARCH_DB_FILENAME } from '@/core/constant';
+import { getFileSize } from '@/core/utils/obsidian-utils';
 
 /**
  * Utility functions for index initialization.
@@ -58,20 +56,20 @@ export class IndexInitializer {
 			}
 
 			// Index exists - check for changes
-			const changes = await this.checkForIndexChanges();
+			const { filesToIndex } = await this.scanForIndexChanges();
 
-			if (changes.needsIndexing) {
+			if (filesToIndex.length > 0) {
 				if (this.settings.autoIndex) {
 					// Auto index enabled: show notification and index automatically
-					const fileCount = changes.newFiles + changes.modifiedFiles;
+					const fileCount = filesToIndex.length;
 					new Notice(
 						`Updating search index: ${fileCount} file${fileCount === 1 ? '' : 's'} changed.`,
 						3000,
 					);
-					await this.performIncrementalIndexing();
+					await this.performIncrementalIndexing(filesToIndex);
 				} else {
 					// Auto index disabled: notify user to manually trigger indexing
-					const fileCount = changes.newFiles + changes.modifiedFiles;
+					const fileCount = filesToIndex.length;
 					new Notice(
 						`Search index has ${fileCount} file${fileCount === 1 ? '' : 's'} to update. Use command "Index Search" to update. Enable "Auto Index" in settings to update automatically.`,
 						8000,
@@ -88,8 +86,7 @@ export class IndexInitializer {
 	 */
 	async performFullIndexing(showNotification: boolean): Promise<void> {
 		const progressTracker = showNotification ? new IndexProgressTracker(this.app) : null;
-		const startTime = Date.now();
-		const startMemory = this.getMemoryUsage();
+		console.log('[IndexInitializer] Starting full indexing');
 
 		try {
 			if (progressTracker) {
@@ -97,42 +94,38 @@ export class IndexInitializer {
 			}
 
 			const loaderManager = DocumentLoaderManager.getInstance();
-			let totalIndexed = 0;
+			let indexedCount = 0;
 			let lastProgressUpdate = Date.now();
 			const PROGRESS_UPDATE_INTERVAL = 3000; // Update every 3 seconds
 
-			for await (const batch of loaderManager.loadAllDocuments({ batchSize: 25 })) {
-				// Documents are already filtered by settings in loadAllDocuments
-				const filteredBatch = batch.filter((doc) => loaderManager.shouldIndexDocument(doc));
+			// Process documents one by one: load -> index (chunking handled in IndexService)
+			for await (const batch of loaderManager.loadAllDocuments()) {
+				for (const doc of batch) {
+					// Documents are already filtered by settings in loadAllDocuments
+					if (!loaderManager.shouldIndexDocument(doc)) {
+						continue;
+					}
 
-				if (filteredBatch.length > 0) {
-					// Apply chunking strategy if enabled (converts Document -> IndexableDocument)
-					// todo chunk only should be called from indexdocunent method
-					const documentsToIndex = await this.applyChunkingStrategy(filteredBatch);
-					documentsToIndex.forEach(doc => {
-						IndexService.getInstance().indexDocument(doc);
-					});
-					totalIndexed += documentsToIndex.length;
+					// Index document (chunking strategy is applied inside IndexService)
+					await IndexService.getInstance().indexDocument(doc, this.settings);
+					indexedCount += 1; // Count by document, not by chunks
 
 					// Update progress periodically
 					if (progressTracker && Date.now() - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL) {
-						progressTracker.updateProgress(totalIndexed);
+						progressTracker.updateProgress(indexedCount);
 						lastProgressUpdate = Date.now();
 					}
 				}
 			}
 
 			if (progressTracker) {
-				const endTime = Date.now();
-				const endMemory = this.getMemoryUsage();
-				const duration = endTime - startTime;
-				const memoryDelta = endMemory - startMemory;
-				const storageSize = await this.getStorageSize();
+				const dbFilePath = this.storageFolder 
+					? `${this.storageFolder.trim().replace(/^\/+/, '').replace(/\/+$/, '')}/${SEARCH_DB_FILENAME}`
+					: SEARCH_DB_FILENAME;
+				const storageSize = await getFileSize(this.app, dbFilePath);
 
 				progressTracker.showComplete({
-					totalIndexed,
-					duration,
-					memoryDelta,
+					totalIndexed: indexedCount,
 					storageSize,
 				});
 			}
@@ -155,91 +148,24 @@ export class IndexInitializer {
 	 * - File system operations
 	 * - When Obsidian opens, file watchers won't detect these changes
 	 */
-	async performIncrementalIndexing(): Promise<void> {
+	async performIncrementalIndexing(filesToIndexPaths?: string[]): Promise<void> {
 		try {
-			// Scan for files that need indexing
-			// todo 可以接收一个参数的 如果之前获取过不用重复获取一次 例如 checkAndUpdateIndex 的调用
-			const { filesToIndex: filesToIndexPaths } = await this.scanForIndexChanges();
-
-			// Check for deleted files (in index but not in vault)
-			// Get all indexed paths and scan vault to find deleted files
-			const allIndexedPaths = await IndexService.getInstance().getIndexedPaths();
-			const indexedPathSet = new Set(allIndexedPaths.map(item => item.path));
-
-			// Scan vault to get all current files
-			const loaderManager = DocumentLoaderManager.getInstance();
-			const vaultFiles = new Set<string>();
-			for await (const docBatch of loaderManager.scanDocuments()) {
-				for (const docItem of docBatch) {
-					if (loaderManager.shouldIndexDocument({ type: docItem.type } as CoreDocument)) {
-						vaultFiles.add(docItem.path);
-					}
-				}
+			// Scan for files that need indexing (only if not already provided)
+			if (!filesToIndexPaths) {
+				const scanResult = await this.scanForIndexChanges();
+				filesToIndexPaths = scanResult.filesToIndex;
 			}
 
-			// todo del 也不该去一开始load all 而是需要在这里batch sql check
-			const deletedPaths: string[] = [];
-			for (const indexedPath of indexedPathSet) {
-				if (!vaultFiles.has(indexedPath)) {
-					deletedPaths.push(indexedPath);
-				}
-			}
-			// Remove deleted files from index
-			if (deletedPaths.length > 0) {
-				await IndexService.getInstance().deleteDocuments(deletedPaths);
-			}
-
-			// todo manual rewrite these code
-			// Load documents for indexing (only load content when actually needed)
-			const filesToIndex: CoreDocument[] = [];
-			for (const path of filesToIndexPaths) {
-				const doc = await loaderManager.readByPath(path);
-				if (doc) {
-					filesToIndex.push(doc);
-				}
-			}
-			// Index new/modified files in batches
-			if (filesToIndex.length > 0) {
-				const progressTracker = new IndexProgressTracker(this.app, filesToIndex.length);
-				const startTime = Date.now();
-				const startMemory = this.getMemoryUsage();
-
-				progressTracker.showStart('Incremental indexing');
-
-				const batchSize = 25;
-				let indexedCount = 0;
-				let lastProgressUpdate = Date.now();
-				const PROGRESS_UPDATE_INTERVAL = 2000; // Update every 2 seconds for incremental
-
-				for (let i = 0; i < filesToIndex.length; i += batchSize) {
-					const batch = filesToIndex.slice(i, i + batchSize);
-					// Apply chunking strategy if enabled (converts Document -> IndexableDocument)
-					const documentsToIndex = await this.applyChunkingStrategy(batch);
-					documentsToIndex.forEach(doc => {
-						IndexService.getInstance().indexDocument(doc);
-					});
-					indexedCount += documentsToIndex.length;
-
-					// Update progress periodically
-					if (Date.now() - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL) {
-						progressTracker.updateProgress(indexedCount);
-						lastProgressUpdate = Date.now();
-					}
-				}
-
-				const endTime = Date.now();
-				const endMemory = this.getMemoryUsage();
-				const duration = endTime - startTime;
-				const memoryDelta = endMemory - startMemory;
-				const storageSize = await this.getStorageSize();
-
-				progressTracker.showComplete({
-					totalIndexed: indexedCount,
-					duration,
-					memoryDelta,
-					storageSize,
-				});
-			}
+			const pathsToIndex = filesToIndexPaths;
+			// Execute indexing and deletion check in parallel
+			Promise.all([
+				this.checkAndDeleteRemovedFiles(),
+				this.indexNewAndModifiedFiles(pathsToIndex),
+			]).then(() => {
+				console.log(`[IndexInitializer] Incremental indexing completed: ${pathsToIndex.length} files processed`);
+			}).catch((e) => {
+				console.error('Incremental indexing operations failed:', e);
+			});
 
 		} catch (e) {
 			console.error('Incremental indexing failed:', e);
@@ -247,41 +173,128 @@ export class IndexInitializer {
 	}
 
 	/**
-	 * Check for files that need indexing (new or modified).
-	 * Returns summary of changes without actually indexing.
+	 * Check for deleted files and remove them from index.
+	 * Uses batch checking to avoid loading all indexed paths at once.
+	 * 
+	 * Performance characteristics for vault file collection:
+	 * - ~100 files: ~10-50ms (Obsidian API overhead dominates)
+	 * - ~1,000 files: ~50-200ms (linear scaling with file count)
+	 * - ~10,000 files: ~200ms-1s (linear scaling, Obsidian API is efficient)
+	 * - ~100,000 files: ~1-5s (linear scaling, may have minor overhead)
+	 * 
+	 * The collection process is O(n) where n is the number of markdown files.
+	 * Main operations:
+	 * 1. app.vault.getMarkdownFiles() - Obsidian internal file tree traversal (O(n))
+	 * 2. Batch iteration - minimal overhead, just object creation
+	 * 3. Set.add() - O(1) average case per file
+	 * 
+	 * The bottleneck is typically Obsidian's getMarkdownFiles() API call,
+	 * which internally scans the vault file tree.
 	 */
-	private async checkForIndexChanges(): Promise<{ needsIndexing: boolean; newFiles: number; modifiedFiles: number }> {
-		try {
-			const { filesToIndex } = await this.scanForIndexChanges();
-
-			if (filesToIndex.length === 0) {
-				return { needsIndexing: false, newFiles: 0, modifiedFiles: 0 };
-			}
-
-			// Batch check indexed status to distinguish new vs modified files
-			const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-			const indexedMap = await docMetaRepo.batchCheckIndexed(filesToIndex);
-
-			let newFiles = 0;
-			let modifiedFiles = 0;
-			for (const path of filesToIndex) {
-				const indexedInfo = indexedMap.get(path);
-				if (indexedInfo === undefined) {
-					newFiles++;
-				} else {
-					modifiedFiles++;
+	private async checkAndDeleteRemovedFiles(): Promise<void> {
+		const loaderManager = DocumentLoaderManager.getInstance();
+		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		
+		// First, scan vault to collect all current file paths
+		// Performance: O(n) where n = number of markdown files
+		// Expected time: ~0.1-0.5ms per file (includes Obsidian API overhead)
+		// 
+		// Performance benchmarks (estimated):
+		// - ~100 files: ~10-50ms
+		// - ~1,000 files: ~50-200ms
+		// - ~10,000 files: ~200ms-1s
+		// - ~100,000 files: ~1-5s
+		const vaultFiles = new Set<string>();
+		const collectionStartTime = performance.now();
+		
+		for await (const docBatch of loaderManager.scanDocuments({ batchSize: INDEX_CHECK_BATCH_SIZE })) {
+			for (const docItem of docBatch) {
+				if (loaderManager.shouldIndexDocument({ type: docItem.type } as CoreDocument)) {
+					vaultFiles.add(docItem.path);
 				}
 			}
-
-			return {
-				needsIndexing: true,
-				newFiles,
-				modifiedFiles,
-			};
-		} catch (e) {
-			console.error('Failed to check for index changes:', e);
-			return { needsIndexing: false, newFiles: 0, modifiedFiles: 0 };
 		}
+		
+		const collectionTime = performance.now() - collectionStartTime;
+		if (collectionTime > 100) {
+			// Log if collection takes more than 100ms
+			console.log(`[IndexInitializer] Vault file collection: ${vaultFiles.size} files in ${collectionTime.toFixed(2)}ms (${(collectionTime / vaultFiles.size).toFixed(3)}ms per file)`);
+		}
+
+		// Batch check indexed paths against vault files
+		const deletedPaths: string[] = [];
+		let offset = 0;
+		const batchSize = INDEX_CHECK_BATCH_SIZE;
+		
+		while (true) {
+			const indexedBatch = await docMetaRepo.getIndexedPathsBatch(offset, batchSize);
+			if (indexedBatch.length === 0) {
+				break;
+			}
+			
+			for (const indexedItem of indexedBatch) {
+				if (!vaultFiles.has(indexedItem.path)) {
+					deletedPaths.push(indexedItem.path);
+				}
+			}
+			
+			offset += batchSize;
+		}
+
+		// Remove deleted files from index
+		if (deletedPaths.length > 0) {
+			await IndexService.getInstance().deleteDocuments(deletedPaths);
+		}
+		console.log(`[IndexInitializer] Deleted ${deletedPaths.length} files from index`);
+	}
+
+	/**
+	 * Index new and modified files.
+	 * Loads and indexes documents in batches to avoid loading all files into memory at once.
+	 * This approach is memory-efficient for large vaults.
+	 */
+	private async indexNewAndModifiedFiles(filesToIndexPaths: string[]): Promise<void> {
+		if (filesToIndexPaths.length === 0) {
+			return;
+		}
+
+		const loaderManager = DocumentLoaderManager.getInstance();
+		const progressTracker = new IndexProgressTracker(this.app, filesToIndexPaths.length);
+
+		progressTracker.showStart('Incremental indexing');
+
+		let indexedCount = 0;
+		let lastProgressUpdate = Date.now();
+		const PROGRESS_UPDATE_INTERVAL = 2000; // Update every 2 seconds for incremental
+
+		// Process files one by one: load -> index (chunking handled in IndexService)
+		for (const path of filesToIndexPaths) {
+			// Load document
+			const doc = await loaderManager.readByPath(path);
+			if (!doc) {
+				continue;
+			}
+
+			// Index document (chunking strategy is applied inside IndexService)
+			await IndexService.getInstance().indexDocument(doc, this.settings);
+			indexedCount += 1; // Count by document, not by chunks
+
+			// Update progress periodically
+			if (Date.now() - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL) {
+				progressTracker.updateProgress(indexedCount);
+				lastProgressUpdate = Date.now();
+			}
+		}
+
+		const dbFilePath = this.storageFolder 
+			? `${this.storageFolder.trim().replace(/^\/+/, '').replace(/\/+$/, '')}/${SEARCH_DB_FILENAME}`
+			: SEARCH_DB_FILENAME;
+		const storageSize = await getFileSize(this.app, dbFilePath);
+
+		progressTracker.showComplete({
+			totalIndexed: indexedCount,
+			storageSize,
+		});
 	}
 
 	/**
@@ -400,102 +413,7 @@ export class IndexInitializer {
 		return filesToIndex;
 	}
 
-	/**
-	 * Apply chunking strategy to documents if enabled.
-	 * Converts core Documents to IndexableDocuments, applying chunking if needed.
-	 */
-	private async applyChunkingStrategy(docs: CoreDocument[]): Promise<IndexableDocument[]> {
-		const indexableDocs: IndexableDocument[] = [];
 
-		for (const doc of docs) {
-			// Check if chunking is enabled and document is large enough
-			const shouldChunk = this.settings.chunking?.enabled &&
-				doc.sourceFileInfo.content.length > (this.settings.chunking.minDocumentSizeForChunking ?? 1500);
 
-			if (shouldChunk) {
-				// Chunk the document using LangChain strategy
-				const chunks = await chunkDocument(doc, {
-					maxChunkSize: this.settings.chunking.maxChunkSize,
-					chunkOverlap: this.settings.chunking.chunkOverlap,
-					minDocumentSize: this.settings.chunking.minDocumentSizeForChunking,
-					strategy: 'recursive',
-				});
-
-				// Convert chunks to IndexableDocuments
-				for (const chunk of chunks) {
-					indexableDocs.push(chunkToIndexable(chunk, doc));
-				}
-			} else {
-				// Convert document to IndexableDocument without chunking
-				indexableDocs.push(documentToIndexable(doc));
-			}
-		}
-
-		return indexableDocs;
-	}
-
-	/**
-	 * Get current memory usage in MB (best effort, may not be available in all environments).
-	 */
-	private getMemoryUsage(): number {
-		try {
-			// Browser environment (Chrome/Edge)
-			if ((performance as any).memory) {
-				return (performance as any).memory.usedJSHeapSize / (1024 * 1024);
-			}
-			// Node.js environment
-			if (typeof process !== 'undefined' && process.memoryUsage) {
-				return process.memoryUsage().heapUsed / (1024 * 1024);
-			}
-		} catch {
-			// Ignore errors
-		}
-		return 0;
-	}
-
-	/**
-	 * Get storage size of index files in bytes.
-	 */
-	private async getStorageSize(): Promise<number> {
-		try {
-			const files = [
-				'search.sqlite',
-			];
-
-			let totalSize = 0;
-			for (const filename of files) {
-				try {
-					// Build full path using the same logic as VaultFileStore
-					const baseDir = this.storageFolder?.trim() || (this.app.vault.adapter as any)?.basePath;
-					const fullPath = `${baseDir}/${filename}`;
-
-					// Try to get file from vault
-					const file = this.app.vault.getAbstractFileByPath(fullPath);
-					if (file && 'stat' in file) {
-						totalSize += (file as any).stat.size || 0;
-					} else {
-						// Fallback: try to read file and get its size
-						try {
-							const content = await this.app.vault.adapter.read(fullPath);
-							totalSize += new Blob([content]).size;
-						} catch {
-							// File may not exist yet or is binary
-							try {
-								const binary = await (this.app.vault.adapter as any).readBinary(fullPath);
-								totalSize += binary.byteLength || 0;
-							} catch {
-								// File doesn't exist
-							}
-						}
-					}
-				} catch {
-					// File may not exist yet
-				}
-			}
-			return totalSize;
-		} catch {
-			return 0;
-		}
-	}
 }
 

@@ -7,7 +7,7 @@ import type { SearchSnippet } from '../types';
  * - Best-effort: for MVP we do not attempt tokenization or multiple highlights.
  * - Offsets are JS string indices (UTF-16).
  */
-export function buildSnippet(content: string, query: string): SearchSnippet | null {
+export function buildHighlightSnippet(content: string, query: string): SearchSnippet | null {
 	const q = query.trim();
 	if (!content) return null;
 	if (!q) {

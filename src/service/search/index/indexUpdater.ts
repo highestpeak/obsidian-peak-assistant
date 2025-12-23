@@ -1,11 +1,8 @@
 import type { App, TAbstractFile, EventRef } from 'obsidian';
 import { TFile } from 'obsidian';
 import { DocumentLoaderManager } from '@/service/search/index/document/DocumentLoaderManager';
-import { documentToIndexable } from '@/service/search/index/document/types';
-import type { IndexableDocument } from '@/service/search/_deprecated/worker/types-rpc';
+import type { SearchSettings } from '@/app/settings/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import type { DocMetaRepo } from '@/core/storage/sqlite/repositories/DocMetaRepo';
-import type { DocStatisticsRepo } from '@/core/storage/sqlite/repositories/DocStatisticsRepo';
 import { IndexService } from '@/service/search/index/indexService';
 import { generateUuidWithoutHyphens } from '@/service/chat/utils';
 
@@ -24,31 +21,12 @@ export class SearchUpdateListener {
 	private timer: number | null = null;
 	private readonly vaultRefs: EventRef[] = [];
 	private readonly workspaceRefs: EventRef[] = [];
-	private docMetaRepo: DocMetaRepo | null = null;
-	private docStatisticsRepo: DocStatisticsRepo | null = null;
 	constructor(
 		private readonly app: App,
+		private readonly settings: SearchSettings,
 		private readonly debounceMs: number = 800
 	) {
 		this.loaderManager = DocumentLoaderManager.getInstance();
-		this.initializeRepos();
-	}
-
-	/**
-	 * Initialize repositories from global database connection.
-	 */
-	private initializeRepos(): void {
-		if (!sqliteStoreManager.isInitialized()) {
-			// Store not initialized yet, will retry when needed
-			return;
-		}
-		try {
-			this.docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-			this.docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
-		} catch (e) {
-			// Store not initialized yet, will retry when needed
-			console.debug('Failed to initialize repos, will retry later:', e);
-		}
 	}
 
 	/**
@@ -117,27 +95,24 @@ export class SearchUpdateListener {
 	private async handleFileOpen(file: TFile | null): Promise<void> {
 		if (!file || !(file instanceof TFile)) return;
 		
-		// Try to initialize repos if not already initialized
-		if (!this.docStatisticsRepo || !this.docMetaRepo) {
-			this.initializeRepos();
-		}
-		
-		if (!this.docStatisticsRepo || !this.docMetaRepo) {
-			// SearchClient not initialized yet, skip
+		if (!sqliteStoreManager.isInitialized()) {
+			// Store not initialized yet, skip
 			return;
 		}
 		
 		try {
+			const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+			const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
+			
 			// Get doc_id from path
-			const meta = await this.docMetaRepo.getByPath(file.path);
+			const meta = await docMetaRepo.getByPath(file.path);
 			if (!meta) {
 				// Document not indexed yet, skip
 				return;
 			}
-			const tsNum = Date.now();
-			await this.docStatisticsRepo.recordOpen(meta.id, tsNum);
+			await docStatisticsRepo.recordOpen(meta.id, Date.now());
 		} catch (e) {
-			// Silently ignore errors (file might not be indexed yet)
+			// Silently ignore errors (file might not be indexed yet or store not initialized)
 			console.debug('Failed to record file open:', file.path, e);
 		}
 	}
@@ -161,44 +136,37 @@ export class SearchUpdateListener {
 		try {
 			console.log('flush start processing. flush id: ', uuid);
 
-			// todo 可以并行执行好像
-			// todo 对 upsert 拆分一个方法
-			if (deletePaths.length) {
-				await IndexService.getInstance().deleteDocuments(deletePaths);
-			}
-			if (upsertPaths.length) {
-				const indexableDocs: IndexableDocument[] = [];
-				for (const p of upsertPaths) {
-					const doc = await this.loaderManager.readByPath(p);
-					if (doc) {
-						const indexable = documentToIndexable(doc);
-						// Convert to IndexableDocument format expected by SearchClient
-						// Ensure path matches the file path (not document id)
-						const rpcIndexable: IndexableDocument = {
-							path: p,
-							title: indexable.title,
-							type: indexable.type as string, // DocumentType is compatible with string
-							content: indexable.content,
-							mtime: indexable.mtime,
-							embedding: indexable.embedding,
-							chunkId: indexable.chunkId,
-							chunkIndex: indexable.chunkIndex,
-							totalChunks: indexable.totalChunks,
-						};
-						indexableDocs.push(rpcIndexable);
-					}
-				}
-				if (indexableDocs.length) {
-					indexableDocs.forEach(doc => {
-						IndexService.getInstance().indexDocument(doc);
-					});
-				}
-			}
+			// Execute delete and upsert operations in parallel
+			Promise.all([
+				deletePaths.length > 0
+					? IndexService.getInstance().deleteDocuments(deletePaths)
+					: Promise.resolve(),
+				upsertPaths.length > 0
+					? this.indexDocuments(upsertPaths)
+					: Promise.resolve(),
+			]).then(() => {
+				console.log(`[SearchUpdateListener] Flush completed: deleted ${deletePaths.length} files, indexed ${upsertPaths.length} files`);
+			}).catch((e) => {
+				console.error('Search update operations failed:', e);
+			});
 
 		} catch (e) {
 			console.error('Search update flush failed:', e);
 		} finally {
 			console.log('flush end processing. flush id: ', uuid, 'duration: ', Date.now() - startTime, 'ms');
+		}
+	}
+
+	/**
+	 * Index multiple documents by their paths.
+	 */
+	private async indexDocuments(paths: string[]): Promise<void> {
+		for (const p of paths) {
+			const doc = await this.loaderManager.readByPath(p);
+			if (doc) {
+				// Index document directly using CoreDocument (chunking handled in IndexService)
+				await IndexService.getInstance().indexDocument(doc, this.settings);
+			}
 		}
 	}
 }

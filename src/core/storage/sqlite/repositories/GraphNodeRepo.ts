@@ -9,6 +9,9 @@ export class GraphNodeRepo {
 
 	/**
 	 * Upsert a graph node.
+	 * 
+	 * @param node.id - Normalized path (for document nodes) or prefixed identifier (for tags, categories, etc.).
+	 *                  For document nodes, this should be the normalized file path relative to vault root.
 	 */
 	async upsert(node: {
 		id: string;

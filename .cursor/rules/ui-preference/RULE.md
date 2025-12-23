@@ -13,3 +13,5 @@ alwaysApply: true
   - File Placement Decision (Atomicity and Reusability):
     - If the sub-component only serves its parent component and will not be reused elsewhere, keep it as a sub-component within the original file (e.g., define and return it inside the parent component's function).
     - If the sub-component has the potential to be reused in other components or pages, it must be extracted into a new, separate file.
+
+- **Constants**: All constants should be defined in `constant.ts` to maintain good code quality and centralize configuration values.

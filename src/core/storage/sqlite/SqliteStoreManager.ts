@@ -11,6 +11,7 @@ import { IndexStateRepo } from './repositories/IndexStateRepo';
 import { DocStatisticsRepo } from './repositories/DocStatisticsRepo';
 import { GraphNodeRepo } from './repositories/GraphNodeRepo';
 import { GraphEdgeRepo } from './repositories/GraphEdgeRepo';
+import { GraphStore } from '../graph/GraphStore';
 
 /**
  * Global singleton manager for SQLite database connection.
@@ -31,6 +32,7 @@ class SqliteStoreManager {
 	private docStatisticsRepo: DocStatisticsRepo | null = null;
 	private graphNodeRepo: GraphNodeRepo | null = null;
 	private graphEdgeRepo: GraphEdgeRepo | null = null;
+	private graphStore: GraphStore | null = null;
 
 	/**
 	 * Initialize the database connection.
@@ -79,6 +81,8 @@ class SqliteStoreManager {
 		this.docStatisticsRepo = new DocStatisticsRepo(kdb);
 		this.graphNodeRepo = new GraphNodeRepo(kdb);
 		this.graphEdgeRepo = new GraphEdgeRepo(kdb);
+		// Initialize GraphStore
+		this.graphStore = new GraphStore(this.graphNodeRepo, this.graphEdgeRepo);
 	}
 
 	/**
@@ -181,6 +185,16 @@ class SqliteStoreManager {
 	}
 
 	/**
+	 * Get GraphStore instance.
+	 */
+	getGraphStore(): GraphStore {
+		if (!this.graphStore) {
+			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		}
+		return this.graphStore;
+	}
+
+	/**
 	 * Close the database connection.
 	 */
 	close(): void {
@@ -197,6 +211,7 @@ class SqliteStoreManager {
 		this.docStatisticsRepo = null;
 		this.graphNodeRepo = null;
 		this.graphEdgeRepo = null;
+		this.graphStore = null;
 	}
 }
 

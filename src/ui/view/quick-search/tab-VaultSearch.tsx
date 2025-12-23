@@ -15,7 +15,7 @@ const mockRecentlyAccessed: SearchResultItemType[] = [
 		type: 'markdown',
 		title: 'Daily Notes - 2024-12-15',
 		path: 'Daily',
-		snippet: { text: 'Today\'s meeting notes and tasks' },
+		highlight: { text: 'Today\'s meeting notes and tasks' },
 		lastModified: Date.now() - 30 * 60 * 1000, // 30 minutes ago
 	},
 	{
@@ -23,7 +23,7 @@ const mockRecentlyAccessed: SearchResultItemType[] = [
 		type: 'markdown',
 		title: 'Project Planning',
 		path: 'Projects/Active',
-		snippet: { text: 'Q1 2025 roadmap and milestones' },
+		highlight: { text: 'Q1 2025 roadmap and milestones' },
 		lastModified: Date.now() - 2 * 60 * 60 * 1000, // 2 hours ago
 	},
 	{
@@ -31,7 +31,7 @@ const mockRecentlyAccessed: SearchResultItemType[] = [
 		type: 'pdf',
 		title: 'Research Notes - AI Trends',
 		path: 'Research',
-		snippet: { text: 'Key findings from recent AI research papers' },
+		highlight: { text: 'Key findings from recent AI research papers' },
 		lastModified: Date.now() - 5 * 60 * 60 * 1000, // 5 hours ago
 	},
 	{
@@ -39,7 +39,7 @@ const mockRecentlyAccessed: SearchResultItemType[] = [
 		type: 'markdown',
 		title: 'Meeting Notes - Team Sync',
 		path: 'Work/Meetings',
-		snippet: { text: 'Weekly team synchronization discussion' },
+		highlight: { text: 'Weekly team synchronization discussion' },
 		lastModified: Date.now() - 24 * 60 * 60 * 1000, // 1 day ago
 	},
 	{
@@ -47,7 +47,7 @@ const mockRecentlyAccessed: SearchResultItemType[] = [
 		type: 'folder',
 		title: 'Personal',
 		path: 'Notes',
-		snippet: { text: '8 notes inside' },
+		highlight: { text: '8 notes inside' },
 		lastModified: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
 	},
 ];
@@ -62,7 +62,7 @@ const filterResults = (results: SearchResultItemType[], query: string): SearchRe
 		(result) =>
 			result.title.toLowerCase().includes(lowerQuery) ||
 			result.path.toLowerCase().includes(lowerQuery) ||
-			result.snippet?.text?.toLowerCase().includes(lowerQuery),
+			result.highlight?.text?.toLowerCase().includes(lowerQuery),
 	);
 };
 
@@ -148,9 +148,9 @@ const SearchResultRow: React.FC<{
 				</div>
 
 				{/* Snippet */}
-				{result.snippet?.text && (
+				{result.highlight?.text && (
 					<span className="pktw-text-sm pktw-text-[#6c757d] pktw-line-clamp-2 pktw-mt-1">
-						{isSearching ? highlightMatch(result.snippet.text, searchQuery) : result.snippet.text}
+						{isSearching ? highlightMatch(result.highlight.text, searchQuery) : result.highlight.text}
 					</span>
 				)}
 			</div>
@@ -248,7 +248,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 	// Reset selected index when results change
 	useEffect(() => {
 		setSelectedIndex(0);
-	}, [isSearching, searchQuery.text, searchQuery.mode]);
+	}, [isSearching, searchQuery.text, searchQuery.scopeMode]);
 
 	// Handle keyboard navigation
 	useEffect(() => {

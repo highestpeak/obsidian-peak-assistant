@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import type { AiAnalyzeResult } from '@/service/search/types';
+import type { AiAnalyzeResult, SearchResultItem } from '@/service/search/types';
 
 /**
  * Save AI analysis result to a markdown file in the vault.
@@ -64,7 +64,7 @@ function renderMarkdown(params: {
 	query: string;
 	webEnabled: boolean;
 	summary: string;
-	sources: Array<{ title: string; path: string; snippet: string; score?: number }>;
+	sources: SearchResultItem[];
 	graph?: { nodes: Array<{ id: string; label: string; kind: string }>; edges: Array<{ from: string; to: string; weight?: number }> };
 	estimatedTokens?: number;
 }): string {
@@ -89,9 +89,11 @@ function renderMarkdown(params: {
 	lines.push(`# Sources`);
 	lines.push('');
 	for (const s of params.sources) {
-		lines.push(`- [[${s.path}|${s.title}]]${s.score != null ? ` (score: ${s.score.toFixed(2)})` : ''}`);
-		if (s.snippet) {
-			lines.push(`  - ${s.snippet.replace(/\\n/g, ' ').slice(0, 300)}`);
+		const snippet = s.highlight?.text || s.content || '';
+		const score = s.finalScore ?? s.score;
+		lines.push(`- [[${s.path}|${s.title}]]${score != null ? ` (score: ${score.toFixed(2)})` : ''}`);
+		if (snippet) {
+			lines.push(`  - ${snippet.replace(/\\n/g, ' ').slice(0, 300)}`);
 		}
 	}
 	lines.push('');

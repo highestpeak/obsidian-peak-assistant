@@ -154,4 +154,11 @@ export interface LLMProviderService {
 	 * Get provider metadata (name and default baseUrl)
 	 */
 	getProviderMetadata(): ProviderMetaData;
+	/**
+	 * Generate embeddings for texts.
+	 * @param texts - Array of texts to generate embeddings for
+	 * @param model - Model identifier for embedding generation
+	 * @returns Promise resolving to array of embedding vectors (each is an array of numbers)
+	 */
+	generateEmbeddings(texts: string[], model: string): Promise<number[][]>;
 }

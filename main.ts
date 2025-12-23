@@ -12,6 +12,7 @@ import { SearchUpdateListener } from '@/service/search/index/indexUpdater';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { DocumentLoaderManager } from '@/service/search/index/document/DocumentLoaderManager';
+import { IndexService } from '@/service/search/index/indexService';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -67,6 +68,9 @@ export default class MyPlugin extends Plugin {
 		// Initialize global SQLite store
 		await sqliteStoreManager.init({ app: this.app, storageFolder: this.settings.dataStorageFolder, filename: 'search.sqlite' });
 
+		// Initialize IndexService with AIServiceManager for embedding generation
+		IndexService.getInstance().init(this.aiServiceManager);
+
 		// Initialize global search service (singleton)
 		await this.initializeSearchService();
 
@@ -92,11 +96,11 @@ export default class MyPlugin extends Plugin {
 		// Initialize global DocumentLoaderManager singleton
 		DocumentLoaderManager.init(this.app, this.settings.search);
 
-		const tmpSearchClient = new SearchClient(this.app);
+		const tmpSearchClient = new SearchClient(this.app, this.aiServiceManager, this.settings.search);
 		this.searchClient = tmpSearchClient;
 
 		// first init listener then initializer to avoid missing index changes
-		const searchUpdateListener = new SearchUpdateListener(this.app, 800);
+		const searchUpdateListener = new SearchUpdateListener(this.app, this.settings.search, 800);
 		this.searchUpdateQueue = searchUpdateListener;
 		searchUpdateListener.start();
 

@@ -5,8 +5,8 @@ import { Search, Sparkles } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import type { SearchMode } from '@/service/search/types';
-import { parseQuickSearchInput } from '@/service/search/query/query-parser';
+import type { SearchScopeMode } from '@/service/search/types';
+import { parseQuickSearchInput } from '@/service/search/view/query-parser';
 
 type TabType = 'vault' | 'ai';
 
@@ -52,7 +52,7 @@ export const QuickSearchModalContent: React.FC = () => {
 	const { app, searchClient } = useServiceContext();
 
 	const [indexProgress, setIndexProgress] = useState<{ processed: number; total?: number } | null>(null);
-	const [modeOverride, setModeOverride] = useState<SearchMode | null>(null);
+	const [modeOverride, setModeOverride] = useState<SearchScopeMode | null>(null);
 	const [showModeList, setShowModeList] = useState(false);
 
 	const handleAnalyze = () => {

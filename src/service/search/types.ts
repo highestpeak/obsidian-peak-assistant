@@ -12,12 +12,12 @@ export type SearchResultType = DocumentType | 'heading';
  * - inFile: search within a single file
  * - inFolder: search within a folder scope
  */
-export type SearchMode = 'vault' | 'inFile' | 'inFolder';
+export type SearchScopeMode = 'vault' | 'inFile' | 'inFolder';
 
 /**
  * Optional search scope information.
  */
-export interface SearchScope {
+export interface SearchScopeValue {
 	/**
 	 * Current file path (if any). Used for inFile mode and directory boost.
 	 */
@@ -33,8 +33,8 @@ export interface SearchScope {
  */
 export interface SearchQuery {
 	text: string;
-	mode: SearchMode;
-	scope?: SearchScope;
+	scopeMode: SearchScopeMode;
+	scopeValue?: SearchScopeValue;
 	topK?: number;
 	/**
 	 * Search mode: 'fulltext' for text only, 'vector' for vector only, 'hybrid' for both.
@@ -75,7 +75,12 @@ export interface SearchResultItem {
 	title: string;
 	path: string;
 	lastModified: number;
-	snippet?: SearchSnippet | null;
+	/**
+	 * Full content of the search result (chunk or document).
+	 * Used for highlighting and displaying context.
+	 */
+	content?: string;
+	highlight?: SearchSnippet | null;
 	/**
 	 * Raw score from the engine (before boosts).
 	 */
@@ -109,6 +114,7 @@ export interface SearchResponse {
 
 /**
  * A source document used for AI RAG.
+ * @deprecated Use SearchResultItem instead.
  */
 export interface RagSource {
 	path: string;
@@ -132,7 +138,7 @@ export interface AiAnalyzeRequest {
  */
 export interface AiAnalyzeResult {
 	summary: string;
-	sources: RagSource[];
+	sources: SearchResultItem[];
 	insights?: {
 		topics?: Array<{ label: string; weight: number }>;
 		graph?: GraphPreview;

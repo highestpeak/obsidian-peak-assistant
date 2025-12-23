@@ -70,6 +70,27 @@ export class DocMetaRepo {
 	}
 
 	/**
+	 * Batch get indexed paths with pagination.
+	 * Useful for processing large numbers of indexed paths without loading all at once.
+	 * 
+	 * @param offset - Number of rows to skip
+	 * @param limit - Maximum number of rows to return
+	 * @returns Array of { path, mtime } pairs
+	 */
+	async getIndexedPathsBatch(offset: number, limit: number): Promise<Array<{ path: string; mtime: number }>> {
+		const rows = await this.db
+			.selectFrom('doc_meta')
+			.select(['path', 'mtime'])
+			.offset(offset)
+			.limit(limit)
+			.execute();
+		return rows.map(row => ({
+			path: row.path,
+			mtime: row.mtime ?? 0,
+		}));
+	}
+
+	/**
 	 * Batch check indexed status for multiple paths.
 	 * Returns a map of path -> { mtime, content_hash } for paths that are indexed.
 	 */

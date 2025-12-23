@@ -2,8 +2,12 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
 import type { DocumentType } from '@/core/document/types';
-import type { Document as CoreDocument } from '@/core/document/types';
+import type { Document } from '@/core/document/types';
 import { generateContentHash, extractReferences } from '@/core/utils/markdown-utils';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
+import type { Chunk } from '../chunk/types';
+import type { ChunkingSettings } from '@/app/settings/types';
+import { generateUuidWithoutHyphens } from '@/service/chat/utils';
 
 /**
  * Markdown document loader.
@@ -26,10 +30,61 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	 * Read a markdown document by its path.
 	 * Returns core Document model.
 	 */
-	async readByPath(path: string): Promise<CoreDocument | null> {
+	async readByPath(path: string): Promise<Document | null> {
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (!file || !(file instanceof TFile) || file.extension !== 'md') return null;
 		return await this.readMarkdownFile(file);
+	}
+
+	/**
+	 * Get indexable content from a document.
+	 * Returns the content string that should be indexed.
+	 */
+	getIndexableContent(doc: Document): string {
+		return doc.sourceFileInfo.content;
+	}
+
+	/**
+	 * Chunk content from a document using LangChain's RecursiveCharacterTextSplitter.
+	 * First calls getIndexableContent, then chunks the content using markdown-specific splitter.
+	 */
+	async chunkContent(
+		doc: Document,
+		settings: ChunkingSettings,
+	): Promise<Chunk[]> {
+		const content = this.getIndexableContent(doc);
+		const minSize = settings.minDocumentSizeForChunking;
+
+		// If content is too small, return as single chunk
+		if (content.length <= minSize) {
+			return [{
+				docId: doc.id,
+				content: content,
+			}];
+		}
+
+		// Use LangChain's RecursiveCharacterTextSplitter for markdown
+		const splitter = RecursiveCharacterTextSplitter.fromLanguage('markdown', {
+			chunkSize: settings.maxChunkSize,
+			chunkOverlap: settings.chunkOverlap,
+		});
+
+		// Create documents using LangChain's API (expects array of strings)
+		const langchainDocs = await splitter.createDocuments([content]);
+
+		// Convert LangChain documents to Chunk format
+		const chunks: Chunk[] = [];
+		for (let i = 0; i < langchainDocs.length; i++) {
+			const langchainDoc = langchainDocs[i];
+			chunks.push({
+				docId: doc.id,
+				content: langchainDoc.pageContent,
+				chunkId: generateUuidWithoutHyphens(),
+				chunkIndex: i,
+			});
+		}
+
+		return chunks;
 	}
 
 	/**
@@ -60,7 +115,7 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	/**
 	 * Read a markdown file and convert to core Document model.
 	 */
-	private async readMarkdownFile(file: TFile): Promise<CoreDocument | null> {
+	private async readMarkdownFile(file: TFile): Promise<Document | null> {
 		try {
 			const content = await this.app.vault.cachedRead(file);
 			const contentHash = await generateContentHash(content);

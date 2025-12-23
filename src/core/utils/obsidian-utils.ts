@@ -14,3 +14,38 @@ export function getPluginDir(app: App, pluginId: string = DEFAULT_PLUGIN_ID): st
 	return pluginDir;
 }
 
+/**
+ * Get file size in bytes from vault.
+ * Returns 0 if file doesn't exist or cannot be read.
+ * 
+ * @param app - Obsidian app instance
+ * @param filePath - Path to the file relative to vault root
+ * @returns File size in bytes, or 0 if file doesn't exist
+ */
+export async function getFileSize(app: App, filePath: string): Promise<number> {
+	try {
+		// Try to get file from vault
+		const file = app.vault.getAbstractFileByPath(filePath);
+		if (file && 'stat' in file) {
+			return (file as any).stat.size || 0;
+		}
+
+		// Fallback: try to read file and get its size
+		try {
+			const content = await app.vault.adapter.read(filePath);
+			return new Blob([content]).size;
+		} catch {
+			// File may be binary, try readBinary
+			try {
+				const binary = await (app.vault.adapter as any).readBinary(filePath);
+				return binary.byteLength || 0;
+			} catch {
+				// File doesn't exist
+				return 0;
+			}
+		}
+	} catch {
+		return 0;
+	}
+}
+

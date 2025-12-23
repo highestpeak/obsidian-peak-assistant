@@ -11,7 +11,7 @@
  * 
  * Design principles:
  * - Single source of truth: one Document model for all use cases
- * - Separation of concerns: Document (core) vs IndexableDocument (search-specific)
+ * - Separation of concerns: Document (core) vs Chunk (search-specific)
  * - Extensibility: easy to add new document types and metadata
  * - Performance: caching for expensive operations (PDF, Image, Canvas)
  */
@@ -135,6 +135,22 @@ export interface DocumentMetadata {
 }
 
 /**
+ * Reference to another document.
+ */
+export interface DocumentReference {
+	/**
+	 * Document ID (if available).
+	 * May be empty/undefined when the referenced document hasn't been indexed yet.
+	 */
+	docId?: string;
+	/**
+	 * Full path relative to vault root.
+	 * Required and cannot be empty.
+	 */
+	fullPath: string;
+}
+
+/**
  * Document references (bidirectional).
  * 
  * will be readed after graph instance is created.
@@ -143,11 +159,11 @@ export interface DocumentReferences {
 	/**
 	 * Outgoing references (links from this document).
 	 */
-	outgoingDocIds: string[];
+	outgoing: DocumentReference[];
 	/**
 	 * Incoming references (links to this document).
 	 */
-	incomingDocIds: string[];
+	incoming: DocumentReference[];
 }
 
 /**

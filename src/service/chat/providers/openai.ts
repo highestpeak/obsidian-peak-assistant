@@ -213,4 +213,66 @@ export class OpenAIChatService implements LLMProviderService {
 			icon: 'openai',
 		};
 	}
+
+	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
+		return generateOpenAIEmbeddings({
+			texts,
+			model,
+			baseUrl: this.options.baseUrl,
+			apiKey: this.options.apiKey,
+			timeoutMs: this.options.timeoutMs ?? DEFAULT_OPENAI_TIMEOUT_MS,
+		});
+	}
+}
+
+/**
+ * Generate embeddings using OpenAI-compatible API.
+ */
+async function generateOpenAIEmbeddings(params: {
+	texts: string[];
+	model: string;
+	baseUrl?: string;
+	apiKey?: string;
+	timeoutMs: number;
+}): Promise<number[][]> {
+	if (!params.apiKey) {
+		throw new Error('OpenAI API key is required');
+	}
+
+	const baseUrl = params.baseUrl ?? OPENAI_DEFAULT_BASE;
+	const url = `${baseUrl}/embeddings`;
+
+	const response = await fetch(url, {
+		method: 'POST',
+		headers: {
+			'Authorization': `Bearer ${params.apiKey}`,
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			input: params.texts,
+			model: params.model,
+		}),
+		signal: AbortSignal.timeout(params.timeoutMs),
+	});
+
+	if (!response.ok) {
+		const errorText = await response.text().catch(() => 'Unknown error');
+		throw new Error(`OpenAI embedding API error: ${response.status} ${response.statusText}. ${errorText}`);
+	}
+
+	const data = await response.json();
+
+	if (!data.data || !Array.isArray(data.data)) {
+		throw new Error('Invalid embedding API response: missing data array');
+	}
+
+	// Extract embeddings from response
+	const embeddings: number[][] = data.data.map((item: { embedding?: number[] }) => {
+		if (!item.embedding || !Array.isArray(item.embedding)) {
+			throw new Error('Invalid embedding format in API response');
+		}
+		return item.embedding;
+	});
+
+	return embeddings;
 }

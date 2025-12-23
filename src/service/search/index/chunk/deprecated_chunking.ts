@@ -1,4 +1,6 @@
 /**
+ * Actually this is not used. Deprecated. We may use for default text chunking. Currently we ignore this file but not delete it.
+ * 
  * Document chunking using LangChain's RecursiveCharacterTextSplitter strategy.
  * 
  * This implementation follows LangChain's proven approach:
@@ -12,18 +14,11 @@
  */
 
 import type { Document } from '@/core/document/types';
-import type { DocumentChunk, DocumentChunkingOptions } from '../types';
-
-/**
- * Default chunking options.
- */
-const DEFAULT_CHUNKING_OPTIONS: Required<Omit<DocumentChunkingOptions, 'strategy'>> & { strategy: 'recursive' } = {
-	enabled: true,
-	maxChunkSize: 1000,
-	chunkOverlap: 200,
-	minDocumentSize: 1500,
-	strategy: 'recursive',
-};
+import type { DocumentChunkingOptions } from '../types';
+import type { ChunkingSettings } from '@/app/settings/types';
+import type { Chunk } from './types';
+import { DEFAULT_CHUNKING_SETTINGS } from '@/app/settings/types';
+import { generateUuidWithoutHyphens } from '@/service/chat/utils';
 
 /**
  * Default separators in order of preference (most specific first).
@@ -164,86 +159,49 @@ function getOverlapText(text: string, overlapSize: number): string {
 }
 
 /**
- * Chunk a document using LangChain's RecursiveCharacterTextSplitter strategy.
+ * Chunk content string using LangChain's RecursiveCharacterTextSplitter strategy.
  * 
- * This is the recommended approach as it:
- * - Handles multiple languages properly
- * - Respects semantic boundaries (paragraphs, sentences, words)
- * - Has been battle-tested in production (LangChain)
- * - Supports custom separators and chunk size
- * 
- * @param document - Document to chunk
- * @param options - Chunking configuration
- * @returns Array of document chunks
+ * @param content - Content string to chunk
+ * @param documentId - Document ID for chunk identifiers
+ * @param settings - Chunking settings
+ * @returns Array of chunks
  */
-export async function chunkDocument(
-	document: Document,
-	options?: DocumentChunkingOptions,
-): Promise<DocumentChunk[]> {
-	const opts = { ...DEFAULT_CHUNKING_OPTIONS, ...options };
+export async function chunkContent(
+	content: string,
+	documentId: string,
+	settings: ChunkingSettings,
+): Promise<Chunk[]> {
+	const minSize = settings.minDocumentSizeForChunking;
 
-	// If chunking is disabled or document is too small, return as single chunk
-	if (!opts.enabled || document.sourceFileInfo.content.length <= opts.minDocumentSize) {
+	// If content is too small, return as single chunk
+	if (content.length <= minSize) {
 		return [{
-			id: `${document.id}:chunk:0`,
-			documentId: document.id,
-			chunkIndex: 0,
-			totalChunks: 1,
-			content: document.sourceFileInfo.content,
-			startOffset: 0,
-			endOffset: document.sourceFileInfo.content.length,
+			docId: documentId,
+			content: content,
 		}];
 	}
 
 	// Use recursive splitting strategy (LangChain's approach)
 	const chunkTexts = recursiveSplit(
-		document.sourceFileInfo.content,
+		content,
 		DEFAULT_SEPARATORS,
-		opts.maxChunkSize,
-		opts.chunkOverlap,
+		settings.maxChunkSize,
+		settings.chunkOverlap,
 	);
 
-	// Convert to DocumentChunk format with accurate offsets
-	const chunks: DocumentChunk[] = [];
-	let searchOffset = 0;
+	// Convert to Chunk format
+	const chunks: Chunk[] = [];
 
 	for (let i = 0; i < chunkTexts.length; i++) {
 		const chunkText = chunkTexts[i];
-		
-		// Find chunk position in original document
-		const startOffset = document.sourceFileInfo.content.indexOf(chunkText, searchOffset);
-		const endOffset = startOffset >= 0 ? startOffset + chunkText.length : searchOffset + chunkText.length;
-		
-		// Update search offset for next iteration
-		searchOffset = endOffset;
 
 		chunks.push({
-			id: `${document.id}:chunk:${i}`,
-			documentId: document.id,
-			chunkIndex: i,
-			totalChunks: chunkTexts.length,
+			docId: documentId,
 			content: chunkText,
-			startOffset: startOffset >= 0 ? startOffset : 0,
-			endOffset: endOffset > 0 ? endOffset : chunkText.length,
+			chunkId: generateUuidWithoutHyphens(),
+			chunkIndex: i,
 		});
 	}
 
 	return chunks;
-}
-
-/**
- * Chunk multiple documents in batch.
- */
-export async function chunkDocuments(
-	documents: Document[],
-	options?: DocumentChunkingOptions,
-): Promise<DocumentChunk[]> {
-	const allChunks: DocumentChunk[] = [];
-	
-	for (const doc of documents) {
-		const chunks = await chunkDocument(doc, options);
-		allChunks.push(...chunks);
-	}
-	
-	return allChunks;
 }

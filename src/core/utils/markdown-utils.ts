@@ -1,6 +1,6 @@
 import matter from 'gray-matter';
 import { marked, Tokens } from 'marked';
-import type { DocumentReferences } from '../document/types';
+import type { DocumentReferences, DocumentReference } from '../document/types';
 
 /**
  * Best-effort markdown extractors and utilities for search signals.
@@ -217,7 +217,7 @@ export async function generateContentHash(content: string): Promise<string> {
  * - Markdown links: [text](path)
  */
 export function extractReferences(content: string): DocumentReferences {
-	const outgoing: string[] = [];
+	const outgoingPaths = new Set<string>();
 
 	// Wiki links: [[path]] or [[path|alias]]
 	const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
@@ -228,7 +228,7 @@ export function extractReferences(content: string): DocumentReferences {
 			// Check if it's an image embed (skip those, they're handled by extractEmbeddings)
 			const prevChar = content[match.index - 1];
 			if (prevChar !== '!') {
-				outgoing.push(link);
+				outgoingPaths.add(link);
 			}
 		}
 	}
@@ -239,13 +239,19 @@ export function extractReferences(content: string): DocumentReferences {
 		const path = match[2].trim();
 		if (path && !path.startsWith('http')) {
 			// Only local paths, not URLs
-			outgoing.push(path);
+			outgoingPaths.add(path);
 		}
 	}
 
+	// Convert to DocumentReference array (docId will be populated later during indexing)
+	const outgoing: DocumentReference[] = Array.from(outgoingPaths).map(fullPath => ({
+		fullPath,
+		// docId will be populated when the referenced document is indexed
+	}));
+
 	return {
-		outgoingDocIds: [...new Set(outgoing)], // Deduplicate
-		incomingDocIds: [], // Will be populated by indexing process
+		outgoing, // Deduplicated paths
+		incoming: [], // Will be populated by indexing process
 	};
 }
 

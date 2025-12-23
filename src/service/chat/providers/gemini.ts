@@ -374,5 +374,9 @@ export class GeminiChatService implements LLMProviderService {
 			icon: 'google',
 		};
 	}
+
+	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
+		throw new Error('Gemini provider does not support embedding generation');
+	}
 }
 

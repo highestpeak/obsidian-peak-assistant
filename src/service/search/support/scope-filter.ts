@@ -1,11 +1,11 @@
-import type { SearchMode, SearchScope } from '../types';
+import type { SearchScopeMode, SearchScopeValue } from '../types';
 
 /**
  * Filter engine hits by UI scope.
  */
 export function shouldKeepPathByScope(params: {
-	mode: SearchMode;
-	scope?: SearchScope;
+	mode: SearchScopeMode;
+	scope?: SearchScopeValue;
 	path: string;
 }): boolean {
 	const { mode, scope, path } = params;

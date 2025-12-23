@@ -1,23 +1,30 @@
-import type { IndexableDocument } from '@/service/search/_deprecated/worker/types-rpc';
-import type { GetIndexStatusResponse, StorageType } from '@/service/search/_deprecated/worker/types-rpc';
+import type { Chunk } from './chunk/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { DocMetaRepo } from '@/core/storage/sqlite/repositories/DocMetaRepo';
 import { GraphEdgeRepo } from '@/core/storage/sqlite/repositories/GraphEdgeRepo';
-import { IndexStateRepo } from '@/core/storage/sqlite/repositories/IndexStateRepo';
 import { normalizeTextForFts } from '../support/segmenter';
-import { extractTags, extractWikiLinks } from '@/core/utils/markdown-utils';
+import type { SearchSettings } from '@/app/settings/types';
+import type { Document } from '@/core/document/types';
+import { INDEX_STATE_KEYS } from '@/core/constant';
+import { DocumentLoaderManager } from './document/DocumentLoaderManager';
+import { generateUuidWithoutHyphens } from '@/service/chat/utils';
+import { normalizePath } from 'obsidian';
+import { AIServiceManager } from '@/service/chat/service-manager';
 
-const INDEX_STATE_KEYS = {
-	builtAt: 'index_built_at',
-	indexedDocs: 'indexed_docs',
-} as const;
+export type StorageType = 'sqlite' | 'graph';
+
+export interface GetIndexStatusResponse {
+	indexBuiltAt: number | null;
+	indexedDocs: number | null;
+	isReady: boolean;
+}
 
 /**
  * Index service for document and graph indexing operations.
  */
 export class IndexService {
-	
+
 	private static instance: IndexService | null = null;
+	private aiServiceManager: AIServiceManager;
 
 	private constructor() {
 		// Private constructor to prevent direct instantiation.
@@ -31,129 +38,64 @@ export class IndexService {
 	}
 
 	/**
-	 * Index a batch of documents. Main thread reads vault content and writes SQLite.
-	 * todo only index one document one time
-	 *
-	 * Notes:
-	 * - Caller should feed already-chunked docs if chunking is enabled.
-	 * - This method groups documents by path, indexes them, updates graph relationships,
-	 *   and yields between path-groups to reduce UI stalls.
-	 * - Graph relationships are updated for markdown documents.
+	 * Initialize IndexService with AIServiceManager for embedding generation.
+	 * This should be called once during plugin initialization in main.ts.
+	 * Can also be called when settings are updated to refresh the service instance.
 	 */
-	async indexDocument(
-		doc: IndexableDocument,
-		onAfterMutation?: (types: StorageType[]) => void,
-	): Promise<void> {
-		if (!doc) return;
-
-		// Group by original path to keep doc-level metadata consistent.
-		const byPath = new Map<string, IndexableDocument[]>();
-		const arr = byPath.get(doc.path) ?? [];
-		arr.push(doc);
-		byPath.set(doc.path, arr);
-
-		// Batch by path; each path becomes one small transaction.
-		for (const [docPath, group] of byPath.entries()) {
-			await this.indexDocumentGroup(group);
-
-			// Update graph for markdown docs (best-effort).
-			const firstType = (group[0]?.type ?? 'markdown') as string;
-			if (firstType === 'markdown') {
-				await this.upsertGraphForMarkdown({
-					docId: docPath,
-					content: group.map((g) => g.content ?? '').join('\n\n'),
-				});
-			}
-
-			// Yield to UI thread.
-			await new Promise((r) => window.setTimeout(r, 0));
-		}
-
-		onAfterMutation?.(['sqlite', 'graph']);
+	init(aiServiceManager: AIServiceManager): void {
+		this.aiServiceManager = aiServiceManager;
 	}
 
 	/**
-	 * Index a single group of documents (chunks) for one document path.
-	 * This method is called internally by indexDocuments after grouping.
+	 * Index a core document with chunking strategy applied.
+	 * This method handles chunking internally based on settings.
+	 * 
+	 * @param doc - Core document to index
+	 * @param settings - Search settings containing chunking configuration
 	 */
-	private async indexDocumentGroup(docs: IndexableDocument[]): Promise<void> {
-		const now = Date.now();
+	async indexDocument(
+		doc: Document,
+		settings: SearchSettings,
+	): Promise<void> {
+		if (!doc) return;
+
+		// Get loader for document type
+		const loaderManager = DocumentLoaderManager.getInstance();
+		if (!loaderManager.shouldIndexDocument(doc)) {
+			console.warn(`Document type ${doc.type} should not be indexed or has no loader`);
+			return;
+		}
+		const loader = loaderManager.getLoaderForDocumentType(doc.type);
+		if (!loader) {
+			console.warn(`No loader found for document type: ${doc.type}`);
+			return;
+		}
+
+		// Chunk content using loader's chunkContent method
+		const chunks = await loader.chunkContent(doc, settings.chunking);
+
+		// Generate embeddings for chunks if embedding model is configured
+		const embeddingModel = settings.chunking.embeddingModel;
+		if (embeddingModel) {
+			await this.generateAndFillEmbeddings(chunks, embeddingModel);
+		}
+
+		// Save all data in a single transaction for atomicity
 		const kdb = sqliteStoreManager.getKysely();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
-		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
-		const indexStateRepo = sqliteStoreManager.getIndexStateRepo();
-
-		// Process all chunks in a single transaction
 		await kdb.transaction().execute(async () => {
-			// All docs in this group have the same path
-			const first = docs[0]!;
-			const docId = first.path; // Use path as doc_id for now (can be changed later)
-			// Upsert doc_meta first to get doc_id
-			await docMetaRepo.upsert({
-				id: docId,
-				path: first.path,
-				type: first.type ?? 'markdown',
-				title: first.title ?? first.path,
-				mtime: first.mtime ?? 0,
-			});
+			// Save doc meta
+			await this.saveDocMeta(doc);
 
-			// Clear existing rows for this doc (re-index semantics).
-			await kdb.deleteFrom('doc_chunk').where('doc_id', '=', docId).execute();
-			docChunkRepo.deleteFtsByDocId(docId);
-			await kdb.deleteFrom('embedding').where('doc_id', '=', docId).execute();
+			// Save search data (FTS and embeddings, not chunk data - reduce storage space)
+			const embeddingModelName = embeddingModel ? `${embeddingModel.provider}:${embeddingModel.modelId}` : undefined;
+			await this.saveSearchData(doc.id, doc.sourceFileInfo.path, doc.metadata.title, chunks, embeddingModelName);
 
-			// Insert chunks + fts rows.
-			for (const d of docs) {
-				const chunkId = d.chunkId ?? `${d.path}:chunk:${Number(d.chunkIndex ?? 0)}`;
-				const chunkIndex = Number(d.chunkIndex ?? 0);
-				const title = d.title ?? d.path;
-				const mtime = Number(d.mtime ?? 0);
-				const raw = d.content ?? '';
-				const norm = normalizeTextForFts(raw);
+			// Save graph data (all document types have graph)
+			await this.upsertGraph(doc);
 
-				await docChunkRepo.upsertChunk({
-					chunk_id: chunkId,
-					doc_id: docId,
-					chunk_index: chunkIndex,
-					title,
-					mtime,
-					content_raw: raw,
-					content_fts_norm: norm,
-				});
-
-				docChunkRepo.insertFts({
-					chunk_id: chunkId,
-					doc_id: docId,
-					path: d.path, // Keep path for display
-					title,
-					content: norm,
-				});
-
-				if (Array.isArray(d.embedding) && d.embedding.length > 0) {
-					await embeddingRepo.upsert({
-						id: chunkId,
-						doc_id: docId,
-						chunk_id: chunkId,
-						chunk_index: chunkIndex,
-						content_hash: '',
-						ctime: now,
-						mtime: now,
-						embedding: d.embedding, // number[] will be converted to BLOB in EmbeddingRepo
-						embedding_model: 'unknown',
-						embedding_len: d.embedding.length,
-					});
-				}
-			}
-
-			// Index state bookkeeping (best-effort).
-			const indexedCount = await indexStateRepo.get(INDEX_STATE_KEYS.indexedDocs);
-			const newCount = Number(indexedCount ?? 0) + 1;
-			await indexStateRepo.set(INDEX_STATE_KEYS.indexedDocs, String(newCount));
+			// Finally: Update index state (only after graph is complete)
+			await this.updateIndexState();
 		});
-
-		// Update built-at timestamp after doc group is indexed.
-		await indexStateRepo.set(INDEX_STATE_KEYS.builtAt, String(now));
 	}
 
 	/**
@@ -181,7 +123,7 @@ export class IndexService {
 			// Get doc_ids from paths
 			const metaMap = await docMetaRepo.getByPaths(paths);
 			const docIds = Array.from(metaMap.values()).map((m) => m.id);
-			
+
 			docChunkRepo.deleteFtsByDocIds(docIds);
 			await docChunkRepo.deleteByDocIds(docIds);
 			await embeddingRepo.deleteByDocIds(docIds);
@@ -213,44 +155,151 @@ export class IndexService {
 	}
 
 	/**
-	 * Get all indexed document paths with their modification times.
+	 * Generate embeddings for chunks and fill them into chunk objects.
+	 * 
+	 * @param chunks - Chunks to generate embeddings for
+	 * @param embeddingModel - Embedding model configuration (provider and modelId)
 	 */
-	async getIndexedPaths(): Promise<Array<{ path: string; mtime: number }>> {
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-		const map = await docMetaRepo.getAllIndexedPaths();
-		return Array.from(map.entries()).map(([path, mtime]) => ({ path, mtime }));
+	private async generateAndFillEmbeddings(
+		chunks: Chunk[],
+		embeddingModel: { provider: string; modelId: string },
+	): Promise<void> {
+		if (!chunks.length) return;
+
+		try {
+			// Generate embeddings using MultiProviderChatService from AIServiceManager
+			const multiProviderChatService = this.aiServiceManager.getMultiChat();
+			const embeddings = await multiProviderChatService.generateEmbeddings(
+				chunks.map(chunk => chunk.content),
+				embeddingModel.modelId,
+				embeddingModel.provider,
+			);
+
+			// Fill embeddings into chunk.embedding fields
+			for (let i = 0; i < chunks.length && i < embeddings.length; i++) {
+				chunks[i].embedding = embeddings[i];
+			}
+		} catch (error) {
+			console.error(`[IndexService] Failed to generate embeddings:`, error);
+			// Continue without embeddings rather than failing the entire indexing
+		}
 	}
 
 	/**
-	 * Index graph relationships for a markdown document.
+	 * Save search data (FTS and embeddings) to database.
 	 */
-	private async upsertGraphForMarkdown(params: { docId: string; content: string }): Promise<void> {
-		const { docId, content } = params;
+	private async saveSearchData(docId: string, path: string, title: string, chunks: Chunk[], embeddingModel?: string): Promise<void> {
+		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
+		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
+		const now = Date.now();
+
+		// Delete existing FTS and embeddings for this doc
+		docChunkRepo.deleteFtsByDocId(docId);
+		await embeddingRepo.deleteByDocIds([docId]);
+
+		// Save FTS and embeddings
+		for (const chunk of chunks) {
+			const chunkId = chunk.chunkId ?? generateUuidWithoutHyphens();
+			const chunkIndex = Number(chunk.chunkIndex ?? 0);
+			// Save FTS (title and content are both searchable in FTS5)
+			const normTitle = normalizeTextForFts(title ?? '');
+			const normContent = normalizeTextForFts(chunk.content ?? '');
+
+			docChunkRepo.insertFts({
+				chunk_id: chunkId,
+				doc_id: docId,
+				path: path,
+				title: normTitle, // Normalized title for FTS search (searchable in FTS5)
+				content: normContent, // Normalized content for FTS search
+			});
+
+			// Save embedding
+			if (Array.isArray(chunk.embedding) && chunk.embedding.length > 0) {
+				await embeddingRepo.upsert({
+					id: chunkId,
+					doc_id: docId,
+					chunk_id: chunkId,
+					chunk_index: chunkIndex,
+					path: path,
+					content_hash: '',
+					ctime: now,
+					mtime: now,
+					embedding: chunk.embedding,
+					embedding_model: embeddingModel ?? 'unknown',
+					embedding_len: chunk.embedding.length,
+				});
+			}
+		}
+	}
+
+	/**
+	 * Save document metadata to database.
+	 */
+	private async saveDocMeta(doc: Document): Promise<void> {
+		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+
+		await docMetaRepo.upsert({
+			id: doc.id,
+			path: doc.sourceFileInfo.path,
+			type: doc.type,
+			title: doc.metadata.title ?? doc.id,
+			mtime: doc.sourceFileInfo.mtime ?? 0,
+			size: doc.sourceFileInfo.size ?? null,
+			ctime: doc.sourceFileInfo.ctime ?? null,
+			content_hash: doc.contentHash ?? null,
+			summary: doc.summary ?? null,
+			tags: doc.metadata.tags ? JSON.stringify(doc.metadata.tags) : null,
+		});
+	}
+
+	/**
+	 * Update index state (document count and build timestamp).
+	 */
+	private async updateIndexState(): Promise<void> {
+		const indexStateRepo = sqliteStoreManager.getIndexStateRepo();
+		const now = Date.now();
+
+		const indexedCount = await indexStateRepo.get(INDEX_STATE_KEYS.indexedDocs);
+		const newCount = Number(indexedCount ?? 0) + 1;
+		await indexStateRepo.set(INDEX_STATE_KEYS.indexedDocs, String(newCount));
+		await indexStateRepo.set(INDEX_STATE_KEYS.builtAt, String(now));
+	}
+
+	/**
+	 * Upsert graph relationships for a document.
+	 * Uses data directly from Document object (references, tags, categories).
+	 */
+	private async upsertGraph(doc: Document): Promise<void> {
 		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
 		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
 
+		// Use normalized path as node ID (graph nodes use path, not doc.id, since we can't guarantee doc.id exists)
+		const docNodeId = normalizePath(doc.sourceFileInfo.path);
+
 		// Document node
 		await graphNodeRepo.upsert({
-			id: docId,
+			id: docNodeId,
 			type: 'document',
-			label: docId,
-			attributes: JSON.stringify({ path: docId }),
+			label: doc.metadata.title ?? docNodeId,
+			attributes: JSON.stringify({ path: doc.sourceFileInfo.path }),
 		});
 
-		// Wiki links
-		const links = extractWikiLinks(content);
-		for (const link of links) {
-			const linkId = `link:${link}`;
+		// Outgoing references (links from this document to other documents)
+		for (const ref of doc.references.outgoing) {
+			// Use normalized path as node ID (graph nodes use path, not docId, since we can't guarantee docId exists)
+			const targetNodeId = normalizePath(ref.fullPath);
+
+			// Ensure target document node exists (it will be created/updated when that document is indexed)
 			await graphNodeRepo.upsert({
-				id: linkId,
-				type: 'link',
-				label: link,
-				attributes: JSON.stringify({ linkName: link }),
+				id: targetNodeId,
+				type: 'document',
+				label: targetNodeId,
+				attributes: JSON.stringify({ path: ref.fullPath }),
 			});
 			await graphEdgeRepo.upsert({
-				id: GraphEdgeRepo.generateEdgeId(docId, linkId, 'references'),
-				from_node_id: docId,
-				to_node_id: linkId,
+				id: GraphEdgeRepo.generateEdgeId(docNodeId, targetNodeId, 'references'),
+				from_node_id: docNodeId,
+				to_node_id: targetNodeId,
 				type: 'references',
 				weight: 1.0,
 				attributes: JSON.stringify({}),
@@ -258,8 +307,7 @@ export class IndexService {
 		}
 
 		// Tags
-		const tags = extractTags(content);
-		for (const tag of tags) {
+		for (const tag of doc.metadata.tags ?? []) {
 			const tagId = `tag:${tag}`;
 			await graphNodeRepo.upsert({
 				id: tagId,
@@ -268,14 +316,34 @@ export class IndexService {
 				attributes: JSON.stringify({ tagName: tag }),
 			});
 			await graphEdgeRepo.upsert({
-				id: GraphEdgeRepo.generateEdgeId(docId, tagId, 'tagged'),
-				from_node_id: docId,
+				id: GraphEdgeRepo.generateEdgeId(docNodeId, tagId, 'tagged'),
+				from_node_id: docNodeId,
 				to_node_id: tagId,
 				type: 'tagged',
 				weight: 1.0,
 				attributes: JSON.stringify({}),
 			});
 		}
+
+		// Categories (if available)
+		for (const category of doc.metadata.categories ?? []) {
+			const categoryId = `category:${category}`;
+			await graphNodeRepo.upsert({
+				id: categoryId,
+				type: 'category',
+				label: category,
+				attributes: JSON.stringify({ categoryName: category }),
+			});
+			await graphEdgeRepo.upsert({
+				id: GraphEdgeRepo.generateEdgeId(docNodeId, categoryId, 'categorized'),
+				from_node_id: docNodeId,
+				to_node_id: categoryId,
+				type: 'categorized',
+				weight: 1.0,
+				attributes: JSON.stringify({}),
+			});
+		}
 	}
+
 }
 
