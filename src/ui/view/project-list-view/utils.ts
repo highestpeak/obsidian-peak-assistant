@@ -1,5 +1,5 @@
 import { App, Menu } from 'obsidian';
-import { ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
+import { ChatConversation, ChatProject } from '@/service/chat/types';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
@@ -16,7 +16,7 @@ interface MenuItem {
  */
 export async function notifySelectionChange(
 	app: App,
-	conversation?: ParsedConversationFile | null
+	conversation?: ChatConversation | null
 ): Promise<void> {
 	const { setActiveConversation, setActiveProject, projects } = useProjectStore.getState();
 

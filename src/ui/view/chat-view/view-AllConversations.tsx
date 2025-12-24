@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ParsedConversationFile } from '@/service/chat/types';
+import { ChatConversation } from '@/service/chat/types';
 import { formatRelativeDate } from '@/ui/view/shared/date-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 
 interface AllConversationsViewProps {
-	onConversationClick: (conversation: ParsedConversationFile) => void;
+	onConversationClick: (conversation: ChatConversation) => void;
 }
 
 const CONVERSATIONS_PAGE_SIZE = 20;
@@ -17,7 +17,7 @@ export const AllConversationsViewComponent: React.FC<AllConversationsViewProps> 
 	onConversationClick,
 }) => {
 	const { manager } = useServiceContext();
-	const [conversations, setConversations] = useState<ParsedConversationFile[]>([]);
+	const [conversations, setConversations] = useState<ChatConversation[]>([]);
 	const [conversationsPage, setConversationsPage] = useState(0);
 	const [loading, setLoading] = useState(true);
 

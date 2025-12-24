@@ -7,7 +7,7 @@ import { generateContentHash, extractReferences } from '@/core/utils/markdown-ut
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
-import { generateUuidWithoutHyphens } from '@/service/chat/utils';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 
 /**
  * Markdown document loader.

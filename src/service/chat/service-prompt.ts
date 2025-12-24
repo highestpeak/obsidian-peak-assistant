@@ -1,5 +1,5 @@
 import { App, normalizePath, TFile } from 'obsidian';
-import { ensureFolder } from '@/service/chat/utils';
+import { ensureFolder } from '@/core/utils/vault-utils';
 
 /**
  * Predefined prompt template filenames for consistent lookup.

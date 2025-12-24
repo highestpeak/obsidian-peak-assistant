@@ -19,6 +19,12 @@ export interface MessageTokenUsage {
 export interface ChatMessage {
 	id: string;
 	role: ChatRole;
+	/**
+	 * Optional short title for markdown heading.
+	 *
+	 * Note: This is persisted in markdown only (not in sqlite).
+	 */
+	title?: string;
 	content: string;
 	createdAtTimestamp: number;
 	createdAtZone: string;
@@ -123,10 +129,8 @@ export interface ChatProjectContext {
 	resourceIndex?: ResourceSummaryMeta[];
 }
 
-// todo 可以放到 storage 里面
 export interface ChatFilePaths {
 	rootFolder: string;
-	starredCsvPath: string;
 }
 
 export interface StarredMessageRecord {
@@ -140,7 +144,7 @@ export interface StarredMessageRecord {
 
 import type { TFile } from 'obsidian';
 
-export interface ParsedConversationFile {
+export interface ChatConversation {
 	meta: ChatConversationMeta;
 	messages: ChatMessage[];
 	context?: ChatContextWindow;
@@ -148,7 +152,7 @@ export interface ParsedConversationFile {
 	file: TFile;
 }
 
-export interface ParsedProjectFile {
+export interface ChatProject {
 	meta: ChatProjectMeta;
 	context?: ChatProjectContext;
 	shortSummary?: string;
@@ -162,6 +166,6 @@ export interface ParsedProjectFile {
  */
 export interface PendingConversation {
 	title: string;
-	project: ParsedProjectFile | null;
+	project: ChatProject | null;
 }
 

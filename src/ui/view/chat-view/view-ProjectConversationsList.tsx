@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
+import { ChatConversation, ChatProject } from '@/service/chat/types';
 import { formatRelativeDate } from '@/ui/view/shared/date-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -7,7 +7,7 @@ import { useProjectStore } from '@/ui/store/projectStore';
 
 interface ProjectConversationsListViewProps {
 	projectId: string;
-	onConversationClick: (conversation: ParsedConversationFile) => void;
+	onConversationClick: (conversation: ChatConversation) => void;
 }
 
 const CONVERSATIONS_PAGE_SIZE = 20;
@@ -23,12 +23,12 @@ export const ProjectConversationsListViewComponent: React.FC<ProjectConversation
 	const projects = useProjectStore((state) => state.projects);
 	const project = projectId ? projects.get(projectId) || null : null;
 
-	const [conversations, setConversations] = useState<ParsedConversationFile[]>([]);
+	const [conversations, setConversations] = useState<ChatConversation[]>([]);
 	const [conversationsPage, setConversationsPage] = useState(0);
 	const [loading, setLoading] = useState(true);
 
 	// Load conversations for the project
-	const loadConversations = useCallback(async (page: number, projectMeta: ParsedProjectFile['meta']) => {
+	const loadConversations = useCallback(async (page: number, projectMeta: ChatProject['meta']) => {
 		const allConversations = await manager.listConversations(projectMeta);
 		
 		// Sort by createdAtTimestamp descending (newest first)

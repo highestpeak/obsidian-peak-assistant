@@ -1,16 +1,16 @@
 import { normalizePath, TFile, TFolder } from 'obsidian';
-import { generateUuidWithoutHyphens } from './utils';
+import { generateUuidWithoutHyphens } from '../../core/utils/id-utils';
 import { LLMProviderService } from '@/core/providers/types';
 import { LLMApplicationService } from './service-application';
-import { ChatStorageService } from './storage';
+import { ChatStorageService } from '../../core/storage/vault/ChatStore';
 import { LLMRequestMessage } from '@/core/providers/types';
 import {
 	ChatContextWindow,
 	ChatConversationMeta,
 	ChatMessage,
 	ChatProjectMeta,
-	ParsedConversationFile,
-	ParsedProjectFile,
+	ChatConversation,
+	ChatProject,
 	StarredMessageRecord,
 } from './types';
 import { PromptService, PromptTemplate } from './service-prompt';
@@ -18,6 +18,8 @@ import { MessageContentComposer } from './messages/utils-message-content';
 import { AIStreamEvent } from '@/core/providers/types-events';
 import { ResourceSummaryService } from './resources/ResourceSummaryService';
 import { ContextBuilder } from './context/ContextBuilder';
+import { ChatArchiveService } from './ChatArchiveService';
+import type { MessageTokenUsage } from './types';
 
 /**
  * Create a basic chat message with timestamps.
@@ -41,6 +43,7 @@ export function createDefaultMessage(role: ChatMessage['role'], content: string,
  */
 export class ConversationService {
 	private readonly contextBuilder: ContextBuilder;
+	private readonly archiveService: ChatArchiveService;
 
 	constructor(
 		private readonly storage: ChatStorageService,
@@ -56,12 +59,30 @@ export class ConversationService {
 			this.promptService,
 			this.resourceSummaryService || new ResourceSummaryService(storage.getApp(), storage.getRootFolder())
 		);
+		this.archiveService = new ChatArchiveService(storage.getApp(), storage.getRootFolder());
+	}
+
+	/**
+	 * Normalize provider usage to our persisted token usage shape.
+	 */
+	private toMessageTokenUsage(usage: unknown): MessageTokenUsage | undefined {
+		const u = usage as any;
+		if (!u || typeof u !== 'object') return undefined;
+		const promptTokens = Number(u.promptTokens ?? u.inputTokens ?? 0);
+		const completionTokens = Number(u.completionTokens ?? u.outputTokens ?? 0);
+		const totalTokens = Number(u.totalTokens ?? promptTokens + completionTokens);
+		if (!Number.isFinite(totalTokens)) return undefined;
+		return {
+			promptTokens: Number.isFinite(promptTokens) ? promptTokens : 0,
+			completionTokens: Number.isFinite(completionTokens) ? completionTokens : 0,
+			totalTokens,
+		};
 	}
 
 	/**
 	 * List conversations, optionally filtered by project.
 	 */
-	async listConversations(project?: ChatProjectMeta): Promise<ParsedConversationFile[]> {
+	async listConversations(project?: ChatProjectMeta): Promise<ChatConversation[]> {
 		return this.storage.listConversations(project);
 	}
 
@@ -72,7 +93,7 @@ export class ConversationService {
 		title: string;
 		project?: ChatProjectMeta | null;
 		initialMessages?: ChatMessage[];
-	}): Promise<ParsedConversationFile> {
+	}): Promise<ChatConversation> {
 		const timestamp = Date.now();
 		const defaultProvider = this.chat.getProviderId();
 		const meta: ChatConversationMeta = {
@@ -87,20 +108,26 @@ export class ConversationService {
 		};
 
 		const messages = params.initialMessages ?? [];
-		const file = await this.storage.saveConversation(params.project ?? null, meta, messages);
-		return this.storage.readConversation(file);
+		const file = await this.storage.saveConversation(
+			params.project ?? null,
+			meta,
+			messages,
+			undefined,
+			undefined
+		);
+		return this.storage.readConversation(meta.id);
 	}
 
 	/**
 	 * Send a message and wait for the full model response (blocking).
 	 */
 	async blockChat(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		userContent: string;
 		attachments?: string[];
 		autoSave?: boolean;
-	}): Promise<{ conversation: ParsedConversationFile; message: ChatMessage }> {
+	}): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
 		const { conversation, project, userContent, attachments, autoSave = true } = params;
 		const modelId = conversation.meta.activeModel || this.defaultModelId;
 		const provider = conversation.meta.activeProvider || this.chat.getProviderId();
@@ -133,11 +160,10 @@ export class ConversationService {
 		
 		// Add token usage and generation time
 		if (assistant.usage) {
-			assistantMessage.tokenUsage = {
-				promptTokens: assistant.usage.promptTokens,
-				completionTokens: assistant.usage.completionTokens,
-				totalTokens: assistant.usage.totalTokens,
-			};
+			const tokenUsage = this.toMessageTokenUsage(assistant.usage);
+			if (tokenUsage) {
+				assistantMessage.tokenUsage = tokenUsage;
+			}
 		}
 		
 		if (autoSave) {
@@ -156,7 +182,7 @@ export class ConversationService {
 				...conversation.meta,
 				updatedAtTimestamp: Date.now(),
 			};
-			const unsavedConversation: ParsedConversationFile = {
+			const unsavedConversation: ChatConversation = {
 				meta: updatedMeta,
 				messages: updatedMessages,
 				content: '',
@@ -170,8 +196,8 @@ export class ConversationService {
 	 * Send a message and stream incremental model output.
 	 */
 	streamChat(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		userContent: string;
 		autoSave?: boolean;
 	}): AsyncGenerator<AIStreamEvent> {
@@ -193,11 +219,11 @@ export class ConversationService {
 	 * Update full message list of a conversation.
 	 */
 	async updateConversationMessages(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		messages: ChatMessage[];
 		context?: ChatContextWindow;
-	}): Promise<ParsedConversationFile> {
+	}): Promise<ChatConversation> {
 		const { conversation, project, messages, context } = params;
 		const updatedMeta: ChatConversationMeta = {
 			...conversation.meta,
@@ -208,21 +234,20 @@ export class ConversationService {
 			updatedMeta,
 			messages,
 			context,
-			undefined,
 			conversation.file
 		);
-		return this.storage.readConversation(saved);
+		return this.storage.readConversation(updatedMeta.id);
 	}
 
 	/**
 	 * Update conversation's active model.
 	 */
 	async updateConversationModel(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		modelId: string;
 		provider?: string;
-	}): Promise<ParsedConversationFile> {
+	}): Promise<ChatConversation> {
 		const { conversation, project, modelId, provider } = params;
 		// Use provided provider or keep existing provider, fallback to chat service default
 		const finalProvider = provider || conversation.meta.activeProvider || this.chat.getProviderId();
@@ -241,27 +266,26 @@ export class ConversationService {
 			updatedMeta,
 			conversation.messages,
 			conversation.context,
-			undefined,
 			conversation.file
 		);
-		return this.storage.readConversation(saved);
+		return this.storage.readConversation(updatedMeta.id);
 	}
 
 	/**
 	 * Update conversation title by renaming the file.
 	 */
 	async updateConversationTitle(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		title: string;
-	}): Promise<ParsedConversationFile> {
+	}): Promise<ChatConversation> {
 		const { conversation, project, title } = params;
 		
 		const folder = conversation.file.parent;
 		const fileToRename = this.findConversationFile(folder, conversation) ?? conversation.file;
 
 		// Build new filename with the updated title
-		const newFileName = this.storage.buildConversationFileName({
+		const newFileName = await this.storage.buildConversationFileName({
 			...conversation.meta,
 			title,
 		});
@@ -294,10 +318,9 @@ export class ConversationService {
 			updatedMeta,
 			conversation.messages,
 			conversation.context,
-			undefined,
 			renamedFile
 		);
-		return this.storage.readConversation(saved);
+		return this.storage.readConversation(updatedMeta.id);
 	}
 
 	/**
@@ -305,10 +328,10 @@ export class ConversationService {
 	 */
 	async toggleStar(params: {
 		messageId: string;
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		starred: boolean;
-	}): Promise<ParsedConversationFile> {
+	}): Promise<ChatConversation> {
 		const { messageId, conversation, project, starred } = params;
 		let targetMessage: ChatMessage | null = null;
 		const nextMessages: ChatMessage[] = [];
@@ -349,7 +372,7 @@ export class ConversationService {
 	 * Load starred message records.
 	 */
 	async loadStarred(): Promise<StarredMessageRecord[]> {
-		return this.storage.readStarredCsv();
+		return this.storage.listStarred();
 	}
 
 	/**
@@ -360,14 +383,13 @@ export class ConversationService {
 		return 'defaultSummary';
 	}
 
-
 	/**
 	 * Compose the full messages array sent to the LLM.
 	 */
 	private async buildLLMRequestMessages(
 		messages: ChatMessage[],
-		conversation: ParsedConversationFile,
-		project?: ParsedProjectFile | null
+		conversation: ChatConversation,
+		project?: ChatProject | null
 	): Promise<LLMRequestMessage[]> {
 		// Use ContextBuilder to build messages with full context
 		return this.contextBuilder.buildContextMessages({
@@ -381,13 +403,13 @@ export class ConversationService {
 	 * Save conversation metadata and messages after an exchange.
 	 */
 	private async persistExchange(params: {
-		conversation: ParsedConversationFile;
-		project: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project: ChatProject | null;
 		messages: ChatMessage[];
 		model: string;
 		provider?: string;
 		tokenDelta: number;
-	}): Promise<ParsedConversationFile> {
+	}): Promise<ChatConversation> {
 		const context = await this.buildContextWindow(params.messages, params.model);
 		
 		// Keep the existing title, don't auto-generate from messages
@@ -411,18 +433,20 @@ export class ConversationService {
 			updatedMeta,
 			params.messages,
 			context,
-			undefined,
 			params.conversation.file
 		);
-		return this.storage.readConversation(saved);
+		const result = await this.storage.readConversation(updatedMeta.id);
+		// Trigger archive check after autoSave
+		await this.archiveService.maybeArchiveNow('persistExchange');
+		return result;
 	}
 
 	/**
 	 * Produce stream-like events for providers without native streaming.
 	 */
 	private createBlockingStream(
-		conversation: ParsedConversationFile,
-		project: ParsedProjectFile | null,
+		conversation: ChatConversation,
+		project: ChatProject | null,
 		userContent: string,
 		autoSave: boolean
 	): AsyncGenerator<AIStreamEvent> {
@@ -450,8 +474,8 @@ export class ConversationService {
 	 * Start a real streaming session against the configured provider.
 	 */
 	private createLiveStream(params: {
-		conversation: ParsedConversationFile;
-		project: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project: ChatProject | null;
 		userContent: string;
 		streamChat: NonNullable<LLMProviderService['streamChat']>;
 		autoSave: boolean;
@@ -489,8 +513,8 @@ export class ConversationService {
 		context: {
 			initialModel: string;
 			initialProvider: string;
-			conversation: ParsedConversationFile;
-			project: ParsedProjectFile | null;
+			conversation: ChatConversation;
+			project: ChatProject | null;
 			messagesWithUser: ChatMessage[];
 			timezone: string;
 			autoSave: boolean;
@@ -528,7 +552,7 @@ export class ConversationService {
 				};
 			}
 			
-			let finalConversation: ParsedConversationFile;
+			let finalConversation: ChatConversation;
 			if (context.autoSave) {
 				finalConversation = await this.persistExchange({
 					conversation: context.conversation,
@@ -557,7 +581,8 @@ export class ConversationService {
 				conversation: finalConversation,
 				message: assistantMessage,
 				model: currentModel,
-				usage: tokenDelta > 0 ? { promptTokens: 0, completionTokens: 0, totalTokens: tokenDelta } : undefined,
+				// Keep provider usage only when available from upstream.
+				usage: undefined,
 			};
 		} catch (error) {
 			const normalized = error instanceof Error ? error : new Error(String(error));
@@ -603,21 +628,9 @@ export class ConversationService {
 	}
 
 	/**
-	 * Fetch system prompt text while silencing prompt errors.
-	 */
-	private async loadConversationSystemPrompt(): Promise<string | null> {
-		try {
-			return (await this.promptService.getPrompt(PromptTemplate.ConversationSystem)) ?? null;
-		} catch (error) {
-			console.error('Failed to load conversation prompt', error);
-			return null;
-		}
-	}
-
-	/**
 	 * Locate the conversation file under the provided folder by matching the id suffix.
 	 */
-	private findConversationFile(folder: TFolder | null | undefined, conversation: ParsedConversationFile): TFile | null {
+	private findConversationFile(folder: TFolder | null | undefined, conversation: ChatConversation): TFile | null {
 		if (!folder) {
 			return null;
 		}

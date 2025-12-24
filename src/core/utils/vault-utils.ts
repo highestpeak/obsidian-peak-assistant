@@ -1,4 +1,21 @@
-import { App, TFile, TFolder } from 'obsidian';
+import { App, normalizePath, TFile, TFolder } from 'obsidian';
+
+/**
+ * Ensures that a folder exists at the specified path.
+ * If the folder does not exist, it is created recursively.
+ * @param app The Obsidian app instance.
+ * @param folderPath The path to the folder to ensure.
+ * @returns The TFolder object representing the folder.
+ */
+export async function ensureFolder(app: App, folderPath: string): Promise<TFolder> {
+	const normalized = normalizePath(folderPath);
+	await ensureFolderRecursive(app, normalized);
+	const folder = app.vault.getAbstractFileByPath(normalized);
+	if (folder instanceof TFolder) {
+		return folder;
+	}
+	throw new Error(`Unable to create or access folder: ${normalized}`);
+}
 
 /**
  * Recursively create folder and all parent folders

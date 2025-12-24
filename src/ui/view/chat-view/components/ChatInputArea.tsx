@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ParsedConversationFile, ParsedProjectFile, ChatMessage, PendingConversation } from '@/service/chat/types';
-import { generateUuidWithoutHyphens } from '@/service/chat/utils';
+import { ChatConversation, ChatProject, ChatMessage, PendingConversation } from '@/service/chat/types';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { uploadFilesToVault } from '@/core/utils/vault-utils';
 import { useMessageStore } from '@/ui/store/messageStore';
 import { useChatViewStore } from '../store/chatViewStore';
@@ -217,7 +217,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 			};
 
 			// Show user message immediately
-			const tempConversation: ParsedConversationFile = {
+			const tempConversation: ChatConversation = {
 				...conversation,
 				messages: [...conversation.messages, tempUserMessage],
 			};
@@ -237,7 +237,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				autoSave: true,
 			});
 
-			let finalConversation: ParsedConversationFile | null = null;
+			let finalConversation: ChatConversation | null = null;
 			let finalMessage: ChatMessage | null = null;
 
 			try {

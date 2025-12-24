@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
+import { ChatConversation, ChatProject } from '@/service/chat/types';
 import { ViewMode } from './store/chatViewStore';
 import { AllConversationsViewComponent } from './view-AllConversations';
 import { AllProjectsViewComponent } from './view-AllProjects';
@@ -70,7 +70,7 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 			case ViewMode.ALL_PROJECTS:
 				return (
 					<AllProjectsViewComponent
-						onProjectClick={(project: ParsedProjectFile) => {
+						onProjectClick={(project: ChatProject) => {
 							store.setProjectOverview(project);
 						}}
 					/>
@@ -79,7 +79,7 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 			case ViewMode.ALL_CONVERSATIONS:
 				return (
 					<AllConversationsViewComponent
-						onConversationClick={(conversation: ParsedConversationFile) => {
+						onConversationClick={(conversation: ChatConversation) => {
 							store.setConversation(conversation);
 						}}
 					/>
@@ -91,10 +91,10 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 				return (
 					<ProjectOverviewViewComponent
 						projectId={projectId}
-						onConversationClick={(conversation: ParsedConversationFile, project: ParsedProjectFile) => {
+						onConversationClick={(conversation: ChatConversation, project: ChatProject) => {
 							store.setConversation(conversation);
 						}}
-						onMessageClick={(conversation: ParsedConversationFile, project: ParsedProjectFile, messageId: string) => {
+						onMessageClick={(conversation: ChatConversation, project: ChatProject, messageId: string) => {
 							store.setConversation(conversation);
 							requestAnimationFrame(() => {
 								eventBus.dispatch(new ScrollToMessageEvent({ messageId }));
@@ -109,7 +109,7 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 				return (
 					<ProjectConversationsListViewComponent
 						projectId={projectIdForList}
-						onConversationClick={(conversation: ParsedConversationFile) => {
+						onConversationClick={(conversation: ChatConversation) => {
 							store.setConversation(conversation);
 						}}
 					/>

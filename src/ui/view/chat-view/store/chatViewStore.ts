@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ParsedProjectFile, PendingConversation, ParsedConversationFile } from '@/service/chat/types';
+import { ChatProject, PendingConversation, ChatConversation } from '@/service/chat/types';
 import { useProjectStore } from '@/ui/store/projectStore';
 
 /**
@@ -24,17 +24,17 @@ export enum ViewMode {
 interface ChatViewStore {
 	// State
 	viewMode: ViewMode | null;
-	projectForOverview: ParsedProjectFile | null;
+	projectForOverview: ChatProject | null;
 	pendingConversation: PendingConversation | null;
 	showSummaryModal: boolean;
 	showResourcesModal: boolean;
 
 	// Actions
-	setProjectOverview: (project: ParsedProjectFile) => void;
-	setProjectConversationsList: (project: ParsedProjectFile) => void;
+	setProjectOverview: (project: ChatProject) => void;
+	setProjectConversationsList: (project: ChatProject) => void;
 	setAllProjects: () => void;
 	setAllConversations: () => void;
-	setConversation: (conversation: ParsedConversationFile) => void;
+	setConversation: (conversation: ChatConversation) => void;
 	setPendingConversation: (pending: PendingConversation | null) => void;
 	setShowSummaryModal: (show: boolean) => void;
 	setShowResourcesModal: (show: boolean) => void;
@@ -50,7 +50,7 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 	showResourcesModal: false,
 
 	// Actions
-	setProjectOverview: (project: ParsedProjectFile) => {
+	setProjectOverview: (project: ChatProject) => {
 		useProjectStore.getState().setActiveProject(null);
 		useProjectStore.getState().setActiveConversation(null);
 		set({
@@ -59,7 +59,7 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 			pendingConversation: null,
 		});
 	},
-	setProjectConversationsList: (project: ParsedProjectFile) => {
+	setProjectConversationsList: (project: ChatProject) => {
 		useProjectStore.getState().setActiveProject(null);
 		useProjectStore.getState().setActiveConversation(null);
 		set({
@@ -86,7 +86,7 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 			pendingConversation: null,
 		});
 	},
-	setConversation: (conversation: ParsedConversationFile) => {
+	setConversation: (conversation: ChatConversation) => {
 		useProjectStore.getState().setActiveConversation(conversation);
 		// Get project from projectStore based on conversation.meta.projectId
 		const project = conversation.meta.projectId

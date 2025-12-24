@@ -4,7 +4,7 @@ import { DocumentLoaderManager } from '@/core/document/loader/DocumentLoaderMana
 import type { SearchSettings } from '@/app/settings/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { IndexService } from '@/service/search/index/indexService';
-import { generateUuidWithoutHyphens } from '@/service/chat/utils';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 
 /**
  * Debounced update queue for incremental indexing.

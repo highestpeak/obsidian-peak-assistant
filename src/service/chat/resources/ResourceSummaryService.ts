@@ -3,7 +3,7 @@ import { buildFrontmatter, codeBlock } from '@/core/utils/markdown-utils';
 import { stringifyYaml } from 'obsidian';
 import type { ChatResourceRef, ResourceKind, ResourceSummaryMeta, ParsedResourceSummaryFile } from './types';
 import { parseFrontmatter } from '@/core/utils/markdown-utils';
-import { ensureFolder } from '../utils';
+import { ensureFolder } from '@/core/utils/vault-utils';
 
 /**
  * Service for managing resource summary notes.

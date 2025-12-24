@@ -91,6 +91,77 @@ export interface Database {
 		title: string | null;
 		content: string | null;
 	};
+	chat_project: {
+		project_id: string;
+		name: string;
+		folder_rel_path: string;
+		created_at_ts: number;
+		updated_at_ts: number;
+		archived_rel_path: string | null;
+		meta_json: string | null;
+	};
+	chat_conversation: {
+		conversation_id: string;
+		project_id: string | null;
+		title: string;
+		file_rel_path: string;
+		created_at_ts: number;
+		updated_at_ts: number;
+		active_model: string | null;
+		active_provider: string | null;
+		token_usage_total: number | null;
+		title_manually_edited: number;
+		archived_rel_path: string | null;
+		meta_json: string | null;
+	};
+	chat_message: {
+		message_id: string;
+		conversation_id: string;
+		role: string;
+		content_hash: string | null;
+		created_at_ts: number;
+		created_at_zone: string | null;
+		model: string | null;
+		provider: string | null;
+		starred: number;
+		is_error: number;
+		is_visible: number;
+		gen_time_ms: number | null;
+		token_usage_json: string | null;
+		thinking: string | null;
+	};
+	chat_message_resource: {
+		id: string;
+		message_id: string;
+		source: string;
+		kind: string | null;
+		summary_note_rel_path: string | null;
+		meta_json: string | null;
+	};
+	chat_star: {
+		/**
+		 * The source message id (stable key).
+		 */
+		source_message_id: string;
+		/**
+		 * Separate id for UI/reference needs.
+		 */
+		id: string;
+		conversation_id: string;
+		project_id: string | null;
+		created_at_ts: number;
+		active: number;
+	};
+	chat_summary: {
+		id: string;
+		scope: string;
+		scope_id: string;
+		short_summary: string | null;
+		full_summary: string | null;
+		topics_json: string | null;
+		resource_index_json: string | null;
+		last_updated_ts: number;
+	};
 }
 
 
@@ -267,6 +338,86 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE VIRTUAL TABLE IF NOT EXISTS vec_embeddings USING vec0(
 			embedding float[1536]
 		);
+	`);
+
+	// Chat storage tables (metadata-only, markdown files store plain text)
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS chat_project (
+			project_id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			folder_rel_path TEXT NOT NULL UNIQUE,
+			created_at_ts INTEGER NOT NULL,
+			updated_at_ts INTEGER NOT NULL,
+			archived_rel_path TEXT,
+			meta_json TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_chat_project_folder_path ON chat_project(folder_rel_path);
+		CREATE INDEX IF NOT EXISTS idx_chat_project_updated_at ON chat_project(updated_at_ts);
+		CREATE TABLE IF NOT EXISTS chat_conversation (
+			conversation_id TEXT PRIMARY KEY,
+			project_id TEXT,
+			title TEXT NOT NULL,
+			file_rel_path TEXT NOT NULL UNIQUE,
+			created_at_ts INTEGER NOT NULL,
+			updated_at_ts INTEGER NOT NULL,
+			active_model TEXT,
+			active_provider TEXT,
+			token_usage_total INTEGER,
+			title_manually_edited INTEGER NOT NULL DEFAULT 0,
+			archived_rel_path TEXT,
+			meta_json TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_chat_conversation_project_id ON chat_conversation(project_id);
+		CREATE INDEX IF NOT EXISTS idx_chat_conversation_file_path ON chat_conversation(file_rel_path);
+		CREATE INDEX IF NOT EXISTS idx_chat_conversation_updated_at ON chat_conversation(updated_at_ts);
+		CREATE TABLE IF NOT EXISTS chat_message (
+			message_id TEXT PRIMARY KEY,
+			conversation_id TEXT NOT NULL,
+			role TEXT NOT NULL,
+			content_hash TEXT,
+			created_at_ts INTEGER NOT NULL,
+			created_at_zone TEXT,
+			model TEXT,
+			provider TEXT,
+			starred INTEGER NOT NULL DEFAULT 0,
+			is_error INTEGER NOT NULL DEFAULT 0,
+			is_visible INTEGER NOT NULL DEFAULT 1,
+			gen_time_ms INTEGER,
+			token_usage_json TEXT,
+			thinking TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_chat_message_conversation_id ON chat_message(conversation_id);
+		CREATE INDEX IF NOT EXISTS idx_chat_message_created_at ON chat_message(created_at_ts);
+		CREATE TABLE IF NOT EXISTS chat_message_resource (
+			id TEXT PRIMARY KEY,
+			message_id TEXT NOT NULL,
+			source TEXT NOT NULL,
+			kind TEXT,
+			summary_note_rel_path TEXT,
+			meta_json TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_chat_message_resource_message_id ON chat_message_resource(message_id);
+		CREATE TABLE IF NOT EXISTS chat_star (
+			source_message_id TEXT PRIMARY KEY,
+			id TEXT NOT NULL,
+			conversation_id TEXT NOT NULL,
+			project_id TEXT,
+			created_at_ts INTEGER NOT NULL,
+			active INTEGER NOT NULL DEFAULT 1
+		);
+		CREATE INDEX IF NOT EXISTS idx_chat_star_active ON chat_star(active);
+		CREATE INDEX IF NOT EXISTS idx_chat_star_conversation_id ON chat_star(conversation_id);
+		CREATE TABLE IF NOT EXISTS chat_summary (
+			id TEXT PRIMARY KEY,
+			scope TEXT NOT NULL,
+			scope_id TEXT NOT NULL,
+			short_summary TEXT,
+			full_summary TEXT,
+			topics_json TEXT,
+			resource_index_json TEXT,
+			last_updated_ts INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_chat_summary_scope ON chat_summary(scope, scope_id);
 	`);
 }
 

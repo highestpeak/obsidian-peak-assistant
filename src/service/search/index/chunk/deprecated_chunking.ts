@@ -18,7 +18,7 @@ import type { DocumentChunkingOptions } from '../types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import type { Chunk } from '../types';
 import { DEFAULT_CHUNKING_SETTINGS } from '@/app/settings/types';
-import { generateUuidWithoutHyphens } from '@/service/chat/utils';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 
 /**
  * Default separators in order of preference (most specific first).

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ParsedProjectFile } from '@/service/chat/types';
+import { ChatProject } from '@/service/chat/types';
 import { cn } from '@/ui/react/lib/utils';
 import { Folder } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 
 interface AllProjectsViewProps {
-	onProjectClick: (project: ParsedProjectFile) => void;
+	onProjectClick: (project: ChatProject) => void;
 }
 
 const PROJECTS_PAGE_SIZE = 20;
@@ -17,7 +17,7 @@ export const AllProjectsViewComponent: React.FC<AllProjectsViewProps> = ({
 	onProjectClick,
 }) => {
 	const { manager } = useServiceContext();
-	const [projects, setProjects] = useState<ParsedProjectFile[]>([]);
+	const [projects, setProjects] = useState<ChatProject[]>([]);
 	const [projectsPage, setProjectsPage] = useState(0);
 	const [loading, setLoading] = useState(true);
 

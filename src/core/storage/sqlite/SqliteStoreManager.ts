@@ -12,6 +12,12 @@ import { DocStatisticsRepo } from './repositories/DocStatisticsRepo';
 import { GraphNodeRepo } from './repositories/GraphNodeRepo';
 import { GraphEdgeRepo } from './repositories/GraphEdgeRepo';
 import { GraphStore } from '../graph/GraphStore';
+import { ChatProjectRepo } from './repositories/ChatProjectRepo';
+import { ChatConversationRepo } from './repositories/ChatConversationRepo';
+import { ChatMessageRepo } from './repositories/ChatMessageRepo';
+import { ChatMessageResourceRepo } from './repositories/ChatMessageResourceRepo';
+import { ChatSummaryRepo } from './repositories/ChatSummaryRepo';
+import { ChatStarRepo } from './repositories/ChatStarRepo';
 
 /**
  * Global singleton manager for SQLite database connection.
@@ -33,6 +39,12 @@ class SqliteStoreManager {
 	private graphNodeRepo: GraphNodeRepo | null = null;
 	private graphEdgeRepo: GraphEdgeRepo | null = null;
 	private graphStore: GraphStore | null = null;
+	private chatProjectRepo: ChatProjectRepo | null = null;
+	private chatConversationRepo: ChatConversationRepo | null = null;
+	private chatMessageRepo: ChatMessageRepo | null = null;
+	private chatMessageResourceRepo: ChatMessageResourceRepo | null = null;
+	private chatSummaryRepo: ChatSummaryRepo | null = null;
+	private chatStarRepo: ChatStarRepo | null = null;
 
 	/**
 	 * Initialize the database connection.
@@ -83,6 +95,13 @@ class SqliteStoreManager {
 		this.graphEdgeRepo = new GraphEdgeRepo(kdb);
 		// Initialize GraphStore
 		this.graphStore = new GraphStore(this.graphNodeRepo, this.graphEdgeRepo);
+		// Initialize chat repositories
+		this.chatProjectRepo = new ChatProjectRepo(kdb);
+		this.chatConversationRepo = new ChatConversationRepo(kdb);
+		this.chatMessageRepo = new ChatMessageRepo(kdb);
+		this.chatMessageResourceRepo = new ChatMessageResourceRepo(kdb);
+		this.chatSummaryRepo = new ChatSummaryRepo(kdb);
+		this.chatStarRepo = new ChatStarRepo(kdb);
 	}
 
 	/**
@@ -195,6 +214,66 @@ class SqliteStoreManager {
 	}
 
 	/**
+	 * Get ChatProjectRepo instance.
+	 */
+	getChatProjectRepo(): ChatProjectRepo {
+		if (!this.chatProjectRepo) {
+			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		}
+		return this.chatProjectRepo;
+	}
+
+	/**
+	 * Get ChatConversationRepo instance.
+	 */
+	getChatConversationRepo(): ChatConversationRepo {
+		if (!this.chatConversationRepo) {
+			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		}
+		return this.chatConversationRepo;
+	}
+
+	/**
+	 * Get ChatMessageRepo instance.
+	 */
+	getChatMessageRepo(): ChatMessageRepo {
+		if (!this.chatMessageRepo) {
+			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		}
+		return this.chatMessageRepo;
+	}
+
+	/**
+	 * Get ChatMessageResourceRepo instance.
+	 */
+	getChatMessageResourceRepo(): ChatMessageResourceRepo {
+		if (!this.chatMessageResourceRepo) {
+			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		}
+		return this.chatMessageResourceRepo;
+	}
+
+	/**
+	 * Get ChatSummaryRepo instance.
+	 */
+	getChatSummaryRepo(): ChatSummaryRepo {
+		if (!this.chatSummaryRepo) {
+			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		}
+		return this.chatSummaryRepo;
+	}
+
+	/**
+	 * Get ChatStarRepo instance.
+	 */
+	getChatStarRepo(): ChatStarRepo {
+		if (!this.chatStarRepo) {
+			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		}
+		return this.chatStarRepo;
+	}
+
+	/**
 	 * Close the database connection.
 	 */
 	close(): void {
@@ -212,6 +291,12 @@ class SqliteStoreManager {
 		this.graphNodeRepo = null;
 		this.graphEdgeRepo = null;
 		this.graphStore = null;
+		this.chatProjectRepo = null;
+		this.chatConversationRepo = null;
+		this.chatMessageRepo = null;
+		this.chatMessageResourceRepo = null;
+		this.chatSummaryRepo = null;
+		this.chatStarRepo = null;
 	}
 }
 

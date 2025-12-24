@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import { ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
+import { ChatConversation, ChatProject } from '@/service/chat/types';
 
 /**
  * Custom events for view communication
@@ -46,9 +46,9 @@ export class SelectionChangedEvent extends ViewEvent {
  * Conversation updated event
  */
 export class ConversationUpdatedEvent extends ViewEvent {
-	conversation: ParsedConversationFile;
+	conversation: ChatConversation;
 
-	constructor(data: { conversation: ParsedConversationFile }) {
+	constructor(data: { conversation: ChatConversation }) {
 		super(ViewEventType.CONVERSATION_UPDATED);
 		this.conversation = data.conversation;
 	}
@@ -58,9 +58,9 @@ export class ConversationUpdatedEvent extends ViewEvent {
  * Project updated event
  */
 export class ProjectUpdatedEvent extends ViewEvent {
-	project: ParsedProjectFile;
+	project: ChatProject;
 
-	constructor(data: { project: ParsedProjectFile }) {
+	constructor(data: { project: ChatProject }) {
 		super(ViewEventType.PROJECT_UPDATED);
 		this.project = data.project;
 	}

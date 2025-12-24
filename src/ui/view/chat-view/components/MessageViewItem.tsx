@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { Menu, TFile } from 'obsidian';
-import { ChatMessage, ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
+import { ChatMessage, ChatConversation, ChatProject } from '@/service/chat/types';
 import { getFileTypeFromPath, getAttachmentStats } from '@/ui/view/shared/file-utils';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -43,8 +43,8 @@ const CopyButton: React.FC<{ onCopy: () => Promise<void> }> = ({ onCopy }) => {
 
 interface MessageItemProps {
 	message: ChatMessage;
-	activeConversation: ParsedConversationFile | null;
-	activeProject: ParsedProjectFile | null;
+	activeConversation: ChatConversation | null;
+	activeProject: ChatProject | null;
 	isStreaming?: boolean;
 	streamingContent?: string;
 	onScrollToBottom?: () => void;

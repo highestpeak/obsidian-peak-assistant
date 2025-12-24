@@ -3,8 +3,8 @@ import { ModelInfoForSwitch } from '@/core/providers/types';
 import { LLMApplicationService } from './service-application';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { PromptApplicationService } from './service-application';
-import { ChatStorageService } from './storage';
-import { ChatContextWindow, ChatMessage, ChatProjectMeta, ParsedConversationFile, ParsedProjectFile, StarredMessageRecord } from './types';
+import { ChatStorageService } from '../../core/storage/vault/ChatStore';
+import { ChatContextWindow, ChatMessage, ChatProjectMeta, ChatConversation, ChatProject, StarredMessageRecord } from './types';
 import { PromptService } from './service-prompt';
 import { MessageContentComposer } from './messages/utils-message-content';
 import { ProjectService } from './service-project';
@@ -12,7 +12,6 @@ import { ConversationService } from './service-conversation';
 import { AIStreamEvent } from '@/core/providers/types-events';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { ResourceSummaryService } from './resources/ResourceSummaryService';
-import { ChatMigrationService } from './migration';
 import { IndexService } from '@/service/search/index/indexService';
 
 /**
@@ -27,7 +26,6 @@ export class AIServiceManager {
 	private projectService: ProjectService;
 	private conversationService: ConversationService;
 	private resourceSummaryService: ResourceSummaryService;
-	private migrationService: ChatMigrationService;
 
 	constructor(
 		private readonly app: App,
@@ -41,7 +39,6 @@ export class AIServiceManager {
 		// Storage service for chat data
 		this.storage = new ChatStorageService(this.app, {
 			rootFolder: this.settings.rootFolder,
-			starredCsvPath: `${this.settings.rootFolder}/Starred.csv`,
 		});
 
 		// Message content composer utility
@@ -59,13 +56,6 @@ export class AIServiceManager {
 		this.promptService = new PromptService(this.app, {
 			promptFolder: this.settings.promptFolder,
 		});
-
-		// === Migration service ===
-		this.migrationService = new ChatMigrationService(
-			this.app,
-			this.storage,
-			this.resourceSummaryService
-		);
 
 		// === Project- and conversation-level services ===
 		this.projectService = new ProjectService(
@@ -93,18 +83,19 @@ export class AIServiceManager {
 		await this.promptService.init();
 		await this.resourceSummaryService.init();
 		
-		// Run migration
-		try {
-			const migrationResult = await this.migrationService.migrateAll();
-			if (migrationResult.conversationsMigrated > 0 || migrationResult.projectsMigrated > 0) {
-				console.log(`[AIServiceManager] Migration completed: ${migrationResult.conversationsMigrated} conversations, ${migrationResult.projectsMigrated} projects, ${migrationResult.resourcesCreated} resources created`);
-				if (migrationResult.errors.length > 0) {
-					console.warn(`[AIServiceManager] Migration had ${migrationResult.errors.length} errors`);
-				}
-			}
-		} catch (error) {
-			console.error('[AIServiceManager] Migration failed:', error);
-		}
+		// Migration is deprecated - new format uses sqlite-only metadata
+		// Old data should be manually processed if needed
+		// try {
+		// 	const migrationResult = await this.migrationService.migrateAll();
+		// 	if (migrationResult.conversationsMigrated > 0 || migrationResult.projectsMigrated > 0) {
+		// 		console.log(`[AIServiceManager] Migration completed: ${migrationResult.conversationsMigrated} conversations, ${migrationResult.projectsMigrated} projects, ${migrationResult.resourcesCreated} resources created`);
+		// 		if (migrationResult.errors.length > 0) {
+		// 			console.warn(`[AIServiceManager] Migration had ${migrationResult.errors.length} errors`);
+		// 		}
+		// 	}
+		// } catch (error) {
+		// 	console.error('[AIServiceManager] Migration failed:', error);
+		// }
 	}
 
 	/**
@@ -128,7 +119,6 @@ export class AIServiceManager {
 		this.settings = { ...DEFAULT_AI_SERVICE_SETTINGS, ...next };
 		this.storage = new ChatStorageService(this.app, {
 			rootFolder: this.settings.rootFolder,
-			starredCsvPath: `${this.settings.rootFolder}/Starred.csv`,
 		});
 		this.promptService.setPromptFolder(this.settings.promptFolder);
 		this.refreshDefaultServices();
@@ -163,28 +153,28 @@ export class AIServiceManager {
 	/**
 	 * Create a new project on disk.
 	 */
-	async createProject(input: Omit<ChatProjectMeta, 'id' | 'createdAtTimestamp' | 'updatedAtTimestamp'>): Promise<ParsedProjectFile> {
+	async createProject(input: Omit<ChatProjectMeta, 'id' | 'createdAtTimestamp' | 'updatedAtTimestamp'>): Promise<ChatProject> {
 		return this.projectService.createProject(input);
 	}
 
 	/**
 	 * List projects managed by the service.
 	 */
-	async listProjects(): Promise<ParsedProjectFile[]> {
+	async listProjects(): Promise<ChatProject[]> {
 		return this.projectService.listProjects();
 	}
 
 	/**
 	 * List conversations, optionally filtered by project.
 	 */
-	async listConversations(project?: ChatProjectMeta): Promise<ParsedConversationFile[]> {
+	async listConversations(project?: ChatProjectMeta): Promise<ChatConversation[]> {
 		return this.conversationService.listConversations(project);
 	}
 
 	/**
 	 * Create a new conversation with optional seed messages.
 	 */
-	async createConversation(params: { title: string; project?: ChatProjectMeta | null; initialMessages?: ChatMessage[] }): Promise<ParsedConversationFile> {
+	async createConversation(params: { title: string; project?: ChatProjectMeta | null; initialMessages?: ChatMessage[] }): Promise<ChatConversation> {
 		return this.conversationService.createConversation(params);
 	}
 
@@ -192,12 +182,12 @@ export class AIServiceManager {
 	 * Send a message and wait for the full model response (blocking).
 	 */
 	async blockChat(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		userContent: string;
 		attachments?: string[];
 		autoSave?: boolean;
-	}): Promise<{ conversation: ParsedConversationFile; message: ChatMessage }> {
+	}): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
 		return this.conversationService.blockChat(params);
 	}
 
@@ -205,10 +195,10 @@ export class AIServiceManager {
 	 * Send a message and wait for the full model response (blocking) with auto-save.
 	 */
 	async blockChatWithSave(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		userContent: string;
-	}): Promise<{ conversation: ParsedConversationFile; message: ChatMessage }> {
+	}): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
 		return this.conversationService.blockChat({ ...params, autoSave: true });
 	}
 
@@ -216,10 +206,10 @@ export class AIServiceManager {
 	 * Send a message and wait for the full model response (blocking) without auto-save.
 	 */
 	async blockChatWithoutSave(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		userContent: string;
-	}): Promise<{ conversation: ParsedConversationFile; message: ChatMessage }> {
+	}): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
 		return this.conversationService.blockChat({ ...params, autoSave: false });
 	}
 
@@ -227,8 +217,8 @@ export class AIServiceManager {
 	 * Send a message and stream incremental model output.
 	 */
 	streamChat(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		userContent: string;
 		autoSave?: boolean;
 	}): AsyncGenerator<AIStreamEvent> {
@@ -239,8 +229,8 @@ export class AIServiceManager {
 	 * Send a message and stream incremental model output with auto-save.
 	 */
 	streamChatWithSave(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		userContent: string;
 	}): AsyncGenerator<AIStreamEvent> {
 		return this.conversationService.streamChat({ ...params, autoSave: true });
@@ -250,8 +240,8 @@ export class AIServiceManager {
 	 * Send a message and stream incremental model output without auto-save.
 	 */
 	streamChatWithoutSave(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		userContent: string;
 	}): AsyncGenerator<AIStreamEvent> {
 		return this.conversationService.streamChat({ ...params, autoSave: false });
@@ -261,11 +251,11 @@ export class AIServiceManager {
 	 * Update full message list of a conversation.
 	 */
 	async updateConversationMessages(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		messages: ChatMessage[];
 		context?: ChatContextWindow;
-	}): Promise<ParsedConversationFile> {
+	}): Promise<ChatConversation> {
 		return this.conversationService.updateConversationMessages(params);
 	}
 
@@ -273,11 +263,11 @@ export class AIServiceManager {
 	 * Update conversation's active model.
 	 */
 	async updateConversationModel(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		modelId: string;
 		provider?: string;
-	}): Promise<ParsedConversationFile> {
+	}): Promise<ChatConversation> {
 		return this.conversationService.updateConversationModel(params);
 	}
 
@@ -285,10 +275,10 @@ export class AIServiceManager {
 	 * Update conversation title and mark it as manually edited.
 	 */
 	async updateConversationTitle(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		title: string;
-	}): Promise<ParsedConversationFile> {
+	}): Promise<ChatConversation> {
 		return this.conversationService.updateConversationTitle(params);
 	}
 
@@ -297,10 +287,10 @@ export class AIServiceManager {
 	 */
 	async toggleStar(params: {
 		messageId: string;
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		starred: boolean;
-	}): Promise<ParsedConversationFile> {
+	}): Promise<ChatConversation> {
 		return this.conversationService.toggleStar(params);
 	}
 
@@ -321,14 +311,14 @@ export class AIServiceManager {
 	/**
 	 * Summarize a project by aggregating summaries from all conversations in the project.
 	 */
-	async summarizeProject(project: ParsedProjectFile, modelId: string): Promise<string> {
+	async summarizeProject(project: ChatProject, modelId: string): Promise<string> {
 		return this.projectService.summarizeProject(project, modelId);
 	}
 
 	/**
 	 * Rename a project by renaming its folder.
 	 */
-	async renameProject(project: ParsedProjectFile, newName: string): Promise<ParsedProjectFile> {
+	async renameProject(project: ChatProject, newName: string): Promise<ChatProject> {
 		return this.projectService.renameProject(project, newName);
 	}
 

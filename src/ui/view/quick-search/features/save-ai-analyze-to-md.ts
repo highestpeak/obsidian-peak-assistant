@@ -1,5 +1,6 @@
 import type { App } from 'obsidian';
 import type { AiAnalyzeResult, SearchResultItem } from '@/service/search/types';
+import { ensureFolder } from '@/core/utils/vault-utils';
 
 /**
  * Save AI analysis result to a markdown file in the vault.
@@ -38,18 +39,6 @@ export async function saveAiAnalyzeResultToMarkdown(app: App, params: {
 	}
 	await app.vault.create(finalPath, content);
 	return { path: finalPath };
-}
-
-async function ensureFolder(app: App, folderPath: string): Promise<void> {
-	const parts = folderPath.split('/').filter(Boolean);
-	let current = '';
-	for (const part of parts) {
-		current = current ? `${current}/${part}` : part;
-		const existing = app.vault.getAbstractFileByPath(current);
-		if (!existing) {
-			await app.vault.createFolder(current);
-		}
-	}
 }
 
 function sanitizeFileName(name: string): string {

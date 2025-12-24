@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
+import { ChatConversation, ChatProject } from '@/service/chat/types';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { useChatViewStore } from '../chat-view/store/chatViewStore';
@@ -19,9 +19,9 @@ const MAX_PROJECTS_DISPLAY = 10;
 const MAX_CONVERSATIONS_DISPLAY = 10;
 
 interface ProjectItemProps {
-	project: ParsedProjectFile;
+	project: ChatProject;
 	isExpanded: boolean;
-	conversations: ParsedConversationFile[];
+	conversations: ChatConversation[];
 }
 
 const ProjectItem: React.FC<ProjectItemProps> = ({
@@ -57,7 +57,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	} | null>(null);
 
 	// Check if conversation is active
-	const isConversationActive = useCallback((conversation: ParsedConversationFile): boolean => {
+	const isConversationActive = useCallback((conversation: ChatConversation): boolean => {
 		return activeConversation?.meta.id === conversation.meta.id;
 	}, [activeConversation]);
 
@@ -68,7 +68,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		setProjectOverview(project);
 	};
 
-	const handleConversationClick = async (conversation: ParsedConversationFile) => {
+	const handleConversationClick = async (conversation: ChatConversation) => {
 		// Don't set state here, let notifySelectionChange handle it
 		// This ensures the state is set correctly and consistently
 		await notifySelectionChange(app, conversation);
@@ -83,7 +83,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		await notifySelectionChange(app, null);
 	};
 
-	const handleEditProjectName = useCallback((projectItem: ParsedProjectFile) => {
+	const handleEditProjectName = useCallback((projectItem: ChatProject) => {
 		setInputModalConfig({
 			message: 'Enter project name',
 			initialValue: projectItem.meta.name,
@@ -109,8 +109,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	}, [manager, updateProject, activeProject, setActiveProject]);
 
 	const handleEditConversationTitle = useCallback((
-		projectItem: ParsedProjectFile | null,
-		conversation: ParsedConversationFile
+		projectItem: ChatProject | null,
+		conversation: ChatConversation
 	) => {
 		setInputModalConfig({
 			message: 'Enter conversation title',
@@ -141,7 +141,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	}, [manager, updateConversation, isConversationActive, setActiveConversation]);
 
 	// Menu item configurations
-	const projectMenuItems = useCallback((projectItem: ParsedProjectFile) => [
+	const projectMenuItems = useCallback((projectItem: ChatProject) => [
 		{
 			title: 'Rename project',
 			icon: 'pencil',
@@ -156,7 +156,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		},
 	], [app, handleEditProjectName]);
 
-	const conversationMenuItems = useCallback((conversation: ParsedConversationFile) => {
+	const conversationMenuItems = useCallback((conversation: ChatConversation) => {
 		const projectItem = conversation.meta.projectId ? projects.get(conversation.meta.projectId) || null : null;
 		return [
 			{
@@ -177,11 +177,11 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	const handleContextMenu = (
 		e: React.MouseEvent,
 		type: 'project' | 'conversation',
-		item: ParsedProjectFile | ParsedConversationFile
+		item: ChatProject | ChatConversation
 	) => {
 		const menuItems = type === 'project'
-			? projectMenuItems(item as ParsedProjectFile)
-			: conversationMenuItems(item as ParsedConversationFile);
+			? projectMenuItems(item as ChatProject)
+			: conversationMenuItems(item as ChatConversation);
 		showContextMenu(e, menuItems);
 	};
 
@@ -311,7 +311,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 	const { setAllProjects } = useChatViewStore();
 
 	const [projectConversations, setProjectConversations] = useState<
-		Map<string, ParsedConversationFile[]>
+		Map<string, ChatConversation[]>
 	>(new Map());
 	const [inputModalOpen, setInputModalOpen] = useState(false);
 	const [inputModalConfig, setInputModalConfig] = useState<{
@@ -324,7 +324,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 
 	// Load conversations for a project
 	const loadProjectConversations = useCallback(
-		async (project: ParsedProjectFile) => {
+		async (project: ChatProject) => {
 			const conversations = await manager.listConversations(project.meta);
 			conversations.sort((a, b) => {
 				const timeA = a.meta.createdAtTimestamp || 0;

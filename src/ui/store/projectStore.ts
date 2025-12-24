@@ -1,27 +1,27 @@
 import { create } from 'zustand';
-import { ParsedConversationFile, ParsedProjectFile } from '@/service/chat/types';
+import { ChatConversation, ChatProject } from '@/service/chat/types';
 
 interface ProjectStore {
 	// State
-	projects: Map<string, ParsedProjectFile>;
-	conversations: Map<string, ParsedConversationFile>;
+	projects: Map<string, ChatProject>;
+	conversations: Map<string, ChatConversation>;
 	expandedProjects: Set<string>;
-	activeProject: ParsedProjectFile | null;
-	activeConversation: ParsedConversationFile | null;
+	activeProject: ChatProject | null;
+	activeConversation: ChatConversation | null;
 	isProjectsCollapsed: boolean;
 	isConversationsCollapsed: boolean;
 
 	// Actions
-	setProjects: (projects: ParsedProjectFile[]) => void;
-	setConversations: (conversations: ParsedConversationFile[]) => void;
+	setProjects: (projects: ChatProject[]) => void;
+	setConversations: (conversations: ChatConversation[]) => void;
 	toggleProjectExpanded: (projectId: string) => void;
-	setActiveProject: (project: ParsedProjectFile | string | null) => void;
-	setActiveConversation: (conversation: ParsedConversationFile | string | null) => void;
+	setActiveProject: (project: ChatProject | string | null) => void;
+	setActiveConversation: (conversation: ChatConversation | string | null) => void;
 	toggleProjectsCollapsed: () => void;
 	toggleConversationsCollapsed: () => void;
 	clearExpandedProjects: () => void;
-	updateProject: (project: ParsedProjectFile) => void;
-	updateConversation: (conversation: ParsedConversationFile) => void;
+	updateProject: (project: ChatProject) => void;
+	updateConversation: (conversation: ChatConversation) => void;
 }
 
 export const useProjectStore = create<ProjectStore>((set: any) => ({
@@ -37,11 +37,11 @@ export const useProjectStore = create<ProjectStore>((set: any) => ({
 	isConversationsCollapsed: false,
 
 	// Actions
-	setProjects: (projects: ParsedProjectFile[]) =>
+	setProjects: (projects: ChatProject[]) =>
 		set({
 			projects: new Map(projects.map(p => [p.meta.id, p]))
 		}),
-	setConversations: (conversations: ParsedConversationFile[]) =>
+	setConversations: (conversations: ChatConversation[]) =>
 		set({
 			conversations: new Map(conversations.map(c => [c.meta.id, c]))
 		}),
@@ -55,7 +55,7 @@ export const useProjectStore = create<ProjectStore>((set: any) => ({
 			}
 			return { expandedProjects: newExpanded };
 		}),
-	setActiveProject: (project: ParsedProjectFile | string | null) =>
+	setActiveProject: (project: ChatProject | string | null) =>
 		set((state: ProjectStore) => {
 			if (project === null) {
 				return { activeProject: null };
@@ -65,7 +65,7 @@ export const useProjectStore = create<ProjectStore>((set: any) => ({
 			}
 			return { activeProject: project };
 		}),
-	setActiveConversation: (conversation: ParsedConversationFile | string | null) =>
+	setActiveConversation: (conversation: ChatConversation | string | null) =>
 		set((state: ProjectStore) => {
 			if (conversation === null) {
 				return { activeConversation: null };
@@ -80,13 +80,13 @@ export const useProjectStore = create<ProjectStore>((set: any) => ({
 	toggleConversationsCollapsed: () =>
 		set((state: ProjectStore) => ({ isConversationsCollapsed: !state.isConversationsCollapsed })),
 	clearExpandedProjects: () => set({ expandedProjects: new Set() }),
-	updateProject: (project: ParsedProjectFile) =>
+	updateProject: (project: ChatProject) =>
 		set((state: ProjectStore) => {
 			const newProjects = new Map(state.projects);
 			newProjects.set(project.meta.id, project);
 			return { projects: newProjects };
 		}),
-	updateConversation: (conversation: ParsedConversationFile) =>
+	updateConversation: (conversation: ChatConversation) =>
 		set((state: ProjectStore) => {
 			const newConversations = new Map(state.conversations);
 			newConversations.set(conversation.meta.id, conversation);

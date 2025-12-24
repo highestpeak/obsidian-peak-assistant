@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ParsedConversationFile } from '@/service/chat/types';
+import { ChatConversation } from '@/service/chat/types';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { useChatViewStore } from '../chat-view/store/chatViewStore';
@@ -29,7 +29,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 	} = useProjectStore();
 	const { setPendingConversation } = useChatViewStore();
 
-	const isConversationActive = useCallback((conversation: ParsedConversationFile): boolean => {
+	const isConversationActive = useCallback((conversation: ChatConversation): boolean => {
 		return activeConversation?.meta.id === conversation.meta.id;
 	}, [activeConversation]);
 
@@ -50,12 +50,12 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 		await notifySelectionChange(app);
 	};
 
-	const handleConversationClick = async (conversation: ParsedConversationFile) => {
+	const handleConversationClick = async (conversation: ChatConversation) => {
 		setActiveConversation(conversation);
 		await notifySelectionChange(app, conversation);
 	};
 
-	const handleEditConversationTitle = useCallback((conversation: ParsedConversationFile) => {
+	const handleEditConversationTitle = useCallback((conversation: ChatConversation) => {
 		setInputModalConfig({
 			message: 'Enter conversation title',
 			initialValue: conversation.meta.title,
@@ -85,7 +85,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 	}, [manager, updateConversation, setActiveConversation, isConversationActive]);
 
 	// Menu item configurations
-	const conversationMenuItems = useCallback((conversation: ParsedConversationFile) => [
+	const conversationMenuItems = useCallback((conversation: ChatConversation) => [
 		{
 			title: 'Edit title',
 			icon: 'pencil',
@@ -100,7 +100,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 		},
 	], [app, handleEditConversationTitle]);
 
-	const handleContextMenu = (e: React.MouseEvent, conversation: ParsedConversationFile) => {
+	const handleContextMenu = (e: React.MouseEvent, conversation: ChatConversation) => {
 		const menuItems = conversationMenuItems(conversation);
 		showContextMenu(e, menuItems);
 	};

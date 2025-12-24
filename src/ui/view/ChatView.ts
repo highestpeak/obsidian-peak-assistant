@@ -1,6 +1,6 @@
 import { IconName, ItemView, TFolder, WorkspaceLeaf } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';
-import { ParsedProjectFile } from '@/service/chat/types';
+import { ChatProject } from '@/service/chat/types';
 import { EventBus, SelectionChangedEvent, ViewEventType } from '@/core/eventBus';
 import { useChatViewStore } from './chat-view/store/chatViewStore';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
@@ -45,7 +45,7 @@ export class ChatView extends ItemView {
 			this.eventBus.on<SelectionChangedEvent>(ViewEventType.SELECTION_CHANGED, async (event) => {
 				if (event.conversationId) {
 					// Load conversation and project from IDs
-					let project: ParsedProjectFile | null = null;
+					let project: ChatProject | null = null;
 					if (event.projectId) {
 						const projects = await this.aiServiceManager.listProjects();
 						project = projects.find(p => p.meta.id === event.projectId) ?? null;

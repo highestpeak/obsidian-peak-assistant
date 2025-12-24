@@ -1,5 +1,5 @@
 import type { LLMRequestMessage } from '@/core/providers/types';
-import type { ParsedConversationFile, ParsedProjectFile, ChatMessage } from '../types';
+import type { ChatConversation, ChatProject, ChatMessage } from '../types';
 import type { PromptService } from '../service-prompt';
 import type { ResourceSummaryService } from '../resources/ResourceSummaryService';
 import { PromptTemplate } from '../service-prompt';
@@ -39,8 +39,8 @@ export class ContextBuilder {
 	 * Build LLM request messages with full context
 	 */
 	async buildContextMessages(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 		messages: ChatMessage[];
 		options?: ContextBuilderOptions;
 	}): Promise<LLMRequestMessage[]> {
@@ -98,8 +98,8 @@ export class ContextBuilder {
 	 */
 	private async buildContextMemoryMessage(
 		params: {
-			conversation: ParsedConversationFile;
-			project?: ParsedProjectFile | null;
+			conversation: ChatConversation;
+			project?: ChatProject | null;
 		},
 		options: Required<ContextBuilderOptions>
 	): Promise<LLMRequestMessage | null> {
@@ -164,8 +164,8 @@ export class ContextBuilder {
 	 * Build resource summaries section for resources in current conversation/messages
 	 */
 	private async buildResourceSummariesSection(params: {
-		conversation: ParsedConversationFile;
-		project?: ParsedProjectFile | null;
+		conversation: ChatConversation;
+		project?: ChatProject | null;
 	}): Promise<string | null> {
 		const resourceIds = new Set<string>();
 

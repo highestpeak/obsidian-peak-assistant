@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ParsedConversationFile, ParsedProjectFile, ChatMessage } from '@/service/chat/types';
+import { ChatConversation, ChatProject, ChatMessage } from '@/service/chat/types';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { formatRelativeDate } from '@/ui/view/shared/date-utils';
 import { cn } from '@/ui/react/lib/utils';
@@ -8,19 +8,19 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 
 interface ProjectOverviewViewProps {
 	projectId: string;
-	onConversationClick: (conversation: ParsedConversationFile, project: ParsedProjectFile) => void;
-	onMessageClick: (conversation: ParsedConversationFile, project: ParsedProjectFile, messageId: string) => void;
+	onConversationClick: (conversation: ChatConversation, project: ChatProject) => void;
+	onMessageClick: (conversation: ChatConversation, project: ChatProject, messageId: string) => void;
 }
 
 type TabType = 'conversations' | 'starred' | 'resources';
 
 interface StarredEntry {
-	conversation: ParsedConversationFile;
+	conversation: ChatConversation;
 	message: ChatMessage;
 }
 
 interface ResourceAttachmentEntry {
-	conversation: ParsedConversationFile;
+	conversation: ChatConversation;
 	message: ChatMessage;
 	attachment: string;
 	attachmentLabel: string;
@@ -38,7 +38,7 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 	const projects = useProjectStore((state) => state.projects);
 	const project = projectId ? projects.get(projectId) || null : null;
 	
-	const [conversations, setConversations] = useState<ParsedConversationFile[]>([]);
+	const [conversations, setConversations] = useState<ChatConversation[]>([]);
 	const [activeTab, setActiveTab] = useState<TabType>('conversations');
 	const [summaryExpanded, setSummaryExpanded] = useState(false);
 
@@ -211,8 +211,8 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 };
 
 interface ConversationsTabProps {
-	conversations: ParsedConversationFile[];
-	onConversationClick: (conversation: ParsedConversationFile) => void;
+	conversations: ChatConversation[];
+	onConversationClick: (conversation: ChatConversation) => void;
 }
 
 const ConversationsTab: React.FC<ConversationsTabProps> = ({ conversations, onConversationClick }) => {
@@ -261,8 +261,8 @@ const ConversationsTab: React.FC<ConversationsTabProps> = ({ conversations, onCo
 
 interface StarredTabProps {
 	entries: StarredEntry[];
-	project: ParsedProjectFile;
-	onClick: (conversation: ParsedConversationFile, messageId: string) => void;
+	project: ChatProject;
+	onClick: (conversation: ChatConversation, messageId: string) => void;
 }
 
 const StarredTab: React.FC<StarredTabProps> = ({ entries, onClick }) => {
@@ -338,7 +338,7 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources, onAttachmentClic
 	);
 };
 
-function getProjectSummaryText(project: ParsedProjectFile): string | undefined {
+function getProjectSummaryText(project: ChatProject): string | undefined {
 	const candidate = project.shortSummary ?? project.context?.summary;
 	const trimmed = candidate?.trim();
 	return trimmed || undefined;

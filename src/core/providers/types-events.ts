@@ -1,4 +1,4 @@
-import { ChatMessage, ParsedConversationFile } from '../../service/chat/types';
+import { ChatMessage, ChatConversation } from '../../service/chat/types';
 import { LLMUsage } from '../providers/types';
 
 /**
@@ -16,7 +16,7 @@ export type AIStreamEvent =
 			type: 'complete';
 			model: string;
 			usage?: LLMUsage;
-			conversation?: ParsedConversationFile;
+			conversation?: ChatConversation;
 			message?: ChatMessage;
 	  }
 	| {
