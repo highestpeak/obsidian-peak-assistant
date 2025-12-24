@@ -6,57 +6,21 @@ import {
 	ProviderMetaData,
 } from '../types';
 import { AIStreamEvent } from '../types-events';
+import { createOllama, type OllamaProvider } from 'ollama-ai-provider';
+import { generateText, streamText, embedMany, type LanguageModel, type EmbeddingModel } from 'ai';
+import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
 import { trimTrailingSlash } from './helpers';
-import { invokeOpenAICompatibleBlock, invokeOpenAICompatibleStream } from './openai-compatible';
 
 const DEFAULT_OLLAMA_TIMEOUT_MS = 60000;
 export const OLLAMA_DEFAULT_BASE = 'http://localhost:11434';
 
 /**
- * Normalize Ollama baseUrl to ensure it has /v1 path
+ * Normalize Ollama baseUrl - remove /v1 suffix if present as ollama-ai-provider handles it
  */
 function normalizeOllamaBaseUrl(baseUrl: string): string {
-	const cleaned = baseUrl.replace(/\/v1\/?$/, ''); // Remove /v1 suffix if present
-	return `${trimTrailingSlash(cleaned)}/v1`;
+	return baseUrl.replace(/\/v1\/?$/, '').replace(/\/$/, '');
 }
 
-async function invokeOllamaBlock(params: {
-	request: LLMRequest;
-	baseUrl?: string;
-	apiKey?: string;
-	timeoutMs: number;
-}): Promise<LLMResponse> {
-	if (!params.baseUrl) {
-		throw new Error('Ollama baseUrl is required');
-	}
-	const normalizedBaseUrl = normalizeOllamaBaseUrl(params.baseUrl);
-	return invokeOpenAICompatibleBlock({
-		request: params.request,
-		baseUrl: normalizedBaseUrl,
-		apiKey: params.apiKey,
-		timeoutMs: params.timeoutMs,
-		errorPrefix: 'Ollama endpoint',
-	});
-}
-
-async function* invokeOllamaStream(params: {
-	request: LLMRequest;
-	baseUrl?: string;
-	apiKey?: string;
-	timeoutMs: number;
-}): AsyncGenerator<AIStreamEvent> {
-	if (!params.baseUrl) {
-		throw new Error('Ollama baseUrl is required');
-	}
-	const normalizedBaseUrl = normalizeOllamaBaseUrl(params.baseUrl);
-	yield* invokeOpenAICompatibleStream({
-		request: params.request,
-		baseUrl: normalizedBaseUrl,
-		apiKey: params.apiKey,
-		timeoutMs: params.timeoutMs,
-		errorPrefix: 'Ollama streaming endpoint',
-	});
-}
 
 export interface OllamaChatServiceOptions {
 	baseUrl?: string;
@@ -197,28 +161,50 @@ async function fetchOllamaModels(
 }
 
 export class OllamaChatService implements LLMProviderService {
-	constructor(private readonly options: OllamaChatServiceOptions) { }
+	private readonly client: OllamaProvider;
+
+	constructor(private readonly options: OllamaChatServiceOptions) {
+		if (!this.options.baseUrl) {
+			throw new Error('Ollama baseUrl is required');
+		}
+		const normalizedBaseUrl = normalizeOllamaBaseUrl(this.options.baseUrl);
+		this.client = createOllama({
+			baseURL: normalizedBaseUrl,
+		});
+	}
 
 	getProviderId(): string {
 		return 'ollama';
 	}
 
 	async blockChat(request: LLMRequest): Promise<LLMResponse> {
-		return invokeOllamaBlock({
-			request,
-			baseUrl: this.options.baseUrl,
-			apiKey: this.options.apiKey,
-			timeoutMs: this.options.timeoutMs ?? DEFAULT_OLLAMA_TIMEOUT_MS,
+		const messages = toAiSdkMessages(request.messages);
+		const systemMessage = extractSystemMessage(request.messages);
+
+		const result = await generateText({
+			model: this.client(request.model) as unknown as LanguageModel,
+			messages,
+			system: systemMessage,
 		});
+
+		return {
+			content: result.text,
+			model: result.response.modelId || request.model,
+			usage: result.usage,
+		};
 	}
 
 	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
-		return invokeOllamaStream({
-			request,
-			baseUrl: this.options.baseUrl,
-			apiKey: this.options.apiKey,
-			timeoutMs: this.options.timeoutMs ?? DEFAULT_OLLAMA_TIMEOUT_MS,
+		const messages = toAiSdkMessages(request.messages);
+		const systemMessage = extractSystemMessage(request.messages);
+
+		const result = streamText({
+			model: this.client(request.model) as unknown as LanguageModel,
+			messages,
+			system: systemMessage,
 		});
+
+		return streamTextToAIStreamEvents(result, request.model);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
@@ -255,58 +241,19 @@ export class OllamaChatService implements LLMProviderService {
 	}
 
 	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
-		return generateOllamaEmbeddings({
-			texts,
-			model,
-			baseUrl: this.options.baseUrl,
-			timeoutMs: this.options.timeoutMs ?? DEFAULT_OLLAMA_TIMEOUT_MS,
-		});
-	}
-}
+		const timeoutMs = this.options.timeoutMs ?? DEFAULT_OLLAMA_TIMEOUT_MS;
 
-/**
- * Generate embeddings using Ollama API.
- */
-async function generateOllamaEmbeddings(params: {
-	texts: string[];
-	model: string;
-	baseUrl?: string;
-	timeoutMs: number;
-}): Promise<number[][]> {
-	const baseUrl = trimTrailingSlash(params.baseUrl ?? OLLAMA_DEFAULT_BASE);
-	// Ollama uses /api/embeddings (not /v1/embeddings like OpenAI)
-	const url = `${baseUrl}/api/embeddings`;
-
-	const response = await fetch(url, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify({
-			input: params.texts,
-			model: params.model,
-		}),
-		signal: AbortSignal.timeout(params.timeoutMs),
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text().catch(() => 'Unknown error');
-		throw new Error(`Ollama embedding API error: ${response.status} ${response.statusText}. ${errorText}`);
-	}
-
-	const data = await response.json();
-
-	if (!data.data || !Array.isArray(data.data)) {
-		throw new Error('Invalid embedding API response: missing data array');
-	}
-
-	const embeddings: number[][] = data.data.map((item: { embedding?: number[] }) => {
-		if (!item.embedding || !Array.isArray(item.embedding)) {
-			throw new Error('Invalid embedding format in API response');
+		try {
+			// Try to use AI SDK's embedMany if supported
+			const result = await embedMany({
+				model: this.client(model) as unknown as EmbeddingModel<string>,
+				values: texts,
+			});
+			return result.embeddings;
+		} catch (error) {
+			console.error('[OllamaChatService] Error generating embeddings:', error);
+			return [];
 		}
-		return item.embedding;
-	});
-
-	return embeddings;
+	}
 }
 

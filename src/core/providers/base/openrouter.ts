@@ -6,66 +6,12 @@ import {
 	ProviderMetaData,
 } from '../types';
 import { AIStreamEvent } from '../types-events';
-import { invokeOpenAICompatibleBlock, invokeOpenAICompatibleStream } from './openai-compatible';
+import { createOpenRouter, type OpenRouterProvider } from '@openrouter/ai-sdk-provider';
+import { generateText, streamText, type LanguageModel } from 'ai';
+import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
 
 const DEFAULT_OPENROUTER_TIMEOUT_MS = 60000;
 const OPENROUTER_DEFAULT_BASE = 'https://openrouter.ai/api/v1';
-
-async function invokeOpenRouterBlock(params: {
-	request: LLMRequest;
-	baseUrl?: string;
-	apiKey?: string;
-	referer?: string;
-	title?: string;
-	timeoutMs: number;
-}): Promise<LLMResponse> {
-	if (!params.apiKey) {
-		throw new Error('OpenRouter API key is required');
-	}
-	const extraHeaders: Record<string, string> = {};
-	if (params.referer) {
-		extraHeaders['HTTP-Referer'] = params.referer;
-	}
-	if (params.title) {
-		extraHeaders['X-Title'] = params.title;
-	}
-	return invokeOpenAICompatibleBlock({
-		request: params.request,
-		baseUrl: params.baseUrl ?? OPENROUTER_DEFAULT_BASE,
-		apiKey: params.apiKey,
-		timeoutMs: params.timeoutMs,
-		extraHeaders,
-		errorPrefix: 'OpenRouter endpoint',
-	});
-}
-
-async function* invokeOpenRouterStream(params: {
-	request: LLMRequest;
-	baseUrl?: string;
-	apiKey?: string;
-	referer?: string;
-	title?: string;
-	timeoutMs: number;
-}): AsyncGenerator<AIStreamEvent> {
-	if (!params.apiKey) {
-		throw new Error('OpenRouter API key is required');
-	}
-	const extraHeaders: Record<string, string> = {};
-	if (params.referer) {
-		extraHeaders['HTTP-Referer'] = params.referer;
-	}
-	if (params.title) {
-		extraHeaders['X-Title'] = params.title;
-	}
-	yield* invokeOpenAICompatibleStream({
-		request: params.request,
-		baseUrl: params.baseUrl ?? OPENROUTER_DEFAULT_BASE,
-		apiKey: params.apiKey,
-		timeoutMs: params.timeoutMs,
-		extraHeaders,
-		errorPrefix: 'OpenRouter streaming endpoint',
-	});
-}
 
 export interface OpenRouterChatServiceOptions {
 	baseUrl?: string;
@@ -80,14 +26,30 @@ const DEFAULT_OPENROUTER_REFERER = 'https://obsidian.md';
 const DEFAULT_OPENROUTER_TITLE = 'Peak Assistant';
 
 export class OpenRouterChatService implements LLMProviderService {
-	private readonly options: OpenRouterChatServiceOptions;
+	private readonly client: OpenRouterProvider;
+	private readonly referer: string;
+	private readonly title: string;
 
-	constructor(options: OpenRouterChatServiceOptions) {
-		this.options = {
-			...options,
-			referer: options.referer ?? options.extra?.referer ?? DEFAULT_OPENROUTER_REFERER,
-			title: options.title ?? options.extra?.title ?? DEFAULT_OPENROUTER_TITLE,
-		};
+	constructor(private readonly options: OpenRouterChatServiceOptions) {
+		if (!this.options.apiKey) {
+			throw new Error('OpenRouter API key is required');
+		}
+		this.referer = this.options.referer ?? this.options.extra?.referer ?? DEFAULT_OPENROUTER_REFERER;
+		this.title = this.options.title ?? this.options.extra?.title ?? DEFAULT_OPENROUTER_TITLE;
+
+		const headers: Record<string, string> = {};
+		if (this.referer) {
+			headers['HTTP-Referer'] = this.referer;
+		}
+		if (this.title) {
+			headers['X-Title'] = this.title;
+		}
+
+		this.client = createOpenRouter({
+			apiKey: this.options.apiKey,
+			baseURL: this.options.baseUrl ?? OPENROUTER_DEFAULT_BASE,
+			headers,
+		});
 	}
 
 	getProviderId(): string {
@@ -95,25 +57,33 @@ export class OpenRouterChatService implements LLMProviderService {
 	}
 
 	async blockChat(request: LLMRequest): Promise<LLMResponse> {
-		return invokeOpenRouterBlock({
-			request,
-			baseUrl: this.options.baseUrl,
-			apiKey: this.options.apiKey,
-			referer: this.options.referer,
-			title: this.options.title,
-			timeoutMs: this.options.timeoutMs ?? DEFAULT_OPENROUTER_TIMEOUT_MS,
+		const messages = toAiSdkMessages(request.messages);
+		const systemMessage = extractSystemMessage(request.messages);
+
+		const result = await generateText({
+			model: this.client(request.model) as unknown as LanguageModel,
+			messages,
+			system: systemMessage,
 		});
+
+		return {
+			content: result.text,
+			model: result.response.modelId || request.model,
+			usage: result.usage,
+		};
 	}
 
 	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
-		return invokeOpenRouterStream({
-			request,
-			baseUrl: this.options.baseUrl,
-			apiKey: this.options.apiKey,
-			referer: this.options.referer,
-			title: this.options.title,
-			timeoutMs: this.options.timeoutMs ?? DEFAULT_OPENROUTER_TIMEOUT_MS,
+		const messages = toAiSdkMessages(request.messages);
+		const systemMessage = extractSystemMessage(request.messages);
+
+		const result = streamText({
+			model: this.client(request.model) as unknown as LanguageModel,
+			messages,
+			system: systemMessage,
 		});
+
+		return streamTextToAIStreamEvents(result, request.model);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
@@ -145,77 +115,53 @@ export class OpenRouterChatService implements LLMProviderService {
 	}
 
 	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
-		return generateOpenRouterEmbeddings({
-			texts,
-			model,
-			baseUrl: this.options.baseUrl,
-			apiKey: this.options.apiKey,
-			referer: this.options.referer,
-			title: this.options.title,
-			timeoutMs: this.options.timeoutMs ?? DEFAULT_OPENROUTER_TIMEOUT_MS,
-		});
-	}
-}
+		const timeoutMs = this.options.timeoutMs ?? DEFAULT_OPENROUTER_TIMEOUT_MS;
 
-/**
- * Generate embeddings using OpenRouter API (OpenAI-compatible).
- */
-async function generateOpenRouterEmbeddings(params: {
-	texts: string[];
-	model: string;
-	baseUrl?: string;
-	apiKey?: string;
-	referer?: string;
-	title?: string;
-	timeoutMs: number;
-}): Promise<number[][]> {
-	if (!params.apiKey) {
-		throw new Error('OpenRouter API key is required');
-	}
-
-	const baseUrl = params.baseUrl ?? OPENROUTER_DEFAULT_BASE;
-	const url = `${baseUrl}/embeddings`;
-
-	const headers: Record<string, string> = {
-		'Authorization': `Bearer ${params.apiKey}`,
-		'Content-Type': 'application/json',
-	};
-
-	if (params.referer) {
-		headers['HTTP-Referer'] = params.referer;
-	}
-	if (params.title) {
-		headers['X-Title'] = params.title;
-	}
-
-	const response = await fetch(url, {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({
-			input: params.texts,
-			model: params.model,
-		}),
-		signal: AbortSignal.timeout(params.timeoutMs),
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text().catch(() => 'Unknown error');
-		throw new Error(`OpenRouter embedding API error: ${response.status} ${response.statusText}. ${errorText}`);
-	}
-
-	const data = await response.json();
-
-	if (!data.data || !Array.isArray(data.data)) {
-		throw new Error('Invalid embedding API response: missing data array');
-	}
-
-	const embeddings: number[][] = data.data.map((item: { embedding?: number[] }) => {
-		if (!item.embedding || !Array.isArray(item.embedding)) {
-			throw new Error('Invalid embedding format in API response');
+		const headers: Record<string, string> = {
+			'Authorization': `Bearer ${this.options.apiKey}`,
+			'Content-Type': 'application/json',
+		};
+		if (this.referer) {
+			headers['HTTP-Referer'] = this.referer;
 		}
-		return item.embedding;
-	});
+		if (this.title) {
+			headers['X-Title'] = this.title;
+		}
 
-	return embeddings;
+		const baseUrl = this.options.baseUrl ?? OPENROUTER_DEFAULT_BASE;
+		const url = `${baseUrl}/embeddings`;
+
+		// OpenRouter uses OpenAI-compatible API, so we use direct fetch
+		// as embedMany may not be supported by the OpenRouter provider
+		const response = await fetch(url, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify({
+				input: texts,
+				model: model,
+			}),
+			signal: AbortSignal.timeout(timeoutMs),
+		});
+
+		if (!response.ok) {
+			const errorText = await response.text().catch(() => 'Unknown error');
+			throw new Error(`OpenRouter embedding API error: ${response.status} ${response.statusText}. ${errorText}`);
+		}
+
+		const data = await response.json();
+
+		if (!data.data || !Array.isArray(data.data)) {
+			throw new Error('Invalid embedding API response: missing data array');
+		}
+
+		const embeddings: number[][] = data.data.map((item: { embedding?: number[] }) => {
+			if (!item.embedding || !Array.isArray(item.embedding)) {
+				throw new Error('Invalid embedding format in API response');
+			}
+			return item.embedding;
+		});
+
+		return embeddings;
+	}
 }
 

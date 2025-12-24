@@ -1,5 +1,6 @@
 import { ChatRole } from '@/service/chat/types';
 import { AIStreamEvent } from './types-events';
+import { LanguageModelUsage } from 'ai';
 
 export interface ProviderConfig {
 	enabled?: boolean;
@@ -62,11 +63,7 @@ export interface LLMRequestMessage {
 	content: ProviderContentPart[];
 }
 
-export interface LLMUsage {
-	promptTokens: number;
-	completionTokens: number;
-	totalTokens: number;
-}
+export type LLMUsage = LanguageModelUsage;
 
 export enum ModelType {
 	LLM = 'llm',

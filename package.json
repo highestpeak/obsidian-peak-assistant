@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-peak-assistant",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Peak Assistant is a plugin for Obsidian (https://obsidian.md) that allows you to use AI to help you with your notes.",
 	"main": "main.js",
 	"scripts": {
 		"dev:tailwind": "npx tailwindcss -i src/styles/tailwind.css -o styles.css --watch",
@@ -14,11 +14,17 @@
 	},
 	"keywords": [],
 	"author": "",
-	"license": "MIT",
+	"license": "GPL-3.0",
 	"dependencies": {
+		"@ai-sdk/anthropic": "^1.0.0",
+		"@ai-sdk/google": "^1.0.0",
+		"@ai-sdk/openai": "^1.0.0",
 		"@langchain/core": "^1.1.8",
 		"@langchain/textsplitters": "^1.0.1",
 		"@lobehub/icons": "^2.44.0",
+		"@openrouter/ai-sdk-provider": "^1.0.0",
+		"ai": "^5.0.0",
+		"ollama-ai-provider": "^1.0.0",
 		"@radix-ui/react-dialog": "^1.0.5",
 		"@radix-ui/react-slot": "^1.0.2",
 		"@tensorflow/tfjs-node": "^4.22.0",

@@ -6,7 +6,9 @@ import {
 	ProviderMetaData,
 } from '../types';
 import { AIStreamEvent } from '../types-events';
-import { invokeOpenAICompatibleBlock, invokeOpenAICompatibleStream } from './openai-compatible';
+import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai';
+import { generateText, streamText, embedMany, type EmbeddingModel, type LanguageModel } from 'ai';
+import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
 
 const DEFAULT_OPENAI_TIMEOUT_MS = 60000;
 const OPENAI_DEFAULT_BASE = 'https://api.openai.com/v1';
@@ -110,42 +112,6 @@ async function fetchOpenAIModels(
 	}
 }
 
-async function invokeOpenAIBlock(params: {
-	request: LLMRequest;
-	baseUrl?: string;
-	apiKey?: string;
-	timeoutMs: number;
-}): Promise<LLMResponse> {
-	if (!params.apiKey) {
-		throw new Error('OpenAI API key is required');
-	}
-	return invokeOpenAICompatibleBlock({
-		request: params.request,
-		baseUrl: params.baseUrl ?? OPENAI_DEFAULT_BASE,
-		apiKey: params.apiKey,
-		timeoutMs: params.timeoutMs,
-		errorPrefix: 'OpenAI endpoint',
-	});
-}
-
-async function* invokeOpenAIStream(params: {
-	request: LLMRequest;
-	baseUrl?: string;
-	apiKey?: string;
-	timeoutMs: number;
-}): AsyncGenerator<AIStreamEvent> {
-	if (!params.apiKey) {
-		throw new Error('OpenAI API key is required');
-	}
-	yield* invokeOpenAICompatibleStream({
-		request: params.request,
-		baseUrl: params.baseUrl ?? OPENAI_DEFAULT_BASE,
-		apiKey: params.apiKey,
-		timeoutMs: params.timeoutMs,
-		errorPrefix: 'OpenAI streaming endpoint',
-	});
-}
-
 export interface OpenAIChatServiceOptions {
 	baseUrl?: string;
 	apiKey?: string;
@@ -154,28 +120,50 @@ export interface OpenAIChatServiceOptions {
 }
 
 export class OpenAIChatService implements LLMProviderService {
-	constructor(private readonly options: OpenAIChatServiceOptions) {}
+	private readonly client: OpenAIProvider;
+
+	constructor(private readonly options: OpenAIChatServiceOptions) {
+		if (!this.options.apiKey) {
+			throw new Error('OpenAI API key is required');
+		}
+		this.client = createOpenAI({
+			apiKey: this.options.apiKey,
+			baseURL: this.options.baseUrl ?? OPENAI_DEFAULT_BASE,
+		});
+	}
 
 	getProviderId(): string {
 		return 'openai';
 	}
 
 	async blockChat(request: LLMRequest): Promise<LLMResponse> {
-		return invokeOpenAIBlock({
-			request,
-			baseUrl: this.options.baseUrl,
-			apiKey: this.options.apiKey,
-			timeoutMs: this.options.timeoutMs ?? DEFAULT_OPENAI_TIMEOUT_MS,
+		const messages = toAiSdkMessages(request.messages);
+		const systemMessage = extractSystemMessage(request.messages);
+
+		const result = await generateText({
+			model: this.client(request.model) as unknown as LanguageModel,
+			messages,
+			system: systemMessage,
 		});
+
+		return {
+			content: result.text,
+			model: result.response.modelId || request.model,
+			usage: result.usage,
+		};
 	}
 
 	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
-		return invokeOpenAIStream({
-			request,
-			baseUrl: this.options.baseUrl,
-			apiKey: this.options.apiKey,
-			timeoutMs: this.options.timeoutMs ?? DEFAULT_OPENAI_TIMEOUT_MS,
+		const messages = toAiSdkMessages(request.messages);
+		const systemMessage = extractSystemMessage(request.messages);
+
+		const result = streamText({
+			model: this.client(request.model) as unknown as LanguageModel,
+			messages,
+			system: systemMessage,
 		});
+
+		return streamTextToAIStreamEvents(result, request.model);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
@@ -215,64 +203,11 @@ export class OpenAIChatService implements LLMProviderService {
 	}
 
 	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
-		return generateOpenAIEmbeddings({
-			texts,
-			model,
-			baseUrl: this.options.baseUrl,
-			apiKey: this.options.apiKey,
-			timeoutMs: this.options.timeoutMs ?? DEFAULT_OPENAI_TIMEOUT_MS,
+		const result = await embedMany({
+			model: this.client.textEmbeddingModel(model) as unknown as EmbeddingModel<string>,
+			values: texts,
 		});
+
+		return result.embeddings;
 	}
-}
-
-/**
- * Generate embeddings using OpenAI-compatible API.
- */
-async function generateOpenAIEmbeddings(params: {
-	texts: string[];
-	model: string;
-	baseUrl?: string;
-	apiKey?: string;
-	timeoutMs: number;
-}): Promise<number[][]> {
-	if (!params.apiKey) {
-		throw new Error('OpenAI API key is required');
-	}
-
-	const baseUrl = params.baseUrl ?? OPENAI_DEFAULT_BASE;
-	const url = `${baseUrl}/embeddings`;
-
-	const response = await fetch(url, {
-		method: 'POST',
-		headers: {
-			'Authorization': `Bearer ${params.apiKey}`,
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify({
-			input: params.texts,
-			model: params.model,
-		}),
-		signal: AbortSignal.timeout(params.timeoutMs),
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text().catch(() => 'Unknown error');
-		throw new Error(`OpenAI embedding API error: ${response.status} ${response.statusText}. ${errorText}`);
-	}
-
-	const data = await response.json();
-
-	if (!data.data || !Array.isArray(data.data)) {
-		throw new Error('Invalid embedding API response: missing data array');
-	}
-
-	// Extract embeddings from response
-	const embeddings: number[][] = data.data.map((item: { embedding?: number[] }) => {
-		if (!item.embedding || !Array.isArray(item.embedding)) {
-			throw new Error('Invalid embedding format in API response');
-		}
-		return item.embedding;
-	});
-
-	return embeddings;
 }
