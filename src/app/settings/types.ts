@@ -41,6 +41,15 @@ export interface ChunkingSettings {
 }
 
 /**
+ * Default chunking settings.
+ */
+export const DEFAULT_CHUNKING_SETTINGS: ChunkingSettings = {
+	maxChunkSize: 1000,
+	chunkOverlap: 200,
+	minDocumentSizeForChunking: 1500,
+};
+
+/**
  * Search-related settings.
  */
 export interface SearchSettings {
@@ -66,53 +75,6 @@ export interface SearchSettings {
 		modelId: string;
 	};
 }
-
-/**
- * Shape of plugin-level persisted settings.
- */
-export interface MyPluginSettings {
-	mySetting: string;
-	scriptFolder: string;
-	htmlViewConfigFile: string;
-	statisticsDataStoreFolder: string;
-	dataStorageFolder: string;
-	ai: AIServiceSettings;
-	commandHidden: CommandHiddenSettings;
-	search: SearchSettings;
-}
-
-/**
- * AI service configuration settings.
- */
-export interface AIServiceSettings {
-	rootFolder: string;
-	rootMode: RootMode;
-	promptFolder: string;
-	uploadFolder: string;
-	defaultModelId: string;
-	llmProviderConfigs: Record<string, ProviderConfig>;
-}
-
-/**
- * Default values for AI service settings.
- */
-export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
-	rootFolder: 'ChatFolder',
-	rootMode: 'conversation-first',
-	promptFolder: 'A-control/PeakAssistantPrompts',
-	uploadFolder: 'ChatFolder/Attachments',
-	defaultModelId: 'gpt-4.1-mini',
-	llmProviderConfigs: {},
-};
-
-/**
- * Default chunking settings.
- */
-export const DEFAULT_CHUNKING_SETTINGS: ChunkingSettings = {
-	maxChunkSize: 1000,
-	chunkOverlap: 200,
-	minDocumentSizeForChunking: 1500,
-};
 
 /**
  * Default search settings.
@@ -144,6 +106,45 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	} as Record<DocumentType, boolean>,
 	chunking: DEFAULT_CHUNKING_SETTINGS,
 };
+
+/**
+ * AI service configuration settings.
+ */
+export interface AIServiceSettings {
+	rootFolder: string;
+	rootMode: RootMode;
+	promptFolder: string;
+	uploadFolder: string;
+	defaultModelId: string;
+	llmProviderConfigs: Record<string, ProviderConfig>;
+}
+
+/**
+ * Default values for AI service settings.
+ */
+export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
+	rootFolder: 'ChatFolder',
+	rootMode: 'conversation-first',
+	promptFolder: 'A-control/PeakAssistantPrompts',
+	uploadFolder: 'ChatFolder/Attachments',
+	defaultModelId: 'gpt-4.1-mini',
+	llmProviderConfigs: {},
+};
+
+/**
+ * Shape of plugin-level persisted settings.
+ */
+export interface MyPluginSettings {
+	mySetting: string;
+	scriptFolder: string;
+	htmlViewConfigFile: string;
+	statisticsDataStoreFolder: string;
+	dataStorageFolder: string;
+
+	ai: AIServiceSettings;
+	commandHidden: CommandHiddenSettings;
+	search: SearchSettings;
+}
 
 /**
  * Baseline settings applied when no persisted data exists.
