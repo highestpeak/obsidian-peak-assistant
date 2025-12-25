@@ -50,7 +50,7 @@ export class ConversationService {
 		private readonly chat: LLMProviderService,
 		private readonly promptService: PromptService,
 		private readonly contentComposer: MessageContentComposer,
-		private readonly defaultModelId: string,
+		private readonly defaultModel: { provider: string; modelId: string },
 		private readonly resourceSummaryService?: ResourceSummaryService,
 		private readonly profileService?: UserProfileService,
 	) {
@@ -78,15 +78,14 @@ export class ConversationService {
 		initialMessages?: ChatMessage[];
 	}): Promise<ChatConversation> {
 		const timestamp = Date.now();
-		const defaultProvider = this.chat.getProviderId();
 		const meta: ChatConversationMeta = {
 			id: generateUuidWithoutHyphens(),
 			title: params.title,
 			projectId: params.project?.id,
 			createdAtTimestamp: timestamp,
 			updatedAtTimestamp: timestamp,
-			activeModel: this.defaultModelId,
-			activeProvider: defaultProvider,
+			activeModel: this.defaultModel.modelId,
+			activeProvider: this.defaultModel.provider,
 			tokenUsageTotal: 0,
 		};
 
@@ -113,8 +112,8 @@ export class ConversationService {
 		attachments?: string[];
 	}): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
 		const { conversation, project, userContent, attachments } = params;
-		const modelId = conversation.meta.activeModel || this.defaultModelId;
-		const provider = conversation.meta.activeProvider || this.chat.getProviderId();
+		const modelId = conversation.meta.activeModel || this.defaultModel.modelId;
+		const provider = conversation.meta.activeProvider || this.defaultModel.provider;
 		const timezone = this.detectTimezone();
 		const userMessage = createDefaultMessage('user', userContent, modelId, provider, timezone);
 		// Convert legacy attachments to resources if provided
@@ -518,8 +517,8 @@ export class ConversationService {
 	}): AsyncGenerator<AIStreamEvent> {
 		const self = this;
 		return (async function* (): AsyncGenerator<AIStreamEvent> {
-			const modelId = params.conversation.meta.activeModel || self.defaultModelId;
-			const provider = params.conversation.meta.activeProvider || self.chat.getProviderId();
+			const modelId = params.conversation.meta.activeModel || self.defaultModel.modelId;
+			const provider = params.conversation.meta.activeProvider || self.defaultModel.provider;
 			const timezone = self.detectTimezone();
 			const userMessage = createDefaultMessage('user', params.userContent, modelId, provider, timezone);
 			const messagesWithUser = [...params.conversation.messages, userMessage];

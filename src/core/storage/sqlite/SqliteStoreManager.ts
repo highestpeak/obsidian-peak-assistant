@@ -18,6 +18,7 @@ import { ChatMessageRepo } from './repositories/ChatMessageRepo';
 import { ChatMessageResourceRepo } from './repositories/ChatMessageResourceRepo';
 import { ChatSummaryRepo } from './repositories/ChatSummaryRepo';
 import { ChatStarRepo } from './repositories/ChatStarRepo';
+import { SEARCH_DB_FILENAME } from '@/core/constant';
 
 /**
  * Global singleton manager for SQLite database connection.
@@ -52,7 +53,7 @@ class SqliteStoreManager {
 	 * 
 	 * @param app - Obsidian app instance
 	 * @param storageFolder - Storage folder path (relative to vault root)
-	 * @param filename - Database filename (default: 'search.sqlite')
+	 * @param filename - Database filename (default: SEARCH_DB_FILENAME)
 	 */
 	async init(params: { app: App; storageFolder?: string; filename?: string }): Promise<void> {
 		if (this.store) {
@@ -65,7 +66,7 @@ class SqliteStoreManager {
 		// Calculate database file path
 		const basePath = (this.app.vault.adapter as any)?.basePath ?? '';
 		const normalizedStorageFolder = (params.storageFolder ?? '').trim().replace(/^\/+/, '');
-		const filename = params.filename ?? 'search.sqlite';
+		const filename = params.filename ?? SEARCH_DB_FILENAME;
 		
 		if (normalizedStorageFolder) {
 			// Ensure the vault folder exists before opening a file-backed database.

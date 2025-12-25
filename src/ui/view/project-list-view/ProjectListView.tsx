@@ -28,8 +28,6 @@ export const ProjectListViewComponent: React.FC = () => {
 
 	// Hydrate data
 	const hydrateData = useCallback(async () => {
-		const settings = manager.getSettings();
-
 		// Load projects
 		await hydrateProjects(manager);
 		const projectsMap = useProjectStore.getState().projects;
@@ -43,15 +41,6 @@ export const ProjectListViewComponent: React.FC = () => {
 			} else {
 				setActiveProject(null);
 			}
-		}
-
-		// Handle activeProject based on rootMode
-		if (settings.rootMode === 'project-first' && projectsMap.size > 0) {
-			if (!activeProject) {
-				setActiveProject(projectsList[0]);
-			}
-		} else {
-			setActiveProject(null);
 		}
 
 		// Load conversations

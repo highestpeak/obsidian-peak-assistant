@@ -1,6 +1,5 @@
 import type { RerankProvider, RerankRequest, RerankResponse, RerankResult, RerankDocument } from './types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/service/prompt/PromptId';
 
 interface LLMRerankOptions {
@@ -18,13 +17,11 @@ export class LLMRerankProvider implements RerankProvider {
 	private readonly modelId: string;
 	private readonly provider: string;
 	private readonly aiServiceManager: AIServiceManager;
-	private readonly promptService: PromptService;
 
 	constructor(options: LLMRerankOptions) {
 		this.modelId = options.modelId;
 		this.provider = options.provider;
 		this.aiServiceManager = options.aiServiceManager;
-		this.promptService = options.aiServiceManager.getUnifiedPromptService();
 	}
 
 	getType(): string {
@@ -39,8 +36,8 @@ export class LLMRerankProvider implements RerankProvider {
 			boostInfo: doc.metadata?.boostInfo,
 		}));
 
-		// Render prompt and call LLM via PromptService
-		const content = await this.promptService.chatWithPrompt(
+		// Render prompt and call LLM via AIServiceManager
+		const content = await this.aiServiceManager.chatWithPrompt(
 			PromptId.SearchRerankRankGpt,
 			{
 				query: request.query,

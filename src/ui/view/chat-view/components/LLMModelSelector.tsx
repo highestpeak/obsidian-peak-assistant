@@ -65,7 +65,7 @@ export const LLMModelSelector: React.FC = () => {
 
 	// Calculate current model id and provider for comparison (reactive)
 	const currentModelId = useMemo(() => {
-		return activeConversation?.meta.activeModel || manager?.getSettings().defaultModelId;
+		return activeConversation?.meta.activeModel || manager?.getSettings().defaultModel.modelId;
 	}, [activeConversation?.meta.activeModel, manager]);
 
 	const currentProvider = useMemo(() => {

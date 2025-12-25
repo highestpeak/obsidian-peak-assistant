@@ -4,6 +4,7 @@ import { MultiProviderChatService } from '@/core/providers/MultiProviderChatServ
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { ChatContextWindow, ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord } from './types';
 import { PromptService } from '@/service/prompt/PromptService';
+import { PromptId, PromptVariables } from '@/service/prompt/PromptId';
 import { MessageContentComposer } from './messages/utils-message-content';
 import { ProjectService } from './service-project';
 import { ConversationService } from './service-conversation';
@@ -54,14 +55,13 @@ export class AIServiceManager {
 		// Create prompt service
 		this.promptService = new PromptService(this.app, this.settings.promptFolder, this.multiChat);
 
-		// Initialize context service if memory or profile is enabled
-		if (this.settings.memoryEnabled || this.settings.profileEnabled) {
-			// Use memory file path as the unified context file, or create a new one
+		// Initialize context service if profile is enabled
+		if (this.settings.profileEnabled) {
 			this.profileService = new UserProfileService(
 				this.app,
 				this.promptService,
 				this.multiChat,
-				this.settings.memoryFilePath || `${this.settings.rootFolder}/User-Context.md`,
+				this.settings.profileFilePath || `${this.settings.rootFolder}/User-Profile.md`,
 			);
 		}
 
@@ -77,7 +77,7 @@ export class AIServiceManager {
 			this.multiChat,
 			this.promptService,
 			this.contentComposer,
-			this.settings.defaultModelId,
+			this.settings.defaultModel,
 			this.resourceSummaryService,
 			this.profileService,
 		);
@@ -136,13 +136,13 @@ export class AIServiceManager {
 		});
 		this.promptService.setChatService(this.multiChat);
 
-		// Reinitialize context service if memory or profile is enabled
-		if (this.settings.memoryEnabled || this.settings.profileEnabled) {
+		// Reinitialize context service if profile is enabled
+		if (this.settings.profileEnabled) {
 			this.profileService = new UserProfileService(
 				this.app,
 				this.promptService,
 				this.multiChat,
-				this.settings.memoryFilePath || `${this.settings.rootFolder}/User-Context.md`,
+				this.settings.profileFilePath || `${this.settings.rootFolder}/User-Profile.md`,
 			);
 		}
 
@@ -153,7 +153,7 @@ export class AIServiceManager {
 			this.multiChat,
 			this.promptService,
 			this.contentComposer,
-			this.settings.defaultModelId,
+			this.settings.defaultModel,
 			this.resourceSummaryService,
 			this.profileService,
 		);
@@ -287,24 +287,16 @@ export class AIServiceManager {
 	}
 
 	/**
-	 * Get the application service for generating titles and names
+	 * Chat with a prompt template.
+	 * Renders the prompt and calls the LLM with the rendered text.
 	 */
-	getApplicationService(): PromptService {
-		return this.promptService;
-	}
-
-	/**
-	 * Get the prompt service for rendering prompts.
-	 */
-	getPromptService(): PromptService {
-		return this.promptService;
-	}
-
-	/**
-	 * Get the unified prompt service (alias for getPromptService).
-	 */
-	getUnifiedPromptService() {
-		return this.promptService;
+	async chatWithPrompt<T extends PromptId>(
+		promptId: T,
+		variables: PromptVariables[T],
+		provider: string,
+		model: string
+	): Promise<string> {
+		return this.promptService.chatWithPrompt(promptId, variables, provider, model);
 	}
 
 	/**

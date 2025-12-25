@@ -78,9 +78,10 @@ export const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({
 			return selectedModelProp;
 		}
 		if (activeConversation) {
+			const defaultModel = manager.getSettings().defaultModel;
 			return {
-				provider: activeConversation.meta.activeProvider || 'other',
-				modelId: activeConversation.meta.activeModel || manager.getSettings().defaultModelId,
+				provider: activeConversation.meta.activeProvider || defaultModel.provider,
+				modelId: activeConversation.meta.activeModel || defaultModel.modelId,
 			};
 		}
 		return undefined;

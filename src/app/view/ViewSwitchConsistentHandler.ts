@@ -117,7 +117,6 @@ export class ViewSwitchConsistentHandler {
 					// Use the first existing markdown leaf
 					centerLeaf = existingMarkdownLeaves[0];
 				}
-
 			}
 
 			// If no markdown leaf, try to use new tab leaf

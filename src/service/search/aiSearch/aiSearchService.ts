@@ -8,26 +8,22 @@ import {
 	AI_SEARCH_GRAPH_MAX_HOPS,
 	AI_SEARCH_GRAPH_FINAL_MAX_NODES,
 } from '@/core/constant';
-import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/service/prompt/PromptId';
 
 /**
  * AI Search Service for generating summaries, graphs, and topics from search results.
  */
 export class AISearchService {
-	private readonly promptService: PromptService;
 
 	constructor(
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly searchSettings: SearchSettings,
 	) {
-		// Get unified prompt service from manager
-		this.promptService = aiServiceManager.getUnifiedPromptService();
 	}
 
 	/**
 	 * Get model configuration for AI search operations.
-	 * Uses searchSummaryModel if configured, otherwise falls back to default provider + defaultModelId.
+	 * Uses searchSummaryModel if configured, otherwise falls back to defaultModel.
 	 */
 	private async getModelConfig(): Promise<{ provider: string; model: string }> {
 		// Use searchSummaryModel if configured
@@ -39,21 +35,11 @@ export class AISearchService {
 			};
 		}
 
-		// Fallback to default provider + defaultModelId
+		// Fallback to defaultModel
 		const aiSettings = this.aiServiceManager.getSettings();
-		const defaultModelId = aiSettings.defaultModelId;
-		
-        // todo actually it is not a good config style. as we need to config both provider and model id. we need refactor this.
-		// Find provider for the default model
-		const models = await this.aiServiceManager.getAllAvailableModels();
-		const modelInfo = models.find((m) => m.id === defaultModelId);
-		if (!modelInfo) {
-			throw new Error(`Default model ${defaultModelId} not found in available models`);
-		}
-		
 		return {
-			provider: modelInfo.provider,
-			model: modelInfo.id,
+			provider: aiSettings.defaultModel.provider,
+			model: aiSettings.defaultModel.modelId,
 		};
 	}
 
@@ -192,7 +178,7 @@ export class AISearchService {
 		const { query, sources, webEnabled, graph } = params;
 
 		try {
-			// Get model configuration (searchSummaryModel or default provider + defaultModelId)
+			// Get model configuration (searchSummaryModel or defaultModel)
 			const { provider, model } = await this.getModelConfig();
 			
 			// Build sources array for prompt
@@ -212,23 +198,21 @@ export class AISearchService {
 				graphContext = nodeLabels;
 			}
 
-			// Render prompt using PromptService
-			const promptText = await this.promptService.render(PromptId.SearchAiSummary, {
-				query,
-				sources: sourcesArray,
-				graphContext,
-				webEnabled,
-			});
-
-			// Calculate estimated tokens (rough estimate: ~4 characters per token)
-			const estimatedTokens = Math.ceil((promptText.length + query.length) / 4);
-
-			const summary = await this.aiServiceManager.getApplicationService().chatWithPrompt(
-				PromptId.DocSummary,
-				{ content: promptText },
+			// Generate summary using SearchAiSummary prompt
+			const summary = await this.aiServiceManager.chatWithPrompt(
+				PromptId.SearchAiSummary,
+				{
+					query,
+					sources: sourcesArray,
+					graphContext,
+					webEnabled,
+				},
 				provider,
 				model
 			);
+
+			// Rough token estimation (4 chars per token)
+			const estimatedTokens = Math.ceil((query.length + sourcesArray.reduce((sum, s) => sum + (s.snippet?.length || 0) + s.title.length, 0)) / 4);
 
 			return { summary, estimatedTokens };
 		} catch (error) {
@@ -256,7 +240,7 @@ export class AISearchService {
 		const { query, sources, summary, graph } = params;
 
 		try {
-			// Get model configuration (searchSummaryModel or default provider + defaultModelId)
+			// Get model configuration (searchSummaryModel or defaultModel)
 			const { provider, model } = await this.getModelConfig();
 			
 			const multiChat = this.aiServiceManager.getMultiChat();
@@ -279,8 +263,8 @@ export class AISearchService {
 				graphContext = nodeLabels;
 			}
 
-			// Render prompt and call LLM via PromptService
-			const content = await this.promptService.chatWithPrompt(
+			// Render prompt and call LLM via AIServiceManager
+			const content = await this.aiServiceManager.chatWithPrompt(
 				PromptId.SearchTopicExtractJson,
 				{
 					query,

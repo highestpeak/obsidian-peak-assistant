@@ -1,8 +1,8 @@
 import { Plugin } from 'obsidian';
-import { EventDispatcher } from 'src/core/EventDispatcher';
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { CommandHiddenControlService } from 'src/service/CommandHiddenControlService';
-import { MySettings, normalizePluginSettings } from 'src/app/settings/MySetting';
+import { MySettings } from 'src/app/settings/MySetting';
+import { normalizePluginSettings } from 'src/app/settings/PluginSettingsLoader';
 import { ViewManager } from 'src/app/view/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
 import { registerCoreEvents } from 'src/app/events/Register';
@@ -13,22 +13,28 @@ import { IndexInitializer } from '@/service/search/index/indexInitializer';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { DocumentLoaderManager } from '@/core/document/loader/DocumentLoaderManager';
 import { IndexService } from '@/service/search/index/indexService';
+import { SEARCH_DB_FILENAME } from '@/core/constant';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
  */
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
-	eventHandler: EventDispatcher;
-	commandHiddenControlService: CommandHiddenControlService;
+	// eventHandler: EventDispatcher;
+
+	// views
 	viewManager: ViewManager;
 
+	// chat
 	aiServiceManager: AIServiceManager;
 
 	// search
 	searchClient: SearchClient | null = null;
 	searchUpdateQueue: SearchUpdateListener | null = null;
 	indexInitializer: IndexInitializer | null = null;
+
+	// try to replace other plugins' functions'
+	commandHiddenControlService: CommandHiddenControlService;
 
 	/**
 	 * Bootstraps services, views, commands, and layout handling.
@@ -55,24 +61,17 @@ export default class MyPlugin extends Plugin {
 		this.aiServiceManager = new AIServiceManager(this.app, this.settings.ai);
 		await this.aiServiceManager.init();
 
-		// Initialize UI control service
-		this.commandHiddenControlService = new CommandHiddenControlService(this.app, this, this.settings.commandHidden);
-		this.commandHiddenControlService.init();
-
 		this.viewManager = new ViewManager(this, this.aiServiceManager);
 		this.viewManager.init();
 
-		// add setting ui
-		this.addSettingTab(new MySettings(this.app, this));
+		// Initialize SQLite store
+		await sqliteStoreManager.init({ app: this.app, storageFolder: this.settings.dataStorageFolder, filename: SEARCH_DB_FILENAME });
 
-		// Initialize global SQLite store
-		await sqliteStoreManager.init({ app: this.app, storageFolder: this.settings.dataStorageFolder, filename: 'search.sqlite' });
-
-		// Initialize IndexService with AIServiceManager for embedding generation
-		IndexService.getInstance().init(this.aiServiceManager);
-
-		// Initialize global search service (singleton)
+		// Initialize search service (singleton)
 		await this.initializeSearchService();
+
+		// register workspace events
+		registerCoreEvents(this, this.viewManager);
 
 		// register commands (after services are ready)
 		buildCoreCommands(
@@ -84,9 +83,12 @@ export default class MyPlugin extends Plugin {
 			this.settings.dataStorageFolder,
 		).forEach((command) => this.addCommand(command));
 
-		// register workspace events
-		registerCoreEvents(this, this.viewManager);
+		// add setting ui
+		this.addSettingTab(new MySettings(this.app, this));
 
+		// Initialize UI control service
+		this.commandHiddenControlService = new CommandHiddenControlService(this.app, this, this.settings.commandHidden);
+		this.commandHiddenControlService.init();
 	}
 
 	/**
@@ -96,16 +98,15 @@ export default class MyPlugin extends Plugin {
 		// Initialize global DocumentLoaderManager singleton
 		DocumentLoaderManager.init(this.app, this.settings.search);
 
-		const tmpSearchClient = new SearchClient(this.app, this.aiServiceManager, this.settings.search);
-		this.searchClient = tmpSearchClient;
+		// Initialize IndexService with AIServiceManager for embedding generation
+		IndexService.getInstance().init(this.aiServiceManager);
+
+		this.searchClient = new SearchClient(this.app, this.aiServiceManager, this.settings.search);
+		await this.searchClient.init();
 
 		// first init listener then initializer to avoid missing index changes
-		const searchUpdateListener = new SearchUpdateListener(this.app, this.settings.search, 800);
-		this.searchUpdateQueue = searchUpdateListener;
-		searchUpdateListener.start();
-
-		// Initialize local SQLite search service
-		await this.searchClient.init();
+		this.searchUpdateQueue = new SearchUpdateListener(this.app, this.settings.search, 800);
+		this.searchUpdateQueue.start();
 
 		// Check index status and perform incremental indexing if needed
 		// This handles cases where files were modified outside Obsidian (e.g., git sync, external editors)

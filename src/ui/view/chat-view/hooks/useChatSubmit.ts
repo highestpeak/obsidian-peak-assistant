@@ -91,8 +91,9 @@ export function useChatSubmit({ onScrollToBottom, onSendingChange }: UseChatSubm
 				const inputText = message.text?.trim() || '';
 
 				// Create temporary user message
-				const modelId = conversation.meta.activeModel || manager.getSettings().defaultModelId;
-				const provider = conversation.meta.activeProvider || 'other';
+				const defaultModel = manager.getSettings().defaultModel;
+				const modelId = conversation.meta.activeModel || defaultModel.modelId;
+				const provider = conversation.meta.activeProvider || defaultModel.provider;
 				const tempUserMessage: ChatMessage = {
 					id: generateUuidWithoutHyphens(),
 					role: 'user',
@@ -171,10 +172,11 @@ export function useChatSubmit({ onScrollToBottom, onSendingChange }: UseChatSubm
 							role: msg.role,
 							content: msg.content,
 						}));
+						const defaultModel = manager.getSettings().defaultModel;
 						const modelId =
-							finalConversation.meta.activeModel || manager.getSettings().defaultModelId;
-						const provider = finalConversation.meta.activeProvider || 'openai';
-						const result = await manager.getApplicationService().chatWithPrompt(
+							finalConversation.meta.activeModel || defaultModel.modelId;
+						const provider = finalConversation.meta.activeProvider || defaultModel.provider;
+						const result = await manager.chatWithPrompt(
 							PromptId.ApplicationGenerateTitle,
 							{ messages: messagesForName },
 							provider,

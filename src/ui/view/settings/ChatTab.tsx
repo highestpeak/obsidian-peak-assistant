@@ -16,18 +16,6 @@ interface ChatTabProps {
  * Chat settings tab with AI service configuration.
  */
 export function ChatTab({ settings, aiServiceManager, updateSettings }: ChatTabProps) {
-	const handleRootModeChange = useCallback(
-		async (value: 'project-first' | 'conversation-first') => {
-			await updateSettings({
-				ai: {
-					...settings.ai,
-					rootMode: value,
-				},
-			});
-		},
-		[settings.ai, updateSettings]
-	);
-
 	const handleRootFolderCommit = useCallback(
 		async (value: string) => {
 			const next = value?.trim() || DEFAULT_AI_SERVICE_SETTINGS.rootFolder;
@@ -84,18 +72,6 @@ export function ChatTab({ settings, aiServiceManager, updateSettings }: ChatTabP
 
 	return (
 		<div className="peak-settings-card">
-			{/* Chat Root Mode */}
-			<SettingField label="Chat Root Mode" description="Choose the default navigation mode">
-				<select
-					className="pktw-flex pktw-h-10 pktw-w-full pktw-rounded-md pktw-border pktw-border-input pktw-bg-background pktw-px-3 pktw-py-2 pktw-text-sm pktw-ring-offset-background focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-ring focus-visible:pktw-ring-offset-2"
-					value={settings.ai.rootMode}
-					onChange={(e) => handleRootModeChange(e.target.value as 'project-first' | 'conversation-first')}
-				>
-					<option value="project-first">Project First</option>
-					<option value="conversation-first">Conversation First</option>
-				</select>
-			</SettingField>
-
 			{/* Chat Root Folder */}
 			<CommittedInputField
 				label="Chat Root Folder"

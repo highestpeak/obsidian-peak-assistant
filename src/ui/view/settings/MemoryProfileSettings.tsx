@@ -11,15 +11,9 @@ interface MemoryProfileSettingsProps {
 }
 
 /**
- * React component for Memory and Profile settings.
+ * React component for Profile settings.
  */
 export function MemoryProfileSettingsComponent({ settings, aiServiceManager, onUpdate }: MemoryProfileSettingsProps) {
-	const [memoryEnabled, setMemoryEnabled] = useState(
-		settings.memoryEnabled ?? DEFAULT_AI_SERVICE_SETTINGS.memoryEnabled ?? true
-	);
-	const [memoryFilePath, setMemoryFilePath] = useState(
-		settings.memoryFilePath || DEFAULT_AI_SERVICE_SETTINGS.memoryFilePath || 'ChatFolder/User-Memory.md'
-	);
 	const [profileEnabled, setProfileEnabled] = useState(
 		settings.profileEnabled ?? DEFAULT_AI_SERVICE_SETTINGS.profileEnabled ?? true
 	);
@@ -32,29 +26,10 @@ export function MemoryProfileSettingsComponent({ settings, aiServiceManager, onU
 
 	// Sync state with settings when they change externally
 	useEffect(() => {
-		setMemoryEnabled(settings.memoryEnabled ?? DEFAULT_AI_SERVICE_SETTINGS.memoryEnabled ?? true);
-		setMemoryFilePath(settings.memoryFilePath || DEFAULT_AI_SERVICE_SETTINGS.memoryFilePath || 'ChatFolder/User-Memory.md');
 		setProfileEnabled(settings.profileEnabled ?? DEFAULT_AI_SERVICE_SETTINGS.profileEnabled ?? true);
 		setProfileFilePath(settings.profileFilePath || DEFAULT_AI_SERVICE_SETTINGS.profileFilePath || 'ChatFolder/User-Profile.md');
 		setPromptRewriteEnabled(settings.promptRewriteEnabled ?? DEFAULT_AI_SERVICE_SETTINGS.promptRewriteEnabled ?? false);
 	}, [settings]);
-
-	const handleMemoryEnabledChange = useCallback(async (value: boolean) => {
-		setMemoryEnabled(value);
-		await onUpdate({ memoryEnabled: value });
-		aiServiceManager?.updateSettings({ ...settings, memoryEnabled: value });
-		aiServiceManager?.refreshDefaultServices();
-		await aiServiceManager?.init();
-	}, [settings, aiServiceManager, onUpdate]);
-
-	const handleMemoryFilePathChange = useCallback(async (value: string) => {
-		const next = value?.trim() || DEFAULT_AI_SERVICE_SETTINGS.memoryFilePath || 'ChatFolder/User-Memory.md';
-		setMemoryFilePath(next);
-		await onUpdate({ memoryFilePath: next });
-		aiServiceManager?.updateSettings({ ...settings, memoryFilePath: next });
-		aiServiceManager?.refreshDefaultServices();
-		await aiServiceManager?.init();
-	}, [settings, aiServiceManager, onUpdate]);
 
 	const handleProfileEnabledChange = useCallback(async (value: boolean) => {
 		setProfileEnabled(value);
@@ -80,50 +55,6 @@ export function MemoryProfileSettingsComponent({ settings, aiServiceManager, onU
 
 	return (
 		<div className="pktw-space-y-6">
-			{/* Memory Settings */}
-			<div className="pktw-space-y-4">
-				<div className="pktw-flex pktw-items-center pktw-justify-between">
-					<div className="pktw-flex-1">
-						<div className="pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
-							Enable Memory Mode
-						</div>
-						<div className="pktw-text-xs pktw-text-muted-foreground pktw-leading-relaxed">
-							Automatically extract and update user memories from conversations
-						</div>
-					</div>
-					<label className="pktw-relative pktw-inline-block pktw-w-11 pktw-h-6 pktw-cursor-pointer pktw-ml-4">
-						<input
-							type="checkbox"
-							checked={memoryEnabled}
-							onChange={(e) => handleMemoryEnabledChange(e.target.checked)}
-							className="pktw-opacity-0 pktw-w-0 pktw-h-0"
-						/>
-						<span className={cn(
-							"pktw-absolute pktw-cursor-pointer pktw-top-0 pktw-left-0 pktw-right-0 pktw-bottom-0 pktw-transition-all pktw-duration-300 pktw-rounded-full",
-							memoryEnabled ? "pktw-bg-accent" : "pktw-bg-border"
-						)}>
-							<span className={cn(
-								"pktw-absolute pktw-content-[''] pktw-h-[18px] pktw-w-[18px] pktw-left-[3px] pktw-bottom-[3px] pktw-bg-white pktw-transition-all pktw-duration-300 pktw-rounded-full",
-								memoryEnabled && "pktw-translate-x-[20px]"
-							)}></span>
-						</span>
-					</label>
-				</div>
-
-				<div className="pktw-space-y-2">
-					<div className="pktw-text-sm pktw-font-medium pktw-text-foreground">Memory File Path</div>
-					<div className="pktw-text-xs pktw-text-muted-foreground pktw-mb-2">
-						Path to user memory file (relative to vault root)
-					</div>
-					<Input
-						type="text"
-						placeholder={DEFAULT_AI_SERVICE_SETTINGS.memoryFilePath || 'ChatFolder/User-Memory.md'}
-						value={memoryFilePath}
-						onChange={(e) => handleMemoryFilePathChange(e.target.value)}
-					/>
-				</div>
-			</div>
-
 			{/* Profile Settings */}
 			<div className="pktw-space-y-4">
 				<div className="pktw-flex pktw-items-center pktw-justify-between">

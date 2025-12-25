@@ -1,4 +1,3 @@
-import { RootMode } from '@/service/chat/types';
 import { ProviderConfig } from '@/core/providers/types';
 import { CommandHiddenSettings, DEFAULT_COMMAND_HIDDEN_SETTINGS } from '@/service/CommandHiddenControlService';
 import type { DocumentType } from '@/core/document/types';
@@ -68,7 +67,7 @@ export interface SearchSettings {
 	chunking: ChunkingSettings;
 	/**
 	 * Model configuration for AI search summary generation.
-	 * If not provided, will fallback to defaultModelId from AI settings.
+	 * If not provided, will fallback to defaultModel from AI settings.
 	 */
 	searchSummaryModel?: {
 		provider: string;
@@ -97,7 +96,7 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 		conv: false,
 		project: false,
 		prompt: false,
-		excalidraw: false,
+		excalidraw: true,
 		canvas: false,
 		dataloom: false,
 		folder: false,
@@ -105,6 +104,10 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 		unknown: false,
 	} as Record<DocumentType, boolean>,
 	chunking: DEFAULT_CHUNKING_SETTINGS,
+	searchSummaryModel: {
+		provider: 'openai',
+		modelId: 'gpt-4o-mini',
+	},
 };
 
 /**
@@ -112,19 +115,13 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
  */
 export interface AIServiceSettings {
 	rootFolder: string;
-	rootMode: RootMode;
 	promptFolder: string;
 	uploadFolder: string;
-	defaultModelId: string;
+	defaultModel: {
+		provider: string;
+		modelId: string;
+	};
 	llmProviderConfigs: Record<string, ProviderConfig>;
-	/**
-	 * Enable memory mode (auto-update user memories)
-	 */
-	memoryEnabled?: boolean;
-	/**
-	 * Path to user memory file (relative to vault root)
-	 */
-	memoryFilePath?: string;
 	/**
 	 * Enable profile mode (auto-update user profile)
 	 */
@@ -144,13 +141,13 @@ export interface AIServiceSettings {
  */
 export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	rootFolder: 'ChatFolder',
-	rootMode: 'conversation-first',
 	promptFolder: 'A-control/PeakAssistantPrompts',
 	uploadFolder: 'ChatFolder/Attachments',
-	defaultModelId: 'gpt-4.1-mini',
+	defaultModel: {
+		provider: 'openai',
+		modelId: 'gpt-4o-mini',
+	},
 	llmProviderConfigs: {},
-	memoryEnabled: true,
-	memoryFilePath: 'ChatFolder/User-Memory.md',
 	profileEnabled: true,
 	profileFilePath: 'ChatFolder/User-Profile.md',
 	promptRewriteEnabled: false,
@@ -160,26 +157,31 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
  * Shape of plugin-level persisted settings.
  */
 export interface MyPluginSettings {
-	mySetting: string;
+	// general folder settings
 	scriptFolder: string;
 	htmlViewConfigFile: string;
 	statisticsDataStoreFolder: string;
 	dataStorageFolder: string;
+
+	// core settings
 	ai: AIServiceSettings;
-	commandHidden: CommandHiddenSettings;
 	search: SearchSettings;
+
+	// the try to replace other plugins' functions' settings
+	commandHidden: CommandHiddenSettings;
 }
 
 /**
  * Baseline settings applied when no persisted data exists.
  */
 export const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default',
 	scriptFolder: 'A-control',
 	htmlViewConfigFile: 'A-control/PeakAssistantScript/HtmlViewConfig.json',
 	statisticsDataStoreFolder: 'A-control/PeakAssistantDataStore/RepoStatistics',
 	dataStorageFolder: '',
+
 	ai: DEFAULT_AI_SERVICE_SETTINGS,
-	commandHidden: DEFAULT_COMMAND_HIDDEN_SETTINGS,
 	search: DEFAULT_SEARCH_SETTINGS,
+
+	commandHidden: DEFAULT_COMMAND_HIDDEN_SETTINGS,
 };
