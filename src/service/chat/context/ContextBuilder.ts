@@ -1,8 +1,9 @@
 import type { LLMRequestMessage } from '@/core/providers/types';
 import type { ChatConversation, ChatProject, ChatMessage } from '../types';
-import type { PromptService } from '../service-prompt';
 import type { ResourceSummaryService } from '../resources/ResourceSummaryService';
-import { PromptTemplate } from '../service-prompt';
+import type { PromptService } from '@/service/prompt/PromptService';
+import { PromptId } from '@/service/prompt/PromptId';
+import type { UserProfileService } from '@/service/chat/context/UserProfileService';
 
 /**
  * Context building options
@@ -32,7 +33,8 @@ const DEFAULT_TOKEN_BUDGET = 16000;
 export class ContextBuilder {
 	constructor(
 		private readonly promptService: PromptService,
-		private readonly resourceSummaryService: ResourceSummaryService
+		private readonly resourceSummaryService: ResourceSummaryService,
+		private readonly userProfileService?: UserProfileService,
 	) {}
 
 	/**
@@ -47,7 +49,7 @@ export class ContextBuilder {
 		const startTime = Date.now();
 		const options = {
 			maxRecentMessages: DEFAULT_MAX_RECENT_MESSAGES,
-			includeUserProfile: false,
+			includeUserProfile: true, // Default to true if memory/profile services are available
 			tokenBudget: DEFAULT_TOKEN_BUDGET,
 			...params.options,
 		};
@@ -55,7 +57,7 @@ export class ContextBuilder {
 		const result: LLMRequestMessage[] = [];
 
 		// 1. System prompt (ConversationSystem)
-		const systemPrompt = await this.promptService.getPrompt(PromptTemplate.ConversationSystem);
+		const systemPrompt = await this.promptService.render(PromptId.ConversationSystem, {});
 		if (systemPrompt) {
 			result.push({
 				role: 'system',
@@ -63,10 +65,23 @@ export class ContextBuilder {
 			});
 		}
 
-		// 2. User profile prompt (optional)
+		// 2. User profile and memories (if enabled)
 		if (options.includeUserProfile) {
-			// User profile prompt would be loaded from a prompt file if it exists
-			// For now, we'll skip it as it's optional
+			if (this.userProfileService) {
+				// Load unified context
+				const contextMap = await this.userProfileService.loadContext();
+				if (contextMap.size > 0) {
+					const sections: string[] = [];
+					for (const [category, texts] of contextMap.entries()) {
+						sections.push(`${category}: ${texts.join(', ')}`);
+					}
+					const contextText = sections.join('\n');
+					result.push({
+						role: 'system',
+						content: [{ type: 'text', text: `# User Context\n\n${contextText}` }],
+					});
+				}
+			}
 		}
 
 		// 3. Context Memory system message

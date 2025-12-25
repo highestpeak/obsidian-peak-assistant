@@ -60,3 +60,28 @@ export const RRF_VECTOR_WEIGHT = 0.4;
 export const AI_SEARCH_GRAPH_MAX_NODES_PER_SOURCE = 50; // Max nodes per source when building graph
 export const AI_SEARCH_GRAPH_MAX_HOPS = 2; // Max hops from each source
 export const AI_SEARCH_GRAPH_FINAL_MAX_NODES = 30; // Final max nodes in merged graph
+
+/**
+ * Minimum confidence threshold for user profile candidate items.
+ */
+export const USER_PROFILE_MIN_CONFIDENCE_THRESHOLD = 0.7;
+
+/**
+ * Default summary text when no summary is available.
+ */
+export const DEFAULT_SUMMARY = 'defaultSummary';
+
+/**
+ * Number of messages to accumulate before triggering summary update for conversation.
+ */
+export const CONVERSATION_SUMMARY_UPDATE_THRESHOLD = 3;
+
+/**
+ * Number of messages to accumulate before triggering summary update for project.
+ */
+export const PROJECT_SUMMARY_UPDATE_THRESHOLD = 5;
+
+/**
+ * Debounce delay in milliseconds before triggering summary update.
+ */
+export const SUMMARY_UPDATE_DEBOUNCE_MS = 5000;

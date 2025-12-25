@@ -10,6 +10,7 @@ import { getFileType, FileType } from '@/ui/view/shared/file-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { FileText, Image, File } from 'lucide-react';
 import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
+import { PromptId } from '@/service/prompt/PromptId';
 
 /**
  * Pending file with preview for images
@@ -234,7 +235,6 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				conversation: conversation,
 				project: currentActiveProject,
 				userContent: currentInputValue,
-				autoSave: true,
 			});
 
 			let finalConversation: ChatConversation | null = null;
@@ -276,16 +276,20 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				(finalConversation.meta.title === 'New Conversation' || finalConversation.meta.title === 'new-conversation') &&
 				finalConversation.messages.length >= 2) {
 				try {
-					const messagesForName = finalConversation.messages.map(msg => ({
+					const messagesForName = finalConversation.messages.slice(0, 4).map(msg => ({
 						role: msg.role,
 						content: msg.content,
 					}));
-					const generatedName = await manager.getApplicationService().generateConvName({
-						conversation: {
-							id: finalConversation.meta.id,
-							messages: messagesForName,
-						},
-					});
+					// Get provider and model from conversation or default settings
+					const modelId = finalConversation.meta.activeModel || manager.getSettings().defaultModelId;
+					const provider = finalConversation.meta.activeProvider || 'openai';
+					const result = await manager.getApplicationService().chatWithPrompt(
+						PromptId.ApplicationGenerateTitle,
+						{ messages: messagesForName },
+						provider,
+						modelId
+					);
+					const generatedName = result.replace(/^["']|["']$/g, '').slice(0, 50) || 'New Conversation';
 
 					finalConversation = await manager.updateConversationTitle({
 						conversation: finalConversation,

@@ -1,5 +1,7 @@
 import type { RerankProvider, RerankRequest, RerankResponse, RerankResult, RerankDocument } from './types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
+import { PromptService } from '@/service/prompt/PromptService';
+import { PromptId } from '@/service/prompt/PromptId';
 
 interface LLMRerankOptions {
 	modelId: string;
@@ -16,11 +18,13 @@ export class LLMRerankProvider implements RerankProvider {
 	private readonly modelId: string;
 	private readonly provider: string;
 	private readonly aiServiceManager: AIServiceManager;
+	private readonly promptService: PromptService;
 
 	constructor(options: LLMRerankOptions) {
 		this.modelId = options.modelId;
 		this.provider = options.provider;
 		this.aiServiceManager = options.aiServiceManager;
+		this.promptService = options.aiServiceManager.getUnifiedPromptService();
 	}
 
 	getType(): string {
@@ -28,24 +32,26 @@ export class LLMRerankProvider implements RerankProvider {
 	}
 
 	async rerank(request: RerankRequest): Promise<RerankResponse> {
-		// Build prompt for LLM reranking
-		const prompt = this.buildRerankPrompt(request.query, request.documents);
+		// Build documents array for prompt
+		const documentsArray = request.documents.map((doc, idx) => ({
+			index: idx,
+			text: doc.text,
+			boostInfo: doc.metadata?.boostInfo,
+		}));
 
-		// Call LLM via MultiProviderChatService
-		const multiChat = this.aiServiceManager.getMultiChat();
-		const response = await multiChat.blockChat({
-			provider: this.provider,
-			model: this.modelId,
-			messages: [
-				{
-					role: 'user',
-					content: [{ type: 'text', text: prompt }],
-				},
-			],
-		});
+		// Render prompt and call LLM via PromptService
+		const content = await this.promptService.chatWithPrompt(
+			PromptId.SearchRerankRankGpt,
+			{
+				query: request.query,
+				documents: documentsArray,
+			},
+			this.provider,
+			this.modelId
+		);
 
 		// Parse LLM response to extract rankings
-		const results = this.parseLLMResponse(response.content, request.documents.length);
+		const results = this.parseLLMResponse(content, request.documents.length);
 
 		// Sort by score descending
 		results.sort((a, b) => b.score - a.score);
@@ -54,30 +60,6 @@ export class LLMRerankProvider implements RerankProvider {
 		const finalResults = request.topK ? results.slice(0, request.topK) : results;
 
 		return { results: finalResults };
-	}
-
-	/**
-	 * Build prompt for LLM reranking.
-	 */
-	private buildRerankPrompt(query: string, documents: RerankDocument[]): string {
-		const docList = documents
-			.map((doc, idx) => {
-				const metadata = doc.metadata?.boostInfo ? ` [${doc.metadata.boostInfo}]` : '';
-				return `[${idx}] ${doc.text}${metadata}`;
-			})
-			.join('\n\n');
-
-		return `You are a search result reranker. Given a query and a list of documents, rank them by relevance.
-
-Query: ${query}
-
-Documents:
-${docList}
-
-Please return the document indices in order of relevance (most relevant first), separated by commas.
-Example format: 2,0,1,3
-
-Only return the indices, nothing else.`;
 	}
 
 	/**

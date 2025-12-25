@@ -1,4 +1,5 @@
 import type { ChatMessage } from './types';
+import type { LLMUsage } from '@/core/providers/types';
 
 /**
  * View Object for ChatMessage used at runtime.
@@ -49,11 +50,7 @@ export interface AssistantMessage extends BaseChatMessage {
 	/**
 	 * Token usage for this message
 	 */
-	tokenUsage?: {
-		promptTokens: number;
-		completionTokens: number;
-		totalTokens: number;
-	};
+	tokenUsage?: LLMUsage;
 	/**
 	 * Thinking process (if available from provider)
 	 */

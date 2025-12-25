@@ -1,27 +1,22 @@
 import { normalizePath, TFolder } from 'obsidian';
-import { generateUuidWithoutHyphens } from '../../core/utils/id-utils';
-import { ChatProjectMeta, ChatProject, ChatConversation } from './types';
-import { ChatStorageService } from '../../core/storage/vault/ChatStore';
-import { LLMApplicationService } from './service-application';
-import { PromptService } from './service-prompt';
-import { ChatDocName } from '@/core/storage/vault/chat-docs/ChatDocName';
-import { ChatArchiveService } from './ChatArchiveService';
-import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { buildTimestampedName, generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { ChatProject, ChatProjectMeta, ChatConversation } from './types';
+import { ChatStorageService } from '@/core/storage/vault/ChatStore';
+import { DEFAULT_SUMMARY } from '@/core/constant';
+import { PromptService } from '@/service/prompt/PromptService';
+import { PromptId } from '@/service/prompt/PromptId';
+import type { LLMProviderService } from '@/core/providers/types';
 
 /**
  * Service for managing chat projects.
  */
 export class ProjectService {
-	private readonly archiveService: ChatArchiveService;
-
 	constructor(
 		private readonly storage: ChatStorageService,
 		private readonly rootFolder: string,
 		private readonly promptService?: PromptService,
-		private readonly application?: LLMApplicationService
-	) {
-		this.archiveService = new ChatArchiveService(storage.getApp(), rootFolder);
-	}
+		private readonly chat?: LLMProviderService,
+	) {}
 
 	/**
 	 * Create a new project on disk.
@@ -30,12 +25,7 @@ export class ProjectService {
 		const timestamp = Date.now();
 		const projectId = generateUuidWithoutHyphens();
 		const normalizedRootFolder = normalizePath(this.rootFolder);
-		const folderName = await ChatDocName.buildProjectFolderName(
-			timestamp,
-			input.name,
-			this.storage.getApp().vault,
-			normalizedRootFolder
-		);
+		const folderName = buildTimestampedName('Project', input.name, timestamp, projectId);
 		const projectFolder = normalizePath(
 			input.folderPath?.trim() || `${normalizedRootFolder}/${folderName}`
 		);
@@ -46,11 +36,7 @@ export class ProjectService {
 			name: input.name,
 			folderPath: projectFolder,
 		};
-		const file = await this.storage.saveProject(project);
-		const result = await this.storage.readProject(project.id);
-		// Trigger archive check
-		await this.archiveService.maybeArchiveNow('createProject');
-		return result;
+		return await this.storage.saveProject(project);
 	}
 
 	/**
@@ -63,9 +49,65 @@ export class ProjectService {
 	/**
 	 * Summarize a project by aggregating summaries from all conversations in the project.
 	 */
-	async summarizeProject(project: ChatProject, modelId: string): Promise<string> {
-		// Mock implementation - return default summary
-		return 'defaultSummary';
+	async summarizeProject(project: ChatProject, modelId: string, provider?: string): Promise<string> {
+		if (!this.chat) {
+			console.warn('[ProjectService] No LLM service available for project summary');
+			return DEFAULT_SUMMARY;
+		}
+
+		try {
+			// Get all conversations in this project
+			const conversations = await this.storage.listConversations(project.meta);
+			
+			// Build conversations array with summaries
+			const conversationsArray = conversations.map((conv) => ({
+				title: conv.meta.title,
+				shortSummary: conv.context?.shortSummary || conv.context?.summary,
+				fullSummary: conv.context?.fullSummary,
+			}));
+
+			// Build resources array if available
+			const resourcesArray = project.context?.resourceIndex?.map((r) => ({
+				title: r.title || r.id,
+				source: r.source,
+				shortSummary: r.shortSummary,
+			})) || [];
+
+			// Generate short summary
+			if (!this.promptService) {
+				return DEFAULT_SUMMARY;
+			}
+			const finalProvider = provider || this.chat.getProviderId();
+			const shortSummary = await this.promptService.chatWithPrompt(
+				PromptId.ProjectSummaryShort,
+				{
+					conversations: conversationsArray,
+					resources: resourcesArray.length > 0 ? resourcesArray : undefined,
+				},
+				finalProvider,
+				modelId
+			) || DEFAULT_SUMMARY;
+
+			// Generate full summary if project has multiple conversations
+			if (conversations.length > 1) {
+				const fullSummary = await this.promptService.chatWithPrompt(
+					PromptId.ProjectSummaryFull,
+					{
+						conversations: conversationsArray,
+						resources: resourcesArray.length > 0 ? resourcesArray : undefined,
+						shortSummary,
+					},
+					finalProvider,
+					modelId
+				);
+				return fullSummary || shortSummary;
+			}
+
+			return shortSummary;
+		} catch (error) {
+			console.warn('[ProjectService] Failed to generate project summary:', error);
+			return DEFAULT_SUMMARY;
+		}
 	}
 
 	/**
@@ -78,13 +120,8 @@ export class ProjectService {
 		}
 
 		const timestamp = Date.now();
+		const newFolderName = buildTimestampedName('Project', newName, timestamp, project.meta.id);
 		const parentPath = folder.parent?.path ?? this.rootFolder;
-		const newFolderName = await ChatDocName.buildProjectFolderName(
-			timestamp,
-			newName,
-			this.storage.getApp().vault,
-			parentPath
-		);
 		const newFolderPath = normalizePath(`${parentPath}/${newFolderName}`);
 
 		// Rename the folder
@@ -98,15 +135,8 @@ export class ProjectService {
 			updatedAtTimestamp: timestamp,
 		};
 
-		// Update sqlite paths
-		const projectRepo = sqliteStoreManager.getChatProjectRepo();
-		const newFolderRelPath = this.storage.getRootFolder() ? 
-			newFolderPath.replace(this.storage.getRootFolder() + '/', '') : newFolderPath;
-		await projectRepo.updatePathsOnMove(project.meta.id, newFolderRelPath);
-
 		// Save updated project meta
-		const file = await this.storage.saveProject(updatedMeta, project.context);
-		return this.storage.readProject(project.meta.id);
+		return await this.storage.saveProject(updatedMeta, project.context);
 	}
 
 	/**

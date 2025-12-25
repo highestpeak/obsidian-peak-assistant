@@ -1,15 +1,7 @@
+import { LLMUsage } from '@/core/providers/types';
 import type { ChatResourceRef, ResourceSummaryMeta } from './resources/types';
 
 export type ChatRole = 'user' | 'assistant' | 'system';
-
-/**
- * Token usage information for a message
- */
-export interface MessageTokenUsage {
-	promptTokens: number;
-	completionTokens: number;
-	totalTokens: number;
-}
 
 /**
  * Base chat message structure (persisted to markdown).
@@ -38,7 +30,7 @@ export interface ChatMessage {
 	/**
 	 * Token usage for this message (assistant messages only)
 	 */
-	tokenUsage?: MessageTokenUsage;
+	tokenUsage?: LLMUsage;
 	/**
 	 * Whether this message represents an error
 	 */

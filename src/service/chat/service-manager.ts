@@ -1,11 +1,9 @@
 import { App } from 'obsidian';
 import { ModelInfoForSwitch } from '@/core/providers/types';
-import { LLMApplicationService } from './service-application';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
-import { PromptApplicationService } from './service-application';
-import { ChatStorageService } from '../../core/storage/vault/ChatStore';
-import { ChatContextWindow, ChatMessage, ChatProjectMeta, ChatConversation, ChatProject, StarredMessageRecord } from './types';
-import { PromptService } from './service-prompt';
+import { ChatStorageService } from '@/core/storage/vault/ChatStore';
+import { ChatContextWindow, ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord } from './types';
+import { PromptService } from '@/service/prompt/PromptService';
 import { MessageContentComposer } from './messages/utils-message-content';
 import { ProjectService } from './service-project';
 import { ConversationService } from './service-conversation';
@@ -13,6 +11,7 @@ import { AIStreamEvent } from '@/core/providers/types-events';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { ResourceSummaryService } from './resources/ResourceSummaryService';
 import { IndexService } from '@/service/search/index/indexService';
+import { UserProfileService } from '@/service/chat/context/UserProfileService';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -21,11 +20,11 @@ export class AIServiceManager {
 	private storage: ChatStorageService;
 	private contentComposer: MessageContentComposer;
 	private multiChat: MultiProviderChatService;
-	private application: LLMApplicationService;
 	private promptService: PromptService;
 	private projectService: ProjectService;
 	private conversationService: ConversationService;
 	private resourceSummaryService: ResourceSummaryService;
+	private profileService?: UserProfileService;
 
 	constructor(
 		private readonly app: App,
@@ -52,50 +51,56 @@ export class AIServiceManager {
 		this.multiChat = new MultiProviderChatService({
 			providerConfigs,
 		});
-		this.application = new PromptApplicationService(this.multiChat);
-		this.promptService = new PromptService(this.app, {
-			promptFolder: this.settings.promptFolder,
-		});
+		// Create prompt service
+		this.promptService = new PromptService(this.app, this.settings.promptFolder, this.multiChat);
+
+		// Initialize context service if memory or profile is enabled
+		if (this.settings.memoryEnabled || this.settings.profileEnabled) {
+			// Use memory file path as the unified context file, or create a new one
+			this.profileService = new UserProfileService(
+				this.app,
+				this.promptService,
+				this.multiChat,
+				this.settings.memoryFilePath || `${this.settings.rootFolder}/User-Context.md`,
+			);
+		}
 
 		// === Project- and conversation-level services ===
 		this.projectService = new ProjectService(
 			this.storage,
 			this.settings.rootFolder,
 			this.promptService,
-			this.application
+			this.multiChat
 		);
 		this.conversationService = new ConversationService(
 			this.storage,
 			this.multiChat,
-			this.application,
 			this.promptService,
 			this.contentComposer,
 			this.settings.defaultModelId,
-			this.resourceSummaryService
+			this.resourceSummaryService,
+			this.profileService,
 		);
 	}
 
 	/**
-	 * Initialize storage resources and run migration if needed.
+	 * Initialize storage resources.
 	 */
 	async init(): Promise<void> {
 		await this.storage.init();
 		await this.promptService.init();
 		await this.resourceSummaryService.init();
-		
-		// Migration is deprecated - new format uses sqlite-only metadata
-		// Old data should be manually processed if needed
-		// try {
-		// 	const migrationResult = await this.migrationService.migrateAll();
-		// 	if (migrationResult.conversationsMigrated > 0 || migrationResult.projectsMigrated > 0) {
-		// 		console.log(`[AIServiceManager] Migration completed: ${migrationResult.conversationsMigrated} conversations, ${migrationResult.projectsMigrated} projects, ${migrationResult.resourcesCreated} resources created`);
-		// 		if (migrationResult.errors.length > 0) {
-		// 			console.warn(`[AIServiceManager] Migration had ${migrationResult.errors.length} errors`);
-		// 		}
-		// 	}
-		// } catch (error) {
-		// 	console.error('[AIServiceManager] Migration failed:', error);
-		// }
+		if (this.profileService) {
+			await this.profileService.init();
+		}
+	}
+
+	/**
+	 * Read a conversation by id.
+	 * @param loadMessages If true, loads all messages; if false, only loads metadata and context.
+	 */
+	async readConversation(conversationId: string, loadMessages: boolean = true): Promise<ChatConversation> {
+		return this.storage.readConversation(conversationId, loadMessages);
 	}
 
 	/**
@@ -129,17 +134,28 @@ export class AIServiceManager {
 		this.multiChat = new MultiProviderChatService({
 			providerConfigs,
 		});
-		this.application = new PromptApplicationService(this.multiChat);
-		this.projectService = new ProjectService(this.storage, this.settings.rootFolder, this.promptService, this.application);
+		this.promptService.setChatService(this.multiChat);
+
+		// Reinitialize context service if memory or profile is enabled
+		if (this.settings.memoryEnabled || this.settings.profileEnabled) {
+			this.profileService = new UserProfileService(
+				this.app,
+				this.promptService,
+				this.multiChat,
+				this.settings.memoryFilePath || `${this.settings.rootFolder}/User-Context.md`,
+			);
+		}
+
+		this.projectService = new ProjectService(this.storage, this.settings.rootFolder, this.promptService, this.multiChat);
 		this.resourceSummaryService = new ResourceSummaryService(this.app, this.settings.rootFolder);
 		this.conversationService = new ConversationService(
 			this.storage,
 			this.multiChat,
-			this.application,
 			this.promptService,
 			this.contentComposer,
 			this.settings.defaultModelId,
-			this.resourceSummaryService
+			this.resourceSummaryService,
+			this.profileService,
 		);
 
 		// Update IndexService with updated AIServiceManager instance
@@ -186,31 +202,8 @@ export class AIServiceManager {
 		project?: ChatProject | null;
 		userContent: string;
 		attachments?: string[];
-		autoSave?: boolean;
 	}): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
 		return this.conversationService.blockChat(params);
-	}
-
-	/**
-	 * Send a message and wait for the full model response (blocking) with auto-save.
-	 */
-	async blockChatWithSave(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
-		userContent: string;
-	}): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
-		return this.conversationService.blockChat({ ...params, autoSave: true });
-	}
-
-	/**
-	 * Send a message and wait for the full model response (blocking) without auto-save.
-	 */
-	async blockChatWithoutSave(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
-		userContent: string;
-	}): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
-		return this.conversationService.blockChat({ ...params, autoSave: false });
 	}
 
 	/**
@@ -220,32 +213,10 @@ export class AIServiceManager {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
 		userContent: string;
-		autoSave?: boolean;
 	}): AsyncGenerator<AIStreamEvent> {
 		return this.conversationService.streamChat(params);
 	}
 
-	/**
-	 * Send a message and stream incremental model output with auto-save.
-	 */
-	streamChatWithSave(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
-		userContent: string;
-	}): AsyncGenerator<AIStreamEvent> {
-		return this.conversationService.streamChat({ ...params, autoSave: true });
-	}
-
-	/**
-	 * Send a message and stream incremental model output without auto-save.
-	 */
-	streamChatWithoutSave(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
-		userContent: string;
-	}): AsyncGenerator<AIStreamEvent> {
-		return this.conversationService.streamChat({ ...params, autoSave: false });
-	}
 
 	/**
 	 * Update full message list of a conversation.
@@ -309,13 +280,6 @@ export class AIServiceManager {
 	}
 
 	/**
-	 * Summarize a project by aggregating summaries from all conversations in the project.
-	 */
-	async summarizeProject(project: ChatProject, modelId: string): Promise<string> {
-		return this.projectService.summarizeProject(project, modelId);
-	}
-
-	/**
 	 * Rename a project by renaming its folder.
 	 */
 	async renameProject(project: ChatProject, newName: string): Promise<ChatProject> {
@@ -325,8 +289,22 @@ export class AIServiceManager {
 	/**
 	 * Get the application service for generating titles and names
 	 */
-	getApplicationService(): LLMApplicationService {
-		return this.application;
+	getApplicationService(): PromptService {
+		return this.promptService;
+	}
+
+	/**
+	 * Get the prompt service for rendering prompts.
+	 */
+	getPromptService(): PromptService {
+		return this.promptService;
+	}
+
+	/**
+	 * Get the unified prompt service (alias for getPromptService).
+	 */
+	getUnifiedPromptService() {
+		return this.promptService;
 	}
 
 	/**

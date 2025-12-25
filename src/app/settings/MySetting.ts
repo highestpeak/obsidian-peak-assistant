@@ -1,17 +1,17 @@
 import { App, PluginSettingTab } from 'obsidian';
 import type MyPlugin from 'main';
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings, SearchSettings } from '@/app/settings/types';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings } from '@/app/settings/types';
 import React from 'react';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { SettingsRoot } from '@/ui/view/SettingsView';
 import { EventBus } from '@/core/eventBus';
 
 /**
- * Plugin settings tab that renders React-based settings UI.
+ * Renders plugin settings UI with multiple tabs.
  */
 export class MySettings extends PluginSettingTab {
 	private readonly pluginRef: MyPlugin;
-	private reactRenderer: ReactRenderer | null = null;
+	private settingsRenderer: ReactRenderer | null = null;
 	private eventBus: EventBus;
 
 	constructor(app: App, plugin: MyPlugin) {
@@ -21,24 +21,21 @@ export class MySettings extends PluginSettingTab {
 	}
 
 	/**
-	 * Renders the settings UI using React.
+	 * Builds the full settings layout and tab navigation.
 	 */
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		// Clean up previous renderer if exists
-		if (this.reactRenderer) {
-			this.reactRenderer.unmount();
-			this.reactRenderer = null;
+		// Clean up React renderer when re-rendering
+		if (this.settingsRenderer) {
+			this.settingsRenderer.unmount();
+			this.settingsRenderer = null;
 		}
 
-		// Create container for React component
-		const reactContainer = containerEl.createDiv();
-		this.reactRenderer = new ReactRenderer(reactContainer);
-
-		// Render React root component
-		this.reactRenderer.render(
+		// Render the complete settings UI using SettingsRoot component
+		this.settingsRenderer = new ReactRenderer(containerEl);
+		this.settingsRenderer.render(
 			React.createElement(SettingsRoot, {
 				plugin: this.pluginRef,
 				eventBus: this.eventBus,
@@ -46,98 +43,62 @@ export class MySettings extends PluginSettingTab {
 		);
 	}
 
-	/**
-	 * Clean up React renderer when settings tab is hidden.
-	 */
-	hide(): void {
-		if (this.reactRenderer) {
-			this.reactRenderer.unmount();
-			this.reactRenderer = null;
-		}
-		super.hide();
-	}
-}
-
-/**
- * Merge nested settings with defaults.
- */
-function mergeNestedSettings<T>(defaults: T, raw: unknown): T {
-	return Object.assign({}, defaults, raw ?? {});
-}
-
-/**
- * Normalize AI service settings, handling legacy chat settings migration.
- */
-function normalizeAISettings(raw: Record<string, unknown>): AIServiceSettings {
-	const legacyChatSettings = raw?.chat as Partial<AIServiceSettings> | undefined;
-	const aiSettings = mergeNestedSettings(
-		DEFAULT_AI_SERVICE_SETTINGS,
-		raw?.ai ?? legacyChatSettings ?? {}
-	);
-
-	// Migrate legacy promptFolder from root level
-	if (!aiSettings.promptFolder && typeof raw?.promptFolder === 'string') {
-		aiSettings.promptFolder = raw.promptFolder;
-	}
-
-	// Ensure defaultModelId has a fallback
-	if (!aiSettings.defaultModelId) {
-		aiSettings.defaultModelId = DEFAULT_AI_SERVICE_SETTINGS.defaultModelId;
-	}
-
-	return aiSettings;
-}
-
-/**
- * Normalize search settings, handling legacy migrations.
- */
-function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
-	const rawSearch = raw?.search;
-	const searchSettings = mergeNestedSettings(
-		DEFAULT_SEARCH_SETTINGS,
-		rawSearch ?? {}
-	);
-
-	// Migrate legacy neverPromptAgain to autoIndex
-	if (rawSearch && typeof rawSearch === 'object' && 'neverPromptAgain' in rawSearch) {
-		searchSettings.autoIndex = !(rawSearch as Record<string, unknown>).neverPromptAgain;
-	}
-
-	// Normalize includeDocumentTypes: merge with defaults
-	const rawIncludeTypes = (rawSearch as Record<string, unknown>)?.includeDocumentTypes ?? {};
-	searchSettings.includeDocumentTypes = mergeNestedSettings(
-		DEFAULT_SEARCH_SETTINGS.includeDocumentTypes,
-		rawIncludeTypes
-	);
-
-	// Normalize chunking settings
-	searchSettings.chunking = mergeNestedSettings(
-		DEFAULT_SEARCH_SETTINGS.chunking,
-		searchSettings.chunking ?? {}
-	);
-
-	return searchSettings;
 }
 
 /**
  * Load and normalize plugin settings from persisted data.
- * Handles legacy settings migration and ensures all required fields are present.
  */
 export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	const raw = (data ?? {}) as Record<string, unknown>;
-	const settings: MyPluginSettings = mergeNestedSettings(DEFAULT_SETTINGS, raw);
-
-	// Normalize nested settings
-	settings.ai = normalizeAISettings(raw);
-	settings.search = normalizeSearchSettings(raw);
-	settings.commandHidden = mergeNestedSettings(
-		settings.commandHidden,
-		raw?.uiControl ?? {}
+	const settings: MyPluginSettings = Object.assign({}, DEFAULT_SETTINGS, raw);
+	const legacyChatSettings = raw?.chat as Partial<AIServiceSettings> | undefined;
+	settings.ai = Object.assign({}, DEFAULT_AI_SERVICE_SETTINGS, raw?.ai ?? legacyChatSettings ?? {});
+	settings.search = Object.assign({}, DEFAULT_SEARCH_SETTINGS, raw?.search ?? {});
+	// Migrate from legacy neverPromptAgain to autoIndex
+	if (raw?.search && typeof raw.search === 'object' && 'neverPromptAgain' in raw.search) {
+		settings.search.autoIndex = !(raw.search as any)?.neverPromptAgain;
+		delete (settings.search as any).neverPromptAgain;
+	}
+	// Normalize includeDocumentTypes: merge with defaults, ensuring all DocumentTypes are present
+	const rawIncludeTypes = (settings.search as any)?.includeDocumentTypes ?? {};
+	settings.search.includeDocumentTypes = Object.assign(
+		{},
+		DEFAULT_SEARCH_SETTINGS.includeDocumentTypes,
+		rawIncludeTypes,
 	);
-
-	// Remove legacy chat property if it exists
+	// Ensure chunking settings exist
+	if (!settings.search.chunking) {
+		settings.search.chunking = DEFAULT_SEARCH_SETTINGS.chunking;
+	} else {
+		settings.search.chunking = Object.assign(
+			{},
+			DEFAULT_SEARCH_SETTINGS.chunking,
+			settings.search.chunking,
+		);
+	}
+	if (!settings.ai.promptFolder) {
+		const legacyPromptFolder = typeof raw?.promptFolder === 'string' ? (raw.promptFolder as string) : undefined;
+		settings.ai.promptFolder = legacyPromptFolder || DEFAULT_AI_SERVICE_SETTINGS.promptFolder;
+	}
+	settings.ai.defaultModelId = settings.ai.defaultModelId || 'gpt-4.1-mini';
+	// Set defaults for memory/profile/rewrite if not present
+	if (settings.ai.memoryEnabled === undefined) {
+		settings.ai.memoryEnabled = DEFAULT_AI_SERVICE_SETTINGS.memoryEnabled ?? true;
+	}
+	if (!settings.ai.memoryFilePath) {
+		settings.ai.memoryFilePath = DEFAULT_AI_SERVICE_SETTINGS.memoryFilePath;
+	}
+	if (settings.ai.profileEnabled === undefined) {
+		settings.ai.profileEnabled = DEFAULT_AI_SERVICE_SETTINGS.profileEnabled ?? true;
+	}
+	if (!settings.ai.profileFilePath) {
+		settings.ai.profileFilePath = DEFAULT_AI_SERVICE_SETTINGS.profileFilePath;
+	}
+	if (settings.ai.promptRewriteEnabled === undefined) {
+		settings.ai.promptRewriteEnabled = DEFAULT_AI_SERVICE_SETTINGS.promptRewriteEnabled ?? false;
+	}
+	settings.commandHidden = Object.assign({}, settings.commandHidden, raw?.uiControl ?? {});
 	const settingsBag = settings as unknown as Record<string, unknown>;
 	delete settingsBag.chat;
-
 	return settings;
 }

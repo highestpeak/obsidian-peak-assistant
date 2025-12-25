@@ -13,6 +13,8 @@ export enum ViewEventType {
 	OPEN_LINK = 'peak:open-link',
 	SHOW_TOAST = 'peak:show-toast',
 	SETTINGS_UPDATED = 'peak:settings-updated',
+	MESSAGE_SENT = 'peak:message-sent',
+	CONVERSATION_CREATED = 'peak:conversation-created',
 }
 
 /**
@@ -105,6 +107,34 @@ export class OpenLinkEvent extends ViewEvent {
 export class SettingsUpdatedEvent extends ViewEvent {
 	constructor() {
 		super(ViewEventType.SETTINGS_UPDATED);
+	}
+}
+
+/**
+ * Message sent event
+ */
+export class MessageSentEvent extends ViewEvent {
+	conversationId: string;
+	projectId?: string | null;
+
+	constructor(data: { conversationId: string; projectId?: string | null }) {
+		super(ViewEventType.MESSAGE_SENT);
+		this.conversationId = data.conversationId;
+		this.projectId = data.projectId;
+	}
+}
+
+/**
+ * Conversation created event
+ */
+export class ConversationCreatedEvent extends ViewEvent {
+	conversationId: string;
+	projectId?: string | null;
+
+	constructor(data: { conversationId: string; projectId?: string | null }) {
+		super(ViewEventType.CONVERSATION_CREATED);
+		this.conversationId = data.conversationId;
+		this.projectId = data.projectId;
 	}
 }
 

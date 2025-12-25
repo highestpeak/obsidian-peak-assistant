@@ -8,15 +8,22 @@ import {
 	AI_SEARCH_GRAPH_MAX_HOPS,
 	AI_SEARCH_GRAPH_FINAL_MAX_NODES,
 } from '@/core/constant';
+import { PromptService } from '@/service/prompt/PromptService';
+import { PromptId } from '@/service/prompt/PromptId';
 
 /**
  * AI Search Service for generating summaries, graphs, and topics from search results.
  */
 export class AISearchService {
+	private readonly promptService: PromptService;
+
 	constructor(
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly searchSettings: SearchSettings,
-	) {}
+	) {
+		// Get unified prompt service from manager
+		this.promptService = aiServiceManager.getUnifiedPromptService();
+	}
 
 	/**
 	 * Get model configuration for AI search operations.
@@ -188,43 +195,40 @@ export class AISearchService {
 			// Get model configuration (searchSummaryModel or default provider + defaultModelId)
 			const { provider, model } = await this.getModelConfig();
 			
-			// Build prompt for summary generation
-			const sourcesText = sources
-				.map((s) => {
-					const snippet = s.highlight?.text || s.content || '';
-					return `- ${s.title} (${s.path})${snippet ? `\n  ${snippet.trimEnd()}` : ''}`;
-				})
-				.join('\n');
+			// Build sources array for prompt
+			const sourcesArray = sources.map((s) => ({
+				title: s.title,
+				path: s.path,
+				snippet: s.highlight?.text || s.content || undefined,
+			}));
 
 			// Build graph context text
-			let graphText = '';
+			let graphContext: string | undefined;
 			if (graph && graph.nodes.length > 0) {
 				const nodeLabels = graph.nodes
 					.slice(0, 20)
 					.map((n) => n.label)
 					.join(', ');
-				graphText = `\n\nKnowledge Graph (related concepts):\n${nodeLabels}`;
+				graphContext = nodeLabels;
 			}
 
-			const webText = webEnabled ? '\nWeb search is enabled (if you have web results, incorporate them).' : '';
-
-			const text = `User question: ${query}
-
-You must answer in Chinese.${webText}
-
-Sources (snippets):
-${sourcesText}${graphText}
-
-Task: Provide a concise, high-signal answer. Cite sources by file path when appropriate.`;
+			// Render prompt using PromptService
+			const promptText = await this.promptService.render(PromptId.SearchAiSummary, {
+				query,
+				sources: sourcesArray,
+				graphContext,
+				webEnabled,
+			});
 
 			// Calculate estimated tokens (rough estimate: ~4 characters per token)
-			const estimatedTokens = Math.ceil((text.length + query.length) / 4);
+			const estimatedTokens = Math.ceil((promptText.length + query.length) / 4);
 
-			const summary = await this.aiServiceManager.getApplicationService().summarize({
+			const summary = await this.aiServiceManager.getApplicationService().chatWithPrompt(
+				PromptId.DocSummary,
+				{ content: promptText },
 				provider,
-				model,
-				text,
-			});
+				model
+			);
 
 			return { summary, estimatedTokens };
 		} catch (error) {
@@ -257,50 +261,38 @@ Task: Provide a concise, high-signal answer. Cite sources by file path when appr
 			
 			const multiChat = this.aiServiceManager.getMultiChat();
 
-			// Build prompt for topic extraction
-			const sourcesText = sources
+			// Build sources array for prompt
+			const sourcesArray = sources
 				.slice(0, 5)
-				.map((s, idx) => `${idx + 1}. ${s.title} (${s.path})`)
-				.join('\n');
+				.map((s) => ({
+					title: s.title,
+					path: s.path,
+				}));
 
 			// Build graph context text
-			let graphText = '';
+			let graphContext: string | undefined;
 			if (graph && graph.nodes.length > 0) {
 				const nodeLabels = graph.nodes
 					.slice(0, 20)
 					.map((n) => n.label)
 					.join(', ');
-				graphText = `\n\nKnowledge Graph (related concepts):\n${nodeLabels}`;
+				graphContext = nodeLabels;
 			}
 
-			const prompt = `Extract key topics/themes from the following search query, summary, sources, and knowledge graph.
-
-Query: ${query}
-
-Summary:
-${summary}
-
-Sources:
-${sourcesText}${graphText}
-
-Please return a JSON array of topics, each with "label" (topic name) and "weight" (relevance score 0-10).
-Example format: [{"label": "Machine Learning", "weight": 8}, {"label": "Neural Networks", "weight": 7}]
-
-Return only the JSON array, nothing else.`;
-
-			const response = await multiChat.blockChat({
+			// Render prompt and call LLM via PromptService
+			const content = await this.promptService.chatWithPrompt(
+				PromptId.SearchTopicExtractJson,
+				{
+					query,
+					summary,
+					sources: sourcesArray,
+					graphContext,
+				},
 				provider,
-				model,
-				messages: [
-					{
-						role: 'user',
-						content: [{ type: 'text', text: prompt }],
-					},
-				],
-			});
+				model
+			);
 
 			// Parse JSON response
-			const content = response.content.trim();
 			// Try to extract JSON array from response
 			const jsonMatch = content.match(/\[[\s\S]*\]/);
 			if (jsonMatch) {

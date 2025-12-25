@@ -1,4 +1,5 @@
 import { App, normalizePath, TFile } from 'obsidian';
+import { DEFAULT_SUMMARY } from '@/core/constant';
 import {
 	ChatContextWindow,
 	ChatConversationMeta,
@@ -35,7 +36,7 @@ export class ChatStorageService {
 		await ensureFolder(this.app, projectFolder);
 	}
 
-	async saveProject(project: ChatProjectMeta, context?: ChatProjectContext): Promise<TFile> {
+	async saveProject(project: ChatProjectMeta, context?: ChatProjectContext): Promise<ChatProject> {
 		await this.ensureProjectFolders(project);
 		const fileName = `Project-Summary.md`;
 		const projectFolder = await this.getProjectFolderPath(project);
@@ -59,7 +60,22 @@ export class ChatStorageService {
 			updatedAtTs: project.updatedAtTimestamp,
 		});
 
-		return savedFile;
+		const finalContext: ChatProjectContext = {
+			lastUpdatedTimestamp: project.updatedAtTimestamp,
+			summary: context?.shortSummary ?? context?.summary ?? DEFAULT_SUMMARY,
+			shortSummary: context?.shortSummary ?? undefined,
+			fullSummary: context?.fullSummary ?? undefined,
+			resourceIndex: context?.resourceIndex,
+		};
+		const finalShortSummary = context?.shortSummary ?? context?.fullSummary ?? undefined;
+
+		return {
+			meta: project,
+			context: finalContext,
+			content: markdown,
+			file: savedFile,
+			shortSummary: finalShortSummary,
+		};
 	}
 
 	async saveConversation(
@@ -68,7 +84,7 @@ export class ChatStorageService {
 		messages: ChatMessage[],
 		context?: ChatContextWindow,
 		existingFile?: TFile
-	): Promise<TFile> {
+	): Promise<ChatConversation> {
 		const folder = project ? await this.getProjectFolderPath(project) : this.rootFolder;
 		await ensureFolder(this.app, folder);
 
@@ -132,16 +148,31 @@ export class ChatStorageService {
 			}
 		}
 
-		// Summary is stored in markdown file (not in DB).
+		const finalContext: ChatContextWindow = {
+			lastUpdatedTimestamp: conversation.updatedAtTimestamp,
+			recentMessagesWindow: context?.recentMessagesWindow ?? [],
+			summary: context?.shortSummary ?? context?.summary ?? DEFAULT_SUMMARY,
+			shortSummary: context?.shortSummary ?? undefined,
+			fullSummary: context?.fullSummary ?? undefined,
+			topics: context?.topics,
+			resourceIndex: context?.resourceIndex,
+		};
 
-		return savedFile;
+		return {
+			meta: conversation,
+			messages,
+			context: finalContext,
+			content: markdown,
+			file: savedFile,
+		};
 	}
 
 	/**
 	 * Read a conversation by id.
 	 * Loads file path from sqlite, then parses markdown for content/title/summary.
+	 * @param loadMessages If false, only loads metadata and context, not messages (faster for listing).
 	 */
-	async readConversation(conversationId: string): Promise<ChatConversation> {
+	async readConversation(conversationId: string, loadMessages: boolean = true): Promise<ChatConversation> {
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
 		const convRow = await convRepo.getById(conversationId);
 		if (!convRow) {
@@ -168,6 +199,19 @@ export class ChatStorageService {
 			tokenUsageTotal: convRow.token_usage_total ?? undefined,
 			titleManuallyEdited: convRow.title_manually_edited === 1,
 		};
+
+		const context: ChatContextWindow = {
+			lastUpdatedTimestamp: meta.updatedAtTimestamp,
+			recentMessagesWindow: [],
+			summary: docModel.shortSummary || docModel.fullSummary || DEFAULT_SUMMARY,
+			shortSummary: docModel.shortSummary || undefined,
+			fullSummary: docModel.fullSummary || undefined,
+		};
+
+		// Only load messages if requested
+		if (!loadMessages) {
+			return { meta, context, messages: [], content: raw, file };
+		}
 
 		// Load messages from sqlite
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
@@ -226,14 +270,6 @@ export class ChatStorageService {
 			}
 		}
 
-		const context: ChatContextWindow = {
-			lastUpdatedTimestamp: meta.updatedAtTimestamp,
-			recentMessagesWindow: [],
-			summary: docModel.shortSummary || docModel.fullSummary || 'defaultSummary',
-			shortSummary: docModel.shortSummary || undefined,
-			fullSummary: docModel.fullSummary || undefined,
-		};
-
 		return { meta, context, messages, content: raw, file };
 	}
 
@@ -268,7 +304,7 @@ export class ChatStorageService {
 
 		const context: ChatProjectContext = {
 			lastUpdatedTimestamp: meta.updatedAtTimestamp,
-			summary: docModel.shortSummary || docModel.fullSummary || 'defaultSummary',
+			summary: docModel.shortSummary || docModel.fullSummary || DEFAULT_SUMMARY,
 			shortSummary: docModel.shortSummary || undefined,
 			fullSummary: docModel.fullSummary || undefined,
 		};
@@ -299,7 +335,8 @@ export class ChatStorageService {
 		const result: ChatConversation[] = [];
 		for (const convRow of conversations) {
 			try {
-				result.push(await this.readConversation(convRow.conversation_id));
+				// Don't load messages for listing (only metadata and context)
+				result.push(await this.readConversation(convRow.conversation_id, false));
 			} catch (error) {
 				console.error(`Failed to read conversation: ${convRow.conversation_id}`, error);
 			}

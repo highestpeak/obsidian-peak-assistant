@@ -117,6 +117,26 @@ export interface AIServiceSettings {
 	uploadFolder: string;
 	defaultModelId: string;
 	llmProviderConfigs: Record<string, ProviderConfig>;
+	/**
+	 * Enable memory mode (auto-update user memories)
+	 */
+	memoryEnabled?: boolean;
+	/**
+	 * Path to user memory file (relative to vault root)
+	 */
+	memoryFilePath?: string;
+	/**
+	 * Enable profile mode (auto-update user profile)
+	 */
+	profileEnabled?: boolean;
+	/**
+	 * Path to user profile file (relative to vault root)
+	 */
+	profileFilePath?: string;
+	/**
+	 * Enable prompt rewrite (auto-improve user prompts)
+	 */
+	promptRewriteEnabled?: boolean;
 }
 
 /**
@@ -129,6 +149,11 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	uploadFolder: 'ChatFolder/Attachments',
 	defaultModelId: 'gpt-4.1-mini',
 	llmProviderConfigs: {},
+	memoryEnabled: true,
+	memoryFilePath: 'ChatFolder/User-Memory.md',
+	profileEnabled: true,
+	profileFilePath: 'ChatFolder/User-Profile.md',
+	promptRewriteEnabled: false,
 };
 
 /**
@@ -140,7 +165,6 @@ export interface MyPluginSettings {
 	htmlViewConfigFile: string;
 	statisticsDataStoreFolder: string;
 	dataStorageFolder: string;
-
 	ai: AIServiceSettings;
 	commandHidden: CommandHiddenSettings;
 	search: SearchSettings;

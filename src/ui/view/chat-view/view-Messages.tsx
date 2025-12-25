@@ -16,7 +16,7 @@ import { useScrollManager } from '../shared/scroll-utils';
  * Main component for rendering and managing the messages list view
  */
 export const MessagesViewComponent: React.FC = () => {
-	const { app, eventBus } = useServiceContext();
+	const { app, eventBus, manager } = useServiceContext();
     const store = useChatViewStore();
     const activeConversation = useProjectStore((state) => state.activeConversation);
     const activeProject = useProjectStore((state) => state.activeProject);
@@ -26,6 +26,27 @@ export const MessagesViewComponent: React.FC = () => {
 
     const bodyContainerRef = useRef<HTMLDivElement>(null);
     const bodyScrollRef = useRef<HTMLDivElement>(null);
+
+    // Load full conversation data (with messages) when conversation is selected but doesn't have messages
+    useEffect(() => {
+        if (!activeConversation) return;
+
+        // Check if conversation has messages loaded
+        // If messages array is empty or undefined, we need to load the full conversation
+        if (!activeConversation.messages || activeConversation.messages.length === 0) {
+            (async () => {
+                try {
+                    // Load conversation with messages
+                    const fullConversation = await manager.readConversation(activeConversation.meta.id, true);
+                    // Update conversation in store
+                    useProjectStore.getState().updateConversation(fullConversation);
+                    useProjectStore.getState().setActiveConversation(fullConversation);
+                } catch (error) {
+                    console.error('[MessagesView] Failed to load conversation messages:', error);
+                }
+            })();
+        }
+    }, [activeConversation?.meta.id, manager]);
 
     // Scroll management - all scroll logic centralized here
     const { scrollToTop, scrollToBottom, scrollToMessage } = useScrollManager({
@@ -132,7 +153,6 @@ export const MessagesViewComponent: React.FC = () => {
                             starred: false,
                             model: activeConversation?.meta.activeModel || 'gpt-4o',
                             provider: activeConversation?.meta.activeProvider || 'openai',
-                            attachments: [],
                         };
 
                         return (

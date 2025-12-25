@@ -1,25 +1,26 @@
 import { normalizePath, TFile, TFolder } from 'obsidian';
-import { generateUuidWithoutHyphens } from '../../core/utils/id-utils';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { LLMProviderService } from '@/core/providers/types';
-import { LLMApplicationService } from './service-application';
-import { ChatStorageService } from '../../core/storage/vault/ChatStore';
+import { ChatStorageService } from '@/core/storage/vault/ChatStore';
+import { DEFAULT_SUMMARY } from '@/core/constant';
+import { EventBus, MessageSentEvent, ConversationCreatedEvent } from '@/core/eventBus';
 import { LLMRequestMessage } from '@/core/providers/types';
 import {
 	ChatContextWindow,
+	ChatConversation,
 	ChatConversationMeta,
 	ChatMessage,
-	ChatProjectMeta,
-	ChatConversation,
 	ChatProject,
+	ChatProjectMeta,
 	StarredMessageRecord,
 } from './types';
-import { PromptService, PromptTemplate } from './service-prompt';
+import { PromptService } from '@/service/prompt/PromptService';
+import { UserProfileService } from '@/service/chat/context/UserProfileService';
+import { PromptId } from '@/service/prompt/PromptId';
 import { MessageContentComposer } from './messages/utils-message-content';
 import { AIStreamEvent } from '@/core/providers/types-events';
 import { ResourceSummaryService } from './resources/ResourceSummaryService';
 import { ContextBuilder } from './context/ContextBuilder';
-import { ChatArchiveService } from './ChatArchiveService';
-import type { MessageTokenUsage } from './types';
 
 /**
  * Create a basic chat message with timestamps.
@@ -43,40 +44,22 @@ export function createDefaultMessage(role: ChatMessage['role'], content: string,
  */
 export class ConversationService {
 	private readonly contextBuilder: ContextBuilder;
-	private readonly archiveService: ChatArchiveService;
 
 	constructor(
 		private readonly storage: ChatStorageService,
 		private readonly chat: LLMProviderService,
-		private readonly application: LLMApplicationService,
 		private readonly promptService: PromptService,
 		private readonly contentComposer: MessageContentComposer,
 		private readonly defaultModelId: string,
-		private readonly resourceSummaryService?: ResourceSummaryService
+		private readonly resourceSummaryService?: ResourceSummaryService,
+		private readonly profileService?: UserProfileService,
 	) {
 		// Initialize context builder
 		this.contextBuilder = new ContextBuilder(
 			this.promptService,
-			this.resourceSummaryService || new ResourceSummaryService(storage.getApp(), storage.getRootFolder())
+			this.resourceSummaryService || new ResourceSummaryService(storage.getApp(), storage.getRootFolder()),
+			this.profileService,
 		);
-		this.archiveService = new ChatArchiveService(storage.getApp(), storage.getRootFolder());
-	}
-
-	/**
-	 * Normalize provider usage to our persisted token usage shape.
-	 */
-	private toMessageTokenUsage(usage: unknown): MessageTokenUsage | undefined {
-		const u = usage as any;
-		if (!u || typeof u !== 'object') return undefined;
-		const promptTokens = Number(u.promptTokens ?? u.inputTokens ?? 0);
-		const completionTokens = Number(u.completionTokens ?? u.outputTokens ?? 0);
-		const totalTokens = Number(u.totalTokens ?? promptTokens + completionTokens);
-		if (!Number.isFinite(totalTokens)) return undefined;
-		return {
-			promptTokens: Number.isFinite(promptTokens) ? promptTokens : 0,
-			completionTokens: Number.isFinite(completionTokens) ? completionTokens : 0,
-			totalTokens,
-		};
 	}
 
 	/**
@@ -108,14 +91,16 @@ export class ConversationService {
 		};
 
 		const messages = params.initialMessages ?? [];
-		const file = await this.storage.saveConversation(
-			params.project ?? null,
-			meta,
-			messages,
-			undefined,
-			undefined
-		);
-		return this.storage.readConversation(meta.id);
+		const conversation = await this.storage.saveConversation(params.project ?? null, meta, messages);
+		
+		// Trigger conversation created event
+		const eventBus = EventBus.getInstance(this.storage.getApp());
+		eventBus.dispatch(new ConversationCreatedEvent({
+			conversationId: conversation.meta.id,
+			projectId: conversation.meta.projectId ?? null,
+		}));
+		
+		return conversation;
 	}
 
 	/**
@@ -126,9 +111,8 @@ export class ConversationService {
 		project?: ChatProject | null;
 		userContent: string;
 		attachments?: string[];
-		autoSave?: boolean;
 	}): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
-		const { conversation, project, userContent, attachments, autoSave = true } = params;
+		const { conversation, project, userContent, attachments } = params;
 		const modelId = conversation.meta.activeModel || this.defaultModelId;
 		const provider = conversation.meta.activeProvider || this.chat.getProviderId();
 		const timezone = this.detectTimezone();
@@ -160,36 +144,18 @@ export class ConversationService {
 		
 		// Add token usage and generation time
 		if (assistant.usage) {
-			const tokenUsage = this.toMessageTokenUsage(assistant.usage);
-			if (tokenUsage) {
-				assistantMessage.tokenUsage = tokenUsage;
-			}
+			assistantMessage.tokenUsage = assistant.usage;
 		}
 		
-		if (autoSave) {
-			const savedConversation = await this.persistExchange({
-				conversation,
-				project: project ?? null,
-				messages: [...messagesWithUser, assistantMessage],
-				model: assistant.model,
-				provider: provider,
-				tokenDelta: assistant.usage?.totalTokens ?? 0,
-			});
-			return { conversation: savedConversation, message: assistantMessage };
-		} else {
-			const updatedMessages = [...messagesWithUser, assistantMessage];
-			const updatedMeta: ChatConversationMeta = {
-				...conversation.meta,
-				updatedAtTimestamp: Date.now(),
-			};
-			const unsavedConversation: ChatConversation = {
-				meta: updatedMeta,
-				messages: updatedMessages,
-				content: '',
-				file: conversation.file,
-			};
-			return { conversation: unsavedConversation, message: assistantMessage };
-		}
+		const savedConversation = await this.persistExchange({
+			conversation,
+			project: project ?? null,
+			messages: [...messagesWithUser, assistantMessage],
+			model: assistant.model,
+			provider: provider,
+			tokenDelta: assistant.usage?.totalTokens ?? 0,
+		});
+		return { conversation: savedConversation, message: assistantMessage };
 	}
 
 	/**
@@ -199,19 +165,17 @@ export class ConversationService {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
 		userContent: string;
-		autoSave?: boolean;
 	}): AsyncGenerator<AIStreamEvent> {
-		const { conversation, project, userContent, autoSave = true } = params;
+		const { conversation, project, userContent } = params;
 		const streamChat = this.chat.streamChat ? this.chat.streamChat.bind(this.chat) : null;
 		if (!streamChat) {
-			return this.createBlockingStream(conversation, project ?? null, userContent, autoSave);
+			return this.createBlockingStream(conversation, project ?? null, userContent);
 		}
 		return this.createLiveStream({
 			conversation,
 			project: project ?? null,
 			userContent,
 			streamChat,
-			autoSave,
 		});
 	}
 
@@ -229,14 +193,37 @@ export class ConversationService {
 			...conversation.meta,
 			updatedAtTimestamp: Date.now(),
 		};
-		const saved = await this.storage.saveConversation(
+		return await this.storage.saveConversation(
 			project?.meta ?? null,
 			updatedMeta,
 			messages,
 			context,
 			conversation.file
 		);
-		return this.storage.readConversation(updatedMeta.id);
+	}
+
+	/**
+	 * Update conversation context only (summary), keeping messages unchanged.
+	 * Uses optimistic locking by checking updatedAtTimestamp.
+	 */
+	async updateConversationContext(params: {
+		conversation: ChatConversation;
+		project?: ChatProject | null;
+		context: ChatContextWindow;
+	}): Promise<ChatConversation> {
+		const { conversation, project, context } = params;
+		// Update context but keep messages unchanged
+		const updatedMeta: ChatConversationMeta = {
+			...conversation.meta,
+			updatedAtTimestamp: Date.now(),
+		};
+		return await this.storage.saveConversation(
+			project?.meta ?? null,
+			updatedMeta,
+			conversation.messages,
+			context,
+			conversation.file
+		);
 	}
 
 	/**
@@ -261,14 +248,13 @@ export class ConversationService {
 		};
 
 		// Save updated meta
-		const saved = await this.storage.saveConversation(
+		return await this.storage.saveConversation(
 			project?.meta ?? null,
 			updatedMeta,
 			conversation.messages,
 			conversation.context,
 			conversation.file
 		);
-		return this.storage.readConversation(updatedMeta.id);
 	}
 
 	/**
@@ -285,7 +271,7 @@ export class ConversationService {
 		const fileToRename = this.findConversationFile(folder, conversation) ?? conversation.file;
 
 		// Build new filename with the updated title
-		const newFileName = await this.storage.buildConversationFileName({
+		const newFileName = this.storage.buildConversationFileName({
 			...conversation.meta,
 			title,
 		});
@@ -313,14 +299,13 @@ export class ConversationService {
 		}
 
 		// Save updated meta
-		const saved = await this.storage.saveConversation(
+		return await this.storage.saveConversation(
 			project?.meta ?? null,
 			updatedMeta,
 			conversation.messages,
 			conversation.context,
 			renamedFile
 		);
-		return this.storage.readConversation(updatedMeta.id);
 	}
 
 	/**
@@ -380,7 +365,7 @@ export class ConversationService {
 	 */
 	async summarizeConversation(modelId: string, text: string): Promise<string> {
 		// Mock implementation - return default summary
-		return 'defaultSummary';
+		return DEFAULT_SUMMARY;
 	}
 
 	/**
@@ -410,7 +395,7 @@ export class ConversationService {
 		provider?: string;
 		tokenDelta: number;
 	}): Promise<ChatConversation> {
-		const context = await this.buildContextWindow(params.messages, params.model);
+		const context = await this.buildContextWindow(params.messages, params.model, params.project);
 		
 		// Keep the existing title, don't auto-generate from messages
 		// Title generation will be handled by a separate service later
@@ -435,10 +420,63 @@ export class ConversationService {
 			context,
 			params.conversation.file
 		);
-		const result = await this.storage.readConversation(updatedMeta.id);
-		// Trigger archive check after autoSave
-		await this.archiveService.maybeArchiveNow('persistExchange');
-		return result;
+
+		// Trigger message sent event
+		const eventBus = EventBus.getInstance(this.storage.getApp());
+		eventBus.dispatch(new MessageSentEvent({
+			conversationId: saved.meta.id,
+			projectId: saved.meta.projectId ?? null,
+		}));
+
+		// Update memory and profile asynchronously (don't block save)
+		if (this.profileService && params.messages.length >= 2) {
+			const userMessage = params.messages[params.messages.length - 2];
+			const assistantMessage = params.messages[params.messages.length - 1];
+			if (userMessage && assistantMessage && userMessage.role === 'user' && assistantMessage.role === 'assistant') {
+				// Extract context candidates
+				const contextMap: Record<string, string> = {};
+				if (params.project) {
+					contextMap.project = `Project: ${params.project.meta.name}${params.project.context?.shortSummary ? `\n${params.project.context.shortSummary}` : ''}`;
+				}
+				if (context.shortSummary || context.summary) {
+					contextMap.conversation = context.shortSummary || context.summary || '';
+				}
+
+				this.profileService?.extractCandidates({
+					userMessage: userMessage.content,
+					assistantReply: assistantMessage.content,
+					context: Object.keys(contextMap).length > 0 ? contextMap : undefined,
+					provider,
+					model: params.model,
+				}).then((candidates) => {
+					// Update context with all candidates
+					if (candidates.length > 0) {
+						this.profileService?.updateProfile({
+							newItems: candidates,
+							provider,
+							model: params.model,
+						}).catch((error) => {
+							console.warn('[ConversationService] Failed to update context:', error);
+						});
+					}
+				}).catch((error) => {
+					console.warn('[ConversationService] Failed to extract context candidates:', error);
+				});
+			}
+		}
+
+		// Update context from conversations periodically (every 10 messages)
+		if (this.profileService && params.messages.length > 0 && params.messages.length % 10 === 0) {
+			const recentConversations = await this.storage.listConversations(params.project?.meta);
+			const recentSummaries = recentConversations
+				.slice(-5)
+				.map((conv) => ({
+					summary: conv.context?.shortSummary || conv.context?.summary || '',
+					topics: conv.context?.topics,
+				}));
+		}
+
+		return saved;
 	}
 
 	/**
@@ -447,13 +485,12 @@ export class ConversationService {
 	private createBlockingStream(
 		conversation: ChatConversation,
 		project: ChatProject | null,
-		userContent: string,
-		autoSave: boolean
+		userContent: string
 	): AsyncGenerator<AIStreamEvent> {
 		const self = this;
 		return (async function* (): AsyncGenerator<AIStreamEvent> {
 			try {
-				const result = await self.blockChat({ conversation, project, userContent, autoSave });
+				const result = await self.blockChat({ conversation, project, userContent });
 				if (result.message.content) {
 					yield { type: 'delta', text: result.message.content };
 				}
@@ -478,7 +515,6 @@ export class ConversationService {
 		project: ChatProject | null;
 		userContent: string;
 		streamChat: NonNullable<LLMProviderService['streamChat']>;
-		autoSave: boolean;
 	}): AsyncGenerator<AIStreamEvent> {
 		const self = this;
 		return (async function* (): AsyncGenerator<AIStreamEvent> {
@@ -500,7 +536,6 @@ export class ConversationService {
 				project: params.project,
 				messagesWithUser,
 				timezone,
-				autoSave: params.autoSave,
 			});
 		})();
 	}
@@ -517,7 +552,6 @@ export class ConversationService {
 			project: ChatProject | null;
 			messagesWithUser: ChatMessage[];
 			timezone: string;
-			autoSave: boolean;
 		}
 	): AsyncGenerator<AIStreamEvent> {
 		let assistantContent = '';
@@ -546,43 +580,27 @@ export class ConversationService {
 			if (tokenDelta > 0) {
 				// We don't have exact breakdown in streaming, so estimate
 				assistantMessage.tokenUsage = {
-					promptTokens: 0,
-					completionTokens: tokenDelta,
+					inputTokens: 0,
+					outputTokens: tokenDelta,
 					totalTokens: tokenDelta,
 				};
 			}
 			
-			let finalConversation: ChatConversation;
-			if (context.autoSave) {
-				finalConversation = await this.persistExchange({
-					conversation: context.conversation,
-					project: context.project,
-					messages: [...context.messagesWithUser, assistantMessage],
-					model: currentModel,
-					provider: currentProvider,
-					tokenDelta,
-				});
-			} else {
-				const updatedMessages = [...context.messagesWithUser, assistantMessage];
-				const updatedMeta: ChatConversationMeta = {
-					...context.conversation.meta,
-					updatedAtTimestamp: Date.now(),
-				};
-				finalConversation = {
-					meta: updatedMeta,
-					messages: updatedMessages,
-					content: '',
-					file: context.conversation.file,
-				};
-			}
+			const finalConversation = await this.persistExchange({
+				conversation: context.conversation,
+				project: context.project,
+				messages: [...context.messagesWithUser, assistantMessage],
+				model: currentModel,
+				provider: currentProvider,
+				tokenDelta,
+			});
 			
 			yield {
 				type: 'complete',
 				conversation: finalConversation,
 				message: assistantMessage,
 				model: currentModel,
-				// Keep provider usage only when available from upstream.
-				usage: undefined,
+				usage: tokenDelta > 0 ? { totalTokens: tokenDelta } as any : undefined,
 			};
 		} catch (error) {
 			const normalized = error instanceof Error ? error : new Error(String(error));
@@ -593,26 +611,81 @@ export class ConversationService {
 	/**
 	 * Build a compact context window for summarization.
 	 */
-	private async buildContextWindow(messages: ChatMessage[], modelId: string): Promise<ChatContextWindow> {
+	async buildContextWindow(
+		messages: ChatMessage[],
+		modelId: string,
+		project?: ChatProject | null,
+	): Promise<ChatContextWindow> {
 		if (messages.length === 0) {
 			return {
 				lastUpdatedTimestamp: Date.now(),
 				recentMessagesWindow: [],
-				summary: 'defaultSummary',
+				summary: DEFAULT_SUMMARY,
 			};
 		}
 
 		const recent = messages.slice(-10);
-		return {
-			lastUpdatedTimestamp: Date.now(),
-			recentMessagesWindow: [
+		const recentMessagesWindow = [
+			{
+				fromMessageId: recent[0].id,
+				toMessageId: recent[recent.length - 1].id,
+			},
+		];
+
+		// Generate real summary using LLM
+		try {
+			const provider = this.chat.getProviderId();
+			const messagesForSummary = recent.map((m) => ({
+				role: m.role,
+				content: m.content,
+			}));
+
+			// Build project context if available
+			const projectContext = project
+				? `Project: ${project.meta.name}${project.context?.shortSummary ? `\n${project.context.shortSummary}` : ''}`
+				: undefined;
+
+			// Generate short summary
+			const shortSummary = await this.promptService.chatWithPrompt(
+				PromptId.ConversationSummaryShort,
 				{
-					fromMessageId: recent[0].id,
-					toMessageId: recent[recent.length - 1].id,
+					messages: messagesForSummary,
+					projectContext,
 				},
-			],
-			summary: 'defaultSummary',
-		};
+				provider,
+				modelId
+			) || DEFAULT_SUMMARY;
+
+			// Generate full summary if conversation is substantial
+			let fullSummary: string | undefined;
+			if (messages.length > 5) {
+				fullSummary = await this.promptService.chatWithPrompt(
+					PromptId.ConversationSummaryFull,
+					{
+						messages: messagesForSummary,
+						projectContext,
+						shortSummary,
+					},
+					provider,
+					modelId
+				);
+			}
+
+			return {
+				lastUpdatedTimestamp: Date.now(),
+				recentMessagesWindow,
+				summary: shortSummary,
+				shortSummary,
+				fullSummary,
+			};
+		} catch (error) {
+			console.warn('[ConversationService] Failed to generate summary:', error);
+			return {
+				lastUpdatedTimestamp: Date.now(),
+				recentMessagesWindow,
+				summary: DEFAULT_SUMMARY,
+			};
+		}
 	}
 
 	/**
@@ -624,6 +697,18 @@ export class ConversationService {
 			return detected || 'UTC';
 		} catch (error) {
 			return 'UTC';
+		}
+	}
+
+	/**
+	 * Fetch system prompt text while silencing prompt errors.
+	 */
+	private async loadConversationSystemPrompt(): Promise<string | null> {
+		try {
+			return (await this.promptService.render(PromptId.ConversationSystem, {})) ?? null;
+		} catch (error) {
+			console.error('Failed to load conversation prompt', error);
+			return null;
 		}
 	}
 
