@@ -108,7 +108,7 @@ export function GeneralTab({ settings, updateSettings }: GeneralTabProps) {
 			{/* Auto Index on Startup */}
 			<SettingField
 				label="Auto Index on Startup"
-				description="Automatically index files when Obsidian opens. If disabled, you can manually trigger indexing via command palette (Command+P: \"Index Search\")."
+				description={"Automatically index files when Obsidian opens. If disabled, you can manually trigger indexing via command palette (Command+P: \"Index Search\")."}
 			>
 				<Switch checked={settings.search.autoIndex} onChange={handleAutoIndexChange} />
 			</SettingField>

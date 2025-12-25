@@ -85,3 +85,23 @@ export const PROJECT_SUMMARY_UPDATE_THRESHOLD = 5;
  * Debounce delay in milliseconds before triggering summary update.
  */
 export const SUMMARY_UPDATE_DEBOUNCE_MS = 5000;
+
+/**
+ * Default suggestions for chat input when no conversation context is available.
+ */
+export const DEFAULT_CHAT_SUGGESTIONS = [
+	'What are the latest trends in AI?',
+	'How does machine learning work?',
+	'Explain quantum computing',
+	'Best practices for React development',
+	'How to optimize database queries?',
+	'What is the difference between REST and GraphQL?',
+	'Explain the concept of clean code',
+	'What are design patterns?',
+] as const;
+
+/**
+ * Typing speed for typewriter effect in milliseconds per character.
+ * Used for displaying conversation titles with animation.
+ */
+export const TYPEWRITER_EFFECT_SPEED_MS = 30;

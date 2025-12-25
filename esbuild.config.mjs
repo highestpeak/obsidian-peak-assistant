@@ -42,6 +42,12 @@ const shared = {
 		"@lezer/lr",
 		...builtins,
 	],
+	loader: {
+		".woff": "empty",
+		".woff2": "empty",
+		".ttf": "empty",
+		".eot": "empty",
+	},
 	target: "es2018",
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",

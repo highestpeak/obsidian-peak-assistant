@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useMemo } from 'react';
-import { ChatMessage } from '@/service/chat/types';
+import React, { useEffect, useRef, useMemo, useCallback } from 'react';
+import { ChatMessage, ChatConversation, ChatProject } from '@/service/chat/types';
 import { useChatViewStore } from './store/chatViewStore';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { useMessageStore } from '@/ui/store/messageStore';
@@ -7,10 +7,33 @@ import { OpenLinkEvent, ViewEventType } from '@/core/eventBus';
 import { SummaryModal } from './components/SummaryModal';
 import { ResourcesModal } from './components/ResourcesModal';
 import { MessageHeader } from './components/MessageViewHeader';
-import { MessageItem } from './components/MessageViewItem';
 import { ChatInputAreaComponent } from './components/ChatInputArea';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager } from '../shared/scroll-utils';
+import {
+	Conversation,
+	ConversationContent,
+	ConversationScrollButton,
+	Message,
+	MessageBranch,
+	MessageBranchContent,
+	MessageBranchSelector,
+	MessageContent,
+	MessageResponse,
+	MessageActions,
+	MessageAction,
+	Sources,
+	SourcesTrigger,
+	SourcesContent,
+	Source,
+	Reasoning,
+	ReasoningTrigger,
+	ReasoningContent,
+	Suggestions,
+	Suggestion,
+} from '@/ui/component/ai-elements';
+import { Star, Copy, RefreshCw } from 'lucide-react';
+import { useSuggestions } from './hooks/useSuggestions';
 
 /**
  * Main component for rendering and managing the messages list view
@@ -23,6 +46,7 @@ export const MessagesViewComponent: React.FC = () => {
     const pendingConversation = store.pendingConversation;
     const streamingMessageId = useMessageStore((state) => state.streamingMessageId);
     const streamingContent = useMessageStore((state) => state.streamingContent);
+    const suggestions = useSuggestions();
 
     const bodyContainerRef = useRef<HTMLDivElement>(null);
     const bodyScrollRef = useRef<HTMLDivElement>(null);
@@ -112,6 +136,52 @@ export const MessagesViewComponent: React.FC = () => {
         return result;
     }, [activeConversation, streamingMessageId, streamingContent]);
 
+    // Handle message actions
+    const handleToggleStar = useCallback(async (messageId: string, starred: boolean) => {
+        if (!activeConversation) return;
+        const updatedConv = await manager.toggleStar({
+            messageId,
+            conversation: activeConversation,
+            project: activeProject,
+            starred,
+        });
+        useChatViewStore.getState().setConversation(updatedConv);
+    }, [activeConversation, activeProject, manager]);
+
+    const handleRegenerate = useCallback(async (messageId: string) => {
+        if (!activeConversation) return;
+        
+        const messageIndex = activeConversation.messages.findIndex(m => m.id === messageId);
+        if (messageIndex === -1 || messageIndex === 0) return;
+        
+        const assistantMessage = activeConversation.messages[messageIndex];
+        if (assistantMessage.role !== 'assistant') return;
+        
+        let userMessageIndex = -1;
+        for (let i = messageIndex - 1; i >= 0; i--) {
+            if (activeConversation.messages[i].role === 'user') {
+                userMessageIndex = i;
+                break;
+            }
+        }
+        
+        if (userMessageIndex === -1) return;
+        
+        const userMessage = activeConversation.messages[userMessageIndex];
+        
+        try {
+            const result = await manager.blockChat({
+                conversation: activeConversation,
+                project: activeProject,
+                userContent: userMessage.content,
+            });
+            useChatViewStore.getState().setConversation(result.conversation);
+            scrollToBottom();
+        } catch (error) {
+            console.error('Failed to regenerate message:', error);
+        }
+    }, [activeConversation, activeProject, manager, scrollToBottom]);
+
     return (
         <div className="pktw-flex pktw-flex-col pktw-h-full pktw-relative pktw-overflow-hidden">
             {/* Header */}
@@ -122,25 +192,37 @@ export const MessagesViewComponent: React.FC = () => {
                 />
             </div>
 
-            {/* Body - Messages List */}
-            <div 
-                className="pktw-flex-1 pktw-overflow-y-auto pktw-overflow-x-hidden pktw-relative pktw-min-h-0 pktw-w-full" 
-                ref={bodyScrollRef}
-                style={{ scrollBehavior: 'smooth' }}
-            >
-                <div className="pktw-w-full">
-                    <div
-                        ref={bodyContainerRef}
-                        className="pktw-flex pktw-flex-col pktw-w-full pktw-max-w-none pktw-m-0 pktw-px-4 pktw-py-6 pktw-gap-0 pktw-box-border"
-                    >
-                {!activeConversation && !pendingConversation ? (
-                    <div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]">
-                        <div className="pktw-text-2xl pktw-font-light pktw-text-muted-foreground pktw-text-center">Ready when you are.</div>
-                    </div>
-                ) : messagesToRender.length === 0 ? (
-                    <div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]">
-                        <div className="pktw-text-2xl pktw-font-light pktw-text-muted-foreground pktw-text-center">Ready when you are.</div>
-                    </div>
+            {/* Body - Messages List using new component structure */}
+            <Conversation>
+                <ConversationContent>
+                {(!activeConversation && !pendingConversation) || messagesToRender.length === 0 ? (
+                    <>
+                        <div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-min-h-[400px]">
+                            <div className="pktw-text-2xl pktw-font-light pktw-text-muted-foreground pktw-text-center">
+                                Ready when you are.
+                            </div>
+                        </div>
+                        {/* Suggestions when no messages */}
+                        {suggestions.length > 0 && (
+                            <Suggestions className="pktw-px-4">
+                                {suggestions.map((suggestion, index) => (
+                                    <Suggestion
+                                        key={index}
+                                        suggestion={suggestion}
+                                        onClick={(suggestion) => {
+                                            // Set input value when suggestion is clicked
+                                            const inputArea = document.querySelector('textarea[name="message"]') as HTMLTextAreaElement;
+                                            if (inputArea) {
+                                                inputArea.value = suggestion;
+                                                inputArea.dispatchEvent(new Event('input', { bubbles: true }));
+                                                inputArea.focus();
+                                            }
+                                        }}
+                                    />
+                                ))}
+                            </Suggestions>
+                        )}
+                    </>
                 ) : (
                     messagesToRender.map((item) => {
                         // Create a temporary message for streaming messages
@@ -155,28 +237,95 @@ export const MessagesViewComponent: React.FC = () => {
                             provider: activeConversation?.meta.activeProvider || 'openai',
                         };
 
+                            const messageRole = message.role as 'user' | 'assistant' | 'system';
+                            const displayContent = item.isStreaming ? item.streamingContent : message.content;
+
+                            // Extract sources from resources if available
+                            const sources = message.resources?.map((resource) => ({
+                                href: resource.source,
+                                title: resource.source.split('/').pop() || resource.source,
+                            }));
+
                         return (
-                            <MessageItem
-                                key={item.id}
-                                message={message}
-                                activeConversation={activeConversation}
-                                activeProject={activeProject}
-                                isStreaming={item.isStreaming}
-                                streamingContent={item.streamingContent}
-                                onScrollToBottom={scrollToBottom}
-                            />
+                                <MessageBranch key={item.id} defaultBranch={0}>
+                                    <MessageBranchContent>
+                                        <Message from={messageRole}>
+                                            {/* Sources */}
+                                            {sources && sources.length > 0 && (
+                                                <Sources>
+                                                    <SourcesTrigger count={sources.length} />
+                                                    <SourcesContent>
+                                                        {sources.map((source) => (
+                                                            <Source
+                                                                href={source.href}
+                                                                key={source.href}
+                                                                title={source.title}
+                                                            />
+                                                        ))}
+                                                    </SourcesContent>
+                                                </Sources>
+                                            )}
+
+                                            {/* Reasoning/Thinking */}
+                                            {message.thinking && (
+                                                <Reasoning>
+                                                    <ReasoningTrigger />
+                                                    <ReasoningContent>{message.thinking}</ReasoningContent>
+                                                </Reasoning>
+                                            )}
+
+                                            {/* Message Content */}
+                                            <MessageContent>
+                                                <MessageResponse>{displayContent}</MessageResponse>
+                                            </MessageContent>
+
+                                            {/* Message Actions (only show when not streaming) */}
+                                            {!item.isStreaming && (
+                                                <MessageActions>
+                                                    <MessageAction
+                                                        tooltip={message.starred ? 'Unstar message' : 'Star message'}
+                                                        onClick={() => handleToggleStar(message.id, !message.starred)}
+                                                    >
+                                                        <Star size={14} fill={message.starred ? 'currentColor' : 'none'} />
+                                                    </MessageAction>
+                                                    <MessageAction
+                                                        tooltip="Copy message"
+                                                        onClick={async () => {
+                                                            try {
+                                                                await navigator.clipboard.writeText(message.content);
+                                                            } catch (err) {
+                                                                console.error('Failed to copy:', err);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Copy size={14} />
+                                                    </MessageAction>
+                                                    {message.role === 'assistant' && (
+                                                        <MessageAction
+                                                            tooltip="Regenerate response"
+                                                            onClick={() => handleRegenerate(message.id)}
+                                                        >
+                                                            <RefreshCw size={14} />
+                                                        </MessageAction>
+                                                    )}
+                                                </MessageActions>
+                                            )}
+                                        </Message>
+                                    </MessageBranchContent>
+
+                                    {/* Branch Selector (for future multi-version support) */}
+                                    <MessageBranchSelector from={messageRole} />
+                                </MessageBranch>
                         );
                     })
                 )}
-                    </div>
-                </div>
-            </div>
+                </ConversationContent>
+                <ConversationScrollButton />
+            </Conversation>
 
             {/* Footer - Input Area */}
             <div className="pktw-flex-shrink-0">
-                <ChatInputAreaComponent
-                    onScrollToBottom={scrollToBottom}
-                />
+                <ChatInputAreaComponent onScrollToBottom={scrollToBottom} />
             </div>
 
             {/* Modals */}

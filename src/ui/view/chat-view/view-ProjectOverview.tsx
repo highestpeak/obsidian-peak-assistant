@@ -22,8 +22,8 @@ interface StarredEntry {
 interface ResourceAttachmentEntry {
 	conversation: ChatConversation;
 	message: ChatMessage;
-	attachment: string;
-	attachmentLabel: string;
+	resource: string;
+	resourceLabel: string;
 }
 
 /**
@@ -94,19 +94,19 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 
 		for (const conversation of conversations) {
 			for (const message of conversation.messages) {
-				if (!message.attachments || message.attachments.length === 0) {
+				if (!message.resources || message.resources.length === 0) {
 					continue;
 				}
-				for (const attachment of message.attachments) {
-					const key = `${message.id}:${attachment}`;
+				for (const resourceRef of message.resources) {
+					const key = `${message.id}:${resourceRef.source}`;
 					if (seen.has(key)) continue;
 					seen.add(key);
-					const label = attachment.split('/').pop() || attachment;
+					const label = resourceRef.source.split('/').pop() || resourceRef.source;
 					entries.push({
 						conversation,
 						message,
-						attachment,
-						attachmentLabel: label,
+						resource: resourceRef.source,
+						resourceLabel: label,
 					});
 				}
 			}
@@ -321,16 +321,16 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources, onAttachmentClic
 		<div className="pktw-space-y-2">
 			{resources.map((entry, index) => (
 				<div
-					key={`${entry.conversation.meta.id}-${entry.attachment}-${index}`}
+					key={`${entry.conversation.meta.id}-${entry.resource}-${index}`}
 					className={cn(
 						'pktw-p-3 pktw-rounded-lg pktw-border pktw-border-border pktw-bg-card',
 						'pktw-cursor-pointer pktw-transition-all',
 						'hover:pktw-shadow-md hover:pktw-border-primary/50'
 					)}
-					onClick={() => onAttachmentClick(entry.attachment)}
+					onClick={() => onAttachmentClick(entry.resource)}
 				>
 					<div className="pktw-text-sm pktw-text-foreground">
-						{entry.conversation.meta.title} · {entry.attachmentLabel}
+						{entry.conversation.meta.title} · {entry.resourceLabel}
 					</div>
 				</div>
 			))}

@@ -10,6 +10,8 @@ import { ChevronDown, ChevronRight, Plus, Pencil, FileText } from 'lucide-react'
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ViewEventType, ConversationUpdatedEvent } from '@/core/eventBus';
+import { useTypewriterEffect } from '@/ui/view/shared/useTypewriterEffect';
+import { TYPEWRITER_EFFECT_SPEED_MS } from '@/core/constant';
 
 interface ConversationsSectionProps {
 }
@@ -122,6 +124,52 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 		};
 	}, [eventBus, updateConversation]);
 
+	/**
+	 * Component for displaying conversation title with typewriter effect
+	 */
+	const ConversationTitle: React.FC<{ conversationId: string }> = ({ conversationId }) => {
+		// Get latest conversation from store
+		const storeConversations = useProjectStore((state) => state.conversations);
+		const conversation = storeConversations.get(conversationId);
+		const [displayTitle, setDisplayTitle] = useState(conversation?.meta.title || '');
+
+		// Listen for conversation title updates
+		useEffect(() => {
+			const unsubscribe = eventBus.on<ConversationUpdatedEvent>(
+				ViewEventType.CONVERSATION_UPDATED,
+				(event) => {
+					// Only trigger typewriter if this is the updated conversation
+					if (event.conversation.meta.id === conversationId) {
+						setDisplayTitle(event.conversation.meta.title);
+					}
+				}
+			);
+
+			return () => {
+				unsubscribe();
+			};
+		}, [eventBus, conversationId]);
+
+		// Update display title when conversation changes or store updates
+		useEffect(() => {
+			if (conversation?.meta.title) {
+				setDisplayTitle((prev) => {
+					// Only update if title actually changed
+					return prev !== conversation.meta.title ? conversation.meta.title : prev;
+				});
+			}
+		}, [conversation?.meta.title, conversationId]); // Update when title changes
+
+		// Apply typewriter effect
+		const typewriterTitle = useTypewriterEffect({
+			text: displayTitle,
+			speed: TYPEWRITER_EFFECT_SPEED_MS,
+			enabled: true,
+		});
+
+		return <>{typewriterTitle}</>;
+	};
+
 	// Get root-level conversations (without projectId)
 	const conversationsWithoutProject = useMemo(() => {
 		return Array.from(conversations.values())
@@ -188,7 +236,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 								onClick={() => handleConversationClick(conversation)}
 								onContextMenu={(e) => handleContextMenu(e, conversation)}
 							>
-								{conversation.meta.title}
+								<ConversationTitle conversationId={conversation.meta.id} />
 							</div>
 						);
 					})
