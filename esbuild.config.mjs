@@ -4,6 +4,7 @@ import builtins from "builtin-modules";
 import alias from "esbuild-plugin-alias";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,18 +18,68 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = (process.argv[2] === "production");
 
+/**
+ * Custom plugin to inline WASM files as Base64 data URLs
+ * This ensures WASM files are bundled into the output for Obsidian plugin distribution
+ * 
+ * The plugin intercepts .wasm imports and converts them to Base64 strings that can be
+ * loaded at runtime without requiring separate file system access.
+ */
+const wasmInlinePlugin = {
+	name: 'wasm-inline',
+	setup(build) {
+		// Handle .wasm file imports
+		build.onResolve({ filter: /\.wasm$/ }, (args) => {
+			// Resolve WASM files to absolute paths
+			let wasmPath = args.path;
+			if (!path.isAbsolute(wasmPath)) {
+				// Handle relative imports from node_modules
+				if (wasmPath.includes('@journeyapps/wa-sqlite')) {
+					wasmPath = path.resolve(
+						__dirname,
+						'node_modules',
+						wasmPath.replace(/^.*?@journeyapps\/wa-sqlite\//, '@journeyapps/wa-sqlite/')
+					);
+				} else {
+					// Resolve relative to the importing file
+					wasmPath = path.resolve(path.dirname(args.importer), wasmPath);
+				}
+			}
+			return { path: wasmPath, namespace: 'wasm-inline' };
+		});
+
+		// Load WASM files and convert to Base64 data URL
+		build.onLoad({ filter: /.*/, namespace: 'wasm-inline' }, async (args) => {
+			try {
+				const wasmBytes = await fs.promises.readFile(args.path);
+				const base64 = wasmBytes.toString('base64');
+				const dataUrl = `data:application/wasm;base64,${base64}`;
+				
+				return {
+					contents: `export default "${dataUrl}";`,
+					loader: 'js',
+				};
+			} catch (error) {
+				console.error(`[wasm-inline] Failed to load WASM file: ${args.path}`, error);
+				throw error;
+			}
+		});
+	},
+};
+
 const shared = {
 	banner: { js: banner },
 	bundle: true,
+	platform: "node",
 	plugins: [
 		alias({
 			"@": path.resolve(__dirname, "src"),
 		}),
+		wasmInlinePlugin,
 	],
 	external: [
 		"obsidian",
 		"electron",
-		"better-sqlite3",
 		"@codemirror/autocomplete",
 		"@codemirror/collab",
 		"@codemirror/commands",
@@ -40,6 +91,10 @@ const shared = {
 		"@lezer/common",
 		"@lezer/highlight",
 		"@lezer/lr",
+		"playwright",
+		"playwright-core",
+		"chromium-bidi",
+		"@langchain/community",
 		...builtins,
 	],
 	loader: {
@@ -47,6 +102,8 @@ const shared = {
 		".woff2": "empty",
 		".ttf": "empty",
 		".eot": "empty",
+		// WASM files are inlined as Base64 data URLs by wasmInlinePlugin
+		// This ensures they're bundled into main.js for Obsidian plugin distribution
 	},
 	target: "es2018",
 	logLevel: "info",

@@ -1,0 +1,4 @@
+{"location":"better-sqlite3-loader.ts:8","message":"loadBetterSqlite3 entry","data":{"hasDatabase":false,"dirname":"/Applications/Obsidian.app/Contents/Resources/electron.asar/renderer","processCwd":"/"},"timestamp":1766728223477,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"better-sqlite3-loader.ts:14","message":"Attempting direct require","data":{},"timestamp":1766728223478,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"better-sqlite3-loader.ts:20","message":"Direct require failed","data":{"errorMessage":"Cannot find module 'better-sqlite3'\nRequire stack:\n- electron/js2c/renderer_init"},"timestamp":1766728223479,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"better-sqlite3-loader.ts:26","message":"Trying absolute path","data":{"pluginRoot":null},"timestamp":1766728223480,"sessionId":"debug-session","runId":"run1","hypothesisId":"B,C"}

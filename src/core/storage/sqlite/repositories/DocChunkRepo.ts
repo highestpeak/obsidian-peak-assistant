@@ -1,10 +1,8 @@
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
-import Database from 'better-sqlite3';
+import type { SqliteDatabase } from '../wa-sqlite-adapter/WaSqliteStore';
 import type { DocChunkInput, DocChunkOutput, FtsInsertParams, FtsSearchResult } from './types';
 import type { SearchScopeMode, SearchScopeValue } from '@/service/search/types';
-
-type BetterSqlite3Database = Database.Database;
 
 /**
  * CRUD repository for `doc_chunk` table and FTS5 virtual table.
@@ -12,7 +10,7 @@ type BetterSqlite3Database = Database.Database;
 export class DocChunkRepo {
 	constructor(
 		private readonly db: Kysely<DbSchema>,
-		private readonly rawDb: BetterSqlite3Database,
+		private readonly rawDb: SqliteDatabase,
 	) {}
 
 	/**

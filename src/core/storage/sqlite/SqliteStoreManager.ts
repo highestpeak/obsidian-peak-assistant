@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import path from 'path';
-import { BetterSqliteStore } from './BetterSqliteStore';
+import { WaSqliteStore } from './wa-sqlite-adapter/WaSqliteStore';
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from './ddl';
 import { ensureFolderRecursive } from '@/core/utils/vault-utils';
@@ -28,7 +28,7 @@ import { SEARCH_DB_FILENAME } from '@/core/constant';
  * multiple layers.
  */
 class SqliteStoreManager {
-	private store: BetterSqliteStore | null = null;
+	private store: WaSqliteStore | null = null;
 	private app: App | null = null;
 	
 	// Repositories
@@ -82,7 +82,7 @@ class SqliteStoreManager {
 			throw new Error('SqliteStoreManager init failed: dbFilePath is missing and vault basePath is unavailable');
 		}
 		
-		this.store = BetterSqliteStore.open({ dbFilePath });
+		this.store = await WaSqliteStore.open({ dbFilePath });
 		
 		// Initialize all repositories
 		const kdb = this.store.kysely;
@@ -117,10 +117,10 @@ class SqliteStoreManager {
 	}
 
 	/**
-	 * Get the BetterSqliteStore instance.
+	 * Get the WaSqliteStore instance.
 	 * Throws error if not initialized.
 	 */
-	getStore(): BetterSqliteStore {
+	getStore(): WaSqliteStore {
 		if (!this.store) {
 			throw new Error('SqliteStoreManager not initialized. Call init() first.');
 		}
