@@ -27,12 +27,6 @@ export interface DocumentLoader {
 	readByPath(path: string): Promise<Document | null>;
 
 	/**
-	 * Get indexable content from a document.
-	 * Returns the content string that should be indexed.
-	 */
-	getIndexableContent(doc: Document): string;
-
-	/**
 	 * Chunk content from a document.
 	 * First calls getIndexableContent, then chunks the content using appropriate splitter.
 	 * 

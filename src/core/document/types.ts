@@ -41,9 +41,9 @@ export type DocumentType =
 	| 'xlsx'
 	| 'pptx'
 	// Plugin data files
-	| 'conv'
-	| 'project'
-	| 'prompt'
+	// | 'conv'
+	// | 'project'
+	// | 'prompt'
 	// Obsidian data files
 	| 'excalidraw'
 	| 'canvas'

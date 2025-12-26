@@ -96,7 +96,8 @@ export default class MyPlugin extends Plugin {
 	 */
 	private async initializeSearchService(): Promise<void> {
 		// Initialize global DocumentLoaderManager singleton
-		DocumentLoaderManager.init(this.app, this.settings.search);
+		// Pass aiServiceManager for loaders that need AI capabilities (e.g., image description)
+		DocumentLoaderManager.init(this.app, this.settings.search, this.aiServiceManager);
 
 		// Initialize IndexService with AIServiceManager for embedding generation
 		IndexService.getInstance().init(this.aiServiceManager);

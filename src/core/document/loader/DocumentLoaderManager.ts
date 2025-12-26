@@ -4,7 +4,20 @@ import type { DocumentLoader } from './types';
 import type { DocumentType } from '@/core/document/types';
 import type { Document as CoreDocument } from '@/core/document/types';
 import type { SearchSettings } from '@/app/settings/types';
+import type { AIServiceManager } from '@/service/chat/service-manager';
 import { MarkdownDocumentLoader } from './MarkdownDocumentLoader';
+import { TextDocumentLoader } from './TextDocumentLoader';
+import { TableDocumentLoader } from './TableDocumentLoader';
+import { JsonDocumentLoader } from './JsonDocumentLoader';
+import { HtmlXmlDocumentLoader } from './HtmlXmlDocumentLoader';
+import { PdfDocumentLoader } from './PdfDocumentLoader';
+import { ImageDocumentLoader } from './ImageDocumentLoader';
+import { DocxDocumentLoader } from './DocxDocumentLoader';
+import { PptxDocumentLoader } from './PptxDocumentLoader';
+import { ExcalidrawDocumentLoader } from './ExcalidrawDocumentLoader';
+import { CanvasDocumentLoader } from './CanvasDocumentLoader';
+import { DataloomDocumentLoader } from './DataloomDocumentLoader';
+import { UrlDocumentLoader } from './UrlDocumentLoader';
 
 /**
  * Global singleton manager for document loaders.
@@ -31,20 +44,32 @@ export class DocumentLoaderManager {
 	/**
 	 * Initialize the global singleton instance.
 	 * Should be called once during plugin initialization.
+	 * @param aiServiceManager Optional AI service manager for loaders that need AI capabilities (e.g., image description).
 	 */
-	static init(app: App, settings: SearchSettings): DocumentLoaderManager {
+	static init(app: App, settings: SearchSettings, aiServiceManager?: AIServiceManager): DocumentLoaderManager {
 		if (DocumentLoaderManager.instance) {
 			console.warn('DocumentLoaderManager already initialized. Reinitializing with new settings.');
 		}
-		DocumentLoaderManager.instance = new DocumentLoaderManager(app, settings);
+		DocumentLoaderManager.instance = new DocumentLoaderManager(app, settings, aiServiceManager);
 		return DocumentLoaderManager.instance;
 	}
 
-	private constructor(app: App, settings: SearchSettings) {
+	private constructor(app: App, settings: SearchSettings, aiServiceManager?: AIServiceManager) {
 		this.settings = settings;
-		// Register default loaders
+		// Register all document loaders
 		this.registerLoader(new MarkdownDocumentLoader(app));
-		// TODO: Add PDF, Image, and other loaders here
+		this.registerLoader(new TextDocumentLoader(app));
+		this.registerLoader(new TableDocumentLoader(app));
+		this.registerLoader(new JsonDocumentLoader(app));
+		this.registerLoader(new HtmlXmlDocumentLoader(app));
+		this.registerLoader(new PdfDocumentLoader(app));
+		this.registerLoader(new ImageDocumentLoader(app, settings, aiServiceManager));
+		this.registerLoader(new DocxDocumentLoader(app));
+		this.registerLoader(new PptxDocumentLoader(app));
+		this.registerLoader(new ExcalidrawDocumentLoader(app));
+		this.registerLoader(new CanvasDocumentLoader(app));
+		this.registerLoader(new DataloomDocumentLoader(app));
+		this.registerLoader(new UrlDocumentLoader(app));
 	}
 
 	/**
@@ -90,7 +115,22 @@ export class DocumentLoaderManager {
 	 * Returns core Document model.
 	 */
 	async readByPath(path: string): Promise<CoreDocument | null> {
-		// Extract extension from path
+		// Handle special cases first
+		// Check for excalidraw files (ends with .excalidraw or .excalidraw.md)
+		// This needs special handling because .excalidraw.md would be matched as 'md' extension
+		if (path.endsWith('.excalidraw.md') || path.endsWith('.excalidraw')) {
+			const loader = this.loaderMap.get('excalidraw');
+			if (loader) return await loader.readByPath(path);
+		}
+		
+		// Check if it's a URL (not a file path)
+		if (path.startsWith('http://') || path.startsWith('https://')) {
+			const loader = this.loaderMap.get('url');
+			if (loader) return await loader.readByPath(path);
+		}
+		
+		// Extract extension from path for normal files
+		// Canvas and dataloom files will be matched by their extensions ('canvas', 'loom')
 		const extension = path.split('.').pop()?.toLowerCase() || '';
 		const loader = this.getLoaderForExtension(extension);
 		if (!loader) return null;

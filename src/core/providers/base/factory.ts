@@ -4,6 +4,7 @@ import { OpenRouterChatService } from './openrouter';
 import { OLLAMA_DEFAULT_BASE, OllamaChatService } from './ollama';
 import { ClaudeChatService } from './claude';
 import { GeminiChatService } from './gemini';
+import { PerplexityChatService } from './perplexity';
 
 const DEFAULT_TIMEOUT_MS = 60000;
 
@@ -90,6 +91,19 @@ export class ProviderServiceFactory {
 		this.register('ollama', (config, timeoutMs) => {
 			return new OllamaChatService({
 				baseUrl: config.baseUrl ?? OLLAMA_DEFAULT_BASE,
+				apiKey: config.apiKey,
+				timeoutMs,
+				extra: config.extra,
+			});
+		});
+
+		this.register('perplexity', (config, timeoutMs) => {
+			if (!config.apiKey) {
+				console.log('create service null apiKey', 'perplexity', config);
+				return null;
+			}
+			return new PerplexityChatService({
+				baseUrl: config.baseUrl,
 				apiKey: config.apiKey,
 				timeoutMs,
 				extra: config.extra,

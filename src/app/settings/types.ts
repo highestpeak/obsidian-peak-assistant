@@ -73,6 +73,14 @@ export interface SearchSettings {
 		provider: string;
 		modelId: string;
 	};
+	/**
+	 * Model configuration for image description generation (OCR and vision).
+	 * If not provided, will fallback to defaultModel from AI settings.
+	 */
+	imageDescriptionModel?: {
+		provider: string;
+		modelId: string;
+	};
 }
 
 /**
@@ -107,6 +115,10 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	searchSummaryModel: {
 		provider: 'openai',
 		modelId: 'gpt-4o-mini',
+	},
+	imageDescriptionModel: {
+		provider: 'openai',
+		modelId: 'gpt-4o',
 	},
 };
 

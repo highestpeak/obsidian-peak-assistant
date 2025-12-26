@@ -1,0 +1,148 @@
+import type { App } from 'obsidian';
+import type { DocumentLoader } from './types';
+import type { DocumentType } from '@/core/document/types';
+import type { Document } from '@/core/document/types';
+import { generateContentHash } from '@/core/utils/markdown-utils';
+import { PlaywrightWebBaseLoader } from '@langchain/community/document_loaders/web/playwright';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
+import type { Chunk } from '@/service/search/index/types';
+import type { ChunkingSettings } from '@/app/settings/types';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+
+/**
+ * URL document loader using PlaywrightWebBaseLoader.
+ * 
+ * Note: URLs are not files in the vault, so readByPath and scanDocuments
+ * may need special handling. This loader is designed for URL indexing.
+ */
+export class UrlDocumentLoader implements DocumentLoader {
+	private readonly playwrightConfig = {
+		launchOptions: {
+			headless: true,
+		},
+		gotoOptions: {
+			waitUntil: 'domcontentloaded' as const,
+		},
+	};
+
+	constructor(private readonly app: App) {}
+
+	getDocumentType(): DocumentType {
+		return 'url';
+	}
+
+	getSupportedExtensions(): string[] {
+		return ['url'];
+	}
+
+	async readByPath(path: string): Promise<Document | null> {
+		// For URLs, path is the URL itself
+		if (!this.isValidUrl(path)) return null;
+		return await this.readUrl(path);
+	}
+
+	async chunkContent(
+		doc: Document,
+		settings: ChunkingSettings,
+	): Promise<Chunk[]> {
+		const content = doc.cacheFileInfo.content;
+		const minSize = settings.minDocumentSizeForChunking;
+
+		if (content.length <= minSize) {
+			return [{
+				docId: doc.id,
+				content: content,
+			}];
+		}
+
+		const splitter = new RecursiveCharacterTextSplitter({
+			chunkSize: settings.maxChunkSize,
+			chunkOverlap: settings.chunkOverlap,
+		});
+
+		const langchainDocs = await splitter.createDocuments([content]);
+		const chunks: Chunk[] = [];
+		for (let i = 0; i < langchainDocs.length; i++) {
+			const langchainDoc = langchainDocs[i];
+			chunks.push({
+				docId: doc.id,
+				content: langchainDoc.pageContent,
+				chunkId: generateUuidWithoutHyphens(),
+				chunkIndex: i,
+			});
+		}
+
+		return chunks;
+	}
+
+	async *scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
+		// URLs are not files in the vault, so this may return empty
+		// In practice, URLs might be stored in a special index or metadata
+		yield [];
+	}
+
+	private isValidUrl(url: string): boolean {
+		try {
+			new URL(url);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	private async readUrl(url: string): Promise<Document | null> {
+		// Validate URL before creating loader instance
+		if (!this.isValidUrl(url)) {
+			return null;
+		}
+
+		try {
+			const loader = new PlaywrightWebBaseLoader(url, this.playwrightConfig);
+
+			const docs = await loader.load();
+			const content = docs.map(doc => doc.pageContent).join('\n\n');
+			const contentHash = await generateContentHash(content);
+
+			// Use URL as the document ID
+			const urlObj = new URL(url);
+			const title = urlObj.hostname + urlObj.pathname;
+
+			return {
+				id: url,
+				type: 'url',
+				sourceFileInfo: {
+					path: url,
+					name: url,
+					extension: 'url',
+					size: content.length,
+					mtime: Date.now(),
+					ctime: Date.now(),
+					content: '', // URL has no source content
+				},
+				cacheFileInfo: {
+					path: url,
+					name: url,
+					extension: 'url',
+					size: content.length,
+					mtime: Date.now(),
+					ctime: Date.now(),
+					content, // Extracted web content
+				},
+				metadata: {
+					title: title,
+					tags: [],
+				},
+				contentHash,
+				references: {
+					outgoing: [],
+					incoming: [],
+				},
+				lastProcessedAt: Date.now(),
+			};
+		} catch (error) {
+			console.error('Error loading URL:', url, error);
+			return null;
+		}
+	}
+}
+
