@@ -34,24 +34,7 @@ export class MultiProviderChatService implements LLMProviderService {
 	}
 
 	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
-		const service = this.getProviderService(request.provider);
-		return service.streamChat ? service.streamChat(request) : this.createFallbackStream(service, request);
-	}
-
-	private async *createFallbackStream(service: LLMProviderService, request: LLMRequest): AsyncGenerator<AIStreamEvent> {
-		const result = await service.blockChat(request);
-		if (result.content) {
-			yield {
-				type: 'delta',
-				text: result.content,
-				model: result.model,
-			};
-		}
-		yield {
-			type: 'complete',
-			model: result.model,
-			usage: result.usage,
-		};
+		return this.getProviderService(request.provider).streamChat(request);
 	}
 
 	/**

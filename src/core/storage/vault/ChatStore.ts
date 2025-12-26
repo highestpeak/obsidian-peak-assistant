@@ -17,7 +17,7 @@ import { ChatConversationDoc } from './chat-docs/ChatConversationDoc';
 import { ChatProjectSummaryDoc } from './chat-docs/ChatProjectSummaryDoc';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
-import type { ChatResourceRef } from '@/service/chat/resources/types';
+import type { ChatResourceRef } from '@/service/chat/types';
 
 export class ChatStorageService {
 	private readonly rootFolder: string;
@@ -44,7 +44,7 @@ export class ChatStorageService {
 
 		const file = this.app.vault.getAbstractFileByPath(path) as TFile | null;
 		const markdown = ChatProjectSummaryDoc.buildMarkdown({
-			shortSummary: context?.shortSummary ?? context?.summary ?? '',
+			shortSummary: context?.shortSummary ?? '',
 			fullSummary: context?.fullSummary ?? '',
 		});
 		const savedFile = await this.writeFile(file, path, markdown);
@@ -62,7 +62,6 @@ export class ChatStorageService {
 
 		const finalContext: ChatProjectContext = {
 			lastUpdatedTimestamp: project.updatedAtTimestamp,
-			summary: context?.shortSummary ?? context?.summary ?? DEFAULT_SUMMARY,
 			shortSummary: context?.shortSummary ?? undefined,
 			fullSummary: context?.fullSummary ?? undefined,
 			resourceIndex: context?.resourceIndex,
@@ -113,7 +112,7 @@ export class ChatStorageService {
 		}
 
 		const markdown = ChatConversationDoc.buildMarkdown({
-			shortSummary: context?.shortSummary ?? context?.summary ?? '',
+			shortSummary: context?.shortSummary ?? '',
 			fullSummary: context?.fullSummary ?? '',
 			messages,
 			attachments,
@@ -151,7 +150,6 @@ export class ChatStorageService {
 		const finalContext: ChatContextWindow = {
 			lastUpdatedTimestamp: conversation.updatedAtTimestamp,
 			recentMessagesWindow: context?.recentMessagesWindow ?? [],
-			summary: context?.shortSummary ?? context?.summary ?? DEFAULT_SUMMARY,
 			shortSummary: context?.shortSummary ?? undefined,
 			fullSummary: context?.fullSummary ?? undefined,
 			topics: context?.topics,
@@ -203,7 +201,6 @@ export class ChatStorageService {
 		const context: ChatContextWindow = {
 			lastUpdatedTimestamp: meta.updatedAtTimestamp,
 			recentMessagesWindow: [],
-			summary: docModel.shortSummary || docModel.fullSummary || DEFAULT_SUMMARY,
 			shortSummary: docModel.shortSummary || undefined,
 			fullSummary: docModel.fullSummary || undefined,
 		};
@@ -304,7 +301,6 @@ export class ChatStorageService {
 
 		const context: ChatProjectContext = {
 			lastUpdatedTimestamp: meta.updatedAtTimestamp,
-			summary: docModel.shortSummary || docModel.fullSummary || DEFAULT_SUMMARY,
 			shortSummary: docModel.shortSummary || undefined,
 			fullSummary: docModel.fullSummary || undefined,
 		};

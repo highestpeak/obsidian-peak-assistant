@@ -1,4 +1,4 @@
-import type { ChatMessage } from './types';
+import type { ChatMessage, ChatResourceRef } from './types';
 import type { LLMUsage } from '@/core/providers/types';
 
 /**
@@ -32,7 +32,7 @@ export interface BaseChatMessage {
 	starred: boolean;
 	model: string;
 	provider: string;
-	resources?: import('./resources/types').ChatResourceRef[];
+	resources?: ChatResourceRef[];
 }
 
 /**

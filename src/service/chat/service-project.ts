@@ -62,7 +62,7 @@ export class ProjectService {
 			// Build conversations array with summaries
 			const conversationsArray = conversations.map((conv) => ({
 				title: conv.meta.title,
-				shortSummary: conv.context?.shortSummary || conv.context?.summary,
+				shortSummary: conv.context?.shortSummary,
 				fullSummary: conv.context?.fullSummary,
 			}));
 

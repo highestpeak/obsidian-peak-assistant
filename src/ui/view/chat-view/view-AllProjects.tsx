@@ -102,7 +102,7 @@ export const AllProjectsViewComponent: React.FC<AllProjectsViewProps> = ({
 
 						{/* Project summary */}
 						<div className="pktw-text-sm pktw-text-muted-foreground pktw-line-clamp-3">
-							{project.context?.summary || 'No summary available.'}
+							{project.context?.shortSummary || 'No summary available.'}
 						</div>
 					</div>
 				))}

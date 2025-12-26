@@ -339,7 +339,7 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources, onAttachmentClic
 };
 
 function getProjectSummaryText(project: ChatProject): string | undefined {
-	const candidate = project.shortSummary ?? project.context?.summary;
+	const candidate = project.shortSummary ?? project.context?.shortSummary;
 	const trimmed = candidate?.trim();
 	return trimmed || undefined;
 }

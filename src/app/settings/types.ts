@@ -143,6 +143,11 @@ export interface AIServiceSettings {
 	 */
 	profileFilePath?: string;
 	/**
+	 * Resources summary folder name (relative to rootFolder).
+	 * Used for storing resource summary notes (files, URLs, etc.).
+	 */
+	resourcesSummaryFolder: string;
+	/**
 	 * Enable prompt rewrite (auto-improve user prompts)
 	 */
 	promptRewriteEnabled?: boolean;
@@ -155,6 +160,7 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	rootFolder: 'ChatFolder',
 	promptFolder: 'A-control/PeakAssistantPrompts',
 	uploadFolder: 'ChatFolder/Attachments',
+	resourcesSummaryFolder: 'resources-summary-cache',
 	defaultModel: {
 		provider: 'openai',
 		modelId: 'gpt-4o-mini',

@@ -32,11 +32,23 @@ export async function ensureFolderRecursive(app: App, folderPath: string): Promi
 			try {
 				await app.vault.createFolder(currentPath);
 			} catch (error) {
+				// Check if folder was created by another process/thread
 				const checkAgain = app.vault.getAbstractFileByPath(currentPath);
-				if (!checkAgain) {
-					console.error('Failed to create folder:', currentPath, error);
-					throw error;
+				if (checkAgain instanceof TFolder) {
+					// Folder exists now, which is what we want
+					continue;
 				}
+				// If error is "Folder already exists", ignore it
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				if (errorMessage.includes('already exists') || errorMessage.includes('Folder already exists')) {
+					// Verify it's actually a folder
+					const verify = app.vault.getAbstractFileByPath(currentPath);
+					if (verify instanceof TFolder) {
+						continue;
+					}
+				}
+				console.error('Failed to create folder:', currentPath, error);
+				throw error;
 			}
 		} else if (!(existing instanceof TFolder)) {
 			throw new Error(`Path exists but is not a folder: ${currentPath}`);

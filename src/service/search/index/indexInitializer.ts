@@ -1,7 +1,7 @@
 import { Notice } from 'obsidian';
 import type { App } from 'obsidian';
 import type { SearchSettings } from '@/app/settings/types';
-import { DocumentLoaderManager } from '@/core/document/loader/DocumentLoaderManager';
+import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { Document as CoreDocument, DocumentType } from '@/core/document/types';
 import { IndexProgressTracker } from '../support/progress-tracker';
 import { IndexService } from '@/service/search/index/indexService';

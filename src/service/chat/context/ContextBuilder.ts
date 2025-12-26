@@ -1,6 +1,6 @@
 import type { LLMRequestMessage } from '@/core/providers/types';
 import type { ChatConversation, ChatProject, ChatMessage } from '../types';
-import type { ResourceSummaryService } from '../resources/ResourceSummaryService';
+import type { ResourceSummaryService } from './ResourceSummaryService';
 import type { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/service/prompt/PromptId';
 import type { UserProfileService } from '@/service/chat/context/UserProfileService';
@@ -123,7 +123,7 @@ export class ContextBuilder {
 		// Project context
 		if (params.project) {
 			sections.push('## Project Context');
-			const projectSummary = params.project.context?.fullSummary || params.project.context?.shortSummary || params.project.context?.summary || params.project.shortSummary;
+			const projectSummary = params.project.context?.fullSummary || params.project.context?.shortSummary || params.project.shortSummary;
 			if (projectSummary) {
 				sections.push(`### Project: ${params.project.meta.name}`);
 				sections.push(projectSummary);
@@ -140,7 +140,7 @@ export class ContextBuilder {
 
 		// Conversation context
 		sections.push('## Conversation Context');
-		const convSummary = params.conversation.context?.fullSummary || params.conversation.context?.shortSummary || params.conversation.context?.summary;
+		const convSummary = params.conversation.context?.fullSummary || params.conversation.context?.shortSummary;
 		if (convSummary) {
 			sections.push(`### Summary: ${convSummary}`);
 

@@ -5,27 +5,28 @@ import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { ChatContextWindow, ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord } from './types';
 import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId, PromptVariables } from '@/service/prompt/PromptId';
-import { MessageContentComposer } from './messages/utils-message-content';
 import { ProjectService } from './service-project';
 import { ConversationService } from './service-conversation';
 import { AIStreamEvent } from '@/core/providers/types-events';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
-import { ResourceSummaryService } from './resources/ResourceSummaryService';
+import { ResourceSummaryService } from './context/ResourceSummaryService';
 import { IndexService } from '@/service/search/index/indexService';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
+import { ContextUpdateService } from './context/ContextUpdateService';
+import { EventBus } from '@/core/eventBus';
 
 /**
  * Manage AI conversations, storage, and model interactions.
  */
 export class AIServiceManager {
 	private storage: ChatStorageService;
-	private contentComposer: MessageContentComposer;
 	private multiChat: MultiProviderChatService;
 	private promptService: PromptService;
 	private projectService: ProjectService;
 	private conversationService: ConversationService;
 	private resourceSummaryService: ResourceSummaryService;
 	private profileService?: UserProfileService;
+	private contextUpdateService?: ContextUpdateService;
 
 	constructor(
 		private readonly app: App,
@@ -41,11 +42,12 @@ export class AIServiceManager {
 			rootFolder: this.settings.rootFolder,
 		});
 
-		// Message content composer utility
-		this.contentComposer = new MessageContentComposer(this.app);
-
 		// === Resource summary service ===
-		this.resourceSummaryService = new ResourceSummaryService(this.app, this.settings.rootFolder);
+		this.resourceSummaryService = new ResourceSummaryService(
+			this.app,
+			this.settings.rootFolder,
+			this.settings.resourcesSummaryFolder
+		);
 
 		// === Service construction ===
 		const providerConfigs = this.settings.llmProviderConfigs ?? {};
@@ -76,10 +78,18 @@ export class AIServiceManager {
 			this.storage,
 			this.multiChat,
 			this.promptService,
-			this.contentComposer,
 			this.settings.defaultModel,
 			this.resourceSummaryService,
 			this.profileService,
+		);
+
+		// Initialize summary update service
+		const eventBus = EventBus.getInstance(this.app);
+		this.contextUpdateService = new ContextUpdateService(
+			eventBus,
+			this.storage,
+			this.conversationService,
+			this.projectService,
 		);
 	}
 
@@ -147,15 +157,30 @@ export class AIServiceManager {
 		}
 
 		this.projectService = new ProjectService(this.storage, this.settings.rootFolder, this.promptService, this.multiChat);
-		this.resourceSummaryService = new ResourceSummaryService(this.app, this.settings.rootFolder);
+		this.resourceSummaryService = new ResourceSummaryService(
+			this.app,
+			this.settings.rootFolder,
+			this.settings.resourcesSummaryFolder
+		);
 		this.conversationService = new ConversationService(
 			this.storage,
 			this.multiChat,
 			this.promptService,
-			this.contentComposer,
 			this.settings.defaultModel,
 			this.resourceSummaryService,
 			this.profileService,
+		);
+
+		// Reinitialize summary update service
+		const eventBus = EventBus.getInstance(this.app);
+		if (this.contextUpdateService) {
+			this.contextUpdateService.cleanup();
+		}
+		this.contextUpdateService = new ContextUpdateService(
+			eventBus,
+			this.storage,
+			this.conversationService,
+			this.projectService,
 		);
 
 		// Update IndexService with updated AIServiceManager instance
@@ -217,19 +242,6 @@ export class AIServiceManager {
 		return this.conversationService.streamChat(params);
 	}
 
-
-	/**
-	 * Update full message list of a conversation.
-	 */
-	async updateConversationMessages(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
-		messages: ChatMessage[];
-		context?: ChatContextWindow;
-	}): Promise<ChatConversation> {
-		return this.conversationService.updateConversationMessages(params);
-	}
-
 	/**
 	 * Update conversation's active model.
 	 */
@@ -270,13 +282,6 @@ export class AIServiceManager {
 	 */
 	async loadStarred(): Promise<StarredMessageRecord[]> {
 		return this.conversationService.loadStarred();
-	}
-
-	/**
-	 * Summarize a conversation chunk with the configured model.
-	 */
-	async summarizeConversation(modelId: string, text: string): Promise<string> {
-		return this.conversationService.summarizeConversation(modelId, text);
 	}
 
 	/**

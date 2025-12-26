@@ -1,5 +1,7 @@
+import type { ResourceKind } from '@/core/document/types';
+
 import { LLMUsage } from '@/core/providers/types';
-import type { ChatResourceRef, ResourceSummaryMeta } from './resources/types';
+import type { TFile } from 'obsidian';
 
 export type ChatRole = 'user' | 'assistant' | 'system';
 
@@ -69,7 +71,40 @@ export interface ChatProjectMeta {
 	updatedAtTimestamp: number;
 }
 
-export type RootMode = 'project-first' | 'conversation-first';
+/**
+ * Reference to a resource attached to a message
+ */
+export interface ChatResourceRef {
+	source: string; // Original path/url/text content
+	id: string; // Stable hash-based ID for indexing and summary file naming
+	kind: ResourceKind;
+	summaryNotePath?: string; // Path to the resource summary note file
+}
+
+/**
+ * Resource summary metadata stored in resource summary note files
+ */
+export interface ResourceSummaryMeta {
+	id: string;
+	source: string;
+	kind: ResourceKind;
+	title?: string;
+	shortSummary?: string;
+	fullSummary?: string;
+	lastUpdatedTimestamp: number;
+	mentionedInConversations?: string[]; // Conversation IDs
+	mentionedInProjects?: string[]; // Project IDs
+	mentionedInFiles?: string[]; // File paths (markdown, excalidraw, etc.)
+}
+
+/**
+ * Parsed resource summary file
+ */
+export interface ParsedResourceSummaryFile {
+	meta: ResourceSummaryMeta;
+	content: string;
+	file: TFile;
+}
 
 export interface ChatContextWindow {
 	lastUpdatedTimestamp: number;
@@ -77,10 +112,6 @@ export interface ChatContextWindow {
 		fromMessageId: string;
 		toMessageId: string;
 	}>;
-	/**
-	 * @deprecated Use shortSummary and fullSummary instead
-	 */
-	summary: string;
 	/**
 	 * Short summary (100-1000 characters)
 	 */
@@ -102,10 +133,6 @@ export interface ChatContextWindow {
 
 export interface ChatProjectContext {
 	lastUpdatedTimestamp: number;
-	/**
-	 * @deprecated Use shortSummary and fullSummary instead
-	 */
-	summary: string;
 	/**
 	 * Short summary (100-1000 characters)
 	 */
@@ -133,8 +160,6 @@ export interface StarredMessageRecord {
 	createdAt: number;
 	active: boolean;
 }
-
-import type { TFile } from 'obsidian';
 
 export interface ChatConversation {
 	meta: ChatConversationMeta;

@@ -1,5 +1,4 @@
-import type { ChatMessage } from '../types';
-import type { ChatResourceRef } from '../resources/types';
+import type { ChatMessage, ChatResourceRef } from '@/service/chat/types';
 
 /**
  * Document model for conversation markdown (plain text, no meta).

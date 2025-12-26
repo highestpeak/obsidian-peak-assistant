@@ -38,6 +38,7 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 	settings.rootFolder = getString(rawAI.rootFolder, settings.rootFolder);
 	settings.promptFolder = getString(rawAI.promptFolder, settings.promptFolder);
 	settings.uploadFolder = getString(rawAI.uploadFolder, settings.uploadFolder);
+	settings.resourcesSummaryFolder = getString(rawAI.resourcesSummaryFolder, settings.resourcesSummaryFolder);
 
 	// Default model
 	if (rawAI.defaultModel && typeof rawAI.defaultModel === 'object') {

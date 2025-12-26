@@ -1,8 +1,7 @@
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
-import type { DocumentType } from '@/core/document/types';
-import type { Document } from '@/core/document/types';
+import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { generateContentHash } from '@/core/utils/markdown-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
@@ -11,6 +10,7 @@ import { DEFAULT_SEARCH_SETTINGS } from '@/app/settings/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { LLMRequest } from '@/core/providers/types';
+import { PromptId } from '@/service/prompt/PromptId';
 
 /**
  * Image document loader.
@@ -95,6 +95,33 @@ export class ImageDocumentLoader implements DocumentLoader {
 			}
 		}
 		if (batch.length) yield batch;
+	}
+
+	/**
+	 * Get summary for an image document
+	 */
+	async getSummary(
+		source: Document | string,
+		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
+		provider: string,
+		modelId: string
+	): Promise<ResourceSummary> {
+		if (typeof source === 'string') {
+			throw new Error('ImageDocumentLoader.getSummary requires a Document, not a string');
+		}
+		const doc = source;
+		const content = doc.cacheFileInfo.content;
+		const title = doc.metadata.title || doc.sourceFileInfo.name;
+		const path = doc.sourceFileInfo.path;
+
+		const shortSummary = await promptService.chatWithPrompt(
+			PromptId.ImageSummary,
+			{ content, title, path },
+			provider,
+			modelId
+		);
+
+		return { shortSummary, fullSummary: shortSummary };
 	}
 
 	private async readImageFile(file: TFile): Promise<Document | null> {

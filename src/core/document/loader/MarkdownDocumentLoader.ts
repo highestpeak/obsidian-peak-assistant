@@ -1,13 +1,13 @@
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
-import type { DocumentType } from '@/core/document/types';
-import type { Document } from '@/core/document/types';
+import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { generateContentHash, extractReferences } from '@/core/utils/markdown-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { PromptId } from '@/service/prompt/PromptId';
 
 /**
  * Markdown document loader.
@@ -190,6 +190,57 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 			// Ignore read errors; indexing should be best-effort.
 			return null;
 		}
+	}
+
+	/**
+	 * Get summary for a markdown document
+	 * // todo implement getSummary. many types: raw knowledge base markdown, conv and project markdown, resources markdown
+	 */
+	async getSummary(
+		source: Document | string,
+		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
+		provider: string,
+		modelId: string
+	): Promise<ResourceSummary> {
+		if (typeof source === 'string') {
+			throw new Error('MarkdownDocumentLoader.getSummary requires a Document, not a string');
+		}
+		const doc = source;
+		const content = doc.sourceFileInfo.content;
+		const title = doc.metadata.title || doc.sourceFileInfo.name;
+		const path = doc.sourceFileInfo.path;
+
+		// Generate short summary
+		const shortSummary = await promptService.chatWithPrompt(
+			PromptId.DocSummary,
+			{
+				content,
+				title,
+				path,
+			},
+			provider,
+			modelId
+		);
+
+		// Generate full summary if content is substantial (more than 2000 characters)
+		let fullSummary: string | undefined;
+		if (content.length > 2000) {
+			fullSummary = await promptService.chatWithPrompt(
+				PromptId.DocSummary,
+				{
+					content,
+					title,
+					path,
+				},
+				provider,
+				modelId
+			);
+		}
+
+		return {
+			shortSummary,
+			fullSummary,
+		};
 	}
 }
 

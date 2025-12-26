@@ -5,7 +5,7 @@ import { normalizeTextForFts } from '../support/segmenter';
 import type { SearchSettings } from '@/app/settings/types';
 import type { Document } from '@/core/document/types';
 import { INDEX_STATE_KEYS } from '@/core/constant';
-import { DocumentLoaderManager } from '@/core/document/loader/DocumentLoaderManager';
+import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { normalizePath } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';

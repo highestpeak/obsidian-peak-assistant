@@ -1,7 +1,7 @@
 import { EventBus, MessageSentEvent, ConversationCreatedEvent, ViewEventType } from '@/core/eventBus';
 import { CONVERSATION_SUMMARY_UPDATE_THRESHOLD, PROJECT_SUMMARY_UPDATE_THRESHOLD, SUMMARY_UPDATE_DEBOUNCE_MS } from '@/core/constant';
-import type { ConversationService } from './service-conversation';
-import type { ProjectService } from './service-project';
+import type { ConversationService } from '../service-conversation';
+import type { ProjectService } from '../service-project';
 import type { ChatStorageService } from '@/core/storage/vault/ChatStore';
 
 /**
@@ -9,7 +9,7 @@ import type { ChatStorageService } from '@/core/storage/vault/ChatStore';
  * Uses debouncing and threshold-based triggering to avoid excessive updates.
  * Both conversation and project summaries are updated based on message count.
  */
-export class SummaryUpdateService {
+export class ContextUpdateService {
 	// Count messages per conversation
 	private conversationCounts = new Map<string, number>();
 	// Count messages per project (across all conversations in the project)

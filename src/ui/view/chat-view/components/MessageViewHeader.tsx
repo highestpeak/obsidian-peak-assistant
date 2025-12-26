@@ -119,7 +119,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 							</IconButton>
 
 							{/* Summary button (if available) */}
-							{activeConversation.context?.summary && (
+							{activeConversation.context?.shortSummary && (
 								<IconButton
 									size="lg"
 									onClick={() => setShowSummaryModal(true)}

@@ -15,6 +15,7 @@ import * as instructionUpdate from './templates/instruction-update';
 import * as promptQualityEvalJson from './templates/prompt-quality-eval-json';
 import * as promptRewriteWithLibrary from './templates/prompt-rewrite-with-library';
 import * as docSummary from './templates/doc-summary';
+import * as imageSummary from './templates/image-summary';
 import * as folderProjectSummary from './templates/folder-project-summary';
 import * as docTypeClassifyJson from './templates/doc-type-classify-json';
 import * as docTagGenerateJson from './templates/doc-tag-generate-json';
@@ -74,6 +75,7 @@ export enum PromptId {
 	
 	// Document analysis prompts (for future use)
 	DocSummary = 'doc-summary',
+	ImageSummary = 'image-summary',
 	FolderProjectSummary = 'folder-project-summary',
 	// Classify document type: principle, profile, index, daily, project, note, or other
 	DocTypeClassifyJson = 'doc-type-classify-json',
@@ -156,6 +158,11 @@ export interface PromptVariables {
 		title?: string;
 		path?: string;
 	};
+	[PromptId.ImageSummary]: {
+		content: string;
+		title?: string;
+		path?: string;
+	};
 	[PromptId.FolderProjectSummary]: {
 		documents: Array<{ title: string; summary?: string; path: string }>;
 	};
@@ -192,6 +199,7 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptTemplate> = {
 	[PromptId.PromptQualityEvalJson]: createTemplate(promptQualityEvalJson),
 	[PromptId.PromptRewriteWithLibrary]: createTemplate(promptRewriteWithLibrary),
 	[PromptId.DocSummary]: createTemplate(docSummary),
+	[PromptId.ImageSummary]: createTemplate(imageSummary),
 	[PromptId.FolderProjectSummary]: createTemplate(folderProjectSummary),
 	[PromptId.DocTypeClassifyJson]: createTemplate(docTypeClassifyJson),
 	[PromptId.DocTagGenerateJson]: createTemplate(docTagGenerateJson),

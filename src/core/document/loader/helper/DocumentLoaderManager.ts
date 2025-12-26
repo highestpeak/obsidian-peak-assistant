@@ -1,23 +1,23 @@
 import type { App, TAbstractFile } from 'obsidian';
 import { TFile } from 'obsidian';
-import type { DocumentLoader } from './types';
+import type { DocumentLoader } from '../types';
 import type { DocumentType } from '@/core/document/types';
 import type { Document as CoreDocument } from '@/core/document/types';
 import type { SearchSettings } from '@/app/settings/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { MarkdownDocumentLoader } from './MarkdownDocumentLoader';
-import { TextDocumentLoader } from './TextDocumentLoader';
-import { TableDocumentLoader } from './TableDocumentLoader';
-import { JsonDocumentLoader } from './JsonDocumentLoader';
-import { HtmlXmlDocumentLoader } from './HtmlXmlDocumentLoader';
-import { PdfDocumentLoader } from './PdfDocumentLoader';
-import { ImageDocumentLoader } from './ImageDocumentLoader';
-import { DocxDocumentLoader } from './DocxDocumentLoader';
-import { PptxDocumentLoader } from './PptxDocumentLoader';
-import { ExcalidrawDocumentLoader } from './ExcalidrawDocumentLoader';
-import { CanvasDocumentLoader } from './CanvasDocumentLoader';
-import { DataloomDocumentLoader } from './DataloomDocumentLoader';
-import { UrlDocumentLoader } from './UrlDocumentLoader';
+import { MarkdownDocumentLoader } from '../MarkdownDocumentLoader';
+import { TextDocumentLoader } from '../TextDocumentLoader';
+import { TableDocumentLoader } from '../TableDocumentLoader';
+import { JsonDocumentLoader } from '../JsonDocumentLoader';
+import { HtmlXmlDocumentLoader } from '../HtmlXmlDocumentLoader';
+import { PdfDocumentLoader } from '../PdfDocumentLoader';
+import { ImageDocumentLoader } from '../ImageDocumentLoader';
+import { DocxDocumentLoader } from '../DocxDocumentLoader';
+import { PptxDocumentLoader } from '../PptxDocumentLoader';
+import { ExcalidrawDocumentLoader } from '../ExcalidrawDocumentLoader';
+import { CanvasDocumentLoader } from '../CanvasDocumentLoader';
+import { DataloomDocumentLoader } from '../DataloomDocumentLoader';
+import { UrlDocumentLoader } from '../UrlDocumentLoader';
 
 /**
  * Global singleton manager for document loaders.

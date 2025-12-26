@@ -1,12 +1,12 @@
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
-import type { DocumentType } from '@/core/document/types';
-import type { Document } from '@/core/document/types';
+import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { generateContentHash } from '@/core/utils/markdown-utils';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 
 /**
  * Table document loader for CSV and XLSX files.
@@ -93,6 +93,21 @@ export class TableDocumentLoader implements DocumentLoader {
 			}
 		}
 		if (batch.length) yield batch;
+	}
+
+	/**
+	 * Get summary for a table document (CSV/XLSX)
+	 */
+	async getSummary(
+		source: Document | string,
+		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
+		provider: string,
+		modelId: string
+	): Promise<ResourceSummary> {
+		if (typeof source === 'string') {
+			throw new Error('TableDocumentLoader.getSummary requires a Document, not a string');
+		}
+		return getDefaultDocumentSummary(source, promptService, provider, modelId);
 	}
 
 	private async readTableFile(file: TFile): Promise<Document | null> {

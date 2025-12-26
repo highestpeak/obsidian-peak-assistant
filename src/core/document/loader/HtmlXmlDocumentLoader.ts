@@ -1,12 +1,12 @@
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
-import type { DocumentType } from '@/core/document/types';
-import type { Document } from '@/core/document/types';
+import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { generateContentHash } from '@/core/utils/markdown-utils';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 
 /**
  * HTML/XML document loader.
@@ -187,6 +187,21 @@ export class HtmlXmlDocumentLoader implements DocumentLoader {
 			}
 		}
 		if (batch.length) yield batch;
+	}
+
+	/**
+	 * Get summary for an HTML/XML document
+	 */
+	async getSummary(
+		source: Document | string,
+		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
+		provider: string,
+		modelId: string
+	): Promise<ResourceSummary> {
+		if (typeof source === 'string') {
+			throw new Error('HtmlXmlDocumentLoader.getSummary requires a Document, not a string');
+		}
+		return getDefaultDocumentSummary(source, promptService, provider, modelId);
 	}
 
 	private async readHtmlXmlFile(file: TFile): Promise<Document | null> {

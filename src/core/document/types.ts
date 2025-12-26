@@ -233,3 +233,46 @@ export interface Document {
 	lastProcessedAt: number;
 }
 
+/**
+ * Special resource types that are not regular documents
+ */
+export type SpecialResourceType = 'tag' | 'folder' | 'category';
+
+/**
+ * All possible resource kinds (document types + special resource types)
+ */
+export type ResourceKind = DocumentType | SpecialResourceType;
+
+/**
+ * Resource summary result
+ */
+export interface ResourceSummary {
+	shortSummary: string;
+	fullSummary?: string;
+}
+
+/**
+ * Interface for resources that can generate summaries
+ */
+export interface Summarizable {
+	/**
+	 * Get summary for a resource or document
+	 */
+	getSummary(
+		source: Document | string,
+		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
+		provider: string,
+		modelId: string
+	): Promise<ResourceSummary>;
+}
+
+/**
+ * Resource loader interface for special resource types
+ */
+export interface ResourceLoader extends Summarizable {
+	/**
+	 * Get the resource type this loader handles
+	 */
+	getResourceType(): ResourceKind;
+}
+

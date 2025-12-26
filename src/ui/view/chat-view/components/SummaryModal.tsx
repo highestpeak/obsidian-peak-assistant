@@ -19,7 +19,7 @@ export const SummaryModal: React.FC = () => {
 	const showSummaryModal = useChatViewStore((state) => state.showSummaryModal);
 	const setShowSummaryModal = useChatViewStore((state) => state.setShowSummaryModal);
 
-	const summary = activeConversation?.context?.summary;
+	const summary = activeConversation?.context?.shortSummary;
 
 	// Close modal when conversation changes
 	useEffect(() => {

@@ -67,6 +67,53 @@ const wasmInlinePlugin = {
 	},
 };
 
+/**
+ * Plugin to fix createRequire(import.meta.url) issues in bundled code
+ * Some packages like @langchain/community use createRequire(import.meta.url)
+ * In CommonJS output, we can use __filename directly instead
+ */
+const fixImportMetaPlugin = {
+	name: 'fix-import-meta',
+	setup(build) {
+		build.onLoad({ filter: /node_modules\/@langchain\/community\/.*\.(js|mjs|cjs)$/ }, async (args) => {
+			try {
+				const contents = await fs.promises.readFile(args.path, 'utf8');
+				
+				// Fix createRequire(import.meta.url) patterns
+				// In CommonJS, __filename is available, so we can use it directly
+				let modified = contents;
+				
+				// Pattern: createRequire(import.meta.url)
+				// Replace with createRequire(__filename) for CommonJS
+				if (contents.includes('createRequire(import.meta.url)')) {
+					modified = modified.replace(
+						/createRequire\(import\.meta\.url\)/g,
+						'(function() { const { createRequire } = require("module"); return createRequire(typeof __filename !== "undefined" ? __filename : require("path").join(__dirname, "index.js")); })()'
+					);
+				}
+				
+				// Pattern: createRequire(import.meta.url || ...)
+				if (contents.includes('createRequire(import.meta.url')) {
+					modified = modified.replace(
+						/createRequire\(import\.meta\.url(?:\s*\|\|.*?)?\)/g,
+						'(function() { const { createRequire } = require("module"); return createRequire(typeof __filename !== "undefined" ? __filename : require("path").join(__dirname, "index.js")); })()'
+					);
+				}
+
+				if (modified !== contents) {
+					return {
+						contents: modified,
+						loader: 'js',
+					};
+				}
+			} catch (error) {
+				// If we can't read/modify the file, just return undefined to use default handling
+				console.warn(`[fix-import-meta] Could not process ${args.path}:`, error.message);
+			}
+		});
+	},
+};
+
 const shared = {
 	banner: { js: banner },
 	bundle: true,
@@ -75,6 +122,7 @@ const shared = {
 		alias({
 			"@": path.resolve(__dirname, "src"),
 		}),
+		fixImportMetaPlugin,
 		wasmInlinePlugin,
 	],
 	external: [
@@ -94,7 +142,6 @@ const shared = {
 		"playwright",
 		"playwright-core",
 		"chromium-bidi",
-		"@langchain/community",
 		...builtins,
 	],
 	loader: {

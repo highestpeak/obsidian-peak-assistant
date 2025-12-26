@@ -1,5 +1,4 @@
-import type { DocumentType } from '@/core/document/types';
-import type { Document } from '@/core/document/types';
+import type { DocumentType, Document, ResourceSummary, Summarizable } from '@/core/document/types';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 
@@ -9,7 +8,7 @@ import type { ChunkingSettings } from '@/app/settings/types';
  * Loaders should return core Document model, which can then be converted
  * to Chunk for search indexing.
  */
-export interface DocumentLoader {
+export interface DocumentLoader extends Summarizable {
 	/**
 	 * Get the document type this loader handles.
 	 */
@@ -42,5 +41,21 @@ export interface DocumentLoader {
 	 * This is used for efficient index change detection.
 	 */
 	scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>>;
+
+	/**
+	 * Get summary for a document.
+	 * Returns both short and full summaries.
+	 * @param source - Document to summarize
+	 * @param promptService - Prompt service for generating summaries
+	 * @param provider - LLM provider
+	 * @param modelId - LLM model ID
+	 * @returns Resource summary with short and optional full summary
+	 */
+	getSummary(
+		source: Document | string,
+		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
+		provider: string,
+		modelId: string
+	): Promise<ResourceSummary>;
 }
 

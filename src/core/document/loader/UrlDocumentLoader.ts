@@ -1,13 +1,13 @@
 import type { App } from 'obsidian';
 import type { DocumentLoader } from './types';
-import type { DocumentType } from '@/core/document/types';
-import type { Document } from '@/core/document/types';
+import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { generateContentHash } from '@/core/utils/markdown-utils';
 import { PlaywrightWebBaseLoader } from '@langchain/community/document_loaders/web/playwright';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 
 /**
  * URL document loader using PlaywrightWebBaseLoader.
@@ -79,6 +79,21 @@ export class UrlDocumentLoader implements DocumentLoader {
 		// URLs are not files in the vault, so this may return empty
 		// In practice, URLs might be stored in a special index or metadata
 		yield [];
+	}
+
+	/**
+	 * Get summary for a URL document
+	 */
+	async getSummary(
+		source: Document | string,
+		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
+		provider: string,
+		modelId: string
+	): Promise<ResourceSummary> {
+		if (typeof source === 'string') {
+			throw new Error('UrlDocumentLoader.getSummary requires a Document, not a string');
+		}
+		return getDefaultDocumentSummary(source, promptService, provider, modelId);
 	}
 
 	private isValidUrl(url: string): boolean {
