@@ -58,7 +58,11 @@ export default class MyPlugin extends Plugin {
 		// // 	this
 		// // )
 
+		// Create AIServiceManager (ConversationService and ProjectService will be initialized in init())
 		this.aiServiceManager = new AIServiceManager(this.app, this.settings.ai);
+		// Initialize global DocumentLoaderManager singleton
+		// Pass aiServiceManager for loaders that need AI capabilities (e.g., image description)
+		DocumentLoaderManager.init(this.app, this.settings.search, this.aiServiceManager);
 		await this.aiServiceManager.init();
 
 		this.viewManager = new ViewManager(this, this.aiServiceManager);
@@ -95,9 +99,6 @@ export default class MyPlugin extends Plugin {
 	 * Initialize search client and background indexing.
 	 */
 	private async initializeSearchService(): Promise<void> {
-		// Initialize global DocumentLoaderManager singleton
-		// Pass aiServiceManager for loaders that need AI capabilities (e.g., image description)
-		DocumentLoaderManager.init(this.app, this.settings.search, this.aiServiceManager);
 
 		// Initialize IndexService with AIServiceManager for embedding generation
 		IndexService.getInstance().init(this.aiServiceManager);
