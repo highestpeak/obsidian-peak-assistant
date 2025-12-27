@@ -1,6 +1,6 @@
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
-import type { SqliteDatabase } from '../wa-sqlite-adapter/WaSqliteStore';
+import type { SqliteDatabase } from '../types';
 import type { SearchScopeMode, SearchScopeValue } from '@/service/search/types';
 
 /**

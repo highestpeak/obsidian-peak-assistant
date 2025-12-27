@@ -69,7 +69,12 @@ export default class MyPlugin extends Plugin {
 		this.viewManager.init();
 
 		// Initialize SQLite store
-		await sqliteStoreManager.init({ app: this.app, storageFolder: this.settings.dataStorageFolder, filename: SEARCH_DB_FILENAME });
+		await sqliteStoreManager.init({ 
+			app: this.app, 
+			storageFolder: this.settings.dataStorageFolder, 
+			filename: SEARCH_DB_FILENAME,
+			settings: { sqliteBackend: this.settings.sqliteBackend }
+		});
 
 		// Initialize search service (singleton)
 		await this.initializeSearchService();

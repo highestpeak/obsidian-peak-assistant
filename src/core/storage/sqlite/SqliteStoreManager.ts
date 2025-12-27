@@ -1,8 +1,10 @@
 import type { App } from 'obsidian';
 import path from 'path';
-import { WaSqliteStore } from './wa-sqlite-adapter/WaSqliteStore';
+import { BetterSqliteStore } from './better-sqlite3-adapter/BetterSqliteStore';
+import { SqlJsStore } from './sqljs-adapter/SqlJsStore';
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from './ddl';
+import type { SqliteStoreType, SqliteStore } from './types';
 import { ensureFolderRecursive } from '@/core/utils/vault-utils';
 import { DocMetaRepo } from './repositories/DocMetaRepo';
 import { DocChunkRepo } from './repositories/DocChunkRepo';
@@ -26,11 +28,16 @@ import { SEARCH_DB_FILENAME } from '@/core/constant';
  * This provides a centralized way to access the database connection
  * across different parts of the application without passing it through
  * multiple layers.
+ * 
+ * Supports multiple backends:
+ * - better-sqlite3 (native, fastest, requires manual installation)
+ * - sql.js (pure JS, default, cross-platform)
  */
 class SqliteStoreManager {
-	private store: WaSqliteStore | null = null;
+	private store: SqliteStore | null = null;
+	private storeType: SqliteStoreType = 'sql.js';
 	private app: App | null = null;
-	
+
 	// Repositories
 	private docMetaRepo: DocMetaRepo | null = null;
 	private docChunkRepo: DocChunkRepo | null = null;
@@ -47,43 +54,126 @@ class SqliteStoreManager {
 	private chatSummaryRepo: ChatSummaryRepo | null = null;
 	private chatStarRepo: ChatStarRepo | null = null;
 
+
+	/**
+	 * Select the appropriate SQLite backend based on user settings and availability.
+	 * 
+	 * Priority order:
+	 * 1. User setting (if explicitly set in settings)
+	 * 2. Auto-detect better-sqlite3 (if available)
+	 * 3. Default to sql.js
+	 * 
+	 * @param userSetting - User's backend preference from settings ('auto' | 'better-sqlite3' | 'sql.js' | undefined)
+	 * @returns Selected backend type
+	 */
+	private async selectBackend(userSetting?: 'auto' | 'better-sqlite3' | 'sql.js'): Promise<SqliteStoreType> {
+		// Priority 1: User setting (if explicitly set)
+		if (userSetting && userSetting !== 'auto') {
+			if (userSetting === 'better-sqlite3') {
+				const available = await BetterSqliteStore.checkAvailable(this.app ?? undefined);
+				if (available) {
+					console.log('[SqliteStoreManager] Using better-sqlite3 (user preference)');
+					return 'better-sqlite3';
+				} else {
+					console.warn('[SqliteStoreManager] better-sqlite3 requested but not available, falling back to sql.js');
+					return 'sql.js';
+				}
+			} else {
+				console.log('[SqliteStoreManager] Using sql.js (user preference)');
+				return 'sql.js';
+			}
+		}
+
+		// Priority 2: Auto-detect better-sqlite3 (if available)
+		if (userSetting === 'auto' || !userSetting) {
+			const available = await BetterSqliteStore.checkAvailable(this.app ?? undefined);
+			if (available) {
+				console.log('[SqliteStoreManager] Using better-sqlite3 (auto-detected)');
+				return 'better-sqlite3';
+			}
+		}
+
+		// Priority 3: Default to sql.js
+		console.log('[SqliteStoreManager] Using sql.js (default, cross-platform)');
+		return 'sql.js';
+	}
+
 	/**
 	 * Initialize the database connection.
 	 * Should be called once during plugin initialization.
 	 * 
+	 * Backend selection priority:
+	 * 1. User setting (if explicitly set in settings)
+	 * 2. Auto-detect better-sqlite3 (if available)
+	 * 3. Default to sql.js
+	 * 
 	 * @param app - Obsidian app instance
 	 * @param storageFolder - Storage folder path (relative to vault root)
 	 * @param filename - Database filename (default: SEARCH_DB_FILENAME)
+	 * @param settings - Optional plugin settings (if provided, will use sqliteBackend from settings)
 	 */
-	async init(params: { app: App; storageFolder?: string; filename?: string }): Promise<void> {
+	async init(params: {
+		app: App;
+		storageFolder?: string;
+		filename?: string;
+		settings?: { sqliteBackend?: 'auto' | 'better-sqlite3' | 'sql.js' };
+	}): Promise<void> {
 		if (this.store) {
 			console.warn('SqliteStoreManager already initialized, closing existing connection');
 			this.close();
 		}
-		
+
 		this.app = params.app;
-		
+
 		// Calculate database file path
 		const basePath = (this.app.vault.adapter as any)?.basePath ?? '';
 		const normalizedStorageFolder = (params.storageFolder ?? '').trim().replace(/^\/+/, '');
 		const filename = params.filename ?? SEARCH_DB_FILENAME;
-		
+
 		if (normalizedStorageFolder) {
 			// Ensure the vault folder exists before opening a file-backed database.
 			await ensureFolderRecursive(this.app, normalizedStorageFolder);
 		}
-		
+
 		const dbFilePath =
 			basePath
 				? (normalizedStorageFolder ? path.join(basePath, normalizedStorageFolder, filename) : path.join(basePath, filename))
 				: null;
-		
+
 		if (!dbFilePath) {
 			throw new Error('SqliteStoreManager init failed: dbFilePath is missing and vault basePath is unavailable');
 		}
-		
-		this.store = await WaSqliteStore.open({ dbFilePath });
-		
+
+		// Select backend using the extracted function
+		const userSetting = params.settings?.sqliteBackend;
+		let selectedBackend = await this.selectBackend(userSetting);
+		this.storeType = selectedBackend;
+
+		// Open database with selected backend
+		// If better-sqlite3 fails, automatically fallback to sql.js
+		try {
+			switch (selectedBackend) {
+				case 'better-sqlite3':
+					this.store = await BetterSqliteStore.open({ dbFilePath, app: this.app ?? undefined });
+					break;
+				case 'sql.js':
+					this.store = await SqlJsStore.open({ dbFilePath });
+					break;
+			}
+		} catch (error) {
+			// If better-sqlite3 fails to open (e.g., native module loading failed),
+			// automatically fallback to sql.js
+			if (selectedBackend === 'better-sqlite3') {
+				console.error('[SqliteStoreManager] Failed to open database with better-sqlite3:', error);
+				console.log('[SqliteStoreManager] Automatically falling back to sql.js');
+				this.storeType = 'sql.js';
+				this.store = await SqlJsStore.open({ dbFilePath });
+			} else {
+				// Re-throw error for sql.js (should not fail, but if it does, we need to know)
+				throw error;
+			}
+		}
+
 		// Initialize all repositories
 		const kdb = this.store.kysely;
 		const rawDb = this.store.rawDb;
@@ -117,14 +207,21 @@ class SqliteStoreManager {
 	}
 
 	/**
-	 * Get the WaSqliteStore instance.
+	 * Get the store instance.
 	 * Throws error if not initialized.
 	 */
-	getStore(): WaSqliteStore {
+	getStore(): SqliteStore {
 		if (!this.store) {
 			throw new Error('SqliteStoreManager not initialized. Call init() first.');
 		}
 		return this.store;
+	}
+
+	/**
+	 * Get the current backend type.
+	 */
+	getStoreType(): SqliteStoreType {
+		return this.storeType;
 	}
 
 	/**
@@ -277,8 +374,22 @@ class SqliteStoreManager {
 	/**
 	 * Close the database connection.
 	 */
+	/**
+	 * Save the database (for sql.js backend).
+	 * This is a no-op for other backends.
+	 */
+	save(): void {
+		if (this.store && this.storeType === 'sql.js' && 'save' in this.store) {
+			(this.store as SqlJsStore).save();
+		}
+	}
+
 	close(): void {
 		if (this.store) {
+			// sql.js needs to save before closing
+			if (this.storeType === 'sql.js' && 'save' in this.store) {
+				(this.store as SqlJsStore).save();
+			}
 			this.store.close();
 			this.store = null;
 		}
@@ -305,4 +416,3 @@ class SqliteStoreManager {
  * Global singleton instance.
  */
 export const sqliteStoreManager = new SqliteStoreManager();
-

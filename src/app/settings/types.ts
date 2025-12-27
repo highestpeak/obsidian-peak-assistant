@@ -187,6 +187,14 @@ export interface MyPluginSettings {
 
 	// the try to replace other plugins' functions' settings
 	commandHidden: CommandHiddenSettings;
+
+	/**
+	 * SQLite backend preference.
+	 * - 'auto': Automatically detect and use better-sqlite3 if available, otherwise use sql.js
+	 * - 'better-sqlite3': Force use better-sqlite3 (requires manual installation)
+	 * - 'sql.js': Force use sql.js (default, cross-platform)
+	 */
+	sqliteBackend?: 'auto' | 'better-sqlite3' | 'sql.js';
 }
 
 /**
@@ -202,4 +210,6 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	search: DEFAULT_SEARCH_SETTINGS,
 
 	commandHidden: DEFAULT_COMMAND_HIDDEN_SETTINGS,
+
+	sqliteBackend: 'auto', // Auto-detect: try better-sqlite3 first, fallback to sql.js
 };

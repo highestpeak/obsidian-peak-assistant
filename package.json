@@ -19,7 +19,6 @@
 		"@ai-sdk/anthropic": "^1.0.0",
 		"@ai-sdk/google": "^1.0.0",
 		"@ai-sdk/openai": "^1.0.0",
-		"@journeyapps/wa-sqlite": "^1.4.1",
 		"@langchain/community": "^1.1.1",
 		"@langchain/core": "^1.1.8",
 		"@langchain/textsplitters": "^1.0.1",
@@ -41,6 +40,7 @@
 		"ai-elements": "^1.6.3",
 		"antd": "^6.1.1",
 		"autoprefixer": "^10.4.16",
+		"better-sqlite3": "^11.10.0",
 		"class-variance-authority": "^0.7.0",
 		"clsx": "^2.0.0",
 		"cmdk": "^1.1.1",
@@ -73,6 +73,8 @@
 		"zustand": "^4.4.7"
 	},
 	"devDependencies": {
+		"@electron/rebuild": "^4.0.2",
+		"@types/better-sqlite3": "^7.6.11",
 		"@types/js-yaml": "^4.0.9",
 		"@types/node": "^16.11.6",
 		"@types/react": "^18.2.43",

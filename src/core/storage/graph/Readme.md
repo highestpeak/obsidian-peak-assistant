@@ -6,7 +6,7 @@ The core idea behind this plugin's graph query solution is described below, focu
 
 ## 1. Storage Layer — Persistent SQLite Storage
 
-- **Structured Design**: All node and edge information is uniformly stored in a SQLite database (e.g., sql.js/wa-sqlite), which is ideal for local operation within the Obsidian plugin environment.
+- **Structured Design**: All node and edge information is uniformly stored in a SQLite database (sql.js or better-sqlite3), which is ideal for local operation within the Obsidian plugin environment.
 - **Supported Data**:
   - Document nodes and their metadata
   - All relationships between nodes (such as explicit edges for tags, links, categories, etc.)
