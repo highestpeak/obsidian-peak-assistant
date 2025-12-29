@@ -13,6 +13,32 @@ import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } fro
 const DEFAULT_CLAUDE_MAX_OUTPUT_TOKENS = 1024;
 const CLAUDE_DEFAULT_BASE = 'https://api.anthropic.com/v1';
 
+/**
+ * Known Claude model IDs extracted from @ai-sdk/anthropic type definitions.
+ * This serves as a fallback when API model fetching fails.
+ * 
+ * Note: This list should be kept in sync with AnthropicMessagesModelId type from @ai-sdk/anthropic.
+ * The list includes all known model IDs up to the package version.
+ */
+export const KNOWN_CLAUDE_CHAT_MODELS: readonly string[] = [
+	// Claude 4 series
+	'claude-4-opus-20250514',
+	'claude-4-sonnet-20250514',
+	// Claude 3.7 series
+	'claude-3-7-sonnet-20250219',
+	// Claude 3.5 series
+	'claude-3-5-sonnet-latest',
+	'claude-3-5-sonnet-20241022',
+	'claude-3-5-sonnet-20240620',
+	'claude-3-5-haiku-latest',
+	'claude-3-5-haiku-20241022',
+	// Claude 3 series
+	'claude-3-opus-latest',
+	'claude-3-opus-20240229',
+	'claude-3-sonnet-20240229',
+	'claude-3-haiku-20240307',
+] as const;
+
 export interface ClaudeChatServiceOptions {
 	baseUrl?: string;
 	apiKey?: string;
@@ -73,18 +99,19 @@ export class ClaudeChatService implements LLMProviderService {
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
-		return Promise.resolve([
-			{ id: 'claude-3-5-sonnet-20240620', displayName: 'Claude 3.5 Sonnet', icon: 'claude-3-5-sonnet' },
-			{ id: 'claude-3-opus-20240229', displayName: 'Claude 3 Opus', icon: 'claude-3-opus' },
-			{ id: 'claude-3-sonnet-20240229', displayName: 'Claude 3 Sonnet', icon: 'claude-3-sonnet' },
-			{ id: 'claude-3-haiku-20240307', displayName: 'Claude 3 Haiku', icon: 'claude-3-haiku' },
-		]);
+		// Return all known Claude models with appropriate icons
+		return KNOWN_CLAUDE_CHAT_MODELS.map((modelId) => ({
+			id: modelId,
+			displayName: modelId,
+			// Set icon based on model type
+			icon: 'claude',
+		}));
 	}
 
 	getProviderMetadata(): ProviderMetaData {
 		return {
 			id: 'claude',
-			name: 'Claude',
+			name: 'Anthropic',
 			defaultBaseUrl: CLAUDE_DEFAULT_BASE,
 			icon: 'anthropic',
 		};

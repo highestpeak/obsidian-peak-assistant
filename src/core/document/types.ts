@@ -17,7 +17,8 @@
  */
 
 /**
- * Document type for indexing and document loaders.
+ * All document type values as a constant array.
+ * This is the source of truth for all document types.
  * 
  * Supports various file types:
  * - Text files: markdown, csv, json, html, xml, txt
@@ -26,33 +27,40 @@
  * - Obsidian data: excalidraw, canvas, dataloom
  * - Special: folder, url
  */
-export type DocumentType =
+export const DOCUMENT_TYPES = [
 	// Text files
-	| 'markdown'
-	| 'csv'
-	| 'json'
-	| 'html'
-	| 'xml'
-	| 'txt'
+	'markdown',
+	'txt',
+	'csv',
+	'json',
+	'html',
+	'xml',
 	// Binary files
-	| 'pdf'
-	| 'image'
-	| 'docx'
-	| 'xlsx'
-	| 'pptx'
+	'pdf',
+	'image',
+	'docx',
+	'xlsx',
+	'pptx',
 	// Plugin data files
-	// | 'conv'
-	// | 'project'
-	// | 'prompt'
+	// 'conv',
+	// 'project',
+	// 'prompt',
 	// Obsidian data files
-	| 'excalidraw'
-	| 'canvas'
-	| 'dataloom'
+	'excalidraw',
+	'canvas',
+	'dataloom',
 	// Special types
-	| 'folder'
-	| 'url'
+	'folder',
+	'url',
 	// Unknown/unsupported (only index filename and metadata)
-	| 'unknown';
+	'unknown',
+] as const;
+
+/**
+ * Document type for indexing and document loaders.
+ * Derived from DOCUMENT_TYPES constant array.
+ */
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
 /**
  * Document source information.

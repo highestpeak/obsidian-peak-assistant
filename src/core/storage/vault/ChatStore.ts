@@ -1,5 +1,5 @@
 import { App, normalizePath, TFile } from 'obsidian';
-import { DEFAULT_SUMMARY } from '@/core/constant';
+import { CHAT_PROJECT_SUMMARY_FILENAME, DEFAULT_SUMMARY } from '@/core/constant';
 import {
 	ChatContextWindow,
 	ChatConversationMeta,
@@ -38,7 +38,7 @@ export class ChatStorageService {
 
 	async saveProject(project: ChatProjectMeta, context?: ChatProjectContext): Promise<ChatProject> {
 		await this.ensureProjectFolders(project);
-		const fileName = `Project-Summary.md`;
+		const fileName = CHAT_PROJECT_SUMMARY_FILENAME;
 		const projectFolder = await this.getProjectFolderPath(project);
 		const path = this.join(projectFolder, fileName);
 
@@ -282,7 +282,7 @@ export class ChatStorageService {
 		}
 
 		const folderPath = this.getAbsolutePath(projectRow.folder_rel_path);
-		const summaryPath = this.join(folderPath, 'Project-Summary.md');
+		const summaryPath = this.join(folderPath, CHAT_PROJECT_SUMMARY_FILENAME);
 		const file = this.app.vault.getAbstractFileByPath(summaryPath);
 		if (!(file instanceof TFile)) {
 			throw new Error(`Project summary file not found: ${summaryPath}`);

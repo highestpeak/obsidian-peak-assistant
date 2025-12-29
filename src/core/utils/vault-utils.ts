@@ -31,6 +31,7 @@ export async function ensureFolderRecursive(app: App, folderPath: string): Promi
 		if (!existing) {
 			try {
 				await app.vault.createFolder(currentPath);
+				console.log(`[vault-utils] Created folder: ${currentPath}`);
 			} catch (error) {
 				// Check if folder was created by another process/thread
 				const checkAgain = app.vault.getAbstractFileByPath(currentPath);

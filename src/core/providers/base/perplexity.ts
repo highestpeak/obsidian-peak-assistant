@@ -6,12 +6,29 @@ import {
 	ProviderMetaData,
 } from '../types';
 import { AIStreamEvent } from '../types-events';
-import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai';
+import { createPerplexity, type PerplexityProvider } from '@ai-sdk/perplexity';
 import { generateText, streamText, type LanguageModel } from 'ai';
 import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
 
 const DEFAULT_PERPLEXITY_TIMEOUT_MS = 60000;
 const PERPLEXITY_DEFAULT_BASE = 'https://api.perplexity.ai';
+
+/**
+ * Known Perplexity model IDs extracted from @ai-sdk/perplexity type definitions.
+ * This serves as a fallback when API model fetching fails.
+ * 
+ * Note: This list should be kept in sync with PerplexityLanguageModelId type from @ai-sdk/perplexity.
+ * The list includes all known model IDs up to the package version.
+ * 
+ * https://docs.perplexity.ai/getting-started/pricing
+ */
+export const KNOWN_PERPLEXITY_CHAT_MODELS: readonly string[] = [
+	'sonar-deep-research',
+	'sonar-reasoning-pro',
+	'sonar-reasoning',
+	'sonar-pro',
+	'sonar',
+] as const;
 
 interface PerplexityModelResponse {
 	object: string;
@@ -113,13 +130,13 @@ export interface PerplexityChatServiceOptions {
 }
 
 export class PerplexityChatService implements LLMProviderService {
-	private readonly client: OpenAIProvider;
+	private readonly client: PerplexityProvider;
 
 	constructor(private readonly options: PerplexityChatServiceOptions) {
 		if (!this.options.apiKey) {
 			throw new Error('Perplexity API key is required');
 		}
-		this.client = createOpenAI({
+		this.client = createPerplexity({
 			apiKey: this.options.apiKey,
 			baseURL: this.options.baseUrl ?? PERPLEXITY_DEFAULT_BASE,
 		});
@@ -160,31 +177,13 @@ export class PerplexityChatService implements LLMProviderService {
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
-		// Try to fetch models from API
-		const models = await fetchPerplexityModels(
-			this.options.baseUrl,
-			this.options.apiKey,
-			this.options.timeoutMs
-		);
-
-		if (models && models.length > 0) {
-			return models;
-		}
-
-		// Fallback to common Perplexity models
-		return [
-			{ id: 'llama-3.1-sonar-small-128k-online', displayName: 'Llama 3.1 Sonar Small 128K Online', icon: 'perplexity' },
-			{ id: 'llama-3.1-sonar-large-128k-online', displayName: 'Llama 3.1 Sonar Large 128K Online', icon: 'perplexity' },
-			{ id: 'llama-3.1-sonar-huge-128k-online', displayName: 'Llama 3.1 Sonar Huge 128K Online', icon: 'perplexity' },
-			{ id: 'llama-3-sonar-small-32k-online', displayName: 'Llama 3 Sonar Small 32K Online', icon: 'perplexity' },
-			{ id: 'llama-3-sonar-large-32k-online', displayName: 'Llama 3 Sonar Large 32K Online', icon: 'perplexity' },
-			{ id: 'llama-3-sonar-huge-128k-online', displayName: 'Llama 3 Sonar Huge 128K Online', icon: 'perplexity' },
-			{ id: 'llama-3.1-sonar-small-128k-chat', displayName: 'Llama 3.1 Sonar Small 128K Chat', icon: 'perplexity' },
-			{ id: 'llama-3.1-sonar-large-128k-chat', displayName: 'Llama 3.1 Sonar Large 128K Chat', icon: 'perplexity' },
-			{ id: 'llama-3.1-sonar-huge-128k-chat', displayName: 'Llama 3.1 Sonar Huge 128K Chat', icon: 'perplexity' },
-			{ id: 'mixtral-8x7b-instruct', displayName: 'Mixtral 8x7B Instruct', icon: 'perplexity' },
-			{ id: 'mistral-7b-instruct', displayName: 'Mistral 7B Instruct', icon: 'perplexity' },
-		];
+		// Fallback: Use known model IDs from @ai-sdk/perplexity type definitions
+		// This ensures we have a comprehensive list even when API fetch fails
+		return KNOWN_PERPLEXITY_CHAT_MODELS.map((modelId) => ({
+			id: modelId,
+			displayName: modelId,
+			icon: 'perplexity',
+		}));
 	}
 
 	getProviderMetadata(): ProviderMetaData {

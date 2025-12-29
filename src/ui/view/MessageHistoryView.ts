@@ -44,7 +44,10 @@ export class MessageHistoryView extends ItemView {
 		// Create React renderer - containerEl structure: [header, content]
 		// We render into the content area (children[1])
 		this.reactRenderer = new ReactRenderer(this.containerEl);
-		this.render();
+		// Initial render - delay to ensure container is in DOM
+		requestAnimationFrame(() => {
+			this.render();
+		});
 	}
 
 	private checkChatViewAndUpdateVisibility(): void {

@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Command,
   CommandDialog,
@@ -12,6 +13,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from "@/ui/component/shared-ui/dialog";
@@ -42,6 +44,9 @@ export const ModelSelectorContent = ({
 }: ModelSelectorContentProps) => (
   <DialogContent className={cn("pktw-p-0", className)} {...props}>
     <DialogTitle className="pktw-sr-only">{title}</DialogTitle>
+    <DialogDescription className="pktw-sr-only">
+      Select a model to use for this conversation
+    </DialogDescription>
     <Command className="**:data-[slot=command-input-wrapper]:pktw-h-auto">
       {children}
     </Command>

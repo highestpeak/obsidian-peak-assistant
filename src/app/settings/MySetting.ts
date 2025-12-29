@@ -25,13 +25,15 @@ export class MySettings extends PluginSettingTab {
 	 */
 	display(): void {
 		const { containerEl } = this;
-		containerEl.empty();
 
-		// Clean up React renderer when re-rendering
+		// Clean up React renderer before emptying container
 		if (this.settingsRenderer) {
 			this.settingsRenderer.unmount();
 			this.settingsRenderer = null;
 		}
+
+		// Empty container after unmounting
+		containerEl.empty();
 
 		// Render the complete settings UI using SettingsRoot component
 		this.settingsRenderer = new ReactRenderer(containerEl);
@@ -41,6 +43,16 @@ export class MySettings extends PluginSettingTab {
 				eventBus: this.eventBus,
 			})
 		);
+	}
+
+	/**
+	 * Clean up when settings tab is closed
+	 */
+	hide(): void {
+		if (this.settingsRenderer) {
+			this.settingsRenderer.unmount();
+			this.settingsRenderer = null;
+		}
 	}
 
 }

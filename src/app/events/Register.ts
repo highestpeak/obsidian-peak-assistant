@@ -5,6 +5,7 @@ import { ViewManager } from '@/app/view/ViewManager';
 import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { createElement, icons } from 'lucide';
+import { CHAT_PROJECT_SUMMARY_FILENAME } from '@/core/constant';
 
 /**
  * Register workspace-level reactive events
@@ -57,8 +58,8 @@ async function handleConversationFileOpen(
 	file: TFile,
 	eventBus: EventBus
 ): Promise<void> {
-	// Skip Project-Summary.md files
-	if (file.name === 'Project-Summary.md') {
+	// Skip project summary files
+	if (file.name === CHAT_PROJECT_SUMMARY_FILENAME) {
 		return;
 	}
 

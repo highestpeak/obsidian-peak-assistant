@@ -10,106 +10,119 @@ import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai';
 import { generateText, streamText, embedMany, type EmbeddingModel, type LanguageModel } from 'ai';
 import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
 
-const DEFAULT_OPENAI_TIMEOUT_MS = 60000;
 const OPENAI_DEFAULT_BASE = 'https://api.openai.com/v1';
 
-interface OpenAIModelResponse {
-	object: string;
-	data: Array<{
-		id: string;
-		object: string;
-		created: number;
-		owned_by: string;
-	}>;
-}
+/**
+ * Known OpenAI chat model IDs extracted from @ai-sdk/openai type definitions.
+ * This serves as a fallback when API model fetching fails.
+ * 
+ * Note: This list should be kept in sync with OpenAIChatModelId type from @ai-sdk/openai.
+ * The list includes all known model IDs up to the package version.
+ * 
+ * https://platform.openai.com/docs/models
+ */
+export const KNOWN_OPENAI_CHAT_MODELS: readonly string[] = [
+	// O1 series
+	'o1',
+	'o1-2024-12-17',
+	'o1-mini',
+	'o1-mini-2024-09-12',
+	'o1-preview',
+	'o1-preview-2024-09-12',
+	// O3 series
+	'o3-mini',
+	'o3-mini-2025-01-31',
+	'o3',
+	'o3-2025-04-16',
+	// O4 series
+	'o4-mini',
+	'o4-mini-2025-04-16',
+	// GPT-5 series
+	'gpt-5',
+	'gpt-5-2025-08-07',
+	'gpt-5-mini',
+	'gpt-5-mini-2025-08-07',
+	'gpt-5-nano',
+	'gpt-5-nano-2025-08-07',
+	'gpt-5-chat-latest',
+	// GPT-4.1 series
+	'gpt-4.1',
+	'gpt-4.1-2025-04-14',
+	'gpt-4.1-mini',
+	'gpt-4.1-mini-2025-04-14',
+	'gpt-4.1-nano',
+	'gpt-4.1-nano-2025-04-14',
+	// GPT-4o series
+	'gpt-4o',
+	'gpt-4o-2024-05-13',
+	'gpt-4o-2024-08-06',
+	'gpt-4o-2024-11-20',
+	'gpt-4o-audio-preview',
+	'gpt-4o-audio-preview-2024-10-01',
+	'gpt-4o-audio-preview-2024-12-17',
+	'gpt-4o-search-preview',
+	'gpt-4o-search-preview-2025-03-11',
+	'gpt-4o-mini-search-preview',
+	'gpt-4o-mini-search-preview-2025-03-11',
+	'gpt-4o-mini',
+	'gpt-4o-mini-2024-07-18',
+	// GPT-4 series
+	'gpt-4-turbo',
+	'gpt-4-turbo-2024-04-09',
+	'gpt-4-turbo-preview',
+	'gpt-4-0125-preview',
+	'gpt-4-1106-preview',
+	'gpt-4',
+	'gpt-4-0613',
+	// GPT-4.5 series
+	'gpt-4.5-preview',
+	'gpt-4.5-preview-2025-02-27',
+	// GPT-3.5 series
+	'gpt-3.5-turbo-0125',
+	'gpt-3.5-turbo',
+	'gpt-3.5-turbo-1106',
+	// Other
+	'chatgpt-4o-latest',
+] as const;
 
 /**
- * Format model display name from model ID
+ * Determine OpenAI model icon identifier based on model ID.
+ * Returns the appropriate icon identifier for @lobehub/icons ModelIcon component.
+ * 
+ * The returned value should match the first keyword in @lobehub/icons modelMappings
+ * (with '^' prefix removed). See SafeIconWrapper.tsx for details on how to find correct values.
+ * 
+ * @param modelId - Model ID string
+ * @returns Icon identifier compatible with @lobehub/icons modelMappings keywords[0]
  */
-function formatModelDisplayName(modelId: string): string {
-	let displayName = modelId;
-	
-	// Handle GPT models
-	if (displayName.startsWith('gpt-')) {
-		displayName = displayName.replace('gpt-', 'GPT-');
-		// Capitalize after numbers: gpt-4o -> GPT-4O
-		displayName = displayName.replace(/(\d)([a-z])/g, (_, num, letter) => `${num}${letter.toUpperCase()}`);
-		// Capitalize first letter after dash/space
-		displayName = displayName.replace(/[- ]([a-z])/g, (_, letter) => ` ${letter.toUpperCase()}`);
-		return displayName;
+export function getOpenAIAvatarType(modelId: string): string {
+	// O series (o1, o3, o4, etc.)
+	if (/^o[1-9]/.test(modelId)) {
+		return 'o1';
 	}
 	
-	// Handle O1 models
-	if (displayName.startsWith('o1')) {
-		displayName = displayName.replace(/^o1/, 'O1');
-		// Replace dash with space and capitalize following letter
-		displayName = displayName.replace(/-([a-z])/g, (_, letter) => ` ${letter.toUpperCase()}`);
-		return displayName;
+	// GPT-5 series
+	if (modelId.startsWith('gpt-5')) {
+		return 'gpt-5';
 	}
 	
-	// For other models, capitalize first letter if needed
-	if (displayName.length > 0 && displayName[0] !== displayName[0].toUpperCase()) {
-		displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+	// GPT-4 series (including GPT-4o, GPT-4.1, GPT-4.5, etc.)
+	if (modelId.startsWith('gpt-4')) {
+		return 'gpt-4';
 	}
 	
-	return displayName;
-}
-
-/**
- * Fetch models from OpenAI API
- * @param baseUrl - OpenAI base URL
- * @param apiKey - OpenAI API key
- * @param timeoutMs - Request timeout in milliseconds
- * @returns Promise resolving to array of ModelMetaData or null if fetch failed
- */
-async function fetchOpenAIModels(
-	baseUrl?: string,
-	apiKey?: string,
-	timeoutMs?: number
-): Promise<ModelMetaData[] | null> {
-	if (!apiKey) {
-		return null;
+	// GPT-3.5 series
+	if (modelId.startsWith('gpt-3.5')) {
+		return 'gpt-3.5';
 	}
-
-	try {
-		const url = baseUrl ?? OPENAI_DEFAULT_BASE;
-		const apiUrl = `${url}/models`;
-
-		const response = await fetch(apiUrl, {
-			method: 'GET',
-			headers: {
-				'Authorization': `Bearer ${apiKey}`,
-				'Content-Type': 'application/json',
-			},
-			signal: AbortSignal.timeout(timeoutMs ?? DEFAULT_OPENAI_TIMEOUT_MS),
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`);
-		}
-
-		const data: OpenAIModelResponse = await response.json();
-
-		if (!data.data || !Array.isArray(data.data)) {
-			throw new Error('Invalid response format: data array not found');
-		}
-
-		// Convert API response to ModelMetaData format
-		return data.data.map((model) => {
-			const displayName = formatModelDisplayName(model.id);
-
-			return {
-				id: model.id,
-				displayName,
-				// Use provider icon for all OpenAI models
-				// This avoids maintaining model-specific icon mappings as OpenAI keeps adding new models
-				icon: 'openai',
-			};
-		});
-	} catch (error) {
-		console.error('[OpenAIChatService] Error fetching models:', error);
-		return null;
+	
+	// GPT-3 series (legacy)
+	if (modelId.startsWith('gpt-3')) {
+		return 'gpt-3.5';
 	}
+	
+	// Default fallback - return original modelId, let @lobehub/icons handle it
+	return modelId;
 }
 
 export interface OpenAIChatServiceOptions {
@@ -167,30 +180,14 @@ export class OpenAIChatService implements LLMProviderService {
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
-		// Try to fetch models from API
-		const models = await fetchOpenAIModels(
-			this.options.baseUrl,
-			this.options.apiKey,
-			this.options.timeoutMs
-		);
-
-		if (models && models.length > 0) {
-			return models;
-		}
-
-		// Fallback to empty array if fetch failed
-		// Original hardcoded models list (kept for reference):
-		// return [
-		// 	{ id: 'gpt-4.1', displayName: 'GPT-4.1', icon: 'gpt-4.1' },
-		// 	{ id: 'gpt-4.1-mini', displayName: 'GPT-4.1 Mini', icon: 'gpt-4.1-mini' },
-		// 	{ id: 'gpt-4o', displayName: 'GPT-4o', icon: 'gpt-4o' },
-		// 	{ id: 'gpt-4o-mini', displayName: 'GPT-4o Mini', icon: 'gpt-4o-mini' },
-		// 	{ id: 'gpt-3.5-turbo', displayName: 'GPT-3.5 Turbo', icon: 'gpt-3.5-turbo' },
-		// 	{ id: 'o1', displayName: 'O1', icon: 'o1' },
-		// 	{ id: 'o1-mini', displayName: 'O1 Mini', icon: 'o1-mini' },
-		// 	{ id: 'o1-preview', displayName: 'O1 Preview', icon: 'o1-preview' },
-		// ];
-		return [];
+		// Fallback: Use known model IDs from @ai-sdk/openai type definitions
+		// This ensures we have a comprehensive list even when API fetch fails
+		return KNOWN_OPENAI_CHAT_MODELS.map((modelId) => ({
+			id: modelId,
+			displayName: modelId,
+			// Set icon based on model type for OpenAI.Avatar component
+			icon: getOpenAIAvatarType(modelId),
+		}));
 	}
 
 	getProviderMetadata(): ProviderMetaData {

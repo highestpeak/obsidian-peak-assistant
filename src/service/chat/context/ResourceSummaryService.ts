@@ -21,7 +21,7 @@ export class ResourceSummaryService {
 		rootFolder: string,
 		resourcesSummaryFolderName: string
 	) {
-		this.resourcesFolder = normalizePath(`${rootFolder}/${resourcesSummaryFolderName}`);
+		this.resourcesFolder = normalizePath(`${resourcesSummaryFolderName}`);
 		this.kindDetector = new ResourceKindDetector(app);
 	}
 

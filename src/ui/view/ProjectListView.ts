@@ -46,8 +46,10 @@ export class ProjectListView extends ItemView {
 			})
 		);
 
-		// Initial render
-		this.render();
+		// Initial render - delay to ensure container is in DOM
+		requestAnimationFrame(() => {
+			this.render();
+		});
 	}
 
 	private render(): void {

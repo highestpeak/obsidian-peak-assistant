@@ -144,9 +144,9 @@ export class AIServiceManager {
 
 	refreshDefaultServices(): void {
 		const providerConfigs = this.settings.llmProviderConfigs ?? {};
-		this.multiChat = new MultiProviderChatService({
-			providerConfigs,
-		});
+		// Refresh provider services with new configurations
+		// This clears existing services and recreates them with updated configs
+		this.multiChat.refresh(providerConfigs);
 		this.promptService.setChatService(this.multiChat);
 
 		// Reinitialize context service if profile is enabled
@@ -347,10 +347,9 @@ export class AIServiceManager {
 	async getAllAvailableModels(): Promise<ModelInfoForSwitch[]> {
 		const allModels = await this.multiChat.getAllAvailableModels();
 		const providerConfigs = this.settings.llmProviderConfigs ?? {};
-		console.log('getAllAvailableModels', allModels, providerConfigs);
 
 		// Filter models by provider and model enabled status
-		const filteredModels = allModels
+		return allModels
 			.filter(model => {
 				const providerConfig = providerConfigs[model.provider];
 
@@ -369,7 +368,7 @@ export class AIServiceManager {
 				const modelConfig = modelConfigs[model.id];
 				// If model is explicitly configured, check its enabled status
 				// If not configured, default to enabled
-				return modelConfig?.enabled !== false;
+				return modelConfig?.enabled === true;
 			})
 			.map(m => ({
 				id: m.id,
@@ -377,8 +376,6 @@ export class AIServiceManager {
 				provider: m.provider,
 				icon: m.icon,
 			}));
-		console.log('getAllAvailableModels done', filteredModels);
-		return filteredModels;
 	}
 
 }

@@ -13,6 +13,7 @@ import {
 	ModelSelectorItem,
 	ModelSelectorLogo,
 	ModelSelectorName,
+	PromptInputButton,
 } from '@/ui/component/ai-elements';
 import { CheckIcon } from 'lucide-react';
 import type { ModelInfoForSwitch } from '@/core/providers/types';
@@ -129,6 +130,8 @@ export const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({
 			});
 
 			useChatViewStore.getState().setConversation(updatedConv);
+			useProjectStore.getState().updateConversation(updatedConv);
+			useProjectStore.getState().setActiveConversation(updatedConv);
 			setModelSelectorOpen(false);
 		},
 		[onModelChangeProp, activeConversation, activeProject, manager]
@@ -141,7 +144,7 @@ export const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({
 	return (
 		<ModelSelectorPrimitive onOpenChange={setModelSelectorOpen} open={modelSelectorOpen}>
 			<ModelSelectorTrigger asChild>
-				<button className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-bg-secondary pktw-border pktw-border-border pktw-rounded-md pktw-text-sm">
+				<PromptInputButton>
 					{selectedModelInfo?.icon && <ModelSelectorLogo provider={selectedModelInfo.icon} />}
 					{selectedModelInfo?.displayName && (
 						<ModelSelectorName>{selectedModelInfo.displayName}</ModelSelectorName>
@@ -149,7 +152,7 @@ export const ChatModelSelector: React.FC<ChatModelSelectorProps> = ({
 					{!selectedModelInfo && (
 						<ModelSelectorName>Select model</ModelSelectorName>
 					)}
-				</button>
+				</PromptInputButton>
 			</ModelSelectorTrigger>
 			<ModelSelectorContent>
 				<ModelSelectorInput placeholder={modelSearchPlaceholder} />

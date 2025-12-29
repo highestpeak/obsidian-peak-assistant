@@ -14,11 +14,11 @@ export class MultiProviderChatService implements LLMProviderService {
 	/**
 	 * key: provider name, value: provider service instance
 	 */
-	private readonly providerServiceMap = new Map<string, LLMProviderService>();
+	private providerServiceMap = new Map<string, LLMProviderService>();
 	/**
 	 * key: provider name, value: provider configuration
 	 */
-	private readonly configs: Record<string, ProviderConfig>;
+	private configs: Record<string, ProviderConfig>;
 	private readonly requestTimeout: number;
 
 	constructor(options: MultiProviderChatServiceOptions = {}) {
@@ -134,5 +134,22 @@ export class MultiProviderChatService implements LLMProviderService {
 		}
 
 		return allModels;
+	}
+
+	/**
+	 * Refresh provider services with new configurations.
+	 * Clears existing services and recreates them with updated configs.
+	 * 
+	 * @param newConfigs - New provider configurations to use
+	 */
+	refresh(newConfigs: Record<string, ProviderConfig>): void {
+		// Clear existing services
+		this.providerServiceMap.clear();
+		
+		// Update configs
+		this.configs = newConfigs;
+		
+		// Recreate services with new configs
+		this.providerServiceMap = ProviderServiceFactory.getInstance().createAll(this.configs, this.requestTimeout);
 	}
 }

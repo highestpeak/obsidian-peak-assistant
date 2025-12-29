@@ -104,7 +104,6 @@ export default class MyPlugin extends Plugin {
 	 * Initialize search client and background indexing.
 	 */
 	private async initializeSearchService(): Promise<void> {
-
 		// Initialize IndexService with AIServiceManager for embedding generation
 		IndexService.getInstance().init(this.aiServiceManager);
 
@@ -122,7 +121,8 @@ export default class MyPlugin extends Plugin {
 			this.settings.search,
 			this.settings.dataStorageFolder,
 		);
-		await this.indexInitializer.checkAndUpdateIndex();
+		// todo tmp block. remove this after testing
+		// await this.indexInitializer.checkAndUpdateIndex();
 	}
 
 	/**

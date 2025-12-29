@@ -66,8 +66,10 @@ export class ChatView extends ItemView {
 		});
 		this.unsubscribeHandlers.push(unsubscribeStore);
 
-		// Initial render
-		this.render();
+		// Initial render - delay to ensure container is in DOM
+		requestAnimationFrame(() => {
+			this.render();
+		});
 	}
 
 	async onClose(): Promise<void> {

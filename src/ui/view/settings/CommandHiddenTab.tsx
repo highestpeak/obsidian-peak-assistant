@@ -3,7 +3,7 @@ import { MyPluginSettings } from '@/app/settings/types';
 import { CommandHiddenControlService } from '@/service/CommandHiddenControlService';
 import { cn } from '@/ui/react/lib/utils';
 import { VisibilityToggle } from '@/ui/component/shared-ui/visibility-toggle';
-import { SettingField } from '@/ui/component/shared-ui/setting-field';
+import { SettingField } from '@/ui/view/settings/component/setting-field';
 
 interface CommandHiddenTabProps {
 	settings: MyPluginSettings;

@@ -2,10 +2,10 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { AIServiceSettings } from '@/app/settings/types';
 import { ProviderServiceFactory } from '@/core/providers/base/factory';
-import { ProviderIcon, ModelIcon } from '@lobehub/icons';
+import { SafeProviderIcon, SafeModelIcon } from '@/ui/component/mine/SafeIconWrapper';
 import { ModelMetaData, ProviderMetaData } from '@/core/providers/types';
 import { cn } from '@/ui/react/lib/utils';
-import { ErrorBoundary } from '@/ui/react/lib/ErrorBoundary';
+import { InputWithConfirm } from '@/ui/component/mine/input-with-confirm';
 
 interface ProviderSettingsComponentProps {
 	settings: AIServiceSettings;
@@ -62,7 +62,13 @@ function ProviderListItem({ provider, providerId, selectedProvider, isEnabled, o
 				<div className="pktw-absolute pktw-left-0 pktw-top-0 pktw-bottom-0 pktw-w-[3px] pktw-bg-accent"></div>
 			)}
 			<div className="pktw-relative pktw-flex-shrink-0">
-				{provider.icon && <ProviderIcon provider={provider.icon as any} size={20} />}
+				{provider.icon && (
+					<SafeProviderIcon
+						provider={provider.icon}
+						size={20}
+						fallback={<div className="pktw-w-5 pktw-h-5 pktw-rounded pktw-bg-muted" />}
+					/>
+				)}
 				<div className={cn(
 					"pktw-absolute pktw-bottom-0 pktw-right-0 pktw-w-2 pktw-h-2 pktw-rounded-full pktw-border pktw-border-background",
 					statusColor,
@@ -129,7 +135,13 @@ function ProviderConfigForm({ selectedProvider: provider, settings, onConfigChan
 			{/* Provider Header */}
 			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-8 pktw-pb-4 pktw-border-b pktw-border-border">
 				<div className="pktw-flex pktw-items-center pktw-gap-3">
-					{selectedProviderInfo.icon && <ProviderIcon provider={selectedProviderInfo.icon as any} size={24} />}
+					{selectedProviderInfo.icon && (
+						<SafeProviderIcon
+							provider={selectedProviderInfo.icon}
+							size={24}
+							fallback={<div className="pktw-w-6 pktw-h-6 pktw-rounded pktw-bg-muted" />}
+						/>
+					)}
 					<h2 className="pktw-m-0 pktw-text-xl pktw-font-semibold pktw-text-foreground">{selectedProviderInfo.name}</h2>
 				</div>
 				<div className="pktw-flex pktw-items-center pktw-gap-3">
@@ -165,12 +177,11 @@ function ProviderConfigForm({ selectedProvider: provider, settings, onConfigChan
 					</div>
 				</div>
 				<div className="pktw-mt-2">
-					<input
+					<InputWithConfirm
 						type="password"
-						className="pktw-w-full pktw-px-3.5 pktw-py-2.5 pktw-text-sm pktw-border pktw-border-border pktw-rounded-md pktw-bg-transparent pktw-text-foreground pktw-transition-all pktw-duration-200 pktw-box-border focus:pktw-outline-none focus:pktw-border-accent focus:pktw-shadow-[0_0_0_3px_rgba(var(--interactive-accent-rgb),0.1)]"
 						placeholder={`${selectedProviderInfo.name} API Key`}
 						value={selectedConfig.apiKey || ''}
-						onChange={(e) => onConfigChange(provider, 'apiKey', e.target.value)}
+						onConfirm={(value) => onConfigChange(provider, 'apiKey', value)}
 					/>
 				</div>
 			</div>
@@ -184,12 +195,11 @@ function ProviderConfigForm({ selectedProvider: provider, settings, onConfigChan
 					</div>
 				</div>
 				<div className="pktw-mt-2">
-					<input
+					<InputWithConfirm
 						type="text"
-						className="pktw-w-full pktw-px-3.5 pktw-py-2.5 pktw-text-sm pktw-border pktw-border-border pktw-rounded-md pktw-bg-transparent pktw-text-foreground pktw-transition-all pktw-duration-200 pktw-box-border focus:pktw-outline-none focus:pktw-border-accent focus:pktw-shadow-[0_0_0_3px_rgba(var(--interactive-accent-rgb),0.1)] placeholder:pktw-text-muted-foreground"
 						placeholder={selectedProviderInfo?.defaultBaseUrl || ''}
 						value={selectedConfig.baseUrl || ''}
-						onChange={(e) => onConfigChange(provider, 'baseUrl', e.target.value)}
+						onConfirm={(value) => onConfigChange(provider, 'baseUrl', value)}
 					/>
 				</div>
 			</div>
@@ -226,6 +236,7 @@ function ModelList({ selectedProvider: provider, settings, onModelConfigChange }
 				// Pass actual config to getProviderSupportModels so providers that need API key can fetch models
 				const providerConfig = config || {};
 				const models = await factory.getProviderSupportModels(provider, providerConfig);
+				// console.log('models', provider, models);
 				setAvailableModels(models);
 			} catch (error) {
 				console.error(`[ProviderSettings] Error loading models for ${provider}:`, error);
@@ -259,9 +270,18 @@ function ModelList({ selectedProvider: provider, settings, onModelConfigChange }
 								>
 									{model.icon && (
 										<div className="pktw-w-5 pktw-h-5 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
-											<ErrorBoundary fallback={providerMetadata?.icon ? <ProviderIcon provider={providerMetadata.icon as any} size={20} /> : null}>
-												<ModelIcon model={model.icon} size={20} className="pktw-flex-shrink-0" />
-											</ErrorBoundary>
+											<SafeModelIcon
+												model={model.icon}
+												size={20}
+												className="pktw-flex-shrink-0"
+												fallback={providerMetadata?.icon ? (
+													<SafeProviderIcon
+														provider={providerMetadata.icon}
+														size={20}
+														fallback={<div className="pktw-w-5 pktw-h-5 pktw-rounded pktw-bg-muted" />}
+													/>
+												) : <div className="pktw-w-5 pktw-h-5 pktw-rounded pktw-bg-muted" />}
+											/>
 										</div>
 									)}
 									<span className="pktw-text-sm pktw-text-foreground pktw-flex-1">{model.displayName}</span>

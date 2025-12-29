@@ -158,16 +158,16 @@ export interface AIServiceSettings {
  */
 export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	rootFolder: 'ChatFolder',
-	promptFolder: 'A-control/PeakAssistantPrompts',
+	promptFolder: 'ChatFolder/Prompts',
 	uploadFolder: 'ChatFolder/Attachments',
-	resourcesSummaryFolder: 'resources-summary-cache',
+	resourcesSummaryFolder: 'ChatFolder/resources-summary-cache',
 	defaultModel: {
 		provider: 'openai',
 		modelId: 'gpt-4o-mini',
 	},
 	llmProviderConfigs: {},
 	profileEnabled: true,
-	profileFilePath: 'ChatFolder/User-Profile.md',
+	profileFilePath: 'ChatFolder/system/User-Profile.md',
 	promptRewriteEnabled: false,
 };
 
@@ -201,10 +201,10 @@ export interface MyPluginSettings {
  * Baseline settings applied when no persisted data exists.
  */
 export const DEFAULT_SETTINGS: MyPluginSettings = {
-	scriptFolder: 'A-control',
-	htmlViewConfigFile: 'A-control/PeakAssistantScript/HtmlViewConfig.json',
-	statisticsDataStoreFolder: 'A-control/PeakAssistantDataStore/RepoStatistics',
-	dataStorageFolder: '',
+	scriptFolder: 'A-control/PeakAssistant/Scripts',
+	htmlViewConfigFile: 'A-control/PeakAssistant/HtmlViewConfig.json',
+	statisticsDataStoreFolder: 'A-control/PeakAssistant/Statistics',
+	dataStorageFolder: 'A-control/PeakAssistant/DataStore',
 
 	ai: DEFAULT_AI_SERVICE_SETTINGS,
 	search: DEFAULT_SEARCH_SETTINGS,

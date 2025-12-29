@@ -29,11 +29,23 @@ export const Switch = React.forwardRef<HTMLLabelElement, SwitchProps>(
 
 		const sizeConfig = sizeClasses[size];
 
+		const handleClick = React.useCallback(
+			(e: React.MouseEvent) => {
+				if (!disabled) {
+					e.preventDefault();
+					onChange(!checked);
+				}
+			},
+			[disabled, checked, onChange]
+		);
+
 		return (
 			<label
 				ref={ref}
+				onClick={handleClick}
 				className={cn(
 					'pktw-relative pktw-inline-block pktw-cursor-pointer',
+					sizeConfig.container,
 					disabled && 'pktw-cursor-not-allowed pktw-opacity-50',
 					className
 				)}
@@ -43,7 +55,9 @@ export const Switch = React.forwardRef<HTMLLabelElement, SwitchProps>(
 					checked={checked}
 					onChange={(e) => !disabled && onChange(e.target.checked)}
 					disabled={disabled}
-					className="pktw-opacity-0 pktw-w-0 pktw-h-0"
+					className="pktw-opacity-0 pktw-w-0 pktw-h-0 pktw-absolute"
+					aria-hidden="true"
+					tabIndex={-1}
 				/>
 				<span
 					className={cn(

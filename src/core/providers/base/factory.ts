@@ -1,7 +1,7 @@
 import { LLMProviderService, ModelMetaData, ProviderConfig, ProviderMetaData } from '../types';
 import { OpenAIChatService } from './openai';
 import { OpenRouterChatService } from './openrouter';
-import { OLLAMA_DEFAULT_BASE, OllamaChatService } from './ollama';
+import { OllamaChatService } from './ollama';
 import { ClaudeChatService } from './claude';
 import { GeminiChatService } from './gemini';
 import { PerplexityChatService } from './perplexity';
@@ -10,10 +10,10 @@ const DEFAULT_TIMEOUT_MS = 60000;
 
 type ProviderFactory = (config: ProviderConfig, timeoutMs: number) => LLMProviderService | null;
 
-// Create a temporary service instance to get metadata
-// Use a temporary config with placeholder values (value doesn't matter for metadata)
+// Create a temporary service instance to get metadata or models
+// Use fake API key and default baseUrl - these are only used for getting metadata/models, not for actual API calls
 const tempConfig: ProviderConfig = {
-	apiKey: 'temp',
+	apiKey: 'fake-api-key-for-metadata-only',
 	baseUrl: 'http://localhost:11434',
 };
 
@@ -90,7 +90,7 @@ export class ProviderServiceFactory {
 
 		this.register('ollama', (config, timeoutMs) => {
 			return new OllamaChatService({
-				baseUrl: config.baseUrl ?? OLLAMA_DEFAULT_BASE,
+				baseUrl: config.baseUrl,
 				apiKey: config.apiKey,
 				timeoutMs,
 				extra: config.extra,
@@ -198,20 +198,34 @@ export class ProviderServiceFactory {
 	/**
 	 * Get available models for a provider
 	 * @param providerId - Provider identifier
-	 * @param config - Optional provider config (required for providers that need API key)
+	 * @param config - Optional provider config (if provided, will use real API key; otherwise uses fake key)
 	 * @returns Promise resolving to array of ModelMetaData
 	 */
 	async getProviderSupportModels(providerId: string, config?: ProviderConfig): Promise<ModelMetaData[]> {
 		const factory = this.factories.get(providerId);
-		if (factory) {
-			// Use provided config if available, otherwise use temp config
-			const serviceConfig = config || tempConfig;
-			const tempService = factory(serviceConfig, this.defaultTimeout);
-			if (tempService) {
-				return await tempService.getAvailableModels();
-			}
+		if (!factory) {
+			throw new Error(`Provider ${providerId} not found`);
 		}
-		throw new Error(`Provider ${providerId} not found`);
+
+		// Use provided config if available, otherwise use fake config
+		// Fake config allows creating instance to get models without real API key
+		const serviceConfig = (config && config.apiKey) ? config : {
+			...tempConfig,
+			// For Ollama, use default baseUrl if not provided
+			baseUrl: config?.baseUrl,
+		};
+
+		try {
+			const service = factory(serviceConfig, this.defaultTimeout);
+			if (service) {
+				return await service.getAvailableModels();
+			}
+		} catch (error) {
+			console.warn(`[ProviderServiceFactory] Failed to get models for ${providerId}:`, error);
+			throw error;
+		}
+
+		throw new Error(`Failed to create service for provider ${providerId}`);
 	}
 }
 

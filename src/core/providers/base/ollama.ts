@@ -6,7 +6,7 @@ import {
 	ProviderMetaData,
 } from '../types';
 import { AIStreamEvent } from '../types-events';
-import { createOllama, type OllamaProvider } from 'ollama-ai-provider';
+import { createOllama, type OllamaProvider } from 'ollama-ai-provider-v2';
 import { generateText, streamText, embedMany, type LanguageModel, type EmbeddingModel } from 'ai';
 import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
 import { trimTrailingSlash } from './helpers';
@@ -15,10 +15,20 @@ const DEFAULT_OLLAMA_TIMEOUT_MS = 60000;
 export const OLLAMA_DEFAULT_BASE = 'http://localhost:11434';
 
 /**
- * Normalize Ollama baseUrl - remove /v1 suffix if present as ollama-ai-provider handles it
+ * Normalize Ollama baseUrl for ollama-ai-provider-v2
+ * The provider expects baseURL to include /api (e.g., http://localhost:11434/api)
  */
 function normalizeOllamaBaseUrl(baseUrl: string): string {
-	return baseUrl.replace(/\/v1\/?$/, '').replace(/\/$/, '');
+	// Remove trailing slashes and /v1 suffix if present
+	let normalized = baseUrl.replace(/\/v1\/?$/, '').replace(/\/$/, '');
+	
+	// Ensure /api is included in the baseURL
+	// ollama-ai-provider-v2 expects baseURL to be like http://localhost:11434/api
+	if (!normalized.endsWith('/api')) {
+		normalized = `${normalized}/api`;
+	}
+	
+	return normalized;
 }
 
 
@@ -164,10 +174,8 @@ export class OllamaChatService implements LLMProviderService {
 	private readonly client: OllamaProvider;
 
 	constructor(private readonly options: OllamaChatServiceOptions) {
-		if (!this.options.baseUrl) {
-			throw new Error('Ollama baseUrl is required');
-		}
-		const normalizedBaseUrl = normalizeOllamaBaseUrl(this.options.baseUrl);
+		const baseUrl = this.options.baseUrl ?? OLLAMA_DEFAULT_BASE;
+		const normalizedBaseUrl = normalizeOllamaBaseUrl(baseUrl);
 		this.client = createOllama({
 			baseURL: normalizedBaseUrl,
 		});
@@ -213,7 +221,7 @@ export class OllamaChatService implements LLMProviderService {
 			this.options.baseUrl,
 			this.options.timeoutMs
 		);
-		console.log('models fetched', models);
+		// console.log('models fetched', models);
 
 		if (models) {
 			return models;

@@ -1,30 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type MyPlugin from 'main';
-import { EventBus } from '@/core/eventBus';
-import { usePluginSettings } from './settings/usePluginSettings';
+import { EventBus, ViewEventType, SettingsUpdatedEvent } from '@/core/eventBus';
 import { GeneralTab } from './settings/GeneralTab';
-import { ChatTab } from './settings/ChatTab';
+import { ModelConfigTab } from './settings/ModelConfigTab';
 import { CommandHiddenTab } from './settings/CommandHiddenTab';
-import { ModelConfigurationTab } from './settings/ModelConfigurationTab';
+import { SearchSettingsTab } from './settings/SearchSettingsTab';
+import { useSettingsUpdate } from './settings/hooks/useSettingsUpdate';
+import type { MyPluginSettings } from '@/app/settings/types';
 
 interface SettingsRootProps {
 	plugin: MyPlugin;
 	eventBus: EventBus;
 }
 
-type TabId = 'general' | 'ai-models' | 'model-config' | 'command-hidden';
+type TabId = 'general' | 'ai-models' | 'search' | 'command-hidden';
 
 /**
  * Root component for plugin settings with tab navigation.
  */
 export function SettingsRoot({ plugin, eventBus }: SettingsRootProps) {
 	const [activeTab, setActiveTab] = useState<TabId>('general');
-	const { updateSettings } = usePluginSettings(plugin, eventBus);
+
+	// Keep a React state copy so controlled inputs rerender immediately when settings change
+	const [settings, setSettings] = useState<MyPluginSettings>(plugin.settings);
+
+	// Sync settings state when SettingsUpdatedEvent is dispatched
+	useEffect(() => {
+		const unsubscribe = eventBus.on(ViewEventType.SETTINGS_UPDATED, () => {
+			setSettings({ ...plugin.settings });
+		});
+		return unsubscribe;
+	}, [eventBus, plugin]);
+
+	// Get update functions from hook (handles all side effects internally)
+	const settingsUpdates = useSettingsUpdate(plugin, eventBus, settings);
+
+	// Wrapper that syncs React state for controlled components
+	const updateSettingsAndSync = useCallback(
+		async (updates: Partial<MyPluginSettings>) => {
+			await settingsUpdates.updateSettings(updates);
+			// Force rerender for controlled components (checkbox/input) by updating state
+			setSettings({ ...plugin.settings });
+		},
+		[settingsUpdates, plugin]
+	);
 
 	const tabs: Array<{ id: TabId; label: string }> = [
 		{ id: 'general', label: 'General' },
-		{ id: 'ai-models', label: 'Chat' },
-		{ id: 'model-config', label: 'Model Config' },
+		{ id: 'ai-models', label: 'Model Config' },
+		{ id: 'search', label: 'Search Settings' },
 		{ id: 'command-hidden', label: 'Command Hidden' },
 	];
 
@@ -46,27 +70,23 @@ export function SettingsRoot({ plugin, eventBus }: SettingsRootProps) {
 			{/* Tab Content */}
 			<div className="peak-settings-content">
 				{activeTab === 'general' && (
-					<GeneralTab settings={plugin.settings} updateSettings={updateSettings} />
+					<GeneralTab settings={settings} settingsUpdates={settingsUpdates} />
 				)}
 				{activeTab === 'ai-models' && (
-					<ChatTab
-						settings={plugin.settings}
+					<ModelConfigTab
+						settings={settings}
 						aiServiceManager={plugin.aiServiceManager}
-						updateSettings={updateSettings}
+						settingsUpdates={settingsUpdates}
 					/>
 				)}
-				{activeTab === 'model-config' && (
-					<ModelConfigurationTab
-						settings={plugin.settings}
-						aiServiceManager={plugin.aiServiceManager}
-						updateSettings={updateSettings}
-					/>
+				{activeTab === 'search' && (
+					<SearchSettingsTab settings={settings} settingsUpdates={settingsUpdates} />
 				)}
 				{activeTab === 'command-hidden' && (
 					<CommandHiddenTab
-						settings={plugin.settings}
+						settings={settings}
 						commandHiddenControlService={plugin.commandHiddenControlService}
-						updateSettings={updateSettings}
+						updateSettings={updateSettingsAndSync}
 					/>
 				)}
 			</div>

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Input, InputProps } from './input';
-import { SettingField, SettingFieldProps } from './setting-field';
+import { SettingField, SettingFieldProps } from '../../view/settings/component/setting-field';
 
 export interface CommittedInputProps extends Omit<InputProps, 'value' | 'onChange' | 'onBlur' | 'onKeyDown'> {
 	value: string;

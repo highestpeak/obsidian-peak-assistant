@@ -105,3 +105,5 @@ export const DEFAULT_CHAT_SUGGESTIONS = [
  * Used for displaying conversation titles with animation.
  */
 export const TYPEWRITER_EFFECT_SPEED_MS = 30;
+
+export const CHAT_PROJECT_SUMMARY_FILENAME = 'Project-Summary.md';

@@ -12,6 +12,48 @@ import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } fro
 
 const GEMINI_DEFAULT_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+/**
+ * Known Gemini model IDs extracted from @ai-sdk/google type definitions.
+ * This serves as a fallback when API model fetching fails.
+ * 
+ * Note: This list should be kept in sync with GoogleGenerativeAIModelId type from @ai-sdk/google.
+ * The list includes all known model IDs up to the package version.
+ */
+export const KNOWN_GEMINI_CHAT_MODELS: readonly string[] = [
+	// Gemini 2.5 series
+	'gemini-2.5-pro-exp-03-25',
+	'gemini-2.5-pro-preview-05-06',
+	'gemini-2.5-flash-preview-04-17',
+	'gemini-2.5-pro',
+	'gemini-2.5-flash',
+	// Gemini 2.0 series
+	'gemini-2.0-pro-exp-02-05',
+	'gemini-2.0-flash-thinking-exp-01-21',
+	'gemini-2.0-flash-exp',
+	'gemini-2.0-flash',
+	'gemini-2.0-flash-001',
+	'gemini-2.0-flash-live-001',
+	'gemini-2.0-flash-lite',
+	// Gemini 1.5 series
+	'gemini-1.5-pro',
+	'gemini-1.5-pro-latest',
+	'gemini-1.5-pro-001',
+	'gemini-1.5-pro-002',
+	'gemini-1.5-flash',
+	'gemini-1.5-flash-latest',
+	'gemini-1.5-flash-001',
+	'gemini-1.5-flash-002',
+	'gemini-1.5-flash-8b',
+	'gemini-1.5-flash-8b-latest',
+	'gemini-1.5-flash-8b-001',
+	// Gemini experimental
+	'gemini-exp-1206',
+	// Gemma series
+	'gemma-3-27b-it',
+	// LearnLM series
+	'learnlm-1.5-pro-experimental',
+] as const;
+
 export interface GeminiChatServiceOptions {
 	baseUrl?: string;
 	apiKey?: string;
@@ -67,17 +109,19 @@ export class GeminiChatService implements LLMProviderService {
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
-		return Promise.resolve([
-			{ id: 'gemini-1.5-pro', displayName: 'Gemini 1.5 Pro', icon: 'gemini-1.5-pro' },
-			{ id: 'gemini-1.5-flash', displayName: 'Gemini 1.5 Flash', icon: 'gemini-1.5-flash' },
-			{ id: 'gemini-1.0-pro', displayName: 'Gemini 1.0 Pro', icon: 'gemini-1.0-pro' },
-		]);
+		// Return all known Gemini models with appropriate icons
+		return KNOWN_GEMINI_CHAT_MODELS.map((modelId) => ({
+			id: modelId,
+			displayName: modelId,
+			// Set icon based on model type
+			icon: 'gemini',
+		}));
 	}
 
 	getProviderMetadata(): ProviderMetaData {
 		return {
 			id: 'gemini',
-			name: 'Gemini',
+			name: 'Google',
 			defaultBaseUrl: GEMINI_DEFAULT_BASE,
 			icon: 'google',
 		};
