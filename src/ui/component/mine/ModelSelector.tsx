@@ -53,6 +53,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 	placeholder = 'Select model',
 }) => {
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const [menuPosition, setMenuPosition] = useState<'bottom' | 'top'>('bottom');
 	const containerRef = useRef<HTMLDivElement>(null);
 	const menuRef = useRef<HTMLDivElement>(null);
 	const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -138,6 +139,39 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 		};
 	}, [isMenuOpen, closeMenu]);
 
+	// Calculate menu position (bottom or top) based on available space
+	useEffect(() => {
+		if (!isMenuOpen || !containerRef.current || !menuRef.current) return;
+
+		const calculatePosition = () => {
+			const container = containerRef.current;
+			const menu = menuRef.current;
+			if (!container || !menu) return;
+
+			const containerRect = container.getBoundingClientRect();
+			const menuHeight = menu.offsetHeight || 400; // Estimate menu height
+			const spaceBelow = window.innerHeight - containerRect.bottom;
+			const spaceAbove = containerRect.top;
+
+			// If not enough space below but enough space above, show above
+			if (spaceBelow < menuHeight && spaceAbove > menuHeight) {
+				setMenuPosition('top');
+			} else {
+				setMenuPosition('bottom');
+			}
+		};
+
+		// Calculate on open and on resize
+		calculatePosition();
+		window.addEventListener('resize', calculatePosition);
+		window.addEventListener('scroll', calculatePosition, true);
+
+		return () => {
+			window.removeEventListener('resize', calculatePosition);
+			window.removeEventListener('scroll', calculatePosition, true);
+		};
+	}, [isMenuOpen]);
+
 	// Close menu when clicking outside
 	useEffect(() => {
 		if (!isMenuOpen) return;
@@ -211,6 +245,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 			onMouseEnter={isMenuOpen ? handleMouseEnter : undefined}
 		>
 			<button
+				type="button"
 				className={cn(
 					'pktw-flex pktw-items-center pktw-justify-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-bg-secondary pktw-border pktw-border-border pktw-rounded-md pktw-text-[13px] pktw-font-medium pktw-cursor-pointer pktw-transition-all pktw-duration-200 pktw-whitespace-nowrap hover:pktw-bg-hover hover:pktw-border-accent',
 					!isCurrentModelAvailable && currentModel
@@ -220,6 +255,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 				)}
 				onClick={(e) => {
 					e.stopPropagation();
+					e.preventDefault();
 					setIsMenuOpen(!isMenuOpen);
 				}}
 				title={!isCurrentModelAvailable && currentModel ? 'Current model is not available. Please select another model.' : undefined}
@@ -276,7 +312,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 			{isMenuOpen && (
 				<div
 					ref={menuRef}
-					className="pktw-absolute pktw-top-full pktw-left-0 pktw-mt-1 pktw-bg-background pktw-border pktw-border-border pktw-rounded-lg pktw-shadow-lg pktw-max-h-[400px] pktw-overflow-y-auto pktw-overflow-x-hidden pktw-z-[10000]"
+					className={cn(
+						'pktw-absolute pktw-left-0 pktw-bg-background pktw-border pktw-border-border pktw-rounded-lg pktw-shadow-lg pktw-max-h-[400px] pktw-overflow-y-auto pktw-overflow-x-hidden pktw-z-[10000]',
+						menuPosition === 'bottom' ? 'pktw-top-full pktw-mt-1' : 'pktw-bottom-full pktw-mb-1'
+					)}
 					onClick={(e) => e.stopPropagation()}
 					onMouseLeave={handleMenuMouseLeave}
 					onMouseEnter={handleMouseEnter}

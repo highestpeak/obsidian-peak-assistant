@@ -51,47 +51,6 @@ export {
 	ReasoningContent,
 } from './reasoning';
 
-// Model Selector components
-export {
-	ModelSelector,
-	ModelSelectorTrigger,
-	ModelSelectorContent,
-	ModelSelectorDialog,
-	ModelSelectorInput,
-	ModelSelectorList,
-	ModelSelectorEmpty,
-	ModelSelectorGroup,
-	ModelSelectorItem,
-	ModelSelectorLogo,
-	ModelSelectorLogoGroup,
-	ModelSelectorName,
-	type ModelSelectorProps,
-	type ModelSelectorTriggerProps,
-	type ModelSelectorContentProps,
-} from './model-selector';
-
-// Prompt Input components
-export {
-	PromptInput,
-	PromptInputProvider,
-	PromptInputHeader,
-	PromptInputBody,
-	PromptInputFooter,
-	PromptInputTextarea,
-	PromptInputButton,
-	PromptInputSubmit,
-	PromptInputTools,
-	PromptInputAttachments,
-	PromptInputAttachment,
-	PromptInputActionMenu,
-	PromptInputActionMenuTrigger,
-	PromptInputActionMenuContent,
-	PromptInputActionAddAttachments,
-	PromptInputSpeechButton,
-	usePromptInputController,
-	type PromptInputMessage,
-	type PromptInputProps,
-} from './prompt-input';
 
 // Queue components
 export {

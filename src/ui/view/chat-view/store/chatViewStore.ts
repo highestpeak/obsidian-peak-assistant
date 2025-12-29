@@ -28,6 +28,8 @@ interface ChatViewStore {
 	pendingConversation: PendingConversation | null;
 	showSummaryModal: boolean;
 	showResourcesModal: boolean;
+	// Initial model selection when no conversation exists
+	initialSelectedModel: { provider: string; modelId: string } | null;
 
 	// Actions
 	setProjectOverview: (project: ChatProject) => void;
@@ -36,6 +38,7 @@ interface ChatViewStore {
 	setAllConversations: () => void;
 	setConversation: (conversation: ChatConversation) => void;
 	setPendingConversation: (pending: PendingConversation | null) => void;
+	setInitialSelectedModel: (model: { provider: string; modelId: string } | null) => void;
 	setShowSummaryModal: (show: boolean) => void;
 	setShowResourcesModal: (show: boolean) => void;
 	reset: () => void;
@@ -48,6 +51,7 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 	pendingConversation: null,
 	showSummaryModal: false,
 	showResourcesModal: false,
+	initialSelectedModel: null,
 
 	// Actions
 	setProjectOverview: (project: ChatProject) => {
@@ -99,6 +103,7 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 				: ViewMode.STANDALONE_CONVERSATION,
 			projectForOverview: null,
 			pendingConversation: null,
+			initialSelectedModel: null, // Clear initial model when conversation is set
 		});
 	},
 	setPendingConversation: (pending: PendingConversation | null) => {
@@ -115,7 +120,13 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 				? (pending.project ? ViewMode.CONVERSATION_IN_PROJECT : ViewMode.STANDALONE_CONVERSATION)
 				: null,
 			projectForOverview: null,
+			// When creating pending conversation, initialSelectedModel should be null (will use default model)
+			// User can then select a different model, which will set initialSelectedModel
+			initialSelectedModel: null,
 		});
+	},
+	setInitialSelectedModel: (model: { provider: string; modelId: string } | null) => {
+		set({ initialSelectedModel: model });
 	},
 	setShowSummaryModal: (show: boolean) => {
 		set({ showSummaryModal: show });
@@ -132,6 +143,7 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 			pendingConversation: null,
 			showSummaryModal: false,
 			showResourcesModal: false,
+			initialSelectedModel: null,
 		});
 	},
 }));

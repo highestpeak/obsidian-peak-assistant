@@ -84,6 +84,8 @@ export class ConversationService {
 		title: string;
 		project?: ChatProjectMeta | null;
 		initialMessages?: ChatMessage[];
+		modelId?: string;
+		provider?: string;
 	}): Promise<ChatConversation> {
 		const timestamp = Date.now();
 		const meta: ChatConversationMeta = {
@@ -92,8 +94,8 @@ export class ConversationService {
 			projectId: params.project?.id,
 			createdAtTimestamp: timestamp,
 			updatedAtTimestamp: timestamp,
-			activeModel: this.defaultModel.modelId,
-			activeProvider: this.defaultModel.provider,
+			activeModel: params.modelId || this.defaultModel.modelId,
+			activeProvider: params.provider || this.defaultModel.provider,
 			tokenUsageTotal: 0,
 		};
 

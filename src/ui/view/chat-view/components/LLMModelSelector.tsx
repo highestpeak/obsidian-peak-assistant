@@ -15,6 +15,8 @@ export const LLMModelSelector: React.FC = () => {
 	const { manager, eventBus } = useServiceContext();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 	const activeProject = useProjectStore((state) => state.activeProject);
+	const initialSelectedModel = useChatViewStore((state) => state.initialSelectedModel);
+	const setInitialSelectedModel = useChatViewStore((state) => state.setInitialSelectedModel);
 	const [models, setModels] = useState<ModelInfoForSwitch[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
@@ -47,13 +49,26 @@ export const LLMModelSelector: React.FC = () => {
 	}, [eventBus, loadModels]);
 
 	// Calculate current model id and provider for comparison (reactive)
+	// If there's an active conversation, use its model; otherwise use initial selected model or default
 	const currentModelId = useMemo(() => {
-		return activeConversation?.meta.activeModel || manager?.getSettings().defaultModel.modelId;
-	}, [activeConversation?.meta.activeModel, manager]);
+		if (activeConversation) {
+			return activeConversation.meta.activeModel;
+		}
+		if (initialSelectedModel) {
+			return initialSelectedModel.modelId;
+		}
+		return manager?.getSettings().defaultModel.modelId;
+	}, [activeConversation?.meta.activeModel, initialSelectedModel, manager]);
 
 	const currentProvider = useMemo(() => {
-		return activeConversation?.meta.activeProvider;
-	}, [activeConversation?.meta.activeProvider]);
+		if (activeConversation) {
+			return activeConversation.meta.activeProvider;
+		}
+		if (initialSelectedModel) {
+			return initialSelectedModel.provider;
+		}
+		return manager?.getSettings().defaultModel.provider;
+	}, [activeConversation?.meta.activeProvider, initialSelectedModel, manager]);
 
 	// Get current model for selector
 	const currentModel = useMemo(() => {
@@ -103,19 +118,23 @@ export const LLMModelSelector: React.FC = () => {
 	// Handle model change
 	const handleModelChange = useCallback(
 		async (provider: string, modelId: string) => {
-			if (!activeConversation) return;
+			if (activeConversation) {
+				// If there's an active conversation, update it
+				const updatedConv = await manager.updateConversationModel({
+					conversation: activeConversation,
+					project: activeProject,
+					modelId,
+					provider: provider,
+				});
 
-			const updatedConv = await manager.updateConversationModel({
-				conversation: activeConversation,
-				project: activeProject,
-				modelId,
-				provider: provider,
-			});
-
-			// Update conversation in store
-			useChatViewStore.getState().setConversation(updatedConv);
+				// Update conversation in store
+				useChatViewStore.getState().setConversation(updatedConv);
+			} else {
+				// If no conversation, just store the initial selection (doesn't change default model)
+				setInitialSelectedModel({ provider, modelId });
+			}
 		},
-		[activeConversation, activeProject, manager]
+		[activeConversation, activeProject, manager, setInitialSelectedModel]
 	);
 
 	return (

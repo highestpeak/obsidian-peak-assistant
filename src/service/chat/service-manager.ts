@@ -227,7 +227,7 @@ export class AIServiceManager {
 	/**
 	 * Create a new conversation with optional seed messages.
 	 */
-	async createConversation(params: { title: string; project?: ChatProjectMeta | null; initialMessages?: ChatMessage[] }): Promise<ChatConversation> {
+	async createConversation(params: { title: string; project?: ChatProjectMeta | null; initialMessages?: ChatMessage[]; modelId?: string; provider?: string }): Promise<ChatConversation> {
 		if (!this.conversationService) {
 			throw new Error('ConversationService not initialized. Call init() first.');
 		}

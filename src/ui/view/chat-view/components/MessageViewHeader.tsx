@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { useChatViewStore } from '../store/chatViewStore';
-import { LLMModelSelector } from './LLMModelSelector';
-import { StatsRendererComponent } from './StatsRenderer';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ArrowUp, ArrowDown, List, Lightbulb, FileText, Folder } from 'lucide-react';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
@@ -83,14 +81,10 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 				) : null}
 			</div>
 
-			{/* Right side: Model selector, stats, and action buttons */}
+			{/* Right side: Action buttons */}
 			<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-flex-shrink-0">
-				<LLMModelSelector />
-
 				{activeConversation && (
 					<>
-						<StatsRendererComponent />
-						
 						{/* Action buttons */}
 						<div className="pktw-flex pktw-items-center pktw-gap-1">
 							{/* Scroll buttons */}

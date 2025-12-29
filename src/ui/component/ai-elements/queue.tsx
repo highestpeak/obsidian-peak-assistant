@@ -1,5 +1,4 @@
-
-
+import React from "react";
 import { Button } from "@/ui/component/shared-ui/button";
 import {
   Collapsible,
