@@ -129,6 +129,8 @@ export interface Database {
 		gen_time_ms: number | null;
 		token_usage_json: string | null;
 		thinking: string | null;
+		content_preview: string | null;
+		attachment_summary: string | null;
 	};
 	chat_message_resource: {
 		id: string;
@@ -374,10 +376,20 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			is_visible INTEGER NOT NULL DEFAULT 1,
 			gen_time_ms INTEGER,
 			token_usage_json TEXT,
-			thinking TEXT
+			thinking TEXT,
+			content_preview TEXT,
+			attachment_summary TEXT
 		);
 		CREATE INDEX IF NOT EXISTS idx_chat_message_conversation_id ON chat_message(conversation_id);
 		CREATE INDEX IF NOT EXISTS idx_chat_message_created_at ON chat_message(created_at_ts);
+	`);
+	tryExec(`
+		ALTER TABLE chat_message ADD COLUMN content_preview TEXT;
+	`);
+	tryExec(`
+		ALTER TABLE chat_message ADD COLUMN attachment_summary TEXT;
+	`);
+	db.exec(`
 		CREATE TABLE IF NOT EXISTS chat_message_resource (
 			id TEXT PRIMARY KEY,
 			message_id TEXT NOT NULL,

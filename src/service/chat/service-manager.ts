@@ -375,6 +375,19 @@ export class AIServiceManager {
 	}
 
 	/**
+	 * List starred messages for a project.
+	 */
+	async listStarredMessagesByProject(projectId: string): Promise<{
+		messages: ChatMessage[];
+		messageToConversationId: Map<string, string>;
+	}> {
+		if (!this.storage) {
+			throw new Error('StorageService not initialized. Call init() first.');
+		}
+		return this.storage.listStarredMessagesByProject(projectId);
+	}
+
+	/**
 	 * Rename a project by renaming its folder.
 	 */
 	async renameProject(projectId: string, newName: string): Promise<ChatProject> {

@@ -15,9 +15,13 @@ import {
 	MessageAction,
 	MessageAttachment,
 } from '@/ui/component/ai-elements';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/component/shared-ui/tooltip';
+import { Button } from '@/ui/component/shared-ui/button';
 import { FilePreviewHover } from '@/ui/component/mine/file-preview-hover';
 import { Streamdown } from 'streamdown';
 import type { FileUIPart } from 'ai';
+import { ConversationUpdatedEvent } from '@/core/eventBus';
+import { formatTimestampLocale } from '@/ui/view/shared/date-utils';
 
 /**
  * Component for rendering message attachments
@@ -173,12 +177,113 @@ const MessageActionsList: React.FC<{
 					<RefreshCw size={12} strokeWidth={2} />
 				</MessageAction>
 			)}
+
+			{message.role === 'assistant' && (
+				<MessageMetadataButton message={message} />
+			)}
 		</MessageActions>
 	);
 };
 
 /**
+ * Component for displaying message metadata as a button in action area
+ */
+const MessageMetadataButton: React.FC<{
+	message: ChatMessage;
+}> = ({ message }) => {
+	const [copied, setCopied] = useState(false);
+	const { tokenCount, modelInfo, formatDate, timezone, hasMetadata } = useMemo(() => {
+		const totalTokens = message.tokenUsage
+			? (() => {
+				const usage = message.tokenUsage as any;
+				return usage.totalTokens ?? usage.total_tokens ??
+					((usage.promptTokens ?? usage.prompt_tokens ?? 0) + (usage.completionTokens ?? usage.completion_tokens ?? 0));
+			})()
+			: null;
+
+		const model = message.model ? `${message.provider || ''}/${message.model}`.replace(/^\//, '') : null;
+
+		const date = message.createdAtTimestamp
+			? formatTimestampLocale(message.createdAtTimestamp, message.createdAtZone)
+			: null;
+
+		const tz = message.createdAtZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+		const hasMeta = totalTokens !== null || model || date;
+
+		return {
+			tokenCount: totalTokens,
+			modelInfo: model,
+			formatDate: date,
+			timezone: tz,
+			hasMetadata: hasMeta,
+		};
+	}, [message.tokenUsage, message.model, message.provider, message.createdAtTimestamp, message.createdAtZone]);
+
+	if (!hasMetadata) return null;
+
+	const tooltipContent = (() => {
+		const lines: string[] = [];
+		if (modelInfo && tokenCount !== null) {
+			lines.push(`${modelInfo} ${tokenCount} tokens`);
+		} else if (modelInfo) {
+			lines.push(modelInfo);
+		} else if (tokenCount !== null) {
+			lines.push(`${tokenCount} tokens`);
+		}
+		if (formatDate) {
+			lines.push(formatDate + (timezone ? ` (${timezone})` : ''));
+		} else if (timezone) {
+			lines.push(`(${timezone})`);
+		}
+		return lines.join('\n');
+	})();
+
+	const handleCopyTooltip = useCallback(async (e: React.MouseEvent) => {
+		e.stopPropagation();
+		try {
+			await navigator.clipboard.writeText(tooltipContent);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 2000);
+		} catch (err) {
+			console.error('Failed to copy tooltip content:', err);
+		}
+	}, [tooltipContent]);
+
+	return (
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button
+						variant="ghost"
+						size="icon"
+						type="button"
+						className="pktw-h-auto pktw-w-auto pktw-px-1.5 pktw-cursor-pointer"
+						onClick={handleCopyTooltip}
+					>
+						<span className="pktw-text-xs">
+							{tokenCount !== null ? `${tokenCount} tokens${copied ? ' copied!' : ''}` : ''}
+						</span>
+						<span className="pktw-sr-only">Message metadata</span>
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent 
+					className="pktw-whitespace-pre-line pktw-select-text"
+					side="top"
+					align="start"
+					sideOffset={4}
+					onPointerDown={(e) => e.stopPropagation()}
+				>
+					<p className="pktw-select-text">{tooltipContent}</p>
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
+	);
+};
+
+/**
  * Component for displaying message metadata (time, timezone, tokens, model)
+ * @deprecated This component is no longer used. Metadata is now shown as a button in the action area.
  */
 const MessageMetadata: React.FC<{
 	message: ChatMessage;
@@ -266,6 +371,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	const { manager, app, eventBus } = useServiceContext();
 
 	const handleToggleStar = useCallback(async (messageId: string, starred: boolean) => {
+		console.debug('[MessageItem] Toggling star for message:', { messageId, starred });
 		if (!activeConversation) return;
 		await manager.toggleStar({
 			messageId,
@@ -284,7 +390,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 		useProjectStore.getState().updateConversation(updatedConv);
 		useProjectStore.getState().setActiveConversation(updatedConv);
 		// Dispatch event to notify other components
-		const { ConversationUpdatedEvent } = await import('@/core/eventBus');
 		eventBus.dispatch(new ConversationUpdatedEvent({ conversation: updatedConv }));
 	}, [activeConversation, manager, eventBus]);
 
@@ -522,9 +627,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 					onCopy={handleCopy}
 					onRegenerate={handleRegenerate}
 				/>
-
-				{/* Render metadata */}
-				{!isStreaming && <MessageMetadata message={message} />}
 			</Message>
 		</div>
 	);

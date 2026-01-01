@@ -67,4 +67,57 @@ export class ChatMessageRepo {
 			.orderBy('created_at_ts', 'asc')
 			.execute();
 	}
+
+	/**
+	 * Update starred status for a message.
+	 * Optionally updates content preview and attachment summary when starring.
+	 */
+	async updateStarred(
+		messageId: string,
+		starred: boolean,
+		contentPreview?: string | null,
+		attachmentSummary?: string | null
+	): Promise<void> {
+		const updateData: {
+			starred: number;
+			content_preview?: string | null;
+			attachment_summary?: string | null;
+		} = {
+			starred: starred ? 1 : 0,
+		};
+
+		// Only update preview fields when starring (not when unstarring)
+		if (starred) {
+			if (contentPreview !== undefined) {
+				updateData.content_preview = contentPreview || null;
+			}
+			if (attachmentSummary !== undefined) {
+				updateData.attachment_summary = attachmentSummary || null;
+			}
+		} else {
+			// When unstarring, clear preview fields
+			updateData.content_preview = null;
+			updateData.attachment_summary = null;
+		}
+
+		await this.db
+			.updateTable('chat_message')
+			.set(updateData)
+			.where('message_id', '=', messageId)
+			.execute();
+	}
+
+	/**
+	 * List starred messages for a project by joining with chat_conversation table.
+	 */
+	async listStarredByProject(projectId: string): Promise<DbSchema['chat_message'][]> {
+		return this.db
+			.selectFrom('chat_message')
+			.innerJoin('chat_conversation', 'chat_message.conversation_id', 'chat_conversation.conversation_id')
+			.selectAll('chat_message')
+			.where('chat_conversation.project_id', '=', projectId)
+			.where('chat_message.starred', '=', 1)
+			.orderBy('chat_message.created_at_ts', 'desc')
+			.execute();
+	}
 }

@@ -26,6 +26,7 @@ import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoa
 import { ResourceLoaderManager } from '@/core/document/resource/helper/ResourceLoaderManager';
 import type { AIServiceManager } from './service-manager';
 import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
+import { generateContentPreview, generateAttachmentSummary } from '@/core/utils/message-preview-utils';
 
 /**
  * Service for managing chat conversations.
@@ -391,38 +392,33 @@ export class ConversationService {
 
 	/**
 	 * Toggle star status on a message.
+	 * When starring, generates and saves content preview and attachment summary.
 	 */
 	async toggleStar(params: {
 		messageId: string;
 		conversationId: string;
 		starred: boolean;
 	}): Promise<void> {
-		const { messageId, conversationId, starred } = params;
+		const { messageId, starred, conversationId } = params;
 
-		const conversation = await this.storage.readConversation(conversationId, false);
-		if (!conversation) {
-			throw new Error(`Conversation ${conversationId} not found`);
-		}
+		let contentPreview: string | null = null;
+		let attachmentSummary: string | null = null;
 
-		const targetMessage = conversation.messages.find((msg) => msg.id === messageId);
-		if (!targetMessage) {
-			throw new Error(`Message ${messageId} not found in conversation`);
-		}
-
-		const record: StarredMessageRecord = {
-			id: generateUuidWithoutHyphens(),
-			sourceMessageId: messageId,
-			conversationId: conversation.meta.id,
-			projectId: conversation.meta.projectId ?? undefined,
-			createdAt: Date.now(),
-			active: starred,
-		};
-
+		// When starring, load message content to generate preview
 		if (starred) {
-			await this.storage.addStar(record);
-		} else {
-			await this.storage.removeStar(messageId);
+			const conversation = await this.storage.readConversation(conversationId, true);
+			if (conversation) {
+				const message = conversation.messages.find((m) => m.id === messageId);
+				if (message) {
+					// Generate preview and summary
+					contentPreview = generateContentPreview(message.content);
+					attachmentSummary = generateAttachmentSummary(message.resources);
+				}
+			}
 		}
+
+		// Update starred status with preview data
+		await this.storage.updateMessageStarred(messageId, starred, contentPreview, attachmentSummary);
 	}
 
 	/**

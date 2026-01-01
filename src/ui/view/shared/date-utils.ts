@@ -61,6 +61,21 @@ export function formatRelativeDate(timestamp: number): string {
 }
 
 /**
+ * Format timestamp as locale string with timezone support
+ */
+export function formatTimestampLocale(timestamp: number, timeZone?: string): string {
+	const date = new Date(timestamp);
+	return date.toLocaleString('en-US', {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+		timeZone: timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+	});
+}
+
+/**
  * Format timestamp as relative time (e.g., "2 days ago", "3 weeks ago")
  * Uses timezone-aware date comparison: if timestamp is before today's 0:00, use day/week/month, otherwise use hours/minutes
  */

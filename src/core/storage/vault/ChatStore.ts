@@ -14,6 +14,7 @@ import {
 import { ensureFolder, joinPath, writeFile, getAbsolutePath, getRelativePath } from '@/core/utils/vault-utils';
 import { ChatDocName } from './chat-docs/ChatDocName';
 import { ChatConversationDoc, ChatConversationDocModel } from './chat-docs/ChatConversationDoc';
+import { hashMD5 } from '@/core/utils/hash-utils';
 import { ChatProjectSummaryDoc } from './chat-docs/ChatProjectSummaryDoc';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
@@ -251,9 +252,9 @@ export class ChatStorageService {
 		}
 
 		// Load messages from sqlite and merge with markdown
-		// console.log('[ChatStore] readConversation loading messages', conversationId, docModel);
+		console.debug('[ChatStore] readConversation loading messages', conversationId, docModel);
 		const messages = await this.loadConversationMessages(conversationId, docModel);
-		// console.log('[ChatStore] readConversation loaded messages', conversationId, messages);
+		console.debug('[ChatStore] readConversation loaded messages', conversationId, messages);
 		return { meta, context, messages, content: raw, file };
 	}
 
@@ -388,30 +389,79 @@ export class ChatStorageService {
 	}
 
 	/**
-	 * Upsert a star record into sqlite.
+	 * Update starred status for a message.
 	 */
-	async addStar(record: StarredMessageRecord): Promise<void> {
-		const starRepo = sqliteStoreManager.getChatStarRepo();
-		await starRepo.upsert({
-			sourceMessageId: record.sourceMessageId,
-			id: record.id,
-			conversationId: record.conversationId,
-			projectId: record.projectId ?? null,
-			createdAtTs: record.createdAt,
-			active: record.active,
-		});
+	/**
+	 * Update starred status for a message.
+	 * Optionally accepts content preview and attachment summary to store when starring.
+	 */
+	async updateMessageStarred(
+		messageId: string,
+		starred: boolean,
+		contentPreview?: string | null,
+		attachmentSummary?: string | null
+	): Promise<void> {
+		const messageRepo = sqliteStoreManager.getChatMessageRepo();
+		await messageRepo.updateStarred(messageId, starred, contentPreview, attachmentSummary);
 	}
 
 	/**
-	 * Mark a star record inactive in sqlite.
+	 * List starred messages for a project.
+	 * Returns messages with conversationId mapping for easy lookup.
+	 * Uses content preview and attachment summary from database (no markdown parsing needed).
 	 */
-	async removeStar(messageId: string): Promise<void> {
-		const starRepo = sqliteStoreManager.getChatStarRepo();
-		await starRepo.setActive(messageId, false);
+	async listStarredMessagesByProject(projectId: string): Promise<{
+		messages: ChatMessage[];
+		messageToConversationId: Map<string, string>;
+	}> {
+		const messageRepo = sqliteStoreManager.getChatMessageRepo();
+		const messageRows = await messageRepo.listStarredByProject(projectId);
+		const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
+		const messageIds = messageRows.map((m) => m.message_id);
+		const resourcesMap = messageIds.length > 0 ? await resourceRepo.getByMessageIds(messageIds) : new Map();
+		
+		// Convert SQLite rows to ChatMessage objects
+		// Use content_preview from database instead of parsing markdown
+		const messages = messageRows.map((row) => {
+			const msg: ChatMessage = {
+				id: row.message_id,
+				role: row.role as ChatMessage['role'],
+				// Use preview content from database (or empty string if not available)
+				content: row.content_preview || '',
+				createdAtTimestamp: row.created_at_ts,
+				createdAtZone: row.created_at_zone ?? 'UTC',
+				starred: row.starred === 1,
+				model: row.model ?? '',
+				provider: row.provider ?? 'other',
+			};
+			if (row.is_error === 1) msg.isErrorMessage = true;
+			if (row.is_visible === 0) msg.isVisible = false;
+			if (row.gen_time_ms !== null) msg.genTimeMs = row.gen_time_ms;
+			if (row.thinking) msg.thinking = row.thinking;
+			if (row.token_usage_json) {
+				try {
+					msg.tokenUsage = JSON.parse(row.token_usage_json);
+				} catch { }
+			}
+			// Note: We don't load full resources for starred messages list
+			// The attachment_summary field provides a summary instead
+			// If attachment_summary is available, we could add it as a metadata field
+			// For now, we'll just use the preview content
+			return msg;
+		});
+		
+		// Create mapping from message ID to conversation ID
+		const messageToConversationId = new Map<string, string>();
+		for (const row of messageRows) {
+			messageToConversationId.set(row.message_id, row.conversation_id);
+		}
+		
+		return { messages, messageToConversationId };
 	}
 
 	/**
 	 * List active starred message records from sqlite.
+	 * @deprecated This method is deprecated. Starred status is now stored directly in chat_message table.
 	 */
 	async listStarred(): Promise<StarredMessageRecord[]> {
 		const starRepo = sqliteStoreManager.getChatStarRepo();
@@ -542,9 +592,9 @@ export class ChatStorageService {
 			return null;
 		}
 		const raw = await this.app.vault.read(file);
-		// console.log('[ChatStore] getConvDoc raw', fileRelPath, 'raw', raw);
+		console.debug('[ChatStore] getConvDoc raw', fileRelPath, 'raw', { raw: raw });
 		const docModel = ChatConversationDoc.parse(raw);
-		// console.log('[ChatStore] getConvDoc docModel', fileRelPath, 'docModel', docModel);
+		console.debug('[ChatStore] getConvDoc docModel', fileRelPath, 'docModel', docModel);
 		return { file, docModel, raw };
 	}
 
@@ -575,7 +625,28 @@ export class ChatStorageService {
 		console.debug('[ChatStore][loadConversationMessages] conversationId:', conversationId, 'messageIds:', messageIds,
 			'messageRows:', messageRows, 'docModel:', docModel, 'resourcesMap:', resourcesMap);
 
-		const messages: ChatMessage[] = messageRows.map((row) => {
+		const messages = this.convertSqliteRowsToMessages(messageRows, resourcesMap);
+		const allMarkdownMessages = ChatStorageService.collectAllMarkdownMessages(docModel);
+		this.mergeMarkdownContentIntoMessages(messages, allMarkdownMessages);
+
+		// Warn if message counts don't match
+		const totalMarkdownMessages = allMarkdownMessages.length;
+		const totalTopicMessages = docModel.topics.reduce((sum, t) => sum + t.messages.length, 0);
+		if (messages.length !== totalMarkdownMessages) {
+			console.warn(`[ChatStore] Message count mismatch: sqlite=${messages.length}, markdown=${totalMarkdownMessages} (topics: ${totalTopicMessages}, NoTopic: ${docModel.messages.length})`);
+		}
+
+		return messages;
+	}
+
+	/**
+	 * Convert SQLite message rows to ChatMessage array.
+	 */
+	private convertSqliteRowsToMessages(
+		messageRows: DbSchema['chat_message'][],
+		resourcesMap: Map<string, DbSchema['chat_message_resource'][]>
+	): ChatMessage[] {
+		return messageRows.map((row) => {
 			const msg: ChatMessage = {
 				id: row.message_id,
 				role: row.role as ChatMessage['role'],
@@ -606,38 +677,107 @@ export class ChatStorageService {
 			}
 			return msg;
 		});
+	}
 
-		// Merge message content/title/role from markdown into sqlite messages (by index)
-		// Both should be ordered by creation time, so index-based matching should work
-		// Role should also be merged from markdown as it's the source of truth for message type
-		const minLength = Math.min(messages.length, docModel.messages.length);
+	/**
+	 * Collect all messages from docModel (topics + NoTopic) in chronological order.
+	 */
+	private static collectAllMarkdownMessages(docModel: ChatConversationDocModel): Array<{
+		content: string;
+		title?: string;
+		role: 'user' | 'assistant' | 'system';
+		topic?: string;
+	}> {
+		const allMessages: Array<{
+			content: string;
+			title?: string;
+			role: 'user' | 'assistant' | 'system';
+			topic?: string;
+		}> = [];
+
+		// Add messages from topics (in topic order, message order within each topic)
+		for (const topic of docModel.topics) {
+			for (const topicMsg of topic.messages) {
+				allMessages.push({
+					content: topicMsg.content,
+					title: topicMsg.title,
+					role: topicMsg.role,
+					topic: topic.title,
+				});
+			}
+		}
+
+		// Add messages from NoTopic section
+		for (const noTopicMsg of docModel.messages) {
+			allMessages.push({
+				content: noTopicMsg.content,
+				title: noTopicMsg.title,
+				role: noTopicMsg.role,
+				topic: undefined, // NoTopic messages have no topic
+			});
+		}
+
+		return allMessages;
+	}
+
+	/**
+	 * Merge markdown content (content, title, role, topic) into SQLite messages.
+	 */
+	private mergeMarkdownContentIntoMessages(
+		messages: ChatMessage[],
+		allMarkdownMessages: Array<{
+			content: string;
+			title?: string;
+			role: 'user' | 'assistant' | 'system';
+			topic?: string;
+		}>
+	): void {
+		// Build a map of message keys to message data for fast lookup
+		const messageKeyToDocData = new Map<string, {
+			content: string;
+			title?: string;
+			role: 'user' | 'assistant' | 'system';
+			topic?: string;
+		}>();
+
+		for (const docMsg of allMarkdownMessages) {
+			const key = ChatStorageService.createMessageKey(docMsg.role, docMsg.content, docMsg.title);
+			messageKeyToDocData.set(key, docMsg);
+		}
+
+		// Merge message content/title/role/topic from markdown into sqlite messages
+		// Strategy: Use index-based matching (assuming chronological order), then verify/correct by message key
+		const minLength = Math.min(messages.length, allMarkdownMessages.length);
 		for (let i = 0; i < minLength; i++) {
-			messages[i].content = docModel.messages[i].content;
-			messages[i].title = docModel.messages[i].title;
-			messages[i].role = docModel.messages[i].role; // Use role from markdown as source of truth
+			const docData = allMarkdownMessages[i];
+			messages[i].content = docData.content;
+			messages[i].title = docData.title;
+			messages[i].role = docData.role; // Use role from markdown as source of truth
+			messages[i].topic = docData.topic; // Assign topic (undefined for NoTopic messages)
 		}
 
-		// Warn if message counts don't match
-		if (messages.length !== docModel.messages.length) {
-			console.warn(`[ChatStore] Message count mismatch: sqlite=${messages.length}, markdown=${docModel.messages.length}`);
+		// Verify and correct matches using message key (handles cases where order might differ)
+		for (const msg of messages) {
+			if (!msg.content) {
+				continue; // Skip if no content (shouldn't happen after above loop, but be safe)
+			}
+			const msgKey = ChatStorageService.createMessageKey(msg.role, msg.content, msg.title);
+			const docData = messageKeyToDocData.get(msgKey);
+			if (docData) {
+				// Update topic if it doesn't match (content/role/title should already match)
+				if (msg.topic !== docData.topic) {
+					msg.topic = docData.topic;
+				}
+			}
 		}
+	}
 
-		// // Merge attachments from markdown
-		// if (docModel.attachments.length > 0) {
-		// 	for (const msg of messages) {
-		// 		if (!msg.resources) msg.resources = [];
-		// 		for (const att of docModel.attachments) {
-		// 			// Check if attachment already exists in resources
-		// 			const existingResource = msg.resources.find((r) => r.source === att);
-		// 			if (!existingResource) {
-		// 				// Use 'unknown' as default kind for legacy attachments
-		// 				msg.resources.push({ source: att, id: att, kind: 'unknown' });
-		// 			}
-		// 		}
-		// 	}
-		// }
-
-		return messages;
+	/**
+	 * Create message key for matching (same as ChatConversationDoc.createMessageKey).
+	 */
+	private static createMessageKey(role: string, content: string, title?: string): string {
+		const contentHash = hashMD5(content);
+		return `${role}|${contentHash}|${title || ''}`;
 	}
 
 	// Project folder operations =================================================

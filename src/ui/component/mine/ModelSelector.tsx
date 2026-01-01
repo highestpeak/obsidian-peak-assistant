@@ -298,7 +298,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 				<div
 					ref={menuRef}
 					className={cn(
-						'pktw-absolute pktw-left-0 pktw-border pktw-border-border pktw-rounded-lg pktw-shadow-lg pktw-max-h-[400px] pktw-overflow-y-auto pktw-overflow-x-hidden pktw-z-[10000]',
+						'pktw-absolute pktw-left-0 pktw-bg-popover pktw-border pktw-border-border pktw-rounded-lg pktw-shadow-lg pktw-max-h-[400px] pktw-overflow-y-auto pktw-overflow-x-hidden pktw-z-[10000]',
 						menuPosition === 'bottom' ? 'pktw-top-full pktw-mt-1' : 'pktw-bottom-full pktw-mb-1'
 					)}
 					onClick={(e) => e.stopPropagation()}
@@ -358,7 +358,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 										<div className="pktw-h-[2px] pktw-bg-border pktw-my-2" />
 									)}
 									{/* Provider header */}
-									<div className="pktw-sticky pktw-top-0 pktw-bg-background pktw-px-6 pktw-py-2.5 pktw-border-b-2 pktw-border-border pktw-z-10">
+									<div className="pktw-sticky pktw-top-0 pktw-px-6 pktw-py-2.5 pktw-border-b-2 pktw-border-border pktw-z-10">
 										<div className="pktw-flex pktw-items-center pktw-gap-2">
 											{providerMeta?.icon && (
 												<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
@@ -386,7 +386,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 													// Only show border between models, not after the last one in the group
 													modelIndex < providerModels.length - 1 && 'pktw-border-b pktw-border-border',
 													'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
-													isSelected && 'pktw-bg-[var(--background-modifier-active)] pktw-bg-accent/20'
+													isSelected && 'pktw-bg-accent/20'
 												)}
 												onClick={() => handleModelSelect(model.provider, model.id)}
 											>

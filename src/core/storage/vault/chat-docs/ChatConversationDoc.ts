@@ -470,7 +470,7 @@ export class ChatConversationDoc {
 
 		// Render topics
 		for (const topic of docModel.topics) {
-			sections.push(`# ${topic.title}`);
+			sections.push(`# ${topic.title}`, ''); // Topic title followed by empty line
 			if (topic.summary) {
 				sections.push(topic.summary, '');
 			}
@@ -478,17 +478,15 @@ export class ChatConversationDoc {
 			if (topicMessagesMarkdown) {
 				sections.push(topicMessagesMarkdown);
 			}
-			sections.push(''); // Empty line after topic
 		}
 
 		// Render messages not in any topic under #NoTopic
 		if (docModel.messages.length > 0) {
-			sections.push('# NoTopic');
+			sections.push('# NoTopic', ''); // NoTopic title, empty line after
 			const messagesMarkdown = this.renderMessagesFromArray(docModel.messages);
 			if (messagesMarkdown) {
 				sections.push(messagesMarkdown);
 			}
-			sections.push(''); // Empty line after NoTopic
 		}
 
 		return sections.join('\n').trim() + '\n';

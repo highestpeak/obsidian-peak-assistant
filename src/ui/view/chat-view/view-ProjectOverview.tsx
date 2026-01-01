@@ -76,16 +76,43 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 	const summaryText = getProjectSummaryText(project);
 	const totalMessages = conversations.reduce((sum, conv) => sum + conv.messages.length, 0);
 
-	// Collect starred entries
+	// Load starred messages directly from database
+	const [starredMessages, setStarredMessages] = useState<ChatMessage[]>([]);
+	const [messageToConversationId, setMessageToConversationId] = useState<Map<string, string>>(new Map());
+	
+	useEffect(() => {
+		const loadStarredMessages = async () => {
+			if (!project) return;
+			try {
+				const result = await manager.listStarredMessagesByProject(project.meta.id);
+				console.debug('[ProjectOverview] Starred messages:', result.messages);
+				setStarredMessages(result.messages);
+				setMessageToConversationId(result.messageToConversationId);
+			} catch (error) {
+				console.error('[ProjectOverview] Error loading starred messages:', error);
+				setStarredMessages([]);
+				setMessageToConversationId(new Map());
+			}
+		};
+		loadStarredMessages();
+	}, [project, manager]);
+
+	// Collect starred entries from directly loaded starred messages
 	const starredEntries = useMemo(() => {
-		return conversations
-			.flatMap(conversation =>
-				conversation.messages
-					.filter(message => message.starred)
-					.map(message => ({ conversation, message }))
-			)
+		// Create a map of conversation ID to conversation for quick lookup
+		const convMap = new Map<string, ChatConversation>();
+		conversations.forEach(conv => convMap.set(conv.meta.id, conv));
+		
+		// Map starred messages to entries with their conversations using conversationId mapping
+		return starredMessages
+			.map(message => {
+				const conversationId = messageToConversationId.get(message.id);
+				const conversation = conversationId ? convMap.get(conversationId) : undefined;
+				return conversation ? { conversation, message } : null;
+			})
+			.filter((entry): entry is StarredEntry => entry !== null)
 			.sort((a, b) => (b.message.createdAtTimestamp ?? 0) - (a.message.createdAtTimestamp ?? 0));
-	}, [conversations]);
+	}, [starredMessages, messageToConversationId, conversations]);
 
 	// Collect resources
 	const resources = useMemo(() => {
@@ -268,9 +295,10 @@ const StarredTab: React.FC<StarredTabProps> = ({ entries, onClick }) => {
 	return (
 		<div className="pktw-space-y-3">
 			{entries.map((entry, index) => {
-				const truncated = entry.message.content.length > 200
-					? entry.message.content.substring(0, 200) + '...'
-					: entry.message.content;
+				const messageContent = entry.message.content || '';
+				const truncated = messageContent.length > 200
+					? messageContent.substring(0, 200) + '...'
+					: messageContent;
 				return (
 					<div
 						key={`${entry.conversation.meta.id}-${entry.message.id}-${index}`}
@@ -283,13 +311,15 @@ const StarredTab: React.FC<StarredTabProps> = ({ entries, onClick }) => {
 					>
 						<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-2">
 							<Star className="pktw-w-4 pktw-h-4 pktw-fill-yellow-400 pktw-text-yellow-400 pktw-shrink-0" />
-							<div className="pktw-text-sm pktw-font-semibold pktw-text-foreground pktw-truncate">
+							<div className="pktw-text-xs pktw-font-medium pktw-text-muted-foreground pktw-truncate">
 								{entry.conversation.meta.title}
 							</div>
 						</div>
-						<div className="pktw-text-sm pktw-text-muted-foreground pktw-line-clamp-3 pktw-leading-relaxed">
-							{truncated}
-						</div>
+						{messageContent && (
+							<div className="pktw-text-sm pktw-text-foreground pktw-line-clamp-3 pktw-leading-relaxed pktw-mt-1">
+								{truncated}
+							</div>
+						)}
 					</div>
 				);
 			})}

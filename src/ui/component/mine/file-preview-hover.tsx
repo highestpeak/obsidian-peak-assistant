@@ -45,7 +45,9 @@ export const FilePreviewHover: React.FC<FilePreviewHoverProps> = ({
     const [previewContent, setPreviewContent] = useState<string | null>(null);
     const [isImagePreview, setIsImagePreview] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
+    const [alignOffset, setAlignOffset] = useState<number>(0);
     const blobUrlRef = useRef<string | null>(null);
+    const triggerRef = useRef<HTMLElement | null>(null);
 
     // Detect file type from extension if not provided
     const detectedFileType = fileType || (() => {
@@ -59,6 +61,20 @@ export const FilePreviewHover: React.FC<FilePreviewHoverProps> = ({
         return 'file';
     })();
 
+
+    // Calculate alignOffset when hovered and it's an image
+    useEffect(() => {
+        if (!enabled || !isHovered || !isImagePreview || !triggerRef.current) {
+            return;
+        }
+        // Calculate offset: pop top should align with trigger bottom
+        // When align="end", pop bottom aligns with trigger bottom
+        // We need to offset by trigger height to align pop top with trigger bottom
+        // But with align="end", the pop is already below the trigger, so we need negative offset
+        // Actually, let's use align="start" and positive offset
+        const triggerHeight = triggerRef.current.offsetHeight;
+        setAlignOffset(triggerHeight);
+    }, [enabled, isHovered, isImagePreview]);
 
     // Load preview content when hovered
     useEffect(() => {
@@ -130,9 +146,16 @@ export const FilePreviewHover: React.FC<FilePreviewHoverProps> = ({
 			closeDelay={200}
 			onOpenChange={(open) => setIsHovered(open)}
 		>
-			<HoverCardTrigger asChild>
-				{children}
-			</HoverCardTrigger>
+			<div
+				ref={(el) => {
+					triggerRef.current = el;
+				}}
+				className="pktw-inline-block"
+			>
+				<HoverCardTrigger asChild>
+					{children}
+				</HoverCardTrigger>
+			</div>
                 {previewContent && (
                     <HoverCardContent
                         className={cn(
@@ -140,9 +163,10 @@ export const FilePreviewHover: React.FC<FilePreviewHoverProps> = ({
                             isImagePreview ? 'pktw-p-2' : 'pktw-p-3',
                             previewClassName
                         )}
-                        side="right"
+                        side="left"
                         align="start"
-                        sideOffset={8}
+                        sideOffset={0}
+                        alignOffset={0}
                         collisionPadding={16}
                         avoidCollisions={true}
                         onPointerDownOutside={(e) => e.preventDefault()}

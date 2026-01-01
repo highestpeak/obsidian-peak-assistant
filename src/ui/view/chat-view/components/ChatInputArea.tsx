@@ -137,27 +137,25 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 		}
 	}, [submitMessage, activeConversation, activeProject, onScrollToBottom, isSending]);
 
-	// Calculate token usage
+	// Calculate total token usage from all messages
 	const tokenUsage = useMemo<TokenUsageInfo>(() => {
-		// Default values (can be configured)
-		const totalAvailable = 400000; // Default token limit
-
-		if (!activeConversation) {
+		if (!activeConversation || !activeConversation.messages || activeConversation.messages.length === 0) {
 			return {
 				totalUsed: 0,
-				remaining: totalAvailable,
-				totalAvailable,
 			};
 		}
 
-		// Get total token usage from conversation
-		const totalUsed = activeConversation.meta.tokenUsageTotal || 0;
-		const remaining = Math.max(0, totalAvailable - totalUsed);
+		// Sum up token usage from all messages
+		const totalUsed = activeConversation.messages.reduce((sum, msg) => {
+			if (!msg.tokenUsage) return sum;
+			const usage = msg.tokenUsage as any;
+			const tokens = usage.totalTokens ?? usage.total_tokens ??
+				((usage.promptTokens ?? usage.prompt_tokens ?? 0) + (usage.completionTokens ?? usage.completion_tokens ?? 0));
+			return sum + (tokens || 0);
+		}, 0);
 
 		return {
 			totalUsed,
-			remaining,
-			totalAvailable,
 		};
 	}, [activeConversation]);
 

@@ -24,8 +24,8 @@ export interface PromptInputMessage {
  */
 export interface TokenUsageInfo {
 	totalUsed: number;
-	remaining: number;
-	totalAvailable: number;
+	remaining?: number;
+	totalAvailable?: number;
 }
 
 /**

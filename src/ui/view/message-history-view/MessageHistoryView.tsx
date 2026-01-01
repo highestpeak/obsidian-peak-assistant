@@ -8,65 +8,68 @@ import { useScrollManager } from '../shared/scroll-utils';
 import { ScrollArea } from '@/ui/component/shared-ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/ui/component/shared-ui/collapsible';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
+import { Button } from '@/ui/component/shared-ui/button';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useTypewriterEffect } from '../shared/useTypewriterEffect';
 import { TYPEWRITER_EFFECT_SPEED_MS } from '@/core/constant';
 import type { ChatMessage } from '@/service/chat/types';
 
+const NO_TOPIC_NAME = 'NoTopic';
+const MESSAGE_SUMMARY_MAX_LENGTH = 100;
+
 interface TopicGroup {
 	id: string;
-	name?: string;
+	name: string;
 	messages: ChatMessage[];
 }
 
-const TOPIC_TIME_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
-
 /**
- * Group messages into topics based on time gaps
+ * Group messages into topics based on message.topic field from ChatConversationDoc
+ * Returns topics and NoTopic messages separately
  */
-function groupMessagesIntoTopics(messages: ChatMessage[], topicNames?: string[]): TopicGroup[] {
-	if (messages.length === 0) return [];
+function groupMessagesIntoTopics(messages: ChatMessage[]): {
+	topics: TopicGroup[];
+	noTopicMessages: ChatMessage[];
+} {
+	console.debug('[MessageHistoryView] groupMessagesIntoTopics messages', messages);
+	if (messages.length === 0) return { topics: [], noTopicMessages: [] };
 
-	const groups: TopicGroup[] = [];
-	let currentGroup: ChatMessage[] = [];
-	let groupStartTime = messages[0]?.createdAtTimestamp || 0;
-	let groupIndex = 0;
+	// Group messages by topic name
+	const topicMap = new Map<string, ChatMessage[]>();
+	const noTopicMessages: ChatMessage[] = [];
 
 	for (const message of messages) {
-		const timeGap = message.createdAtTimestamp - groupStartTime;
-		const shouldStartNewGroup = 
-			currentGroup.length > 0 && 
-			timeGap > TOPIC_TIME_THRESHOLD_MS && 
-			message.role === 'user';
-
-		if (shouldStartNewGroup) {
-			groups.push({
-				id: `topic-${groupIndex}`,
-				name: topicNames?.[groupIndex],
-				messages: [...currentGroup],
-			});
-			currentGroup = [];
-			groupStartTime = message.createdAtTimestamp;
-			groupIndex++;
+		if (message.topic) {
+			if (!topicMap.has(message.topic)) {
+				topicMap.set(message.topic, []);
+			}
+			topicMap.get(message.topic)!.push(message);
+		} else {
+			noTopicMessages.push(message);
 		}
-
-		currentGroup.push(message);
 	}
 
-	// Add the last group
-	if (currentGroup.length > 0) {
-		groups.push({
+	// Convert map to array of TopicGroup
+	const topics: TopicGroup[] = [];
+	let groupIndex = 0;
+
+	// Add topic groups (preserve order by first message timestamp)
+	const topicEntries = Array.from(topicMap.entries()).sort((a, b) => {
+		const aTime = a[1][0]?.createdAtTimestamp || 0;
+		const bTime = b[1][0]?.createdAtTimestamp || 0;
+		return aTime - bTime;
+	});
+
+	for (const [topicName, topicMessages] of topicEntries) {
+		topics.push({
 			id: `topic-${groupIndex}`,
-			name: topicNames?.[groupIndex],
-			messages: currentGroup,
+			name: topicName,
+			messages: topicMessages,
 		});
+		groupIndex++;
 	}
 
-	return groups.length > 0 ? groups : [{
-		id: 'topic-0',
-		name: topicNames?.[0],
-		messages,
-	}];
+	return { topics, noTopicMessages };
 }
 
 /**
@@ -75,7 +78,7 @@ function groupMessagesIntoTopics(messages: ChatMessage[], topicNames?: string[])
 function getMessageSummary(message: ChatMessage): string {
 	if (message.title) return message.title;
 	const content = message.content || '';
-	return content.slice(0, 10) + (content.length > 10 ? '...' : '');
+	return content.slice(0, MESSAGE_SUMMARY_MAX_LENGTH) + (content.length > MESSAGE_SUMMARY_MAX_LENGTH ? '...' : '');
 }
 
 /**
@@ -99,32 +102,44 @@ interface MessageItemProps {
 	message: ChatMessage;
 	isActive: boolean;
 	onClick: () => void;
+	onStarToggle?: (messageId: string, starred: boolean) => void;
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message, isActive, onClick }) => (
-	<div className="pktw-flex pktw-justify-center pktw-px-2">
-		<button
-			data-message-id={message.id}
-			data-message-role={message.role}
-			onClick={onClick}
-			className={cn(
-				'pktw-w-full pktw-max-w-full pktw-py-2 pktw-px-3 pktw-rounded pktw-transition-colors hover:pktw-bg-accent/50',
-				'pktw-flex pktw-flex-col pktw-items-center pktw-text-center',
-				isActive && 'pktw-bg-accent/70'
-			)}
-		>
-			<div className={getRoleBadgeClass(message.role)}>
-				{message.role.toUpperCase()}
-				{message.starred && (
-					<Star className="pktw-inline-block pktw-w-3 pktw-h-3 pktw-ml-1.5 pktw-fill-yellow-400 pktw-text-yellow-400" />
+const MessageItem: React.FC<MessageItemProps> = ({ message, isActive, onClick, onStarToggle }) => {
+	const handleStarClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		onStarToggle?.(message.id, !message.starred);
+	};
+
+	return (
+		<div className="">
+			<Button
+				variant="ghost"
+				data-message-id={message.id}
+				data-message-role={message.role}
+				onClick={onClick}
+				className={cn(
+					'pktw-w-full pktw-justify-start pktw-items-start pktw-text-left pktw-whitespace-normal pktw-h-auto pktw-min-h-[3rem] pktw-py-2',
+					'focus-visible:!pktw-ring-0 focus-visible:!pktw-ring-offset-0 pktw-shadow-none focus-visible:pktw-shadow-none',
+					isActive && 'pktw-bg-accent/70'
 				)}
-			</div>
-			<div className="pktw-text-sm pktw-text-center pktw-leading-relaxed pktw-break-words pktw-line-clamp-2">
-				{getMessageSummary(message)}
-			</div>
-		</button>
-	</div>
-);
+			>
+				<div className="pktw-flex-1 pktw-min-w-0 pktw-line-clamp-2 pktw-text-sm pktw-leading-relaxed">
+					<span className={cn(getRoleBadgeClass(message.role), 'pktw-inline-flex pktw-items-center pktw-mr-2 pktw-mb-0')}>
+						{message.role.toUpperCase()}
+						{message.starred && (
+							<Star 
+								className="pktw-inline-block pktw-w-3 pktw-h-3 pktw-ml-1.5 pktw-fill-yellow-400 pktw-text-yellow-400 pktw-cursor-pointer"
+								onClick={handleStarClick}
+							/>
+						)}
+					</span>
+					<span className="pktw-break-words">{getMessageSummary(message)}</span>
+				</div>
+			</Button>
+		</div>
+	);
+};
 
 /**
  * Header component
@@ -138,9 +153,9 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ title, onOpenSource, showSourceButton }) => (
 	<div className="pktw-p-4 pktw-border-b pktw-border-border">
 		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-justify-between">
-			<h3 className="pktw-text-base pktw-font-semibold pktw-text-foreground pktw-m-0 pktw-truncate pktw-flex-1">
+			<div className="pktw-text-base pktw-font-semibold pktw-text-foreground pktw-m-0 pktw-truncate pktw-flex-1">
 				{title}
-			</h3>
+			</div>
 			{showSourceButton && onOpenSource && (
 				<IconButton
 					size="md"
@@ -165,26 +180,31 @@ interface TopicHeaderProps {
 }
 
 const TopicHeader: React.FC<TopicHeaderProps> = ({ topic, index, isOpen }) => {
-	const topicName = topic.name || `Topic ${index + 1}`;
 	const messageCount = topic.messages.length;
 	
 	return (
-		<CollapsibleTrigger className="pktw-w-full pktw-group">
-			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-pr-2 pktw-py-2 pktw-rounded hover:pktw-bg-accent/50 pktw-transition-colors pktw-cursor-pointer">
-				{isOpen ? (
-					<ChevronDown className="pktw-size-4 pktw-text-muted-foreground pktw-flex-shrink-0" />
-				) : (
-					<ChevronRight className="pktw-size-4 pktw-text-muted-foreground pktw-flex-shrink-0" />
+		<CollapsibleTrigger asChild>
+			<Button
+				variant="ghost"
+				className={cn(
+					'pktw-w-full pktw-justify-start pktw-items-start pktw-text-left pktw-h-auto pktw-py-2',
+					'focus-visible:!pktw-ring-0 focus-visible:!pktw-ring-offset-0 pktw-shadow-none focus-visible:pktw-shadow-none'
 				)}
-				<div className="pktw-flex-1 pktw-text-left pktw-min-w-0">
-					<div className="pktw-text-sm pktw-font-medium pktw-text-foreground">
-						{topicName}
+			>
+				{isOpen ? (
+					<ChevronDown className="pktw-size-4 pktw-text-muted-foreground pktw-flex-shrink-0 pktw-mt-0.5" />
+				) : (
+					<ChevronRight className="pktw-size-4 pktw-text-muted-foreground pktw-flex-shrink-0 pktw-mt-0.5" />
+				)}
+				<div className="pktw-flex-1 pktw-text-left pktw-min-w-0 pktw-ml-2">
+					<div className="pktw-text-sm pktw-font-medium">
+						{topic.name}
 					</div>
-					<div className="pktw-text-xs pktw-text-muted-foreground pktw-mt-0.5">
+					<div className="pktw-text-xs pktw-mt-0.5">
 						{messageCount} {messageCount === 1 ? 'message' : 'messages'}
 					</div>
 				</div>
-			</div>
+			</Button>
 		</CollapsibleTrigger>
 	);
 };
@@ -199,6 +219,7 @@ interface TopicGroupComponentProps {
 	activeMessageId: string | null;
 	onToggle: () => void;
 	onMessageClick: (messageId: string) => void;
+	onStarToggle?: (messageId: string, starred: boolean) => void;
 }
 
 const TopicGroupComponent: React.FC<TopicGroupComponentProps> = ({
@@ -208,17 +229,19 @@ const TopicGroupComponent: React.FC<TopicGroupComponentProps> = ({
 	activeMessageId,
 	onToggle,
 	onMessageClick,
+	onStarToggle,
 }) => (
 	<Collapsible open={isOpen} onOpenChange={onToggle} className="pktw-mb-1">
 		<TopicHeader topic={topic} index={index} isOpen={isOpen} />
-		<CollapsibleContent>
-			<div className="pktw-space-y-1">
+		<CollapsibleContent className="pktw-mt-1">
+			<div className="pktw-space-y-1 pktw-border-l pktw-border-t-0 pktw-border-r-0 pktw-border-b-0 pktw-border-solid pktw-border-muted-foreground/30 pktw-ml-6">
 				{topic.messages.map((message) => (
 					<MessageItem
 						key={message.id}
 						message={message}
 						isActive={activeMessageId === message.id}
 						onClick={() => onMessageClick(message.id)}
+						onStarToggle={onStarToggle}
 					/>
 				))}
 			</div>
@@ -272,42 +295,28 @@ export const MessageHistoryViewComponent: React.FC = () => {
 		messagesCount: activeConversation?.messages.length,
 	});
 
-	// Group messages into topics
-	const topicGroups = useMemo(() => {
-		if (!activeConversation?.messages) return [];
-		return groupMessagesIntoTopics(
-			activeConversation.messages,
-			activeConversation.context?.topics
-		);
-	}, [activeConversation?.messages, activeConversation?.context?.topics]);
+	// Group messages into topics based on message.topic field
+	const { topics: topicGroups, noTopicMessages } = useMemo(() => {
+		if (!activeConversation?.messages) return { topics: [], noTopicMessages: [] };
+		return groupMessagesIntoTopics(activeConversation.messages);
+	}, [activeConversation?.messages]);
 
-	// Manage open topics state
-	const [openTopics, setOpenTopics] = useState<Set<string>>(() => 
-		new Set(topicGroups.map(g => g.id))
-	);
+	// Manage open topics state - all topics default to closed
+	const [openTopics, setOpenTopics] = useState<Set<string>>(() => new Set());
 
-	// Update open topics when groups change
+	// Reset open topics when conversation changes (all closed by default)
 	useEffect(() => {
-		setOpenTopics(prev => {
-			const next = new Set(prev);
-			topicGroups.forEach(group => {
-				if (!next.has(group.id)) {
-					next.add(group.id);
-				}
-			});
-			return next;
-		});
-	}, [topicGroups.length]);
+		setOpenTopics(new Set());
+	}, [activeConversation?.meta.id]);
 
 	// Auto-scroll to topic when opened
 	const prevOpenTopicsRef = useRef<Set<string>>(new Set());
 	useEffect(() => {
-		const hasNamedTopics = topicGroups.some(g => g.name);
-		if (hasNamedTopics) {
+		if (topicGroups.length > 0) {
 			topicGroups.forEach(topic => {
 				const wasOpen = prevOpenTopicsRef.current.has(topic.id);
 				const isOpen = openTopics.has(topic.id);
-				if (!wasOpen && isOpen && topic.name && topic.messages.length > 0) {
+				if (!wasOpen && isOpen && topic.messages.length > 0) {
 					eventBus.dispatch(new ScrollToMessageEvent({ messageId: topic.messages[0].id }));
 				}
 			});
@@ -320,6 +329,39 @@ export const MessageHistoryViewComponent: React.FC = () => {
 		eventBus.dispatch(new ScrollToMessageEvent({ messageId }));
 		setTimeout(() => setActiveMessageId(null), 2000);
 	}, [eventBus]);
+
+	const { manager } = useServiceContext();
+	
+	const handleStarToggle = useCallback(async (messageId: string, starred: boolean) => {
+		if (!activeConversation || !manager) return;
+		
+		console.debug('[MessageHistoryView] Toggling star for message:', { messageId, starred });
+
+		try {
+			await manager.toggleStar({
+				messageId,
+				conversationId: activeConversation.meta.id,
+				starred,
+			});
+			
+			// Update conversation state locally
+			const updatedMessages = activeConversation.messages.map(msg =>
+				msg.id === messageId ? { ...msg, starred } : msg
+			);
+			const updatedConv = {
+				...activeConversation,
+				messages: updatedMessages,
+			};
+			
+			useProjectStore.getState().updateConversation(updatedConv);
+			useProjectStore.getState().setActiveConversation(updatedConv);
+			
+			// Dispatch event to notify other components
+			eventBus.dispatch(new ConversationUpdatedEvent({ conversation: updatedConv }));
+		} catch (error) {
+			console.error('[MessageHistoryView] Error toggling star:', error);
+		}
+	}, [activeConversation, manager, eventBus]);
 
 	const toggleTopic = useCallback((topicId: string) => {
 		setOpenTopics(prev => {
@@ -344,14 +386,14 @@ export const MessageHistoryViewComponent: React.FC = () => {
 	}
 
 	const hasMessages = activeConversation.messages.length > 0;
-	const hasNamedTopics = topicGroups.some(g => g.name);
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-overflow-hidden">
 			<Header
 				title={typewriterTitle}
 				onOpenSource={handleOpenSource}
-				showSourceButton={!!activeConversation.file}
+				// abort this idea for now. i don't like this idea now.
+				showSourceButton={false}
 			/>
 
 			{!hasMessages ? (
@@ -361,19 +403,37 @@ export const MessageHistoryViewComponent: React.FC = () => {
 			) : (
 				<ScrollArea className="pktw-flex-1" ref={scrollAreaRef}>
 					<div ref={messageListContainerRef}>
-						{hasNamedTopics ? (
-							topicGroups.map((topic, index) => (
-								<TopicGroupComponent
-									key={topic.id}
-									topic={topic}
-									index={index}
-									isOpen={openTopics.has(topic.id)}
-									activeMessageId={activeMessageId}
-									onToggle={() => toggleTopic(topic.id)}
-									onMessageClick={scrollToMessage}
-								/>
-							))
-						) : (
+						{/* Render topics */}
+					{topicGroups.map((topic, index) => (
+						<TopicGroupComponent
+							key={topic.id}
+							topic={topic}
+							index={index}
+							isOpen={openTopics.has(topic.id)}
+							activeMessageId={activeMessageId}
+							onToggle={() => toggleTopic(topic.id)}
+							onMessageClick={scrollToMessage}
+							onStarToggle={handleStarToggle}
+						/>
+					))}
+						
+						{/* Render NoTopic messages directly (not in a topic group) */}
+						{noTopicMessages.length > 0 && (
+							<div className="pktw-space-y-1 pktw-mb-1">
+								{noTopicMessages.map((message) => (
+									<MessageItem
+										key={message.id}
+										message={message}
+										isActive={activeMessageId === message.id}
+										onClick={() => scrollToMessage(message.id)}
+										onStarToggle={handleStarToggle}
+									/>
+								))}
+							</div>
+						)}
+						
+						{/* Fallback: render all messages if no topics */}
+						{topicGroups.length === 0 && noTopicMessages.length === 0 && (
 							<div className="pktw-space-y-1">
 								{activeConversation.messages.map((message) => (
 									<MessageItem
@@ -381,6 +441,7 @@ export const MessageHistoryViewComponent: React.FC = () => {
 										message={message}
 										isActive={activeMessageId === message.id}
 										onClick={() => scrollToMessage(message.id)}
+										onStarToggle={handleStarToggle}
 									/>
 								))}
 							</div>

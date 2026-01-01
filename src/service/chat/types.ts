@@ -49,6 +49,11 @@ export interface ChatMessage {
 	 * Assistant-only: generation time in milliseconds
 	 */
 	genTimeMs?: number;
+	/**
+	 * Topic name this message belongs to (from ChatConversationDoc parsing).
+	 * If undefined, the message is in NoTopic section.
+	 */
+	topic?: string;
 }
 
 export interface ChatConversationMeta {
