@@ -104,7 +104,7 @@ export const PromptInputBody = forwardRef<HTMLTextAreaElement, PromptInputBodyPr
 				placeholder={placeholder}
 				className={cn(
 					'pktw-w-full pktw-resize-none pktw-border-0 pktw-bg-transparent pktw-text-[15px] pktw-leading-[1.5]',
-					'pktw-text-foreground pktw-outline-none pktw-font-inherit',
+					'pktw-text-gray-900 dark:pktw-text-gray-100 pktw-font-medium pktw-outline-none pktw-font-inherit',
 					'placeholder:pktw-text-muted-foreground',
 					'pktw-py-3 pktw-min-h-[60px] pktw-max-h-[200px]',
 					'focus:pktw-border-0 focus:pktw-outline-none focus:pktw-ring-0 focus-visible:pktw-border-0 focus-visible:pktw-outline-none focus-visible:pktw-ring-0',

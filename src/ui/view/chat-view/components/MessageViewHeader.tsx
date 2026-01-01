@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '@/ui/store/projectStore';
-import { useChatViewStore } from '../store/chatViewStore';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { Book, Brain, ExternalLink, Folder } from 'lucide-react';
+import { ExternalLink, Folder } from 'lucide-react';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { cn } from '@/ui/react/lib/utils';
@@ -10,6 +9,7 @@ import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
 import { useTypewriterEffect } from '@/ui/view/shared/useTypewriterEffect';
 import { TYPEWRITER_EFFECT_SPEED_MS } from '@/core/constant';
 import { ResourcesPopover } from './ResourcesPopover';
+import { SummaryPopover } from './SummaryPopover';
 
 interface MessageHeaderProps {
 }
@@ -22,7 +22,6 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 	const { app, eventBus } = useServiceContext();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 	const activeProject = useProjectStore((state) => state.activeProject);
-	const setShowSummaryModal = useChatViewStore((state) => state.setShowSummaryModal);
 	const [displayTitle, setDisplayTitle] = useState(activeConversation?.meta.title || '');
 
 	// Listen for conversation title updates
@@ -87,13 +86,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 							<ResourcesPopover />
 
 							{/* Summary button */}
-							<IconButton
-								size="lg"
-								onClick={() => setShowSummaryModal(true)}
-								title="View conversation summary"
-							>
-								<Brain className="pktw-w-4 pktw-h-4" />
-							</IconButton>
+							<SummaryPopover />
 
 							{/* Open source button */}
 							<IconButton

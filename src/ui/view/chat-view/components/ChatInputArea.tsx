@@ -257,7 +257,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 
 					{/* Right side: token usage and submit */}
 					<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-						<TokenUsage usage={tokenUsage} />
+						<TokenUsage usage={tokenUsage} conversation={activeConversation} />
 						<PromptInputSubmit 
 							status={status} 
 							onCancel={isStreaming ? handleCancelStream : undefined}
