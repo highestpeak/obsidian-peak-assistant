@@ -107,3 +107,31 @@ export const DEFAULT_CHAT_SUGGESTIONS = [
 export const TYPEWRITER_EFFECT_SPEED_MS = 30;
 
 export const CHAT_PROJECT_SUMMARY_FILENAME = 'Project-Summary.md';
+
+/**
+ * Default title for new conversations.
+ */
+export const DEFAULT_NEW_CONVERSATION_TITLE = 'New Conversation';
+
+/**
+ * Character limit for collapsed user messages in chat view.
+ * Messages longer than this limit will be truncated with an expand button.
+ */
+export const COLLAPSED_USER_MESSAGE_CHAR_LIMIT = 200;
+
+/**
+ * Maximum number of conversations to display in conversation sections before showing "See more" button.
+ */
+export const MAX_CONVERSATIONS_DISPLAY = 50;
+
+/**
+ * Maximum number of projects to display in project sections before showing "See more" button.
+ * This is smaller than MAX_CONVERSATIONS_DISPLAY since projects are typically fewer in number.
+ */
+export const MAX_PROJECTS_DISPLAY = 10;
+
+/**
+ * Maximum number of conversations to display under each project item in the project list.
+ * This is much smaller than MAX_CONVERSATIONS_DISPLAY since it's shown within a nested structure.
+ */
+export const MAX_CONVERSATIONS_PER_PROJECT = 10;

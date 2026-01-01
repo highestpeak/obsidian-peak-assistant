@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useRef, useCallback, useEffect, useState, useMemo, type FormEvent, type HTMLAttributes, type PropsWithChildren } from 'react';
 import { cn } from '@/ui/react/lib/utils';
+import { calculateFileHash } from '@/core/utils/hash-utils';
 import type { PromptInputMessage, FileAttachment } from './types';
 
 /**
@@ -59,7 +60,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 	// Internal state
 	const [textInput, setTextInput] = useState(initialInput);
 	const [attachments, setAttachments] = useState<FileAttachment[]>([]);
-	const openFileDialogRef = useRef<() => void>(() => {});
+	const openFileDialogRef = useRef<() => void>(() => { });
 	const formRef = useRef<HTMLFormElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,11 +104,22 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 		const newAttachments: FileAttachment[] = [];
 
 		for (const file of fileArray) {
+			// Calculate file hash for deduplication
+			let fileHash: string;
+			try {
+				fileHash = await calculateFileHash(file);
+			} catch (error) {
+				console.error('Failed to calculate file hash:', error);
+				// Continue without hash if calculation fails
+				fileHash = `${file.name}-${file.size}-${file.lastModified}`;
+			}
+
 			const type = getFileType(file);
 			const attachment: FileAttachment = {
 				id: `${Date.now()}-${Math.random()}`,
 				file,
 				type,
+				hash: fileHash,
 			};
 
 			if (type === 'image') {
@@ -121,7 +133,19 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 			newAttachments.push(attachment);
 		}
 
-		setAttachments((prev) => [...prev, ...newAttachments]);
+		if (newAttachments.length > 0) {
+			setAttachments((prev) => {
+				// Filter out duplicates based on hash
+				const existingHashes = new Set(prev.map(a => a.hash).filter(Boolean));
+				const uniqueNewAttachments = newAttachments.filter(a => !a.hash || !existingHashes.has(a.hash));
+
+				if (uniqueNewAttachments.length < newAttachments.length) {
+					console.log(`Skipped ${newAttachments.length - uniqueNewAttachments.length} duplicate file(s)`);
+				}
+
+				return [...prev, ...uniqueNewAttachments];
+			});
+		}
 	}, [createImagePreview, getFileType]);
 
 	const removeFile = useCallback((id: string) => {

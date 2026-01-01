@@ -67,6 +67,7 @@ export const useProjectStore = create<ProjectStore>((set: any) => ({
 		}),
 	setActiveConversation: (conversation: ChatConversation | string | null) =>
 		set((state: ProjectStore) => {
+			// console.log('[useProjectStore] setActiveConversation', conversation);
 			if (conversation === null) {
 				return { activeConversation: null };
 			}

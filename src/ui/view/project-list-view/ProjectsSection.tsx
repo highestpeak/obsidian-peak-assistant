@@ -7,16 +7,15 @@ import { notifySelectionChange, hydrateProjects as hydrateProjectsFromManager, s
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { Button } from '@/ui/component/shared-ui/button';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, MoreHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, MoreHorizontal, Calendar } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ViewEventType, ConversationUpdatedEvent } from '@/core/eventBus';
+import { DEFAULT_NEW_CONVERSATION_TITLE, MAX_CONVERSATIONS_DISPLAY, MAX_PROJECTS_DISPLAY, MAX_CONVERSATIONS_PER_PROJECT } from '@/core/constant';
+import { formatRelativeDate } from '@/ui/view/shared/date-utils';
 
 interface ProjectsSectionProps {
 }
-
-const MAX_PROJECTS_DISPLAY = 10;
-const MAX_CONVERSATIONS_DISPLAY = 10;
 
 interface ProjectItemProps {
 	project: ChatProject;
@@ -43,8 +42,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	} = useProjectStore();
 	const { setProjectOverview, setProjectConversationsList, setPendingConversation } = useChatViewStore();
 
-	const conversationsToShow = conversations.slice(0, MAX_CONVERSATIONS_DISPLAY);
-	const hasMoreConversations = conversations.length > MAX_CONVERSATIONS_DISPLAY;
+	const conversationsToShow = conversations.slice(0, MAX_CONVERSATIONS_PER_PROJECT);
+	const hasMoreConversations = conversations.length > MAX_CONVERSATIONS_PER_PROJECT;
 
 	// State for input modal
 	const [inputModalOpen, setInputModalOpen] = useState(false);
@@ -77,7 +76,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	const handleNewConversation = async () => {
 		setActiveProject(project);
 		setPendingConversation({
-			title: 'New Conversation',
+			title: DEFAULT_NEW_CONVERSATION_TITLE,
 			project: project,
 		});
 		await notifySelectionChange(app, null);
@@ -91,7 +90,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				if (!newName || !newName.trim()) return;
 
 				try {
-					const updatedProject = await manager.renameProject(projectItem, newName.trim());
+					const updatedProject = await manager.renameProject(projectItem.meta.id, newName.trim());
 
 					// Update project in store
 					updateProject(updatedProject);
@@ -119,11 +118,14 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				if (!newTitle || !newTitle.trim()) return;
 
 				try {
-					const updatedConversation = await manager.updateConversationTitle({
-						conversation,
-						project: projectItem,
+					await manager.updateConversationTitle({
+						conversationId: conversation.meta.id,
 						title: newTitle.trim(),
 					});
+					const updatedConversation = await manager.readConversation(conversation.meta.id, false);
+					if (!updatedConversation) {
+						throw new Error('Failed to update conversation title');
+					}
 
 					// Update conversation in store
 					updateConversation(updatedConversation);
@@ -242,12 +244,11 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				{/* Render conversations */}
 				{conversationsToShow.map((conv) => {
 					const isActive = activeConversation?.meta.id === conv.meta.id;
-					// console.log('isActive', isActive, conv.meta.id, activeConversation?.meta.id);
 					return (
 						<div
 							key={conv.meta.id}
 							className={cn(
-								'pktw-relative pktw-px-2 pktw-py-1.5 pktw-pl-6 pktw-rounded pktw-cursor-pointer pktw-transition-colors pktw-text-[13px] pktw-min-h-7 pktw-flex pktw-items-center pktw-break-words',
+								'pktw-relative pktw-px-2 pktw-py-1.5 pktw-pl-6 pktw-pr-2 pktw-rounded pktw-cursor-pointer pktw-transition-colors pktw-text-[13px] pktw-min-h-7 pktw-flex pktw-items-center pktw-justify-between pktw-gap-2 pktw-break-words',
 								'before:pktw-content-[""] before:pktw-absolute before:pktw-left-2 before:pktw-top-1/2 before:pktw--translate-y-1/2 before:pktw-w-1 before:pktw-h-1 before:pktw-rounded-full before:pktw-transition-opacity',
 								// Default state
 								!isActive && 'pktw-bg-transparent pktw-text-muted-foreground hover:pktw-bg-muted hover:pktw-text-foreground before:pktw-bg-muted-foreground before:pktw-opacity-40 hover:before:pktw-opacity-80',
@@ -261,7 +262,16 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 							}}
 							onContextMenu={(e) => handleContextMenu(e, 'conversation', conv)}
 						>
-							{conv.meta.title}
+							<span className="pktw-flex-1 pktw-min-w-0 pktw-truncate">{conv.meta.title}</span>
+							{conv.meta.createdAtTimestamp && (
+								<div className={cn(
+									'pktw-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-shrink-0',
+									isActive ? 'pktw-text-primary-foreground/70' : 'pktw-text-muted-foreground/70'
+								)}>
+									<Calendar className="pktw-w-3 pktw-h-3" />
+									{formatRelativeDate(conv.meta.createdAtTimestamp)}
+								</div>
+							)}
 						</div>
 					);
 				})}
@@ -325,7 +335,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 	// Load conversations for a project
 	const loadProjectConversations = useCallback(
 		async (project: ChatProject) => {
-			const conversations = await manager.listConversations(project.meta);
+			const conversations = await manager.listConversations(project.meta.id);
 			conversations.sort((a, b) => {
 				const timeA = a.meta.createdAtTimestamp || 0;
 				const timeB = b.meta.createdAtTimestamp || 0;

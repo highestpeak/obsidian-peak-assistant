@@ -2,11 +2,12 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
-import { generateContentHash } from '@/core/utils/markdown-utils';
+import { generateContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 
 /**
@@ -15,7 +16,10 @@ import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
  * Otherwise, the entire structure is one chunk, then split by size/overlap.
  */
 export class JsonDocumentLoader implements DocumentLoader {
-	constructor(private readonly app: App) {}
+	constructor(
+		private readonly app: App,
+		private readonly aiServiceManager?: AIServiceManager
+	) {}
 
 	getDocumentType(): DocumentType {
 		return 'json';
@@ -142,20 +146,22 @@ export class JsonDocumentLoader implements DocumentLoader {
 	 */
 	async getSummary(
 		source: Document | string,
-		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
-		provider: string,
-		modelId: string
+		provider?: string,
+		modelId?: string
 	): Promise<ResourceSummary> {
+		if (!this.aiServiceManager) {
+			throw new Error('JsonDocumentLoader requires AIServiceManager to generate summaries');
+		}
 		if (typeof source === 'string') {
 			throw new Error('JsonDocumentLoader.getSummary requires a Document, not a string');
 		}
-		return getDefaultDocumentSummary(source, promptService, provider, modelId);
+		return getDefaultDocumentSummary(source, this.aiServiceManager, provider, modelId);
 	}
 
 	private async readJsonFile(file: TFile): Promise<Document | null> {
 		try {
 			const content = await this.app.vault.cachedRead(file);
-			const contentHash = await generateContentHash(content);
+			const contentHash = generateContentHash(content);
 
 			return {
 				id: file.path,

@@ -2,6 +2,7 @@ import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 import { sql } from 'kysely';
 import type { ChatMessage } from '@/service/chat/types';
+import { hashStringBase36 } from '@/core/utils/hash-utils';
 
 /**
  * Repository for chat_message table.
@@ -19,7 +20,7 @@ export class ChatMessageRepo {
 			message_id: msg.id,
 			conversation_id: conversationId,
 			role: msg.role,
-			content_hash: this.computeContentHash(msg.content),
+			content_hash: hashStringBase36(msg.content),
 			created_at_ts: msg.createdAtTimestamp,
 			created_at_zone: msg.createdAtZone,
 			model: msg.model ?? null,
@@ -65,19 +66,5 @@ export class ChatMessageRepo {
 			.where('conversation_id', '=', conversationId)
 			.orderBy('created_at_ts', 'asc')
 			.execute();
-	}
-
-	/**
-	 * Simple hash function for content (can be replaced with crypto if needed).
-	 */
-	private computeContentHash(content: string): string {
-		// Simple hash - in production might use crypto.createHash
-		let hash = 0;
-		for (let i = 0; i < content.length; i++) {
-			const char = content.charCodeAt(i);
-			hash = (hash << 5) - hash + char;
-			hash = hash & hash; // Convert to 32-bit integer
-		}
-		return hash.toString(36);
 	}
 }

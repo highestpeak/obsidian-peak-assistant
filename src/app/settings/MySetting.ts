@@ -1,6 +1,5 @@
 import { App, PluginSettingTab } from 'obsidian';
 import type MyPlugin from 'main';
-import { normalizePluginSettings } from '@/app/settings/PluginSettingsLoader';
 import React from 'react';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { SettingsRoot } from '@/ui/view/SettingsView';

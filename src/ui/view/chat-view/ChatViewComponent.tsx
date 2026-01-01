@@ -21,7 +21,7 @@ interface ChatViewComponentProps {
 export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 	viewMode,
 }) => {
-	const { eventBus } = useServiceContext();
+	const { eventBus, manager } = useServiceContext();
 	const store = useChatViewStore();
 
 	// Listen for toast events from other React instances
@@ -79,8 +79,11 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 			case ViewMode.ALL_CONVERSATIONS:
 				return (
 					<AllConversationsViewComponent
-						onConversationClick={(conversation: ChatConversation) => {
-							store.setConversation(conversation);
+						onConversationClick={async (conversation: ChatConversation) => {
+							const fullConversation = await manager.readConversation(conversation.meta.id, true);
+							if (fullConversation) {
+								store.setConversation(fullConversation);
+							}
 						}}
 					/>
 				);
@@ -91,14 +94,20 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 				return (
 					<ProjectOverviewViewComponent
 						projectId={projectId}
-						onConversationClick={(conversation: ChatConversation, project: ChatProject) => {
-							store.setConversation(conversation);
+						onConversationClick={async (conversation: ChatConversation, project: ChatProject) => {
+							const fullConversation = await manager.readConversation(conversation.meta.id, true);
+							if (fullConversation) {
+								store.setConversation(fullConversation);
+							}
 						}}
-						onMessageClick={(conversation: ChatConversation, project: ChatProject, messageId: string) => {
-							store.setConversation(conversation);
-							requestAnimationFrame(() => {
-								eventBus.dispatch(new ScrollToMessageEvent({ messageId }));
-							});
+						onMessageClick={async (conversation: ChatConversation, project: ChatProject, messageId: string) => {
+							const fullConversation = await manager.readConversation(conversation.meta.id, true);
+							if (fullConversation) {
+								store.setConversation(fullConversation);
+								requestAnimationFrame(() => {
+									eventBus.dispatch(new ScrollToMessageEvent({ messageId }));
+								});
+							}
 						}}
 					/>
 				);
@@ -109,8 +118,11 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 				return (
 					<ProjectConversationsListViewComponent
 						projectId={projectIdForList}
-						onConversationClick={(conversation: ChatConversation) => {
-							store.setConversation(conversation);
+						onConversationClick={async (conversation: ChatConversation) => {
+							const fullConversation = await manager.readConversation(conversation.meta.id, true);
+							if (fullConversation) {
+								store.setConversation(fullConversation);
+							}
 						}}
 					/>
 				);

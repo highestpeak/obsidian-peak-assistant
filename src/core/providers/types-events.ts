@@ -16,7 +16,6 @@ export type AIStreamEvent =
 			type: 'complete';
 			model: string;
 			usage?: LLMUsage;
-			conversation?: ChatConversation;
 			message?: ChatMessage;
 	  }
 	| {

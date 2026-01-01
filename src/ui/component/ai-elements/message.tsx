@@ -30,8 +30,8 @@ export type MessageProps = HTMLAttributes<HTMLDivElement> & {
 export const Message = ({ className, from, ...props }: MessageProps) => (
   <div
     className={cn(
-      "group pktw-flex pktw-w-full max-w-[95%] pktw-flex-col pktw-gap-2",
-      from === "user" ? "is-user ml-auto pktw-justify-end" : "is-assistant",
+      "group pktw-flex pktw-flex-col pktw-gap-2",
+      from === "user" ? "is-user" : "is-assistant",
       className
     )}
     {...props}
@@ -47,9 +47,8 @@ export const MessageContent = ({
 }: MessageContentProps) => (
   <div
     className={cn(
-      "is-user:dark pktw-flex pktw-w-fit max-w-full min-w-0 pktw-flex-col pktw-gap-2 pktw-overflow-hidden pktw-text-sm",
-      "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
-      "group-[.is-assistant]:text-foreground",
+      "pktw-flex pktw-w-fit max-w-full min-w-0 pktw-flex-col pktw-gap-2 pktw-overflow-hidden pktw-text-sm",
+      "pktw-select-text", // Enable text selection
       className
     )}
     {...props}
@@ -81,10 +80,17 @@ export const MessageAction = ({
   label,
   variant = "ghost",
   size = "icon",
+  className,
   ...props
 }: MessageActionProps) => {
   const button = (
-    <Button size={size} type="button" variant={variant} {...props}>
+    <Button 
+      size={size} 
+      type="button" 
+      variant={variant} 
+      className={cn("pktw-h-6 pktw-w-6 pktw-p-0", className)}
+      {...props}
+    >
       {children}
       <span className="pktw-sr-only">{label || tooltip}</span>
     </Button>
@@ -308,13 +314,12 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown
-      className={cn(
-        "pktw-size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        className
-      )}
-      {...props}
-    />
+    <div className={cn("pktw-select-text pktw-relative", className)} data-streamdown-root>
+      <Streamdown
+        className={cn("pktw-size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0")}
+        {...props}
+      />
+    </div>
   ),
   (prevProps, nextProps) => prevProps.children === nextProps.children
 );

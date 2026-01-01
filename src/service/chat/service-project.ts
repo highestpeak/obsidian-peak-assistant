@@ -1,6 +1,6 @@
-import { normalizePath, TFolder } from 'obsidian';
-import { buildTimestampedName, generateUuidWithoutHyphens } from '@/core/utils/id-utils';
-import { ChatProject, ChatProjectMeta, ChatConversation } from './types';
+import { App } from 'obsidian';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { ChatProject, ChatProjectMeta } from './types';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { DEFAULT_SUMMARY } from '@/core/constant';
 import { PromptService } from '@/service/prompt/PromptService';
@@ -12,6 +12,7 @@ import type { LLMProviderService } from '@/core/providers/types';
  */
 export class ProjectService {
 	constructor(
+		private readonly app: App,
 		private readonly storage: ChatStorageService,
 		private readonly rootFolder: string,
 		private readonly promptService?: PromptService,
@@ -21,20 +22,22 @@ export class ProjectService {
 	/**
 	 * Create a new project on disk.
 	 */
-	async createProject(input: Omit<ChatProjectMeta, 'id' | 'createdAtTimestamp' | 'updatedAtTimestamp'>): Promise<ChatProject> {
+	async createProject(input: Partial<ChatProjectMeta>): Promise<ChatProject> {
 		const timestamp = Date.now();
 		const projectId = generateUuidWithoutHyphens();
-		const normalizedRootFolder = normalizePath(this.rootFolder);
-		const folderName = buildTimestampedName('Project', input.name, timestamp, projectId);
-		const projectFolder = normalizePath(
-			input.folderPath?.trim() || `${normalizedRootFolder}/${folderName}`
+		const name = input.name || `New`;
+		const folderPath = this.storage.buildProjectFolderRelPath(
+			name,
+			timestamp,
+			projectId,
+			input.folderPath
 		);
 		const project: ChatProjectMeta = {
 			id: projectId,
 			createdAtTimestamp: timestamp,
 			updatedAtTimestamp: timestamp,
-			name: input.name,
-			folderPath: projectFolder,
+			name: name,
+			folderPath: folderPath,
 		};
 		return await this.storage.saveProject(project);
 	}
@@ -49,7 +52,7 @@ export class ProjectService {
 	/**
 	 * Summarize a project by aggregating summaries from all conversations in the project.
 	 */
-	async summarizeProject(project: ChatProject, modelId: string, provider?: string): Promise<string> {
+	async summarizeProject(project: ChatProject): Promise<string> {
 		if (!this.chat) {
 			console.warn('[ProjectService] No LLM service available for project summary');
 			return DEFAULT_SUMMARY;
@@ -57,7 +60,7 @@ export class ProjectService {
 
 		try {
 			// Get all conversations in this project
-			const conversations = await this.storage.listConversations(project.meta);
+			const conversations = await this.storage.listConversations(project.meta.id);
 			
 			// Build conversations array with summaries
 			const conversationsArray = conversations.map((conv) => ({
@@ -77,15 +80,12 @@ export class ProjectService {
 			if (!this.promptService) {
 				return DEFAULT_SUMMARY;
 			}
-			const finalProvider = provider || this.chat.getProviderId();
 			const shortSummary = await this.promptService.chatWithPrompt(
 				PromptId.ProjectSummaryShort,
 				{
 					conversations: conversationsArray,
 					resources: resourcesArray.length > 0 ? resourcesArray : undefined,
 				},
-				finalProvider,
-				modelId
 			) || DEFAULT_SUMMARY;
 
 			// Generate full summary if project has multiple conversations
@@ -97,8 +97,6 @@ export class ProjectService {
 						resources: resourcesArray.length > 0 ? resourcesArray : undefined,
 						shortSummary,
 					},
-					finalProvider,
-					modelId
 				);
 				return fullSummary || shortSummary;
 			}
@@ -113,59 +111,25 @@ export class ProjectService {
 	/**
 	 * Rename a project by renaming its folder.
 	 */
-	async renameProject(project: ChatProject, newName: string): Promise<ChatProject> {
-		const folder = this.resolveProjectFolder(project);
-		if (!folder) {
-			throw new Error('Project folder not found');
+	async renameProject(projectId: string, newName: string): Promise<ChatProject> {
+		const project = await this.storage.readProject(projectId);
+		if (!project) {
+			throw new Error('Project not found');
 		}
 
-		const timestamp = Date.now();
-		const newFolderName = buildTimestampedName('Project', newName, timestamp, project.meta.id);
-		const parentPath = folder.parent?.path ?? this.rootFolder;
-		const newFolderPath = normalizePath(`${parentPath}/${newFolderName}`);
-
-		// Rename the folder
-		await this.storage.getApp().vault.rename(folder, newFolderName);
+		// Rename folder and get new relative path
+		const newFolderPath = await this.storage.renameProjectFolder(projectId, newName);
 
 		// Update project meta with new folder path and name
 		const updatedMeta: ChatProjectMeta = {
 			...project.meta,
 			name: newName,
 			folderPath: newFolderPath,
-			updatedAtTimestamp: timestamp,
+			updatedAtTimestamp: Date.now(),
 		};
 
 		// Save updated project meta
 		return await this.storage.saveProject(updatedMeta, project.context);
-	}
-
-	/**
-	 * Locate a project folder by id, falling back to the parsed project file when needed.
-	 */
-	private resolveProjectFolder(project: ChatProject): TFolder | null {
-		const folderById = this.findProjectFolderById(project.meta.id);
-		if (folderById) {
-			return folderById;
-		}
-		return project.file.parent instanceof TFolder ? project.file.parent : null;
-	}
-
-	/**
-	 * Search the configured root folder for a child folder whose name contains the project id suffix.
-	 */
-	private findProjectFolderById(projectId: string): TFolder | null {
-		const rootFolder = this.storage.getApp().vault.getAbstractFileByPath(this.rootFolder);
-		if (!(rootFolder instanceof TFolder)) {
-			return null;
-		}
-
-		for (const child of rootFolder.children) {
-			if (child instanceof TFolder && child.name.startsWith('Project-') && child.name.endsWith(`-${projectId}`)) {
-				return child;
-			}
-		}
-
-		return null;
 	}
 }
 

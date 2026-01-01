@@ -384,26 +384,43 @@ export class BetterSqliteStore {
             },
             prepare: (sql: string): BetterSqliteStatement => {
                 const stmt = db.prepare(sql);
-                return {
-                    bind: (...params: any[]) => {
-                        // better-sqlite3 statements are immutable, so bind() doesn't actually modify
-                        // We return the same statement object for chaining
-                        return stmt as any;
-                    },
-                    run: (...params: any[]) => {
-                        return stmt.run(...params) as { changes: number; lastInsertRowid: number };
-                    },
-                    get: (...params: any[]) => {
-                        return stmt.get(...params);
-                    },
-                    all: (...params: any[]) => {
-                        return stmt.all(...params) as any[];
-                    },
-                    finalize: () => {
-                        // better-sqlite3 statements are automatically finalized when garbage collected
-                        // This is a no-op for compatibility with unified interface
-                    },
+                
+                // Create a wrapper that properly handles bind() and preserves reader property
+                // Kysely uses the reader property to determine if it's a SELECT query
+                const createWrapper = (statement: any): BetterSqliteStatement => {
+                    const wrapper: any = {
+                        // Preserve the reader property so Kysely can determine if it's a SELECT query
+                        get reader() {
+                            return statement.reader;
+                        },
+                        bind: (...params: any[]) => {
+                            // better-sqlite3 bind() returns a new bound statement
+                            if (params.length > 0) {
+                                const boundStmt = statement.bind(...params);
+                                return createWrapper(boundStmt);
+                            }
+                            return createWrapper(statement);
+                        },
+                        run: (...params: any[]) => {
+                            // better-sqlite3 run() accepts parameters directly
+                            return statement.run(...params) as { changes: number; lastInsertRowid: number };
+                        },
+                        get: (...params: any[]) => {
+                            // better-sqlite3 get() accepts parameters directly, or uses bound params if already bound
+                            return params.length > 0 ? statement.get(...params) : statement.get();
+                        },
+                        all: (...params: any[]) => {
+                            // better-sqlite3 all() accepts parameters directly, or uses bound params if already bound
+                            return (params.length > 0 ? statement.all(...params) : statement.all()) as any[];
+                        },
+                        finalize: () => {
+                            // better-sqlite3 statements are automatically finalized when garbage collected
+                            // This is a no-op for compatibility with unified interface
+                        },
+                    };
+                    return wrapper;
                 };
+                return createWrapper(stmt);
             },
         };
     }

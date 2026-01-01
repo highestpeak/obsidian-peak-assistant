@@ -83,12 +83,17 @@ export function parseFrontmatter<T extends object>(text: string): ParsedFrontmat
 
 /**
  * Build frontmatter string from data object.
+ * Filters out undefined values to avoid YAML serialization errors.
  * 
  * @param data The data object to serialize as frontmatter.
  * @returns Frontmatter string (without body content).
  */
 export function buildFrontmatter<T extends object>(data: T): string {
-	return matter.stringify('', data);
+	// Filter out undefined values to prevent YAML serialization errors
+	const cleaned = Object.fromEntries(
+		Object.entries(data).filter(([_, value]) => value !== undefined)
+	) as T;
+	return matter.stringify('', cleaned);
 }
 
 /**
@@ -188,26 +193,6 @@ function hasNestedTokens(token: Tokens.Generic): token is Tokens.Generic & { tok
 	return Array.isArray((token as any).tokens);
 }
 
-/**
- * Generate MD5 hash of content for deduplication.
- * 
- * Note: This is a simple implementation. For production, use a proper MD5 library.
- * The hash is used to:
- * - Avoid duplicate embedding generation
- * - Detect unchanged content
- * - Cache invalidation
- */
-export async function generateContentHash(content: string): Promise<string> {
-	// Simple hash function (not cryptographically secure, but fast)
-	// For production, consider using crypto.subtle.digest or a library like crypto-js
-	let hash = 0;
-	for (let i = 0; i < content.length; i++) {
-		const char = content.charCodeAt(i);
-		hash = ((hash << 5) - hash) + char;
-		hash = hash & hash; // Convert to 32-bit integer
-	}
-	return Math.abs(hash).toString(16);
-}
 
 /**
  * Extract references from markdown content.

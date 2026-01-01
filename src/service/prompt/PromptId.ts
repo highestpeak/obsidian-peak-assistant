@@ -54,25 +54,25 @@ export enum PromptId {
 	ConversationSummaryFull = 'conversation-summary-full',
 	ProjectSummaryShort = 'project-summary-short',
 	ProjectSummaryFull = 'project-summary-full',
-	
+
 	// Search prompts
 	SearchAiSummary = 'search-ai-summary',
 	SearchTopicExtractJson = 'search-topic-extract-json',
 	SearchRerankRankGpt = 'search-rerank-rank-gpt',
-	
+
 	// Application prompts (title generation)
 	ApplicationGenerateTitle = 'application-generate-title',
-	
+
 	// Memory/Profile prompts
 	MemoryExtractCandidatesJson = 'memory-extract-candidates-json',
 	MemoryUpdateBulletList = 'memory-update-bullet-list',
 	UserProfileUpdateJson = 'user-profile-update-json',
 	InstructionUpdate = 'instruction-update',
-	
+
 	// Prompt rewrite prompts
 	PromptQualityEvalJson = 'prompt-quality-eval-json',
 	PromptRewriteWithLibrary = 'prompt-rewrite-with-library',
-	
+
 	// Document analysis prompts (for future use)
 	DocSummary = 'doc-summary',
 	ImageSummary = 'image-summary',
@@ -80,6 +80,53 @@ export enum PromptId {
 	// Classify document type: principle, profile, index, daily, project, note, or other
 	DocTypeClassifyJson = 'doc-type-classify-json',
 	DocTagGenerateJson = 'doc-tag-generate-json',
+}
+
+/**
+ * Prompt IDs that allow model configuration in settings.
+ * Only prompts listed here will appear in the Model Configuration UI.
+ * 
+ * Prompts not listed here (e.g., internal/system prompts) will always use the default model.
+ */
+export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
+	// Chat summary prompts - users may want different models for summaries
+	PromptId.ConversationSummaryShort,
+	PromptId.ConversationSummaryFull,
+	PromptId.ProjectSummaryShort,
+	PromptId.ProjectSummaryFull,
+
+	// Search prompts - users may want specialized models for search
+	PromptId.SearchAiSummary,
+	PromptId.SearchTopicExtractJson,
+	PromptId.SearchRerankRankGpt,
+
+	// Application prompts - title generation may benefit from different models
+	PromptId.ApplicationGenerateTitle,
+
+	// Memory/Profile prompts
+	PromptId.MemoryExtractCandidatesJson,
+	PromptId.MemoryUpdateBulletList,
+	PromptId.UserProfileUpdateJson,
+	PromptId.InstructionUpdate,
+
+	// Prompt rewrite prompts
+	PromptId.PromptQualityEvalJson,
+	PromptId.PromptRewriteWithLibrary,
+
+	// Document analysis prompts - users may want different models for different document types
+	PromptId.DocSummary,
+	PromptId.ImageSummary,
+	PromptId.FolderProjectSummary,
+	// Classify document type: principle, profile, index, daily, project, note, or other
+	PromptId.DocTypeClassifyJson,
+	PromptId.DocTagGenerateJson,
+] as const;
+
+/**
+ * Check if a prompt ID allows model configuration.
+ */
+export function isPromptModelConfigurable(promptId: PromptId): boolean {
+	return CONFIGURABLE_PROMPT_IDS.includes(promptId);
 }
 
 /**

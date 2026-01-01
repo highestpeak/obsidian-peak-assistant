@@ -15,7 +15,6 @@ export class FolderResourceLoader implements ResourceLoader {
     // todo implement getSummary. structures, semantic info about all files in the folder
 	async getSummary(
 		source: string | any,
-		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
 		provider: string,
 		modelId: string
 	): Promise<ResourceSummary> {

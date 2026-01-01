@@ -8,6 +8,7 @@ export interface PromptInputSubmitProps {
 	status?: PromptInputStatus;
 	className?: string;
 	disabled?: boolean;
+	onCancel?: () => void | Promise<void>;
 }
 
 /**
@@ -17,6 +18,7 @@ export const PromptInputSubmit: React.FC<PromptInputSubmitProps> = ({
 	status = 'ready',
 	className,
 	disabled,
+	onCancel,
 	...props
 }) => {
 	let Icon = <CornerDownLeft className="pktw-size-5" />;
@@ -29,16 +31,27 @@ export const PromptInputSubmit: React.FC<PromptInputSubmitProps> = ({
 		Icon = <X className="pktw-size-5" />;
 	}
 
+	// In streaming mode, button should be clickable to cancel
+	const isStreaming = status === 'streaming';
+	const handleClick = isStreaming && onCancel 
+		? async (e: React.MouseEvent<HTMLButtonElement>) => {
+			e.preventDefault();
+			e.stopPropagation();
+			await onCancel();
+		}
+		: undefined;
+
 	return (
 		<Button
-			type="submit"
+			type={isStreaming ? 'button' : 'submit'}
 			variant="default"
 			size="icon"
 			className={cn(
 				'pktw-h-8 pktw-w-8 pktw-rounded-md',
 				className
 			)}
-			disabled={disabled || status === 'submitted' || status === 'streaming'}
+			disabled={disabled || (status === 'submitted' && !isStreaming)}
+			onClick={handleClick}
 			{...props}
 		>
 			{Icon}

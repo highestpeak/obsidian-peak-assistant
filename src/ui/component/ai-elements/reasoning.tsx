@@ -169,7 +169,9 @@ export const ReasoningContent = memo(
       )}
       {...props}
     >
-      <Streamdown {...props}>{children}</Streamdown>
+      <div className="pktw-select-text" data-streamdown-root>
+        <Streamdown {...props}>{children}</Streamdown>
+      </div>
     </CollapsibleContent>
   )
 );

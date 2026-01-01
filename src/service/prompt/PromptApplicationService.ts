@@ -16,8 +16,6 @@ export class PromptApplicationService {
 	async rewritePrompt(params: {
 		originalPrompt: string;
 		qualityIssues: string[];
-		provider: string;
-		model: string;
 	}): Promise<string> {
 		try {
 			return await this.promptService.chatWithPrompt(
@@ -26,8 +24,6 @@ export class PromptApplicationService {
 					originalPrompt: params.originalPrompt,
 					qualityIssues: params.qualityIssues,
 				},
-				params.provider,
-				params.model
 			);
 		} catch (error) {
 			console.warn('[PromptApplicationService] Failed to rewrite prompt:', error);

@@ -74,7 +74,9 @@ export class ClaudeChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
-			maxOutputTokens: this.maxOutputTokens,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			maxOutputTokens: request.outputControl?.maxOutputTokens ?? this.maxOutputTokens,
 		});
 
 		return {
@@ -92,7 +94,9 @@ export class ClaudeChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
-			maxOutputTokens: this.maxOutputTokens,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			maxOutputTokens: request.outputControl?.maxOutputTokens ?? this.maxOutputTokens,
 		});
 
 		return streamTextToAIStreamEvents(result, request.model);

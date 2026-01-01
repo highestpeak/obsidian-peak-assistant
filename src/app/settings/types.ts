@@ -1,6 +1,7 @@
-import { ProviderConfig } from '@/core/providers/types';
+import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { CommandHiddenSettings, DEFAULT_COMMAND_HIDDEN_SETTINGS } from '@/service/CommandHiddenControlService';
 import type { DocumentType } from '@/core/document/types';
+import { PromptId, CONFIGURABLE_PROMPT_IDS } from '@/service/prompt/PromptId';
 
 /**
  * Document chunking configuration.
@@ -151,6 +152,17 @@ export interface AIServiceSettings {
 	 * Enable prompt rewrite (auto-improve user prompts)
 	 */
 	promptRewriteEnabled?: boolean;
+	/**
+	 * Default LLM output control settings for all models.
+	 * Can be overridden per conversation in chat interface.
+	 */
+	defaultOutputControl?: LLMOutputControlSettings;
+	/**
+	 * Model configuration map for configurable prompt IDs.
+	 * Only prompts in CONFIGURABLE_PROMPT_IDS should be included here.
+	 * If not configured for a specific prompt, falls back to defaultModel.
+	 */
+	promptModelMap?: Partial<Record<PromptId, { provider: string; modelId: string }>>;
 }
 
 /**
@@ -169,6 +181,15 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	profileEnabled: true,
 	profileFilePath: 'ChatFolder/system/User-Profile.md',
 	promptRewriteEnabled: false,
+	// Programmatically initialize promptModelMap with defaultModel only for configurable prompt IDs
+	promptModelMap: (() => {
+		const defaultModel = { provider: 'openai', modelId: 'gpt-4o-mini' };
+		const map: Partial<Record<PromptId, { provider: string; modelId: string }>> = {};
+		for (const promptId of CONFIGURABLE_PROMPT_IDS) {
+			map[promptId] = { ...defaultModel };
+		}
+		return map;
+	})(),
 };
 
 /**

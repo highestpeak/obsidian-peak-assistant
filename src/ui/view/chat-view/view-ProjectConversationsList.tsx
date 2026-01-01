@@ -4,6 +4,7 @@ import { formatRelativeDate } from '@/ui/view/shared/date-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useProjectStore } from '@/ui/store/projectStore';
+import { ConversationItem } from '@/ui/view/chat-view/components/conversation-item';
 
 interface ProjectConversationsListViewProps {
 	projectId: string;
@@ -29,7 +30,7 @@ export const ProjectConversationsListViewComponent: React.FC<ProjectConversation
 
 	// Load conversations for the project
 	const loadConversations = useCallback(async (page: number, projectMeta: ChatProject['meta']) => {
-		const allConversations = await manager.listConversations(projectMeta);
+		const allConversations = await manager.listConversations(projectMeta.id);
 		
 		// Sort by createdAtTimestamp descending (newest first)
 		allConversations.sort((a, b) => {
@@ -130,39 +131,12 @@ export const ProjectConversationsListViewComponent: React.FC<ProjectConversation
 			{/* Conversations List */}
 			<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-4">
 				{conversations.map((conversation) => (
-					<div
+					<ConversationItem
 						key={conversation.meta.id}
-						className={cn(
-							'pktw-flex pktw-items-center pktw-gap-4 pktw-p-4 pktw-rounded-lg',
-							'pktw-border pktw-border-border pktw-bg-card',
-							'pktw-cursor-pointer pktw-transition-all',
-							'hover:pktw-shadow-md hover:pktw-border-primary/50'
-						)}
-						onClick={() => onConversationClick(conversation)}
-					>
-						{/* Content wrapper (left side) */}
-						<div className="pktw-flex-1 pktw-min-w-0">
-							{/* Title */}
-							<div className="pktw-text-base pktw-font-semibold pktw-text-foreground pktw-mb-1 pktw-truncate">
-								{conversation.meta.title}
-							</div>
-
-							{/* Preview */}
-							{conversation.messages.length > 0 && (
-								<div className="pktw-text-sm pktw-text-muted-foreground pktw-line-clamp-2">
-									{conversation.messages[0].content.substring(0, 100)}
-									{conversation.messages[0].content.length > 100 ? '...' : ''}
-								</div>
-							)}
-						</div>
-
-						{/* Date (right side) */}
-						{conversation.meta.createdAtTimestamp && (
-							<div className="pktw-text-xs pktw-text-muted-foreground pktw-shrink-0">
-								{formatRelativeDate(conversation.meta.createdAtTimestamp)}
-							</div>
-						)}
-					</div>
+						conversation={conversation}
+						onClick={onConversationClick}
+						maxPreviewLength={100}
+					/>
 				))}
 			</div>
 

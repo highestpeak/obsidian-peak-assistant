@@ -14,7 +14,6 @@ export {
 export {
 	Message,
 	MessageContent,
-	MessageResponse,
 	MessageActions,
 	MessageAction,
 	MessageBranch,
@@ -28,7 +27,6 @@ export {
 	MessageToolbar,
 	type MessageProps,
 	type MessageContentProps,
-	type MessageResponseProps,
 	type MessageActionsProps,
 	type MessageActionProps,
 	type MessageBranchProps,
@@ -78,3 +76,24 @@ export {
 	Suggestions,
 	Suggestion,
 } from './suggestion';
+
+// OpenIn components
+export {
+	OpenIn,
+	OpenInTrigger,
+	OpenInContent,
+	OpenInChatGPT,
+	OpenInClaude,
+	OpenInT3,
+	OpenInScira,
+	OpenInv0,
+	OpenInCursor,
+	OpenInItem,
+	OpenInLabel,
+	OpenInSeparator,
+	type OpenInProps,
+	type OpenInTriggerProps,
+	type OpenInContentProps,
+	type OpenInItemProps,
+	type OpenInLabelProps,
+} from './open-in-chat';

@@ -1,0 +1,162 @@
+/*
+ * Streamdown styles (scoped isolation)
+ *
+ * OVERALL STRATEGY:
+ * =================
+ * We use a "scoped container" approach to completely isolate streamdown from
+ * Obsidian's global styles:
+ *
+ * 1. Container Isolation:
+ *    - All Streamdown components are wrapped in `[data-streamdown-root]`
+ *    - Tailwind utilities are scoped to this container via `important: '[data-streamdown-root]'`
+ *    - This creates high-specificity selectors like `[data-streamdown-root] .bg-muted`
+ *    - Obsidian's global styles cannot easily override these
+ *
+ * 2. Self-Contained Theme:
+ *    - We define our own CSS variables (HSL triplets) for streamdown
+ *    - These are NOT mapped to Obsidian variables (--text-normal, etc.)
+ *    - Light/dark theme switching uses `body.theme-dark` class only as a trigger
+ *    - This keeps streamdown's visual design independent
+ *
+ * 3. Minimal Overrides:
+ *    - We only override properties that Obsidian commonly interferes with:
+ *      * Emphasis color (em/i tags often get colored by Obsidian themes)
+ *      * Code block structure (white-space, line breaks)
+ *      * Button appearance (Obsidian's button styles)
+ *    - We NEVER touch Shiki's inline color styles (syntax highlighting)
+ *
+ * 4. Build Process:
+ *    - This file is compiled by `tailwind.streamdown.config.js` (no prefix)
+ *    - Output: `styles.streamdown.css` (scoped utilities)
+ *    - Final `styles.css` = plugin UI + streamdown + KaTeX CSS
+ *
+ * WHY NOT Shadow DOM or iframe?
+ * ==============================
+ * - Shadow DOM: Breaks React event handling and accessibility
+ * - iframe: Heavy, breaks copy/paste, complex communication
+ * - Scoped CSS: Lightweight, works with React, sufficient isolation
+ *
+ * Code comments and UI text must be English (per project conventions).
+ */
+
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* -------------------------------------------------------------------------- */
+/* Streamdown theme tokens (self-contained, NOT Obsidian variables)            */
+/* -------------------------------------------------------------------------- */
+
+/*
+  Streamdown uses shadcn-like tokens:
+  - bg-muted / text-muted-foreground / border-border / text-primary / etc.
+  These resolve to CSS variables (HSL triplets).
+*/
+
+[data-streamdown-root] {
+	/* Light theme defaults */
+	--background: 0 0% 100%;
+	--foreground: 222.2 84% 4.9%;
+	--muted: 210 40% 96.1%;
+	--muted-foreground: 215.4 16.3% 46.9%;
+	--border: 214.3 31.8% 91.4%;
+	--input: 214.3 31.8% 91.4%;
+	--ring: 222.2 84% 4.9%;
+	--primary: 222.2 47.4% 11.2%;
+	--primary-foreground: 210 40% 98%;
+	--secondary: 210 40% 96.1%;
+	--secondary-foreground: 222.2 47.4% 11.2%;
+	--accent: 210 40% 96.1%;
+	--accent-foreground: 222.2 47.4% 11.2%;
+	--destructive: 0 84.2% 60.2%;
+	--destructive-foreground: 210 40% 98%;
+	--radius: 0.75rem;
+
+	/* Base typography: keep streamdown independent from Obsidian typography */
+	font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
+		"Segoe UI Emoji", "Segoe UI Symbol", sans-serif !important;
+	font-size: 16px !important;
+	line-height: 1.6 !important;
+
+	/* Keep text consistent even if Obsidian sets weird defaults */
+	color: hsl(var(--foreground)) !important;
+}
+
+/* Dark theme defaults (use Obsidian class only as a switch, not variables) */
+body.theme-dark [data-streamdown-root] {
+	--background: 222.2 84% 4.9%;
+	--foreground: 210 40% 98%;
+	--muted: 217.2 32.6% 17.5%;
+	--muted-foreground: 215 20.2% 65.1%;
+	--border: 217.2 32.6% 17.5%;
+	--input: 217.2 32.6% 17.5%;
+	--ring: 212.7 26.8% 83.9%;
+	--primary: 210 40% 98%;
+	--primary-foreground: 222.2 47.4% 11.2%;
+	--secondary: 217.2 32.6% 17.5%;
+	--secondary-foreground: 210 40% 98%;
+	--accent: 217.2 32.6% 17.5%;
+	--accent-foreground: 210 40% 98%;
+	--destructive: 0 62.8% 30.6%;
+	--destructive-foreground: 210 40% 98%;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Minimal anti-Obsidian overrides (avoid touching Shiki span colors)          */
+/* -------------------------------------------------------------------------- */
+
+/* Fix Obsidian themes that colorize emphasis (e.g. red italics) */
+[data-streamdown-root] em,
+[data-streamdown-root] i {
+	color: inherit !important;
+}
+
+/* Ensure consistent box model without destroying syntax highlighting */
+[data-streamdown-root],
+[data-streamdown-root] * {
+	box-sizing: border-box;
+}
+
+/* Links: keep streamdown link color, avoid Obsidian overrides */
+[data-streamdown-root] a {
+	color: hsl(var(--primary)) !important;
+	text-decoration: underline;
+}
+
+/* Code blocks: structural fallback against Obsidian CSS resets */
+/* This does NOT touch Shiki token colors (those are inline styles). */
+[data-streamdown-root] [data-streamdown="code-block-body"] {
+	white-space: pre !important;
+	tab-size: 4;
+	margin: 0 !important;
+	border: 0 !important;
+}
+
+[data-streamdown-root] [data-streamdown="code-block-body"] code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+		"Liberation Mono", "Courier New", monospace !important;
+}
+
+/* Ensure each line is a block (streamdown uses `block` utility; this is a safety net) */
+[data-streamdown-root] [data-streamdown="code-block-body"] code > span {
+	display: block !important;
+}
+
+/* Ensure tokens inside a line remain inline */
+[data-streamdown-root] [data-streamdown="code-block-body"] code > span > span {
+	display: inline !important;
+}
+
+/* Buttons: neutralize Obsidian button styling inside streamdown */
+[data-streamdown-root] button {
+	appearance: none;
+	background: transparent;
+	border: 0;
+	color: inherit;
+	font: inherit;
+	line-height: inherit;
+	margin: 0;
+	padding: 0;
+	text-align: inherit;
+}

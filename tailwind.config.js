@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
 	content: [
+		'./node_modules/streamdown/dist/*.js',
 		'./src/**/*.{js,ts,jsx,tsx}',
 		'./src/styles/tailwind.css',
 	],
@@ -9,31 +10,43 @@ module.exports = {
 	theme: {
 		extend: {
 			colors: {
-				background: 'var(--background-primary)',
-				foreground: 'var(--text-normal)',
+				// Background colors
+				background: '#282828',
+				card: '#ffffff',
+				popover: '#ffffff',
+				// Text colors
+				foreground: '#8C8C8C',
+				// Primary colors
 				primary: {
-					DEFAULT: 'var(--interactive-accent)',
-					foreground: 'var(--text-on-accent)',
+					DEFAULT: '#3b82f6',
+					foreground: '#ffffff',
 				},
+				// Secondary colors
 				secondary: {
-					DEFAULT: 'var(--background-secondary)',
-					foreground: 'var(--text-normal)',
+					DEFAULT: '#f3f4f6',
+					foreground: '#1a1a1a',
 				},
+				// Muted colors
 				muted: {
-					DEFAULT: 'var(--background-modifier-hover)',
-					foreground: 'var(--text-muted)',
+					DEFAULT: '#f3f4f6',
+					foreground: '#8C8C8C',
 				},
+				// Accent colors
 				accent: {
-					DEFAULT: 'var(--interactive-accent)',
-					foreground: 'var(--text-on-accent)',
+					DEFAULT: '#3b82f6',
+					foreground: '#ffffff',
 				},
+				// Destructive colors
 				destructive: {
-					DEFAULT: 'var(--text-error)',
-					foreground: 'var(--text-on-accent)',
+					DEFAULT: '#ef4444',
+					foreground: '#ffffff',
 				},
-				border: 'var(--background-modifier-border)',
-				input: 'var(--background-modifier-border)',
-				ring: 'var(--interactive-accent)',
+				// Border colors
+				border: 'rgba(128, 128, 128, 0.15)',
+				'border-default': '#666666',
+				'border-hover': '#3b82f6',
+				input: 'rgba(128, 128, 128, 0.2)',
+				ring: '#3b82f6',
 			},
 			borderRadius: {
 				lg: '0.5rem', // 8px

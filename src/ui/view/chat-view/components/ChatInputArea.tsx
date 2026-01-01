@@ -2,8 +2,6 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useProjectStore } from '@/ui/store/projectStore';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useMessageStore } from '@/ui/store/messageStore';
-import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
-import { uploadFilesToVault } from '@/core/utils/vault-utils';
 import {
 	PromptInput,
 	PromptInputBody,
@@ -12,35 +10,106 @@ import {
 	PromptInputSearchButton,
 	PromptInputSubmit,
 	TokenUsage,
+	usePromptInputContext,
 	type PromptInputMessage,
 	type TokenUsageInfo,
 } from '@/ui/component/prompt-input';
 import { LLMModelSelector } from './LLMModelSelector';
-import { useServiceContext } from '@/ui/context/ServiceContext';
-import { ConversationUpdatedEvent } from '@/core/eventBus';
-import { PromptId } from '@/service/prompt/PromptId';
+import { LLMOutputControlSettingsPopover } from './LLMOutputControlSettings';
 import { cn } from '@/ui/react/lib/utils';
-import type { ChatConversation, ChatMessage } from '@/service/chat/types';
+import {
+	OpenIn,
+	OpenInTrigger,
+	OpenInContent,
+	OpenInChatGPT,
+	OpenInClaude,
+	OpenInT3,
+	OpenInScira,
+	OpenInv0,
+	OpenInCursor,
+} from '@/ui/component/ai-elements';
+import type { ChatConversation } from '@/service/chat/types';
+import { useChatSubmit } from '../hooks/useChatSubmit';
 
 interface ChatInputAreaComponentProps {
 	onScrollToBottom?: () => void;
 }
 
 /**
- * React component for chat input area using new PromptInput components
+ * Internal component to clear input immediately when sending starts
  */
+const InputClearHandler: React.FC<{ isSending: boolean }> = ({ isSending }) => {
+	const inputContext = usePromptInputContext();
+	const prevIsSendingRef = React.useRef(isSending);
+
+	React.useEffect(() => {
+		// Clear input immediately when sending starts (changes from false to true)
+		if (!prevIsSendingRef.current && isSending) {
+			inputContext.textInput.clear();
+			inputContext.attachments.clear();
+		}
+		prevIsSendingRef.current = isSending;
+	}, [isSending, inputContext]);
+
+	return null;
+};
+
+/**
+ * Internal component for OpenIn button that needs access to input context
+ */
+const OpenInButton: React.FC = () => {
+	const activeConversation = useProjectStore((state) => state.activeConversation);
+
+	// Build query from all user messages in the conversation
+	const conversationQuery = React.useMemo(() => {
+		if (!activeConversation || !activeConversation.messages || activeConversation.messages.length === 0) {
+			return '';
+		}
+		// Get all user messages and join them
+		const userMessages = activeConversation.messages
+			.filter(msg => msg.role === 'user')
+			.map(msg => msg.content)
+			.join('\n\n');
+		return userMessages;
+	}, [activeConversation]);
+
+	if (!conversationQuery.trim()) return null;
+
+	return (
+		<OpenIn query={conversationQuery}>
+			<OpenInTrigger>
+				<button
+					type="button"
+					className="pktw-h-9 pktw-px-2.5 pktw-text-xs pktw-bg-transparent pktw-border-0 pktw-shadow-none pktw-rounded-md hover:pktw-bg-accent hover:pktw-text-accent-foreground pktw-flex pktw-items-center pktw-gap-1"
+				>
+					Open in chat
+					<svg className="pktw-size-3" fill="none" viewBox="0 0 15 15">
+						<path d="M4.5 6L7.5 9L10.5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+					</svg>
+				</button>
+			</OpenInTrigger>
+			<OpenInContent>
+				<OpenInChatGPT />
+				<OpenInClaude />
+				<OpenInT3 />
+				<OpenInScira />
+				<OpenInv0 />
+				<OpenInCursor />
+			</OpenInContent>
+		</OpenIn>
+	);
+};
+
 export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	onScrollToBottom,
 }) => {
-	const { app, manager, eventBus } = useServiceContext();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 	const activeProject = useProjectStore((state) => state.activeProject);
-	const pendingConversation = useChatViewStore((state) => state.pendingConversation);
-	const initialSelectedModel = useChatViewStore((state) => state.initialSelectedModel);
-	const setInitialSelectedModel = useChatViewStore((state) => state.setInitialSelectedModel);
 	const [isSending, setIsSending] = useState(false);
 	const [isSearchActive, setIsSearchActive] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+	const { submitMessage, cancelStream } = useChatSubmit();
 
 	// Handle submit
 	const handleSubmit = useCallback(async (message: PromptInputMessage) => {
@@ -52,142 +121,21 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 		if (isSending) return;
 
 		setIsSending(true);
-		const messageStore = useMessageStore.getState();
-
 		try {
-			// Create conversation if needed
-			let conversation = activeConversation;
-			if (!conversation && pendingConversation) {
-				conversation = await manager.createConversation({
-					title: pendingConversation.title,
-					project: pendingConversation.project?.meta ?? null,
-					modelId: initialSelectedModel?.modelId,
-					provider: initialSelectedModel?.provider,
-				});
-				setInitialSelectedModel(null);
-
-				useProjectStore.getState().updateConversation(conversation);
-				eventBus.dispatch(new ConversationUpdatedEvent({ conversation }));
-			}
-			if (!conversation) {
-				console.error('Failed to create conversation');
-				setIsSending(false);
-				return;
-			}
-
-			// Upload files if any
-			let uploadedPaths: string[] = [];
-			if (currentPendingFiles.length > 0) {
-				uploadedPaths = await uploadFilesToVault(app, currentPendingFiles, manager.getSettings().uploadFolder);
-			}
-
-			// Create temporary user message
-			const modelId = conversation.meta.activeModel || manager.getSettings().defaultModel.modelId;
-			const provider = conversation.meta.activeProvider || 'other';
-			const tempUserMessage: ChatMessage = {
-				id: generateUuidWithoutHyphens(),
-				role: 'user',
-				content: currentInputValue,
-				model: modelId,
-				provider: provider,
-				createdAtTimestamp: Date.now(),
-				createdAtZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-				starred: false,
-			};
-
-			// Show user message immediately
-			const tempConversation: ChatConversation = {
-				...conversation,
-				messages: [...conversation.messages, tempUserMessage],
-			};
-			useChatViewStore.getState().setConversation(tempConversation);
-			useProjectStore.getState().updateConversation(tempConversation);
-
-			// Create assistant message ID for streaming
-			const assistantMessageId = generateUuidWithoutHyphens();
-			messageStore.startStreaming(assistantMessageId, 'assistant');
-
-			// Stream chat
-			const stream = manager.streamChat({
-				conversation: conversation,
+			await submitMessage({
+				text: currentInputValue,
+				files: currentPendingFiles,
+				conversation: activeConversation,
 				project: activeProject,
-				userContent: currentInputValue,
+				onScrollToBottom,
 			});
-
-			let finalConversation: ChatConversation | null = null;
-			let finalMessage: ChatMessage | null = null;
-
-			try {
-				for await (const event of stream) {
-					if (event.type === 'delta') {
-						messageStore.appendStreamingDelta(event.text);
-						onScrollToBottom?.();
-					} else if (event.type === 'complete') {
-						if (event.message) {
-							finalMessage = event.message;
-							messageStore.completeStreaming(event.message);
-						}
-						if (event.conversation) {
-							finalConversation = event.conversation;
-						}
-						onScrollToBottom?.();
-					} else if (event.type === 'error') {
-						console.error('Streaming error:', event.error);
-						messageStore.errorStreaming();
-						throw event.error;
-					}
-				}
-			} catch (error) {
-				messageStore.errorStreaming();
-				throw error;
-			}
-
-			// Get final conversation
-			if (!finalConversation) {
-				const allConversations = await manager.listConversations(activeProject?.meta);
-				finalConversation = allConversations.find(c => c.meta.id === conversation.meta.id) || conversation;
-			}
-
-			// Generate title if needed
-			if (finalConversation &&
-				(finalConversation.meta.title === 'New Conversation' || finalConversation.meta.title === 'new-conversation') &&
-				finalConversation.messages.length >= 2) {
-				try {
-					const messagesForName = finalConversation.messages.slice(0, 4).map(msg => ({
-						role: msg.role,
-						content: msg.content,
-					}));
-					const modelId = finalConversation.meta.activeModel || manager.getSettings().defaultModel.modelId;
-					const provider = finalConversation.meta.activeProvider || 'openai';
-					const result = await manager.chatWithPrompt(
-						PromptId.ApplicationGenerateTitle,
-						{ messages: messagesForName },
-						provider,
-						modelId
-					);
-					const generatedName = result.replace(/^["']|["']$/g, '').slice(0, 50) || 'New Conversation';
-
-					finalConversation = await manager.updateConversationTitle({
-						conversation: finalConversation,
-						project: activeProject,
-						title: generatedName,
-					});
-				} catch (error) {
-					console.warn('Failed to generate conversation name', error);
-				}
-			}
-
-			if (finalConversation) {
-				useChatViewStore.getState().setConversation(finalConversation);
-				useProjectStore.getState().updateConversation(finalConversation);
-				eventBus.dispatch(new ConversationUpdatedEvent({ conversation: finalConversation }));
-			}
 		} catch (error) {
-			console.error('Error in handleSubmit:', error);
+			console.error('[ChatInputAreaComponent] Error in handleSubmit:', error);
+			// Error handling is done inside submitMessage
 		} finally {
 			setIsSending(false);
 		}
-	}, [activeConversation, activeProject, pendingConversation, manager, eventBus, app, onScrollToBottom, isSending]);
+	}, [submitMessage, activeConversation, activeProject, onScrollToBottom, isSending]);
 
 	// Calculate token usage
 	const tokenUsage = useMemo<TokenUsageInfo>(() => {
@@ -250,14 +198,29 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 
 	const hasMessages = activeConversation && activeConversation.messages.length > 0;
 	const placeholder = hasMessages ? 'Ask anything' : 'Ready when you are.';
-	const status = isSending ? 'streaming' : 'ready';
+	
+	// Check if streaming is active
+	const isStreaming = useMessageStore((state) => state.streamingMessageId !== null);
+	
+	// Handle cancel stream
+	const handleCancelStream = useCallback(async () => {
+		if (isStreaming) {
+			console.log('[ChatInputArea] Canceling stream');
+			await cancelStream();
+			// Note: setIsSending(false) will be called in handleSubmit's finally block
+			// But we set it here immediately for better UX
+			setIsSending(false);
+		}
+	}, [isStreaming, cancelStream]);
+	
+	// Button status: 'ready' (blue + Enter) when not sending, 'streaming' when streaming, 'submitted' when sending but not streaming
+	const status = isStreaming ? 'streaming' : (isSending ? 'submitted' : 'ready');
 
 	return (
 		<div className="pktw-px-6 pktw-pt-5 pktw-pb-6 pktw-border-t pktw-border-border pktw-flex-shrink-0">
 			<PromptInput
 				className={cn(
 					'pktw-flex pktw-flex-col pktw-w-full pktw-border pktw-rounded-lg',
-					'pktw-bg-background',
 					'pktw-border-[var(--background-modifier-border)]',
 					'pktw-shadow-[0_0_0_2px_rgba(59,130,246,0.1)]',
 					'focus-within:pktw-border-accent focus-within:pktw-shadow-[0_0_0_4px_rgba(59,130,246,0.4)]'
@@ -266,6 +229,9 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				multiple
 				onSubmit={handleSubmit}
 			>
+				{/* Clear input handler */}
+				<InputClearHandler isSending={isSending} />
+
 				{/* Attachments display */}
 				<PromptInputAttachments />
 
@@ -287,12 +253,17 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 						<div className="[&_button]:pktw-h-9 [&_button]:pktw-px-2.5 [&_button]:pktw-text-xs [&_button]:pktw-bg-transparent [&_button]:pktw-border-0 [&_button]:pktw-shadow-none [&_button]:pktw-rounded-md [&_button]:hover:pktw-bg-accent [&_button]:hover:pktw-text-accent-foreground">
 							<LLMModelSelector />
 						</div>
+						<LLMOutputControlSettingsPopover />
+						<OpenInButton />
 					</div>
 
 					{/* Right side: token usage and submit */}
 					<div className="pktw-flex pktw-items-center pktw-gap-1.5">
 						<TokenUsage usage={tokenUsage} />
-						<PromptInputSubmit status={status} />
+						<PromptInputSubmit 
+							status={status} 
+							onCancel={isStreaming ? handleCancelStream : undefined}
+						/>
 					</div>
 				</div>
 			</PromptInput>

@@ -68,8 +68,6 @@ export class UserProfileService {
 		userMessage: string;
 		assistantReply: string;
 		context?: Record<string, string>;
-		provider: string;
-		model: string;
 	}): Promise<UserProfileItem[]> {
 		try {
 			const content = await this.promptService.chatWithPrompt(
@@ -79,8 +77,6 @@ export class UserProfileService {
 					assistantReply: params.assistantReply,
 					context: params.context || {},
 				},
-				params.provider,
-				params.model
 			);
 
 			// Parse JSON response
@@ -123,8 +119,6 @@ export class UserProfileService {
 	 */
 	async updateProfile(params: {
 		newItems: UserProfileItem[];
-		provider: string;
-		model: string;
 	}): Promise<UserProfileItem[]> {
 		try {
 			// Load existing context
@@ -143,8 +137,6 @@ export class UserProfileService {
 					newStatement: newStatements,
 					existingMemories,
 				},
-				params.provider,
-				params.model
 			);
 
 			// Parse bullet list from response

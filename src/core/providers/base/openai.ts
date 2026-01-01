@@ -157,6 +157,11 @@ export class OpenAIChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			presencePenalty: request.outputControl?.presencePenalty,
+			frequencyPenalty: request.outputControl?.frequencyPenalty,
+			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
 		});
 
 		return {
@@ -174,6 +179,11 @@ export class OpenAIChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			presencePenalty: request.outputControl?.presencePenalty,
+			frequencyPenalty: request.outputControl?.frequencyPenalty,
+			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
 		});
 
 		return streamTextToAIStreamEvents(result, request.model);

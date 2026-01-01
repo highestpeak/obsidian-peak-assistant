@@ -123,7 +123,7 @@ export class ContextBuilder {
 		// Project context
 		if (params.project) {
 			sections.push('## Project Context');
-			const projectSummary = params.project.context?.fullSummary || params.project.context?.shortSummary || params.project.shortSummary;
+			const projectSummary = params.project.context?.fullSummary || params.project.context?.shortSummary;
 			if (projectSummary) {
 				sections.push(`### Project: ${params.project.meta.name}`);
 				sections.push(projectSummary);

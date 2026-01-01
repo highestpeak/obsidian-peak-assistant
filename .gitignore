@@ -14,12 +14,19 @@ bun.lock
 # Don't include the compiled main.js file in the repo.
 # They should be uploaded to GitHub releases instead.
 main.js
+main.css
 styles.css
+streamdown-styles.css
+styles.tailwind.css
+styles.streamdown.css
 search-worker.js
 *.wasm
 
 # Exclude sourcemaps
 *.map
+
+# KaTeX fonts (copied from node_modules during build)
+fonts/
 
 # obsidian
 data.json

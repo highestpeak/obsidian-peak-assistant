@@ -1,4 +1,5 @@
 import type { Document, ResourceSummary } from '@/core/document/types';
+import { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 
 /**
@@ -6,16 +7,16 @@ import { PromptId } from '@/service/prompt/PromptId';
  * Uses DocSummary prompt to generate summaries from document content.
  * 
  * @param doc - Document to summarize
- * @param promptService - Prompt service for generating summaries
+ * @param aiServiceManager - AI service manager for generating summaries
  * @param provider - LLM provider
  * @param modelId - LLM model ID
  * @returns Resource summary with short and optional full summary
  */
 export async function getDefaultDocumentSummary(
 	doc: Document,
-	promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
-	provider: string,
-	modelId: string
+	aiServiceManager: AIServiceManager,
+	provider?: string,
+	modelId?: string
 ): Promise<ResourceSummary> {
 	// Use cacheFileInfo.content if available (for binary files like PDF, Image),
 	// otherwise use sourceFileInfo.content (for text files)
@@ -23,7 +24,7 @@ export async function getDefaultDocumentSummary(
 	const title = doc.metadata.title || doc.sourceFileInfo.name;
 	const path = doc.sourceFileInfo.path;
 
-	const shortSummary = await promptService.chatWithPrompt(
+	const shortSummary = await aiServiceManager.chatWithPrompt(
 		PromptId.DocSummary,
 		{ content, title, path },
 		provider,
@@ -32,7 +33,7 @@ export async function getDefaultDocumentSummary(
 
 	let fullSummary: string | undefined;
 	if (content.length > 2000) {
-		fullSummary = await promptService.chatWithPrompt(
+		fullSummary = await aiServiceManager.chatWithPrompt(
 			PromptId.DocSummary,
 			{ content, title, path },
 			provider,

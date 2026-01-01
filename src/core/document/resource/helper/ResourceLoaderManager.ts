@@ -1,5 +1,6 @@
 import type { App } from 'obsidian';
 import type { ResourceLoader, ResourceKind, SpecialResourceType, DocumentType, Summarizable } from '@/core/document/types';
+import type { AIServiceManager } from '@/service/chat/service-manager';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { TagResourceLoader } from '../TagResourceLoader';
 import { FolderResourceLoader } from '../FolderResourceLoader';
@@ -12,11 +13,13 @@ import { FolderResourceLoader } from '../FolderResourceLoader';
 export class ResourceLoaderManager {
     private readonly loaderMap = new Map<SpecialResourceType, ResourceLoader>();
     private readonly documentLoaderManager: DocumentLoaderManager;
+    private readonly aiServiceManager: AIServiceManager;
     private readonly specialTypes: Set<SpecialResourceType> = new Set(['tag', 'folder', 'category']);
 
-    constructor(app: App, documentLoaderManager?: DocumentLoaderManager) {
+    constructor(app: App, aiServiceManager: AIServiceManager, documentLoaderManager?: DocumentLoaderManager) {
         // Use provided DocumentLoaderManager or get singleton instance
         this.documentLoaderManager = documentLoaderManager || DocumentLoaderManager.getInstance();
+        this.aiServiceManager = aiServiceManager;
 
         // Register resource loaders for special resource types
         this.registerLoader(new TagResourceLoader());
@@ -62,21 +65,31 @@ export class ResourceLoaderManager {
     async getSummary(
         source: string,
         resourceKind: ResourceKind,
-        promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
-        provider: string,
-        modelId: string
+        provider?: string,
+        modelId?: string
     ): Promise<{ shortSummary: string; fullSummary?: string } | null> {
+        console.debug('[ResourceLoaderManager] getting summary for source:', source, 'resourceKind:', resourceKind);
         const loader = this.getLoader(resourceKind);
         if (!loader) {
             return null;
         }
 
+        const startTime = Date.now();
+
+        let summary: { shortSummary: string; fullSummary?: string } | null;
         if (this.isSpecialResourceType(resourceKind)) {
-            return await loader.getSummary(source, promptService, provider, modelId);
+            console.debug('[ResourceLoaderManager] getting summary for special resource type:', source, 'resourceKind:', resourceKind);
+            summary = await loader.getSummary(source, provider, modelId);
+        } else {
+            const doc = await this.documentLoaderManager.readByPath(source);
+            console.debug('[ResourceLoaderManager] getting summary for document type:', source, 'resourceKind:', resourceKind);
+            summary = doc ? await loader.getSummary(doc, provider, modelId) : null;
         }
-        
-        const doc = await this.documentLoaderManager.readByPath(source);
-        return doc ? await loader.getSummary(doc, promptService, provider, modelId) : null;
+
+        const genTime = Date.now() - startTime;
+        console.debug(`[ResourceLoaderManager] summary generation time for source: ${source} (${resourceKind}): ${genTime}ms`);
+
+        return summary;
     }
 }
 

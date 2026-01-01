@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { ChatMessage } from '@/service/chat/types';
 
-interface MessageStore {
+export interface MessageStore {
 	// Streaming state
 	streamingMessageId: string | null;
 	streamingContent: string;
@@ -11,7 +11,6 @@ interface MessageStore {
 	startStreaming: (messageId: string, role: ChatMessage['role']) => void;
 	appendStreamingDelta: (delta: string) => void;
 	completeStreaming: (message: ChatMessage) => void;
-	errorStreaming: () => void;
 	clearStreaming: () => void;
 }
 
@@ -35,13 +34,6 @@ export const useMessageStore = create<MessageStore>((set) => ({
 		})),
 
 	completeStreaming: (message: ChatMessage) =>
-		set({
-			streamingMessageId: null,
-			streamingContent: '',
-			streamingRole: null,
-		}),
-
-	errorStreaming: () =>
 		set({
 			streamingMessageId: null,
 			streamingContent: '',

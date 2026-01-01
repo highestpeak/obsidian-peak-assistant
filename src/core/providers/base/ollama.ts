@@ -193,6 +193,11 @@ export class OllamaChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			topK: request.outputControl?.topK,
+			presencePenalty: request.outputControl?.presencePenalty,
+			frequencyPenalty: request.outputControl?.frequencyPenalty,
 		});
 
 		return {
@@ -210,6 +215,11 @@ export class OllamaChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			topK: request.outputControl?.topK,
+			presencePenalty: request.outputControl?.presencePenalty,
+			frequencyPenalty: request.outputControl?.frequencyPenalty,
 		});
 
 		return streamTextToAIStreamEvents(result, request.model);

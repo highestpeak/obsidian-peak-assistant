@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import { TFolder } from 'obsidian';
-import type { ResourceKind, DocumentType } from '@/core/document/types';
+import type { ResourceKind } from '@/core/document/types';
 
 /**
  * Helper class for detecting resource kind from source string

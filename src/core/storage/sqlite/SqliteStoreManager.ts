@@ -18,7 +18,6 @@ import { ChatProjectRepo } from './repositories/ChatProjectRepo';
 import { ChatConversationRepo } from './repositories/ChatConversationRepo';
 import { ChatMessageRepo } from './repositories/ChatMessageRepo';
 import { ChatMessageResourceRepo } from './repositories/ChatMessageResourceRepo';
-import { ChatSummaryRepo } from './repositories/ChatSummaryRepo';
 import { ChatStarRepo } from './repositories/ChatStarRepo';
 import { SEARCH_DB_FILENAME } from '@/core/constant';
 
@@ -51,7 +50,6 @@ class SqliteStoreManager {
 	private chatConversationRepo: ChatConversationRepo | null = null;
 	private chatMessageRepo: ChatMessageRepo | null = null;
 	private chatMessageResourceRepo: ChatMessageResourceRepo | null = null;
-	private chatSummaryRepo: ChatSummaryRepo | null = null;
 	private chatStarRepo: ChatStarRepo | null = null;
 
 
@@ -191,7 +189,6 @@ class SqliteStoreManager {
 		this.chatConversationRepo = new ChatConversationRepo(kdb);
 		this.chatMessageRepo = new ChatMessageRepo(kdb);
 		this.chatMessageResourceRepo = new ChatMessageResourceRepo(kdb);
-		this.chatSummaryRepo = new ChatSummaryRepo(kdb);
 		this.chatStarRepo = new ChatStarRepo(kdb);
 	}
 
@@ -352,16 +349,6 @@ class SqliteStoreManager {
 	}
 
 	/**
-	 * Get ChatSummaryRepo instance.
-	 */
-	getChatSummaryRepo(): ChatSummaryRepo {
-		if (!this.chatSummaryRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
-		}
-		return this.chatSummaryRepo;
-	}
-
-	/**
 	 * Get ChatStarRepo instance.
 	 */
 	getChatStarRepo(): ChatStarRepo {
@@ -407,7 +394,6 @@ class SqliteStoreManager {
 		this.chatConversationRepo = null;
 		this.chatMessageRepo = null;
 		this.chatMessageResourceRepo = null;
-		this.chatSummaryRepo = null;
 		this.chatStarRepo = null;
 	}
 }

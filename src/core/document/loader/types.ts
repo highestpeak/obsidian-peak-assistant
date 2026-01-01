@@ -46,14 +46,12 @@ export interface DocumentLoader extends Summarizable {
 	 * Get summary for a document.
 	 * Returns both short and full summaries.
 	 * @param source - Document to summarize
-	 * @param promptService - Prompt service for generating summaries
 	 * @param provider - LLM provider
 	 * @param modelId - LLM model ID
 	 * @returns Resource summary with short and optional full summary
 	 */
 	getSummary(
 		source: Document | string,
-		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
 		provider: string,
 		modelId: string
 	): Promise<ResourceSummary>;

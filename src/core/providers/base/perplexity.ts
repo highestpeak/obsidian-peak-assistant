@@ -73,7 +73,9 @@ function formatModelDisplayName(modelId: string): string {
 
 /**
  * Fetch models from Perplexity API
+ * @internal This function is reserved for future use
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function fetchPerplexityModels(
 	baseUrl?: string,
 	apiKey?: string,
@@ -154,6 +156,10 @@ export class PerplexityChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			topK: request.outputControl?.topK,
+			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
 		});
 
 		return {
@@ -171,6 +177,10 @@ export class PerplexityChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			topK: request.outputControl?.topK,
+			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
 		});
 
 		return streamTextToAIStreamEvents(result, request.model);

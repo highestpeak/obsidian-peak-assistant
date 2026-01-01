@@ -115,3 +115,45 @@ export async function uploadFilesToVault(
 	return uploadedPaths;
 }
 
+/**
+ * Join path parts and normalize the result.
+ */
+export function joinPath(...parts: string[]): string {
+	return normalizePath(parts.join('/'));
+}
+
+/**
+ * Write content to a file, creating it if it doesn't exist, or modifying it if it does.
+ */
+export async function writeFile(
+	app: App,
+	file: TFile | null,
+	path: string,
+	content: string
+): Promise<TFile> {
+	if (file) {
+		await app.vault.modify(file, content);
+		return file;
+	}
+	return await app.vault.create(path, content);
+}
+
+/**
+ * Get absolute path from root folder and relative path.
+ */
+export function getAbsolutePath(rootFolder: string, relativePath: string): string {
+	return joinPath(rootFolder, relativePath);
+}
+
+/**
+ * Get relative path from absolute path and root folder.
+ */
+export function getRelativePath(rootFolder: string, absolutePath: string): string {
+	const normalized = normalizePath(absolutePath);
+	const rootNormalized = normalizePath(rootFolder);
+	if (normalized.startsWith(rootNormalized)) {
+		return normalized.substring(rootNormalized.length).replace(/^\//, '');
+	}
+	return normalized;
+}
+

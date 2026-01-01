@@ -77,6 +77,7 @@ export function SettingsRoot({ plugin, eventBus }: SettingsRootProps) {
 						settings={settings}
 						aiServiceManager={plugin.aiServiceManager}
 						settingsUpdates={settingsUpdates}
+						eventBus={eventBus}
 					/>
 				)}
 				{activeTab === 'search' && (

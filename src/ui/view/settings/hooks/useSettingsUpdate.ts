@@ -2,6 +2,8 @@ import { useCallback } from 'react';
 import type MyPlugin from 'main';
 import type { MyPluginSettings } from '@/app/settings/types';
 import { EventBus, SettingsUpdatedEvent } from '@/core/eventBus';
+import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
+import { PromptId } from '@/service/prompt/PromptId';
 
 /**
  * Generic hook for creating update functions for nested settings.
@@ -43,6 +45,13 @@ export function useSettingsUpdate(
 			// Handle command hidden settings side effects
 			if (updates.commandHidden) {
 				plugin.commandHiddenControlService?.updateSettings(plugin.settings.commandHidden);
+			}
+
+			// Handle search settings side effects
+			if (updates.search) {
+				DocumentLoaderManager.getInstance().updateSettings(
+					plugin.settings.search
+				);
 			}
 
 			// Save to disk
@@ -197,6 +206,26 @@ export function useSettingsUpdate(
 		[settings.ai, updateSettings]
 	);
 
+	/**
+	 * Update prompt model configuration
+	 */
+	const updatePromptModel = useCallback(
+		(promptId: string, provider: string, modelId: string) => {
+			// Only update configurable prompt IDs
+			const existingMap = settings.ai.promptModelMap || {};
+			return updateSettings({
+				ai: {
+					...settings.ai,
+					promptModelMap: {
+						...existingMap,
+						[promptId]: { provider, modelId },
+					},
+				},
+			});
+		},
+		[settings.ai, updateSettings]
+	);
+
 	return {
 		update,
 		updateAI,
@@ -207,6 +236,7 @@ export function useSettingsUpdate(
 		updateDefaultModel,
 		updateSearchModel,
 		updateChunkingModel,
+		updatePromptModel,
 		updateSettings,
 	};
 }

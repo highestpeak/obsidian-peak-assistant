@@ -79,7 +79,7 @@ export class EventDispatcher {
     private loadFromScriptFolder(scriptFolderPath: string) {
         const basePath = (this.app.vault.adapter as any).basePath
         // load events
-        let eventScripts: Map<string, Callback[]> = loadScriptsForEvent(
+        const eventScripts: Map<string, Callback[]> = loadScriptsForEvent(
             path.join(basePath, scriptFolderPath)
         )
         // console.log(eventScripts);
@@ -195,10 +195,10 @@ export class EventDispatcher {
     }
 
     private registerWindowEvents(eventName: string) {
-        let windowEventListener = (evt: Event) => {
+        const windowEventListener = (evt: Event) => {
             this.domBufferDispatch(eventName, evt)
         };
-        let eventKey = eventName as keyof WindowEventMap
+        const eventKey = eventName as keyof WindowEventMap
         this.windowEventRefs.set(
             eventKey,
             windowEventListener

@@ -1,4 +1,4 @@
-import type { RerankProvider, RerankRequest, RerankResponse, RerankResult, RerankDocument } from './types';
+import type { RerankProvider, RerankRequest, RerankResponse, RerankResult } from './types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 

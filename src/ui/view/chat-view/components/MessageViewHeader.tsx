@@ -2,30 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { useChatViewStore } from '../store/chatViewStore';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { ArrowUp, ArrowDown, List, Lightbulb, FileText, Folder } from 'lucide-react';
+import { Book, Brain, ExternalLink, Folder } from 'lucide-react';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { cn } from '@/ui/react/lib/utils';
 import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
 import { useTypewriterEffect } from '@/ui/view/shared/useTypewriterEffect';
 import { TYPEWRITER_EFFECT_SPEED_MS } from '@/core/constant';
+import { ResourcesPopover } from './ResourcesPopover';
 
 interface MessageHeaderProps {
-	onScrollToTop: () => void;
-	onScrollToBottom: () => void;
 }
 
 /**
  * Component for rendering message header with title, model selector, and stats
  */
 export const MessageHeader: React.FC<MessageHeaderProps> = ({
-	onScrollToTop,
-	onScrollToBottom,
 }) => {
 	const { app, eventBus } = useServiceContext();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 	const activeProject = useProjectStore((state) => state.activeProject);
-	const setShowResourcesModal = useChatViewStore((state) => state.setShowResourcesModal);
 	const setShowSummaryModal = useChatViewStore((state) => state.setShowSummaryModal);
 	const [displayTitle, setDisplayTitle] = useState(activeConversation?.meta.title || '');
 
@@ -87,41 +83,17 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 					<>
 						{/* Action buttons */}
 						<div className="pktw-flex pktw-items-center pktw-gap-1">
-							{/* Scroll buttons */}
-							<IconButton
-								size="lg"
-								onClick={onScrollToTop}
-								title="Scroll to top"
-							>
-								<ArrowUp className="pktw-w-4 pktw-h-4" />
-							</IconButton>
-							<IconButton
-								size="lg"
-								onClick={onScrollToBottom}
-								title="Scroll to latest"
-							>
-								<ArrowDown className="pktw-w-4 pktw-h-4" />
-							</IconButton>
-
 							{/* Resources button */}
+							<ResourcesPopover />
+
+							{/* Summary button */}
 							<IconButton
 								size="lg"
-								onClick={() => setShowResourcesModal(true)}
-								title="View conversation resources"
+								onClick={() => setShowSummaryModal(true)}
+								title="View conversation summary"
 							>
-								<List className="pktw-w-4 pktw-h-4" />
+								<Brain className="pktw-w-4 pktw-h-4" />
 							</IconButton>
-
-							{/* Summary button (if available) */}
-							{activeConversation.context?.shortSummary && (
-								<IconButton
-									size="lg"
-									onClick={() => setShowSummaryModal(true)}
-									title="View conversation summary"
-								>
-									<Lightbulb className="pktw-w-4 pktw-h-4" />
-								</IconButton>
-							)}
 
 							{/* Open source button */}
 							<IconButton
@@ -129,7 +101,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 								onClick={handleOpenSource}
 								title="Open source document"
 							>
-								<FileText className="pktw-w-4 pktw-h-4" />
+								<ExternalLink className="pktw-w-4 pktw-h-4" />
 							</IconButton>
 						</div>
 					</>

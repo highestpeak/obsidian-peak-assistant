@@ -268,9 +268,8 @@ export interface Summarizable {
 	 */
 	getSummary(
 		source: Document | string,
-		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
-		provider: string,
-		modelId: string
+		provider?: string,
+		modelId?: string
 	): Promise<ResourceSummary>;
 }
 

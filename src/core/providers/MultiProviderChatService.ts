@@ -1,7 +1,8 @@
-import { LLMProviderService, ProviderConfig, ModelMetaData, ProviderMetaData, ModelInfoForSettings } from './types';
+import { LLMProviderService, ProviderConfig, ModelMetaData, ProviderMetaData } from './types';
 import { LLMRequest } from './types';
 import { AIStreamEvent } from './types-events';
 import { ProviderServiceFactory } from './base/factory';
+import { BusinessError, ErrorCode } from '@/core/errors';
 
 export interface MultiProviderChatServiceOptions {
 	providerConfigs?: Record<string, ProviderConfig>;
@@ -86,11 +87,17 @@ export class MultiProviderChatService implements LLMProviderService {
 
 		const config = this.getConfigForProvider(provider);
 		if (!config) {
-			throw new Error(`Configuration for provider ${provider} is missing`);
+			throw new BusinessError(
+				ErrorCode.CONFIGURATION_MISSING,
+				`Configuration for provider ${provider} is missing`
+			);
 		}
 		const newService = this.createProviderService(provider, config);
 		if (!newService) {
-			throw new Error(`Failed to create service for provider ${provider}`);
+			throw new BusinessError(
+				ErrorCode.MODEL_UNAVAILABLE,
+				`Failed to create service for provider ${provider}`
+			);
 		}
 		this.providerServiceMap.set(provider, newService);
 		return newService;

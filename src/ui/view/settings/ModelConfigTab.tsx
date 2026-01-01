@@ -6,11 +6,16 @@ import { ModelSelector } from '@/ui/component/mine/ModelSelector';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 import { CollapsibleSettingsSection } from '@/ui/component/shared-ui/CollapsibleSettingsSection';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
+import type { LLMOutputControlSettings } from '@/core/providers/types';
+import { OutputControlSettingsList } from '@/ui/component/mine/LLMOutputControlSettings';
+import { EventBus, ViewEventType, SettingsUpdatedEvent } from '@/core/eventBus';
+import { PromptId, CONFIGURABLE_PROMPT_IDS } from '@/service/prompt/PromptId';
 
 interface ChatTabProps {
 	settings: MyPluginSettings;
 	aiServiceManager: AIServiceManager;
 	settingsUpdates: SettingsUpdates;
+	eventBus?: EventBus;
 }
 
 interface ModelConfigItem {
@@ -31,6 +36,7 @@ function ModelSelectorField({
 	onChange,
 	models,
 	isLoading,
+	onMenuOpen,
 }: {
 	label: string;
 	description: string;
@@ -38,6 +44,7 @@ function ModelSelectorField({
 	onChange: (provider: string, modelId: string) => Promise<void>;
 	models: ModelInfoForSwitch[];
 	isLoading: boolean;
+	onMenuOpen?: () => void;
 }) {
 	return (
 		<div className="pktw-mb-6 pktw-flex pktw-items-start pktw-gap-4">
@@ -59,6 +66,7 @@ function ModelSelectorField({
 					onChange={onChange}
 					placeholder="Select model"
 					buttonClassName="pktw-w-full pktw-justify-start"
+					onMenuOpen={onMenuOpen}
 				/>
 			</div>
 		</div>
@@ -68,7 +76,7 @@ function ModelSelectorField({
 /**
  * Model configuration tab with AI provider settings and model usage configuration.
  */
-export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates }: ChatTabProps) {
+export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, eventBus }: ChatTabProps) {
 	const [models, setModels] = useState<ModelInfoForSwitch[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
@@ -90,7 +98,21 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates }: 
 		loadModels();
 	}, [loadModels]);
 
-	const { updateAISettings, updateDefaultModel, updateSearchModel, updateChunkingModel } = settingsUpdates;
+	// Listen to settings update events to refresh model list
+	useEffect(() => {
+		if (!eventBus) return;
+
+		const unsubscribe = eventBus.on(ViewEventType.SETTINGS_UPDATED, () => {
+			// Reload models when settings are updated (e.g., provider enabled/disabled)
+			loadModels();
+		});
+
+		return () => {
+			unsubscribe();
+		};
+	}, [eventBus, loadModels]);
+
+	const { updateAISettings, updateDefaultModel, updateSearchModel, updateChunkingModel, updatePromptModel } = settingsUpdates;
 
 	const modelConfigs: ModelConfigItem[] = [
 		{
@@ -159,8 +181,61 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates }: 
 							onChange={config.onChange}
 							models={models}
 							isLoading={isLoading}
+							onMenuOpen={loadModels}
 						/>
 					))}
+				</div>
+			</CollapsibleSettingsSection>
+
+			{/* Prompt Model Configuration Section */}
+			<CollapsibleSettingsSection title="Prompt Model Configuration" defaultOpen={false}>
+				<div className="pktw-mb-6">
+					<p className="pktw-text-sm pktw-text-muted-foreground">
+						Configure AI models for each prompt type. If not configured, prompts will use the default model.
+					</p>
+				</div>
+
+				<div className="pktw-space-y-6">
+					{CONFIGURABLE_PROMPT_IDS.map((promptId) => {
+						const promptModel = settings.ai.promptModelMap?.[promptId];
+						const currentModel = promptModel || settings.ai.defaultModel;
+						const promptLabel = promptId
+							.split('-')
+							.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+							.join(' ');
+
+						return (
+							<ModelSelectorField
+								key={promptId}
+								label={promptLabel}
+								description={`Model for ${promptId} prompt. Falls back to default model if not configured.`}
+								currentModel={currentModel}
+								onChange={(provider, modelId) => updatePromptModel(promptId, provider, modelId)}
+								models={models}
+								isLoading={isLoading}
+								onMenuOpen={loadModels}
+							/>
+						);
+					})}
+				</div>
+			</CollapsibleSettingsSection>
+
+			{/* LLM Output Control Settings Section */}
+			<CollapsibleSettingsSection title="LLM Output Control (Default)" defaultOpen={false}>
+				<div className="pktw-mb-4">
+					<p className="pktw-text-sm pktw-text-muted-foreground">
+						Configure default output control settings for all models. These settings can be temporarily overridden in the chat interface.
+					</p>
+				</div>
+				<div className="pktw-space-y-1">
+					<OutputControlSettingsList
+						settings={settings.ai.defaultOutputControl || {}}
+						onChange={(outputControl: LLMOutputControlSettings) => {
+							updateAISettings({ defaultOutputControl: outputControl });
+						}}
+						variant="default"
+						useLocalState={true}
+					/>
 				</div>
 			</CollapsibleSettingsSection>
 		</div>

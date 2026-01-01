@@ -1,5 +1,5 @@
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings, SearchSettings } from '@/app/settings/types';
-import { ProviderConfig } from '@/core/providers/types';
+import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { DEFAULT_COMMAND_HIDDEN_SETTINGS } from '@/service/CommandHiddenControlService';
 
 /**
@@ -14,13 +14,6 @@ function getString(source: unknown, defaultValue: string): string {
  */
 function getBoolean(source: unknown, defaultValue: boolean): boolean {
 	return typeof source === 'boolean' ? source : defaultValue;
-}
-
-/**
- * Get object value from source with type check.
- */
-function getObject<T>(source: unknown, defaultValue: T): T {
-	return (source && typeof source === 'object') ? (source as T) : defaultValue;
 }
 
 /**
@@ -59,6 +52,16 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 	settings.profileFilePath = getString(rawAI.profileFilePath, settings.profileFilePath ?? '');
 	settings.promptRewriteEnabled = getBoolean(rawAI.promptRewriteEnabled, settings.promptRewriteEnabled ?? false);
 
+	// Prompt model map
+	if (rawAI.promptModelMap && typeof rawAI.promptModelMap === 'object') {
+		settings.promptModelMap = rawAI.promptModelMap as Partial<Record<string, { provider: string; modelId: string }>>;
+	}
+
+	// Default output control settings
+	if (rawAI.defaultOutputControl && typeof rawAI.defaultOutputControl === 'object') {
+		settings.defaultOutputControl = rawAI.defaultOutputControl as LLMOutputControlSettings;
+	}
+
 	return settings;
 }
 
@@ -86,10 +89,33 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 
 	// Chunking settings
 	if (rawSearch.chunking && typeof rawSearch.chunking === 'object') {
+		const rawChunking = rawSearch.chunking as Partial<typeof DEFAULT_SEARCH_SETTINGS.chunking>;
 		settings.chunking = {
 			...DEFAULT_SEARCH_SETTINGS.chunking,
-			...rawSearch.chunking,
+			maxChunkSize: typeof rawChunking.maxChunkSize === 'number' ? rawChunking.maxChunkSize : DEFAULT_SEARCH_SETTINGS.chunking.maxChunkSize,
+			chunkOverlap: typeof rawChunking.chunkOverlap === 'number' ? rawChunking.chunkOverlap : DEFAULT_SEARCH_SETTINGS.chunking.chunkOverlap,
+			minDocumentSizeForChunking: typeof rawChunking.minDocumentSizeForChunking === 'number' ? rawChunking.minDocumentSizeForChunking : DEFAULT_SEARCH_SETTINGS.chunking.minDocumentSizeForChunking,
 		};
+
+		// Embedding model
+		if (rawChunking.embeddingModel && typeof rawChunking.embeddingModel === 'object') {
+			const model = rawChunking.embeddingModel as { provider?: unknown; modelId?: unknown };
+			const provider = getString(model.provider, '');
+			const modelId = getString(model.modelId, '');
+			if (provider && modelId) {
+				settings.chunking.embeddingModel = { provider, modelId };
+			}
+		}
+
+		// Rerank model
+		if (rawChunking.rerankModel && typeof rawChunking.rerankModel === 'object') {
+			const model = rawChunking.rerankModel as { provider?: unknown; modelId?: unknown };
+			const provider = getString(model.provider, '');
+			const modelId = getString(model.modelId, '');
+			if (provider && modelId) {
+				settings.chunking.rerankModel = { provider, modelId };
+			}
+		}
 	}
 
 	// Search summary model
@@ -99,6 +125,16 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 		const modelId = getString(model.modelId, '');
 		if (provider && modelId) {
 			settings.searchSummaryModel = { provider, modelId };
+		}
+	}
+
+	// Image description model
+	if (rawSearch.imageDescriptionModel && typeof rawSearch.imageDescriptionModel === 'object') {
+		const model = rawSearch.imageDescriptionModel as { provider?: unknown; modelId?: unknown };
+		const provider = getString(model.provider, '');
+		const modelId = getString(model.modelId, '');
+		if (provider && modelId) {
+			settings.imageDescriptionModel = { provider, modelId };
 		}
 	}
 

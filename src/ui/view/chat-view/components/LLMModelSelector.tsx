@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { AlertTriangle } from 'lucide-react';
@@ -6,6 +6,8 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ModelSelector } from '@/ui/component/mine/ModelSelector';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 import { SettingsUpdatedEvent, ViewEventType } from '@/core/eventBus';
+import { cn } from '@/ui/react/lib/utils';
+import { usePopupPosition } from '@/ui/hooks/usePopupPosition';
 
 /**
  * React component for model selector in chat view.
@@ -19,6 +21,8 @@ export const LLMModelSelector: React.FC = () => {
 	const setInitialSelectedModel = useChatViewStore((state) => state.setInitialSelectedModel);
 	const [models, setModels] = useState<ModelInfoForSwitch[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const tooltipContainerRef = useRef<HTMLDivElement>(null);
+	const tooltipRef = useRef<HTMLDivElement>(null);
 
 	// Load models function
 	const loadModels = useCallback(async () => {
@@ -51,6 +55,7 @@ export const LLMModelSelector: React.FC = () => {
 	// Calculate current model id and provider for comparison (reactive)
 	// If there's an active conversation, use its model; otherwise use initial selected model or default
 	const currentModelId = useMemo(() => {
+		console.log('[LLMModelSelector] currentModelId:', activeConversation, initialSelectedModel);
 		if (activeConversation) {
 			return activeConversation.meta.activeModel;
 		}
@@ -69,6 +74,10 @@ export const LLMModelSelector: React.FC = () => {
 		}
 		return manager?.getSettings().defaultModel.provider;
 	}, [activeConversation?.meta.activeProvider, initialSelectedModel, manager]);
+
+	useEffect(() => {
+		console.log('[LLMModelSelector] currentModelId or currentProvider changed1:', { currentModelId, currentProvider });
+	}, [currentModelId, currentProvider]);
 
 	// Get current model for selector
 	const currentModel = useMemo(() => {
@@ -115,17 +124,24 @@ export const LLMModelSelector: React.FC = () => {
 		};
 	}, [currentModelId, currentProvider, manager]);
 
+	// Calculate tooltip position based on available space
+	const tooltipPosition = usePopupPosition(tooltipContainerRef, tooltipRef, !isModelAvailable, 120);
+
 	// Handle model change
 	const handleModelChange = useCallback(
 		async (provider: string, modelId: string) => {
+			console.log('handleModelChange', provider, modelId, activeConversation);
 			if (activeConversation) {
 				// If there's an active conversation, update it
-				const updatedConv = await manager.updateConversationModel({
-					conversation: activeConversation,
-					project: activeProject,
+				await manager.updateConversationModel({
+					conversationId: activeConversation.meta.id,
 					modelId,
 					provider: provider,
 				});
+				const updatedConv = await manager.readConversation(activeConversation.meta.id, false);
+				if (!updatedConv) {
+					throw new Error('Failed to update conversation model');
+				}
 
 				// Update conversation in store
 				useChatViewStore.getState().setConversation(updatedConv);
@@ -137,6 +153,8 @@ export const LLMModelSelector: React.FC = () => {
 		[activeConversation, activeProject, manager, setInitialSelectedModel]
 	);
 
+	// Tooltip position is calculated by usePopupPosition hook
+
 	return (
 		<div className="pktw-flex pktw-items-center pktw-gap-1.5">
 			<ModelSelector
@@ -147,17 +165,31 @@ export const LLMModelSelector: React.FC = () => {
 				placeholder="No model selected"
 			/>
 			{!isModelAvailable && currentModelId && unavailabilityReason && (
-				<div className="pktw-relative pktw-flex-shrink-0 pktw-group">
+				<div ref={tooltipContainerRef} className="pktw-relative pktw-flex-shrink-0 pktw-group">
 					<AlertTriangle
 						className="pktw-text-[#ff6b6b] pktw-cursor-help"
 						size={16}
 						style={{ minWidth: '16px' }}
 					/>
-					{/* Tooltip - displayed below the icon */}
-					<div className="pktw-absolute pktw-top-full pktw-left-1/2 pktw-transform pktw--translate-x-1/2 pktw-mt-2 pktw-opacity-0 pktw-invisible group-hover:pktw-opacity-100 group-hover:pktw-visible pktw-transition-opacity pktw-duration-200 pktw-z-[10001] pktw-pointer-events-none">
+					{/* Tooltip - position dynamically based on available space */}
+					<div
+						ref={tooltipRef}
+						className={cn(
+							'pktw-absolute pktw-left-1/2 pktw-transform pktw--translate-x-1/2 pktw-opacity-0 pktw-invisible group-hover:pktw-opacity-100 group-hover:pktw-visible pktw-transition-opacity pktw-duration-200 pktw-z-[10001] pktw-pointer-events-none',
+							tooltipPosition === 'bottom' ? 'pktw-top-full pktw-mt-2' : 'pktw-bottom-full pktw-mb-2'
+						)}
+					>
 						<div className="pktw-bg-[#000000] pktw-text-white pktw-text-xs pktw-rounded pktw-px-4 pktw-py-2.5 pktw-shadow-lg pktw-min-w-[320px] pktw-max-w-[400px] pktw-whitespace-normal">
 							{unavailabilityReason}
-							<div className="pktw-absolute pktw-bottom-full pktw-left-1/2 pktw-transform pktw--translate-x-1/2 pktw-w-0 pktw-h-0 pktw-border-l-[6px] pktw-border-r-[6px] pktw-border-b-[6px] pktw-border-transparent pktw-border-b-[#000000]"></div>
+							{/* Arrow pointer */}
+							<div
+								className={cn(
+									'pktw-absolute pktw-left-1/2 pktw-transform pktw--translate-x-1/2 pktw-w-0 pktw-h-0 pktw-border-l-[6px] pktw-border-r-[6px] pktw-border-transparent',
+									tooltipPosition === 'bottom'
+										? 'pktw-bottom-full pktw-border-b-[6px] pktw-border-b-[#000000]'
+										: 'pktw-top-full pktw-border-t-[6px] pktw-border-t-[#000000]'
+								)}
+							></div>
 						</div>
 					</div>
 				</div>

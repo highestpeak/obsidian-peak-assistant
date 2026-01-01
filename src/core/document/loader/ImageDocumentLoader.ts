@@ -2,7 +2,7 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
-import { generateContentHash } from '@/core/utils/markdown-utils';
+import { generateContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings, SearchSettings } from '@/app/settings/types';
@@ -21,7 +21,7 @@ export class ImageDocumentLoader implements DocumentLoader {
 		private readonly app: App,
 		private readonly settings: SearchSettings,
 		private readonly aiServiceManager?: AIServiceManager
-	) {}
+	) { }
 
 	getDocumentType(): DocumentType {
 		return 'image';
@@ -102,10 +102,12 @@ export class ImageDocumentLoader implements DocumentLoader {
 	 */
 	async getSummary(
 		source: Document | string,
-		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
-		provider: string,
-		modelId: string
+		provider?: string,
+		modelId?: string
 	): Promise<ResourceSummary> {
+		if (!this.aiServiceManager) {
+			throw new Error('ImageDocumentLoader requires AIServiceManager to generate summaries');
+		}
 		if (typeof source === 'string') {
 			throw new Error('ImageDocumentLoader.getSummary requires a Document, not a string');
 		}
@@ -114,7 +116,7 @@ export class ImageDocumentLoader implements DocumentLoader {
 		const title = doc.metadata.title || doc.sourceFileInfo.name;
 		const path = doc.sourceFileInfo.path;
 
-		const shortSummary = await promptService.chatWithPrompt(
+		const shortSummary = await this.aiServiceManager.chatWithPrompt(
 			PromptId.ImageSummary,
 			{ content, title, path },
 			provider,
@@ -127,8 +129,8 @@ export class ImageDocumentLoader implements DocumentLoader {
 	private async readImageFile(file: TFile): Promise<Document | null> {
 		try {
 			const content = await this.generateImageDescription(file);
-			
-			const contentHash = await generateContentHash(content);
+
+			const contentHash = generateContentHash(content);
 
 			return {
 				id: file.path,
@@ -182,22 +184,26 @@ export class ImageDocumentLoader implements DocumentLoader {
 			const base64 = Buffer.from(arrayBuffer).toString('base64');
 			const mimeType = this.getMimeType(file.extension);
 			const dataUrl = `data:${mimeType};base64,${base64}`;
-			
+			console.debug('[ImageDocumentLoader] dataUrl:', dataUrl);
+
 			// Get model and provider from settings
 			// Use imageDescriptionModel if configured, otherwise fallback to AI settings defaultModel
 			let modelConfig = this.settings.imageDescriptionModel;
+			console.debug('[ImageDocumentLoader] modelConfig from settings:', modelConfig);
 			if (!modelConfig && this.aiServiceManager) {
 				// Try to get defaultModel from AIServiceManager
 				const aiSettings = (this.aiServiceManager as any).settings;
 				if (aiSettings?.defaultModel) {
 					modelConfig = aiSettings.defaultModel;
+					console.debug('[ImageDocumentLoader] defaultModel from AIServiceManager:', modelConfig);
 				}
 			}
 			// Final fallback to default settings
 			if (!modelConfig) {
 				modelConfig = DEFAULT_SEARCH_SETTINGS.imageDescriptionModel!;
+				console.debug('[ImageDocumentLoader] defaultModel from DEFAULT_SEARCH_SETTINGS:', modelConfig);
 			}
-			
+
 			// Get MultiProviderChatService through AIServiceManager
 			const multiChat = this.aiServiceManager.getMultiChat();
 			const request: LLMRequest = {
@@ -219,9 +225,10 @@ export class ImageDocumentLoader implements DocumentLoader {
 					},
 				],
 			};
-			
+
 			// Call AI service
 			const response = await multiChat.blockChat(request);
+			console.debug('[ImageDocumentLoader] response:', response);
 			return response.content || `[Image: ${file.basename}]`;
 		} catch (error) {
 			console.error('Error generating image description with AI:', error);

@@ -11,7 +11,6 @@ export class TagResourceLoader implements ResourceLoader {
     // todo: implement getSummary
 	async getSummary(
 		source: string | any,
-		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
 		provider: string,
 		modelId: string
 	): Promise<ResourceSummary> {

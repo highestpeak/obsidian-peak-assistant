@@ -1,43 +1,243 @@
-import React, { useCallback, useState } from 'react';
-import { Menu, TFile } from 'obsidian';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Menu, TFile, App } from 'obsidian';
 import { ChatMessage, ChatConversation, ChatProject } from '@/service/chat/types';
-import { getFileTypeFromPath, getAttachmentStats } from '@/ui/view/shared/file-utils';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { useProjectStore } from '@/ui/store/projectStore';
+import { useStreamChat } from '../hooks/useStreamChat';
 import { cn } from '@/ui/react/lib/utils';
-import { Copy, Check, RefreshCw, FileText, File } from 'lucide-react';
+import { COLLAPSED_USER_MESSAGE_CHAR_LIMIT } from '@/core/constant';
+import { Copy, RefreshCw, Star, Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+	Message,
+	MessageContent,
+	MessageActions,
+	MessageAction,
+	MessageAttachment,
+} from '@/ui/component/ai-elements';
+import { FilePreviewHover } from '@/ui/component/mine/file-preview-hover';
+import { Streamdown } from 'streamdown';
+import type { FileUIPart } from 'ai';
 
 /**
- * Copy button component with visual feedback
+ * Component for rendering message attachments
  */
-const CopyButton: React.FC<{ onCopy: () => Promise<void> }> = ({ onCopy }) => {
-	const [copied, setCopied] = useState(false);
+const MessageAttachmentsList: React.FC<{
+	message: ChatMessage;
+	app: App;
+}> = ({ message, app }) => {
+	const fileAttachments = useMemo(() => {
+		if (!message.resources || message.resources.length === 0) {
+			return [];
+		}
 
-	const handleClick = useCallback(async (e: React.MouseEvent) => {
-		e.stopPropagation();
-		await onCopy();
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
-	}, [onCopy]);
+		const fileParts: Array<FileUIPart & { _originalPath?: string; _fileType?: 'image' | 'markdown' | 'file' }> = [];
 
-	const Icon = copied ? Check : Copy;
+		// Process resources
+		message.resources.forEach((resource) => {
+			const normalizedPath = resource.source.startsWith('/') ? resource.source.slice(1) : resource.source;
+			const file = app.vault.getAbstractFileByPath(normalizedPath);
+			const fileName = resource.source.split('/').pop() || resource.source;
+
+			if (file instanceof TFile) {
+				const resourcePath = app.vault.getResourcePath(file);
+				const isImage = file.extension && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(file.extension.toLowerCase());
+				const isMarkdown = file.extension === 'md';
+
+				fileParts.push({
+					type: 'file',
+					url: resourcePath,
+					filename: fileName,
+					mediaType: isImage ? `image/${file.extension}` : 'application/octet-stream',
+					_originalPath: normalizedPath,
+					_fileType: isImage ? 'image' : isMarkdown ? 'markdown' : 'file',
+				});
+			}
+		});
+
+		return fileParts;
+	}, [message.resources, app]);
+
+	if (fileAttachments.length === 0) {
+		return null;
+	}
 
 	return (
-		<button
-			className="pktw-bg-transparent pktw-border-0 pktw-shadow-none pktw-cursor-pointer pktw-text-[14px] pktw-text-muted-foreground pktw-p-0 pktw-rounded-none pktw-transition-all pktw-duration-200 pktw-flex pktw-items-center pktw-justify-center pktw-min-w-6 pktw-h-6 pktw-box-border pktw-outline-none pktw-leading-none hover:pktw-bg-accent hover:pktw-text-white focus-visible:pktw-outline-none focus-visible:pktw-shadow-none"
-			aria-label="Copy message"
-			title="Copy"
-			onClick={handleClick}
-		>
-			<Icon 
-				size={14} 
-				strokeWidth={copied ? 3 : 2}
-				className={cn(
-					'pktw-flex-shrink-0 pktw-align-middle pktw-inline-block pktw-transition-colors pktw-duration-200',
-					copied && 'pktw-text-[var(--interactive-accent)]'
+		<div className="pktw-flex pktw-flex-wrap pktw-gap-2 pktw-w-full pktw-max-w-full pktw-min-w-0">
+			{fileAttachments.map((attachment, index) => {
+				const originalPath = (attachment as any)._originalPath;
+				const fileType = (attachment as any)._fileType;
+
+				const attachmentElement = (
+					<div className="pktw-cursor-pointer pktw-transition-opacity hover:pktw-opacity-90 pktw-flex-shrink-0">
+						<MessageAttachment
+							data={attachment}
+							onClick={async (e) => {
+								e.stopPropagation();
+								if (!originalPath) return;
+								const file = app.vault.getAbstractFileByPath(originalPath);
+								if (file instanceof TFile) {
+									const leaf = app.workspace.getLeaf(false);
+									await leaf.openFile(file);
+								}
+							}}
+						/>
+					</div>
+				);
+
+				// Use FilePreviewHover for images and markdown files
+				if (fileType === 'image' || fileType === 'markdown') {
+					return (
+						<FilePreviewHover
+							key={index}
+							filePath={originalPath}
+							fileType={fileType}
+							app={app}
+							previewClassName="pktw-z-[100]"
+						>
+							{attachmentElement}
+						</FilePreviewHover>
+					);
+				}
+
+				// For other files, return without preview
+				return (
+					<React.Fragment key={index}>
+						{attachmentElement}
+					</React.Fragment>
+				);
+			})}
+		</div>
+	);
+};
+
+/**
+ * Component for rendering message action buttons
+ */
+const MessageActionsList: React.FC<{
+	message: ChatMessage;
+	isLastMessage: boolean;
+	isStreaming: boolean;
+	copied: boolean;
+	onToggleStar: (messageId: string, starred: boolean) => void;
+	onCopy: () => void;
+	onRegenerate: (messageId: string) => void;
+}> = ({ message, isLastMessage, isStreaming, copied, onToggleStar, onCopy, onRegenerate }) => {
+	if (isStreaming) {
+		return null;
+	}
+
+	return (
+		<MessageActions>
+			<MessageAction
+				tooltip={message.starred ? 'Unstar message' : 'Star message'}
+				label={message.starred ? 'Unstar message' : 'Star message'}
+				onClick={(e) => {
+					e.stopPropagation();
+					onToggleStar(message.id, !message.starred);
+				}}
+			>
+				<Star
+					size={12}
+					strokeWidth={2}
+					className={cn(
+						message.starred && 'pktw-fill-current'
+					)}
+				/>
+			</MessageAction>
+
+			<MessageAction
+				tooltip={copied ? 'Copied!' : 'Copy message'}
+				label="Copy message"
+				onClick={(e) => {
+					e.stopPropagation();
+					onCopy();
+				}}
+			>
+				{copied ? (
+					<Check size={12} strokeWidth={copied ? 3 : 2} />
+				) : (
+					<Copy size={12} strokeWidth={2} />
 				)}
-			/>
-		</button>
+			</MessageAction>
+
+			{message.role === 'assistant' && isLastMessage && (
+				<MessageAction
+					tooltip="Regenerate response"
+					label="Regenerate response"
+					onClick={async (e) => {
+						e.stopPropagation();
+						onRegenerate(message.id);
+					}}
+				>
+					<RefreshCw size={12} strokeWidth={2} />
+				</MessageAction>
+			)}
+		</MessageActions>
+	);
+};
+
+/**
+ * Component for displaying message metadata (time, timezone, tokens, model)
+ */
+const MessageMetadata: React.FC<{
+	message: ChatMessage;
+}> = ({ message }) => {
+	const formatDate = useMemo(() => {
+		if (!message.createdAtTimestamp) return '';
+		const date = new Date(message.createdAtTimestamp);
+		return date.toLocaleString('en-US', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+			timeZone: message.createdAtZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+		});
+	}, [message.createdAtTimestamp, message.createdAtZone]);
+
+	const timezone = message.createdAtZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+	const totalTokens = message.tokenUsage
+		? (() => {
+			const usage = message.tokenUsage as any;
+			return usage.totalTokens ?? usage.total_tokens ??
+				((usage.promptTokens ?? usage.prompt_tokens ?? 0) + (usage.completionTokens ?? usage.completion_tokens ?? 0));
+		})()
+		: null;
+
+	const modelInfo = message.model ? `${message.provider || ''}/${message.model}`.replace(/^\//, '') : null;
+
+	const hasFirstLine = modelInfo || totalTokens !== null;
+	const hasSecondLine = formatDate || timezone;
+
+	if (!hasFirstLine && !hasSecondLine) return null;
+
+	return (
+		<div className="pktw-mt-2 pktw-text-xs pktw-text-muted-foreground pktw-flex pktw-flex-col pktw-gap-1 pktw-select-text">
+			{/* First line: model and token */}
+			{hasFirstLine && (
+				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-flex-wrap">
+					{modelInfo && (
+						<span className="pktw-whitespace-nowrap">{modelInfo}</span>
+					)}
+					{totalTokens !== null && (
+						<span className="pktw-whitespace-nowrap">{totalTokens} tokens</span>
+					)}
+				</div>
+			)}
+			{/* Second line: date and timezone */}
+			{hasSecondLine && (
+				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-flex-wrap">
+					{formatDate && (
+						<span className="pktw-whitespace-nowrap">{formatDate}</span>
+					)}
+					{timezone && (
+						<span className="pktw-whitespace-nowrap">({timezone})</span>
+					)}
+				</div>
+			)}
+		</div>
 	);
 };
 
@@ -47,6 +247,7 @@ interface MessageItemProps {
 	activeProject: ChatProject | null;
 	isStreaming?: boolean;
 	streamingContent?: string;
+	isLastMessage?: boolean;
 	onScrollToBottom?: () => void;
 }
 
@@ -59,29 +260,47 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	activeProject,
 	isStreaming = false,
 	streamingContent = '',
+	isLastMessage = false,
 	onScrollToBottom,
 }) => {
-	const { manager, app } = useServiceContext();
+	const { manager, app, eventBus } = useServiceContext();
+
 	const handleToggleStar = useCallback(async (messageId: string, starred: boolean) => {
 		if (!activeConversation) return;
-		const updatedConv = await manager.toggleStar({
+		await manager.toggleStar({
 			messageId,
-			conversation: activeConversation,
-			project: activeProject,
+			conversationId: activeConversation.meta.id,
 			starred,
 		});
+		// Update conversation state locally
+		const updatedMessages = activeConversation.messages.map(msg =>
+			msg.id === messageId ? { ...msg, starred } : msg
+		);
+		const updatedConv = {
+			...activeConversation,
+			messages: updatedMessages,
+		};
 		useChatViewStore.getState().setConversation(updatedConv);
-	}, [activeConversation, activeProject, manager]);
+		useProjectStore.getState().updateConversation(updatedConv);
+		useProjectStore.getState().setActiveConversation(updatedConv);
+		// Dispatch event to notify other components
+		const { ConversationUpdatedEvent } = await import('@/core/eventBus');
+		eventBus.dispatch(new ConversationUpdatedEvent({ conversation: updatedConv }));
+	}, [activeConversation, manager, eventBus]);
+
+	const { streamChat, updateConv } = useStreamChat();
 
 	const handleRegenerate = useCallback(async (messageId: string) => {
 		if (!activeConversation) return;
-		
+		if (!isLastMessage) return; // Only allow regenerating the last message
+
+		// Find the assistant message
 		const messageIndex = activeConversation.messages.findIndex(m => m.id === messageId);
-		if (messageIndex === -1 || messageIndex === 0) return;
-		
+		if (messageIndex === -1) return;
 		const assistantMessage = activeConversation.messages[messageIndex];
 		if (assistantMessage.role !== 'assistant') return;
-		
+
+		// Find the user message before the assistant message
 		let userMessageIndex = -1;
 		for (let i = messageIndex - 1; i >= 0; i--) {
 			if (activeConversation.messages[i].role === 'user') {
@@ -89,26 +308,70 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 				break;
 			}
 		}
-		
 		if (userMessageIndex === -1) return;
-		
 		const userMessage = activeConversation.messages[userMessageIndex];
-		
+
 		try {
-			const result = await manager.blockChat({
-				conversation: activeConversation,
+			// Create a conversation context up to the user message (for LLM request)
+			const conversationContext: ChatConversation = {
+				...activeConversation,
+				messages: activeConversation.messages.slice(0, userMessageIndex + 1),
+			};
+
+			// Stream chat to generate new assistant message
+			const streamResult = await streamChat({
+				conversation: conversationContext,
 				project: activeProject,
 				userContent: userMessage.content,
+				onScrollToBottom,
 			});
-			useChatViewStore.getState().setConversation(result.conversation);
-			onScrollToBottom?.();
+
+			// Replace the assistant message with the new one
+			if (streamResult.finalMessage) {
+				// Remove old message and add new one
+				// First, create a conversation with messages up to and including the user message
+				const conversationWithoutOldMessage: ChatConversation = {
+					...activeConversation,
+					messages: activeConversation.messages.slice(0, messageIndex),
+				};
+
+				// Add the new message using addMessage (this will update storage properly)
+				await manager.addMessage({
+					conversationId: conversationWithoutOldMessage.meta.id,
+					message: streamResult.finalMessage,
+					model: streamResult.finalMessage.model,
+					provider: streamResult.finalMessage.provider,
+					usage: streamResult.finalUsage ?? { inputTokens: -1, outputTokens: -1, totalTokens: -1 },
+				});
+			}
 		} catch (error) {
 			console.error('Failed to regenerate message:', error);
+			// Error handling is done inside streamChat hook
 		}
-	}, [activeConversation, activeProject, manager, onScrollToBottom]);
+	}, [activeConversation, activeProject, isLastMessage, streamChat, manager, updateConv, onScrollToBottom]);
+
+	const [copied, setCopied] = useState(false);
+	const [isExpanded, setIsExpanded] = useState(false);
+
+	// Determine if this is a user message or assistant message
+	const isUser = message.role === 'user'; // 'user' = 用户消息, 'assistant' = AI消息
+
+	// Get display content: if streaming, use streamingContent; otherwise use message.content
+	// Streaming logic: when AI is generating, isStreaming=true and streamingContent contains partial content
+	const displayContent = isStreaming ? (streamingContent || '') : message.content;
+
+	// Character limit for collapsed user messages (only for user messages, not streaming)
+	const contentLength = String(displayContent || '').length;
+	const shouldShowExpand = isUser && !isStreaming && contentLength > COLLAPSED_USER_MESSAGE_CHAR_LIMIT;
+	const displayText = shouldShowExpand && !isExpanded
+		? String(displayContent).slice(0, COLLAPSED_USER_MESSAGE_CHAR_LIMIT) + '...'
+		: String(displayContent);
+
 	const handleCopy = useCallback(async () => {
 		try {
 			await navigator.clipboard.writeText(message.content);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 2000);
 		} catch (err) {
 			console.error('Failed to copy:', err);
 		}
@@ -156,8 +419,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 			});
 		});
 
-		// Regenerate (only for assistant messages)
-		if (message.role === 'assistant') {
+		// Regenerate (only for last assistant message)
+		if (message.role === 'assistant' && isLastMessage) {
 			menu.addItem((item) => {
 				item.setTitle('Regenerate response');
 				item.setIcon('refresh-cw');
@@ -169,161 +432,100 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
 		// Show menu at cursor position
 		menu.showAtPosition({ x: e.clientX, y: e.clientY });
-	}, [message, handleCopy, handleToggleStar, handleRegenerate]);
-
-	const renderAttachments = useCallback((attachments: string[]) => {
-		const stats = getAttachmentStats(attachments);
-		const statsText: string[] = [];
-		if (stats.pdf > 0) statsText.push(`${stats.pdf} PDF${stats.pdf > 1 ? 's' : ''}`);
-		if (stats.image > 0) statsText.push(`${stats.image} image${stats.image > 1 ? 's' : ''}`);
-		if (stats.file > 0) statsText.push(`${stats.file} file${stats.file > 1 ? 's' : ''}`);
-
-		return (
-			<div className="pktw-flex pktw-flex-col pktw-items-start pktw-gap-1.5 pktw-w-full pktw-max-w-[420px] pktw-pt-1.5">
-				{statsText.length > 0 && (
-					<div className="pktw-text-xs pktw-text-muted-foreground">
-						{statsText.join(', ')}
-					</div>
-				)}
-				<div className="pktw-grid pktw-grid-cols-[repeat(auto-fit,minmax(140px,1fr))] pktw-gap-2 pktw-w-full">
-					{attachments.map((attachmentPath, index) => {
-						const type = getFileTypeFromPath(attachmentPath);
-						const normalizedPath = attachmentPath.startsWith('/') ? attachmentPath.slice(1) : attachmentPath;
-						const file = app.vault.getAbstractFileByPath(normalizedPath);
-						const isImage = type === 'image' && file && file instanceof TFile;
-						const fileName = attachmentPath.split('/').pop() || attachmentPath;
-
-						return (
-							<div
-								key={index}
-								className={cn(
-									"pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-gap-1.5 pktw-min-h-24 pktw-border pktw-rounded-xl pktw-p-2.5 pktw-shadow-sm pktw-cursor-pointer pktw-transition-colors",
-									type === 'pdf' && "pktw-bg-[#c92a2a] pktw-border-[#ca1f1f] pktw-text-white pktw-shadow-[0_4px_12px_rgba(201,42,42,0.35)]",
-									type === 'image' && "pktw-bg-[#ecfeff] pktw-border-[#67e8f9]",
-									type === 'file' && "pktw-bg-secondary pktw-border-border",
-									"hover:pktw-border-accent"
-								)}
-								onClick={async () => {
-									if (isImage && file instanceof TFile) {
-										const leaf = app.workspace.getLeaf(false);
-										await leaf.openFile(file);
-									} else {
-										await app.workspace.openLinkText(attachmentPath, '', true);
-									}
-								}}
-							>
-								{isImage && file instanceof TFile ? (
-									<img
-										src={app.vault.getResourcePath(file)}
-										alt={file.name}
-										className="pktw-max-w-full pktw-max-h-20 pktw-rounded-lg pktw-object-contain"
-									/>
-								) : (
-									<>
-										<div className="pktw-flex pktw-items-center pktw-justify-center pktw-flex-1">
-											{type === 'pdf' ? (
-												<FileText 
-													size={32} 
-													strokeWidth={2}
-													className="pktw-flex-shrink-0 pktw-align-middle pktw-inline-block pktw-transition-colors pktw-duration-200"
-												/>
-											) : (
-												<File 
-													size={32} 
-													strokeWidth={2}
-													className="pktw-flex-shrink-0 pktw-align-middle pktw-inline-block pktw-transition-colors pktw-duration-200"
-												/>
-											)}
-										</div>
-										<div className={cn(
-											"pktw-text-[13px] pktw-text-foreground pktw-text-center pktw-overflow-hidden pktw-text-ellipsis pktw-whitespace-nowrap pktw-w-full",
-											type === 'pdf' && "pktw-text-white"
-										)} title={attachmentPath}>
-											{fileName}
-										</div>
-									</>
-								)}
-							</div>
-						);
-					})}
-				</div>
-			</div>
-		);
-	}, [app]);
-
+	}, [message, handleCopy, handleToggleStar, handleRegenerate, isLastMessage]);
 
 	return (
 		<div
 			className={cn(
-				"pktw-flex pktw-w-full pktw-mb-4 pktw-px-4 pktw-box-border",
-				message.role === 'user' && "pktw-justify-end pktw-bg-transparent",
-				message.role === 'assistant' && "pktw-justify-start pktw-bg-transparent",
-				message.role === 'system' && "pktw-justify-center"
+				"pktw-mb-4 pktw-px-4 pktw-flex pktw-w-full",
+				isUser ? "pktw-justify-end" : "pktw-justify-start"
 			)}
 			data-message-id={message.id}
 			data-message-role={message.role}
+			onContextMenu={handleContextMenu}
 		>
-			<div
-				className={cn(
-					"pktw-max-w-[70%] pktw-relative pktw-flex pktw-flex-col pktw-gap-2",
-					message.role === 'user' && "pktw-items-end",
-					message.role === 'assistant' && "pktw-items-start"
-				)}
-				onContextMenu={handleContextMenu}
-			>
-				{message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
-				
-				<div 
-					data-message-bubble
-					className={cn(
-						"pktw-whitespace-pre-wrap pktw-break-words pktw-leading-[1.6] pktw-text-[15px] pktw-px-4 pktw-py-3 pktw-rounded-[18px] pktw-shadow-sm pktw-box-border pktw-max-w-full pktw-transition-shadow pktw-duration-200 pktw-select-text pktw-cursor-text",
-						message.role === 'user' && "pktw-bg-accent pktw-text-white pktw-rounded-br-[4px] pktw-shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:pktw-shadow-[0_2px_4px_rgba(0,0,0,0.12)]",
-						message.role === 'assistant' && "pktw-bg-secondary pktw-text-foreground pktw-border pktw-border-border pktw-rounded-bl-[4px] hover:pktw-shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:pktw-border-[var(--background-modifier-border-hover)]"
-					)}
-				>
-					{isStreaming ? streamingContent : message.content}
-				</div>
-
-				{!isStreaming && (
-					<div className={cn(
-						"pktw-flex pktw-gap-1 pktw-mt-0 pktw-mb-0 pktw-opacity-100 pktw-w-auto pktw-p-0 pktw-box-border",
-						message.role === 'user' && "pktw-justify-end",
-						message.role === 'assistant' && "pktw-justify-start"
-					)}>
-						<button
-							className="pktw-bg-transparent pktw-border-0 pktw-shadow-none pktw-cursor-pointer pktw-text-[14px] pktw-text-muted-foreground pktw-p-0 pktw-rounded-none pktw-transition-all pktw-duration-200 pktw-flex pktw-items-center pktw-justify-center pktw-min-w-6 pktw-h-6 pktw-box-border pktw-outline-none pktw-leading-none hover:pktw-bg-accent hover:pktw-text-white focus-visible:pktw-outline-none focus-visible:pktw-shadow-none"
-							aria-label={message.starred ? 'Unstar message' : 'Star message'}
-							title={message.starred ? 'Unstar' : 'Star'}
-							onClick={(e) => {
-								e.stopPropagation();
-								handleToggleStar(message.id, !message.starred);
-							}}
-						>
-							{message.starred ? '★' : '☆'}
-						</button>
-
-						<CopyButton onCopy={handleCopy} />
-
-						{message.role === 'assistant' && (
-							<button
-								className="pktw-bg-transparent pktw-border-0 pktw-shadow-none pktw-cursor-pointer pktw-text-[14px] pktw-text-muted-foreground pktw-p-0 pktw-rounded-none pktw-transition-all pktw-duration-200 pktw-flex pktw-items-center pktw-justify-center pktw-min-w-6 pktw-h-6 pktw-box-border pktw-outline-none pktw-leading-none hover:pktw-bg-accent hover:pktw-text-white focus-visible:pktw-outline-none focus-visible:pktw-shadow-none"
-								aria-label="Regenerate response"
-								title="Regenerate"
-								onClick={async (e) => {
-									e.stopPropagation();
-									handleRegenerate(message.id);
-								}}
-							>
-								<RefreshCw 
-									size={14} 
-									strokeWidth={2}
-									className="pktw-flex-shrink-0 pktw-align-middle pktw-inline-block pktw-transition-colors pktw-duration-200"
-								/>
-							</button>
-						)}
+			<Message from={message.role} className="pktw-max-w-[85%]">
+				{/* Render attachments if any - images should appear above text bubble */}
+				{message.resources && message.resources.length > 0 && (
+					<div className="pktw-mb-2 pktw-w-full pktw-max-w-full pktw-min-w-0 pktw-overflow-hidden">
+						<MessageAttachmentsList message={message} app={app} />
 					</div>
 				)}
-			</div>
+				
+				<MessageContent
+					className={cn(
+						isUser && "pktw-rounded-lg pktw-bg-secondary pktw-px-4 pktw-py-4 pktw-w-full"
+					)}
+				>
+					{/* Render message content */}
+					{/* Case 1: Streaming started but no content yet - show loading spinner */}
+					{isStreaming && !streamingContent ? (
+						<div className="pktw-flex pktw-items-center pktw-justify-start pktw-py-2">
+							<Loader2 className="pktw-size-4 pktw-animate-spin pktw-text-muted-foreground" />
+						</div>
+					) : displayContent ? (
+						/* Case 2: Has content (either streaming or complete) - render content */
+						<div className="pktw-relative">
+							{
+								isUser ? (
+									<div className="pktw-select-text">
+										{displayText}
+									</div>
+								) : (
+									<div
+										className="pktw-select-text"
+										data-streamdown-root
+									>
+										{/* Streamdown component handles animated rendering of streaming text */}
+										{/* isAnimating=true when streaming, false when complete */}
+										<Streamdown isAnimating={isStreaming}>{displayText}</Streamdown>
+									</div>
+								)
+							}
+							{/* Case 3: Show expand/collapse button for long user messages (not streaming, not AI) */}
+							{shouldShowExpand && (
+								<button
+									type="button"
+									onClick={(e) => {
+										e.stopPropagation();
+										setIsExpanded(!isExpanded);
+									}}
+									className={cn(
+										"pktw-mt-2 pktw-flex pktw-items-center pktw-gap-1 pktw-text-xs pktw-text-muted-foreground",
+										"hover:pktw-text-foreground pktw-transition-colors pktw-cursor-pointer"
+									)}
+								>
+									{isExpanded ? (
+										<>
+											<ChevronUp className="pktw-w-3 pktw-h-3" />
+											<span>Show less</span>
+										</>
+									) : (
+										<>
+											<ChevronDown className="pktw-w-3 pktw-h-3" />
+											<span>Expand</span>
+										</>
+									)}
+								</button>
+							)}
+						</div>
+					) : null}
+				</MessageContent>
+
+				{/* Render actions */}
+				<MessageActionsList
+					message={message}
+					isLastMessage={isLastMessage}
+					isStreaming={isStreaming}
+					copied={copied}
+					onToggleStar={handleToggleStar}
+					onCopy={handleCopy}
+					onRegenerate={handleRegenerate}
+				/>
+
+				{/* Render metadata */}
+				{!isStreaming && <MessageMetadata message={message} />}
+			</Message>
 		</div>
 	);
 };

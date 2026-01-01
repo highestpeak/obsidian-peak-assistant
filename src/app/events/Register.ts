@@ -165,7 +165,7 @@ function addChatViewButton(
 		}
 
 		// Find conversation using the correct project context
-		const conversations = await aiManager.listConversations(project?.meta);
+		const conversations = await aiManager.listConversations(projectId);
 		const conversation = conversations.find(c => c.meta.id === conversationId);
 		
 		if (conversation) {

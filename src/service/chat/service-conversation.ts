@@ -1,9 +1,10 @@
-import { normalizePath, TFile, TFolder } from 'obsidian';
+import { App } from 'obsidian';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
-import { LLMProviderService, LLMUsage } from '@/core/providers/types';
+import { LLMProviderService, LLMUsage, LLMOutputControlSettings } from '@/core/providers/types';
+import { AIServiceSettings } from '@/app/settings/types';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { DEFAULT_SUMMARY } from '@/core/constant';
-import { EventBus, MessageSentEvent, ConversationCreatedEvent } from '@/core/eventBus';
+import { EventBus, MessageSentEvent, ConversationCreatedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
 import { LLMRequestMessage } from '@/core/providers/types';
 import {
 	ChatContextWindow,
@@ -21,26 +22,10 @@ import { PromptId } from '@/service/prompt/PromptId';
 import { AIStreamEvent } from '@/core/providers/types-events';
 import { ResourceSummaryService } from './context/ResourceSummaryService';
 import { ContextBuilder } from './context/ContextBuilder';
-import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { ResourceLoaderManager } from '@/core/document/resource/helper/ResourceLoaderManager';
-
-/**
- * Create a basic chat message with timestamps.
- */
-export function createMessage(role: ChatMessage['role'], content: string, model: string, provider: string, timezone: string): ChatMessage {
-	const timestamp = Date.now();
-	return {
-		id: generateUuidWithoutHyphens(),
-		role,
-		content,
-		model,
-		provider,
-		createdAtTimestamp: timestamp,
-		createdAtZone: timezone,
-		starred: false,
-	};
-}
+import type { AIServiceManager } from './service-manager';
+import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 
 /**
  * Service for managing chat conversations.
@@ -50,22 +35,21 @@ export class ConversationService {
 	private readonly resourceLoaderManager: ResourceLoaderManager;
 
 	constructor(
+		private readonly app: App,
 		private readonly storage: ChatStorageService,
 		private readonly chat: LLMProviderService,
 		private readonly promptService: PromptService,
 		private readonly defaultModel: { provider: string; modelId: string },
-		private readonly resourceSummaryService?: ResourceSummaryService,
+		private readonly resourceSummaryService: ResourceSummaryService,
+		private readonly aiServiceManager: AIServiceManager,
 		private readonly profileService?: UserProfileService,
+		private readonly settings?: AIServiceSettings,
 	) {
-		this.resourceLoaderManager = new ResourceLoaderManager(storage.getApp(), DocumentLoaderManager.getInstance());
+		this.resourceLoaderManager = new ResourceLoaderManager(this.app, this.aiServiceManager, DocumentLoaderManager.getInstance());
 		// Initialize context builder
 		this.contextBuilder = new ContextBuilder(
 			this.promptService,
-			this.resourceSummaryService || new ResourceSummaryService(
-				storage.getApp(),
-				storage.getRootFolder(),
-				DEFAULT_AI_SERVICE_SETTINGS.resourcesSummaryFolder
-			),
+			this.resourceSummaryService,
 			this.profileService,
 		);
 	}
@@ -73,8 +57,8 @@ export class ConversationService {
 	/**
 	 * List conversations, optionally filtered by project.
 	 */
-	async listConversations(project?: ChatProjectMeta): Promise<ChatConversation[]> {
-		return this.storage.listConversations(project);
+	async listConversations(projectId: string | null): Promise<ChatConversation[]> {
+		return this.storage.listConversations(projectId);
 	}
 
 	/**
@@ -100,10 +84,15 @@ export class ConversationService {
 		};
 
 		const messages = params.initialMessages ?? [];
-		const conversation = await this.storage.saveConversation(params.project ?? null, meta, messages);
+		const conversation = await this.storage.saveConversation(
+			params.project ?? null,
+			meta,
+			undefined, // context
+			messages // messages
+		);
 
 		// Trigger conversation created event
-		const eventBus = EventBus.getInstance(this.storage.getApp());
+		const eventBus = EventBus.getInstance(this.app);
 		eventBus.dispatch(new ConversationCreatedEvent({
 			conversationId: conversation.meta.id,
 			projectId: conversation.meta.projectId ?? null,
@@ -114,33 +103,30 @@ export class ConversationService {
 
 	/**
 	 * Send a message and wait for the full model response (blocking).
+	 * Returns the assistant message and usage without persisting. Call addMessage to persist.
 	 */
 	async blockChat(params: {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
 		userContent: string;
 		attachments?: string[];
-	}): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
+	}): Promise<{ message: ChatMessage; usage?: LLMUsage }> {
 		const { conversation, project } = params;
 		const prepared = await this.prepareChatRequest(params);
 		const assistant = await this.chat.blockChat({
 			provider: prepared.provider,
 			model: prepared.modelId,
 			messages: prepared.llmMessages,
+			outputControl: prepared.outputControl,
 		});
 
-		const assistantMessage = createMessage('assistant', assistant.content, assistant.model, prepared.provider, prepared.timezone);
+		const assistantMessage = createChatMessage('assistant', assistant.content, assistant.model, prepared.provider, prepared.timezone);
 		assistantMessage.tokenUsage = assistant.usage;
 
-		const savedConversation = await this.persistExchange({
-			conversation,
-			project: project ?? null,
-			messages: [...prepared.messagesWithUser, assistantMessage],
-			model: assistant.model,
-			provider: prepared.provider,
-			tokenDelta: assistant.usage?.totalTokens ?? 0,
-		});
-		return { conversation: savedConversation, message: assistantMessage };
+		return {
+			message: assistantMessage,
+			usage: assistant.usage,
+		};
 	}
 
 	/**
@@ -159,6 +145,7 @@ export class ConversationService {
 				provider: prepared.provider,
 				model: prepared.modelId,
 				messages: prepared.llmMessages,
+				outputControl: prepared.outputControl,
 			});
 			yield* self.consumeLLMStream(stream, {
 				initialModel: prepared.modelId,
@@ -172,11 +159,12 @@ export class ConversationService {
 	}
 
 	/**
-	 * Reduce streaming deltas and persist the final assistant reply.
+	 * Reduce streaming deltas and return the final assistant reply.
+	 * Does not persist. Call saveExchange to persist.
 	 */
 	private async *consumeLLMStream(
 		stream: AsyncGenerator<AIStreamEvent>,
-		context: {
+		params: {
 			initialModel: string;
 			initialProvider: string;
 			conversation: ChatConversation;
@@ -186,8 +174,8 @@ export class ConversationService {
 		}
 	): AsyncGenerator<AIStreamEvent> {
 		let assistantContent = '';
-		let currentModel = context.initialModel;
-		let currentProvider = context.initialProvider;
+		let currentModel = params.initialModel;
+		let currentProvider = params.initialProvider;
 		let usage: LLMUsage | undefined;
 		try {
 			for await (const chunk of stream) {
@@ -202,26 +190,14 @@ export class ConversationService {
 					if (chunk.usage) {
 						usage = chunk.usage;
 					}
-					// Provider's complete event doesn't have conversation/message yet
-					// We'll emit our own complete event after persistence
 				}
 			}
 
-			const assistantMessage = createMessage('assistant', assistantContent, currentModel, currentProvider, context.timezone);
+			const assistantMessage = createChatMessage('assistant', assistantContent, currentModel, currentProvider, params.timezone);
 			assistantMessage.tokenUsage = usage;
-
-			const finalConversation = await this.persistExchange({
-				conversation: context.conversation,
-				project: context.project,
-				messages: [...context.messagesWithUser, assistantMessage],
-				model: currentModel,
-				provider: currentProvider,
-				tokenDelta: usage?.totalTokens ?? 0,
-			});
 
 			yield {
 				type: 'complete',
-				conversation: finalConversation,
 				message: assistantMessage,
 				model: currentModel,
 				usage,
@@ -230,6 +206,41 @@ export class ConversationService {
 			const normalized = error instanceof Error ? error : new Error(String(error));
 			yield { type: 'error', error: normalized };
 		}
+	}
+
+	/**
+	 * Upload files and create resource references.
+	 * Uploads files to vault and creates resourceRef for each file.
+	 * 
+	 * @param files Files to upload
+	 * @returns Array of resource references
+	 */
+	async uploadFilesAndCreateResources(files: File[]): Promise<ChatResourceRef[]> {
+		if (!files || files.length === 0) {
+			return [];
+		}
+
+		// Get upload folder from settings
+		const uploadFolder = this.settings?.uploadFolder || 'uploads';
+		
+		// Upload files to vault
+		const { uploadFilesToVault } = await import('@/core/utils/vault-utils');
+		const uploadedPaths = await uploadFilesToVault(this.app, files, uploadFolder);
+
+		// Create resource references for uploaded files
+		const resources: ChatResourceRef[] = [];
+		for (const filePath of uploadedPaths) {
+			const resourceRef = this.resourceSummaryService!.createResourceRef(filePath);
+			const summaryPath = this.resourceSummaryService!.getResourceSummaryPath(resourceRef.id);
+			resourceRef.summaryNotePath = summaryPath;
+
+			// Ensure resource summary exists, generate if missing
+			await this.ensureResourceSummary(filePath, resourceRef);
+
+			resources.push(resourceRef);
+		}
+
+		return resources;
 	}
 
 	/**
@@ -247,12 +258,13 @@ export class ConversationService {
 		userMessage: ChatMessage;
 		messagesWithUser: ChatMessage[];
 		llmMessages: LLMRequestMessage[];
+		outputControl?: LLMOutputControlSettings;
 	}> {
 		const { conversation, project, userContent, attachments } = params;
 		const modelId = conversation.meta.activeModel || this.defaultModel.modelId;
 		const provider = conversation.meta.activeProvider || this.defaultModel.provider;
 		const timezone = this.detectTimezone();
-		const userMessage = createMessage('user', userContent, modelId, provider, timezone);
+		const userMessage = createChatMessage('user', userContent, modelId, provider, timezone);
 
 		// Convert legacy attachments to resources if provided
 		if (attachments && attachments.length > 0) {
@@ -273,6 +285,14 @@ export class ConversationService {
 		const messagesWithUser = [...conversation.messages, userMessage];
 		const llmMessages = await this.buildLLMRequestMessages(messagesWithUser, conversation, project);
 
+		// Get output control settings: priority: conversation override > global default
+		let outputControl: LLMOutputControlSettings | undefined;
+		if (conversation.meta.outputControlOverride) {
+			outputControl = conversation.meta.outputControlOverride;
+		} else if (this.settings?.defaultOutputControl) {
+			outputControl = this.settings.defaultOutputControl;
+		}
+
 		return {
 			modelId,
 			provider,
@@ -280,6 +300,7 @@ export class ConversationService {
 			userMessage,
 			messagesWithUser,
 			llmMessages,
+			outputControl,
 		};
 	}
 
@@ -301,9 +322,7 @@ export class ConversationService {
 		return await this.storage.saveConversation(
 			project?.meta ?? null,
 			updatedMeta,
-			conversation.messages,
-			context,
-			conversation.file
+			context
 		);
 	}
 
@@ -311,82 +330,63 @@ export class ConversationService {
 	 * Update conversation's active model.
 	 */
 	async updateConversationModel(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
+		conversationId: string;
 		modelId: string;
-		provider?: string;
-	}): Promise<ChatConversation> {
-		const { conversation, project, modelId, provider } = params;
-		// Use provided provider or keep existing provider, fallback to chat service default
-		const finalProvider = provider || conversation.meta.activeProvider || this.chat.getProviderId();
-
-		// Update meta with new active model and provider
-		const updatedMeta: ChatConversationMeta = {
-			...conversation.meta,
-			activeModel: modelId,
-			activeProvider: finalProvider,
-			updatedAtTimestamp: Date.now(),
-		};
+		provider: string;
+	}): Promise<void> {
+		const { conversationId, modelId, provider } = params;
 
 		// Save updated meta
-		return await this.storage.saveConversation(
-			project?.meta ?? null,
-			updatedMeta,
-			conversation.messages,
-			conversation.context,
-			conversation.file
+		await this.storage.upsertConversationMeta(
+			conversationId,
+			{
+				activeModel: modelId,
+				activeProvider: provider,
+				updatedAtTimestamp: Date.now(),
+			}
+		);
+	}
+
+	/**
+	 * Update conversation's output control override settings.
+	 */
+	async updateConversationOutputControl(params: {
+		conversationId: string;
+		outputControlOverride?: LLMOutputControlSettings;
+	}): Promise<void> {
+		const { conversationId, outputControlOverride } = params;
+
+		// Save updated meta
+		await this.storage.upsertConversationMeta(
+			conversationId,
+			{
+				outputControlOverride: outputControlOverride && Object.keys(outputControlOverride).length > 0 ? outputControlOverride : undefined,
+				updatedAtTimestamp: Date.now(),
+			}
 		);
 	}
 
 	/**
 	 * Update conversation title by renaming the file.
+	 * @param params.titleManuallyEdited - If true, marks the title as manually edited (default: true)
 	 */
 	async updateConversationTitle(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
+		conversationId: string;
 		title: string;
-	}): Promise<ChatConversation> {
-		const { conversation, project, title } = params;
+		titleManuallyEdited?: boolean;
+	}): Promise<void> {
+		const { conversationId, title, titleManuallyEdited = true } = params;
 
-		const folder = conversation.file.parent;
-		const fileToRename = this.findConversationFile(folder, conversation) ?? conversation.file;
+		// Rename file and get new relative path
+		const newFileRelPath = await this.storage.renameConversationFile(conversationId, title);
 
-		// Build new filename with the updated title
-		const newFileName = this.storage.buildConversationFileName({
-			...conversation.meta,
+		// Save updated meta (file path is updated in sqlite)
+		await this.storage.upsertConversationMeta(conversationId, {
+			id: conversationId,
 			title,
+			titleManuallyEdited,
+			fileRelPath: newFileRelPath,
 		});
-		const newPath = normalizePath(
-			folder?.path?.trim()
-				? `${folder!.path}/${newFileName}.md`
-				: `${newFileName}.md`
-		);
-
-		// Rename the file by id to keep names in sync
-		await this.storage.getApp().vault.rename(fileToRename, newPath);
-
-		// Update meta to mark as manually edited
-		const updatedMeta: ChatConversationMeta = {
-			...conversation.meta,
-			title,
-			titleManuallyEdited: true,
-			updatedAtTimestamp: Date.now(),
-		};
-
-		// Get the renamed file
-		const renamedFile = this.storage.getApp().vault.getAbstractFileByPath(newPath) as TFile | null;
-		if (!renamedFile) {
-			throw new Error('Failed to find renamed conversation file');
-		}
-
-		// Save updated meta
-		return await this.storage.saveConversation(
-			project?.meta ?? null,
-			updatedMeta,
-			conversation.messages,
-			conversation.context,
-			renamedFile
-		);
 	}
 
 	/**
@@ -394,49 +394,35 @@ export class ConversationService {
 	 */
 	async toggleStar(params: {
 		messageId: string;
-		conversation: ChatConversation;
-		project?: ChatProject | null;
+		conversationId: string;
 		starred: boolean;
-	}): Promise<ChatConversation> {
-		const { messageId, conversation, project, starred } = params;
-		let targetMessage: ChatMessage | null = null;
-		const nextMessages: ChatMessage[] = [];
-		for (const message of conversation.messages) {
-			const next = message.id === messageId ? { ...message, starred } : message;
-			if (next.id === messageId) {
-				targetMessage = next;
-			}
-			nextMessages.push(next);
+	}): Promise<void> {
+		const { messageId, conversationId, starred } = params;
+
+		const conversation = await this.storage.readConversation(conversationId, false);
+		if (!conversation) {
+			throw new Error(`Conversation ${conversationId} not found`);
 		}
+
+		const targetMessage = conversation.messages.find((msg) => msg.id === messageId);
 		if (!targetMessage) {
-			return conversation;
+			throw new Error(`Message ${messageId} not found in conversation`);
 		}
 
 		const record: StarredMessageRecord = {
 			id: generateUuidWithoutHyphens(),
-			sourceMessageId: targetMessage.id,
+			sourceMessageId: messageId,
 			conversationId: conversation.meta.id,
-			projectId: project?.meta.id ?? conversation.meta.projectId,
+			projectId: conversation.meta.projectId ?? undefined,
 			createdAt: Date.now(),
 			active: starred,
 		};
+
 		if (starred) {
 			await this.storage.addStar(record);
 		} else {
-			await this.storage.removeStar(targetMessage.id);
+			await this.storage.removeStar(messageId);
 		}
-
-		const updatedMeta: ChatConversationMeta = {
-			...conversation.meta,
-			updatedAtTimestamp: Date.now(),
-		};
-		return await this.storage.saveConversation(
-			project?.meta ?? null,
-			updatedMeta,
-			nextMessages,
-			conversation.context,
-			conversation.file
-		);
 	}
 
 	/**
@@ -463,98 +449,74 @@ export class ConversationService {
 	}
 
 	/**
-	 * Save conversation metadata and messages after an exchange.
+	 * Add a message to conversation and save it.
 	 */
-	private async persistExchange(params: {
-		conversation: ChatConversation;
-		project: ChatProject | null;
-		messages: ChatMessage[];
+	async addMessage(params: {
+		conversationId: string;
+		message: ChatMessage;
 		model: string;
-		provider?: string;
-		tokenDelta: number;
-	}): Promise<ChatConversation> {
-		const context = await this.buildContextWindow(params.messages, params.model, params.project);
+		provider: string;
+		usage: LLMUsage;
+	}): Promise<void> {
+		const { conversationId, message, model, provider, usage } = params;
 
-		// Keep the existing title, don't auto-generate from messages
-		// Title generation will be handled by a separate service later
-		const title = params.conversation.meta.title;
+		// Save message to storage (low-level operation: updates DB and file)
+		await this.storage.saveNewMessage(conversationId, message);
 
-		// Get provider from last message or params or conversation meta
-		const lastMessage = params.messages[params.messages.length - 1];
-		const provider = params.provider || lastMessage?.provider || params.conversation.meta.activeProvider || this.chat.getProviderId();
-
-		const updatedMeta: ChatConversationMeta = {
-			...params.conversation.meta,
-			title,
-			activeModel: params.model,
+		// Update conversation meta only (model, provider, token usage, updated timestamp)
+		// This is a lightweight operation that doesn't rebuild context
+		const updatedMeta = await this.storage.upsertConversationMeta(conversationId, {
+			activeModel: model,
 			activeProvider: provider,
-			updatedAtTimestamp: Date.now(),
-			tokenUsageTotal: (params.conversation.meta.tokenUsageTotal ?? 0) + params.tokenDelta,
-		};
-		const saved = await this.storage.saveConversation(
-			params.project?.meta ?? null,
-			updatedMeta,
-			params.messages,
-			context,
-			params.conversation.file
-		);
+			tokenUsageTotal: usage?.totalTokens ?? 0,
+		});
+		if (!updatedMeta) {
+			throw new Error(`Failed to update conversation meta: ${conversationId}`);
+		}
 
 		// Trigger message sent event
-		const eventBus = EventBus.getInstance(this.storage.getApp());
+		const eventBus = EventBus.getInstance(this.app);
 		eventBus.dispatch(new MessageSentEvent({
-			conversationId: saved.meta.id,
-			projectId: saved.meta.projectId ?? null,
+			conversationId: conversationId,
+			projectId: null,
 		}));
+	}
 
-		// Update memory and profile asynchronously (don't block save)
-		if (this.profileService && params.messages.length >= 2) {
-			const userMessage = params.messages[params.messages.length - 2];
-			const assistantMessage = params.messages[params.messages.length - 1];
-			if (userMessage && assistantMessage && userMessage.role === 'user' && assistantMessage.role === 'assistant') {
-				// Extract context candidates
-				const contextMap: Record<string, string> = {};
-				if (params.project) {
-					contextMap.project = `Project: ${params.project.meta.name}${params.project.context?.shortSummary ? `\n${params.project.context.shortSummary}` : ''}`;
-				}
-				if (context.shortSummary) {
-					contextMap.conversation = context.shortSummary;
-				}
-
-				this.profileService?.extractCandidates({
-					userMessage: userMessage.content,
-					assistantReply: assistantMessage.content,
-					context: Object.keys(contextMap).length > 0 ? contextMap : undefined,
-					provider,
-					model: params.model,
-				}).then((candidates) => {
-					// Update context with all candidates
-					if (candidates.length > 0) {
-						this.profileService?.updateProfile({
-							newItems: candidates,
-							provider,
-							model: params.model,
-						}).catch((error) => {
-							console.warn('[ConversationService] Failed to update context:', error);
-						});
-					}
-				}).catch((error) => {
-					console.warn('[ConversationService] Failed to extract context candidates:', error);
-				});
-			}
+	/**
+	 * Generate a title for conversation based on messages.
+	 * Uses the ApplicationGenerateTitle prompt to generate a concise title.
+	 */
+	async generateConversationTitle(messages: ChatMessage[]): Promise<string | null> {
+		if (messages.length === 0) {
+			return null;
 		}
 
-		// Update context from conversations periodically (every 10 messages)
-		if (this.profileService && params.messages.length > 0 && params.messages.length % 10 === 0) {
-			const recentConversations = await this.storage.listConversations(params.project?.meta);
-			const recentSummaries = recentConversations
-				.slice(-5)
-				.map((conv) => ({
-					summary: conv.context?.shortSummary || '',
-					topics: conv.context?.topics,
-				}));
-		}
+		try {
+			// Use first few messages to generate title (to keep it focused on the initial topic)
+			const messagesForTitle = messages.slice(0, Math.min(5, messages.length));
+			const messagesForPrompt = messagesForTitle.map((m) => ({
+				role: m.role,
+				content: m.content,
+			}));
 
-		return saved;
+			const title = await this.promptService.chatWithPrompt(
+				PromptId.ApplicationGenerateTitle,
+				{
+					messages: messagesForPrompt,
+				}
+			);
+
+			// Clean up title: remove quotes, trim, and limit length
+			const cleanedTitle = title
+				.replace(/^["']|["']$/g, '') // Remove surrounding quotes
+				.trim()
+				.substring(0, 50); // Limit to 50 characters
+
+			return cleanedTitle || null;
+		} catch (error) {
+			console.warn('[ConversationService] Failed to generate title:', error);
+			return null;
+		}
 	}
 
 	/**
@@ -562,7 +524,6 @@ export class ConversationService {
 	 */
 	async buildContextWindow(
 		messages: ChatMessage[],
-		modelId: string,
 		project?: ChatProject | null,
 	): Promise<ChatContextWindow> {
 		if (messages.length === 0) {
@@ -583,7 +544,6 @@ export class ConversationService {
 
 		// Generate real summary using LLM
 		try {
-			const provider = this.chat.getProviderId();
 			const messagesForSummary = recent.map((m) => ({
 				role: m.role,
 				content: m.content,
@@ -601,8 +561,6 @@ export class ConversationService {
 					messages: messagesForSummary,
 					projectContext,
 				},
-				provider,
-				modelId
 			) || DEFAULT_SUMMARY;
 
 			// Generate full summary if conversation is substantial
@@ -615,8 +573,6 @@ export class ConversationService {
 						projectContext,
 						shortSummary,
 					},
-					provider,
-					modelId
 				);
 			}
 
@@ -653,15 +609,9 @@ export class ConversationService {
 
 		// Generate summary
 		try {
-			const provider = this.chat.getProviderId();
-			const modelId = this.defaultModel.modelId;
-
 			const summary = await this.resourceLoaderManager.getSummary(
 				sourcePath,
 				resourceRef.kind,
-				this.promptService,
-				provider,
-				modelId
 			) || { shortSummary: `Resource: ${sourcePath}` };
 
 			// Save summary
@@ -699,27 +649,4 @@ export class ConversationService {
 		}
 	}
 
-	/**
-	 * Locate the conversation file under the provided folder by matching the id suffix.
-	 */
-	private findConversationFile(folder: TFolder | null | undefined, conversation: ChatConversation): TFile | null {
-		if (!folder) {
-			return null;
-		}
-
-		const suffix = `-${conversation.meta.id}`;
-		for (const child of folder.children) {
-			if (!(child instanceof TFile) || child.extension !== 'md') {
-				continue;
-			}
-			if (child.basename === conversation.file.basename) {
-				return child;
-			}
-			if (child.basename.startsWith('Conv-') && child.basename.endsWith(suffix)) {
-				return child;
-			}
-		}
-
-		return null;
-	}
 }

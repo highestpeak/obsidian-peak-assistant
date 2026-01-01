@@ -10,6 +10,7 @@ import { SearchClient } from '@/service/search/SearchClient';
 import type { SearchSettings } from '@/app/settings/types';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
 import { IndexService } from '@/service/search/index/indexService';
+import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 
 /**
  * Registers core commands exposed via Obsidian command palette.
@@ -22,7 +23,6 @@ export function buildCoreCommands(
 	searchSettings?: SearchSettings,
 	storageFolder?: string,
 ): Command[] {
-	const app = viewManager.getApp();
 	return [
 		{
 			id: 'peak-quick-search',
@@ -67,7 +67,7 @@ export function buildCoreCommands(
 				// Set pending conversation state instead of creating immediately
 				// Actual creation will happen when user sends first message
 				useChatViewStore.getState().setPendingConversation({
-					title: 'New Conversation',
+					title: DEFAULT_NEW_CONVERSATION_TITLE,
 					project: null,
 				});
 			},

@@ -2,11 +2,13 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
-import { generateContentHash, extractReferences } from '@/core/utils/markdown-utils';
+import { extractReferences } from '@/core/utils/markdown-utils';
+import { generateContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 
 /**
@@ -16,7 +18,10 @@ import { PromptId } from '@/service/prompt/PromptId';
  * Worker code must never import this module.
  */
 export class MarkdownDocumentLoader implements DocumentLoader {
-	constructor(private readonly app: App) {}
+	constructor(
+		private readonly app: App,
+		private readonly aiServiceManager?: AIServiceManager
+	) {}
 
 	getDocumentType(): DocumentType {
 		return 'markdown';
@@ -114,7 +119,7 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	private async readMarkdownFile(file: TFile): Promise<Document | null> {
 		try {
 			const content = await this.app.vault.cachedRead(file);
-			const contentHash = await generateContentHash(content);
+			const contentHash = generateContentHash(content);
 			const references = extractReferences(content);
 			
 			// Extract title from frontmatter or filename
@@ -198,10 +203,12 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	 */
 	async getSummary(
 		source: Document | string,
-		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
-		provider: string,
-		modelId: string
+		provider?: string,
+		modelId?: string
 	): Promise<ResourceSummary> {
+		if (!this.aiServiceManager) {
+			throw new Error('MarkdownDocumentLoader requires AIServiceManager to generate summaries');
+		}
 		if (typeof source === 'string') {
 			throw new Error('MarkdownDocumentLoader.getSummary requires a Document, not a string');
 		}
@@ -211,7 +218,7 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 		const path = doc.sourceFileInfo.path;
 
 		// Generate short summary
-		const shortSummary = await promptService.chatWithPrompt(
+		const shortSummary = await this.aiServiceManager.chatWithPrompt(
 			PromptId.DocSummary,
 			{
 				content,
@@ -225,7 +232,7 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 		// Generate full summary if content is substantial (more than 2000 characters)
 		let fullSummary: string | undefined;
 		if (content.length > 2000) {
-			fullSummary = await promptService.chatWithPrompt(
+			fullSummary = await this.aiServiceManager.chatWithPrompt(
 				PromptId.DocSummary,
 				{
 					content,

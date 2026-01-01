@@ -66,11 +66,12 @@ function mapContentPartToAiSdk(part: ProviderContentPart): Array<{ type: 'text';
 	switch (part.type) {
 		case 'text':
 			return [{ type: 'text', text: part.text }];
-		case 'document':
+		case 'document': {
 			// Preserve document semantics with [Document: name] prefix
 			const docText = part.name ? `[Document: ${part.name}]\n${part.text}` : part.text;
 			return [{ type: 'text', text: docText }];
-		case 'inline_image':
+		}
+		case 'inline_image': {
 			// Map base64 inline image to AI SDK image format
 			const imageData = `data:${part.mediaType};base64,${part.data}`;
 			const parts: Array<{ type: 'text'; text: string } | { type: 'image'; image: string }> = [
@@ -80,7 +81,8 @@ function mapContentPartToAiSdk(part: ProviderContentPart): Array<{ type: 'text';
 				parts.push({ type: 'text', text: part.alt });
 			}
 			return parts;
-		case 'image_url':
+		}
+		case 'image_url': {
 			// Map image URL to AI SDK image format
 			const urlParts: Array<{ type: 'text'; text: string } | { type: 'image'; image: string }> = [
 				{ type: 'image', image: part.url },
@@ -89,6 +91,7 @@ function mapContentPartToAiSdk(part: ProviderContentPart): Array<{ type: 'text';
 				urlParts.push({ type: 'text', text: part.alt });
 			}
 			return urlParts;
+		}
 		default:
 			return [{ type: 'text', text: '' }];
 	}

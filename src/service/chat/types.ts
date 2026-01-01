@@ -1,6 +1,6 @@
 import type { ResourceKind } from '@/core/document/types';
 
-import { LLMUsage } from '@/core/providers/types';
+import { LLMUsage, LLMOutputControlSettings } from '@/core/providers/types';
 import type { TFile } from 'obsidian';
 
 export type ChatRole = 'user' | 'assistant' | 'system';
@@ -61,6 +61,12 @@ export interface ChatConversationMeta {
 	activeProvider: string;
 	tokenUsageTotal?: number;
 	titleManuallyEdited?: boolean; // If true, auto-title generation will be disabled
+	fileRelPath?: string; // Relative path to the conversation markdown file
+	/**
+	 * Temporary override for LLM output control settings.
+	 * If set, this overrides the global default settings.
+	 */
+	outputControlOverride?: LLMOutputControlSettings;
 }
 
 export interface ChatProjectMeta {
@@ -172,9 +178,6 @@ export interface ChatConversation {
 export interface ChatProject {
 	meta: ChatProjectMeta;
 	context?: ChatProjectContext;
-	shortSummary?: string;
-	content: string;
-	file: TFile;
 }
 
 /**

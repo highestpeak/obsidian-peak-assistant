@@ -1,3 +1,42 @@
+## Development
+
+### Hot Reload Setup
+
+This project supports hot reload for faster development. Follow these steps:
+
+1. **Install obsidian-hot-reload plugin** (if not already installed):
+   - Download from [GitHub](https://github.com/pjeby/hot-reload)
+   - Extract to `.obsidian/plugins/hot-reload` in your test vault
+   - Enable the plugin in Obsidian settings
+
+2. **Enable hot reload for this plugin**:
+   - The `.hotreload` file has been created in the plugin root directory
+   - This file signals the hot-reload plugin to watch this plugin for changes
+
+3. **Start development mode**:
+   ```bash
+   npm run dev
+   ```
+   This will:
+   - Watch TypeScript files and rebuild `main.js` on changes (via esbuild watch mode)
+   - Watch Tailwind CSS files and rebuild `styles.css` on changes
+   - Run both watchers in parallel
+
+4. **Development workflow**:
+   - Make changes to your TypeScript/React code
+   - Save the file
+   - The build process will automatically compile changes
+   - The hot-reload plugin will detect the new `main.js` or `styles.css`
+   - Obsidian will automatically reload the plugin
+
+**Note**: The `dev` script uses `npm-run-all` to run both TypeScript and Tailwind watchers in parallel. The esbuild watch mode is configured in `esbuild.config.mjs`.
+
+### Build Scripts
+
+- `npm run dev` - Start development mode with file watching (TypeScript + Tailwind)
+- `npm run build` - Build for production (minified, no sourcemaps)
+- `npm run build:css` - Build only CSS files
+
 ## Project Structure Explanation
 
 This project is organized into logical modules that separate concerns for maintainability and extensibility. Below is a detailed explanation of the directory structure:

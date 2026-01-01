@@ -4,11 +4,14 @@
 	"description": "Peak Assistant is a plugin for Obsidian (https://obsidian.md) that allows you to use AI to help you with your notes.",
 	"main": "main.js",
 	"scripts": {
-		"dev:tailwind": "npx tailwindcss -i src/styles/tailwind.css -o styles.css --watch",
+		"dev:tailwind": "npx tailwindcss -i src/styles/tailwind.css -o styles.tailwind.css --watch",
+		"dev:streamdown": "npx tailwindcss -i src/styles/streamdown.css -o styles.streamdown.css --config tailwind.streamdown.config.js --watch",
+		"dev:css": "node scripts/concat-css.mjs watch",
 		"dev:ts": "node esbuild.config.mjs",
 		"dev": "npm-run-all --parallel dev:*",
-		"build:tailwind": "npx tailwindcss -i src/styles/tailwind.css -o styles.css --minify",
-		"build:css": "npm run build:tailwind",
+		"build:tailwind": "npx tailwindcss -i src/styles/tailwind.css -o styles.tailwind.css --minify",
+		"build:streamdown": "npx tailwindcss -i src/styles/streamdown.css -o styles.streamdown.css --config tailwind.streamdown.config.js --minify",
+		"build:css": "npm run build:tailwind && npm run build:streamdown && node scripts/concat-css.mjs",
 		"build": "npm run build:css && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},

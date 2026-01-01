@@ -1,8 +1,9 @@
 import { EventBus, MessageSentEvent, ConversationCreatedEvent, ViewEventType } from '@/core/eventBus';
-import { CONVERSATION_SUMMARY_UPDATE_THRESHOLD, PROJECT_SUMMARY_UPDATE_THRESHOLD, SUMMARY_UPDATE_DEBOUNCE_MS } from '@/core/constant';
+import { CONVERSATION_SUMMARY_UPDATE_THRESHOLD, PROJECT_SUMMARY_UPDATE_THRESHOLD, SUMMARY_UPDATE_DEBOUNCE_MS, DEFAULT_SUMMARY } from '@/core/constant';
 import type { ConversationService } from '../service-conversation';
 import type { ProjectService } from '../service-project';
 import type { ChatStorageService } from '@/core/storage/vault/ChatStore';
+import type { ChatContextWindow, ChatConversation } from '../types';
 
 /**
  * Service to automatically update summaries based on events.
@@ -24,7 +25,8 @@ export class ContextUpdateService {
 		private readonly conversationService: ConversationService,
 		private readonly projectService: ProjectService,
 	) {
-		this.setupListeners();
+		// TODO: uncomment this after testing
+		// this.setupListeners();
 	}
 
 	/**
@@ -47,7 +49,7 @@ export class ContextUpdateService {
 	 */
 	private async handleMessageSent(event: MessageSentEvent): Promise<void> {
 		const { conversationId, projectId } = event;
-		
+
 		// Increment conversation count
 		const convCount = (this.conversationCounts.get(conversationId) || 0) + 1;
 		this.conversationCounts.set(conversationId, convCount);
@@ -111,22 +113,18 @@ export class ContextUpdateService {
 	 */
 	private async updateConversationSummary(conversationId: string): Promise<void> {
 		try {
-			// Load conversation without messages (only metadata and context)
+			// Load conversation with messages (needed for title generation)
 			const conversation = await this.storage.readConversation(conversationId, true);
 			if (!conversation) {
 				return;
 			}
 
-			// Get default model from conversation service
-			const modelId = conversation.meta.activeModel;
-			
 			// Get project if exists
 			const project = conversation.meta.projectId ? await this.getProjectForConversation(conversation.meta.projectId) : null;
-			
+
 			// Build context window which will generate summary
 			const context = await this.conversationService.buildContextWindow(
 				conversation.messages,
-				modelId,
 				project
 			);
 
@@ -136,8 +134,64 @@ export class ContextUpdateService {
 				project,
 				context,
 			});
+
+			// Update title if it hasn't been manually edited
+			// Only update if context has meaningful summary (not default) and conversation has messages
+			if (
+				!conversation.meta.titleManuallyEdited &&
+				context.shortSummary &&
+				context.shortSummary !== DEFAULT_SUMMARY &&
+				context.shortSummary !== 'No summary available yet.' &&
+				conversation.messages.length > 0
+			) {
+				await this.updateConversationTitleIfNeeded(conversation, context);
+			}
 		} catch (error) {
 			console.warn('[SummaryUpdateService] Failed to update conversation summary:', error);
+		}
+	}
+
+	/**
+	 * Update conversation title if context has changed significantly.
+	 * Only updates if the new title would be different from the current one.
+	 */
+	private async updateConversationTitleIfNeeded(
+		conversation: ChatConversation,
+		context: ChatContextWindow
+	): Promise<void> {
+		try {
+			// Only update title if we have at least 2 messages (user + assistant)
+			// This ensures the conversation has meaningful content
+			if (conversation.messages.length < 2) {
+				return;
+			}
+
+			// Generate new title based on messages
+			const newTitle = await this.conversationService.generateConversationTitle(conversation.messages);
+			
+			if (!newTitle || newTitle.trim().length === 0) {
+				// Title generation failed, skip update
+				return;
+			}
+
+			// Normalize titles for comparison (trim and lowercase)
+			const currentTitleNormalized = conversation.meta.title.trim().toLowerCase();
+			const newTitleNormalized = newTitle.trim().toLowerCase();
+
+			// Only update if title is significantly different
+			// This avoids unnecessary updates when the title is similar
+			if (currentTitleNormalized === newTitleNormalized) {
+				return;
+			}
+
+			// Update title without marking as manually edited (preserve auto-update capability)
+			await this.conversationService.updateConversationTitle({
+				conversationId: conversation.meta.id,
+				title: newTitle.trim(),
+				titleManuallyEdited: false, // Keep auto-update enabled
+			});
+		} catch (error) {
+			console.warn('[ContextUpdateService] Failed to update conversation title:', error);
 		}
 	}
 
@@ -152,12 +206,9 @@ export class ContextUpdateService {
 				return;
 			}
 
-			// Get default model
-			const modelId = 'default';
-			
 			// Generate summary
-			const summary = await this.projectService.summarizeProject(project, modelId);
-			
+			const summary = await this.projectService.summarizeProject(project);
+
 			// Update project context
 			const updatedContext = {
 				...project.context,

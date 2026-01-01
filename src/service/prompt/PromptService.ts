@@ -2,6 +2,7 @@ import { App, normalizePath, TFile } from 'obsidian';
 import { PromptId, type PromptVariables, PROMPT_REGISTRY } from './PromptId';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
+import type { AIServiceSettings } from '@/app/settings/types';
 
 /**
  * Unified prompt service with code-first templates and optional file overrides.
@@ -10,14 +11,16 @@ export class PromptService {
 	private promptFolder: string;
 	private readonly cache = new Map<string, string>();
 	private chat?: MultiProviderChatService;
+	private settings?: AIServiceSettings;
 
 	constructor(
 		private readonly app: App,
-		promptFolder: string,
+		settings: AIServiceSettings,
 		chat?: MultiProviderChatService,
 	) {
-		this.promptFolder = normalizePath(promptFolder);
+		this.promptFolder = normalizePath(settings.promptFolder);
 		this.chat = chat;
+		this.settings = settings;
 	}
 
 	/**
@@ -43,6 +46,13 @@ export class PromptService {
 	}
 
 	/**
+	 * Update settings for prompt model configuration.
+	 */
+	setSettings(settings: AIServiceSettings): void {
+		this.settings = settings;
+	}
+
+	/**
 	 * Render a prompt template and call blockChat.
 	 * @param promptId - The prompt identifier
 	 * @param variables - Variables for the prompt template
@@ -53,13 +63,30 @@ export class PromptService {
 	async chatWithPrompt<T extends PromptId>(
 		promptId: T,
 		variables: PromptVariables[T],
-		provider: string,
-		model: string
+		provider?: string,
+		model?: string
 	): Promise<string> {
 		if (!this.chat) {
 			throw new Error('Chat service not available. Call setChatService() first.');
 		}
 		const promptText = await this.render(promptId, variables);
+		
+		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
+		if (!provider || !model) {
+			// Check promptModelMap first
+			if (this.settings?.promptModelMap?.[promptId]) {
+				const promptModel = this.settings.promptModelMap[promptId];
+				provider = promptModel.provider;
+				model = promptModel.modelId;
+			} else if (this.settings?.defaultModel) {
+				// Fallback to defaultModel from settings
+				provider = this.settings.defaultModel.provider;
+				model = this.settings.defaultModel.modelId;
+			} else {
+				throw new Error('No model configuration available. Please configure defaultModel in settings.');
+			}
+		}
+		
 		const completion = await this.chat.blockChat({
 			provider,
 			model,

@@ -19,6 +19,49 @@ export interface ProviderConfig {
 	extra?: Record<string, any>;
 }
 
+/**
+ * LLM output control settings.
+ * These settings control the generation behavior of language models.
+ */
+export interface LLMOutputControlSettings {
+	/**
+	 * Temperature setting (0-2).
+	 * Higher values make the output more random.
+	 * Default: undefined (uses model default)
+	 */
+	temperature?: number;
+	/**
+	 * Top-p (nucleus sampling) setting (0-1).
+	 * Controls diversity via nucleus sampling.
+	 * Default: undefined (uses model default)
+	 */
+	topP?: number;
+	/**
+	 * Top-k setting.
+	 * Limits the number of top tokens to consider.
+	 * Default: undefined (uses model default)
+	 */
+	topK?: number;
+	/**
+	 * Presence penalty (-2 to 2).
+	 * Penalizes new tokens based on whether they appear in the text so far.
+	 * Default: undefined (uses model default)
+	 */
+	presencePenalty?: number;
+	/**
+	 * Frequency penalty (-2 to 2).
+	 * Penalizes new tokens based on their frequency in the text so far.
+	 * Default: undefined (uses model default)
+	 */
+	frequencyPenalty?: number;
+	/**
+	 * Max output tokens.
+	 * Maximum number of tokens to generate.
+	 * Default: undefined (uses model default)
+	 */
+	maxOutputTokens?: number;
+}
+
 export interface ModelConfig {
 	id: string;
 	enabled?: boolean;
@@ -50,6 +93,11 @@ export interface LLMRequest {
 	provider: string;
 	model: string;
 	messages: LLMRequestMessage[];
+	/**
+	 * LLM output control settings.
+	 * If not provided, uses model defaults or model config settings.
+	 */
+	outputControl?: LLMOutputControlSettings;
 }
 
 export interface LLMResponse {

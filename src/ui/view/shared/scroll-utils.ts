@@ -65,10 +65,38 @@ export function scrollToTop(scrollRef: RefObject<HTMLElement>, instant: boolean 
  */
 export function scrollToBottom(scrollRef: RefObject<HTMLElement>, instant: boolean = false): void {
 	if (!scrollRef.current) return;
+	
 	if (instant) {
-		scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+		const scrollElement = scrollRef.current;
+		let lastScrollHeight = 0;
+		let attempts = 0;
+		const maxAttempts = 10; // Maximum number of scroll attempts
+		
+		// Function to attempt scrolling - keeps trying until scrollHeight stabilizes
+		const attemptScroll = () => {
+			if (!scrollElement || attempts >= maxAttempts) return;
+			
+			const currentScrollHeight = scrollElement.scrollHeight;
+			scrollElement.scrollTop = currentScrollHeight;
+			
+			// If scrollHeight changed, content is still loading, try again
+			if (currentScrollHeight !== lastScrollHeight) {
+				lastScrollHeight = currentScrollHeight;
+				attempts++;
+				// Use increasing delays to allow content to load (code blocks, images, etc.)
+				setTimeout(attemptScroll, Math.min(attempts * 50, 300));
+			}
+		};
+		
+		// Start scrolling after initial render
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				attemptScroll();
+			});
+		});
 		return;
 	}
+	
 	// Double requestAnimationFrame ensures browser has completed all rendering
 	// This is especially important for scrollHeight calculation when content is dynamic
 	requestAnimationFrame(() => {

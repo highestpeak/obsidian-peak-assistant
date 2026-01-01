@@ -6,6 +6,10 @@ const TooltipProvider = TooltipPrimitive.Provider;
 
 const Tooltip = TooltipPrimitive.Root;
 
+// Disable tooltip on focus - only show on hover
+// Radix UI Tooltip shows on both hover and focus by default
+// We need to handle this via CSS or component props
+
 const TooltipTrigger = TooltipPrimitive.Trigger;
 
 const TooltipContent = React.forwardRef<

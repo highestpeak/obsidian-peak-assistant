@@ -5,6 +5,7 @@ import { OllamaChatService } from './ollama';
 import { ClaudeChatService } from './claude';
 import { GeminiChatService } from './gemini';
 import { PerplexityChatService } from './perplexity';
+import { BusinessError, ErrorCode } from '@/core/errors';
 
 const DEFAULT_TIMEOUT_MS = 60000;
 
@@ -204,7 +205,7 @@ export class ProviderServiceFactory {
 	async getProviderSupportModels(providerId: string, config?: ProviderConfig): Promise<ModelMetaData[]> {
 		const factory = this.factories.get(providerId);
 		if (!factory) {
-			throw new Error(`Provider ${providerId} not found`);
+			throw new BusinessError(ErrorCode.PROVIDER_NOT_FOUND, `Provider ${providerId} not found`);
 		}
 
 		// Use provided config if available, otherwise use fake config
@@ -225,7 +226,7 @@ export class ProviderServiceFactory {
 			throw error;
 		}
 
-		throw new Error(`Failed to create service for provider ${providerId}`);
+		throw new BusinessError(ErrorCode.MODEL_UNAVAILABLE, `Failed to create service for provider ${providerId}`);
 	}
 }
 

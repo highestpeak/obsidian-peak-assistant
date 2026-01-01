@@ -67,6 +67,12 @@ export class OpenRouterChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			topK: request.outputControl?.topK,
+			presencePenalty: request.outputControl?.presencePenalty,
+			frequencyPenalty: request.outputControl?.frequencyPenalty,
+			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
 		});
 
 		return {
@@ -84,6 +90,12 @@ export class OpenRouterChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			topK: request.outputControl?.topK,
+			presencePenalty: request.outputControl?.presencePenalty,
+			frequencyPenalty: request.outputControl?.frequencyPenalty,
+			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
 		});
 
 		return streamTextToAIStreamEvents(result, request.model);

@@ -4,6 +4,7 @@ import { ChevronDown, Check } from 'lucide-react';
 import { SafeModelIcon, SafeProviderIcon } from '@/ui/component/mine/SafeIconWrapper';
 import { cn } from '@/ui/react/lib/utils';
 import { ProviderServiceFactory } from '@/core/providers/base/factory';
+import { usePopupPosition } from '@/ui/hooks/usePopupPosition';
 
 /**
  * Global registry to track all open selectors
@@ -37,6 +38,8 @@ export interface ModelSelectorProps {
 	buttonClassName?: string;
 	/** Placeholder text when no model is selected */
 	placeholder?: string;
+	/** Callback when menu opens - useful for reloading data */
+	onMenuOpen?: () => void;
 }
 
 /**
@@ -51,11 +54,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 	className,
 	buttonClassName,
 	placeholder = 'Select model',
+	onMenuOpen,
 }) => {
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
-	const [menuPosition, setMenuPosition] = useState<'bottom' | 'top'>('bottom');
 	const containerRef = useRef<HTMLDivElement>(null);
 	const menuRef = useRef<HTMLDivElement>(null);
+	const menuPosition = usePopupPosition(containerRef, menuRef, isMenuOpen, 400);
 	const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 	// Get provider metadata map for fallback icons and names
@@ -139,38 +143,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 		};
 	}, [isMenuOpen, closeMenu]);
 
-	// Calculate menu position (bottom or top) based on available space
-	useEffect(() => {
-		if (!isMenuOpen || !containerRef.current || !menuRef.current) return;
-
-		const calculatePosition = () => {
-			const container = containerRef.current;
-			const menu = menuRef.current;
-			if (!container || !menu) return;
-
-			const containerRect = container.getBoundingClientRect();
-			const menuHeight = menu.offsetHeight || 400; // Estimate menu height
-			const spaceBelow = window.innerHeight - containerRect.bottom;
-			const spaceAbove = containerRect.top;
-
-			// If not enough space below but enough space above, show above
-			if (spaceBelow < menuHeight && spaceAbove > menuHeight) {
-				setMenuPosition('top');
-			} else {
-				setMenuPosition('bottom');
-			}
-		};
-
-		// Calculate on open and on resize
-		calculatePosition();
-		window.addEventListener('resize', calculatePosition);
-		window.addEventListener('scroll', calculatePosition, true);
-
-		return () => {
-			window.removeEventListener('resize', calculatePosition);
-			window.removeEventListener('scroll', calculatePosition, true);
-		};
-	}, [isMenuOpen]);
+	// Menu position is calculated by usePopupPosition hook
 
 	// Close menu when clicking outside
 	useEffect(() => {
@@ -224,9 +197,19 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 	}, [currentModelInfo, currentModel, placeholder, isCurrentModelAvailable]);
 
 	// Get current model icon (only from model info, not provider)
-	const currentModelIcon = currentModelInfo?.icon;
+	const currentModelIcon = useMemo(() => {
+		return currentModelInfo?.icon;
+	}, [currentModelInfo]);
 
-	const currentProvider = currentModel?.provider;
+	// Get current provider
+	const currentProvider = useMemo(() => {
+		return currentModel?.provider;
+	}, [currentModel]);
+
+	// Get provider icon for current provider
+	const providerIcon = useMemo(() => {
+		return currentProvider ? providerMetadataMap.get(currentProvider)?.icon : undefined;
+	}, [currentProvider, providerMetadataMap]);
 
 	// Handle model select
 	const handleModelSelect = useCallback(
@@ -256,14 +239,16 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 				onClick={(e) => {
 					e.stopPropagation();
 					e.preventDefault();
-					setIsMenuOpen(!isMenuOpen);
+					const willOpen = !isMenuOpen;
+					if (willOpen) {
+						// Call onMenuOpen callback when opening menu
+						onMenuOpen?.();
+					}
+					setIsMenuOpen(willOpen);
 				}}
 				title={!isCurrentModelAvailable && currentModel ? 'Current model is not available. Please select another model.' : undefined}
 			>
 				{!isLoading && (() => {
-					// Determine which icon to show: model icon, or provider icon if unavailable
-					const providerIcon = currentProvider ? providerMetadataMap.get(currentProvider)?.icon : undefined;
-					
 					// Show icon if we have model icon or provider icon
 					if (currentModelIcon || providerIcon) {
 						return (
@@ -313,7 +298,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 				<div
 					ref={menuRef}
 					className={cn(
-						'pktw-absolute pktw-left-0 pktw-bg-background pktw-border pktw-border-border pktw-rounded-lg pktw-shadow-lg pktw-max-h-[400px] pktw-overflow-y-auto pktw-overflow-x-hidden pktw-z-[10000]',
+						'pktw-absolute pktw-left-0 pktw-border pktw-border-border pktw-rounded-lg pktw-shadow-lg pktw-max-h-[400px] pktw-overflow-y-auto pktw-overflow-x-hidden pktw-z-[10000]',
 						menuPosition === 'bottom' ? 'pktw-top-full pktw-mt-1' : 'pktw-bottom-full pktw-mb-1'
 					)}
 					onClick={(e) => e.stopPropagation()}
@@ -321,13 +306,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 					onMouseEnter={handleMouseEnter}
 				>
 					{isLoading ? (
-						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-cursor-pointer pktw-transition-colors pktw-duration-150 pktw-border-b pktw-border-border pktw-min-w-[200px] hover:pktw-bg-hover">
+						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-cursor-pointer pktw-transition-colors pktw-duration-150 pktw-border-b pktw-border-border pktw-min-w-[200px] hover:pktw-bg-accent hover:pktw-text-accent-foreground">
 							<div className="pktw-flex-1 pktw-text-[14px] pktw-font-medium pktw-text-foreground pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
 								Loading models...
 							</div>
 						</div>
 					) : models.length === 0 ? (
-						<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-items-start pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-min-w-[220px] pktw-bg-background">
+						<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-items-start pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-min-w-[220px]">
 							<div className="pktw-text-[14px] pktw-font-medium pktw-text-[#000000] pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
 								No models available
 							</div>
@@ -338,9 +323,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 					) : (
 						<>
 							{/* Show unavailable current model at the top if it's not in the list */}
-							{currentModel && !isCurrentModelAvailable && (() => {
-								const providerIcon = currentProvider ? providerMetadataMap.get(currentProvider)?.icon : undefined;
-								return (
+							{currentModel && !isCurrentModelAvailable && (
 									<div className="pktw-min-w-[200px] pktw-border-b pktw-border-border">
 										<div className="pktw-px-6 pktw-py-2.5">
 											<div className="pktw-flex pktw-items-center pktw-gap-2">
@@ -364,8 +347,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 											</div>
 										</div>
 									</div>
-								);
-							})()}
+							)}
 							{modelsByProvider.map(([providerId, providerModels], index) => {
 							const providerMeta = providerMetadataMap.get(providerId);
 							const providerName = providerMeta?.name || providerId;
@@ -400,10 +382,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 											<div
 												key={`${model.provider}-${model.id}`}
 												className={cn(
-													'pktw-flex pktw-items-center pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-cursor-pointer pktw-transition-all pktw-duration-200 pktw-rounded-sm',
+													'pktw-flex pktw-items-center pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-cursor-pointer pktw-transition-colors pktw-duration-200 pktw-rounded-sm',
 													// Only show border between models, not after the last one in the group
 													modelIndex < providerModels.length - 1 && 'pktw-border-b pktw-border-border',
-													'hover:pktw-bg-hover hover:pktw-shadow-sm hover:pktw-scale-[1.01]',
+													'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
 													isSelected && 'pktw-bg-[var(--background-modifier-active)] pktw-bg-accent/20'
 												)}
 												onClick={() => handleModelSelect(model.provider, model.id)}
@@ -432,7 +414,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 															</div>
 														);
 													})()}
-													<span className="pktw-text-[14px] pktw-font-medium pktw-text-foreground pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
+													<span className="pktw-text-[14px] pktw-font-medium pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
 														{model.displayName}
 													</span>
 												</div>

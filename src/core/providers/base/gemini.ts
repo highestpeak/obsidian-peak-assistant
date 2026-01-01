@@ -86,6 +86,10 @@ export class GeminiChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			topK: request.outputControl?.topK,
+			...(request.outputControl?.maxOutputTokens !== undefined && { maxOutputTokens: request.outputControl.maxOutputTokens }),
 		});
 
 		return {
@@ -103,6 +107,10 @@ export class GeminiChatService implements LLMProviderService {
 			model: this.client(request.model) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
+			temperature: request.outputControl?.temperature,
+			topP: request.outputControl?.topP,
+			topK: request.outputControl?.topK,
+			...(request.outputControl?.maxOutputTokens !== undefined && { maxOutputTokens: request.outputControl.maxOutputTokens }),
 		});
 
 		return streamTextToAIStreamEvents(result, request.model);

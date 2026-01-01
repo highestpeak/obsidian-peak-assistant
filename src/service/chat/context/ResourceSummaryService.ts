@@ -6,6 +6,7 @@ import type { ResourceKind } from '@/core/document/types';
 import { parseFrontmatter } from '@/core/utils/markdown-utils';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import { ResourceKindDetector } from '@/core/document/resource/helper/ResourceKindDetector';
+import { hashString } from '@/core/utils/hash-utils';
 
 /**
  * Service for managing resource summary notes.
@@ -78,9 +79,9 @@ export class ResourceSummaryService {
 			shortSummary: params.shortSummary,
 			fullSummary: params.fullSummary,
 			lastUpdatedTimestamp: Date.now(),
-					mentionedInConversations: params.mentionedInConversations ?? [],
-					mentionedInProjects: params.mentionedInProjects ?? [],
-					mentionedInFiles: params.mentionedInFiles ?? [],
+			mentionedInConversations: params.mentionedInConversations ?? [],
+			mentionedInProjects: params.mentionedInProjects ?? [],
+			mentionedInFiles: params.mentionedInFiles ?? [],
 		};
 
 		const markdown = this.buildResourceSummaryMarkdown(meta);
@@ -155,27 +156,8 @@ export class ResourceSummaryService {
 	 * Generate a stable resource ID from source string
 	 */
 	private generateResourceId(source: string): string {
-		// Use a simple hash function for stable ID generation
-		// In a browser/Node environment, we can use crypto if available
-		if (typeof crypto !== 'undefined' && crypto.subtle) {
-			// For now, use a simple hash that's stable
-			return this.simpleHash(source);
-		}
-		return this.simpleHash(source);
-	}
-
-	/**
-	 * Simple hash function for stable ID generation
-	 */
-	private simpleHash(str: string): string {
-		let hash = 0;
-		for (let i = 0; i < str.length; i++) {
-			const char = str.charCodeAt(i);
-			hash = ((hash << 5) - hash) + char;
-			hash = hash & hash; // Convert to 32bit integer
-		}
-		// Convert to positive hex string
-		return Math.abs(hash).toString(16).padStart(8, '0');
+		// Use hash utility for stable ID generation
+		return hashString(source, 8);
 	}
 
 	/**
@@ -188,7 +170,7 @@ export class ResourceSummaryService {
 		// Original resource reference section
 		sections.push('# Original Resource');
 		sections.push('## Resource Link');
-		
+
 		// Reference the original resource based on kind
 		if (meta.kind === 'url') {
 			sections.push(`[${meta.source}](${meta.source})`);

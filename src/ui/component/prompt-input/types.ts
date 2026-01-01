@@ -8,6 +8,7 @@ export interface FileAttachment {
 	file: File;
 	preview?: string; // Data URL for images
 	type: 'image' | 'file' | 'pdf';
+	hash?: string; // File hash for deduplication
 }
 
 /**

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChatConversation, ChatProject, ChatMessage } from '@/service/chat/types';
 import { useProjectStore } from '@/ui/store/projectStore';
-import { formatRelativeDate } from '@/ui/view/shared/date-utils';
 import { cn } from '@/ui/react/lib/utils';
-import { Folder, ChevronDown, ChevronRight } from 'lucide-react';
+import { Folder, ChevronDown, ChevronRight, MessageCircle, MessageSquare, Calendar, Star, FileText, Image, File } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { ConversationItem } from '@/ui/view/chat-view/components/conversation-item';
 
 interface ProjectOverviewViewProps {
 	projectId: string;
@@ -46,7 +46,7 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 	useEffect(() => {
 		const loadConversations = async () => {
 			if (!project) return;
-			const convs = await manager.listConversations(project.meta);
+			const convs = await manager.listConversations(project.meta.id);
 			convs.sort((a, b) => {
 				const timeA = a.meta.createdAtTimestamp || 0;
 				const timeB = b.meta.createdAtTimestamp || 0;
@@ -126,36 +126,46 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 	}, [app]);
 
 	return (
-		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-overflow-hidden">
+		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-overflow-hidde">
 			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-p-6">
 				{/* Stats */}
 				<div className="pktw-flex pktw-gap-4 pktw-mb-6">
-					<div className="pktw-flex pktw-flex-col pktw-p-4 pktw-rounded-lg pktw-border pktw-border-border pktw-bg-card">
-						<span className="pktw-text-sm pktw-text-muted-foreground">Conversations</span>
-						<span className="pktw-text-2xl pktw-font-semibold pktw-text-foreground">{conversations.length}</span>
+					<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-p-4 pktw-rounded-lg pktw-border pktw-border-border pktw-bg-card pktw-shadow-sm">
+						<div className="pktw-p-2 pktw-rounded-md pktw-bg-blue-500/10">
+							<MessageCircle className="pktw-w-5 pktw-h-5 pktw-text-blue-600 dark:pktw-text-blue-400" />
+						</div>
+						<div className="pktw-flex pktw-flex-col">
+							<span className="pktw-text-sm pktw-font-medium pktw-text-muted-foreground">Conversations</span>
+							<span className="pktw-text-2xl pktw-font-semibold pktw-text-foreground">{conversations.length}</span>
+						</div>
 					</div>
-					<div className="pktw-flex pktw-flex-col pktw-p-4 pktw-rounded-lg pktw-border pktw-border-border pktw-bg-card">
-						<span className="pktw-text-sm pktw-text-muted-foreground">Messages</span>
-						<span className="pktw-text-2xl pktw-font-semibold pktw-text-foreground">{totalMessages}</span>
+					<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-p-4 pktw-rounded-lg pktw-border pktw-border-border pktw-bg-card pktw-shadow-sm">
+						<div className="pktw-p-2 pktw-rounded-md pktw-bg-green-500/10">
+							<MessageSquare className="pktw-w-5 pktw-h-5 pktw-text-green-600 dark:pktw-text-green-400" />
+						</div>
+						<div className="pktw-flex pktw-flex-col">
+							<span className="pktw-text-sm pktw-font-medium pktw-text-muted-foreground">Messages</span>
+							<span className="pktw-text-2xl pktw-font-semibold pktw-text-foreground">{totalMessages}</span>
+						</div>
 					</div>
 				</div>
 
 				{/* Project Summary */}
 				{summaryText && (
-					<div className="pktw-mb-6 pktw-border pktw-border-border pktw-rounded-lg pktw-overflow-hidden">
+					<div className="pktw-mb-6 pktw-border pktw-border-border pktw-rounded-lg pktw-bg-card pktw-shadow-sm pktw-overflow-hidden">
 						<div
-							className="pktw-flex pktw-items-center pktw-justify-between pktw-p-4 pktw-cursor-pointer hover:pktw-bg-muted/50"
+							className="pktw-flex pktw-items-center pktw-justify-between pktw-p-4 pktw-cursor-pointer hover:pktw-bg-muted/50 pktw-transition-colors"
 							onClick={() => setSummaryExpanded(!summaryExpanded)}
 						>
 							<h3 className="pktw-text-base pktw-font-semibold pktw-text-foreground pktw-m-0">Project Summary</h3>
 							{summaryExpanded ? (
-								<ChevronDown className="pktw-w-4 pktw-h-4" />
+								<ChevronDown className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground" />
 							) : (
-								<ChevronRight className="pktw-w-4 pktw-h-4" />
+								<ChevronRight className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground" />
 							)}
 						</div>
 						{summaryExpanded && (
-							<div className="pktw-p-4 pktw-pt-0 pktw-text-sm pktw-text-foreground">
+							<div className="pktw-px-4 pktw-pb-4 pktw-text-sm pktw-text-foreground/90 pktw-leading-relaxed">
 								{summaryText}
 							</div>
 						)}
@@ -163,16 +173,16 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 				)}
 
 				{/* Tab Navigation */}
-				<div className="pktw-flex pktw-gap-1 pktw-border-b pktw-border-border pktw-mb-4">
+				<div className="pktw-flex pktw-gap-1 pktw-border-b pktw-border-border pktw-mb-6">
 					{(['conversations', 'starred', 'resources'] as TabType[]).map((tab) => (
 						<button
 							key={tab}
 							className={cn(
-								'pktw-px-4 pktw-py-2 pktw-text-sm pktw-font-medium pktw-transition-colors',
+								'pktw-px-4 pktw-py-2.5 pktw-text-sm pktw-font-medium pktw-transition-all pktw-relative',
 								'pktw-border-b-2 pktw-border-transparent',
 								activeTab === tab
 									? 'pktw-text-primary pktw-border-primary'
-									: 'pktw-text-muted-foreground hover:pktw-text-foreground'
+									: 'pktw-text-muted-foreground hover:pktw-text-foreground hover:pktw-border-muted-foreground/30'
 							)}
 							onClick={() => setActiveTab(tab)}
 						>
@@ -218,42 +228,22 @@ interface ConversationsTabProps {
 const ConversationsTab: React.FC<ConversationsTabProps> = ({ conversations, onConversationClick }) => {
 	if (conversations.length === 0) {
 		return (
-			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-8">
-				No conversations yet.
+			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-12">
+				<MessageCircle className="pktw-w-12 pktw-h-12 pktw-mx-auto pktw-mb-3 pktw-opacity-50" />
+				<p className="pktw-text-sm">No conversations yet.</p>
 			</div>
 		);
 	}
 
 	return (
-		<div className="pktw-space-y-2">
+		<div className="pktw-space-y-3">
 			{conversations.map((conversation) => (
-				<div
+				<ConversationItem
 					key={conversation.meta.id}
-					className={cn(
-						'pktw-flex pktw-items-center pktw-gap-4 pktw-p-4 pktw-rounded-lg',
-						'pktw-border pktw-border-border pktw-bg-card',
-						'pktw-cursor-pointer pktw-transition-all',
-						'hover:pktw-shadow-md hover:pktw-border-primary/50'
-					)}
-					onClick={() => onConversationClick(conversation)}
-				>
-					<div className="pktw-flex-1 pktw-min-w-0">
-						<div className="pktw-text-base pktw-font-semibold pktw-text-foreground pktw-mb-1 pktw-truncate">
-							{conversation.meta.title}
-						</div>
-						{conversation.messages.length > 0 && (
-							<div className="pktw-text-sm pktw-text-muted-foreground pktw-line-clamp-2">
-								{conversation.messages[0].content.substring(0, 100)}
-								{conversation.messages[0].content.length > 100 ? '...' : ''}
-							</div>
-						)}
-					</div>
-					{conversation.meta.createdAtTimestamp && (
-						<div className="pktw-text-xs pktw-text-muted-foreground pktw-shrink-0">
-							{formatRelativeDate(conversation.meta.createdAtTimestamp)}
-						</div>
-					)}
-				</div>
+					conversation={conversation}
+					onClick={onConversationClick}
+					maxPreviewLength={150}
+				/>
 			))}
 		</div>
 	);
@@ -268,8 +258,9 @@ interface StarredTabProps {
 const StarredTab: React.FC<StarredTabProps> = ({ entries, onClick }) => {
 	if (entries.length === 0) {
 		return (
-			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-8">
-				No starred messages yet.
+			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-12">
+				<Star className="pktw-w-12 pktw-h-12 pktw-mx-auto pktw-mb-3 pktw-opacity-50" />
+				<p className="pktw-text-sm">No starred messages yet.</p>
 			</div>
 		);
 	}
@@ -277,23 +268,26 @@ const StarredTab: React.FC<StarredTabProps> = ({ entries, onClick }) => {
 	return (
 		<div className="pktw-space-y-3">
 			{entries.map((entry, index) => {
-				const truncated = entry.message.content.length > 150
-					? entry.message.content.substring(0, 150) + '...'
+				const truncated = entry.message.content.length > 200
+					? entry.message.content.substring(0, 200) + '...'
 					: entry.message.content;
 				return (
 					<div
 						key={`${entry.conversation.meta.id}-${entry.message.id}-${index}`}
 						className={cn(
-							'pktw-p-4 pktw-rounded-lg pktw-border pktw-border-border pktw-bg-card',
+							'pktw-p-4 pktw-rounded-lg pktw-border pktw-border-muted-foreground/20 pktw-bg-card pktw-shadow-sm',
 							'pktw-cursor-pointer pktw-transition-all',
-							'hover:pktw-shadow-md hover:pktw-border-primary/50'
+							'hover:pktw-shadow-md hover:pktw-border-border-hover hover:pktw-bg-accent/50'
 						)}
 						onClick={() => onClick(entry.conversation, entry.message.id)}
 					>
-						<div className="pktw-text-sm pktw-font-semibold pktw-text-foreground pktw-mb-2">
-							{entry.conversation.meta.title}
+						<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-2">
+							<Star className="pktw-w-4 pktw-h-4 pktw-fill-yellow-400 pktw-text-yellow-400 pktw-shrink-0" />
+							<div className="pktw-text-sm pktw-font-semibold pktw-text-foreground pktw-truncate">
+								{entry.conversation.meta.title}
+							</div>
 						</div>
-						<div className="pktw-text-sm pktw-text-muted-foreground pktw-line-clamp-3">
+						<div className="pktw-text-sm pktw-text-muted-foreground pktw-line-clamp-3 pktw-leading-relaxed">
 							{truncated}
 						</div>
 					</div>
@@ -309,37 +303,75 @@ interface ResourcesTabProps {
 }
 
 const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources, onAttachmentClick }) => {
+	const getFileIcon = (fileName: string) => {
+		const ext = fileName.split('.').pop()?.toLowerCase();
+		if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext || '')) {
+			return Image;
+		}
+		return FileText;
+	};
+
+	const getFileType = (fileName: string): string => {
+		const ext = fileName.split('.').pop()?.toLowerCase();
+		if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext || '')) {
+			return 'image';
+		}
+		if (ext === 'pdf') {
+			return 'pdf';
+		}
+		if (['xlsx', 'xls'].includes(ext || '')) {
+			return 'excel';
+		}
+		if (['docx', 'doc'].includes(ext || '')) {
+			return 'word';
+		}
+		return ext || 'file';
+	};
+
 	if (resources.length === 0) {
 		return (
-			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-8">
-				No resources attached yet.
+			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-12">
+				<FileText className="pktw-w-12 pktw-h-12 pktw-mx-auto pktw-mb-3 pktw-opacity-50" />
+				<p className="pktw-text-sm">No resources attached yet.</p>
 			</div>
 		);
 	}
 
 	return (
-		<div className="pktw-space-y-2">
-			{resources.map((entry, index) => (
-				<div
-					key={`${entry.conversation.meta.id}-${entry.resource}-${index}`}
-					className={cn(
-						'pktw-p-3 pktw-rounded-lg pktw-border pktw-border-border pktw-bg-card',
-						'pktw-cursor-pointer pktw-transition-all',
-						'hover:pktw-shadow-md hover:pktw-border-primary/50'
-					)}
-					onClick={() => onAttachmentClick(entry.resource)}
-				>
-					<div className="pktw-text-sm pktw-text-foreground">
-						{entry.conversation.meta.title} · {entry.resourceLabel}
+		<div className="pktw-space-y-3">
+			{resources.map((entry, index) => {
+				const FileIcon = getFileIcon(entry.resourceLabel);
+				const fileType = getFileType(entry.resourceLabel);
+				return (
+					<div
+						key={`${entry.conversation.meta.id}-${entry.resource}-${index}`}
+						className={cn(
+							'pktw-flex pktw-items-center pktw-gap-3 pktw-p-4 pktw-rounded-lg pktw-border pktw-border-muted-foreground/20 pktw-bg-card pktw-shadow-sm',
+							'pktw-cursor-pointer pktw-transition-all',
+							'hover:pktw-shadow-md hover:pktw-border-border-hover hover:pktw-bg-accent/50'
+						)}
+						onClick={() => onAttachmentClick(entry.resource)}
+					>
+						<div className="pktw-p-2 pktw-rounded-md pktw-bg-muted pktw-shrink-0">
+							<FileIcon className="pktw-w-5 pktw-h-5 pktw-text-muted-foreground" />
+						</div>
+						<div className="pktw-flex-1 pktw-min-w-0">
+							<div className="pktw-text-sm pktw-font-medium pktw-text-foreground pktw-truncate pktw-mb-1">
+								{entry.conversation.meta.title} - {entry.resourceLabel}
+							</div>
+						</div>
+						<div className="pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-bg-muted pktw-text-xs pktw-font-medium pktw-text-muted-foreground pktw-shrink-0 pktw-uppercase">
+							{fileType}
+						</div>
 					</div>
-				</div>
-			))}
+				);
+			})}
 		</div>
 	);
 };
 
 function getProjectSummaryText(project: ChatProject): string | undefined {
-	const candidate = project.shortSummary ?? project.context?.shortSummary;
+	const candidate = project.context?.shortSummary;
 	const trimmed = candidate?.trim();
 	return trimmed || undefined;
 }

@@ -6,7 +6,7 @@ import type { Document as CoreDocument, DocumentType } from '@/core/document/typ
 import { IndexProgressTracker } from '../support/progress-tracker';
 import { IndexService } from '@/service/search/index/indexService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { generateContentHash } from '@/core/utils/markdown-utils';
+import { generateContentHash } from '@/core/utils/hash-utils';
 import { INDEX_CHECK_BATCH_SIZE, SEARCH_DB_FILENAME } from '@/core/constant';
 import { getFileSize } from '@/core/utils/obsidian-utils';
 

@@ -2,10 +2,11 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
-import { generateContentHash } from '@/core/utils/markdown-utils';
+import { generateContentHash } from '@/core/utils/hash-utils';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 
 /**
@@ -16,7 +17,10 @@ export class HtmlXmlDocumentLoader implements DocumentLoader {
 	private static readonly MEANINGFUL_TAGS = ['div', 'section', 'article', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'td', 'th'];
 	private readonly tagPattern: RegExp;
 
-	constructor(private readonly app: App) {
+	constructor(
+		private readonly app: App,
+		private readonly aiServiceManager?: AIServiceManager
+	) {
 		// Initialize regex pattern once in constructor
 		const tagsPattern = HtmlXmlDocumentLoader.MEANINGFUL_TAGS.join('|');
 		this.tagPattern = new RegExp(`(<(?:${tagsPattern})[^>]*>)([\\s\\S]*?)(</(?:${tagsPattern})>)`, 'gi');
@@ -194,20 +198,22 @@ export class HtmlXmlDocumentLoader implements DocumentLoader {
 	 */
 	async getSummary(
 		source: Document | string,
-		promptService: { chatWithPrompt: (promptId: string, variables: any, provider: string, model: string) => Promise<string> },
-		provider: string,
-		modelId: string
+		provider?: string,
+		modelId?: string
 	): Promise<ResourceSummary> {
+		if (!this.aiServiceManager) {
+			throw new Error('HtmlXmlDocumentLoader requires AIServiceManager to generate summaries');
+		}
 		if (typeof source === 'string') {
 			throw new Error('HtmlXmlDocumentLoader.getSummary requires a Document, not a string');
 		}
-		return getDefaultDocumentSummary(source, promptService, provider, modelId);
+		return getDefaultDocumentSummary(source, this.aiServiceManager, provider, modelId);
 	}
 
 	private async readHtmlXmlFile(file: TFile): Promise<Document | null> {
 		try {
 			const content = await this.app.vault.cachedRead(file);
-			const contentHash = await generateContentHash(content);
+			const contentHash = generateContentHash(content);
 
 			return {
 				id: file.path,

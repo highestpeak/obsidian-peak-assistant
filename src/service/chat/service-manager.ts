@@ -1,8 +1,8 @@
 import { App } from 'obsidian';
-import { ModelInfoForSwitch } from '@/core/providers/types';
+import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings } from '@/core/providers/types';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
-import { ChatContextWindow, ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord } from './types';
+import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef } from './types';
 import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId, PromptVariables } from '@/service/prompt/PromptId';
 import { ProjectService } from './service-project';
@@ -55,7 +55,7 @@ export class AIServiceManager {
 			providerConfigs,
 		});
 		// Create prompt service
-		this.promptService = new PromptService(this.app, this.settings.promptFolder, this.multiChat);
+		this.promptService = new PromptService(this.app, this.settings, this.multiChat);
 
 		// Initialize context service if profile is enabled
 		if (this.settings.profileEnabled) {
@@ -84,18 +84,22 @@ export class AIServiceManager {
 
 		// Initialize Project- and conversation-level services after DocumentLoaderManager is ready
 		this.projectService = new ProjectService(
+			this.app,
 			this.storage,
 			this.settings.rootFolder,
 			this.promptService,
 			this.multiChat
 		);
 		this.conversationService = new ConversationService(
+			this.app,
 			this.storage,
 			this.multiChat,
 			this.promptService,
 			this.settings.defaultModel,
 			this.resourceSummaryService,
+			this,
 			this.profileService,
+			this.settings,
 		);
 
 		// Initialize summary update service
@@ -112,7 +116,7 @@ export class AIServiceManager {
 	 * Read a conversation by id.
 	 * @param loadMessages If true, loads all messages; if false, only loads metadata and context.
 	 */
-	async readConversation(conversationId: string, loadMessages: boolean = true): Promise<ChatConversation> {
+	async readConversation(conversationId: string, loadMessages: boolean = true): Promise<ChatConversation | null> {
 		return this.storage.readConversation(conversationId, loadMessages);
 	}
 
@@ -139,6 +143,7 @@ export class AIServiceManager {
 			rootFolder: this.settings.rootFolder,
 		});
 		this.promptService.setPromptFolder(this.settings.promptFolder);
+		this.promptService.setSettings(this.settings);
 		this.refreshDefaultServices();
 	}
 
@@ -159,19 +164,25 @@ export class AIServiceManager {
 			);
 		}
 
-		this.projectService = new ProjectService(this.storage, this.settings.rootFolder, this.promptService, this.multiChat);
+		this.projectService = new ProjectService(
+			this.app,
+			this.storage, this.settings.rootFolder, this.promptService, this.multiChat
+		);
 		this.resourceSummaryService = new ResourceSummaryService(
 			this.app,
 			this.settings.rootFolder,
 			this.settings.resourcesSummaryFolder
 		);
 		this.conversationService = new ConversationService(
+			this.app,
 			this.storage,
 			this.multiChat,
 			this.promptService,
 			this.settings.defaultModel,
 			this.resourceSummaryService,
+			this,
 			this.profileService,
+			this.settings,
 		);
 
 		// Reinitialize summary update service
@@ -217,11 +228,11 @@ export class AIServiceManager {
 	/**
 	 * List conversations, optionally filtered by project.
 	 */
-	async listConversations(project?: ChatProjectMeta): Promise<ChatConversation[]> {
+	async listConversations(projectId: string | null | undefined): Promise<ChatConversation[]> {
 		if (!this.conversationService) {
 			throw new Error('ConversationService not initialized. Call init() first.');
 		}
-		return this.conversationService.listConversations(project);
+		return this.conversationService.listConversations(projectId ?? null);
 	}
 
 	/**
@@ -236,13 +247,14 @@ export class AIServiceManager {
 
 	/**
 	 * Send a message and wait for the full model response (blocking).
+	 * Returns the assistant message and usage without persisting. Call addMessage to persist.
 	 */
 	async blockChat(params: {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
 		userContent: string;
 		attachments?: string[];
-	}): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
+	}): Promise<{ message: ChatMessage; usage?: LLMUsage }> {
 		if (!this.conversationService) {
 			throw new Error('ConversationService not initialized. Call init() first.');
 		}
@@ -256,6 +268,7 @@ export class AIServiceManager {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
 		userContent: string;
+		attachments?: string[];
 	}): AsyncGenerator<AIStreamEvent> {
 		if (!this.conversationService) {
 			throw new Error('ConversationService not initialized. Call init() first.');
@@ -267,40 +280,84 @@ export class AIServiceManager {
 	 * Update conversation's active model.
 	 */
 	async updateConversationModel(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
+		conversationId: string;
 		modelId: string;
-		provider?: string;
-	}): Promise<ChatConversation> {
+		provider: string;
+	}): Promise<void> {
 		if (!this.conversationService) {
 			throw new Error('ConversationService not initialized. Call init() first.');
 		}
-		return this.conversationService.updateConversationModel(params);
+		await this.conversationService.updateConversationModel(params);
 	}
 
 	/**
 	 * Update conversation title and mark it as manually edited.
 	 */
 	async updateConversationTitle(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
+		conversationId: string;
 		title: string;
-	}): Promise<ChatConversation> {
+	}): Promise<void> {
 		if (!this.conversationService) {
 			throw new Error('ConversationService not initialized. Call init() first.');
 		}
-		return this.conversationService.updateConversationTitle(params);
+		await this.conversationService.updateConversationTitle(params);
 	}
+
+	/**
+	 * Update conversation's output control override settings.
+	 */
+	async updateConversationOutputControl(params: {
+		conversationId: string;
+		outputControlOverride?: LLMOutputControlSettings;
+	}): Promise<void> {
+		if (!this.conversationService) {
+			throw new Error('ConversationService not initialized. Call init() first.');
+		}
+		await this.conversationService.updateConversationOutputControl(params);
+	}
+
+	/**
+	 * Upload files and create resource references.
+	 * Uploads files to vault and creates resourceRef for each file.
+	 */
+	async uploadFilesAndCreateResources(files: File[]): Promise<ChatResourceRef[]> {
+		if (!this.conversationService) {
+			throw new Error('ConversationService not initialized. Call init() first.');
+		}
+		return this.conversationService.uploadFilesAndCreateResources(files);
+	}
+
+	/**
+	 * Add a message to conversation and save it.
+	 */
+	async addMessage(params: {
+		conversationId: string;
+		message: ChatMessage;
+		model: string;
+		provider: string;
+		usage: LLMUsage;
+	}): Promise<void> {
+		if (!this.conversationService) {
+			throw new Error('ConversationService not initialized. Call init() first.');
+		}
+		this.conversationService.addMessage({
+			conversationId: params.conversationId,
+			message: params.message,
+			model: params.model,
+			provider: params.provider,
+			usage: params.usage,
+		});
+	}
+
 
 	/**
 	 * Toggle star status on a message.
 	 */
 	async toggleStar(params: {
 		messageId: string;
-		conversation: ChatConversation;
-		project?: ChatProject | null;
+		conversationId: string;
 		starred: boolean;
-	}): Promise<ChatConversation> {
+	}): Promise<void> {
 		if (!this.conversationService) {
 			throw new Error('ConversationService not initialized. Call init() first.');
 		}
@@ -320,11 +377,11 @@ export class AIServiceManager {
 	/**
 	 * Rename a project by renaming its folder.
 	 */
-	async renameProject(project: ChatProject, newName: string): Promise<ChatProject> {
+	async renameProject(projectId: string, newName: string): Promise<ChatProject> {
 		if (!this.projectService) {
 			throw new Error('ProjectService not initialized. Call init() first.');
 		}
-		return this.projectService.renameProject(project, newName);
+		return this.projectService.renameProject(projectId, newName);
 	}
 
 	/**
@@ -334,8 +391,8 @@ export class AIServiceManager {
 	async chatWithPrompt<T extends PromptId>(
 		promptId: T,
 		variables: PromptVariables[T],
-		provider: string,
-		model: string
+		provider?: string,
+		model?: string
 	): Promise<string> {
 		return this.promptService.chatWithPrompt(promptId, variables, provider, model);
 	}

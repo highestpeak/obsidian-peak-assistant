@@ -152,16 +152,6 @@ export interface Database {
 		created_at_ts: number;
 		active: number;
 	};
-	chat_summary: {
-		id: string;
-		scope: string;
-		scope_id: string;
-		short_summary: string | null;
-		full_summary: string | null;
-		topics_json: string | null;
-		resource_index_json: string | null;
-		last_updated_ts: number;
-	};
 }
 
 
@@ -407,17 +397,6 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		);
 		CREATE INDEX IF NOT EXISTS idx_chat_star_active ON chat_star(active);
 		CREATE INDEX IF NOT EXISTS idx_chat_star_conversation_id ON chat_star(conversation_id);
-		CREATE TABLE IF NOT EXISTS chat_summary (
-			id TEXT PRIMARY KEY,
-			scope TEXT NOT NULL,
-			scope_id TEXT NOT NULL,
-			short_summary TEXT,
-			full_summary TEXT,
-			topics_json TEXT,
-			resource_index_json TEXT,
-			last_updated_ts INTEGER NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_chat_summary_scope ON chat_summary(scope, scope_id);
 	`);
 }
 

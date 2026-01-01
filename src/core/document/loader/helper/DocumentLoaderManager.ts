@@ -28,7 +28,9 @@ export class DocumentLoaderManager {
 	
 	private readonly loaderMap = new Map<DocumentType, DocumentLoader>();
 	private readonly extensionToLoaderMap = new Map<string, DocumentLoader>();
-	private readonly settings: SearchSettings;
+	private settings: SearchSettings;
+	private readonly app: App;
+	private aiServiceManager?: AIServiceManager;
 
 	/**
 	 * Get the global singleton instance.
@@ -55,21 +57,40 @@ export class DocumentLoaderManager {
 	}
 
 	private constructor(app: App, settings: SearchSettings, aiServiceManager?: AIServiceManager) {
+		this.app = app;
 		this.settings = settings;
+		this.aiServiceManager = aiServiceManager;
+		this.registerAllLoaders();
+	}
+
+	/**
+	 * Register all document loaders.
+	 */
+	private registerAllLoaders(): void {
 		// Register all document loaders
-		this.registerLoader(new MarkdownDocumentLoader(app));
-		this.registerLoader(new TextDocumentLoader(app));
-		this.registerLoader(new TableDocumentLoader(app));
-		this.registerLoader(new JsonDocumentLoader(app));
-		this.registerLoader(new HtmlXmlDocumentLoader(app));
-		this.registerLoader(new PdfDocumentLoader(app));
-		this.registerLoader(new ImageDocumentLoader(app, settings, aiServiceManager));
-		this.registerLoader(new DocxDocumentLoader(app));
-		this.registerLoader(new PptxDocumentLoader(app));
-		this.registerLoader(new ExcalidrawDocumentLoader(app));
-		this.registerLoader(new CanvasDocumentLoader(app));
-		this.registerLoader(new DataloomDocumentLoader(app));
-		this.registerLoader(new UrlDocumentLoader(app));
+		this.registerLoader(new MarkdownDocumentLoader(this.app, this.aiServiceManager));
+		this.registerLoader(new TextDocumentLoader(this.app, this.aiServiceManager));
+		this.registerLoader(new TableDocumentLoader(this.app, this.aiServiceManager));
+		this.registerLoader(new JsonDocumentLoader(this.app, this.aiServiceManager));
+		this.registerLoader(new HtmlXmlDocumentLoader(this.app, this.aiServiceManager));
+		this.registerLoader(new PdfDocumentLoader(this.app, this.aiServiceManager));
+		this.registerLoader(new ImageDocumentLoader(this.app, this.settings, this.aiServiceManager));
+		this.registerLoader(new DocxDocumentLoader(this.app, this.aiServiceManager));
+		this.registerLoader(new PptxDocumentLoader(this.app, this.aiServiceManager));
+		this.registerLoader(new ExcalidrawDocumentLoader(this.app, this.aiServiceManager));
+		this.registerLoader(new CanvasDocumentLoader(this.app, this.aiServiceManager));
+		this.registerLoader(new DataloomDocumentLoader(this.app, this.aiServiceManager));
+		this.registerLoader(new UrlDocumentLoader(this.app, this.aiServiceManager));
+	}
+
+	/**
+	 * Update settings and reload all loaders.
+	 * Should be called when search settings are updated.
+	 */
+	updateSettings(settings: SearchSettings): void {
+		this.settings = settings;
+		// Re-register all loaders with updated settings
+		this.registerAllLoaders();
 	}
 
 	/**
