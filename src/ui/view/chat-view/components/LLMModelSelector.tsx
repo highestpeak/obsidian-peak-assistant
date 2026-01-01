@@ -54,8 +54,10 @@ export const LLMModelSelector: React.FC = () => {
 
 	// Calculate current model id and provider for comparison (reactive)
 	// If there's an active conversation, use its model; otherwise use initial selected model or default
+	// Use primitive values in dependencies to avoid circular reference issues
+	// Note: manager is intentionally omitted from dependencies as it's a stable reference from context
 	const currentModelId = useMemo(() => {
-		console.log('[LLMModelSelector] currentModelId:', activeConversation, initialSelectedModel);
+		console.log('[LLMModelSelector] currentModelId:', activeConversation?.meta.activeModel, initialSelectedModel?.modelId);
 		if (activeConversation) {
 			return activeConversation.meta.activeModel;
 		}
@@ -63,7 +65,7 @@ export const LLMModelSelector: React.FC = () => {
 			return initialSelectedModel.modelId;
 		}
 		return manager?.getSettings().defaultModel.modelId;
-	}, [activeConversation?.meta.activeModel, initialSelectedModel, manager]);
+	}, [activeConversation?.meta.activeModel, initialSelectedModel?.modelId]);
 
 	const currentProvider = useMemo(() => {
 		if (activeConversation) {
@@ -73,7 +75,7 @@ export const LLMModelSelector: React.FC = () => {
 			return initialSelectedModel.provider;
 		}
 		return manager?.getSettings().defaultModel.provider;
-	}, [activeConversation?.meta.activeProvider, initialSelectedModel, manager]);
+	}, [activeConversation?.meta.activeProvider, initialSelectedModel?.provider]);
 
 	useEffect(() => {
 		console.log('[LLMModelSelector] currentModelId or currentProvider changed1:', { currentModelId, currentProvider });
@@ -82,15 +84,18 @@ export const LLMModelSelector: React.FC = () => {
 	// Get current model for selector
 	const currentModel = useMemo(() => {
 		if (!currentModelId) return undefined;
+		const defaultProvider = manager?.getSettings().defaultModel.provider || '';
 		return {
-			provider: currentProvider || manager?.getSettings().defaultModel.provider || '',
+			provider: currentProvider || defaultProvider,
 			modelId: currentModelId,
 		};
-	}, [currentModelId, currentProvider, manager]);
+	}, [currentModelId, currentProvider]);
 
 	// Check if current model is available and get reason if not
+	// Note: manager is intentionally omitted from dependencies as it's a stable reference from context
+	// Settings are read inside useMemo to avoid object reference issues in dependencies
 	const { isModelAvailable, unavailabilityReason } = useMemo(() => {
-		if (!currentModelId) {
+		if (!currentModelId || !manager) {
 			return { isModelAvailable: true, unavailabilityReason: null };
 		}
 
@@ -122,7 +127,7 @@ export const LLMModelSelector: React.FC = () => {
 			isModelAvailable: true,
 			unavailabilityReason: null,
 		};
-	}, [currentModelId, currentProvider, manager]);
+	}, [currentModelId, currentProvider]);
 
 	// Calculate tooltip position based on available space
 	const tooltipPosition = usePopupPosition(tooltipContainerRef, tooltipRef, !isModelAvailable, 120);
@@ -138,7 +143,8 @@ export const LLMModelSelector: React.FC = () => {
 					modelId,
 					provider: provider,
 				});
-				const updatedConv = await manager.readConversation(activeConversation.meta.id, false);
+				// Load full conversation with messages to preserve them in the UI
+				const updatedConv = await manager.readConversation(activeConversation.meta.id, true);
 				if (!updatedConv) {
 					throw new Error('Failed to update conversation model');
 				}

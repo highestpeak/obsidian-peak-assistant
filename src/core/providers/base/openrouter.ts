@@ -9,9 +9,9 @@ import { AIStreamEvent } from '../types-events';
 import { createOpenRouter, type OpenRouterProvider } from '@openrouter/ai-sdk-provider';
 import { generateText, streamText, type LanguageModel } from 'ai';
 import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
-import { KNOWN_OPENAI_CHAT_MODELS, getOpenAIAvatarType } from './openai';
-import { KNOWN_CLAUDE_CHAT_MODELS } from './claude';
-import { KNOWN_GEMINI_CHAT_MODELS } from './gemini';
+import { getKnownOpenAIModelIds, getOpenAIAvatarType } from './openai';
+import { getKnownClaudeModelIds } from './claude';
+import { getKnownGeminiModelIds } from './gemini';
 
 const DEFAULT_OPENROUTER_TIMEOUT_MS = 60000;
 const OPENROUTER_DEFAULT_BASE = 'https://openrouter.ai/api/v1';
@@ -105,7 +105,7 @@ export class OpenRouterChatService implements LLMProviderService {
 		const models: ModelMetaData[] = [];
 
 		// Add OpenAI models with openai/ prefix
-		for (const modelId of KNOWN_OPENAI_CHAT_MODELS) {
+		for (const modelId of getKnownOpenAIModelIds()) {
 			models.push({
 				id: `openai/${modelId}`,
 				displayName: modelId,
@@ -114,7 +114,7 @@ export class OpenRouterChatService implements LLMProviderService {
 		}
 
 		// Add Claude models with anthropic/ prefix
-		for (const modelId of KNOWN_CLAUDE_CHAT_MODELS) {
+		for (const modelId of getKnownClaudeModelIds()) {
 			models.push({
 				id: `anthropic/${modelId}`,
 				displayName: modelId,
@@ -123,7 +123,7 @@ export class OpenRouterChatService implements LLMProviderService {
 		}
 
 		// Add Gemini models with google/ prefix
-		for (const modelId of KNOWN_GEMINI_CHAT_MODELS) {
+		for (const modelId of getKnownGeminiModelIds()) {
 			models.push({
 				id: `google/${modelId}`,
 				displayName: modelId,

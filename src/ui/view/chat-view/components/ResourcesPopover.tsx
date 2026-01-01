@@ -18,12 +18,19 @@ export const ResourcesPopover: React.FC = () => {
 	const app = (window as any).app as App;
 	const eventBus = EventBus.getInstance(app);
 
+	// Use conversation ID and message count as dependencies, but get latest values from store inside useMemo
+	// to avoid stale closure issues while preventing circular reference problems.
+	const conversationId = conversation?.meta.id;
+	const messageCount = conversation?.messages?.length ?? 0;
+	
 	const resources = useMemo(() => {
-		if (!conversation) return [];
+		// Get latest values from store to avoid stale closure
+		const latestConversation = useProjectStore.getState().activeConversation;
+		if (!latestConversation) return [];
 
 		const resourceMap = new Map<string, { type: FileType; summaryNotePath?: string }>();
 
-		for (const message of conversation.messages) {
+		for (const message of latestConversation.messages) {
 			if (message.resources && message.resources.length > 0) {
 				for (const resource of message.resources) {
 					if (!resourceMap.has(resource.source)) {
@@ -39,7 +46,7 @@ export const ResourcesPopover: React.FC = () => {
 			type: data.type,
 			summaryNotePath: data.summaryNotePath,
 		}));
-	}, [conversation]);
+	}, [conversationId, messageCount]);
 
 	const handleResourceClick = (path: string) => {
 		if (!path) return;

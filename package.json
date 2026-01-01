@@ -19,9 +19,9 @@
 	"author": "",
 	"license": "GPL-3.0",
 	"dependencies": {
-		"@ai-sdk/anthropic": "^1.0.0",
-		"@ai-sdk/google": "^1.0.0",
-		"@ai-sdk/openai": "^1.0.0",
+		"@ai-sdk/anthropic": "^2.0.0",
+		"@ai-sdk/google": "^2.0.0",
+		"@ai-sdk/openai": "^2.0.0",
 		"@ai-sdk/perplexity": "^3.0.1",
 		"@langchain/community": "^1.1.1",
 		"@langchain/core": "^1.1.8",

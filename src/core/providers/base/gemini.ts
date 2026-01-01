@@ -13,46 +13,60 @@ import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } fro
 const GEMINI_DEFAULT_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 /**
- * Known Gemini model IDs extracted from @ai-sdk/google type definitions.
- * This serves as a fallback when API model fetching fails.
- * 
- * Note: This list should be kept in sync with GoogleGenerativeAIModelId type from @ai-sdk/google.
- * The list includes all known model IDs up to the package version.
+ * Model mapping interface containing both the actual API model ID and the icon identifier.
  */
-export const KNOWN_GEMINI_CHAT_MODELS: readonly string[] = [
+interface ModelMapping {
+	/** Actual API model ID to use for API calls */
+	modelId: string;
+	/** Icon identifier for UI display, compatible with @lobehub/icons ModelIcon component */
+	icon: string;
+}
+
+/**
+ * Map user-facing model IDs to actual API model IDs and icons.
+ * 
+ * DESIGN EVOLUTION:
+ * 
+ * Initially, we maintained a complete list (KNOWN_GEMINI_CHAT_MODELS) that included all
+ * Gemini model IDs, extracted from @ai-sdk/google type definitions. This list was used
+ * directly for getAvailableModels().
+ * 
+ * CURRENT APPROACH:
+ * 
+ * We now use a unified mapping structure for consistency with other providers:
+ * - User-facing IDs (keys): Clean names without version suffixes where applicable (e.g., 'gemini-1.5-pro' instead of 'gemini-1.5-pro-002')
+ * - API model IDs (modelId): Actual model IDs with version suffixes (latest stable versions)
+ * - Icons (icon): All Gemini models use 'gemini' icon
+ * 
+ * Similar to OpenAI and Claude, we map user-friendly names to specific versions for API calls,
+ * ensuring users see clean names while we use specific versions internally.
+ * 
+ * DATA SOURCES:
+ * - Original model IDs: @ai-sdk/google package type definitions (GoogleGenerativeAIModelId type)
+ * - Official documentation: https://ai.google.dev/models/gemini
+ * - When adding new models, check both sources
+ * 
+ * This is now the single source of truth for available Gemini models.
+ */
+const MODEL_ID_MAP: Record<string, ModelMapping> = {
 	// Gemini 2.5 series
-	'gemini-2.5-pro-exp-03-25',
-	'gemini-2.5-pro-preview-05-06',
-	'gemini-2.5-flash-preview-04-17',
-	'gemini-2.5-pro',
-	'gemini-2.5-flash',
+	'gemini-2.5-pro': { modelId: 'gemini-2.5-pro', icon: 'gemini' },
+	'gemini-2.5-flash': { modelId: 'gemini-2.5-flash', icon: 'gemini' },
 	// Gemini 2.0 series
-	'gemini-2.0-pro-exp-02-05',
-	'gemini-2.0-flash-thinking-exp-01-21',
-	'gemini-2.0-flash-exp',
-	'gemini-2.0-flash',
-	'gemini-2.0-flash-001',
-	'gemini-2.0-flash-live-001',
-	'gemini-2.0-flash-lite',
+	'gemini-2.0-flash': { modelId: 'gemini-2.0-flash-001', icon: 'gemini' },
 	// Gemini 1.5 series
-	'gemini-1.5-pro',
-	'gemini-1.5-pro-latest',
-	'gemini-1.5-pro-001',
-	'gemini-1.5-pro-002',
-	'gemini-1.5-flash',
-	'gemini-1.5-flash-latest',
-	'gemini-1.5-flash-001',
-	'gemini-1.5-flash-002',
-	'gemini-1.5-flash-8b',
-	'gemini-1.5-flash-8b-latest',
-	'gemini-1.5-flash-8b-001',
-	// Gemini experimental
-	'gemini-exp-1206',
-	// Gemma series
-	'gemma-3-27b-it',
-	// LearnLM series
-	'learnlm-1.5-pro-experimental',
-] as const;
+	'gemini-1.5-pro': { modelId: 'gemini-1.5-pro-002', icon: 'gemini' },
+	'gemini-1.5-flash': { modelId: 'gemini-1.5-flash-002', icon: 'gemini' },
+};
+
+/**
+ * Get list of available Gemini model IDs.
+ * 
+ * @returns Array of user-facing model IDs (keys from MODEL_ID_MAP)
+ */
+export function getKnownGeminiModelIds(): readonly string[] {
+	return Object.keys(MODEL_ID_MAP);
+}
 
 export interface GeminiChatServiceOptions {
 	baseUrl?: string;
@@ -78,12 +92,23 @@ export class GeminiChatService implements LLMProviderService {
 		return 'gemini';
 	}
 
+	/**
+	 * Normalize user-facing model ID to actual API model ID by looking up in MODEL_ID_MAP.
+	 * 
+	 * @param modelId - User-facing model ID
+	 * @returns Actual API model ID from MODEL_ID_MAP, or original ID if not found in mapping
+	 */
+	private normalizeModelId(modelId: string): string {
+		return MODEL_ID_MAP[modelId]?.modelId || modelId;
+	}
+
 	async blockChat(request: LLMRequest): Promise<LLMResponse> {
 		const messages = toAiSdkMessages(request.messages);
 		const systemMessage = extractSystemMessage(request.messages);
+		const normalizedModelId = this.normalizeModelId(request.model);
 
 		const result = await generateText({
-			model: this.client(request.model) as unknown as LanguageModel,
+			model: this.client(normalizedModelId) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
 			temperature: request.outputControl?.temperature,
@@ -94,7 +119,7 @@ export class GeminiChatService implements LLMProviderService {
 
 		return {
 			content: result.text,
-			model: result.response.modelId || request.model,
+			model: result.response.modelId || normalizedModelId,
 			usage: result.usage,
 		};
 	}
@@ -102,9 +127,10 @@ export class GeminiChatService implements LLMProviderService {
 	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
 		const messages = toAiSdkMessages(request.messages);
 		const systemMessage = extractSystemMessage(request.messages);
+		const normalizedModelId = this.normalizeModelId(request.model);
 
 		const result = streamText({
-			model: this.client(request.model) as unknown as LanguageModel,
+			model: this.client(normalizedModelId) as unknown as LanguageModel,
 			messages,
 			system: systemMessage,
 			temperature: request.outputControl?.temperature,
@@ -113,17 +139,19 @@ export class GeminiChatService implements LLMProviderService {
 			...(request.outputControl?.maxOutputTokens !== undefined && { maxOutputTokens: request.outputControl.maxOutputTokens }),
 		});
 
-		return streamTextToAIStreamEvents(result, request.model);
+		return streamTextToAIStreamEvents(result, normalizedModelId);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
-		// Return all known Gemini models with appropriate icons
-		return KNOWN_GEMINI_CHAT_MODELS.map((modelId) => ({
-			id: modelId,
-			displayName: modelId,
-			// Set icon based on model type
-			icon: 'gemini',
-		}));
+		// Return model IDs from MODEL_ID_MAP
+		return getKnownGeminiModelIds().map((modelId) => {
+			const mapping = MODEL_ID_MAP[modelId];
+			return {
+				id: modelId,
+				displayName: modelId,
+				icon: mapping?.icon || 'gemini',
+			};
+		});
 	}
 
 	getProviderMetadata(): ProviderMetaData {

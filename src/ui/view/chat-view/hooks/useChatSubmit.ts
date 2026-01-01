@@ -21,39 +21,49 @@ export interface ChatSubmitOptions {
 export function useChatSubmit() {
 	const { app, manager } = useServiceContext();
 	const { streamChat, updateConv } = useStreamChat();
-	const activeConversation = useProjectStore((state) => state.activeConversation);
-	const pendingConversation = useChatViewStore((state) => state.pendingConversation);
-	const initialSelectedModel = useChatViewStore((state) => state.initialSelectedModel);
-	const setInitialSelectedModel = useChatViewStore((state) => state.setInitialSelectedModel);
 
 	// AbortController for canceling streaming
 	const abortControllerRef = useRef<AbortController | null>(null);
 
 	/**
 	 * Ensure conversation exists, create if needed.
+	 * Use primitive values as dependencies to avoid object reference issues.
+	 * Get values directly from store (no subscription) since we use getState() inside callbacks.
 	 */
+	const activeConversationId = useProjectStore.getState().activeConversation?.meta.id;
+	const pendingConversationTitle = useChatViewStore.getState().pendingConversation?.title;
+	const pendingProjectId = useChatViewStore.getState().pendingConversation?.project?.meta?.id;
+	const initialModelId = useChatViewStore.getState().initialSelectedModel?.modelId;
+	const initialProvider = useChatViewStore.getState().initialSelectedModel?.provider;
+	
 	const ensureConversation = useCallback(async (): Promise<ChatConversation | null> => {
-		let conversation = activeConversation || null;
-		if (!conversation && pendingConversation) {
-			console.log('[useChatSubmit] creating conversation', pendingConversation, initialSelectedModel);
+		// Get latest values from store to avoid stale closure
+		const latestActiveConversation = useProjectStore.getState().activeConversation;
+		const latestPendingConversation = useChatViewStore.getState().pendingConversation;
+		const latestInitialSelectedModel = useChatViewStore.getState().initialSelectedModel;
+		
+		let conversation = latestActiveConversation || null;
+		if (!conversation && latestPendingConversation) {
+			console.log('[useChatSubmit] creating conversation', latestPendingConversation, latestInitialSelectedModel);
 			conversation = await manager.createConversation({
-				title: pendingConversation.title,
-				project: pendingConversation.project?.meta ?? null,
-				modelId: initialSelectedModel?.modelId,
-				provider: initialSelectedModel?.provider,
+				title: latestPendingConversation.title,
+				project: latestPendingConversation.project?.meta ?? null,
+				modelId: latestInitialSelectedModel?.modelId,
+				provider: latestInitialSelectedModel?.provider,
 			});
-			setInitialSelectedModel(null);
+			useChatViewStore.getState().setInitialSelectedModel(null);
 			updateConv(conversation);
 		}
 		if (!conversation) {
 			console.error('[useChatSubmit] Failed to create conversation');
 		}
 		return conversation;
-	}, [activeConversation, pendingConversation, initialSelectedModel, manager, setInitialSelectedModel, updateConv]);
+	}, [activeConversationId, pendingConversationTitle, pendingProjectId, initialModelId, initialProvider]);
 
 
 	/**
 	 * Create temporary user message for immediate UI display.
+	 * Note: manager is intentionally omitted from dependencies as it's a stable reference from context.
 	 */
 	const createUserMessage = useCallback((
 		conversation: ChatConversation,
@@ -63,7 +73,7 @@ export function useChatSubmit() {
 		const provider = conversation.meta.activeProvider || 'other';
 		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 		return createChatMessage('user', content, modelId, provider, timezone);
-	}, [manager]);
+	}, []);
 
 	/**
 	 * Cancel the current streaming operation.
@@ -175,7 +185,9 @@ export function useChatSubmit() {
 			console.log('[useChatSubmit] Updating conversation with assistant message:', conversationWithAssistantMessage.messages.length, 'messages');
 			updateConv(conversationWithAssistantMessage);
 		}
-	}, [ensureConversation, createUserMessage, streamChat, manager, updateConv]);
+		// Note: manager and updateConv are intentionally omitted from dependencies
+		// manager is a stable reference from context, updateConv is from useStreamChat hook
+	}, [ensureConversation, createUserMessage, streamChat]);
 
 	return {
 		submitMessage,

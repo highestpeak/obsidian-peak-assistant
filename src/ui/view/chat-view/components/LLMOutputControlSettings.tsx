@@ -18,21 +18,32 @@ export const LLMOutputControlSettingsPopover: React.FC = () => {
 	const [isOpen, setIsOpen] = useState(false);
 
 	// Get current settings: conversation override + global default (merged)
+	// Use primitive values as dependencies, but get latest values from store inside useMemo
+	// to avoid stale closure issues while preventing circular reference problems.
+	const conversationId = activeConversation?.meta.id;
+	const outputControlOverride = activeConversation?.meta.outputControlOverride;
+	
 	const currentSettings = useMemo<LLMOutputControlSettings>(() => {
-		if (!manager || !activeConversation) return {};
+		// Get latest values from store to avoid stale closure
+		const latestActiveConversation = useProjectStore.getState().activeConversation;
+		if (!manager || !latestActiveConversation) return {};
 
 		// Start with global default settings
 		const globalDefault = manager.getSettings().defaultOutputControl || {};
 		
 		// Merge with conversation override (override takes priority)
-		const override = activeConversation.meta.outputControlOverride || {};
+		const override = latestActiveConversation.meta.outputControlOverride || {};
 		
 		return { ...globalDefault, ...override };
-	}, [manager, activeConversation]);
+	}, [conversationId, outputControlOverride]);
 
+	// Use conversation ID as dependency, but get latest values from store inside callback
+	// to avoid stale closure issues while preventing circular reference problems.
 	const saveSettings = useCallback(
 		async (settings: LLMOutputControlSettings) => {
-			if (!manager || !activeConversation) return;
+			// Get latest values from store to avoid stale closure
+			const latestActiveConversation = useProjectStore.getState().activeConversation;
+			if (!manager || !latestActiveConversation) return;
 
 			// Get global default settings
 			const globalDefault = manager.getSettings().defaultOutputControl || {};
@@ -50,21 +61,23 @@ export const LLMOutputControlSettingsPopover: React.FC = () => {
 				}
 			}
 
+			const convId = latestActiveConversation.meta.id;
+			
 			// Update conversation meta with override (empty object means no override)
 			await manager.updateConversationOutputControl({
-				conversationId: activeConversation.meta.id,
+				conversationId: convId,
 				outputControlOverride: Object.keys(override).length > 0 ? override : undefined,
 			});
 
 			// Reload conversation to get updated meta
-			const updatedConv = await manager.readConversation(activeConversation.meta.id, false);
+			const updatedConv = await manager.readConversation(convId, false);
 			if (updatedConv) {
 				useProjectStore.getState().setActiveConversation(updatedConv);
 				useProjectStore.getState().updateConversation(updatedConv);
 				useChatViewStore.getState().setConversation(updatedConv);
 			}
 		},
-		[manager, activeConversation]
+		[conversationId]
 	);
 
 	return (
