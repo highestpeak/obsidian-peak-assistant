@@ -120,4 +120,18 @@ export class ChatMessageRepo {
 			.orderBy('chat_message.created_at_ts', 'desc')
 			.execute();
 	}
+
+	/**
+	 * Count messages for a conversation (lightweight operation).
+	 */
+	async countByConversation(conversationId: string): Promise<number> {
+		const result = await this.db
+			.selectFrom('chat_message')
+			.select(({ fn }) => fn.count<number>('message_id').as('count'))
+			.where('conversation_id', '=', conversationId)
+			.where('is_visible', '=', 1)
+			.executeTakeFirst();
+
+		return result?.count ?? 0;
+	}
 }

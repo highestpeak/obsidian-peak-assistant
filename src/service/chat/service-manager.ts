@@ -304,6 +304,45 @@ export class AIServiceManager {
 	}
 
 	/**
+	 * Regenerate conversation title based on current messages and context.
+	 */
+	async regenerateConversationTitle(conversationId: string): Promise<void> {
+		if (!this.conversationService) {
+			throw new Error('ConversationService not initialized. Call init() first.');
+		}
+
+		// Load conversation with messages
+		const conversation = await this.readConversation(conversationId, true);
+		if (!conversation) {
+			throw new Error(`Conversation not found: ${conversationId}`);
+		}
+
+		// Get project if exists
+		const projects = await this.listProjects();
+		const project = conversation.meta.projectId 
+			? projects.find(p => p.meta.id === conversation.meta.projectId) || null
+			: null;
+
+		// Build context window for title generation
+		const context = await this.conversationService.buildContextWindow(conversation.messages, project);
+
+		// Generate new title based on messages and context
+		const newTitle = await this.conversationService.generateConversationTitle(conversation.messages, context);
+
+		if (!newTitle || newTitle.trim().length === 0) {
+			return;
+		}
+
+		// Update title - preserve titleManuallyEdited status, but mark as auto-updated
+		await this.conversationService.updateConversationTitle({
+			conversationId: conversation.meta.id,
+			title: newTitle.trim(),
+			titleManuallyEdited: conversation.meta.titleManuallyEdited ?? false,
+			titleAutoUpdated: true,
+		});
+	}
+
+	/**
 	 * Update conversation's output control override settings.
 	 */
 	async updateConversationOutputControl(params: {

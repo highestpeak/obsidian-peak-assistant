@@ -10,8 +10,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/ui/compon
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { Button } from '@/ui/component/shared-ui/button';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
-import { useTypewriterEffect } from '../shared/useTypewriterEffect';
-import { TYPEWRITER_EFFECT_SPEED_MS } from '@/core/constant';
 import type { ChatMessage } from '@/service/chat/types';
 
 const NO_TOPIC_NAME = 'NoTopic';
@@ -256,33 +254,6 @@ export const MessageHistoryViewComponent: React.FC = () => {
 	const { eventBus, app } = useServiceContext();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 	const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
-	const [displayTitle, setDisplayTitle] = useState(activeConversation?.meta.title || '');
-
-	// Update title from conversation updates
-	useEffect(() => {
-		const unsubscribe = eventBus.on<ConversationUpdatedEvent>(
-			ViewEventType.CONVERSATION_UPDATED,
-			(event) => {
-				if (event.conversation.meta.id === activeConversation?.meta.id) {
-					setDisplayTitle(event.conversation.meta.title);
-				}
-			}
-		);
-		return unsubscribe;
-	}, [eventBus, activeConversation?.meta.id]);
-
-	// Reset title when conversation changes
-	useEffect(() => {
-		if (activeConversation?.meta.title) {
-			setDisplayTitle(activeConversation.meta.title);
-		}
-	}, [activeConversation?.meta.id]);
-
-	const typewriterTitle = useTypewriterEffect({
-		text: displayTitle,
-		speed: TYPEWRITER_EFFECT_SPEED_MS,
-		enabled: true,
-	});
 
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const messageListContainerRef = useRef<HTMLDivElement>(null);
@@ -390,7 +361,7 @@ export const MessageHistoryViewComponent: React.FC = () => {
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-overflow-hidden">
 			<Header
-				title={typewriterTitle}
+				title="Conversation Outline"
 				onOpenSource={handleOpenSource}
 				// abort this idea for now. i don't like this idea now.
 				showSourceButton={false}

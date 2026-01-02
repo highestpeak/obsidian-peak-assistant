@@ -158,6 +158,9 @@ export class ChatStorageService {
 				activeProvider: updatedMeta.activeProvider,
 				tokenUsageTotal: updatedMeta.tokenUsageTotal ?? null,
 				titleManuallyEdited: updatedMeta.titleManuallyEdited ?? false,
+				titleAutoUpdated: updatedMeta.titleAutoUpdated ?? false,
+				contextLastUpdatedTimestamp: updatedMeta.contextLastUpdatedTimestamp ?? null,
+				contextLastMessageIndex: updatedMeta.contextLastMessageIndex ?? null,
 			});
 
 		return updatedMeta;
@@ -277,6 +280,9 @@ export class ChatStorageService {
 			activeProvider: convRow.active_provider ?? 'other',
 			tokenUsageTotal: convRow.token_usage_total ?? undefined,
 			titleManuallyEdited: convRow.title_manually_edited === 1,
+			titleAutoUpdated: convRow.title_auto_updated === 1,
+			contextLastUpdatedTimestamp: convRow.context_last_updated_ts ?? undefined,
+			contextLastMessageIndex: convRow.context_last_message_index ?? undefined,
 			fileRelPath: convRow.file_rel_path,
 		};
 	}
@@ -888,6 +894,14 @@ export class ChatStorageService {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Count messages for a conversation (lightweight operation).
+	 */
+	async countMessages(conversationId: string): Promise<number> {
+		const messageRepo = sqliteStoreManager.getChatMessageRepo();
+		return messageRepo.countByConversation(conversationId);
 	}
 }
 

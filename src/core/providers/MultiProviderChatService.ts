@@ -31,10 +31,12 @@ export class MultiProviderChatService implements LLMProviderService {
 	}
 
 	async blockChat(request: LLMRequest) {
+		console.debug('[MultiProviderChatService] Blocking chat:', request);
 		return this.getProviderService(request.provider).blockChat(request);
 	}
 
 	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
+		console.debug('[MultiProviderChatService] Streaming chat:', request);
 		return this.getProviderService(request.provider).streamChat(request);
 	}
 

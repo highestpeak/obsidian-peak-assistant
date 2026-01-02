@@ -20,17 +20,17 @@ export interface IconButtonProps
 export const IconButton = React.forwardRef<HTMLDivElement, IconButtonProps>(
 	({ className, size = 'md', children, onClick, onKeyDown, ...props }, ref) => {
 		const sizeClasses = {
-			xs: 'pktw-h-3 pktw-w-3',
-			sm: 'pktw-h-4 pktw-w-4',
-			md: 'pktw-h-5 pktw-w-5',
+			xs: 'pktw-h-4 pktw-w-4',
+			sm: 'pktw-h-5 pktw-w-5',
+			md: 'pktw-h-6 pktw-w-6',
 			lg: 'pktw-h-8 pktw-w-8',
 		};
 
 		const iconSizeClasses = {
-			xs: 'pktw-h-2.5 pktw-w-2.5',
-			sm: 'pktw-h-3.5 pktw-w-3.5',
-			md: 'pktw-h-4 pktw-w-4',
-			lg: 'pktw-h-5 pktw-w-5',
+			xs: 'pktw-h-3.5 pktw-w-3.5',
+			sm: 'pktw-h-4.5 pktw-w-4.5',
+			md: 'pktw-h-5 pktw-w-5',
+			lg: 'pktw-h-6 pktw-w-6',
 		};
 
 		const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {

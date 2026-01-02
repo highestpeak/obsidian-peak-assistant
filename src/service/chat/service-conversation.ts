@@ -313,12 +313,15 @@ export class ConversationService {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
 		context: ChatContextWindow;
+		messageIndex: number; // Message index when context was updated
 	}): Promise<ChatConversation> {
-		const { conversation, project, context } = params;
+		const { conversation, project, context, messageIndex } = params;
 		// Update context but keep messages unchanged
 		const updatedMeta: ChatConversationMeta = {
 			...conversation.meta,
 			updatedAtTimestamp: Date.now(),
+			contextLastUpdatedTimestamp: Date.now(),
+			contextLastMessageIndex: messageIndex,
 		};
 		return await this.storage.saveConversation(
 			project?.meta ?? null,
@@ -370,13 +373,15 @@ export class ConversationService {
 	/**
 	 * Update conversation title by renaming the file.
 	 * @param params.titleManuallyEdited - If true, marks the title as manually edited (default: true)
+	 * @param params.titleAutoUpdated - If true, marks the title as auto-updated (default: false)
 	 */
 	async updateConversationTitle(params: {
 		conversationId: string;
 		title: string;
 		titleManuallyEdited?: boolean;
+		titleAutoUpdated?: boolean;
 	}): Promise<void> {
-		const { conversationId, title, titleManuallyEdited = true } = params;
+		const { conversationId, title, titleManuallyEdited = true, titleAutoUpdated = false } = params;
 
 		// Rename file and get new relative path
 		const newFileRelPath = await this.storage.renameConversationFile(conversationId, title);
@@ -386,8 +391,18 @@ export class ConversationService {
 			id: conversationId,
 			title,
 			titleManuallyEdited,
+			titleAutoUpdated,
 			fileRelPath: newFileRelPath,
 		});
+
+		// Trigger conversation updated event
+		const updatedConversation = await this.storage.readConversation(conversationId, false);
+		if (updatedConversation) {
+			const eventBus = EventBus.getInstance(this.app);
+			eventBus.dispatch(new ConversationUpdatedEvent({
+				conversation: updatedConversation,
+			}));
+		}
 	}
 
 	/**
@@ -479,10 +494,10 @@ export class ConversationService {
 	}
 
 	/**
-	 * Generate a title for conversation based on messages.
+	 * Generate a title for conversation based on messages and context.
 	 * Uses the ApplicationGenerateTitle prompt to generate a concise title.
 	 */
-	async generateConversationTitle(messages: ChatMessage[]): Promise<string | null> {
+	async generateConversationTitle(messages: ChatMessage[], context: ChatContextWindow): Promise<string | null> {
 		if (messages.length === 0) {
 			return null;
 		}
@@ -495,10 +510,16 @@ export class ConversationService {
 				content: m.content,
 			}));
 
+			// Use context summary if available to provide better context for title generation
+			const contextInfo = context.shortSummary && context.shortSummary !== DEFAULT_SUMMARY
+				? `Context: ${context.shortSummary}`
+				: undefined;
+
 			const title = await this.promptService.chatWithPrompt(
 				PromptId.ApplicationGenerateTitle,
 				{
 					messages: messagesForPrompt,
+					contextInfo,
 				}
 			);
 
@@ -514,6 +535,7 @@ export class ConversationService {
 			return null;
 		}
 	}
+
 
 	/**
 	 * Build a compact context window for summarization.

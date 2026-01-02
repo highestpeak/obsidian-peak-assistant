@@ -173,6 +173,7 @@ export interface PromptVariables {
 	};
 	[PromptId.ApplicationGenerateTitle]: {
 		messages: Array<{ role: string; content: string }>;
+		contextInfo?: string;
 	};
 	[PromptId.MemoryExtractCandidatesJson]: {
 		userMessage: string;

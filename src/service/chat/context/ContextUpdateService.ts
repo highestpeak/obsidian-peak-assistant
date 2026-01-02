@@ -1,5 +1,5 @@
 import { EventBus, MessageSentEvent, ConversationCreatedEvent, ViewEventType } from '@/core/eventBus';
-import { CONVERSATION_SUMMARY_UPDATE_THRESHOLD, PROJECT_SUMMARY_UPDATE_THRESHOLD, SUMMARY_UPDATE_DEBOUNCE_MS, DEFAULT_SUMMARY } from '@/core/constant';
+import { CONVERSATION_SUMMARY_UPDATE_THRESHOLD, PROJECT_SUMMARY_UPDATE_THRESHOLD, SUMMARY_UPDATE_DEBOUNCE_MS, DEFAULT_SUMMARY, MIN_MESSAGES_FOR_TITLE_GENERATION } from '@/core/constant';
 import type { ConversationService } from '../service-conversation';
 import type { ProjectService } from '../service-project';
 import type { ChatStorageService } from '@/core/storage/vault/ChatStore';
@@ -11,10 +11,6 @@ import type { ChatContextWindow, ChatConversation } from '../types';
  * Both conversation and project summaries are updated based on message count.
  */
 export class ContextUpdateService {
-	// Count messages per conversation
-	private conversationCounts = new Map<string, number>();
-	// Count messages per project (across all conversations in the project)
-	private projectCounts = new Map<string, number>();
 	private conversationTimers = new Map<string, NodeJS.Timeout>();
 	private projectTimers = new Map<string, NodeJS.Timeout>();
 	private unsubscribeHandlers: (() => void)[] = [];
@@ -25,8 +21,7 @@ export class ContextUpdateService {
 		private readonly conversationService: ConversationService,
 		private readonly projectService: ProjectService,
 	) {
-		// TODO: uncomment this after testing
-		// this.setupListeners();
+		this.setupListeners();
 	}
 
 	/**
@@ -34,14 +29,10 @@ export class ContextUpdateService {
 	 */
 	private setupListeners(): void {
 		const unsubscribe1 = this.eventBus.on(ViewEventType.MESSAGE_SENT, (event: MessageSentEvent) => {
+			console.debug('[ContextUpdateService] Message sent event received:', event);
 			this.handleMessageSent(event);
 		});
 		this.unsubscribeHandlers.push(unsubscribe1);
-
-		const unsubscribe2 = this.eventBus.on(ViewEventType.CONVERSATION_CREATED, (event: ConversationCreatedEvent) => {
-			this.handleConversationCreated(event);
-		});
-		this.unsubscribeHandlers.push(unsubscribe2);
 	}
 
 	/**
@@ -50,48 +41,43 @@ export class ContextUpdateService {
 	private async handleMessageSent(event: MessageSentEvent): Promise<void> {
 		const { conversationId, projectId } = event;
 
-		// Increment conversation count
-		const convCount = (this.conversationCounts.get(conversationId) || 0) + 1;
-		this.conversationCounts.set(conversationId, convCount);
-
-		// Clear existing timer
+		// Debounce: if timer exists, cancel it and set a new one
+		// This ensures we only update after messages stop coming for SUMMARY_UPDATE_DEBOUNCE_MS
 		const existingTimer = this.conversationTimers.get(conversationId);
-		if (existingTimer) {
-			clearTimeout(existingTimer);
-		}
-
-		// Check if threshold reached
-		if (convCount >= CONVERSATION_SUMMARY_UPDATE_THRESHOLD) {
-			// Trigger immediate update
-			this.conversationCounts.set(conversationId, 0);
-			await this.updateConversationSummary(conversationId);
-		} else {
-			// Set debounce timer
+		if (!existingTimer) {
+			console.debug('[ContextUpdateService] Setting debounce timer for conversation:', conversationId);
+			// Set debounce timer - will check message count difference when timer fires
 			const timer = setTimeout(async () => {
-				this.conversationCounts.set(conversationId, 0);
-				await this.updateConversationSummary(conversationId);
+				console.debug('[ContextUpdateService] Timer triggered for conversation:', conversationId);
+				// Timer triggers: count messages and compare with last update from DB
+				const [currentMessageCount, conversationMeta] = await Promise.all([
+					this.storage.countMessages(conversationId),
+					this.storage.readConversationMeta(conversationId),
+				]);
+				const lastUpdateMessageIndex = conversationMeta?.contextLastMessageIndex || 0;
+				const messageCountDiff = currentMessageCount - lastUpdateMessageIndex;
+
+				// Only update if message count difference is greater than threshold
+				if (messageCountDiff >= CONVERSATION_SUMMARY_UPDATE_THRESHOLD) {
+					console.debug('[ContextUpdateService] Updating conversation summary:', conversationId, currentMessageCount, lastUpdateMessageIndex, messageCountDiff);
+					await this.updateConversationSummary(conversationId, currentMessageCount);
+				}
+
+				// Timer completes and removes itself
 				this.conversationTimers.delete(conversationId);
 			}, SUMMARY_UPDATE_DEBOUNCE_MS);
+
 			this.conversationTimers.set(conversationId, timer);
 		}
 
 		// Handle project update if projectId exists
-		// Project summary is also based on message count
 		if (projectId) {
-			const projectCount = (this.projectCounts.get(projectId) || 0) + 1;
-			this.projectCounts.set(projectId, projectCount);
-
 			const existingProjectTimer = this.projectTimers.get(projectId);
-			if (existingProjectTimer) {
-				clearTimeout(existingProjectTimer);
-			}
-
-			if (projectCount >= PROJECT_SUMMARY_UPDATE_THRESHOLD) {
-				this.projectCounts.set(projectId, 0);
-				await this.updateProjectSummary(projectId);
-			} else {
+			if (!existingProjectTimer) {
+				console.debug('[ContextUpdateService] Setting debounce timer for project:', projectId);
+				// Simple debounce for project updates
 				const timer = setTimeout(async () => {
-					this.projectCounts.set(projectId, 0);
+					console.debug('[ContextUpdateService] Timer triggered for project:', projectId);
 					await this.updateProjectSummary(projectId);
 					this.projectTimers.delete(projectId);
 				}, SUMMARY_UPDATE_DEBOUNCE_MS);
@@ -101,17 +87,9 @@ export class ContextUpdateService {
 	}
 
 	/**
-	 * Handle conversation created event
-	 */
-	private async handleConversationCreated(event: ConversationCreatedEvent): Promise<void> {
-		// For new conversations, we don't need to update summary immediately
-		// Project summary will be updated when messages are sent to conversations in the project
-	}
-
-	/**
 	 * Update conversation summary
 	 */
-	private async updateConversationSummary(conversationId: string): Promise<void> {
+	private async updateConversationSummary(conversationId: string, currentMessageCount: number): Promise<void> {
 		try {
 			// Load conversation with messages (needed for title generation)
 			const conversation = await this.storage.readConversation(conversationId, true);
@@ -127,18 +105,21 @@ export class ContextUpdateService {
 				conversation.messages,
 				project
 			);
+			console.debug('[ContextUpdateService] Built context window:', conversationId, context);
 
 			// Update conversation context only (with optimistic locking)
 			await this.conversationService.updateConversationContext({
 				conversation,
 				project,
 				context,
+				messageIndex: currentMessageCount,
 			});
 
-			// Update title if it hasn't been manually edited
+			// Update title if it hasn't been manually edited and hasn't been auto-updated before
 			// Only update if context has meaningful summary (not default) and conversation has messages
 			if (
 				!conversation.meta.titleManuallyEdited &&
+				!conversation.meta.titleAutoUpdated &&
 				context.shortSummary &&
 				context.shortSummary !== DEFAULT_SUMMARY &&
 				context.shortSummary !== 'No summary available yet.' &&
@@ -159,16 +140,17 @@ export class ContextUpdateService {
 		conversation: ChatConversation,
 		context: ChatContextWindow
 	): Promise<void> {
+		console.debug('[ContextUpdateService] Updating conversation title if needed:', conversation, context);
 		try {
-			// Only update title if we have at least 2 messages (user + assistant)
+			// Only update title if we have at least MIN_MESSAGES_FOR_TITLE_GENERATION messages (user + assistant)
 			// This ensures the conversation has meaningful content
-			if (conversation.messages.length < 2) {
+			if (conversation.messages.length < MIN_MESSAGES_FOR_TITLE_GENERATION) {
 				return;
 			}
 
 			// Generate new title based on messages
-			const newTitle = await this.conversationService.generateConversationTitle(conversation.messages);
-			
+			const newTitle = await this.conversationService.generateConversationTitle(conversation.messages, context);
+
 			if (!newTitle || newTitle.trim().length === 0) {
 				// Title generation failed, skip update
 				return;
@@ -184,11 +166,12 @@ export class ContextUpdateService {
 				return;
 			}
 
-			// Update title without marking as manually edited (preserve auto-update capability)
+			// Update title without marking as manually edited, but mark as auto-updated
 			await this.conversationService.updateConversationTitle({
 				conversationId: conversation.meta.id,
 				title: newTitle.trim(),
 				titleManuallyEdited: false, // Keep auto-update enabled
+				titleAutoUpdated: true, // Mark as auto-updated
 			});
 		} catch (error) {
 			console.warn('[ContextUpdateService] Failed to update conversation title:', error);
@@ -231,6 +214,7 @@ export class ContextUpdateService {
 		const projects = await this.storage.listProjects();
 		return projects.find(p => p.meta.id === projectId) || null;
 	}
+
 
 	/**
 	 * Cleanup and unsubscribe

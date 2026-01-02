@@ -66,6 +66,9 @@ export interface ChatConversationMeta {
 	activeProvider: string;
 	tokenUsageTotal?: number;
 	titleManuallyEdited?: boolean; // If true, auto-title generation will be disabled
+	titleAutoUpdated?: boolean; // If true, title has been auto-updated at least once
+	contextLastUpdatedTimestamp?: number; // Timestamp when context was last updated
+	contextLastMessageIndex?: number; // Message index when context was last updated
 	fileRelPath?: string; // Relative path to the conversation markdown file
 	/**
 	 * Temporary override for LLM output control settings.

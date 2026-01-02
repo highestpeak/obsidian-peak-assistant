@@ -21,6 +21,9 @@ export class ChatConversationRepo {
 		activeProvider?: string | null;
 		tokenUsageTotal?: number | null;
 		titleManuallyEdited?: boolean;
+		titleAutoUpdated?: boolean;
+		contextLastUpdatedTimestamp?: number | null;
+		contextLastMessageIndex?: number | null;
 		archivedRelPath?: string | null;
 		metaJson?: string | null;
 	}): Promise<void> {
@@ -37,6 +40,9 @@ export class ChatConversationRepo {
 				active_provider: params.activeProvider ?? null,
 				token_usage_total: params.tokenUsageTotal ?? null,
 				title_manually_edited: params.titleManuallyEdited ? 1 : 0,
+				title_auto_updated: params.titleAutoUpdated ? 1 : 0,
+				context_last_updated_ts: params.contextLastUpdatedTimestamp ?? null,
+				context_last_message_index: params.contextLastMessageIndex ?? null,
 				archived_rel_path: params.archivedRelPath ?? null,
 				meta_json: params.metaJson ?? null,
 			})
@@ -50,6 +56,9 @@ export class ChatConversationRepo {
 					active_provider: eb.ref('excluded.active_provider'),
 					token_usage_total: eb.ref('excluded.token_usage_total'),
 					title_manually_edited: eb.ref('excluded.title_manually_edited'),
+					title_auto_updated: eb.ref('excluded.title_auto_updated'),
+					context_last_updated_ts: eb.ref('excluded.context_last_updated_ts'),
+					context_last_message_index: eb.ref('excluded.context_last_message_index'),
 					archived_rel_path: eb.ref('excluded.archived_rel_path'),
 					meta_json: eb.ref('excluded.meta_json'),
 				})),

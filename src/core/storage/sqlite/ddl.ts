@@ -111,6 +111,9 @@ export interface Database {
 		active_provider: string | null;
 		token_usage_total: number | null;
 		title_manually_edited: number;
+		title_auto_updated: number;
+		context_last_updated_ts: number | null;
+		context_last_message_index: number | null;
 		archived_rel_path: string | null;
 		meta_json: string | null;
 	};
@@ -352,11 +355,14 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			file_rel_path TEXT NOT NULL UNIQUE,
 			created_at_ts INTEGER NOT NULL,
 			updated_at_ts INTEGER NOT NULL,
-			active_model TEXT,
-			active_provider TEXT,
-			token_usage_total INTEGER,
-			title_manually_edited INTEGER NOT NULL DEFAULT 0,
-			archived_rel_path TEXT,
+		active_model TEXT,
+		active_provider TEXT,
+		token_usage_total INTEGER,
+		title_manually_edited INTEGER NOT NULL DEFAULT 0,
+		title_auto_updated INTEGER NOT NULL DEFAULT 0,
+		context_last_updated_ts INTEGER,
+		context_last_message_index INTEGER,
+		archived_rel_path TEXT,
 			meta_json TEXT
 		);
 		CREATE INDEX IF NOT EXISTS idx_chat_conversation_project_id ON chat_conversation(project_id);
@@ -388,6 +394,12 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	`);
 	tryExec(`
 		ALTER TABLE chat_message ADD COLUMN attachment_summary TEXT;
+	`);
+	tryExec(`
+		ALTER TABLE chat_conversation ADD COLUMN context_last_updated_ts INTEGER;
+	`);
+	tryExec(`
+		ALTER TABLE chat_conversation ADD COLUMN context_last_message_index INTEGER;
 	`);
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS chat_message_resource (

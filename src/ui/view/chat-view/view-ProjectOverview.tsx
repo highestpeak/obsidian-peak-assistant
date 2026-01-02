@@ -5,6 +5,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { Folder, ChevronDown, ChevronRight, MessageCircle, MessageSquare, Calendar, Star, FileText, Image, File } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ConversationItem } from '@/ui/view/chat-view/components/conversation-item';
+import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
 
 interface ProjectOverviewViewProps {
 	projectId: string;
@@ -34,7 +35,7 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 	onConversationClick,
 	onMessageClick,
 }) => {
-	const { manager, app } = useServiceContext();
+	const { manager, app, eventBus } = useServiceContext();
 	const projects = useProjectStore((state) => state.projects);
 	const project = projectId ? projects.get(projectId) || null : null;
 	
@@ -56,6 +57,27 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 		};
 		loadConversations();
 	}, [project, manager]);
+
+	// Listen for conversation updates and update only the affected item
+	useEffect(() => {
+		const unsubscribe = eventBus.on<ConversationUpdatedEvent>(
+			ViewEventType.CONVERSATION_UPDATED,
+			(event) => {
+				// Only update if the updated conversation belongs to this project
+				if (project && event.conversation.meta.projectId === project.meta.id) {
+					setConversations(prev => {
+						// Use map to update the matching conversation without using index
+						return prev.map(conv => 
+							conv.meta.id === event.conversation.meta.id 
+								? event.conversation 
+								: conv
+						);
+					});
+				}
+			}
+		);
+		return unsubscribe;
+	}, [eventBus, project]);
 
 	// Set summary expanded based on whether summary exists
 	useEffect(() => {

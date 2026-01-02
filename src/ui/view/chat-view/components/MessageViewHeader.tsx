@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { ExternalLink, Folder } from 'lucide-react';
+import { ExternalLink, Folder, RefreshCw } from 'lucide-react';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { cn } from '@/ui/react/lib/utils';
@@ -19,10 +19,11 @@ interface MessageHeaderProps {
  */
 export const MessageHeader: React.FC<MessageHeaderProps> = ({
 }) => {
-	const { app, eventBus } = useServiceContext();
+	const { app, eventBus, manager } = useServiceContext();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 	const activeProject = useProjectStore((state) => state.activeProject);
 	const [displayTitle, setDisplayTitle] = useState(activeConversation?.meta.title || '');
+	const [enableTypewriter, setEnableTypewriter] = useState(false);
 
 	// Listen for conversation title updates
 	useEffect(() => {
@@ -32,6 +33,8 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 				// Only trigger typewriter if this is the active conversation
 				if (event.conversation.meta.id === activeConversation?.meta.id) {
 					setDisplayTitle(event.conversation.meta.title);
+					// Enable typewriter effect only when title is updated
+					setEnableTypewriter(true);
 				}
 			}
 		);
@@ -41,25 +44,52 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 		};
 	}, [eventBus, activeConversation?.meta.id]);
 
-	// Update display title when active conversation changes
+	// Update display title when active conversation changes (initial load, no typewriter)
 	useEffect(() => {
 		if (activeConversation?.meta.title) {
 			setDisplayTitle(activeConversation.meta.title);
+			// Disable typewriter on initial load
+			setEnableTypewriter(false);
 		}
 	}, [activeConversation?.meta.id]); // Only reset on conversation change, not title change
 
-	// Apply typewriter effect
+	// Apply typewriter effect only when enabled
 	const typewriterTitle = useTypewriterEffect({
 		text: displayTitle,
 		speed: TYPEWRITER_EFFECT_SPEED_MS,
-		enabled: true,
+		enabled: enableTypewriter,
 	});
+
+	// Disable typewriter after it completes
+	useEffect(() => {
+		if (enableTypewriter && typewriterTitle === displayTitle && displayTitle.length > 0) {
+			// Typewriter effect completed, disable it
+			setEnableTypewriter(false);
+		}
+	}, [enableTypewriter, typewriterTitle, displayTitle]);
+
+	// Use typewriter title only when enabled, otherwise use displayTitle directly
+	const finalTitle = enableTypewriter ? typewriterTitle : displayTitle;
 
 	const handleOpenSource = async () => {
 		if (activeConversation?.file) {
 			await openSourceFile(app, activeConversation.file);
 		}
 	};
+
+	const handleRegenerateTitle = async () => {
+		const conversation = useProjectStore.getState().activeConversation;
+		if (!conversation) {
+			return;
+		}
+
+		try {
+			await manager.regenerateConversationTitle(conversation.meta.id);
+		} catch (error) {
+			console.error('Failed to regenerate conversation title:', error);
+		}
+	};
+
 	return (
 		<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-4 pktw-w-full">
 			{/* Left side: Conversation name */}
@@ -69,10 +99,30 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 						<Folder className="pktw-inline-flex pktw-items-center pktw-flex-shrink-0" size={18} />
 						<span className="pktw-font-medium pktw-text-foreground pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>{activeProject.meta.name}</span>
 						<span className="pktw-text-muted-foreground pktw-mx-1" style={{ fontSize: 'var(--font-ui-medium)' }}> / </span>
-						<span className="pktw-font-medium pktw-text-foreground pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>{typewriterTitle}</span>
+						<span className="pktw-font-medium pktw-text-foreground pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>{finalTitle}</span>
+						{activeConversation && !activeConversation.meta.titleManuallyEdited && (
+							<IconButton
+								size="lg"
+								onClick={handleRegenerateTitle}
+								title="Regenerate conversation title"
+							>
+								<RefreshCw />
+							</IconButton>
+						)}
 					</>
 				) : activeConversation ? (
-					<h2 className="pktw-m-0 pktw-font-medium pktw-text-foreground pktw-inline pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>{typewriterTitle}</h2>
+					<>
+						<h2 className="pktw-m-0 pktw-font-medium pktw-text-foreground pktw-inline pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>{finalTitle}</h2>
+						{activeConversation && !activeConversation.meta.titleManuallyEdited && (
+							<IconButton
+								size="lg"
+								onClick={handleRegenerateTitle}
+								title="Regenerate conversation title"
+							>
+								<RefreshCw />
+							</IconButton>
+						)}
+					</>
 				) : null}
 			</div>
 

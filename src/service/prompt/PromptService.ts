@@ -3,6 +3,7 @@ import { PromptId, type PromptVariables, PROMPT_REGISTRY } from './PromptId';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import type { AIServiceSettings } from '@/app/settings/types';
+import Handlebars from 'handlebars';
 
 /**
  * Unified prompt service with code-first templates and optional file overrides.
@@ -10,6 +11,7 @@ import type { AIServiceSettings } from '@/app/settings/types';
 export class PromptService {
 	private promptFolder: string;
 	private readonly cache = new Map<string, string>();
+	private readonly templateCache = new Map<string, HandlebarsTemplateDelegate>();
 	private chat?: MultiProviderChatService;
 	private settings?: AIServiceSettings;
 
@@ -70,7 +72,7 @@ export class PromptService {
 			throw new Error('Chat service not available. Call setChatService() first.');
 		}
 		const promptText = await this.render(promptId, variables);
-		
+
 		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
 		if (!provider || !model) {
 			// Check promptModelMap first
@@ -86,7 +88,7 @@ export class PromptService {
 				throw new Error('No model configuration available. Please configure defaultModel in settings.');
 			}
 		}
-		
+
 		const completion = await this.chat.blockChat({
 			provider,
 			model,
@@ -101,7 +103,7 @@ export class PromptService {
 	}
 
 	/**
-	 * Render a prompt with variables.
+	 * Render a prompt with variables using Handlebars.
 	 * First checks for file override, then falls back to code template.
 	 */
 	async render<K extends PromptId>(
@@ -111,8 +113,7 @@ export class PromptService {
 		// Try to load override from file
 		const override = await this.loadOverride(id);
 		if (override) {
-			// For overrides, use simple variable substitution (no complex template logic)
-			return this.renderSimpleTemplate(override, variables as Record<string, any>);
+			return this.renderHandlebarsTemplate(override, variables as Record<string, any>);
 		}
 
 		// Use code template
@@ -147,17 +148,7 @@ export class PromptService {
 	}
 
 	/**
-	 * Simple template renderer for file overrides (only {{variable}} substitution).
-	 */
-	private renderSimpleTemplate(template: string, vars: Record<string, any>): string {
-		return template.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-			const value = this.getNestedValue(vars, varName);
-			return value !== undefined && value !== null ? String(value) : '';
-		});
-	}
-
-	/**
-	 * Render code template with variables.
+	 * Render code template with variables using Handlebars.
 	 */
 	private renderCodeTemplate<K extends PromptId>(
 		id: K,
@@ -168,80 +159,33 @@ export class PromptService {
 			throw new Error(`Prompt template not found: ${id}`);
 		}
 
-		return this.renderTemplate(template.template, variables as Record<string, any>);
+		return this.renderHandlebarsTemplate(template.template, variables as Record<string, any>);
 	}
 
 	/**
-	 * Render template string with variables.
-	 * Supports:
-	 * - {{variable}} - variable substitution
-	 * - {{#if variable}}...{{/if}} - conditional blocks
-	 * - {{#each array}}...{{/each}} - array iteration
-	 * - {{@index}} - loop index
-	 * - {{#if (eq a b)}}...{{/if}} - equality helper
+	 * Render template using Handlebars.
 	 */
-	private renderTemplate(template: string, vars: Record<string, any>): string {
-		// Handle conditionals and loops first, then simple variables
-		let result = template;
-
-		// Process {{#each}} blocks
-		result = result.replace(/\{\{#each\s+(\w+)\}\}([\s\S]*?)\{\{\/each\}\}/g, (match, varName, block) => {
-			const array = this.getNestedValue(vars, varName);
-			if (!Array.isArray(array)) {
-				return '';
-			}
-			return array.map((item, index) => {
-				const itemVars = { ...vars, [varName]: item, '@index': index };
-				return this.renderTemplate(block, itemVars);
-			}).join('');
-		});
-
-		// Process {{#if}} blocks with equality check
-		result = result.replace(/\{\{#if\s+\(eq\s+(\w+)\s+(\w+)\)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, var1, var2, block) => {
-			const val1 = this.getNestedValue(vars, var1);
-			const val2 = this.getNestedValue(vars, var2);
-			if (val1 === val2) {
-				return this.renderTemplate(block, vars);
-			}
-			return '';
-		});
-
-		// Process {{#if}} blocks
-		result = result.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, varName, block) => {
-			const value = this.getNestedValue(vars, varName);
-			if (value) {
-				return this.renderTemplate(block, vars);
-			}
-			return '';
-		});
-
-		// Process simple variable substitutions {{variable}}
-		result = result.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-			const value = this.getNestedValue(vars, varName);
-			return value !== undefined && value !== null ? String(value) : '';
-		});
-
-		// Process nested variable access {{path.to.value}}
-		result = result.replace(/\{\{(\w+(?:\.\w+)+)\}\}/g, (match, path) => {
-			const value = this.getNestedValue(vars, path);
-			return value !== undefined && value !== null ? String(value) : '';
-		});
-
-		return result.trim();
-	}
-
-	/**
-	 * Get nested value from object using dot notation.
-	 */
-	private getNestedValue(obj: any, path: string): any {
-		const parts = path.split('.');
-		let current = obj;
-		for (const part of parts) {
-			if (current === null || current === undefined) {
-				return undefined;
-			}
-			current = current[part];
+	private renderHandlebarsTemplate(template: string, vars: Record<string, any>): string {
+		// Check cache first
+		if (!this.templateCache.has(template)) {
+			const compiled = Handlebars.compile(template);
+			this.templateCache.set(template, compiled);
 		}
-		return current;
+
+		const compiled = this.templateCache.get(template)!;
+		const result = compiled(vars).trim();
+
+		// Debug: log if messages array exists but wasn't rendered
+		if (vars.messages && Array.isArray(vars.messages) && vars.messages.length > 0) {
+			const hasMessagesInResult = result.includes(vars.messages[0]?.content || '');
+			if (!hasMessagesInResult) {
+				console.warn('[PromptService] Messages may not have been rendered correctly:', {
+					messageCount: vars.messages.length,
+					resultPreview: result.substring(0, 200),
+				});
+			}
+		}
+
+		return result;
 	}
 }

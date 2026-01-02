@@ -135,3 +135,9 @@ export const MAX_PROJECTS_DISPLAY = 10;
  * This is much smaller than MAX_CONVERSATIONS_DISPLAY since it's shown within a nested structure.
  */
 export const MAX_CONVERSATIONS_PER_PROJECT = 10;
+
+/**
+ * Minimum number of messages required for title generation.
+ * Need at least user message + assistant response to generate a meaningful title.
+ */
+export const MIN_MESSAGES_FOR_TITLE_GENERATION = 2;
