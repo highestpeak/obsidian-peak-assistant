@@ -17,6 +17,16 @@
 
 /* Custom CSS */
 
+/* Shimmer animation keyframes */
+@keyframes pktw-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 /* Icon */
 .peak-icon {
 	flex-shrink: 0;

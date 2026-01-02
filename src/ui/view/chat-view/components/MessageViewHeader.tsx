@@ -10,6 +10,7 @@ import { useTypewriterEffect } from '@/ui/view/shared/useTypewriterEffect';
 import { TYPEWRITER_EFFECT_SPEED_MS } from '@/core/constant';
 import { ResourcesPopover } from './ResourcesPopover';
 import { SummaryPopover } from './SummaryPopover';
+import { Shimmer } from '@/ui/component/ai-elements/shimmer';
 
 interface MessageHeaderProps {
 }
@@ -24,6 +25,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 	const activeProject = useProjectStore((state) => state.activeProject);
 	const [displayTitle, setDisplayTitle] = useState(activeConversation?.meta.title || '');
 	const [enableTypewriter, setEnableTypewriter] = useState(false);
+	const [isRegeneratingTitle, setIsRegeneratingTitle] = useState(false);
 
 	// Listen for conversation title updates
 	useEffect(() => {
@@ -33,7 +35,8 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 				// Only trigger typewriter if this is the active conversation
 				if (event.conversation.meta.id === activeConversation?.meta.id) {
 					setDisplayTitle(event.conversation.meta.title);
-					// Enable typewriter effect only when title is updated
+					// Disable shimmer effect and enable typewriter effect when title is updated
+					setIsRegeneratingTitle(false);
 					setEnableTypewriter(true);
 				}
 			}
@@ -50,6 +53,8 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 			setDisplayTitle(activeConversation.meta.title);
 			// Disable typewriter on initial load
 			setEnableTypewriter(false);
+			// Reset regenerating state when conversation changes
+			setIsRegeneratingTitle(false);
 		}
 	}, [activeConversation?.meta.id]); // Only reset on conversation change, not title change
 
@@ -70,6 +75,15 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 
 	// Use typewriter title only when enabled, otherwise use displayTitle directly
 	const finalTitle = enableTypewriter ? typewriterTitle : displayTitle;
+	
+	// Title element with shimmer effect when regenerating
+	// Always use displayTitle for shimmer to show current title, not the typewriter one
+	const titleToShow = isRegeneratingTitle && displayTitle ? displayTitle : finalTitle;
+	const titleElement = (
+		<span className="pktw-font-medium pktw-text-foreground pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>
+			{isRegeneratingTitle && displayTitle ? <Shimmer duration={2} spread={2}>{displayTitle}</Shimmer> : titleToShow}
+		</span>
+	);
 
 	const handleOpenSource = async () => {
 		if (activeConversation?.file) {
@@ -78,15 +92,23 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 	};
 
 	const handleRegenerateTitle = async () => {
+		// Prevent multiple clicks while regenerating
+		if (isRegeneratingTitle) {
+			return;
+		}
+
 		const conversation = useProjectStore.getState().activeConversation;
 		if (!conversation) {
 			return;
 		}
 
 		try {
+			// Show shimmer effect immediately
+			setIsRegeneratingTitle(true);
 			await manager.regenerateConversationTitle(conversation.meta.id);
 		} catch (error) {
 			console.error('Failed to regenerate conversation title:', error);
+			setIsRegeneratingTitle(false);
 		}
 	};
 
@@ -94,36 +116,37 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 		<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-4 pktw-w-full">
 			{/* Left side: Conversation name */}
 			<div className="pktw-m-0 pktw-flex pktw-items-center pktw-gap-2 pktw-flex-nowrap pktw-flex-1 pktw-min-w-0">
-				{activeConversation && activeProject ? (
+				{activeConversation && (
 					<>
-						<Folder className="pktw-inline-flex pktw-items-center pktw-flex-shrink-0" size={18} />
-						<span className="pktw-font-medium pktw-text-foreground pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>{activeProject.meta.name}</span>
-						<span className="pktw-text-muted-foreground pktw-mx-1" style={{ fontSize: 'var(--font-ui-medium)' }}> / </span>
-						<span className="pktw-font-medium pktw-text-foreground pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>{finalTitle}</span>
-						{activeConversation && !activeConversation.meta.titleManuallyEdited && (
+						{activeProject && (
+							<>
+								<Folder className="pktw-inline-flex pktw-items-center pktw-flex-shrink-0" size={18} />
+								<span className="pktw-font-medium pktw-text-foreground pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>{activeProject.meta.name}</span>
+								<span className="pktw-text-muted-foreground pktw-mx-1" style={{ fontSize: 'var(--font-ui-medium)' }}> / </span>
+							</>
+						)}
+						{titleElement}
+						{!activeConversation.meta.titleManuallyEdited && (
 							<IconButton
 								size="lg"
-								onClick={handleRegenerateTitle}
-								title="Regenerate conversation title"
+								onClick={isRegeneratingTitle ? undefined : handleRegenerateTitle}
+								title={isRegeneratingTitle ? "Regenerating..." : "Regenerate conversation title"}
+								className={cn(
+									isRegeneratingTitle && [
+										"pktw-opacity-40",
+										"pktw-cursor-not-allowed",
+										"!pktw-pointer-events-none",
+										"pktw-select-none",
+										"hover:!pktw-bg-transparent",
+										"hover:!pktw-opacity-40"
+									]
+								)}
 							>
-								<RefreshCw />
+								<RefreshCw className={cn(isRegeneratingTitle && "pktw-animate-spin")} />
 							</IconButton>
 						)}
 					</>
-				) : activeConversation ? (
-					<>
-						<h2 className="pktw-m-0 pktw-font-medium pktw-text-foreground pktw-inline pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>{finalTitle}</h2>
-						{activeConversation && !activeConversation.meta.titleManuallyEdited && (
-							<IconButton
-								size="lg"
-								onClick={handleRegenerateTitle}
-								title="Regenerate conversation title"
-							>
-								<RefreshCw />
-							</IconButton>
-						)}
-					</>
-				) : null}
+				)}
 			</div>
 
 			{/* Right side: Action buttons */}

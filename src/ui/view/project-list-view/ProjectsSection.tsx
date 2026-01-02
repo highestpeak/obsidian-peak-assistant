@@ -10,9 +10,10 @@ import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, MoreHorizontal, Calendar } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { ViewEventType, ConversationUpdatedEvent } from '@/core/eventBus';
+import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent } from '@/core/eventBus';
 import { DEFAULT_NEW_CONVERSATION_TITLE, MAX_CONVERSATIONS_DISPLAY, MAX_PROJECTS_DISPLAY, MAX_CONVERSATIONS_PER_PROJECT } from '@/core/constant';
 import { formatRelativeDate } from '@/ui/view/shared/date-utils';
+import { ConversationList } from './ConversationsSection';
 
 interface ProjectsSectionProps {
 }
@@ -21,12 +22,16 @@ interface ProjectItemProps {
 	project: ChatProject;
 	isExpanded: boolean;
 	conversations: ChatConversation[];
+	typewriterEnabled: Map<string, boolean>;
+	onTypewriterComplete: (conversationId: string) => void;
 }
 
 const ProjectItem: React.FC<ProjectItemProps> = ({
 	project,
 	isExpanded,
 	conversations,
+	typewriterEnabled,
+	onTypewriterComplete,
 }) => {
 	const { app, manager } = useServiceContext();
 	// Directly access store in component
@@ -149,13 +154,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 			icon: 'pencil',
 			onClick: () => handleEditProjectName(projectItem),
 		},
-		{
-			title: 'Open source file',
-			icon: 'file-text',
-			onClick: async () => {
-				await openSourceFile(app, projectItem.file);
-			},
-		},
+		// Note: Projects don't have files, so this menu item is removed
 	], [app, handleEditProjectName]);
 
 	const conversationMenuItems = useCallback((conversation: ChatConversation) => {
@@ -242,39 +241,22 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				</div>
 
 				{/* Render conversations */}
-				{conversationsToShow.map((conv) => {
-					const isActive = activeConversation?.meta.id === conv.meta.id;
-					return (
-						<div
-							key={conv.meta.id}
-							className={cn(
-								'pktw-relative pktw-px-2 pktw-py-1.5 pktw-pl-6 pktw-pr-2 pktw-rounded pktw-cursor-pointer pktw-transition-colors pktw-text-[13px] pktw-min-h-7 pktw-flex pktw-items-center pktw-justify-between pktw-gap-2 pktw-break-words',
-								'before:pktw-content-[""] before:pktw-absolute before:pktw-left-2 before:pktw-top-1/2 before:pktw--translate-y-1/2 before:pktw-w-1 before:pktw-h-1 before:pktw-rounded-full before:pktw-transition-opacity',
-								// Default state
-								!isActive && 'pktw-bg-transparent pktw-text-muted-foreground hover:pktw-bg-muted hover:pktw-text-foreground before:pktw-bg-muted-foreground before:pktw-opacity-40 hover:before:pktw-opacity-80',
-								// Active state - use same pattern as ConversationsSection
-								isActive && '!pktw-bg-primary !pktw-text-primary-foreground hover:!pktw-bg-primary hover:!pktw-text-primary-foreground before:!pktw-opacity-100 before:!pktw-bg-primary-foreground'
-							)}
-							data-conversation-id={conv.meta.id}
-							onClick={(e) => {
-								e.stopPropagation();
-								handleConversationClick(conv);
-							}}
-							onContextMenu={(e) => handleContextMenu(e, 'conversation', conv)}
-						>
-							<span className="pktw-flex-1 pktw-min-w-0 pktw-truncate">{conv.meta.title}</span>
-							{conv.meta.createdAtTimestamp && (
-								<div className={cn(
-									'pktw-flex pktw-items-center pktw-gap-1 pktw-text-[11px] pktw-shrink-0',
-									isActive ? 'pktw-text-primary-foreground/70' : 'pktw-text-muted-foreground/70'
-								)}>
-									<Calendar className="pktw-w-3 pktw-h-3" />
-									{formatRelativeDate(conv.meta.createdAtTimestamp)}
-								</div>
-							)}
-						</div>
-					);
-				})}
+				<div className="pktw-ml-7">
+					<ConversationList
+						conversations={conversationsToShow}
+						activeConversation={activeConversation}
+						typewriterEnabled={typewriterEnabled}
+						onConversationClick={(conv) => {
+							handleConversationClick(conv);
+						}}
+						onContextMenu={(e, conv) => {
+							e.stopPropagation();
+							handleContextMenu(e, 'conversation', conv);
+						}}
+						onTypewriterComplete={(conversationId) => onTypewriterComplete(conversationId)}
+						showIndicator={true}
+					/>
+				</div>
 
 				{hasMoreConversations && (
 					<div
@@ -323,6 +305,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 	const [projectConversations, setProjectConversations] = useState<
 		Map<string, ChatConversation[]>
 	>(new Map());
+	const [typewriterEnabled, setTypewriterEnabled] = useState<Map<string, boolean>>(new Map());
 	const [inputModalOpen, setInputModalOpen] = useState(false);
 	const [inputModalConfig, setInputModalConfig] = useState<{
 		message: string;
@@ -372,10 +355,22 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 
 	// Listen for conversation updates and reload project conversations if needed
 	useEffect(() => {
-		const unsubscribe = eventBus.on<ConversationUpdatedEvent>(
+		const unsubscribeUpdated = eventBus.on<ConversationUpdatedEvent>(
 			ViewEventType.CONVERSATION_UPDATED,
 			async (event) => {
 				const conversation = event.conversation;
+				console.log('[ProjectsSection] CONVERSATION_UPDATED event:', {
+					conversationId: conversation.meta.id,
+					projectId: conversation.meta.projectId,
+					title: conversation.meta.title,
+					timestamp: Date.now()
+				});
+				// Enable typewriter effect for this conversation
+				setTypewriterEnabled(prev => {
+					const next = new Map(prev);
+					next.set(conversation.meta.id, true);
+					return next;
+				});
 				// If conversation belongs to a project and that project is expanded, reload its conversations
 				if (conversation.meta.projectId) {
 					const project = projects.get(conversation.meta.projectId);
@@ -386,10 +381,35 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 			}
 		);
 
+		const unsubscribeCreated = eventBus.on<ConversationCreatedEvent>(
+			ViewEventType.CONVERSATION_CREATED,
+			(event) => {
+				console.log('[ProjectsSection] CONVERSATION_CREATED event:', {
+					conversationId: event.conversationId,
+					timestamp: Date.now()
+				});
+				// Enable typewriter effect for new conversation
+				setTypewriterEnabled(prev => {
+					const next = new Map(prev);
+					next.set(event.conversationId, true);
+					return next;
+				});
+			}
+		);
+
 		return () => {
-			unsubscribe();
+			unsubscribeUpdated();
+			unsubscribeCreated();
 		};
 	}, [eventBus, projects, expandedProjects, loadProjectConversations]);
+
+	const handleTypewriterComplete = useCallback((conversationId: string) => {
+		setTypewriterEnabled(prev => {
+			const next = new Map(prev);
+			next.delete(conversationId);
+			return next;
+		});
+	}, []);
 
 	const handleCreateProject = () => {
 		setInputModalConfig({
@@ -458,6 +478,8 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 						project={project}
 						isExpanded={expandedProjects.has(project.meta.id)}
 						conversations={projectConversations.get(project.meta.id) || []}
+						typewriterEnabled={typewriterEnabled}
+						onTypewriterComplete={handleTypewriterComplete}
 					/>
 				))}
 

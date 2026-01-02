@@ -53,6 +53,12 @@ module.exports = {
 				md: '0.375rem', // 6px
 				sm: '0.25rem', // 4px
 			},
+			keyframes: {
+				shimmer: {
+					'0%': { 'background-position': '-200% 0' },
+					'100%': { 'background-position': '200% 0' },
+				},
+			},
 		},
 	},
 	plugins: [],

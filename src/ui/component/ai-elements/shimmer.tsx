@@ -17,7 +17,7 @@ export type TextShimmerProps = {
 
 const ShimmerComponent = ({
   children,
-  as: Component = "p",
+  as: Component = "span",
   className,
   duration = 2,
   spread = 2,
@@ -30,16 +30,21 @@ const ShimmerComponent = ({
   return (
     <Component
       className={cn(
-        "pktw-relative pktw-inline-block pktw-bg-[length:250%_100%,auto] pktw-bg-clip-text pktw-text-transparent",
-        "pktw-[--bg:linear-gradient(90deg,#0000_calc(50%-var(--spread)),var(--color-background),#0000_calc(50%+var(--spread)))] pktw-[background-repeat:no-repeat,padding-box]",
-        "pktw-animate-[shimmer_2s_linear_infinite]",
+        "pktw-relative pktw-inline-block pktw-bg-clip-text pktw-text-transparent",
         className
       )}
       style={
         {
           "--spread": `${dynamicSpread}px`,
-          backgroundImage:
-            "var(--bg), linear-gradient(var(--color-muted-foreground), var(--color-muted-foreground))",
+          // Shimmer effect: white highlight moving over text color
+          // First gradient: transparent -> white (highlight) -> transparent (moving)
+          // Second gradient: solid text color (base layer)
+          backgroundImage: `linear-gradient(90deg, transparent calc(50% - var(--spread)), rgba(255, 255, 255, 0.8) calc(50% - var(--spread)), rgba(255, 255, 255, 0.8) calc(50% + var(--spread)), transparent calc(50% + var(--spread))), linear-gradient(var(--text-normal), var(--text-normal))`,
+          backgroundSize: "250% 100%, auto",
+          backgroundRepeat: "no-repeat, repeat",
+          backgroundClip: "text, padding-box",
+          WebkitBackgroundClip: "text, padding-box",
+          animation: `pktw-shimmer ${duration}s linear infinite`,
         } as CSSProperties
       }
     >
