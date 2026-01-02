@@ -304,6 +304,19 @@ export class AIServiceManager {
 	}
 
 	/**
+	 * Update conversation's attachment handling mode override.
+	 */
+	async updateConversationAttachmentHandling(params: {
+		conversationId: string;
+		attachmentHandlingOverride?: 'direct' | 'degrade_to_text';
+	}): Promise<void> {
+		if (!this.conversationService) {
+			throw new Error('ConversationService not initialized. Call init() first.');
+		}
+		await this.conversationService.updateConversationAttachmentHandling(params);
+	}
+
+	/**
 	 * Regenerate conversation title based on current messages and context.
 	 */
 	async regenerateConversationTitle(conversationId: string): Promise<void> {
@@ -484,6 +497,7 @@ export class AIServiceManager {
 				displayName: m.displayName,
 				provider: m.provider,
 				icon: m.icon,
+				capabilities: m.capabilities, // Pass through capabilities from provider
 			}));
 	}
 

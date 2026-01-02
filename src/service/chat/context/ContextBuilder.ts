@@ -1,9 +1,14 @@
-import type { LLMRequestMessage } from '@/core/providers/types';
+import type { LLMRequestMessage, ProviderContentPart } from '@/core/providers/types';
 import type { ChatConversation, ChatProject, ChatMessage } from '../types';
 import type { ResourceSummaryService } from './ResourceSummaryService';
 import type { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/service/prompt/PromptId';
 import type { UserProfileService } from '@/service/chat/context/UserProfileService';
+import type { ModelCapabilities } from '@/core/providers/model-capabilities';
+import type { App } from 'obsidian';
+import { normalizePath, TFile } from 'obsidian';
+import { Buffer } from 'buffer';
+import { isImageExtension, getImageMimeType } from '@/core/document/helper/FileTypeUtils';
 
 /**
  * Context building options
@@ -45,6 +50,9 @@ export class ContextBuilder {
 		project?: ChatProject | null;
 		messages: ChatMessage[];
 		options?: ContextBuilderOptions;
+		modelCapabilities?: ModelCapabilities;
+		attachmentHandlingMode?: 'direct' | 'degrade_to_text';
+		app?: App;
 	}): Promise<LLMRequestMessage[]> {
 		const startTime = Date.now();
 		const options = {
@@ -92,12 +100,47 @@ export class ContextBuilder {
 
 		// 4. Recent raw messages (last N messages)
 		const recentMessages = params.messages.slice(-options.maxRecentMessages!);
-		for (const message of recentMessages) {
-			// Use original content only (runtime fields like contextText are handled by ChatMessageVO)
+		for (let i = 0; i < recentMessages.length; i++) {
+			const message = recentMessages[i];
+			const isLastMessage = i === recentMessages.length - 1;
+			
+			// Build message content
+			const contentParts: ProviderContentPart[] = [];
+			
+			// Add text content
 			if (message.content) {
+				contentParts.push({ type: 'text', text: message.content });
+			}
+			
+			// For the last user message, if model has vision capability and direct mode, convert image resources to image_url
+			if (isLastMessage && message.role === 'user' && params.modelCapabilities?.vision && params.attachmentHandlingMode === 'direct' && message.resources && params.app) {
+				for (const resource of message.resources) {
+					// Check if resource is an image
+					const ext = resource.source.split('.').pop()?.toLowerCase() || '';
+					if (isImageExtension(ext)) {
+						try {
+							// Convert image to data URL
+							const normalizedPath = normalizePath(resource.source.startsWith('/') ? resource.source.slice(1) : resource.source);
+							const file = params.app.vault.getAbstractFileByPath(normalizedPath);
+							if (file instanceof TFile) {
+								const arrayBuffer = await params.app.vault.readBinary(file);
+								const base64 = Buffer.from(arrayBuffer).toString('base64');
+								const mimeType = getImageMimeType(ext);
+								const dataUrl = `data:${mimeType};base64,${base64}`;
+								contentParts.push({ type: 'image_url', url: dataUrl });
+							}
+						} catch (error) {
+							console.warn(`[ContextBuilder] Failed to convert image ${resource.source} to image_url:`, error);
+							// Fallback: will use summary from context memory
+						}
+					}
+				}
+			}
+			
+			if (contentParts.length > 0) {
 				result.push({
 					role: message.role,
-					content: [{ type: 'text', text: message.content }],
+					content: contentParts,
 				});
 			}
 		}

@@ -152,6 +152,28 @@ export function useStreamChat() {
 					console.error('[useStreamChat] Streaming error:', event.error);
 					messageStore.clearStreaming();
 					throw event.error;
+				} else if (event.type === 'progress') {
+					// Handle progress events
+					const stepIndex = messageStore.streamingSteps.findIndex(
+						s => s.stage === event.stage && s.resourceId === event.resourceId
+					);
+					if (stepIndex >= 0) {
+						// Update existing step
+						messageStore.updateStreamingStep(stepIndex, {
+							status: event.status,
+							label: event.label,
+						});
+					} else {
+						// Add new step
+						messageStore.addStreamingStep({
+							stage: event.stage,
+							status: event.status,
+							label: event.label,
+							resourceSource: event.resourceSource,
+							resourceId: event.resourceId,
+						});
+					}
+					onScrollToBottom?.();
 				}
 			}
 

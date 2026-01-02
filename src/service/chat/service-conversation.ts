@@ -27,6 +27,8 @@ import { ResourceLoaderManager } from '@/core/document/resource/helper/ResourceL
 import type { AIServiceManager } from './service-manager';
 import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { generateContentPreview, generateAttachmentSummary } from '@/core/utils/message-preview-utils';
+import { getFileTypeFromPath, isImageExtension } from '@/core/document/helper/FileTypeUtils';
+import { resolveModelCapabilities } from '@/core/providers/model-capabilities';
 
 /**
  * Service for managing chat conversations.
@@ -267,6 +269,12 @@ export class ConversationService {
 		const timezone = this.detectTimezone();
 		const userMessage = createChatMessage('user', userContent, modelId, provider, timezone);
 
+		// Get model capabilities and attachment handling mode
+		const allModels = await this.aiServiceManager.getAllAvailableModels();
+		const currentModel = allModels.find(m => m.id === modelId && m.provider === provider);
+		const modelCapabilities = resolveModelCapabilities(currentModel);
+		const attachmentHandlingMode = conversation.meta.attachmentHandlingOverride ?? this.settings?.attachmentHandlingDefault ?? 'degrade_to_text';
+
 		// Convert legacy attachments to resources if provided
 		if (attachments && attachments.length > 0) {
 			const resources = [];
@@ -275,8 +283,17 @@ export class ConversationService {
 				const summaryPath = this.resourceSummaryService!.getResourceSummaryPath(resourceRef.id);
 				resourceRef.summaryNotePath = summaryPath;
 
-				// Ensure resource summary exists, generate if missing
-				await this.ensureResourceSummary(attachment, resourceRef);
+				const fileType = getFileTypeFromPath(attachment);
+				const isImage = fileType === 'image';
+
+				// Check if we should generate summary or use direct mode
+				if (isImage && modelCapabilities.vision && attachmentHandlingMode === 'direct') {
+					// Vision model + direct mode: skip summary generation, will use image_url directly
+					// Still create resourceRef for indexing, but don't block on summary
+				} else {
+					// Degrade mode or non-vision: ensure resource summary exists
+					await this.ensureResourceSummary(attachment, resourceRef);
+				}
 
 				resources.push(resourceRef);
 			}
@@ -284,7 +301,7 @@ export class ConversationService {
 		}
 
 		const messagesWithUser = [...conversation.messages, userMessage];
-		const llmMessages = await this.buildLLMRequestMessages(messagesWithUser, conversation, project);
+		const llmMessages = await this.buildLLMRequestMessages(messagesWithUser, conversation, project, modelCapabilities, attachmentHandlingMode);
 
 		// Get output control settings: priority: conversation override > global default
 		let outputControl: LLMOutputControlSettings | undefined;
@@ -371,6 +388,34 @@ export class ConversationService {
 	}
 
 	/**
+	 * Update conversation's attachment handling mode override.
+	 */
+	async updateConversationAttachmentHandling(params: {
+		conversationId: string;
+		attachmentHandlingOverride?: 'direct' | 'degrade_to_text';
+	}): Promise<void> {
+		const { conversationId, attachmentHandlingOverride } = params;
+
+		// Save updated meta
+		await this.storage.upsertConversationMeta(
+			conversationId,
+			{
+				attachmentHandlingOverride: attachmentHandlingOverride,
+				updatedAtTimestamp: Date.now(),
+			}
+		);
+
+		// Trigger conversation updated event
+		const updatedConversation = await this.storage.readConversation(conversationId, false);
+		if (updatedConversation) {
+			const eventBus = EventBus.getInstance(this.app);
+			eventBus.dispatch(new ConversationUpdatedEvent({
+				conversation: updatedConversation,
+			}));
+		}
+	}
+
+	/**
 	 * Update conversation title by renaming the file.
 	 * @param params.titleManuallyEdited - If true, marks the title as manually edited (default: true)
 	 * @param params.titleAutoUpdated - If true, marks the title as auto-updated (default: false)
@@ -449,13 +494,18 @@ export class ConversationService {
 	private async buildLLMRequestMessages(
 		messages: ChatMessage[],
 		conversation: ChatConversation,
-		project?: ChatProject | null
+		project?: ChatProject | null,
+		modelCapabilities?: ReturnType<typeof resolveModelCapabilities>,
+		attachmentHandlingMode?: 'direct' | 'degrade_to_text'
 	): Promise<LLMRequestMessage[]> {
 		// Use ContextBuilder to build messages with full context
 		return this.contextBuilder.buildContextMessages({
 			conversation,
 			project,
 			messages,
+			modelCapabilities,
+			attachmentHandlingMode,
+			app: this.app,
 		});
 	}
 
@@ -611,7 +661,9 @@ export class ConversationService {
 	}
 
 	/**
-	 * Ensure resource summary exists, generate if missing
+	 * Ensure resource summary exists, generate if missing.
+	 * For images: uses imageDescriptionModel from DocumentLoaderManager settings if available.
+	 * If imageDescriptionModel is not configured and resource is image, skips summary generation (ignore strategy).
 	 */
 	private async ensureResourceSummary(sourcePath: string, resourceRef: ChatResourceRef): Promise<void> {
 		if (!this.resourceSummaryService) {
@@ -625,7 +677,28 @@ export class ConversationService {
 			return;
 		}
 
-		// Generate summary
+		// Check if this is an image and if imageDescriptionModel is configured
+		const fileType = getFileTypeFromPath(sourcePath);
+		const isImage = fileType === 'image';
+		
+		if (isImage) {
+			// Get SearchSettings from DocumentLoaderManager to check imageDescriptionModel
+			const docLoaderManager = DocumentLoaderManager.getInstance();
+			const searchSettings = (docLoaderManager as any).settings;
+			
+			if (!searchSettings?.imageDescriptionModel) {
+				// Image but no imageDescriptionModel configured: skip summary generation (ignore strategy)
+				console.warn(`[ConversationService] Image "${sourcePath}" skipped: no imageDescriptionModel configured`);
+				// Don't create summary, just return (image will be ignored in degrade_to_text mode)
+				return;
+			}
+			
+			// Image with imageDescriptionModel: use it for summary generation
+			// The ResourceLoaderManager.getSummary will delegate to ImageDocumentLoader,
+			// which will use imageDescriptionModel from settings
+		}
+
+		// Generate summary (for images with imageDescriptionModel, or for non-image resources)
 		try {
 			const summary = await this.resourceLoaderManager.getSummary(
 				sourcePath,

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ModelInfoForSwitch } from '@/core/providers/types';
-import { ChevronDown, Check } from 'lucide-react';
+import { ChevronDown, Check, Eye, FileText, Wrench, Globe, Code, Image as ImageIcon, Brain, Search } from 'lucide-react';
 import { SafeModelIcon, SafeProviderIcon } from '@/ui/component/mine/SafeIconWrapper';
 import { cn } from '@/ui/react/lib/utils';
 import { ProviderServiceFactory } from '@/core/providers/base/factory';
 import { usePopupPosition } from '@/ui/hooks/usePopupPosition';
+import { formatMaxContext } from '@/core/providers/model-capabilities';
 
 /**
  * Global registry to track all open selectors
@@ -417,6 +418,51 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 													<span className="pktw-text-[14px] pktw-font-medium pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
 														{model.displayName}
 													</span>
+													{/* Capabilities badges */}
+													{model.capabilities && (
+														<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-flex-shrink-0 pktw-ml-auto">
+															{model.capabilities.vision && (
+																<div title="Vision">
+																	<Eye className="pktw-w-3.5 pktw-h-3.5 pktw-text-emerald-500" />
+																</div>
+															)}
+															{model.capabilities.pdfInput && (
+																<div title="PDF Input">
+																	<FileText className="pktw-w-3.5 pktw-h-3.5 pktw-text-red-500" />
+																</div>
+															)}
+															{model.capabilities.tools && (
+																<div title="Tools">
+																	<Wrench className="pktw-w-3.5 pktw-h-3.5 pktw-text-blue-500" />
+																</div>
+															)}
+															{(model.capabilities.webSearch || model.capabilities.xSearch || model.capabilities.newsSearch || model.capabilities.rssSearch) && (
+																<div title="Search">
+																	<Globe className="pktw-w-3.5 pktw-h-3.5 pktw-text-purple-500" />
+																</div>
+															)}
+															{model.capabilities.codeInterpreter && (
+																<div title="Code Interpreter">
+																	<Code className="pktw-w-3.5 pktw-h-3.5 pktw-text-orange-500" />
+																</div>
+															)}
+															{model.capabilities.imageGeneration && (
+																<div title="Image Generation">
+																	<ImageIcon className="pktw-w-3.5 pktw-h-3.5 pktw-text-pink-500" />
+																</div>
+															)}
+															{model.capabilities.reasoning && (
+																<div title="Reasoning">
+																	<Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-indigo-500" />
+																</div>
+															)}
+															{model.capabilities.maxCtx && (
+																<span className="pktw-text-[10px] pktw-font-medium pktw-text-muted-foreground pktw-px-1 pktw-py-0.5 pktw-bg-muted pktw-rounded" title="Max Context">
+																	{formatMaxContext(model.capabilities.maxCtx)}
+																</span>
+															)}
+														</div>
+													)}
 												</div>
 												{isSelected && (
 													<Check

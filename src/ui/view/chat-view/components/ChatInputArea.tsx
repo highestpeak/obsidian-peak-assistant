@@ -30,6 +30,9 @@ import {
 } from '@/ui/component/ai-elements';
 import type { ChatConversation } from '@/service/chat/types';
 import { useChatSubmit } from '../hooks/useChatSubmit';
+import { useServiceContext } from '@/ui/context/ServiceContext';
+import { Switch } from '@/ui/component/shared-ui/switch';
+import { Upload, FileText } from 'lucide-react';
 
 interface ChatInputAreaComponentProps {
 	onScrollToBottom?: () => void;
@@ -103,6 +106,7 @@ const OpenInButton: React.FC = () => {
 export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	onScrollToBottom,
 }) => {
+	const { manager } = useServiceContext();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 	const activeProject = useProjectStore((state) => state.activeProject);
 	const [isSending, setIsSending] = useState(false);
@@ -110,6 +114,21 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	const { submitMessage, cancelStream } = useChatSubmit();
+
+	// Get effective attachment handling mode (conversation override > global default)
+	const attachmentHandlingMode = useMemo(() => {
+		return activeConversation?.meta.attachmentHandlingOverride ?? manager.getSettings().attachmentHandlingDefault ?? 'degrade_to_text';
+	}, [activeConversation?.meta.attachmentHandlingOverride, manager]);
+
+	// Handle attachment mode toggle
+	const handleAttachmentModeToggle = useCallback(async (value: boolean) => {
+		if (!activeConversation) return;
+		const newMode: 'direct' | 'degrade_to_text' = value ? 'direct' : 'degrade_to_text';
+		await manager.updateConversationAttachmentHandling({
+			conversationId: activeConversation.meta.id,
+			attachmentHandlingOverride: newMode,
+		});
+	}, [activeConversation, manager]);
 
 	// Handle submit
 	const handleSubmit = useCallback(async (message: PromptInputMessage) => {
@@ -248,6 +267,21 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 							active={isSearchActive}
 							onClick={() => setIsSearchActive(!isSearchActive)}
 						/>
+						{/* Attachment handling mode toggle */}
+						{activeConversation && (
+							<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2 pktw-py-1 pktw-rounded-md hover:pktw-bg-accent/50 pktw-transition-colors" title={attachmentHandlingMode === 'direct' ? 'Direct mode: Send attachments directly to model' : 'Degrade mode: Convert attachments to text summaries'}>
+								{attachmentHandlingMode === 'direct' ? (
+									<Upload className="pktw-w-3.5 pktw-h-3.5 pktw-text-blue-500" />
+								) : (
+									<FileText className="pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground" />
+								)}
+								<Switch
+									checked={attachmentHandlingMode === 'direct'}
+									onChange={handleAttachmentModeToggle}
+									className="pktw-scale-75"
+								/>
+							</div>
+						)}
 						<div className="[&_button]:pktw-h-9 [&_button]:pktw-px-2.5 [&_button]:pktw-text-xs [&_button]:pktw-bg-transparent [&_button]:pktw-border-0 [&_button]:pktw-shadow-none [&_button]:pktw-rounded-md [&_button]:hover:pktw-bg-accent [&_button]:hover:pktw-text-accent-foreground">
 							<LLMModelSelector />
 						</div>

@@ -163,6 +163,12 @@ export interface AIServiceSettings {
 	 * If not configured for a specific prompt, falls back to defaultModel.
 	 */
 	promptModelMap?: Partial<Record<PromptId, { provider: string; modelId: string }>>;
+	/**
+	 * Default attachment handling mode.
+	 * 'direct': Send attachments directly to model (requires model capabilities)
+	 * 'degrade_to_text': Convert attachments to text summaries via OCR/parsing
+	 */
+	attachmentHandlingDefault?: 'direct' | 'degrade_to_text';
 }
 
 /**
@@ -190,6 +196,7 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 		}
 		return map;
 	})(),
+	attachmentHandlingDefault: 'direct', // Default to direct for user experience.
 };
 
 /**

@@ -1,6 +1,7 @@
 import { ChatRole } from '@/service/chat/types';
 import { AIStreamEvent } from './types-events';
 import { LanguageModelUsage } from 'ai';
+import { ModelCapabilities } from './model-capabilities';
 
 export interface ProviderConfig {
 	enabled?: boolean;
@@ -164,6 +165,11 @@ export interface ModelMetaData {
 	releaseTimestamp?: number;
 	costInput?: string;
 	costOutput?: string;
+	/**
+	 * Model capabilities (vision, pdfInput, tools, webSearch, etc.)
+	 * Should be defined in each provider's getAvailableModels() method.
+	 */
+	capabilities?: ModelCapabilities;
 }
 
 /**

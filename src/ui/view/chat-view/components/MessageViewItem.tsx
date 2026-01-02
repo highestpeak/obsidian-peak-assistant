@@ -8,6 +8,8 @@ import { useStreamChat } from '../hooks/useStreamChat';
 import { cn } from '@/ui/react/lib/utils';
 import { COLLAPSED_USER_MESSAGE_CHAR_LIMIT } from '@/core/constant';
 import { Copy, RefreshCw, Star, Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { useMessageStore } from '@/ui/store/messageStore';
+import { StreamingStepsView } from './StreamingStepsView';
 import {
 	Message,
 	MessageContent,
@@ -461,6 +463,11 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	// Determine if this is a user message or assistant message
 	const isUser = message.role === 'user'; // 'user' = 用户消息, 'assistant' = AI消息
 
+	// Get streaming steps if this is the streaming message
+	const streamingSteps = useMessageStore((state) => 
+		state.streamingMessageId === message.id ? state.streamingSteps : []
+	);
+
 	// Get display content: if streaming, use streamingContent; otherwise use message.content
 	// Streaming logic: when AI is generating, isStreaming=true and streamingContent contains partial content
 	const displayContent = isStreaming ? (streamingContent || '') : message.content;
@@ -556,6 +563,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 						<MessageAttachmentsList message={message} app={app} />
 					</div>
 				)}
+
+				{/* Chain of Thought: Show streaming steps for assistant messages */}
+				{!isUser && <StreamingStepsView steps={streamingSteps} />}
 				
 				<MessageContent
 					className={cn(

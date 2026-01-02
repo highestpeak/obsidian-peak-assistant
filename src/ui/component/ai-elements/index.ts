@@ -97,3 +97,11 @@ export {
 	type OpenInItemProps,
 	type OpenInLabelProps,
 } from './open-in-chat';
+
+// Chain of Thought components
+export {
+	ChainOfThought,
+	ChainOfThoughtHeader,
+	ChainOfThoughtStep,
+	ChainOfThoughtContent,
+} from './chain-of-thought';

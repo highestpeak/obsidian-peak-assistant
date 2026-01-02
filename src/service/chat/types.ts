@@ -75,6 +75,13 @@ export interface ChatConversationMeta {
 	 * If set, this overrides the global default settings.
 	 */
 	outputControlOverride?: LLMOutputControlSettings;
+	/**
+	 * Attachment handling mode override for this conversation.
+	 * If set, overrides the global default attachmentHandlingDefault.
+	 * 'direct': Send attachments directly to model (requires model capabilities)
+	 * 'degrade_to_text': Convert attachments to text summaries via OCR/parsing
+	 */
+	attachmentHandlingOverride?: 'direct' | 'degrade_to_text';
 }
 
 export interface ChatProjectMeta {
