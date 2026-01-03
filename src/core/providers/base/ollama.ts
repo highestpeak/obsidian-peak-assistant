@@ -259,18 +259,22 @@ export class OllamaChatService implements LLMProviderService {
 	}
 
 	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
-		const timeoutMs = this.options.timeoutMs ?? DEFAULT_OLLAMA_TIMEOUT_MS;
-
 		try {
-			// Try to use AI SDK's embedMany if supported
+			// Use ollama-ai-provider-v2's embeddingModel method to create embedding model
+			// Following AI SDK example: ollama.embeddingModel('nomic-embed-text')
+			// Try embeddingModel first, fallback to textEmbeddingModel if not available
+			const embeddingModel = this.client.textEmbeddingModel(model);
+			if (!embeddingModel) {
+				throw new Error('Ollama provider does not support embedding models');
+			}
 			const result = await embedMany({
-				model: this.client(model) as unknown as EmbeddingModel<string>,
+				model: embeddingModel,
 				values: texts,
 			});
 			return result.embeddings;
 		} catch (error) {
 			console.error('[OllamaChatService] Error generating embeddings:', error);
-			return [];
+			throw error;
 		}
 	}
 }

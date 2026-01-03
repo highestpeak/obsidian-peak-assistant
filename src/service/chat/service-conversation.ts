@@ -361,9 +361,9 @@ export class ConversationService {
 		await this.storage.upsertConversationMeta(
 			conversationId,
 			{
-				activeModel: modelId,
+			activeModel: modelId,
 				activeProvider: provider,
-				updatedAtTimestamp: Date.now(),
+			updatedAtTimestamp: Date.now(),
 			}
 		);
 	}

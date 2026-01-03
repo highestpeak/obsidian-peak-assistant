@@ -30,12 +30,15 @@ export class QueryService {
 		const scopeMode = query?.scopeMode ?? DEFAULT_SEARCH_MODE;
 		const scopeValue = query?.scopeValue ?? {};
 
-		// Always perform hybrid search (fulltext + vector if embedding is available)
-		// Generate embedding first (if configured)
+		// Always perform hybrid search (fulltext + vector if embedding and vector search are available)
+		// Check if vector search is available (requires sqlite-vec extension)
+		const vectorSearchAvailable = sqliteStoreManager.isVectorSearchEnabled();
+
+		// Generate embedding first (if configured and vector search is available)
 		const embeddingModel = this.searchSettings.chunking.embeddingModel;
 		let embedding: number[] | undefined;
 
-		if (embeddingModel) {
+		if (embeddingModel && vectorSearchAvailable) {
 			try {
 				const multiProviderChatService = this.aiServiceManager.getMultiChat();
 				const embeddings = await multiProviderChatService.generateEmbeddings(
@@ -54,8 +57,8 @@ export class QueryService {
 		const [textItems, vecItems] = await Promise.all([
 			// Perform fulltext search
 			this.executeFulltextSearch({ query, scopeMode, scopeValue }),
-			// Perform vector search if embedding is available
-			embedding ? this.executeVectorSearch({
+			// Perform vector search if embedding is available and vector search is enabled
+			embedding && vectorSearchAvailable ? this.executeVectorSearch({
 				query,
 				mode: scopeMode,
 				scope: scopeValue,

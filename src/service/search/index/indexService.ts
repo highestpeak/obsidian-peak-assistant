@@ -9,6 +9,7 @@ import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoa
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { normalizePath } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';
+import { Stopwatch } from '@/core/utils/Stopwatch';
 
 export type StorageType = 'sqlite' | 'graph';
 
@@ -57,45 +58,70 @@ export class IndexService {
 		doc: Document,
 		settings: SearchSettings,
 	): Promise<void> {
-		if (!doc) return;
+		const sw = new Stopwatch(`[IndexService] Indexing: ${doc.sourceFileInfo.path}`);
+		
+		try {
+			if (!doc) return;
 
-		// Get loader for document type
-		const loaderManager = DocumentLoaderManager.getInstance();
-		if (!loaderManager.shouldIndexDocument(doc)) {
-			console.warn(`Document type ${doc.type} should not be indexed or has no loader`);
-			return;
-		}
-		const loader = loaderManager.getLoaderForDocumentType(doc.type);
-		if (!loader) {
-			console.warn(`No loader found for document type: ${doc.type}`);
-			return;
-		}
+			// Get loader for document type
+			const loaderManager = DocumentLoaderManager.getInstance();
+			if (!loaderManager.shouldIndexDocument(doc)) {
+				console.warn(`Document type ${doc.type} should not be indexed or has no loader`);
+				return;
+			}
+			const loader = loaderManager.getLoaderForDocumentType(doc.type);
+			if (!loader) {
+				console.warn(`No loader found for document type: ${doc.type}`);
+				return;
+			}
 
-		// Chunk content using loader's chunkContent method
-		const chunks = await loader.chunkContent(doc, settings.chunking);
+			// Chunk content using loader's chunkContent method
+			sw.start('Chunk content');
+			const chunks = await loader.chunkContent(doc, settings.chunking);
+			sw.stop();
 
-		// Generate embeddings for chunks if embedding model is configured
-		const embeddingModel = settings.chunking.embeddingModel;
-		if (embeddingModel) {
-			await this.generateAndFillEmbeddings(chunks, embeddingModel);
-		}
+			// Check if vector search is available (requires sqlite-vec extension)
+			const vectorSearchAvailable = sqliteStoreManager.isVectorSearchEnabled();
+			
+			// Generate embeddings for chunks if embedding model is configured AND vector search is available
+			const embeddingModel = settings.chunking.embeddingModel;
+			if (embeddingModel && vectorSearchAvailable) {
+				sw.start('Generate embeddings');
+				await this.generateAndFillEmbeddings(chunks, embeddingModel);
+				sw.stop();
+			} else {
+				console.debug(
+					`[IndexService] Skipping embedding generation for ${doc.sourceFileInfo.path}. ` +
+					'Vector search may not be available (sqlite-vec extension not loaded). '
+				);
+			}
 
-		// Save all data in a single transaction for atomicity
-		const kdb = sqliteStoreManager.getKysely();
-		await kdb.transaction().execute(async () => {
-			// Save doc meta
+			// Save all data directly (no transaction)
+			sw.start('Save doc meta');
 			await this.saveDocMeta(doc);
+			sw.stop();
 
+			sw.start('Save search data');
 			// Save search data (FTS and embeddings, not chunk data - reduce storage space)
 			const embeddingModelName = embeddingModel ? `${embeddingModel.provider}:${embeddingModel.modelId}` : undefined;
 			await this.saveSearchData(doc.id, doc.sourceFileInfo.path, doc.metadata.title, chunks, embeddingModelName);
+			sw.stop();
 
+			sw.start('Save graph data');
 			// Save graph data (all document types have graph)
 			await this.upsertGraph(doc);
+			sw.stop();
 
+			sw.start('Update index state');
 			// Finally: Update index state (only after graph is complete)
 			await this.updateIndexState();
-		});
+			sw.stop();
+		} catch (error) {
+			console.error(`[IndexService] Error indexing document ${doc.sourceFileInfo.path}:`, error);
+			throw error;
+		} finally {
+			sw.print();
+		}
 	}
 
 	/**
@@ -236,20 +262,30 @@ export class IndexService {
 	 * Save document metadata to database.
 	 */
 	private async saveDocMeta(doc: Document): Promise<void> {
+		const startTime = Date.now();
 		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
 
-		await docMetaRepo.upsert({
-			id: doc.id,
-			path: doc.sourceFileInfo.path,
-			type: doc.type,
-			title: doc.metadata.title ?? doc.id,
-			mtime: doc.sourceFileInfo.mtime ?? 0,
-			size: doc.sourceFileInfo.size ?? null,
-			ctime: doc.sourceFileInfo.ctime ?? null,
-			content_hash: doc.contentHash ?? null,
-			summary: doc.summary ?? null,
-			tags: doc.metadata.tags ? JSON.stringify(doc.metadata.tags) : null,
-		});
+		try {
+			await docMetaRepo.upsert({
+				id: doc.id,
+				path: doc.sourceFileInfo.path,
+				type: doc.type,
+				title: doc.metadata.title ?? doc.id,
+				mtime: doc.sourceFileInfo.mtime ?? 0,
+				size: doc.sourceFileInfo.size ?? null,
+				ctime: doc.sourceFileInfo.ctime ?? null,
+				content_hash: doc.contentHash ?? null,
+				summary: doc.summary ?? null,
+				tags: doc.metadata.tags ? JSON.stringify(doc.metadata.tags) : null,
+			});
+			const elapsed = Date.now() - startTime;
+			if (elapsed > 100) {
+				console.warn(`[IndexService] saveDocMeta took ${elapsed}ms for ${doc.sourceFileInfo.path}`);
+			}
+		} catch (error) {
+			console.error(`[IndexService] Error saving doc meta for ${doc.sourceFileInfo.path}:`, error);
+			throw error;
+		}
 	}
 
 	/**

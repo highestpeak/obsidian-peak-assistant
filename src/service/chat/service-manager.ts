@@ -493,10 +493,10 @@ export class AIServiceManager {
 				return modelConfig?.enabled === true;
 			})
 			.map(m => ({
-				id: m.id,
-				displayName: m.displayName,
-				provider: m.provider,
-				icon: m.icon,
+					id: m.id,
+					displayName: m.displayName,
+					provider: m.provider,
+					icon: m.icon,
 				capabilities: m.capabilities, // Pass through capabilities from provider
 			}));
 	}

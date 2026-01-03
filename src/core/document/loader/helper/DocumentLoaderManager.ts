@@ -25,7 +25,7 @@ import { UrlDocumentLoader } from '../UrlDocumentLoader';
  */
 export class DocumentLoaderManager {
 	private static instance: DocumentLoaderManager | null = null;
-	
+
 	private readonly loaderMap = new Map<DocumentType, DocumentLoader>();
 	private readonly extensionToLoaderMap = new Map<string, DocumentLoader>();
 	private settings: SearchSettings;
@@ -101,7 +101,7 @@ export class DocumentLoaderManager {
 		const docType = loader.getDocumentType();
 		// If multiple loaders support the same type, the last one wins
 		this.loaderMap.set(docType, loader);
-		
+
 		// Map all supported extensions to this loader
 		for (const ext of loader.getSupportedExtensions()) {
 			this.extensionToLoaderMap.set(ext.toLowerCase(), loader);
@@ -143,13 +143,13 @@ export class DocumentLoaderManager {
 			const loader = this.loaderMap.get('excalidraw');
 			if (loader) return await loader.readByPath(path);
 		}
-		
+
 		// Check if it's a URL (not a file path)
 		if (path.startsWith('http://') || path.startsWith('https://')) {
 			const loader = this.loaderMap.get('url');
 			if (loader) return await loader.readByPath(path);
 		}
-		
+
 		// Extract extension from path for normal files
 		// Canvas and dataloom files will be matched by their extensions ('canvas', 'loom')
 		const extension = path.split('.').pop()?.toLowerCase() || '';
@@ -174,8 +174,11 @@ export class DocumentLoaderManager {
 		const batchSize = params?.batchSize ?? 25;
 		let currentBatch: CoreDocument[] = [];
 
+		// track the start time of the batch read
+		let batchReadStart;
 		// Scan all documents first to get file list
 		for await (const scanBatch of this.scanDocuments(params)) {
+			batchReadStart = performance.now();
 			for (const docMeta of scanBatch) {
 				// Filter by settings: only load enabled document types
 				if (!this.shouldIndexDocument({ type: docMeta.type } as CoreDocument)) {
@@ -184,11 +187,16 @@ export class DocumentLoaderManager {
 
 				// Load document content on demand
 				const doc = await this.readByPath(docMeta.path);
+
 				if (doc) {
 					currentBatch.push(doc);
 					if (currentBatch.length >= batchSize) {
+						console.log(
+							`[DocumentLoaderManager] Yielded a batch of documents, read time: ${(performance.now() - batchReadStart).toFixed(2)} ms`
+						);
 						yield currentBatch;
 						currentBatch = [];
+						batchReadStart = performance.now();
 					}
 				}
 			}
@@ -196,6 +204,9 @@ export class DocumentLoaderManager {
 
 		// Yield remaining documents
 		if (currentBatch.length > 0) {
+			console.log(
+				`[DocumentLoaderManager] Yielded final batch of documents, read time: ${(performance.now() - batchReadStart).toFixed(2)} ms`
+			);
 			yield currentBatch;
 		}
 	}

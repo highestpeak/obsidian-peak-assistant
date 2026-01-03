@@ -107,7 +107,41 @@ npm install better-sqlite3 --build-from-source \
 
 Replace `28.0.0` with your Obsidian's Electron version.
 
-**Step 4: Configure Plugin Settings**
+**Step 4: Install sqlite-vec Extension (Optional, for Vector Search)**
+
+If you want to enable vector similarity search, you need to install the `sqlite-vec` extension:
+
+1. Install the main package:
+   ```bash
+   npm install sqlite-vec
+   ```
+
+2. Install platform-specific extension package:
+   ```bash
+   # For macOS ARM64 (Apple Silicon)
+   npm install sqlite-vec-darwin-arm64
+   
+   # For macOS x64 (Intel)
+   npm install sqlite-vec-darwin-x64
+   
+   # For Linux x64
+   npm install sqlite-vec-linux-x64
+   
+   # For Windows x64
+   npm install sqlite-vec-windows-x64
+   ```
+
+   **Note**: Install the package that matches your platform. The plugin will automatically detect and load the extension if available.
+
+3. **How it works**:
+   - The plugin automatically tries to load `sqlite-vec` extension when using `better-sqlite3` backend
+   - If the extension loads successfully, vector similarity search will be enabled
+   - If the extension fails to load (e.g., platform package not installed), the plugin will continue to work with fulltext search only
+   - The plugin tracks whether vector search is available via `SqliteStoreManager.isVectorSearchEnabled()`
+   - Indexing will skip embedding generation if vector search is not available
+   - Search will automatically fall back to fulltext-only if vector search is not available
+
+**Step 5: Configure Plugin Settings**
 
 1. Open Obsidian Settings → Peak Assistant
 2. Set "SQLite Backend" to `better-sqlite3` (or `auto` to auto-detect)
@@ -124,10 +158,20 @@ Replace `28.0.0` with your Obsidian's Electron version.
   - The native module is not compatible with Electron's Node.js version
   - Rebuild using the steps above (Step 3)
   - Make sure you're using the correct Electron version from Obsidian Settings → About
+
+- **Error: "Loadble extension for sqlite-vec not found" or "no such module: vec0"**
+  - The `sqlite-vec` extension requires platform-specific packages
+  - Install the appropriate platform package (see Step 4 above)
+  - For macOS ARM64: `npm install sqlite-vec-darwin-arm64`
+  - For Linux x64: `npm install sqlite-vec-linux-x64`
+  - For Windows x64: `npm install sqlite-vec-windows-x64`
+  - **Note**: If the extension fails to load, the plugin will continue to work with fulltext search only
   
 - **Still not working?**
   - **Recommended**: Use `sql.js` instead (default, works out of the box)
   - `sql.js` provides good performance for most use cases and doesn't require any setup
+  - **Note**: `sql.js` does NOT support SQLite extensions, so vector search will not be available with `sql.js` backend
+  - `better-sqlite3` is required for vector similarity search functionality
   - `better-sqlite3` is an advanced option that may not work in all Obsidian plugin environments
 
 **Important Note**: 
@@ -194,13 +238,36 @@ Due to Obsidian's plugin architecture, `better-sqlite3` may not work reliably ev
 - **Why Virtual Table is Needed**:
   - SQLite standard indexes (B-tree) cannot handle vector similarity search
   - vec0 provides specialized ANN index (HNSW) and `MATCH` operator
-  - See comments in `src/core/storage/sqlite/database.ts` for details
+  - See comments in `src/core/storage/sqlite/ddl.ts` for details
+- **Table Creation & Dimension Management**:
+  - `vec_embeddings` table is created lazily on first embedding insert (not in DDL migration)
+  - Table dimension is determined by the actual embedding model dimension (e.g., 768, 1536)
+  - This ensures table dimension always matches the embedding model, avoiding dimension mismatch errors
+  - If dimension mismatch occurs (e.g., after changing embedding model), an error is thrown with clear instructions
+  - Users need to manually drop the table and re-index if they change embedding models
+- **Performance Optimization: Table State Caching**:
+  - Table existence is checked once on plugin startup and cached in memory
+  - `EmbeddingRepo.initializeVecEmbeddingsTableCache()` is called during `SqliteStoreManager.init()`
+  - Subsequent inserts use cached state, avoiding frequent `sqlite_master` queries
+  - Fallback logic: If insert fails with "no such table" error, re-check table state and update cache
+  - This optimization significantly reduces database queries during bulk indexing operations
+- **Extension Loading**:
+  - Requires `sqlite-vec` npm package and platform-specific extension package
+  - Automatically loaded when using `better-sqlite3` backend
+  - If loading fails, plugin continues with fulltext search only (graceful degradation)
+  - Extension availability is tracked via `SqliteStoreManager.isVectorSearchEnabled()`
+  - Indexing skips embedding generation if vector search is not available
+  - Search automatically falls back to fulltext-only if vector search is not available
+- **Backend Support**:
+  - ✅ **better-sqlite3**: Supports sqlite-vec extension (requires platform-specific package)
+  - ❌ **sql.js**: Does NOT support SQLite extensions (vector search unavailable)
 - **Query**:
   - Use `WHERE embedding MATCH ?` for KNN search
   - Returns `rowid` and `distance`, join back to `embedding` table via `rowid` to get complete records
 - **Hybrid Search**:
   - Full-text search and vector search execute independently
   - Use Reciprocal Rank Fusion (RRF) to merge results
+  - If vector search is unavailable, only fulltext search results are returned
 
 #### Graph Search (Recursive CTE)
 - **Storage**:

@@ -59,25 +59,27 @@ export class Reranker {
 		const itemsWithScore = items.map((i) => ({ ...i, score: i.score ?? 0 })) as SearchResultItem[];
 		const boostedItems = this.applyRankingBoosts({ items: itemsWithScore, signals, relatedPaths: related });
 
-		// Apply rerank if model is configured (with boost context)
-		const rerankModel = this.searchSettings.chunking.rerankModel;
-		if (!rerankModel) {
-			return boostedItems;
-		}
+		return boostedItems;
+		// todo temp disable rerank for now to test
+		// // Apply rerank if model is configured (with boost context)
+		// const rerankModel = this.searchSettings.chunking.rerankModel;
+		// if (!rerankModel) {
+		// 	return boostedItems;
+		// }
 
-		// Ensure score is present for rerank
-		const itemsForRerank = boostedItems.map((i) => ({
-			...i,
-			score: i.finalScore ?? i.score ?? 0,
-		}));
+		// // Ensure score is present for rerank
+		// const itemsForRerank = boostedItems.map((i) => ({
+		// 	...i,
+		// 	score: i.finalScore ?? i.score ?? 0,
+		// }));
 
-		try {
-			return await this.rerankResults(itemsForRerank, query, rerankModel, signals, related);
-		} catch (error) {
-			console.error('[Reranker] Failed to rerank results:', error);
-			// Continue with boosted results if rerank fails
-			return boostedItems;
-		}
+		// try {
+		// 	return await this.rerankResults(itemsForRerank, query, rerankModel, signals, related);
+		// } catch (error) {
+		// 	console.error('[Reranker] Failed to rerank results:', error);
+		// 	// Continue with boosted results if rerank fails
+		// 	return boostedItems;
+		// }
 	}
 
 	/**

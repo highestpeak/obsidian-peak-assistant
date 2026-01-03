@@ -215,10 +215,20 @@ export class SqlJsStore {
 		// Enable foreign keys
 		db.run('PRAGMA foreign_keys = ON');
 
+		// Note: sql.js (WASM) does not support loading SQLite extensions like sqlite-vec
+		// Vector similarity search will not be available when using sql.js backend
+		// To enable vector search, use better-sqlite3 backend instead
+		console.warn(
+			'[SqlJsStore] sql.js backend does not support SQLite extensions. ' +
+			'vec_embeddings virtual table and vector similarity search will not be available. ' +
+			'To enable vector search, use better-sqlite3 backend (set sqliteBackend to "better-sqlite3" in settings).'
+		);
+
 		// Create adapter
 		const adapter = SqlJsStore.createKyselyAdapter(db);
 
 		// Run migrations
+		// Note: vec_embeddings table creation will fail with sql.js, but that's expected
 		migrateSqliteSchema(adapter);
 
 		return new SqlJsStore(db, adapter, params.dbFilePath);

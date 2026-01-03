@@ -182,8 +182,22 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	const tryExec = (sql: string) => {
 		try {
 			db.exec(sql);
-		} catch {
+		} catch (error) {
 			// Ignore migration errors for idempotency (e.g., "duplicate column name").
+			// For vec_embeddings, if creation fails, we log a warning but don't throw
+			// The SqliteStoreManager tracks whether vector search is available via a flag
+			if (sql.includes('vec_embeddings')) {
+				const errorMsg = error instanceof Error ? error.message : String(error);
+				console.warn(
+					'[DDL] Failed to create vec_embeddings virtual table. ' +
+					'Vector similarity search will not be available. ' +
+					'This requires sqlite-vec extension to be loaded. ' +
+					`Error: ${errorMsg}`
+				);
+				// Don't throw - allow database to continue without vector search
+				return;
+			}
+			// For other errors, ignore for idempotency
 		}
 	};
 
@@ -323,17 +337,18 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	// For detailed explanation, see: VEC0_VIRTUAL_TABLE_EXPLANATION.md
 	//
 	// Note: This requires sqlite-vec extension to be loaded first.
-	// The embedding dimension should match your embedding model (e.g., 1536 for OpenAI, 384 for sentence-transformers).
-	// We use a reasonable default of 1536, but this should be configurable.
+	// vec_embeddings virtual table is created lazily on first insert in EmbeddingRepo.upsert()
+	// This ensures the table dimension matches the actual embedding model dimension.
+	// We don't create it here to avoid hardcoding a dimension that might not match the model.
 	//
 	// Important: vec_embeddings.rowid corresponds to embedding table's implicit rowid (integer).
 	// This allows direct association without a mapping table.
 	// When inserting into vec_embeddings, we use embedding table's rowid as vec_embeddings.rowid.
-	tryExec(`
-		CREATE VIRTUAL TABLE IF NOT EXISTS vec_embeddings USING vec0(
-			embedding float[1536]
-		);
-	`);
+	// tryExec(`
+	// 	CREATE VIRTUAL TABLE IF NOT EXISTS vec_embeddings USING vec0(
+	// 		embedding float[1536]
+	// 	);
+	// `);
 
 	// Chat storage tables (metadata-only, markdown files store plain text)
 	db.exec(`

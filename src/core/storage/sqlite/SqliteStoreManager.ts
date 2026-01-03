@@ -36,6 +36,7 @@ class SqliteStoreManager {
 	private store: SqliteStore | null = null;
 	private storeType: SqliteStoreType = 'sql.js';
 	private app: App | null = null;
+	private isVectorSearchAvailable: boolean = false;
 
 	// Repositories
 	private docMetaRepo: DocMetaRepo | null = null;
@@ -151,12 +152,18 @@ class SqliteStoreManager {
 		// If better-sqlite3 fails, automatically fallback to sql.js
 		try {
 			switch (selectedBackend) {
-				case 'better-sqlite3':
-					this.store = await BetterSqliteStore.open({ dbFilePath, app: this.app ?? undefined });
+				case 'better-sqlite3': {
+					const result = await BetterSqliteStore.open({ dbFilePath, app: this.app ?? undefined });
+					this.store = result.store;
+					this.isVectorSearchAvailable = result.sqliteVecAvailable;
 					break;
-				case 'sql.js':
-					this.store = await SqlJsStore.open({ dbFilePath });
+				}
+				case 'sql.js': {
+					const result = await SqlJsStore.open({ dbFilePath });
+					this.store = result;
+					this.isVectorSearchAvailable = false;
 					break;
+				}
 			}
 		} catch (error) {
 			// If better-sqlite3 fails to open (e.g., native module loading failed),
@@ -165,7 +172,9 @@ class SqliteStoreManager {
 				console.error('[SqliteStoreManager] Failed to open database with better-sqlite3:', error);
 				console.log('[SqliteStoreManager] Automatically falling back to sql.js');
 				this.storeType = 'sql.js';
-				this.store = await SqlJsStore.open({ dbFilePath });
+				const fallbackResult = await SqlJsStore.open({ dbFilePath });
+				this.store = fallbackResult;
+				this.isVectorSearchAvailable = false;
 			} else {
 				// Re-throw error for sql.js (should not fail, but if it does, we need to know)
 				throw error;
@@ -178,6 +187,8 @@ class SqliteStoreManager {
 		this.docMetaRepo = new DocMetaRepo(kdb);
 		this.docChunkRepo = new DocChunkRepo(kdb, rawDb);
 		this.embeddingRepo = new EmbeddingRepo(kdb, rawDb);
+		// Initialize vec_embeddings table cache (check once on plugin startup)
+		this.embeddingRepo.initializeVecEmbeddingsTableCache();
 		this.indexStateRepo = new IndexStateRepo(kdb);
 		this.docStatisticsRepo = new DocStatisticsRepo(kdb);
 		this.graphNodeRepo = new GraphNodeRepo(kdb);
@@ -256,6 +267,14 @@ class SqliteStoreManager {
 			throw new Error('SqliteStoreManager not initialized. Call init() first.');
 		}
 		return this.embeddingRepo;
+	}
+
+	/**
+	 * Check if vector similarity search is available.
+	 * This requires sqlite-vec extension to be loaded successfully.
+	 */
+	isVectorSearchEnabled(): boolean {
+		return this.isVectorSearchAvailable;
 	}
 
 	/**

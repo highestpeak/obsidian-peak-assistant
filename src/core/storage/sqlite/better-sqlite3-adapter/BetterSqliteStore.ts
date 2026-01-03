@@ -50,6 +50,7 @@ type BetterSqlite3Database = {
 	pragma(sql: string): any;
 	close(): void;
 	open: boolean;
+	loadExtension?(path: string): void;
 };
 
 /**
@@ -309,10 +310,10 @@ export class BetterSqliteStore {
 	 * 
 	 * @param params - Database parameters
 	 * @param params.dbFilePath - Path to the SQLite database file
-	 * @returns Promise resolving to BetterSqliteStore instance
+	 * @returns Promise resolving to object with store instance and sqliteVecAvailable flag
 	 * @throws Error if better-sqlite3 native module cannot be loaded
 	 */
-	static async open(params: { dbFilePath: string; app?: App }): Promise<BetterSqliteStore> {
+	static async open(params: { dbFilePath: string; app?: App }): Promise<{ store: BetterSqliteStore; sqliteVecAvailable: boolean }> {
 		// Dynamically load better-sqlite3 to avoid module resolution errors at import time
 		const BetterSqlite3 = BetterSqliteStore.loadBetterSqlite3(params.app);
 		const Database = BetterSqlite3.default || BetterSqlite3;
@@ -340,6 +341,9 @@ export class BetterSqliteStore {
 		// Enable foreign keys
 		db.pragma('foreign_keys = ON');
 
+		// Try to load sqlite-vec extension for vector similarity search
+		const sqliteVecAvailable = BetterSqliteStore.tryLoadSqliteVec(db, params.app);
+
 		// Create adapter
 		const adapter = BetterSqliteStore.createKyselyAdapter(db);
 
@@ -347,7 +351,189 @@ export class BetterSqliteStore {
 		// better-sqlite3's Database has exec() method, so we can use it directly
 		migrateSqliteSchema(adapter);
 
-		return new BetterSqliteStore(db, adapter);
+		return { store: new BetterSqliteStore(db, adapter), sqliteVecAvailable };
+	}
+
+	/**
+	 * Finds the path to sqlite-vec extension file.
+	 * Tries getLoadablePath() first, then falls back to manual path resolution.
+	 */
+	private static findSqliteVecExtensionPath(sqliteVec: any, app?: App): string | null {
+		// Try getLoadablePath() first
+		if (sqliteVec.getLoadablePath && typeof sqliteVec.getLoadablePath === 'function') {
+			try {
+				const extensionPath = sqliteVec.getLoadablePath();
+				if (fs.existsSync(extensionPath)) {
+					console.log(`[BetterSqliteStore] getLoadablePath() returned: ${extensionPath}`);
+					return extensionPath;
+				}
+			} catch (pathError: any) {
+				console.debug(`[BetterSqliteStore] getLoadablePath() failed: ${pathError instanceof Error ? pathError.message : String(pathError)}`);
+			}
+		}
+
+		// Determine platform-specific package name and file extension
+		const platform = process.platform;
+		const arch = process.arch;
+		let packageName: string;
+		let fileExt: string;
+
+		if (platform === 'darwin') {
+			packageName = arch === 'arm64' ? 'sqlite-vec-darwin-arm64' : 'sqlite-vec-darwin-x64';
+			fileExt = 'dylib';
+		} else if (platform === 'linux') {
+			packageName = arch === 'arm64' ? 'sqlite-vec-linux-arm64' : 'sqlite-vec-linux-x64';
+			fileExt = 'so';
+		} else if (platform === 'win32') {
+			packageName = 'sqlite-vec-windows-x64';
+			fileExt = 'dll';
+		} else {
+			throw new Error(`Unsupported platform: ${platform}-${arch}`);
+		}
+
+		// Build possible paths (without require.resolve, not available in Obsidian bundled environment)
+		const possiblePaths: string[] = [];
+
+		// Primary: Use Obsidian vault-based path (most reliable in plugin environment)
+		if (app) {
+			const basePath = (app.vault.adapter as any)?.basePath;
+			if (basePath) {
+				possiblePaths.push(
+					path.join(basePath, '.obsidian', 'plugins', 'obsidian-peak-assistant', 'node_modules', packageName, `vec0.${fileExt}`)
+				);
+			}
+		}
+
+		// Fallback: Try process.cwd() based path
+		try {
+			possiblePaths.push(
+				path.join(process.cwd(), 'node_modules', packageName, `vec0.${fileExt}`)
+			);
+		} catch {
+			// process.cwd() may fail in some environments
+		}
+
+		console.log(`[BetterSqliteStore] Trying alternative paths: ${possiblePaths.join(', ')}`);
+		for (const altPath of possiblePaths) {
+			if (fs.existsSync(altPath)) {
+				console.log(`[BetterSqliteStore] Found extension at: ${altPath}`);
+				return altPath;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Attempts to manually load sqlite-vec extension using db.loadExtension().
+	 */
+	private static tryManualLoadExtension(
+		db: BetterSqlite3Database,
+		sqliteVec: any,
+		app?: App
+	): boolean {
+		if (!db.loadExtension) {
+			return false;
+		}
+
+		try {
+			const extensionPath = this.findSqliteVecExtensionPath(sqliteVec, app);
+			if (!extensionPath) {
+				console.warn(`[BetterSqliteStore] Could not find extension file.`);
+				return false;
+			}
+
+			console.log(`[BetterSqliteStore] Loading extension manually from: ${extensionPath}`);
+			db.loadExtension(extensionPath);
+
+			// Verify extension is loaded
+			const versionResult = db.prepare('SELECT vec_version() as version').get() as { version: string } | undefined;
+			if (versionResult) {
+				console.log(`[BetterSqliteStore] sqlite-vec extension loaded manually (version: ${versionResult.version})`);
+				return true;
+			}
+
+			return false;
+		} catch (manualError: any) {
+			console.warn(`[BetterSqliteStore] Manual loading failed: ${manualError instanceof Error ? manualError.message : String(manualError)}`);
+			return false;
+		}
+	}
+
+	/**
+	 * Try to load sqlite-vec extension for vector similarity search.
+	 * If loading fails, returns false but doesn't throw error.
+	 * This allows database to work without vector search (fulltext search still works).
+	 * 
+	 * @param db - Database instance to load extension into
+	 * @returns true if extension loaded successfully, false otherwise
+	 */
+	private static tryLoadSqliteVec(db: BetterSqlite3Database, app?: App): boolean {
+		try {
+			// Dynamically load sqlite-vec to avoid module resolution errors
+			// According to sqlite-vec docs, it should automatically handle platform-specific packages
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			const sqliteVec = require('sqlite-vec');
+			
+			// sqlite-vec exports a load function that takes the database instance
+			// It internally handles finding and loading the platform-specific extension
+			const loadFn = sqliteVec.load || sqliteVec.default?.load;
+			if (typeof loadFn !== 'function') {
+				console.warn(
+					'[BetterSqliteStore] sqlite-vec.load function not found. ' +
+					'Vector similarity search will not be available.'
+				);
+				return false;
+			}
+
+			try {
+				loadFn(db);
+				// Verify extension is loaded by checking vec_version()
+				const versionResult = db.prepare('SELECT vec_version() as version').get() as { version: string } | undefined;
+				if (versionResult) {
+					console.log(`[BetterSqliteStore] sqlite-vec extension loaded successfully (version: ${versionResult.version})`);
+					return true;
+				}
+				// If vec_version() failed, extension may not be fully loaded
+				console.warn('[BetterSqliteStore] sqlite-vec.load() succeeded but vec_version() failed. Extension may not be fully loaded.');
+			} catch (loadError: any) {
+				// Error during load() call - sqlite-vec.load() internally uses getLoadablePath() and db.loadExtension()
+				// In Obsidian plugin environment, path resolution may fail due to __dirname pointing to bundled location
+				const errorMsg = loadError instanceof Error ? loadError.message : String(loadError);
+				
+				// Try manual loading as fallback
+				if (this.tryManualLoadExtension(db, sqliteVec, app)) {
+					return true;
+				}
+
+				// Report the error
+				console.warn(
+					'[BetterSqliteStore] Failed to load sqlite-vec extension. ' +
+					'Vector similarity search will not be available. ' +
+					'According to sqlite-vec docs, platform packages should be automatically handled. ' +
+					'If this error persists, ensure sqlite-vec and platform-specific packages are installed. ' +
+					`Error: ${errorMsg}. Fulltext search will still work.`
+				);
+			}
+
+			return false;
+		} catch (requireError: any) {
+			if (requireError.code === 'MODULE_NOT_FOUND') {
+				console.warn(
+					'[BetterSqliteStore] sqlite-vec extension is not installed. ' +
+					'Vector similarity search will not be available. ' +
+					'To enable it, install: npm install sqlite-vec'
+				);
+			} else {
+				const errorMsg = requireError instanceof Error ? requireError.message : String(requireError);
+				console.warn(
+					'[BetterSqliteStore] Failed to require sqlite-vec. ' +
+					'Vector similarity search will not be available. ' +
+					`Error: ${errorMsg}. Fulltext search will still work.`
+				);
+			}
+			return false;
+		}
 	}
 
 	/**

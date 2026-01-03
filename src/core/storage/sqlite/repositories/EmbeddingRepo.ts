@@ -2,15 +2,20 @@ import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 import type { SqliteDatabase } from '../types';
 import type { SearchScopeMode, SearchScopeValue } from '@/service/search/types';
+import { BusinessError, ErrorCode } from '@/core/errors';
 
 /**
  * CRUD repository for `embedding` table.
  */
 export class EmbeddingRepo {
+	// Cache for vec_embeddings table state (checked once on plugin startup)
+	private vecEmbeddingsTableExists: boolean | null = null;
+	private vecEmbeddingsTableDimension: number | null = null;
+
 	constructor(
 		private readonly db: Kysely<DbSchema>,
 		private readonly rawDb: SqliteDatabase,
-	) {}
+	) { }
 
 	/**
 	 * Convert number[] to Buffer (BLOB format).
@@ -32,6 +37,192 @@ export class EmbeddingRepo {
 			arr.push(buffer.readFloatLE(i));
 		}
 		return arr;
+	}
+
+	/**
+	 * Initialize vec_embeddings table state cache.
+	 * Should be called once on plugin startup to avoid frequent table checks.
+	 */
+	initializeVecEmbeddingsTableCache(): void {
+		const checkStmt = this.rawDb.prepare(`
+			SELECT name FROM sqlite_master 
+			WHERE type='table' AND name='vec_embeddings'
+		`);
+		this.vecEmbeddingsTableExists = checkStmt.get() !== undefined;
+
+		// If table exists, try to get dimension from table definition
+		// Note: sqlite-vec doesn't expose dimension directly, so we'll check it during first insert
+		if (this.vecEmbeddingsTableExists) {
+			// Dimension will be validated on first insert attempt
+			this.vecEmbeddingsTableDimension = null; // Unknown until first insert
+		}
+	}
+
+	/**
+	 * Re-check vec_embeddings table state (fallback when error occurs).
+	 */
+	private recheckVecEmbeddingsTableState(): void {
+		const checkStmt = this.rawDb.prepare(`
+			SELECT name FROM sqlite_master 
+			WHERE type='table' AND name='vec_embeddings'
+		`);
+		this.vecEmbeddingsTableExists = checkStmt.get() !== undefined;
+		this.vecEmbeddingsTableDimension = null; // Reset dimension cache
+	}
+
+	/**
+	 * Recreate vec_embeddings table with new dimension.
+	 * This will delete all existing vector data in vec_embeddings.
+	 * Note: This does NOT delete embedding records from the embedding table.
+	 * 
+	 * @param dimension - New dimension for the table
+	 */
+	recreateVecEmbeddingsTable(dimension: number): void {
+		console.warn(
+			`[EmbeddingRepo] Recreating vec_embeddings table with dimension ${dimension}. ` +
+			'All existing vector data in vec_embeddings will be lost (embedding table records are preserved).'
+		);
+
+		// Drop existing table
+		this.rawDb.exec(`DROP TABLE IF EXISTS vec_embeddings`);
+
+		// Create new table with correct dimension
+		this.rawDb.exec(`
+			CREATE VIRTUAL TABLE vec_embeddings USING vec0(
+				embedding float[${dimension}]
+			)
+		`);
+
+		// Update cache
+		this.vecEmbeddingsTableExists = true;
+		this.vecEmbeddingsTableDimension = dimension;
+
+		console.log(`[EmbeddingRepo] Recreated vec_embeddings table with dimension ${dimension}`);
+	}
+
+	/**
+	 * Ensure vec_embeddings table exists with correct dimension.
+	 * Uses cached state to avoid frequent table checks.
+	 * If table doesn't exist, create it with the specified dimension.
+	 */
+	private ensureVecEmbeddingsTable(dimension: number): void {
+		// Use cached state if available
+		if (this.vecEmbeddingsTableExists === null) {
+			// Cache not initialized, check now
+			this.initializeVecEmbeddingsTableCache();
+		}
+
+		if (!this.vecEmbeddingsTableExists) {
+			// Create table with correct dimension on first insert
+			// This ensures the table dimension matches the actual embedding model dimension
+			this.rawDb.exec(`
+				CREATE VIRTUAL TABLE vec_embeddings USING vec0(
+					embedding float[${dimension}]
+				)
+			`);
+			console.log(`[EmbeddingRepo] Created vec_embeddings table with dimension ${dimension}`);
+			// Update cache
+			this.vecEmbeddingsTableExists = true;
+			this.vecEmbeddingsTableDimension = dimension;
+		}
+		// If table exists, dimension will be validated during insert
+		// If mismatch, we'll catch the error and throw a clear error message
+	}
+
+	/**
+	 * Get embedding rowid by id.
+	 * Returns null if not found.
+	 */
+	private getEmbeddingRowid(id: string): number | null {
+		const stmt = this.rawDb.prepare(`
+			SELECT rowid FROM embedding WHERE id = ?
+		`);
+		const result = stmt.get(id) as { rowid: number } | undefined;
+		return result?.rowid ?? null;
+	}
+
+
+	/**
+	 * Sync embedding to vec_embeddings virtual table.
+	 * This performs DELETE then INSERT (virtual tables don't support UPDATE).
+	 */
+	private syncToVecEmbeddings(embeddingRowid: number, embeddingBuffer: Buffer, logContext?: string): void {
+		// Check if row exists in vec_embeddings
+		const checkStmt = this.rawDb.prepare(`
+			SELECT rowid FROM vec_embeddings WHERE rowid = CAST(? AS INTEGER)
+		`);
+		const existing = checkStmt.get(embeddingRowid);
+
+		// If exists, delete first (virtual tables don't support UPDATE)
+		if (existing) {
+			const deleteStmt = this.rawDb.prepare(`
+				DELETE FROM vec_embeddings WHERE rowid = CAST(? AS INTEGER)
+			`);
+			deleteStmt.run(embeddingRowid);
+		}
+
+		// Insert (or re-insert) the embedding
+		const insertStmt = this.rawDb.prepare(`
+			INSERT INTO vec_embeddings(rowid, embedding)
+			VALUES (CAST(? AS INTEGER), ?)
+		`);
+		const logMsg = logContext 
+			? `[EmbeddingRepo] Inserting into vec_embeddings with rowid: ${embeddingRowid} (${logContext})`
+			: `[EmbeddingRepo] Inserting into vec_embeddings with rowid: ${embeddingRowid}`;
+		console.log(logMsg);
+		insertStmt.run(embeddingRowid, embeddingBuffer);
+	}
+
+	/**
+	 * Handle errors from syncToVecEmbeddings and retry if needed.
+	 */
+	private handleSyncError(
+		error: unknown,
+		embeddingRowid: number,
+		embeddingBuffer: Buffer,
+		embeddingDimension: number,
+	): void {
+		const errorMsg = error instanceof Error ? error.message : String(error);
+		const cause = error instanceof Error ? error : new Error(String(error));
+
+		// Handle table missing error
+		if (errorMsg.includes('no such table: vec_embeddings')) {
+			this.recheckVecEmbeddingsTableState();
+			if (!this.vecEmbeddingsTableExists) {
+				throw new BusinessError(
+					ErrorCode.VEC_EMBEDDINGS_TABLE_MISSING,
+					'vec_embeddings virtual table does not exist. This requires sqlite-vec extension to be loaded. Please ensure sqlite-vec is installed and the extension is loaded during database initialization.',
+					cause
+				);
+			}
+			// Retry after table state recheck
+			this.syncToVecEmbeddings(embeddingRowid, embeddingBuffer, 'retry after table missing');
+			return;
+		}
+
+		// Handle dimension mismatch error
+		if (errorMsg.includes('Dimension mismatch')) {
+			const dimensionMatch = errorMsg.match(/Expected (\d+) dimensions/);
+			const expectedDimension = dimensionMatch ? dimensionMatch[1] : 'unknown';
+			console.warn(
+				`[EmbeddingRepo] Dimension mismatch detected: table expects ${expectedDimension} dimensions, ` +
+				`but received ${embeddingDimension} dimensions. ` +
+				`This usually happens when the embedding model was changed. ` +
+				`Automatically recreating vec_embeddings table with correct dimension...`
+			);
+			this.recreateVecEmbeddingsTable(embeddingDimension);
+			this.syncToVecEmbeddings(embeddingRowid, embeddingBuffer, 'retry after dimension mismatch');
+			console.log(`[EmbeddingRepo] Successfully inserted embedding after recreating table`);
+			return;
+		}
+
+		// Handle other errors
+		this.recheckVecEmbeddingsTableState();
+		throw new BusinessError(
+			ErrorCode.UNKNOWN_ERROR,
+			`Failed to sync embedding to vec_embeddings: ${errorMsg}`,
+			cause
+		);
 	}
 
 	/**
@@ -59,17 +250,15 @@ export class EmbeddingRepo {
 	}): Promise<void> {
 		// Convert number[] to Buffer (BLOB)
 		const embeddingBuffer = this.arrayToBuffer(embedding.embedding);
-		
-		// Check if embedding already exists
-		const existingStmt = this.rawDb.prepare(`
-			SELECT rowid FROM embedding WHERE id = ?
-		`);
-		const existing = existingStmt.get(embedding.id) as { rowid: number } | undefined;
+
+		// Check if embedding already exists and get rowid
+		const existingRowid = this.getEmbeddingRowid(embedding.id);
 
 		let embeddingRowid: number;
-		if (existing) {
+		if (existingRowid !== null) {
 			// Update existing embedding
-			embeddingRowid = existing.rowid;
+			embeddingRowid = existingRowid;
+
 			await this.db
 				.updateTable('embedding')
 				.set({
@@ -86,46 +275,54 @@ export class EmbeddingRepo {
 				.where('id', '=', embedding.id)
 				.execute();
 		} else {
-			// Insert new embedding
-		await this.db
-			.insertInto('embedding')
-			.values({
-				id: embedding.id,
-				doc_id: embedding.doc_id,
-				chunk_id: embedding.chunk_id ?? null,
-				chunk_index: embedding.chunk_index ?? null,
-				path: embedding.path ?? null,
-				content_hash: embedding.content_hash,
-				ctime: embedding.ctime,
-				mtime: embedding.mtime,
-				embedding: embeddingBuffer,
-				embedding_model: embedding.embedding_model,
-				embedding_len: embedding.embedding_len,
-			})
-				.execute();
-			
-			// Get the rowid of the newly inserted row
-			const rowidStmt = this.rawDb.prepare(`
-				SELECT rowid FROM embedding WHERE id = ?
+			// Insert new embedding using raw SQL with RETURNING clause to get rowid directly
+			const insertStmt = this.rawDb.prepare(`
+				INSERT INTO embedding (
+					id, doc_id, chunk_id, chunk_index, path,
+					content_hash, ctime, mtime, embedding,
+					embedding_model, embedding_len
+				)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				RETURNING rowid
 			`);
-			const row = rowidStmt.get(embedding.id) as { rowid: number };
-			embeddingRowid = row.rowid;
+			const result = insertStmt.get(
+				embedding.id,
+				embedding.doc_id,
+				embedding.chunk_id ?? null,
+				embedding.chunk_index ?? null,
+				embedding.path ?? null,
+				embedding.content_hash,
+				embedding.ctime,
+				embedding.mtime,
+				embeddingBuffer,
+				embedding.embedding_model,
+				embedding.embedding_len,
+			) as { rowid: number } | undefined;
+
+			if (!result || result.rowid === undefined || result.rowid === null) {
+				throw new BusinessError(
+					ErrorCode.UNKNOWN_ERROR,
+					`Failed to insert embedding with id: ${embedding.id}`,
+				);
+			}
+			embeddingRowid = result.rowid;
 		}
 
 		// Sync to vec_embeddings virtual table using embedding.rowid as vec_embeddings.rowid
 		// vec0 virtual table stores vectors as float[], we pass the same BLOB buffer
 		// This avoids JSON serialization/deserialization overhead
+		// Note: vec_embeddings requires sqlite-vec extension to be loaded
+		// Virtual tables don't support UPSERT, so we need to DELETE then INSERT
+
+		const embeddingDimension = embedding.embedding.length;
+
+		// Ensure table exists with correct dimension
+		this.ensureVecEmbeddingsTable(embeddingDimension);
+
 		try {
-			const vecStmt = this.rawDb.prepare(`
-				INSERT INTO vec_embeddings(rowid, embedding)
-				VALUES (?, ?)
-				ON CONFLICT(rowid) DO UPDATE SET embedding = excluded.embedding
-			`);
-			// Pass BLOB directly - vec0 accepts binary format for float[]
-			vecStmt.run(embeddingRowid, embeddingBuffer);
+			this.syncToVecEmbeddings(embeddingRowid, embeddingBuffer);
 		} catch (error) {
-			// Ignore errors if vec_embeddings table doesn't exist or sqlite-vec is not loaded
-			console.warn('Failed to sync embedding to vec_embeddings:', error);
+			this.handleSyncError(error, embeddingRowid, embeddingBuffer, embeddingDimension);
 		}
 	}
 
@@ -205,6 +402,19 @@ export class EmbeddingRepo {
 		embedding_id: string;
 		distance: number;
 	}> {
+		const checkStmt = this.rawDb.prepare(`
+			SELECT name FROM sqlite_master 
+			WHERE type='table' AND name='vec_embeddings'
+		`);
+		const result = checkStmt.get();
+		if (!result) {
+			throw new BusinessError(
+				ErrorCode.VEC_EMBEDDINGS_TABLE_MISSING,
+				'vec_embeddings virtual table does not exist. Vector similarity search requires sqlite-vec extension. ' +
+				'Please ensure sqlite-vec is installed (npm install sqlite-vec) and the extension is loaded during database initialization.',
+			);
+		}
+
 		// Convert to Buffer if needed (BLOB format for float[])
 		const embeddingBuffer = Buffer.isBuffer(queryEmbedding)
 			? queryEmbedding
@@ -228,6 +438,7 @@ export class EmbeddingRepo {
 		// vec_embeddings.rowid = embedding.rowid
 		// vec0 MATCH operator accepts BLOB format for float[]
 		// We JOIN embedding table to filter by path before limiting results
+		// Note: sqlite-vec requires 'k = ?' constraint in WHERE clause for KNN queries
 		const sql = `
 			SELECT
 				ve.rowid,
@@ -235,12 +446,12 @@ export class EmbeddingRepo {
 			FROM vec_embeddings ve
 			INNER JOIN embedding e ON ve.rowid = e.rowid
 			WHERE ve.embedding MATCH ?
+				AND k = ?
 			${pathFilter}
 			ORDER BY ve.distance
-			LIMIT ?
 		`;
 		const knnStmt = this.rawDb.prepare(sql);
-		const knnResults = knnStmt.all(embeddingBuffer, ...pathParams, limit) as Array<{
+		const knnResults = knnStmt.all(embeddingBuffer, limit, ...pathParams) as Array<{
 			rowid: number;
 			distance: number;
 		}>;
@@ -269,9 +480,9 @@ export class EmbeddingRepo {
 				const embeddingId = rowidToEmbeddingId.get(r.rowid);
 				return embeddingId
 					? {
-							embedding_id: embeddingId,
-							distance: r.distance,
-						}
+						embedding_id: embeddingId,
+						distance: r.distance,
+					}
 					: null;
 			})
 			.filter((r): r is { embedding_id: string; distance: number } => r !== null);

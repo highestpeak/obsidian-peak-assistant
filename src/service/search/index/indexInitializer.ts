@@ -100,6 +100,7 @@ export class IndexInitializer {
 
 			// Process documents one by one: load -> index (chunking handled in IndexService)
 			for await (const batch of loaderManager.loadAllDocuments()) {
+				console.debug('[IndexInitializer] Loading batch:', batch.length);
 				for (const doc of batch) {
 					// Documents are already filtered by settings in loadAllDocuments
 					if (!loaderManager.shouldIndexDocument(doc)) {
@@ -107,6 +108,7 @@ export class IndexInitializer {
 					}
 
 					// Index document (chunking strategy is applied inside IndexService)
+					console.debug('[IndexInitializer] Indexing document:', doc.sourceFileInfo.path);
 					await IndexService.getInstance().indexDocument(doc, this.settings);
 					indexedCount += 1; // Count by document, not by chunks
 
@@ -116,6 +118,8 @@ export class IndexInitializer {
 						lastProgressUpdate = Date.now();
 					}
 				}
+				// for testing only
+				break;
 			}
 
 			if (progressTracker) {

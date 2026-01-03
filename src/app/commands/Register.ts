@@ -88,14 +88,17 @@ export function buildCoreCommands(
 
 				const indexStatus = await IndexService.getInstance().getIndexStatus();
 				const hasIndex = indexStatus.isReady && indexStatus.indexBuiltAt !== null;
-				
-				if (hasIndex) {
-					// Incremental indexing
-					await indexInitializer.performIncrementalIndexing();
-				} else {
-					// Full indexing
-					await indexInitializer.performFullIndexing(true);
-				}
+				console.debug('[Register] Index status hasIndex:', hasIndex);
+				// for testing only
+				await indexInitializer.performFullIndexing(true);
+				// after testing, comment out the above line and uncomment the below lines
+				// if (hasIndex) {
+				// 	// Incremental indexing
+				// 	await indexInitializer.performIncrementalIndexing();
+				// } else {
+				// 	// Full indexing
+				// 	await indexInitializer.performFullIndexing(true);
+				// }
 			},
 		},
 	];
