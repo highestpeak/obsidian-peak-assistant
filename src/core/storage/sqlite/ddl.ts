@@ -26,7 +26,6 @@ export interface Database {
 		doc_id: string;
 		chunk_id: string | null;
 		chunk_index: number | null;
-		path: string | null;
 		content_hash: string;
 		ctime: number;
 		mtime: number;
@@ -226,7 +225,6 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			doc_id TEXT NOT NULL,
 			chunk_id TEXT,
 			chunk_index INTEGER,
-			path TEXT,
 			content_hash TEXT NOT NULL,
 			ctime INTEGER NOT NULL,
 			mtime INTEGER NOT NULL,
@@ -237,7 +235,6 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_embedding_doc_id ON embedding(doc_id);
 		CREATE INDEX IF NOT EXISTS idx_embedding_chunk_id ON embedding(chunk_id);
 		CREATE INDEX IF NOT EXISTS idx_embedding_content_hash ON embedding(content_hash);
-		CREATE INDEX IF NOT EXISTS idx_embedding_path ON embedding(path);
 		CREATE TABLE IF NOT EXISTS doc_statistics (
 			doc_id TEXT PRIMARY KEY,
 			word_count INTEGER,
@@ -298,17 +295,24 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	`);
 
 
-	// FTS5 virtual table (stores normalized text).
+	// FTS5 virtual table for document content (stores normalized text).
 	// Note: tokenize options may vary by SQLite build; keep it simple for compatibility.
 	// Kysely doesn't support virtual tables, so we use raw SQL.
-	// doc_id is stored for association, path is kept for display purposes only.
 	tryExec(`
 		CREATE VIRTUAL TABLE IF NOT EXISTS doc_fts USING fts5(
 			chunk_id UNINDEXED,
 			doc_id UNINDEXED,
-			path,
-			title,
 			content
+		);
+	`);
+
+	// FTS5 virtual table for document metadata (title/path).
+	// Separate from content FTS to avoid redundant storage and enable weighted search.
+	tryExec(`
+		CREATE VIRTUAL TABLE IF NOT EXISTS doc_meta_fts USING fts5(
+			doc_id UNINDEXED,
+			path,
+			title
 		);
 	`);
 

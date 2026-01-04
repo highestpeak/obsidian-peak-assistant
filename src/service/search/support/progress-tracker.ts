@@ -28,16 +28,33 @@ export class IndexProgressTracker {
 
 	/**
 	 * Update progress with current count.
+	 * Shows percentage, elapsed time, and estimated remaining time.
 	 */
 	updateProgress(currentCount: number): void {
 		if (!this.notice) return;
 
 		let message: string;
-		if (this.totalFiles !== null) {
+		if (this.totalFiles !== null && this.totalFiles > 0) {
 			const percentage = Math.round((currentCount / this.totalFiles) * 100);
-			message = `Indexing: ${currentCount}/${this.totalFiles} files (${percentage}%)`;
+			
+			// Calculate elapsed time
+			const elapsedMs = this.startTime ? Date.now() - this.startTime : 0;
+			const elapsedText = this.formatDuration(elapsedMs);
+			
+			// Calculate estimated remaining time
+			let remainingText = '';
+			if (currentCount > 0 && currentCount < this.totalFiles) {
+				const avgTimePerFile = elapsedMs / currentCount;
+				const remainingFiles = this.totalFiles - currentCount;
+				const estimatedRemainingMs = avgTimePerFile * remainingFiles;
+				remainingText = `, ~${this.formatDuration(estimatedRemainingMs)} remaining`;
+			}
+			
+			message = `Indexing: ${currentCount}/${this.totalFiles} files (${percentage}%) - ${elapsedText} elapsed${remainingText}`;
 		} else {
-			message = `Indexing: ${currentCount} files processed...`;
+			const elapsedMs = this.startTime ? Date.now() - this.startTime : 0;
+			const elapsedText = this.formatDuration(elapsedMs);
+			message = `Indexing: ${currentCount} files processed... - ${elapsedText} elapsed`;
 		}
 
 		// Update notice by creating a new one (Obsidian doesn't support updating existing notices)

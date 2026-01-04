@@ -2,7 +2,7 @@ import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 import { sql } from 'kysely';
 import type { ChatMessage } from '@/service/chat/types';
-import { hashStringBase36 } from '@/core/utils/hash-utils';
+import { hashMD5 } from '@/core/utils/hash-utils';
 
 /**
  * Repository for chat_message table.
@@ -20,7 +20,7 @@ export class ChatMessageRepo {
 			message_id: msg.id,
 			conversation_id: conversationId,
 			role: msg.role,
-			content_hash: hashStringBase36(msg.content),
+			content_hash: hashMD5(msg.content),
 			created_at_ts: msg.createdAtTimestamp,
 			created_at_zone: msg.createdAtZone,
 			model: msg.model ?? null,

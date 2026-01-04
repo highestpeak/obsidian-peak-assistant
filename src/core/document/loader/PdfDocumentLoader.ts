@@ -6,7 +6,7 @@ import { generateContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
-import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -136,7 +136,7 @@ export class PdfDocumentLoader implements DocumentLoader {
 			const contentHash = generateContentHash(content);
 
 			return {
-				id: file.path,
+				id: generateDocIdFromPath(file.path),
 				type: 'pdf',
 				sourceFileInfo: {
 					path: file.path,

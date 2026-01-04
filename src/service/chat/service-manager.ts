@@ -2,7 +2,7 @@ import { App } from 'obsidian';
 import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings } from '@/core/providers/types';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
-import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef } from './types';
+import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef, StreamingCallbacks, StreamType } from './types';
 import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId, PromptVariables } from '@/service/prompt/PromptId';
 import { ProjectService } from './service-project';
@@ -14,6 +14,7 @@ import { IndexService } from '@/service/search/index/indexService';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
 import { ContextUpdateService } from './context/ContextUpdateService';
 import { EventBus } from '@/core/eventBus';
+import { createChatMessage } from './utils/chat-message-builder';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -246,6 +247,84 @@ export class AIServiceManager {
 	}
 
 	/**
+	 * Create a conversation from AI search analysis results.
+	 * Builds a comprehensive initial message with search query, summary, sources, and topics.
+	 */
+	async createConvFromSearchAIAnalysis(params: {
+		query: string;
+		summary: string;
+		sources: Array<{ path: string; title: string; highlight?: { text?: string } | null }>;
+		topics?: Array<{ label: string; weight: number }>;
+	}): Promise<ChatConversation> {
+		console.debug('[AIServiceManager] createConvFromSearchAIAnalysis called', {
+			query: params.query,
+			sourcesCount: params.sources.length,
+			topicsCount: params.topics?.length ?? 0,
+		});
+
+		// Build title from query
+		const title = params.query.trim() || 'AI Search Analysis';
+		console.debug('[AIServiceManager] Conversation title:', title);
+
+		// Build content with sources as markdown links for context
+		const sourcesList = params.sources.slice(0, 10).map((s, i) => {
+			const link = `[[${s.path}|${s.title}]]`;
+			const snippet = s.highlight?.text ? `\n  - ${s.highlight.text.substring(0, 200)}...` : '';
+			return `${i + 1}. ${link}${snippet}`;
+		}).join('\n');
+
+		const topicsList = params.topics && params.topics.length > 0
+			? `\n\n**Key Topics:**\n${params.topics.map(t => `- ${t.label} (weight: ${t.weight})`).join('\n')}`
+			: '';
+
+		const content = `## Search Query
+${params.query}
+
+## Analysis Summary
+${params.summary || 'No summary available.'}
+
+## Top Sources (${params.sources.length} files)
+${sourcesList}${topicsList}
+
+---
+*This conversation was created from an AI Search analysis. You can reference the sources above to continue the discussion.*`;
+
+		console.debug('[AIServiceManager] Initial message content length:', content.length);
+
+		// Get default model and timezone
+		const defaultModel = this.settings.defaultModel;
+		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+		// Create initial message with search context
+		const initialMessage = createChatMessage(
+			'user',
+			content,
+			defaultModel.modelId,
+			defaultModel.provider,
+			timezone
+		);
+
+		console.debug('[AIServiceManager] Creating conversation with initial message', {
+			messageId: initialMessage.id,
+			model: defaultModel.modelId,
+			provider: defaultModel.provider,
+		});
+
+		// Create conversation with initial message containing all search context
+		const conversation = await this.createConversation({
+			title,
+			initialMessages: [initialMessage],
+		});
+
+		console.debug('[AIServiceManager] Conversation created successfully', {
+			conversationId: conversation.meta.id,
+			projectId: conversation.meta.projectId ?? null,
+		});
+
+		return conversation;
+	}
+
+	/**
 	 * Send a message and wait for the full model response (blocking).
 	 * Returns the assistant message and usage without persisting. Call addMessage to persist.
 	 */
@@ -460,6 +539,27 @@ export class AIServiceManager {
 		model?: string
 	): Promise<string> {
 		return this.promptService.chatWithPrompt(promptId, variables, provider, model);
+	}
+
+	/**
+	 * Stream chat with prompt using streaming callbacks.
+	 * @param promptId - The prompt identifier
+	 * @param variables - Variables for the prompt template
+	 * @param callbacks - Streaming callbacks for handling progress
+	 * @param streamType - Stream type identifier (default: 'content')
+	 * @param provider - LLM provider name
+	 * @param model - Model identifier
+	 * @returns The complete LLM response content
+	 */
+	async chatWithPromptStream<T extends PromptId>(
+		promptId: T,
+		variables: PromptVariables[T],
+		callbacks: StreamingCallbacks,
+		streamType: StreamType = 'content',
+		provider?: string,
+		model?: string
+	): Promise<string> {
+		return this.promptService.chatWithPromptStream(promptId, variables, callbacks, streamType, provider, model);
 	}
 
 	/**

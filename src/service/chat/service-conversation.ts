@@ -116,6 +116,8 @@ export class ConversationService {
 	}): Promise<{ message: ChatMessage; usage?: LLMUsage }> {
 		const { conversation, project } = params;
 		const prepared = await this.prepareChatRequest(params);
+
+		const startTime = Date.now();
 		const assistant = await this.chat.blockChat({
 			provider: prepared.provider,
 			model: prepared.modelId,
@@ -125,6 +127,7 @@ export class ConversationService {
 
 		const assistantMessage = createChatMessage('assistant', assistant.content, assistant.model, prepared.provider, prepared.timezone);
 		assistantMessage.tokenUsage = assistant.usage;
+		assistantMessage.genTimeMs = Date.now() - startTime;
 
 		return {
 			message: assistantMessage,
@@ -180,6 +183,7 @@ export class ConversationService {
 		let currentModel = params.initialModel;
 		let currentProvider = params.initialProvider;
 		let usage: LLMUsage | undefined;
+		const startTime = Date.now();
 		try {
 			for await (const chunk of stream) {
 				if (chunk.type === 'delta') {
@@ -198,6 +202,7 @@ export class ConversationService {
 
 			const assistantMessage = createChatMessage('assistant', assistantContent, currentModel, currentProvider, params.timezone);
 			assistantMessage.tokenUsage = usage;
+			assistantMessage.genTimeMs = Date.now() - startTime;
 
 			yield {
 				type: 'complete',

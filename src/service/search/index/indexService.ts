@@ -112,6 +112,11 @@ export class IndexService {
 			await this.upsertGraph(doc);
 			sw.stop();
 
+			sw.start('Update doc statistics');
+			// Update document statistics (word count, char count, etc.)
+			await this.updateDocStatistics(doc);
+			sw.stop();
+
 			sw.start('Update index state');
 			// Finally: Update index state (only after graph is complete)
 			await this.updateIndexState();
@@ -221,21 +226,27 @@ export class IndexService {
 
 		// Delete existing FTS and embeddings for this doc
 		docChunkRepo.deleteFtsByDocId(docId);
+		docChunkRepo.deleteMetaFtsByDocId(docId);
 		await embeddingRepo.deleteByDocIds([docId]);
+
+		// Save meta FTS (title/path) - once per document
+		const normTitle = normalizeTextForFts(title ?? '');
+		docChunkRepo.insertMetaFts({
+			doc_id: docId,
+			path: path,
+			title: normTitle,
+		});
 
 		// Save FTS and embeddings
 		for (const chunk of chunks) {
 			const chunkId = chunk.chunkId ?? generateUuidWithoutHyphens();
 			const chunkIndex = Number(chunk.chunkIndex ?? 0);
-			// Save FTS (title and content are both searchable in FTS5)
-			const normTitle = normalizeTextForFts(title ?? '');
+			// Save FTS content
 			const normContent = normalizeTextForFts(chunk.content ?? '');
 
 			docChunkRepo.insertFts({
 				chunk_id: chunkId,
 				doc_id: docId,
-				path: path,
-				title: normTitle, // Normalized title for FTS search (searchable in FTS5)
 				content: normContent, // Normalized content for FTS search
 			});
 
@@ -246,7 +257,6 @@ export class IndexService {
 					doc_id: docId,
 					chunk_id: chunkId,
 					chunk_index: chunkIndex,
-					path: path,
 					content_hash: '',
 					ctime: now,
 					mtime: now,
@@ -286,6 +296,48 @@ export class IndexService {
 			console.error(`[IndexService] Error saving doc meta for ${doc.sourceFileInfo.path}:`, error);
 			throw error;
 		}
+	}
+
+	/**
+	 * Update document statistics (word count, char count, updated_at, etc.).
+	 * Initializes statistics if they don't exist, updates if they do.
+	 */
+	private async updateDocStatistics(doc: Document): Promise<void> {
+		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
+		
+		// Calculate word count and char count from content
+		// Content is stored in sourceFileInfo.content for text files
+		const content = doc.sourceFileInfo.content ?? '';
+		const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+		const charCount = content.length;
+
+		// Determine updated_at: prefer frontmatter updated_at, fallback to ctime, then mtime
+		let updatedAt: number;
+		const frontmatterUpdated = doc.metadata.frontmatter?.['updated_at'] || doc.metadata.frontmatter?.['updated'];
+		if (frontmatterUpdated) {
+			// Try to parse as timestamp (number) or date string
+			if (typeof frontmatterUpdated === 'number') {
+				updatedAt = frontmatterUpdated;
+			} else if (typeof frontmatterUpdated === 'string') {
+				const parsed = Date.parse(frontmatterUpdated);
+				updatedAt = isNaN(parsed) ? (doc.sourceFileInfo.ctime ?? doc.sourceFileInfo.mtime ?? Date.now()) : parsed;
+			} else {
+				updatedAt = doc.sourceFileInfo.ctime ?? doc.sourceFileInfo.mtime ?? Date.now();
+			}
+		} else {
+			// Fallback to file creation time, then modification time
+			updatedAt = doc.sourceFileInfo.ctime ?? doc.sourceFileInfo.mtime ?? Date.now();
+		}
+
+		// Upsert statistics (creates if not exists, updates if exists)
+		await docStatisticsRepo.upsert({
+			doc_id: doc.id,
+			word_count: wordCount > 0 ? wordCount : null,
+			char_count: charCount > 0 ? charCount : null,
+			language: null, // Language detection can be added later if needed
+			richness_score: null, // Richness score calculation can be added later if needed
+			updated_at: updatedAt,
+		});
 	}
 
 	/**

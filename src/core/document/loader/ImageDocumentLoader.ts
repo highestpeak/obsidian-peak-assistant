@@ -7,7 +7,7 @@ import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings, SearchSettings } from '@/app/settings/types';
 import { DEFAULT_SEARCH_SETTINGS } from '@/app/settings/types';
-import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { LLMRequest } from '@/core/providers/types';
 import { PromptId } from '@/service/prompt/PromptId';
@@ -133,7 +133,7 @@ export class ImageDocumentLoader implements DocumentLoader {
 			const contentHash = generateContentHash(content);
 
 			return {
-				id: file.path,
+				id: generateDocIdFromPath(file.path),
 				type: 'image',
 				sourceFileInfo: {
 					path: file.path,

@@ -5,7 +5,7 @@ import type { DocumentType, Document, ResourceSummary } from '@/core/document/ty
 import { generateContentHash } from '@/core/utils/hash-utils';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
-import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 
@@ -142,7 +142,7 @@ export class TableDocumentLoader implements DocumentLoader {
 			const contentHash = generateContentHash(content);
 
 			return {
-				id: file.path,
+				id: generateDocIdFromPath(file.path),
 				type: 'csv',
 				sourceFileInfo: {
 					path: file.path,

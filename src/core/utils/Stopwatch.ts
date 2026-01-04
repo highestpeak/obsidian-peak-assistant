@@ -77,7 +77,7 @@ export class Stopwatch {
 	 * Print all timing segments to console.
 	 * Format: [Stopwatch: name] label: duration ms (total: X ms)
 	 */
-	print(): void {
+	print(debug: boolean = true): void {
 		const total = this.getTotalElapsed();
 		const lines: string[] = [];
 
@@ -94,7 +94,11 @@ export class Stopwatch {
 			lines.push(`  - ${this.currentSegment.label}: ${runningDuration.toFixed(2)} ms (running)`);
 		}
 
-		console.debug(lines.join('\n'));
+		if (debug) {
+			console.debug(lines.join('\n'));
+		} else {
+			console.log(lines.join('\n'));
+		}
 	}
 
 	/**

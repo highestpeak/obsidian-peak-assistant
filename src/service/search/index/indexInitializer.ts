@@ -7,7 +7,7 @@ import { IndexProgressTracker } from '../support/progress-tracker';
 import { IndexService } from '@/service/search/index/indexService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { generateContentHash } from '@/core/utils/hash-utils';
-import { INDEX_CHECK_BATCH_SIZE, SEARCH_DB_FILENAME } from '@/core/constant';
+import { INDEX_CHECK_BATCH_SIZE, SEARCH_DB_FILENAME, INDEX_PROGRESS_UPDATE_INTERVAL } from '@/core/constant';
 import { getFileSize } from '@/core/utils/obsidian-utils';
 
 /**
@@ -85,20 +85,37 @@ export class IndexInitializer {
 	 * Perform full indexing of all documents with progress tracking.
 	 */
 	async performFullIndexing(showNotification: boolean): Promise<void> {
-		const progressTracker = showNotification ? new IndexProgressTracker(this.app) : null;
 		console.log('[IndexInitializer] Starting full indexing');
+
+		const loaderManager = DocumentLoaderManager.getInstance();
+		
+		// Step 1: Count total files first to show accurate progress
+		const countStartTime = performance.now();
+		let totalFiles = 0;
+		console.log('[IndexInitializer] Counting total files...');
+		for await (const batch of loaderManager.scanDocuments()) {
+			for (const docMeta of batch) {
+				// Count files that should be indexed (respecting settings)
+				// Use the same filter logic as loadAllDocuments
+				if (loaderManager.shouldIndexDocument({ type: docMeta.type } as any)) {
+					totalFiles += 1;
+				}
+			}
+		}
+		const countDuration = performance.now() - countStartTime;
+		console.log(`[IndexInitializer] Total files to index: ${totalFiles} (counted in ${countDuration.toFixed(2)}ms)`);
+
+		const progressTracker = showNotification ? new IndexProgressTracker(this.app, totalFiles) : null;
 
 		try {
 			if (progressTracker) {
 				progressTracker.showStart();
 			}
 
-			const loaderManager = DocumentLoaderManager.getInstance();
 			let indexedCount = 0;
 			let lastProgressUpdate = Date.now();
-			const PROGRESS_UPDATE_INTERVAL = 3000; // Update every 3 seconds
 
-			// Process documents one by one: load -> index (chunking handled in IndexService)
+			// Step 2: Process documents one by one: load -> index (chunking handled in IndexService)
 			for await (const batch of loaderManager.loadAllDocuments()) {
 				console.debug('[IndexInitializer] Loading batch:', batch.length);
 				for (const doc of batch) {
@@ -113,13 +130,18 @@ export class IndexInitializer {
 					indexedCount += 1; // Count by document, not by chunks
 
 					// Update progress periodically
-					if (progressTracker && Date.now() - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL) {
+					if (progressTracker && Date.now() - lastProgressUpdate >= INDEX_PROGRESS_UPDATE_INTERVAL) {
 						progressTracker.updateProgress(indexedCount);
 						lastProgressUpdate = Date.now();
 					}
 				}
 				// for testing only
 				break;
+			}
+
+			// Final progress update
+			if (progressTracker) {
+				progressTracker.updateProgress(indexedCount);
 			}
 
 			if (progressTracker) {
@@ -269,7 +291,8 @@ export class IndexInitializer {
 
 		let indexedCount = 0;
 		let lastProgressUpdate = Date.now();
-		const PROGRESS_UPDATE_INTERVAL = 2000; // Update every 2 seconds for incremental
+		// Use shorter interval for incremental indexing (faster updates)
+		const INCREMENTAL_PROGRESS_UPDATE_INTERVAL = 2000; // Update every 2 seconds for incremental
 
 		// Process files one by one: load -> index (chunking handled in IndexService)
 		for (const path of filesToIndexPaths) {
@@ -284,7 +307,7 @@ export class IndexInitializer {
 			indexedCount += 1; // Count by document, not by chunks
 
 			// Update progress periodically
-			if (Date.now() - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL) {
+			if (Date.now() - lastProgressUpdate >= INCREMENTAL_PROGRESS_UPDATE_INTERVAL) {
 				progressTracker.updateProgress(indexedCount);
 				lastProgressUpdate = Date.now();
 			}

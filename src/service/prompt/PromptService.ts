@@ -4,6 +4,7 @@ import { ensureFolder } from '@/core/utils/vault-utils';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import type { AIServiceSettings } from '@/app/settings/types';
 import Handlebars from 'handlebars';
+import { StreamingCallbacks, StreamType } from '@/service/chat/types';
 
 /**
  * Unified prompt service with code-first templates and optional file overrides.
@@ -100,6 +101,87 @@ export class PromptService {
 			],
 		});
 		return completion.content.trim();
+	}
+
+	/**
+	 * Render a prompt template and call streamChat with streaming callbacks.
+	 * @param promptId - The prompt identifier
+	 * @param variables - Variables for the prompt template
+	 * @param callbacks - Streaming callbacks for handling progress
+	 * @param streamType - Stream type identifier (default: 'content')
+	 * @param provider - LLM provider name
+	 * @param model - Model identifier
+	 * @returns The complete LLM response content
+	 */
+	async chatWithPromptStream<T extends PromptId>(
+		promptId: T,
+		variables: PromptVariables[T],
+		callbacks: StreamingCallbacks,
+		streamType: StreamType = 'content',
+		provider?: string,
+		model?: string
+	): Promise<string> {
+		if (!this.chat) {
+			throw new Error('Chat service not available. Call setChatService() first.');
+		}
+		const promptText = await this.render(promptId, variables);
+
+		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
+		if (!provider || !model) {
+			// Check promptModelMap first
+			if (this.settings?.promptModelMap?.[promptId]) {
+				const promptModel = this.settings.promptModelMap[promptId];
+				provider = promptModel.provider;
+				model = promptModel.modelId;
+			} else if (this.settings?.defaultModel) {
+				// Fallback to defaultModel from settings
+				provider = this.settings.defaultModel.provider;
+				model = this.settings.defaultModel.modelId;
+			} else {
+				throw new Error('No model configuration available. Please configure defaultModel in settings.');
+			}
+		}
+
+		callbacks.onStart?.(streamType);
+
+		let fullContent = '';
+		try {
+			const stream = this.chat.streamChat({
+				provider,
+				model,
+				messages: [
+					{
+						role: 'user',
+						content: [{ type: 'text', text: promptText }],
+					},
+				],
+			});
+
+			for await (const event of stream) {
+				if (event.type === 'delta') {
+					fullContent += event.text;
+					callbacks.onDelta?.(streamType, event.text);
+				} else if (event.type === 'complete') {
+					const finalContent = fullContent.trim();
+					callbacks.onComplete?.(streamType, finalContent, {
+						estimatedTokens: event.usage?.totalTokens,
+						usage: event.usage,
+					});
+					return finalContent;
+				} else if (event.type === 'error') {
+					callbacks.onError?.(streamType, event.error);
+					throw event.error;
+				}
+			}
+
+			// If stream ends without complete event, return what we have
+			const finalContent = fullContent.trim();
+			callbacks.onComplete?.(streamType, finalContent);
+			return finalContent;
+		} catch (error) {
+			callbacks.onError?.(streamType, error);
+			throw error;
+		}
 	}
 
 	/**

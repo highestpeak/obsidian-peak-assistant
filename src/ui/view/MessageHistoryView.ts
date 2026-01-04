@@ -1,8 +1,8 @@
 import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
-import { AIServiceManager } from '@/service/chat/service-manager';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { MessageHistoryViewComponent } from './message-history-view/MessageHistoryView';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { AppContext } from '@/app/context/AppContext';
 
 export const MESSAGE_HISTORY_VIEW_TYPE = 'peak-message-history-view';
 
@@ -12,7 +12,10 @@ export const MESSAGE_HISTORY_VIEW_TYPE = 'peak-message-history-view';
 export class MessageHistoryView extends ItemView {
 	private reactRenderer: ReactRenderer | null = null;
 
-	constructor(leaf: WorkspaceLeaf, private readonly manager: AIServiceManager) {
+	constructor(
+		leaf: WorkspaceLeaf,
+		private readonly appContext: AppContext
+	) {
 		super(leaf);
 	}
 
@@ -77,8 +80,7 @@ export class MessageHistoryView extends ItemView {
 			createReactElementWithServices(
 				MessageHistoryViewComponent,
 				{},
-				this.app,
-				this.manager
+				this.appContext
 			)
 		);
 	}

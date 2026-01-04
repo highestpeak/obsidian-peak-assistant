@@ -7,7 +7,7 @@ import { generateContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
-import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 
@@ -162,8 +162,7 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 			}
 
 			return {
-				// todo id shouldn't be path. should be empty as this is not read from db. it is a tmp method call. and just to align with the core document class.
-				id: file.path,
+				id: generateDocIdFromPath(file.path),
 				type: 'markdown',
 				sourceFileInfo: {
 					path: file.path,

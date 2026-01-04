@@ -265,7 +265,6 @@ export class EmbeddingRepo {
 					doc_id: embedding.doc_id,
 					chunk_id: embedding.chunk_id ?? null,
 					chunk_index: embedding.chunk_index ?? null,
-					path: embedding.path ?? null,
 					content_hash: embedding.content_hash,
 					mtime: embedding.mtime,
 					embedding: embeddingBuffer,
@@ -278,11 +277,11 @@ export class EmbeddingRepo {
 			// Insert new embedding using raw SQL with RETURNING clause to get rowid directly
 			const insertStmt = this.rawDb.prepare(`
 				INSERT INTO embedding (
-					id, doc_id, chunk_id, chunk_index, path,
+					id, doc_id, chunk_id, chunk_index,
 					content_hash, ctime, mtime, embedding,
 					embedding_model, embedding_len
 				)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				RETURNING rowid
 			`);
 			const result = insertStmt.get(
@@ -290,7 +289,6 @@ export class EmbeddingRepo {
 				embedding.doc_id,
 				embedding.chunk_id ?? null,
 				embedding.chunk_index ?? null,
-				embedding.path ?? null,
 				embedding.content_hash,
 				embedding.ctime,
 				embedding.mtime,
@@ -425,19 +423,19 @@ export class EmbeddingRepo {
 		const pathParams: string[] = [];
 
 		if (scopeMode === 'inFile' && scopeValue?.currentFilePath) {
-			pathFilter = 'AND e.path = ?';
+			pathFilter = 'AND dm.path = ?';
 			pathParams.push(scopeValue.currentFilePath);
 		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
 			const folderPath = scopeValue.folderPath;
-			pathFilter = 'AND (e.path = ? OR e.path LIKE ?)';
+			pathFilter = 'AND (dm.path = ? OR dm.path LIKE ?)';
 			pathParams.push(folderPath, `${folderPath}/%`);
 		}
 
-		// Step 1: KNN search on vec_embeddings with JOIN to embedding table for path filtering
+		// Step 1: KNN search on vec_embeddings with JOIN to embedding and doc_meta tables for path filtering
 		// Returns vec_embeddings.rowid (integer) and distance
 		// vec_embeddings.rowid = embedding.rowid
 		// vec0 MATCH operator accepts BLOB format for float[]
-		// We JOIN embedding table to filter by path before limiting results
+		// We JOIN embedding and doc_meta tables to filter by path before limiting results
 		// Note: sqlite-vec requires 'k = ?' constraint in WHERE clause for KNN queries
 		const sql = `
 			SELECT
@@ -445,6 +443,7 @@ export class EmbeddingRepo {
 				ve.distance
 			FROM vec_embeddings ve
 			INNER JOIN embedding e ON ve.rowid = e.rowid
+			INNER JOIN doc_meta dm ON e.doc_id = dm.id
 			WHERE ve.embedding MATCH ?
 				AND k = ?
 			${pathFilter}

@@ -6,7 +6,7 @@ import { PlaywrightWebBaseLoader } from '@langchain/community/document_loaders/w
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
-import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 
@@ -129,7 +129,7 @@ export class UrlDocumentLoader implements DocumentLoader {
 			const title = urlObj.hostname + urlObj.pathname;
 
 			return {
-				id: url,
+				id: generateDocIdFromPath(url),
 				type: 'url',
 				sourceFileInfo: {
 					path: url,

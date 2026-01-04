@@ -19,14 +19,21 @@ export type DocChunkInput = {
 export type DocChunkOutput = Pick<DbSchema['doc_chunk'], 'chunk_id' | 'doc_id' | 'title' | 'content_raw' | 'mtime'>;
 
 /**
- * FTS insert parameters.
+ * FTS insert parameters for content.
  */
 export type FtsInsertParams = {
 	chunk_id: string;
 	doc_id: string;
-	path: string; // Kept for display purposes only
-	title: string | null;
 	content: string;
+};
+
+/**
+ * FTS insert parameters for document metadata.
+ */
+export type FtsMetaInsertParams = {
+	doc_id: string;
+	path: string;
+	title: string | null;
 };
 
 /**

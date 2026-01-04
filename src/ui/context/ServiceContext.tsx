@@ -3,6 +3,7 @@ import { App } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { EventBus } from '@/core/eventBus';
 import { SearchClient } from '@/service/search/SearchClient';
+import { ViewManager } from '@/app/view/ViewManager';
 
 /**
  * Service context value containing all global services
@@ -12,6 +13,7 @@ interface ServiceContextValue {
 	manager: AIServiceManager;
 	eventBus: EventBus;
 	searchClient: SearchClient | null;
+	viewManager: ViewManager;
 }
 
 const ServiceContext = createContext<ServiceContextValue | null>(null);
@@ -24,11 +26,12 @@ export const ServiceProvider: React.FC<{
 	app: App;
 	manager: AIServiceManager;
 	searchClient?: SearchClient | null;
-}> = ({ children, app, manager, searchClient = null }) => {
+	viewManager: ViewManager;
+}> = ({ children, app, manager, searchClient = null, viewManager }) => {
 	const eventBus = EventBus.getInstance(app);
 
 	return (
-		<ServiceContext.Provider value={{ app, manager, eventBus, searchClient }}>
+		<ServiceContext.Provider value={{ app, manager, eventBus, searchClient, viewManager }}>
 			{children}
 		</ServiceContext.Provider>
 	);

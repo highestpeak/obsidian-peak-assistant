@@ -14,6 +14,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { IndexService } from '@/service/search/index/indexService';
 import { SEARCH_DB_FILENAME } from '@/core/constant';
+import { AppContext } from '@/app/context/AppContext';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -65,9 +66,6 @@ export default class MyPlugin extends Plugin {
 		DocumentLoaderManager.init(this.app, this.settings.search, this.aiServiceManager);
 		await this.aiServiceManager.init();
 
-		this.viewManager = new ViewManager(this, this.aiServiceManager);
-		this.viewManager.init();
-
 		// Initialize SQLite store
 		await sqliteStoreManager.init({ 
 			app: this.app, 
@@ -78,6 +76,20 @@ export default class MyPlugin extends Plugin {
 
 		// Initialize search service (singleton)
 		await this.initializeSearchService();
+
+		// Create AppContext with all dependencies (viewManager will be set after ViewManager creation)
+		const appContext = new AppContext(
+			this.app,
+			this.aiServiceManager,
+			this.searchClient
+		);
+
+		// Create ViewManager with AppContext
+		this.viewManager = new ViewManager(this, appContext);
+		// Set viewManager in AppContext after creation
+		appContext.viewManager = this.viewManager;
+
+		this.viewManager.init();
 
 		// register workspace events
 		registerCoreEvents(this, this.viewManager);

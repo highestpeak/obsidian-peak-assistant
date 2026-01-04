@@ -1,7 +1,7 @@
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 import type { SqliteDatabase } from '../types';
-import type { DocChunkInput, DocChunkOutput, FtsInsertParams, FtsSearchResult } from './types';
+import type { DocChunkInput, DocChunkOutput, FtsInsertParams, FtsMetaInsertParams, FtsSearchResult } from './types';
 import type { SearchScopeMode, SearchScopeValue } from '@/service/search/types';
 
 /**
@@ -46,12 +46,44 @@ export class DocChunkRepo {
 	}
 
 	/**
+	 * Delete meta FTS row by doc_id.
+	 */
+	deleteMetaFtsByDocId(docId: string): void {
+		const stmt = this.rawDb.prepare(`DELETE FROM doc_meta_fts WHERE doc_id = ?`);
+		stmt.run(docId);
+	}
+
+	/**
+	 * Delete meta FTS rows by doc_ids (batch).
+	 */
+	deleteMetaFtsByDocIds(docIds: string[]): void {
+		if (!docIds.length) return;
+		const stmt = this.rawDb.prepare(`DELETE FROM doc_meta_fts WHERE doc_id IN (${docIds.map(() => '?').join(',')})`);
+		stmt.run(...docIds);
+	}
+
+	/**
 	 * Insert FTS row.
+	 */
+	/**
+	 * Insert FTS row for content.
 	 */
 	insertFts(params: FtsInsertParams): void {
 		const stmt = this.rawDb.prepare(`
-			INSERT INTO doc_fts (chunk_id, doc_id, path, title, content)
-			VALUES (@chunk_id, @doc_id, @path, @title, @content)
+			INSERT INTO doc_fts (chunk_id, doc_id, content)
+			VALUES (@chunk_id, @doc_id, @content)
+		`);
+		stmt.run(params);
+	}
+
+	/**
+	 * Insert FTS row for document metadata (title/path).
+	 * Only one row per document.
+	 */
+	insertMetaFts(params: FtsMetaInsertParams): void {
+		const stmt = this.rawDb.prepare(`
+			INSERT INTO doc_meta_fts (doc_id, path, title)
+			VALUES (@doc_id, @path, @title)
 		`);
 		stmt.run(params);
 	}
@@ -101,7 +133,6 @@ export class DocChunkRepo {
 			SELECT
 				f.chunk_id,
 				f.doc_id,
-				f.title,
 				f.content as content_raw,
 				NULL as mtime
 			FROM doc_fts f
@@ -110,11 +141,16 @@ export class DocChunkRepo {
 		const rows = stmt.all(...chunkIds) as Array<{
 			chunk_id: string;
 			doc_id: string;
-			title: string | null;
 			content_raw: string;
 			mtime: number | null;
 		}>;
-		return rows;
+		return rows.map(row => ({
+			chunk_id: row.chunk_id,
+			doc_id: row.doc_id,
+			title: null,
+			content_raw: row.content_raw,
+			mtime: row.mtime,
+		}));
 	}
 
 	/**
@@ -144,11 +180,11 @@ export class DocChunkRepo {
 		const pathParams: string[] = [];
 
 		if (scopeMode === 'inFile' && scopeValue?.currentFilePath) {
-			pathFilter = 'AND f.path = ?';
+			pathFilter = 'AND dm.path = ?';
 			pathParams.push(scopeValue.currentFilePath);
 		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
 			const folderPath = scopeValue.folderPath;
-			pathFilter = 'AND (f.path = ? OR f.path LIKE ?)';
+			pathFilter = 'AND (dm.path = ? OR dm.path LIKE ?)';
 			pathParams.push(folderPath, `${folderPath}/%`);
 		}
 
@@ -156,11 +192,12 @@ export class DocChunkRepo {
 			SELECT
 				f.chunk_id as chunkId,
 				f.doc_id as docId,
-				f.path as path,
-				f.title as title,
+				dm.path as path,
+				dm.title as title,
 				f.content as content,
 				bm25(doc_fts) as bm25
 			FROM doc_fts f
+			INNER JOIN doc_meta dm ON f.doc_id = dm.id
 			WHERE doc_fts MATCH ?
 			${pathFilter}
 			ORDER BY bm25 ASC
@@ -173,6 +210,59 @@ export class DocChunkRepo {
 			path: string;
 			title: string | null;
 			content: string;
+			bm25: number;
+		}>;
+	}
+
+	/**
+	 * Search document metadata (title/path) using FTS5.
+	 *
+	 * @param term - Search term (normalized for FTS)
+	 * @param limit - Maximum number of results
+	 * @param scopeMode - Scope mode for filtering
+	 * @param scopeValue - Scope value for filtering
+	 */
+	searchMetaFts(
+		term: string,
+		limit: number,
+		scopeMode?: SearchScopeMode,
+		scopeValue?: SearchScopeValue,
+	): Array<{
+		docId: string;
+		path: string;
+		title: string | null;
+		bm25: number;
+	}> {
+		// Build path filter condition based on scope
+		let pathFilter = '';
+		const pathParams: string[] = [];
+
+		if (scopeMode === 'inFile' && scopeValue?.currentFilePath) {
+			pathFilter = 'AND mf.path = ?';
+			pathParams.push(scopeValue.currentFilePath);
+		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
+			const folderPath = scopeValue.folderPath;
+			pathFilter = 'AND (mf.path = ? OR mf.path LIKE ?)';
+			pathParams.push(folderPath, `${folderPath}/%`);
+		}
+
+		const sql = `
+			SELECT
+				mf.doc_id as docId,
+				mf.path as path,
+				mf.title as title,
+				bm25(doc_meta_fts) as bm25
+			FROM doc_meta_fts mf
+			WHERE doc_meta_fts MATCH ?
+			${pathFilter}
+			ORDER BY bm25 ASC
+			LIMIT ?
+		`;
+		const stmt = this.rawDb.prepare(sql);
+		return stmt.all(term, ...pathParams, limit) as Array<{
+			docId: string;
+			path: string;
+			title: string | null;
 			bm25: number;
 		}>;
 	}

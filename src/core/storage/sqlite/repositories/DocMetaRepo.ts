@@ -13,10 +13,14 @@ export class DocMetaRepo {
 	 * Supports both full Document metadata and minimal fields for backward compatibility.
 	 */
 	async upsert(doc: Partial<DbSchema['doc_meta']> & { path: string }): Promise<void> {
+		// Ensure id is provided (should be generated from path if not provided)
+		if (!doc.id) {
+			throw new Error(`doc.id is required for doc_meta.upsert. Path: ${doc.path}`);
+		}
 		await this.db
 			.insertInto('doc_meta')
 			.values({
-				id: doc.id ?? doc.path,
+				id: doc.id,
 				path: doc.path,
 				type: doc.type ?? null,
 				title: doc.title ?? null,

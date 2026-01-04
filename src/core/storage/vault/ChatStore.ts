@@ -78,17 +78,21 @@ export class ChatStorageService {
 		// Get or build conversation file path
 		const { file, path } = await this.getConvFile(conversation, folder);
 
+		// IMPORTANT: First upsert conversation meta to ensure it exists in SQLite
+		// This must happen before saveNewMessage, because saveNewMessage calls readConversation
+		// which requires the meta to exist in SQLite (specifically fileRelPath must be set)
+		await this.upsertConversationMeta(conversation.id, {
+			...conversation,
+			fileRelPath: getRelativePath(this.rootFolder, path),
+		});
+
 		// If messages are provided, save them using saveMessage
+		// Now that meta is persisted, saveNewMessage can successfully read the conversation
 		if (messages && messages.length > 0) {
 			// console.log('[ChatStore] saveConversation saving messages', messages);
 			// Save messages using saveMessage (saveMessage will load conversation and ensure file exists)
 			await this.saveNewMessage(conversation.id, messages);
 		}
-
-		await this.upsertConversationMeta(conversation.id, {
-			...conversation,
-			fileRelPath: getRelativePath(this.rootFolder, path),
-		});
 
 		// Load final conversation
 		const finalConv = await this.readConversation(conversation.id, true);

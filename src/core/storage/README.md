@@ -299,7 +299,7 @@ Due to Obsidian's plugin architecture, `better-sqlite3` may not work reliably ev
 ### Repository Architecture
 All data access is encapsulated through the Repository layer:
 - **Kysely-based Repositories**:
-  - `DocMetaRepo`, `DocChunkRepo`, `EmbeddingRepo`, `IndexStateRepo`, `RecentOpenRepo`
+  - `DocMetaRepo`, `DocChunkRepo`, `EmbeddingRepo`, `IndexStateRepo`
   - `DocStatisticsRepo`, `GraphNodeRepo`, `GraphEdgeRepo`
 - **FTS5 and sqlite-vec Operations**:
   - Use `rawDb` (sql.js or better-sqlite3 adapter) to directly execute raw SQL

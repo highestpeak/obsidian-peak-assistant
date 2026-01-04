@@ -2,18 +2,6 @@ import React from 'react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 
-const tags = [
-	{ name: 'Neural Networks', count: 18, size: 'lg' },
-	{ name: 'Deep Learning', count: 15, size: 'lg' },
-	{ name: 'Python', count: 12, size: 'md' },
-	{ name: 'TensorFlow', count: 10, size: 'md' },
-	{ name: 'AI', count: 9, size: 'md' },
-	{ name: 'Data Science', count: 8, size: 'sm' },
-	{ name: 'NLP', count: 7, size: 'sm' },
-	{ name: 'Computer Vision', count: 6, size: 'sm' },
-	{ name: 'PyTorch', count: 5, size: 'sm' },
-];
-
 const getSizeClasses = (size: string) => {
 	switch (size) {
 		case 'lg':
@@ -40,13 +28,29 @@ const getColorClasses = (size: string) => {
 	}
 };
 
+interface TagCloudProps {
+	topics?: Array<{ label: string; weight: number }>;
+}
+
 /**
- * Static tag cloud for AI search insights.
+ * Tag cloud for AI search insights.
  */
-export const TagCloud: React.FC = () => {
+export const TagCloud: React.FC<TagCloudProps> = ({ topics }) => {
+	if (!topics || topics.length === 0) {
+		return (
+			<span className="pktw-text-xs pktw-text-[#999999]">No topics extracted yet...</span>
+		);
+	}
+
+	const displayTags = topics.map((topic, index) => ({
+		name: topic.label,
+		count: Math.round(topic.weight * 100),
+		size: index < 3 ? 'lg' : index < 6 ? 'md' : 'sm' as const,
+	}));
+
 	return (
 		<div className="pktw-flex pktw-flex-wrap pktw-gap-2">
-			{tags.map((tag, index) => (
+			{displayTags.map((tag, index) => (
 				<Button
 					key={index}
 					variant="ghost"
@@ -55,7 +59,7 @@ export const TagCloud: React.FC = () => {
 						getColorClasses(tag.size),
 						'pktw-rounded-md pktw-border pktw-h-auto pktw-font-medium hover:pktw-shadow-sm active:pktw-scale-95'
 					)}
-					title={`${tag.count} occurrences`}
+					title={`Weight: ${tag.count}`}
 				>
 					{tag.name}
 				</Button>

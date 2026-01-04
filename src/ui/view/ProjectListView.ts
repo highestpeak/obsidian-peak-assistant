@@ -1,9 +1,9 @@
 import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
-import { AIServiceManager } from '@/service/chat/service-manager';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { ProjectListViewComponent } from './project-list-view/ProjectListView';
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { AppContext } from '@/app/context/AppContext';
 
 export const PROJECT_LIST_VIEW_TYPE = 'peak-project-list-view';
 
@@ -15,7 +15,10 @@ export class ProjectListView extends ItemView {
 	private eventBus: EventBus;
 	private unsubscribeHandlers: (() => void)[] = [];
 
-	constructor(leaf: WorkspaceLeaf, private readonly manager: AIServiceManager) {
+	constructor(
+		leaf: WorkspaceLeaf,
+		private readonly appContext: AppContext
+	) {
 		super(leaf);
 		this.eventBus = EventBus.getInstance(this.app);
 	}
@@ -59,8 +62,7 @@ export class ProjectListView extends ItemView {
 			createReactElementWithServices(
 				ProjectListViewComponent,
 				{},
-				this.app,
-				this.manager
+				this.appContext
 			)
 		);
 	}

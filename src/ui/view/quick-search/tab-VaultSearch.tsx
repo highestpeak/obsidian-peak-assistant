@@ -4,53 +4,11 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { formatRelativeTime } from '@/ui/view/shared/date-utils';
 import { getFileIcon } from '@/ui/view/shared/file-utils';
 import { KeyboardShortcut } from './components/KeyboardShortcut';
+import { formatDuration } from '@/core/utils/format-utils';
 import type { SearchQuery, SearchResultItem as SearchResultItemType } from '@/service/search/types';
 import type { SearchClient } from '@/service/search/SearchClient';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 
-// Mock recently accessed files
-const mockRecentlyAccessed: SearchResultItemType[] = [
-	{
-		id: 'ra-1',
-		type: 'markdown',
-		title: 'Daily Notes - 2024-12-15',
-		path: 'Daily',
-		highlight: { text: 'Today\'s meeting notes and tasks' },
-		lastModified: Date.now() - 30 * 60 * 1000, // 30 minutes ago
-	},
-	{
-		id: 'ra-2',
-		type: 'markdown',
-		title: 'Project Planning',
-		path: 'Projects/Active',
-		highlight: { text: 'Q1 2025 roadmap and milestones' },
-		lastModified: Date.now() - 2 * 60 * 60 * 1000, // 2 hours ago
-	},
-	{
-		id: 'ra-3',
-		type: 'pdf',
-		title: 'Research Notes - AI Trends',
-		path: 'Research',
-		highlight: { text: 'Key findings from recent AI research papers' },
-		lastModified: Date.now() - 5 * 60 * 60 * 1000, // 5 hours ago
-	},
-	{
-		id: 'ra-4',
-		type: 'markdown',
-		title: 'Meeting Notes - Team Sync',
-		path: 'Work/Meetings',
-		highlight: { text: 'Weekly team synchronization discussion' },
-		lastModified: Date.now() - 24 * 60 * 60 * 1000, // 1 day ago
-	},
-	{
-		id: 'ra-5',
-		type: 'folder',
-		title: 'Personal',
-		path: 'Notes',
-		highlight: { text: '8 notes inside' },
-		lastModified: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
-	},
-];
 
 /**
  * Filter search results based on query.
@@ -67,22 +25,84 @@ const filterResults = (results: SearchResultItemType[], query: string): SearchRe
 };
 
 /**
- * Highlight matching text in search results
+ * Highlight text using multiple keywords with more visible styling.
  */
-const highlightMatch = (text: string, highlight: string) => {
-	if (!highlight) return text;
+const highlightText = (text: string, keywords: string[]) => {
+	if (!keywords.length) return text;
 
-	const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+	// Create regex pattern for all keywords (case insensitive)
+	const pattern = keywords
+		.map(k => k.trim())
+		.filter(k => k.length > 0)
+		.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escape special regex chars
+		.join('|');
+	
+	if (!pattern) return text;
+	
+	const regex = new RegExp(`(${pattern})`, 'gi');
+	const parts = text.split(regex);
+	
 	return (
 		<>
-			{parts.map((part, i) =>
-				part.toLowerCase() === highlight.toLowerCase() ? (
-					<mark key={i} className="pktw-bg-amber-100 pktw-text-amber-800 pktw-px-0.5 pktw-rounded">
+			{parts.map((part, i) => {
+				const isMatch = keywords.some(k => part.toLowerCase() === k.toLowerCase().trim());
+				return isMatch ? (
+					<mark 
+						key={i} 
+						className="pktw-bg-[#fef3c7] pktw-text-[#92400e] pktw-px-1 pktw-py-0.5 pktw-rounded pktw-font-semibold"
+					>
 						{part}
 					</mark>
 				) : (
 					<span key={i}>{part}</span>
-				),
+				);
+			})}
+		</>
+	);
+};
+
+/**
+ * Render text with highlight spans from SearchSnippet.
+ */
+const renderHighlightedSnippet = (snippet: { text: string; highlights?: Array<{ start: number; end: number }> }) => {
+	if (!snippet.highlights || snippet.highlights.length === 0) {
+		return snippet.text;
+	}
+	
+	// Sort highlights by start position
+	const sortedHighlights = [...snippet.highlights].sort((a, b) => a.start - b.start);
+	
+	const parts: Array<{ text: string; highlight: boolean }> = [];
+	let lastEnd = 0;
+	
+	for (const highlight of sortedHighlights) {
+		// Add text before highlight
+		if (highlight.start > lastEnd) {
+			parts.push({ text: snippet.text.slice(lastEnd, highlight.start), highlight: false });
+		}
+		// Add highlighted text
+		parts.push({ text: snippet.text.slice(highlight.start, highlight.end), highlight: true });
+		lastEnd = highlight.end;
+	}
+	
+	// Add remaining text
+	if (lastEnd < snippet.text.length) {
+		parts.push({ text: snippet.text.slice(lastEnd), highlight: false });
+	}
+	
+	return (
+		<>
+			{parts.map((part, i) =>
+				part.highlight ? (
+					<mark 
+						key={i} 
+						className="pktw-bg-[#fef3c7] pktw-text-[#92400e] pktw-px-1 pktw-py-0.5 pktw-rounded pktw-font-semibold"
+					>
+						{part.text}
+					</mark>
+				) : (
+					<span key={i}>{part.text}</span>
+				)
 			)}
 		</>
 	);
@@ -116,13 +136,20 @@ const SearchResultRow: React.FC<{
 	searchQuery: string;
 	onSelect: (index: number) => void;
 	itemRef: (el: HTMLDivElement | null) => void;
-}> = ({ result, index, isSelected, isSearching, searchQuery, onSelect, itemRef }) => (
+	onOpen?: () => void;
+}> = ({ result, index, isSelected, isSearching, searchQuery, onSelect, itemRef, onOpen }) => {
+	const handleClick = () => {
+		onSelect(index);
+		onOpen?.();
+	};
+	
+	return (
 	<div
 		ref={itemRef}
 		className={`pktw-relative pktw-px-4 pktw-py-2 pktw-cursor-pointer pktw-transition-colors pktw-mb-2 ${
 			isSelected ? 'pktw-bg-[#eef2ff]' : 'hover:pktw-bg-[#fafafa]'
 		}`}
-		onClick={() => onSelect(index)}
+		onClick={handleClick}
 	>
 		{/* Leading accent bar */}
 		<div
@@ -139,18 +166,20 @@ const SearchResultRow: React.FC<{
 				{/* Title and Path */}
 				<div className="pktw-flex pktw-items-baseline pktw-gap-2 pktw-mb-1">
 					<span className="pktw-font-semibold pktw-text-[#2e3338] pktw-truncate" style={{ fontWeight: 800, fontSize: '1.2rem', lineHeight: '1.2' }}>
-						{isSearching ? highlightMatch(result.title, searchQuery) : result.title}
+						{isSearching ? highlightText(result.title, searchQuery.split(/\s+/)) : result.title}
 					</span>
 					<ChevronRight className="pktw-w-3 pktw-h-3 pktw-text-[#d1d5db] pktw-flex-shrink-0" />
 					<span className="pktw-text-xs pktw-text-[#999999] pktw-truncate">
-						{result.path}
+						{isSearching ? highlightText(result.path, searchQuery.split(/\s+/)) : result.path}
 					</span>
 				</div>
 
 				{/* Snippet */}
 				{result.highlight?.text && (
 					<span className="pktw-text-sm pktw-text-[#6c757d] pktw-line-clamp-2 pktw-mt-1">
-						{isSearching ? highlightMatch(result.highlight.text, searchQuery) : result.highlight.text}
+						{isSearching && result.highlight.highlights 
+							? renderHighlightedSnippet(result.highlight)
+							: result.highlight.text}
 					</span>
 				)}
 			</div>
@@ -162,6 +191,7 @@ const SearchResultRow: React.FC<{
 		</div>
 	</div>
 );
+};
 
 /**
  * Footer hints section for vault search tab
@@ -181,15 +211,17 @@ interface VaultSearchTabProps {
 	onSwitchToAI: () => void;
 	searchClient: SearchClient | null;
 	indexProgress: { processed: number; total?: number } | null;
+	onClose?: () => void;
 }
 
 /**
  * Quick search tab for regular vault search results.
  */
-export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, searchQuery, onSwitchToAI, searchClient, indexProgress }) => {
+export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, searchQuery, onSwitchToAI, searchClient, indexProgress, onClose }) => {
 	const [selectedIndex, setSelectedIndex] = React.useState(0);
 	const [remoteResults, setRemoteResults] = React.useState<SearchResultItemType[] | null>(null);
 	const [recentResults, setRecentResults] = React.useState<SearchResultItemType[] | null>(null);
+	const [searchDuration, setSearchDuration] = React.useState<number | null>(null);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 	const { app } = useServiceContext();
@@ -198,7 +230,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 	const isSearching = searchQuery.text.trim().length > 0;
 	const displayedResults = isSearching
 		? (remoteResults ?? [])
-		: (recentResults && recentResults.length ? recentResults : mockRecentlyAccessed);
+		: (recentResults ?? []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -221,29 +253,42 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 		};
 	}, [isSearching, searchClient]);
 
+	// Debounced search: wait for user to stop typing before triggering search
 	useEffect(() => {
-		let cancelled = false;
-		(async () => {
 			if (!isSearching) {
 				setRemoteResults(null);
+			setSearchDuration(null);
 				return;
 			}
 			if (!searchClient) {
 				setRemoteResults([]);
+			setSearchDuration(null);
 				return;
 			}
+
+		// Debounce: wait 500ms after user stops typing before triggering search
+		let cancelled = false;
+		const timeoutId = setTimeout(async () => {
 			try {
 				const res = await searchClient.search(searchQuery);
-				if (!cancelled) setRemoteResults(res.items);
+				if (!cancelled) {
+					setRemoteResults(res.items);
+					setSearchDuration(res.duration ?? null);
+				}
 			} catch (e) {
 				console.error('Vault search failed:', e);
-				if (!cancelled) setRemoteResults([]);
+				if (!cancelled) {
+					setRemoteResults([]);
+					setSearchDuration(null);
+				}
 			}
-		})();
+		}, 500); // Wait 500ms after user stops typing
+
 		return () => {
 			cancelled = true;
+			clearTimeout(timeoutId);
 		};
-	}, [isSearching, searchQuery, searchClient]);
+	}, [isSearching, searchQuery.text, searchQuery.scopeMode, searchQuery.scopeValue, searchClient]);
 
 	// Reset selected index when results change
 	useEffect(() => {
@@ -284,6 +329,8 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 							const file = app.vault.getAbstractFileByPath(selectedResult.path);
 							if (file && (file as any).path) {
 								void app.workspace.getLeaf(false).openFile(file as any);
+								// Close the search modal after opening the file
+								onClose?.();
 							}
 						} catch (err) {
 							console.error('Open result failed:', err);
@@ -328,6 +375,18 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 				{/* Empty State - No Results */}
 				{isSearching && displayedResults.length === 0 ? (
 					<NoResultsState searchInput={searchInput} />
+				) : !isSearching && displayedResults.length === 0 ? (
+					<div className="pktw-h-full pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-8">
+						<div className="pktw-w-20 pktw-h-20 pktw-rounded-full pktw-bg-gray-50 pktw-flex pktw-items-center pktw-justify-center pktw-mb-4">
+							<SearchX className="pktw-w-10 pktw-h-10 pktw-text-gray-400" />
+						</div>
+						<span className="pktw-font-semibold pktw-text-[#2e3338] pktw-mb-2 pktw-text-lg">
+							No recently accessed files
+						</span>
+						<span className="pktw-text-sm pktw-text-[#6c757d] pktw-max-w-md">
+							Start searching or open some files to see them here.
+						</span>
+					</div>
 				) : (
 					<>
 						{/* Show hint text for recently accessed */}
@@ -336,7 +395,20 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 								<span className="pktw-text-xs pktw-text-[#999999]">Recently accessed</span>
 							</div>
 						)}
-						{displayedResults.map((result, index) => (
+						{displayedResults.map((result, index) => {
+							const handleOpen = async () => {
+								try {
+									const file = app.vault.getAbstractFileByPath(result.path);
+									if (file && (file as any).path) {
+										await app.workspace.getLeaf(false).openFile(file as any);
+										onClose?.();
+									}
+								} catch (err) {
+									console.error('Open result failed:', err);
+								}
+							};
+							
+							return (
 							<SearchResultRow
 								key={result.id}
 								result={result}
@@ -348,8 +420,10 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 								itemRef={(el) => {
 									itemRefs.current[index] = el;
 								}}
+									onOpen={handleOpen}
 							/>
-						))}
+							);
+						})}
 					</>
 				)}
 			</div>
@@ -364,9 +438,16 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 						</span>
 					) : null}
 					{isSearching && (
+						<>
 						<span className="pktw-text-xs pktw-text-[#999999]">
 							{displayedResults.length} result{displayedResults.length !== 1 ? 's' : ''}
 						</span>
+							{searchDuration !== null && (
+								<span className="pktw-text-xs pktw-text-[#999999]">
+									• <strong className="pktw-text-[#2e3338]">{formatDuration(searchDuration)}</strong>
+								</span>
+							)}
+						</>
 					)}
 					<Button
 						onClick={onSwitchToAI}

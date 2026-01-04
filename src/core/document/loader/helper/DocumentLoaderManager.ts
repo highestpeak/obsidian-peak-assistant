@@ -175,7 +175,7 @@ export class DocumentLoaderManager {
 		let currentBatch: CoreDocument[] = [];
 
 		// track the start time of the batch read
-		let batchReadStart;
+		let batchReadStart: number | undefined;
 		// Scan all documents first to get file list
 		for await (const scanBatch of this.scanDocuments(params)) {
 			batchReadStart = performance.now();
@@ -205,7 +205,7 @@ export class DocumentLoaderManager {
 		// Yield remaining documents
 		if (currentBatch.length > 0) {
 			console.log(
-				`[DocumentLoaderManager] Yielded final batch of documents, read time: ${(performance.now() - batchReadStart).toFixed(2)} ms`
+				`[DocumentLoaderManager] Yielded final batch of documents, read time: ${(performance.now() - (batchReadStart ?? performance.now())).toFixed(2)} ms`
 			);
 			yield currentBatch;
 		}

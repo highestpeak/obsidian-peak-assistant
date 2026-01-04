@@ -28,8 +28,8 @@ export function buildCoreCommands(
 			id: 'peak-quick-search',
 			name: 'Open Quick Search',
 			callback: () => {
-				const app = viewManager.getApp();
-				const modal: Modal = new QuickSearchModal(app, aiManager, searchClient);
+				// Get AppContext from ViewManager
+				const modal: Modal = new QuickSearchModal(viewManager.appContext);
 				modal.open();
 			},
 		},

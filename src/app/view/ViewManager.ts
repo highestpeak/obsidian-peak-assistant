@@ -6,6 +6,7 @@ import { MESSAGE_HISTORY_VIEW_TYPE, MessageHistoryView } from '@/ui/view/Message
 import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
 import { InputModal } from '@/ui/component/InputModal';
 import { App, ViewCreator } from 'obsidian';
+import { AppContext } from '@/app/context/AppContext';
 
 /**
  * Manages view registrations, related commands, and lifecycle cleanup.
@@ -16,12 +17,19 @@ export class ViewManager {
 
 	constructor(
 		private readonly plugin: MyPlugin,
-		private readonly aiManager: AIServiceManager,
+		public readonly appContext: AppContext,
 	) {
 		this.viewSwicthConsistenter = new ViewSwitchConsistentHandler(this.plugin.app);
-		this.viewCreators.set(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf, this.aiManager));
-		this.viewCreators.set(PROJECT_LIST_VIEW_TYPE, (leaf) => new ProjectListView(leaf, this.aiManager));
-		this.viewCreators.set(MESSAGE_HISTORY_VIEW_TYPE, (leaf) => new MessageHistoryView(leaf, this.aiManager));
+		// Pass appContext to View constructors
+		this.viewCreators.set(CHAT_VIEW_TYPE, (leaf) => {
+			return new ChatView(leaf, appContext);
+		});
+		this.viewCreators.set(PROJECT_LIST_VIEW_TYPE, (leaf) => {
+			return new ProjectListView(leaf, appContext);
+		});
+		this.viewCreators.set(MESSAGE_HISTORY_VIEW_TYPE, (leaf) => {
+			return new MessageHistoryView(leaf, appContext);
+		});
 	}
 
 	/**

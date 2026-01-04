@@ -22,6 +22,12 @@ export const INDEX_CHECK_BATCH_SIZE = 100;
 export const SEARCH_DB_FILENAME = 'search.sqlite';
 
 /**
+ * Progress update interval in milliseconds for indexing operations.
+ * Used to control how frequently progress notifications are updated.
+ */
+export const INDEX_PROGRESS_UPDATE_INTERVAL = 3000; // Update every 3 seconds
+
+/**
  * Index state keys for storing index metadata.
  */
 export const INDEX_STATE_KEYS = {
@@ -51,8 +57,11 @@ export const DEFAULT_SEARCH_MODE = 'vault';
  * RRF (Reciprocal Rank Fusion) configuration constants.
  */
 export const RRF_K = 60;
-export const RRF_TEXT_WEIGHT = 0.6;
-export const RRF_VECTOR_WEIGHT = 0.4;
+// Two-stage RRF weights for hybrid search
+// Stage 1: Content sources (fulltext + vector) merged with combined weight
+export const RRF_CONTENT_WEIGHT = 0.6; // Combined weight for content hits (text + vector)
+// Stage 2: Content vs Meta with equal weights
+export const RRF_CONTENT_VS_META_WEIGHT = 0.5; // Weight for content hits vs meta hits
 
 /**
  * AI Search graph generation constants.

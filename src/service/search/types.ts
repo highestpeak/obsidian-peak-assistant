@@ -69,6 +69,8 @@ export interface SearchSnippet {
 /**
  * A single search result item.
  */
+export type SearchResultSource = 'local' | 'web' | 'x'; // x for future extensibility
+
 export interface SearchResultItem {
 	id: string;
 	type: SearchResultType;
@@ -89,6 +91,10 @@ export interface SearchResultItem {
 	 * Final score after boosts.
 	 */
 	finalScore?: number;
+	/**
+	 * Source of the search result (local vault, web, etc.)
+	 */
+	source?: SearchResultSource;
 	/**
 	 * Optional location hint for opening/scrolling.
 	 */
@@ -146,6 +152,5 @@ export interface AiAnalyzeResult {
 	usage?: {
 		estimatedTokens?: number;
 	};
+	duration?: number; // Search duration in milliseconds
 }
-
-

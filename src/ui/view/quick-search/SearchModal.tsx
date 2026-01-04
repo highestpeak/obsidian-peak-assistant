@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { VaultSearchTab } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
-import { Search, Sparkles } from 'lucide-react';
+import { Search, Sparkles, Globe } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -44,10 +44,11 @@ const TabButton: React.FC<TabButtonProps> = ({ tab, label, activeTab, onClick })
 /**
  * Root quick search modal content with tabs for vault and AI search.
  */
-export const QuickSearchModalContent: React.FC = () => {
+export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
 	const [activeTab, setActiveTab] = useState<TabType>('vault');
 	const [searchQuery, setSearchQuery] = useState('');
 	const [triggerAnalysis, setTriggerAnalysis] = useState(0);
+	const [webEnabled, setWebEnabled] = useState(false);
 	const inputRef = useRef<HTMLInputElement | null>(null);
 	const { app, searchClient } = useServiceContext();
 
@@ -81,6 +82,25 @@ export const QuickSearchModalContent: React.FC = () => {
 			e.preventDefault();
 			handleAnalyze();
 		}
+	};
+
+	// Detect @web trigger in search query (don't remove from display, just enable web mode)
+	useEffect(() => {
+		if (activeTab === 'ai') {
+			const trimmed = searchQuery.trim();
+			const hasWebTrigger = trimmed.includes('@web');
+			if (hasWebTrigger && !webEnabled) {
+				setWebEnabled(true);
+			} else if (!hasWebTrigger && webEnabled) {
+				// Only disable if user manually removes @web
+				setWebEnabled(false);
+			}
+		}
+	}, [searchQuery, activeTab, webEnabled]);
+	
+	// Get clean query without @web for actual search
+	const getCleanQuery = (query: string): string => {
+		return query.replace(/@web\s*/g, '').trim();
 	};
 
 	const parsed = parseQuickSearchInput({
@@ -135,7 +155,10 @@ export const QuickSearchModalContent: React.FC = () => {
 			<div className="pktw-p-4 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
 				<div className="pktw-flex pktw-gap-2 pktw-items-center">
 					<div className="pktw-relative pktw-flex-1">
-						<Search className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-w-4 pktw-h-4 pktw-text-[#999999]" />
+						<Search className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-w-4 pktw-h-4 pktw-text-[#999999] pktw-z-10" />
+						<div className="pktw-relative pktw-flex pktw-items-center">
+							{/* Input with @web highlighting overlay */}
+							<div className="pktw-relative pktw-w-full">
 						<input
 							type="text"
 							ref={inputRef}
@@ -147,8 +170,62 @@ export const QuickSearchModalContent: React.FC = () => {
 									? 'Search in vault... (# for in-file, @ for folder, / for mode list)'
 									: 'Ask AI anything about your vault...'
 							}
-							className="pktw-w-full pktw-pl-11 pktw-pr-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border pktw-border-[#d1d5db] pktw-rounded-full pktw-text-[#2e3338] pktw-placeholder:text-[#999999] pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-[#7c3aed] pktw-focus:border-transparent pktw-transition-all"
-						/>
+									className={`pktw-w-full pktw-pl-11 ${activeTab === 'ai' ? 'pktw-pr-20' : 'pktw-pr-4'} pktw-py-2.5 pktw-bg-[#fafafa] pktw-border pktw-border-[#d1d5db] pktw-rounded-full pktw-text-transparent pktw-placeholder:text-[#999999] pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-[#7c3aed] pktw-focus:border-transparent pktw-transition-all`}
+									style={{
+										caretColor: '#2e3338', // Ensure cursor is visible
+										font: 'inherit', // Use font shorthand to inherit all font properties
+									}}
+								/>
+								{/* Overlay to display text with @web highlighting */}
+								<div 
+									className="pktw-absolute pktw-inset-0 pktw-pl-11 pktw-pr-20 pktw-py-2.5 pktw-pointer-events-none pktw-text-[#2e3338] pktw-select-none"
+									style={{ 
+										font: 'inherit', // Use font shorthand to inherit all font properties
+										whiteSpace: 'pre',
+										overflow: 'hidden',
+										textAlign: 'left',
+										display: 'flex',
+										alignItems: 'center',
+										wordBreak: 'normal',
+										overflowWrap: 'normal',
+									}}
+								>
+									{activeTab === 'ai' && searchQuery.includes('@web') ? (
+										searchQuery.split(/(@web)/g).map((part, index) => (
+											part === '@web' ? (
+												<span key={index} className="pktw-text-[#3b82f6]" style={{ fontWeight: 500 }}>@web</span>
+											) : (
+												<span key={index}>{part}</span>
+											)
+										))
+									) : (
+										searchQuery
+									)}
+								</div>
+							</div>
+							{/* Web toggle button inside input (AI tab only) */}
+							{activeTab === 'ai' && (
+								<button
+									onClick={() => {
+										if (searchQuery.includes('@web')) {
+											setSearchQuery(prev => prev.replace(/@web\s*/g, '').trim());
+											setWebEnabled(false);
+										} else {
+											setSearchQuery(prev => prev + (prev.trim() ? ' @web' : '@web'));
+											setWebEnabled(true);
+										}
+									}}
+									className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors ${
+										(webEnabled || searchQuery.includes('@web'))
+											? 'pktw-bg-white pktw-text-[#3b82f6] pktw-border pktw-border-[#3b82f6]/30 hover:pktw-bg-[#3b82f6]/5' 
+											: 'pktw-bg-white pktw-text-[#6c757d] pktw-border pktw-border-[#e5e7eb] hover:pktw-bg-[#f9fafb]'
+									}`}
+									title={(webEnabled || searchQuery.includes('@web')) ? 'Web: ON' : 'Web: OFF'}
+								>
+									<Globe className={`pktw-w-3.5 pktw-h-3.5 ${(webEnabled || searchQuery.includes('@web')) ? 'pktw-text-[#3b82f6]' : ''}`} />
+								</button>
+							)}
+						</div>
 
 						{/* Mode list */}
 						{activeTab === 'vault' && showModeList && (
@@ -213,7 +290,7 @@ export const QuickSearchModalContent: React.FC = () => {
 			{/* Tab Content */}
 			<div className="pktw-bg-white pktw-flex-1 pktw-min-h-0 pktw-overflow-hidden pktw-flex pktw-flex-col">
 				{activeTab === 'ai' ? (
-					<AISearchTab searchQuery={searchQuery} triggerAnalysis={triggerAnalysis} searchClient={searchClient} />
+					<AISearchTab searchQuery={getCleanQuery(searchQuery)} triggerAnalysis={triggerAnalysis} searchClient={searchClient} webEnabled={webEnabled} onWebEnabledChange={setWebEnabled} onClose={onClose} />
 				) : (
 					<VaultSearchTab
 						searchInput={searchQuery}
@@ -221,6 +298,7 @@ export const QuickSearchModalContent: React.FC = () => {
 						onSwitchToAI={() => setActiveTab('ai')}
 						searchClient={searchClient}
 						indexProgress={indexProgress}
+						onClose={onClose}
 					/>
 				)}
 			</div>

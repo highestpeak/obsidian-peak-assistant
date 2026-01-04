@@ -1,11 +1,9 @@
 import React from 'react';
 import { Modal } from 'obsidian';
-import type { App } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { QuickSearchModalContent } from './quick-search/SearchModal';
-import { AIServiceManager } from '@/service/chat/service-manager';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
-import { SearchClient } from '@/service/search/SearchClient';
+import { AppContext } from '@/app/context/AppContext';
 
 /**
  * Obsidian modal wrapper for quick search React UI.
@@ -13,8 +11,8 @@ import { SearchClient } from '@/service/search/SearchClient';
 export class QuickSearchModal extends Modal {
 	private reactRenderer: ReactRenderer | null = null;
 
-	constructor(app: App, private readonly manager: AIServiceManager, private readonly searchClient: SearchClient | null) {
-		super(app);
+	constructor(private readonly appContext: AppContext) {
+		super(appContext.app);
 	}
 
 	onOpen(): void {
@@ -34,7 +32,11 @@ export class QuickSearchModal extends Modal {
 
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 		this.reactRenderer.render(
-			createReactElementWithServices(QuickSearchModalContent, {}, this.app, this.manager, this.searchClient)
+			createReactElementWithServices(
+				QuickSearchModalContent, 
+				{ onClose: () => this.close() }, 
+				this.appContext
+			)
 		);
 	}
 

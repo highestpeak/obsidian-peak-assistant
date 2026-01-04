@@ -1,5 +1,4 @@
 import { IconName, ItemView, TFolder, WorkspaceLeaf } from 'obsidian';
-import { AIServiceManager } from '@/service/chat/service-manager';
 import { ChatProject } from '@/service/chat/types';
 import { EventBus, SelectionChangedEvent, ViewEventType } from '@/core/eventBus';
 import { useChatViewStore, ViewMode } from './chat-view/store/chatViewStore';
@@ -7,6 +6,7 @@ import { useProjectStore } from '@/ui/store/projectStore';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { ChatViewComponent } from './chat-view/ChatViewComponent';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
+import { AppContext } from '@/app/context/AppContext';
 
 export const CHAT_VIEW_TYPE = 'peak-chat-view';
 
@@ -16,7 +16,10 @@ export class ChatView extends ItemView {
 	private eventBus: EventBus;
 	private unsubscribeHandlers: (() => void)[] = [];
 
-	constructor(leaf: WorkspaceLeaf, private readonly aiServiceManager: AIServiceManager) {
+	constructor(
+		leaf: WorkspaceLeaf,
+		private readonly appContext: AppContext
+	) {
 		super(leaf);
 		this.eventBus = EventBus.getInstance(this.app);
 		// Note: messagesViewWrapperRef will be set when React component mounts
@@ -54,7 +57,7 @@ export class ChatView extends ItemView {
 					// }
 
 					// Just load the conversation by id using aiServiceManager
-					const conversation = await this.aiServiceManager.readConversation(event.conversationId);
+					const conversation = await this.appContext.manager.readConversation(event.conversationId);
 					console.log('[ChatView] Loaded conversation:', conversation);
 					if (conversation) {
 						useChatViewStore.getState().setConversation(conversation);
@@ -103,8 +106,7 @@ export class ChatView extends ItemView {
 			createReactElementWithServices(
 				ChatViewComponent,
 				{ viewMode },
-				this.app,
-				this.aiServiceManager
+				this.appContext
 			)
 		);
 	}
