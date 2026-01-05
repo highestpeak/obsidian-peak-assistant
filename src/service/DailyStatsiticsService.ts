@@ -12,9 +12,9 @@ const dateTimeFormat = 'YYYYMMDD-HH:mm:ss';
 const dateFormat = 'YYYYMMDD';
 
 /**
- * 根据格式 %Y%m%d 解析字符串到日期，并获取这一天的0点到24点时间。
- * @param dateStr 日期字符串，格式为 %Y%m%d
- * @returns (start_of_day, end_of_day) 元组，分别表示这一天的0点时间和24点时间
+ * Parse date string in %Y%m%d format and get the time range from 0:00 to 24:00 for that day.
+ * @param dateStr Date string in %Y%m%d format
+ * @returns (start_of_day, end_of_day) tuple representing 0:00 and 24:00 of that day
  */
 function getDayStartEnd(dateStr: string): [Date, Date] {
     const date = moment(dateStr, dateFormat).toDate();
@@ -25,17 +25,17 @@ function getDayStartEnd(dateStr: string): [Date, Date] {
 }
 
 /**
- * 获取两个日期字符串之间的所有日期，并在每个日期上执行一个函数。
- * @param startDateStr 起始日期字符串，格式为 %Y%m%d
- * @param endDateStr 结束日期字符串，格式为 %Y%m%d
- * @param func 要在每个日期上执行的函数，接收一个日期字符串参数，格式为 %Y%m%d
+ * Get all dates between two date strings and execute a function on each date.
+ * @param startDateStr Start date string in %Y%m%d format
+ * @param endDateStr End date string in %Y%m%d format
+ * @param func Function to execute on each date, receives a date string parameter in %Y%m%d format
  */
 function iterateDatesBetween(startDateStr: string, endDateStr: string, func: (dateStr: string) => void) {
     const startDate = moment(startDateStr, dateFormat);
     const endDate = moment(endDateStr, dateFormat);
 
     if (startDate.isAfter(endDate)) {
-        throw new Error("起始日期不能大于结束日期");
+        throw new Error("Start date cannot be after end date");
     }
 
     let currentDate = startDate.clone();
@@ -50,27 +50,27 @@ function iterateDatesBetween(startDateStr: string, endDateStr: string, func: (da
 // organize file process functions
 
 /**
- * 整理 data 文件.
+ * Organize data file.
  */
 function organizeDataFile(filePath: string, processFunc: (dateStr: string) => any) {
     const dateDict: Record<string, any> = {};
 
-    // 读取文件并处理重复日期
+    // Read file and process duplicate dates
     const lines = fs.readFileSync(filePath, 'utf-8').split('\n');
     for (const line of lines) {
         const [dateStr, jsonStr] = line.split(',', 2);
         if (dateStr in dateDict) {
-            // 发现重复日期，调用处理函数
+            // Found duplicate date, call process function
             dateDict[dateStr] = processFunc(dateStr);
         } else {
             dateDict[dateStr] = JSON.parse(jsonStr);
         }
     }
 
-    // 按日期排序
+    // Sort by date
     const sortedDates = Object.keys(dateDict).sort((a, b) => moment(a, dateFormat).unix() - moment(b, dateFormat).unix());
 
-    // 写回原文件
+    // Write back to original file
     const output = sortedDates.map(date => `${date},${JSON.stringify(dateDict[date])}`).join('\n');
     fs.writeFileSync(filePath, output);
 }
@@ -79,17 +79,17 @@ function organizeDataFile(filePath: string, processFunc: (dateStr: string) => an
 // one day git process functions
 
 /**
- * 定义一个正则表达式来检测 Obsidian 双链格式的图片链接
+ * Define a regex to detect Obsidian wikilink format image links
  */
 const imagePattern = /!\[\[.*?\.(png|jpg|jpeg|gif)\]\]|\[\[.*?\.(png|jpg|jpeg|gif)\]\]/;
 const todoPattern = /\b(TODO:|todo:|\[ \]|\[x\])/i;
 
 /**
- * 每次append到文件末尾一行 
+ * Append one line to end of file each time
  */
 function appendToJsonFile(dayStr: string, filePath: string, newData: any) {
     const newDataStr = `${dayStr},${JSON.stringify(newData)}`;
-    // 打开文件以追加模式写入
+    // Open file in append mode for writing
     fs.appendFileSync(filePath, newDataStr + '\n');
 }
 
@@ -115,13 +115,13 @@ async function getCommitStats(repoPath: string, since: Date, until: Date, ignore
             continue;
         }
 
-        // 这里使用 commit.stats.files 来获取每个提交的文件
+        // Use commit.stats.files to get files for each commit
         const files = Object.keys(commit.diff.files);
 
         for (const file of files) {
             const cleanFile = file.replace(/"/g, '').replace(/\\/g, '');
 
-            // 如果忽略函数存在且文件路径匹配，则跳过该文件
+            // If ignore function exists and file path matches, skip the file
             if (ignoreFunc && ignoreFunc(cleanFile)) {
                 continue;
             }
@@ -143,7 +143,7 @@ async function getCommitStats(repoPath: string, since: Date, until: Date, ignore
                         fileLine = parseInt(match[1]) - 1;
                     }
                 } else if (line.startsWith('+') && !line.startsWith('+++')) {
-                    charsAdded += line.length - 1; // 计算添加的字符数，去掉开头的 '+'
+                    charsAdded += line.length - 1; // Calculate added characters, remove leading '+'
                     if (imagePattern.test(cleanFile)) {
                         imagesAdded += 1;
                     }
@@ -157,7 +157,7 @@ async function getCommitStats(repoPath: string, since: Date, until: Date, ignore
                         todoAddedCount += 1;
                     }
                 } else if (line.startsWith('-') && !line.startsWith('---')) {
-                    charsRemoved += line.length - 1; // 计算删除的字符数，去掉开头的 '-'
+                    charsRemoved += line.length - 1; // Calculate removed characters, remove leading '-'
                     // Detect deleted TODO items
                     if (todoPattern.test(line)) {
                         todos.deleted.push({
@@ -212,8 +212,8 @@ function buildHeaderContextMap(content: string) {
 }
 
 /**
- * 这些文件不处理
- * 被 gitIgnore 的文件会自动不被处理.
+ * These files are not processed
+ * Files ignored by .gitignore are automatically not processed.
  */
 function ignoreFile(filePath: string, dataStore: string) {
     // ignore_files = ['.DS_store']
@@ -243,7 +243,7 @@ function analyzeLogEntries(logEntries: ActivityRecordAchieved[]): AnalysisResult
 
         // Handle App Activity
         if (entry.type === LogMetricType.WINDOW_ACTIVE) {
-            // 防止连续 active 事件
+            // Prevent consecutive active events
             appStartTime = appStartTime === null ? entry.time : appStartTime;
         } else if (entry.type === LogMetricType.WINDOW_LOSE && appStartTime) {
             appActivity.activeTimePeriods.push({ start: appStartTime, end: entry.time });
@@ -382,7 +382,7 @@ async function processOneDay(params: ProcessOneDayParams): Promise<ProcessOneDay
     const { dayStr, repoPath, dataStore = '', returnData = false } = params;
     const [since, until] = getDayStartEnd(dayStr);
 
-    // 直接将返回值解构赋值给 result
+    // Directly destructure and assign return value to result
     const result = {
         calcTime: moment().format(dateTimeFormat),
         ...(await getCommitStats(

@@ -10,9 +10,9 @@ export interface HTMLViewConfig {
     filePath: string;
     iconName: string;
     iconTitle: string;
-    // 是否在左侧侧边栏添加入口
+    // Whether to add entry in left sidebar
     sideBar: boolean;
-    // 触发命令名称
+    // Trigger command name
     command?: string;
     leafType?: string | boolean;
 }
@@ -52,7 +52,7 @@ class HtmlView extends ItemView {
 }
 
 export function registerHTMLViews(congfigFilePath: string, plugin: Plugin) {
-    // 读取内容
+    // Read content
     const basePath = (plugin.app.vault.adapter as any).basePath
     const configFilePath = path.join(basePath, congfigFilePath);
     
@@ -70,7 +70,7 @@ export function registerHTMLViews(congfigFilePath: string, plugin: Plugin) {
         return;
     }
     
-    // 解析为 JSON 对象
+    // Parse as JSON object
     let configArray: HTMLViewConfig[] = [];
     try {
         configArray = JSON.parse(configFileContent);
@@ -78,7 +78,7 @@ export function registerHTMLViews(congfigFilePath: string, plugin: Plugin) {
             throw new Error("Config file content is not an array");
         }
 
-        // 验证每个配置项是否符合 HTMLViewConfig 接口
+        // Validate each config item matches HTMLViewConfig interface
         configArray.forEach(item => {
             if (typeof item.viewName !== 'string' ||
                 typeof item.filePath !== 'string' ||
@@ -94,7 +94,7 @@ export function registerHTMLViews(congfigFilePath: string, plugin: Plugin) {
         return;
     }
 
-    // 注册 view
+    // Register view
     configArray.forEach(item => registerHTMLView(item, plugin))
 }
 
@@ -110,13 +110,13 @@ export function registerHTMLViews(congfigFilePath: string, plugin: Plugin) {
  * @param plugin 
  */
 export function registerHTMLView(viewConfig: HTMLViewConfig, plugin: Plugin) {
-    // register home view
+    // Register home view
     plugin.registerView(
         VIEW_TYPE_HTML,
         (leaf: WorkspaceLeaf) => new HtmlView(leaf, viewConfig)
     );
     const newLeafType = (viewConfig.leafType ?? true) as LeafType
-    // 如果指定按钮触发,则在侧边栏添加按钮,否则注册命令
+    // If sidebar button is specified, add button in sidebar, otherwise register command
     if (viewConfig.sideBar) {
         plugin.addRibbonIcon(viewConfig.iconName, viewConfig.iconTitle, async () => {
             activateView(plugin, newLeafType);

@@ -552,7 +552,7 @@ export class CommandHiddenControlService {
 	private isDeleteItem(title: string): boolean {
 		if (!title) return false;
 		const norm = this.normalizeTitle(title).toLowerCase();
-		return norm === 'delete' || norm === '删除';
+		return norm === 'delete';
 	}
 
 	/**
@@ -611,11 +611,11 @@ export class CommandHiddenControlService {
 			if (!pos) return false;
 			const line = editor.getLine?.(pos.line) || '';
 			const ch = pos.ch;
-			// Find token start (from cursor向左到空白/行首)
+			// Find token start (from cursor to left until whitespace/line start)
 			let i = ch - 1;
 			while (i >= 0 && !/\s/.test(line[i])) i--;
 			const token = line.slice(i + 1, ch);
-			// Strict: token 必须以 '/' 开头，且不是 '[[', '![', 'http'
+			// Strict: token must start with '/', and not be '[[', '![', 'http'
 			if (!token.startsWith('/')) return false;
 			if (token.startsWith('http') || token.startsWith('[') || token.startsWith('![')) return false;
 			return true;

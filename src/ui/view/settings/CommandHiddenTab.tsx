@@ -31,7 +31,7 @@ const menuTypes: MenuType[] = [
 function isDeleteItem(title: string): boolean {
 	if (!title) return false;
 	const norm = title.trim().toLowerCase();
-	return norm === 'delete' || norm === '删除';
+	return norm === 'delete';
 }
 
 /**

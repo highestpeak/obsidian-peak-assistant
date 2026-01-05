@@ -50,8 +50,9 @@ export function getAttachmentStats(attachments: string[]): { pdf: number; image:
 
 /**
  * Get icon component for different file types
- * todo 需要统一和支持更多文件类型 https://github.com/material-extensions/vscode-material-icon-theme 使用的地方还有 messageItem convResourcesModal 没使用这个呢，都得用这个啊，进行统一
- * todo 最好使用 ResourceLoader 的 type resourceKind 等进行统一
+ * TODO: Need to unify and support more file types https://github.com/material-extensions/vscode-material-icon-theme
+ * Places that use it also include messageItem convResourcesModal which don't use this yet, all should use this for unification
+ * TODO: Better to use ResourceLoader's type resourceKind etc. for unification
  */
 export function getFileIcon(type: string): React.ReactElement {
 	switch (type) {

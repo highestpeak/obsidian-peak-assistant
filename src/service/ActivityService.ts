@@ -36,10 +36,10 @@ export function logMetrics(records: ActivityRecord[], data_store: string) {
         fs.mkdirSync(directory, { recursive: true });
     }
 
-    // 将每个 record 转换为 JSON 字符串并添加换行符，然后拼接成一个最终的字符串
+    // Convert each record to JSON string and add newline, then concatenate into final string
     const recordString = records
-        .map(record => JSON.stringify(convertToAchieved(record)) + '\n') // 对每个 record 进行转换和换行
-        .join(''); // 拼接成一个最终的字符串
+        .map(record => JSON.stringify(convertToAchieved(record)) + '\n') // Convert and add newline for each record
+        .join(''); // Concatenate into final string
 
     // Append the record to the specified file
     fs.appendFile(data_store, recordString, (err) => {

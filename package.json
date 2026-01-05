@@ -39,7 +39,6 @@
 		"@radix-ui/react-slot": "^1.2.4",
 		"@radix-ui/react-tooltip": "^1.2.8",
 		"@radix-ui/react-use-controllable-state": "^1.2.2",
-		"@tensorflow/tfjs-node": "^4.22.0",
 		"@types/handlebars": "^4.0.40",
 		"ai": "^5.0.116",
 		"ai-elements": "^1.6.3",

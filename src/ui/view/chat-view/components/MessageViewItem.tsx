@@ -461,7 +461,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	const [isExpanded, setIsExpanded] = useState(false);
 
 	// Determine if this is a user message or assistant message
-	const isUser = message.role === 'user'; // 'user' = 用户消息, 'assistant' = AI消息
+	const isUser = message.role === 'user'; // 'user' = user message, 'assistant' = AI message
 
 	// Get streaming steps if this is the streaming message
 	const streamingSteps = useMessageStore((state) => 

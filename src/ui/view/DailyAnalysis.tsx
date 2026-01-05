@@ -4,9 +4,9 @@ import { Card, Typography, Button } from 'antd';
 
 const { Title, Paragraph } = Typography;
 
-// todo 比较后觉得 echat 太丑了 d3太复杂了 antv 还行 维护度也ok
-// 我喜欢这个 https://g2.antv.antgroup.com/examples/general/cell#cell-heatmap
-// 喜欢这个 https://g2.antv.antgroup.com/examples 的 热力图
+// TODO: After comparison, found echart too ugly, d3 too complex, antv is okay and maintainable
+// I like this https://g2.antv.antgroup.com/examples/general/cell#cell-heatmap
+// Like this heatmap https://g2.antv.antgroup.com/examples
 const DailyAnalysis = ({ data }: { data: ProcessOneDayResult }) => {
     const [emotionalData, setEmotionalData] = useState<any[]>([]);
     const [activeDocs, setActiveDocs] = useState<any[]>([]);
@@ -101,7 +101,7 @@ const DailyAnalysis = ({ data }: { data: ProcessOneDayResult }) => {
                     <div id="radar-container"></div>
                 </Paragraph>
                 <Paragraph>
-                    <strong>成长和收获提示:</strong>
+                    <strong>Growth and Achievement Tips:</strong>
                     {/* Growth insights */}
                     <ul>
                         {data.growthInsights.map((insight) => (
@@ -110,7 +110,7 @@ const DailyAnalysis = ({ data }: { data: ProcessOneDayResult }) => {
                     </ul>
                 </Paragraph>
                 <Paragraph>
-                    <strong>总体评价:</strong>
+                    <strong>Overall Evaluation:</strong>
                     {/* General evaluation from Copilot */}
                     <p>{data.overallEvaluation}</p>
                 </Paragraph>

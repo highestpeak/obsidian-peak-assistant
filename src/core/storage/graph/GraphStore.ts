@@ -232,7 +232,7 @@ export class GraphStore {
 		});
 
 		// Extract and upsert wiki links
-		// todo 另一个node应该是 document 而不是 link - document 只有markdown
+		// TODO: The other node should be document instead of link - documents are only markdown
 		const links = extractWikiLinks(params.content);
 		for (const link of links) {
 			const linkId = `link:${link}`;
@@ -253,7 +253,7 @@ export class GraphStore {
 			});
 		}
 
-		// todo 缺少一个类型是 resources 节点 ，例如 image pdf 等 这些 resources 节点必须有 file type 标识，详见 DocumentType
+		// TODO: Missing a resource type node, such as image, pdf, etc. These resource nodes must have file type identifier, see DocumentType
 
 		// Extract and upsert tags
 		const tags = extractTags(params.content);

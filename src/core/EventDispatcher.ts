@@ -3,16 +3,26 @@ import * as path from "path";
 import { Callback, loadScriptsForEvent } from "./ScriptLoader";
 
 type EventHandler<T = any> = (data: T) => void;
+
 /**
- * 1. obsidian 触发事件 => 寻找所有 handler => 分发给对应 handler
- * 2. 初始化 EventDispatcher => 监听所有 obsidian 事件 => 注册默认 dispatch 分发器.
- * 3. addNewHandler => 修改 dispatch 分发器
- * 4. 卸载所有监听事件
- * todo 后续应该可以 push 事件，然后别人可以订阅，不一定只需要处理 obsidian 内部的事件，自己可以新建的，和 kafka 一样，这样就写代码写起来很方便了，插件扩展性很强。
+ * Event dispatcher for handling Obsidian and custom events.
+ *
+ * Initially designed to avoid dependency on Obsidian's event system, but currently uses
+ * Obsidian's event mechanism temporarily. This file is rarely used as a result.
+ *
+ * Design flow:
+ * 1. Obsidian triggers events => find all handlers => dispatch to corresponding handlers
+ * 2. Initialize EventDispatcher => listen to all Obsidian events => register default dispatch handlers
+ * 3. addNewHandler => modify dispatch handlers
+ * 4. Unload all event listeners
+ *
+ * TODO: Should support pushing custom events that others can subscribe to, not just handling
+ * Obsidian's internal events. Custom events could be created like Kafka, making plugin
+ * development more convenient and extensible.
  */
 export class EventDispatcher {
     /**
-     * 便于卸载事件
+     * Event references for easy cleanup
      */
     private vaultEventRefs: EventRef[] = [];
     private metadataCacheEventRefs: EventRef[] = [];
@@ -21,14 +31,14 @@ export class EventDispatcher {
     private alreadyRegisteredEvents: Set<string> = new Set()
 
     /**
-     * handler
-     * key: eg: "dom-click" "workspace-editor-change"
+     * Event handlers
+     * Key format: e.g., "dom-click", "workspace-editor-change"
      */
     private handlers: { [key: string]: EventHandler[] } = {};
 
     /**
-     * bufferTrigger
-     * 事件太多了. 降低处理的量. 提高性能.
+     * Event buffering for performance optimization
+     * Too many events occur, reduce processing load and improve performance.
      */
     private eventBuffer: { [key: string]: any[] } = {};
     private timeoutIds: { [key: string]: NodeJS.Timeout | null } = {};
@@ -37,8 +47,8 @@ export class EventDispatcher {
     }
 
     private async init() {
-        // // 批量注册太损耗性能了 改为增量注册
-        // // 注册 Obsidian 事件
+        // // Batch registration consumes too much performance, changed to incremental registration
+        // // Register Obsidian events
         // this.registerVaultEvents();
         // this.registerMetadataCacheEvents();
         // this.registerWorkspaceEvents();
@@ -58,7 +68,7 @@ export class EventDispatcher {
     }
 
     private async onScriptFolderChange(changedFileParam: any, scriptFolderPath: string) {
-        // console.log(`文件已变动1: `, changedFileParam, scriptFolderPath);
+        // console.log(`File changed 1: `, changedFileParam, scriptFolderPath);
 
         let changedFileArray = changedFileParam as TAbstractFile[]
         changedFileArray = changedFileArray.filter(changedFile =>
@@ -68,8 +78,8 @@ export class EventDispatcher {
             return
         }
 
-        // console.log(`文件已变动2:`, changedFileArray);
-        // 这里可以添加您需要的逻辑
+        // console.log(`File changed 2:`, changedFileArray);
+        // Add your logic here if needed
         this.unload()
         this.addScriptFolderListener(scriptFolderPath)
         // make a notice to let user know event listener had been registered
@@ -109,7 +119,7 @@ export class EventDispatcher {
             return
         }
 
-        // 只需要注册一次. 因为相同事件都会到 dispatcher 然后去 handlers 里找
+        // Only register once. Because same events will go to dispatcher and find handlers there
         if (this.alreadyRegisteredEvents.has(eventName)) {
             return
         }
@@ -137,13 +147,14 @@ export class EventDispatcher {
     }
 
     public removeHandler<T>(eventName: string, handler: EventHandler<T>) {
-        // 写 remove 太麻烦了. 可以直接全部清空再重新 load 一遍
+        // Writing remove is too complicated. Can just clear all and reload.
     }
 
     public unload() {
-        // 将 handlers 置空同时会造成 dom events remove. 猜测是 dom 的 event handler 只要 handler 没有被持有就会被 vm 回收
+        // Clearing handlers will also cause DOM events to be removed.
+        // Assumption: DOM event handlers will be garbage collected by VM if not held.
         this.handlers = {};
-        // obsidian 的 event handler 回收
+        // Cleanup Obsidian event handlers
         this.vaultEventRefs.forEach(ref => this.app.vault.offref(ref));
         this.metadataCacheEventRefs.forEach(ref => this.app.metadataCache.offref(ref));
         this.workspaceEventRefs.forEach(ref => this.app.workspace.offref(ref));
@@ -151,33 +162,37 @@ export class EventDispatcher {
     }
 
     /**
-     * js 单线程机制. 不需要处理并发更新问题. 即正在处理时又设置了 data 导致丢失事件的问题
+     * JavaScript single-threaded mechanism. No need to handle concurrent update issues.
+     * I.e., data loss when setting data while processing.
      */
     private bufferDispatch(event: string, data: any) {
-        // 没有对应事件处理器则直接返回
+        // Return directly if no corresponding event handler
         if (!this.handlers[event]) {
             return
         }
 
-        // 如果事件不存在，则初始化一个空数组
+        // Initialize empty array if event doesn't exist
         if (!this.eventBuffer[event]) {
             this.eventBuffer[event] = [];
         }
-        // 将数据推入事件缓冲区
+        // Push data to event buffer
         this.eventBuffer[event].push(data);
 
-        // 如果尚未设置超时，则设置一个
+        // Set timeout if not already set
         if (!this.timeoutIds[event]) {
             this.timeoutIds[event] = setTimeout(() => this.realDispatch(event), 1000);
         }
     }
 
     /**
-     * js 单线程机制. 不需要处理并发更新问题. 即正在处理时又设置了 data 导致丢失事件的问题
+     * JavaScript single-threaded mechanism. No need to handle concurrent update issues.
+     * I.e., data loss when setting data while processing.
      */
     private realDispatch(event: string) {
-        // 处理特定事件
-        // todo eventData 可能还是有点多 不应该全缓存的应该 应该允许每个不同事件自己去进行 merge 逻辑 但是考虑到1s也不好缓存太多 现在的情况也能handle很多情况了 先这样吧
+        // Process specific event
+        // TODO: eventData might be too much, shouldn't cache everything.
+        // Should allow each different event to have its own merge logic.
+        // But considering 1s won't cache too much, current situation handles many cases, leave it for now.
         const eventData = this.eventBuffer[event];
         // console.log(`Triggering ${event} with data:`, eventData);
 
@@ -187,7 +202,7 @@ export class EventDispatcher {
                 eventHandlers.forEach(handler => handler(eventData));
             }
         } finally {
-            // 确保清理总是执行
+            // Ensure cleanup always executes
             delete this.eventBuffer[event];
             clearTimeout(this.timeoutIds[event]!);
             delete this.timeoutIds[event];
@@ -270,7 +285,7 @@ export class EventDispatcher {
                 );
                 break;
             case 'resolve':
-                // // 不知道两个事件的用处. resolve 会在一开始启动的时候大量调用.
+                // // Don't know the use of these two events. resolve will be called heavily at startup.
                 // // "https://docs.obsidian.md/Reference/TypeScript+API/MetadataCache/on('resolve')"
                 // this.metadataCacheEventRefs.push(
                 //     this.app.metadataCache.on('resolve', (file: TFile) => this.metadataCacheBufferDispatch('resolve', file))

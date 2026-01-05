@@ -124,7 +124,7 @@ import { hashMD5 } from '@/core/utils/hash-utils';
  * ```
  *
  * All comments and documentation must be in English (per project conventions).
- * todo 对 doc 文件的读写需要有缓存，否则任何的写入和更新都会频繁的更新文件，这读写量不是太大吧虽然，但是会比较不必要。
+ * TODO: Need caching for doc file read/write operations, otherwise any write/update will frequently update the file. Although the read/write volume isn't too large, it would be unnecessary.
  */
 
 /**
