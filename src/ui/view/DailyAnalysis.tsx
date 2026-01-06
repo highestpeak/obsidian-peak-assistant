@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { G2 } from '@antv/g2';
+import { Chart } from '@antv/g2';
 import { Card, Typography, Button } from 'antd';
 
 const { Title, Paragraph } = Typography;
@@ -23,7 +23,7 @@ const DailyAnalysis = ({ data }: { data: ProcessOneDayResult }) => {
 
     // Sample G2 chart initialization for heatmap
     const renderHeatmap = (data: any[]) => {
-        const chart = new G2.Chart({
+        const chart = new Chart({
             container: 'heatmap-container',
             height: 300,
             width: 600,
@@ -46,7 +46,7 @@ const DailyAnalysis = ({ data }: { data: ProcessOneDayResult }) => {
 
     // Sample G2 chart initialization for radar chart
     const renderRadarChart = (data: any[]) => {
-        const chart = new G2.Chart({
+        const chart = new Chart({
             container: 'radar-container',
             height: 300,
             width: 600,

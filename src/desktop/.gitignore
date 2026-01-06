@@ -1,0 +1,4 @@
+# Desktop build output
+dist-desktop/
+node_modules/
+

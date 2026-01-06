@@ -10,6 +10,7 @@
  * 
  * For cryptographic purposes, use crypto.subtle.digest instead.
  */
+import { createHash } from 'crypto';
 
 /**
  * Simple hash function using DJB2-like algorithm.
@@ -71,7 +72,7 @@ export function generateContentHash(content: string): string {
 export function hashMD5(str: string): string {
 	try {
 		// Use Node.js crypto module if available
-		const { createHash } = require('crypto');
+		// In browser, this will use the crypto mock via Vite alias
 		return createHash('md5').update(str).digest('hex');
 	} catch (error) {
 		// Fallback to simple hash if crypto is not available (e.g., in browser)

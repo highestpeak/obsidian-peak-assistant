@@ -1,0 +1,137 @@
+/**
+ * Obsidian Global Styles Mock
+ * 
+ * This file simulates Obsidian's global styles to ensure components
+ * behave identically in both Obsidian and desktop development environments.
+ * 
+ * HOW TO ADD STYLES FROM OBSIDIAN:
+ * =================================
+ * 1. Open Obsidian → Press Ctrl+Shift+I (Cmd+Option+I on Mac) to open DevTools
+ * 2. Select an element in Elements panel (e.g., a button, .clickable-icon)
+ * 3. In Styles panel, find the CSS rules applied to that element
+ * 4. Copy the entire CSS rule (right-click → "Copy rule" or manually copy)
+ * 5. Paste it below in the appropriate section
+ * 
+ * IMPORTANT:
+ * - Only add styles that come from Obsidian's global styles (app.css, etc.)
+ * - Do NOT modify Tailwind classes (pktw-*) - they use tailwind.config.js
+ * - Use !important if needed to override browser defaults
+ * - Test in desktop environment after adding styles
+ */
+
+/* Reset button styles to match Obsidian */
+button {
+	border: none;
+	background: transparent;
+	padding: 0;
+	margin: 0;
+	font-family: inherit;
+	font-size: inherit;
+	line-height: inherit;
+	color: inherit;
+	cursor: pointer;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+}
+
+button:focus {
+	outline: none;
+}
+
+button:focus-visible {
+	outline: none;
+}
+
+/* Obsidian's clickable-icon pattern */
+/* This matches Obsidian's built-in .clickable-icon class */
+.clickable-icon {
+	-webkit-app-region: no-drag;
+	background-color: transparent;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--size-2-2, 4px) var(--size-2-3, 6px);
+	cursor: var(--cursor, pointer);
+	border-radius: var(--clickable-icon-radius, 4px);
+	color: var(--icon-color, var(--text-normal));
+	opacity: var(--icon-opacity, 1);
+	transition: opacity var(--anim-duration-fast, 0.1s) ease-in-out;
+	height: auto;
+	border: none;
+	outline: none;
+	user-select: none;
+	/* Obsidian adds this box-shadow for default state */
+	box-shadow: rgba(0, 0, 0, 0.12) 0px 0px 0px 1px inset;
+}
+
+.clickable-icon:hover {
+	opacity: var(--icon-opacity-hover, 0.8);
+	background-color: var(--background-modifier-hover, rgba(0, 0, 0, 0.03));
+	box-shadow: none;
+}
+
+.clickable-icon:active {
+	opacity: var(--icon-opacity-active, 0.6);
+	background-color: var(--background-modifier-active, rgba(0, 0, 0, 0.05));
+}
+
+.clickable-icon:focus-visible {
+	outline: 2px solid var(--interactive-accent, #2383e6);
+	outline-offset: 2px;
+}
+
+/* Ghost variant buttons: No border/box-shadow by default */
+/* Tailwind classes handle the styling */
+button[class*="hover:pktw-bg-accent"] {
+	box-shadow: none !important;
+}
+
+/* ============================================================================
+ * OBSIDIAN CSS VARIABLES
+ * ============================================================================
+ * Copy CSS variables from Obsidian's :root element
+ * In Obsidian DevTools: Elements → <html> or <body> → Styles → :root rules
+ */
+:root {
+	/* Size variables */
+	--size-2-2: var(--size-2-2, 4px);
+	--size-2-3: var(--size-2-3, 6px);
+	
+	/* Clickable icon variables */
+	--clickable-icon-radius: var(--clickable-icon-radius, 4px);
+	--icon-color: var(--icon-color, var(--text-normal));
+	--icon-opacity: var(--icon-opacity, 1);
+	--icon-opacity-hover: var(--icon-opacity-hover, 0.8);
+	--icon-opacity-active: var(--icon-opacity-active, 0.6);
+	--cursor: var(--cursor, pointer);
+	--anim-duration-fast: var(--anim-duration-fast, 0.1s);
+	
+	/* Add more Obsidian CSS variables here as needed */
+	/* Copy from Obsidian DevTools → Elements → <html> → Styles → :root */
+}
+
+/* ============================================================================
+ * ADD MORE OBSIDIAN GLOBAL STYLES BELOW
+ * ============================================================================
+ * 
+ * When you find style differences between Obsidian and desktop environments:
+ * 
+ * 1. In Obsidian DevTools, select the element that looks different
+ * 2. In Styles panel, find rules from Obsidian's global styles (app.css, etc.)
+ * 3. Copy the entire CSS rule
+ * 4. Paste it below, grouped by element type
+ * 
+ * Example:
+ * 
+ * input, textarea, select {
+ *   // Paste Obsidian's styles here
+ * }
+ * 
+ * a {
+ *   // Paste Obsidian's link styles here
+ * }
+ * 
+ * etc.
+ */
+

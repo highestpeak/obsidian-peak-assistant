@@ -9,8 +9,7 @@ import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const mammoth = require('mammoth');
+import mammoth from 'mammoth';
 
 /**
  * DOCX document loader using mammoth.

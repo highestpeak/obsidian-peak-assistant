@@ -15,7 +15,7 @@ export interface IconButtonProps
 
 /**
  * Icon button component using div wrapper to avoid Obsidian's button global styles
- * Follows Obsidian's clickable-icon pattern for consistency
+ * Uses Tailwind classes for styling, compatible with both Obsidian and desktop environments
  */
 export const IconButton = React.forwardRef<HTMLDivElement, IconButtonProps>(
 	({ className, size = 'md', children, onClick, onKeyDown, ...props }, ref) => {
@@ -56,9 +56,15 @@ export const IconButton = React.forwardRef<HTMLDivElement, IconButtonProps>(
 			<div
 				ref={ref}
 				className={cn(
-					'clickable-icon',
 					'pktw-flex pktw-items-center pktw-justify-center',
 					'pktw-cursor-pointer',
+					'pktw-bg-transparent',
+					'pktw-border-none pktw-outline-none',
+					'pktw-select-none',
+					'hover:pktw-opacity-80 hover:pktw-bg-muted/50',
+					'active:pktw-opacity-60',
+					'focus-visible:pktw-outline-2 focus-visible:pktw-outline-primary focus-visible:pktw-outline-offset-2',
+					'pktw-transition-opacity',
 					sizeClasses[size],
 					className
 				)}

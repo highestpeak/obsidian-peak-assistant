@@ -9,10 +9,12 @@
 		"dev:css": "node scripts/concat-css.mjs watch",
 		"dev:ts": "node esbuild.config.mjs",
 		"dev": "npm-run-all --parallel dev:*",
+		"dev:desktop": "vite",
 		"build:tailwind": "npx tailwindcss -i src/styles/tailwind.css -o styles.tailwind.css --minify",
 		"build:streamdown": "npx tailwindcss -i src/styles/streamdown.css -o styles.streamdown.css --config tailwind.streamdown.config.js --minify",
 		"build:css": "npm run build:tailwind && npm run build:streamdown && node scripts/concat-css.mjs",
 		"build": "npm run build:css && node esbuild.config.mjs production",
+		"build:desktop": "vite build",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [],
@@ -23,6 +25,7 @@
 		"@ai-sdk/google": "^2.0.0",
 		"@ai-sdk/openai": "^2.0.0",
 		"@ai-sdk/perplexity": "^3.0.1",
+		"@antv/g2": "^5.4.7",
 		"@langchain/community": "^1.1.1",
 		"@langchain/core": "^1.1.8",
 		"@langchain/textsplitters": "^1.0.1",
@@ -88,13 +91,14 @@
 		"@electron/rebuild": "^4.0.2",
 		"@types/better-sqlite3": "^7.6.11",
 		"@types/js-yaml": "^4.0.9",
-		"@types/node": "^16.11.6",
+		"@types/node": "^18.0.0",
 		"@types/react": "^18.2.43",
 		"@types/react-dom": "^18.2.17",
 		"@types/sql.js": "^1.4.9",
 		"@types/uuid": "^10.0.0",
 		"@typescript-eslint/eslint-plugin": "5.29.0",
 		"@typescript-eslint/parser": "5.29.0",
+		"@vitejs/plugin-react": "^4.2.1",
 		"builtin-modules": "3.3.0",
 		"esbuild": "^0.27.0",
 		"esbuild-plugin-alias": "^0.2.1",
@@ -102,7 +106,8 @@
 		"npm-run-all": "^4.1.5",
 		"obsidian": "latest",
 		"tslib": "2.4.0",
-		"typescript": "4.7.4"
+		"typescript": "4.7.4",
+		"vite": "^5.1.0"
 	},
 	"overrides": {
 		"officeparser": "^5.2.2",
@@ -112,6 +117,7 @@
 			"react": "^18.2.0",
 			"react-dom": "^18.2.0"
 		},
-		"zod": "^3.25.76"
+		"zod": "^3.25.76",
+		"@types/node": "^18.0.0"
 	}
 }
