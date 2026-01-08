@@ -12,6 +12,67 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ArrowUp, ArrowDown } from 'lucide-react';
+import { ExternalPromptInfo } from '@/ui/component/prompt-input/menu/PromptMenu';
+
+/**
+ * Mock prompt data for testing
+ */
+const mockPrompts: ExternalPromptInfo[] = [
+	{
+		promptId: 'chat-general',
+		promptNameForDisplay: 'General Chat',
+		promptCategory: 'chat',
+		promptDesc: 'General conversation and discussion'
+	},
+    {
+		promptId: 'chat-general2',
+		promptNameForDisplay: 'General Chat 2 Test',
+		promptCategory: 'chat',
+		promptDesc: 'General conversation and discussion 2 test General conversation and discussion 2 test General conversation and discussion 2 test '
+	},
+	{
+		promptId: 'search-web',
+		promptNameForDisplay: 'Web Search',
+		promptCategory: 'search',
+		promptDesc: 'Search and retrieve information from the web'
+	},
+	{
+		promptId: 'code-review',
+		promptNameForDisplay: 'Code Review',
+		promptCategory: 'app',
+		promptDesc: 'Review and analyze code for improvements'
+	},
+	{
+		promptId: 'document-summary',
+		promptNameForDisplay: 'Document Summary',
+		promptCategory: 'document',
+		promptDesc: 'Summarize documents and extract key points'
+	},
+	{
+		promptId: 'creative-writing',
+		promptNameForDisplay: 'Creative Writing',
+		promptCategory: 'creative',
+		promptDesc: 'Assist with creative writing and storytelling'
+	},
+	{
+		promptId: 'data-analysis',
+		promptNameForDisplay: 'Data Analysis',
+		promptCategory: 'analysis',
+		promptDesc: 'Analyze data and provide insights'
+	},
+	{
+		promptId: 'learning-plan',
+		promptNameForDisplay: 'Learning Plan',
+		promptCategory: 'education',
+		promptDesc: 'Create personalized learning plans'
+	},
+	{
+		promptId: 'problem-solving',
+		promptNameForDisplay: 'Problem Solving',
+		promptCategory: 'logic',
+		promptDesc: 'Help solve complex problems step by step'
+	}
+];
 
 /**
  * Main component for rendering and managing the messages list view
@@ -170,18 +231,21 @@ export const MessagesViewComponent: React.FC = () => {
                         size="lg"
                         onClick={() => scrollToTop(false)}
                         title="Scroll to top"
+                        className="hover:pktw-bg-gray-200"
                     >
-                        <ArrowUp className="pktw-w-4 pktw-h-4" />
+                        <ArrowUp className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground group-hover:pktw-text-black" />
                     </IconButton>
                     <IconButton
                         size="lg"
                         onClick={() => scrollToBottom(false)}
                         title="Scroll to latest"
+                        className="hover:pktw-bg-gray-200"
                     >
-                        <ArrowDown className="pktw-w-4 pktw-h-4" />
+                        <ArrowDown className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground group-hover:pktw-text-black" />
                     </IconButton>
                 </div>
                 <ChatInputAreaComponent
+                    prompts={mockPrompts}
                     onScrollToBottom={scrollToBottom}
                 />
             </div>

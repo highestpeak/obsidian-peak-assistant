@@ -1,5 +1,5 @@
 import { App, normalizePath, TFile, TFolder } from 'obsidian';
-
+// todo seperate app parameter from function parameters. in this way we can seperate file open from obsidian to electron.
 /**
  * Ensures that a folder exists at the specified path.
  * If the folder does not exist, it is created recursively.

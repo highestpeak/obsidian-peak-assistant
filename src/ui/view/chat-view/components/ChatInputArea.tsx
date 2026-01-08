@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useProjectStore } from '@/ui/store/projectStore';
-import { useChatViewStore } from '../store/chatViewStore';
 import { useMessageStore } from '@/ui/store/messageStore';
 import {
 	PromptInput,
@@ -9,6 +8,7 @@ import {
 	PromptInputFileButton,
 	PromptInputSearchButton,
 	PromptInputSubmit,
+	PromptInputMenu,
 	TokenUsage,
 	usePromptInputContext,
 	type PromptInputMessage,
@@ -16,25 +16,15 @@ import {
 } from '@/ui/component/prompt-input';
 import { LLMModelSelector } from './LLMModelSelector';
 import { LLMOutputControlSettingsPopover } from './LLMOutputControlSettings';
+import { ToolButton } from './ToolButton';
+import { ModeSelector } from './ModeSelector';
 import { cn } from '@/ui/react/lib/utils';
-import {
-	OpenIn,
-	OpenInTrigger,
-	OpenInContent,
-	OpenInChatGPT,
-	OpenInClaude,
-	OpenInT3,
-	OpenInScira,
-	OpenInv0,
-	OpenInCursor,
-} from '@/ui/component/ai-elements';
-import type { ChatConversation } from '@/service/chat/types';
 import { useChatSubmit } from '../hooks/useChatSubmit';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { Switch } from '@/ui/component/shared-ui/switch';
-import { Upload, FileText } from 'lucide-react';
+import { ExternalPromptInfo } from '@/ui/component/prompt-input/menu/PromptMenu';
 
 interface ChatInputAreaComponentProps {
+	prompts?: ExternalPromptInfo[];
 	onScrollToBottom?: () => void;
 }
 
@@ -57,53 +47,9 @@ const InputClearHandler: React.FC<{ isSending: boolean }> = ({ isSending }) => {
 	return null;
 };
 
-/**
- * Internal component for OpenIn button that needs access to input context
- */
-const OpenInButton: React.FC = () => {
-	const activeConversation = useProjectStore((state) => state.activeConversation);
-
-	// Build query from all user messages in the conversation
-	const conversationQuery = React.useMemo(() => {
-		if (!activeConversation || !activeConversation.messages || activeConversation.messages.length === 0) {
-			return '';
-		}
-		// Get all user messages and join them
-		const userMessages = activeConversation.messages
-			.filter(msg => msg.role === 'user')
-			.map(msg => msg.content)
-			.join('\n\n');
-		return userMessages;
-	}, [activeConversation]);
-
-	if (!conversationQuery.trim()) return null;
-
-	return (
-		<OpenIn query={conversationQuery}>
-			<OpenInTrigger>
-				<button
-					type="button"
-					className="pktw-h-9 pktw-px-2.5 pktw-text-xs pktw-bg-transparent pktw-border-0 pktw-shadow-none pktw-rounded-md hover:pktw-bg-accent hover:pktw-text-accent-foreground pktw-flex pktw-items-center pktw-gap-1"
-				>
-					Open in chat
-					<svg className="pktw-size-3" fill="none" viewBox="0 0 15 15">
-						<path d="M4.5 6L7.5 9L10.5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-					</svg>
-				</button>
-			</OpenInTrigger>
-			<OpenInContent>
-				<OpenInChatGPT />
-				<OpenInClaude />
-				<OpenInT3 />
-				<OpenInScira />
-				<OpenInv0 />
-				<OpenInCursor />
-			</OpenInContent>
-		</OpenIn>
-	);
-};
 
 export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
+	prompts,
 	onScrollToBottom,
 }) => {
 	const { manager } = useServiceContext();
@@ -111,24 +57,14 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	const activeProject = useProjectStore((state) => state.activeProject);
 	const [isSending, setIsSending] = useState(false);
 	const [isSearchActive, setIsSearchActive] = useState(false);
+	const [searchProvider, setSearchProvider] = useState<'local' | 'perplexity' | 'model-builtin'>('local');
+	const [enableWebSearch, setEnableWebSearch] = useState(false);
+	const [enableTwitterSearch, setEnableTwitterSearch] = useState(true);
+	const [enableRedditSearch, setEnableRedditSearch] = useState(true);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const inputFocusRef = useRef<{ focus: () => void } | null>(null);
 
 	const { submitMessage, cancelStream } = useChatSubmit();
-
-	// Get effective attachment handling mode (conversation override > global default)
-	const attachmentHandlingMode = useMemo(() => {
-		return activeConversation?.meta.attachmentHandlingOverride ?? manager.getSettings().attachmentHandlingDefault ?? 'degrade_to_text';
-	}, [activeConversation?.meta.attachmentHandlingOverride, manager]);
-
-	// Handle attachment mode toggle
-	const handleAttachmentModeToggle = useCallback(async (value: boolean) => {
-		if (!activeConversation) return;
-		const newMode: 'direct' | 'degrade_to_text' = value ? 'direct' : 'degrade_to_text';
-		await manager.updateConversationAttachmentHandling({
-			conversationId: activeConversation.meta.id,
-			attachmentHandlingOverride: newMode,
-		});
-	}, [activeConversation, manager]);
 
 	// Handle submit
 	const handleSubmit = useCallback(async (message: PromptInputMessage) => {
@@ -187,12 +123,15 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 		}
 	}, [activeConversation?.meta.id]);
 
-	// Handle keyboard shortcuts (Cmd/Ctrl+K to focus input)
+	// Handle keyboard shortcuts (Cmd/Ctrl+K to focus input, Cmd/Ctrl+Enter for line break, Cmd/Ctrl+A for select all)
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			const isModKey = e.metaKey || e.ctrlKey;
 			const isKKey = e.key === 'k' || e.key === 'K' || e.keyCode === 75;
+			const isEnterKey = e.key === 'Enter';
+			const isAKey = e.key === 'a' || e.key === 'A' || e.keyCode === 65;
 
+			// Cmd/Ctrl+K to focus input
 			if (isModKey && isKKey) {
 				const activeElement = document.activeElement;
 				if (textareaRef.current && activeElement !== textareaRef.current) {
@@ -205,6 +144,33 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 					return false;
 				}
 			}
+
+			// Cmd/Ctrl+Enter for line break in textarea
+			if (isModKey && isEnterKey && textareaRef.current) {
+				e.preventDefault();
+				e.stopPropagation();
+
+				const textarea = textareaRef.current;
+				const start = textarea.selectionStart;
+				const end = textarea.selectionEnd;
+				const value = textarea.value;
+
+				// Insert line break at cursor position
+				textarea.value = value.substring(0, start) + '\n' + value.substring(end);
+				textarea.selectionStart = textarea.selectionEnd = start + 1;
+
+				// Trigger input event to update any reactive state
+				textarea.dispatchEvent(new Event('input', { bubbles: true }));
+			}
+
+			// Cmd/Ctrl+A for select all in textarea
+			if (isModKey && isAKey && textareaRef.current) {
+				e.preventDefault();
+				e.stopPropagation();
+
+				const textarea = textareaRef.current;
+				textarea.select();
+			}
 		};
 
 		window.addEventListener('keydown', handleKeyDown, true);
@@ -214,11 +180,12 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	}, []);
 
 	const hasMessages = activeConversation && activeConversation.messages.length > 0;
-	const placeholder = hasMessages ? 'Ask anything' : 'Ready when you are.';
-	
+	const placeholder = (hasMessages ? '' : 'Type your message here...\n')
+		+ '@ or [[]] for context. / for prompts. ⌘ ↩︎ for a line break.';
+
 	// Check if streaming is active
 	const isStreaming = useMessageStore((state) => state.streamingMessageId !== null);
-	
+
 	// Handle cancel stream
 	const handleCancelStream = useCallback(async () => {
 		if (isStreaming) {
@@ -229,9 +196,10 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 			setIsSending(false);
 		}
 	}, [isStreaming, cancelStream]);
-	
+
+
 	// Button status: 'ready' (blue + Enter) when not sending, 'streaming' when streaming, 'submitted' when sending but not streaming
-	const status = isStreaming ? 'streaming' : (isSending ? 'submitted' : 'ready');
+	const status: 'ready' | 'submitted' | 'streaming' | 'error' = isStreaming ? 'streaming' : (isSending ? 'submitted' : 'ready');
 
 	return (
 		<div className="pktw-px-6 pktw-pt-5 pktw-pb-6 pktw-border-t pktw-border-border pktw-flex-shrink-0">
@@ -244,10 +212,14 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				)}
 				globalDrop
 				multiple
+				inputFocusRef={inputFocusRef}
 				onSubmit={handleSubmit}
 			>
 				{/* Clear input handler */}
 				<InputClearHandler isSending={isSending} />
+
+				{/* Menu handler */}
+				<PromptInputMenu textareaRef={textareaRef} prompts={prompts} />
 
 				{/* Attachments display */}
 				<PromptInputAttachments />
@@ -255,6 +227,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				{/* Textarea */}
 				<PromptInputBody
 					ref={textareaRef}
+					inputRef={inputFocusRef}
 					placeholder={placeholder}
 				/>
 
@@ -265,35 +238,29 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 						<PromptInputFileButton />
 						<PromptInputSearchButton
 							active={isSearchActive}
-							onClick={() => setIsSearchActive(!isSearchActive)}
+							searchProvider={searchProvider}
+							enableWebSearch={enableWebSearch}
+							enableTwitterSearch={enableTwitterSearch}
+							enableRedditSearch={enableRedditSearch}
+							onToggleActive={() => setIsSearchActive(!isSearchActive)}
+							onChangeProvider={setSearchProvider}
+							onToggleWebSearch={setEnableWebSearch}
+							onToggleTwitterSearch={setEnableTwitterSearch}
+							onToggleRedditSearch={setEnableRedditSearch}
 						/>
-						{/* Attachment handling mode toggle */}
-						{activeConversation && (
-							<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2 pktw-py-1 pktw-rounded-md hover:pktw-bg-accent/50 pktw-transition-colors" title={attachmentHandlingMode === 'direct' ? 'Direct mode: Send attachments directly to model' : 'Degrade mode: Convert attachments to text summaries'}>
-								{attachmentHandlingMode === 'direct' ? (
-									<Upload className="pktw-w-3.5 pktw-h-3.5 pktw-text-blue-500" />
-								) : (
-									<FileText className="pktw-w-3.5 pktw-h-3.5 pktw-text-muted-foreground" />
-								)}
-								<Switch
-									checked={attachmentHandlingMode === 'direct'}
-									onChange={handleAttachmentModeToggle}
-									className="pktw-scale-75"
-								/>
-							</div>
-						)}
+						<LLMOutputControlSettingsPopover />
+						<ToolButton />
+					</div>
+
+					{/* Right side: mode selector, model selector, token usage and submit */}
+					<div className="pktw-flex pktw-items-center pktw-gap-1.5">
+						<ModeSelector />
 						<div className="[&_button]:pktw-h-9 [&_button]:pktw-px-2.5 [&_button]:pktw-text-xs [&_button]:pktw-bg-transparent [&_button]:pktw-border-0 [&_button]:pktw-shadow-none [&_button]:pktw-rounded-md [&_button]:hover:pktw-bg-accent [&_button]:hover:pktw-text-accent-foreground">
 							<LLMModelSelector />
 						</div>
-						<LLMOutputControlSettingsPopover />
-						<OpenInButton />
-					</div>
-
-					{/* Right side: token usage and submit */}
-					<div className="pktw-flex pktw-items-center pktw-gap-1.5">
 						<TokenUsage usage={tokenUsage} conversation={activeConversation} />
-						<PromptInputSubmit 
-							status={status} 
+						<PromptInputSubmit
+							status={status}
 							onCancel={isStreaming ? handleCancelStream : undefined}
 						/>
 					</div>

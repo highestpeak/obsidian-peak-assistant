@@ -12,6 +12,7 @@ interface PromptInputContextValue {
 		setInput: (value: string) => void;
 		clear: () => void;
 	};
+	focusInput: () => void;
 	attachments: {
 		files: FileAttachment[];
 		add: (files: File[] | FileList) => void;
@@ -41,6 +42,7 @@ export interface PromptInputProps extends Omit<HTMLAttributes<HTMLFormElement>, 
 	globalDrop?: boolean;
 	accept?: string;
 	initialInput?: string;
+	inputFocusRef?: React.Ref<{ focus: () => void }>;
 }
 
 /**
@@ -54,6 +56,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 	globalDrop = false,
 	accept,
 	initialInput = '',
+	inputFocusRef,
 	children,
 	...props
 }) => {
@@ -72,6 +75,10 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 	const clearInput = useCallback(() => {
 		setTextInput('');
 	}, []);
+
+	const focusInput = useCallback(() => {
+		inputFocusRef?.current?.focus();
+	}, [inputFocusRef]);
 
 	// File attachment methods
 	const createImagePreview = useCallback((file: File): Promise<string> => {
@@ -198,6 +205,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 				setInput,
 				clear: clearInput,
 			},
+			focusInput,
 			attachments: {
 				files: attachments,
 				add: addFiles,
@@ -207,7 +215,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 				registerFileInput,
 			},
 		}),
-		[textInput, setInput, clearInput, attachments, addFiles, removeFile, clearFiles, openFileDialog, registerFileInput]
+		[textInput, setInput, clearInput, focusInput, attachments, addFiles, removeFile, clearFiles, openFileDialog, registerFileInput]
 	);
 
 	// Register file input

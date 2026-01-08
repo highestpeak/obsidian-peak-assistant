@@ -10,7 +10,8 @@ export class InputModal extends Modal {
 		app: App,
 		private readonly message: string,
 		private readonly onSubmit: (value: string | null) => void,
-		private readonly initialValue?: string
+		private readonly initialValue?: string,
+		private readonly placeholderText?: string
 	) {
 		super(app);
 		if (initialValue) {
@@ -33,7 +34,7 @@ export class InputModal extends Modal {
 			type: 'text',
 			cls: 'peak-input-modal__input',
 			attr: {
-				placeholder: this.message,
+				placeholder: this.placeholderText || '',
 			}
 		});
 		

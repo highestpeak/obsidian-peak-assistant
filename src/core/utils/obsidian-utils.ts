@@ -49,3 +49,19 @@ export async function getFileSize(app: App, filePath: string): Promise<number> {
 	}
 }
 
+/**
+ * Open a file in Obsidian workspace.
+ * Creates a new leaf if needed.
+ * 
+ * @param app - Obsidian app instance
+ * @param filePath - Path to the file relative to vault root
+ * @returns Promise that resolves when file is opened
+ */
+export async function openFile(app: App, filePath: string): Promise<void> {
+	const file = app.vault.getAbstractFileByPath(filePath);
+	if (file && 'path' in file) {
+		const leaf = app.workspace.getLeaf(false);
+		await leaf.openFile(file as any);
+	}
+}
+

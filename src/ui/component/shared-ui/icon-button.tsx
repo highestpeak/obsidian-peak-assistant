@@ -61,10 +61,12 @@ export const IconButton = React.forwardRef<HTMLDivElement, IconButtonProps>(
 					'pktw-bg-transparent',
 					'pktw-border-none pktw-outline-none',
 					'pktw-select-none',
-					'hover:pktw-opacity-80 hover:pktw-bg-muted/50',
-					'active:pktw-opacity-60',
+					'pktw-rounded-md',
+					'pktw-group',
+					'hover:pktw-bg-muted/50',
+					'active:pktw-opacity-80',
 					'focus-visible:pktw-outline-2 focus-visible:pktw-outline-primary focus-visible:pktw-outline-offset-2',
-					'pktw-transition-opacity',
+					'pktw-transition-colors',
 					sizeClasses[size],
 					className
 				)}

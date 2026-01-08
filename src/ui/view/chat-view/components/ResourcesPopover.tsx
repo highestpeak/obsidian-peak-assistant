@@ -7,8 +7,9 @@ import { LibraryBig, FileText, Image, File, ExternalLink } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { EventBus, OpenLinkEvent } from '@/core/eventBus';
 import { App } from 'obsidian';
-import { getFileTypeFromPath, FileType } from '@/ui/view/shared/file-utils';
-import { FilePreviewHover } from '@/ui/component/mine/file-preview-hover';
+import { FileType } from '@/ui/view/shared/file-utils';
+import { FilePreviewHover } from '@/ui/component/mine/resource-preview-hover';
+import { detectPreviewFileType, getFileTypeFromResourceKind } from '@/core/document/helper/FileTypeUtils';
 
 /**
  * Popover component for displaying conversation resources as a list
@@ -28,14 +29,18 @@ export const ResourcesPopover: React.FC = () => {
 		const latestConversation = useProjectStore.getState().activeConversation;
 		if (!latestConversation) return [];
 
-		const resourceMap = new Map<string, { type: FileType; summaryNotePath?: string }>();
+		const resourceMap = new Map<string, { type: FileType; kind?: string; summaryNotePath?: string }>();
 
 		for (const message of latestConversation.messages) {
 			if (message.resources && message.resources.length > 0) {
 				for (const resource of message.resources) {
 					if (!resourceMap.has(resource.source)) {
-						const type = getFileTypeFromPath(resource.source);
-						resourceMap.set(resource.source, { type, summaryNotePath: resource.summaryNotePath });
+						const type = getFileTypeFromResourceKind(resource.kind, resource.source);
+						resourceMap.set(resource.source, { 
+							type, 
+							kind: resource.kind,
+							summaryNotePath: resource.summaryNotePath 
+						});
 					}
 				}
 			}
@@ -44,6 +49,7 @@ export const ResourcesPopover: React.FC = () => {
 		return Array.from(resourceMap.entries()).map(([path, data]) => ({
 			path,
 			type: data.type,
+			kind: data.kind,
 			summaryNotePath: data.summaryNotePath,
 		}));
 	}, [conversationId, messageCount]);
@@ -67,8 +73,9 @@ export const ResourcesPopover: React.FC = () => {
 				<IconButton
 					size="lg"
 					title="View conversation resources"
+					className="hover:pktw-bg-gray-200"
 				>
-					<LibraryBig className="pktw-w-4 pktw-h-4" />
+					<LibraryBig className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground group-hover:pktw-text-black" />
 				</IconButton>
 			</HoverCardTrigger>
 			<HoverCardContent
@@ -81,7 +88,7 @@ export const ResourcesPopover: React.FC = () => {
 				<div className="pktw-flex pktw-flex-col pktw-max-h-[400px] pktw-overflow-y-auto">
 					<div className="pktw-px-3 pktw-py-2 pktw-border-b pktw-border-border">
 						<span className="pktw-text-lg pktw-font-semibold">
-							Related Files/Knowledge Bases
+							Resources
 						</span>
 					</div>
 					{resources.length === 0 ? (
@@ -95,6 +102,7 @@ export const ResourcesPopover: React.FC = () => {
 									key={resource.path}
 									path={resource.path}
 									type={resource.type}
+									kind={resource.kind}
 									summaryNotePath={resource.summaryNotePath}
 									onClick={() => handleResourceClick(resource.path)}
 								/>
@@ -110,11 +118,12 @@ export const ResourcesPopover: React.FC = () => {
 interface ResourceItemProps {
 	path: string;
 	type: FileType;
+	kind?: string;
 	summaryNotePath?: string;
 	onClick: () => void;
 }
 
-const ResourceItem: React.FC<ResourceItemProps> = ({ path, type, summaryNotePath, onClick }) => {
+const ResourceItem: React.FC<ResourceItemProps> = ({ path, type, kind, summaryNotePath, onClick }) => {
 	const app = (window as any).app as App;
 	const eventBus = EventBus.getInstance(app);
 	const fileName = path.split('/').pop() || path;
@@ -126,13 +135,19 @@ const ResourceItem: React.FC<ResourceItemProps> = ({ path, type, summaryNotePath
 	}, [path]);
 
 	// Map FileType to preview fileType
+	// Use resource.kind if available, otherwise use detectPreviewFileType
 	const previewFileType = useMemo(() => {
-		if (type === 'image') return 'image' as const;
-		// Check if it's markdown by extension
-		const ext = normalizedPath.split('.').pop()?.toLowerCase();
-		if (ext === 'md') return 'markdown' as const;
-		return undefined;
-	}, [type, normalizedPath]);
+		// If we have resource.kind, use it directly
+		if (kind === 'image') return 'image' as const;
+		if (kind === 'pdf') return 'pdf' as const;
+		// Otherwise, use detectPreviewFileType to identify from path
+		const detected = detectPreviewFileType(normalizedPath);
+		// Only return preview types (image, pdf, markdown), not 'file'
+		if (detected === 'file') {
+			return undefined;
+		}
+		return detected;
+	}, [kind, normalizedPath]);
 
 	const getIcon = () => {
 		switch (type) {

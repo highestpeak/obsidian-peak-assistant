@@ -83,14 +83,26 @@ function getMessageSummary(message: ChatMessage): string {
  * Get role badge className based on message role
  */
 function getRoleBadgeClass(role: ChatMessage['role']): string {
-	const base = 'pktw-inline-block pktw-text-xs pktw-font-medium pktw-px-2 pktw-py-0.5 pktw-rounded pktw-mb-2';
+	const base = 'pktw-inline-block pktw-text-xs pktw-font-medium pktw-px-2 pktw-py-0.5 pktw-rounded pktw-mb-2 pktw-transition-colors';
 	if (role === 'user') {
-		return cn(base, 'pktw-bg-blue-500/15 pktw-text-blue-700 dark:pktw-bg-blue-500/20 dark:pktw-text-blue-400');
+		return cn(
+			base,
+			'pktw-bg-blue-500/15 pktw-text-blue-700 dark:pktw-bg-blue-500/20 dark:pktw-text-blue-400',
+			'group-hover:pktw-bg-white group-hover:pktw-text-blue-500 dark:group-hover:pktw-bg-white dark:group-hover:pktw-text-blue-500'
+		);
 	}
 	if (role === 'assistant') {
-		return cn(base, 'pktw-bg-purple-500/15 pktw-text-purple-700 dark:pktw-bg-purple-500/20 dark:pktw-text-purple-400');
+		return cn(
+			base,
+			'pktw-bg-purple-500/15 pktw-text-purple-700 dark:pktw-bg-purple-500/20 dark:pktw-text-purple-400',
+			'group-hover:pktw-bg-white group-hover:pktw-text-purple-500 dark:group-hover:pktw-bg-white dark:group-hover:pktw-text-purple-500'
+		);
 	}
-	return cn(base, 'pktw-bg-gray-500/15 pktw-text-gray-700 dark:pktw-bg-gray-500/20 dark:pktw-text-gray-400');
+	return cn(
+		base,
+		'pktw-bg-gray-500/15 pktw-text-gray-700 dark:pktw-bg-gray-500/20 dark:pktw-text-gray-400',
+		'group-hover:pktw-bg-white group-hover:pktw-text-gray-500 dark:group-hover:pktw-bg-white dark:group-hover:pktw-text-gray-500'
+	);
 }
 
 /**
@@ -117,7 +129,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isActive, onClick, o
 				data-message-role={message.role}
 				onClick={onClick}
 				className={cn(
-					'pktw-w-full pktw-justify-start pktw-items-start pktw-text-left pktw-whitespace-normal pktw-h-auto pktw-min-h-[3rem] pktw-py-2',
+					'pktw-w-full pktw-justify-start pktw-items-start pktw-text-left pktw-whitespace-normal pktw-h-auto pktw-min-h-[3rem] pktw-py-2 pktw-group',
 					'focus-visible:!pktw-ring-0 focus-visible:!pktw-ring-offset-0 pktw-shadow-none focus-visible:pktw-shadow-none',
 					isActive && 'pktw-bg-accent/70'
 				)}
@@ -127,7 +139,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isActive, onClick, o
 						{message.role.toUpperCase()}
 						{message.starred && (
 							<Star 
-								className="pktw-inline-block pktw-w-3 pktw-h-3 pktw-ml-1.5 pktw-fill-yellow-400 pktw-text-yellow-400 pktw-cursor-pointer"
+								className="pktw-inline-block pktw-w-3 pktw-h-3 pktw-ml-1.5 pktw-fill-red-500 pktw-text-red-500 pktw-cursor-pointer"
 								onClick={handleStarClick}
 							/>
 						)}
@@ -185,14 +197,14 @@ const TopicHeader: React.FC<TopicHeaderProps> = ({ topic, index, isOpen }) => {
 			<Button
 				variant="ghost"
 				className={cn(
-					'pktw-w-full pktw-justify-start pktw-items-start pktw-text-left pktw-h-auto pktw-py-2',
+					'pktw-w-full pktw-justify-start pktw-items-start pktw-text-left pktw-h-auto pktw-py-2 pktw-group',
 					'focus-visible:!pktw-ring-0 focus-visible:!pktw-ring-offset-0 pktw-shadow-none focus-visible:pktw-shadow-none'
 				)}
 			>
 				{isOpen ? (
-					<ChevronDown className="pktw-size-4 pktw-text-muted-foreground pktw-flex-shrink-0 pktw-mt-0.5" />
+					<ChevronDown className="pktw-size-4 pktw-text-muted-foreground group-hover:pktw-text-accent-foreground pktw-flex-shrink-0 pktw-mt-0.5 pktw-transition-colors" />
 				) : (
-					<ChevronRight className="pktw-size-4 pktw-text-muted-foreground pktw-flex-shrink-0 pktw-mt-0.5" />
+					<ChevronRight className="pktw-size-4 pktw-text-muted-foreground group-hover:pktw-text-accent-foreground pktw-flex-shrink-0 pktw-mt-0.5 pktw-transition-colors" />
 				)}
 				<div className="pktw-flex-1 pktw-text-left pktw-min-w-0 pktw-ml-2">
 					<div className="pktw-text-sm pktw-font-medium">

@@ -3,18 +3,26 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/c
 import { HelpCircle } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { NumberInput } from '@/ui/component/shared-ui/number-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/component/shared-ui/select';
+import { ProgressBarSelector } from './ProgressBarSelector';
+import { ProgressBarSlider } from './ProgressBarSlider';
+import type { ControlType } from './constants';
 
 export interface ControlSettingItemProps {
 	label: string;
 	paramName: string;
 	tooltip: string;
 	icon?: React.ReactNode;
-	value: number | undefined;
+	value: number | string | undefined;
 	enabled: boolean;
-	min: number;
-	max: number;
-	step: number;
-	onValueChange: (value: number | undefined) => void;
+	type: ControlType;
+	// For slider controls
+	min?: number;
+	max?: number;
+	step?: number;
+	// For select controls
+	options?: { value: string; label: string }[];
+	onValueChange: (value: number | string | undefined) => void;
 	onEnabledChange: (enabled: boolean) => void;
 	/**
 	 * Variant style for different use cases
@@ -38,20 +46,29 @@ export const ControlSettingItem: React.FC<ControlSettingItemProps> = ({
 	icon,
 	value,
 	enabled,
+	type,
 	min,
 	max,
 	step,
+	options,
 	onValueChange,
 	onEnabledChange,
 	variant = 'default',
 	hideCheckbox = false,
 }) => {
-	const displayValue = value ?? min;
+	const displayValue = value ?? (type === 'slider' ? min : options?.[0]?.value);
 	const isCompact = variant === 'compact';
 
 	const handleSliderChange = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {
 			const newValue = parseFloat(e.target.value);
+			onValueChange(newValue);
+		},
+		[onValueChange]
+	);
+
+	const handleSelectChange = useCallback(
+		(newValue: string) => {
 			onValueChange(newValue);
 		},
 		[onValueChange]
@@ -94,41 +111,35 @@ export const ControlSettingItem: React.FC<ControlSettingItemProps> = ({
 				</div>
 			</div>
 
-			{/* Right side: Slider and value */}
+			{/* Right side: Control and value */}
 			<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-flex-shrink-0 pktw-mt-0.5">
-				<div className="pktw-flex pktw-items-center pktw-gap-3" style={{ width: isCompact ? '180px' : '240px' }}>
-					<input
-						type="range"
-						min={min}
-						max={max}
-						step={step}
-						value={displayValue}
-						onChange={handleSliderChange}
-						disabled={!enabled}
-						className={cn(
-							'pktw-flex-1 pktw-h-1.5 pktw-cursor-pointer pktw-rounded-lg pktw-appearance-none pktw-bg-input',
-							'enabled:pktw-accent-primary disabled:pktw-opacity-50 disabled:pktw-cursor-not-allowed',
-							'[&::-webkit-slider-thumb]:pktw-appearance-none [&::-webkit-slider-thumb]:pktw-h-3.5 [&::-webkit-slider-thumb]:pktw-w-3.5 [&::-webkit-slider-thumb]:pktw-rounded-full [&::-webkit-slider-thumb]:pktw-bg-primary [&::-webkit-slider-thumb]:pktw-cursor-pointer',
-							'[&::-moz-range-thumb]:pktw-h-3.5 [&::-moz-range-thumb]:pktw-w-3.5 [&::-moz-range-thumb]:pktw-rounded-full [&::-moz-range-thumb]:pktw-border-0 [&::-moz-range-thumb]:pktw-bg-primary [&::-moz-range-thumb]:pktw-cursor-pointer'
-						)}
-						style={{ minWidth: 0 }}
-					/>
-					{isCompact ? (
-						<span className="pktw-w-14 pktw-text-right pktw-text-sm pktw-font-mono pktw-text-foreground pktw-flex-shrink-0">
-							{displayValue.toFixed(step < 0.1 ? 2 : 1)}
-						</span>
-					) : (
-						<NumberInput
-							value={displayValue}
+				{type === 'slider' ? (
+					<div className={cn(
+						"pktw-w-[240px]",
+						isCompact && "pktw-w-[200px]"
+					)}>
+						<ProgressBarSlider
+							value={displayValue as number}
+							min={min!}
+							max={max!}
+							step={step!}
 							onChange={onValueChange}
-							min={min}
-							max={max}
-							step={step}
-							className="pktw-w-16 pktw-text-right pktw-flex-shrink-0"
 							disabled={!enabled}
 						/>
-					)}
-				</div>
+					</div>
+				) : (
+					<div className={cn(
+						"pktw-w-[240px]",
+						isCompact && "pktw-w-[200px]"
+					)}>
+						<ProgressBarSelector
+							options={options || []}
+							value={displayValue as string}
+							onChange={handleSelectChange}
+							disabled={!enabled}
+						/>
+					</div>
+				)}
 			</div>
 		</div>
 	);

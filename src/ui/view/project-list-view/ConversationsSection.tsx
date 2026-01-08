@@ -136,6 +136,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 		message: string;
 		onSubmit: (value: string | null) => Promise<void>;
 		initialValue?: string;
+		placeholderText?: string;
 		hintText?: string;
 		submitButtonText?: string;
 	} | null>(null);
@@ -159,6 +160,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 	const handleEditConversationTitle = useCallback((conversation: ChatConversation) => {
 		setInputModalConfig({
 			message: 'Enter conversation title',
+			placeholderText: 'Conversation title',
 			initialValue: conversation.meta.title,
 			onSubmit: async (newTitle: string | null) => {
 				if (!newTitle || !newTitle.trim()) return;
@@ -270,27 +272,27 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 		<div className="pktw-flex pktw-flex-col">
 			{/* Header */}
 			<div
-				className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2 pktw-cursor-pointer pktw-rounded pktw-transition-all hover:pktw-bg-muted hover:pktw-shadow-sm"
+				className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2 pktw-cursor-pointer pktw-rounded pktw-transition-all hover:pktw-bg-muted hover:pktw-shadow-sm pktw-group"
 				onClick={() => toggleConversationsCollapsed()}
 			>
 				<div className="pktw-flex pktw-items-center pktw-gap-2">
 					{isConversationsCollapsed ? (
-						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-shrink-0" />
+						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
 					) : (
-						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0" />
+						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
 					)}
 					<h3 className="pktw-flex-1 pktw-m-0 pktw-text-[13px] pktw-font-semibold pktw-text-foreground pktw-uppercase pktw-tracking-wide">Conversations</h3>
 				</div>
 				<IconButton
 					size="lg"
-					className="pktw-shrink-0"
+					className="pktw-shrink-0 group-hover:pktw-bg-gray-200 group-hover:pktw-shadow-sm hover:pktw-shadow-sm"
 					onClick={(e) => {
 						e.stopPropagation();
 						handleNewConversation();
 					}}
 					title={DEFAULT_NEW_CONVERSATION_TITLE}
 				>
-					<Plus />
+					<Plus className="pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
 				</IconButton>
 			</div>
 
@@ -338,6 +340,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 					message={inputModalConfig.message}
 					onSubmit={inputModalConfig.onSubmit}
 					initialValue={inputModalConfig.initialValue}
+					placeholderText={inputModalConfig.placeholderText}
 					hintText={inputModalConfig.hintText}
 					submitButtonText={inputModalConfig.submitButtonText}
 				/>

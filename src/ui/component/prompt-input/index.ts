@@ -1,6 +1,11 @@
 // Main components
 export { PromptInput, usePromptInputContext } from './PromptInput';
 export { PromptInputBody } from './PromptInputBody';
+export { PromptInputMenu } from './PromptInputMenu';
+
+// Menu components
+export { ContextMenu } from './menu';
+export { PromptMenu } from './menu';
 
 // Buttons
 export { PromptInputSubmit } from './PromptInputSubmit';

@@ -6,23 +6,10 @@ import { cn } from '@/ui/react/lib/utils';
 import { ProviderServiceFactory } from '@/core/providers/base/factory';
 import { usePopupPosition } from '@/ui/hooks/usePopupPosition';
 import { formatMaxContext } from '@/core/providers/model-capabilities';
+// Import hover menu manager to initialize global coordination functions and use the hook
+import { useHoverMenu } from '@/ui/component/mine/hover-menu-manager';
 
-/**
- * Global registry to track all open selectors
- * When a new selector opens, it closes all others
- */
-const openSelectors = new Set<() => void>();
-
-/**
- * Close all open selectors except the provided one
- */
-function closeAllExcept(exceptCloseFn?: () => void) {
-	openSelectors.forEach((closeFn) => {
-		if (closeFn !== exceptCloseFn) {
-			closeFn();
-		}
-	});
-}
+// Global menu coordination functions are now managed in hover-menu-manager.tsx
 
 export interface ModelSelectorProps {
 	/** Available models list */
@@ -57,11 +44,15 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 	placeholder = 'Select model',
 	onMenuOpen,
 }) => {
-	const [isMenuOpen, setIsMenuOpen] = useState(false);
-	const containerRef = useRef<HTMLDivElement>(null);
+	// Use hover menu manager for unified hover behavior
+	const hoverMenu = useHoverMenu({
+		id: 'model-selector',
+		closeDelay: 800, // Extended delay for better UX
+		enableCoordination: true
+	});
+
 	const menuRef = useRef<HTMLDivElement>(null);
-	const menuPosition = usePopupPosition(containerRef, menuRef, isMenuOpen, 400);
-	const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
+	const menuPosition = usePopupPosition(hoverMenu.containerRef, menuRef, hoverMenu.isOpen, 400);
 
 	// Get provider metadata map for fallback icons and names
 	const providerMetadataMap = useMemo(() => {
@@ -99,83 +90,30 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 		});
 	}, [models, providerMetadataMap]);
 
-	// Close menu helper
-	const closeMenu = useCallback(() => {
-		setIsMenuOpen(false);
-		if (closeTimerRef.current) {
-			clearTimeout(closeTimerRef.current);
-			closeTimerRef.current = null;
-		}
-	}, []);
-
-	// Handle mouse leave from menu with delay
-	const handleMenuMouseLeave = useCallback(() => {
-		if (closeTimerRef.current) {
-			clearTimeout(closeTimerRef.current);
-		}
-		closeTimerRef.current = setTimeout(() => {
-			closeMenu();
-		}, 1000); // 1000ms delay
-	}, [closeMenu]);
-
-	// Handle mouse enter to container/menu (cancel close timer)
-	const handleMouseEnter = useCallback(() => {
-		if (closeTimerRef.current) {
-			clearTimeout(closeTimerRef.current);
-			closeTimerRef.current = null;
-		}
-	}, []);
-
-	// Handle menu open/close and coordinate with other selectors
-	useEffect(() => {
-		if (isMenuOpen) {
-			// Close all other selectors before opening this one
-			closeAllExcept(closeMenu);
-			// Register this selector
-			openSelectors.add(closeMenu);
-		} else {
-			// Unregister when closed
-			openSelectors.delete(closeMenu);
-		}
-
-		// Cleanup on unmount
-		return () => {
-			openSelectors.delete(closeMenu);
-		};
-	}, [isMenuOpen, closeMenu]);
-
 	// Menu position is calculated by usePopupPosition hook
 
 	// Close menu when clicking outside
 	useEffect(() => {
-		if (!isMenuOpen) return;
-		
+		if (!hoverMenu.isOpen) return;
+
 		const handleClickOutside = (e: MouseEvent) => {
 			const target = e.target as HTMLElement;
 			if (
-				containerRef.current &&
-				!containerRef.current.contains(target) &&
+				hoverMenu.containerRef.current &&
+				!hoverMenu.containerRef.current.contains(target) &&
 				menuRef.current &&
 				!menuRef.current.contains(target)
 			) {
-				closeMenu();
+				hoverMenu.closeMenu();
 			}
 		};
-		
+
 		document.addEventListener('click', handleClickOutside);
 		return () => {
 			document.removeEventListener('click', handleClickOutside);
 		};
-	}, [isMenuOpen, closeMenu]);
+	}, [hoverMenu.isOpen, hoverMenu.closeMenu]);
 
-	// Cleanup timer on unmount
-	useEffect(() => {
-		return () => {
-			if (closeTimerRef.current) {
-				clearTimeout(closeTimerRef.current);
-			}
-		};
-	}, []);
 
 	// Find current model info
 	const currentModelInfo = useMemo(() => {
@@ -216,17 +154,17 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 	const handleModelSelect = useCallback(
 		async (provider: string, modelId: string) => {
 			await onChange(provider, modelId);
-			setIsMenuOpen(false);
+			hoverMenu.closeMenu();
 		},
-		[onChange]
+		[onChange, hoverMenu.closeMenu]
 	);
 
 	return (
 		<div
-			ref={containerRef}
+			ref={hoverMenu.containerRef}
 			className={cn('pktw-relative pktw-inline-block', className)}
-			onMouseLeave={isMenuOpen ? handleMenuMouseLeave : undefined}
-			onMouseEnter={isMenuOpen ? handleMouseEnter : undefined}
+			onMouseEnter={hoverMenu.handleMouseEnter}
+			onMouseLeave={hoverMenu.handleMouseLeave}
 		>
 			<button
 				type="button"
@@ -237,16 +175,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 						: 'pktw-text-foreground',
 					buttonClassName
 				)}
-				onClick={(e) => {
-					e.stopPropagation();
-					e.preventDefault();
-					const willOpen = !isMenuOpen;
-					if (willOpen) {
-						// Call onMenuOpen callback when opening menu
-						onMenuOpen?.();
-					}
-					setIsMenuOpen(willOpen);
-				}}
 				title={!isCurrentModelAvailable && currentModel ? 'Current model is not available. Please select another model.' : undefined}
 			>
 				{!isLoading && (() => {
@@ -295,7 +223,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 				/>
 			</button>
 
-			{isMenuOpen && (
+			{hoverMenu.isOpen && (
 				<div
 					ref={menuRef}
 					className={cn(
@@ -303,8 +231,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 						menuPosition === 'bottom' ? 'pktw-top-full pktw-mt-1' : 'pktw-bottom-full pktw-mb-1'
 					)}
 					onClick={(e) => e.stopPropagation()}
-					onMouseLeave={handleMenuMouseLeave}
-					onMouseEnter={handleMouseEnter}
 				>
 					{isLoading ? (
 						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-cursor-pointer pktw-transition-colors pktw-duration-150 pktw-border-b pktw-border-border pktw-min-w-[200px] hover:pktw-bg-accent hover:pktw-text-accent-foreground">

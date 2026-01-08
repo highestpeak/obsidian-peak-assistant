@@ -52,7 +52,7 @@ export const OutputControlSettingsList: React.FC<OutputControlSettingsListProps>
 	const currentSettings = useLocalState ? localSettings : effectiveSettings;
 
 	const handleUpdateSetting = useCallback(
-		(key: keyof LLMOutputControlSettings, value: number | undefined) => {
+		(key: keyof LLMOutputControlSettings, value: number | string | undefined) => {
 			const newSettings = { ...currentSettings, [key]: value };
 			if (useLocalState) {
 				setLocalSettings(newSettings);
@@ -78,9 +78,11 @@ export const OutputControlSettingsList: React.FC<OutputControlSettingsListProps>
 						icon={item.icon}
 						value={value}
 						enabled={enabled}
+						type={item.type}
 						min={item.min}
 						max={item.max}
 						step={item.step}
+						options={item.options}
 						onValueChange={(newValue) => handleUpdateSetting(item.key, newValue)}
 						onEnabledChange={() => {}} // No-op since always enabled
 						variant={variant}

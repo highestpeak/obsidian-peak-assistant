@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Menu, TFile, App } from 'obsidian';
 import { ChatMessage, ChatConversation, ChatProject } from '@/service/chat/types';
 import { useChatViewStore } from '../store/chatViewStore';
@@ -7,7 +7,7 @@ import { useProjectStore } from '@/ui/store/projectStore';
 import { useStreamChat } from '../hooks/useStreamChat';
 import { cn } from '@/ui/react/lib/utils';
 import { COLLAPSED_USER_MESSAGE_CHAR_LIMIT } from '@/core/constant';
-import { Copy, RefreshCw, Star, Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Copy, RefreshCw, Star, Loader2, Check, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { useMessageStore } from '@/ui/store/messageStore';
 import { StreamingStepsView } from './StreamingStepsView';
 import {
@@ -19,11 +19,25 @@ import {
 } from '@/ui/component/ai-elements';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/component/shared-ui/tooltip';
 import { Button } from '@/ui/component/shared-ui/button';
-import { FilePreviewHover } from '@/ui/component/mine/file-preview-hover';
+import { ResourcePreviewHover } from '@/ui/component/mine/resource-preview-hover';
 import { Streamdown } from 'streamdown';
 import type { FileUIPart } from 'ai';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
 import { formatTimestampLocale } from '@/ui/view/shared/date-utils';
+import { isUrl, getExtensionFromSource, getImageMimeType, isImageExtension } from '@/core/document/helper/FileTypeUtils';
+import { ChatResourceRef } from '@/service/chat/types';
+import { ResourceKind } from '@/core/document/types';
+import { openFile } from '@/core/utils/obsidian-utils';
+import { SafeModelIcon, SafeProviderIcon } from '@/ui/component/mine/SafeIconWrapper';
+import { ProviderServiceFactory } from '@/core/providers/base/factory';
+
+/**
+ * UI representation of a resource attachment
+ */
+interface ResourceUIAttachment extends FileUIPart {
+	resource: ChatResourceRef;
+	fileType: ResourceKind;
+}
 
 /**
  * Component for rendering message attachments
@@ -37,82 +51,126 @@ const MessageAttachmentsList: React.FC<{
 			return [];
 		}
 
-		const fileParts: Array<FileUIPart & { _originalPath?: string; _fileType?: 'image' | 'markdown' | 'file' }> = [];
+		return message.resources.map((resource) => {
+			const source = resource.source;
+			const extension = getExtensionFromSource(source);
 
-		// Process resources
-		message.resources.forEach((resource) => {
-			const normalizedPath = resource.source.startsWith('/') ? resource.source.slice(1) : resource.source;
-			const file = app.vault.getAbstractFileByPath(normalizedPath);
-			const fileName = resource.source.split('/').pop() || resource.source;
-
-			if (file instanceof TFile) {
-				const resourcePath = app.vault.getResourcePath(file);
-				const isImage = file.extension && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(file.extension.toLowerCase());
-				const isMarkdown = file.extension === 'md';
-
-				fileParts.push({
-					type: 'file',
-					url: resourcePath,
-					filename: fileName,
-					mediaType: isImage ? `image/${file.extension}` : 'application/octet-stream',
-					_originalPath: normalizedPath,
-					_fileType: isImage ? 'image' : isMarkdown ? 'markdown' : 'file',
-				});
+			let mediaType: string;
+			if (resource.kind === 'image') {
+				mediaType = getImageMimeType(extension);
+			} else if (resource.kind === 'pdf') {
+				mediaType = 'application/pdf';
+			} else {
+				mediaType = 'application/octet-stream';
 			}
-		});
 
-		return fileParts;
+			return {
+				type: 'file' as const,
+				url: source,
+				filename: source.split('/').pop() || source,
+				mediaType: mediaType,
+				resource: resource,
+				fileType: resource.kind,
+			};
+		});
 	}, [message.resources, app]);
+
+	/**
+	 * Handle opening a resource based on its type
+	 */
+	const handleOpenResource = useCallback(async (attachment: ResourceUIAttachment) => {
+		const url = attachment.url;
+		if (!url) return;
+
+		// Handle URL resources - open in new tab
+		if (isUrl(url)) {
+			window.open(url, '_blank', 'noopener,noreferrer');
+			return;
+		}
+
+		// Handle file resources
+		await openFile(app, url);
+	}, [app]);
 
 	if (fileAttachments.length === 0) {
 		return null;
 	}
 
+	/**
+	 * Render a single attachment with preview hover
+	 */
+	const renderAttachment = (attachment: ResourceUIAttachment, index: number, isImage: boolean) => {
+		const isPdf = attachment.fileType === 'pdf';
+		
+		const handleClick = async (e: React.MouseEvent) => {
+			e.stopPropagation();
+			await handleOpenResource(attachment);
+		};
+
+		const wrappedContent = (
+			<ResourcePreviewHover
+				resource={attachment.resource}
+				app={app}
+				previewClassName="pktw-z-[100]"
+			>
+				<div 
+					className={cn(
+						"pktw-cursor-pointer pktw-transition-opacity hover:pktw-opacity-90",
+						isPdf || !isImage ? "pktw-w-full" : "pktw-flex-shrink-0"
+					)}
+					onClick={handleClick}
+				>
+					{isPdf ? (
+						<div className="pktw-flex pktw-flex-row pktw-w-full pktw-shrink-0 pktw-items-center pktw-rounded-lg pktw-border-1 pktw-border-solid pktw-border-gray-200 dark:pktw-border-gray-600 pktw-bg-white pktw-px-3 pktw-py-3 pktw-gap-3 pktw-min-h-[48px]">
+							<div className="pktw-flex-shrink-0 pktw-w-8 pktw-h-8 pktw-bg-red-500 pktw-rounded pktw-flex pktw-items-center pktw-justify-center">
+								<FileText className="pktw-size-4 pktw-text-white" />
+							</div>
+							<div className="pktw-flex-1 pktw-flex pktw-flex-col pktw-gap-1 pktw-min-w-0">
+								<span className="pktw-text-sm pktw-font-medium pktw-text-gray-900 pktw-truncate">
+									{attachment.filename}
+								</span>
+								<span className="pktw-text-xs pktw-text-gray-500 pktw-uppercase pktw-font-medium">
+									PDF
+								</span>
+							</div>
+						</div>
+					) : (
+						<MessageAttachment data={attachment} onClick={handleClick} />
+					)}
+				</div>
+			</ResourcePreviewHover>
+		);
+
+		// Only wrap with TooltipProvider for non-PDF files
+		if (isPdf) {
+			return <React.Fragment key={`attachment-${index}`}>{wrappedContent}</React.Fragment>;
+		}
+
+		return (
+			<TooltipProvider key={`attachment-${index}`}>
+				{wrappedContent}
+			</TooltipProvider>
+		);
+	};
+
+	// Group attachments by type for layout
+	const imageAttachments = fileAttachments.filter(att => att.fileType === 'image');
+	const otherAttachments = fileAttachments.filter(att => att.fileType !== 'image');
+
 	return (
-		<div className="pktw-flex pktw-flex-wrap pktw-gap-2 pktw-w-full pktw-max-w-full pktw-min-w-0">
-			{fileAttachments.map((attachment, index) => {
-				const originalPath = (attachment as any)._originalPath;
-				const fileType = (attachment as any)._fileType;
-
-				const attachmentElement = (
-					<div className="pktw-cursor-pointer pktw-transition-opacity hover:pktw-opacity-90 pktw-flex-shrink-0">
-						<MessageAttachment
-							data={attachment}
-							onClick={async (e) => {
-								e.stopPropagation();
-								if (!originalPath) return;
-								const file = app.vault.getAbstractFileByPath(originalPath);
-								if (file instanceof TFile) {
-									const leaf = app.workspace.getLeaf(false);
-									await leaf.openFile(file);
-								}
-							}}
-						/>
-					</div>
-				);
-
-				// Use FilePreviewHover for images and markdown files
-				if (fileType === 'image' || fileType === 'markdown') {
-					return (
-						<FilePreviewHover
-							key={index}
-							filePath={originalPath}
-							fileType={fileType}
-							app={app}
-							previewClassName="pktw-z-[100]"
-						>
-							{attachmentElement}
-						</FilePreviewHover>
-					);
-				}
-
-				// For other files, return without preview
-				return (
-					<React.Fragment key={index}>
-						{attachmentElement}
-					</React.Fragment>
-				);
-			})}
+		<div className="pktw-flex pktw-flex-col pktw-gap-2 pktw-w-full pktw-max-w-full pktw-min-w-0">
+			{/* Images: horizontal layout with wrapping */}
+			{imageAttachments.length > 0 && (
+				<div className="pktw-flex pktw-flex-wrap pktw-gap-2 pktw-w-full pktw-max-w-full pktw-min-w-0">
+					{imageAttachments.map((attachment, index) => renderAttachment(attachment, index, true))}
+				</div>
+			)}
+			{/* Other attachments (PDFs, etc.): vertical layout, full width */}
+			{otherAttachments.length > 0 && (
+				<div className="pktw-flex pktw-flex-col pktw-gap-2 pktw-w-full pktw-max-w-full pktw-min-w-0">
+					{otherAttachments.map((attachment, index) => renderAttachment(attachment, index, false))}
+				</div>
+			)}
 		</div>
 	);
 };
@@ -129,12 +187,21 @@ const MessageActionsList: React.FC<{
 	onCopy: () => void;
 	onRegenerate: (messageId: string) => void;
 }> = ({ message, isLastMessage, isStreaming, copied, onToggleStar, onCopy, onRegenerate }) => {
+	const [isHovered, setIsHovered] = useState(false);
+
 	if (isStreaming) {
 		return null;
 	}
 
+	const showTime = message.role === 'assistant' && isHovered;
+
 	return (
-		<MessageActions>
+		<div
+			onMouseEnter={() => setIsHovered(true)}
+			onMouseLeave={() => setIsHovered(false)}
+			className="pktw-flex pktw-items-center pktw-gap-1"
+		>
+			<MessageActions>
 			<MessageAction
 				tooltip={message.starred ? 'Unstar message' : 'Star message'}
 				label={message.starred ? 'Unstar message' : 'Star message'}
@@ -147,7 +214,7 @@ const MessageActionsList: React.FC<{
 					size={12}
 					strokeWidth={2}
 					className={cn(
-						message.starred && 'pktw-fill-current'
+						message.starred && 'pktw-fill-red-500 pktw-text-red-500'
 					)}
 				/>
 			</MessageAction>
@@ -181,76 +248,79 @@ const MessageActionsList: React.FC<{
 			)}
 
 			{message.role === 'assistant' && (
-				<MessageMetadataButton message={message} />
+				<>
+					<ModelIconButton message={message} />
+					<TokenCountButton message={message} />
+				</>
 			)}
-		</MessageActions>
+
+			</MessageActions>
+			{showTime && <TimeDisplay message={message} />}
+		</div>
 	);
 };
 
 /**
- * Component for displaying message metadata as a button in action area
+ * Component for displaying model/provider icon with tooltip
  */
-const MessageMetadataButton: React.FC<{
+const ModelIconButton: React.FC<{
 	message: ChatMessage;
 }> = ({ message }) => {
+	const { manager } = useServiceContext();
 	const [copied, setCopied] = useState(false);
-	const { tokenCount, modelInfo, formatDate, timezone, hasMetadata } = useMemo(() => {
-		const totalTokens = message.tokenUsage
-			? (() => {
-				const usage = message.tokenUsage as any;
-				return usage.totalTokens ?? usage.total_tokens ??
-					((usage.promptTokens ?? usage.prompt_tokens ?? 0) + (usage.completionTokens ?? usage.completion_tokens ?? 0));
-			})()
-			: null;
+	const [modelIcon, setModelIcon] = useState<string | null>(null);
+	const [providerIcon, setProviderIcon] = useState<string | null>(null);
 
-		const model = message.model ? `${message.provider || ''}/${message.model}`.replace(/^\//, '') : null;
+	const modelInfo = useMemo(() => {
+		if (!message.model) return null;
+		return `${message.provider || ''}/${message.model}`.replace(/^\//, '');
+	}, [message.model, message.provider]);
 
-		const date = message.createdAtTimestamp
-			? formatTimestampLocale(message.createdAtTimestamp, message.createdAtZone)
-			: null;
+	// Get provider and model icons
+	useEffect(() => {
+		if (!message.provider || !message.model || !manager) {
+			setModelIcon(null);
+			setProviderIcon(null);
+			return;
+		}
 
-		const tz = message.createdAtZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+		const loadIcons = async () => {
+			try {
+				// Get provider metadata
+				const providerMetadata = ProviderServiceFactory.getInstance().getAllProviderMetadata();
+				const providerMeta = providerMetadata.find(m => m.id === message.provider);
+				if (providerMeta?.icon) {
+					setProviderIcon(providerMeta.icon);
+				}
 
-		const hasMeta = totalTokens !== null || model || date;
-
-		return {
-			tokenCount: totalTokens,
-			modelInfo: model,
-			formatDate: date,
-			timezone: tz,
-			hasMetadata: hasMeta,
+				// Get model metadata
+				const allModels = await manager.getAllAvailableModels();
+				const modelInfo = allModels.find(
+					m => m.id === message.model && m.provider === message.provider
+				);
+				if (modelInfo?.icon) {
+					setModelIcon(modelInfo.icon);
+				}
+			} catch (err) {
+				console.error('Failed to load model/provider icons:', err);
+			}
 		};
-	}, [message.tokenUsage, message.model, message.provider, message.createdAtTimestamp, message.createdAtZone]);
 
-	if (!hasMetadata) return null;
+		loadIcons();
+	}, [message.provider, message.model, manager]);
 
-	const tooltipContent = (() => {
-		const lines: string[] = [];
-		if (modelInfo && tokenCount !== null) {
-			lines.push(`${modelInfo} ${tokenCount} tokens`);
-		} else if (modelInfo) {
-			lines.push(modelInfo);
-		} else if (tokenCount !== null) {
-			lines.push(`${tokenCount} tokens`);
-		}
-		if (formatDate) {
-			lines.push(formatDate + (timezone ? ` (${timezone})` : ''));
-		} else if (timezone) {
-			lines.push(`(${timezone})`);
-		}
-		return lines.join('\n');
-	})();
+	if (!modelInfo) return null;
 
-	const handleCopyTooltip = useCallback(async (e: React.MouseEvent) => {
+	const handleCopy = useCallback(async (e: React.MouseEvent) => {
 		e.stopPropagation();
 		try {
-			await navigator.clipboard.writeText(tooltipContent);
+			await navigator.clipboard.writeText(modelInfo);
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
 		} catch (err) {
-			console.error('Failed to copy tooltip content:', err);
+			console.error('Failed to copy model info:', err);
 		}
-	}, [tooltipContent]);
+	}, [modelInfo]);
 
 	return (
 		<TooltipProvider>
@@ -260,26 +330,138 @@ const MessageMetadataButton: React.FC<{
 						variant="ghost"
 						size="icon"
 						type="button"
-						className="pktw-h-auto pktw-w-auto pktw-px-1.5 pktw-cursor-pointer"
-						onClick={handleCopyTooltip}
+						className="pktw-h-6 pktw-w-6 pktw-p-0 pktw-cursor-pointer"
+						onClick={handleCopy}
 					>
-						<span className="pktw-text-xs">
-							{tokenCount !== null ? `${tokenCount} tokens${copied ? ' copied!' : ''}` : ''}
-						</span>
-						<span className="pktw-sr-only">Message metadata</span>
+						{modelIcon ? (
+							<SafeModelIcon
+								model={modelIcon}
+								size={16}
+								className="pktw-flex-shrink-0"
+								fallback={
+									providerIcon ? (
+										<SafeProviderIcon
+											provider={providerIcon}
+											size={16}
+											className="pktw-flex-shrink-0"
+											fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-blue-200" title="No icon available" />}
+										/>
+									) : (
+										<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-blue-200" title="No icon available" />
+									)
+								}
+							/>
+						) : providerIcon ? (
+							<SafeProviderIcon
+								provider={providerIcon}
+								size={16}
+								className="pktw-flex-shrink-0"
+								fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-blue-200" title="No icon available" />}
+							/>
+						) : (
+							<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-blue-200" title="No icon available" />
+						)}
+						<span className="pktw-sr-only">Model: {modelInfo}</span>
 					</Button>
 				</TooltipTrigger>
-				<TooltipContent 
-					className="pktw-whitespace-pre-line pktw-select-text"
+				<TooltipContent
+					className="pktw-select-text"
 					side="top"
 					align="start"
 					sideOffset={4}
 					onPointerDown={(e) => e.stopPropagation()}
 				>
-					<p className="pktw-select-text">{tooltipContent}</p>
+					<p className="pktw-select-text">{copied ? 'Copied!' : modelInfo}</p>
 				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
+	);
+};
+
+/**
+ * Component for displaying token count
+ */
+const TokenCountButton: React.FC<{
+	message: ChatMessage;
+}> = ({ message }) => {
+	const [copied, setCopied] = useState(false);
+	const tokenCount = useMemo(() => {
+		if (!message.tokenUsage) return null;
+		const usage = message.tokenUsage as any;
+		return usage.totalTokens ?? usage.total_tokens ??
+			((usage.promptTokens ?? usage.prompt_tokens ?? 0) + (usage.completionTokens ?? usage.completion_tokens ?? 0));
+	}, [message.tokenUsage]);
+
+	if (tokenCount === null) return null;
+
+	const handleCopy = useCallback(async (e: React.MouseEvent) => {
+		e.stopPropagation();
+		try {
+			await navigator.clipboard.writeText(`${tokenCount} tokens`);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 2000);
+		} catch (err) {
+			console.error('Failed to copy token count:', err);
+		}
+	}, [tokenCount]);
+
+	return (
+		<Button
+			variant="ghost"
+			size="icon"
+			type="button"
+			className="pktw-h-auto pktw-w-auto pktw-px-1.5 pktw-cursor-pointer"
+			onClick={handleCopy}
+		>
+			<span className="pktw-text-xs">
+				{tokenCount} tokens{copied ? ' copied!' : ''}
+			</span>
+			<span className="pktw-sr-only">Token count: {tokenCount}</span>
+		</Button>
+	);
+};
+
+/**
+ * Component for displaying time (shown on hover of MessageActions)
+ */
+const TimeDisplay: React.FC<{
+	message: ChatMessage;
+}> = ({ message }) => {
+	const [copied, setCopied] = useState(false);
+	const timeInfo = useMemo(() => {
+		if (!message.createdAtTimestamp) return null;
+		// Use user's local timezone instead of message's timezone
+		const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		const date = formatTimestampLocale(message.createdAtTimestamp, userTimezone);
+		return date ? `${date} (${userTimezone})` : null;
+	}, [message.createdAtTimestamp]);
+
+	if (!timeInfo) return null;
+
+	const handleCopy = useCallback(async (e: React.MouseEvent) => {
+		e.stopPropagation();
+		try {
+			await navigator.clipboard.writeText(timeInfo);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 2000);
+		} catch (err) {
+			console.error('Failed to copy time info:', err);
+		}
+	}, [timeInfo]);
+
+	return (
+		<Button
+			variant="ghost"
+			size="icon"
+			type="button"
+			className="pktw-h-auto pktw-w-auto pktw-px-1.5 pktw-cursor-pointer"
+			onClick={handleCopy}
+		>
+			<span className="pktw-text-xs">
+				{copied ? `${timeInfo} copied!` : timeInfo}
+			</span>
+			<span className="pktw-sr-only">Time: {timeInfo}</span>
+		</Button>
 	);
 };
 
@@ -464,7 +646,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	const isUser = message.role === 'user'; // 'user' = user message, 'assistant' = AI message
 
 	// Get streaming steps if this is the streaming message
-	const streamingSteps = useMessageStore((state) => 
+	const streamingSteps = useMessageStore((state) =>
 		state.streamingMessageId === message.id ? state.streamingSteps : []
 	);
 
@@ -566,7 +748,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
 				{/* Chain of Thought: Show streaming steps for assistant messages */}
 				{!isUser && <StreamingStepsView steps={streamingSteps} />}
-				
+
 				<MessageContent
 					className={cn(
 						isUser && "pktw-rounded-lg pktw-bg-secondary pktw-px-4 pktw-py-4 pktw-w-full"

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ExternalLink, Folder, RefreshCw } from 'lucide-react';
-import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { cn } from '@/ui/react/lib/utils';
 import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
@@ -10,6 +9,7 @@ import { useTypewriterEffect } from '@/ui/view/shared/useTypewriterEffect';
 import { TYPEWRITER_EFFECT_SPEED_MS } from '@/core/constant';
 import { ResourcesPopover } from './ResourcesPopover';
 import { SummaryPopover } from './SummaryPopover';
+import { OpenMenuButton } from './OpenMenuButton';
 import { Shimmer } from '@/ui/component/ai-elements/shimmer';
 
 interface MessageHeaderProps {
@@ -80,16 +80,11 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 	// Always use displayTitle for shimmer to show current title, not the typewriter one
 	const titleToShow = isRegeneratingTitle && displayTitle ? displayTitle : finalTitle;
 	const titleElement = (
-		<span className="pktw-font-medium pktw-text-foreground pktw-leading-[1.5]" style={{ fontSize: 'var(--font-ui-medium)' }}>
+		<span className="pktw-font-medium pktw-text-foreground pktw-leading-[1.5] pktw-text-xl" style={{ fontSize: 'var(--font-ui-large)' }}>
 			{isRegeneratingTitle && displayTitle ? <Shimmer duration={2} spread={2}>{displayTitle}</Shimmer> : titleToShow}
 		</span>
 	);
 
-	const handleOpenSource = async () => {
-		if (activeConversation?.file) {
-			await openSourceFile(app, activeConversation.file);
-		}
-	};
 
 	const handleRegenerateTitle = async () => {
 		// Prevent multiple clicks while regenerating
@@ -128,10 +123,11 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 						{titleElement}
 						{!activeConversation.meta.titleManuallyEdited && (
 							<IconButton
-								size="lg"
+								size="md"
 								onClick={isRegeneratingTitle ? undefined : handleRegenerateTitle}
 								title={isRegeneratingTitle ? "Regenerating..." : "Regenerate conversation title"}
 								className={cn(
+									"hover:pktw-bg-gray-200",
 									isRegeneratingTitle && [
 										"pktw-opacity-40",
 										"pktw-cursor-not-allowed",
@@ -142,7 +138,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 									]
 								)}
 							>
-								<RefreshCw className={cn(isRegeneratingTitle && "pktw-animate-spin")} />
+								<RefreshCw className={cn("pktw-text-muted-foreground group-hover:pktw-text-black", isRegeneratingTitle && "pktw-animate-spin")} />
 							</IconButton>
 						)}
 					</>
@@ -161,14 +157,8 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 							{/* Summary button */}
 							<SummaryPopover />
 
-							{/* Open source button */}
-							<IconButton
-								size="lg"
-								onClick={handleOpenSource}
-								title="Open source document"
-							>
-								<ExternalLink className="pktw-w-4 pktw-h-4" />
-							</IconButton>
+							{/* Open menu button (merged open source document and open in chat) */}
+							<OpenMenuButton />
 						</div>
 					</>
 				)}

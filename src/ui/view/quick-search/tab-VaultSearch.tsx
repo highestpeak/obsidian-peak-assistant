@@ -8,6 +8,7 @@ import { formatDuration } from '@/core/utils/format-utils';
 import type { SearchQuery, SearchResultItem as SearchResultItemType } from '@/service/search/types';
 import type { SearchClient } from '@/service/search/SearchClient';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { openFile } from '@/core/utils/obsidian-utils';
 
 
 /**
@@ -297,7 +298,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 
 	// Handle keyboard navigation
 	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
+		const handleKeyDown = async (e: KeyboardEvent) => {
 			// Navigation keys (ArrowUp, ArrowDown, Enter) should work even when focus is in input
 			// Other keys should be ignored if focus is in input/textarea
 			const isNavigationKey = e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter';
@@ -326,12 +327,9 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 					const selectedResult = displayedResults[selectedIndex];
 					if (selectedResult) {
 						try {
-							const file = app.vault.getAbstractFileByPath(selectedResult.path);
-							if (file && (file as any).path) {
-								void app.workspace.getLeaf(false).openFile(file as any);
-								// Close the search modal after opening the file
-								onClose?.();
-							}
+							await openFile(app, selectedResult.path);
+							// Close the search modal after opening the file
+							onClose?.();
 						} catch (err) {
 							console.error('Open result failed:', err);
 						}
@@ -398,11 +396,8 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 						{displayedResults.map((result, index) => {
 							const handleOpen = async () => {
 								try {
-									const file = app.vault.getAbstractFileByPath(result.path);
-									if (file && (file as any).path) {
-										await app.workspace.getLeaf(false).openFile(file as any);
-										onClose?.();
-									}
+									await openFile(app, result.path);
+									onClose?.();
 								} catch (err) {
 									console.error('Open result failed:', err);
 								}

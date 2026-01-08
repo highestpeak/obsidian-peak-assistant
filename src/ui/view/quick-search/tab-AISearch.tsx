@@ -8,6 +8,7 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { Streamdown } from 'streamdown';
 import { formatDuration, formatTokenCount } from '@/core/utils/format-utils';
+import { openFile } from '@/core/utils/obsidian-utils';
 import { mixSearchResultsBySource } from '@/core/utils/source-mixer';
 import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
 import { CHAT_VIEW_TYPE } from '@/app/view/types';
@@ -440,10 +441,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 
 	const handleOpenSource = async (path: string) => {
 		try {
-			const file = app.vault.getAbstractFileByPath(path);
-			if (file) {
-				await app.workspace.getLeaf(false).openFile(file as any);
-			}
+			await openFile(app, path);
 		} catch (e) {
 			console.error('Open source failed:', e);
 		}

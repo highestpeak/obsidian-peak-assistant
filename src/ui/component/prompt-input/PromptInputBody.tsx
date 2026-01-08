@@ -1,22 +1,42 @@
-import React, { useRef, useCallback, useState, forwardRef, type TextareaHTMLAttributes } from 'react';
+import React, { useRef, useCallback, useState, forwardRef, useEffect, type TextareaHTMLAttributes } from 'react';
 import { cn } from '@/ui/react/lib/utils';
 import { usePromptInputContext } from './PromptInput';
 
+// TODO: Marker styling temporarily disabled
+// const hasMarkers = (text: string): boolean => {
+// 	return /@[^@]+@|\/[^\/]+\//.test(text) || /\[\[[^\]]+\]\]/.test(text);
+// };
+
+// const MarkerOverlay: React.FC<{ text: string; isEditing: boolean }> = ({ text, isEditing }) => {
+// 	return null; // Temporarily disabled
+// };
+
 export interface PromptInputBodyProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'> {
 	placeholder?: string;
+	inputRef?: React.Ref<{ focus: () => void }>;
 }
 
 /**
- * Textarea component for prompt input
+ * Simple textarea component for prompt input (marker styling temporarily disabled)
  */
 export const PromptInputBody = forwardRef<HTMLTextAreaElement, PromptInputBodyProps>(({
 	className,
 	placeholder = 'What would you like to know?',
+	inputRef,
 	...props
 }, ref) => {
 	const { textInput, attachments } = usePromptInputContext();
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const [isComposing, setIsComposing] = useState(false);
+
+	// Expose focus method via inputRef
+	React.useImperativeHandle(inputRef, () => ({
+		focus: () => {
+			if (textareaRef.current) {
+				textareaRef.current.focus();
+			}
+		}
+	}), []);
 
 	// Merge refs
 	React.useImperativeHandle(ref, () => textareaRef.current as HTMLTextAreaElement);
@@ -40,6 +60,13 @@ export const PromptInputBody = forwardRef<HTMLTextAreaElement, PromptInputBodyPr
 	const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
 		// Enter to submit (Shift+Enter for new line)
 		if (e.key === 'Enter' && !e.shiftKey) {
+			// Check if there's an active NavigableMenu (dropdown menu)
+			const activeMenu = document.querySelector('[data-item-id]');
+			if (activeMenu) {
+				// Let the menu handle the Enter key
+				return;
+			}
+
 			if (isComposing || e.nativeEvent.isComposing) {
 				return;
 			}

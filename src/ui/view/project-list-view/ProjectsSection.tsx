@@ -56,6 +56,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		message: string;
 		onSubmit: (value: string | null) => Promise<void>;
 		initialValue?: string;
+		placeholderText?: string;
 		hintText?: string;
 		submitButtonText?: string;
 	} | null>(null);
@@ -89,7 +90,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 
 	const handleEditProjectName = useCallback((projectItem: ChatProject) => {
 		setInputModalConfig({
-			message: 'Enter project name',
+			message: 'Rename Project',
+			placeholderText: 'Project name',
 			initialValue: projectItem.meta.name,
 			onSubmit: async (newName: string | null) => {
 				if (!newName || !newName.trim()) return;
@@ -117,7 +119,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		conversation: ChatConversation
 	) => {
 		setInputModalConfig({
-			message: 'Enter conversation title',
+			message: 'Create Conversation',
+			placeholderText: 'Conversation title',
 			initialValue: conversation.meta.title,
 			onSubmit: async (newTitle: string | null) => {
 				if (!newTitle || !newTitle.trim()) return;
@@ -193,19 +196,19 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		>
 			{/* Project Header */}
 			<div
-				className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1.5 pktw-rounded pktw-cursor-pointer pktw-bg-transparent pktw-transition-colors pktw-min-h-8 pktw-select-none hover:pktw-bg-muted"
+				className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1.5 pktw-rounded pktw-cursor-pointer pktw-bg-transparent pktw-transition-colors pktw-min-h-8 pktw-select-none hover:pktw-bg-muted pktw-group"
 				onClick={handleProjectHeaderClick}
 				onContextMenu={(e) => handleContextMenu(e, 'project', project)}
 			>
 				{isExpanded ? (
 					<>
-						<ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" />
-						<FolderOpen className="pktw-w-4 pktw-h-4 pktw-shrink-0" />
+						<ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+						<FolderOpen className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
 					</>
 				) : (
 					<>
-						<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" />
-						<Folder className="pktw-w-4 pktw-h-4 pktw-shrink-0" />
+						<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+						<Folder className="pktw-w-4 pktw-h-4 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
 					</>
 				)}
 				<span className="pktw-flex-1 pktw-text-sm pktw-text-foreground pktw-break-words pktw-leading-snug">
@@ -281,6 +284,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 					message={inputModalConfig.message}
 					onSubmit={inputModalConfig.onSubmit}
 					initialValue={inputModalConfig.initialValue}
+					placeholderText={inputModalConfig.placeholderText}
 					hintText={inputModalConfig.hintText}
 					submitButtonText={inputModalConfig.submitButtonText}
 				/>
@@ -311,6 +315,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 		message: string;
 		onSubmit: (value: string | null) => Promise<void>;
 		initialValue?: string;
+		placeholderText?: string;
 		hintText?: string;
 		submitButtonText?: string;
 	} | null>(null);
@@ -413,7 +418,8 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 
 	const handleCreateProject = () => {
 		setInputModalConfig({
-			message: 'Project name',
+			message: 'Create Project',
+			placeholderText: 'Project name',
 			hintText: 'Projects keep chats, files, and custom instructions in one place. Use them for ongoing work, or just to keep things tidy.',
 			submitButtonText: 'Create project',
 			onSubmit: async (name: string | null) => {
@@ -441,27 +447,27 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 		<div className="pktw-flex pktw-flex-col">
 			{/* Header */}
 			<div
-				className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2 pktw-cursor-pointer pktw-rounded pktw-transition-all hover:pktw-bg-muted hover:pktw-shadow-sm"
+				className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2 pktw-cursor-pointer pktw-rounded pktw-transition-all hover:pktw-bg-muted hover:pktw-shadow-sm pktw-group"
 				onClick={() => toggleProjectsCollapsed()}
 			>
 				<div className="pktw-flex pktw-items-center pktw-gap-2">
 					{isProjectsCollapsed ? (
-						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-shrink-0" />
+						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
 					) : (
-						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0" />
+						<ChevronDown className="pktw-w-3 pktw-h-3 pktw-shrink-0 pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
 					)}
 					<h3 className="pktw-flex-1 pktw-m-0 pktw-text-[13px] pktw-font-semibold pktw-text-foreground pktw-uppercase pktw-tracking-wide">Projects</h3>
 				</div>
 				<IconButton
 					size="lg"
-					className="pktw-shrink-0"
+					className="pktw-shrink-0 group-hover:pktw-bg-gray-200 group-hover:pktw-shadow-sm hover:pktw-shadow-sm"
 					onClick={(e) => {
 						e.stopPropagation();
 						handleCreateProject();
 					}}
 					title="New Project"
 				>
-					<Plus />
+					<Plus className="pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
 				</IconButton>
 			</div>
 
@@ -502,6 +508,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 					message={inputModalConfig.message}
 					onSubmit={inputModalConfig.onSubmit}
 					initialValue={inputModalConfig.initialValue}
+					placeholderText={inputModalConfig.placeholderText}
 					hintText={inputModalConfig.hintText}
 					submitButtonText={inputModalConfig.submitButtonText}
 				/>

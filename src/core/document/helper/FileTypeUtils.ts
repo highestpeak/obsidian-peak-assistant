@@ -3,6 +3,8 @@
  * Centralized location for file type detection, MIME type mapping, and related utilities.
  */
 
+import type { ResourceKind } from '@/core/document/types';
+
 /**
  * Supported image file extensions
  */
@@ -23,6 +25,11 @@ export const IMAGE_EXTENSIONS = [
  * File type categories
  */
 export type FileType = 'image' | 'pdf' | 'file';
+
+/**
+ * Preview file type for UI components
+ */
+export type PreviewFileType = 'image' | 'markdown' | 'pdf' | 'file';
 
 /**
  * Determine file type from file path
@@ -64,4 +71,74 @@ export function getImageMimeType(extension: string): string {
 		'ico': 'image/x-icon',
 	};
 	return mimeTypes[ext] || 'image/jpeg';
+}
+
+/**
+ * Check if a source string is a URL (http:// or https://)
+ */
+export function isUrl(source: string): boolean {
+	return source.startsWith('http://') || source.startsWith('https://');
+}
+
+/**
+ * Extract file extension from URL or file path
+ */
+export function getExtensionFromSource(source: string): string {
+	const urlWithoutQuery = source.split('?')[0];
+	const ext = urlWithoutQuery.split('.').pop()?.toLowerCase() || '';
+	return ext;
+}
+
+/**
+ * Detect preview file type from file path
+ * Returns 'image', 'markdown', 'pdf', or 'file' based on file extension
+ */
+export function detectPreviewFileType(filePath: string): PreviewFileType {
+	const ext = getExtensionFromSource(filePath);
+	if (IMAGE_EXTENSIONS.includes(ext as typeof IMAGE_EXTENSIONS[number])) {
+		return 'image';
+	}
+	if (ext === 'md') {
+		return 'markdown';
+	}
+	if (ext === 'pdf') {
+		return 'pdf';
+	}
+	return 'file';
+}
+
+/**
+ * Get file name and extension for display
+ * @param filePath - File path or URL
+ * @param maxLength - Maximum length for file name (default: 20)
+ * @returns Formatted display name (e.g., "PDF - filename...")
+ */
+export function getFileDisplayName(filePath: string, maxLength: number = 20): string {
+	const fileName = filePath.split('/').pop() || filePath;
+	const parts = fileName.split('.');
+	if (parts.length < 2) {
+		return fileName.length > maxLength ? fileName.substring(0, maxLength) + '...' : fileName;
+	}
+	const extension = parts.pop() || '';
+	const nameWithoutExt = parts.join('.');
+	const truncatedName = nameWithoutExt.length > maxLength ? nameWithoutExt.substring(0, maxLength) + '...' : nameWithoutExt;
+	return `${extension.toUpperCase()} - ${truncatedName}`;
+}
+
+/**
+ * Convert ResourceKind to FileType
+ * Uses resource.kind if available, otherwise falls back to path-based detection
+ * @param kind - ResourceKind from ChatResourceRef
+ * @param sourcePath - Source path for fallback detection
+ * @returns FileType ('image', 'pdf', or 'file')
+ */
+export function getFileTypeFromResourceKind(kind: ResourceKind | undefined, sourcePath: string): FileType {
+	if (kind === 'image') {
+		return 'image';
+	}
+	if (kind === 'pdf') {
+		return 'pdf';
+	}
+	// Fallback to path-based detection
+	return getFileTypeFromPath(sourcePath);
 }

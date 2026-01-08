@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { cn } from '@/ui/react/lib/utils';
 import { formatCount } from '@/core/utils/format-utils';
 import type { TokenUsageInfo } from './types';
@@ -66,14 +66,21 @@ export const TokenUsage: React.FC<TokenUsageProps> = ({ usage, conversation, cla
 	const formattedTokens = formatCount(usage.totalUsed);
 	const groupedUsage = useMemo(() => calculateGroupedUsage(conversation), [conversation]);
 	const hasDetails = groupedUsage.length > 0;
+	const [isHovered, setIsHovered] = useState(false);
 
 	const content = (
-		<div className={cn(
-			'pktw-inline-flex pktw-items-center pktw-justify-center pktw-h-8 pktw-px-2.5 pktw-rounded-md',
-			'pktw-bg-gray-100 pktw-text-[#22c55e]', // Light gray background, green text
-			'pktw-text-xs pktw-font-medium',
-			className
-		)}>
+		<div
+			className={cn(
+				'pktw-inline-flex pktw-items-center pktw-justify-center pktw-h-8 pktw-px-2.5 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors',
+				isHovered
+					? 'pktw-bg-accent pktw-text-accent-foreground' // Hover state - accent colors
+					: 'pktw-bg-gray-100 pktw-text-[#22c55e]', // Normal state - light gray background, green text
+				'pktw-text-xs pktw-font-medium',
+				className
+			)}
+			onMouseEnter={() => setIsHovered(true)}
+			onMouseLeave={() => setIsHovered(false)}
+		>
 			<span>Used {formattedTokens}</span>
 		</div>
 	);

@@ -61,6 +61,41 @@ export interface LLMOutputControlSettings {
 	 * Default: undefined (uses model default)
 	 */
 	maxOutputTokens?: number;
+	/**
+	 * Reasoning effort setting.
+	 * Controls how much reasoning/thinking the model should do.
+	 * Options: 'none', 'low', 'medium', 'high'
+	 * Default: undefined (uses model default)
+	 */
+	reasoningEffort?: string;
+	/**
+	 * Text verbosity setting.
+	 * Controls the level of detail in output text.
+	 * Options: 'low', 'medium', 'high'
+	 * Default: undefined (uses model default)
+	 */
+	textVerbosity?: string;
+}
+
+/**
+ * All keys of LLMOutputControlSettings for runtime access
+ */
+export const LLM_OUTPUT_CONTROL_SETTING_KEYS = {
+	temperature: 'temperature',
+	topP: 'topP',
+	topK: 'topK',
+	presencePenalty: 'presencePenalty',
+	frequencyPenalty: 'frequencyPenalty',
+	maxOutputTokens: 'maxOutputTokens',
+	reasoningEffort: 'reasoningEffort',
+	textVerbosity: 'textVerbosity',
+} as const;
+
+/**
+ * Get all LLMOutputControlSettings keys as an array
+ */
+export function getLLMOutputControlSettingKeys(): (keyof LLMOutputControlSettings)[] {
+	return Object.keys(LLM_OUTPUT_CONTROL_SETTING_KEYS) as (keyof LLMOutputControlSettings)[];
 }
 
 export interface ModelConfig {

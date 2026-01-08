@@ -27,6 +27,35 @@ export class MockAIServiceManager {
 	}
 
 	/**
+	 * Create a new conversation (mock implementation)
+	 */
+	async createConversation(params: { title: string; project?: any; initialMessages?: ChatMessage[]; modelId?: string; provider?: string }): Promise<ChatConversation> {
+		const conversationId = `mock-conv-${Date.now()}`;
+		console.log('[MockAIServiceManager] createConversation:', params.title);
+
+		return {
+			meta: {
+				id: conversationId,
+				title: params.title,
+				createdAtTimestamp: Date.now(),
+				updatedAtTimestamp: Date.now(),
+				activeModel: params.modelId || 'gpt-4',
+				activeProvider: params.provider || 'openai',
+				projectId: params.project?.id,
+			},
+			messages: params.initialMessages || [],
+			content: `# ${params.title}\n\nMock conversation content`,
+			file: this.createMockFile(`.peak-assistant/conversations/${conversationId}.md`),
+			context: {
+				shortSummary: `Mock conversation: ${params.title}`,
+				fullSummary: `This is a mock conversation created for testing purposes.`,
+				lastUpdatedTimestamp: Date.now(),
+				recentMessagesWindow: [],
+			},
+		};
+	}
+
+	/**
 	 * Read conversation by ID
 	 */
 	async readConversation(conversationId: string, includeMessages: boolean = false): Promise<ChatConversation | null> {
@@ -43,6 +72,12 @@ export class MockAIServiceManager {
 			messages: includeMessages ? this.getMockMessages() : [],
 			content: '# Mock Conversation\n\nMock conversation content',
 			file: this.createMockFile('.peak-assistant/conversations/mock-conversation.md'),
+			context: {
+				shortSummary: 'This conversation covers project management basics, getting started guides, and best practices for using the Peak Assistant plugin. Key topics include creating new projects, organizing conversations, and managing resources effectively.',
+				fullSummary: 'This comprehensive conversation explores multiple aspects of project management and plugin usage:\n\n**Getting Started**: The conversation begins with introductory questions about how to create new projects and organize conversations within the Peak Assistant plugin.\n\n**Project Management**: Detailed discussions on project creation, conversation management, and resource organization. Users learn how to structure their work effectively.\n\n**Best Practices**: The conversation concludes with recommendations for optimal plugin usage, including tips on resource management and workflow optimization.\n\n**Resources**: Several image resources and a PDF document were referenced during the conversation, demonstrating the plugin\'s ability to handle various file types and provide context-aware assistance.',
+				lastUpdatedTimestamp: Date.now(),
+				recentMessagesWindow: [],
+			},
 		};
 	}
 
@@ -166,13 +201,22 @@ export class MockAIServiceManager {
 				id: 'gpt-4',
 				displayName: 'GPT-4',
 				provider: 'openai',
+				icon: 'gpt-4',
 			} as ModelInfoForSwitch,
 			{
 				id: 'claude-3-opus',
 				displayName: 'Claude 3 Opus',
 				provider: 'anthropic',
+				icon: 'claude-3-5-sonnet',
 			} as ModelInfoForSwitch,
 		];
+	}
+
+	/**
+	 * Get all available models (async version)
+	 */
+	async getAllAvailableModels(): Promise<ModelInfoForSwitch[]> {
+		return this.getAvailableModels();
 	}
 
 	/**
@@ -228,6 +272,62 @@ export class MockAIServiceManager {
 	}
 
 	/**
+	 * Add a message to conversation (mock implementation)
+	 */
+	async addMessage(params: {
+		conversationId: string;
+		message: ChatMessage;
+		model: string;
+		provider: string;
+		usage: any;
+	}): Promise<void> {
+		// Mock implementation - just log the action
+		console.log('[MockAIServiceManager] addMessage called with:', {
+			conversationId: params.conversationId,
+			messageRole: params.message.role,
+			model: params.model,
+			provider: params.provider,
+		});
+		// In a real implementation, this would persist the message to storage
+		// For mocking purposes, we just simulate success
+		return Promise.resolve();
+	}
+
+	/**
+	 * Update conversation's attachment handling mode override (mock implementation)
+	 */
+	async updateConversationAttachmentHandling(params: {
+		conversationId: string;
+		attachmentHandlingOverride?: 'direct' | 'degrade_to_text';
+	}): Promise<void> {
+		// Mock implementation - just log the action
+		console.log('[MockAIServiceManager] updateConversationAttachmentHandling called with:', {
+			conversationId: params.conversationId,
+			attachmentHandlingOverride: params.attachmentHandlingOverride,
+		});
+		// In a real implementation, this would update the conversation metadata
+		// For mocking purposes, we just simulate success
+		return Promise.resolve();
+	}
+
+	/**
+	 * Upload files and create resources (mock implementation)
+	 */
+	async uploadFilesAndCreateResources(files: File[]): Promise<any[]> {
+		// Mock implementation - simulate resource creation
+		console.log('[MockAIServiceManager] uploadFilesAndCreateResources called with', files.length, 'files');
+
+		// Return mock resources
+		return files.map((file, index) => ({
+			source: URL.createObjectURL(file),
+			id: `resource-${index}`,
+			kind: file.type.startsWith('image/') ? 'image' : 'file',
+			name: file.name,
+			size: file.size,
+		}));
+	}
+
+	/**
 	 * Get mock messages
 	 */
 	private getMockMessages(): ChatMessage[] {
@@ -242,6 +342,13 @@ export class MockAIServiceManager {
 				starred: false,
 				model: 'gpt-4',
 				provider: 'openai',
+				resources: [
+					{
+						source: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
+						id: 'img-1',
+						kind: 'image',
+					},
+				],
 			},
 			{
 				id: 'msg-2',
@@ -252,6 +359,10 @@ export class MockAIServiceManager {
 				starred: false,
 				model: 'gpt-4',
 				provider: 'openai',
+				tokenUsage: {
+					prompt_tokens: 15,
+					completion_tokens: 25,
+				} as any,
 			},
 			{
 				id: 'msg-3',
@@ -262,6 +373,7 @@ export class MockAIServiceManager {
 				starred: false,
 				model: 'gpt-4',
 				provider: 'openai',
+				topic: 'Getting Started',
 			},
 			{
 				id: 'msg-4',
@@ -272,6 +384,11 @@ export class MockAIServiceManager {
 				starred: true,
 				model: 'gpt-4',
 				provider: 'openai',
+				topic: 'Getting Started',
+				tokenUsage: {
+					prompt_tokens: 45,
+					completion_tokens: 120,
+				} as any,
 			},
 			{
 				id: 'msg-5',
@@ -282,6 +399,24 @@ export class MockAIServiceManager {
 				starred: false,
 				model: 'gpt-4',
 				provider: 'openai',
+				topic: 'Project Management',
+				resources: [
+					{
+						source: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800',
+						id: 'img-2',
+						kind: 'image',
+					},
+					{
+						source: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800',
+						id: 'img-3',
+						kind: 'image',
+					},
+					{
+						source: 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf',
+						id: 'pdf-1',
+						kind: 'pdf',
+					},
+				],
 			},
 			{
 				id: 'msg-6',
@@ -292,6 +427,11 @@ export class MockAIServiceManager {
 				starred: false,
 				model: 'gpt-4',
 				provider: 'openai',
+				topic: 'Project Management',
+				tokenUsage: {
+					prompt_tokens: 30,
+					completion_tokens: 95,
+				} as any,
 			},
 			{
 				id: 'msg-7',
@@ -302,6 +442,7 @@ export class MockAIServiceManager {
 				starred: false,
 				model: 'gpt-4',
 				provider: 'openai',
+				topic: 'Best Practices',
 			},
 			{
 				id: 'msg-8',
@@ -312,6 +453,11 @@ export class MockAIServiceManager {
 				starred: true,
 				model: 'gpt-4',
 				provider: 'openai',
+				topic: 'Best Practices',
+				tokenUsage: {
+					prompt_tokens: 55,
+					completion_tokens: 180,
+				} as any,
 			},
 			{
 				id: 'msg-9',
@@ -332,6 +478,10 @@ export class MockAIServiceManager {
 				starred: false,
 				model: 'gpt-4',
 				provider: 'openai',
+				tokenUsage: {
+					prompt_tokens: 10,
+					completion_tokens: 20,
+				} as any,
 			},
 		];
 	}

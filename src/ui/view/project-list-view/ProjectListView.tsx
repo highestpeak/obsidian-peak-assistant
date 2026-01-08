@@ -184,7 +184,7 @@ export const ProjectListViewComponent: React.FC = () => {
 					onClick={handleRefresh}
 					title="Refresh projects and conversations"
 				>
-					<RefreshCw />
+					<RefreshCw className="pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
 				</IconButton>
 				<IconButton
 					size="lg"
@@ -192,7 +192,7 @@ export const ProjectListViewComponent: React.FC = () => {
 					onClick={() => clearExpandedProjects()}
 					title="Collapse all projects"
 				>
-					<Minus />
+					<Minus className="pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
 				</IconButton>
 			</div>
 

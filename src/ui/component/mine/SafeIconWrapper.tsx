@@ -1,4 +1,5 @@
 import React, { Component, ReactNode } from 'react';
+import { MarkdownIcon } from '@/ui/component/icon/MarkdownIcon';
 
 /**
  * Safe wrapper for @lobehub/icons ModelIcon and ProviderIcon components
