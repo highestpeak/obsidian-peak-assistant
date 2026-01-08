@@ -4,10 +4,8 @@ import { ChevronDown, Check, Eye, FileText, Wrench, Globe, Code, Image as ImageI
 import { SafeModelIcon, SafeProviderIcon } from '@/ui/component/mine/SafeIconWrapper';
 import { cn } from '@/ui/react/lib/utils';
 import { ProviderServiceFactory } from '@/core/providers/base/factory';
-import { usePopupPosition } from '@/ui/hooks/usePopupPosition';
 import { formatMaxContext } from '@/core/providers/model-capabilities';
-// Import hover menu manager to initialize global coordination functions and use the hook
-import { useHoverMenu } from '@/ui/component/mine/hover-menu-manager';
+import { HoverButton } from '@/ui/component/mine/HoverButton';
 
 // Global menu coordination functions are now managed in hover-menu-manager.tsx
 
@@ -22,8 +20,6 @@ export interface ModelSelectorProps {
 	onChange: (provider: string, modelId: string) => Promise<void>;
 	/** Custom className for the container */
 	className?: string;
-	/** Custom className for the button */
-	buttonClassName?: string;
 	/** Placeholder text when no model is selected */
 	placeholder?: string;
 	/** Callback when menu opens - useful for reloading data */
@@ -40,19 +36,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 	currentModel,
 	onChange,
 	className,
-	buttonClassName,
 	placeholder = 'Select model',
 	onMenuOpen,
 }) => {
-	// Use hover menu manager for unified hover behavior
-	const hoverMenu = useHoverMenu({
-		id: 'model-selector',
-		closeDelay: 800, // Extended delay for better UX
-		enableCoordination: true
-	});
-
-	const menuRef = useRef<HTMLDivElement>(null);
-	const menuPosition = usePopupPosition(hoverMenu.containerRef, menuRef, hoverMenu.isOpen, 400);
 
 	// Get provider metadata map for fallback icons and names
 	const providerMetadataMap = useMemo(() => {
@@ -90,29 +76,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 		});
 	}, [models, providerMetadataMap]);
 
-	// Menu position is calculated by usePopupPosition hook
-
-	// Close menu when clicking outside
-	useEffect(() => {
-		if (!hoverMenu.isOpen) return;
-
-		const handleClickOutside = (e: MouseEvent) => {
-			const target = e.target as HTMLElement;
-			if (
-				hoverMenu.containerRef.current &&
-				!hoverMenu.containerRef.current.contains(target) &&
-				menuRef.current &&
-				!menuRef.current.contains(target)
-			) {
-				hoverMenu.closeMenu();
-			}
-		};
-
-		document.addEventListener('click', handleClickOutside);
-		return () => {
-			document.removeEventListener('click', handleClickOutside);
-		};
-	}, [hoverMenu.isOpen, hoverMenu.closeMenu]);
 
 
 	// Find current model info
@@ -154,132 +117,105 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 	const handleModelSelect = useCallback(
 		async (provider: string, modelId: string) => {
 			await onChange(provider, modelId);
-			hoverMenu.closeMenu();
 		},
-		[onChange, hoverMenu.closeMenu]
+		[onChange]
 	);
 
-	return (
-		<div
-			ref={hoverMenu.containerRef}
-			className={cn('pktw-relative pktw-inline-block', className)}
-			onMouseEnter={hoverMenu.handleMouseEnter}
-			onMouseLeave={hoverMenu.handleMouseLeave}
-		>
-			<button
-				type="button"
-				className={cn(
-					'pktw-flex pktw-items-center pktw-justify-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-bg-secondary pktw-border pktw-border-border pktw-rounded-md pktw-text-[13px] pktw-font-medium pktw-cursor-pointer pktw-transition-all pktw-duration-200 pktw-whitespace-nowrap hover:pktw-bg-hover hover:pktw-border-accent',
-					!isCurrentModelAvailable && currentModel
-						? 'pktw-text-foreground pktw-border-destructive/50'
-						: 'pktw-text-foreground',
-					buttonClassName
-				)}
-				title={!isCurrentModelAvailable && currentModel ? 'Current model is not available. Please select another model.' : undefined}
-			>
-				{!isLoading && (() => {
-					// Show icon if we have model icon or provider icon
-					if (currentModelIcon || providerIcon) {
-						return (
-							<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
-								{currentModelInfo && currentModelIcon ? (
-									// Model is available, use model icon
-									<SafeModelIcon
-										model={currentModelIcon}
-										size={16}
-										className="pktw-flex-shrink-0"
-										fallback={
-											providerIcon ? (
+	// Create button icon component
+	const ModelIcon = useMemo(() => {
+		if (!currentModelIcon && !providerIcon) return undefined;
+
+		// Create a simple component that HoverButton can use
+		const IconComponent = ({ className }: { className?: string }) => {
+			if (currentModelInfo && currentModelIcon) {
+				return (
+					<SafeModelIcon
+						model={currentModelIcon}
+						size={16}
+						className={cn("pktw-flex-shrink-0", className)}
+						fallback={
+							providerIcon ? (
+								<SafeProviderIcon
+									provider={providerIcon}
+									size={16}
+									fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
+								/>
+							) : (
+								<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />
+							)
+						}
+					/>
+				);
+			}
+			if (providerIcon) {
+				return (
+					<SafeProviderIcon
+						provider={providerIcon}
+						size={16}
+						className={cn("pktw-flex-shrink-0", className)}
+						fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
+					/>
+				);
+			}
+			return null;
+		};
+
+		return IconComponent;
+	}, [currentModelInfo, currentModelIcon, providerIcon]);
+
+
+	// Create menu content
+	const menuContent = useMemo(() => {
+		return (
+			<div className="pktw-max-h-[400px] pktw-overflow-y-auto pktw-overflow-x-hidden pktw-min-w-[200px]">
+				{isLoading ? (
+					<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-cursor-pointer pktw-transition-colors pktw-duration-150 pktw-border-b pktw-border-border hover:pktw-bg-accent hover:pktw-text-accent-foreground">
+						<div className="pktw-flex-1 pktw-text-[14px] pktw-font-medium pktw-text-foreground pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
+							Loading models...
+						</div>
+					</div>
+				) : models.length === 0 ? (
+					<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-items-start pktw-justify-between pktw-px-6 pktw-py-2.5">
+						<div className="pktw-text-[14px] pktw-font-medium pktw-text-[#000000] pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
+							No models available
+						</div>
+						<div className="pktw-text-[12px] pktw-text-[#666666] pktw-mt-1">
+							Please go to <span className="pktw-font-semibold">Settings</span> to configure your model api key and proxys.
+						</div>
+					</div>
+				) : (
+					<>
+						{/* Show unavailable current model at the top if it's not in the list */}
+						{currentModel && !isCurrentModelAvailable && (
+							<div className="pktw-border-b pktw-border-border">
+								<div className="pktw-px-6 pktw-py-2.5">
+									<div className="pktw-flex pktw-items-center pktw-gap-2">
+										{providerIcon ? (
+											<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
 												<SafeProviderIcon
 													provider={providerIcon}
 													size={16}
 													fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
 												/>
-											) : (
-												<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />
-											)
-										}
-									/>
-								) : providerIcon ? (
-									// Model is unavailable or no model icon, use provider icon
-									<SafeProviderIcon
-										provider={providerIcon}
-										size={16}
-										fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
-									/>
-								) : (
-									<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />
-								)}
-							</div>
-						);
-					}
-					return null;
-				})()}
-				<span>{currentModelName}</span>
-				<ChevronDown
-					className="pktw-flex-shrink-0 pktw-transition-transform pktw-duration-200 hover:pktw-translate-y-px"
-					size={14}
-					style={{ marginLeft: '6px' }}
-				/>
-			</button>
-
-			{hoverMenu.isOpen && (
-				<div
-					ref={menuRef}
-					className={cn(
-						'pktw-absolute pktw-left-0 pktw-bg-popover pktw-border pktw-border-border pktw-rounded-lg pktw-shadow-lg pktw-max-h-[400px] pktw-overflow-y-auto pktw-overflow-x-hidden pktw-z-[10000]',
-						menuPosition === 'bottom' ? 'pktw-top-full pktw-mt-1' : 'pktw-bottom-full pktw-mb-1'
-					)}
-					onClick={(e) => e.stopPropagation()}
-				>
-					{isLoading ? (
-						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-cursor-pointer pktw-transition-colors pktw-duration-150 pktw-border-b pktw-border-border pktw-min-w-[200px] hover:pktw-bg-accent hover:pktw-text-accent-foreground">
-							<div className="pktw-flex-1 pktw-text-[14px] pktw-font-medium pktw-text-foreground pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
-								Loading models...
-							</div>
-						</div>
-					) : models.length === 0 ? (
-						<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-items-start pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-min-w-[220px]">
-							<div className="pktw-text-[14px] pktw-font-medium pktw-text-[#000000] pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
-								No models available
-							</div>
-							<div className="pktw-text-[12px] pktw-text-[#666666] pktw-mt-1">
-								Please go to <span className="pktw-font-semibold">Settings</span> to configure your model api key and proxys.
-							</div>
-						</div>
-					) : (
-						<>
-							{/* Show unavailable current model at the top if it's not in the list */}
-							{currentModel && !isCurrentModelAvailable && (
-									<div className="pktw-min-w-[200px] pktw-border-b pktw-border-border">
-										<div className="pktw-px-6 pktw-py-2.5">
-											<div className="pktw-flex pktw-items-center pktw-gap-2">
-												{providerIcon ? (
-													<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
-														<SafeProviderIcon
-															provider={providerIcon}
-															size={16}
-															fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
-														/>
-													</div>
-												) : (
-													<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-rounded pktw-bg-muted" />
-												)}
-												<span className="pktw-text-[14px] pktw-font-medium pktw-text-foreground pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
-													{currentModel.modelId} (Unavailable)
-												</span>
 											</div>
-											<div className="pktw-text-[12px] pktw-text-muted-foreground pktw-mt-1 pktw-ml-6">
-												Current model is not available
-											</div>
-										</div>
+										) : (
+											<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-rounded pktw-bg-muted" />
+										)}
+										<span className="pktw-text-[14px] pktw-font-medium pktw-text-foreground pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
+											{currentModel.modelId} (Unavailable)
+										</span>
 									</div>
-							)}
-							{modelsByProvider.map(([providerId, providerModels], index) => {
+									<div className="pktw-text-[12px] pktw-text-muted-foreground pktw-mt-1 pktw-ml-6">
+										Current model is not available
+									</div>
+								</div>
+							</div>
+						)}
+						{modelsByProvider.map(([providerId, providerModels], index) => {
 							const providerMeta = providerMetadataMap.get(providerId);
 							const providerName = providerMeta?.name || providerId;
 							return (
-								<div key={providerId} className="pktw-min-w-[200px]">
+								<div key={providerId}>
 									{/* Provider separator - add top border for all except first */}
 									{index > 0 && (
 										<div className="pktw-h-[2px] pktw-bg-border pktw-my-2" />
@@ -403,10 +339,23 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 								</div>
 							);
 						})}
-						</>
-					)}
-				</div>
-			)}
+					</>
+				)}
+			</div>
+		);
+	}, [isLoading, models.length, modelsByProvider, providerMetadataMap, currentModel, isCurrentModelAvailable, providerIcon, handleModelSelect]);
+
+	return (
+		<div className={cn('pktw-relative pktw-inline-block', className)}>
+			<HoverButton
+				icon={ModelIcon}
+				text={currentModelName}
+				menuId="model-selector"
+				hoverMenuContent={menuContent}
+				menuClassName="pktw-max-h-[400px] pktw-overflow-hidden"
+				title={!isCurrentModelAvailable && currentModel ? 'Current model is not available. Please select another model.' : undefined}
+			>
+			</HoverButton>
 		</div>
 	);
 };

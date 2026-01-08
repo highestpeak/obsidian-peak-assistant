@@ -12,41 +12,24 @@ export function trimTrailingSlash(url: string): string {
 
 /**
  * Convert AI SDK StreamTextResult to AIStreamEvent async generator.
- * Handles delta events and final complete event with usage.
+ * Now directly yields TextStreamPart events from the AI SDK.
  */
 export async function* streamTextToAIStreamEvents(
 	result: StreamTextResult<any, any>,
 	initialModel?: string
 ): AsyncGenerator<AIStreamEvent> {
-	let currentModel = initialModel;
-	let finalUsage: LanguageModelUsage | undefined = undefined;
-
 	try {
-		// Process the stream
+		// Yield all TextStreamPart events from the AI SDK stream
 		for await (const chunk of result.fullStream) {
-			if (chunk.type === 'text-delta') {
-				// Yield text delta - AI SDK uses 'text' field
-				yield {
-					type: 'delta',
-					text: chunk.text,
-					model: currentModel,
-				};
-			} else if (chunk.type === 'text-start') {
-				// Update model from provider metadata if available
-				if (chunk.providerMetadata && typeof chunk.providerMetadata === 'object') {
-					const metadata = chunk.providerMetadata as Record<string, any>;
-					if (metadata.modelId && typeof metadata.modelId === 'string') {
-						currentModel = metadata.modelId;
-					}
-				}
-			}
+			yield chunk;
 		}
 
-		finalUsage = await result.usage;
-		// Yield final complete event
+		// Get final usage for compatibility
+		const finalUsage = await result.usage;
+		// Yield final complete event for backward compatibility
 		yield {
 			type: 'complete',
-			model: currentModel || '',
+			model: initialModel || '',
 			usage: finalUsage,
 		};
 	} catch (error) {

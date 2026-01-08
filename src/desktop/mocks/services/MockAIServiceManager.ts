@@ -1,7 +1,10 @@
 import { ChatConversation, ChatProject, ChatMessage } from '@/service/chat/types';
 import { ModelInfoForSwitch } from '@/core/providers/types';
+import { AIStreamEvent } from '@/core/providers/types-events';
 import { TFile } from 'obsidian';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
+import { MOCK_RESPONSE_CONTENT } from './MockResponseContent';
+import { TextStreamPart } from 'ai';
 
 /**
  * Mock AIServiceManager for desktop development
@@ -325,6 +328,211 @@ export class MockAIServiceManager {
 			name: file.name,
 			size: file.size,
 		}));
+	}
+
+	/**
+	 * Get mock response content (embedded in code for browser compatibility)
+	 */
+	private loadMockResponse(): string {
+		console.log('[MockAIServiceManager] Using embedded mock response content, length:', MOCK_RESPONSE_CONTENT.length);
+		return MOCK_RESPONSE_CONTENT;
+	}
+
+	/**
+	 * Generate thinking process content based on user input
+	 */
+	private generateThinkingProcess(userContent: string): string {
+		const thinkingSteps = [
+			`Understanding user query: "${userContent.substring(0, 50)}${userContent.length > 50 ? '...' : ''}"`,
+			'Analyzing query intent and context',
+			'Retrieving relevant knowledge and information',
+			'Organizing response structure and content',
+			'Preparing detailed response content'
+		];
+
+		let thinking = '## 思考过程 (Chain of Thought)\n\n';
+		thinkingSteps.forEach((step, index) => {
+			thinking += `${index + 1}. ${step}\n`;
+		});
+		thinking += '\n---\n\n';
+
+		return thinking;
+	}
+
+	/**
+	 * Stream chat messages (mock implementation)
+	 * Emulates streamText API with comprehensive stream events
+	 */
+	streamChat(params: {
+		conversation: ChatConversation;
+		project?: ChatProject | null;
+		userContent: string;
+		attachments?: string[];
+	}): AsyncGenerator<AIStreamEvent> {
+		const self = this;
+		return (async function* (): AsyncGenerator<AIStreamEvent> {
+			// Load mock response content
+			const mockResponse = self.loadMockResponse();
+			const thinkingContent = self.generateThinkingProcess(params.userContent);
+
+			// Combine thinking and response
+			const fullContent = thinkingContent + mockResponse;
+
+			const delay = 15; // ms delay between characters for smooth streaming
+			const thinkingDelay = 20; // slower delay for thinking content
+
+			let eventId = 0;
+
+			// Start the stream
+			yield { type: 'start' };
+
+			// Start the main step
+			const stepId = `step-${Date.now()}`;
+			const mockRequestMetadata = {
+				id: stepId,
+				modelId: params.conversation.meta.activeModel,
+				timestamp: Date.now(),
+			};
+			const mockWarnings: any[] = [];
+			yield {
+				type: 'start-step',
+				request: mockRequestMetadata,
+				warnings: mockWarnings,
+			} as TextStreamPart<any>;
+
+			// Text start
+			eventId++;
+			yield {
+				type: 'text-start',
+				id: eventId.toString(),
+			} as TextStreamPart<any>;
+
+			// Split thinking content into characters for streaming
+			const thinkingChars = thinkingContent.split('');
+
+			// Stream thinking content character by character
+			for (let i = 0; i < thinkingChars.length; i++) {
+				await new Promise(resolve => setTimeout(resolve, thinkingDelay));
+
+				if (i === 0) {
+					// Reasoning start
+					eventId++;
+					yield {
+						type: 'reasoning-start',
+						id: eventId.toString(),
+					} as TextStreamPart<any>;
+				}
+
+				// Reasoning delta
+				const char = thinkingChars[i];
+				if (char) {
+					eventId++;
+					yield {
+						type: 'reasoning-delta',
+						id: eventId.toString(),
+						text: char,
+					} as TextStreamPart<any>;
+				}
+			}
+
+			// Reasoning end
+			if (thinkingChars.length > 0) {
+				await new Promise(resolve => setTimeout(resolve, delay));
+				eventId++;
+				yield {
+					type: 'reasoning-end',
+					id: eventId.toString(),
+				} as TextStreamPart<any>;
+			}
+
+
+			// Split response content into characters for streaming
+			const responseChars = mockResponse.split('');
+
+			// Stream response content character by character
+			for (let i = 0; i < responseChars.length; i++) {
+				await new Promise(resolve => setTimeout(resolve, delay));
+
+				const char = responseChars[i];
+				if (char) {
+					// Text delta
+					eventId++;
+					yield {
+						type: 'text-delta',
+						id: eventId.toString(),
+						text: char,
+					} as TextStreamPart<any>;
+				}
+			}
+
+			// Text end
+			await new Promise(resolve => setTimeout(resolve, delay));
+			eventId++;
+			yield {
+				type: 'text-end',
+				id: eventId.toString(),
+			} as TextStreamPart<any>;
+
+			// Finish step
+			await new Promise(resolve => setTimeout(resolve, delay));
+			const mockResponseMetadata = {
+				id: stepId,
+				modelId: params.conversation.meta.activeModel,
+				timestamp: new Date(),
+				headers: {},
+			};
+			const mockUsage = {
+				inputTokens: Math.floor(params.userContent.length / 4),
+				outputTokens: Math.floor(fullContent.length / 4),
+			};
+			const finishReason = 'stop' as const;
+			const providerMetadata = undefined;
+			yield {
+				type: 'finish-step',
+				response: mockResponseMetadata as any,
+				usage: mockUsage as any,
+				finishReason,
+				providerMetadata,
+			} as TextStreamPart<any>;
+
+			// Finish
+			await new Promise(resolve => setTimeout(resolve, delay));
+			const totalUsage = mockUsage;
+			yield {
+				type: 'finish',
+				finishReason,
+				totalUsage: totalUsage as any,
+			} as TextStreamPart<any>;
+
+			// Create final usage and message for backward compatibility
+			const legacyUsage = {
+				prompt_tokens: Math.floor(params.userContent.length / 4),
+				completion_tokens: Math.floor(fullContent.length / 4),
+				total_tokens: Math.floor((params.userContent.length + fullContent.length) / 4),
+			};
+
+			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+			const finalMessage: ChatMessage = {
+				id: `mock-msg-${Date.now()}`,
+				role: 'assistant',
+				content: fullContent,
+				createdAtTimestamp: Date.now(),
+				createdAtZone: timezone,
+				starred: false,
+				model: params.conversation.meta.activeModel,
+				provider: params.conversation.meta.activeProvider,
+				tokenUsage: mockUsage as any,
+			};
+
+			// Yield complete event for backward compatibility
+			await new Promise(resolve => setTimeout(resolve, delay));
+			yield {
+				type: 'complete',
+				model: params.conversation.meta.activeModel,
+				usage: mockUsage as any,
+				message: finalMessage,
+			};
+		})();
 	}
 
 	/**

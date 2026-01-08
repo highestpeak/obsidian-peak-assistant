@@ -65,7 +65,6 @@ function ModelSelectorField({
 					currentModel={currentModel}
 					onChange={onChange}
 					placeholder="Select model"
-					buttonClassName="pktw-w-full pktw-justify-start"
 					onMenuOpen={onMenuOpen}
 				/>
 			</div>

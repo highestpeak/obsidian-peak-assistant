@@ -14,10 +14,10 @@ import {
 	type PromptInputMessage,
 	type TokenUsageInfo,
 } from '@/ui/component/prompt-input';
-import { LLMModelSelector } from './LLMModelSelector';
-import { LLMOutputControlSettingsPopover } from './LLMOutputControlSettings';
-import { ToolButton } from './ToolButton';
-import { ModeSelector } from './ModeSelector';
+import { LLMModelSelector } from '../../../component/prompt-input/LLMModelSelector';
+import { LLMOutputControlSettingsPopover } from '../../../component/prompt-input/LLMOutputControlSettings';
+import { ToolButton } from '@/ui/component/prompt-input';
+import { ModeSelector } from '../../../component/prompt-input/ModeSelector';
 import { cn } from '@/ui/react/lib/utils';
 import { useChatSubmit } from '../hooks/useChatSubmit';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -255,9 +255,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 					{/* Right side: mode selector, model selector, token usage and submit */}
 					<div className="pktw-flex pktw-items-center pktw-gap-1.5">
 						<ModeSelector />
-						<div className="[&_button]:pktw-h-9 [&_button]:pktw-px-2.5 [&_button]:pktw-text-xs [&_button]:pktw-bg-transparent [&_button]:pktw-border-0 [&_button]:pktw-shadow-none [&_button]:pktw-rounded-md [&_button]:hover:pktw-bg-accent [&_button]:hover:pktw-text-accent-foreground">
-							<LLMModelSelector />
-						</div>
+						<LLMModelSelector />
 						<TokenUsage usage={tokenUsage} conversation={activeConversation} />
 						<PromptInputSubmit
 							status={status}

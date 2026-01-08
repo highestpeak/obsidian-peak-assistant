@@ -188,7 +188,7 @@ export const PromptInputSubmit: React.FC<PromptInputSubmitProps> = ({
 		<Button
 			type={buttonType}
 			variant="ghost"
-			size="icon"
+			size="sm"
 			className={cn(
 				'pktw-h-10 pktw-w-10 pktw-rounded-md',
 				buttonClassName,

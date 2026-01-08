@@ -1,13 +1,11 @@
-import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import { useChatViewStore } from '../store/chatViewStore';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import { useChatViewStore } from '../../view/chat-view/store/chatViewStore';
 import { useProjectStore } from '@/ui/store/projectStore';
-import { AlertTriangle } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { ModelSelector } from '@/ui/component/mine/ModelSelector';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 import { SettingsUpdatedEvent, ViewEventType } from '@/core/eventBus';
 import { cn } from '@/ui/react/lib/utils';
-import { usePopupPosition } from '@/ui/hooks/usePopupPosition';
+import { ModelSelector } from '@/ui/component/mine/ModelSelector';
 
 /**
  * React component for model selector in chat view.
@@ -21,8 +19,6 @@ export const LLMModelSelector: React.FC = () => {
 	const setInitialSelectedModel = useChatViewStore((state) => state.setInitialSelectedModel);
 	const [models, setModels] = useState<ModelInfoForSwitch[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const tooltipContainerRef = useRef<HTMLDivElement>(null);
-	const tooltipRef = useRef<HTMLDivElement>(null);
 
 	// Load models function
 	const loadModels = useCallback(async () => {
@@ -91,47 +87,6 @@ export const LLMModelSelector: React.FC = () => {
 		};
 	}, [currentModelId, currentProvider]);
 
-	// Check if current model is available and get reason if not
-	// Note: manager is intentionally omitted from dependencies as it's a stable reference from context
-	// Settings are read inside useMemo to avoid object reference issues in dependencies
-	const { isModelAvailable, unavailabilityReason } = useMemo(() => {
-		if (!currentModelId || !manager) {
-			return { isModelAvailable: true, unavailabilityReason: null };
-		}
-
-		const settings = manager.getSettings();
-		const providerConfigs = settings.llmProviderConfigs || {};
-
-		if (currentProvider) {
-			const providerConfig = providerConfigs[currentProvider];
-
-			// Check if provider is disabled
-			if (!providerConfig || providerConfig.enabled !== true) {
-				return {
-					isModelAvailable: false,
-					unavailabilityReason: `Provider "${currentProvider}" is disabled. Please enable it in Settings. or switch to another provider.`,
-				};
-			}
-
-			// Check if model is disabled
-			const modelConfig = providerConfig.modelConfigs?.[currentModelId];
-			if (modelConfig && modelConfig.enabled === false) {
-				return {
-					isModelAvailable: false,
-					unavailabilityReason: `Model "${currentModelId}" is disabled. Please enable it in Settings. or switch to another model.`,
-				};
-			}
-		}
-
-		return {
-			isModelAvailable: true,
-			unavailabilityReason: null,
-		};
-	}, [currentModelId, currentProvider]);
-
-	// Calculate tooltip position based on available space
-	const tooltipPosition = usePopupPosition(tooltipContainerRef, tooltipRef, !isModelAvailable, 120);
-
 	// Handle model change
 	const handleModelChange = useCallback(
 		async (provider: string, modelId: string) => {
@@ -159,48 +114,14 @@ export const LLMModelSelector: React.FC = () => {
 		[activeConversation, activeProject, manager, setInitialSelectedModel]
 	);
 
-	// Tooltip position is calculated by usePopupPosition hook
-
 	return (
-		<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-			<ModelSelector
-				models={models}
-				isLoading={isLoading}
-				currentModel={currentModel}
-				onChange={handleModelChange}
-				placeholder="No model selected"
-			/>
-			{!isModelAvailable && currentModelId && unavailabilityReason && (
-				<div ref={tooltipContainerRef} className="pktw-relative pktw-flex-shrink-0 pktw-group">
-					<AlertTriangle
-						className="pktw-text-[#ff6b6b] pktw-cursor-help"
-						size={16}
-						style={{ minWidth: '16px' }}
-					/>
-					{/* Tooltip - position dynamically based on available space */}
-					<div
-						ref={tooltipRef}
-						className={cn(
-							'pktw-absolute pktw-left-1/2 pktw-transform pktw--translate-x-1/2 pktw-opacity-0 pktw-invisible group-hover:pktw-opacity-100 group-hover:pktw-visible pktw-transition-opacity pktw-duration-200 pktw-z-[10001] pktw-pointer-events-none',
-							tooltipPosition === 'bottom' ? 'pktw-top-full pktw-mt-2' : 'pktw-bottom-full pktw-mb-2'
-						)}
-					>
-						<div className="pktw-bg-[#000000] pktw-text-white pktw-text-xs pktw-rounded pktw-px-4 pktw-py-2.5 pktw-shadow-lg pktw-min-w-[320px] pktw-max-w-[400px] pktw-whitespace-normal">
-							{unavailabilityReason}
-							{/* Arrow pointer */}
-							<div
-								className={cn(
-									'pktw-absolute pktw-left-1/2 pktw-transform pktw--translate-x-1/2 pktw-w-0 pktw-h-0 pktw-border-l-[6px] pktw-border-r-[6px] pktw-border-transparent',
-									tooltipPosition === 'bottom'
-										? 'pktw-bottom-full pktw-border-b-[6px] pktw-border-b-[#000000]'
-										: 'pktw-top-full pktw-border-t-[6px] pktw-border-t-[#000000]'
-								)}
-							></div>
-						</div>
-					</div>
-				</div>
-			)}
-		</div>
+		<ModelSelector
+			models={models}
+			isLoading={isLoading}
+			currentModel={currentModel}
+			onChange={handleModelChange}
+			placeholder="No model selected"
+		/>
 	);
 };
 

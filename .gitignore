@@ -36,3 +36,5 @@ data.json
 
 .cursor/plans/
 .cursor/debug.log
+
+dist-desktop/

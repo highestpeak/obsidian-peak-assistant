@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useProjectStore } from '@/ui/store/projectStore';
-import { useChatViewStore } from '../store/chatViewStore';
+import { useChatViewStore } from '../../view/chat-view/store/chatViewStore';
 import type { LLMOutputControlSettings } from '@/core/providers/types';
 import { getLLMOutputControlSettingKeys } from '@/core/providers/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/component/shared-ui/popover';
 import { Settings2 } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { OutputControlSettingsList } from '@/ui/component/mine/LLMOutputControlSettings';
-import { useHoverMenu } from '@/ui/component/mine';
+import { HoverButton } from '@/ui/component/mine';
 
 /**
  * LLM output control settings component.
@@ -17,12 +17,6 @@ import { useHoverMenu } from '@/ui/component/mine';
 export const LLMOutputControlSettingsPopover: React.FC = () => {
 	const { manager } = useServiceContext();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
-
-	const hoverMenu = useHoverMenu({
-		id: 'output-control-settings',
-		closeDelay: 1000,
-		enableCoordination: true
-	});
 
 	// Get current settings: conversation override + global default (merged)
 	// Use primitive values as dependencies, but get latest values from store inside useMemo
@@ -89,41 +83,19 @@ export const LLMOutputControlSettingsPopover: React.FC = () => {
 	);
 
 	return (
-		<div
-			ref={hoverMenu.containerRef}
-			className="pktw-relative pktw-inline-block"
-			onMouseEnter={hoverMenu.handleMouseEnter}
-			onMouseLeave={hoverMenu.handleMouseLeave}
-		>
-			<Popover open={hoverMenu.isOpen} onOpenChange={hoverMenu.closeMenu}>
-				<PopoverTrigger asChild>
-					<button
-						type="button"
-						className={cn(
-							'pktw-h-9 pktw-px-2.5 pktw-text-xs pktw-bg-transparent pktw-border-0 pktw-shadow-none pktw-rounded-md',
-							'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
-							hoverMenu.isOpen && 'pktw-bg-accent pktw-text-accent-foreground',
-							'pktw-flex pktw-items-center pktw-justify-center pktw-relative'
-						)}
-					>
-						<Settings2 className="pktw-size-4 pktw-flex-shrink-0" />
-					</button>
-				</PopoverTrigger>
-				<PopoverContent
-					className="pktw-w-[560px] pktw-p-1 pktw-bg-white pktw-shadow-lg pktw-border pktw-z-50"
-					align="start"
-					side="top"
-					sideOffset={8}
-				>
-					<OutputControlSettingsList
-						settings={currentSettings}
-						onChange={saveSettings}
-						variant="compact"
-						useLocalState={true}
-					/>
-				</PopoverContent>
-			</Popover>
-		</div>
+		<HoverButton
+			icon={Settings2}
+			menuId="output-control-settings"
+			menuClassName="pktw-w-[560px] pktw-p-1 pktw-bg-white pktw-border pktw-z-50"
+			hoverMenuContent={
+				<OutputControlSettingsList
+					settings={currentSettings}
+					onChange={saveSettings}
+					variant="compact"
+					useLocalState={true}
+				/>
+			}
+		/>
 	);
 };
 

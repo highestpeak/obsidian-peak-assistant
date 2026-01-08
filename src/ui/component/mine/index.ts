@@ -5,3 +5,4 @@ export * from './SafeIconWrapper';
 export * from './resource-preview-hover';
 export * from './input-with-confirm';
 export * from './NavigableMenu';
+export * from './HoverButton';

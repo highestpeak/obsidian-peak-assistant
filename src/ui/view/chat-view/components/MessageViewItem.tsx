@@ -121,7 +121,7 @@ const MessageAttachmentsList: React.FC<{
 					onClick={handleClick}
 				>
 					{isPdf ? (
-						<div className="pktw-flex pktw-flex-row pktw-w-full pktw-shrink-0 pktw-items-center pktw-rounded-lg pktw-border-1 pktw-border-solid pktw-border-gray-200 dark:pktw-border-gray-600 pktw-bg-white pktw-px-3 pktw-py-3 pktw-gap-3 pktw-min-h-[48px]">
+						<div className="pktw-flex pktw-flex-row pktw-w-full pktw-shrink-0 pktw-items-center pktw-rounded-lg pktw-border-1 pktw-border-solid pktw-border-gray-200 dark:pktw-border-gray-600 pktw-bg-white pktw-px-1.5 pktw-py-1.5 pktw-gap-3 pktw-min-h-[48px]">
 							<div className="pktw-flex-shrink-0 pktw-w-8 pktw-h-8 pktw-bg-red-500 pktw-rounded pktw-flex pktw-items-center pktw-justify-center">
 								<FileText className="pktw-size-4 pktw-text-white" />
 							</div>

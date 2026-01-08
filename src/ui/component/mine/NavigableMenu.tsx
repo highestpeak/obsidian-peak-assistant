@@ -54,11 +54,15 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 	const enabledItems = items.filter(item => !item.disabled);
 	const currentItem = enabledItems[selectedIndex];
 
+	// Get items length and ids for stable dependencies
+	const itemsLength = items.length;
+	const itemsIds = items.map(item => item.id).join(',');
+
 	// Reset selection when items change
 	useEffect(() => {
 		setSelectedIndex(0);
 		setSelectedItemRect(null);
-	}, [items]);
+	}, [itemsIds]); // Use stable string instead of items array
 
 	// Update selected item position when selection changes
 	useEffect(() => {
@@ -69,7 +73,14 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 				setSelectedItemRect(rect);
 			}
 		}
-	}, [selectedIndex, enabledItems]);
+	}, [selectedIndex, enabledItems.length, itemsIds]); // Use stable dependencies
+
+	// Clear selected item rect when component unmounts or items change
+	useEffect(() => {
+		return () => {
+			setSelectedItemRect(null);
+		};
+	}, [itemsIds]);
 
 	// Handle keyboard navigation
 	const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -98,7 +109,7 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 				onClose();
 				break;
 		}
-	}, [enabledItems.length, currentItem, onSelect, onClose]);
+	}, [enabledItems.length, currentItem?.id, onSelect, onClose]); // Use currentItem.id for stable dependency
 
 	// Add keyboard event listener only when there are items (capture phase for higher priority)
 	useEffect(() => {
@@ -121,7 +132,7 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 				});
 			}
 		}
-	}, [selectedIndex, currentItem]);
+	}, [selectedIndex, currentItem?.id]); // Use currentItem.id for stable dependency
 
 	if (items.length === 0) {
 		return (
@@ -145,153 +156,153 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 				style={{ maxHeight }}
 			>
 				{enabledItems.map((item, index) => {
-				const isSelected = index === selectedIndex;
-				const isDisabled = item.disabled;
+					const isSelected = index === selectedIndex;
+					const isDisabled = item.disabled;
 
-				if (isTagStyle) {
-					// Tag style for prompts
-					const button = (
-						<button
-							key={item.id}
-							data-item-id={item.id}
-							type="button"
-							onClick={() => !isDisabled && onSelect(item)}
-							disabled={isDisabled}
-							className={cn(
-								'pktw-w-full pktw-px-3 pktw-py-2 pktw-text-left pktw-transition-colors',
-								'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
-								isSelected && 'pktw-bg-accent pktw-text-accent-foreground',
-								isDisabled && 'pktw-opacity-50 pktw-cursor-not-allowed'
-							)}
-						>
-							<div className="pktw-flex pktw-items-center pktw-gap-2">
-								<span
-									className={cn(
-										'pktw-text-xs pktw-font-medium pktw-px-2 pktw-py-0.5 pktw-rounded pktw-transition-colors pktw-whitespace-nowrap',
-										item.color || 'pktw-bg-blue-500/15 pktw-text-blue-700 dark:pktw-bg-blue-500/20 dark:pktw-text-blue-400',
-										isSelected && 'pktw-bg-white pktw-text-blue-500 dark:pktw-bg-white dark:pktw-text-blue-500'
-									)}
-								>
-									{item.label}
-								</span>
-								{item.description && (
-									<span className={cn("pktw-text-xs pktw-truncate", isSelected ? "pktw-text-white" : "pktw-text-muted-foreground")}>
-										{item.description}
-									</span>
+					if (isTagStyle) {
+						// Tag style for prompts
+						const button = (
+							<button
+								key={item.id}
+								data-item-id={item.id}
+								type="button"
+								onClick={() => !isDisabled && onSelect(item)}
+								disabled={isDisabled}
+								className={cn(
+									'pktw-w-full pktw-px-3 pktw-py-2 pktw-text-left pktw-transition-colors',
+									'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
+									isSelected && 'pktw-bg-accent pktw-text-accent-foreground',
+									isDisabled && 'pktw-opacity-50 pktw-cursor-not-allowed'
 								)}
-								{item.rightIcon && (typeof item.rightIcon === 'function' ? item.rightIcon(isSelected) : item.rightIcon)}
-							</div>
-						</button>
-					);
-
-					// Wrap with tooltip if description exists and is longer than a certain length
-					if (item.description && item.description.length > 50) {
-						return (
-							<TooltipProvider key={item.id}>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										{button}
-									</TooltipTrigger>
-									<TooltipContent
-										side="top"
-										align="start"
-										className="pktw-max-w-sm pktw-whitespace-pre-wrap pktw-break-words"
-										sideOffset={5}
+							>
+								<div className="pktw-flex pktw-items-center pktw-gap-2">
+									<span
+										className={cn(
+											'pktw-text-xs pktw-font-medium pktw-px-2 pktw-py-0.5 pktw-rounded pktw-transition-colors pktw-whitespace-nowrap',
+											item.color || 'pktw-bg-blue-500/15 pktw-text-blue-700 dark:pktw-bg-blue-500/20 dark:pktw-text-blue-400',
+											isSelected && 'pktw-bg-white pktw-text-blue-500 dark:pktw-bg-white dark:pktw-text-blue-500'
+										)}
 									>
-										<div className="pktw-text-sm">
-											<div className="pktw-font-medium pktw-mb-1">{item.label}</div>
-											<div>{item.description}</div>
+										{item.label}
+									</span>
+									{item.description && (
+										<span className={cn("pktw-text-xs pktw-truncate", isSelected ? "pktw-text-white" : "pktw-text-muted-foreground")}>
+											{item.description}
+										</span>
+									)}
+									{item.rightIcon && (typeof item.rightIcon === 'function' ? item.rightIcon(isSelected) : item.rightIcon)}
+								</div>
+							</button>
+						);
+
+						// Wrap with tooltip if description exists and is longer than a certain length
+						if (item.description && item.description.length > 50) {
+							return (
+								<TooltipProvider key={item.id}>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											{button}
+										</TooltipTrigger>
+										<TooltipContent
+											side="top"
+											align="start"
+											className="pktw-max-w-sm pktw-whitespace-pre-wrap pktw-break-words"
+											sideOffset={5}
+										>
+											<div className="pktw-text-sm">
+												<div className="pktw-font-medium pktw-mb-1">{item.label}</div>
+												<div>{item.description}</div>
+											</div>
+										</TooltipContent>
+									</Tooltip>
+								</TooltipProvider>
+							);
+						}
+
+						return button;
+					} else {
+						// Regular list style for context items
+						return (
+							<button
+								key={item.id}
+								data-item-id={item.id}
+								type="button"
+								onClick={() => !isDisabled && onSelect(item)}
+								disabled={isDisabled}
+								className={cn(
+									'pktw-w-full pktw-px-3 pktw-py-2 pktw-text-left pktw-text-sm pktw-transition-colors',
+									'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
+									isSelected && 'pktw-bg-accent pktw-text-accent-foreground',
+									isDisabled && 'pktw-opacity-50 pktw-cursor-not-allowed'
+								)}
+							>
+								<div className="pktw-flex pktw-items-center pktw-gap-2">
+									{typeof item.icon === 'function' ? item.icon(isSelected) : item.icon}
+									<div className="pktw-flex-1 pktw-min-w-0">
+										<div className="pktw-font-medium pktw-truncate">
+											{item.label}
 										</div>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
+										{item.description && (
+											<div className={cn("pktw-text-xs pktw-truncate", isSelected ? "pktw-text-white" : "pktw-text-muted-foreground")}>
+												{item.description}
+											</div>
+										)}
+									</div>
+									{item.rightIcon && (typeof item.rightIcon === 'function' ? item.rightIcon(isSelected) : item.rightIcon)}
+								</div>
+							</button>
 						);
 					}
+				})}
 
-					return button;
-				} else {
-					// Regular list style for context items
+				{/* Floating description for selected item */}
+				{selectedItemRect && enabledItems[selectedIndex]?.description && (() => {
+					const POPOVER_WIDTH = 300;
+					const POPOVER_HEIGHT = 200; // Approximate max height
+					const MARGIN = 8;
+
+					// Calculate available space on left and right
+					const spaceOnRight = window.innerWidth - selectedItemRect.right;
+					const spaceOnLeft = selectedItemRect.left;
+
+					// Decide position: prefer right, fallback to left
+					const showOnRight = spaceOnRight >= POPOVER_WIDTH + MARGIN;
+					const showOnLeft = spaceOnLeft >= POPOVER_WIDTH + MARGIN && !showOnRight;
+
+					let left, top;
+
+					if (showOnRight) {
+						// Show on the right
+						left = selectedItemRect.right + MARGIN;
+						top = Math.max(MARGIN, Math.min(selectedItemRect.top, window.innerHeight - POPOVER_HEIGHT - MARGIN));
+					} else if (showOnLeft) {
+						// Show on the left
+						left = selectedItemRect.left - POPOVER_WIDTH - MARGIN;
+						top = Math.max(MARGIN, Math.min(selectedItemRect.top, window.innerHeight - POPOVER_HEIGHT - MARGIN));
+					} else {
+						// Fallback: show below if no space on sides
+						left = Math.max(MARGIN, Math.min(selectedItemRect.left, window.innerWidth - POPOVER_WIDTH - MARGIN));
+						top = selectedItemRect.bottom + MARGIN;
+					}
+
 					return (
-						<button
-							key={item.id}
-							data-item-id={item.id}
-							type="button"
-							onClick={() => !isDisabled && onSelect(item)}
-							disabled={isDisabled}
-							className={cn(
-								'pktw-w-full pktw-px-3 pktw-py-2 pktw-text-left pktw-text-sm pktw-transition-colors',
-								'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
-								isSelected && 'pktw-bg-accent pktw-text-accent-foreground',
-								isDisabled && 'pktw-opacity-50 pktw-cursor-not-allowed'
-							)}
+						<div
+							className="pktw-fixed pktw-z-[9999] pktw-max-w-sm pktw-p-3 pktw-bg-popover pktw-border pktw-border-border pktw-rounded-lg pktw-shadow-xl pktw-text-sm pktw-pointer-events-none"
+							style={{
+								left,
+								top,
+							}}
 						>
-							<div className="pktw-flex pktw-items-center pktw-gap-2">
-								{typeof item.icon === 'function' ? item.icon(isSelected) : item.icon}
-								<div className="pktw-flex-1 pktw-min-w-0">
-									<div className="pktw-font-medium pktw-truncate">
-										{item.label}
-									</div>
-									{item.description && (
-										<div className={cn("pktw-text-xs pktw-truncate", isSelected ? "pktw-text-white" : "pktw-text-muted-foreground")}>
-											{item.description}
-										</div>
-									)}
-								</div>
-								{item.rightIcon && (typeof item.rightIcon === 'function' ? item.rightIcon(isSelected) : item.rightIcon)}
+							<div className="pktw-font-medium pktw-mb-2 pktw-text-foreground">
+								{enabledItems[selectedIndex].label}
 							</div>
-						</button>
+							<div className="pktw-text-muted-foreground pktw-whitespace-pre-wrap pktw-break-words">
+								{enabledItems[selectedIndex].description}
+							</div>
+						</div>
 					);
-				}
-			})}
-
-			{/* Floating description for selected item */}
-			{selectedItemRect && enabledItems[selectedIndex]?.description && (() => {
-				const POPOVER_WIDTH = 300;
-				const POPOVER_HEIGHT = 200; // Approximate max height
-				const MARGIN = 8;
-
-				// Calculate available space on left and right
-				const spaceOnRight = window.innerWidth - selectedItemRect.right;
-				const spaceOnLeft = selectedItemRect.left;
-
-				// Decide position: prefer right, fallback to left
-				const showOnRight = spaceOnRight >= POPOVER_WIDTH + MARGIN;
-				const showOnLeft = spaceOnLeft >= POPOVER_WIDTH + MARGIN && !showOnRight;
-
-				let left, top;
-
-				if (showOnRight) {
-					// Show on the right
-					left = selectedItemRect.right + MARGIN;
-					top = Math.max(MARGIN, Math.min(selectedItemRect.top, window.innerHeight - POPOVER_HEIGHT - MARGIN));
-				} else if (showOnLeft) {
-					// Show on the left
-					left = selectedItemRect.left - POPOVER_WIDTH - MARGIN;
-					top = Math.max(MARGIN, Math.min(selectedItemRect.top, window.innerHeight - POPOVER_HEIGHT - MARGIN));
-				} else {
-					// Fallback: show below if no space on sides
-					left = Math.max(MARGIN, Math.min(selectedItemRect.left, window.innerWidth - POPOVER_WIDTH - MARGIN));
-					top = selectedItemRect.bottom + MARGIN;
-				}
-
-				return (
-					<div
-						className="pktw-fixed pktw-z-[9999] pktw-max-w-sm pktw-p-3 pktw-bg-popover pktw-border pktw-border-border pktw-rounded-lg pktw-shadow-xl pktw-text-sm pktw-pointer-events-none"
-						style={{
-							left,
-							top,
-						}}
-					>
-						<div className="pktw-font-medium pktw-mb-2 pktw-text-foreground">
-							{enabledItems[selectedIndex].label}
-						</div>
-						<div className="pktw-text-muted-foreground pktw-whitespace-pre-wrap pktw-break-words">
-							{enabledItems[selectedIndex].description}
-						</div>
-					</div>
-				);
-			})()}
-		</div>
+				})()}
+			</div>
 		</>
 	);
 };

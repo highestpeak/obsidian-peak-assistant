@@ -11,6 +11,7 @@ export { PromptMenu } from './menu';
 export { PromptInputSubmit } from './PromptInputSubmit';
 export { PromptInputFileButton } from './PromptInputFileButton';
 export { PromptInputSearchButton } from './PromptInputSearchButton';
+export { ToolButton } from './ToolButton';
 
 // Attachments
 export { PromptInputAttachments } from './PromptInputAttachments';
