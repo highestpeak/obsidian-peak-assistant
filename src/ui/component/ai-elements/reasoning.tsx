@@ -1,4 +1,5 @@
-import React from "react";
+"use client";
+
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import {
   Collapsible,
@@ -98,7 +99,7 @@ export const Reasoning = memo(
         value={{ isStreaming, isOpen, setIsOpen, duration }}
       >
         <Collapsible
-          className={cn("not-prose mb-4", className)}
+          className={cn("pktw-not-prose pktw-mb-4", className)}
           onOpenChange={handleOpenChange}
           open={isOpen}
           {...props}
@@ -131,7 +132,7 @@ export const ReasoningTrigger = memo(
     return (
       <CollapsibleTrigger
         className={cn(
-          "pktw-flex pktw-w-full pktw-items-center pktw-gap-2 pktw-text-muted-foreground pktw-text-sm transition-colors hover:text-foreground",
+          "pktw-flex pktw-w-full pktw-items-center pktw-gap-2 pktw-text-muted-foreground pktw-text-sm pktw-transition-colors hover:pktw-text-foreground",
           className
         )}
         {...props}
@@ -142,8 +143,8 @@ export const ReasoningTrigger = memo(
             {getThinkingMessage(isStreaming, duration)}
             <ChevronDownIcon
               className={cn(
-                "pktw-size-4 transition-transform",
-                isOpen ? "rotate-180" : "rotate-0"
+                "pktw-size-4 pktw-transition-transform",
+                isOpen ? "pktw-rotate-180" : "pktw-rotate-0"
               )}
             />
           </>
@@ -163,15 +164,13 @@ export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => (
     <CollapsibleContent
       className={cn(
-        "mt-4 pktw-text-sm",
-        "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 pktw-text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+        "pktw-mt-4 pktw-text-sm",
+        "data-[state=closed]:pktw-fade-out-0 data-[state=closed]:pktw-slide-out-to-top-2 data-[state=open]:pktw-slide-in-from-top-2 pktw-text-muted-foreground pktw-outline-none data-[state=closed]:pktw-animate-out data-[state=open]:pktw-animate-in",
         className
       )}
       {...props}
     >
-      <div className="pktw-select-text" data-streamdown-root>
-        <Streamdown {...props}>{children}</Streamdown>
-      </div>
+      <Streamdown {...props}>{children}</Streamdown>
     </CollapsibleContent>
   )
 );

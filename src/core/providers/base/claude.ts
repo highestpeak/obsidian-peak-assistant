@@ -4,11 +4,11 @@ import {
 	LLMProviderService,
 	ModelMetaData,
 	ProviderMetaData,
+	LLMStreamEvent,
 } from '../types';
-import { AIStreamEvent } from '../types-events';
 import { createAnthropic, type AnthropicProvider } from '@ai-sdk/anthropic';
-import { generateText, streamText, type LanguageModel } from 'ai';
-import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
+import { type LanguageModel } from 'ai';
+import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
 
 const DEFAULT_CLAUDE_MAX_OUTPUT_TOKENS = 1024;
 const CLAUDE_DEFAULT_BASE = 'https://api.anthropic.com/v1';
@@ -110,42 +110,12 @@ export class ClaudeChatService implements LLMProviderService {
 		return MODEL_ID_MAP[modelId]?.modelId || modelId;
 	}
 
-	async blockChat(request: LLMRequest): Promise<LLMResponse> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
-		const normalizedModelId = this.normalizeModelId(request.model);
-
-		const result = await generateText({
-			model: this.client(normalizedModelId) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			maxOutputTokens: request.outputControl?.maxOutputTokens ?? this.maxOutputTokens,
-		});
-
-		return {
-			content: result.text,
-			model: result.response.modelId || normalizedModelId,
-			usage: result.usage,
-		};
+	async blockChat(request: LLMRequest<any>): Promise<LLMResponse> {
+		return blockChat(this.client(this.normalizeModelId(request.model)) as unknown as LanguageModel, request);
 	}
 
-	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
-		const normalizedModelId = this.normalizeModelId(request.model);
-
-		const result = streamText({
-			model: this.client(normalizedModelId) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			maxOutputTokens: request.outputControl?.maxOutputTokens ?? this.maxOutputTokens,
-		});
-
-		return streamTextToAIStreamEvents(result, normalizedModelId);
+	streamChat(request: LLMRequest<any>): AsyncGenerator<LLMStreamEvent> {
+		return streamChat(this.client(this.normalizeModelId(request.model)) as unknown as LanguageModel, request);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {

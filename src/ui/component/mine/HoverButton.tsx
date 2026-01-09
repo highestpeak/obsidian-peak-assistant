@@ -22,6 +22,10 @@ export interface HoverButtonProps {
 	menuId?: string;
 	/** Custom className for the hover menu container */
 	menuClassName?: string;
+	/** Alignment of the hover card */
+	align?: 'start' | 'center' | 'end';
+	/** Side of the hover card */
+	side?: 'top' | 'right' | 'bottom' | 'left';
 }
 
 /**
@@ -83,6 +87,8 @@ export const HoverButton: React.FC<HoverButtonProps> = ({
 	hoverMenuContent,
 	menuId,
 	menuClassName,
+	align = 'start',
+	side = 'top',
 }) => {
 	// Generate default title from menuId if not provided
 	const defaultTitle = menuId
@@ -152,8 +158,8 @@ export const HoverButton: React.FC<HoverButtonProps> = ({
 					</HoverCardTrigger>
 					<HoverCardContent
 						className={cn("pktw-w-56 pktw-p-3 pktw-bg-popover pktw-shadow-lg", menuClassName)}
-						align="start"
-						side="top"
+						align={align}
+						side={side}
 						sideOffset={8}
 					>
 						{hoverMenuContent}

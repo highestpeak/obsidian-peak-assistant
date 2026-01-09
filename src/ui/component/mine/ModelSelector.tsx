@@ -4,7 +4,7 @@ import { ChevronDown, Check, Eye, FileText, Wrench, Globe, Code, Image as ImageI
 import { SafeModelIcon, SafeProviderIcon } from '@/ui/component/mine/SafeIconWrapper';
 import { cn } from '@/ui/react/lib/utils';
 import { ProviderServiceFactory } from '@/core/providers/base/factory';
-import { formatMaxContext } from '@/core/providers/model-capabilities';
+import { formatMaxContext } from '@/core/utils/format-utils';
 import { HoverButton } from '@/ui/component/mine/HoverButton';
 
 // Global menu coordination functions are now managed in hover-menu-manager.tsx
@@ -354,6 +354,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 				hoverMenuContent={menuContent}
 				menuClassName="pktw-max-h-[400px] pktw-overflow-hidden"
 				title={!isCurrentModelAvailable && currentModel ? 'Current model is not available. Please select another model.' : undefined}
+				align="end"
+				side="bottom"
 			>
 			</HoverButton>
 		</div>

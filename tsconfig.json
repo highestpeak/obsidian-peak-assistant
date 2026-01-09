@@ -28,5 +28,13 @@
   "include": [
     "**/*.ts",
     "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "out",
+    // Exclude ai-sdk-adapter.ts due to heavy AI SDK type imports that cause TypeScript performance issues
+    "src/core/providers/types.ts"
   ]
 }

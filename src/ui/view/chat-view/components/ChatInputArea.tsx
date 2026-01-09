@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useProjectStore } from '@/ui/store/projectStore';
-import { useMessageStore } from '@/ui/store/messageStore';
+import { useMessageStore } from '@/ui/view/chat-view/store/messageStore';
 import {
 	PromptInput,
 	PromptInputBody,

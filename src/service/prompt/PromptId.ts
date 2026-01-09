@@ -19,6 +19,9 @@ import * as imageSummary from './templates/image-summary';
 import * as folderProjectSummary from './templates/folder-project-summary';
 import * as docTypeClassifyJson from './templates/doc-type-classify-json';
 import * as docTagGenerateJson from './templates/doc-tag-generate-json';
+import * as contextMemory from './templates/context-memory';
+import * as userProfileContext from './templates/user-profile-context';
+import * as messageResources from './templates/message-resources';
 
 /**
  * Prompt template definition.
@@ -49,7 +52,7 @@ function createTemplate(module: { template: string; expectsJson?: boolean; jsonC
  */
 export enum PromptId {
 	// Chat prompts
-	ConversationSystem = 'conversation-system',
+	ConversationSystem = 'conversation-system', // todo we need to tell the model. that we have [[xxx]] @xxx@ /xxx/ tags syntax. to let it know he can read these things.
 	ConversationSummaryShort = 'conversation-summary-short',
 	ConversationSummaryFull = 'conversation-summary-full',
 	ProjectSummaryShort = 'project-summary-short',
@@ -80,6 +83,11 @@ export enum PromptId {
 	// Classify document type: principle, profile, index, daily, project, note, or other
 	DocTypeClassifyJson = 'doc-type-classify-json',
 	DocTagGenerateJson = 'doc-tag-generate-json',
+
+	// Context building templates (internal use)
+	ContextMemory = 'context-memory',
+	UserProfileContext = 'user-profile-context',
+	MessageResources = 'message-resources',
 }
 
 /**
@@ -224,6 +232,33 @@ export interface PromptVariables {
 		title?: string;
 		existingTags?: string[];
 	};
+	[PromptId.ContextMemory]: {
+		hasProject: boolean;
+		projectName: string;
+		projectSummary: string;
+		projectResources: Array<{
+			displayName: string;
+			displaySummary: string;
+		}>;
+		hasConversation: boolean;
+		conversationSummary: string;
+		conversationTopics: string[];
+		conversationResources: Array<{
+			displayName: string;
+			displaySummary: string;
+		}>;
+	};
+	[PromptId.UserProfileContext]: {
+		contextEntries: Array<{
+			category: string;
+			texts: string;
+		}>;
+	};
+	[PromptId.MessageResources]: {
+		resources: Array<{
+			id: string;
+		}>;
+	};
 }
 
 /**
@@ -251,4 +286,7 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptTemplate> = {
 	[PromptId.FolderProjectSummary]: createTemplate(folderProjectSummary),
 	[PromptId.DocTypeClassifyJson]: createTemplate(docTypeClassifyJson),
 	[PromptId.DocTagGenerateJson]: createTemplate(docTagGenerateJson),
+	[PromptId.ContextMemory]: createTemplate(contextMemory),
+	[PromptId.UserProfileContext]: createTemplate(userProfileContext),
+	[PromptId.MessageResources]: createTemplate(messageResources),
 };

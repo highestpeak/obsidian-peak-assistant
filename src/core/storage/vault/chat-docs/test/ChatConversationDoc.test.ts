@@ -146,6 +146,91 @@ function testUnclosedCodeBlock(name: string, markdown: string): boolean {
 }
 
 /**
+ * Test reasoning and tool calls parsing
+ */
+function testReasoningAndTools(name: string, markdown: string): boolean {
+	console.log(`\n=== Test: ${name} ===`);
+
+	try {
+		// Parse markdown
+		const parsed = ChatConversationDoc.parse(markdown);
+
+		console.log('Parsed result:');
+		console.log(`  Attachments: ${parsed.attachments.length}`);
+		console.log(`  Messages: ${parsed.messages.length}`);
+
+		// Check if we have messages
+		if (parsed.messages.length === 0) {
+			console.log('❌ No messages found');
+			return false;
+		}
+
+		// Check the assistant message for reasoning and tool calls
+		const assistantMessage = parsed.messages.find(msg => msg.role === 'assistant');
+		if (!assistantMessage) {
+			console.log('❌ No assistant message found');
+			return false;
+		}
+
+		console.log(`  Assistant message content length: ${assistantMessage.content.length}`);
+		console.log(`  Has reasoning: ${assistantMessage.reasoning ? 'Yes' : 'No'}`);
+		console.log(`  Has tool calls: ${assistantMessage.toolCalls ? assistantMessage.toolCalls.length : 0}`);
+
+		// Verify reasoning content
+		if (assistantMessage.reasoning) {
+			console.log(`  Reasoning content preview: ${assistantMessage.reasoning.content.substring(0, 100)}...`);
+			if (!assistantMessage.reasoning.content.includes('step by step')) {
+				console.log('❌ Reasoning content does not contain expected text');
+				return false;
+			}
+		} else {
+			console.log('❌ No reasoning found in assistant message');
+			return false;
+		}
+
+		// Verify tool calls
+		if (assistantMessage.toolCalls && assistantMessage.toolCalls.length > 0) {
+			console.log(`  Tool calls: ${assistantMessage.toolCalls.length}`);
+			assistantMessage.toolCalls.forEach((call, index) => {
+				console.log(`    Call ${index + 1}: ${call.toolName}`);
+				console.log(`      Input: ${JSON.stringify(call.input).substring(0, 50)}...`);
+				console.log(`      Output: ${JSON.stringify(call.output).substring(0, 50)}...`);
+			});
+
+			// Check for expected tool names
+			const expectedTools = ['code_analyzer', 'performance_checker'];
+			const foundTools = assistantMessage.toolCalls.map(call => call.toolName);
+			const allExpectedFound = expectedTools.every(tool => foundTools.includes(tool));
+
+			if (!allExpectedFound) {
+				console.log(`❌ Expected tools ${expectedTools.join(', ')} not all found in ${foundTools.join(', ')}`);
+				return false;
+			}
+		} else {
+			console.log('❌ No tool calls found in assistant message');
+			return false;
+		}
+
+		// Verify main content doesn't contain reasoning/tool sections
+		if (assistantMessage.content.includes('## Reasoning') ||
+		    assistantMessage.content.includes('## Tool Calls')) {
+			console.log('❌ Main content still contains reasoning/tool sections');
+			return false;
+		}
+
+		console.log('✅ Reasoning and tool calls parsed correctly');
+		return true;
+
+	} catch (error) {
+		console.error(`\n❌ ERROR: ${error}`);
+		if (error instanceof Error) {
+			console.error(error.stack);
+		}
+		return false;
+	}
+}
+
+/**
  * Test appendMessagesToContent with different scenarios
  */
 function testAppendMessages(name: string, initialContent: string, appendParams: {
@@ -308,6 +393,15 @@ try {
 	allPassed = testRoundtrip('Case 3: CJK characters (Chinese, Japanese, Korean)', cjkMarkdown) && allPassed;
 } catch (error) {
 	console.error(`\n❌ Failed to read case3-cjk-characters.md: ${error}`);
+	allPassed = false;
+}
+
+// Test 4: Reasoning and Tool Calls parsing
+try {
+	const reasoningToolsMarkdown = readTestFile('case4-reasoning-tools.md');
+	allPassed = testReasoningAndTools('Case 4: Reasoning and Tool Calls parsing', reasoningToolsMarkdown) && allPassed;
+} catch (error) {
+	console.error(`\n❌ Failed to read case4-reasoning-tools.md: ${error}`);
 	allPassed = false;
 }
 

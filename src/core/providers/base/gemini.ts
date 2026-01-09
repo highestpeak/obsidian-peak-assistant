@@ -1,14 +1,12 @@
 import {
-	LLMResponse,
-	LLMRequest,
 	LLMProviderService,
 	ModelMetaData,
 	ProviderMetaData,
 } from '../types';
-import { AIStreamEvent } from '../types-events';
 import { createGoogleGenerativeAI, GoogleGenerativeAIProvider } from '@ai-sdk/google';
-import { generateText, streamText, type LanguageModel } from 'ai';
-import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
+import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
+import { LLMRequest, LLMResponse, LLMStreamEvent } from '../types';
+import { LanguageModel } from 'ai';
 
 const GEMINI_DEFAULT_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -102,44 +100,12 @@ export class GeminiChatService implements LLMProviderService {
 		return MODEL_ID_MAP[modelId]?.modelId || modelId;
 	}
 
-	async blockChat(request: LLMRequest): Promise<LLMResponse> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
-		const normalizedModelId = this.normalizeModelId(request.model);
-
-		const result = await generateText({
-			model: this.client(normalizedModelId) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			topK: request.outputControl?.topK,
-			...(request.outputControl?.maxOutputTokens !== undefined && { maxOutputTokens: request.outputControl.maxOutputTokens }),
-		});
-
-		return {
-			content: result.text,
-			model: result.response.modelId || normalizedModelId,
-			usage: result.usage,
-		};
+	async blockChat(request: LLMRequest<any>): Promise<LLMResponse> {
+		return blockChat(this.client(this.normalizeModelId(request.model)) as unknown as LanguageModel, request);
 	}
 
-	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
-		const normalizedModelId = this.normalizeModelId(request.model);
-
-		const result = streamText({
-			model: this.client(normalizedModelId) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			topK: request.outputControl?.topK,
-			...(request.outputControl?.maxOutputTokens !== undefined && { maxOutputTokens: request.outputControl.maxOutputTokens }),
-		});
-
-		return streamTextToAIStreamEvents(result, normalizedModelId);
+	streamChat(request: LLMRequest<any>): AsyncGenerator<LLMStreamEvent> {
+		return streamChat(this.client(this.normalizeModelId(request.model)) as unknown as LanguageModel, request);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {

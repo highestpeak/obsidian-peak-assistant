@@ -40,9 +40,11 @@ let ProviderIcon: any = null;
 let iconsAvailable = false;
 
 try {
+	// For ES modules, we need to handle the import differently
+	// The package is installed but may not be available in all contexts
 	const iconsModule = require('@lobehub/icons');
-	ModelIcon = iconsModule.ModelIcon;
-	ProviderIcon = iconsModule.ProviderIcon;
+	ModelIcon = iconsModule.ModelIcon || iconsModule.default?.ModelIcon;
+	ProviderIcon = iconsModule.ProviderIcon || iconsModule.default?.ProviderIcon;
 	// Mark as available if icons are loaded
 	iconsAvailable = !!(ModelIcon && ProviderIcon);
 } catch (error) {

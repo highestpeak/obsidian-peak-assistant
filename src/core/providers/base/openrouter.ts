@@ -4,11 +4,11 @@ import {
 	LLMProviderService,
 	ModelMetaData,
 	ProviderMetaData,
+	LLMStreamEvent,
 } from '../types';
-import { AIStreamEvent } from '../types-events';
 import { createOpenRouter, type OpenRouterProvider } from '@openrouter/ai-sdk-provider';
-import { generateText, streamText, type LanguageModel } from 'ai';
-import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
+import { type LanguageModel } from 'ai';
+import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
 import { getKnownOpenAIModelIds, getOpenAIAvatarType } from './openai';
 import { getKnownClaudeModelIds } from './claude';
 import { getKnownGeminiModelIds } from './gemini';
@@ -59,46 +59,12 @@ export class OpenRouterChatService implements LLMProviderService {
 		return 'openrouter';
 	}
 
-	async blockChat(request: LLMRequest): Promise<LLMResponse> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
-
-		const result = await generateText({
-			model: this.client(request.model) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			topK: request.outputControl?.topK,
-			presencePenalty: request.outputControl?.presencePenalty,
-			frequencyPenalty: request.outputControl?.frequencyPenalty,
-			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
-		});
-
-		return {
-			content: result.text,
-			model: result.response.modelId || request.model,
-			usage: result.usage,
-		};
+	async blockChat(request: LLMRequest<any>): Promise<LLMResponse> {
+		return blockChat(this.client(request.model) as unknown as LanguageModel, request);
 	}
 
-	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
-
-		const result = streamText({
-			model: this.client(request.model) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			topK: request.outputControl?.topK,
-			presencePenalty: request.outputControl?.presencePenalty,
-			frequencyPenalty: request.outputControl?.frequencyPenalty,
-			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
-		});
-
-		return streamTextToAIStreamEvents(result, request.model);
+	streamChat(request: LLMRequest<any>): AsyncGenerator<LLMStreamEvent> {
+		return streamChat(this.client(request.model) as unknown as LanguageModel, request);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {

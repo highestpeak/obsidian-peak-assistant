@@ -1,4 +1,5 @@
 import type { App } from 'obsidian';
+import { normalizePath, TFile } from 'obsidian';
 
 const DEFAULT_PLUGIN_ID = 'obsidian-peak-assistant';
 
@@ -52,7 +53,7 @@ export async function getFileSize(app: App, filePath: string): Promise<number> {
 /**
  * Open a file in Obsidian workspace.
  * Creates a new leaf if needed.
- * 
+ *
  * @param app - Obsidian app instance
  * @param filePath - Path to the file relative to vault root
  * @returns Promise that resolves when file is opened
@@ -63,5 +64,27 @@ export async function openFile(app: App, filePath: string): Promise<void> {
 		const leaf = app.workspace.getLeaf(false);
 		await leaf.openFile(file as any);
 	}
+}
+
+/**
+ * Read a file from vault and convert to base64 string.
+ * Returns null if file doesn't exist or cannot be read.
+ *
+ * @param app - Obsidian app instance
+ * @param resourceSource - Resource source path (may start with '/')
+ * @returns Base64 string of the file content, or null if failed
+ */
+export async function readFileAsBase64(app: App, resourceSource: string): Promise<string | null> {
+	try {
+		const normalizedPath = normalizePath(resourceSource.startsWith('/') ? resourceSource.slice(1) : resourceSource);
+		const file = app.vault.getAbstractFileByPath(normalizedPath);
+		if (file && file instanceof TFile) {
+			const arrayBuffer = await app.vault.readBinary(file as TFile);
+			return Buffer.from(arrayBuffer).toString('base64');
+		}
+	} catch (error) {
+		console.warn(`[obsidian-utils] Failed to read file as base64: ${resourceSource}`, error);
+	}
+	return null;
 }
 

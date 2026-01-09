@@ -27,11 +27,12 @@ export const ServiceProvider: React.FC<{
 	manager: AIServiceManager;
 	searchClient?: SearchClient | null;
 	viewManager: ViewManager;
-}> = ({ children, app, manager, searchClient = null, viewManager }) => {
-	const eventBus = EventBus.getInstance(app);
+	eventBus?: EventBus;
+}> = ({ children, app, manager, searchClient = null, viewManager, eventBus }) => {
+	const defaultEventBus = eventBus || EventBus.getInstance(app);
 
 	return (
-		<ServiceContext.Provider value={{ app, manager, eventBus, searchClient, viewManager }}>
+		<ServiceContext.Provider value={{ app, manager, eventBus: defaultEventBus, searchClient, viewManager }}>
 			{children}
 		</ServiceContext.Provider>
 	);

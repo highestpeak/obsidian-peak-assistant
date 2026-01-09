@@ -1,15 +1,21 @@
 import { ChatConversation, ChatProject, ChatMessage } from '@/service/chat/types';
-import { ModelInfoForSwitch } from '@/core/providers/types';
-import { AIStreamEvent } from '@/core/providers/types-events';
+import { LLMStreamEvent, ModelInfoForSwitch } from '@/core/providers/types';
 import { TFile } from 'obsidian';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { MOCK_RESPONSE_CONTENT } from './MockResponseContent';
 import { TextStreamPart } from 'ai';
+import { ConversationUpdatedEvent } from '@/core/eventBus';
 
 /**
  * Mock AIServiceManager for desktop development
  */
 export class MockAIServiceManager {
+	private eventBus?: any;
+
+	constructor(eventBus?: any) {
+		this.eventBus = eventBus;
+	}
+
 	/**
 	 * Create mock TFile
 	 */
@@ -350,7 +356,7 @@ export class MockAIServiceManager {
 			'Preparing detailed response content'
 		];
 
-		let thinking = '## 思考过程 (Chain of Thought)\n\n';
+		let thinking = '## Thinking Process\n\n';
 		thinkingSteps.forEach((step, index) => {
 			thinking += `${index + 1}. ${step}\n`;
 		});
@@ -368,9 +374,9 @@ export class MockAIServiceManager {
 		project?: ChatProject | null;
 		userContent: string;
 		attachments?: string[];
-	}): AsyncGenerator<AIStreamEvent> {
+	}): AsyncGenerator<LLMStreamEvent> {
 		const self = this;
-		return (async function* (): AsyncGenerator<AIStreamEvent> {
+		return (async function* (): AsyncGenerator<LLMStreamEvent> {
 			// Load mock response content
 			const mockResponse = self.loadMockResponse();
 			const thinkingContent = self.generateThinkingProcess(params.userContent);
@@ -383,154 +389,71 @@ export class MockAIServiceManager {
 
 			let eventId = 0;
 
-			// Start the stream
-			yield { type: 'start' };
-
-			// Start the main step
-			const stepId = `step-${Date.now()}`;
-			const mockRequestMetadata = {
-				id: stepId,
-				modelId: params.conversation.meta.activeModel,
-				timestamp: Date.now(),
-			};
-			const mockWarnings: any[] = [];
-			yield {
-				type: 'start-step',
-				request: mockRequestMetadata,
-				warnings: mockWarnings,
-			} as TextStreamPart<any>;
-
-			// Text start
-			eventId++;
-			yield {
-				type: 'text-start',
-				id: eventId.toString(),
-			} as TextStreamPart<any>;
-
-			// Split thinking content into characters for streaming
-			const thinkingChars = thinkingContent.split('');
-
 			// Stream thinking content character by character
+			const thinkingChars = (thinkingContent).split('');
 			for (let i = 0; i < thinkingChars.length; i++) {
-				await new Promise(resolve => setTimeout(resolve, thinkingDelay));
-
-				if (i === 0) {
-					// Reasoning start
-					eventId++;
-					yield {
-						type: 'reasoning-start',
-						id: eventId.toString(),
-					} as TextStreamPart<any>;
-				}
-
-				// Reasoning delta
+				await new Promise(resolve => setTimeout(resolve, delay));
 				const char = thinkingChars[i];
 				if (char) {
-					eventId++;
 					yield {
 						type: 'reasoning-delta',
-						id: eventId.toString(),
 						text: char,
-					} as TextStreamPart<any>;
+					};
 				}
 			}
 
-			// Reasoning end
-			if (thinkingChars.length > 0) {
-				await new Promise(resolve => setTimeout(resolve, delay));
-				eventId++;
-				yield {
-					type: 'reasoning-end',
-					id: eventId.toString(),
-				} as TextStreamPart<any>;
-			}
+			// Tool call: Web search
+			await new Promise(resolve => setTimeout(resolve, delay));
+			yield {
+				type: 'tool-call',
+				toolName: 'web_search',
+				input: { query: 'current AI developments 2024', maxResults: 5 },
+			};
 
-
-			// Split response content into characters for streaming
-			const responseChars = mockResponse.split('');
+			// Tool result
+			await new Promise(resolve => setTimeout(resolve, delay * 3));
+			const searchResults = [
+				'OpenAI releases GPT-4 Turbo with enhanced reasoning',
+				'Google\'s Gemini 1.5 achieves breakthrough in multimodal AI',
+				'Anthropic\'s Claude 3 leads in AI safety metrics',
+				'Meta\'s Llama 3 shows competitive performance',
+				'New AI chip developments promise faster training'
+			];
+			yield {
+				type: 'tool-result',
+				toolName: 'web_search',
+				output: { results: searchResults, totalResults: searchResults.length },
+			};
 
 			// Stream response content character by character
+			const responseChars = mockResponse.split('')
+				// mock response too long, so we only stream the first 200 characters for testing. if need more, change it.
+				.slice(0, 200);
 			for (let i = 0; i < responseChars.length; i++) {
 				await new Promise(resolve => setTimeout(resolve, delay));
-
 				const char = responseChars[i];
 				if (char) {
-					// Text delta
-					eventId++;
 					yield {
 						type: 'text-delta',
-						id: eventId.toString(),
 						text: char,
-					} as TextStreamPart<any>;
+					};
 				}
 			}
 
-			// Text end
-			await new Promise(resolve => setTimeout(resolve, delay));
-			eventId++;
-			yield {
-				type: 'text-end',
-				id: eventId.toString(),
-			} as TextStreamPart<any>;
-
-			// Finish step
-			await new Promise(resolve => setTimeout(resolve, delay));
-			const mockResponseMetadata = {
-				id: stepId,
-				modelId: params.conversation.meta.activeModel,
-				timestamp: new Date(),
-				headers: {},
-			};
+			// Create final usage
+			const inputTokens = Math.floor(params.userContent.length / 4);
+			const outputTokens = Math.floor(fullContent.length / 4);
 			const mockUsage = {
-				inputTokens: Math.floor(params.userContent.length / 4),
-				outputTokens: Math.floor(fullContent.length / 4),
-			};
-			const finishReason = 'stop' as const;
-			const providerMetadata = undefined;
-			yield {
-				type: 'finish-step',
-				response: mockResponseMetadata as any,
-				usage: mockUsage as any,
-				finishReason,
-				providerMetadata,
-			} as TextStreamPart<any>;
-
-			// Finish
-			await new Promise(resolve => setTimeout(resolve, delay));
-			const totalUsage = mockUsage;
-			yield {
-				type: 'finish',
-				finishReason,
-				totalUsage: totalUsage as any,
-			} as TextStreamPart<any>;
-
-			// Create final usage and message for backward compatibility
-			const legacyUsage = {
-				prompt_tokens: Math.floor(params.userContent.length / 4),
-				completion_tokens: Math.floor(fullContent.length / 4),
-				total_tokens: Math.floor((params.userContent.length + fullContent.length) / 4),
+				inputTokens,
+				outputTokens,
+				totalTokens: inputTokens + outputTokens,
 			};
 
-			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-			const finalMessage: ChatMessage = {
-				id: `mock-msg-${Date.now()}`,
-				role: 'assistant',
-				content: fullContent,
-				createdAtTimestamp: Date.now(),
-				createdAtZone: timezone,
-				starred: false,
-				model: params.conversation.meta.activeModel,
-				provider: params.conversation.meta.activeProvider,
-				tokenUsage: mockUsage as any,
-			};
-
-			// Yield complete event for backward compatibility
+			// Yield complete event
 			await new Promise(resolve => setTimeout(resolve, delay));
 			yield {
 				type: 'complete',
-				model: params.conversation.meta.activeModel,
-				usage: mockUsage as any,
-				message: finalMessage,
+				usage: mockUsage,
 			};
 		})();
 	}
@@ -550,27 +473,31 @@ export class MockAIServiceManager {
 				starred: false,
 				model: 'gpt-4',
 				provider: 'openai',
-				resources: [
-					{
-						source: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
-						id: 'img-1',
-						kind: 'image',
-					},
-				],
 			},
 			{
 				id: 'msg-2',
 				role: 'assistant',
-				content: 'Hello! This is a mock assistant response. I\'m here to help you with any questions or tasks you might have.',
+				content: `## 思考过程 (Chain of Thought)
+
+1. Understanding user query: "Hello, this is a mock user message."
+2. Analyzing query intent and context
+3. Retrieving relevant knowledge and information
+4. Organizing response structure and content
+5. Preparing detailed response content
+
+---
+
+Hello! This is a mock assistant response. I'm here to help you with any questions or tasks you might have.`,
 				createdAtTimestamp: now - 3500000,
 				createdAtZone: 'UTC',
 				starred: false,
 				model: 'gpt-4',
 				provider: 'openai',
 				tokenUsage: {
-					prompt_tokens: 15,
-					completion_tokens: 25,
-				} as any,
+					inputTokens: 15,
+					outputTokens: 25,
+					totalTokens: 40,
+				},
 			},
 			{
 				id: 'msg-3',
@@ -586,112 +513,82 @@ export class MockAIServiceManager {
 			{
 				id: 'msg-4',
 				role: 'assistant',
-				content: 'Sure! This plugin is designed to help you manage conversations and projects. It provides:\n\n1. **Conversation Management**: Organize your AI conversations into projects\n2. **Message History**: Keep track of all your interactions\n3. **Project Organization**: Group related conversations together\n4. **Search Functionality**: Quickly find past conversations and messages\n\nWould you like me to explain any specific feature in more detail?',
+				content: `## 思考过程 (Chain of Thought)
+
+1. Understanding user query: "Can you explain how this plugin works?"
+2. Analyzing query intent and context
+3. Retrieving relevant knowledge and information
+4. Organizing response structure and content
+5. Preparing detailed response content
+
+---
+
+This plugin is designed to help you manage conversations and projects with AI assistants. It provides:
+
+1. **Conversation Management**: Organize your AI conversations into projects
+2. **Message History**: Keep track of all your interactions
+3. **Project Organization**: Group related conversations together
+4. **Search Functionality**: Quickly find past conversations and messages`,
 				createdAtTimestamp: now - 3300000,
 				createdAtZone: 'UTC',
-				starred: true,
+				starred: false,
 				model: 'gpt-4',
 				provider: 'openai',
 				topic: 'Getting Started',
 				tokenUsage: {
-					prompt_tokens: 45,
-					completion_tokens: 120,
-				} as any,
-			},
-			{
-				id: 'msg-5',
-				role: 'user',
-				content: 'How do I create a new project?',
-				createdAtTimestamp: now - 3200000,
-				createdAtZone: 'UTC',
-				starred: false,
-				model: 'gpt-4',
-				provider: 'openai',
-				topic: 'Project Management',
-				resources: [
-					{
-						source: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800',
-						id: 'img-2',
-						kind: 'image',
-					},
-					{
-						source: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800',
-						id: 'img-3',
-						kind: 'image',
-					},
-					{
-						source: 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf',
-						id: 'pdf-1',
-						kind: 'pdf',
-					},
-				],
-			},
-			{
-				id: 'msg-6',
-				role: 'assistant',
-				content: 'To create a new project, you can:\n\n1. Click the "+" button next to the "PROJECTS" section in the left sidebar\n2. Enter a name for your project\n3. The project will be created and you can start adding conversations to it\n\nProjects help you organize related conversations together, making it easier to manage your work.',
-				createdAtTimestamp: now - 3100000,
-				createdAtZone: 'UTC',
-				starred: false,
-				model: 'gpt-4',
-				provider: 'openai',
-				topic: 'Project Management',
-				tokenUsage: {
-					prompt_tokens: 30,
-					completion_tokens: 95,
-				} as any,
-			},
-			{
-				id: 'msg-7',
-				role: 'user',
-				content: 'What are the best practices for organizing conversations?',
-				createdAtTimestamp: now - 3000000,
-				createdAtZone: 'UTC',
-				starred: false,
-				model: 'gpt-4',
-				provider: 'openai',
-				topic: 'Best Practices',
-			},
-			{
-				id: 'msg-8',
-				role: 'assistant',
-				content: 'Here are some best practices for organizing conversations:\n\n**1. Use Descriptive Project Names**\n- Choose names that clearly indicate the project\'s purpose\n- Examples: "Research Project", "Code Review", "Learning Notes"\n\n**2. Group Related Conversations**\n- Keep conversations about the same topic in the same project\n- This makes it easier to find and reference past discussions\n\n**3. Star Important Messages**\n- Use the star feature to mark important messages\n- Starred messages are easily accessible in the project overview\n\n**4. Regular Cleanup**\n- Periodically review and archive old conversations\n- Keep your workspace organized and focused\n\n**5. Use Search Effectively**\n- Use the search feature to quickly find specific topics\n- Search works across all your conversations and projects',
-				createdAtTimestamp: now - 2900000,
-				createdAtZone: 'UTC',
-				starred: true,
-				model: 'gpt-4',
-				provider: 'openai',
-				topic: 'Best Practices',
-				tokenUsage: {
-					prompt_tokens: 55,
-					completion_tokens: 180,
-				} as any,
-			},
-			{
-				id: 'msg-9',
-				role: 'user',
-				content: 'Thanks for the tips!',
-				createdAtTimestamp: now - 2800000,
-				createdAtZone: 'UTC',
-				starred: false,
-				model: 'gpt-4',
-				provider: 'openai',
-			},
-			{
-				id: 'msg-10',
-				role: 'assistant',
-				content: 'You\'re welcome! If you have any more questions or need help with anything else, feel free to ask. I\'m here to help!',
-				createdAtTimestamp: now - 2700000,
-				createdAtZone: 'UTC',
-				starred: false,
-				model: 'gpt-4',
-				provider: 'openai',
-				tokenUsage: {
-					prompt_tokens: 10,
-					completion_tokens: 20,
-				} as any,
+					inputTokens: 45,
+					outputTokens: 120,
+					totalTokens: 165,
+				},
 			},
 		];
+	}
+
+	/**
+	 * Regenerate conversation title (mock implementation)
+	 */
+	async regenerateConversationTitle(conversationId: string): Promise<void> {
+		console.log('[MockAIServiceManager] regenerateConversationTitle:', conversationId);
+
+		// Simulate async delay
+		await new Promise(resolve => setTimeout(resolve, 1000));
+
+		// Mock title regeneration - in real implementation this would analyze messages and generate a new title
+		const mockTitles = [
+			'Discussion about AI development',
+			'Code review and optimization',
+			'Project planning session',
+			'Technical question and answer',
+			'Implementation strategy meeting'
+		];
+
+		const newTitle = mockTitles[Math.floor(Math.random() * mockTitles.length)];
+
+		// Create a mock updated conversation object
+		const updatedConversation: ChatConversation = {
+			meta: {
+				id: conversationId,
+				title: newTitle,
+				createdAtTimestamp: Date.now() - 1000, // Mock creation time
+				updatedAtTimestamp: Date.now(),
+				activeModel: 'gpt-4',
+				activeProvider: 'openai',
+				titleManuallyEdited: false,
+				titleAutoUpdated: true,
+			},
+			messages: [], // Empty messages for mock
+			content: `# ${newTitle}\n\nMock conversation content`,
+			file: this.createMockFile(`.peak-assistant/conversations/${conversationId}.md`),
+		};
+
+		// Send event to update UI
+		if (this.eventBus) {
+			this.eventBus.dispatch(new ConversationUpdatedEvent({
+				conversation: updatedConversation,
+			}));
+		}
+
+		console.log(`[MockAIServiceManager] Regenerated title to: "${newTitle}"`);
 	}
 }
 

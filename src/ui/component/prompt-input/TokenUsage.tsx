@@ -132,6 +132,8 @@ export const TokenUsage: React.FC<TokenUsageProps> = ({ usage, conversation, cla
 			menuId="token-usage"
 			hoverMenuContent={menuContent}
 			menuClassName="pktw-w-auto pktw-bg-white pktw-shadow-lg pktw-border pktw-border-border"
+			align="end"
+			side="bottom"
 		/>
 	);
 };

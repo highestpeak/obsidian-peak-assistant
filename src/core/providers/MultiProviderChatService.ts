@@ -1,6 +1,5 @@
-import { LLMProviderService, ProviderConfig, ModelMetaData, ProviderMetaData } from './types';
+import { LLMProviderService, ProviderConfig, ModelMetaData, ProviderMetaData, LLMStreamEvent } from './types';
 import { LLMRequest } from './types';
-import { AIStreamEvent } from './types-events';
 import { ProviderServiceFactory } from './base/factory';
 import { BusinessError, ErrorCode } from '@/core/errors';
 
@@ -35,7 +34,7 @@ export class MultiProviderChatService implements LLMProviderService {
 		return this.getProviderService(request.provider).blockChat(request);
 	}
 
-	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
+	streamChat(request: LLMRequest): AsyncGenerator<LLMStreamEvent> {
 		console.debug('[MultiProviderChatService] Streaming chat:', request);
 		return this.getProviderService(request.provider).streamChat(request);
 	}

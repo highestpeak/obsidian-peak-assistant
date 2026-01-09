@@ -43,3 +43,21 @@ export function formatTokenCount(tokens: number): string {
 	return tokens.toString();
 }
 
+/**
+ * Format max context for display (e.g., 200000 -> "200K", 1000000 -> "1M")
+ */
+export function formatMaxContext(maxCtx?: number): string | undefined {
+	if (!maxCtx) return undefined;
+	if (maxCtx >= 1000000) {
+		return `${Math.round(maxCtx / 1000000)}M`;
+	}
+	if (maxCtx >= 1000) {
+		return `${Math.round(maxCtx / 1000)}K`;
+	}
+	return String(maxCtx);
+}
+
+
+export function trimTrailingSlash(url: string): string {
+	return url.endsWith('/') ? url.slice(0, -1) : url;
+}

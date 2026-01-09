@@ -1,13 +1,15 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { ChatMessage } from '@/service/chat/types';
 import { useChatViewStore } from './store/chatViewStore';
 import { useProjectStore } from '@/ui/store/projectStore';
-import { useMessageStore } from '@/ui/store/messageStore';
+import { useMessageStore } from '@/ui/view/chat-view/store/messageStore';
 import { OpenLinkEvent, ViewEventType } from '@/core/eventBus';
 import { SummaryModal } from './components/SummaryModal';
 import { MessageHeader } from './components/MessageViewHeader';
 import { MessageItem } from './components/MessageViewItem';
 import { ChatInputAreaComponent } from './components/ChatInputArea';
+import { FileChangesList } from './components/FileChangesList';
+import { FileChange } from '@/service/chat/types';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
@@ -86,8 +88,196 @@ export const MessagesViewComponent: React.FC = () => {
     const streamingMessageId = useMessageStore((state) => state.streamingMessageId);
     const streamingContent = useMessageStore((state) => state.streamingContent);
 
+    // Reasoning state
+    const reasoningContent = useMessageStore((state) => state.reasoningContent);
+    const isReasoningActive = useMessageStore((state) => state.isReasoningActive);
+
+    // Tool state
+    const currentToolCalls = useMessageStore((state) => state.currentToolCalls);
+    const isToolSequenceActive = useMessageStore((state) => state.isToolSequenceActive);
+
     const bodyContainerRef = useRef<HTMLDivElement>(null);
     const bodyScrollRef = useRef<HTMLDivElement>(null);
+
+    // File changes state - mock data for development
+    const [fileChanges, setFileChanges] = useState<FileChange[]>([
+        {
+            id: '1',
+            filePath: 'src/components/Button.tsx',
+            addedLines: 21,
+            removedLines: 33,
+            accepted: false,
+            extension: 'tsx'
+        },
+        {
+            id: '2',
+            filePath: 'src/utils/helpers.ts',
+            addedLines: 5,
+            removedLines: 2,
+            accepted: false,
+            extension: 'ts'
+        },
+        {
+            id: '3',
+            filePath: 'src/styles/main.css',
+            addedLines: 10,
+            removedLines: 15,
+            accepted: false,
+            extension: 'css'
+        },
+        {
+            id: '4',
+            filePath: 'README.md',
+            addedLines: 3,
+            removedLines: 1,
+            accepted: false,
+            extension: 'md'
+        },
+        {
+            id: '5',
+            filePath: 'package.json',
+            addedLines: 2,
+            removedLines: 0,
+            accepted: false,
+            extension: 'json'
+        },
+        {
+            id: '6',
+            filePath: 'src/hooks/useAuth.ts',
+            addedLines: 45,
+            removedLines: 12,
+            accepted: false,
+            extension: 'ts'
+        },
+        {
+            id: '7',
+            filePath: 'public/images/logo.png',
+            addedLines: 0,
+            removedLines: 0,
+            accepted: false,
+            extension: 'png'
+        },
+        {
+            id: '8',
+            filePath: 'src/types/api.ts',
+            addedLines: 8,
+            removedLines: 3,
+            accepted: false,
+            extension: 'ts'
+        },
+        {
+            id: '9',
+            filePath: '.gitignore',
+            addedLines: 1,
+            removedLines: 0,
+            accepted: false,
+            extension: 'gitignore'
+        },
+        {
+            id: '10',
+            filePath: 'src/components/forms/InputField.tsx',
+            addedLines: 67,
+            removedLines: 23,
+            accepted: false,
+            extension: 'tsx'
+        },
+        {
+            id: '11',
+            filePath: 'src/services/authService.ts',
+            addedLines: 12,
+            removedLines: 8,
+            accepted: false,
+            extension: 'ts'
+        },
+        {
+            id: '12',
+            filePath: 'tailwind.config.js',
+            addedLines: 5,
+            removedLines: 2,
+            accepted: false,
+            extension: 'js'
+        },
+        {
+            id: '13',
+            filePath: 'src/pages/dashboard/Dashboard.tsx',
+            addedLines: 89,
+            removedLines: 34,
+            accepted: false,
+            extension: 'tsx'
+        },
+        {
+            id: '14',
+            filePath: 'src/utils/date-utils.ts',
+            addedLines: 0,
+            removedLines: 5,
+            accepted: false,
+            extension: 'ts'
+        },
+        {
+            id: '15',
+            filePath: 'src/styles/components/_buttons.scss',
+            addedLines: 15,
+            removedLines: 7,
+            accepted: false,
+            extension: 'scss'
+        },
+        {
+            id: '16',
+            filePath: 'docker-compose.yml',
+            addedLines: 3,
+            removedLines: 1,
+            accepted: false,
+            extension: 'yml'
+        },
+        {
+            id: '17',
+            filePath: 'src/components/icons/SvgIcon.tsx',
+            addedLines: 28,
+            removedLines: 0,
+            accepted: false,
+            extension: 'tsx'
+        },
+        {
+            id: '18',
+            filePath: 'jest.config.js',
+            addedLines: 4,
+            removedLines: 2,
+            accepted: false,
+            extension: 'js'
+        },
+        {
+            id: '19',
+            filePath: 'src/hooks/useLocalStorage.ts',
+            addedLines: 0,
+            removedLines: 18,
+            accepted: false,
+            extension: 'ts'
+        },
+        {
+            id: '20',
+            filePath: 'public/favicon.ico',
+            addedLines: 0,
+            removedLines: 0,
+            accepted: false,
+            extension: 'ico'
+        },
+        {
+            id: '21',
+            filePath: 'src/constants/config.ts',
+            addedLines: 6,
+            removedLines: 3,
+            accepted: false,
+            extension: 'ts'
+        },
+        {
+            id: '22',
+            filePath: 'src/components/layout/Header.tsx',
+            addedLines: 42,
+            removedLines: 16,
+            accepted: false,
+            extension: 'tsx'
+        }
+    ]);
 
 
     // Scroll management - all scroll logic centralized here
@@ -100,6 +290,27 @@ export const MessagesViewComponent: React.FC = () => {
         autoScrollOnStreaming: true,
         streamingContent,
     });
+
+    // File changes handlers
+    const handleAcceptAll = useCallback(() => {
+        setFileChanges(prev => prev.map(change => ({ ...change, accepted: true })));
+    }, []);
+
+    const handleDiscardAll = useCallback(() => {
+        setFileChanges(prev => prev.map(change => ({ ...change, accepted: false })));
+    }, []);
+
+    const handleAcceptChange = useCallback((id: string) => {
+        setFileChanges(prev => prev.map(change =>
+            change.id === id ? { ...change, accepted: true } : change
+        ));
+    }, []);
+
+    const handleDiscardChange = useCallback((id: string) => {
+        setFileChanges(prev => prev.map(change =>
+            change.id === id ? { ...change, accepted: false } : change
+        ));
+    }, []);
 
     // Handle open link events
     useEffect(() => {
@@ -213,6 +424,10 @@ export const MessagesViewComponent: React.FC = () => {
                                 activeProject={activeProject}
                                 isStreaming={item.isStreaming}
                                 streamingContent={item.streamingContent}
+                                reasoningContent={item.isStreaming ? reasoningContent : (message.reasoning ? message.reasoning.content : '')}
+                                isReasoningActive={item.isStreaming ? isReasoningActive : false}
+                                currentToolCalls={item.isStreaming ? currentToolCalls : (message.toolCalls || [])}
+                                isToolSequenceActive={item.isStreaming ? isToolSequenceActive : false}
                                 isLastMessage={isLastMessage}
                                 onScrollToBottom={scrollToBottom}
                             />
@@ -221,12 +436,20 @@ export const MessagesViewComponent: React.FC = () => {
                 )}
                     </div>
                 </div>
+
+                {/* File Changes List - positioned after messages, before footer */}
+                <FileChangesList
+                    changes={fileChanges}
+                    onAcceptAll={handleAcceptAll}
+                    onDiscardAll={handleDiscardAll}
+                    onAcceptChange={handleAcceptChange}
+                    onDiscardChange={handleDiscardChange}
+                />
             </div>
 
-            {/* Footer - Input Area with scroll buttons */}
-            <div className="pktw-flex-shrink-0 pktw-relative">
-                {/* Scroll buttons - positioned above input area on the right */}
-                <div className="pktw-absolute pktw-top-0 pktw-right-6 pktw-flex pktw-items-center pktw-gap-1 pktw-z-10" style={{ transform: 'translateY(-100%)', marginBottom: '8px' }}>
+            {/* Scroll buttons - positioned between body and footer, outside scroll area */}
+            <div className="pktw-flex-shrink-0 pktw-flex pktw-justify-end pktw-px-6 pktw-py-2 pktw-border-b pktw-border-borde">
+                <div className="pktw-flex pktw-items-center pktw-gap-1">
                     <IconButton
                         size="lg"
                         onClick={() => scrollToTop(false)}
@@ -244,6 +467,10 @@ export const MessagesViewComponent: React.FC = () => {
                         <ArrowDown className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground group-hover:pktw-text-black" />
                     </IconButton>
                 </div>
+            </div>
+
+            {/* Footer - Input Area */}
+            <div className="pktw-flex-shrink-0">
                 <ChatInputAreaComponent
                     prompts={mockPrompts}
                     onScrollToBottom={scrollToBottom}

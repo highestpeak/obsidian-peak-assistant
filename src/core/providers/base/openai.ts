@@ -4,11 +4,11 @@ import {
 	LLMProviderService,
 	ModelMetaData,
 	ProviderMetaData,
+	LLMStreamEvent,
 } from '../types';
-import { AIStreamEvent } from '../types-events';
 import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai';
-import { generateText, streamText, embedMany, type EmbeddingModel, type LanguageModel } from 'ai';
-import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
+import { embedMany, type EmbeddingModel, type LanguageModel } from 'ai';
+import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
 
 const OPENAI_DEFAULT_BASE = 'https://api.openai.com/v1';
 
@@ -97,17 +97,6 @@ export function getKnownOpenAIModelIds(): readonly string[] {
 	return Object.keys(MODEL_ID_MAP);
 }
 
-/**
- * Normalize user-facing model ID to actual API model ID by looking up in MODEL_ID_MAP.
- * This handles the mapping from clean names (e.g., 'gpt-5-mini') to dated versions
- * required by AI SDK 5 v2 specification (e.g., 'gpt-5-mini-2025-08-07').
- * 
- * @param modelId - User-facing model ID (may be from user selection or API response)
- * @returns Actual API model ID from MODEL_ID_MAP, or original ID if not found in mapping
- */
-function normalizeModelId(modelId: string): string {
-	return MODEL_ID_MAP[modelId]?.modelId || modelId;
-}
 
 /**
  * Get icon identifier for a model ID by looking up in MODEL_ID_MAP.
@@ -144,46 +133,24 @@ export class OpenAIChatService implements LLMProviderService {
 		return 'openai';
 	}
 
-	async blockChat(request: LLMRequest): Promise<LLMResponse> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
-		const normalizedModelId = normalizeModelId(request.model);
-
-		const result = await generateText({
-			model: this.client(normalizedModelId) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			presencePenalty: request.outputControl?.presencePenalty,
-			frequencyPenalty: request.outputControl?.frequencyPenalty,
-			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
-		});
-
-		return {
-			content: result.text,
-			model: result.response.modelId || normalizedModelId,
-			usage: result.usage,
-		};
+	/**
+	 * Normalize user-facing model ID to actual API model ID by looking up in MODEL_ID_MAP.
+	 * This handles the mapping from clean names (e.g., 'gpt-5-mini') to dated versions
+	 * required by AI SDK 5 v2 specification (e.g., 'gpt-5-mini-2025-08-07').
+	 *
+	 * @param modelId - User-facing model ID (may be from user selection or API response)
+	 * @returns Actual API model ID from MODEL_ID_MAP, or original ID if not found in mapping
+	 */
+	private normalizeModelId(modelId: string): string {
+		return MODEL_ID_MAP[modelId]?.modelId || modelId;
 	}
 
-	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
-		const normalizedModelId = normalizeModelId(request.model);
+	async blockChat(request: LLMRequest<any>): Promise<LLMResponse> {
+		return blockChat(this.client(this.normalizeModelId(request.model)) as unknown as LanguageModel, request);
+	}
 
-		const result = streamText({
-			model: this.client(normalizedModelId) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			presencePenalty: request.outputControl?.presencePenalty,
-			frequencyPenalty: request.outputControl?.frequencyPenalty,
-			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
-		});
-
-		return streamTextToAIStreamEvents(result, normalizedModelId);
+	streamChat(request: LLMRequest<any>): AsyncGenerator<LLMStreamEvent> {
+		return streamChat(this.client(this.normalizeModelId(request.model)) as unknown as LanguageModel, request);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
@@ -209,7 +176,7 @@ export class OpenAIChatService implements LLMProviderService {
 
 	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
 		const result = await embedMany({
-			model: this.client.textEmbeddingModel(model) as unknown as EmbeddingModel<string>,
+			model: this.client.textEmbeddingModel(model) as unknown as EmbeddingModel,
 			values: texts,
 		});
 

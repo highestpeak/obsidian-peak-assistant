@@ -104,11 +104,8 @@ export function useChatSubmit() {
 		// Create user message
 		const userMessage = createUserMessage(conversation, text);
 		console.debug('[useChatSubmit] userMessage:', userMessage);
-		// Upload files and create resource references if any
+		// Upload files and create resource references if any. no summary will be generated until start streaming.
 		const resources = files.length > 0
-		// todo if it is a multi dimension model. we should not summary the resources. and we just need to send to the model.
-		//   however we still need to test which kind of resources. like pdf, we must summary first, but image we can just send to the model.
-		// todo summary image cost time. so we should use some steps component from ai-sdk to show the progress to get better user experience.
 			? await manager.uploadFilesAndCreateResources(files)
 			: [];
 		console.debug('[useChatSubmit] resources:', resources);
@@ -137,7 +134,7 @@ export function useChatSubmit() {
 				updatedAtTimestamp: Date.now(), // Update timestamp since we just added a message
 			},
 		};
-		console.log('[useChatSubmit] Updating conversation with user message:', conversationWithUserMessage.messages.length, 'messages');
+		console.debug('[useChatSubmit] Updating conversation with user message:', conversationWithUserMessage.messages.length, 'messages');
 		updateConv(conversationWithUserMessage);
 
 		// Create new AbortController for this stream
@@ -151,10 +148,11 @@ export function useChatSubmit() {
 			conversation: conversationWithUserMessage, // Use conversation with user message
 			project: project,
 			userContent: text,
+			attachments: resources.map(resource => resource.source),
 			onScrollToBottom,
 			abortSignal: abortControllerRef.current.signal,
 		});
-		console.debug('[useChatSubmit] streaming chat completed');
+		console.debug('[useChatSubmit] streaming chat completed', streamResult);
 
 		// Clear abort controller
 		abortControllerRef.current = null;
@@ -163,7 +161,7 @@ export function useChatSubmit() {
 		// If streaming was interrupted, finalMessage might be null, but we should still
 		// save any partial content from the streaming state
 		if (streamResult.finalMessage) {
-			console.log('[useChatSubmit] Saving assistant message:', streamResult.finalMessage);
+			console.debug('[useChatSubmit] Saving assistant message:', streamResult.finalMessage);
 			await manager.addMessage({
 				conversationId: conversation.meta.id,
 				message: streamResult.finalMessage,
@@ -182,7 +180,7 @@ export function useChatSubmit() {
 					updatedAtTimestamp: Date.now(),
 				},
 			};
-			console.log('[useChatSubmit] Updating conversation with assistant message:', conversationWithAssistantMessage.messages.length, 'messages');
+			console.debug('[useChatSubmit] Updating conversation with assistant message:', conversationWithAssistantMessage.messages.length, 'messages');
 			updateConv(conversationWithAssistantMessage);
 		}
 		// Note: manager and updateConv are intentionally omitted from dependencies

@@ -1,9 +1,7 @@
 import type { ResourceKind } from '@/core/document/types';
 
-import { LLMUsage, LLMOutputControlSettings } from '@/core/providers/types';
+import { LLMUsage, LLMOutputControlSettings, ChatRole } from '@/core/providers/types';
 import type { TFile } from 'obsidian';
-
-export type ChatRole = 'user' | 'assistant' | 'system';
 
 /**
  * Base chat message structure (persisted to markdown).
@@ -43,8 +41,23 @@ export interface ChatMessage {
 	isVisible?: boolean;
 	/**
 	 * Assistant-only: thinking process (if available from provider)
+	 * @deprecated use reasoning instead
 	 */
 	thinking?: string;
+	/**
+	 * Assistant-only: structured reasoning content (parsed from markdown)
+	 */
+	reasoning?: {
+		content: string;
+	};
+	/**
+	 * Assistant-only: tool calls made during generation (parsed from markdown)
+	 */
+	toolCalls?: Array<{
+		toolName: string;
+		input?: any;
+		output?: any;
+	}>;
 	/**
 	 * Assistant-only: generation time in milliseconds
 	 */
@@ -238,5 +251,33 @@ export interface StreamingCallbacks {
 	 * @param error - The error that occurred
 	 */
 	onError?: (streamType: StreamType, error: unknown) => void;
+}
+
+/**
+ * Represents a file change in the workspace
+ */
+export interface FileChange {
+	/** Unique identifier for the file change */
+	id: string;
+	/** Relative path to the file */
+	filePath: string;
+	/** Number of lines added */
+	addedLines: number;
+	/** Number of lines removed */
+	removedLines: number;
+	/** Whether this change should be kept/accepted */
+	accepted: boolean;
+	/** File extension for icon display */
+	extension?: string;
+}
+
+/**
+ * Represents the current state of file changes in a conversation
+ */
+export interface FileChangesState {
+	/** Array of file changes */
+	changes: FileChange[];
+	/** Whether the changes area should be visible */
+	isVisible: boolean;
 }
 

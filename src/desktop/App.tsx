@@ -19,7 +19,8 @@ const originalGetInstance = EventBus.getInstance;
  */
 export const DesktopApp: React.FC = () => {
 	const app = new MockApp() as any;
-	const manager = new MockAIServiceManager() as any;
+	const eventBus = new MockEventBus() as any;
+	const manager = new MockAIServiceManager(eventBus) as any;
 	const viewManager = new MockViewManager() as any;
 	const searchClient = new MockSearchClient() as any;
 
@@ -29,6 +30,7 @@ export const DesktopApp: React.FC = () => {
 			manager={manager}
 			searchClient={searchClient}
 			viewManager={viewManager}
+			eventBus={eventBus}
 		>
 		<div className="h-screen w-screen flex flex-col" style={{ height: '100vh', width: '100vw', backgroundColor: '#ffffff', color: '#000000', display: 'flex', flexDirection: 'column' }}>
 			<DesktopRouter />

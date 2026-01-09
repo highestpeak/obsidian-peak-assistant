@@ -91,7 +91,7 @@ npm install --save-dev @electron/rebuild
 # Rebuild better-sqlite3 for Electron
 # (Make sure to specify your Electron version for best compatibility)
 npx electron-rebuild -f -w better-sqlite3 --version=28.0.0
-# Replace 28.0.0 with your Obsidian's Electron version (found in Settings → About)
+# Replace 28.0.0 with your Obsidian's Electron version (found in Settings → About)(or open console and input: navigator.userAgent)
 ```
 
 **Option B: Manual Rebuild**

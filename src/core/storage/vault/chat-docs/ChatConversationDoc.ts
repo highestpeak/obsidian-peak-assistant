@@ -150,6 +150,9 @@ const REGEX_SHORT_SUMMARY_SECTION = /^#\s+Short Summary\s*$\n([\s\S]*?)(?=^#\s+|
 const REGEX_FULL_SUMMARY_SECTION = /^#\s+Full Summary\s*$\n([\s\S]*?)(?=^#\s+|\n?$)/m;
 // Matches topic section header: "# Topic Title" (level 1 heading that's not a message header or standard section)
 const REGEX_TOPIC_HEADER = /^#\s+([^\n💬🤖]+)$/gm;
+// Pre-compiled regex for parsing reasoning and tool calls
+const REGEX_LEVEL2_HEADINGS = /^## /m; // Matches level 2 headings for splitting content
+const REGEX_CODEBLOCK = /```(?:json|javascript|js)?\n?([\s\S]*?)```/g; // Matches codeblocks with optional language specifier
 
 /**
  * Message in document format (plain text representation).
@@ -158,6 +161,8 @@ export interface ChatMessageDoc {
 	role: 'user' | 'assistant' | 'system';
 	content: string;
 	title?: string;
+	reasoning?: { content: string };
+	toolCalls?: Array<{ toolName: string; input?: any; output?: any; isActive?: boolean }>;
 }
 
 /**
@@ -988,7 +993,120 @@ export class ChatConversationDoc {
 		const titleMatch = headerTitle.match(/^(💬|🤖)\s+(.+)$/);
 		const title = titleMatch ? titleMatch[2] : undefined;
 
-		return { role, content: trimmedContent, title };
+		// Parse reasoning and tool calls from content
+		const { mainContent, reasoning, toolCalls } = this.parseReasoningAndTools(trimmedContent);
+
+		return {
+			role,
+			content: mainContent,
+			title,
+			reasoning,
+			toolCalls
+		};
+	}
+
+	/**
+	 * Parse reasoning and tool calls from message content
+	 */
+	private static parseReasoningAndTools(content: string): {
+		mainContent: string;
+		reasoning?: { content: string };
+		toolCalls?: Array<{ toolName: string; input?: any; output?: any; isActive?: boolean }>;
+	} {
+		let mainContent = content;
+		let reasoning: { content: string } | undefined;
+		let toolCalls: Array<{ toolName: string; input?: any; output?: any; isActive?: boolean }> | undefined;
+
+		// Split content by level 2 headings (##)
+		const sections = content.split(REGEX_LEVEL2_HEADINGS);
+		const processedSections: string[] = [];
+
+		for (let i = 0; i < sections.length; i++) {
+			const section = sections[i].trim();
+			if (!section) continue;
+
+			const lines = section.split('\n');
+			const heading = lines[0]?.toLowerCase();
+
+			if (heading?.includes('reasoning') || heading?.includes('thinking')) {
+				// Extract reasoning content (everything after the heading)
+				const reasoningContent = lines.slice(1).join('\n').trim();
+				if (reasoningContent) {
+					reasoning = { content: reasoningContent };
+				}
+			} else if (heading?.includes('tool') || heading?.includes('function')) {
+				// Extract tool calls from codeblocks
+				const toolSection = lines.slice(1).join('\n');
+				toolCalls = this.parseToolCallsFromContent(toolSection);
+			} else {
+				// Keep other sections as main content
+				processedSections.push('## ' + section);
+			}
+		}
+
+		// If no sections were processed, use original content
+		mainContent = processedSections.length > 0 ? processedSections.join('\n\n') : content;
+
+		return { mainContent, reasoning, toolCalls };
+	}
+
+	/**
+	 * Parse tool calls from content (expects codeblocks with tool call data)
+	 */
+	private static parseToolCallsFromContent(content: string): Array<{ toolName: string; input?: any; output?: any; isActive?: boolean }> {
+		const toolCalls: Array<{ toolName: string; input?: any; output?: any; isActive?: boolean }> = [];
+
+		// Find codeblocks in the content
+		let match;
+
+		while ((match = REGEX_CODEBLOCK.exec(content)) !== null) {
+			const codeContent = match[1].trim();
+			try {
+				// Try to parse as JSON first
+				const parsed = JSON.parse(codeContent);
+				if (Array.isArray(parsed)) {
+					// Array of tool calls
+					parsed.forEach(call => {
+						if (call.toolName || call.name) {
+							toolCalls.push({
+								toolName: call.toolName || call.name,
+								input: call.input || call.arguments,
+								output: call.output || call.result,
+								isActive: call.isActive || false
+							});
+						}
+					});
+				} else if (parsed.toolName || parsed.name) {
+					// Single tool call
+					toolCalls.push({
+						toolName: parsed.toolName || parsed.name,
+						input: parsed.input || parsed.arguments,
+						output: parsed.output || parsed.result,
+						isActive: parsed.isActive || false
+					});
+				}
+			} catch (e) {
+				// If not JSON, try to parse line by line
+				const lines = codeContent.split('\n').filter(line => line.trim());
+				lines.forEach(line => {
+					try {
+						const parsed = JSON.parse(line.trim());
+						if (parsed.toolName || parsed.name) {
+							toolCalls.push({
+								toolName: parsed.toolName || parsed.name,
+								input: parsed.input || parsed.arguments,
+								output: parsed.output || parsed.result,
+								isActive: parsed.isActive || false
+							});
+						}
+					} catch (e2) {
+						// Skip invalid lines
+					}
+				});
+			}
+		}
+
+		return toolCalls;
 	}
 
 	// Intentionally no local short-title generator here.

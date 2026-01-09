@@ -87,6 +87,8 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({ className }) => {
 			text={currentMode?.label}
 			menuId="chat-mode-selector"
 			hoverMenuContent={menuContent}
+			align="end"
+			side="bottom"
 		/>
 	);
 };

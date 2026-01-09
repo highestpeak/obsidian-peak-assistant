@@ -49,6 +49,18 @@ export {
 	ReasoningContent,
 } from './reasoning';
 
+// Shimmer component
+export { Shimmer } from './shimmer';
+
+// Task components
+export {
+	Task,
+	TaskTrigger,
+	TaskContent,
+	TaskItem,
+	TaskItemFile,
+} from './task';
+
 
 // Queue components
 export {

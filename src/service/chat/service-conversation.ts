@@ -1,7 +1,7 @@
 import { App } from 'obsidian';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
-import { LLMProviderService, LLMUsage, LLMOutputControlSettings } from '@/core/providers/types';
-import { AIServiceSettings } from '@/app/settings/types';
+import { LLMProviderService, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, ToolEvent } from '@/core/providers/types';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { DEFAULT_SUMMARY } from '@/core/constant';
 import { EventBus, MessageSentEvent, ConversationCreatedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
@@ -19,7 +19,6 @@ import {
 import { PromptService } from '@/service/prompt/PromptService';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
 import { PromptId } from '@/service/prompt/PromptId';
-import { AIStreamEvent } from '@/core/providers/types-events';
 import { ResourceSummaryService } from './context/ResourceSummaryService';
 import { ContextBuilder } from './context/ContextBuilder';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
@@ -27,8 +26,18 @@ import { ResourceLoaderManager } from '@/core/document/resource/helper/ResourceL
 import type { AIServiceManager } from './service-manager';
 import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { generateContentPreview, generateAttachmentSummary } from '@/core/utils/message-preview-utils';
-import { getFileTypeFromPath, isImageExtension } from '@/core/document/helper/FileTypeUtils';
-import { resolveModelCapabilities } from '@/core/providers/model-capabilities';
+import { getFileTypeFromPath } from '@/core/document/helper/FileTypeUtils';
+import { resolveModelCapabilities } from '@/core/providers/types';
+import { detectTimezone } from '@/ui/view/shared/date-utils';
+import { uploadFilesToVault } from '@/core/utils/vault-utils';
+
+interface ChatPreparationResult {
+	modelId: string;
+	provider: string;
+	timezone: string;
+	prompt: LLMRequestMessage[];
+	outputControl?: LLMOutputControlSettings;
+}
 
 /**
  * Service for managing chat conversations.
@@ -105,118 +114,6 @@ export class ConversationService {
 	}
 
 	/**
-	 * Send a message and wait for the full model response (blocking).
-	 * Returns the assistant message and usage without persisting. Call addMessage to persist.
-	 */
-	async blockChat(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
-		userContent: string;
-		attachments?: string[];
-	}): Promise<{ message: ChatMessage; usage?: LLMUsage }> {
-		const { conversation, project } = params;
-		const prepared = await this.prepareChatRequest(params);
-
-		const startTime = Date.now();
-		const assistant = await this.chat.blockChat({
-			provider: prepared.provider,
-			model: prepared.modelId,
-			messages: prepared.llmMessages,
-			outputControl: prepared.outputControl,
-		});
-
-		const assistantMessage = createChatMessage('assistant', assistant.content, assistant.model, prepared.provider, prepared.timezone);
-		assistantMessage.tokenUsage = assistant.usage;
-		assistantMessage.genTimeMs = Date.now() - startTime;
-
-		return {
-			message: assistantMessage,
-			usage: assistant.usage,
-		};
-	}
-
-	/**
-	 * Send a message and stream incremental model output.
-	 */
-	streamChat(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
-		userContent: string;
-		attachments?: string[];
-	}): AsyncGenerator<AIStreamEvent> {
-		const self = this;
-		return (async function* (): AsyncGenerator<AIStreamEvent> {
-			const prepared = await self.prepareChatRequest(params);
-			const stream = self.chat.streamChat({
-				provider: prepared.provider,
-				model: prepared.modelId,
-				messages: prepared.llmMessages,
-				outputControl: prepared.outputControl,
-			});
-			yield* self.consumeLLMStream(stream, {
-				initialModel: prepared.modelId,
-				initialProvider: prepared.provider,
-				conversation: params.conversation,
-				project: params.project ?? null,
-				messagesWithUser: prepared.messagesWithUser,
-				timezone: prepared.timezone,
-			});
-		})();
-	}
-
-	/**
-	 * Reduce streaming deltas and return the final assistant reply.
-	 * Does not persist. Call saveExchange to persist.
-	 */
-	private async *consumeLLMStream(
-		stream: AsyncGenerator<AIStreamEvent>,
-		params: {
-			initialModel: string;
-			initialProvider: string;
-			conversation: ChatConversation;
-			project: ChatProject | null;
-			messagesWithUser: ChatMessage[];
-			timezone: string;
-		}
-	): AsyncGenerator<AIStreamEvent> {
-		let assistantContent = '';
-		let currentModel = params.initialModel;
-		let currentProvider = params.initialProvider;
-		let usage: LLMUsage | undefined;
-		const startTime = Date.now();
-		try {
-			for await (const chunk of stream) {
-				if (chunk.type === 'delta') {
-					assistantContent += chunk.text;
-					if (chunk.model) {
-						currentModel = chunk.model;
-					}
-					yield { type: 'delta', text: chunk.text };
-				} else if (chunk.type === 'complete') {
-					currentModel = chunk.model || currentModel;
-					if (chunk.usage) {
-						usage = chunk.usage;
-					}
-				}
-			}
-
-			const assistantMessage = createChatMessage('assistant', assistantContent, currentModel, currentProvider, params.timezone);
-			assistantMessage.tokenUsage = usage;
-			assistantMessage.genTimeMs = Date.now() - startTime;
-
-			yield {
-				type: 'complete',
-				message: assistantMessage,
-				model: currentModel,
-				usage,
-			};
-		} catch (error) {
-			const normalized = error instanceof Error ? error : new Error(String(error));
-			yield { type: 'error', error: normalized };
-		}
-	}
-
-	/**
 	 * Upload files and create resource references.
 	 * Uploads files to vault and creates resourceRef for each file.
 	 * 
@@ -230,9 +127,8 @@ export class ConversationService {
 
 		// Get upload folder from settings
 		const uploadFolder = this.settings?.uploadFolder || 'uploads';
-		
+
 		// Upload files to vault
-		const { uploadFilesToVault } = await import('@/core/utils/vault-utils');
 		const uploadedPaths = await uploadFilesToVault(this.app, files, uploadFolder);
 
 		// Create resource references for uploaded files
@@ -242,8 +138,9 @@ export class ConversationService {
 			const summaryPath = this.resourceSummaryService!.getResourceSummaryPath(resourceRef.id);
 			resourceRef.summaryNotePath = summaryPath;
 
-			// Ensure resource summary exists, generate if missing
-			await this.ensureResourceSummary(filePath, resourceRef);
+			// only generate when streaming
+			// // Ensure resource summary exists, generate if missing
+			// await this.ensureResourceSummary(filePath, resourceRef);
 
 			resources.push(resourceRef);
 		}
@@ -252,35 +149,62 @@ export class ConversationService {
 	}
 
 	/**
-	 * Prepare chat request: create user message, process attachments, build LLM messages
+	 * Send a message and stream incremental model output.
 	 */
-	private async prepareChatRequest(params: {
+	streamChat(params: {
 		conversation: ChatConversation;
 		project?: ChatProject | null;
 		userContent: string;
 		attachments?: string[];
-	}): Promise<{
-		modelId: string;
-		provider: string;
-		timezone: string;
-		userMessage: ChatMessage;
-		messagesWithUser: ChatMessage[];
-		llmMessages: LLMRequestMessage[];
-		outputControl?: LLMOutputControlSettings;
-	}> {
+	}): AsyncGenerator<LLMStreamEvent> {
+		const self = this;
+		return (async function* (): AsyncGenerator<LLMStreamEvent> {
+			const preparationGenerator = self.prepareChatRequest(params);
+			// Manually iterate through the generator to get both events and final result
+			let prepared: ChatPreparationResult | undefined;
+			let result: IteratorResult<LLMStreamEvent, ChatPreparationResult>;
+			while (!(result = await preparationGenerator.next()).done) {
+				// Yield all intermediate events
+				if (result.value) {
+					yield result.value;
+				}
+			}
+			// Get the final return value
+			prepared = result.value;
+
+			const stream = self.chat.streamChat({
+				provider: prepared.provider,
+				model: prepared.modelId,
+				messages: prepared.prompt,
+				outputControl: prepared.outputControl,
+			});
+			yield* stream;
+		})();
+	}
+
+	/**
+	 * Prepare chat request: create user message, process attachments, build LLM messages
+	 */
+	private async *prepareChatRequest(params: {
+		conversation: ChatConversation;
+		project?: ChatProject | null;
+		userContent: string;
+		attachments?: string[];
+	}): AsyncGenerator<LLMStreamEvent, ChatPreparationResult, void> {
 		const { conversation, project, userContent, attachments } = params;
 		const modelId = conversation.meta.activeModel || this.defaultModel.modelId;
 		const provider = conversation.meta.activeProvider || this.defaultModel.provider;
-		const timezone = this.detectTimezone();
-		const userMessage = createChatMessage('user', userContent, modelId, provider, timezone);
-
 		// Get model capabilities and attachment handling mode
-		const allModels = await this.aiServiceManager.getAllAvailableModels();
-		const currentModel = allModels.find(m => m.id === modelId && m.provider === provider);
+		const currentModel = await this.aiServiceManager.getModelInfo(modelId, provider);
 		const modelCapabilities = resolveModelCapabilities(currentModel);
-		const attachmentHandlingMode = conversation.meta.attachmentHandlingOverride ?? this.settings?.attachmentHandlingDefault ?? 'degrade_to_text';
+
+		const timezone = detectTimezone();
+		const originalUserMessage = createChatMessage('user', userContent, modelId, provider, timezone);
 
 		// Convert legacy attachments to resources if provided
+		const attachmentHandlingMode = conversation.meta.attachmentHandlingOverride
+			?? this.settings?.attachmentHandlingDefault
+			?? DEFAULT_AI_SERVICE_SETTINGS.attachmentHandlingDefault;
 		if (attachments && attachments.length > 0) {
 			const resources = [];
 			for (const attachment of attachments) {
@@ -288,41 +212,51 @@ export class ConversationService {
 				const summaryPath = this.resourceSummaryService!.getResourceSummaryPath(resourceRef.id);
 				resourceRef.summaryNotePath = summaryPath;
 
-				const fileType = getFileTypeFromPath(attachment);
-				const isImage = fileType === 'image';
-
 				// Check if we should generate summary or use direct mode
-				if (isImage && modelCapabilities.vision && attachmentHandlingMode === 'direct') {
-					// Vision model + direct mode: skip summary generation, will use image_url directly
-					// Still create resourceRef for indexing, but don't block on summary
-				} else {
+				if (attachmentHandlingMode !== 'direct') {
 					// Degrade mode or non-vision: ensure resource summary exists
+					yield { type: 'tool-call', toolName: ToolEvent.GENERATE_SUMMARY, input: attachment };
 					await this.ensureResourceSummary(attachment, resourceRef);
+					yield { type: 'tool-result', toolName: ToolEvent.GENERATE_SUMMARY, input: attachment };
 				}
 
 				resources.push(resourceRef);
 			}
-			userMessage.resources = resources;
+			originalUserMessage.resources = resources;
 		}
 
-		const messagesWithUser = [...conversation.messages, userMessage];
-		const llmMessages = await this.buildLLMRequestMessages(messagesWithUser, conversation, project, modelCapabilities, attachmentHandlingMode);
+		// Build prompt from context and user input
+		const historyMessage = [...conversation.messages, originalUserMessage];
+		const contextGenerator = this.contextBuilder.buildContextMessages({
+			conversation,
+			project,
+			messages: historyMessage,
+			modelCapabilities,
+			attachmentHandlingMode,
+			app: this.app,
+		});
+		// Consume progress events
+		let result: IteratorResult<LLMStreamEvent, LLMRequestMessage[]>;
+		while (!(result = await contextGenerator.next()).done) {
+			// Yield all intermediate events
+			if (result.value) {
+				yield result.value;
+			}
+		}
+		const prompt = result.value;
+
+		// todo check result length and check whether overflow the model's context window. if so, we need to truncate the result.
 
 		// Get output control settings: priority: conversation override > global default
-		let outputControl: LLMOutputControlSettings | undefined;
-		if (conversation.meta.outputControlOverride) {
-			outputControl = conversation.meta.outputControlOverride;
-		} else if (this.settings?.defaultOutputControl) {
-			outputControl = this.settings.defaultOutputControl;
-		}
+		const outputControl = conversation.meta.outputControlOverride
+			?? this.settings?.defaultOutputControl
+			?? DEFAULT_AI_SERVICE_SETTINGS.defaultOutputControl;
 
 		return {
 			modelId,
 			provider,
 			timezone,
-			userMessage,
-			messagesWithUser,
-			llmMessages,
+			prompt: prompt,
 			outputControl,
 		};
 	}
@@ -366,9 +300,9 @@ export class ConversationService {
 		await this.storage.upsertConversationMeta(
 			conversationId,
 			{
-			activeModel: modelId,
+				activeModel: modelId,
 				activeProvider: provider,
-			updatedAtTimestamp: Date.now(),
+				updatedAtTimestamp: Date.now(),
 			}
 		);
 	}
@@ -491,27 +425,6 @@ export class ConversationService {
 	 */
 	async loadStarred(): Promise<StarredMessageRecord[]> {
 		return this.storage.listStarred();
-	}
-
-	/**
-	 * Compose the full messages array sent to the LLM.
-	 */
-	private async buildLLMRequestMessages(
-		messages: ChatMessage[],
-		conversation: ChatConversation,
-		project?: ChatProject | null,
-		modelCapabilities?: ReturnType<typeof resolveModelCapabilities>,
-		attachmentHandlingMode?: 'direct' | 'degrade_to_text'
-	): Promise<LLMRequestMessage[]> {
-		// Use ContextBuilder to build messages with full context
-		return this.contextBuilder.buildContextMessages({
-			conversation,
-			project,
-			messages,
-			modelCapabilities,
-			attachmentHandlingMode,
-			app: this.app,
-		});
 	}
 
 	/**
@@ -685,19 +598,19 @@ export class ConversationService {
 		// Check if this is an image and if imageDescriptionModel is configured
 		const fileType = getFileTypeFromPath(sourcePath);
 		const isImage = fileType === 'image';
-		
+
 		if (isImage) {
 			// Get SearchSettings from DocumentLoaderManager to check imageDescriptionModel
 			const docLoaderManager = DocumentLoaderManager.getInstance();
 			const searchSettings = (docLoaderManager as any).settings;
-			
+
 			if (!searchSettings?.imageDescriptionModel) {
 				// Image but no imageDescriptionModel configured: skip summary generation (ignore strategy)
 				console.warn(`[ConversationService] Image "${sourcePath}" skipped: no imageDescriptionModel configured`);
 				// Don't create summary, just return (image will be ignored in degrade_to_text mode)
 				return;
 			}
-			
+
 			// Image with imageDescriptionModel: use it for summary generation
 			// The ResourceLoaderManager.getSummary will delegate to ImageDocumentLoader,
 			// which will use imageDescriptionModel from settings
@@ -730,18 +643,6 @@ export class ConversationService {
 				kind: resourceRef.kind,
 				shortSummary: errorSummary,
 			});
-		}
-	}
-
-	/**
-	 * Detect the local timezone or fall back to UTC.
-	 */
-	private detectTimezone(): string {
-		try {
-			const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
-			return detected || 'UTC';
-		} catch (error) {
-			return 'UTC';
 		}
 	}
 

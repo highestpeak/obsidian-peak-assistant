@@ -4,12 +4,12 @@ import {
 	LLMProviderService,
 	ModelMetaData,
 	ProviderMetaData,
+	LLMStreamEvent,
 } from '../types';
-import { AIStreamEvent } from '../types-events';
 import { createOllama, type OllamaProvider } from 'ollama-ai-provider-v2';
-import { generateText, streamText, embedMany, type LanguageModel, type EmbeddingModel } from 'ai';
-import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
-import { trimTrailingSlash } from './helpers';
+import { embedMany, type LanguageModel, type EmbeddingModel } from 'ai';
+import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
+import { trimTrailingSlash } from '@/core/utils/format-utils';
 
 const DEFAULT_OLLAMA_TIMEOUT_MS = 60000;
 export const OLLAMA_DEFAULT_BASE = 'http://localhost:11434';
@@ -185,44 +185,12 @@ export class OllamaChatService implements LLMProviderService {
 		return 'ollama';
 	}
 
-	async blockChat(request: LLMRequest): Promise<LLMResponse> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
-
-		const result = await generateText({
-			model: this.client(request.model) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			topK: request.outputControl?.topK,
-			presencePenalty: request.outputControl?.presencePenalty,
-			frequencyPenalty: request.outputControl?.frequencyPenalty,
-		});
-
-		return {
-			content: result.text,
-			model: result.response.modelId || request.model,
-			usage: result.usage,
-		};
+	async blockChat(request: LLMRequest<any>): Promise<LLMResponse> {
+		return blockChat(this.client(request.model) as unknown as LanguageModel, request);
 	}
 
-	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
-
-		const result = streamText({
-			model: this.client(request.model) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			topK: request.outputControl?.topK,
-			presencePenalty: request.outputControl?.presencePenalty,
-			frequencyPenalty: request.outputControl?.frequencyPenalty,
-		});
-
-		return streamTextToAIStreamEvents(result, request.model);
+	streamChat(request: LLMRequest<any>): AsyncGenerator<LLMStreamEvent> {
+		return streamChat(this.client(request.model) as unknown as LanguageModel, request);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {

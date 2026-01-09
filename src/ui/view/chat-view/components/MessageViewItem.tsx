@@ -8,14 +8,20 @@ import { useStreamChat } from '../hooks/useStreamChat';
 import { cn } from '@/ui/react/lib/utils';
 import { COLLAPSED_USER_MESSAGE_CHAR_LIMIT } from '@/core/constant';
 import { Copy, RefreshCw, Star, Loader2, Check, ChevronDown, ChevronUp, FileText } from 'lucide-react';
-import { useMessageStore } from '@/ui/store/messageStore';
-import { StreamingStepsView } from './StreamingStepsView';
+import { useMessageStore, type ToolCallInfo } from '@/ui/view/chat-view/store/messageStore';
 import {
 	Message,
 	MessageContent,
 	MessageActions,
 	MessageAction,
 	MessageAttachment,
+	Reasoning,
+	ReasoningContent,
+	ReasoningTrigger,
+	Task,
+	TaskItem,
+	TaskTrigger,
+	TaskContent,
 } from '@/ui/component/ai-elements';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/component/shared-ui/tooltip';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -101,7 +107,7 @@ const MessageAttachmentsList: React.FC<{
 	 */
 	const renderAttachment = (attachment: ResourceUIAttachment, index: number, isImage: boolean) => {
 		const isPdf = attachment.fileType === 'pdf';
-		
+
 		const handleClick = async (e: React.MouseEvent) => {
 			e.stopPropagation();
 			await handleOpenResource(attachment);
@@ -113,7 +119,7 @@ const MessageAttachmentsList: React.FC<{
 				app={app}
 				previewClassName="pktw-z-[100]"
 			>
-				<div 
+				<div
 					className={cn(
 						"pktw-cursor-pointer pktw-transition-opacity hover:pktw-opacity-90",
 						isPdf || !isImage ? "pktw-w-full" : "pktw-flex-shrink-0"
@@ -176,6 +182,46 @@ const MessageAttachmentsList: React.FC<{
 };
 
 /**
+ * Component for rendering tool calls display
+ */
+const ToolCallsDisplay: React.FC<{
+	expanded: boolean;
+	toolCalls: ToolCallInfo[];
+}> = ({ expanded, toolCalls }) => {
+	return (
+		<div className="pktw-w-full pktw-space-y-2">
+			{toolCalls.map((toolCall, index) => (
+				<Task key={index} defaultOpen={expanded}>
+					<TaskTrigger title={toolCall.toolName} />
+					<TaskContent>
+						<TaskItem>
+							{toolCall.input && (
+								<div className="pktw-text-xs pktw-text-muted-foreground pktw-mb-2">
+									<strong>Input:</strong>
+									<pre className="pktw-whitespace-pre-wrap pktw-mt-1">{JSON.stringify(toolCall.input, null, 2)}</pre>
+								</div>
+							)}
+							{toolCall.output && (
+								<div className="pktw-text-xs pktw-text-muted-foreground pktw-mb-2">
+									<strong>Output:</strong>
+									<pre className="pktw-whitespace-pre-wrap pktw-mt-1">{JSON.stringify(toolCall.output, null, 2)}</pre>
+								</div>
+							)}
+							{toolCall.isActive && (
+								<div className="pktw-flex pktw-items-center pktw-mt-2">
+									<Loader2 className="pktw-size-3 pktw-animate-spin pktw-text-muted-foreground pktw-mr-2" />
+									<span className="pktw-text-xs pktw-text-muted-foreground">Running...</span>
+								</div>
+							)}
+						</TaskItem>
+					</TaskContent>
+				</Task>
+			))}
+		</div>
+	);
+};
+
+/**
  * Component for rendering message action buttons
  */
 const MessageActionsList: React.FC<{
@@ -202,57 +248,57 @@ const MessageActionsList: React.FC<{
 			className="pktw-flex pktw-items-center pktw-gap-1"
 		>
 			<MessageActions>
-			<MessageAction
-				tooltip={message.starred ? 'Unstar message' : 'Star message'}
-				label={message.starred ? 'Unstar message' : 'Star message'}
-				onClick={(e) => {
-					e.stopPropagation();
-					onToggleStar(message.id, !message.starred);
-				}}
-			>
-				<Star
-					size={12}
-					strokeWidth={2}
-					className={cn(
-						message.starred && 'pktw-fill-red-500 pktw-text-red-500'
-					)}
-				/>
-			</MessageAction>
-
-			<MessageAction
-				tooltip={copied ? 'Copied!' : 'Copy message'}
-				label="Copy message"
-				onClick={(e) => {
-					e.stopPropagation();
-					onCopy();
-				}}
-			>
-				{copied ? (
-					<Check size={12} strokeWidth={copied ? 3 : 2} />
-				) : (
-					<Copy size={12} strokeWidth={2} />
-				)}
-			</MessageAction>
-
-			{message.role === 'assistant' && isLastMessage && (
 				<MessageAction
-					tooltip="Regenerate response"
-					label="Regenerate response"
-					onClick={async (e) => {
+					tooltip={message.starred ? 'Unstar message' : 'Star message'}
+					label={message.starred ? 'Unstar message' : 'Star message'}
+					onClick={(e) => {
 						e.stopPropagation();
-						onRegenerate(message.id);
+						onToggleStar(message.id, !message.starred);
 					}}
 				>
-					<RefreshCw size={12} strokeWidth={2} />
+					<Star
+						size={12}
+						strokeWidth={2}
+						className={cn(
+							message.starred && 'pktw-fill-red-500 pktw-text-red-500'
+						)}
+					/>
 				</MessageAction>
-			)}
 
-			{message.role === 'assistant' && (
-				<>
-					<ModelIconButton message={message} />
-					<TokenCountButton message={message} />
-				</>
-			)}
+				<MessageAction
+					tooltip={copied ? 'Copied!' : 'Copy message'}
+					label="Copy message"
+					onClick={(e) => {
+						e.stopPropagation();
+						onCopy();
+					}}
+				>
+					{copied ? (
+						<Check size={12} strokeWidth={copied ? 3 : 2} />
+					) : (
+						<Copy size={12} strokeWidth={2} />
+					)}
+				</MessageAction>
+
+				{message.role === 'assistant' && isLastMessage && (
+					<MessageAction
+						tooltip="Regenerate response"
+						label="Regenerate response"
+						onClick={async (e) => {
+							e.stopPropagation();
+							onRegenerate(message.id);
+						}}
+					>
+						<RefreshCw size={12} strokeWidth={2} />
+					</MessageAction>
+				)}
+
+				{message.role === 'assistant' && (
+					<>
+						<ModelIconButton message={message} />
+						<TokenCountButton message={message} />
+					</>
+				)}
 
 			</MessageActions>
 			{showTime && <TimeDisplay message={message} />}
@@ -536,6 +582,15 @@ interface MessageItemProps {
 	activeProject: ChatProject | null;
 	isStreaming?: boolean;
 	streamingContent?: string;
+	reasoningContent?: string;
+	isReasoningActive?: boolean;
+	currentToolCalls?: Array<{
+		toolName: string;
+		input?: any;
+		isActive?: boolean;
+		output?: any;
+	}>;
+	isToolSequenceActive?: boolean;
 	isLastMessage?: boolean;
 	onScrollToBottom?: () => void;
 }
@@ -549,6 +604,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	activeProject,
 	isStreaming = false,
 	streamingContent = '',
+	reasoningContent = '',
+	isReasoningActive = false,
+	currentToolCalls = [],
+	isToolSequenceActive = false,
 	isLastMessage = false,
 	onScrollToBottom,
 }) => {
@@ -645,21 +704,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	// Determine if this is a user message or assistant message
 	const isUser = message.role === 'user'; // 'user' = user message, 'assistant' = AI message
 
-	// Get streaming steps if this is the streaming message
-	const streamingSteps = useMessageStore((state) =>
-		state.streamingMessageId === message.id ? state.streamingSteps : []
-	);
-
 	// Get display content: if streaming, use streamingContent; otherwise use message.content
 	// Streaming logic: when AI is generating, isStreaming=true and streamingContent contains partial content
 	const displayContent = isStreaming ? (streamingContent || '') : message.content;
-
-	// Character limit for collapsed user messages (only for user messages, not streaming)
-	const contentLength = String(displayContent || '').length;
-	const shouldShowExpand = isUser && !isStreaming && contentLength > COLLAPSED_USER_MESSAGE_CHAR_LIMIT;
-	const displayText = shouldShowExpand && !isExpanded
-		? String(displayContent).slice(0, COLLAPSED_USER_MESSAGE_CHAR_LIMIT) + '...'
-		: String(displayContent);
 
 	const handleCopy = useCallback(async () => {
 		try {
@@ -728,6 +775,16 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 		menu.showAtPosition({ x: e.clientX, y: e.clientY });
 	}, [message, handleCopy, handleToggleStar, handleRegenerate, isLastMessage]);
 
+	// Character limit for collapsed user messages (only for user messages, not streaming)
+	const contentLength = String(displayContent || '').length;
+	const shouldShowExpand = isUser && !isStreaming && contentLength > COLLAPSED_USER_MESSAGE_CHAR_LIMIT;
+	const displayText = shouldShowExpand && !isExpanded
+		? String(displayContent).slice(0, COLLAPSED_USER_MESSAGE_CHAR_LIMIT) + '...'
+		: String(displayContent);
+
+	// should show loader
+	const shouldShowLoader = isStreaming && !displayContent && !isReasoningActive && !isToolSequenceActive;
+
 	return (
 		<div
 			className={cn(
@@ -746,22 +803,41 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 					</div>
 				)}
 
-				{/* Chain of Thought: Show streaming steps for assistant messages */}
-				{!isUser && <StreamingStepsView steps={streamingSteps} />}
-
 				<MessageContent
 					className={cn(
 						isUser && "pktw-rounded-lg pktw-bg-secondary pktw-px-4 pktw-py-4 pktw-w-full"
 					)}
 				>
-					{/* Render message content */}
-					{/* Case 1: Streaming started but no content yet - show loading spinner */}
-					{isStreaming && !streamingContent ? (
+					{/* Streaming started but no content yet - show loading spinner */}
+					{shouldShowLoader ? (
 						<div className="pktw-flex pktw-items-center pktw-justify-start pktw-py-2">
 							<Loader2 className="pktw-size-4 pktw-animate-spin pktw-text-muted-foreground" />
 						</div>
-					) : displayContent ? (
-						/* Case 2: Has content (either streaming or complete) - render content */
+					) : null}
+
+					{/* Render reasoning content for assistant messages */}
+					{!isUser && reasoningContent && (
+						<Reasoning isStreaming={isReasoningActive} className="pktw-w-full pktw-mb-0">
+							<ReasoningTrigger/>
+							<ReasoningContent>
+								{reasoningContent}
+							</ReasoningContent>
+						</Reasoning>
+					)}
+
+					{/* Render tool calls for assistant messages */}
+					{!isUser && currentToolCalls.length > 0 && (
+						<ToolCallsDisplay expanded={isToolSequenceActive} toolCalls={currentToolCalls.map(call => ({
+							toolName: call.toolName,
+							input: call.input,
+							output: call.output,
+							isActive: call.isActive ?? false,
+						}))} />
+					)}
+
+					{/* Render message content */}
+					{(!shouldShowLoader && displayContent) ? (
+						/* Has content (either streaming or complete) - render content */
 						<div className="pktw-relative">
 							{
 								isUser ? (
@@ -779,7 +855,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 									</div>
 								)
 							}
-							{/* Case 3: Show expand/collapse button for long user messages (not streaming, not AI) */}
+							{/* Show expand/collapse button for long user messages (not streaming, not AI) */}
 							{shouldShowExpand && (
 								<button
 									type="button"

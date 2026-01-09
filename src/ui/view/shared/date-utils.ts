@@ -7,7 +7,7 @@ export function formatDuration(startTimestamp: number, endTimestamp: number): st
 	const minutes = Math.floor(seconds / 60);
 	const hours = Math.floor(minutes / 60);
 	const days = Math.floor(hours / 24);
-	
+
 	if (days > 0) {
 		return `${days}d ${hours % 24}h`;
 	} else if (hours > 0) {
@@ -37,17 +37,17 @@ export function formatTokenCount(count: number): string {
 export function formatRelativeDate(timestamp: number): string {
 	const dateObj = new Date(timestamp);
 	const now = new Date();
-	
+
 	// Get today's date at 0:00 in local timezone
 	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-	
+
 	// Get the date at 0:00 in local timezone for the timestamp
 	const targetDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
-	
+
 	// Calculate difference in days
 	const diffMs = today.getTime() - targetDate.getTime();
 	const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-	
+
 	if (diffDays === 0) {
 		return 'Today';
 	} else if (diffDays === 1) {
@@ -83,13 +83,13 @@ export function formatRelativeTime(timestamp: number): string {
 	const now = Date.now();
 	const dateObj = new Date(timestamp);
 	const nowDate = new Date(now);
-	
+
 	// Get today's date at 0:00 in local timezone
 	const today = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate());
-	
+
 	// Check if timestamp is before today's 0:00
 	const isBeforeToday = timestamp < today.getTime();
-	
+
 	if (isBeforeToday) {
 		// Use day/week/month/year for dates before today
 		const diffMs = now - timestamp;
@@ -100,7 +100,7 @@ export function formatRelativeTime(timestamp: number): string {
 		const diffWeeks = Math.floor(diffDays / 7);
 		const diffMonths = Math.floor(diffDays / 30);
 		const diffYears = Math.floor(diffDays / 365);
-		
+
 		if (diffDays < 7) {
 			return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
 		} else if (diffWeeks < 4) {
@@ -116,7 +116,7 @@ export function formatRelativeTime(timestamp: number): string {
 		const diffSeconds = Math.floor(diffMs / 1000);
 		const diffMinutes = Math.floor(diffSeconds / 60);
 		const diffHours = Math.floor(diffMinutes / 60);
-		
+
 		if (diffSeconds < 60) {
 			return 'just now';
 		} else if (diffMinutes < 60) {
@@ -127,3 +127,14 @@ export function formatRelativeTime(timestamp: number): string {
 	}
 }
 
+/**
+ * Detect the local timezone or fall back to UTC.
+ */
+export function detectTimezone(): string {
+	try {
+		const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		return detected || 'UTC';
+	} catch (error) {
+		return 'UTC';
+	}
+}

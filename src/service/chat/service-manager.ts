@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings } from '@/core/providers/types';
+import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings, LLMStreamEvent } from '@/core/providers/types';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef, StreamingCallbacks, StreamType } from './types';
@@ -7,7 +7,6 @@ import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId, PromptVariables } from '@/service/prompt/PromptId';
 import { ProjectService } from './service-project';
 import { ConversationService } from './service-conversation';
-import { AIStreamEvent } from '@/core/providers/types-events';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { ResourceSummaryService } from './context/ResourceSummaryService';
 import { IndexService } from '@/service/search/index/indexService';
@@ -327,6 +326,8 @@ ${sourcesList}${topicsList}
 	/**
 	 * Send a message and wait for the full model response (blocking).
 	 * Returns the assistant message and usage without persisting. Call addMessage to persist.
+	 *
+	 * @experimental This method is temporarily not supported. Use streamChat instead.
 	 */
 	async blockChat(params: {
 		conversation: ChatConversation;
@@ -334,10 +335,7 @@ ${sourcesList}${topicsList}
 		userContent: string;
 		attachments?: string[];
 	}): Promise<{ message: ChatMessage; usage?: LLMUsage }> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
-		return this.conversationService.blockChat(params);
+		throw new Error('Unsupported operation. Use streamChat instead.');
 	}
 
 	/**
@@ -348,7 +346,7 @@ ${sourcesList}${topicsList}
 		project?: ChatProject | null;
 		userContent: string;
 		attachments?: string[];
-	}): AsyncGenerator<AIStreamEvent> {
+	}): AsyncGenerator<LLMStreamEvent> {
 		if (!this.conversationService) {
 			throw new Error('ConversationService not initialized. Call init() first.');
 		}
@@ -599,6 +597,11 @@ ${sourcesList}${topicsList}
 					icon: m.icon,
 				capabilities: m.capabilities, // Pass through capabilities from provider
 			}));
+	}
+
+	async getModelInfo(modelId: string, provider: string): Promise<ModelInfoForSwitch | undefined> {
+		const allModels = await this.getAllAvailableModels();
+		return allModels.find(m => m.id === modelId && m.provider === provider);
 	}
 
 }

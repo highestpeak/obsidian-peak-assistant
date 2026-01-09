@@ -4,31 +4,68 @@ import {
 	LLMProviderService,
 	ModelMetaData,
 	ProviderMetaData,
+	LLMStreamEvent,
 } from '../types';
-import { AIStreamEvent } from '../types-events';
 import { createPerplexity, type PerplexityProvider } from '@ai-sdk/perplexity';
-import { generateText, streamText, type LanguageModel } from 'ai';
-import { toAiSdkMessages, extractSystemMessage, streamTextToAIStreamEvents } from './helpers';
+import { type LanguageModel } from 'ai';
+import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
 
 const DEFAULT_PERPLEXITY_TIMEOUT_MS = 60000;
 const PERPLEXITY_DEFAULT_BASE = 'https://api.perplexity.ai';
 
 /**
- * Known Perplexity model IDs extracted from @ai-sdk/perplexity type definitions.
- * This serves as a fallback when API model fetching fails.
- * 
- * Note: This list should be kept in sync with PerplexityLanguageModelId type from @ai-sdk/perplexity.
- * The list includes all known model IDs up to the package version.
- * 
- * https://docs.perplexity.ai/getting-started/pricing
+ * Model mapping interface containing both the actual API model ID and the icon identifier.
  */
-export const KNOWN_PERPLEXITY_CHAT_MODELS: readonly string[] = [
-	'sonar-deep-research',
-	'sonar-reasoning-pro',
-	'sonar-reasoning',
-	'sonar-pro',
-	'sonar',
-] as const;
+interface ModelMapping {
+	/** Actual API model ID to use for API calls */
+	modelId: string;
+	/** Icon identifier for UI display, compatible with @lobehub/icons ModelIcon component */
+	icon: string;
+}
+
+/**
+ * Map user-facing model IDs to actual API model IDs and icons.
+ *
+ * DESIGN EVOLUTION:
+ *
+ * Initially, we maintained a complete list (KNOWN_PERPLEXITY_CHAT_MODELS) that included all
+ * Perplexity model IDs, extracted from @ai-sdk/perplexity type definitions. This list was used
+ * directly for getAvailableModels().
+ *
+ * CURRENT APPROACH:
+ *
+ * We now use a unified mapping structure for consistency with other providers:
+ * - User-facing IDs (keys): Clean names without version suffixes where applicable
+ * - API model IDs (modelId): Actual model IDs to use for API calls
+ * - Icons (icon): All Perplexity models use 'perplexity' icon
+ *
+ * Similar to OpenAI and Claude, we map user-friendly names to specific versions for API calls,
+ * ensuring users see clean names while we use specific versions internally.
+ *
+ * DATA SOURCES:
+ * - Original model IDs: @ai-sdk/perplexity package type definitions (PerplexityLanguageModelId type)
+ * - Official documentation: https://docs.perplexity.ai/getting-started/pricing
+ * - When adding new models, check both sources
+ *
+ * This is now the single source of truth for available Perplexity models.
+ */
+const MODEL_ID_MAP: Record<string, ModelMapping> = {
+	// Sonar series
+	'sonar-deep-research': { modelId: 'sonar-deep-research', icon: 'perplexity' },
+	'sonar-reasoning-pro': { modelId: 'sonar-reasoning-pro', icon: 'perplexity' },
+	'sonar-reasoning': { modelId: 'sonar-reasoning', icon: 'perplexity' },
+	'sonar-pro': { modelId: 'sonar-pro', icon: 'perplexity' },
+	'sonar': { modelId: 'sonar', icon: 'perplexity' },
+};
+
+/**
+ * Get list of available Perplexity model IDs.
+ *
+ * @returns Array of user-facing model IDs (keys from MODEL_ID_MAP)
+ */
+export function getKnownPerplexityModelIds(): readonly string[] {
+	return Object.keys(MODEL_ID_MAP);
+}
 
 interface PerplexityModelResponse {
 	object: string;
@@ -148,52 +185,34 @@ export class PerplexityChatService implements LLMProviderService {
 		return 'perplexity';
 	}
 
-	async blockChat(request: LLMRequest): Promise<LLMResponse> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
-
-		const result = await generateText({
-			model: this.client(request.model) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			topK: request.outputControl?.topK,
-			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
-		});
-
-		return {
-			content: result.text,
-			model: result.response.modelId || request.model,
-			usage: result.usage,
-		};
+	/**
+	 * Normalize user-facing model ID to actual API model ID by looking up in MODEL_ID_MAP.
+	 *
+	 * @param modelId - User-facing model ID
+	 * @returns Actual API model ID from MODEL_ID_MAP, or original ID if not found in mapping
+	 */
+	private normalizeModelId(modelId: string): string {
+		return MODEL_ID_MAP[modelId]?.modelId || modelId;
 	}
 
-	streamChat(request: LLMRequest): AsyncGenerator<AIStreamEvent> {
-		const messages = toAiSdkMessages(request.messages);
-		const systemMessage = extractSystemMessage(request.messages);
+	async blockChat(request: LLMRequest<any>): Promise<LLMResponse> {
+		return blockChat(this.client(this.normalizeModelId(request.model)) as unknown as LanguageModel, request);
+	}
 
-		const result = streamText({
-			model: this.client(request.model) as unknown as LanguageModel,
-			messages,
-			system: systemMessage,
-			temperature: request.outputControl?.temperature,
-			topP: request.outputControl?.topP,
-			topK: request.outputControl?.topK,
-			...(request.outputControl?.maxOutputTokens !== undefined && { maxTokens: request.outputControl.maxOutputTokens }),
-		});
-
-		return streamTextToAIStreamEvents(result, request.model);
+	streamChat(request: LLMRequest<any>): AsyncGenerator<LLMStreamEvent> {
+		return streamChat(this.client(this.normalizeModelId(request.model)) as unknown as LanguageModel, request);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
-		// Fallback: Use known model IDs from @ai-sdk/perplexity type definitions
-		// This ensures we have a comprehensive list even when API fetch fails
-		return KNOWN_PERPLEXITY_CHAT_MODELS.map((modelId) => ({
-			id: modelId,
-			displayName: modelId,
-			icon: 'perplexity',
-		}));
+		// Return model IDs from MODEL_ID_MAP
+		return getKnownPerplexityModelIds().map((modelId) => {
+			const mapping = MODEL_ID_MAP[modelId];
+			return {
+				id: modelId,
+				displayName: modelId,
+				icon: mapping?.icon || 'perplexity',
+			};
+		});
 	}
 
 	getProviderMetadata(): ProviderMetaData {

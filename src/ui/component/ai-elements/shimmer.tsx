@@ -1,11 +1,14 @@
-import React, {
+"use client";
+
+import { cn } from "@/ui/react/lib/utils";
+import { motion } from "motion/react";
+import {
   type CSSProperties,
   type ElementType,
   type JSX,
   memo,
   useMemo,
 } from "react";
-import { cn } from "@/ui/react/lib/utils";
 
 export type TextShimmerProps = {
   children: string;
@@ -17,41 +20,45 @@ export type TextShimmerProps = {
 
 const ShimmerComponent = ({
   children,
-  as: Component = "span",
+  as: Component = "p",
   className,
   duration = 2,
   spread = 2,
 }: TextShimmerProps) => {
+  const MotionComponent = motion.create(
+    Component as keyof JSX.IntrinsicElements
+  );
+
   const dynamicSpread = useMemo(
     () => (children?.length ?? 0) * spread,
     [children, spread]
   );
 
   return (
-    <Component
+    <MotionComponent
+      animate={{ backgroundPosition: "0% center" }}
       className={cn(
-        "pktw-relative pktw-inline-block pktw-bg-clip-text pktw-text-transparent",
+        "pktw-relative pktw-inline-block bg-[length:pktw-250%_100%,auto] pktw-bg-clip-text pktw-text-transparent",
+        "[--bg:pktw-linear-gradient(90deg,#0000_calc(50%-var(--spread)),var(--color-background),#0000_calc(50%+var(--spread)))] [background-repeat:pktw-no-repeat,padding-box]",
         className
       )}
+      initial={{ backgroundPosition: "100% center" }}
       style={
         {
           "--spread": `${dynamicSpread}px`,
-          // Shimmer effect: white highlight moving over text color
-          // First gradient: transparent -> white (highlight) -> transparent (moving)
-          // Second gradient: solid text color (base layer)
-          backgroundImage: `linear-gradient(90deg, transparent calc(50% - var(--spread)), rgba(255, 255, 255, 0.8) calc(50% - var(--spread)), rgba(255, 255, 255, 0.8) calc(50% + var(--spread)), transparent calc(50% + var(--spread))), linear-gradient(var(--text-normal), var(--text-normal))`,
-          backgroundSize: "250% 100%, auto",
-          backgroundRepeat: "no-repeat, repeat",
-          backgroundClip: "text, padding-box",
-          WebkitBackgroundClip: "text, padding-box",
-          animation: `pktw-shimmer ${duration}s linear infinite`,
+          backgroundImage:
+            "var(--bg), linear-gradient(var(--color-muted-foreground), var(--color-muted-foreground))",
         } as CSSProperties
       }
+      transition={{
+        repeat: Number.POSITIVE_INFINITY,
+        duration,
+        ease: "linear",
+      }}
     >
       {children}
-    </Component>
+    </MotionComponent>
   );
 };
 
 export const Shimmer = memo(ShimmerComponent);
-

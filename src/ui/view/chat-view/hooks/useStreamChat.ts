@@ -1,15 +1,15 @@
 import { useCallback } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { useMessageStore } from '@/ui/store/messageStore';
+import { useMessageStore } from '@/ui/view/chat-view/store/messageStore';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
 import { createChatErrorMessage } from '@/service/chat/utils/chat-message-builder';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types';
-import type { LLMUsage } from '@/core/providers/types';
+import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import type { MessageStore } from '@/ui/store/messageStore';
+import type { MessageStore } from '@/ui/view/chat-view/store/messageStore';
 
 export interface StreamChatOptions {
 	conversation: ChatConversation;
@@ -41,29 +41,88 @@ function handleAbortedStream(
 	finalUsage: LLMUsage | undefined,
 	onlyIfNoMessage: boolean = false
 ): StreamChatResult {
-	const streamingContent = messageStore.streamingContent;
-
-	// Check if we should create a message from partial content
-	const shouldCreateMessage = streamingContent && streamingContent.trim() && (!onlyIfNoMessage || !finalMessage);
-
-	if (shouldCreateMessage) {
-		const modelId = conversation.meta.activeModel || manager.getSettings().defaultModel.modelId;
-		const provider = conversation.meta.activeProvider || manager.getSettings().defaultModel.provider;
-		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-		finalMessage = {
-			id: assistantMessageId,
-			role: 'assistant',
-			content: streamingContent,
-			createdAtTimestamp: Date.now(),
-			createdAtZone: timezone,
-			starred: false,
-			model: modelId,
-			provider: provider,
-		};
+	// Always create a message if we don't have one or if onlyIfNoMessage is false
+	if (!finalMessage || !onlyIfNoMessage) {
+		finalMessage = createFinalAssistantMessage(
+			conversation,
+			manager,
+			assistantMessageId
+		);
 	}
 
 	messageStore.clearStreaming();
+	messageStore.clearReasoning();
+	messageStore.clearToolCalls();
 	return { finalMessage, finalUsage };
+}
+
+/**
+ * Create a final assistant message with all necessary fields from streaming state
+ */
+function createFinalAssistantMessage(
+	conversation: ChatConversation,
+	manager: AIServiceManager,
+	messageId: string,
+	additionalFields: Record<string, any> = {},
+	error?: unknown
+): ChatMessage {
+	// Get all required data
+	const modelId = conversation.meta.activeModel || manager.getSettings().defaultModel.modelId;
+	const provider = conversation.meta.activeProvider || manager.getSettings().defaultModel.provider;
+	const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+	const streamingContent = useMessageStore.getState().streamingContent;
+	const reasoningContent = useMessageStore.getState().reasoningContent;
+	const currentToolCalls = useMessageStore.getState().currentToolCalls;
+
+	// Merge streaming content with error message if error occurred
+	let finalContent = streamingContent;
+	let hasError = false;
+
+	if (error) {
+		hasError = true;
+		const errorMessage = createChatErrorMessage(error, modelId, provider, timezone);
+		finalContent = streamingContent
+			? `${streamingContent}\n\n${errorMessage.content}`
+			: errorMessage.content;
+	}
+
+	return {
+		id: messageId,
+		role: 'assistant',
+		content: finalContent,
+		createdAtTimestamp: Date.now(),
+		createdAtZone: timezone,
+		starred: false,
+		model: modelId,
+		provider,
+		// Include reasoning and tool calls
+		...(reasoningContent && {
+			reasoning: { content: reasoningContent }
+		}),
+		...(currentToolCalls.length > 0 && {
+			toolCalls: currentToolCalls.map(call => ({
+				toolName: call.toolName,
+				input: call.input,
+				output: call.output,
+				isActive: call.isActive
+			}))
+		}),
+		...additionalFields,
+	};
+}
+
+/**
+ * Check if an event type is tool-related
+ */
+function isToolEvent(eventType: LLMStreamEvent['type']): boolean {
+	return ['tool-call', 'tool-input-start', 'tool-input-delta', 'tool-result'].includes(eventType);
+}
+
+/**
+ * Check if an event type is reasoning-related
+ */
+function isReasoningEvent(eventType: LLMStreamEvent['type']): boolean {
+	return eventType === 'reasoning-delta';
 }
 
 /**
@@ -119,9 +178,10 @@ export function useStreamChat() {
 
 			// Process stream events
 			for await (const event of stream) {
+				console.debug('[useStreamChat] Event:', event.type, event);
 				// Check if aborted before processing event
 				if (abortSignal?.aborted) {
-					console.log('[useStreamChat] Stream aborted by user');
+					console.debug('[useStreamChat] Stream aborted by user');
 					return handleAbortedStream(
 						conversation,
 						manager,
@@ -133,53 +193,98 @@ export function useStreamChat() {
 					);
 				}
 
-				if (event.type === 'delta') {
-					messageStore.appendStreamingDelta(event.text);
-					onDelta?.(event.text);
-					onScrollToBottom?.();
-				} else if (event.type === 'complete') {
-					console.log('[useStreamChat] Streaming completed, final message:', event.message);
-					if (event.message) {
-						finalMessage = event.message;
-						messageStore.completeStreaming(event.message);
-					}
-					if (event.usage) {
-						finalUsage = event.usage;
-					}
-					onComplete?.(finalMessage!, finalUsage);
-					onScrollToBottom?.();
-				} else if (event.type === 'error') {
-					console.error('[useStreamChat] Streaming error:', event.error);
-					messageStore.clearStreaming();
-					throw event.error;
-				} else if (event.type === 'progress') {
-					// Handle progress events
-					const stepIndex = messageStore.streamingSteps.findIndex(
-						s => s.stage === event.stage && s.resourceId === event.resourceId
-					);
-					if (stepIndex >= 0) {
-						// Update existing step
-						messageStore.updateStreamingStep(stepIndex, {
-							status: event.status,
-							label: event.label,
-						});
-					} else {
-						// Add new step
-						messageStore.addStreamingStep({
-							stage: event.stage,
-							status: event.status,
-							label: event.label,
-							resourceSource: event.resourceSource,
-							resourceId: event.resourceId,
-						});
-					}
-					onScrollToBottom?.();
+				// Check if we need to end tool sequence (when receiving non-tool event while tool sequence is active)
+				// This includes reasoning-delta, text-delta, and other non-tool events
+				if (useMessageStore.getState().isToolSequenceActive && !isToolEvent(event.type)) {
+					console.debug('[useStreamChat] Ending tool sequence due to non-tool event:', event.type);
+					messageStore.endToolSequence();
+				}
+
+				// Check if we need to end reasoning (when receiving non-reasoning event while reasoning is active)
+				// This includes tool events, text-delta, and other non-reasoning events
+				if (useMessageStore.getState().isReasoningActive && !isReasoningEvent(event.type)) {
+					console.debug('[useStreamChat] Ending reasoning due to non-reasoning event:', event.type);
+					messageStore.completeReasoning();
+				}
+
+				// Handle different event types
+				switch (event.type) {
+					case 'text-delta':
+						messageStore.appendStreamingDelta(event.text);
+						onDelta?.(event.text);
+						onScrollToBottom?.();
+						break;
+
+					case 'reasoning-delta':
+						// Start reasoning if not already active
+						if (!useMessageStore.getState().isReasoningActive) {
+							messageStore.startReasoning();
+						}
+						messageStore.appendReasoningDelta(event.text);
+						onScrollToBottom?.();
+						break;
+
+					case 'tool-call':
+						messageStore.startToolCall(event.toolName, event.input);
+						onScrollToBottom?.();
+						break;
+
+					case 'tool-input-start':
+						messageStore.startToolCall(event.toolName);
+						onScrollToBottom?.();
+						break;
+
+					case 'tool-input-delta':
+						const currentToolName = useMessageStore.getState().currentToolName;
+						if (currentToolName) {
+							messageStore.updateToolCall(currentToolName, event.delta);
+						}
+						onScrollToBottom?.();
+						break;
+
+					case 'tool-result':
+						messageStore.completeToolCall(event.toolName, event.output);
+						onScrollToBottom?.();
+						break;
+
+					case 'complete':
+						// End tool sequence if active
+						if (useMessageStore.getState().isToolSequenceActive) {
+							messageStore.endToolSequence();
+						}
+
+						// Complete reasoning if active
+						if (useMessageStore.getState().isReasoningActive) {
+							messageStore.completeReasoning();
+						}
+
+						// Construct final message from accumulated streaming content
+						finalMessage = createFinalAssistantMessage(
+							conversation,
+							manager,
+							assistantMessageId
+						);
+						messageStore.completeStreaming(finalMessage);
+
+						if (event.usage) {
+							finalUsage = event.usage;
+						}
+						onComplete?.(finalMessage!, finalUsage);
+						onScrollToBottom?.();
+						break;
+					case 'source':
+					case 'on-step-finish':
+					case 'error':
+					case 'unSupported':
+					default:
+						console.debug('[useStreamChat] Unsupported chunk:');
+						break;
 				}
 			}
 
 			// Check if aborted after stream completes (in case abort happened during final processing)
 			if (abortSignal?.aborted) {
-				console.log('[useStreamChat] Stream aborted after completion');
+				console.debug('[useStreamChat] Stream aborted after completion');
 				return handleAbortedStream(
 					conversation,
 					manager,
@@ -192,46 +297,19 @@ export function useStreamChat() {
 			}
 		} catch (streamError) {
 			console.error('[useStreamChat] Stream error:', streamError);
-
-			// Get model/provider/timezone once (used in multiple places)
-			const modelId = conversation.meta.activeModel || manager.getSettings().defaultModel.modelId;
-			const provider = conversation.meta.activeProvider || manager.getSettings().defaultModel.provider;
-			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-
-			// Try to save any partial content before clearing streaming state
-			const streamingContent = messageStore.streamingContent;
-			const streamingMessageId = messageStore.streamingMessageId;
-
-			if (streamingMessageId && streamingContent && streamingContent.trim()) {
-				console.log('[useStreamChat] Saving partial assistant message due to error/interruption');
-				// Create a message from partial content
-				finalMessage = {
-					id: streamingMessageId,
-					role: 'assistant',
-					content: streamingContent,
-					createdAtTimestamp: Date.now(),
-					createdAtZone: timezone,
-					starred: false,
-					model: modelId,
-					provider: provider,
-					isErrorMessage: true,
-				};
-			}
-
+			finalMessage = createFinalAssistantMessage(
+				conversation,
+				manager,
+				assistantMessageId,
+				{ isErrorMessage: true },
+				streamError
+			);
+		} finally {
+			// Ensure all streaming states are cleared regardless of how the function exits
+			// This handles cases where the stream ends unexpectedly without proper cleanup
 			messageStore.clearStreaming();
-
-			// Create error message and merge with partial content if exists
-			const errorMessage = createChatErrorMessage(streamError, modelId, provider, timezone);
-			if (!finalMessage) {
-				finalMessage = errorMessage;
-			} else {
-				// Merge error message content into finalMessage
-				finalMessage = {
-					...finalMessage,
-					content: `${finalMessage.content}\n\n${errorMessage.content}`,
-					isErrorMessage: true,
-				};
-			}
+			messageStore.clearReasoning();
+			messageStore.clearToolCalls();
 		}
 
 		return { finalMessage, finalUsage };
