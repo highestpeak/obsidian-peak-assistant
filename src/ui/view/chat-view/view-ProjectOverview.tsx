@@ -27,6 +27,32 @@ interface ResourceAttachmentEntry {
 	resourceLabel: string;
 }
 
+interface ProjectStatsCardProps {
+	icon: React.ReactNode;
+	label: string;
+	value: number;
+	color: string;
+}
+
+/**
+ * Component for displaying a single project statistics card
+ */
+const ProjectStatsCard: React.FC<ProjectStatsCardProps> = ({ icon, label, value, color }) => {
+	return (
+		<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-p-6 pktw-rounded-xl pktw-border pktw-border-border pktw-bg-card pktw-shadow-md pktw-min-w-[200px]">
+			<div className={`pktw-p-3 pktw-rounded-lg pktw-bg-${color}-500/10`}>
+				<div className={`pktw-text-${color}-600 dark:pktw-text-${color}-400`}>
+					{icon}
+				</div>
+			</div>
+			<div className="pktw-flex pktw-flex-col">
+				<span className="pktw-text-sm pktw-font-medium pktw-text-muted-foreground">{label}</span>
+				<span className="pktw-text-3xl pktw-font-bold pktw-text-foreground">{value}</span>
+			</div>
+		</div>
+	);
+};
+
 /**
  * Project overview view component
  */
@@ -38,7 +64,7 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 	const { manager, app, eventBus } = useServiceContext();
 	const projects = useProjectStore((state) => state.projects);
 	const project = projectId ? projects.get(projectId) || null : null;
-	
+
 	const [conversations, setConversations] = useState<ChatConversation[]>([]);
 	const [activeTab, setActiveTab] = useState<TabType>('conversations');
 	const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -67,9 +93,9 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 				if (project && event.conversation.meta.projectId === project.meta.id) {
 					setConversations(prev => {
 						// Use map to update the matching conversation without using index
-						return prev.map(conv => 
-							conv.meta.id === event.conversation.meta.id 
-								? event.conversation 
+						return prev.map(conv =>
+							conv.meta.id === event.conversation.meta.id
+								? event.conversation
 								: conv
 						);
 					});
@@ -101,7 +127,7 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 	// Load starred messages directly from database
 	const [starredMessages, setStarredMessages] = useState<ChatMessage[]>([]);
 	const [messageToConversationId, setMessageToConversationId] = useState<Map<string, string>>(new Map());
-	
+
 	useEffect(() => {
 		const loadStarredMessages = async () => {
 			if (!project) return;
@@ -124,7 +150,7 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 		// Create a map of conversation ID to conversation for quick lookup
 		const convMap = new Map<string, ChatConversation>();
 		conversations.forEach(conv => convMap.set(conv.meta.id, conv));
-		
+
 		// Map starred messages to entries with their conversations using conversationId mapping
 		return starredMessages
 			.map(message => {
@@ -176,58 +202,30 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-overflow-hidde">
-			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-p-6">
+			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-pt-10 pktw-w-4/6 pktw-mx-auto">
 				{/* Stats */}
-				<div className="pktw-flex pktw-gap-4 pktw-mb-6">
-					<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-p-4 pktw-rounded-lg pktw-border pktw-border-border pktw-bg-card pktw-shadow-sm">
-						<div className="pktw-p-2 pktw-rounded-md pktw-bg-blue-500/10">
-							<MessageCircle className="pktw-w-5 pktw-h-5 pktw-text-blue-600 dark:pktw-text-blue-400" />
-						</div>
-						<div className="pktw-flex pktw-flex-col">
-							<span className="pktw-text-sm pktw-font-medium pktw-text-muted-foreground">Conversations</span>
-							<span className="pktw-text-2xl pktw-font-semibold pktw-text-foreground">{conversations.length}</span>
-						</div>
-					</div>
-					<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-p-4 pktw-rounded-lg pktw-border pktw-border-border pktw-bg-card pktw-shadow-sm">
-						<div className="pktw-p-2 pktw-rounded-md pktw-bg-green-500/10">
-							<MessageSquare className="pktw-w-5 pktw-h-5 pktw-text-green-600 dark:pktw-text-green-400" />
-						</div>
-						<div className="pktw-flex pktw-flex-col">
-							<span className="pktw-text-sm pktw-font-medium pktw-text-muted-foreground">Messages</span>
-							<span className="pktw-text-2xl pktw-font-semibold pktw-text-foreground">{totalMessages}</span>
-						</div>
-					</div>
+				<div className="pktw-flex pktw-justify-center pktw-gap-6 pktw-mb-8">
+					<ProjectStatsCard
+						icon={<MessageCircle className="pktw-w-6 pktw-h-6" />}
+						label="Conversations"
+						value={conversations.length}
+						color="blue"
+					/>
+					<ProjectStatsCard
+						icon={<MessageSquare className="pktw-w-6 pktw-h-6" />}
+						label="Messages"
+						value={totalMessages}
+						color="green"
+					/>
 				</div>
 
-				{/* Project Summary */}
-				{summaryText && (
-					<div className="pktw-mb-6 pktw-border pktw-border-border pktw-rounded-lg pktw-bg-card pktw-shadow-sm pktw-overflow-hidden">
-						<div
-							className="pktw-flex pktw-items-center pktw-justify-between pktw-p-4 pktw-cursor-pointer hover:pktw-bg-muted/50 pktw-transition-colors"
-							onClick={() => setSummaryExpanded(!summaryExpanded)}
-						>
-							<h3 className="pktw-text-base pktw-font-semibold pktw-text-foreground pktw-m-0">Project Summary</h3>
-							{summaryExpanded ? (
-								<ChevronDown className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground" />
-							) : (
-								<ChevronRight className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground" />
-							)}
-						</div>
-						{summaryExpanded && (
-							<div className="pktw-px-4 pktw-pb-4 pktw-text-sm pktw-text-foreground/90 pktw-leading-relaxed">
-								{summaryText}
-							</div>
-						)}
-					</div>
-				)}
-
 				{/* Tab Navigation */}
-				<div className="pktw-flex pktw-gap-1 pktw-border-b pktw-border-border pktw-mb-6">
+				<div className="pktw-flex pktw-justify-center pktw-gap-1 pktw-border-b pktw-border-border pktw-mb-6">
 					{(['conversations', 'starred', 'resources'] as TabType[]).map((tab) => (
 						<button
 							key={tab}
 							className={cn(
-								'pktw-px-4 pktw-py-2.5 pktw-text-sm pktw-font-medium pktw-transition-all pktw-relative',
+								'pktw-px-4 pktw-py-2.5 pktw-text-xl pktw-font-medium pktw-transition-all pktw-relative',
 								'pktw-border-b-2 pktw-border-transparent',
 								activeTab === tab
 									? 'pktw-text-primary pktw-border-primary'
@@ -248,6 +246,9 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 						<ConversationsTab
 							conversations={conversations}
 							onConversationClick={(conv) => onConversationClick(conv, project)}
+							summaryText={summaryText}
+							summaryExpanded={summaryExpanded}
+							onSummaryExpandedChange={setSummaryExpanded}
 						/>
 					)}
 					{activeTab === 'starred' && (
@@ -272,9 +273,18 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 interface ConversationsTabProps {
 	conversations: ChatConversation[];
 	onConversationClick: (conversation: ChatConversation) => void;
+	summaryText?: string;
+	summaryExpanded: boolean;
+	onSummaryExpandedChange: (expanded: boolean) => void;
 }
 
-const ConversationsTab: React.FC<ConversationsTabProps> = ({ conversations, onConversationClick }) => {
+const ConversationsTab: React.FC<ConversationsTabProps> = ({
+	conversations,
+	onConversationClick,
+	summaryText,
+	summaryExpanded,
+	onSummaryExpandedChange
+}) => {
 	if (conversations.length === 0) {
 		return (
 			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-12">
@@ -286,6 +296,36 @@ const ConversationsTab: React.FC<ConversationsTabProps> = ({ conversations, onCo
 
 	return (
 		<div className="pktw-space-y-3">
+			{/* Project Summary */}
+			{/* Place here to make Tabs seem more balanced. Make ui more balanced. Choose Conv Tabs because it has more content. */}
+			{summaryText && (
+				<div className="pktw-mb-6 pktw-border pktw-rounded-lg pktw-bg-secondary pktw-shadow-md pktw-overflow-hidden">
+					<div
+						className="pktw-flex pktw-items-center pktw-justify-between pktw-p-4 pktw-cursor-pointer hover:pktw-bg-muted/50 pktw-transition-colors"
+						onClick={() => onSummaryExpandedChange(!summaryExpanded)}
+					>
+						<h3 className="pktw-text-base pktw-font-semibold pktw-text-foreground pktw-m-0">Project Summary</h3>
+						<div className="pktw-transition-transform pktw-duration-200 pktw-ease-in-out">
+							{summaryExpanded ? (
+								<ChevronDown className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground" />
+							) : (
+								<ChevronRight className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground" />
+							)}
+						</div>
+					</div>
+					<div
+						className={`pktw-transition-all pktw-duration-300 pktw-ease-in-out pktw-overflow-hidden ${summaryExpanded
+								? 'pktw-max-h-96 pktw-opacity-100'
+								: 'pktw-max-h-0 pktw-opacity-0'
+							}`}
+					>
+						<div className="pktw-px-4 pktw-pb-4 pktw-text-sm pktw-text-foreground/90 pktw-leading-relaxed">
+							{summaryText}
+						</div>
+					</div>
+				</div>
+			)}
+
 			{conversations.map((conversation) => (
 				<ConversationItem
 					key={conversation.meta.id}

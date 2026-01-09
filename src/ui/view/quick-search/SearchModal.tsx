@@ -24,13 +24,12 @@ const TabButton: React.FC<TabButtonProps> = ({ tab, label, activeTab, onClick })
 	const isActive = activeTab === tab;
 	return (
 		<Button
-			variant="ghost"
 			onClick={onClick}
 			className={cn(
-				'pktw-flex-1 pktw-px-6 pktw-py-3 pktw-text-sm pktw-transition-all pktw-duration-150 pktw-relative pktw-rounded-none pktw-h-auto pktw-border-0',
+				'pktw-inline-flex pktw-items-center pktw-justify-center pktw-whitespace-nowrap pktw-font-medium focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-offset-2 disabled:pktw-pointer-events-none disabled:pktw-opacity-50 pktw-flex-1 pktw-relative',
 				isActive
-					? 'pktw-text-[#7c3aed] pktw-bg-white hover:pktw-bg-white hover:!pktw-text-[#7c3aed]'
-					: 'pktw-text-[#6c757d] hover:!pktw-text-[#2e3338] hover:pktw-bg-[#f0f0f0]'
+					? 'pktw-text-[#7c3aed] pktw-bg-white hover:pktw-bg-white hover:pktw-text-[#7c3aed]'
+					: 'pktw-text-black hover:pktw-text-white pktw-bg-[#f0f0f0]'
 			)}
 		>
 			<span className="pktw-font-medium">{label}</span>
@@ -97,7 +96,7 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 			}
 		}
 	}, [searchQuery, activeTab, webEnabled]);
-	
+
 	// Get clean query without @web for actual search
 	const getCleanQuery = (query: string): string => {
 		return query.replace(/@web\s*/g, '').trim();
@@ -130,7 +129,7 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 	};
 
 	return (
-		<div 
+		<div
 			className="pktw-w-full pktw-max-w-[1100px] pktw-bg-white pktw-rounded-lg pktw-shadow-lg pktw-overflow-hidden pktw-flex pktw-flex-col pktw-h-full"
 			onKeyDown={handleContainerKeyDown}
 			tabIndex={-1}
@@ -159,17 +158,17 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 						<div className="pktw-relative pktw-flex pktw-items-center">
 							{/* Input with @web highlighting overlay */}
 							<div className="pktw-relative pktw-w-full">
-						<input
-							type="text"
-							ref={inputRef}
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							onKeyDown={handleKeyDown}
-							placeholder={
-								activeTab === 'vault'
-									? 'Search in vault... (# for in-file, @ for folder, / for mode list)'
-									: 'Ask AI anything about your vault...'
-							}
+								<input
+									type="text"
+									ref={inputRef}
+									value={searchQuery}
+									onChange={(e) => setSearchQuery(e.target.value)}
+									onKeyDown={handleKeyDown}
+									placeholder={
+										activeTab === 'vault'
+											? 'Search in vault... (# for in-file, @ for folder, / for mode list)'
+											: 'Ask AI anything about your vault...'
+									}
 									className={`pktw-w-full pktw-pl-11 ${activeTab === 'ai' ? 'pktw-pr-20' : 'pktw-pr-4'} pktw-py-2.5 pktw-bg-[#fafafa] pktw-border pktw-border-[#d1d5db] pktw-rounded-full pktw-text-transparent pktw-placeholder:text-[#999999] pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-[#7c3aed] pktw-focus:border-transparent pktw-transition-all`}
 									style={{
 										caretColor: '#2e3338', // Ensure cursor is visible
@@ -177,9 +176,9 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 									}}
 								/>
 								{/* Overlay to display text with @web highlighting */}
-								<div 
+								<div
 									className="pktw-absolute pktw-inset-0 pktw-pl-11 pktw-pr-20 pktw-py-2.5 pktw-pointer-events-none pktw-text-[#2e3338] pktw-select-none"
-									style={{ 
+									style={{
 										font: 'inherit', // Use font shorthand to inherit all font properties
 										whiteSpace: 'pre',
 										overflow: 'hidden',
@@ -215,11 +214,10 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 											setWebEnabled(true);
 										}
 									}}
-									className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors ${
-										(webEnabled || searchQuery.includes('@web'))
-											? 'pktw-bg-white pktw-text-[#3b82f6] pktw-border pktw-border-[#3b82f6]/30 hover:pktw-bg-[#3b82f6]/5' 
+									className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors ${(webEnabled || searchQuery.includes('@web'))
+											? 'pktw-bg-white pktw-text-[#3b82f6] pktw-border pktw-border-[#3b82f6]/30 hover:pktw-bg-[#3b82f6]/5'
 											: 'pktw-bg-white pktw-text-[#6c757d] pktw-border pktw-border-[#e5e7eb] hover:pktw-bg-[#f9fafb]'
-									}`}
+										}`}
 									title={(webEnabled || searchQuery.includes('@web')) ? 'Web: ON' : 'Web: OFF'}
 								>
 									<Globe className={`pktw-w-3.5 pktw-h-3.5 ${(webEnabled || searchQuery.includes('@web')) ? 'pktw-text-[#3b82f6]' : ''}`} />

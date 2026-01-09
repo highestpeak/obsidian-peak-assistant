@@ -9,6 +9,7 @@ import { MessageHeader } from './components/MessageViewHeader';
 import { MessageItem } from './components/MessageViewItem';
 import { ChatInputAreaComponent } from './components/ChatInputArea';
 import { FileChangesList } from './components/FileChangesList';
+import { SuggestionTags, SuggestionTag } from '../../component/prompt-input/SuggestionTags';
 import { FileChange } from '@/service/chat/types';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
@@ -312,6 +313,48 @@ export const MessagesViewComponent: React.FC = () => {
         ));
     }, []);
 
+    // Suggestion tag data
+    const suggestionTags: SuggestionTag[] = [
+        {
+            id: 'transfer',
+            label: 'Transfer To Project',
+            color: 'blue',
+            tooltip: 'Move this conversation to a project',
+            action: 'transfer'
+        },
+        {
+            id: 'update',
+            label: 'Update Articles',
+            color: 'green',
+            tooltip: 'Update related articles in the knowledge base',
+            action: 'update'
+        },
+        {
+            id: 'review',
+            label: 'Code Review',
+            color: 'purple',
+            tooltip: 'Request code review for changes',
+            action: 'review'
+        }
+    ];
+
+    // Suggestion tag handlers
+    const handleTagClick = useCallback((tagType: string) => {
+        console.log('Tag clicked:', tagType);
+        // TODO: Implement actual tag actions
+        switch (tagType) {
+            case 'transfer':
+                // Handle transfer to project
+                break;
+            case 'update':
+                // Handle update articles
+                break;
+            case 'review':
+                // Handle code review
+                break;
+        }
+    }, []);
+
     // Handle open link events
     useEffect(() => {
         if (!eventBus) return;
@@ -448,7 +491,14 @@ export const MessagesViewComponent: React.FC = () => {
             </div>
 
             {/* Scroll buttons - positioned between body and footer, outside scroll area */}
-            <div className="pktw-flex-shrink-0 pktw-flex pktw-justify-end pktw-px-6 pktw-py-2 pktw-border-b pktw-border-borde">
+            <div className="pktw-flex-shrink-0 pktw-flex pktw-justify-between pktw-items-center pktw-px-6 pktw-pt-6 pktw-border-b pktw-border-borde">
+                {/* Tags on the left */}
+                <SuggestionTags
+                    tags={suggestionTags}
+                    onTagClick={handleTagClick}
+                />
+
+                {/* Scroll buttons on the right */}
                 <div className="pktw-flex pktw-items-center pktw-gap-1">
                     <IconButton
                         size="lg"

@@ -189,6 +189,10 @@ export class MockAIServiceManager {
 					createdAtTimestamp: Date.now() - 259200000,
 					updatedAtTimestamp: Date.now() - 259200000,
 				},
+				context: {
+					shortSummary: 'This project focuses on developing an AI-powered assistant for Obsidian, featuring advanced conversation management, file analysis capabilities, and intelligent project organization tools. The system integrates seamlessly with Obsidian\'s ecosystem while providing powerful AI-driven insights and automation features.',
+					lastUpdatedTimestamp: Date.now() - 86400000,
+				},
 			},
 			{
 				meta: {
@@ -196,6 +200,22 @@ export class MockAIServiceManager {
 					name: 'Mock Project 2',
 					createdAtTimestamp: Date.now() - 345600000,
 					updatedAtTimestamp: Date.now() - 345600000,
+				},
+				context: {
+					shortSummary: 'A comprehensive knowledge management system designed to enhance productivity and creativity. This project includes advanced search capabilities, intelligent content organization, and collaborative features that help users build and maintain extensive knowledge bases with ease.',
+					lastUpdatedTimestamp: Date.now() - 172800000,
+				},
+			},
+			{
+				meta: {
+					id: 'project-3',
+					name: 'Mock Project 3',
+					createdAtTimestamp: Date.now() - 432000000,
+					updatedAtTimestamp: Date.now() - 432000000,
+				},
+				context: {
+					shortSummary: 'An innovative approach to document processing and analysis, combining machine learning techniques with user-friendly interfaces. The project aims to revolutionize how users interact with their documents through intelligent summarization, categorization, and cross-referencing capabilities.',
+					lastUpdatedTimestamp: Date.now() - 259200000,
 				},
 			},
 		];
@@ -383,6 +403,9 @@ export class MockAIServiceManager {
 
 			// Combine thinking and response
 			const fullContent = thinkingContent + mockResponse;
+
+			// delay to see loader
+			await new Promise(resolve => setTimeout(resolve, 2000));
 
 			const delay = 15; // ms delay between characters for smooth streaming
 			const thinkingDelay = 20; // slower delay for thinking content
