@@ -61,6 +61,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	const [enableRedditSearch, setEnableRedditSearch] = useState(true);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const inputFocusRef = useRef<{ focus: () => void } | null>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
 
 	const { submitMessage, cancelStream } = useChatSubmit();
 
@@ -199,7 +200,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	const status: 'ready' | 'submitted' | 'streaming' | 'error' = isStreaming ? 'streaming' : (isSending ? 'submitted' : 'ready');
 
 	return (
-		<div className="pktw-px-6 pktw-pt-2 pktw-pb-6 pktw-border-t pktw-border-border pktw-flex-shrink-0">
+		<div ref={containerRef} className="pktw-relative pktw-px-6 pktw-pt-2 pktw-pb-6 pktw-border-t pktw-border-border pktw-flex-shrink-0">
 			<PromptInput
 				className={cn(
 					'pktw-flex pktw-flex-col pktw-w-full pktw-border pktw-rounded-lg',
@@ -216,7 +217,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				<InputClearHandler isSending={isSending} />
 
 				{/* Menu handler */}
-				<PromptInputMenu textareaRef={textareaRef} prompts={prompts} />
+				<PromptInputMenu textareaRef={textareaRef} prompts={prompts} containerRef={containerRef} />
 
 				{/* Attachments display */}
 				<PromptInputAttachments />

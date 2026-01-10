@@ -1,110 +1,60 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { NavigableMenu, type NavigableMenuItem } from '../../mine/NavigableMenu';
-import { FileText, Search, Image as ImageIcon, Folder, Hash, Archive, FileType, ChevronRight } from 'lucide-react';
-import { useServiceContext } from '@/ui/context/ServiceContext';
+import { FileText, Image as ImageIcon, Folder, Hash, Archive, FileType, ChevronRight } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { MarkdownIcon } from '../../icon/MarkdownIcon';
+
+/**
+ * File item structure for context menu
+ */
+export interface FileItem {
+	id: string;
+	type: string;
+	title: string;
+	path: string;
+	lastModified?: number;
+}
 
 /**
  * Context menu props
  */
 export interface ContextMenuProps {
+	files: FileItem[]; // External file list (like prompts)
 	query?: string; // For filtering files
+	loading?: boolean; // Loading state
 	onSelect: (fileReference: string) => void;
 	onClose: () => void;
 	className?: string;
-	maxItems?: number;
 	currentFolder?: string; // Current folder path for navigation
 	onNavigateFolder?: (folderPath: string) => void; // Callback when navigating into a folder
+	containerRef?: React.RefObject<HTMLElement>; // Reference to container element for position calculation
 }
 
 /**
  * Context menu component for @ and [[ ]] commands
  */
 export const ContextMenu: React.FC<ContextMenuProps> = ({
+	files,
 	query = '',
+	loading = false,
 	onSelect,
 	onClose,
 	className,
-	maxItems = 10,
 	currentFolder,
 	onNavigateFolder,
+	containerRef,
 }) => {
-	const { searchClient } = useServiceContext();
-	const [files, setFiles] = useState<any[]>([]);
-	const [loading, setLoading] = useState(false);
 
-	// Search for files when query changes
-	useEffect(() => {
-		const searchFiles = async () => {
-			setLoading(true);
-			try {
-				if (query.trim()) {
-					// Search for files matching the query
-					if (searchClient) {
-						const results = await searchClient.search({
-							text: query,
-							scopeMode: currentFolder ? 'inFolder' : 'vault',
-							scopeValue: currentFolder ? { folderPath: currentFolder } : undefined,
-							topK: maxItems,
-							searchMode: 'fulltext'
-						});
-						setFiles(results.items || []);
-					} else {
-						setFiles([]);
-					}
-				} else {
-					// Show recent files or folder contents when no query
-					if (searchClient) {
-						if (currentFolder) {
-							// Show contents of current folder
-							const results = await searchClient.search({
-								text: '',
-								scopeMode: 'inFolder',
-								scopeValue: { folderPath: currentFolder },
-								topK: maxItems,
-								searchMode: 'fulltext'
-							});
-							setFiles(results.items || []);
-						} else {
-							// Show recent files at root level
-							const recentFiles = await searchClient.getRecent(maxItems);
-							setFiles(recentFiles);
-						}
-					} else {
-						setFiles([]);
-					}
-				}
-			} catch (error) {
-				console.error('Error searching files:', error);
-				setFiles([]);
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		// Debounce search
-		const timeoutId = setTimeout(searchFiles, 150);
-		return () => clearTimeout(timeoutId);
-	}, [query, searchClient, maxItems, currentFolder]);
 
 	const items = useMemo<NavigableMenuItem[]>(() => {
 		if (loading) {
-			return [{
-				id: 'loading',
-				label: 'Searching...',
-				value: '',
-				disabled: true,
-			}];
+			// Return empty array so NavigableMenu can show loading message
+			return [];
 		}
 
-		if (files.length === 0) {
-			return [{
-				id: 'empty',
-				label: query.trim() ? 'No files found' : 'Recent files will appear here',
-				value: '',
-				disabled: true,
-			}];
+		if (!files || files.length === 0) {
+			// Return empty array so NavigableMenu can show emptyMessage
+			return [];
 		}
 
 		// Helper function to get icon based on file type
@@ -171,7 +121,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 			onClose={onClose}
 			className={className}
 			isTagStyle={false}
-			emptyMessage={query.trim() ? "No files found" : "Start typing to search files..."}
+			isLoading={loading}
+			loadingMessage="Searching..."
+			emptyMessage={query.trim() ? "No files found" : "Recent files will appear here"}
+			containerRef={containerRef}
 		/>
 	);
 };

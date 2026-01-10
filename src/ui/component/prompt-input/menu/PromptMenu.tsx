@@ -48,6 +48,7 @@ export interface PromptMenuProps {
 	query?: string; // For filtering prompts
 	onSelect: (promptId: string) => void; // Changed to return promptId instead of promptName
 	onClose: () => void;
+	containerRef?: React.RefObject<HTMLElement>; // Reference to container element for position calculation
 	className?: string;
 }
 
@@ -60,6 +61,7 @@ export const PromptMenu: React.FC<PromptMenuProps> = ({
 	onSelect,
 	onClose,
 	className,
+	containerRef,
 }) => {
 	const items = useMemo<NavigableMenuItem[]>(() => {
 		return prompts.map(prompt => ({
@@ -86,6 +88,7 @@ export const PromptMenu: React.FC<PromptMenuProps> = ({
 			className={className}
 			isTagStyle={true}
 			emptyMessage="No prompts found"
+			containerRef={containerRef}
 		/>
 	);
 };

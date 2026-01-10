@@ -58,6 +58,13 @@ module.exports = {
 					'0%': { 'background-position': '-200% 0' },
 					'100%': { 'background-position': '200% 0' },
 				},
+				scanEffect: {
+					'0%': { 'background-position': 'right' },
+					'100%': { 'background-position': 'left' },
+				},
+			},
+			animation: {
+				'scan': 'scanEffect 2s infinite',
 			},
 		},
 	},

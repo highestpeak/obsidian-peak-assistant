@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { PromptMenu, ContextMenu } from './menu';
+import type { FileItem } from './menu/ContextMenu';
 import { usePromptInputContext } from './PromptInput';
 import { ExternalPromptInfo } from './menu/PromptMenu';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 /**
  * Trigger character definitions and their corresponding menu types
@@ -55,8 +57,8 @@ const MENU_CONSTANTS = {
  *   "file[[name"      - after letter
  */
 const TRIGGER_CONFIG = {
-	'/':  { type: TriggerType.PROMPT,  needsWordBoundary: true,  endChar: '/'  },
-	'@':  { type: TriggerType.CONTEXT, needsWordBoundary: true,  endChar: '@'  },
+	'/': { type: TriggerType.PROMPT, needsWordBoundary: true, endChar: '/' },
+	'@': { type: TriggerType.CONTEXT, needsWordBoundary: true, endChar: '@' },
 	'[[': { type: TriggerType.CONTEXT, needsWordBoundary: true, endChar: ']]' }
 } as const;
 
@@ -261,13 +263,13 @@ const getCaretCoordinates = (textarea: HTMLTextAreaElement, cursorPos: number): 
  * @param cursorPos - Current cursor position in text
  * @returns Cursor coordinates relative to viewport
  */
-const getCursorPosition = (textarea: HTMLTextAreaElement, cursorPos: number): { x: number; y: number } => {
+const getCursorPosition = (textarea: HTMLTextAreaElement, cursorPos: number, containerRef?: React.RefObject<HTMLElement>): { x: number; y: number } => {
 	const rect = textarea.getBoundingClientRect();
 	const caretCoords = getCaretCoordinates(textarea, cursorPos);
 
-	// Calculate absolute position relative to viewport
-	const cursorX = rect.left + caretCoords.left - textarea.scrollLeft;
-	const cursorY = rect.top + caretCoords.top - textarea.scrollTop;
+	// Calculate position relative to textarea (viewport coordinates)
+	let cursorX = rect.left + caretCoords.left - textarea.scrollLeft;
+	let cursorY = rect.top + caretCoords.top - textarea.scrollTop;
 
 	return { x: cursorX, y: cursorY };
 };
@@ -275,6 +277,7 @@ const getCursorPosition = (textarea: HTMLTextAreaElement, cursorPos: number): { 
 interface PromptInputMenuProps {
 	textareaRef: React.RefObject<HTMLTextAreaElement>;
 	prompts?: ExternalPromptInfo[];
+	containerRef?: React.RefObject<HTMLElement>;
 }
 
 /**
@@ -294,7 +297,7 @@ interface MenuState {
 /**
  * Hook for managing prompt input menu
  */
-const usePromptInputMenu = (textareaRef: React.RefObject<HTMLTextAreaElement>) => {
+const usePromptInputMenu = (textareaRef: React.RefObject<HTMLTextAreaElement>, containerRef?: React.RefObject<HTMLElement>) => {
 	const [menuState, setMenuState] = useState<MenuState>({
 		isOpen: false,
 		type: null,
@@ -310,7 +313,7 @@ const usePromptInputMenu = (textareaRef: React.RefObject<HTMLTextAreaElement>) =
 
 	// Check for menu triggers in input
 	const checkForMenuTrigger = useCallback((value: string, cursorPos: number) => {
-        // Get current state from textarea (more reliable than parameters)
+		// Get current state from textarea (more reliable than parameters)
 		if (textareaRef.current && textareaRef.current.isConnected) {
 			const textarea = textareaRef.current;
 			value = textarea.value;
@@ -327,7 +330,7 @@ const usePromptInputMenu = (textareaRef: React.RefObject<HTMLTextAreaElement>) =
 			// Calculate menu position
 			if (textareaRef.current && textareaRef.current.isConnected) {
 				const textarea = textareaRef.current;
-				const cursorPosCoords = getCursorPosition(textarea, cursorPos);
+				const cursorPosCoords = getCursorPosition(textarea, cursorPos, containerRef);
 
 				setMenuState({
 					isOpen: true,
@@ -368,50 +371,59 @@ const usePromptInputMenu = (textareaRef: React.RefObject<HTMLTextAreaElement>) =
 };
 
 /**
- * Internal component for menu functionality that needs access to input context
- */
-/**
+ * todo we need to get a better calculation algorithm for the menu position
+ * 
  * Calculate final menu position based on actual menu dimensions and cursor position
- * @param cursorPos - Cursor position coordinates
+ * @param cursorPos - Cursor position coordinates (relative to viewport)
  * @param menuWidth - Actual menu width
  * @param menuHeight - Actual menu height
- * @returns Final menu position
+ * @param containerRect - Container bounding rectangle (optional, falls back to viewport)
+ * @returns Final menu position (relative to container if provided, otherwise viewport)
  */
 const calculateFinalMenuPosition = (
 	cursorPos: { x: number; y: number },
 	menuWidth: number,
-	menuHeight: number
+	menuHeight: number,
+	containerRect?: DOMRect
 ): { top: number; left: number } => {
-	const viewportWidth = window.innerWidth;
-	const viewportHeight = window.innerHeight;
+	// Use container bounds if provided, otherwise use viewport
+	const boundsWidth = containerRect ? containerRect.width : window.innerWidth;
+	const boundsHeight = containerRect ? containerRect.height : window.innerHeight;
+	const boundsLeft = containerRect ? containerRect.left : 0;
+	const boundsTop = containerRect ? containerRect.top : 0;
+
+	// Convert cursor position to container-relative coordinates if container is provided
+	const relativeCursorX = containerRect ? cursorPos.x - boundsLeft : cursorPos.x;
+	const relativeCursorY = containerRect ? cursorPos.y - boundsTop : cursorPos.y;
 
 	let top: number;
 	let left: number;
 
-	// Vertical positioning: prefer below cursor
-	const bottomSpace = viewportHeight - cursorPos.y;
-	const topSpace = cursorPos.y;
-	
-	if (topSpace >= menuHeight) {
-		// Show above cursor
-		top = cursorPos.y - menuHeight;
-	} else {
-		// Not enough space, show below anyway
-		top = cursorPos.y;
-	}
+	// // Vertical positioning: prefer below cursor
+	// const bottomSpace = boundsHeight - relativeCursorY;
+	// const topSpace = relativeCursorY;
 
-	// Ensure menu doesn't go above viewport
-	if (top < 0) {
-		top = 0;
-	}
+	// if (topSpace >= menuHeight) {
+	// 	// Show above cursor
+	// 	top = relativeCursorY - menuHeight;
+	// } else {
+	// 	// Not enough space, show below anyway
+	// 	top = relativeCursorY;
+	// }
+
+	// // Ensure menu doesn't go above container bounds
+	// if (top < 0) {
+	// 	top = 0;
+	// }
+	top = relativeCursorY - menuHeight;
 
 	// Horizontal positioning
-	if (cursorPos.x + menuWidth > viewportWidth) {
+	if (relativeCursorX + menuWidth > boundsWidth) {
 		// Would overflow right, align with right edge
-		left = viewportWidth - menuWidth;
+		left = boundsWidth - menuWidth;
 	} else {
 		// Safe position, align with cursor
-		left = cursorPos.x;
+		left = relativeCursorX;
 	}
 
 	// Ensure menu doesn't go off left edge
@@ -419,7 +431,20 @@ const calculateFinalMenuPosition = (
 		left = 0;
 	}
 
-	// console.log('Menu position calculated:', { top, left, menuWidth, menuHeight, viewportWidth, viewportHeight, cursorPos });
+	// console.debug('[PromptInputMenu] Menu position calculated:',
+	// 	{
+	// 		top,
+	// 		left,
+	// 		menuWidth,
+	// 		menuHeight,
+	// 		boundsWidth,
+	// 		boundsHeight,
+	// 		cursorPos,
+	// 		relativeCursorX,
+	// 		relativeCursorY,
+	// 		containerRect
+	// 	}
+	// );
 
 	return { top, left };
 };
@@ -428,10 +453,14 @@ const MenuHandler: React.FC<{
 	menuState: MenuState;
 	setMenuState: React.Dispatch<React.SetStateAction<MenuState>>;
 	prompts?: ExternalPromptInfo[];
-}> = ({ menuState, setMenuState, prompts = [] }) => {
+	containerRef?: React.RefObject<HTMLElement>;
+}> = ({ menuState, setMenuState, prompts = [], containerRef }) => {
 	const inputContext = usePromptInputContext();
+	const { searchClient } = useServiceContext();
 	const menuRef = React.useRef<HTMLDivElement>(null);
 	const [hasPositioned, setHasPositioned] = React.useState(false);
+	const [files, setFiles] = React.useState<FileItem[]>([]);
+	const [filesLoading, setFilesLoading] = React.useState(false);
 
 	// Adjust menu position after it renders with real dimensions
 	React.useEffect(() => {
@@ -458,18 +487,11 @@ const MenuHandler: React.FC<{
 					y: menuState.position.top
 				};
 
-				// Calculate final position with real menu dimensions
-				const finalPosition = calculateFinalMenuPosition(cursorPos, menuWidth, menuHeight);
+				// Get container bounds for positioning
+				const containerRect = containerRef?.current?.getBoundingClientRect();
 
-				// console.log('Menu position calculated:', {
-				// 	top: finalPosition.top,
-				// 	left: finalPosition.left,
-				// 	menuWidth,
-				// 	menuHeight,
-				// 	viewportWidth: window.innerWidth,
-				// 	viewportHeight: window.innerHeight,
-				// 	cursorPos
-				// });
+				// Calculate final position with real menu dimensions
+				const finalPosition = calculateFinalMenuPosition(cursorPos, menuWidth, menuHeight, containerRect);
 
 				// Update menu position
 				setMenuState(prev => ({
@@ -483,7 +505,7 @@ const MenuHandler: React.FC<{
 			// Initial measurement attempt
 			setTimeout(measureAndPosition, 10);
 		}
-	}, [menuState.isOpen, hasPositioned, menuState.position, setMenuState]);
+	}, [menuState.isOpen, hasPositioned, menuState.position, setMenuState, filesLoading]);
 
 	// Reset positioning flag when menu closes
 	React.useEffect(() => {
@@ -491,6 +513,84 @@ const MenuHandler: React.FC<{
 			setHasPositioned(false);
 		}
 	}, [menuState.isOpen]);
+
+	// Search for files when context menu is triggered or query changes
+	React.useEffect(() => {
+		if (menuState.type === TriggerType.CONTEXT && searchClient) {
+			const searchFiles = async () => {
+				setFilesLoading(true);
+				try {
+					if (menuState.query.trim()) {
+						// Search for files matching the query
+						const results = await searchClient.search({
+							text: menuState.query,
+							scopeMode: menuState.currentFolder ? 'inFolder' : 'vault',
+							scopeValue: menuState.currentFolder ? { folderPath: menuState.currentFolder } : undefined,
+							topK: 8,
+							searchMode: 'fulltext'
+						});
+						const fileItems: FileItem[] = (results.items || []).map(item => ({
+							id: item.path || item.id,
+							type: item.type,
+							title: item.title || item.path || item.id,
+							path: item.path || item.id,
+							lastModified: item.lastModified,
+						}));
+						setFiles(fileItems);
+					} else {
+						// Show recent files or folder contents when no query
+						if (menuState.currentFolder) {
+							// Show contents of current folder
+							const results = await searchClient.search({
+								text: '',
+								scopeMode: 'inFolder',
+								scopeValue: { folderPath: menuState.currentFolder },
+								topK: 8,
+								searchMode: 'fulltext'
+							});
+							const fileItems: FileItem[] = (results.items || []).map(item => ({
+								id: item.path || item.id,
+								type: item.type,
+								title: item.title || item.path || item.id,
+								path: item.path || item.id,
+								lastModified: item.lastModified,
+							}));
+							setFiles(fileItems);
+						} else {
+							// Show recent files at root level
+							const recentFiles = await searchClient.getRecent(8);
+							const fileItems: FileItem[] = recentFiles.map(item => ({
+								id: item.path || item.id,
+								type: item.type,
+								title: item.title || item.path || item.id,
+								path: item.path || item.id,
+								lastModified: item.lastModified,
+							}));
+							setFiles(fileItems);
+						}
+					}
+				} catch (error) {
+					console.error('Error searching files:', error);
+					setFiles([]);
+				} finally {
+					setFilesLoading(false);
+				}
+			};
+
+			// Debounce search
+			const timeoutId = setTimeout(searchFiles, 150);
+			return () => clearTimeout(timeoutId);
+		}
+	}, [menuState.type, menuState.query, menuState.currentFolder, searchClient]);
+
+	// Re-position when menu content might have changed (query, type, or folder changes)
+	React.useEffect(() => {
+		if (menuState.isOpen) {
+			console.log('Re-positioning menu due to content change', { query: menuState.query, type: menuState.type, currentFolder: menuState.currentFolder });
+			// Force re-positioning when content might change
+			setHasPositioned(false);
+		}
+	}, [menuState.query, menuState.type, menuState.currentFolder]);
 
 	// Handle menu selection
 	const handleMenuSelect = useCallback((value: string) => {
@@ -536,7 +636,7 @@ const MenuHandler: React.FC<{
 			{menuState.isOpen && (
 				<div
 					ref={menuRef}
-					className="pktw-fixed pktw-z-[2147483647] pktw-bg-white pktw-border pktw-border-gray-200 pktw-rounded-lg pktw-shadow-2xl pktw-pointer-events-auto pktw-ring-2 pktw-ring-gray-900/10"
+					className="pktw-absolute pktw-z-[2147483647] pktw-bg-white pktw-border pktw-border-gray-200 pktw-rounded-lg pktw-shadow-2xl pktw-pointer-events-auto pktw-ring-2 pktw-ring-gray-900/10"
 					style={{
 						top: menuState.position.top,
 						left: menuState.position.left,
@@ -552,17 +652,20 @@ const MenuHandler: React.FC<{
 							query={menuState.query}
 							onSelect={handleMenuSelect}
 							onClose={handleMenuClose}
+							containerRef={containerRef}
 						/>
 					)}
 					{menuState.type === TriggerType.CONTEXT && (
 						<ContextMenu
+							files={files}
 							query={menuState.query}
+							loading={filesLoading}
 							onSelect={handleMenuSelect}
 							onClose={handleMenuClose}
-							maxItems={8}
 							currentFolder={menuState.currentFolder}
 							onNavigateFolder={handleNavigateFolder}
-							key={`context-${menuState.currentFolder || 'root'}`} // Force re-render when folder changes
+							containerRef={containerRef}
+							key={`context-${menuState.currentFolder || 'root'}-${menuState.query}`} // Force re-render when folder or query changes
 						/>
 					)}
 				</div>
@@ -574,14 +677,15 @@ const MenuHandler: React.FC<{
 /**
  * PromptInputMenu component that provides menu functionality for prompt input
  */
-export const PromptInputMenu: React.FC<PromptInputMenuProps> = ({ textareaRef, prompts = [] }) => {
-	const { menuState, setMenuState } = usePromptInputMenu(textareaRef);
+export const PromptInputMenu: React.FC<PromptInputMenuProps> = ({ textareaRef, prompts = [], containerRef }) => {
+	const { menuState, setMenuState } = usePromptInputMenu(textareaRef, containerRef);
 
 	return (
 		<MenuHandler
 			menuState={menuState}
 			setMenuState={setMenuState}
 			prompts={prompts}
+			containerRef={containerRef}
 		/>
 	);
 };

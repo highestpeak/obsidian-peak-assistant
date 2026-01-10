@@ -100,7 +100,7 @@ export class PromptService {
 				},
 			],
 		});
-		return completion.content.trim();
+		return completion.content.map(part => part.type === 'text' ? part.text : '').join('').trim();
 	}
 
 	/**
@@ -158,7 +158,7 @@ export class PromptService {
 			});
 
 			for await (const event of stream) {
-				if (event.type === 'delta') {
+				if (event.type === 'text-delta') {
 					fullContent += event.text;
 					callbacks.onDelta?.(streamType, event.text);
 				} else if (event.type === 'complete') {

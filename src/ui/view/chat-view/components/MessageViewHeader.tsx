@@ -35,9 +35,9 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 				// Only trigger typewriter if this is the active conversation
 				if (event.conversation.meta.id === activeConversation?.meta.id) {
 					setDisplayTitle(event.conversation.meta.title);
-					// Disable shimmer effect and enable typewriter effect when title is updated
-					setIsRegeneratingTitle(false);
+					// Show brief highlight effect on the updated title
 					setEnableTypewriter(true);
+					setIsRegeneratingTitle(false);
 				}
 			}
 		);
@@ -74,14 +74,41 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 	}, [enableTypewriter, typewriterTitle, displayTitle]);
 
 	// Use typewriter title only when enabled, otherwise use displayTitle directly
-	const finalTitle = enableTypewriter ? typewriterTitle : displayTitle;
-	
-	// Title element with shimmer effect when regenerating
-	// Always use displayTitle for shimmer to show current title, not the typewriter one
-	const titleToShow = isRegeneratingTitle && displayTitle ? displayTitle : finalTitle;
-	const titleElement = (
-		<span className="pktw-font-medium pktw-text-foreground pktw-leading-[1.5] pktw-text-xl" style={{ fontSize: 'var(--font-ui-large)' }}>
-			{isRegeneratingTitle && displayTitle ? <Shimmer duration={2} spread={2}>{displayTitle}</Shimmer> : titleToShow}
+
+	// Title element with scan effect when regenerating
+	const titleElement = isRegeneratingTitle ? (
+		<>
+			<style dangerouslySetInnerHTML={{
+				__html: `
+					@keyframes scanEffect {
+						25% { background-position: calc(1*100%/3) 0; }
+						50% { background-position: calc(2*100%/3) 0; }
+						75% { background-position: calc(3*100%/3) 0; }
+						100% { background-position: calc(4*100%/3) 0; }
+					}
+				`
+			}} />
+			<span
+				className="pktw-leading-[1.5] pktw-text-xl pktw-inline-block"
+				style={{
+					fontSize: 'var(--font-ui-large)',
+					width: 'fit-content',
+					color: '#0000',
+					background: 'linear-gradient(90deg, #3b82f6 33%, #10b981 0 66%, #8b5cf6 0) 0 0/400% 100%',
+					backgroundClip: 'text',
+					WebkitBackgroundClip: 'text',
+					animation: 'scanEffect 5s infinite cubic-bezier(0.3, 1, 0, 1)',
+				}}
+			>
+				{displayTitle}
+			</span>
+		</>
+	) : (
+		<span
+			className="pktw-font-medium pktw-text-foreground pktw-leading-[1.5] pktw-text-xl"
+			style={{ fontSize: 'var(--font-ui-large)' }}
+		>
+			{enableTypewriter ? typewriterTitle : displayTitle}
 		</span>
 	);
 
