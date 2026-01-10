@@ -104,7 +104,7 @@ export function GeneralTab({ settings, settingsUpdates }: GeneralTabProps) {
 						<div key={config.id} className="pktw-flex pktw-items-start pktw-gap-4">
 							{/* Left side: label and description */}
 							<div className="pktw-flex-1 pktw-min-w-0">
-								<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+								<label className="pktw-block pktw-text-sm pktw-font-medium pktw-mb-1">
 									{config.label}
 								</label>
 								{config.description && (

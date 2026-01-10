@@ -6,6 +6,8 @@ import { useProjectStore } from '@/ui/store/projectStore';
  * View modes for ChatView
  */
 export enum ViewMode {
+	// home view showing recent conversations and projects
+	HOME = 'home',
 	// projects items list has max items to display. the overview of all projects need to show in a large card view in center area
 	ALL_PROJECTS = 'all-projects',
 	// conversations items list has max items to display. the overview of all conversations need to show in a large card view in center area
@@ -32,6 +34,7 @@ interface ChatViewStore {
 	initialSelectedModel: { provider: string; modelId: string } | null;
 
 	// Actions
+	setHome: () => void;
 	setProjectOverview: (project: ChatProject) => void;
 	setProjectConversationsList: (project: ChatProject) => void;
 	setAllProjects: () => void;
@@ -54,6 +57,15 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 	initialSelectedModel: null,
 
 	// Actions
+	setHome: () => {
+		useProjectStore.getState().setActiveProject(null);
+		useProjectStore.getState().setActiveConversation(null);
+		set({
+			viewMode: ViewMode.HOME,
+			projectForOverview: null,
+			pendingConversation: null,
+		});
+	},
 	setProjectOverview: (project: ChatProject) => {
 		useProjectStore.getState().setActiveProject(null);
 		useProjectStore.getState().setActiveConversation(null);

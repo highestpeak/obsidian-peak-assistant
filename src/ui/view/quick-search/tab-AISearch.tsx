@@ -5,10 +5,11 @@ import { TagCloud } from './components/TagCloud';
 import { SaveDialog } from './components/ResultSaveDialog';
 import { KeyboardShortcut } from './components/KeyboardShortcut';
 import { Button } from '@/ui/component/shared-ui/button';
+import { AnimatedSparkles } from '@/ui/component/mine';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { Streamdown } from 'streamdown';
 import { formatDuration, formatTokenCount } from '@/core/utils/format-utils';
-import { openFile } from '@/core/utils/obsidian-utils';
+import { openFile, getSelectedTextFromActiveEditor } from '@/core/utils/obsidian-utils';
 import { mixSearchResultsBySource } from '@/core/utils/source-mixer';
 import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
 import { CHAT_VIEW_TYPE } from '@/app/view/types';
@@ -17,12 +18,14 @@ import type { SearchResultItem, SearchResultSource } from '@/service/search/type
 import type { StreamingCallbacks } from '@/service/chat/types';
 import type { GraphPreview } from '@/core/storage/graph/types';
 
+
 interface AISearchTabProps {
 	searchQuery: string;
 	triggerAnalysis: number;
 	searchClient: SearchClient | null;
 	webEnabled: boolean;
 	onWebEnabledChange: (enabled: boolean) => void;
+	onSearchQueryChange: (query: string) => void;
 	onClose?: () => void;
 }
 
@@ -50,42 +53,31 @@ const ErrorState: React.FC<{ error: string; onRetry: () => void }> = ({ error, o
 );
 
 /**
- * Loading state component showing analysis in progress
+ * Combined state component for AI search - shows loading or ready state
  */
-const LoadingState: React.FC = () => (
+const AISearchState: React.FC<{
+	isAnalyzing: boolean;
+	isSummaryStreaming: boolean;
+}> = ({ isAnalyzing, isSummaryStreaming }) => (
 	<div className="pktw-h-full pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-8">
-		<div className="pktw-w-16 pktw-h-16 pktw-rounded-full pktw-bg-violet-50 pktw-flex pktw-items-center pktw-justify-center pktw-mb-4">
-			<Sparkles className="pktw-w-8 pktw-h-8 pktw-text-primary pktw-animate-pulse" />
+		<div className="pktw-w-16 pktw-h-16 pktw-rounded-full pktw-flex pktw-items-center pktw-justify-center pktw-mb-4">
+			<AnimatedSparkles isAnimating={isAnalyzing || isSummaryStreaming} />
 		</div>
 		<span className="pktw-font-semibold pktw-text-[#2e3338] pktw-mb-2">
-			Analyzing...
-		</span>
-		<span className="pktw-text-sm pktw-text-[#6c757d]">
-			AI is processing your query and searching through your vault...
-		</span>
-	</div>
-);
-
-/**
- * Empty state component when waiting for analysis trigger
- */
-const EmptyState: React.FC = () => (
-	<div className="pktw-h-full pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-8">
-		<div className="pktw-w-16 pktw-h-16 pktw-rounded-full pktw-bg-violet-50 pktw-flex pktw-items-center pktw-justify-center pktw-mb-4">
-			<Sparkles className="pktw-w-8 pktw-h-8 pktw-text-primary" />
-		</div>
-		<span className="pktw-font-semibold pktw-text-[#2e3338] pktw-mb-2">
-			Ready to Analyze with AI
+			{isAnalyzing || isSummaryStreaming ? 'Analyzing...' : 'Ready to Analyze with AI'}
 		</span>
 		<span className="pktw-text-sm pktw-text-[#6c757d] pktw-mb-4 pktw-max-w-md">
-			Enter your question and click <strong>Analyze</strong> or press <strong>Enter</strong> to
-			start deep knowledge retrieval. The system will automatically choose the best search
-			strategy.
+			{isAnalyzing || isSummaryStreaming
+				? 'AI is processing your query and searching through your vault...'
+				: 'Enter your question to start deep knowledge retrieval. The system will automatically choose the best search strategy.'
+			}
 		</span>
-		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-amber-600 pktw-bg-amber-50 pktw-px-3 pktw-py-2 pktw-rounded-md">
-			<AlertCircle className="pktw-w-4 pktw-h-4" />
-			<span>This action will consume AI tokens</span>
-		</div>
+		{!(isAnalyzing || isSummaryStreaming) && (
+			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-amber-600 pktw-bg-amber-50 pktw-px-3 pktw-py-2 pktw-rounded-md">
+				<AlertCircle className="pktw-w-4 pktw-h-4" />
+				<span>This action will consume AI tokens</span>
+			</div>
+		)}
 	</div>
 );
 
@@ -130,11 +122,11 @@ const TagCloudSection: React.FC<{
 	}, [topicsRawText, showRawText]);
 
 	return (
-	<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
-		<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
-			<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
-			<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Key Topics</span>
-		</div>
+		<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
+			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
+				<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
+				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Key Topics</span>
+			</div>
 			{showRawText ? (
 				<div
 					ref={scrollContainerRef}
@@ -148,11 +140,11 @@ const TagCloudSection: React.FC<{
 			) : (
 				<TagCloud topics={topics} />
 			)}
-		<span className="pktw-text-xs pktw-text-[#999999] pktw-mt-3">
-			Click any topic to search
-		</span>
-	</div>
-);
+			<span className="pktw-text-xs pktw-text-[#999999] pktw-mt-3">
+				Click any topic to search
+			</span>
+		</div>
+	);
 };
 
 /**
@@ -250,6 +242,70 @@ const TopSourcesSection: React.FC<{
 };
 
 /**
+ * Selected text references preview component
+ */
+const SelectedTextReferencesSection: React.FC<{
+	references: Array<{ id: number; text: string; fileName?: string }>;
+	onRemove: (id: number) => void;
+	onAddReference: (id: number) => void;
+	usedReferences: Set<number>;
+}> = ({ references, onRemove, onAddReference, usedReferences }) => {
+	if (references.length === 0) return null;
+
+	return (
+		<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
+			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
+				<FileText className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
+				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">
+					Selected Text References
+				</span>
+				<span className="pktw-text-xs pktw-text-[#999999]">({references.length})</span>
+			</div>
+			<div className="pktw-space-y-3">
+				{references.map((ref) => (
+					<div
+						key={ref.id}
+						className={`pktw-rounded-md pktw-p-3 pktw-border pktw-border-[#e5e7eb] pktw-cursor-pointer pktw-transition-colors ${usedReferences.has(ref.id)
+							? 'pktw-bg-[#eef2ff] hover:pktw-bg-[#eef2ff]'
+							: 'pktw-bg-white hover:pktw-bg-blue-50/50'
+							}`}
+						onClick={() => onAddReference(ref.id)}
+					>
+						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-2">
+							<div className="pktw-flex pktw-items-center pktw-gap-2">
+								<span className="pktw-text-xs pktw-font-medium pktw-bg-blue-500/15 pktw-text-blue-700 pktw-px-2 pktw-py-0.5 pktw-rounded">
+									@{ref.id}
+								</span>
+								{ref.fileName && (
+									<span className="pktw-text-xs pktw-text-[#999999]">
+										{ref.fileName}
+									</span>
+								)}
+							</div>
+							<button
+								onClick={(e) => {
+									e.stopPropagation(); // Prevent triggering the parent onClick
+									onRemove(ref.id);
+								}}
+								className="pktw-text-[#999999] hover:pktw-text-red-500 pktw-transition-colors"
+							>
+								×
+							</button>
+						</div>
+						<div className="pktw-text-sm pktw-text-[#2e3338] pktw-leading-relaxed">
+							{ref.text.length > 200 ? `${ref.text.substring(0, 200)}...` : ref.text}
+						</div>
+					</div>
+				))}
+			</div>
+			<div className="pktw-text-xs pktw-text-[#999999] pktw-mt-3">
+				Use @1, @2, @3, etc. in your search query to reference these selections
+			</div>
+		</div>
+	);
+};
+
+/**
  * Knowledge graph section component
  */
 const KnowledgeGraphSection: React.FC<{ graph?: GraphPreview | null }> = ({ graph }) => (
@@ -273,9 +329,9 @@ const KnowledgeGraphSection: React.FC<{ graph?: GraphPreview | null }> = ({ grap
 const AISearchFooterHints: React.FC<{ hasAnalyzed: boolean }> = ({ hasAnalyzed }) => (
 	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-[#999999]">
 		<KeyboardShortcut keys="Esc" description="to close" prefix="Press" />
-		<KeyboardShortcut 
-			keys="Enter" 
-			description="to analyze" 
+		<KeyboardShortcut
+			keys="Enter"
+			description="to analyze"
 			prefix="Press"
 			warning={!hasAnalyzed ? "• Will consume AI tokens" : undefined}
 			className="pktw-flex pktw-items-center pktw-gap-1"
@@ -286,7 +342,7 @@ const AISearchFooterHints: React.FC<{ hasAnalyzed: boolean }> = ({ hasAnalyzed }
 /**
  * AI search tab, showing analysis summary, sources, and insights.
  */
-export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAnalysis, searchClient, webEnabled, onWebEnabledChange, onClose }) => {
+export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAnalysis, searchClient, webEnabled, onWebEnabledChange, onSearchQueryChange, onClose }) => {
 	const [isAnalyzing, setIsAnalyzing] = useState(false);
 	const [hasAnalyzed, setHasAnalyzed] = useState(false);
 	const [hasStartedStreaming, setHasStartedStreaming] = useState(false);
@@ -301,11 +357,93 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 	const [topicsRawText, setTopicsRawText] = useState('');
 	const [usage, setUsage] = useState<{ estimatedTokens?: number }>({});
 	const [duration, setDuration] = useState<number | null>(null);
+	const [selectedTextReferences, setSelectedTextReferences] = useState<Array<{ id: number; text: string; fileName?: string }>>([]);
+	const [usedReferences, setUsedReferences] = useState<Set<number>>(new Set());
 	const { app, manager, viewManager } = useServiceContext();
 
+	// Memoize selectedTextReferences to avoid unnecessary re-renders
+	const memoizedSelectedTextReferences = React.useMemo(() => selectedTextReferences, [selectedTextReferences.length]);
+
+	// Check for selected text in active editor (with mock data for desktop testing)
+	useEffect(() => {
+		// Mock data for desktop testing
+		const mockReferences = [
+			{
+				id: 1,
+				text: "This is a sample selected text from the document. It contains important information about the topic being discussed and should be referenced in the AI analysis.",
+				fileName: "Sample Document.md"
+			},
+			{
+				id: 2,
+				text: "Another piece of selected text that demonstrates how multiple references can be used in a single search query. This allows for more precise and contextual AI analysis.",
+				fileName: "Research Notes.md"
+			},
+			{
+				id: 3,
+				text: "A shorter selection that shows how brief but important information can be easily referenced using the @3 syntax in search queries.",
+				fileName: "Quick Notes.md"
+			}
+		];
+
+		// Set mock data immediately for testing
+		setSelectedTextReferences(mockReferences);
+
+		// Update used references based on current search query
+		const usedRefs = new Set<number>();
+		memoizedSelectedTextReferences.forEach(ref => {
+			if (searchQuery.includes(`@${ref.id}`)) {
+				usedRefs.add(ref.id);
+			}
+		});
+		setUsedReferences(usedRefs);
+
+		// In production, uncomment the code below to enable real selection detection
+		/*
+		const checkSelectedText = () => {
+			const selectedText = getSelectedTextFromActiveEditor(app);
+			if (selectedText && selectedText.length > 0) {
+				// Get current file name
+				const anyApp = app as any;
+				const view = anyApp.workspace?.getActiveViewOfType?.(anyApp.MarkdownView || (anyApp as any).MarkdownView);
+				const file = view?.file;
+				const fileName = file?.basename || 'Current Document';
+
+				const newReference = {
+					id: selectedTextReferences.length + 1,
+					text: selectedText,
+					fileName: fileName
+				};
+
+				// Check if this text is already referenced
+				const existingIndex = selectedTextReferences.findIndex(ref => ref.text === selectedText);
+				if (existingIndex === -1) {
+					setSelectedTextReferences(prev => [...prev, newReference]);
+				}
+			}
+		};
+
+		// Check immediately
+		checkSelectedText();
+
+		// Set up interval to check periodically (every 2 seconds)
+		const interval = setInterval(checkSelectedText, 2000);
+
+		return () => clearInterval(interval);
+		*/
+	}, [searchQuery, memoizedSelectedTextReferences]);
+
 	const performAnalysis = async () => {
-		// Validate query: must have content after removing @web
-		const cleanQuery = searchQuery.replace(/@web\s*/g, '').trim();
+		// Process @1, @2, @3 references in search query
+		let processedQuery = searchQuery;
+		if (selectedTextReferences.length > 0) {
+			selectedTextReferences.forEach(ref => {
+				const referencePattern = new RegExp(`@${ref.id}\\b`, 'g');
+				processedQuery = processedQuery.replace(referencePattern, `"${ref.text}"`);
+			});
+		}
+
+		// Validate query: must have content after removing @web and references
+		const cleanQuery = processedQuery.replace(/@web\s*/g, '').trim();
 		if (!cleanQuery) {
 			setError('Please enter a search query.');
 			return;
@@ -316,6 +454,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 		}
 		setIsAnalyzing(true);
 		setHasStartedStreaming(false);
+		setHasAnalyzed(false);
 		setError(null);
 		setSummary('');
 		setIsSummaryStreaming(false);
@@ -334,6 +473,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 				}
 			},
 			onDelta: (streamType, delta) => {
+				console.debug(`[AISearchTab] Stream delta: ${streamType}`, delta);
 				if (streamType === 'summary') {
 					// When first summary delta arrives, switch from loading to content display
 					setHasStartedStreaming(prev => {
@@ -349,6 +489,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 				}
 			},
 			onComplete: (streamType, content, metadata) => {
+				console.debug(`[AISearchTab] Stream complete: ${streamType}`, content, '|', metadata);
 				if (streamType === 'summary') {
 					setSummary(content);
 					setIsSummaryStreaming(false);
@@ -382,7 +523,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 		};
 
 		try {
-			const result = await searchClient.aiAnalyze({ query: searchQuery, topK: 8, webEnabled }, callbacks);
+			const result = await searchClient.aiAnalyze({ query: processedQuery, topK: 8, webEnabled }, callbacks);
 			console.debug(`[AISearchTab] AI analyze result:`, result);
 
 			// Set final values (sources and duration are already set via callback)
@@ -394,7 +535,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 				setTopicsRawText(''); // Clear raw text if final topics are set
 			}
 			if (!summary && result.summary) {
-			setSummary(result.summary);
+				setSummary(result.summary);
 			}
 			setUsage(result.usage ?? {});
 			// Duration is already set via callback, but ensure it's set from final result
@@ -402,17 +543,17 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 				setDuration(result.duration);
 			}
 
-			setIsAnalyzing(false);
 			setHasAnalyzed(true);
 			setError(null);
 		} catch (err) {
-			setIsAnalyzing(false);
 			setHasAnalyzed(false);
-			setHasStartedStreaming(false);
 			const errorMessage = err instanceof Error
 				? err.message
 				: 'Failed to connect to AI service. Please check your network connection and try again.';
 			setError(errorMessage);
+		} finally {
+			setIsAnalyzing(false);
+			setHasStartedStreaming(false);
 		}
 	};
 
@@ -445,6 +586,19 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 		} catch (e) {
 			console.error('Open source failed:', e);
 		}
+	};
+
+	const handleRemoveReference = (id: number) => {
+		setSelectedTextReferences(prev => prev.filter(ref => ref.id !== id));
+	};
+
+	const handleAddReference = (id: number) => {
+		const referenceTag = `@${id}`;
+		const currentQuery = searchQuery.trim();
+		const newQuery = currentQuery ? `${currentQuery} ${referenceTag}` : referenceTag;
+		onSearchQueryChange(newQuery);
+		// Mark this reference as used
+		setUsedReferences(prev => new Set(prev).add(id));
 	};
 
 	const handleOpenInChat = async () => {
@@ -537,50 +691,51 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
 			{/* Main Content */}
 			<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-pt-3 pktw-px-4 pktw-pb-4">
-				{error ? (
-					<ErrorState error={error} onRetry={handleRetry} />
-				) : !hasStartedStreaming && !hasAnalyzed && sources.length === 0 ? (
-					isAnalyzing ? <LoadingState /> : <EmptyState />
-				) : (
-					// Analysis Results - Keep original order: AI Analysis first, then Top Sources
-					<div className="pktw-flex pktw-flex-col pktw-gap-4">
-						{/* AI Analysis section: show loading state immediately when analyzing, content when streaming */}
-						{isAnalyzing || hasStartedStreaming || hasAnalyzed ? (
-							!hasStartedStreaming && isAnalyzing ? (
-								// Show loading state for AI Analysis while waiting for first token
-								<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
-									<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
-										<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed] pktw-animate-pulse" />
-										<span className="pktw-font-semibold pktw-text-[#2e3338] pktw-text-lg">AI Analysis</span>
-									</div>
-									<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-sm pktw-text-[#6c757d]">
-										<span>Analyzing...</span>
-									</div>
-								</div>
-							) : (
-								// Show content when streaming has started
-								<AnalysisSection summary={summary} isStreaming={isSummaryStreaming} />
-							)
-						) : null}
+				{error ? (<ErrorState error={error} onRetry={handleRetry} />) : null}
 
-						{/* Show topics section only if topics have started generating (raw text) or are complete */}
-						{(topicsRawText || topics.length > 0) && (
-							<TagCloudSection topics={topics} topicsRawText={topicsRawText} />
-						)}
-
-						{/* Show sources immediately after search completes (before AI analysis completes) */}
-						{sources.length > 0 && (
-							hasAnalyzed && graph ? (
-						<div className="pktw-grid pktw-grid-cols-2 pktw-gap-4">
-							<TopSourcesSection sources={sources} onOpen={handleOpenSource} />
-							<KnowledgeGraphSection graph={graph} />
-						</div>
-							) : (
-								<TopSourcesSection sources={sources} onOpen={handleOpenSource} />
-							)
-						)}
+				{isAnalyzing || !hasStartedStreaming && !hasAnalyzed ? (
+					// Ready state - show selected text references and ready state
+					<div className="pktw-flex pktw-flex-col pktw-gap-4 pktw-mb-4">
+						<AISearchState isAnalyzing={isAnalyzing} isSummaryStreaming={isSummaryStreaming} />
 					</div>
-				)}
+				) : null}
+
+				{!isAnalyzing && !hasAnalyzed && !error ? (
+					selectedTextReferences.length > 0 && (
+						<SelectedTextReferencesSection
+							references={selectedTextReferences}
+							onRemove={handleRemoveReference}
+							onAddReference={handleAddReference}
+							usedReferences={usedReferences}
+						/>
+					)
+				) : null}
+
+				{/* Analysis Results - Keep original order: AI Analysis first, then Top Sources */}
+				<div className="pktw-flex pktw-flex-col pktw-gap-4">
+					{/* AI Analysis section: show loading state immediately when analyzing, content when streaming */}
+					{hasStartedStreaming || hasAnalyzed ? (
+						// Show content when streaming has started
+						<AnalysisSection summary={summary} isStreaming={isSummaryStreaming} />
+					) : null}
+
+					{/* Show topics section only if topics have started generating (raw text) or are complete */}
+					{(topicsRawText || topics.length > 0) && (
+						<TagCloudSection topics={topics} topicsRawText={topicsRawText} />
+					)}
+
+					{/* Show sources immediately after search completes (before AI analysis completes) */}
+					{sources.length > 0 ? (
+						hasAnalyzed && graph ? (
+							<div className="pktw-grid pktw-grid-cols-2 pktw-gap-4">
+								<TopSourcesSection sources={sources} onOpen={handleOpenSource} />
+								<KnowledgeGraphSection graph={graph} />
+							</div>
+						) : (
+							<TopSourcesSection sources={sources} onOpen={handleOpenSource} />
+						)
+					) : null}
+				</div>
 			</div>
 
 			{/* Footer */}
@@ -595,18 +750,18 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 								</div>
 							)}
 							{usage.estimatedTokens && (
-							<div className="pktw-text-xs pktw-text-[#999999] pktw-flex pktw-items-center pktw-gap-1">
-								<Sparkles className="pktw-w-3 pktw-h-3" />
-								<span>
+								<div className="pktw-text-xs pktw-text-[#999999] pktw-flex pktw-items-center pktw-gap-1">
+									<Sparkles className="pktw-w-3 pktw-h-3" />
+									<span>
 										Used: <strong className="pktw-text-[#2e3338]">~{formatTokenCount(usage.estimatedTokens)} tokens</strong>
-								</span>
-							</div>
+									</span>
+								</div>
 							)}
 							<Button
 								onClick={() => setShowSaveDialog(true)}
 								size="sm"
 								variant="outline"
-								className="pktw-px-4 pktw-py-1.5 pktw-text-sm pktw-border-[#e5e7eb] pktw-bg-white pktw-text-[#6c757d] hover:pktw-bg-[#f9fafb] !pktw-rounded-md pktw-flex pktw-items-center pktw-gap-2"
+								className="pktw-px-4 pktw-py-1.5 pktw-text-sm pktw-border-[#e5e7eb] pktw-bg-white pktw-text-[#6c757d] hover:pktw-bg-[#6d28d9] !pktw-rounded-md pktw-flex pktw-items-center pktw-gap-2"
 							>
 								<span>Save to File</span>
 								<Save className="pktw-w-3.5 pktw-h-3.5" />
@@ -631,10 +786,10 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 					query={searchQuery}
 					webEnabled={webEnabled}
 					result={{
-					summary,
-					sources,
-					insights: graph ? { graph } : undefined,
-					usage,
+						summary,
+						sources,
+						insights: graph ? { graph } : undefined,
+						usage,
 					}}
 				/>
 			)}

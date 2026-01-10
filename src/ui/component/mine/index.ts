@@ -6,3 +6,4 @@ export * from './resource-preview-hover';
 export * from './input-with-confirm';
 export * from './NavigableMenu';
 export * from './HoverButton';
+export * from './AnimatedSparkles';

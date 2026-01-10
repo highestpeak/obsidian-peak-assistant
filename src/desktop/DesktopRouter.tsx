@@ -6,6 +6,7 @@ import DailyAnalysis from '@/ui/view/DailyAnalysis';
 import { ProjectListViewComponent } from '@/ui/view/project-list-view/ProjectListView';
 import { MessageHistoryViewComponent } from '@/ui/view/message-history-view/MessageHistoryView';
 import { MessagesViewComponent } from '@/ui/view/chat-view/view-Messages';
+import { HomeViewComponent } from '@/ui/view/chat-view/view-Home';
 import { QuickSearchModalContent } from '@/ui/view/quick-search/SearchModal';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useProjectStore } from '@/ui/store/projectStore';
@@ -45,9 +46,9 @@ export const DesktopRouter: React.FC = () => {
 
 	// Navigation bar component
 	const NavigationBar = () => (
-		<div style={{ 
-			height: '48px', 
-			backgroundColor: '#f8f9fa', 
+		<div style={{
+			height: '48px',
+			backgroundColor: '#f8f9fa',
 			borderBottom: '1px solid #e5e5e5',
 			display: 'flex',
 			alignItems: 'center',
@@ -160,9 +161,11 @@ export const DesktopRouter: React.FC = () => {
 	// Left: Project List (dark background)
 	// Center: Chat View (light background)
 	// Right: Message History (light background, only shown when in conversation mode)
-	const isConversationMode = 
-		viewMode === ViewMode.CONVERSATION_IN_PROJECT || 
+	const isConversationMode =
+		viewMode === ViewMode.CONVERSATION_IN_PROJECT ||
 		viewMode === ViewMode.STANDALONE_CONVERSATION;
+
+	const isHomeMode = viewMode === ViewMode.HOME;
 
 	return (
 		<div className="h-full w-full flex flex-col" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -178,6 +181,9 @@ export const DesktopRouter: React.FC = () => {
 					{isConversationMode ? (
 						// Show MessagesView when in conversation mode
 						<MessagesViewComponent />
+					) : isHomeMode ? (
+						// Show HomeView when in home mode
+						<HomeViewComponent />
 					) : (
 						// Show ChatViewComponent for other modes (project list, all conversations, etc.)
 						<ChatViewComponent viewMode={viewMode} />
@@ -213,17 +219,16 @@ export const DesktopRouter: React.FC = () => {
 						style={{
 							backgroundColor: '#ffffff',
 							borderRadius: '8px',
-							width: '90%',
-							maxWidth: '800px',
+							width: '80%',
 							maxHeight: '90%',
 							overflow: 'auto',
 							boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
 						}}
 						onClick={(e) => e.stopPropagation()}
 					>
-						<div style={{ 
-							display: 'flex', 
-							justifyContent: 'space-between', 
+						<div style={{
+							display: 'flex',
+							justifyContent: 'space-between',
 							alignItems: 'center',
 							padding: '16px',
 							borderBottom: '1px solid #e5e5e5'

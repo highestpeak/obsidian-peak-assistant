@@ -47,12 +47,12 @@ export const SaveDialog: React.FC<SaveDialogProps> = ({ onClose, query, result, 
 
 	return (
 		<div className="pktw-fixed pktw-inset-0 pktw-bg-black/20 pktw-flex pktw-items-center pktw-justify-center pktw-z-50 pktw-p-4">
-			<div className="pktw-bg-background pktw-rounded-lg pktw-shadow-2xl pktw-border pktw-border-border pktw-w-full pktw-max-w-lg">
+			<div className="pktw-bg-white pktw-rounded-lg pktw-shadow-2xl pktw-border pktw-border-border pktw-w-full pktw-max-w-lg">
 				{/* Header */}
 				<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-py-4 pktw-border-b pktw-border-border">
 					<div className="pktw-flex pktw-items-center pktw-gap-2">
 						<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-primary" />
-						<span className="pktw-font-semibold pktw-text-foreground">Save Search Results</span>
+						<span className="pktw-font-semibold pktw-text-foreground">Save Analysis Results</span>
 					</div>
 					<IconButton
 						onClick={onClose}
@@ -64,7 +64,7 @@ export const SaveDialog: React.FC<SaveDialogProps> = ({ onClose, query, result, 
 				</div>
 
 				{/* Body */}
-				<div className="pktw-p-5 pktw-space-y-4">
+				<div className="pktw-px-5 pktw-space-y-4">
 					{/* File Name */}
 					<div>
 						<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-2">
@@ -77,7 +77,7 @@ export const SaveDialog: React.FC<SaveDialogProps> = ({ onClose, query, result, 
 							type="text"
 							value={fileName}
 							onChange={(e) => setFileName(e.target.value)}
-							className="pktw-w-full pktw-px-3 pktw-py-2 pktw-bg-muted pktw-border pktw-border-input pktw-rounded-md pktw-text-foreground pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-primary pktw-focus:border-transparent pktw-transition-all"
+							className="pktw-w-full pktw-box-border pktw-px-3 pktw-py-2 pktw-border pktw-border-input pktw-rounded-md pktw-text-foreground pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-primary pktw-focus:border-transparent pktw-transition-all"
 						/>
 						<span className="pktw-text-xs pktw-text-muted-foreground pktw-mt-1 pktw-block">
 							Extension .md will be added automatically
@@ -98,7 +98,7 @@ export const SaveDialog: React.FC<SaveDialogProps> = ({ onClose, query, result, 
 								type="text"
 								value={folderPath}
 								onChange={(e) => setFolderPath(e.target.value)}
-								className="pktw-w-full pktw-pl-10 pktw-pr-3 pktw-py-2 pktw-bg-muted pktw-border pktw-border-input pktw-rounded-md pktw-text-foreground pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-primary pktw-focus:border-transparent pktw-transition-all"
+								className="pktw-w-full pktw-box-border pktw-pl-10 pktw-pr-3 pktw-py-2 pktw-border pktw-border-input pktw-rounded-md pktw-text-foreground pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-primary pktw-focus:border-transparent pktw-transition-all"
 							/>
 						</div>
 						<span className="pktw-text-xs pktw-text-muted-foreground pktw-mt-1 pktw-block">

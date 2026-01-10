@@ -7,6 +7,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { SearchScopeMode } from '@/service/search/types';
 import { parseQuickSearchInput } from '@/service/search/view/query-parser';
+import { GlobeOff } from '@/ui/component/icon';
 
 type TabType = 'vault' | 'ai';
 
@@ -130,7 +131,7 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 
 	return (
 		<div
-			className="pktw-w-full pktw-max-w-[1100px] pktw-bg-white pktw-rounded-lg pktw-shadow-lg pktw-overflow-hidden pktw-flex pktw-flex-col pktw-h-full"
+			className="pktw-w-full pktw-bg-white pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-h-full"
 			onKeyDown={handleContainerKeyDown}
 			tabIndex={-1}
 		>
@@ -166,35 +167,50 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 									onKeyDown={handleKeyDown}
 									placeholder={
 										activeTab === 'vault'
-											? 'Search in vault... (# for in-file, @ for folder, / for mode list)'
+											? 'Search in vault... (# for in-file, @ for folder, : to go to line)'
 											: 'Ask AI anything about your vault...'
 									}
-									className={`pktw-w-full pktw-pl-11 ${activeTab === 'ai' ? 'pktw-pr-20' : 'pktw-pr-4'} pktw-py-2.5 pktw-bg-[#fafafa] pktw-border pktw-border-[#d1d5db] pktw-rounded-full pktw-text-transparent pktw-placeholder:text-[#999999] pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-[#7c3aed] pktw-focus:border-transparent pktw-transition-all`}
+									className={`pktw-w-full pktw-pl-11 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border pktw-border-muted-foreground pktw-rounded-full pktw-text-transparent pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-[#7c3aed] pktw-focus:border-transparent pktw-transition-all`}
 									style={{
 										caretColor: '#2e3338', // Ensure cursor is visible
 										font: 'inherit', // Use font shorthand to inherit all font properties
+										boxSizing: 'border-box', // Ensure padding and border are included in width
 									}}
 								/>
 								{/* Overlay to display text with @web highlighting */}
 								<div
 									className="pktw-absolute pktw-inset-0 pktw-pl-11 pktw-pr-20 pktw-py-2.5 pktw-pointer-events-none pktw-text-[#2e3338] pktw-select-none"
 									style={{
-										font: 'inherit', // Use font shorthand to inherit all font properties
+										font: 'inherit',
 										whiteSpace: 'pre',
 										overflow: 'hidden',
 										textAlign: 'left',
-										display: 'flex',
-										alignItems: 'center',
+										lineHeight: 'inherit',
 										wordBreak: 'normal',
 										overflowWrap: 'normal',
 									}}
 								>
-									{activeTab === 'ai' && searchQuery.includes('@web') ? (
-										searchQuery.split(/(@web)/g).map((part, index) => (
-											part === '@web' ? (
-												<span key={index} className="pktw-text-[#3b82f6]" style={{ fontWeight: 500 }}>@web</span>
+									{activeTab === 'ai' && (searchQuery.includes('@web') || /@\d+/.test(searchQuery)) ? (
+										searchQuery.split(/(@web|@\d+)/g).map((part, index) => (
+											part === '@web' || /^@\d+$/.test(part) ? (
+												<span
+													key={index}
+													className="pktw-rounded pktw-bg-blue-500/15 pktw-text-blue-700 dark:pktw-bg-blue-500/20 dark:pktw-text-blue-400"
+													style={{
+														padding: '0px 0px',
+														margin: '0px 0px',
+														display: 'inline',
+														lineHeight: 'inherit',
+														fontSize: 'inherit',
+														fontWeight: 'inherit',
+														fontFamily: 'inherit',
+														letterSpacing: 'inherit',
+													}}
+												>
+													{part}
+												</span>
 											) : (
-												<span key={index}>{part}</span>
+												<span key={index} style={{ lineHeight: 'inherit' }}>{part}</span>
 											)
 										))
 									) : (
@@ -214,13 +230,16 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 											setWebEnabled(true);
 										}
 									}}
-									className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors ${(webEnabled || searchQuery.includes('@web'))
-											? 'pktw-bg-white pktw-text-[#3b82f6] pktw-border pktw-border-[#3b82f6]/30 hover:pktw-bg-[#3b82f6]/5'
-											: 'pktw-bg-white pktw-text-[#6c757d] pktw-border pktw-border-[#e5e7eb] hover:pktw-bg-[#f9fafb]'
+									className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors ${webEnabled
+										? 'pktw-text-[#3b82f6] pktw-border pktw-border-[#3b82f6]/30 hover:pktw-bg-[#3b82f6]/5'
+										: 'pktw-border-0 pktw-bg-transparent hover:pktw-bg-accent/50'
 										}`}
-									title={(webEnabled || searchQuery.includes('@web')) ? 'Web: ON' : 'Web: OFF'}
+									title={webEnabled ? 'Web: ON' : 'Web: OFF'}
 								>
-									<Globe className={`pktw-w-3.5 pktw-h-3.5 ${(webEnabled || searchQuery.includes('@web')) ? 'pktw-text-[#3b82f6]' : ''}`} />
+									{webEnabled
+										? (<Globe className={`pktw-w-5 pktw-h-5 pktw-text-[#3b82f6]`} />)
+										: (<GlobeOff className={`pktw-w-5 pktw-h-5 pktw-text-[#6c757d]`} />)
+									}
 								</button>
 							)}
 						</div>
@@ -288,7 +307,7 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 			{/* Tab Content */}
 			<div className="pktw-bg-white pktw-flex-1 pktw-min-h-0 pktw-overflow-hidden pktw-flex pktw-flex-col">
 				{activeTab === 'ai' ? (
-					<AISearchTab searchQuery={getCleanQuery(searchQuery)} triggerAnalysis={triggerAnalysis} searchClient={searchClient} webEnabled={webEnabled} onWebEnabledChange={setWebEnabled} onClose={onClose} />
+					<AISearchTab searchQuery={getCleanQuery(searchQuery)} triggerAnalysis={triggerAnalysis} searchClient={searchClient} webEnabled={webEnabled} onWebEnabledChange={setWebEnabled} onSearchQueryChange={setSearchQuery} onClose={onClose} />
 				) : (
 					<VaultSearchTab
 						searchInput={searchQuery}

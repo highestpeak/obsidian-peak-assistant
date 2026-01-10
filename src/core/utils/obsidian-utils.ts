@@ -88,3 +88,28 @@ export async function readFileAsBase64(app: App, resourceSource: string): Promis
 	return null;
 }
 
+/**
+ * Get selected text from the currently active Obsidian editor.
+ * Returns null if no editor is active or no text is selected.
+ *
+ * @param app - Obsidian app instance
+ * @returns Selected text string, or null if none selected
+ */
+export function getSelectedTextFromActiveEditor(app: App): string | null {
+	try {
+		const anyApp = app as any;
+		const view = anyApp.workspace?.getActiveViewOfType?.(anyApp.MarkdownView || (anyApp as any).MarkdownView);
+		const editor = view?.editor || anyApp.workspace?.activeEditor?.editor;
+
+		if (!editor) return null;
+
+		const selection = editor.getSelection?.();
+		if (!selection || selection.trim().length === 0) return null;
+
+		return selection.trim();
+	} catch (error) {
+		console.warn('[obsidian-utils] Failed to get selected text from active editor:', error);
+		return null;
+	}
+}
+

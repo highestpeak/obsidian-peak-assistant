@@ -298,27 +298,9 @@ export class MockSearchClient {
 			}
 		];
 
-		// Filter results based on query text and folder path
-		let filteredResults = mockResults.filter(item =>
-			query.text ? item.title.toLowerCase().includes(query.text.toLowerCase()) ||
-						item.content.toLowerCase().includes(query.text.toLowerCase()) : true
-		);
-
-		// Filter by folder path if provided
-		if (query.scopeValue?.folderPath) {
-			const folderPath = query.scopeValue.folderPath;
-			const folderPrefix = folderPath.endsWith('/') ? folderPath : folderPath + '/';
-			filteredResults = filteredResults.filter(item => {
-				// Include items that are directly in the folder or subfolders
-				return item.path?.startsWith(folderPrefix) ||
-					   item.path === folderPath ||
-					   (item.type === 'folder' && folderPath.startsWith(item.path + '/'));
-			});
-		}
-
 		// Limit results to topK
 		const topK = query.topK || 10;
-		const limitedResults = filteredResults.slice(0, topK);
+		const limitedResults = mockResults.slice(0, topK);
 
 		return {
 			query,
@@ -403,6 +385,97 @@ export class MockSearchClient {
 
 		const limit = Math.max(1, Number(topK ?? 20));
 		return mockRecentFiles.slice(0, limit);
+	}
+
+	/**
+	 * AI analyze (mock implementation)
+	 */
+	async aiAnalyze(req: any, callbacks?: any): Promise<any> {
+		console.log('MockSearchClient: aiAnalyze', req);
+
+		const { query, topK = 8, webEnabled = false } = req;
+
+		// Simulate AI processing delay
+		await new Promise(resolve => setTimeout(resolve, 1000));
+
+		// Get mock search results for sources
+		const searchResults = await this.search({
+			text: query,
+			topK: topK,
+			searchMode: 'fulltext'
+		});
+		const sources = searchResults.items.map((item: any) => ({
+			...item,
+			source: 'local'
+		}));
+
+		// Simulate AI processing delay
+		await new Promise(resolve => setTimeout(resolve, 3000));
+
+		// Notify sources complete
+		callbacks?.onComplete?.('other', '', { sources, duration: 100 });
+
+		// Simulate AI processing delay
+		await new Promise(resolve => setTimeout(resolve, 3000));
+
+		// Call start callback
+		callbacks?.onStart?.('summary');
+		callbacks?.onStart?.('graph');
+		callbacks?.onStart?.('topics');
+
+		// Simulate streaming summary
+		const summaryText = `Based on the search query "${query}", I found several relevant documents in your knowledge base. The analysis reveals key insights about your projects and daily activities.`;
+		const summaryChars = summaryText.split('');
+		for (let i = 0; i < summaryChars.length; i++) {
+			await new Promise(resolve => setTimeout(resolve, 2));
+			callbacks?.onDelta?.('summary', summaryChars[i]);
+		}
+
+		// Complete summary
+		callbacks?.onComplete?.('summary', summaryText);
+
+		// Simulate graph generation
+		await new Promise(resolve => setTimeout(resolve, 500));
+		const mockGraph = {
+			nodes: [
+				{ id: '1', label: 'Project Management', x: 100, y: 100, size: 20 },
+				{ id: '2', label: 'Development', x: 200, y: 150, size: 18 },
+				{ id: '3', label: 'Documentation', x: 150, y: 200, size: 16 },
+				{ id: '4', label: 'Planning', x: 250, y: 100, size: 14 }
+			],
+			edges: [
+				{ source: '1', target: '2', weight: 0.8 },
+				{ source: '1', target: '3', weight: 0.6 },
+				{ source: '2', target: '4', weight: 0.7 },
+				{ source: '3', target: '4', weight: 0.5 }
+			]
+		};
+		callbacks?.onComplete?.('graph', '', mockGraph);
+
+		// Simulate topics generation
+		await new Promise(resolve => setTimeout(resolve, 300));
+		const mockTopics = [
+			{ label: 'Project Development', weight: 0.9 },
+			{ label: 'Knowledge Management', weight: 0.8 },
+			{ label: 'Daily Planning', weight: 0.7 },
+			{ label: 'Documentation', weight: 0.6 },
+			{ label: 'Task Organization', weight: 0.5 }
+		];
+		callbacks?.onComplete?.('topics', '', { topics: mockTopics });
+
+		// Return final result
+		return {
+			summary: summaryText,
+			sources: sources,
+			insights: {
+				graph: mockGraph,
+				topics: mockTopics
+			},
+			usage: {
+				estimatedTokens: Math.floor(query.length * 1.5)
+			},
+			duration: 2000
+		};
 	}
 }
 

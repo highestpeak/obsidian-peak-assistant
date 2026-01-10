@@ -25,7 +25,7 @@ import {
 } from '@/ui/component/ai-elements';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/component/shared-ui/tooltip';
 import { Button } from '@/ui/component/shared-ui/button';
-import { ResourcePreviewHover } from '@/ui/component/mine/resource-preview-hover';
+import { ResourcePreviewHover, AnimatedSparkles } from '@/ui/component/mine';
 import { Streamdown } from 'streamdown';
 import type { FileUIPart } from 'ai';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
@@ -811,7 +811,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 					{/* Streaming started but no content yet - show loading spinner */}
 					{shouldShowLoader ? (
 						<div className="pktw-flex pktw-items-center pktw-justify-start pktw-py-2">
-							<Loader2 className="pktw-size-4 pktw-animate-spin pktw-text-muted-foreground" />
+							<div className="pktw-scale-50 pktw-origin-left">
+								<AnimatedSparkles isAnimating={true} />
+							</div>
 						</div>
 					) : null}
 

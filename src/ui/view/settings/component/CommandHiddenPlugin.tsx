@@ -3,13 +3,7 @@ import { MyPluginSettings } from '@/app/settings/types';
 import { CommandHiddenControlService } from '@/service/CommandHiddenControlService';
 import { cn } from '@/ui/react/lib/utils';
 import { VisibilityToggle } from '@/ui/component/shared-ui/visibility-toggle';
-import { SettingField } from '@/ui/view/settings/component/setting-field';
-
-interface CommandHiddenTabProps {
-	settings: MyPluginSettings;
-	commandHiddenControlService: CommandHiddenControlService | null;
-	updateSettings: (updates: Partial<MyPluginSettings>) => Promise<void>;
-}
+import { SettingField } from './setting-field';
 
 type MenuTypeId = 'slash-commands' | 'command-palette' | 'ribbon-icons';
 
@@ -34,14 +28,20 @@ function isDeleteItem(title: string): boolean {
 	return norm === 'delete';
 }
 
+interface CommandHiddenPluginProps {
+	settings: MyPluginSettings;
+	commandHiddenControlService: CommandHiddenControlService | null;
+	updateSettings: (updates: Partial<MyPluginSettings>) => Promise<void>;
+}
+
 /**
- * Command Hidden settings tab with visibility controls.
+ * Command Hidden Plugin component for managing command visibility
  */
-export function CommandHiddenTab({
+export function CommandHiddenPlugin({
 	settings,
 	commandHiddenControlService,
 	updateSettings,
-}: CommandHiddenTabProps) {
+}: CommandHiddenPluginProps) {
 	const [activeMenuType, setActiveMenuType] = useState<MenuTypeId>('slash-commands');
 	const [isListCollapsed, setIsListCollapsed] = useState(true);
 	const [, forceUpdate] = useState(0);
@@ -142,12 +142,10 @@ export function CommandHiddenTab({
 	}, [activeMenuType, discovered, hiddenByType, settings.commandHidden, updateSettings, commandHiddenControlService]);
 
 	return (
-		<div className="peak-settings-card">
-			{/* Header */}
-			<h3 className="pktw-m-0 pktw-text-lg pktw-font-semibold pktw-text-foreground pktw-mb-2">Command Hidden</h3>
-			<p className="peak-settings-description">
-				Control which command are hidden. Items are automatically discovered. Click the eye icon to toggle visibility.
-			</p>
+		<>
+			<div className="peak-settings-description pktw-mb-4">
+				Control which commands are hidden. Items are automatically discovered. Click the eye icon to toggle visibility.
+			</div>
 
 			{/* Refresh Button */}
 			<SettingField
@@ -239,6 +237,6 @@ export function CommandHiddenTab({
 					)}
 				</div>
 			</div>
-		</div>
+		</>
 	);
 }

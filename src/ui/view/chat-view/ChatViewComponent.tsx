@@ -6,6 +6,7 @@ import { AllProjectsViewComponent } from './view-AllProjects';
 import { ProjectOverviewViewComponent } from './view-ProjectOverview';
 import { ProjectConversationsListViewComponent } from './view-ProjectConversationsList';
 import { MessagesViewComponent } from './view-Messages';
+import { HomeViewComponent } from './view-Home';
 import { useChatViewStore } from './store/chatViewStore';
 import { ScrollToMessageEvent, ShowToastEvent, ViewEventType } from '@/core/eventBus';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -67,6 +68,11 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 
 	const renderContent = () => {
 		switch (viewMode) {
+			case ViewMode.HOME:
+				return (
+					<HomeViewComponent />
+				);
+
 			case ViewMode.ALL_PROJECTS:
 				return (
 					<AllProjectsViewComponent

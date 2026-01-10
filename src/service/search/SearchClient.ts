@@ -77,18 +77,18 @@ export class SearchClient {
 
 			// 2. Generate AI analysis (summary, graph, topics) - parallel execution where possible
 			// Supports optional streaming callbacks for progressive updates
-		const analysis = await this.aiSearchService.analyze({
-			query: q,
-			sources,
-			webEnabled,
+			const analysis = await this.aiSearchService.analyze({
+				query: q,
+				sources,
+				webEnabled,
 				callbacks,
-		});
+			});
 
 			const result = {
-			...analysis,
-			sources,
+				...analysis,
+				sources,
 				duration: searchDuration,
-		};
+			};
 
 			return result;
 		} catch (error) {

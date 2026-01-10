@@ -2,9 +2,10 @@ import React, { useEffect, useCallback } from 'react';
 import { ProjectsSection } from './ProjectsSection';
 import { ConversationsSection } from './ConversationsSection';
 import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { ViewEventType, SelectionChangedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
 import { notifySelectionChange, hydrateProjects } from './utils';
-import { RefreshCw, Minus } from 'lucide-react';
+import { RefreshCw, Minus, Home } from 'lucide-react';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { showToast } from '@/ui/utils/toast';
@@ -14,6 +15,7 @@ import { showToast } from '@/ui/utils/toast';
  */
 export const ProjectListViewComponent: React.FC = () => {
 	const { app, manager, eventBus } = useServiceContext();
+	const chatViewStore = useChatViewStore();
 	const {
 		setProjects,
 		setConversations,
@@ -44,7 +46,7 @@ export const ProjectListViewComponent: React.FC = () => {
 		}
 
 		// Load conversations
-		const conversationsList = await manager.listConversations();
+		const conversationsList = await manager.listConversations(null);
 		conversationsList.sort((a, b) => {
 			const timeA = a.meta.createdAtTimestamp || 0;
 			const timeB = b.meta.createdAtTimestamp || 0;
@@ -87,6 +89,11 @@ export const ProjectListViewComponent: React.FC = () => {
 		hydrateData();
 	}, []);
 
+	// Navigate to home view
+	const handleGoHome = () => {
+		chatViewStore.setHome();
+	};
+
 	// Refresh projects and conversations
 	const handleRefresh = async () => {
 		try {
@@ -98,7 +105,7 @@ export const ProjectListViewComponent: React.FC = () => {
 			showToast.success('Projects and conversations refreshed', { app });
 		} catch (error) {
 			// Show error toast
-			showToast.error('Failed to refresh data', { 
+			showToast.error('Failed to refresh data', {
 				app,
 				description: error instanceof Error ? error.message : 'Unknown error'
 			});
@@ -178,6 +185,14 @@ export const ProjectListViewComponent: React.FC = () => {
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-p-0 pktw-box-border pktw-overflow-y-auto pktw-bg-background">
 			{/* Toolbar */}
 			<div className="pktw-flex pktw-flex-row pktw-items-center pktw-gap-1 pktw-border-b pktw-border-border pktw-px-2 pktw-pt-1">
+				<IconButton
+					size="lg"
+					className="pktw-shrink-0"
+					onClick={handleGoHome}
+					title="Go to home"
+				>
+					<Home className="pktw-text-foreground group-hover:pktw-text-gray-900 pktw-transition-colors" />
+				</IconButton>
 				<IconButton
 					size="lg"
 					className="pktw-shrink-0"

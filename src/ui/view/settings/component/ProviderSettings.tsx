@@ -399,9 +399,9 @@ export function ProviderSettingsComponent({ settings, aiServiceManager, onUpdate
 	const [selectedProvider, setSelectedProvider] = useState<string>('openai');
 
 	return (
-		<div className="pktw-flex pktw-gap-0 pktw-border pktw-border-border pktw-rounded-lg pktw-bg-background pktw-overflow-hidden pktw-min-h-[500px]">
+		<div className="pktw-flex pktw-gap-0 pktw-border pktw-border-border pktw-rounded-lg pktw-overflow-hidden pktw-min-h-[500px]">
 			{/* Left Sidebar - Provider List */}
-			<div className="pktw-w-[240px] pktw-min-w-[240px] pktw-bg-background pktw-flex pktw-flex-col pktw-overflow-y-auto" style={{ borderRight: '2px solid var(--background-modifier-border)' }}>
+			<div className="pktw-w-[240px] pktw-min-w-[240px] pktw-flex pktw-flex-col pktw-overflow-y-auto" style={{ borderRight: '2px solid var(--background-modifier-border)' }}>
 				<div className="pktw-px-5 pktw-py-4 pktw-border-b pktw-border-border">
 					<h3 className="pktw-m-0 pktw-text-sm pktw-font-semibold pktw-text-foreground">AI Service Provider</h3>
 				</div>
@@ -424,7 +424,7 @@ export function ProviderSettingsComponent({ settings, aiServiceManager, onUpdate
 			</div>
 
 			{/* Right Panel - Provider Configuration */}
-			<div className="pktw-flex-1 pktw-px-8 pktw-py-6 pktw-overflow-y-auto pktw-bg-background">
+			<div className="pktw-flex-1 pktw-px-8 pktw-py-6 pktw-overflow-y-auto">
 				<ProviderConfigForm
 					selectedProvider={selectedProvider}
 					settings={settings}
