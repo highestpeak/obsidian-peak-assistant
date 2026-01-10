@@ -5,6 +5,8 @@ import * as d3Drag from 'd3-drag';
 import * as d3Zoom from 'd3-zoom';
 import { ZoomIn, ZoomOut, Maximize2, Settings } from 'lucide-react';
 import type { GraphPreview } from '@/core/storage/graph/types';
+import { ProgressBarSlider } from '@/ui/component/mine/ProgressBarSlider';
+import { Button } from '../shared-ui/button';
 
 interface GraphConfig {
 	linkDistance: number; // Link distance (default: 60)
@@ -14,9 +16,16 @@ interface GraphConfig {
 
 const DEFAULT_CONFIG: GraphConfig = {
 	linkDistance: 60,
-	chargeStrength: -300,
+	chargeStrength: -50,
 	collisionRadius: 20,
 };
+
+// Slider configuration constants
+const SLIDER_CONFIGS = {
+	linkDistance: { min: 30, max: 500, step: 10 },
+	chargeStrength: { min: -100, max: 50, step: 5 },
+	collisionRadius: { min: 10, max: 80, step: 2 },
+} as const;
 
 export const GraphVisualization: React.FC<{
 	graph?: GraphPreview | null;
@@ -288,28 +297,28 @@ export const GraphVisualization: React.FC<{
 			{/* Control Panel */}
 			<div className="pktw-absolute pktw-top-2 pktw-right-2 pktw-z-10 pktw-flex pktw-gap-1">
 				{/* Zoom Controls */}
-				<button
+				<Button
 					onClick={() => handleZoom(1.2)}
 					className="pktw-p-1.5 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded pktw-shadow-sm hover:pktw-bg-[#f9fafb] pktw-transition-colors"
 					title="Zoom In"
 				>
 					<ZoomIn className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#6c757d]" />
-				</button>
-				<button
+				</Button>
+				<Button
 					onClick={() => handleZoom(1 / 1.2)}
 					className="pktw-p-1.5 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded pktw-shadow-sm hover:pktw-bg-[#f9fafb] pktw-transition-colors"
 					title="Zoom Out"
 				>
 					<ZoomOut className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#6c757d]" />
-				</button>
-				<button
+				</Button>
+				<Button
 					onClick={handleResetZoom}
 					className="pktw-p-1.5 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded pktw-shadow-sm hover:pktw-bg-[#f9fafb] pktw-transition-colors"
 					title="Fit to View"
 				>
 					<Maximize2 className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#6c757d]" />
-				</button>
-				<button
+				</Button>
+				<Button
 					onClick={() => setShowControls(!showControls)}
 					className={`pktw-p-1.5 pktw-border pktw-rounded pktw-shadow-sm pktw-transition-colors ${
 						showControls 
@@ -319,7 +328,7 @@ export const GraphVisualization: React.FC<{
 					title="Settings"
 				>
 					<Settings className="pktw-w-3.5 pktw-h-3.5" />
-				</button>
+				</Button>
 			</div>
 
 			{/* Settings Panel */}
@@ -332,17 +341,13 @@ export const GraphVisualization: React.FC<{
 						<label className="pktw-text-xs pktw-text-[#6c757d] pktw-block pktw-mb-1">
 							Link Distance: {config.linkDistance}
 						</label>
-						<input
-							type="range"
-							min="20"
-							max="150"
-							step="5"
+						<ProgressBarSlider
 							value={config.linkDistance}
-							onChange={(e) => setConfig(prev => ({ ...prev, linkDistance: Number(e.target.value) }))}
-							className="pktw-w-full pktw-h-1.5 pktw-bg-[#e5e7eb] pktw-rounded-lg pktw-appearance-none pktw-cursor-pointer"
-							style={{
-								background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${((config.linkDistance - 20) / (150 - 20)) * 100}%, #e5e7eb ${((config.linkDistance - 20) / (150 - 20)) * 100}%, #e5e7eb 100%)`
-							}}
+							min={SLIDER_CONFIGS.linkDistance.min}
+							max={SLIDER_CONFIGS.linkDistance.max}
+							step={SLIDER_CONFIGS.linkDistance.step}
+							onChange={(value) => setConfig(prev => ({ ...prev, linkDistance: value }))}
+							showTooltip={false}
 						/>
 					</div>
 
@@ -351,17 +356,13 @@ export const GraphVisualization: React.FC<{
 						<label className="pktw-text-xs pktw-text-[#6c757d] pktw-block pktw-mb-1">
 							Repulsion: {config.chargeStrength}
 						</label>
-						<input
-							type="range"
-							min="-800"
-							max="-50"
-							step="25"
+						<ProgressBarSlider
 							value={config.chargeStrength}
-							onChange={(e) => setConfig(prev => ({ ...prev, chargeStrength: Number(e.target.value) }))}
-							className="pktw-w-full pktw-h-1.5 pktw-bg-[#e5e7eb] pktw-rounded-lg pktw-appearance-none pktw-cursor-pointer"
-							style={{
-								background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${((config.chargeStrength - (-800)) / (-50 - (-800))) * 100}%, #e5e7eb ${((config.chargeStrength - (-800)) / (-50 - (-800))) * 100}%, #e5e7eb 100%)`
-							}}
+							min={SLIDER_CONFIGS.chargeStrength.min}
+							max={SLIDER_CONFIGS.chargeStrength.max}
+							step={SLIDER_CONFIGS.chargeStrength.step}
+							onChange={(value) => setConfig(prev => ({ ...prev, chargeStrength: value }))}
+							showTooltip={false}
 						/>
 					</div>
 
@@ -370,22 +371,18 @@ export const GraphVisualization: React.FC<{
 						<label className="pktw-text-xs pktw-text-[#6c757d] pktw-block pktw-mb-1">
 							Collision Radius: {config.collisionRadius}
 						</label>
-						<input
-							type="range"
-							min="5"
-							max="50"
-							step="2"
+						<ProgressBarSlider
 							value={config.collisionRadius}
-							onChange={(e) => setConfig(prev => ({ ...prev, collisionRadius: Number(e.target.value) }))}
-							className="pktw-w-full pktw-h-1.5 pktw-bg-[#e5e7eb] pktw-rounded-lg pktw-appearance-none pktw-cursor-pointer"
-							style={{
-								background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${((config.collisionRadius - 5) / (50 - 5)) * 100}%, #e5e7eb ${((config.collisionRadius - 5) / (50 - 5)) * 100}%, #e5e7eb 100%)`
-							}}
+							min={SLIDER_CONFIGS.collisionRadius.min}
+							max={SLIDER_CONFIGS.collisionRadius.max}
+							step={SLIDER_CONFIGS.collisionRadius.step}
+							onChange={(value) => setConfig(prev => ({ ...prev, collisionRadius: value }))}
+							showTooltip={false}
 						/>
 					</div>
 
 					{/* Reset Button */}
-					<button
+					<Button
 						onClick={() => {
 							setConfig(DEFAULT_CONFIG);
 							setTimeout(fitToView, 100);
@@ -393,7 +390,7 @@ export const GraphVisualization: React.FC<{
 						className="pktw-w-full pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-bg-[#f3f4f6] pktw-text-[#6c757d] pktw-rounded pktw-border pktw-border-[#e5e7eb] hover:pktw-bg-[#e5e7eb] pktw-transition-colors"
 					>
 						Reset to Default
-					</button>
+					</Button>
 				</div>
 			)}
 

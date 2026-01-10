@@ -62,10 +62,10 @@ export const PromptInputFileButton: React.FC<PromptInputFileButtonProps> = ({
 					onClick={() => handleModeSelect('degrade_to_text')}
 				>
 					<FileText className={cn(
-						'pktw-w-4 pktw-h-4 pktw-mr-3',
+						'pktw-w-4 pktw-h-4 pktw-mr-3 pktw-flex-shrink-0',
 						attachmentHandlingMode === 'degrade_to_text'
 							? 'pktw-text-accent-foreground'
-							: 'pktw-text-green-500'
+							: 'pktw-text-blue-500'
 					)} />
 					<div className="pktw-flex pktw-flex-col pktw-items-start">
 						<span className="pktw-text-sm pktw-font-medium">Summarize First</span>
@@ -74,7 +74,7 @@ export const PromptInputFileButton: React.FC<PromptInputFileButtonProps> = ({
 							attachmentHandlingMode === 'degrade_to_text'
 								? 'pktw-text-accent-foreground'
 								: 'pktw-text-muted-foreground'
-						)}>Convert files to summaries first</span>
+						)}>Summaries then send.</span>
 					</div>
 					{attachmentHandlingMode === 'degrade_to_text' && (
 						<Check className="pktw-w-4 pktw-h-4 pktw-absolute pktw-right-3 pktw-top-1/2 pktw-transform pktw--translate-y-1/2 pktw-text-accent-foreground" />
@@ -94,7 +94,7 @@ export const PromptInputFileButton: React.FC<PromptInputFileButtonProps> = ({
 					onClick={() => handleModeSelect('direct')}
 				>
 					<Upload className={cn(
-						'pktw-w-4 pktw-h-4 pktw-mr-3',
+						'pktw-w-4 pktw-h-4 pktw-mr-3 pktw-flex-shrink-0',
 						attachmentHandlingMode === 'direct'
 							? 'pktw-text-accent-foreground'
 							: 'pktw-text-blue-500'

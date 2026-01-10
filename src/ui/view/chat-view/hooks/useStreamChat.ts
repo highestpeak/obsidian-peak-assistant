@@ -19,7 +19,6 @@ export interface StreamChatOptions {
 	onDelta?: (text: string) => void;
 	onComplete?: (message: ChatMessage, usage?: LLMUsage) => void;
 	onError?: (error: unknown) => void;
-	onScrollToBottom?: () => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -156,7 +155,6 @@ export function useStreamChat() {
 			onDelta,
 			onComplete,
 			onError,
-			onScrollToBottom,
 			abortSignal,
 		} = options;
 
@@ -212,7 +210,6 @@ export function useStreamChat() {
 					case 'text-delta':
 						messageStore.appendStreamingDelta(event.text);
 						onDelta?.(event.text);
-						onScrollToBottom?.();
 						break;
 
 					case 'reasoning-delta':
@@ -221,17 +218,14 @@ export function useStreamChat() {
 							messageStore.startReasoning();
 						}
 						messageStore.appendReasoningDelta(event.text);
-						onScrollToBottom?.();
 						break;
 
 					case 'tool-call':
 						messageStore.startToolCall(event.toolName, event.input);
-						onScrollToBottom?.();
 						break;
 
 					case 'tool-input-start':
 						messageStore.startToolCall(event.toolName);
-						onScrollToBottom?.();
 						break;
 
 					case 'tool-input-delta':
@@ -239,12 +233,10 @@ export function useStreamChat() {
 						if (currentToolName) {
 							messageStore.updateToolCall(currentToolName, event.delta);
 						}
-						onScrollToBottom?.();
 						break;
 
 					case 'tool-result':
 						messageStore.completeToolCall(event.toolName, event.output);
-						onScrollToBottom?.();
 						break;
 
 					case 'complete':
@@ -270,7 +262,6 @@ export function useStreamChat() {
 							finalUsage = event.usage;
 						}
 						onComplete?.(finalMessage!, finalUsage);
-						onScrollToBottom?.();
 						break;
 					case 'source':
 					case 'on-step-finish':

@@ -7,6 +7,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { ExternalLink } from 'lucide-react';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { Button } from '@/ui/component/shared-ui/button';
 
 /**
  * Individual menu item for opening in external platforms
@@ -30,8 +31,9 @@ const OpenMenuItem: React.FC<{
 	};
 
 	return (
-		<button
+		<Button
 			type="button"
+			variant="ghost"
 			onClick={handleClick}
 			className={cn(
 				"pktw-flex pktw-items-center pktw-justify-between pktw-w-full pktw-px-3 pktw-py-2 pktw-text-sm pktw-text-left pktw-rounded-md hover:pktw-bg-accent hover:pktw-text-accent-foreground pktw-transition-colors",
@@ -42,7 +44,7 @@ const OpenMenuItem: React.FC<{
 				{platformName}
 			</span>
 			{url && <ExternalLink className="pktw-size-3 pktw-flex-shrink-0" />}
-		</button>
+		</Button>
 	);
 };
 

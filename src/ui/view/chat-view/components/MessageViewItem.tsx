@@ -592,7 +592,6 @@ interface MessageItemProps {
 	}>;
 	isToolSequenceActive?: boolean;
 	isLastMessage?: boolean;
-	onScrollToBottom?: () => void;
 }
 
 /**
@@ -609,7 +608,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	currentToolCalls = [],
 	isToolSequenceActive = false,
 	isLastMessage = false,
-	onScrollToBottom,
 }) => {
 	const { manager, app, eventBus } = useServiceContext();
 
@@ -671,7 +669,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 				conversation: conversationContext,
 				project: activeProject,
 				userContent: userMessage.content,
-				onScrollToBottom,
 			});
 
 			// Replace the assistant message with the new one
@@ -696,7 +693,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 			console.error('Failed to regenerate message:', error);
 			// Error handling is done inside streamChat hook
 		}
-	}, [activeConversation, activeProject, isLastMessage, streamChat, manager, updateConv, onScrollToBottom]);
+	}, [activeConversation, activeProject, isLastMessage, streamChat, manager, updateConv]);
 
 	const [copied, setCopied] = useState(false);
 	const [isExpanded, setIsExpanded] = useState(false);
@@ -859,15 +856,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 							}
 							{/* Show expand/collapse button for long user messages (not streaming, not AI) */}
 							{shouldShowExpand && (
-								<button
+								<Button
 									type="button"
 									onClick={(e) => {
 										e.stopPropagation();
 										setIsExpanded(!isExpanded);
 									}}
 									className={cn(
-										"pktw-mt-2 pktw-flex pktw-items-center pktw-gap-1 pktw-text-xs pktw-text-muted-foreground",
-										"hover:pktw-text-foreground pktw-transition-colors pktw-cursor-pointer"
+										"pktw-mt-2 pktw-flex pktw-items-center pktw-gap-1 pktw-text-xs",
+										"pktw-transition-colors pktw-cursor-pointer"
 									)}
 								>
 									{isExpanded ? (
@@ -881,7 +878,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 											<span>Expand</span>
 										</>
 									)}
-								</button>
+								</Button>
 							)}
 						</div>
 					) : null}

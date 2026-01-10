@@ -6,6 +6,7 @@ import { Folder, ChevronDown, ChevronRight, MessageCircle, MessageSquare, Calend
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ConversationItem } from '@/ui/view/chat-view/components/conversation-item';
 import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
+import { Button } from '@/ui/component/shared-ui/button';
 
 interface ProjectOverviewViewProps {
 	projectId: string;
@@ -222,21 +223,22 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 				{/* Tab Navigation */}
 				<div className="pktw-flex pktw-justify-center pktw-gap-1 pktw-border-b pktw-border-border pktw-mb-6">
 					{(['conversations', 'starred', 'resources'] as TabType[]).map((tab) => (
-						<button
+						<Button
 							key={tab}
+							variant="ghost"
 							className={cn(
 								'pktw-px-4 pktw-py-2.5 pktw-text-xl pktw-font-medium pktw-transition-all pktw-relative',
 								'pktw-border-b-2 pktw-border-transparent',
 								activeTab === tab
 									? 'pktw-text-primary pktw-border-primary'
-									: 'pktw-text-muted-foreground hover:pktw-text-foreground hover:pktw-border-muted-foreground/30'
+									: 'pktw-text-muted-foreground'
 							)}
 							onClick={() => setActiveTab(tab)}
 						>
 							{tab === 'conversations' && 'Conversations'}
 							{tab === 'starred' && 'Starred Messages'}
 							{tab === 'resources' && 'Resources'}
-						</button>
+						</Button>
 					))}
 				</div>
 

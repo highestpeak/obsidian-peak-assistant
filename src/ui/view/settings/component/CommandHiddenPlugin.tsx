@@ -4,6 +4,7 @@ import { CommandHiddenControlService } from '@/service/CommandHiddenControlServi
 import { cn } from '@/ui/react/lib/utils';
 import { VisibilityToggle } from '@/ui/component/shared-ui/visibility-toggle';
 import { SettingField } from './setting-field';
+import { Button } from '@/ui/component/shared-ui/button';
 
 type MenuTypeId = 'slash-commands' | 'command-palette' | 'ribbon-icons';
 
@@ -152,18 +153,18 @@ export function CommandHiddenPlugin({
 				label="Refresh Menu Items"
 				description="Click to manually refresh discovered menu items. You can also right-click in different contexts to automatically discover items."
 			>
-				<button
+				<Button
 					className="pktw-px-4 pktw-py-2 pktw-bg-accent pktw-text-white pktw-rounded-md pktw-text-sm pktw-font-medium hover:pktw-opacity-90 pktw-transition-opacity"
 					onClick={handleRefresh}
 				>
 					Refresh Now
-				</button>
+				</Button>
 			</SettingField>
 
 			{/* Sub Tabs */}
 			<div className="peak-ui-control-tabs">
 				{menuTypes.map((menuType) => (
-					<button
+					<Button
 						key={menuType.id}
 						className={cn(
 							'peak-ui-control-tab',
@@ -172,7 +173,7 @@ export function CommandHiddenPlugin({
 						onClick={() => setActiveMenuType(menuType.id)}
 					>
 						{menuType.label}
-					</button>
+					</Button>
 				))}
 			</div>
 
@@ -187,26 +188,26 @@ export function CommandHiddenPlugin({
 						<div className="peak-bulk-actions-desc">Control visibility of all commands and icons</div>
 					</div>
 					<div className="peak-bulk-actions">
-						<button className="peak-bulk-action hide-all" onClick={handleHideAll}>
+						<Button className="peak-bulk-action hide-all" onClick={handleHideAll}>
 							Hide All
-						</button>
-						<button className="peak-bulk-action show-all" onClick={handleShowAll}>
+						</Button>
+						<Button className="peak-bulk-action show-all" onClick={handleShowAll}>
 							Display All
-						</button>
+						</Button>
 						{isListCollapsed ? (
-							<button
+							<Button
 								className="peak-bulk-action expand-list"
 								onClick={() => setIsListCollapsed(false)}
 							>
 								Expand List
-							</button>
+							</Button>
 						) : (
-							<button
+							<Button
 								className="peak-bulk-action collapse-list"
 								onClick={() => setIsListCollapsed(true)}
 							>
 								Collapse List
-							</button>
+							</Button>
 						)}
 					</div>
 				</div>

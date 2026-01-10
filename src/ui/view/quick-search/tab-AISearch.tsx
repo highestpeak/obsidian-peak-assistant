@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Save, FileText, TrendingUp, AlertCircle, AlertTriangle, Globe, MessageCircle, Database } from 'lucide-react';
-import { GraphVisualization } from './components/GraphVisualization';
+import { GraphVisualization } from '../../component/mine/GraphVisualization';
 import { TagCloud } from './components/TagCloud';
 import { SaveDialog } from './components/ResultSaveDialog';
 import { KeyboardShortcut } from './components/KeyboardShortcut';
@@ -9,7 +9,7 @@ import { AnimatedSparkles } from '@/ui/component/mine';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { Streamdown } from 'streamdown';
 import { formatDuration, formatTokenCount } from '@/core/utils/format-utils';
-import { openFile, getSelectedTextFromActiveEditor } from '@/core/utils/obsidian-utils';
+import { openFile } from '@/core/utils/obsidian-utils';
 import { mixSearchResultsBySource } from '@/core/utils/source-mixer';
 import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
 import { CHAT_VIEW_TYPE } from '@/app/view/types';
@@ -282,15 +282,15 @@ const SelectedTextReferencesSection: React.FC<{
 									</span>
 								)}
 							</div>
-							<button
+							<Button
+								variant="ghost"
 								onClick={(e) => {
 									e.stopPropagation(); // Prevent triggering the parent onClick
 									onRemove(ref.id);
 								}}
-								className="pktw-text-[#999999] hover:pktw-text-red-500 pktw-transition-colors"
 							>
 								×
-							</button>
+							</Button>
 						</div>
 						<div className="pktw-text-sm pktw-text-[#2e3338] pktw-leading-relaxed">
 							{ref.text.length > 200 ? `${ref.text.substring(0, 200)}...` : ref.text}

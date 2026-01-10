@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, FolderOpen, Sparkles, Check } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
+import { Input } from '@/ui/component/shared-ui/input';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { AiAnalyzeResult } from '@/service/search/types';
 import { saveAiAnalyzeResultToMarkdown } from '@/ui/view/quick-search/features/save-ai-analyze-to-md';
@@ -73,11 +74,11 @@ export const SaveDialog: React.FC<SaveDialogProps> = ({ onClose, query, result, 
 								(AI suggested)
 							</span>
 						</label>
-						<input
+						<Input
 							type="text"
 							value={fileName}
 							onChange={(e) => setFileName(e.target.value)}
-							className="pktw-w-full pktw-box-border pktw-px-3 pktw-py-2 pktw-border pktw-border-input pktw-rounded-md pktw-text-foreground pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-primary pktw-focus:border-transparent pktw-transition-all"
+							className="pktw-box-border pktw-transition-all"
 						/>
 						<span className="pktw-text-xs pktw-text-muted-foreground pktw-mt-1 pktw-block">
 							Extension .md will be added automatically
@@ -94,11 +95,11 @@ export const SaveDialog: React.FC<SaveDialogProps> = ({ onClose, query, result, 
 						</label>
 						<div className="pktw-relative">
 							<FolderOpen className="pktw-absolute pktw-left-3 pktw-top-1/2 -pktw-translate-y-1/2 pktw-w-4 pktw-h-4 pktw-text-muted-foreground" />
-							<input
+							<Input
 								type="text"
 								value={folderPath}
 								onChange={(e) => setFolderPath(e.target.value)}
-								className="pktw-w-full pktw-box-border pktw-pl-10 pktw-pr-3 pktw-py-2 pktw-border pktw-border-input pktw-rounded-md pktw-text-foreground pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-primary pktw-focus:border-transparent pktw-transition-all"
+								className="pktw-pl-10 pktw-box-border pktw-transition-all"
 							/>
 						</div>
 						<span className="pktw-text-xs pktw-text-muted-foreground pktw-mt-1 pktw-block">

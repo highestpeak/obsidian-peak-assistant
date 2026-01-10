@@ -13,6 +13,7 @@ import { SuggestionTags, SuggestionTag } from '../../component/prompt-input/Sugg
 import { FileChange } from '@/service/chat/types';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
+import { useAutoScroll } from './hooks/useAutoScroll';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { ExternalPromptInfo } from '@/ui/component/prompt-input/menu/PromptMenu';
@@ -288,8 +289,14 @@ export const MessagesViewComponent: React.FC = () => {
         eventBus,
         autoScrollOnMessagesChange: true,
         messagesCount: activeConversation?.messages.length,
-        autoScrollOnStreaming: true,
-        streamingContent,
+        autoScrollOnStreaming: false, // Disable old streaming auto-scroll, handled by useAutoScroll
+    });
+
+    // Auto-scroll management for streaming content with user scroll detection
+    const { resumeAutoScroll, isAutoScrollPaused } = useAutoScroll({
+        scrollRef: bodyScrollRef,
+        enabled: true,
+        userScrollThreshold: 100,
     });
 
     // File changes handlers
@@ -472,7 +479,6 @@ export const MessagesViewComponent: React.FC = () => {
                                 currentToolCalls={item.isStreaming ? currentToolCalls : (message.toolCalls || [])}
                                 isToolSequenceActive={item.isStreaming ? isToolSequenceActive : false}
                                 isLastMessage={isLastMessage}
-                                onScrollToBottom={scrollToBottom}
                             />
                         );
                     })
@@ -510,7 +516,9 @@ export const MessagesViewComponent: React.FC = () => {
                     </IconButton>
                     <IconButton
                         size="lg"
-                        onClick={() => scrollToBottom(false)}
+                        onClick={() => {
+                            resumeAutoScroll();
+                        }}
                         title="Scroll to latest"
                         className="hover:pktw-bg-gray-200"
                     >
@@ -523,7 +531,6 @@ export const MessagesViewComponent: React.FC = () => {
             <div className="pktw-flex-shrink-0">
                 <ChatInputAreaComponent
                     prompts={mockPrompts}
-                    onScrollToBottom={scrollToBottom}
                 />
             </div>
 

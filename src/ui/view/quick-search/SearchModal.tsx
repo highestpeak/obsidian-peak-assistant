@@ -3,6 +3,7 @@ import { VaultSearchTab } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
 import { Search, Sparkles, Globe } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
+import { InputWithOverlay } from '@/ui/component/mine';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { SearchScopeMode } from '@/service/search/types';
@@ -16,21 +17,23 @@ interface TabButtonProps {
 	label: string;
 	activeTab: TabType;
 	onClick: () => void;
+	className?: string;
 }
 
 /**
  * Tab button component for switching between tabs.
  */
-const TabButton: React.FC<TabButtonProps> = ({ tab, label, activeTab, onClick }) => {
+const TabButton: React.FC<TabButtonProps> = ({ tab, label, activeTab, onClick, className }) => {
 	const isActive = activeTab === tab;
 	return (
 		<Button
 			onClick={onClick}
 			className={cn(
-				'pktw-inline-flex pktw-items-center pktw-justify-center pktw-whitespace-nowrap pktw-font-medium focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-offset-2 disabled:pktw-pointer-events-none disabled:pktw-opacity-50 pktw-flex-1 pktw-relative',
+				'pktw-rounded-none pktw-inline-flex pktw-items-center pktw-justify-center pktw-whitespace-nowrap pktw-font-medium focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-offset-2 disabled:pktw-pointer-events-none disabled:pktw-opacity-50 pktw-flex-1 pktw-relative',
 				isActive
 					? 'pktw-text-[#7c3aed] pktw-bg-white hover:pktw-bg-white hover:pktw-text-[#7c3aed]'
-					: 'pktw-text-black hover:pktw-text-white pktw-bg-[#f0f0f0]'
+					: 'pktw-text-black hover:pktw-text-white pktw-bg-[#f0f0f0]',
+				className
 			)}
 		>
 			<span className="pktw-font-medium">{label}</span>
@@ -121,6 +124,36 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 		}
 	}, []);
 
+	// Render overlay text with @web highlighting
+	const renderOverlay = (value: string) => {
+		if (activeTab === 'ai' && (value.includes('@web') || /@\d+/.test(value))) {
+			return value.split(/(@web|@\d+)/g).map((part, index) => {
+				if (part === '@web' || /^@\d+$/.test(part)) {
+					return (
+						<span
+							key={index}
+							className="pktw-rounded pktw-bg-blue-500/15 pktw-text-blue-700 dark:pktw-bg-blue-500/20 dark:pktw-text-blue-400"
+							style={{
+								padding: '0px 0px',
+								margin: '0px 0px',
+								display: 'inline',
+								lineHeight: 'inherit',
+								fontSize: 'inherit',
+								fontWeight: 'inherit',
+								fontFamily: 'inherit',
+								letterSpacing: 'inherit',
+							}}
+						>
+							{part}
+						</span>
+					);
+				}
+				return <span key={index} style={{ lineHeight: 'inherit' }}>{part}</span>;
+			});
+		}
+		return <span style={{ lineHeight: 'inherit' }}>{value}</span>;
+	};
+
 	// Handle Tab key on container level to switch tabs
 	const handleContainerKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === 'Tab' && !e.shiftKey) {
@@ -142,12 +175,14 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 					label="Vault Search"
 					activeTab={activeTab}
 					onClick={() => setActiveTab('vault')}
+					className="pktw-rounded-tl-lg"
 				/>
 				<TabButton
 					tab="ai"
 					label="AI Analysis"
 					activeTab={activeTab}
 					onClick={() => setActiveTab('ai')}
+					className="pktw-rounded-tr-lg"
 				/>
 			</div>
 
@@ -157,70 +192,28 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 					<div className="pktw-relative pktw-flex-1">
 						<Search className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-w-4 pktw-h-4 pktw-text-[#999999] pktw-z-10" />
 						<div className="pktw-relative pktw-flex pktw-items-center">
-							{/* Input with @web highlighting overlay */}
-							<div className="pktw-relative pktw-w-full">
-								<input
-									type="text"
-									ref={inputRef}
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-									onKeyDown={handleKeyDown}
-									placeholder={
-										activeTab === 'vault'
-											? 'Search in vault... (# for in-file, @ for folder, : to go to line)'
-											: 'Ask AI anything about your vault...'
-									}
-									className={`pktw-w-full pktw-pl-11 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border pktw-border-muted-foreground pktw-rounded-full pktw-text-transparent pktw-focus:outline-none pktw-focus:ring-2 pktw-focus:ring-[#7c3aed] pktw-focus:border-transparent pktw-transition-all`}
-									style={{
-										caretColor: '#2e3338', // Ensure cursor is visible
-										font: 'inherit', // Use font shorthand to inherit all font properties
-										boxSizing: 'border-box', // Ensure padding and border are included in width
-									}}
-								/>
-								{/* Overlay to display text with @web highlighting */}
-								<div
-									className="pktw-absolute pktw-inset-0 pktw-pl-11 pktw-pr-20 pktw-py-2.5 pktw-pointer-events-none pktw-text-[#2e3338] pktw-select-none"
-									style={{
-										font: 'inherit',
-										whiteSpace: 'pre',
-										overflow: 'hidden',
-										textAlign: 'left',
-										lineHeight: 'inherit',
-										wordBreak: 'normal',
-										overflowWrap: 'normal',
-									}}
-								>
-									{activeTab === 'ai' && (searchQuery.includes('@web') || /@\d+/.test(searchQuery)) ? (
-										searchQuery.split(/(@web|@\d+)/g).map((part, index) => (
-											part === '@web' || /^@\d+$/.test(part) ? (
-												<span
-													key={index}
-													className="pktw-rounded pktw-bg-blue-500/15 pktw-text-blue-700 dark:pktw-bg-blue-500/20 dark:pktw-text-blue-400"
-													style={{
-														padding: '0px 0px',
-														margin: '0px 0px',
-														display: 'inline',
-														lineHeight: 'inherit',
-														fontSize: 'inherit',
-														fontWeight: 'inherit',
-														fontFamily: 'inherit',
-														letterSpacing: 'inherit',
-													}}
-												>
-													{part}
-												</span>
-											) : (
-												<span key={index} style={{ lineHeight: 'inherit' }}>{part}</span>
-											)
-										))
-									) : (
-										searchQuery
-									)}
-								</div>
-							</div>
+							<InputWithOverlay
+								ref={inputRef}
+								type="text"
+								value={searchQuery}
+								onChange={(e) => setSearchQuery(e.target.value)}
+								onKeyDown={handleKeyDown}
+								placeholder={
+									activeTab === 'vault'
+										? 'Search in vault... (# for in-file, @ for folder, : to go to line)'
+										: 'Ask AI anything about your vault...'
+								}
+								className="pktw-pl-11 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-muted-foreground pktw-rounded-full pktw-transition-all"
+								renderOverlay={renderOverlay}
+								containerClassName="pktw-w-full"
+								overlayStyle={{
+									paddingRight: '48px', // Reserve space for button, only override right padding
+								}}
+							/>
 							{/* Web toggle button inside input (AI tab only) */}
 							{activeTab === 'ai' && (
-								<button
+								<Button
+									variant="ghost"
 									onClick={() => {
 										if (searchQuery.includes('@web')) {
 											setSearchQuery(prev => prev.replace(/@web\s*/g, '').trim());
@@ -230,17 +223,16 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 											setWebEnabled(true);
 										}
 									}}
-									className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors ${webEnabled
-										? 'pktw-text-[#3b82f6] pktw-border pktw-border-[#3b82f6]/30 hover:pktw-bg-[#3b82f6]/5'
-										: 'pktw-border-0 pktw-bg-transparent hover:pktw-bg-accent/50'
-										}`}
+									className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors 
+										${webEnabled ? 'pktw-text-[#3b82f6] pktw-border pktw-border-[#3b82f6]/30' : 'pktw-border-0 pktw-bg-transparent '}`
+									}
 									title={webEnabled ? 'Web: ON' : 'Web: OFF'}
 								>
 									{webEnabled
-										? (<Globe className={`pktw-w-5 pktw-h-5 pktw-text-[#3b82f6]`} />)
-										: (<GlobeOff className={`pktw-w-5 pktw-h-5 pktw-text-[#6c757d]`} />)
+										? (<Globe className={`pktw-w-5 pktw-h-5 `} />)
+										: (<GlobeOff className={`pktw-w-5 pktw-h-5 `} />)
 									}
-								</button>
+								</Button>
 							)}
 						</div>
 

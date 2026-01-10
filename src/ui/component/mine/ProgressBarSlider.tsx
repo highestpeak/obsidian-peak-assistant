@@ -9,6 +9,8 @@ export interface ProgressBarSliderProps {
   onChange: (value: number) => void;
   disabled?: boolean;
   className?: string;
+  showTooltip?: boolean;
+  displayPrecision?: number; // Number of decimal places to display (default: 0 for integers)
 }
 
 export const ProgressBarSlider: React.FC<ProgressBarSliderProps> = ({
@@ -19,6 +21,8 @@ export const ProgressBarSlider: React.FC<ProgressBarSliderProps> = ({
   onChange,
   disabled = false,
   className,
+  showTooltip = true,
+  displayPrecision = 0,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -52,17 +56,17 @@ export const ProgressBarSlider: React.FC<ProgressBarSliderProps> = ({
     lastValueRef.current = value; // Store initial value
   }, [disabled, value]);
 
-  // Debounced update function
+  // Debounced update function - reduced delay for smoother interaction
   const debouncedUpdate = useCallback((newValue: number) => {
     // Clear existing timeout
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // Set new timeout - only update after 150ms of no changes
+    // Set new timeout - only update after 50ms of no changes for better responsiveness
     debounceTimeoutRef.current = setTimeout(() => {
-      onChange(newValue);
-    }, 150);
+      onChange(Number(newValue.toFixed(displayPrecision)));
+    }, 50);
   }, [onChange]);
 
   const handlePointerMove = useCallback((event: PointerEvent) => {
@@ -73,8 +77,8 @@ export const ProgressBarSlider: React.FC<ProgressBarSliderProps> = ({
     const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
     const newValue = getValueFromPosition(percentage, true); // Allow continuous during drag
 
-    // Only trigger update if value changed significantly
-    if (Math.abs(newValue - lastValueRef.current) >= step * 0.1) {
+    // Only trigger update if value changed significantly - increased threshold for better performance
+    if (Math.abs(newValue - lastValueRef.current) >= Math.max(step * 0.5, 0.1)) {
       lastValueRef.current = newValue;
       debouncedUpdate(newValue);
     }
@@ -88,7 +92,7 @@ export const ProgressBarSlider: React.FC<ProgressBarSliderProps> = ({
 
     // Snap to nearest step when releasing and apply immediately
     const snappedValue = getValueFromPosition(getSliderPosition(lastValueRef.current), false);
-    onChange(snappedValue);
+    onChange(Number(snappedValue.toFixed(displayPrecision)));
 
     setIsDragging(false);
   }, [onChange, getSliderPosition, getValueFromPosition]);
@@ -109,6 +113,15 @@ export const ProgressBarSlider: React.FC<ProgressBarSliderProps> = ({
     }
   }, [isDragging, handlePointerMove, handlePointerUp]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Handle click on progress bar
   const handleBarClick = useCallback((event: React.MouseEvent) => {
     if (disabled || !containerRef.current) return;
@@ -117,8 +130,7 @@ export const ProgressBarSlider: React.FC<ProgressBarSliderProps> = ({
     const x = event.clientX - rect.left;
     const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
     const newValue = getValueFromPosition(percentage, false); // Snap to step on click
-    onChange(newValue); // Immediate update on click
-    onChange(newValue);
+    onChange(Number(newValue.toFixed(displayPrecision))); // Immediate update on click
   }, [disabled, onChange]);
 
   const position = getSliderPosition(value);
@@ -158,23 +170,28 @@ export const ProgressBarSlider: React.FC<ProgressBarSliderProps> = ({
           }}
           onPointerDown={handlePointerDown}
         >
-          {/* Current value tooltip */}
-          <div className={cn(
-            "pktw-absolute pktw-bottom-full pktw-left-1/2 pktw-transform pktw--translate-x-1/2 pktw-mb-2",
-            "pktw-px-2 pktw-py-1 pktw-bg-popover pktw-text-popover-foreground pktw-text-xs pktw-rounded-md",
-            "pktw-border pktw-shadow-md pktw-whitespace-nowrap pktw-pointer-events-none pktw-opacity-100",
-            "pktw-transition-opacity pktw-duration-200"
-          )}>
-            {value.toFixed(step < 0.1 ? 2 : 1)}
-            <div className="pktw-absolute pktw-top-full pktw-left-1/2 pktw-transform pktw--translate-x-1/2 pktw-border-4 pktw-border-transparent pktw-border-t-popover" />
-          </div>
+          {(showTooltip || isDragging) && (
+            <>
+              {/* Current value tooltip */}
+              <div className={cn(
+                "pktw-absolute pktw-bottom-full pktw-left-1/2 pktw-transform pktw--translate-x-1/2 pktw-mb-2",
+                "pktw-px-2 pktw-py-1 pktw-bg-popover pktw-text-popover-foreground pktw-text-xs pktw-rounded-md",
+                "pktw-border pktw-shadow-md pktw-whitespace-nowrap pktw-pointer-events-none",
+                isDragging ? "pktw-opacity-100" : "pktw-opacity-100",
+                "pktw-transition-opacity pktw-duration-200"
+              )}>
+                {value.toFixed(displayPrecision)}
+                <div className="pktw-absolute pktw-top-full pktw-left-1/2 pktw-transform pktw--translate-x-1/2 pktw-border-4 pktw-border-transparent pktw-border-t-popover" />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Labels */}
       <div className="pktw-flex pktw-justify-between pktw-mt-2 pktw-text-xs pktw-text-muted-foreground">
-        <span>{min.toFixed(step < 0.1 ? 2 : 1)}</span>
-        <span>{max.toFixed(step < 0.1 ? 2 : 1)}</span>
+        <span>{min.toFixed(displayPrecision)}</span>
+        <span>{max.toFixed(displayPrecision)}</span>
       </div>
     </div>
   );

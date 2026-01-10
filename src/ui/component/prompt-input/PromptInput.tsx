@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useRef, useCallback, useEffect, useState, useMemo, type FormEvent, type HTMLAttributes, type PropsWithChildren } from 'react';
 import { cn } from '@/ui/react/lib/utils';
 import { calculateFileHash } from '@/core/utils/hash-utils';
+import { HiddenFileInput } from '@/ui/component/mine/input-for-file-with-hidden';
 import type { PromptInputMessage, FileAttachment } from './types';
 
 /**
@@ -332,14 +333,11 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 				{...props}
 			>
 				{/* Hidden file input */}
-				<input
+				<HiddenFileInput
 					ref={fileInputRef}
-					type="file"
 					multiple={multiple}
 					accept={accept}
 					onChange={handleFileChange}
-					className="pktw-hidden"
-					aria-label="Upload files"
 				/>
 
 				{/* Main content */}

@@ -11,7 +11,6 @@ export interface ChatSubmitOptions {
 	files: File[];
 	conversation: ChatConversation | null;
 	project: ChatProject | null;
-	onScrollToBottom?: () => void;
 }
 
 /**
@@ -91,7 +90,7 @@ export function useChatSubmit() {
 	 * Submit a chat message and handle the complete flow.
 	 */
 	const submitMessage = useCallback(async (options: ChatSubmitOptions): Promise<void> => {
-		const { text, files, conversation: inputConversation, project, onScrollToBottom } = options;
+		const { text, files, conversation: inputConversation, project } = options;
 
 		// Ensure conversation exists
 		const conversation = inputConversation || await ensureConversation();
@@ -149,7 +148,6 @@ export function useChatSubmit() {
 			project: project,
 			userContent: text,
 			attachments: resources.map(resource => resource.source),
-			onScrollToBottom,
 			abortSignal: abortControllerRef.current.signal,
 		});
 		console.debug('[useChatSubmit] streaming chat completed', streamResult);

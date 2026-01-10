@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/component/shared-ui/tooltip';
+import { Button } from '../shared-ui/button';
 
 export interface SuggestionTag {
 	id: string;
@@ -52,12 +53,12 @@ export const SuggestionTags: React.FC<SuggestionTagsProps> = ({ tags, onTagClick
 					<TooltipProvider key={tag.id}>
 						<Tooltip>
 							<TooltipTrigger asChild>
-								<button
+								<Button
 									onClick={() => onTagClick(tag.action)}
 									className={`pktw-text-xs pktw-font-medium pktw-px-3 pktw-py-1.5 pktw-rounded-md pktw-transition-all pktw-duration-200 hover:pktw-shadow-md hover:pktw-scale-105 active:pktw-scale-95 pktw-cursor-pointer pktw-select-none ${styles.base} ${styles.hover}`}
 								>
 									{tag.label}
-								</button>
+								</Button>
 							</TooltipTrigger>
 							<TooltipContent>
 								<p>{tag.tooltip}</p>

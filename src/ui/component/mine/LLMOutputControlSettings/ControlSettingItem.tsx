@@ -5,7 +5,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { NumberInput } from '@/ui/component/shared-ui/number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/component/shared-ui/select';
 import { ProgressBarSelector } from './ProgressBarSelector';
-import { ProgressBarSlider } from './ProgressBarSlider';
+import { ProgressBarSlider } from '../ProgressBarSlider';
 import type { ControlType } from './constants';
 
 export interface ControlSettingItemProps {

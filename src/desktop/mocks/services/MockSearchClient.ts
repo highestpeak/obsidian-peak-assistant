@@ -410,13 +410,13 @@ export class MockSearchClient {
 		}));
 
 		// Simulate AI processing delay
-		await new Promise(resolve => setTimeout(resolve, 3000));
+		await new Promise(resolve => setTimeout(resolve, 1500));
 
 		// Notify sources complete
 		callbacks?.onComplete?.('other', '', { sources, duration: 100 });
 
 		// Simulate AI processing delay
-		await new Promise(resolve => setTimeout(resolve, 3000));
+		await new Promise(resolve => setTimeout(resolve, 1500));
 
 		// Call start callback
 		callbacks?.onStart?.('summary');

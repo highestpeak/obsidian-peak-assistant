@@ -5,12 +5,12 @@ import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ConversationItem } from '@/ui/view/chat-view/components/conversation-item';
 import { Folder, Plus, MessageSquare } from 'lucide-react';
-import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { useChatViewStore } from './store/chatViewStore';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import { hydrateProjects } from '@/ui/view/project-list-view/utils';
+import { Button } from '@/ui/component/shared-ui/button';
 
 const RECENT_CONVERSATIONS_LIMIT = 5;
 const RECENT_PROJECTS_LIMIT = 5;
@@ -108,22 +108,22 @@ export const HomeViewComponent: React.FC = () => {
 						Quick Actions
 					</h2>
 					<div className="pktw-flex pktw-flex-row pktw-gap-6">
-						<button
+						<Button
 							className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-6 pktw-py-4 pktw-bg-secondary pktw-text-secondary-foreground hover:pktw-bg-primary hover:pktw-text-primary-foreground pktw-rounded-lg pktw-transition-colors pktw-font-medium"
 							onClick={handleCreateConversation}
 							title="Start a new conversation"
 						>
 							<MessageSquare className="pktw-w-6 pktw-h-6" />
 							<span>New Conversation</span>
-						</button>
-						<button
+						</Button>
+						<Button
 							className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-6 pktw-py-4 pktw-bg-secondary pktw-text-secondary-foreground hover:pktw-bg-primary hover:pktw-text-primary-foreground pktw-rounded-lg pktw-transition-colors pktw-font-medium"
 							onClick={handleCreateProject}
 							title="Create a new project"
 						>
 							<Folder className="pktw-w-6 pktw-h-6" />
 							<span>New Project</span>
-						</button>
+						</Button>
 					</div>
 				</section>
 
@@ -134,12 +134,13 @@ export const HomeViewComponent: React.FC = () => {
 							Recent Conversations
 						</h2>
 						{recentConversations.length > 0 && (
-							<button
+							<Button
+								variant="ghost"
 								onClick={() => chatViewStore.setAllConversations()}
-								className="pktw-text-sm pktw-text-primary hover:pktw-text-primary/80 pktw-font-medium"
+								className="pktw-text-sm pktw-font-medium"
 							>
 								View all
-							</button>
+							</Button>
 						)}
 					</div>
 
@@ -172,12 +173,13 @@ export const HomeViewComponent: React.FC = () => {
 							Recent Projects
 						</h2>
 						{recentProjects.length > 0 && (
-							<button
+							<Button
+								variant="ghost"
 								onClick={() => chatViewStore.setAllProjects()}
-								className="pktw-text-sm pktw-text-primary hover:pktw-text-primary/80 pktw-font-medium"
+								className="pktw-text-sm pktw-font-medium"
 							>
 								View all
-							</button>
+							</Button>
 						)}
 					</div>
 

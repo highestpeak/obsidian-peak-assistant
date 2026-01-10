@@ -6,6 +6,7 @@ import { SafeProviderIcon, SafeModelIcon } from '@/ui/component/mine/SafeIconWra
 import { ModelMetaData, ProviderMetaData } from '@/core/providers/types';
 import { cn } from '@/ui/react/lib/utils';
 import { InputWithConfirm } from '@/ui/component/mine/input-with-confirm';
+import { Switch } from '@/ui/component/shared-ui/switch';
 
 interface ProviderSettingsComponentProps {
 	settings: AIServiceSettings;
@@ -145,26 +146,10 @@ function ProviderConfigForm({ selectedProvider: provider, settings, onConfigChan
 					<h2 className="pktw-m-0 pktw-text-xl pktw-font-semibold pktw-text-foreground">{selectedProviderInfo.name}</h2>
 				</div>
 				<div className="pktw-flex pktw-items-center pktw-gap-3">
-					<label className="pktw-relative pktw-inline-block pktw-w-11 pktw-h-6 pktw-cursor-pointer">
-						<input
-							type="checkbox"
-							checked={isSelectedEnabled}
-							onChange={(e) => onConfigChange(provider, 'enabled', e.target.checked)}
-							className="pktw-opacity-0 pktw-w-0 pktw-h-0"
-						/>
-						<span className={cn(
-							"pktw-absolute pktw-cursor-pointer pktw-top-0 pktw-left-0 pktw-right-0 pktw-bottom-0 pktw-transition-all pktw-duration-300 pktw-rounded-full",
-							isSelectedEnabled ? "pktw-bg-accent" : "pktw-bg-border"
-						)}>
-							<span className={cn(
-								"pktw-absolute pktw-content-[''] pktw-h-[18px] pktw-w-[18px] pktw-left-[3px] pktw-bottom-[3px] pktw-bg-white pktw-transition-all pktw-duration-300 pktw-rounded-full",
-								isSelectedEnabled && "pktw-translate-x-[20px]"
-							)}></span>
-						</span>
-					</label>
-					<span className="pktw-text-[13px] pktw-text-muted-foreground pktw-font-medium">
-						{isSelectedEnabled ? 'Enabled' : 'Disabled'}
-					</span>
+					<Switch
+						checked={isSelectedEnabled}
+						onChange={(checked) => onConfigChange(provider, 'enabled', checked)}
+					/>
 				</div>
 			</div>
 
@@ -220,7 +205,7 @@ function ModelList({ selectedProvider: provider, settings, onModelConfigChange }
 	const [isLoadingModels, setIsLoadingModels] = useState(false);
 
 	const config = settings.llmProviderConfigs[provider];
-	
+
 	// Get provider metadata for fallback icon
 	const providerMetadata = useMemo(() => {
 		const allProviderMetadata = ProviderServiceFactory.getInstance().getAllProviderMetadata();
@@ -285,23 +270,11 @@ function ModelList({ selectedProvider: provider, settings, onModelConfigChange }
 										</div>
 									)}
 									<span className="pktw-text-sm pktw-text-foreground pktw-flex-1">{model.displayName}</span>
-									<label className="pktw-relative pktw-inline-block pktw-w-9 pktw-h-5 pktw-cursor-pointer">
-										<input
-											type="checkbox"
-											checked={isModelEnabled}
-											onChange={(e) => onModelConfigChange(provider, model.id, e.target.checked)}
-											className="pktw-opacity-0 pktw-w-0 pktw-h-0"
-										/>
-										<span className={cn(
-											"pktw-absolute pktw-cursor-pointer pktw-top-0 pktw-left-0 pktw-right-0 pktw-bottom-0 pktw-transition-all pktw-duration-300 pktw-rounded-full",
-											isModelEnabled ? "pktw-bg-accent" : "pktw-bg-border"
-										)}>
-											<span className={cn(
-												"pktw-absolute pktw-content-[''] pktw-h-[14px] pktw-w-[14px] pktw-left-[2px] pktw-bottom-[2px] pktw-bg-white pktw-transition-all pktw-duration-300 pktw-rounded-full",
-												isModelEnabled && "pktw-translate-x-[16px]"
-											)}></span>
-										</span>
-									</label>
+									<Switch
+										checked={isModelEnabled}
+										onChange={(checked) => onModelConfigChange(provider, model.id, checked)}
+										size="sm"
+									/>
 								</div>
 							);
 						})}

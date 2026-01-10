@@ -25,7 +25,6 @@ import { ExternalPromptInfo } from '@/ui/component/prompt-input/menu/PromptMenu'
 
 interface ChatInputAreaComponentProps {
 	prompts?: ExternalPromptInfo[];
-	onScrollToBottom?: () => void;
 }
 
 /**
@@ -50,7 +49,6 @@ const InputClearHandler: React.FC<{ isSending: boolean }> = ({ isSending }) => {
 
 export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	prompts,
-	onScrollToBottom,
 }) => {
 	const { manager } = useServiceContext();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
@@ -82,7 +80,6 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				files: currentPendingFiles,
 				conversation: activeConversation,
 				project: activeProject,
-				onScrollToBottom,
 			});
 		} catch (error) {
 			console.error('[ChatInputAreaComponent] Error in handleSubmit:', error);
@@ -90,7 +87,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 		} finally {
 			setIsSending(false);
 		}
-	}, [submitMessage, activeConversation, activeProject, onScrollToBottom, isSending]);
+	}, [submitMessage, activeConversation, activeProject, isSending]);
 
 	// Calculate total token usage from all messages
 	const tokenUsage = useMemo<TokenUsageInfo>(() => {

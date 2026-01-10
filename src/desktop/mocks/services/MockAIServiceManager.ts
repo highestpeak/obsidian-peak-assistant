@@ -451,7 +451,7 @@ export class MockAIServiceManager {
 			// Stream response content character by character
 			const responseChars = mockResponse.split('')
 				// mock response too long, so we only stream the first 200 characters for testing. if need more, change it.
-				.slice(0, 200);
+				.slice(0, 300);
 			for (let i = 0; i < responseChars.length; i++) {
 				await new Promise(resolve => setTimeout(resolve, delay));
 				const char = responseChars[i];
