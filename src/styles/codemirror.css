@@ -1,0 +1,156 @@
+/* CodeMirror custom styling to match textarea appearance */
+
+/* Base editor styling */
+.cm-editor {
+  outline: none !important;
+  border: none !important;
+  background: transparent !important;
+  font-family: inherit !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  font-weight: 500 !important;
+  color: rgb(31 41 55) !important; /* text-gray-900 */
+}
+
+.dark .cm-editor {
+  color: rgb(243 244 246) !important; /* text-gray-100 */
+}
+
+/* Content area */
+.cm-content {
+  padding: 0 !important;
+  line-height: 1.5 !important;
+  font-family: inherit !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  min-height: 60px !important;
+  max-height: 200px !important;
+}
+
+/* Focus states */
+.cm-focused {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Selection */
+.cm-selectionBackground {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Cursor */
+.cm-cursor {
+  border-left: 2px solid rgb(31 41 55) !important;
+}
+
+.dark .cm-cursor {
+  border-left: 2px solid rgb(243 244 246) !important;
+}
+
+/* Placeholder */
+.cm-placeholder {
+  color: rgb(107 114 128) !important; /* text-muted-foreground */
+  font-style: normal !important;
+}
+
+/* Context tag styling - purple */
+.cm-context-tag {
+  background-color: rgba(139, 92, 246, 0.1) !important;
+  color: rgb(139, 92, 246) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2) !important;
+  border-radius: 4px !important;
+  padding: 1px 3px !important;
+  font-weight: 500 !important;
+}
+
+/* Prompt tag styling - blue */
+.cm-prompt-tag {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  color: rgb(59, 130, 246) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  border-radius: 4px !important;
+  padding: 1px 3px !important;
+  font-weight: 500 !important;
+}
+
+/* Hide scrollbars if not needed */
+.cm-scroller {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+/* Ensure proper text wrapping */
+.cm-line {
+  word-wrap: break-word !important;
+  white-space: pre-wrap !important;
+}
+
+/* Autocompletion styles */
+.cm-tooltip-autocomplete {
+  background-color: var(--background-primary) !important;
+  border: 2px solid var(--background-modifier-border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3) !important;
+  padding: 4px !important;
+  max-height: 300px !important;
+  overflow-y: auto !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Selected item */
+.cm-tooltip-autocomplete ul li[aria-selected] {
+  background-color: var(--interactive-accent) !important;
+  color: var(--text-normal) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Completion item */
+.cm-completionLabel {
+  font-weight: 500 !important;
+  color: var(--text-normal) !important;
+}
+
+.cm-completionDetail {
+  font-style: italic !important;
+  opacity: 0.6 !important;
+  margin-left: 10px !important;
+  color: var(--text-muted) !important;
+}
+
+/* Completion item layout */
+.cm-tooltip-autocomplete ul li {
+  padding: 8px 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  cursor: pointer !important;
+}
+
+/* Hide type indicators */
+.cm-completionIcon {
+  display: none !important;
+}
+
+/* Info tooltip styles for completion details */
+.cm-tooltip {
+  border: 2px solid var(--background-modifier-border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(251, 4, 4, 0.3) !important;
+  max-width: 800px !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+  color: var(--text-normal) !important;
+  z-index: 9999 !important;
+  position: absolute !important;
+  backdrop-filter: blur(8px) !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Ensure info tooltip appears above autocomplete list */
+.cm-tooltip-autocomplete {
+  z-index: 999 !important;
+  box-shadow: 0 8px 24px rgba(0, 252, 160, 0.3) !important;
+}

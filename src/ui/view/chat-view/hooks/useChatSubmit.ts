@@ -6,7 +6,6 @@ import { useMessageStore } from '../store/messageStore';
 import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { useStreamChat } from './useStreamChat';
 import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types';
-import type { LLMUsage } from '@/core/providers/types';
 
 export interface ChatSubmitOptions {
 	text: string;

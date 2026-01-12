@@ -3,11 +3,11 @@ import { useProjectStore } from '@/ui/store/projectStore';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { Button } from '@/ui/component/shared-ui/button';
-import { LibraryBig, FileText, Image, File, ExternalLink } from 'lucide-react';
+import { LibraryBig, ExternalLink } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { EventBus, OpenLinkEvent } from '@/core/eventBus';
 import { App } from 'obsidian';
-import { FileType } from '@/ui/view/shared/file-utils';
+import { FileType, getFileIcon } from '@/ui/view/shared/file-utils';
 import { FilePreviewHover } from '@/ui/component/mine/resource-preview-hover';
 import { detectPreviewFileType, getFileTypeFromResourceKind } from '@/core/document/helper/FileTypeUtils';
 
@@ -23,7 +23,7 @@ export const ResourcesPopover: React.FC = () => {
 	// to avoid stale closure issues while preventing circular reference problems.
 	const conversationId = conversation?.meta.id;
 	const messageCount = conversation?.messages?.length ?? 0;
-	
+
 	const resources = useMemo(() => {
 		// Get latest values from store to avoid stale closure
 		const latestConversation = useProjectStore.getState().activeConversation;
@@ -36,10 +36,10 @@ export const ResourcesPopover: React.FC = () => {
 				for (const resource of message.resources) {
 					if (!resourceMap.has(resource.source)) {
 						const type = getFileTypeFromResourceKind(resource.kind, resource.source);
-						resourceMap.set(resource.source, { 
-							type, 
+						resourceMap.set(resource.source, {
+							type,
 							kind: resource.kind,
-							summaryNotePath: resource.summaryNotePath 
+							summaryNotePath: resource.summaryNotePath
 						});
 					}
 				}
@@ -149,16 +149,6 @@ const ResourceItem: React.FC<ResourceItemProps> = ({ path, type, kind, summaryNo
 		return detected;
 	}, [kind, normalizedPath]);
 
-	const getIcon = () => {
-		switch (type) {
-			case 'pdf':
-				return <FileText className="pktw-w-4 pktw-h-4" />;
-			case 'image':
-				return <Image className="pktw-w-4 pktw-h-4" />;
-			default:
-				return <File className="pktw-w-4 pktw-h-4" />;
-		}
-	};
 
 	const handleOpenSummary = (e: React.MouseEvent) => {
 		e.stopPropagation();
@@ -176,7 +166,7 @@ const ResourceItem: React.FC<ResourceItemProps> = ({ path, type, kind, summaryNo
 			)}
 			onClick={onClick}
 		>
-			<div className="pktw-flex-shrink-0">{getIcon()}</div>
+			<div className="pktw-flex-shrink-0">{getFileIcon(type)}</div>
 			<div className="pktw-flex-1 pktw-min-w-0">
 				<div className="pktw-text-sm pktw-font-medium pktw-truncate">
 					{fileName}

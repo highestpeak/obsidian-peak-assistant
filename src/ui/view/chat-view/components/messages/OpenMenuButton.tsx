@@ -70,6 +70,7 @@ export const OpenMenuButton: React.FC = () => {
 	};
 
 	// Build query from all user messages in the conversation
+	// todo summary text or the latest n. not all messages.
 	const conversationQuery = React.useMemo(() => {
 		if (!activeConversation || !activeConversation.messages || activeConversation.messages.length === 0) {
 			return '';

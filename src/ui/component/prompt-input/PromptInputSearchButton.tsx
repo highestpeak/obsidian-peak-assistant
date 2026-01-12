@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { Globe, X, MessageSquare, Check } from 'lucide-react';
+import { Globe, X, MessageSquare, Check, LibraryBig } from 'lucide-react';
 import { GlobeOff } from '@/ui/component/icon';
 import { cn } from '@/ui/react/lib/utils';
 import { HoverButton } from '@/ui/component/mine';
@@ -9,11 +9,13 @@ export interface PromptInputSearchButtonProps {
 	active?: boolean;
 	searchProvider?: 'local' | 'perplexity' | 'model-builtin';
 	enableWebSearch?: boolean;
+	enableVaultSearch?: boolean;
 	enableTwitterSearch?: boolean;
 	enableRedditSearch?: boolean;
 	onToggleActive?: () => void;
 	onChangeProvider?: (provider: 'local' | 'perplexity' | 'model-builtin') => void;
 	onToggleWebSearch?: (enabled: boolean) => void;
+	onToggleVaultSearch?: (enabled: boolean) => void;
 	onToggleTwitterSearch?: (enabled: boolean) => void;
 	onToggleRedditSearch?: (enabled: boolean) => void;
 	className?: string;
@@ -26,11 +28,13 @@ export const PromptInputSearchButton: React.FC<PromptInputSearchButtonProps> = (
 	active,
 	searchProvider,
 	enableWebSearch,
+	enableVaultSearch,
 	enableTwitterSearch,
 	enableRedditSearch,
 	onToggleActive,
 	onChangeProvider,
 	onToggleWebSearch,
+	onToggleVaultSearch,
 	onToggleTwitterSearch,
 	onToggleRedditSearch,
 	className,
@@ -103,7 +107,22 @@ export const PromptInputSearchButton: React.FC<PromptInputSearchButtonProps> = (
 				>
 					{enableWebSearch && <Check className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
 					{!enableWebSearch && <div className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
+					<Globe className="pktw-w-4 pktw-h-4 pktw-mr-1" />
 					Web Search
+				</Button>
+				<Button
+					variant="ghost"
+					size="sm"
+					className={cn(
+						'pktw-justify-start pktw-h-7 pktw-px-2 pktw-text-xs pktw-font-normal',
+						enableVaultSearch && 'pktw-bg-accent pktw-text-accent-foreground'
+					)}
+					onClick={() => onToggleVaultSearch?.(!enableVaultSearch)}
+				>
+					{enableVaultSearch && <Check className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
+					{!enableVaultSearch && <div className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
+					<LibraryBig className="pktw-w-4 pktw-h-4 pktw-mr-1" />
+					Vault Search
 				</Button>
 				<Button
 					variant="ghost"

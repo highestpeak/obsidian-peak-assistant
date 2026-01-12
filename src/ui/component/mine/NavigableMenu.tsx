@@ -9,9 +9,8 @@ export interface NavigableMenuItem {
 	id: string;
 	label: string;
 	description?: string;
-	color?: string; // For tag-style items like prompts
 	icon?: React.ReactNode | ((isSelected: boolean) => React.ReactNode);
-	rightIcon?: React.ReactNode | ((isSelected: boolean) => React.ReactNode); // Icon on the right side
+	showArrow?: boolean; // Whether to show a right arrow
 	value: string; // The value to insert when selected
 	disabled?: boolean;
 }
@@ -28,7 +27,6 @@ export interface NavigableMenuProps {
 	emptyMessage?: string;
 	loadingMessage?: string;
 	isLoading?: boolean; // Whether the menu is in loading state
-	isTagStyle?: boolean; // For prompt-style tags with colors
 	containerRef?: React.RefObject<HTMLElement>; // Reference to container element for position calculation
 }
 
@@ -44,7 +42,6 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 	emptyMessage = 'No items found',
 	loadingMessage = 'Loading...',
 	isLoading = false,
-	isTagStyle = false,
 	containerRef,
 }) => {
 	const [selectedIndex, setSelectedIndex] = useState(0);
@@ -177,9 +174,9 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 		}
 
 		// Adjust left position relative to container if containerRef is provided
-		if (containerRect) {
-			left -= containerRect.left;
-		}
+		// if (containerRect) {
+		// 	left -= containerRect.left;
+		// }
 
 		console.debug("[NavigableMenu] popover position debug", {
 			selectedItemRect,
@@ -290,82 +287,43 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 					const isSelected = index === selectedIndex;
 					const isDisabled = item.disabled;
 
-					if (isTagStyle) {
-						// Tag style for prompts
-						const button = (
-							<Button
-								key={item.id}
-								variant="ghost"
-								data-item-id={item.id}
-								type="button"
-								onClick={() => !isDisabled && onSelect(item)}
-								disabled={isDisabled}
-								className={cn(
-									'pktw-items-start pktw-w-full pktw-px-3 pktw-py-2 pktw-text-left pktw-transition-colors pktw-h-auto',
-									'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
-									isSelected && 'pktw-bg-accent pktw-text-accent-foreground',
-									isDisabled && 'pktw-opacity-50 pktw-cursor-not-allowed'
-								)}
-							>
-								<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-w-full">
-									<span
-										className={cn(
-											'pktw-text-xs pktw-font-medium pktw-px-2 pktw-py-0.5 pktw-rounded pktw-transition-colors pktw-whitespace-nowrap pktw-flex-shrink-0',
-											item.color || 'pktw-bg-blue-500/15 pktw-text-blue-700 dark:pktw-bg-blue-500/20 dark:pktw-text-blue-400',
-											isSelected && 'pktw-bg-white pktw-text-blue-500 dark:pktw-bg-white dark:pktw-text-blue-500'
-										)}
-									>
+					return (
+						<Button
+							key={item.id}
+							data-item-id={item.id}
+							variant="ghost"
+							type="button"
+							onClick={() => !isDisabled && onSelect(item)}
+							disabled={isDisabled}
+							className={cn(
+								'pktw-w-full pktw-px-3 pktw-py-2 pktw-text-left pktw-text-sm pktw-transition-colors pktw-h-auto',
+								'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
+								isSelected && 'pktw-bg-accent pktw-text-accent-foreground',
+								isDisabled && 'pktw-opacity-50 pktw-cursor-not-allowed'
+							)}
+						>
+							<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-w-full">
+								<div className="pktw-flex-shrink-0">
+									{typeof item.icon === 'function' ? item.icon(isSelected) : item.icon}
+								</div>
+								<div className="pktw-flex-1 pktw-min-w-0">
+									<div className="pktw-font-medium pktw-truncate">
 										{item.label}
-									</span>
+									</div>
 									{item.description && (
-										<span className={cn("pktw-text-xs pktw-truncate pktw-flex-1 pktw-min-w-0 pktw-text-left pktw-ml-2", isSelected ? "pktw-text-white" : "pktw-text-muted-foreground")}>
+										<div className={cn("pktw-text-xs pktw-truncate pktw-text-left", isSelected ? "pktw-text-white" : "pktw-text-muted-foreground")}>
 											{item.description}
-										</span>
-									)}
-									{item.rightIcon && (typeof item.rightIcon === 'function' ? item.rightIcon(isSelected) : item.rightIcon)}
-								</div>
-							</Button>
-						);
-
-
-
-						return button;
-					} else {
-						// Regular list style for context items
-						return (
-							<Button
-								key={item.id}
-								data-item-id={item.id}
-								variant="ghost"
-								type="button"
-								onClick={() => !isDisabled && onSelect(item)}
-								disabled={isDisabled}
-								className={cn(
-									'pktw-w-full pktw-px-3 pktw-py-2 pktw-text-left pktw-text-sm pktw-transition-colors pktw-h-auto',
-									'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
-									isSelected && 'pktw-bg-accent pktw-text-accent-foreground',
-									isDisabled && 'pktw-opacity-50 pktw-cursor-not-allowed'
-								)}
-							>
-								<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-w-full">
-									<div className="pktw-flex-shrink-0">
-										{typeof item.icon === 'function' ? item.icon(isSelected) : item.icon}
-									</div>
-									<div className="pktw-flex-1 pktw-min-w-0">
-										<div className="pktw-font-medium pktw-truncate">
-											{item.label}
 										</div>
-										{item.description && (
-											<div className={cn("pktw-text-xs pktw-truncate pktw-text-left", isSelected ? "pktw-text-white" : "pktw-text-muted-foreground")}>
-												{item.description}
-											</div>
-										)}
-									</div>
-									{item.rightIcon && (typeof item.rightIcon === 'function' ? item.rightIcon(isSelected) : item.rightIcon)}
+									)}
 								</div>
-							</Button>
-						);
-					}
+								{item.showArrow && (
+									<span className={cn("pktw-text-sm pktw-flex-shrink-0", isSelected ? "pktw-text-white" : "pktw-text-muted-foreground")}>
+										&gt;
+									</span>
+								)}
+							</div>
+						</Button>
+					);
 				})}
 
 				{/* Floating description for selected item */}

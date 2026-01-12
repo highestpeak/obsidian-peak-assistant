@@ -610,5 +610,15 @@ This plugin is designed to help you manage conversations and projects with AI as
 
 		console.log(`[MockAIServiceManager] Regenerated title to: "${newTitle}"`);
 	}
+
+	/**
+	 * Search for prompts (mock implementation)
+	 * This is a placeholder implementation that returns an empty array
+	 */
+	async searchPrompts(query: string): Promise<Array<{ id: string; label: string; description: string; value: string; icon: string; showArrow: boolean }>> {
+		console.debug('[MockAIServiceManager] searchPrompts called with query:', query);
+		// For mock purposes, return empty array as placeholder
+		return [];
+	}
 }
 

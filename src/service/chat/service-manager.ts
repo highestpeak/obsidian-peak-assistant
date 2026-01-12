@@ -576,6 +576,23 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
+	 * Search for external prompts using AI
+	 * This is a placeholder implementation that should be replaced with actual AI-powered prompt search
+	 */
+	async searchPrompts(query: string): Promise<Array<{ id: string; label: string; description: string; value: string; icon: string; showArrow: boolean }>> {
+		// TODO: Implement actual AI-powered prompt search
+		// This could involve:
+		// 1. Searching through prompt templates
+		// 2. Using embeddings to find similar prompts
+		// 3. Querying external prompt databases
+		// 4. Using LLM to generate relevant prompts based on query
+
+		// For now, return empty array as placeholder
+		console.debug('[AIServiceManager] searchPrompts called with query:', query);
+		return [];
+	}
+
+	/**
 	 * Get all available models from all configured providers
 	 * Only returns models from enabled providers and enabled models
 	 */

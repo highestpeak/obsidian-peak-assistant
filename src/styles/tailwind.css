@@ -8,6 +8,9 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+/* CodeMirror styles */
+@import "./codemirror.css";
+
 /* Streamdown and KaTeX styles */
 /* Import KaTeX CSS for math rendering */
 /* Note: KaTeX CSS is bundled via esbuild, so we don't need to import it here */

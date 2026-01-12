@@ -1,8 +1,14 @@
 import { create } from 'zustand';
 import { FileChange } from '@/service/chat/types';
-import { ExternalPromptInfo } from '@/ui/component/prompt-input/menu/PromptMenu';
 import { SuggestionTag } from '@/ui/component/prompt-input/SuggestionTags';
-import { ModelInfoForSwitch } from '@/core/providers/types';
+import { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
+
+export interface ChatTag {
+	type: 'context' | 'prompt';
+	text: string;
+	start: number;
+	end: number;
+}
 
 /**
  * Store for managing chat session data
@@ -12,7 +18,7 @@ export interface ChatSessionState {
 	fileChanges: FileChange[];
 
 	// External prompts data
-	promptsSuggest: ExternalPromptInfo[];
+	promptsSuggest: NavigableMenuItem[];
 
 	// Suggestion tags data ==> todo update by copilot updater
 	suggestionTags: SuggestionTag[];
@@ -21,6 +27,7 @@ export interface ChatSessionState {
 	isSearchActive: boolean;
 	searchProvider: 'local' | 'perplexity' | 'model-builtin';
 	enableWebSearch: boolean;
+	enableVaultSearch: boolean;
 	enableTwitterSearch: boolean;
 	enableRedditSearch: boolean;
 
@@ -37,9 +44,10 @@ export interface ChatSessionState {
 	chatMode: 'chat' | 'plan' | 'agent';
 
 	// LLM model settings
-	selectedModel: { provider: string; modelId: string } | null;
-	models: ModelInfoForSwitch[];
-	isModelsLoading: boolean;
+	selectedModel: { provider: string; modelId: string } | undefined;
+
+	// Current input tags
+	currentInputTags: ChatTag[];
 
 	// todo context paths suggestion ==> todo initial have vault structure. but later can be added some item by copilot updater.
 
@@ -52,7 +60,7 @@ export interface ChatSessionState {
 	discardFileChange: (id: string) => void;
 
 	// Actions for prompts
-	setExternalPrompts: (prompts: ExternalPromptInfo[]) => void;
+	setExternalPrompts: (prompts: NavigableMenuItem[]) => void;
 
 	// Actions for suggestion tags
 	setSuggestionTags: (tags: SuggestionTag[]) => void;
@@ -61,6 +69,7 @@ export interface ChatSessionState {
 	setSearchActive: (active: boolean) => void;
 	setSearchProvider: (provider: 'local' | 'perplexity' | 'model-builtin') => void;
 	setEnableWebSearch: (enabled: boolean) => void;
+	setEnableVaultSearch: (enabled: boolean) => void;
 	setEnableTwitterSearch: (enabled: boolean) => void;
 	setEnableRedditSearch: (enabled: boolean) => void;
 
@@ -77,9 +86,10 @@ export interface ChatSessionState {
 	setChatMode: (mode: 'chat' | 'plan' | 'agent') => void;
 
 	// Actions for LLM model settings
-	setSelectedModel: (model: { provider: string; modelId: string } | null) => void;
-	setModels: (models: ModelInfoForSwitch[]) => void;
-	setIsModelsLoading: (loading: boolean) => void;
+	setSelectedModel: (provider: string, modelId: string) => void;
+
+	// Actions for current input tags
+	setCurrentInputTags: (tags: Array<{ type: 'context' | 'prompt'; text: string; start: number; end: number; }>) => void;
 
 	// Reset session data
 	resetSession: () => void;
@@ -105,198 +115,48 @@ const initialFileChanges: FileChange[] = [
 		accepted: false,
 		extension: 'ts'
 	},
-	{
-		id: '3',
-		filePath: 'src/styles/main.css',
-		addedLines: 10,
-		removedLines: 15,
-		accepted: false,
-		extension: 'css'
-	},
-	{
-		id: '4',
-		filePath: 'README.md',
-		addedLines: 3,
-		removedLines: 1,
-		accepted: false,
-		extension: 'md'
-	},
-	{
-		id: '5',
-		filePath: 'package.json',
-		addedLines: 2,
-		removedLines: 0,
-		accepted: false,
-		extension: 'json'
-	},
-	{
-		id: '6',
-		filePath: 'src/hooks/useAuth.ts',
-		addedLines: 45,
-		removedLines: 12,
-		accepted: false,
-		extension: 'ts'
-	},
-	{
-		id: '7',
-		filePath: 'public/images/logo.png',
-		addedLines: 0,
-		removedLines: 0,
-		accepted: false,
-		extension: 'png'
-	},
-	{
-		id: '8',
-		filePath: 'src/types/api.ts',
-		addedLines: 8,
-		removedLines: 3,
-		accepted: false,
-		extension: 'ts'
-	},
-	{
-		id: '9',
-		filePath: '.gitignore',
-		addedLines: 1,
-		removedLines: 0,
-		accepted: false,
-		extension: 'gitignore'
-	},
-	{
-		id: '10',
-		filePath: 'src/components/forms/InputField.tsx',
-		addedLines: 67,
-		removedLines: 23,
-		accepted: false,
-		extension: 'tsx'
-	},
-	{
-		id: '11',
-		filePath: 'src/services/authService.ts',
-		addedLines: 12,
-		removedLines: 8,
-		accepted: false,
-		extension: 'ts'
-	},
-	{
-		id: '12',
-		filePath: 'tailwind.config.js',
-		addedLines: 5,
-		removedLines: 2,
-		accepted: false,
-		extension: 'js'
-	},
-	{
-		id: '13',
-		filePath: 'src/pages/dashboard/Dashboard.tsx',
-		addedLines: 89,
-		removedLines: 34,
-		accepted: false,
-		extension: 'tsx'
-	},
-	{
-		id: '14',
-		filePath: 'src/utils/date-utils.ts',
-		addedLines: 0,
-		removedLines: 5,
-		accepted: false,
-		extension: 'ts'
-	},
-	{
-		id: '15',
-		filePath: 'src/styles/components/_buttons.scss',
-		addedLines: 15,
-		removedLines: 7,
-		accepted: false,
-		extension: 'scss'
-	},
-	{
-		id: '16',
-		filePath: 'docker-compose.yml',
-		addedLines: 3,
-		removedLines: 1,
-		accepted: false,
-		extension: 'yml'
-	},
-	{
-		id: '17',
-		filePath: 'src/components/icons/SvgIcon.tsx',
-		addedLines: 28,
-		removedLines: 0,
-		accepted: false,
-		extension: 'tsx'
-	},
-	{
-		id: '18',
-		filePath: 'jest.config.js',
-		addedLines: 4,
-		removedLines: 2,
-		accepted: false,
-		extension: 'js'
-	},
-	{
-		id: '19',
-		filePath: 'src/hooks/useLocalStorage.ts',
-		addedLines: 0,
-		removedLines: 18,
-		accepted: false,
-		extension: 'ts'
-	},
-	{
-		id: '20',
-		filePath: 'public/favicon.ico',
-		addedLines: 0,
-		removedLines: 0,
-		accepted: false,
-		extension: 'ico'
-	},
-	{
-		id: '21',
-		filePath: 'src/constants/config.ts',
-		addedLines: 6,
-		removedLines: 3,
-		accepted: false,
-		extension: 'ts'
-	},
-	{
-		id: '22',
-		filePath: 'src/components/layout/Header.tsx',
-		addedLines: 42,
-		removedLines: 16,
-		accepted: false,
-		extension: 'tsx'
-	}
 ];
 
-const initialExternalPrompts: ExternalPromptInfo[] = [
+const initialExternalPrompts: NavigableMenuItem[] = [
 	{
-		promptId: 'chat-general',
-		promptNameForDisplay: 'General Chat',
-		promptCategory: 'chat',
-		promptDesc: 'General conversation and discussion'
+		id: 'chat-general',
+		label: 'General Chat',
+		description: 'General conversation and discussion'.repeat(10),
+		value: 'chat-general',
+		icon: '💡',
+		showArrow: false
 	},
 	{
-		promptId: 'chat-general2',
-		promptNameForDisplay: 'General Chat 2 Test',
-		promptCategory: 'chat',
-		promptDesc: 'General conversation and discussion 2 test General conversation and discussion 2 test General conversation and discussion 2 test '
+		id: 'chat-general2',
+		label: 'General Chat 2 Test',
+		description: 'General conversation and discussion 2 test General conversation and discussion 2 test General conversation and discussion 2 test ',
+		value: 'chat-general2',
+		icon: '💡',
+		showArrow: false
 	},
 	{
-		promptId: 'search-web',
-		promptNameForDisplay: 'Web Search',
-		promptCategory: 'search',
-		promptDesc: 'Search and retrieve information from the web'
+		id: 'search-web',
+		label: 'Web Search',
+		description: 'Search and retrieve information from the web',
+		value: 'search-web',
+		icon: '💡',
+		showArrow: false
 	},
 	{
-		promptId: 'code-review',
-		promptNameForDisplay: 'Code Review',
-		promptCategory: 'app',
-		promptDesc: 'Review and analyze code for improvements'
+		id: 'code-review',
+		label: 'Code Review',
+		description: 'Review and analyze code for improvements',
+		value: 'code-review',
+		icon: '💡',
+		showArrow: false
 	},
 	{
-		promptId: 'document-summary',
-		promptNameForDisplay: 'Document Summary',
-		promptCategory: 'document',
-		promptDesc: 'Summarize documents and extract key points'
+		id: 'document-summary',
+		label: 'Document Summary',
+		description: 'Summarize documents and extract key points'.repeat(10),
+		value: 'document-summary',
+		icon: '💡',
+		showArrow: false
 	}
 ];
 
@@ -332,15 +192,15 @@ export const useChatSessionStore = create<ChatSessionState>((set, get) => ({
 	isSearchActive: false,
 	searchProvider: 'local',
 	enableWebSearch: false,
+	enableVaultSearch: false,
 	enableTwitterSearch: true,
 	enableRedditSearch: true,
 	attachmentHandlingMode: 'degrade_to_text',
 	llmOutputControlSettings: {},
 	isCodeInterpreterEnabled: false,
 	chatMode: 'chat',
-	selectedModel: null,
-	models: [],
-	isModelsLoading: false,
+	selectedModel: undefined,
+	currentInputTags: [],
 
 	// File changes actions
 	setFileChanges: (changes: FileChange[]) => set({ fileChanges: changes }),
@@ -377,7 +237,7 @@ export const useChatSessionStore = create<ChatSessionState>((set, get) => ({
 		})),
 
 	// Prompts actions
-	setExternalPrompts: (prompts: ExternalPromptInfo[]) => set({ promptsSuggest: prompts }),
+	setExternalPrompts: (prompts: NavigableMenuItem[]) => set({ promptsSuggest: prompts }),
 
 	// Suggestion tags actions
 	setSuggestionTags: (tags: SuggestionTag[]) => set({ suggestionTags: tags }),
@@ -386,6 +246,7 @@ export const useChatSessionStore = create<ChatSessionState>((set, get) => ({
 	setSearchActive: (active: boolean) => set({ isSearchActive: active }),
 	setSearchProvider: (provider: 'local' | 'perplexity' | 'model-builtin') => set({ searchProvider: provider }),
 	setEnableWebSearch: (enabled: boolean) => set({ enableWebSearch: enabled }),
+	setEnableVaultSearch: (enabled: boolean) => set({ enableVaultSearch: enabled }),
 	setEnableTwitterSearch: (enabled: boolean) => set({ enableTwitterSearch: enabled }),
 	setEnableRedditSearch: (enabled: boolean) => set({ enableRedditSearch: enabled }),
 
@@ -402,9 +263,10 @@ export const useChatSessionStore = create<ChatSessionState>((set, get) => ({
 	setChatMode: (mode: 'chat' | 'plan' | 'agent') => set({ chatMode: mode }),
 
 	// LLM model actions
-	setSelectedModel: (model: { provider: string; modelId: string } | null) => set({ selectedModel: model }),
-	setModels: (models: ModelInfoForSwitch[]) => set({ models }),
-	setIsModelsLoading: (loading: boolean) => set({ isModelsLoading: loading }),
+	setSelectedModel: (provider: string, modelId: string) => set({ selectedModel: { provider, modelId } }),
+
+	// Current input tags actions
+	setCurrentInputTags: (tags: ChatTag[]) => set({ currentInputTags: tags }),
 
 	// Reset session
 	resetSession: () => set({
@@ -414,14 +276,14 @@ export const useChatSessionStore = create<ChatSessionState>((set, get) => ({
 		isSearchActive: false,
 		searchProvider: 'local',
 		enableWebSearch: false,
+		enableVaultSearch: false,
 		enableTwitterSearch: true,
 		enableRedditSearch: true,
 		attachmentHandlingMode: 'degrade_to_text',
 		llmOutputControlSettings: {},
 		isCodeInterpreterEnabled: false,
 		chatMode: 'chat',
-		selectedModel: null,
-		models: [],
-		isModelsLoading: false
+		selectedModel: undefined,
+		currentInputTags: []
 	})
 }));

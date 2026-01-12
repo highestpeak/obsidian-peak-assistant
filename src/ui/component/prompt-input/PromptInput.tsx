@@ -2,6 +2,7 @@ import React, { createContext, useContext, useRef, useCallback, useEffect, useSt
 import { cn } from '@/ui/react/lib/utils';
 import { calculateFileHash } from '@/core/utils/hash-utils';
 import { HiddenFileInput } from '@/ui/component/mine/input-for-file-with-hidden';
+import { PromptInputBody } from './PromptInputBody';
 import type { PromptInputMessage, FileAttachment } from './types';
 
 /**
@@ -21,6 +22,14 @@ interface PromptInputContextValue {
 		clear: () => void;
 		openFileDialog: () => void;
 		registerFileInput: (ref: React.RefObject<HTMLInputElement | null>) => void;
+	};
+	// Autocompletion data
+	autocompletion: {
+		contextItems: any[];
+		promptItems: any[];
+		onLoadContextItems?: (query: string, currentFolder?: string) => Promise<any[]>;
+		onLoadPromptItems?: (query: string) => Promise<any[]>;
+		onMenuItemSelect?: (triggerChar: string, selectedItem: any) => void;
 	};
 }
 
@@ -43,7 +52,14 @@ export interface PromptInputProps extends Omit<HTMLAttributes<HTMLFormElement>, 
 	globalDrop?: boolean;
 	accept?: string;
 	initialInput?: string;
-	inputFocusRef?: React.Ref<{ focus: () => void }>;
+	inputFocusRef?: React.RefObject<{ focus: () => void }>;
+	// Autocompletion data
+	contextItems?: any[];
+	promptItems?: any[];
+	onLoadContextItems?: (query: string, currentFolder?: string) => Promise<any[]>;
+	onLoadPromptItems?: (query: string) => Promise<any[]>;
+	onMenuItemSelect?: (triggerChar: string, selectedItem: any) => void;
+	onTextChange?: (text: string, tags: Array<{ type: 'context' | 'prompt'; text: string; start: number; end: number; }>) => void;
 }
 
 /**
@@ -58,6 +74,12 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 	accept,
 	initialInput = '',
 	inputFocusRef,
+	contextItems = [],
+	promptItems = [],
+	onLoadContextItems,
+	onLoadPromptItems,
+	onMenuItemSelect,
+	onTextChange,
 	children,
 	...props
 }) => {
@@ -215,8 +237,15 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 				openFileDialog,
 				registerFileInput,
 			},
+			autocompletion: {
+				contextItems,
+				promptItems,
+				onLoadContextItems,
+				onLoadPromptItems,
+				onMenuItemSelect,
+			},
 		}),
-		[textInput, setInput, clearInput, focusInput, attachments, addFiles, removeFile, clearFiles, openFileDialog, registerFileInput]
+		[textInput, setInput, clearInput, focusInput, attachments, addFiles, removeFile, clearFiles, openFileDialog, registerFileInput, contextItems, promptItems, onLoadContextItems, onLoadPromptItems, onMenuItemSelect]
 	);
 
 	// Register file input
@@ -342,7 +371,13 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 
 				{/* Main content */}
 				<div className="pktw-flex pktw-flex-col pktw-w-full">
-					{children}
+					{React.Children.map(children, child => {
+						// Pass onTextChange to PromptInputBody components
+						if (React.isValidElement(child) && child.type === PromptInputBody) {
+							return React.cloneElement(child, { onTextChange });
+						}
+						return child;
+					})}
 				</div>
 			</form>
 		</PromptInputContext.Provider>

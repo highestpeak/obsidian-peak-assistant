@@ -50,7 +50,7 @@ export const MessagesViewComponent: React.FC = () => {
     // Scroll management - all scroll logic centralized here
     const { scrollToTop, scrollToBottom } = useScrollManager({
         scrollRef: bodyScrollRef,
-        containerRef: bodyContainerRef,
+        containerRef: bodyScrollRef,
         eventBus,
         autoScrollOnMessagesChange: true,
         messagesCount: activeConversation?.messages.length,
