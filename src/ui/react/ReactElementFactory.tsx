@@ -18,6 +18,7 @@ export function createReactElementWithServices<T extends Record<string, any>>(
 			manager: appContext.manager,
 			searchClient: appContext.searchClient,
 			viewManager: appContext.viewManager,
+			plugin: appContext.plugin!,
 			children: React.createElement(Component, props as T)
 		}
 	);

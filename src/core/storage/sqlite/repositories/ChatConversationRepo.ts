@@ -83,7 +83,9 @@ export class ChatConversationRepo {
 	 */
 	async listByProject(
 		projectId: string | null,
-		includeArchived: boolean = false
+		includeArchived: boolean = false,
+		limit?: number,
+		offset?: number
 	): Promise<DbSchema['chat_conversation'][]> {
 		let query = this.db.selectFrom('chat_conversation').selectAll();
 		if (projectId === null) {
@@ -94,7 +96,36 @@ export class ChatConversationRepo {
 		if (!includeArchived) {
 			query = query.where('archived_rel_path', 'is', null);
 		}
-		return query.orderBy('updated_at_ts', 'desc').execute();
+		query = query.orderBy('updated_at_ts', 'desc');
+
+		if (offset !== undefined) {
+			query = query.offset(offset);
+		}
+		if (limit !== undefined) {
+			query = query.limit(limit);
+		}
+
+		return query.execute();
+	}
+
+	/**
+	 * Count conversations by project (null for root conversations).
+	 */
+	async countByProject(
+		projectId: string | null,
+		includeArchived: boolean = false
+	): Promise<number> {
+		let query = this.db.selectFrom('chat_conversation').select(this.db.fn.countAll().as('count'));
+		if (projectId === null) {
+			query = query.where('project_id', 'is', null);
+		} else {
+			query = query.where('project_id', '=', projectId);
+		}
+		if (!includeArchived) {
+			query = query.where('archived_rel_path', 'is', null);
+		}
+		const result = await query.executeTakeFirst();
+		return Number(result?.count ?? 0);
 	}
 
 	/**

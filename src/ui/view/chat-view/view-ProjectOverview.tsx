@@ -1,32 +1,21 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ChatConversation, ChatProject, ChatMessage } from '@/service/chat/types';
-import { useProjectStore } from '@/ui/store/projectStore';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ChatConversation, ChatProject } from '@/service/chat/types';
 import { cn } from '@/ui/react/lib/utils';
-import { Folder, ChevronDown, ChevronRight, MessageCircle, MessageSquare, Calendar, Star, FileText, Image, File } from 'lucide-react';
+import { Folder, MessageCircle, MessageSquare, Calendar, Star, FileText, Image, File } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ConversationItem } from '@/ui/view/chat-view/components/conversation-item';
-import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
 import { Button } from '@/ui/component/shared-ui/button';
+import { getFileIconByName, getFileTypeByName } from '@/ui/view/shared/file-utils';
+import { ResourceAttachmentEntry, useProjectLoad, useConversationLoad, StarredEntry } from './hooks';
+import { openAttachment } from '@/core/utils/vault-utils';
+import { useChatViewStore } from './store/chatViewStore';
+import { ProjectSummary } from './components/project-summary';
+import { ConversationList } from './components/conversation-list';
 
 interface ProjectOverviewViewProps {
-	projectId: string;
-	onConversationClick: (conversation: ChatConversation, project: ChatProject) => void;
-	onMessageClick: (conversation: ChatConversation, project: ChatProject, messageId: string) => void;
 }
 
 type TabType = 'conversations' | 'starred' | 'resources';
-
-interface StarredEntry {
-	conversation: ChatConversation;
-	message: ChatMessage;
-}
-
-interface ResourceAttachmentEntry {
-	conversation: ChatConversation;
-	message: ChatMessage;
-	resource: string;
-	resourceLabel: string;
-}
 
 interface ProjectStatsCardProps {
 	icon: React.ReactNode;
@@ -57,62 +46,29 @@ const ProjectStatsCard: React.FC<ProjectStatsCardProps> = ({ icon, label, value,
 /**
  * Project overview view component
  */
-export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = ({
-	projectId,
-	onConversationClick,
-	onMessageClick,
-}) => {
-	const { manager, app, eventBus } = useServiceContext();
-	const projects = useProjectStore((state) => state.projects);
-	const project = projectId ? projects.get(projectId) || null : null;
+export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = () => {
+	const store = useChatViewStore();
 
-	const [conversations, setConversations] = useState<ChatConversation[]>([]);
-	const [activeTab, setActiveTab] = useState<TabType>('conversations');
-	const [summaryExpanded, setSummaryExpanded] = useState(false);
-
-	// Load conversations
-	useEffect(() => {
-		const loadConversations = async () => {
-			if (!project) return;
-			const convs = await manager.listConversations(project.meta.id);
-			convs.sort((a, b) => {
-				const timeA = a.meta.createdAtTimestamp || 0;
-				const timeB = b.meta.createdAtTimestamp || 0;
-				return timeB - timeA;
-			});
-			setConversations(convs);
-		};
-		loadConversations();
-	}, [project, manager]);
-
-	// Listen for conversation updates and update only the affected item
-	useEffect(() => {
-		const unsubscribe = eventBus.on<ConversationUpdatedEvent>(
-			ViewEventType.CONVERSATION_UPDATED,
-			(event) => {
-				// Only update if the updated conversation belongs to this project
-				if (project && event.conversation.meta.projectId === project.meta.id) {
-					setConversations(prev => {
-						// Use map to update the matching conversation without using index
-						return prev.map(conv =>
-							conv.meta.id === event.conversation.meta.id
-								? event.conversation
-								: conv
-						);
-					});
-				}
-			}
+	const projectId = store.projectForOverview?.meta.id;
+	if (!projectId) {
+		return (
+			<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-text-muted-foreground">
+				No project selected.
+			</div>
 		);
-		return unsubscribe;
-	}, [eventBus, project]);
+	}
 
-	// Set summary expanded based on whether summary exists
-	useEffect(() => {
-		if (project) {
-			const summaryText = getProjectSummaryText(project);
-			setSummaryExpanded(Boolean(summaryText));
-		}
-	}, [project]);
+	const [activeTab, setActiveTab] = useState<TabType>('conversations');
+
+	// Use unified project load hook for state management
+	const {
+		project,
+		conversations,
+		starredEntries,
+		resources,
+		totalMessages,
+		summaryText,
+	} = useProjectLoad(projectId);
 
 	if (!project) {
 		return (
@@ -121,85 +77,6 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 			</div>
 		);
 	}
-
-	const summaryText = getProjectSummaryText(project);
-	const totalMessages = conversations.reduce((sum, conv) => sum + conv.messages.length, 0);
-
-	// Load starred messages directly from database
-	const [starredMessages, setStarredMessages] = useState<ChatMessage[]>([]);
-	const [messageToConversationId, setMessageToConversationId] = useState<Map<string, string>>(new Map());
-
-	useEffect(() => {
-		const loadStarredMessages = async () => {
-			if (!project) return;
-			try {
-				const result = await manager.listStarredMessagesByProject(project.meta.id);
-				console.debug('[ProjectOverview] Starred messages:', result.messages);
-				setStarredMessages(result.messages);
-				setMessageToConversationId(result.messageToConversationId);
-			} catch (error) {
-				console.error('[ProjectOverview] Error loading starred messages:', error);
-				setStarredMessages([]);
-				setMessageToConversationId(new Map());
-			}
-		};
-		loadStarredMessages();
-	}, [project, manager]);
-
-	// Collect starred entries from directly loaded starred messages
-	const starredEntries = useMemo(() => {
-		// Create a map of conversation ID to conversation for quick lookup
-		const convMap = new Map<string, ChatConversation>();
-		conversations.forEach(conv => convMap.set(conv.meta.id, conv));
-
-		// Map starred messages to entries with their conversations using conversationId mapping
-		return starredMessages
-			.map(message => {
-				const conversationId = messageToConversationId.get(message.id);
-				const conversation = conversationId ? convMap.get(conversationId) : undefined;
-				return conversation ? { conversation, message } : null;
-			})
-			.filter((entry): entry is StarredEntry => entry !== null)
-			.sort((a, b) => (b.message.createdAtTimestamp ?? 0) - (a.message.createdAtTimestamp ?? 0));
-	}, [starredMessages, messageToConversationId, conversations]);
-
-	// Collect resources
-	const resources = useMemo(() => {
-		const seen = new Set<string>();
-		const entries: ResourceAttachmentEntry[] = [];
-
-		for (const conversation of conversations) {
-			for (const message of conversation.messages) {
-				if (!message.resources || message.resources.length === 0) {
-					continue;
-				}
-				for (const resourceRef of message.resources) {
-					const key = `${message.id}:${resourceRef.source}`;
-					if (seen.has(key)) continue;
-					seen.add(key);
-					const label = resourceRef.source.split('/').pop() || resourceRef.source;
-					entries.push({
-						conversation,
-						message,
-						resource: resourceRef.source,
-						resourceLabel: label,
-					});
-				}
-			}
-		}
-
-		return entries.sort(
-			(a, b) =>
-				(b.message.createdAtTimestamp ?? 0) - (a.message.createdAtTimestamp ?? 0)
-		);
-	}, [conversations]);
-
-	const handleOpenAttachment = useCallback((path: string) => {
-		if (!path) return;
-		const cleaned = path.replace(/^\[\[|\]\]$/g, '');
-		const normalized = cleaned.startsWith('/') ? cleaned.slice(1) : cleaned;
-		void app.workspace.openLinkText(normalized, '', true);
-	}, [app]);
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-overflow-hidde">
@@ -246,24 +123,19 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 				<div>
 					{activeTab === 'conversations' && (
 						<ConversationsTab
-							conversations={conversations}
-							onConversationClick={(conv) => onConversationClick(conv, project)}
+							projectId={projectId}
 							summaryText={summaryText}
-							summaryExpanded={summaryExpanded}
-							onSummaryExpandedChange={setSummaryExpanded}
 						/>
 					)}
 					{activeTab === 'starred' && (
 						<StarredTab
 							entries={starredEntries}
 							project={project}
-							onClick={(conv, messageId) => onMessageClick(conv, project, messageId)}
 						/>
 					)}
 					{activeTab === 'resources' && (
 						<ResourcesTab
 							resources={resources}
-							onAttachmentClick={handleOpenAttachment}
 						/>
 					)}
 				</div>
@@ -273,69 +145,34 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 };
 
 interface ConversationsTabProps {
-	conversations: ChatConversation[];
-	onConversationClick: (conversation: ChatConversation) => void;
+	projectId: string;
 	summaryText?: string;
-	summaryExpanded: boolean;
-	onSummaryExpandedChange: (expanded: boolean) => void;
 }
 
 const ConversationsTab: React.FC<ConversationsTabProps> = ({
-	conversations,
-	onConversationClick,
+	projectId,
 	summaryText,
-	summaryExpanded,
-	onSummaryExpandedChange
 }) => {
-	if (conversations.length === 0) {
-		return (
-			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-12">
-				<MessageCircle className="pktw-w-12 pktw-h-12 pktw-mx-auto pktw-mb-3 pktw-opacity-50" />
-				<p className="pktw-text-sm">No conversations yet.</p>
-			</div>
-		);
-	}
+
+	const { loadConversation } = useConversationLoad();
+
+	const [summaryExpanded, setSummaryExpanded] = useState<boolean>(summaryText ? true : false);
 
 	return (
 		<div className="pktw-space-y-3">
 			{/* Project Summary */}
 			{/* Place here to make Tabs seem more balanced. Make ui more balanced. Choose Conv Tabs because it has more content. */}
-			{summaryText && (
-				<div className="pktw-mb-6 pktw-border pktw-rounded-lg pktw-bg-secondary pktw-shadow-md pktw-overflow-hidden">
-					<div
-						className="pktw-flex pktw-items-center pktw-justify-between pktw-p-4 pktw-cursor-pointer hover:pktw-bg-muted/50 pktw-transition-colors"
-						onClick={() => onSummaryExpandedChange(!summaryExpanded)}
-					>
-						<h3 className="pktw-text-base pktw-font-semibold pktw-text-foreground pktw-m-0">Project Summary</h3>
-						<div className="pktw-transition-transform pktw-duration-200 pktw-ease-in-out">
-							{summaryExpanded ? (
-								<ChevronDown className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground" />
-							) : (
-								<ChevronRight className="pktw-w-4 pktw-h-4 pktw-text-muted-foreground" />
-							)}
-						</div>
-					</div>
-					<div
-						className={`pktw-transition-all pktw-duration-300 pktw-ease-in-out pktw-overflow-hidden ${summaryExpanded
-								? 'pktw-max-h-96 pktw-opacity-100'
-								: 'pktw-max-h-0 pktw-opacity-0'
-							}`}
-					>
-						<div className="pktw-px-4 pktw-pb-4 pktw-text-sm pktw-text-foreground/90 pktw-leading-relaxed">
-							{summaryText}
-						</div>
-					</div>
-				</div>
-			)}
+			<ProjectSummary
+				summaryText={summaryText}
+				summaryExpanded={summaryExpanded}
+				onSummaryExpandedChange={setSummaryExpanded}
+			/>
 
-			{conversations.map((conversation) => (
-				<ConversationItem
-					key={conversation.meta.id}
-					conversation={conversation}
-					onClick={onConversationClick}
-					maxPreviewLength={150}
-				/>
-			))}
+			<ConversationList
+				projectId={projectId}
+				maxPreviewLength={150}
+				emptyText="No conversations in this project yet."
+			/>
 		</div>
 	);
 };
@@ -343,10 +180,12 @@ const ConversationsTab: React.FC<ConversationsTabProps> = ({
 interface StarredTabProps {
 	entries: StarredEntry[];
 	project: ChatProject;
-	onClick: (conversation: ChatConversation, messageId: string) => void;
 }
 
-const StarredTab: React.FC<StarredTabProps> = ({ entries, onClick }) => {
+const StarredTab: React.FC<StarredTabProps> = ({ entries }) => {
+
+	const { openConvAndScroll2Msg } = useConversationLoad();
+
 	if (entries.length === 0) {
 		return (
 			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-12">
@@ -371,7 +210,7 @@ const StarredTab: React.FC<StarredTabProps> = ({ entries, onClick }) => {
 							'pktw-cursor-pointer pktw-transition-all',
 							'hover:pktw-shadow-md hover:pktw-border-border-hover hover:pktw-bg-accent/50'
 						)}
-						onClick={() => onClick(entry.conversation, entry.message.id)}
+						onClick={() => openConvAndScroll2Msg(entry.conversation.meta.id, entry.message.id)}
 					>
 						<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-2">
 							<Star className="pktw-w-4 pktw-h-4 pktw-fill-yellow-400 pktw-text-yellow-400 pktw-shrink-0" />
@@ -393,34 +232,11 @@ const StarredTab: React.FC<StarredTabProps> = ({ entries, onClick }) => {
 
 interface ResourcesTabProps {
 	resources: ResourceAttachmentEntry[];
-	onAttachmentClick: (path: string) => void;
 }
 
-const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources, onAttachmentClick }) => {
-	const getFileIcon = (fileName: string) => {
-		const ext = fileName.split('.').pop()?.toLowerCase();
-		if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext || '')) {
-			return Image;
-		}
-		return FileText;
-	};
+const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources }) => {
 
-	const getFileType = (fileName: string): string => {
-		const ext = fileName.split('.').pop()?.toLowerCase();
-		if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext || '')) {
-			return 'image';
-		}
-		if (ext === 'pdf') {
-			return 'pdf';
-		}
-		if (['xlsx', 'xls'].includes(ext || '')) {
-			return 'excel';
-		}
-		if (['docx', 'doc'].includes(ext || '')) {
-			return 'word';
-		}
-		return ext || 'file';
-	};
+	const { app } = useServiceContext();
 
 	if (resources.length === 0) {
 		return (
@@ -434,8 +250,8 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources, onAttachmentClic
 	return (
 		<div className="pktw-space-y-3">
 			{resources.map((entry, index) => {
-				const FileIcon = getFileIcon(entry.resourceLabel);
-				const fileType = getFileType(entry.resourceLabel);
+				const FileIcon = getFileIconByName(entry.resourceLabel);
+				const fileType = getFileTypeByName(entry.resourceLabel);
 				return (
 					<div
 						key={`${entry.conversation.meta.id}-${entry.resource}-${index}`}
@@ -444,7 +260,7 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources, onAttachmentClic
 							'pktw-cursor-pointer pktw-transition-all',
 							'hover:pktw-shadow-md hover:pktw-border-border-hover hover:pktw-bg-accent/50'
 						)}
-						onClick={() => onAttachmentClick(entry.resource)}
+						onClick={() => openAttachment(app, entry.resource)}
 					>
 						<div className="pktw-p-2 pktw-rounded-md pktw-bg-muted pktw-shrink-0">
 							<FileIcon className="pktw-w-5 pktw-h-5 pktw-text-muted-foreground" />
@@ -463,10 +279,4 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources, onAttachmentClic
 		</div>
 	);
 };
-
-function getProjectSummaryText(project: ChatProject): string | undefined {
-	const candidate = project.context?.shortSummary;
-	const trimmed = candidate?.trim();
-	return trimmed || undefined;
-}
 

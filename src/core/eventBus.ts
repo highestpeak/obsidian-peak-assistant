@@ -8,7 +8,6 @@ export enum ViewEventType {
 	SELECTION_CHANGED = 'peak:selection-changed',
 	CONVERSATION_UPDATED = 'peak:conversation-updated',
 	PROJECT_UPDATED = 'peak:project-updated',
-	DATA_REFRESHED = 'peak:data-refreshed',
 	SCROLL_TO_MESSAGE = 'peak:scroll-to-message',
 	OPEN_LINK = 'peak:open-link',
 	SHOW_TOAST = 'peak:show-toast',
@@ -65,15 +64,6 @@ export class ProjectUpdatedEvent extends ViewEvent {
 	constructor(data: { project: ChatProject }) {
 		super(ViewEventType.PROJECT_UPDATED);
 		this.project = data.project;
-	}
-}
-
-/**
- * Data refreshed event
- */
-export class DataRefreshedEvent extends ViewEvent {
-	constructor() {
-		super(ViewEventType.DATA_REFRESHED);
 	}
 }
 

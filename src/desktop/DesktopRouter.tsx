@@ -140,7 +140,7 @@ export const DesktopRouter: React.FC = () => {
 			<div className="h-full w-full flex flex-col" style={{ backgroundColor: '#ffffff', height: '100%', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 				<NavigationBar />
 				<div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
-					<SettingsRoot plugin={mockPlugin as any} eventBus={eventBus} />
+					<SettingsRoot />
 				</div>
 			</div>
 		);

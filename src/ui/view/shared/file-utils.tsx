@@ -1,5 +1,6 @@
 import React from 'react';
-import { FileText, Image, FileType as FileTypeIcon, Folder, Heading } from 'lucide-react';
+import { FileText, Image, FileType as FileTypeIcon, Folder, Heading, File } from 'lucide-react';
+import { cn } from '@/ui/react/lib/utils';
 
 /**
  * File type utilities
@@ -54,20 +55,75 @@ export function getAttachmentStats(attachments: string[]): { pdf: number; image:
  * Places that use it also include messageItem convResourcesModal which don't use this yet, all should use this for unification
  * TODO: Better to use ResourceLoader's type resourceKind etc. for unification
  */
-export function getFileIcon(type: string): React.ReactElement {
+export function getFileIcon(type: string, isSelected: boolean = false): React.ReactElement {
+	const iconClass = isSelected
+		? "pktw-w-4 pktw-h-4 pktw-text-white"
+		: "pktw-w-4 pktw-h-4";
+
 	switch (type) {
 		case 'markdown':
-			return <FileText className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />;
+			return <FileText className={cn(iconClass, isSelected ? "" : "pktw-text-[#7c3aed]")} />;
 		case 'pdf':
-			return <FileTypeIcon className="pktw-w-4 pktw-h-4 pktw-text-red-500" />;
+			return <FileTypeIcon className={cn(iconClass, isSelected ? "" : "pktw-text-red-500")} />;
 		case 'image':
-			return <Image className="pktw-w-4 pktw-h-4 pktw-text-emerald-500" />;
+			return <Image className={cn(iconClass, isSelected ? "" : "pktw-text-emerald-500")} />;
 		case 'folder':
-			return <Folder className="pktw-w-4 pktw-h-4 pktw-text-amber-500" />;
+			return <Folder className={cn(iconClass, isSelected ? "" : "pktw-text-amber-500")} />;
 		case 'heading':
-			return <Heading className="pktw-w-4 pktw-h-4 pktw-text-blue-500" />;
+			return <Heading className={cn(iconClass, isSelected ? "" : "pktw-text-blue-500")} />;
+		case 'tag':
+			return <FileText className={cn(iconClass, isSelected ? "" : "pktw-text-blue-500")} />;
+		case 'category':
+			return <FileText className={cn(iconClass, isSelected ? "" : "pktw-text-purple-500")} />;
 		default:
-			return <FileText className="pktw-w-4 pktw-h-4 pktw-text-[#6c757d]" />;
+			return <FileText className={cn(iconClass, isSelected ? "" : "pktw-text-[#6c757d]")} />;
 	}
+}
+
+/**
+ * Get file icon component based on file name extension
+ */
+export function getFileIconByName(fileName: string): typeof Image | typeof FileText {
+	const ext = fileName.split('.').pop()?.toLowerCase();
+	if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext || '')) {
+		return Image;
+	}
+	return FileText;
+}
+
+/**
+ * Get file type string based on file name extension
+ */
+export function getFileTypeByName(fileName: string): string {
+	const ext = fileName.split('.').pop()?.toLowerCase();
+	if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext || '')) {
+		return 'image';
+	}
+	if (ext === 'pdf') {
+		return 'pdf';
+	}
+	if (['xlsx', 'xls'].includes(ext || '')) {
+		return 'excel';
+	}
+	if (['docx', 'doc'].includes(ext || '')) {
+		return 'word';
+	}
+	return ext || 'file';
+}
+
+/**
+ * Get file icon component based on file extension
+ */
+export function getFileIconComponent(extension?: string): typeof File | typeof Image | typeof FileText {
+	if (!extension) return File;
+
+	const lowerExt = extension.toLowerCase();
+	if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(lowerExt)) {
+		return Image;
+	}
+	if (['md', 'txt', 'json', 'js', 'ts', 'py', 'java', 'cpp', 'c', 'css', 'html', 'xml', 'yaml', 'yml'].includes(lowerExt)) {
+		return FileText;
+	}
+	return File;
 }
 

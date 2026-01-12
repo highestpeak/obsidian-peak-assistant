@@ -4,6 +4,7 @@ import { AIServiceManager } from '@/service/chat/service-manager';
 import { EventBus } from '@/core/eventBus';
 import { SearchClient } from '@/service/search/SearchClient';
 import { ViewManager } from '@/app/view/ViewManager';
+import type MyPlugin from 'main';
 
 /**
  * Service context value containing all global services
@@ -14,6 +15,7 @@ interface ServiceContextValue {
 	eventBus: EventBus;
 	searchClient: SearchClient | null;
 	viewManager: ViewManager;
+	plugin: MyPlugin;
 }
 
 const ServiceContext = createContext<ServiceContextValue | null>(null);
@@ -28,11 +30,12 @@ export const ServiceProvider: React.FC<{
 	searchClient?: SearchClient | null;
 	viewManager: ViewManager;
 	eventBus?: EventBus;
-}> = ({ children, app, manager, searchClient = null, viewManager, eventBus }) => {
+	plugin: MyPlugin;
+}> = ({ children, app, manager, searchClient = null, viewManager, eventBus, plugin }) => {
 	const defaultEventBus = eventBus || EventBus.getInstance(app);
 
 	return (
-		<ServiceContext.Provider value={{ app, manager, eventBus: defaultEventBus, searchClient, viewManager }}>
+		<ServiceContext.Provider value={{ app, manager, eventBus: defaultEventBus, searchClient, viewManager, plugin }}>
 			{children}
 		</ServiceContext.Provider>
 	);

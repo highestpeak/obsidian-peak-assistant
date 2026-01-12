@@ -227,12 +227,27 @@ export class AIServiceManager {
 
 	/**
 	 * List conversations, optionally filtered by project.
+	 * Supports pagination with limit and offset parameters.
 	 */
-	async listConversations(projectId: string | null | undefined): Promise<ChatConversation[]> {
+	async listConversations(
+		projectId: string | null | undefined,
+		limit?: number,
+		offset?: number
+	): Promise<ChatConversation[]> {
 		if (!this.conversationService) {
 			throw new Error('ConversationService not initialized. Call init() first.');
 		}
-		return this.conversationService.listConversations(projectId ?? null);
+		return this.conversationService.listConversations(projectId ?? null, limit, offset);
+	}
+
+	/**
+	 * Count conversations, optionally filtered by project.
+	 */
+	async countConversations(projectId: string | null | undefined): Promise<number> {
+		if (!this.conversationService) {
+			throw new Error('ConversationService not initialized. Call init() first.');
+		}
+		return this.conversationService.countConversations(projectId ?? null);
 	}
 
 	/**

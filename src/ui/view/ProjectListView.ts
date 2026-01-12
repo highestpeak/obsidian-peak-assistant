@@ -1,7 +1,6 @@
 import { IconName, ItemView, WorkspaceLeaf } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { ProjectListViewComponent } from './project-list-view/ProjectListView';
-import { EventBus, ViewEventType } from '@/core/eventBus';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 
@@ -12,15 +11,12 @@ export const PROJECT_LIST_VIEW_TYPE = 'peak-project-list-view';
  */
 export class ProjectListView extends ItemView {
 	private reactRenderer: ReactRenderer | null = null;
-	private eventBus: EventBus;
-	private unsubscribeHandlers: (() => void)[] = [];
 
 	constructor(
 		leaf: WorkspaceLeaf,
 		private readonly appContext: AppContext
 	) {
 		super(leaf);
-		this.eventBus = EventBus.getInstance(this.app);
 	}
 
 	getViewType(): string {
@@ -42,13 +38,6 @@ export class ProjectListView extends ItemView {
 		// We render into the content area (children[1])
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 
-		// Subscribe to data refreshed events
-		this.unsubscribeHandlers.push(
-			this.eventBus.on(ViewEventType.DATA_REFRESHED, () => {
-				this.updateView();
-			})
-		);
-
 		// Initial render - delay to ensure container is in DOM
 		requestAnimationFrame(() => {
 			this.render();
@@ -68,10 +57,6 @@ export class ProjectListView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
-		// Unsubscribe from events
-		this.unsubscribeHandlers.forEach(unsubscribe => unsubscribe());
-		this.unsubscribeHandlers = [];
-
 		if (this.reactRenderer) {
 			this.reactRenderer.unmount();
 			this.reactRenderer = null;

@@ -3,44 +3,62 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { usePromptInputContext } from './PromptInput';
 import { Plus, Upload, FileText, Check } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
-import { useProjectStore } from '@/ui/store/projectStore';
-import { useServiceContext } from '@/ui/context/ServiceContext';
 import { HoverButton } from '@/ui/component/mine';
 
 export interface PromptInputFileButtonProps {
 	className?: string;
+
+	// Attachment handling mode - controlled externally
+	attachmentHandlingMode?: 'direct' | 'degrade_to_text';
+
+	// Callback when attachment handling mode changes
+	onAttachmentHandlingModeChange?: (mode: 'direct' | 'degrade_to_text') => void;
 }
 
 /**
  * File upload button with hover menu for upload options
+ * Attachment handling mode is controlled externally
  */
 export const PromptInputFileButton: React.FC<PromptInputFileButtonProps> = ({
 	className,
+	attachmentHandlingMode = 'degrade_to_text',
+	onAttachmentHandlingModeChange,
 }) => {
 	const { attachments } = usePromptInputContext();
-	const { manager } = useServiceContext();
-	const activeConversation = useProjectStore((state) => state.activeConversation);
-	const [isHovered, setIsHovered] = useState(false);
+	const prevFilesRef = React.useRef(attachments.files);
+	const [forceCloseMenu, setForceCloseMenu] = React.useState(false);
+	const [fileDialogOpened, setFileDialogOpened] = React.useState(false);
 
-	// Get effective attachment handling mode
-	const attachmentHandlingMode = activeConversation?.meta.attachmentHandlingOverride ?? manager.getSettings().attachmentHandlingDefault ?? 'degrade_to_text';
-
-	const handleUploadMode = async (mode: 'direct' | 'degrade_to_text') => {
-		if (!activeConversation) return;
-
-		await manager.updateConversationAttachmentHandling({
-			conversationId: activeConversation.meta.id,
-			attachmentHandlingOverride: mode,
-		});
+	const handleModeSelect = (mode: 'direct' | 'degrade_to_text') => {
+		if (onAttachmentHandlingModeChange) {
+			onAttachmentHandlingModeChange(mode);
+		}
 	};
 
-	const handleModeSelect = async (mode: 'direct' | 'degrade_to_text') => {
-		if (!activeConversation) return;
-		await manager.updateConversationAttachmentHandling({
-			conversationId: activeConversation.meta.id,
-			attachmentHandlingOverride: mode,
-		});
+	// Handle upload click - open file dialog and mark dialog as opened
+	const handleUploadClick = () => {
+		setFileDialogOpened(true);
+		attachments.openFileDialog();
 	};
+
+	// Close hover menu when file dialog interaction completes
+	React.useEffect(() => {
+		const currentFiles = attachments.files;
+		const prevFiles = prevFilesRef.current;
+
+		// If file dialog was opened and files array changed (user completed file selection)
+		if (fileDialogOpened && currentFiles !== prevFiles) {
+			setForceCloseMenu(true);
+			setFileDialogOpened(false);
+
+			// Reset force close after a short delay to allow normal hover behavior again
+			setTimeout(() => {
+				setForceCloseMenu(false);
+			}, 1000); // Allow normal behavior after 1 second
+		}
+
+		prevFilesRef.current = currentFiles;
+	}, [attachments.files, fileDialogOpened]);
 
 	const menuContent = (
 		<div className="pktw-flex pktw-flex-col pktw-gap-3">
@@ -120,8 +138,8 @@ export const PromptInputFileButton: React.FC<PromptInputFileButtonProps> = ({
 		<HoverButton
 			icon={Plus}
 			menuId="file-upload-options"
-			onClick={attachments.openFileDialog}
-			hoverMenuContent={menuContent}
+			onClick={handleUploadClick}
+			hoverMenuContent={forceCloseMenu ? null : menuContent}
 		/>
 	);
 };

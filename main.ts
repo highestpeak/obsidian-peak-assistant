@@ -81,7 +81,8 @@ export default class MyPlugin extends Plugin {
 		const appContext = new AppContext(
 			this.app,
 			this.aiServiceManager,
-			this.searchClient
+			this.searchClient,
+			this
 		);
 
 		// Create ViewManager with AppContext
@@ -105,7 +106,7 @@ export default class MyPlugin extends Plugin {
 		).forEach((command) => this.addCommand(command));
 
 		// add setting ui
-		this.addSettingTab(new MySettings(this.app, this));
+		this.addSettingTab(new MySettings(this.app, this, appContext));
 
 		// Initialize UI control service
 		this.commandHiddenControlService = new CommandHiddenControlService(this.app, this, this.settings.commandHidden);

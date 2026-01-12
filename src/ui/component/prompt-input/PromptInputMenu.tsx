@@ -3,7 +3,6 @@ import { PromptMenu, ContextMenu } from './menu';
 import type { FileItem } from './menu/ContextMenu';
 import { usePromptInputContext } from './PromptInput';
 import { ExternalPromptInfo } from './menu/PromptMenu';
-import { useServiceContext } from '@/ui/context/ServiceContext';
 
 /**
  * Trigger character definitions and their corresponding menu types
@@ -276,8 +275,16 @@ const getCursorPosition = (textarea: HTMLTextAreaElement, cursorPos: number, con
 
 interface PromptInputMenuProps {
 	textareaRef: React.RefObject<HTMLTextAreaElement>;
-	prompts?: ExternalPromptInfo[];
 	containerRef?: React.RefObject<HTMLElement>;
+
+	// Context menu data and callbacks
+	initialContextItems?: FileItem[];
+	onSearchContext?: (query: string, currentFolder?: string) => Promise<FileItem[]>;
+	prompts?: ExternalPromptInfo[];
+	onSearchPrompts?: (query: string) => Promise<ExternalPromptInfo[]>;
+
+	// Menu selection callback
+	onMenuSelect?: (value: string, menuType: TriggerType, menuState: MenuState, selectedItem?: any) => void;
 }
 
 /**
@@ -454,13 +461,21 @@ const MenuHandler: React.FC<{
 	setMenuState: React.Dispatch<React.SetStateAction<MenuState>>;
 	prompts?: ExternalPromptInfo[];
 	containerRef?: React.RefObject<HTMLElement>;
-}> = ({ menuState, setMenuState, prompts = [], containerRef }) => {
-	const inputContext = usePromptInputContext();
-	const { searchClient } = useServiceContext();
+
+	// Context menu data and callbacks
+	initialContextItems?: FileItem[];
+	onSearchContext?: (query: string, currentFolder?: string) => Promise<FileItem[]>;
+	onSearchPrompts?: (query: string) => Promise<ExternalPromptInfo[]>;
+
+	// Menu selection callback
+	onMenuSelect?: (value: string, menuType: TriggerType, menuState: MenuState, selectedItem?: any) => void;
+}> = ({ menuState, setMenuState, prompts = [], containerRef, initialContextItems = [], onSearchContext, onSearchPrompts, onMenuSelect }) => {
 	const menuRef = React.useRef<HTMLDivElement>(null);
 	const [hasPositioned, setHasPositioned] = React.useState(false);
-	const [files, setFiles] = React.useState<FileItem[]>([]);
+	const [files, setFiles] = React.useState<FileItem[]>(initialContextItems);
 	const [filesLoading, setFilesLoading] = React.useState(false);
+	const [filteredPrompts, setFilteredPrompts] = React.useState<ExternalPromptInfo[]>(prompts);
+	const [promptsLoading, setPromptsLoading] = React.useState(false);
 
 	// Adjust menu position after it renders with real dimensions
 	React.useEffect(() => {
@@ -511,66 +526,39 @@ const MenuHandler: React.FC<{
 	React.useEffect(() => {
 		if (!menuState.isOpen) {
 			setHasPositioned(false);
+			// Reset files and prompts to initial state when menu closes
+			setFiles(initialContextItems);
+			setFilesLoading(false);
+			setFilteredPrompts(prompts);
+			setPromptsLoading(false);
 		}
-	}, [menuState.isOpen]);
+	}, [menuState.isOpen, initialContextItems, prompts]);
+
+	// Initialize files and prompts when menu first opens
+	React.useEffect(() => {
+		if (menuState.isOpen && menuState.type === TriggerType.CONTEXT && initialContextItems.length > 0 && files.length === 0) {
+			setFiles(initialContextItems);
+		}
+		if (menuState.isOpen && menuState.type === TriggerType.PROMPT && prompts.length > 0 && filteredPrompts.length === 0) {
+			// Ensure prompts have closeIfSelect field set
+			const promptsWithCloseFlag = prompts.map(prompt => ({
+				...prompt,
+				closeIfSelect: prompt.closeIfSelect ?? true, // Default to true if not specified
+			}));
+			setFilteredPrompts(promptsWithCloseFlag);
+		}
+	}, [menuState.isOpen, menuState.type, initialContextItems, prompts, files.length, filteredPrompts.length]);
 
 	// Search for files when context menu is triggered or query changes
 	React.useEffect(() => {
-		if (menuState.type === TriggerType.CONTEXT && searchClient) {
-			const searchFiles = async () => {
+		if (menuState.type === TriggerType.CONTEXT && onSearchContext) {
+			const searchContext = async () => {
 				setFilesLoading(true);
 				try {
-					if (menuState.query.trim()) {
-						// Search for files matching the query
-						const results = await searchClient.search({
-							text: menuState.query,
-							scopeMode: menuState.currentFolder ? 'inFolder' : 'vault',
-							scopeValue: menuState.currentFolder ? { folderPath: menuState.currentFolder } : undefined,
-							topK: 8,
-							searchMode: 'fulltext'
-						});
-						const fileItems: FileItem[] = (results.items || []).map(item => ({
-							id: item.path || item.id,
-							type: item.type,
-							title: item.title || item.path || item.id,
-							path: item.path || item.id,
-							lastModified: item.lastModified,
-						}));
-						setFiles(fileItems);
-					} else {
-						// Show recent files or folder contents when no query
-						if (menuState.currentFolder) {
-							// Show contents of current folder
-							const results = await searchClient.search({
-								text: '',
-								scopeMode: 'inFolder',
-								scopeValue: { folderPath: menuState.currentFolder },
-								topK: 8,
-								searchMode: 'fulltext'
-							});
-							const fileItems: FileItem[] = (results.items || []).map(item => ({
-								id: item.path || item.id,
-								type: item.type,
-								title: item.title || item.path || item.id,
-								path: item.path || item.id,
-								lastModified: item.lastModified,
-							}));
-							setFiles(fileItems);
-						} else {
-							// Show recent files at root level
-							const recentFiles = await searchClient.getRecent(8);
-							const fileItems: FileItem[] = recentFiles.map(item => ({
-								id: item.path || item.id,
-								type: item.type,
-								title: item.title || item.path || item.id,
-								path: item.path || item.id,
-								lastModified: item.lastModified,
-							}));
-							setFiles(fileItems);
-						}
-					}
+					const fileItems = await onSearchContext(menuState.query, menuState.currentFolder);
+					setFiles(fileItems);
 				} catch (error) {
-					console.error('Error searching files:', error);
+					console.error('Error searching context:', error);
 					setFiles([]);
 				} finally {
 					setFilesLoading(false);
@@ -578,10 +566,32 @@ const MenuHandler: React.FC<{
 			};
 
 			// Debounce search
-			const timeoutId = setTimeout(searchFiles, 150);
+			const timeoutId = setTimeout(searchContext, 150);
 			return () => clearTimeout(timeoutId);
 		}
-	}, [menuState.type, menuState.query, menuState.currentFolder, searchClient]);
+	}, [menuState.type, menuState.query, menuState.currentFolder, onSearchContext]);
+
+	// Search for prompts when prompt menu is triggered or query changes
+	React.useEffect(() => {
+		if (menuState.type === TriggerType.PROMPT && onSearchPrompts) {
+			const searchPrompts = async () => {
+				setPromptsLoading(true);
+				try {
+					const promptItems = await onSearchPrompts(menuState.query);
+					setFilteredPrompts(promptItems);
+				} catch (error) {
+					console.error('Error searching prompts:', error);
+					setFilteredPrompts([]);
+				} finally {
+					setPromptsLoading(false);
+				}
+			};
+
+			// Debounce search
+			const timeoutId = setTimeout(searchPrompts, 150);
+			return () => clearTimeout(timeoutId);
+		}
+	}, [menuState.type, menuState.query, onSearchPrompts]);
 
 	// Re-position when menu content might have changed (query, type, or folder changes)
 	React.useEffect(() => {
@@ -594,36 +604,31 @@ const MenuHandler: React.FC<{
 
 	// Handle menu selection
 	const handleMenuSelect = useCallback((value: string) => {
-		if (!menuState.isOpen) return;
+		if (!menuState.isOpen || !onMenuSelect) return;
 
-		const { triggerStart, triggerChar, fullText } = menuState;
+		// Check if the selected item should close the menu and get item info
+		let shouldClose = true;
+		let selectedItem: any = null;
 
-		// Replace the trigger text with the selected value, wrapped with trigger char for styling
-		const endPos = triggerStart + triggerChar.length;
-		const wrappedValue = ' ' + triggerChar + value + triggerChar + ' ';
-		const newValue = fullText.substring(0, triggerStart) + wrappedValue + fullText.substring(endPos);
+		if (menuState.type === TriggerType.CONTEXT) {
+			// Find the selected file item
+			selectedItem = files.find(file => file.id === value);
+			shouldClose = selectedItem?.closeIfSelect ?? true; // Default to true if not specified
+		} else if (menuState.type === TriggerType.PROMPT) {
+			// Find the selected prompt item
+			selectedItem = filteredPrompts.find(prompt => prompt.promptId === value);
+			shouldClose = selectedItem?.closeIfSelect ?? true; // Default to true if not specified
+		}
 
-		// Update input context first (this will sync to all components)
-		inputContext.textInput.setInput(newValue);
+		// Call external callback with the selected value, menu information, and item details
+		onMenuSelect(value, menuState.type!, menuState, selectedItem);
 
-		// Close menu
-		setMenuState((prev: MenuState) => ({ ...prev, isOpen: false }));
+		// Close the menu if the selected item specifies to do so
+		if (shouldClose) {
+			setMenuState((prev: MenuState) => ({ ...prev, isOpen: false }));
+		}
+	}, [menuState, onMenuSelect, files, filteredPrompts, setMenuState]);
 
-		// Focus after a short delay to ensure input is updated
-		setTimeout(() => {
-			inputContext.focusInput();
-		}, 0);
-	}, [menuState, inputContext, setMenuState]);
-
-	const handleNavigateFolder = useCallback((folderPath: string) => {
-		// Update menu state to navigate into the folder
-		setMenuState((prev: MenuState) => ({
-			...prev,
-			currentFolder: folderPath,
-			query: '', // Clear query when navigating
-			isOpen: true // Keep menu open during navigation
-		}));
-	}, []);
 
 	// Handle menu close
 	const handleMenuClose = useCallback(() => {
@@ -648,7 +653,7 @@ const MenuHandler: React.FC<{
 				>
 					{menuState.type === TriggerType.PROMPT && (
 						<PromptMenu
-							prompts={prompts}
+							prompts={filteredPrompts}
 							query={menuState.query}
 							onSelect={handleMenuSelect}
 							onClose={handleMenuClose}
@@ -663,7 +668,6 @@ const MenuHandler: React.FC<{
 							onSelect={handleMenuSelect}
 							onClose={handleMenuClose}
 							currentFolder={menuState.currentFolder}
-							onNavigateFolder={handleNavigateFolder}
 							containerRef={containerRef}
 							key={`context-${menuState.currentFolder || 'root'}-${menuState.query}`} // Force re-render when folder or query changes
 						/>
@@ -677,15 +681,27 @@ const MenuHandler: React.FC<{
 /**
  * PromptInputMenu component that provides menu functionality for prompt input
  */
-export const PromptInputMenu: React.FC<PromptInputMenuProps> = ({ textareaRef, prompts = [], containerRef }) => {
+export const PromptInputMenu: React.FC<PromptInputMenuProps> = ({
+	textareaRef,
+	prompts = [],
+	containerRef,
+	initialContextItems = [],
+	onSearchContext,
+	onSearchPrompts,
+	onMenuSelect
+}) => {
 	const { menuState, setMenuState } = usePromptInputMenu(textareaRef, containerRef);
 
 	return (
 		<MenuHandler
 			menuState={menuState}
 			setMenuState={setMenuState}
-			prompts={prompts}
 			containerRef={containerRef}
+			initialContextItems={initialContextItems}
+			onSearchContext={onSearchContext}
+			prompts={prompts}
+			onSearchPrompts={onSearchPrompts}
+			onMenuSelect={onMenuSelect}
 		/>
 	);
 };

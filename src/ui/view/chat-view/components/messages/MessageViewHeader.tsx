@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { ExternalLink, Folder, RefreshCw } from 'lucide-react';
+import { Folder, RefreshCw } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { cn } from '@/ui/react/lib/utils';
 import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
@@ -10,7 +10,6 @@ import { TYPEWRITER_EFFECT_SPEED_MS } from '@/core/constant';
 import { ResourcesPopover } from './ResourcesPopover';
 import { SummaryPopover } from './SummaryPopover';
 import { OpenMenuButton } from './OpenMenuButton';
-import { Shimmer } from '@/ui/component/ai-elements/shimmer';
 
 interface MessageHeaderProps {
 }

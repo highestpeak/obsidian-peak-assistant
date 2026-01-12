@@ -157,3 +157,14 @@ export function getRelativePath(rootFolder: string, absolutePath: string): strin
 	return normalized;
 }
 
+/**
+ * Open an attachment link in Obsidian workspace
+ * Cleans up wiki link syntax and normalizes the path before opening
+ */
+export function openAttachment(app: App, path: string): void {
+	if (!path) return;
+	const cleaned = path.replace(/^\[\[|\]\]$/g, '');
+	const normalized = cleaned.startsWith('/') ? cleaned.slice(1) : cleaned;
+	void app.workspace.openLinkText(normalized, '', true);
+}
+

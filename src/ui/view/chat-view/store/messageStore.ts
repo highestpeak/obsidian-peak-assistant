@@ -9,6 +9,9 @@ export interface ToolCallInfo {
 }
 
 export interface MessageStore {
+	// Message list state
+	messages: ChatMessage[];
+
 	// Streaming state
 	streamingMessageId: string | null;
 	streamingContent: string;
@@ -22,6 +25,12 @@ export interface MessageStore {
 	currentToolCalls: ToolCallInfo[];
 	isToolSequenceActive: boolean;
 	currentToolName: string | null; // Track current tool for input-delta events
+
+	// Message list actions
+	setMessages: (messages: ChatMessage[]) => void;
+	addMessage: (message: ChatMessage) => void;
+	updateMessage: (id: string, updates: Partial<ChatMessage>) => void;
+	clearMessages: () => void;
 
 	// Actions
 	startStreaming: (messageId: string, role: ChatMessage['role']) => void;
@@ -45,6 +54,7 @@ export interface MessageStore {
 
 export const useMessageStore = create<MessageStore>((set, get) => ({
 	// Initial state
+	messages: [],
 	streamingMessageId: null,
 	streamingContent: '',
 	streamingRole: null,
@@ -53,6 +63,26 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
 	currentToolCalls: [],
 	isToolSequenceActive: false,
 	currentToolName: null,
+
+	// Message list actions
+	setMessages: (messages: ChatMessage[]) => {
+		set({ messages });
+	},
+	addMessage: (message: ChatMessage) => {
+		set((state) => ({
+			messages: [...state.messages, message]
+		}));
+	},
+	updateMessage: (id: string, updates: Partial<ChatMessage>) => {
+		set((state) => ({
+			messages: state.messages.map(msg =>
+				msg.id === id ? { ...msg, ...updates } : msg
+			)
+		}));
+	},
+	clearMessages: () => {
+		set({ messages: [] });
+	},
 
 	// Actions
 	startStreaming: (messageId: string, role: ChatMessage['role']) =>
@@ -68,11 +98,11 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
 		})),
 
 	completeStreaming: (message: ChatMessage) =>
-		set({
+		set((state) => ({
 			streamingMessageId: null,
 			streamingContent: '',
 			streamingRole: null,
-		}),
+		})),
 
 	clearStreaming: () =>
 		set({

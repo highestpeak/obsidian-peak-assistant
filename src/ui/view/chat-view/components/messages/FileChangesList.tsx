@@ -1,24 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { FileChange } from '@/service/chat/types';
 import { Button } from '@/ui/component/shared-ui/button';
-import { X, Check, FileText, Image, File, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
+import { getFileIconComponent } from '@/ui/view/shared/file-utils';
+import { useChatSessionStore } from '../../store/chatSessionStore';
 
-/**
- * Get appropriate icon for file type
- */
-const getFileIcon = (extension?: string) => {
-	if (!extension) return File;
-
-	const lowerExt = extension.toLowerCase();
-	if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(lowerExt)) {
-		return Image;
-	}
-	if (['md', 'txt', 'json', 'js', 'ts', 'py', 'java', 'cpp', 'c', 'css', 'html', 'xml', 'yaml', 'yml'].includes(lowerExt)) {
-		return FileText;
-	}
-	return File;
-};
 
 /**
  * Component for displaying a single file change item
@@ -31,7 +18,7 @@ const FileChangeItem: React.FC<{
 	const [isHovered, setIsHovered] = useState(false);
 	const fileName = change.filePath.split('/').pop() || change.filePath;
 	const extension = fileName.split('.').pop();
-	const IconComponent = getFileIcon(extension);
+	const IconComponent = getFileIconComponent(extension);
 
 	return (
 		<div
@@ -92,16 +79,18 @@ const FileChangeItem: React.FC<{
 /**
  * Component for displaying list of file changes with bulk actions
  */
-export const FileChangesList: React.FC<{
-	changes: FileChange[];
-	onAcceptAll: () => void;
-	onDiscardAll: () => void;
-	onAcceptChange: (id: string) => void;
-	onDiscardChange: (id: string) => void;
-}> = ({ changes, onAcceptAll, onDiscardAll, onAcceptChange, onDiscardChange }) => {
+export const FileChangesList: React.FC = () => {
+	const {
+		fileChanges,
+		acceptAllFileChanges,
+		discardAllFileChanges,
+		acceptFileChange,
+		discardFileChange
+	} = useChatSessionStore();
+
 	const [isExpanded, setIsExpanded] = useState(true);
 
-	if (changes.length === 0) {
+	if (fileChanges.length === 0) {
 		return null;
 	}
 
@@ -131,7 +120,7 @@ export const FileChangesList: React.FC<{
 						)}
 					</Button>
 					<span className="pktw-text-black">
-						{changes.length} File{changes.length !== 1 ? 's' : ''}
+						{fileChanges.length} File{fileChanges.length !== 1 ? 's' : ''}
 					</span>
 				</div>
 				<div className="pktw-flex pktw-items-center pktw-gap-2">
@@ -139,7 +128,7 @@ export const FileChangesList: React.FC<{
 						variant="ghost"
 						size="sm"
 						className="pktw-text-black hover:pktw-text-white"
-						onClick={onDiscardAll}
+						onClick={discardAllFileChanges}
 					>
 						Undo all
 					</Button>
@@ -147,7 +136,7 @@ export const FileChangesList: React.FC<{
 						variant="ghost"
 						size="sm"
 						className="pktw-text-black hover:pktw-text-white"
-						onClick={onAcceptAll}
+						onClick={acceptAllFileChanges}
 					>
 						Keep all
 					</Button>
@@ -162,12 +151,12 @@ export const FileChangesList: React.FC<{
 				)}
 			>
 				<div className="pktw-max-h-60 pktw-overflow-y-auto pktw-bg-blue-500/15 pktw-rounded-b-lg">
-					{changes.map((change) => (
+					{fileChanges.map((change) => (
 						<FileChangeItem
 							key={change.id}
 							change={change}
-							onAccept={onAcceptChange}
-							onDiscard={onDiscardChange}
+							onAccept={acceptFileChange}
+							onDiscard={discardFileChange}
 						/>
 					))}
 				</div>

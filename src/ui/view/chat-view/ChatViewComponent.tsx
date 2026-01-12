@@ -1,16 +1,15 @@
 import React, { useEffect } from 'react';
-import { ChatConversation, ChatProject } from '@/service/chat/types';
 import { ViewMode } from './store/chatViewStore';
-import { AllConversationsViewComponent } from './view-AllConversations';
 import { AllProjectsViewComponent } from './view-AllProjects';
 import { ProjectOverviewViewComponent } from './view-ProjectOverview';
 import { ProjectConversationsListViewComponent } from './view-ProjectConversationsList';
 import { MessagesViewComponent } from './view-Messages';
 import { HomeViewComponent } from './view-Home';
-import { useChatViewStore } from './store/chatViewStore';
-import { ScrollToMessageEvent, ShowToastEvent, ViewEventType } from '@/core/eventBus';
+import { SelectionChangedEvent, ShowToastEvent, ViewEventType } from '@/core/eventBus';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { Toaster, toast as sonnerToast } from 'sonner';
+import { ConversationList } from './components/conversation-list';
+import { useChatViewStore } from './store/chatViewStore';
 
 interface ChatViewComponentProps {
 	viewMode: ViewMode | null;
@@ -23,7 +22,6 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 	viewMode,
 }) => {
 	const { eventBus, manager } = useServiceContext();
-	const store = useChatViewStore();
 
 	// Listen for toast events from other React instances
 	useEffect(() => {
@@ -61,8 +59,30 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 		};
 	}, [eventBus]);
 
+	useEffect(() => {
+		const unsubscribe = eventBus.on<SelectionChangedEvent>(
+			ViewEventType.SELECTION_CHANGED,
+			async (event) => {
+				if (!event.conversationId) {
+					return;
+				}
+				console.log('[ChatView] Selection changed to conversation:', event.conversationId);
+				// Just load the conversation by id using aiServiceManager
+				const conversation = await manager.readConversation(event.conversationId);
+				if (conversation) {
+					useChatViewStore.getState().setConversation(conversation);
+				}
+			}
+		);
+
+		return () => {
+			unsubscribe();
+		};
+	}, [eventBus]);
+
 	// Render body content based on viewMode
 	if (!viewMode) {
+		console.error('No view mode selected');
 		return null;
 	}
 
@@ -72,73 +92,31 @@ export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
 				return (
 					<HomeViewComponent />
 				);
-
 			case ViewMode.ALL_PROJECTS:
 				return (
-					<AllProjectsViewComponent
-						onProjectClick={(project: ChatProject) => {
-							store.setProjectOverview(project);
-						}}
-					/>
+					<AllProjectsViewComponent />
 				);
-
 			case ViewMode.ALL_CONVERSATIONS:
 				return (
-					<AllConversationsViewComponent
-						onConversationClick={async (conversation: ChatConversation) => {
-							const fullConversation = await manager.readConversation(conversation.meta.id, true);
-							if (fullConversation) {
-								store.setConversation(fullConversation);
-							}
-						}}
+					<ConversationList
+						containerClass="pktw-w-4/6 pktw-mx-auto"
+						maxPreviewLength={100}
+						emptyText="No conversations yet."
 					/>
 				);
-
 			case ViewMode.PROJECT_OVERVIEW:
-				if (!store.projectForOverview) return null;
-				const projectId = store.projectForOverview.meta.id;
 				return (
-					<ProjectOverviewViewComponent
-						projectId={projectId}
-						onConversationClick={async (conversation: ChatConversation, project: ChatProject) => {
-							const fullConversation = await manager.readConversation(conversation.meta.id, true);
-							if (fullConversation) {
-								store.setConversation(fullConversation);
-							}
-						}}
-						onMessageClick={async (conversation: ChatConversation, project: ChatProject, messageId: string) => {
-							const fullConversation = await manager.readConversation(conversation.meta.id, true);
-							if (fullConversation) {
-								store.setConversation(fullConversation);
-								requestAnimationFrame(() => {
-									eventBus.dispatch(new ScrollToMessageEvent({ messageId }));
-								});
-							}
-						}}
-					/>
+					<ProjectOverviewViewComponent />
 				);
-
 			case ViewMode.PROJECT_CONVERSATIONS_LIST:
-				if (!store.projectForOverview) return null;
-				const projectIdForList = store.projectForOverview.meta.id;
 				return (
-					<ProjectConversationsListViewComponent
-						projectId={projectIdForList}
-						onConversationClick={async (conversation: ChatConversation) => {
-							const fullConversation = await manager.readConversation(conversation.meta.id, true);
-							if (fullConversation) {
-								store.setConversation(fullConversation);
-							}
-						}}
-					/>
+					<ProjectConversationsListViewComponent />
 				);
-
 			case ViewMode.CONVERSATION_IN_PROJECT:
 			case ViewMode.STANDALONE_CONVERSATION:
 				return (
 					<MessagesViewComponent />
 				);
-
 			default:
 				return null;
 		}

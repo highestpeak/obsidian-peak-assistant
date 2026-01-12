@@ -3,9 +3,9 @@ import { ChatProject } from '@/service/chat/types';
 import { cn } from '@/ui/react/lib/utils';
 import { Folder } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 
 interface AllProjectsViewProps {
-	onProjectClick: (project: ChatProject) => void;
 }
 
 const PROJECTS_PAGE_SIZE = 20;
@@ -14,12 +14,15 @@ const PROJECTS_PAGE_SIZE = 20;
  * View component for displaying all projects in a card grid
  */
 export const AllProjectsViewComponent: React.FC<AllProjectsViewProps> = ({
-	onProjectClick,
 }) => {
 	const { manager } = useServiceContext();
 	const [projects, setProjects] = useState<ChatProject[]>([]);
 	const [projectsPage, setProjectsPage] = useState(0);
 	const [loading, setLoading] = useState(true);
+
+	const onProjectClick = useCallback((project: ChatProject) => {
+		useChatViewStore.getState().setProjectOverview(project);
+	}, []);
 
 	// Load projects
 	useEffect(() => {

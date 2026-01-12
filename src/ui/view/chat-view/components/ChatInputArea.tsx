@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { useMessageStore } from '@/ui/view/chat-view/store/messageStore';
+import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import {
 	PromptInput,
 	PromptInputBody,
@@ -14,17 +15,21 @@ import {
 	type PromptInputMessage,
 	type TokenUsageInfo,
 } from '@/ui/component/prompt-input';
-import { LLMModelSelector } from '../../../component/prompt-input/LLMModelSelector';
-import { LLMOutputControlSettingsPopover } from '../../../component/prompt-input/LLMOutputControlSettings';
 import { ToolButton } from '@/ui/component/prompt-input';
 import { ModeSelector } from '../../../component/prompt-input/ModeSelector';
 import { cn } from '@/ui/react/lib/utils';
 import { useChatSubmit } from '../hooks/useChatSubmit';
+import { useChatSessionStore } from '../store/chatSessionStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ExternalPromptInfo } from '@/ui/component/prompt-input/menu/PromptMenu';
+import type { FileItem } from '@/ui/component/prompt-input/menu/ContextMenu';
+import type { TriggerType } from '@/ui/component/prompt-input/PromptInputMenu';
+import { getLLMOutputControlSettingKeys } from '@/core/providers/types';
+import { ModelSelector } from '@/ui/component/mine/ModelSelector';
+import { HoverButton, OutputControlSettingsList } from '@/ui/component/mine';
+import { Settings2 } from 'lucide-react';
 
 interface ChatInputAreaComponentProps {
-	prompts?: ExternalPromptInfo[];
 }
 
 /**
@@ -48,22 +53,324 @@ const InputClearHandler: React.FC<{ isSending: boolean }> = ({ isSending }) => {
 
 
 export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
-	prompts,
 }) => {
-	const { manager } = useServiceContext();
+	const {
+		promptsSuggest,
+		isSearchActive,
+		searchProvider,
+		enableWebSearch,
+		enableTwitterSearch,
+		enableRedditSearch,
+		attachmentHandlingMode,
+		llmOutputControlSettings,
+		isCodeInterpreterEnabled,
+		chatMode,
+		selectedModel,
+		models,
+		isModelsLoading,
+		setSearchActive,
+		setSearchProvider,
+		setEnableWebSearch,
+		setEnableTwitterSearch,
+		setEnableRedditSearch,
+		setAttachmentHandlingMode,
+		setLlmOutputControlSettings,
+		setIsCodeInterpreterEnabled,
+		setChatMode,
+		setSelectedModel,
+		setModels,
+		setIsModelsLoading
+	} = useChatSessionStore();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 	const activeProject = useProjectStore((state) => state.activeProject);
 	const [isSending, setIsSending] = useState(false);
-	const [isSearchActive, setIsSearchActive] = useState(false);
-	const [searchProvider, setSearchProvider] = useState<'local' | 'perplexity' | 'model-builtin'>('local');
-	const [enableWebSearch, setEnableWebSearch] = useState(false);
-	const [enableTwitterSearch, setEnableTwitterSearch] = useState(true);
-	const [enableRedditSearch, setEnableRedditSearch] = useState(true);
+	const [menuContextItems, setMenuContextItems] = useState<FileItem[]>([]);
+	const { searchClient, manager, eventBus } = useServiceContext();
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const inputFocusRef = useRef<{ focus: () => void } | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	const { submitMessage, cancelStream } = useChatSubmit();
+
+	// Initialize attachment handling mode from active conversation
+	useEffect(() => {
+		if (activeConversation) {
+			const effectiveMode = activeConversation.meta.attachmentHandlingOverride ?? manager.getSettings().attachmentHandlingDefault ?? 'degrade_to_text';
+			setAttachmentHandlingMode(effectiveMode);
+		}
+	}, [activeConversation, manager, setAttachmentHandlingMode]);
+
+	// Callback for attachment handling mode changes
+	const handleAttachmentHandlingModeChange = useCallback(async (mode: 'direct' | 'degrade_to_text') => {
+		// Update store state
+		setAttachmentHandlingMode(mode);
+
+		// Update conversation in backend if we have an active conversation
+		if (activeConversation) {
+			await manager.updateConversationAttachmentHandling({
+				conversationId: activeConversation.meta.id,
+				attachmentHandlingOverride: mode,
+			});
+		}
+	}, [activeConversation, manager, setAttachmentHandlingMode]);
+
+	// Compute current LLM output control settings (global default + conversation override + session settings)
+	const currentLlmOutputControlSettings = useMemo(() => {
+		// Start with global default settings
+		const globalDefault = manager.getSettings().defaultOutputControl || {};
+
+		// Merge with conversation override (override takes priority)
+		const override = activeConversation?.meta.outputControlOverride || {};
+
+		// Merge with session settings (highest priority)
+		return { ...globalDefault, ...override, ...llmOutputControlSettings };
+	}, [manager, activeConversation, llmOutputControlSettings]);
+
+	// Handle LLM output control settings changes
+	const handleLlmOutputControlSettingsChange = useCallback(async (settings: Record<string, any>) => {
+		// Update store state
+		setLlmOutputControlSettings(settings);
+
+		// Update conversation in backend if we have an active conversation
+		if (activeConversation) {
+			// Get global default settings
+			const globalDefault = manager.getSettings().defaultOutputControl || {};
+
+			// Calculate override: only include values that differ from global default
+			const override: Record<string, any> = {};
+			const allKeys = getLLMOutputControlSettingKeys();
+
+			for (const key of allKeys) {
+				const settingValue = settings[key];
+				const defaultValue = globalDefault[key];
+				// Include in override if value is set and different from default
+				if (settingValue !== undefined && settingValue !== defaultValue) {
+					override[key] = settingValue;
+				}
+			}
+
+			const convId = activeConversation.meta.id;
+
+			// Update conversation meta with override (empty object means no override)
+			await manager.updateConversationOutputControl({
+				conversationId: String(convId),
+				outputControlOverride: Object.keys(override).length > 0 ? override : undefined,
+			});
+
+			// Reload conversation to get updated meta
+			const updatedConv = await manager.readConversation(convId, false);
+			if (updatedConv) {
+				useProjectStore.getState().setActiveConversation(updatedConv);
+				useProjectStore.getState().updateConversation(updatedConv);
+				useChatViewStore.getState().setConversation(updatedConv);
+			}
+		}
+	}, [activeConversation, manager, setLlmOutputControlSettings]);
+
+	// Load models function
+	const loadModels = useCallback(async () => {
+		if (!manager) return;
+		setIsModelsLoading(true);
+		try {
+			const allModels = await manager.getAllAvailableModels();
+			setModels(allModels);
+		} catch (error) {
+			console.error('[ChatInputArea] Error loading models:', error);
+			setModels([]);
+		} finally {
+			setIsModelsLoading(false);
+		}
+	}, [manager, setModels, setIsModelsLoading]);
+
+	// Initialize models loading
+	useEffect(() => {
+		loadModels();
+	}, [loadModels]);
+
+	// Listen for settings updates to reload models
+	useEffect(() => {
+		if (!eventBus) return;
+		const unsubscribe = eventBus.on('settings-updated', () => {
+			loadModels();
+		});
+		return unsubscribe;
+	}, [eventBus, loadModels]);
+
+	// Compute current model for selector
+	const currentModel = useMemo(() => {
+		// Priority: conversation model > selected model > default model
+		if (activeConversation?.meta.activeModel) {
+			return {
+				provider: activeConversation.meta.activeProvider || manager?.getSettings().defaultModel.provider || '',
+				modelId: activeConversation.meta.activeModel,
+			};
+		}
+		if (selectedModel) {
+			return selectedModel;
+		}
+		const defaultModel = manager?.getSettings().defaultModel;
+		return defaultModel ? {
+			provider: defaultModel.provider,
+			modelId: defaultModel.modelId,
+		} : undefined;
+	}, [activeConversation, selectedModel, manager]);
+
+	// Handle model change
+	const handleModelChange = useCallback(async (provider: string, modelId: string) => {
+		if (activeConversation) {
+			// Update conversation model
+			await manager.updateConversationModel({
+				conversationId: activeConversation.meta.id,
+				modelId,
+				provider,
+			});
+
+			// Reload conversation
+			const updatedConv = await manager.readConversation(activeConversation.meta.id, false);
+			if (updatedConv) {
+				useProjectStore.getState().setActiveConversation(updatedConv);
+				useProjectStore.getState().updateConversation(updatedConv);
+				useChatViewStore.getState().setConversation(updatedConv);
+			}
+		} else {
+			// Store as initial selection
+			setSelectedModel({ provider, modelId });
+		}
+	}, [activeConversation, manager, setSelectedModel]);
+
+	// Callback for searching context items in context menu
+	const handleSearchContext = useCallback(async (query: string, currentFolder?: string): Promise<FileItem[]> => {
+		if (!searchClient) return [];
+
+		try {
+			if (query.trim()) {
+				// Search for files matching the query
+				const results = await searchClient.search({
+					text: query,
+					scopeMode: currentFolder ? 'inFolder' : 'vault',
+					scopeValue: currentFolder ? { folderPath: currentFolder } : undefined,
+					topK: 8,
+					searchMode: 'fulltext'
+				});
+				return (results.items || []).map(item => ({
+					id: item.path || item.id,
+					type: item.type,
+					title: item.title || item.path || item.id,
+					path: item.path || item.id,
+					lastModified: item.lastModified,
+					closeIfSelect: item.type !== 'folder', // Close menu for files, keep open for folders (navigation)
+				}));
+			} else {
+				// Show recent files or folder contents when no query
+				if (currentFolder) {
+					// Show contents of current folder
+					const results = await searchClient.search({
+						text: '',
+						scopeMode: 'inFolder',
+						scopeValue: { folderPath: currentFolder },
+						topK: 8,
+						searchMode: 'fulltext'
+					});
+					return (results.items || []).map(item => ({
+						id: item.path || item.id,
+						type: item.type,
+						title: item.title || item.path || item.id,
+						path: item.path || item.id,
+						lastModified: item.lastModified,
+						closeIfSelect: item.type !== 'folder', // Close menu for files, keep open for folders (navigation)
+					}));
+				} else {
+					// Show recent files at root level
+					const recentFiles = await searchClient.getRecent(8);
+					return recentFiles.map(item => ({
+						id: item.path || item.id,
+						type: item.type,
+						title: item.title || item.path || item.id,
+						path: item.path || item.id,
+						lastModified: item.lastModified,
+						closeIfSelect: item.type !== 'folder', // Close menu for files, keep open for folders (navigation)
+					}));
+				}
+			}
+		} catch (error) {
+			console.error('Error searching files:', error);
+			return [];
+		}
+	}, [searchClient]);
+
+	// Initialize menu context items
+	useEffect(() => {
+		const initializeMenuItems = async () => {
+			try {
+				const initialItems = await handleSearchContext('', undefined);
+				setMenuContextItems(initialItems);
+			} catch (error) {
+				console.error('Error initializing menu items:', error);
+				setMenuContextItems([]);
+			}
+		};
+
+		initializeMenuItems();
+	}, [handleSearchContext]);
+
+	// Callback for searching prompts in prompt menu
+	const handleSearchPrompts = useCallback(async (query: string): Promise<ExternalPromptInfo[]> => {
+		// Filter prompts based on query
+		if (!query.trim()) {
+			return promptsSuggest;
+		}
+
+		const lowerQuery = query.toLowerCase();
+		return promptsSuggest.filter(prompt =>
+			prompt.promptNameForDisplay.toLowerCase().includes(lowerQuery) ||
+			prompt.promptDesc.toLowerCase().includes(lowerQuery) ||
+			prompt.promptCategory.toLowerCase().includes(lowerQuery)
+		).map(prompt => ({
+			...prompt,
+			closeIfSelect: true, // Always close menu when selecting a prompt
+		}));
+	}, [promptsSuggest]);
+
+	// Handle menu selection from PromptInputMenu
+	const handleMenuSelect = useCallback(async (value: string, menuType: TriggerType, menuState: any, selectedItem?: any) => {
+		const { triggerStart, triggerChar, fullText } = menuState;
+		console.log('Menu select:', value, menuType, menuState, selectedItem);
+
+		// Handle folder navigation - if selecting a folder, navigate into it instead of closing menu
+		if (menuType === 'context' && selectedItem?.type === 'folder') {
+			try {
+				console.log('Navigating to folder:', selectedItem.path);
+				// Get the contents of the selected folder
+				const folderContents = await handleSearchContext('', selectedItem.path);
+				setMenuContextItems(folderContents);
+			} catch (error) {
+				console.error('Error loading folder contents:', error);
+				setMenuContextItems([]);
+			}
+			return; // Don't close menu or update input for folder navigation
+		}
+
+		// Replace the trigger text with the selected value, wrapped with trigger char for styling
+		const endPos = triggerStart + triggerChar.length;
+		const wrappedValue = ' ' + triggerChar + value + triggerChar + ' ';
+		const newValue = fullText.substring(0, triggerStart) + wrappedValue + fullText.substring(endPos);
+
+		// Update the input - we need to access the input context
+		// Since we don't have direct access to inputContext here, we'll use a different approach
+		// We can emit an event or use a ref to the textarea
+		if (textareaRef.current) {
+			textareaRef.current.value = newValue;
+			textareaRef.current.focus();
+
+			// Trigger input event to update any reactive state
+			textareaRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+
+			// Move cursor to end of inserted text
+			const cursorPos = triggerStart + wrappedValue.length;
+			textareaRef.current.setSelectionRange(cursorPos, cursorPos);
+		}
+
+	}, [textareaRef, handleSearchContext]);
 
 	// Handle submit
 	const handleSubmit = useCallback(async (message: PromptInputMessage) => {
@@ -217,7 +524,15 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				<InputClearHandler isSending={isSending} />
 
 				{/* Menu handler */}
-				<PromptInputMenu textareaRef={textareaRef} prompts={prompts} containerRef={containerRef} />
+				<PromptInputMenu
+					textareaRef={textareaRef}
+					containerRef={containerRef}
+					initialContextItems={menuContextItems}
+					onSearchContext={handleSearchContext}
+					prompts={promptsSuggest}
+					onSearchPrompts={handleSearchPrompts}
+					onMenuSelect={handleMenuSelect}
+				/>
 
 				{/* Attachments display */}
 				<PromptInputAttachments />
@@ -233,27 +548,54 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 				<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-1.5 pktw-px-3 pktw-py-2">
 					{/* Left side: tools */}
 					<div className="pktw-flex pktw-items-center pktw-gap-0.5">
-						<PromptInputFileButton />
+						<PromptInputFileButton
+							attachmentHandlingMode={attachmentHandlingMode}
+							onAttachmentHandlingModeChange={handleAttachmentHandlingModeChange}
+						/>
 						<PromptInputSearchButton
 							active={isSearchActive}
 							searchProvider={searchProvider}
 							enableWebSearch={enableWebSearch}
 							enableTwitterSearch={enableTwitterSearch}
 							enableRedditSearch={enableRedditSearch}
-							onToggleActive={() => setIsSearchActive(!isSearchActive)}
+							onToggleActive={() => setSearchActive(!isSearchActive)}
 							onChangeProvider={setSearchProvider}
 							onToggleWebSearch={setEnableWebSearch}
 							onToggleTwitterSearch={setEnableTwitterSearch}
 							onToggleRedditSearch={setEnableRedditSearch}
 						/>
-						<LLMOutputControlSettingsPopover />
-						<ToolButton />
+						<HoverButton
+							icon={Settings2}
+							menuId="output-control-settings"
+							menuClassName="pktw-w-[560px] pktw-p-1 pktw-bg-white pktw-border pktw-z-50"
+							hoverMenuContent={
+								<OutputControlSettingsList
+									settings={currentLlmOutputControlSettings}
+									onChange={handleLlmOutputControlSettingsChange}
+									variant="compact"
+									useLocalState={true}
+								/>
+							}
+						/>
+						<ToolButton
+							isCodeInterpreterEnabled={isCodeInterpreterEnabled}
+							onCodeInterpreterEnabledChange={setIsCodeInterpreterEnabled}
+						/>
 					</div>
 
 					{/* Right side: mode selector, model selector, token usage and submit */}
 					<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-						<ModeSelector />
-						<LLMModelSelector />
+						<ModeSelector
+							selectedMode={chatMode}
+							onModeChange={setChatMode}
+						/>
+						<ModelSelector
+							models={models}
+							isLoading={isModelsLoading}
+							currentModel={currentModel}
+							onChange={handleModelChange}
+							placeholder="No model selected"
+						/>
 						<TokenUsage usage={tokenUsage} conversation={activeConversation} />
 						<PromptInputSubmit
 							status={status}

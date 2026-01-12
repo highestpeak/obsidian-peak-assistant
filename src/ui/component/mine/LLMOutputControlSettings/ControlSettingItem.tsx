@@ -2,8 +2,6 @@ import React, { useCallback } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/component/shared-ui/tooltip';
 import { HelpCircle } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
-import { NumberInput } from '@/ui/component/shared-ui/number-input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/component/shared-ui/select';
 import { ProgressBarSelector } from './ProgressBarSelector';
 import { ProgressBarSlider } from '../ProgressBarSlider';
 import type { ControlType } from './constants';

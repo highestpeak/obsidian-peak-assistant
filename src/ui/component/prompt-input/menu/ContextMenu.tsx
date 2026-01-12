@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { NavigableMenu, type NavigableMenuItem } from '../../mine/NavigableMenu';
-import { FileText, Image as ImageIcon, Folder, Hash, Archive, FileType, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
-import { MarkdownIcon } from '../../icon/MarkdownIcon';
+import { getFileIcon } from '@/ui/view/shared/file-utils';
 
 /**
  * File item structure for context menu
@@ -13,6 +13,7 @@ export interface FileItem {
 	title: string;
 	path: string;
 	lastModified?: number;
+	closeIfSelect?: boolean;
 }
 
 /**
@@ -26,7 +27,6 @@ export interface ContextMenuProps {
 	onClose: () => void;
 	className?: string;
 	currentFolder?: string; // Current folder path for navigation
-	onNavigateFolder?: (folderPath: string) => void; // Callback when navigating into a folder
 	containerRef?: React.RefObject<HTMLElement>; // Reference to container element for position calculation
 }
 
@@ -41,7 +41,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	onClose,
 	className,
 	currentFolder,
-	onNavigateFolder,
 	containerRef,
 }) => {
 
@@ -56,28 +55,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 			// Return empty array so NavigableMenu can show emptyMessage
 			return [];
 		}
-
-		// Helper function to get icon based on file type
-		const getFileIcon = (type: string, isSelected: boolean) => {
-			const iconClass = cn("pktw-size-4", isSelected ? "pktw-text-white" : "pktw-text-muted-foreground");
-
-			switch (type) {
-				case 'image':
-					return <ImageIcon className={iconClass} />;
-				case 'pdf':
-					return <FileType className={iconClass} />;
-				case 'folder':
-					return <Folder className={iconClass} />;
-				case 'tag':
-					return <Hash className={iconClass} />;
-				case 'category':
-					return <Archive className={iconClass} />;
-				case 'markdown':
-					return <MarkdownIcon size={16} className={iconClass} />;
-				default:
-					return <FileText className={iconClass} />;
-			}
-		};
 
 		// Helper function to get right icon (for folders)
 		const getRightIcon = (type: string, isSelected: boolean) => {
@@ -100,16 +77,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 	const handleSelect = (item: NavigableMenuItem) => {
 		if (item.disabled) return;
 
-		// Find the original file to check its type
-		const originalFile = files.find(f => (f.path || f.id) === item.value);
-
-		// If it's a folder and we have navigation callback, navigate into it
-		if (originalFile?.type === 'folder' && onNavigateFolder) {
-			onNavigateFolder(item.value);
-			return;
-		}
-
-		// Otherwise, format as [[file path]] for wiki links
+		// Format as [[file path]] for wiki links (navigation is handled by parent component)
 		const wikiLink = `[[${item.value}]]`;
 		onSelect(wikiLink);
 	};

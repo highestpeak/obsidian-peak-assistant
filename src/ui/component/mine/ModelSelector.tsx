@@ -76,8 +76,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 		});
 	}, [models, providerMetadataMap]);
 
-
-
 	// Find current model info
 	const currentModelInfo = useMemo(() => {
 		if (!currentModel || models.length === 0) return null;

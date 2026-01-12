@@ -9,6 +9,7 @@ export interface ExternalPromptInfo {
 	promptNameForDisplay: string;
 	promptCategory: string;
 	promptDesc: string;
+	closeIfSelect?: boolean;
 }
 
 // Use hash to select from a predefined set of colors

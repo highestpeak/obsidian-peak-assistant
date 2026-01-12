@@ -93,88 +93,76 @@ export class MockAIServiceManager {
 	/**
 	 * List all conversations
 	 * @param projectId - If provided, only return conversations for this project. If null/undefined, return all conversations.
+	 * Each project or standalone has 100 mock conversations
+	 * @param limit - Optional limit on the number of conversations to return.
+	 * @param offset - Optional offset into the list of conversations.
 	 */
-	async listConversations(projectId?: string | null): Promise<ChatConversation[]> {
-		const allConversations: ChatConversation[] = [
-			{
-				meta: {
-					id: 'conv-1',
-					title: 'First Conversation',
-					createdAtTimestamp: Date.now() - 86400000,
-					updatedAtTimestamp: Date.now() - 86400000,
-					activeModel: 'gpt-4',
-					activeProvider: 'openai',
-					// No projectId - this is a standalone conversation
-				},
-				messages: [],
-				content: '# First Conversation\n\nContent',
-				file: this.createMockFile('.peak-assistant/conversations/conv-1.md'),
-			},
-			{
-				meta: {
-					id: 'conv-2',
-					title: 'Second Conversation',
-					createdAtTimestamp: Date.now() - 172800000,
-					updatedAtTimestamp: Date.now() - 172800000,
-					projectId: 'project-1',
-					activeModel: 'claude-3-opus',
-					activeProvider: 'anthropic',
-				},
-				messages: [],
-				content: '# Second Conversation\n\nContent',
-				file: this.createMockFile('.peak-assistant/conversations/conv-2.md'),
-			},
-			{
-				meta: {
-					id: 'conv-3',
-					title: 'Project Conversation 1',
-					createdAtTimestamp: Date.now() - 259200000,
-					updatedAtTimestamp: Date.now() - 259200000,
-					projectId: 'project-1',
-					activeModel: 'gpt-4',
-					activeProvider: 'openai',
-				},
-				messages: [],
-				content: '# Project Conversation 1\n\nContent',
-				file: this.createMockFile('.peak-assistant/conversations/conv-3.md'),
-			},
-			{
-				meta: {
-					id: 'conv-4',
-					title: 'Project Conversation 2',
-					createdAtTimestamp: Date.now() - 345600000,
-					updatedAtTimestamp: Date.now() - 345600000,
-					projectId: 'project-1',
-					activeModel: 'gpt-4',
-					activeProvider: 'openai',
-				},
-				messages: [],
-				content: '# Project Conversation 2\n\nContent',
-				file: this.createMockFile('.peak-assistant/conversations/conv-4.md'),
-			},
-			{
-				meta: {
-					id: 'conv-5',
-					title: 'Standalone Conversation',
-					createdAtTimestamp: Date.now() - 432000000,
-					updatedAtTimestamp: Date.now() - 432000000,
-					activeModel: 'claude-3-opus',
-					activeProvider: 'anthropic',
-					// No projectId - standalone conversation
-				},
-				messages: [],
-				content: '# Standalone Conversation\n\nContent',
-				file: this.createMockFile('.peak-assistant/conversations/conv-5.md'),
-			},
-		];
+	async listConversations(projectId?: string | null, limit?: number, offset?: number): Promise<ChatConversation[]> {
+		const mockConvs = (base: {
+			baseId: string;
+			title: string;
+			baseDays: number;
+			projectId?: string;
+			activeModel?: string;
+			activeProvider?: string;
+		}) => {
+			return Array.from({ length: 100 }).map((_, idx) => {
+				const uniqId = `${base.baseId}-${idx + 1}`;
+				const daysAgo = base.baseDays + idx;
+				const ts = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
+				return {
+					meta: {
+						id: uniqId,
+						title: `${base.title} #${idx + 1}`,
+						createdAtTimestamp: ts,
+						updatedAtTimestamp: ts,
+						activeModel: base.activeModel || 'gpt-4',
+						activeProvider: base.activeProvider || 'openai',
+						...(base.projectId ? { projectId: base.projectId } : {}),
+					},
+					messages: [],
+					content: `# ${base.title} #${idx + 1}\n\nMock content`,
+					file: this.createMockFile(`.peak-assistant/conversations/${uniqId}.md`),
+				};
+			});
+		};
 
-		// Filter by projectId if provided
-		if (projectId !== undefined && projectId !== null) {
-			return allConversations.filter(conv => conv.meta.projectId === projectId);
+		let allConversations: ChatConversation[] = [];
+		if (projectId) {
+			// For a given projectId, return 100 mock conversations for that project
+			allConversations = mockConvs({
+				baseId: `project-${projectId}-conv`,
+				title: `Project(${projectId}) Conversation`,
+				baseDays: 0,
+				projectId,
+				activeModel: 'gpt-4',
+				activeProvider: 'openai',
+			});
+		} else {
+			// Return 100 mock standalone conversations
+			allConversations = mockConvs({
+				baseId: 'standalone-conv',
+				title: 'Standalone Conversation',
+				baseDays: 0,
+				activeModel: 'claude-3-opus',
+				activeProvider: 'anthropic',
+			});
 		}
 
-		// Return all conversations if no projectId specified
-		return allConversations;
+		// Apply pagination
+		const startIndex = offset || 0;
+		const endIndex = limit ? startIndex + limit : undefined;
+		const paginatedConversations = allConversations.slice(startIndex, endIndex);
+
+		return paginatedConversations;
+	}
+
+	/**
+	 * Count conversations, optionally filtered by project
+	 */
+	async countConversations(projectId?: string | null): Promise<number> {
+		// Mock always returns 100 conversations per project/standalone
+		return 100;
 	}
 
 	/**
@@ -218,6 +206,15 @@ export class MockAIServiceManager {
 					lastUpdatedTimestamp: Date.now() - 259200000,
 				},
 			},
+			// Add 20 mock projects
+			...Array.from({ length: 20 }, (_, i) => ({
+				meta: {
+					id: `project-${i + 4}`,
+					name: `Mock Project ${i + 4}`,
+					createdAtTimestamp: Date.now() - (518400000 + i * 86400000),
+					updatedAtTimestamp: Date.now() - (518400000 + i * 86400000),
+				},
+			})),
 		];
 	}
 
@@ -500,7 +497,7 @@ export class MockAIServiceManager {
 			{
 				id: 'msg-2',
 				role: 'assistant',
-				content: `## 思考过程 (Chain of Thought)
+				content: `## (Chain of Thought)
 
 1. Understanding user query: "Hello, this is a mock user message."
 2. Analyzing query intent and context
@@ -536,7 +533,7 @@ Hello! This is a mock assistant response. I'm here to help you with any question
 			{
 				id: 'msg-4',
 				role: 'assistant',
-				content: `## 思考过程 (Chain of Thought)
+				content: `## (Chain of Thought)
 
 1. Understanding user query: "Can you explain how this plugin works?"
 2. Analyzing query intent and context

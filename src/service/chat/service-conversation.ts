@@ -68,9 +68,17 @@ export class ConversationService {
 
 	/**
 	 * List conversations, optionally filtered by project.
+	 * Supports pagination with limit and offset.
 	 */
-	async listConversations(projectId: string | null): Promise<ChatConversation[]> {
-		return this.storage.listConversations(projectId);
+	async listConversations(projectId: string | null, limit?: number, offset?: number): Promise<ChatConversation[]> {
+		return this.storage.listConversations(projectId, limit, offset);
+	}
+
+	/**
+	 * Count conversations, optionally filtered by project.
+	 */
+	async countConversations(projectId: string | null): Promise<number> {
+		return this.storage.countConversations(projectId);
 	}
 
 	/**

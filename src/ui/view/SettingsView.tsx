@@ -1,24 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type MyPlugin from 'main';
-import { EventBus, ViewEventType, SettingsUpdatedEvent } from '@/core/eventBus';
+import { ViewEventType } from '@/core/eventBus';
 import { GeneralTab } from './settings/GeneralTab';
 import { ModelConfigTab } from './settings/ModelConfigTab';
 import { CosmoPluginsTab } from './settings/CosmoPluginsTab';
 import { SearchSettingsTab } from './settings/SearchSettingsTab';
 import { useSettingsUpdate } from './settings/hooks/useSettingsUpdate';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { MyPluginSettings } from '@/app/settings/types';
-
-interface SettingsRootProps {
-	plugin: MyPlugin;
-	eventBus: EventBus;
-}
 
 type TabId = 'general' | 'ai-models' | 'search' | 'cosmo-plugins';
 
 /**
  * Root component for plugin settings with tab navigation.
  */
-export function SettingsRoot({ plugin, eventBus }: SettingsRootProps) {
+export function SettingsRoot() {
+	const { manager, eventBus, plugin } = useServiceContext();
 	const [activeTab, setActiveTab] = useState<TabId>('general');
 
 	// Keep a React state copy so controlled inputs rerender immediately when settings change
@@ -75,7 +71,7 @@ export function SettingsRoot({ plugin, eventBus }: SettingsRootProps) {
 				{activeTab === 'ai-models' && (
 					<ModelConfigTab
 						settings={settings}
-						aiServiceManager={plugin.aiServiceManager}
+						aiServiceManager={manager}
 						settingsUpdates={settingsUpdates}
 						eventBus={eventBus}
 					/>

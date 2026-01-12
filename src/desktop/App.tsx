@@ -5,6 +5,7 @@ import { MockEventBus } from './mocks/services/MockEventBus';
 import { MockAIServiceManager } from './mocks/services/MockAIServiceManager';
 import { MockViewManager } from './mocks/services/MockViewManager';
 import { MockSearchClient } from './mocks/services/MockSearchClient';
+import { MockPlugin } from './mocks/services/MockPlugin';
 import { DesktopRouter } from './DesktopRouter';
 
 // Override EventBus.getInstance to return mock event bus
@@ -23,6 +24,7 @@ export const DesktopApp: React.FC = () => {
 	const manager = new MockAIServiceManager(eventBus) as any;
 	const viewManager = new MockViewManager() as any;
 	const searchClient = new MockSearchClient() as any;
+	const plugin = new MockPlugin() as any;
 
 	return (
 		<ServiceProvider
@@ -31,6 +33,7 @@ export const DesktopApp: React.FC = () => {
 			searchClient={searchClient}
 			viewManager={viewManager}
 			eventBus={eventBus}
+			plugin={plugin}
 		>
 		<div className="h-screen w-screen flex flex-col" style={{ height: '100vh', width: '100vw', backgroundColor: '#ffffff', color: '#000000', display: 'flex', flexDirection: 'column' }}>
 			<DesktopRouter />

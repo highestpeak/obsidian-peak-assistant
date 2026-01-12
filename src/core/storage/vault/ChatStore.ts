@@ -379,9 +379,9 @@ export class ChatStorageService {
 		return result;
 	}
 
-	async listConversations(projectId: string | null): Promise<ChatConversation[]> {
+	async listConversations(projectId: string | null, limit?: number, offset?: number): Promise<ChatConversation[]> {
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
-		const conversations = await convRepo.listByProject(projectId, false); // Exclude archived
+		const conversations = await convRepo.listByProject(projectId, false, limit, offset); // Exclude archived
 
 		const result: ChatConversation[] = [];
 		for (const convRow of conversations) {
@@ -396,6 +396,14 @@ export class ChatStorageService {
 			}
 		}
 		return result;
+	}
+
+	/**
+	 * Count conversations, optionally filtered by project.
+	 */
+	async countConversations(projectId: string | null): Promise<number> {
+		const convRepo = sqliteStoreManager.getChatConversationRepo();
+		return convRepo.countByProject(projectId, false); // Exclude archived
 	}
 
 	/**

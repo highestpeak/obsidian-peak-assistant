@@ -1,22 +1,20 @@
 import { App, PluginSettingTab } from 'obsidian';
 import type MyPlugin from 'main';
-import React from 'react';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { SettingsRoot } from '@/ui/view/SettingsView';
-import { EventBus } from '@/core/eventBus';
+import { AppContext } from '@/app/context/AppContext';
+import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 
 /**
  * Renders plugin settings UI with multiple tabs.
  */
 export class MySettings extends PluginSettingTab {
-	private readonly pluginRef: MyPlugin;
 	private settingsRenderer: ReactRenderer | null = null;
-	private eventBus: EventBus;
+	private appContext: AppContext;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: MyPlugin, appContext: AppContext) {
 		super(app, plugin);
-		this.pluginRef = plugin;
-		this.eventBus = EventBus.getInstance(app);
+		this.appContext = appContext;
 	}
 
 	/**
@@ -34,13 +32,10 @@ export class MySettings extends PluginSettingTab {
 		// Empty container after unmounting
 		containerEl.empty();
 
-		// Render the complete settings UI using SettingsRoot component
+		// Render the complete settings UI using SettingsRoot component with service context
 		this.settingsRenderer = new ReactRenderer(containerEl);
 		this.settingsRenderer.render(
-			React.createElement(SettingsRoot, {
-				plugin: this.pluginRef,
-				eventBus: this.eventBus,
-			})
+			createReactElementWithServices(SettingsRoot, {}, this.appContext)
 		);
 	}
 

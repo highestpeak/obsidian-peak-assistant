@@ -29,6 +29,7 @@ export class QuickSearchModal extends Modal {
 		modalEl.style.maxWidth = '90vw';
 		modalEl.style.maxHeight = 'calc(100vh - 160px)';
 		modalEl.style.padding = '0';
+		modalEl.style.overflow = 'hidden'; // Prevent modal itself from scrolling
 
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 		this.reactRenderer.render(

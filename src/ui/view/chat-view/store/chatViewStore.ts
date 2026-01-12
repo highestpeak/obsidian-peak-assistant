@@ -28,8 +28,6 @@ interface ChatViewStore {
 	viewMode: ViewMode | null;
 	projectForOverview: ChatProject | null;
 	pendingConversation: PendingConversation | null;
-	showSummaryModal: boolean;
-	showResourcesModal: boolean;
 	// Initial model selection when no conversation exists
 	initialSelectedModel: { provider: string; modelId: string } | null;
 
@@ -42,8 +40,6 @@ interface ChatViewStore {
 	setConversation: (conversation: ChatConversation) => void;
 	setPendingConversation: (pending: PendingConversation | null) => void;
 	setInitialSelectedModel: (model: { provider: string; modelId: string } | null) => void;
-	setShowSummaryModal: (show: boolean) => void;
-	setShowResourcesModal: (show: boolean) => void;
 	reset: () => void;
 }
 
@@ -52,8 +48,6 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 	viewMode: null,
 	projectForOverview: null,
 	pendingConversation: null,
-	showSummaryModal: false,
-	showResourcesModal: false,
 	initialSelectedModel: null,
 
 	// Actions
@@ -140,12 +134,6 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 	setInitialSelectedModel: (model: { provider: string; modelId: string } | null) => {
 		set({ initialSelectedModel: model });
 	},
-	setShowSummaryModal: (show: boolean) => {
-		set({ showSummaryModal: show });
-	},
-	setShowResourcesModal: (show: boolean) => {
-		set({ showResourcesModal: show });
-	},
 	reset: () => {
 		useProjectStore.getState().setActiveProject(null);
 		useProjectStore.getState().setActiveConversation(null);
@@ -153,8 +141,6 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 			viewMode: null,
 			projectForOverview: null,
 			pendingConversation: null,
-			showSummaryModal: false,
-			showResourcesModal: false,
 			initialSelectedModel: null,
 		});
 	},

@@ -16,6 +16,7 @@ export interface IconButtonProps
 /**
  * Icon button component using div wrapper to avoid Obsidian's button global styles
  * Uses Tailwind classes for styling, compatible with both Obsidian and desktop environments
+ * todo children and size should be variables.
  */
 export const IconButton = React.forwardRef<HTMLDivElement, IconButtonProps>(
 	({ className, size = 'md', children, onClick, onKeyDown, ...props }, ref) => {

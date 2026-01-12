@@ -81,6 +81,14 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 			return;
 		}
 
+		// Cmd/Ctrl+A for select all in input
+		if ((e.key === 'a' || e.key === 'A') && (e.metaKey || e.ctrlKey) && inputRef.current) {
+			e.preventDefault();
+			e.stopPropagation();
+			inputRef.current.select();
+			return;
+		}
+
 		if (e.key === 'Enter' && activeTab === 'ai') {
 			e.preventDefault();
 			handleAnalyze();
@@ -164,12 +172,13 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 
 	return (
 		<div
-			className="pktw-w-full pktw-bg-white pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-h-full"
+			className="pktw-w-full pktw-bg-white pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-h-full pktw-overflow-hidden"
 			onKeyDown={handleContainerKeyDown}
 			tabIndex={-1}
+			style={{ maxHeight: 'calc(100vh - 160px)' }}
 		>
 			{/* Tab Header */}
-			<div className="pktw-flex pktw-border-b pktw-border-[#e5e7eb] pktw-bg-[#fafafa]">
+			<div className="pktw-flex-shrink-0 pktw-flex pktw-border-b pktw-border-[#e5e7eb] pktw-bg-[#fafafa]">
 				<TabButton
 					tab="vault"
 					label="Vault Search"
@@ -187,7 +196,7 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 			</div>
 
 			{/* Search Input */}
-			<div className="pktw-p-4 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
+			<div className="pktw-flex-shrink-0 pktw-p-4 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
 				<div className="pktw-flex pktw-gap-2 pktw-items-center">
 					<div className="pktw-relative pktw-flex-1">
 						<Search className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-w-4 pktw-h-4 pktw-text-[#999999] pktw-z-10" />
@@ -297,7 +306,7 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 			</div>
 
 			{/* Tab Content */}
-			<div className="pktw-bg-white pktw-flex-1 pktw-min-h-0 pktw-overflow-hidden pktw-flex pktw-flex-col">
+			<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-white pktw-overflow-hidden pktw-flex pktw-flex-col">
 				{activeTab === 'ai' ? (
 					<AISearchTab searchQuery={getCleanQuery(searchQuery)} triggerAnalysis={triggerAnalysis} searchClient={searchClient} webEnabled={webEnabled} onWebEnabledChange={setWebEnabled} onSearchQueryChange={setSearchQuery} onClose={onClose} />
 				) : (

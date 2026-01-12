@@ -2,9 +2,11 @@ import { useCallback, useRef } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useProjectStore } from '@/ui/store/projectStore';
+import { useMessageStore } from '../store/messageStore';
 import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { useStreamChat } from './useStreamChat';
 import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types';
+import type { LLMUsage } from '@/core/providers/types';
 
 export interface ChatSubmitOptions {
 	text: string;
@@ -20,9 +22,36 @@ export interface ChatSubmitOptions {
 export function useChatSubmit() {
 	const { app, manager } = useServiceContext();
 	const { streamChat, updateConv } = useStreamChat();
+	const { addMessage: addMessageToStore } = useMessageStore();
 
 	// AbortController for canceling streaming
 	const abortControllerRef = useRef<AbortController | null>(null);
+
+	/**
+	 * Add message to both manager (backend) and messageStore (frontend state)
+	 */
+	const addMessageToBoth = useCallback(async (
+		conversationId: string,
+		message: ChatMessage,
+		model: string,
+		provider: string,
+		usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+	) => {
+		// Add to backend manager
+		await manager.addMessage({
+			conversationId,
+			message,
+			model,
+			provider,
+			usage: {
+				inputTokens: usage.inputTokens ?? -1,
+				outputTokens: usage.outputTokens ?? -1,
+				totalTokens: usage.totalTokens ?? -1,
+			},
+		});
+
+		addMessageToStore(message);
+	}, [manager, addMessageToStore]);
 
 	/**
 	 * Ensure conversation exists, create if needed.
@@ -113,13 +142,13 @@ export function useChatSubmit() {
 			userMessage.resources = resources;
 		}
 
-		await manager.addMessage({
-			conversationId: conversation.meta.id,
-			message: userMessage,
-			model: userMessage.model,
-			provider: userMessage.provider,
-			usage: { inputTokens: -1, outputTokens: -1, totalTokens: -1 },
-		});
+		await addMessageToBoth(
+			conversation.meta.id,
+			userMessage,
+			userMessage.model,
+			userMessage.provider,
+			{ inputTokens: -1, outputTokens: -1, totalTokens: -1 }
+		);
 		console.debug('[useChatSubmit] added user message:', userMessage);
 
 		// Show user message immediately in UI using tempConversation
@@ -160,13 +189,13 @@ export function useChatSubmit() {
 		// save any partial content from the streaming state
 		if (streamResult.finalMessage) {
 			console.debug('[useChatSubmit] Saving assistant message:', streamResult.finalMessage);
-			await manager.addMessage({
-				conversationId: conversation.meta.id,
-				message: streamResult.finalMessage,
-				model: streamResult.finalMessage.model,
-				provider: streamResult.finalMessage.provider,
-				usage: streamResult.finalUsage ?? { inputTokens: -1, outputTokens: -1, totalTokens: -1 },
-			});
+			await addMessageToBoth(
+				conversation.meta.id,
+				streamResult.finalMessage,
+				streamResult.finalMessage.model,
+				streamResult.finalMessage.provider,
+				streamResult.finalUsage ?? { inputTokens: -1, outputTokens: -1, totalTokens: -1 }
+			);
 
 			// Update UI immediately with assistant message (don't reload from file to avoid timing issues)
 			// The file will be written in the background, and will be loaded correctly when conversation is opened next time

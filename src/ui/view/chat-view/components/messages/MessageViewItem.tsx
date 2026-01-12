@@ -1,14 +1,14 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import { Menu, TFile, App } from 'obsidian';
-import { ChatMessage, ChatConversation, ChatProject } from '@/service/chat/types';
-import { useChatViewStore } from '../store/chatViewStore';
+import { Menu, App } from 'obsidian';
+import { ChatMessage, ChatConversation } from '@/service/chat/types';
+import { useChatViewStore } from '../../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useProjectStore } from '@/ui/store/projectStore';
-import { useStreamChat } from '../hooks/useStreamChat';
+import { useStreamChat } from '../../hooks/useStreamChat';
 import { cn } from '@/ui/react/lib/utils';
 import { COLLAPSED_USER_MESSAGE_CHAR_LIMIT } from '@/core/constant';
 import { Copy, RefreshCw, Star, Loader2, Check, ChevronDown, ChevronUp, FileText } from 'lucide-react';
-import { useMessageStore, type ToolCallInfo } from '@/ui/view/chat-view/store/messageStore';
+import { type ToolCallInfo } from '@/ui/view/chat-view/store/messageStore';
 import {
 	Message,
 	MessageContent,
@@ -30,7 +30,7 @@ import { Streamdown } from 'streamdown';
 import type { FileUIPart } from 'ai';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
 import { formatTimestampLocale } from '@/ui/view/shared/date-utils';
-import { isUrl, getExtensionFromSource, getImageMimeType, isImageExtension } from '@/core/document/helper/FileTypeUtils';
+import { isUrl, getExtensionFromSource, getImageMimeType } from '@/core/document/helper/FileTypeUtils';
 import { ChatResourceRef } from '@/service/chat/types';
 import { ResourceKind } from '@/core/document/types';
 import { openFile } from '@/core/utils/obsidian-utils';
@@ -511,86 +511,23 @@ const TimeDisplay: React.FC<{
 	);
 };
 
-/**
- * Component for displaying message metadata (time, timezone, tokens, model)
- * @deprecated This component is no longer used. Metadata is now shown as a button in the action area.
- */
-const MessageMetadata: React.FC<{
-	message: ChatMessage;
-}> = ({ message }) => {
-	const formatDate = useMemo(() => {
-		if (!message.createdAtTimestamp) return '';
-		const date = new Date(message.createdAtTimestamp);
-		return date.toLocaleString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit',
-			timeZone: message.createdAtZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-		});
-	}, [message.createdAtTimestamp, message.createdAtZone]);
-
-	const timezone = message.createdAtZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-	const totalTokens = message.tokenUsage
-		? (() => {
-			const usage = message.tokenUsage as any;
-			return usage.totalTokens ?? usage.total_tokens ??
-				((usage.promptTokens ?? usage.prompt_tokens ?? 0) + (usage.completionTokens ?? usage.completion_tokens ?? 0));
-		})()
-		: null;
-
-	const modelInfo = message.model ? `${message.provider || ''}/${message.model}`.replace(/^\//, '') : null;
-
-	const hasFirstLine = modelInfo || totalTokens !== null;
-	const hasSecondLine = formatDate || timezone;
-
-	if (!hasFirstLine && !hasSecondLine) return null;
-
-	return (
-		<div className="pktw-mt-2 pktw-text-xs pktw-text-muted-foreground pktw-flex pktw-flex-col pktw-gap-1 pktw-select-text">
-			{/* First line: model and token */}
-			{hasFirstLine && (
-				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-flex-wrap">
-					{modelInfo && (
-						<span className="pktw-whitespace-nowrap">{modelInfo}</span>
-					)}
-					{totalTokens !== null && (
-						<span className="pktw-whitespace-nowrap">{totalTokens} tokens</span>
-					)}
-				</div>
-			)}
-			{/* Second line: date and timezone */}
-			{hasSecondLine && (
-				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-flex-wrap">
-					{formatDate && (
-						<span className="pktw-whitespace-nowrap">{formatDate}</span>
-					)}
-					{timezone && (
-						<span className="pktw-whitespace-nowrap">({timezone})</span>
-					)}
-				</div>
-			)}
-		</div>
-	);
-};
-
-interface MessageItemProps {
-	message: ChatMessage;
-	activeConversation: ChatConversation | null;
-	activeProject: ChatProject | null;
-	isStreaming?: boolean;
-	streamingContent?: string;
-	reasoningContent?: string;
-	isReasoningActive?: boolean;
-	currentToolCalls?: Array<{
+interface StreamingState {
+	isStreaming: boolean;
+	streamingContent: string;
+	reasoningContent: string;
+	isReasoningActive: boolean;
+	currentToolCalls: Array<{
 		toolName: string;
 		input?: any;
 		isActive?: boolean;
 		output?: any;
 	}>;
-	isToolSequenceActive?: boolean;
+	isToolSequenceActive: boolean;
+}
+
+export interface MessageItemProps {
+	message: ChatMessage;
+	streamingState?: StreamingState;
 	isLastMessage?: boolean;
 }
 
@@ -599,17 +536,20 @@ interface MessageItemProps {
  */
 export const MessageItem: React.FC<MessageItemProps> = ({
 	message,
-	activeConversation,
-	activeProject,
-	isStreaming = false,
-	streamingContent = '',
-	reasoningContent = '',
-	isReasoningActive = false,
-	currentToolCalls = [],
-	isToolSequenceActive = false,
+	streamingState = {
+		isStreaming: false,
+		streamingContent: '',
+		reasoningContent: '',
+		isReasoningActive: false,
+		currentToolCalls: [],
+		isToolSequenceActive: false,
+	},
 	isLastMessage = false,
 }) => {
 	const { manager, app, eventBus } = useServiceContext();
+
+	const activeConversation = useProjectStore((state) => state.activeConversation);
+	const activeProject = useProjectStore((state) => state.activeProject);
 
 	const handleToggleStar = useCallback(async (messageId: string, starred: boolean) => {
 		console.debug('[MessageItem] Toggling star for message:', { messageId, starred });
@@ -703,7 +643,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
 	// Get display content: if streaming, use streamingContent; otherwise use message.content
 	// Streaming logic: when AI is generating, isStreaming=true and streamingContent contains partial content
-	const displayContent = isStreaming ? (streamingContent || '') : message.content;
+	const displayContent = message.content;
 
 	const handleCopy = useCallback(async () => {
 		try {
@@ -774,13 +714,13 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
 	// Character limit for collapsed user messages (only for user messages, not streaming)
 	const contentLength = String(displayContent || '').length;
-	const shouldShowExpand = isUser && !isStreaming && contentLength > COLLAPSED_USER_MESSAGE_CHAR_LIMIT;
+	const shouldShowExpand = isUser && !streamingState.isStreaming && contentLength > COLLAPSED_USER_MESSAGE_CHAR_LIMIT;
 	const displayText = shouldShowExpand && !isExpanded
 		? String(displayContent).slice(0, COLLAPSED_USER_MESSAGE_CHAR_LIMIT) + '...'
 		: String(displayContent);
 
 	// should show loader
-	const shouldShowLoader = isStreaming && !displayContent && !isReasoningActive && !isToolSequenceActive;
+	const shouldShowLoader = streamingState.isStreaming && !displayContent && !streamingState.isReasoningActive && !streamingState.isToolSequenceActive;
 
 	return (
 		<div
@@ -815,18 +755,18 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 					) : null}
 
 					{/* Render reasoning content for assistant messages */}
-					{!isUser && reasoningContent && (
-						<Reasoning isStreaming={isReasoningActive} className="pktw-w-full pktw-mb-0">
+					{!isUser && streamingState.reasoningContent && (
+						<Reasoning isStreaming={streamingState.isReasoningActive} className="pktw-w-full pktw-mb-0">
 							<ReasoningTrigger/>
 							<ReasoningContent>
-								{reasoningContent}
+								{streamingState.reasoningContent}
 							</ReasoningContent>
 						</Reasoning>
 					)}
 
 					{/* Render tool calls for assistant messages */}
-					{!isUser && currentToolCalls.length > 0 && (
-						<ToolCallsDisplay expanded={isToolSequenceActive} toolCalls={currentToolCalls.map(call => ({
+					{!isUser && streamingState.currentToolCalls.length > 0 && (
+						<ToolCallsDisplay expanded={streamingState.isToolSequenceActive} toolCalls={streamingState.currentToolCalls.map(call => ({
 							toolName: call.toolName,
 							input: call.input,
 							output: call.output,
@@ -850,7 +790,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 									>
 										{/* Streamdown component handles animated rendering of streaming text */}
 										{/* isAnimating=true when streaming, false when complete */}
-										<Streamdown isAnimating={isStreaming}>{displayText}</Streamdown>
+										<Streamdown isAnimating={streamingState.isStreaming}>{displayText}</Streamdown>
 									</div>
 								)
 							}
@@ -888,7 +828,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 				<MessageActionsList
 					message={message}
 					isLastMessage={isLastMessage}
-					isStreaming={isStreaming}
+					isStreaming={streamingState.isStreaming}
 					copied={copied}
 					onToggleStar={handleToggleStar}
 					onCopy={handleCopy}

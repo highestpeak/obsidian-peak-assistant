@@ -2,6 +2,7 @@ import { App } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { SearchClient } from '@/service/search/SearchClient';
 import { ViewManager } from '@/app/view/ViewManager';
+import type MyPlugin from 'main';
 
 /**
  * Application context containing all global dependencies.
@@ -14,6 +15,7 @@ export class AppContext {
 		public readonly app: App,
 		public readonly manager: AIServiceManager,
 		public readonly searchClient: SearchClient | null = null,
+		public readonly plugin: MyPlugin | null = null,
 	) {
 		// viewManager will be set after ViewManager is created
 		this.viewManager = null as any;

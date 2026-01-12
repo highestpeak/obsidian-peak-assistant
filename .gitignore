@@ -38,3 +38,4 @@ data.json
 .cursor/debug.log
 
 dist-desktop/
+opencode.json

@@ -5,11 +5,19 @@ import { Hammer, Code } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { HoverButton } from '@/ui/component/mine';
 
+export interface ToolButtonProps {
+	isCodeInterpreterEnabled?: boolean;
+	onCodeInterpreterEnabledChange: (enabled: boolean) => void;
+}
+
 /**
  * Tool settings button with hover menu for tool options
  */
-export const ToolButton: React.FC = () => {
-	const [isCodeInterpreterEnabled, setIsCodeInterpreterEnabled] = useState(false);
+export const ToolButton: React.FC<ToolButtonProps> = ({
+	isCodeInterpreterEnabled,
+	onCodeInterpreterEnabledChange,
+}) => {
+	const effectiveIsEnabled = isCodeInterpreterEnabled ?? false;
 
 	const menuContent = (
 		<div className="pktw-flex pktw-flex-col pktw-gap-2">
@@ -23,8 +31,8 @@ export const ToolButton: React.FC = () => {
 						<span className="pktw-text-sm pktw-font-medium">Code Interpreter</span>
 					</div>
 					<Switch
-						checked={isCodeInterpreterEnabled}
-						onChange={setIsCodeInterpreterEnabled}
+						checked={effectiveIsEnabled}
+						onChange={onCodeInterpreterEnabledChange}
 						size="sm"
 					/>
 				</div>
@@ -36,7 +44,7 @@ export const ToolButton: React.FC = () => {
 		<HoverButton
 			icon={Hammer}
 			menuId="tool-options"
-			active={isCodeInterpreterEnabled}
+			active={effectiveIsEnabled}
 			hoverMenuContent={menuContent}
 		/>
 	);

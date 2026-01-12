@@ -367,9 +367,9 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 	}, [selectedIndex]);
 
 	return (
-		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
+		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0 pktw-overflow-hidden">
 			{/* Results List */}
-			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto">
+			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto" style={{ flexBasis: 0, minHeight: 0 }}>
 				{/* Empty State - No Results */}
 				{isSearching && displayedResults.length === 0 ? (
 					<NoResultsState searchInput={searchInput} />
@@ -424,7 +424,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 			</div>
 
 			{/* Footer */}
-			<div className="pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between">
+			<div className="pktw-flex-shrink-0 pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between">
 				<VaultSearchFooterHints />
 				<div className="pktw-flex pktw-items-center pktw-gap-3">
 					{!isSearching && indexProgress?.processed ? (

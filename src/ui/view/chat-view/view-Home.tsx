@@ -23,7 +23,6 @@ export const HomeViewComponent: React.FC = () => {
 	const chatViewStore = useChatViewStore();
 	const { projects, conversations } = useProjectStore();
 	const { setPendingConversation } = chatViewStore;
-	const [loading, setLoading] = useState(true);
 
 	// State for input modal
 	const [inputModalOpen, setInputModalOpen] = useState(false);

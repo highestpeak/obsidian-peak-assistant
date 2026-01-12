@@ -8,6 +8,8 @@ export type ChatMode = 'chat' | 'plan' | 'agent';
 
 interface ModeSelectorProps {
 	className?: string;
+	selectedMode?: ChatMode;
+	onModeChange?: (mode: ChatMode) => void;
 }
 
 const modes = [
@@ -34,9 +36,11 @@ const modes = [
 /**
  * Mode selector component for choosing chat mode (chat/plan/agent)
  */
-export const ModeSelector: React.FC<ModeSelectorProps> = ({ className }) => {
-	const [selectedMode, setSelectedMode] = useState<ChatMode>('chat');
-
+export const ModeSelector: React.FC<ModeSelectorProps> = ({
+	className,
+	selectedMode = 'chat',
+	onModeChange
+}) => {
 	const currentMode = modes.find(mode => mode.id === selectedMode);
 	const CurrentIcon = currentMode?.icon || MessageSquare;
 
@@ -59,7 +63,7 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({ className }) => {
 								'pktw-justify-start pktw-h-12 pktw-px-3 pktw-text-xs pktw-font-normal pktw-group hover:pktw-text-accent-foreground',
 								selectedMode === mode.id && 'pktw-bg-accent pktw-text-accent-foreground'
 							)}
-							onClick={() => setSelectedMode(mode.id)}
+							onClick={() => onModeChange?.(mode.id)}
 						>
 							<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-w-full">
 								<Icon className="pktw-w-4 pktw-h-4" />
