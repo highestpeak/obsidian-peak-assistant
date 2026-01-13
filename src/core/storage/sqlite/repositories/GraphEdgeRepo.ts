@@ -1,5 +1,6 @@
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
+import { generateStableUuid } from '@/core/utils/id-utils';
 
 /**
  * CRUD repository for `graph_edges` table.
@@ -8,10 +9,11 @@ export class GraphEdgeRepo {
 	constructor(private readonly db: Kysely<DbSchema>) {}
 
 	/**
-	 * Generate edge ID from from_node_id, to_node_id, and type.
+	 * Generate edge ID (now returns a UUID instead of composite string for better storage efficiency).
 	 */
 	static generateEdgeId(fromNodeId: string, toNodeId: string, type: string): string {
-		return `${fromNodeId}->${toNodeId}:${type}`;
+		// Import here to avoid circular dependencies
+		return generateStableUuid(fromNodeId + toNodeId + type);
 	}
 
 	/**
@@ -167,6 +169,13 @@ export class GraphEdgeRepo {
 			.deleteFrom('graph_edges')
 			.where((eb) => eb.or([eb('from_node_id', 'in', nodeIds), eb('to_node_id', 'in', nodeIds)]))
 			.execute();
+	}
+
+	/**
+	 * Delete all graph edges.
+	 */
+	async deleteAll(): Promise<void> {
+		await this.db.deleteFrom('graph_edges').execute();
 	}
 }
 

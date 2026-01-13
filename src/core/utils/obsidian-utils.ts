@@ -113,3 +113,10 @@ export function getSelectedTextFromActiveEditor(app: App): string | null {
 	}
 }
 
+export async function readFileContentByPath(app: App, filePath: string): Promise<ArrayBuffer | null> {
+	const file = app.vault.getAbstractFileByPath(filePath);
+	if (file && file instanceof TFile) {
+		return await app.vault.readBinary(file);
+	}
+	return null;
+}

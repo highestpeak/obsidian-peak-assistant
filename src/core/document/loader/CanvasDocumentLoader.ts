@@ -36,11 +36,11 @@ export class CanvasDocumentLoader implements DocumentLoader {
 		return supportedExts.some(ext => path.endsWith('.' + ext));
 	}
 
-	async readByPath(filePath: string): Promise<Document | null> {
+	async readByPath(filePath: string, genCacheContent?: boolean): Promise<Document | null> {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (!file || !(file instanceof TFile)) return null;
 		if (!this.isSupportedPath(filePath)) return null;
-		return await this.readCanvasFile(file);
+		return await this.readCanvasFile(file, genCacheContent);
 	}
 
 	async chunkContent(
@@ -117,7 +117,7 @@ export class CanvasDocumentLoader implements DocumentLoader {
 		return getDefaultDocumentSummary(source, this.aiServiceManager, provider, modelId);
 	}
 
-	private async readCanvasFile(file: TFile): Promise<Document | null> {
+	private async readCanvasFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
 		try {
 			const fileContents = await this.app.vault.cachedRead(file);
 			const canvas: CanvasData = fileContents ? JSON.parse(fileContents) : {};

@@ -29,6 +29,13 @@ export class DocChunkRepo {
 	}
 
 	/**
+	 * Delete all chunks.
+	 */
+	async deleteAll(): Promise<void> {
+		await this.db.deleteFrom('doc_chunk').execute();
+	}
+
+	/**
 	 * Delete FTS rows by doc_id.
 	 */
 	deleteFtsByDocId(docId: string): void {
@@ -60,6 +67,22 @@ export class DocChunkRepo {
 		if (!docIds.length) return;
 		const stmt = this.rawDb.prepare(`DELETE FROM doc_meta_fts WHERE doc_id IN (${docIds.map(() => '?').join(',')})`);
 		stmt.run(...docIds);
+	}
+
+	/**
+	 * Delete all FTS rows.
+	 */
+	deleteAllFts(): void {
+		const stmt = this.rawDb.prepare(`DELETE FROM doc_fts`);
+		stmt.run();
+	}
+
+	/**
+	 * Delete all meta FTS rows.
+	 */
+	deleteAllMetaFts(): void {
+		const stmt = this.rawDb.prepare(`DELETE FROM doc_meta_fts`);
+		stmt.run();
 	}
 
 	/**

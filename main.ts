@@ -125,8 +125,7 @@ export default class MyPlugin extends Plugin {
 
 		// first init listener then initializer to avoid missing index changes
 		this.searchUpdateQueue = new SearchUpdateListener(this.app, this.settings.search, 800);
-		// todo tmp block. remove comments this after testing
-		// this.searchUpdateQueue.start();
+		this.searchUpdateQueue.start();
 
 		// Check index status and perform incremental indexing if needed
 		// This handles cases where files were modified outside Obsidian (e.g., git sync, external editors)

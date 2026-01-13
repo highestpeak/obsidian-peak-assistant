@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings, LLMStreamEvent } from '@/core/providers/types';
+import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart } from '@/core/providers/types';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef, StreamingCallbacks, StreamType } from './types';
@@ -53,6 +53,7 @@ export class AIServiceManager {
 		const providerConfigs = this.settings.llmProviderConfigs ?? {};
 		this.multiChat = new MultiProviderChatService({
 			providerConfigs,
+			defaultOutputControl: this.settings.defaultOutputControl,
 		});
 		// Create prompt service
 		this.promptService = new PromptService(this.app, this.settings, this.multiChat);
@@ -151,7 +152,7 @@ export class AIServiceManager {
 		const providerConfigs = this.settings.llmProviderConfigs ?? {};
 		// Refresh provider services with new configurations
 		// This clears existing services and recreates them with updated configs
-		this.multiChat.refresh(providerConfigs);
+		this.multiChat.refresh(providerConfigs, this.settings.defaultOutputControl ?? DEFAULT_AI_SERVICE_SETTINGS.defaultOutputControl!);
 		this.promptService.setChatService(this.multiChat);
 
 		// Reinitialize context service if profile is enabled
@@ -547,11 +548,12 @@ ${sourcesList}${topicsList}
 	 */
 	async chatWithPrompt<T extends PromptId>(
 		promptId: T,
-		variables: PromptVariables[T],
+		variables: PromptVariables[T] | null,
 		provider?: string,
-		model?: string
+		model?: string,
+		extraParts?: MessagePart[]
 	): Promise<string> {
-		return this.promptService.chatWithPrompt(promptId, variables, provider, model);
+		return this.promptService.chatWithPrompt(promptId, variables, provider, model, extraParts);
 	}
 
 	/**
@@ -566,7 +568,7 @@ ${sourcesList}${topicsList}
 	 */
 	async chatWithPromptStream<T extends PromptId>(
 		promptId: T,
-		variables: PromptVariables[T],
+		variables: PromptVariables[T] | null,
 		callbacks: StreamingCallbacks,
 		streamType: StreamType = 'content',
 		provider?: string,

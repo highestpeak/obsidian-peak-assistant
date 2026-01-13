@@ -69,7 +69,6 @@ export function getKnownGeminiModelIds(): readonly string[] {
 export interface GeminiChatServiceOptions {
 	baseUrl?: string;
 	apiKey?: string;
-	timeoutMs?: number;
 	extra?: Record<string, any>;
 }
 

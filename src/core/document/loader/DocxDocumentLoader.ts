@@ -2,7 +2,7 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
-import { generateContentHash } from '@/core/utils/hash-utils';
+import { binaryContentHash, generateContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
@@ -19,7 +19,7 @@ export class DocxDocumentLoader implements DocumentLoader {
 	constructor(
 		private readonly app: App,
 		private readonly aiServiceManager?: AIServiceManager
-	) {}
+	) { }
 
 	getDocumentType(): DocumentType {
 		return 'docx';
@@ -29,11 +29,11 @@ export class DocxDocumentLoader implements DocumentLoader {
 		return ['docx', 'doc'];
 	}
 
-	async readByPath(filePath: string): Promise<Document | null> {
+	async readByPath(filePath: string, genCacheContent?: boolean): Promise<Document | null> {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (!file || !(file instanceof TFile)) return null;
 		if (!this.getSupportedExtensions().includes(file.extension.toLowerCase())) return null;
-		return await this.readDocxFile(file);
+		return await this.readDocxFile(file, genCacheContent);
 	}
 
 	async chunkContent(
@@ -111,16 +111,19 @@ export class DocxDocumentLoader implements DocumentLoader {
 		return getDefaultDocumentSummary(source, this.aiServiceManager, provider, modelId);
 	}
 
-	private async readDocxFile(file: TFile): Promise<Document | null> {
+	private async readDocxFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
 		try {
 			// Read DOCX as binary
 			const arrayBuffer = await this.app.vault.readBinary(file);
 			const buffer = Buffer.from(arrayBuffer);
-			
+			const sourceContentHash = binaryContentHash(arrayBuffer);
+
 			// Parse DOCX directly from buffer using mammoth
-			const result = await mammoth.extractRawText({ buffer });
-			const content = result.value;
-			const contentHash = generateContentHash(content);
+			let cacheContent = '';
+			if (genCacheContent) {
+				const result = await mammoth.extractRawText({ buffer });
+				cacheContent = result.value;
+			}
 
 			return {
 				id: generateDocIdFromPath(file.path),
@@ -141,13 +144,13 @@ export class DocxDocumentLoader implements DocumentLoader {
 					size: file.stat.size,
 					mtime: file.stat.mtime,
 					ctime: file.stat.ctime,
-					content, // Extracted text content
+					content: cacheContent, // Extracted text content
 				},
 				metadata: {
 					title: file.basename,
 					tags: [],
 				},
-				contentHash,
+				contentHash: sourceContentHash,
 				references: {
 					outgoing: [],
 					incoming: [],

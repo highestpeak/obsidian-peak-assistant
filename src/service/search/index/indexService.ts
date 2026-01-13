@@ -6,7 +6,7 @@ import type { SearchSettings } from '@/app/settings/types';
 import type { Document } from '@/core/document/types';
 import { INDEX_STATE_KEYS } from '@/core/constant';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
-import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { generateUuidWithoutHyphens, generateStableUuid } from '@/core/utils/id-utils';
 import { normalizePath } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { Stopwatch } from '@/core/utils/Stopwatch';
@@ -25,6 +25,7 @@ export interface GetIndexStatusResponse {
 export class IndexService {
 
 	private static instance: IndexService | null = null;
+	private static isIndexingCancelled = false;
 	private aiServiceManager: AIServiceManager;
 
 	private constructor() {
@@ -48,27 +49,68 @@ export class IndexService {
 	}
 
 	/**
-	 * Index a core document with chunking strategy applied.
-	 * This method handles chunking internally based on settings.
-	 * 
-	 * @param doc - Core document to index
+	 * Cancel ongoing indexing operations.
+	 */
+	static cancelIndexing(): void {
+		IndexService.isIndexingCancelled = true;
+	}
+
+	/**
+	 * Reset the cancellation flag.
+	 */
+	static resetCancellation(): void {
+		IndexService.isIndexingCancelled = false;
+	}
+
+	/**
+	 * Check if indexing has been cancelled.
+	 */
+	static isCancelled(): boolean {
+		return IndexService.isIndexingCancelled;
+	}
+
+	/**
+	 * Index a document by path with chunking strategy applied.
+	 * This method handles document loading and chunking internally based on settings.
+	 *
+	 * @param docPath - Document path to index
 	 * @param settings - Search settings containing chunking configuration
 	 */
 	async indexDocument(
-		doc: Document,
+		docPath: string,
 		settings: SearchSettings,
 	): Promise<void> {
-		const sw = new Stopwatch(`[IndexService] Indexing: ${doc.sourceFileInfo.path}`);
-		
+		const sw = new Stopwatch(`[IndexService] Indexing: ${docPath}`);
+
+		console.debug(`[IndexService] Index document: ${docPath}`);
 		try {
-			if (!doc) return;
+			// Load document content
+			const loaderManager = DocumentLoaderManager.getInstance();
 
 			// Get loader for document type
-			const loaderManager = DocumentLoaderManager.getInstance();
-			if (!loaderManager.shouldIndexDocument(doc)) {
-				console.warn(`Document type ${doc.type} should not be indexed or has no loader`);
+			const partialDoc = {
+				type: loaderManager.getTypeForPath(docPath) ?? 'unknown',
+				sourceFileInfo: { path: docPath }
+			} as any;
+			if (!loaderManager.shouldIndexDocument(partialDoc)) {
+				console.warn(`[IndexService] Skipping indexing for path: ${docPath}, type: ${partialDoc.type} (should not be indexed or has no loader)`);
 				return;
 			}
+
+			sw.start('Read document');
+			const doc = await loaderManager.readByPath(docPath, true);
+			sw.stop();
+			if (!doc) {
+				console.warn(`[IndexService] Failed to load document: ${docPath}`);
+				return;
+			}
+
+			// Check if indexing has been cancelled
+			if (IndexService.isCancelled()) {
+				console.log(`[IndexService] Indexing cancelled for ${doc.sourceFileInfo.path}`);
+				return;
+			}
+
 			const loader = loaderManager.getLoaderForDocumentType(doc.type);
 			if (!loader) {
 				console.warn(`No loader found for document type: ${doc.type}`);
@@ -82,7 +124,7 @@ export class IndexService {
 
 			// Check if vector search is available (requires sqlite-vec extension)
 			const vectorSearchAvailable = sqliteStoreManager.isVectorSearchEnabled();
-			
+
 			// Generate embeddings for chunks if embedding model is configured AND vector search is available
 			const embeddingModel = settings.chunking.embeddingModel;
 			if (embeddingModel && vectorSearchAvailable) {
@@ -96,12 +138,14 @@ export class IndexService {
 				);
 			}
 
-			// Save all data directly (no transaction)
+			// Save all data within a transaction for consistency and to prevent deadlocks
 			sw.start('Save doc meta');
+			console.debug(`[IndexService] Saving doc meta for document: ${docPath}`);
 			await this.saveDocMeta(doc);
 			sw.stop();
 
 			sw.start('Save search data');
+			console.debug(`[IndexService] Saving search data for document: ${docPath}`);
 			// Save search data (FTS and embeddings, not chunk data - reduce storage space)
 			const embeddingModelName = embeddingModel ? `${embeddingModel.provider}:${embeddingModel.modelId}` : undefined;
 			await this.saveSearchData(doc.id, doc.sourceFileInfo.path, doc.metadata.title, chunks, embeddingModelName);
@@ -122,8 +166,12 @@ export class IndexService {
 			await this.updateIndexState();
 			sw.stop();
 		} catch (error) {
-			console.error(`[IndexService] Error indexing document ${doc.sourceFileInfo.path}:`, error);
-			throw error;
+			console.error(`[IndexService] Error indexing document:`, {
+				docPath,
+				message: (error as Error).message ?? undefined,
+				stack: (error as Error).stack ?? undefined
+			});
+			// throw error;
 		} finally {
 			sw.print();
 		}
@@ -148,7 +196,7 @@ export class IndexService {
 		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
 		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
 		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-		const kdb = sqliteStoreManager.getKysely();
+		const kdb = sqliteStoreManager.getSearchContext();
 
 		await kdb.transaction().execute(async (trx) => {
 			// Get doc_ids from paths
@@ -165,6 +213,43 @@ export class IndexService {
 			await graphEdgeRepo.deleteByNodeIds(paths);
 			await graphNodeRepo.deleteByIds(paths);
 		});
+
+		onAfterMutation?.(['sqlite', 'graph']);
+	}
+
+	/**
+	 * Clear all index data. Removes all indexed documents, chunks, embeddings, statistics, and graph data.
+	 * This is a destructive operation that cannot be undone.
+	 *
+	 * @param onAfterMutation - Callback to notify after data mutation
+	 */
+	async clearAllIndexData(
+		onAfterMutation?: (types: StorageType[]) => void,
+	): Promise<void> {
+		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
+		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
+		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
+		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
+		const indexStateRepo = sqliteStoreManager.getIndexStateRepo();
+
+		// Clear all FTS data
+		docChunkRepo.deleteAllFts();
+		docChunkRepo.deleteAllMetaFts();
+
+		// Clear all document-related data
+		await docChunkRepo.deleteAll();
+		await embeddingRepo.deleteAll();
+		await docStatisticsRepo.deleteAll();
+		await docMetaRepo.deleteAll();
+
+		// Clear all graph data (including tags, links, etc.)
+		await graphEdgeRepo.deleteAll();
+		await graphNodeRepo.deleteAll();
+
+		// Reset index state
+		await indexStateRepo.clearAll();
 
 		onAfterMutation?.(['sqlite', 'graph']);
 	}
@@ -304,7 +389,7 @@ export class IndexService {
 	 */
 	private async updateDocStatistics(doc: Document): Promise<void> {
 		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
-		
+
 		// Calculate word count and char count from content
 		// Content is stored in sourceFileInfo.content for text files
 		const content = doc.sourceFileInfo.content ?? '';
@@ -336,6 +421,7 @@ export class IndexService {
 			char_count: charCount > 0 ? charCount : null,
 			language: null, // Language detection can be added later if needed
 			richness_score: null, // Richness score calculation can be added later if needed
+			last_open_ts: updatedAt,
 			updated_at: updatedAt,
 		});
 	}
@@ -361,27 +447,27 @@ export class IndexService {
 		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
 		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
 
-		// Use normalized path as node ID (graph nodes use path, not doc.id, since we can't guarantee doc.id exists)
-		const docNodeId = normalizePath(doc.sourceFileInfo.path);
+		// Use document UUID as node ID (doc.id is already a UUID)
+		const docNodeId = doc.id;
 
 		// Document node
 		await graphNodeRepo.upsert({
 			id: docNodeId,
 			type: 'document',
-			label: doc.metadata.title ?? docNodeId,
+			label: doc.metadata.title ?? normalizePath(doc.sourceFileInfo.path),
 			attributes: JSON.stringify({ path: doc.sourceFileInfo.path }),
 		});
 
 		// Outgoing references (links from this document to other documents)
 		for (const ref of doc.references.outgoing) {
-			// Use normalized path as node ID (graph nodes use path, not docId, since we can't guarantee docId exists)
-			const targetNodeId = normalizePath(ref.fullPath);
+			// Use referenced document's UUID if available, otherwise create a path-based placeholder
+			const targetNodeId = ref.docId ?? generateStableUuid(ref.fullPath);
 
 			// Ensure target document node exists (it will be created/updated when that document is indexed)
 			await graphNodeRepo.upsert({
 				id: targetNodeId,
 				type: 'document',
-				label: targetNodeId,
+				label: normalizePath(ref.fullPath),
 				attributes: JSON.stringify({ path: ref.fullPath }),
 			});
 			await graphEdgeRepo.upsert({
@@ -396,7 +482,7 @@ export class IndexService {
 
 		// Tags
 		for (const tag of doc.metadata.tags ?? []) {
-			const tagId = `tag:${tag}`;
+			const tagId = generateStableUuid(`tag:${tag}`);
 			await graphNodeRepo.upsert({
 				id: tagId,
 				type: 'tag',
@@ -415,7 +501,7 @@ export class IndexService {
 
 		// Categories (if available)
 		for (const category of doc.metadata.categories ?? []) {
-			const categoryId = `category:${category}`;
+			const categoryId = generateStableUuid(`category:${category}`);
 			await graphNodeRepo.upsert({
 				id: categoryId,
 				type: 'category',

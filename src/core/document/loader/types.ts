@@ -23,7 +23,7 @@ export interface DocumentLoader extends Summarizable {
 	 * Read a document by its path.
 	 * Returns core Document model, or null if file cannot be read.
 	 */
-	readByPath(path: string): Promise<Document | null>;
+	readByPath(path: string, genCacheContent?: boolean): Promise<Document | null>;
 
 	/**
 	 * Chunk content from a document.

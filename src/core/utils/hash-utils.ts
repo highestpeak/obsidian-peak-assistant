@@ -62,6 +62,19 @@ export function generateContentHash(content: string): string {
 	return hashString(content, 8);
 }
 
+export function binaryContentHash(data: Buffer | Uint8Array | ArrayBuffer): string {
+	let buffer: Buffer;
+	if (Buffer.isBuffer(data)) {
+		buffer = data;
+	} else if (data instanceof ArrayBuffer) {
+		buffer = Buffer.from(data);
+	} else {
+		// Uint8Array
+		buffer = Buffer.from(data);
+	}
+	return createHash('md5').update(buffer).digest('hex');
+}
+
 /**
  * Calculate MD5 hash of a string using Node.js crypto module.
  * Falls back to simple hash if crypto.createHash is not available.

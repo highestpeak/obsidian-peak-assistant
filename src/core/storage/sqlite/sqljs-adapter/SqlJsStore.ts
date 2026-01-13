@@ -215,6 +215,13 @@ export class SqlJsStore {
 		// Enable foreign keys
 		db.run('PRAGMA foreign_keys = ON');
 
+		// Set busy timeout to prevent infinite blocking on locked database
+		// When database is locked (e.g., concurrent read/write operations),
+		// operations will fail after 5 seconds instead of blocking indefinitely
+		db.run('PRAGMA busy_timeout = 5000');
+
+		console.log('[SqlJsStore] Set busy_timeout to 5000ms');
+
 		// Note: sql.js (WASM) does not support loading SQLite extensions like sqlite-vec
 		// Vector similarity search will not be available when using sql.js backend
 		// To enable vector search, use better-sqlite3 backend instead

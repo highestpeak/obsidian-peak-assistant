@@ -12,7 +12,8 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { MockPlugin } from './mocks/services/MockPlugin';
-import { Settings, Search, BarChart3, MessageSquare, X } from 'lucide-react';
+import { ConfirmDialog } from '@/ui/view/modals/ConfirmDialog';
+import { Settings, Search, BarChart3, MessageSquare, X, Trash2 } from 'lucide-react';
 
 /**
  * Router component for desktop development
@@ -21,9 +22,13 @@ import { Settings, Search, BarChart3, MessageSquare, X } from 'lucide-react';
  * - Settings: Full-screen
  * - Daily Analysis: Full-screen
  */
-export const DesktopRouter: React.FC = () => {
+export const DesktopRouter: React.FC<{
+	useMockAI: boolean;
+	onToggleMockAI: () => void;
+}> = ({ useMockAI, onToggleMockAI }) => {
 	const [currentView, setCurrentView] = useState<'chat' | 'settings' | 'daily'>('chat');
 	const [showSearchModal, setShowSearchModal] = useState(false);
+	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 	const { eventBus } = useServiceContext();
 	const mockPlugin = new MockPlugin();
 	const activeConversation = useProjectStore((state) => state.activeConversation);
@@ -131,6 +136,70 @@ export const DesktopRouter: React.FC = () => {
 				<BarChart3 size={16} />
 				Daily Analysis
 			</button>
+			<button
+				onClick={() => setShowConfirmDialog(true)}
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: '6px',
+					padding: '6px 12px',
+					borderRadius: '6px',
+					border: 'none',
+					backgroundColor: showConfirmDialog ? '#e9ecef' : 'transparent',
+					color: showConfirmDialog ? '#000' : '#666',
+					cursor: 'pointer',
+					fontSize: '14px',
+					fontWeight: showConfirmDialog ? '500' : '400',
+				}}
+			>
+				<Trash2 size={16} />
+				Test Confirm
+			</button>
+
+			{/* AI Mode Toggle Switch */}
+			<div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+				<span style={{ fontSize: '12px', color: '#666', fontWeight: '500' }}>
+					AI Mode:
+				</span>
+				<div
+					onClick={onToggleMockAI}
+					style={{
+						position: 'relative',
+						width: '50px',
+						height: '24px',
+						backgroundColor: useMockAI ? '#28a745' : '#007bff',
+						borderRadius: '12px',
+						cursor: 'pointer',
+						transition: 'background-color 0.2s ease',
+						border: 'none',
+						display: 'flex',
+						alignItems: 'center',
+						padding: '0 2px',
+					}}
+					title={useMockAI ? 'Currently in Mock mode (no tokens used). Click to switch to Real AI.' : 'Currently in Real AI mode (uses tokens). Click to switch to Mock mode.'}
+				>
+					<div
+						style={{
+							width: '20px',
+							height: '20px',
+							backgroundColor: 'white',
+							borderRadius: '50%',
+							transition: 'transform 0.2s ease',
+							transform: useMockAI ? 'translateX(26px)' : 'translateX(0)',
+							boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+						}}
+					/>
+				</div>
+				<span style={{
+					fontSize: '11px',
+					color: useMockAI ? '#28a745' : '#007bff',
+					fontWeight: '600',
+					minWidth: '35px',
+					textAlign: 'left'
+				}}>
+					{useMockAI ? 'MOCK' : 'REAL'}
+				</span>
+			</div>
 		</div>
 	);
 
@@ -252,6 +321,40 @@ export const DesktopRouter: React.FC = () => {
 						<div style={{ padding: '16px' }}>
 							<QuickSearchModalContent onClose={() => setShowSearchModal(false)} />
 						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Confirm Dialog */}
+			{showConfirmDialog && (
+				<div
+					style={{
+						position: 'fixed',
+						top: 0,
+						left: 0,
+						right: 0,
+						bottom: 0,
+						backgroundColor: 'rgba(0, 0, 0, 0.5)',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						zIndex: 1000,
+					}}
+					onClick={() => setShowConfirmDialog(false)}
+				>
+					<div onClick={(e) => e.stopPropagation()}>
+						<ConfirmDialog
+							open={showConfirmDialog}
+							onOpenChange={setShowConfirmDialog}
+							title="Delete Item"
+							message="Are you sure you want to delete this item? This action cannot be undone."
+							onConfirm={() => {
+								console.log('Item deleted!');
+							}}
+							confirmText="Delete"
+							cancelText="Cancel"
+							requireConfirmationText="I love u CPU"
+						/>
 					</div>
 				</div>
 			)}

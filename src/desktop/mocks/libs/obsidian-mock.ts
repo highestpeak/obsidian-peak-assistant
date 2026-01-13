@@ -33,19 +33,47 @@ export type PaneType = string;
  */
 export function normalizePath(path: string): string {
 	if (!path) return '';
-	
+
 	// Convert backslashes to forward slashes
 	let normalized = path.replace(/\\/g, '/');
-	
+
 	// Remove duplicate slashes
 	normalized = normalized.replace(/\/+/g, '/');
-	
+
 	// Remove trailing slash (except for root)
 	if (normalized.length > 1 && normalized.endsWith('/')) {
 		normalized = normalized.slice(0, -1);
 	}
-	
+
 	return normalized;
+}
+
+/**
+ * Convert an object to a YAML string
+ * Simple mock implementation for desktop development
+ */
+export function stringifyYaml(obj: any): string {
+	try {
+		// Simple YAML serialization - for basic objects only
+		if (obj === null || obj === undefined) return '';
+		if (typeof obj === 'string') return obj;
+		if (typeof obj === 'number' || typeof obj === 'boolean') return String(obj);
+
+		if (Array.isArray(obj)) {
+			return obj.map(item => `- ${stringifyYaml(item)}`).join('\n');
+		}
+
+		if (typeof obj === 'object') {
+			return Object.entries(obj)
+				.map(([key, value]) => `${key}: ${stringifyYaml(value)}`)
+				.join('\n');
+		}
+
+		return String(obj);
+	} catch (error) {
+		console.warn('[obsidian-mock] stringifyYaml failed:', error);
+		return '';
+	}
 }
 
 // Mock classes

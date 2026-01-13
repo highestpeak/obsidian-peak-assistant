@@ -23,37 +23,47 @@ export async function ensureFolder(app: App, folderPath: string): Promise<TFolde
 export async function ensureFolderRecursive(app: App, folderPath: string): Promise<void> {
 	const parts = folderPath.split('/').filter(p => p.length > 0);
 	let currentPath = '';
-	
+
 	for (const part of parts) {
 		currentPath = currentPath ? `${currentPath}/${part}` : part;
-		const existing = app.vault.getAbstractFileByPath(currentPath);
-		
+		let existing = app.vault.getAbstractFileByPath(currentPath);
+
+		// If folder doesn't exist, try to create it
 		if (!existing) {
 			try {
 				await app.vault.createFolder(currentPath);
 				console.log(`[vault-utils] Created folder: ${currentPath}`);
 			} catch (error) {
-				// Check if folder was created by another process/thread
-				const checkAgain = app.vault.getAbstractFileByPath(currentPath);
-				if (checkAgain instanceof TFolder) {
-					// Folder exists now, which is what we want
+				// Re-check if folder exists after error (might have been created by another process)
+				existing = app.vault.getAbstractFileByPath(currentPath);
+				if (existing instanceof TFolder) {
 					continue;
 				}
-				// If error is "Folder already exists", ignore it
+
+				// Check for "already exists" type errors
 				const errorMessage = error instanceof Error ? error.message : String(error);
-				if (errorMessage.includes('already exists') || errorMessage.includes('Folder already exists')) {
-					// Verify it's actually a folder
-					const verify = app.vault.getAbstractFileByPath(currentPath);
-					if (verify instanceof TFolder) {
+				const isAlreadyExistsError = errorMessage.includes('already exist');
+
+				if (isAlreadyExistsError) {
+					// Double-check the folder exists
+					existing = app.vault.getAbstractFileByPath(currentPath);
+					if (existing instanceof TFolder) {
+						console.log(`[vault-utils] Folder already exists (caught error): ${currentPath}`);
 						continue;
 					}
 				}
-				console.error('Failed to create folder:', currentPath, error);
+
+				console.error(`[vault-utils] Failed to create folder: ${currentPath}`, {
+					error: errorMessage,
+					isAlreadyExistsError,
+					path: currentPath
+				});
 				throw error;
 			}
 		} else if (!(existing instanceof TFolder)) {
 			throw new Error(`Path exists but is not a folder: ${currentPath}`);
 		}
+		// If folder already exists and is a TFolder, continue to next part
 	}
 }
 

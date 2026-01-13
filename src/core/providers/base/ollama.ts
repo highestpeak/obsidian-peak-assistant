@@ -21,13 +21,13 @@ export const OLLAMA_DEFAULT_BASE = 'http://localhost:11434';
 function normalizeOllamaBaseUrl(baseUrl: string): string {
 	// Remove trailing slashes and /v1 suffix if present
 	let normalized = baseUrl.replace(/\/v1\/?$/, '').replace(/\/$/, '');
-	
+
 	// Ensure /api is included in the baseURL
 	// ollama-ai-provider-v2 expects baseURL to be like http://localhost:11434/api
 	if (!normalized.endsWith('/api')) {
 		normalized = `${normalized}/api`;
 	}
-	
+
 	return normalized;
 }
 
@@ -35,7 +35,6 @@ function normalizeOllamaBaseUrl(baseUrl: string): string {
 export interface OllamaChatServiceOptions {
 	baseUrl?: string;
 	apiKey?: string;
-	timeoutMs?: number;
 	extra?: Record<string, any>;
 }
 
@@ -110,12 +109,10 @@ function getModelIcon(family?: string, name?: string): string {
 /**
  * Fetch models from Ollama API
  * @param baseUrl - Ollama base URL
- * @param timeoutMs - Request timeout in milliseconds
  * @returns Promise resolving to array of ModelMetaData or null if fetch failed
  */
 async function fetchOllamaModels(
 	baseUrl?: string,
-	timeoutMs?: number
 ): Promise<ModelMetaData[] | null> {
 	try {
 		const url = baseUrl ?? OLLAMA_DEFAULT_BASE;
@@ -126,7 +123,7 @@ async function fetchOllamaModels(
 			headers: {
 				'Content-Type': 'application/json',
 			},
-			signal: AbortSignal.timeout(timeoutMs ?? DEFAULT_OLLAMA_TIMEOUT_MS),
+			signal: AbortSignal.timeout(DEFAULT_OLLAMA_TIMEOUT_MS),
 		});
 
 		if (!response.ok) {
@@ -138,6 +135,7 @@ async function fetchOllamaModels(
 		if (!data.models || !Array.isArray(data.models)) {
 			throw new Error('Invalid response format: models array not found');
 		}
+		console.log('[OllamaChatService] data.models', data.models);
 
 		// Convert API response to ModelMetaData format
 		return data.models.map((model) => {
@@ -145,15 +143,10 @@ async function fetchOllamaModels(
 			const icon = getModelIcon(family, model.name);
 			// console.log('model', model.name, displayName, family, icon);
 
-			// Generate display name from model name
+			// Generate display name from model name - keep full name for version distinction
 			let displayName = model.name;
-			// If name contains colon, use the part after colon as display name
-			if (model.name.includes(':')) {
-				const parts = model.name.split(':');
-				displayName = parts[0];
-			}
 			// Format display name: capitalize first letter and add space before numbers
-			// e.g., "gemma3" -> "Gemma 3", "llama3.1" -> "Llama 3.1"
+			// e.g., "gemma3:4b" -> "Gemma 3:4b", "llama3.1:latest" -> "Llama 3.1:latest"
 			displayName = displayName.replace(/([a-z])([0-9])/gi, '$1 $2');
 			displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
 			// console.log('displayName', displayName);
@@ -197,7 +190,6 @@ export class OllamaChatService implements LLMProviderService {
 		// Call fetchOllamaModels directly each time using await
 		const models = await fetchOllamaModels(
 			this.options.baseUrl,
-			this.options.timeoutMs
 		);
 		// console.log('models fetched', models);
 

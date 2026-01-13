@@ -102,6 +102,13 @@ export class GraphNodeRepo {
 	}
 
 	/**
+	 * Delete all graph nodes.
+	 */
+	async deleteAll(): Promise<void> {
+		await this.db.deleteFrom('graph_nodes').execute();
+	}
+
+	/**
 	 * Delete nodes by type.
 	 */
 	async deleteByType(type: string): Promise<void> {

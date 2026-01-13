@@ -9,7 +9,7 @@ import { BusinessError, ErrorCode } from '@/core/errors';
 
 const DEFAULT_TIMEOUT_MS = 60000;
 
-type ProviderFactory = (config: ProviderConfig, timeoutMs: number) => LLMProviderService | null;
+type ProviderFactory = (config: ProviderConfig) => LLMProviderService | null;
 
 // Create a temporary service instance to get metadata or models
 // Use fake API key and default baseUrl - these are only used for getting metadata/models, not for actual API calls
@@ -37,7 +37,7 @@ export class ProviderServiceFactory {
 	 * Register default providers
 	 */
 	private registerDefaultProviders(): void {
-		this.register('openai', (config, timeoutMs) => {
+		this.register('openai', (config) => {
 			if (!config.apiKey) {
 				console.log('create service null apiKey', 'openai', config);
 				return null;
@@ -45,12 +45,11 @@ export class ProviderServiceFactory {
 			return new OpenAIChatService({
 				baseUrl: config.baseUrl,
 				apiKey: config.apiKey,
-				timeoutMs,
 				extra: config.extra,
 			});
 		});
 
-		this.register('openrouter', (config, timeoutMs) => {
+		this.register('openrouter', (config) => {
 			if (!config.apiKey) {
 				console.log('create service null apiKey', 'openrouter', config);
 				return null;
@@ -58,12 +57,11 @@ export class ProviderServiceFactory {
 			return new OpenRouterChatService({
 				baseUrl: config.baseUrl,
 				apiKey: config.apiKey,
-				timeoutMs,
 				extra: config.extra,
 			});
 		});
 
-		this.register('claude', (config, timeoutMs) => {
+		this.register('claude', (config) => {
 			if (!config.apiKey) {
 				console.log('create service null apiKey', 'claude', config);
 				return null;
@@ -71,12 +69,11 @@ export class ProviderServiceFactory {
 			return new ClaudeChatService({
 				baseUrl: config.baseUrl,
 				apiKey: config.apiKey,
-				timeoutMs,
 				extra: config.extra,
 			});
 		});
 
-		this.register('gemini', (config, timeoutMs) => {
+		this.register('gemini', (config) => {
 			if (!config.apiKey) {
 				console.log('create service null apiKey', 'gemini', config);
 				return null;
@@ -84,21 +81,19 @@ export class ProviderServiceFactory {
 			return new GeminiChatService({
 				baseUrl: config.baseUrl,
 				apiKey: config.apiKey,
-				timeoutMs,
 				extra: config.extra,
 			});
 		});
 
-		this.register('ollama', (config, timeoutMs) => {
+		this.register('ollama', (config) => {
 			return new OllamaChatService({
 				baseUrl: config.baseUrl,
 				apiKey: config.apiKey,
-				timeoutMs,
 				extra: config.extra,
 			});
 		});
 
-		this.register('perplexity', (config, timeoutMs) => {
+		this.register('perplexity', (config) => {
 			if (!config.apiKey) {
 				console.log('create service null apiKey', 'perplexity', config);
 				return null;
@@ -106,7 +101,6 @@ export class ProviderServiceFactory {
 			return new PerplexityChatService({
 				baseUrl: config.baseUrl,
 				apiKey: config.apiKey,
-				timeoutMs,
 				extra: config.extra,
 			});
 		});
@@ -142,7 +136,7 @@ export class ProviderServiceFactory {
 	/**
 	 * Create a service instance for a provider
 	 */
-	create(providerId: string, config: ProviderConfig, timeoutMs?: number): LLMProviderService | null {
+	create(providerId: string, config: ProviderConfig): LLMProviderService | null {
 		if (!config) {
 			return null;
 		}
@@ -150,7 +144,7 @@ export class ProviderServiceFactory {
 		if (!factory) {
 			return null;
 		}
-		const service = factory(config, timeoutMs ?? this.defaultTimeout);
+		const service = factory(config);
 		return service;
 	}
 
@@ -158,12 +152,12 @@ export class ProviderServiceFactory {
 	 * Get all services by configs
 	 * @param configs - Record where key is provider ID and value is provider config
 	 */
-	createAll(configs: Record<string, ProviderConfig>, timeoutMs?: number): Map<string, LLMProviderService> {
+	createAll(configs: Record<string, ProviderConfig>): Map<string, LLMProviderService> {
 		const services = new Map<string, LLMProviderService>();
 
 		for (const [providerId, config] of Object.entries(configs)) {
 			// Factory functions handle their own validation and return null if config is invalid
-			const service = this.create(providerId, config, timeoutMs);
+			const service = this.create(providerId, config);
 			if (service) {
 				services.set(providerId, service);
 			}
@@ -182,7 +176,7 @@ export class ProviderServiceFactory {
 			try {
 				const factory = this.factories.get(providerId);
 				if (factory) {
-					const tempService = factory(tempConfig, this.defaultTimeout);
+					const tempService = factory(tempConfig);
 					if (tempService) {
 						metadata.push(tempService.getProviderMetadata());
 					}
@@ -217,7 +211,7 @@ export class ProviderServiceFactory {
 		};
 
 		try {
-			const service = factory(serviceConfig, this.defaultTimeout);
+			const service = factory(serviceConfig);
 			if (service) {
 				return await service.getAvailableModels();
 			}

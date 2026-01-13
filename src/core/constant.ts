@@ -22,6 +22,11 @@ export const INDEX_CHECK_BATCH_SIZE = 100;
 export const SEARCH_DB_FILENAME = 'search.sqlite';
 
 /**
+ * Meta database filename for chat and project data.
+ */
+export const META_DB_FILENAME = 'meta.sqlite';
+
+/**
  * Progress update interval in milliseconds for indexing operations.
  * Used to control how frequently progress notifications are updated.
  */

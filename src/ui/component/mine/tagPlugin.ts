@@ -1,6 +1,6 @@
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, keymap } from "@codemirror/view";
 import { RangeSetBuilder } from "@codemirror/state";
-import { parseTagsFromText } from "./tagParser";
+import { parseTagsFromText } from "../mine/tagParser";
 
 const contextTagDeco = Decoration.mark({
 	class: "cm-context-tag"
@@ -12,6 +12,10 @@ const promptTagDeco = Decoration.mark({
 
 const bracketTagDeco = Decoration.mark({
 	class: "cm-context-tag"
+});
+
+const searchTagDeco = Decoration.mark({
+	class: "cm-search-tag"
 });
 
 const tagPlugin = ViewPlugin.fromClass(class {
@@ -38,11 +42,21 @@ const tagPlugin = ViewPlugin.fromClass(class {
 
 			// Convert to decoration format and adjust positions
 			for (const tag of parsedTags) {
-				builder.add(
-					from + tag.start,
-					from + tag.end,
-					tag.type === 'context' ? contextTagDeco : promptTagDeco
-				);
+				let deco;
+				switch (tag.type) {
+					case 'context':
+						deco = contextTagDeco;
+						break;
+					case 'prompt':
+						deco = promptTagDeco;
+						break;
+					case 'search':
+						deco = searchTagDeco;
+						break;
+					default:
+						deco = contextTagDeco;
+				}
+				builder.add(from + tag.start, from + tag.end, deco);
 			}
 		}
 

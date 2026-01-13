@@ -2,14 +2,12 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
-import { generateContentHash } from '@/core/utils/hash-utils';
+import { binaryContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings, SearchSettings } from '@/app/settings/types';
-import { DEFAULT_SEARCH_SETTINGS } from '@/app/settings/types';
-import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
+import { generateUuidWithoutHyphens, generateStableUuid } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import type { LLMRequest } from '@/core/providers/types';
 import { PromptId } from '@/service/prompt/PromptId';
 
 /**
@@ -31,12 +29,12 @@ export class ImageDocumentLoader implements DocumentLoader {
 		return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
 	}
 
-	async readByPath(filePath: string): Promise<Document | null> {
+	async readByPath(filePath: string, genCacheContent?: boolean): Promise<Document | null> {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (!file || !(file instanceof TFile)) return null;
 		const ext = file.extension.toLowerCase();
 		if (!this.getSupportedExtensions().includes(ext)) return null;
-		return await this.readImageFile(file);
+		return await this.readImageFile(file, genCacheContent);
 	}
 
 	async chunkContent(
@@ -126,14 +124,19 @@ export class ImageDocumentLoader implements DocumentLoader {
 		return { shortSummary, fullSummary: shortSummary };
 	}
 
-	private async readImageFile(file: TFile): Promise<Document | null> {
+	private async readImageFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
 		try {
-			const content = await this.generateImageDescription(file);
+			if (genCacheContent) {
+				console.debug('[ImageDocumentLoader] reading image file:', file.path, 'genCacheContent:', genCacheContent);
+			}
+			const realContent = await this.app.vault.readBinary(file);
+			const realContentHash = binaryContentHash(realContent);
 
-			const contentHash = generateContentHash(content);
+			const cacheContent = genCacheContent ? await this.generateImageDescription(file) : '';
+			// const cacheContentHash = generateContentHash(cacheContent);
 
 			return {
-				id: generateDocIdFromPath(file.path),
+				id: generateStableUuid(file.path),
 				type: 'image',
 				sourceFileInfo: {
 					path: file.path,
@@ -151,13 +154,13 @@ export class ImageDocumentLoader implements DocumentLoader {
 					size: file.stat.size,
 					mtime: file.stat.mtime,
 					ctime: file.stat.ctime,
-					content, // OCR and AI description
+					content: cacheContent, // OCR and AI description
 				},
 				metadata: {
 					title: file.basename,
 					tags: [],
 				},
-				contentHash,
+				contentHash: realContentHash,
 				references: {
 					outgoing: [],
 					incoming: [],
@@ -181,55 +184,26 @@ export class ImageDocumentLoader implements DocumentLoader {
 		try {
 			// Read image as base64
 			const arrayBuffer = await this.app.vault.readBinary(file);
-			const base64 = Buffer.from(arrayBuffer).toString('base64');
+			// const base64 = Buffer.from(arrayBuffer).toString('base64');
 			const mimeType = this.getMimeType(file.extension);
-			const dataUrl = `data:${mimeType};base64,${base64}`;
-			console.debug('[ImageDocumentLoader] dataUrl:', dataUrl);
+			// const dataUrl = `data:${mimeType};base64,${base64}`;
+			// console.debug('[ImageDocumentLoader] dataUrl:', dataUrl);
 
-			// Get model and provider from settings
-			// Use imageDescriptionModel if configured, otherwise fallback to AI settings defaultModel
-			let modelConfig = this.settings.imageDescriptionModel;
-			console.debug('[ImageDocumentLoader] modelConfig from settings:', modelConfig);
-			if (!modelConfig && this.aiServiceManager) {
-				// Try to get defaultModel from AIServiceManager
-				const aiSettings = (this.aiServiceManager as any).settings;
-				if (aiSettings?.defaultModel) {
-					modelConfig = aiSettings.defaultModel;
-					console.debug('[ImageDocumentLoader] defaultModel from AIServiceManager:', modelConfig);
-				}
-			}
-			// Final fallback to default settings
-			if (!modelConfig) {
-				modelConfig = DEFAULT_SEARCH_SETTINGS.imageDescriptionModel!;
-				console.debug('[ImageDocumentLoader] defaultModel from DEFAULT_SEARCH_SETTINGS:', modelConfig);
-			}
-
-			// Get MultiProviderChatService through AIServiceManager
-			const multiChat = this.aiServiceManager.getMultiChat();
-			const request: LLMRequest = {
-				provider: modelConfig.provider,
-				model: modelConfig.modelId,
-				messages: [
+			const response = await this.aiServiceManager.chatWithPrompt(
+				PromptId.ImageDescription,
+				null, // No variables needed for image description
+				undefined,
+				undefined,
+				[
 					{
-						role: 'user',
-						content: [
-							{
-								type: 'text',
-								text: 'Please describe this image in detail, including any text visible in the image (OCR), objects, scenes, and any other relevant information.',
-							},
-							{
-								type: 'image_url',
-								url: dataUrl,
-							},
-						],
+						type: 'image',
+						data: arrayBuffer,
+						mediaType: mimeType,
 					},
-				],
-			};
-
-			// Call AI service
-			const response = await multiChat.blockChat(request);
+				]
+			);
 			console.debug('[ImageDocumentLoader] response:', response);
-			return response.content || `[Image: ${file.basename}]`;
+			return response || `[Image: ${file.basename}]`;
 		} catch (error) {
 			console.error('Error generating image description with AI:', error);
 			// Fallback to placeholder

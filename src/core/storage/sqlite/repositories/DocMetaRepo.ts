@@ -60,6 +60,13 @@ export class DocMetaRepo {
 	}
 
 	/**
+	 * Delete all document metadata.
+	 */
+	async deleteAll(): Promise<void> {
+		await this.db.deleteFrom('doc_meta').execute();
+	}
+
+	/**
 	 * Get all indexed file paths with their modification times.
 	 * Returns a map of path -> mtime for efficient lookup.
 	 */

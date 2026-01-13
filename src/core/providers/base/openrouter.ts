@@ -21,7 +21,6 @@ export interface OpenRouterChatServiceOptions {
 	apiKey?: string;
 	referer?: string;
 	title?: string;
-	timeoutMs?: number;
 	extra?: Record<string, any>;
 }
 
@@ -110,7 +109,7 @@ export class OpenRouterChatService implements LLMProviderService {
 	}
 
 	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
-		const timeoutMs = this.options.timeoutMs ?? DEFAULT_OPENROUTER_TIMEOUT_MS;
+		const timeoutMs = DEFAULT_OPENROUTER_TIMEOUT_MS;
 
 		const headers: Record<string, string> = {
 			'Authorization': `Bearer ${this.options.apiKey}`,

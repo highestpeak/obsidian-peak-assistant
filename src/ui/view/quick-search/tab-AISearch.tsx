@@ -442,8 +442,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 			});
 		}
 
-		// Validate query: must have content after removing @web and references
-		const cleanQuery = processedQuery.replace(/@web\s*/g, '').trim();
+		// Validate query: must have content after removing @web@ and references
+		const cleanQuery = processedQuery.replace(/@web@\s*/g, '').trim();
 		if (!cleanQuery) {
 			setError('Please enter a search query.');
 			return;
@@ -593,7 +593,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 	};
 
 	const handleAddReference = (id: number) => {
-		const referenceTag = `@${id}`;
+		const referenceTag = `@${id}@`;
 		const currentQuery = searchQuery.trim();
 		const newQuery = currentQuery ? `${currentQuery} ${referenceTag}` : referenceTag;
 		onSearchQueryChange(newQuery);

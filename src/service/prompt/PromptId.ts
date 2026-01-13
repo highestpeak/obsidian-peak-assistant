@@ -16,6 +16,7 @@ import * as promptQualityEvalJson from './templates/prompt-quality-eval-json';
 import * as promptRewriteWithLibrary from './templates/prompt-rewrite-with-library';
 import * as docSummary from './templates/doc-summary';
 import * as imageSummary from './templates/image-summary';
+import * as imageDescription from './templates/image-description';
 import * as folderProjectSummary from './templates/folder-project-summary';
 import * as docTypeClassifyJson from './templates/doc-type-classify-json';
 import * as docTagGenerateJson from './templates/doc-tag-generate-json';
@@ -78,6 +79,7 @@ export enum PromptId {
 
 	// Document analysis prompts (for future use)
 	DocSummary = 'doc-summary',
+	ImageDescription = 'image-description',
 	ImageSummary = 'image-summary',
 	FolderProjectSummary = 'folder-project-summary',
 	// Classify document type: principle, profile, index, daily, project, note, or other
@@ -123,6 +125,7 @@ export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
 
 	// Document analysis prompts - users may want different models for different document types
 	PromptId.DocSummary,
+	PromptId.ImageDescription,
 	PromptId.ImageSummary,
 	PromptId.FolderProjectSummary,
 	// Classify document type: principle, profile, index, daily, project, note, or other
@@ -214,6 +217,7 @@ export interface PromptVariables {
 		title?: string;
 		path?: string;
 	};
+	[PromptId.ImageDescription]: Record<string, never>;
 	[PromptId.ImageSummary]: {
 		content: string;
 		title?: string;
@@ -282,6 +286,7 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptTemplate> = {
 	[PromptId.PromptQualityEvalJson]: createTemplate(promptQualityEvalJson),
 	[PromptId.PromptRewriteWithLibrary]: createTemplate(promptRewriteWithLibrary),
 	[PromptId.DocSummary]: createTemplate(docSummary),
+	[PromptId.ImageDescription]: createTemplate(imageDescription),
 	[PromptId.ImageSummary]: createTemplate(imageSummary),
 	[PromptId.FolderProjectSummary]: createTemplate(folderProjectSummary),
 	[PromptId.DocTypeClassifyJson]: createTemplate(docTypeClassifyJson),

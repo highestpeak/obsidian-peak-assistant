@@ -5,6 +5,7 @@ import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/t
 import { MOCK_RESPONSE_CONTENT } from './MockResponseContent';
 import { TextStreamPart } from 'ai';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
+import { TEST_PROJECTS, TEST_CONVERSATIONS } from '@/desktop/mocks/test-data';
 
 /**
  * Mock AIServiceManager for desktop development
@@ -68,7 +69,17 @@ export class MockAIServiceManager {
 	 * Read conversation by ID
 	 */
 	async readConversation(conversationId: string, includeMessages: boolean = false): Promise<ChatConversation | null> {
-		// Return mock conversation
+		// Find conversation in test data
+		const conversation = TEST_CONVERSATIONS.find(conv => conv.meta.id === conversationId);
+		if (conversation) {
+			// Return a copy with messages included/excluded based on parameter
+			return {
+				...conversation,
+				messages: includeMessages ? conversation.messages : [],
+			};
+		}
+
+		// Fallback to mock conversation if not found in test data
 		return {
 			meta: {
 				id: conversationId,
@@ -93,66 +104,21 @@ export class MockAIServiceManager {
 	/**
 	 * List all conversations
 	 * @param projectId - If provided, only return conversations for this project. If null/undefined, return all conversations.
-	 * Each project or standalone has 100 mock conversations
 	 * @param limit - Optional limit on the number of conversations to return.
 	 * @param offset - Optional offset into the list of conversations.
 	 */
 	async listConversations(projectId?: string | null, limit?: number, offset?: number): Promise<ChatConversation[]> {
-		const mockConvs = (base: {
-			baseId: string;
-			title: string;
-			baseDays: number;
-			projectId?: string;
-			activeModel?: string;
-			activeProvider?: string;
-		}) => {
-			return Array.from({ length: 100 }).map((_, idx) => {
-				const uniqId = `${base.baseId}-${idx + 1}`;
-				const daysAgo = base.baseDays + idx;
-				const ts = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
-				return {
-					meta: {
-						id: uniqId,
-						title: `${base.title} #${idx + 1}`,
-						createdAtTimestamp: ts,
-						updatedAtTimestamp: ts,
-						activeModel: base.activeModel || 'gpt-4',
-						activeProvider: base.activeProvider || 'openai',
-						...(base.projectId ? { projectId: base.projectId } : {}),
-					},
-					messages: [],
-					content: `# ${base.title} #${idx + 1}\n\nMock content`,
-					file: this.createMockFile(`.peak-assistant/conversations/${uniqId}.md`),
-				};
-			});
-		};
+		let conversations = TEST_CONVERSATIONS;
 
-		let allConversations: ChatConversation[] = [];
+		// Filter by project if specified
 		if (projectId) {
-			// For a given projectId, return 100 mock conversations for that project
-			allConversations = mockConvs({
-				baseId: `project-${projectId}-conv`,
-				title: `Project(${projectId}) Conversation`,
-				baseDays: 0,
-				projectId,
-				activeModel: 'gpt-4',
-				activeProvider: 'openai',
-			});
-		} else {
-			// Return 100 mock standalone conversations
-			allConversations = mockConvs({
-				baseId: 'standalone-conv',
-				title: 'Standalone Conversation',
-				baseDays: 0,
-				activeModel: 'claude-3-opus',
-				activeProvider: 'anthropic',
-			});
+			conversations = conversations.filter(conv => conv.meta.projectId === projectId);
 		}
 
 		// Apply pagination
 		const startIndex = offset || 0;
 		const endIndex = limit ? startIndex + limit : undefined;
-		const paginatedConversations = allConversations.slice(startIndex, endIndex);
+		const paginatedConversations = conversations.slice(startIndex, endIndex);
 
 		return paginatedConversations;
 	}
@@ -161,61 +127,17 @@ export class MockAIServiceManager {
 	 * Count conversations, optionally filtered by project
 	 */
 	async countConversations(projectId?: string | null): Promise<number> {
-		// Mock always returns 100 conversations per project/standalone
-		return 100;
+		if (projectId) {
+			return TEST_CONVERSATIONS.filter(conv => conv.meta.projectId === projectId).length;
+		}
+		return TEST_CONVERSATIONS.length;
 	}
 
 	/**
 	 * List all projects
 	 */
 	async listProjects(): Promise<ChatProject[]> {
-		return [
-			{
-				meta: {
-					id: 'project-1',
-					name: 'Mock Project 1',
-					createdAtTimestamp: Date.now() - 259200000,
-					updatedAtTimestamp: Date.now() - 259200000,
-				},
-				context: {
-					shortSummary: 'This project focuses on developing an AI-powered assistant for Obsidian, featuring advanced conversation management, file analysis capabilities, and intelligent project organization tools. The system integrates seamlessly with Obsidian\'s ecosystem while providing powerful AI-driven insights and automation features.',
-					lastUpdatedTimestamp: Date.now() - 86400000,
-				},
-			},
-			{
-				meta: {
-					id: 'project-2',
-					name: 'Mock Project 2',
-					createdAtTimestamp: Date.now() - 345600000,
-					updatedAtTimestamp: Date.now() - 345600000,
-				},
-				context: {
-					shortSummary: 'A comprehensive knowledge management system designed to enhance productivity and creativity. This project includes advanced search capabilities, intelligent content organization, and collaborative features that help users build and maintain extensive knowledge bases with ease.',
-					lastUpdatedTimestamp: Date.now() - 172800000,
-				},
-			},
-			{
-				meta: {
-					id: 'project-3',
-					name: 'Mock Project 3',
-					createdAtTimestamp: Date.now() - 432000000,
-					updatedAtTimestamp: Date.now() - 432000000,
-				},
-				context: {
-					shortSummary: 'An innovative approach to document processing and analysis, combining machine learning techniques with user-friendly interfaces. The project aims to revolutionize how users interact with their documents through intelligent summarization, categorization, and cross-referencing capabilities.',
-					lastUpdatedTimestamp: Date.now() - 259200000,
-				},
-			},
-			// Add 20 mock projects
-			...Array.from({ length: 20 }, (_, i) => ({
-				meta: {
-					id: `project-${i + 4}`,
-					name: `Mock Project ${i + 4}`,
-					createdAtTimestamp: Date.now() - (518400000 + i * 86400000),
-					updatedAtTimestamp: Date.now() - (518400000 + i * 86400000),
-				},
-			})),
-		];
+		return TEST_PROJECTS;
 	}
 
 	/**

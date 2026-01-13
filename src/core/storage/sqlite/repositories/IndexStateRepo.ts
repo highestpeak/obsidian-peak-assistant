@@ -25,6 +25,13 @@ export class IndexStateRepo {
 			.onConflict((oc) => oc.column('key').doUpdateSet({ value: (eb) => eb.ref('excluded.value') }))
 			.execute();
 	}
+
+	/**
+	 * Clear all index state entries.
+	 */
+	async clearAll(): Promise<void> {
+		await this.db.deleteFrom('index_state').execute();
+	}
 }
 
 

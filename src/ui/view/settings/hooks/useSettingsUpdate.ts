@@ -79,12 +79,12 @@ export function useSettingsUpdate(
 		<K extends keyof MyPluginSettings['ai']>(key: K, value: MyPluginSettings['ai'][K]) => {
 			return updateSettings({
 				ai: {
-					...settings.ai,
+					...plugin.settings.ai,
 					[key]: value,
 				},
 			});
 		},
-		[settings.ai, updateSettings]
+		[updateSettings] // Remove settings.ai dependency to avoid stale closure
 	);
 
 	/**
@@ -94,12 +94,12 @@ export function useSettingsUpdate(
 		<K extends keyof MyPluginSettings['search']>(key: K, value: MyPluginSettings['search'][K]) => {
 			return updateSettings({
 				search: {
-					...settings.search,
+					...plugin.settings.search,
 					[key]: value,
 				},
 			});
 		},
-		[settings.search, updateSettings]
+		[updateSettings] // Remove settings.search dependency to avoid stale closure
 	);
 
 	/**
@@ -110,18 +110,18 @@ export function useSettingsUpdate(
 			key: K,
 			value: NonNullable<MyPluginSettings['search']['chunking']>[K]
 		) => {
-			if (!settings.search.chunking) return Promise.resolve();
+			if (!plugin.settings.search.chunking) return Promise.resolve();
 			return updateSettings({
 				search: {
-					...settings.search,
+					...plugin.settings.search,
 					chunking: {
-						...settings.search.chunking,
+						...plugin.settings.search.chunking,
 						[key]: value,
 					},
 				},
 			});
 		},
-		[settings.search, updateSettings]
+		[updateSettings] // Remove settings.search dependency to avoid stale closure
 	);
 
 	/**
@@ -131,27 +131,27 @@ export function useSettingsUpdate(
 		(provider: string, modelId: string) => {
 			return updateSettings({
 				ai: {
-					...settings.ai,
+					...plugin.settings.ai,
 					defaultModel: { provider, modelId },
 				},
 			});
 		},
-		[settings.ai, updateSettings]
+		[updateSettings] // Remove settings.ai dependency to avoid stale closure
 	);
 
 	/**
-	 * Update model configuration in search settings (searchSummaryModel, imageDescriptionModel)
+	 * Update model configuration in search settings (searchSummaryModel)
 	 */
 	const updateSearchModel = useCallback(
-		(key: 'searchSummaryModel' | 'imageDescriptionModel', provider: string, modelId: string) => {
+		(key: 'searchSummaryModel', provider: string, modelId: string) => {
 			return updateSettings({
 				search: {
-					...settings.search,
+					...plugin.settings.search,
 					[key]: { provider, modelId },
 				},
 			});
 		},
-		[settings.search, updateSettings]
+		[updateSettings] // Remove settings.search dependency to avoid stale closure
 	);
 
 	/**
@@ -159,18 +159,18 @@ export function useSettingsUpdate(
 	 */
 	const updateChunkingModel = useCallback(
 		(key: 'embeddingModel' | 'rerankModel', provider: string, modelId: string) => {
-			if (!settings.search.chunking) return Promise.resolve();
+			if (!plugin.settings.search.chunking) return Promise.resolve();
 			return updateSettings({
 				search: {
-					...settings.search,
+					...plugin.settings.search,
 					chunking: {
-						...settings.search.chunking,
+						...plugin.settings.search.chunking,
 						[key]: { provider, modelId },
 					},
 				},
 			});
 		},
-		[settings.search, updateSettings]
+		[updateSettings] // Remove settings.search dependency to avoid stale closure
 	);
 
 	/**
@@ -180,15 +180,15 @@ export function useSettingsUpdate(
 		(type: string, value: boolean) => {
 			return updateSettings({
 				search: {
-					...settings.search,
+					...plugin.settings.search,
 					includeDocumentTypes: {
-						...settings.search.includeDocumentTypes,
+						...plugin.settings.search.includeDocumentTypes,
 						[type]: value,
 					},
 				},
 			});
 		},
-		[settings.search, updateSettings]
+		[updateSettings] // Remove settings.search dependency to avoid stale closure
 	);
 
 	/**
@@ -198,12 +198,12 @@ export function useSettingsUpdate(
 		(updates: Partial<MyPluginSettings['ai']>) => {
 			return updateSettings({
 				ai: {
-					...settings.ai,
+					...plugin.settings.ai,
 					...updates,
 				},
 			});
 		},
-		[settings.ai, updateSettings]
+		[updateSettings] // Remove settings.ai dependency to avoid stale closure
 	);
 
 	/**
@@ -212,10 +212,10 @@ export function useSettingsUpdate(
 	const updatePromptModel = useCallback(
 		(promptId: string, provider: string, modelId: string) => {
 			// Only update configurable prompt IDs
-			const existingMap = settings.ai.promptModelMap || {};
+			const existingMap = plugin.settings.ai.promptModelMap || {};
 			return updateSettings({
 				ai: {
-					...settings.ai,
+					...plugin.settings.ai,
 					promptModelMap: {
 						...existingMap,
 						[promptId]: { provider, modelId },
@@ -223,7 +223,7 @@ export function useSettingsUpdate(
 				},
 			});
 		},
-		[settings.ai, updateSettings]
+		[updateSettings] // Remove settings.ai dependency to avoid stale closure
 	);
 
 	return {

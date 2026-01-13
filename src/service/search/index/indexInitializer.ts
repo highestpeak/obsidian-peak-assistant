@@ -2,12 +2,11 @@ import { Notice } from 'obsidian';
 import type { App } from 'obsidian';
 import type { SearchSettings } from '@/app/settings/types';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
-import type { Document as CoreDocument, DocumentType } from '@/core/document/types';
+import type { DocumentType } from '@/core/document/types';
 import { IndexProgressTracker } from '../support/progress-tracker';
 import { IndexService } from '@/service/search/index/indexService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { generateContentHash } from '@/core/utils/hash-utils';
-import { INDEX_CHECK_BATCH_SIZE, SEARCH_DB_FILENAME, INDEX_PROGRESS_UPDATE_INTERVAL } from '@/core/constant';
+import { INDEX_CHECK_BATCH_SIZE, SEARCH_DB_FILENAME } from '@/core/constant';
 import { getFileSize } from '@/core/utils/obsidian-utils';
 
 /**
@@ -56,7 +55,9 @@ export class IndexInitializer {
 			}
 
 			// Index exists - check for changes
+			new Notice('Scanning for index changes...', 5000);
 			const { filesToIndex } = await this.scanForIndexChanges();
+			new Notice(`Scanning for index changes completed. files to index: ${filesToIndex.length}`, 3000);
 
 			if (filesToIndex.length > 0) {
 				if (this.settings.autoIndex) {
@@ -87,81 +88,32 @@ export class IndexInitializer {
 	async performFullIndexing(showNotification: boolean): Promise<void> {
 		console.log('[IndexInitializer] Starting full indexing');
 
+		// Reset cancellation flag
+		IndexService.resetCancellation();
+
 		const loaderManager = DocumentLoaderManager.getInstance();
-		
+
 		// Step 1: Count total files first to show accurate progress
 		const countStartTime = performance.now();
-		let totalFiles = 0;
 		console.log('[IndexInitializer] Counting total files...');
+		const filesToIndex: string[] = [];
 		for await (const batch of loaderManager.scanDocuments()) {
 			for (const docMeta of batch) {
 				// Count files that should be indexed (respecting settings)
-				// Use the same filter logic as loadAllDocuments
-				if (loaderManager.shouldIndexDocument({ type: docMeta.type } as any)) {
-					totalFiles += 1;
+				// Create a partial document object with path info for ignore pattern checking
+				const partialDoc = {
+					type: docMeta.type,
+					sourceFileInfo: { path: docMeta.path }
+				} as any;
+				if (loaderManager.shouldIndexDocument(partialDoc)) {
+					filesToIndex.push(docMeta.path);
 				}
 			}
 		}
 		const countDuration = performance.now() - countStartTime;
-		console.log(`[IndexInitializer] Total files to index: ${totalFiles} (counted in ${countDuration.toFixed(2)}ms)`);
+		console.log(`[IndexInitializer] Total files to index: ${filesToIndex.length} (counted in ${countDuration.toFixed(2)}ms)`);
 
-		const progressTracker = showNotification ? new IndexProgressTracker(this.app, totalFiles) : null;
-
-		try {
-			if (progressTracker) {
-				progressTracker.showStart();
-			}
-
-			let indexedCount = 0;
-			let lastProgressUpdate = Date.now();
-
-			// Step 2: Process documents one by one: load -> index (chunking handled in IndexService)
-			for await (const batch of loaderManager.loadAllDocuments()) {
-				console.debug('[IndexInitializer] Loading batch:', batch.length);
-				for (const doc of batch) {
-					// Documents are already filtered by settings in loadAllDocuments
-					if (!loaderManager.shouldIndexDocument(doc)) {
-						continue;
-					}
-
-					// Index document (chunking strategy is applied inside IndexService)
-					console.debug('[IndexInitializer] Indexing document:', doc.sourceFileInfo.path);
-					await IndexService.getInstance().indexDocument(doc, this.settings);
-					indexedCount += 1; // Count by document, not by chunks
-
-					// Update progress periodically
-					if (progressTracker && Date.now() - lastProgressUpdate >= INDEX_PROGRESS_UPDATE_INTERVAL) {
-						progressTracker.updateProgress(indexedCount);
-						lastProgressUpdate = Date.now();
-					}
-				}
-				// for testing only
-				break;
-			}
-
-			// Final progress update
-			if (progressTracker) {
-				progressTracker.updateProgress(indexedCount);
-			}
-
-			if (progressTracker) {
-				const dbFilePath = this.storageFolder 
-					? `${this.storageFolder.trim().replace(/^\/+/, '').replace(/\/+$/, '')}/${SEARCH_DB_FILENAME}`
-					: SEARCH_DB_FILENAME;
-				const storageSize = await getFileSize(this.app, dbFilePath);
-
-				progressTracker.showComplete({
-					totalIndexed: indexedCount,
-					storageSize,
-				});
-			}
-
-		} catch (e) {
-			console.error('Full indexing failed:', e);
-			if (progressTracker) {
-				progressTracker.showError(e instanceof Error ? e.message : 'Unknown error');
-			}
-		}
+		await this.indexNewAndModifiedFiles(filesToIndex);
 	}
 
 	/**
@@ -176,22 +128,24 @@ export class IndexInitializer {
 	 */
 	async performIncrementalIndexing(filesToIndexPaths?: string[]): Promise<void> {
 		try {
+			// Reset cancellation flag
+			IndexService.resetCancellation();
+
 			// Scan for files that need indexing (only if not already provided)
 			if (!filesToIndexPaths) {
+				new Notice('Scanning for index changes...', 5000);
 				const scanResult = await this.scanForIndexChanges();
 				filesToIndexPaths = scanResult.filesToIndex;
+				new Notice(`Scanning for index changes completed. files to index: ${filesToIndexPaths.length}`, 3000);
 			}
 
 			const pathsToIndex = filesToIndexPaths;
 			// Execute indexing and deletion check in parallel
-			Promise.all([
+			await Promise.all([
 				this.checkAndDeleteRemovedFiles(),
 				this.indexNewAndModifiedFiles(pathsToIndex),
-			]).then(() => {
-				console.log(`[IndexInitializer] Incremental indexing completed: ${pathsToIndex.length} files processed`);
-			}).catch((e) => {
-				console.error('Incremental indexing operations failed:', e);
-			});
+			]);
+			console.log(`[IndexInitializer] Incremental indexing completed: ${pathsToIndex.length} files processed`);
 
 		} catch (e) {
 			console.error('Incremental indexing failed:', e);
@@ -218,9 +172,10 @@ export class IndexInitializer {
 	 * which internally scans the vault file tree.
 	 */
 	private async checkAndDeleteRemovedFiles(): Promise<void> {
+		console.debug('[IndexInitializer] Checking and deleting removed files');
 		const loaderManager = DocumentLoaderManager.getInstance();
 		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-		
+
 		// First, scan vault to collect all current file paths
 		// Performance: O(n) where n = number of markdown files
 		// Expected time: ~0.1-0.5ms per file (includes Obsidian API overhead)
@@ -232,15 +187,19 @@ export class IndexInitializer {
 		// - ~100,000 files: ~1-5s
 		const vaultFiles = new Set<string>();
 		const collectionStartTime = performance.now();
-		
+
 		for await (const docBatch of loaderManager.scanDocuments({ batchSize: INDEX_CHECK_BATCH_SIZE })) {
 			for (const docItem of docBatch) {
-				if (loaderManager.shouldIndexDocument({ type: docItem.type } as CoreDocument)) {
+				const partialDoc = {
+					type: docItem.type,
+					sourceFileInfo: { path: docItem.path }
+				} as any;
+				if (loaderManager.shouldIndexDocument(partialDoc)) {
 					vaultFiles.add(docItem.path);
 				}
 			}
 		}
-		
+
 		const collectionTime = performance.now() - collectionStartTime;
 		if (collectionTime > 100) {
 			// Log if collection takes more than 100ms
@@ -251,19 +210,19 @@ export class IndexInitializer {
 		const deletedPaths: string[] = [];
 		let offset = 0;
 		const batchSize = INDEX_CHECK_BATCH_SIZE;
-		
+
 		while (true) {
 			const indexedBatch = await docMetaRepo.getIndexedPathsBatch(offset, batchSize);
 			if (indexedBatch.length === 0) {
 				break;
 			}
-			
+
 			for (const indexedItem of indexedBatch) {
 				if (!vaultFiles.has(indexedItem.path)) {
 					deletedPaths.push(indexedItem.path);
 				}
 			}
-			
+
 			offset += batchSize;
 		}
 
@@ -284,10 +243,9 @@ export class IndexInitializer {
 			return;
 		}
 
-		const loaderManager = DocumentLoaderManager.getInstance();
 		const progressTracker = new IndexProgressTracker(this.app, filesToIndexPaths.length);
 
-		progressTracker.showStart('Incremental indexing');
+		progressTracker.showStart('Indexing');
 
 		let indexedCount = 0;
 		let lastProgressUpdate = Date.now();
@@ -295,15 +253,16 @@ export class IndexInitializer {
 		const INCREMENTAL_PROGRESS_UPDATE_INTERVAL = 2000; // Update every 2 seconds for incremental
 
 		// Process files one by one: load -> index (chunking handled in IndexService)
+		console.debug(`[IndexInitializer] Indexing started: ${filesToIndexPaths.length} files to process`);
 		for (const path of filesToIndexPaths) {
-			// Load document
-			const doc = await loaderManager.readByPath(path);
-			if (!doc) {
-				continue;
+			// Check if indexing has been cancelled
+			if (IndexService.isCancelled() || progressTracker?.isCancelled()) {
+				console.log(`[IndexInitializer] Indexing cancelled at ${path}`);
+				break;
 			}
 
 			// Index document (chunking strategy is applied inside IndexService)
-			await IndexService.getInstance().indexDocument(doc, this.settings);
+			await IndexService.getInstance().indexDocument(path, this.settings);
 			indexedCount += 1; // Count by document, not by chunks
 
 			// Update progress periodically
@@ -313,7 +272,7 @@ export class IndexInitializer {
 			}
 		}
 
-		const dbFilePath = this.storageFolder 
+		const dbFilePath = this.storageFolder
 			? `${this.storageFolder.trim().replace(/^\/+/, '').replace(/\/+$/, '')}/${SEARCH_DB_FILENAME}`
 			: SEARCH_DB_FILENAME;
 		const storageSize = await getFileSize(this.app, dbFilePath);
@@ -342,19 +301,25 @@ export class IndexInitializer {
 	private async scanForIndexChanges(): Promise<{
 		filesToIndex: string[];
 	}> {
+		console.debug('[IndexInitializer] Scanning for index changes');
 		const loaderManager = DocumentLoaderManager.getInstance();
 		const filesToIndex: string[] = [];
 
 		// Scan vault files without loading content
 		for await (const docBatch of loaderManager.scanDocuments({ batchSize: INDEX_CHECK_BATCH_SIZE })) {
 			const batchFilesToIndex = await this.checkAndCollectModifiedFiles(
-				docBatch.filter(docItem =>
-					loaderManager.shouldIndexDocument({ type: docItem.type } as CoreDocument)
-				)
+				docBatch.filter(docItem => {
+					const partialDoc = {
+						type: docItem.type,
+						sourceFileInfo: { path: docItem.path }
+					} as any;
+					return loaderManager.shouldIndexDocument(partialDoc);
+				})
 			);
 			filesToIndex.push(...batchFilesToIndex);
 		}
 
+		console.debug('[IndexInitializer] Scanning for index changes completed. files to index:', filesToIndex.length);
 		return { filesToIndex };
 	}
 
@@ -411,7 +376,7 @@ export class IndexInitializer {
 		const filesWithoutHash: string[] = [];
 
 		for (const docItem of maybeIndexArray) {
-			const doc = await loaderManager.readByPath(docItem.path);
+			const doc = await loaderManager.readByPath(docItem.path, false);
 			if (doc && doc.contentHash) {
 				pathToHash.set(docItem.path, doc.contentHash);
 			} else {

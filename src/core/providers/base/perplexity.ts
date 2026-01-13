@@ -116,7 +116,6 @@ function formatModelDisplayName(modelId: string): string {
 async function fetchPerplexityModels(
 	baseUrl?: string,
 	apiKey?: string,
-	timeoutMs?: number
 ): Promise<ModelMetaData[] | null> {
 	if (!apiKey) {
 		return null;
@@ -132,7 +131,7 @@ async function fetchPerplexityModels(
 				'Authorization': `Bearer ${apiKey}`,
 				'Content-Type': 'application/json',
 			},
-			signal: AbortSignal.timeout(timeoutMs ?? DEFAULT_PERPLEXITY_TIMEOUT_MS),
+			signal: AbortSignal.timeout(DEFAULT_PERPLEXITY_TIMEOUT_MS),
 		});
 
 		if (!response.ok) {
@@ -164,7 +163,6 @@ async function fetchPerplexityModels(
 export interface PerplexityChatServiceOptions {
 	baseUrl?: string;
 	apiKey?: string;
-	timeoutMs?: number;
 	extra?: Record<string, any>;
 }
 

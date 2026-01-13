@@ -24,7 +24,8 @@ export class SearchUpdateListener {
 	constructor(
 		private readonly app: App,
 		private readonly settings: SearchSettings,
-		private readonly debounceMs: number = 800
+		// five seconds debounce to avoid too many updates
+		private readonly debounceMs: number = 5000
 	) {
 		this.loaderManager = DocumentLoaderManager.getInstance();
 	}
@@ -162,11 +163,7 @@ export class SearchUpdateListener {
 	 */
 	private async indexDocuments(paths: string[]): Promise<void> {
 		for (const p of paths) {
-			const doc = await this.loaderManager.readByPath(p);
-			if (doc) {
-				// Index document directly using CoreDocument (chunking handled in IndexService)
-				await IndexService.getInstance().indexDocument(doc, this.settings);
-			}
+			await IndexService.getInstance().indexDocument(p, this.settings);
 		}
 	}
 }

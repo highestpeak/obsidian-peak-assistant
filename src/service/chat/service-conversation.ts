@@ -588,8 +588,7 @@ export class ConversationService {
 
 	/**
 	 * Ensure resource summary exists, generate if missing.
-	 * For images: uses imageDescriptionModel from DocumentLoaderManager settings if available.
-	 * If imageDescriptionModel is not configured and resource is image, skips summary generation (ignore strategy).
+	 * For images: uses ImageDescription prompt for generating descriptions.
 	 */
 	private async ensureResourceSummary(sourcePath: string, resourceRef: ChatResourceRef): Promise<void> {
 		if (!this.resourceSummaryService) {
@@ -603,28 +602,7 @@ export class ConversationService {
 			return;
 		}
 
-		// Check if this is an image and if imageDescriptionModel is configured
-		const fileType = getFileTypeFromPath(sourcePath);
-		const isImage = fileType === 'image';
-
-		if (isImage) {
-			// Get SearchSettings from DocumentLoaderManager to check imageDescriptionModel
-			const docLoaderManager = DocumentLoaderManager.getInstance();
-			const searchSettings = (docLoaderManager as any).settings;
-
-			if (!searchSettings?.imageDescriptionModel) {
-				// Image but no imageDescriptionModel configured: skip summary generation (ignore strategy)
-				console.warn(`[ConversationService] Image "${sourcePath}" skipped: no imageDescriptionModel configured`);
-				// Don't create summary, just return (image will be ignored in degrade_to_text mode)
-				return;
-			}
-
-			// Image with imageDescriptionModel: use it for summary generation
-			// The ResourceLoaderManager.getSummary will delegate to ImageDocumentLoader,
-			// which will use imageDescriptionModel from settings
-		}
-
-		// Generate summary (for images with imageDescriptionModel, or for non-image resources)
+		// Generate summary for the resource
 		try {
 			const summary = await this.resourceLoaderManager.getSummary(
 				sourcePath,

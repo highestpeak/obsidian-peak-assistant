@@ -81,7 +81,7 @@ export class ResourceLoaderManager {
             console.debug('[ResourceLoaderManager] getting summary for special resource type:', source, 'resourceKind:', resourceKind);
             summary = await loader.getSummary(source, provider, modelId);
         } else {
-            const doc = await this.documentLoaderManager.readByPath(source);
+            const doc = await this.documentLoaderManager.readByPath(source, true);
             console.debug('[ResourceLoaderManager] getting summary for document type:', source, 'resourceKind:', resourceKind);
             summary = doc ? await loader.getSummary(doc, provider, modelId) : null;
         }

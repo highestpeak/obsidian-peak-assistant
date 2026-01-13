@@ -1,5 +1,5 @@
 export interface ParsedTag {
-	type: 'context' | 'prompt';
+	type: 'context' | 'prompt' | 'search';
 	text: string;
 	start: number;
 	end: number;
@@ -8,6 +8,7 @@ export interface ParsedTag {
 const contextTagRegex = /@[^@]+@/g;
 const promptTagRegex = /\/[^\/]*?\//g; // Non-greedy matching
 const bracketTagRegex = /\[\[[^\]]+\]\]/g;
+const searchTagRegex = /(@web@|@\d+@)/g; // For @web@ and @number@ highlighting in search
 
 /**
  * Parse tags from text using the same logic as tagPlugin
@@ -32,6 +33,17 @@ export function parseTagsFromText(text: string): ParsedTag[] {
 	while ((match = bracketRegex.exec(text)) !== null) {
 		tags.push({
 			type: 'context',
+			text: match[0],
+			start: match.index,
+			end: match.index + match[0].length,
+		});
+	}
+
+	// Parse @web@ and @number@ tags for search input
+	const searchRegex = /(@web@|@\d+@)/g;
+	while ((match = searchRegex.exec(text)) !== null) {
+		tags.push({
+			type: 'search',
 			text: match[0],
 			start: match.index,
 			end: match.index + match[0].length,

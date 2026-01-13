@@ -4,10 +4,10 @@ import { usePromptInputContext } from './PromptInput';
 import CodeMirror from '@uiw/react-codemirror';
 import { EditorView, tooltips } from '@codemirror/view';
 import { autocompletion } from '@codemirror/autocomplete';
-import { tagPlugin } from './tagPlugin';
+import { tagPlugin } from '@/ui/component/mine/tagPlugin';
 import { keymapExtension } from './keymap';
 import { CompletionContext, CompletionSource } from '@codemirror/autocomplete';
-import { parseTagsFromText } from './tagParser';
+import { parseTagsFromText } from '../mine/tagParser';
 
 // Create completion sources with data
 const createCompletionSources = (
@@ -45,7 +45,7 @@ const createCompletionSources = (
 			options: options.slice(0, 20).map(item => ({
 				label: `@${item.value || item.label}`,
 				displayLabel: item.label,
-				detail: item.description,
+				// detail: item.description,
 				type: 'context',
 				info: item.description,
 				apply: (view: EditorView, completion: any, from: number, to: number) => {
@@ -98,7 +98,7 @@ const createCompletionSources = (
 			options: options.slice(0, 20).map(item => ({
 				label: `[[${item.value || item.label}]]`,
 				displayLabel: item.label,
-				detail: item.description,
+				// detail: item.description,
 				type: 'context',
 				info: item.description,
 				apply: (view: EditorView, completion: any, from: number, to: number) => {
@@ -151,7 +151,7 @@ const createCompletionSources = (
 			options: options.slice(0, 20).map(item => ({
 				label: `/${item.value || item.label}`,
 				displayLabel: item.label,
-				detail: item.description,
+				// detail: item.description,
 				type: 'prompt',
 				info: item.description,
 				apply: (view: EditorView, completion: any, from: number, to: number) => {
@@ -226,6 +226,7 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 				),
 				icons: false,
 				maxRenderedOptions: 10,
+				tooltipClass: () => 'pktw-codemirror-custom',
 			}),
 			tooltips({
 				parent: document.body,
@@ -254,7 +255,9 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 		// Parse tags and notify parent
 		if (onTextChange) {
 			const parsedTags = parseTagsFromTextCallback(value);
-			onTextChange(value, parsedTags);
+			// Filter out 'search' type tags as they're not relevant for chat input
+			const filteredTags = parsedTags.filter(tag => tag.type !== 'search') as Array<{ type: 'context' | 'prompt'; text: string; start: number; end: number; }>;
+			onTextChange(value, filteredTags);
 		}
 	}, [textInput, adjustHeight, onTextChange, parseTagsFromText]);
 
@@ -278,7 +281,7 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 					});
 				}}
 				className={cn(
-					'pktw-w-full pktw-text-[15px] pktw-leading-[1.5] pktw-font-medium',
+					'pktw-w-full pktw-text-[15px] pktw-leading-[1.5] pktw-font-medium pktw-codemirror-custom',
 					'pktw-py-3',
 					className
 				)}

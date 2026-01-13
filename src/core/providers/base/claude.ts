@@ -76,7 +76,6 @@ export function getKnownClaudeModelIds(): readonly string[] {
 export interface ClaudeChatServiceOptions {
 	baseUrl?: string;
 	apiKey?: string;
-	timeoutMs?: number;
 	maxOutputTokens?: number;
 	extra?: Record<string, any>;
 }

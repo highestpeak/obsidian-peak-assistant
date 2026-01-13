@@ -19,7 +19,7 @@ import { ChatConversationRepo } from './repositories/ChatConversationRepo';
 import { ChatMessageRepo } from './repositories/ChatMessageRepo';
 import { ChatMessageResourceRepo } from './repositories/ChatMessageResourceRepo';
 import { ChatStarRepo } from './repositories/ChatStarRepo';
-import { SEARCH_DB_FILENAME } from '@/core/constant';
+import { SEARCH_DB_FILENAME, META_DB_FILENAME } from '@/core/constant';
 
 /**
  * Global singleton manager for SQLite database connection.
@@ -33,12 +33,14 @@ import { SEARCH_DB_FILENAME } from '@/core/constant';
  * - sql.js (pure JS, default, cross-platform)
  */
 class SqliteStoreManager {
-	private store: SqliteStore | null = null;
+	// Database connections
+	private searchStore: SqliteStore | null = null;
+	private metaStore: SqliteStore | null = null;
 	private storeType: SqliteStoreType = 'sql.js';
 	private app: App | null = null;
 	private isVectorSearchAvailable: boolean = false;
 
-	// Repositories
+	// Search database repositories (search.sqlite)
 	private docMetaRepo: DocMetaRepo | null = null;
 	private docChunkRepo: DocChunkRepo | null = null;
 	private embeddingRepo: EmbeddingRepo | null = null;
@@ -47,6 +49,8 @@ class SqliteStoreManager {
 	private graphNodeRepo: GraphNodeRepo | null = null;
 	private graphEdgeRepo: GraphEdgeRepo | null = null;
 	private graphStore: GraphStore | null = null;
+
+	// Meta database repositories (meta.sqlite)
 	private chatProjectRepo: ChatProjectRepo | null = null;
 	private chatConversationRepo: ChatConversationRepo | null = null;
 	private chatMessageRepo: ChatMessageRepo | null = null;
@@ -55,13 +59,56 @@ class SqliteStoreManager {
 
 
 	/**
+	 * Create a database connection with the specified path and settings.
+	 */
+	private async createDatabaseConnection(
+		dbFilePath: string,
+		settings?: { sqliteBackend?: 'auto' | 'better-sqlite3' | 'sql.js' }
+	): Promise<SqliteStore> {
+		const userSetting = settings?.sqliteBackend;
+		let selectedBackend = await this.selectBackend(userSetting);
+		this.storeType = selectedBackend;
+
+		// Open database with selected backend
+		// If better-sqlite3 fails, automatically fallback to sql.js
+		try {
+			switch (selectedBackend) {
+				case 'better-sqlite3': {
+					const result = await BetterSqliteStore.open({ dbFilePath, app: this.app ?? undefined });
+					this.isVectorSearchAvailable = result.sqliteVecAvailable;
+					return result.store;
+				}
+				case 'sql.js': {
+					const result = await SqlJsStore.open({ dbFilePath });
+					this.isVectorSearchAvailable = false;
+					return result;
+				}
+			}
+		} catch (error) {
+			// If better-sqlite3 fails to open (e.g., native module loading failed),
+			// automatically fallback to sql.js
+			if (selectedBackend === 'better-sqlite3') {
+				console.error('[SqliteStoreManager] Failed to open database with better-sqlite3:', error);
+				console.log('[SqliteStoreManager] Automatically falling back to sql.js');
+				this.storeType = 'sql.js';
+				const fallbackResult = await SqlJsStore.open({ dbFilePath });
+				this.isVectorSearchAvailable = false;
+				return fallbackResult;
+			} else {
+				// Re-throw error for sql.js (should not fail, but if it does, we need to know)
+				throw error;
+			}
+		}
+	}
+
+	/**
 	 * Select the appropriate SQLite backend based on user settings and availability.
-	 * 
+	 *
 	 * Priority order:
 	 * 1. User setting (if explicitly set in settings)
 	 * 2. Auto-detect better-sqlite3 (if available)
 	 * 3. Default to sql.js
-	 * 
+	 *
 	 * @param userSetting - User's backend preference from settings ('auto' | 'better-sqlite3' | 'sql.js' | undefined)
 	 * @returns Selected backend type
 	 */
@@ -117,112 +164,88 @@ class SqliteStoreManager {
 		filename?: string;
 		settings?: { sqliteBackend?: 'auto' | 'better-sqlite3' | 'sql.js' };
 	}): Promise<void> {
-		if (this.store) {
-			console.warn('SqliteStoreManager already initialized, closing existing connection');
+		if (this.searchStore || this.metaStore) {
+			console.warn('SqliteStoreManager already initialized, closing existing connections');
 			this.close();
 		}
 
 		this.app = params.app;
 
-		// Calculate database file path
+		// Calculate database file paths
 		const basePath = (this.app.vault.adapter as any)?.basePath ?? '';
 		const normalizedStorageFolder = (params.storageFolder ?? '').trim().replace(/^\/+/, '');
-		const filename = params.filename ?? SEARCH_DB_FILENAME;
 
 		if (normalizedStorageFolder) {
 			// Ensure the vault folder exists before opening a file-backed database.
 			await ensureFolderRecursive(this.app, normalizedStorageFolder);
 		}
 
-		const dbFilePath =
+		// Helper function to get database path
+		const getDbPath = (filename: string) =>
 			basePath
 				? (normalizedStorageFolder ? path.join(basePath, normalizedStorageFolder, filename) : path.join(basePath, filename))
 				: null;
 
-		if (!dbFilePath) {
-			throw new Error('SqliteStoreManager init failed: dbFilePath is missing and vault basePath is unavailable');
+		// Create search database connection
+		const searchDbPath = getDbPath(SEARCH_DB_FILENAME);
+		if (!searchDbPath) {
+			throw new Error('SqliteStoreManager init failed: search database path is missing and vault basePath is unavailable');
 		}
+		this.searchStore = await this.createDatabaseConnection(searchDbPath, params.settings);
 
-		// Select backend using the extracted function
-		const userSetting = params.settings?.sqliteBackend;
-		let selectedBackend = await this.selectBackend(userSetting);
-		this.storeType = selectedBackend;
-
-		// Open database with selected backend
-		// If better-sqlite3 fails, automatically fallback to sql.js
-		try {
-			switch (selectedBackend) {
-				case 'better-sqlite3': {
-					const result = await BetterSqliteStore.open({ dbFilePath, app: this.app ?? undefined });
-					this.store = result.store;
-					this.isVectorSearchAvailable = result.sqliteVecAvailable;
-					break;
-				}
-				case 'sql.js': {
-					const result = await SqlJsStore.open({ dbFilePath });
-					this.store = result;
-					this.isVectorSearchAvailable = false;
-					break;
-				}
-			}
-		} catch (error) {
-			// If better-sqlite3 fails to open (e.g., native module loading failed),
-			// automatically fallback to sql.js
-			if (selectedBackend === 'better-sqlite3') {
-				console.error('[SqliteStoreManager] Failed to open database with better-sqlite3:', error);
-				console.log('[SqliteStoreManager] Automatically falling back to sql.js');
-				this.storeType = 'sql.js';
-				const fallbackResult = await SqlJsStore.open({ dbFilePath });
-				this.store = fallbackResult;
-				this.isVectorSearchAvailable = false;
-			} else {
-				// Re-throw error for sql.js (should not fail, but if it does, we need to know)
-				throw error;
-			}
+		// Create meta database connection
+		const metaDbPath = getDbPath(META_DB_FILENAME);
+		if (!metaDbPath) {
+			throw new Error('SqliteStoreManager init failed: meta database path is missing and vault basePath is unavailable');
 		}
+		this.metaStore = await this.createDatabaseConnection(metaDbPath, params.settings);
 
-		// Initialize all repositories
-		const kdb = this.store.kysely;
-		const rawDb = this.store.rawDb;
-		this.docMetaRepo = new DocMetaRepo(kdb);
-		this.docChunkRepo = new DocChunkRepo(kdb, rawDb);
-		this.embeddingRepo = new EmbeddingRepo(kdb, rawDb);
+		// Initialize search database repositories
+		const searchKdb = this.searchStore.kysely;
+		const searchRawDb = this.searchStore.rawDb;
+		this.docMetaRepo = new DocMetaRepo(searchKdb);
+		this.docChunkRepo = new DocChunkRepo(searchKdb, searchRawDb);
+		this.embeddingRepo = new EmbeddingRepo(searchKdb, searchRawDb);
 		// Initialize vec_embeddings table cache (check once on plugin startup)
 		this.embeddingRepo.initializeVecEmbeddingsTableCache();
-		this.indexStateRepo = new IndexStateRepo(kdb);
-		this.docStatisticsRepo = new DocStatisticsRepo(kdb);
-		this.graphNodeRepo = new GraphNodeRepo(kdb);
-		this.graphEdgeRepo = new GraphEdgeRepo(kdb);
+		this.indexStateRepo = new IndexStateRepo(searchKdb);
+		this.docStatisticsRepo = new DocStatisticsRepo(searchKdb);
+		this.graphNodeRepo = new GraphNodeRepo(searchKdb);
+		this.graphEdgeRepo = new GraphEdgeRepo(searchKdb);
 		// Initialize GraphStore
 		this.graphStore = new GraphStore(this.graphNodeRepo, this.graphEdgeRepo);
-		// Initialize chat repositories
-		this.chatProjectRepo = new ChatProjectRepo(kdb);
-		this.chatConversationRepo = new ChatConversationRepo(kdb);
-		this.chatMessageRepo = new ChatMessageRepo(kdb);
-		this.chatMessageResourceRepo = new ChatMessageResourceRepo(kdb);
-		this.chatStarRepo = new ChatStarRepo(kdb);
+
+		// Initialize meta database repositories
+		const metaKdb = this.metaStore.kysely;
+		this.chatProjectRepo = new ChatProjectRepo(metaKdb);
+		this.chatConversationRepo = new ChatConversationRepo(metaKdb);
+		this.chatMessageRepo = new ChatMessageRepo(metaKdb);
+		this.chatMessageResourceRepo = new ChatMessageResourceRepo(metaKdb);
+		this.chatStarRepo = new ChatStarRepo(metaKdb);
 	}
 
 	/**
 	 * Get the Kysely instance for database queries.
+	 * Returns the search database connection for backward compatibility.
 	 * Throws error if not initialized.
 	 */
-	getKysely(): Kysely<DbSchema> {
-		if (!this.store) {
+	getSearchContext(): Kysely<DbSchema> {
+		if (!this.searchStore) {
 			throw new Error('SqliteStoreManager not initialized. Call init() first.');
 		}
-		return this.store.kysely;
+		return this.searchStore.kysely;
 	}
 
 	/**
 	 * Get the store instance.
+	 * Returns the search database connection for backward compatibility.
 	 * Throws error if not initialized.
 	 */
 	getStore(): SqliteStore {
-		if (!this.store) {
+		if (!this.searchStore) {
 			throw new Error('SqliteStoreManager not initialized. Call init() first.');
 		}
-		return this.store;
+		return this.searchStore;
 	}
 
 	/**
@@ -233,10 +256,10 @@ class SqliteStoreManager {
 	}
 
 	/**
-	 * Check if the store is initialized.
+	 * Check if the stores are initialized.
 	 */
 	isInitialized(): boolean {
-		return this.store !== null;
+		return this.searchStore !== null && this.metaStore !== null;
 	}
 
 	/**
@@ -381,24 +404,41 @@ class SqliteStoreManager {
 	 * Close the database connection.
 	 */
 	/**
-	 * Save the database (for sql.js backend).
+	 * Save both databases (for sql.js backend).
 	 * This is a no-op for other backends.
 	 */
 	save(): void {
-		if (this.store && this.storeType === 'sql.js' && 'save' in this.store) {
-			(this.store as SqlJsStore).save();
+		// Save search database
+		if (this.searchStore && this.storeType === 'sql.js' && 'save' in this.searchStore) {
+			(this.searchStore as SqlJsStore).save();
+		}
+		// Save meta database
+		if (this.metaStore && this.storeType === 'sql.js' && 'save' in this.metaStore) {
+			(this.metaStore as SqlJsStore).save();
 		}
 	}
 
 	close(): void {
-		if (this.store) {
+		// Close search database
+		if (this.searchStore) {
 			// sql.js needs to save before closing
-			if (this.storeType === 'sql.js' && 'save' in this.store) {
-				(this.store as SqlJsStore).save();
+			if (this.storeType === 'sql.js' && 'save' in this.searchStore) {
+				(this.searchStore as SqlJsStore).save();
 			}
-			this.store.close();
-			this.store = null;
+			this.searchStore.close();
+			this.searchStore = null;
 		}
+
+		// Close meta database
+		if (this.metaStore) {
+			// sql.js needs to save before closing
+			if (this.storeType === 'sql.js' && 'save' in this.metaStore) {
+				(this.metaStore as SqlJsStore).save();
+			}
+			this.metaStore.close();
+			this.metaStore = null;
+		}
+
 		this.app = null;
 		// Clear repositories
 		this.docMetaRepo = null;

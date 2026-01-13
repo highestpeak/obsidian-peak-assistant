@@ -18,6 +18,7 @@ export class DocStatisticsRepo {
 		char_count?: number | null;
 		language?: string | null;
 		richness_score?: number | null;
+		last_open_ts?: number | null;
 		updated_at: number;
 	}): Promise<void> {
 		await this.db
@@ -28,6 +29,7 @@ export class DocStatisticsRepo {
 				char_count: stats.char_count ?? null,
 				language: stats.language ?? null,
 				richness_score: stats.richness_score ?? null,
+				last_open_ts: stats.last_open_ts ?? null,
 				updated_at: stats.updated_at,
 			})
 			.onConflict((oc) =>
@@ -36,6 +38,7 @@ export class DocStatisticsRepo {
 					char_count: (eb) => eb.ref('excluded.char_count'),
 					language: (eb) => eb.ref('excluded.language'),
 					richness_score: (eb) => eb.ref('excluded.richness_score'),
+					last_open_ts: (eb) => eb.ref('excluded.last_open_ts'),
 					updated_at: (eb) => eb.ref('excluded.updated_at'),
 				}),
 			)
@@ -147,6 +150,13 @@ export class DocStatisticsRepo {
 	async deleteByDocIds(docIds: string[]): Promise<void> {
 		if (!docIds.length) return;
 		await this.db.deleteFrom('doc_statistics').where('doc_id', 'in', docIds).execute();
+	}
+
+	/**
+	 * Delete all document statistics.
+	 */
+	async deleteAll(): Promise<void> {
+		await this.db.deleteFrom('doc_statistics').execute();
 	}
 
 	/**

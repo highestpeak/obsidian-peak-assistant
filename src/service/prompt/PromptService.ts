@@ -5,6 +5,7 @@ import { MultiProviderChatService } from '@/core/providers/MultiProviderChatServ
 import type { AIServiceSettings } from '@/app/settings/types';
 import Handlebars from 'handlebars';
 import { StreamingCallbacks, StreamType } from '@/service/chat/types';
+import { MessagePart } from '@/core/providers/types';
 
 /**
  * Unified prompt service with code-first templates and optional file overrides.
@@ -61,13 +62,15 @@ export class PromptService {
 	 * @param variables - Variables for the prompt template
 	 * @param provider - LLM provider name
 	 * @param model - Model identifier
+	 * @param extraPart - Extra parts to add to the message. some times like image, file, etc.
 	 * @returns The LLM response content
 	 */
 	async chatWithPrompt<T extends PromptId>(
 		promptId: T,
-		variables: PromptVariables[T],
+		variables: PromptVariables[T] | null,
 		provider?: string,
-		model?: string
+		model?: string,
+		extraParts?: MessagePart[]
 	): Promise<string> {
 		if (!this.chat) {
 			throw new Error('Chat service not available. Call setChatService() first.');
@@ -96,7 +99,11 @@ export class PromptService {
 			messages: [
 				{
 					role: 'user',
-					content: [{ type: 'text', text: promptText }],
+					// MessageParts should be a flat array of MessagePart, which may contain text or other types (image, etc)
+					content: [
+						...(extraParts ?? []),
+						{ type: 'text', text: promptText },
+					],
 				},
 			],
 		});
@@ -115,7 +122,7 @@ export class PromptService {
 	 */
 	async chatWithPromptStream<T extends PromptId>(
 		promptId: T,
-		variables: PromptVariables[T],
+		variables: PromptVariables[T] | null,
 		callbacks: StreamingCallbacks,
 		streamType: StreamType = 'content',
 		provider?: string,
@@ -187,14 +194,19 @@ export class PromptService {
 	/**
 	 * Render a prompt with variables using Handlebars.
 	 * First checks for file override, then falls back to code template.
+	 * 
+	 * If variables are null, returns the template without variables.
 	 */
 	async render<K extends PromptId>(
 		id: K,
-		variables: PromptVariables[K],
+		variables: PromptVariables[K] | null,
 	): Promise<string> {
 		// Try to load override from file
 		const override = await this.loadOverride(id);
 		if (override) {
+			if (!variables) {
+				return override;
+			}
 			return this.renderHandlebarsTemplate(override, variables as Record<string, any>);
 		}
 
@@ -206,6 +218,7 @@ export class PromptService {
 	 * Load prompt override from vault file if exists.
 	 */
 	private async loadOverride(id: PromptId): Promise<string | undefined> {
+		console.debug(`[PromptService] Loading prompt override for: ${id}`);
 		const cacheKey = `override:${id}`;
 		if (this.cache.has(cacheKey)) {
 			return this.cache.get(cacheKey);
@@ -213,6 +226,7 @@ export class PromptService {
 
 		const fileName = `${id}.prompt.md`;
 		const filePath = normalizePath(`${this.promptFolder}/${fileName}`);
+		console.debug(`[PromptService] Checking for prompt override at: ${filePath}`);
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 
 		if (!(file instanceof TFile)) {
@@ -221,6 +235,7 @@ export class PromptService {
 
 		try {
 			const content = (await this.app.vault.read(file)).trim();
+			console.debug(`[PromptService] Loaded prompt override for: ${id}`, { content });
 			this.cache.set(cacheKey, content);
 			return content;
 		} catch (error) {
@@ -234,11 +249,14 @@ export class PromptService {
 	 */
 	private renderCodeTemplate<K extends PromptId>(
 		id: K,
-		variables: PromptVariables[K],
+		variables: PromptVariables[K] | null,
 	): string {
 		const template = PROMPT_REGISTRY[id];
 		if (!template) {
 			throw new Error(`Prompt template not found: ${id}`);
+		}
+		if (!variables) {
+			return template.template;
 		}
 
 		return this.renderHandlebarsTemplate(template.template, variables as Record<string, any>);

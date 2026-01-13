@@ -324,6 +324,15 @@ export class BetterSqliteStore {
 				// Enable WAL mode for better concurrency
 				// This is the default, but we make it explicit
 			}) as BetterSqlite3Database;
+
+			// Immediately attempt to recover from any potential lock issues
+			try {
+				// Force a WAL checkpoint to clear any pending transactions
+				db.pragma('wal_checkpoint(TRUNCATE)');
+				console.log('[BetterSqliteStore] Initial WAL checkpoint completed');
+			} catch (checkpointError) {
+				console.warn('[BetterSqliteStore] Initial WAL checkpoint failed:', checkpointError);
+			}
 		} catch (error) {
 			// If native module loading fails, provide a helpful error message
 			if (error instanceof Error && (error.message.includes('indexOf') || error.message.includes('bindings'))) {
@@ -340,6 +349,22 @@ export class BetterSqliteStore {
 
 		// Enable foreign keys
 		db.pragma('foreign_keys = ON');
+
+		// Set busy timeout to prevent infinite blocking on locked database
+		// When database is locked (e.g., concurrent read/write operations),
+		// operations will fail after 5 seconds instead of blocking indefinitely
+		db.pragma('busy_timeout = 5000');
+
+		// Attempt to recover from potential lock issues
+		try {
+			// Check if database is in a locked state and try to recover
+			const walCheckpoint = db.pragma('wal_checkpoint(TRUNCATE)');
+			console.log('[BetterSqliteStore] WAL checkpoint result:', walCheckpoint);
+		} catch (error) {
+			console.warn('[BetterSqliteStore] WAL checkpoint failed (may be normal):', error);
+		}
+
+		console.log('[BetterSqliteStore] Set busy_timeout to 5000ms');
 
 		// Try to load sqlite-vec extension for vector similarity search
 		const sqliteVecAvailable = BetterSqliteStore.tryLoadSqliteVec(db, params.app);

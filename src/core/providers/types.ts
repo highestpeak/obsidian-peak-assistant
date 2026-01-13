@@ -479,6 +479,16 @@ export interface LLMOutputControlSettings {
 	 * Default: undefined (uses model default)
 	 */
 	textVerbosity?: string;
+	/**
+	 * Total timeout for the entire LLM call including all steps.
+	 * In milliseconds. Default: undefined (no timeout)
+	 */
+	timeoutTotalMs?: number;
+	/**
+	 * Timeout for each individual step (LLM call).
+	 * In milliseconds. Default: undefined (no timeout)
+	 */
+	timeoutStepMs?: number;
 }
 
 /**
@@ -493,6 +503,8 @@ export const LLM_OUTPUT_CONTROL_SETTING_KEYS = {
 	maxOutputTokens: 'maxOutputTokens',
 	reasoningEffort: 'reasoningEffort',
 	textVerbosity: 'textVerbosity',
+	timeoutTotalMs: 'timeoutTotalMs',
+	timeoutStepMs: 'timeoutStepMs',
 } as const;
 
 /**

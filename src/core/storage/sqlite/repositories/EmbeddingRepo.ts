@@ -169,7 +169,7 @@ export class EmbeddingRepo {
 		const logMsg = logContext 
 			? `[EmbeddingRepo] Inserting into vec_embeddings with rowid: ${embeddingRowid} (${logContext})`
 			: `[EmbeddingRepo] Inserting into vec_embeddings with rowid: ${embeddingRowid}`;
-		console.log(logMsg);
+		console.debug(logMsg);
 		insertStmt.run(embeddingRowid, embeddingBuffer);
 	}
 
@@ -531,6 +531,13 @@ export class EmbeddingRepo {
 	async deleteByDocIds(docIds: string[]): Promise<void> {
 		if (!docIds.length) return;
 		await this.db.deleteFrom('embedding').where('doc_id', 'in', docIds).execute();
+	}
+
+	/**
+	 * Delete all embeddings.
+	 */
+	async deleteAll(): Promise<void> {
+		await this.db.deleteFrom('embedding').execute();
 	}
 
 	/**

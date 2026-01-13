@@ -33,13 +33,13 @@ export const OutputControlSettingsList: React.FC<OutputControlSettingsListProps>
 
 	// Ensure all settings have default values if not set (default enabled)
 	const effectiveSettings = useMemo(() => {
-		const result = { ...settings };
+		const result = { ...settings } as Record<keyof LLMOutputControlSettings, number | string>;
 		OUTPUT_CONTROL_SETTINGS_ITEMS.forEach((item) => {
 			if (result[item.key] === undefined) {
-				result[item.key] = DEFAULT_OUTPUT_CONTROL_VALUES[item.key];
+				result[item.key] = DEFAULT_OUTPUT_CONTROL_VALUES[item.key] as number | string;
 			}
 		});
-		return result;
+		return result as LLMOutputControlSettings;
 	}, [settings]);
 
 	// Sync with external changes when using local state

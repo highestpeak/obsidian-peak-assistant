@@ -38,11 +38,22 @@ export default defineConfig({
 			'playwright-core',
 			'better-sqlite3',
 			'@langchain/community/document_loaders/web/playwright',
+			'@lobehub/ui',
+			'es-toolkit',
+			'sqljs-wasm', // Virtual module created by esbuild plugin, doesn't exist as real package
 		],
 	},
 	ssr: {
 		noExternal: [],
-		external: ['obsidian', 'playwright', 'playwright-core', 'better-sqlite3'],
+		external: [
+			'obsidian',
+			'playwright',
+			'playwright-core',
+			'better-sqlite3',
+			'@lobehub/ui',
+			'es-toolkit',
+			'sqljs-wasm', // Virtual module created by esbuild plugin
+		],
 	},
 	define: {
 		// Prevent playwright from being bundled

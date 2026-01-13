@@ -29,7 +29,7 @@ export class UrlDocumentLoader implements DocumentLoader {
 	constructor(
 		private readonly app: App,
 		private readonly aiServiceManager?: AIServiceManager
-	) {}
+	) { }
 
 	getDocumentType(): DocumentType {
 		return 'url';
@@ -39,10 +39,10 @@ export class UrlDocumentLoader implements DocumentLoader {
 		return ['url'];
 	}
 
-	async readByPath(path: string): Promise<Document | null> {
+	async readByPath(path: string, genCacheContent?: boolean): Promise<Document | null> {
 		// For URLs, path is the URL itself
 		if (!this.isValidUrl(path)) return null;
-		return await this.readUrl(path);
+		return await this.readUrl(path, genCacheContent);
 	}
 
 	async chunkContent(
@@ -111,22 +111,26 @@ export class UrlDocumentLoader implements DocumentLoader {
 		}
 	}
 
-	private async readUrl(url: string): Promise<Document | null> {
+	private async readUrl(url: string, genCacheContent?: boolean): Promise<Document | null> {
 		// Validate URL before creating loader instance
 		if (!this.isValidUrl(url)) {
 			return null;
 		}
 
 		try {
-			const loader = new PlaywrightWebBaseLoader(url, this.playwrightConfig);
+			let content = '';
+			const contentHash = generateContentHash(url);
+			let title = '';
+			if (genCacheContent) {
+				const loader = new PlaywrightWebBaseLoader(url, this.playwrightConfig);
 
-			const docs = await loader.load();
-			const content = docs.map(doc => doc.pageContent).join('\n\n');
-			const contentHash = generateContentHash(content);
+				const docs = await loader.load();
+				content = docs.map(doc => doc.pageContent).join('\n\n');
 
-			// Use URL as the document ID
-			const urlObj = new URL(url);
-			const title = urlObj.hostname + urlObj.pathname;
+				// Use URL as the document ID
+				const urlObj = new URL(url);
+				title = urlObj.hostname + urlObj.pathname;
+			}
 
 			return {
 				id: generateDocIdFromPath(url),

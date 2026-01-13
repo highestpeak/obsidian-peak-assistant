@@ -3,7 +3,7 @@ import { VaultSearchTab } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
 import { Search, Sparkles, Globe } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { InputWithOverlay } from '@/ui/component/mine';
+import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { SearchScopeMode } from '@/service/search/types';
@@ -52,7 +52,7 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 	const [searchQuery, setSearchQuery] = useState('');
 	const [triggerAnalysis, setTriggerAnalysis] = useState(0);
 	const [webEnabled, setWebEnabled] = useState(false);
-	const inputRef = useRef<HTMLInputElement | null>(null);
+	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
 	const { app, searchClient } = useServiceContext();
 
 	const [indexProgress, setIndexProgress] = useState<{ processed: number; total?: number } | null>(null);
@@ -95,23 +95,23 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 		}
 	};
 
-	// Detect @web trigger in search query (don't remove from display, just enable web mode)
+	// Detect @web@ trigger in search query (don't remove from display, just enable web mode)
 	useEffect(() => {
 		if (activeTab === 'ai') {
 			const trimmed = searchQuery.trim();
-			const hasWebTrigger = trimmed.includes('@web');
+			const hasWebTrigger = trimmed.includes('@web@');
 			if (hasWebTrigger && !webEnabled) {
 				setWebEnabled(true);
 			} else if (!hasWebTrigger && webEnabled) {
-				// Only disable if user manually removes @web
+				// Only disable if user manually removes @web@
 				setWebEnabled(false);
 			}
 		}
 	}, [searchQuery, activeTab, webEnabled]);
 
-	// Get clean query without @web for actual search
+	// Get clean query without @web@ for actual search
 	const getCleanQuery = (query: string): string => {
-		return query.replace(/@web\s*/g, '').trim();
+		return query.replace(/@web@\s*/g, '').trim();
 	};
 
 	const parsed = parseQuickSearchInput({
@@ -125,42 +125,15 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 		setShowModeList(parsed.showModeList);
 	}, [parsed.showModeList]);
 
+	// Auto focus when switching tabs
 	useEffect(() => {
-		// Auto focus main search input when modal opens
 		if (inputRef.current) {
 			inputRef.current.focus();
 		}
-	}, []);
+	}, [activeTab]);
 
-	// Render overlay text with @web highlighting
-	const renderOverlay = (value: string) => {
-		if (activeTab === 'ai' && (value.includes('@web') || /@\d+/.test(value))) {
-			return value.split(/(@web|@\d+)/g).map((part, index) => {
-				if (part === '@web' || /^@\d+$/.test(part)) {
-					return (
-						<span
-							key={index}
-							className="pktw-rounded pktw-bg-blue-500/15 pktw-text-blue-700 dark:pktw-bg-blue-500/20 dark:pktw-text-blue-400"
-							style={{
-								padding: '0px 0px',
-								margin: '0px 0px',
-								display: 'inline',
-								lineHeight: 'inherit',
-								fontSize: 'inherit',
-								fontWeight: 'inherit',
-								fontFamily: 'inherit',
-								letterSpacing: 'inherit',
-							}}
-						>
-							{part}
-						</span>
-					);
-				}
-				return <span key={index} style={{ lineHeight: 'inherit' }}>{part}</span>;
-			});
-		}
-		return <span style={{ lineHeight: 'inherit' }}>{value}</span>;
-	};
+	// Focus is now handled automatically by CodeMirrorInput on creation
+
 
 	// Handle Tab key on container level to switch tabs
 	const handleContainerKeyDown = (e: React.KeyboardEvent) => {
@@ -201,38 +174,34 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 					<div className="pktw-relative pktw-flex-1">
 						<Search className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-w-4 pktw-h-4 pktw-text-[#999999] pktw-z-10" />
 						<div className="pktw-relative pktw-flex pktw-items-center">
-							<InputWithOverlay
-								ref={inputRef}
-								type="text"
+							<CodeMirrorInput
 								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
+								onChange={setSearchQuery}
 								onKeyDown={handleKeyDown}
 								placeholder={
 									activeTab === 'vault'
 										? 'Search in vault... (# for in-file, @ for folder, : to go to line)'
 										: 'Ask AI anything about your vault...'
 								}
-								className="pktw-pl-11 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-muted-foreground pktw-rounded-full pktw-transition-all"
-								renderOverlay={renderOverlay}
-								containerClassName="pktw-w-full"
-								overlayStyle={{
-									paddingRight: '48px', // Reserve space for button, only override right padding
-								}}
+								enableSearchTags={activeTab === 'ai'}
+								singleLine={true}
+								containerClassName="pktw-w-full pktw-pl-11 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-muted-foreground pktw-rounded-full pktw-transition-all"
+								className="pktw-pr-12" // Reserve space for button
 							/>
 							{/* Web toggle button inside input (AI tab only) */}
 							{activeTab === 'ai' && (
 								<Button
 									variant="ghost"
 									onClick={() => {
-										if (searchQuery.includes('@web')) {
-											setSearchQuery(prev => prev.replace(/@web\s*/g, '').trim());
+										if (searchQuery.includes('@web@')) {
+											setSearchQuery(prev => prev.replace(/@web@\s*/g, '').trim());
 											setWebEnabled(false);
 										} else {
-											setSearchQuery(prev => prev + (prev.trim() ? ' @web' : '@web'));
+											setSearchQuery(prev => prev + (prev.trim() ? ' @web@' : '@web@'));
 											setWebEnabled(true);
 										}
 									}}
-									className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors 
+									className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors
 										${webEnabled ? 'pktw-text-[#3b82f6] pktw-border pktw-border-[#3b82f6]/30' : 'pktw-border-0 pktw-bg-transparent '}`
 									}
 									title={webEnabled ? 'Web: ON' : 'Web: OFF'}

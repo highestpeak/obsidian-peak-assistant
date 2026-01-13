@@ -2,14 +2,27 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
-import { generateContentHash } from '@/core/utils/hash-utils';
+import { binaryContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
-import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
+import { generateUuidWithoutHyphens, generateStableUuid } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 import * as pdfjsLib from 'pdfjs-dist';
+// Import the worker to auto-register it in the bundle
+import 'pdfjs-dist/build/pdf.worker.mjs';
+
+/**
+ * Default options for PDF.js getDocument calls in bundled environment.
+ */
+const PDF_JS_OPTIONS = {
+	// Standard font data URL for PDF.js
+	standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.394/standard_fonts/',
+	// Character map URLs for proper text extraction
+	cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.394/cmaps/',
+	cMapPacked: true,
+};
 
 /**
  * PDF document loader using Mozilla's pdfjs-dist.
@@ -19,7 +32,7 @@ export class PdfDocumentLoader implements DocumentLoader {
 	constructor(
 		private readonly app: App,
 		private readonly aiServiceManager?: AIServiceManager
-	) {}
+	) { }
 
 	getDocumentType(): DocumentType {
 		return 'pdf';
@@ -29,11 +42,11 @@ export class PdfDocumentLoader implements DocumentLoader {
 		return ['pdf'];
 	}
 
-	async readByPath(filePath: string): Promise<Document | null> {
+	async readByPath(filePath: string, genCacheContent?: boolean): Promise<Document | null> {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (!file || !(file instanceof TFile)) return null;
 		if (!this.getSupportedExtensions().includes(file.extension.toLowerCase())) return null;
-		return await this.readPdfFile(file);
+		return await this.readPdfFile(file, genCacheContent);
 	}
 
 	async chunkContent(
@@ -111,32 +124,40 @@ export class PdfDocumentLoader implements DocumentLoader {
 		return getDefaultDocumentSummary(source, this.aiServiceManager, provider, modelId);
 	}
 
-	private async readPdfFile(file: TFile): Promise<Document | null> {
+	private async readPdfFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
 		try {
 			// Read PDF as binary
 			const arrayBuffer = await this.app.vault.readBinary(file);
-			const uint8Array = new Uint8Array(arrayBuffer);
-			
-			// Parse PDF using pdfjs-dist directly from buffer
-			const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
-			const pdfDocument = await loadingTask.promise;
-			
-			// Extract text from all pages
-			const pageTexts: string[] = [];
-			for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
-				const page = await pdfDocument.getPage(pageNum);
-				const textContent = await page.getTextContent();
-				const pageText = textContent.items
-					.map((item: any) => item.str)
-					.join(' ');
-				pageTexts.push(pageText);
+			const sourceContentHash = binaryContentHash(arrayBuffer);
+
+			let cacheContent = '';
+			if (genCacheContent) {
+				// Parse PDF using pdfjs-dist directly from buffer
+				const uint8Array = new Uint8Array(arrayBuffer);
+				const loadingOptions = {
+					data: uint8Array,
+					// Use configured options for fonts and CMaps
+					...PDF_JS_OPTIONS,
+				};
+				const loadingTask = pdfjsLib.getDocument(loadingOptions);
+				const pdfDocument = await loadingTask.promise;
+
+				// Extract text from all pages
+				const pageTexts: string[] = [];
+				for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+					const page = await pdfDocument.getPage(pageNum);
+					const textContent = await page.getTextContent();
+					const pageText = textContent.items
+						.map((item: any) => item.str)
+						.join(' ');
+					pageTexts.push(pageText);
+				}
+
+				cacheContent = pageTexts.join('\n\n');
 			}
-			
-			const content = pageTexts.join('\n\n');
-			const contentHash = generateContentHash(content);
 
 			return {
-				id: generateDocIdFromPath(file.path),
+				id: generateStableUuid(file.path),
 				type: 'pdf',
 				sourceFileInfo: {
 					path: file.path,
@@ -154,20 +175,21 @@ export class PdfDocumentLoader implements DocumentLoader {
 					size: file.stat.size,
 					mtime: file.stat.mtime,
 					ctime: file.stat.ctime,
-					content, // Extracted text content
+					content: cacheContent, // Extracted text content
 				},
 				metadata: {
 					title: file.basename,
 					tags: [],
 				},
-				contentHash,
+				contentHash: sourceContentHash,
 				references: {
 					outgoing: [],
 					incoming: [],
 				},
 				lastProcessedAt: Date.now(),
 			};
-		} catch {
+		} catch (error) {
+			console.error('[PdfDocumentLoader] error reading PDF file:', file.path, error);
 			return null;
 		}
 	}

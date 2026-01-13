@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { MyPluginSettings } from '@/app/settings/types';
 import { Switch } from '@/ui/component/shared-ui/switch';
+import { Button } from '@/ui/component/shared-ui/button';
 import { NumberInputWithConfirm } from '@/ui/component/shared-ui/number-input';
 import { DocumentType, DOCUMENT_TYPES } from '@/core/document/types';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
@@ -15,6 +16,26 @@ interface SearchSettingsTabProps {
  */
 export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsTabProps) {
 	const { updateSearch, updateChunking, updateDocumentType } = settingsUpdates;
+
+	// Local state for textarea to avoid input issues
+	const [ignorePatternsText, setIgnorePatternsText] = useState('');
+
+	// Sync local state with settings
+	useEffect(() => {
+		setIgnorePatternsText(settings.search.ignorePatterns?.join('\n') ?? '');
+	}, [settings.search.ignorePatterns]);
+
+	// Check if there are unsaved changes
+	const hasUnsavedChanges = ignorePatternsText !== (settings.search.ignorePatterns?.join('\n') ?? '');
+
+	// Save function
+	const saveIgnorePatterns = () => {
+		const patterns = ignorePatternsText
+			.split('\n')
+			.map(line => line.trim())
+			.filter(line => line.length > 0);
+		updateSearch('ignorePatterns', patterns);
+	};
 
 	// Sort document types alphabetically
 	const sortedDocumentTypes = useMemo(() => {
@@ -72,6 +93,43 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 							/>
 						</div>
 					))}
+				</div>
+			</div>
+
+			{/* Ignore Patterns */}
+			<div className="pktw-mb-8">
+				<div className="pktw-flex pktw-items-start pktw-gap-4">
+					{/* Left side: label and description */}
+					<div className="pktw-flex-1 pktw-min-w-0">
+						<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+							Ignore Patterns
+						</label>
+						<p className="pktw-text-xs pktw-text-muted-foreground pktw-mb-2">
+							File/directory patterns to exclude from indexing (similar to .gitignore). One pattern per line.
+							<br />
+							Examples: .git/, node_modules/, *.tmp, temp/*.log
+						</p>
+						<textarea
+							value={ignorePatternsText}
+							onChange={(e) => {
+								setIgnorePatternsText(e.target.value);
+							}}
+							placeholder={'.git/\nnode_modules/\n*.tmp\ntemp/*.log\n.DS_Store\nThumbs.db'}
+							className="pktw-w-full pktw-h-32 pktw-px-3 pktw-py-2 pktw-border pktw-border-border pktw-rounded-md pktw-text-sm pktw-font-mono pktw-placeholder-muted-foreground focus:pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-ring focus:pktw-border-transparent pktw-resize-vertical"
+						/>
+						{hasUnsavedChanges && (
+							<div className="pktw-mt-2 pktw-flex pktw-items-center pktw-gap-2">
+								<span className="pktw-text-xs pktw-text-amber-600">You have unsaved changes</span>
+								<Button
+									onClick={saveIgnorePatterns}
+									size="sm"
+									className="pktw-text-xs"
+								>
+									Save Changes
+								</Button>
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
 

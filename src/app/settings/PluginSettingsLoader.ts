@@ -87,6 +87,11 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 		};
 	}
 
+	// Ignore patterns
+	if (Array.isArray(rawSearch.ignorePatterns)) {
+		settings.ignorePatterns = rawSearch.ignorePatterns as string[];
+	}
+
 	// Chunking settings
 	if (rawSearch.chunking && typeof rawSearch.chunking === 'object') {
 		const rawChunking = rawSearch.chunking as Partial<typeof DEFAULT_SEARCH_SETTINGS.chunking>;
@@ -129,14 +134,6 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 	}
 
 	// Image description model
-	if (rawSearch.imageDescriptionModel && typeof rawSearch.imageDescriptionModel === 'object') {
-		const model = rawSearch.imageDescriptionModel as { provider?: unknown; modelId?: unknown };
-		const provider = getString(model.provider, '');
-		const modelId = getString(model.modelId, '');
-		if (provider && modelId) {
-			settings.imageDescriptionModel = { provider, modelId };
-		}
-	}
 
 	return settings;
 }

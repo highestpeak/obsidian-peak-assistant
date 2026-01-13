@@ -42,6 +42,7 @@ function ResetAllModelsSection({
 	loadModels,
 	modelConfigs,
 	settingsUpdates,
+	settings,
 }: {
 	resetAllMode: boolean;
 	setResetAllMode: (mode: boolean) => void;
@@ -54,114 +55,152 @@ function ResetAllModelsSection({
 	loadModels: () => void;
 	modelConfigs: ModelConfigItem[];
 	settingsUpdates: SettingsUpdates;
+	settings: MyPluginSettings;
 }) {
+	// Handle applying the selected model to all configurations
+	const handleApplyToAllModels = async () => {
+		if (!resetAllModel) return; // Guard against undefined
+
+		try {
+			// Build a single update object with all model configurations
+			const updates: Partial<MyPluginSettings> = {
+				ai: {
+					...settings.ai,
+					defaultModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId },
+					promptModelMap: {
+						...settings.ai.promptModelMap,
+						...CONFIGURABLE_PROMPT_IDS.reduce((acc, promptId) => ({
+							...acc,
+							[promptId]: { provider: resetAllModel.provider, modelId: resetAllModel.modelId }
+						}), {})
+					}
+				},
+				search: {
+					...settings.search,
+					searchSummaryModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId },
+					chunking: {
+						...settings.search.chunking,
+						embeddingModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId },
+						rerankModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId }
+					}
+				}
+			};
+
+			// Apply all updates in a single batch operation
+			await settingsUpdates.updateSettings(updates);
+
+		} catch (error) {
+			console.error('[ModelConfigTab] Error updating all models:', error);
+		} finally {
+			// Reset state
+			setResetAllMode(false);
+			setShowConfirmDialog(false);
+			setResetAllModel(undefined);
+		}
+	};
+
 	return (
-		<div className="pktw-mb-6 pktw-border pktw-border-gray-200 pktw-rounded-lg pktw-bg-gray-50/50">
-			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-3">
-				<h4 className="pktw-text-sm pktw-font-medium">Reset All Models</h4>
-				{!resetAllMode && (
-					<Button
-						onClick={() => setResetAllMode(true)}
-						size="sm"
-						variant="outline"
-						className="pktw-text-xs pktw-bg-red-600 hover:pktw-bg-red-700 pktw-text-white"
-					>
-						Reset All
-					</Button>
-				)}
+		<div className="pktw-mb-6 pktw-space-y-4">
+			{/* first row: left + right */}
+			<div className="pktw-flex pktw-items-center pktw-gap-4">
+				{/* Left side: label and description */}
+				<div className="pktw-flex-1 pktw-min-w-0">
+					<label className="pktw-block pktw-text-sm pktw-font-medium pktw-mb-1">
+						Reset All Models
+					</label>
+
+					<p className="pktw-text-xs pktw-text-muted-foreground">
+						Apply a new model to all configurable AI, search, and embedding settings at once. Useful for quickly switching your default provider or primary model across the plugin.
+					</p>
+				</div>
+				{/* Right side: selector */}
+				<div className="pktw-flex-shrink-0 pktw-w-64 pktw-flex pktw-items-center pktw-justify-start pktw-min-h-[3rem]">
+					{!resetAllMode && (
+						<div className="pktw-space-y-3">
+							<Button
+								onClick={() => setResetAllMode(true)}
+								size="sm"
+								variant="outline"
+								className="pktw-text-xs pktw-bg-red-600 hover:pktw-bg-red-700 pktw-text-white"
+							>
+								Reset All
+							</Button>
+						</div>
+					)}
+					{resetAllMode && !showConfirmDialog && (
+						<div className="">
+							<ModelSelector
+								models={models}
+								isLoading={isLoading}
+								currentModel={resetAllModel}
+								onChange={async (provider, modelId) => {
+									setResetAllModel({ provider, modelId });
+									setShowConfirmDialog(true);
+								}}
+								placeholder="Select model"
+								onMenuOpen={loadModels}
+							/>
+							<Button
+								onClick={() => {
+									setResetAllMode(false);
+									setResetAllModel(undefined);
+								}}
+								size="sm"
+								variant="outline"
+								className="pktw-text-xs pktw-bg-gray-600 hover:pktw-bg-gray-700 pktw-text-white pktw-ml-4"
+							>
+								Cancel
+							</Button>
+						</div>
+					)}
+				</div>
 			</div>
 
-			{resetAllMode && !showConfirmDialog && (
-				<div className="pktw-space-y-3">
-					<ModelSelectorField
-						label="Select Model for All Configurations"
-						description="Choose a model that will be applied to all configurable prompts and model configurations below. This will override any existing model selections."
-						currentModel={resetAllModel}
-						onChange={async (provider, modelId) => {
-							setResetAllModel({ provider, modelId });
-							setShowConfirmDialog(true);
-						}}
-						models={models}
-						isLoading={isLoading}
-						onMenuOpen={loadModels}
-					/>
-					<div className="pktw-flex pktw-justify-end">
-						<Button
-							onClick={() => {
-								setResetAllMode(false);
-								setResetAllModel(undefined);
-							}}
-							size="sm"
-							variant="outline"
-							className="pktw-text-xs pktw-bg-gray-600 hover:pktw-bg-gray-700 pktw-text-white"
-						>
-							Cancel
-						</Button>
-					</div>
-				</div>
-			)}
-
+			{/* second row: confirm dialog */}
 			{showConfirmDialog && resetAllModel && (
-				<div className="pktw-space-y-3">
-					<div className="pktw-p-4 pktw-bg-amber-50 pktw-border pktw-border-amber-200 pktw-rounded-md">
-						<div className="pktw-flex pktw-items-start pktw-gap-3">
-							<div className="pktw-flex-shrink-0 pktw-w-5 pktw-h-5 pktw-text-amber-400 pktw-mt-0.5">
-								⚠️
-							</div>
-							<div className="pktw-flex-1">
-								<h5 className="pktw-text-sm pktw-font-medium pktw-text-amber-800 pktw-mb-2">
-									Confirm Reset All Models
-								</h5>
-								<div className="pktw-text-sm pktw-text-amber-700 pktw-space-y-1">
-									<p>
-										You are about to apply <strong>{resetAllModel.provider} / {resetAllModel.modelId}</strong> to:
-									</p>
-									<ul className="pktw-list-disc pktw-list-inside pktw-ml-4 pktw-space-y-1">
-										<li>All model configurations (Default, Search, Embedding, etc.)</li>
-										<li>All configurable prompts ({CONFIGURABLE_PROMPT_IDS.length} types)</li>
-									</ul>
-									<p className="pktw-font-medium pktw-pt-2">
-										This action will override all existing model selections. This cannot be undone.
-									</p>
-								</div>
-							</div>
+				<div className="pktw-flex pktw-items-start pktw-gap-4 pktw-p-4 pktw-bg-amber-50 pktw-border pktw-border-amber-200 pktw-rounded-md">
+					{/* Left side: warning message */}
+					<div className="pktw-flex-1 pktw-min-w-0">
+						<span className="pktw-text-sm pktw-font-medium pktw-text-amber-800 pktw-mb-2">
+							⚠️ Confirm Reset All Models
+						</span>
+						<div className="pktw-text-sm pktw-text-amber-700 pktw-space-y-1">
+							<p>
+								You are about to apply <strong>{resetAllModel.provider} / {resetAllModel.modelId}</strong> to:
+							</p>
+							<ul className="pktw-list-disc pktw-list-inside pktw-ml-4 pktw-space-y-1">
+								<li>All model configurations (Default, Search, Embedding, etc.)</li>
+								<li>All configurable prompts ({CONFIGURABLE_PROMPT_IDS.length} types)</li>
+							</ul>
+							<p className="pktw-font-medium pktw-pt-2">
+								This action will override all existing model selections. This cannot be undone.
+							</p>
 						</div>
 					</div>
-
-					<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-justify-end">
-						<Button
-							onClick={async () => {
-								// Apply to all modelConfigs
-								for (const config of modelConfigs) {
-									await config.onChange(resetAllModel.provider, resetAllModel.modelId);
-								}
-
-								// Apply to all CONFIGURABLE_PROMPT_IDS
-								for (const promptId of CONFIGURABLE_PROMPT_IDS) {
-									await settingsUpdates.updatePromptModel(promptId, resetAllModel.provider, resetAllModel.modelId);
-								}
-
-								// Reset state
-								setResetAllMode(false);
-								setShowConfirmDialog(false);
-								setResetAllModel(undefined);
-							}}
-							size="sm"
-							className="pktw-text-xs pktw-bg-red-600 hover:pktw-bg-red-700"
-						>
-							Apply to All Models
-						</Button>
-						<Button
-							onClick={() => {
-								setShowConfirmDialog(false);
-								setResetAllModel(undefined);
-							}}
-							size="sm"
-							variant="outline"
-							className="pktw-text-xs pktw-bg-gray-600 hover:pktw-bg-gray-700 pktw-text-white"
-						>
-							Cancel
-						</Button>
+					{/* Right side: buttons */}
+					<div className="pktw-flex-shrink-0 pktw-w-64 pktw-flex pktw-items-center pktw-justify-start pktw-min-h-[3rem]">
+						<div className="pktw-space-y-3">
+							<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-justify-end">
+								<Button
+									onClick={() => {
+										setShowConfirmDialog(false);
+										setResetAllModel(undefined);
+									}}
+									size="sm"
+									variant="outline"
+									className="pktw-text-xs pktw-bg-gray-600 hover:pktw-bg-gray-700 pktw-text-white"
+								>
+									Cancel
+								</Button>
+								<Button
+									onClick={handleApplyToAllModels}
+									size="sm"
+									className="pktw-text-xs pktw-bg-red-600 hover:pktw-bg-red-700 pktw-ml-10"
+								>
+									Confirm
+								</Button>
+							</div>
+						</div>
 					</div>
 				</div>
 			)}
@@ -275,13 +314,6 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 			onChange: (provider, modelId) => updateSearchModel('searchSummaryModel', provider, modelId),
 		},
 		{
-			id: 'imageDescription',
-			label: 'Image Description Model',
-			description: 'Model for generating image descriptions (OCR and vision). Falls back to default model if not configured.',
-			currentModel: settings.search.imageDescriptionModel,
-			onChange: (provider, modelId) => updateSearchModel('imageDescriptionModel', provider, modelId),
-		},
-		{
 			id: 'embedding',
 			label: 'Embedding Model',
 			description: 'Model for generating document embeddings for vector search. Optional - embeddings will not be generated if not configured.',
@@ -328,6 +360,7 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 					loadModels={loadModels}
 					modelConfigs={modelConfigs}
 					settingsUpdates={settingsUpdates}
+					settings={settings}
 				/>
 
 				<div className="pktw-space-y-6">
@@ -343,27 +376,32 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 							onMenuOpen={loadModels}
 						/>
 					))}
-					{CONFIGURABLE_PROMPT_IDS.map((promptId) => {
-						const promptModel = settings.ai.promptModelMap?.[promptId];
-						const currentModel = promptModel || settings.ai.defaultModel;
-						const promptLabel = promptId
-							.split('-')
-							.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-							.join(' ');
+					{CONFIGURABLE_PROMPT_IDS
+						.map((promptId) => {
+							const promptLabel = promptId
+								.split('-')
+								.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+								.join(' ');
+							return { promptId, promptLabel };
+						})
+						.sort((a, b) => a.promptLabel.localeCompare(b.promptLabel))
+						.map(({ promptId, promptLabel }) => {
+							const promptModel = settings.ai.promptModelMap?.[promptId];
+							const currentModel = promptModel || settings.ai.defaultModel;
 
-						return (
-							<ModelSelectorField
-								key={promptId}
-								label={promptLabel}
-								description={`Model for ${promptId} prompt. Falls back to default model if not configured.`}
-								currentModel={currentModel}
-								onChange={(provider, modelId) => updatePromptModel(promptId, provider, modelId)}
-								models={models}
-								isLoading={isLoading}
-								onMenuOpen={loadModels}
-							/>
-						);
-					})}
+							return (
+								<ModelSelectorField
+									key={promptId}
+									label={promptLabel}
+									description={`Model for ${promptId} prompt. Falls back to default model if not configured.`}
+									currentModel={currentModel}
+									onChange={(provider, modelId) => updatePromptModel(promptId, provider, modelId)}
+									models={models}
+									isLoading={isLoading}
+									onMenuOpen={loadModels}
+								/>
+							);
+						})}
 				</div>
 			</CollapsibleSettingsSection>
 

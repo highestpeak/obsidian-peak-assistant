@@ -67,18 +67,15 @@ export interface SearchSettings {
 	 */
 	chunking: ChunkingSettings;
 	/**
+	 * File/directory ignore patterns (similar to .gitignore).
+	 * Files matching these patterns will not be indexed.
+	 */
+	ignorePatterns: string[];
+	/**
 	 * Model configuration for AI search summary generation.
 	 * If not provided, will fallback to defaultModel from AI settings.
 	 */
 	searchSummaryModel?: {
-		provider: string;
-		modelId: string;
-	};
-	/**
-	 * Model configuration for image description generation (OCR and vision).
-	 * If not provided, will fallback to defaultModel from AI settings.
-	 */
-	imageDescriptionModel?: {
 		provider: string;
 		modelId: string;
 	};
@@ -113,13 +110,20 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 		unknown: false,
 	} as Record<DocumentType, boolean>,
 	chunking: DEFAULT_CHUNKING_SETTINGS,
+	ignorePatterns: [
+		'.git/',
+		'node_modules/',
+		'.obsidian/',
+		'A-control/',
+		'*.tmp',
+		'*.temp',
+		'*.log',
+		'.DS_Store',
+		'Thumbs.db',
+	],
 	searchSummaryModel: {
 		provider: 'openai',
 		modelId: 'gpt-4o-mini',
-	},
-	imageDescriptionModel: {
-		provider: 'openai',
-		modelId: 'gpt-4o',
 	},
 };
 
@@ -197,6 +201,18 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 		return map;
 	})(),
 	attachmentHandlingDefault: 'direct', // Default to direct for user experience.
+	defaultOutputControl: {
+		temperature: 1.0,
+		topP: 0.9,
+		topK: 50,
+		presencePenalty: 0.0,
+		frequencyPenalty: 0.0,
+		maxOutputTokens: 4096,
+		reasoningEffort: 'medium',
+		textVerbosity: 'medium',
+		timeoutTotalMs: 300000, // 5 minutes
+		timeoutStepMs: 30000, // 30 seconds
+	},
 };
 
 /**

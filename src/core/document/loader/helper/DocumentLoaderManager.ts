@@ -5,6 +5,7 @@ import type { DocumentType } from '@/core/document/types';
 import type { Document as CoreDocument } from '@/core/document/types';
 import type { SearchSettings } from '@/app/settings/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
+import { IgnoreService } from '@/service/search/IgnoreService';
 import { MarkdownDocumentLoader } from '../MarkdownDocumentLoader';
 import { TextDocumentLoader } from '../TextDocumentLoader';
 import { TableDocumentLoader } from '../TableDocumentLoader';
@@ -60,6 +61,8 @@ export class DocumentLoaderManager {
 		this.app = app;
 		this.settings = settings;
 		this.aiServiceManager = aiServiceManager;
+		// Initialize ignore service with current settings
+		IgnoreService.init(settings.ignorePatterns);
 		this.registerAllLoaders();
 	}
 
@@ -89,6 +92,8 @@ export class DocumentLoaderManager {
 	 */
 	updateSettings(settings: SearchSettings): void {
 		this.settings = settings;
+		// Update ignore service with new patterns
+		IgnoreService.getInstance().updateSettings(settings.ignorePatterns);
 		// Re-register all loaders with updated settings
 		this.registerAllLoaders();
 	}
@@ -131,38 +136,60 @@ export class DocumentLoaderManager {
 		return this.getLoaderForExtension(extension);
 	}
 
-	/**
-	 * Read a document by its path using the appropriate loader.
-	 * Returns core Document model.
-	 */
-	async readByPath(path: string): Promise<CoreDocument | null> {
+	getTypeForPath(path: string): DocumentType | null {
 		// Handle special cases first
 		// Check for excalidraw files (ends with .excalidraw or .excalidraw.md)
 		// This needs special handling because .excalidraw.md would be matched as 'md' extension
 		if (path.endsWith('.excalidraw.md') || path.endsWith('.excalidraw')) {
-			const loader = this.loaderMap.get('excalidraw');
-			if (loader) return await loader.readByPath(path);
+			return 'excalidraw';
 		}
 
 		// Check if it's a URL (not a file path)
 		if (path.startsWith('http://') || path.startsWith('https://')) {
-			const loader = this.loaderMap.get('url');
-			if (loader) return await loader.readByPath(path);
+			return 'url';
 		}
 
 		// Extract extension from path for normal files
 		// Canvas and dataloom files will be matched by their extensions ('canvas', 'loom')
 		const extension = path.split('.').pop()?.toLowerCase() || '';
-		const loader = this.getLoaderForExtension(extension);
-		if (!loader) return null;
-		return await loader.readByPath(path);
+		return this.getLoaderForExtension(extension)?.getDocumentType() || null;
 	}
 
 	/**
-	 * Check if a document should be indexed based on settings.
+	 * Read a document by its path using the appropriate loader.
+	 * Returns core Document model.
+	 */
+	async readByPath(path: string, genCacheContent?: boolean): Promise<CoreDocument | null> {
+		if (genCacheContent === undefined || genCacheContent === null) {
+			genCacheContent = true;
+		}
+
+		const type = this.getTypeForPath(path);
+		if (!type) return null;
+
+		const loader = this.loaderMap.get(type);
+		if (!loader) return null;
+
+		return await loader.readByPath(path, genCacheContent);
+	}
+
+	/**
+	 * Check if a document should be indexed based on settings and ignore patterns.
 	 */
 	shouldIndexDocument(doc: CoreDocument): boolean {
-		return (this.settings.includeDocumentTypes[doc.type] && this.loaderMap.has(doc.type)) ?? false;
+		// First check if document type is enabled
+		if (!(this.settings.includeDocumentTypes[doc.type] && this.loaderMap.has(doc.type))) {
+			return false;
+		}
+
+		// Then check if path is ignored (skip if sourceFileInfo is not available)
+		if (doc.sourceFileInfo?.path) {
+			const ignoreService = IgnoreService.getInstance();
+			return !ignoreService.shouldIgnore(doc.sourceFileInfo.path);
+		}
+
+		// If sourceFileInfo is not available, assume it should be indexed (ignore pattern check deferred)
+		return true;
 	}
 
 	/**
@@ -180,8 +207,12 @@ export class DocumentLoaderManager {
 		for await (const scanBatch of this.scanDocuments(params)) {
 			batchReadStart = performance.now();
 			for (const docMeta of scanBatch) {
-				// Filter by settings: only load enabled document types
-				if (!this.shouldIndexDocument({ type: docMeta.type } as CoreDocument)) {
+				// Filter by settings: only load enabled document types and check ignore patterns
+				const partialDoc = {
+					type: docMeta.type,
+					sourceFileInfo: { path: docMeta.path }
+				} as CoreDocument;
+				if (!this.shouldIndexDocument(partialDoc)) {
 					continue;
 				}
 

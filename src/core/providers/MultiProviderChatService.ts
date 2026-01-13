@@ -1,11 +1,12 @@
-import { LLMProviderService, ProviderConfig, ModelMetaData, ProviderMetaData, LLMStreamEvent } from './types';
+import { LLMProviderService, ProviderConfig, ModelMetaData, ProviderMetaData, LLMStreamEvent, LLMOutputControlSettings } from './types';
 import { LLMRequest } from './types';
 import { ProviderServiceFactory } from './base/factory';
 import { BusinessError, ErrorCode } from '@/core/errors';
+import { getLLMOutputControlSettingKeys } from './types';
 
 export interface MultiProviderChatServiceOptions {
 	providerConfigs?: Record<string, ProviderConfig>;
-	requestTimeoutMs?: number;
+	defaultOutputControl?: LLMOutputControlSettings;
 }
 
 const DEFAULT_TIMEOUT_MS = 60000;
@@ -19,24 +20,48 @@ export class MultiProviderChatService implements LLMProviderService {
 	 * key: provider name, value: provider configuration
 	 */
 	private configs: Record<string, ProviderConfig>;
-	private readonly requestTimeout: number;
+	private defaultOutputControl?: LLMOutputControlSettings;
 
 	constructor(options: MultiProviderChatServiceOptions = {}) {
 		this.configs = options.providerConfigs ?? {};
-		this.requestTimeout = options.requestTimeoutMs ?? DEFAULT_TIMEOUT_MS;
+		this.defaultOutputControl = options.defaultOutputControl;
 
 		// Initialize services for each configured provider using factory
-		this.providerServiceMap = ProviderServiceFactory.getInstance().createAll(this.configs, this.requestTimeout);
+		this.providerServiceMap = ProviderServiceFactory.getInstance().createAll(this.configs);
+	}
+
+	/**
+	 * Merge request outputControl with global default settings
+	 */
+	private mergeOutputControl(request: LLMRequest): LLMRequest {
+		let mergedOutputControl = request.outputControl ? { ...request.outputControl } : {};
+
+		// If we have default settings, merge them field by field
+		if (this.defaultOutputControl) {
+			const settingKeys = getLLMOutputControlSettingKeys();
+			settingKeys.forEach(key => {
+				if (mergedOutputControl[key] === undefined && this.defaultOutputControl![key] !== undefined) {
+					(mergedOutputControl as any)[key] = this.defaultOutputControl![key];
+				}
+			});
+		}
+
+		return {
+			...request,
+			outputControl: mergedOutputControl
+		};
 	}
 
 	async blockChat(request: LLMRequest) {
 		console.debug('[MultiProviderChatService] Blocking chat:', request);
-		return this.getProviderService(request.provider).blockChat(request);
+		const mergedRequest = this.mergeOutputControl(request);
+		return this.getProviderService(request.provider).blockChat(mergedRequest);
 	}
 
 	streamChat(request: LLMRequest): AsyncGenerator<LLMStreamEvent> {
 		console.debug('[MultiProviderChatService] Streaming chat:', request);
-		return this.getProviderService(request.provider).streamChat(request);
+		const mergedRequest = this.mergeOutputControl(request);
+		return this.getProviderService(request.provider).streamChat(mergedRequest);
 	}
 
 	/**
@@ -115,7 +140,7 @@ export class MultiProviderChatService implements LLMProviderService {
 	 * Create provider service instance using factory
 	 */
 	private createProviderService(provider: string, config: ProviderConfig): LLMProviderService | null {
-		return ProviderServiceFactory.getInstance().create(provider, config, this.requestTimeout);
+		return ProviderServiceFactory.getInstance().create(provider, config);
 	}
 
 	/**
@@ -150,14 +175,16 @@ export class MultiProviderChatService implements LLMProviderService {
 	 * 
 	 * @param newConfigs - New provider configurations to use
 	 */
-	refresh(newConfigs: Record<string, ProviderConfig>): void {
+	refresh(newConfigs: Record<string, ProviderConfig>, newOutputControl: LLMOutputControlSettings): void {
 		// Clear existing services
 		this.providerServiceMap.clear();
 		
 		// Update configs
 		this.configs = newConfigs;
+
+		this.defaultOutputControl = newOutputControl;
 		
 		// Recreate services with new configs
-		this.providerServiceMap = ProviderServiceFactory.getInstance().createAll(this.configs, this.requestTimeout);
+		this.providerServiceMap = ProviderServiceFactory.getInstance().createAll(this.configs);
 	}
 }

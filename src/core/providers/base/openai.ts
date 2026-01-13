@@ -112,7 +112,6 @@ export function getOpenAIAvatarType(modelId: string): string {
 export interface OpenAIChatServiceOptions {
 	baseUrl?: string;
 	apiKey?: string;
-	timeoutMs?: number;
 	extra?: Record<string, any>;
 }
 

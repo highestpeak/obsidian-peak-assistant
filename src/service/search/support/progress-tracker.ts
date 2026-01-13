@@ -8,6 +8,7 @@ export class IndexProgressTracker {
 	private notice: Notice | null = null;
 	private readonly totalFiles: number | null;
 	private startTime: number | null = null;
+	private cancelled = false;
 
 	constructor(
 		private readonly app: App,
@@ -24,6 +25,25 @@ export class IndexProgressTracker {
 		const message = customMessage || 'Building search index...';
 		this.notice = new Notice(message, 0); // 0 = don't auto-hide
 		this.startTime = Date.now();
+		this.cancelled = false;
+	}
+
+	/**
+	 * Cancel the ongoing indexing operation.
+	 */
+	cancel(): void {
+		this.cancelled = true;
+		if (this.notice) {
+			this.notice.hide();
+			this.notice = new Notice('Indexing cancelled', 3000);
+		}
+	}
+
+	/**
+	 * Check if indexing has been cancelled.
+	 */
+	isCancelled(): boolean {
+		return this.cancelled;
 	}
 
 	/**

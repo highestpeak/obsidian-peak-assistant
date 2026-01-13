@@ -1,6 +1,7 @@
 import React from 'react';
-import { Sparkles, Brain, FileText, Repeat, Cpu, Layers } from 'lucide-react';
+import { Sparkles, Brain, FileText, Repeat, Cpu, Layers, Clock } from 'lucide-react';
 import type { LLMOutputControlSettings } from '@/core/providers/types';
+import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 
 export type ControlType = 'slider' | 'select';
 
@@ -91,16 +92,29 @@ export const OUTPUT_CONTROL_SETTINGS_ITEMS: readonly OutputControlSettingItemCon
 			{ value: 'high', label: 'High' },
 		],
 	},
+	{
+		key: 'timeoutTotalMs',
+		label: 'Total Timeout',
+		paramName: 'timeout_total_ms',
+		tooltip: 'Maximum time in milliseconds for the entire LLM call including all steps. Prevents long-running conversations.',
+		icon: <Clock className="pktw-size-4" />,
+		type: 'slider',
+		min: 10000, // 10 seconds
+		max: 600000, // 10 minutes
+		step: 10000, // 10 seconds
+	},
+	{
+		key: 'timeoutStepMs',
+		label: 'Step Timeout',
+		paramName: 'timeout_step_ms',
+		tooltip: 'Maximum time in milliseconds for each individual LLM call step. Prevents individual steps from hanging.',
+		icon: <Clock className="pktw-size-4" />,
+		type: 'slider',
+		min: 5000, // 5 seconds
+		max: 300000, // 5 minutes
+		step: 5000, // 5 seconds
+	},
 ] as const;
 
-export const DEFAULT_OUTPUT_CONTROL_VALUES: Record<keyof LLMOutputControlSettings, number | string> = {
-	temperature: 1.0,
-	topP: 0.9,
-	topK: 50,
-	presencePenalty: 0.0,
-	frequencyPenalty: 0.0,
-	maxOutputTokens: 4096,
-	reasoningEffort: 'medium',
-	textVerbosity: 'medium',
-};
+export const DEFAULT_OUTPUT_CONTROL_VALUES: Record<keyof LLMOutputControlSettings, number | string> = DEFAULT_AI_SERVICE_SETTINGS.defaultOutputControl as Record<keyof LLMOutputControlSettings, number | string>;
 
