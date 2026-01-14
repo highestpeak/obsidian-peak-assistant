@@ -4,7 +4,7 @@ import { BetterSqliteStore } from './better-sqlite3-adapter/BetterSqliteStore';
 import { SqlJsStore } from './sqljs-adapter/SqlJsStore';
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from './ddl';
-import type { SqliteStoreType, SqliteStore } from './types';
+import type { SqliteStoreType, SqliteDatabase } from './types';
 import { ensureFolderRecursive } from '@/core/utils/vault-utils';
 import { DocMetaRepo } from './repositories/DocMetaRepo';
 import { DocChunkRepo } from './repositories/DocChunkRepo';
@@ -34,9 +34,8 @@ import { SEARCH_DB_FILENAME, META_DB_FILENAME } from '@/core/constant';
  */
 class SqliteStoreManager {
 	// Database connections
-	private searchStore: SqliteStore | null = null;
-	private metaStore: SqliteStore | null = null;
-	private storeType: SqliteStoreType = 'sql.js';
+	private searchStore: SqliteDatabase | null = null;
+	private metaStore: SqliteDatabase | null = null;
 	private app: App | null = null;
 	private isVectorSearchAvailable: boolean = false;
 
@@ -60,14 +59,14 @@ class SqliteStoreManager {
 
 	/**
 	 * Create a database connection with the specified path and settings.
+	 * Returns both the database connection and the backend type used.
 	 */
 	private async createDatabaseConnection(
 		dbFilePath: string,
 		settings?: { sqliteBackend?: 'auto' | 'better-sqlite3' | 'sql.js' }
-	): Promise<SqliteStore> {
+	): Promise<SqliteDatabase> {
 		const userSetting = settings?.sqliteBackend;
 		let selectedBackend = await this.selectBackend(userSetting);
-		this.storeType = selectedBackend;
 
 		// Open database with selected backend
 		// If better-sqlite3 fails, automatically fallback to sql.js
@@ -90,10 +89,8 @@ class SqliteStoreManager {
 			if (selectedBackend === 'better-sqlite3') {
 				console.error('[SqliteStoreManager] Failed to open database with better-sqlite3:', error);
 				console.log('[SqliteStoreManager] Automatically falling back to sql.js');
-				this.storeType = 'sql.js';
-				const fallbackResult = await SqlJsStore.open({ dbFilePath });
 				this.isVectorSearchAvailable = false;
-				return fallbackResult;
+				return await SqlJsStore.open({ dbFilePath });
 			} else {
 				// Re-throw error for sql.js (should not fail, but if it does, we need to know)
 				throw error;
@@ -145,14 +142,43 @@ class SqliteStoreManager {
 	}
 
 	/**
+	 * Calculate database file path with proper storage folder handling.
+	 */
+	private async buildDatabasePath(
+		app: App,
+		storageFolder: string | undefined,
+		dbFilename: string
+	): Promise<string> {
+		// Calculate database file paths
+		const basePath = (app.vault.adapter as any)?.basePath ?? '';
+		const normalizedStorageFolder = (storageFolder ?? '').trim().replace(/^\/+/, '');
+
+		if (normalizedStorageFolder) {
+			// Ensure the vault folder exists before opening a file-backed database.
+			await ensureFolderRecursive(app, normalizedStorageFolder);
+		}
+
+		// Calculate the database path
+		const dbPath = basePath
+			? (normalizedStorageFolder ? path.join(basePath, normalizedStorageFolder, dbFilename) : path.join(basePath, dbFilename))
+			: null;
+
+		if (!dbPath) {
+			throw new Error(`SqliteStoreManager init failed: ${dbFilename} database path is missing and vault basePath is unavailable`);
+		}
+
+		return dbPath;
+	}
+
+	/**
 	 * Initialize the database connection.
 	 * Should be called once during plugin initialization.
-	 * 
+	 *
 	 * Backend selection priority:
 	 * 1. User setting (if explicitly set in settings)
 	 * 2. Auto-detect better-sqlite3 (if available)
 	 * 3. Default to sql.js
-	 * 
+	 *
 	 * @param app - Obsidian app instance
 	 * @param storageFolder - Storage folder path (relative to vault root)
 	 * @param filename - Database filename (default: SEARCH_DB_FILENAME)
@@ -171,38 +197,17 @@ class SqliteStoreManager {
 
 		this.app = params.app;
 
-		// Calculate database file paths
-		const basePath = (this.app.vault.adapter as any)?.basePath ?? '';
-		const normalizedStorageFolder = (params.storageFolder ?? '').trim().replace(/^\/+/, '');
-
-		if (normalizedStorageFolder) {
-			// Ensure the vault folder exists before opening a file-backed database.
-			await ensureFolderRecursive(this.app, normalizedStorageFolder);
-		}
-
-		// Helper function to get database path
-		const getDbPath = (filename: string) =>
-			basePath
-				? (normalizedStorageFolder ? path.join(basePath, normalizedStorageFolder, filename) : path.join(basePath, filename))
-				: null;
-
 		// Create search database connection
-		const searchDbPath = getDbPath(SEARCH_DB_FILENAME);
-		if (!searchDbPath) {
-			throw new Error('SqliteStoreManager init failed: search database path is missing and vault basePath is unavailable');
-		}
+		const searchDbPath = await this.buildDatabasePath(params.app, params.storageFolder, SEARCH_DB_FILENAME);
 		this.searchStore = await this.createDatabaseConnection(searchDbPath, params.settings);
 
 		// Create meta database connection
-		const metaDbPath = getDbPath(META_DB_FILENAME);
-		if (!metaDbPath) {
-			throw new Error('SqliteStoreManager init failed: meta database path is missing and vault basePath is unavailable');
-		}
+		const metaDbPath = await this.buildDatabasePath(params.app, params.storageFolder, META_DB_FILENAME);
 		this.metaStore = await this.createDatabaseConnection(metaDbPath, params.settings);
 
 		// Initialize search database repositories
-		const searchKdb = this.searchStore.kysely;
-		const searchRawDb = this.searchStore.rawDb;
+		const searchKdb = this.searchStore.kysely<DbSchema>();
+		const searchRawDb = this.searchStore;
 		this.docMetaRepo = new DocMetaRepo(searchKdb);
 		this.docChunkRepo = new DocChunkRepo(searchKdb, searchRawDb);
 		this.embeddingRepo = new EmbeddingRepo(searchKdb, searchRawDb);
@@ -216,7 +221,7 @@ class SqliteStoreManager {
 		this.graphStore = new GraphStore(this.graphNodeRepo, this.graphEdgeRepo);
 
 		// Initialize meta database repositories
-		const metaKdb = this.metaStore.kysely;
+		const metaKdb = this.metaStore.kysely<DbSchema>();
 		this.chatProjectRepo = new ChatProjectRepo(metaKdb);
 		this.chatConversationRepo = new ChatConversationRepo(metaKdb);
 		this.chatMessageRepo = new ChatMessageRepo(metaKdb);
@@ -233,26 +238,21 @@ class SqliteStoreManager {
 		if (!this.searchStore) {
 			throw new Error('SqliteStoreManager not initialized. Call init() first.');
 		}
-		return this.searchStore.kysely;
+		return this.searchStore.kysely();
 	}
 
 	/**
-	 * Get the store instance.
-	 * Returns the search database connection for backward compatibility.
-	 * Throws error if not initialized.
+	 * Get the search database backend type.
 	 */
-	getStore(): SqliteStore {
-		if (!this.searchStore) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
-		}
+	getSearchStore(): SqliteDatabase | null {
 		return this.searchStore;
 	}
 
 	/**
-	 * Get the current backend type.
+	 * Get the meta database backend type.
 	 */
-	getStoreType(): SqliteStoreType {
-		return this.storeType;
+	getMetaStore(): SqliteDatabase | null {
+		return this.metaStore;
 	}
 
 	/**
@@ -409,12 +409,12 @@ class SqliteStoreManager {
 	 */
 	save(): void {
 		// Save search database
-		if (this.searchStore && this.storeType === 'sql.js' && 'save' in this.searchStore) {
-			(this.searchStore as SqlJsStore).save();
+		if (this.searchStore && this.searchStore.databaseType() === 'sql.js' && 'save' in this.searchStore) {
+			(this.searchStore as any).save();
 		}
 		// Save meta database
-		if (this.metaStore && this.storeType === 'sql.js' && 'save' in this.metaStore) {
-			(this.metaStore as SqlJsStore).save();
+		if (this.metaStore && this.metaStore.databaseType() === 'sql.js' && 'save' in this.metaStore) {
+			(this.metaStore as any).save();
 		}
 	}
 
@@ -422,8 +422,8 @@ class SqliteStoreManager {
 		// Close search database
 		if (this.searchStore) {
 			// sql.js needs to save before closing
-			if (this.storeType === 'sql.js' && 'save' in this.searchStore) {
-				(this.searchStore as SqlJsStore).save();
+			if (this.searchStore.databaseType() === 'sql.js' && 'save' in this.searchStore) {
+				(this.searchStore as any).save();
 			}
 			this.searchStore.close();
 			this.searchStore = null;
@@ -432,8 +432,8 @@ class SqliteStoreManager {
 		// Close meta database
 		if (this.metaStore) {
 			// sql.js needs to save before closing
-			if (this.storeType === 'sql.js' && 'save' in this.metaStore) {
-				(this.metaStore as SqlJsStore).save();
+			if (this.metaStore.databaseType() === 'sql.js' && 'save' in this.metaStore) {
+				(this.metaStore as any).save();
 			}
 			this.metaStore.close();
 			this.metaStore = null;

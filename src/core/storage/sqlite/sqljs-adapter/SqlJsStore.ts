@@ -22,9 +22,9 @@
  * This is the default implementation for Obsidian plugin marketplace compatibility.
  */
 import { migrateSqliteSchema } from '@/core/storage/sqlite/ddl';
-import { Kysely, SqliteDialect } from 'kysely';
+import { Kysely, SqliteQueryCompiler, SqliteIntrospector, SqliteAdapter, type CompiledQuery } from 'kysely';
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
-import type { SqliteDatabase, SqliteStatement } from '../types';
+import type { SqliteDatabase, SqliteStoreType } from '../types';
 import initSqlJs, { Database as SqlJsDatabase, type SqlJsStatic } from 'sql.js';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -47,25 +47,103 @@ try {
 }
 
 /**
- * Adapter implementation for sql.js.
- * Implements the unified SqliteDatabase interface.
+ * Custom SQLite driver that intercepts all execute operations for sql.js
  */
-export interface SqlJsAdapter extends SqliteDatabase {
-	exec(sql: string): void;
-	prepare(sql: string): SqlJsStatement;
+class CustomSqliteDriver {
+	private db: SqlJsDatabase;
+
+	constructor(db: SqlJsDatabase) {
+		this.db = db;
+	}
+
+	async init(): Promise<void> {}
+	async acquireConnection(): Promise<{ executeQuery: (query: CompiledQuery) => Promise<any>; streamQuery: (query: CompiledQuery, chunkSize?: number) => AsyncIterableIterator<any> }> {
+		return {
+			executeQuery: this.executeQuery.bind(this),
+			streamQuery: this.streamQuery.bind(this)
+		};
+	}
+	async beginTransaction(): Promise<void> { this.db.run('BEGIN TRANSACTION'); }
+	async commitTransaction(): Promise<void> { this.db.run('COMMIT'); }
+	async rollbackTransaction(): Promise<void> { this.db.run('ROLLBACK'); }
+	async releaseConnection(): Promise<void> {}
+	async destroy(): Promise<void> {}
+
+	async executeQuery(compiledQuery: CompiledQuery): Promise<any> {
+		const { sql, parameters } = compiledQuery;
+		const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
+
+		if (isSelect) {
+			// For SELECT queries, use exec which returns results
+			const results = parameters && parameters.length > 0
+				? this.db.exec(sql, parameters as unknown as any[])
+				: this.db.exec(sql);
+			if (results.length > 0) {
+				return {
+					rows: results[0].values.map((row: any[]) => {
+						const obj: any = {};
+						results[0].columns.forEach((col: string, idx: number) => {
+							obj[col] = row[idx];
+						});
+						return obj;
+					}),
+					insertId: undefined,
+					numAffectedRows: undefined
+				};
+			} else {
+				return {
+					rows: [],
+					insertId: undefined,
+					numAffectedRows: undefined
+				};
+			}
+		} else {
+			// For non-SELECT queries, use run
+			const result = parameters && parameters.length > 0
+				? this.db.run(sql, parameters as unknown as any[]) as any
+				: this.db.run(sql) as any;
+			return {
+				rows: [],
+				insertId: result.insertId ? BigInt(result.insertId) : undefined,
+				numAffectedRows: result.changes ? BigInt(result.changes) : undefined
+			};
+		}
+	}
+
+	async *streamQuery(compiledQuery: CompiledQuery, chunkSize?: number): AsyncIterableIterator<any> {
+		const result = await this.executeQuery(compiledQuery);
+		if (result.rows && Array.isArray(result.rows)) {
+			if (chunkSize && chunkSize > 0) {
+				for (let i = 0; i < result.rows.length; i += chunkSize) {
+					const chunk = result.rows.slice(i, i + chunkSize);
+					yield { ...result, rows: chunk };
+				}
+			} else {
+				yield result;
+			}
+		} else {
+			yield result;
+		}
+	}
 }
 
 /**
- * Statement implementation for sql.js.
- * Implements the unified SqliteStatement interface.
+ * Minimal SQLite dialect using our custom driver for sql.js
  */
-interface SqlJsStatement extends SqliteStatement {
-	bind(...params: any[]): SqlJsStatement;
-	run(...params: any[]): { changes: number; lastInsertRowid: number };
-	get(...params: any[]): any;
-	all(...params: any[]): any[];
-	finalize(): void;
+class CustomSqliteDialect {
+	private db: SqlJsDatabase;
+
+	constructor(db: SqlJsDatabase) {
+		this.db = db;
+	}
+
+	createDriver() { return new CustomSqliteDriver(this.db); }
+	createQueryCompiler() { return new SqliteQueryCompiler(); }
+	createAdapter() { return new SqliteAdapter(); }
+	createIntrospector(db: any) { return new SqliteIntrospector(db); }
 }
+
+
 
 /**
  * File-based SQLite store using sql.js.
@@ -76,22 +154,18 @@ interface SqlJsStatement extends SqliteStatement {
  * Note: sql.js loads the entire database into memory, so for large databases,
  * this may consume significant memory. Changes must be explicitly saved to disk.
  */
-export class SqlJsStore {
+export class SqlJsStore implements SqliteDatabase {
 	private db: SqlJsDatabase;
 	private dbFilePath: string;
-	public readonly kysely: Kysely<DbSchema>;
-	public readonly rawDb: SqlJsAdapter;
+	private kyselyInstance: Kysely<DbSchema>;
 
-	private constructor(db: SqlJsDatabase, adapter: SqlJsAdapter, dbFilePath: string) {
+	private constructor(db: SqlJsDatabase, dbFilePath: string) {
 		this.db = db;
-		this.rawDb = adapter;
 		this.dbFilePath = dbFilePath;
-		
-		// Create Kysely instance with sql.js adapter
-		this.kysely = new Kysely<DbSchema>({
-			dialect: new SqliteDialect({
-				database: adapter as any,
-			}),
+
+		// Create Kysely instance with custom dialect that intercepts all execute operations
+		this.kyselyInstance = new Kysely<DbSchema>({
+			dialect: new CustomSqliteDialect(db),
 		});
 	}
 
@@ -231,14 +305,10 @@ export class SqlJsStore {
 			'To enable vector search, use better-sqlite3 backend (set sqliteBackend to "better-sqlite3" in settings).'
 		);
 
-		// Create adapter
-		const adapter = SqlJsStore.createKyselyAdapter(db);
+		// Run migrations directly with db (has exec method)
+		migrateSqliteSchema(db);
 
-		// Run migrations
-		// Note: vec_embeddings table creation will fail with sql.js, but that's expected
-		migrateSqliteSchema(adapter);
-
-		return new SqlJsStore(db, adapter, params.dbFilePath);
+		return new SqlJsStore(db, params.dbFilePath);
 	}
 
 	/**
@@ -271,15 +341,16 @@ export class SqlJsStore {
 	}
 
 	/**
-	 * Close the database connection.
-	 * 
-	 * Note: This will save the database to disk before closing.
-	 * 
+	 * Close the database connection with save option.
+	 *
+	 * Note: This will save the database to disk before closing, unless it's an in-memory database.
+	 *
 	 * @param saveBeforeClose - If true, save before closing (default: true)
 	 */
-	close(saveBeforeClose: boolean = true): void {
+	closeWithSave(saveBeforeClose: boolean = true): void {
 		if (this.db) {
-			if (saveBeforeClose) {
+			// Don't save in-memory databases
+			if (saveBeforeClose && this.dbFilePath !== ':memory:') {
 				this.save();
 			}
 			this.db.close();
@@ -294,65 +365,27 @@ export class SqlJsStore {
 		return this.db !== null;
 	}
 
-	/**
-	 * Execute a raw SQL string
-	 */
+
 	exec(sql: string): void {
-		this.rawDb.exec(sql);
+		this.db.run(sql);
 	}
 
-    /**
-     * Create adapter to make sql.js compatible with Kysely's SqliteDialect
-     */
-    private static createKyselyAdapter(db: SqlJsDatabase): SqlJsAdapter {
-        return {
-            exec: (sql: string) => {
-                db.run(sql);
-            },
-            prepare: (sql: string): SqlJsStatement => {
-                const stmt = db.prepare(sql);
-                return {
-                    bind: (...params: any[]) => {
-                        // sql.js uses bind() with array or individual parameters
-                        if (params.length > 0) {
-                            stmt.bind(params);
-                        }
-                        return stmt as any;
-                    },
-                    run: (...params: any[]) => {
-                        stmt.bind(params);
-                        stmt.step();
-                        const changes = db.getRowsModified();
-                        // Get last insert rowid
-                        const lastInsertRowidResult = db.exec("SELECT last_insert_rowid()");
-                        const lastInsertRowid = lastInsertRowidResult.length > 0 && lastInsertRowidResult[0].values.length > 0
-                            ? (lastInsertRowidResult[0].values[0][0] as number)
-                            : 0;
-                        stmt.reset();
-                        return { changes, lastInsertRowid };
-                    },
-                    get: (...params: any[]) => {
-                        stmt.bind(params);
-                        const hasRow = stmt.step();
-                        const result = hasRow ? stmt.getAsObject({}) : null;
-                        stmt.reset();
-                        return result;
-                    },
-                    all: (...params: any[]) => {
-                        stmt.bind(params);
-                        const results: any[] = [];
-                        while (stmt.step()) {
-                            results.push(stmt.getAsObject({}));
-                        }
-                        stmt.reset();
-                        return results;
-                    },
-                    finalize: () => {
-                        stmt.free();
-                    },
-                };
-            },
-        };
-    }
+	prepare(sql: string): any {
+		return this.db.prepare(sql);
+	}
+
+	kysely<T = DbSchema>(): Kysely<T> {
+		// This cast is safe because kyselyInstance is created with DbSchema.
+		// For full type-safety, callers should only use the default type parameter.
+		return this.kyselyInstance as unknown as Kysely<T>;
+	}
+
+	close(): void {
+		this.closeWithSave(true);
+	}
+
+	databaseType(): SqliteStoreType {
+		return 'sql.js';
+	}
 }
 

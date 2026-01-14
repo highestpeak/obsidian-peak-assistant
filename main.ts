@@ -97,6 +97,7 @@ export default class MyPlugin extends Plugin {
 
 		// register commands (after services are ready)
 		buildCoreCommands(
+			this.settings,
 			this.viewManager,
 			this.aiServiceManager,
 			this.searchClient,

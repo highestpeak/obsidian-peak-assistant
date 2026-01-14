@@ -11,107 +11,110 @@
  * - Native module (.node file) must be available at runtime
  */
 import { migrateSqliteSchema } from '@/core/storage/sqlite/ddl';
-import { Kysely, SqliteDialect, type CompiledQuery, type TransactionSettings } from 'kysely';
+import { Kysely, SqliteIntrospector, SqliteQueryCompiler, SqliteAdapter, type CompiledQuery } from 'kysely';
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
-import type { SqliteDatabase, SqliteStatement } from '../types';
 import type { App } from 'obsidian';
 import * as fs from 'fs';
 import * as path from 'path';
-import { executeCompiledQuery } from '../utils';
+import type { SqliteDatabase, SqliteStoreType } from '../types';
 
 /**
  * Custom SQLite driver that intercepts all execute operations
  */
 class CustomSqliteDriver {
-	private rawDb: BetterSqliteAdapter;
+	private adapter: { exec: (sql: string) => void; prepare: (sql: string) => any };
 
-	constructor(rawDb: BetterSqliteAdapter) {
-		this.rawDb = rawDb;
+	constructor(adapter: { exec: (sql: string) => void; prepare: (sql: string) => any }) {
+		this.adapter = adapter;
 	}
 
-	async init(): Promise<void> {
-		// No initialization needed
-	}
-
-	async acquireConnection(): Promise<{ executeQuery: (query: CompiledQuery) => Promise<any> }> {
+	async init(): Promise<void> { }
+	async acquireConnection(): Promise<{ executeQuery: (query: CompiledQuery) => Promise<any>; streamQuery: (query: CompiledQuery, chunkSize?: number) => AsyncIterableIterator<any> }> {
 		return {
-			executeQuery: this.executeQuery.bind(this)
+			executeQuery: this.executeQuery.bind(this),
+			streamQuery: this.streamQuery.bind(this)
 		};
 	}
+	async beginTransaction(): Promise<void> { this.adapter.exec('BEGIN TRANSACTION'); }
+	async commitTransaction(): Promise<void> { this.adapter.exec('COMMIT'); }
+	async rollbackTransaction(): Promise<void> { this.adapter.exec('ROLLBACK'); }
+	async releaseConnection(): Promise<void> { }
+	async destroy(): Promise<void> { }
 
-	async beginTransaction(connection: any, settings: TransactionSettings): Promise<void> {
-		// Execute BEGIN TRANSACTION SQL command
-		this.rawDb.exec('BEGIN TRANSACTION');
-	}
-
-	async commitTransaction(connection: any): Promise<void> {
-		// Execute COMMIT SQL command
-		this.rawDb.exec('COMMIT');
-	}
-
-	async rollbackTransaction(connection: any): Promise<void> {
-		// Execute ROLLBACK SQL command
-		this.rawDb.exec('ROLLBACK');
-	}
-
-	async releaseConnection(): Promise<void> {
-		// Connection pooling not needed for better-sqlite3
-	}
-
-	async destroy(): Promise<void> {
-		// Cleanup if needed
-	}
-
-	/**
-	 * Custom executeQuery that uses our executeCompiledQuery logic
-	 * This intercepts all SQL execution at the driver level
-	 */
 	async executeQuery(compiledQuery: CompiledQuery): Promise<any> {
-		// Use our custom execution logic that bypasses Kysely's default behavior
-		return executeCompiledQuery(compiledQuery, this.rawDb);
+		const { sql, parameters } = compiledQuery;
+		const stmt = this.adapter.prepare(sql);
+		let result: any;
+
+		if (parameters && parameters.length > 0) {
+			const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
+			if (isSelect) {
+				result = stmt.all(...parameters);
+			} else {
+				result = stmt.run(...parameters);
+			}
+		} else {
+			const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
+			if (isSelect) {
+				result = stmt.all();
+			} else {
+				result = stmt.run();
+			}
+		}
+
+		// Format result according to Kysely's driver interface expectations
+		if (Array.isArray(result)) {
+			return {
+				rows: result,
+				insertId: undefined,
+				numAffectedRows: undefined
+			};
+		} else {
+			return {
+				rows: [],
+				insertId: result.lastInsertRowid ? BigInt(result.lastInsertRowid) : undefined,
+				numAffectedRows: result.changes ? BigInt(result.changes) : undefined
+			};
+		}
+	}
+
+	async *streamQuery(compiledQuery: CompiledQuery, chunkSize?: number): AsyncIterableIterator<any> {
+		const result = await this.executeQuery(compiledQuery);
+		if (result.rows && Array.isArray(result.rows)) {
+			if (chunkSize && chunkSize > 0) {
+				for (let i = 0; i < result.rows.length; i += chunkSize) {
+					const chunk = result.rows.slice(i, i + chunkSize);
+					yield { ...result, rows: chunk };
+				}
+			} else {
+				yield result;
+			}
+		} else {
+			yield result;
+		}
 	}
 }
 
-/**
- * Custom SQLite dialect that uses our custom driver
- */
-class CustomSqliteDialect extends SqliteDialect {
-	private rawDb: BetterSqliteAdapter;
+class CustomSqliteDialect {
+	private db: BetterSqlite3Database;
 
-	constructor(rawDb: BetterSqliteAdapter) {
-		super({
-			database: rawDb as any
+	constructor(db: BetterSqlite3Database) {
+		this.db = db;
+	}
+
+	createDriver() {
+		return new CustomSqliteDriver({
+			exec: (sql: string) => this.db.exec(sql),
+			prepare: (sql: string) => this.db.prepare(sql)
 		});
-		this.rawDb = rawDb;
 	}
 
-	createDriver(): any {
-		return new CustomSqliteDriver(this.rawDb);
-	}
+	createQueryCompiler() { return new SqliteQueryCompiler(); }
+	createAdapter() { return new SqliteAdapter(); }
+	createIntrospector(db: any) { return new SqliteIntrospector(db); }
 }
 
 // Don't import better-sqlite3 at the top level - load it dynamically to avoid module resolution errors
-
-/**
- * Adapter implementation for better-sqlite3.
- * Implements the unified SqliteDatabase interface.
- */
-export interface BetterSqliteAdapter extends SqliteDatabase {
-	exec(sql: string): void;
-	prepare(sql: string): BetterSqliteStatement;
-}
-
-/**
- * Statement implementation for better-sqlite3.
- * Implements the unified SqliteStatement interface.
- */
-interface BetterSqliteStatement extends SqliteStatement {
-	bind(...params: any[]): BetterSqliteStatement;
-	run(...params: any[]): { changes: number; lastInsertRowid: number };
-	get(...params: any[]): any;
-	all(...params: any[]): any[];
-	finalize(): void;
-}
 
 /**
  * Type definition for better-sqlite3 Database.
@@ -135,21 +138,19 @@ type BetterSqlite3Database = {
  * Note: better-sqlite3 is loaded dynamically to avoid module resolution errors
  * in Obsidian plugin environment.
  */
-export class BetterSqliteStore {
+export class BetterSqliteStore implements SqliteDatabase {
 	private db: BetterSqlite3Database;
-	public readonly kysely: Kysely<DbSchema>;
-	public readonly rawDb: BetterSqliteAdapter;
-	
+	private kyselyInstance: Kysely<DbSchema>;
+
 	// Cache for better-sqlite3 module if successfully loaded
 	private static cachedBetterSqlite3: typeof import('better-sqlite3') | null = null;
 
-	private constructor(db: BetterSqlite3Database, adapter: BetterSqliteAdapter) {
+	private constructor(db: BetterSqlite3Database) {
 		this.db = db;
-		this.rawDb = adapter;
 
 		// Create Kysely instance with custom dialect that intercepts all execute operations
-		this.kysely = new Kysely<DbSchema>({
-			dialect: new CustomSqliteDialect(adapter),
+		this.kyselyInstance = new Kysely<DbSchema>({
+			dialect: new CustomSqliteDialect(db),
 		});
 	}
 
@@ -170,7 +171,7 @@ export class BetterSqliteStore {
 			try {
 				betterSqlite3 = require('better-sqlite3');
 			} catch (requireError: any) {
-				console.log('[BetterSqliteStore] Failed to require better-sqlite3. Trying to load from possible paths...',
+				console.warn('[BetterSqliteStore] Failed to require better-sqlite3. Trying to load from possible paths...',
 					'Error message:', requireError.message,
 					'Code:', requireError.code,
 				);
@@ -217,8 +218,8 @@ export class BetterSqliteStore {
 			try {
 				const testDb = new Database(':memory:');
 				testDb.close();
-				console.log('[BetterSqliteStore] better-sqlite3 native module is working');
-				
+				console.debug('[BetterSqliteStore] better-sqlite3 native module is working');
+
 				// Cache the module only after successful verification
 				BetterSqliteStore.cachedBetterSqlite3 = betterSqlite3;
 				return true;
@@ -311,10 +312,10 @@ export class BetterSqliteStore {
 	private static loadBetterSqlite3(app?: App): typeof import('better-sqlite3') {
 		// Strategy 1: Use cached module
 		if (BetterSqliteStore.cachedBetterSqlite3) {
-			console.log('[BetterSqliteStore] Using cached better-sqlite3');
+			console.debug('[BetterSqliteStore] Using cached better-sqlite3');
 			return BetterSqliteStore.cachedBetterSqlite3;
 		}
-		
+
 		// Strategy 2: Try normal require
 		try {
 			const module = require('better-sqlite3');
@@ -338,27 +339,27 @@ export class BetterSqliteStore {
 							if (Database && typeof Database === 'function') {
 								const module = { default: Database, Database: Database } as any;
 								BetterSqliteStore.cachedBetterSqlite3 = module;
-								console.log(`[BetterSqliteStore] Using better-sqlite3 from require.cache: ${modulePath}`);
+								console.debug(`[BetterSqliteStore] Using better-sqlite3 from require.cache: ${modulePath}`);
 								return module;
 							}
 						}
 					}
 				}
 			}
-			
+
 			// Strategy 4: Try loading from absolute paths (only if MODULE_NOT_FOUND)
 			if (requireError.code === 'MODULE_NOT_FOUND') {
 				const possiblePaths = BetterSqliteStore.getPossiblePaths(app);
-				
+
 				for (const modulePath of possiblePaths) {
 					const betterSqlite3 = BetterSqliteStore.loadFromPath(modulePath);
 					if (betterSqlite3) {
 						BetterSqliteStore.cachedBetterSqlite3 = betterSqlite3;
-						console.log(`[BetterSqliteStore] Loaded better-sqlite3 from: ${modulePath}`);
+						console.debug(`[BetterSqliteStore] Loaded better-sqlite3 from: ${modulePath}`);
 						return betterSqlite3;
 					}
 				}
-				
+
 				throw new Error(
 					'better-sqlite3 is not installed or not accessible. ' +
 					'Please install it in the plugin directory: .obsidian/plugins/obsidian-peak-assistant/ ' +
@@ -367,13 +368,6 @@ export class BetterSqliteStore {
 			}
 			throw requireError;
 		}
-	}
-
-	/**
-	 * Get the cached better-sqlite3 module if available.
-	 */
-	static getCachedModule(): typeof import('better-sqlite3') | null {
-		return BetterSqliteStore.cachedBetterSqlite3;
 	}
 
 	/**
@@ -388,7 +382,7 @@ export class BetterSqliteStore {
 		// Dynamically load better-sqlite3 to avoid module resolution errors at import time
 		const BetterSqlite3 = BetterSqliteStore.loadBetterSqlite3(params.app);
 		const Database = BetterSqlite3.default || BetterSqlite3;
-		
+
 		let db: BetterSqlite3Database;
 		try {
 			db = new Database(params.dbFilePath, {
@@ -400,7 +394,7 @@ export class BetterSqliteStore {
 			try {
 				// Force a WAL checkpoint to clear any pending transactions
 				db.pragma('wal_checkpoint(TRUNCATE)');
-				console.log('[BetterSqliteStore] Initial WAL checkpoint completed');
+				console.debug('[BetterSqliteStore] Initial WAL checkpoint completed');
 			} catch (checkpointError) {
 				console.warn('[BetterSqliteStore] Initial WAL checkpoint failed:', checkpointError);
 			}
@@ -430,24 +424,18 @@ export class BetterSqliteStore {
 		try {
 			// Check if database is in a locked state and try to recover
 			const walCheckpoint = db.pragma('wal_checkpoint(TRUNCATE)');
-			console.log('[BetterSqliteStore] WAL checkpoint result:', walCheckpoint);
+			console.debug('[BetterSqliteStore] WAL checkpoint result:', walCheckpoint);
 		} catch (error) {
 			console.warn('[BetterSqliteStore] WAL checkpoint failed (may be normal):', error);
 		}
 
-		console.log('[BetterSqliteStore] Set busy_timeout to 5000ms');
-
 		// Try to load sqlite-vec extension for vector similarity search
 		const sqliteVecAvailable = BetterSqliteStore.tryLoadSqliteVec(db, params.app);
 
-		// Create adapter
-		const adapter = BetterSqliteStore.createKyselyAdapter(db);
+		// Run migrations directly with db (has exec method)
+		migrateSqliteSchema(db);
 
-		// Run migrations
-		// better-sqlite3's Database has exec() method, so we can use it directly
-		migrateSqliteSchema(adapter);
-
-		return { store: new BetterSqliteStore(db, adapter), sqliteVecAvailable };
+		return { store: new BetterSqliteStore(db), sqliteVecAvailable };
 	}
 
 	/**
@@ -460,7 +448,7 @@ export class BetterSqliteStore {
 			try {
 				const extensionPath = sqliteVec.getLoadablePath();
 				if (fs.existsSync(extensionPath)) {
-					console.log(`[BetterSqliteStore] getLoadablePath() returned: ${extensionPath}`);
+					console.debug(`[BetterSqliteStore] getLoadablePath() returned: ${extensionPath}`);
 					return extensionPath;
 				}
 			} catch (pathError: any) {
@@ -509,10 +497,10 @@ export class BetterSqliteStore {
 			// process.cwd() may fail in some environments
 		}
 
-		console.log(`[BetterSqliteStore] Trying alternative paths: ${possiblePaths.join(', ')}`);
+		console.debug(`[BetterSqliteStore] Trying alternative paths: ${possiblePaths.join(', ')}`);
 		for (const altPath of possiblePaths) {
 			if (fs.existsSync(altPath)) {
-				console.log(`[BetterSqliteStore] Found extension at: ${altPath}`);
+				console.debug(`[BetterSqliteStore] Found extension at: ${altPath}`);
 				return altPath;
 			}
 		}
@@ -539,13 +527,13 @@ export class BetterSqliteStore {
 				return false;
 			}
 
-			console.log(`[BetterSqliteStore] Loading extension manually from: ${extensionPath}`);
+			console.debug(`[BetterSqliteStore] Loading extension manually from: ${extensionPath}`);
 			db.loadExtension(extensionPath);
 
 			// Verify extension is loaded
 			const versionResult = db.prepare('SELECT vec_version() as version').get() as { version: string } | undefined;
 			if (versionResult) {
-				console.log(`[BetterSqliteStore] sqlite-vec extension loaded manually (version: ${versionResult.version})`);
+				console.debug(`[BetterSqliteStore] sqlite-vec extension loaded manually (version: ${versionResult.version})`);
 				return true;
 			}
 
@@ -570,7 +558,7 @@ export class BetterSqliteStore {
 			// According to sqlite-vec docs, it should automatically handle platform-specific packages
 			// eslint-disable-next-line @typescript-eslint/no-var-requires
 			const sqliteVec = require('sqlite-vec');
-			
+
 			// sqlite-vec exports a load function that takes the database instance
 			// It internally handles finding and loading the platform-specific extension
 			const loadFn = sqliteVec.load || sqliteVec.default?.load;
@@ -587,7 +575,7 @@ export class BetterSqliteStore {
 				// Verify extension is loaded by checking vec_version()
 				const versionResult = db.prepare('SELECT vec_version() as version').get() as { version: string } | undefined;
 				if (versionResult) {
-					console.log(`[BetterSqliteStore] sqlite-vec extension loaded successfully (version: ${versionResult.version})`);
+					console.debug(`[BetterSqliteStore] sqlite-vec extension loaded successfully (version: ${versionResult.version})`);
 					return true;
 				}
 				// If vec_version() failed, extension may not be fully loaded
@@ -596,7 +584,7 @@ export class BetterSqliteStore {
 				// Error during load() call - sqlite-vec.load() internally uses getLoadablePath() and db.loadExtension()
 				// In Obsidian plugin environment, path resolution may fail due to __dirname pointing to bundled location
 				const errorMsg = loadError instanceof Error ? loadError.message : String(loadError);
-				
+
 				// Try manual loading as fallback
 				if (this.tryManualLoadExtension(db, sqliteVec, app)) {
 					return true;
@@ -649,62 +637,23 @@ export class BetterSqliteStore {
 		return this.db !== null && this.db.open;
 	}
 
-	/**
-	 * Execute a raw SQL string
-	 */
 	exec(sql: string): void {
-		this.rawDb.exec(sql);
+		this.db.exec(sql);
 	}
 
-    /**
-     * Create adapter to make better-sqlite3 compatible with Kysely's SqliteDialect
-     */
-    private static createKyselyAdapter(db: BetterSqlite3Database): BetterSqliteAdapter {
-        return {
-            exec: (sql: string) => {
-                db.exec(sql);
-            },
-            prepare: (sql: string): BetterSqliteStatement => {
-                const stmt = db.prepare(sql);
-                
-                // Create a wrapper that properly handles bind() and preserves reader property
-                // Kysely uses the reader property to determine if it's a SELECT query
-                const createWrapper = (statement: any): BetterSqliteStatement => {
-                    const wrapper: any = {
-                        // Preserve the reader property so Kysely can determine if it's a SELECT query
-                        get reader() {
-                            return statement.reader;
-                        },
-                        bind: (...params: any[]) => {
-                            // better-sqlite3 bind() returns a new bound statement
-                            if (params.length > 0) {
-                                const boundStmt = statement.bind(...params);
-                                return createWrapper(boundStmt);
-                            }
-                            return createWrapper(statement);
-                        },
-                        run: (...params: any[]) => {
-                            // better-sqlite3 run() accepts parameters directly
-                            return statement.run(...params) as { changes: number; lastInsertRowid: number };
-                        },
-                        get: (...params: any[]) => {
-                            // better-sqlite3 get() accepts parameters directly, or uses bound params if already bound
-                            return params.length > 0 ? statement.get(...params) : statement.get();
-                        },
-                        all: (...params: any[]) => {
-                            // better-sqlite3 all() accepts parameters directly, or uses bound params if already bound
-                            return (params.length > 0 ? statement.all(...params) : statement.all()) as any[];
-                        },
-                        finalize: () => {
-                            // better-sqlite3 statements are automatically finalized when garbage collected
-                            // This is a no-op for compatibility with unified interface
-                        },
-                    };
-                    return wrapper;
-                };
-                return createWrapper(stmt);
-            },
-        };
-    }
+	prepare(sql: string): any {
+		return this.db.prepare(sql);
+	}
+
+	kysely<T = DbSchema>(): Kysely<T> {
+		// This cast is safe because kyselyInstance is created with DbSchema.
+		// For full type-safety, callers should only use the default type parameter.
+		return this.kyselyInstance as unknown as Kysely<T>;
+	}
+
+	databaseType(): SqliteStoreType {
+		return 'better-sqlite3';
+	}
+
 }
 

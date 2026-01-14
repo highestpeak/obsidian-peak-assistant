@@ -7,17 +7,18 @@ import { AIServiceManager } from '@/service/chat/service-manager';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
 import { SearchClient } from '@/service/search/SearchClient';
-import type { SearchSettings } from '@/app/settings/types';
+import type { MyPluginSettings, SearchSettings } from '@/app/settings/types';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
 import { IndexService } from '@/service/search/index/indexService';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import { ConfirmModal } from '@/ui/view/ConfirmModal';
-import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 
 /**
  * Registers core commands exposed via Obsidian command palette.
  */
 export function buildCoreCommands(
+	settings: MyPluginSettings,
 	viewManager: ViewManager,
 	aiManager: AIServiceManager,
 	searchClient: SearchClient | null,
@@ -175,6 +176,13 @@ export function buildCoreCommands(
 		// 		}
 		// 	},
 		// },
+		{
+			id: 'peak-database-verify',
+			name: 'Verify Database Health',
+			callback: async () => {
+				await verifyDatabaseHealth(viewManager.getApp(), settings);
+			},
+		},
 
 	];
 }
