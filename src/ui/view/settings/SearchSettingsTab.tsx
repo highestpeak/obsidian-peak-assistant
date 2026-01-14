@@ -70,6 +70,31 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 				</div>
 			</div>
 
+			{/* Index Refresh Interval */}
+			<div className="pktw-mb-8">
+				<div className="pktw-flex pktw-items-start pktw-gap-4">
+					{/* Left side: label and description */}
+					<div className="pktw-flex-1 pktw-min-w-0">
+						<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+							Index Refresh Interval
+						</label>
+						<p className="pktw-text-xs pktw-text-muted-foreground">
+							Time in milliseconds to debounce search index updates after file changes. Default: 5000 (5 seconds)
+						</p>
+					</div>
+					{/* Right side: input */}
+					<div className="pktw-flex-shrink-0 pktw-w-64">
+						<NumberInputWithConfirm
+							value={settings.search.indexRefreshInterval ?? 5000}
+							onConfirm={(value) => updateSearch('indexRefreshInterval', value)}
+							min={1000}
+							max={30000}
+							placeholder="5000"
+						/>
+					</div>
+				</div>
+			</div>
+
 			{/* Index Document Types */}
 			<div className="pktw-mb-8">
 				<div className="pktw-mb-4">

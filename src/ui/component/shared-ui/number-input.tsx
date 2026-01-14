@@ -168,7 +168,7 @@ export const NumberInputWithConfirm = React.forwardRef<HTMLInputElement, NumberI
 						type="button"
 						onClick={handleConfirm}
 						disabled={isConfirming}
-						className="pktw-flex-shrink-0 pktw-px-2 pktw-py-1 pktw-text-xs pktw-font-medium pktw-text-foreground pktw-bg-accent pktw-rounded pktw-transition-all hover:pktw-opacity-80 disabled:pktw-opacity-50 disabled:pktw-cursor-not-allowed"
+						className="pktw-flex-shrink-0 pktw-px-2 pktw-py-1 pktw-text-xs pktw-font-medium pktw-text-white pktw-bg-accent pktw-rounded pktw-transition-all hover:pktw-opacity-80 disabled:pktw-opacity-50 disabled:pktw-cursor-not-allowed"
 					>
 						{isConfirming ? '...' : 'Confirm'}
 					</button>

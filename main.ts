@@ -125,7 +125,7 @@ export default class MyPlugin extends Plugin {
 		await this.searchClient.init();
 
 		// first init listener then initializer to avoid missing index changes
-		this.searchUpdateQueue = new SearchUpdateListener(this.app, this.settings.search, 800);
+		this.searchUpdateQueue = new SearchUpdateListener(this.app, this, this.settings.search, this.settings.search.indexRefreshInterval);
 		this.searchUpdateQueue.start();
 
 		// Check index status and perform incremental indexing if needed

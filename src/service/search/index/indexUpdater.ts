@@ -5,6 +5,8 @@ import type { SearchSettings } from '@/app/settings/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { IndexService } from '@/service/search/index/indexService';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { EventBus } from '@/core/eventBus';
+import type MyPlugin from 'main';
 
 /**
  * Debounced update queue for incremental indexing.
@@ -21,8 +23,10 @@ export class SearchUpdateListener {
 	private timer: number | null = null;
 	private readonly vaultRefs: EventRef[] = [];
 	private readonly workspaceRefs: EventRef[] = [];
+	private settingsUnsubscribe: (() => void) | null = null;
 	constructor(
 		private readonly app: App,
+		private readonly plugin: MyPlugin,
 		private readonly settings: SearchSettings,
 		// five seconds debounce to avoid too many updates
 		private readonly debounceMs: number = 5000
@@ -31,7 +35,7 @@ export class SearchUpdateListener {
 	}
 
 	/**
-	 * Start listening to vault changes and file open events.
+	 * Start listening to vault changes, file open events, and settings updates.
 	 */
 	start(): void {
 		this.vaultRefs.push(
@@ -46,6 +50,15 @@ export class SearchUpdateListener {
 				void this.handleFileOpen(file);
 			}),
 		);
+
+		// Listen for settings updates to restart if indexRefreshInterval changed
+		const eventBus = EventBus.getInstance(this.app);
+		this.settingsUnsubscribe = eventBus.on('peak:settings-updated', () => {
+			if (this.debounceMs !== this.plugin.settings.search.indexRefreshInterval) {
+				console.log('Index refresh interval changed, restarting search update listener');
+				this.restartWithNewInterval();
+			}
+		});
 	}
 
 	/**
@@ -60,6 +73,13 @@ export class SearchUpdateListener {
 		}
 		this.vaultRefs.length = 0;
 		this.workspaceRefs.length = 0;
+
+		// Remove settings update listener
+		if (this.settingsUnsubscribe) {
+			this.settingsUnsubscribe();
+			this.settingsUnsubscribe = null;
+		}
+
 		if (this.timer) {
 			window.clearTimeout(this.timer);
 			this.timer = null;
@@ -98,6 +118,7 @@ export class SearchUpdateListener {
 		
 		if (!sqliteStoreManager.isInitialized()) {
 			// Store not initialized yet, skip
+			console.warn('sqliteStoreManager not initialized, skipping file open:', file.path);
 			return;
 		}
 		
@@ -165,6 +186,42 @@ export class SearchUpdateListener {
 		for (const p of paths) {
 			await IndexService.getInstance().indexDocument(p, this.settings);
 		}
+	}
+
+	/**
+	 * Restart the listener with new interval from current settings.
+	 * This method is called when indexRefreshInterval setting changes.
+	 */
+	private restartWithNewInterval(): void {
+		// Dispose current listeners and timers
+		for (const ref of this.vaultRefs) {
+			this.app.vault.offref(ref);
+		}
+		for (const ref of this.workspaceRefs) {
+			this.app.workspace.offref(ref);
+		}
+		this.vaultRefs.length = 0;
+		this.workspaceRefs.length = 0;
+
+		if (this.settingsUnsubscribe) {
+			this.settingsUnsubscribe();
+			this.settingsUnsubscribe = null;
+		}
+
+		if (this.timer) {
+			window.clearTimeout(this.timer);
+			this.timer = null;
+		}
+
+		// Clear pending operations
+		this.upsertPaths.clear();
+		this.deletePaths.clear();
+
+		// Update debounceMs with new value
+		(this as any).debounceMs = this.plugin.settings.search.indexRefreshInterval;
+
+		// Restart with new settings
+		this.start();
 	}
 }
 

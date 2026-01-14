@@ -133,6 +133,11 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 		}
 	}
 
+	// Index refresh interval
+	if (typeof rawSearch.indexRefreshInterval === 'number') {
+		settings.indexRefreshInterval = rawSearch.indexRefreshInterval;
+	}
+
 	// Image description model
 
 	return settings;

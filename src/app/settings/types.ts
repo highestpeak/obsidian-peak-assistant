@@ -79,6 +79,11 @@ export interface SearchSettings {
 		provider: string;
 		modelId: string;
 	};
+	/**
+	 * Index refresh interval in milliseconds for debouncing search index updates.
+	 * Default: 5000 (5 seconds)
+	 */
+	indexRefreshInterval: number;
 }
 
 /**
@@ -125,6 +130,7 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 		provider: 'openai',
 		modelId: 'gpt-4o-mini',
 	},
+	indexRefreshInterval: 5000, // 5 seconds
 };
 
 /**
