@@ -9,21 +9,7 @@ import type { SearchQuery, SearchResultItem as SearchResultItemType } from '@/se
 import type { SearchClient } from '@/service/search/SearchClient';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { openFile } from '@/core/utils/obsidian-utils';
-
-
-/**
- * Filter search results based on query.
- */
-const filterResults = (results: SearchResultItemType[], query: string): SearchResultItemType[] => {
-	if (!query.trim()) return results;
-	const lowerQuery = query.toLowerCase();
-	return results.filter(
-		(result) =>
-			result.title.toLowerCase().includes(lowerQuery) ||
-			result.path.toLowerCase().includes(lowerQuery) ||
-			result.highlight?.text?.toLowerCase().includes(lowerQuery),
-	);
-};
+import { cn } from '@/ui/react/lib/utils';
 
 /**
  * Highlight text using multiple keywords with more visible styling.
@@ -213,30 +199,34 @@ interface VaultSearchTabProps {
 	searchClient: SearchClient | null;
 	indexProgress: { processed: number; total?: number } | null;
 	onClose?: () => void;
+	onSearchStateChange?: (isSearching: boolean) => void;
 }
 
 /**
  * Quick search tab for regular vault search results.
  */
-export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, searchQuery, onSwitchToAI, searchClient, indexProgress, onClose }) => {
+export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, searchQuery, onSwitchToAI, searchClient, indexProgress, onClose, onSearchStateChange }) => {
 	const [selectedIndex, setSelectedIndex] = React.useState(0);
 	const [remoteResults, setRemoteResults] = React.useState<SearchResultItemType[] | null>(null);
 	const [recentResults, setRecentResults] = React.useState<SearchResultItemType[] | null>(null);
 	const [searchDuration, setSearchDuration] = React.useState<number | null>(null);
+	const [isSearching, setIsSearching] = React.useState(false);
+	const [lastSearchResults, setLastSearchResults] = React.useState<SearchResultItemType[]>([]);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+	const currentSearchId = React.useRef<string | null>(null);
 	const { app } = useServiceContext();
 
 	// Determine which results to show
-	const isSearching = searchQuery.text.trim().length > 0;
-	const displayedResults = isSearching
-		? (remoteResults ?? [])
+	const hasSearchQuery = searchQuery.text.trim().length > 0;
+	const displayedResults = hasSearchQuery
+		? (isSearching ? (lastSearchResults.length > 0 ? lastSearchResults : (recentResults ?? [])) : (remoteResults ?? []))
 		: (recentResults ?? []);
 
 	useEffect(() => {
 		let cancelled = false;
 		(async () => {
-			if (isSearching) return;
+			if (hasSearchQuery) return;
 			if (!searchClient) {
 				setRecentResults(null);
 				return;
@@ -252,35 +242,50 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 		return () => {
 			cancelled = true;
 		};
-	}, [isSearching, searchClient]);
+	}, [hasSearchQuery, searchClient]);
 
 	// Debounced search: wait for user to stop typing before triggering search
 	useEffect(() => {
-		if (!isSearching) {
+		if (!hasSearchQuery) {
+			currentSearchId.current = null;
 			setRemoteResults(null);
 			setSearchDuration(null);
+			setIsSearching(false);
 			return;
 		}
 		if (!searchClient) {
+			currentSearchId.current = null;
 			setRemoteResults([]);
 			setSearchDuration(null);
+			setIsSearching(false);
 			return;
 		}
+
+		// Generate a unique search ID for this search
+		const searchId = `${searchQuery.text}-${searchQuery.scopeMode}-${searchQuery.scopeValue}`;
+		currentSearchId.current = searchId;
+
+		// Set searching state
+		setIsSearching(true);
 
 		// Debounce: wait 500ms after user stops typing before triggering search
 		let cancelled = false;
 		const timeoutId = setTimeout(async () => {
 			try {
 				const res = await searchClient.search(searchQuery);
-				if (!cancelled) {
+				if (!cancelled && currentSearchId.current === searchId) {
 					setRemoteResults(res.items);
+					setLastSearchResults(res.items); // Store results for next search
 					setSearchDuration(res.duration ?? null);
+					setIsSearching(false);
 				}
 			} catch (e) {
 				console.error('Vault search failed:', e);
-				if (!cancelled) {
+				if (!cancelled && currentSearchId.current === searchId) {
 					setRemoteResults([]);
+					setLastSearchResults([]); // Store empty results for next search
 					setSearchDuration(null);
+					setIsSearching(false);
 				}
 			}
 		}, 500); // Wait 500ms after user stops typing
@@ -289,12 +294,17 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 			cancelled = true;
 			clearTimeout(timeoutId);
 		};
-	}, [isSearching, searchQuery.text, searchQuery.scopeMode, searchQuery.scopeValue, searchClient]);
+	}, [hasSearchQuery, searchQuery.text, searchQuery.scopeMode, searchQuery.scopeValue, searchClient]);
 
 	// Reset selected index when results change
 	useEffect(() => {
 		setSelectedIndex(0);
-	}, [isSearching, searchQuery.text, searchQuery.scopeMode]);
+	}, [hasSearchQuery, searchQuery.text, searchQuery.scopeMode]);
+
+	// Notify parent component of search state changes
+	useEffect(() => {
+		onSearchStateChange?.(isSearching);
+	}, [hasSearchQuery, onSearchStateChange]);
 
 	// Handle keyboard navigation
 	useEffect(() => {
@@ -370,8 +380,16 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0 pktw-overflow-hidden">
 			{/* Results List */}
 			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto" style={{ flexBasis: 0, minHeight: 0 }}>
+				<div
+					className={cn(
+						'pktw-bottom-0 pktw-left-0 pktw-right-0 pktw-h-0.5 pktw-z-20',
+						isSearching
+							? 'line-progress-loader'
+							: 'pktw-bg-transparent'
+					)}
+				/>
 				{/* Empty State - No Results */}
-				{isSearching && displayedResults.length === 0 ? (
+				{hasSearchQuery && !isSearching && displayedResults.length === 0 ? (
 					<NoResultsState searchInput={searchInput} />
 				) : !isSearching && displayedResults.length === 0 ? (
 					<div className="pktw-h-full pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-8">
@@ -388,8 +406,8 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 				) : (
 					<>
 						{/* Show hint text for recently accessed */}
-						{!isSearching && (
-							<div className="pktw-px-4 pktw-pt-3 pktw-pb-2">
+						{!hasSearchQuery && (
+							<div className="pktw-px-4 pktw-pb-2">
 								<span className="pktw-text-xs pktw-text-[#999999]">Recently accessed</span>
 							</div>
 						)}
@@ -432,15 +450,21 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ searchInput, sea
 							Indexed: {indexProgress.processed}
 						</span>
 					) : null}
-					{isSearching && (
+					{hasSearchQuery && (
 						<>
-							<span className="pktw-text-xs pktw-text-[#999999]">
-								{displayedResults.length} result{displayedResults.length !== 1 ? 's' : ''}
-							</span>
-							{searchDuration !== null && (
-								<span className="pktw-text-xs pktw-text-[#999999]">
-									• <strong className="pktw-text-[#2e3338]">{formatDuration(searchDuration)}</strong>
-								</span>
+							{isSearching ? (
+								<span className="pktw-text-xs pktw-text-[#999999]">Searching...</span>
+							) : (
+								<>
+									<span className="pktw-text-xs pktw-text-[#999999]">
+										{displayedResults.length} result{displayedResults.length !== 1 ? 's' : ''}
+									</span>
+									{searchDuration !== null && (
+										<span className="pktw-text-xs pktw-text-[#999999]">
+											• <strong className="pktw-text-[#2e3338]">{formatDuration(searchDuration)}</strong>
+										</span>
+									)}
+								</>
 							)}
 						</>
 					)}

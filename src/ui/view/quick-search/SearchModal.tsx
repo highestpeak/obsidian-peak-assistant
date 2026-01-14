@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { VaultSearchTab } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
 import { Search, Sparkles, Globe } from 'lucide-react';
@@ -114,12 +114,12 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 		return query.replace(/@web@\s*/g, '').trim();
 	};
 
-	const parsed = parseQuickSearchInput({
+	const parsed = React.useMemo(() => parseQuickSearchInput({
 		app,
 		rawInput: searchQuery,
 		modeOverride,
 		topK: 50,
-	});
+	}), [app, searchQuery, modeOverride]);
 
 	useEffect(() => {
 		setShowModeList(parsed.showModeList);

@@ -300,8 +300,10 @@ export class MockSearchClient {
 
 		// Limit results to topK
 		const topK = query.topK || 10;
-		const limitedResults = mockResults.slice(0, topK);
+		const shuffledResults = mockResults.sort(() => 0.5 - Math.random());
+		const limitedResults = shuffledResults.slice(0, topK);
 
+		await new Promise(resolve => setTimeout(resolve, 1500));
 		return {
 			query,
 			items: limitedResults,

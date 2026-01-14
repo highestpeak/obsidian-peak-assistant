@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Save, FileText, TrendingUp, AlertCircle, AlertTriangle, Globe, MessageCircle, Database } from 'lucide-react';
+import { Sparkles, Save, FileText, TrendingUp, AlertCircle, AlertTriangle, Globe, MessageCircle, Database, X } from 'lucide-react';
 import { GraphVisualization } from '../../component/mine/GraphVisualization';
 import { TagCloud } from './components/TagCloud';
 import { SaveDialog } from './components/ResultSaveDialog';
@@ -69,15 +69,9 @@ const AISearchState: React.FC<{
 		<span className="pktw-text-sm pktw-text-[#6c757d] pktw-mb-4 pktw-max-w-md">
 			{isAnalyzing || isSummaryStreaming
 				? 'AI is processing your query and searching through your vault...'
-				: 'Enter your question to start deep knowledge retrieval. The system will automatically choose the best search strategy.'
+				: ''
 			}
 		</span>
-		{!(isAnalyzing || isSummaryStreaming) && (
-			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-amber-600 pktw-bg-amber-50 pktw-px-3 pktw-py-2 pktw-rounded-md">
-				<AlertCircle className="pktw-w-4 pktw-h-4" />
-				<span>This action will consume AI tokens</span>
-			</div>
-		)}
 	</div>
 );
 
@@ -245,11 +239,10 @@ const TopSourcesSection: React.FC<{
  * Selected text references preview component
  */
 const SelectedTextReferencesSection: React.FC<{
-	references: Array<{ id: number; text: string; fileName?: string }>;
-	onRemove: (id: number) => void;
-	onAddReference: (id: number) => void;
+	references: Array<{ id: number; text?: string; fileName?: string }>;
+	onToggleReference: (id: number) => void;
 	usedReferences: Set<number>;
-}> = ({ references, onRemove, onAddReference, usedReferences }) => {
+}> = ({ references, onToggleReference, usedReferences }) => {
 	if (references.length === 0) return null;
 
 	return (
@@ -257,27 +250,27 @@ const SelectedTextReferencesSection: React.FC<{
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
 				<FileText className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
 				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">
-					Selected Text References
+					Quick References
 				</span>
 				<span className="pktw-text-xs pktw-text-[#999999]">({references.length})</span>
 			</div>
-			<div className="pktw-space-y-3">
+			<div className="pktw-space-y-2">
 				{references.map((ref) => (
 					<div
 						key={ref.id}
-						className={`pktw-rounded-md pktw-p-3 pktw-border pktw-border-[#e5e7eb] pktw-cursor-pointer pktw-transition-colors ${usedReferences.has(ref.id)
+						className={`pktw-rounded-md pktw-px-3 pktw-border pktw-border-[#e5e7eb] pktw-cursor-pointer pktw-transition-colors ${usedReferences.has(ref.id)
 							? 'pktw-bg-[#eef2ff] hover:pktw-bg-[#eef2ff]'
 							: 'pktw-bg-white hover:pktw-bg-blue-50/50'
 							}`}
-						onClick={() => onAddReference(ref.id)}
+						onClick={() => onToggleReference(ref.id)}
 					>
-						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-2">
+						<div className="pktw-flex pktw-items-center pktw-justify-between">
 							<div className="pktw-flex pktw-items-center pktw-gap-2">
 								<span className="pktw-text-xs pktw-font-medium pktw-bg-blue-500/15 pktw-text-blue-700 pktw-px-2 pktw-py-0.5 pktw-rounded">
 									@{ref.id}
 								</span>
 								{ref.fileName && (
-									<span className="pktw-text-xs pktw-text-[#999999]">
+									<span className="pktw-text-xs">
 										{ref.fileName}
 									</span>
 								)}
@@ -286,15 +279,15 @@ const SelectedTextReferencesSection: React.FC<{
 								variant="ghost"
 								onClick={(e) => {
 									e.stopPropagation(); // Prevent triggering the parent onClick
-									onRemove(ref.id);
+									onToggleReference(ref.id);
 								}}
 							>
-								×
+								<X className="pktw-w-4 pktw-h-4" />
 							</Button>
 						</div>
-						<div className="pktw-text-sm pktw-text-[#2e3338] pktw-leading-relaxed">
+						{ref.text && (<div className="pktw-text-sm pktw-text-[#2e3338] pktw-leading-relaxed">
 							{ref.text.length > 200 ? `${ref.text.substring(0, 200)}...` : ref.text}
-						</div>
+						</div>)}
 					</div>
 				))}
 			</div>
@@ -344,6 +337,10 @@ const AISearchFooterHints: React.FC<{ hasAnalyzed: boolean }> = ({ hasAnalyzed }
  */
 export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAnalysis, searchClient, webEnabled, onWebEnabledChange, onSearchQueryChange, onClose }) => {
 	const [isAnalyzing, setIsAnalyzing] = useState(false);
+	
+	// todo Temporarily comment out quick references related code, since reference feature is not currently needed. Keep the code in case it needs to be restored in the future.
+	const [enableQuickReferences, setEnableQuickReferences] = useState(false);
+
 	const [hasAnalyzed, setHasAnalyzed] = useState(false);
 	const [hasStartedStreaming, setHasStartedStreaming] = useState(false);
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -357,7 +354,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 	const [topicsRawText, setTopicsRawText] = useState('');
 	const [usage, setUsage] = useState<{ estimatedTokens?: number }>({});
 	const [duration, setDuration] = useState<number | null>(null);
-	const [selectedTextReferences, setSelectedTextReferences] = useState<Array<{ id: number; text: string; fileName?: string }>>([]);
+	const [selectedTextReferences, setSelectedTextReferences] = useState<Array<{ id: number; text?: string; fileName?: string }>>([]);
 	const [usedReferences, setUsedReferences] = useState<Set<number>>(new Set());
 	const { app, manager, viewManager } = useServiceContext();
 
@@ -370,7 +367,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 		const mockReferences = [
 			{
 				id: 1,
-				text: "This is a sample selected text from the document. It contains important information about the topic being discussed and should be referenced in the AI analysis.",
 				fileName: "Sample Document.md"
 			},
 			{
@@ -396,40 +392,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 			}
 		});
 		setUsedReferences(usedRefs);
-
-		// In production, uncomment the code below to enable real selection detection
-		/*
-		const checkSelectedText = () => {
-			const selectedText = getSelectedTextFromActiveEditor(app);
-			if (selectedText && selectedText.length > 0) {
-				// Get current file name
-				const anyApp = app as any;
-				const view = anyApp.workspace?.getActiveViewOfType?.(anyApp.MarkdownView || (anyApp as any).MarkdownView);
-				const file = view?.file;
-				const fileName = file?.basename || 'Current Document';
-
-				const newReference = {
-					id: selectedTextReferences.length + 1,
-					text: selectedText,
-					fileName: fileName
-				};
-
-				// Check if this text is already referenced
-				const existingIndex = selectedTextReferences.findIndex(ref => ref.text === selectedText);
-				if (existingIndex === -1) {
-					setSelectedTextReferences(prev => [...prev, newReference]);
-				}
-			}
-		};
-
-		// Check immediately
-		checkSelectedText();
-
-		// Set up interval to check periodically (every 2 seconds)
-		const interval = setInterval(checkSelectedText, 2000);
-
-		return () => clearInterval(interval);
-		*/
 	}, [searchQuery, memoizedSelectedTextReferences]);
 
 	const performAnalysis = async () => {
@@ -588,17 +550,26 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 		}
 	};
 
-	const handleRemoveReference = (id: number) => {
-		setSelectedTextReferences(prev => prev.filter(ref => ref.id !== id));
-	};
-
-	const handleAddReference = (id: number) => {
+	const handleToggleReference = (id: number) => {
 		const referenceTag = `@${id}@`;
 		const currentQuery = searchQuery.trim();
-		const newQuery = currentQuery ? `${currentQuery} ${referenceTag}` : referenceTag;
-		onSearchQueryChange(newQuery);
-		// Mark this reference as used
-		setUsedReferences(prev => new Set(prev).add(id));
+
+		if (usedReferences.has(id)) {
+			// Remove the reference from query and usedReferences
+			const regex = new RegExp(`\\s*${referenceTag}\\s*`, 'g');
+			const newQuery = currentQuery.replace(regex, ' ').trim();
+			onSearchQueryChange(newQuery);
+			setUsedReferences(prev => {
+				const newSet = new Set(prev);
+				newSet.delete(id);
+				return newSet;
+			});
+		} else {
+			// Add the reference to query and usedReferences
+			const newQuery = currentQuery ? `${currentQuery} ${referenceTag}` : referenceTag;
+			onSearchQueryChange(newQuery);
+			setUsedReferences(prev => new Set(prev).add(id));
+		}
 	};
 
 	const handleOpenInChat = async () => {
@@ -700,12 +671,11 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ searchQuery, triggerAn
 					</div>
 				) : null}
 
-				{!isAnalyzing && !hasAnalyzed && !error ? (
+				{enableQuickReferences && !isAnalyzing && !hasAnalyzed && !error ? (
 					selectedTextReferences.length > 0 && (
 						<SelectedTextReferencesSection
 							references={selectedTextReferences}
-							onRemove={handleRemoveReference}
-							onAddReference={handleAddReference}
+							onToggleReference={handleToggleReference}
 							usedReferences={usedReferences}
 						/>
 					)

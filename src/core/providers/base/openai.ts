@@ -144,12 +144,16 @@ export class OpenAIChatService implements LLMProviderService {
 		return MODEL_ID_MAP[modelId]?.modelId || modelId;
 	}
 
+	modelClient(model: string): LanguageModel {
+		return this.client(this.normalizeModelId(model)) as unknown as LanguageModel;
+	}
+
 	async blockChat(request: LLMRequest<any>): Promise<LLMResponse> {
-		return blockChat(this.client(this.normalizeModelId(request.model)) as unknown as LanguageModel, request);
+		return blockChat(this.modelClient(request.model), request);
 	}
 
 	streamChat(request: LLMRequest<any>): AsyncGenerator<LLMStreamEvent> {
-		return streamChat(this.client(this.normalizeModelId(request.model)) as unknown as LanguageModel, request);
+		return streamChat(this.modelClient(request.model), request);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {

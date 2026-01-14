@@ -1,4 +1,4 @@
-import { LanguageModelUsage, FinishReason, CallWarning, LanguageModelRequestMetadata, LanguageModelResponseMetadata, ProviderMetadata, StepResult, GeneratedFile, ContentPart, ReasoningOutput } from 'ai';
+import { LanguageModelUsage, FinishReason, CallWarning, LanguageModelRequestMetadata, LanguageModelResponseMetadata, ProviderMetadata, StepResult, GeneratedFile, ContentPart, ReasoningOutput, LanguageModel } from 'ai';
 
 export interface ProviderConfig {
 	enabled?: boolean;
@@ -194,6 +194,10 @@ export interface LLMProviderService {
 	 * Get provider ID
 	 */
 	getProviderId(): string;
+	/**
+	 * Get model client for this provider
+	 */
+	modelClient(model: string): LanguageModel;
 	/**
 	 * Get list of available models for this provider
 	 * Returns empty array if models cannot be fetched or provider doesn't support listing

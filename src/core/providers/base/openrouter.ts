@@ -58,12 +58,16 @@ export class OpenRouterChatService implements LLMProviderService {
 		return 'openrouter';
 	}
 
+	modelClient(model: string): LanguageModel {
+		return this.client(model) as unknown as LanguageModel;
+	}
+
 	async blockChat(request: LLMRequest<any>): Promise<LLMResponse> {
-		return blockChat(this.client(request.model) as unknown as LanguageModel, request);
+		return blockChat(this.modelClient(request.model), request);
 	}
 
 	streamChat(request: LLMRequest<any>): AsyncGenerator<LLMStreamEvent> {
-		return streamChat(this.client(request.model) as unknown as LanguageModel, request);
+		return streamChat(this.modelClient(request.model), request);
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {

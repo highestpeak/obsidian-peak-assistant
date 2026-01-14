@@ -3,6 +3,7 @@ import { LLMRequest } from './types';
 import { ProviderServiceFactory } from './base/factory';
 import { BusinessError, ErrorCode } from '@/core/errors';
 import { getLLMOutputControlSettingKeys } from './types';
+import { LanguageModel } from 'ai';
 
 export interface MultiProviderChatServiceOptions {
 	providerConfigs?: Record<string, ProviderConfig>;
@@ -127,6 +128,10 @@ export class MultiProviderChatService implements LLMProviderService {
 		}
 		this.providerServiceMap.set(provider, newService);
 		return newService;
+	}
+
+	modelClient(model: string): LanguageModel {
+		throw new Error('unsupported operation: modelClient');
 	}
 
 	/**
