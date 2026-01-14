@@ -84,6 +84,18 @@ export interface SearchSettings {
 	 * Default: 5000 (5 seconds)
 	 */
 	indexRefreshInterval: number;
+
+	/**
+	 * which implementation to use for ai analysis if web search is enabled.
+	 */
+	aiAnalysisWebSearchImplement?: 'perplexity' | 'local_chromium';
+	/**
+	 * which model to use for ai analysis if perplexity is selected.
+	 */
+	perplexitySearchModel?: string;
+
+	shortSummaryLength: number;
+	fullSummaryLength: number;
 }
 
 /**
@@ -131,6 +143,11 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 		modelId: 'gpt-4o-mini',
 	},
 	indexRefreshInterval: 5000, // 5 seconds
+
+	aiAnalysisWebSearchImplement: 'local_chromium',
+
+	shortSummaryLength: 150,
+	fullSummaryLength: 2000,
 };
 
 /**

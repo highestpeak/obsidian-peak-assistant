@@ -47,6 +47,14 @@ export class SearchClient {
 		return await this.queryService.textSearch(query, enableLLMRerank);
 	}
 
+	async vectorSearch(query: SearchQuery): Promise<SearchResponse & { duration: number }> {
+		if (!this.queryService) {
+			throw new Error('SearchClient not initialized. Call init() first.');
+		}
+
+		return await this.queryService.vectorSearch(query);
+	}
+
 	/**
 	 * Execute AI analysis with optional streaming callbacks.
 	 * @param req - AI analysis request
@@ -115,7 +123,7 @@ export class SearchClient {
 		return recent.map((r) => {
 			const meta = metaById.get(r.docId);
 			return {
-				id: meta?.path ?? r.docId,
+				id: r.docId,
 				type: (meta?.type ?? 'markdown') as any,
 				title: meta?.title ?? r.docId,
 				path: meta?.path ?? r.docId,

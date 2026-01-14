@@ -44,7 +44,7 @@ export function SettingsRoot() {
 	const tabs: Array<{ id: TabId; label: string }> = [
 		{ id: 'general', label: 'General' },
 		{ id: 'ai-models', label: 'Model Config' },
-		{ id: 'search', label: 'Search Settings' },
+		{ id: 'search', label: 'Doc & Search' },
 		{ id: 'cosmo-plugins', label: 'Cosmo Plugins' },
 	];
 

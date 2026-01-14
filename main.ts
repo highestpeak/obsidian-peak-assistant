@@ -15,6 +15,7 @@ import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoa
 import { IndexService } from '@/service/search/index/indexService';
 import { SEARCH_DB_FILENAME } from '@/core/constant';
 import { AppContext } from '@/app/context/AppContext';
+import { registerTemplateEngineHelpers } from '@/core/template-engine-helper';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -41,6 +42,8 @@ export default class MyPlugin extends Plugin {
 	 * Bootstraps services, views, commands, and layout handling.
 	 */
 	async onload() {
+		registerTemplateEngineHelpers();
+
 		const data = await this.loadData();
 		this.settings = normalizePluginSettings(data);
 
@@ -81,8 +84,9 @@ export default class MyPlugin extends Plugin {
 		const appContext = new AppContext(
 			this.app,
 			this.aiServiceManager,
-			this.searchClient,
-			this
+			this.searchClient!,
+			this,
+			this.settings
 		);
 
 		// Create ViewManager with AppContext

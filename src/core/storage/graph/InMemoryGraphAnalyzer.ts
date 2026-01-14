@@ -33,6 +33,8 @@ type GraphInstance = any;
  * 3. Perform analysis using Graphology algorithms via getGraph()
  * 4. Query metadata on-demand using getNodeMetadata() if needed
  * 5. Analyzer instance is garbage collected, graph is released
+ * 
+ * @deprecated Use GraphStore instead
  */
 export class InMemoryGraphAnalyzer {
 	private graph: GraphInstance | null = null;

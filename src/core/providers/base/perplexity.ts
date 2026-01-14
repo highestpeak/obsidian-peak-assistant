@@ -13,6 +13,8 @@ import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
 const DEFAULT_PERPLEXITY_TIMEOUT_MS = 60000;
 const PERPLEXITY_DEFAULT_BASE = 'https://api.perplexity.ai';
 
+export const PROVIDER_ID_PERPLEXITY = 'perplexity';
+
 /**
  * Model mapping interface containing both the actual API model ID and the icon identifier.
  */
@@ -180,7 +182,7 @@ export class PerplexityChatService implements LLMProviderService {
 	}
 
 	getProviderId(): string {
-		return 'perplexity';
+		return PROVIDER_ID_PERPLEXITY;
 	}
 
 	/**

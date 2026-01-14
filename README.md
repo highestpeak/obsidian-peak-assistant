@@ -37,6 +37,50 @@ This project supports hot reload for faster development. Follow these steps:
 - `npm run build` - Build for production (minified, no sourcemaps)
 - `npm run build:css` - Build only CSS files
 
+### Testing
+
+The project includes unit tests for critical components to ensure code quality and prevent regressions.
+
+**Running All Tests:**
+```bash
+npm run test
+```
+
+**Running Specific Test File:**
+```bash
+npm run test -- path/to/specific.test.ts
+```
+
+**Available Test Commands:**
+- `npm run test` - Run all `.test.ts` files found in the `src/` directory
+- `npm run test -- src/service/tools/search-graph-inspector/boolean-expression-parser.test.ts` - Run specific test file
+
+**Current Test Coverage:**
+
+**Boolean Expression Parser** (`boolean-expression-parser.test.ts` - 54 tests):
+- Basic tag and category matching
+- AND, OR, NOT logical operations
+- Complex nested expressions with parentheses
+- Whitespace handling
+- Syntax error detection and proper error messages
+- `extractDimensions` - Extracting tags and categories from expressions
+- `buildEdgeConditions` - Building SQL WHERE conditions
+- `evaluate` - Boolean expression evaluation against note data
+
+**Chat Conversation Document** (`ChatConversationDoc.test.ts`):
+- Markdown generation with different configurations
+- Message deduplication and hash handling
+- Content parsing and formatting
+
+**Test Framework Features:**
+- Automatic compilation of TypeScript test files using esbuild
+- Detailed pass/fail reporting with test counts
+- Error handling for missing test files
+- Automatic cleanup of temporary build artifacts
+- Support for running individual test files or all tests
+
+All tests should pass before committing changes. The test runner will report the total number of passed/failed test files.
+
 ## Project Structure Explanation
 
 This project is organized into logical modules that separate concerns for maintainability and extensibility. Below is a detailed explanation of the directory structure:

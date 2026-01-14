@@ -1,9 +1,16 @@
 import { chromium, type Browser, type Page } from 'playwright';
+import { z } from 'zod';
+import { AgentTool, safeAgentTool } from './types';
+import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
+import { PROVIDER_ID_PERPLEXITY } from '@/core/providers/base/perplexity';
+import { AppContext } from '@/app/context/AppContext';
+import { BusinessError } from '@/core/errors';
+import { ErrorCode } from '@/core/errors';
 
 /**
  * Google search result item
  */
-export interface GoogleSearchResult {
+interface GoogleSearchResult {
 	title: string;
 	url: string;
 	snippet: string;
@@ -12,7 +19,7 @@ export interface GoogleSearchResult {
 /**
  * Google search response
  */
-export interface GoogleSearchResponse {
+interface GoogleSearchResponse {
 	query: string;
 	results: GoogleSearchResult[];
 	totalResults?: string;
@@ -24,7 +31,7 @@ export interface GoogleSearchResponse {
  * 
  * Performs web scraping of Google search results using headless browser.
  */
-export class GoogleSearchTool {
+class GoogleSearchTool {
 	private browser: Browser | null = null;
 
 	/**
@@ -32,7 +39,7 @@ export class GoogleSearchTool {
 	 */
 	private async getBrowser(): Promise<Browser> {
 		if (!this.browser) {
-			this.browser = await chromium.launch({ 
+			this.browser = await chromium.launch({
 				headless: true,
 			});
 		}
@@ -136,7 +143,7 @@ export class GoogleSearchTool {
 					if (!titleEl) continue;
 
 					const title = await titleEl.textContent() || '';
-					
+
 					// Find parent container
 					const parent = await titleEl.evaluateHandle((el) => el.closest('div.g, div[data-ved], a'));
 					if (parent) {
@@ -286,19 +293,19 @@ export class GoogleSearchTool {
 	 */
 	async searchAsMarkdown(query: string): Promise<string> {
 		const response = await this.search(query);
-		
+
 		let markdown = `# Google Search Results for: ${query}\n\n`;
-		
+
 		if (response.totalResults) {
 			markdown += `**${response.totalResults}**\n\n`;
 		}
-		
+
 		if (response.searchTime) {
 			markdown += `Search time: ${response.searchTime}\n\n`;
 		}
-		
+
 		markdown += `---\n\n`;
-		
+
 		for (let i = 0; i < response.results.length; i++) {
 			const result = response.results[i];
 			markdown += `## ${i + 1}. ${result.title}\n\n`;
@@ -308,15 +315,88 @@ export class GoogleSearchTool {
 			}
 			markdown += `---\n\n`;
 		}
-		
+
 		return markdown;
 	}
 }
 
-/**
- * Create a new GoogleSearchTool instance
- */
-export function createGoogleSearchTool(): GoogleSearchTool {
-	return new GoogleSearchTool();
+export function localWebSearchTool(): AgentTool {
+	return safeAgentTool({
+		description: 'Search web using local chromium browser',
+		inputSchema: z.object({
+			query: z.string().describe('The search query'),
+			limit: z.number()
+				.int()
+				.positive()
+				.max(50, 'Maximum number of results is 50')
+				.default(10)
+				.describe('Maximum number of results to return')
+				.optional(),
+		}),
+		execute: async ({ query, limit }) => {
+			const response = await new GoogleSearchTool().search(query, limit);
+			return {
+				query: query,
+				results: response.results.map(result => ({
+					title: result.title,
+					url: result.url,
+					snippet: result.snippet,
+				})),
+				totalResults: response.totalResults,
+				searchTime: response.searchTime,
+			};
+		},
+	});
 }
 
+// todo safe wrap execute to limit timeout and retry
+export function perplexityWebSearchTool(): AgentTool {
+	const perplexitySearchModel = AppContext.getInstance().settings.search.perplexitySearchModel;
+	if (!perplexitySearchModel) {
+		throw new BusinessError(
+			ErrorCode.CONFIGURATION_MISSING,
+			'Perplexity model for search is not configured, please check your settings.'
+		);
+	}
+
+	return safeAgentTool({
+		description: 'Search web using perplexity',
+		inputSchema: z.object({
+			query: z.string().describe('The search query'),
+		}),
+		execute: async ({ query }) => {
+			const start = Date.now();
+			const response = await MultiProviderChatService.getInstance()
+				.getProviderService(PROVIDER_ID_PERPLEXITY)
+				.blockChat({
+					provider: PROVIDER_ID_PERPLEXITY,
+					model: perplexitySearchModel,
+					messages: [
+						{
+							role: 'user',
+							content: [{
+								type: 'text',
+								text: `${query}`,
+							}],
+						},
+					],
+				});
+			const textResults = []
+			for (const result of response.content) {
+				if (result.type === 'text') {
+					textResults.push(result);
+				} else {
+					console.warn(`[PerplexityWebSearchTool] Unsupported result type: ${result.type}`);
+				}
+			}
+			const end = Date.now();
+			const durationMs = end - start;
+			return {
+				query: query,
+				// it is not necessary to have the same result format as local web search tool. LLM is a language model, they can understand.
+				results: textResults,
+				searchTime: durationMs,
+			};
+		},
+	});
+}

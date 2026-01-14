@@ -18,7 +18,7 @@ export class GraphStore {
 	constructor(
 		private readonly nodeRepo: GraphNodeRepo,
 		private readonly edgeRepo: GraphEdgeRepo,
-	) {}
+	) { }
 
 	// ===== Node Operations =====
 
@@ -385,5 +385,29 @@ export class GraphStore {
 		}
 
 		return { nodes, edges };
+	}
+
+	/**
+	 * @returns Map<docId, { tags: string[]; categories: string[] }>
+	 */
+	async getTagsAndCategoriesByDocIds(docIds: string[]): Promise<Map<string, { tags: string[]; categories: string[] }>> {
+		const allTagCategoryEdge = await this.edgeRepo.getByFromNodesAndTypes(docIds, ['tagged', 'categorized']);
+		const allTagCategoryNodeMap = await this.nodeRepo.getByIds(allTagCategoryEdge.map(edge => edge.to_node_id));
+
+		const map = new Map<string, { tags: string[]; categories: string[] }>();
+		for (const edge of allTagCategoryEdge) {
+			const tagOrCategoryNode = allTagCategoryNodeMap.get(edge.to_node_id);
+			if (!tagOrCategoryNode) continue;
+			if (!map.has(edge.from_node_id)) {
+				map.set(edge.from_node_id, { tags: [], categories: [] });
+			}
+			const docTagsAndCategories = map.get(edge.from_node_id)!;
+			if (tagOrCategoryNode.type === 'tag') {
+				docTagsAndCategories.tags.push(tagOrCategoryNode.label);
+			} else if (tagOrCategoryNode.type === 'category') {
+				docTagsAndCategories.categories.push(tagOrCategoryNode.label);
+			}
+		}
+		return map;
 	}
 }

@@ -2,6 +2,8 @@ import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 import { sql } from 'kysely';
 
+export type DocStatistics = DbSchema['doc_statistics'];
+
 /**
  * CRUD repository for `doc_statistics` table.
  * This table combines document statistics and recent open tracking.
@@ -212,6 +214,88 @@ export class DocStatisticsRepo {
 			.orderBy('richness_score', 'desc')
 			.limit(limit)
 			.execute();
+	}
+
+	/**
+	 * Get top documents by updated_at within doc_ids.
+	 */
+	async getTopRecentEditedByDocIds(docIds: string[], limit: number): Promise<Array<{ doc_id: string, updated_at: number }>> {
+		if (!docIds.length) return [];
+		const rows = await this.db
+			.selectFrom('doc_statistics')
+			.select(['doc_id', 'updated_at'])
+			.where('doc_id', 'in', docIds)
+			.where('updated_at', 'is not', null)
+			.orderBy('updated_at', 'desc')
+			.limit(limit)
+			.execute();
+		return rows as Array<{ doc_id: string, updated_at: number }>;
+	}
+
+	/**
+	 * Get top documents by word_count within doc_ids.
+	 */
+	async getTopWordCountByDocIds(docIds: string[], limit: number): Promise<Array<{ doc_id: string, word_count: number }>> {
+		if (!docIds.length) return [];
+		const rows = await this.db
+			.selectFrom('doc_statistics')
+			.select(['doc_id', 'word_count'])
+			.where('doc_id', 'in', docIds)
+			.where('word_count', 'is not', null)
+			.orderBy('word_count', 'desc')
+			.limit(limit)
+			.execute();
+		return rows as Array<{ doc_id: string, word_count: number }>;
+	}
+
+	/**
+	 * Get top documents by char_count within doc_ids.
+	 */
+	async getTopCharCountByDocIds(docIds: string[], limit: number): Promise<Array<{ doc_id: string, char_count: number }>> {
+		if (!docIds.length) return [];
+		const rows = await this.db
+			.selectFrom('doc_statistics')
+			.select(['doc_id', 'char_count'])
+			.where('doc_id', 'in', docIds)
+			.where('char_count', 'is not', null)
+			.orderBy('char_count', 'desc')
+			.limit(limit)
+			.execute();
+		return rows as Array<{ doc_id: string, char_count: number }>;
+	}
+
+	/**
+	 * Get top documents by richness_score within doc_ids.
+	 */
+	async getTopRichnessByDocIds(docIds: string[], limit: number): Promise<Array<{ doc_id: string, richness_score: number }>> {
+		if (!docIds.length) return [];
+		const rows = await this.db
+			.selectFrom('doc_statistics')
+			.select(['doc_id', 'richness_score'])
+			.where('doc_id', 'in', docIds)
+			.where('richness_score', 'is not', null)
+			.orderBy('richness_score', 'desc')
+			.limit(limit)
+			.execute();
+		return rows as Array<{ doc_id: string, richness_score: number }>;
+	}
+
+	/**
+	 * Get language statistics within doc_ids.
+	 */
+	async getLanguageStatsByDocIds(docIds: string[]): Promise<Array<{ language: string, count: number }>> {
+		if (!docIds.length) return [];
+		const rows = await this.db
+			.selectFrom('doc_statistics')
+			.select(({ fn }) => [
+				'language',
+				fn.count<number>('doc_id').as('count')
+			])
+			.where('doc_id', 'in', docIds)
+			.where('language', 'is not', null)
+			.groupBy('language')
+			.execute();
+		return rows as Array<{ language: string, count: number }>;
 	}
 }
 

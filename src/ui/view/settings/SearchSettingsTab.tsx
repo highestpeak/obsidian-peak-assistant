@@ -3,7 +3,12 @@ import { MyPluginSettings } from '@/app/settings/types';
 import { Switch } from '@/ui/component/shared-ui/switch';
 import { Button } from '@/ui/component/shared-ui/button';
 import { NumberInputWithConfirm } from '@/ui/component/shared-ui/number-input';
-import { DocumentType, DOCUMENT_TYPES } from '@/core/document/types';
+import { Input } from '@/ui/component/shared-ui/input';
+import { HoverButton } from '@/ui/component/mine/HoverButton';
+import { Check } from 'lucide-react';
+import { cn } from '@/ui/react/lib/utils';
+import { DOCUMENT_TYPES } from '@/core/document/types';
+import { getKnownPerplexityModelIds } from '@/core/providers/base/perplexity';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
 
 interface SearchSettingsTabProps {
@@ -40,6 +45,11 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 	// Sort document types alphabetically
 	const sortedDocumentTypes = useMemo(() => {
 		return [...DOCUMENT_TYPES].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+	}, []);
+
+	// Get available perplexity models
+	const perplexityModels = useMemo(() => {
+		return getKnownPerplexityModelIds();
 	}, []);
 
 	return (
@@ -90,6 +100,152 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 							min={1000}
 							max={30000}
 							placeholder="5000"
+						/>
+					</div>
+				</div>
+			</div>
+
+			{/* AI Analysis Web Search Implementation */}
+			<div className="pktw-mb-8">
+				<div className="pktw-flex pktw-items-start pktw-gap-4">
+					{/* Left side: label and description */}
+					<div className="pktw-flex-1 pktw-min-w-0">
+						<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+							AI Analysis Web Search Implementation
+						</label>
+						<p className="pktw-text-xs pktw-text-muted-foreground">
+							Implementation to use for AI analysis when web search is enabled. Perplexity provides better search quality, local_chromium uses local browser.
+						</p>
+					</div>
+					{/* Right side: hover menu selector */}
+					<div className="pktw-flex-shrink-0 pktw-w-64">
+						<HoverButton
+							text={(settings.search.aiAnalysisWebSearchImplement ?? 'local_chromium') === 'perplexity' ? 'Perplexity' : 'Local Chromium'}
+							menuId="web-search-implementation"
+							className="pktw-justify-between pktw-h-10 pktw-px-3 pktw-py-2 pktw-text-sm pktw-font-normal pktw-border  pktw-rounded-md pktw-shadow-sm"
+							hoverMenuContent={
+								<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-1">
+									<Button
+										variant="ghost"
+										size="sm"
+										className={cn(
+											'pktw-justify-start pktw-h-7 pktw-px-2 pktw-text-xs pktw-font-normal',
+											(settings.search.aiAnalysisWebSearchImplement ?? 'local_chromium') === 'perplexity' && 'pktw-bg-accent pktw-text-accent-foreground'
+										)}
+										onClick={() => updateSearch('aiAnalysisWebSearchImplement', 'perplexity')}
+									>
+										{(settings.search.aiAnalysisWebSearchImplement ?? 'local_chromium') === 'perplexity' && <Check className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
+										{(settings.search.aiAnalysisWebSearchImplement ?? 'local_chromium') !== 'perplexity' && <div className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
+										Perplexity
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										className={cn(
+											'pktw-justify-start pktw-h-7 pktw-px-2 pktw-text-xs pktw-font-normal',
+											(settings.search.aiAnalysisWebSearchImplement ?? 'local_chromium') === 'local_chromium' && 'pktw-bg-accent pktw-text-accent-foreground'
+										)}
+										onClick={() => updateSearch('aiAnalysisWebSearchImplement', 'local_chromium')}
+									>
+										{(settings.search.aiAnalysisWebSearchImplement ?? 'local_chromium') === 'local_chromium' && <Check className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
+										{(settings.search.aiAnalysisWebSearchImplement ?? 'local_chromium') !== 'local_chromium' && <div className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
+										Local Chromium
+									</Button>
+								</div>
+							}
+						/>
+					</div>
+				</div>
+			</div>
+
+			{/* Perplexity Search Model */}
+			<div className="pktw-mb-8">
+				<div className="pktw-flex pktw-items-start pktw-gap-4">
+					{/* Left side: label and description */}
+					<div className="pktw-flex-1 pktw-min-w-0">
+						<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+							Perplexity Search Model
+						</label>
+						<p className="pktw-text-xs pktw-text-muted-foreground">
+							Model to use for AI analysis when Perplexity implementation is selected. Leave empty to use default.
+						</p>
+					</div>
+					{/* Right side: hover menu selector */}
+					<div className="pktw-flex-shrink-0 pktw-w-64">
+						<HoverButton
+							text={settings.search.perplexitySearchModel ?? 'Select model'}
+							menuId="perplexity-search-model"
+							className="pktw-justify-between pktw-h-10 pktw-px-3 pktw-py-2 pktw-text-sm pktw-font-normal pktw-border  pktw-rounded-md pktw-shadow-sm"
+							hoverMenuContent={
+								<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-1 pktw-max-h-64 pktw-overflow-y-auto">
+									{perplexityModels.map((modelId) => (
+										<Button
+											key={modelId}
+											variant="ghost"
+											size="sm"
+											className={cn(
+												'pktw-justify-start pktw-h-7 pktw-px-2 pktw-text-xs pktw-font-normal',
+												settings.search.perplexitySearchModel === modelId && 'pktw-bg-accent pktw-text-accent-foreground'
+											)}
+											onClick={() => updateSearch('perplexitySearchModel', modelId)}
+										>
+											{settings.search.perplexitySearchModel === modelId && <Check className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
+											{settings.search.perplexitySearchModel !== modelId && <div className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
+											{modelId}
+										</Button>
+									))}
+								</div>
+							}
+						/>
+					</div>
+				</div>
+			</div>
+
+			{/* Short Summary Length */}
+			<div className="pktw-mb-8">
+				<div className="pktw-flex pktw-items-start pktw-gap-4">
+					{/* Left side: label and description */}
+					<div className="pktw-flex-1 pktw-min-w-0">
+						<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+							Short Summary Length
+						</label>
+						<p className="pktw-text-xs pktw-text-muted-foreground">
+							Maximum characters for short document summaries. Default: 150
+						</p>
+					</div>
+					{/* Right side: input */}
+					<div className="pktw-flex-shrink-0 pktw-w-64">
+						<NumberInputWithConfirm
+							value={settings.search.shortSummaryLength ?? 150}
+							onConfirm={(value) => updateSearch('shortSummaryLength', value)}
+							min={50}
+							max={500}
+							placeholder="150"
+						/>
+					</div>
+				</div>
+			</div>
+
+			{/* Full Summary Length */}
+			<div className="pktw-mb-8">
+				<div className="pktw-flex pktw-items-start pktw-gap-4">
+					{/* Left side: label and description */}
+					<div className="pktw-flex-1 pktw-min-w-0">
+						<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+							Full Summary Length
+						</label>
+						<p className="pktw-text-xs pktw-text-muted-foreground">
+							Maximum characters for full document summaries. Default: 2000
+						</p>
+					</div>
+					{/* Right side: input */}
+					<div className="pktw-flex-shrink-0 pktw-w-64">
+						<NumberInputWithConfirm
+							value={settings.search.fullSummaryLength ?? 2000}
+							onConfirm={(value) => updateSearch('fullSummaryLength', value)}
+							min={500}
+							max={10000}
+							placeholder="2000"
 						/>
 					</div>
 				</div>

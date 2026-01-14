@@ -215,6 +215,7 @@ export interface Document {
 	references: DocumentReferences;
 
 	/**
+	 * Short summary.
 	 * Document summary (redundant field for quick access).
 	 * 
 	 * This is a cached summary extracted from content:

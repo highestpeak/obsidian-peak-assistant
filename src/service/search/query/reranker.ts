@@ -17,7 +17,7 @@ export class Reranker {
 	constructor(
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly searchSettings: SearchSettings,
-	) {}
+	) { }
 
 	/**
 	 * Rerank search results with optional LLM reranking.
@@ -50,9 +50,9 @@ export class Reranker {
 		const signals = await this.getSignalsForPaths(items.map((i) => i.path));
 		const related = scopeValue?.currentFilePath
 			? await this.getRelatedPathsWithinHops({
-					startPath: scopeValue.currentFilePath,
-					maxHops: 2,
-				})
+				startPath: scopeValue.currentFilePath,
+				maxHops: 2,
+			})
 			: new Set<string>();
 
 		// Apply ranking boosts (always performed for better relevance)
@@ -67,7 +67,7 @@ export class Reranker {
 		// Apply LLM rerank if model is configured and enabled
 		const rerankModel = this.searchSettings.chunking.rerankModel;
 		if (!rerankModel) {
-		return boostedItems;
+			return boostedItems;
 		}
 
 		// Ensure score is present for rerank
@@ -137,7 +137,7 @@ export class Reranker {
 		const documents: RerankDocument[] = items.map((item) => {
 			const itemAny = item as any;
 			const text = itemAny.content || itemAny.highlight?.text || itemAny.title || item.path;
-			
+
 			// Include boost context information in metadata
 			const signal = signals?.get(item.path);
 			const isRelated = relatedPaths?.has(item.path);
@@ -152,7 +152,7 @@ export class Reranker {
 			if (isRelated) {
 				boostInfo.push('related to current file');
 			}
-			
+
 			return {
 				text,
 				metadata: {
@@ -194,29 +194,29 @@ export class Reranker {
 			const rerankedItems = response.results.map((result, rerankIndex) => {
 				const originalItem = items[result.index]!;
 				const originalScore = (originalItem as any).finalScore ?? originalItem.score ?? 0;
-				
+
 				// Normalize rerank score to 0-1 range if it's rank-based (e.g., LLM provider uses docCount - rank)
 				// For API providers (cohere, jina), result.score is already a proper relevance score (0-1)
 				// For LLM provider, result.score is rank-based (docCount - rank), so we normalize it
 				const maxPossibleScore = items.length; // LLM provider uses docCount as max score
 				const normalizedRerankScore = result.score > 1 ? result.score / maxPossibleScore : result.score;
-				
+
 				// Combine original score with rerank boost
 				// Use weighted combination: 70% original score + 30% rerank boost
 				// This preserves the original relevance while incorporating rerank improvements
 				const rerankBoost = normalizedRerankScore * 0.3;
 				const combinedScore = originalScore * 0.7 + rerankBoost;
-				
+
 				return {
 					...originalItem,
 					score: combinedScore,
 					finalScore: combinedScore,
 				};
 			});
-			
+
 			// Ensure results are sorted by score (descending) - rerank provider should already do this, but ensure it
 			rerankedItems.sort((a, b) => (b.finalScore ?? b.score ?? 0) - (a.finalScore ?? a.score ?? 0));
-			
+
 			return rerankedItems;
 		} catch (error) {
 			console.error(`[Reranker] Rerank failed:`, error);

@@ -38,6 +38,7 @@ export interface Database {
 		word_count: number | null;
 		char_count: number | null;
 		language: string | null;
+		// todo wait for implementation
 		richness_score: number | null;
 		last_open_ts: number | null;
 		open_count: number | null;

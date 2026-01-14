@@ -11,8 +11,9 @@ export type SearchResultType = DocumentType | 'heading';
  * - vault: global vault search
  * - inFile: search within a single file
  * - inFolder: search within a folder scope
+ * - limitIdsSet: search within a limited set of IDs
  */
-export type SearchScopeMode = 'vault' | 'inFile' | 'inFolder';
+export type SearchScopeMode = 'vault' | 'inFile' | 'inFolder' | 'limitIdsSet';
 
 /**
  * Optional search scope information.
@@ -26,6 +27,10 @@ export interface SearchScopeValue {
 	 * Folder path (if inFolder mode).
 	 */
 	folderPath?: string | null;
+	/**
+	 * Limit IDs set (if limitIdsSet mode).
+	 */
+	limitIdsSet?: Set<string>;
 }
 
 /**
@@ -33,6 +38,9 @@ export interface SearchScopeValue {
  */
 export interface SearchQuery {
 	text: string;
+	/**
+	 * no full support currently. please implement it when you need it.
+	 */
 	scopeMode: SearchScopeMode;
 	scopeValue?: SearchScopeValue;
 	topK?: number;
@@ -41,12 +49,6 @@ export interface SearchQuery {
 	 * Defaults to 'fulltext'.
 	 */
 	searchMode?: 'fulltext' | 'vector' | 'hybrid';
-	/**
-	 * Optional embedding vector for vector or hybrid search.
-	 * Should be generated externally from the search text.
-	 * If provided, searchMode will default to 'hybrid' if not specified.
-	 */
-	embedding?: number[];
 }
 
 /**

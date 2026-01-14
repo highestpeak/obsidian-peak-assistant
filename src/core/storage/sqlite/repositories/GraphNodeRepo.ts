@@ -1,6 +1,8 @@
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 
+export type GraphNode = DbSchema['graph_nodes'];
+
 /**
  * CRUD repository for `graph_nodes` table.
  */
@@ -50,8 +52,7 @@ export class GraphNodeRepo {
 	/**
 	 * Upsert a graph node.
 	 *
-	 * @param node.id - Normalized path (for document nodes) or prefixed identifier (for tags, categories, etc.).
-	 *                  For document nodes, this should be the normalized file path relative to vault root.
+	 * @param node.id - document id, tag id, category id, etc.
 	 */
 	async upsert(node: {
 		id: string;
@@ -96,10 +97,10 @@ export class GraphNodeRepo {
 	/**
 	 * Get nodes by IDs (batch).
 	 */
-	async getByIds(ids: string[]): Promise<Map<string, DbSchema['graph_nodes']>> {
+	async getByIds(ids: string[]): Promise<Map<string, GraphNode>> {
 		if (!ids.length) return new Map();
 		const rows = await this.db.selectFrom('graph_nodes').selectAll().where('id', 'in', ids).execute();
-		const result = new Map<string, DbSchema['graph_nodes']>();
+		const result = new Map<string, GraphNode>();
 		for (const row of rows) {
 			result.set(row.id, row);
 		}
@@ -111,6 +112,19 @@ export class GraphNodeRepo {
 	 */
 	async getByType(type: string): Promise<DbSchema['graph_nodes'][]> {
 		return await this.db.selectFrom('graph_nodes').selectAll().where('type', '=', type).execute();
+	}
+
+	/**
+	 * Get nodes by type and labels.
+	 */
+	async getByTypeAndLabels(type: string, labels: string[]): Promise<DbSchema['graph_nodes'][]> {
+		if (!labels.length) return [];
+		return await this.db
+			.selectFrom('graph_nodes')
+			.selectAll()
+			.where('type', '=', type)
+			.where('label', 'in', labels)
+			.execute();
 	}
 
 	/**
@@ -155,14 +169,6 @@ export class GraphNodeRepo {
 	 */
 	async deleteByType(type: string): Promise<void> {
 		await this.db.deleteFrom('graph_nodes').where('type', '=', type).execute();
-	}
-
-	/**
-	 * Get all node IDs.
-	 */
-	async getAllIds(): Promise<string[]> {
-		const rows = await this.db.selectFrom('graph_nodes').select(['id']).execute();
-		return rows.map((row) => row.id);
 	}
 }
 

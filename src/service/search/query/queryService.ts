@@ -116,6 +116,79 @@ export class QueryService {
 	}
 
 	/**
+	 * Perform pure vector similarity search for semantic matching.
+	 * Returns document IDs with their similarity scores for RRF fusion.
+	 *
+	 * @param queryText - The text to search for semantically
+	 * @param topK - Maximum number of results to return
+	 * @param scopeMode - Search scope mode (default: 'vault')
+	 * @param scopeValue - Optional search scope configuration
+	 * @returns Array of documents with their similarity scores
+	 */
+	async vectorSearch(
+		query: SearchQuery,
+	): Promise<SearchResponse & { duration: number }> {
+		const { text: queryText, topK, scopeMode, scopeValue } = query;
+		const sw = new Stopwatch('SearchQuery');
+		// Check if vector search is available
+		const vectorSearchAvailable = sqliteStoreManager.isVectorSearchEnabled();
+		if (!vectorSearchAvailable) {
+			console.warn('[QueryService.vectorSearch] Vector search not available');
+			return { query, items: [], duration: sw.getTotalElapsed() };
+		}
+
+		// Generate embedding for the query text
+		const embeddingModel = this.searchSettings.chunking.embeddingModel;
+		if (!embeddingModel) {
+			console.warn('[QueryService.vectorSearch] No embedding model configured');
+			return { query, items: [], duration: sw.getTotalElapsed() };
+		}
+
+		let embedding: number[] | undefined;
+		try {
+			const multiProviderChatService = this.aiServiceManager.getMultiChat();
+			const embeddings = await multiProviderChatService.generateEmbeddings(
+				[queryText],
+				embeddingModel.modelId,
+				embeddingModel.provider,
+			);
+			embedding = embeddings[0];
+		} catch (error) {
+			console.error(`[QueryService.vectorSearch] Failed to generate embedding:`, error);
+			return { query, items: [], duration: sw.getTotalElapsed() };
+		}
+
+		if (!embedding) {
+			console.warn('[QueryService.vectorSearch] No embedding generated');
+			return { query, items: [], duration: sw.getTotalElapsed() };
+		}
+
+		// Perform vector search
+		const searchQuery: SearchQuery = {
+			text: queryText,
+			scopeMode,
+			scopeValue,
+			topK,
+			searchMode: 'vector'
+		};
+
+		try {
+			const vectorResults = await this.executeVectorSearch({
+				query: searchQuery,
+				mode: scopeMode,
+				scope: scopeValue,
+				embedding
+			});
+
+			// Return results in the standard SearchResponse format
+			return { query, items: vectorResults, duration: sw.getTotalElapsed() };
+		} catch (error) {
+			console.error(`[QueryService.vectorSearch] Vector search failed:`, error);
+			return { query, items: [], duration: sw.getTotalElapsed() };
+		}
+	}
+
+	/**
 	 * Extract keywords from query text for multi-keyword matching.
 	 * Splits by whitespace and normalizes each keyword.
 	 */
@@ -283,29 +356,20 @@ export class QueryService {
 		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
 		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
 
-		// Use sqlite-vec KNN search with scope filtering at SQL level
-		const vectorResults = embeddingRepo.searchSimilar(embedding, topK, mode, scope);
+		// Use searchSimilarAndGetId for combined vector search and embedding/doc mapping
+		const vectorResults = await embeddingRepo.searchSimilarAndGetId(embedding, topK, mode, scope);
 		if (!vectorResults.length) {
 			return [];
 		}
-
-		// Map distance to similarity score (distance is smaller for more similar vectors)
-		const embeddingRows = await embeddingRepo.getByIds(
-			vectorResults.map((r) => r.embedding_id)
-		);
-		const embeddingMap = new Map(embeddingRows.map((r) => [r.id, r]));
 		const scoreByChunk = new Map<string, number>();
-		for (const vecResult of vectorResults) {
-			const emb = embeddingMap.get(vecResult.embedding_id);
-			if (emb?.chunk_id) {
-				// Convert distance to similarity score: 1 / (1 + distance)
-				const similarity = 1 / (1 + vecResult.distance);
-				scoreByChunk.set(emb.chunk_id, similarity);
+		for (const result of vectorResults) {
+			if (result.chunk_id) {
+				scoreByChunk.set(result.chunk_id, result.similarity);
 			}
 		}
 
 		// Get chunk IDs and fetch chunk data
-		const vecChunkIds = embeddingRows.map((r) => r.chunk_id).filter((id): id is string => id !== null);
+		const vecChunkIds = Array.from(scoreByChunk.keys());
 		const chunkRows = await docChunkRepo.getByChunkIds(vecChunkIds);
 
 		// Fetch doc_meta separately (avoid JOIN)

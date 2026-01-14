@@ -460,4 +460,5 @@ class SqliteStoreManager {
 /**
  * Global singleton instance.
  */
+// todo change to another way to build instance of SqliteStoreManager like AppContext.getInstance()
 export const sqliteStoreManager = new SqliteStoreManager();

@@ -216,6 +216,7 @@ export interface PromptVariables {
 		content: string;
 		title?: string;
 		path?: string;
+		wordCount?: string;
 	};
 	[PromptId.ImageDescription]: Record<string, never>;
 	[PromptId.ImageSummary]: {

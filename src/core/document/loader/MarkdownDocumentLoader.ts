@@ -10,6 +10,7 @@ import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
+import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 
 /**
  * Markdown document loader.
@@ -21,7 +22,7 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	constructor(
 		private readonly app: App,
 		private readonly aiServiceManager?: AIServiceManager
-	) {}
+	) { }
 
 	getDocumentType(): DocumentType {
 		return 'markdown';
@@ -35,11 +36,11 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	 * Read a markdown document by its path.
 	 * Returns core Document model.
 	 */
-	async readByPath(path: string): Promise<Document | null> {
+	async readByPath(path: string, genCacheContent?: boolean): Promise<Document | null> {
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (!file || !(file instanceof TFile)) return null;
 		if (!this.getSupportedExtensions().includes(file.extension.toLowerCase())) return null;
-		return await this.readMarkdownFile(file);
+		return await this.readMarkdownFile(file, genCacheContent);
 	}
 
 	/**
@@ -116,12 +117,12 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	/**
 	 * Read a markdown file and convert to core Document model.
 	 */
-	private async readMarkdownFile(file: TFile): Promise<Document | null> {
+	private async readMarkdownFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
 		try {
 			const content = await this.app.vault.cachedRead(file);
 			const contentHash = generateContentHash(content);
 			const references = extractReferences(content);
-			
+
 			// Extract title from frontmatter or filename
 			let title = file.basename;
 			const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
@@ -161,6 +162,8 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 				tags.push(...hashTags.map(t => t.slice(1))); // Remove #
 			}
 
+			const summaryContent = genCacheContent ? { shortSummary: null, fullSummary: null } : await this.getSummary(content);
+
 			return {
 				id: generateDocIdFromPath(file.path),
 				type: 'markdown',
@@ -180,12 +183,13 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 					size: file.stat.size,
 					mtime: file.stat.mtime,
 					ctime: file.stat.ctime,
-					content,
+					content: summaryContent.fullSummary ?? "",
 				},
 				metadata: {
 					title,
 					tags: [...new Set(tags)], // Deduplicate
 				},
+				summary: summaryContent.shortSummary,
 				contentHash,
 				references,
 				lastProcessedAt: Date.now(),
@@ -205,48 +209,7 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 		provider?: string,
 		modelId?: string
 	): Promise<ResourceSummary> {
-		if (!this.aiServiceManager) {
-			throw new Error('MarkdownDocumentLoader requires AIServiceManager to generate summaries');
-		}
-		if (typeof source === 'string') {
-			throw new Error('MarkdownDocumentLoader.getSummary requires a Document, not a string');
-		}
-		const doc = source;
-		const content = doc.sourceFileInfo.content;
-		const title = doc.metadata.title || doc.sourceFileInfo.name;
-		const path = doc.sourceFileInfo.path;
-
-		// Generate short summary
-		const shortSummary = await this.aiServiceManager.chatWithPrompt(
-			PromptId.DocSummary,
-			{
-				content,
-				title,
-				path,
-			},
-			provider,
-			modelId
-		);
-
-		// Generate full summary if content is substantial (more than 2000 characters)
-		let fullSummary: string | undefined;
-		if (content.length > 2000) {
-			fullSummary = await this.aiServiceManager.chatWithPrompt(
-				PromptId.DocSummary,
-				{
-					content,
-					title,
-					path,
-				},
-				provider,
-				modelId
-			);
-		}
-
-		return {
-			shortSummary,
-			fullSummary,
-		};
+		return getDefaultDocumentSummary(source, this.aiServiceManager, provider, modelId);
 	}
 }
 

@@ -13,6 +13,18 @@ export interface MultiProviderChatServiceOptions {
 const DEFAULT_TIMEOUT_MS = 60000;
 
 export class MultiProviderChatService implements LLMProviderService {
+	private static instance: MultiProviderChatService | undefined;
+
+	public static getInstance(): MultiProviderChatService {
+		if (!MultiProviderChatService.instance) {
+			throw new BusinessError(
+				ErrorCode.CONFIGURATION_MISSING,
+				'MultiProviderChatService is not initialized'
+			);
+		}
+		return MultiProviderChatService.instance;
+	}
+
 	/**
 	 * key: provider name, value: provider service instance
 	 */
@@ -29,6 +41,7 @@ export class MultiProviderChatService implements LLMProviderService {
 
 		// Initialize services for each configured provider using factory
 		this.providerServiceMap = ProviderServiceFactory.getInstance().createAll(this.configs);
+		MultiProviderChatService.instance = this;
 	}
 
 	/**
@@ -106,7 +119,7 @@ export class MultiProviderChatService implements LLMProviderService {
 	/**
 	 * Get provider service by provider name
 	 */
-	private getProviderService(provider: string): LLMProviderService {
+	public getProviderService(provider: string): LLMProviderService {
 		const service = this.providerServiceMap.get(provider);
 		if (service) {
 			return service;

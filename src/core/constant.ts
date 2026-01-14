@@ -69,6 +69,69 @@ export const RRF_CONTENT_WEIGHT = 0.6; // Combined weight for content hits (text
 export const RRF_CONTENT_VS_META_WEIGHT = 0.5; // Weight for content hits vs meta hits
 
 /**
+ * TODO: Turn these constants into configuration options, or make them optional parameters for tools.
+ * 	This will allow the AI Agent to adjust them according to the specific scenario.
+ * 	Different tasks require different "exploration scales". If the Agent can fine-tune PHYSICAL_CONNECTION_BONUS,
+ * 	its ability to explore and discover will be significantly improved.
+ * 
+ * Graph Inspector RRF weights for document node ranking.
+ * Weights are applied to each ranking dimension in the RRF formula.
+ * Higher weight gives more importance to that dimension.
+ */
+export const GRAPH_RRF_WEIGHTS = {
+	// Connection density (how well connected a node is)
+	density: 1.0,
+	// Update time (how recently the node was modified)
+	updateTime: 1.2, // Slightly higher weight for recency
+	// Richness score (content quality indicator)
+	richness: 0.8,
+	// Open count (how often the user accesses this node)
+	openCount: 0.9,
+	// Last open time (how recently the user accessed this node)
+	lastOpen: 0.7,
+	// Similarity score (only for semantic neighbors, measures semantic closeness)
+	similarity: 1.1, // Higher weight for semantic relevance in BFS traversal
+} as const;
+
+/**
+ * Base score bonus for physically connected nodes vs semantic neighbors.
+ * Physical connections are considered more reliable than semantic similarity.
+ */
+export const PHYSICAL_CONNECTION_BONUS = 0.1;
+
+/**
+ * Path finding algorithm constants for bidirectional hybrid BFS.
+ */
+export const PATH_FINDING_CONSTANTS = {
+	/**
+	 * Default number of iterations for hybrid path discovery.
+	 * Balances diversity and computational cost.
+	 * - 1st iteration: Finds most direct path
+	 * - 2nd iteration: Discovers one alternative path
+	 * - 3rd iteration: Provides additional exploration perspective
+	 */
+	DEFAULT_ITERATIONS: 3,
+
+	/**
+	 * Maximum hop limit to prevent semantic drift.
+	 * Limits path length to maintain result relevance and prevent excessive computation.
+	 */
+	MAX_HOPS_LIMIT: 5,
+} as const;
+
+export const KEY_NODES_RRF_K = 60;
+
+/**
+ * for each step of graph inspection, limit their duration to avoid no response for a long time.
+ */
+export const GRAPH_INSPECT_STEP_TIME_LIMIT = 10000; // 10 seconds
+
+// Use a reasonable limit to balance performance and ranking accuracy
+// RRF works well with top-ranked nodes since low-degree nodes contribute little to the score
+// Consider top 500 nodes by degree for RRF fusion
+export const RRF_RANKING_POOL_SIZE = 500;
+
+/**
  * AI Search graph generation constants.
  */
 export const AI_SEARCH_GRAPH_MAX_NODES_PER_SOURCE = 50; // Max nodes per source when building graph

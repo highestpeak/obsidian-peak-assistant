@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { ChevronRight, Sparkles, SearchX } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { formatRelativeTime } from '@/ui/view/shared/date-utils';
 import { getFileIcon } from '@/ui/view/shared/file-utils';
 import { KeyboardShortcut } from './components/KeyboardShortcut';
 import { formatDuration } from '@/core/utils/format-utils';
@@ -10,6 +9,7 @@ import type { SearchClient } from '@/service/search/SearchClient';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { openFile } from '@/core/utils/obsidian-utils';
 import { cn } from '@/ui/react/lib/utils';
+import { humanReadableTime } from '@/core/utils/date-utils';
 
 /**
  * Highlight text using multiple keywords with more visible styling.
@@ -172,7 +172,7 @@ const SearchResultRow: React.FC<{
 
 				{/* Last Modified Time */}
 				<div className="pktw-flex-shrink-0 pktw-ml-4 pktw-text-xs pktw-text-[#999999] pktw-whitespace-nowrap">
-					{formatRelativeTime(result.lastModified)}
+					{humanReadableTime(result.lastModified)}
 				</div>
 			</div>
 		</div>

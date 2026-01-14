@@ -166,7 +166,7 @@ export class EmbeddingRepo {
 			INSERT INTO vec_embeddings(rowid, embedding)
 			VALUES (CAST(? AS INTEGER), ?)
 		`);
-		const logMsg = logContext 
+		const logMsg = logContext
 			? `[EmbeddingRepo] Inserting into vec_embeddings with rowid: ${embeddingRowid} (${logContext})`
 			: `[EmbeddingRepo] Inserting into vec_embeddings with rowid: ${embeddingRowid}`;
 		console.debug(logMsg);
@@ -417,6 +417,40 @@ export class EmbeddingRepo {
 		return rows.filter((r): r is { id: string; doc_id: string; chunk_id: string; embedding: Buffer } => r.chunk_id != null);
 	}
 
+	async searchSimilarAndGetId(
+		queryEmbedding: number[] | Buffer,
+		limit: number,
+		scopeMode?: SearchScopeMode,
+		scopeValue?: SearchScopeValue,
+	): Promise<Array<
+		{ id: string; doc_id: string; chunk_id: string; embedding: Buffer, distance: number; similarity: number }
+	>> {
+		// Perform semantic search
+		const searchResults = this.searchSimilar(queryEmbedding, limit, scopeMode, scopeValue);
+		if (!searchResults.length) {
+			return [];
+		}
+		// embedding_id -> distance
+		const distanceMap = new Map<string, number>();
+		for (const result of searchResults) {
+			distanceMap.set(result.embedding_id, result.distance);
+		}
+
+		// Get embeddings by their IDs to find corresponding doc_ids
+		const embeddingRows = await this.getByIds(searchResults.map(r => r.embedding_id));
+
+		return embeddingRows.map(row => {
+			const embeddingId = row.id
+			const distance = distanceMap.get(embeddingId) ?? Number.MAX_SAFE_INTEGER;
+			return {
+				...row,
+				distance,
+				// Convert distance to similarity score: 1 / (1 + distance)
+				similarity: 1 / (1 + distance),
+			};
+		});
+	}
+
 	/**
 	 * Vector similarity search using sqlite-vec KNN search.
 	 * 
@@ -477,6 +511,9 @@ export class EmbeddingRepo {
 			const folderPath = scopeValue.folderPath;
 			pathFilter = 'AND (dm.path = ? OR dm.path LIKE ?)';
 			pathParams.push(folderPath, `${folderPath}/%`);
+		} else if (scopeMode === 'limitIdsSet' && scopeValue?.limitIdsSet) {
+			pathFilter = 'AND e.id IN ?';
+			pathParams.push((Array.from(scopeValue.limitIdsSet ?? [])).join(',') ?? '');
 		}
 
 		// Step 1: KNN search on vec_embeddings with JOIN to embedding and doc_meta tables for path filtering
@@ -485,6 +522,7 @@ export class EmbeddingRepo {
 		// vec0 MATCH operator accepts BLOB format for float[]
 		// We JOIN embedding and doc_meta tables to filter by path before limiting results
 		// Note: sqlite-vec requires 'k = ?' constraint in WHERE clause for KNN queries
+		// todo we may need to avoid this join query due to performance issue.
 		const sql = `
 			SELECT
 				ve.rowid,
@@ -601,6 +639,59 @@ export class EmbeddingRepo {
 	async deleteByIds(ids: string[]): Promise<void> {
 		if (!ids.length) return;
 		await this.db.deleteFrom('embedding').where('id', 'in', ids).execute();
+	}
+
+	/**
+	 * Computes the global mean semantic embedding vector for a document (Global Mean Pooling).
+	 *
+	 * [Mathematical Principle & Representational Power]
+	 * This method operates under the "semantic centroid" assumption: in vector space, the arithmetic mean of a set of vectors represents their geometric centroid.
+	 * When a document's theme is highly coherent (such as a single-topic technical doc or focused essay), this mean vector effectively captures and compresses the document's essential theme,
+	 * providing a single, summary-level vector fingerprint for the document.
+	 *
+	 * [Semantic Dilution Risk]
+	 * For long or heterogeneous documents containing multiple unrelated semantic centers, averaging can cause "semantic collapse."
+	 * The resulting mean vector may fall in a region of vector space that doesn't exist in reality, significantly reducing retrieval accuracy.
+	 *   Common failure cases:
+	 *   1. Extreme topic shifts: If the first half discusses "pasta recipes" and the second half "Java multithreading," the mean vector drifts to a noisy space 
+	 *      that represents neither cooking nor programming, causing both keyword searches to miss.
+	 *   2. Localized key info: In a 5000-word annual report with only a short mention of "company layoffs," the mean dilutes this signal among ordinary content, 
+	 *      masking critical features.
+	 *   3. Contradictory semantics: Discussing both "extreme heat" and "extreme cold" may yield a mean vector closer to "moderate climate," losing the extremes.
+	 *
+	 * [Optimization Suggestions] todo implement
+	 * 1. Head-Chunk pooling: For overly long documents, compute average on the first N chunks (where title/intro often concentrates core context).
+	 * 2. Salience weighting: Use chunk position or IDF to weight the mean.
+	 * 3. Multi-center representation: For long/heterogeneous docs, store multiple cluster centroids or raw chunk embeddings instead of a single mean.
+	 *
+	 * @param docId - Unique document identifier
+	 * @returns High-dimensional vector (number[]) representing the document's global semantics, or null if none found
+	 */
+	async getAverageEmbeddingForDoc(docId: string): Promise<number[] | null> {
+		const embeddings = await this.getByDocId(docId);
+
+		if (!embeddings.length) {
+			return null;
+		}
+
+		const embeddingDim = embeddings[0].embedding_len;
+		const averageVector = new Array(embeddingDim).fill(0);
+
+		// Sum all vectors
+		for (const embedding of embeddings) {
+			const buffer = embedding.embedding;
+			for (let i = 0; i < buffer.length; i += 4) {
+				const floatValue = buffer.readFloatLE(i);
+				averageVector[i / 4] += floatValue;
+			}
+		}
+
+		// Calculate average
+		for (let i = 0; i < averageVector.length; i++) {
+			averageVector[i] /= embeddings.length;
+		}
+
+		return averageVector;
 	}
 }
 

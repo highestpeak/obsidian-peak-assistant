@@ -1,3 +1,4 @@
+import { AppContext } from '@/app/context/AppContext';
 import type { App } from 'obsidian';
 import { normalizePath, TFile } from 'obsidian';
 
@@ -119,4 +120,24 @@ export async function readFileContentByPath(app: App, filePath: string): Promise
 		return await app.vault.readBinary(file);
 	}
 	return null;
+}
+
+export function getFileTypeByPath(filePath: string): 'note' | 'file' | 'folder' | null {
+	// Use Obsidian API to properly determine file type
+	const app = AppContext.getInstance().app;
+	const path = filePath;
+	const abstractFile = app.vault.getAbstractFileByPath(path);
+
+	let itemType: 'note' | 'file' | 'folder' = 'folder';
+	if (abstractFile) {
+		if ('extension' in abstractFile) {
+			// It's a TFile
+			itemType = abstractFile.extension === 'md' ? 'note' : 'file';
+		} else {
+			// It's a TFolder
+			itemType = 'folder';
+		}
+	}
+
+	return itemType ?? null;
 }

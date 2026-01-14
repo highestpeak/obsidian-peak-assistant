@@ -7,6 +7,8 @@ import type { SearchResultItem, SearchResultSource } from '@/service/search/type
  * 1. Ensure each source has at least `minPerSource` items
  * 2. Interleave remaining items by score (round-robin by source)
  * 
+ * @deprecated we shouldn't use this during ui logic
+ * 
  * @param items - Search results with source information
  * @param minPerSource - Minimum items to include from each source (default: 2)
  * @returns Mixed and sorted results

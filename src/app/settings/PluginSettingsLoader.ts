@@ -138,6 +138,24 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 		settings.indexRefreshInterval = rawSearch.indexRefreshInterval;
 	}
 
+	// AI analysis web search implementation
+	const validImplementations = ['perplexity', 'local_chromium'] as const;
+	if (rawSearch.aiAnalysisWebSearchImplement && validImplementations.includes(rawSearch.aiAnalysisWebSearchImplement as any)) {
+		settings.aiAnalysisWebSearchImplement = rawSearch.aiAnalysisWebSearchImplement as 'perplexity' | 'local_chromium';
+	}
+
+	// Perplexity search model
+	const validPerplexityModel = getString(rawSearch.perplexitySearchModel, '');
+	settings.perplexitySearchModel = validPerplexityModel === '' ? undefined : validPerplexityModel;
+
+	// Summary lengths
+	if (typeof rawSearch.shortSummaryLength === 'number') {
+		settings.shortSummaryLength = Math.max(50, Math.min(500, rawSearch.shortSummaryLength));
+	}
+	if (typeof rawSearch.fullSummaryLength === 'number') {
+		settings.fullSummaryLength = Math.max(500, Math.min(10000, rawSearch.fullSummaryLength));
+	}
+
 	// Image description model
 
 	return settings;

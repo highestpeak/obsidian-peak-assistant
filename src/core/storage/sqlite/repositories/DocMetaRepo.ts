@@ -191,6 +191,19 @@ export class DocMetaRepo {
 	}
 
 	/**
+	 * Get document IDs by paths (batch).
+	 */
+	async getIdsByPaths(paths: string[]): Promise<{ id: string, path: string }[]> {
+		if (!paths.length) return [];
+		const rows = await this.db
+			.selectFrom('doc_meta')
+			.select(['id', 'path'])
+			.where('path', 'in', paths)
+			.execute();
+		return rows.map(row => ({ id: row.id, path: row.path }));
+	}
+
+	/**
 	 * Get document metadata by IDs (batch).
 	 */
 	async getByIds(ids: string[]): Promise<DbSchema['doc_meta'][]> {
