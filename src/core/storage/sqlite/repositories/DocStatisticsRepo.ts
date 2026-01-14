@@ -10,6 +10,47 @@ export class DocStatisticsRepo {
 	constructor(private readonly db: Kysely<DbSchema>) {}
 
 	/**
+	 * Check if document statistics exist by doc_id.
+	 */
+	async existsByDocId(docId: string): Promise<boolean> {
+		const row = await this.db
+			.selectFrom('doc_statistics')
+			.select('doc_id')
+			.where('doc_id', '=', docId)
+			.executeTakeFirst();
+		return row !== undefined;
+	}
+
+	/**
+	 * Insert new document statistics.
+	 */
+	async insert(stats: {
+		doc_id: string;
+		word_count: number | null;
+		char_count: number | null;
+		language: string | null;
+		richness_score: number | null;
+		last_open_ts: number | null;
+		updated_at: number;
+	}): Promise<void> {
+		await this.db
+			.insertInto('doc_statistics')
+			.values(stats)
+			.execute();
+	}
+
+	/**
+	 * Update existing document statistics by doc_id.
+	 */
+	async updateByDocId(docId: string, updates: Partial<Pick<DbSchema['doc_statistics'], 'word_count' | 'char_count' | 'language' | 'richness_score' | 'last_open_ts' | 'updated_at'>>): Promise<void> {
+		await this.db
+			.updateTable('doc_statistics')
+			.set(updates)
+			.where('doc_id', '=', docId)
+			.execute();
+	}
+
+	/**
 	 * Upsert document statistics.
 	 */
 	async upsert(stats: {
@@ -21,9 +62,21 @@ export class DocStatisticsRepo {
 		last_open_ts?: number | null;
 		updated_at: number;
 	}): Promise<void> {
-		await this.db
-			.insertInto('doc_statistics')
-			.values({
+		const exists = await this.existsByDocId(stats.doc_id);
+
+		if (exists) {
+			// Update existing record
+			await this.updateByDocId(stats.doc_id, {
+				word_count: stats.word_count ?? null,
+				char_count: stats.char_count ?? null,
+				language: stats.language ?? null,
+				richness_score: stats.richness_score ?? null,
+				last_open_ts: stats.last_open_ts ?? null,
+				updated_at: stats.updated_at,
+			});
+		} else {
+			// Insert new record
+			await this.insert({
 				doc_id: stats.doc_id,
 				word_count: stats.word_count ?? null,
 				char_count: stats.char_count ?? null,
@@ -31,18 +84,8 @@ export class DocStatisticsRepo {
 				richness_score: stats.richness_score ?? null,
 				last_open_ts: stats.last_open_ts ?? null,
 				updated_at: stats.updated_at,
-			})
-			.onConflict((oc) =>
-				oc.column('doc_id').doUpdateSet({
-					word_count: (eb) => eb.ref('excluded.word_count'),
-					char_count: (eb) => eb.ref('excluded.char_count'),
-					language: (eb) => eb.ref('excluded.language'),
-					richness_score: (eb) => eb.ref('excluded.richness_score'),
-					last_open_ts: (eb) => eb.ref('excluded.last_open_ts'),
-					updated_at: (eb) => eb.ref('excluded.updated_at'),
-				}),
-			)
-			.execute();
+			});
+		}
 	}
 
 	/**

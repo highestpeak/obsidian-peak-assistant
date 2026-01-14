@@ -8,8 +8,48 @@ export class GraphNodeRepo {
 	constructor(private readonly db: Kysely<DbSchema>) {}
 
 	/**
+	 * Check if graph node exists by id.
+	 */
+	async existsById(id: string): Promise<boolean> {
+		const row = await this.db
+			.selectFrom('graph_nodes')
+			.select('id')
+			.where('id', '=', id)
+			.executeTakeFirst();
+		return row !== undefined;
+	}
+
+	/**
+	 * Insert new graph node.
+	 */
+	async insert(node: {
+		id: string;
+		type: string;
+		label: string;
+		attributes: string;
+		created_at: number;
+		updated_at: number;
+	}): Promise<void> {
+		await this.db
+			.insertInto('graph_nodes')
+			.values(node)
+			.execute();
+	}
+
+	/**
+	 * Update existing graph node by id.
+	 */
+	async updateById(id: string, updates: Partial<Pick<DbSchema['graph_nodes'], 'type' | 'label' | 'attributes' | 'updated_at'>>): Promise<void> {
+		await this.db
+			.updateTable('graph_nodes')
+			.set(updates)
+			.where('id', '=', id)
+			.execute();
+	}
+
+	/**
 	 * Upsert a graph node.
-	 * 
+	 *
 	 * @param node.id - Normalized path (for document nodes) or prefixed identifier (for tags, categories, etc.).
 	 *                  For document nodes, this should be the normalized file path relative to vault root.
 	 */
@@ -22,25 +62,27 @@ export class GraphNodeRepo {
 		updated_at?: number;
 	}): Promise<void> {
 		const now = Date.now();
-		await this.db
-			.insertInto('graph_nodes')
-			.values({
+		const exists = await this.existsById(node.id);
+
+		if (exists) {
+			// Update existing node
+			await this.updateById(node.id, {
+				type: node.type,
+				label: node.label,
+				attributes: node.attributes,
+				updated_at: node.updated_at ?? now,
+			});
+		} else {
+			// Insert new node
+			await this.insert({
 				id: node.id,
 				type: node.type,
 				label: node.label,
 				attributes: node.attributes,
 				created_at: node.created_at ?? now,
 				updated_at: node.updated_at ?? now,
-			})
-			.onConflict((oc) =>
-				oc.column('id').doUpdateSet({
-					type: (eb) => eb.ref('excluded.type'),
-					label: (eb) => eb.ref('excluded.label'),
-					attributes: (eb) => eb.ref('excluded.attributes'),
-					updated_at: (eb) => eb.ref('excluded.updated_at'),
-				}),
-			)
-			.execute();
+			});
+		}
 	}
 
 	/**

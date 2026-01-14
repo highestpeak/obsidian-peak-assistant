@@ -9,6 +9,50 @@ export class DocMetaRepo {
 	constructor(private readonly db: Kysely<DbSchema>) {}
 
 	/**
+	 * Check if document metadata exists by path.
+	 */
+	async existsByPath(path: string): Promise<boolean> {
+		const row = await this.db
+			.selectFrom('doc_meta')
+			.select('id')
+			.where('path', '=', path)
+			.executeTakeFirst();
+		return row !== undefined;
+	}
+
+	/**
+	 * Insert new document metadata.
+	 */
+	async insert(doc: DbSchema['doc_meta']): Promise<void> {
+		await this.db
+			.insertInto('doc_meta')
+			.values(doc)
+			.execute();
+	}
+
+	/**
+	 * Update existing document metadata by id.
+	 */
+	async updateById(id: string, updates: Partial<Omit<DbSchema['doc_meta'], 'id' | 'path' | 'created_at'>>): Promise<void> {
+		await this.db
+			.updateTable('doc_meta')
+			.set(updates)
+			.where('id', '=', id)
+			.execute();
+	}
+
+	/**
+	 * Update existing document metadata by path.
+	 */
+	async updateByPath(path: string, updates: Partial<Omit<DbSchema['doc_meta'], 'id' | 'path' | 'created_at'>>): Promise<void> {
+		await this.db
+			.updateTable('doc_meta')
+			.set(updates)
+			.where('path', '=', path)
+			.execute();
+	}
+
+	/**
 	 * Upsert document metadata.
 	 * Supports both full Document metadata and minimal fields for backward compatibility.
 	 */
@@ -17,9 +61,26 @@ export class DocMetaRepo {
 		if (!doc.id) {
 			throw new Error(`doc.id is required for doc_meta.upsert. Path: ${doc.path}`);
 		}
-		await this.db
-			.insertInto('doc_meta')
-			.values({
+
+		const exists = await this.existsByPath(doc.path);
+
+		if (exists) {
+			// Update existing record using id (more efficient and accurate)
+			await this.updateById(doc.id, {
+				type: doc.type ?? null,
+				title: doc.title ?? null,
+				size: doc.size ?? null,
+				mtime: doc.mtime ?? null,
+				ctime: doc.ctime ?? null,
+				content_hash: doc.content_hash ?? null,
+				summary: doc.summary ?? null,
+				tags: doc.tags ?? null,
+				last_processed_at: doc.last_processed_at ?? null,
+				frontmatter_json: doc.frontmatter_json ?? null,
+			});
+		} else {
+			// Insert new record
+			await this.insert({
 				id: doc.id,
 				path: doc.path,
 				type: doc.type ?? null,
@@ -32,23 +93,8 @@ export class DocMetaRepo {
 				tags: doc.tags ?? null,
 				last_processed_at: doc.last_processed_at ?? null,
 				frontmatter_json: doc.frontmatter_json ?? null,
-			})
-			.onConflict((oc) =>
-				oc.column('path').doUpdateSet((eb) => ({
-					id: eb.ref('excluded.id'),
-					type: eb.ref('excluded.type'),
-					title: eb.ref('excluded.title'),
-					size: eb.ref('excluded.size'),
-					mtime: eb.ref('excluded.mtime'),
-					ctime: eb.ref('excluded.ctime'),
-					content_hash: eb.ref('excluded.content_hash'),
-					summary: eb.ref('excluded.summary'),
-					tags: eb.ref('excluded.tags'),
-					last_processed_at: eb.ref('excluded.last_processed_at'),
-					frontmatter_json: eb.ref('excluded.frontmatter_json'),
-				})),
-			)
-			.execute();
+			});
+		}
 	}
 
 	/**

@@ -212,7 +212,8 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			content_hash TEXT,
 			summary TEXT,
 			tags TEXT,
-			last_processed_at INTEGER
+			last_processed_at INTEGER,
+			frontmatter_json TEXT
 		);
 		CREATE INDEX IF NOT EXISTS idx_doc_meta_path ON doc_meta(path);
 		CREATE INDEX IF NOT EXISTS idx_doc_meta_content_hash ON doc_meta(content_hash);
@@ -274,10 +275,6 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_graph_edges_type ON graph_edges(type);
 		CREATE INDEX IF NOT EXISTS idx_graph_edges_from_to ON graph_edges(from_node_id, to_node_id);
 	`);
-
-	// USKE extensions (idempotent adds).
-	// Dynamic metadata storage (frontmatter JSON).
-	tryExec(`ALTER TABLE doc_meta ADD COLUMN frontmatter_json TEXT;`);
 
 	// Chunk storage for FTS/vector/search snippets.
 	db.exec(`
@@ -407,18 +404,6 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		);
 		CREATE INDEX IF NOT EXISTS idx_chat_message_conversation_id ON chat_message(conversation_id);
 		CREATE INDEX IF NOT EXISTS idx_chat_message_created_at ON chat_message(created_at_ts);
-	`);
-	tryExec(`
-		ALTER TABLE chat_message ADD COLUMN content_preview TEXT;
-	`);
-	tryExec(`
-		ALTER TABLE chat_message ADD COLUMN attachment_summary TEXT;
-	`);
-	tryExec(`
-		ALTER TABLE chat_conversation ADD COLUMN context_last_updated_ts INTEGER;
-	`);
-	tryExec(`
-		ALTER TABLE chat_conversation ADD COLUMN context_last_message_index INTEGER;
 	`);
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS chat_message_resource (

@@ -112,9 +112,21 @@ export class DocChunkRepo {
 	}
 
 	/**
-	 * Upsert chunk.
+	 * Check if chunk exists by chunk_id.
 	 */
-	async upsertChunk(chunk: DocChunkInput): Promise<void> {
+	async existsByChunkId(chunkId: string): Promise<boolean> {
+		const row = await this.db
+			.selectFrom('doc_chunk')
+			.select('chunk_id')
+			.where('chunk_id', '=', chunkId)
+			.executeTakeFirst();
+		return row !== undefined;
+	}
+
+	/**
+	 * Insert new chunk.
+	 */
+	async insert(chunk: DocChunkInput): Promise<void> {
 		await this.db
 			.insertInto('doc_chunk')
 			.values({
@@ -126,17 +138,40 @@ export class DocChunkRepo {
 				content_raw: chunk.content_raw,
 				content_fts_norm: chunk.content_fts_norm,
 			})
-			.onConflict((oc) =>
-				oc.column('chunk_id').doUpdateSet({
-					doc_id: (eb) => eb.ref('excluded.doc_id'),
-					chunk_index: (eb) => eb.ref('excluded.chunk_index'),
-					title: (eb) => eb.ref('excluded.title'),
-					mtime: (eb) => eb.ref('excluded.mtime'),
-					content_raw: (eb) => eb.ref('excluded.content_raw'),
-					content_fts_norm: (eb) => eb.ref('excluded.content_fts_norm'),
-				}),
-			)
 			.execute();
+	}
+
+	/**
+	 * Update existing chunk by chunk_id.
+	 */
+	async updateByChunkId(chunkId: string, updates: Partial<Pick<DbSchema['doc_chunk'], 'doc_id' | 'chunk_index' | 'title' | 'mtime' | 'content_raw' | 'content_fts_norm'>>): Promise<void> {
+		await this.db
+			.updateTable('doc_chunk')
+			.set(updates)
+			.where('chunk_id', '=', chunkId)
+			.execute();
+	}
+
+	/**
+	 * Upsert chunk.
+	 */
+	async upsertChunk(chunk: DocChunkInput): Promise<void> {
+		const exists = await this.existsByChunkId(chunk.chunk_id);
+
+		if (exists) {
+			// Update existing chunk
+			await this.updateByChunkId(chunk.chunk_id, {
+				doc_id: chunk.doc_id,
+				chunk_index: chunk.chunk_index,
+				title: chunk.title,
+				mtime: chunk.mtime,
+				content_raw: chunk.content_raw,
+				content_fts_norm: chunk.content_fts_norm,
+			});
+		} else {
+			// Insert new chunk
+			await this.insert(chunk);
+		}
 	}
 
 	/**

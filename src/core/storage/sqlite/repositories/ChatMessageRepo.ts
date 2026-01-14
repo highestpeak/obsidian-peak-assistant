@@ -11,49 +11,101 @@ export class ChatMessageRepo {
 	constructor(private readonly db: Kysely<DbSchema>) {}
 
 	/**
+	 * Check if message exists by message_id.
+	 */
+	async existsByMessageId(messageId: string): Promise<boolean> {
+		const row = await this.db
+			.selectFrom('chat_message')
+			.select('message_id')
+			.where('message_id', '=', messageId)
+			.executeTakeFirst();
+		return row !== undefined;
+	}
+
+	/**
+	 * Insert new chat message.
+	 */
+	async insert(message: {
+		message_id: string;
+		conversation_id: string;
+		role: string;
+		content_hash: string;
+		created_at_ts: number;
+		created_at_zone: string;
+		model: string | null;
+		provider: string | null;
+		starred: number;
+		is_error: number;
+		is_visible: number;
+		gen_time_ms: number | null;
+		token_usage_json: string | null;
+		thinking: string | null;
+	}): Promise<void> {
+		await this.db
+			.insertInto('chat_message')
+			.values(message)
+			.execute();
+	}
+
+	/**
+	 * Update existing chat message by message_id.
+	 */
+	async updateByMessageId(messageId: string, updates: Partial<Pick<DbSchema['chat_message'], 'conversation_id' | 'role' | 'content_hash' | 'created_at_ts' | 'created_at_zone' | 'model' | 'provider' | 'starred' | 'is_error' | 'is_visible' | 'gen_time_ms' | 'token_usage_json' | 'thinking'>>): Promise<void> {
+		await this.db
+			.updateTable('chat_message')
+			.set(updates)
+			.where('message_id', '=', messageId)
+			.execute();
+	}
+
+	/**
 	 * Upsert messages for a conversation.
 	 */
 	async upsertMessages(conversationId: string, messages: ChatMessage[]): Promise<void> {
 		if (messages.length === 0) return;
 
-		const values = messages.map((msg) => ({
-			message_id: msg.id,
-			conversation_id: conversationId,
-			role: msg.role,
-			content_hash: hashMD5(msg.content),
-			created_at_ts: msg.createdAtTimestamp,
-			created_at_zone: msg.createdAtZone,
-			model: msg.model ?? null,
-			provider: msg.provider ?? null,
-			starred: msg.starred ? 1 : 0,
-			is_error: msg.isErrorMessage ? 1 : 0,
-			is_visible: msg.isVisible !== false ? 1 : 0,
-			gen_time_ms: msg.genTimeMs ?? null,
-			token_usage_json: msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null,
-			thinking: msg.thinking ?? null,
-		}));
+		for (const msg of messages) {
+			const messageData = {
+				message_id: msg.id,
+				conversation_id: conversationId,
+				role: msg.role,
+				content_hash: hashMD5(msg.content),
+				created_at_ts: msg.createdAtTimestamp,
+				created_at_zone: msg.createdAtZone,
+				model: msg.model ?? null,
+				provider: msg.provider ?? null,
+				starred: msg.starred ? 1 : 0,
+				is_error: msg.isErrorMessage ? 1 : 0,
+				is_visible: msg.isVisible !== false ? 1 : 0,
+				gen_time_ms: msg.genTimeMs ?? null,
+				token_usage_json: msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null,
+				thinking: msg.thinking ?? null,
+			};
 
-		await this.db
-			.insertInto('chat_message')
-			.values(values)
-			.onConflict((oc) =>
-				oc.column('message_id').doUpdateSet((eb) => ({
-					conversation_id: eb.ref('excluded.conversation_id'),
-					role: eb.ref('excluded.role'),
-					content_hash: eb.ref('excluded.content_hash'),
-					created_at_ts: eb.ref('excluded.created_at_ts'),
-					created_at_zone: eb.ref('excluded.created_at_zone'),
-					model: eb.ref('excluded.model'),
-					provider: eb.ref('excluded.provider'),
-					starred: eb.ref('excluded.starred'),
-					is_error: eb.ref('excluded.is_error'),
-					is_visible: eb.ref('excluded.is_visible'),
-					gen_time_ms: eb.ref('excluded.gen_time_ms'),
-					token_usage_json: eb.ref('excluded.token_usage_json'),
-					thinking: eb.ref('excluded.thinking'),
-				})),
-			)
-			.execute();
+			const exists = await this.existsByMessageId(msg.id);
+
+			if (exists) {
+				// Update existing message
+				await this.updateByMessageId(msg.id, {
+					conversation_id: conversationId,
+					role: msg.role,
+					content_hash: hashMD5(msg.content),
+					created_at_ts: msg.createdAtTimestamp,
+					created_at_zone: msg.createdAtZone,
+					model: msg.model ?? null,
+					provider: msg.provider ?? null,
+					starred: msg.starred ? 1 : 0,
+					is_error: msg.isErrorMessage ? 1 : 0,
+					is_visible: msg.isVisible !== false ? 1 : 0,
+					gen_time_ms: msg.genTimeMs ?? null,
+					token_usage_json: msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null,
+					thinking: msg.thinking ?? null,
+				});
+			} else {
+				// Insert new message
+				await this.insert(messageData);
+			}
+		}
 	}
 
 	/**

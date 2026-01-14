@@ -17,6 +17,48 @@ export class GraphEdgeRepo {
 	}
 
 	/**
+	 * Check if graph edge exists by id.
+	 */
+	async existsById(id: string): Promise<boolean> {
+		const row = await this.db
+			.selectFrom('graph_edges')
+			.select('id')
+			.where('id', '=', id)
+			.executeTakeFirst();
+		return row !== undefined;
+	}
+
+	/**
+	 * Insert new graph edge.
+	 */
+	async insert(edge: {
+		id: string;
+		from_node_id: string;
+		to_node_id: string;
+		type: string;
+		weight: number;
+		attributes: string;
+		created_at: number;
+		updated_at: number;
+	}): Promise<void> {
+		await this.db
+			.insertInto('graph_edges')
+			.values(edge)
+			.execute();
+	}
+
+	/**
+	 * Update existing graph edge by id.
+	 */
+	async updateById(id: string, updates: Partial<Pick<DbSchema['graph_edges'], 'weight' | 'attributes' | 'updated_at'>>): Promise<void> {
+		await this.db
+			.updateTable('graph_edges')
+			.set(updates)
+			.where('id', '=', id)
+			.execute();
+	}
+
+	/**
 	 * Upsert a graph edge.
 	 */
 	async upsert(edge: {
@@ -31,9 +73,19 @@ export class GraphEdgeRepo {
 	}): Promise<void> {
 		const now = Date.now();
 		const id = edge.id ?? GraphEdgeRepo.generateEdgeId(edge.from_node_id, edge.to_node_id, edge.type);
-		await this.db
-			.insertInto('graph_edges')
-			.values({
+
+		const exists = await this.existsById(id);
+
+		if (exists) {
+			// Update existing edge
+			await this.updateById(id, {
+				weight: edge.weight ?? 1.0,
+				attributes: edge.attributes,
+				updated_at: edge.updated_at ?? now,
+			});
+		} else {
+			// Insert new edge
+			await this.insert({
 				id,
 				from_node_id: edge.from_node_id,
 				to_node_id: edge.to_node_id,
@@ -42,15 +94,8 @@ export class GraphEdgeRepo {
 				attributes: edge.attributes,
 				created_at: edge.created_at ?? now,
 				updated_at: edge.updated_at ?? now,
-			})
-			.onConflict((oc) =>
-				oc.column('id').doUpdateSet({
-					weight: (eb) => eb.ref('excluded.weight'),
-					attributes: (eb) => eb.ref('excluded.attributes'),
-					updated_at: (eb) => eb.ref('excluded.updated_at'),
-				}),
-			)
-			.execute();
+			});
+		}
 	}
 
 	/**

@@ -226,12 +226,83 @@ export class EmbeddingRepo {
 	}
 
 	/**
+	 * Check if embedding exists by id.
+	 */
+	async existsById(id: string): Promise<boolean> {
+		const row = await this.db
+			.selectFrom('embedding')
+			.select('id')
+			.where('id', '=', id)
+			.executeTakeFirst();
+		return row !== undefined;
+	}
+
+	/**
+	 * Insert new embedding record.
+	 */
+	async insert(embedding: {
+		id: string;
+		doc_id: string;
+		chunk_id: string | null;
+		chunk_index: number | null;
+		content_hash: string;
+		ctime: number;
+		mtime: number;
+		embedding: Buffer;
+		embedding_model: string;
+		embedding_len: number;
+	}): Promise<number> {
+		// Use raw SQL to get the rowid after insert
+		const insertStmt = this.rawDb.prepare(`
+			INSERT INTO embedding (
+				id, doc_id, chunk_id, chunk_index,
+				content_hash, ctime, mtime, embedding,
+				embedding_model, embedding_len
+			)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`);
+		const result = insertStmt.run(
+			embedding.id,
+			embedding.doc_id,
+			embedding.chunk_id,
+			embedding.chunk_index,
+			embedding.content_hash,
+			embedding.ctime,
+			embedding.mtime,
+			embedding.embedding,
+			embedding.embedding_model,
+			embedding.embedding_len
+		);
+		return result.lastInsertRowid as number;
+	}
+
+	/**
+	 * Update existing embedding record by id.
+	 */
+	async updateById(id: string, updates: {
+		doc_id: string;
+		chunk_id: string | null;
+		chunk_index: number | null;
+		content_hash: string;
+		mtime: number;
+		embedding: Buffer;
+		embedding_model: string;
+		embedding_len: number;
+	}): Promise<void> {
+		await this.db
+			.updateTable('embedding')
+			.set(updates)
+			.where('id', '=', id)
+			.execute();
+	}
+
+	/**
 	 * Upsert an embedding record.
-	 * 
+	 *
 	 * Also syncs the embedding vector to vec_embeddings virtual table for KNN search.
 	 * vec_embeddings.rowid corresponds to embedding table's implicit rowid (integer).
 	 * This allows direct association: we get embedding.rowid after insert, then use it as vec_embeddings.rowid.
-	 * 
+	 *
 	 * Note: embedding table stores vectors as BLOB (binary format), while vec_embeddings virtual table
 	 * uses JSON format (as required by sqlite-vec vec0).
 	 */
@@ -251,59 +322,36 @@ export class EmbeddingRepo {
 		// Convert number[] to Buffer (BLOB)
 		const embeddingBuffer = this.arrayToBuffer(embedding.embedding);
 
-		// Check if embedding already exists and get rowid
-		const existingRowid = this.getEmbeddingRowid(embedding.id);
+		const exists = await this.existsById(embedding.id);
 
 		let embeddingRowid: number;
-		if (existingRowid !== null) {
+		if (exists) {
 			// Update existing embedding
-			embeddingRowid = existingRowid;
-
-			await this.db
-				.updateTable('embedding')
-				.set({
-					doc_id: embedding.doc_id,
-					chunk_id: embedding.chunk_id ?? null,
-					chunk_index: embedding.chunk_index ?? null,
-					content_hash: embedding.content_hash,
-					mtime: embedding.mtime,
-					embedding: embeddingBuffer,
-					embedding_model: embedding.embedding_model,
-					embedding_len: embedding.embedding_len,
-				})
-				.where('id', '=', embedding.id)
-				.execute();
+			embeddingRowid = this.getEmbeddingRowid(embedding.id)!;
+			await this.updateById(embedding.id, {
+				doc_id: embedding.doc_id,
+				chunk_id: embedding.chunk_id ?? null,
+				chunk_index: embedding.chunk_index ?? null,
+				content_hash: embedding.content_hash,
+				mtime: embedding.mtime,
+				embedding: embeddingBuffer,
+				embedding_model: embedding.embedding_model,
+				embedding_len: embedding.embedding_len,
+			});
 		} else {
-			// Insert new embedding using raw SQL with RETURNING clause to get rowid directly
-			const insertStmt = this.rawDb.prepare(`
-				INSERT INTO embedding (
-					id, doc_id, chunk_id, chunk_index,
-					content_hash, ctime, mtime, embedding,
-					embedding_model, embedding_len
-				)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-				RETURNING rowid
-			`);
-			const result = insertStmt.get(
-				embedding.id,
-				embedding.doc_id,
-				embedding.chunk_id ?? null,
-				embedding.chunk_index ?? null,
-				embedding.content_hash,
-				embedding.ctime,
-				embedding.mtime,
-				embeddingBuffer,
-				embedding.embedding_model,
-				embedding.embedding_len,
-			) as { rowid: number } | undefined;
-
-			if (!result || result.rowid === undefined || result.rowid === null) {
-				throw new BusinessError(
-					ErrorCode.UNKNOWN_ERROR,
-					`Failed to insert embedding with id: ${embedding.id}`,
-				);
-			}
-			embeddingRowid = result.rowid;
+			// Insert new embedding
+			embeddingRowid = await this.insert({
+				id: embedding.id,
+				doc_id: embedding.doc_id,
+				chunk_id: embedding.chunk_id ?? null,
+				chunk_index: embedding.chunk_index ?? null,
+				content_hash: embedding.content_hash,
+				ctime: embedding.ctime,
+				mtime: embedding.mtime,
+				embedding: embeddingBuffer,
+				embedding_model: embedding.embedding_model,
+				embedding_len: embedding.embedding_len,
+			});
 		}
 
 		// Sync to vec_embeddings virtual table using embedding.rowid as vec_embeddings.rowid

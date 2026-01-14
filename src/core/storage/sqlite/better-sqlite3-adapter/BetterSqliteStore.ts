@@ -11,12 +11,85 @@
  * - Native module (.node file) must be available at runtime
  */
 import { migrateSqliteSchema } from '@/core/storage/sqlite/ddl';
-import { Kysely, SqliteDialect } from 'kysely';
+import { Kysely, SqliteDialect, type CompiledQuery, type TransactionSettings } from 'kysely';
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
 import type { SqliteDatabase, SqliteStatement } from '../types';
 import type { App } from 'obsidian';
 import * as fs from 'fs';
 import * as path from 'path';
+import { executeCompiledQuery } from '../utils';
+
+/**
+ * Custom SQLite driver that intercepts all execute operations
+ */
+class CustomSqliteDriver {
+	private rawDb: BetterSqliteAdapter;
+
+	constructor(rawDb: BetterSqliteAdapter) {
+		this.rawDb = rawDb;
+	}
+
+	async init(): Promise<void> {
+		// No initialization needed
+	}
+
+	async acquireConnection(): Promise<{ executeQuery: (query: CompiledQuery) => Promise<any> }> {
+		return {
+			executeQuery: this.executeQuery.bind(this)
+		};
+	}
+
+	async beginTransaction(connection: any, settings: TransactionSettings): Promise<void> {
+		// Execute BEGIN TRANSACTION SQL command
+		this.rawDb.exec('BEGIN TRANSACTION');
+	}
+
+	async commitTransaction(connection: any): Promise<void> {
+		// Execute COMMIT SQL command
+		this.rawDb.exec('COMMIT');
+	}
+
+	async rollbackTransaction(connection: any): Promise<void> {
+		// Execute ROLLBACK SQL command
+		this.rawDb.exec('ROLLBACK');
+	}
+
+	async releaseConnection(): Promise<void> {
+		// Connection pooling not needed for better-sqlite3
+	}
+
+	async destroy(): Promise<void> {
+		// Cleanup if needed
+	}
+
+	/**
+	 * Custom executeQuery that uses our executeCompiledQuery logic
+	 * This intercepts all SQL execution at the driver level
+	 */
+	async executeQuery(compiledQuery: CompiledQuery): Promise<any> {
+		// Use our custom execution logic that bypasses Kysely's default behavior
+		return executeCompiledQuery(compiledQuery, this.rawDb);
+	}
+}
+
+/**
+ * Custom SQLite dialect that uses our custom driver
+ */
+class CustomSqliteDialect extends SqliteDialect {
+	private rawDb: BetterSqliteAdapter;
+
+	constructor(rawDb: BetterSqliteAdapter) {
+		super({
+			database: rawDb as any
+		});
+		this.rawDb = rawDb;
+	}
+
+	createDriver(): any {
+		return new CustomSqliteDriver(this.rawDb);
+	}
+}
+
 // Don't import better-sqlite3 at the top level - load it dynamically to avoid module resolution errors
 
 /**
@@ -73,12 +146,10 @@ export class BetterSqliteStore {
 	private constructor(db: BetterSqlite3Database, adapter: BetterSqliteAdapter) {
 		this.db = db;
 		this.rawDb = adapter;
-		
-		// Create Kysely instance with better-sqlite3 adapter
+
+		// Create Kysely instance with custom dialect that intercepts all execute operations
 		this.kysely = new Kysely<DbSchema>({
-			dialect: new SqliteDialect({
-				database: adapter as any,
-			}),
+			dialect: new CustomSqliteDialect(adapter),
 		});
 	}
 
