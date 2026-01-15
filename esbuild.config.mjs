@@ -148,9 +148,9 @@ const fixImportMetaPlugin = {
 	name: 'fix-import-meta',
 	setup(build) {
 		// NOTE: args.path uses OS-specific separators. Use [\\/] so this works on Windows too.
-		// We keep this scoped to dependency files only, and then only modify files that actually
+		// We keep this scoped to @langchain packages only, and then only modify files that actually
 		// contain createRequire(import.meta.url) patterns.
-		build.onLoad({ filter: /node_modules[\\/].*\.(js|mjs|cjs)$/ }, async (args) => {
+		build.onLoad({ filter: /node_modules[\\/]@langchain[\\/].*\.(js|mjs|cjs)$/ }, async (args) => {
 			try {
 				const contents = await fs.promises.readFile(args.path, 'utf8');
 				

@@ -23,7 +23,7 @@ export class ViewSwitchConsistentHandler {
 	 */
 	private getNewTabLeaf(): WorkspaceLeaf | null {
 		const emptyLeaves = this.app.workspace.getLeavesOfType('empty');
-		const newTabLeaf = emptyLeaves.find(leaf => {
+		const newTabLeaf = emptyLeaves.find((leaf: WorkspaceLeaf) => {
 			const state = leaf.getViewState() as any;
 			return state.title === 'New tab';
 		});
