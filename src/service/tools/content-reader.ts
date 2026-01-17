@@ -1,6 +1,6 @@
 import { AppContext } from "@/app/context/AppContext";
 import { AgentTool, safeAgentTool } from "./types";
-import { z } from "zod";
+import { z } from "zod/v3"
 import { DocumentLoaderManager } from "@/core/document/loader/helper/DocumentLoaderManager";
 
 /**

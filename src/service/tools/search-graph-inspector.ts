@@ -1,5 +1,5 @@
 import { AgentTool, safeAgentTool } from "./types";
-import { z } from "zod";
+import { z } from "zod/v3"
 import { inspectNoteContext } from "./search-graph-inspector/inspect-note-context";
 import { graphTraversal } from "./search-graph-inspector/graph-traversal";
 import { findPath } from "./search-graph-inspector/find-path";
@@ -70,7 +70,7 @@ const ResponseFormat = z.object({
         // also AI may auto switch the mode when it meet some troubles in other modes.
         .describe("Choose 'markdown' if you need to reason about relationships, summarize content, or present findings. "
             + "Choose 'structured' if you are performing multi-step operations for programmatic piping (e.g., getting IDs for another tool)."
-            + "Choose 'hybrid' if you need to get both data and context. But aboid this as it may cause context overflow.")
+            + "Choose 'hybrid' if you need to get both data and context. But avoid this as it may cause context overflow(especially for graph_traversal).")
 });
 
 // Base parameter blocks for reuse
@@ -78,12 +78,6 @@ const ResponseFormat = z.object({
 const BaseLimit = z.object({
     limit: z.number().min(1).max(50).default(20).optional().describe('Maximum number of results(each step inner also. not so strictly.)')
 });
-
-// Filter and sort combination
-const FilterSortLimit = z.object({
-    filters: FilterOption.optional().describe('Additional filter conditions'),
-    sorter: SorterOption.optional().describe('Sort results by criteria'),
-}).merge(BaseLimit); // Include limit
 
 // Semantic enhancement options
 const SemanticOptions = z.object({
@@ -96,6 +90,9 @@ const SemanticOptions = z.object({
             + "Instead of 'AI', use 'Large language model architecture and training' to ensure vector relevance.")
 });
 
+/**
+ * the core of the tool design: don't return "raw data", return "semantic description".
+ */
 export function vaultGraphInspectorTool(): AgentTool {
     return safeAgentTool({
         description: `Vault graph analysis tool for exploring note relationships and vault structure.
@@ -104,16 +101,15 @@ export function vaultGraphInspectorTool(): AgentTool {
 
         🔍 SINGLE NOTE ANALYSIS:
         • inspect_note_context: [Deep Dive] [detailed analysis] Use 'inspect_note_context' to understand a single note's identity (tags, connections, location)
+        
+        🔗 RELATIONSHIP DISCOVERY: - Find the room using the map
         • graph_traversal: [Relational Discovery] exploring knowledge clusters. Explore related notes within N degrees of separation
-
-        🔗 RELATIONSHIP DISCOVERY:
-        • graph_traversal
         • find_path: Discover connection paths between two specific notes
         structural health and authority analysis.
         • find_key_nodes: Identify influential notes (high connectivity nodes)
         • find_orphans: Find disconnected/unlinked notes
 
-        📊 SEARCH & FILTERING:
+        📊 SEARCH & FILTERING: - Looking for a needle in a haystack.
         • search_by_dimensions: complex multi-criteria searches. Advanced filtering by tags, folders, time ranges with boolean logic
         • local_search_whole_vault: Full-text and semantic search across the vault
 
@@ -200,7 +196,8 @@ export function vaultGraphInspectorTool(): AgentTool {
                 .merge(BaseLimit)
                 .extend({
                     filters: FilterOption.optional(),
-                    sorter: SorterOption.optional(),
+                    // normally user want to find the key nodes with the most backlinks.
+                    sorter: SorterOption.optional().default('backlinks_count_desc'),
                     semantic_filter: SemanticOptions.shape.semantic_filter.optional(),
                     // AI need to understand the meaning associations between these notes, or give the user a summary.
                     response_format: ResponseFormat.shape.response_format.default('markdown')
@@ -231,7 +228,8 @@ export function vaultGraphInspectorTool(): AgentTool {
                 boolean_expression: z.string()
                     .describe("Complex boolean expression for filtering. Supports: tag:value, category:value, AND, OR, NOT, parentheses. "
                         + "Category/tags refers to a field in the metadata of the note."
-                        + "Example: '(tag:react OR tag:vue) AND category:frontend'")
+                        + "Example: '(tag:react OR tag:vue) AND category:frontend'."
+                        + "If no results are found, try relaxing the boolean constraints or switching to OR logic")
             })
                 .merge(BaseLimit)
                 .extend({

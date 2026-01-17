@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod/v3"
 
 /**
  * Don't use ToolSet from ai sdk directly; it slows TS and may crash IDE.
@@ -7,7 +7,7 @@ import { z } from 'zod';
 export interface AgentTool {
     description: string;
     inputSchema: z.ZodType;
-    execute: (input: any) => Promise<any>;
+    execute: (input?: any) => Promise<any>;
 }
 
 /**
@@ -17,10 +17,10 @@ export function safeAgentTool(tool: AgentTool): AgentTool {
     return {
         description: tool.description,
         inputSchema: tool.inputSchema,
-        execute: async (parameters) => {
+        execute: async (parameters?: any) => {
             const start = Date.now();
             try {
-                const parsedParameters = tool.inputSchema.parse(parameters);
+                const parsedParameters = parameters ? tool.inputSchema.parse(parameters) : undefined;
                 return {
                     result: await tool.execute(parsedParameters),
                     durationMs: Date.now() - start,

@@ -1,5 +1,5 @@
 import { chromium, type Browser, type Page } from 'playwright';
-import { z } from 'zod';
+import { z } from "zod/v3"
 import { AgentTool, safeAgentTool } from './types';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { PROVIDER_ID_PERPLEXITY } from '@/core/providers/base/perplexity';

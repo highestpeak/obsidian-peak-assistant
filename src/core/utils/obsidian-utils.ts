@@ -89,6 +89,81 @@ export async function readFileAsBase64(app: App, resourceSource: string): Promis
 	return null;
 }
 
+type ActiveFile = {
+	path: string;
+	title: string;
+	selectedText: string | null;
+	cursorPosition: { line: number; ch: number } | null;
+}
+
+export function getActiveNoteDetail(): {
+	activeFile: ActiveFile | null;
+	openFiles: Array<ActiveFile>;
+} {
+	const app = AppContext.getInstance().app;
+
+	// Get the active file using the recommended API
+	const activeFile = app.workspace.getActiveFile();
+
+	// Get all open files
+	const openFiles: Array<ActiveFile> = [];
+
+	let activeFileDetail: ActiveFile | null = null;
+
+	// Process each open leaf
+	app.workspace.iterateAllLeaves((leaf: any) => {
+		const view = leaf.view as any;
+		const file = view?.file;
+
+		if (!file) {
+			return;
+		}
+
+		const isActive = activeFile ? file.path === activeFile.path : false;
+		const fileInfo: ActiveFile = {
+			path: file.path,
+			title: file.name || file.basename || 'Untitled',
+			selectedText: null,
+			cursorPosition: null
+		};
+
+		openFiles.push(fileInfo);
+
+		// Check if this is the active file
+		if (isActive) {
+			// Get selected text for active file
+			const selectedText = getSelectedTextFromActiveEditor(app);
+
+			// Get cursor position for active file
+			let cursorPosition = null;
+			try {
+				const editor = view?.editor || app.workspace?.activeEditor?.editor;
+				if (editor && editor.getCursor) {
+					const cursor = editor.getCursor();
+					cursorPosition = {
+						line: cursor.line,
+						ch: cursor.ch
+					};
+				}
+			} catch (error) {
+				console.warn('[obsidian-utils] Failed to get cursor position:', error);
+			}
+
+			activeFileDetail = {
+				path: file.path,
+				title: file.name || file.basename || 'Untitled',
+				selectedText,
+				cursorPosition
+			};
+		}
+	});
+
+	return {
+		activeFile: activeFileDetail,
+		openFiles
+	};
+}
+
 /**
  * Get selected text from the currently active Obsidian editor.
  * Returns null if no editor is active or no text is selected.
@@ -118,6 +193,20 @@ export async function readFileContentByPath(app: App, filePath: string): Promise
 	const file = app.vault.getAbstractFileByPath(filePath);
 	if (file && file instanceof TFile) {
 		return await app.vault.readBinary(file);
+	}
+	return null;
+}
+
+export async function readFileAsText(filePath: string): Promise<string | null> {
+	try {
+		const app = AppContext.getInstance().app;
+		const normalizedPath = normalizePath(filePath.startsWith('/') ? filePath.slice(1) : filePath);
+		const file = app.vault.getAbstractFileByPath(normalizedPath);
+		if (file && file instanceof TFile) {
+			return await app.vault.read(file);
+		}
+	} catch (error) {
+		console.warn(`[obsidian-utils] Failed to read file as text: ${filePath}`, error);
 	}
 	return null;
 }

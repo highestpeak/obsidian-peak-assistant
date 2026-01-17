@@ -218,3 +218,14 @@ export const MAX_CONVERSATIONS_PER_PROJECT = 10;
  * Need at least user message + assistant response to generate a meaningful title.
  */
 export const MIN_MESSAGES_FOR_TITLE_GENERATION = 2;
+
+/**
+ * Vault description filename in the prompt folder.
+ * Best practice: be sure to write down the key notes. and the overall structure of the vault.
+ */
+export const VAULT_DESCRIPTION_FILENAME = 'vault-description.md';
+
+/**
+ * Top tags count for global tag cloud when get system info.
+ */
+export const GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT = 50;

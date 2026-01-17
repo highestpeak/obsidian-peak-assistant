@@ -7,6 +7,7 @@ import * as projectSummaryFull from './templates/project-summary-full';
 import * as searchAiSummary from './templates/search-ai-summary';
 import * as searchTopicExtractJson from './templates/search-topic-extract-json';
 import * as searchRerankRankGpt from './templates/search-rerank-rank-gpt';
+import * as aiSearchSystem from './templates/ai-search-system';
 import * as applicationGenerateTitle from './templates/application-generate-title';
 import * as memoryExtractCandidatesJson from './templates/memory-extract-candidates-json';
 import * as memoryUpdateBulletList from './templates/memory-update-bullet-list';
@@ -63,6 +64,7 @@ export enum PromptId {
 	SearchAiSummary = 'search-ai-summary',
 	SearchTopicExtractJson = 'search-topic-extract-json',
 	SearchRerankRankGpt = 'search-rerank-rank-gpt',
+	AiSearchSystem = 'ai-search-system',
 
 	// Application prompts (title generation)
 	ApplicationGenerateTitle = 'application-generate-title',

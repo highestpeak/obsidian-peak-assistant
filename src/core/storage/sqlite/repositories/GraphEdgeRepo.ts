@@ -523,6 +523,24 @@ export class GraphEdgeRepo {
 
 
 	/**
+	 * Get top N most used tags by counting tagged relationships.
+	 * Returns array of { tagId: string, count: number } sorted by count descending.
+	 */
+	async getTopTaggedNodes(limit: number = 50): Promise<Array<{ tagId: string; count: number }>> {
+		return await this.db
+			.selectFrom('graph_edges')
+			.select([
+				'to_node_id as tagId',
+				({ fn }) => fn.count<number>('id').as('count')
+			])
+			.where('type', '=', 'tagged')
+			.groupBy('to_node_id')
+			.orderBy('count', 'desc')
+			.limit(limit)
+			.execute();
+	}
+
+	/**
 	 * Delete all graph edges.
 	 */
 	async deleteAll(): Promise<void> {
