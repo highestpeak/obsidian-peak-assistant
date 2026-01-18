@@ -215,8 +215,6 @@ const shared = {
 		"playwright",
 		"playwright-core",
 		"chromium-bidi",
-		"@lobehub/ui",
-		"es-toolkit",
 		...builtins,
 	],
 	loader: {
