@@ -12,16 +12,14 @@ import { ConversationList } from './components/conversation-list';
 import { useChatViewStore } from './store/chatViewStore';
 
 interface ChatViewComponentProps {
-	viewMode: ViewMode | null;
 }
 
 /**
  * Unified ChatView component that renders different views based on viewMode
  */
-export const ChatViewComponent: React.FC<ChatViewComponentProps> = ({
-	viewMode,
-}) => {
+export const ChatViewComponent: React.FC<ChatViewComponentProps> = () => {
 	const { eventBus, manager } = useServiceContext();
+	const { viewMode } = useChatViewStore();
 
 	// Listen for toast events from other React instances
 	useEffect(() => {

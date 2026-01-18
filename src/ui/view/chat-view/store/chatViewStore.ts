@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { ChatProject, PendingConversation, ChatConversation } from '@/service/chat/types';
 import { useProjectStore } from '@/ui/store/projectStore';
+import { VIEW_CLASS_NAME } from '@antv/g2';
 
 /**
  * View modes for ChatView
@@ -45,7 +46,7 @@ interface ChatViewStore {
 
 export const useChatViewStore = create<ChatViewStore>((set) => ({
 	// Initial state
-	viewMode: null,
+	viewMode: ViewMode.HOME,
 	projectForOverview: null,
 	pendingConversation: null,
 	initialSelectedModel: null,

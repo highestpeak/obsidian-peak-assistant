@@ -57,16 +57,11 @@ export class ChatView extends ItemView {
 	private render(): void {
 		if (!this.reactRenderer) return;
 
-		const state = useChatViewStore.getState();
-		const { viewMode } = state;
-
-		if (!viewMode) return;
-
 		// Use unified React component for all views with service context
 		this.reactRenderer.render(
 			createReactElementWithServices(
 				ChatViewComponent,
-				{ viewMode },
+				{ },
 				this.appContext
 			)
 		);
