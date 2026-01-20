@@ -1,6 +1,7 @@
 import React from 'react';
-import { FileText, Image, FileType as FileTypeIcon, Folder, Heading, File } from 'lucide-react';
+import { FileText, Image, FileType as FileTypeIcon, Folder, Heading, File, Globe, Database } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
+import type { SearchResultSource } from '@/service/search/types';
 
 /**
  * File type utilities
@@ -47,6 +48,21 @@ export function getAttachmentStats(attachments: string[]): { pdf: number; image:
 		stats[type]++;
 	}
 	return stats;
+}
+
+/**
+ * Get icon for search result source
+ */
+export function getSourceIcon(source?: SearchResultSource): React.ReactElement {
+	switch (source) {
+		case 'web':
+			return <Globe className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#3b82f6]" />;
+		case 'x':
+			return <Database className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#8b5cf6]" />;
+		case 'local':
+		default:
+			return <FileText className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed]" />;
+	}
 }
 
 /**

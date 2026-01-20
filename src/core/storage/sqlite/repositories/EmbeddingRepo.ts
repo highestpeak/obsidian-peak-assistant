@@ -166,10 +166,10 @@ export class EmbeddingRepo {
 			INSERT INTO vec_embeddings(rowid, embedding)
 			VALUES (CAST(? AS INTEGER), ?)
 		`);
-		const logMsg = logContext
-			? `[EmbeddingRepo] Inserting into vec_embeddings with rowid: ${embeddingRowid} (${logContext})`
-			: `[EmbeddingRepo] Inserting into vec_embeddings with rowid: ${embeddingRowid}`;
-		console.debug(logMsg);
+		// const logMsg = logContext
+		// 	? `[EmbeddingRepo] Inserting into vec_embeddings with rowid: ${embeddingRowid} (${logContext})`
+		// 	: `[EmbeddingRepo] Inserting into vec_embeddings with rowid: ${embeddingRowid}`;
+		// console.debug(logMsg);
 		insertStmt.run(embeddingRowid, embeddingBuffer);
 	}
 

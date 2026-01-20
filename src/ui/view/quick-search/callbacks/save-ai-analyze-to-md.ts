@@ -21,14 +21,28 @@ export async function saveAiAnalyzeResultToMarkdown(app: App, params: {
 		await ensureFolder(app, fullFolderPath);
 	}
 
+	const graph = params.result.insights?.graph;
+	const transformedGraph = graph ? {
+		nodes: graph.nodes.map(node => ({
+			id: node.id,
+			label: node.label,
+			kind: node.type
+		})),
+		edges: graph.edges.map(edge => ({
+			from: edge.from_node_id,
+			to: edge.to_node_id,
+			weight: edge.weight
+		}))
+	} : undefined;
+
 	const content = renderMarkdown({
 		query: params.query,
 		webEnabled: params.webEnabled === true,
 		summary: params.result.summary,
 		sources: params.result.sources,
-		graph: params.result.insights?.graph,
+		graph: transformedGraph,
 		estimatedTokens: params.result.usage?.estimatedTokens,
-	});
+	}, graph);
 
 	const existing = app.vault.getAbstractFileByPath(filePath);
 	let finalPath = filePath;
@@ -56,7 +70,7 @@ function renderMarkdown(params: {
 	sources: SearchResultItem[];
 	graph?: { nodes: Array<{ id: string; label: string; kind: string }>; edges: Array<{ from: string; to: string; weight?: number }> };
 	estimatedTokens?: number;
-}): string {
+}, originalGraph?: GraphPreview): string {
 	const now = new Date();
 	const date = now.toISOString();
 	const lines: string[] = [];
@@ -88,7 +102,7 @@ function renderMarkdown(params: {
 	lines.push('');
 	lines.push(`# Knowledge Graph`);
 	lines.push('');
-	lines.push(renderMermaid(params.graph));
+	lines.push(renderMermaid(originalGraph));
 	lines.push('');
 	return lines.join('\\n');
 }

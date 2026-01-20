@@ -2,6 +2,8 @@
  * Mock Obsidian App for desktop development
  */
 export class MockApp {
+	isMock = true;
+
 	vault = {
 		getAbstractFileByPath: (path: string) => null,
 		getMarkdownFiles: () => [],
@@ -22,6 +24,10 @@ export class MockApp {
 		offref: (ref: any) => {},
 		getActiveFile: () => null,
 		getActiveViewOfType: (type: any) => null,
+		iterateAllLeaves: (callback: (leaf: any) => void) => {
+			// Mock implementation: do nothing since we don't have actual leaves in mock environment
+			// In a real implementation, this would iterate through all open workspace leaves
+		},
 	};
 
 	metadataCache = {

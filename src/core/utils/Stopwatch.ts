@@ -14,8 +14,8 @@
  * ```
  */
 export class Stopwatch {
-	private segments: Array<{ label: string; startTime: number; endTime?: number; duration?: number }> = [];
-	private currentSegment: { label: string; startTime: number } | null = null;
+	private segments: Array<{ label: string; startTime: number; endTime?: number; duration?: number; details?: Array<{ label: string; duration: number }> }> = [];
+	private currentSegment: { label: string; startTime: number; details?: Array<{ label: string; duration: number }> } | null = null;
 	private readonly name: string;
 
 	constructor(name: string = 'Stopwatch') {
@@ -33,7 +33,17 @@ export class Stopwatch {
 		}
 
 		const startTime = Date.now();
-		this.currentSegment = { label, startTime };
+		this.currentSegment = { label, startTime, details: [] };
+	}
+
+	/**
+	 * add to current segment.
+	 */
+	addSegmentDetail(label: string, duration: number): void {
+		if (!this.currentSegment) {
+			return;
+		}
+		this.currentSegment.details?.push({ label, duration });
 	}
 
 	/**
@@ -52,6 +62,7 @@ export class Stopwatch {
 			startTime: this.currentSegment.startTime,
 			endTime,
 			duration,
+			details: this.currentSegment.details,
 		});
 
 		this.currentSegment = null;
@@ -86,12 +97,22 @@ export class Stopwatch {
 		for (const segment of this.segments) {
 			const duration = segment.duration ?? 0;
 			lines.push(`  - ${segment.label}: ${duration.toFixed(2)} ms`);
+			if (segment.details) {
+				for (const detail of segment.details) {
+					lines.push(`    - ${detail.label}: ${detail.duration.toFixed(2)} ms`);
+				}
+			}
 		}
 
 		// If there's a current running segment, show it
 		if (this.currentSegment) {
 			const runningDuration = Date.now() - this.currentSegment.startTime;
 			lines.push(`  - ${this.currentSegment.label}: ${runningDuration.toFixed(2)} ms (running)`);
+			if (this.currentSegment.details) {
+				for (const detail of this.currentSegment.details) {
+					lines.push(`    - ${detail.label}: ${detail.duration.toFixed(2)} ms`);
+				}
+			}
 		}
 
 		if (debug) {

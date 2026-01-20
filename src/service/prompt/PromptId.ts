@@ -24,6 +24,7 @@ import * as docTagGenerateJson from './templates/doc-tag-generate-json';
 import * as contextMemory from './templates/context-memory';
 import * as userProfileContext from './templates/user-profile-context';
 import * as messageResources from './templates/message-resources';
+import { SystemInfo } from '../tools/system-info';
 
 /**
  * Prompt template definition.
@@ -184,6 +185,7 @@ export interface PromptVariables {
 		query: string;
 		documents: Array<{ index: number; text: string; boostInfo?: string }>;
 	};
+	[PromptId.AiSearchSystem]: SystemInfo;
 	[PromptId.ApplicationGenerateTitle]: {
 		messages: Array<{ role: string; content: string }>;
 		contextInfo?: string;
@@ -281,6 +283,7 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptTemplate> = {
 	[PromptId.SearchAiSummary]: createTemplate(searchAiSummary),
 	[PromptId.SearchTopicExtractJson]: createTemplate(searchTopicExtractJson),
 	[PromptId.SearchRerankRankGpt]: createTemplate(searchRerankRankGpt),
+	[PromptId.AiSearchSystem]: createTemplate(aiSearchSystem),
 	[PromptId.ApplicationGenerateTitle]: createTemplate(applicationGenerateTitle),
 	[PromptId.MemoryExtractCandidatesJson]: createTemplate(memoryExtractCandidatesJson),
 	[PromptId.MemoryUpdateBulletList]: createTemplate(memoryUpdateBulletList),

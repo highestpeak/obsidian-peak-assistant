@@ -69,6 +69,18 @@ export const RRF_CONTENT_WEIGHT = 0.6; // Combined weight for content hits (text
 export const RRF_CONTENT_VS_META_WEIGHT = 0.5; // Weight for content hits vs meta hits
 
 /**
+ * Search scoring constants for keyword matching.
+ * Used to boost search results based on keyword diversity and density.
+ */
+export const SEARCH_SCORING_DIVERSITY_BOOST_CONTENT = 0.5; // Up to 50% boost for diversity in content matches
+export const SEARCH_SCORING_DENSITY_BOOST_CONTENT = 0.3; // Up to 30% boost for density in content matches
+export const SEARCH_SCORING_MAX_OCCURRENCES_CONTENT = 10; // Max reasonable occurrences per keyword in content
+
+export const SEARCH_SCORING_DIVERSITY_BOOST_META = 0.8; // Up to 80% boost for diversity in meta matches
+export const SEARCH_SCORING_DENSITY_BOOST_META = 0.4; // Up to 40% boost for density in meta matches
+export const SEARCH_SCORING_MAX_OCCURRENCES_META = 5; // Max reasonable occurrences per keyword in meta
+
+/**
  * TODO: Turn these constants into configuration options, or make them optional parameters for tools.
  * 	This will allow the AI Agent to adjust them according to the specific scenario.
  * 	Different tasks require different "exploration scales". If the Agent can fine-tune PHYSICAL_CONNECTION_BONUS,
@@ -229,3 +241,8 @@ export const VAULT_DESCRIPTION_FILENAME = 'vault-description.md';
  * Top tags count for global tag cloud when get system info.
  */
 export const GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT = 50;
+
+/**
+ * Default recent search results count.
+ */
+export const DEFAULT_RECENT_SEARCH_RESULTS_COUNT = 30;

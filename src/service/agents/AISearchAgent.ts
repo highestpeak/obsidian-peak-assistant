@@ -78,6 +78,7 @@ export class AISearchAgent {
             prompt,
         });
 
+        // todo
         return (async function* (): AsyncGenerator<LLMStreamEvent> {
             for await (const chunk of result.fullStream) {
                 switch (chunk.type) {

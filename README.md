@@ -1,3 +1,22 @@
+## Installation
+
+### Dependencies Installation
+
+Due to peer dependency conflicts between different packages (mainly `@langchain/community` and `ignore` versions), use the following command to install dependencies:
+
+```bash
+npm run install-safe
+```
+
+Or manually:
+```bash
+npm install --legacy-peer-deps
+```
+
+This uses `--legacy-peer-deps` flag to handle peer dependency conflicts while maintaining functionality.
+
+**Note**: Regular `npm install` may show ERESOLVE errors due to peer dependency conflicts, but the above commands will resolve them properly.
+
 ## Development
 
 ### Hot Reload Setup

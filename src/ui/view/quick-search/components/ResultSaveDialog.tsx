@@ -5,7 +5,7 @@ import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { Input } from '@/ui/component/shared-ui/input';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { AiAnalyzeResult } from '@/service/search/types';
-import { saveAiAnalyzeResultToMarkdown } from '@/ui/view/quick-search/features/save-ai-analyze-to-md';
+import { saveAiAnalyzeResultToMarkdown } from '@/ui/view/quick-search/callbacks/save-ai-analyze-to-md';
 
 interface SaveDialogProps {
 	onClose: () => void;

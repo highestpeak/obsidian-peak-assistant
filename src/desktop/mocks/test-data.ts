@@ -148,6 +148,7 @@ const createMockConversations = (base: {
 						totalTokens: Math.floor(Math.random() * 230) + 60,
 					}
 				}),
+				topic: topic,
 			});
 		}
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { VaultSearchTab } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
 import { Search, Sparkles, Globe } from 'lucide-react';
@@ -6,9 +6,8 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import type { SearchScopeMode } from '@/service/search/types';
-import { parseQuickSearchInput } from '@/service/search/view/query-parser';
 import { GlobeOff } from '@/ui/component/icon';
+import { useSharedStore, useVaultSearchStore, useAIAnalysisStore } from './store';
 
 type TabType = 'vault' | 'ai';
 
@@ -48,24 +47,38 @@ const TabButton: React.FC<TabButtonProps> = ({ tab, label, activeTab, onClick, c
  * Root quick search modal content with tabs for vault and AI search.
  */
 export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
-	const [activeTab, setActiveTab] = useState<TabType>('vault');
-	const [searchQuery, setSearchQuery] = useState('');
-	const [triggerAnalysis, setTriggerAnalysis] = useState(0);
-	const [webEnabled, setWebEnabled] = useState(false);
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
-	const { app, searchClient } = useServiceContext();
+	const { app } = useServiceContext();
 
-	const [indexProgress, setIndexProgress] = useState<{ processed: number; total?: number } | null>(null);
-	const [modeOverride, setModeOverride] = useState<SearchScopeMode | null>(null);
-	const [showModeList, setShowModeList] = useState(false);
+	// Shared store
+	const { activeTab, searchQuery, setActiveTab, setSearchQuery } = useSharedStore();
+
+	// Vault search store
+	const { updateParsedQuery, isSearching, quickSearchMode } = useVaultSearchStore();
+
+	// AI analysis store
+	const { webEnabled, incrementTriggerAnalysis, toggleWeb } = useAIAnalysisStore();
 
 	const handleAnalyze = () => {
 		if (searchQuery.trim()) {
-			setTriggerAnalysis(prev => prev + 1);
+			incrementTriggerAnalysis();
 		}
 	};
 
-	const handleKeyDown = (e: React.KeyboardEvent) => {
+	useEffect(() => {
+		updateParsedQuery(app, searchQuery);
+	}, [app, searchQuery, updateParsedQuery]);
+
+	// Handle Tab key on container level to switch tabs
+	const handleContainerKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === 'Tab' && !e.shiftKey) {
+			e.preventDefault();
+			setActiveTab(activeTab === 'vault' ? 'ai' : 'vault');
+		}
+	};
+
+	// Handle key down events in the input
+	const handleInputKeyDown = (e: React.KeyboardEvent) => {
 		// Tab key switches between tabs instead of navigating between elements
 		if (e.key === 'Tab' && !e.shiftKey) {
 			e.preventDefault();
@@ -95,53 +108,25 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 		}
 	};
 
-	// Detect @web@ trigger in search query (don't remove from display, just enable web mode)
-	useEffect(() => {
-		if (activeTab === 'ai') {
-			const trimmed = searchQuery.trim();
-			const hasWebTrigger = trimmed.includes('@web@');
-			if (hasWebTrigger && !webEnabled) {
-				setWebEnabled(true);
-			} else if (!hasWebTrigger && webEnabled) {
-				// Only disable if user manually removes @web@
-				setWebEnabled(false);
-			}
-		}
-	}, [searchQuery, activeTab, webEnabled]);
-
-	// Get clean query without @web@ for actual search
-	const getCleanQuery = (query: string): string => {
-		return query.replace(/@web@\s*/g, '').trim();
-	};
-
-	const parsed = React.useMemo(() => parseQuickSearchInput({
-		app,
-		rawInput: searchQuery,
-		modeOverride,
-		topK: 50,
-	}), [app, searchQuery, modeOverride]);
-
-	useEffect(() => {
-		setShowModeList(parsed.showModeList);
-	}, [parsed.showModeList]);
-
 	// Auto focus when switching tabs
+	// Focus is now handled automatically by CodeMirrorInput on creation
 	useEffect(() => {
 		if (inputRef.current) {
 			inputRef.current.focus();
 		}
 	}, [activeTab]);
 
-	// Focus is now handled automatically by CodeMirrorInput on creation
-
-
-	// Handle Tab key on container level to switch tabs
-	const handleContainerKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === 'Tab' && !e.shiftKey) {
-			e.preventDefault();
-			setActiveTab(prev => prev === 'vault' ? 'ai' : 'vault');
+	// Restore focus to search input after go-to-line operation completes
+	useEffect(() => {
+		if (quickSearchMode === 'goToLine' && !isSearching && inputRef.current) {
+			// Small delay to ensure the scroll operation has completed
+			setTimeout(() => {
+				if (inputRef.current) {
+					inputRef.current.focus();
+				}
+			}, 100);
 		}
-	};
+	}, [quickSearchMode, isSearching]);
 
 	return (
 		<div
@@ -175,12 +160,14 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 						<Search className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-w-4 pktw-h-4 pktw-text-[#999999] pktw-z-10" />
 						<div className="pktw-relative pktw-flex pktw-items-center">
 							<CodeMirrorInput
+								ref={inputRef}
 								value={searchQuery}
 								onChange={setSearchQuery}
-								onKeyDown={handleKeyDown}
+								onKeyDown={handleInputKeyDown}
 								placeholder={
 									activeTab === 'vault'
-										? 'Search in vault... (# for in-file, @ for folder, : to go to line)'
+										// ? 'Search in vault... (# for in-file, @ for folder, : to go to line)'
+										? 'Search in vault... (# for in-file, : to go to line)'
 										: 'Ask AI anything about your vault...'
 								}
 								enableSearchTags={activeTab === 'ai'}
@@ -193,13 +180,8 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 								<Button
 									variant="ghost"
 									onClick={() => {
-										if (searchQuery.includes('@web@')) {
-											setSearchQuery(prev => prev.replace(/@web@\s*/g, '').trim());
-											setWebEnabled(false);
-										} else {
-											setSearchQuery(prev => prev + (prev.trim() ? ' @web@' : '@web@'));
-											setWebEnabled(true);
-										}
+										const newQuery = toggleWeb(searchQuery);
+										setSearchQuery(newQuery);
 									}}
 									className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors
 										${webEnabled ? 'pktw-text-[#3b82f6] pktw-border pktw-border-[#3b82f6]/30' : 'pktw-border-0 pktw-bg-transparent '}`
@@ -214,52 +196,6 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 							)}
 						</div>
 
-						{/* Mode list */}
-						{activeTab === 'vault' && showModeList && (
-							<div className="pktw-absolute pktw-left-0 pktw-right-0 pktw-mt-2 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-shadow-lg pktw-overflow-hidden">
-								<div className="pktw-flex pktw-flex-col">
-									<Button
-										variant="ghost"
-										className="pktw-justify-start !pktw-rounded-none"
-										onClick={() => {
-											setModeOverride('vault');
-											setShowModeList(false);
-											if (searchQuery.trimStart().startsWith('/')) {
-												setSearchQuery(searchQuery.trimStart().slice(1).trimStart());
-											}
-										}}
-									>
-										<span className="pktw-text-sm">Vault</span>
-									</Button>
-									<Button
-										variant="ghost"
-										className="pktw-justify-start !pktw-rounded-none"
-										onClick={() => {
-											setModeOverride('inFile');
-											setShowModeList(false);
-											if (searchQuery.trimStart().startsWith('/')) {
-												setSearchQuery(searchQuery.trimStart().slice(1).trimStart());
-											}
-										}}
-									>
-										<span className="pktw-text-sm">In File</span>
-									</Button>
-									<Button
-										variant="ghost"
-										className="pktw-justify-start !pktw-rounded-none"
-										onClick={() => {
-											setModeOverride('inFolder');
-											setShowModeList(false);
-											if (searchQuery.trimStart().startsWith('/')) {
-												setSearchQuery(searchQuery.trimStart().slice(1).trimStart());
-											}
-										}}
-									>
-										<span className="pktw-text-sm">In Folder</span>
-									</Button>
-								</div>
-							</div>
-						)}
 					</div>
 					{activeTab === 'ai' && (
 						<Button
@@ -277,20 +213,11 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 			{/* Tab Content */}
 			<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-white pktw-overflow-hidden pktw-flex pktw-flex-col">
 				{activeTab === 'ai' ? (
-					<AISearchTab searchQuery={getCleanQuery(searchQuery)} triggerAnalysis={triggerAnalysis} searchClient={searchClient} webEnabled={webEnabled} onWebEnabledChange={setWebEnabled} onSearchQueryChange={setSearchQuery} onClose={onClose} />
+					<AISearchTab onClose={onClose} />
 				) : (
-					<VaultSearchTab
-						searchInput={searchQuery}
-						searchQuery={parsed.query}
-						onSwitchToAI={() => setActiveTab('ai')}
-						searchClient={searchClient}
-						indexProgress={indexProgress}
-						onClose={onClose}
-					/>
+					<VaultSearchTab onClose={onClose} />
 				)}
 			</div>
 		</div>
 	);
 };
-
-

@@ -116,7 +116,7 @@ async function getTagCloud(): Promise<string> {
     }
 }
 
-type SystemInfo = {
+export type SystemInfo = {
     current_time: SystemTimeInfo;
     vault_statistics: SystemVaultStatistics;
     current_focus: ActiveFile;

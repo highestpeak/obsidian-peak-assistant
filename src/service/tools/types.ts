@@ -12,6 +12,7 @@ export interface AgentTool {
 
 /**
  * Wrap the tool with a safe wrapper to handle input validation errors and internal errors and return the result with duration.
+ * todo cache tool call.
  */
 export function safeAgentTool(tool: AgentTool): AgentTool {
     return {

@@ -6,7 +6,17 @@ import { Reranker } from './reranker';
 import { DEFAULT_SEARCH_MODE, DEFAULT_SEARCH_TOP_K } from '@/core/constant';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { SearchSettings } from '@/app/settings/types';
-import { RRF_K, RRF_CONTENT_WEIGHT, RRF_CONTENT_VS_META_WEIGHT } from '@/core/constant';
+import {
+	RRF_K,
+	RRF_CONTENT_WEIGHT,
+	RRF_CONTENT_VS_META_WEIGHT,
+	SEARCH_SCORING_DIVERSITY_BOOST_CONTENT,
+	SEARCH_SCORING_DENSITY_BOOST_CONTENT,
+	SEARCH_SCORING_MAX_OCCURRENCES_CONTENT,
+	SEARCH_SCORING_DIVERSITY_BOOST_META,
+	SEARCH_SCORING_DENSITY_BOOST_META,
+	SEARCH_SCORING_MAX_OCCURRENCES_META
+} from '@/core/constant';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 
 /**
@@ -70,21 +80,47 @@ export class QueryService {
 			sw.stop();
 		}
 
-		// Parallel execution: fulltext search, vector search, and meta search
+		// Parallel execution with individual timing: fulltext search, vector search, and meta search
 		sw.start('parallel_search_execution');
-		const [textItems, vecItems, metaItems] = await Promise.all([
-			// Perform fulltext search
-			this.executeFulltextSearch({ query, scopeMode, scopeValue }),
-			// Perform vector search if embedding is available and vector search is enabled
-			embedding && vectorSearchAvailable ? this.executeVectorSearch({
-				query,
-				mode: scopeMode,
-				scope: scopeValue,
-				embedding,
-			}) : Promise.resolve([]),
-			// Perform meta search for titles and paths
-			this.executeMetaSearch({ query, scopeMode, scopeValue }),
-		]);
+
+		// Helper function to time async operations
+		const timeAsyncOperation = async <T>(
+			operation: () => Promise<T>,
+		): Promise<{ result: T; duration: number }> => {
+			const startTime = Date.now();
+			const result = await operation();
+			const duration = Date.now() - startTime;
+			return { result, duration };
+		};
+		// Execute all searches in parallel with individual timing
+		const searchPromises = [
+			// Fulltext search
+			timeAsyncOperation(
+				() => this.executeFulltextSearch({ query, scopeMode, scopeValue }),
+			),
+			// Vector search (conditional)
+			embedding && vectorSearchAvailable
+				? timeAsyncOperation(
+					() => this.executeVectorSearch({
+						query,
+						mode: scopeMode,
+						scope: scopeValue,
+						embedding,
+					}),
+				)
+				: Promise.resolve({ result: [] as SearchResultItem[], duration: 0 }),
+			// Meta search
+			timeAsyncOperation(
+				() => this.executeMetaSearch({ query, scopeMode, scopeValue }),
+			),
+		];
+		const [textResult, vecResult, metaResult] = await Promise.all(searchPromises);
+		const textItems = textResult.result;
+		const vecItems = vecResult.result;
+		const metaItems = metaResult.result;
+		sw.addSegmentDetail('fulltext_search', textResult.duration);
+		sw.addSegmentDetail('vector_search', vecResult.duration);
+		sw.addSegmentDetail('meta_search', metaResult.duration);
 		sw.stop();
 
 		// Two-stage merge: content sources first, then with meta
@@ -224,8 +260,7 @@ export class QueryService {
 	}
 
 	/**
-	 * Count how many keywords are matched in the content.
-	 * Used for weighted scoring: more keyword matches = higher score.
+	 * Count how many different keywords are matched in content (diversity)
 	 */
 	private countKeywordMatches(content: string, keywords: string[]): number {
 		if (!content || keywords.length === 0) return 0;
@@ -241,6 +276,29 @@ export class QueryService {
 		}
 
 		return matchCount;
+	}
+
+	/**
+	 * Count total occurrences of all keywords in content (density)
+	 */
+	private countTotalKeywordOccurrences(content: string, keywords: string[]): number {
+		if (!content || keywords.length === 0) return 0;
+
+		const normalizedContent = normalizeTextForFts(content).toLowerCase();
+		let totalOccurrences = 0;
+
+		for (const keyword of keywords) {
+			const normalizedKeyword = keyword.toLowerCase();
+			let count = 0;
+			let index = 0;
+			while ((index = normalizedContent.indexOf(normalizedKeyword, index)) !== -1) {
+				count++;
+				index += normalizedKeyword.length;
+			}
+			totalOccurrences += count;
+		}
+
+		return totalOccurrences;
 	}
 
 	/**
@@ -299,7 +357,8 @@ export class QueryService {
 			const snippet = buildHighlightSnippet(content, termRaw);
 
 			// Count keyword matches in content
-			const keywordMatchCount = this.countKeywordMatches(content, keywords);
+			const keywordMatchCount = this.countKeywordMatches(content, keywords); // diversity: different keywords matched
+			const totalOccurrences = this.countTotalKeywordOccurrences(content, keywords); // density: total occurrences
 
 			// Title logic: use yaml title from meta, fallback to filename without extension
 			let title = meta?.title ?? null;
@@ -313,12 +372,18 @@ export class QueryService {
 			// Base score from BM25 (smaller is better, convert to larger-is-better)
 			const bm25Score = 1 / (1 + Math.max(0, Number(r.bm25 ?? 0)));
 
-			// Weighted score: boost by keyword match count
-			// More keywords matched = higher score
-			// Formula: baseScore * (1 + matchRatio * boostFactor)
-			const matchRatio = keywords.length > 0 ? keywordMatchCount / keywords.length : 0;
-			const keywordBoost = 1 + (matchRatio * 0.5); // Up to 50% boost for matching all keywords
-			const score = bm25Score * keywordBoost;
+			// Enhanced scoring: prioritize diversity (different keywords matched) over density (total occurrences)
+			// Diversity boost: up to 50% boost for matching all keywords
+			const diversityRatio = keywords.length > 0 ? keywordMatchCount / keywords.length : 0;
+			const diversityBoost = 1 + (diversityRatio * SEARCH_SCORING_DIVERSITY_BOOST_CONTENT);
+
+			// Density boost: additional boost based on total occurrences, but with diminishing returns
+			// Cap at reasonable maximum to prevent single keyword spamming
+			const maxReasonableOccurrences = keywords.length * SEARCH_SCORING_MAX_OCCURRENCES_CONTENT;
+			const densityRatio = Math.min(totalOccurrences / maxReasonableOccurrences, 1);
+			const densityBoost = 1 + (densityRatio * SEARCH_SCORING_DENSITY_BOOST_CONTENT);
+
+			const score = bm25Score * diversityBoost * densityBoost;
 
 			return {
 				id: r.path,
@@ -475,7 +540,8 @@ export class QueryService {
 			const titleText = title ?? '';
 			const pathText = r.path ?? '';
 			const combinedText = `${titleText} ${pathText}`;
-			const keywordMatchCount = this.countKeywordMatches(combinedText, keywords);
+			const keywordMatchCount = this.countKeywordMatches(combinedText, keywords); // diversity: different keywords matched
+			const totalOccurrences = this.countTotalKeywordOccurrences(combinedText, keywords); // density: total occurrences
 
 			// For meta search, create snippet from title and path
 			const content = `${title} ${r.path}`;
@@ -484,11 +550,17 @@ export class QueryService {
 			// Base score from BM25 (smaller is better, convert to larger-is-better)
 			const bm25Score = 1 / (1 + Math.max(0, Number(r.bm25 ?? 0)));
 
-			// Weighted score: boost by keyword match count
+			// Enhanced scoring for meta matches: prioritize diversity (different keywords matched) over density
 			// Meta matches are important, so give higher boost
-			const matchRatio = keywords.length > 0 ? keywordMatchCount / keywords.length : 0;
-			const keywordBoost = 1 + (matchRatio * 0.8); // Up to 80% boost for meta matches
-			const score = bm25Score * keywordBoost;
+			const diversityRatio = keywords.length > 0 ? keywordMatchCount / keywords.length : 0;
+			const diversityBoost = 1 + (diversityRatio * SEARCH_SCORING_DIVERSITY_BOOST_META);
+
+			// Density boost: additional boost based on total occurrences in title/path
+			const maxReasonableOccurrences = keywords.length * SEARCH_SCORING_MAX_OCCURRENCES_META;
+			const densityRatio = Math.min(totalOccurrences / maxReasonableOccurrences, 1);
+			const densityBoost = 1 + (densityRatio * SEARCH_SCORING_DENSITY_BOOST_META);
+
+			const score = bm25Score * diversityBoost * densityBoost;
 
 			return {
 				id: r.path,

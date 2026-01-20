@@ -46,7 +46,8 @@ export class Reranker {
 			return items.map((i) => ({ ...i, score: i.score ?? 0 })) as SearchResultItem[];
 		}
 
-		// Get ranking signals and related paths for boost context
+		// Get ranking signals and related paths for boost context.
+		// eg: last open time, open count, etc.
 		const signals = await this.getSignalsForPaths(items.map((i) => i.path));
 		const related = scopeValue?.currentFilePath
 			? await this.getRelatedPathsWithinHops({
