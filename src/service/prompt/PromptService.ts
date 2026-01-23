@@ -4,8 +4,8 @@ import { ensureFolder } from '@/core/utils/vault-utils';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import type { AIServiceSettings } from '@/app/settings/types';
 import Handlebars from 'handlebars';
-import { StreamingCallbacks, StreamType } from '@/service/chat/types';
-import { MessagePart } from '@/core/providers/types';
+import { LLMStreamEvent, MessagePart } from '@/core/providers/types';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 
 /**
  * Unified prompt service with code-first templates and optional file overrides.
@@ -114,20 +114,16 @@ export class PromptService {
 	 * Render a prompt template and call streamChat with streaming callbacks.
 	 * @param promptId - The prompt identifier
 	 * @param variables - Variables for the prompt template
-	 * @param callbacks - Streaming callbacks for handling progress
-	 * @param streamType - Stream type identifier (default: 'content')
 	 * @param provider - LLM provider name
 	 * @param model - Model identifier
 	 * @returns The complete LLM response content
 	 */
-	async chatWithPromptStream<T extends PromptId>(
+	async *chatWithPromptStream<T extends PromptId>(
 		promptId: T,
 		variables: PromptVariables[T] | null,
-		callbacks: StreamingCallbacks,
-		streamType: StreamType = 'content',
 		provider?: string,
 		model?: string
-	): Promise<string> {
+	): AsyncGenerator<LLMStreamEvent> {
 		if (!this.chat) {
 			throw new Error('Chat service not available. Call setChatService() first.');
 		}
@@ -149,9 +145,11 @@ export class PromptService {
 			}
 		}
 
-		callbacks.onStart?.(streamType);
+		const toolCallId = generateUuidWithoutHyphens();
+		yield { type: 'prompt-stream-start', id: toolCallId, promptId, variables };
 
-		let fullContent = '';
+		const contentChunks: string[] = [];
+		const startTime = Date.now();
 		try {
 			const stream = this.chat.streamChat({
 				provider,
@@ -166,27 +164,17 @@ export class PromptService {
 
 			for await (const event of stream) {
 				if (event.type === 'text-delta') {
-					fullContent += event.text;
-					callbacks.onDelta?.(streamType, event.text);
+					contentChunks.push(event.text);
+					yield { type: 'prompt-stream-delta', id: toolCallId, promptId, delta: event.text };
 				} else if (event.type === 'complete') {
-					const finalContent = fullContent.trim();
-					callbacks.onComplete?.(streamType, finalContent, {
-						estimatedTokens: event.usage?.totalTokens,
-						usage: event.usage,
-					});
-					return finalContent;
+					const finalContent = contentChunks.join('').trim();
+					yield { type: 'prompt-stream-result', id: toolCallId, promptId, output: finalContent };
 				} else if (event.type === 'error') {
-					callbacks.onError?.(streamType, event.error);
-					throw event.error;
+					yield { type: 'error', error: event.error, durationMs: Date.now() - startTime };
 				}
 			}
-
-			// If stream ends without complete event, return what we have
-			const finalContent = fullContent.trim();
-			callbacks.onComplete?.(streamType, finalContent);
-			return finalContent;
 		} catch (error) {
-			callbacks.onError?.(streamType, error);
+			yield { type: 'error', error, durationMs: Date.now() - startTime };
 			throw error;
 		}
 	}
@@ -218,15 +206,16 @@ export class PromptService {
 	 * Load prompt override from vault file if exists.
 	 */
 	private async loadOverride(id: PromptId): Promise<string | undefined> {
-		console.debug(`[PromptService] Loading prompt override for: ${id}`);
+		// console.debug(`[PromptService] Loading prompt override for: ${id}`);
 		const cacheKey = `override:${id}`;
 		if (this.cache.has(cacheKey)) {
+			console.debug(`[PromptService] Loading prompt override from cache for: ${id}`);
 			return this.cache.get(cacheKey);
 		}
 
 		const fileName = `${id}.prompt.md`;
 		const filePath = normalizePath(`${this.promptFolder}/${fileName}`);
-		console.debug(`[PromptService] Checking for prompt override at: ${filePath}`);
+		// console.debug(`[PromptService] Checking for prompt override at: ${filePath}`);
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 
 		if (!(file instanceof TFile)) {

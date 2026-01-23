@@ -273,6 +273,7 @@ export class GraphEdgeRepo {
 
 	/**
 	 * Get nodes with zero out-degree (no outgoing edges).
+	 * todo cache degree fields in graph_nodes table.
 	 * @param limit Maximum number of nodes to return
 	 */
 	async getNodesWithZeroOutDegree(limit?: number): Promise<string[]> {
@@ -292,6 +293,7 @@ export class GraphEdgeRepo {
 
 	/**
 	 * Get nodes with zero in-degree (no incoming edges).
+	 * todo cache degree fields in graph_nodes table.
 	 * @param limit Maximum number of nodes to return
 	 */
 	async getNodesWithZeroInDegree(limit?: number): Promise<string[]> {

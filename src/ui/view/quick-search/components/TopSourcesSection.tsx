@@ -5,12 +5,13 @@ import { getSourceIcon } from '@/ui/view/shared/file-utils';
 import type { SearchResultItem } from '@/service/search/types';
 
 /**
- * Top sources section component showing relevant files with staggered animation
+ * Top sources section component showing relevant files with optional staggered animation
  */
 export const TopSourcesSection: React.FC<{
 	sources: SearchResultItem[];
 	onOpen: (source: SearchResultItem | string) => void;
-}> = ({ sources, onOpen }) => {
+	skipAnimation?: boolean;
+}> = ({ sources, onOpen, skipAnimation = false }) => {
 	const [visibleCount, setVisibleCount] = React.useState(0);
 
 	// Apply source mixing strategy (ensure minimum 2 items per source, then interleave)
@@ -21,6 +22,12 @@ export const TopSourcesSection: React.FC<{
 	React.useEffect(() => {
 		if (mixedSources.length === 0) {
 			setVisibleCount(0);
+			return;
+		}
+
+		if (skipAnimation) {
+			// Skip animation and show all items immediately
+			setVisibleCount(mixedSources.length);
 			return;
 		}
 
@@ -36,7 +43,7 @@ export const TopSourcesSection: React.FC<{
 		}, 100); // Show one item every 100ms
 
 		return () => clearInterval(interval);
-	}, [mixedSources.length]);
+	}, [mixedSources.length, skipAnimation]);
 
 	return (
 		<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">

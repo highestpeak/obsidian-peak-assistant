@@ -20,7 +20,7 @@ import {
     generateText,
     ModelMessage,
 } from 'ai';
-import { LLMRequest, LLMResponse, LLMStreamEvent, LLMResponseSource, MessagePart, LLMRequestMessage } from '../types';
+import { LLMRequest, LLMResponse, LLMStreamEvent, LLMResponseSource, MessagePart, LLMRequestMessage, ToolResultOutput } from '../types';
 
 /**
  * Build common AI SDK parameters from LLMRequest
@@ -89,7 +89,7 @@ export async function* streamChat(
         const result = streamText(buildAiSdkParams(model, request));
 
         for await (const chunk of result.fullStream) {
-            console.debug('[ai-sdk-adapter] Chunk:', chunk);
+            // console.debug('[ai-sdk-adapter] Chunk:', chunk);
             switch (chunk.type) {
                 case 'text-delta':
                     yield { type: 'text-delta', text: chunk.text };
@@ -136,7 +136,9 @@ export async function* streamChat(
                 case 'finish': {
                     yield {
                         type: 'complete',
-                        usage: chunk.totalUsage
+                        usage: chunk.totalUsage,
+                        finishReason: chunk.finishReason,
+                        durationMs: Date.now() - startTime
                     };
                     break;
                 }
@@ -157,7 +159,7 @@ export async function* streamChat(
 
         // Yield completion event with usage
         const finalUsage = await result.usage;
-        yield { type: 'complete', usage: finalUsage, durationMs: Date.now() - startTime };
+        yield { type: 'complete', usage: finalUsage, finishReason: 'stop', durationMs: Date.now() - startTime };
     } catch (error) {
         console.error('[ai-sdk-adapter] Stream chat exception error:', error);
         yield { type: 'error', error: error as Error, durationMs: Date.now() - startTime };
@@ -174,7 +176,10 @@ function mapContentPartToAiSdk(part: MessagePart): Array<
     | { type: 'file'; url: string; mediaType: string; filename?: string }
     | { type: 'reasoning'; text: string }
     | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
-    | { type: 'tool-result'; toolCallId: string; toolName: string; output: unknown }
+    | {
+        type: 'tool-result'; toolCallId: string; toolName: string;
+        output: ToolResultOutput;
+    }
 > {
     switch (part.type) {
         case 'text':
@@ -223,10 +228,19 @@ function mapContentPartToAiSdk(part: MessagePart): Array<
             }];
         case 'tool-result':
             return [{
-                type: 'tool-result',
-                toolCallId: part.toolCallId,
-                toolName: part.toolName,
-                output: part.output
+                type: 'text',
+                /**
+                 * ollama-ai-provider-v2 don't support tool-result content part, so we fallback to text
+                 * as for other providers, we don't handle this differently to keep consistent
+                 * see. https://github.com/nordwestt/ollama-ai-provider-v2/blob/4f28ca78f2fd101ba485e691a73fdde60368d0c8/src/adaptors/convert-to-ollama-chat-messages.ts
+                 *   "Unsupported part" for assistant message.
+                 */
+                text: JSON.stringify({
+                    type: 'tool-result',
+                    toolCallId: part.toolCallId,
+                    toolName: part.toolName,
+                    output: part.output
+                })
             }];
         default:
             return [{ type: 'text', text: '' }];

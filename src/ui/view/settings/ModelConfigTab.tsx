@@ -78,6 +78,11 @@ function ResetAllModelsSection({
 				search: {
 					...settings.search,
 					searchSummaryModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId },
+					aiAnalysisModel: {
+						...settings.search.aiAnalysisModel,
+						thoughtAgentModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId },
+						searchAgentModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId }
+					},
 					chunking: {
 						...settings.search.chunking,
 						embeddingModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId },
@@ -296,7 +301,7 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 		};
 	}, [eventBus, loadModels]);
 
-	const { updateAISettings, updateDefaultModel, updateSearchModel, updateChunkingModel, updatePromptModel } = settingsUpdates;
+	const { updateAISettings, updateDefaultModel, updateSearchModel, updateChunkingModel, updateAIAnalysisModel, updatePromptModel } = settingsUpdates;
 
 	const modelConfigs: ModelConfigItem[] = [
 		{
@@ -312,6 +317,20 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 			description: 'Model for generating search result summaries. Falls back to default model if not configured.',
 			currentModel: settings.search.searchSummaryModel,
 			onChange: (provider, modelId) => updateSearchModel('searchSummaryModel', provider, modelId),
+		},
+		{
+			id: 'thoughtAgent',
+			label: 'AI Search Thought Agent',
+			description: 'Model for the coordinator agent that plans and orchestrates AI search tasks. Falls back to default model if not configured.',
+			currentModel: settings.search.aiAnalysisModel?.thoughtAgentModel,
+			onChange: (provider, modelId) => updateAIAnalysisModel('thoughtAgentModel', provider, modelId),
+		},
+		{
+			id: 'searchAgent',
+			label: 'AI Search Agent',
+			description: 'Model for the executor agent that performs searches and content analysis. Falls back to default model if not configured.',
+			currentModel: settings.search.aiAnalysisModel?.searchAgentModel,
+			onChange: (provider, modelId) => updateAIAnalysisModel('searchAgentModel', provider, modelId),
 		},
 		{
 			id: 'embedding',

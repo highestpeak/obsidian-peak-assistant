@@ -55,17 +55,18 @@ export class AISearchService {
 
 			// Use streaming chatWithPrompt
 			let estimatedTokens = 0;
-			const summary = await this.aiServiceManager.chatWithPromptStream(
-				PromptId.SearchAiSummary,
-				{
-					query,
-					sources: sourcesArray,
-					graphContext,
-					webEnabled,
-				},
-				callbacks || {},
-				'summary',
-			);
+			// const summary = await this.aiServiceManager.chatWithPromptStream(
+			// 	PromptId.SearchAiSummary,
+			// 	{
+			// 		query,
+			// 		sources: sourcesArray,
+			// 		graphContext,
+			// 		webEnabled,
+			// 	},
+			// 	callbacks || {},
+			// 	'summary',
+			// );
+			const summary = 'deprecated';
 
 			// Fallback token estimation if not provided
 			estimatedTokens = Math.ceil((query.length + sourcesArray.reduce((sum, s) => sum + (s.snippet?.length || 0) + s.title.length, 0)) / 4);
@@ -118,17 +119,18 @@ export class AISearchService {
 			callbacks?.onStart?.('topics');
 
 			// Use streaming chatWithPrompt
-			const content = await this.aiServiceManager.chatWithPromptStream(
-				PromptId.SearchTopicExtractJson,
-				{
-					query,
-					summary,
-					sources: sourcesArray,
-					graphContext,
-				},
-				callbacks || {},
-				'topics',
-			);
+			// const content = await this.aiServiceManager.chatWithPromptStream(
+			// 	PromptId.SearchTopicExtractJson,
+			// 	{
+			// 		query,
+			// 		summary,
+			// 		sources: sourcesArray,
+			// 		graphContext,
+			// 	},
+			// 	callbacks || {},
+			// 	'topics',
+			// );
+			const content = 'deprecated';
 
 			// Parse final topics from JSON
 			const topics = this.parseTopicsFromJson(content);
@@ -139,7 +141,7 @@ export class AISearchService {
 			if (callbacks?.onComplete) {
 				callbacks.onComplete('topics', content, { topics: topics.length > 0 ? topics : [] });
 			}
-			
+
 			return topics;
 		} catch (error) {
 			console.warn('[AISearchService] Failed to extract topics:', error);
@@ -155,24 +157,24 @@ export class AISearchService {
 		try {
 			// Remove markdown code block markers if present
 			let cleanedContent = content.trim();
-			
+
 			// Remove ```json or ``` at the start
 			cleanedContent = cleanedContent.replace(/^```json\s*/i, '');
 			cleanedContent = cleanedContent.replace(/^```\s*/, '');
-			
+
 			// Remove ``` at the end
 			cleanedContent = cleanedContent.replace(/\s*```$/, '');
-			
+
 			// Trim again after removing markers
 			cleanedContent = cleanedContent.trim();
-			
+
 			const topics = JSON.parse(cleanedContent) as Array<{ label: string; weight: number }>;
 			// Validate and sort by weight
 			return topics
 				.filter((t) => t.label && typeof t.weight === 'number')
 				.sort((a, b) => b.weight - a.weight)
 				.slice(0, 10);
-		} catch(error) {
+		} catch (error) {
 			console.warn('[AISearchService] Failed to parse topics from JSON:', error, 'content:', content);
 			// If parsing fails, return empty array
 			return [];
@@ -224,9 +226,9 @@ export class AISearchService {
 				}),
 				// 2. Generate summary using LLM with streaming support
 				this.generateSummaryWithStreaming({
-			query,
-			sources,
-			webEnabled,
+					query,
+					sources,
+					webEnabled,
 					graph: undefined, // Will enhance summary with graph later if needed
 					callbacks,
 				}),
@@ -239,20 +241,20 @@ export class AISearchService {
 				query,
 				sources,
 				summary,
-			graph,
+				graph,
 				callbacks,
-		});
+			});
 
 			const result = {
-			summary,
-			insights: {
-				topics: topics.length > 0 ? topics : undefined,
-				graph: graph && graph.nodes.length > 0 ? graph : undefined,
-			},
-			usage: {
-				estimatedTokens,
-			},
-		};
+				summary,
+				insights: {
+					topics: topics.length > 0 ? topics : undefined,
+					graph: graph && graph.nodes.length > 0 ? graph : undefined,
+				},
+				usage: {
+					estimatedTokens,
+				},
+			};
 
 			return result;
 

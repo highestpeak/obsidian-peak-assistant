@@ -17,7 +17,7 @@ export function createChatMessage(
 	content: string,
 	model: string,
 	provider: string,
-	timezone: string
+	timezone?: string
 ): ChatMessage {
 	const timestamp = Date.now();
 	return {
@@ -27,7 +27,7 @@ export function createChatMessage(
 		model,
 		provider,
 		createdAtTimestamp: timestamp,
-		createdAtZone: timezone,
+		createdAtZone: timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
 		starred: false,
 	};
 }
@@ -45,7 +45,7 @@ export function createChatErrorMessage(
 	error: unknown,
 	model: string,
 	provider: string,
-	timezone: string
+	timezone?: string
 ): ChatMessage {
 	const errorContent = getErrorMessage(error);
 	const message = createChatMessage('assistant', errorContent, model, provider, timezone);

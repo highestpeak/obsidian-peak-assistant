@@ -74,10 +74,21 @@ export interface SearchSettings {
 	/**
 	 * Model configuration for AI search summary generation.
 	 * If not provided, will fallback to defaultModel from AI settings.
+	 * @deprecated
 	 */
 	searchSummaryModel?: {
 		provider: string;
 		modelId: string;
+	};
+	aiAnalysisModel?: {
+		thoughtAgentModel?: {
+			provider: string;
+			modelId: string;
+		};
+		searchAgentModel?: {
+			provider: string;
+			modelId: string;
+		};
 	};
 	/**
 	 * Index refresh interval in milliseconds for debouncing search index updates.
@@ -96,6 +107,12 @@ export interface SearchSettings {
 
 	shortSummaryLength: number;
 	fullSummaryLength: number;
+
+	/**
+	 * Maximum iterations for multi-agent ReAct loop.
+	 * Default: 10
+	 */
+	maxMultiAgentIterations: number;
 }
 
 /**
@@ -142,12 +159,24 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 		provider: 'openai',
 		modelId: 'gpt-4o-mini',
 	},
+	aiAnalysisModel: {
+		thoughtAgentModel: {
+			provider: 'openai',
+			modelId: 'gpt-4o-mini',
+		},
+		searchAgentModel: {
+			provider: 'openai',
+			modelId: 'gpt-4o-mini',
+		},
+	},
 	indexRefreshInterval: 5000, // 5 seconds
 
 	aiAnalysisWebSearchImplement: 'local_chromium',
 
 	shortSummaryLength: 150,
 	fullSummaryLength: 2000,
+
+	maxMultiAgentIterations: 10,
 };
 
 /**

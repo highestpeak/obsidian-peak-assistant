@@ -220,12 +220,14 @@ export interface PendingConversation {
 /**
  * Stream type identifiers for different streaming operations.
  * Used to distinguish between different types of streams in unified callbacks.
+ * @deprecated
  */
 export type StreamType = 'summary' | 'topics' | 'graph' | 'content' | 'other';
 
 /**
  * Generic streaming callbacks for any streaming operation.
  * Provides unified interface for handling streaming progress across different features.
+ * @deprecated use LLMStreamEvent instead.
  */
 export interface StreamingCallbacks {
 	/**

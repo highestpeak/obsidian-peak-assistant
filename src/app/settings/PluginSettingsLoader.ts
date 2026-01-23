@@ -133,6 +133,41 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 		}
 	}
 
+	// AI analysis model
+	if (rawSearch.aiAnalysisModel && typeof rawSearch.aiAnalysisModel === 'object') {
+		const aiAnalysis = rawSearch.aiAnalysisModel as {
+			thoughtAgentModel?: { provider?: unknown; modelId?: unknown };
+			searchAgentModel?: { provider?: unknown; modelId?: unknown };
+		};
+
+		settings.aiAnalysisModel = {};
+
+		// Thought agent model
+		if (aiAnalysis.thoughtAgentModel && typeof aiAnalysis.thoughtAgentModel === 'object') {
+			const model = aiAnalysis.thoughtAgentModel as { provider?: unknown; modelId?: unknown };
+			const provider = getString(model.provider, '');
+			const modelId = getString(model.modelId, '');
+			if (provider && modelId) {
+				settings.aiAnalysisModel.thoughtAgentModel = { provider, modelId };
+			}
+		}
+
+		// Search agent model
+		if (aiAnalysis.searchAgentModel && typeof aiAnalysis.searchAgentModel === 'object') {
+			const model = aiAnalysis.searchAgentModel as { provider?: unknown; modelId?: unknown };
+			const provider = getString(model.provider, '');
+			const modelId = getString(model.modelId, '');
+			if (provider && modelId) {
+				settings.aiAnalysisModel.searchAgentModel = { provider, modelId };
+			}
+		}
+
+		// If no models were set, use default values
+		if (!settings.aiAnalysisModel.thoughtAgentModel && !settings.aiAnalysisModel.searchAgentModel) {
+			settings.aiAnalysisModel = { ...DEFAULT_SEARCH_SETTINGS.aiAnalysisModel };
+		}
+	}
+
 	// Index refresh interval
 	if (typeof rawSearch.indexRefreshInterval === 'number') {
 		settings.indexRefreshInterval = rawSearch.indexRefreshInterval;
@@ -154,6 +189,11 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 	}
 	if (typeof rawSearch.fullSummaryLength === 'number') {
 		settings.fullSummaryLength = Math.max(500, Math.min(10000, rawSearch.fullSummaryLength));
+	}
+
+	// Max multi-agent iterations
+	if (typeof rawSearch.maxMultiAgentIterations === 'number') {
+		settings.maxMultiAgentIterations = Math.max(1, Math.min(50, rawSearch.maxMultiAgentIterations));
 	}
 
 	// Image description model

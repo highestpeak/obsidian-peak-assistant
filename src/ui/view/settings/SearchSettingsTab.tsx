@@ -368,6 +368,40 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 					</div>
 				</div>
 			</div>
+
+			{/* Multi-Agent Settings */}
+			<div className="pktw-border-t pktw-border-border pktw-pt-6">
+				<div className="pktw-mb-6">
+					<h4 className="pktw-text-base pktw-font-semibold pktw-text-foreground pktw-mb-1">Multi-Agent Settings</h4>
+					<p className="pktw-text-xs pktw-text-muted-foreground">
+						Configure settings for the multi-agent ReAct loop system.
+					</p>
+				</div>
+				<div className="pktw-space-y-6">
+					{/* Max Multi-Agent Iterations */}
+					<div className="pktw-flex pktw-items-start pktw-gap-4">
+						{/* Left side: label and description */}
+						<div className="pktw-flex-1 pktw-min-w-0">
+							<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+								Max Multi-Agent Iterations
+							</label>
+							<p className="pktw-text-xs pktw-text-muted-foreground">
+								Maximum iterations for the ThoughtAgent-SearchAgent ReAct loop. Default: 10
+							</p>
+						</div>
+						{/* Right side: input */}
+						<div className="pktw-flex-shrink-0 pktw-w-64">
+							<NumberInputWithConfirm
+								value={settings.search.maxMultiAgentIterations}
+								onConfirm={(value) => updateSearch('maxMultiAgentIterations', value)}
+								min={1}
+								max={50}
+								placeholder="10"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	);
 }

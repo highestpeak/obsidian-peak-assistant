@@ -1,13 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { VaultSearchTab } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
-import { Search, Sparkles, Globe } from 'lucide-react';
+import { Search, Sparkles, Globe, X } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { GlobeOff } from '@/ui/component/icon';
 import { useSharedStore, useVaultSearchStore, useAIAnalysisStore } from './store';
+import { useAIAnalysis } from './hooks/useAIAnalysis';
 
 type TabType = 'vault' | 'ai';
 
@@ -57,12 +58,20 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 	const { updateParsedQuery, isSearching, quickSearchMode } = useVaultSearchStore();
 
 	// AI analysis store
-	const { webEnabled, incrementTriggerAnalysis, toggleWeb } = useAIAnalysisStore();
+	const { webEnabled, toggleWeb, resetAnalysisState, isAnalyzing } = useAIAnalysisStore();
+
+	// AI analysis hook
+	const { performAnalysis, cancel } = useAIAnalysis();
 
 	const handleAnalyze = () => {
 		if (searchQuery.trim()) {
-			incrementTriggerAnalysis();
+			resetAnalysisState();
+			performAnalysis();
 		}
+	};
+
+	const handleCancel = () => {
+		cancel();
 	};
 
 	useEffect(() => {
@@ -199,12 +208,25 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 					</div>
 					{activeTab === 'ai' && (
 						<Button
-							onClick={handleAnalyze}
-							disabled={!searchQuery.trim()}
-							className="pktw-px-5 pktw-py-2.5 pktw-bg-[#7c3aed] pktw-text-white hover:pktw-bg-[#6d28d9] pktw-whitespace-nowrap !pktw-rounded-md"
+							onClick={isAnalyzing ? handleCancel : handleAnalyze}
+							disabled={!searchQuery.trim() && !isAnalyzing}
+							className={`pktw-px-5 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md ${
+								isAnalyzing
+									? 'pktw-bg-red-500 pktw-text-white hover:pktw-bg-red-600'
+									: 'pktw-bg-[#7c3aed] pktw-text-white hover:pktw-bg-[#6d28d9]'
+							}`}
 						>
-							<Sparkles className="pktw-w-4 pktw-h-4" />
-							<span>Analyze</span>
+							{isAnalyzing ? (
+								<>
+									<X className="pktw-w-4 pktw-h-4" />
+									<span>Cancel</span>
+								</>
+							) : (
+								<>
+									<Sparkles className="pktw-w-4 pktw-h-4" />
+									<span>Analyze</span>
+								</>
+							)}
 						</Button>
 					)}
 				</div>

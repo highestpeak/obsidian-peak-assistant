@@ -1,25 +1,134 @@
 import { create } from 'zustand';
+import { AISearchGraph, AISearchSource, AISearchTopic, InsightCard, Suggestion } from '@/service/agents/AISearchAgent';
+import { LLMUsage } from '@/core/providers/types';
+import { useUIEventStore } from '@/ui/store/uiEventStore';
+
+export type AIAnalysisStepType =
+	'idle' |
+	'search-thought-talking' |
+	'search-thought-reasoning' |
+	'search-inspector-talking' |
+	'search-inspector-reasoning' |
+	'search-inspector-inspect-note-context' |
+	'search-inspector-graph-traversal' |
+	'search-inspector-find-path' |
+	'search-inspector-find-key-nodes' |
+	'search-inspector-find-orphans' |
+	'search-inspector-search-by-dimensions' |
+	'search-inspector-explore-folder' |
+	'search-inspector-recent-changes-whole-vault' |
+	'search-inspector-local-search-whole-vault' |
+	'search-inspector-content-reader' |
+	'search-inspector-web-search' |
+	'search-thought-summary-context-messages';
+
+export interface AIAnalysisStep {
+	type: AIAnalysisStepType;
+	textChunks: string[]; // Use array to efficiently accumulate text chunks
+	extra?: any;
+}
 
 interface AIAnalysisStore {
-	// State
+	// before analysis
 	triggerAnalysis: number;
 	webEnabled: boolean;
 
-	// Actions
+	/**
+	 * streaming states
+	 * analyzingBeforeFirstToken => hasStartedStreaming => hasAnalyzed => analysisCompleted
+	 */
+	isAnalyzing: boolean;
+	analyzingBeforeFirstToken: boolean;
+	hasStartedStreaming: boolean;
+	hasAnalyzed: boolean;
+	// Flag to prevent re-triggering analysis on tab switch
+	analysisCompleted: boolean;
+	error: string | null;
+	currentStep: AIAnalysisStep;
+	/**
+	 * eg: Explored xxx, Thought xxx, Read xxx.
+	 * some step may trigger animation, eg find path shimmer, read note shimmer, etc.
+	 * every time step change. currentStep will be replace and append to the steps array.
+	 */
+	steps: AIAnalysisStep[];
+	stepTrigger: number;
+	isSummaryStreaming: boolean;
+
+	// final state (will change during streaming but will be replaced with the final state after streaming)
+	summaryChunks: string[];
+	graph: AISearchGraph | null;
+	insightCards: InsightCard[];
+	suggestions: Suggestion[];
+	topics: AISearchTopic[];
+	sources: AISearchSource[];
+	usage: LLMUsage | null;
+	duration: number | null;
+
+	// before analysis actions
 	incrementTriggerAnalysis: () => void;
-	setWebEnabled: (enabled: boolean) => void;
 	toggleWeb: (currentQuery: string) => string;
 	updateWebFromQuery: (query: string) => void;
+
+	// streaming actions
+	startAnalyzing: () => void;
+	startStreaming: () => void;
+	markCompleted: () => void;
+	recordError: (error: string) => void;
+	// Set current step type and extra data (completion handled by completeCurrentStep)
+	setCurrentStep: (type: AIAnalysisStepType, extra?: any) => void;
+	// Complete current step with text chunks (called when step finishes)
+	completeCurrentStep: (textChunks: string[]) => void;
+	startSummaryStreaming: () => void;
+
+	// final state reset actions
+	setSummary: (summary: string) => void;
+
+	// Computed getters
+	setGraph: (graph: AISearchGraph) => void;
+	setInsightCards: (insightCards: InsightCard[]) => void;
+	setSuggestions: (suggestions: Suggestion[]) => void;
+	setTopics: (topics: AISearchTopic[]) => void;
+	setSources: (sources: AISearchSource[]) => void;
+	setUsage: (usage: LLMUsage) => void;
+	setDuration: (duration: number) => void;
+
+	// Reset analysis state
+	resetAnalysisState: () => void;
+
+	// Computed getters
+	getCurrentStepText: () => string;
+	getStepText: (step: AIAnalysisStep) => string;
 }
 
-export const useAIAnalysisStore = create<AIAnalysisStore>((set) => ({
-	// Initial state
+export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
+	// before analysis
 	triggerAnalysis: 0,
 	webEnabled: false,
 
-	// Actions
+	// streaming states
+	isAnalyzing: false,
+	analyzingBeforeFirstToken: false,
+	hasStartedStreaming: false,
+	hasAnalyzed: false,
+	analysisCompleted: false,
+	error: null,
+	currentStep: { type: 'idle', textChunks: [] },
+	steps: [],
+	isSummaryStreaming: false,
+	stepTrigger: 0,
+
+	// final state
+	summaryChunks: [],
+	graph: null,
+	insightCards: [],
+	suggestions: [],
+	topics: [],
+	sources: [],
+	usage: null,
+	duration: null,
+
+	// before analysis actions
 	incrementTriggerAnalysis: () => set((state) => ({ triggerAnalysis: state.triggerAnalysis + 1 })),
-	setWebEnabled: (enabled: boolean) => set({ webEnabled: enabled }),
 	toggleWeb: (currentQuery: string) => {
 		if (currentQuery.includes('@web@')) {
 			set({ webEnabled: false });
@@ -34,6 +143,108 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set) => ({
 		const hasWebTrigger = trimmed.includes('@web@');
 		set({ webEnabled: hasWebTrigger });
 	},
+
+	// streaming actions
+	startAnalyzing: () => set({ isAnalyzing: true, analyzingBeforeFirstToken: true }),
+	startStreaming: () => set({ hasStartedStreaming: true, analyzingBeforeFirstToken: false }),
+	markCompleted: () => {
+		set({
+			isAnalyzing: false,
+			hasStartedStreaming: false,
+			analysisCompleted: true,
+			isSummaryStreaming: false
+		});
+	},
+	recordError: (error: string) => set({ error }),
+	setCurrentStep: (type: AIAnalysisStepType, extra?: any) => {
+		const prevStep = get().currentStep;
+		const prevStepType = prevStep.type;
+		if (prevStepType && prevStepType !== type) {
+			// Step type changed - trigger UI update but don't auto-complete
+			set((state) => ({
+				stepTrigger: state.stepTrigger + 1,
+				currentStep: { type, textChunks: [], extra: extra },
+			}));
+		} else {
+			// Same step type, just update extra
+			set({
+				currentStep: {
+					type,
+					textChunks: prevStep.textChunks,
+					extra: { ...prevStep.extra, ...extra }
+				}
+			});
+		}
+	},
+	completeCurrentStep: (textChunks: string[]) => {
+		const currentStep = get().currentStep;
+		if (currentStep.type !== 'idle') {
+			set((state) => ({
+				stepTrigger: state.stepTrigger + 1,
+				steps: [...state.steps, {
+					...currentStep,
+					textChunks: textChunks
+				}],
+				currentStep: { type: 'idle', textChunks: [] }
+			}));
+		}
+	},
+	startSummaryStreaming: () => set({ isSummaryStreaming: true }),
+	// final state reset actions
+	setSummary: (summary: string) => {
+		set({
+			summaryChunks: [summary], // Set as single chunk for backward compatibility
+			hasAnalyzed: true,
+		});
+	},
+
+	setGraph: (graph: AISearchGraph) => {
+		set({ graph, hasAnalyzed: true });
+	},
+	setInsightCards: (insightCards: InsightCard[]) => {
+		set({ insightCards, hasAnalyzed: true });
+	},
+	setSuggestions: (suggestions: Suggestion[]) => {
+		set({ suggestions, hasAnalyzed: true });
+	},
+	setTopics: (topics: AISearchTopic[]) => {
+		set({ topics, hasAnalyzed: true });
+	},
+	setSources: (sources: AISearchSource[]) => {
+		set({ sources, hasAnalyzed: true });
+	},
+	setUsage: (usage: LLMUsage) => {
+		set({ usage, hasAnalyzed: true });
+	},
+	setDuration: (duration: number) => {
+		set({ duration, hasAnalyzed: true });
+	},
+
+	// Reset analysis state
+	resetAnalysisState: () => set({
+		isAnalyzing: false,
+		analyzingBeforeFirstToken: false,
+		hasStartedStreaming: false,
+		hasAnalyzed: false,
+		analysisCompleted: false,
+		stepTrigger: 0,
+		error: null,
+		currentStep: { type: 'idle', textChunks: [] },
+		steps: [],
+		isSummaryStreaming: false,
+		summaryChunks: [],
+		graph: null,
+		insightCards: [],
+		suggestions: [],
+		topics: [],
+		sources: [],
+		usage: null,
+		duration: null,
+	}),
+
+	// Computed getters
+	getCurrentStepText: () => get().currentStep.textChunks.join(''),
+	getStepText: (step: AIAnalysisStep) => step.textChunks.join(''),
 }));
 
 // Get clean query without @web@ for actual search

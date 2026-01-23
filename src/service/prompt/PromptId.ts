@@ -8,6 +8,7 @@ import * as searchAiSummary from './templates/search-ai-summary';
 import * as searchTopicExtractJson from './templates/search-topic-extract-json';
 import * as searchRerankRankGpt from './templates/search-rerank-rank-gpt';
 import * as aiSearchSystem from './templates/ai-search-system';
+import * as thoughtAgentSystem from './templates/thought-agent-system';
 import * as applicationGenerateTitle from './templates/application-generate-title';
 import * as memoryExtractCandidatesJson from './templates/memory-extract-candidates-json';
 import * as memoryUpdateBulletList from './templates/memory-update-bullet-list';
@@ -25,6 +26,7 @@ import * as contextMemory from './templates/context-memory';
 import * as userProfileContext from './templates/user-profile-context';
 import * as messageResources from './templates/message-resources';
 import { SystemInfo } from '../tools/system-info';
+import { SearchAgentResult, AgentMemory, AISearchAgentOptions } from '../agents/AISearchAgent';
 
 /**
  * Prompt template definition.
@@ -66,6 +68,7 @@ export enum PromptId {
 	SearchTopicExtractJson = 'search-topic-extract-json',
 	SearchRerankRankGpt = 'search-rerank-rank-gpt',
 	AiSearchSystem = 'ai-search-system',
+	ThoughtAgentSystem = 'thought-agent-system',
 
 	// Application prompts (title generation)
 	ApplicationGenerateTitle = 'application-generate-title',
@@ -169,11 +172,9 @@ export interface PromptVariables {
 		shortSummary?: string;
 	};
 	[PromptId.SearchAiSummary]: {
-		query: string;
-		sources: Array<{ title: string; path: string; snippet?: string }>;
-		graphContext?: string;
-		webEnabled?: boolean;
-		userPreferences?: string;
+		agentResult: SearchAgentResult;
+		agentMemory: AgentMemory;
+		options: AISearchAgentOptions;
 	};
 	[PromptId.SearchTopicExtractJson]: {
 		query: string;
@@ -186,6 +187,7 @@ export interface PromptVariables {
 		documents: Array<{ index: number; text: string; boostInfo?: string }>;
 	};
 	[PromptId.AiSearchSystem]: SystemInfo;
+	[PromptId.ThoughtAgentSystem]: Record<string, never>;
 	[PromptId.ApplicationGenerateTitle]: {
 		messages: Array<{ role: string; content: string }>;
 		contextInfo?: string;
@@ -284,6 +286,7 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptTemplate> = {
 	[PromptId.SearchTopicExtractJson]: createTemplate(searchTopicExtractJson),
 	[PromptId.SearchRerankRankGpt]: createTemplate(searchRerankRankGpt),
 	[PromptId.AiSearchSystem]: createTemplate(aiSearchSystem),
+	[PromptId.ThoughtAgentSystem]: createTemplate(thoughtAgentSystem),
 	[PromptId.ApplicationGenerateTitle]: createTemplate(applicationGenerateTitle),
 	[PromptId.MemoryExtractCandidatesJson]: createTemplate(memoryExtractCandidatesJson),
 	[PromptId.MemoryUpdateBulletList]: createTemplate(memoryUpdateBulletList),

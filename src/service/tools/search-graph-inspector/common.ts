@@ -226,10 +226,13 @@ function calculateDocumentRRF(
  * @returns Array of semantic search results with document IDs and scores
  */
 export async function getSemanticSearchResults(
-    semanticFilter: { query: string; topK: number },
+    semanticFilter?: { query: string; topK: number },
     scopeMode: SearchScopeMode = 'vault',
     scopeValue?: SearchScopeValue,
 ): Promise<Array<{ nodeId: string; score: number }>> {
+    if (!semanticFilter) {
+        return [];
+    }
     const { query, topK } = semanticFilter;
 
     try {

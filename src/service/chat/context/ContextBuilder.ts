@@ -110,6 +110,8 @@ export class ContextBuilder {
 		yield { type: 'tool-result', toolName: ToolEvent.BUILD_CONTEXT_MEMORY, output: contextMemory };
 
 		// 4. Recent raw messages (last N messages) (include the latest user message)
+		// Conversation summary will auto update when the user message is sent. a seperate process in ContextUpdateService. 
+		// We assume the conversation summary is ready here.
 		yield { type: 'tool-call', toolName: ToolEvent.COLLECT_RECENT_MESSAGES, input: { maxRecentMessages: options.maxRecentMessages! } };
 		const recentMessagesCollected: LLMRequestMessage[] = [];
 		const recentMessages = params.messages.slice(-options.maxRecentMessages!);

@@ -1,15 +1,10 @@
 import { useCallback } from 'react';
-import { App } from 'obsidian';
 import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
 import { CHAT_VIEW_TYPE } from '@/app/view/types';
 import type { SearchResultItem } from '@/service/search/types';
-import type { AIServiceManager } from '@/service/chat/service-manager';
-import type { ViewManager } from '@/app/view/ViewManager';
+import { useServiceContext } from '@/ui/context/ServiceContext';
 
 export function useOpenInChat(
-	app: App,
-	manager: AIServiceManager,
-	viewManager: ViewManager,
 	searchQuery: string,
 	summary: string,
 	sources: SearchResultItem[],
@@ -17,6 +12,8 @@ export function useOpenInChat(
 	setError: (error: string | null) => void,
 	onClose?: () => void
 ) {
+	const { app, manager, viewManager } = useServiceContext();
+
 	const handleOpenInChat = useCallback(async () => {
 		try {
 			console.debug('[AISearchTab] handleOpenInChat called', {
@@ -101,7 +98,7 @@ export function useOpenInChat(
 			console.error('[AISearchTab] Open in chat failed:', e);
 			setError(e instanceof Error ? e.message : 'Failed to open in chat');
 		}
-	}, [app, manager, viewManager, searchQuery, summary, sources, topics, setError, onClose]);
+	}, [searchQuery, summary, sources, topics, setError, onClose]);
 
 	return handleOpenInChat;
 }

@@ -2,7 +2,7 @@ import { App } from 'obsidian';
 import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart } from '@/core/providers/types';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
-import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef, StreamingCallbacks, StreamType } from './types';
+import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef } from './types';
 import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId, PromptVariables } from '@/service/prompt/PromptId';
 import { ProjectService } from './service-project';
@@ -542,6 +542,13 @@ ${sourcesList}${topicsList}
 		return this.projectService.renameProject(projectId, newName);
 	}
 
+	async renderPrompt<T extends PromptId>(
+		promptId: T,
+		variables: PromptVariables[T] | null
+	): Promise<string> {
+		return this.promptService.render(promptId, variables);
+	}
+
 	/**
 	 * Chat with a prompt template.
 	 * Renders the prompt and calls the LLM with the rendered text.
@@ -561,20 +568,17 @@ ${sourcesList}${topicsList}
 	 * @param promptId - The prompt identifier
 	 * @param variables - Variables for the prompt template
 	 * @param callbacks - Streaming callbacks for handling progress
-	 * @param streamType - Stream type identifier (default: 'content')
 	 * @param provider - LLM provider name
 	 * @param model - Model identifier
 	 * @returns The complete LLM response content
 	 */
-	async chatWithPromptStream<T extends PromptId>(
+	async *chatWithPromptStream<T extends PromptId>(
 		promptId: T,
 		variables: PromptVariables[T] | null,
-		callbacks: StreamingCallbacks,
-		streamType: StreamType = 'content',
 		provider?: string,
 		model?: string
-	): Promise<string> {
-		return this.promptService.chatWithPromptStream(promptId, variables, callbacks, streamType, provider, model);
+	): AsyncGenerator<LLMStreamEvent> {
+		return this.promptService.chatWithPromptStream(promptId, variables, provider, model);
 	}
 
 	/**

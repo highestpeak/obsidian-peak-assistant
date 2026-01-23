@@ -74,7 +74,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose }) => {
 	const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const { setActiveTab } = useSharedStore();
-	const { incrementTriggerAnalysis } = useAIAnalysisStore();
+	const { incrementTriggerAnalysis, setAnalysisCompleted } = useAIAnalysisStore();
 
 	// Use vault search hook for data fetching
 	useVaultSearch();
@@ -84,6 +84,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose }) => {
 		setActiveTab('ai');
 		// Trigger AI analysis immediately after switching to AI tab
 		incrementTriggerAnalysis();
+		setAnalysisCompleted(false);
 	};
 
 	// Handle keyboard navigation

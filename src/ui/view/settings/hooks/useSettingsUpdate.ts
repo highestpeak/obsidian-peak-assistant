@@ -174,6 +174,24 @@ export function useSettingsUpdate(
 	);
 
 	/**
+	 * Update model configuration in search.aiAnalysisModel settings (thoughtAgentModel, searchAgentModel)
+	 */
+	const updateAIAnalysisModel = useCallback(
+		(key: 'thoughtAgentModel' | 'searchAgentModel', provider: string, modelId: string) => {
+			return updateSettings({
+				search: {
+					...plugin.settings.search,
+					aiAnalysisModel: {
+						...plugin.settings.search.aiAnalysisModel,
+						[key]: { provider, modelId },
+					},
+				},
+			});
+		},
+		[updateSettings] // Remove settings.search dependency to avoid stale closure
+	);
+
+	/**
 	 * Update includeDocumentTypes in search settings
 	 */
 	const updateDocumentType = useCallback(
@@ -236,6 +254,7 @@ export function useSettingsUpdate(
 		updateDefaultModel,
 		updateSearchModel,
 		updateChunkingModel,
+		updateAIAnalysisModel,
 		updatePromptModel,
 		updateSettings,
 	};

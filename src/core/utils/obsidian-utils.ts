@@ -90,7 +90,7 @@ export async function readFileAsBase64(app: App, resourceSource: string): Promis
 	return null;
 }
 
-type ActiveFile = {
+export type ActiveFile = {
 	path: string;
 	title: string;
 	selectedText: string | null;

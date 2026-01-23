@@ -1,4 +1,4 @@
-import { LanguageModelUsage, FinishReason, CallWarning, LanguageModelRequestMetadata, LanguageModelResponseMetadata, ProviderMetadata, StepResult, GeneratedFile, ContentPart, ReasoningOutput, LanguageModel } from 'ai';
+import { LanguageModelUsage, FinishReason, CallWarning, LanguageModelRequestMetadata, LanguageModelResponseMetadata, ProviderMetadata, StepResult, GeneratedFile, ContentPart, ReasoningOutput, LanguageModel, JSONValue } from 'ai';
 
 export interface ProviderConfig {
 	enabled?: boolean;
@@ -248,6 +248,10 @@ Data content. Can either be a base64-encoded string, a Uint8Array, an ArrayBuffe
  */
 type DataContent = string | Uint8Array | ArrayBuffer | Buffer;
 
+export type ToolResultOutput = { type: 'text'; value: string; }
+| { type: 'json'; value: JSONValue; }
+| { type: 'content'; value: Array<{ type: 'text'; text: string; }> }
+
 /**
  * inspire by ai-sdk's ModelMessage.
  * use for both request and response.
@@ -290,27 +294,45 @@ export type MessagePart =
 		type: 'tool-result';
 		toolCallId: string;
 		toolName: string;
-		output: any;
+		output: ToolResultOutput;
 	}
 	;
 
 export type LLMUsage = LanguageModelUsage;
 
-export type LLMStreamEvent =
+type RawStreamEvent =
 	// from AI-SDK StreamTextOnChunkCallback types
 	{ type: 'text-delta'; text: string; } |
 	{ type: 'reasoning-delta'; text: string; } |
 	({ type: 'source'; } | LLMResponseSource) |
-	{ type: 'tool-call'; toolName: string; input?: any; } |
-	{ type: 'tool-input-start'; toolName: string; } |
-	{ type: 'tool-input-delta'; delta: string; } |
-	{ type: 'tool-result'; toolName: string; input?: any; output?: any; } |
+	{ type: 'tool-call'; id?: string; toolName: string; input?: any; } |
+	{ type: 'tool-input-start'; id?: string; toolName: string; } |
+	{ type: 'tool-input-delta'; id?: string; delta: string; } |
+	{ type: 'tool-result'; id?: string; toolName: string; input?: any; output?: any; } |
 	// from project usage
 	{ type: 'on-step-finish'; text: string, finishReason: FinishReason, usage: LLMUsage } |
-	{ type: 'complete'; usage: LLMUsage, durationMs?: number } |
+	{ type: 'complete'; usage: LLMUsage, finishReason: FinishReason, durationMs?: number, result?: any } |
 	{ type: 'error'; error: Error, durationMs?: number } |
-	{ type: 'unSupported'; chunk: any }
+	{ type: 'unSupported'; chunk: any, comeFrom?: string } |
+	// from prompt service
+	{ type: 'prompt-stream-start'; id?: string; promptId: string; variables?: any; } |
+	{ type: 'prompt-stream-delta'; id?: string; promptId: string; delta?: string; } |
+	{ type: 'prompt-stream-result'; id?: string; promptId: string; output?: any; }
 	;
+
+export type LLMStreamEvent =
+	RawStreamEvent & {
+		// some times we need to pass stream trigger name to the event.
+		// as we may manual control the loop process.
+		triggerName?: StreamTriggerName;
+		extra? : any;
+	};
+
+export enum StreamTriggerName {
+	SEARCH_THOUGHT_AGENT = 'search-thought-agent',
+	SEARCH_INSPECTOR_AGENT = 'search-inspector-agent',
+	SEARCH_SUMMARY = 'search-summary',
+}
 
 export enum ToolEvent {
 	BUILD_CONTEXT_MESSAGES = 'build-context-messages',

@@ -92,6 +92,9 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
 			streamingRole: role,
 		}),
 
+	/**
+	 * Append streaming delta to content. Must use this pattern to avoid creating new strings on every delta.
+	 */
 	appendStreamingDelta: (delta: string) =>
 		set((state) => ({
 			streamingContent: state.streamingContent + delta,

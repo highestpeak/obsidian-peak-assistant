@@ -1,4 +1,5 @@
 import { z } from "zod/v3"
+import Handlebars from 'handlebars';
 
 /**
  * Don't use ToolSet from ai sdk directly; it slows TS and may crash IDE.

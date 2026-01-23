@@ -60,6 +60,7 @@ export class SearchClient {
 	 * @param req - AI analysis request
 	 * @param callbacks - Optional streaming callbacks for progressive updates
 	 * @returns AI analysis result with duration
+	 * @deprecated use AISearchAgent instead.
 	 */
 	async aiAnalyze(
 		req: AiAnalyzeRequest,

@@ -95,33 +95,34 @@ const SemanticOptions = z.object({
  */
 export function vaultGraphInspectorTool(): AgentTool {
     return safeAgentTool({
-        description: `Vault graph analysis tool for exploring note relationships and vault structure.
+        description: `
+Vault graph analysis tool for exploring note relationships and vault structure.
 
-        🎯 CORE CAPABILITIES:
+🎯 CORE CAPABILITIES:
 
-        🔍 SINGLE NOTE ANALYSIS:
-        • inspect_note_context: [Deep Dive] [detailed analysis] Use 'inspect_note_context' to understand a single note's identity (tags, connections, location)
-        
-        🔗 RELATIONSHIP DISCOVERY: - Find the room using the map
-        • graph_traversal: [Relational Discovery] exploring knowledge clusters. Explore related notes within N degrees of separation
-        • find_path: Discover connection paths between two specific notes
-        structural health and authority analysis.
-        • find_key_nodes: Identify influential notes (high connectivity nodes)
-        • find_orphans: Find disconnected/unlinked notes
+🔍 SINGLE NOTE ANALYSIS:
+• inspect_note_context: [Deep Dive] [detailed analysis] Use 'inspect_note_context' to understand a single note's identity (tags, connections, location)
 
-        📊 SEARCH & FILTERING: - Looking for a needle in a haystack.
-        • search_by_dimensions: complex multi-criteria searches. Advanced filtering by tags, folders, time ranges with boolean logic
-        • local_search_whole_vault: Full-text and semantic search across the vault
+🔗 RELATIONSHIP DISCOVERY: - Find the room using the map
+• graph_traversal: [Relational Discovery] exploring knowledge clusters. Explore related notes within N degrees of separation
+• find_path: Discover connection paths between two specific notes
+structural health and authority analysis.
+• find_key_nodes: Identify influential notes (high connectivity nodes)
+• find_orphans: Find disconnected/unlinked notes
 
-        📁 VAULT NAVIGATION:
-        • explore_folder: Browse folder structure and contents
-        • recent_changes_whole_vault: View recently modified notes
+📊 SEARCH & FILTERING: - Looking for a needle in a haystack.
+• search_by_dimensions: complex multi-criteria searches. Advanced filtering by tags, folders, time ranges with boolean logic
+• local_search_whole_vault: Full-text and semantic search across the vault
 
-        💡 USAGE GUIDELINES:
-        - Combine semantic_filter with graph operations for relevance-focused results
-        - Physical vs Semantic: Most tools support 'include_semantic_paths'. Physical paths are hard links ([[links]]); Semantic paths are conceptual similarities discovered via vector embeddings.
-        - Pruning: Always use 'semantic_filter' when traversing large graphs to avoid noise and context overflow.
-        - Avoid use too much filters and sorters. as it will increase the query complexity and cost.
+📁 VAULT NAVIGATION:
+• explore_folder: Browse folder structure and contents
+• recent_changes_whole_vault: View recently modified notes
+
+💡 USAGE GUIDELINES:
+- Combine semantic_filter with graph operations for relevance-focused results
+- Physical vs Semantic: Most tools support 'include_semantic_paths'. Physical paths are hard links ([[links]]); Semantic paths are conceptual similarities discovered via vector embeddings.
+- Pruning: Always use 'semantic_filter' when traversing large graphs to avoid noise and context overflow.
+- Avoid use too much filters and sorters. as it will increase the query complexity and cost.
         `,
 
         inputSchema: z.discriminatedUnion("mode", [

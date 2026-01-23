@@ -119,7 +119,7 @@ async function getTagCloud(): Promise<string> {
 export type SystemInfo = {
     current_time: SystemTimeInfo;
     vault_statistics: SystemVaultStatistics;
-    current_focus: ActiveFile;
+    current_focus: ActiveFile | null;
     vault_description?: string;
     tag_cloud?: string;
 }
@@ -138,7 +138,7 @@ export async function genSystemInfo(): Promise<SystemInfo> {
         // these things can cover 80% of the "this", "that", "just now", "yesterday" such as pronouns.
         current_time: getCurrentTime(),
         vault_statistics: getVaultStatistics(),
-        current_focus: getActiveNoteDetail(),
+        current_focus: getActiveNoteDetail().activeFile,
     };
 
     // Only add vault_description if it exists
