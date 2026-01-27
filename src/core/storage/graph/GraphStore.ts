@@ -1,7 +1,7 @@
 import type { GraphNodeRepo } from '@/core/storage/sqlite/repositories/GraphNodeRepo';
 import { GraphEdgeRepo } from '@/core/storage/sqlite/repositories/GraphEdgeRepo';
 import type { GraphNodePO, GraphEdgePO, GraphNodeType, GraphEdgeType } from '@/core/po/graph.po';
-import { extractTags, extractWikiLinks } from '@/core/utils/markdown-utils';
+import { parseMarkdownWithRemark } from '@/core/utils/markdown-utils';
 import type { GraphPreview } from './types';
 
 /**
@@ -231,17 +231,19 @@ export class GraphStore {
 			docType: params.docType,
 		});
 
-		// Extract and upsert wiki links
-		// TODO: The other node should be document instead of link - documents are only markdown
-		const links = extractWikiLinks(params.content);
-		for (const link of links) {
-			const linkId = `link:${link}`;
+		// Parse markdown content to extract links, tags, and embeddings
+		const parseResult = await parseMarkdownWithRemark(params.content);
+
+		// Extract and upsert wiki links and markdown links
+		const allReferences = [...parseResult.references.outgoing];
+		for (const ref of allReferences) {
+			const linkId = `link:${ref.fullPath}`;
 			await this.upsertNode({
 				id: linkId,
 				type: 'link',
-				label: link,
+				label: ref.fullPath,
 				attributes: {
-					target: link,
+					target: ref.fullPath,
 					resolved: false,
 				},
 			});
@@ -253,10 +255,28 @@ export class GraphStore {
 			});
 		}
 
-		// TODO: Missing a resource type node, such as image, pdf, etc. These resource nodes must have file type identifier, see DocumentType
+		// Extract and upsert embeddings (images, PDFs, etc.)
+		for (const embed of parseResult.embeddings) {
+			const embedId = `embed:${embed}`;
+			await this.upsertNode({
+				id: embedId,
+				type: 'resource',
+				label: embed,
+				attributes: {
+					resourcePath: embed,
+					resourceType: this.getResourceType(embed),
+				},
+			});
+			await this.upsertEdge({
+				fromNodeId: params.id,
+				toNodeId: embedId,
+				type: 'references',
+				weight: 1.0,
+			});
+		}
 
 		// Extract and upsert tags
-		const tags = extractTags(params.content);
+		const tags = parseResult.tags;
 		for (const tag of tags) {
 			const tagId = `tag:${tag}`;
 			await this.upsertNode({
@@ -388,11 +408,60 @@ export class GraphStore {
 	}
 
 	/**
+	 * Determine resource type from file extension
+	 */
+	private getResourceType(path: string): string {
+		const ext = path.split('.').pop()?.toLowerCase();
+		switch (ext) {
+			case 'png':
+			case 'jpg':
+			case 'jpeg':
+			case 'gif':
+			case 'svg':
+			case 'webp':
+				return 'image';
+			case 'pdf':
+				return 'pdf';
+			case 'mp4':
+			case 'avi':
+			case 'mov':
+			case 'wmv':
+				return 'video';
+			case 'mp3':
+			case 'wav':
+			case 'flac':
+				return 'audio';
+			default:
+				return 'file';
+		}
+	}
+
+	/**
 	 * @returns Map<docId, { tags: string[]; categories: string[] }>
 	 */
-	async getTagsAndCategoriesByDocIds(docIds: string[]): Promise<Map<string, { tags: string[]; categories: string[] }>> {
+	async getTagsAndCategoriesByDocIds(docIds: string[]):
+		Promise<{
+			idMapToTagsAndCategories: Map<string, { tags: string[]; categories: string[] }>,
+			tagCounts: Map<string, number>,
+			categoryCounts: Map<string, number>,
+		}> {
 		const allTagCategoryEdge = await this.edgeRepo.getByFromNodesAndTypes(docIds, ['tagged', 'categorized']);
 		const allTagCategoryNodeMap = await this.nodeRepo.getByIds(allTagCategoryEdge.map(edge => edge.to_node_id));
+
+		// Count occurrences of each tag and category across docIds from allTagCategoryEdge
+		const tagCounts: Map<string, number> = new Map();
+		const categoryCounts: Map<string, number> = new Map();
+		for (const edge of allTagCategoryEdge) {
+			const node = allTagCategoryNodeMap.get(edge.to_node_id);
+			if (!node) continue;
+			if (node.type === 'tag') {
+				const current = tagCounts.get(node.label) ?? 0;
+				tagCounts.set(node.label, current + 1);
+			} else if (node.type === 'category') {
+				const current = categoryCounts.get(node.label) ?? 0;
+				categoryCounts.set(node.label, current + 1);
+			}
+		}
 
 		const map = new Map<string, { tags: string[]; categories: string[] }>();
 		for (const edge of allTagCategoryEdge) {
@@ -408,6 +477,10 @@ export class GraphStore {
 				docTagsAndCategories.categories.push(tagOrCategoryNode.label);
 			}
 		}
-		return map;
+		return {
+			idMapToTagsAndCategories: map,
+			tagCounts,
+			categoryCounts,
+		};
 	}
 }

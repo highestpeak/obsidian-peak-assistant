@@ -5,6 +5,24 @@ import { template as FIND_KEY_NODES_TEMPLATE } from "../templates/find-key-nodes
 import { buildResponse } from "../types";
 import { emptyMap } from "@/core/utils/collection-utils";
 
+/**
+ * Get unique categories connected to each node to detect bridge nodes
+ */
+async function getNodeCategoryConnections(nodeIds: string[]): Promise<Map<string, number>> {
+    if (!nodeIds.length) return new Map();
+
+    const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+    const categoryConnections = await graphEdgeRepo.getByFromNodesAndTypes(nodeIds, ['categorized']);
+
+    const categoryCountMap = new Map<string, number>();
+    for (const edge of categoryConnections) {
+        const count = categoryCountMap.get(edge.from_node_id) || 0;
+        categoryCountMap.set(edge.from_node_id, count + 1);
+    }
+
+    return categoryCountMap;
+}
+
 export async function findKeyNodes(params: any) {
     const { limit, semantic_filter, response_format, filters, sorter } = params;
     const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
@@ -26,7 +44,7 @@ export async function findKeyNodes(params: any) {
     )
 
     // Calculate RRF scores using the dedicated function
-    const sortedNodes = calculateKeyNoteRRFScores(
+    const sortedNodes = await calculateKeyNoteRRFScores(
         semanticResults,
         allOutDegreeStats,
         allInDegreeStats,
@@ -48,41 +66,63 @@ export async function findKeyNodes(params: any) {
     const nodeMap = await graphNodeRepo.getByIds(candidateNodeIds);
 
     // Group nodes by semantic relevance and type
-    type PhysicalNode = { id: string; label: string; degree: number; index: number };
-    let physicalSourceNodes: Array<PhysicalNode> = [];
-    let physicalSinkNodes: Array<PhysicalNode> = [];
+    type KeyNode = {
+        id: string;
+        label: string;
+        type: string; // 'document', 'tag', 'category', etc.
+        degree: number;
+        direction: 'out' | 'in';
+        nodeType: 'hub' | 'authority' | 'bridge' | 'balanced';
+        uniqueCategories: number;
+    };
+
+    // Create lookup map for node metadata from sorted nodes
+    const nodeMetadataMap = new Map(
+        sortedNodes.map(node => [node.nodeId, {
+            nodeType: node.nodeType,
+            uniqueCategories: node.uniqueCategories
+        }])
+    );
+
+    let allKeyNodes: Array<KeyNode> = [];
 
     // Process source nodes (out-degree)
     for (const stat of candidateOutDegrees) {
-        const nodeData = {
+        const nodeInfo = nodeMap.get(stat.nodeId);
+        const metadata = nodeMetadataMap.get(stat.nodeId) || { nodeType: 'balanced' as const, uniqueCategories: 0 };
+        allKeyNodes.push({
             id: stat.nodeId,
-            label: nodeMap.get(stat.nodeId)?.label || stat.nodeId,
-            degree: stat.outDegree
-        };
-
-        physicalSourceNodes.push({ ...nodeData, index: physicalSourceNodes.length + 1 });
+            label: nodeInfo?.label || stat.nodeId,
+            type: nodeInfo?.type || 'unknown',
+            degree: stat.outDegree,
+            direction: 'out',
+            nodeType: metadata.nodeType,
+            uniqueCategories: metadata.uniqueCategories
+        });
     }
 
     // Process sink nodes (in-degree)
     for (const stat of candidateInDegrees) {
-        const nodeData = {
+        const nodeInfo = nodeMap.get(stat.nodeId);
+        const metadata = nodeMetadataMap.get(stat.nodeId) || { nodeType: 'balanced' as const, uniqueCategories: 0 };
+        allKeyNodes.push({
             id: stat.nodeId,
-            label: nodeMap.get(stat.nodeId)?.label || stat.nodeId,
-            degree: stat.inDegree
-        };
-
-        physicalSinkNodes.push({ ...nodeData, index: physicalSinkNodes.length + 1 });
+            label: nodeInfo?.label || stat.nodeId,
+            type: nodeInfo?.type || 'unknown',
+            degree: stat.inDegree,
+            direction: 'in',
+            nodeType: metadata.nodeType,
+            uniqueCategories: metadata.uniqueCategories
+        });
     }
 
     if (filters) {
-        const itemFiledGetter = await getDefaultItemFiledGetter<PhysicalNode>(candidateNodeIds, filters, sorter);
-        physicalSourceNodes = applyFiltersAndSorters(physicalSourceNodes, filters, sorter, undefined, itemFiledGetter);
-        physicalSinkNodes = applyFiltersAndSorters(physicalSinkNodes, filters, sorter, undefined, itemFiledGetter);
+        const itemFiledGetter = await getDefaultItemFiledGetter<KeyNode>(candidateNodeIds, filters, sorter);
+        allKeyNodes = applyFiltersAndSorters(allKeyNodes, filters, sorter, undefined, itemFiledGetter);
     }
 
     return buildResponse(response_format, FIND_KEY_NODES_TEMPLATE, {
-        physical_source_nodes: physicalSourceNodes,
-        physical_sink_nodes: physicalSinkNodes
+        key_nodes: allKeyNodes
     });
 }
 
@@ -98,19 +138,21 @@ export async function findKeyNodes(params: any) {
  * @param candidateLimit Maximum number of candidates to return (multiplied by 2 for source/sink separation)
  * @returns Array of nodes sorted by RRF score, with degree and semantic information
  */
-function calculateKeyNoteRRFScores(
+async function calculateKeyNoteRRFScores(
     semanticResults: Array<{ nodeId: string; score: number }>,
     allOutDegreeStats: Array<{ nodeId: string; outDegree: number }>,
     allInDegreeStats: Array<{ nodeId: string; inDegree: number }>,
     semanticEnabled: boolean,
     candidateLimit: number
-): Array<{
+): Promise<Array<{
     nodeId: string;
     outDegree: number;
     inDegree: number;
     semanticScore: number;
     rrfScore: number;
-}> {
+    nodeType: 'hub' | 'authority' | 'bridge' | 'balanced';
+    uniqueCategories: number;
+}>> {
     // Create ranking maps for efficient lookup
     const outDegreeRankMap = new Map<string, number>();
     const inDegreeRankMap = new Map<string, number>();
@@ -133,6 +175,13 @@ function calculateKeyNoteRRFScores(
     const outDegreeMap = new Map(allOutDegreeStats.map(stat => [stat.nodeId, stat.outDegree]));
     const inDegreeMap = new Map(allInDegreeStats.map(stat => [stat.nodeId, stat.inDegree]));
 
+    // Get category connections for bridge detection
+    const allNodeIds = new Set([
+        ...allOutDegreeStats.map(stat => stat.nodeId),
+        ...allInDegreeStats.map(stat => stat.nodeId)
+    ]);
+    const categoryConnections = await getNodeCategoryConnections(Array.from(allNodeIds));
+
     // Calculate RRF scores for each node
     const nodeScores = new Map<string, {
         nodeId: string;
@@ -140,10 +189,12 @@ function calculateKeyNoteRRFScores(
         inDegree: number;
         semanticScore: number;
         rrfScore: number;
+        nodeType: 'hub' | 'authority' | 'bridge' | 'balanced';
+        uniqueCategories: number;
     }>();
 
     // Process all nodes that have degree information
-    const allNodeIds = new Set([
+    const degreeNodeIds = new Set([
         ...allOutDegreeStats.map(stat => stat.nodeId),
         ...allInDegreeStats.map(stat => stat.nodeId)
     ]);
@@ -151,25 +202,52 @@ function calculateKeyNoteRRFScores(
     for (const nodeId of allNodeIds) {
         const outDegree = outDegreeMap.get(nodeId) || 0;
         const inDegree = inDegreeMap.get(nodeId) || 0;
+        const uniqueCategories = categoryConnections.get(nodeId) || 0;
 
         const outDegreeRank = outDegreeRankMap.get(nodeId) || Number.MAX_SAFE_INTEGER;
         const inDegreeRank = inDegreeRankMap.get(nodeId) || Number.MAX_SAFE_INTEGER;
         const semanticRank = semanticRankMap.get(nodeId) || Number.MAX_SAFE_INTEGER;
 
-        // Calculate RRF score: combine semantic rank with degree ranks
+        // Calculate RRF score with balanced weighting
         const semanticContribution = semanticEnabled ? 1 / (KEY_NODES_RRF_K + semanticRank) : 0;
-        // Use the better (lower) of out-degree and in-degree rank for overall degree importance
-        // If a node is superindex (with high outdegree) or superhub (with high indegree), it will receive an exceptionally high degree rank.
-        const degreeRank = Math.min(outDegreeRank, inDegreeRank);
-        const degreeContribution = 1 / (KEY_NODES_RRF_K + degreeRank);
-        const rrfScore = semanticContribution + degreeContribution;
+
+        // Balanced approach: use the better rank but preserve individual contributions
+        const outContribution = 1 / (KEY_NODES_RRF_K + outDegreeRank);
+        const inContribution = 1 / (KEY_NODES_RRF_K + inDegreeRank);
+        const degreeContribution = Math.max(outContribution, inContribution);
+
+        // Classify node type based on characteristics
+        let nodeType: 'hub' | 'authority' | 'bridge' | 'balanced';
+
+        // Bridge nodes: connect multiple categories (2+ categories)
+        if (uniqueCategories >= 2) {
+            nodeType = 'bridge';
+        }
+        // Hub nodes: significantly more outgoing than incoming connections
+        else if (outDegree > inDegree * 1.2 && outDegree > 3) {
+            nodeType = 'hub';
+        }
+        // Authority nodes: significantly more incoming than outgoing connections
+        else if (inDegree > outDegree * 1.2 && inDegree > 3) {
+            nodeType = 'authority';
+        }
+        // Balanced nodes: relatively balanced connectivity
+        else {
+            nodeType = 'balanced';
+        }
+
+        // Boost bridge nodes in RRF score
+        const bridgeBonus = nodeType === 'bridge' ? 0.1 : 0;
+        const rrfScore = semanticContribution + degreeContribution + bridgeBonus;
 
         nodeScores.set(nodeId, {
             nodeId,
             outDegree,
             inDegree,
             semanticScore: semanticRank < Number.MAX_SAFE_INTEGER ? semanticContribution : 0,
-            rrfScore
+            rrfScore,
+            nodeType,
+            uniqueCategories
         });
     }
 

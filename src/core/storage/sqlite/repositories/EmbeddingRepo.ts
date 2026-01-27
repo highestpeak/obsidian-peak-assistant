@@ -3,6 +3,7 @@ import type { Database as DbSchema } from '../ddl';
 import type { SqliteDatabase } from '../types';
 import type { SearchScopeMode, SearchScopeValue } from '@/service/search/types';
 import { BusinessError, ErrorCode } from '@/core/errors';
+import { DocMetaRepo } from './DocMetaRepo';
 
 /**
  * CRUD repository for `embedding` table.
@@ -15,6 +16,7 @@ export class EmbeddingRepo {
 	constructor(
 		private readonly db: Kysely<DbSchema>,
 		private readonly rawDb: SqliteDatabase,
+		private readonly docMetaRepo: DocMetaRepo,
 	) { }
 
 	/**
@@ -37,6 +39,50 @@ export class EmbeddingRepo {
 			arr.push(buffer.readFloatLE(i));
 		}
 		return arr;
+	}
+
+	/**
+	 * Get embedding rowids by specific file paths.
+	 */
+	private async getEmbeddingRowidsByPath(paths: string[]): Promise<number[]> {
+		const docIds = (await this.docMetaRepo.getIdsByPaths(paths)).map(d => d.id);
+		return this.getEmbeddingRowidsByDocIds(docIds);
+	}
+
+	/**
+	 * Get embedding rowids by folder path (including subfolders).
+	 */
+	private async getEmbeddingRowidsByFolder(folderPath: string): Promise<number[]> {
+		const docIds = (await this.docMetaRepo.getByFolderPath(folderPath)).map(d => d.id);
+		return this.getEmbeddingRowidsByDocIds(docIds);
+	}
+
+	/**
+	 * Get embedding rowids by embedding IDs.
+	 */
+	private getEmbeddingRowidsByIds(ids: string[]): number[] {
+		if (!ids.length) return [];
+
+		const embeddingStmt = this.rawDb.prepare(`
+			SELECT rowid FROM embedding
+			WHERE id IN (${ids.map(() => '?').join(',')})
+		`);
+		const embeddings = embeddingStmt.all(...ids) as Array<{ rowid: number }>;
+		return embeddings.map(e => e.rowid);
+	}
+
+	/**
+	 * Get embedding rowids by document IDs.
+	 */
+	private getEmbeddingRowidsByDocIds(docIds: string[]): number[] {
+		if (!docIds.length) return [];
+
+		const embeddingStmt = this.rawDb.prepare(`
+			SELECT rowid FROM embedding
+			WHERE doc_id IN (${docIds.map(() => '?').join(',')})
+		`);
+		const embeddings = embeddingStmt.all(...docIds) as Array<{ rowid: number }>;
+		return embeddings.map(e => e.rowid);
 	}
 
 	/**
@@ -140,7 +186,6 @@ export class EmbeddingRepo {
 		const result = stmt.get(id) as { rowid: number } | undefined;
 		return result?.rowid ?? null;
 	}
-
 
 	/**
 	 * Sync embedding to vec_embeddings virtual table.
@@ -426,7 +471,7 @@ export class EmbeddingRepo {
 		{ id: string; doc_id: string; chunk_id: string; embedding: Buffer, distance: number; similarity: number }
 	>> {
 		// Perform semantic search
-		const searchResults = this.searchSimilar(queryEmbedding, limit, scopeMode, scopeValue);
+		const searchResults = await this.searchSimilar(queryEmbedding, limit, scopeMode, scopeValue);
 		if (!searchResults.length) {
 			return [];
 		}
@@ -473,15 +518,15 @@ export class EmbeddingRepo {
 	 * @param scopeValue Optional scope value for filtering
 	 * @returns Array of results with embedding_id (from embedding table) and distance
 	 */
-	searchSimilar(
+	async searchSimilar(
 		queryEmbedding: number[] | Buffer,
 		limit: number,
 		scopeMode?: SearchScopeMode,
 		scopeValue?: SearchScopeValue,
-	): Array<{
+	): Promise<Array<{
 		embedding_id: string;
 		distance: number;
-	}> {
+	}>> {
 		const checkStmt = this.rawDb.prepare(`
 			SELECT name FROM sqlite_master 
 			WHERE type='table' AND name='vec_embeddings'
@@ -500,43 +545,47 @@ export class EmbeddingRepo {
 			? queryEmbedding
 			: this.arrayToBuffer(queryEmbedding);
 
-		// Build path filter condition based on scope
-		let pathFilter = '';
-		const pathParams: string[] = [];
+		// Handle scope filtering - pre-fetch constrained rowids to avoid JOIN in KNN query
+		let scopedRowids: number[] | null = null;
 
 		if (scopeMode === 'inFile' && scopeValue?.currentFilePath) {
-			pathFilter = 'AND dm.path = ?';
-			pathParams.push(scopeValue.currentFilePath);
+			scopedRowids = await this.getEmbeddingRowidsByPath([scopeValue.currentFilePath]);
 		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
-			const folderPath = scopeValue.folderPath;
-			pathFilter = 'AND (dm.path = ? OR dm.path LIKE ?)';
-			pathParams.push(folderPath, `${folderPath}/%`);
+			scopedRowids = await this.getEmbeddingRowidsByFolder(scopeValue.folderPath);
 		} else if (scopeMode === 'limitIdsSet' && scopeValue?.limitIdsSet) {
-			pathFilter = 'AND e.id IN ?';
-			pathParams.push((Array.from(scopeValue.limitIdsSet ?? [])).join(',') ?? '');
+			scopedRowids = this.getEmbeddingRowidsByIds(Array.from(scopeValue.limitIdsSet));
+		}
+		// Build KNN query with optional rowid filter
+		let rowidFilter = scopedRowids && scopedRowids.length > 0
+			? `AND ve.rowid IN (${scopedRowids.map(() => '?').join(',')})`
+			: '';
+		if (scopeMode === 'excludeDocIdsSet' && scopeValue?.excludeDocIdsSet && scopeValue.excludeDocIdsSet.size > 0) {
+			scopedRowids = this.getEmbeddingRowidsByDocIds(Array.from(scopeValue.excludeDocIdsSet));
+			rowidFilter = `AND ve.rowid NOT IN (${scopedRowids.map(() => '?').join(',')})`;
 		}
 
-		// Step 1: KNN search on vec_embeddings with JOIN to embedding and doc_meta tables for path filtering
-		// Returns vec_embeddings.rowid (integer) and distance
-		// vec_embeddings.rowid = embedding.rowid
-		// vec0 MATCH operator accepts BLOB format for float[]
-		// We JOIN embedding and doc_meta tables to filter by path before limiting results
-		// Note: sqlite-vec requires 'k = ?' constraint in WHERE clause for KNN queries
-		// todo we may need to avoid this join query due to performance issue.
-		const sql = `
+		// Step 1: KNN search - always direct on vec_embeddings table
+		let sql: string;
+		let knnParams: any[];
+
+		sql = `
 			SELECT
 				ve.rowid,
 				ve.distance
 			FROM vec_embeddings ve
-			INNER JOIN embedding e ON ve.rowid = e.rowid
-			INNER JOIN doc_meta dm ON e.doc_id = dm.id
 			WHERE ve.embedding MATCH ?
 				AND k = ?
-			${pathFilter}
+				${rowidFilter}
 			ORDER BY ve.distance
 		`;
+
+		knnParams = [embeddingBuffer, limit];
+		if (scopedRowids && scopedRowids.length > 0) {
+			knnParams.push(...scopedRowids);
+		}
+
 		const knnStmt = this.rawDb.prepare(sql);
-		const knnResults = knnStmt.all(embeddingBuffer, limit, ...pathParams) as Array<{
+		const knnResults = knnStmt.all(...knnParams) as Array<{
 			rowid: number;
 			distance: number;
 		}>;
@@ -547,10 +596,11 @@ export class EmbeddingRepo {
 
 		// Step 2: Batch lookup embedding table to get embedding.id from rowid
 		const rowids = knnResults.map((r) => r.rowid);
-		const embeddingStmt = this.rawDb.prepare(`
+		const embeddingSql = `
 			SELECT rowid, id FROM embedding
 			WHERE rowid IN (${rowids.map(() => '?').join(',')})
-		`);
+		`;
+		const embeddingStmt = this.rawDb.prepare(embeddingSql);
 		const embeddings = embeddingStmt.all(...rowids) as Array<{
 			rowid: number;
 			id: string;
@@ -605,10 +655,42 @@ export class EmbeddingRepo {
 	}
 
 	/**
+	 * Delete embeddings and their corresponding vec_embeddings records by rowids.
+	 * This is a private helper method that ensures both tables stay in sync.
+	 */
+	private async deleteEmbeddingsAndVecEmbeddingsByRowids(rowids: number[]): Promise<void> {
+		if (!rowids.length) return;
+
+		// Delete from embedding table using raw SQL
+		const placeholders = rowids.map(() => '?').join(',');
+		const deleteEmbeddingStmt = this.rawDb.prepare(`
+			DELETE FROM embedding WHERE rowid IN (${placeholders})
+		`);
+		deleteEmbeddingStmt.run(...rowids);
+
+		// Delete from vec_embeddings table
+		if (this.vecEmbeddingsTableExists) {
+			const deleteVecStmt = this.rawDb.prepare(`
+				DELETE FROM vec_embeddings WHERE rowid IN (${placeholders})
+			`);
+			deleteVecStmt.run(...rowids);
+		}
+	}
+
+	/**
 	 * Delete embeddings by file ID.
 	 */
 	async deleteByDocId(docId: string): Promise<void> {
-		await this.db.deleteFrom('embedding').where('doc_id', '=', docId).execute();
+		// Get rowids of embeddings to delete
+		const stmt = this.rawDb.prepare(`
+			SELECT rowid FROM embedding WHERE doc_id = ?
+		`);
+		const rows = stmt.all(docId) as Array<{ rowid: number }>;
+
+		if (rows.length > 0) {
+			const rowids = rows.map(r => r.rowid);
+			await this.deleteEmbeddingsAndVecEmbeddingsByRowids(rowids);
+		}
 	}
 
 	/**
@@ -616,21 +698,44 @@ export class EmbeddingRepo {
 	 */
 	async deleteByDocIds(docIds: string[]): Promise<void> {
 		if (!docIds.length) return;
-		await this.db.deleteFrom('embedding').where('doc_id', 'in', docIds).execute();
+
+		// Get rowids of embeddings to delete
+		const placeholders = docIds.map(() => '?').join(',');
+		const stmt = this.rawDb.prepare(`
+			SELECT rowid FROM embedding WHERE doc_id IN (${placeholders})
+		`);
+		const rows = stmt.all(...docIds) as Array<{ rowid: number }>;
+
+		if (rows.length > 0) {
+			const rowids = rows.map(r => r.rowid);
+			await this.deleteEmbeddingsAndVecEmbeddingsByRowids(rowids);
+		}
 	}
 
 	/**
 	 * Delete all embeddings.
 	 */
 	async deleteAll(): Promise<void> {
-		await this.db.deleteFrom('embedding').execute();
+		// Get all embedding rowids
+		const stmt = this.rawDb.prepare(`
+			SELECT rowid FROM embedding
+		`);
+		const rows = stmt.all() as Array<{ rowid: number }>;
+
+		if (rows.length > 0) {
+			const rowids = rows.map(r => r.rowid);
+			await this.deleteEmbeddingsAndVecEmbeddingsByRowids(rowids);
+		}
 	}
 
 	/**
 	 * Delete embedding by ID.
 	 */
 	async deleteById(id: string): Promise<void> {
-		await this.db.deleteFrom('embedding').where('id', '=', id).execute();
+		const rowid = this.getEmbeddingRowid(id);
+		if (rowid !== null) {
+			await this.deleteEmbeddingsAndVecEmbeddingsByRowids([rowid]);
+		}
 	}
 
 	/**
@@ -638,7 +743,18 @@ export class EmbeddingRepo {
 	 */
 	async deleteByIds(ids: string[]): Promise<void> {
 		if (!ids.length) return;
-		await this.db.deleteFrom('embedding').where('id', 'in', ids).execute();
+
+		const rowids: number[] = [];
+		for (const id of ids) {
+			const rowid = this.getEmbeddingRowid(id);
+			if (rowid !== null) {
+				rowids.push(rowid);
+			}
+		}
+
+		if (rowids.length > 0) {
+			await this.deleteEmbeddingsAndVecEmbeddingsByRowids(rowids);
+		}
 	}
 
 	/**
@@ -692,6 +808,67 @@ export class EmbeddingRepo {
 		}
 
 		return averageVector;
+	}
+
+	/**
+	 * Clean up orphaned vec_embeddings records that exist in vec_embeddings table
+	 * but not in embedding table. This fixes data inconsistency issues.
+	 *
+	 * @returns Object with cleanup statistics: { found: number, deleted: number }
+	 */
+	async cleanupOrphanedVecEmbeddings(): Promise<{ found: number; deleted: number }> {
+		let found = 0;
+		let deleted = 0;
+
+		try {
+			// Check if vec_embeddings table exists
+			const checkStmt = this.rawDb.prepare(`
+				SELECT name FROM sqlite_master
+				WHERE type='table' AND name='vec_embeddings'
+			`);
+			const tableExists = checkStmt.get() !== undefined;
+
+			if (!tableExists) {
+				console.log('[EmbeddingRepo] vec_embeddings table does not exist, nothing to clean up');
+				return { found: 0, deleted: 0 };
+			}
+
+			// Find vec_embeddings records that don't have corresponding embedding records
+			const orphanedStmt = this.rawDb.prepare(`
+				SELECT ve.rowid
+				FROM vec_embeddings ve
+				LEFT JOIN embedding e ON ve.rowid = e.rowid
+				WHERE e.rowid IS NULL
+			`);
+
+			const orphanedRecords = orphanedStmt.all() as Array<{ rowid: number }>;
+			found = orphanedRecords.length;
+
+			if (found === 0) {
+				console.log('[EmbeddingRepo] No orphaned vec_embeddings records found');
+				return { found: 0, deleted: 0 };
+			}
+
+			console.log(`[EmbeddingRepo] Found ${found} orphaned vec_embeddings records`);
+
+			// Delete orphaned records
+			const rowids = orphanedRecords.map(r => r.rowid);
+			const placeholders = rowids.map(() => '?').join(',');
+			const deleteStmt = this.rawDb.prepare(`
+				DELETE FROM vec_embeddings WHERE rowid IN (${placeholders})
+			`);
+
+			deleteStmt.run(...rowids);
+			deleted = rowids.length;
+
+			console.log(`[EmbeddingRepo] Successfully deleted ${deleted} orphaned vec_embeddings records`);
+
+		} catch (error) {
+			console.error('[EmbeddingRepo] Error during cleanup:', error);
+			throw error;
+		}
+
+		return { found, deleted };
 	}
 }
 

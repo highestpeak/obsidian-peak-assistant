@@ -1,4 +1,4 @@
-import type { Kysely } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
 import { generateStableUuid } from '@/core/utils/id-utils';
 
@@ -267,8 +267,30 @@ export class GraphEdgeRepo {
 			parameters: [],
 			query: {} // Add required query property
 		} as any;
+		console.log('[GraphEdgeRepo.getByCustomWhere] compiledQuery', compiledQuery);
 		const result = await this.db.executeQuery(compiledQuery);
 		return result.rows as DbSchema['graph_edges'][];
+	}
+
+	/**
+	 * Get source node IDs that are connected to ALL specified target node IDs.
+	 * Uses GROUP BY and HAVING to find nodes that have edges to all required targets.
+	 * Since target node IDs are unique (tags and categories have different IDs),
+	 * we don't need to filter by edge type.
+	 * @param targetNodeIds Array of target node IDs to match against
+	 */
+	async getSourceNodesConnectedToAllTargets(targetNodeIds: string[]): Promise<string[]> {
+		if (targetNodeIds.length === 0) return [];
+
+		const result = await this.db
+			.selectFrom('graph_edges')
+			.select('from_node_id')
+			.where('to_node_id', 'in', targetNodeIds)
+			.groupBy('from_node_id')
+			.having(sql`COUNT(DISTINCT to_node_id)`, '=', targetNodeIds.length)
+			.execute();
+
+		return result.map(row => row.from_node_id);
 	}
 
 	/**
@@ -317,16 +339,22 @@ export class GraphEdgeRepo {
 	 * @param limit Maximum number of orphans to return
 	 */
 	async getHardOrphanNodeIds(limit?: number): Promise<string[]> {
-		// Get nodes with zero out-degree and zero in-degree
-		const zeroOutNodes = await this.getNodesWithZeroOutDegree(limit);
-		const zeroInNodes = await this.getNodesWithZeroInDegree(limit);
+		// Use a single query to find nodes with both zero out-degree and zero in-degree
+		// This is more efficient than separate queries and intersection
+		let query = this.db
+			.selectFrom('graph_nodes')
+			.leftJoin('graph_edges as out_edges', 'graph_nodes.id', 'out_edges.from_node_id')
+			.leftJoin('graph_edges as in_edges', 'graph_nodes.id', 'in_edges.to_node_id')
+			.select('graph_nodes.id')
+			.where('out_edges.from_node_id', 'is', null)
+			.where('in_edges.to_node_id', 'is', null);
 
-		// Find intersection: nodes that appear in both lists
-		const zeroOutSet = new Set(zeroOutNodes);
-		const hardOrphans = zeroInNodes.filter(nodeId => zeroOutSet.has(nodeId));
+		if (limit) {
+			query = query.limit(limit);
+		}
 
-		// Apply limit if specified
-		return limit ? hardOrphans.slice(0, limit) : hardOrphans;
+		const rows = await query.execute();
+		return rows.map(row => row.id);
 	}
 
 	/**
@@ -484,6 +512,8 @@ export class GraphEdgeRepo {
 		limitPerType: number,
 		typesExclude?: string[]
 	): Promise<GraphEdge[]> {
+		const directionExpr = sql<string>`case when from_node_id = ${nodeId} then 'out' else 'in' end`;
+
 		// Use window function to rank edges by type and updated_at, then filter
 		const query = this.db
 			.with('ranked_edges', (qb) => {
@@ -498,9 +528,13 @@ export class GraphEdgeRepo {
 						'attributes',
 						'created_at',
 						'updated_at',
-						this.db.fn.agg<number>('row_number').over((ob) =>
-							ob.partitionBy('type').orderBy('updated_at', 'desc')
-						).as('type_rank')
+						// 1. define direction explicitly: if the edge is outgoing from the current node, mark as 'out', otherwise mark as 'in'
+						directionExpr.as('direction'),
+						// 2. add type and direction to partitionBy
+						sql<number>`row_number() over(
+							partition by type, ${directionExpr} 
+							order by updated_at desc
+						)`.as('dir_type_rank')
 					])
 					.where((eb) =>
 						eb.or([
@@ -517,7 +551,7 @@ export class GraphEdgeRepo {
 			})
 			.selectFrom('ranked_edges')
 			.selectAll()
-			.where('type_rank', '<=', limitPerType)
+			.where('dir_type_rank', '<=', limitPerType)
 			.orderBy('updated_at', 'desc');
 
 		return await query.execute();

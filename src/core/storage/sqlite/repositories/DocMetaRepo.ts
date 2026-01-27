@@ -204,6 +204,24 @@ export class DocMetaRepo {
 	}
 
 	/**
+	 * Get document IDs by folder path (including subfolders).
+	 */
+	async getByFolderPath(folderPath: string): Promise<{ id: string, path: string }[]> {
+		if (!folderPath) return [];
+		const rows = await this.db
+			.selectFrom('doc_meta')
+			.select(['id', 'path'])
+			.where((eb) =>
+				eb.or([
+					eb('path', 'like', `${folderPath}/%`),
+					eb('path', '=', folderPath)
+				])
+			)
+			.execute();
+		return rows.map(row => ({ id: row.id, path: row.path }));
+	}
+
+	/**
 	 * Get document metadata by IDs (batch).
 	 */
 	async getByIds(ids: string[]): Promise<DbSchema['doc_meta'][]> {

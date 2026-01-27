@@ -41,7 +41,7 @@ export async function findOrphanNotes(params: any) {
 
     // Prepare orphans data
     const hardOrphans = finalAllOrphanNodes.map((orphan: any, i: number) => {
-        const suggestion = orphanRevivalSuggestions.get(orphan.nodeId);
+        const suggestion = orphanRevivalSuggestions.get(orphan.id);
         return {
             index: i + 1,
             modified: orphan.modified,
@@ -75,12 +75,15 @@ async function findRevivalSuggestions(orphans: OrphanNode[]) {
         if (orphan.type !== 'document') continue;
         try {
             // Use getSemanticNeighbors to find semantically similar documents
-            // Filter out orphan nodes to find connections to active parts of the knowledge graph
-            const semanticNeighbors = await getSemanticNeighbors(orphan.id, 10, orphanIds);
+            // Filter out only the current orphan node itself to find connections to active parts of the knowledge graph
+            const semanticNeighbors = await getSemanticNeighbors(orphan.id, 10, new Set([orphan.id]));
 
+            // console.log('[findRevivalSuggestions] semanticNeighbors', semanticNeighbors);
             // Find the closest non-orphan document with high similarity
             const closestNonOrphan = semanticNeighbors
+                .filter(neighbor => !orphanIds.has(neighbor.id)) // Ensure it's not an orphan
                 .sort((a, b) => parseFloat(b.similarity) - parseFloat(a.similarity))[0];
+            // console.log('[findRevivalSuggestions] closestNonOrphan', closestNonOrphan);
 
             if (closestNonOrphan) {
                 suggestions.set(orphan.id, {

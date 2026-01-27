@@ -47,7 +47,7 @@ export async function exploreFolder(params: any) {
     const { tagDesc, categoryDesc } = await getTagsAndCategoriesByDocIds(finalDocIdsMaps.map(item => item.id));
 
     // Get doc statistics by docIds
-    const docStats = await getDocStatisticsByDocIds(finalDocIdsMaps.map(item => item.id), limit);
+    const docStats = await getDocStatisticsByDocIds(finalDocIdsMaps, limit);
 
     // Render template
     return buildResponse(response_format, EXPLORE_FOLDER_TEMPLATE, {
@@ -116,10 +116,10 @@ function getAllFilePaths(fileTree: IterFile[]): string[] {
 
 function getFinalFileTree(candidateFileTree: IterFile[], pathToIdMap: Map<string, string>): IterFile[] {
     const result: IterFile[] = [];
-    
+
     for (const item of candidateFileTree) {
-        if (!pathToIdMap.has(item.path)) { continue; }
         if (item.type === "file") {
+            if (!pathToIdMap.has(item.path)) { continue; }
             result.push({
                 type: "file",
                 path: item.path
@@ -145,9 +145,21 @@ async function getTagsAndCategoriesByDocIds(docIds: string[]):
     }
 
     const graphStore = sqliteStoreManager.getGraphStore();
-    const tagsAndCategoriesMap = await graphStore.getTagsAndCategoriesByDocIds(docIds);
-    const tagDesc = Array.from(tagsAndCategoriesMap.values()).map(item => item.tags.join(", ")).join(", ");
-    const categoryDesc = Array.from(tagsAndCategoriesMap.values()).map(item => item.categories.join(", ")).join(", ");
+    const { idMapToTagsAndCategories, tagCounts, categoryCounts } = await graphStore.getTagsAndCategoriesByDocIds(docIds);
+    const tagDesc = Array.from(idMapToTagsAndCategories.values())
+        .filter(item => item.tags.length > 0)
+        .flatMap(item => item.tags)
+        .unique()
+        .sort((a, b) => (tagCounts.get(b) ?? 0) - (tagCounts.get(a) ?? 0))
+        .map(item => `${item}(${tagCounts.get(item) || 0})`)
+        .join(", ");
+    const categoryDesc = Array.from(idMapToTagsAndCategories.values())
+        .filter(item => item.categories.length > 0)
+        .flatMap(item => item.categories)
+        .unique()
+        .sort((a, b) => (categoryCounts.get(b) ?? 0) - (categoryCounts.get(a) ?? 0))
+        .map(item => `${item}(${categoryCounts.get(item) || 0})`)
+        .join(", ");
 
     return { tagDesc, categoryDesc };
 }
@@ -155,14 +167,19 @@ async function getTagsAndCategoriesByDocIds(docIds: string[]):
 /**
  * Get document statistics by document IDs
  */
-async function getDocStatisticsByDocIds(docIds: string[], topK: number = 5): Promise<{
+async function getDocStatisticsByDocIds(docIdsMaps: { id: string, path: string }[], topK: number = 5): Promise<{
     totalFiles: number;
     topRecentEdited: Array<{ path: string, updated_at: number }>;
     topWordCount: Array<{ path: string, word_count: number }>;
     topCharCount: Array<{ path: string, char_count: number }>;
     topRichness: Array<{ path: string, richness_score: number }>;
-    languageStats: Record<string, number>;
+    languageStats?: Record<string, number>;
 }> {
+    const idToPathMap = docIdsMaps.reduce((acc, item) => {
+        acc.set(item.id, item.path);
+        return acc;
+    }, new Map<string, string>());
+    const docIds = Array.from(idToPathMap.keys());
     if (!docIds.length) {
         return {
             totalFiles: 0,
@@ -170,7 +187,7 @@ async function getDocStatisticsByDocIds(docIds: string[], topK: number = 5): Pro
             topWordCount: [],
             topCharCount: [],
             topRichness: [],
-            languageStats: {}
+            languageStats: undefined
         };
     }
 
@@ -199,10 +216,10 @@ async function getDocStatisticsByDocIds(docIds: string[], topK: number = 5): Pro
 
     return {
         totalFiles: docIds.length,
-        topRecentEdited: topRecentEdited.map(item => ({ path: item.doc_id, updated_at: item.updated_at })),
-        topWordCount: topWordCount.map(item => ({ path: item.doc_id, word_count: item.word_count })),
-        topCharCount: topCharCount.map(item => ({ path: item.doc_id, char_count: item.char_count })),
-        topRichness: topRichness.map(item => ({ path: item.doc_id, richness_score: item.richness_score })),
-        languageStats
+        topRecentEdited: topRecentEdited.map(item => ({ path: idToPathMap.get(item.doc_id) || item.doc_id, updated_at: item.updated_at })),
+        topWordCount: topWordCount.map(item => ({ path: idToPathMap.get(item.doc_id) || item.doc_id, word_count: item.word_count })),
+        topCharCount: topCharCount.map(item => ({ path: idToPathMap.get(item.doc_id) || item.doc_id, char_count: item.char_count })),
+        topRichness: topRichness.map(item => ({ path: idToPathMap.get(item.doc_id) || item.doc_id, richness_score: item.richness_score })),
+        languageStats: Object.keys(languageStats).length > 0 ? languageStats : undefined
     };
 }

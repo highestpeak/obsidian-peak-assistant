@@ -94,22 +94,33 @@ async function findByExpressionWhere(
         .then(nodes => new Map(
             nodes.map(node => [node.label, node.id])
         ));
-    // Build SQL WHERE conditions using the parser
-    const whereClause = parser.buildEdgeConditions(tagLookupMap, categoryLookupMap);
-    if (!whereClause) {
-        console.error('[searchByDimensions] Error building edge conditions');
-        return { success: false, message: 'Error building edge conditions.' };
-    }
-    // get all edges that match the where clause(required expression.)
-    const allRelevantEdges = await graphEdgeRepo.getByCustomWhere(whereClause);
 
-    // Get all relevant document nodes
-    const documentIds = new Set(allRelevantEdges.map(edge => edge.from_node_id));
-    if (documentIds.size === 0) {
-        return { success: false, message: 'No documents found matching the criteria.' };
+    // Collect all target node IDs (tags and categories)
+    const allTargetNodeIds: string[] = [];
+
+    // Add tag IDs
+    tagLookupMap.forEach((tagId) => {
+        allTargetNodeIds.push(tagId);
+    });
+
+    // Add category IDs
+    categoryLookupMap.forEach((categoryId) => {
+        allTargetNodeIds.push(categoryId);
+    });
+
+    if (allTargetNodeIds.length === 0) {
+        return { success: false, message: 'No valid tags or categories found in expression.' };
     }
+
+    // Use GROUP BY and HAVING to find documents connected to ALL specified targets
+    const documentIds = await graphEdgeRepo.getSourceNodesConnectedToAllTargets(allTargetNodeIds);
+
+    if (documentIds.length === 0) {
+        return { success: false, message: 'No documents found matching all criteria.' };
+    }
+
     return {
         success: true,
-        data: await graphNodeRepo.getByIds(Array.from(documentIds))
+        data: await graphNodeRepo.getByIds(documentIds)
     };
 }

@@ -19,31 +19,37 @@ export const template = `# 📁 Folder Exploration: {{current_path}}
 ## 📊 Statistics
 - **Total Files**: {{docStats.totalFiles}}
 {{#if docStats.languageStats}}
+{{#if docStats.languageStats}}
 - **Languages**: {{#each docStats.languageStats}}{{@key}}: {{this}}{{#if @last}}{{else}}, {{/if}}{{/each}}
+{{/if}}
 {{/if}}
 
 {{#if docStats.topRecentEdited}}
 ### 🕒 Recently Edited Files
 {{#each docStats.topRecentEdited}}
-- [[{{path}}]] ({{humanReadableTime updated_at}}){{/each}}
+- [[{{path}}]] ({{humanReadableTime updated_at}})
+{{/each}}
 {{/if}}
 
 {{#if docStats.topWordCount}}
 ### 📝 Word Count Leaders
 {{#each docStats.topWordCount}}
-- [[{{path}}]]: {{word_count}} words{{/each}}
+- [[{{path}}]]: {{word_count}} words
+{{/each}}
 {{/if}}
 
 {{#if docStats.topCharCount}}
 ### 📏 Character Count Leaders
 {{#each docStats.topCharCount}}
-- [[{{path}}]]: {{char_count}} characters{{/each}}
+- [[{{path}}]]: {{char_count}} characters
+{{/each}}
 {{/if}}
 
 {{#if docStats.topRichness}}
 ### ✨ Richness Score Leaders
 {{#each docStats.topRichness}}
-- [[{{path}}]]: {{richness_score}} richness{{/each}}
+- [[{{path}}]]: {{richness_score}} richness
+{{/each}}
 {{/if}}
 
 ## 📂 File Tree

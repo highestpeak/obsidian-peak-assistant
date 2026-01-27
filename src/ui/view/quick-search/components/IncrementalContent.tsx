@@ -51,21 +51,21 @@ export const IncrementalContent: React.FC<{
 					<div className="pktw-space-y-2">
 						{/* New insight cards */}
 						{diff.newInsightCards.map((card) => (
-							<div key={card.id} className="pktw-bg-green-50 pktw-border pktw-border-green-200 pktw-rounded pktw-p-3 pktw-text-xs">
+							<div key={'new' + card.id} className="pktw-bg-green-50 pktw-border pktw-border-green-200 pktw-rounded pktw-p-3 pktw-text-xs">
 								<div className="pktw-font-medium pktw-text-green-800">{card.title}</div>
 								<div className="pktw-text-green-700 pktw-mt-1">{card.description}</div>
 							</div>
 						))}
 						{/* Removed insight cards */}
 						{diff.removedInsightCards.map((card) => (
-							<div key={card.id} className="pktw-bg-red-50 pktw-border pktw-border-red-200 pktw-rounded pktw-p-3 pktw-text-xs pktw-line-through">
+							<div key={'removed' + card.id} className="pktw-bg-red-50 pktw-border pktw-border-red-200 pktw-rounded pktw-p-3 pktw-text-xs pktw-line-through">
 								<div className="pktw-font-medium pktw-text-red-800">{card.title}</div>
 								<div className="pktw-text-red-700 pktw-mt-1">{card.description}</div>
 							</div>
 						))}
 						{/* Existing insight cards */}
 						{insightCards.filter(card => !diff.newInsightCards.find(c => c.id === card.id)).map((card) => (
-							<div key={card.id} className="pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded pktw-p-3 pktw-text-xs">
+							<div key={'existing' + card.id} className="pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded pktw-p-3 pktw-text-xs">
 								<div className="pktw-font-medium pktw-text-[#2e3338]">{card.title}</div>
 								<div className="pktw-text-[#6c757d] pktw-mt-1">{card.description}</div>
 							</div>
@@ -84,19 +84,19 @@ export const IncrementalContent: React.FC<{
 					<div className="pktw-flex pktw-flex-wrap pktw-gap-2">
 						{/* New topics */}
 						{diff.newTopics.map((topic) => (
-							<span key={topic.label} className="pktw-bg-green-100 pktw-text-green-800 pktw-text-xs pktw-px-2 pktw-py-1 pktw-rounded pktw-font-medium">
+							<span key={'new' + topic.label} className="pktw-bg-green-100 pktw-text-green-800 pktw-text-xs pktw-px-2 pktw-py-1 pktw-rounded pktw-font-medium">
 								+ {topic.label}
 							</span>
 						))}
 						{/* Removed topics */}
 						{diff.removedTopics.map((topic) => (
-							<span key={topic.label} className="pktw-bg-red-100 pktw-text-red-800 pktw-text-xs pktw-px-2 pktw-py-1 pktw-rounded pktw-font-medium pktw-line-through">
+							<span key={'removed' + topic.label} className="pktw-bg-red-100 pktw-text-red-800 pktw-text-xs pktw-px-2 pktw-py-1 pktw-rounded pktw-font-medium pktw-line-through">
 								- {topic.label}
 							</span>
 						))}
 						{/* Existing topics */}
 						{topics.filter(topic => !diff.newTopics.find(t => t.label === topic.label)).map((topic) => (
-							<span key={topic.label} className="pktw-bg-[#e5e7eb] pktw-text-[#2e3338] pktw-text-xs pktw-px-2 pktw-py-1 pktw-rounded pktw-font-medium">
+							<span key={'existing' + topic.label} className="pktw-bg-[#e5e7eb] pktw-text-[#2e3338] pktw-text-xs pktw-px-2 pktw-py-1 pktw-rounded pktw-font-medium">
 								{topic.label}
 							</span>
 						))}
@@ -114,21 +114,21 @@ export const IncrementalContent: React.FC<{
 					<div className="pktw-space-y-2">
 						{/* New sources */}
 						{diff.newSources.map((source) => (
-							<div key={source.id} className="pktw-bg-green-50 pktw-border pktw-border-green-200 pktw-rounded pktw-p-3 pktw-text-xs">
+							<div key={'new' + source.id} className="pktw-bg-green-50 pktw-border pktw-border-green-200 pktw-rounded pktw-p-3 pktw-text-xs">
 								<div className="pktw-font-medium pktw-text-green-800">{source.title}</div>
 								<div className="pktw-text-green-700 pktw-mt-1">{source.reasoning}</div>
 							</div>
 						))}
 						{/* Removed sources */}
 						{diff.removedSources.map((source) => (
-							<div key={source.id} className="pktw-bg-red-50 pktw-border pktw-border-red-200 pktw-rounded pktw-p-3 pktw-text-xs pktw-line-through">
+							<div key={'removed' + source.id} className="pktw-bg-red-50 pktw-border pktw-border-red-200 pktw-rounded pktw-p-3 pktw-text-xs pktw-line-through">
 								<div className="pktw-font-medium pktw-text-red-800">{source.title}</div>
 								<div className="pktw-text-red-700 pktw-mt-1">{source.reasoning}</div>
 							</div>
 						))}
 						{/* Existing sources */}
 						{sources.filter(source => !diff.newSources.find(s => s.id === source.id)).map((source) => (
-							<div key={source.id} className="pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded pktw-p-3 pktw-text-xs">
+							<div key={'existing' + source.id} className="pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded pktw-p-3 pktw-text-xs">
 								<div className="pktw-font-medium pktw-text-[#2e3338]">{source.title}</div>
 								<div className="pktw-text-[#6c757d] pktw-mt-1">{source.reasoning}</div>
 							</div>

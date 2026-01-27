@@ -26,8 +26,12 @@ export async function getSemanticNeighbors(docId: string, limit: number, filterD
     }
 
     // Perform semantic search
-    // If you want 'limit' semantic neighbors, but 3 of them are already your structural neighbors, after filtering you'll only have limit - 3 left. So, fetch more at first (e.g., limit * 2), then after filtering, slice(0, limit) to ensure you still return the full number of semantic neighbors to the Agent.
-    const searchResults = await embeddingRepo.searchSimilarAndGetId(averageVector, limit * 2);
+    // If you want 'limit' semantic neighbors, but 3 of them are already your structural neighbors, after filtering you'll only have limit - 3 left. 
+    // So, fetch more at first (e.g., limit * 2), then after filtering, slice(0, limit) to ensure you still return the full number of semantic neighbors to the Agent.
+    const searchResults = await embeddingRepo.searchSimilarAndGetId(
+        averageVector, limit * 2,
+        'excludeDocIdsSet', { excludeDocIdsSet: filterDocIds }
+    );
     // Get unique doc_ids and fetch their metadata
     const resultDocIds = Array.from(new Set(searchResults.map(r => r.doc_id)));
     // doc info
@@ -66,7 +70,7 @@ type ClusterNodesDescription = {
  * 
  * @param nodes - do not change the original nodes item. as it may extend GraphNode type. many hide fields.
  */
-export async function distillClusterNodesData(nodes: GraphNode[], limit: number): Promise<ClusterNodesDescription> {
+export async function distillClusterNodesData(nodes: GraphNode[], limit: number, ignoreDocumentNodes: boolean = false): Promise<ClusterNodesDescription> {
     // Map node types to arrays of nodes
     const typeNodeMap: { [key in GraphNodeType]?: GraphNode[] } = {};
     for (const node of nodes) {
@@ -81,14 +85,14 @@ export async function distillClusterNodesData(nodes: GraphNode[], limit: number)
     let documentNodes = typeNodeMap['document'];
     let omittedDocNodeCnt = 0;
     // Implement RRF (Reciprocal Rank Fusion) sorting based on connection density, update time, and similarity
-    if (documentNodes && documentNodes.length > 0) {
+    if (!ignoreDocumentNodes && documentNodes && documentNodes.length > 0) {
         const nodeIds = documentNodes.map(node => node.id);
 
         const densityMap = await sqliteStoreManager.getGraphEdgeRepo().countEdges(nodeIds, 'document');
         const docStatisticsMap = await sqliteStoreManager.getDocStatisticsRepo().getByDocIds(nodeIds);
 
         // Apply RRF sorting using the extracted function
-        documentNodes = calculateDocumentRRF(documentNodes, densityMap, docStatisticsMap)
+        documentNodes = calculateDocumentRRF(documentNodes, densityMap.total, docStatisticsMap)
             .sort((a, b) => b.rrfScore - a.rrfScore);
 
         // Apply limit and track omitted count
@@ -291,7 +295,7 @@ export type ItemFiledGetter<T> = (item: T) => {
 export async function getDefaultItemFiledGetter<T extends { id: string }>(nodeIds: string[], filters?: any, sorter?: string): Promise<ItemFiledGetter<T>> {
     const nodesMap = await sqliteStoreManager.getGraphNodeRepo().getByIds(nodeIds);
     const tagsAndCategoriesMap = filters?.tag_category_boolean_expression
-        ? await sqliteStoreManager.getGraphStore().getTagsAndCategoriesByDocIds(nodeIds)
+        ? (await sqliteStoreManager.getGraphStore().getTagsAndCategoriesByDocIds(nodeIds)).idMapToTagsAndCategories
         : emptyMap<string, { tags: string[], categories: string[] }>();
     const edgeRepo = sqliteStoreManager.getGraphEdgeRepo();
     const { incoming: inCominglinksCountMap, outgoing: outGoinglinksCountMap, total: totalLinksCountMap } =

@@ -444,6 +444,7 @@ export class IndexService {
 	 * Uses data directly from Document object (references, tags, categories).
 	 */
 	private async upsertGraph(doc: Document): Promise<void> {
+		console.debug(`[IndexService] Upserting graph for document: `, JSON.stringify(doc));
 		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
 		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
 

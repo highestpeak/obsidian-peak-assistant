@@ -291,6 +291,12 @@ export interface MyPluginSettings {
 	 * - 'sql.js': Force use sql.js (default, cross-platform)
 	 */
 	sqliteBackend?: 'auto' | 'better-sqlite3' | 'sql.js';
+
+	/**
+	 * Enable development tools for testing graph inspector tools in DevTools console.
+	 * When enabled, exposes window.testGraphTools global object.
+	 */
+	enableDevTools?: boolean;
 }
 
 /**
@@ -308,4 +314,6 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	commandHidden: DEFAULT_COMMAND_HIDDEN_SETTINGS,
 
 	sqliteBackend: 'auto', // Auto-detect: try better-sqlite3 first, fallback to sql.js
+
+	enableDevTools: false, // Disabled by default for security
 };

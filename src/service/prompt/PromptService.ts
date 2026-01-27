@@ -146,6 +146,7 @@ export class PromptService {
 		}
 
 		const toolCallId = generateUuidWithoutHyphens();
+		console.debug('[PromptService] chatWithPromptStream started', {promptText});
 		yield { type: 'prompt-stream-start', id: toolCallId, promptId, variables };
 
 		const contentChunks: string[] = [];
@@ -161,6 +162,7 @@ export class PromptService {
 					},
 				],
 			});
+			console.debug('[PromptService] chatWithPromptStream stream created');
 
 			for await (const event of stream) {
 				if (event.type === 'text-delta') {

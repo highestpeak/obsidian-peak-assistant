@@ -328,6 +328,25 @@ export function useAIAnalysis() {
 				: 'Failed to connect to AI service. Please check your network connection and try again.';
 			recordError(errorMessage);
 		} finally {
+			// comment this after debugging.
+			const aiAnalysisStoreState = useAIAnalysisStore.getState();
+			console.debug('[useAIAnalysis] complete. log all steps for debugging.', JSON.stringify({
+				...Object.fromEntries(
+					Object.entries(aiAnalysisStoreState).filter(([key]) => key !== 'steps' && key !== 'currentStep' && key !== 'summaryChunks')
+				),
+				steps: aiAnalysisStoreState.steps.map(step => ({
+					type: step.type,
+					text: step.textChunks.join(''),
+					extra: step.extra
+				})),
+				currentStep: {
+					type: aiAnalysisStoreState.currentStep.type,
+					text: aiAnalysisStoreState.currentStep.textChunks.join(''),
+					extra: aiAnalysisStoreState.currentStep.extra
+				},
+				summary: aiAnalysisStoreState.summaryChunks.join('')
+			}));
+
 			markCompleted();
 			// Clear abort controller
 			if (controller) {

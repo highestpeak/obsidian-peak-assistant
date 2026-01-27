@@ -210,7 +210,7 @@ class SqliteStoreManager {
 		const searchRawDb = this.searchStore;
 		this.docMetaRepo = new DocMetaRepo(searchKdb);
 		this.docChunkRepo = new DocChunkRepo(searchKdb, searchRawDb);
-		this.embeddingRepo = new EmbeddingRepo(searchKdb, searchRawDb);
+		this.embeddingRepo = new EmbeddingRepo(searchKdb, searchRawDb, this.docMetaRepo);
 		// Initialize vec_embeddings table cache (check once on plugin startup)
 		this.embeddingRepo.initializeVecEmbeddingsTableCache();
 		this.indexStateRepo = new IndexStateRepo(searchKdb);

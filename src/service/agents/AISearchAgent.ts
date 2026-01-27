@@ -341,7 +341,12 @@ export class AISearchAgent {
                     case 'text-end':
                     case 'finish-step':
                     case 'tool-input-end':
-                        console.debug('[AISearchAgent] streamSearch skip.', chunk.type);
+                    case 'tool-input-start':
+                    case 'tool-input-delta':
+                        // devtools will merge these duplicate logs.
+                        console.debug('[AISearchAgent] streamSearch skip. one of the following types: '
+                            + 'start, start-step, reasoning-start, reasoning-end, text-start, text-end, '
+                            + 'finish-step, tool-input-start, tool-input-delta, tool-input-end');
                         break;
                     default:
                         yield { type: 'unSupported', chunk: chunk, comeFrom: 'streamSearch', triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT };
@@ -448,7 +453,7 @@ export class AISearchAgent {
                                         // only process final summary. we don't need to keep the other parts.
                                         searchResultChunks.summary = searchChunk.result?.summary.trim().length > 0
                                             // if summary is empty, use text instead. (but i don't know why it happens currently. i will fix this later if i have time.)
-                                            ? searchChunk.result?.summary 
+                                            ? searchChunk.result?.summary
                                             : searchChunk.result?.text;
                                         // searchResultChunks.text = searchChunk.result?.text;
                                         // searchResultChunks.reasoning = searchChunk.result?.reasoning;
@@ -519,7 +524,10 @@ export class AISearchAgent {
                     case 'tool-input-start':
                     case 'tool-input-delta':
                     case 'tool-input-end':
-                        console.debug('[AISearchAgent] thoughtAgent skip.', chunk.type);
+                        // devtools will merge these duplicate logs.
+                        console.debug('[AISearchAgent] thoughtAgent skip. one of the following types: '
+                            + 'start, start-step, reasoning-start, reasoning-end, text-start, text-end, '
+                            + 'finish-step, tool-input-start, tool-input-delta, tool-input-end');
                         break;
                     default:
                         yield { type: 'unSupported', chunk: chunk, comeFrom: 'thoughtAgent', triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
@@ -579,11 +587,13 @@ export class AISearchAgent {
                     },
                 );
                 for await (const chunk of summaryStream) {
+                    console.debug('[AISearchAgent] summaryStream chunk:', JSON.stringify(chunk));
                     if (chunk.type === 'prompt-stream-result') {
                         this.agentResult.summary = chunk.output;
                     }
                     yield { ...chunk, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
                 }
+                console.debug('[AISearchAgent] summaryStream completed');
                 yield {
                     type: 'complete',
                     finishReason: 'stop',

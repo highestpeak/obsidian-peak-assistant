@@ -63,7 +63,8 @@ export async function graphTraversal(params: any) {
         let semanticLimit = limit;
         if (include_semantic_paths && current.depth > 0) {
             // Reduce semantic neighbor limit for farther hops (deeper nodes are less likely to be relevant).
-            semanticLimit = Math.max(3, Math.floor(limit / (current.depth + 1)));
+            const decayMap = [limit, 3, 1];
+            semanticLimit = decayMap[current.depth] ?? 0;
         }
         const semanticNodes = include_semantic_paths && current.type === "document"
             ? await getSemanticNeighbors(current.id, semanticLimit, new Set([...inComingNode, ...outGoingNode]))
@@ -108,7 +109,8 @@ export async function graphTraversal(params: any) {
     const levels = await Promise.all(
         Array.from(groupedByDepth.entries()).map(async ([depth, levelData]) => ({
             depth,
-            ...(await distillClusterNodesData(levelData, limit))
+            // ignore document nodes filter as we have already filtered them before. also we want more semantic neighbors for each level.
+            ...(await distillClusterNodesData(levelData, limit, true))
         }))
     );
 

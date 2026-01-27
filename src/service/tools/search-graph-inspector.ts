@@ -76,7 +76,7 @@ const ResponseFormat = z.object({
 // Base parameter blocks for reuse
 // Basic pagination/limiting
 const BaseLimit = z.object({
-    limit: z.number().min(1).max(50).default(20).optional().describe('Maximum number of results(each step inner also. not so strictly.)')
+    limit: z.number().min(1).max(100).default(20).optional().describe('Maximum number of results(each step inner also. not so strictly.)')
 });
 
 // Semantic enhancement options
@@ -147,6 +147,9 @@ structural health and authority analysis.
             /**
              * Group 2. graph_traversal
              * [Breadth Exploration]: explore related notes within N degrees of separation
+             * hops=3 limit=30 structured output for a normal doc may lead to 100KB output witch may count to 50k tokens.
+             * hops=3 limit=100 structured output for a normal doc may lead to 217KB output witch may count to 100k tokens.
+             * hops=3 limit=100 structured output for a doc with a lot outlinks(50) may lead to 255KB output witch may count to 100k tokens.
              */
             z.object({
                 mode: z.literal("graph_traversal"),
@@ -168,7 +171,7 @@ structural health and authority analysis.
                     // traversal is usually an intermediate step, default to precise path arrays can reduce AI spelling errors.
                     response_format: ResponseFormat.shape.response_format.default('structured'),
                     // Exploration tools, using a larger limit to allow AI to get a more complete local graph.
-                    limit: z.number().min(1).max(100).default(40).optional().describe('Maximum number of results')
+                    limit: z.number().min(1).max(100).default(15).optional().describe('Maximum number of results. do not set too large as it may cause context overflow.')
                 }),
 
             /**
@@ -210,8 +213,8 @@ structural health and authority analysis.
             z.object({
                 mode: z.literal("find_orphans")
             })
-                .merge(BaseLimit)
                 .extend({
+                    limit: z.number().min(1).max(1000).default(50).optional().describe('Maximum number of results.'),
                     filters: FilterOption.optional(),
                     sorter: SorterOption.optional(),
                     // AI need to understand the meaning associations between these notes, or give the user a summary.

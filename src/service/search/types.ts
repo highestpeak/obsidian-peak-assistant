@@ -13,7 +13,7 @@ export type SearchResultType = DocumentType | 'heading';
  * - inFolder: search within a folder scope
  * - limitIdsSet: search within a limited set of IDs
  */
-export type SearchScopeMode = 'vault' | 'inFile' | 'inFolder' | 'limitIdsSet';
+export type SearchScopeMode = 'vault' | 'inFile' | 'inFolder' | 'limitIdsSet' | 'excludeDocIdsSet';
 
 /**
  * Optional search scope information.
@@ -31,6 +31,10 @@ export interface SearchScopeValue {
 	 * Limit IDs set (if limitIdsSet mode).
 	 */
 	limitIdsSet?: Set<string>;
+	/**
+	 * Exclude IDs set (if excludeIdsSet mode).
+	 */
+	excludeDocIdsSet?: Set<string>;
 }
 
 /**

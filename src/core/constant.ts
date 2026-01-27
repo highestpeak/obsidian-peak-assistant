@@ -122,7 +122,7 @@ export const PATH_FINDING_CONSTANTS = {
 	 * - 2nd iteration: Discovers one alternative path
 	 * - 3rd iteration: Provides additional exploration perspective
 	 */
-	DEFAULT_ITERATIONS: 3,
+	DEFAULT_ITERATIONS: 5,
 
 	/**
 	 * Maximum hop limit to prevent semantic drift.

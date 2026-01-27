@@ -6,7 +6,9 @@ export const template = `# 📂 Context for [[{{note_path}}]]
 
 ## 🏷️ Identity
 **Tags**: {{#each tags}} #{{this}}, {{/each}}
+{{#if categories}}
 **Categories**: {{#each categories}} {{this}}, {{/each}}
+{{/if}}
 
 ## 🔗 Relationships
 
@@ -14,7 +16,8 @@ export const template = `# 📂 Context for [[{{note_path}}]]
 ### 📥 Incoming Links ({{incoming.documentNodes.length}})
 {{#each incoming.documentNodes}} - **{{label}}**
     - id: {{id}}
-    - attributes: \`{{attributes}}\`
+    - attributes: 
+{{{toYaml attributes 8}}}
     - created_at: {{humanReadableTime created_at}}
     - updated_at: {{humanReadableTime updated_at}}
 {{/each}}
@@ -27,7 +30,8 @@ export const template = `# 📂 Context for [[{{note_path}}]]
 ### 📤 Outgoing Links ({{outgoing.documentNodes.length}})
 {{#each outgoing.documentNodes}} - **{{label}}**
     - id: {{id}}
-    - attributes: \`{{attributes}}\`
+    - attributes:
+{{{toYaml attributes 8}}}
     - created_at: {{humanReadableTime created_at}}
     - updated_at: {{humanReadableTime updated_at}}
 {{/each}}
@@ -41,7 +45,8 @@ export const template = `# 📂 Context for [[{{note_path}}]]
 {{#each semanticNeighbors.documentNodes}} - **{{label}}**
     - similarity: {{similarity}}
     - id: {{id}}
-    - attributes: \`{{attributes}}\`
+    - attributes:
+{{{toYaml attributes 8}}}
     - created_at: {{humanReadableTime created_at}}
     - updated_at: {{humanReadableTime updated_at}}
 {{/each}}

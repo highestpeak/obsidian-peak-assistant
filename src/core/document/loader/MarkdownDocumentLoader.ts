@@ -2,14 +2,13 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
-import { extractReferences } from '@/core/utils/markdown-utils';
+import { parseMarkdownWithRemark } from '@/core/utils/markdown-utils';
 import { generateContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { PromptId } from '@/service/prompt/PromptId';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 
 /**
@@ -121,46 +120,12 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 		try {
 			const content = await this.app.vault.cachedRead(file);
 			const contentHash = generateContentHash(content);
-			const references = extractReferences(content);
 
-			// Extract title from frontmatter or filename
-			let title = file.basename;
-			const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-			if (frontmatterMatch) {
-				const frontmatter = frontmatterMatch[1];
-				const titleMatch = frontmatter.match(/^title:\s*(.+)$/m);
-				if (titleMatch) {
-					title = titleMatch[1].trim().replace(/^["']|["']$/g, '');
-				}
-			}
+			// Parse markdown using remark to extract title, tags and frontmatter
+			const parseResult = await parseMarkdownWithRemark(content);
 
-			// Extract tags from frontmatter and content
-			const tags: string[] = [];
-			if (frontmatterMatch) {
-				const frontmatter = frontmatterMatch[1];
-				const tagsMatch = frontmatter.match(/^tags?:\s*(.+)$/m);
-				if (tagsMatch) {
-					const tagStr = tagsMatch[1].trim();
-					// Support both YAML list and comma-separated
-					if (tagStr.startsWith('[')) {
-						// YAML list format
-						try {
-							const parsed = JSON.parse(tagStr);
-							if (Array.isArray(parsed)) tags.push(...parsed);
-						} catch {
-							// Fallback: split by comma
-							tags.push(...tagStr.split(',').map(t => t.trim()));
-						}
-					} else {
-						tags.push(...tagStr.split(',').map(t => t.trim()));
-					}
-				}
-			}
-			// Also extract #tags from content
-			const hashTags = content.match(/#[\w\u4e00-\u9fff]+/g);
-			if (hashTags) {
-				tags.push(...hashTags.map(t => t.slice(1))); // Remove #
-			}
+			// Extract title from parsed result or fallback to filename
+			let title = parseResult.title || file.basename;
 
 			const summaryContent = genCacheContent ? { shortSummary: null, fullSummary: null } : await this.getSummary(content);
 
@@ -187,14 +152,15 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 				},
 				metadata: {
 					title,
-					tags: [...new Set(tags)], // Deduplicate
+					tags: parseResult.tags,
 				},
 				summary: summaryContent.shortSummary,
 				contentHash,
-				references,
+				references: parseResult.references,
 				lastProcessedAt: Date.now(),
 			};
-		} catch {
+		} catch (error) {
+			console.error('Error reading markdown file:', error);
 			// Ignore read errors; indexing should be best-effort.
 			return null;
 		}

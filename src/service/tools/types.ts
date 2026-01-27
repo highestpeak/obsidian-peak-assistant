@@ -88,7 +88,7 @@ export function buildResponse(responseFormat: 'structured' | 'markdown' | 'hybri
             return template ? Handlebars.compile(template)(result) : result;
         case 'hybrid':
             return {
-                data: result.data,
+                data: result,
                 template: template ? Handlebars.compile(template)(result) : result,
             };
         default:

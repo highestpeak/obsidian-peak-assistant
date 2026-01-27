@@ -47,15 +47,17 @@ class CustomSqliteDriver {
 		let result: any;
 
 		if (parameters && parameters.length > 0) {
-			const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
-			if (isSelect) {
+			// const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
+			// if (isSelect) {
+			if (stmt.reader) {
 				result = stmt.all(...parameters);
 			} else {
 				result = stmt.run(...parameters);
 			}
 		} else {
-			const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
-			if (isSelect) {
+			// const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
+			// if (isSelect) {
+			if (stmt.reader) {
 				result = stmt.all();
 			} else {
 				result = stmt.run();

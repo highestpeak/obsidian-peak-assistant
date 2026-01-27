@@ -13,6 +13,8 @@ import { IndexService } from '@/service/search/index/indexService';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import { ConfirmModal } from '@/ui/view/ConfirmModal';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
+import { EmbeddingRepo } from '@/core/storage/sqlite/repositories/EmbeddingRepo';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 /**
  * Registers core commands exposed via Obsidian command palette.
@@ -181,6 +183,33 @@ export function buildCoreCommands(
 			name: 'Verify Database Health',
 			callback: async () => {
 				await verifyDatabaseHealth(viewManager.getApp(), settings);
+			},
+		},
+		{
+			id: 'peak-cleanup-orphaned-vec-embeddings',
+			name: 'Cleanup Orphaned Vector Embeddings',
+			callback: async () => {
+				try {
+					new Notice('Starting cleanup of orphaned vector embeddings...', 2000);
+
+					// Run cleanup
+					const result = await sqliteStoreManager.getEmbeddingRepo().cleanupOrphanedVecEmbeddings();
+
+					if (result.found === 0) {
+						new Notice('No orphaned vector embeddings found.', 3000);
+					} else {
+						new Notice(
+							`Cleanup completed: Found ${result.found} orphaned records, deleted ${result.deleted}.`,
+							5000
+						);
+					}
+				} catch (error) {
+					console.error('[Register] Error cleaning up orphaned vec embeddings:', error);
+					new Notice(
+						'Failed to cleanup orphaned vector embeddings. Please check the console for details.',
+						5000
+					);
+				}
 			},
 		},
 

@@ -3,6 +3,7 @@ import { MyPluginSettings } from '@/app/settings/types';
 import { InputWithConfirm } from '@/ui/component/mine/input-with-confirm';
 import { CollapsibleSettingsSection } from '@/ui/component/shared-ui/CollapsibleSettingsSection';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
+import { Switch } from '@/ui/component/shared-ui/switch';
 
 interface GeneralTabProps {
 	settings: MyPluginSettings;
@@ -122,6 +123,31 @@ export function GeneralTab({ settings, settingsUpdates }: GeneralTabProps) {
 							</div>
 						</div>
 					))}
+				</div>
+			</CollapsibleSettingsSection>
+
+			{/* Developer Tools Section */}
+			<CollapsibleSettingsSection title="Developer Tools">
+				<div className="pktw-space-y-6">
+					<div className="pktw-flex pktw-items-start pktw-gap-4">
+						{/* Left side: label and description */}
+						<div className="pktw-flex-1 pktw-min-w-0">
+							<label className="pktw-block pktw-text-sm pktw-font-medium pktw-mb-1">
+								Enable DevTools Graph Inspector
+							</label>
+							<p className="pktw-text-xs pktw-text-muted-foreground">
+								Enable global test interface for graph inspector tools in browser DevTools console.
+								Exposes window.testGraphTools object with convenience methods for testing.
+							</p>
+						</div>
+						{/* Right side: switch */}
+						<div className="pktw-flex-shrink-0">
+							<Switch
+								checked={settings.enableDevTools ?? false}
+								onChange={(checked) => update('enableDevTools', checked)}
+							/>
+						</div>
+					</div>
 				</div>
 			</CollapsibleSettingsSection>
 

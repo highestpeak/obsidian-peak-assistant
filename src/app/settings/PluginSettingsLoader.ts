@@ -236,6 +236,9 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		settings.sqliteBackend = sqliteBackend;
 	}
 
+	// Dev tools setting
+	settings.enableDevTools = getBoolean(raw?.enableDevTools, false);
+
 	return settings;
 }
 
