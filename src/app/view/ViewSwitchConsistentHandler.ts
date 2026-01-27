@@ -46,13 +46,17 @@ export class ViewSwitchConsistentHandler {
 	 * Ensures chat layout views are active and focused.
 	 */
 	async activateChatView(): Promise<void> {
+		// Check if chat view actually exists, reset state if not
+		const existingChatLeaves = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
+		if (existingChatLeaves.length === 0) {
+			this.isChatLayoutActive = false;
+		}
+
 		if (this.isChatLayoutActive || this.isActivating) return;
 
 		this.isActivating = true;
 		try {
-
-			const existingChatLeaves = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
-			const centerLeaf = existingChatLeaves[0] ?? this.app.workspace.getLeaf(false);
+			const centerLeaf = existingChatLeaves[0] ?? this.app.workspace.getLeaf('tab');
 			if(centerLeaf) {
 				await centerLeaf.setViewState({ type: CHAT_VIEW_TYPE, active: true });
 			}
