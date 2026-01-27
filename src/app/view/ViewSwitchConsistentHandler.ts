@@ -23,7 +23,7 @@ export class ViewSwitchConsistentHandler {
 	 */
 	private getNewTabLeaf(): WorkspaceLeaf | null {
 		const emptyLeaves = this.app.workspace.getLeavesOfType('empty');
-		const newTabLeaf = emptyLeaves.find(leaf => {
+		const newTabLeaf = emptyLeaves.find((leaf: WorkspaceLeaf) => {
 			const state = leaf.getViewState() as any;
 			return state.title === 'New tab';
 		});
@@ -38,7 +38,7 @@ export class ViewSwitchConsistentHandler {
 		if (viewType && TRACKED_VIEW_TYPES.has(viewType)) {
 			void this.activateChatView();
 		} else if (viewType !== 'empty') {
-			void this.activeDocumentView();
+			void this.activeDocumentView(leaf);
 		}
 	}
 
@@ -46,13 +46,17 @@ export class ViewSwitchConsistentHandler {
 	 * Ensures chat layout views are active and focused.
 	 */
 	async activateChatView(): Promise<void> {
+		// Check if chat view actually exists, reset state if not
+		const existingChatLeaves = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
+		if (existingChatLeaves.length === 0) {
+			this.isChatLayoutActive = false;
+		}
+
 		if (this.isChatLayoutActive || this.isActivating) return;
 
 		this.isActivating = true;
 		try {
-
-			const existingChatLeaves = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
-			const centerLeaf = existingChatLeaves[0] ?? this.app.workspace.getLeaf(false);
+			const centerLeaf = existingChatLeaves[0] ?? this.app.workspace.getLeaf('tab');
 			if(centerLeaf) {
 				await centerLeaf.setViewState({ type: CHAT_VIEW_TYPE, active: true });
 			}
@@ -81,13 +85,16 @@ export class ViewSwitchConsistentHandler {
 	/**
 	 * Returns to the regular document layout, restoring cached states.
 	 */
-	async activeDocumentView(): Promise<void> {
+	async activeDocumentView(preferredLeaf?: WorkspaceLeaf | null): Promise<void> {
 		if (!this.isChatLayoutActive || this.isActivatingDocument) return;
 
 		this.isActivatingDocument = true;
 		try {
-			const fallbackLeft: ViewState = { type: 'file-explorer', state: {}, active: true } as ViewState;
-			const fallbackRight: ViewState = { type: 'outline', state: {}, active: true } as ViewState;
+			// Important: do NOT set side panes to active=true here.
+			// When switching from chat -> document, the user's click already selected a target leaf.
+			// Activating side panes would steal focus and can cause us to incorrectly pick a fallback markdown leaf.
+			const fallbackLeft: ViewState = { type: 'file-explorer', state: {}, active: false } as ViewState;
+			const fallbackRight: ViewState = { type: 'outline', state: {}, active: false } as ViewState;
 
 			// Find existing file-explorer leaf or create new one
 			const existingFileExplorerLeaves = this.app.workspace.getLeavesOfType('file-explorer');
@@ -103,11 +110,15 @@ export class ViewSwitchConsistentHandler {
 				await rightLeaf.setViewState({ ...fallbackRight, active: true });
 			}
 
-			// Handle center area: find last active markdown document or create new one
+			// Handle center area: prefer the leaf that triggered the switch (i.e. the tab the user clicked).
 			const existingMarkdownLeaves = this.app.workspace.getLeavesOfType('markdown');
 			let centerLeaf: WorkspaceLeaf | null = null;
 
-			if (existingMarkdownLeaves.length > 0) {
+			if (preferredLeaf && preferredLeaf.view?.getViewType() === 'markdown') {
+				centerLeaf = preferredLeaf;
+			}
+
+			if (!centerLeaf && existingMarkdownLeaves.length > 0) {
 				// Find the last active markdown leaf
 				// Check if any markdown leaf is currently active
 				const activeLeaf = this.app.workspace.activeLeaf;
