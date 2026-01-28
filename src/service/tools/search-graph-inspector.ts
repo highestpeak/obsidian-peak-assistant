@@ -28,7 +28,7 @@ const FilterOption = z.object({
             + "Example: '(tag:react OR tag:vue) AND category:frontend'"),
 
     // Single choice type selection - eliminates conflicts with boolean flags
-    type: z.enum(['note', 'folder', 'file', 'all']).default('all').optional()
+    type: z.enum(['note', 'folder', 'file', 'all']).optional().default('all')
         .describe("note (markdown only), file (attachments), folder, or all (everything). Default is 'all'."),
     path: z.string().optional().describe("Regex or prefix for file paths"),
 
@@ -75,15 +75,16 @@ const ResponseFormat = z.object({
 
 // Base parameter blocks for reuse
 // Basic pagination/limiting
+// NOTE: Use .optional().default(x) order so that Zod applies the default when param is not provided
 const BaseLimit = z.object({
-    limit: z.number().min(1).max(100).default(20).optional().describe('Maximum number of results(each step inner also. not so strictly.)')
+    limit: z.number().min(1).max(100).optional().default(20).describe('Maximum number of results(each step inner also. not so strictly.)')
 });
 
 // Semantic enhancement options
 const SemanticOptions = z.object({
     // make more: expand results
     // The algorithm reuses the content of the current node. When it arrives at a point A, its query is formed using the content of A to search for neighboring vectors in the vector library dynamically and adaptively without requiring additional user input.
-    include_semantic_paths: z.boolean().default(false).optional().describe('Include document semantic connection paths. Only semantic connection to document nodes.'),
+    include_semantic_paths: z.boolean().optional().default(false).describe('Include document semantic connection paths. Only semantic connection to document nodes.'),
     // make less: when semantic_filter is true, it will be a "guard", whenever the algorithm is about to walk to a new node, it will ask: "is this node related to the user's search intent (query)?"
     semantic_filter: SemanticFilter.optional()
         .describe("Semantic pruning/relevance filtering. The conceptual anchor for filtering. "
@@ -91,266 +92,254 @@ const SemanticOptions = z.object({
 });
 
 /**
- * the core of the tool design: don't return "raw data", return "semantic description".
+ * Tool 1: inspect_note_context
  */
-export function vaultGraphInspectorTool(): AgentTool {
+export function inspectNoteContextTool(): AgentTool {
     return safeAgentTool({
-        description: `
-Vault graph analysis tool for exploring note relationships and vault structure.
+        // No need for filters and sorters. as it's a single note context. Content will not be too much.
+        description: `[Deep Dive] [detailed analysis] Use this tool to understand a single note's identity (tags, connections, location). Includes 'get_note_connections', 'get_note_tags', 'get_note_categories'.`,
+        inputSchema: z.object({
+            note_path: z.string()
+        })
+            .merge(BaseLimit)
+            .extend({
+                include_semantic_paths: SemanticOptions.shape.include_semantic_paths,
+                // Use structured by default for better tool chaining and graph reasoning
+                response_format: ResponseFormat.shape.response_format.default('structured')
+            }),
+        execute: async (params) => {
+            return await inspectNoteContext({ ...params, mode: 'inspect_note_context' });
+        }
+    });
+}
 
-🎯 CORE CAPABILITIES:
-
-🔍 SINGLE NOTE ANALYSIS:
-• inspect_note_context: [Deep Dive] [detailed analysis] Use 'inspect_note_context' to understand a single note's identity (tags, connections, location)
-
-🔗 RELATIONSHIP DISCOVERY: - Find the room using the map
-• graph_traversal: [Relational Discovery] exploring knowledge clusters. Explore related notes within N degrees of separation
-• find_path: Discover connection paths between two specific notes
-structural health and authority analysis.
-• find_key_nodes: Identify influential notes (high connectivity nodes)
-• find_orphans: Find disconnected/unlinked notes
-
-📊 SEARCH & FILTERING: - Looking for a needle in a haystack.
-• search_by_dimensions: complex multi-criteria searches. Advanced filtering by tags, folders, time ranges with boolean logic
-• local_search_whole_vault: Full-text and semantic search across the vault
-
-📁 VAULT NAVIGATION:
-• explore_folder: Browse folder structure and contents
-• recent_changes_whole_vault: View recently modified notes
-
-💡 USAGE GUIDELINES:
-- Combine semantic_filter with graph operations for relevance-focused results
-- Physical vs Semantic: Most tools support 'include_semantic_paths'. Physical paths are hard links ([[links]]); Semantic paths are conceptual similarities discovered via vector embeddings.
-- Pruning: Always use 'semantic_filter' when traversing large graphs to avoid noise and context overflow.
-- Avoid use too much filters and sorters. as it will increase the query complexity and cost.
-        `,
-
-        inputSchema: z.discriminatedUnion("mode", [
-            /**
-             * Group 1. inspect_note_context. 
-             * [Deep Dive] [detailed analysis] [to understand a single note's identity (tags, connections, location)]
-             * Reduce API calls: Agent previously needed 3 calls to gather note context, now 1 call handles it.
-             *   Includes 'get_note_connections', 'get_note_tags', 'get_note_categories'.
-             * No need for filters and sorters. as it's a single note context. Content will not be too much.
+/**
+ * Tool 2: graph_traversal
+ * hops=3 limit=30 structured output for a normal doc may lead to 100KB output witch may count to 50k tokens.
+ * hops=3 limit=100 structured output for a normal doc may lead to 217KB output witch may count to 100k tokens.
+ * hops=3 limit=100 structured output for a doc with a lot outlinks(50) may lead to 255KB output witch may count to 100k tokens.
+ */
+export function graphTraversalTool(): AgentTool {
+    return safeAgentTool({
+        description: `[Relational Discovery] Explore related notes within N degrees of separation (hops). Find knowledge clusters and neighborhood.`,
+        inputSchema: z.object({
+            start_note_path: z.string(),
+            // The '6-degree separation' theory implies that with five jumps, almost all points in a small note database can be covered
+            hops: z.number().min(1).max(3).default(1)
+                .describe('3 hops is usually enough to cover a vast knowledge cluster. start with 1-2 hops. Only escalate to 3 hops if the results are too sparse.')
+        })
+            /*
+             * When traversing the graph, the Agent has two choices:
+             * Physical Hops: Walk along [[links]], e.g. A -> B -> C.
+             * Semantic Hops: Walk along "meaning", e.g. A -> (semantically closest node) -> B.
+             * Without SemanticOptions, graph_traversal works as a rigid crawler; with it, the Agent can discover paths that are physically disconnected but logically related.
              */
-            z.object({
-                mode: z.literal("inspect_note_context"),
-                note_path: z.string()
-            })
-                .merge(BaseLimit)
-                .extend({
-                    include_semantic_paths: SemanticOptions.shape.include_semantic_paths,
-                    // AI needs to read it like reading a "personal file", Markdown is more contextual.
-                    response_format: ResponseFormat.shape.response_format.default('markdown')
-                }),
+            .merge(SemanticOptions)
+            .extend({
+                filters: FilterOption.optional().describe('Only filter document nodes in each level.'),
+                sorter: SorterOption.optional().describe('Only sort document nodes in each level.'),
+                // traversal is usually an intermediate step, default to precise path arrays can reduce AI spelling errors.
+                response_format: ResponseFormat.shape.response_format.default('structured'),
+                // Exploration tools, using a larger limit to allow AI to get a more complete local graph.
+                limit: z.number().min(1).max(100).optional().default(15).describe('Maximum number of results. do not set too large as it may cause context overflow.')
+            }),
+        execute: async (params) => {
+            return await graphTraversal({ ...params, mode: 'graph_traversal' });
+        }
+    });
+}
 
-            /**
-             * Group 2. graph_traversal
-             * [Breadth Exploration]: explore related notes within N degrees of separation
-             * hops=3 limit=30 structured output for a normal doc may lead to 100KB output witch may count to 50k tokens.
-             * hops=3 limit=100 structured output for a normal doc may lead to 217KB output witch may count to 100k tokens.
-             * hops=3 limit=100 structured output for a doc with a lot outlinks(50) may lead to 255KB output witch may count to 100k tokens.
-             */
-            z.object({
-                mode: z.literal("graph_traversal"),
-                start_note_path: z.string(),
-                // The '6-degree separation' theory implies that with five jumps, almost all points in a small note database can be covered
-                hops: z.number().min(1).max(3).default(1)
-                    .describe('3 hops is usually enough to cover a vast knowledge cluster. start with 1-2 hops. Only escalate to 3 hops if the results are too sparse.')
-            })
-                /**
-                 * When traversing the graph, the Agent has two choices:
-                 * Physical Hops: Walk along [[links]], e.g. A -> B -> C.
-                 * Semantic Hops: Walk along "meaning", e.g. A -> (semantically closest node) -> B.
-                 * Without SemanticOptions, graph_traversal works as a rigid crawler; with it, the Agent can discover paths that are physically disconnected but logically related.
-                 */
-                .merge(SemanticOptions)
-                .extend({
-                    filters: FilterOption.optional().describe('Only filter document nodes in each level.'),
-                    sorter: SorterOption.optional().describe('Only sort document nodes in each level.'),
-                    // traversal is usually an intermediate step, default to precise path arrays can reduce AI spelling errors.
-                    response_format: ResponseFormat.shape.response_format.default('structured'),
-                    // Exploration tools, using a larger limit to allow AI to get a more complete local graph.
-                    limit: z.number().min(1).max(100).default(15).optional().describe('Maximum number of results. do not set too large as it may cause context overflow.')
-                }),
+/**
+ * Tool 3: find_path
+ * no support for sorting multiple paths by relevance/modification. meaningless for most cases. and also meaningless for sorting nodes in the path.
+ */
+export function findPathTool(): AgentTool {
+    return safeAgentTool({
+        description: `Discover connection paths between two specific notes. Useful for finding how two concepts are related.`,
+        inputSchema: z.object({
+            start_note_path: z.string(),
+            end_note_path: z.string()
+        })
+            .merge(BaseLimit)
+            .extend({
+                filters: FilterOption.optional().describe('Filter nodes in the path. May cost much more time and resources. As the graph algorithm is time-consuming.'),
+                include_semantic_paths: SemanticOptions.shape.include_semantic_paths,
+                // find_path is usually an intermediate step, precise path arrays can reduce AI spelling errors.
+                response_format: ResponseFormat.shape.response_format.default('structured'),
+            }),
+        execute: async (params) => {
+            return await findPath({ ...params, mode: 'find_path' });
+        }
+    });
+}
 
-            /**
-             * Group 3. find_path for depth path finding.
-             * no support for sorting multiple paths by relevance/modification. meaningless for most cases. and also meaningless for sorting nodes in the path.
-             */
-            z.object({
-                mode: z.literal("find_path"),
-                start_note_path: z.string(),
-                end_note_path: z.string()
-            })
-                .merge(BaseLimit)
-                .extend({
-                    filters: FilterOption.optional().describe('Filter nodes in the path. May cost much more time and resources. As the graph algorithm is time-consuming.'),
-                    include_semantic_paths: SemanticOptions.shape.include_semantic_paths,
-                    // find_path is usually an intermediate step, precise path arrays can reduce AI spelling errors.
-                    response_format: ResponseFormat.shape.response_format.default('structured'),
-                }),
+/**
+ * Tool 4: find_key_nodes
+ */
+export function findKeyNodesTool(): AgentTool {
+    return safeAgentTool({
+        description: `Identify influential notes (high connectivity nodes, hubs) in the vault.`,
+        inputSchema: z.object({})
+            .merge(BaseLimit)
+            .extend({
+                filters: FilterOption.optional(),
+                // normally user want to find the key nodes with the most backlinks.
+                sorter: SorterOption.optional().default('backlinks_count_desc'),
+                semantic_filter: SemanticOptions.shape.semantic_filter.optional(),
+                // AI need to understand the meaning associations between these notes, or give the user a summary.
+                response_format: ResponseFormat.shape.response_format.default('markdown')
+            }),
+        execute: async (params) => {
+            return await findKeyNodes({ ...params, mode: 'find_key_nodes' });
+        }
+    });
+}
 
-            /**
-             * Group 4. find_key_nodes for global hubs
-             */
-            z.object({
-                mode: z.literal("find_key_nodes")
-            })
-                .merge(BaseLimit)
-                .extend({
-                    filters: FilterOption.optional(),
-                    // normally user want to find the key nodes with the most backlinks.
-                    sorter: SorterOption.optional().default('backlinks_count_desc'),
-                    semantic_filter: SemanticOptions.shape.semantic_filter.optional(),
-                    // AI need to understand the meaning associations between these notes, or give the user a summary.
-                    response_format: ResponseFormat.shape.response_format.default('markdown')
-                }),
+/**
+ * Tool 5: find_orphans
+ */
+export function findOrphansTool(): AgentTool {
+    return safeAgentTool({
+        description: `Find disconnected/unlinked notes (orphans) in the vault.`,
+        inputSchema: z.object({})
+            .extend({
+                limit: z.number().min(1).max(1000).optional().default(50).describe('Maximum number of results.'),
+                filters: FilterOption.optional(),
+                sorter: SorterOption.optional(),
+                // AI need to understand the meaning associations between these notes, or give the user a summary.
+                response_format: ResponseFormat.shape.response_format.default('markdown')
+            }),
+        execute: async (params) => {
+            return await findOrphanNotes({ ...params, mode: 'find_orphans' });
+        }
+    });
+}
 
-            /**
-             * Group 5. find_orphans for disconnected notes
-             */
-            z.object({
-                mode: z.literal("find_orphans")
-            })
-                .extend({
-                    limit: z.number().min(1).max(1000).default(50).optional().describe('Maximum number of results.'),
-                    filters: FilterOption.optional(),
-                    sorter: SorterOption.optional(),
-                    // AI need to understand the meaning associations between these notes, or give the user a summary.
-                    response_format: ResponseFormat.shape.response_format.default('markdown')
-                }),
+/**
+ * Tool 6: search_by_dimensions
+ * example: user asks: "find the low-risk financial suggestions suitable for a layperson in my personal finance notes."
+ *     AI => search_by_dimensions: tag:FinancialPlanning OR category:Finance
+ *     AI => semantic_filter: "layperson、low-risk、stable income、anti-greed"
+ */
+export function searchByDimensionsTool(): AgentTool {
+    return safeAgentTool({
+        description: `Complex multi-criteria searches. Advanced filtering by tags, folders, time ranges with boolean logic. E.g. "(tag:react OR tag:vue) AND category:frontend"`,
+        inputSchema: z.object({
+            boolean_expression: z.string()
+                .describe("Complex boolean expression for filtering. Supports: tag:value, category:value, AND, OR, NOT, parentheses. "
+                    + "Category/tags refers to a field in the metadata of the note."
+                    + "Example: '(tag:react OR tag:vue) AND category:frontend'."
+                    + "If no results are found, try relaxing the boolean constraints or switching to OR logic")
+        })
+            .merge(BaseLimit)
+            .extend({
+                // For search_by_dimensions, we only need to filter by type and time, so we exclude tag/category from filters.
+                filters: FilterOption.omit({ tag_category_boolean_expression: true }).optional(),
+                sorter: SorterOption.optional(),
+                response_format: ResponseFormat.shape.response_format.default('structured')
+            }),
+        execute: async (params) => {
+            return await searchByDimensions({ ...params, mode: 'search_by_dimensions' });
+        }
+    });
+}
 
-            /**
-             * Group 6. search_by_dimensions for dimensional filtering. Precise filtering by tags, categories using complex boolean expressions.
-             * eg: user asks: "find the low-risk financial suggestions suitable for a layperson in my personal finance notes."
-             *     AI => search_by_dimensions: tag:FinancialPlanning OR category:Finance
-             *     AI => semantic_filter: "layperson、low-risk、stable income、anti-greed"
-             */
-            z.object({
-                mode: z.literal("search_by_dimensions"),
-                boolean_expression: z.string()
-                    .describe("Complex boolean expression for filtering. Supports: tag:value, category:value, AND, OR, NOT, parentheses. "
-                        + "Category/tags refers to a field in the metadata of the note."
-                        + "Example: '(tag:react OR tag:vue) AND category:frontend'."
-                        + "If no results are found, try relaxing the boolean constraints or switching to OR logic")
-            })
-                .merge(BaseLimit)
-                .extend({
-                    // For search_by_dimensions, we only need to filter by type and time, so we exclude tag/category from filters.
-                    filters: FilterOption.omit({ tag_category_boolean_expression: true }).optional(),
-                    sorter: SorterOption.optional(),
-                    response_format: ResponseFormat.shape.response_format.default('structured')
-                }),
-
-            /**
-             * Group 7. explore_folder for physical navigation
-             */
-            z.object({
-                mode: z.literal("explore_folder"),
-                folderPath: z.string().default("/").describe("Folder path to inspect (relative to vault root, use '/' for root)"),
-                recursive: z.boolean().default(true),
-                // The depth of 2 usually shows the "folder -> sub-file" structure, which is more intuitive than depth 1 for "recursive browsing", while not generating too many results like depth 3.
-                max_depth: z.number().min(1).max(3).default(2).optional()
-                    .describe('Only active when recursive: true. Use max_depth: 1 for quick navigation, use max_depth: 3 only for deep structure mapping.')
-            })
-                .merge(BaseLimit)
-                .extend({
-                    filters: FilterOption.optional(),
-                    sorter: SorterOption.optional(),
-                    // (gemini told me that) AI is extremely good at reading tree-like text like the output of the 'dir' command, much stronger than parsing nested JSON arrays.
-                    response_format: ResponseFormat.shape.response_format.default('markdown')
-                })
-                .describe(`Inspect vault structure with spatial navigation. `
+/**
+ * Tool 7: explore_folder
+ */
+export function exploreFolderTool(): AgentTool {
+    return safeAgentTool({
+        description: `Inspect vault structure with spatial navigation. `
                     + `Use this to 'walk' through folders. Best paired with 'response_format: markdown' to visualize the directory tree clearly.`
                     + `Use this when you need to:`
                     + `\n- Browse folders and understand vault organization`
                     + `\n- Check folder contents before moving or organizing notes`
-                    + `\n- Discover vault structure for better context understanding`),
-
-            /**
-             * Group 8. recent_changes great for undestanding users' focus
-             */
-            z.object({
-                mode: z.literal("recent_changes_whole_vault")
-            })
-                .merge(BaseLimit)
-                .extend({
-                    filters: FilterOption.optional(),
-                    sorter: SorterOption.optional(),
-                    // AI need to understand the recent changes, or give the user a summary.
-                    response_format: ResponseFormat.shape.response_format.default('markdown')
-                }),
-
-            /**
-             * Group 9. local_search. full-text and semantic search across the vault.
-             * great for inspector support. As web searching isn’t semantically driven to inspect a vault, we switched the web search tool with another tool.
-             */
-            z.object({
-                mode: z.literal("local_search_whole_vault"),
-                query: z.string().describe("The query to search for"),
-                searchMode: z.enum(['fulltext', 'vector', 'hybrid'])
-                    .default('fulltext')
-                    .optional()
-                    .describe("Search mode: 'fulltext' (text only), 'vector' (embedding-based), or 'hybrid' (combine both)."),
-                scopeMode: z.enum(['vault', 'inFile', 'inFolder', 'limitIdsSet'])
-                    .default('vault')
-                    .optional()
-                    .describe("Scope of search: 'vault' (entire vault), 'inFile' (current file), 'inFolder' (a folder and its subnotes), or 'limitIdsSet' (specific note ids set)."),
-                scopeValue: z.object({
-                    currentFilePath: z.string().nullable().optional()
-                        .describe("Current file path (if any). Used for inFile mode and directory boost."),
-                    folderPath: z.string().nullable().optional()
-                        .describe("Folder path (if inFolder mode)."),
-                    limitIdsSet: z.array(z.string()).optional()
-                        .describe("Set of note/document ids to limit search within (if limitIdsSet mode).")
-                })
-                    .optional()
-                    .describe("Optional search scope values matching the scopeMode."),
-            })
-                .merge(BaseLimit)
-                .extend({
-                    filters: FilterOption.optional(),
-                    sorter: SorterOption.optional(),
-                    // AI need to understand the search results, or give the user a summary.
-                    response_format: ResponseFormat.shape.response_format.default('hybrid')
-                }),
-        ]),
-
+                    + `\n- Discover vault structure for better context understanding`,
+        inputSchema: z.object({
+            folderPath: z.string().default("/").describe("Folder path to inspect (relative to vault root, use '/' for root)"),
+            recursive: z.boolean().default(true),
+            // The depth of 2 usually shows the "folder -> sub-file" structure, which is more intuitive than depth 1 for "recursive browsing", while not generating too many results like depth 3.
+            max_depth: z.number().min(1).max(3).optional().default(2)
+                .describe('Only active when recursive: true. Use max_depth: 1 for quick navigation, use max_depth: 3 only for deep structure mapping.')
+        })
+            .merge(BaseLimit)
+            .extend({
+                filters: FilterOption.optional(),
+                sorter: SorterOption.optional(),
+                response_format: ResponseFormat.shape.response_format.default('markdown')
+            }),
         execute: async (params) => {
-            switch (params.mode) {
-                case 'inspect_note_context':
-                    return await inspectNoteContext(params);
+            return await exploreFolder({ ...params, mode: 'explore_folder' });
+        }
+    });
+}
 
-                case 'graph_traversal':
-                    return await graphTraversal(params);
+/**
+ * Tool 8: recent_changes_whole_vault
+ */
+export function recentChangesWholeVaultTool(): AgentTool {
+    return safeAgentTool({
+        description: `View recently modified notes in the whole vault. Great for understanding users' current focus.`,
+        inputSchema: z.object({})
+            .merge(BaseLimit)
+            .extend({
+                filters: FilterOption.optional(),
+                sorter: SorterOption.optional(),
+                // AI need to understand the recent changes, or give the user a summary.
+                response_format: ResponseFormat.shape.response_format.default('markdown')
+            }),
+        execute: async (params) => {
+            return await getRecentChanges({ ...params, mode: 'recent_changes_whole_vault' });
+        }
+    });
+}
 
-                case 'find_path':
-                    return await findPath(params);
-
-                case 'find_key_nodes':
-                    return await findKeyNodes(params);
-
-                case 'find_orphans':
-                    return await findOrphanNotes(params);
-
-                case 'search_by_dimensions':
-                    return await searchByDimensions(params);
-
-                case 'explore_folder':
-                    return await exploreFolder(params);
-
-                case 'recent_changes_whole_vault':
-                    return await getRecentChanges(params);
-
-                case `local_search_whole_vault`:
-                    return await localSearch(params);
-
-                default:
-                    return `Unsupported mode: ${params.mode}. Please use one of the supported modes: `
-                        + "inspect_note_context, graph_traversal, find_path, find_key_nodes, find_orphans, "
-                        + "search_by_dimensions, explore_folder, recent_changes_whole_vault, local_search_whole_vault.";
-            }
+/**
+ * Tool 9: local_search_whole_vault
+ * great for inspector support. As web searching isn’t semantically driven to inspect a vault, we switched the web search tool with another tool.
+ */
+export function localSearchWholeVaultTool(): AgentTool {
+    return safeAgentTool({
+        description: `Full-text and semantic search across the vault. Use keywords or semantic description to find relevant notes.`,
+        inputSchema: z.object({
+            query: z.string().describe("The query to search for"),
+            searchMode: z.enum(['fulltext', 'vector', 'hybrid'])
+                .optional()
+                .default('fulltext')
+                .describe("Search mode: 'fulltext' (text only), 'vector' (embedding-based), or 'hybrid' (combine both)."),
+            scopeMode: z.enum(['vault', 'inFile', 'inFolder', 'limitIdsSet'])
+                .optional()
+                .default('vault')
+                .describe("Scope of search: 'vault' (entire vault), 'inFile' (current file), 'inFolder' (a folder and its subnotes), or 'limitIdsSet' (specific note ids set)."),
+            // Flattened scope values
+            current_file_path: z.string().nullable().optional()
+                .describe("Current file path (if any). Used for inFile mode and directory boost."),
+            folder_path: z.string().nullable().optional()
+                .describe("Folder path (if inFolder mode)."),
+            limit_ids_set: z.array(z.string()).optional()
+                .describe("Set of note/document ids to limit search within (if limitIdsSet mode)."),
+            // Default limit reduced for faster responses and less context overflow
+            limit: z.number().min(1).max(100).optional().default(8)
+                .describe('Maximum number of results. Keep small (8-12) for fast responses.')
+        })
+            .extend({
+                filters: FilterOption.optional(),
+                sorter: SorterOption.optional(),
+                response_format: ResponseFormat.shape.response_format.default('structured')
+            }),
+        execute: async (params) => {
+            // Reconstruct scopeValue object for the internal function
+            const scopeValue = {
+                currentFilePath: params.current_file_path,
+                folderPath: params.folder_path,
+                limitIdsSet: params.limit_ids_set
+            };
+            
+            return await localSearch({ 
+                ...params, 
+                scopeValue,
+                mode: 'local_search_whole_vault' 
+            });
         }
     });
 }

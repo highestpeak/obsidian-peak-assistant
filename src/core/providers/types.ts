@@ -20,6 +20,22 @@ export interface ProviderConfig {
 export interface ModelConfig {
 	id: string;
 	enabled?: boolean;
+	/**
+	 * Override display name for custom models
+	 */
+	displayName?: string;
+	/**
+	 * Override icon for custom models
+	 */
+	icon?: string;
+	/**
+	 * Override token limits (for custom models or when API doesn't provide)
+	 */
+	tokenLimitsOverride?: ModelTokenLimits;
+	/**
+	 * Override capabilities (for custom models or when API doesn't provide)
+	 */
+	capabilitiesOverride?: Partial<ModelCapabilities>;
 }
 
 export enum ModelType {
@@ -78,6 +94,10 @@ export interface ModelMetaData {
 	 * Should be defined in each provider's getAvailableModels() method.
 	 */
 	capabilities?: ModelCapabilities;
+	/**
+	 * Token limits for this model
+	 */
+	tokenLimits?: ModelTokenLimits;
 }
 
 /**
@@ -149,6 +169,28 @@ export interface ModelCapabilities {
 }
 
 /**
+ * Token limits for a model, providing detailed token constraints
+ */
+export interface ModelTokenLimits {
+	/**
+	 * Maximum total context window in tokens (input + output)
+	 */
+	maxTokens?: number;
+	/**
+	 * Maximum input tokens allowed
+	 */
+	maxInputTokens?: number;
+	/**
+	 * Maximum output tokens allowed
+	 */
+	maxOutputTokens?: number;
+	/**
+	 * Recommended safe context window size for summarization (typically 80-90% of maxTokens)
+	 */
+	recommendedSummaryThreshold?: number;
+}
+
+/**
  * Resolve model capabilities from model metadata.
  * Capabilities should be defined in each provider's getAvailableModels() method.
  * Returns default (all false) if not provided.
@@ -214,6 +256,12 @@ export interface LLMProviderService {
 	 * @returns Promise resolving to array of embedding vectors (each is an array of numbers)
 	 */
 	generateEmbeddings(texts: string[], model: string): Promise<number[][]>;
+	/**
+	 * Get token limits for a specific model
+	 * @param model - Model identifier
+	 * @returns Token limits for the model, or undefined if not available
+	 */
+	getModelTokenLimits(model: string): ModelTokenLimits | undefined;
 }
 
 export type LLMRequest<TOOLS extends any = any> = {
@@ -286,6 +334,7 @@ export type MessagePart =
 	}
 	| {
 		type: 'tool-call';
+		toolCallId?: string;
 		toolName: string;
 		input: any;
 		providerExecuted?: boolean;
@@ -317,7 +366,9 @@ type RawStreamEvent =
 	// from prompt service
 	{ type: 'prompt-stream-start'; id?: string; promptId: string; variables?: any; } |
 	{ type: 'prompt-stream-delta'; id?: string; promptId: string; delta?: string; } |
-	{ type: 'prompt-stream-result'; id?: string; promptId: string; output?: any; }
+	{ type: 'prompt-stream-result'; id?: string; promptId: string; output?: any; } | 
+	// for debug purpose.
+	{ type: 'pk-debug'; debugName: string; }
 	;
 
 export type LLMStreamEvent =
@@ -344,6 +395,9 @@ export enum ToolEvent {
 	COMPLETE = 'complete',
 	COLLECT_RECENT_MESSAGES = "COLLECT_RECENT_MESSAGES",
 	GENERATE_SUMMARY = "GENERATE_SUMMARY",
+
+	// search agent
+	summary_context_messages = 'summary_context_messages',
 }
 
 /**

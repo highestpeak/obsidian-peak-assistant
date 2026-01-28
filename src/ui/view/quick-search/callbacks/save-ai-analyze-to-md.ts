@@ -1,6 +1,7 @@
 import type { App } from 'obsidian';
 import type { AiAnalyzeResult, SearchResultItem } from '@/service/search/types';
 import { ensureFolder } from '@/core/utils/vault-utils';
+import type { GraphPreview } from '@/core/storage/graph/types';
 
 /**
  * Save AI analysis result to a markdown file in the vault.
@@ -35,10 +36,11 @@ export async function saveAiAnalyzeResultToMarkdown(app: App, params: {
 		}))
 	} : undefined;
 
-	const content = renderMarkdown({
+	const content = buildAiAnalyzeMarkdown({
 		query: params.query,
 		webEnabled: params.webEnabled === true,
 		summary: params.result.summary,
+		topics: params.result.insights?.topics,
 		sources: params.result.sources,
 		graph: transformedGraph,
 		estimatedTokens: params.result.usage?.estimatedTokens,
@@ -63,10 +65,15 @@ function sanitizeFileName(name: string): string {
 		.slice(0, 120);
 }
 
-function renderMarkdown(params: {
+/**
+ * Build a Markdown document for saving/copying AI analysis results.
+ * Keep it compact enough for vault notes while still being useful.
+ */
+export function buildAiAnalyzeMarkdown(params: {
 	query: string;
 	webEnabled: boolean;
 	summary: string;
+	topics?: Array<{ label: string; weight: number }>;
 	sources: SearchResultItem[];
 	graph?: { nodes: Array<{ id: string; label: string; kind: string }>; edges: Array<{ from: string; to: string; weight?: number }> };
 	estimatedTokens?: number;
@@ -77,6 +84,7 @@ function renderMarkdown(params: {
 	lines.push('---');
 	lines.push('type: ai-search-result');
 	lines.push(`created: ${date}`);
+	lines.push(`query: ${escapeYamlScalar(params.query)}`);
 	lines.push(`webEnabled: ${params.webEnabled ? 'true' : 'false'}`);
 	if (params.estimatedTokens != null) lines.push(`estimatedTokens: ${params.estimatedTokens}`);
 	lines.push('---');
@@ -85,6 +93,14 @@ function renderMarkdown(params: {
 	lines.push('');
 	lines.push(params.summary || '(empty)');
 	lines.push('');
+	if (params.topics?.length) {
+		lines.push(`# Key Topics`);
+		lines.push('');
+		for (const t of params.topics) {
+			lines.push(`- ${t.label}${t.weight != null ? ` (weight: ${t.weight})` : ''}`);
+		}
+		lines.push('');
+	}
 	lines.push(`# Query`);
 	lines.push('');
 	lines.push(params.query);
@@ -102,14 +118,12 @@ function renderMarkdown(params: {
 	lines.push('');
 	lines.push(`# Knowledge Graph`);
 	lines.push('');
-	lines.push(renderMermaid(originalGraph));
+	lines.push(buildMermaidBlock(originalGraph));
 	lines.push('');
 	return lines.join('\\n');
 }
 
-import type { GraphPreview } from '@/core/storage/graph/types';
-
-function renderMermaid(graph?: GraphPreview): string {
+export function buildMermaidBlock(graph?: GraphPreview): string {
 	if (!graph || !graph.nodes?.length) {
 		return '```mermaid\\nflowchart TD\\n  A[No graph data]\\n```';
 	}
@@ -142,6 +156,11 @@ function escapeMermaidLabel(label: string): string {
 		.replace(/\"/g, '\\\\\"')
 		.replace(/\\n/g, ' ')
 		.slice(0, 80);
+}
+
+function escapeYamlScalar(value: string): string {
+	const v = String(value ?? '').replace(/\\r?\\n/g, ' ').trim();
+	return JSON.stringify(v);
 }
 
 

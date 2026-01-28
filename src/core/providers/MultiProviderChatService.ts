@@ -1,4 +1,4 @@
-import { LLMProviderService, ProviderConfig, ModelMetaData, ProviderMetaData, LLMStreamEvent, LLMOutputControlSettings } from './types';
+import { LLMProviderService, ProviderConfig, ModelMetaData, ProviderMetaData, LLMStreamEvent, LLMOutputControlSettings, ModelTokenLimits } from './types';
 import { LLMRequest } from './types';
 import { ProviderServiceFactory } from './base/factory';
 import { BusinessError, ErrorCode } from '@/core/errors';
@@ -167,18 +167,24 @@ export class MultiProviderChatService implements LLMProviderService {
 	async getAllAvailableModels(): Promise<Array<ModelMetaData & { provider: string }>> {
 		const allModels: Array<ModelMetaData & { provider: string }> = [];
 
-		// Get models from initialized services
+		// Get models from initialized services (only for enabled providers)
 		for (const [provider, service] of this.providerServiceMap.entries()) {
+			const providerConfig = this.configs[provider];
+
+			// Skip disabled providers
+			if (providerConfig?.enabled !== true) {
+				continue;
+			}
+
 			try {
-				if (service.getAvailableModels) {
-					const models = await service.getAvailableModels();
-					models.forEach((model) => {
-						allModels.push({
-							...model,
-							provider,
-						});
+				(await ProviderServiceFactory.getInstance()
+					.getProviderSupportModels(provider, providerConfig)
+				).forEach((model) => {
+					allModels.push({
+						...model,
+						provider,
 					});
-				}
+				});
 			} catch (error) {
 				console.warn(`Failed to get models from provider ${provider}:`, error);
 			}
@@ -196,13 +202,24 @@ export class MultiProviderChatService implements LLMProviderService {
 	refresh(newConfigs: Record<string, ProviderConfig>, newOutputControl: LLMOutputControlSettings): void {
 		// Clear existing services
 		this.providerServiceMap.clear();
-		
+
 		// Update configs
 		this.configs = newConfigs;
 
 		this.defaultOutputControl = newOutputControl;
-		
+
 		// Recreate services with new configs
 		this.providerServiceMap = ProviderServiceFactory.getInstance().createAll(this.configs);
+	}
+
+	/**
+	 * Get token limits for a model
+	 * Delegates to the appropriate provider service
+	 */
+	getModelTokenLimits(model: string): ModelTokenLimits | undefined {
+		throw new Error(`
+			unsupported operation: getModelTokenLimits. 
+			you need to use the getProviderService method to get the provider service and then call the getModelTokenLimits method on the provider service.
+			model: ${model}`);
 	}
 }

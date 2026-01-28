@@ -6,7 +6,7 @@ import { ModelSelector } from '@/ui/component/mine/ModelSelector';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 import { CollapsibleSettingsSection } from '@/ui/component/shared-ui/CollapsibleSettingsSection';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
-import type { LLMOutputControlSettings } from '@/core/providers/types';
+import type { LLMOutputControlSettings, ModelCapabilities } from '@/core/providers/types';
 import { OutputControlSettingsList } from '@/ui/component/mine/LLMOutputControlSettings';
 import { EventBus, ViewEventType, SettingsUpdatedEvent } from '@/core/eventBus';
 import { PromptId, CONFIGURABLE_PROMPT_IDS } from '@/service/prompt/PromptId';
@@ -224,6 +224,7 @@ function ModelSelectorField({
 	models,
 	isLoading,
 	onMenuOpen,
+	requiredCapabilities,
 }: {
 	label: string;
 	description: string;
@@ -232,7 +233,21 @@ function ModelSelectorField({
 	models: ModelInfoForSwitch[];
 	isLoading: boolean;
 	onMenuOpen?: () => void;
+	requiredCapabilities?: Partial<ModelCapabilities>;
 }) {
+	// Check if current model meets requirements
+	const currentModelInfo = currentModel ? models.find(m => m.id === currentModel.modelId && m.provider === currentModel.provider) : undefined;
+	const meetsRequirements = !requiredCapabilities || !currentModelInfo || 
+		Object.entries(requiredCapabilities).every(([key, required]) => 
+			required !== true || currentModelInfo.capabilities?.[key as keyof typeof currentModelInfo.capabilities]
+		);
+
+	const missingCapabilities = requiredCapabilities && currentModelInfo
+		? Object.entries(requiredCapabilities)
+			.filter(([key, required]) => required === true && !currentModelInfo.capabilities?.[key as keyof typeof currentModelInfo.capabilities])
+			.map(([key]) => key)
+		: [];
+
 	return (
 		<div className="pktw-mb-6 pktw-flex pktw-items-start pktw-gap-4">
 			{/* Left side: label and description */}
@@ -242,6 +257,14 @@ function ModelSelectorField({
 				</label>
 				{description && (
 					<p className="pktw-text-xs pktw-text-muted-foreground">{description}</p>
+				)}
+				{!meetsRequirements && currentModel && (
+					<div className="pktw-mt-2 pktw-p-2 pktw-bg-amber-50 pktw-border pktw-border-amber-200 pktw-rounded-md">
+						<p className="pktw-text-xs pktw-text-amber-800">
+							<strong>Warning:</strong> The selected model does not support required capabilities: {missingCapabilities.join(', ')}. 
+							Please select a model with these capabilities or configure the model in Provider Settings.
+						</p>
+					</div>
 				)}
 			</div>
 			{/* Right side: selector */}
@@ -253,6 +276,7 @@ function ModelSelectorField({
 					onChange={onChange}
 					placeholder="Select model"
 					onMenuOpen={onMenuOpen}
+					requiredCapabilities={requiredCapabilities}
 				/>
 			</div>
 		</div>
@@ -383,18 +407,24 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 				/>
 
 				<div className="pktw-space-y-6">
-					{modelConfigs.map((config) => (
-						<ModelSelectorField
-							key={config.id}
-							label={config.label}
-							description={config.description}
-							currentModel={config.currentModel}
-							onChange={config.onChange}
-							models={models}
-							isLoading={isLoading}
-							onMenuOpen={loadModels}
-						/>
-					))}
+					{modelConfigs.map((config) => {
+						// Require tools capability for agent-like models
+						const requiresTools = config.id === 'thoughtAgent' || config.id === 'searchAgent';
+						
+						return (
+							<ModelSelectorField
+								key={config.id}
+								label={config.label}
+								description={config.description}
+								currentModel={config.currentModel}
+								onChange={config.onChange}
+								models={models}
+								isLoading={isLoading}
+								onMenuOpen={loadModels}
+								requiredCapabilities={requiresTools ? { tools: true } : undefined}
+							/>
+						);
+					})}
 					{CONFIGURABLE_PROMPT_IDS
 						.map((promptId) => {
 							const promptLabel = promptId

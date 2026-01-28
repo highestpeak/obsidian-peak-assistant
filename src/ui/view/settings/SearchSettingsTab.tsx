@@ -400,6 +400,85 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 							/>
 						</div>
 					</div>
+
+					{/* ThoughtAgent Session Summary Word Count */}
+					<div className="pktw-flex pktw-items-start pktw-gap-4">
+						<div className="pktw-flex-1 pktw-min-w-0">
+							<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+								AI Analysis Session Summary Word Count
+							</label>
+							<p className="pktw-text-xs pktw-text-muted-foreground">
+								Word limit hint for summarizing long AI analysis history. Lower values save tokens; higher values preserve more context. Default: 1200
+							</p>
+						</div>
+						<div className="pktw-flex-shrink-0 pktw-w-64">
+							<NumberInputWithConfirm
+								value={settings.search.aiAnalysisSessionSummaryWordCount ?? 1200}
+								onConfirm={(value) => updateSearch('aiAnalysisSessionSummaryWordCount', value)}
+								min={200}
+								max={5000}
+								placeholder="1200"
+							/>
+						</div>
+					</div>
+
+					{/* Auto-save AI Analysis Results */}
+					<div className="pktw-flex pktw-items-start pktw-gap-4">
+						<div className="pktw-flex-1 pktw-min-w-0">
+							<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+								Auto-save AI Analysis Results
+							</label>
+							<p className="pktw-text-xs pktw-text-muted-foreground">
+								Automatically save completed AI Analysis results into your vault. This enables the “Recent AI Analysis” list in the AI tab.
+							</p>
+						</div>
+						<div className="pktw-flex-shrink-0 pktw-flex pktw-items-center">
+							<Switch
+								checked={settings.search.aiAnalysisAutoSaveEnabled ?? true}
+								onChange={(value) => updateSearch('aiAnalysisAutoSaveEnabled', value)}
+							/>
+						</div>
+					</div>
+
+					{/* Auto-save Folder */}
+					<div className="pktw-flex pktw-items-start pktw-gap-4">
+						<div className="pktw-flex-1 pktw-min-w-0">
+							<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+								AI Analysis Save Folder
+							</label>
+							<p className="pktw-text-xs pktw-text-muted-foreground">
+								Folder path relative to vault root. The folder will be created automatically if missing.
+							</p>
+						</div>
+						<div className="pktw-flex-shrink-0 pktw-w-64">
+							<Input
+								value={settings.search.aiAnalysisAutoSaveFolder ?? 'Analysis/AI Searches'}
+								onChange={(e) => updateSearch('aiAnalysisAutoSaveFolder', e.target.value)}
+								placeholder="Analysis/AI Searches"
+							/>
+						</div>
+					</div>
+
+					{/* Recent History Limit */}
+					<div className="pktw-flex pktw-items-start pktw-gap-4">
+						<div className="pktw-flex-1 pktw-min-w-0">
+							<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+								Recent AI Analysis Items
+							</label>
+							<p className="pktw-text-xs pktw-text-muted-foreground">
+								How many recent auto-saved AI analysis entries to show in the AI tab. Default: 5
+							</p>
+						</div>
+						<div className="pktw-flex-shrink-0 pktw-w-64">
+							<NumberInputWithConfirm
+								value={settings.search.aiAnalysisHistoryLimit ?? 5}
+								onConfirm={(value) => updateSearch('aiAnalysisHistoryLimit', value)}
+								min={1}
+								max={50}
+								placeholder="5"
+							/>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

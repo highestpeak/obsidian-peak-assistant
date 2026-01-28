@@ -113,6 +113,40 @@ export interface SearchSettings {
 	 * Default: 10
 	 */
 	maxMultiAgentIterations: number;
+
+	/**
+	 * Word limit hint for ThoughtAgent history session summarization.
+	 * This summary is injected back into the context when history grows too large.
+	 * Default: 1200
+	 */
+	aiAnalysisSessionSummaryWordCount: number;
+
+	/**
+	 * Auto-save AI analysis results to a folder in the vault.
+	 * Default: true
+	 */
+	aiAnalysisAutoSaveEnabled: boolean;
+
+	/**
+	 * Folder path (relative to vault root) for auto-saving AI analysis results.
+	 * Default: "Analysis/AI Searches"
+	 */
+	aiAnalysisAutoSaveFolder: string;
+
+	/**
+	 * How many recent AI analysis entries to keep for quick access.
+	 * Default: 5
+	 */
+	aiAnalysisHistoryLimit: number;
+
+	/**
+	 * Recent AI analysis entries (saved markdown file paths).
+	 */
+	aiAnalysisRecentHistory: Array<{
+		path: string;
+		query: string;
+		createdAt: string; // ISO timestamp
+	}>;
 }
 
 /**
@@ -177,6 +211,13 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	fullSummaryLength: 2000,
 
 	maxMultiAgentIterations: 10,
+
+	aiAnalysisSessionSummaryWordCount: 3000,
+
+	aiAnalysisAutoSaveEnabled: true,
+	aiAnalysisAutoSaveFolder: 'ChatFolder/AI-Analysis',
+	aiAnalysisHistoryLimit: 5,
+	aiAnalysisRecentHistory: [],
 };
 
 /**

@@ -7,6 +7,7 @@ import { ModelMetaData, ProviderMetaData } from '@/core/providers/types';
 import { cn } from '@/ui/react/lib/utils';
 import { InputWithConfirm } from '@/ui/component/mine/input-with-confirm';
 import { Switch } from '@/ui/component/shared-ui/switch';
+import { ModelCapabilitiesIcons } from '@/ui/component/mine/ModelCapabilitiesIcons';
 
 interface ProviderSettingsComponentProps {
 	settings: AIServiceSettings;
@@ -39,6 +40,8 @@ interface ProviderConfigFormProps {
 interface ModelListProps {
 	selectedProvider: string;
 	settings: AIServiceSettings;
+	availableModels: ModelMetaData[];
+	isLoadingModels: boolean;
 	onModelConfigChange: (provider: string, modelId: string, enabled: boolean) => Promise<void>;
 }
 
@@ -200,9 +203,8 @@ function ProviderConfigForm({ selectedProvider: provider, settings, onConfigChan
 /**
  * Model list component
  */
-function ModelList({ selectedProvider: provider, settings, onModelConfigChange }: ModelListProps) {
-	const [availableModels, setAvailableModels] = useState<ModelMetaData[]>([]);
-	const [isLoadingModels, setIsLoadingModels] = useState(false);
+function ModelList({ selectedProvider: provider, settings, availableModels, isLoadingModels, onModelConfigChange }: ModelListProps) {
+	const [searchTerm, setSearchTerm] = useState('');
 
 	const config = settings.llmProviderConfigs[provider];
 
@@ -212,90 +214,115 @@ function ModelList({ selectedProvider: provider, settings, onModelConfigChange }
 		return allProviderMetadata.find(p => p.id === provider);
 	}, [provider]);
 
-	// Load models for selected provider
-	useEffect(() => {
-		setIsLoadingModels(true);
-		(async () => {
-			try {
-				const factory = ProviderServiceFactory.getInstance();
-				// Pass actual config to getProviderSupportModels so providers that need API key can fetch models
-				const providerConfig = config || {};
-				const models = await factory.getProviderSupportModels(provider, providerConfig);
-				// console.log('models', provider, models);
-				setAvailableModels(models);
-			} catch (error) {
-				console.error(`[ProviderSettings] Error loading models for ${provider}:`, error);
-				setAvailableModels([]);
-			} finally {
-				setIsLoadingModels(false);
-			}
-		})();
-	}, [provider, config]);
-
 	return (
 		<div className="pktw-mt-8">
-			<div className="pktw-mb-4">
+			<div className="pktw-mb-4 pktw-flex pktw-items-end pktw-justify-between">
 				<h3 className="pktw-m-0 pktw-text-base pktw-font-semibold pktw-text-foreground">Model List</h3>
-				<div className="pktw-text-xs pktw-text-muted-foreground pktw-mt-1">
-					{isLoadingModels ? 'Loading models...' : `${availableModels.length} models available`}
-				</div>
-			</div>
-			{isLoadingModels ? (
-				<div className="pktw-text-sm pktw-text-muted-foreground pktw-py-4">Loading models...</div>
-			) : availableModels.length > 0 ? (
-				<div className="pktw-border pktw-border-border pktw-rounded-md pktw-overflow-hidden">
-					<div className="pktw-max-h-[400px] pktw-overflow-y-auto">
-						{availableModels.map((model) => {
-							const modelConfig = config?.modelConfigs?.[model.id];
-							const isModelEnabled = modelConfig?.enabled ?? false;
-							return (
-								<div
-									key={model.id}
-									className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-4 pktw-py-3 pktw-border-b pktw-border-border pktw-transition-colors hover:pktw-bg-muted last:pktw-border-b-0"
-								>
-									{model.icon && (
-										<div className="pktw-w-5 pktw-h-5 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
-											<SafeModelIcon
-												model={model.icon}
-												size={20}
-												className="pktw-flex-shrink-0"
-												fallback={providerMetadata?.icon ? (
-													<SafeProviderIcon
-														provider={providerMetadata.icon}
-														size={20}
-														fallback={<div className="pktw-w-5 pktw-h-5 pktw-rounded pktw-bg-muted" />}
-													/>
-												) : <div className="pktw-w-5 pktw-h-5 pktw-rounded pktw-bg-muted" />}
-											/>
-										</div>
-									)}
-									<span className="pktw-text-sm pktw-text-foreground pktw-flex-1">{model.displayName}</span>
-									<Switch
-										checked={isModelEnabled}
-										onChange={(checked) => onModelConfigChange(provider, model.id, checked)}
-										size="sm"
-									/>
-								</div>
-							);
-						})}
-					</div>
-				</div>
-			) : (
-				<div className="pktw-text-sm pktw-text-muted-foreground pktw-py-4">
-					{provider === 'openai' && !config?.apiKey ? (
-						<div className="pktw-space-y-2">
-							<div className="pktw-text-center pktw-font-medium">No models available</div>
-							<div className="pktw-text-xs pktw-leading-relaxed">
-								Please enter your OpenAI API key above to fetch available models. The model list will be automatically loaded from the OpenAI API once you provide a valid API key.
-							</div>
-						</div>
+				<div className="pktw-text-xs pktw-text-muted-foreground pktw-ml-4">
+					{isLoadingModels ? 'Loading models...' : searchTerm ? (
+						`${availableModels.filter(model => model.displayName.toLowerCase().includes(searchTerm.toLowerCase())).length} of ${availableModels.length} models`
 					) : (
-						<div className="pktw-text-center">
-							No models available. Please check your API key and try again.
-						</div>
+						`${availableModels.length} models available`
 					)}
 				</div>
+			</div>
+			{!isLoadingModels && availableModels.length > 0 && (
+				<div className="pktw-mb-4">
+					<input
+						type="text"
+						placeholder="Search models..."
+						value={searchTerm}
+						onChange={(e) => setSearchTerm(e.target.value)}
+						className="pktw-w-full pktw-px-3 pktw-py-2 pktw-text-sm pktw-border pktw-border-border pktw-rounded-md pktw-placeholder-muted-foreground focus:pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-ring focus:pktw-ring-offset-2"
+					/>
+				</div>
 			)}
+			{isLoadingModels ? (
+				<div className="pktw-text-sm pktw-text-muted-foreground pktw-py-4">Loading models...</div>
+			) : (() => {
+				// Filter and sort models: enabled first, then by search term
+				const filteredAndSortedModels = availableModels
+					.filter((model) =>
+						model.displayName.toLowerCase().includes(searchTerm.toLowerCase())
+					)
+					.sort((a, b) => {
+						const aConfig = config?.modelConfigs?.[a.id];
+						const bConfig = config?.modelConfigs?.[b.id];
+						const aEnabled = aConfig?.enabled ?? false;
+						const bEnabled = bConfig?.enabled ?? false;
+
+						// Sort by enabled status (enabled first), then by display name
+						if (aEnabled !== bEnabled) {
+							return aEnabled ? -1 : 1;
+						}
+						return a.displayName.localeCompare(b.displayName);
+					});
+
+				return filteredAndSortedModels.length > 0 ? (
+					<div className="pktw-border pktw-border-border pktw-rounded-md pktw-overflow-hidden">
+						<div className="pktw-max-h-[400px] pktw-overflow-y-auto">
+							{filteredAndSortedModels.map((model) => {
+								const modelConfig = config?.modelConfigs?.[model.id];
+								const isModelEnabled = modelConfig?.enabled ?? false;
+								return (
+									<div
+										key={model.id}
+										className="pktw-flex pktw-items-center pktw-gap-3 pktw-py-3 pktw-border-b pktw-border-border pktw-transition-colors hover:pktw-bg-muted last:pktw-border-b-0"
+									>
+										{model.icon && (
+											<div className="pktw-w-5 pktw-h-5 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
+												<SafeModelIcon
+													model={model.icon}
+													size={20}
+													className="pktw-flex-shrink-0"
+													fallback={providerMetadata?.icon ? (
+														<SafeProviderIcon
+															provider={providerMetadata.icon}
+															size={20}
+															fallback={<div className="pktw-w-5 pktw-h-5 pktw-rounded pktw-bg-muted" />}
+														/>
+													) : <div className="pktw-w-5 pktw-h-5 pktw-rounded pktw-bg-muted" />}
+												/>
+											</div>
+										)}
+										<span className="pktw-text-sm pktw-text-foreground pktw-flex-1 pktw-min-w-0">{model.displayName}</span>
+										{model.capabilities && (
+											<ModelCapabilitiesIcons
+												capabilities={model.capabilities}
+												className="pktw-overflow-x-auto pktw-scrollbar-hide"
+											/>
+										)}
+										<Switch
+											checked={isModelEnabled}
+											onChange={(checked) => onModelConfigChange(provider, model.id, checked)}
+											size="sm"
+										/>
+									</div>
+								);
+							})}
+						</div>
+					</div>
+				) : searchTerm ? (
+					<div className="pktw-text-sm pktw-text-muted-foreground pktw-py-4 pktw-text-center">
+						No models match your search.
+					</div>
+				) : (
+					<div className="pktw-text-sm pktw-text-muted-foreground pktw-py-4">
+						{provider === 'openai' && !config?.apiKey ? (
+							<div className="pktw-space-y-2">
+								<div className="pktw-text-center pktw-font-medium">No models available</div>
+								<div className="pktw-text-xs pktw-leading-relaxed">
+									Please enter your OpenAI API key above to fetch available models. The model list will be automatically loaded from the OpenAI API once you provide a valid API key.
+								</div>
+							</div>
+						) : (
+							<div className="pktw-text-center">
+								No models available. Please check your API key and try again.
+							</div>
+						)}
+					</div>
+				);
+			})()}
 		</div>
 	);
 }
@@ -308,6 +335,33 @@ export function ProviderSettingsComponent({ settings, aiServiceManager, onUpdate
 	// for display provider list
 	const allProviderMetadata = useMemo(() => ProviderServiceFactory.getInstance().getAllProviderMetadata(), []);
 	// const providerConfigs = settings.llmProviderConfigs || {};
+
+	// Model data cache for all providers to avoid reloading on provider switch
+	const [modelsCache, setModelsCache] = useState<Record<string, ModelMetaData[]>>({});
+	const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+
+	// Preload models for all providers to avoid flickering when switching
+	useEffect(() => {
+		allProviderMetadata.forEach(async (providerMeta) => {
+			const providerId = providerMeta.id;
+			if (modelsCache[providerId] || loadingStates[providerId]) {
+				return; // Already loaded or loading
+			}
+
+			setLoadingStates(prev => ({ ...prev, [providerId]: true }));
+			try {
+				const factory = ProviderServiceFactory.getInstance();
+				const providerConfig = settings.llmProviderConfigs[providerId] || {};
+				const models = await factory.getProviderSupportModels(providerId, providerConfig);
+				setModelsCache(prev => ({ ...prev, [providerId]: models }));
+			} catch (error) {
+				console.error(`[ProviderSettings] Error preloading models for ${providerId}:`, error);
+				setModelsCache(prev => ({ ...prev, [providerId]: [] }));
+			} finally {
+				setLoadingStates(prev => ({ ...prev, [providerId]: false }));
+			}
+		});
+	}, [allProviderMetadata, settings.llmProviderConfigs, modelsCache, loadingStates]);
 
 	// Get enabled and disabled providers
 	const { enabledProviders, disabledProviders } = useMemo(() => {
@@ -342,6 +396,22 @@ export function ProviderSettingsComponent({ settings, aiServiceManager, onUpdate
 			},
 		};
 		await onUpdate({ llmProviderConfigs: updatedConfigs });
+
+		// Reload models if API key or base URL changed
+		if (field === 'apiKey' || field === 'baseUrl') {
+			setLoadingStates(prev => ({ ...prev, [provider]: true }));
+			try {
+				const factory = ProviderServiceFactory.getInstance();
+				const providerConfig = updatedConfigs[provider] || {};
+				const models = await factory.getProviderSupportModels(provider, providerConfig);
+				setModelsCache(prev => ({ ...prev, [provider]: models }));
+			} catch (error) {
+				console.error(`[ProviderSettings] Error reloading models for ${provider}:`, error);
+				setModelsCache(prev => ({ ...prev, [provider]: [] }));
+			} finally {
+				setLoadingStates(prev => ({ ...prev, [provider]: false }));
+			}
+		}
 	}, [settings, onUpdate]);
 
 	// Update model configuration
@@ -406,6 +476,8 @@ export function ProviderSettingsComponent({ settings, aiServiceManager, onUpdate
 				<ModelList
 					selectedProvider={selectedProvider}
 					settings={settings}
+					availableModels={modelsCache[selectedProvider] || []}
+					isLoadingModels={loadingStates[selectedProvider] || false}
 					onModelConfigChange={handleModelConfigChange}
 				/>
 			</div>

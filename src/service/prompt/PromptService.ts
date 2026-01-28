@@ -124,6 +124,9 @@ export class PromptService {
 		provider?: string,
 		model?: string
 	): AsyncGenerator<LLMStreamEvent> {
+		console.log('[PromptService] chatWithPromptStream ENTRY - METHOD STARTED');
+		console.debug('[PromptService] chatWithPromptStream ENTRY', { promptId, hasVariables: !!variables, provider, model, hasChat: !!this.chat });
+
 		if (!this.chat) {
 			throw new Error('Chat service not available. Call setChatService() first.');
 		}

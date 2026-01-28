@@ -21,10 +21,10 @@ export const SaveDialog: React.FC<SaveDialogProps> = ({ onClose, query, result, 
 	const today = new Date().toISOString().slice(0, 10);
 	const defaultName = `AI Search Results - ${query.slice(0, 40) || 'Query'} - ${today}`;
 	const [fileName, setFileName] = useState(defaultName);
-	const [folderPath, setFolderPath] = useState('Analysis/AI Searches');
+	const { app, plugin } = useServiceContext();
+	const [folderPath, setFolderPath] = useState(plugin.settings.search.aiAnalysisAutoSaveFolder ?? 'Analysis/AI Searches');
 	const [isSaving, setIsSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
-	const { app } = useServiceContext();
 
 	const handleSave = async () => {
 		if (isSaving || saved) return;

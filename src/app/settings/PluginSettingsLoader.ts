@@ -196,6 +196,25 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 		settings.maxMultiAgentIterations = Math.max(1, Math.min(50, rawSearch.maxMultiAgentIterations));
 	}
 
+	// ThoughtAgent history session summary word count
+	if (typeof (rawSearch as any).aiAnalysisSessionSummaryWordCount === 'number') {
+		settings.aiAnalysisSessionSummaryWordCount = Math.max(200, Math.min(5000, (rawSearch as any).aiAnalysisSessionSummaryWordCount));
+	}
+
+	// Auto-save AI analysis results
+	if (typeof (rawSearch as any).aiAnalysisAutoSaveEnabled === 'boolean') {
+		settings.aiAnalysisAutoSaveEnabled = (rawSearch as any).aiAnalysisAutoSaveEnabled;
+	}
+	if (typeof (rawSearch as any).aiAnalysisAutoSaveFolder === 'string') {
+		settings.aiAnalysisAutoSaveFolder = (rawSearch as any).aiAnalysisAutoSaveFolder;
+	}
+	if (typeof (rawSearch as any).aiAnalysisHistoryLimit === 'number') {
+		settings.aiAnalysisHistoryLimit = Math.max(1, Math.min(50, (rawSearch as any).aiAnalysisHistoryLimit));
+	}
+	if (Array.isArray((rawSearch as any).aiAnalysisRecentHistory)) {
+		settings.aiAnalysisRecentHistory = (rawSearch as any).aiAnalysisRecentHistory as any;
+	}
+
 	// Image description model
 
 	return settings;

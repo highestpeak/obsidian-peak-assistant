@@ -3,7 +3,7 @@ import { getCleanQuery, AIAnalysisStepType } from '../store/aiAnalysisStore';
 import { useSharedStore, useAIAnalysisStore } from '@/ui/view/quick-search/store';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { AISearchAgent, SearchAgentResult } from '@/service/agents/AISearchAgent';
-import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
+import { LLMStreamEvent, StreamTriggerName, ToolEvent } from '@/core/providers/types';
 import { PromptId } from '@/service/prompt/PromptId';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 
@@ -17,6 +17,7 @@ export function useAIAnalysis() {
 		setUsage,
 		setDuration,
 		setSummary,
+		appendSummaryDelta,
 		setGraph,
 		setInsightCards,
 		setSuggestions,
@@ -37,18 +38,70 @@ export function useAIAnalysis() {
 	// Reset accumulated text chunks and step type for new analysis
 	const currentStepTextChunksRef = useRef<string[]>([]);
 
+	// Full tool trace for debugging (not stored in state to avoid OOM)
+	// NOTE:
+	// - Only `content_reader` should avoid full output (too large).
+	// - Other tools should keep full output for debugging (user requirement).
+	const toolTraceRef = useRef<Array<{
+		ts: number;
+		triggerName: string;
+		type: 'tool-call' | 'tool-result' | 'tool-error';
+		toolName: string;
+		toolCallId?: string;
+		input?: any;
+		output?: any; // Full output (except content_reader)
+		outputSummary?: any; // Summary for UI display / quick scan
+		error?: string;
+	}>>([]);
+
+	// Analysis start time for duration tracking
+	const analysisStartTimeRef = useRef<number>(0);
+
+	// Summary delta buffer to reduce store update frequency.
+	const summaryDeltaBufferRef = useRef<string>('');
+	const summaryFlushTimerRef = useRef<number | null>(null);
+
+	const flushSummaryBuffer = useCallback(() => {
+		if (summaryFlushTimerRef.current) {
+			window.clearTimeout(summaryFlushTimerRef.current);
+			summaryFlushTimerRef.current = null;
+		}
+		const buf = summaryDeltaBufferRef.current;
+		if (!buf) return;
+		appendSummaryDelta(buf);
+		summaryDeltaBufferRef.current = '';
+	}, [appendSummaryDelta]);
+
+	const bufferSummaryDelta = useCallback((delta: string) => {
+		if (!delta) return;
+		summaryDeltaBufferRef.current += delta;
+		if (summaryFlushTimerRef.current) return;
+		summaryFlushTimerRef.current = window.setTimeout(() => {
+			summaryFlushTimerRef.current = null;
+			const buf = summaryDeltaBufferRef.current;
+			if (!buf) return;
+			appendSummaryDelta(buf);
+			summaryDeltaBufferRef.current = '';
+		}, 120);
+	}, [appendSummaryDelta]);
+
 	const updateIfStepChanged = useCallback((newStepType: AIAnalysisStepType, delta?: string, extra?: any) => {
 		if (currentStepTypeRef.current !== newStepType) {
+			// Step type changed - complete the previous step first
+			if (currentStepTypeRef.current !== 'idle') {
+				completeCurrentStep([...currentStepTextChunksRef.current]);
+				currentStepTextChunksRef.current = [];
+			}
 			currentStepTypeRef.current = newStepType;
 			setCurrentStep(newStepType, extra);
 		}
 		if (delta) {
 			// Accumulate text chunks for current step
 			currentStepTextChunksRef.current.push(delta || '');
-			// Publish event for real-time UI rendering
-			useUIEventStore.getState().publish(newStepType, { text: delta, extra: extra });
 		}
-	}, [currentStepTypeRef, currentStepTextChunksRef, setCurrentStep]);
+		// Publish event for real-time UI rendering
+		useUIEventStore.getState().publish(newStepType, { text: delta, extra: extra });
+	}, [currentStepTypeRef, currentStepTextChunksRef, setCurrentStep, completeCurrentStep]);
 
 	// AbortController for canceling analysis
 	const abortControllerRef = useRef<AbortController | null>(null);
@@ -138,11 +191,18 @@ export function useAIAnalysis() {
 			resetAnalysisState();
 			startAnalyzing();
 			currentStepTypeRef.current = 'idle';
+			currentStepTextChunksRef.current = [];
+			toolTraceRef.current = [];
+			analysisStartTimeRef.current = Date.now();
+			summaryDeltaBufferRef.current = '';
+			if (summaryFlushTimerRef.current) {
+				window.clearTimeout(summaryFlushTimerRef.current);
+				summaryFlushTimerRef.current = null;
+			}
 
 			// Start streaming with AISearchAgent
 			const stream = await aiSearchAgent.stream(searchQuery);
 
-			let prevEvent: LLMStreamEvent | null = null;
 			// Process the stream directly
 			for await (const event of stream) {
 				// avoid closure trap. use useAIAnalysisStore.getState() to get the latest state. otherwise always get the old state.
@@ -156,29 +216,19 @@ export function useAIAnalysis() {
 					break;
 				}
 
-				// event type changed. complete the current step.
-				// currentStepTextChunksRef only change within event switch case statements.
-				if (prevEvent && prevEvent.type !== event.type) {
-					// Complete current step with accumulated text chunks
-					completeCurrentStep([...currentStepTextChunksRef.current]);
-					// Reset accumulated text chunks and step type for next step
-					currentStepTextChunksRef.current = [];
-					currentStepTypeRef.current = 'idle';
-				}
+				// Step completion is now handled by updateIfStepChanged when step type changes
 
-				prevEvent = event;
-
-				// debug log for all chunks.
-				const checkIfDeltaEvent = (type: string) =>
-					type === 'text-delta' || type === 'reasoning-delta' || type === 'prompt-stream-delta'
-					|| type === 'search-thought-talking' || type === 'search-thought-reasoning'
-					|| type === 'search-inspector-talking' || type === 'search-inspector-reasoning';
-				if (!checkIfDeltaEvent(event.type)) {
-					console.debug('[useAIAnalysis] event:', JSON.stringify(event));
-				} else {
-					// delta event are too much to log. useless. only log the type to observe the flow.
-					console.debug('[useAIAnalysis] event:', event.type, event.triggerName);
-				}
+				// // debug log for all chunks.
+				// const checkIfDeltaEvent = (type: string) =>
+				// 	type === 'text-delta' || type === 'reasoning-delta' || type === 'prompt-stream-delta'
+				// 	|| type === 'search-thought-talking' || type === 'search-thought-reasoning'
+				// 	|| type === 'search-inspector-talking' || type === 'search-inspector-reasoning';
+				// if (!checkIfDeltaEvent(event.type)) {
+				// 	console.debug('[useAIAnalysis] event:', JSON.stringify(event));
+				// } else {
+				// 	// delta event are too much to log. useless. only log the type to observe the flow.
+				// 	console.debug('[useAIAnalysis] event:', event.type, event.triggerName);
+				// }
 
 				switch (event.type) {
 					case 'text-delta':
@@ -187,98 +237,56 @@ export function useAIAnalysis() {
 						 * and the delta is very fast to generate. which may cause performance issue and memory leak.
 						 */
 						updateIfStepChanged(
-							event.triggerName === StreamTriggerName.SEARCH_INSPECTOR_AGENT
-								? 'search-inspector-talking'
-								: 'search-thought-talking',
+							event.triggerName + '-talking' as AIAnalysisStepType,
 							event.text
 						);
 						break;
 					case 'reasoning-delta':
 						updateIfStepChanged(
-							event.triggerName === StreamTriggerName.SEARCH_INSPECTOR_AGENT
-								? 'search-inspector-reasoning'
-								: 'search-thought-reasoning',
+							event.triggerName + '-reasoning' as AIAnalysisStepType,
 							event.text
 						);
 						break;
 					case 'tool-call':
-						if (event.triggerName === StreamTriggerName.SEARCH_THOUGHT_AGENT) {
-							if (event.toolName === 'summary_context_messages') {
-								updateIfStepChanged('search-thought-summary-context-messages', undefined);
-							}
-						}
-						if (event.triggerName === StreamTriggerName.SEARCH_INSPECTOR_AGENT) {
-							if (event.toolName === 'content_reader') {
-								updateIfStepChanged('search-inspector-content-reader', undefined, {
-									path: event.input.path,
-									mode: event.input.mode,
-									lineRange: event.input.lineRange
-								});
-							} else if (event.toolName === 'web_search') {
-								updateIfStepChanged('search-inspector-web-search', undefined, {
-									query: event.input.query,
-									limit: event.input.limit
-								});
-							} else if (event.toolName === 'vault_inspector') {
-								/**
-								 * see {@link vaultGraphInspectorTool} for more details.
-								 */
-								const { mode } = event.input as { mode: string };
-								switch (mode) {
-									case 'inspect_note_context':
-										updateIfStepChanged('search-inspector-inspect-note-context', undefined, {
-											note_path: event.input.note_path
-										});
-										break;
-									case 'graph_traversal':
-										updateIfStepChanged('search-inspector-graph-traversal', undefined, {
-											hops: event.input.hops,
-											note_path: event.input.note_path
-										});
-										break;
-									case 'find_path':
-										updateIfStepChanged('search-inspector-find-path', undefined, {
-											start_note_path: event.input.start_note_path,
-											end_note_path: event.input.end_note_path
-										});
-										break;
-									case 'find_key_nodes':
-										updateIfStepChanged('search-inspector-find-key-nodes');
-										break;
-									case 'find_orphans':
-										updateIfStepChanged('search-inspector-find-orphans');
-										break;
-									case 'search_by_dimensions':
-										updateIfStepChanged('search-inspector-search-by-dimensions', undefined, {
-											boolean_expression: event.input.boolean_expression
-										});
-										break;
-									case 'explore_folder':
-										updateIfStepChanged('search-inspector-explore-folder', undefined, {
-											folder_path: event.input.folder_path,
-											recursive: event.input.recursive,
-											max_depth: event.input.max_depth
-										});
-										break;
-									case 'recent_changes_whole_vault':
-										updateIfStepChanged('search-inspector-recent-changes-whole-vault');
-										break;
-									case 'local_search_whole_vault':
-										updateIfStepChanged('search-inspector-local-search-whole-vault', undefined, {
-											query: event.input.query,
-											searchMode: event.input.searchMode,
-											scopeMode: event.input.scopeMode,
-											scopeValue: event.input.scopeValue
-										});
-										break;
-									default:
-										console.warn('[useAIAnalysis] Unknown tool call:', event.toolName, event.input);
-										break;
-								}
-							}
-						}
+						// Record to tool trace for debugging
+						toolTraceRef.current.push({
+							ts: Date.now(),
+							triggerName: event.triggerName || 'unknown',
+							type: 'tool-call',
+							toolName: event.toolName,
+							toolCallId: event.id,
+							input: event.input
+						});
+
+						// Publish a normalized tool-call event for graph animation / UI orchestration.
+						// Keep it separate from step streaming to avoid mixing non-text payloads into the text renderer.
+						useUIEventStore.getState().publish('ui:tool-call', {
+							triggerName: event.triggerName || 'unknown',
+							toolName: event.toolName,
+							toolCallId: event.id,
+							input: event.input,
+						});
+
+						updateIfStepChanged(
+							event.triggerName + '--tool-call--' + event.toolName as AIAnalysisStepType,
+							undefined,
+							{ ...event.input, }
+						);
 						break;
-					case 'tool-result':
+					case 'tool-result': {
+						// Extract summary from tool results
+						const output = event.output?.result || event.output;
+
+						// Record to tool trace (full output for non-content_reader tools)
+						toolTraceRef.current.push({
+							ts: Date.now(),
+							triggerName: event.triggerName || 'unknown',
+							type: 'tool-result',
+							toolName: event.toolName,
+							toolCallId: event.id,
+							output: event.toolName !== 'content_reader' ? output : undefined,
+						});
+
 						if (event.triggerName === StreamTriggerName.SEARCH_THOUGHT_AGENT) {
 							// only process update_result tool call.
 							if (event.toolName === 'update_result') {
@@ -288,8 +296,22 @@ export function useAIAnalysis() {
 									applySearchResult(currentResult);
 								}
 							}
+						} else {
+							// Publish a normalized tool-result event for graph animation / UI orchestration.
+							useUIEventStore.getState().publish('ui:tool-result', {
+								triggerName: event.triggerName || 'unknown',
+								toolName: event.toolName,
+								toolCallId: event.id,
+								output,
+							});
+
+							useUIEventStore.getState().publish(
+								event.triggerName + '--tool-result--' + event.toolName,
+								{ output: output }
+							);
 						}
 						break;
+					}
 					case 'prompt-stream-start':
 						if (event.promptId === PromptId.SearchAiSummary) {
 							startSummaryStreaming();
@@ -298,12 +320,14 @@ export function useAIAnalysis() {
 					case 'prompt-stream-delta':
 						if (event.promptId === PromptId.SearchAiSummary) {
 							const delta = event.delta || '';
+							bufferSummaryDelta(delta);
 							// publish event for UI rendering
 							useUIEventStore.getState().publish('summary-delta', { text: delta });
 						}
 						break;
 					case 'prompt-stream-result':
 						if (event.promptId === PromptId.SearchAiSummary) {
+							flushSummaryBuffer();
 							// Update store with complete summary
 							setSummary(event.output as string);
 						}
@@ -311,10 +335,24 @@ export function useAIAnalysis() {
 					case 'complete':
 						// Process final result
 						handleFinalResult(event);
-						markCompleted();
 						break;
 					case 'error':
 						recordError(event.error.message);
+						break;
+					case 'on-step-finish':
+						updateIfStepChanged('pk-debug', undefined, {
+							triggerName: event.triggerName,
+							text: event.text,
+							finishReason: event.finishReason,
+							usage: event.usage,
+						});
+						break;
+					case 'pk-debug':
+						updateIfStepChanged('pk-debug', undefined, {
+							debugName: event.debugName,
+							triggerName: event.triggerName,
+							extra: event.extra,
+						});
 						break;
 					default:
 						// we have debug log ahead of the switch statement.
@@ -328,24 +366,51 @@ export function useAIAnalysis() {
 				: 'Failed to connect to AI service. Please check your network connection and try again.';
 			recordError(errorMessage);
 		} finally {
-			// comment this after debugging.
+			flushSummaryBuffer();
+			// Build merged debug dump for easier debugging
 			const aiAnalysisStoreState = useAIAnalysisStore.getState();
-			console.debug('[useAIAnalysis] complete. log all steps for debugging.', JSON.stringify({
-				...Object.fromEntries(
-					Object.entries(aiAnalysisStoreState).filter(([key]) => key !== 'steps' && key !== 'currentStep' && key !== 'summaryChunks')
-				),
+			const debugDump = {
+				meta: {
+					query: searchQuery,
+					webEnabled,
+					totalDurationMs: Date.now() - analysisStartTimeRef.current,
+					usage: aiAnalysisStoreState.usage,
+					hasError: !!aiAnalysisStoreState.error,
+					error: aiAnalysisStoreState.error,
+					sourcesCount: aiAnalysisStoreState.sources.length,
+					topicsCount: aiAnalysisStoreState.topics.length,
+					insightCardsCount: aiAnalysisStoreState.insightCards.length,
+					graphNodesCount: aiAnalysisStoreState.graph?.nodes?.length ?? 0,
+					graphEdgesCount: aiAnalysisStoreState.graph?.edges?.length ?? 0
+				},
 				steps: aiAnalysisStoreState.steps.map(step => ({
 					type: step.type,
 					text: step.textChunks.join(''),
-					extra: step.extra
+					extra: step.extra,
+					startedAtMs: step.startedAtMs,
+					endedAtMs: step.endedAtMs,
+					durationMs: step.startedAtMs && step.endedAtMs ? step.endedAtMs - step.startedAtMs : undefined
 				})),
 				currentStep: {
 					type: aiAnalysisStoreState.currentStep.type,
 					text: aiAnalysisStoreState.currentStep.textChunks.join(''),
 					extra: aiAnalysisStoreState.currentStep.extra
 				},
-				summary: aiAnalysisStoreState.summaryChunks.join('')
-			}));
+				toolTrace: toolTraceRef.current,
+				summary: aiAnalysisStoreState.summaryChunks.join(''),
+				summaryLen: aiAnalysisStoreState.summaryChunks.join('').length
+			};
+			// Log merged debug dump
+			console.debug('[useAIAnalysis] debugDumpJson', JSON.stringify(debugDump));
+
+			// Reset refs for next analysis
+			toolTraceRef.current = [];
+			analysisStartTimeRef.current = 0;
+			summaryDeltaBufferRef.current = '';
+			if (summaryFlushTimerRef.current) {
+				window.clearTimeout(summaryFlushTimerRef.current);
+				summaryFlushTimerRef.current = null;
+			}
 
 			markCompleted();
 			// Clear abort controller
@@ -366,6 +431,9 @@ export function useAIAnalysis() {
 		markCompleted,
 		setCurrentStep,
 		startSummaryStreaming,
+		appendSummaryDelta,
+		bufferSummaryDelta,
+		flushSummaryBuffer,
 		handleFinalResult
 	]);
 

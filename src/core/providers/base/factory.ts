@@ -1,4 +1,4 @@
-import { LLMProviderService, ModelMetaData, ProviderConfig, ProviderMetaData } from '../types';
+import { LLMProviderService, ModelMetaData, ProviderConfig, ProviderMetaData, ModelConfig, ModelCapabilities } from '../types';
 import { OpenAIChatService } from './openai';
 import { OpenRouterChatService } from './openrouter';
 import { OllamaChatService } from './ollama';
@@ -191,6 +191,80 @@ export class ProviderServiceFactory {
 	}
 
 	/**
+	 * Merge modelConfigs into model metadata
+	 */
+	private mergeModelConfigs(
+		models: ModelMetaData[],
+		modelConfigs?: Record<string, ModelConfig>
+	): ModelMetaData[] {
+		if (!modelConfigs) {
+			return models;
+		}
+
+		const modelMap = new Map<string, ModelMetaData>();
+		// Add API models first
+		models.forEach(model => {
+			modelMap.set(model.id, { ...model });
+		});
+
+		// Apply overrides and add custom models
+		for (const [modelId, config] of Object.entries(modelConfigs)) {
+			const existingModel = modelMap.get(modelId);
+			
+			if (existingModel) {
+				// Apply overrides to existing model
+				if (config.displayName) {
+					existingModel.displayName = config.displayName;
+				}
+				if (config.icon) {
+					existingModel.icon = config.icon;
+				}
+				if (config.tokenLimitsOverride) {
+					existingModel.tokenLimits = {
+						...existingModel.tokenLimits,
+						...config.tokenLimitsOverride,
+					};
+				}
+				if (config.capabilitiesOverride) {
+					// Ensure all required boolean fields are present
+					const baseCapabilities: ModelCapabilities = {
+						vision: existingModel.capabilities?.vision ?? false,
+						pdfInput: existingModel.capabilities?.pdfInput ?? false,
+						tools: existingModel.capabilities?.tools ?? false,
+						webSearch: existingModel.capabilities?.webSearch ?? false,
+						xSearch: existingModel.capabilities?.xSearch ?? false,
+						newsSearch: existingModel.capabilities?.newsSearch ?? false,
+						rssSearch: existingModel.capabilities?.rssSearch ?? false,
+						codeInterpreter: existingModel.capabilities?.codeInterpreter ?? false,
+						imageGeneration: existingModel.capabilities?.imageGeneration ?? false,
+						reasoning: existingModel.capabilities?.reasoning ?? false,
+						maxCtx: existingModel.capabilities?.maxCtx,
+					};
+
+					// Apply overrides
+					existingModel.capabilities = {
+						...baseCapabilities,
+						...config.capabilitiesOverride,
+						// Ensure maxCtx is preserved if provided
+						maxCtx: config.capabilitiesOverride.maxCtx ?? baseCapabilities.maxCtx,
+					};
+				}
+			} else {
+				// Add custom model that's not in API list
+				modelMap.set(modelId, {
+					id: modelId,
+					displayName: config.displayName || modelId,
+					icon: config.icon,
+					tokenLimits: config.tokenLimitsOverride,
+					capabilities: config.capabilitiesOverride as any,
+				});
+			}
+		}
+
+		return Array.from(modelMap.values());
+	}
+
+	/**
 	 * Get available models for a provider
 	 * @param providerId - Provider identifier
 	 * @param config - Optional provider config (if provided, will use real API key; otherwise uses fake key)
@@ -213,7 +287,10 @@ export class ProviderServiceFactory {
 		try {
 			const service = factory(serviceConfig);
 			if (service) {
-				return await service.getAvailableModels();
+				const models = await service.getAvailableModels();
+				
+				// Merge with modelConfigs if provided
+				return this.mergeModelConfigs(models, config?.modelConfigs);
 			}
 		} catch (error) {
 			console.warn(`[ProviderServiceFactory] Failed to get models for ${providerId}:`, error);

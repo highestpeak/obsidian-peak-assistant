@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
+import { motion } from 'framer-motion';
 
 const getSizeClasses = (size: string) => {
 	switch (size) {
@@ -51,18 +52,24 @@ export const TagCloud: React.FC<TagCloudProps> = ({ topics }) => {
 	return (
 		<div className="pktw-flex pktw-flex-wrap pktw-gap-2">
 			{displayTags.map((tag, index) => (
-				<Button
+				<motion.div
 					key={index}
-					variant="ghost"
-					className={cn(
-						getSizeClasses(tag.size),
-						getColorClasses(tag.size),
-						'pktw-rounded-md pktw-border pktw-h-auto pktw-font-medium hover:pktw-shadow-sm active:pktw-scale-95'
-					)}
-					title={`Weight: ${tag.count}`}
+					initial={{ opacity: 0, y: 6, scale: 0.98 }}
+					animate={{ opacity: 1, y: 0, scale: 1 }}
+					transition={{ duration: 0.22, delay: Math.min(0.6, index * 0.04) }}
 				>
-					{tag.name}
-				</Button>
+					<Button
+						variant="ghost"
+						className={cn(
+							getSizeClasses(tag.size),
+							getColorClasses(tag.size),
+							'pktw-rounded-md pktw-border pktw-h-auto pktw-font-medium hover:pktw-shadow-sm active:pktw-scale-95'
+						)}
+						title={`Weight: ${tag.count}`}
+					>
+						{tag.name}
+					</Button>
+				</motion.div>
 			))}
 		</div>
 	);

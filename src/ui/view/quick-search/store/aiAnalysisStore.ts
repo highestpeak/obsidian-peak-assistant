@@ -5,27 +5,35 @@ import { useUIEventStore } from '@/ui/store/uiEventStore';
 
 export type AIAnalysisStepType =
 	'idle' |
-	'search-thought-talking' |
-	'search-thought-reasoning' |
-	'search-inspector-talking' |
-	'search-inspector-reasoning' |
-	'search-inspector-inspect-note-context' |
-	'search-inspector-graph-traversal' |
-	'search-inspector-find-path' |
-	'search-inspector-find-key-nodes' |
-	'search-inspector-find-orphans' |
-	'search-inspector-search-by-dimensions' |
-	'search-inspector-explore-folder' |
-	'search-inspector-recent-changes-whole-vault' |
-	'search-inspector-local-search-whole-vault' |
-	'search-inspector-content-reader' |
-	'search-inspector-web-search' |
-	'search-thought-summary-context-messages';
+	'search-thought-agent-talking' |
+	'search-thought-agent-reasoning' |
+	'search-inspector-agent-talking' |
+	'search-inspector-agent-reasoning' |
+	'search-inspector-agent-inspect_note_context' |
+	'search-inspector-agent-graph_traversal' |
+	'search-inspector-agent-find_path' |
+	'search-inspector-agent-find_key_nodes' |
+	'search-inspector-agent-find_orphans' |
+	'search-inspector-agent-search_by_dimensions' |
+	'search-inspector-agent-explore_folder' |
+	'search-inspector-agent-recent_changes_whole_vault' |
+	'search-inspector-agent-local_search_whole_vault' |
+	'search-inspector-agent-content_reader' |
+	'search-inspector-agent-web_search' |
+	'search-thought-agent-summary_context_messages' | 'pk-debug';
+	'pk-debug';
+
+export const StepsUISkipShouldSkip = new Set<AIAnalysisStepType>([
+	'idle',
+	'pk-debug',
+]);
 
 export interface AIAnalysisStep {
 	type: AIAnalysisStepType;
 	textChunks: string[]; // Use array to efficiently accumulate text chunks
 	extra?: any;
+	startedAtMs?: number; // Timestamp when step started (for timer display)
+	endedAtMs?: number;   // Timestamp when step completed (for duration calculation)
 }
 
 interface AIAnalysisStore {
@@ -53,6 +61,11 @@ interface AIAnalysisStore {
 	steps: AIAnalysisStep[];
 	stepTrigger: number;
 	isSummaryStreaming: boolean;
+	/**
+	 * Timestamp when analysis started (ms).
+	 * Used for rendering a global timer inside the AI Analysis area.
+	 */
+	analysisStartedAtMs: number | null;
 
 	// final state (will change during streaming but will be replaced with the final state after streaming)
 	summaryChunks: string[];
@@ -79,6 +92,11 @@ interface AIAnalysisStore {
 	// Complete current step with text chunks (called when step finishes)
 	completeCurrentStep: (textChunks: string[]) => void;
 	startSummaryStreaming: () => void;
+	/**
+	 * Append summary delta in a throttled manner (caller should throttle).
+	 * Used for Markdown rendering with Streamdown.
+	 */
+	appendSummaryDelta: (delta: string) => void;
 
 	// final state reset actions
 	setSummary: (summary: string) => void;
@@ -115,6 +133,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	currentStep: { type: 'idle', textChunks: [] },
 	steps: [],
 	isSummaryStreaming: false,
+	analysisStartedAtMs: null,
 	stepTrigger: 0,
 
 	// final state
@@ -145,7 +164,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	},
 
 	// streaming actions
-	startAnalyzing: () => set({ isAnalyzing: true, analyzingBeforeFirstToken: true }),
+	startAnalyzing: () => set({ isAnalyzing: true, analyzingBeforeFirstToken: true, analysisStartedAtMs: Date.now() }),
 	startStreaming: () => set({ hasStartedStreaming: true, analyzingBeforeFirstToken: false }),
 	markCompleted: () => {
 		set({
@@ -163,7 +182,12 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			// Step type changed - trigger UI update but don't auto-complete
 			set((state) => ({
 				stepTrigger: state.stepTrigger + 1,
-				currentStep: { type, textChunks: [], extra: extra },
+				currentStep: { 
+					type, 
+					textChunks: [], 
+					extra: extra,
+					startedAtMs: Date.now() // Record start time for timer
+				},
 			}));
 		} else {
 			// Same step type, just update extra
@@ -171,7 +195,8 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 				currentStep: {
 					type,
 					textChunks: prevStep.textChunks,
-					extra: { ...prevStep.extra, ...extra }
+					extra: { ...prevStep.extra, ...extra },
+					startedAtMs: prevStep.startedAtMs // Preserve start time
 				}
 			});
 		}
@@ -179,17 +204,26 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	completeCurrentStep: (textChunks: string[]) => {
 		const currentStep = get().currentStep;
 		if (currentStep.type !== 'idle') {
+			const endedAtMs = Date.now();
 			set((state) => ({
 				stepTrigger: state.stepTrigger + 1,
 				steps: [...state.steps, {
 					...currentStep,
-					textChunks: textChunks
+					textChunks: textChunks,
+					endedAtMs: endedAtMs // Record end time for duration
 				}],
 				currentStep: { type: 'idle', textChunks: [] }
 			}));
 		}
 	},
 	startSummaryStreaming: () => set({ isSummaryStreaming: true }),
+	appendSummaryDelta: (delta: string) => {
+		if (!delta) return;
+		set((state) => ({
+			summaryChunks: [...state.summaryChunks, delta],
+			hasAnalyzed: true,
+		}));
+	},
 	// final state reset actions
 	setSummary: (summary: string) => {
 		set({
@@ -232,6 +266,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 		currentStep: { type: 'idle', textChunks: [] },
 		steps: [],
 		isSummaryStreaming: false,
+		analysisStartedAtMs: null,
 		summaryChunks: [],
 		graph: null,
 		insightCards: [],

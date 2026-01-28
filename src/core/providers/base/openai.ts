@@ -5,6 +5,9 @@ import {
 	ModelMetaData,
 	ProviderMetaData,
 	LLMStreamEvent,
+	ModelTokenLimits,
+	ModelCapabilities,
+	ModelType,
 } from '../types';
 import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai';
 import { embedMany, type EmbeddingModel, type LanguageModel } from 'ai';
@@ -20,6 +23,10 @@ interface ModelMapping {
 	modelId: string;
 	/** Icon identifier for UI display, compatible with @lobehub/icons ModelIcon component */
 	icon: string;
+	/** Token limits for this model */
+	tokenLimits?: ModelTokenLimits;
+	/** Capabilities for this model */
+	capabilities?: ModelCapabilities;
 }
 
 /**
@@ -60,31 +67,122 @@ interface ModelMapping {
  */
 const MODEL_ID_MAP: Record<string, ModelMapping> = {
 	// O1 series
-	'o1': { modelId: 'o1-2024-12-17', icon: 'o1' },
-	'o1-mini': { modelId: 'o1-mini-2024-09-12', icon: 'o1' },
+	'o1': {
+		modelId: 'o1-2024-12-17',
+		icon: 'o1',
+		tokenLimits: { maxTokens: 200000, maxInputTokens: 200000, recommendedSummaryThreshold: 150000 },
+		capabilities: { vision: false, pdfInput: false, tools: false, webSearch: false, reasoning: true, maxCtx: 200000 },
+	},
+	'o1-mini': {
+		modelId: 'o1-mini-2024-09-12',
+		icon: 'o1',
+		tokenLimits: { maxTokens: 200000, maxInputTokens: 200000, recommendedSummaryThreshold: 150000 },
+		capabilities: { vision: false, pdfInput: false, tools: false, webSearch: false, reasoning: true, maxCtx: 200000 },
+	},
 	// O3 series
-	'o3-mini': { modelId: 'o3-mini-2025-01-31', icon: 'o1' },
-	'o3': { modelId: 'o3-2025-04-16', icon: 'o1' },
+	'o3-mini': {
+		modelId: 'o3-mini-2025-01-31',
+		icon: 'o1',
+		tokenLimits: { maxTokens: 200000, maxInputTokens: 200000, recommendedSummaryThreshold: 150000 },
+		capabilities: { vision: false, pdfInput: false, tools: false, webSearch: false, reasoning: true, maxCtx: 200000 },
+	},
+	'o3': {
+		modelId: 'o3-2025-04-16',
+		icon: 'o1',
+		tokenLimits: { maxTokens: 200000, maxInputTokens: 200000, recommendedSummaryThreshold: 150000 },
+		capabilities: { vision: false, pdfInput: false, tools: false, webSearch: false, reasoning: true, maxCtx: 200000 },
+	},
 	// O4 series
-	'o4-mini': { modelId: 'o4-mini-2025-04-16', icon: 'o1' },
+	'o4-mini': {
+		modelId: 'o4-mini-2025-04-16',
+		icon: 'o1',
+		tokenLimits: { maxTokens: 200000, maxInputTokens: 200000, recommendedSummaryThreshold: 150000 },
+		capabilities: { vision: false, pdfInput: false, tools: false, webSearch: false, reasoning: true, maxCtx: 200000 },
+	},
 	// GPT-5 series
-	'gpt-5': { modelId: 'gpt-5-2025-08-07', icon: 'gpt-5' },
-	'gpt-5-mini': { modelId: 'gpt-5-mini-2025-08-07', icon: 'gpt-5' },
-	'gpt-5-nano': { modelId: 'gpt-5-nano-2025-08-07', icon: 'gpt-5' },
+	'gpt-5': {
+		modelId: 'gpt-5-2025-08-07',
+		icon: 'gpt-5',
+		tokenLimits: { maxTokens: 128000, maxInputTokens: 128000, recommendedSummaryThreshold: 100000 },
+		capabilities: { vision: true, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 128000 },
+	},
+	'gpt-5-mini': {
+		modelId: 'gpt-5-mini-2025-08-07',
+		icon: 'gpt-5',
+		tokenLimits: { maxTokens: 128000, maxInputTokens: 128000, recommendedSummaryThreshold: 100000 },
+		capabilities: { vision: true, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 128000 },
+	},
+	'gpt-5-nano': {
+		modelId: 'gpt-5-nano-2025-08-07',
+		icon: 'gpt-5',
+		tokenLimits: { maxTokens: 128000, maxInputTokens: 128000, recommendedSummaryThreshold: 100000 },
+		capabilities: { vision: true, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 128000 },
+	},
 	// GPT-4.1 series
-	'gpt-4.1': { modelId: 'gpt-4.1-2025-04-14', icon: 'gpt-4' },
-	'gpt-4.1-mini': { modelId: 'gpt-4.1-mini-2025-04-14', icon: 'gpt-4' },
-	'gpt-4.1-nano': { modelId: 'gpt-4.1-nano-2025-04-14', icon: 'gpt-4' },
+	'gpt-4.1': {
+		modelId: 'gpt-4.1-2025-04-14',
+		icon: 'gpt-4',
+		tokenLimits: { maxTokens: 128000, maxInputTokens: 128000, recommendedSummaryThreshold: 100000 },
+		capabilities: { vision: true, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 128000 },
+	},
+	'gpt-4.1-mini': {
+		modelId: 'gpt-4.1-mini-2025-04-14',
+		icon: 'gpt-4',
+		tokenLimits: { maxTokens: 128000, maxInputTokens: 128000, recommendedSummaryThreshold: 100000 },
+		capabilities: { vision: true, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 128000 },
+	},
+	'gpt-4.1-nano': {
+		modelId: 'gpt-4.1-nano-2025-04-14',
+		icon: 'gpt-4',
+		tokenLimits: { maxTokens: 128000, maxInputTokens: 128000, recommendedSummaryThreshold: 100000 },
+		capabilities: { vision: true, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 128000 },
+	},
 	// GPT-4o series
-	'gpt-4o': { modelId: 'gpt-4o-2024-11-20', icon: 'gpt-4' },
-	'gpt-4o-mini': { modelId: 'gpt-4o-mini-2024-07-18', icon: 'gpt-4' },
+	'gpt-4o': {
+		modelId: 'gpt-4o-2024-11-20',
+		icon: 'gpt-4',
+		tokenLimits: { maxTokens: 128000, maxInputTokens: 128000, recommendedSummaryThreshold: 100000 },
+		capabilities: { vision: true, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 128000 },
+	},
+	'gpt-4o-mini': {
+		modelId: 'gpt-4o-mini-2024-07-18',
+		icon: 'gpt-4',
+		tokenLimits: { maxTokens: 128000, maxInputTokens: 128000, recommendedSummaryThreshold: 100000 },
+		capabilities: { vision: true, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 128000 },
+	},
 	// GPT-4 series
-	'gpt-4-turbo': { modelId: 'gpt-4-turbo-2024-04-09', icon: 'gpt-4' },
-	'gpt-4': { modelId: 'gpt-4', icon: 'gpt-4' },
+	'gpt-4-turbo': {
+		modelId: 'gpt-4-turbo-2024-04-09',
+		icon: 'gpt-4',
+		tokenLimits: { maxTokens: 128000, maxInputTokens: 128000, recommendedSummaryThreshold: 100000 },
+		capabilities: { vision: true, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 128000 },
+	},
+	'gpt-4': {
+		modelId: 'gpt-4',
+		icon: 'gpt-4',
+		tokenLimits: { maxTokens: 8192, maxInputTokens: 8192, recommendedSummaryThreshold: 6000 },
+		capabilities: { vision: false, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 8192 },
+	},
+	'gpt-4-32k': {
+		modelId: 'gpt-4-32k',
+		icon: 'gpt-4',
+		tokenLimits: { maxTokens: 32768, maxInputTokens: 32768, recommendedSummaryThreshold: 25000 },
+		capabilities: { vision: false, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 32768 },
+	},
 	// GPT-4.5 series
-	'gpt-4.5': { modelId: 'gpt-4.5-preview-2025-02-27', icon: 'gpt-4' },
+	'gpt-4.5': {
+		modelId: 'gpt-4.5-preview-2025-02-27',
+		icon: 'gpt-4',
+		tokenLimits: { maxTokens: 128000, maxInputTokens: 128000, recommendedSummaryThreshold: 100000 },
+		capabilities: { vision: true, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 128000 },
+	},
 	// GPT-3.5 series
-	'gpt-3.5-turbo': { modelId: 'gpt-3.5-turbo', icon: 'gpt-3.5' },
+	'gpt-3.5-turbo': {
+		modelId: 'gpt-3.5-turbo',
+		icon: 'gpt-3.5',
+		tokenLimits: { maxTokens: 16384, maxInputTokens: 16384, recommendedSummaryThreshold: 12000 },
+		capabilities: { vision: false, pdfInput: false, tools: true, webSearch: false, reasoning: false, maxCtx: 16384 },
+	},
 };
 
 /**
@@ -164,6 +262,9 @@ export class OpenAIChatService implements LLMProviderService {
 				id: modelId,
 				displayName: modelId,
 				icon: mapping?.icon || modelId,
+				modelType: ModelType.LLM,
+				tokenLimits: mapping?.tokenLimits ?? this.getModelTokenLimits(modelId),
+				capabilities: mapping?.capabilities ?? this.getCapabilitiesForModel(modelId),
 			};
 		});
 	}
@@ -184,5 +285,59 @@ export class OpenAIChatService implements LLMProviderService {
 		});
 
 		return result.embeddings;
+	}
+
+	/**
+	 * Get token limits for OpenAI models
+	 */
+	getModelTokenLimits(model: string): ModelTokenLimits | undefined {
+		// Try exact match first
+		const mapping = MODEL_ID_MAP[model];
+		if (mapping?.tokenLimits) {
+			return mapping.tokenLimits;
+		}
+
+		// Try partial match (for dated versions)
+		for (const [key, value] of Object.entries(MODEL_ID_MAP)) {
+			if (model.includes(key) || key.includes(model.split('-').slice(0, 2).join('-'))) {
+				if (value.tokenLimits) {
+					return value.tokenLimits;
+				}
+			}
+		}
+
+		// Default for unknown OpenAI models
+		return { maxTokens: 4096, maxInputTokens: 4096, recommendedSummaryThreshold: 3000 };
+	}
+
+	/**
+	 * Get capabilities for OpenAI model
+	 */
+	private getCapabilitiesForModel(modelId: string): ModelCapabilities {
+		// Try exact match first
+		const mapping = MODEL_ID_MAP[modelId];
+		if (mapping?.capabilities) {
+			return mapping.capabilities;
+		}
+
+		// Try partial match
+		for (const [key, value] of Object.entries(MODEL_ID_MAP)) {
+			if (modelId.includes(key) || key.includes(modelId.split('-').slice(0, 2).join('-'))) {
+				if (value.capabilities) {
+					return value.capabilities;
+				}
+			}
+		}
+
+		// Default capabilities
+		const tokenLimits = this.getModelTokenLimits(modelId);
+		return {
+			vision: false,
+			pdfInput: false,
+			tools: true,
+			webSearch: false,
+			reasoning: false,
+			maxCtx: tokenLimits?.maxInputTokens,
+		};
 	}
 }

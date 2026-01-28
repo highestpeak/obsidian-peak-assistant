@@ -67,6 +67,7 @@
 		"d3-zoom": "^3.0.0",
 		"embla-carousel-react": "^8.6.0",
 		"es-toolkit": "^1.44.0",
+		"framer-motion": "^12.29.2",
 		"graphology": "^0.26.0",
 		"gray-matter": "^4.0.3",
 		"handlebars": "^4.7.8",

@@ -218,8 +218,8 @@ function mapContentPartToAiSdk(part: MessagePart): Array<
         case 'reasoning':
             return [{ type: 'reasoning', text: part.text }];
         case 'tool-call':
-            // Generate a tool call ID if not provided
-            const toolCallId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            // Use provided toolCallId or generate one if not provided
+            const toolCallId = part.toolCallId ?? generateToolCallId();
             return [{
                 type: 'tool-call',
                 toolCallId,
@@ -280,6 +280,99 @@ export function toAiSdkMessages(messages: LLMRequestMessage[]): ModelMessage[] {
 }
 
 /**
+ * Convert ReAct thought-agent history to ModelMessage[].
+ * Assistant messages with tool-call + tool-result parts are split into:
+ * - one assistant message (text, reasoning, tool_calls only)
+ * - one tool message per tool-result (role 'tool'), so the API receives
+ *   tool responses as separate messages, not embedded in assistant content.
+ */
+export function toReActThoughtPromptMessages(messages: LLMRequestMessage[]): ModelMessage[] {
+    const out: ModelMessage[] = [];
+
+    for (const message of messages) {
+        if (message.role === 'system') continue;
+        if (message.role === 'user') {
+            const parts = message.content.flatMap(mapContentPartToAiSdk);
+            out.push({
+                role: 'user',
+                content: parts.length ? parts : [{ type: 'text', text: '' }],
+            } as ModelMessage);
+            continue;
+        }
+
+        if (message.role === 'assistant') {
+            const textParts: Array<{ type: 'text'; text: string } | { type: 'reasoning'; text: string }> = [];
+            const toolCallParts: Array<{ type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }> = [];
+            const toolResultParts: Array<{ type: 'tool-result'; toolCallId: string; toolName: string; output: ToolResultOutput }> = [];
+
+            for (const part of message.content) {
+                switch (part.type) {
+                    case 'text':
+                        textParts.push({ type: 'text', text: part.text });
+                        break;
+                    case 'reasoning':
+                        textParts.push({ type: 'reasoning', text: part.text });
+                        break;
+                    case 'tool-call': {
+                        const id = part.toolCallId ?? generateToolCallId();
+                        toolCallParts.push({
+                            type: 'tool-call',
+                            toolCallId: id,
+                            toolName: part.toolName,
+                            input: part.input,
+                        });
+                        break;
+                    }
+                    case 'tool-result':
+                        toolResultParts.push({
+                            type: 'tool-result',
+                            toolCallId: part.toolCallId,
+                            toolName: part.toolName,
+                            output: part.output,
+                        });
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            const assistantContent: unknown[] = textParts.length
+                ? textParts
+                : [{ type: 'text', text: '' }];
+            if (toolCallParts.length > 0) {
+                assistantContent.push(...toolCallParts);
+            }
+            out.push({
+                role: 'assistant',
+                content: assistantContent,
+            } as ModelMessage);
+
+            for (const tr of toolResultParts) {
+                out.push({
+                    role: 'tool',
+                    content: [{
+                        type: 'tool-result',
+                        toolCallId: tr.toolCallId,
+                        toolName: tr.toolName,
+                        output: tr.output,
+                    }],
+                } as ModelMessage);
+            }
+        }
+    }
+
+    return out;
+}
+
+/**
+ * Generate a unique tool call ID.
+ * Used when the model doesn't provide one or when we need to create synthetic IDs.
+ */
+export function generateToolCallId(): string {
+    return `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
  * Extract system message text from LLMRequestMessage array.
  * Returns concatenated system message text or undefined if none.
  */
@@ -303,4 +396,33 @@ export function extractSystemMessage(request: LLMRequest<any>): string | undefin
         }
     }
     return systemParts.length > 0 ? systemParts.join('\n\n') : undefined;
+}
+
+/**
+ * Convert LLMRequestMessage array to human-readable text for template rendering.
+ * Extracts text and reasoning content, skips tool calls/results.
+ */
+export function convertMessagesToText(messages: LLMRequestMessage[]): string {
+    const lines: string[] = [];
+    for (const msg of messages) {
+        const role = msg.role === 'user' ? 'User' : 'Assistant';
+        const textParts: string[] = [];
+
+        for (const part of msg.content) {
+            if (typeof part === 'string') {
+                textParts.push(part);
+            } else if (part.type === 'text' && part.text) {
+                textParts.push(part.text);
+            } else if (part.type === 'reasoning' && part.text) {
+                // Include reasoning but mark it
+                textParts.push(`[Reasoning: ${part.text.substring(0, 200)}${part.text.length > 200 ? '...' : ''}]`);
+            }
+            // Skip tool-call and tool-result parts
+        }
+
+        if (textParts.length > 0) {
+            lines.push(`${role}: ${textParts.join(' ')}`);
+        }
+    }
+    return lines.join('\n');
 }

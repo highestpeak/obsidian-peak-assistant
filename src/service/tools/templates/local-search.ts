@@ -19,8 +19,8 @@ Found **{{results.length}}** results:
 - **Score**: {{score}}{{/if}}
 {{#if finalScore}}
 - **Final Score**: {{finalScore}}{{/if}}
-{{#if highlight}}
-- **Highlight**: {{{highlight.text}}}
+{{#if highlightedText}}
+- **Highlight**: {{{highlightedText}}}
 {{/if}}
 {{#if content}}
 - **Content Preview**: {{{content}}}

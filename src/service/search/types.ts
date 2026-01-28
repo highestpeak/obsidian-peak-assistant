@@ -114,6 +114,18 @@ export interface SearchResultItem {
 		 */
 		line?: number;
 	};
+	/**
+	 * Badges for AI search results - quick identifiers for the item's role.
+	 */
+	badges?: string[];
+	/**
+	 * Score breakdown for AI search results (physical/semantic/average).
+	 */
+	scoreDetail?: {
+		physical: number;
+		semantic: number;
+		average: number;
+	};
 }
 
 /**

@@ -175,6 +175,8 @@ export interface PromptVariables {
 		agentResult: SearchAgentResult;
 		agentMemory: AgentMemory;
 		options: AISearchAgentOptions;
+		/** Pre-rendered text from latestMessages for template use */
+		latestMessagesText?: string;
 	};
 	[PromptId.SearchTopicExtractJson]: {
 		query: string;

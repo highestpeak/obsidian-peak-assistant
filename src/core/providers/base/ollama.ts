@@ -5,9 +5,13 @@ import {
 	ModelMetaData,
 	ProviderMetaData,
 	LLMStreamEvent,
+	ModelTokenLimits,
+	ModelCapabilities,
+	ModelType,
 } from '../types';
+import { modelMetadataCache } from '@/core/utils/ttl-cache';
 import { createOllama, type OllamaProvider } from 'ollama-ai-provider-v2';
-import { embedMany, type LanguageModel, type EmbeddingModel } from 'ai';
+import { embedMany, type LanguageModel } from 'ai';
 import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
 import { trimTrailingSlash } from '@/core/utils/format-utils';
 
@@ -107,12 +111,81 @@ function getModelIcon(family?: string, name?: string): string {
 }
 
 /**
+ * Get token limits for Ollama model based on model name/family
+ * Default context length is 4096 (Ollama default), but can be configured via extra.contextLength
+ */
+function getOllamaTokenLimits(modelName: string, contextLength?: number): ModelTokenLimits {
+	const defaultContextLength = contextLength ?? 4096;
+	
+	// Common Ollama model context window sizes (from model families)
+	const modelLimits: Record<string, ModelTokenLimits> = {
+		'llama2': { maxTokens: 4096, maxInputTokens: 4096, recommendedSummaryThreshold: 3000 },
+		'llama3': { maxTokens: 8192, maxInputTokens: 8192, recommendedSummaryThreshold: 6000 },
+		'llama3.1': { maxTokens: 131072, maxInputTokens: 131072, recommendedSummaryThreshold: 100000 },
+		'llama3.2': { maxTokens: 131072, maxInputTokens: 131072, recommendedSummaryThreshold: 100000 },
+		'mistral': { maxTokens: 8192, maxInputTokens: 8192, recommendedSummaryThreshold: 6000 },
+		'mixtral': { maxTokens: 32768, maxInputTokens: 32768, recommendedSummaryThreshold: 25000 },
+		'codellama': { maxTokens: 16384, maxInputTokens: 16384, recommendedSummaryThreshold: 12000 },
+		'phi': { maxTokens: 2048, maxInputTokens: 2048, recommendedSummaryThreshold: 1500 },
+		'phi3': { maxTokens: 4096, maxInputTokens: 4096, recommendedSummaryThreshold: 3000 },
+		'gemma': { maxTokens: 8192, maxInputTokens: 8192, recommendedSummaryThreshold: 6000 },
+		'gemma2': { maxTokens: 8192, maxInputTokens: 8192, recommendedSummaryThreshold: 6000 },
+		'qwen': { maxTokens: 32768, maxInputTokens: 32768, recommendedSummaryThreshold: 25000 },
+		'qwen2': { maxTokens: 32768, maxInputTokens: 32768, recommendedSummaryThreshold: 25000 },
+	};
+
+	// Try partial match based on model name
+	const lowerName = modelName.toLowerCase();
+	for (const [prefix, limits] of Object.entries(modelLimits)) {
+		if (lowerName.includes(prefix)) {
+			// Override with configured context length if provided
+			if (contextLength) {
+				return {
+					maxTokens: contextLength,
+					maxInputTokens: contextLength,
+					recommendedSummaryThreshold: Math.floor(contextLength * 0.8),
+				};
+			}
+			return limits;
+		}
+	}
+
+	// Default fallback
+	return {
+		maxTokens: defaultContextLength,
+		maxInputTokens: defaultContextLength,
+		recommendedSummaryThreshold: Math.floor(defaultContextLength * 0.8),
+	};
+}
+
+/**
+ * Get capabilities for Ollama model
+ */
+function getOllamaCapabilities(modelName: string, tokenLimits: ModelTokenLimits): ModelCapabilities {
+	const capabilities: ModelCapabilities = {
+		vision: modelName.toLowerCase().includes('llava') || modelName.toLowerCase().includes('vision'),
+		pdfInput: false, // Ollama doesn't directly support PDF input
+		tools: true, // Ollama supports tool calling
+		webSearch: false,
+		reasoning: false,
+	};
+
+	if (tokenLimits.maxInputTokens) {
+		capabilities.maxCtx = tokenLimits.maxInputTokens;
+	}
+
+	return capabilities;
+}
+
+/**
  * Fetch models from Ollama API
  * @param baseUrl - Ollama base URL
+ * @param contextLength - Optional context length from config
  * @returns Promise resolving to array of ModelMetaData or null if fetch failed
  */
 async function fetchOllamaModels(
 	baseUrl?: string,
+	contextLength?: number,
 ): Promise<ModelMetaData[] | null> {
 	try {
 		const url = baseUrl ?? OLLAMA_DEFAULT_BASE;
@@ -135,26 +208,27 @@ async function fetchOllamaModels(
 		if (!data.models || !Array.isArray(data.models)) {
 			throw new Error('Invalid response format: models array not found');
 		}
-		console.log('[OllamaChatService] data.models', data.models);
 
 		// Convert API response to ModelMetaData format
 		return data.models.map((model) => {
 			const family = model.details?.family || '';
 			const icon = getModelIcon(family, model.name);
-			// console.log('model', model.name, displayName, family, icon);
 
-			// Generate display name from model name - keep full name for version distinction
+			// Generate display name from model name
 			let displayName = model.name;
-			// Format display name: capitalize first letter and add space before numbers
-			// e.g., "gemma3:4b" -> "Gemma 3:4b", "llama3.1:latest" -> "Llama 3.1:latest"
 			displayName = displayName.replace(/([a-z])([0-9])/gi, '$1 $2');
 			displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-			// console.log('displayName', displayName);
+
+			const tokenLimits = getOllamaTokenLimits(model.name, contextLength);
+			const capabilities = getOllamaCapabilities(model.name, tokenLimits);
 
 			return {
 				id: model.name,
 				displayName,
 				icon,
+				modelType: ModelType.LLM,
+				tokenLimits,
+				capabilities,
 			};
 		});
 	} catch (error) {
@@ -165,6 +239,14 @@ async function fetchOllamaModels(
 
 export class OllamaChatService implements LLMProviderService {
 	private readonly client: OllamaProvider;
+
+	/**
+	 * Get cache key for this provider instance
+	 */
+	private getCacheKey(): string {
+		const contextLength = this.options.extra?.contextLength ?? 4096;
+		return `ollama:${this.options.baseUrl ?? OLLAMA_DEFAULT_BASE}:ctx${contextLength}`;
+	}
 
 	constructor(private readonly options: OllamaChatServiceOptions) {
 		const baseUrl = this.options.baseUrl ?? OLLAMA_DEFAULT_BASE;
@@ -191,24 +273,26 @@ export class OllamaChatService implements LLMProviderService {
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
-		// Call fetchOllamaModels directly each time using await
-		const models = await fetchOllamaModels(
-			this.options.baseUrl,
-		);
-		// console.log('models fetched', models);
+		const cacheKey = this.getCacheKey();
 
-		if (models) {
-			return models;
+		// Check cache first
+		const cached = modelMetadataCache.get(cacheKey) as ModelMetaData[] | undefined;
+		if (cached) {
+			return cached;
 		}
 
-		// Original hardcoded models list (commented out but kept for reference)
-		// return [
-		// 	{ id: 'llama3.1', displayName: 'Llama 3.1', icon: 'llama-3.1' },
-		// 	{ id: 'llama3', displayName: 'Llama 3', icon: 'llama-3' },
-		// 	{ id: 'mistral', displayName: 'Mistral', icon: 'mistral' },
-		// 	{ id: 'phi3', displayName: 'Phi-3', icon: 'phi-3' },
-		// 	{ id: 'qwen', displayName: 'Qwen', icon: 'qwen' },
-		// ];
+		// Call fetchOllamaModels with context length for API data
+		const contextLength = this.options.extra?.contextLength ?? 4096;
+		const models = await fetchOllamaModels(
+			this.options.baseUrl,
+			contextLength,
+		);
+
+		if (models && models.length > 0) {
+			// Cache the result
+			modelMetadataCache.set(cacheKey, models);
+			return models;
+		}
 
 		return [];
 	}
@@ -240,6 +324,27 @@ export class OllamaChatService implements LLMProviderService {
 			console.error('[OllamaChatService] Error generating embeddings:', error);
 			throw error;
 		}
+	}
+
+	/**
+	 * Get token limits for a specific model
+	 * This method looks up from cached model metadata first, then falls back to dynamic calculation
+	 */
+	getModelTokenLimits(model: string): ModelTokenLimits | undefined {
+		// Try to get from cache first
+		const cacheKey = this.getCacheKey();
+		const cached = modelMetadataCache.get(cacheKey) as ModelMetaData[] | undefined;
+
+		if (cached) {
+			const modelMeta = cached.find(m => m.id === model);
+			if (modelMeta?.tokenLimits) {
+				return modelMeta.tokenLimits;
+			}
+		}
+
+		// Fall back to dynamic calculation
+		const contextLength = this.options.extra?.contextLength ?? 4096;
+		return getOllamaTokenLimits(model, contextLength);
 	}
 }
 

@@ -3,14 +3,10 @@ import { z } from "zod/v3"
 
 export function submitFinalAnswerTool(): AgentTool {
     return safeAgentTool({
-        description: "When you have found all the clues and the required information is built, call this tool to submit the final answer. This will end the current analysis task.",
-        inputSchema: z.object({
-            summary: z.string().describe("the final analysis report text."),
-        }),
-        execute: async ({ summary }) => {
-            return {
-                summary,
-            };
+        description: "Call this tool to mark the end of the current analysis task. No input or output required.",
+        inputSchema: z.object({}),
+        execute: async () => {
+            return {};
         },
     });
 }

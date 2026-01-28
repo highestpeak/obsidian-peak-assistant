@@ -2,11 +2,15 @@ import {
 	LLMProviderService,
 	ModelMetaData,
 	ProviderMetaData,
+	ModelCapabilities,
+	ModelTokenLimits,
+	ModelType,
 } from '../types';
 import { createGoogleGenerativeAI, GoogleGenerativeAIProvider } from '@ai-sdk/google';
 import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
 import { LLMRequest, LLMResponse, LLMStreamEvent } from '../types';
 import { LanguageModel } from 'ai';
+import { modelMetadataCache } from '@/core/utils/ttl-cache';
 
 const GEMINI_DEFAULT_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -18,6 +22,10 @@ interface ModelMapping {
 	modelId: string;
 	/** Icon identifier for UI display, compatible with @lobehub/icons ModelIcon component */
 	icon: string;
+	/** Token limits for this model */
+	tokenLimits?: ModelTokenLimits;
+	/** Capabilities for this model */
+	capabilities?: ModelCapabilities;
 }
 
 /**
@@ -48,13 +56,56 @@ interface ModelMapping {
  */
 const MODEL_ID_MAP: Record<string, ModelMapping> = {
 	// Gemini 2.5 series
-	'gemini-2.5-pro': { modelId: 'gemini-2.5-pro', icon: 'gemini' },
-	'gemini-2.5-flash': { modelId: 'gemini-2.5-flash', icon: 'gemini' },
+	'gemini-2.5-pro': {
+		modelId: 'gemini-2.5-pro',
+		icon: 'gemini',
+		tokenLimits: { maxTokens: 2097152, maxInputTokens: 2097152, recommendedSummaryThreshold: 1600000 },
+		capabilities: { vision: true, pdfInput: true, tools: true, webSearch: false, reasoning: false, maxCtx: 2097152 },
+	},
+	'gemini-2.5-flash': {
+		modelId: 'gemini-2.5-flash',
+		icon: 'gemini',
+		tokenLimits: { maxTokens: 1048576, maxInputTokens: 1048576, recommendedSummaryThreshold: 800000 },
+		capabilities: { vision: true, pdfInput: true, tools: true, webSearch: false, reasoning: false, maxCtx: 1048576 },
+	},
 	// Gemini 2.0 series
-	'gemini-2.0-flash': { modelId: 'gemini-2.0-flash-001', icon: 'gemini' },
+	'gemini-2.0-flash': {
+		modelId: 'gemini-2.0-flash-001',
+		icon: 'gemini',
+		tokenLimits: { maxTokens: 1048576, maxInputTokens: 1048576, recommendedSummaryThreshold: 800000 },
+		capabilities: { vision: true, pdfInput: true, tools: true, webSearch: false, reasoning: false, maxCtx: 1048576 },
+	},
+	'gemini-2.0-flash-lite': {
+		modelId: 'gemini-2.0-flash-lite-001',
+		icon: 'gemini',
+		tokenLimits: { maxTokens: 1048576, maxInputTokens: 1048576, recommendedSummaryThreshold: 800000 },
+		capabilities: { vision: true, pdfInput: true, tools: true, webSearch: false, reasoning: false, maxCtx: 1048576 },
+	},
+	'gemini-2.0-flash-thinking': {
+		modelId: 'gemini-2.0-flash-thinking-exp-01-21',
+		icon: 'gemini',
+		tokenLimits: { maxTokens: 1171712, maxInputTokens: 1048576, maxOutputTokens: 65536, recommendedSummaryThreshold: 800000 },
+		capabilities: { vision: true, pdfInput: true, tools: true, webSearch: false, reasoning: true, maxCtx: 1048576 },
+	},
 	// Gemini 1.5 series
-	'gemini-1.5-pro': { modelId: 'gemini-1.5-pro-002', icon: 'gemini' },
-	'gemini-1.5-flash': { modelId: 'gemini-1.5-flash-002', icon: 'gemini' },
+	'gemini-1.5-pro': {
+		modelId: 'gemini-1.5-pro-002',
+		icon: 'gemini',
+		tokenLimits: { maxTokens: 2097152, maxInputTokens: 2097152, recommendedSummaryThreshold: 1600000 },
+		capabilities: { vision: true, pdfInput: true, tools: true, webSearch: false, reasoning: false, maxCtx: 2097152 },
+	},
+	'gemini-1.5-flash': {
+		modelId: 'gemini-1.5-flash-002',
+		icon: 'gemini',
+		tokenLimits: { maxTokens: 1048576, maxInputTokens: 1048576, recommendedSummaryThreshold: 800000 },
+		capabilities: { vision: true, pdfInput: true, tools: true, webSearch: false, reasoning: false, maxCtx: 1048576 },
+	},
+	'gemini-1.5-flash-8b': {
+		modelId: 'gemini-1.5-flash-8b-001',
+		icon: 'gemini',
+		tokenLimits: { maxTokens: 1048576, maxInputTokens: 1048576, recommendedSummaryThreshold: 800000 },
+		capabilities: { vision: true, pdfInput: true, tools: true, webSearch: false, reasoning: false, maxCtx: 1048576 },
+	},
 };
 
 /**
@@ -112,13 +163,15 @@ export class GeminiChatService implements LLMProviderService {
 	}
 
 	async getAvailableModels(): Promise<ModelMetaData[]> {
-		// Return model IDs from MODEL_ID_MAP
 		return getKnownGeminiModelIds().map((modelId) => {
 			const mapping = MODEL_ID_MAP[modelId];
 			return {
 				id: modelId,
 				displayName: modelId,
 				icon: mapping?.icon || 'gemini',
+				modelType: ModelType.LLM,
+				tokenLimits: mapping?.tokenLimits ?? this.getModelTokenLimits(modelId),
+				capabilities: mapping?.capabilities ?? this.getCapabilitiesForModel(modelId),
 			};
 		});
 	}
@@ -134,6 +187,35 @@ export class GeminiChatService implements LLMProviderService {
 
 	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {
 		throw new Error('Gemini provider does not support embedding generation');
+	}
+
+	/**
+	 * Get token limits for Gemini models
+	 * This method looks up from cached model metadata first, then falls back to static mapping
+	 */
+	getModelTokenLimits(model: string): ModelTokenLimits | undefined {
+		const mapping = MODEL_ID_MAP[model];
+		return mapping?.tokenLimits;
+	}
+
+	/**
+	 * Get capabilities for Gemini model
+	 * This method looks up from cached model metadata first, then falls back to static mapping
+	 */
+	private getCapabilitiesForModel(modelId: string): ModelCapabilities {
+		const mapping = MODEL_ID_MAP[modelId];
+		if (mapping?.capabilities) {
+			return mapping.capabilities;
+		}
+
+		return mapping?.capabilities ?? {
+			vision: true,
+			pdfInput: true,
+			tools: true,
+			webSearch: false,
+			reasoning: false,
+			maxCtx: mapping?.tokenLimits?.maxInputTokens ?? mapping?.tokenLimits?.maxTokens,
+		};
 	}
 }
 

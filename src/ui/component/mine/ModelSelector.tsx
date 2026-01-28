@@ -1,11 +1,91 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ModelInfoForSwitch } from '@/core/providers/types';
-import { ChevronDown, Check, Eye, FileText, Wrench, Globe, Code, Image as ImageIcon, Brain, Search } from 'lucide-react';
+import { ModelInfoForSwitch, ModelCapabilities } from '@/core/providers/types';
+import { ChevronDown, Check, Search } from 'lucide-react';
 import { SafeModelIcon, SafeProviderIcon } from '@/ui/component/mine/SafeIconWrapper';
 import { cn } from '@/ui/react/lib/utils';
 import { ProviderServiceFactory } from '@/core/providers/base/factory';
-import { formatMaxContext } from '@/core/utils/format-utils';
 import { HoverButton } from '@/ui/component/mine/HoverButton';
+import { ModelCapabilitiesIcons } from './ModelCapabilitiesIcons';
+
+interface ModelItemProps {
+	model: ModelInfoForSwitch;
+	providerMetadataMap: Map<string, { icon?: string; name: string }>;
+	currentModel: { provider: string; modelId: string } | undefined;
+	handleModelSelect: (provider: string, modelId: string) => Promise<void>;
+	modelIndex: number;
+	providerModels: ModelInfoForSwitch[];
+}
+const ModelItem: React.FC<ModelItemProps> = ({
+	model,
+	providerMetadataMap,
+	currentModel,
+	handleModelSelect,
+	modelIndex,
+	providerModels,
+}) => {
+	const [isHovered, setIsHovered] = useState(false);
+	const isSelected =
+		currentModel?.modelId === model.id && currentModel?.provider === model.provider;
+	return (
+		<div
+			key={`${model.provider}-${model.id}`}
+			className={cn(
+				'pktw-flex pktw-items-center pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-cursor-pointer pktw-transition-colors pktw-duration-200 pktw-rounded-sm',
+				// Only show border between models, not after the last one in the group
+				modelIndex < providerModels.length - 1 && 'pktw-border-b pktw-border-border',
+				'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
+				isSelected && 'pktw-bg-accent/20'
+			)}
+			onMouseEnter={() => setIsHovered(true)}
+			onMouseLeave={() => setIsHovered(false)}
+			onClick={() => handleModelSelect(model.provider, model.id)}
+		>
+			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-flex-1 pktw-min-w-0">
+				{model.icon && (() => {
+					const providerIcon = providerMetadataMap.get(model.provider)?.icon;
+					return (
+						<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
+							<SafeModelIcon
+								model={model.icon}
+								size={16}
+								className="pktw-flex-shrink-0"
+								fallback={
+									providerIcon ? (
+										<SafeProviderIcon
+											provider={providerIcon}
+											size={16}
+											fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
+										/>
+									) : (
+										<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />
+									)
+								}
+							/>
+						</div>
+					);
+				})()}
+				<span className="pktw-text-[14px] pktw-font-medium pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
+					{model.displayName}
+				</span>
+				{/* Capabilities badges */}
+				{model.capabilities && (
+					<ModelCapabilitiesIcons
+						capabilities={model.capabilities}
+						isHovered={isHovered}
+						className="pktw-ml-auto"
+					/>
+				)}
+			</div>
+			{isSelected && (
+				<Check
+					className="pktw-flex-shrink-0 pktw-ml-2 pktw-text-accent"
+					size={14}
+					strokeWidth={3}
+				/>
+			)}
+		</div>
+	);
+};
 
 // Global menu coordination functions are now managed in hover-menu-manager.tsx
 
@@ -24,6 +104,8 @@ export interface ModelSelectorProps {
 	placeholder?: string;
 	/** Callback when menu opens - useful for reloading data */
 	onMenuOpen?: () => void;
+	/** Required capabilities to filter models */
+	requiredCapabilities?: Partial<ModelCapabilities>;
 }
 
 /**
@@ -38,7 +120,18 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 	className,
 	placeholder = 'Select model',
 	onMenuOpen,
+	requiredCapabilities,
 }) => {
+
+	// Filter models based on required capabilities
+	const filteredModels = useMemo(() => {
+		if (!requiredCapabilities) return models;
+		return models.filter(model =>
+			Object.entries(requiredCapabilities).every(([key, required]) =>
+				required !== true || model.capabilities?.[key as keyof ModelCapabilities]
+			)
+		);
+	}, [models, requiredCapabilities]);
 
 	// Get provider metadata map for fallback icons and names
 	const providerMetadataMap = useMemo(() => {
@@ -61,7 +154,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 	// Group models by provider
 	const modelsByProvider = useMemo(() => {
 		const grouped = new Map<string, ModelInfoForSwitch[]>();
-		models.forEach((model) => {
+		filteredModels.forEach((model) => {
 			const providerId = model.provider;
 			if (!grouped.has(providerId)) {
 				grouped.set(providerId, []);
@@ -74,7 +167,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 			const nameB = providerMetadataMap.get(b)?.name || b;
 			return nameA.localeCompare(nameB);
 		});
-	}, [models, providerMetadataMap]);
+	}, [filteredModels, providerMetadataMap]);
 
 	// Find current model info
 	const currentModelInfo = useMemo(() => {
@@ -172,7 +265,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 							Loading models...
 						</div>
 					</div>
-				) : models.length === 0 ? (
+				) : filteredModels.length === 0 ? (
 					<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-items-start pktw-justify-between pktw-px-6 pktw-py-2.5">
 						<div className="pktw-text-[14px] pktw-font-medium pktw-text-[#000000] pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
 							No models available
@@ -219,7 +312,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 										<div className="pktw-h-[2px] pktw-bg-border pktw-my-2" />
 									)}
 									{/* Provider header */}
-									<div className="pktw-sticky pktw-top-0 pktw-px-6 pktw-py-2.5 pktw-border-b-2 pktw-border-border pktw-z-10">
+									<div className="pktw-top-0 pktw-px-6 pktw-py-2.5 pktw-border-b-2 pktw-border-border pktw-z-10">
 										<div className="pktw-flex pktw-items-center pktw-gap-2">
 											{providerMeta?.icon && (
 												<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
@@ -237,103 +330,21 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 									</div>
 									{/* Models in this provider */}
 									{providerModels.map((model, modelIndex) => {
-										const isSelected =
-											currentModel?.modelId === model.id && currentModel?.provider === model.provider;
-										return (
-											<div
-												key={`${model.provider}-${model.id}`}
-												className={cn(
-													'pktw-flex pktw-items-center pktw-justify-between pktw-px-6 pktw-py-2.5 pktw-cursor-pointer pktw-transition-colors pktw-duration-200 pktw-rounded-sm',
-													// Only show border between models, not after the last one in the group
-													modelIndex < providerModels.length - 1 && 'pktw-border-b pktw-border-border',
-													'hover:pktw-bg-accent hover:pktw-text-accent-foreground',
-													isSelected && 'pktw-bg-accent/20'
-												)}
-												onClick={() => handleModelSelect(model.provider, model.id)}
-											>
-												<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-flex-1 pktw-min-w-0">
-													{model.icon && (() => {
-														const providerIcon = providerMetadataMap.get(model.provider)?.icon;
-														return (
-															<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
-																<SafeModelIcon
-																	model={model.icon}
-																	size={16}
-																	className="pktw-flex-shrink-0"
-																	fallback={
-																		providerIcon ? (
-																			<SafeProviderIcon
-																				provider={providerIcon}
-																				size={16}
-																				fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
-																			/>
-																		) : (
-																			<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />
-																		)
-																	}
-																/>
-															</div>
-														);
-													})()}
-													<span className="pktw-text-[14px] pktw-font-medium pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
-														{model.displayName}
-													</span>
-													{/* Capabilities badges */}
-													{model.capabilities && (
-														<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-flex-shrink-0 pktw-ml-auto">
-															{model.capabilities.vision && (
-																<div title="Vision">
-																	<Eye className="pktw-w-3.5 pktw-h-3.5 pktw-text-emerald-500" />
-																</div>
-															)}
-															{model.capabilities.pdfInput && (
-																<div title="PDF Input">
-																	<FileText className="pktw-w-3.5 pktw-h-3.5 pktw-text-red-500" />
-																</div>
-															)}
-															{model.capabilities.tools && (
-																<div title="Tools">
-																	<Wrench className="pktw-w-3.5 pktw-h-3.5 pktw-text-blue-500" />
-																</div>
-															)}
-															{(model.capabilities.webSearch || model.capabilities.xSearch || model.capabilities.newsSearch || model.capabilities.rssSearch) && (
-																<div title="Search">
-																	<Globe className="pktw-w-3.5 pktw-h-3.5 pktw-text-purple-500" />
-																</div>
-															)}
-															{model.capabilities.codeInterpreter && (
-																<div title="Code Interpreter">
-																	<Code className="pktw-w-3.5 pktw-h-3.5 pktw-text-orange-500" />
-																</div>
-															)}
-															{model.capabilities.imageGeneration && (
-																<div title="Image Generation">
-																	<ImageIcon className="pktw-w-3.5 pktw-h-3.5 pktw-text-pink-500" />
-																</div>
-															)}
-															{model.capabilities.reasoning && (
-																<div title="Reasoning">
-																	<Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-indigo-500" />
-																</div>
-															)}
-															{model.capabilities.maxCtx && (
-																<span className="pktw-text-[10px] pktw-font-medium pktw-text-muted-foreground pktw-px-1 pktw-py-0.5 pktw-bg-muted pktw-rounded" title="Max Context">
-																	{formatMaxContext(model.capabilities.maxCtx)}
-																</span>
-															)}
-														</div>
-													)}
-												</div>
-												{isSelected && (
-													<Check
-														className="pktw-flex-shrink-0 pktw-ml-2 pktw-text-accent"
-														size={14}
-														strokeWidth={3}
-													/>
-												)}
-											</div>
-										);
+										return <ModelItem
+											key={`${model.provider}-${model.id}`}
+											model={model}
+											providerMetadataMap={providerMetadataMap}
+											currentModel={currentModel}
+											handleModelSelect={handleModelSelect}
+											modelIndex={modelIndex}
+											providerModels={providerModels}
+										/>
 									})}
+
+									{/* last padding */}
+									{index === modelsByProvider.length - 1 && (
+										<div className="pktw-h-[30px]" />
+									)}
 								</div>
 							);
 						})}
@@ -341,7 +352,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 				)}
 			</div>
 		);
-	}, [isLoading, models.length, modelsByProvider, providerMetadataMap, currentModel, isCurrentModelAvailable, providerIcon, handleModelSelect]);
+	}, [isLoading, filteredModels.length, modelsByProvider, providerMetadataMap, currentModel, isCurrentModelAvailable, providerIcon, handleModelSelect]);
 
 	return (
 		<div className={cn('pktw-relative pktw-inline-block', className)}>

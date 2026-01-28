@@ -16,23 +16,24 @@ Web search is enabled.
 ## Search Process Context
 The search agent explores ideas through multi-step analysis. Due to model context limitations,
 we provide summarized session context and recent messages to maintain continuity.
-You may find valuable insights in the following process information:
 {{#if agentMemory.sessionSummary}}
 Session context: {{agentMemory.sessionSummary}}
 {{/if}}
-{{#if agentMemory.latestMessages}}
-**Recent messages:**
-{{#each agentMemory.latestMessages}}
-- {{content}}
-{{/each}}
+{{#if latestMessagesText}}
+**Recent conversation:**
+{{latestMessagesText}}
 {{/if}}
 
 ## Search Results & Analysis
 
 ### Key Findings
-**Topics Discovered:** {{#each agentResult.topics}}{{#if @first}}{{this}}{{else}}, {{this}}{{/if}}{{/each}}
+{{#if agentResult.topics.length}}
+**Topics Discovered:** {{#each agentResult.topics}}{{#if @first}}{{label}}{{else}}, {{label}}{{/if}}{{/each}}
+{{else}}
+No specific topics extracted.
+{{/if}}
 
-{{#if agentResult.insightCards}}
+{{#if agentResult.insightCards.length}}
 ### Key Insights
 {{#each agentResult.insightCards}}
 **{{title}}**
@@ -40,7 +41,7 @@ Session context: {{agentMemory.sessionSummary}}
 {{/each}}
 {{/if}}
 
-{{#if agentResult.suggestions}}
+{{#if agentResult.suggestions.length}}
 ### Actionable Suggestions
 {{#each agentResult.suggestions}}
 **{{title}}**
@@ -50,36 +51,51 @@ Session context: {{agentMemory.sessionSummary}}
 
 ### Source Materials ({{agentResult.sources.length}})
 {{#each agentResult.sources}}
-**{{title}}** ({{path}})
+**{{title}}** (\`{{path}}\`)
 - **Relevance:** {{score.average}}/100 (Physical: {{score.physical}}, Semantic: {{score.semantic}})
 - **Analysis:** {{reasoning}}
-{{#if badges}}- **Tags:** {{#each badges}}[{{this}}]{{/each}}{{/if}}
+{{#if badges.length}}- **Badges:** {{#each badges}}[{{this}}]{{/each}}{{/if}}
 
 {{/each}}
 
+{{#if agentResult.graph.nodes.length}}
 ### Knowledge Graph:
 
-**Nodes:**
+**Nodes ({{agentResult.graph.nodes.length}}):**
 {{#each agentResult.graph.nodes}}
-- {{title}} ({{type}}){{#if path}} - {{path}}{{/if}}
-  Attributes: {{#each attributes}}{{@key}}: {{this}}{{#unless @last}}, {{/unless}}{{/each}}
+- {{title}} ({{type}}){{#if path}} - \`{{path}}\`{{/if}}
 {{/each}}
 
-**Edges:**
+{{#if agentResult.graph.edges.length}}
+**Edges ({{agentResult.graph.edges.length}}):**
 {{#each agentResult.graph.edges}}
 - {{source}} --[{{type}}]--> {{target}}
-  Attributes: {{#each attributes}}{{@key}}: {{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/each}}
+{{/if}}
+{{/if}}
 
 ## Synthesis Instructions
+
+**CRITICAL: You MUST only reference paths that appear in the Source Materials section above.**
+Do NOT invent, guess, or hallucinate any file paths. If a path is not listed in Source Materials, do not cite it.
+
 Create a comprehensive response that:
 
 1. **Directly addresses** the current query using evidence from sources
-2. **Cites sources** by file path when referencing specific information
+2. **Cites sources** using ONLY the exact paths from Source Materials (e.g., \`path/to/file.md\`)
 3. **Leverages relationships** from the knowledge graph to show connections
 4. **Highlights insights** and recommendations where relevant
 5. **Maintains conversational coherence** with the session history
 6. **Prioritizes high-relevance sources** (score > 70) for key claims
-7. **Explains complex relationships** through the graph structure when helpful`;
+7. **Acknowledges limitations** if evidence is insufficient rather than fabricating information
+8. **Include a small Mermaid overview diagram** that summarizes the key relationships:
+   - Output a section titled: \`## Mermaid Overview\`
+   - Then output a Mermaid code block using \`flowchart TD\`
+   - Limit to **<= 12 nodes** and **<= 18 edges** (keep it compact)
+   - Node IDs must be mermaid-safe (no spaces). Use short IDs like \`A1\`, \`T1\`, \`S1\`.
+   - Node labels should be short and readable. **Do NOT include file paths in node labels.**
+   - The diagram should connect topics -> documents -> insights/suggestions (high-level), not the full raw graph.
+   - If you cannot produce a meaningful diagram, output a minimal placeholder mermaid block.
+`;
 
 export const expectsJson = false;

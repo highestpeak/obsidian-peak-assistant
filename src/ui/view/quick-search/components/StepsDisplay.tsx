@@ -1,11 +1,105 @@
 import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react';
-import { Activity, Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
-import { AIAnalysisStep } from '@/ui/view/quick-search/store/aiAnalysisStore';
+import { Activity, Sparkles, ChevronDown, ChevronRight, Check } from 'lucide-react';
+import { AIAnalysisStep, StepsUISkipShouldSkip } from '@/ui/view/quick-search/store/aiAnalysisStore';
+import { motion } from 'framer-motion';
+import { AnalysisTimer } from './IntelligenceFrame';
+import { Streamdown } from 'streamdown';
 
 export type StreamingDisplayMethods = {
 	appendText: (text: string) => void;
 	clear: () => void;
 };
+
+/**
+ * Live timer that updates using requestAnimationFrame for smooth display
+ */
+const LiveTimer: React.FC<{ startedAtMs: number }> = ({ startedAtMs }) => {
+	const [elapsed, setElapsed] = useState(0);
+	const rafRef = useRef<number>();
+	
+	useEffect(() => {
+		const update = () => {
+			setElapsed(Date.now() - startedAtMs);
+			rafRef.current = requestAnimationFrame(update);
+		};
+		rafRef.current = requestAnimationFrame(update);
+		return () => {
+			if (rafRef.current) {
+				cancelAnimationFrame(rafRef.current);
+			}
+		};
+	}, [startedAtMs]);
+	
+	const seconds = (elapsed / 1000).toFixed(1);
+	return (
+		<span className="pktw-text-[#7c3aed] pktw-font-mono pktw-text-xs pktw-tabular-nums">
+			{seconds}s...
+		</span>
+	);
+};
+
+/**
+ * Completed step duration display (static)
+ */
+const CompletedDuration: React.FC<{ startedAtMs?: number; endedAtMs?: number }> = ({ 
+	startedAtMs, 
+	endedAtMs 
+}) => {
+	if (!startedAtMs || !endedAtMs) return null;
+	const duration = ((endedAtMs - startedAtMs) / 1000).toFixed(1);
+	return (
+		<span className="pktw-text-[#9ca3af] pktw-font-mono pktw-text-xs pktw-tabular-nums">
+			{duration}s
+		</span>
+	);
+};
+
+/**
+ * Pulsating circle indicator for running step
+ */
+const RunningIndicator: React.FC = () => (
+	<div className="pktw-relative pktw-w-3 pktw-h-3 pktw-flex pktw-items-center pktw-justify-center">
+		{/* Ripple effect */}
+		<motion.div
+			className="pktw-absolute pktw-w-3 pktw-h-3 pktw-rounded-full pktw-bg-[#7c3aed]"
+			animate={{
+				scale: [1, 1.8, 1.8],
+				opacity: [0.6, 0, 0]
+			}}
+			transition={{
+				duration: 1.5,
+				repeat: Infinity,
+				ease: "easeOut"
+			}}
+		/>
+		{/* Center dot */}
+		<motion.div
+			className="pktw-w-2 pktw-h-2 pktw-rounded-full pktw-bg-[#7c3aed]"
+			animate={{
+				scale: [1, 1.1, 1]
+			}}
+			transition={{
+				duration: 0.8,
+				repeat: Infinity,
+				ease: "easeInOut"
+			}}
+		/>
+	</div>
+);
+
+/**
+ * Checkmark indicator for completed step with micro-animation
+ */
+const CompletedIndicator: React.FC = () => (
+	<motion.div
+		className="pktw-w-3 pktw-h-3 pktw-rounded-full pktw-bg-[#10b981] pktw-flex pktw-items-center pktw-justify-center"
+		initial={{ scale: 0, rotate: -180 }}
+		animate={{ scale: 1, rotate: 0 }}
+		transition={{ type: "spring", stiffness: 260, damping: 20 }}
+	>
+		<Check className="pktw-w-2 pktw-h-2 pktw-text-white" strokeWidth={3} />
+	</motion.div>
+);
 
 /**
  * Hook for incremental text rendering with batching and auto-scroll
@@ -135,11 +229,17 @@ export const StreamingStepsDisplay: React.FC<{
 	currentStep: AIAnalysisStep;
 	stepTrigger: number;
 	registerCurrentStepRender?: (methods: StreamingDisplayMethods) => void;
+	startedAtMs?: number | null;
+	isRunning?: boolean;
+	finalDurationMs?: number | null;
 }> = ({
 	steps,
 	currentStep,
 	stepTrigger,
-	registerCurrentStepRender
+	registerCurrentStepRender,
+	startedAtMs,
+	isRunning,
+	finalDurationMs,
 }) => {
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const currentStepContainerRef = useRef<HTMLDivElement>(null);
@@ -202,72 +302,94 @@ export const StreamingStepsDisplay: React.FC<{
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
 				<Activity className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
 				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Analysis Steps</span>
+				<div className="pktw-flex-1" />
+				{startedAtMs && isRunning !== undefined ? (
+					<AnalysisTimer
+						startedAtMs={startedAtMs}
+						isRunning={isRunning}
+						finalDurationMs={finalDurationMs ?? undefined}
+					/>
+				) : null}
 			</div>
 
 			<div
 				ref={scrollContainerRef}
-				className="pktw-h-64 pktw-overflow-y-auto pktw-space-y-3 pktw-scroll-smooth"
+				className="pktw-h-64 pktw-overflow-y-auto pktw-scroll-smooth"
 			>
 				{/* Completed Steps */}
-				{stepsWithFullText.map((step, index) => {
+				{stepsWithFullText.filter(step => !StepsUISkipShouldSkip.has(step.type)).map((step, index) => {
 					const isExpanded = expandedSteps.has(index);
 					return (
-						<div key={`completed-${index}`} className="pktw-text-xs pktw-text-[#6c757d]">
+						<div
+							key={`completed-${index}`}
+							className="pktw-text-xs pktw-text-[#6c757d] pktw-mb-3"
+						>
 							<div
-								className="pktw-font-medium pktw-text-[#2e3338] pktw-mb-1 pktw-cursor-pointer pktw-flex pktw-items-center pktw-gap-2 pktw-hover:pktw-text-[#7c3aed] pktw-transition-colors"
+								className="pktw-font-medium pktw-text-[#2e3338] pktw-mb-1 pktw-cursor-pointer pktw-flex pktw-items-center pktw-gap-2 hover:pktw-text-[#7c3aed] pktw-transition-colors"
 								onClick={() => toggleStepExpansion(index)}
 							>
+								<CompletedIndicator />
 								{isExpanded ? (
 									<ChevronDown className="pktw-w-3 pktw-h-3" />
 								) : (
 									<ChevronRight className="pktw-w-3 pktw-h-3" />
 								)}
-								{formatStepType(step.type)}
+								<span className="pktw-flex-1">{formatStepType(step.type)}</span>
+								<CompletedDuration startedAtMs={step.startedAtMs} endedAtMs={step.endedAtMs} />
 							</div>
-							{isExpanded && (
-								<>
-									<div className="pktw-leading-relaxed pktw-break-words pktw-ml-5">
-										{step.fullText}
+
+							{/* Expand/Collapse without layout reflow animation */}
+							<div
+								className="pktw-overflow-hidden pktw-transition-[max-height,opacity] pktw-duration-200"
+								style={{
+									maxHeight: isExpanded ? 480 : 0,
+									opacity: isExpanded ? 1 : 0,
+								}}
+							>
+								<div className="pktw-leading-relaxed pktw-break-words pktw-ml-8 pktw-mt-1">
+									{step.fullText}
+								</div>
+								{step.extra && Object.keys(step.extra).length > 0 && (
+									<div className="pktw-text-[#999999] pktw-mt-1 pktw-text-xs pktw-ml-8 pktw-space-y-0.5">
+										{Object.entries(step.extra).map(([key, value]) => (
+											<div key={key} className="pktw-truncate">
+												<span className="pktw-text-[#6b7280]">{key}:</span>{' '}
+												{typeof value === 'object' ? JSON.stringify(value) : String(value)}
+											</div>
+										))}
 									</div>
-									{step.extra && Object.keys(step.extra).length > 0 && (
-										<div className="pktw-text-[#999999] pktw-mt-1 pktw-text-xs pktw-ml-5">
-											{Object.entries(step.extra).map(([key, value]) => (
-												<div key={key}>{key}: {String(value)}</div>
-											))}
-										</div>
-									)}
-								</>
-							)}
+								)}
+							</div>
 						</div>
 					);
 				})}
 
 				{/* Current Step */}
-				{currentStep.type !== 'idle' && (
+				{!StepsUISkipShouldSkip.has(currentStep.type) && (
 					<div className="pktw-text-xs pktw-text-[#6c757d]">
-						{/* Fixed header for current step */}
 						<div className="pktw-sticky pktw-top-0 pktw-bg-[#f9fafb] pktw-z-10 pktw-pb-2 pktw-border-b pktw-border-[#e5e7eb]">
-							<div className="pktw-font-medium pktw-text-[#2e3338] pktw-mb-1">
-								{formatStepType(currentStep.type)}
-								<span className="pktw-ml-2 pktw-text-[#7c3aed] pktw-text-xs pktw-font-normal">
-									(currently running)
-								</span>
+							<div className="pktw-font-medium pktw-text-[#2e3338] pktw-mb-1 pktw-flex pktw-items-center pktw-gap-2">
+								<RunningIndicator />
+								<span className="pktw-flex-1">{formatStepType(currentStep.type)}</span>
+								{currentStep.startedAtMs && (
+									<LiveTimer startedAtMs={currentStep.startedAtMs} />
+								)}
 							</div>
 							{currentStep.extra && Object.keys(currentStep.extra).length > 0 && (
-								<div className="pktw-text-[#999999] pktw-mb-1 pktw-text-xs">
+								<div className="pktw-text-[#999999] pktw-mb-1 pktw-text-xs pktw-ml-5 pktw-space-y-0.5">
 									{Object.entries(currentStep.extra).map(([key, value]) => (
-										<div key={key}>{key}: {String(value)}</div>
+										<div key={key} className="pktw-truncate">
+											<span className="pktw-text-[#6b7280]">{key}:</span>{' '}
+											{typeof value === 'object' ? JSON.stringify(value) : String(value)}
+										</div>
 									))}
 								</div>
 							)}
 						</div>
-						{/* Current step content */}
 						<div
 							ref={currentStepContainerRef}
 							className="pktw-leading-relaxed pktw-break-words pktw-text-sm pktw-text-[#2e3338] pktw-pt-2"
-						>
-							{/* Current step content will be inserted here via incremental rendering */}
-						</div>
+						/>
 					</div>
 				)}
 			</div>
@@ -280,45 +402,31 @@ export const StreamingStepsDisplay: React.FC<{
  */
 export const SummaryContent: React.FC<{
 	summary: string;
-	registerSummaryRender?: (methods: StreamingDisplayMethods) => void;
-}> = ({ summary, registerSummaryRender }) => {
-	const containerRef = useRef<HTMLDivElement>(null);
-
-	// Use the shared incremental renderer hook
-	const { appendText, clear } = useIncrementalRenderer(
-		containerRef,
-		undefined, // Use container itself for scrolling
-		50 // 150ms delay for summary rendering
-	);
-
-	useEffect(() => {
-		appendText(summary);
-	}, [summary, appendText]);
-
-	const methods = useMemo(() => ({
-		appendText,
-		clear
-	}), [appendText, clear]);
-
-	// Register methods with parent component
-	useEffect(() => {
-		if (registerSummaryRender) {
-			registerSummaryRender(methods);
-		}
-	}, [registerSummaryRender, methods]);
-
+	startedAtMs?: number | null;
+	isRunning?: boolean;
+	finalDurationMs?: number | null;
+}> = ({ summary, startedAtMs, isRunning, finalDurationMs }) => {
 	return (
 		<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
 				<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
 				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">AI Analysis</span>
+				<div className="pktw-flex-1" />
+				{startedAtMs && isRunning === true && (
+					<AnalysisTimer
+						startedAtMs={startedAtMs}
+						isRunning={isRunning}
+						finalDurationMs={finalDurationMs ?? undefined}
+					/>
+				)}
 			</div>
 			<div className="pktw-space-y-3 pktw-text-sm pktw-text-[#2e3338] pktw-leading-relaxed">
-				<div
-					ref={containerRef}
-					className="pktw-select-text pktw-min-h-16 pktw-max-h-48 pktw-overflow-y-auto pktw-break-words pktw-scroll-smooth"
-				>
-					{/* Content will be inserted here via incremental rendering */}
+				<div className="pktw-select-text pktw-break-words" data-streamdown-root>
+					{summary ? (
+						<Streamdown isAnimating={!!isRunning}>{summary}</Streamdown>
+					) : (
+						<span className="pktw-text-[#999999]">No summary available.</span>
+					)}
 				</div>
 			</div>
 		</div>

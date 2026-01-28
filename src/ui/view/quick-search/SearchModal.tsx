@@ -139,9 +139,10 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 
 	return (
 		<div
-			className="pktw-w-full pktw-bg-white pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-h-full pktw-overflow-hidden"
+			className="pktw-w-full pktw-bg-white pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-overflow-hidden"
 			onKeyDown={handleContainerKeyDown}
 			tabIndex={-1}
+			// Use explicit height to avoid bottom clipping inside Obsidian modal
 			style={{ maxHeight: 'calc(100vh - 160px)' }}
 		>
 			{/* Tab Header */}
@@ -207,27 +208,29 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 
 					</div>
 					{activeTab === 'ai' && (
-						<Button
-							onClick={isAnalyzing ? handleCancel : handleAnalyze}
-							disabled={!searchQuery.trim() && !isAnalyzing}
-							className={`pktw-px-5 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md ${
-								isAnalyzing
-									? 'pktw-bg-red-500 pktw-text-white hover:pktw-bg-red-600'
-									: 'pktw-bg-[#7c3aed] pktw-text-white hover:pktw-bg-[#6d28d9]'
-							}`}
-						>
-							{isAnalyzing ? (
-								<>
-									<X className="pktw-w-4 pktw-h-4" />
-									<span>Cancel</span>
-								</>
-							) : (
-								<>
-									<Sparkles className="pktw-w-4 pktw-h-4" />
-									<span>Analyze</span>
-								</>
-							)}
-						</Button>
+						<div className="pktw-flex pktw-items-center pktw-gap-2">
+							<Button
+								onClick={isAnalyzing ? handleCancel : handleAnalyze}
+								disabled={!searchQuery.trim() && !isAnalyzing}
+								className={`pktw-px-5 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md ${
+									isAnalyzing
+										? 'pktw-bg-red-500 pktw-text-white hover:pktw-bg-red-600'
+										: 'pktw-bg-[#7c3aed] pktw-text-white hover:pktw-bg-[#6d28d9]'
+								}`}
+							>
+								{isAnalyzing ? (
+									<>
+										<X className="pktw-w-4 pktw-h-4" />
+										<span>Cancel</span>
+									</>
+								) : (
+									<>
+										<Sparkles className="pktw-w-4 pktw-h-4" />
+										<span>Analyze</span>
+									</>
+								)}
+							</Button>
+						</div>
 					)}
 				</div>
 			</div>

@@ -1,5 +1,6 @@
 import { GRAPH_INSPECT_STEP_TIME_LIMIT } from "@/core/constant";
 import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
+import { GraphEdge } from "@/core/storage/sqlite/repositories/GraphEdgeRepo";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, distillClusterNodesData, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import { template as GRAPH_TRAVERSAL_TEMPLATE } from "../templates/graph-traversal";
@@ -11,6 +12,27 @@ type GraphTraversalResult = GraphNode
         foundBy: 'physical_neighbors' | 'semantic_neighbors';
         similarity?: string,
     };
+
+/**
+ * Simplified node for UI visualization
+ */
+interface GraphVisualizationNode {
+    id: string;
+    label: string;
+    type: string;
+    depth: number;
+    foundBy: 'physical_neighbors' | 'semantic_neighbors';
+}
+
+/**
+ * Simplified edge for UI visualization
+ */
+interface GraphVisualizationEdge {
+    from_node_id: string;
+    to_node_id: string;
+    type: string;
+    weight: number;
+}
 export async function graphTraversal(params: any) {
     const { start_note_path, hops, include_semantic_paths, limit, response_format, filters, sorter } = params;
     const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
@@ -27,7 +49,7 @@ export async function graphTraversal(params: any) {
         return `Graph Traversal Failed. Start note node "${start_note_path}" not found in graph database.`;
     }
 
-    // BFS traversal
+    // BFS traversal - collect both nodes and edges for visualization
     let isTimeOut = false;
     const startTime = Date.now();
     const visited = new Set([startNode.id]);
@@ -35,6 +57,8 @@ export async function graphTraversal(params: any) {
         { ...startNode, depth: 0, foundBy: 'physical_neighbors' },
     ];
     const result: Array<GraphTraversalResult> = [];
+    const collectedEdges: GraphVisualizationEdge[] = [];
+    
     while (queue.length > 0) {
         // avoid time out.
         if (Date.now() - startTime > GRAPH_INSPECT_STEP_TIME_LIMIT) {
@@ -53,6 +77,17 @@ export async function graphTraversal(params: any) {
 
         // physical neighbors: two directions; And we limit by type to avoid too many edges.
         const physicalInAndOutEdges = await graphEdgeRepo.getAllEdgesForNode(current.id, limit);
+        
+        // Collect edges for visualization (only edges between visited or to-be-visited nodes)
+        for (const edge of physicalInAndOutEdges) {
+            collectedEdges.push({
+                from_node_id: edge.from_node_id,
+                to_node_id: edge.to_node_id,
+                type: edge.type,
+                weight: edge.weight
+            });
+        }
+        
         // Extract nodeTo and nodeFrom from inAndOutEdges
         // inComingNode --> currentNode --> outGoingNode
         const inComingNode = physicalInAndOutEdges.filter(e => e.to_node_id === current.id).map(e => e.from_node_id);
@@ -93,6 +128,13 @@ export async function graphTraversal(params: any) {
                     similarity: node.similarity,
                     foundBy: 'semantic_neighbors'
                 });
+                // Add semantic edge (synthetic) for visualization
+                collectedEdges.push({
+                    from_node_id: current.id,
+                    to_node_id: node.id,
+                    type: 'semantic',
+                    weight: parseFloat(node.similarity || '0') || 0.5
+                });
             }
         }
     }
@@ -127,11 +169,30 @@ export async function graphTraversal(params: any) {
         }
     }
 
-    // Render template
+    // Build graph visualization data from collected nodes and edges
+    const visitedNodeIds = new Set(result.map(n => n.id));
+    const graphVisualizationNodes: GraphVisualizationNode[] = result.map(node => ({
+        id: node.id,
+        label: node.label || node.id,
+        type: node.type,
+        depth: node.depth,
+        foundBy: node.foundBy
+    }));
+    // Filter edges to only include those between visited nodes
+    const graphVisualizationEdges = collectedEdges.filter(
+        edge => visitedNodeIds.has(edge.from_node_id) && visitedNodeIds.has(edge.to_node_id)
+    );
+
+    // Render template with graph field for UI visualization
     return buildResponse(response_format, GRAPH_TRAVERSAL_TEMPLATE, {
         isTimeOut,
         start_note_path,
         hops,
-        levels
+        levels,
+        // Graph field for UI real-time visualization (structured output only)
+        graph: {
+            nodes: graphVisualizationNodes,
+            edges: graphVisualizationEdges
+        }
     });
 }

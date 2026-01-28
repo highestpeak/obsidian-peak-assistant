@@ -1,4 +1,14 @@
-import { vaultGraphInspectorTool } from "../../service/tools/search-graph-inspector";
+import { 
+    inspectNoteContextTool, 
+    graphTraversalTool, 
+    findPathTool, 
+    findKeyNodesTool, 
+    findOrphansTool, 
+    searchByDimensionsTool, 
+    exploreFolderTool, 
+    recentChangesWholeVaultTool, 
+    localSearchWholeVaultTool
+} from "../../service/tools/search-graph-inspector";
 import { AppContext } from "@/app/context/AppContext";
 
 /**
@@ -6,19 +16,32 @@ import { AppContext } from "@/app/context/AppContext";
  * Available in browser DevTools as window.testGraphTools
  */
 export class GraphInspectorTestTools {
-    private tool: any;
+    private tools: any;
 
     constructor() {
-        this.tool = vaultGraphInspectorTool();
+        this.tools = {
+            inspect_note_context: inspectNoteContextTool(),
+            graph_traversal: graphTraversalTool(),
+            find_path: findPathTool(),
+            find_key_nodes: findKeyNodesTool(),
+            find_orphans: findOrphansTool(),
+            search_by_dimensions: searchByDimensionsTool(),
+            explore_folder: exploreFolderTool(),
+            recent_changes_whole_vault: recentChangesWholeVaultTool(),
+            local_search_whole_vault: localSearchWholeVaultTool(),
+        };
     }
 
     /**
-     * Execute any graph inspector tool
+     * Execute a specific tool
      */
-    async execute(params: any) {
+    async executeTool(name: string, params: any) {
         try {
-            console.log('🔍 Executing graph inspector tool with params:', params);
-            const result = await this.tool.execute(params);
+            console.log(`🔍 Executing ${name} with params:`, params);
+            if (!this.tools[name]) {
+                throw new Error(`Tool ${name} not found`);
+            }
+            const result = await this.tools[name].execute(params);
             console.log('✅ Tool execution result:', JSON.stringify(result));
             return result;
         } catch (error) {
@@ -29,8 +52,7 @@ export class GraphInspectorTestTools {
 
     // Convenience methods for each tool
     async inspectNote(notePath: string, includeSemantic = false, limit = 10, responseFormat = 'hybrid') {
-        return this.execute({
-            mode: 'inspect_note_context',
+        return this.executeTool('inspect_note_context', {
             note_path: notePath,
             limit: limit,
             include_semantic_paths: includeSemantic,
@@ -39,8 +61,7 @@ export class GraphInspectorTestTools {
     }
 
     async graphTraversal(startPath: string, hops = 1, limit = 20, responseFormat = 'hybrid', includeSemantic = false, filters = undefined, sorter = undefined) {
-        return this.execute({
-            mode: 'graph_traversal',
+        return this.executeTool('graph_traversal', {
             start_note_path: startPath,
             hops: hops,
             limit: limit,
@@ -52,8 +73,7 @@ export class GraphInspectorTestTools {
     }
 
     async findPath(startPath: string, endPath: string, responseFormat = 'hybrid', limit = 10, includeSemantic = false) {
-        return this.execute({
-            mode: 'find_path',
+        return this.executeTool('find_path', {
             start_note_path: startPath,
             end_note_path: endPath,
             response_format: responseFormat,
@@ -63,24 +83,21 @@ export class GraphInspectorTestTools {
     }
 
     async findKeyNodes(limit = 20, responseFormat = 'hybrid') {
-        return this.execute({
-            mode: 'find_key_nodes',
+        return this.executeTool('find_key_nodes', {
             limit: limit,
             response_format: responseFormat
         });
     }
 
     async findOrphans(limit = 20, responseFormat = 'hybrid') {
-        return this.execute({
-            mode: 'find_orphans',
+        return this.executeTool('find_orphans', {
             limit: limit,
             response_format: responseFormat
         });
     }
 
     async searchByDimensions(expression: string, limit = 20, responseFormat = 'hybrid') {
-        return this.execute({
-            mode: 'search_by_dimensions',
+        return this.executeTool('search_by_dimensions', {
             boolean_expression: expression,
             limit: limit,
             response_format: responseFormat
@@ -88,8 +105,7 @@ export class GraphInspectorTestTools {
     }
 
     async exploreFolder(folderPath = "/", recursive = true, maxDepth = 2, responseFormat = 'hybrid') {
-        return this.execute({
-            mode: 'explore_folder',
+        return this.executeTool('explore_folder', {
             folderPath: folderPath,
             recursive: recursive,
             max_depth: maxDepth,
@@ -98,8 +114,7 @@ export class GraphInspectorTestTools {
     }
 
     async getRecentChanges(limit = 20, responseFormat = 'hybrid') {
-        return this.execute({
-            mode: 'recent_changes_whole_vault',
+        return this.executeTool('recent_changes_whole_vault', {
             limit: limit,
             response_format: responseFormat
         });
@@ -110,12 +125,12 @@ export class GraphInspectorTestTools {
         searchMode: 'fulltext' | 'vector' | 'hybrid' = 'hybrid',
         limit = 20, responseFormat = 'hybrid'
     ) {
-        return this.execute({
-            mode: 'local_search_whole_vault',
+        return this.executeTool('local_search_whole_vault', {
             query: query,
             searchMode: searchMode,
             limit: limit,
-            response_format: responseFormat
+            response_format: responseFormat,
+            // Pass flattened params if needed, or let them be undefined
         });
     }
 
