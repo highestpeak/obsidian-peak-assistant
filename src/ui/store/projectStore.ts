@@ -22,6 +22,7 @@ interface ProjectStore {
 	clearExpandedProjects: () => void;
 	updateProject: (project: ChatProject) => void;
 	updateConversation: (conversation: ChatConversation) => void;
+	removeConversation: (conversationId: string) => void;
 }
 
 export const useProjectStore = create<ProjectStore>((set: any) => ({
@@ -91,6 +92,12 @@ export const useProjectStore = create<ProjectStore>((set: any) => ({
 		set((state: ProjectStore) => {
 			const newConversations = new Map(state.conversations);
 			newConversations.set(conversation.meta.id, conversation);
+			return { conversations: newConversations };
+		}),
+	removeConversation: (conversationId: string) =>
+		set((state: ProjectStore) => {
+			const newConversations = new Map(state.conversations);
+			newConversations.delete(conversationId);
 			return { conversations: newConversations };
 		}),
 }));

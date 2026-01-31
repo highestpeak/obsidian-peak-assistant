@@ -60,4 +60,29 @@ export class ChatMessageResourceRepo {
 		}
 		return result;
 	}
+
+	/**
+	 * Delete all resources for a specific message.
+	 */
+	async deleteByMessageId(messageId: string): Promise<void> {
+		await this.db
+			.deleteFrom('chat_message_resource')
+			.where('message_id', '=', messageId)
+			.execute();
+	}
+
+	/**
+	 * Delete all resources for all messages in a conversation.
+	 */
+	async deleteByConversationId(conversationId: string): Promise<void> {
+		// Find all messages in conversation via join and delete their resources
+		await this.db
+			.deleteFrom('chat_message_resource')
+			.where('message_id', 'in', (eb) =>
+				eb.selectFrom('chat_message')
+					.select('message_id')
+					.where('conversation_id', '=', conversationId)
+			)
+			.execute();
+	}
 }

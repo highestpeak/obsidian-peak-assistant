@@ -7,10 +7,12 @@ import { notifySelectionChange, hydrateProjects as hydrateProjectsFromManager, s
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { Button } from '@/ui/component/shared-ui/button';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, MoreHorizontal, Calendar } from 'lucide-react';
+import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, MoreHorizontal, Calendar, Trash } from 'lucide-react';
+import { Notice, App } from 'obsidian';
+import { ConfirmModal } from '@/ui/view/ConfirmModal';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent } from '@/core/eventBus';
+import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent, ConversationDeletedEvent } from '@/core/eventBus';
 import { DEFAULT_NEW_CONVERSATION_TITLE, MAX_CONVERSATIONS_DISPLAY, MAX_PROJECTS_DISPLAY, MAX_CONVERSATIONS_PER_PROJECT } from '@/core/constant';
 import { formatRelativeDate } from '@/ui/view/shared/date-utils';
 import { ConversationList } from './ConversationsSection';
@@ -33,7 +35,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	typewriterEnabled,
 	onTypewriterComplete,
 }) => {
-	const { app, manager } = useServiceContext();
+	const { app, manager, plugin } = useServiceContext();
 	// Directly access store in component
 	const {
 		projects,
@@ -44,6 +46,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		toggleProjectExpanded,
 		updateProject,
 		updateConversation,
+		removeConversation,
 	} = useProjectStore();
 	const { setProjectOverview, setProjectConversationsList, setPendingConversation } = useChatViewStore();
 
@@ -150,6 +153,49 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		setInputModalOpen(true);
 	}, [manager, updateConversation, isConversationActive, setActiveConversation]);
 
+	/**
+	 * Handle delete conversation action (consistent with ConversationsSection)
+	 * 
+	 * Flow:
+	 * 1. Show confirmation dialog (prevent accidental deletion)
+	 * 2. On confirmation, call manager.deleteConversation
+	 * 3. Manager triggers ConversationDeletedEvent
+	 * 4. Event listener auto-updates store and UI (see useEffect)
+	 * 5. Show success or error notification
+	 * 
+	 * Note: No need to manually call removeConversation or reload project conversations,
+	 * event listener handles these operations automatically
+	 */
+	const handleDeleteConversation = useCallback((projectItem: ChatProject | null, conversation: ChatConversation) => {
+		// Show confirmation dialog to prevent accidental deletion
+		const modal = new ConfirmModal(
+			app,
+			plugin.appContext,
+			'Delete Conversation',
+			`Are you sure you want to delete "${conversation.meta.title}"? This action cannot be undone.`,
+			async () => {
+				try {
+					// Call manager's delete method (deletes file + database records)
+					// This triggers ConversationDeletedEvent
+					await manager.deleteConversation(conversation.meta.id);
+
+					// No need to manually update store, event listener handles it
+					// removeConversation(conversation.meta.id); // Removed
+					// setActiveConversation(null); // Removed
+					// loadProjectConversations(project); // Removed
+					
+					// Show success notification
+					new Notice('Conversation deleted successfully');
+				} catch (error) {
+					// Catch and display error
+					console.error('Failed to delete conversation', error);
+					new Notice(`Failed to delete conversation: ${error.message}`);
+				}
+			}
+		);
+		modal.open();
+	}, [app, plugin, manager]);
+
 	// Menu item configurations
 	const projectMenuItems = useCallback((projectItem: ChatProject) => [
 		{
@@ -175,8 +221,14 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 					await openSourceFile(app, conversation.file);
 				},
 			},
+			{
+				title: 'Delete',
+				icon: 'trash',
+				onClick: () => handleDeleteConversation(projectItem, conversation),
+				className: 'menu-item-danger', // Red color for delete action
+			},
 		];
-	}, [app, projects, handleEditConversationTitle]);
+	}, [app, projects, handleEditConversationTitle, handleDeleteConversation]);
 
 	const handleContextMenu = (
 		e: React.MouseEvent,
@@ -297,12 +349,15 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
  * Projects section component
  */
 export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
-	const { manager, eventBus } = useServiceContext();
+	const { app, manager, eventBus } = useServiceContext();
 	const {
 		projects,
 		expandedProjects,
 		isProjectsCollapsed,
 		toggleProjectsCollapsed,
+		activeConversation,
+		setActiveConversation,
+		removeConversation,
 	} = useProjectStore();
 	const { setAllProjects } = useChatViewStore();
 
@@ -402,11 +457,49 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 			}
 		);
 
+		// Listen for conversation deletion events
+		// Auto-remove from store and clean up state when conversation is deleted
+		const unsubscribeDeleted = eventBus.on<ConversationDeletedEvent>(
+			ViewEventType.CONVERSATION_DELETED,
+			async (event) => {
+				console.log('[ProjectsSection] CONVERSATION_DELETED event:', {
+					conversationId: event.conversationId,
+					projectId: event.projectId,
+					timestamp: Date.now()
+				});
+				
+				// 1. Remove conversation from store
+				removeConversation(event.conversationId);
+				
+				// 2. Clear active state if this was the active conversation
+				if (activeConversation?.meta.id === event.conversationId) {
+					setActiveConversation(null);
+					await notifySelectionChange(app);
+				}
+				
+				// 3. Clean up typewriter effect state
+				setTypewriterEnabled(prev => {
+					const next = new Map(prev);
+					next.delete(event.conversationId);
+					return next;
+				});
+
+				// 4. Reload project conversations if conversation belongs to expanded project
+				if (event.projectId) {
+					const project = projects.get(event.projectId);
+					if (project && expandedProjects.has(event.projectId)) {
+						await loadProjectConversations(project);
+					}
+				}
+			}
+		);
+
 		return () => {
 			unsubscribeUpdated();
 			unsubscribeCreated();
+			unsubscribeDeleted();
 		};
-	}, [eventBus, projects, expandedProjects, loadProjectConversations]);
+	}, [eventBus, projects, expandedProjects, loadProjectConversations, removeConversation, activeConversation, setActiveConversation, app]);
 
 	const handleTypewriterComplete = useCallback((conversationId: string) => {
 		setTypewriterEnabled(prev => {

@@ -192,4 +192,14 @@ export class ChatConversationRepo {
 			.where('conversation_id', '=', conversationId)
 			.execute();
 	}
+
+	/**
+	 * Delete conversation by conversation_id.
+	 */
+	async deleteByConversationId(conversationId: string): Promise<void> {
+		await this.db
+			.deleteFrom('chat_conversation')
+			.where('conversation_id', '=', conversationId)
+			.execute();
+	}
 }

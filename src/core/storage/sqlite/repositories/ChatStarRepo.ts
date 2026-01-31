@@ -116,5 +116,15 @@ export class ChatStarRepo {
 			.executeTakeFirst();
 		return row ?? null;
 	}
+
+	/**
+	 * Delete all starred messages for a conversation.
+	 */
+	async deleteByConversationId(conversationId: string): Promise<void> {
+		await this.db
+			.deleteFrom('chat_star')
+			.where('conversation_id', '=', conversationId)
+			.execute();
+	}
 }
 

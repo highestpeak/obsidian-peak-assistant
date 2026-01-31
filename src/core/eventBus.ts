@@ -7,6 +7,7 @@ import { ChatConversation, ChatProject } from '@/service/chat/types';
 export enum ViewEventType {
 	SELECTION_CHANGED = 'peak:selection-changed',
 	CONVERSATION_UPDATED = 'peak:conversation-updated',
+	CONVERSATION_DELETED = 'peak:conversation-deleted',
 	PROJECT_UPDATED = 'peak:project-updated',
 	SCROLL_TO_MESSAGE = 'peak:scroll-to-message',
 	OPEN_LINK = 'peak:open-link',
@@ -123,6 +124,22 @@ export class ConversationCreatedEvent extends ViewEvent {
 
 	constructor(data: { conversationId: string; projectId?: string | null }) {
 		super(ViewEventType.CONVERSATION_CREATED);
+		this.conversationId = data.conversationId;
+		this.projectId = data.projectId;
+	}
+}
+
+/**
+ * Conversation deleted event - fired when a conversation is deleted
+ */
+export class ConversationDeletedEvent extends ViewEvent {
+	/** ID of the deleted conversation */
+	conversationId: string;
+	/** Project ID if conversation belongs to a project */
+	projectId?: string | null;
+
+	constructor(data: { conversationId: string; projectId?: string | null }) {
+		super(ViewEventType.CONVERSATION_DELETED);
 		this.conversationId = data.conversationId;
 		this.projectId = data.projectId;
 	}

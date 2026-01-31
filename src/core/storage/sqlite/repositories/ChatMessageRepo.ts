@@ -121,6 +121,16 @@ export class ChatMessageRepo {
 	}
 
 	/**
+	 * Delete all messages for a conversation.
+	 */
+	async deleteByConversation(conversationId: string): Promise<void> {
+		await this.db
+			.deleteFrom('chat_message')
+			.where('conversation_id', '=', conversationId)
+			.execute();
+	}
+
+	/**
 	 * Update starred status for a message.
 	 * Optionally updates content preview and attachment summary when starring.
 	 */

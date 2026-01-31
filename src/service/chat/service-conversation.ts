@@ -4,7 +4,7 @@ import { LLMProviderService, LLMUsage, LLMOutputControlSettings, LLMStreamEvent,
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { DEFAULT_SUMMARY } from '@/core/constant';
-import { EventBus, MessageSentEvent, ConversationCreatedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
+import { EventBus, MessageSentEvent, ConversationCreatedEvent, ConversationUpdatedEvent, ConversationDeletedEvent } from '@/core/eventBus';
 import { LLMRequestMessage } from '@/core/providers/types';
 import {
 	ChatContextWindow,
@@ -632,4 +632,30 @@ export class ConversationService {
 		}
 	}
 
+	/**
+	 * Delete a conversation completely (file + database records)
+	 * 
+	 * Flow:
+	 * 1. Read conversation metadata to get project ID
+	 * 2. Call storage layer to execute full deletion (file + 4 database tables)
+	 * 3. Publish ConversationDeletedEvent to notify UI layer
+	 * 
+	 * @param conversationId - ID of conversation to delete
+	 */
+	async deleteConversation(conversationId: string): Promise<void> {
+		// 1. Read conversation metadata to get project ID (for event publishing)
+		const meta = await this.storage.readConversationMeta(conversationId);
+		const projectId = meta?.projectId ?? null;
+
+		// 2. Call storage layer to execute full deletion
+		// This deletes: file, starred_messages, message_resources, messages, conversation records
+		await this.storage.deleteConversation(conversationId);
+
+		// 3. Publish conversation deleted event to notify all listeners (UI updates automatically)
+		const eventBus = EventBus.getInstance(this.app);
+		eventBus.dispatch(new ConversationDeletedEvent({
+			conversationId: conversationId,
+			projectId: projectId,
+		}));
+	}
 }

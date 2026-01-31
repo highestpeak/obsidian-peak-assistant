@@ -9,6 +9,7 @@ interface MenuItem {
 	title: string;
 	icon: string;
 	onClick: () => void | Promise<void>;
+	className?: string; // Optional CSS class for styling
 }
 
 /**
@@ -79,11 +80,18 @@ export function showContextMenu(
 	e.stopPropagation();
 
 	const menu = new Menu();
-	menuItems.forEach(({ title, icon, onClick }) => {
+	menuItems.forEach(({ title, icon, onClick, className }) => {
 		menu.addItem((item) => {
 			item.setTitle(title);
 			item.setIcon(icon);
 			item.onClick(onClick);
+			// Apply custom class for styling (e.g., red color for delete)
+			if (className) {
+				const itemElement = (item as any).dom;
+				if (itemElement) {
+					itemElement.addClass(className);
+				}
+			}
 		});
 	});
 

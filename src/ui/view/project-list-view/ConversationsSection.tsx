@@ -6,10 +6,12 @@ import { useChatViewStore } from '../chat-view/store/chatViewStore';
 import { notifySelectionChange, showContextMenu } from './utils';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { ChevronDown, ChevronRight, Plus, Pencil, FileText, Calendar } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Pencil, FileText, Calendar, Trash } from 'lucide-react';
+import { Notice, App } from 'obsidian';
+import { ConfirmModal } from '@/ui/view/ConfirmModal';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent } from '@/core/eventBus';
+import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent, ConversationDeletedEvent } from '@/core/eventBus';
 import { useTypewriterEffect } from '@/ui/view/shared/useTypewriterEffect';
 import { TYPEWRITER_EFFECT_SPEED_MS, DEFAULT_NEW_CONVERSATION_TITLE, MAX_CONVERSATIONS_DISPLAY } from '@/core/constant';
 import { formatRelativeDate } from '@/ui/view/shared/date-utils';
@@ -120,7 +122,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
  * Conversations section component
  */
 export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
-	const { app, manager, eventBus } = useServiceContext();
+	const { app, manager, eventBus, plugin } = useServiceContext();
 	const {
 		conversations,
 		activeConversation,
@@ -128,6 +130,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 		setActiveConversation,
 		toggleConversationsCollapsed,
 		updateConversation,
+		removeConversation,
 	} = useProjectStore();
 	const { setPendingConversation, setAllConversations } = useChatViewStore();
 
@@ -180,6 +183,47 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 		setInputModalOpen(true);
 	}, [manager]);
 
+	/**
+	 * Handle delete conversation action
+	 * 
+	 * Flow:
+	 * 1. Show confirmation dialog (prevent accidental deletion)
+	 * 2. On confirmation, call manager.deleteConversation
+	 * 3. Manager triggers ConversationDeletedEvent
+	 * 4. Event listener auto-updates store and UI (see useEffect)
+	 * 5. Show success or error notification
+	 * 
+	 * Note: No need to manually call removeConversation, event listener handles it
+	 */
+	const handleDeleteConversation = useCallback((conversation: ChatConversation) => {
+		// Show confirmation dialog to prevent accidental deletion
+		const modal = new ConfirmModal(
+			app,
+			plugin.appContext,  // Use plugin.appContext instead of getting from app
+			'Delete Conversation',
+			`Are you sure you want to delete "${conversation.meta.title}"? This action cannot be undone.`,
+			async () => {
+				try {
+					// Call manager's delete method (deletes file + database records)
+					// This triggers ConversationDeletedEvent
+					await manager.deleteConversation(conversation.meta.id);
+
+					// No need to manually update store, event listener handles it
+					// removeConversation(conversation.meta.id); // Removed
+					// setActiveConversation(null); // Removed
+					
+					// Show success notification
+					new Notice('Conversation deleted successfully');
+				} catch (error) {
+					// Catch and display error
+					console.error('Failed to delete conversation', error);
+					new Notice(`Failed to delete conversation: ${error.message}`);
+				}
+			}
+		);
+		modal.open();
+	}, [app, plugin, manager]);
+
 	// Menu item configurations
 	const conversationMenuItems = useCallback((conversation: ChatConversation) => [
 		{
@@ -194,15 +238,22 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 				await openSourceFile(app, conversation.file);
 			},
 		},
-	], [app, handleEditConversationTitle]);
+		{
+			title: 'Delete',
+			icon: 'trash',
+			onClick: () => handleDeleteConversation(conversation),
+			className: 'menu-item-danger', // Red color for delete action
+		},
+	], [app, handleEditConversationTitle, handleDeleteConversation]);
 
 	const handleContextMenu = (e: React.MouseEvent, conversation: ChatConversation) => {
 		const menuItems = conversationMenuItems(conversation);
 		showContextMenu(e, menuItems);
 	};
 
-	// Listen for conversation updates and manage typewriter effect
+	// Listen for conversation events and manage typewriter effect
 	useEffect(() => {
+		// Listen for conversation update events (e.g., title changes)
 		const unsubscribeUpdated = eventBus.on<ConversationUpdatedEvent>(
 			ViewEventType.CONVERSATION_UPDATED,
 			async (event) => {
@@ -212,20 +263,21 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 					title: conversation.meta.title,
 					timestamp: Date.now()
 				});
-				// Enable typewriter effect first, then update conversation in store
-				// This ensures ConversationTitle receives enableTypewriter=true before the title prop changes
+				// Enable typewriter effect before updating store
+				// This ensures ConversationTitle receives enableTypewriter=true before title changes
 				setTypewriterEnabled(prev => {
 					const next = new Map(prev);
 					next.set(conversation.meta.id, true);
 					console.log('[ConversationsSection] Enabling typewriter for conversation:', conversation.meta.id, 'title:', conversation.meta.title);
 					return next;
 				});
-				// Update conversation in store - this will trigger ConversationTitle to re-render
-				// with the new title prop, and useTypewriterEffect will detect the text change
+				// Update conversation in store - triggers ConversationTitle re-render
+				// useTypewriterEffect detects text change and starts animation
 				updateConversation(conversation);
 			}
 		);
 
+		// Listen for conversation creation events
 		const unsubscribeCreated = eventBus.on<ConversationCreatedEvent>(
 			ViewEventType.CONVERSATION_CREATED,
 			(event) => {
@@ -242,11 +294,41 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 			}
 		);
 
+		// Listen for conversation deletion events
+		// Auto-remove from store and clean up state when conversation is deleted
+		const unsubscribeDeleted = eventBus.on<ConversationDeletedEvent>(
+			ViewEventType.CONVERSATION_DELETED,
+			async (event) => {
+				console.log('[ConversationsSection] CONVERSATION_DELETED event:', {
+					conversationId: event.conversationId,
+					projectId: event.projectId,
+					timestamp: Date.now()
+				});
+				
+				// 1. Remove conversation from store
+				removeConversation(event.conversationId);
+				
+				// 2. Clear active state if this was the active conversation
+				if (activeConversation?.meta.id === event.conversationId) {
+					setActiveConversation(null);
+					await notifySelectionChange(app);
+				}
+				
+				// 3. Clean up typewriter effect state
+				setTypewriterEnabled(prev => {
+					const next = new Map(prev);
+					next.delete(event.conversationId);
+					return next;
+				});
+			}
+		);
+
 		return () => {
 			unsubscribeUpdated();
 			unsubscribeCreated();
+			unsubscribeDeleted();
 		};
-	}, [eventBus, updateConversation]);
+	}, [eventBus, updateConversation, removeConversation, activeConversation, setActiveConversation, app]);
 
 	// Get root-level conversations (without projectId)
 	const conversationsWithoutProject = useMemo(() => {

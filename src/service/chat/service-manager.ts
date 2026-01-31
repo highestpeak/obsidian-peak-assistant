@@ -534,6 +534,23 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
+	 * Delete a conversation completely (file + database records).
+	 * 
+	 * This method:
+	 * 1. Checks if ConversationService is initialized
+	 * 2. Calls ConversationService.deleteConversation to execute deletion
+	 * 3. ConversationService publishes event to notify UI layer
+	 * 
+	 * @param conversationId - ID of conversation to delete
+	 */
+	async deleteConversation(conversationId: string): Promise<void> {
+		if (!this.conversationService) {
+			throw new Error('ConversationService not initialized. Call init() first.');
+		}
+		return this.conversationService.deleteConversation(conversationId);
+	}
+
+	/**
 	 * Rename a project by renaming its folder.
 	 */
 	async renameProject(projectId: string, newName: string): Promise<ChatProject> {

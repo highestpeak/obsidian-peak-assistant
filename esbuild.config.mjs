@@ -147,7 +147,10 @@ const wasmInlinePlugin = {
 const fixImportMetaPlugin = {
 	name: 'fix-import-meta',
 	setup(build) {
-		build.onLoad({ filter: /node_modules\/@langchain\/community\/.*\.(js|mjs|cjs)$/ }, async (args) => {
+		// NOTE: args.path uses OS-specific separators. Use [\\/] so this works on Windows too.
+		// We keep this scoped to @langchain packages only, and then only modify files that actually
+		// contain createRequire(import.meta.url) patterns.
+		build.onLoad({ filter: /node_modules[\\/]@langchain[\\/].*\.(js|mjs|cjs)$/ }, async (args) => {
 			try {
 				const contents = await fs.promises.readFile(args.path, 'utf8');
 				
@@ -156,19 +159,21 @@ const fixImportMetaPlugin = {
 				let modified = contents;
 				
 				// Pattern: createRequire(import.meta.url)
-				// Replace with createRequire(__filename) for CommonJS
+				// Replace with createRequire(__filename) for CommonJS.
+				// Important: Some dependencies call it as a member (e.g. module.createRequire(import.meta.url)).
+				// Replacing the call with an IIFE would break syntax like `obj.(...)`, so keep it as a call.
 				if (contents.includes('createRequire(import.meta.url)')) {
 					modified = modified.replace(
 						/createRequire\(import\.meta\.url\)/g,
-						'(function() { const { createRequire } = require("module"); return createRequire(typeof __filename !== "undefined" ? __filename : require("path").join(__dirname, "index.js")); })()'
+						'createRequire(__filename)'
 					);
 				}
 				
 				// Pattern: createRequire(import.meta.url || ...)
 				if (contents.includes('createRequire(import.meta.url')) {
 					modified = modified.replace(
-						/createRequire\(import\.meta\.url(?:\s*\|\|.*?)?\)/g,
-						'(function() { const { createRequire } = require("module"); return createRequire(typeof __filename !== "undefined" ? __filename : require("path").join(__dirname, "index.js")); })()'
+						/createRequire\(import\.meta\.url(?:\s*\|\|[^\)]*)?\)/g,
+						'createRequire(__filename)'
 					);
 				}
 
@@ -225,6 +230,8 @@ const shared = {
 		// WASM files are inlined as Base64 data URLs by wasmInlinePlugin (if any dependencies import .wasm files)
 		// Note: sql.js loads WASM dynamically, so this may not be needed
 	},
+	jsx: "automatic",
+	jsxImportSource: "react",
 	target: "es2018",
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",

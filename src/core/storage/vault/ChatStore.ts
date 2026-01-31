@@ -915,5 +915,60 @@ export class ChatStorageService {
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		return messageRepo.countByConversation(conversationId);
 	}
+
+	/**
+	 * Delete a conversation completely (file + database records).
+	 * This includes:
+	 * - Conversation file from vault
+	 * - Conversation record from database
+	 * - All messages from database
+	 * - All message resources from database
+	 * - All starred message records from database
+	 */
+	/**
+	 * Delete a conversation completely (file + database records)
+	 * 
+	 * Steps:
+	 * 1. Read conversation metadata to get file path
+	 * 2. Delete Markdown file (contains full conversation history)
+	 * 3. Delete related records from 4 database tables:
+	 *    - chat_star: starred messages
+	 *    - chat_message_resource: message resources
+	 *    - chat_message: all messages
+	 *    - chat_conversation: conversation metadata
+	 */
+	async deleteConversation(conversationId: string): Promise<void> {
+		// 1. Get conversation metadata to find the file
+		const meta = await this.readConversationMeta(conversationId);
+		if (!meta) {
+			throw new Error(`Conversation not found: ${conversationId}`);
+		}
+
+		// 2. Delete the conversation Markdown file from vault
+		// File contains: frontmatter (attachments, summaries) + full history + topics
+		if (meta.fileRelPath) {
+			const filePath = getAbsolutePath(this.rootFolder, meta.fileRelPath);
+			const file = this.app.vault.getAbstractFileByPath(filePath);
+			if (file instanceof TFile) {
+				await this.app.vault.delete(file);
+			}
+		}
+
+		// 3. Delete all starred message records for this conversation
+		const starRepo = sqliteStoreManager.getChatStarRepo();
+		await starRepo.deleteByConversationId(conversationId);
+
+		// 4. Delete all message resources
+		const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
+		await resourceRepo.deleteByConversationId(conversationId);
+
+		// 5. Delete all messages
+		const messageRepo = sqliteStoreManager.getChatMessageRepo();
+		await messageRepo.deleteByConversation(conversationId);
+
+		// 6. Delete conversation record
+		const convRepo = sqliteStoreManager.getChatConversationRepo();
+		await convRepo.deleteByConversationId(conversationId);
+	}
 }
 
