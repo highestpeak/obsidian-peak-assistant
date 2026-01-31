@@ -1,4 +1,3 @@
-
 import { Notice } from 'obsidian';
 import type { ChatProjectMeta } from '@/service/chat/types';
 import { ViewManager } from '@/app/view/ViewManager';
@@ -75,6 +74,9 @@ export function buildCoreCommands(
 					title: DEFAULT_NEW_CONVERSATION_TITLE,
 					project: null,
 				});
+
+				// Switch to chat view so user can see the pending conversation
+				await viewManager.getViewSwitchConsistentHandler().activateChatView();
 			},
 		},
 		{
