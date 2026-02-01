@@ -157,6 +157,26 @@ export interface Database {
 		created_at_ts: number;
 		active: number;
 	};
+	/**
+	 * AI analysis records generated from the Quick Search AI tab.
+	 *
+	 * Design:
+	 * - Large content lives in a vault markdown file (vault_rel_path)
+	 * - This table stores lightweight metadata for listing/pagination
+	 */
+	ai_analysis_record: {
+		id: string;
+		vault_rel_path: string;
+		query: string | null;
+		created_at_ts: number;
+		web_enabled: number;
+		estimated_tokens: number | null;
+		sources_count: number | null;
+		topics_count: number | null;
+		graph_nodes_count: number | null;
+		graph_edges_count: number | null;
+		duration: number | null;
+	};
 }
 
 
@@ -427,6 +447,27 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_chat_star_active ON chat_star(active);
 		CREATE INDEX IF NOT EXISTS idx_chat_star_conversation_id ON chat_star(conversation_id);
 	`);
+
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS ai_analysis_record (
+			id TEXT PRIMARY KEY,
+			vault_rel_path TEXT NOT NULL UNIQUE,
+			query TEXT,
+			created_at_ts INTEGER NOT NULL,
+			web_enabled INTEGER NOT NULL DEFAULT 0,
+			estimated_tokens INTEGER,
+			sources_count INTEGER,
+			topics_count INTEGER,
+			graph_nodes_count INTEGER,
+			graph_edges_count INTEGER,
+			duration INTEGER
+		);
+		CREATE INDEX IF NOT EXISTS idx_ai_analysis_record_created_at ON ai_analysis_record(created_at_ts);
+		CREATE INDEX IF NOT EXISTS idx_ai_analysis_record_vault_path ON ai_analysis_record(vault_rel_path);
+	`);
+	// Migration: add duration, drop meta_json (SQLite 3.35+ for DROP COLUMN)
+	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN duration INTEGER`);
+	tryExec(`ALTER TABLE ai_analysis_record DROP COLUMN meta_json`);
 }
 
 

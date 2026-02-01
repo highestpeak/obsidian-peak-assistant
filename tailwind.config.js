@@ -62,6 +62,10 @@ module.exports = {
 					'0%': { 'background-position': 'right' },
 					'100%': { 'background-position': 'left' },
 				},
+				spin: {
+					from: { transform: 'translateZ(0) rotate(0deg)' },
+					to: { transform: 'translateZ(0) rotate(360deg)' },
+				},
 			},
 			animation: {
 				'scan': 'scanEffect 2s infinite',

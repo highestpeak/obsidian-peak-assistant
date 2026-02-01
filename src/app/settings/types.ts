@@ -138,15 +138,6 @@ export interface SearchSettings {
 	 * Default: 5
 	 */
 	aiAnalysisHistoryLimit: number;
-
-	/**
-	 * Recent AI analysis entries (saved markdown file paths).
-	 */
-	aiAnalysisRecentHistory: Array<{
-		path: string;
-		query: string;
-		createdAt: string; // ISO timestamp
-	}>;
 }
 
 /**
@@ -217,7 +208,6 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	aiAnalysisAutoSaveEnabled: true,
 	aiAnalysisAutoSaveFolder: 'ChatFolder/AI-Analysis',
 	aiAnalysisHistoryLimit: 5,
-	aiAnalysisRecentHistory: [],
 };
 
 /**

@@ -19,6 +19,7 @@ import { ChatConversationRepo } from './repositories/ChatConversationRepo';
 import { ChatMessageRepo } from './repositories/ChatMessageRepo';
 import { ChatMessageResourceRepo } from './repositories/ChatMessageResourceRepo';
 import { ChatStarRepo } from './repositories/ChatStarRepo';
+import { AIAnalysisRepo } from './repositories/AIAnalysisRepo';
 import { SEARCH_DB_FILENAME, META_DB_FILENAME } from '@/core/constant';
 
 /**
@@ -55,6 +56,7 @@ class SqliteStoreManager {
 	private chatMessageRepo: ChatMessageRepo | null = null;
 	private chatMessageResourceRepo: ChatMessageResourceRepo | null = null;
 	private chatStarRepo: ChatStarRepo | null = null;
+	private aiAnalysisRepo: AIAnalysisRepo | null = null;
 
 
 	/**
@@ -227,6 +229,7 @@ class SqliteStoreManager {
 		this.chatMessageRepo = new ChatMessageRepo(metaKdb);
 		this.chatMessageResourceRepo = new ChatMessageResourceRepo(metaKdb);
 		this.chatStarRepo = new ChatStarRepo(metaKdb);
+		this.aiAnalysisRepo = new AIAnalysisRepo(metaKdb);
 	}
 
 	/**
@@ -398,6 +401,16 @@ class SqliteStoreManager {
 			throw new Error('SqliteStoreManager not initialized. Call init() first.');
 		}
 		return this.chatStarRepo;
+	}
+
+	/**
+	 * Get AIAnalysisRepo instance (meta.sqlite).
+	 */
+	getAIAnalysisRepo(): AIAnalysisRepo {
+		if (!this.aiAnalysisRepo) {
+			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		}
+		return this.aiAnalysisRepo;
 	}
 
 	/**

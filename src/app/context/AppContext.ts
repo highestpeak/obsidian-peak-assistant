@@ -8,6 +8,8 @@ import { BusinessError, ErrorCode } from '@/core/errors';
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import { GraphInspectorTestTools } from '@/app/context/test-tools';
 import { IndexService } from '@/service/search/index/indexService';
+import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
+import { AISearchAgent, AISearchAgentOptions } from '@/service/agents/AISearchAgent';
 
 /**
  * Application context containing all global dependencies.
@@ -34,6 +36,10 @@ export class AppContext {
 		public readonly searchClient: SearchClient,
 		public readonly plugin: MyPlugin,
 		public settings: MyPluginSettings,
+		public readonly aiAnalysisHistoryService: AIAnalysisHistoryService,
+		public readonly searchAgentFactory: (aiServiceManager: AIServiceManager, options: AISearchAgentOptions) => AISearchAgent,
+		/** When true, running in mock/dev environment (e.g. desktop dev). */
+		public readonly isMockEnv: boolean = false,
 	) {
 		// viewManager will be set after ViewManager is created
 		this.viewManager = null as any;
@@ -51,6 +57,10 @@ export class AppContext {
 				this.handleDevToolsSettingChange(currentEnableDevTools);
 			}
 		});
+	}
+
+	public static searchAgent(options: AISearchAgentOptions) {
+		return AppContext.getInstance().searchAgentFactory(AppContext.getInstance().manager, options);
 	}
 
 	/**

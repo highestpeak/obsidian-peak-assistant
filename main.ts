@@ -15,7 +15,9 @@ import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoa
 import { IndexService } from '@/service/search/index/indexService';
 import { SEARCH_DB_FILENAME } from '@/core/constant';
 import { AppContext } from '@/app/context/AppContext';
+import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { registerTemplateEngineHelpers } from '@/core/template-engine-helper';
+import { AISearchAgent, AISearchAgentOptions } from '@/service/agents/AISearchAgent';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -81,12 +83,15 @@ export default class MyPlugin extends Plugin {
 		await this.initializeSearchService();
 
 		// Create AppContext with all dependencies (viewManager will be set after ViewManager creation)
+		const aiAnalysisHistoryService = new AIAnalysisHistoryService();
 		const appContext = new AppContext(
 			this.app,
 			this.aiServiceManager,
 			this.searchClient!,
 			this,
-			this.settings
+			this.settings,
+			aiAnalysisHistoryService,
+			(aiServiceManager: AIServiceManager, options: AISearchAgentOptions) => new AISearchAgent(aiServiceManager, options),
 		);
 
 		// Create ViewManager with AppContext

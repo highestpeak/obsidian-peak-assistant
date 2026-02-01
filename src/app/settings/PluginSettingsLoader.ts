@@ -211,9 +211,6 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 	if (typeof (rawSearch as any).aiAnalysisHistoryLimit === 'number') {
 		settings.aiAnalysisHistoryLimit = Math.max(1, Math.min(50, (rawSearch as any).aiAnalysisHistoryLimit));
 	}
-	if (Array.isArray((rawSearch as any).aiAnalysisRecentHistory)) {
-		settings.aiAnalysisRecentHistory = (rawSearch as any).aiAnalysisRecentHistory as any;
-	}
 
 	// Image description model
 
