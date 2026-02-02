@@ -1,0 +1,160 @@
+/**
+ * Shadow DOM host styles for Streamdown isolation.
+ * Injected first into the Shadow Root; read and concatenated by scripts/concat-css.mjs.
+ * Aligned with https://streamdown.ai/docs/styling (CSS variables + data-streamdown selectors).
+ */
+
+:host {
+  display: block !important;
+  width: 100%;
+  min-height: 1em;
+  overflow: visible;
+  font-family: var(--font-interface, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-size: 1rem;
+  line-height: 1.5;
+  background-color: transparent;
+  color: hsl(var(--foreground));
+  /* Theme tokens per official Styling docs */
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 222.2 84% 4.9%;
+  --radius: 0.5rem;
+  /* rehype-katex errorColor expects full color value */
+  --color-muted-foreground: hsl(var(--muted-foreground));
+}
+
+.streamdown-wrapper {
+  display: block !important;
+  width: 100%;
+  min-height: 1em;
+  overflow: visible;
+  box-sizing: border-box;
+  background-color: transparent;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Modern block styling per official docs (code, table, mermaid) */
+[data-streamdown="code-block"] {
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+[data-streamdown="mermaid-block"] {
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+[data-streamdown="table-wrapper"] {
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+[data-streamdown="table"] {
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+[data-streamdown="table-header"] {
+  background: linear-gradient(to bottom, hsl(var(--muted)), hsl(var(--border) / 0.5));
+}
+
+[data-streamdown="blockquote"] {
+  border-radius: calc(var(--radius) - 2px);
+  border-left-width: 4px;
+}
+
+/* Buttons: light background + subtle border (no harsh grey/black) */
+[data-streamdown="code-block-copy-button"],
+[data-streamdown="code-block-download-button"],
+[data-streamdown="table-wrapper"] button,
+[data-streamdown="mermaid-block"] button {
+  border-radius: calc(var(--radius) - 2px);
+  /* background-color: hsl(var(--background)); */
+  background-color: transparent;
+  /* border: 1px solid hsl(var(--border)); */
+  border: none;
+  color: hsl(var(--muted-foreground));
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+[data-streamdown="code-block-copy-button"]:hover,
+[data-streamdown="code-block-download-button"]:hover,
+[data-streamdown="table-wrapper"] button:hover,
+[data-streamdown="mermaid-block"] button:hover {
+  background-color: hsl(var(--muted) / 0.8);
+  color: hsl(var(--foreground));
+}
+
+[data-streamdown="code-block-copy-button"]:focus-visible,
+[data-streamdown="code-block-download-button"]:focus-visible,
+[data-streamdown="table-wrapper"] button:focus-visible,
+[data-streamdown="mermaid-block"] button:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+a[href^="peak://wikilink/"]:hover,
+a[href^="#peak-wikilink="]:hover,
+a[href^="obsidian://open"]:hover,
+[data-streamdown="link"]:hover {
+  color: #982598 !important;
+  text-decoration: underline;
+  text-decoration-style: solid;
+}
+
+/* Wikilinks: classic blue underlined link, no box, pointer cursor (remarkWikilink plugin) */
+a[href^="peak://wikilink/"],
+a[href^="#peak-wikilink="],
+a[href^="obsidian://open"],
+[data-streamdown="link"] {
+  /* Classic blue underlined link, no box, pointer cursor */
+  color: #2563eb !important;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: transparent;
+  text-decoration-line: none;
+}
+
+/* Mermaid/table dropdown panels (SVG, PNG, MMD etc.) */
+[data-streamdown="mermaid-block"] [class*="absolute"][class*="rounded-md"],
+[data-streamdown="table-wrapper"] [class*="absolute"][class*="rounded-md"] {
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid hsl(var(--border));
+}
+
+/* Hide the dropdown panels by default */
+[data-streamdown="mermaid-block"] > .flex.items-center.justify-end,
+[data-streamdown="mermaid-block"] .absolute.z-10.flex.flex-col.rounded-md {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+/* Show on hover over the mermaid block */
+[data-streamdown="mermaid-block"]:hover > .flex.items-center.justify-end,
+[data-streamdown="mermaid-block"]:hover .absolute.z-10.flex.flex-col.rounded-md {
+  opacity: 1;
+  pointer-events: auto;
+}

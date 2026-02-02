@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Lightbulb, Tag, FileText } from 'lucide-react';
-import { InsightCard, AISearchTopic, AISearchSource } from '@/service/agents/AISearchAgent';
+import { Tag, FileText } from 'lucide-react';
+import { DashboardBlock, AISearchTopic, AISearchSource } from '@/service/agents/AISearchAgent';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 
 // Stagger animation variants for container
@@ -31,16 +31,17 @@ const itemVariants = {
 };
 
 /**
- * Incremental content component - shows new/changed content with diff highlighting
+ * Incremental content component - shows new/changed content with diff highlighting.
+ * Dashboard blocks are rendered by DashboardBlocksSection in the parent.
  */
 export const IncrementalContent: React.FC<{
-	insightCards: InsightCard[];
+	dashboardBlocks: DashboardBlock[];
 	topics: AISearchTopic[];
 	sources: AISearchSource[];
-}> = ({ insightCards, topics, sources }) => {
+}> = ({ dashboardBlocks, topics, sources }) => {
 	// Track previous state for diff calculation
 	const prevStateRef = React.useRef({
-		insightCards: [] as InsightCard[],
+		dashboardBlocks: [] as DashboardBlock[],
 		topics: [] as AISearchTopic[],
 		sources: [] as AISearchSource[],
 	});
@@ -64,71 +65,33 @@ export const IncrementalContent: React.FC<{
 		});
 	};
 
-	const dedupedInsightCards = useMemo(() => dedupeById(insightCards), [insightCards]);
+	const dedupedBlocks = useMemo(() => dedupeById(dashboardBlocks), [dashboardBlocks]);
 	const dedupedTopics = useMemo(() => dedupeByLabel(topics), [topics]);
 	const dedupedSources = useMemo(() => dedupeById(sources), [sources]);
 
 	const diff = useMemo(() => {
 		const prev = prevStateRef.current;
-		const newInsightCards = dedupedInsightCards.filter(card => !prev.insightCards.find(p => p.id === card.id));
-		const removedInsightCards = prev.insightCards.filter(card => !dedupedInsightCards.find(c => c.id === card.id));
 		const newTopics = dedupedTopics.filter(topic => !prev.topics.find(p => p.label === topic.label));
 		const removedTopics = prev.topics.filter(topic => !dedupedTopics.find(t => t.label === topic.label));
 		const newSources = dedupedSources.filter(source => !prev.sources.find(p => p.id === source.id));
 		const removedSources = prev.sources.filter(source => !dedupedSources.find(s => s.id === source.id));
 
-		// Update ref with deduped values
 		prevStateRef.current = {
-			insightCards: dedupedInsightCards,
+			dashboardBlocks: dedupedBlocks,
 			topics: dedupedTopics,
 			sources: dedupedSources,
 		};
 
 		return {
-			newInsightCards,
-			removedInsightCards,
 			newTopics,
 			removedTopics,
 			newSources,
 			removedSources,
 		};
-	}, [dedupedInsightCards, dedupedTopics, dedupedSources]);
+	}, [dedupedBlocks, dedupedTopics, dedupedSources]);
 
 	return (
 		<div className="pktw-space-y-4">
-			{/* Insight Cards */}
-			{(dedupedInsightCards.length > 0 || diff.newInsightCards.length > 0 || diff.removedInsightCards.length > 0) && (
-				<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
-					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
-						<Lightbulb className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
-						<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Insights</span>
-					</div>
-					<div className="pktw-space-y-2">
-						{/* New insight cards */}
-						{diff.newInsightCards.map((card, index) => (
-							<div key={`new-${card.id}-${index}`} className="pktw-bg-green-50 pktw-border pktw-border-green-200 pktw-rounded pktw-p-3 pktw-text-xs">
-								<div className="pktw-font-medium pktw-text-green-800">{card.title}</div>
-								<div className="pktw-text-green-700 pktw-mt-1">{card.description}</div>
-							</div>
-						))}
-						{/* Removed insight cards */}
-						{diff.removedInsightCards.map((card, index) => (
-							<div key={`removed-${card.id}-${index}`} className="pktw-bg-red-50 pktw-border pktw-border-red-200 pktw-rounded pktw-p-3 pktw-text-xs pktw-line-through">
-								<div className="pktw-font-medium pktw-text-red-800">{card.title}</div>
-								<div className="pktw-text-red-700 pktw-mt-1">{card.description}</div>
-							</div>
-						))}
-						{/* Existing insight cards */}
-						{dedupedInsightCards.filter(card => !diff.newInsightCards.find(c => c.id === card.id)).map((card, index) => (
-							<div key={`existing-${card.id}-${index}`} className="pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded pktw-p-3 pktw-text-xs">
-								<div className="pktw-font-medium pktw-text-[#2e3338]">{card.title}</div>
-								<div className="pktw-text-[#6c757d] pktw-mt-1">{card.description}</div>
-							</div>
-						))}
-					</div>
-				</div>
-			)}
-
 			{/* Topics with stagger animation */}
 			{(dedupedTopics.length > 0 || diff.newTopics.length > 0 || diff.removedTopics.length > 0) && (
 				<motion.div 

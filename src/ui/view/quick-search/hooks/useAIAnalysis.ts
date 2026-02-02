@@ -1,26 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { getCleanQuery, AIAnalysisStepType } from '../store/aiAnalysisStore';
 import { useSharedStore, useAIAnalysisStore } from '@/ui/view/quick-search/store';
-import { useServiceContext } from '@/ui/context/ServiceContext';
-import { AISearchAgent, SearchAgentResult } from '@/service/agents/AISearchAgent';
-import { LLMStreamEvent, StreamTriggerName, ToolEvent } from '@/core/providers/types';
+import { AppContext } from '@/app/context/AppContext';
+import { SearchAgentResult } from '@/service/agents/AISearchAgent';
+import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import { PromptId } from '@/service/prompt/PromptId';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
+import { Notice } from 'obsidian';
 
 export function useAIAnalysis() {
 	const { searchQuery } = useSharedStore();
-	const { manager, plugin } = useServiceContext();
 
 	const {
 		webEnabled,
+		analysisMode,
 		completeCurrentStep,
 		setUsage,
 		setDuration,
 		setSummary,
 		appendSummaryDelta,
 		setGraph,
-		setInsightCards,
-		setSuggestions,
+		setDashboardBlocks,
 		setTopics,
 		setSources,
 		startAnalyzing,
@@ -105,21 +105,23 @@ export function useAIAnalysis() {
 
 	// AbortController for canceling analysis
 	const abortControllerRef = useRef<AbortController | null>(null);
+	const didCancelRef = useRef<boolean>(false);
+	const noticeSentRef = useRef<boolean>(false);
 
-	// Create AISearchAgent instance
+	// Real agent when not mock; MockAISearchAgent in desktop dev so one code path
 	const aiSearchAgent = useMemo(() => {
-		if (!manager) return null;
-
-		return new AISearchAgent(manager, {
+		const plugin = AppContext.getInstance().plugin
+		return AppContext.searchAgent({
 			enableWebSearch: webEnabled,
 			enableLocalSearch: true,
+			analysisMode,
 			maxMultiAgentIterations: plugin.settings.search.maxMultiAgentIterations,
 			thoughtAgentModel: plugin.settings.search.aiAnalysisModel?.thoughtAgentModel?.modelId!,
 			thoughtAgentProvider: plugin.settings.search.aiAnalysisModel?.thoughtAgentModel?.provider!,
 			searchAgentModel: plugin.settings.search.aiAnalysisModel?.searchAgentModel?.modelId!,
 			searchAgentProvider: plugin.settings.search.aiAnalysisModel?.searchAgentModel?.provider!,
 		});
-	}, [manager, plugin, webEnabled]);
+	}, [webEnabled]);
 
 	// Detect @web@ trigger in search query (don't remove from display, just enable web mode)
 	useEffect(() => {
@@ -136,11 +138,8 @@ export function useAIAnalysis() {
 		if (result.graph) {
 			setGraph(result.graph);
 		}
-		if (result.insightCards) {
-			setInsightCards(result.insightCards);
-		}
-		if (result.suggestions) {
-			setSuggestions(result.suggestions);
+		if (result.dashboardBlocks) {
+			setDashboardBlocks(result.dashboardBlocks);
 		}
 		if (result.topics) {
 			setTopics(result.topics);
@@ -148,7 +147,7 @@ export function useAIAnalysis() {
 		if (result.sources) {
 			setSources(result.sources);
 		}
-	}, [setSummary, setGraph, setInsightCards, setSuggestions, setTopics, setSources]);
+	}, [setSummary, setGraph, setDashboardBlocks, setTopics, setSources]);
 
 	/**
 	 * Handle the final result from AISearchAgent
@@ -165,6 +164,16 @@ export function useAIAnalysis() {
 		finalResult = finalResult as SearchAgentResult;
 
 		applySearchResult(finalResult);
+
+		// Notice (success): only when modal is closed and not canceled.
+		// Use store state directly to avoid stale closures.
+		if (!didCancelRef.current && !noticeSentRef.current && !useAIAnalysisStore.getState().aiModalOpen) {
+			noticeSentRef.current = true;
+			new Notice(
+				'AI Analysis completed. Reopen Quick Search → AI Analysis tab to view results.',
+				8000,
+			);
+		}
 	}, [setUsage, setDuration, applySearchResult]);
 
 	const performAnalysis = useCallback(async (abortSignal?: AbortSignal) => {
@@ -190,6 +199,8 @@ export function useAIAnalysis() {
 
 			resetAnalysisState();
 			startAnalyzing();
+			didCancelRef.current = false;
+			noticeSentRef.current = false;
 			currentStepTypeRef.current = 'idle';
 			currentStepTextChunksRef.current = [];
 			toolTraceRef.current = [];
@@ -200,8 +211,7 @@ export function useAIAnalysis() {
 				summaryFlushTimerRef.current = null;
 			}
 
-			// Start streaming with AISearchAgent
-			const stream = await aiSearchAgent.stream(searchQuery);
+			const stream = await aiSearchAgent!.stream(searchQuery);
 
 			// Process the stream directly
 			for await (const event of stream) {
@@ -338,6 +348,14 @@ export function useAIAnalysis() {
 						break;
 					case 'error':
 						recordError(event.error.message);
+						// Notice (error): only when modal is closed and not canceled.
+						if (!didCancelRef.current && !noticeSentRef.current && !useAIAnalysisStore.getState().aiModalOpen) {
+							noticeSentRef.current = true;
+							new Notice(
+								'AI Analysis failed. Reopen Quick Search → AI Analysis tab for details.',
+								8000,
+							);
+						}
 						break;
 					case 'on-step-finish':
 						updateIfStepChanged('pk-debug', undefined, {
@@ -365,6 +383,14 @@ export function useAIAnalysis() {
 				? err.message
 				: 'Failed to connect to AI service. Please check your network connection and try again.';
 			recordError(errorMessage);
+			// Notice (error): only when modal is closed and not canceled.
+			if (!didCancelRef.current && !noticeSentRef.current && !useAIAnalysisStore.getState().aiModalOpen) {
+				noticeSentRef.current = true;
+				new Notice(
+					'AI Analysis failed. Reopen Quick Search → AI Analysis tab for details.',
+					8000,
+				);
+			}
 		} finally {
 			flushSummaryBuffer();
 			// Build merged debug dump for easier debugging
@@ -379,7 +405,7 @@ export function useAIAnalysis() {
 					error: aiAnalysisStoreState.error,
 					sourcesCount: aiAnalysisStoreState.sources.length,
 					topicsCount: aiAnalysisStoreState.topics.length,
-					insightCardsCount: aiAnalysisStoreState.insightCards.length,
+					dashboardBlocksCount: aiAnalysisStoreState.dashboardBlocks?.length ?? 0,
 					graphNodesCount: aiAnalysisStoreState.graph?.nodes?.length ?? 0,
 					graphEdgesCount: aiAnalysisStoreState.graph?.edges?.length ?? 0
 				},
@@ -443,6 +469,7 @@ export function useAIAnalysis() {
 	const cancel = useCallback(() => {
 		if (abortControllerRef.current) {
 			console.log('[useAIAnalysis] Canceling analysis');
+			didCancelRef.current = true;
 			abortControllerRef.current.abort();
 			abortControllerRef.current = null;
 		}

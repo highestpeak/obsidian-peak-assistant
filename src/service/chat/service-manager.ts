@@ -269,7 +269,7 @@ export class AIServiceManager {
 	async createConvFromSearchAIAnalysis(params: {
 		query: string;
 		summary: string;
-		sources: Array<{ path: string; title: string; highlight?: { text?: string } | null }>;
+		sources: Array<{ path: string; title: string; content?: string }>;
 		topics?: Array<{ label: string; weight: number }>;
 	}): Promise<ChatConversation> {
 		console.debug('[AIServiceManager] createConvFromSearchAIAnalysis called', {
@@ -285,7 +285,7 @@ export class AIServiceManager {
 		// Build content with sources as markdown links for context
 		const sourcesList = params.sources.slice(0, 10).map((s, i) => {
 			const link = `[[${s.path}|${s.title}]]`;
-			const snippet = s.highlight?.text ? `\n  - ${s.highlight.text.substring(0, 200)}...` : '';
+			const snippet = s.content ? `\n  - ${s.content.substring(0, 200)}...` : '';
 			return `${i + 1}. ${link}${snippet}`;
 		}).join('\n');
 

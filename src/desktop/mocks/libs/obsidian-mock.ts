@@ -11,7 +11,34 @@ export class App {}
 export class Plugin {}
 export class WorkspaceLeaf {}
 export class ItemView {}
-export class Modal {}
+export class Modal {
+	constructor(public app: App) {}
+	open() {}
+	close() {}
+}
+
+/** Mock SuggestModal for desktop dev - base for FuzzySuggestModal. */
+export class SuggestModal<T> extends Modal {
+	limit = 100;
+	emptyStateText = '';
+	inputEl = document.createElement('input');
+	resultContainerEl = document.createElement('div');
+	constructor(app: App) {
+		super(app);
+	}
+	setPlaceholder(_s: string) {}
+	setInstructions(_i: any[]) {}
+}
+
+/** Mock FuzzySuggestModal for FolderPickerModal in desktop dev. */
+export abstract class FuzzySuggestModal<T> extends SuggestModal<any> {
+	constructor(app: App) {
+		super(app);
+	}
+	abstract getItems(): T[];
+	abstract getItemText(item: T): string;
+	abstract onChooseItem(item: T, evt?: MouseEvent | KeyboardEvent): void;
+}
 export class Menu {}
 export class Editor {}
 export class MarkdownView {}

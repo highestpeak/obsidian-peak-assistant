@@ -35,6 +35,13 @@ export const DEFAULT_PLACEHOLDER = "Untitled";
 export const DEFAULT_ICON = "bulb";
 export const DEFAULT_COLOR = "blue";
 
+/** Substring to detect add/merge success in result */
+export const RESULT_SUCCESS_UPDATED = "successfully updated";
+export const RESULT_ADDED = RESULT_SUCCESS_UPDATED + " result (added)";
+export const RESULT_MERGED = RESULT_SUCCESS_UPDATED + " result (merged)";
+/** Substring to detect remove success in result */
+export const RESULT_SUCCESS_REMOVED = "successfully removed";
+
 export function createUpdateResultTool(config: UpdateResultToolConfig) {
     const {
         availableFields,
@@ -53,37 +60,11 @@ export function createUpdateResultTool(config: UpdateResultToolConfig) {
     const fieldNames = availableFields.map(f => f.name);
     const fieldEnum = z.enum(fieldNames as [string, ...string[]]);
 
-    // Create operation schemas with field-specific item validation
+    // Create plain object schemas for discriminated union
     const addOperationSchema = z.object({
         operation: z.literal('add'),
         targetField: fieldEnum,
         item: z.any(),
-    }).transform((data) => {
-        const schema = itemSchemas[data.targetField];
-        if (!schema) {
-            throw new Error(`No schema found for targetField: ${data.targetField}`);
-        }
-        // Parse and validate the item with the correct schema
-        const result = schema.safeParse(data.item);
-        if (!result.success) {
-            // Check if this is a "discard" error (no meaningful content)
-            const errorMessage = result.error.message;
-            if (errorMessage.includes(NO_MEANINGFUL_CONTENT_MESSAGE)) {
-                console.warn(`[UpdateResultTool] Discarding item with no meaningful content for ${data.targetField}`);
-                // Return a special marker to indicate this operation should be skipped
-                return {
-                    ...data,
-                    _skip: true
-                };
-            }
-            // For other validation errors, still throw
-            throw new Error(`Invalid item for targetField "${data.targetField}": ${errorMessage}`);
-        }
-        // Return the validated data
-        return {
-            ...data,
-            item: result.data
-        };
     });
 
     const removeOperationSchema = z.object({
@@ -92,8 +73,59 @@ export function createUpdateResultTool(config: UpdateResultToolConfig) {
         removeId: z.string().min(1, { message: "removeId is required" }),
     });
 
+    /** Unwrap operation when LLM nests it inside a single-key "item" (e.g. {"item": {"operation":"add", "targetField":"...", "item":...}}) */
+    function normalizeOperation(raw: unknown): unknown {
+        if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+            const keys = Object.keys(raw as object);
+            if (keys.length === 1 && keys[0] === 'item') {
+                const inner = (raw as { item: unknown }).item;
+                if (inner && typeof inner === 'object' && !Array.isArray(inner) && 'operation' in inner && 'targetField' in inner) {
+                    return inner;
+                }
+            }
+        }
+        return raw;
+    }
+
+    // Use discriminated union with plain schemas, then apply item validation transform
+    const operationSchema = z.any()
+        .transform(normalizeOperation)
+        .pipe(z.discriminatedUnion('operation', [addOperationSchema, removeOperationSchema])
+            .transform((data) => {
+                if (data.operation === 'add') {
+                    // Apply item validation for add operations
+                    const schema = itemSchemas[data.targetField];
+                    if (!schema) {
+                        throw new Error(`No schema found for targetField: ${data.targetField}`);
+                    }
+                    // Parse and validate the item with the correct schema
+                    const result = schema.safeParse(data.item);
+                    if (!result.success) {
+                        // Check if this is a "discard" error (no meaningful content)
+                        const errorMessage = result.error.message;
+                        if (errorMessage.includes(NO_MEANINGFUL_CONTENT_MESSAGE)) {
+                            console.warn(`[UpdateResultTool] Discarding item with no meaningful content for ${data.targetField}`);
+                            // Return a special marker to indicate this operation should be skipped
+                            return {
+                                ...data,
+                                _skip: true
+                            };
+                        }
+                        // For other validation errors, still throw
+                        throw new Error(`Invalid item for targetField "${data.targetField}": ${errorMessage}`);
+                    }
+                    // Return the validated data
+                    return {
+                        ...data,
+                        item: result.data
+                    };
+                }
+                // Remove operations don't need additional validation
+                return data;
+            }));
+
     const inputSchema = z.object({
-        operations: z.array(z.union([addOperationSchema, removeOperationSchema])).min(1, { message: "At least one operation is required" }),
+        operations: z.array(operationSchema).min(1, { message: "At least one operation is required" }),
     });
 
     // Build description
@@ -137,11 +169,7 @@ ${allExamples.map(ex => `- ${ex}`).join('\n')}`;
                     continue;
                 }
 
-                // Try to extract success count from result
-                const successMatch = result.match(/successfully added (\d+) items/);
-                if (successMatch) {
-                    totalSuccessCount += parseInt(successMatch[1]);
-                } else if (result.includes('successfully updated') || result.includes('successfully removed')) {
+                if (result.includes(RESULT_SUCCESS_UPDATED) || result.includes(RESULT_SUCCESS_REMOVED)) {
                     totalSuccessCount++;
                 }
 
@@ -154,10 +182,12 @@ ${allExamples.map(ex => `- ${ex}`).join('\n')}`;
                 }
             }
 
-            if (failedResults.length > 0) {
-                return `Batch completed: ${totalSuccessCount}/${totalItems} operations succeeded. Failures: ${failedResults.join('; ')}`;
-            }
-            return `Batch completed successfully: ${totalSuccessCount} operations processed`;
+            const failedPercentage = totalItems === 0 ? '0.00' : ((totalSuccessCount / totalItems) * 100).toFixed(2);
+            return `Batch completed successfully: request ${input.operations} operations, processed ${totalSuccessCount} operations, `
+                +`request ${totalItems} items, succeeded ${totalSuccessCount} items, `
+                + (failedResults.length > 0
+                    ? `Failed (${failedPercentage}%): ${failedResults.join('; ')}`
+                    : '');
         },
     });
 
@@ -211,20 +241,13 @@ ${allExamples.map(ex => `- ${ex}`).join('\n')}`;
                 const id = safeText(item.id);
                 return id ? `id:${id}` : null;
             }
-            case 'insightCards': {
+            case 'dashboardBlocks': {
                 const id = safeText(item.id);
-                if (id && !id.startsWith('card:')) return `id:${id}`;
-                const title = safeText(item.title);
-                const desc = safeText(item.description || item.content);
-                const composite = `${title}\n${desc}`.trim();
-                return composite ? `text:${norm(composite)}` : null;
-            }
-            case 'suggestions': {
-                const id = safeText(item.id);
-                if (id && !id.startsWith('suggestion:')) return `id:${id}`;
-                const title = safeText(item.title);
-                const desc = safeText(item.description);
-                const composite = `${title}\n${desc}`.trim();
+                if (id && !id.startsWith('block:')) return `id:${id}`;
+                const title = safeText(item.title ?? item.category);
+                const slot = safeText(item.slot);
+                const engine = safeText(item.renderEngine);
+                const composite = `${title}\n${slot}\n${engine}`.trim();
                 return composite ? `text:${norm(composite)}` : null;
             }
             case 'graph.nodes': {
@@ -303,7 +326,18 @@ ${allExamples.map(ex => `- ${ex}`).join('\n')}`;
 
     async function addItem(targetField: string, item: any): Promise<string> {
         // Validate paths if validator provided
-        if (validatePath && (targetField === 'sources' || targetField === 'graph.nodes') && item.path) {
+        // - sources: always validate
+        // - graph.nodes: validate ONLY for document/file nodes (concept/tag nodes should not carry file paths)
+        const nodeType = String(item?.type ?? 'document').trim().toLowerCase();
+        const shouldValidatePath =
+            !!validatePath
+            && (
+                targetField === 'sources'
+                || (targetField === 'graph.nodes' && (nodeType === 'document' || nodeType === 'file'))
+            )
+            && !!item?.path;
+
+        if (shouldValidatePath) {
             // Skip validation for placeholder values
             if (item.path === DEFAULT_PLACEHOLDER || item.path === 'Untitled') {
                 console.warn(`[UpdateResultTool] Skipping validation for placeholder path: ${item.path}`);
@@ -347,13 +381,13 @@ ${allExamples.map(ex => `- ${ex}`).join('\n')}`;
             const idx = targetArray.findIndex((existing) => buildIdentityKey(targetField, existing) === incomingKey);
             if (idx >= 0) {
                 mergePreferMeaningful(targetArray[idx], item);
-                return 'successfully updated result (merged)';
+                return RESULT_MERGED;
             }
         }
 
         targetArray.push(item);
 
-        return 'successfully updated result (added)';
+        return RESULT_ADDED;
     }
 
     function removeItem(targetField: string, removeId: string) {
@@ -392,6 +426,6 @@ ${allExamples.map(ex => `- ${ex}`).join('\n')}`;
         }
 
         targetArray.splice(index, 1);
-        return `successfully removed item ${removeId} from ${targetField}`;
+        return `${RESULT_SUCCESS_REMOVED} ${removeId} from ${targetField}`;
     }
 }

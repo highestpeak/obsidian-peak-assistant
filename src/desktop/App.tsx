@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ServiceProvider } from '@/ui/context/ServiceContext';
+import { AppContext } from '@/app/context/AppContext';
 import { MockApp } from './mocks/services/MockApp';
 import { MockEventBus } from './mocks/services/MockEventBus';
 import { MockAIServiceManager } from './mocks/services/MockAIServiceManager';
@@ -9,9 +10,12 @@ import { MockPlugin } from './mocks/services/MockPlugin';
 import { DesktopRouter } from './DesktopRouter';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { normalizePluginSettings } from '@/app/settings/PluginSettingsLoader';
+import { MockAIAnalysisHistoryService } from './mocks/services/MockAiAnalysisHistoryService';
 
 // Override EventBus.getInstance to return mock event bus
 import { EventBus } from '@/core/eventBus';
+import { MockAISearchAgent } from './mocks/services/MockAISearchAgent';
+import { AISearchAgentOptions } from '@/service/agents/AISearchAgent';
 const originalGetInstance = EventBus.getInstance;
 (EventBus as any).getInstance = (app: any) => {
 	return new MockEventBus() as any;
@@ -25,20 +29,25 @@ export const DesktopApp: React.FC = () => {
 	const [realSettings, setRealSettings] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
 
-	// Load real settings from data.json
+	// Load real settings from data.json (in dev, /data.json may 404 and return index.html)
 	useEffect(() => {
 		const loadSettings = async () => {
 			try {
 				const response = await fetch('/data.json');
 				if (!response.ok) {
-					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+					setRealSettings({});
+					return;
 				}
-				const settings = await response.json();
+				const text = await response.text();
+				// Dev server may return index.html for unknown routes; avoid parsing as JSON
+				const trimmed = text.trim();
+				if (!trimmed || trimmed.startsWith('<')) {
+					setRealSettings({});
+					return;
+				}
+				const settings = JSON.parse(text);
 				setRealSettings(settings);
-			} catch (error) {
-				console.error('Failed to load data.json:', error);
-				// Fallback to empty settings
-
+			} catch {
 				setRealSettings({});
 			} finally {
 				setLoading(false);
@@ -52,6 +61,25 @@ export const DesktopApp: React.FC = () => {
 	const viewManager = new MockViewManager() as any;
 	const searchClient = new MockSearchClient() as any;
 	const plugin = new MockPlugin() as any;
+
+	// So UI can use AppContext.getInstance().aiAnalysisHistoryService / isMockEnv (set on first render)
+	const mockContext = useMemo(() => {
+		const ctx = new AppContext(
+			app,
+			new MockAIServiceManager(eventBus) as any,
+			searchClient,
+			plugin,
+			plugin.settings,
+			new MockAIAnalysisHistoryService(),
+			((_ai: AIServiceManager, _opts: AISearchAgentOptions) => new MockAISearchAgent()) as any,
+			true,
+		);
+		ctx.viewManager = viewManager;
+		return ctx;
+	}, []);
+	useEffect(() => {
+		(mockContext as any).isMockEnv = useMockAI;
+	}, [useMockAI]);
 
 	// Normalize settings when loaded
 	const realConfig = realSettings ? normalizePluginSettings(realSettings) : null;

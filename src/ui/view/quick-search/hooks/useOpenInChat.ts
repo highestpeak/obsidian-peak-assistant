@@ -1,13 +1,16 @@
 import { useCallback } from 'react';
 import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
 import { CHAT_VIEW_TYPE } from '@/app/view/types';
-import type { SearchResultItem } from '@/service/search/types';
+import type { AISearchSource } from '@/service/agents/AISearchAgent';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+
+/** Minimal source shape for open-in-chat; AISearchSource is compatible (path, title, reasoning → content). */
+export type OpenInChatSource = Array<{ path: string; title: string; content?: string }>;
 
 export function useOpenInChat(
 	searchQuery: string,
 	summary: string,
-	sources: SearchResultItem[],
+	sources: AISearchSource[] | OpenInChatSource,
 	topics: Array<{ label: string; weight: number }>,
 	setError: (error: string | null) => void,
 	onClose?: () => void
@@ -22,12 +25,18 @@ export function useOpenInChat(
 				topicsCount: topics.length,
 			});
 
+			const mappedSources = sources.map(s => ({
+				path: s.path,
+				title: s.title,
+				content: 'reasoning' in s ? (s as AISearchSource).reasoning : (s as { content?: string }).content,
+			}));
+
 			// Step 1: Create conversation from search analysis
 			console.debug('[AISearchTab] Step 1: Creating conversation from search analysis...');
 			const conversation = await manager.createConvFromSearchAIAnalysis({
 				query: searchQuery,
 				summary: summary,
-				sources: sources,
+				sources: mappedSources,
 				topics: topics.length > 0 ? topics : undefined,
 			});
 			console.debug('[AISearchTab] Conversation created', {

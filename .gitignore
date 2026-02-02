@@ -19,6 +19,7 @@ styles.css
 streamdown-styles.css
 styles.tailwind.css
 styles.streamdown.css
+src/styles/streamdown-isolated-css.ts
 search-worker.js
 *.wasm
 

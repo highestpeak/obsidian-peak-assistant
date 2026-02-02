@@ -20,6 +20,13 @@ import * as docSummary from './templates/doc-summary';
 import * as imageSummary from './templates/image-summary';
 import * as imageDescription from './templates/image-description';
 import * as folderProjectSummary from './templates/folder-project-summary';
+import * as aiAnalysisFollowupSummary from './templates/ai-analysis-followup-summary';
+import * as aiAnalysisFollowupGraph from './templates/ai-analysis-followup-graph';
+import * as aiAnalysisFollowupSources from './templates/ai-analysis-followup-sources';
+import * as aiAnalysisFollowupBlocks from './templates/ai-analysis-followup-blocks';
+import * as aiAnalysisFollowupFull from './templates/ai-analysis-followup-full';
+import * as aiAnalysisSaveFilename from './templates/ai-analysis-save-filename';
+import * as aiAnalysisSaveFolder from './templates/ai-analysis-save-folder';
 import * as docTypeClassifyJson from './templates/doc-type-classify-json';
 import * as docTagGenerateJson from './templates/doc-tag-generate-json';
 import * as contextMemory from './templates/context-memory';
@@ -92,6 +99,17 @@ export enum PromptId {
 	DocTypeClassifyJson = 'doc-type-classify-json',
 	DocTagGenerateJson = 'doc-tag-generate-json',
 
+	// AI analysis inline follow-up prompts
+	AiAnalysisFollowupSummary = 'ai-analysis-followup-summary',
+	AiAnalysisFollowupGraph = 'ai-analysis-followup-graph',
+	AiAnalysisFollowupSources = 'ai-analysis-followup-sources',
+	AiAnalysisFollowupBlocks = 'ai-analysis-followup-blocks',
+	AiAnalysisFollowupFull = 'ai-analysis-followup-full',
+
+	// AI analysis save dialog (filename/folder suggestions)
+	AiAnalysisSaveFileName = 'ai-analysis-save-filename',
+	AiAnalysisSaveFolder = 'ai-analysis-save-folder',
+
 	// Context building templates (internal use)
 	ContextMemory = 'context-memory',
 	UserProfileContext = 'user-profile-context',
@@ -137,6 +155,13 @@ export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
 	// Classify document type: principle, profile, index, daily, project, note, or other
 	PromptId.DocTypeClassifyJson,
 	PromptId.DocTagGenerateJson,
+
+	// AI analysis follow-up prompts
+	PromptId.AiAnalysisFollowupSummary,
+	PromptId.AiAnalysisFollowupGraph,
+	PromptId.AiAnalysisFollowupSources,
+	PromptId.AiAnalysisFollowupBlocks,
+	PromptId.AiAnalysisFollowupFull,
 ] as const;
 
 /**
@@ -189,7 +214,7 @@ export interface PromptVariables {
 		documents: Array<{ index: number; text: string; boostInfo?: string }>;
 	};
 	[PromptId.AiSearchSystem]: SystemInfo;
-	[PromptId.ThoughtAgentSystem]: Record<string, never>;
+	[PromptId.ThoughtAgentSystem]: { analysisMode?: 'simple' | 'full'; simpleMode?: boolean };
 	[PromptId.ApplicationGenerateTitle]: {
 		messages: Array<{ role: string; content: string }>;
 		contextInfo?: string;
@@ -245,6 +270,13 @@ export interface PromptVariables {
 		title?: string;
 		existingTags?: string[];
 	};
+	[PromptId.AiAnalysisFollowupSummary]: { question: string; summary: string };
+	[PromptId.AiAnalysisFollowupGraph]: { question: string; nodeLabels: string; nodeCount: number; edgeCount: number };
+	[PromptId.AiAnalysisFollowupSources]: { question: string; sourcesList: string };
+	[PromptId.AiAnalysisFollowupBlocks]: { question: string; blocksText: string };
+	[PromptId.AiAnalysisFollowupFull]: { question: string; summary: string };
+	[PromptId.AiAnalysisSaveFileName]: { query: string; summary?: string };
+	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string };
 	[PromptId.ContextMemory]: {
 		hasProject: boolean;
 		projectName: string;
@@ -300,6 +332,13 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptTemplate> = {
 	[PromptId.ImageDescription]: createTemplate(imageDescription),
 	[PromptId.ImageSummary]: createTemplate(imageSummary),
 	[PromptId.FolderProjectSummary]: createTemplate(folderProjectSummary),
+	[PromptId.AiAnalysisFollowupSummary]: createTemplate(aiAnalysisFollowupSummary),
+	[PromptId.AiAnalysisFollowupGraph]: createTemplate(aiAnalysisFollowupGraph),
+	[PromptId.AiAnalysisFollowupSources]: createTemplate(aiAnalysisFollowupSources),
+	[PromptId.AiAnalysisFollowupBlocks]: createTemplate(aiAnalysisFollowupBlocks),
+	[PromptId.AiAnalysisFollowupFull]: createTemplate(aiAnalysisFollowupFull),
+	[PromptId.AiAnalysisSaveFileName]: createTemplate(aiAnalysisSaveFilename),
+	[PromptId.AiAnalysisSaveFolder]: createTemplate(aiAnalysisSaveFolder),
 	[PromptId.DocTypeClassifyJson]: createTemplate(docTypeClassifyJson),
 	[PromptId.DocTagGenerateJson]: createTemplate(docTagGenerateJson),
 	[PromptId.ContextMemory]: createTemplate(contextMemory),

@@ -1,0 +1,436 @@
+import { hashText } from "@/core/utils/hash-utils";
+import { useCallback } from "react";
+import { CompletedAnalysisSnapshot, useAIAnalysisStore } from "../store/aiAnalysisStore";
+import { AppContext } from "@/app/context/AppContext";
+import { useSharedStore } from "../store/sharedStore";
+import { buildAiAnalyzeMarkdown, ExportSource, saveAiAnalyzeResultToMarkdown } from "../callbacks/save-ai-analyze-to-md";
+import { AISearchSource } from "@/service/agents/AISearchAgent";
+import { AIAnalysisHistoryRecord } from "@/service/AIAnalysisHistoryService";
+import { generateStableUuid } from "@/core/utils/id-utils";
+import { CHAT_VIEW_TYPE } from "../../ChatView";
+import { EventBus, SelectionChangedEvent } from "@/core/eventBus";
+import { SearchResultItem } from "@/service/search/types";
+import { findKeyNodesTool, findPathTool, graphTraversalTool, inspectNoteContextTool, localSearchWholeVaultTool } from "@/service/tools/search-graph-inspector";
+import { useUIEventStore } from "@/ui/store/uiEventStore";
+
+// Convert AISearchSource[] to SearchResultItem[] with extended fields for TopSourcesSection
+export const convertSourcesToSearchResultItems = (aiSources: AISearchSource[]): SearchResultItem[] => {
+    return aiSources.map(source => ({
+        id: source.id,
+        type: 'markdown' as const,
+        title: source.title,
+        path: source.path,
+        lastModified: Date.now(),
+        content: source.reasoning, // Used for reasoning display
+        score: source.score.average,
+        source: 'local' as const,
+        badges: source.badges,
+        scoreDetail: {
+            physical: source.score.physical,
+            semantic: source.score.semantic,
+            average: source.score.average
+        }
+    }));
+};
+
+export function useAIAnalysisResult() {
+    const { searchQuery } = useSharedStore();
+
+    const {
+        webEnabled,
+        analysisStartedAtMs,
+        graph,
+        topics,
+        sources,
+        topicInspectResults,
+        usage,
+        duration,
+        analysisRunId,
+        autoSaveState,
+        setAutoSaveState,
+        recordError,
+        getHasGraphData,
+    } = useAIAnalysisStore();
+
+    /** Current summary for display (streaming = summaryChunks, else selected from summaries). */
+    const summary = useAIAnalysisStore((s) => {
+        if (s.isSummaryStreaming || (s.isAnalyzing && s.summaryChunks.length > 0)) {
+            return s.summaryChunks.join('');
+        }
+        const list = s.summaries;
+        const idx = (s.summaryVersion ?? 1) - 1;
+        return list[idx] ?? list[0] ?? '';
+    });
+
+    const handleAutoSave = useCallback(async () => {
+        const summaryHash = hashText(`${summary}::t${topics.length}::s${sources.length}`);
+        const alreadySavedSameRunSameSummary =
+            autoSaveState.lastRunId === analysisRunId
+            && autoSaveState.lastSavedSummaryHash === summaryHash;
+        if (alreadySavedSameRunSameSummary) return;
+
+        try {
+            const st = useAIAnalysisStore.getState();
+            const replaySnapshot: CompletedAnalysisSnapshot = {
+                version: 1,
+                summaries: st.summaries?.length ? st.summaries : [summary],
+                summaryVersion: st.summaryVersion ?? 1,
+                runAnalysisMode: st.runAnalysisMode ?? undefined,
+                analysisStartedAtMs,
+                duration,
+                usage: usage ?? null,
+                topics: st.topics ?? [],
+                dashboardBlocks: st.dashboardBlocks ?? [],
+                sources: st.sources ?? [],
+                graph: st.graph ?? null,
+                topicInspectResults: st.topicInspectResults ?? {},
+                topicAnalyzeResults: st.topicAnalyzeResults ?? {},
+                topicGraphResults: st.topicGraphResults ?? {},
+                steps: st.steps ?? [],
+                fullAnalysisFollowUp: st.fullAnalysisFollowUp ?? [],
+            };
+
+            const ts = Date.now();
+            const today = new Date().toISOString().slice(0, 10);
+            const fileName = `AI Analysis - ${searchQuery.slice(0, 48) || 'Query'} - ${today}`;
+            const exportSources: ExportSource[] = sources.map(s => ({
+                path: s.path,
+                title: s.title,
+                score: s.score?.average,
+                content: s.reasoning,
+            }));
+
+            const saved = await saveAiAnalyzeResultToMarkdown({
+                folderPath: AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder!,
+                fileName,
+                query: searchQuery,
+                snapshot: replaySnapshot,
+                webEnabled,
+            });
+
+            const record: AIAnalysisHistoryRecord = {
+                id: generateStableUuid(saved.path),
+                vault_rel_path: saved.path,
+                query: searchQuery || null,
+                created_at_ts: ts,
+                web_enabled: webEnabled ? 1 : 0,
+                estimated_tokens: usage?.totalTokens ?? null,
+                sources_count: sources.length,
+                topics_count: topics.length,
+                graph_nodes_count: getHasGraphData() ? (graph?.nodes?.length ?? 0) : 0,
+                graph_edges_count: getHasGraphData() ? (graph?.edges?.length ?? 0) : 0,
+                duration: duration ?? null,
+            };
+            await AppContext.getInstance().aiAnalysisHistoryService.insertOrIgnore(record as any);
+
+            // Mark as saved to prevent duplicates across modal reopen.
+            setAutoSaveState({ lastRunId: analysisRunId, lastSavedSummaryHash: summaryHash });
+        } catch (e) {
+            console.warn('[AISearchTab] auto-save failed:', e);
+        }
+    }, [searchQuery, summary, getHasGraphData]);
+
+    const handleCopyAll = useCallback(async () => {
+        const st = useAIAnalysisStore.getState();
+        const markdown = buildAiAnalyzeMarkdown({
+            query: searchQuery,
+            webEnabled,
+            summary,
+            topics,
+            sources: sources.map(s => ({
+                path: s.path,
+                title: s.title,
+                score: s.score?.average,
+                content: s.reasoning,
+            })),
+            topicInspectResults: topicInspectResults ?? {},
+            topicAnalyzeResults: st.topicAnalyzeResults ?? {},
+            topicGraphResults: st.topicGraphResults ?? {},
+            estimatedTokens: usage?.totalTokens ?? 0,
+        }, graph ?? undefined);
+
+        const enableDevTools = AppContext.getInstance().plugin?.settings?.enableDevTools ?? false;
+        let textToCopy = markdown;
+        if (enableDevTools && (st.steps?.length ?? 0) > 0) {
+            const getStepText = useAIAnalysisStore.getState().getStepText;
+            const stepsSection = st.steps!
+                .map((step, i) => {
+                    const title = `### Step ${i + 1}: ${step.type}`;
+                    const body = getStepText(step).trim();
+                    return body ? `${title}\n\n${body}` : title;
+                })
+                .join('\n\n');
+            textToCopy = `${markdown}\n\n---\n\n## Steps (Dev)\n\n${stepsSection}`;
+        }
+        await navigator.clipboard.writeText(textToCopy);
+    }, [searchQuery, webEnabled, summary, topics, sources, graph, topicInspectResults, usage]);
+
+    const handleSaveToFile = useCallback(async (folderPath: string, fileName: string) => {
+        const st = useAIAnalysisStore.getState();
+        const snapshot: CompletedAnalysisSnapshot = {
+            version: 1,
+            summaries: st.summaries?.length ? st.summaries : [summary],
+            summaryVersion: st.summaryVersion ?? 1,
+            runAnalysisMode: st.runAnalysisMode ?? undefined,
+            analysisStartedAtMs,
+            duration,
+            usage: usage ?? null,
+            topics: st.topics ?? [],
+            dashboardBlocks: st.dashboardBlocks ?? [],
+            sources: st.sources ?? [],
+            graph: st.graph ?? null,
+            topicInspectResults: st.topicInspectResults ?? {},
+            topicAnalyzeResults: st.topicAnalyzeResults ?? {},
+            topicGraphResults: st.topicGraphResults ?? {},
+            steps: st.steps ?? [],
+            fullAnalysisFollowUp: st.fullAnalysisFollowUp ?? [],
+            graphFollowups: st.graphFollowupHistory?.length ? st.graphFollowupHistory : undefined,
+            blocksFollowupsByBlockId: Object.keys(st.blocksFollowupHistoryByBlockId ?? {}).length > 0 ? st.blocksFollowupHistoryByBlockId : undefined,
+            sourcesFollowups: st.sourcesFollowupHistory?.length ? st.sourcesFollowupHistory : undefined,
+        };
+        await saveAiAnalyzeResultToMarkdown({
+            folderPath: folderPath,
+            fileName: fileName,
+            query: searchQuery,
+            snapshot,
+            webEnabled,
+        });
+    }, [searchQuery, webEnabled, summary, analysisStartedAtMs, duration, usage]);
+
+    // Use custom hook for opening in chat (raw sources; hook maps to manager format)
+    const handleOpenInChat = useCallback(async (
+        onClose?: () => void
+    ) => {
+        try {
+            console.debug('[AISearchTab] handleOpenInChat called', {
+                query: searchQuery,
+                sourcesCount: sources.length,
+                topicsCount: topics.length,
+            });
+
+            const mappedSources = sources.map(s => ({
+                path: s.path,
+                title: s.title,
+                content: 'reasoning' in s ? (s as AISearchSource).reasoning : (s as { content?: string }).content,
+            }));
+
+            // Step 1: Create conversation from search analysis
+            console.debug('[AISearchTab] Step 1: Creating conversation from search analysis...');
+            const conversation = await AppContext.getInstance().manager.createConvFromSearchAIAnalysis({
+                query: searchQuery,
+                summary: summary,
+                sources: mappedSources,
+                topics: topics.length > 0 ? topics : undefined,
+            });
+            console.debug('[AISearchTab] Conversation created', {
+                conversationId: conversation.meta.id,
+                projectId: conversation.meta.projectId ?? null,
+            });
+
+            // Step 2: Wait for conversation to be fully persisted
+            console.debug('[AISearchTab] Step 2: Waiting for conversation persistence...');
+            await new Promise<void>((resolve) => {
+                requestAnimationFrame(() => {
+                    setTimeout(() => resolve(), 50);
+                });
+            });
+            console.debug('[AISearchTab] Conversation persistence wait completed');
+
+            // Step 3: Activate chat view
+            console.debug('[AISearchTab] Step 3: Activating chat view...');
+            if (AppContext.getInstance().viewManager) {
+                const handler = AppContext.getInstance().viewManager.getViewSwitchConsistentHandler();
+                if (handler) {
+                    await handler.activateChatView();
+                    console.debug('[AISearchTab] Chat view activated');
+                } else {
+                    console.warn('[AISearchTab] ViewSwitchConsistentHandler not available');
+                }
+            } else {
+                console.warn('[AISearchTab] ViewManager not available');
+            }
+
+            // Step 4: Wait for chat view to be ready
+            console.debug('[AISearchTab] Step 4: Waiting for chat view to be ready...');
+            let retries = 0;
+            let chatViewReady = false;
+            while (retries < 20) { // Increased retries for more reliable loading
+                const chatLeaves = AppContext.getInstance().app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
+                if (chatLeaves.length > 0 && chatLeaves[0]?.view) {
+                    console.debug('[AISearchTab] Chat view is ready', { retries });
+                    chatViewReady = true;
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100)); // Increased delay
+                retries++;
+            }
+            if (!chatViewReady) {
+                console.warn('[AISearchTab] Chat view not ready after 20 retries');
+            }
+
+            // Step 5: Wait a bit more to ensure view is fully initialized
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Step 6: Dispatch selection change event
+            console.debug('[AISearchTab] Step 6: Dispatching SelectionChangedEvent...');
+            const eventBus = EventBus.getInstance(AppContext.getInstance().app);
+            eventBus.dispatch(new SelectionChangedEvent({
+                conversationId: conversation.meta.id,
+                projectId: conversation.meta.projectId ?? null,
+            }));
+            console.debug('[AISearchTab] SelectionChangedEvent dispatched successfully');
+
+            // Step 7: Wait a bit more to ensure event is processed
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Step 8: Close the search modal
+            console.debug('[AISearchTab] Step 8: Closing search modal...');
+            onClose?.();
+        } catch (e) {
+            console.error('[AISearchTab] Open in chat failed:', e);
+            recordError(e instanceof Error ? e.message : 'Failed to open in chat');
+        }
+    }, [searchQuery, summary, sources, topics]);
+
+    return {
+        handleAutoSave,
+        handleSaveToFile,
+        handleCopyAll,
+        handleOpenInChat,
+    }
+}
+
+export function useAnalyzeTopicResults() {
+
+    const { summaryChunks, sources, topicInspectResults, setTopicInspectResults, setTopicInspectLoading } = useAIAnalysisStore();
+
+    const summary = summaryChunks.join('');
+
+    const handleCopyTopicInfo = useCallback(async (topic: string) => {
+        const inspectList = topicInspectResults[topic] ?? [];
+        // todo send to core/storage/vault/search-docs to process
+        const lines: string[] = [
+            `# Topic: ${topic}`,
+            '',
+            '## Summary',
+            summary || '(empty)',
+            '',
+            '## Sources',
+            ...sources.map((s) => `- [[${s.path}|${s.title}]]`),
+            '',
+        ];
+        if (inspectList.length > 0) {
+            lines.push('## Inspect results');
+            inspectList.forEach((item) => lines.push(`- [[${item.path}|${item.title}]]`));
+            lines.push('');
+        }
+        try {
+            await navigator.clipboard.writeText(lines.join('\n'));
+        } catch (e) {
+            console.warn('Copy topic info failed:', e);
+        }
+    }, [summary, sources, topicInspectResults]);
+
+    // todo we need to use simple search agent to inspect the topic
+    const handleInspectTopic = useCallback(async (topic: string) => {
+        setTopicInspectLoading(topic);
+        try {
+            const tool = localSearchWholeVaultTool();
+            const out = await tool.execute({
+                query: topic,
+                searchMode: 'hybrid',
+                scopeMode: 'vault',
+                limit: 10,
+                response_format: 'structured',
+            });
+            const raw = (out as any)?.result ?? out;
+            const results = Array.isArray(raw?.results) ? raw.results : [];
+            const items: SearchResultItem[] = results.map((r: any) => ({
+                id: r.id ?? r.path ?? `inspect:${r.path}`,
+                type: (r.type as SearchResultItem['type']) ?? 'markdown',
+                title: r.title ?? r.path ?? '',
+                path: r.path ?? '',
+                lastModified: r.lastModified ?? Date.now(),
+                score: r.score ?? r.finalScore,
+                source: 'local',
+                scoreDetail: r.scoreDetail,
+            }));
+            setTopicInspectResults(topic, items);
+        } catch (e) {
+            console.warn('[TagCloudSection] Inspect topic failed:', e);
+            setTopicInspectResults(topic, []);
+        } finally {
+            setTopicInspectLoading(null);
+        }
+    }, [setTopicInspectResults, setTopicInspectLoading]);
+
+    return {
+        handleCopyTopicInfo,
+        handleInspectTopic,
+    };
+}
+
+export function useAnalyzeGraphResults() {
+
+    const publishToolCall = (toolName: string, toolCallId: string, input: any) => {
+        useUIEventStore.getState().publish('ui:tool-call', {
+            triggerName: 'graph-ui',
+            toolName,
+            toolCallId,
+            input,
+        });
+    };
+
+    const publishToolResult = (toolName: string, toolCallId: string, output: any) => {
+        useUIEventStore.getState().publish('ui:tool-result', {
+            triggerName: 'graph-ui',
+            toolName,
+            toolCallId,
+            output,
+        });
+    };
+
+    const runGraphTool = async <TOutput,>(toolName: 'inspect_note_context' | 'graph_traversal' | 'find_path' | 'find_key_nodes', input: any) => {
+        const toolCallId = `graph-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        publishToolCall(toolName, toolCallId, input);
+        try {
+            let output: any = null;
+            if (toolName === 'inspect_note_context') {
+                output = await inspectNoteContextTool().execute({
+                    note_path: input.note_path,
+                    limit: 15,
+                    include_semantic_paths: true,
+                    response_format: 'structured',
+                });
+            } else if (toolName === 'graph_traversal') {
+                output = await graphTraversalTool().execute({
+                    start_note_path: input.start_note_path,
+                    hops: 1,
+                    limit: 15,
+                    include_semantic_paths: true,
+                    response_format: 'structured',
+                });
+            } else if (toolName === 'find_path') {
+                output = await findPathTool().execute({
+                    start_note_path: input.start_note_path,
+                    end_note_path: input.end_note_path,
+                    limit: 15,
+                    include_semantic_paths: true,
+                    response_format: 'structured',
+                });
+            } else if (toolName === 'find_key_nodes') {
+                output = await findKeyNodesTool().execute(input);
+            }
+            publishToolResult(toolName, toolCallId, output);
+            return output as TOutput;
+        } catch (e) {
+            console.warn('[KnowledgeGraphSection] graph tool failed:', toolName, e);
+            publishToolResult(toolName, toolCallId, { error: e instanceof Error ? e.message : String(e) });
+            throw e;
+        }
+    };
+
+    return {
+        runGraphTool
+    };
+}

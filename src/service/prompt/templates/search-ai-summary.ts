@@ -33,19 +33,12 @@ Session context: {{agentMemory.sessionSummary}}
 No specific topics extracted.
 {{/if}}
 
-{{#if agentResult.insightCards.length}}
-### Key Insights
-{{#each agentResult.insightCards}}
-**{{title}}**
-*{{description}}*
-{{/each}}
-{{/if}}
-
-{{#if agentResult.suggestions.length}}
-### Actionable Suggestions
-{{#each agentResult.suggestions}}
-**{{title}}**
-*{{description}}*
+{{#if agentResult.dashboardBlocks.length}}
+### Dashboard Blocks (insights, suggestions, Mermaid, etc.)
+{{#each agentResult.dashboardBlocks}}
+**{{title}}{{#if category}} ({{category}}){{/if}}** [{{slot}} / {{renderEngine}}]
+{{#if items.length}}{{#each items}}- **{{title}}**: {{description}}
+{{/each}}{{/if}}{{#if markdown}}{{markdown}}{{/if}}{{#if mermaidCode}}(mermaid block: {{mermaidCode}}){{/if}}
 {{/each}}
 {{/if}}
 
@@ -89,12 +82,12 @@ Create a comprehensive response that:
 6. **Prioritizes high-relevance sources** (score > 70) for key claims
 7. **Acknowledges limitations** if evidence is insufficient rather than fabricating information
 8. **Include a small Mermaid overview diagram** that summarizes the key relationships:
-   - Output a section titled: \`## Mermaid Overview\`
+   - Output a section titled: \`## Overview\`
    - Then output a Mermaid code block using \`flowchart TD\`
    - Limit to **<= 12 nodes** and **<= 18 edges** (keep it compact)
    - Node IDs must be mermaid-safe (no spaces). Use short IDs like \`A1\`, \`T1\`, \`S1\`.
    - Node labels should be short and readable. **Do NOT include file paths in node labels.**
-   - The diagram should connect topics -> documents -> insights/suggestions (high-level), not the full raw graph.
+   - The diagram should connect topics -> documents -> dashboard blocks (high-level), not the full raw graph.
    - If you cannot produce a meaningful diagram, output a minimal placeholder mermaid block.
 `;
 

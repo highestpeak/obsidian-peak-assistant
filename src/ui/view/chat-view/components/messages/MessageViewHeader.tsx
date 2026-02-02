@@ -5,7 +5,7 @@ import { Folder, RefreshCw } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { cn } from '@/ui/react/lib/utils';
 import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
-import { useTypewriterEffect } from '@/ui/view/shared/useTypewriterEffect';
+import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
 import { TYPEWRITER_EFFECT_SPEED_MS } from '@/core/constant';
 import { ResourcesPopover } from './ResourcesPopover';
 import { SummaryPopover } from './SummaryPopover';

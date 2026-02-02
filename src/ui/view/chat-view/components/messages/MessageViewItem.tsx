@@ -26,7 +26,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/component/shared-ui/tooltip';
 import { Button } from '@/ui/component/shared-ui/button';
 import { ResourcePreviewHover, AnimatedSparkles } from '@/ui/component/mine';
-import { Streamdown } from 'streamdown';
+import { StreamdownIsolated } from '@/ui/component/mine';
 import type { FileUIPart } from 'ai';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
 import { formatTimestampLocale } from '@/ui/view/shared/date-utils';
@@ -784,14 +784,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 										{displayText}
 									</div>
 								) : (
-									<div
+									<StreamdownIsolated
 										className="pktw-select-text"
-										data-streamdown-root
+										isAnimating={streamingState.isStreaming}
 									>
-										{/* Streamdown component handles animated rendering of streaming text */}
-										{/* isAnimating=true when streaming, false when complete */}
-										<Streamdown isAnimating={streamingState.isStreaming}>{displayText}</Streamdown>
-									</div>
+										{displayText}
+									</StreamdownIsolated>
 								)
 							}
 							{/* Show expand/collapse button for long user messages (not streaming, not AI) */}

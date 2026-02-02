@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Sparkles, SearchX } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
-import { KeyboardShortcut } from './components/KeyboardShortcut';
+import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { SearchResultRow } from './components/VaultSearchResult';
 import { formatDuration } from '@/core/utils/format-utils';
 import { cn } from '@/ui/react/lib/utils';

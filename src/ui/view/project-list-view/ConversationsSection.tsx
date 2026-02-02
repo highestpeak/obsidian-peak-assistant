@@ -10,7 +10,7 @@ import { ChevronDown, ChevronRight, Plus, Pencil, FileText, Calendar } from 'luc
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent } from '@/core/eventBus';
-import { useTypewriterEffect } from '@/ui/view/shared/useTypewriterEffect';
+import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
 import { TYPEWRITER_EFFECT_SPEED_MS, DEFAULT_NEW_CONVERSATION_TITLE, MAX_CONVERSATIONS_DISPLAY } from '@/core/constant';
 import { formatRelativeDate } from '@/ui/view/shared/date-utils';
 import { MoreHorizontal } from 'lucide-react';

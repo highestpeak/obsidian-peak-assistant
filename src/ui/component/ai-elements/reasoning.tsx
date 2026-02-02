@@ -9,8 +9,8 @@ import {
 import { cn } from "@/ui/react/lib/utils";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { createContext, memo, useContext, useEffect, useState } from "react";
-import { Streamdown } from "streamdown";
+import React, { createContext, memo, useContext, useEffect, useState } from "react";
+import { StreamdownIsolated } from "@/ui/component/mine";
 import { Shimmer } from "./shimmer";
 
 type ReasoningContextValue = {
@@ -170,7 +170,9 @@ export const ReasoningContent = memo(
       )}
       {...props}
     >
-      <Streamdown {...props}>{children}</Streamdown>
+      <StreamdownIsolated isAnimating={(props as { isAnimating?: boolean }).isAnimating ?? false}>
+        {children}
+      </StreamdownIsolated>
     </CollapsibleContent>
   )
 );

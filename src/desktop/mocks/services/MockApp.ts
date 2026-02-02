@@ -5,15 +5,20 @@ export class MockApp {
 	isMock = true;
 
 	vault = {
-		getAbstractFileByPath: (path: string) => null,
+		getAbstractFileByPath: (_path: string) => null,
+		getAllFolders: (_includeRoot?: boolean) => [
+			{ path: '', name: '', isRoot: () => true, children: [] },
+			{ path: 'Analysis/AI Searches', name: 'AI Searches', isRoot: () => false, children: [] },
+		],
 		getMarkdownFiles: () => [],
-		read: async (path: string) => '',
-		write: async (path: string, data: string) => {},
-		exists: (path: string) => false,
-		create: async (path: string, data: string) => {},
-		modify: async (path: string, data: string) => {},
-		delete: async (path: string) => {},
-		rename: async (path: string, newPath: string) => {},
+		read: async (_path: string) => '',
+		write: async (_path: string, _data: string) => {},
+		exists: (_path: string) => false,
+		create: async (_path: string, _data: string) => {},
+		createFolder: async (_path: string) => {},
+		modify: async (_path: string, _data: string) => {},
+		delete: async (_path: string) => {},
+		rename: async (_path: string, _newPath: string) => {},
 	};
 
 	workspace = {

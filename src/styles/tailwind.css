@@ -20,26 +20,53 @@
 
 /* Custom CSS */
 
+/* Remove border and box-shadow from mermaid container in dashboard blocks section but keep them in other places */
+.dashboard-blocks-section-block [data-streamdown-root="true"]::part(mermaid-container) {
+	border: none;
+	box-shadow: none;
+}
+
 /* Shimmer animation keyframes */
 @keyframes pktw-shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+	0% {
+		background-position: -200% 0;
+	}
+
+	100% {
+		background-position: 200% 0;
+	}
+}
+
+/* Breathing glow border for IntelligenceFrame - compact spread to avoid clipping by overflow parents */
+@keyframes pktw-pulseGlow {
+
+	0%,
+	100% {
+		box-shadow:
+			0 0 0 1px rgba(139, 92, 246, 0.5),
+			0 0 8px rgba(139, 92, 246, 0.3),
+			0 0 14px rgba(59, 130, 246, 0.2);
+	}
+
+	50% {
+		box-shadow:
+			0 0 0 2px rgba(139, 92, 246, 0.8),
+			0 0 22px rgba(139, 92, 246, 0.5),
+			0 0 30px rgba(236, 72, 153, 0.25);
+	}
 }
 
 /* Fade in slide animation for staggered list items */
 @keyframes fadeInSlide {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+	from {
+		opacity: 0;
+		transform: translateY(-8px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 /* Icon */
@@ -210,7 +237,7 @@
 .peak-menu-list-container {
 	overflow: hidden;
 	transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-	            opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	max-height: 5000px;
 	opacity: 1;
 }
@@ -444,7 +471,15 @@
 }
 
 @keyframes l16 {
-	0% { background-position: -150% 0, -150% 0; }
-	66% { background-position: 250% 0, -150% 0; }
-	100% { background-position: 250% 0, 250% 0; }
+	0% {
+		background-position: -150% 0, -150% 0;
+	}
+
+	66% {
+		background-position: 250% 0, -150% 0;
+	}
+
+	100% {
+		background-position: 250% 0, 250% 0;
+	}
 }

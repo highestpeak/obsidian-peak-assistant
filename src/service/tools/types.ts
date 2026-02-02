@@ -30,13 +30,13 @@ export function safeAgentTool(tool: AgentTool): AgentTool {
             } catch (error) {
                 if (error instanceof z.ZodError) {
                     return {
-                        error: "not valid parameters: " + error.errors.map(e => e.message).join(", "),
+                        error: "[Tool Safe Wrapper][Zod] Not valid parameters: " + error.errors.map(e => e.message).join(", "),
                         durationMs: Date.now() - start,
                     };
                 }
-                console.error(error);
+                console.error("[Tool Safe Wrapper] Unknown internal error: ", error);
                 return {
-                    error: "internal error: " + error.message,
+                    error: "[Tool Safe Wrapper] Unknown internal error: " + error.message,
                     durationMs: Date.now() - start,
                 };
             }

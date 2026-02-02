@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
-import { Streamdown } from "streamdown";
+import { StreamdownIsolated } from "@/ui/component/mine";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -310,16 +310,14 @@ export const MessageBranchPage = ({
   );
 };
 
-export type MessageResponseProps = ComponentProps<typeof Streamdown>;
+export type MessageResponseProps = ComponentProps<typeof StreamdownIsolated>;
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
-    <div className={cn("pktw-select-text pktw-relative", className)} data-streamdown-root>
-      <Streamdown
-        className={cn("pktw-size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0")}
-        {...props}
-      />
-    </div>
+    <StreamdownIsolated
+      className={cn("pktw-select-text pktw-relative pktw-size-full", className)}
+      {...props}
+    />
   ),
   (prevProps, nextProps) => prevProps.children === nextProps.children
 );

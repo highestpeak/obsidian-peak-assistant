@@ -3,7 +3,6 @@
  *
  * This is intentionally UI-focused and does not try to match the storage layer graph types.
  */
-export type GraphEdgeKind = 'physical' | 'semantic' | 'path' | 'unknown';
 
 export interface GraphPatchNode {
 	id: string;
@@ -22,7 +21,7 @@ export interface GraphPatchEdge {
 	/**
 	 * Used for styling (semantic edges as dashed, path edges as neon, etc.)
 	 */
-	kind?: GraphEdgeKind;
+	kind?: string;
 }
 
 export interface GraphPatch {
@@ -60,15 +59,24 @@ function safeString(v: unknown): string | null {
  * This converter is best-effort and only patches when structured data is available.
  */
 export function toolOutputToGraphPatch(toolName: string, output: unknown): GraphPatch | null {
+	// Many tool runners wrap outputs (e.g. { result, durationMs }).
+	// Unwrap here so converters can focus on the core payload.
+	const anyOut: any = output as any;
+	const core = anyOut?.result ?? anyOut?.data ?? anyOut;
+	const payload = core?.data ?? core; // hybrid: { data, template }
+
+	// If the tool reports an error, don't patch the graph.
+	if (payload?.error) return null;
+
 	switch (toolName) {
 		case 'graph_traversal':
-			return convertGraphTraversal(output);
+			return convertGraphTraversal(payload);
 		case 'inspect_note_context':
-			return convertInspectNoteContext(output);
+			return convertInspectNoteContext(payload);
 		case 'find_key_nodes':
-			return convertFindKeyNodes(output);
+			return convertFindKeyNodes(payload);
 		case 'find_path':
-			return convertFindPath(output);
+			return convertFindPath(payload);
 		default:
 			return null;
 	}

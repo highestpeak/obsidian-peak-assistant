@@ -120,3 +120,9 @@ export async function calculateFileHash(file: File): Promise<string> {
 	}
 }
 
+export function hashText(text: string): string {
+	// Lightweight deterministic hash (djb2-ish) to avoid importing crypto.
+	let h = 5381;
+	for (let i = 0; i < text.length; i++) h = ((h << 5) + h) ^ text.charCodeAt(i);
+	return `h${(h >>> 0).toString(16)}`;
+}

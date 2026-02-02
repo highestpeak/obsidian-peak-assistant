@@ -1,18 +1,47 @@
-import type { App } from 'obsidian';
-import type { AiAnalyzeResult, SearchResultItem } from '@/service/search/types';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
+import type { GraphNodeType } from '@/core/po/graph.po';
+import { AppContext } from '@/app/context/AppContext';
+import type { AISearchGraph, AISearchSource } from '@/service/agents/AISearchAgent';
+import type { DashboardBlock } from '@/service/agents/AISearchAgent';
+import type { SearchResultItem } from '@/service/search/types';
+import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
+import type { CompletedAnalysisSnapshot } from '@/ui/view/quick-search/store/aiAnalysisStore';
 
-/**
- * Save AI analysis result to a markdown file in the vault.
- */
-export async function saveAiAnalyzeResultToMarkdown(app: App, params: {
+/** Source shape for export/save; compatible with AISearchSource (path, title, score.average, reasoning). */
+export type ExportSource = { path: string; title: string; score?: number; content?: string };
+
+/** Per-topic Analyze Q&A for export. */
+export type ExportTopicAnalyzeResult = { question: string; answer: string };
+
+export type SaveAnalysisResultParams = {
 	folderPath: string;
 	fileName: string;
 	query: string;
-	result: Pick<AiAnalyzeResult, 'summary' | 'sources' | 'insights' | 'usage'>;
+	/** Full snapshot; when provided, uses AiSearchAnalysisDoc format. */
+	snapshot?: CompletedAnalysisSnapshot;
+	result?: {
+		summary: string;
+		sources: ExportSource[];
+		insights?: {
+			topics?: Array<{ label: string; weight: number }>;
+			graph?: AISearchGraph;
+		};
+		topicInspectResults?: Record<string, SearchResultItem[]>;
+		topicAnalyzeResults?: Record<string, ExportTopicAnalyzeResult[]>;
+		topicGraphResults?: Record<string, GraphPreview | null>;
+		usage?: { estimatedTokens?: number };
+	};
 	webEnabled?: boolean;
-}): Promise<{ path: string }> {
+};
+
+/**
+ * Save AI analysis result to a markdown file in the vault.
+ * Uses AiSearchAnalysisDoc when snapshot is provided; otherwise builds from result.
+ */
+export async function saveAiAnalyzeResultToMarkdown(params: SaveAnalysisResultParams): Promise<{ path: string }> {
+	const ctx = AppContext.getInstance();
+	const app = ctx.app;
 	const folder = params.folderPath.replace(/^\/+/, '').replace(/\/+$/, '');
 	const fileName = sanitizeFileName(params.fileName || 'AI Search Results');
 	const fullFolderPath = folder.length ? folder : '';
@@ -22,34 +51,43 @@ export async function saveAiAnalyzeResultToMarkdown(app: App, params: {
 		await ensureFolder(app, fullFolderPath);
 	}
 
-	const graph = params.result.insights?.graph;
-	const transformedGraph = graph ? {
-		nodes: graph.nodes.map(node => ({
-			id: node.id,
-			label: node.label,
-			kind: node.type
-		})),
-		edges: graph.edges.map(edge => ({
-			from: edge.from_node_id,
-			to: edge.to_node_id,
-			weight: edge.weight
-		}))
-	} : undefined;
-
-	const content = buildAiAnalyzeMarkdown({
-		query: params.query,
-		webEnabled: params.webEnabled === true,
-		summary: params.result.summary,
-		topics: params.result.insights?.topics,
-		sources: params.result.sources,
-		graph: transformedGraph,
-		estimatedTokens: params.result.usage?.estimatedTokens,
-	}, graph);
+	let content: string;
+	if (params.snapshot) {
+		const docModel = fromCompletedAnalysisSnapshot(params.snapshot, params.query, params.webEnabled === true);
+		docModel.created = new Date().toISOString();
+		content = buildAiSearchAnalysisMarkdown(docModel);
+	} else {
+		const r = params.result!;
+		const snapshot: CompletedAnalysisSnapshot = {
+			version: 1,
+			summaries: r.summary ? [r.summary] : [],
+			summaryVersion: 1,
+			analysisStartedAtMs: null,
+			duration: null,
+			usage: r.usage?.estimatedTokens != null ? { inputTokens: 0, outputTokens: r.usage.estimatedTokens, totalTokens: r.usage.estimatedTokens } : null,
+			topics: r.insights?.topics ?? [],
+			dashboardBlocks: [],
+			sources: r.sources.map((s, i) => ({
+				id: s.path ? `replay:${s.path}` : `replay:src:${i}`,
+				path: s.path,
+				title: s.title,
+				reasoning: s.content ?? '',
+				badges: [],
+				score: { physical: s.score ?? 0, semantic: s.score ?? 0, average: s.score ?? 0 },
+			})),
+			graph: r.insights?.graph ?? null,
+			topicInspectResults: r.topicInspectResults ?? {},
+			topicAnalyzeResults: r.topicAnalyzeResults ?? {},
+			topicGraphResults: r.topicGraphResults ?? {},
+		};
+		const docModel = fromCompletedAnalysisSnapshot(snapshot, params.query, params.webEnabled === true);
+		docModel.created = new Date().toISOString();
+		content = buildAiSearchAnalysisMarkdown(docModel);
+	}
 
 	const existing = app.vault.getAbstractFileByPath(filePath);
 	let finalPath = filePath;
 	if (existing) {
-		// Avoid overwriting: suffix with timestamp.
 		const ts = new Date().toISOString().replace(/[:.]/g, '-');
 		finalPath = fullFolderPath ? `${fullFolderPath}/${fileName}-${ts}.md` : `${fileName}-${ts}.md`;
 	}
@@ -61,106 +99,58 @@ function sanitizeFileName(name: string): string {
 	return name
 		.trim()
 		.replace(/[\\\\/:*?\"<>|]/g, '-')
-		.replace(/\\s+/g, ' ')
+		.replace(/\s+/g, ' ')
 		.slice(0, 120);
 }
 
 /**
- * Build a Markdown document for saving/copying AI analysis results.
- * Keep it compact enough for vault notes while still being useful.
+ * Build markdown from snapshot (for copy, etc). Uses AiSearchAnalysisDoc format.
+ */
+export function buildAiAnalyzeMarkdownFromSnapshot(
+	snapshot: CompletedAnalysisSnapshot,
+	query: string,
+	webEnabled: boolean
+): string {
+	const docModel = fromCompletedAnalysisSnapshot(snapshot, query, webEnabled);
+	docModel.created = new Date().toISOString();
+	return buildAiSearchAnalysisMarkdown(docModel);
+}
+
+/**
+ * Build a Markdown document for saving AI analysis results (legacy params; delegates to AiSearchAnalysisDoc).
  */
 export function buildAiAnalyzeMarkdown(params: {
 	query: string;
 	webEnabled: boolean;
 	summary: string;
 	topics?: Array<{ label: string; weight: number }>;
-	sources: SearchResultItem[];
-	graph?: { nodes: Array<{ id: string; label: string; kind: string }>; edges: Array<{ from: string; to: string; weight?: number }> };
+	sources: ExportSource[];
+	topicInspectResults?: Record<string, SearchResultItem[]>;
+	topicAnalyzeResults?: Record<string, ExportTopicAnalyzeResult[]>;
+	topicGraphResults?: Record<string, GraphPreview | null>;
 	estimatedTokens?: number;
-}, originalGraph?: GraphPreview): string {
-	const now = new Date();
-	const date = now.toISOString();
-	const lines: string[] = [];
-	lines.push('---');
-	lines.push('type: ai-search-result');
-	lines.push(`created: ${date}`);
-	lines.push(`query: ${escapeYamlScalar(params.query)}`);
-	lines.push(`webEnabled: ${params.webEnabled ? 'true' : 'false'}`);
-	if (params.estimatedTokens != null) lines.push(`estimatedTokens: ${params.estimatedTokens}`);
-	lines.push('---');
-	lines.push('');
-	lines.push(`# AI Analysis`);
-	lines.push('');
-	lines.push(params.summary || '(empty)');
-	lines.push('');
-	if (params.topics?.length) {
-		lines.push(`# Key Topics`);
-		lines.push('');
-		for (const t of params.topics) {
-			lines.push(`- ${t.label}${t.weight != null ? ` (weight: ${t.weight})` : ''}`);
-		}
-		lines.push('');
-	}
-	lines.push(`# Query`);
-	lines.push('');
-	lines.push(params.query);
-	lines.push('');
-	lines.push(`# Sources`);
-	lines.push('');
-	for (const s of params.sources) {
-		const snippet = s.highlight?.text || s.content || '';
-		const score = s.finalScore ?? s.score;
-		lines.push(`- [[${s.path}|${s.title}]]${score != null ? ` (score: ${score.toFixed(2)})` : ''}`);
-		if (snippet) {
-			lines.push(`  - ${snippet.replace(/\\n/g, ' ').slice(0, 300)}`);
-		}
-	}
-	lines.push('');
-	lines.push(`# Knowledge Graph`);
-	lines.push('');
-	lines.push(buildMermaidBlock(originalGraph));
-	lines.push('');
-	return lines.join('\\n');
+}, originalGraph?: AISearchGraph): string {
+	const snapshot: CompletedAnalysisSnapshot = {
+		version: 1,
+		summaries: params.summary ? [params.summary] : [],
+		summaryVersion: 1,
+		analysisStartedAtMs: null,
+		duration: null,
+		usage: params.estimatedTokens != null ? { inputTokens: 0, outputTokens: params.estimatedTokens, totalTokens: params.estimatedTokens } : null,
+		topics: params.topics ?? [],
+		dashboardBlocks: [],
+		sources: params.sources.map((s, i) => ({
+			id: s.path ? `replay:${s.path}` : `replay:src:${i}`,
+			path: s.path,
+			title: s.title,
+			reasoning: s.content ?? '',
+			badges: [],
+			score: { physical: s.score ?? 0, semantic: s.score ?? 0, average: s.score ?? 0 },
+		})),
+		graph: originalGraph ?? null,
+		topicInspectResults: params.topicInspectResults ?? {},
+		topicAnalyzeResults: params.topicAnalyzeResults ?? {},
+		topicGraphResults: params.topicGraphResults ?? {},
+	};
+	return buildAiAnalyzeMarkdownFromSnapshot(snapshot, params.query, params.webEnabled);
 }
-
-export function buildMermaidBlock(graph?: GraphPreview): string {
-	if (!graph || !graph.nodes?.length) {
-		return '```mermaid\\nflowchart TD\\n  A[No graph data]\\n```';
-	}
-
-	// Map arbitrary ids to stable mermaid-safe ids.
-	const nodeIds = new Map<string, string>();
-	graph.nodes.slice(0, 40).forEach((n, idx) => nodeIds.set(n.id, `N${idx}`));
-
-	const lines: string[] = [];
-	lines.push('```mermaid');
-	lines.push('flowchart TD');
-	for (const n of graph.nodes.slice(0, 40)) {
-		const id = nodeIds.get(n.id);
-		if (!id) continue;
-		const label = escapeMermaidLabel(n.label);
-		lines.push(`  ${id}["${label}"]`);
-	}
-	for (const e of graph.edges.slice(0, 80)) {
-		const from = nodeIds.get(e.from_node_id);
-		const to = nodeIds.get(e.to_node_id);
-		if (!from || !to) continue;
-		lines.push(`  ${from} --> ${to}`);
-	}
-	lines.push('```');
-	return lines.join('\\n');
-}
-
-function escapeMermaidLabel(label: string): string {
-	return String(label ?? '')
-		.replace(/\"/g, '\\\\\"')
-		.replace(/\\n/g, ' ')
-		.slice(0, 80);
-}
-
-function escapeYamlScalar(value: string): string {
-	const v = String(value ?? '').replace(/\\r?\\n/g, ' ').trim();
-	return JSON.stringify(v);
-}
-
-

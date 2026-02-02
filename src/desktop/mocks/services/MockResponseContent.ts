@@ -6,6 +6,24 @@ export const MOCK_RESPONSE_CONTENT = `# Comprehensive AI Response Examples
 
 This document contains various examples of AI responses with different content types for testing stream chat functionality. It includes code blocks, mathematical expressions, diagrams, tables, and mixed content formats. Almost all text is in English, with only one dedicated chapter (Chapter 1) specifically testing CJK language support.
 
+## 0. WikiLink Example
+
+This section demonstrates the use of double-bracket WikiLinks, commonly used and parsed by the remark-wikilink plugin.
+
+Here are different link forms:
+
+- Basic link to existing page: [[Artificial Intelligence]]
+- Aliased link: [[Machine Learning|ML]]
+- Nested path: [[deep/learning]]
+- Aliased nested path: [[theory/math|Math Theory]]
+- Linking with special characters: [[remark-wikilink (plugin)]]
+- Linking with non-latin text: [[自然语言处理|NLP in Chinese]]
+
+Embedded as part of the sentence:  
+To know more, see [[Knowledge Graphs]] and [[Vector Databases|this page]] for details.
+
+> Note: WikiLinks like [[PageName]] are meant to be resolved to internal markdown pages, not external URLs.
+
 ## 1. CJK Language Support
 
 This section specifically tests Chinese, Japanese, and Korean character support in the system.
@@ -120,7 +138,8 @@ $$\\int_{0}^{1} x^2 \\, dx = \\left[\\frac{x^3}{3}\\right]_{0}^{1} = \\frac{1}{3
 
 ### Linear Algebra
 Matrix multiplication:
-$$\\begin{pmatrix}
+$$
+\\begin{pmatrix}
 a & b \\\\
 c & d
 \\end{pmatrix}
@@ -128,11 +147,11 @@ c & d
 x \\\\
 y
 \\end{pmatrix}
-=
-\\begin{pmatrix}
+=\\begin{pmatrix}
 ax + by \\\\
 cx + dy
-\\end{pmatrix}$$
+\\end{pmatrix}
+$$
 
 ## 4. Mermaid Diagrams
 

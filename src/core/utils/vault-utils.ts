@@ -10,6 +10,10 @@ import { App, normalizePath, TFile, TFolder } from 'obsidian';
 export async function ensureFolder(app: App, folderPath: string): Promise<TFolder> {
 	const normalized = normalizePath(folderPath);
 	await ensureFolderRecursive(app, normalized);
+	// Mock vault (e.g. desktop dev) does not persist; skip strict check so save flow can return path from params/settings
+	if ((app as any).isMock) {
+		return null as unknown as TFolder;
+	}
 	const folder = app.vault.getAbstractFileByPath(normalized);
 	if (folder instanceof TFolder) {
 		return folder;

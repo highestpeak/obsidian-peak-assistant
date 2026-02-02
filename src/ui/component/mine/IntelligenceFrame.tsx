@@ -1,47 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 /**
- * Apple Intelligence style frame with rotating conic gradient glow border.
- * Speed dynamically adjusts based on streaming/analyzing state.
+ * Intelligence animation frame with breathing glow border.
+ * Entire perimeter has uniform pulse animation.
  */
 export const IntelligenceFrame: React.FC<{
 	isActive: boolean;
 	className?: string;
+	/** Applied to inner content wrapper; use for flex/overflow chain (e.g. scrollable modal). */
+	innerClassName?: string;
 	children: React.ReactNode;
-}> = ({ isActive, className = '', children }) => {
-	// IMPORTANT:
-	// Avoid updating React state on every animation frame.
-	// Previous implementation re-rendered the entire analysis subtree at ~60fps, which can cause UI jank and crashes.
-	const spinDuration = isActive ? '3.0s' : '18.0s';
+}> = ({ isActive, className = '', innerClassName = '', children }) => {
+	const pulseDuration = isActive ? '3s' : '1s';
 
 	return (
-		<div className={`pktw-relative pktw-p-[2px] pktw-rounded-xl pktw-overflow-hidden ${className}`}>
-			{/* Glow layer (blurred) */}
-			<div
-				className="pktw-absolute pktw-inset-0 pktw-rounded-xl pktw-animate-spin"
-				style={{
-					animationDuration: spinDuration,
-					animationTimingFunction: 'linear',
-					background: 'conic-gradient(#8b5cf6, #3b82f6, #ec4899, #8b5cf6)',
-					opacity: isActive ? 0.55 : 0.22,
-					filter: 'blur(10px)',
-					transform: 'translateZ(0)',
-				}}
-			/>
-			{/* Sharp border layer */}
-			<div
-				className="pktw-absolute pktw-inset-0 pktw-rounded-xl pktw-animate-spin"
-				style={{
-					animationDuration: spinDuration,
-					animationTimingFunction: 'linear',
-					background: 'conic-gradient(#8b5cf6, #3b82f6, #ec4899, #8b5cf6)',
-					opacity: isActive ? 0.85 : 0.35,
-					transition: 'opacity 0.25s ease',
-					transform: 'translateZ(0)',
-				}}
-			/>
+		<div
+			className={`pktw-relative pktw-p-[1px] pktw-rounded-xl pktw-isolate ${className}`}
+			style={{
+				animation: `pktw-pulseGlow ${pulseDuration} ease-in-out infinite`,
+				boxShadow: '0 0 0 1px rgba(139, 92, 246, 0.5), 0 0 15px rgba(139, 92, 246, 0.25), 0 0 25px rgba(59, 130, 246, 0.15), 0 0 35px rgba(236, 72, 153, 0.1)',
+			}}
+		>
 			{/* Inner content with frosted glass */}
-			<div className="pktw-relative pktw-rounded-[10px] pktw-bg-white/90 dark:pktw-bg-gray-900/90 pktw-backdrop-blur-xl">
+			<div className={`pktw-relative pktw-rounded-[11px] pktw-bg-white/92 dark:pktw-bg-gray-900/90 pktw-backdrop-blur-xl ${innerClassName}`.trim()}>
 				{children}
 			</div>
 		</div>

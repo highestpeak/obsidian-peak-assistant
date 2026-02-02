@@ -396,6 +396,8 @@ export class MockAIServiceManager {
 			yield {
 				type: 'complete',
 				usage: mockUsage,
+				finishReason: 'stop',
+				durationMs: 1000,
 			};
 		})();
 	}
@@ -531,6 +533,49 @@ This plugin is designed to help you manage conversations and projects with AI as
 		}
 
 		console.log(`[MockAIServiceManager] Regenerated title to: "${newTitle}"`);
+	}
+
+	/**
+	 * Render prompt with variables (mock).
+	 */
+	async renderPrompt(promptId: string, variables: any): Promise<string> {
+		console.log('[MockAIServiceManager] renderPrompt:', promptId);
+		return `Mock prompt for ${promptId}`;
+	}
+
+	/**
+	 * Chat with prompt (mock) - returns mock result for Save dialog filename/folder generation.
+	 */
+	async chatWithPrompt(promptId: string, variables: any): Promise<string> {
+		const query = variables?.query ?? 'Query';
+		if (promptId === 'ai-analysis-save-filename') {
+			return `AI Analysis - ${query.slice(0, 40)} - ${new Date().toISOString().slice(0, 10)}`;
+		}
+		if (promptId === 'ai-analysis-save-folder') {
+			return 'Analysis/AI Searches';
+		}
+		return 'Mock response';
+	}
+
+	/**
+	 * Stream chat with prompt (mock). Yields prompt-stream-start, prompt-stream-delta, prompt-stream-result.
+	 */
+	async *chatWithPromptStream(
+		promptId: string,
+		variables: any,
+		_provider?: string,
+		_model?: string
+	): AsyncGenerator<LLMStreamEvent> {
+		const id = `mock-prompt-${Date.now()}`;
+		yield { type: 'prompt-stream-start', id, promptId, variables };
+		const fullText = this.loadMockResponse();
+		const chunkSize = 30;
+		for (let i = 0; i < fullText.length; i += chunkSize) {
+			await new Promise((r) => setTimeout(r, 0));
+			const chunk = fullText.slice(i, i + chunkSize);
+			yield { type: 'prompt-stream-delta', id, promptId, delta: chunk };
+		}
+		yield { type: 'prompt-stream-result', id, promptId, output: fullText };
 	}
 
 	/**
