@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check } from 'lucide-react';
+import { Sparkles, Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink } from 'lucide-react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { StreamingDisplayMethods } from './components/ai-analysis-sections/StepsDisplay';
@@ -77,6 +77,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		topicInspectLoading,
 		contextChatModal,
 		setContextChatModal,
+		restoredFromHistory,
+		restoredFromVaultPath,
 	} = useAIAnalysisStore();
 
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -414,6 +416,17 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 								>
 									<Save className="pktw-w-3.5 pktw-h-3.5" />
 								</Button>
+								{restoredFromHistory && restoredFromVaultPath ? (
+									<Button
+										onClick={() => void createOpenSourceCallback(onClose)(restoredFromVaultPath)}
+										size="sm"
+										variant="ghost"
+										className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-[#6d28d9] pktw-border-0 pktw-shadow-none focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"
+										title="Open saved analysis file in document"
+									>
+										<ExternalLink className="pktw-w-3.5 pktw-h-3.5" />
+									</Button>
+								) : null}
 							</div>
 							<Button
 								onClick={() => {

@@ -187,6 +187,8 @@ interface AIAnalysisStore {
 	 * This helps avoid unintended auto-save on modal reopen.
 	 */
 	restoredFromHistory: boolean;
+	/** Vault path of the file when restored from history; used for "Open in document" button. */
+	restoredFromVaultPath: string | null;
 	/**
 	 * Auto-save bookkeeping to prevent duplicate file generation.
 	 */
@@ -326,8 +328,9 @@ interface AIAnalysisStore {
 	/**
 	 * Load a completed analysis snapshot into the store.
 	 * Used by "Recent AI Analysis" replay in the modal.
+	 * @param sourceVaultPath - When loading from a saved file, pass its vault path for "Open in document" button.
 	 */
-	loadCompletedAnalysis: (snapshot: CompletedAnalysisSnapshot) => void;
+	loadCompletedAnalysis: (snapshot: CompletedAnalysisSnapshot, sourceVaultPath?: string) => void;
 
 	// Reset analysis state
 	resetAnalysisState: () => void;
@@ -352,6 +355,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	analysisMode: 'full',
 	analysisRunId: null,
 	restoredFromHistory: false,
+	restoredFromVaultPath: null,
 	autoSaveState: {
 		lastRunId: null,
 		lastSavedSummaryHash: null,
@@ -445,6 +449,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			analysisStartedAtMs: ts,
 			analysisRunId: `run:${ts}`,
 			restoredFromHistory: false,
+			restoredFromVaultPath: null,
 			runAnalysisMode: mode,
 		});
 	},
@@ -604,7 +609,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	},
 	setAiModalOpen: (open) => set({ aiModalOpen: open }),
 
-	loadCompletedAnalysis: (snapshot: CompletedAnalysisSnapshot) => {
+	loadCompletedAnalysis: (snapshot: CompletedAnalysisSnapshot, sourceVaultPath?: string) => {
 		// IMPORTANT:
 		// This should not kick off streaming; it only rehydrates a finished result for display.
 		const runId = snapshot.analysisStartedAtMs ? `run:${snapshot.analysisStartedAtMs}` : `replay:${Date.now()}`;
@@ -625,6 +630,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			analysisStartedAtMs: snapshot.analysisStartedAtMs ?? null,
 			analysisRunId: runId,
 			restoredFromHistory: true,
+			restoredFromVaultPath: sourceVaultPath ?? null,
 			summaryChunks: [currentSummary],
 			summaries,
 			summaryVersion,
@@ -650,7 +656,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	},
 
 	// Reset analysis state
-	resetAnalysisState: () => set({
+		resetAnalysisState: () => set({
 		isAnalyzing: false,
 		analyzingBeforeFirstToken: false,
 		hasStartedStreaming: false,
@@ -664,6 +670,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 		analysisStartedAtMs: null,
 		analysisRunId: null,
 		restoredFromHistory: false,
+		restoredFromVaultPath: null,
 		summaryChunks: [],
 		summaries: [],
 		summaryVersion: 1,

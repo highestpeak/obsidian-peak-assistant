@@ -58,10 +58,13 @@ export const RecentAIAnalysis: React.FC<{
 
         const snapshot = await loadSnapshotFromMarkdown(path, Number.isFinite(createdAt) ? createdAt : undefined);
         if (snapshot) {
-            useAIAnalysisStore.getState().loadCompletedAnalysis({
-                ...snapshot,
-                analysisStartedAtMs: (snapshot.analysisStartedAtMs ?? (Number.isFinite(createdAt) ? createdAt : null)) ?? null,
-            });
+            useAIAnalysisStore.getState().loadCompletedAnalysis(
+                {
+                    ...snapshot,
+                    analysisStartedAtMs: (snapshot.analysisStartedAtMs ?? (Number.isFinite(createdAt) ? createdAt : null)) ?? null,
+                },
+                path
+            );
             return;
         }
 
