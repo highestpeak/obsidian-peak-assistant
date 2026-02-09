@@ -9,6 +9,10 @@ import * as searchTopicExtractJson from './templates/search-topic-extract-json';
 import * as searchRerankRankGpt from './templates/search-rerank-rank-gpt';
 import * as aiSearchSystem from './templates/ai-search-system';
 import * as thoughtAgentSystem from './templates/thought-agent-system';
+import * as sourcesUpdateAgentSystem from './templates/sources-update-agent-system';
+import * as topicsUpdateAgentSystem from './templates/topics-update-agent-system';
+import * as graphUpdateAgentSystem from './templates/graph-update-agent-system';
+import * as dashboardBlocksUpdateAgentSystem from './templates/dashboard-blocks-update-agent-system';
 import * as applicationGenerateTitle from './templates/application-generate-title';
 import * as memoryExtractCandidatesJson from './templates/memory-extract-candidates-json';
 import * as memoryUpdateBulletList from './templates/memory-update-bullet-list';
@@ -33,7 +37,8 @@ import * as contextMemory from './templates/context-memory';
 import * as userProfileContext from './templates/user-profile-context';
 import * as messageResources from './templates/message-resources';
 import { SystemInfo } from '../tools/system-info';
-import { SearchAgentResult, AgentMemory, AISearchAgentOptions } from '../agents/AISearchAgent';
+import { SearchAgentResult, AISearchAgentOptions } from '../agents/AISearchAgent';
+import { AgentMemory } from '../agents/search-agent-helper/AgentMemoryManager';
 
 /**
  * Prompt template definition.
@@ -76,6 +81,12 @@ export enum PromptId {
 	SearchRerankRankGpt = 'search-rerank-rank-gpt',
 	AiSearchSystem = 'ai-search-system',
 	ThoughtAgentSystem = 'thought-agent-system',
+
+	/** Dimension update agents: turn Thought agent text into operations JSON (one prompt per dimension) */
+	SourcesUpdateAgentSystem = 'sources-update-agent-system',
+	TopicsUpdateAgentSystem = 'topics-update-agent-system',
+	GraphUpdateAgentSystem = 'graph-update-agent-system',
+	DashboardBlocksUpdateAgentSystem = 'dashboard-blocks-update-agent-system',
 
 	// Application prompts (title generation)
 	ApplicationGenerateTitle = 'application-generate-title',
@@ -215,6 +226,10 @@ export interface PromptVariables {
 	};
 	[PromptId.AiSearchSystem]: SystemInfo;
 	[PromptId.ThoughtAgentSystem]: { analysisMode?: 'simple' | 'full'; simpleMode?: boolean };
+	[PromptId.SourcesUpdateAgentSystem]: { text: string; lastError?: string };
+	[PromptId.TopicsUpdateAgentSystem]: { text: string; lastError?: string };
+	[PromptId.GraphUpdateAgentSystem]: { text: string; lastError?: string };
+	[PromptId.DashboardBlocksUpdateAgentSystem]: { text: string; lastError?: string };
 	[PromptId.ApplicationGenerateTitle]: {
 		messages: Array<{ role: string; content: string }>;
 		contextInfo?: string;
@@ -321,6 +336,10 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptTemplate> = {
 	[PromptId.SearchRerankRankGpt]: createTemplate(searchRerankRankGpt),
 	[PromptId.AiSearchSystem]: createTemplate(aiSearchSystem),
 	[PromptId.ThoughtAgentSystem]: createTemplate(thoughtAgentSystem),
+	[PromptId.SourcesUpdateAgentSystem]: createTemplate(sourcesUpdateAgentSystem),
+	[PromptId.TopicsUpdateAgentSystem]: createTemplate(topicsUpdateAgentSystem),
+	[PromptId.GraphUpdateAgentSystem]: createTemplate(graphUpdateAgentSystem),
+	[PromptId.DashboardBlocksUpdateAgentSystem]: createTemplate(dashboardBlocksUpdateAgentSystem),
 	[PromptId.ApplicationGenerateTitle]: createTemplate(applicationGenerateTitle),
 	[PromptId.MemoryExtractCandidatesJson]: createTemplate(memoryExtractCandidatesJson),
 	[PromptId.MemoryUpdateBulletList]: createTemplate(memoryUpdateBulletList),

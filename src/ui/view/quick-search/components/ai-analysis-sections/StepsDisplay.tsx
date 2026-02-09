@@ -319,7 +319,11 @@ export const StreamingStepsDisplay: React.FC<{
 				case 'web_search': {
 					return query ? `: ${String(query).slice(0, 80)}` : '';
 				}
-				case 'update_result': {
+				case 'update_result':
+				case 'update_sources':
+				case 'update_topics':
+				case 'update_graph':
+				case 'add_dashboard_blocks': {
 					const ops: any[] | undefined = Array.isArray(x?.operations) ? x.operations : undefined;
 					if (!ops?.length) return '';
 					const addCount = new Map<string, number>();
@@ -360,6 +364,10 @@ export const StreamingStepsDisplay: React.FC<{
 			if (toolName === 'find_key_nodes') return { title: `Find key nodes${suffix}`.trim(), rawType };
 			if (toolName === 'web_search') return { title: `Web search${suffix}`.trim(), rawType };
 			if (toolName === 'update_result') return { title: `Update results${suffix}`.trim(), rawType };
+			if (toolName === 'update_sources') return { title: `Update sources${suffix}`.trim(), rawType };
+			if (toolName === 'update_topics') return { title: `Update topics${suffix}`.trim(), rawType };
+			if (toolName === 'update_graph') return { title: `Update graph${suffix}`.trim(), rawType };
+			if (toolName === 'add_dashboard_blocks') return { title: `Add dashboard blocks${suffix}`.trim(), rawType };
 			if (toolName === 'call_search_agent') return { title: `Ask Search Agent${suffix}`.trim(), rawType };
 
 			// Default: keep it readable but explicit that it's a tool.
@@ -389,6 +397,10 @@ export const StreamingStepsDisplay: React.FC<{
 			if (toolName === 'find_key_nodes') return { title: `Find key nodes${suffix}`.trim(), rawType };
 			if (toolName === 'web_search') return { title: `Web search${suffix}`.trim(), rawType };
 			if (toolName === 'update_result') return { title: `Update results${suffix}`.trim(), rawType };
+			if (toolName === 'update_sources') return { title: `Update sources${suffix}`.trim(), rawType };
+			if (toolName === 'update_topics') return { title: `Update topics${suffix}`.trim(), rawType };
+			if (toolName === 'update_graph') return { title: `Update graph${suffix}`.trim(), rawType };
+			if (toolName === 'add_dashboard_blocks') return { title: `Add dashboard blocks${suffix}`.trim(), rawType };
 			if (toolName === 'call_search_agent') return { title: `Ask Search Agent${suffix}`.trim(), rawType };
 			return { title: `Tool: ${toolName.replace(/_/g, ' ')}${suffix}`.trim(), rawType };
 		}

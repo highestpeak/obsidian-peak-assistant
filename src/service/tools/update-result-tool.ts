@@ -1,6 +1,9 @@
 import { z } from 'zod/v3';
 import { safeAgentTool } from './types';
 
+/** Strategy to build a stable identity key for deduping/upserting. Injected by caller (e.g. search-agent-helper). */
+export type BuildIdentityKeyFn = (targetField: string, item: any) => string | null;
+
 export interface UpdateResultToolConfig {
     /** Available fields that can be updated */
     availableFields: {
@@ -26,6 +29,9 @@ export interface UpdateResultToolConfig {
 
     /** Set of verified paths */
     verifiedPaths?: Set<string>;
+
+    /** Optional identity key builder for dedup/upsert. If omitted, falls back to item.id. */
+    buildIdentityKey?: BuildIdentityKeyFn;
 }
 
 // Constants for validation
@@ -50,8 +56,15 @@ export function createUpdateResultTool(config: UpdateResultToolConfig) {
         descriptionExtra,
         result,
         validatePath,
-        verifiedPaths = new Set()
+        verifiedPaths = new Set(),
+        buildIdentityKey: configIdentityKey,
     } = config;
+
+    const buildIdentityKey: BuildIdentityKeyFn = configIdentityKey ?? ((_targetField, item) => {
+        if (!item || typeof item !== 'object') return null;
+        const id = String((item as any).id ?? '').trim();
+        return id ? `id:${id}` : null;
+    });
 
     // Helper to get current result (handles both static and dynamic cases)
     const getCurrentResult = () => typeof result === 'function' ? result() : result;
@@ -217,58 +230,6 @@ ${allExamples.map(ex => `- ${ex}`).join('\n')}`;
             return [operation.item];
         }
         return [];
-    }
-
-    /**
-     * Build a stable identity key for deduping/upserting.
-     * This prevents repeated update_result calls from blindly appending duplicates.
-     */
-    function buildIdentityKey(targetField: string, item: any): string | null {
-        if (!item || typeof item !== 'object') return null;
-
-        const norm = (v: unknown) => String(v ?? '').trim().toLowerCase();
-        const normPath = (v: unknown) => String(v ?? '').trim().replace(/^\/+/, '');
-        const safeText = (v: unknown) => String(v ?? '').trim();
-
-        switch (targetField) {
-            case 'topics': {
-                const label = safeText(item.label);
-                return label ? `label:${norm(label)}` : null;
-            }
-            case 'sources': {
-                const path = safeText(item.path);
-                if (path && path !== DEFAULT_PLACEHOLDER) return `path:${normPath(path)}`;
-                const id = safeText(item.id);
-                return id ? `id:${id}` : null;
-            }
-            case 'dashboardBlocks': {
-                const id = safeText(item.id);
-                if (id && !id.startsWith('block:')) return `id:${id}`;
-                const title = safeText(item.title ?? item.category);
-                const slot = safeText(item.slot);
-                const engine = safeText(item.renderEngine);
-                const composite = `${title}\n${slot}\n${engine}`.trim();
-                return composite ? `text:${norm(composite)}` : null;
-            }
-            case 'graph.nodes': {
-                const path = safeText(item.path);
-                if (path && path !== DEFAULT_PLACEHOLDER) return `path:${normPath(path)}`;
-                const id = safeText(item.id);
-                return id ? `id:${id}` : null;
-            }
-            case 'graph.edges': {
-                const id = safeText(item.id);
-                if (id && id.startsWith('edge:')) return `id:${id}`;
-                const source = safeText(item.source);
-                const target = safeText(item.target);
-                if (!source || !target) return null;
-                return `edge:${norm(source)}::${norm(target)}::${norm(item.type ?? '')}::${norm(item.label ?? '')}`;
-            }
-            default: {
-                const id = safeText(item.id);
-                return id ? `id:${id}` : null;
-            }
-        }
     }
 
     function isMeaningfulString(v: unknown): boolean {

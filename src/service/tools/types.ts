@@ -1,5 +1,6 @@
 import { z } from "zod/v3"
 import Handlebars from 'handlebars';
+import { LLMStreamEvent, StreamTriggerName } from "@/core/providers/types";
 
 /**
  * Don't use ToolSet from ai sdk directly; it slows TS and may crash IDE.
@@ -94,4 +95,11 @@ export function buildResponse(responseFormat: 'structured' | 'markdown' | 'hybri
         default:
             throw new Error(`Invalid response format: ${responseFormat}`);
     }
+}
+
+export interface ManualToolCallHandler {
+    toolName: string;
+    triggerName: StreamTriggerName;
+    handle: (chunkInput: any, resultCollector: Record<string, any>) => AsyncGenerator<LLMStreamEvent>;
+    outputGetter?: (resultCollector: Record<string, any>) => any;
 }

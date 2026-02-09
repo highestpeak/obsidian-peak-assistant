@@ -349,6 +349,16 @@ export type MessagePart =
 
 export type LLMUsage = LanguageModelUsage;
 
+export function mergeTokenUsage(usage1: LLMUsage, usage2: LLMUsage): LLMUsage {
+	return {
+		inputTokens: (usage1.inputTokens ?? 0) + (usage2.inputTokens ?? 0) || undefined,
+		outputTokens: (usage1.outputTokens ?? 0) + (usage2.outputTokens ?? 0) || undefined,
+		totalTokens: (usage1.totalTokens ?? 0) + (usage2.totalTokens ?? 0) || undefined,
+		reasoningTokens: (usage1.reasoningTokens ?? 0) + (usage2.reasoningTokens ?? 0) || undefined,
+		cachedInputTokens: (usage1.cachedInputTokens ?? 0) + (usage2.cachedInputTokens ?? 0) || undefined,
+	};
+}
+
 type RawStreamEvent =
 	// from AI-SDK StreamTextOnChunkCallback types
 	{ type: 'text-delta'; text: string; } |
@@ -382,6 +392,10 @@ export type LLMStreamEvent =
 export enum StreamTriggerName {
 	SEARCH_THOUGHT_AGENT = 'search-thought-agent',
 	SEARCH_INSPECTOR_AGENT = 'search-inspector-agent',
+	SEARCH_GRAPH_AGENT = 'search-graph-agent',
+	SEARCH_TOPICS_AGENT = 'search-topics-agent',
+	SEARCH_SOURCES_AGENT = 'search-sources-agent',
+	SEARCH_DASHBOARD_AGENT = 'search-dashboard-agent',
 	SEARCH_SUMMARY = 'search-summary',
 }
 

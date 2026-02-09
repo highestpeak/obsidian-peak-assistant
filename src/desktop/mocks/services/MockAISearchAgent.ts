@@ -141,7 +141,7 @@ export async function* mockAIAnalysisStream(
 
 	// Reasoning delta
 	await delay(chunkDelayMs);
-	yield { type: 'reasoning-delta', text: 'Planning: call search agent then update result.\n', triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+	yield { type: 'reasoning-delta', text: 'Planning: call search agent then add_dashboard_blocks.\n', triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
 
 	await delay(phaseDelayMs);
 
@@ -165,12 +165,12 @@ export async function* mockAIAnalysisStream(
 		await delay(phaseDelayMs);
 	}
 
-	// Tool: update_result (thought agent)
+	// Result-update tools (thought agent): emit one aggregate tool-result so UI still gets currentResult
 	const callId3 = `mock-call-${Date.now()}-3`;
 	await delay(chunkDelayMs);
-	yield { type: 'tool-call', id: callId3, toolName: 'update_result', input: { topics: fullResult.topics, sources: fullResult.sources, 'graph.nodes': fullResult.graph.nodes, 'graph.edges': fullResult.graph.edges, dashboardBlocks: fullResult.dashboardBlocks }, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+	yield { type: 'tool-call', id: callId3, toolName: 'add_dashboard_blocks', input: { text: 'Add mock dashboard blocks for insights and suggestions.' }, triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT };
 	await delay(chunkDelayMs);
-	yield { type: 'tool-result', id: callId3, toolName: 'update_result', output: { result: { updated: true } }, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT, extra: { currentResult: fullResult } };
+	yield { type: 'tool-result', id: callId3, toolName: 'add_dashboard_blocks', output: { result: { updated: true } }, triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT, extra: { currentResult: fullResult } };
 
 	await delay(phaseDelayMs);
 

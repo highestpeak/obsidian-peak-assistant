@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { getCleanQuery, AIAnalysisStepType } from '../store/aiAnalysisStore';
 import { useSharedStore, useAIAnalysisStore } from '@/ui/view/quick-search/store';
 import { AppContext } from '@/app/context/AppContext';
-import { SearchAgentResult } from '@/service/agents/AISearchAgent';
+import { RESULT_UPDATE_TOOL_NAMES, SearchAgentResult } from '@/service/agents/AISearchAgent';
 import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import { PromptId } from '@/service/prompt/PromptId';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
@@ -297,16 +297,13 @@ export function useAIAnalysis() {
 							output: event.toolName !== 'content_reader' ? output : undefined,
 						});
 
-						if (event.triggerName === StreamTriggerName.SEARCH_THOUGHT_AGENT) {
-							// only process update_result tool call.
-							if (event.toolName === 'update_result') {
-								// full update
-								const currentResult = event.extra?.currentResult as SearchAgentResult;
-								if (currentResult) {
-									applySearchResult(currentResult);
-								}
+						if (RESULT_UPDATE_TOOL_NAMES.has(event.toolName)) {
+							const currentResult = event.extra?.currentResult as SearchAgentResult | undefined;
+							if (currentResult) {
+								applySearchResult(currentResult);
 							}
-						} else {
+						}
+						if (event.triggerName !== StreamTriggerName.SEARCH_THOUGHT_AGENT) {
 							// Publish a normalized tool-result event for graph animation / UI orchestration.
 							useUIEventStore.getState().publish('ui:tool-result', {
 								triggerName: event.triggerName || 'unknown',
