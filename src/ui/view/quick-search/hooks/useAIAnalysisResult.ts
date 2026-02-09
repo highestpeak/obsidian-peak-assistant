@@ -308,7 +308,6 @@ export function useAnalyzeTopicResults() {
 
     const handleCopyTopicInfo = useCallback(async (topic: string) => {
         const inspectList = topicInspectResults[topic] ?? [];
-        // todo send to core/storage/vault/search-docs to process
         const lines: string[] = [
             `# Topic: ${topic}`,
             '',

@@ -6,7 +6,7 @@ import { StreamdownIsolated } from '@/ui/component/mine';
 import { Button } from '@/ui/component/shared-ui/button';
 import { InlineFollowupChat } from '../../../../component/mine/InlineFollowupChat';
 import { useAIAnalysisStore } from '../../store';
-import { PromptId } from '@/service/prompt/PromptId';
+import { useSummaryFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 import { useStreamdownWikilinkClick } from '../../callbacks/useStreamdownWikilinkClick';
 
 /**
@@ -52,10 +52,8 @@ export const SummaryContent: React.FC<{
 
     const [streamingReplace, setStreamingReplace] = useState<string | null>(null);
 
-    const getVariables = useCallback((question: string) => ({
-        question,
-        summary: summaryVersions[activeSummaryIndex] ?? summary ?? '',
-    }), [summaryVersions, activeSummaryIndex, summary]);
+    const currentSummary = summaryVersions[activeSummaryIndex] ?? summary ?? '';
+    const summaryFollowupConfig = useSummaryFollowupChatConfig({ summary: currentSummary });
 
     const onStreamingReplace = useCallback((text: string | null) => {
         setStreamingReplace(text !== null && text !== undefined ? text : null);
@@ -136,10 +134,7 @@ export const SummaryContent: React.FC<{
             {showSummaryFollowup ? (
                 <div className="pktw-mb-3">
                     <InlineFollowupChat
-                        title="Ask about this Summary"
-                        placeholder="Ask for key insights, suggestions, or next steps…"
-                        promptId={PromptId.AiAnalysisFollowupSummary}
-                        getVariables={getVariables}
+                        {...summaryFollowupConfig}
                         applyMode="replace"
                         onStreamingReplace={onStreamingReplace}
                         onApply={onApply}

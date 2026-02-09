@@ -3,6 +3,8 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { PromptId } from '@/service/prompt/PromptId';
 import { useAIAnalysisStore } from '../store/aiAnalysisStore';
 import { useSharedStore } from '../store/sharedStore';
+import type { UIPreviewGraph } from '@/ui/component/mine/graph-viz/types';
+import type { DashboardBlock, DashboardBlockItem } from '@/service/agents/AISearchAgent';
 
 /** Sanitize AI-generated filename: remove invalid filesystem chars. */
 function sanitizeFilename(s: string): string {
@@ -123,4 +125,137 @@ export function useAnalyzeTopic() {
 
 }
 
-// todo prefer all inline followup chat move to this place to process prompt stream chat to get a better code maintainability
+/** Config for InlineFollowupChat: promptId + getVariables + optional initialQuestion; title/placeholder required for InlineFollowupChat. */
+// todo prompt enginering
+export type InlineFollowupChatConfig = {
+    promptId: PromptId;
+    getVariables: (question: string) => Record<string, unknown>;
+    initialQuestion?: string;
+    title: string;
+    placeholder: string;
+};
+
+/** Graph follow-up: prompt and variables from uiGraph; initialQuestion from selected node. */
+export function useGraphFollowupChatConfig(params: {
+    uiGraph: UIPreviewGraph | null;
+    graphChatNodeContext: { label: string } | null;
+}): InlineFollowupChatConfig {
+    const { uiGraph, graphChatNodeContext } = params;
+    const promptId = PromptId.AiAnalysisFollowupGraph;
+    const getVariables = useCallback((question: string) => {
+        const nodeLabels = (uiGraph?.nodes ?? []).slice(0, 30).map(n => `- ${n.label}`).join('\n');
+        return {
+            question,
+            nodeLabels: nodeLabels || '(empty)',
+            nodeCount: (uiGraph?.nodes ?? []).length,
+            edgeCount: (uiGraph?.edges ?? []).length,
+        };
+    }, [uiGraph]);
+    const initialQuestion = graphChatNodeContext
+        ? `Discuss "${graphChatNodeContext.label}" in the graph.`
+        : undefined;
+    return {
+        promptId,
+        getVariables,
+        initialQuestion,
+        title: 'Ask about this Graph',
+        placeholder: 'Ask for key nodes, clusters, or next steps…',
+    };
+}
+
+/** Summary follow-up: variables from current summary text. */
+export function useSummaryFollowupChatConfig(params: { summary: string }): InlineFollowupChatConfig {
+    const { summary } = params;
+    const promptId = PromptId.AiAnalysisFollowupSummary;
+    const getVariables = useCallback((question: string) => ({
+        question,
+        summary: summary ?? '',
+    }), [summary]);
+    return {
+        promptId,
+        getVariables,
+        title: 'Ask about this Summary',
+        placeholder: 'Ask for key insights, suggestions, or next steps…',
+    };
+}
+
+/** Continue analysis (full) follow-up: variables from joined summary chunks. */
+export function useContinueAnalysisFollowupChatConfig(params: { summary: string }): InlineFollowupChatConfig {
+    const { summary } = params;
+    const promptId = PromptId.AiAnalysisFollowupFull;
+    const getVariables = useCallback((question: string) => ({
+        question,
+        summary: summary?.length ? summary : '(empty)',
+    }), [summary]);
+    return {
+        promptId,
+        getVariables,
+        title: 'Continue Analysis',
+        placeholder: 'Ask a follow-up about this analysis…',
+    };
+}
+
+/** Blocks follow-up: variables from dashboardBlocks; initialQuestion from block/item context. */
+export function useBlocksFollowupChatConfig(params: {
+    dashboardBlocks: DashboardBlock[] | null | undefined;
+    blocksChatContext: DashboardBlock | null;
+    blocksChatItemContext: { block: DashboardBlock; item: DashboardBlockItem } | null;
+}): InlineFollowupChatConfig {
+    const { dashboardBlocks, blocksChatContext, blocksChatItemContext } = params;
+    const promptId = PromptId.AiAnalysisFollowupBlocks;
+    const getVariables = useCallback((question: string) => ({
+        question,
+        blocksText: (dashboardBlocks ?? []).map((b) => {
+            const label = b.title || b.category || 'Block';
+            const itemsPreview = b.items?.slice(0, 5).map((i) => i.title).join(', ') || '';
+            const md = (b.markdown || b.mermaidCode || '').slice(0, 200);
+            return `- ${label}${itemsPreview ? ` (${itemsPreview})` : ''}${md ? `: ${md}` : ''}`;
+        }).join('\n') || '(empty)',
+    }), [dashboardBlocks]);
+    const initialQuestion = blocksChatItemContext
+        ? `Discuss: "${blocksChatItemContext.item.title}". ${blocksChatItemContext.item.description ?? ''}`.trim()
+        : blocksChatContext
+            ? `Discuss this: "${blocksChatContext.title || blocksChatContext.category || 'Block'}".`
+            : undefined;
+    return {
+        promptId,
+        getVariables,
+        initialQuestion,
+        title: 'Ask about Blocks',
+        placeholder: 'Ask about inspiration, diagrams, or next steps…',
+    };
+}
+
+/** Sources follow-up: variables from sources list (title/path). */
+export function useSourcesFollowupChatConfig(params: {
+    sources: Array<{ title?: string; path?: string }>;
+}): InlineFollowupChatConfig {
+    const { sources } = params;
+    const promptId = PromptId.AiAnalysisFollowupSources;
+    const getVariables = useCallback((question: string) => ({
+        question,
+        sourcesList: sources.slice(0, 10).map((s) => `- ${s.title || s.path}`).join('\n') || '(empty)',
+    }), [sources]);
+    return {
+        promptId,
+        getVariables,
+        title: 'Ask about Sources',
+        placeholder: 'Ask to explain why these sources matter…',
+    };
+}
+
+/** Topic follow-up: same prompt as full; variables from summary; title from topic. */
+export function useTopicFollowupChatConfig(params: {
+    summary: string;
+    topicLabel: string | null;
+}): InlineFollowupChatConfig {
+    const { summary, topicLabel } = params;
+    const promptId = PromptId.AiAnalysisFollowupFull;
+    const getVariables = useCallback((question: string) => ({ question, summary }), [summary]);
+    return {
+        promptId,
+        getVariables,
+        title: topicLabel ? `Ask about ${topicLabel}` : 'Ask about topic',
+        placeholder: 'Your question…',
+    };
+}

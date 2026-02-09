@@ -20,7 +20,7 @@ import { AIAnalysisErrorState } from './components/ai-analysis-state/AIAnalysisE
 import { AIAnalysisPreStreamingState } from './components/ai-analysis-state/AIAnalysisPreStreamingState';
 import { SectionExtraChatModal } from './components/ai-analysis-modal/SectionExtraChatModal';
 import { InlineFollowupChat } from '../../component/mine/InlineFollowupChat';
-import { PromptId } from '@/service/prompt/PromptId';
+import { useContinueAnalysisFollowupChatConfig } from './hooks/useAIAnalysisPostAIInteractions';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 
 interface AISearchTabProps {
@@ -80,6 +80,9 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		restoredFromHistory,
 		restoredFromVaultPath,
 	} = useAIAnalysisStore();
+
+	const continueAnalysisSummary = summaryChunks?.length ? summaryChunks.join('') : '';
+	const continueAnalysisConfig = useContinueAnalysisFollowupChatConfig({ summary: continueAnalysisSummary });
 
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
 	const [copied, setCopied] = useState(false);
@@ -360,13 +363,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 				{analysisCompleted && showContinueAnalysis ? (
 					<div ref={continueAnalysisBlockRef} className="pktw-mt-6 pktw-scroll-mt-4">
 						<InlineFollowupChat
-							title="Continue Analysis"
-							placeholder="Ask a follow-up about this analysis…"
-							promptId={PromptId.AiAnalysisFollowupFull}
-							getVariables={(question) => ({
-								question,
-								summary: summaryChunks?.length ? summaryChunks.join('') : '(empty)',
-							})}
+							{...continueAnalysisConfig}
 							onApply={(answer, mode, question) => setFullAnalysisFollowUp(question ?? 'Continue', answer, mode)}
 						/>
 					</div>

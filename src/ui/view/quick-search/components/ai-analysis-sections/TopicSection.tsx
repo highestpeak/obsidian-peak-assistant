@@ -10,7 +10,7 @@ import { TopicMenuPopover } from '../ai-analysis-topic-section/TopicMenuPopover'
 import { TopicCapsule } from '../ai-analysis-topic-section/TopicCapsule';
 import { loadGraphForTopic } from '../ai-analysis-topic-section/TopicGraphPopover';
 import { InlineFollowupChat } from '@/ui/component/mine/InlineFollowupChat';
-import { PromptId } from '@/service/prompt/PromptId';
+import { useTopicFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 const getSizeClasses = (size: string) => {
 	switch (size) {
 		case 'lg':
@@ -174,6 +174,8 @@ export const TopicSection: React.FC<TagCloudSectionProps> = ({
 		}
 	}, []);
 
+	const topicFollowupConfig = useTopicFollowupChatConfig({ summary, topicLabel: userInputTopic });
+
 	const scheduleClose = useCallback(() => {
 		clearCloseDelay();
 		closeDelayRef.current = setTimeout(() => {
@@ -301,11 +303,7 @@ export const TopicSection: React.FC<TagCloudSectionProps> = ({
 						className="pktw-mt-3 pktw-overflow-hidden"
 					>
 						<InlineFollowupChat
-							title={`Ask about ${userInputTopic}`}
-							placeholder="Your question…"
-							// todo prompt engineering
-							promptId={PromptId.AiAnalysisFollowupFull}
-							getVariables={(question) => ({ question, summary })}
+							{...topicFollowupConfig}
 							hideModeToggle={true}
 							outputPlace="modal"
 							onOpenModal={(question) => {

@@ -10,7 +10,7 @@ import { InlineFollowupChat } from "../../../../component/mine/InlineFollowupCha
 import { DashboardBlocksSection } from "../ai-analysis-sections/DashboardBlocksSection";
 import type { DashboardBlock, DashboardBlockItem } from "@/service/agents/AISearchAgent";
 import { createOpenSourceCallback } from "../../callbacks/open-source-file";
-import { PromptId } from "@/service/prompt/PromptId";
+import { useBlocksFollowupChatConfig } from "../../hooks/useAIAnalysisPostAIInteractions";
 import React from "react";
 import { StreamdownIsolated } from "@/ui/component/mine";
 import { MessageCircle } from "lucide-react";
@@ -95,6 +95,12 @@ export const CompletedAIAnalysis: React.FC<{
         continueAnalysisRef,
     } = sectionRefs;
 
+    const blocksFollowupConfig = useBlocksFollowupChatConfig({
+        dashboardBlocks,
+        blocksChatContext,
+        blocksChatItemContext,
+    });
+
     return (
         <div className="pktw-flex pktw-flex-col pktw-gap-4">
             {/* Summary: only this area should have the frame */}
@@ -178,18 +184,7 @@ export const CompletedAIAnalysis: React.FC<{
                     }}
                     followupSlot={
                         <InlineFollowupChat
-                            title="Ask about Blocks"
-                            placeholder="Ask about inspiration, diagrams, or next steps…"
-                            promptId={PromptId.AiAnalysisFollowupBlocks}
-                            getVariables={(question) => ({
-                                question,
-                                blocksText: (dashboardBlocks ?? []).map((b) => {
-                                    const label = b.title || b.category || 'Block';
-                                    const itemsPreview = b.items?.slice(0, 5).map((i) => i.title).join(', ') || '';
-                                    const md = (b.markdown || b.mermaidCode || '').slice(0, 200);
-                                    return `- ${label}${itemsPreview ? ` (${itemsPreview})` : ''}${md ? `: ${md}` : ''}`;
-                                }).join('\n') || '(empty)',
-                            })}
+                            {...blocksFollowupConfig}
                             outputPlace="modal"
                             onOpenModal={(question) => {
                                 const blockId = blocksChatContext?.id ?? '';
@@ -212,13 +207,6 @@ export const CompletedAIAnalysis: React.FC<{
                                     streamingText: '',
                                 } : null);
                             }}
-                            initialQuestion={
-                                blocksChatItemContext
-                                    ? `Discuss: "${blocksChatItemContext.item.title}". ${blocksChatItemContext.item.description ?? ''}`.trim()
-                                    : blocksChatContext
-                                        ? `Discuss this: "${blocksChatContext.title || blocksChatContext.category || 'Block'}".`
-                                        : undefined
-                            }
                         />
                     }
                 />

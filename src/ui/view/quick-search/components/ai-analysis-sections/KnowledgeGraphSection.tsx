@@ -12,7 +12,7 @@ import {
 } from '@/ui/view/quick-search/presets/obsidianGraphPreset';
 import { Button } from '@/ui/component/shared-ui/button';
 import { InlineFollowupChat } from '@/ui/component/mine/InlineFollowupChat';
-import { PromptId } from '@/service/prompt/PromptId';
+import { useGraphFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 import { useAnalyzeGraphResults } from '../../hooks/useAIAnalysisResult';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/shared-ui/hover-card';
 import { AISearchGraph, AISearchNode } from '@/service/agents/AISearchAgent';
@@ -332,6 +332,8 @@ export const KnowledgeGraphSection: React.FC<{
 	const [graphChatNodeContext, setGraphChatNodeContext] = useState<GraphVizNodeInfo | null>(null);
 	const [followupOpen, setFollowupOpen] = useState(false);
 
+	const graphFollowupConfig = useGraphFollowupChatConfig({ uiGraph, graphChatNodeContext });
+
 	// graph section ref
 	const containerRef = useRef<HTMLDivElement>(null);
 	// graph ref
@@ -501,21 +503,8 @@ export const KnowledgeGraphSection: React.FC<{
 						transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
 						className="pktw-w-full pktw-mb-3"
 					>
-						{/* todo prefer all inline to useAIAnalysisPostAIInteractions */}
 						<InlineFollowupChat
-							title="Ask about this Graph"
-							placeholder="Ask for key nodes, clusters, or next steps…"
-							// todo prompt engineering
-							promptId={PromptId.AiAnalysisFollowupGraph}
-							getVariables={(question) => {
-								const nodeLabels = (uiGraph?.nodes ?? []).slice(0, 30).map(n => `- ${n.label}`).join('\n');
-								return {
-									question,
-									nodeLabels: nodeLabels || '(empty)',
-									nodeCount: (uiGraph?.nodes ?? []).length,
-									edgeCount: (uiGraph?.edges ?? []).length,
-								};
-							}}
+							{...graphFollowupConfig}
 							outputPlace="modal"
 							onOpenModal={(question) => setContextChatModal((prev) => {
 								if (prev && prev.type === 'graph') {
@@ -533,7 +522,6 @@ export const KnowledgeGraphSection: React.FC<{
 									streamingText: '',
 								} : null);
 							}}
-							initialQuestion={graphChatNodeContext ? `Discuss "${graphChatNodeContext.label}" in the graph.` : undefined}
 						/>
 					</motion.div>
 				) : null}

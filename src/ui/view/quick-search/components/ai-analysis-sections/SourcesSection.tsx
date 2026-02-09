@@ -7,7 +7,7 @@ import type { SearchResultItem } from '@/service/search/types';
 import { Button } from '@/ui/component/shared-ui/button';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/shared-ui/hover-card';
 import { InlineFollowupChat } from '@/ui/component/mine/InlineFollowupChat';
-import { PromptId } from '@/service/prompt/PromptId';
+import { useSourcesFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 import { useAIAnalysisStore } from '../../store/aiAnalysisStore';
 
 /** Radius and center for the semicircle gauge. */
@@ -103,6 +103,8 @@ export const TopSourcesSection: React.FC<{
 
 	const [showSourcesFollowup, setShowSourcesFollowup] = useState(false);
 
+	const sourcesFollowupConfig = useSourcesFollowupChatConfig({ sources });
+
 	// Apply source mixing strategy (ensure minimum 2 items per source, then interleave)
 	const mixedSources = React.useMemo(() => {
 		return mixSearchResultsBySource(sources, 2);
@@ -189,13 +191,7 @@ export const TopSourcesSection: React.FC<{
 						className="pktw-w-full pktw-mb-3"
 					>
 						<InlineFollowupChat
-							title="Ask about Sources"
-							placeholder="Ask to explain why these sources matter…"
-							promptId={PromptId.AiAnalysisFollowupSources}
-							getVariables={(question) => ({
-								question,
-								sourcesList: sources.slice(0, 10).map((s: any) => `- ${s.title || s.path}`).join('\n') || '(empty)',
-							})}
+							{...sourcesFollowupConfig}
 							outputPlace="modal"
 							onOpenModal={(question) => setContextChatModal((prev) => {
 								if (prev && prev.type === 'sources') {
