@@ -713,6 +713,22 @@ export class EmbeddingRepo {
 	}
 
 	/**
+	 * Remove orphan embedding rows (doc_id not in doc_meta).
+	 */
+	async cleanupOrphanEmbeddings(): Promise<number> {
+		const stmt = this.rawDb.prepare(`
+			SELECT rowid FROM embedding WHERE doc_id NOT IN (SELECT id FROM doc_meta)
+		`);
+		const rows = stmt.all() as Array<{ rowid: number }>;
+
+		if (rows.length > 0) {
+			const rowids = rows.map(r => r.rowid);
+			await this.deleteEmbeddingsAndVecEmbeddingsByRowids(rowids);
+		}
+		return rows.length;
+	}
+
+	/**
 	 * Delete all embeddings.
 	 */
 	async deleteAll(): Promise<void> {

@@ -115,6 +115,9 @@ export class QueryService {
 			),
 		];
 		const [textResult, vecResult, metaResult] = await Promise.all(searchPromises);
+		// console.debug('textResult', JSON.stringify(textResult));
+		// console.debug('vecResult', JSON.stringify(vecResult));
+		// console.debug('metaResult', JSON.stringify(metaResult));
 		const textItems = textResult.result;
 		const vecItems = vecResult.result;
 		const metaItems = metaResult.result;

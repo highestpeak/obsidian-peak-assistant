@@ -204,6 +204,13 @@ export function buildCoreCommands(
 						new Notice('Search index: no orphaned documents found.', 3000);
 					}
 
+					// Step 1.5: Orphan child records (doc_meta_fts, doc_fts, doc_chunk, embedding, doc_statistics, graph) — meta gone but children remain
+					const orphanResult = await IndexService.getInstance().cleanupOrphanedSearchIndexData();
+					const orphanTotal = orphanResult.metaFts + orphanResult.fts + orphanResult.chunks + orphanResult.embeddings + orphanResult.stats + orphanResult.graphNodes;
+					if (orphanTotal > 0) {
+						new Notice(`Search index: cleaned ${orphanTotal} orphan child record(s) (meta_fts, fts, chunks, embeddings, stats, graph).`, 4000);
+					}
+
 					// Step 2: Orphan vec_embeddings (records not linked to embedding table)
 					const vecResult = await sqliteStoreManager.getEmbeddingRepo().cleanupOrphanedVecEmbeddings();
 					if (vecResult.found === 0) {

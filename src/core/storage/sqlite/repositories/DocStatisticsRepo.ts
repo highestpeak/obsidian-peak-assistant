@@ -205,6 +205,17 @@ export class DocStatisticsRepo {
 	}
 
 	/**
+	 * Remove orphan doc_statistics rows (doc_id not in doc_meta).
+	 */
+	async cleanupOrphanStats(): Promise<number> {
+		const result = await this.db
+			.deleteFrom('doc_statistics')
+			.where('doc_id', 'not in', this.db.selectFrom('doc_meta').select('id'))
+			.executeTakeFirst();
+		return Number((result as { numDeletedRows: bigint })?.numDeletedRows ?? 0);
+	}
+
+	/**
 	 * Get top documents by richness score.
 	 */
 	async getTopByRichness(limit: number): Promise<DbSchema['doc_statistics'][]> {

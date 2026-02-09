@@ -86,6 +86,35 @@ export class DocChunkRepo {
 	}
 
 	/**
+	 * Remove orphan doc_meta_fts rows (doc_id not in doc_meta).
+	 */
+	cleanupOrphanMetaFts(): number {
+		const stmt = this.rawDb.prepare(`DELETE FROM doc_meta_fts WHERE doc_id NOT IN (SELECT id FROM doc_meta)`);
+		const result = stmt.run();
+		return result.changes;
+	}
+
+	/**
+	 * Remove orphan doc_fts rows (doc_id not in doc_meta).
+	 */
+	cleanupOrphanFts(): number {
+		const stmt = this.rawDb.prepare(`DELETE FROM doc_fts WHERE doc_id NOT IN (SELECT id FROM doc_meta)`);
+		const result = stmt.run();
+		return result.changes;
+	}
+
+	/**
+	 * Remove orphan doc_chunk rows (doc_id not in doc_meta).
+	 */
+	async cleanupOrphanChunks(): Promise<number> {
+		const result = await this.db
+			.deleteFrom('doc_chunk')
+			.where('doc_id', 'not in', this.db.selectFrom('doc_meta').select('id'))
+			.executeTakeFirst();
+		return Number((result as { numDeletedRows: bigint })?.numDeletedRows ?? 0);
+	}
+
+	/**
 	 * Insert FTS row.
 	 */
 	/**

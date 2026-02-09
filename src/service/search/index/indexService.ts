@@ -204,6 +204,7 @@ export class IndexService {
 			const docIds = Array.from(metaMap.values()).map((m) => m.id);
 
 			docChunkRepo.deleteFtsByDocIds(docIds);
+			docChunkRepo.deleteMetaFtsByDocIds(docIds);
 			await docChunkRepo.deleteByDocIds(docIds);
 			await embeddingRepo.deleteByDocIds(docIds);
 			await docStatisticsRepo.deleteByDocIds(docIds);
@@ -252,6 +253,60 @@ export class IndexService {
 		await indexStateRepo.clearAll();
 
 		onAfterMutation?.(['sqlite', 'graph']);
+	}
+
+	/**
+	 * Clean up orphan records: doc_meta_fts, doc_fts, doc_chunk, embedding, doc_statistics, graph
+	 * where the parent doc_meta no longer exists. Fixes inconsistency when doc_meta was deleted
+	 * but child tables were not cleaned.
+	 */
+	async cleanupOrphanedSearchIndexData(): Promise<{
+		metaFts: number;
+		fts: number;
+		chunks: number;
+		embeddings: number;
+		stats: number;
+		graphNodes: number;
+	}> {
+		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
+		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
+		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
+		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
+		const kdb = sqliteStoreManager.getSearchContext();
+
+		let metaFts = 0;
+		let fts = 0;
+		let chunks = 0;
+		let embeddings = 0;
+		let stats = 0;
+		let graphNodes = 0;
+
+		await kdb.transaction().execute(async () => {
+			metaFts = docChunkRepo.cleanupOrphanMetaFts();
+			fts = docChunkRepo.cleanupOrphanFts();
+			chunks = await docChunkRepo.cleanupOrphanChunks();
+			embeddings = await embeddingRepo.cleanupOrphanEmbeddings();
+			stats = await docStatisticsRepo.cleanupOrphanStats();
+
+			const pathMap = await docMetaRepo.getAllIndexedPaths();
+			const paths = Array.from(pathMap.keys());
+			const idRows = paths.length > 0 ? await docMetaRepo.getIdsByPaths(paths) : [];
+			const validDocIds = new Set(idRows.map((r) => r.id));
+
+			const orphanDocNodes = await graphNodeRepo
+				.getByType('document')
+				.then((nodes) => nodes.filter((n) => !validDocIds.has(n.id)).map((n) => n.id));
+
+			if (orphanDocNodes.length > 0) {
+				await graphEdgeRepo.deleteByNodeIds(orphanDocNodes);
+				await graphNodeRepo.deleteByIds(orphanDocNodes);
+				graphNodes = orphanDocNodes.length;
+			}
+		});
+
+		return { metaFts, fts, chunks, embeddings, stats, graphNodes };
 	}
 
 	/**

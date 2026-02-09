@@ -86,7 +86,15 @@ export function createUpdateResultTool(config: UpdateResultToolConfig) {
         removeId: z.string().min(1, { message: "removeId is required" }),
     });
 
-    /** Unwrap operation when LLM nests it inside a single-key "item". Normalize "update" -> "add" (add does upsert by identity). */
+    /** Detect if object looks like an edge (has source+target but no operation). */
+    function isEdgeLike(obj: Record<string, unknown>): boolean {
+        if ('operation' in obj || 'targetField' in obj) return false;
+        const hasSource = 'source' in obj || 'sourceId' in obj || 'startNode' in obj;
+        const hasTarget = 'target' in obj || 'targetId' in obj || 'endNode' in obj;
+        return !!hasSource && !!hasTarget;
+    }
+
+    /** Unwrap operation when LLM nests it inside a single-key "item". Normalize "update" -> "add" (add does upsert by identity). Normalize bare edge objects into add ops. */
     function normalizeOperation(raw: unknown): unknown {
         if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
             const obj = raw as Record<string, unknown>;
@@ -103,6 +111,11 @@ export function createUpdateResultTool(config: UpdateResultToolConfig) {
             // Normalize operation: "update" -> "add" (add does upsert by identity for topics, sources, etc.)
             if (obj.operation === 'update' && obj.item != null && obj.targetField != null) {
                 return { ...obj, operation: 'add' };
+            }
+
+            // LLM may output bare edge objects (source, target, type, label) without operation/targetField - wrap as add op
+            if (isEdgeLike(obj)) {
+                return { operation: 'add', targetField: 'graph.edges', item: obj };
             }
         }
         return raw;
