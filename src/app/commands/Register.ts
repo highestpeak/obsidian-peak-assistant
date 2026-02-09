@@ -13,7 +13,6 @@ import { IndexService } from '@/service/search/index/indexService';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import { ConfirmModal } from '@/ui/view/ConfirmModal';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
-import { EmbeddingRepo } from '@/core/storage/sqlite/repositories/EmbeddingRepo';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 /**
@@ -186,29 +185,67 @@ export function buildCoreCommands(
 			},
 		},
 		{
-			id: 'peak-cleanup-orphaned-vec-embeddings',
-			name: 'Cleanup Orphaned Vector Embeddings',
+			id: 'peak-cleanup-useless-data',
+			name: 'Cleanup Useless Data',
 			callback: async () => {
+				const app = viewManager.getApp();
 				try {
-					new Notice('Starting cleanup of orphaned vector embeddings...', 2000);
+					new Notice('Starting cleanup of useless data...', 2000);
 
-					// Run cleanup
-					const result = await sqliteStoreManager.getEmbeddingRepo().cleanupOrphanedVecEmbeddings();
-
-					if (result.found === 0) {
-						new Notice('No orphaned vector embeddings found.', 3000);
+					// Step 1: Orphan search index (doc_meta, chunks, embeddings, graph, etc.) — files deleted from vault but still in DB
+					const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+					const indexedPaths = await docMetaRepo.getAllIndexedPaths();
+					const vaultPathSet = new Set(app.vault.getFiles().map((f) => f.path));
+					const orphanPaths = Array.from(indexedPaths.keys()).filter((p) => !vaultPathSet.has(p));
+					if (orphanPaths.length > 0) {
+						await IndexService.getInstance().deleteDocuments(orphanPaths);
+						new Notice(`Search index: removed ${orphanPaths.length} orphaned document(s).`, 4000);
 					} else {
-						new Notice(
-							`Cleanup completed: Found ${result.found} orphaned records, deleted ${result.deleted}.`,
-							5000
-						);
+						new Notice('Search index: no orphaned documents found.', 3000);
 					}
+
+					// Step 2: Orphan vec_embeddings (records not linked to embedding table)
+					const vecResult = await sqliteStoreManager.getEmbeddingRepo().cleanupOrphanedVecEmbeddings();
+					if (vecResult.found === 0) {
+						new Notice('Vector embeddings: no orphaned records.', 3000);
+					} else {
+						new Notice(`Vector embeddings: removed ${vecResult.deleted} orphaned record(s).`, 4000);
+					}
+
+					// Step 3: Orphan chat conversations — conv file deleted from vault but DB still has conversation
+					const convRepo = sqliteStoreManager.getChatConversationRepo();
+					const messageRepo = sqliteStoreManager.getChatMessageRepo();
+					const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
+					const starRepo = sqliteStoreManager.getChatStarRepo();
+					const allConvs = await convRepo.getAllWithFilePaths();
+					const orphanConvIds: string[] = [];
+					for (const c of allConvs) {
+						const effectivePath = c.archived_rel_path ?? c.file_rel_path;
+						if (!vaultPathSet.has(effectivePath)) {
+							orphanConvIds.push(c.conversation_id);
+						}
+					}
+					if (orphanConvIds.length > 0) {
+						const messageIds: string[] = [];
+						for (const convId of orphanConvIds) {
+							const msgs = await messageRepo.listByConversation(convId);
+							messageIds.push(...msgs.map((m) => m.message_id));
+						}
+						if (messageIds.length > 0) {
+							await resourceRepo.deleteByMessageIds(messageIds);
+						}
+						await starRepo.deleteByConversationIds(orphanConvIds);
+						await messageRepo.deleteByConversationIds(orphanConvIds);
+						await convRepo.deleteByConversationIds(orphanConvIds);
+						new Notice(`Chat: removed ${orphanConvIds.length} orphaned conversation(s).`, 4000);
+					} else {
+						new Notice('Chat: no orphaned conversations found.', 3000);
+					}
+
+					new Notice('Cleanup finished.', 3000);
 				} catch (error) {
-					console.error('[Register] Error cleaning up orphaned vec embeddings:', error);
-					new Notice(
-						'Failed to cleanup orphaned vector embeddings. Please check the console for details.',
-						5000
-					);
+					console.error('[Register] Error during cleanup useless data:', error);
+					new Notice('Cleanup failed. See console for details.', 5000);
 				}
 			},
 		},

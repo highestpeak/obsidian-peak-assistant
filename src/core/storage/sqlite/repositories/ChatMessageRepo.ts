@@ -186,4 +186,15 @@ export class ChatMessageRepo {
 
 		return result?.count ?? 0;
 	}
+
+	/**
+	 * Delete all messages for the given conversation IDs.
+	 */
+	async deleteByConversationIds(conversationIds: string[]): Promise<void> {
+		if (conversationIds.length === 0) return;
+		await this.db
+			.deleteFrom('chat_message')
+			.where('conversation_id', 'in', conversationIds)
+			.execute();
+	}
 }

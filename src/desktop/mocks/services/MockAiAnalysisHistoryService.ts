@@ -10,6 +10,7 @@ export interface MockAIAnalysisRecord {
 	id: string;
 	vault_rel_path: string;
 	query: string | null;
+	title: string | null;
 	created_at_ts: number;
 	web_enabled: number;
 	estimated_tokens: number | null;
@@ -430,8 +431,12 @@ const MOCK_AI_ANALYSIS_RECORDS_INIT: MockAIAnalysisRecord[] = Array.from({ lengt
 	];
 	const summary = summaryParagraphs[i % summaryParagraphs.length];
 
+	const mockTitle = query ? `Mock: ${query.slice(0, 45)}${query.length > 45 ? '…' : ''}` : 'Mock AI Analysis';
+	const mermaidVariant = MERMAID_VARIANTS[i % MERMAID_VARIANTS.length];
+
 	const snapshot: CompletedAnalysisSnapshot = {
 		version: 1,
+		title: mockTitle,
 		summaries: summary ? [summary] : [],
 		summaryVersion: 1,
 		analysisStartedAtMs: nowTs - duration,
@@ -441,6 +446,7 @@ const MOCK_AI_ANALYSIS_RECORDS_INIT: MockAIAnalysisRecord[] = Array.from({ lengt
 		dashboardBlocks: buildDashboardBlocks(i),
 		sources,
 		graph,
+		overviewMermaid: mermaidVariant,
 		topicInspectResults: buildTopicInspectResults(topics, sources, i),
 		topicAnalyzeResults: buildTopicAnalyzeResults(topics, query, i),
 		topicGraphResults: buildTopicGraphResults(topics, i),
@@ -454,6 +460,7 @@ const MOCK_AI_ANALYSIS_RECORDS_INIT: MockAIAnalysisRecord[] = Array.from({ lengt
 		id: `mock-ai-${i + 1}`,
 		vault_rel_path,
 		query,
+		title: mockTitle,
 		created_at_ts: nowTs,
 		web_enabled: 0,
 		estimated_tokens: snapshot.usage?.totalTokens ?? makeRandomInt(150, 350),

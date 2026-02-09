@@ -168,6 +168,8 @@ export interface Database {
 		id: string;
 		vault_rel_path: string;
 		query: string | null;
+		/** Short display title (from AI at end of analysis). */
+		title: string | null;
 		created_at_ts: number;
 		web_enabled: number;
 		estimated_tokens: number | null;
@@ -453,6 +455,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			id TEXT PRIMARY KEY,
 			vault_rel_path TEXT NOT NULL UNIQUE,
 			query TEXT,
+			title TEXT,
 			created_at_ts INTEGER NOT NULL,
 			web_enabled INTEGER NOT NULL DEFAULT 0,
 			estimated_tokens INTEGER,
@@ -468,6 +471,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	// Migration: add duration, drop meta_json (SQLite 3.35+ for DROP COLUMN)
 	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN duration INTEGER`);
 	tryExec(`ALTER TABLE ai_analysis_record DROP COLUMN meta_json`);
+	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN title TEXT`);
 }
 
 

@@ -93,13 +93,41 @@ function buildMockSearchAgentResult(query: string): SearchAgentResult {
 			renderEngine: 'MARKDOWN' as const,
 			// No markdown, no items → contentHint "short" → narrower block
 		},
+		// Mock "post-review" block: suggestion-style (review agent may add/fix blocks)
+		{
+			id: 'block:mock-review',
+			title: 'Review Suggestion',
+			category: 'Follow-up',
+			slot: 'FLOW' as const,
+			renderEngine: 'MARKDOWN' as const,
+			markdown: 'Mock block added to simulate **review agent** output. In real flow, the review agent suggests fixes for dashboard blocks.',
+		},
 	];
+
+	const mockTitle = query.trim().length > 0
+		? `Mock: ${query.slice(0, 50)}${query.length > 50 ? '…' : ''}`
+		: 'Mock AI Analysis';
+
+	const overviewMermaid = `flowchart LR
+  subgraph Sources
+    A[Mock Note One]
+    B[Mock Note Two]
+  end
+  subgraph Concepts
+    C[Mock Concept A]
+  end
+  C --> A
+  A --> B
+  B --> C`;
+
 	return {
+		title: mockTitle,
 		summary,
 		topics,
 		sources,
 		graph,
 		dashboardBlocks,
+		overviewMermaid,
 	};
 }
 
@@ -187,6 +215,38 @@ export async function* mockAIAnalysisStream(
 	yield { type: 'prompt-stream-result', promptId: PromptId.SearchAiSummary, output: summaryText, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
 
 	await delay(phaseDelayMs);
+
+	// Title stream (AiAnalysisTitle) – typewriter effect in UI
+	const titleText = fullResult.title ?? '';
+	if (titleText) {
+		await delay(chunkDelayMs);
+		yield { type: 'prompt-stream-start', promptId: PromptId.AiAnalysisTitle, triggerName: StreamTriggerName.SEARCH_TITLE };
+		const titleChunkSize = Math.max(1, Math.floor(titleText.length / 6));
+		for (let i = 0; i < titleText.length; i += titleChunkSize) {
+			await delay(chunkDelayMs);
+			yield { type: 'prompt-stream-delta', promptId: PromptId.AiAnalysisTitle, delta: titleText.slice(i, i + titleChunkSize), triggerName: StreamTriggerName.SEARCH_TITLE };
+		}
+		await delay(chunkDelayMs);
+		yield { type: 'prompt-stream-result', promptId: PromptId.AiAnalysisTitle, output: titleText, triggerName: StreamTriggerName.SEARCH_TITLE };
+		await delay(phaseDelayMs);
+	}
+
+	// Overview Mermaid stream (AiAnalysisOverviewMermaid)
+	const mermaidText = fullResult.overviewMermaid ?? '';
+	if (mermaidText) {
+		await delay(chunkDelayMs);
+		yield { type: 'prompt-stream-start', promptId: PromptId.AiAnalysisOverviewMermaid, triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID };
+		const mermaidChunkSize = Math.max(1, Math.floor(mermaidText.length / 8));
+		for (let i = 0; i < mermaidText.length; i += mermaidChunkSize) {
+			await delay(chunkDelayMs);
+			yield { type: 'prompt-stream-delta', promptId: PromptId.AiAnalysisOverviewMermaid, delta: mermaidText.slice(i, i + mermaidChunkSize), triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID };
+		}
+		await delay(chunkDelayMs);
+		yield { type: 'prompt-stream-result', promptId: PromptId.AiAnalysisOverviewMermaid, output: mermaidText, triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID };
+		await delay(phaseDelayMs);
+	}
+
+	// (Review agent not streamed in mock; fullResult.dashboardBlocks already include a mock "Review Suggestion" block)
 
 	// Final complete
 	await delay(chunkDelayMs);

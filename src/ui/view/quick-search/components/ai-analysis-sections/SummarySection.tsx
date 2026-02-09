@@ -36,10 +36,7 @@ export const SummaryContent: React.FC<{
     } = useAIAnalysisStore();
 
     // Memoize summary text calculation to avoid unnecessary joins on every render
-    const baseSummary = useMemo(() => {
-        console.debug('[SummarySection] summary concat runned', summaryChunks.length);
-        return summaryChunks.join('');
-    }, [summaryChunks]);
+    const baseSummary = useMemo(() => summaryChunks.join(''), [summaryChunks]);
     const [summaryVersions, setSummaryVersions] = useState<string[]>(() => (baseSummary ? [baseSummary] : []));
     const [activeSummaryIndex, setActiveSummaryIndex] = useState(0);
 
@@ -48,6 +45,15 @@ export const SummaryContent: React.FC<{
             setSummaryVersions([baseSummary]);
         }
     }, [baseSummary]);
+    // Freeze final summary into version 0 when streaming completes
+    useEffect(() => {
+        if (!analysisCompleted || !baseSummary) return;
+        setSummaryVersions((prev) => {
+            if (prev.length === 0) return [baseSummary];
+            if (prev[0] === baseSummary) return prev;
+            return [baseSummary, ...prev.slice(1)];
+        });
+    }, [analysisCompleted, baseSummary]);
     const summary = baseSummary;
 
     const [streamingReplace, setStreamingReplace] = useState<string | null>(null);
@@ -67,11 +73,14 @@ export const SummaryContent: React.FC<{
         setStreamingReplace(null);
     }, []);
 
+    // During streaming, always show live baseSummary; after completion use summaryVersions for history.
     const displaySummary = streamingReplace != null
         ? streamingReplace
-        : (summaryVersions?.length && summaryVersions.length > 0)
-            ? (summaryVersions[activeSummaryIndex] ?? summary)
-            : summary;
+        : (isAnalyzing && !analysisCompleted)
+            ? summary
+            : (summaryVersions?.length && summaryVersions.length > 0)
+                ? (summaryVersions[activeSummaryIndex] ?? summary)
+                : summary;
     // Wikilinks [[...]] are parsed by remarkWikilink in StreamdownIsolated; click handled by handleStreamdownClick.
     const renderedSummary = displaySummary;
 

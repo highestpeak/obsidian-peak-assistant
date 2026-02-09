@@ -72,23 +72,19 @@ No specific topics extracted.
 **CRITICAL: You MUST only reference paths that appear in the Source Materials section above.**
 Do NOT invent, guess, or hallucinate any file paths. If a path is not listed in Source Materials, do not cite it.
 
+**CRITICAL: Your response MUST include your analysis, judgments, and actionable recommendations—NOT just a paraphrase or bullet list of sources. The user expects insight, not a raw dump of content.**
+
+**Anti-pattern (forbidden)**: Outputting only quotes or summaries of each source without synthesizing them into a coherent argument, drawing conclusions, or suggesting next steps.
+
 Create a comprehensive response that:
 
 1. **Directly addresses** the current query using evidence from sources
 2. **Cites sources** using ONLY the exact paths from Source Materials (e.g., \`path/to/file.md\`)
 3. **Leverages relationships** from the knowledge graph to show connections
-4. **Highlights insights** and recommendations where relevant
+4. **Provides explicit insights, judgments** (e.g., strength/weakness of evidence), and **actionable recommendations**—this is required, not optional
 5. **Maintains conversational coherence** with the session history
 6. **Prioritizes high-relevance sources** (score > 70) for key claims
 7. **Acknowledges limitations** if evidence is insufficient rather than fabricating information
-8. **Include a small Mermaid overview diagram** that summarizes the key relationships:
-   - Output a section titled: \`## Overview\`
-   - Then output a Mermaid code block using \`flowchart TD\`
-   - Limit to **<= 12 nodes** and **<= 18 edges** (keep it compact)
-   - Node IDs must be mermaid-safe (no spaces). Use short IDs like \`A1\`, \`T1\`, \`S1\`.
-   - Node labels should be short and readable. **Do NOT include file paths in node labels.**
-   - The diagram should connect topics -> documents -> dashboard blocks (high-level), not the full raw graph.
-   - If you cannot produce a meaningful diagram, output a minimal placeholder mermaid block.
 `;
 
 export const expectsJson = false;

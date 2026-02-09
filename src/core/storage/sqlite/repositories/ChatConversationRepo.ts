@@ -192,4 +192,25 @@ export class ChatConversationRepo {
 			.where('conversation_id', '=', conversationId)
 			.execute();
 	}
+
+	/**
+	 * Get all conversations with file paths (for orphan cleanup).
+	 */
+	async getAllWithFilePaths(): Promise<Array<{ conversation_id: string; file_rel_path: string; archived_rel_path: string | null }>> {
+		return this.db
+			.selectFrom('chat_conversation')
+			.select(['conversation_id', 'file_rel_path', 'archived_rel_path'])
+			.execute();
+	}
+
+	/**
+	 * Delete conversations by IDs.
+	 */
+	async deleteByConversationIds(conversationIds: string[]): Promise<void> {
+		if (conversationIds.length === 0) return;
+		await this.db
+			.deleteFrom('chat_conversation')
+			.where('conversation_id', 'in', conversationIds)
+			.execute();
+	}
 }

@@ -3,8 +3,10 @@
  */
 export const template = `You are helping the user with a follow-up question about their AI analysis.
 
-## Current analysis summary
-{{summary}}
+## Analysis context
+Original query: {{originalQuery}}
+
+Current analysis summary: {{summary}}
 
 ## User question
 {{question}}

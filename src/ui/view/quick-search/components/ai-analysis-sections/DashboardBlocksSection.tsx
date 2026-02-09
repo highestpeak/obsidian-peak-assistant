@@ -3,6 +3,7 @@ import { AnimatePresence, motion, LayoutGroup } from 'framer-motion';
 import { Copy, MessageCircle } from 'lucide-react';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import type { DashboardBlock, DashboardBlockItem } from '@/service/agents/AISearchAgent';
+import { normalizeMermaidForDisplay } from '@/core/utils/mermaid-utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/shared-ui/hover-card';
 import { useAIAnalysisStore } from '../../store/aiAnalysisStore';
@@ -83,6 +84,17 @@ function getBlockCopyText(block: DashboardBlock): string {
 	return '';
 }
 
+/** Dedupes items by (title, description) to avoid duplicate cards from AI output. */
+function dedupeBlockItems(items: DashboardBlockItem[]): DashboardBlockItem[] {
+	const seen = new Set<string>();
+	return items.filter((item) => {
+		const key = `${(item.title ?? '').trim()}|${(item.description ?? '').trim()}`;
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+}
+
 /** Renders a single dashboard block by renderEngine. */
 const BlockContent: React.FC<{
 	block: DashboardBlock;
@@ -91,7 +103,8 @@ const BlockContent: React.FC<{
 	followupSlot?: React.ReactNode | null;
 	anchorItemId?: string | null;
 }> = ({ block, isStreaming = false, onOpenChatForItem, followupSlot, anchorItemId }) => {
-	const { renderEngine, items, markdown, mermaidCode, title, category } = block;
+	const { renderEngine, items: rawItems, markdown, mermaidCode, title, category } = block;
+	const items = rawItems?.length ? dedupeBlockItems(rawItems) : rawItems;
 	const label = title || category || 'Block';
 	const hasItemChat = !!onOpenChatForItem;
 	const showSlotAfterItem = (itemId: string) => !!followupSlot && anchorItemId === itemId;
@@ -99,10 +112,13 @@ const BlockContent: React.FC<{
 	if (renderEngine === 'TILE' && items?.length) {
 		return (
 			<div className="pktw-grid pktw-grid-cols-1 pktw-md:grid-cols-2 pktw-gap-3">
-				{items.map((item: DashboardBlockItem) => (
-					<React.Fragment key={item.id}>
-						<div
-							className="pktw-bg-white pktw-rounded-lg pktw-overflow-hidden pktw-border pktw-border-[#e5e7eb] hover:pktw-border-[#7c3aed]/30 pktw-transition-colors pktw-flex pktw-group/item"
+				{items.map((item: DashboardBlockItem, idx: number) => (
+					<React.Fragment key={`${block.id}-item-${idx}`}>
+						<motion.div
+							initial={{ opacity: 0, scale: 0.96 }}
+							animate={{ opacity: 1, scale: 1 }}
+							transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
+							className="pktw-select-text pktw-bg-white pktw-rounded-lg pktw-overflow-hidden pktw-border pktw-border-[#e5e7eb] hover:pktw-border-[#7c3aed]/30 pktw-transition-colors pktw-flex pktw-group/item"
 						>
 							<div
 								className="pktw-w-1 pktw-flex-shrink-0"
@@ -132,7 +148,7 @@ const BlockContent: React.FC<{
 									</Button>
 								) : null}
 							</div>
-						</div>
+						</motion.div>
 						{showSlotAfterItem(item.id) ? (
 							<motion.div
 								initial={{ opacity: 0, y: -4 }}
@@ -152,10 +168,13 @@ const BlockContent: React.FC<{
 	if (renderEngine === 'ACTION_GROUP' && items?.length) {
 		return (
 			<div className="pktw-space-y-3">
-				{items.map((item: DashboardBlockItem) => (
-					<React.Fragment key={item.id}>
-						<div
-							className="pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-p-3 hover:pktw-border-[#7c3aed]/30 hover:pktw-bg-[#fafafa] pktw-transition-colors pktw-flex pktw-items-start pktw-gap-2 pktw-group/item"
+				{items.map((item: DashboardBlockItem, idx: number) => (
+					<React.Fragment key={`${block.id}-item-${idx}`}>
+						<motion.div
+							initial={{ opacity: 0, x: -8 }}
+							animate={{ opacity: 1, x: 0 }}
+							transition={{ duration: 0.28, delay: idx * 0.05, ease: [0.22, 1, 0.36, 1] }}
+							className="pktw-select-text pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-p-3 hover:pktw-border-[#7c3aed]/30 hover:pktw-bg-[#fafafa] pktw-transition-colors pktw-flex pktw-items-start pktw-gap-2 pktw-group/item"
 						>
 							<div className="pktw-flex-1 pktw-min-w-0">
 								<div className="pktw-font-medium pktw-text-[#2e3338] pktw-text-sm pktw-mb-1">{stripMarkdownFromTitle(item.title)}</div>
@@ -175,7 +194,7 @@ const BlockContent: React.FC<{
 									<MessageCircle className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#6c757d]" />
 								</Button>
 							) : null}
-						</div>
+						</motion.div>
 						{showSlotAfterItem(item.id) ? (
 							<motion.div
 								initial={{ opacity: 0, y: -4 }}
@@ -193,14 +212,14 @@ const BlockContent: React.FC<{
 	}
 
 	if (renderEngine === 'MERMAID' && (mermaidCode?.trim() || markdown?.trim())) {
-		const code = mermaidCode?.trim() || markdown?.trim() || '';
-		const wrapped = code.includes('```mermaid') ? code : `\`\`\`mermaid\n${code}\n\`\`\``;
+		const raw = mermaidCode?.trim() || markdown?.trim() || '';
+		const content = normalizeMermaidForDisplay(raw);
 		return (
 			<StreamdownIsolated
-				className="pktw-w-full pktw-min-w-0 pktw-text-left pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none"
+				className="pktw-select-text pktw-w-full pktw-min-w-0 pktw-text-left pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none"
 				isAnimating={isStreaming}
 			>
-				{wrapped}
+				{content}
 			</StreamdownIsolated>
 		);
 	}
@@ -208,7 +227,7 @@ const BlockContent: React.FC<{
 	if ((renderEngine === 'MARKDOWN' || renderEngine === 'MERMAID') && markdown?.trim()) {
 		return (
 			<StreamdownIsolated
-				className="pktw-w-full pktw-text-left pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none"
+				className="pktw-select-text pktw-w-full pktw-text-left pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none"
 				isAnimating={isStreaming}
 			>
 				{markdown}
@@ -251,7 +270,7 @@ export const DashboardBlocksSection: React.FC<{
 	const showSlotAfterBlockHeader = followupOpen && anchor?.blockId && !anchor.itemId;
 	const showSlotAfterItem = followupOpen && !!anchor?.itemId;
 
-	const renderBlock = (block: DashboardBlock) => {
+	const renderBlock = (block: DashboardBlock, index: number) => {
 		const rawLabel = block.title || block.category || 'Block';
 		const label = stripMarkdownFromTitle(rawLabel) || 'Block';
 		const isAnchorBlock = anchor?.blockId === block.id;
@@ -262,10 +281,18 @@ export const DashboardBlocksSection: React.FC<{
 		const copyText = getBlockCopyText(block);
 		const showCopy = copyText.length > 0;
 		return (
-			<div
+			<motion.div
 				key={block.id}
+				layout
+				initial={{ opacity: 0, y: 16 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{
+					duration: 0.35,
+					delay: index * 0.06,
+					ease: [0.22, 1, 0.36, 1],
+				}}
 				id={`block-${block.id}`}
-				className="dashboard-blocks-section-block pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb] pktw-scroll-mt-4 pktw-flex pktw-flex-col pktw-min-h-0 pktw-overflow-visible pktw-group"
+				className="dashboard-blocks-section-block pktw-select-text pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb] pktw-scroll-mt-4 pktw-flex pktw-flex-col pktw-min-h-0 pktw-overflow-visible pktw-group"
 				style={{
 					flexGrow: flexStyle.flexGrow,
 					flexBasis: flexStyle.flexBasis,
@@ -354,16 +381,19 @@ export const DashboardBlocksSection: React.FC<{
 						anchorItemId={anchor?.itemId ?? null}
 					/>
 				</div>
-			</div>
+			</motion.div>
 		);
 	};
 
 	return (
-		<div ref={blockRef} className="pktw-scroll-mt-24 pktw-w-full">
+		<div ref={blockRef} className="pktw-select-text pktw-scroll-mt-24 pktw-w-full">
 			<LayoutGroup>
-				<div className="pktw-flex pktw-flex-wrap pktw-gap-3 pktw-items-stretch pktw-w-full">
-					{blocks.map(renderBlock)}
-				</div>
+				<motion.div
+					className="pktw-flex pktw-flex-wrap pktw-gap-3 pktw-items-stretch pktw-w-full"
+					layout
+				>
+					{blocks.map((block, index) => renderBlock(block, index))}
+				</motion.div>
 			</LayoutGroup>
 		</div>
 	);

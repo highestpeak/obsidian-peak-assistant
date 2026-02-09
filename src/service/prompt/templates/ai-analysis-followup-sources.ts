@@ -3,6 +3,11 @@
  */
 export const template = `You are helping the user interpret the sources from an AI analysis.
 
+## Analysis context
+Original query: {{originalQuery}}
+
+Main summary: {{mainSummary}}
+
 ## Sources (sample)
 {{sourcesList}}
 

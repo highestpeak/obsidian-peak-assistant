@@ -171,13 +171,24 @@ export async function graphTraversal(params: any) {
 
     // Build graph visualization data from collected nodes and edges
     const visitedNodeIds = new Set(result.map(n => n.id));
-    const graphVisualizationNodes: GraphVisualizationNode[] = result.map(node => ({
-        id: node.id,
-        label: node.label || node.id,
-        type: node.type,
-        depth: node.depth,
-        foundBy: node.foundBy
-    }));
+    const graphVisualizationNodes: (GraphVisualizationNode & { path?: string; attributes?: Record<string, unknown> })[] = result.map(node => {
+        let path: string | undefined;
+        try {
+            const attrs = typeof node.attributes === 'string' ? JSON.parse(node.attributes || '{}') : node.attributes;
+            if (attrs && typeof attrs === 'object' && typeof attrs.path === 'string' && attrs.path.trim()) {
+                path = attrs.path.trim();
+            }
+        } catch { /* ignore */ }
+        return {
+            id: node.id,
+            label: node.label || node.id,
+            type: node.type,
+            depth: node.depth,
+            foundBy: node.foundBy,
+            ...(path ? { path } : {}),
+            ...(node.attributes ? { attributes: typeof node.attributes === 'string' ? (() => { try { return JSON.parse(node.attributes); } catch { return {}; } })() : node.attributes } : {}),
+        };
+    });
     // Filter edges to only include those between visited nodes
     const graphVisualizationEdges = collectedEdges.filter(
         edge => visitedNodeIds.has(edge.from_node_id) && visitedNodeIds.has(edge.to_node_id)

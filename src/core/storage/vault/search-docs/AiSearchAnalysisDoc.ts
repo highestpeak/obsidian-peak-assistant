@@ -14,6 +14,7 @@
  */
 
 import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock } from '@/service/agents/AISearchAgent';
+import { getMermaidInner, normalizeMermaidForDisplay } from '@/core/utils/mermaid-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { SearchResultItem } from '@/service/search/types';
 import type { LLMUsage } from '@/core/providers/types';
@@ -23,6 +24,7 @@ import type { GraphNodeType } from '@/core/po/graph.po';
 
 const SECTION_SUMMARY = '# Summary';
 const SECTION_QUERY = '# Query';
+const SECTION_OVERVIEW = '# Overview';
 const SECTION_KEY_TOPICS = '# Key Topics';
 const SECTION_SOURCES = '# Sources';
 const SECTION_TOPIC_INSPECT = '# Topic Inspect Results';
@@ -49,6 +51,8 @@ export interface AiSearchAnalysisDocModel {
 	analysisStartedAtMs: number | null;
 	duration: number | null;
 	usage: LLMUsage | null;
+	/** Short display title (from AI at end of analysis). */
+	title?: string;
 	/** Selected summary for md body (summaries[summaryVersion - 1]). */
 	summary: string;
 	/** All generated summaries. */
@@ -75,6 +79,8 @@ export interface AiSearchAnalysisDocModel {
 	sourcesFollowups?: SectionAnalyzeResult[];
 	/** All analysis steps for replay. */
 	steps?: AIAnalysisStep[];
+	/** Overview diagram (raw Mermaid code). */
+	overviewMermaid?: string;
 }
 
 const EMPTY_DOC_MODEL: AiSearchAnalysisDocModel = {
@@ -108,6 +114,7 @@ function extractSection(raw: string, sectionTitle: string): string {
 
 function parseFrontmatter(raw: string): {
 	created: string;
+	title: string;
 	query: string;
 	webEnabled: boolean;
 	duration: number | null;
@@ -119,6 +126,7 @@ function parseFrontmatter(raw: string): {
 	if (!fmMatch) {
 		return {
 			created: '',
+			title: '',
 			query: '',
 			webEnabled: false,
 			duration: null,
@@ -153,6 +161,7 @@ function parseFrontmatter(raw: string): {
 		runMode === 'simple' || runMode === 'full' ? runMode : undefined;
 	return {
 		created: getStr('created'),
+		title: getStr('title'),
 		query: getStr('query'),
 		webEnabled: getBool('webEnabled'),
 		duration: getNum('duration'),
@@ -242,6 +251,8 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 	const summary = extractSection(body, 'Summary');
 	const querySection = extractSection(body, 'Query');
 	const query = querySection || fm.query;
+	const overviewSection = extractSection(body, 'Overview');
+	const overviewMermaid = overviewSection ? extractMermaidBlock(overviewSection) : undefined;
 	const topicsText = extractSection(body, 'Key Topics');
 	const sourcesText = extractSection(body, 'Sources');
 	const inspectText = extractSection(body, 'Topic Inspect Results');
@@ -461,6 +472,7 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 	return {
 		...EMPTY_DOC_MODEL,
 		created: fm.created || undefined,
+		title: fm.title?.trim() || undefined,
 		query,
 		webEnabled: fm.webEnabled,
 		analysisStartedAtMs: fm.analysisStartedAt,
@@ -481,6 +493,7 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		blocksFollowupsByBlockId,
 		sourcesFollowups: sourcesFollowups.length ? sourcesFollowups : undefined,
 		steps: steps.length ? steps : undefined,
+		overviewMermaid: overviewMermaid || undefined,
 	};
 }
 
@@ -544,6 +557,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel): string {
 	lines.push('type: ai-search-result');
 	lines.push(`version: 1`);
 	lines.push(`created: ${now}`);
+	if (docModel.title?.trim()) lines.push(`title: ${escapeYamlScalar(docModel.title.trim())}`);
 	lines.push(`query: ${escapeYamlScalar(docModel.query)}`);
 	lines.push(`webEnabled: ${docModel.webEnabled}`);
 	if (docModel.runAnalysisMode) lines.push(`runAnalysisMode: ${docModel.runAnalysisMode}`);
@@ -562,6 +576,15 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel): string {
 	lines.push('');
 	lines.push(docModel.query);
 	lines.push('');
+
+	if (docModel.overviewMermaid?.trim()) {
+		lines.push(SECTION_OVERVIEW);
+		lines.push('');
+		lines.push('```mermaid');
+		lines.push(getMermaidInner(docModel.overviewMermaid));
+		lines.push('```');
+		lines.push('');
+	}
 
 	if (docModel.topics.length) {
 		lines.push(SECTION_KEY_TOPICS);
@@ -715,6 +738,7 @@ export function toCompletedAnalysisSnapshot(
 ): CompletedAnalysisSnapshot {
 	return {
 		version: 1,
+		title: docModel.title,
 		summaries: (docModel.summaries?.length ? docModel.summaries : [docModel.summary]) as string[],
 		summaryVersion: docModel.summaryVersion ?? 1,
 		runAnalysisMode: docModel.runAnalysisMode,
@@ -734,6 +758,7 @@ export function toCompletedAnalysisSnapshot(
 		blocksFollowupsByBlockId: docModel.blocksFollowupsByBlockId,
 		sourcesFollowups: docModel.sourcesFollowups,
 		steps: docModel.steps,
+		overviewMermaid: docModel.overviewMermaid ? normalizeMermaidForDisplay(docModel.overviewMermaid) : undefined,
 	};
 }
 
@@ -747,6 +772,7 @@ export function fromCompletedAnalysisSnapshot(
 ): AiSearchAnalysisDocModel {
 	return {
 		version: 1,
+		title: snapshot.title,
 		summaryVersion: snapshot.summaryVersion ?? 1,
 		summary: getSnapshotSummary(snapshot),
 		summaries: snapshot.summaries?.length ? snapshot.summaries : undefined,
@@ -760,6 +786,7 @@ export function fromCompletedAnalysisSnapshot(
 		dashboardBlocks: snapshot.dashboardBlocks ?? [],
 		sources: snapshot.sources ?? [],
 		graph: snapshot.graph ?? null,
+		overviewMermaid: snapshot.overviewMermaid,
 		topicInspectResults: snapshot.topicInspectResults ?? {},
 		topicAnalyzeResults: snapshot.topicAnalyzeResults ?? {},
 		topicGraphResults: snapshot.topicGraphResults ?? {},

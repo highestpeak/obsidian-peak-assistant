@@ -15,22 +15,25 @@ import { useUIEventStore } from "@/ui/store/uiEventStore";
 
 // Convert AISearchSource[] to SearchResultItem[] with extended fields for TopSourcesSection
 export const convertSourcesToSearchResultItems = (aiSources: AISearchSource[]): SearchResultItem[] => {
-    return aiSources.map(source => ({
-        id: source.id,
-        type: 'markdown' as const,
-        title: source.title,
-        path: source.path,
-        lastModified: Date.now(),
-        content: source.reasoning, // Used for reasoning display
-        score: source.score.average,
-        source: 'local' as const,
-        badges: source.badges,
-        scoreDetail: {
-            physical: source.score.physical,
-            semantic: source.score.semantic,
-            average: source.score.average
-        }
-    }));
+    return aiSources.map(source => {
+        const score = source.score ?? { average: 0, physical: 0, semantic: 0 };
+        return {
+            id: source.id,
+            type: 'markdown' as const,
+            title: source.title,
+            path: source.path,
+            lastModified: Date.now(),
+            content: source.reasoning, // Used for reasoning display
+            score: score.average ?? 0,
+            source: 'local' as const,
+            badges: source.badges,
+            scoreDetail: {
+                physical: score.physical ?? 0,
+                semantic: score.semantic ?? 0,
+                average: score.average ?? 0
+            }
+        };
+    });
 };
 
 export function useAIAnalysisResult() {
@@ -73,6 +76,7 @@ export function useAIAnalysisResult() {
             const st = useAIAnalysisStore.getState();
             const replaySnapshot: CompletedAnalysisSnapshot = {
                 version: 1,
+                title: st.title ?? undefined,
                 summaries: st.summaries?.length ? st.summaries : [summary],
                 summaryVersion: st.summaryVersion ?? 1,
                 runAnalysisMode: st.runAnalysisMode ?? undefined,
@@ -83,6 +87,7 @@ export function useAIAnalysisResult() {
                 dashboardBlocks: st.dashboardBlocks ?? [],
                 sources: st.sources ?? [],
                 graph: st.graph ?? null,
+                overviewMermaid: st.overviewMermaid ?? undefined,
                 topicInspectResults: st.topicInspectResults ?? {},
                 topicAnalyzeResults: st.topicAnalyzeResults ?? {},
                 topicGraphResults: st.topicGraphResults ?? {},
@@ -92,7 +97,8 @@ export function useAIAnalysisResult() {
 
             const ts = Date.now();
             const today = new Date().toISOString().slice(0, 10);
-            const fileName = `AI Analysis - ${searchQuery.slice(0, 48) || 'Query'} - ${today}`;
+            const displayTitle = (st.title?.trim() || searchQuery.slice(0, 48) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 60);
+            const fileName = `AI Analysis - ${displayTitle} - ${today}`;
             const exportSources: ExportSource[] = sources.map(s => ({
                 path: s.path,
                 title: s.title,
@@ -112,6 +118,7 @@ export function useAIAnalysisResult() {
                 id: generateStableUuid(saved.path),
                 vault_rel_path: saved.path,
                 query: searchQuery || null,
+                title: st.title?.trim() || null,
                 created_at_ts: ts,
                 web_enabled: webEnabled ? 1 : 0,
                 estimated_tokens: usage?.totalTokens ?? null,
@@ -128,7 +135,22 @@ export function useAIAnalysisResult() {
         } catch (e) {
             console.warn('[AISearchTab] auto-save failed:', e);
         }
-    }, [searchQuery, summary, getHasGraphData]);
+    }, [
+        searchQuery,
+        summary,
+        topics,
+        sources,
+        autoSaveState,
+        analysisRunId,
+        analysisStartedAtMs,
+        duration,
+        usage,
+        graph,
+        webEnabled,
+        topicInspectResults,
+        getHasGraphData,
+        setAutoSaveState,
+    ]);
 
     const handleCopyAll = useCallback(async () => {
         const st = useAIAnalysisStore.getState();
@@ -166,9 +188,21 @@ export function useAIAnalysisResult() {
     }, [searchQuery, webEnabled, summary, topics, sources, graph, topicInspectResults, usage]);
 
     const handleSaveToFile = useCallback(async (folderPath: string, fileName: string) => {
+        const root = AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder?.trim() || '';
+        const normalizedFolder = root
+            ? (() => {
+                const base = root.replace(/^\/+|\/+$/g, '').trim();
+                const p = (folderPath || '').replace(/^\/+|\/+$/g, '').trim();
+                if (!base || !p || p === base || p.startsWith(base + '/')) return p || base;
+                const last = p.split('/').pop() || p;
+                return last ? `${base}/${last}` : base;
+            })()
+            : folderPath;
+
         const st = useAIAnalysisStore.getState();
         const snapshot: CompletedAnalysisSnapshot = {
             version: 1,
+            title: st.title ?? undefined,
             summaries: st.summaries?.length ? st.summaries : [summary],
             summaryVersion: st.summaryVersion ?? 1,
             runAnalysisMode: st.runAnalysisMode ?? undefined,
@@ -189,7 +223,7 @@ export function useAIAnalysisResult() {
             sourcesFollowups: st.sourcesFollowupHistory?.length ? st.sourcesFollowupHistory : undefined,
         };
         await saveAiAnalyzeResultToMarkdown({
-            folderPath: folderPath,
+            folderPath: normalizedFolder,
             fileName: fileName,
             query: searchQuery,
             snapshot,

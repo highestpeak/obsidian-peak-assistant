@@ -8,7 +8,7 @@ Each operation must be one of:
 - Add: { "operation": "add", "targetField": "sources", "item": { "id": "src:path", "title": "...", "path": "vault-relative-path.md", "reasoning": "...", "badges": [], "score": { "physical": 0-100, "semantic": 0-100, "average": 0-100 } } }
 - Remove: { "operation": "remove", "targetField": "sources", "removeId": "src:path or id" }
 
-targetField must always be "sources". Paths must be vault-relative (e.g. "folder/note.md"). Only use paths that exist in the vault or were returned by search tools.
+targetField must always be "sources". Paths must be vault-relative (e.g. "folder/note.md"). Only use paths that exist in the vault or were returned by search tools. Never use "Untitled" as path—use the exact path from search results.
 
 {{#if lastError}}
 Previous attempt failed: {{lastError}}

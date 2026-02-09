@@ -24,8 +24,8 @@ export interface UpdateResultToolConfig {
     /** Result object that will be modified, or function to get it dynamically */
     result: any | (() => any);
 
-    /** Path validation function */
-    validatePath?: (path: string) => Promise<{ valid: boolean; reason?: string }>;
+    /** Path validation function. May return resolvedPath when basename is matched to full path. */
+    validatePath?: (path: string) => Promise<{ valid: boolean; reason?: string; resolvedPath?: string }>;
 
     /** Set of verified paths */
     verifiedPaths?: Set<string>;
@@ -86,15 +86,23 @@ export function createUpdateResultTool(config: UpdateResultToolConfig) {
         removeId: z.string().min(1, { message: "removeId is required" }),
     });
 
-    /** Unwrap operation when LLM nests it inside a single-key "item" (e.g. {"item": {"operation":"add", "targetField":"...", "item":...}}) */
+    /** Unwrap operation when LLM nests it inside a single-key "item". Normalize "update" -> "add" (add does upsert by identity). */
     function normalizeOperation(raw: unknown): unknown {
         if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-            const keys = Object.keys(raw as object);
+            const obj = raw as Record<string, unknown>;
+            const keys = Object.keys(obj);
+
+            // Unwrap when nested in single-key "item"
             if (keys.length === 1 && keys[0] === 'item') {
-                const inner = (raw as { item: unknown }).item;
+                const inner = obj.item;
                 if (inner && typeof inner === 'object' && !Array.isArray(inner) && 'operation' in inner && 'targetField' in inner) {
-                    return inner;
+                    return normalizeOperation(inner);
                 }
+            }
+
+            // Normalize operation: "update" -> "add" (add does upsert by identity for topics, sources, etc.)
+            if (obj.operation === 'update' && obj.item != null && obj.targetField != null) {
+                return { ...obj, operation: 'add' };
             }
         }
         return raw;
@@ -106,25 +114,50 @@ export function createUpdateResultTool(config: UpdateResultToolConfig) {
         .pipe(z.discriminatedUnion('operation', [addOperationSchema, removeOperationSchema])
             .transform((data) => {
                 if (data.operation === 'add') {
-                    // Apply item validation for add operations
+                    let item = data.item;
+                    // Normalize graph.edges: LLM may put edge id as string in item, with sourceId/targetId/type at op level
+                    if (data.targetField === 'graph.edges' && typeof item === 'string') {
+                        const raw = data as Record<string, unknown>;
+                        const sourceId = raw.sourceId ?? raw.source ?? raw.startNode;
+                        const targetId = raw.targetId ?? raw.target ?? raw.endNode;
+                        if (sourceId != null || targetId != null) {
+                            item = {
+                                id: item,
+                                source: String(sourceId ?? ''),
+                                target: String(targetId ?? ''),
+                                type: raw.type ?? 'link',
+                                label: raw.label ?? '',
+                            };
+                            data = { ...data, item };
+                        }
+                    }
+                    // Skip add operations with missing or non-object item (LLM may output null/undefined)
+                    if (item == null || typeof item !== 'object' || Array.isArray(item)) {
+                        console.warn(`[UpdateResultTool] Skipping add operation for ${data.targetField}: item is missing or invalid`);
+                        return { ...data, _skip: true };
+                    }
                     const schema = itemSchemas[data.targetField];
                     if (!schema) {
                         throw new Error(`No schema found for targetField: ${data.targetField}`);
                     }
-                    // Parse and validate the item with the correct schema
-                    const result = schema.safeParse(data.item);
+                    const result = schema.safeParse(item);
                     if (!result.success) {
-                        // Check if this is a "discard" error (no meaningful content)
                         const errorMessage = result.error.message;
+                        // Discard: no meaningful content
                         if (errorMessage.includes(NO_MEANINGFUL_CONTENT_MESSAGE)) {
                             console.warn(`[UpdateResultTool] Discarding item with no meaningful content for ${data.targetField}`);
-                            // Return a special marker to indicate this operation should be skipped
-                            return {
-                                ...data,
-                                _skip: true
-                            };
+                            return { ...data, _skip: true };
                         }
-                        // For other validation errors, still throw
+                        // Discard: document/file node with placeholder path (Untitled)
+                        if (errorMessage.includes('Document/file nodes must have a valid path')) {
+                            console.warn(`[UpdateResultTool] Discarding document/file node with placeholder path for ${data.targetField}: ${item?.path}`);
+                            return { ...data, _skip: true };
+                        }
+                        // Discard: graph edge with missing or invalid source/target
+                        if (data.targetField === 'graph.edges' && (errorMessage.includes('source and target are required') || errorMessage.includes('source and target cannot be the same'))) {
+                            console.warn(`[UpdateResultTool] Discarding graph edge with invalid source/target for ${data.targetField}`);
+                            return { ...data, _skip: true };
+                        }
                         throw new Error(`Invalid item for targetField "${data.targetField}": ${errorMessage}`);
                     }
                     // Return the validated data
@@ -301,7 +334,7 @@ ${allExamples.map(ex => `- ${ex}`).join('\n')}`;
         if (shouldValidatePath) {
             // Skip validation for placeholder values
             if (item.path === DEFAULT_PLACEHOLDER || item.path === 'Untitled') {
-                console.warn(`[UpdateResultTool] Skipping validation for placeholder path: ${item.path}`);
+                console.debug(`[UpdateResultTool] Skipping validation for placeholder path: ${item.path}`);
                 return `failed to add item: path "${item.path}" is a placeholder value. Please provide a valid file path.`;
             }
 
@@ -309,6 +342,9 @@ ${allExamples.map(ex => `- ${ex}`).join('\n')}`;
             if (!pathValidation.valid) {
                 console.warn(`[UpdateResultTool] Path validation failed: ${item.path} - ${pathValidation.reason}`);
                 return `failed to add item: path "${item.path}" is not verified. ${pathValidation.reason}. Use search tools to find valid paths first.`;
+            }
+            if (pathValidation.resolvedPath) {
+                item = { ...item, path: pathValidation.resolvedPath };
             }
         }
 

@@ -3,9 +3,13 @@
  */
 export const template = `You are helping the user interpret the summary from an AI analysis.
 
-User question: {{question}}
+## Analysis context
+Original query: {{originalQuery}}
 
-Summary: {{summary}}
+Summary (current): {{summary}}
+
+## User question
+{{question}}
 
 Return markdown. Be concise and grounded in the summary.`;
 

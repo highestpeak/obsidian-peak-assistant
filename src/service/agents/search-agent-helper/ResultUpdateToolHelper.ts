@@ -87,6 +87,7 @@ export async function applyOperationsForDimension(
 
     if (dimension === 'graph') {
         normalizeAgentGraphInPlace(getResult());
+        removeInvalidGraphEdges(getResult());
         const validation = validateGraphConsistency(getResult());
         if (!validation.isValid) {
             console.warn('[ResultUpdateToolHelper] Graph consistency issues:', validation.issues);
@@ -197,11 +198,14 @@ function getFullUpdateResultConfig(
                 path: z.string().default(DEFAULT_PLACEHOLDER),
                 reasoning: z.string().default(DEFAULT_PLACEHOLDER),
                 badges: z.array(z.string()).default(() => []),
-                score: z.object({
-                    physical: z.number().min(0).max(100).optional(),
-                    semantic: z.number().min(0).max(100).optional(),
-                    average: z.number().min(0).max(100).optional(),
-                }).optional(),
+                score: z.preprocess(
+                    (val) => (typeof val === 'number' ? { average: val } : val),
+                    z.object({
+                        physical: z.number().min(0).max(100).optional(),
+                        semantic: z.number().min(0).max(100).optional(),
+                        average: z.number().min(0).max(100).optional(),
+                    }).optional()
+                ),
             }).superRefine((data, ctx) => {
                 if ((data.title === DEFAULT_PLACEHOLDER) && (!data.path || data.path === DEFAULT_PLACEHOLDER) &&
                     (!data.reasoning || data.reasoning === DEFAULT_PLACEHOLDER) && (!data.badges || data.badges.length === 0)) {
@@ -215,15 +219,33 @@ function getFullUpdateResultConfig(
                 label: z.string().default(DEFAULT_PLACEHOLDER),
                 path: z.string().optional(),
                 attributes: z.record(z.any()).default(() => ({})),
+            }).transform((data) => {
+                const d = data as any;
+                const isPlaceholder = (s: string) => !s || s.trim() === '' || s === DEFAULT_PLACEHOLDER || s === 'Untitled';
+                const type = String(d.type ?? 'document').trim().toLowerCase();
+                d.type = type;
+                if (type === 'document' || type === 'file') {
+                    if (!d.path || isPlaceholder(String(d.path ?? ''))) {
+                        const attrsPath = d?.attributes?.path;
+                        if (attrsPath && !isPlaceholder(String(attrsPath))) d.path = attrsPath;
+                    }
+                    if (!d.path || isPlaceholder(String(d.path ?? ''))) {
+                        const rawId = String(d.id ?? '').trim();
+                        if (rawId.startsWith('file:')) {
+                            const derivedPath = rawId.slice('file:'.length).replace(/^\/+/, '').trim();
+                            if (derivedPath && !isPlaceholder(derivedPath)) d.path = derivedPath;
+                        }
+                    }
+                }
+                return d;
             }).superRefine((data, ctx) => {
                 if (data.title && !data.label) (data as any).label = data.title;
                 if (data.label && !data.title) (data as any).title = data.label;
                 const type = String((data as any).type ?? 'document').trim().toLowerCase();
                 (data as any).type = type;
+                const isPlaceholder = (s: string) => !s || s.trim() === '' || s === DEFAULT_PLACEHOLDER || s === 'Untitled';
                 if (type === 'document' || type === 'file') {
-                    const attrsPath = (data as any)?.attributes?.path;
-                    if ((!data.path || data.path === DEFAULT_PLACEHOLDER || data.path === 'Untitled') && attrsPath) (data as any).path = attrsPath;
-                    if (!data.path || data.path === DEFAULT_PLACEHOLDER || data.path === 'Untitled') {
+                    if (!data.path || isPlaceholder(String(data.path ?? ''))) {
                         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Document/file nodes must have a valid path.", path: ["path"] });
                         return;
                     }
@@ -234,11 +256,18 @@ function getFullUpdateResultConfig(
                     if (!id || id === DEFAULT_PLACEHOLDER || id.startsWith('node:') || id.startsWith('src:')) (data as any).id = expectedId;
                     else if (id.startsWith('file:')) (data as any).id = toFileNodeId(id.slice('file:'.length));
                     else (data as any).id = expectedId;
+                    // Derive title/label from path basename when missing or placeholder
+                    if (isPlaceholder(String(data.title ?? '')) && isPlaceholder(String(data.label ?? ''))) {
+                        const basename = normalizedPath.split('/').filter(Boolean).pop() ?? normalizedPath;
+                        const displayName = basename.replace(/\.(md|markdown)$/i, '') || basename;
+                        (data as any).title = displayName;
+                        (data as any).label = displayName;
+                    }
                 } else if (type === 'concept' || type === 'tag') {
                     if (data.path === DEFAULT_PLACEHOLDER || data.path === 'Untitled') (data as any).path = undefined;
                     const rawLabel = String(data.label || data.title || '').trim();
-                    if (!rawLabel || rawLabel === DEFAULT_PLACEHOLDER) {
-                        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Concept/tag nodes must have a non-empty label or title.", path: ["label"] });
+                    if (isPlaceholder(rawLabel)) {
+                        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Concept/tag nodes must have a non-empty label or title (not Untitled).", path: ["label"] });
                         return;
                     }
                     const expectedId = type === 'tag' ? toTagNodeId(rawLabel) : toConceptNodeId(rawLabel);
@@ -259,13 +288,18 @@ function getFullUpdateResultConfig(
                 sourceId: z.string().optional(),
                 target: z.string().optional(),
                 targetId: z.string().optional(),
+                startNode: z.string().optional(),
+                endNode: z.string().optional(),
+                from_node_id: z.string().optional(),
+                to_node_id: z.string().optional(),
                 type: z.string().default('link'),
                 label: z.string().default(''),
                 attributes: z.record(z.any()).default(() => ({})),
             }).transform((data) => {
-                const source = (data as any).source ?? (data as any).sourceId ?? '';
-                const target = (data as any).target ?? (data as any).targetId ?? '';
-                const { sourceId, targetId, ...rest } = data as any;
+                const d = data as any;
+                const source = String(d.source ?? d.sourceId ?? d.startNode ?? d.from_node_id ?? '').trim();
+                const target = String(d.target ?? d.targetId ?? d.endNode ?? d.to_node_id ?? '').trim();
+                const { sourceId, targetId, startNode, endNode, from_node_id, to_node_id, ...rest } = d;
                 return { ...rest, source, target };
             }).refine((data) => data.source && data.target, { message: "source and target are required", path: ["source"] })
                 .refine((data) => data.source !== data.target, { message: "source and target cannot be the same", path: ["source"] }),
@@ -394,6 +428,7 @@ function normalizeAgentGraphInPlace(agentResult: SearchAgentResult): void {
     const conceptLabelToId = new Map<string, string>();
     const tagLabelToId = new Map<string, string>();
 
+    const isPlaceholder = (s: string) => !s || s.trim() === '' || s === DEFAULT_PLACEHOLDER || s === 'Untitled';
     for (const n of g.nodes) {
         const type = String(n?.type ?? DEFAULT_NODE_TYPE).trim().toLowerCase();
         n.type = type;
@@ -401,13 +436,26 @@ function normalizeAgentGraphInPlace(agentResult: SearchAgentResult): void {
             const p = normalizeFilePath(n.path);
             n.path = p;
             n.id = toFileId(p);
+            if (isPlaceholder(String((n as any)?.title ?? '')) && isPlaceholder(String((n as any)?.label ?? ''))) {
+                const basename = p.split('/').filter(Boolean).pop() ?? p;
+                const displayName = basename.replace(/\.(md|markdown)$/i, '') || basename;
+                (n as any).title = displayName;
+                (n as any).label = displayName;
+            }
             continue;
         }
 
         // todo we need to process more node types in the future, should not limit to concept and tag.
         if (type === 'concept' || type === 'tag') {
-            const label = String((n as any)?.label || (n as any)?.attributes?.label || n?.title || '').trim();
-            if (!label) continue;
+            let label = String((n as any)?.label || (n as any)?.attributes?.label || n?.title || '').trim();
+            if (!label || isPlaceholder(label)) {
+                const rawId = String((n as any)?.id ?? '').trim();
+                const prefix = type === 'tag' ? 'tag:' : 'concept:';
+                if (rawId.toLowerCase().startsWith(prefix)) {
+                    label = rawId.slice(prefix.length).replace(/-/g, ' ').trim();
+                }
+            }
+            if (!label || isPlaceholder(label)) continue;
             const key = normalizeSpecialKey(label);
             const id = type === 'tag' ? `tag:${key}` : `concept:${key}`;
             n.id = id;
@@ -475,7 +523,9 @@ function normalizeAgentGraphInPlace(agentResult: SearchAgentResult): void {
  * Validate that a path exists in the vault/DB or was seen in tool outputs.
  * This is the core of EvidenceGate - preventing hallucinated paths.
  */
-async function validatePath(path: string, verifiedPaths: Set<string>): Promise<{ valid: boolean; reason?: string }> {
+async function validatePath(path: string, verifiedPaths: Set<string>): Promise<{ valid: boolean; reason?: string; resolvedPath?: string }> {
+    const normPath = (p: string) => p.trim().replace(/^\/+/, '');
+
     // Check if path was already verified (appeared in tool outputs)
     if (verifiedPaths.has(path)) {
         return { valid: true };
@@ -505,10 +555,35 @@ async function validatePath(path: string, verifiedPaths: Set<string>): Promise<{
         console.warn(`[AISearchAgent] Error checking path in vault: ${error}`);
     }
 
+    // Basename resolution: LLM may output only filename (e.g. "如何写简历.md") while verifiedPaths has full path
+    const pathNorm = normPath(path);
+    if (pathNorm && !pathNorm.includes('/')) {
+        const matches = Array.from(verifiedPaths).filter(p => {
+            const pNorm = normPath(p);
+            return pNorm === pathNorm || pNorm.endsWith('/' + pathNorm);
+        });
+        if (matches.length === 1) {
+            const fullPath = matches[0];
+            verifiedPaths.add(fullPath);
+            return { valid: true, resolvedPath: fullPath };
+        }
+    }
+
     return {
         valid: false,
         reason: 'Path not found in vault or database. Only use paths from tool outputs (local_search_whole_vault, graph_traversal, etc.)'
     };
+}
+
+/** Remove edges whose source or target node does not exist. Allows partial graph display when LLM outputs invalid edges. */
+function removeInvalidGraphEdges(agentResult: SearchAgentResult): void {
+    const nodes = agentResult.graph.nodes;
+    const edges = agentResult.graph.edges;
+    const nodeIds = new Set(nodes.map((n: any) => n.id));
+    const validEdges = edges.filter((e: any) => nodeIds.has(e.source) && nodeIds.has(e.target));
+    if (validEdges.length < edges.length) {
+        agentResult.graph.edges = validEdges;
+    }
 }
 
 /**

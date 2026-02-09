@@ -192,7 +192,7 @@ export const GraphVisualization = forwardRef<
 			.force('charge', d3.forceManyBody<GraphVizNode>().strength(config.chargeStrength))
 			.force('center', d3.forceCenter(width / 2, height / 2))
 			.force('collision', d3.forceCollide<GraphVizNode>().radius(config.collisionRadius));
-		simulation.velocityDecay(0.6);
+		simulation.velocityDecay(0.85);
 
 		simulation.on('tick', () => {
 			const linkSel = linkSelRef.current;
@@ -247,7 +247,7 @@ export const GraphVisualization = forwardRef<
 		if (sim) {
 			(sim.force('center') as d3.ForceCenter<GraphVizNode>)?.x(width / 2);
 			(sim.force('center') as d3.ForceCenter<GraphVizNode>)?.y(height / 2);
-			sim.alpha(0.2).restart();
+			sim.alpha(0.1).restart();
 		}
 	}, [resizeTick]);
 
@@ -262,7 +262,7 @@ export const GraphVisualization = forwardRef<
 		if (linkForce) linkForce.distance((d: { weight?: number }) => config.linkDistance + (1 - (d.weight || 1)) * 20);
 		if (chargeForce) chargeForce.strength(config.chargeStrength);
 		if (collisionForce) collisionForce.radius(config.collisionRadius);
-		simulation.alpha(0.25).restart();
+		simulation.alpha(0.1).restart();
 	}, [config]);
 
 	useEffect(() => () => {
@@ -297,9 +297,9 @@ export const GraphVisualization = forwardRef<
 
 		simulation.nodes(nodes);
 		(simulation.force('link') as d3.ForceLink<GraphVizNode, GraphVizLink>).links(resolvedLinks);
-		simulation.alpha(Math.max(simulation.alpha(), 0.18)).alphaTarget(0.06).restart();
+		simulation.alpha(Math.max(simulation.alpha(), 0.08)).alphaTarget(0.02).restart();
 		if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
-		settleTimerRef.current = window.setTimeout(() => simulation.alphaTarget(0), 900);
+		settleTimerRef.current = window.setTimeout(() => simulation.alphaTarget(0), 500);
 
 		const linkSel = linksLayer
 			.selectAll<SVGLineElement, GraphVizLink>('line')
@@ -433,15 +433,24 @@ export const GraphVisualization = forwardRef<
 	}
 
 	function upsertEdges(edges: Array<{ from_node_id: string; to_node_id: string; weight?: number; kind?: string }>) {
-		const nodeIds = new Set(nodesRef.current.map((n) => n.id));
+		const nodeById = new Map(nodesRef.current.map((n) => [n.id, n]));
 		const map = new Map(linksRef.current.map((l) => [linkKey(l, normalizeNodeId), l]));
+
+		function ensureNode(id: string): void {
+			if (nodeById.has(id)) return;
+			const label = id.replace(/^(node:|concept:|tag:|file:)/i, '').replace(/-/g, ' ');
+			const style = getNodeStyle({ id, label, type: defaultNodeType, badges: [], r: 0 } as GraphVizNode);
+			const r = style.r ?? 10;
+			const newNode = { id, label, type: defaultNodeType, badges: [] as string[], r } as GraphVizNode;
+			nodeById.set(id, newNode);
+			nodesRef.current = Array.from(nodeById.values());
+		}
+
 		for (const e of edges) {
 			const source = String(e.from_node_id);
 			const target = String(e.to_node_id);
-			if (!nodeIds.has(source) || !nodeIds.has(target)) {
-				console.warn(`[GraphVisualization] Skipping edge with non-existent node(s): source="${source}", target="${target}"`);
-				continue;
-			}
+			ensureNode(source);
+			ensureNode(target);
 			const kind = String(e.kind ?? defaultEdgeKind);
 			const weight = typeof e.weight === 'number' ? e.weight : 1;
 			const k = `${source}::${target}::${kind}`;

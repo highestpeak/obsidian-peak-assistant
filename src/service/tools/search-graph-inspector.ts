@@ -318,9 +318,8 @@ export function localSearchWholeVaultTool(): AgentTool {
                 .describe("Folder path (if inFolder mode)."),
             limit_ids_set: z.array(z.string()).optional()
                 .describe("Set of note/document ids to limit search within (if limitIdsSet mode)."),
-            // Default limit reduced for faster responses and less context overflow
-            limit: z.number().min(1).max(100).optional().default(8)
-                .describe('Maximum number of results. Keep small (8-12) for fast responses.')
+            limit: z.number().min(1).max(100).optional().default(20)
+                .describe('Maximum number of results. Use 15-25 for broader coverage; 8-12 for fast narrow search.')
         })
             .extend({
                 filters: FilterOption.optional(),

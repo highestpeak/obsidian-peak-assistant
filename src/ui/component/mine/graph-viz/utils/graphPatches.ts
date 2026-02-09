@@ -12,6 +12,10 @@ export interface GraphPatchNode {
 	 * Optional role badges for styling (e.g. Source/Sink/Bridge).
 	 */
 	badges?: string[];
+	/** Vault-relative path for document/file nodes (used for opening files). */
+	path?: string;
+	/** Raw attributes from graph (e.g. attributes.path when id is hash). */
+	attributes?: Record<string, unknown>;
 }
 
 export interface GraphPatchEdge {
@@ -113,12 +117,17 @@ function convertGraphTraversal(output: any): GraphPatch | null {
 		return null;
 	};
 
-	const nodesRaw: GraphPatchNode[] = (graph.nodes as any[]).map((n) => ({
-		id: String(n.id),
-		label: String(n.label ?? n.id),
-		type: String(n.type ?? 'document'),
-		badges: n.foundBy ? [String(n.foundBy)] : undefined,
-	}));
+	const nodesRaw: GraphPatchNode[] = (graph.nodes as any[]).map((n) => {
+		const path = typeof n.path === 'string' && n.path.trim() ? n.path.trim() : (n.attributes && typeof n.attributes === 'object' && typeof (n.attributes as any).path === 'string') ? String((n.attributes as any).path).trim() : undefined;
+		return {
+			id: String(n.id),
+			label: String(n.label ?? n.id),
+			type: String(n.type ?? 'document'),
+			badges: n.foundBy ? [String(n.foundBy)] : undefined,
+			...(path ? { path } : {}),
+			...(n.attributes && typeof n.attributes === 'object' ? { attributes: n.attributes as Record<string, unknown> } : {}),
+		};
+	});
 
 	// Build a quick index and normalize special nodes already present.
 	const nodesById = new Map<string, GraphPatchNode>();
@@ -194,10 +203,14 @@ function convertInspectNoteContext(output: any): GraphPatch | null {
 		if (!docs?.length) return;
 		for (const d of docs) {
 			const id = String(d.id);
+			const attrs = typeof d.attributes === 'string' ? (() => { try { return JSON.parse(d.attributes); } catch { return {}; } })() : (d.attributes && typeof d.attributes === 'object' ? d.attributes : {});
+			const path = typeof d.path === 'string' && d.path.trim() ? d.path.trim() : (attrs && typeof attrs.path === 'string' && attrs.path.trim()) ? String(attrs.path).trim() : undefined;
 			nodes.push({
 				id,
 				label: String(d.label ?? id),
 				type: String(d.type ?? 'document'),
+				...(path ? { path } : {}),
+				...(attrs && Object.keys(attrs).length ? { attributes: attrs } : {}),
 			});
 			if (mode === 'incoming') {
 				edges.push({ from_node_id: id, to_node_id: centerId, kind: 'physical' });

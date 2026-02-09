@@ -349,13 +349,18 @@ export type MessagePart =
 
 export type LLMUsage = LanguageModelUsage;
 
-export function mergeTokenUsage(usage1: LLMUsage, usage2: LLMUsage): LLMUsage {
+const EMPTY_USAGE: LLMUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+
+/** Merges two usage objects; treats undefined/null as zero usage. */
+export function mergeTokenUsage(usage1?: LLMUsage | null, usage2?: LLMUsage | null): LLMUsage {
+	const u1 = usage1 ?? EMPTY_USAGE;
+	const u2 = usage2 ?? EMPTY_USAGE;
 	return {
-		inputTokens: (usage1.inputTokens ?? 0) + (usage2.inputTokens ?? 0) || undefined,
-		outputTokens: (usage1.outputTokens ?? 0) + (usage2.outputTokens ?? 0) || undefined,
-		totalTokens: (usage1.totalTokens ?? 0) + (usage2.totalTokens ?? 0) || undefined,
-		reasoningTokens: (usage1.reasoningTokens ?? 0) + (usage2.reasoningTokens ?? 0) || undefined,
-		cachedInputTokens: (usage1.cachedInputTokens ?? 0) + (usage2.cachedInputTokens ?? 0) || undefined,
+		inputTokens: (u1.inputTokens ?? 0) + (u2.inputTokens ?? 0) || undefined,
+		outputTokens: (u1.outputTokens ?? 0) + (u2.outputTokens ?? 0) || undefined,
+		totalTokens: (u1.totalTokens ?? 0) + (u2.totalTokens ?? 0) || undefined,
+		reasoningTokens: (u1.reasoningTokens ?? 0) + (u2.reasoningTokens ?? 0) || undefined,
+		cachedInputTokens: (u1.cachedInputTokens ?? 0) + (u2.cachedInputTokens ?? 0) || undefined,
 	};
 }
 
@@ -397,6 +402,8 @@ export enum StreamTriggerName {
 	SEARCH_SOURCES_AGENT = 'search-sources-agent',
 	SEARCH_DASHBOARD_AGENT = 'search-dashboard-agent',
 	SEARCH_SUMMARY = 'search-summary',
+	SEARCH_TITLE = 'search-title',
+	SEARCH_OVERVIEW_MERMAID = 'search-overview-mermaid',
 }
 
 export enum ToolEvent {

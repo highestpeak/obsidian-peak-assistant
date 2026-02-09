@@ -3,6 +3,11 @@
  */
 export const template = `You are analyzing a knowledge graph snapshot from an Obsidian vault.
 
+## Analysis context
+Original query: {{originalQuery}}
+
+Main summary: {{mainSummary}}
+
 Nodes: {{nodeCount}}, Edges: {{edgeCount}}
 
 ## Sample nodes

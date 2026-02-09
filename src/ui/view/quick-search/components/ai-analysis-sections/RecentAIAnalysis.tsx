@@ -8,6 +8,7 @@ import { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 import { TFile } from 'obsidian';
 import { humanReadableTime } from '@/core/utils/date-utils';
 import { parse as parseAiSearchAnalysisDoc, toCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
+import { useSharedStore } from '../../store/sharedStore';
 
 export const RecentAIAnalysis: React.FC<{
     onClose?: () => void;
@@ -23,7 +24,10 @@ export const RecentAIAnalysis: React.FC<{
     const recentListRef = useRef<HTMLDivElement>(null);
     const recentSentinelRef = useRef<HTMLDivElement>(null);
 
-    const loadSnapshotFromMarkdown = async (vaultRelPath: string, createdAtTs?: number): Promise<CompletedAnalysisSnapshot | null> => {
+    const loadSnapshotFromMarkdown = async (
+        vaultRelPath: string,
+        createdAtTs?: number
+    ): Promise<{ snapshot: CompletedAnalysisSnapshot; query: string } | null> => {
         try {
             let md: string | null = null;
             const file = AppContext.getInstance().app.vault.getAbstractFileByPath(vaultRelPath);
@@ -38,7 +42,8 @@ export const RecentAIAnalysis: React.FC<{
             }
             if (!md) return null;
             const docModel = parseAiSearchAnalysisDoc(md);
-            return toCompletedAnalysisSnapshot(docModel, Number.isFinite(createdAtTs) ? createdAtTs : undefined);
+            const snapshot = toCompletedAnalysisSnapshot(docModel, Number.isFinite(createdAtTs) ? createdAtTs : undefined);
+            return { snapshot, query: docModel.query ?? '' };
         } catch (e) {
             console.warn('[AISearchTab] load snapshot from markdown failed:', e);
             return null;
@@ -56,15 +61,16 @@ export const RecentAIAnalysis: React.FC<{
             return;
         }
 
-        const snapshot = await loadSnapshotFromMarkdown(path, Number.isFinite(createdAt) ? createdAt : undefined);
-        if (snapshot) {
-            useAIAnalysisStore.getState().loadCompletedAnalysis(
-                {
-                    ...snapshot,
-                    analysisStartedAtMs: (snapshot.analysisStartedAtMs ?? (Number.isFinite(createdAt) ? createdAt : null)) ?? null,
-                },
-                path
-            );
+        const loaded = await loadSnapshotFromMarkdown(path, Number.isFinite(createdAt) ? createdAt : undefined);
+        if (loaded) {
+            const snapshot = {
+                ...loaded.snapshot,
+                analysisStartedAtMs: (loaded.snapshot.analysisStartedAtMs ?? (Number.isFinite(createdAt) ? createdAt : null)) ?? null,
+            };
+            useAIAnalysisStore.getState().loadCompletedAnalysis(snapshot, path);
+            if (loaded.query != null && loaded.query !== '') {
+                useSharedStore.getState().setSearchQuery(loaded.query);
+            }
             return;
         }
 
@@ -199,7 +205,7 @@ export const RecentAIAnalysis: React.FC<{
                                         group-hover:pktw-text-white
                                     "
                                 >
-                                    {item.query || '(empty query)'}
+                                    {item.title || item.query || '(empty query)'}
                                 </span>
                                 <span
                                     className="

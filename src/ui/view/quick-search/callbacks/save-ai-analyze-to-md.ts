@@ -21,6 +21,7 @@ export type SaveAnalysisResultParams = {
 	/** Full snapshot; when provided, uses AiSearchAnalysisDoc format. */
 	snapshot?: CompletedAnalysisSnapshot;
 	result?: {
+		title?: string;
 		summary: string;
 		sources: ExportSource[];
 		insights?: {
@@ -60,6 +61,7 @@ export async function saveAiAnalyzeResultToMarkdown(params: SaveAnalysisResultPa
 		const r = params.result!;
 		const snapshot: CompletedAnalysisSnapshot = {
 			version: 1,
+			title: r.title,
 			summaries: r.summary ? [r.summary] : [],
 			summaryVersion: 1,
 			analysisStartedAtMs: null,

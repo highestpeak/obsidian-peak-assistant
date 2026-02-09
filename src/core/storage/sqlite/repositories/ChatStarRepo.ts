@@ -116,5 +116,16 @@ export class ChatStarRepo {
 			.executeTakeFirst();
 		return row ?? null;
 	}
+
+	/**
+	 * Delete star records for the given conversation IDs.
+	 */
+	async deleteByConversationIds(conversationIds: string[]): Promise<void> {
+		if (conversationIds.length === 0) return;
+		await this.db
+			.deleteFrom('chat_star')
+			.where('conversation_id', 'in', conversationIds)
+			.execute();
+	}
 }
 

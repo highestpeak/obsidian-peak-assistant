@@ -60,4 +60,15 @@ export class ChatMessageResourceRepo {
 		}
 		return result;
 	}
+
+	/**
+	 * Delete resources for the given message IDs.
+	 */
+	async deleteByMessageIds(messageIds: string[]): Promise<void> {
+		if (messageIds.length === 0) return;
+		await this.db
+			.deleteFrom('chat_message_resource')
+			.where('message_id', 'in', messageIds)
+			.execute();
+	}
 }

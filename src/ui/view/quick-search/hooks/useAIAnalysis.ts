@@ -23,6 +23,8 @@ export function useAIAnalysis() {
 		setDashboardBlocks,
 		setTopics,
 		setSources,
+		setOverviewMermaid,
+		setTitle,
 		startAnalyzing,
 		startStreaming,
 		markCompleted,
@@ -147,7 +149,13 @@ export function useAIAnalysis() {
 		if (result.sources) {
 			setSources(result.sources);
 		}
-	}, [setSummary, setGraph, setDashboardBlocks, setTopics, setSources]);
+		if (result.overviewMermaid !== undefined) {
+			setOverviewMermaid(result.overviewMermaid ?? null);
+		}
+		if (result.title !== undefined) {
+			setTitle(result.title ?? null);
+		}
+	}, [setSummary, setGraph, setDashboardBlocks, setTopics, setSources, setOverviewMermaid, setTitle]);
 
 	/**
 	 * Handle the final result from AISearchAgent

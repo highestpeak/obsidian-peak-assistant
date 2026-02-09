@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { TrendingUp, Copy, MessageCircle } from 'lucide-react';
+import { TrendingUp, Copy, MessageCircle, Maximize2, X } from 'lucide-react';
 import { AppContext } from '@/app/context/AppContext';
 import { openFile } from '@/core/utils/obsidian-utils';
 import { GraphVisualization, GraphVisualizationHandle, GraphVizNodeHoverInfo, GraphVizNodeInfo } from '@/ui/component/mine/GraphVisualization';
-import { useAIAnalysisStore, useGraphAnimationStore, useGraphQueuePump } from '@/ui/view/quick-search/store';
+import { useAIAnalysisStore, useGraphAnimationStore } from '@/ui/view/quick-search/store';
 import { createOpenSourceCallback } from '@/ui/view/quick-search/callbacks/open-source-file';
 import {
 	createObsidianGraphPreset,
@@ -213,6 +213,19 @@ const GraphNodeContextMenu: React.FC<{
 	)
 };
 
+/** Pill styles per node type for visual differentiation. */
+const PILL_STYLES_BY_NODE_TYPE: Record<string, string> = {
+	concept: 'pktw-bg-sky-50 pktw-text-sky-700 pktw-border pktw-border-sky-200',
+	tag: 'pktw-bg-amber-50 pktw-text-amber-700 pktw-border pktw-border-amber-200',
+	file: 'pktw-bg-emerald-50 pktw-text-emerald-700 pktw-border pktw-border-emerald-200',
+	document: 'pktw-bg-emerald-50 pktw-text-emerald-700 pktw-border pktw-border-emerald-200',
+	inspire_idea: 'pktw-bg-violet-50 pktw-text-violet-700 pktw-border pktw-border-violet-200',
+};
+
+function getPillClassNameForNodeType(nodeType: string): string {
+	return PILL_STYLES_BY_NODE_TYPE[nodeType.toLowerCase()] ?? 'pktw-bg-slate-50 pktw-text-slate-700 pktw-border pktw-border-slate-200';
+}
+
 const LabeledPillPanel: React.FC<{
 	items: string[];
 	label: string;
@@ -240,12 +253,12 @@ const LabeledPillPanel: React.FC<{
 				</Button>
 			</div>
 			<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5">
-				{items.slice(0, 120).map((item) => (
+				{items.slice(0, 120).map((item, idx) => (
 					<Button
 						variant="ghost"
 						size="sm"
 						style={{ cursor: 'pointer' }}
-						key={item}
+						key={`${nodeType}-${idx}-${item}`}
 						className={`pktw-text-[11px] pktw-px-2 pktw-py-1 pktw-max-w-[140px] pktw-truncate pktw-rounded-full ${pillClassName}`}
 						onClick={() => onOpenChatForNode ? onOpenChatForNode({ id: `${nodeType}:${item}`, label: item, type: nodeType, path: null }) : copyText(item)}
 						title={onOpenChatForNode ? 'Click to chat' : 'Copy'}
@@ -295,7 +308,7 @@ export const KnowledgeGraphSection: React.FC<{
 }> = ({ onClose }) => {
 
 	const { graph: aiGraph } = useAIAnalysisStore();
-	const uiGraph = convertGraphToGraphPreview(aiGraph)
+	const uiGraph = useMemo(() => convertGraphToGraphPreview(aiGraph), [aiGraph]);
 
 	/**
 	 * Collect all other node types (not DEFAULT_NODE_TYPE=document) and their labels.
@@ -331,6 +344,7 @@ export const KnowledgeGraphSection: React.FC<{
 
 	const [graphChatNodeContext, setGraphChatNodeContext] = useState<GraphVizNodeInfo | null>(null);
 	const [followupOpen, setFollowupOpen] = useState(false);
+	const [fullscreenOpen, setFullscreenOpen] = useState(false);
 
 	const graphFollowupConfig = useGraphFollowupChatConfig({ uiGraph, graphChatNodeContext });
 
@@ -338,6 +352,7 @@ export const KnowledgeGraphSection: React.FC<{
 	const containerRef = useRef<HTMLDivElement>(null);
 	// graph ref
 	const graphRef = useRef<GraphVisualizationHandle>(null);
+	const fullscreenGraphRef = useRef<GraphVisualizationHandle>(null);
 
 	// graph node context menu
 	const [menu, setMenu] = useState<{
@@ -361,8 +376,6 @@ export const KnowledgeGraphSection: React.FC<{
 		effect,
 		clear: clearStore,
 	} = useGraphAnimationStore();
-
-	useGraphQueuePump();
 
 	// close the node context menu when clicking outside
 	useEffect(() => {
@@ -407,6 +420,18 @@ export const KnowledgeGraphSection: React.FC<{
 		setTimeout(() => graphRef.current?.fitToView(), 220);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [analysisCompleted]);
+
+	// Fit fullscreen graph to view when modal opens; Esc to close
+	useEffect(() => {
+		if (fullscreenOpen) {
+			setTimeout(() => fullscreenGraphRef.current?.fitToView(), 100);
+			const onKeyDown = (e: KeyboardEvent) => {
+				if (e.key === 'Escape') setFullscreenOpen(false);
+			};
+			document.addEventListener('keydown', onKeyDown);
+			return () => document.removeEventListener('keydown', onKeyDown);
+		}
+	}, [fullscreenOpen]);
 
 	const copyText = async (text: string) => {
 		try {
@@ -455,6 +480,15 @@ export const KnowledgeGraphSection: React.FC<{
 					Knowledge Graph
 				</span>
 				<div className="pktw-flex-1" />
+				<Button
+					variant="ghost"
+					size="icon"
+					className="pktw-shadow-none pktw-rounded-md pktw-border pktw-opacity-40 hover:pktw-opacity-100"
+					title="Fullscreen"
+					onClick={() => setFullscreenOpen(true)}
+				>
+					<Maximize2 className="pktw-w-4 pktw-h-4" />
+				</Button>
 				<HoverCard openDelay={100} closeDelay={150}>
 					<HoverCardTrigger asChild>
 						<Button
@@ -597,7 +631,7 @@ export const KnowledgeGraphSection: React.FC<{
 								items={labels}
 								label={nodeType}
 								nodeType={nodeType}
-								pillClassName="pktw-bg-sky-50 pktw-text-sky-700 pktw-border pktw-border-sky-200"
+								pillClassName={getPillClassNameForNodeType(nodeType)}
 								onOpenChatForNode={(node) => {
 									setFollowupOpen((v) => !v);
 									setGraphChatNodeContext(node)
@@ -618,7 +652,7 @@ export const KnowledgeGraphSection: React.FC<{
 							items={labels}
 							label={nodeType}
 							nodeType={nodeType}
-							pillClassName="pktw-bg-sky-50 pktw-text-sky-700 pktw-border pktw-border-sky-200"
+							pillClassName={getPillClassNameForNodeType(nodeType)}
 							onOpenChatForNode={(node) => {
 								setFollowupOpen((v) => !v);
 								setGraphChatNodeContext(node)
@@ -642,6 +676,64 @@ export const KnowledgeGraphSection: React.FC<{
 					</div>
 				</div>
 			) : null}
+
+			{/* Fullscreen overlay */}
+			<AnimatePresence>
+				{fullscreenOpen ? (
+					<motion.div
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: 0.2 }}
+						className="pktw-fixed pktw-inset-0 pktw-bg-black/30 pktw-z-[10000] pktw-flex pktw-items-center pktw-justify-center pktw-p-4"
+						onClick={(e) => e.target === e.currentTarget && setFullscreenOpen(false)}
+					>
+						<motion.div
+							initial={{ opacity: 0, scale: 0.96 }}
+							animate={{ opacity: 1, scale: 1 }}
+							exit={{ opacity: 0, scale: 0.96 }}
+							transition={{ duration: 0.2 }}
+							className="pktw-bg-white pktw-rounded-lg pktw-shadow-xl pktw-border pktw-border-[#e5e7eb] pktw-w-full pktw-h-full pktw-max-w-[95vw] pktw-max-h-[95vh] pktw-flex pktw-flex-col pktw-overflow-hidden"
+							onClick={(e) => e.stopPropagation()}
+						>
+							<div className="pktw-flex pktw-items-center pktw-justify-between pktw-p-2 pktw-border-b pktw-border-[#e5e7eb] pktw-shrink-0">
+								<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Knowledge Graph</span>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="pktw-rounded-md"
+									title="Close"
+									onClick={() => setFullscreenOpen(false)}
+								>
+									<X className="pktw-w-5 pktw-h-5" />
+								</Button>
+							</div>
+							<div className="pktw-flex-1 pktw-min-h-0 pktw-p-4">
+								<GraphVisualization
+									ref={fullscreenGraphRef}
+									{...obsidianPreset}
+									graph={uiGraph}
+									effect={effect}
+									onNodeHover={setHover}
+									containerClassName="pktw-w-full pktw-h-full pktw-min-h-[400px]"
+									onNodeContextMenu={(pos, node) => {
+										if (menuLeaveTimerRef.current) {
+											clearTimeout(menuLeaveTimerRef.current);
+											menuLeaveTimerRef.current = null;
+										}
+										const gap = 4;
+										const menuW = 210;
+										const menuH = 320;
+										const left = Math.max(8, Math.min(pos.x, window.innerWidth - menuW - 8));
+										const top = Math.max(8, Math.min(pos.y + gap, window.innerHeight - menuH - 8));
+										setMenu({ open: true, clientX: left, clientY: top, node });
+									}}
+								/>
+							</div>
+						</motion.div>
+					</motion.div>
+				) : null}
+			</AnimatePresence>
 		</div>
 	);
 };

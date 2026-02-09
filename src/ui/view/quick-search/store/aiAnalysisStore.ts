@@ -127,6 +127,8 @@ export type CompletedAnalysisSnapshot = {
 	duration?: number | null;
 	usage?: LLMUsage | null;
 
+	/** Short display title (from AI at end of analysis). */
+	title?: string;
 	/** All generated summaries (each run or re-gen adds one). */
 	summaries: string[];
 	/** 1-based index into summaries: which one is selected for display. */
@@ -151,6 +153,9 @@ export type CompletedAnalysisSnapshot = {
 	dashboardBlocks: DashboardBlock[];
 	/** Per-dashboard-block chat history (key = block id). */
 	blockChatRecords?: Record<string, SnapshotChatMessage[]>;
+
+	/** Overview diagram (raw Mermaid code) from Mermaid Overview Agent. */
+	overviewMermaid?: string;
 
 	/** Continue Analysis Q&A (user question → answer). */
 	fullAnalysisFollowUp?: Array<{ title: string; content: string }>;
@@ -236,6 +241,8 @@ interface AIAnalysisStore {
 	analysisStartedAtMs: number | null;
 
 	// final state (will change during streaming but will be replaced with the final state after streaming)
+	/** Short display title (set when analysis completes). */
+	title: string | null;
 	/** Current streaming summary chunks. */
 	summaryChunks: string[];
 	/** All completed summaries (each run adds one). */
@@ -246,6 +253,8 @@ interface AIAnalysisStore {
 	dashboardBlocks: DashboardBlock[];
 	topics: AISearchTopic[];
 	sources: AISearchSource[];
+	/** Overview diagram (raw Mermaid code). */
+	overviewMermaid: string | null;
 	usage: LLMUsage | null;
 	duration: number | null;
 
@@ -312,6 +321,8 @@ interface AIAnalysisStore {
 	addTopic: (topic: AISearchTopic) => void;
 	setTopics: (topics: AISearchTopic[]) => void;
 	setSources: (sources: AISearchSource[]) => void;
+	setOverviewMermaid: (code: string | null) => void;
+	setTitle: (title: string | null) => void;
 	setUsage: (usage: LLMUsage) => void;
 	setDuration: (duration: number) => void;
 	setFullAnalysisFollowUp: (question: string, answer: string, mode: 'append' | 'replace') => void;
@@ -377,6 +388,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	stepTrigger: 0,
 
 	// final state
+	title: null,
 	summaryChunks: [],
 	summaries: [],
 	summaryVersion: 1,
@@ -384,6 +396,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	dashboardBlocks: [],
 	topics: [],
 	sources: [],
+	overviewMermaid: null,
 	usage: null,
 	duration: null,
 	fullAnalysisFollowUp: [],
@@ -554,6 +567,12 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	setSources: (sources: AISearchSource[]) => {
 		set({ sources, hasAnalyzed: true });
 	},
+	setOverviewMermaid: (code: string | null) => {
+		set({ overviewMermaid: code, hasAnalyzed: true });
+	},
+	setTitle: (title: string | null) => {
+		set({ title, hasAnalyzed: true });
+	},
 	setUsage: (usage: LLMUsage) => {
 		set({ usage, hasAnalyzed: true });
 	},
@@ -631,6 +650,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			analysisRunId: runId,
 			restoredFromHistory: true,
 			restoredFromVaultPath: sourceVaultPath ?? null,
+			title: snapshot.title ?? null,
 			summaryChunks: [currentSummary],
 			summaries,
 			summaryVersion,
@@ -638,6 +658,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			dashboardBlocks: snapshot.dashboardBlocks ?? [],
 			topics: snapshot.topics ?? [],
 			sources: snapshot.sources ?? [],
+			overviewMermaid: snapshot.overviewMermaid ?? null,
 			topicInspectResults: snapshot.topicInspectResults ?? {},
 			topicAnalyzeResults: snapshot.topicAnalyzeResults ?? {},
 			topicGraphResults: snapshot.topicGraphResults ?? {},
@@ -671,6 +692,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 		analysisRunId: null,
 		restoredFromHistory: false,
 		restoredFromVaultPath: null,
+		title: null,
 		summaryChunks: [],
 		summaries: [],
 		summaryVersion: 1,
@@ -678,6 +700,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 		dashboardBlocks: [],
 		topics: [],
 		sources: [],
+		overviewMermaid: null,
 		topicInspectResults: {},
 		topicAnalyzeResults: {},
 		topicGraphResults: {},

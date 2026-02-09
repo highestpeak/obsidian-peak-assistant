@@ -65,8 +65,11 @@ function obsidianGetNodeStyle(node: GraphVizNode): { fill: string; r?: number } 
 	if (node.badges?.includes('bridge')) return { fill: '#2563eb' };
 	if (node.badges?.includes('hub')) return { fill: '#06b6d4' };
 	if (node.badges?.includes('authority')) return { fill: '#ef4444' };
-	if (node.type === 'tag') return { fill: '#8b5cf6' };
-	if (node.type === 'concept') return { fill: '#0ea5e9' };
+	const t = (node.type ?? '').toLowerCase();
+	if (t === 'tag') return { fill: '#d97706' };
+	if (t === 'concept') return { fill: '#0ea5e9' };
+	if (t === 'file' || t === 'document') return { fill: '#059669' };
+	if (t === 'inspire_idea') return { fill: '#7c3aed' };
 	return { fill: '#7c3aed' };
 }
 

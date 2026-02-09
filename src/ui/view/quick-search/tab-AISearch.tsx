@@ -4,11 +4,12 @@ import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { StreamingDisplayMethods } from './components/ai-analysis-sections/StepsDisplay';
 import { Button } from '@/ui/component/shared-ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/ui/component/shared-ui/popover';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { formatDuration, formatTokenCount } from '@/core/utils/format-utils';
-import { useSharedStore, useAIAnalysisStore } from './store';
+import { useSharedStore, useAIAnalysisStore, useGraphQueuePump } from './store';
+import { StepsUISkipShouldSkip } from './store/aiAnalysisStore';
 import { useAIAnalysis } from './hooks/useAIAnalysis';
+import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
 import { useSubscribeUIEvent } from '@/ui/store/uiEventStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RecentAIAnalysis } from './components/ai-analysis-sections/RecentAIAnalysis';
@@ -67,6 +68,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		setFullAnalysisFollowUp,
 		fullAnalysisFollowUp,
 		dashboardBlocks,
+		overviewMermaid,
 		topicAnalyzeResults,
 		topicInspectResults,
 		topicGraphResults,
@@ -79,7 +81,13 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		setContextChatModal,
 		restoredFromHistory,
 		restoredFromVaultPath,
+		title: titleFromStore,
+		steps,
 	} = useAIAnalysisStore();
+	const titleDisplay = useTypewriterEffect({
+		text: titleFromStore ?? '',
+		enabled: !!(titleFromStore?.trim()) && !restoredFromHistory,
+	});
 
 	const continueAnalysisSummary = summaryChunks?.length ? summaryChunks.join('') : '';
 	const continueAnalysisConfig = useContinueAnalysisFollowupChatConfig({ summary: continueAnalysisSummary });
@@ -87,21 +95,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [showContinueAnalysis, setShowContinueAnalysis] = useState(false);
-	const [openChatMenuOpen, setOpenChatMenuOpen] = useState(false);
-	const openChatMenuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 	const continueAnalysisBlockRef = useRef<HTMLDivElement>(null);
-
-	const scheduleCloseOpenChatMenu = () => {
-		if (openChatMenuCloseTimerRef.current) clearTimeout(openChatMenuCloseTimerRef.current);
-		openChatMenuCloseTimerRef.current = setTimeout(() => setOpenChatMenuOpen(false), 150);
-	};
-	const cancelCloseOpenChatMenu = () => {
-		if (openChatMenuCloseTimerRef.current) {
-			clearTimeout(openChatMenuCloseTimerRef.current);
-			openChatMenuCloseTimerRef.current = null;
-		}
-	};
 
 	// Determine if we should show the pre-streaming analysis state (centered AI search state)
 	const showPreStreamingState = !error
@@ -114,11 +109,13 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 	// Section refs for quick navigation (scroll within the AI tab content container).
 	const summaryRef = useRef<HTMLDivElement>(null);
+	const overviewRef = useRef<HTMLDivElement>(null);
 	const topicsRef = useRef<HTMLDivElement>(null);
 	const dashboardBlocksRef = useRef<HTMLDivElement>(null);
 	const graphSectionRef = useRef<HTMLDivElement>(null);
 	const sourcesRef = useRef<HTMLDivElement>(null);
 	const continueAnalysisRef = useRef<HTMLDivElement>(null);
+	const stepsRef = useRef<HTMLDivElement>(null);
 
 	const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
 		ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -131,6 +128,9 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const scrollToContinueSection = (index: number) => {
 		document.getElementById(`continue-section-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	};
+
+	// Graph queue pump: process tool events so graph populates; must run even when graph panel is hidden
+	useGraphQueuePump();
 
 	// hooks for AI analysis ========================================================
 
@@ -172,15 +172,17 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 	const { handleOpenInChat, handleCopyAll, handleAutoSave } = useAIAnalysisResult();
 
-	// Auto-save when analysis completes (if enabled).
+	// Auto-save when analysis completes (if enabled). Skip when state was restored from Recent (no duplicate save).
 	useEffect(() => {
 		if (!analysisCompleted) return;
-		if (!AppContext.getInstance().settings.search.aiAnalysisAutoSaveEnabled!) return;
+		if (restoredFromHistory) return;
+		const autoSaveEnabled = AppContext.getInstance().settings.search.aiAnalysisAutoSaveEnabled ?? true;
+		if (!autoSaveEnabled) return;
 		if (error) return;
 		if (!analysisRunId) return;
 
 		handleAutoSave();
-	}, [analysisCompleted, error, analysisRunId, handleAutoSave]);
+	}, [analysisCompleted, restoredFromHistory, error, analysisRunId, handleAutoSave]);
 
 	const [streamingDisplayMethods, setStreamingDisplayMethods] = useState<StreamingDisplayMethods | null>(null);
 
@@ -200,9 +202,22 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 			{/* Sub navigation (below input, outside frames) */}
 			{getHasCompletedContent() ? (
 				<div className="pktw-flex-shrink-0 pktw-px-4">
-					<div className="pktw-flex pktw-flex-wrap pktw-gap-2 pktw-p-2 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white">
+					<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-3 pktw-p-2 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white">
+						{/* Title on the left (typewriter when just completed, plain when restored from history) */}
+						<div className="pktw-min-w-0 pktw-flex-1 pktw-pr-2">
+							{titleDisplay ? (
+								<span className="pktw-text-sm pktw-font-semibold pktw-text-[#1a1c1e] pktw-truncate pktw-block" title={titleFromStore ?? undefined}>
+									{titleDisplay}
+								</span>
+							) : null}
+						</div>
+						{/* Nav buttons on the right */}
+						<div className="pktw-flex pktw-flex-shrink-0 pktw-flex-wrap pktw-gap-2">
 						{getHasSummarySection() ? (
 							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(summaryRef)}>Summary</Button>
+						) : null}
+						{overviewMermaid ? (
+							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(overviewRef)}>Overview</Button>
 						) : null}
 						{getHasTopicsSection() ? (
 							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(topicsRef)}>Topics</Button>
@@ -212,6 +227,9 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 						) : null}
 						{getHasSourcesSection() ? (
 							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(sourcesRef)}>Sources</Button>
+						) : null}
+						{(steps?.filter(s => !StepsUISkipShouldSkip.has(s.type)).length ?? 0) > 0 ? (
+							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(stepsRef)}>Steps</Button>
 						) : null}
 						{getHasDashboardBlocksSection() ? (
 							(dashboardBlocks?.length ?? 0) > 1 ? (
@@ -293,6 +311,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToContinueSection(0)}>Continue</Button>
 							)
 						) : null}
+						</div>
 					</div>
 				</div>
 			) : null}
@@ -348,11 +367,13 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 								onOpenWikilink={onClose ? createOpenSourceCallback(onClose) : undefined}
 								sectionRefs={{
 									summaryRef,
+									overviewRef,
 									topicsRef,
 									dashboardBlocksRef,
 									graphSectionRef,
 									sourcesRef,
 									continueAnalysisRef,
+									stepsRef,
 								}}
 							/>
 						</motion.div>
@@ -443,37 +464,24 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 								<MessageSquare className="pktw-w-3.5 pktw-h-3.5" />
 								<span>Continue Analysis</span>
 							</Button>
-							<Popover open={openChatMenuOpen} onOpenChange={setOpenChatMenuOpen}>
-								<PopoverTrigger asChild>
+							<HoverCard openDelay={150} closeDelay={300}>
+								<HoverCardTrigger asChild>
 									<Button
 										size="sm"
 										className="pktw-px-4 pktw-py-1.5 pktw-bg-[#7c3aed] pktw-text-white hover:pktw-bg-[#6d28d9] pktw-gap-2"
 										title="Open in chat or full analysis view"
-										onMouseEnter={() => {
-											cancelCloseOpenChatMenu();
-											setOpenChatMenuOpen(true);
-										}}
-										onMouseLeave={scheduleCloseOpenChatMenu}
 									>
 										<MessageCircle className="pktw-w-3.5 pktw-h-3.5" />
 										<span>Open in Chat</span>
 										<ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-opacity-80" />
 									</Button>
-								</PopoverTrigger>
-								<PopoverContent
-									align="end"
-									className="pktw-w-[200px] pktw-p-1 pktw-z-[10000]"
-									onMouseEnter={cancelCloseOpenChatMenu}
-									onMouseLeave={scheduleCloseOpenChatMenu}
-								>
+								</HoverCardTrigger>
+								<HoverCardContent align="end" side="bottom" sideOffset={4} className="pktw-w-[200px] pktw-p-1 pktw-z-[10000]">
 									<Button
 										variant="ghost"
 										style={{ cursor: 'pointer' }}
 										className="pktw-shadow-none pktw-w-full pktw-flex pktw-items-center pktw-gap-2 pktw-rounded-sm pktw-px-2 pktw-py-1.5 pktw-text-sm pktw-text-left pktw-cursor-pointer"
-										onClick={() => {
-											setOpenChatMenuOpen(false);
-											handleOpenInChat(onClose);
-										}}
+										onClick={() => handleOpenInChat(onClose)}
 									>
 										<MessageCircle className="pktw-w-3.5 pktw-h-3.5" />
 										<span>Open in Chat</span>
@@ -484,15 +492,14 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 										className="pktw-shadow-none pktw-w-full pktw-flex pktw-items-center pktw-gap-2 pktw-rounded-sm pktw-px-2 pktw-py-1.5 pktw-text-sm pktw-text-left pktw-cursor-pointer"
 										title="Open this analysis in the main view for a larger view"
 										onClick={() => {
-											setOpenChatMenuOpen(false);
 											// TODO: open this analysis in main view (full analysis view)
 										}}
 									>
 										<Maximize2 className="pktw-w-3.5 pktw-h-3.5" />
 										<span>Full analysis view</span>
 									</Button>
-								</PopoverContent>
-							</Popover>
+								</HoverCardContent>
+							</HoverCard>
 						</>
 					)}
 				</div>

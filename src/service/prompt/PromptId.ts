@@ -29,8 +29,11 @@ import * as aiAnalysisFollowupGraph from './templates/ai-analysis-followup-graph
 import * as aiAnalysisFollowupSources from './templates/ai-analysis-followup-sources';
 import * as aiAnalysisFollowupBlocks from './templates/ai-analysis-followup-blocks';
 import * as aiAnalysisFollowupFull from './templates/ai-analysis-followup-full';
+import * as aiAnalysisOverviewMermaid from './templates/ai-analysis-overview-mermaid';
+import * as aiAnalysisBlocksReview from './templates/ai-analysis-blocks-review';
 import * as aiAnalysisSaveFilename from './templates/ai-analysis-save-filename';
 import * as aiAnalysisSaveFolder from './templates/ai-analysis-save-folder';
+import * as aiAnalysisTitle from './templates/ai-analysis-title';
 import * as docTypeClassifyJson from './templates/doc-type-classify-json';
 import * as docTagGenerateJson from './templates/doc-tag-generate-json';
 import * as contextMemory from './templates/context-memory';
@@ -116,6 +119,14 @@ export enum PromptId {
 	AiAnalysisFollowupSources = 'ai-analysis-followup-sources',
 	AiAnalysisFollowupBlocks = 'ai-analysis-followup-blocks',
 	AiAnalysisFollowupFull = 'ai-analysis-followup-full',
+
+	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
+	AiAnalysisTitle = 'ai-analysis-title',
+	// AI analysis overview Mermaid (standalone agent after summary)
+	AiAnalysisOverviewMermaid = 'ai-analysis-overview-mermaid',
+
+	// AI analysis blocks review (suggest fixes for dashboard blocks)
+	AiAnalysisBlocksReview = 'ai-analysis-blocks-review',
 
 	// AI analysis save dialog (filename/folder suggestions)
 	AiAnalysisSaveFileName = 'ai-analysis-save-filename',
@@ -285,13 +296,27 @@ export interface PromptVariables {
 		title?: string;
 		existingTags?: string[];
 	};
-	[PromptId.AiAnalysisFollowupSummary]: { question: string; summary: string };
-	[PromptId.AiAnalysisFollowupGraph]: { question: string; nodeLabels: string; nodeCount: number; edgeCount: number };
-	[PromptId.AiAnalysisFollowupSources]: { question: string; sourcesList: string };
-	[PromptId.AiAnalysisFollowupBlocks]: { question: string; blocksText: string };
-	[PromptId.AiAnalysisFollowupFull]: { question: string; summary: string };
+	[PromptId.AiAnalysisFollowupSummary]: { question: string; summary: string; originalQuery?: string };
+	[PromptId.AiAnalysisFollowupGraph]: { question: string; nodeLabels: string; nodeCount: number; edgeCount: number; originalQuery?: string; mainSummary?: string };
+	[PromptId.AiAnalysisFollowupSources]: { question: string; sourcesList: string; originalQuery?: string; mainSummary?: string };
+	[PromptId.AiAnalysisFollowupBlocks]: { question: string; blocksText: string; originalQuery?: string; mainSummary?: string };
+	[PromptId.AiAnalysisFollowupFull]: { question: string; summary: string; originalQuery?: string };
+	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
+	[PromptId.AiAnalysisOverviewMermaid]: {
+		originalQuery: string;
+		summary: string;
+		topicsText?: string;
+		graphSummary?: string;
+		sourcesSummary?: string;
+		blocksSummary?: string;
+	};
+	[PromptId.AiAnalysisBlocksReview]: {
+		originalQuery: string;
+		summaryBrief: string;
+		blocksJson: string;
+	};
 	[PromptId.AiAnalysisSaveFileName]: { query: string; summary?: string };
-	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string };
+	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string; candidateFoldersFromSearch?: string; defaultSaveFolder?: string };
 	[PromptId.ContextMemory]: {
 		hasProject: boolean;
 		projectName: string;
@@ -356,6 +381,9 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptTemplate> = {
 	[PromptId.AiAnalysisFollowupSources]: createTemplate(aiAnalysisFollowupSources),
 	[PromptId.AiAnalysisFollowupBlocks]: createTemplate(aiAnalysisFollowupBlocks),
 	[PromptId.AiAnalysisFollowupFull]: createTemplate(aiAnalysisFollowupFull),
+	[PromptId.AiAnalysisTitle]: createTemplate(aiAnalysisTitle),
+	[PromptId.AiAnalysisOverviewMermaid]: createTemplate(aiAnalysisOverviewMermaid),
+	[PromptId.AiAnalysisBlocksReview]: createTemplate(aiAnalysisBlocksReview),
 	[PromptId.AiAnalysisSaveFileName]: createTemplate(aiAnalysisSaveFilename),
 	[PromptId.AiAnalysisSaveFolder]: createTemplate(aiAnalysisSaveFolder),
 	[PromptId.DocTypeClassifyJson]: createTemplate(docTypeClassifyJson),

@@ -3,6 +3,11 @@
  */
 export const template = `You are helping with follow-up about the dashboard blocks from an AI analysis.
 
+## Analysis context
+Original query: {{originalQuery}}
+
+Main summary: {{mainSummary}}
+
 ## Blocks
 {{blocksText}}
 

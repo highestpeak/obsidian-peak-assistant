@@ -3,6 +3,7 @@ import { StreamdownIsolated } from '@/ui/component/mine';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { PromptId } from '@/service/prompt/PromptId';
+import { streamSearchFollowup } from '@/ui/view/quick-search/hooks/useAIAnalysisPostAIInteractions';
 
 type ApplyMode = 'append' | 'replace';
 
@@ -44,7 +45,9 @@ export const InlineFollowupChat: React.FC<{
 	onApply?: (answer: string, mode: ApplyMode, question?: string) => void;
 	/** When set, show Cancel button and call on cancel. */
 	onCancel?: () => void;
-}> = ({ title, placeholder, promptId, getVariables, onApply, hideModeToggle, applyMode = 'append', initialQuestion, outputPlace = 'inline', onOpenModal, onStreamingReplace, onCancel }) => {
+	/** Use RawSearchAgent (search tools + analysis context) instead of plain LLM. */
+	useSearchAgent?: boolean;
+}> = ({ title, placeholder, promptId, getVariables, onApply, hideModeToggle, applyMode = 'append', initialQuestion, outputPlace = 'inline', onOpenModal, onStreamingReplace, onCancel, useSearchAgent }) => {
 	const { manager } = useServiceContext();
 	const [question, setQuestion] = useState(initialQuestion ?? '');
 	const [mode, setMode] = useState<ApplyMode>(applyMode);
@@ -76,7 +79,10 @@ export const InlineFollowupChat: React.FC<{
 
 			const variables = getVariables(q);
 			let acc = '';
-			for await (const event of manager.chatWithPromptStream(promptId, variables as any)) {
+			const stream = useSearchAgent
+				? streamSearchFollowup(manager, promptId, variables as Record<string, unknown>)
+				: manager.chatWithPromptStream(promptId, variables as any);
+			for await (const event of stream) {
 				if (event.type === 'prompt-stream-delta' && typeof event.delta === 'string') {
 					acc += event.delta;
 					if (onStreamingReplace) {

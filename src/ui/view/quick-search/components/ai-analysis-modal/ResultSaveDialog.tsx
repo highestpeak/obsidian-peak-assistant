@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { X, Sparkles, Check, Save, Wand2 } from 'lucide-react';
+import { IntelligenceFrame } from '@/ui/component/mine/IntelligenceFrame';
 import { Button } from '@/ui/component/shared-ui/button';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { Input } from '@/ui/component/shared-ui/input';
@@ -77,6 +78,26 @@ const AIGenerateInputField: React.FC<AIGenerateInputFieldProps> = ({
 		}
 	}, [generating, onGenerate]);
 
+	const isGenerating = generating || typewriterEnabled;
+	const inputRow = (
+		<div className="pktw-relative pktw-flex pktw-items-center">
+			<Input
+				type="text"
+				value={displayValue}
+				onChange={(e) => !typewriterEnabled && onChange(e.target.value)}
+				readOnly={typewriterEnabled}
+				className={`pktw-pr-14 pktw-box-border pktw-transition-all pktw-flex-1 ${generating ? 'pktw-animate-pulse' : ''}`}
+			/>
+			<IconButton
+				onClick={generating ? undefined : handleGenerate}
+				className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-border-0 pktw-bg-transparent hover:pktw-bg-accent hover:pktw-text-accent-foreground pktw-transition-colors ${generating ? 'pktw-cursor-not-allowed pktw-opacity-60 pktw-pointer-events-none' : ''}`}
+				title={`Generate ${label} with AI`}
+			>
+				<Wand2 className={`pktw-w-4 pktw-h-4 ${generating ? 'pktw-animate-pulse' : ''}`} />
+			</IconButton>
+		</div>
+	);
+
 	return (
 		<div>
 			<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-2">
@@ -87,22 +108,13 @@ const AIGenerateInputField: React.FC<AIGenerateInputFieldProps> = ({
 					</span>
 				)}
 			</label>
-			<div className="pktw-relative pktw-flex pktw-items-center">
-				<Input
-					type="text"
-					value={displayValue}
-					onChange={(e) => !typewriterEnabled && onChange(e.target.value)}
-					readOnly={typewriterEnabled}
-					className="pktw-pr-14 pktw-box-border pktw-transition-all pktw-flex-1"
-				/>
-				<IconButton
-					onClick={generating ? undefined : handleGenerate}
-					className={`pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-border-0 pktw-bg-transparent hover:pktw-bg-accent hover:pktw-text-accent-foreground pktw-transition-colors ${generating ? 'pktw-cursor-not-allowed pktw-opacity-60 pktw-pointer-events-none' : ''}`}
-					title={`Generate ${label} with AI`}
-				>
-					<Wand2 className={`pktw-w-4 pktw-h-4 ${generating ? 'pktw-animate-pulse' : ''}`} />
-				</IconButton>
-			</div>
+			{isGenerating ? (
+				<IntelligenceFrame isActive={true} className="pktw-w-full">
+					{inputRow}
+				</IntelligenceFrame>
+			) : (
+				inputRow
+			)}
 			<span className="pktw-text-xs pktw-text-muted-foreground pktw-mt-1 pktw-block">{hintText}</span>
 		</div>
 	);

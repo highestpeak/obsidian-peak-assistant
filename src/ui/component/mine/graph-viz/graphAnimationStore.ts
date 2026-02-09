@@ -161,13 +161,17 @@ function persistPatchToStore(patch: any): void {
 		const nodes: AISearchNode[] = (patch?.upsertNodes ?? []).map((n: any) => {
 			const id = String(n.id);
 			const title = String(n.label ?? id);
-			const path = id.startsWith('file:') ? id.slice('file:'.length) : undefined;
+			// Prefer explicit path, then attributes.path, then derive from file: id (for opening files and display)
+			let path: string | undefined;
+			if (typeof n.path === 'string' && n.path.trim()) path = n.path.trim().replace(/^\/+/, '');
+			else if (n.attributes && typeof n.attributes === 'object' && typeof n.attributes.path === 'string' && n.attributes.path.trim()) path = String(n.attributes.path).trim().replace(/^\/+/, '');
+			else if (id.startsWith('file:')) path = id.slice('file:'.length).replace(/^\/+/, '');
 			return {
 				id,
 				type: String(n.type ?? 'document'),
 				title,
 				...(path ? { path } : {}),
-				attributes: {},
+				attributes: (n.attributes && typeof n.attributes === 'object') ? n.attributes : {},
 			};
 		});
 		const edges: AISearchEdge[] = (patch?.upsertEdges ?? []).map((e: any) => {
