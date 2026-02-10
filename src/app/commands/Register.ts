@@ -12,6 +12,8 @@ import { IndexInitializer } from '@/service/search/index/indexInitializer';
 import { IndexService } from '@/service/search/index/indexService';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import { ConfirmModal } from '@/ui/view/ConfirmModal';
+import { BuildUserProfileProgressModal } from '@/ui/view/BuildUserProfileProgressModal';
+import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
@@ -182,6 +184,64 @@ export function buildCoreCommands(
 			name: 'Verify Database Health',
 			callback: async () => {
 				await verifyDatabaseHealth(viewManager.getApp(), settings);
+			},
+		},
+		{
+			id: 'peak-build-user-profile',
+			name: 'Build User Profile',
+			callback: async () => {
+				if (!settings.ai?.profileEnabled) {
+					new Notice('User profile is disabled. Enable it in settings.', 4000);
+					return;
+				}
+				const profileService = aiManager.getProfileService();
+				if (!profileService) {
+					new Notice('User profile is disabled or path not set.', 4000);
+					return;
+				}
+				const app = viewManager.getApp();
+				const controller = new AbortController();
+				const modal = new BuildUserProfileProgressModal(app, () => controller.abort());
+				modal.open();
+				const onNotice = (msg: string) => {
+					new Notice(msg, 3000);
+					modal.setProgress(msg);
+				};
+				try {
+					const processedHashRepo = sqliteStoreManager.isInitialized()
+						? sqliteStoreManager.getUserProfileProcessedHashRepo()
+						: undefined;
+					await runBuildUserProfile({
+						app,
+						profileService,
+						aiServiceManager: aiManager,
+						abortSignal: controller.signal,
+						onNotice,
+						processedHashRepo,
+					});
+				} catch (error) {
+					console.error('[Register] Build user profile error:', error);
+					onNotice('Build user profile failed. See console for details.');
+				} finally {
+					modal.close();
+				}
+			},
+		},
+		{
+			id: 'peak-clear-user-profile-build-record',
+			name: 'Clear User Profile Build Record',
+			callback: async () => {
+				if (!sqliteStoreManager.isInitialized()) {
+					new Notice('Database not ready. Index search first or restart the plugin.', 4000);
+					return;
+				}
+				try {
+					await sqliteStoreManager.getUserProfileProcessedHashRepo().clearAll();
+					new Notice('User profile build record cleared. Next build will re-scan all documents.', 4000);
+				} catch (error) {
+					console.error('[Register] Clear user profile build record error:', error);
+					new Notice('Failed to clear build record. See console for details.', 4000);
+				}
 			},
 		},
 		{

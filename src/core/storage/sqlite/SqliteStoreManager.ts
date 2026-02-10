@@ -20,6 +20,7 @@ import { ChatMessageRepo } from './repositories/ChatMessageRepo';
 import { ChatMessageResourceRepo } from './repositories/ChatMessageResourceRepo';
 import { ChatStarRepo } from './repositories/ChatStarRepo';
 import { AIAnalysisRepo } from './repositories/AIAnalysisRepo';
+import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcessedHashRepo';
 import { SEARCH_DB_FILENAME, META_DB_FILENAME } from '@/core/constant';
 
 /**
@@ -49,6 +50,7 @@ class SqliteStoreManager {
 	private graphNodeRepo: GraphNodeRepo | null = null;
 	private graphEdgeRepo: GraphEdgeRepo | null = null;
 	private graphStore: GraphStore | null = null;
+	private userProfileProcessedHashRepo: UserProfileProcessedHashRepo | null = null;
 
 	// Meta database repositories (meta.sqlite)
 	private chatProjectRepo: ChatProjectRepo | null = null;
@@ -221,6 +223,7 @@ class SqliteStoreManager {
 		this.graphEdgeRepo = new GraphEdgeRepo(searchKdb);
 		// Initialize GraphStore
 		this.graphStore = new GraphStore(this.graphNodeRepo, this.graphEdgeRepo);
+		this.userProfileProcessedHashRepo = new UserProfileProcessedHashRepo(searchKdb);
 
 		// Initialize meta database repositories
 		const metaKdb = this.metaStore.kysely<DbSchema>();
@@ -351,6 +354,16 @@ class SqliteStoreManager {
 			throw new Error('SqliteStoreManager not initialized. Call init() first.');
 		}
 		return this.graphStore;
+	}
+
+	/**
+	 * Get UserProfileProcessedHashRepo instance (search DB).
+	 */
+	getUserProfileProcessedHashRepo(): UserProfileProcessedHashRepo {
+		if (!this.userProfileProcessedHashRepo) {
+			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		}
+		return this.userProfileProcessedHashRepo;
 	}
 
 	/**

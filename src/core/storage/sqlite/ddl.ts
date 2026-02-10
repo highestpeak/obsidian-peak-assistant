@@ -158,6 +158,14 @@ export interface Database {
 		active: number;
 	};
 	/**
+	 * Hashes of documents already summarized for user profile.
+	 * Compare by content hash to skip unchanged docs; all data in this table are hashes.
+	 */
+	user_profile_processed_hash: {
+		content_hash: string;
+		processed_at: number;
+	};
+	/**
 	 * AI analysis records generated from the Quick Search AI tab.
 	 *
 	 * Design:
@@ -297,6 +305,10 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_graph_edges_to_node ON graph_edges(to_node_id);
 		CREATE INDEX IF NOT EXISTS idx_graph_edges_type ON graph_edges(type);
 		CREATE INDEX IF NOT EXISTS idx_graph_edges_from_to ON graph_edges(from_node_id, to_node_id);
+		CREATE TABLE IF NOT EXISTS user_profile_processed_hash (
+			content_hash TEXT PRIMARY KEY,
+			processed_at INTEGER NOT NULL
+		);
 	`);
 
 	// Chunk storage for FTS/vector/search snippets.

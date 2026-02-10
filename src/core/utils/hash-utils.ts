@@ -95,6 +95,13 @@ export function hashMD5(str: string): string {
 }
 
 /**
+ * SHA-256 of string (e.g. file content) for stable fingerprint. Sync.
+ */
+export function hashSHA256(str: string): string {
+	return createHash('sha256').update(str, 'utf8').digest('hex');
+}
+
+/**
  * Calculate SHA-256 hash of a File object.
  * Falls back to simple hash if crypto.subtle is not available.
  * 

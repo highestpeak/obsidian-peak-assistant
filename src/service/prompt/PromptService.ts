@@ -75,6 +75,7 @@ export class PromptService {
 		if (!this.chat) {
 			throw new Error('Chat service not available. Call setChatService() first.');
 		}
+		const template = PROMPT_REGISTRY[promptId];
 		const promptText = await this.render(promptId, variables);
 
 		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
@@ -96,6 +97,7 @@ export class PromptService {
 		const completion = await this.chat.blockChat({
 			provider,
 			model,
+			...(template?.systemPrompt ? { system: template?.systemPrompt } : {}),
 			messages: [
 				{
 					role: 'user',
@@ -130,6 +132,7 @@ export class PromptService {
 		if (!this.chat) {
 			throw new Error('Chat service not available. Call setChatService() first.');
 		}
+		const template = PROMPT_REGISTRY[promptId];
 		const promptText = await this.render(promptId, variables);
 
 		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
@@ -158,6 +161,7 @@ export class PromptService {
 			const stream = this.chat.streamChat({
 				provider,
 				model,
+				...(template?.systemPrompt ? { system: template?.systemPrompt } : {}),
 				messages: [
 					{
 						role: 'user',

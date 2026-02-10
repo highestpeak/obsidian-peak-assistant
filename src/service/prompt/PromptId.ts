@@ -38,6 +38,8 @@ import * as docTypeClassifyJson from './templates/doc-type-classify-json';
 import * as docTagGenerateJson from './templates/doc-tag-generate-json';
 import * as contextMemory from './templates/context-memory';
 import * as userProfileContext from './templates/user-profile-context';
+import * as profileFromVaultJson from './templates/profile-from-vault-json';
+import * as userProfileOrganizeMarkdown from './templates/user-profile-organize-markdown';
 import * as messageResources from './templates/message-resources';
 import { SystemInfo } from '../tools/system-info';
 import { SearchAgentResult, AISearchAgentOptions } from '../agents/AISearchAgent';
@@ -53,16 +55,19 @@ export interface PromptTemplate {
 	expectsJson?: boolean;
 	/** Additional instructions for JSON output (e.g., "Return only JSON array") */
 	jsonConstraint?: string;
+	/** System prompt for the prompt */
+	systemPrompt?: string;
 }
 
 /**
  * Helper to create PromptTemplate from module exports.
  */
-function createTemplate(module: { template: string; expectsJson?: boolean; jsonConstraint?: string }): PromptTemplate {
+function createTemplate(module: { template: string; expectsJson?: boolean; jsonConstraint?: string; systemPrompt?: string }): PromptTemplate {
 	return {
 		template: module.template,
 		expectsJson: module.expectsJson,
 		jsonConstraint: module.jsonConstraint,
+		systemPrompt: module.systemPrompt,
 	};
 }
 
@@ -135,6 +140,10 @@ export enum PromptId {
 	// Context building templates (internal use)
 	ContextMemory = 'context-memory',
 	UserProfileContext = 'user-profile-context',
+	/** Extract user profile items from vault content (build user profile command) */
+	ProfileFromVaultJson = 'profile-from-vault-json',
+	/** Organize current user profile into clean markdown */
+	UserProfileOrganizeMarkdown = 'user-profile-organize-markdown',
 	MessageResources = 'message-resources',
 }
 
@@ -339,6 +348,14 @@ export interface PromptVariables {
 			texts: string;
 		}>;
 	};
+	[PromptId.ProfileFromVaultJson]: {
+		vaultContent: string;
+		existingProfileMarkdown?: string;
+	};
+	[PromptId.UserProfileOrganizeMarkdown]: {
+		currentProfileMarkdown: string;
+		newItemsMarkdown?: string;
+	};
 	[PromptId.MessageResources]: {
 		resources: Array<{
 			id: string;
@@ -390,5 +407,7 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptTemplate> = {
 	[PromptId.DocTagGenerateJson]: createTemplate(docTagGenerateJson),
 	[PromptId.ContextMemory]: createTemplate(contextMemory),
 	[PromptId.UserProfileContext]: createTemplate(userProfileContext),
+	[PromptId.ProfileFromVaultJson]: createTemplate(profileFromVaultJson),
+	[PromptId.UserProfileOrganizeMarkdown]: createTemplate(userProfileOrganizeMarkdown),
 	[PromptId.MessageResources]: createTemplate(messageResources),
 };

@@ -136,6 +136,13 @@ export class AIServiceManager {
 	}
 
 	/**
+	 * Get UserProfileService when profile is enabled; otherwise undefined.
+	 */
+	getProfileService(): UserProfileService | undefined {
+		return this.profileService;
+	}
+
+	/**
 	 * Update settings and rebuild storage handlers.
 	 */
 	updateSettings(next: AIServiceSettings): void {

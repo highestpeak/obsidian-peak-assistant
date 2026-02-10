@@ -6,33 +6,16 @@ import { ensureFolder } from '@/core/utils/vault-utils';
 import { USER_PROFILE_MIN_CONFIDENCE_THRESHOLD } from '@/core/constant';
 
 /**
- * User profile category constants.
+ * Category is free-form: AI or user decides the name. Stored as markdown ## heading.
  */
-export const USER_PROFILE_VALID_CATEGORIES = [
-	'fact',
-	'preference',
-	'decision',
-	'habit',
-	'communication-style',
-	'work-pattern',
-	'tool-preference',
-	'expertise-area',
-	'response-style',
-	'other',
-] as const;
+export type UserProfileCategory = string;
 
 /**
- * Valid category types for user profile items.
- */
-export type UserProfileCategory = typeof USER_PROFILE_VALID_CATEGORIES[number];
-
-/**
- * User profile item.
- * All user profile information (memories, preferences, profile) uses this structure.
+ * User profile item. Category can be any string (section heading in markdown).
  */
 export interface UserProfileItem {
 	text: string;
-	category: UserProfileCategory;
+	category: string;
 	confidence?: number;
 }
 
@@ -57,7 +40,7 @@ export class UserProfileService {
 		}
 		const file = this.app.vault.getAbstractFileByPath(this.contextFilePath);
 		if (!(file instanceof TFile)) {
-			await this.app.vault.create(this.contextFilePath, '# User Context\n\n- (No context items yet)\n');
+			await this.app.vault.create(this.contextFilePath, '# User Profile\n\n');
 		}
 	}
 
@@ -85,23 +68,14 @@ export class UserProfileService {
 			// Validate candidates
 			const validatedCandidates: UserProfileItem[] = rawCandidates
 				.filter((c): c is UserProfileItem => {
-					// Must have text
-					if (!c || typeof c.text !== 'string' || !c.text.trim()) {
-						return false;
-					}
-					// Validate category
-					if (!c.category || typeof c.category !== 'string' || !USER_PROFILE_VALID_CATEGORIES.includes(c.category as UserProfileCategory)) {
-						return false;
-					}
-					// Validate confidence if provided
-					if (c.confidence !== undefined && (typeof c.confidence !== 'number' || c.confidence < 0 || c.confidence > 1)) {
-						return false;
-					}
+					if (!c || typeof c.text !== 'string' || !c.text.trim()) return false;
+					if (typeof c.category !== 'string' || !c.category.trim()) return false;
+					if (c.confidence !== undefined && (typeof c.confidence !== 'number' || c.confidence < 0 || c.confidence > 1)) return false;
 					return true;
 				})
 				.map((c) => ({
 					text: c.text.trim(),
-					category: c.category as UserProfileCategory,
+					category: c.category.trim(),
 					confidence: c.confidence,
 				}))
 				// Filter by confidence threshold if provided
@@ -115,113 +89,135 @@ export class UserProfileService {
 	}
 
 	/**
-	 * Update context list with new items.
+	 * Merge new items into existing profile via LLM. Saves whatever the prompt returns; no loss-ratio check or programmatic fallback.
 	 */
 	async updateProfile(params: {
 		newItems: UserProfileItem[];
 	}): Promise<UserProfileItem[]> {
 		try {
-			// Load existing context
-			const existingContext = await this.loadContext();
-
-			// Convert new items to statements for prompt
-			const newStatements = params.newItems.map(item => item.text).join('\n');
-
-			// Convert Map to flat array of texts for prompt
-			const existingMemories = Array.from(existingContext.values()).flat();
-
-			// Render update prompt and call LLM
+			const existingMarkdown = await this.getProfileAsMarkdown();
+			const existingItems = await this.loadContextItems();
+			const newItemsMarkdown = this.formatItemsAsMarkdown(params.newItems);
 			const content = await this.promptService.chatWithPrompt(
-				PromptId.MemoryUpdateBulletList,
+				PromptId.UserProfileOrganizeMarkdown,
 				{
-					newStatement: newStatements,
-					existingMemories,
+					currentProfileMarkdown: existingMarkdown || '(empty)',
+					newItemsMarkdown: newItemsMarkdown || undefined,
 				},
 			);
-
-			// Parse bullet list from response
-			const updatedTexts = this.parseBulletList(content);
-			
-			// Reconstruct items (preserve category from new items)
-			const updatedItems: UserProfileItem[] = updatedTexts.map(text => {
-				// Try to find matching item from new items to preserve category
-				const matchingNewItem = params.newItems.find(item => text.includes(item.text) || item.text.includes(text));
-				return {
-					text,
-					category: matchingNewItem?.category || 'other', // Use 'other' as fallback if no matching item found
-				};
-			});
-
-			// Save updated context
-			await this.saveContext(updatedItems);
-
-			return updatedItems;
+			const trimmed = content.trim();
+			const fence = trimmed.match(/```(?:markdown|md)?\s*([\s\S]*?)```/);
+			const raw = fence ? fence[1].trim() : trimmed;
+			const merged = this.cleanProfileItemsBeforeSave(this.parseMarkdownProfile(raw));
+			// Do not overwrite with empty when we had content or new items (LLM may have returned wrong format).
+			if (merged.length === 0 && (existingItems.length > 0 || params.newItems.length > 0)) {
+				console.warn('[UserProfileService] Parse returned no items; keeping existing profile.');
+				return existingItems;
+			}
+			await this.saveContext(merged);
+			return merged;
 		} catch (error) {
 			console.warn('[UserProfileService] Failed to update context:', error);
-			return await this.loadContextItems();
+			return this.loadContextItems();
 		}
+	}
+
+	/** No programmatic cleanup; quality is controlled by prompts only. */
+	private cleanProfileItemsBeforeSave(items: UserProfileItem[]): UserProfileItem[] {
+		return items;
+	}
+
+	/** Format items as markdown (## category then - item per line) for the merge prompt. */
+	private formatItemsAsMarkdown(items: UserProfileItem[]): string {
+		if (items.length === 0) return '';
+		const byCategory = new Map<string, string[]>();
+		const order: string[] = [];
+		for (const item of items) {
+			if (!byCategory.has(item.category)) {
+				order.push(item.category);
+				byCategory.set(item.category, []);
+			}
+			byCategory.get(item.category)!.push(item.text.replace(/\n/g, ' ').trim());
+		}
+		const parts: string[] = [];
+		for (const cat of order) {
+			const texts = byCategory.get(cat);
+			if (texts?.length) {
+				parts.push(`## ${cat}`);
+				for (const t of texts) parts.push(`- ${t}`);
+			}
+		}
+		return parts.join('\n');
 	}
 
 	/**
 	 * Load existing context items from file, grouped by category.
 	 */
-	async loadContext(): Promise<Map<UserProfileCategory, string[]>> {
+	async loadContext(): Promise<Map<string, string[]>> {
 		const items = await this.loadContextItems();
-		const map = new Map<UserProfileCategory, string[]>();
-		
+		const map = new Map<string, string[]>();
 		for (const item of items) {
 			const texts = map.get(item.category) || [];
 			texts.push(item.text);
 			map.set(item.category, texts);
 		}
-		
 		return map;
 	}
 
 	/**
-	 * Load existing context items from file as UserProfileItem[].
+	 * Get current profile as markdown (same format as saved). Use when sending profile to AI.
+	 */
+	async getProfileAsMarkdown(): Promise<string> {
+		const items = await this.loadContextItems();
+		if (items.length === 0) return '';
+		const byCategory = new Map<string, string[]>();
+		const order: string[] = [];
+		for (const item of items) {
+			if (!byCategory.has(item.category)) order.push(item.category);
+			const list = byCategory.get(item.category) ?? [];
+			list.push(item.text.replace(/\n/g, ' ').trim());
+			byCategory.set(item.category, list);
+		}
+		const parts: string[] = [];
+		for (const cat of order) {
+			const texts = byCategory.get(cat);
+			if (texts?.length) {
+				parts.push(`## ${cat}`);
+				for (const t of texts) parts.push(`- ${t}`);
+			}
+		}
+		return parts.join('\n');
+	}
+
+	/**
+	 * Ask AI to organize the current profile into clean markdown; then save.
+	 */
+	async organizeProfileWithAI(): Promise<void> {
+		const currentMarkdown = await this.getProfileAsMarkdown();
+		if (!currentMarkdown.trim()) return;
+		const content = await this.promptService.chatWithPrompt(
+			PromptId.UserProfileOrganizeMarkdown,
+			{ currentProfileMarkdown: currentMarkdown },
+		);
+		let trimmed = content.trim();
+		const fence = trimmed.match(/```(?:markdown|md)?\s*([\s\S]*?)```/);
+		if (fence) trimmed = fence[1].trim();
+		let organized = this.parseMarkdownProfile(trimmed);
+		if (organized.length > 0) {
+			organized = this.cleanProfileItemsBeforeSave(organized);
+			await this.saveContext(organized);
+		}
+	}
+
+	/**
+	 * Load existing context items from file. Markdown only: ## heading = category, - line = item.
 	 */
 	private async loadContextItems(): Promise<UserProfileItem[]> {
 		const file = this.app.vault.getAbstractFileByPath(this.contextFilePath);
-		if (!(file instanceof TFile)) {
-			return [];
-		}
-
+		if (!(file instanceof TFile)) return [];
 		try {
 			const content = await this.app.vault.read(file);
-			// Try to parse as JSON first (structured format)
-			const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || content.match(/\[[\s\S]*\]/);
-			if (jsonMatch) {
-				try {
-					const rawItems = JSON.parse(jsonMatch[1] || jsonMatch[0]) as any[];
-					// Validate categories
-					const items: UserProfileItem[] = rawItems
-						.filter((item): item is UserProfileItem => {
-							if (!item || typeof item.text !== 'string' || !item.text.trim()) {
-								return false;
-							}
-							if (!item.category || typeof item.category !== 'string' || !USER_PROFILE_VALID_CATEGORIES.includes(item.category as UserProfileCategory)) {
-								return false;
-							}
-							return true;
-						})
-						.map((item) => ({
-							text: item.text.trim(),
-							category: item.category as UserProfileCategory,
-							confidence: item.confidence,
-						}));
-					return items;
-				} catch {
-					// Fall through to bullet list parsing
-				}
-			}
-			
-			// Fallback: parse as bullet list (legacy format, use 'other' category)
-			const texts = this.parseBulletList(content);
-			return texts.map(text => ({
-				text,
-				category: 'other' as UserProfileCategory, // Legacy format doesn't have category info
-			}));
+			return this.parseMarkdownProfile(content);
 		} catch (error) {
 			console.warn('[UserProfileService] Failed to load context:', error);
 			return [];
@@ -229,120 +225,74 @@ export class UserProfileService {
 	}
 
 	/**
-	 * Convert Map to UserProfileItem[].
+	 * Strip parenthetical notes from bullet text (e.g. Phi output "(8 words)", "[Merged]").
+	 * Optional cleanup so stored profile stays free of meta.
 	 */
-	private mapToItems(map: Map<UserProfileCategory, string[]>): UserProfileItem[] {
+	private static stripPhiMetaFromBulletText(text: string): string {
+		return text
+			.replace(/\s*\([^)]*\)\s*/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim();
+	}
+
+	/**
+	 * Parse markdown profile: ## category (any heading text) then - item lines.
+	 */
+	private parseMarkdownProfile(content: string): UserProfileItem[] {
 		const items: UserProfileItem[] = [];
-		for (const [category, texts] of map.entries()) {
-			for (const text of texts) {
-				items.push({ text, category });
+		const lines = content.split('\n');
+		let currentCategory = '';
+		for (const line of lines) {
+			const sectionMatch = line.match(/^##\s+(.+)$/);
+			if (sectionMatch) {
+				currentCategory = sectionMatch[1].trim().replace(/\s*\(\d+\)\s*$/g, '').trim();
+				continue;
+			}
+			const bulletMatch = line.match(/^[-*]\s+(.+)$/);
+			if (bulletMatch && currentCategory) {
+				const rawText = bulletMatch[1].trim();
+				const cleaned = UserProfileService.stripPhiMetaFromBulletText(rawText);
+				if (!cleaned) continue;
+				// Skip obviously junk bullets (long paragraphs from essays/assignments).
+				if (cleaned.length > 200) continue;
+				const parts = cleaned.split(/\s*[❌✅]\s*/).map((s) => s.trim()).filter(Boolean);
+				for (const text of parts.length ? parts : [cleaned]) {
+					if (text && text.length <= 200) items.push({ text, category: currentCategory });
+				}
 			}
 		}
 		return items;
 	}
 
 	/**
-	 * Save context items to file.
+	 * Save context items to file as markdown only (## category, - item). No JSON.
 	 */
 	private async saveContext(items: UserProfileItem[]): Promise<void> {
-		// Save as JSON for structured format
-		const content = `# User Context\n\n\`\`\`json\n${JSON.stringify(items, null, 2)}\n\`\`\`\n\n## Plain List\n\n${items.map((item) => `- ${item.text}`).join('\n')}\n`;
+		const byCategory = new Map<string, string[]>();
+		const order: string[] = [];
+		for (const item of items) {
+			if (!byCategory.has(item.category)) order.push(item.category);
+			const list = byCategory.get(item.category) ?? [];
+			const text = UserProfileService.stripPhiMetaFromBulletText(item.text.replace(/\n/g, ' ').trim());
+			if (text) list.push(text);
+			byCategory.set(item.category, list);
+		}
+		const parts: string[] = ['# User Profile', ''];
+		for (const cat of order) {
+			const texts = byCategory.get(cat);
+			if (texts?.length) {
+				parts.push(`## ${cat}`);
+				for (const t of texts) parts.push(`- ${t}`);
+				parts.push('');
+			}
+		}
+		const content = parts.join('\n').trimEnd() + '\n';
 		const file = this.app.vault.getAbstractFileByPath(this.contextFilePath);
 		if (file instanceof TFile) {
 			await this.app.vault.modify(file, content);
 		} else {
 			await this.app.vault.create(this.contextFilePath, content);
 		}
-	}
-
-	/**
-	 * Parse bullet list from text.
-	 */
-	private parseBulletList(text: string): string[] {
-		const lines = text.split('\n');
-		const items: string[] = [];
-		
-		for (const line of lines) {
-			const trimmed = line.trim();
-			// Match bullet points: - item or * item
-			const match = trimmed.match(/^[-*]\s+(.+)$/);
-			if (match) {
-				items.push(match[1].trim());
-			}
-		}
-
-		return items;
-	}
-
-	/**
-	 * Convert profile JSON to context items.
-	 */
-	private profileToContextItems(profile: Record<string, any>): UserProfileItem[] {
-		const items: UserProfileItem[] = [];
-
-		if (profile.communicationStyle) {
-			items.push({
-				text: profile.communicationStyle,
-				category: 'communication-style',
-			});
-		}
-		if (Array.isArray(profile.workPatterns)) {
-			profile.workPatterns.forEach((pattern: string) => {
-				items.push({
-					text: pattern,
-					category: 'work-pattern',
-				});
-			});
-		}
-		if (Array.isArray(profile.toolPreferences)) {
-			profile.toolPreferences.forEach((tool: string) => {
-				items.push({
-					text: tool,
-					category: 'tool-preference',
-				});
-			});
-		}
-		if (Array.isArray(profile.expertiseAreas)) {
-			profile.expertiseAreas.forEach((area: string) => {
-				items.push({
-					text: area,
-					category: 'expertise-area',
-				});
-			});
-		}
-		if (profile.responseStyle) {
-			items.push({
-				text: profile.responseStyle,
-				category: 'response-style',
-			});
-		}
-
-		return items;
-	}
-
-	/**
-	 * Merge new context items with existing ones, avoiding duplicates.
-	 */
-	private mergeContextItems(existing: UserProfileItem[], newItems: UserProfileItem[]): UserProfileItem[] {
-		const merged = [...existing];
-		
-		for (const newItem of newItems) {
-			// Check if similar item already exists
-			const existingIndex = merged.findIndex(item => 
-				item.text.toLowerCase() === newItem.text.toLowerCase() ||
-				(item.category === newItem.category && item.text.includes(newItem.text))
-			);
-			
-			if (existingIndex >= 0) {
-				// Update existing item
-				merged[existingIndex] = newItem;
-			} else {
-				// Add new item
-				merged.push(newItem);
-			}
-		}
-
-		return merged;
 	}
 
 }
