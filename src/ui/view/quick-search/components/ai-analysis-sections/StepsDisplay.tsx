@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react'
 import { Activity, ChevronDown, ChevronRight, Check } from 'lucide-react';
 import { AIAnalysisStep, StepsUISkipShouldSkip } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { motion } from 'framer-motion';
-import { AnalysisTimer } from '../../../../component/mine/IntelligenceFrame';
+import { AnalysisTimer } from '@/ui/component/mine/IntelligenceFrame';
 
 export type StreamingDisplayMethods = {
 	appendText: (text: string) => void;
@@ -384,6 +384,14 @@ export const StreamingStepsDisplay: React.FC<{
 		if (lower.includes('summary_context_messages')) {
 			return { title: 'Preparing context', rawType };
 		}
+		if (rawType === 'search-summary') return { title: 'Writing summary', rawType };
+		if (rawType === 'search-title') return { title: 'Thinking', rawType };
+		if (rawType === 'search-overview-mermaid') return { title: 'Generating overview diagram', rawType };
+		if (rawType === 'search-review-blocks') return { title: 'Reviewing blocks', rawType };
+		if (rawType === 'search-dashboard-update-agent') return { title: 'Updating dashboard', rawType };
+		if (rawType === 'search-internal-audit-summary') return { title: 'Internal audit summary', rawType };
+		if (rawType === 'search-internal-audit-questions') return { title: 'Internal audit questions', rawType };
+		if (rawType === 'search-internal-audit-loop') return { title: 'Internal audit search', rawType };
 
 		// Inspector tool steps: "search-inspector-agent-<tool>"
 		if (lower.startsWith('search-inspector-agent-')) {

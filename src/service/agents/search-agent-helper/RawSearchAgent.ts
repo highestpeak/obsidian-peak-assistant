@@ -1,6 +1,6 @@
 
 import { AIServiceManager } from "@/service/chat/service-manager";
-import { Experimental_Agent as Agent, hasToolCall, stepCountIs } from 'ai';
+import { Experimental_Agent as Agent, DynamicToolCall, hasToolCall, ProviderMetadata, stepCountIs } from 'ai';
 import { AgentTool } from "@/service/tools/types";
 import {
     inspectNoteContextTool,
@@ -16,8 +16,10 @@ import {
 import { genSystemInfo } from '@/service/tools/system-info';
 import { contentReaderTool } from '@/service/tools/content-reader';
 import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
-import { LLMStreamEvent, LLMUsage, StreamTriggerName, ToolResultOutput } from "@/core/providers/types";
+import { LLMStreamEvent, LLMUsage, StreamTriggerName, ToolResultOutput, UIStepType } from "@/core/providers/types";
 import { PromptId } from "@/service/prompt/PromptId";
+import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
+import { getFileNameFromPath } from "@/core/utils/file-utils";
 
 /**
  * Tool set for search agent (executor)
@@ -56,7 +58,7 @@ export class RawSearchAgent {
     constructor(
         private readonly aiServiceManager: AIServiceManager,
         private readonly options: RawSearchAgentOptions,
-        private readonly registerVerifiedPathsFromToolOutput?: (toolName: string, output: any) => void
+        private readonly appendVerifiedPaths?: (paths: string[]) => void
     ) {
         // Create search agent (focused on search tasks, no submit_final_answer)
         let searchTools: SearchToolSet = {
@@ -114,18 +116,56 @@ export class RawSearchAgent {
         const self = this;
 
         return (async function* (): AsyncGenerator<LLMStreamEvent> {
+            const stepId = generateUuidWithoutHyphens();
+            yield {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId,
+                title: 'Deep-diving into the knowledge base...',
+            };
+
             let finalSummary: string = '';
             const reasoningTextChunks: string[] = [];
             const thoughtTextChunks: string[] = [];
             for await (const chunk of result.fullStream) {
                 switch (chunk.type) {
+                    case 'text-start':
+                        yield {
+                            type: 'ui-step',
+                            uiType: UIStepType.STEPS_DISPLAY,
+                            stepId,
+                            title: 'Deep-diving into the knowledge base... Thinking...',
+                            description: 'Thinking about the request...',
+                        };
+                        break;
                     case 'text-delta':
                         thoughtTextChunks.push(chunk.text);
                         yield { type: 'text-delta', text: chunk.text, triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT };
+                        yield {
+                            type: 'ui-step-delta',
+                            uiType: UIStepType.STEPS_DISPLAY,
+                            stepId,
+                            descriptionDelta: chunk.text,
+                        };
+                        break;
+                    case 'reasoning-start':
+                        yield {
+                            type: 'ui-step',
+                            uiType: UIStepType.STEPS_DISPLAY,
+                            stepId,
+                            title: 'Deep-diving into the knowledge base... Reasoning...',
+                            description: 'Reasoning about the request...',
+                        };
                         break;
                     case 'reasoning-delta':
                         reasoningTextChunks.push(chunk.text);
                         yield { type: 'reasoning-delta', text: chunk.text, triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT };
+                        yield {
+                            type: 'ui-step-delta',
+                            uiType: UIStepType.STEPS_DISPLAY,
+                            stepId,
+                            descriptionDelta: chunk.text,
+                        };
                         break;
                     case 'tool-call': {
                         if (chunk.toolName === 'submit_final_answer') {
@@ -141,6 +181,10 @@ export class RawSearchAgent {
                             input: chunk.input,
                             triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT
                         };
+                        const uiEvent = buildToolCallUIEvent(chunk, stepId);
+                        if (uiEvent) {
+                            yield uiEvent;
+                        }
                         break;
                     }
                     case 'tool-result': {
@@ -190,6 +234,13 @@ export class RawSearchAgent {
                                 reasoning: reasoningTextChunks.join('').trim(),
                             },
                         };
+                        yield {
+                            type: 'ui-step',
+                            uiType: UIStepType.STEPS_DISPLAY,
+                            stepId,
+                            title: 'Deep-dive into the knowledge base... Finished!',
+                            description: 'Deep-dive into the knowledge base finished!',
+                        };
                         break;
                     }
                     case 'start':
@@ -237,4 +288,159 @@ export class RawSearchAgent {
         resultCollector.searchResultChunks = searchResultChunks;
     }
 
+
+    /**
+     * Register paths from tool outputs as verified.
+     * Called when processing vault_inspector or content_reader results.
+     */
+    private registerVerifiedPathsFromToolOutput(toolName: string, output: any): void {
+        if (!output) return;
+        if (!this.appendVerifiedPaths) return;
+
+        try {
+            // Handle structured output with results array (local_search, etc.)
+            if (output.results && Array.isArray(output.results)) {
+                for (const item of output.results) {
+                    if (item.path) {
+                        this.appendVerifiedPaths([item.path]);
+                    }
+                }
+            }
+            // Handle data.results pattern (hybrid mode)
+            if (output.data?.results && Array.isArray(output.data.results)) {
+                for (const item of output.data.results) {
+                    if (item.path) {
+                        this.appendVerifiedPaths([item.path]);
+                    }
+                }
+            }
+            // Handle graph nodes
+            if (output.levels && Array.isArray(output.levels)) {
+                for (const level of output.levels) {
+                    if (level.documentNodes && Array.isArray(level.documentNodes)) {
+                        for (const node of level.documentNodes) {
+                            // Graph nodes may have path in attributes
+                            const attrs = typeof node.attributes === 'string'
+                                ? JSON.parse(node.attributes)
+                                : node.attributes;
+                            if (attrs?.path) {
+                                this.appendVerifiedPaths([attrs.path]);
+                            }
+                        }
+                    }
+                }
+            }
+            // Handle content_reader responses
+            if (toolName === 'content_reader' && typeof output === 'object' && output.path) {
+                this.appendVerifiedPaths([output.path]);
+            }
+        } catch (error) {
+            console.warn(`[AISearchAgent] Error extracting paths from tool output: ${error}`);
+        }
+    }
+}
+
+function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | undefined {
+    const toolName = chunk.toolName;
+    if (!toolName) return undefined;
+    const input = chunk.input ?? {};
+    let fileName = '';
+    switch (toolName) {
+        case 'content_reader':
+            fileName = getFileNameFromPath(input.path);
+            const ifQuery = input.query ? `Query: ${input.query}` : '';
+            const ifRange = input.lineRange ? `Range: ${input.lineRange.start}-${input.lineRange.end}` : '';
+            return {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId,
+                title: `Read File. ${input.mode} read. ${fileName}. ${ifQuery} ${ifRange}`,
+                description: JSON.stringify(input),
+            };
+        case 'inspect_note_context':
+            fileName = getFileNameFromPath(input.note_path);
+            return {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId,
+                title: `Inspect Note Context. ${fileName}.`,
+                description: JSON.stringify(input),
+            };
+        case 'graph_traversal':
+            fileName = getFileNameFromPath(input.start_note_path);
+            const ifHops = input.hops ? `Hops: ${input.hops}` : '';
+            return {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId,
+                title: `Explore Graph. ${fileName}. ${ifHops}`,
+                description: JSON.stringify(input),
+            };
+        case 'find_path':
+            fileName = getFileNameFromPath(input.start_note_path);
+            const endFileName = getFileNameFromPath(input.end_note_path);
+            return {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId,
+                title: `Find Path. ${fileName} -> ${endFileName}.`,
+                description: JSON.stringify(input),
+            };
+        case 'find_key_nodes':
+            return {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId,
+                title: `Find Key Nodes in vault.`,
+                description: JSON.stringify(input),
+            };
+        case 'find_orphans':
+            return {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId,
+                title: `Find Orphans in vault.`,
+                description: JSON.stringify(input),
+            };
+        case 'search_by_dimensions':
+            return {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId,
+                title: `Search by Dimensions. ${input.boolean_expression}.`,
+                description: JSON.stringify(input),
+            };
+        case 'explore_folder':
+            fileName = getFileNameFromPath(input.folder_path);
+            const ifRecursive = input.recursive ? `Recursive: true` : `Recursive: false`;
+            const ifMaxDepth = input.max_depth ? `Max Depth: ${input.max_depth}` : '';
+            return {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId,
+                title: `Explore Folder. ${fileName}. ${ifRecursive} ${ifMaxDepth}`,
+                description: JSON.stringify(input),
+            };
+        case 'recent_changes_whole_vault':
+            return {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId,
+                title: `Search recent Changes Whole Vault.`,
+                description: JSON.stringify(input),
+            };
+        case 'local_search_whole_vault':
+            const ifSearchQuery = input.query ? `Query: ${input.query}` : '';
+            const ifScopeMode = input.scopeMode ? `Scope Mode: ${input.scopeMode}` : '';
+            return {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId,
+                title: `Local Search Whole Vault. ${ifSearchQuery}. ${ifScopeMode}.`,
+                description: JSON.stringify(input),
+            };
+        case 'submit_final_answer':
+        default:
+            return undefined;
+    }
 }

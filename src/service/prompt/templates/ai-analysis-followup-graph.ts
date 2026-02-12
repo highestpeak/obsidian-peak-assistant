@@ -13,7 +13,7 @@ Nodes: {{nodeCount}}, Edges: {{edgeCount}}
 ## Sample nodes
 {{nodeLabels}}
 
-## User request
+## User question
 {{question}}
 
 Return markdown. If you propose actions, keep them numbered.`;

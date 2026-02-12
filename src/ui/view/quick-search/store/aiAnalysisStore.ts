@@ -99,8 +99,16 @@ export type AIAnalysisStepType =
 	'search-inspector-agent-local_search_whole_vault' |
 	'search-inspector-agent-content_reader' |
 	'search-inspector-agent-web_search' |
-	'search-thought-agent-summary_context_messages' | 'pk-debug';
-'pk-debug';
+	'search-thought-agent-summary_context_messages' |
+	'search-dashboard-update-agent' |
+	'search-internal-audit-summary' |
+	'search-internal-audit-questions' |
+	'search-internal-audit-loop' |
+	'search-summary' |
+	'search-title' |
+	'search-overview-mermaid' |
+	'search-review-blocks' |
+	'pk-debug';
 
 export const StepsUISkipShouldSkip = new Set<AIAnalysisStepType>([
 	'idle',

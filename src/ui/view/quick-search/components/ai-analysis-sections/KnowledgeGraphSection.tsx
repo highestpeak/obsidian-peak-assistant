@@ -16,7 +16,7 @@ import { useGraphFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInter
 import { useAnalyzeGraphResults } from '../../hooks/useAIAnalysisResult';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/shared-ui/hover-card';
 import { AISearchGraph, AISearchNode } from '@/service/agents/AISearchAgent';
-import { DEFAULT_NODE_TYPE } from '@/service/agents/search-agent-helper/ResultUpdateToolHelper';
+import { DEFAULT_NODE_TYPE } from '@/service/agents/search-agent-helper/DashboardUpdateToolBuilder';
 import { UIPreviewGraph } from '@/ui/component/mine/GraphVisualization';
 
 /** Reusable context menu item: label + onClick, optionally icon or disabled. */

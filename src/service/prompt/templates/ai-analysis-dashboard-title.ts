@@ -9,7 +9,7 @@ Summary excerpt: {{summary}}
 {{/if}}
 
 Rules:
-- One line, maximum 80 characters
+- One line, maximum 20 characters
 - Descriptive of the analysis topic, suitable for file names and list display
 - No quotes or leading/trailing punctuation
 

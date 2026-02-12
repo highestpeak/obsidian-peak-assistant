@@ -1,7 +1,9 @@
 import { AppContext } from "@/app/context/AppContext";
 import { generateToolCallId } from "@/core/providers/adapter/ai-sdk-adapter";
+import { convertMessagesToText } from "@/core/providers/adapter/ai-sdk-adapter";
 import { buildLLMRequestMessage, concatLLMRequestMessages } from "@/core/providers/helpers/message-helper";
-import { LLMRequestMessage, LLMStreamEvent, LLMUsage, mergeTokenUsage, StreamTriggerName, ToolEvent } from "@/core/providers/types";
+import { LLMRequestMessage, LLMStreamEvent, LLMUsage, mergeTokenUsage, OneGenerationContext, StreamTriggerName, ToolEvent } from "@/core/providers/types";
+import { refreshableMemoizeSupplier, Supplier } from "@/core/utils/functions";
 import { AIServiceManager } from "@/service/chat/service-manager";
 import { PromptId } from "@/service/prompt/PromptId";
 
@@ -70,13 +72,10 @@ export class AgentMemoryManager {
     }
 
     public buildIterationThoughtMessage(
-        thoughtTextChunks: string[], reasoningTextChunks: string[],
-        toolCalls: { toolCallId: string; toolName: string; input: any }[],
-        toolResults: { toolCallId: string; toolName: string; output: any }[],
-        stepTokenUsage: LLMUsage
+        oneGenerationContext: OneGenerationContext,
+        thoughtText: string,
     ): LLMRequestMessage {
-        const thoughtText = thoughtTextChunks.join('');
-        const reasoningText = reasoningTextChunks.join('');
+        const reasoningText = oneGenerationContext.reasoningTextChunks.join('');
         const thoughtMessage: LLMRequestMessage = {
             role: 'assistant',
             content: []
@@ -87,9 +86,9 @@ export class AgentMemoryManager {
         if (reasoningText.trim().length > 0) {
             thoughtMessage.content.push({ type: 'reasoning', text: reasoningText.trim() });
         }
-        if (toolCalls.length > 0) {
+        if (oneGenerationContext.toolCalls.length > 0) {
             thoughtMessage.content.push(
-                ...toolCalls.map(({ toolCallId, toolName, input }) => ({
+                ...oneGenerationContext.toolCalls.map(({ toolCallId, toolName, input }) => ({
                     type: 'tool-call' as const,
                     toolCallId,
                     toolName,
@@ -97,9 +96,9 @@ export class AgentMemoryManager {
                 }))
             );
         }
-        if (toolResults.length > 0) {
+        if (oneGenerationContext.toolResults.length > 0) {
             thoughtMessage.content.push(
-                ...toolResults.map(({ toolCallId, toolName, output }) => ({
+                ...oneGenerationContext.toolResults.map(({ toolCallId, toolName, output }) => ({
                     type: 'tool-result' as const,
                     toolCallId,
                     toolName,
@@ -109,7 +108,7 @@ export class AgentMemoryManager {
         }
         this.agentMemory.historyMessages.push(thoughtMessage);
         this.agentMemory.latestMessages.push(thoughtMessage);
-        this.agentMemory.totalTokenUsage = mergeTokenUsage(this.agentMemory.totalTokenUsage, stepTokenUsage);
+        this.agentMemory.totalTokenUsage = mergeTokenUsage(this.agentMemory.totalTokenUsage, oneGenerationContext.stepTokenUsage);
         return thoughtMessage;
     }
 
@@ -193,11 +192,17 @@ export class AgentMemoryManager {
         };
 
         // Generate summary immediately
-        this.agentMemory.sessionSummary = await this.aiServiceManager.chatWithPrompt(PromptId.DocSummary, {
+        const summaryStream = this.aiServiceManager.chatWithPromptStream(PromptId.DocSummary, {
             content: messagesToSummarizeText,
             title: `Thought Agent History of the user query: \`${this.agentMemory.initialPrompt}\` `,
             wordCount: `less than ${AppContext.getInstance().settings.search.aiAnalysisSessionSummaryWordCount}`,
-        });
+        })
+        for await (const chunk of summaryStream) {
+            if (chunk.type === 'prompt-stream-result') {
+                this.accumulateTokenUsage(chunk.usage);
+                this.agentMemory.sessionSummary = chunk.output;
+            }
+        }
 
         this.agentMemory.lastSummaryIndex = messagesToSummarize.length - 1;
         this.agentMemory.latestMessages = DEFAULT_MAX_RECENT_MESSAGES > this.agentMemory.historyMessages.length
@@ -237,7 +242,73 @@ export class AgentMemoryManager {
         this.agentMemory.latestMessages.push(message);
     }
 
+    /**
+     * Push a message into BOTH history and latest buffers.
+     * Use this for internal agent notes that must be queryable by search_analysis_context.
+     */
+    public pushMessageToHistory(message: LLMRequestMessage): void {
+        this.agentMemory.historyMessages.push(message);
+        this.agentMemory.latestMessages.push(message);
+    }
+
+    public accumulateTokenUsage(usage?: LLMUsage): void {
+        if (!usage) {
+            return;
+        }
+        this.agentMemory.totalTokenUsage = mergeTokenUsage(this.agentMemory.totalTokenUsage, usage);
+    }
+
     public getAgentMemory(): AgentMemory {
         return this.agentMemory;
+    }
+
+    /**
+     * Search history messages by query. Returns relevant excerpts.
+     * Used by finish-phase agents for local RAG over analysis context.
+     */
+    public searchHistory(query: string, options?: { maxChars?: number }): string {
+        const maxChars = options?.maxChars ?? 4000;
+        const q = (query ?? '').trim().toLowerCase();
+        if (!q) {
+            const full = (this.agentMemory.sessionSummary ? `[Session Summary]\n${this.agentMemory.sessionSummary}\n\n` : '')
+                + `[Recent Messages]\n${convertMessagesToText(this.agentMemory.latestMessages)}`;
+            return full.slice(0, maxChars);
+        }
+        const fullText = (this.agentMemory.sessionSummary ? `[Session Summary]\n${this.agentMemory.sessionSummary}\n\n` : '')
+            + `[Recent Messages]\n${convertMessagesToText(this.agentMemory.latestMessages)}`;
+        const lines = fullText.split(/\r?\n/);
+        const matches: string[] = [];
+        const contextLines = 2;
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].toLowerCase().includes(q)) {
+                const start = Math.max(0, i - contextLines);
+                const end = Math.min(lines.length, i + contextLines + 1);
+                matches.push(lines.slice(start, end).join('\n'));
+            }
+        }
+        const result = matches.length > 0 ? matches.join('\n---\n') : fullText.slice(0, maxChars);
+        return result.slice(0, maxChars);
+    }
+
+    private latestMessageTextSupplier: Supplier<string> = refreshableMemoizeSupplier<string, number>(
+        () => {
+            const messages = this.agentMemory?.latestMessages ?? [];
+            if (messages.length === 0) {
+                return this.agentMemory?.initialPrompt ?? '';
+            }
+            return convertMessagesToText([
+                messages[messages.length - 1]
+            ]);
+        },
+        () => this.agentMemory?.latestMessages?.length ?? 0,
+        (lastLength, currentLength) => lastLength !== currentLength
+    );
+
+    public getLatestMessageText(): string {
+        return this.latestMessageTextSupplier();
+    }
+
+    public getInitialPrompt(): string {
+        return this.agentMemory?.initialPrompt ?? '';
     }
 }

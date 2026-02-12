@@ -204,15 +204,15 @@ export async function* mockAIAnalysisStream(
 
 	// Summary stream (SearchAiSummary)
 	await delay(chunkDelayMs);
-	yield { type: 'prompt-stream-start', promptId: PromptId.SearchAiSummary, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+	yield { type: 'prompt-stream-start', promptId: PromptId.AiAnalysisSummary, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
 	const summaryText = fullResult.summary;
 	const summaryChunkSize = Math.max(1, Math.floor(summaryText.length / 12));
 	for (let i = 0; i < summaryText.length; i += summaryChunkSize) {
 		await delay(chunkDelayMs);
-		yield { type: 'prompt-stream-delta', promptId: PromptId.SearchAiSummary, delta: summaryText.slice(i, i + summaryChunkSize), triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+		yield { type: 'prompt-stream-delta', promptId: PromptId.AiAnalysisSummary, delta: summaryText.slice(i, i + summaryChunkSize), triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
 	}
 	await delay(chunkDelayMs);
-	yield { type: 'prompt-stream-result', promptId: PromptId.SearchAiSummary, output: summaryText, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+	yield { type: 'prompt-stream-result', promptId: PromptId.AiAnalysisSummary, output: summaryText, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
 
 	await delay(phaseDelayMs);
 

@@ -1,5 +1,5 @@
 import { App, normalizePath, TFile } from 'obsidian';
-import { PromptId, type PromptVariables, PROMPT_REGISTRY } from './PromptId';
+import { PromptId, type PromptVariables, PROMPT_REGISTRY, PromptInfo } from './PromptId';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import type { AIServiceSettings } from '@/app/settings/types';
@@ -76,6 +76,7 @@ export class PromptService {
 			throw new Error('Chat service not available. Call setChatService() first.');
 		}
 		const template = PROMPT_REGISTRY[promptId];
+		const systemPrompt = template.systemPromptId ? PROMPT_REGISTRY[template.systemPromptId!].template : undefined;
 		const promptText = await this.render(promptId, variables);
 
 		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
@@ -97,7 +98,7 @@ export class PromptService {
 		const completion = await this.chat.blockChat({
 			provider,
 			model,
-			...(template?.systemPrompt ? { system: template?.systemPrompt } : {}),
+			...(systemPrompt ? { system: systemPrompt } : {}),
 			messages: [
 				{
 					role: 'user',
@@ -133,6 +134,7 @@ export class PromptService {
 			throw new Error('Chat service not available. Call setChatService() first.');
 		}
 		const template = PROMPT_REGISTRY[promptId];
+		const systemPrompt = template.systemPromptId ? PROMPT_REGISTRY[template.systemPromptId!].template : undefined;
 		const promptText = await this.render(promptId, variables);
 
 		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
@@ -161,7 +163,7 @@ export class PromptService {
 			const stream = this.chat.streamChat({
 				provider,
 				model,
-				...(template?.systemPrompt ? { system: template?.systemPrompt } : {}),
+				...(systemPrompt ? { system: systemPrompt } : {}),
 				messages: [
 					{
 						role: 'user',
@@ -177,7 +179,7 @@ export class PromptService {
 					yield { type: 'prompt-stream-delta', id: toolCallId, promptId, delta: event.text };
 				} else if (event.type === 'complete') {
 					const finalContent = contentChunks.join('').trim();
-					yield { type: 'prompt-stream-result', id: toolCallId, promptId, output: finalContent };
+					yield { type: 'prompt-stream-result', id: toolCallId, promptId, output: finalContent, usage: event.usage };
 				} else if (event.type === 'error') {
 					yield { type: 'error', error: event.error, durationMs: Date.now() - startTime };
 				}
@@ -186,6 +188,12 @@ export class PromptService {
 			yield { type: 'error', error, durationMs: Date.now() - startTime };
 			throw error;
 		}
+	}
+
+	async getPromptInfo<T extends PromptId>(
+		promptId: T
+	): Promise<PromptInfo> {
+		return PROMPT_REGISTRY[promptId];
 	}
 
 	/**

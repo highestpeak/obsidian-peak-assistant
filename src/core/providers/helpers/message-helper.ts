@@ -1,5 +1,6 @@
 
-import { ChatRole, LLMRequestMessage, ToolResultOutput } from '../types';
+import { getToolErrorMessage } from '../adapter/ai-sdk-adapter';
+import { ChatRole, LLMRequestMessage, LLMStreamEvent, StreamTriggerName, ToolResultOutput } from '../types';
 
 export function buildLLMRequestMessage(role: ChatRole, content: string): LLMRequestMessage {
     return {
@@ -54,4 +55,38 @@ export function concatLLMRequestMessages(messages: LLMRequestMessage[]): string 
         contentParts.push('\n');
     }
     return contentParts.join('');
+}
+
+export function buildToolCorrectionMessage(toolName: string, errorMessage: string): LLMRequestMessage {
+    return buildLLMRequestMessage('assistant',
+        `Error: Attempted to call '${toolName}'. But failed. If you think the error is recoverable, please try again. ` +
+        `Error message: ${errorMessage}`
+    )
+}
+
+export function buildToolCorrectionMessageFromChunk(chunk: any): LLMRequestMessage {
+    return buildToolCorrectionMessage(
+        (chunk as any).toolName ?? 'unknown',
+        getToolErrorMessage(chunk)
+    )
+}
+
+export function buildToolErrorStreamEvent(toolName: string, errorMessage: string, chunk: any, triggerName: StreamTriggerName): LLMStreamEvent {
+    return {
+        type: 'error',
+        error: new Error(`Tool ${toolName} failed: ${errorMessage}`),
+        triggerName,
+        extra: { toolName, toolCallId: (chunk as any).toolCallId },
+    }
+}
+
+export function buildToolResultStreamEventFromChunk(chunk: any, triggerName: StreamTriggerName): LLMStreamEvent {
+    const errMsg = getToolErrorMessage(chunk);
+    const toolName = (chunk as any).toolName ?? 'unknown';
+    return {
+        type: 'error',
+        error: new Error(`Tool ${toolName} failed: ${errMsg}`),
+        extra: { toolName, toolCallId: (chunk as any).toolCallId },
+        triggerName,
+    }
 }

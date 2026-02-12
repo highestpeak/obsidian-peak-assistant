@@ -11,7 +11,7 @@ Main summary: {{mainSummary}}
 ## Sources (sample)
 {{sourcesList}}
 
-## User request
+## User question
 {{question}}
 
 Return markdown. Keep it grounded in the sources list.`;

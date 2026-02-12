@@ -4,7 +4,7 @@ import { MultiProviderChatService } from '@/core/providers/MultiProviderChatServ
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef } from './types';
 import { PromptService } from '@/service/prompt/PromptService';
-import { PromptId, PromptVariables } from '@/service/prompt/PromptId';
+import { PromptId, PromptInfo, PromptVariables } from '@/service/prompt/PromptId';
 import { ProjectService } from './service-project';
 import { ConversationService } from './service-conversation';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
@@ -548,6 +548,12 @@ ${sourcesList}${topicsList}
 			throw new Error('ProjectService not initialized. Call init() first.');
 		}
 		return this.projectService.renameProject(projectId, newName);
+	}
+
+	async getPromptInfo<T extends PromptId>(
+		promptId: T
+	): Promise<PromptInfo> {
+		return this.promptService.getPromptInfo(promptId);
 	}
 
 	async renderPrompt<T extends PromptId>(

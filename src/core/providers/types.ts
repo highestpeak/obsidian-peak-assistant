@@ -297,8 +297,8 @@ Data content. Can either be a base64-encoded string, a Uint8Array, an ArrayBuffe
 type DataContent = string | Uint8Array | ArrayBuffer | Buffer;
 
 export type ToolResultOutput = { type: 'text'; value: string; }
-| { type: 'json'; value: JSONValue; }
-| { type: 'content'; value: Array<{ type: 'text'; text: string; }> }
+	| { type: 'json'; value: JSONValue; }
+	| { type: 'content'; value: Array<{ type: 'text'; text: string; }> }
 
 /**
  * inspire by ai-sdk's ModelMessage.
@@ -349,7 +349,11 @@ export type MessagePart =
 
 export type LLMUsage = LanguageModelUsage;
 
-const EMPTY_USAGE: LLMUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+export function emptyUsage(): LLMUsage {
+	return { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+}
+
+const EMPTY_USAGE: LLMUsage = emptyUsage();
 
 /** Merges two usage objects; treats undefined/null as zero usage. */
 export function mergeTokenUsage(usage1?: LLMUsage | null, usage2?: LLMUsage | null): LLMUsage {
@@ -381,9 +385,16 @@ type RawStreamEvent =
 	// from prompt service
 	{ type: 'prompt-stream-start'; id?: string; promptId: string; variables?: any; } |
 	{ type: 'prompt-stream-delta'; id?: string; promptId: string; delta?: string; } |
-	{ type: 'prompt-stream-result'; id?: string; promptId: string; output?: any; } | 
+	{ type: 'prompt-stream-result'; id?: string; promptId: string; output?: any; usage?: LLMUsage } |
 	// for debug purpose.
-	{ type: 'pk-debug'; debugName: string; }
+	{ type: 'pk-debug'; debugName: string; } | 
+	/**
+	 * for ui display. mainly notify the ui component to update the display. notify by useUIEventStore bus.
+	 * delta event for description update. map by stepId.
+	 * uiType: different ui components listen to different events.
+	 */
+	{ type: 'ui-step'; uiType: UIStepType, stepId: string; title: string; description?: string; } | 
+	{ type: 'ui-step-delta'; uiType: UIStepType, stepId: string; titleDelta?: string; descriptionDelta?: string; }
 	;
 
 export type LLMStreamEvent =
@@ -391,8 +402,42 @@ export type LLMStreamEvent =
 		// some times we need to pass stream trigger name to the event.
 		// as we may manual control the loop process.
 		triggerName?: StreamTriggerName;
-		extra? : any;
+		extra?: any;
 	};
+
+/**
+ * Context for one generation. All useful intermediate results are stored in this context.
+ */
+export interface OneGenerationContext {
+	/**
+	 * System prompt for this generation.
+	 */
+	systemPrompt?: string;
+	/**
+	 * User prompt for this generation.
+	 */
+	userPrompt?: string;
+	/**
+	 * Chunks of thought text.
+	 */
+	thoughtTextChunks: string[];
+	/**
+	 * Chunks of reasoning text.
+	 */
+	reasoningTextChunks: string[];
+	/**
+	 * Tool calls.
+	 */
+	toolCalls: Array<{ toolCallId: string; toolName: string; input: any }>;
+	/**
+	 * Tool results.
+	 */
+	toolResults: Array<{ toolCallId: string; toolName: string; output: ToolResultOutput }>;
+	/**
+	 * Token usage of the step.
+	 */
+	stepTokenUsage: LLMUsage;
+}
 
 export enum StreamTriggerName {
 	SEARCH_THOUGHT_AGENT = 'search-thought-agent',
@@ -401,6 +446,7 @@ export enum StreamTriggerName {
 	SEARCH_TOPICS_AGENT = 'search-topics-agent',
 	SEARCH_SOURCES_AGENT = 'search-sources-agent',
 	SEARCH_DASHBOARD_AGENT = 'search-dashboard-agent',
+	SEARCH_DASHBOARD_UPDATE_AGENT = 'search-dashboard-update-agent',
 	SEARCH_SUMMARY = 'search-summary',
 	SEARCH_TITLE = 'search-title',
 	SEARCH_OVERVIEW_MERMAID = 'search-overview-mermaid',
@@ -419,6 +465,10 @@ export enum ToolEvent {
 
 	// search agent
 	summary_context_messages = 'summary_context_messages',
+}
+
+export enum UIStepType {
+	STEPS_DISPLAY = 'steps-display',
 }
 
 /**

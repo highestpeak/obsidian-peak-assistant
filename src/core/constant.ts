@@ -246,3 +246,5 @@ export const GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT = 50;
  * Default recent search results count.
  */
 export const DEFAULT_RECENT_SEARCH_RESULTS_COUNT = 30;
+
+export const DEFAULT_TOOL_ERROR_RETRY_TIMES = 3;

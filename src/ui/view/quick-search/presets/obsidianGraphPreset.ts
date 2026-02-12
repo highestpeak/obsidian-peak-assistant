@@ -78,11 +78,55 @@ function obsidianGetNodeLabel(node: GraphVizNode, mode: 'full' | 'short'): strin
 	if (raw) {
 		return mode === 'short' && raw.length > 15 ? raw.substring(0, 15) + '...' : raw;
 	}
+	const title = String((node as any).title ?? '').trim();
+	if (title) {
+		const out = mode === 'short' && title.length > 15 ? title.substring(0, 15) + '...' : title;
+		console.debug('[GraphVisualization] label fallback: title', out);
+		return out;
+	}
+	const pathFromNode = (node as any).path ?? obsidianExtractPathFromNode(node) ?? String((node as any)?.attributes?.path ?? '').trim();
+	if (pathFromNode) {
+		const base = pathFromNode.split('/').filter(Boolean).pop() || pathFromNode;
+		const clean = base.replace(/\.(md|markdown)$/i, '') || base;
+		const out = mode === 'short' && clean.length > 15 ? clean.substring(0, 15) + '...' : clean;
+		console.debug('[GraphVisualization] label fallback: path', out);
+		return out;
+	}
 	const id = String(node.id || '').trim();
-	if (!id) return 'Untitled';
-	if (id.includes('/')) return id.split('/').filter(Boolean).pop() || id;
-	if (id.startsWith('file:')) return id.slice('file:'.length).split('/').filter(Boolean).pop() || id.slice('file:'.length);
-	if (id.startsWith('note:')) return id.slice('note:'.length);
+	if (!id) {
+		console.warn('[GraphVisualization] node missing label/title/id/path', node);
+		return '';
+	}
+	if (id.startsWith('concept:')) {
+		const text = id.slice('concept:'.length).replace(/-/g, ' ').trim();
+		const out = mode === 'short' && text.length > 15 ? text.substring(0, 15) + '...' : text;
+		console.debug('[GraphVisualization] label fallback: concept id', out);
+		return out;
+	}
+	if (id.startsWith('tag:')) {
+		const text = id.slice('tag:'.length).replace(/-/g, ' ').trim();
+		const out = mode === 'short' && text.length > 15 ? text.substring(0, 15) + '...' : text;
+		console.debug('[GraphVisualization] label fallback: tag id', out);
+		return out;
+	}
+	if (id.includes('/')) {
+		const base = id.split('/').filter(Boolean).pop() || id;
+		const out = mode === 'short' && base.length > 15 ? base.substring(0, 15) + '...' : base;
+		console.debug('[GraphVisualization] label fallback: raw id path', out);
+		return out;
+	}
+	if (id.startsWith('file:')) {
+		const base = id.slice('file:'.length).split('/').filter(Boolean).pop() || id.slice('file:'.length);
+		const out = mode === 'short' && base.length > 15 ? base.substring(0, 15) + '...' : base;
+		console.debug('[GraphVisualization] label fallback: file id', out);
+		return out;
+	}
+	if (id.startsWith('note:')) {
+		const text = id.slice('note:'.length);
+		const out = mode === 'short' && text.length > 15 ? text.substring(0, 15) + '...' : text;
+		console.debug('[GraphVisualization] label fallback: note id', out);
+		return out;
+	}
 	return mode === 'short' && id.length > 15 ? id.substring(0, 15) + '...' : id;
 }
 

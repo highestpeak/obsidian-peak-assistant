@@ -426,3 +426,9 @@ export function convertMessagesToText(messages: LLMRequestMessage[]): string {
     }
     return lines.join('\n');
 }
+
+export function getToolErrorMessage(chunk: any): string {
+    return typeof (chunk as any).error === 'string'
+        ? (chunk as any).error
+        : (chunk as any).error?.message ?? JSON.stringify((chunk as any).error)
+}

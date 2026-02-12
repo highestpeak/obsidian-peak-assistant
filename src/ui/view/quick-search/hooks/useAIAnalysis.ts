@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { getCleanQuery, AIAnalysisStepType } from '../store/aiAnalysisStore';
 import { useSharedStore, useAIAnalysisStore } from '@/ui/view/quick-search/store';
 import { AppContext } from '@/app/context/AppContext';
-import { RESULT_UPDATE_TOOL_NAMES, SearchAgentResult } from '@/service/agents/AISearchAgent';
-import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
+import { SearchAgentResult } from '@/service/agents/AISearchAgent';
+import { RESULT_UPDATE_TOOL_NAMES } from '@/service/agents/AISearchAgent';
+import { LLMStreamEvent } from '@/core/providers/types';
 import { PromptId } from '@/service/prompt/PromptId';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { Notice } from 'obsidian';
@@ -304,6 +305,18 @@ export function useAIAnalysis() {
 							toolCallId: event.id,
 							output: event.toolName !== 'content_reader' ? output : undefined,
 						});
+						// Publish a normalized tool-result event for graph animation / UI orchestration.
+						useUIEventStore.getState().publish('ui:tool-result', {
+							triggerName: event.triggerName || 'unknown',
+							toolName: event.toolName,
+							toolCallId: event.id,
+							output,
+						});
+
+						// useUIEventStore.getState().publish(
+						// 	event.triggerName + '--tool-result--' + event.toolName,
+						// 	{ output: output }
+						// );
 
 						if (RESULT_UPDATE_TOOL_NAMES.has(event.toolName)) {
 							const currentResult = event.extra?.currentResult as SearchAgentResult | undefined;
@@ -311,29 +324,22 @@ export function useAIAnalysis() {
 								applySearchResult(currentResult);
 							}
 						}
-						if (event.triggerName !== StreamTriggerName.SEARCH_THOUGHT_AGENT) {
-							// Publish a normalized tool-result event for graph animation / UI orchestration.
-							useUIEventStore.getState().publish('ui:tool-result', {
-								triggerName: event.triggerName || 'unknown',
-								toolName: event.toolName,
-								toolCallId: event.id,
-								output,
-							});
-
-							useUIEventStore.getState().publish(
-								event.triggerName + '--tool-result--' + event.toolName,
-								{ output: output }
-							);
+						break;
+					}
+					case 'prompt-stream-start': {
+						const pid = event.promptId as string;
+						if (pid === PromptId.AiAnalysisSummary) {
+							updateIfStepChanged('search-summary');
+							startSummaryStreaming();
+						} else if (pid === PromptId.AiAnalysisTitle) {
+							updateIfStepChanged('search-title');
+						} else if (pid === PromptId.AiAnalysisOverviewMermaid) {
+							updateIfStepChanged('search-overview-mermaid');
 						}
 						break;
 					}
-					case 'prompt-stream-start':
-						if (event.promptId === PromptId.SearchAiSummary) {
-							startSummaryStreaming();
-						}
-						break;
 					case 'prompt-stream-delta':
-						if (event.promptId === PromptId.SearchAiSummary) {
+						if (event.promptId === PromptId.AiAnalysisSummary) {
 							const delta = event.delta || '';
 							bufferSummaryDelta(delta);
 							// publish event for UI rendering
@@ -341,11 +347,15 @@ export function useAIAnalysis() {
 						}
 						break;
 					case 'prompt-stream-result':
-						if (event.promptId === PromptId.SearchAiSummary) {
+						if (event.promptId === PromptId.AiAnalysisSummary) {
 							flushSummaryBuffer();
 							// Update store with complete summary
 							setSummary(event.output as string);
 						}
+						break;
+					case 'ui-step':
+					case 'ui-step-delta':
+						useUIEventStore.getState().publish(event.type, event);
 						break;
 					case 'complete':
 						// Process final result
@@ -372,8 +382,8 @@ export function useAIAnalysis() {
 						break;
 					case 'pk-debug':
 						updateIfStepChanged('pk-debug', undefined, {
-							debugName: event.debugName,
 							triggerName: event.triggerName,
+							debugName: event.debugName,
 							extra: event.extra,
 						});
 						break;
