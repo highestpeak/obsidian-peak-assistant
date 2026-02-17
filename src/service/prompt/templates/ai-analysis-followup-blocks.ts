@@ -14,6 +14,6 @@ Main summary: {{mainSummary}}
 ## User question
 {{question}}
 
-Return markdown. Be concise.`;
+Return markdown. Be concise. Use bullets or short headings when helpful.`;
 
 export const expectsJson = false;

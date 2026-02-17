@@ -61,6 +61,8 @@ export async function* streamTransform<TOOLS extends ToolSet>(
         toolResultChunkPostProcessor?: (chunk: any) => LLMStreamEvent | {};
         chunkEventInterceptor?: (chunk: any) => void;
         yieldEventPostProcessor?: (chunk: any) => LLMStreamEvent | {};
+        /** Return extra event(s) to yield after the main event for this chunk. */
+        yieldExtraAfterEvent?: (chunk: any, yieldedEvent: LLMStreamEvent) => LLMStreamEvent | LLMStreamEvent[] | void;
         yieldUIStep?: {
             uiType: UIStepType;
             stepId: string;
@@ -151,6 +153,14 @@ export async function* streamTransform<TOOLS extends ToolSet>(
                 ...(eventProcessor.yieldEventPostProcessor ? eventProcessor.yieldEventPostProcessor(chunk) : {}),
             };
             yield yieldEvent;
+            const extra = eventProcessor.yieldExtraAfterEvent?.(chunk, yieldEvent);
+            if (extra !== undefined && extra !== null) {
+                if (Array.isArray(extra)) {
+                    for (const e of extra) yield e;
+                } else {
+                    yield extra;
+                }
+            }
         }
     }
 }

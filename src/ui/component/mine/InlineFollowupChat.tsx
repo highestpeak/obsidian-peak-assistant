@@ -3,7 +3,7 @@ import { StreamdownIsolated } from '@/ui/component/mine';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { PromptId } from '@/service/prompt/PromptId';
-import { streamSearchFollowup } from '@/ui/view/quick-search/hooks/useAIAnalysisPostAIInteractions';
+import { streamSearchFollowup, consumeFollowupStream } from '@/ui/view/quick-search/hooks/useAIAnalysisPostAIInteractions';
 
 type ApplyMode = 'append' | 'replace';
 
@@ -78,23 +78,15 @@ export const InlineFollowupChat: React.FC<{
 			}
 
 			const variables = getVariables(q);
-			let acc = '';
 			const stream = useSearchAgent
 				? streamSearchFollowup(manager, promptId, variables as Record<string, unknown>)
 				: manager.chatWithPromptStream(promptId, variables as any);
-			for await (const event of stream) {
-				if (event.type === 'prompt-stream-delta' && typeof event.delta === 'string') {
-					acc += event.delta;
-					if (onStreamingReplace) {
-						onStreamingReplace(acc, { question: q });
-					}
-					setAnswer(acc);
-				} else if (event.type === 'prompt-stream-result' && event.output != null) {
-					acc = typeof event.output === 'string' ? event.output : acc;
-				} else if (event.type === 'error') {
-					throw event.error;
-				}
-			}
+			const acc = await consumeFollowupStream(stream, {
+				onDelta: (answerSoFar) => {
+					setAnswer(answerSoFar);
+					onStreamingReplace?.(answerSoFar, { question: q });
+				},
+			});
 
 			setQuestion('');
 			onApply?.(acc, mode, q);

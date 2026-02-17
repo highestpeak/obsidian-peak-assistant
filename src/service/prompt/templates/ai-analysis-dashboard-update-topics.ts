@@ -2,8 +2,8 @@ export const template = `# CONTEXTUAL DATA
 - **Original User Query**: {{originalQuery}}
 - **Current Analysis Mode**: {{analysisMode}}
 
-{{#if attemptTimes > 0}}
-This is your {{attemptTimes}}th attempt to update the topics. Last attempt error message: {{lastAttemptErrorMessage}}.
+{{#if errorRetryInfo.attemptTimes}}
+This is your {{errorRetryInfo.attemptTimes}}th attempt to update the topics. Last attempt error message: {{errorRetryInfo.lastAttemptErrorMessages}}.
 Try your best to fix the error and update the topics.
 {{/if}}
 
@@ -24,6 +24,11 @@ Analyze the "Latest Evidence" provided above. Your task is to:
 3. Generate a set of succinct, professional Topic labels.
 4. Generate 3-4 predictive questions that will guide the user to the next logical step of their "Original User Query".
 
+{{#if toolFormatGuidance}}
+# update_topics FORMAT
+{{toolFormatGuidance}}
+
+{{/if}}
 # EXECUTION
 Execute the 'update_topics' tool now.`;
 

@@ -1,43 +1,124 @@
 import React, { useEffect } from 'react';
-import type { GraphVisualEffect } from '@/ui/component/mine/graph-viz/graphAnimationStore';
 import type { GraphVizLink, GraphVizNode } from '../types';
-import { getLinkEndpointId } from '../utils/link-key';
+import { getLinkEndpointId, linkKey } from '../utils/link-key';
+import { convexHull } from '../utils/hull';
+import type { GraphVisualEffect, GraphVisualEffectType, EffectKindMap } from '../graphAnimationStore';
+import { EffectsCanvasRefs } from '../hooks/useGraphEngine';
+
+const HULL_COLORS = ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#f97316', '#eab308'];
 
 export interface GraphEffectsCanvasProps {
 	effect: GraphVisualEffect | undefined;
-	nodesRef: React.MutableRefObject<GraphVizNode[]>;
-	linksRef: React.MutableRefObject<GraphVizLink[]>;
-	zoomTransformRef: React.MutableRefObject<{ x: number; y: number; k: number }>;
-	canvasRef: React.RefObject<HTMLCanvasElement | null>;
-	containerRef: React.RefObject<HTMLDivElement | null>;
-	resizeTick: number;
-	effectKindMap: Partial<Record<string, string[]>>;
+	canvasRefs: EffectsCanvasRefs;
+
+	effectKindMap: EffectKindMap;
+	highlightHubs?: boolean;
+	/** Hub halo color (CSS color). */
+	hubColor?: string;
+	/** When true, draw convex hulls per community. */
+	communityMode?: boolean;
+	/** Max number of community hulls to draw (largest communities first). */
+	maxCommunityHulls?: number;
+	pathMode?: boolean;
+	/** Path overlay line and node glow color. */
+	pathColor?: string;
+	/** Bump when path result changes so canvas effect re-runs. */
+	pathResultVersion?: number;
+	/** Same as used when computing path (e.g. linkKey(l, normalizeNodeId)). */
+	getLinkKey?: (l: GraphVizLink) => string;
 }
 
-function getKindsForEffect(effectType: string, effectKindMap: Partial<Record<string, string[]>>): string[] {
+function getKindsForEffect(effectType: GraphVisualEffectType, effectKindMap: EffectKindMap): string[] {
 	return effectKindMap[effectType] ?? [];
+}
+
+/** Polygon area in screen space (signed); use Math.abs for magnitude. */
+function polygonArea(points: { x: number; y: number }[]): number {
+	if (points.length < 3) return 0;
+	let area = 0;
+	for (let i = 0; i < points.length; i++) {
+		const j = (i + 1) % points.length;
+		area += points[i].x * points[j].y - points[j].x * points[i].y;
+	}
+	return Math.abs(area) * 0.5;
+}
+
+/** Returns ordered path edges for segment-by-segment animation. pathNodeIds are in normalized id space. */
+function getOrderedPathEdges(
+	pathNodeIds: string[],
+	links: GraphVizLink[],
+	getLinkKey: (l: GraphVizLink) => string,
+	pathLinkKeys: Set<string>,
+	nodes: GraphVizNode[],
+	normalizeNodeId: (id: string) => string
+): { aNode: GraphVizNode | undefined; bNode: GraphVizNode | undefined }[] {
+	const norm = normalizeNodeId;
+	const nodeByNormId = new Map<string, GraphVizNode>();
+	for (const n of nodes) nodeByNormId.set(norm(n.id), n);
+	const result: { aNode: GraphVizNode | undefined; bNode: GraphVizNode | undefined }[] = [];
+	for (let i = 0; i < pathNodeIds.length - 1; i++) {
+		const aId = pathNodeIds[i];
+		const bId = pathNodeIds[i + 1];
+		const link = links.find((l) => {
+			const key = getLinkKey(l);
+			if (!pathLinkKeys.has(key)) return false;
+			const s = norm(getLinkEndpointId(l.source));
+			const t = norm(getLinkEndpointId(l.target));
+			return (s === aId && t === bId) || (s === bId && t === aId);
+		});
+		if (!link) continue;
+		const aNode = nodeByNormId.get(aId);
+		const bNode = nodeByNormId.get(bId);
+		result.push({ aNode, bNode });
+	}
+	return result;
 }
 
 export const GraphEffectsCanvas: React.FC<GraphEffectsCanvasProps> = ({
 	effect,
-	nodesRef,
-	linksRef,
-	zoomTransformRef,
-	canvasRef,
-	containerRef,
-	resizeTick,
+	canvasRefs,
 	effectKindMap,
+	highlightHubs = false,
+	hubColor = '#f59e0b',
+	communityMode = false,
+	maxCommunityHulls = 8,
+	pathMode = false,
+	pathColor = '#22c55e',
+	pathResultVersion = 0,
+	getLinkKey = (l) => linkKey(l, (id) => id),
 }) => {
+
+	const { canvasRef, nodesRef, linksRef, visibleNodesRef, zoomTransformRef, containerSizeRef, resizeTick, hubNodeIdsRef, communityMapRef, pathResultRef, pathResultT0Ref, streamingRef, isDraggingRef, normalizeNodeId } = canvasRefs;
+
 	useEffect(() => {
 		const canvas = canvasRef.current;
-		const container = containerRef.current;
-		if (!canvas || !container) return;
+		if (!canvas) return;
 		const ctx = canvas.getContext('2d');
 		if (!ctx) return;
 
+		const effType = effect?.type ?? 'none';
+		const intensity = Math.max(0, Math.min(1, effect?.intensity ?? 0));
+		const hasPath = pathMode && pathResultRef?.current && pathResultRef.current.pathNodeIds.length > 0;
+		/** Skip hub/community overlay during streaming or drag; read refs in loop for current value. */
+		const skipHeavyOverlayFn = () => !!(streamingRef?.current || isDraggingRef?.current);
+		const staticOverlay = highlightHubs || communityMode || hasPath;
+		const needsLoop = (effType !== 'none' && intensity > 0) || staticOverlay;
+		if (!needsLoop) {
+			const { width, height } = containerSizeRef.current;
+			ctx.clearRect(0, 0, width, height);
+			return;
+		}
+
+		// RAF: requestAnimationFrame
 		let raf = 0;
+		let throttleTimer: ReturnType<typeof setTimeout> | null = null;
 		let alive = true;
 		const start = effect?.startedAtMs ?? Date.now();
+		/** Throttle community hull *computation* to ~10fps; redraw from cache every frame to avoid flicker. */
+		let frameCount = 0;
+		const HULL_THROTTLE = 5;
+		type CachedHull = { color: string; points: { x: number; y: number }[] };
+		let cachedHulls: CachedHull[] = [];
 
 		const drawGlowDot = (x: number, y: number, r: number, color: string, alpha: number) => {
 			ctx.save();
@@ -65,21 +146,22 @@ export const GraphEffectsCanvas: React.FC<GraphEffectsCanvasProps> = ({
 			ctx.restore();
 		};
 
+		/** When only drawing static overlay (hub/community/path), throttle to ~10fps to avoid slow rAF and crash. */
+		const throttleStaticOverlay = effType === 'none' && staticOverlay;
+		const STATIC_FRAME_MS = 100;
+
 		const loop = () => {
 			if (!alive) return;
 			const now = Date.now();
 			const t = (now - start) / 1000;
-			const width = container.clientWidth || 400;
-			const height = container.clientHeight || 400;
-
-			ctx.clearRect(0, 0, width, height);
-
-			const effType = effect?.type ?? 'none';
-			const intensity = Math.max(0, Math.min(1, effect?.intensity ?? 0));
-			if (effType === 'none' || intensity <= 0) {
+			// Use cached dimensions — never read clientWidth/clientHeight to avoid forced reflow.
+			const { width, height } = containerSizeRef.current;
+			if (width <= 0 || height <= 0) {
 				raf = requestAnimationFrame(loop);
 				return;
 			}
+
+			ctx.clearRect(0, 0, width, height);
 
 			const tr = zoomTransformRef.current;
 			const toScreen = (x?: number, y?: number) => ({
@@ -87,10 +169,91 @@ export const GraphEffectsCanvas: React.FC<GraphEffectsCanvasProps> = ({
 				y: (y ?? 0) * tr.k + tr.y,
 			});
 
-			const nodes = nodesRef.current;
-			const links = linksRef.current;
+		const nodesLoop = (visibleNodesRef?.current && visibleNodesRef.current.length > 0 ? visibleNodesRef.current : nodesRef.current) ?? [];
+		const links = linksRef.current;
 
-			if (effType === 'scan') {
+		// Skip nodes without layout to avoid NaN in toScreen (no DOM read here).
+		const hasPos = (n: GraphVizNode) => n.x != null && n.y != null;
+
+		// Skip hub/community during streaming or drag; draw only when graph ready.
+		const skipHeavyOverlay = skipHeavyOverlayFn();
+		if (!skipHeavyOverlay && highlightHubs && hubNodeIdsRef?.current?.length) {
+			const hubSet = new Set(hubNodeIdsRef.current);
+			for (const n of nodesLoop) {
+				if (!hubSet.has(n.id) || !hasPos(n)) continue;
+				const p = toScreen(n.x, n.y);
+				const r = Math.max(10, (n.r ?? 10) * 2.2);
+				drawGlowDot(p.x, p.y, r, hubColor, 0.4);
+			}
+		}
+
+		if (!skipHeavyOverlay && communityMode && communityMapRef?.current?.size && nodesLoop.length > 0) {
+			if (frameCount % HULL_THROTTLE === 0) {
+				const cm = communityMapRef.current;
+				const byCommunity = new Map<number, { x: number; y: number }[]>();
+				for (const n of nodesLoop) {
+					if (!hasPos(n)) continue;
+					const c = cm.get(n.id);
+					if (c === undefined) continue;
+					const p = toScreen(n.x, n.y);
+					if (!byCommunity.has(c)) byCommunity.set(c, []);
+					byCommunity.get(c)!.push(p);
+				}
+				const canvasArea = width * height;
+				const maxHullArea = canvasArea * 0.25;
+				const sorted = [...byCommunity.entries()]
+					.filter(([, pts]) => pts.length >= 2)
+					.sort((a, b) => b[1].length - a[1].length)
+					.slice(0, maxCommunityHulls);
+				cachedHulls = sorted.map(([, pts], i) => {
+					const hull = convexHull(pts);
+					return { color: HULL_COLORS[i % HULL_COLORS.length], points: hull };
+				}).filter((h) => h.points.length >= 2 && polygonArea(h.points) <= maxHullArea);
+			}
+			for (const { color, points } of cachedHulls) {
+				ctx.save();
+				ctx.fillStyle = color;
+				ctx.globalAlpha = 0.15;
+				ctx.beginPath();
+				ctx.moveTo(points[0].x, points[0].y);
+				for (let j = 1; j < points.length; j++) ctx.lineTo(points[j].x, points[j].y);
+				ctx.closePath();
+				ctx.fill();
+				ctx.globalAlpha = 0.55;
+				ctx.strokeStyle = color;
+				ctx.lineWidth = 2.5;
+				ctx.stroke();
+				ctx.restore();
+			}
+		} else {
+			cachedHulls = [];
+		}
+
+		const pathRes = pathResultRef?.current;
+		if (pathMode && pathRes && pathRes.pathNodeIds.length > 0 && nodesLoop.length > 0) {
+			const pathNodeSet = new Set(pathRes.pathNodeIds);
+			const pathLinkKeys = pathRes.pathLinkKeys;
+			const orderedEdges = getOrderedPathEdges(pathRes.pathNodeIds, links, getLinkKey, pathLinkKeys, nodesLoop, normalizeNodeId);
+			const segmentMs = 120;
+			const pathT0 = pathResultT0Ref?.current || now;
+			const elapsed = now - pathT0;
+			const visibleSegments = Math.min(orderedEdges.length, Math.max(1, Math.floor(elapsed / segmentMs) + 1));
+			for (let i = 0; i < visibleSegments && i < orderedEdges.length; i++) {
+				const { aNode, bNode } = orderedEdges[i];
+				if (!aNode || !bNode || !hasPos(aNode) || !hasPos(bNode)) continue;
+				const a = toScreen(aNode.x, aNode.y);
+				const b = toScreen(bNode.x, bNode.y);
+				drawLineGlow(a.x, a.y, b.x, b.y, pathColor, 3, 0.5);
+			}
+			for (const n of nodesLoop) {
+				if (!pathNodeSet.has(normalizeNodeId(n.id)) || !hasPos(n)) continue;
+				const p = toScreen(n.x, n.y);
+				const r = Math.max(10, (n.r ?? 10) * 1.5);
+				drawGlowDot(p.x, p.y, r, pathColor, 0.35);
+			}
+		}
+
+		if (effType === 'scan') {
 				const bandY = ((t * 120) % (height + 120)) - 60;
 				const grad = ctx.createLinearGradient(0, bandY - 40, 0, bandY + 40);
 				grad.addColorStop(0, 'rgba(124,58,237,0)');
@@ -114,7 +277,7 @@ export const GraphEffectsCanvas: React.FC<GraphEffectsCanvasProps> = ({
 					}
 				}
 
-				for (const n of nodes) {
+				for (const n of nodesLoop) {
 					if (!focus.has(n.id)) continue;
 					const p = toScreen(n.x, n.y);
 					const pulse = 0.6 + 0.4 * Math.sin(t * 3);
@@ -135,8 +298,8 @@ export const GraphEffectsCanvas: React.FC<GraphEffectsCanvasProps> = ({
 				const pathEdges = links.filter((l) => pathKinds.includes(l.kind));
 				let idx = 0;
 				for (const l of pathEdges) {
-					const aNode = typeof l.source === 'string' ? nodes.find((n) => n.id === l.source) : l.source;
-					const bNode = typeof l.target === 'string' ? nodes.find((n) => n.id === l.target) : l.target;
+					const aNode = typeof l.source === 'string' ? nodesLoop.find((n) => n.id === l.source) : l.source;
+					const bNode = typeof l.target === 'string' ? nodesLoop.find((n) => n.id === l.target) : l.target;
 					if (!aNode || !bNode) continue;
 					const a = toScreen(aNode.x, aNode.y);
 					const b = toScreen(bNode.x, bNode.y);
@@ -155,8 +318,8 @@ export const GraphEffectsCanvas: React.FC<GraphEffectsCanvasProps> = ({
 				const pulse = 0.5 + 0.5 * Math.sin(t * 4);
 				for (const l of links) {
 					if (!semanticKinds.includes(l.kind)) continue;
-					const aNode = typeof l.source === 'string' ? nodes.find((n) => n.id === l.source) : l.source;
-					const bNode = typeof l.target === 'string' ? nodes.find((n) => n.id === l.target) : l.target;
+					const aNode = typeof l.source === 'string' ? nodesLoop.find((n) => n.id === l.source) : l.source;
+					const bNode = typeof l.target === 'string' ? nodesLoop.find((n) => n.id === l.target) : l.target;
 					if (!aNode || !bNode) continue;
 					const a = toScreen(aNode.x, aNode.y);
 					const b = toScreen(bNode.x, bNode.y);
@@ -166,15 +329,35 @@ export const GraphEffectsCanvas: React.FC<GraphEffectsCanvasProps> = ({
 				}
 			}
 
-			raf = requestAnimationFrame(loop);
+			frameCount += 1;
+			if (throttleStaticOverlay) {
+				throttleTimer = setTimeout(() => {
+					throttleTimer = null;
+					if (alive) raf = requestAnimationFrame(loop);
+				}, STATIC_FRAME_MS);
+			} else {
+				raf = requestAnimationFrame(loop);
+			}
 		};
 
 		raf = requestAnimationFrame(loop);
 		return () => {
 			alive = false;
 			cancelAnimationFrame(raf);
-			ctx.clearRect(0, 0, container.clientWidth || 400, container.clientHeight || 400);
+			if (throttleTimer != null) {
+				clearTimeout(throttleTimer);
+				throttleTimer = null;
+			}
+			const { width, height } = containerSizeRef.current;
+			ctx.clearRect(0, 0, width, height);
 		};
-	}, [effect?.type, effect?.intensity, effect?.startedAtMs, resizeTick, effectKindMap]);
-	return null;
+	}, [effect?.type, effect?.intensity, effect?.startedAtMs, resizeTick, effectKindMap, highlightHubs, hubColor, communityMode, maxCommunityHulls, pathMode, pathColor, pathResultVersion]);
+
+	return (
+		<canvas
+			ref={canvasRef as React.RefObject<HTMLCanvasElement>}
+			className="pktw-absolute pktw-inset-0 pktw-z-[10] pktw-pointer-events-none"
+			aria-hidden="true"
+		/>
+	);
 };

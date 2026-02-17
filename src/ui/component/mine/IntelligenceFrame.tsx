@@ -39,6 +39,7 @@ export const AnalysisTimer: React.FC<{
 	finalDurationMs?: number;
 }> = ({ startedAtMs, isRunning, finalDurationMs }) => {
 	const [elapsed, setElapsed] = useState(0);
+	// RAF:requestAnimationFrame
 	const rafRef = useRef<number>();
 	const tickRef = useRef<number>();
 	const [dotsTick, setDotsTick] = useState(0);

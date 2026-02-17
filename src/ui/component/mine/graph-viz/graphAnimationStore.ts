@@ -1,28 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { create } from 'zustand';
-import { toolOutputToGraphPatch } from '@/ui/component/mine/graph-viz/utils/graphPatches';
 import { useAIAnalysisStore } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import type { AISearchGraph, AISearchNode, AISearchEdge } from '@/service/agents/AISearchAgent';
 import { useSubscribeUIEvent } from '@/ui/store/uiEventStore';
+import type { GraphPatch } from '@/core/providers/ui-events/graph';
 
-export type GraphToolEventKind = 'tool-call' | 'tool-result';
+/** Queue item driven by ui-signal(channel='graph'). */
+export type GraphSignalKind = 'stage' | 'patch' | 'effect';
 
-/**
- * Normalized tool event payload emitted from UI event bus.
- * Used to drive graph animation pipeline.
- */
-export interface GraphToolEventPayload {
-	triggerName: string;
-	toolName: string;
-	toolCallId?: string;
-	/**
-	 * Tool call input (when kind = tool-call).
-	 */
-	input?: unknown;
-	/**
-	 * Tool output (when kind = tool-result).
-	 */
-	output?: unknown;
+export interface GraphSignalQueuePayload {
+	stage?: 'start' | 'finish';
+	patch?: GraphPatch;
+	overlayText?: string | null;
+	effect?: { type?: string; intensity?: number; focusNodeIds?: string[] };
 }
 
 export type GraphAnimationMode = 'idle' | 'scanning' | 'rendering' | 'cooldown';
@@ -33,6 +23,14 @@ export type GraphVisualEffectType =
 	| 'path'
 	| 'filter'
 	| 'semantic';
+
+/**
+ * Map from effect type to link kinds to highlight for that effect. 
+ * config layer is "select edges by edge kind", but not "only edges have effect";
+ * it's "use edge kind to decide which edges (and derived nodes) to participate", then decide whether to draw on edges, nodes, or both.
+ * e.g. { filter: ['semantic', 'physical'] } means when effect type is 'filter', highlight semantic and physical edges.
+ * */
+export type EffectKindMap = Partial<Record<GraphVisualEffectType, string[]>>;
 
 export interface GraphVisualEffect {
 	type: GraphVisualEffectType;
@@ -52,9 +50,9 @@ export interface GraphVisualEffect {
 
 export interface GraphQueueItem {
 	id: string;
-	kind: GraphToolEventKind;
+	kind: GraphSignalKind;
 	ts: number;
-	payload: GraphToolEventPayload;
+	payload: GraphSignalQueuePayload;
 }
 
 interface GraphAnimationStore {
@@ -129,33 +127,7 @@ export const useGraphAnimationStore = create<GraphAnimationStore>((set, get) => 
 	}),
 }));
 
-/** Human-readable overlay text for tool names. */
-function humanizeToolCall(toolName: string): string {
-	switch (toolName) {
-		case 'graph_traversal': return 'Scanning neighborhood…';
-		case 'find_path': return 'Searching for a connecting path…';
-		case 'find_key_nodes': return 'Identifying key nodes…';
-		case 'find_orphans': return 'Looking for orphan notes…';
-		case 'inspect_note_context': return 'Inspecting note context…';
-		case 'local_search_whole_vault': return 'Searching vault…';
-		default: return `Running ${toolName}…`;
-	}
-}
-
-/** Visual effect type from tool name and input. */
-function effectForToolCall(toolName: string, input: unknown): GraphVisualEffectType {
-	if (toolName === 'find_path') return 'path';
-	if (toolName === 'graph_traversal') {
-		const i: any = input ?? {};
-		if (i?.semantic_filter || i?.include_semantic_paths) return 'filter';
-		return 'scan';
-	}
-	if (toolName === 'inspect_note_context') return 'scan';
-	if (toolName === 'find_key_nodes') return 'scan';
-	return 'scan';
-}
-
-/** Persist graph patch to analysis store so completed view keeps enriched nodes/edges. */
+/** Persist graph patch to store. Patch is incremental (only new/changed nodes/edges); setGraph merges via mergeAISearchGraphs. */
 function persistPatchToStore(patch: any): void {
 	try {
 		const nodes: AISearchNode[] = (patch?.upsertNodes ?? []).map((n: any) => {
@@ -197,94 +169,74 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
  * Hook to pump the graph animation queue sequentially.
- * Consumes tool-call/tool-result, updates store state, persists to aiAnalysisStore.
- * Graph updates flow via props (parent re-renders with new graph from store).
+ * Subscribes to ui-signal (channel='graph'); drives mode/effect/overlayText and persists patch to aiAnalysisStore.
  */
 export function useGraphQueuePump(): void {
-	const { queue, enqueue } = useGraphAnimationStore();
-
+	const enqueue = useGraphAnimationStore((s) => s.enqueue);
+	const queueLength = useGraphAnimationStore((s) => s.queue.length);
 	const processingRef = useRef(false);
 
-	const subscribedEventTypes = useMemo(() => new Set<string>([
-		'ui:tool-call',
-		'ui:tool-result',
-	]), []);
-
-	// Only graph-related tools should drive the animation pipeline.
-	// This prevents "tool-call without a patch" from leaving the graph stuck in scanning mode.
-	const graphToolNames = useMemo(() => new Set<string>([
-		'graph_traversal',
-		'find_path',
-		'find_key_nodes',
-		'inspect_note_context',
-	]), []);
-
-	// Collect normalized tool events into the pending queue.
-	useSubscribeUIEvent(subscribedEventTypes, (eventType, payload) => {
-		if (eventType === 'ui:tool-call') {
-			const p = payload as GraphToolEventPayload;
-			if (!graphToolNames.has(p.toolName)) return;
-			console.debug('[KnowledgeGraphSection] enqueue tool-call', p.toolName, p.toolCallId);
-			enqueue({
-				id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-				kind: 'tool-call',
-				ts: Date.now(),
-				payload: p,
-			});
-			return;
-		}
-		if (eventType === 'ui:tool-result') {
-			const p = payload as GraphToolEventPayload;
-			if (!graphToolNames.has(p.toolName)) return;
-			console.debug('[KnowledgeGraphSection] enqueue tool-result', p.toolName, p.toolCallId);
-			enqueue({
-				id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-				kind: 'tool-result',
-				ts: Date.now(),
-				payload: p,
-			});
-			return;
-		}
+	useSubscribeUIEvent('ui-signal', (eventType, raw) => {
+		const ev = raw as { channel?: string; kind?: string; entityId?: string; id?: string; payload?: GraphSignalQueuePayload };
+		if (ev?.channel !== 'graph') return;
+		const kind = (ev.kind ?? 'stage') as GraphSignalKind;
+		enqueue({
+			id: ev.id ?? `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+			kind,
+			ts: Date.now(),
+			payload: ev.payload ?? {},
+		});
 	});
 
 	const queuePumpCallback = useCallback(async (item: GraphQueueItem) => {
 		useGraphAnimationStore.getState().setCurrent(item);
+		const p = item.payload;
 
-		if (item.kind === 'tool-call') {
-			useGraphAnimationStore.getState().setMode('scanning');
-			useGraphAnimationStore.getState().setOverlayText(humanizeToolCall(item.payload.toolName));
-			useGraphAnimationStore.getState().setEffect({
-				type: effectForToolCall(item.payload.toolName, item.payload.input),
-				intensity: 1,
-			});
-			await sleep(260);
+		if (item.kind === 'stage') {
+			if (p.stage === 'start') {
+				useGraphAnimationStore.getState().setMode('scanning');
+				useGraphAnimationStore.getState().setOverlayText(p.overlayText ?? 'Updating graph…');
+				const eff = p.effect;
+				useGraphAnimationStore.getState().setEffect({
+					type: (eff?.type as GraphVisualEffectType) ?? 'scan',
+					intensity: eff?.intensity ?? 1,
+					focusNodeIds: eff?.focusNodeIds,
+				});
+				await sleep(260);
+				return;
+			}
+			if (p.stage === 'finish') {
+				useGraphAnimationStore.getState().setMode('idle');
+				useGraphAnimationStore.getState().setOverlayText(null);
+				useGraphAnimationStore.getState().setEffect({ type: 'none', intensity: 0 });
+				return;
+			}
 			return;
 		}
 
-		const patch = toolOutputToGraphPatch(item.payload.toolName, item.payload.output);
-		const outAny: any = item.payload.output as any;
-		const core = outAny?.result ?? outAny?.data ?? outAny;
-		const errMsg = core?.error ? String(core.error) : null;
-		if (!patch && errMsg) {
-			useGraphAnimationStore.getState().setMode('cooldown');
-			useGraphAnimationStore.getState().setOverlayText(`Tool failed: ${errMsg.slice(0, 120)}`);
-			useGraphAnimationStore.getState().setEffect({ type: 'none', intensity: 0 });
-			await sleep(520);
-			useGraphAnimationStore.getState().setMode('idle');
-			useGraphAnimationStore.getState().setOverlayText('');
+		if (item.kind === 'effect') {
+			const eff = p.effect;
+			if (eff) {
+				useGraphAnimationStore.getState().setEffect({
+					type: (eff.type as GraphVisualEffectType) ?? 'none',
+					intensity: eff.intensity ?? 0,
+					focusNodeIds: eff.focusNodeIds,
+				});
+			}
+			await sleep(120);
 			return;
 		}
-		if (patch) {
-			persistPatchToStore(patch);
+
+		if (item.kind === 'patch' && p.patch) {
+			persistPatchToStore(p.patch);
 			useGraphAnimationStore.getState().setMode('rendering');
-			useGraphAnimationStore.getState().setOverlayText(patch.meta?.label ?? 'Applying results…');
-			// Graph updates flow via aiAnalysisStore -> parent re-render -> graph prop -> GraphVisualization useEffect.
+			useGraphAnimationStore.getState().setOverlayText(p.overlayText ?? p.patch.meta?.label ?? 'Applying results…');
 			await sleep(180);
-			const hasSemantic = (patch.upsertEdges ?? []).some((e: any) => e.kind === 'semantic');
+			const eff = p.effect;
 			useGraphAnimationStore.getState().setEffect({
-				type: hasSemantic ? 'semantic' : 'none',
-				intensity: hasSemantic ? 0.9 : 0,
-				focusNodeIds: patch.focus?.nodeIds,
+				type: (eff?.type as GraphVisualEffectType) ?? (p.patch.focus?.nodeIds?.length ? 'filter' : 'none'),
+				intensity: eff?.intensity ?? 0.9,
+				focusNodeIds: eff?.focusNodeIds ?? p.patch.focus?.nodeIds,
 			});
 			useGraphAnimationStore.getState().setMode('cooldown');
 			await sleep(220);
@@ -292,14 +244,13 @@ export function useGraphQueuePump(): void {
 			useGraphAnimationStore.getState().setEffect({ type: 'none', intensity: 0 });
 			return;
 		}
-		useGraphAnimationStore.getState().setMode('cooldown');
-		await sleep(120);
+
 		useGraphAnimationStore.getState().setMode('idle');
 	}, []);
 
 	useEffect(() => {
 		if (processingRef.current) return;
-		if (!queue.length) return;
+		if (!queueLength) return;
 		processingRef.current = true;
 
 		(async () => {
@@ -311,6 +262,6 @@ export function useGraphQueuePump(): void {
 		})().finally(() => {
 			processingRef.current = false;
 		});
-	}, [queue.length, queuePumpCallback]);
+	}, [queueLength, queuePumpCallback]);
 }
 

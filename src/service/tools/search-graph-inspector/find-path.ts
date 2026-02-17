@@ -185,6 +185,8 @@ const SCORE_WEIGHTS = {
     lengthPenalty: 0.05,
 } as const;
 
+export const PATH_STRING_SEPARATOR = ' -> ';
+
 // ============================================================================
 // Main Entry Point
 // ============================================================================
@@ -286,7 +288,7 @@ export async function findPath(params: any) {
         return {
             index: index + 1,
             steps: pathData.path.length - 1,
-            pathString: pathData.path.map(node => `[[${node}]]`).join(' → '),
+            pathString: pathData.path.map(node => `[[${node}]]`).join(PATH_STRING_SEPARATOR),
             connectionDetails: pathData.connectionDetails,
             strategy: pathData.strategy,
             insightLabel: pathData.insightLabel,

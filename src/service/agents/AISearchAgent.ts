@@ -16,10 +16,44 @@ import { SourcesUpdateAgent } from './search-agent-helper/SourcesUpdateAgent';
 import { TopicsUpdateAgent } from './search-agent-helper/TopicsUpdateAgent';
 import { GraphUpdateAgent } from './search-agent-helper/GraphUpdateAgent';
 import { DashboardBlocksUpdateAgent } from './search-agent-helper/DashboardBlocksUpdateAgent';
+import { buildMinifiedResultSnapshot } from './search-agent-helper/resultSnapshot';
 import { memoizeSupplier } from '@/core/utils/functions';
 import { emptyUsage } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { DELTA_EVENT_TYPES, getDeltaEventDeltaText } from '@/core/providers/helpers/stream-helper';
+import { normalizeFilePath } from '@/core/utils/file-utils';
+
+/** Normalize string for file node id (same as DashboardUpdateToolBuilder). */
+function normalizeSpecialKey(raw: string): string {
+    const text = String(raw ?? '').trim().toLowerCase();
+    return text.replace(/[_\s]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+}
+
+/** Ensure each source path has a corresponding file node in the graph so they are openable. */
+function ensureSourcePathsAsGraphFileNodes(result: SearchAgentResult): void {
+    const nodes = result.graph.nodes;
+    const existingByPath = new Set(nodes.map((n) => n.path?.trim().toLowerCase()).filter(Boolean));
+    const existingById = new Set(nodes.map((n) => n.id?.trim().toLowerCase()).filter(Boolean));
+    for (const src of result.sources) {
+        const path = src.path?.trim();
+        if (!path) continue;
+        const normPath = normalizeFilePath(path);
+        const lowerPath = normPath.toLowerCase();
+        const fileNodeId = `file:${normalizeSpecialKey(normPath)}`;
+        if (existingByPath.has(lowerPath) || existingById.has(fileNodeId.toLowerCase())) continue;
+        const basename = normPath.split('/').filter(Boolean).pop() ?? normPath;
+        const title = basename.replace(/\.(md|markdown)$/i, '') || basename;
+        result.graph.nodes.push({
+            id: fileNodeId,
+            type: 'file',
+            title,
+            path: normPath,
+            attributes: {},
+        });
+        existingByPath.add(lowerPath);
+        existingById.add(fileNodeId.toLowerCase());
+    }
+}
 
 /** Simple: summary + sources only (save tokens). Full: complete analysis. */
 export type AnalysisMode = 'simple' | 'full';
@@ -74,9 +108,7 @@ const MAX_NO_PROGRESS_ITERATIONS = 4;
 const MIN_ITERATIONS_BEFORE_NO_PROGRESS_CHECK = 10;
 
 
-/** Layout slot for dashboard blocks. */
-export type DashboardSlot = 'MAIN' | 'SIDEBAR' | 'FLOW';
-/** How to render the block content. */
+/** How to render the block content. Add new type in DashboardUpdateToolBuilder + DashboardBlocksSection. */
 export type DashboardRenderEngine = 'MARKDOWN' | 'TILE' | 'ACTION_GROUP' | 'MERMAID';
 
 export const RESULT_UPDATE_TOOL_NAMES = new Set(['update_sources', 'update_topics', 'update_graph', 'add_dashboard_blocks']);
@@ -90,7 +122,7 @@ export interface DashboardBlockItem {
     color?: string;
 }
 
-/** Dynamic dashboard block (inspiration, Mermaid, etc.); AI decides title, slot, and content. */
+/** Dynamic dashboard block; AI decides title, weight, and content by renderEngine. */
 export interface DashboardBlock {
     id: string;
     title?: string;
@@ -197,6 +229,11 @@ export interface DashboardUpdateContext {
      */
     currentResultSnapshot: string;
     /**
+     * Minified snapshot for the summary prompt only (topics, sources, blocks, graph key nodes).
+     * When set, summary template should prefer this over currentResultSnapshot to reduce noise.
+     */
+    currentResultSnapshotForSummary?: string;
+    /**
      * Analysis mode
      */
     analysisMode: AnalysisMode;
@@ -257,6 +294,9 @@ export class AISearchAgent {
      */
     private verifiedPaths: Set<string> = new Set();
 
+    /** Last thought-step context, so finish-phase (e.g. summary) can use its tool evidence when context is not passed. */
+    private lastOneGenerationContext: OneGenerationContext | undefined;
+
     constructor(
         private readonly aiServiceManager: AIServiceManager,
         private options: AISearchAgentOptions,
@@ -269,6 +309,10 @@ export class AISearchAgent {
             this.options
         );
 
+        const outputControl = this.aiServiceManager.getSettings()?.defaultOutputControl;
+        const thoughtTemperature = outputControl?.temperature ?? 0.6;
+        const thoughtMaxTokens = outputControl?.maxOutputTokens ?? 4096;
+
         this.thoughtAgent = new Agent<ThoughtToolSet>({
             model: this.aiServiceManager.getMultiChat()
                 .getProviderService(this.options.thoughtAgentProvider)
@@ -278,17 +322,11 @@ export class AISearchAgent {
                 submit_final_answer: submitFinalAnswerTool(),
             },
             stopWhen: [
-                // default: stop at every call. we manually control the loop using ReAct loop.
                 stepCountIs(1),
-                // stop when the submit_final_answer tool is called
                 hasToolCall('submit_final_answer'),
             ],
-            // do not use tool choice. this only control the next tool to be called.
-            // don't understand this too much currently. don't find enough documentation about it.
-            // toolChoice: {
-            //     type: 'tool',
-            //     toolName: 'submit_final_answer',
-            // },
+            temperature: thoughtTemperature,
+            maxOutputTokens: thoughtMaxTokens,
         });
 
         this.searchAgent = new RawSearchAgent(
@@ -338,6 +376,13 @@ export class AISearchAgent {
     async stream(prompt: string): Promise<AsyncGenerator<LLMStreamEvent>> {
         this.resetAgentResult();
         return this.executeReActLoop(prompt);
+    }
+
+    /**
+     * Search this session's chat history by query. Used by follow-up flows to look up analysis context.
+     */
+    searchHistory(query: string, options?: { maxChars?: number }): string {
+        return this.agentMemoryManager.searchHistory(query, options);
     }
 
     private resetAgentResult(): SearchAgentResult {
@@ -454,6 +499,7 @@ export class AISearchAgent {
             );
             // Build thought message and update agent memory
             this.agentMemoryManager.buildIterationThoughtMessage(oneGenerationContext, getThoughtText());
+            this.lastOneGenerationContext = oneGenerationContext;
 
             // After evidence gathering (thought agent and search agent), force one dashboard update pass to materialize evidence into UI.
             // This decouples result updating from ThoughtAgent and guarantees incremental UI updates per iteration.
@@ -496,6 +542,7 @@ export class AISearchAgent {
             stepId,
             title: 'Thinking about your request...',
             description: 'Thinking',
+            triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
         };
 
         // Build current prompt with agent memory, yielding progress events
@@ -536,6 +583,7 @@ export class AISearchAgent {
                         stepId,
                         title: 'Thinking about your request... Thinking...',
                         description: 'Start to think about the request...',
+                        triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
                     };
                     break;
                 case 'text-delta':
@@ -546,6 +594,7 @@ export class AISearchAgent {
                         uiType: UIStepType.STEPS_DISPLAY,
                         stepId,
                         descriptionDelta: chunk.text,
+                        triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
                     };
                     break;
                 case 'reasoning-start':
@@ -555,6 +604,7 @@ export class AISearchAgent {
                         stepId,
                         title: 'Thinking about your request... Reasoning...',
                         description: 'Start to reason about the request...',
+                        triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
                     };
                     break;
                 case 'reasoning-delta':
@@ -565,6 +615,7 @@ export class AISearchAgent {
                         uiType: UIStepType.STEPS_DISPLAY,
                         stepId,
                         descriptionDelta: chunk.text,
+                        triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
                     };
                     break;
                 case 'tool-call': {
@@ -694,8 +745,10 @@ export class AISearchAgent {
                 stepId,
                 title: 'Dashboard Updateing: Updating topics...',
                 description: 'Updating topics',
+                triggerName: StreamTriggerName.SEARCH_TOPICS_AGENT,
             };
             let dashboardUpdateContext = this.buildDashboardUpdateContext(oneGenerationContext);
+            console.debug('[runDashboardUpdate] before update topics, dashboardUpdateContext: ', JSON.stringify(dashboardUpdateContext));
             for await (const ev of this.topicsUpdateAgent.stream(dashboardUpdateContext)) {
                 if (ev.type === 'on-step-finish') {
                     this.agentMemoryManager.accumulateTokenUsage(ev.usage);
@@ -706,6 +759,7 @@ export class AISearchAgent {
                         uiType: UIStepType.STEPS_DISPLAY,
                         stepId,
                         descriptionDelta: getDeltaEventDeltaText(ev),
+                        triggerName: StreamTriggerName.SEARCH_TOPICS_AGENT,
                     };
                 }
 
@@ -723,9 +777,11 @@ export class AISearchAgent {
                 stepId,
                 title: 'Dashboard Updateing: Updating sources...',
                 description: 'Updating sources',
+                triggerName: StreamTriggerName.SEARCH_SOURCES_AGENT,
             };
             // context may change after other agents run. so we need to rebuild the context.
             dashboardUpdateContext = this.buildDashboardUpdateContext(oneGenerationContext);
+            console.debug('[runDashboardUpdate] before update sources, dashboardUpdateContext: ', JSON.stringify(dashboardUpdateContext));
             // all other calls update sources
             for await (const ev of this.sourcesUpdateAgent.stream(dashboardUpdateContext)) {
                 if (ev.type === 'on-step-finish') {
@@ -737,6 +793,7 @@ export class AISearchAgent {
                         uiType: UIStepType.STEPS_DISPLAY,
                         stepId,
                         descriptionDelta: getDeltaEventDeltaText(ev),
+                        triggerName: StreamTriggerName.SEARCH_SOURCES_AGENT,
                     };
                 }
                 yield ev;
@@ -752,10 +809,20 @@ export class AISearchAgent {
                 stepId,
                 title: 'Dashboard Updateing: Updating graph...',
                 description: 'Updating graph',
+                triggerName: StreamTriggerName.SEARCH_GRAPH_AGENT,
             };
+            yield {
+                type: 'ui-signal',
+                id: `sig-${Date.now()}`,
+                channel: 'graph',
+                kind: 'stage',
+                entityId: stepId,
+                payload: { stage: 'start', overlayText: 'Updating graph…', effect: { type: 'scan', intensity: 1 } },
+            };
+            ensureSourcePathsAsGraphFileNodes(this.agentResult);
             dashboardUpdateContext = this.buildDashboardUpdateContext(oneGenerationContext);
-            // only full mode update graph dashboard blocks to generate a detailed overview.
-            for await (const ev of this.graphUpdateAgent.stream(dashboardUpdateContext)) {
+            console.debug('[runDashboardUpdate] before update graph, dashboardUpdateContext: ', JSON.stringify(dashboardUpdateContext));
+            for await (const ev of this.graphUpdateAgent.stream(dashboardUpdateContext, { stepId })) {
                 if (ev.type === 'on-step-finish') {
                     this.agentMemoryManager.accumulateTokenUsage(ev.usage);
                 }
@@ -765,19 +832,29 @@ export class AISearchAgent {
                         uiType: UIStepType.STEPS_DISPLAY,
                         stepId,
                         descriptionDelta: getDeltaEventDeltaText(ev),
+                        triggerName: StreamTriggerName.SEARCH_GRAPH_AGENT,
                     };
                 }
                 yield ev;
             }
-
+            yield {
+                type: 'ui-signal',
+                id: `sig-${Date.now()}`,
+                channel: 'graph',
+                kind: 'stage',
+                entityId: stepId,
+                payload: { stage: 'finish' },
+            };
             yield {
                 type: 'ui-step',
                 uiType: UIStepType.STEPS_DISPLAY,
                 stepId,
                 title: 'Dashboard Updateing: Updating dashboard blocks...',
                 description: 'Updating dashboard blocks',
+                triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT,
             };
             dashboardUpdateContext = this.buildDashboardUpdateContext(oneGenerationContext);
+            console.debug('[runDashboardUpdate] before update dashboard blocks, dashboardUpdateContext: ', JSON.stringify(dashboardUpdateContext));
             for await (const ev of this.dashboardBlocksUpdateAgent.stream(dashboardUpdateContext)) {
                 if (ev.type === 'on-step-finish') {
                     this.agentMemoryManager.accumulateTokenUsage(ev.usage);
@@ -788,6 +865,7 @@ export class AISearchAgent {
                         uiType: UIStepType.STEPS_DISPLAY,
                         stepId,
                         descriptionDelta: getDeltaEventDeltaText(ev),
+                        triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT,
                     };
                 }
                 yield ev;
@@ -807,6 +885,7 @@ export class AISearchAgent {
                 uiType: UIStepType.STEPS_DISPLAY,
                 stepId,
                 title: 'Dashboard Updated. ' + changeDesc,
+                triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
             };
         }
     }
@@ -818,6 +897,7 @@ export class AISearchAgent {
             uiType: UIStepType.STEPS_DISPLAY,
             stepId: summaryStepId,
             title: 'Summarizing the analysis...',
+            triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
         };
         for await (const chunk of this.streamTitle()) {
             if (DELTA_EVENT_TYPES.has(chunk.type)) {
@@ -826,6 +906,7 @@ export class AISearchAgent {
                     uiType: UIStepType.STEPS_DISPLAY,
                     stepId: summaryStepId,
                     descriptionDelta: getDeltaEventDeltaText(chunk),
+                    triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
                 };
             }
             yield chunk;
@@ -836,6 +917,7 @@ export class AISearchAgent {
             uiType: UIStepType.STEPS_DISPLAY,
             stepId: summaryStepId,
             title: 'Summarizing the analysis...',
+            triggerName: StreamTriggerName.SEARCH_SUMMARY,
         };
         let dashboardUpdateContext = this.buildDashboardUpdateContext();
         for await (const chunk of this.summaryAgent.stream(dashboardUpdateContext)) {
@@ -848,6 +930,7 @@ export class AISearchAgent {
                     uiType: UIStepType.STEPS_DISPLAY,
                     stepId: summaryStepId,
                     descriptionDelta: getDeltaEventDeltaText(chunk),
+                    triggerName: StreamTriggerName.SEARCH_SUMMARY,
                 };
             }
             yield chunk;
@@ -862,6 +945,7 @@ export class AISearchAgent {
                     uiType: UIStepType.STEPS_DISPLAY,
                     stepId: summaryStepId,
                     descriptionDelta: getDeltaEventDeltaText(chunk),
+                    triggerName: StreamTriggerName.SEARCH_SUMMARY,
                 };
             }
             yield chunk;
@@ -898,6 +982,49 @@ export class AISearchAgent {
         }
     }
 
+    /** Max characters for evidence hint so prompt does not explode. */
+    private static readonly EVIDENCE_HINT_MAX_CHARS = 6000;
+
+    /**
+     * Build evidence hint from latest message text plus tool outputs (e.g. call_search_agent summary and key paths).
+     * Uses last iteration context when none passed (e.g. finish-phase summary).
+     */
+    private buildEvidenceHintFromContext(oneGenerationContext?: OneGenerationContext): string {
+        const ctx = oneGenerationContext ?? this.lastOneGenerationContext;
+        const parts: string[] = [];
+        const base = this.agentMemoryManager.getLatestMessageText();
+        if (base.trim()) {
+            parts.push('[Latest reasoning]\n' + base.trim());
+        }
+        if (ctx?.toolResults?.length) {
+            const searchSummaries: string[] = [];
+            for (const tr of ctx.toolResults) {
+                if (tr.toolName !== 'call_search_agent') continue;
+                const out = tr.output;
+                if (!out || typeof (out as any).value !== 'string') continue;
+                try {
+                    const parsed = JSON.parse((out as { type: string; value: string }).value) as Record<string, unknown>;
+                    const chunks = parsed?.searchResultChunks as { summary?: string; text?: string } | undefined;
+                    if (chunks?.summary?.trim()) searchSummaries.push(chunks.summary.trim());
+                    else if (chunks?.text?.trim()) searchSummaries.push(chunks.text.trim().slice(0, 1500));
+                } catch {
+                    // ignore parse errors
+                }
+            }
+            if (searchSummaries.length > 0) {
+                parts.push('[Search round summaries]\n' + searchSummaries.join('\n---\n'));
+            }
+        }
+        const keyPaths = Array.from(this.verifiedPaths).slice(0, 25);
+        if (keyPaths.length > 0) {
+            parts.push('[Key paths from evidence]\n' + keyPaths.join('\n'));
+        }
+        const combined = parts.join('\n\n');
+        return combined.length > AISearchAgent.EVIDENCE_HINT_MAX_CHARS
+            ? combined.slice(0, AISearchAgent.EVIDENCE_HINT_MAX_CHARS) + '\n...[truncated]'
+            : combined;
+    }
+
     /**
      * WARNING: context may change after other agents run
      */
@@ -907,10 +1034,9 @@ export class AISearchAgent {
             analysisMode: this.options.analysisMode ?? 'full',
             thisIterationSystemPrompt: oneGenerationContext?.systemPrompt ?? undefined,
             thisIterationUserPrompt: oneGenerationContext?.userPrompt ?? undefined,
-            // Include latest message text to help the update agent focus.
-            recentEvidenceHint: this.agentMemoryManager.getLatestMessageText(),
-            // Include current result snapshot to help the update agent focus.
+            recentEvidenceHint: this.buildEvidenceHintFromContext(oneGenerationContext),
             currentResultSnapshot: JSON.stringify(this.agentResult),
+            currentResultSnapshotForSummary: buildMinifiedResultSnapshot(this.agentResult),
         };
     }
 
@@ -923,6 +1049,7 @@ export class AISearchAgent {
             dashboardBlocks: agentResult.dashboardBlocks?.length ?? 0,
         };
     }
+    /** Only non-zero diff/counts are included so "graphNodes: 0" etc. are not shown. */
     private agentResultChangeDesc(oldAgentResult: AgentResultLenInfo, newAgentResult: AgentResultLenInfo): string {
         const diff = {
             graphNodes: newAgentResult.graphNodes - oldAgentResult.graphNodes,
@@ -931,8 +1058,14 @@ export class AISearchAgent {
             sources: newAgentResult.sources - oldAgentResult.sources,
             dashboardBlocks: newAgentResult.dashboardBlocks - oldAgentResult.dashboardBlocks,
         };
-        // return a string like "graphNodes: +10, graphEdges: +20, topics: +30, sources: +40, dashboardBlocks: +50"
-        return Object.entries(diff).map(([key, value]) => `${key}: ${value > 0 ? '+' : '-'}${value}`).join(', ');
+        const parts = Object.entries(diff)
+            .filter(([, value]) => value !== 0)
+            .map(([key, value]) => `${key}: ${value > 0 ? '+' : ''}${value}`);
+        if (parts.length > 0) return parts.join(', ');
+        return Object.entries(newAgentResult)
+            .filter(([, value]) => value !== 0)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(', ') || '';
     }
 }
 

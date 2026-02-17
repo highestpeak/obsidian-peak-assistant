@@ -5,11 +5,12 @@ export type { AnalysisMode };
 import { LLMUsage } from '@/core/providers/types';
 import type { SearchResultItem } from '@/service/search/types';
 import type { GraphPreview } from '@/core/storage/graph/types';
+import { SnapshotChatMessage } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 
 /** Per-topic completed Q&A from Analyze. */
 export type SectionAnalyzeResult = { question: string; answer: string };
-/** Currently streaming Analyze (single in-flight). */
-export type SectionAnalyzeStreaming = { topic: string; question: string; answerSoFar: string };
+/** Currently streaming Analyze (single in-flight). Chunks are appended; UI joins for display. */
+export type SectionAnalyzeStreaming = { topic: string; question: string; chunks: string[] };
 
 /** Context chat modal state (Graph/Blocks/Sources follow-up). null = closed. */
 export type ContextChatModalState = {
@@ -23,9 +24,6 @@ export type ContextChatModalState = {
 	/** When type is 'blocks', which block this modal is for (each block has its own history). */
 	blockId?: string;
 } | null;
-
-/** Single chat message for snapshot (graph/source/block context chats). */
-export type SnapshotChatMessage = { role: string; content: string };
 
 /**
  * Merge two AISearchGraph objects.
@@ -123,6 +121,15 @@ export interface AIAnalysisStep {
 	endedAtMs?: number;   // Timestamp when step completed (for duration calculation)
 }
 
+/** Completed UI step from ui-step events; persisted in store and not cleared until new run. */
+export interface UIStepRecord {
+	stepId: string;
+	title: string;
+	description: string;
+	startedAtMs?: number;
+	endedAtMs?: number;
+}
+
 /**
  * for save to markdown and replay.
  */
@@ -163,7 +170,9 @@ export type CompletedAnalysisSnapshot = {
 	blockChatRecords?: Record<string, SnapshotChatMessage[]>;
 
 	/** Overview diagram (raw Mermaid code) from Mermaid Overview Agent. */
-	overviewMermaid?: string;
+	overviewMermaidActiveIndex?: number;
+	// all versions of overview mermaid
+	overviewMermaidVersions?: string[];
 
 	/** Continue Analysis Q&A (user question → answer). */
 	fullAnalysisFollowUp?: Array<{ title: string; content: string }>;
@@ -177,8 +186,8 @@ export type CompletedAnalysisSnapshot = {
 	/** Sources section follow-up history. */
 	sourcesFollowups?: SectionAnalyzeResult[];
 
-	/** All analysis steps (thought/inspector tool calls, etc.) for replay and dev copy. */
-	steps?: AIAnalysisStep[];
+	/** All completed UI steps (from ui-step events) for replay and dev copy. */
+	steps?: UIStepRecord[];
 };
 
 /** Current summary text from snapshot (selected by summaryVersion). */
@@ -233,13 +242,11 @@ interface AIAnalysisStore {
 	// Flag to prevent re-triggering analysis on tab switch
 	analysisCompleted: boolean;
 	error: string | null;
-	currentStep: AIAnalysisStep;
-	/**
-	 * eg: Explored xxx, Thought xxx, Read xxx.
-	 * some step may trigger animation, eg find path shimmer, read note shimmer, etc.
-	 * every time step change. currentStep will be replace and append to the steps array.
-	 */
-	steps: AIAnalysisStep[];
+	/** Current streaming UI step (from ui-step); null when idle. Completed steps are in steps[]. */
+	currentStep: UIStepRecord | null;
+	/** Completed UI steps (from ui-step); never cleared until new run. */
+	steps: UIStepRecord[];
+	/** Increments when current step changes (for UI key/clear). */
 	stepTrigger: number;
 	isSummaryStreaming: boolean;
 	/**
@@ -259,10 +266,13 @@ interface AIAnalysisStore {
 	summaryVersion: number;
 	graph: AISearchGraph | null;
 	dashboardBlocks: DashboardBlock[];
+	/** Per-dashboard-block chat history (key = block id). Same pattern as dashboardBlocks list + records by id. */
+	blockChatRecords: Record<string, SnapshotChatMessage[]>;
 	topics: AISearchTopic[];
 	sources: AISearchSource[];
 	/** Overview diagram (raw Mermaid code). */
-	overviewMermaid: string | null;
+	overviewMermaidActiveIndex: number;
+	overviewMermaidVersions: string[];
 	usage: LLMUsage | null;
 	duration: number | null;
 
@@ -308,10 +318,12 @@ interface AIAnalysisStore {
 	startStreaming: () => void;
 	markCompleted: () => void;
 	recordError: (error: string) => void;
-	// Set current step type and extra data (completion handled by completeCurrentStep)
-	setCurrentStep: (type: AIAnalysisStepType, extra?: any) => void;
-	// Complete current step with text chunks (called when step finishes)
-	completeCurrentStep: (textChunks: string[]) => void;
+	/** Append a completed UI step (e.g. when next ui-step arrives or on complete). */
+	appendCompletedUiStep: (step: UIStepRecord) => void;
+	/** Set/switch current streaming step; pushes previous to steps if present. */
+	setCurrentUiStep: (stepId: string, title: string, description?: string) => void;
+	/** Append delta to current step description/title. */
+	appendCurrentUiStepDelta: (descriptionDelta?: string, titleDelta?: string) => void;
 	startSummaryStreaming: () => void;
 	/**
 	 * Append summary delta in a throttled manner (caller should throttle).
@@ -326,10 +338,15 @@ interface AIAnalysisStore {
 	// Computed getters
 	setGraph: (graph: AISearchGraph) => void;
 	setDashboardBlocks: (blocks: DashboardBlock[]) => void;
+	/** Set or append chat messages for a block; prunes records for block ids not in dashboardBlocks. */
+	setBlockChatRecords: (blockId: string, messages: SnapshotChatMessage[]) => void;
 	addTopic: (topic: AISearchTopic) => void;
 	setTopics: (topics: AISearchTopic[]) => void;
 	setSources: (sources: AISearchSource[]) => void;
-	setOverviewMermaid: (code: string | null) => void;
+	setOverviewMermaidActiveIndex: (index: number) => void;
+	setOverviewMermaidVersions: (versions: string[]) => void;
+	/** Append a new overview mermaid version; optionally set as active and dedupe against last. */
+	pushOverviewMermaidVersion: (code: string, opts?: { makeActive?: boolean; dedupe?: boolean }) => void;
 	setTitle: (title: string | null) => void;
 	setUsage: (usage: LLMUsage) => void;
 	setDuration: (duration: number) => void;
@@ -338,6 +355,8 @@ interface AIAnalysisStore {
 	setTopicInspectResults: (topic: string, items: SearchResultItem[]) => void;
 	setTopicAnalyzeResult: (topic: string, question: string, answer: string) => void;
 	setTopicAnalyzeStreaming: (payload: SectionAnalyzeStreaming | null) => void;
+	/** Append a chunk to current topic streaming (no-op if none). Avoids replacing large string. */
+	setTopicAnalyzeStreamingAppend: (chunk: string) => void;
 	setTopicGraphResult: (topic: string, graph: GraphPreview | null) => void;
 	setTopicGraphLoading: (topic: string | null) => void;
 	setTopicInspectLoading: (topic: string | null) => void;
@@ -356,7 +375,7 @@ interface AIAnalysisStore {
 
 	// Computed getters
 	getCurrentStepText: () => string;
-	getStepText: (step: AIAnalysisStep) => string;
+	getStepText: (step: UIStepRecord) => string;
 	getHasGraphData: () => boolean;
 	getHasCompletedContent: () => boolean;
 	getHasSummarySection: () => boolean;
@@ -365,6 +384,8 @@ interface AIAnalysisStore {
 	getHasTopicsSection: () => boolean;
 	getHasDashboardBlocksSection: () => boolean;
 	getHasSourcesSection: () => boolean;
+	/** Active overview mermaid string (versions[activeIndex]). */
+	getActiveOverviewMermaid: () => string;
 }
 
 export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
@@ -389,7 +410,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	hasAnalyzed: false,
 	analysisCompleted: false,
 	error: null,
-	currentStep: { type: 'idle', textChunks: [] },
+	currentStep: null,
 	steps: [],
 	isSummaryStreaming: false,
 	analysisStartedAtMs: null,
@@ -402,9 +423,11 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	summaryVersion: 1,
 	graph: null,
 	dashboardBlocks: [],
+	blockChatRecords: {},
 	topics: [],
 	sources: [],
-	overviewMermaid: null,
+	overviewMermaidActiveIndex: 0,
+	overviewMermaidVersions: [],
 	usage: null,
 	duration: null,
 	fullAnalysisFollowUp: [],
@@ -472,6 +495,9 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			restoredFromHistory: false,
 			restoredFromVaultPath: null,
 			runAnalysisMode: mode,
+			currentStep: null,
+			steps: [],
+			stepTrigger: 0,
 		});
 	},
 	startStreaming: () => set({ hasStartedStreaming: true, analyzingBeforeFirstToken: false }),
@@ -490,46 +516,41 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 		});
 	},
 	recordError: (error: string) => set({ error }),
-	setCurrentStep: (type: AIAnalysisStepType, extra?: any) => {
-		const prevStep = get().currentStep;
-		const prevStepType = prevStep.type;
-		if (prevStepType && prevStepType !== type) {
-			// Step type changed - trigger UI update but don't auto-complete
-			set((state) => ({
-				stepTrigger: state.stepTrigger + 1,
-				currentStep: {
-					type,
-					textChunks: [],
-					extra: extra,
-					startedAtMs: Date.now() // Record start time for timer
-				},
-			}));
-		} else {
-			// Same step type, just update extra
-			set({
-				currentStep: {
-					type,
-					textChunks: prevStep.textChunks,
-					extra: { ...prevStep.extra, ...extra },
-					startedAtMs: prevStep.startedAtMs // Preserve start time
-				}
-			});
-		}
+	appendCompletedUiStep: (step: UIStepRecord) => {
+		const withEnd = step.endedAtMs != null ? step : { ...step, endedAtMs: Date.now() };
+		set((state) => ({ steps: [...state.steps, withEnd] }));
 	},
-	completeCurrentStep: (textChunks: string[]) => {
-		const currentStep = get().currentStep;
-		if (currentStep.type !== 'idle') {
-			const endedAtMs = Date.now();
-			set((state) => ({
+	setCurrentUiStep: (stepId: string, title: string, description?: string) => {
+		set((state) => {
+			const prev = state.currentStep;
+			const nextStep: UIStepRecord = {
+				stepId,
+				title: title || 'Step',
+				description: description ?? '',
+				startedAtMs: Date.now(),
+			};
+			const steps = prev
+				? [...state.steps, { ...prev, endedAtMs: prev.endedAtMs ?? Date.now() }]
+				: state.steps;
+			return {
 				stepTrigger: state.stepTrigger + 1,
-				steps: [...state.steps, {
-					...currentStep,
-					textChunks: textChunks,
-					endedAtMs: endedAtMs // Record end time for duration
-				}],
-				currentStep: { type: 'idle', textChunks: [] }
-			}));
-		}
+				currentStep: nextStep,
+				steps,
+			};
+		});
+	},
+	appendCurrentUiStepDelta: (descriptionDelta?: string, titleDelta?: string) => {
+		set((state) => {
+			const cur = state.currentStep;
+			if (!cur) return state;
+			return {
+				currentStep: {
+					...cur,
+					title: cur.title + (titleDelta ?? ''),
+					description: cur.description + (descriptionDelta ?? ''),
+				},
+			};
+		});
 	},
 	startSummaryStreaming: () => set({ isSummaryStreaming: true }),
 	appendSummaryDelta: (delta: string) => {
@@ -563,8 +584,20 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			hasAnalyzed: true,
 		}));
 	},
-	setDashboardBlocks: (dashboardBlocks: DashboardBlock[]) => {
-		set({ dashboardBlocks, hasAnalyzed: true });
+	setDashboardBlocks: (blocks: DashboardBlock[]) => {
+		set((s) => {
+			const blockIds = new Set(blocks.map((b) => b.id));
+			const nextRecords: Record<string, SnapshotChatMessage[]> = {};
+			for (const id of blockIds) {
+				if (s.blockChatRecords[id]) nextRecords[id] = s.blockChatRecords[id];
+			}
+			return { dashboardBlocks: blocks, blockChatRecords: nextRecords, hasAnalyzed: true };
+		});
+	},
+	setBlockChatRecords: (blockId: string, messages: SnapshotChatMessage[]) => {
+		set((s) => ({
+			blockChatRecords: { ...s.blockChatRecords, [blockId]: messages },
+		}));
 	},
 	addTopic: (topic: AISearchTopic) => {
 		set((s) => ({ topics: [...s.topics, topic] }));
@@ -575,8 +608,28 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	setSources: (sources: AISearchSource[]) => {
 		set({ sources, hasAnalyzed: true });
 	},
-	setOverviewMermaid: (code: string | null) => {
-		set({ overviewMermaid: code, hasAnalyzed: true });
+	setOverviewMermaidActiveIndex: (index: number) => {
+		set({ overviewMermaidActiveIndex: index, hasAnalyzed: true });
+	},
+	setOverviewMermaidVersions: (versions: string[]) => {
+		set({ overviewMermaidVersions: versions, hasAnalyzed: true });
+	},
+	pushOverviewMermaidVersion: (code: string, opts?: { makeActive?: boolean; dedupe?: boolean }) => {
+		const makeActive = opts?.makeActive !== false;
+		const dedupe = opts?.dedupe === true;
+		set((s) => {
+			const versions = [...(s.overviewMermaidVersions ?? [])];
+			if (dedupe && versions.length > 0 && versions[versions.length - 1] === code) {
+				return s;
+			}
+			versions.push(code);
+			const nextIndex = makeActive ? versions.length - 1 : s.overviewMermaidActiveIndex;
+			return {
+				overviewMermaidVersions: versions,
+				overviewMermaidActiveIndex: nextIndex,
+				hasAnalyzed: true,
+			};
+		});
 	},
 	setTitle: (title: string | null) => {
 		set({ title, hasAnalyzed: true });
@@ -613,6 +666,14 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	},
 	setTopicAnalyzeStreaming: (payload: SectionAnalyzeStreaming | null) => {
 		set({ topicAnalyzeStreaming: payload });
+	},
+	setTopicAnalyzeStreamingAppend: (chunk: string) => {
+		if (!chunk) return;
+		set((s) =>
+			s.topicAnalyzeStreaming
+				? { topicAnalyzeStreaming: { ...s.topicAnalyzeStreaming, chunks: [...s.topicAnalyzeStreaming.chunks, chunk] } }
+				: s
+		);
 	},
 	setTopicGraphResult: (topic: string, graph: GraphPreview | null) => {
 		set((s) => ({
@@ -651,7 +712,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			analysisCompleted: true,
 			stepTrigger: 0,
 			error: null,
-			currentStep: { type: 'idle', textChunks: [] },
+			currentStep: null,
 			steps: snapshot.steps ?? [],
 			isSummaryStreaming: false,
 			analysisStartedAtMs: snapshot.analysisStartedAtMs ?? null,
@@ -664,9 +725,22 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			summaryVersion,
 			graph: snapshot.graph ?? null,
 			dashboardBlocks: snapshot.dashboardBlocks ?? [],
+			blockChatRecords: snapshot.blockChatRecords ?? {},
 			topics: snapshot.topics ?? [],
 			sources: snapshot.sources ?? [],
-			overviewMermaid: snapshot.overviewMermaid ?? null,
+			overviewMermaidActiveIndex: (() => {
+				const raw = snapshot.overviewMermaidActiveIndex as number | string | undefined;
+				const versions = snapshot.overviewMermaidVersions ?? [];
+				if (typeof raw === 'string' && String(raw).trim()) return 0;
+				return typeof raw === 'number' ? raw : 0;
+			})(),
+			overviewMermaidVersions: (() => {
+				const raw = snapshot.overviewMermaidActiveIndex as number | string | undefined;
+				const versions = snapshot.overviewMermaidVersions ?? [];
+				if (versions.length > 0) return versions;
+				if (typeof raw === 'string' && String(raw).trim()) return [raw];
+				return [];
+			})(),
 			topicInspectResults: snapshot.topicInspectResults ?? {},
 			topicAnalyzeResults: snapshot.topicAnalyzeResults ?? {},
 			topicGraphResults: snapshot.topicGraphResults ?? {},
@@ -685,7 +759,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	},
 
 	// Reset analysis state
-		resetAnalysisState: () => set({
+	resetAnalysisState: () => set({
 		isAnalyzing: false,
 		analyzingBeforeFirstToken: false,
 		hasStartedStreaming: false,
@@ -693,7 +767,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 		analysisCompleted: false,
 		stepTrigger: 0,
 		error: null,
-		currentStep: { type: 'idle', textChunks: [] },
+		currentStep: null,
 		steps: [],
 		isSummaryStreaming: false,
 		analysisStartedAtMs: null,
@@ -706,9 +780,11 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 		summaryVersion: 1,
 		graph: null,
 		dashboardBlocks: [],
+		blockChatRecords: {},
 		topics: [],
 		sources: [],
-		overviewMermaid: null,
+		overviewMermaidActiveIndex: 0,
+		overviewMermaidVersions: [],
 		topicInspectResults: {},
 		topicAnalyzeResults: {},
 		topicGraphResults: {},
@@ -726,8 +802,8 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	}),
 
 	// Computed getters
-	getCurrentStepText: () => get().currentStep.textChunks.join(''),
-	getStepText: (step: AIAnalysisStep) => step.textChunks.join(''),
+	getCurrentStepText: () => get().currentStep?.description ?? '',
+	getStepText: (step: UIStepRecord) => step.description,
 
 	getHasGraphData: () => {
 		const graph = get().graph;
@@ -751,6 +827,12 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	getHasTopicsSection: () => get().analysisCompleted && get().topics.length > 0,
 	getHasDashboardBlocksSection: () => get().analysisCompleted && (get().dashboardBlocks ?? []).length > 0,
 	getHasSourcesSection: () => get().analysisCompleted && get().sources.length > 0,
+	getActiveOverviewMermaid: () => {
+		const s = get();
+		const versions = s.overviewMermaidVersions ?? [];
+		const idx = s.overviewMermaidActiveIndex ?? 0;
+		return versions[idx] ?? '';
+	},
 }));
 
 // Get clean query without @web@ for actual search

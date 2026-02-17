@@ -16,6 +16,9 @@ The inquiry is evolving. You are now required to synthesize the current state of
 3. **Encapsulate Meaning**: For every node in your chosen structure, use abstract anchors (A, B, C...) and wrap the semantic essence in protective brackets. 
 4. **Manifest Evolution**: If the 'Established Reality' already contains a projection, determine if this is a structural pivot or a refinement of the existing truth.
 
+# OUTPUT LANGUAGE
+Use the same language as the user's original query for all labels and text in the diagram.
+
 # TRIGGER
 Project the crystalline geometry of this analysis now.`;
 

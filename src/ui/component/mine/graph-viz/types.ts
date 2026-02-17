@@ -3,6 +3,8 @@
  * kind is string for extensibility; no domain-specific unions.
  */
 
+import { GraphPatch } from "./utils/graphPatches";
+
 export type GraphUINode = {
 	id: string;
 	label: string;
@@ -31,6 +33,11 @@ export type GraphVizNode = GraphUINode & {
 	y?: number;
 	fx?: number | null;
 	fy?: number | null;
+	/** Velocity (set by D3 force simulation). */
+	vx?: number;
+	vy?: number;
+	/** Set when node is first added; used for stream fade-in animation. */
+	enterTime?: number;
 };
 
 export type GraphVizLink = {
@@ -38,6 +45,8 @@ export type GraphVizLink = {
 	target: string | GraphVizNode;
 	weight: number;
 	kind: string;
+	/** Set by layout: true if edge is in maximum spanning tree (stronger spring in force layout). */
+	isMSTEdge?: boolean;
 };
 
 export type GraphSnapshot = {
@@ -46,9 +55,10 @@ export type GraphSnapshot = {
 };
 
 export type GraphVisualizationHandle = {
-	applyPatch: (patch: import('@/ui/component/mine/graph-viz/utils/graphPatches').GraphPatch) => Promise<void>;
+	applyPatch: (patch: GraphPatch) => Promise<void>;
 	clear: () => void;
-	fitToView: () => void;
+	/** Fit graph in view; pass true to force even if user has interacted. */
+	fitToView: (force?: boolean) => void;
 };
 
 export type GraphVizNodeInfo = {
@@ -76,4 +86,50 @@ export type EdgeStyle = {
 export type NodeStyle = {
 	fill?: string;
 	r?: number;
+};
+
+/** Config for node context menu. Each callback controls whether the corresponding menu item is shown. */
+export type NodeContextMenuConfig = {
+	onOpenSource?: (path: string) => void | Promise<void>;
+	onCopyLabel?: (text: string) => void | Promise<void>;
+	onCopyPath?: (path: string) => void | Promise<void>;
+	/** Fold/unfold leaf neighbors of this node. Called with node id. */
+	onFoldNode?: (nodeId: string) => void;
+	/** On-graph path: set start node (by id). */
+	onSetPathStartNode?: (nodeId: string) => void;
+	/** On-graph path: set end node and compute path (by id). */
+	onSetPathEndNode?: (nodeId: string) => void;
+	/** Current path start node id (for menu: disable "Set as start" on same node). */
+	pathStartNodeId?: string | null;
+	runGraphTool?: (
+		tool: 'inspect_note_context' | 'graph_traversal' | 'find_path' | 'find_key_nodes',
+		input: Record<string, unknown>
+	) => void | Promise<unknown>;
+	pathStart?: string | null;
+	setPathStart?: (path: string | null) => void;
+	onOpenChatForNode?: (node: GraphVizNodeInfo) => void;
+	onToggleFollowup?: () => void;
+};
+
+export type ToolbarHopsValue = 1 | 2 | 3;
+
+export type ToolbarHopsConfig = {
+	value: ToolbarHopsValue;
+	onChange: (h: ToolbarHopsValue) => void;
+};
+
+/** Path result shape for find-path: paths array and optional markdown. */
+export type FindPathResult = { paths?: string[]; markdown?: string } | null;
+
+export type ToolbarFindPathConfig = {
+	pathStart: string | null;
+	setPathStart?: (path: string | null) => void;
+	runFindPath: (startPath: string, targetPath: string) => Promise<{ paths?: string[]; markdown?: string; error?: string }>;
+	onPathResult?: (result: FindPathResult) => void;
+	candidatePaths?: Array<{ path: string; label: string }>;
+};
+
+export type GraphBelowExtraAnalysisAreaConfig = {
+	hops?: ToolbarHopsConfig;
+	findPath?: ToolbarFindPathConfig;
 };

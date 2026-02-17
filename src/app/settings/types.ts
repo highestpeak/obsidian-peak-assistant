@@ -138,7 +138,34 @@ export interface SearchSettings {
 	 * Default: 5
 	 */
 	aiAnalysisHistoryLimit: number;
+
+	/**
+	 * Inspector Links panel: filter tokens and folder grouping.
+	 */
+	inspectorLinks?: InspectorLinksSettings;
 }
+
+/** Inspector Links panel settings */
+export interface InspectorLinksSettings {
+	/** Top N keywords to show as filter chips */
+	keywordTopN: number;
+	/** Top N tags to show as filter chips */
+	tagTopN: number;
+	/** Enable folder grouping for display */
+	folderGroupingEnabled: boolean;
+	/** Min file count to form a folder group (topDownStop) */
+	folderGroupMinCount: number;
+	/** Max depth for folder grouping */
+	folderGroupMaxDepth: number;
+}
+
+export const DEFAULT_INSPECTOR_LINKS_SETTINGS: InspectorLinksSettings = {
+	keywordTopN: 8,
+	tagTopN: 8,
+	folderGroupingEnabled: true,
+	folderGroupMinCount: 6,
+	folderGroupMaxDepth: 4,
+};
 
 /**
  * Default search settings.
@@ -208,6 +235,8 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	aiAnalysisAutoSaveEnabled: true,
 	aiAnalysisAutoSaveFolder: 'ChatFolder/AI-Analysis',
 	aiAnalysisHistoryLimit: 5,
+
+	inspectorLinks: DEFAULT_INSPECTOR_LINKS_SETTINGS,
 };
 
 /**
@@ -328,6 +357,19 @@ export interface MyPluginSettings {
 	 * When enabled, exposes window.testGraphTools global object.
 	 */
 	enableDevTools?: boolean;
+
+	/** Graph visualization settings (default cluster force strength, node size, MST, etc.). */
+	graphViz?: {
+		clusterForceStrength?: number;
+		nodeBaseRadiusPhysical?: number;
+		nodeBaseRadiusSemantic?: number;
+		nodeDegreeBoost?: number;
+		mstPruneDepth?: number;
+		skeletonBackboneOnly?: boolean;
+		skeletonMinBranchNodes?: number;
+		mstLeafOpacity?: number;
+		mstLeafWidthScale?: number;
+	};
 }
 
 /**
@@ -347,4 +389,16 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	sqliteBackend: 'auto', // Auto-detect: try better-sqlite3 first, fallback to sql.js
 
 	enableDevTools: false, // Disabled by default for security
+
+	graphViz: {
+		clusterForceStrength: 0.02,
+		nodeBaseRadiusPhysical: 6,
+		nodeBaseRadiusSemantic: 7,
+		nodeDegreeBoost: 16,
+		mstPruneDepth: 2,
+		skeletonBackboneOnly: false,
+		skeletonMinBranchNodes: 3,
+		mstLeafOpacity: 0.25,
+		mstLeafWidthScale: 0.6,
+	},
 };

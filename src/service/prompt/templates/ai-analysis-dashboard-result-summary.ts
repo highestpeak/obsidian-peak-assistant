@@ -1,27 +1,29 @@
-export const template = `# MOMENTUM
-The inquiry has reached its summit. The fragments of evidence, the threads of reasoning, and the geometry of logic must now collapse into a singular, undeniable synthesis.
+export const template = `# CONTEXT
+The user ran a search. You are given their **original question**, the **search context** (reasoning trace and evidence), and the **current dashboard state** (topics, sources, graph, blocks). Your task is to produce a **final answer** that directly addresses the user's intent—not to retell the search process.
 
-# THE ANALYTICAL UNIVERSE
-- **Original Intent**: {{agentMemory.initialPrompt}}
-- **Dynamic Capabilities**: KB Search {{#if options.enableLocalSearch}}[Active]{{else}}[Off]{{/if}} | Web Search {{#if options.enableWebSearch}}[Active]{{else}}[Off]{{/if}}
+# INPUT
+- **Original query (user intent)**: {{originalQuery}}
+- **Analysis mode**: {{analysisMode}}
 
-# THE DIMENSIONS OF TRUTH
-- **The Reasoning Trace**: (The "How" and "Why" of the search) 
-<<< {{latestMessagesText}} >>>
-- **The Cognitive Pillars**: (Topics & Insights) 
-<<< {{agentResult.topics}} / {{agentResult.dashboardBlocks}} >>>
-- **The Bedrock of Evidence**: (Sources & Reliability) 
-<<< {{agentResult.sources}} >>>
-- **The Logical Anatomy**: (Graph & Causality) 
-<<< {{agentResult.graph}} >>>
+# EVIDENCE
+- **Reasoning trace** (for grounding only):
+<<< {{recentEvidenceHint}} >>>
+- **Current result** (Topics, Sources, Graph, Dashboard blocks):
+<<< {{#if currentResultSnapshotForSummary}}{{currentResultSnapshotForSummary}}{{else}}{{currentResultSnapshot}}{{/if}} >>>
+{{#if diagnosisJson}}
+- **Structured diagnosis** (use this structure; cite evidence for each part):
+<<< {{diagnosisJson}} >>>
+{{/if}}
 
 # DIRECTIVE
-1. **Synthesize the Singularity**: Merge the 'Reasoning Trace' with the 'Bedrock of Evidence'. How did the thinking process evolve based on what was found?
-2. **Consult the Anatomy**: Use the Knowledge Graph to explain the hidden forces and relationships driving this subject.
-3. **Exercise Judgment**: Evaluate the "Gravity of Evidence." Where is the truth absolute? Where is it fragile?
-4. **Define the Frontier**: Based on the current synthesis, what is the "Next Move"? Provide actionable, strategic recommendations that resolve the 'Original Intent'.
+1. **Answer the user**: Using the query and the evidence above, state the **conclusion** and **recommendations** that resolve the user's intent. Lead with the answer. {{#if diagnosisJson}}Base your answer on the structured diagnosis (personaFit, tensions, causalChain, options, oneWeekPlan); expand and cite evidence—do not just repeat it.{{/if}}
+2. **Ground in evidence**: Where relevant, reference Sources or the Knowledge Graph; use wikilinks with **vault-relative path** only (e.g. \`[[folder/note.md]]\` or \`[[folder/note.md|alias]]\`). Do not use \`[[tag]]\` or \`[[#tag]]\`. If evidence above is thin or you need a specific prior step, use **search_analysis_context** to look up the session, then cite what you find.
+3. **Judge and recommend**: Note where evidence is strong or uncertain; end with clear, actionable next steps.
+
+# OUTPUT LANGUAGE
+Write the entire synthesis in the **same language as the user's original query**.
 
 # TRIGGER
-Deliver the comprehensive synthesis of reason now.`;
+Deliver the final answer and recommendations now.`;
 
 export const expectsJson = false;

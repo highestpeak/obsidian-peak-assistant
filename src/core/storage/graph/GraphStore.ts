@@ -1,7 +1,6 @@
 import type { GraphNodeRepo } from '@/core/storage/sqlite/repositories/GraphNodeRepo';
 import { GraphEdgeRepo } from '@/core/storage/sqlite/repositories/GraphEdgeRepo';
 import type { GraphNodePO, GraphEdgePO, GraphNodeType, GraphEdgeType } from '@/core/po/graph.po';
-import { parseMarkdownWithRemark } from '@/core/utils/markdown-utils';
 import type { GraphPreview } from './types';
 
 /**
@@ -211,110 +210,6 @@ export class GraphStore {
 				docType: params.docType,
 			},
 		});
-	}
-
-	/**
-	 * Upsert a markdown document with its relationships (tags, links, categories).
-	 * This method extracts relationships from content and persists them in SQLite.
-	 */
-	async upsertMarkdownDocument(params: {
-		id: string;
-		path: string;
-		content: string;
-		docType?: string;
-		categories?: string[];
-	}): Promise<void> {
-		// Upsert document node
-		await this.upsertDocument({
-			id: params.id,
-			path: params.path,
-			docType: params.docType,
-		});
-
-		// Parse markdown content to extract links, tags, and embeddings
-		const parseResult = await parseMarkdownWithRemark(params.content);
-
-		// Extract and upsert wiki links and markdown links
-		const allReferences = [...parseResult.references.outgoing];
-		for (const ref of allReferences) {
-			const linkId = `link:${ref.fullPath}`;
-			await this.upsertNode({
-				id: linkId,
-				type: 'link',
-				label: ref.fullPath,
-				attributes: {
-					target: ref.fullPath,
-					resolved: false,
-				},
-			});
-			await this.upsertEdge({
-				fromNodeId: params.id,
-				toNodeId: linkId,
-				type: 'references',
-				weight: 1.0,
-			});
-		}
-
-		// Extract and upsert embeddings (images, PDFs, etc.)
-		for (const embed of parseResult.embeddings) {
-			const embedId = `embed:${embed}`;
-			await this.upsertNode({
-				id: embedId,
-				type: 'resource',
-				label: embed,
-				attributes: {
-					resourcePath: embed,
-					resourceType: this.getResourceType(embed),
-				},
-			});
-			await this.upsertEdge({
-				fromNodeId: params.id,
-				toNodeId: embedId,
-				type: 'references',
-				weight: 1.0,
-			});
-		}
-
-		// Extract and upsert tags
-		const tags = parseResult.tags;
-		for (const tag of tags) {
-			const tagId = `tag:${tag}`;
-			await this.upsertNode({
-				id: tagId,
-				type: 'tag',
-				label: tag,
-				attributes: {
-					tagName: tag,
-				},
-			});
-			await this.upsertEdge({
-				fromNodeId: params.id,
-				toNodeId: tagId,
-				type: 'tagged',
-				weight: 1.0,
-			});
-		}
-
-		// Upsert categories if provided
-		if (params.categories) {
-			for (const category of params.categories) {
-				const categoryId = `category:${category}`;
-				await this.upsertNode({
-					id: categoryId,
-					type: 'category',
-					label: category,
-					attributes: {
-						categoryName: category,
-					},
-				});
-				await this.upsertEdge({
-					fromNodeId: params.id,
-					toNodeId: categoryId,
-					type: 'categorized',
-					weight: 1.0,
-				});
-			}
-		}
 	}
 
 	/**

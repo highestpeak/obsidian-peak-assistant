@@ -16,7 +16,7 @@ type GraphTraversalResult = GraphNode
 /**
  * Simplified node for UI visualization
  */
-interface GraphVisualizationNode {
+export interface GraphVisualizationNode {
     id: string;
     label: string;
     type: string;
@@ -27,7 +27,7 @@ interface GraphVisualizationNode {
 /**
  * Simplified edge for UI visualization
  */
-interface GraphVisualizationEdge {
+export interface GraphVisualizationEdge {
     from_node_id: string;
     to_node_id: string;
     type: string;

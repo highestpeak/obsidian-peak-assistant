@@ -74,3 +74,12 @@ export function segmentToWhitespace(text: string, locale?: string): string {
 export function normalizeTextForFts(text: string, locale?: string): string {
 	return normalizeForSearch(segmentToWhitespace(text, locale));
 }
+
+/**
+ * Tokenize path/label-like text: normalize separators to space, then segment + normalize and split.
+ */
+export function tokenizePathOrLabel(text: string, locale?: string): string[] {
+	const withSpaces = (text || '').trim().replace(/[-_\s/.[\]]+/g, ' ').replace(/\s+/g, ' ').trim();
+	if (!withSpaces) return [];
+	return normalizeTextForFts(withSpaces).split(/\s+/).filter(Boolean);
+}

@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import type MyPlugin from 'main';
-import type { MyPluginSettings } from '@/app/settings/types';
+import type { MyPluginSettings, InspectorLinksSettings } from '@/app/settings/types';
+import { DEFAULT_INSPECTOR_LINKS_SETTINGS } from '@/app/settings/types';
 import { EventBus, SettingsUpdatedEvent } from '@/core/eventBus';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { PromptId } from '@/service/prompt/PromptId';
@@ -192,6 +193,22 @@ export function useSettingsUpdate(
 	);
 
 	/**
+	 * Update search.inspectorLinks settings
+	 */
+	const updateInspectorLinks = useCallback(
+		<K extends keyof InspectorLinksSettings>(key: K, value: InspectorLinksSettings[K]) => {
+			const current = plugin.settings.search.inspectorLinks ?? DEFAULT_INSPECTOR_LINKS_SETTINGS;
+			return updateSettings({
+				search: {
+					...plugin.settings.search,
+					inspectorLinks: { ...current, [key]: value },
+				},
+			});
+		},
+		[updateSettings]
+	);
+
+	/**
 	 * Update includeDocumentTypes in search settings
 	 */
 	const updateDocumentType = useCallback(
@@ -249,6 +266,7 @@ export function useSettingsUpdate(
 		updateAI,
 		updateSearch,
 		updateChunking,
+		updateInspectorLinks,
 		updateDocumentType,
 		updateAISettings,
 		updateDefaultModel,

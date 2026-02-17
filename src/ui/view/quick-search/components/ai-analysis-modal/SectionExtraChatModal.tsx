@@ -8,7 +8,7 @@ import type { SearchResultItem } from '@/service/search/types';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { SectionAnalyzeResult } from '../../store/aiAnalysisStore';
 import { StreamdownIsolated } from '@/ui/component/mine';
-import { ChevronDown, ChevronRight, FileText, MessageSquare, Network } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, FileText, MessageSquare, Network } from 'lucide-react';
 import { GraphVisualization } from '@/ui/component/mine/GraphVisualization';
 import { Button } from '@/ui/component/shared-ui/button';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
@@ -59,9 +59,9 @@ const AnalyzeItemSection: React.FC<{
 				{item.isStreaming && <span className="pktw-text-[10px] pktw-text-violet-500 pktw-flex-shrink-0">streaming…</span>}
 			</Button>
 			{!collapsed && (
-				<div className="pktw-p-2 pktw-bg-white">
+				<div className="pktw-p-3 pktw-bg-white pktw-border-t pktw-border-[#e5e7eb]">
 					<StreamdownIsolated
-						className="pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none"
+						className="pktw-text-sm pktw-text-[#2e3338] pktw-leading-relaxed pktw-prose pktw-prose-sm pktw-max-w-none pktw-prose-headings:pktw-font-semibold pktw-prose-headings:pktw-mt-3 pktw-prose-headings:pktw-mb-1 pktw-prose-p:pktw-my-2 pktw-prose-ul:pktw-my-2 pktw-prose-li:pktw-my-0.5"
 						isAnimating={item.isStreaming}
 						onClick={useStreamdownWikilinkClick(createOpenSourceCallback(onClose))}
 					>
@@ -385,6 +385,14 @@ export const SectionExtraChatModal: React.FC<SectionExtraChatModalProps> = ({
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const isStreaming = !!streaming?.answerSoFar;
 
+	const scrollToTop = useCallback(() => {
+		scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+	}, []);
+	const scrollToBottom = useCallback(() => {
+		const el = scrollRef.current;
+		if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+	}, []);
+
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') onClose();
@@ -417,9 +425,17 @@ export const SectionExtraChatModal: React.FC<SectionExtraChatModalProps> = ({
 					<div className="pktw-flex pktw-flex-col pktw-flex-1 pktw-min-h-0 pktw-overflow-hidden pktw-bg-white/95 pktw-rounded-[11px]">
 						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-pt-4 pktw-border-b pktw-border-[#e5e7eb] pktw-flex-shrink-0">
 							<span className="pktw-font-semibold pktw-text-[#2e3338]">{headerTitle}</span>
-							<IconButton onClick={onClose} size="lg" >
-								<X />
-							</IconButton>
+							<div className="pktw-flex pktw-items-center pktw-gap-1">
+								<IconButton onClick={scrollToTop} size="sm" title="Scroll to top" aria-label="Scroll to top">
+									<ChevronUp className="pktw-w-4 pktw-h-4" />
+								</IconButton>
+								<IconButton onClick={scrollToBottom} size="sm" title="Scroll to bottom" aria-label="Scroll to bottom">
+									<ChevronDown className="pktw-w-4 pktw-h-4" />
+								</IconButton>
+								<IconButton onClick={onClose} size="lg" >
+									<X />
+								</IconButton>
+							</div>
 						</div>
 						<div
 							ref={scrollRef}

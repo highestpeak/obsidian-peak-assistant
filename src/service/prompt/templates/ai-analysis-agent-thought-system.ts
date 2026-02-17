@@ -162,9 +162,9 @@ When adding items, use the exact structure below. Wrong structure causes silent 
 
 **Graph edges**: source (node id), target (node id), type: "link"|"semantic"|"tag"|"reference"
 
-**Dashboard blocks**: Use renderEngine, slot, and content—NOT blockType or properties.
+**Dashboard blocks**: Use renderEngine and content—NOT blockType or properties.
 - renderEngine: "TILE" | "MARKDOWN" | "ACTION_GROUP" | "MERMAID"
-- slot: "MAIN" | "SIDEBAR" | "FLOW"
+- weight (optional): 0-10 for layout; 1-3 small, 4-6 medium, 7-10 full-width
 - TILE/ACTION_GROUP: items: [{ id, title, description?, icon?, color? }]
 - MARKDOWN: markdown: "content string"
 - MERMAID: mermaidCode: "graph TD\n  A-->B"
@@ -199,7 +199,7 @@ Before submitting, ask yourself:
 
 Only if all are yes, output the conclusion.
 
-**Final summary format**: Provide a 2–3 sentence meta-narrative—what was discovered, the main insight, and what the user should do next. Avoid raw bullet lists; this guides the final synthesis.
+**Final summary format**: Provide a 2–3 sentence meta-narrative—what was discovered, the main insight, and what the user should do next. Avoid raw bullet lists; this guides the final synthesis. When referencing notes, use Obsidian wikilinks only: \`[[path]]\` or \`[[path|display text]]\`, not quotes or \`"text"(path)\`.
 
 ---
 

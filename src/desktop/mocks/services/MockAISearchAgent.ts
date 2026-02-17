@@ -62,7 +62,6 @@ function buildMockSearchAgentResult(query: string): SearchAgentResult {
 		{
 			id: 'block:mock-1',
 			title: 'Insights',
-			slot: 'MAIN' as const,
 			renderEngine: 'TILE' as const,
 			items: [
 				{ id: 'item1', title: 'Mock Insight 1', description: 'First mock insight for testing.', icon: 'Lightbulb', color: '#7c3aed' },
@@ -72,7 +71,6 @@ function buildMockSearchAgentResult(query: string): SearchAgentResult {
 		{
 			id: 'block:mock-2',
 			title: 'Suggestions',
-			slot: 'FLOW' as const,
 			renderEngine: 'ACTION_GROUP' as const,
 			items: [
 				{ id: 's1', title: 'Follow-up A', description: 'Try asking about X', icon: 'MessageCircle', color: '#2563eb' },
@@ -82,14 +80,12 @@ function buildMockSearchAgentResult(query: string): SearchAgentResult {
 		{
 			id: 'block:mock-long',
 			title: 'Long Analysis (content-aware wider)',
-			slot: 'MAIN' as const,
 			renderEngine: 'MARKDOWN' as const,
 			markdown: longMarkdown,
 		},
 		{
 			id: 'block:mock-short',
 			title: 'Related Questions',
-			slot: 'SIDEBAR' as const,
 			renderEngine: 'MARKDOWN' as const,
 			// No markdown, no items → contentHint "short" → narrower block
 		},
@@ -97,8 +93,6 @@ function buildMockSearchAgentResult(query: string): SearchAgentResult {
 		{
 			id: 'block:mock-review',
 			title: 'Review Suggestion',
-			category: 'Follow-up',
-			slot: 'FLOW' as const,
 			renderEngine: 'MARKDOWN' as const,
 			markdown: 'Mock block added to simulate **review agent** output. In real flow, the review agent suggests fixes for dashboard blocks.',
 		},

@@ -124,13 +124,27 @@ export function buildFrontmatter<T extends object>(data: T): string {
 }
 
 /**
+ * Options for resolving wiki link text to full vault path (e.g. via Obsidian's metadataCache).
+ * When provided, link targets that are names/titles will be resolved to full paths.
+ */
+export interface ParseMarkdownOptions {
+	/** Resolve wiki link text to full vault path. Return null to keep original. */
+	resolveWikiLinkToPath: (linkText: string) => string | null;
+}
+
+/**
  * Parse markdown content using remark and extract frontmatter, title, and tags.
  * Uses remark library instead of regex for more reliable parsing.
  *
  * @param content The markdown content to parse
+ * @param options Optional. When provided with sourcePath and resolveWikiLinkToPath, wiki link
+ *   targets (e.g. [[name]] without path) are resolved to full vault paths.
  * @returns Parsed result with frontmatter, title, and tags
  */
-export async function parseMarkdownWithRemark(content: string): Promise<RemarkParseResult> {
+export async function parseMarkdownWithRemark(
+	content: string,
+	options?: ParseMarkdownOptions
+): Promise<RemarkParseResult> {
 	// Unified processor with all plugins - let plugins handle frontmatter and wiki links
 	const processor = remark()
 		.use(remarkFrontmatter, ['yaml'])
@@ -161,6 +175,14 @@ export async function parseMarkdownWithRemark(content: string): Promise<RemarkPa
 	const tags = new Set<string>();
 	const outgoingRefs: Array<{ fullPath: string }> = [];
 	const embeddings: string[] = [];
+
+	const resolveToFullPath = (linkTarget: string): string => {
+		if (options?.resolveWikiLinkToPath) {
+			const resolved = options.resolveWikiLinkToPath(linkTarget);
+			if (resolved) return resolved;
+		}
+		return linkTarget;
+	};
 
 	visit(validAst, (node: any, index: number | undefined, parent: any) => {
 		switch (node.type) {
@@ -204,10 +226,10 @@ export async function parseMarkdownWithRemark(content: string): Promise<RemarkPa
 						node.data?.embed;
 
 					if (isEmbed) {
-						// Remove leading '!' for embeddings
-						embeddings.push(target.replace(/^!/, ''));
+						// Remove leading '!' for embeddings; resolve to full path when options provided
+						embeddings.push(resolveToFullPath(target.replace(/^!/, '')));
 					} else {
-						outgoingRefs.push({ fullPath: target });
+						outgoingRefs.push({ fullPath: resolveToFullPath(target) });
 					}
 				}
 				break;
@@ -235,37 +257,41 @@ export async function parseMarkdownWithRemark(content: string): Promise<RemarkPa
 				}
 
 				// Fallback: Only use regex if wikiLink plugin didn't work (text still contains [[ ]])
+				// Supports: [[path|alias]] (use path before pipe as fullPath) and [[name]] (use full content as target).
 				if (node.value.includes('[[')) {
 					const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
 					const wikiMatches = node.value.matchAll(wikiLinkRegex);
 					for (const match of wikiMatches) {
 						const content = match[1];
 						const pipeIndex = content.indexOf('|');
-						let target: string;
-						let isEmbed = false;
-
-						if (pipeIndex !== -1) {
-							target = content.substring(0, pipeIndex).trim();
-						} else {
-							target = content.trim();
-						}
+						// Link target is always the part BEFORE the pipe (path); part after pipe is display alias only.
+						let target: string =
+							pipeIndex !== -1 ? content.substring(0, pipeIndex).trim() : content.trim();
 
 						// Check if it's an embed (starts with !)
 						if (target.startsWith('!')) {
-							isEmbed = true;
-							target = target.substring(1); // Remove leading '!'
+							target = target.substring(1).trim();
+							// Strip #anchor or #^block-ref for file path
+							const hashIndex = target.indexOf('#');
+							const filePath = hashIndex !== -1 ? target.substring(0, hashIndex).trim() : target;
+							if (filePath && filePath.length > 0 && filePath.length <= 200 &&
+								!filePath.startsWith('@') && !filePath.includes('\n') &&
+								/[a-zA-Z\u4e00-\u9fff]/.test(filePath)) {
+								embeddings.push(filePath);
+							}
+							continue;
 						}
 
-						// Basic validation
-						if (target && target.length > 0 && target.length <= 200 &&
-							!target.startsWith('@') &&
-							!target.includes('\n') &&
-							/[a-zA-Z\u4e00-\u9fff]/.test(target)) {
-							if (isEmbed) {
-								embeddings.push(target);
-							} else {
-								outgoingRefs.push({ fullPath: target });
-							}
+						// Strip #anchor or #^block-ref so fullPath is the file path only
+						const hashIndex = target.indexOf('#');
+						const fullPath = hashIndex !== -1 ? target.substring(0, hashIndex).trim() : target;
+
+						// Basic validation; resolve to full vault path when options provided
+						if (fullPath && fullPath.length > 0 && fullPath.length <= 200 &&
+							!fullPath.startsWith('@') &&
+							!fullPath.includes('\n') &&
+							/[a-zA-Z\u4e00-\u9fff]/.test(fullPath)) {
+							outgoingRefs.push({ fullPath: resolveToFullPath(fullPath) });
 						}
 					}
 				}

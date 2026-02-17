@@ -16,6 +16,6 @@ Nodes: {{nodeCount}}, Edges: {{edgeCount}}
 ## User question
 {{question}}
 
-Return markdown. If you propose actions, keep them numbered.`;
+Return markdown. If you propose actions, keep them numbered. Be grounded in the analysis.`;
 
 export const expectsJson = false;

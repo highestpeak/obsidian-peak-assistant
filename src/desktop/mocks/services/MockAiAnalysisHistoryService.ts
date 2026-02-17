@@ -80,8 +80,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId) => ({
 		id: baseId,
 		title: 'Key Insights',
-		category: 'insights',
-		slot: 'MAIN',
 		weight: 2,
 		renderEngine: 'TILE',
 		items: [
@@ -93,8 +91,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId) => ({
 		id: baseId,
 		title: 'Follow-up Suggestions',
-		category: 'actions',
-		slot: 'SIDEBAR',
 		weight: 1,
 		renderEngine: 'ACTION_GROUP',
 		items: [
@@ -106,8 +102,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId, i) => ({
 		id: baseId,
 		title: 'Analysis Notes',
-		category: 'summary',
-		slot: 'MAIN',
 		weight: 5,
 		renderEngine: 'MARKDOWN',
 		markdown: MARKDOWN_VARIANTS[i % MARKDOWN_VARIANTS.length],
@@ -115,8 +109,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId) => ({
 		id: baseId,
 		title: 'Data Summary',
-		category: 'summary',
-		slot: 'MAIN',
 		weight: 5,
 		renderEngine: 'MARKDOWN',
 		markdown: '| Topic | Relevance | Notes |\n|-------|-----------|-------|\n| Architecture | High | Core pattern identified |\n| Testing | Medium | Needs follow-up |\n| Documentation | Low | Optional |',
@@ -124,8 +116,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId, i) => ({
 		id: baseId,
 		title: 'Process Flow',
-		category: 'diagram',
-		slot: 'FLOW',
 		weight: 4,
 		renderEngine: 'MERMAID',
 		mermaidCode: MERMAID_VARIANTS[i % MERMAID_VARIANTS.length],
@@ -133,8 +123,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId) => ({
 		id: baseId,
 		title: 'Comparison',
-		category: 'options',
-		slot: 'MAIN',
 		weight: 3,
 		renderEngine: 'TILE',
 		items: [
@@ -145,8 +133,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId, i) => ({
 		id: baseId,
 		title: 'Concept Map',
-		category: 'diagram',
-		slot: 'SIDEBAR',
 		weight: 3,
 		renderEngine: 'MERMAID',
 		mermaidCode: MERMAID_VARIANTS[(i + 1) % MERMAID_VARIANTS.length],
@@ -154,8 +140,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId) => ({
 		id: baseId,
 		title: 'Quick Actions',
-		category: 'actions',
-		slot: 'MAIN',
 		weight: 1,
 		renderEngine: 'ACTION_GROUP',
 		items: [
@@ -166,8 +150,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId, i) => ({
 		id: baseId,
 		title: 'Findings',
-		category: 'summary',
-		slot: 'SIDEBAR',
 		weight: 2,
 		renderEngine: 'MARKDOWN',
 		markdown: MARKDOWN_VARIANTS[(i + 2) % MARKDOWN_VARIANTS.length],
@@ -175,8 +157,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId) => ({
 		id: baseId,
 		title: 'Recommendations',
-		category: 'insights',
-		slot: 'MAIN',
 		weight: 2,
 		renderEngine: 'TILE',
 		items: [
@@ -188,8 +168,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId) => ({
 		id: baseId,
 		title: 'Relevance Distribution',
-		category: 'diagram',
-		slot: 'SIDEBAR',
 		weight: 3,
 		renderEngine: 'MERMAID',
 		mermaidCode: MERMAID_VARIANTS[5],
@@ -197,8 +175,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId) => ({
 		id: baseId,
 		title: 'Scores Chart',
-		category: 'diagram',
-		slot: 'MAIN',
 		weight: 4,
 		renderEngine: 'MERMAID',
 		mermaidCode: MERMAID_VARIANTS[6],
@@ -206,8 +182,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId) => ({
 		id: baseId,
 		title: 'Insight Summary',
-		category: 'summary',
-		slot: 'MAIN',
 		weight: 5,
 		renderEngine: 'MARKDOWN',
 		markdown: MARKDOWN_VARIANTS[6],
@@ -216,8 +190,6 @@ const BLOCK_TEMPLATES: Array<(baseId: string, i: number) => DashboardBlock> = [
 	(baseId) => ({
 		id: baseId,
 		title: 'Long Analysis (content-aware wider)',
-		category: 'summary',
-		slot: 'MAIN',
 		weight: 5,
 		renderEngine: 'MARKDOWN',
 		markdown: `## Thought evolution analysis hypothesis
@@ -261,8 +233,6 @@ The evidence points toward an incremental migration strategy; document decisions
 	(baseId) => ({
 		id: baseId,
 		title: 'Related Questions',
-		category: 'actions',
-		slot: 'SIDEBAR',
 		weight: 1,
 		renderEngine: 'MARKDOWN',
 		markdown: '',
@@ -446,7 +416,8 @@ const MOCK_AI_ANALYSIS_RECORDS_INIT: MockAIAnalysisRecord[] = Array.from({ lengt
 		dashboardBlocks: buildDashboardBlocks(i),
 		sources,
 		graph,
-		overviewMermaid: mermaidVariant,
+		overviewMermaidVersions: [mermaidVariant],
+		overviewMermaidActiveIndex: 0,
 		topicInspectResults: buildTopicInspectResults(topics, sources, i),
 		topicAnalyzeResults: buildTopicAnalyzeResults(topics, query, i),
 		topicGraphResults: buildTopicGraphResults(topics, i),

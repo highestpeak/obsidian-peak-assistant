@@ -49,3 +49,45 @@ const handleRegenerate = useCallback(async () => {
 }, []);
 ```
 
+# Coding Standard: Eliminate Arrow Code & Deep Nesting
+
+## Core Principle: "Flat is better than nested"
+Strictly avoid the "Arrow Anti-pattern" (deeply nested if-statements). Always prioritize code readability by keeping the main logic at the minimum indentation level.
+
+## Guidelines for Logic Structuring
+1. **Early Returns (Guard Clauses):** If a condition needs to be met for the function to proceed, check for the *inverse* and return/throw immediately.
+   - ❌ **Anti-pattern:** `if (condition) { /* 50 lines of code */ } else { return error; }`
+   - ✅ **Best Practice:** `if (!condition) return error; /* 50 lines of code */`
+
+2. **No Redundant Else:** If an `if` block ends with `return`, `break`, `continue`, or `throw`, do **not** use an `else` block. Continue the logic on the next line.
+
+3. **Maximum Nesting Depth:** Aim for a maximum of 2 levels of nesting. If you hit 3 levels, refactor using guard clauses or extract logic into a helper function.
+
+## Examples
+
+### ❌ Bad (Arrow Code)
+function saveProfile(user) {
+    if (user != null) {
+        if (user.hasValidEmail()) {
+            if (user.canSave()) {
+                // Main business logic nested deep inside
+                return database.save(user);
+            } else {
+                throw new Error("Cannot save");
+            }
+        }
+    }
+}
+
+### ✅ Good (Flattened with Guard Clauses)
+function saveProfile(user) {
+    if (!user) return;
+    if (!user.hasValidEmail()) return;
+    if (!user.canSave()) throw new Error("Cannot save");
+
+    // Main business logic stays at the root level
+    return database.save(user);
+}
+
+## Execution
+Apply these rules automatically when generating new functions or refactoring existing code. If you see a nested 'if-else' structure, flatten it using the Early Return pattern.

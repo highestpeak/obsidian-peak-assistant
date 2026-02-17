@@ -66,15 +66,28 @@ export function getSourceIcon(source?: SearchResultSource): React.ReactElement {
 }
 
 /**
+ * Map path to type string for getFileIcon (markdown, pdf, image, or default).
+ */
+export function pathToFileIconType(path: string | null): string {
+	if (!path?.trim()) return 'markdown';
+	const ext = path.split('.').pop()?.toLowerCase() || '';
+	if (ext === 'md' || ext === 'markdown') return 'markdown';
+	const ft = getFileTypeFromPath(path);
+	if (ft === 'pdf') return 'pdf';
+	if (ft === 'image') return 'image';
+	return 'markdown';
+}
+
+/**
  * Get icon component for different file types
  * TODO: Need to unify and support more file types https://github.com/material-extensions/vscode-material-icon-theme
  * Places that use it also include messageItem convResourcesModal which don't use this yet, all should use this for unification
  * TODO: Better to use ResourceLoader's type resourceKind etc. for unification
  */
-export function getFileIcon(type: string, isSelected: boolean = false): React.ReactElement {
-	const iconClass = isSelected
+export function getFileIcon(type: string, isSelected: boolean = false, className?: string): React.ReactElement {
+	const iconClass = cn(className, isSelected
 		? "pktw-w-4 pktw-h-4 pktw-text-white"
-		: "pktw-w-4 pktw-h-4";
+		: "pktw-w-4 pktw-h-4");
 
 	switch (type) {
 		case 'markdown':

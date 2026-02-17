@@ -7,6 +7,7 @@ import { MyPluginSettings } from '../settings/types';
 import { BusinessError, ErrorCode } from '@/core/errors';
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import { GraphInspectorTestTools } from '@/app/context/test-tools';
+import { cleanupGraphTable } from '@/app/context/graph-cleanup';
 import { IndexService } from '@/service/search/index/indexService';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { AISearchAgent, AISearchAgentOptions } from '@/service/agents/AISearchAgent';
@@ -72,19 +73,22 @@ export class AppContext {
 			if (typeof window !== 'undefined') {
 				(window as any).testGraphTools = new GraphInspectorTestTools();
 				(window as any).indexDocument = (docPath: string) => IndexService.getInstance().indexDocument(docPath, this.settings.search);
+				(window as any).cleanupGraphTable = () => cleanupGraphTable();
 
 				console.debug('🔧 Graph Inspector Test Tools initialized!');
 				console.debug('📖 Usage: window.testGraphTools.inspectNote("path/to/note.md")');
-				console.debug('📖 Usage: window.indexService.indexDocument("path/to/note.md")');
+				console.debug('📖 Usage: window.indexDocument("path/to/note.md")');
+				console.debug('📖 Usage: await window.cleanupGraphTable() — clean graph_nodes/edges (nodes whose path not in doc_meta, orphan edges)');
 				console.debug('📖 Available methods:', [
 					...Object.getOwnPropertyNames(GraphInspectorTestTools.prototype).filter(name => name !== 'constructor'),
-					'indexDocument'
+					'indexDocument',
+					'cleanupGraphTable',
 				]);
 			}
 		} else {
-			// Remove test tools when setting is disabled
-			if (typeof window !== 'undefined' && (window as any).testGraphTools) {
-				delete (window as any).testGraphTools;
+			if (typeof window !== 'undefined') {
+				if ((window as any).testGraphTools) delete (window as any).testGraphTools;
+				if ((window as any).cleanupGraphTable) delete (window as any).cleanupGraphTable;
 				console.log('🔧 Graph Inspector Test Tools disabled');
 			}
 		}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { getCleanQuery, AIAnalysisStepType } from '../store/aiAnalysisStore';
+import { getCleanQuery, type UIStepRecord } from '../store/aiAnalysisStore';
 import { useSharedStore, useAIAnalysisStore } from '@/ui/view/quick-search/store';
+import { setLastAnalysisHistorySearch, invalidateFollowupContextCache } from '../followupContextRuntime';
 import { AppContext } from '@/app/context/AppContext';
 import { SearchAgentResult } from '@/service/agents/AISearchAgent';
 import { RESULT_UPDATE_TOOL_NAMES } from '@/service/agents/AISearchAgent';
@@ -8,6 +9,7 @@ import { LLMStreamEvent } from '@/core/providers/types';
 import { PromptId } from '@/service/prompt/PromptId';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { Notice } from 'obsidian';
+import { normalizeMermaidForDisplay } from '@/core/utils/mermaid-utils';
 
 export function useAIAnalysis() {
 	const { searchQuery } = useSharedStore();
@@ -15,7 +17,6 @@ export function useAIAnalysis() {
 	const {
 		webEnabled,
 		analysisMode,
-		completeCurrentStep,
 		setUsage,
 		setDuration,
 		setSummary,
@@ -24,22 +25,19 @@ export function useAIAnalysis() {
 		setDashboardBlocks,
 		setTopics,
 		setSources,
-		setOverviewMermaid,
+		pushOverviewMermaidVersion,
 		setTitle,
 		startAnalyzing,
 		startStreaming,
 		markCompleted,
 		recordError,
-		setCurrentStep,
 		startSummaryStreaming,
 		resetAnalysisState,
-		updateWebFromQuery
+		updateWebFromQuery,
+		appendCompletedUiStep,
+		setCurrentUiStep,
+		appendCurrentUiStepDelta,
 	} = useAIAnalysisStore();
-
-	// Track current step type to avoid unnecessary store updates
-	const currentStepTypeRef = useRef<AIAnalysisStepType>('idle');
-	// Reset accumulated text chunks and step type for new analysis
-	const currentStepTextChunksRef = useRef<string[]>([]);
 
 	// Full tool trace for debugging (not stored in state to avoid OOM)
 	// NOTE:
@@ -59,6 +57,9 @@ export function useAIAnalysis() {
 
 	// Analysis start time for duration tracking
 	const analysisStartTimeRef = useRef<number>(0);
+
+	// Current UI step (from ui-step) for persisting to store when next step or complete
+	const currentUiStepRef = useRef<UIStepRecord | null>(null);
 
 	// Summary delta buffer to reduce store update frequency.
 	const summaryDeltaBufferRef = useRef<string>('');
@@ -87,24 +88,6 @@ export function useAIAnalysis() {
 			summaryDeltaBufferRef.current = '';
 		}, 120);
 	}, [appendSummaryDelta]);
-
-	const updateIfStepChanged = useCallback((newStepType: AIAnalysisStepType, delta?: string, extra?: any) => {
-		if (currentStepTypeRef.current !== newStepType) {
-			// Step type changed - complete the previous step first
-			if (currentStepTypeRef.current !== 'idle') {
-				completeCurrentStep([...currentStepTextChunksRef.current]);
-				currentStepTextChunksRef.current = [];
-			}
-			currentStepTypeRef.current = newStepType;
-			setCurrentStep(newStepType, extra);
-		}
-		if (delta) {
-			// Accumulate text chunks for current step
-			currentStepTextChunksRef.current.push(delta || '');
-		}
-		// Publish event for real-time UI rendering
-		useUIEventStore.getState().publish(newStepType, { text: delta, extra: extra });
-	}, [currentStepTypeRef, currentStepTextChunksRef, setCurrentStep, completeCurrentStep]);
 
 	// AbortController for canceling analysis
 	const abortControllerRef = useRef<AbortController | null>(null);
@@ -150,13 +133,14 @@ export function useAIAnalysis() {
 		if (result.sources) {
 			setSources(result.sources);
 		}
-		if (result.overviewMermaid !== undefined) {
-			setOverviewMermaid(result.overviewMermaid ?? null);
+		if (result.overviewMermaid !== undefined && result.overviewMermaid != null) {
+			const code = normalizeMermaidForDisplay(result.overviewMermaid);
+			pushOverviewMermaidVersion(code, { makeActive: true, dedupe: true });
 		}
 		if (result.title !== undefined) {
 			setTitle(result.title ?? null);
 		}
-	}, [setSummary, setGraph, setDashboardBlocks, setTopics, setSources, setOverviewMermaid, setTitle]);
+	}, [setSummary, setGraph, setDashboardBlocks, setTopics, setSources, pushOverviewMermaidVersion, setTitle]);
 
 	/**
 	 * Handle the final result from AISearchAgent
@@ -207,11 +191,10 @@ export function useAIAnalysis() {
 			}
 
 			resetAnalysisState();
+			invalidateFollowupContextCache();
 			startAnalyzing();
 			didCancelRef.current = false;
 			noticeSentRef.current = false;
-			currentStepTypeRef.current = 'idle';
-			currentStepTextChunksRef.current = [];
 			toolTraceRef.current = [];
 			analysisStartTimeRef.current = Date.now();
 			summaryDeltaBufferRef.current = '';
@@ -237,37 +220,26 @@ export function useAIAnalysis() {
 
 				// Step completion is now handled by updateIfStepChanged when step type changes
 
-				// // debug log for all chunks.
-				// const checkIfDeltaEvent = (type: string) =>
-				// 	type === 'text-delta' || type === 'reasoning-delta' || type === 'prompt-stream-delta'
-				// 	|| type === 'search-thought-talking' || type === 'search-thought-reasoning'
-				// 	|| type === 'search-inspector-talking' || type === 'search-inspector-reasoning';
-				// if (!checkIfDeltaEvent(event.type)) {
-				// 	console.debug('[useAIAnalysis] event:', JSON.stringify(event));
-				// } else {
-				// 	// delta event are too much to log. useless. only log the type to observe the flow.
-				// 	console.debug('[useAIAnalysis] event:', event.type, event.triggerName);
-				// }
+				// debug log for all chunks.
+				const checkIfDeltaEvent = (type: string) =>
+					type === 'text-delta' || type === 'reasoning-delta' || type === 'prompt-stream-delta'
+					|| type === 'search-thought-talking' || type === 'search-thought-reasoning'
+					|| type === 'search-inspector-talking' || type === 'search-inspector-reasoning'
+					|| type === 'ui-step-delta';
+				if (!checkIfDeltaEvent(event.type)) {
+					console.debug('[useAIAnalysis] event:', JSON.stringify(event));
+				} else {
+					// delta event are too much to log. useless. only log the type to observe the flow.
+					console.debug('[useAIAnalysis] delta event:', event.triggerName);
+				}
 
 				switch (event.type) {
 					case 'text-delta':
-						/**
-						 * avoid update store directly. every time store update will copy the entire state. 
-						 * and the delta is very fast to generate. which may cause performance issue and memory leak.
-						 */
-						updateIfStepChanged(
-							event.triggerName + '-talking' as AIAnalysisStepType,
-							event.text
-						);
-						break;
 					case 'reasoning-delta':
-						updateIfStepChanged(
-							event.triggerName + '-reasoning' as AIAnalysisStepType,
-							event.text
-						);
+						// Steps are now driven by ui-step / ui-step-delta events from the agent.
 						break;
 					case 'tool-call':
-						// Record to tool trace for debugging
+						// Record to tool trace for debugging only; graph animation is driven by ui-signal.
 						toolTraceRef.current.push({
 							ts: Date.now(),
 							triggerName: event.triggerName || 'unknown',
@@ -276,27 +248,12 @@ export function useAIAnalysis() {
 							toolCallId: event.id,
 							input: event.input
 						});
-
-						// Publish a normalized tool-call event for graph animation / UI orchestration.
-						// Keep it separate from step streaming to avoid mixing non-text payloads into the text renderer.
-						useUIEventStore.getState().publish('ui:tool-call', {
-							triggerName: event.triggerName || 'unknown',
-							toolName: event.toolName,
-							toolCallId: event.id,
-							input: event.input,
-						});
-
-						updateIfStepChanged(
-							event.triggerName + '--tool-call--' + event.toolName as AIAnalysisStepType,
-							undefined,
-							{ ...event.input, }
-						);
 						break;
 					case 'tool-result': {
 						// Extract summary from tool results
 						const output = event.output?.result || event.output;
 
-						// Record to tool trace (full output for non-content_reader tools)
+						// Record to tool trace for debugging only; graph animation is driven by ui-signal.
 						toolTraceRef.current.push({
 							ts: Date.now(),
 							triggerName: event.triggerName || 'unknown',
@@ -304,13 +261,6 @@ export function useAIAnalysis() {
 							toolName: event.toolName,
 							toolCallId: event.id,
 							output: event.toolName !== 'content_reader' ? output : undefined,
-						});
-						// Publish a normalized tool-result event for graph animation / UI orchestration.
-						useUIEventStore.getState().publish('ui:tool-result', {
-							triggerName: event.triggerName || 'unknown',
-							toolName: event.toolName,
-							toolCallId: event.id,
-							output,
 						});
 
 						// useUIEventStore.getState().publish(
@@ -329,12 +279,7 @@ export function useAIAnalysis() {
 					case 'prompt-stream-start': {
 						const pid = event.promptId as string;
 						if (pid === PromptId.AiAnalysisSummary) {
-							updateIfStepChanged('search-summary');
 							startSummaryStreaming();
-						} else if (pid === PromptId.AiAnalysisTitle) {
-							updateIfStepChanged('search-title');
-						} else if (pid === PromptId.AiAnalysisOverviewMermaid) {
-							updateIfStepChanged('search-overview-mermaid');
 						}
 						break;
 					}
@@ -353,14 +298,59 @@ export function useAIAnalysis() {
 							setSummary(event.output as string);
 						}
 						break;
-					case 'ui-step':
-					case 'ui-step-delta':
+					case 'ui-step': {
+						useUIEventStore.getState().publish(event.type, event);
+						const stepId = event.stepId as string | undefined;
+						const title = typeof event.title === 'string' ? event.title : '';
+						const description = typeof event.description === 'string' ? event.description : '';
+						if (stepId) {
+							const prev = currentUiStepRef.current;
+							if (prev && prev.stepId !== stepId) {
+								appendCompletedUiStep({ ...prev, endedAtMs: Date.now() });
+							}
+							if (prev && prev.stepId === stepId) {
+								appendCurrentUiStepDelta(description, title);
+								currentUiStepRef.current = {
+									...prev,
+									title: prev.title + title,
+									description: prev.description + description,
+								};
+							} else {
+								currentUiStepRef.current = { stepId, title: title || 'Step', description, startedAtMs: Date.now() };
+								setCurrentUiStep(stepId, title || 'Step', description);
+							}
+						}
+						break;
+					}
+					case 'ui-step-delta': {
+						useUIEventStore.getState().publish(event.type, event);
+						const descDelta = typeof event.descriptionDelta === 'string' ? event.descriptionDelta : '';
+						const titleDelta = typeof event.titleDelta === 'string' ? event.titleDelta : '';
+						if (descDelta || titleDelta) {
+							appendCurrentUiStepDelta(descDelta, titleDelta);
+							const cur = currentUiStepRef.current;
+							if (cur) {
+								currentUiStepRef.current = {
+									...cur,
+									title: cur.title + titleDelta,
+									description: cur.description + descDelta,
+								};
+							}
+						}
+						break;
+					}
+					case 'ui-signal':
 						useUIEventStore.getState().publish(event.type, event);
 						break;
-					case 'complete':
-						// Process final result
+					case 'complete': {
+						const lastStep = currentUiStepRef.current;
+						if (lastStep) {
+							appendCompletedUiStep({ ...lastStep, endedAtMs: Date.now() });
+							currentUiStepRef.current = null;
+						}
 						handleFinalResult(event);
 						break;
+					}
 					case 'error':
 						recordError(event.error.message);
 						// Notice (error): only when modal is closed and not canceled.
@@ -373,19 +363,8 @@ export function useAIAnalysis() {
 						}
 						break;
 					case 'on-step-finish':
-						updateIfStepChanged('pk-debug', undefined, {
-							triggerName: event.triggerName,
-							text: event.text,
-							finishReason: event.finishReason,
-							usage: event.usage,
-						});
-						break;
 					case 'pk-debug':
-						updateIfStepChanged('pk-debug', undefined, {
-							triggerName: event.triggerName,
-							debugName: event.debugName,
-							extra: event.extra,
-						});
+						// Steps are now driven by ui-step events; debug events ignored for step display.
 						break;
 					default:
 						// we have debug log ahead of the switch statement.
@@ -425,24 +404,40 @@ export function useAIAnalysis() {
 					graphEdgesCount: aiAnalysisStoreState.graph?.edges?.length ?? 0
 				},
 				steps: aiAnalysisStoreState.steps.map(step => ({
-					type: step.type,
-					text: step.textChunks.join(''),
-					extra: step.extra,
+					stepId: step.stepId,
+					title: step.title,
+					description: step.description,
 					startedAtMs: step.startedAtMs,
 					endedAtMs: step.endedAtMs,
-					durationMs: step.startedAtMs && step.endedAtMs ? step.endedAtMs - step.startedAtMs : undefined
 				})),
-				currentStep: {
-					type: aiAnalysisStoreState.currentStep.type,
-					text: aiAnalysisStoreState.currentStep.textChunks.join(''),
-					extra: aiAnalysisStoreState.currentStep.extra
-				},
+				currentStep: aiAnalysisStoreState.currentStep
+					? {
+						stepId: aiAnalysisStoreState.currentStep.stepId,
+						title: aiAnalysisStoreState.currentStep.title,
+						description: aiAnalysisStoreState.currentStep.description,
+					}
+					: null,
 				toolTrace: toolTraceRef.current,
 				summary: aiAnalysisStoreState.summaryChunks.join(''),
 				summaryLen: aiAnalysisStoreState.summaryChunks.join('').length
 			};
 			// Log merged debug dump
 			console.debug('[useAIAnalysis] debugDumpJson', JSON.stringify(debugDump));
+
+			// Persist history search for follow-up agent (memory only, not store)
+			try {
+				const runId = aiAnalysisStoreState.analysisRunId ?? null;
+				if (aiSearchAgent) {
+					setLastAnalysisHistorySearch(
+                        (q, opts) => aiSearchAgent.searchHistory(q, opts),
+                        runId
+                    );
+				} else {
+					setLastAnalysisHistorySearch(null);
+				}
+			} catch {
+				setLastAnalysisHistorySearch(null);
+			}
 
 			// Reset refs for next analysis
 			toolTraceRef.current = [];
@@ -460,7 +455,6 @@ export function useAIAnalysis() {
 			}
 		}
 	}, [
-		currentStepTextChunksRef,
 		searchQuery,
 		webEnabled,
 		aiSearchAgent,
@@ -470,7 +464,6 @@ export function useAIAnalysis() {
 		startAnalyzing,
 		startStreaming,
 		markCompleted,
-		setCurrentStep,
 		startSummaryStreaming,
 		appendSummaryDelta,
 		bufferSummaryDelta,

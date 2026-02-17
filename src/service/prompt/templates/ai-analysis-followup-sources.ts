@@ -14,6 +14,6 @@ Main summary: {{mainSummary}}
 ## User question
 {{question}}
 
-Return markdown. Keep it grounded in the sources list.`;
+Return markdown. Keep it grounded in the sources list. Use structure (bullets or headings) when helpful.`;
 
 export const expectsJson = false;

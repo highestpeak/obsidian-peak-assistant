@@ -121,8 +121,13 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 			const content = await this.app.vault.cachedRead(file);
 			const contentHash = generateContentHash(content);
 
-			// Parse markdown using remark to extract title, tags and frontmatter
-			const parseResult = await parseMarkdownWithRemark(content);
+			// Parse markdown using remark; resolve wiki link targets to full vault paths
+			const parseResult = await parseMarkdownWithRemark(content, {
+				resolveWikiLinkToPath: (linkText: string) => {
+					const dest = this.app.metadataCache.getFirstLinkpathDest(linkText, file.path);
+					return dest?.path ?? null;
+				},
+			});
 
 			// Extract title from parsed result or fallback to filename
 			let title = parseResult.title || file.basename;

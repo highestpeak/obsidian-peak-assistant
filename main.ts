@@ -1,4 +1,5 @@
 import { Plugin } from 'obsidian';
+import { initPerfDebug } from '@/core/utils/perf-debug';
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { CommandHiddenControlService } from 'src/service/CommandHiddenControlService';
 import { MySettings } from 'src/app/settings/MySetting';
@@ -44,6 +45,7 @@ export default class MyPlugin extends Plugin {
 	 * Bootstraps services, views, commands, and layout handling.
 	 */
 	async onload() {
+		initPerfDebug();
 		registerTemplateEngineHelpers();
 
 		const data = await this.loadData();

@@ -191,11 +191,12 @@ export class AgentMemoryManager {
             },
         };
 
-        // Generate summary immediately
-        const summaryStream = this.aiServiceManager.chatWithPromptStream(PromptId.DocSummary, {
+        // Generate summary with decision-critical structure (user background, pains, evidence paths)
+        const wordCountLimit = AppContext.getInstance().settings.search.aiAnalysisSessionSummaryWordCount ?? 3000;
+        const summaryStream = this.aiServiceManager.chatWithPromptStream(PromptId.AiAnalysisSessionSummary, {
             content: messagesToSummarizeText,
-            title: `Thought Agent History of the user query: \`${this.agentMemory.initialPrompt}\` `,
-            wordCount: `less than ${AppContext.getInstance().settings.search.aiAnalysisSessionSummaryWordCount}`,
+            userQuery: this.agentMemory.initialPrompt ?? '',
+            wordCount: `up to ${wordCountLimit} characters (words)`,
         })
         for await (const chunk of summaryStream) {
             if (chunk.type === 'prompt-stream-result') {

@@ -18,6 +18,7 @@ import * as instructionUpdate from './templates/instruction-update';
 import * as promptQualityEvalJson from './templates/prompt-quality-eval-json';
 import * as promptRewriteWithLibrary from './templates/prompt-rewrite-with-library';
 import * as docSummary from './templates/doc-summary';
+import * as aiAnalysisSessionSummary from './templates/ai-analysis-session-summary';
 import * as imageSummary from './templates/image-summary';
 import * as imageDescription from './templates/image-description';
 import * as folderProjectSummary from './templates/folder-project-summary';
@@ -26,8 +27,10 @@ import * as aiAnalysisFollowupGraph from './templates/ai-analysis-followup-graph
 import * as aiAnalysisFollowupSources from './templates/ai-analysis-followup-sources';
 import * as aiAnalysisFollowupBlocks from './templates/ai-analysis-followup-blocks';
 import * as aiAnalysisFollowupFull from './templates/ai-analysis-followup-full';
+import * as aiAnalysisFollowupSystem from './templates/ai-analysis-followup-system';
 import * as aiAnalysisSummarySystem from './templates/ai-analysis-dashboard-result-summary-system';
 import * as aiAnalysisSummary from './templates/ai-analysis-dashboard-result-summary';
+import * as aiAnalysisDiagnosisJson from './templates/ai-analysis-diagnosis-json';
 import * as aiAnalysisDashboardUpdateSourcesSystem from './templates/ai-analysis-dashboard-update-sources-system';
 import * as aiAnalysisDashboardUpdateSources from './templates/ai-analysis-dashboard-update-sources';
 import * as aiAnalysisDashboardUpdateTopics from './templates/ai-analysis-dashboard-update-topics';
@@ -123,9 +126,13 @@ export enum PromptId {
 	// Search prompts
 	AiSearchSystem = 'ai-search-system',
 	ThoughtAgentSystem = 'thought-agent-system',
+	/** Session history compression for ThoughtAgent; preserves user background, pains, evidence paths. */
+	AiAnalysisSessionSummary = 'ai-analysis-session-summary',
 	// AI analysis dashboard update agent (update overviewMermaid/sources/topics/graph/blocks from memory evidence)
 	AiAnalysisSummarySystem = 'ai-analysis-summary-system',
 	AiAnalysisSummary = 'search-ai-summary',
+	/** Step-A of summary chaining: structured diagnosis JSON for Step-B synthesis. */
+	AiAnalysisDiagnosisJson = 'ai-analysis-diagnosis-json',
 	AiAnalysisOverviewMermaidSystem = 'ai-analysis-overview-mermaid-system',
 	AiAnalysisOverviewMermaid = 'ai-analysis-overview-mermaid',
 	AiAnalysisDashboardUpdateSourcesSystem = 'ai-analysis-dashboard-update-sources-system',
@@ -144,6 +151,8 @@ export enum PromptId {
 	AiAnalysisFollowupSources = 'ai-analysis-followup-sources',
 	AiAnalysisFollowupBlocks = 'ai-analysis-followup-blocks',
 	AiAnalysisFollowupFull = 'ai-analysis-followup-full',
+	/** System prompt for all follow-up chats (Topic, Continue, Graph, Blocks, Sources). */
+	AiAnalysisFollowupSystem = 'ai-analysis-followup-system',
 	// AI analysis save dialog (filename/folder suggestions)
 	AiAnalysisSaveFileName = 'ai-analysis-save-filename',
 	AiAnalysisSaveFolder = 'ai-analysis-save-folder',
@@ -289,6 +298,11 @@ export interface PromptVariables {
 		path?: string;
 		wordCount?: string;
 	};
+	[PromptId.AiAnalysisSessionSummary]: {
+		content: string;
+		userQuery: string;
+		wordCount: string;
+	};
 	[PromptId.ImageDescription]: Record<string, never>;
 	[PromptId.ImageSummary]: {
 		content: string;
@@ -316,17 +330,18 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
 
 	[PromptId.AiAnalysisSummarySystem]: Record<string, never>;
-	[PromptId.AiAnalysisSummary]: DashboardUpdateContext;
+	[PromptId.AiAnalysisSummary]: DashboardUpdateContext & { diagnosisJson?: string };
+	[PromptId.AiAnalysisDiagnosisJson]: { originalQuery: string; recentEvidenceHint: string; currentResultSnapshot: string };
 	[PromptId.AiAnalysisOverviewMermaidSystem]: Record<string, never>;
 	[PromptId.AiAnalysisOverviewMermaid]: DashboardUpdateContext & ErrorRetryInfo;
 	[PromptId.AiAnalysisDashboardUpdateSourcesSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateSources]: DashboardUpdateContext & ErrorRetryInfo;
+	[PromptId.AiAnalysisDashboardUpdateSources]: DashboardUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateTopicsSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateTopics]: DashboardUpdateContext & ErrorRetryInfo;
+	[PromptId.AiAnalysisDashboardUpdateTopics]: DashboardUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateGraphSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateGraph]: DashboardUpdateContext & ErrorRetryInfo;
+	[PromptId.AiAnalysisDashboardUpdateGraph]: DashboardUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateBlocks]: DashboardUpdateContext & ErrorRetryInfo;
+	[PromptId.AiAnalysisDashboardUpdateBlocks]: DashboardUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
 
 	[PromptId.AiAnalysisSaveFileName]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string; candidateFoldersFromSearch?: string; defaultSaveFolder?: string };
@@ -393,6 +408,7 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptInfo> = {
 	[PromptId.PromptQualityEvalJson]: createTemplate(promptQualityEvalJson),
 	[PromptId.PromptRewriteWithLibrary]: createTemplate(promptRewriteWithLibrary),
 	[PromptId.DocSummary]: createTemplate(docSummary),
+	[PromptId.AiAnalysisSessionSummary]: createTemplate(aiAnalysisSessionSummary),
 	[PromptId.ImageDescription]: createTemplate(imageDescription),
 	[PromptId.ImageSummary]: createTemplate(imageSummary),
 	[PromptId.FolderProjectSummary]: createTemplate(folderProjectSummary),
@@ -401,6 +417,7 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptInfo> = {
 	[PromptId.AiAnalysisFollowupSources]: createTemplate(aiAnalysisFollowupSources),
 	[PromptId.AiAnalysisFollowupBlocks]: createTemplate(aiAnalysisFollowupBlocks),
 	[PromptId.AiAnalysisFollowupFull]: createTemplate(aiAnalysisFollowupFull),
+	[PromptId.AiAnalysisFollowupSystem]: createTemplate(aiAnalysisFollowupSystem),
 	[PromptId.AiAnalysisTitle]: createTemplate(aiAnalysisTitle),
 
 	[PromptId.AiAnalysisSummarySystem]: createTemplate(aiAnalysisSummarySystem),
@@ -408,6 +425,7 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptInfo> = {
 		...createTemplate(aiAnalysisSummary),
 		systemPromptId: PromptId.AiAnalysisSummarySystem,
 	},
+	[PromptId.AiAnalysisDiagnosisJson]: createTemplate(aiAnalysisDiagnosisJson),
 
 	[PromptId.AiAnalysisOverviewMermaidSystem]: createTemplate(aiAnalysisOverviewMermaidSystem),
 	[PromptId.AiAnalysisOverviewMermaid]: {

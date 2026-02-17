@@ -2,16 +2,25 @@ import { z } from "zod/v3";
 
 import { SearchAgentResult } from "../AISearchAgent";
 import { normalizeFilePath } from "@/core/utils/file-utils";
-import { createUpdateResultTool, NO_MEANINGFUL_CONTENT_MESSAGE, DEFAULT_PLACEHOLDER, safeText, norm, normPath, commonValidatePath } from "@/service/tools/field-update-tool-array";
+import { createUpdateResultTool, getUpdateResultFormatGuidance, NO_MEANINGFUL_CONTENT_MESSAGE, DEFAULT_PLACEHOLDER, safeText, norm, normPath, commonValidatePath } from "@/service/tools/field-update-tool-array";
 import { normalizeMermaidForDisplay } from "@/core/utils/mermaid-utils";
 import { safeAgentTool } from "@/service/tools/types";
+
+/** Normalizes tool arg: LLM may send { input: string } instead of a plain string. */
+const overviewMermaidInputSchema = z.preprocess(
+    (val) =>
+        typeof val === 'object' && val !== null && 'input' in val && typeof (val as { input: unknown }).input === 'string'
+            ? (val as { input: string }).input
+            : val,
+    z.string().describe('Raw Mermaid diagram code (e.g. flowchart TD\\n  A[label] --> B[label])'),
+);
 
 export function overviewMermaidUpdateTool(
     getResult: () => SearchAgentResult,
 ) {
     return safeAgentTool({
         description: 'Set the overview Mermaid diagram. Call with valid Mermaid code.',
-        inputSchema: z.string().describe('Raw Mermaid diagram code (e.g. flowchart TD\\n  A[label] --> B[label])'),
+        inputSchema: overviewMermaidInputSchema,
         execute: async (input) => {
             const agentResult = getResult();
             // todo maybe we should remove normalized to make code more simple
@@ -20,31 +29,82 @@ export function overviewMermaidUpdateTool(
     });
 }
 
+/** Format guidance for topics prompt; derived from same schema as tool (single source of truth). */
+export function getTopicToolFormatGuidance(): string {
+    return getUpdateResultFormatGuidance({
+        fieldName: 'topics',
+        itemExample: '{ "label": "Topic Label", "weight": 0.8, "suggestQuestions": ["Q1?", "Q2?", "Q3?"] }',
+    });
+}
+
+/** Format guidance for update_sources prompt. */
+export function getSourcesToolFormatGuidance(): string {
+    return getUpdateResultFormatGuidance({
+        fieldName: 'sources',
+        itemExample: '{ "path": "path/to/file.md", "title": "Title", "reasoning": "Why relevant.", "badges": ["relevant"], "score": { "physical": 85, "semantic": 90, "average": 87 } }',
+    });
+}
+
+/** Format guidance for update_graph_nodes / update_graph_edges prompt (both tools in one block). */
+export function getGraphToolFormatGuidance(): string {
+    const nodes = getUpdateResultFormatGuidance({
+        fieldName: 'graph.nodes',
+        itemExample: '{ "type": "file", "label": "Node Label", "path": "path/to.md" }',
+    });
+    const edges = getUpdateResultFormatGuidance({
+        fieldName: 'graph.edges',
+        itemExample: '{ "source": "nodeId1", "target": "nodeId2", "type": "link", "label": "" }',
+    });
+    return `update_graph_nodes: ${nodes} update_graph_edges: ${edges}`;
+}
+
+/** Format guidance for add_dashboard_blocks prompt. */
+export function getDashboardBlocksToolFormatGuidance(): string {
+    return getUpdateResultFormatGuidance({
+        fieldName: 'dashboardBlocks',
+        itemExample: '{ "renderEngine": "MERMAID", "mermaidCode": "flowchart LR\\n  A[Start] --> B[Step] --> C[End]", "title": "Process", "weight": 6 }',
+    });
+}
+
 export function topicUpdateTool(
     getResult: () => SearchAgentResult,
 ) {
     return createUpdateResultTool({
         fieldName: 'topics',
-        itemSchema: z
-            .object({
-                label: z.string().default(DEFAULT_PLACEHOLDER),
-                weight: z.number().min(0).max(1).optional().describe('How important this topic is. eg: 0.5, 0.75, 1.0'),
-                suggestQuestions: z.array(z.string()).optional().describe(
-                    'Suggested questions to ask about this topic. '
-                    + 'Please provide at least 3 questions. at most 5 questions. Each question should be a single sentence no more than 10 words.'
-                    + 'eg: "What is the main idea of the topic?"'
-                ),
-            })
+        itemSchema: z.preprocess((raw: any) => {
+            if (!raw || typeof raw !== 'object') return raw;
+
+            const label = raw.label ?? raw.name ?? raw.title;
+
+            return {
+                ...raw,
+                label: label ? String(label).trim() : undefined,
+            };
+        }, z.object({
+            label: z.string().default(DEFAULT_PLACEHOLDER),
+            weight: z.number().min(0).max(1).optional().describe('How important this topic is. eg: 0.5, 0.75, 1.0'),
+            suggestQuestions: z.array(z.string()).optional().describe(
+                'Suggested questions to ask about this topic. '
+                + 'Please provide at least 3 questions. at most 5 questions. Each question should be a single sentence no more than 10 words.'
+                + 'eg: "What is the main idea of the topic?"'
+            ),
+        })
             .superRefine((data, ctx) => {
                 if ((!data.label || data.label === DEFAULT_PLACEHOLDER) && (data.weight === undefined)) {
                     ctx.addIssue({ code: z.ZodIssueCode.custom, message: NO_MEANINGFUL_CONTENT_MESSAGE });
                 }
-            }),
+            })
+        ),
         getCurrentResult: getResult,
         identityKeyBuilder: (item) => {
             const label = safeText(item.label);
             return label ? `label:${norm(label)}` : null;
         },
+        toolDescription: 'Update dashboard topics. Call with a single argument: { "operations": [ ... ] }. '
+            + 'operations MUST be an array of objects (never strings). '
+            + 'Each object: either { "operation": "add", "targetField": "topics", "item": { "label": "Topic Name", "weight": 0.8, "suggestQuestions": ["Q1?", "Q2?"] } } '
+            + 'or { "operation": "remove", "targetField": "topics", "removeId": "label:normalized-topic-label" }. '
+            + 'Do NOT pass string elements (no JSON strings, no "upsert:...", no "UpsertTopic(...)", no "add(...)").',
     });
 }
 
@@ -52,6 +112,24 @@ export const DEFAULT_NODE_TYPE = 'cosmo';
 const FILE_NODE_TYPE = new Set(['file', 'document', 'doc']);
 const OTHER_NODE_TYPE = new Set([DEFAULT_NODE_TYPE, 'concept', 'tag', 'topic']);
 const RECOMMENDED_TYPES = new Set([...Array.from(OTHER_NODE_TYPE), ...Array.from(FILE_NODE_TYPE)]);
+
+/** Humanize label: strip node_ prefix, replace underscores/hyphens with spaces, trim. */
+function humanizeNodeLabel(raw: string): string {
+    if (!raw || typeof raw !== 'string') return raw;
+    let s = raw.trim();
+    if (!s) return s;
+    if (s.toLowerCase().startsWith('node_')) s = s.slice(5).trim();
+    s = s.replace(/[_\u2013\u2014-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    return s || raw;
+}
+
+/** True if path looks like a vault file path (has slash or .md). */
+function looksLikeFilePath(path: string): boolean {
+    if (!path || typeof path !== 'string') return false;
+    const p = path.trim();
+    return p.includes('/') || /\.(md|markdown)$/i.test(p);
+}
+
 export function graphNodesUpdateTool(
     getResult: () => SearchAgentResult,
     getVerifiedPaths: () => Set<string>,
@@ -91,6 +169,10 @@ export function graphNodesUpdateTool(
         )
             .transform((data) => {
                 const d = data as any;
+                // If path is present and looks like a file path, treat as file node so it renders as openable (circle).
+                if (d.path && !isPlaceholder(String(d.path)) && looksLikeFilePath(d.path)) {
+                    d.type = 'file';
+                }
                 if (FILE_NODE_TYPE.has(d.type)) {
                     if (!d.path || isPlaceholder(String(d.path ?? ''))) {
                         const derivedPath = (() => {
@@ -121,6 +203,10 @@ export function graphNodesUpdateTool(
                     const basename = normalizedPath.split('/').filter(Boolean).pop() ?? normalizedPath;
                     const displayName = basename.replace(/\.(md|markdown)$/i, '') || basename;
                     d.label = displayName;
+                }
+                // Humanize label: snake_case / node_xxx -> readable (for display).
+                if (d.label && d.label !== DEFAULT_PLACEHOLDER && d.label !== 'Untitled') {
+                    d.label = humanizeNodeLabel(d.label);
                 }
 
                 const findFileNodeType = Array.from(FILE_NODE_TYPE).find(type => d.id && d.id.startsWith(type + ':'));
@@ -318,20 +404,22 @@ export function sourcesUpdateTool(
     });
 }
 
-export function dashboardBlocksUpdateTool(
-    getResult: () => SearchAgentResult,
-) {
-    const MarkdownSchema = z.object({
+/**
+ * Dashboard block schemas. To add a new block type (e.g. TODO_LIST, SUGGEST_QUESTIONS):
+ * 1. Add literal to DashboardRenderEngine in AISearchAgent.ts
+ * 2. Add schema here and include it in BlockContentSchema below
+ * 3. Add render case in DashboardBlocksSection.tsx BlockContent
+ */
+const DASHBOARD_BLOCK_CONTENT_SCHEMAS = {
+    MARKDOWN: z.object({
         renderEngine: z.literal('MARKDOWN'),
         markdown: z.string().min(1, "Markdown content is required for MARKDOWN engine"),
-    });
-
-    const MermaidSchema = z.object({
+    }),
+    MERMAID: z.object({
         renderEngine: z.literal('MERMAID'),
         mermaidCode: z.string().min(1, "Mermaid code is required for MERMAID engine"),
-    });
-
-    const TileSchema = z.object({
+    }),
+    TILE: z.object({
         renderEngine: z.literal('TILE'),
         items: z.array(z.object({
             id: z.string().default(() => `item:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
@@ -342,39 +430,37 @@ export function dashboardBlocksUpdateTool(
         }))
             .min(1, "Items are required for TILE engine")
             .describe('Items of the block. It will be displayed in the UI. eg: "item1", "item2", etc.'),
-    });
-
-    const ActionGroupSchema = z.object({
+    }),
+    ACTION_GROUP: z.object({
         renderEngine: z.literal('ACTION_GROUP'),
         items: z.array(z.any()),
-    });
+    }),
+} as const;
 
-    const BlockContentSchema = z.discriminatedUnion("renderEngine", [
-        MarkdownSchema,
-        MermaidSchema,
-        TileSchema,
-        ActionGroupSchema
-    ]);
+const BlockContentSchema = z.discriminatedUnion("renderEngine", [
+    DASHBOARD_BLOCK_CONTENT_SCHEMAS.MARKDOWN,
+    DASHBOARD_BLOCK_CONTENT_SCHEMAS.MERMAID,
+    DASHBOARD_BLOCK_CONTENT_SCHEMAS.TILE,
+    DASHBOARD_BLOCK_CONTENT_SCHEMAS.ACTION_GROUP,
+]);
+
+export function dashboardBlocksUpdateTool(
+    getResult: () => SearchAgentResult,
+) {
     return createUpdateResultTool({
         fieldName: 'dashboardBlocks',
         itemSchema: z.preprocess(
             (raw: any) => {
                 if (!raw || typeof raw !== 'object') return raw;
-
-                const title = raw.title ?? raw.category;
+                const title = raw.title != null ? String(raw.title).trim() : undefined;
                 const engine = String(raw.renderEngine ?? 'MARKDOWN').toUpperCase();
-
-                return {
-                    ...raw,
-                    title: title ? String(title).trim() : undefined,
-                    renderEngine: engine,
-                };
+                return { ...raw, title: title || undefined, renderEngine: engine };
             },
             z.intersection(
                 z.object({
                     id: z.string().default(() => `block:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
                     title: z.string().optional().describe('The title of the block. It will be displayed.'),
-                    weight: z.number().min(0).max(10).optional().describe('Used for grid layout. 0-10; drives grid layout: 1-3 small, 4-6 medium, 7-10 full-width.'),
+                    weight: z.number().min(0).max(10).optional().describe('Used for grid layout. 0-10; 1-3 small, 4-6 medium, 7-10 full-width.'),
                 }),
                 BlockContentSchema
             )
@@ -383,10 +469,9 @@ export function dashboardBlocksUpdateTool(
         identityKeyBuilder: (item) => {
             const id = safeText(item.id);
             if (id && !id.startsWith('block:')) return `id:${id}`;
-            const title = safeText(item.title ?? item.category);
-            const slot = safeText(item.slot);
+            const title = safeText(item.title);
             const engine = safeText(item.renderEngine);
-            const composite = `${title}\n${slot}\n${engine}`.trim();
+            const composite = `${title}\n${engine}`.trim();
             return composite ? `text:${norm(composite)}` : null;
         },
     });

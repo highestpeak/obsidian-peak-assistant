@@ -13,6 +13,8 @@ export interface TopicMenuPopoverProps {
 	open: boolean;
 	anchorRect: { left: number; top: number; width: number; height: number } | null;
 	topicLabel: string;
+	/** AI-generated suggested questions for this topic. When provided, used instead of default suggestions. */
+	suggestQuestions?: string[];
 	summary: string;
 	sources: AISearchSource[];
 	isInspectLoading: boolean;
@@ -27,7 +29,8 @@ export interface TopicMenuPopoverProps {
 	hasGraph: boolean;
 }
 
-const SUGGESTED_QUESTIONS = (topic: string) => [
+/** Default suggestions when topic has no suggestQuestions from agent. */
+const DEFAULT_SUGGESTED_QUESTIONS = (topic: string) => [
 	`In this analysis, what are the conclusions about ${topic}?`,
 	`How does ${topic} appear in my vault? (Which notes and in what way?)`,
 	`Expand on ${topic} in more detail.`,
@@ -36,12 +39,15 @@ const SUGGESTED_QUESTIONS = (topic: string) => [
 /**
  * Floating menu for a topic: actions only; content is shown below Key Topics.
  */
+const TRUNCATE_LEN = 42;
+
 export const TopicMenuPopover: React.FC<TopicMenuPopoverProps> = ({
 	open,
 	anchorRect,
 	onMouseEnter,
 	onMouseLeave,
 	topicLabel,
+	suggestQuestions,
 	onCopyTopicInfo,
 	isInspectLoading,
 	onInspectTopic,
@@ -55,6 +61,10 @@ export const TopicMenuPopover: React.FC<TopicMenuPopoverProps> = ({
 	const { setTopicModalOpen } = useAIAnalysisStore();
 
 	const { handleStartAnalyze } = useAnalyzeTopic();
+
+	const analyzeQuestions = (suggestQuestions?.length ?? 0) > 0
+		? suggestQuestions!
+		: DEFAULT_SUGGESTED_QUESTIONS(topicLabel);
 
 	const handleAnalyze = useCallback((question: string) => {
 		if (!question.trim()) return;
@@ -103,16 +113,17 @@ export const TopicMenuPopover: React.FC<TopicMenuPopoverProps> = ({
 				</Button>
 
 				<div className="pktw-px-2.5 pktw-py-0.5 pktw-text-[11px] pktw-text-[#9ca3af]">Analyze</div>
-				{SUGGESTED_QUESTIONS(topicLabel).map((q, i) => (
+				{analyzeQuestions.map((q, i) => (
 					<Button
 						variant="ghost"
 						key={i}
 						style={{ cursor: 'pointer' }}
 						className={MENU_ITEM_CLASS}
 						onClick={() => handleAnalyze(q)}
+						title={q}
 					>
-						<MessageSquare className="pktw-w-3.5 pktw-h-3.5" />
-						{q.slice(0, 36)}…
+						<MessageSquare className="pktw-w-3.5 pktw-h-3.5 pktw-flex-shrink-0" />
+						<span className="pktw-truncate">{q.length > TRUNCATE_LEN ? `${q.slice(0, TRUNCATE_LEN)}…` : q}</span>
 					</Button>
 				))}
 				<Button

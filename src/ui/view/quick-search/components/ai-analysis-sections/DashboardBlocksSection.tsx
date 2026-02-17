@@ -22,13 +22,13 @@ const SCORE_PER_ITEM = 0.9;
 const MIN_WIDTH_PER_SCORE = 135;
 const MIN_WIDTH_DEFAULT = '280px';
 
-/** Derive effective weight from block (weight or slot). Used for grid layout. */
+/** Default weight when block has none. Used for grid layout. */
+const DEFAULT_BLOCK_WEIGHT = 6;
+
+/** Effective weight for grid layout (1-3 small, 4-6 medium, 7-10 full-width). */
 function getEffectiveWeight(block: DashboardBlock): number {
 	if (block.weight != null) return block.weight;
-	const slot = (block.slot || 'MAIN').toUpperCase();
-	if (slot === 'SIDEBAR') return 3;
-	if (slot === 'FLOW') return 5;
-	return 6;
+	return DEFAULT_BLOCK_WEIGHT;
 }
 
 /** Content score from block: more content => higher. Used for proportional width. */
@@ -63,7 +63,7 @@ function getBlockFlexStyle(
 	return { flexGrow, flexBasis: '0', minWidth };
 }
 
-/** Strip markdown syntax from block title/category for display. */
+/** Strip markdown syntax from block title for display. */
 function stripMarkdownFromTitle(raw: string): string {
 	if (!raw || typeof raw !== 'string') return raw;
 	return raw
@@ -95,7 +95,7 @@ function dedupeBlockItems(items: DashboardBlockItem[]): DashboardBlockItem[] {
 	});
 }
 
-/** Renders a single dashboard block by renderEngine. */
+/** Renders a single dashboard block by renderEngine. To add a new type: 1) add schema in DashboardUpdateToolBuilder, 2) add case here. */
 const BlockContent: React.FC<{
 	block: DashboardBlock;
 	isStreaming?: boolean;
@@ -103,9 +103,9 @@ const BlockContent: React.FC<{
 	followupSlot?: React.ReactNode | null;
 	anchorItemId?: string | null;
 }> = ({ block, isStreaming = false, onOpenChatForItem, followupSlot, anchorItemId }) => {
-	const { renderEngine, items: rawItems, markdown, mermaidCode, title, category } = block;
+	const { renderEngine, items: rawItems, markdown, mermaidCode, title } = block;
 	const items = rawItems?.length ? dedupeBlockItems(rawItems) : rawItems;
-	const label = title || category || 'Block';
+	const label = title || 'Block';
 	const hasItemChat = !!onOpenChatForItem;
 	const showSlotAfterItem = (itemId: string) => !!followupSlot && anchorItemId === itemId;
 
@@ -271,7 +271,7 @@ export const DashboardBlocksSection: React.FC<{
 	const showSlotAfterItem = followupOpen && !!anchor?.itemId;
 
 	const renderBlock = (block: DashboardBlock, index: number) => {
-		const rawLabel = block.title || block.category || 'Block';
+		const rawLabel = block.title || 'Block';
 		const label = stripMarkdownFromTitle(rawLabel) || 'Block';
 		const isAnchorBlock = anchor?.blockId === block.id;
 		const weight = getEffectiveWeight(block);
@@ -282,7 +282,7 @@ export const DashboardBlocksSection: React.FC<{
 		const showCopy = copyText.length > 0;
 		return (
 			<motion.div
-				key={block.id}
+				key={`${block.id}-${index}`}
 				layout
 				initial={{ opacity: 0, y: 16 }}
 				animate={{ opacity: 1, y: 0 }}

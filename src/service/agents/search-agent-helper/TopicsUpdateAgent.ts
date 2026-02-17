@@ -3,7 +3,7 @@ import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import { ErrorRetryInfo, PromptId } from '@/service/prompt/PromptId';
 import { DashboardUpdateContext, InnerAgentContext } from '../AISearchAgent';
-import { topicUpdateTool } from './DashboardUpdateToolBuilder';
+import { topicUpdateTool, getTopicToolFormatGuidance } from './DashboardUpdateToolBuilder';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import type { AgentTool } from '@/service/tools/types';
 import { RESULT_UPDATE_TOOL_NAMES } from '../AISearchAgent';
@@ -71,6 +71,7 @@ export class TopicsUpdateAgent {
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDashboardUpdateTopics, {
             ...variables,
             ...(errorRetryInfo ? { errorRetryInfo } : {}),
+            toolFormatGuidance: getTopicToolFormatGuidance(),
         });
 
         const result = this.agent.stream({

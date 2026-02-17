@@ -3,21 +3,23 @@ import { create } from 'zustand';
 type TabType = 'vault' | 'ai';
 
 interface SharedStore {
-	// State
 	activeTab: TabType;
+	/** Vault Search tab input; not shared with AI until user clicks Ask AI */
+	vaultSearchQuery: string;
+	/** AI Analysis tab input; also set from vault query when Ask AI is clicked */
 	searchQuery: string;
 
-	// Actions
 	setActiveTab: (tab: TabType) => void;
+	setVaultSearchQuery: (query: string) => void;
 	setSearchQuery: (query: string) => void;
 }
 
 export const useSharedStore = create<SharedStore>((set) => ({
-	// Initial state
 	activeTab: 'vault',
+	vaultSearchQuery: '',
 	searchQuery: '',
 
-	// Actions
 	setActiveTab: (tab: TabType) => set({ activeTab: tab }),
+	setVaultSearchQuery: (query: string) => set({ vaultSearchQuery: query }),
 	setSearchQuery: (query: string) => set({ searchQuery: query }),
 }));

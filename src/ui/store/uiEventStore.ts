@@ -129,5 +129,5 @@ export const useSubscribeUIEvent = (
 		});
 
 		return () => unsub();
-	});
+	}, [eventType, callback]);
 };

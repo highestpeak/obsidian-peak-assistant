@@ -1,12 +1,17 @@
-import { useCallback } from 'react';
+/**
+ * All post-completion AI requests for search (regenerate overview, save dialog fields,
+ * topic analyze, inline follow-ups) should go through this module for consistent context and maintainability.
+ */
+import { useCallback, useRef, useState } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { PromptId } from '@/service/prompt/PromptId';
 import { useAIAnalysisStore } from '../store/aiAnalysisStore';
 import { useSharedStore } from '../store/sharedStore';
+import { getLastAnalysisHistorySearch, searchCurrentResult } from '../followupContextRuntime';
 import { AppContext } from '@/app/context/AppContext';
 import type { UIPreviewGraph } from '@/ui/component/mine/graph-viz/types';
 import type { DashboardBlock, DashboardBlockItem } from '@/service/agents/AISearchAgent';
-import { RawSearchAgent } from '@/service/agents/search-agent-helper/RawSearchAgent';
+import { FollowupChatAgent } from '@/service/agents/search-agent-helper/FollowupChatAgent';
 import type { LLMStreamEvent } from '@/core/providers/types';
 
 /** Sanitize AI-generated filename: remove invalid filesystem chars. */
@@ -44,15 +49,14 @@ function getParentFolder(path: string): string {
 const CANDIDATE_FOLDERS_MAX = 12;
 
 /**
- * Stream follow-up response via RawSearchAgent so search tools and analysis summary are used.
- * Falls back to chatWithPromptStream when RawSearchAgent is unavailable (e.g. mock env).
+ * Stream follow-up response via FollowupChatAgent (search_chat_history + search_current_result + vault tools).
+ * Falls back to chatWithPromptStream when agent is unavailable (e.g. mock env).
  */
 export async function* streamSearchFollowup(
     manager: { renderPrompt: (id: PromptId, vars: any) => Promise<string>; chatWithPromptStream: (id: PromptId, vars: any) => AsyncGenerator<LLMStreamEvent> },
     promptId: PromptId,
     variables: Record<string, unknown>
 ): AsyncGenerator<LLMStreamEvent> {
-    let rawAgent: RawSearchAgent | null = null;
     try {
         const plugin = AppContext.getInstance().plugin;
         const searchModel = plugin?.settings?.search?.aiAnalysisModel?.searchAgentModel;
@@ -60,30 +64,51 @@ export async function* streamSearchFollowup(
             yield* manager.chatWithPromptStream(promptId, variables);
             return;
         }
-        rawAgent = new RawSearchAgent(manager as any, {
-            enableLocalSearch: true,
-            searchAgentProvider: searchModel.provider,
-            searchAgentModel: searchModel.modelId,
-        });
+        const historySearchFn = getLastAnalysisHistorySearch();
+        const agent = new FollowupChatAgent(
+            manager as any,
+            {
+                searchAgentProvider: searchModel.provider,
+                searchAgentModel: searchModel.modelId,
+                enableLocalSearch: true,
+            },
+            historySearchFn,
+            searchCurrentResult
+        );
+        for await (const evt of agent.streamFollowup(promptId, variables)) {
+            yield evt;
+        }
     } catch {
         yield* manager.chatWithPromptStream(promptId, variables);
         return;
     }
-    const prompt = await manager.renderPrompt(promptId, variables);
-    const stream = await rawAgent.streamSearch(prompt);
+}
+
+/** Handlers for consuming followup stream (same agent events everywhere). */
+export type ConsumeFollowupStreamHandlers = {
+    onDelta?: (acc: string) => void;
+};
+
+/**
+ * Consume a followup stream (from streamSearchFollowup / FollowupChatAgent) and return final answer.
+ * Use this so all followup entry points share the same event loop and capability.
+ */
+export async function consumeFollowupStream(
+    stream: AsyncGenerator<LLMStreamEvent>,
+    handlers?: ConsumeFollowupStreamHandlers
+): Promise<string> {
     let acc = '';
-    for await (const evt of stream) {
-        if (evt.type === 'text-delta' && typeof (evt as any).text === 'string') {
-            acc += (evt as any).text;
-            yield { type: 'prompt-stream-delta', id: 'search-followup', promptId, delta: (evt as any).text } as any;
-        } else if (evt.type === 'complete' && (evt as any).result) {
-            const result = (evt as any).result;
-            const final = (result.summary || result.text || acc || '').trim();
-            yield { type: 'prompt-stream-result', id: 'search-followup', promptId, output: final } as any;
-        } else if (evt.type === 'error') {
-            yield { type: 'error', error: (evt as any).error } as any;
+    for await (const event of stream) {
+        if (event.type === 'prompt-stream-delta' && typeof (event as any).delta === 'string') {
+            acc += (event as any).delta;
+            handlers?.onDelta?.(acc);
+        } else if (event.type === 'prompt-stream-result' && (event as any).output != null) {
+            acc = typeof (event as any).output === 'string' ? (event as any).output : acc;
+        } else if (event.type === 'error') {
+            throw (event as any).error;
         }
     }
+    return acc;
 }
 
 /**
@@ -198,34 +223,31 @@ export function useGenerateResultSaveField() {
 }
 
 export function useAnalyzeTopic() {
-
-    const { sources, summaryChunks, setTopicAnalyzeStreaming, setTopicModalOpen } = useAIAnalysisStore();
-    const { searchQuery } = useSharedStore();
-
+    const { summaryChunks, setTopicAnalyzeStreaming, setTopicAnalyzeStreamingAppend, setTopicModalOpen } = useAIAnalysisStore();
     const summary = summaryChunks.join('');
-
     const { manager } = useServiceContext();
+    const topicConfig = useTopicFollowupChatConfig({ summary, topicLabel: null });
+
+    const lastLengthRef = useRef(0);
 
     const handleStartAnalyze = useCallback(async (topic: string, question: string) => {
         setTopicModalOpen(topic);
-        setTopicAnalyzeStreaming({ topic, question, answerSoFar: '' });
-        const variables = { question, summary, originalQuery: searchQuery ?? '' };
-        const stream = streamSearchFollowup(manager, PromptId.AiAnalysisFollowupFull, variables);
+        setTopicAnalyzeStreaming({ topic, question, chunks: [] });
+        lastLengthRef.current = 0;
+
+        const onDelta = (answerSoFar: string) => {
+            const chunk = answerSoFar.length > lastLengthRef.current ? answerSoFar.slice(lastLengthRef.current) : '';
+            lastLengthRef.current = answerSoFar.length;
+            if (chunk) useAIAnalysisStore.getState().setTopicAnalyzeStreamingAppend(chunk);
+        };
+
+        const variables = topicConfig.getVariables(question);
+        const stream = streamSearchFollowup(manager, topicConfig.promptId, variables);
         try {
-            let acc = '';
-            for await (const event of stream) {
-                if (event.type === 'prompt-stream-delta' && typeof (event as any).delta === 'string') {
-                    acc += (event as any).delta;
-                    setTopicAnalyzeStreaming({ topic, question, answerSoFar: acc });
-                } else if (event.type === 'prompt-stream-result' && (event as any).output != null) {
-                    acc = typeof (event as any).output === 'string' ? (event as any).output : acc;
-                } else if (event.type === 'error') {
-                    throw (event as any).error;
-                }
-            }
+            const acc = await consumeFollowupStream(stream, { onDelta });
             useAIAnalysisStore.getState().setTopicAnalyzeResult(topic, question, acc);
         } catch (e) {
-            console.warn('[TagCloudSection] Analyze failed:', e);
+            console.warn('[useAnalyzeTopic] Analyze failed:', e);
             useAIAnalysisStore.getState().setTopicAnalyzeResult(
                 topic,
                 question,
@@ -234,12 +256,65 @@ export function useAnalyzeTopic() {
         } finally {
             useAIAnalysisStore.getState().setTopicAnalyzeStreaming(null);
         }
-    }, [summary, sources, manager, searchQuery, setTopicAnalyzeStreaming, setTopicModalOpen]);
+    }, [summary, manager, topicConfig, setTopicAnalyzeStreaming, setTopicAnalyzeStreamingAppend, setTopicModalOpen]);
 
-    return {
-        handleStartAnalyze,
-    };
+    return { handleStartAnalyze };
+}
 
+/**
+ * Regenerate overview Mermaid from current analysis context. Uses store only; does not use FollowupChatAgent.
+ */
+export function useRegenerateOverviewMermaid() {
+    const { manager } = useServiceContext();
+    const { searchQuery } = useSharedStore();
+    const currentSummary = useAIAnalysisStore((s) => {
+        if (s.isSummaryStreaming || (s.isAnalyzing && s.summaryChunks.length > 0)) return s.summaryChunks.join('');
+        const list = s.summaries;
+        const idx = (s.summaryVersion ?? 1) - 1;
+        return list[idx] ?? list[0] ?? '';
+    });
+    const topics = useAIAnalysisStore((s) => s.topics ?? []);
+    const graph = useAIAnalysisStore((s) => s.graph);
+    const sources = useAIAnalysisStore((s) => s.sources ?? []);
+    const dashboardBlocks = useAIAnalysisStore((s) => s.dashboardBlocks ?? []);
+    const pushOverviewMermaidVersion = useAIAnalysisStore((s) => s.pushOverviewMermaidVersion);
+    const analysisMode = useAIAnalysisStore((s) => s.runAnalysisMode ?? 'full');
+
+    const [isRegenerating, setIsRegenerating] = useState(false);
+
+    const regenerateOverview = useCallback(async () => {
+        setIsRegenerating(true);
+        try {
+            const topicsText = topics.map((t: { label?: string }) => t.label).join(', ');
+            const graphSummary =
+                graph?.nodes?.length || graph?.edges?.length
+                    ? `Nodes: ${graph?.nodes?.length ?? 0}, Edges: ${graph?.edges?.length ?? 0}. Sample: ${(graph?.nodes ?? []).slice(0, 8).map((n: { title?: string }) => n.title).join(', ')}`
+                    : '';
+            const sourcesSummary = sources.slice(0, 6).map((s: { title?: string; path?: string }) => s.title || s.path).join(', ') || '';
+            const blocksSummary = dashboardBlocks.slice(0, 5).map((b: { title?: string; id: string }) => b.title || b.id).join(', ') || '';
+            const currentResultSnapshot = [
+                `Summary: ${currentSummary || '(none)'}`,
+                `Topics: ${topicsText || '(none)'}`,
+                `Graph: ${graphSummary || '(none)'}`,
+                `Sources: ${sourcesSummary || '(none)'}`,
+                `Blocks: ${blocksSummary || '(none)'}`,
+            ].join('\n');
+            const variables = {
+                originalQuery: searchQuery ?? '',
+                analysisMode,
+                currentResultSnapshot,
+            };
+            const stream = manager.chatWithPromptStream(PromptId.AiAnalysisOverviewMermaid, variables as any);
+            const raw = (await consumeFollowupStream(stream)).trim();
+            const { normalizeMermaidForDisplay } = await import('@/core/utils/mermaid-utils');
+            const code = normalizeMermaidForDisplay(raw);
+            if (code) pushOverviewMermaidVersion(code, { makeActive: true });
+        } finally {
+            setIsRegenerating(false);
+        }
+    }, [manager, searchQuery, currentSummary, topics, graph, sources, dashboardBlocks, analysisMode, pushOverviewMermaidVersion]);
+
+    return { regenerateOverview, isRegenerating };
 }
 
 /** Config for InlineFollowupChat: promptId + getVariables + optional initialQuestion; title/placeholder required for InlineFollowupChat. */
@@ -348,7 +423,7 @@ export function useBlocksFollowupChatConfig(params: {
     const getVariables = useCallback((question: string) => ({
         question,
         blocksText: (dashboardBlocks ?? []).map((b) => {
-            const label = b.title || b.category || 'Block';
+            const label = b.title || 'Block';
             const itemsPreview = b.items?.slice(0, 5).map((i) => i.title).join(', ') || '';
             const md = (b.markdown || b.mermaidCode || '').slice(0, 200);
             return `- ${label}${itemsPreview ? ` (${itemsPreview})` : ''}${md ? `: ${md}` : ''}`;
@@ -359,7 +434,7 @@ export function useBlocksFollowupChatConfig(params: {
     const initialQuestion = blocksChatItemContext
         ? `Discuss: "${blocksChatItemContext.item.title}". ${blocksChatItemContext.item.description ?? ''}`.trim()
         : blocksChatContext
-            ? `Discuss this: "${blocksChatContext.title || blocksChatContext.category || 'Block'}".`
+            ? `Discuss this: "${blocksChatContext.title || 'Block'}".`
             : undefined;
     return {
         promptId,

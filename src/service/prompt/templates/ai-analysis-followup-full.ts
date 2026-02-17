@@ -11,6 +11,6 @@ Current analysis summary: {{summary}}
 ## User question
 {{question}}
 
-Return markdown. Be concise and grounded in the analysis.`;
+Return markdown. Be concise and grounded in the analysis. Use bullet points or short headings when helpful. Prefer citing specific findings from the analysis before adding suggestions.`;
 
 export const expectsJson = false;

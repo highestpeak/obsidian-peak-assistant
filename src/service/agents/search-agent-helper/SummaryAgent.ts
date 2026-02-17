@@ -50,32 +50,62 @@ export class SummaryAgent {
             submit_final_answer: submitFinalAnswerTool(),
         };
 
+        const outputControl = this.aiServiceManager.getSettings?.()?.defaultOutputControl;
+        const temperature = outputControl?.temperature ?? 0.6;
+        const maxOutputTokens = outputControl?.maxOutputTokens ?? 4096;
+
         this.agent = new Agent<SummaryToolSet>({
             model: this.aiServiceManager.getMultiChat()
                 .getProviderService(this.options.provider)
                 .modelClient(this.options.model),
             tools,
+            temperature,
+            maxOutputTokens,
         });
     }
 
     /**
      * Stream summary generation.
-     *
-     * Uses chatWithPromptStream so that UI can receive prompt-stream-delta / prompt-stream-result
-     * events (real streaming summary), while still updating SearchAgentResult.summary at the end.
+     * In full mode: runs Step-A (diagnosis JSON) then Step-B (markdown synthesis). In simple mode: Step-B only.
      */
     public async *stream(variables: DashboardUpdateContext): AsyncGenerator<LLMStreamEvent> {
+        let diagnosisJson: string | undefined;
+        const analysisMode = variables.analysisMode ?? 'full';
+        const snapshotForDiagnosis = variables.currentResultSnapshotForSummary ?? variables.currentResultSnapshot;
+
+        if (analysisMode === 'full') {
+            try {
+                const diagnosisRaw = await this.aiServiceManager.chatWithPrompt(
+                    PromptId.AiAnalysisDiagnosisJson,
+                    {
+                        originalQuery: variables.originalQuery ?? '',
+                        recentEvidenceHint: variables.recentEvidenceHint ?? '',
+                        currentResultSnapshot: snapshotForDiagnosis,
+                    },
+                    this.options.provider,
+                    this.options.model,
+                );
+                const trimmed = (diagnosisRaw ?? '').trim();
+                if (trimmed.length > 0) {
+                    diagnosisJson = trimmed;
+                }
+            } catch {
+                diagnosisJson = undefined;
+            }
+        }
+
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisSummary);
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisSummary, {
             ...variables,
+            diagnosisJson,
         });
 
         const result = this.agent.stream({
             system: system,
             prompt,
         });
-        let summaryCollector: string[] = [];
+        const summaryCollector: string[] = [];
         yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_SUMMARY, {
             yieldEventPostProcessor: (chunk: any) => {
                 if (chunk.type === 'text-delta') {
@@ -83,7 +113,6 @@ export class SummaryAgent {
                 }
                 return chunk;
             },
-            
         });
         this.context.getResult().summary = summaryCollector.join('');
     }

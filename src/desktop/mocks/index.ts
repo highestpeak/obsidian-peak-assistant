@@ -6,3 +6,10 @@ export { MockViewManager } from './services/MockViewManager';
 export { MockSearchClient } from './services/MockSearchClient';
 export { MockPlugin } from './services/MockPlugin';
 
+// Inspector mock data (for Find path / Links in desktop env)
+export {
+	MOCK_INSPECTOR_CANDIDATE_PATHS,
+	MOCK_INSPECTOR_PATH_RESULT,
+	type MockInspectorLinkItem,
+} from './inspectorMockData';
+

@@ -19,6 +19,7 @@ export const template = `You are the "Master of Visual Logic." Your mission is t
 4. **SEMANTIC RESONANCE**: Titles and labels within the diagram must be "dense." Use professional, high-signal terminology that triggers immediate recognition of the analytical landscape.
 
 5. **THE AUTOBIOGRAPHICAL MOMENT**: The diagram is the final signature of the thinking process. It must unify the Topics, the Graph, and the Evidence into one coherent, undeniable conclusion.
+6. **OUTPUT LANGUAGE**: Use the **same language as the user's original query** for all labels and text inside the diagram.
 
 # EXECUTION
 Unveil the hidden architecture of this analysis now.`;

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Sparkles, SearchX } from 'lucide-react';
-import { Button } from '@/ui/component/shared-ui/button';
+import { SearchX } from 'lucide-react';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { SearchResultRow } from './components/VaultSearchResult';
 import { formatDuration } from '@/core/utils/format-utils';
@@ -9,8 +8,6 @@ import { useVaultSearchStore } from './store';
 import { useVaultSearch, useSearchQuery } from './hooks/useVaultSearch';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { useHasSearchQuery } from './hooks/useVaultSearch';
-import { useSharedStore } from './store/sharedStore';
-import { useAIAnalysisStore } from './store';
 
 /**
  * Empty state when no search results found
@@ -49,43 +46,36 @@ const NoRecentlyAccessedState: React.FC = () => (
 /**
  * Footer hints section for vault search tab
  */
+/** Footer hints: [[ Inspector, left icon = mode, then navigate/open/mode keys. */
 const VaultSearchFooterHints: React.FC = () => (
 	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-[#999999]">
 		<KeyboardShortcut keys="↑↓" description="navigate" />
 		<KeyboardShortcut keys="Enter" description="open" />
 		<KeyboardShortcut keys="#" description="in-file" />
 		<KeyboardShortcut keys=":" description="to line" />
-		{/* <KeyboardShortcut keys="@" description="folder" /> */}
+		<KeyboardShortcut keys="[[ " description="Inspector" />
 	</div>
 );
 
 interface VaultSearchTabProps {
 	onClose?: () => void;
+	/** When true, hide search results and show note-context hint. */
+	inspectorOpen?: boolean;
 }
 
 /**
  * Quick search tab for regular vault search results.
  */
-export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose }) => {
+export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, inspectorOpen }) => {
 	const { quickSearchMode, lastSearchDuration, isSearching, lastSearchResults: displayedResults } = useVaultSearchStore();
 	const hasSearchQuery = useHasSearchQuery();
 	const searchQuery = useSearchQuery();
 	const [selectedIndex, setSelectedIndex] = React.useState(-1);
 	const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
-	const { setActiveTab } = useSharedStore();
-	const { incrementTriggerAnalysis, setAnalysisCompleted } = useAIAnalysisStore();
 
 	// Use vault search hook for data fetching
 	useVaultSearch();
-
-	// Handle "Ask AI" button click
-	const vaultSearchResultToAskAI = () => {
-		setActiveTab('ai');
-		// Trigger AI analysis immediately after switching to AI tab
-		incrementTriggerAnalysis();
-		setAnalysisCompleted(false);
-	};
 
 	// Handle keyboard navigation
 	useEffect(() => {
@@ -153,41 +143,45 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose }) => {
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0 pktw-overflow-hidden">
-			{/* Results List */}
+			{/* Results List - hidden when Inspector is open so user sees note context only */}
 			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto" style={{ flexBasis: 0, minHeight: 0 }}>
-				<div className={cn(
-					'pktw-bottom-0 pktw-left-0 pktw-right-0 pktw-h-0.5 pktw-z-20',
-					isSearching ? 'line-progress-loader' : 'pktw-bg-transparent'
-				)} />
-				{/* Empty State - No Results */}
-				{hasSearchQuery && !isSearching && displayedResults.length === 0 ? (
-					<NoResultsState mode={quickSearchMode} />
-				) : !isSearching && displayedResults.length === 0 ? (
-					<NoRecentlyAccessedState />
+				{inspectorOpen ? (
+					<></>
 				) : (
-					// search results
 					<>
-						{/* Show hint text for recently accessed */}
-						{!hasSearchQuery && (
-							<div className="pktw-px-4 pktw-pb-2">
-								<span className="pktw-text-xs pktw-text-[#999999]">Recently accessed</span>
-							</div>
+						<div className={cn(
+							'pktw-bottom-0 pktw-left-0 pktw-right-0 pktw-h-0.5 pktw-z-20',
+							isSearching ? 'line-progress-loader' : 'pktw-bg-transparent'
+						)} />
+						{/* Empty State - No Results */}
+						{hasSearchQuery && !isSearching && displayedResults.length === 0 ? (
+							<NoResultsState mode={quickSearchMode} />
+						) : !isSearching && displayedResults.length === 0 ? (
+							<NoRecentlyAccessedState />
+						) : (
+							<>
+								{!hasSearchQuery && (
+									<div className="pktw-px-4 pktw-pb-2">
+										<span className="pktw-text-xs pktw-text-[#999999]">Recently accessed</span>
+									</div>
+								)}
+								{displayedResults.map((result, index) => (
+									<SearchResultRow
+										currentQuery={searchQuery.text}
+										key={result.id}
+										index={index}
+										result={result}
+										isSelected={index === selectedIndex}
+										onSelect={setSelectedIndex}
+										itemRef={(el) => {
+											itemRefs.current[index] = el;
+										}}
+										onClose={onClose}
+										newTab={quickSearchMode !== 'goToLine' && quickSearchMode !== 'inFile'}
+									/>
+								))}
+							</>
 						)}
-						{displayedResults.map((result, index) => (
-							<SearchResultRow
-								currentQuery={searchQuery.text}
-								key={result.id}
-								index={index}
-								result={result}
-								isSelected={index === selectedIndex}
-								onSelect={setSelectedIndex}
-								itemRef={(el) => {
-									itemRefs.current[index] = el;
-								}}
-								onClose={onClose}
-								newTab={quickSearchMode !== 'goToLine' && quickSearchMode !== 'inFile'}
-							/>
-						))}
 					</>
 				)}
 			</div>
@@ -197,31 +191,21 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose }) => {
 				<VaultSearchFooterHints />
 				<div className="pktw-flex pktw-items-center pktw-gap-3">
 					{hasSearchQuery && (
-						<>
-							{isSearching ? (
-								<span className="pktw-text-xs pktw-text-[#999999]">Searching...</span>
-							) : (
-								<>
+						isSearching ? (
+							<span className="pktw-text-xs pktw-text-[#999999]">Searching...</span>
+						) : (
+							<>
+								<span className="pktw-text-xs pktw-text-[#999999]">
+									{displayedResults.length} result{displayedResults.length !== 1 ? 's' : ''}
+								</span>
+								{lastSearchDuration !== null && (
 									<span className="pktw-text-xs pktw-text-[#999999]">
-										{displayedResults.length} result{displayedResults.length !== 1 ? 's' : ''}
+										• <strong className="pktw-text-[#2e3338]">{formatDuration(lastSearchDuration)}</strong>
 									</span>
-									{lastSearchDuration !== null && (
-										<span className="pktw-text-xs pktw-text-[#999999]">
-											• <strong className="pktw-text-[#2e3338]">{formatDuration(lastSearchDuration)}</strong>
-										</span>
-									)}
-								</>
-							)}
-						</>
+								)}
+							</>
+						)
 					)}
-					<Button
-						onClick={vaultSearchResultToAskAI}
-						size="sm"
-						className="pktw-px-3 pktw-py-1 pktw-text-xs pktw-bg-[#7c3aed] pktw-text-white hover:pktw-bg-[#6d28d9] !pktw-rounded-md"
-					>
-						<Sparkles className="pktw-w-3 pktw-h-3" />
-						Ask AI
-					</Button>
 				</div>
 			</div>
 		</div>

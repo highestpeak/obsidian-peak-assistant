@@ -387,14 +387,29 @@ type RawStreamEvent =
 	{ type: 'prompt-stream-delta'; id?: string; promptId: string; delta?: string; } |
 	{ type: 'prompt-stream-result'; id?: string; promptId: string; output?: any; usage?: LLMUsage } |
 	// for debug purpose.
-	{ type: 'pk-debug'; debugName: string; } | 
+	{ type: 'pk-debug'; debugName: string; } |
 	/**
-	 * for ui display. mainly notify the ui component to update the display. notify by useUIEventStore bus.
-	 * delta event for description update. map by stepId.
-	 * uiType: different ui components listen to different events.
+	 * UI stream events: two complementary tracks (do not conflict; both are needed).
+	 *
+	 * 1) ui-step / ui-step-delta — Timeline events (log / progress narration).
+	 *    - Drive the Steps list UI: persistent rows with progress, timestamps, nesting.
+	 *    - Semantics: "what I am doing" (user-facing, durable as conversation history).
+	 *
+	 * 2) ui-signal — Component control signals (action / command).
+	 *    - Drive specific UI components: Graph canvas, Dashboard, Toast, etc.
+	 *    - Semantics: "do this now" (ephemeral: animate, apply patch, change state).
+	 *    - Subscribers filter by channel (e.g. channel === 'graph'); kind + payload are component-specific.
 	 */
-	{ type: 'ui-step'; uiType: UIStepType, stepId: string; title: string; description?: string; } | 
-	{ type: 'ui-step-delta'; uiType: UIStepType, stepId: string; titleDelta?: string; descriptionDelta?: string; }
+	{ type: 'ui-step'; uiType: UIStepType, stepId: string; title: string; description?: string; } |
+	{ type: 'ui-step-delta'; uiType: UIStepType, stepId: string; titleDelta?: string; descriptionDelta?: string; } |
+	{
+		type: 'ui-signal';
+		channel: string;
+		kind: string;
+		entityId: string;
+		id?: string;
+		payload?: any;
+	}
 	;
 
 export type LLMStreamEvent =

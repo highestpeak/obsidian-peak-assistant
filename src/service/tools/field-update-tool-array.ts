@@ -18,11 +18,24 @@ const RESULT_MERGED = RESULT_SUCCESS_UPDATED + " result (merged)";
 /** Substring to detect remove success in result */
 const RESULT_SUCCESS_REMOVED = "successfully removed";
 export type BuildIdentityKeyFn = (item: any) => string | null;
+
+/** Build format guidance for prompts from field name and optional item example (single source of truth with schema). */
+export function getUpdateResultFormatGuidance(opts: { fieldName: string; itemExample?: string }): string {
+    const { fieldName, itemExample } = opts;
+    const itemPart = itemExample ?? "{ ... }";
+    return `Call with one argument: { "operations": [ ... ] }. operations MUST be an array of objects (never strings). `
+        + `Do NOT pass an empty array; at least one operation is required. `
+        + `Add: { "operation": "add", "targetField": "${fieldName}", "item": ${itemPart} }. `
+        + `Remove: { "operation": "remove", "targetField": "${fieldName}", "removeId": "string" }. `
+        + `Do NOT use string elements (no JSON strings, no "upsert:...", no "UpsertTopic(...)" etc).`;
+}
 export interface UpdateResultRequiredParameters {
     fieldName: string,
     itemSchema: z.ZodType,
     getCurrentResult: () => any,
     identityKeyBuilder: BuildIdentityKeyFn,
+    /** Override tool description for stricter LLM guidance (e.g. exact JSON shape). */
+    toolDescription?: string,
 }
 /**
  * Some LLM may act not well, we need to provide some robust fixes.
@@ -56,13 +69,65 @@ const defaultRobustParameters: UpdateResultRobustParameters = {
     normalizeOperation: (raw: unknown) => { return raw; },
     dataTransform: (data: unknown, schema?: z.ZodType) => { return data; },
     validatePath: async (item: any) => { return { valid: true }; },
+};
+
+const defaultGetRemoveId = (value: unknown): string => {
+    if (value != null && typeof value === 'object' && !Array.isArray(value) && 'id' in (value as object)) {
+        return String((value as { id?: unknown }).id ?? '').trim() || 'unknown';
+    }
+    if (typeof value === 'string') return value.trim() || 'unknown';
+    return String(value ?? 'unknown').trim() || 'unknown';
+};
+
+/**
+ * Builds normalizeOperation that converts LLM shapes into
+ * { operation: "add", targetField, item } / { operation: "remove", targetField, removeId }.
+ * Handles: { add: item }, { remove: idOrObj }, and JSON Patch style { op, path, value }.
+ */
+function makeAddRemoveNormalizer(
+    fieldName: string,
+    options?: {
+        getRemoveId?: (value: unknown) => string
+    },
+): (raw: unknown) => unknown {
+    const getRemoveId = options?.getRemoveId ?? defaultGetRemoveId;
+    return (raw: unknown): unknown => {
+        if (raw != null && typeof raw === 'object' && !Array.isArray(raw)) {
+            const obj = raw as Record<string, unknown>;
+            const op = obj.op ?? obj.operation;
+            const value = obj.value;
+            // JSON Patch style: op + path + value
+            if ((op === 'add' || op === 'remove')) {
+                if (op === 'add' && value !== undefined) {
+                    return { operation: 'add', targetField: fieldName, item: value };
+                }
+                if (op === 'remove') {
+                    return { operation: 'remove', targetField: fieldName, removeId: getRemoveId(value) };
+                }
+            }
+            if ('add' in obj && obj.add !== undefined) {
+                return { operation: 'add', targetField: fieldName, item: obj.add };
+            }
+            if ('remove' in obj && obj.remove !== undefined) {
+                const r = obj.remove;
+                const removeId = typeof r === 'string' ? r : (r && typeof r === 'object' && 'id' in r ? String((r as { id?: unknown }).id ?? '') : String(r ?? ''));
+                return { operation: 'remove', targetField: fieldName, removeId: removeId.trim() || 'unknown' };
+            }
+        }
+        return raw;
+    };
 }
+
 /**
  * All tools will use this data transform to ensure the data is valid.
  */
 const commonNormalizeOperation = (raw: unknown) => {
     if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
         const obj = raw as Record<string, unknown>;
+        // LLM may send "op" instead of "operation" (e.g. JSON Patch style)
+        if (obj.op !== undefined && obj.operation === undefined) {
+            return commonNormalizeOperation({ ...obj, operation: obj.op });
+        }
         const keys = Object.keys(obj);
 
         /**
@@ -183,8 +248,10 @@ export function createUpdateResultTool(
     /** optional parameters */
     robustParameters: UpdateResultRobustParameters = defaultRobustParameters,
 ) {
-    const { fieldName, itemSchema, getCurrentResult, identityKeyBuilder: buildIdentityKeyParams } = requiredParameters;
-    const { normalizeOperation, dataTransform, validatePath } = robustParameters;
+    const { fieldName, itemSchema, getCurrentResult, identityKeyBuilder: buildIdentityKeyParams, toolDescription: customToolDescription } = requiredParameters;
+    let normalizeOperation = robustParameters?.normalizeOperation ?? defaultRobustParameters.normalizeOperation;
+    let dataTransform = robustParameters.dataTransform ?? defaultRobustParameters.dataTransform;
+    let validatePath = robustParameters.validatePath ?? defaultRobustParameters.validatePath;
     // if have identity key func then use it, otherwise use default id fetch
     const buildIdentityKey: BuildIdentityKeyFn = buildIdentityKeyParams ?? ((item) => {
         if (!item || typeof item !== 'object') return null;
@@ -206,8 +273,9 @@ export function createUpdateResultTool(
 
     // Use discriminated union with plain schemas, then apply item validation transform
     const finalNormalizeOperation = (raw: unknown) => {
+        const normalized = makeAddRemoveNormalizer(fieldName)(raw);
         return commonNormalizeOperation(
-            normalizeOperation!(raw)
+            normalizeOperation!(normalized)
         );
     };
     const finalDataTransform = (data: unknown) => {
@@ -215,16 +283,29 @@ export function createUpdateResultTool(
             dataTransform!(data, itemSchema),
             itemSchema
         );
+        const op = result && typeof result === 'object' && 'operation' in result ? (result as { operation: string }).operation : undefined;
+        if (op === 'remove') return result;
 
-        // can't continue to execute if the item is still invalid after dataTransform
+        // Validate item only for add operations
         const fallbackSafeParse = itemSchema.safeParse(result.item);
         if (!fallbackSafeParse.success) {
             throw new Error(`Invalid item for targetField "${fieldName}": ${fallbackSafeParse.error.message}`);
         }
-
         return result;
     };
+    /** LLM sometimes sends operation as JSON string; parse before normalizing. */
+    const parseOperationRaw = (raw: unknown): unknown => {
+        if (typeof raw === 'string') {
+            try {
+                return JSON.parse(raw) as unknown;
+            } catch {
+                return raw;
+            }
+        }
+        return raw;
+    };
     const operationSchema = z.any()
+        .transform(parseOperationRaw)
         .transform(finalNormalizeOperation)
         .pipe(
             z.discriminatedUnion(
@@ -233,23 +314,31 @@ export function createUpdateResultTool(
             ).transform(finalDataTransform)
         );
 
+    const operationsArrayDesc = getUpdateResultFormatGuidance({ fieldName });
     const inputSchema = z.object({
-        operations: z.array(operationSchema).min(1, { message: "At least one operation is required" }),
+        operations: z.array(operationSchema)
+            .describe(operationsArrayDesc),
     });
 
-    const description = `A high-precision atomic state management tool to synchronize the analysis dashboard.\n`
-        + `Use this tool to perform batch mutations (upsert/delete) on the underlying knowledge model.\n`;
+    const description = customToolDescription ?? (
+        `A high-precision atomic state management tool to synchronize the analysis dashboard.\n`
+        + `Use this tool to perform batch mutations (upsert/delete) on the underlying knowledge model.\n`
+    );
 
     return safeAgentTool({
         description,
         inputSchema: inputSchema,
         execute: async (input) => {
+            const ops = input.operations ?? [];
+            if (ops.length === 0) {
+                return 'Skipped: operations array was empty. Do not call this tool with an empty array; provide at least one operation.';
+            }
             const batchResults: string[] = [];
             let totalSuccessCount = 0;
             let totalItems = 0;
 
             const failedResults: string[] = [];
-            for (const op of input.operations) {
+            for (const op of ops) {
                 const result = await executeSingleOperation(op);
                 batchResults.push(result);
 
@@ -267,7 +356,7 @@ export function createUpdateResultTool(
             }
 
             const failedPercentage = totalItems === 0 ? '0.00' : ((totalSuccessCount / totalItems) * 100).toFixed(2);
-            return `Batch completed successfully: request ${input.operations} operations, processed ${totalSuccessCount} operations, `
+            return `Batch completed successfully: request ${ops.length} operations, processed ${totalSuccessCount} operations, `
                 + `request ${totalItems} items, succeeded ${totalSuccessCount} items, `
                 + (failedResults.length > 0
                     ? `Failed (${failedPercentage}%): ${failedResults.join('; ')}`

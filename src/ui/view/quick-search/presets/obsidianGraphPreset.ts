@@ -5,6 +5,7 @@
 
 import type {
 	EdgeStyle,
+	EffectKindMap,
 	GraphVizNode,
 	GraphVizNodeInfo,
 	GraphVisualizationProps,
@@ -12,6 +13,9 @@ import type {
 import type { SnapshotMarkdownOptions } from '@/ui/component/mine/graph-viz/formatters';
 
 const NODE_ID_PREFIXES = ['node:', 'document:', 'file:', 'src:', 'note:'];
+
+/** Max characters for short labels in graph (longer = more readable, more overlap risk). */
+const SHORT_LABEL_MAX_LEN = 128;
 
 function obsidianNormalizeNodeId(nodeId: string): string {
 	if (!nodeId) return nodeId;
@@ -76,11 +80,11 @@ function obsidianGetNodeStyle(node: GraphVizNode): { fill: string; r?: number } 
 function obsidianGetNodeLabel(node: GraphVizNode, mode: 'full' | 'short'): string {
 	const raw = (node.label || '').trim();
 	if (raw) {
-		return mode === 'short' && raw.length > 15 ? raw.substring(0, 15) + '...' : raw;
+		return mode === 'short' && raw.length > SHORT_LABEL_MAX_LEN ? raw.substring(0, SHORT_LABEL_MAX_LEN) + '...' : raw;
 	}
 	const title = String((node as any).title ?? '').trim();
 	if (title) {
-		const out = mode === 'short' && title.length > 15 ? title.substring(0, 15) + '...' : title;
+		const out = mode === 'short' && title.length > SHORT_LABEL_MAX_LEN ? title.substring(0, SHORT_LABEL_MAX_LEN) + '...' : title;
 		console.debug('[GraphVisualization] label fallback: title', out);
 		return out;
 	}
@@ -88,7 +92,7 @@ function obsidianGetNodeLabel(node: GraphVizNode, mode: 'full' | 'short'): strin
 	if (pathFromNode) {
 		const base = pathFromNode.split('/').filter(Boolean).pop() || pathFromNode;
 		const clean = base.replace(/\.(md|markdown)$/i, '') || base;
-		const out = mode === 'short' && clean.length > 15 ? clean.substring(0, 15) + '...' : clean;
+		const out = mode === 'short' && clean.length > SHORT_LABEL_MAX_LEN ? clean.substring(0, SHORT_LABEL_MAX_LEN) + '...' : clean;
 		console.debug('[GraphVisualization] label fallback: path', out);
 		return out;
 	}
@@ -99,35 +103,35 @@ function obsidianGetNodeLabel(node: GraphVizNode, mode: 'full' | 'short'): strin
 	}
 	if (id.startsWith('concept:')) {
 		const text = id.slice('concept:'.length).replace(/-/g, ' ').trim();
-		const out = mode === 'short' && text.length > 15 ? text.substring(0, 15) + '...' : text;
+		const out = mode === 'short' && text.length > SHORT_LABEL_MAX_LEN ? text.substring(0, SHORT_LABEL_MAX_LEN) + '...' : text;
 		console.debug('[GraphVisualization] label fallback: concept id', out);
 		return out;
 	}
 	if (id.startsWith('tag:')) {
 		const text = id.slice('tag:'.length).replace(/-/g, ' ').trim();
-		const out = mode === 'short' && text.length > 15 ? text.substring(0, 15) + '...' : text;
+		const out = mode === 'short' && text.length > SHORT_LABEL_MAX_LEN ? text.substring(0, SHORT_LABEL_MAX_LEN) + '...' : text;
 		console.debug('[GraphVisualization] label fallback: tag id', out);
 		return out;
 	}
 	if (id.includes('/')) {
 		const base = id.split('/').filter(Boolean).pop() || id;
-		const out = mode === 'short' && base.length > 15 ? base.substring(0, 15) + '...' : base;
+		const out = mode === 'short' && base.length > SHORT_LABEL_MAX_LEN ? base.substring(0, SHORT_LABEL_MAX_LEN) + '...' : base;
 		console.debug('[GraphVisualization] label fallback: raw id path', out);
 		return out;
 	}
 	if (id.startsWith('file:')) {
 		const base = id.slice('file:'.length).split('/').filter(Boolean).pop() || id.slice('file:'.length);
-		const out = mode === 'short' && base.length > 15 ? base.substring(0, 15) + '...' : base;
+		const out = mode === 'short' && base.length > SHORT_LABEL_MAX_LEN ? base.substring(0, SHORT_LABEL_MAX_LEN) + '...' : base;
 		console.debug('[GraphVisualization] label fallback: file id', out);
 		return out;
 	}
 	if (id.startsWith('note:')) {
 		const text = id.slice('note:'.length);
-		const out = mode === 'short' && text.length > 15 ? text.substring(0, 15) + '...' : text;
+		const out = mode === 'short' && text.length > SHORT_LABEL_MAX_LEN ? text.substring(0, SHORT_LABEL_MAX_LEN) + '...' : text;
 		console.debug('[GraphVisualization] label fallback: note id', out);
 		return out;
 	}
-	return mode === 'short' && id.length > 15 ? id.substring(0, 15) + '...' : id;
+	return mode === 'short' && id.length > SHORT_LABEL_MAX_LEN ? id.substring(0, SHORT_LABEL_MAX_LEN) + '...' : id;
 }
 
 function obsidianExtractPathFromNode(node: GraphVizNode): string | null {
@@ -141,7 +145,7 @@ function obsidianExtractPathFromNode(node: GraphVizNode): string | null {
 	return null;
 }
 
-const OBSIDIAN_EFFECT_KIND_MAP: Partial<Record<string, string[]>> = {
+const OBSIDIAN_EFFECT_KIND_MAP: EffectKindMap = {
 	path: ['path'],
 	semantic: ['semantic'],
 	filter: ['semantic'],

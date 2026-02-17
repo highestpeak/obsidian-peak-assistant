@@ -8,12 +8,15 @@ import { MessageHistoryViewComponent } from '@/ui/view/message-history-view/Mess
 import { MessagesViewComponent } from '@/ui/view/chat-view/view-Messages';
 import { HomeViewComponent } from '@/ui/view/chat-view/view-Home';
 import { QuickSearchModalContent } from '@/ui/view/quick-search/SearchModal';
+import { logClick } from '@/core/utils/perf-debug';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { MockPlugin } from './mocks/services/MockPlugin';
 import { ConfirmDialog } from '@/ui/view/modals/ConfirmDialog';
-import { Settings, Search, BarChart3, MessageSquare, X, Trash2 } from 'lucide-react';
+import { Settings, Search, BarChart3, MessageSquare, X, Trash2, Network, Link2 } from 'lucide-react';
+import { GraphDebugView } from './views/GraphDebugView';
+import { LinksTabMockView } from './views/LinksTabMockView';
 
 /**
  * Router component for desktop development
@@ -26,7 +29,7 @@ export const DesktopRouter: React.FC<{
 	useMockAI: boolean;
 	onToggleMockAI: () => void;
 }> = ({ useMockAI, onToggleMockAI }) => {
-	const [currentView, setCurrentView] = useState<'chat' | 'settings' | 'daily'>('chat');
+	const [currentView, setCurrentView] = useState<'chat' | 'settings' | 'daily' | 'graph-debug' | 'links-mock'>('chat');
 	const [showSearchModal, setShowSearchModal] = useState(false);
 	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 	const { eventBus } = useServiceContext();
@@ -137,6 +140,46 @@ export const DesktopRouter: React.FC<{
 				Daily Analysis
 			</button>
 			<button
+				onClick={() => setCurrentView('graph-debug')}
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: '6px',
+					padding: '6px 12px',
+					borderRadius: '6px',
+					border: 'none',
+					backgroundColor: currentView === 'graph-debug' ? '#e9ecef' : 'transparent',
+					color: currentView === 'graph-debug' ? '#000' : '#666',
+					cursor: 'pointer',
+					fontSize: '14px',
+					fontWeight: currentView === 'graph-debug' ? '500' : '400',
+				}}
+				title="Paste graph Copy JSON to debug visualization"
+			>
+				<Network size={16} />
+				Graph Debug
+			</button>
+			<button
+				onClick={() => setCurrentView('links-mock')}
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: '6px',
+					padding: '6px 12px',
+					borderRadius: '6px',
+					border: 'none',
+					backgroundColor: currentView === 'links-mock' ? '#e9ecef' : 'transparent',
+					color: currentView === 'links-mock' ? '#000' : '#666',
+					cursor: 'pointer',
+					fontSize: '14px',
+					fontWeight: currentView === 'links-mock' ? '500' : '400',
+				}}
+				title="Paste links JSON to test Links tab"
+			>
+				<Link2 size={16} />
+				Links Mock
+			</button>
+			<button
 				onClick={() => setShowConfirmDialog(true)}
 				style={{
 					display: 'flex',
@@ -226,6 +269,28 @@ export const DesktopRouter: React.FC<{
 		);
 	}
 
+	if (currentView === 'graph-debug') {
+		return (
+			<div className="h-full w-full flex flex-col" style={{ backgroundColor: '#ffffff', height: '100%', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+				<NavigationBar />
+				<div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+					<GraphDebugView />
+				</div>
+			</div>
+		);
+	}
+
+	if (currentView === 'links-mock') {
+		return (
+			<div className="h-full w-full flex flex-col" style={{ backgroundColor: '#ffffff', height: '100%', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+				<NavigationBar />
+				<div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+					<LinksTabMockView />
+				</div>
+			</div>
+		);
+	}
+
 	// Chat mode: Three-column layout
 	// Left: Project List (dark background)
 	// Center: Chat View (light background)
@@ -255,7 +320,7 @@ export const DesktopRouter: React.FC<{
 						<HomeViewComponent />
 					) : (
 						// Show ChatViewComponent for other modes (project list, all conversations, etc.)
-						<ChatViewComponent viewMode={viewMode} />
+						<ChatViewComponent />
 					)}
 				</div>
 
@@ -282,7 +347,10 @@ export const DesktopRouter: React.FC<{
 						justifyContent: 'center',
 						zIndex: 1000,
 					}}
-					onClick={() => setShowSearchModal(false)}
+					onClick={() => {
+						logClick('search-modal-backdrop-close');
+						setShowSearchModal(false);
+					}}
 				>
 					<div
 						style={{
@@ -318,7 +386,7 @@ export const DesktopRouter: React.FC<{
 								<X size={20} />
 							</button>
 						</div>
-						<div style={{ padding: '16px' }}>
+						<div style={{ flex: 1, minHeight: 0, padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 							<QuickSearchModalContent onClose={() => setShowSearchModal(false)} />
 						</div>
 					</div>

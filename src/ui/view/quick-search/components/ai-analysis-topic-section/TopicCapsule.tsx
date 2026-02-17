@@ -32,7 +32,7 @@ export const TopicCapsule: React.FC<TopicCapsuleProps> = ({
 	const { topicAnalyzeResults, topicAnalyzeStreaming, setTopicModalOpen } = useAIAnalysisStore();
 	const summary = getTopicSummary(
 		topicAnalyzeResults?.[topicLabel] ?? [],
-		topicAnalyzeStreaming?.topic === topicLabel ? topicAnalyzeStreaming.answerSoFar : null
+		topicAnalyzeStreaming?.topic === topicLabel ? topicAnalyzeStreaming.chunks.join('') : null
 	);
 	return (
 		<Button

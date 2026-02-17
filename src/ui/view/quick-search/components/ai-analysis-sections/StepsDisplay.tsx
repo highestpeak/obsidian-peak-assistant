@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { Activity, ChevronDown, ChevronRight, Check } from 'lucide-react';
-import { AIAnalysisStep, StepsUISkipShouldSkip } from '@/ui/view/quick-search/store/aiAnalysisStore';
+import { type UIStepRecord } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { motion } from 'framer-motion';
 import { AnalysisTimer } from '@/ui/component/mine/IntelligenceFrame';
+import { useSubscribeUIEvent } from '@/ui/store/uiEventStore';
+import { UIStepType } from '@/core/providers/types';
 
 export type StreamingDisplayMethods = {
 	appendText: (text: string) => void;
@@ -10,7 +12,7 @@ export type StreamingDisplayMethods = {
 };
 
 /**
- * Live timer that updates using requestAnimationFrame for smooth display
+ * Live timer that updates using RAF(requestAnimationFrame) for smooth display
  */
 const LiveTimer: React.FC<{ startedAtMs: number }> = ({ startedAtMs }) => {
 	const [elapsed, setElapsed] = useState(0);
@@ -224,203 +226,126 @@ const useIncrementalRenderer = (
  * Inspired by the thinkingSteps design pattern with incremental rendering
  */
 export const StreamingStepsDisplay: React.FC<{
-	steps: AIAnalysisStep[];
-	currentStep: AIAnalysisStep;
+	steps: UIStepRecord[];
+	currentStep: UIStepRecord | null;
 	stepTrigger: number;
 	registerCurrentStepRender?: (methods: StreamingDisplayMethods) => void;
 	startedAtMs?: number | null;
 	isRunning?: boolean;
 	finalDurationMs?: number | null;
-}> = ({ steps, currentStep, stepTrigger, registerCurrentStepRender, startedAtMs, isRunning, finalDurationMs, }) => {
+}> = ({ steps, currentStep, stepTrigger, startedAtMs, isRunning, finalDurationMs }) => {
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const currentStepContainerRef = useRef<HTMLDivElement>(null);
 	const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
+
+	// Event-driven step state (ui-step / ui-step-delta)
+	type EventStep = { title: string; description: string; startedAtMs?: number };
+	/** Unified shape for a completed step (from event or store). */
+	type CompletedStepDisplay = EventStep | {
+		title: string;
+		description: string;
+		fullText: string;
+		startedAtMs?: number;
+		endedAtMs?: number;
+		rawType?: string;
+		extra?: Record<string, unknown>;
+	};
+	const [eventStepIds, setEventStepIds] = useState<string[]>([]);
+	const [eventStepsById, setEventStepsById] = useState<Record<string, EventStep>>({});
+	const [eventCurrentStepId, setEventCurrentStepId] = useState<string | null>(null);
+	const eventCurrentStepIdRef = useRef<string | null>(null);
+	eventCurrentStepIdRef.current = eventCurrentStepId;
+	const titleJustChangedRef = useRef(false);
 
 	// Use the shared incremental renderer hook
 	const { appendText, clear, resetUserScroll } = useIncrementalRenderer(
 		currentStepContainerRef,
 		scrollContainerRef,
-		50 // 150ms delay for step rendering
+		50
 	);
 
-	// reset current step container and scroll state when step changes
+	// Reset event state when analysis starts (new run)
 	useEffect(() => {
-		clear();
-		resetUserScroll();
+		if (startedAtMs && isRunning) {
+			setEventStepIds([]);
+			setEventStepsById({});
+			setEventCurrentStepId(null);
+		}
+	}, [startedAtMs, isRunning]);
+
+	// Subscribe to ui-step and ui-step-delta (steps-display only)
+	const handleUIEvent = useCallback((type: string, payload: any) => {
+		if (payload?.uiType !== UIStepType.STEPS_DISPLAY) return;
+		const stepId = payload?.stepId;
+		if (!stepId) return;
+
+		if (type === 'ui-step') {
+			const prev = eventCurrentStepIdRef.current;
+			if (prev && prev !== stepId) {
+				// Defer clear so completed list (with prev step) can render first
+				setTimeout(() => clear(), 0);
+			}
+			const descDelta = typeof payload.description === 'string' ? payload.description : '';
+			const titleChanged = typeof payload.title === 'string';
+			if (titleChanged) titleJustChangedRef.current = true;
+			// Same stepId: do not add new step, only update
+			setEventStepIds((ids) => (ids.includes(stepId) ? ids : [...ids, stepId]));
+			setEventStepsById((by) => {
+				const existing = by[stepId];
+				const newTitle =
+					typeof payload.title === 'string' ? payload.title : (existing?.title ?? 'Step');
+				return {
+					...by,
+					[stepId]: {
+						title: newTitle,
+						description: (existing?.description ?? '') + descDelta,
+						startedAtMs: existing?.startedAtMs ?? Date.now(),
+					},
+				};
+			});
+			setEventCurrentStepId(stepId);
+			if (descDelta) {
+				const prefix = titleJustChangedRef.current ? '\n' : '';
+				if (prefix) titleJustChangedRef.current = false;
+				appendText(prefix + descDelta);
+			}
+		} else if (type === 'ui-step-delta') {
+			const deltaDesc = typeof payload.descriptionDelta === 'string' ? payload.descriptionDelta : '';
+			const deltaTitle = typeof payload.titleDelta === 'string' ? payload.titleDelta : '';
+			if (deltaTitle) titleJustChangedRef.current = true;
+			setEventStepsById((by) => {
+				const cur = by[stepId] ?? { title: '', description: '', startedAtMs: Date.now() };
+				return {
+					...by,
+					[stepId]: {
+						...cur,
+						title: cur.title + deltaTitle,
+						description: cur.description + deltaDesc,
+					},
+				};
+			});
+			if (deltaDesc && eventCurrentStepIdRef.current === stepId) {
+				const prefix = titleJustChangedRef.current ? '\n' : '';
+				if (prefix) titleJustChangedRef.current = false;
+				appendText(prefix + deltaDesc);
+			}
+		}
+	}, [clear, appendText]);
+
+	useSubscribeUIEvent(new Set(['ui-step', 'ui-step-delta']), handleUIEvent);
+
+	// Reset current step container when step changes (store path only; event path clears in handler).
+	// Defer clear so completed list is updated first and old step stays visible.
+	const eventStepCountRef = useRef(0);
+	eventStepCountRef.current = eventStepIds.length;
+	useEffect(() => {
+		if (eventStepCountRef.current > 0) return;
+		const id = setTimeout(() => {
+			clear();
+			resetUserScroll();
+		}, 0);
+		return () => clearTimeout(id);
 	}, [stepTrigger, clear, resetUserScroll]);
-
-	/**
-	 * Convert internal step types into user-friendly titles.
-	 * Keep it short and stable for quick scanning.
-	 */
-	const formatStepTitle = (step: AIAnalysisStep): { title: string; rawType: string } => {
-		const rawType = String(step?.type ?? '');
-		const lower = rawType.toLowerCase();
-
-		const basename = (p: any) => {
-			const s = String(p ?? '').trim();
-			if (!s) return '';
-			return s.split('/').pop() || s;
-		};
-
-		const pick = (obj: any, keys: string[]) => {
-			if (!obj) return undefined;
-			for (const k of keys) {
-				const v = obj?.[k];
-				if (v !== undefined && v !== null && String(v).trim() !== '') return v;
-			}
-			return undefined;
-		};
-
-		const formatToolSuffix = (toolName: string, extra: any): string => {
-			const name = String(toolName ?? '').trim();
-			if (!name) return '';
-			const x = extra ?? {};
-
-			// Common path-like fields
-			const notePath = pick(x, ['note_path', 'path', 'file_path', 'vault_rel_path']);
-			const startPath = pick(x, ['start_note_path', 'start_path']);
-			const endPath = pick(x, ['end_note_path', 'end_path']);
-			const folder = pick(x, ['folder', 'folder_path', 'dir', 'directory']);
-			const query = pick(x, ['query', 'q', 'keyword', 'text', 'search']);
-			const semanticQuery = x?.semantic_filter?.query;
-
-			switch (name) {
-				case 'inspect_note_context':
-				case 'content_reader': {
-					const p = notePath || startPath;
-					return p ? `: ${basename(p)}` : '';
-				}
-				case 'local_search_whole_vault': {
-					const q = semanticQuery || query;
-					return q ? `: ${String(q).slice(0, 80)}` : '';
-				}
-				case 'explore_folder': {
-					return folder ? `: ${basename(folder)}` : '';
-				}
-				case 'graph_traversal': {
-					const hops = pick(x, ['hops']);
-					const p = startPath || notePath;
-					const extraBits = [
-						p ? basename(p) : '',
-						typeof hops === 'number' ? `hops=${hops}` : '',
-					].filter(Boolean);
-					return extraBits.length ? `: ${extraBits.join(' ')}` : '';
-				}
-				case 'find_path': {
-					const a = startPath ? basename(startPath) : '';
-					const b = endPath ? basename(endPath) : '';
-					return (a && b) ? `: ${a} -> ${b}` : (a ? `: ${a}` : '');
-				}
-				case 'find_key_nodes': {
-					const q = semanticQuery || query;
-					return q ? `: ${String(q).slice(0, 80)}` : '';
-				}
-				case 'web_search': {
-					return query ? `: ${String(query).slice(0, 80)}` : '';
-				}
-				case 'update_result':
-				case 'update_sources':
-				case 'update_topics':
-				case 'update_graph':
-				case 'add_dashboard_blocks': {
-					const ops: any[] | undefined = Array.isArray(x?.operations) ? x.operations : undefined;
-					if (!ops?.length) return '';
-					const addCount = new Map<string, number>();
-					for (const op of ops) {
-						if (op?.operation !== 'add') continue;
-						const f = String(op?.targetField ?? '').trim();
-						if (!f) continue;
-						addCount.set(f, (addCount.get(f) ?? 0) + 1);
-					}
-					const parts = Array.from(addCount.entries())
-						.map(([k, v]) => `+${v} ${k}`)
-						.slice(0, 4);
-					return parts.length ? `: ${parts.join(', ')}` : '';
-				}
-				default: {
-					// Generic: show the most likely "target" field.
-					const p = notePath || startPath || folder;
-					const q = semanticQuery || query;
-					if (p) return `: ${basename(p)}`;
-					if (q) return `: ${String(q).slice(0, 80)}`;
-					return '';
-				}
-			}
-		};
-
-		// Tool call pattern: "<trigger>--tool-call--<toolName>"
-		if (rawType.includes('--tool-call--')) {
-			const [triggerPart, toolNamePart] = rawType.split('--tool-call--');
-			const toolName = (toolNamePart ?? '').trim();
-			const suffix = formatToolSuffix(toolName, step.extra);
-
-			// Friendly verbs for common tools (avoid internal naming like "inspecting").
-			if (toolName === 'content_reader') return { title: `Read file${suffix}`.trim(), rawType };
-			if (toolName === 'inspect_note_context') return { title: `Read note${suffix}`.trim(), rawType };
-			if (toolName === 'local_search_whole_vault') return { title: `Search vault${suffix}`.trim(), rawType };
-			if (toolName === 'graph_traversal') return { title: `Traverse graph${suffix}`.trim(), rawType };
-			if (toolName === 'find_path') return { title: `Find path${suffix}`.trim(), rawType };
-			if (toolName === 'find_key_nodes') return { title: `Find key nodes${suffix}`.trim(), rawType };
-			if (toolName === 'web_search') return { title: `Web search${suffix}`.trim(), rawType };
-			if (toolName === 'update_result') return { title: `Update results${suffix}`.trim(), rawType };
-			if (toolName === 'update_sources') return { title: `Update sources${suffix}`.trim(), rawType };
-			if (toolName === 'update_topics') return { title: `Update topics${suffix}`.trim(), rawType };
-			if (toolName === 'update_graph') return { title: `Update graph${suffix}`.trim(), rawType };
-			if (toolName === 'add_dashboard_blocks') return { title: `Add dashboard blocks${suffix}`.trim(), rawType };
-			if (toolName === 'call_search_agent') return { title: `Ask Search Agent${suffix}`.trim(), rawType };
-
-			// Default: keep it readable but explicit that it's a tool.
-			return { title: `Tool: ${toolName.replace(/_/g, ' ')}${suffix}`.trim(), rawType };
-		}
-
-		// Older fixed step types
-		if (lower.includes('search-thought-agent') && (lower.endsWith('-talking') || lower.endsWith('-reasoning'))) {
-			return { title: 'Thinking', rawType };
-		}
-		if (lower.includes('search-inspector-agent') && (lower.endsWith('-talking') || lower.endsWith('-reasoning'))) {
-			return { title: 'Gathering context', rawType };
-		}
-		if (lower.includes('summary_context_messages')) {
-			return { title: 'Preparing context', rawType };
-		}
-		if (rawType === 'search-summary') return { title: 'Writing summary', rawType };
-		if (rawType === 'search-title') return { title: 'Thinking', rawType };
-		if (rawType === 'search-overview-mermaid') return { title: 'Generating overview diagram', rawType };
-		if (rawType === 'search-review-blocks') return { title: 'Reviewing blocks', rawType };
-		if (rawType === 'search-dashboard-update-agent') return { title: 'Updating dashboard', rawType };
-		if (rawType === 'search-internal-audit-summary') return { title: 'Internal audit summary', rawType };
-		if (rawType === 'search-internal-audit-questions') return { title: 'Internal audit questions', rawType };
-		if (rawType === 'search-internal-audit-loop') return { title: 'Internal audit search', rawType };
-
-		// Inspector tool steps: "search-inspector-agent-<tool>"
-		if (lower.startsWith('search-inspector-agent-')) {
-			const toolName = rawType.slice('search-inspector-agent-'.length);
-			const suffix = formatToolSuffix(toolName, step.extra);
-			if (toolName === 'content_reader') return { title: `Read file${suffix}`.trim(), rawType };
-			if (toolName === 'inspect_note_context') return { title: `Read note${suffix}`.trim(), rawType };
-			if (toolName === 'local_search_whole_vault') return { title: `Search vault${suffix}`.trim(), rawType };
-			if (toolName === 'graph_traversal') return { title: `Traverse graph${suffix}`.trim(), rawType };
-			if (toolName === 'find_path') return { title: `Find path${suffix}`.trim(), rawType };
-			if (toolName === 'find_key_nodes') return { title: `Find key nodes${suffix}`.trim(), rawType };
-			if (toolName === 'web_search') return { title: `Web search${suffix}`.trim(), rawType };
-			if (toolName === 'update_result') return { title: `Update results${suffix}`.trim(), rawType };
-			if (toolName === 'update_sources') return { title: `Update sources${suffix}`.trim(), rawType };
-			if (toolName === 'update_topics') return { title: `Update topics${suffix}`.trim(), rawType };
-			if (toolName === 'update_graph') return { title: `Update graph${suffix}`.trim(), rawType };
-			if (toolName === 'add_dashboard_blocks') return { title: `Add dashboard blocks${suffix}`.trim(), rawType };
-			if (toolName === 'call_search_agent') return { title: `Ask Search Agent${suffix}`.trim(), rawType };
-			return { title: `Tool: ${toolName.replace(/_/g, ' ')}${suffix}`.trim(), rawType };
-		}
-
-		// Fallback: title-case with dashes.
-		const pretty = rawType
-			.split('-')
-			.filter(Boolean)
-			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-			.join(' ');
-		return { title: pretty || 'Step', rawType };
-	};
 
 	const toggleStepExpansion = useCallback((index: number) => {
 		setExpandedSteps(prev => {
@@ -434,26 +359,43 @@ export const StreamingStepsDisplay: React.FC<{
 		});
 	}, []);
 
-	// Pre-compute full text for completed steps only
-	const stepsWithFullText = useMemo(() => {
-		return steps.map(step => ({
-			...step,
-			fullText: step.textChunks.join('').trim()
-		}));
-	}, [steps]);
-
-	// Create methods object that can be reused
-	const methods = useMemo(() => ({
-		appendText,
-		clear
-	}), [appendText, clear]);
-
-	// Register methods with parent component
-	useEffect(() => {
-		if (registerCurrentStepRender) {
-			registerCurrentStepRender(methods);
+	/** Unified completed steps: from event when available, else from store. Consecutive steps with same title are deduped. */
+	const completedStepsForDisplay = useMemo((): CompletedStepDisplay[] => {
+		let list: CompletedStepDisplay[];
+		if (eventStepIds.length > 0) {
+			const idx = eventCurrentStepId ? eventStepIds.indexOf(eventCurrentStepId) : -1;
+			const completedIds = idx >= 0 ? eventStepIds.slice(0, idx) : eventStepIds;
+			list = completedIds.map((id) => eventStepsById[id]).filter(Boolean) as EventStep[];
+		} else {
+			list = steps.map((step) => ({
+				title: step.title,
+				description: step.description,
+				fullText: step.description,
+				startedAtMs: step.startedAtMs,
+				endedAtMs: step.endedAtMs,
+				rawType: step.title,
+			}));
 		}
-	}, [registerCurrentStepRender, methods]);
+		return list.filter((step, i) => i === 0 || (step.title || '') !== (list[i - 1]?.title ?? ''));
+	}, [eventStepIds, eventCurrentStepId, eventStepsById, steps]);
+
+	/** Current step for display: event when available, else store. */
+	const currentStepForDisplay = useMemo(() => {
+		if (eventStepIds.length > 0 && eventCurrentStepId && eventStepsById[eventCurrentStepId]) {
+			const e = eventStepsById[eventCurrentStepId];
+			return { type: 'event' as const, title: e.title, description: e.description, startedAtMs: e.startedAtMs };
+		}
+		if (currentStep) {
+			return {
+				type: 'store' as const,
+				title: currentStep.title,
+				rawType: currentStep.title,
+				startedAtMs: currentStep.startedAtMs,
+				extra: undefined,
+			};
+		}
+		return null;
+	}, [eventStepIds.length, eventCurrentStepId, eventStepsById, currentStep]);
 
 	return (
 		<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb] pktw-max-h-96">
@@ -475,10 +417,14 @@ export const StreamingStepsDisplay: React.FC<{
 				// Keep ripple indicators visible at the edges.
 				className="pktw-h-64 pktw-overflow-y-auto pktw-overflow-x-visible pktw-scroll-smooth pktw-px-1"
 			>
-				{/* Completed Steps */}
-				{stepsWithFullText.filter(step => !StepsUISkipShouldSkip.has(step.type)).map((step, index) => {
+				{/* Completed steps: unified list from event or store */}
+				{completedStepsForDisplay.map((step, index) => {
+					const title = step.title || 'Step';
+					const body = step.description?.trim() ?? ('fullText' in step ? step.fullText : '') ?? '';
+					const hasExtra = 'extra' in step && step.extra && Object.keys(step.extra).length > 0;
 					const isExpanded = expandedSteps.has(index);
-					const { title, rawType } = formatStepTitle(step);
+					const stepTitle = 'rawType' in step && step.rawType ? step.rawType : title;
+					const showDuration = 'endedAtMs' in step && step.startedAtMs != null && step.endedAtMs != null;
 					return (
 						<div
 							key={`completed-${index}`}
@@ -487,7 +433,7 @@ export const StreamingStepsDisplay: React.FC<{
 							<div
 								className="pktw-font-medium pktw-text-[#2e3338] pktw-mb-1 pktw-cursor-pointer pktw-flex pktw-items-center pktw-gap-2 hover:pktw-text-[#7c3aed] pktw-transition-colors"
 								onClick={() => toggleStepExpansion(index)}
-								title={rawType}
+								title={stepTitle}
 							>
 								<CompletedIndicator />
 								{isExpanded ? (
@@ -496,10 +442,10 @@ export const StreamingStepsDisplay: React.FC<{
 									<ChevronRight className="pktw-w-3 pktw-h-3" />
 								)}
 								<span className="pktw-flex-1">{title}</span>
-								<CompletedDuration startedAtMs={step.startedAtMs} endedAtMs={step.endedAtMs} />
+								{showDuration && 'startedAtMs' in step && 'endedAtMs' in step && (
+									<CompletedDuration startedAtMs={step.startedAtMs!} endedAtMs={step.endedAtMs!} />
+								)}
 							</div>
-
-							{/* Expand/Collapse without layout reflow animation */}
 							<div
 								className="pktw-overflow-hidden pktw-transition-[max-height,opacity] pktw-duration-200"
 								style={{
@@ -508,9 +454,9 @@ export const StreamingStepsDisplay: React.FC<{
 								}}
 							>
 								<div className="pktw-leading-relaxed pktw-break-words pktw-ml-8 pktw-mt-1">
-									{step.fullText}
+									{body}
 								</div>
-								{step.extra && Object.keys(step.extra).length > 0 && (
+								{hasExtra && 'extra' in step && step.extra && (
 									<div className="pktw-text-[#999999] pktw-mt-1 pktw-text-xs pktw-ml-8 pktw-space-y-0.5">
 										{Object.entries(step.extra).map(([key, value]) => (
 											<div key={key} className="pktw-truncate">
@@ -525,33 +471,31 @@ export const StreamingStepsDisplay: React.FC<{
 					);
 				})}
 
-				{/* Current Step */}
-				{!StepsUISkipShouldSkip.has(currentStep.type) && (
+				{/* Current step: unified from event or store */}
+				{currentStepForDisplay && (
 					<div className="pktw-text-xs pktw-text-[#6c757d]">
-						{(() => {
-							const { title, rawType } = formatStepTitle(currentStep);
-							return (
-								<div className="pktw-sticky pktw-top-0 pktw-bg-[#f9fafb] pktw-z-10 pktw-pb-2 pktw-border-b pktw-border-[#e5e7eb] pktw-pl-1" title={rawType}>
-									<div className="pktw-font-medium pktw-text-[#2e3338] pktw-mb-1 pktw-flex pktw-items-center pktw-gap-2">
-										<RunningIndicator />
-										<span className="pktw-flex-1">{title}</span>
-										{currentStep.startedAtMs && (
-											<LiveTimer startedAtMs={currentStep.startedAtMs} />
-										)}
-									</div>
-									{currentStep.extra && Object.keys(currentStep.extra).length > 0 && (
-										<div className="pktw-text-[#999999] pktw-mb-1 pktw-text-xs pktw-ml-5 pktw-space-y-0.5">
-											{Object.entries(currentStep.extra).map(([key, value]) => (
-												<div key={key} className="pktw-truncate">
-													<span className="pktw-text-[#6b7280]">{key}:</span>{' '}
-													{typeof value === 'object' ? JSON.stringify(value) : String(value)}
-												</div>
-											))}
+						<div
+							className="pktw-sticky pktw-top-0 pktw-bg-[#f9fafb] pktw-z-10 pktw-pb-2 pktw-border-b pktw-border-[#e5e7eb] pktw-pl-1"
+							title={currentStepForDisplay.type === 'store' ? currentStepForDisplay.rawType : currentStepForDisplay.title}
+						>
+							<div className="pktw-font-medium pktw-text-[#2e3338] pktw-mb-1 pktw-flex pktw-items-center pktw-gap-2">
+								<RunningIndicator />
+								<span className="pktw-flex-1">{currentStepForDisplay.title || 'Step'}</span>
+								{currentStepForDisplay.startedAtMs != null && (
+									<LiveTimer startedAtMs={currentStepForDisplay.startedAtMs} />
+								)}
+							</div>
+							{currentStepForDisplay.type === 'store' && currentStepForDisplay.extra && Object.keys(currentStepForDisplay.extra).length > 0 && (
+								<div className="pktw-text-[#999999] pktw-mb-1 pktw-text-xs pktw-ml-5 pktw-space-y-0.5">
+									{Object.entries(currentStepForDisplay.extra).map(([key, value]) => (
+										<div key={key} className="pktw-truncate">
+											<span className="pktw-text-[#6b7280]">{key}:</span>{' '}
+											{typeof value === 'object' ? JSON.stringify(value) : String(value)}
 										</div>
-									)}
+									))}
 								</div>
-							);
-						})()}
+							)}
+						</div>
 						<div
 							ref={currentStepContainerRef}
 							className="pktw-leading-relaxed pktw-break-words pktw-text-sm pktw-text-[#2e3338] pktw-pt-2"

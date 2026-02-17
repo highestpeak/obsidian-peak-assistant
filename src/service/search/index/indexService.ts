@@ -10,6 +10,7 @@ import { generateUuidWithoutHyphens, generateStableUuid } from '@/core/utils/id-
 import { normalizePath } from 'obsidian';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { Stopwatch } from '@/core/utils/Stopwatch';
+import { getFileNameFromPath } from '@/core/utils/file-utils';
 
 export type StorageType = 'sqlite' | 'graph';
 
@@ -523,7 +524,8 @@ export class IndexService {
 			await graphNodeRepo.upsert({
 				id: targetNodeId,
 				type: 'document',
-				label: normalizePath(ref.fullPath),
+				// todo WARNING. label should be the title of the document, not the path. but this node was gen by fallback not by markdown processor parse.
+				label: getFileNameFromPath(ref.fullPath),
 				attributes: JSON.stringify({ path: ref.fullPath }),
 			});
 			await graphEdgeRepo.upsert({

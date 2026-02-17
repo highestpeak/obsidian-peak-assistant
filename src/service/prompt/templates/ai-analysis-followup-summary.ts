@@ -11,6 +11,6 @@ Summary (current): {{summary}}
 ## User question
 {{question}}
 
-Return markdown. Be concise and grounded in the summary.`;
+Return markdown. Be concise and grounded in the summary. Use bullets or short headings when helpful.`;
 
 export const expectsJson = false;

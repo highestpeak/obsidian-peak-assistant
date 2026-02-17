@@ -1,9 +1,9 @@
 import { Experimental_Agent as Agent, stepCountIs } from 'ai';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
-import { ErrorRetryInfo, PromptId } from '@/service/prompt/PromptId';
+import { ErrorRetryInfo, PromptId, type PromptVariables } from '@/service/prompt/PromptId';
 import { DashboardUpdateContext, InnerAgentContext, type AnalysisMode } from '../AISearchAgent';
-import { dashboardBlocksUpdateTool } from './DashboardUpdateToolBuilder';
+import { dashboardBlocksUpdateTool, getDashboardBlocksToolFormatGuidance } from './DashboardUpdateToolBuilder';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import type { AgentTool } from '@/service/tools/types';
 import { RESULT_UPDATE_TOOL_NAMES } from '../AISearchAgent';
@@ -71,7 +71,8 @@ export class DashboardBlocksUpdateAgent {
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDashboardUpdateBlocks, {
             ...variables,
             ...(errorRetryInfo ? { errorRetryInfo } : {}),
-        });
+            toolFormatGuidance: getDashboardBlocksToolFormatGuidance(),
+        } as PromptVariables[typeof PromptId.AiAnalysisDashboardUpdateBlocks]);
 
         const result = this.agent.stream({ system, prompt });
         yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT, {

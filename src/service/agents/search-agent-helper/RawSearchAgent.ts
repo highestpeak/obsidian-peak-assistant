@@ -80,6 +80,10 @@ export class RawSearchAgent {
             searchTools.recent_changes_whole_vault = recentChangesWholeVaultTool();
             searchTools.local_search_whole_vault = localSearchWholeVaultTool();
         }
+        const outputControl = this.aiServiceManager.getSettings?.()?.defaultOutputControl;
+        const temperature = outputControl?.temperature ?? 0.5;
+        const maxOutputTokens = outputControl?.maxOutputTokens ?? 4096;
+
         this.searchAgent = new Agent<SearchToolSet>({
             model: this.aiServiceManager.getMultiChat()
                 .getProviderService(this.options.searchAgentProvider)
@@ -87,9 +91,10 @@ export class RawSearchAgent {
             tools: searchTools,
             stopWhen: [
                 stepCountIs(DEFAULT_MAX_SEARCH_AGENT_STEPS),
-                // stop when the submit_final_answer tool is called
                 hasToolCall('submit_final_answer'),
             ],
+            temperature,
+            maxOutputTokens,
         });
     }
 
@@ -122,6 +127,7 @@ export class RawSearchAgent {
                 uiType: UIStepType.STEPS_DISPLAY,
                 stepId,
                 title: 'Deep-diving into the knowledge base...',
+                triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
             };
 
             let finalSummary: string = '';
@@ -136,6 +142,7 @@ export class RawSearchAgent {
                             stepId,
                             title: 'Deep-diving into the knowledge base... Thinking...',
                             description: 'Thinking about the request...',
+                            triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
                         };
                         break;
                     case 'text-delta':
@@ -146,6 +153,7 @@ export class RawSearchAgent {
                             uiType: UIStepType.STEPS_DISPLAY,
                             stepId,
                             descriptionDelta: chunk.text,
+                            triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
                         };
                         break;
                     case 'reasoning-start':
@@ -155,6 +163,7 @@ export class RawSearchAgent {
                             stepId,
                             title: 'Deep-diving into the knowledge base... Reasoning...',
                             description: 'Reasoning about the request...',
+                            triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
                         };
                         break;
                     case 'reasoning-delta':
@@ -165,6 +174,7 @@ export class RawSearchAgent {
                             uiType: UIStepType.STEPS_DISPLAY,
                             stepId,
                             descriptionDelta: chunk.text,
+                            triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
                         };
                         break;
                     case 'tool-call': {
@@ -181,7 +191,8 @@ export class RawSearchAgent {
                             input: chunk.input,
                             triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT
                         };
-                        const uiEvent = buildToolCallUIEvent(chunk, stepId);
+                        // use a new step id to trigger a new ui step
+                        const uiEvent = buildToolCallUIEvent(chunk, generateUuidWithoutHyphens());
                         if (uiEvent) {
                             yield uiEvent;
                         }
@@ -240,14 +251,13 @@ export class RawSearchAgent {
                             stepId,
                             title: 'Deep-dive into the knowledge base... Finished!',
                             description: 'Deep-dive into the knowledge base finished!',
+                            triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
                         };
                         break;
                     }
                     case 'start':
                     case 'start-step':
-                    case 'reasoning-start':
                     case 'reasoning-end':
-                    case 'text-start':
                     case 'text-end':
                     case 'finish-step':
                     case 'tool-input-end':
@@ -356,6 +366,7 @@ function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | unde
                 stepId,
                 title: `Read File. ${input.mode} read. ${fileName}. ${ifQuery} ${ifRange}`,
                 description: JSON.stringify(input),
+                triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
             };
         case 'inspect_note_context':
             fileName = getFileNameFromPath(input.note_path);
@@ -365,6 +376,7 @@ function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | unde
                 stepId,
                 title: `Inspect Note Context. ${fileName}.`,
                 description: JSON.stringify(input),
+                triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
             };
         case 'graph_traversal':
             fileName = getFileNameFromPath(input.start_note_path);
@@ -375,6 +387,7 @@ function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | unde
                 stepId,
                 title: `Explore Graph. ${fileName}. ${ifHops}`,
                 description: JSON.stringify(input),
+                triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
             };
         case 'find_path':
             fileName = getFileNameFromPath(input.start_note_path);
@@ -385,6 +398,7 @@ function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | unde
                 stepId,
                 title: `Find Path. ${fileName} -> ${endFileName}.`,
                 description: JSON.stringify(input),
+                triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
             };
         case 'find_key_nodes':
             return {
@@ -393,6 +407,7 @@ function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | unde
                 stepId,
                 title: `Find Key Nodes in vault.`,
                 description: JSON.stringify(input),
+                triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
             };
         case 'find_orphans':
             return {
@@ -401,6 +416,7 @@ function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | unde
                 stepId,
                 title: `Find Orphans in vault.`,
                 description: JSON.stringify(input),
+                triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
             };
         case 'search_by_dimensions':
             return {
@@ -409,6 +425,7 @@ function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | unde
                 stepId,
                 title: `Search by Dimensions. ${input.boolean_expression}.`,
                 description: JSON.stringify(input),
+                triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
             };
         case 'explore_folder':
             fileName = getFileNameFromPath(input.folder_path);
@@ -420,6 +437,7 @@ function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | unde
                 stepId,
                 title: `Explore Folder. ${fileName}. ${ifRecursive} ${ifMaxDepth}`,
                 description: JSON.stringify(input),
+                triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
             };
         case 'recent_changes_whole_vault':
             return {
@@ -428,6 +446,7 @@ function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | unde
                 stepId,
                 title: `Search recent Changes Whole Vault.`,
                 description: JSON.stringify(input),
+                triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
             };
         case 'local_search_whole_vault':
             const ifSearchQuery = input.query ? `Query: ${input.query}` : '';
@@ -438,6 +457,7 @@ function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | unde
                 stepId,
                 title: `Local Search Whole Vault. ${ifSearchQuery}. ${ifScopeMode}.`,
                 description: JSON.stringify(input),
+                triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
             };
         case 'submit_final_answer':
         default:

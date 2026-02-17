@@ -1,9 +1,45 @@
 import React from 'react';
+import { AppContext } from '@/app/context/AppContext';
+
+/**
+ * Strip #heading or #^block-id from wikilink target so we open the file, not the anchor.
+ */
+function stripWikilinkAnchor(target: string): string {
+	if (!target || typeof target !== 'string') return target;
+	const t = target.trim();
+	const hashIdx = t.indexOf('#');
+	if (hashIdx === -1) return t;
+	return t.slice(0, hashIdx).trim();
+}
+
+/**
+ * True if the string looks like a vault-relative file path (has slash or .md).
+ */
+function looksLikePath(s: string): boolean {
+	if (!s || typeof s !== 'string') return false;
+	const t = s.trim();
+	return t.includes('/') || /\.(md|markdown)$/i.test(t);
+}
+
+/**
+ * Resolve link text (e.g. "Note Title") to vault file path via metadataCache.
+ * Returns resolved path or original if not found.
+ */
+function resolveWikilinkToPath(linkText: string): string {
+	try {
+		const app = AppContext.getInstance().app;
+		const dest = app.metadataCache.getFirstLinkpathDest(linkText, '');
+		if (dest && 'path' in dest) return dest.path;
+	} catch {
+		// ignore
+	}
+	return linkText;
+}
 
 /**
  * Returns a click handler for StreamdownIsolated that opens Obsidian wikilinks
  * when the user clicks [[...]] links (rendered as <a> or button[data-streamdown="link"]).
- * Use composedPath() so it works inside Shadow DOM.
+ * Strips #anchor, resolves title-only links to vault path via metadataCache, then opens.
  */
 export function useStreamdownWikilinkClick(
 	onOpenWikilink: ((path: string) => void | Promise<void>) | undefined
@@ -34,24 +70,31 @@ export function useStreamdownWikilinkClick(
 			if (!isHash && !isPeak && !isObsidian) return;
 			evt.preventDefault();
 			evt.stopPropagation();
-			let filePath = '';
+			let rawTarget = '';
 			if (isHash) {
 				const encoded = href.slice('#peak-wikilink='.length);
-				filePath = decodeURIComponent(encoded || '').trim();
+				rawTarget = decodeURIComponent(encoded || '').trim();
 			} else if (isPeak) {
 				const encoded = href.slice('peak://wikilink/'.length);
-				filePath = decodeURIComponent(encoded || '').trim();
+				rawTarget = decodeURIComponent(encoded || '').trim();
 			} else {
 				try {
 					const url = new URL(href);
 					const file = url.searchParams.get('file') || '';
-					filePath = decodeURIComponent(file).trim();
+					rawTarget = decodeURIComponent(file).trim();
 				} catch {
-					filePath = '';
+					rawTarget = '';
 				}
 			}
-			if (!filePath) return;
-			await onOpenWikilink(filePath);
+			if (!rawTarget) return;
+			// Do not open tag-only links (e.g. [[#tag]] or link text that is just a tag).
+			if (rawTarget.startsWith('#')) return;
+			const filePart = stripWikilinkAnchor(rawTarget);
+			if (!filePart) return;
+			const pathToOpen = looksLikePath(filePart)
+				? filePart
+				: resolveWikilinkToPath(filePart);
+			await onOpenWikilink(pathToOpen);
 		},
 		[onOpenWikilink]
 	);

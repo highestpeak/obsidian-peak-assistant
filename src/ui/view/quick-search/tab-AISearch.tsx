@@ -2,15 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink } from 'lucide-react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
-import { StreamingDisplayMethods } from './components/ai-analysis-sections/StepsDisplay';
 import { Button } from '@/ui/component/shared-ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { formatDuration, formatTokenCount } from '@/core/utils/format-utils';
 import { useSharedStore, useAIAnalysisStore, useGraphQueuePump } from './store';
-import { StepsUISkipShouldSkip } from './store/aiAnalysisStore';
 import { useAIAnalysis } from './hooks/useAIAnalysis';
 import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
-import { useSubscribeUIEvent } from '@/ui/store/uiEventStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RecentAIAnalysis } from './components/ai-analysis-sections/RecentAIAnalysis';
 import { useAIAnalysisResult } from './hooks/useAIAnalysisResult';
@@ -68,7 +65,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		setFullAnalysisFollowUp,
 		fullAnalysisFollowUp,
 		dashboardBlocks,
-		overviewMermaid,
+		getActiveOverviewMermaid,
 		topicAnalyzeResults,
 		topicInspectResults,
 		topicGraphResults,
@@ -88,7 +85,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		text: titleFromStore ?? '',
 		enabled: !!(titleFromStore?.trim()) && !restoredFromHistory,
 	});
-
+	const settings = AppContext.getInstance().settings;
 	const continueAnalysisSummary = summaryChunks?.length ? summaryChunks.join('') : '';
 	const continueAnalysisConfig = useContinueAnalysisFollowupChatConfig({ summary: continueAnalysisSummary });
 
@@ -184,19 +181,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		handleAutoSave();
 	}, [analysisCompleted, restoredFromHistory, error, analysisRunId, handleAutoSave]);
 
-	const [streamingDisplayMethods, setStreamingDisplayMethods] = useState<StreamingDisplayMethods | null>(null);
-
-	// Handle streaming events for steps and summary
-	useSubscribeUIEvent(null, (eventType, payload) => {
-		// Only append actual text deltas to the incremental renderer.
-		// Tool events may publish payloads without a `text` field.
-		const text = typeof payload?.text === 'string' ? payload.text : '';
-		if (!text) return;
-
-		// Handle step events (all step types)
-		streamingDisplayMethods?.appendText(text);
-	});
-
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
 			{/* Sub navigation (below input, outside frames) */}
@@ -216,7 +200,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 						{getHasSummarySection() ? (
 							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(summaryRef)}>Summary</Button>
 						) : null}
-						{overviewMermaid ? (
+						{getActiveOverviewMermaid?.()?.trim() ? (
 							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(overviewRef)}>Overview</Button>
 						) : null}
 						{getHasTopicsSection() ? (
@@ -228,7 +212,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 						{getHasSourcesSection() ? (
 							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(sourcesRef)}>Sources</Button>
 						) : null}
-						{(steps?.filter(s => !StepsUISkipShouldSkip.has(s.type)).length ?? 0) > 0 ? (
+						{settings.enableDevTools && ((steps?.length ?? 0) > 0 || (hasStartedStreaming && !analysisCompleted)) ? (
 							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(stepsRef)}>Steps</Button>
 						) : null}
 						{getHasDashboardBlocksSection() ? (
@@ -240,7 +224,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 									<HoverCardContent side="bottom" align="start" className="pktw-w-auto pktw-min-w-[160px] pktw-py-1">
 										<div className="pktw-flex pktw-flex-col pktw-gap-0.5">
 											{(dashboardBlocks ?? []).map((b) => {
-												const raw = b.title || b.category || 'Block';
+												const raw = b.title || 'Block';
 												const label = raw.replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').trim() || 'Block';
 												return (
 													<Button
@@ -346,10 +330,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 							exit={{ opacity: 0, y: -10 }}
 							transition={{ duration: 0.25 }}
 						>
-							<StreamingAnalysis
-								onClose={onClose}
-								setStreamingDisplayMethods={setStreamingDisplayMethods}
-							/>
+							<StreamingAnalysis onClose={onClose} stepsRef={stepsRef} />
 						</motion.div>
 					) : null}
 
@@ -533,7 +514,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 					title={`Topic: ${topicModalOpen}`}
 					streaming={
 						topicAnalyzeStreaming?.topic === topicModalOpen
-							? { question: topicAnalyzeStreaming.question, answerSoFar: topicAnalyzeStreaming.answerSoFar }
+							? { question: topicAnalyzeStreaming.question, answerSoFar: topicAnalyzeStreaming.chunks.join('') }
 							: null
 					}
 					analyzeResults={topicAnalyzeResults?.[topicModalOpen] ?? []}

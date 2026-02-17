@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { TrendingUp, Copy, MessageCircle, Maximize2, X } from 'lucide-react';
 import { AppContext } from '@/app/context/AppContext';
@@ -15,225 +16,52 @@ import { InlineFollowupChat } from '@/ui/component/mine/InlineFollowupChat';
 import { useGraphFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 import { useAnalyzeGraphResults } from '../../hooks/useAIAnalysisResult';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/shared-ui/hover-card';
-import { AISearchGraph, AISearchNode } from '@/service/agents/AISearchAgent';
+import { AISearchNode } from '@/service/agents/AISearchAgent';
 import { DEFAULT_NODE_TYPE } from '@/service/agents/search-agent-helper/DashboardUpdateToolBuilder';
-import { UIPreviewGraph } from '@/ui/component/mine/GraphVisualization';
+import { convertGraphToGraphPreview } from '@/ui/view/shared/graph-utils';
+import { copyText } from '@/ui/view/shared/common-utils';
+import { logClick } from '@/core/utils/perf-debug';
+import { cn } from '@/ui/react/lib/utils';
 
-/** Reusable context menu item: label + onClick, optionally icon or disabled. */
-const ContextMenuItem: React.FC<{
-	children: React.ReactNode;
-	onClick: () => void | Promise<void>;
-	disabled?: boolean;
-	icon?: React.ReactNode;
-	className?: string;
-}> = ({ children, onClick, disabled, icon, className = '' }) => (
-	<Button
-		variant="ghost"
-		size="sm"
-		style={{ cursor: 'pointer' }}
-		disabled={disabled}
-		className={`pktw-shadow-none pktw-w-full  pktw-flex pktw-justify-start pktw-text-[#2e3338] disabled:pktw-opacity-50 ${icon ? 'pktw-gap-2' : ''} ${className}`.trim()}
-		onClick={onClick}
-	>
-		{icon ?? null}
-		{children}
-	</Button>
-);
+/**
+ * Key Topics–style pill palette. Node types (including custom ones from the agent)
+ * are mapped to a color by stable hash so each type gets a distinct, consistent style.
+ */
+const PILL_PALETTE: readonly string[] = [
+	'pktw-bg-sky-100 pktw-text-sky-800 hover:pktw-bg-sky-200',
+	'pktw-bg-violet-100 pktw-text-violet-800 hover:pktw-bg-violet-200',
+	'pktw-bg-amber-100 pktw-text-amber-800 hover:pktw-bg-amber-200',
+	'pktw-bg-emerald-100 pktw-text-emerald-800 hover:pktw-bg-emerald-200',
+	'pktw-bg-rose-100 pktw-text-rose-800 hover:pktw-bg-rose-200',
+	'pktw-bg-cyan-100 pktw-text-cyan-800 hover:pktw-bg-cyan-200',
+	'pktw-bg-orange-100 pktw-text-orange-800 hover:pktw-bg-orange-200',
+	'pktw-bg-teal-100 pktw-text-teal-800 hover:pktw-bg-teal-200',
+	'pktw-bg-slate-100 pktw-text-slate-800 hover:pktw-bg-slate-200',
+];
 
-/** Graph node context menu: Open, Copy, Inspect, Expand, Path, Chat. */
-const GraphNodeContextMenu: React.FC<{
-	node: GraphVizNodeInfo;
-	clientX: number;
-	clientY: number;
-	pathStart: string | null;
-	setPathStart: (path: string | null) => void;
-	menuLeaveTimerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
-	closeMenu: () => void;
-	openSource: (path: string) => Promise<void>;
-	onToggleFollowup?: () => void;
-	onOpenChatForNode?: (node: GraphVizNodeInfo) => void;
-}> = ({ node, clientX, clientY, pathStart, closeMenu, menuLeaveTimerRef, openSource, setPathStart, onToggleFollowup, onOpenChatForNode }) => {
-
-	const { runGraphTool } = useAnalyzeGraphResults();
-
-	return (
-		<div
-			className="pktw-fixed pktw-z-[100] pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-shadow-lg pktw-overflow-hidden pktw-min-w-[190px] pktw-transition-opacity pktw-duration-150 pktw-ease-out"
-			style={{ left: clientX, top: clientY }}
-			onMouseEnter={() => {
-				if (menuLeaveTimerRef.current) {
-					clearTimeout(menuLeaveTimerRef.current);
-					menuLeaveTimerRef.current = null;
-				}
-			}}
-			onMouseLeave={() => {
-				menuLeaveTimerRef.current = setTimeout(() => {
-					closeMenu();
-					menuLeaveTimerRef.current = null;
-				}, 600);
-			}}
-		>
-			<div className="pktw-px-2.5 pktw-py-2 pktw-border-b pktw-border-[#f3f4f6]">
-				<div className="pktw-text-xs pktw-font-semibold pktw-text-[#2e3338] pktw-truncate">
-					{node.label || node.id}
-				</div>
-				<div className="pktw-text-[11px] pktw-text-[#9ca3af] pktw-truncate">
-					{node.path ? node.path : node.type}
-				</div>
-			</div>
-
-			<div className="pktw-py-1">
-				{node.path ? (
-					<ContextMenuItem
-						onClick={async () => {
-							try {
-								if (!node.path) return;
-								await openSource(node.path);
-							} finally {
-								closeMenu();
-							}
-						}}
-					>
-						Open
-					</ContextMenuItem>
-				) : null}
-
-				<ContextMenuItem
-					onClick={async () => {
-						try {
-							await navigator.clipboard.writeText(node.label || node.id || '');
-						} finally {
-							closeMenu();
-						}
-					}}
-				>
-					Copy label
-				</ContextMenuItem>
-
-				{node.path ? (
-					<ContextMenuItem
-						onClick={async () => {
-							try {
-								if (!node.path) return;
-								await navigator.clipboard.writeText(node.path);
-							} finally {
-								closeMenu();
-							}
-						}}
-					>
-						Copy path
-					</ContextMenuItem>
-				) : null}
-			</div>
-
-			{node.path ? (
-				<div className="pktw-border-t pktw-border-[#f3f4f6] pktw-py-1">
-					<ContextMenuItem
-						onClick={async () => {
-							try {
-								if (!node.path) return;
-								await runGraphTool('inspect_note_context', {
-									note_path: node.path
-								});
-							} finally {
-								closeMenu();
-							}
-						}}
-					>
-						Inspect context
-					</ContextMenuItem>
-
-					<ContextMenuItem
-						onClick={async () => {
-							try {
-								if (!node.path) return;
-								await runGraphTool('graph_traversal', {
-									start_note_path: node.path
-								});
-							} finally {
-								closeMenu();
-							}
-						}}
-					>
-						Expand neighborhood
-					</ContextMenuItem>
-
-					<ContextMenuItem
-						onClick={() => {
-							setPathStart(node.path || null);
-							closeMenu();
-						}}
-					>
-						Set as path start
-					</ContextMenuItem>
-
-					<ContextMenuItem
-						disabled={!pathStart || pathStart === node.path}
-						className="pktw-px-3 pktw-py-2 pktw-text-xs"
-						onClick={async () => {
-							try {
-								if (!node.path || !pathStart || pathStart === node.path) return;
-								await runGraphTool('find_path', {
-									start_note_path: pathStart,
-									end_note_path: node.path,
-								});
-							} finally {
-								closeMenu();
-							}
-						}}
-					>
-						Find path from start
-						{pathStart ? (
-							<span className="pktw-ml-2 pktw-text-[11px]">
-								({pathStart.split('/').pop()})
-							</span>
-						) : null}
-					</ContextMenuItem>
-				</div>
-			) : null}
-
-			<div className="pktw-border-t pktw-border-[#f3f4f6] pktw-py-1">
-				{onToggleFollowup || onOpenChatForNode ? (
-					<ContextMenuItem
-						icon={<MessageCircle className="pktw-w-3.5 pktw-h-3.5" />}
-						onClick={() => {
-							if (onOpenChatForNode) {
-								onOpenChatForNode(node);
-							} else {
-								onToggleFollowup?.();
-							}
-							closeMenu();
-						}}
-					>
-						Chat about this node
-					</ContextMenuItem>
-				) : null}
-			</div>
-		</div>
-	)
-};
-
-/** Pill styles per node type for visual differentiation. */
-const PILL_STYLES_BY_NODE_TYPE: Record<string, string> = {
-	concept: 'pktw-bg-sky-50 pktw-text-sky-700 pktw-border pktw-border-sky-200',
-	tag: 'pktw-bg-amber-50 pktw-text-amber-700 pktw-border pktw-border-amber-200',
-	file: 'pktw-bg-emerald-50 pktw-text-emerald-700 pktw-border pktw-border-emerald-200',
-	document: 'pktw-bg-emerald-50 pktw-text-emerald-700 pktw-border pktw-border-emerald-200',
-	inspire_idea: 'pktw-bg-violet-50 pktw-text-violet-700 pktw-border pktw-border-violet-200',
-};
-
-function getPillClassNameForNodeType(nodeType: string): string {
-	return PILL_STYLES_BY_NODE_TYPE[nodeType.toLowerCase()] ?? 'pktw-bg-slate-50 pktw-text-slate-700 pktw-border pktw-border-slate-200';
+/** Stable hash of a string for picking a palette index (any node type, including custom). */
+function hashStringToIndex(s: string): number {
+	const str = String(s ?? '').trim().toLowerCase() || 'default';
+	let h = 0;
+	for (let i = 0; i < str.length; i++) {
+		h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+	}
+	return Math.abs(h);
 }
 
+function getPillClassNameForNodeType(nodeType: string): string {
+	const idx = hashStringToIndex(nodeType) % PILL_PALETTE.length;
+	return PILL_PALETTE[idx];
+}
+
+/** Sidebar panel: Key Topics–style capsules (soft bg, no border, pill shape) per node type. */
 const LabeledPillPanel: React.FC<{
 	items: string[];
 	label: string;
 	nodeType: string;
 	pillClassName: string;
 	onOpenChatForNode?: (node: GraphVizNodeInfo) => void;
-	copyText: (text: string) => void;
-}> = ({ items, label, nodeType, pillClassName, onOpenChatForNode, copyText }) => {
+}> = ({ items, label, nodeType, pillClassName, onOpenChatForNode }) => {
 	if (items.length === 0) return null;
 	return (
 		<div className="pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-p-3">
@@ -252,14 +80,14 @@ const LabeledPillPanel: React.FC<{
 					<Copy className="pktw-w-3 pktw-h-3" />
 				</Button>
 			</div>
-			<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5">
+			<div className="pktw-flex pktw-flex-wrap pktw-gap-2">
 				{items.slice(0, 120).map((item, idx) => (
 					<Button
 						variant="ghost"
 						size="sm"
 						style={{ cursor: 'pointer' }}
 						key={`${nodeType}-${idx}-${item}`}
-						className={`pktw-text-[11px] pktw-px-2 pktw-py-1 pktw-max-w-[140px] pktw-truncate pktw-rounded-full ${pillClassName}`}
+						className={`pktw-text-xs pktw-px-2.5 pktw-py-1 pktw-shadow-none pktw-rounded-md pktw-border pktw-h-auto pktw-font-medium hover:pktw-shadow-sm active:pktw-scale-95 ${pillClassName}`}
 						onClick={() => onOpenChatForNode ? onOpenChatForNode({ id: `${nodeType}:${item}`, label: item, type: nodeType, path: null }) : copyText(item)}
 						title={onOpenChatForNode ? 'Click to chat' : 'Copy'}
 					>
@@ -269,31 +97,6 @@ const LabeledPillPanel: React.FC<{
 			</div>
 		</div>
 	);
-};
-
-const convertGraphToGraphPreview = (aiGraph: AISearchGraph | null): UIPreviewGraph | null => {
-	if (aiGraph === null || aiGraph === undefined) return null;
-	return {
-		nodes: aiGraph.nodes.map(node => ({
-			id: node.id,
-			label: node.title || node.id,
-			type: node.type || 'document',
-			attributes: {
-				...node.attributes,
-				path: node.path,
-			},
-		})),
-		edges: aiGraph.edges.map(edge => ({
-			id: edge.id,
-			from_node_id: edge.source,
-			to_node_id: edge.target,
-			kind: edge.type,
-			weight: edge.attributes.weight || 1,
-			attributes: {
-				...edge.attributes,
-			},
-		})),
-	};
 };
 
 /**
@@ -307,7 +110,7 @@ export const KnowledgeGraphSection: React.FC<{
 	onClose?: () => void;
 }> = ({ onClose }) => {
 
-	const { graph: aiGraph } = useAIAnalysisStore();
+	const { graph: aiGraph, title: analysisTitle } = useAIAnalysisStore();
 	const uiGraph = useMemo(() => convertGraphToGraphPreview(aiGraph), [aiGraph]);
 
 	/**
@@ -342,6 +145,8 @@ export const KnowledgeGraphSection: React.FC<{
 		appendGraphFollowup,
 	} = useAIAnalysisStore();
 
+	const { runGraphTool } = useAnalyzeGraphResults();
+
 	const [graphChatNodeContext, setGraphChatNodeContext] = useState<GraphVizNodeInfo | null>(null);
 	const [followupOpen, setFollowupOpen] = useState(false);
 	const [fullscreenOpen, setFullscreenOpen] = useState(false);
@@ -350,22 +155,13 @@ export const KnowledgeGraphSection: React.FC<{
 
 	// graph section ref
 	const containerRef = useRef<HTMLDivElement>(null);
-	// graph ref
 	const graphRef = useRef<GraphVisualizationHandle>(null);
-	const fullscreenGraphRef = useRef<GraphVisualizationHandle>(null);
+	const inlineContainerRef = useRef<HTMLDivElement>(null);
+	const fullscreenContainerRef = useRef<HTMLDivElement>(null);
 
-	// graph node context menu
-	const [menu, setMenu] = useState<{
-		open: boolean;
-		clientX: number;
-		clientY: number;
-		node: GraphVizNodeInfo | null;
-	}>(() => ({ open: false, clientX: 0, clientY: 0, node: null }));
-	const menuLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	// put this field outside the context menu as its state will be reset when the context menu is closed.
-	// but we want to keep it when the context menu is open/close => then we can select another node and find path from it.
+	// Path start for "Find path from start" in graph node context menu (owned by Section, passed to Viz).
 	const [pathStart, setPathStart] = useState<string | null>(null);
+	const [hover, setHover] = useState<GraphVizNodeHoverInfo | null>(null);
 
 	// graph rendering progress's animation
 
@@ -376,33 +172,6 @@ export const KnowledgeGraphSection: React.FC<{
 		effect,
 		clear: clearStore,
 	} = useGraphAnimationStore();
-
-	// close the node context menu when clicking outside
-	useEffect(() => {
-		const onDocPointerDown = (evt: PointerEvent) => {
-			if (!menu.open) return;
-			const el = containerRef.current;
-			if (!el) return;
-			// Close menu when clicking outside.
-			if (!el.contains(evt.target as any)) {
-				if (menuLeaveTimerRef.current) {
-					clearTimeout(menuLeaveTimerRef.current);
-					menuLeaveTimerRef.current = null;
-				}
-				setMenu((m) => ({ ...m, open: false, node: null }));
-			}
-		};
-		document.addEventListener('pointerdown', onDocPointerDown, { capture: true });
-		return () => document.removeEventListener('pointerdown', onDocPointerDown, { capture: true } as any);
-	}, [menu.open]);
-
-	// Clear leave timer when menu closes.
-	useEffect(() => {
-		if (!menu.open && menuLeaveTimerRef.current) {
-			clearTimeout(menuLeaveTimerRef.current);
-			menuLeaveTimerRef.current = null;
-		}
-	}, [menu.open]);
 
 	// When analysis resets graph to null, clear pending queue and visualization.
 	useEffect(() => {
@@ -421,10 +190,10 @@ export const KnowledgeGraphSection: React.FC<{
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [analysisCompleted]);
 
-	// Fit fullscreen graph to view when modal opens; Esc to close
+	// Fit graph to view when fullscreen opens; Esc to close
 	useEffect(() => {
 		if (fullscreenOpen) {
-			setTimeout(() => fullscreenGraphRef.current?.fitToView(), 100);
+			setTimeout(() => graphRef.current?.fitToView(), 100);
 			const onKeyDown = (e: KeyboardEvent) => {
 				if (e.key === 'Escape') setFullscreenOpen(false);
 			};
@@ -432,14 +201,6 @@ export const KnowledgeGraphSection: React.FC<{
 			return () => document.removeEventListener('keydown', onKeyDown);
 		}
 	}, [fullscreenOpen]);
-
-	const copyText = async (text: string) => {
-		try {
-			await navigator.clipboard.writeText(text);
-		} catch (e) {
-			console.warn('[KnowledgeGraphSection] Failed to copy:', e);
-		}
-	};
 
 	const obsidianPreset = useMemo<ObsidianGraphPresetResult>(() => {
 		return createObsidianGraphPreset({
@@ -453,8 +214,66 @@ export const KnowledgeGraphSection: React.FC<{
 	const useSidePanel = !!analysisCompleted;
 	const graphBoxClass = useSidePanel ? 'pktw-h-[360px]' : 'pktw-h-[260px]';
 
+	/** Single graph instance + overlays; portaled between inline and fullscreen to avoid remount/redraw. */
+	const graphWithOverlays = (
+		<div className="pktw-w-full pktw-h-full pktw-relative">
+			<GraphVisualization
+				ref={graphRef}
+				{...obsidianPreset}
+				graph={uiGraph}
+				effect={effect}
+				title={analysisTitle ?? undefined}
+				hideTitle={fullscreenOpen}
+				onNodeHover={setHover}
+				containerClassName={fullscreenOpen ? 'pktw-w-full pktw-h-full pktw-min-h-[400px]' : graphBoxClass}
+				showToolsPanel={fullscreenOpen}
+				nodeContextMenu={{
+					onOpenSource: onClose ? createOpenSourceCallback(onClose) : undefined,
+					runGraphTool,
+					pathStart,
+					setPathStart,
+					onOpenChatForNode: setGraphChatNodeContext,
+					onToggleFollowup: () => setFollowupOpen((v) => !v),
+				}}
+			/>
+			{overlayText ? (
+				<div className="pktw-absolute pktw-bottom-2 pktw-left-2 pktw-z-20 pktw-pointer-events-none">
+					<div className="pktw-bg-white/80 pktw-backdrop-blur-sm pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-px-2 pktw-py-1 pktw-text-[11px] pktw-text-[#374151] pktw-shadow-sm">
+						{overlayText}
+					</div>
+				</div>
+			) : null}
+			{queue.length > 0 ? (
+				<div className="pktw-absolute pktw-bottom-2 pktw-right-2 pktw-z-20 pktw-pointer-events-none">
+					<div className="pktw-bg-white/70 pktw-backdrop-blur-sm pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-px-2 pktw-py-1 pktw-text-[11px] pktw-text-[#6b7280] pktw-shadow-sm">
+						Queue: {queue.length}
+					</div>
+				</div>
+			) : null}
+		</div>
+	);
+
+	const portalTarget = fullscreenOpen ? fullscreenContainerRef.current : inlineContainerRef.current;
+
+	const pillsContent = useSidePanel && hasSidePanelContent ? (
+		<div className={`pktw-w-[320px] pktw-shrink-0 pktw-space-y-3 pktw-overflow-auto ${fullscreenOpen ? 'pktw-h-full' : graphBoxClass}`}>
+			{Array.from(otherNodeTypes.entries()).map(([nodeType, labels]) => (
+				<LabeledPillPanel
+					key={nodeType}
+					items={labels}
+					label={nodeType}
+					nodeType={nodeType}
+					pillClassName={getPillClassNameForNodeType(nodeType)}
+					onOpenChatForNode={(node) => {
+						setFollowupOpen((v) => !v);
+						setGraphChatNodeContext(node);
+					}}
+				/>
+			))}
+		</div>
+	) : null;
+
 	// node tooltip
-	const [hover, setHover] = useState<GraphVizNodeHoverInfo | null>(null);
 	const tooltipPos = useMemo(() => {
 		if (!hover) return null;
 		// Fixed tooltip near the mouse with a simple clamp.
@@ -485,7 +304,10 @@ export const KnowledgeGraphSection: React.FC<{
 					size="icon"
 					className="pktw-shadow-none pktw-rounded-md pktw-border pktw-opacity-40 hover:pktw-opacity-100"
 					title="Fullscreen"
-					onClick={() => setFullscreenOpen(true)}
+					onClick={() => {
+					logClick('graph-fullscreen-open');
+					setFullscreenOpen(true);
+				}}
 				>
 					<Maximize2 className="pktw-w-4 pktw-h-4" />
 				</Button>
@@ -561,86 +383,19 @@ export const KnowledgeGraphSection: React.FC<{
 				) : null}
 			</AnimatePresence>
 
+			{/* Inline graph area: portal target; hidden when fullscreen */}
 			<div
-				className={useSidePanel
-					? 'pktw-w-full pktw-flex pktw-flex-nowrap pktw-gap-3 pktw-items-stretch pktw-min-w-0'
-					: 'pktw-w-full pktw-relative'}
+				className={cn(
+					useSidePanel ? 'pktw-w-full pktw-flex pktw-flex-nowrap pktw-gap-3 pktw-items-stretch pktw-min-w-0' : 'pktw-w-full pktw-relative',
+					fullscreenOpen && 'pktw-hidden'
+				)}
+				style={!fullscreenOpen && !useSidePanel ? { height: 260 } : undefined}
 			>
-				<div className={useSidePanel ? 'pktw-flex-1 pktw-min-w-0 pktw-relative' : ''}>
-					<GraphVisualization
-						ref={graphRef}
-						{...obsidianPreset}
-						graph={uiGraph}
-						effect={effect}
-						onNodeHover={setHover}
-						containerClassName={graphBoxClass}
-						onNodeContextMenu={(pos, node) => {
-							if (menuLeaveTimerRef.current) {
-								clearTimeout(menuLeaveTimerRef.current);
-								menuLeaveTimerRef.current = null;
-							}
-							const gap = 4;
-							const menuW = 210;
-							const menuH = 320;
-							const left = Math.max(8, Math.min(pos.x, window.innerWidth - menuW - 8));
-							const top = Math.max(8, Math.min(pos.y + gap, window.innerHeight - menuH - 8));
-							setMenu({ open: true, clientX: left, clientY: top, node });
-						}}
-					/>
-
-					{/* Process overlay (narration layer) */}
-					{overlayText ? (
-						<div className="pktw-absolute pktw-bottom-2 pktw-left-2 pktw-z-20 pktw-pointer-events-none">
-							<div className="pktw-bg-white/80 pktw-backdrop-blur-sm pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-px-2 pktw-py-1 pktw-text-[11px] pktw-text-[#374151] pktw-shadow-sm">
-								{overlayText}
-							</div>
-						</div>
-					) : null}
-
-					{/* Queue indicator */}
-					{queue.length > 0 ? (
-						<div className="pktw-absolute pktw-bottom-2 pktw-right-2 pktw-z-20 pktw-pointer-events-none">
-							<div className="pktw-bg-white/70 pktw-backdrop-blur-sm pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-px-2 pktw-py-1 pktw-text-[11px] pktw-text-[#6b7280] pktw-shadow-sm">
-								Queue: {queue.length}
-							</div>
-						</div>
-					) : null}
-				</div>
-
-				{menu.open && menu.node ? (
-					<GraphNodeContextMenu
-						node={menu.node}
-						clientX={menu.clientX}
-						clientY={menu.clientY}
-						pathStart={pathStart}
-						setPathStart={setPathStart}
-						menuLeaveTimerRef={menuLeaveTimerRef}
-						closeMenu={() => setMenu({ open: false, clientX: 0, clientY: 0, node: null })}
-						openSource={createOpenSourceCallback(onClose)}
-						onToggleFollowup={() => setFollowupOpen((v) => !v)}
-						onOpenChatForNode={setGraphChatNodeContext}
-					/>
-				) : null}
-
-				{/* show the concepts and tags and other node types on the right side, same max height as graph area, scroll when overflow */}
-				{useSidePanel && hasSidePanelContent ? (
-					<div className={`pktw-w-[320px] pktw-shrink-0 pktw-space-y-3 pktw-overflow-auto ${graphBoxClass}`}>
-						{Array.from(otherNodeTypes.entries()).map(([nodeType, labels]) => (
-							<LabeledPillPanel
-								key={nodeType}
-								items={labels}
-								label={nodeType}
-								nodeType={nodeType}
-								pillClassName={getPillClassNameForNodeType(nodeType)}
-								onOpenChatForNode={(node) => {
-									setFollowupOpen((v) => !v);
-									setGraphChatNodeContext(node)
-								}}
-								copyText={copyText}
-							/>
-						))}
-					</div>
-				) : null}
+				<div
+					ref={inlineContainerRef}
+					className={cn(useSidePanel ? 'pktw-flex-1 pktw-min-w-0 pktw-relative' : 'pktw-relative', !useSidePanel && 'pktw-h-[260px]')}
+				/>
+				{pillsContent}
 			</div>
 
 			{/* during streaming. show below the graph */}
@@ -657,7 +412,6 @@ export const KnowledgeGraphSection: React.FC<{
 								setFollowupOpen((v) => !v);
 								setGraphChatNodeContext(node)
 							}}
-							copyText={copyText}
 						/>
 					))}
 				</div>
@@ -677,63 +431,53 @@ export const KnowledgeGraphSection: React.FC<{
 				</div>
 			) : null}
 
-			{/* Fullscreen overlay */}
-			<AnimatePresence>
-				{fullscreenOpen ? (
-					<motion.div
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						exit={{ opacity: 0 }}
-						transition={{ duration: 0.2 }}
-						className="pktw-fixed pktw-inset-0 pktw-bg-black/30 pktw-z-[10000] pktw-flex pktw-items-center pktw-justify-center pktw-p-4"
-						onClick={(e) => e.target === e.currentTarget && setFullscreenOpen(false)}
-					>
-						<motion.div
-							initial={{ opacity: 0, scale: 0.96 }}
-							animate={{ opacity: 1, scale: 1 }}
-							exit={{ opacity: 0, scale: 0.96 }}
-							transition={{ duration: 0.2 }}
-							className="pktw-bg-white pktw-rounded-lg pktw-shadow-xl pktw-border pktw-border-[#e5e7eb] pktw-w-full pktw-h-full pktw-max-w-[95vw] pktw-max-h-[95vh] pktw-flex pktw-flex-col pktw-overflow-hidden"
-							onClick={(e) => e.stopPropagation()}
+			{/* Fullscreen overlay: always in DOM for stable portal ref; visibility via CSS */}
+			<div
+				className={cn(
+					'pktw-fixed pktw-inset-0 pktw-bg-black/30 pktw-z-[10000] pktw-flex pktw-items-center pktw-justify-center pktw-p-4',
+					!fullscreenOpen && 'pktw-pointer-events-none pktw-invisible'
+				)}
+				style={fullscreenOpen ? undefined : { visibility: 'hidden' }}
+				onClick={(e) => {
+					if (fullscreenOpen && e.target === e.currentTarget) {
+						logClick('graph-fullscreen-backdrop-close');
+						setFullscreenOpen(false);
+					}
+				}}
+			>
+				<motion.div
+					initial={false}
+					animate={{ opacity: fullscreenOpen ? 1 : 0 }}
+					transition={{ duration: 0.2 }}
+					className="pktw-bg-white pktw-rounded-lg pktw-shadow-xl pktw-border pktw-border-[#e5e7eb] pktw-w-full pktw-h-full pktw-max-w-[95vw] pktw-max-h-[95vh] pktw-flex pktw-flex-col pktw-overflow-hidden"
+					onClick={(e) => e.stopPropagation()}
+					style={!fullscreenOpen ? { pointerEvents: 'none' } : undefined}
+				>
+					<div className="pktw-flex pktw-items-center pktw-justify-between pktw-p-2 pktw-border-b pktw-border-[#e5e7eb] pktw-shrink-0">
+						<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338] pktw-truncate">
+							{analysisTitle ? `Knowledge Graph: ${analysisTitle}` : 'Knowledge Graph'}
+						</span>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="pktw-rounded-md"
+							title="Close"
+							onClick={() => setFullscreenOpen(false)}
 						>
-							<div className="pktw-flex pktw-items-center pktw-justify-between pktw-p-2 pktw-border-b pktw-border-[#e5e7eb] pktw-shrink-0">
-								<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Knowledge Graph</span>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="pktw-rounded-md"
-									title="Close"
-									onClick={() => setFullscreenOpen(false)}
-								>
-									<X className="pktw-w-5 pktw-h-5" />
-								</Button>
-							</div>
-							<div className="pktw-flex-1 pktw-min-h-0 pktw-p-4">
-								<GraphVisualization
-									ref={fullscreenGraphRef}
-									{...obsidianPreset}
-									graph={uiGraph}
-									effect={effect}
-									onNodeHover={setHover}
-									containerClassName="pktw-w-full pktw-h-full pktw-min-h-[400px]"
-									onNodeContextMenu={(pos, node) => {
-										if (menuLeaveTimerRef.current) {
-											clearTimeout(menuLeaveTimerRef.current);
-											menuLeaveTimerRef.current = null;
-										}
-										const gap = 4;
-										const menuW = 210;
-										const menuH = 320;
-										const left = Math.max(8, Math.min(pos.x, window.innerWidth - menuW - 8));
-										const top = Math.max(8, Math.min(pos.y + gap, window.innerHeight - menuH - 8));
-										setMenu({ open: true, clientX: left, clientY: top, node });
-									}}
-								/>
-							</div>
-						</motion.div>
-					</motion.div>
-				) : null}
-			</AnimatePresence>
+							<X className="pktw-w-5 pktw-h-5" />
+						</Button>
+					</div>
+					<div className="pktw-flex-1 pktw-min-h-0 pktw-p-4 pktw-flex pktw-flex-nowrap pktw-gap-3 pktw-overflow-hidden">
+						<div
+							ref={fullscreenContainerRef}
+							className="pktw-flex-1 pktw-min-w-0 pktw-min-h-0 pktw-flex pktw-flex-col"
+						/>
+						{pillsContent}
+					</div>
+				</motion.div>
+			</div>
+
+			{portalTarget && createPortal(graphWithOverlays, portalTarget)}
 		</div>
 	);
 };

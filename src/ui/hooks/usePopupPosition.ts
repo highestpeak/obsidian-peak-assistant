@@ -55,7 +55,7 @@ export function usePopupPosition(
 		// Calculate position immediately
 		calculatePosition();
 
-		// Use requestAnimationFrame to ensure DOM has updated
+		// Use RAF(requestAnimationFrame) to ensure DOM has updated
 		const rafId = requestAnimationFrame(() => {
 			calculatePosition();
 		});

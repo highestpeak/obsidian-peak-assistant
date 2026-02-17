@@ -77,8 +77,9 @@ export const ProgressBarSlider: React.FC<ProgressBarSliderProps> = ({
     const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
     const newValue = getValueFromPosition(percentage, true); // Allow continuous during drag
 
-    // Only trigger update if value changed significantly - increased threshold for better performance
-    if (Math.abs(newValue - lastValueRef.current) >= Math.max(step * 0.5, 0.1)) {
+    // Trigger update when value changed by half a step (smooth drag; no fixed 0.1 minimum so small ranges work)
+    const threshold = step * 0.5;
+    if (Math.abs(newValue - lastValueRef.current) >= threshold) {
       lastValueRef.current = newValue;
       debouncedUpdate(newValue);
     }

@@ -87,10 +87,12 @@ export function useAIAnalysisResult() {
                 dashboardBlocks: st.dashboardBlocks ?? [],
                 sources: st.sources ?? [],
                 graph: st.graph ?? null,
-                overviewMermaid: st.overviewMermaid ?? undefined,
+                overviewMermaidVersions: (st.overviewMermaidVersions ?? []).length > 0 ? st.overviewMermaidVersions : undefined,
+                overviewMermaidActiveIndex: (st.overviewMermaidVersions ?? []).length > 0 ? (st.overviewMermaidActiveIndex ?? 0) : undefined,
                 topicInspectResults: st.topicInspectResults ?? {},
                 topicAnalyzeResults: st.topicAnalyzeResults ?? {},
                 topicGraphResults: st.topicGraphResults ?? {},
+                blockChatRecords: Object.keys(st.blockChatRecords ?? {}).length > 0 ? st.blockChatRecords : undefined,
                 steps: st.steps ?? [],
                 fullAnalysisFollowUp: st.fullAnalysisFollowUp ?? [],
             };
@@ -98,7 +100,7 @@ export function useAIAnalysisResult() {
             const ts = Date.now();
             const today = new Date().toISOString().slice(0, 10);
             const displayTitle = (st.title?.trim() || searchQuery.slice(0, 48) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 60);
-            const fileName = `AI Analysis - ${displayTitle} - ${today}`;
+            const fileName = `${ts} - ${displayTitle}`;
             const exportSources: ExportSource[] = sources.map(s => ({
                 path: s.path,
                 title: s.title,
@@ -177,7 +179,7 @@ export function useAIAnalysisResult() {
             const getStepText = useAIAnalysisStore.getState().getStepText;
             const stepsSection = st.steps!
                 .map((step, i) => {
-                    const title = `### Step ${i + 1}: ${step.type}`;
+                    const title = `### Step ${i + 1}: ${step.title}`;
                     const body = getStepText(step).trim();
                     return body ? `${title}\n\n${body}` : title;
                 })
@@ -216,6 +218,7 @@ export function useAIAnalysisResult() {
             topicInspectResults: st.topicInspectResults ?? {},
             topicAnalyzeResults: st.topicAnalyzeResults ?? {},
             topicGraphResults: st.topicGraphResults ?? {},
+            blockChatRecords: Object.keys(st.blockChatRecords ?? {}).length > 0 ? st.blockChatRecords : undefined,
             steps: st.steps ?? [],
             fullAnalysisFollowUp: st.fullAnalysisFollowUp ?? [],
             graphFollowups: st.graphFollowupHistory?.length ? st.graphFollowupHistory : undefined,

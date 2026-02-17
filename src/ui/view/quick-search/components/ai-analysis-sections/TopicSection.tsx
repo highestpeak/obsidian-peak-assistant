@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Sparkles, Plus } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
@@ -11,6 +11,8 @@ import { TopicCapsule } from '../ai-analysis-topic-section/TopicCapsule';
 import { loadGraphForTopic } from '../ai-analysis-topic-section/TopicGraphPopover';
 import { InlineFollowupChat } from '@/ui/component/mine/InlineFollowupChat';
 import { useTopicFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
+import type { AISearchTopic } from '@/service/agents/AISearchAgent';
+
 const getSizeClasses = (size: string) => {
 	switch (size) {
 		case 'lg':
@@ -37,7 +39,7 @@ const getColorClasses = (size: string) => {
 };
 
 interface TagCloudProps {
-	topics?: Array<{ label: string; weight: number }>;
+	topics?: AISearchTopic[];
 	onTopicHover?: (topicLabel: string, evt: React.MouseEvent) => void;
 	onTopicLeave?: () => void;
 }
@@ -92,7 +94,7 @@ export const TagCloud: React.FC<TagCloudProps> = ({ topics, onTopicHover, onTopi
 };
 
 export interface TagCloudSectionProps {
-	topics?: Array<{ label: string; weight: number }>;
+	topics?: AISearchTopic[];
 	onClose?: () => void;
 }
 
@@ -116,10 +118,13 @@ export const TopicSection: React.FC<TagCloudSectionProps> = ({
 		setTopicGraphLoading,
 		setTopicGraphResult,
 		setTopicAnalyzeStreaming,
+		setTopicAnalyzeStreamingAppend,
 		setTopicAnalyzeResult,
 		setTopicModalOpen,
 		getHasGraphData,
 	} = useAIAnalysisStore();
+
+	const streamingTextLengthRef = useRef(0);
 
 	const summary = summaryChunks.join('');
 
@@ -308,11 +313,14 @@ export const TopicSection: React.FC<TagCloudSectionProps> = ({
 							outputPlace="modal"
 							onOpenModal={(question) => {
 								setTopicModalOpen(userInputTopic!);
-								setTopicAnalyzeStreaming({ topic: userInputTopic!, question, answerSoFar: '' });
+								streamingTextLengthRef.current = 0;
+								setTopicAnalyzeStreaming({ topic: userInputTopic!, question, chunks: [] });
 							}}
 							onStreamingReplace={(text, ctx) => {
-								if (text !== null) {
-									setTopicAnalyzeStreaming({ topic: userInputTopic!, question: ctx?.question ?? '', answerSoFar: text });
+								if (text !== null && ctx?.question != null) {
+									const chunk = text.length > streamingTextLengthRef.current ? text.slice(streamingTextLengthRef.current) : '';
+									streamingTextLengthRef.current = text.length;
+									if (chunk) setTopicAnalyzeStreamingAppend(chunk);
 								}
 							}}
 							onApply={(answer, _mode, question) => {
@@ -330,6 +338,7 @@ export const TopicSection: React.FC<TagCloudSectionProps> = ({
 				open={menu.open}
 				anchorRect={menu.anchorRect}
 				topicLabel={menu.topicLabel}
+				suggestQuestions={topics.find((t) => t.label === menu.topicLabel)?.suggestQuestions}
 				summary={summary}
 				sources={sources}
 				isInspectLoading={topicInspectLoading === menu.topicLabel}

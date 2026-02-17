@@ -1,48 +1,11 @@
 /**
- * Graph patch model used by the UI animation pipeline.
- *
- * This is intentionally UI-focused and does not try to match the storage layer graph types.
+ * Graph patch model for the UI animation pipeline.
+ * Re-exports shared types from core; adds UI-specific helpers and converters.
  */
 
-export interface GraphPatchNode {
-	id: string;
-	label: string;
-	type?: string;
-	/**
-	 * Optional role badges for styling (e.g. Source/Sink/Bridge).
-	 */
-	badges?: string[];
-	/** Vault-relative path for document/file nodes (used for opening files). */
-	path?: string;
-	/** Raw attributes from graph (e.g. attributes.path when id is hash). */
-	attributes?: Record<string, unknown>;
-}
+import type { GraphPatch, GraphPatchEdge, GraphPatchNode } from '@/core/providers/ui-events/graph';
 
-export interface GraphPatchEdge {
-	from_node_id: string;
-	to_node_id: string;
-	weight?: number;
-	/**
-	 * Used for styling (semantic edges as dashed, path edges as neon, etc.)
-	 */
-	kind?: string;
-}
-
-export interface GraphPatch {
-	upsertNodes: GraphPatchNode[];
-	upsertEdges: GraphPatchEdge[];
-	removeNodeIds?: string[];
-	removeEdges?: Array<{ from_node_id: string; to_node_id: string }>;
-	focus?: {
-		nodeIds?: string[];
-		edgeKeys?: string[];
-		mode?: 'semantic' | 'physical' | 'mixed';
-	};
-	meta?: {
-		label: string;
-		toolName: string;
-	};
-}
+export type { GraphPatch, GraphPatchEdge, GraphPatchNode };
 
 export function makeEmptyPatch(toolName: string, label: string): GraphPatch {
 	return {

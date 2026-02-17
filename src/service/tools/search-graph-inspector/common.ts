@@ -292,6 +292,11 @@ export type ItemFiledGetter<T> = (item: T) => {
     getOutgoingCount?: () => number;
 }
 
+export function getPathFromNode(node?: GraphNode | null): string {
+    if (!node) return '';
+    return JSON.parse(node.attributes || '{}').path;
+}
+
 export async function getDefaultItemFiledGetter<T extends { id: string }>(nodeIds: string[], filters?: any, sorter?: string): Promise<ItemFiledGetter<T>> {
     const nodesMap = await sqliteStoreManager.getGraphNodeRepo().getByIds(nodeIds);
     const tagsAndCategoriesMap = filters?.tag_category_boolean_expression
@@ -303,7 +308,7 @@ export async function getDefaultItemFiledGetter<T extends { id: string }>(nodeId
             ? await edgeRepo.countEdges(nodeIds)
             : { incoming: emptyMap<string, number>(), outgoing: emptyMap<string, number>(), total: emptyMap<string, number>() };
     return (node) => ({
-        getPath: () => JSON.parse(nodesMap.get(node.id)?.attributes || '{}').path,
+        getPath: () => getPathFromNode(nodesMap.get(node.id)),
         getModified: () => new Date(nodesMap.get(node.id)?.updated_at || Date.now()),
         getCreated: () => new Date(nodesMap.get(node.id)?.created_at || Date.now()),
         getTags: () => tagsAndCategoriesMap.get(node.id)?.tags || [],

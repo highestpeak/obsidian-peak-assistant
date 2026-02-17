@@ -1,4 +1,3 @@
-import { StreamingDisplayMethods } from "../ai-analysis-sections/StepsDisplay";
 import { SummaryContent } from "../ai-analysis-sections/SummarySection";
 import { IntelligenceFrame } from "../../../../component/mine/IntelligenceFrame";
 import { useAIAnalysisStore } from "../../store/aiAnalysisStore";
@@ -11,9 +10,9 @@ import { DashboardBlocksSection } from "../ai-analysis-sections/DashboardBlocksS
 import { createOpenSourceCallback } from "../../callbacks/open-source-file";
 
 export const StreamingAnalysis: React.FC<{
-	onClose?: () => void,
-	setStreamingDisplayMethods: (methods: StreamingDisplayMethods) => void
-}> = ({ onClose, setStreamingDisplayMethods }) => {
+	onClose?: () => void;
+	stepsRef?: React.RefObject<HTMLDivElement | null>;
+}> = ({ onClose, stepsRef }) => {
 	const {
 		isAnalyzing,
 		isSummaryStreaming,
@@ -50,15 +49,16 @@ export const StreamingAnalysis: React.FC<{
 							onOpenWikilink={onClose ? createOpenSourceCallback(onClose) : undefined}
 						/>
 					) : null}
-					<StreamingStepsDisplay
-						steps={steps}
-						currentStep={currentStep}
-						stepTrigger={stepTrigger}
-						registerCurrentStepRender={setStreamingDisplayMethods}
-						startedAtMs={analysisStartedAtMs}
-						isRunning={isAnalyzing && !analysisCompleted}
-						finalDurationMs={analysisCompleted ? duration : null}
-					/>
+					<div ref={stepsRef} className="pktw-scroll-mt-24">
+						<StreamingStepsDisplay
+							steps={steps}
+							currentStep={currentStep}
+							stepTrigger={stepTrigger}
+							startedAtMs={analysisStartedAtMs}
+							isRunning={isAnalyzing && !analysisCompleted}
+							finalDurationMs={analysisCompleted ? duration : null}
+						/>
+					</div>
 				</div>
 			</IntelligenceFrame>
 
