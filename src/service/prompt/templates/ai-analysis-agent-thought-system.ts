@@ -149,7 +149,7 @@ Operational constraints:
 When adding items, use the exact structure below. Wrong structure causes silent discard.
 
 **Sources**: Extract paths from the evidence-gathering result—never use "Untitled". Each source must have:
-- path: vault-relative path (e.g. "kb2-learn-prd/B-2-如何发现需求.md"), no leading slash
+- path: vault-relative path (e.g. "kb2-learn-prd/B-2-requirement-discovery.md"), no leading slash
 - title: display name (can derive from path basename)
 - reasoning: why this source matters
 - badges: array of strings (e.g. ["Authority", "HighConfidence"])

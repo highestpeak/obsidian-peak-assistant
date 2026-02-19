@@ -12,57 +12,29 @@ import { callAgentTool } from '../tools/call-agent-tool';
 import { AgentMemoryManager } from './search-agent-helper/AgentMemoryManager';
 import { SummaryAgent } from './search-agent-helper/SummaryAgent';
 import { MermaidOverviewAgent } from './search-agent-helper/MermaidOverviewAgent';
-import { SourcesUpdateAgent } from './search-agent-helper/SourcesUpdateAgent';
-import { TopicsUpdateAgent } from './search-agent-helper/TopicsUpdateAgent';
-import { GraphUpdateAgent } from './search-agent-helper/GraphUpdateAgent';
-import { DashboardBlocksUpdateAgent } from './search-agent-helper/DashboardBlocksUpdateAgent';
-import { buildMinifiedResultSnapshot } from './search-agent-helper/resultSnapshot';
+import { DashboardUpdateAgent, DashboardUpdatePlan } from './search-agent-helper/DashboardUpdateAgent';
+import { FinalRefineAgent } from './search-agent-helper/FinalRefineAgent';
+import { FollowUpQuestionAgent } from './search-agent-helper/FollowUpQuestionAgent';
+import { DocSimpleAgent } from './search-agent-helper/DocSimpleAgent';
+import { buildMinifiedResultSnapshot } from './search-agent-helper/helpers/resultSnapshot';
+import { addConceptLinksBySimilarity } from './search-agent-helper/helpers/conceptLinkBySimilarity';
+import { AppContext } from '@/app/context/AppContext';
 import { memoizeSupplier } from '@/core/utils/functions';
 import { emptyUsage } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { DELTA_EVENT_TYPES, getDeltaEventDeltaText } from '@/core/providers/helpers/stream-helper';
-import { normalizeFilePath } from '@/core/utils/file-utils';
 
-/** Normalize string for file node id (same as DashboardUpdateToolBuilder). */
-function normalizeSpecialKey(raw: string): string {
-    const text = String(raw ?? '').trim().toLowerCase();
-    return text.replace(/[_\s]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-}
+/** Max characters for evidence hint so prompt does not explode. */
+const EVIDENCE_HINT_MAX_CHARS = 6000;
 
-/** Ensure each source path has a corresponding file node in the graph so they are openable. */
-function ensureSourcePathsAsGraphFileNodes(result: SearchAgentResult): void {
-    const nodes = result.graph.nodes;
-    const existingByPath = new Set(nodes.map((n) => n.path?.trim().toLowerCase()).filter(Boolean));
-    const existingById = new Set(nodes.map((n) => n.id?.trim().toLowerCase()).filter(Boolean));
-    for (const src of result.sources) {
-        const path = src.path?.trim();
-        if (!path) continue;
-        const normPath = normalizeFilePath(path);
-        const lowerPath = normPath.toLowerCase();
-        const fileNodeId = `file:${normalizeSpecialKey(normPath)}`;
-        if (existingByPath.has(lowerPath) || existingById.has(fileNodeId.toLowerCase())) continue;
-        const basename = normPath.split('/').filter(Boolean).pop() ?? normPath;
-        const title = basename.replace(/\.(md|markdown)$/i, '') || basename;
-        result.graph.nodes.push({
-            id: fileNodeId,
-            type: 'file',
-            title,
-            path: normPath,
-            attributes: {},
-        });
-        existingByPath.add(lowerPath);
-        existingById.add(fileNodeId.toLowerCase());
-    }
-}
-
-/** Simple: summary + sources only (save tokens). Full: complete analysis. */
-export type AnalysisMode = 'simple' | 'full';
+/** docSimple = current note only; vaultSimple = vault search then summarize; vaultFull = deep vault analysis. */
+export type AnalysisMode = 'docSimple' | 'vaultSimple' | 'vaultFull';
 
 export interface AISearchAgentOptions {
     enableWebSearch?: boolean;
     enableLocalSearch?: boolean;
-    /** Simple mode: only summary + sources (save tokens). Full: complete analysis. */
-    analysisMode?: AnalysisMode;
+    /** Required. docSimple | vaultSimple | vaultFull. Doc scope for docSimple uses stream(opts.scopeValue). */
+    analysisMode: AnalysisMode;
     /**
      * Maximum iterations for multi-agent ReAct loop.
      */
@@ -71,22 +43,6 @@ export interface AISearchAgentOptions {
      * Maximum wall clock time in milliseconds for the entire search.
      */
     maxWallClockMs?: number;
-    /**
-     * model id for thought agent
-     */
-    thoughtAgentModel: string;
-    /**
-     * provider for thought agent
-     */
-    thoughtAgentProvider: string;
-    /**
-     * model id for search agent
-     */
-    searchAgentModel: string;
-    /**
-     * provider for search agent
-     */
-    searchAgentProvider: string;
 }
 
 /**
@@ -106,7 +62,6 @@ const DEFAULT_MAX_WALL_CLOCK_MS = 10 * 60 * 1000;
 const MAX_NO_PROGRESS_ITERATIONS = 4;
 // Do not apply "no progress" early-stop too early, especially when the dashboard is still empty.
 const MIN_ITERATIONS_BEFORE_NO_PROGRESS_CHECK = 10;
-
 
 /** How to render the block content. Add new type in DashboardUpdateToolBuilder + DashboardBlocksSection. */
 export type DashboardRenderEngine = 'MARKDOWN' | 'TILE' | 'ACTION_GROUP' | 'MERMAID';
@@ -202,6 +157,8 @@ export interface SearchAgentResult {
     sources: AISearchSource[];
     /** Overview diagram generated by Mermaid Overview Agent (raw Mermaid code). */
     overviewMermaid?: string;
+    /** Follow-up questions suggested by a dedicated agent from full search history/session; not from topics. */
+    suggestedFollowUpQuestions?: string[];
 }
 
 export interface InnerAgentContext {
@@ -211,7 +168,7 @@ export interface InnerAgentContext {
     searchHistory: (query: string, options?: { maxChars?: number }) => string;
 }
 
-export interface DashboardUpdateContext {
+export interface AISearchUpdateContext {
     /**
      * System prompt for this generation.
      */
@@ -241,6 +198,8 @@ export interface DashboardUpdateContext {
      * Original query
      */
     originalQuery: string;
+    /** Plan from DashboardUpdateAgent.getPlan(); execution agents follow topicsPlan, sourcesPlan, graphPlan, blockPlan. */
+    plan?: DashboardUpdatePlan;
 }
 
 /**
@@ -249,6 +208,9 @@ export interface DashboardUpdateContext {
  * Multi agent architecture. (SubAgents)
  */
 export class AISearchAgent {
+    /** DocSimple: single-file Q&A agent. Created only when analysisMode === 'docSimple'. */
+    private docSimpleAgent: DocSimpleAgent;
+
     /**
      * Thought Agent - main coordinator for ReAct loop
      */
@@ -262,10 +224,11 @@ export class AISearchAgent {
     /** Finish-phase agents */
     private summaryAgent: SummaryAgent;
     private mermaidOverviewAgent: MermaidOverviewAgent;
-    private topicsUpdateAgent: TopicsUpdateAgent;
-    private graphUpdateAgent: GraphUpdateAgent;
-    private sourcesUpdateAgent: SourcesUpdateAgent;
-    private dashboardBlocksUpdateAgent: DashboardBlocksUpdateAgent;
+    private finalRefineAgent: FinalRefineAgent;
+    private followUpQuestionAgent: FollowUpQuestionAgent;
+
+    /** Dashboard update orchestrator: topics, sources, graph, blocks, review */
+    private dashboardUpdateAgent: DashboardUpdateAgent;
 
     /**
      * Manual tool call handlers
@@ -293,6 +256,8 @@ export class AISearchAgent {
      * Set of verified paths (paths that exist in vault/DB or appeared in tool outputs)
      */
     private verifiedPaths: Set<string> = new Set();
+    /** Paths already emitted as incremental source + graph node during this run (streaming write). */
+    private emittedSourcePaths: Set<string> = new Set();
 
     /** Last thought-step context, so finish-phase (e.g. summary) can use its tool evidence when context is not passed. */
     private lastOneGenerationContext: OneGenerationContext | undefined;
@@ -304,19 +269,19 @@ export class AISearchAgent {
         this.maxIterations = this.options.maxMultiAgentIterations ?? DEFAULT_MAX_MULTI_AGENT_ITERATIONS;
         this.maxWallClockMs = this.options.maxWallClockMs ?? DEFAULT_MAX_WALL_CLOCK_MS;
 
-        this.agentMemoryManager = new AgentMemoryManager(
-            this.aiServiceManager,
-            this.options
-        );
+        this.docSimpleAgent = new DocSimpleAgent(this.aiServiceManager);
 
+        this.agentMemoryManager = new AgentMemoryManager(this.aiServiceManager);
+
+        const { provider: thoughtProvider, modelId: thoughtModel } = this.aiServiceManager.getModelForPrompt(PromptId.ThoughtAgent);
         const outputControl = this.aiServiceManager.getSettings()?.defaultOutputControl;
         const thoughtTemperature = outputControl?.temperature ?? 0.6;
         const thoughtMaxTokens = outputControl?.maxOutputTokens ?? 4096;
 
         this.thoughtAgent = new Agent<ThoughtToolSet>({
             model: this.aiServiceManager.getMultiChat()
-                .getProviderService(this.options.thoughtAgentProvider)
-                .modelClient(this.options.thoughtAgentModel),
+                .getProviderService(thoughtProvider)
+                .modelClient(thoughtModel),
             tools: {
                 call_search_agent: callAgentTool('search'),
                 submit_final_answer: submitFinalAnswerTool(),
@@ -331,7 +296,7 @@ export class AISearchAgent {
 
         this.searchAgent = new RawSearchAgent(
             this.aiServiceManager,
-            this.options,
+            { enableWebSearch: this.options.enableWebSearch, enableLocalSearch: this.options.enableLocalSearch },
             (paths) => paths.forEach(path => this.verifiedPaths.add(path))
         );
         this.manualToolCallHandlers['call_search_agent'] = {
@@ -342,11 +307,9 @@ export class AISearchAgent {
         };
 
         const innerAgentOption = {
-            provider: this.options.thoughtAgentProvider,
-            model: this.options.thoughtAgentModel,
             enableWebSearch: this.options.enableWebSearch,
             enableLocalSearch: this.options.enableLocalSearch,
-            analysisMode: this.options.analysisMode ?? 'full',
+            analysisMode: this.options.analysisMode,
         };
 
         const innerAgentContext: InnerAgentContext = {
@@ -364,16 +327,25 @@ export class AISearchAgent {
 
         this.summaryAgent = new SummaryAgent(innerAgentCreateParams);
         this.mermaidOverviewAgent = new MermaidOverviewAgent(innerAgentCreateParams);
-        this.topicsUpdateAgent = new TopicsUpdateAgent(innerAgentCreateParams);
-        this.graphUpdateAgent = new GraphUpdateAgent(innerAgentCreateParams);
-        this.sourcesUpdateAgent = new SourcesUpdateAgent(innerAgentCreateParams);
-        this.dashboardBlocksUpdateAgent = new DashboardBlocksUpdateAgent(innerAgentCreateParams);
+        this.finalRefineAgent = new FinalRefineAgent(innerAgentCreateParams);
+        this.dashboardUpdateAgent = new DashboardUpdateAgent({
+            ...innerAgentCreateParams,
+            onTokenUsage: (u) => this.agentMemoryManager.accumulateTokenUsage(u),
+        });
+        this.followUpQuestionAgent = new FollowUpQuestionAgent({
+            aiServiceManager: this.aiServiceManager,
+            onTokenUsage: (u) => this.agentMemoryManager.accumulateTokenUsage(u),
+        });
     }
 
     /**
      * Stream search results with ReAct loop (ThoughtAgent coordinates SearchAgent)
+     * @param opts.scopeValue Used by DocSimpleAgent (current file path)
      */
-    async stream(prompt: string): Promise<AsyncGenerator<LLMStreamEvent>> {
+    async stream(prompt: string, opts?: { scopeValue?: string }): Promise<AsyncGenerator<LLMStreamEvent>> {
+        if (this.options.analysisMode === 'docSimple') {
+            return this.docSimpleAgent!.stream(prompt, { scopeValue: opts?.scopeValue });
+        }
         this.resetAgentResult();
         return this.executeReActLoop(prompt);
     }
@@ -393,9 +365,11 @@ export class AISearchAgent {
             graph: { nodes: [], edges: [] },
             sources: [],
             dashboardBlocks: [],
+            suggestedFollowUpQuestions: [],
         };
-        // Clear verified paths for fresh start
         this.verifiedPaths.clear();
+        this.emittedSourcePaths.clear();
+        this.dashboardUpdateAgent.resetSessionState();
         return this.agentResult;
     }
 
@@ -407,22 +381,22 @@ export class AISearchAgent {
         // Initialize agent memory for this session
         this.agentMemoryManager.resetAgentMemory(initialPrompt);
 
-        // first update the dashboard blocks.
+        // first update the dashboard blocks
         for await (const ev of this.runDashboardUpdate(true)) {
             yield ev;
         }
 
-        // iteraction control
+        // iteration control
+        const maxIterations = this.maxIterations;
         let iterationCount = 0;
         let reActStartTimeMs = Date.now();
         let isSubmitResultCalled = false;
-        // Track progress for early stop detection
         let noProgressIterations = 0;
         let previousSourcesCount = 0;
         let previousNodesCount = 0;
         let previousEdgesCount = 0;
 
-        while (iterationCount < this.maxIterations) {
+        while (iterationCount < maxIterations) {
             iterationCount++;
 
             // Check time budget before starting new iteration
@@ -483,7 +457,7 @@ export class AISearchAgent {
             previousNodesCount = currentNodesCount;
             previousEdgesCount = currentEdgesCount;
 
-            // run thought agent
+            // run thought agent (wrapped in try-catch so one iteration error does not terminate entire AI Analysis)
             const oneGenerationContext: OneGenerationContext = {
                 thoughtTextChunks: [],
                 reasoningTextChunks: [],
@@ -491,20 +465,39 @@ export class AISearchAgent {
                 toolResults: [],
                 stepTokenUsage: emptyUsage(),
             };
-            const getThoughtText = memoizeSupplier(() => oneGenerationContext.thoughtTextChunks.join('').trim());
-            yield* this.runThoughtAgent(
-                oneGenerationContext,
-                () => { isSubmitResultCalled = true; },
-                getThoughtText,
+            const getThoughtText = memoizeSupplier(
+                () => (oneGenerationContext.thoughtTextChunks ?? []).join('').trim(),
             );
-            // Build thought message and update agent memory
-            this.agentMemoryManager.buildIterationThoughtMessage(oneGenerationContext, getThoughtText());
-            this.lastOneGenerationContext = oneGenerationContext;
+            try {
+                yield* this.runThoughtAgent(
+                    oneGenerationContext,
+                    () => { isSubmitResultCalled = true; },
+                    getThoughtText,
+                );
+                // Build thought message and update agent memory
+                const thoughtText = getThoughtText();
+                this.agentMemoryManager.buildIterationThoughtMessage(
+                    oneGenerationContext,
+                    thoughtText ?? '',
+                );
+                this.lastOneGenerationContext = oneGenerationContext;
 
-            // After evidence gathering (thought agent and search agent), force one dashboard update pass to materialize evidence into UI.
-            // This decouples result updating from ThoughtAgent and guarantees incremental UI updates per iteration.
-            for await (const ev of this.runDashboardUpdate(false, oneGenerationContext)) {
-                yield ev;
+                for await (const ev of this.runDashboardUpdate(false, oneGenerationContext)) {
+                    yield ev;
+                }
+            } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                console.error('[AISearchAgent] Thought agent iteration error (continuing next iteration):', err);
+                yield {
+                    type: 'pk-debug',
+                    debugName: 'thought-agent-iteration-error',
+                    triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+                    extra: {
+                        reason: `[AISearchAgent] Thought agent error: ${message}. Continuing next iteration.`,
+                        error: message,
+                    },
+                };
+                continue;
             }
 
             // ThoughtAgent decided to submit final answer, end the loop
@@ -564,9 +557,11 @@ export class AISearchAgent {
         };
 
         // ThoughtAgent thinks and decides next action (streaming)
-        const analysisMode = this.options.analysisMode ?? 'full';
-        const simpleMode = analysisMode === 'simple';
-        const systemPrompt = await this.aiServiceManager.renderPrompt(PromptId.ThoughtAgentSystem, { analysisMode, simpleMode });
+        const analysisMode = this.options.analysisMode;
+        const systemPrompt = await this.aiServiceManager.renderPrompt(PromptId.ThoughtAgent, {
+            analysisMode,
+            simpleMode: this.options.analysisMode === 'vaultSimple'
+        });
         const thoughtStream = this.thoughtAgent.stream({
             system: systemPrompt,
             prompt: nextThoughtPrompt,
@@ -682,6 +677,7 @@ export class AISearchAgent {
                             currentResult: this.agentResult,
                         },
                     };
+
                     break;
                 case 'finish':
                     oneGenerationContext.stepTokenUsage = mergeTokenUsage(oneGenerationContext.stepTokenUsage, chunk.totalUsage);
@@ -724,231 +720,42 @@ export class AISearchAgent {
                     break;
             }
         }
+
+        // Deterministic streaming write: new verified paths -> placeholder source + single-node graph patch.
+        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesAndGraphFromVerifiedPaths(
+            this.emittedSourcePaths,
+        )) {
+            yield ev;
+        }
     }
 
     private async *runDashboardUpdate(isInitialCall: boolean, oneGenerationContext?: OneGenerationContext): AsyncGenerator<LLMStreamEvent> {
-        const stepId = generateUuidWithoutHyphens();
-        let oldAgentResultLenInfo = this.getAgentResultLenInfo(this.agentResult);
-        try {
-            yield {
-                type: 'ui-step',
-                uiType: UIStepType.STEPS_DISPLAY,
-                stepId,
-                title: 'Trying to update dashboard',
-                description: 'Starting to update dashboard',
-                triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-            };
+        if (this.options.analysisMode !== 'vaultFull')
+            return;
 
-            yield {
-                type: 'ui-step',
-                uiType: UIStepType.STEPS_DISPLAY,
-                stepId,
-                title: 'Dashboard Updateing: Updating topics...',
-                description: 'Updating topics',
-                triggerName: StreamTriggerName.SEARCH_TOPICS_AGENT,
-            };
-            let dashboardUpdateContext = this.buildDashboardUpdateContext(oneGenerationContext);
-            console.debug('[runDashboardUpdate] before update topics, dashboardUpdateContext: ', JSON.stringify(dashboardUpdateContext));
-            for await (const ev of this.topicsUpdateAgent.stream(dashboardUpdateContext)) {
-                if (ev.type === 'on-step-finish') {
-                    this.agentMemoryManager.accumulateTokenUsage(ev.usage);
-                }
-                if (DELTA_EVENT_TYPES.has(ev.type)) {
-                    yield {
-                        type: 'ui-step-delta',
-                        uiType: UIStepType.STEPS_DISPLAY,
-                        stepId,
-                        descriptionDelta: getDeltaEventDeltaText(ev),
-                        triggerName: StreamTriggerName.SEARCH_TOPICS_AGENT,
-                    };
-                }
+        const updateContext = this.buildDashboardUpdateContext(oneGenerationContext);
 
-                yield ev;
-            }
+        const oldAgentResultLenInfo = this.getAgentResultLenInfo(this.agentResult);
+        yield* this.dashboardUpdateAgent.runDashboardUpdate({
+            updateContext,
+            isInitialCall,
+            buildChangeDesc: () => this.agentResultChangeDesc(oldAgentResultLenInfo, this.getAgentResultLenInfo(this.agentResult)),
+        });
 
-            if (isInitialCall) {
-                // initial call only update topics to give a quick overview of the analysis.
-                return;
-            }
-
-            yield {
-                type: 'ui-step',
-                uiType: UIStepType.STEPS_DISPLAY,
-                stepId,
-                title: 'Dashboard Updateing: Updating sources...',
-                description: 'Updating sources',
-                triggerName: StreamTriggerName.SEARCH_SOURCES_AGENT,
-            };
-            // context may change after other agents run. so we need to rebuild the context.
-            dashboardUpdateContext = this.buildDashboardUpdateContext(oneGenerationContext);
-            console.debug('[runDashboardUpdate] before update sources, dashboardUpdateContext: ', JSON.stringify(dashboardUpdateContext));
-            // all other calls update sources
-            for await (const ev of this.sourcesUpdateAgent.stream(dashboardUpdateContext)) {
-                if (ev.type === 'on-step-finish') {
-                    this.agentMemoryManager.accumulateTokenUsage(ev.usage);
-                }
-                if (DELTA_EVENT_TYPES.has(ev.type)) {
-                    yield {
-                        type: 'ui-step-delta',
-                        uiType: UIStepType.STEPS_DISPLAY,
-                        stepId,
-                        descriptionDelta: getDeltaEventDeltaText(ev),
-                        triggerName: StreamTriggerName.SEARCH_SOURCES_AGENT,
-                    };
-                }
-                yield ev;
-            }
-
-            if (this.options.analysisMode && this.options.analysisMode === 'simple') {
-                return;
-            }
-
-            yield {
-                type: 'ui-step',
-                uiType: UIStepType.STEPS_DISPLAY,
-                stepId,
-                title: 'Dashboard Updateing: Updating graph...',
-                description: 'Updating graph',
-                triggerName: StreamTriggerName.SEARCH_GRAPH_AGENT,
-            };
-            yield {
-                type: 'ui-signal',
-                id: `sig-${Date.now()}`,
-                channel: 'graph',
-                kind: 'stage',
-                entityId: stepId,
-                payload: { stage: 'start', overlayText: 'Updating graph…', effect: { type: 'scan', intensity: 1 } },
-            };
-            ensureSourcePathsAsGraphFileNodes(this.agentResult);
-            dashboardUpdateContext = this.buildDashboardUpdateContext(oneGenerationContext);
-            console.debug('[runDashboardUpdate] before update graph, dashboardUpdateContext: ', JSON.stringify(dashboardUpdateContext));
-            for await (const ev of this.graphUpdateAgent.stream(dashboardUpdateContext, { stepId })) {
-                if (ev.type === 'on-step-finish') {
-                    this.agentMemoryManager.accumulateTokenUsage(ev.usage);
-                }
-                if (DELTA_EVENT_TYPES.has(ev.type)) {
-                    yield {
-                        type: 'ui-step-delta',
-                        uiType: UIStepType.STEPS_DISPLAY,
-                        stepId,
-                        descriptionDelta: getDeltaEventDeltaText(ev),
-                        triggerName: StreamTriggerName.SEARCH_GRAPH_AGENT,
-                    };
-                }
-                yield ev;
-            }
-            yield {
-                type: 'ui-signal',
-                id: `sig-${Date.now()}`,
-                channel: 'graph',
-                kind: 'stage',
-                entityId: stepId,
-                payload: { stage: 'finish' },
-            };
-            yield {
-                type: 'ui-step',
-                uiType: UIStepType.STEPS_DISPLAY,
-                stepId,
-                title: 'Dashboard Updateing: Updating dashboard blocks...',
-                description: 'Updating dashboard blocks',
-                triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT,
-            };
-            dashboardUpdateContext = this.buildDashboardUpdateContext(oneGenerationContext);
-            console.debug('[runDashboardUpdate] before update dashboard blocks, dashboardUpdateContext: ', JSON.stringify(dashboardUpdateContext));
-            for await (const ev of this.dashboardBlocksUpdateAgent.stream(dashboardUpdateContext)) {
-                if (ev.type === 'on-step-finish') {
-                    this.agentMemoryManager.accumulateTokenUsage(ev.usage);
-                }
-                if (DELTA_EVENT_TYPES.has(ev.type)) {
-                    yield {
-                        type: 'ui-step-delta',
-                        uiType: UIStepType.STEPS_DISPLAY,
-                        stepId,
-                        descriptionDelta: getDeltaEventDeltaText(ev),
-                        triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT,
-                    };
-                }
-                yield ev;
-            }
-        } catch (e) {
-            yield {
-                type: 'pk-debug',
-                debugName: 'dashboard-update-agent-error',
-                triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-                extra: { error: String(e) },
-            };
-        } finally {
-            let newAgentResultLenInfo = this.getAgentResultLenInfo(this.agentResult);
-            let changeDesc = this.agentResultChangeDesc(oldAgentResultLenInfo, newAgentResultLenInfo);
-            yield {
-                type: 'ui-step',
-                uiType: UIStepType.STEPS_DISPLAY,
-                stepId,
-                title: 'Dashboard Updated. ' + changeDesc,
-                triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-            };
+        if (!isInitialCall) {
+            const reviewStepId = generateUuidWithoutHyphens();
+            yield* this.dashboardUpdateAgent.streamReview(updateContext, { stepId: reviewStepId });
         }
     }
 
     private async *finishReActLoop(reActStartTimeMs: number): AsyncGenerator<LLMStreamEvent> {
-        const summaryStepId = generateUuidWithoutHyphens();
-        yield {
-            type: 'ui-step',
-            uiType: UIStepType.STEPS_DISPLAY,
-            stepId: summaryStepId,
-            title: 'Summarizing the analysis...',
-            triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-        };
-        for await (const chunk of this.streamTitle()) {
-            if (DELTA_EVENT_TYPES.has(chunk.type)) {
-                yield {
-                    type: 'ui-step-delta',
-                    uiType: UIStepType.STEPS_DISPLAY,
-                    stepId: summaryStepId,
-                    descriptionDelta: getDeltaEventDeltaText(chunk),
-                    triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-                };
-            }
-            yield chunk;
-        }
-
-        yield {
-            type: 'ui-step',
-            uiType: UIStepType.STEPS_DISPLAY,
-            stepId: summaryStepId,
-            title: 'Summarizing the analysis...',
-            triggerName: StreamTriggerName.SEARCH_SUMMARY,
-        };
-        let dashboardUpdateContext = this.buildDashboardUpdateContext();
-        for await (const chunk of this.summaryAgent.stream(dashboardUpdateContext)) {
-            if (chunk.type === 'prompt-stream-result') {
-                this.agentMemoryManager.accumulateTokenUsage(chunk.usage);
-            }
-            if (DELTA_EVENT_TYPES.has(chunk.type)) {
-                yield {
-                    type: 'ui-step-delta',
-                    uiType: UIStepType.STEPS_DISPLAY,
-                    stepId: summaryStepId,
-                    descriptionDelta: getDeltaEventDeltaText(chunk),
-                    triggerName: StreamTriggerName.SEARCH_SUMMARY,
-                };
-            }
-            yield chunk;
-        }
-        for await (const chunk of this.mermaidOverviewAgent.stream(dashboardUpdateContext)) {
-            if (chunk.type === 'on-step-finish') {
-                this.agentMemoryManager.accumulateTokenUsage(chunk.usage);
-            }
-            if (DELTA_EVENT_TYPES.has(chunk.type)) {
-                yield {
-                    type: 'ui-step-delta',
-                    uiType: UIStepType.STEPS_DISPLAY,
-                    stepId: summaryStepId,
-                    descriptionDelta: getDeltaEventDeltaText(chunk),
-                    triggerName: StreamTriggerName.SEARCH_SUMMARY,
-                };
-            }
-            yield chunk;
+        if (this.options.analysisMode === 'vaultFull') {
+            yield* this.streamFullAnalysis();
+        } else {
+            const summaryStepId = generateUuidWithoutHyphens();
+            yield* this.streamFinalRefine(summaryStepId, 'Refining results…', 'full');
+            let dashboardUpdateContext = this.buildDashboardUpdateContext();
+            yield* this.streamTitleAndSummary(summaryStepId, dashboardUpdateContext);
         }
 
         yield {
@@ -959,6 +766,204 @@ export class AISearchAgent {
             result: this.agentResult,
             triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
         };
+    }
+
+    /**
+     * Stream title then summary for the analysis, emitting ui-step and ui-step-delta as needed.
+     */
+    private async *streamTitleAndSummary(
+        stepId: string,
+        dashboardContext: AISearchUpdateContext
+    ): AsyncGenerator<LLMStreamEvent> {
+        yield {
+            type: 'ui-step',
+            uiType: UIStepType.STEPS_DISPLAY,
+            stepId,
+            title: 'Summarizing the analysis...',
+            triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+        };
+        for await (const chunk of this.streamTitle()) {
+            if (DELTA_EVENT_TYPES.has(chunk.type)) {
+                yield {
+                    type: 'ui-step-delta',
+                    uiType: UIStepType.STEPS_DISPLAY,
+                    stepId,
+                    descriptionDelta: getDeltaEventDeltaText(chunk),
+                    triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+                };
+            }
+            yield chunk;
+        }
+        yield {
+            type: 'ui-step',
+            uiType: UIStepType.STEPS_DISPLAY,
+            stepId,
+            title: 'Summarizing the analysis...',
+            triggerName: StreamTriggerName.SEARCH_SUMMARY,
+        };
+        for await (const chunk of this.summaryAgent.stream(dashboardContext)) {
+            if (chunk.type === 'prompt-stream-result') {
+                this.agentMemoryManager.accumulateTokenUsage(chunk.usage);
+            }
+            if (DELTA_EVENT_TYPES.has(chunk.type)) {
+                yield {
+                    type: 'ui-step-delta',
+                    uiType: UIStepType.STEPS_DISPLAY,
+                    stepId,
+                    descriptionDelta: getDeltaEventDeltaText(chunk),
+                    triggerName: StreamTriggerName.SEARCH_SUMMARY,
+                };
+            }
+            yield chunk;
+        }
+    }
+
+    /** Number of refine rounds: each round runs sources (by batch) then graph refine (full). */
+    private static readonly REFINE_ROUNDS = 2;
+    /** Sources refine batch size; graph is always full. */
+    private static readonly REFINE_SOURCES_BATCH_SIZE = 12;
+
+    /**
+     * Single refine step: sources only (optionally one batch), graph only, or full. Emits ui-step + ui-step-delta.
+     */
+    private async *streamFinalRefine(
+        summaryStepId: string,
+        stepTitle: string,
+        refineMode: 'sources_only' | 'graph_only' | 'full',
+        opts?: { sourcesBatch?: { index: number; start: number; end: number; total: number } }
+    ): AsyncGenerator<LLMStreamEvent> {
+        try {
+            yield {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId: summaryStepId,
+                title: stepTitle,
+                description: refineMode === 'sources_only' ? 'Refining sources…' : refineMode === 'graph_only' ? 'Refining graph…' : 'Refining results…',
+                triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
+            };
+            const refineContext = this.buildDashboardUpdateContext();
+            for await (const ev of this.finalRefineAgent.stream(refineContext, {
+                stepId: summaryStepId,
+                refineMode,
+                sourcesBatch: opts?.sourcesBatch,
+            })) {
+                if (ev.type === 'on-step-finish') {
+                    this.agentMemoryManager.accumulateTokenUsage(ev.usage);
+                }
+                if (DELTA_EVENT_TYPES.has(ev.type)) {
+                    yield {
+                        type: 'ui-step-delta',
+                        uiType: UIStepType.STEPS_DISPLAY,
+                        stepId: summaryStepId,
+                        descriptionDelta: getDeltaEventDeltaText(ev),
+                        triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
+                    };
+                }
+                yield ev;
+            }
+        } catch (e) {
+            console.warn('[AISearchAgent] Final refine failed; keeping incremental result.', e);
+        }
+    }
+
+    private async *streamFullAnalysis(): AsyncGenerator<LLMStreamEvent> {
+        const summaryStepId = generateUuidWithoutHyphens();
+
+        // Final review pass before summary (vaultFull only): dedupe/merge blocks, cap 6–8
+        const reviewContext = this.buildDashboardUpdateContext();
+        for await (const ev of this.dashboardUpdateAgent.streamReview(reviewContext, { stepId: summaryStepId })) {
+            yield ev;
+        }
+
+        // Multiple refine rounds: sources by batch (each batch one LLM call), then graph full
+        const rounds = AISearchAgent.REFINE_ROUNDS;
+        const batchSize = AISearchAgent.REFINE_SOURCES_BATCH_SIZE;
+        for (let r = 1; r <= rounds; r++) {
+            const roundLabel = rounds > 1 ? ` (${r}/${rounds})` : '';
+            const totalSources = this.agentResult!.sources.length;
+            if (totalSources > 0) {
+                const numBatches = Math.ceil(totalSources / batchSize);
+                for (let b = 0; b < numBatches; b++) {
+                    const start = b * batchSize;
+                    const end = Math.min(start + batchSize, totalSources);
+                    const batchLabel = numBatches > 1 ? ` batch ${b + 1}/${numBatches}` : '';
+                    yield* this.streamFinalRefine(
+                        summaryStepId,
+                        `Refining sources${roundLabel}${batchLabel}…`,
+                        'sources_only',
+                        { sourcesBatch: { index: b, start, end, total: numBatches } }
+                    );
+                }
+            }
+            yield* this.streamFinalRefine(
+                summaryStepId,
+                `Refining graph${roundLabel}…`,
+                'graph_only'
+            );
+        }
+
+        let dashboardUpdateContext = this.buildDashboardUpdateContext();
+        yield* this.streamTitleAndSummary(summaryStepId, dashboardUpdateContext);
+
+        // Overview diagram: vaultFull only. Retry (empty/invalid mermaid) is handled inside MermaidOverviewAgent.
+        for await (const chunk of this.mermaidOverviewAgent.stream(dashboardUpdateContext)) {
+            if (DELTA_EVENT_TYPES.has(chunk.type)) {
+                yield {
+                    type: 'ui-step-delta',
+                    uiType: UIStepType.STEPS_DISPLAY,
+                    stepId: summaryStepId,
+                    descriptionDelta: getDeltaEventDeltaText(chunk),
+                    triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID,
+                };
+            }
+            yield chunk;
+        }
+
+        // Dedicated step: suggest follow-up questions from full session context (vaultFull only).
+        try {
+            yield {
+                type: 'ui-step',
+                uiType: UIStepType.STEPS_DISPLAY,
+                stepId: summaryStepId,
+                title: 'Suggesting follow-up questions...',
+                triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+            };
+            const mem = this.agentMemoryManager.getAgentMemory();
+            const evidenceHint = this.buildEvidenceHintFromContext();
+            const sessionContext = [
+                `[User query]\n${(mem.initialPrompt ?? '').trim()}`,
+                mem.sessionSummary?.trim() ? `[Session summary]\n${mem.sessionSummary.trim()}` : '',
+                evidenceHint ? `[Evidence / reasoning]\n${evidenceHint}` : '',
+            ]
+                .filter(Boolean)
+                .join('\n\n');
+            const capped = sessionContext.length > 12_000 ? sessionContext.slice(0, 12_000) + '\n...[truncated]' : sessionContext;
+            for await (const ev of this.followUpQuestionAgent.stream(
+                { sessionContext: capped },
+                {
+                    setQuestions: (q) => { this.agentResult.suggestedFollowUpQuestions = q; },
+                    stepId: summaryStepId,
+                    triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+                }
+            )) {
+                if (ev.type === 'on-step-finish') {
+                    this.agentMemoryManager.accumulateTokenUsage(ev.usage);
+                }
+                if (DELTA_EVENT_TYPES.has(ev.type)) {
+                    yield {
+                        type: 'ui-step-delta',
+                        uiType: UIStepType.STEPS_DISPLAY,
+                        stepId: summaryStepId,
+                        descriptionDelta: getDeltaEventDeltaText(ev),
+                        triggerName: StreamTriggerName.SEARCH_SUMMARY,
+                    };
+                }
+                yield ev;
+            }
+        } catch (e) {
+            console.warn('[AISearchAgent] Suggest follow-up questions failed; leaving empty.', e);
+            this.agentResult.suggestedFollowUpQuestions = [];
+        }
     }
 
     /**
@@ -981,9 +986,6 @@ export class AISearchAgent {
             yield { ...chunk, triggerName: StreamTriggerName.SEARCH_TITLE };
         }
     }
-
-    /** Max characters for evidence hint so prompt does not explode. */
-    private static readonly EVIDENCE_HINT_MAX_CHARS = 6000;
 
     /**
      * Build evidence hint from latest message text plus tool outputs (e.g. call_search_agent summary and key paths).
@@ -1020,15 +1022,15 @@ export class AISearchAgent {
             parts.push('[Key paths from evidence]\n' + keyPaths.join('\n'));
         }
         const combined = parts.join('\n\n');
-        return combined.length > AISearchAgent.EVIDENCE_HINT_MAX_CHARS
-            ? combined.slice(0, AISearchAgent.EVIDENCE_HINT_MAX_CHARS) + '\n...[truncated]'
+        return combined.length > EVIDENCE_HINT_MAX_CHARS
+            ? combined.slice(0, EVIDENCE_HINT_MAX_CHARS) + '\n...[truncated]'
             : combined;
     }
 
     /**
      * WARNING: context may change after other agents run
      */
-    private buildDashboardUpdateContext(oneGenerationContext?: OneGenerationContext): DashboardUpdateContext {
+    private buildDashboardUpdateContext(oneGenerationContext?: OneGenerationContext): AISearchUpdateContext {
         return {
             originalQuery: this.agentMemoryManager.getInitialPrompt(),
             analysisMode: this.options.analysisMode ?? 'full',

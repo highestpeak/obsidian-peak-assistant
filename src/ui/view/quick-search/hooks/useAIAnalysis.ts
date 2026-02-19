@@ -5,7 +5,8 @@ import { setLastAnalysisHistorySearch, invalidateFollowupContextCache } from '..
 import { AppContext } from '@/app/context/AppContext';
 import { SearchAgentResult } from '@/service/agents/AISearchAgent';
 import { RESULT_UPDATE_TOOL_NAMES } from '@/service/agents/AISearchAgent';
-import { LLMStreamEvent } from '@/core/providers/types';
+import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
+import { checkIfDeltaEvent, getDeltaEventDeltaText } from '@/core/providers/helpers/stream-helper';
 import { PromptId } from '@/service/prompt/PromptId';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { Notice } from 'obsidian';
@@ -27,6 +28,7 @@ export function useAIAnalysis() {
 		setSources,
 		pushOverviewMermaidVersion,
 		setTitle,
+		setSuggestedFollowUpQuestions,
 		startAnalyzing,
 		startStreaming,
 		markCompleted,
@@ -36,24 +38,65 @@ export function useAIAnalysis() {
 		updateWebFromQuery,
 		appendCompletedUiStep,
 		setCurrentUiStep,
+		updateCurrentUiStep,
 		appendCurrentUiStepDelta,
 	} = useAIAnalysisStore();
 
-	// Full tool trace for debugging (not stored in state to avoid OOM)
-	// NOTE:
-	// - Only `content_reader` should avoid full output (too large).
-	// - Other tools should keep full output for debugging (user requirement).
-	const toolTraceRef = useRef<Array<{
+	// Chronological timeline for debug: every step in order with agent, input, output, token delta
+	type TimelineEntry = {
 		ts: number;
-		triggerName: string;
-		type: 'tool-call' | 'tool-result' | 'tool-error';
-		toolName: string;
-		toolCallId?: string;
-		input?: any;
-		output?: any; // Full output (except content_reader)
-		outputSummary?: any; // Summary for UI display / quick scan
-		error?: string;
-	}>>([]);
+		eventType: string;
+		agent?: string;
+		what?: string;
+		input?: unknown;
+		output?: unknown;
+		tokens?: { inputTokens: number; outputTokens: number; totalTokens: number };
+	};
+	const timelineRef = useRef<TimelineEntry[]>([]);
+	const pushTimeline = (event: LLMStreamEvent) => {
+		try {
+			const anyEvent = event as any;
+			const isDelta = checkIfDeltaEvent(event.type);
+			const deltaText = getDeltaEventDeltaText(event) || (event.type === 'ui-step-delta' ? anyEvent.descriptionDelta : undefined);
+			const arr = timelineRef.current;
+
+			if (isDelta && arr.length > 0 && checkIfDeltaEvent(arr[arr.length - 1].eventType as LLMStreamEvent['type'])) {
+				const prev = arr[arr.length - 1];
+				const base = String(prev.output ?? '').replace(/\s*\[\w[-.\w]*\]\s*$/, '');
+				prev.output = base + (deltaText || '') + (event.type ? ` [${event.type}]` : '');
+				prev.ts = Date.now();
+				return;
+			}
+
+			arr.push({
+				ts: Date.now(),
+				eventType: event.type,
+				agent: event.triggerName || 'unknown',
+				what: anyEvent.toolName
+					? `${anyEvent.toolName}${anyEvent.id ? ` (${anyEvent.id})` : ''}`
+					: anyEvent.promptId
+						? `${anyEvent.promptId}`
+						: anyEvent.debugName
+							? anyEvent.debugName
+							: 'unknown',
+				input: anyEvent.input,
+				output: anyEvent.output !== undefined
+					? anyEvent.toolName !== 'content_reader' ? anyEvent.output : 'content_reader_skipped'
+					: anyEvent.title || anyEvent.description
+						? [anyEvent.title, anyEvent.description].filter(Boolean).join('. ')
+						: deltaText
+							? deltaText + (event.type ? ` [${event.type}]` : '')
+							: anyEvent.error?.message ?? String(anyEvent.error) ?? (anyEvent.extra ?? undefined),
+				tokens: anyEvent.usage ? {
+					inputTokens: anyEvent.usage.inputTokens ?? 0,
+					outputTokens: anyEvent.usage.outputTokens ?? 0,
+					totalTokens: anyEvent.usage.totalTokens ?? 0,
+				} : undefined,
+			});
+		} catch (error) {
+			console.error('[useAIAnalysis] pushTimeline error:', error);
+		}
+	};
 
 	// Analysis start time for duration tracking
 	const analysisStartTimeRef = useRef<number>(0);
@@ -96,18 +139,14 @@ export function useAIAnalysis() {
 
 	// Real agent when not mock; MockAISearchAgent in desktop dev so one code path
 	const aiSearchAgent = useMemo(() => {
-		const plugin = AppContext.getInstance().plugin
+		const plugin = AppContext.getInstance().plugin;
 		return AppContext.searchAgent({
 			enableWebSearch: webEnabled,
 			enableLocalSearch: true,
-			analysisMode,
+			analysisMode: analysisMode ?? 'vaultFull',
 			maxMultiAgentIterations: plugin.settings.search.maxMultiAgentIterations,
-			thoughtAgentModel: plugin.settings.search.aiAnalysisModel?.thoughtAgentModel?.modelId!,
-			thoughtAgentProvider: plugin.settings.search.aiAnalysisModel?.thoughtAgentModel?.provider!,
-			searchAgentModel: plugin.settings.search.aiAnalysisModel?.searchAgentModel?.modelId!,
-			searchAgentProvider: plugin.settings.search.aiAnalysisModel?.searchAgentModel?.provider!,
 		});
-	}, [webEnabled]);
+	}, [webEnabled, analysisMode]);
 
 	// Detect @web@ trigger in search query (don't remove from display, just enable web mode)
 	useEffect(() => {
@@ -140,7 +179,10 @@ export function useAIAnalysis() {
 		if (result.title !== undefined) {
 			setTitle(result.title ?? null);
 		}
-	}, [setSummary, setGraph, setDashboardBlocks, setTopics, setSources, pushOverviewMermaidVersion, setTitle]);
+		if (result.suggestedFollowUpQuestions !== undefined) {
+			setSuggestedFollowUpQuestions(result.suggestedFollowUpQuestions ?? []);
+		}
+	}, [setSummary, setGraph, setDashboardBlocks, setTopics, setSources, pushOverviewMermaidVersion, setTitle, setSuggestedFollowUpQuestions]);
 
 	/**
 	 * Handle the final result from AISearchAgent
@@ -169,7 +211,7 @@ export function useAIAnalysis() {
 		}
 	}, [setUsage, setDuration, applySearchResult]);
 
-	const performAnalysis = useCallback(async (abortSignal?: AbortSignal) => {
+	const performAnalysis = useCallback(async (abortSignal?: AbortSignal, scopeValue?: string) => {
 		// Create AbortController if not provided
 		let controller: AbortController | null = null;
 		if (!abortSignal) {
@@ -195,7 +237,7 @@ export function useAIAnalysis() {
 			startAnalyzing();
 			didCancelRef.current = false;
 			noticeSentRef.current = false;
-			toolTraceRef.current = [];
+			timelineRef.current = [];
 			analysisStartTimeRef.current = Date.now();
 			summaryDeltaBufferRef.current = '';
 			if (summaryFlushTimerRef.current) {
@@ -203,7 +245,7 @@ export function useAIAnalysis() {
 				summaryFlushTimerRef.current = null;
 			}
 
-			const stream = await aiSearchAgent!.stream(searchQuery);
+			const stream = await aiSearchAgent!.stream(searchQuery, scopeValue ? { scopeValue } : undefined);
 
 			// Process the stream directly
 			for await (const event of stream) {
@@ -220,54 +262,23 @@ export function useAIAnalysis() {
 
 				// Step completion is now handled by updateIfStepChanged when step type changes
 
-				// debug log for all chunks.
-				const checkIfDeltaEvent = (type: string) =>
-					type === 'text-delta' || type === 'reasoning-delta' || type === 'prompt-stream-delta'
-					|| type === 'search-thought-talking' || type === 'search-thought-reasoning'
-					|| type === 'search-inspector-talking' || type === 'search-inspector-reasoning'
-					|| type === 'ui-step-delta';
-				if (!checkIfDeltaEvent(event.type)) {
-					console.debug('[useAIAnalysis] event:', JSON.stringify(event));
-				} else {
-					// delta event are too much to log. useless. only log the type to observe the flow.
-					console.debug('[useAIAnalysis] delta event:', event.triggerName);
-				}
+				// // debug log for all chunks.
+				// if (!checkIfDeltaEvent(event.type)) {
+				// 	console.debug('[useAIAnalysis] event:', JSON.stringify(event));
+				// } else {
+				// 	// delta event are too much to log. useless. only log the type to observe the flow.
+				// 	console.debug('[useAIAnalysis] delta event:', event.triggerName);
+				// }
+
+				pushTimeline(event);
 
 				switch (event.type) {
 					case 'text-delta':
 					case 'reasoning-delta':
-						// Steps are now driven by ui-step / ui-step-delta events from the agent.
 						break;
 					case 'tool-call':
-						// Record to tool trace for debugging only; graph animation is driven by ui-signal.
-						toolTraceRef.current.push({
-							ts: Date.now(),
-							triggerName: event.triggerName || 'unknown',
-							type: 'tool-call',
-							toolName: event.toolName,
-							toolCallId: event.id,
-							input: event.input
-						});
 						break;
 					case 'tool-result': {
-						// Extract summary from tool results
-						const output = event.output?.result || event.output;
-
-						// Record to tool trace for debugging only; graph animation is driven by ui-signal.
-						toolTraceRef.current.push({
-							ts: Date.now(),
-							triggerName: event.triggerName || 'unknown',
-							type: 'tool-result',
-							toolName: event.toolName,
-							toolCallId: event.id,
-							output: event.toolName !== 'content_reader' ? output : undefined,
-						});
-
-						// useUIEventStore.getState().publish(
-						// 	event.triggerName + '--tool-result--' + event.toolName,
-						// 	{ output: output }
-						// );
-
 						if (RESULT_UPDATE_TOOL_NAMES.has(event.toolName)) {
 							const currentResult = event.extra?.currentResult as SearchAgentResult | undefined;
 							if (currentResult) {
@@ -291,13 +302,14 @@ export function useAIAnalysis() {
 							useUIEventStore.getState().publish('summary-delta', { text: delta });
 						}
 						break;
-					case 'prompt-stream-result':
-						if (event.promptId === PromptId.AiAnalysisSummary) {
+					case 'prompt-stream-result': {
+						const ev = event as { promptId: string; output?: unknown; usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number } };
+						if (ev.promptId === PromptId.AiAnalysisSummary) {
 							flushSummaryBuffer();
-							// Update store with complete summary
-							setSummary(event.output as string);
+							setSummary(ev.output as string);
 						}
 						break;
+					}
 					case 'ui-step': {
 						useUIEventStore.getState().publish(event.type, event);
 						const stepId = event.stepId as string | undefined;
@@ -309,12 +321,10 @@ export function useAIAnalysis() {
 								appendCompletedUiStep({ ...prev, endedAtMs: Date.now() });
 							}
 							if (prev && prev.stepId === stepId) {
-								appendCurrentUiStepDelta(description, title);
-								currentUiStepRef.current = {
-									...prev,
-									title: prev.title + title,
-									description: prev.description + description,
-								};
+								const newTitle = title || prev.title;
+								const newDescription = description !== '' ? description : prev.description;
+								currentUiStepRef.current = { ...prev, title: newTitle, description: newDescription };
+								updateCurrentUiStep(stepId, newTitle, newDescription);
 							} else {
 								currentUiStepRef.current = { stepId, title: title || 'Step', description, startedAtMs: Date.now() };
 								setCurrentUiStep(stepId, title || 'Step', description);
@@ -348,11 +358,17 @@ export function useAIAnalysis() {
 							appendCompletedUiStep({ ...lastStep, endedAtMs: Date.now() });
 							currentUiStepRef.current = null;
 						}
-						handleFinalResult(event);
+						useAIAnalysisStore.getState().clearCurrentUiStep();
+						useUIEventStore.getState().publish('complete', event);
+						// Only apply final result and notice for top-level complete (thought agent), not inner agents (e.g. inspector)
+						if (event.triggerName === StreamTriggerName.SEARCH_THOUGHT_AGENT || event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT) {
+							handleFinalResult(event);
+						}
 						break;
 					}
-					case 'error':
-						recordError(event.error.message);
+					case 'error': {
+						const errMsg = event.error?.message ?? String(event.error);
+						recordError(errMsg);
 						// Notice (error): only when modal is closed and not canceled.
 						if (!didCancelRef.current && !noticeSentRef.current && !useAIAnalysisStore.getState().aiModalOpen) {
 							noticeSentRef.current = true;
@@ -362,10 +378,10 @@ export function useAIAnalysis() {
 							);
 						}
 						break;
+					}
 					case 'on-step-finish':
 					case 'pk-debug':
-						// Steps are now driven by ui-step events; debug events ignored for step display.
-						break;
+					case 'unSupported':
 					default:
 						// we have debug log ahead of the switch statement.
 						// console.debug('[useAIAnalysis] Unhandled event:', event.type);
@@ -387,7 +403,7 @@ export function useAIAnalysis() {
 			}
 		} finally {
 			flushSummaryBuffer();
-			// Build merged debug dump for easier debugging
+			// Build debug dump: single chronological timeline (every step in order with agent, input, output, token delta)
 			const aiAnalysisStoreState = useAIAnalysisStore.getState();
 			const debugDump = {
 				meta: {
@@ -403,25 +419,10 @@ export function useAIAnalysis() {
 					graphNodesCount: aiAnalysisStoreState.graph?.nodes?.length ?? 0,
 					graphEdgesCount: aiAnalysisStoreState.graph?.edges?.length ?? 0
 				},
-				steps: aiAnalysisStoreState.steps.map(step => ({
-					stepId: step.stepId,
-					title: step.title,
-					description: step.description,
-					startedAtMs: step.startedAtMs,
-					endedAtMs: step.endedAtMs,
-				})),
-				currentStep: aiAnalysisStoreState.currentStep
-					? {
-						stepId: aiAnalysisStoreState.currentStep.stepId,
-						title: aiAnalysisStoreState.currentStep.title,
-						description: aiAnalysisStoreState.currentStep.description,
-					}
-					: null,
-				toolTrace: toolTraceRef.current,
-				summary: aiAnalysisStoreState.summaryChunks.join(''),
-				summaryLen: aiAnalysisStoreState.summaryChunks.join('').length
+				timeline: timelineRef.current,
+				summary: (aiAnalysisStoreState.summaryChunks ?? []).join(''),
+				summaryLen: (aiAnalysisStoreState.summaryChunks ?? []).join('').length
 			};
-			// Log merged debug dump
 			console.debug('[useAIAnalysis] debugDumpJson', JSON.stringify(debugDump));
 
 			// Persist history search for follow-up agent (memory only, not store)
@@ -429,9 +430,9 @@ export function useAIAnalysis() {
 				const runId = aiAnalysisStoreState.analysisRunId ?? null;
 				if (aiSearchAgent) {
 					setLastAnalysisHistorySearch(
-                        (q, opts) => aiSearchAgent.searchHistory(q, opts),
-                        runId
-                    );
+						(q, opts) => aiSearchAgent.searchHistory(q, opts),
+						runId
+					);
 				} else {
 					setLastAnalysisHistorySearch(null);
 				}
@@ -440,7 +441,7 @@ export function useAIAnalysis() {
 			}
 
 			// Reset refs for next analysis
-			toolTraceRef.current = [];
+			timelineRef.current = [];
 			analysisStartTimeRef.current = 0;
 			summaryDeltaBufferRef.current = '';
 			if (summaryFlushTimerRef.current) {

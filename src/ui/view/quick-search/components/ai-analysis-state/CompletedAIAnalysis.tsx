@@ -8,18 +8,20 @@ import { KnowledgeGraphSection } from "../ai-analysis-sections/KnowledgeGraphSec
 import { TopSourcesSection } from "../ai-analysis-sections/SourcesSection";
 import { InlineFollowupChat } from "../../../../component/mine/InlineFollowupChat";
 import { DashboardBlocksSection } from "../ai-analysis-sections/DashboardBlocksSection";
+import { FollowupQuestionsBlock } from "../ai-analysis-sections/FollowupQuestionsBlock";
 import type { DashboardBlock, DashboardBlockItem } from "@/service/agents/AISearchAgent";
 import { createOpenSourceCallback } from "../../callbacks/open-source-file";
 import { useBlocksFollowupChatConfig, useRegenerateOverviewMermaid } from "../../hooks/useAIAnalysisPostAIInteractions";
 import React from "react";
 import { StreamdownIsolated } from "@/ui/component/mine";
-import { MessageCircle, RefreshCw } from "lucide-react";
+import { MessageCircle, RefreshCw, Copy, Check } from "lucide-react";
 import { useStreamdownWikilinkClick } from "../../callbacks/useStreamdownWikilinkClick";
 import { useSharedStore } from "../../store/sharedStore";
 import { Button } from "@/ui/component/shared-ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/ui/component/shared-ui/hover-card";
 import { StreamingStepsDisplay } from "../ai-analysis-sections/StepsDisplay";
 import { AppContext } from "@/app/context/AppContext";
+import { copyText } from "@/ui/view/shared/common-utils";
 
 export const CompletedAIAnalysis: React.FC<{
     onClose?: () => void;
@@ -55,21 +57,25 @@ export const CompletedAIAnalysis: React.FC<{
         setOverviewMermaidActiveIndex,
         pushOverviewMermaidVersion,
         fullAnalysisFollowUp,
+        followUpStreaming,
         runAnalysisMode,
         getHasGraphData,
         graph,
         steps,
         currentStep,
         stepTrigger,
+        getSummary,
     } = useAIAnalysisStore();
     const { searchQuery } = useSharedStore();
     const { regenerateOverview, isRegenerating } = useRegenerateOverviewMermaid();
     const settings = AppContext.getInstance().settings;
-    const isSimpleMode = runAnalysisMode === 'simple';
+    const isSimpleMode = runAnalysisMode === 'docSimple' || runAnalysisMode === 'vaultSimple';
 
     const [showBlocksFollowup, setShowBlocksFollowup] = useState(false);
     const [blocksChatContext, setBlocksChatContext] = useState<DashboardBlock | null>(null);
     const [blocksChatItemContext, setBlocksChatItemContext] = useState<{ block: DashboardBlock; item: DashboardBlockItem } | null>(null);
+    const [overviewCopied, setOverviewCopied] = useState(false);
+    const [copiedContinueIndex, setCopiedContinueIndex] = useState<number | null>(null);
 
     useEffect(() => {
         if (!showBlocksFollowup) {
@@ -137,13 +143,28 @@ export const CompletedAIAnalysis: React.FC<{
                 </div>
             ) : null}
 
-            {/* Overview (Mermaid) between Summary and Topics */}
-            {(displayOverview?.trim() || isRegenerating) && (
+            {/* Overview (Mermaid): full mode only; simple mode is chat-with-doc + raw search, no overview */}
+            {!isSimpleMode && (displayOverview?.trim() || isRegenerating) && (
                 <div ref={overviewRef} className="pktw-scroll-mt-24">
-                    <div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb] pktw-flex pktw-flex-col pktw-gap-2">
+                    <div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border-0 pktw-flex pktw-flex-col pktw-gap-2">
                         <div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2">
                             <span className="pktw-text-xs pktw-font-semibold pktw-text-[#6b7280]">Overview</span>
                             <div className="pktw-flex pktw-items-center pktw-gap-1">
+                                {displayOverview?.trim() ? (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="pktw-h-7 pktw-w-7 pktw-shadow-none"
+                                        title={overviewCopied ? 'Copied' : 'Copy overview'}
+                                        onClick={async () => {
+                                            await copyText(displayOverview);
+                                            setOverviewCopied(true);
+                                            setTimeout(() => setOverviewCopied(false), 1500);
+                                        }}
+                                    >
+                                        {overviewCopied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#6c757d]" />}
+                                    </Button>
+                                ) : null}
                                 {((overviewMermaidVersions?.length ?? 0) > 1 || displayOverview?.trim()) && (
                                     <HoverCard openDelay={100} closeDelay={150}>
                                         <HoverCardTrigger asChild>
@@ -153,7 +174,7 @@ export const CompletedAIAnalysis: React.FC<{
                                                     : `Previous ${(overviewMermaidVersions?.length ?? 0) - 1 - (overviewMermaidActiveIndex ?? 0)}`}
                                             </Button>
                                         </HoverCardTrigger>
-                                        <HoverCardContent align="end" className="pktw-w-48 pktw-p-1 pktw-z-[10000]">
+                                        <HoverCardContent align="end" className="pktw-w-48 pktw-p-1 pktw-z-[10000] pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
                                             {(overviewMermaidVersions ?? []).map((_, idx) => {
                                                 const len = overviewMermaidVersions!.length;
                                                 const targetIndex = len - 1 - idx;
@@ -188,7 +209,7 @@ export const CompletedAIAnalysis: React.FC<{
                         </div>
                         {displayOverview?.trim() ? (
                             <StreamdownIsolated
-                                className="pktw-w-full pktw-min-w-0 pktw-text-left pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none"
+                                className="pktw-w-full pktw-min-w-0 pktw-text-left pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none pktw-select-text"
                                 isAnimating={false}
                             >
                                 {displayOverview}
@@ -200,7 +221,7 @@ export const CompletedAIAnalysis: React.FC<{
                 </div>
             )}
 
-            {/* Topics (before Blocks, hidden in simple mode) */}
+            {/* Topics: full mode only; simple mode has no key topics */}
             {!isSimpleMode && dedupedTopics.length > 0 && (
                 <div ref={topicsRef} className="pktw-scroll-mt-24">
                     <TopicSection
@@ -296,19 +317,33 @@ export const CompletedAIAnalysis: React.FC<{
                 />
             )}
 
-            {/* Continue Analysis follow-up (full width, each question as section) */}
-            {(fullAnalysisFollowUp?.length ?? 0) > 0 ? (
+            {/* Continue Analysis: history + streaming (above Follow-up Questions so new answers appear here) */}
+            {(fullAnalysisFollowUp?.length ?? 0) > 0 || followUpStreaming ? (
                 <div ref={continueAnalysisRef} className="pktw-scroll-mt-24 pktw-space-y-4">
                     {(fullAnalysisFollowUp ?? []).map((section, i) => (
-                        <div key={i} id={`continue-section-${i}`} className="pktw-scroll-mt-4 pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
-                            <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
+                        <div id={`continue-section-${i}`} className="pktw-scroll-mt-4 pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border-0 pktw-flex pktw-flex-col pktw-gap-2">
+                            <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-1">
                                 <MessageCircle className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
                                 <span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">
                                     {(section.title || `Continue ${i + 1}`).replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim() || `Continue ${i + 1}`}
                                 </span>
+                                <div className="pktw-flex-1" />
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="pktw-h-7 pktw-w-7 pktw-shadow-none"
+                                    title={copiedContinueIndex === i ? 'Copied' : 'Copy'}
+                                    onClick={async () => {
+                                        await copyText(section.content ?? '');
+                                        setCopiedContinueIndex(i);
+                                        setTimeout(() => setCopiedContinueIndex(null), 1500);
+                                    }}
+                                >
+                                    {copiedContinueIndex === i ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#6c757d]" />}
+                                </Button>
                             </div>
                             <StreamdownIsolated
-                                className="pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none"
+                                className="pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none pktw-select-text"
                                 isAnimating={false}
                                 onClick={handleStreamdownClick}
                             >
@@ -316,7 +351,46 @@ export const CompletedAIAnalysis: React.FC<{
                             </StreamdownIsolated>
                         </div>
                     ))}
+                    {followUpStreaming ? (
+                        <IntelligenceFrame isActive={true} className="pktw-mb-1">
+                            <div id="continue-section-streaming" className="pktw-scroll-mt-4 pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border-0 pktw-flex pktw-flex-col pktw-gap-2">
+                                <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-1">
+                                    <MessageCircle className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
+                                    <span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">
+                                        {(followUpStreaming.question || 'Continue').replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim() || 'Continue'}
+                                    </span>
+                                    <span className="pktw-text-[11px] pktw-text-[#9ca3af]">Streaming…</span>
+                                    <div className="pktw-flex-1" />
+                                    {(followUpStreaming.content ?? '').trim() ? (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="pktw-h-7 pktw-w-7 pktw-shadow-none"
+                                            title="Copy"
+                                            onClick={async () => {
+                                                await copyText(followUpStreaming.content ?? '');
+                                            }}
+                                        >
+                                            <Copy className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#6c757d]" />
+                                        </Button>
+                                    ) : null}
+                                </div>
+                                <StreamdownIsolated
+                                    className="pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none pktw-select-text"
+                                    isAnimating={true}
+                                    onClick={handleStreamdownClick}
+                                >
+                                    {followUpStreaming.content || ''}
+                                </StreamdownIsolated>
+                            </div>
+                        </IntelligenceFrame>
+                    ) : null}
                 </div>
+            ) : null}
+
+            {/* Follow-up Questions: always last so new analysis appears above */}
+            {!isSimpleMode ? (
+                <FollowupQuestionsBlock summary={getSummary?.() ?? ''} onClose={onClose} />
             ) : null}
 
             {/* Only debug mode shows. And all steps including UISkipSteps */}

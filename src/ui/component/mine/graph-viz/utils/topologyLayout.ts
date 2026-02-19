@@ -85,14 +85,15 @@ export function assignInitialPositionsByGroup(
 		const jitterX = Math.min(60, radiusX * 0.28);
 		const jitterY = Math.min(24, radiusY * 0.22);
 		for (const n of groupNodes) {
-			if (n.x != null && n.y != null) continue;
+			// Treat (0,0) or near-origin as unset so we don't keep a cluster at top-left
+			if (n.x != null && n.y != null && (Math.abs(n.x) > 20 || Math.abs(n.y) > 20)) continue;
 			n.x = gx + (Math.random() - 0.5) * 2 * jitterX;
 			n.y = gy + (Math.random() - 0.5) * 2 * jitterY;
 		}
 	}
 
 	for (const n of nodes) {
-		if (n.x != null && n.y != null) continue;
+		if (n.x != null && n.y != null && (Math.abs(n.x) > 20 || Math.abs(n.y) > 20)) continue;
 		n.x = padding + Math.random() * spanX;
 		n.y = padding + Math.random() * spanY;
 	}

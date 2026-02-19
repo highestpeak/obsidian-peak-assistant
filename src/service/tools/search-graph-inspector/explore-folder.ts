@@ -5,6 +5,7 @@ import { template as EXPLORE_FOLDER_TEMPLATE } from "../templates/explore-folder
 import Handlebars from "handlebars";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter } from "./common";
 import { buildResponse } from "../types";
+import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
 /**
  * we do not use database to get the structure. to get better performance.
@@ -31,8 +32,11 @@ export async function exploreFolder(params: any) {
         return "No files found in the folder";
     }
 
-    // filter and sort candidate doc ids
-    const candidateDocIdsMaps = await sqliteStoreManager.getDocMetaRepo().getIdsByPaths(allCandidateFilePaths);;
+    let candidateDocIdsMaps = await sqliteStoreManager.getDocMetaRepo().getIdsByPaths(allCandidateFilePaths);
+    const excludeCtx = await getAiAnalysisExcludeContext();
+    if (excludeCtx) {
+        candidateDocIdsMaps = candidateDocIdsMaps.filter((d) => !excludeCtx.excludedDocIds.has(d.id));
+    }
     const itemFiledGetter = await getDefaultItemFiledGetter(candidateDocIdsMaps.map(item => item.id), filters, sorter);
     const finalDocIdsMaps = applyFiltersAndSorters<{ id: string, path: string }>(candidateDocIdsMaps, filters, sorter, limit, itemFiledGetter);
 

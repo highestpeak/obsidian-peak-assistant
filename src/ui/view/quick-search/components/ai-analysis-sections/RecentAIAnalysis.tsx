@@ -1,14 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { History } from 'lucide-react';
+import { History, FileText, Zap, Brain } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
 import { AppContext } from '@/app/context/AppContext';
 import { CompletedAnalysisSnapshot, useAIAnalysisStore } from '../../store/aiAnalysisStore';
+import type { AnalysisMode } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 import { TFile } from 'obsidian';
 import { humanReadableTime } from '@/core/utils/date-utils';
 import { parse as parseAiSearchAnalysisDoc, toCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 import { useSharedStore } from '../../store/sharedStore';
+import { cn } from '@/ui/react/lib/utils';
+
+/** Mode icon for history list; matches SearchModal preset icons. */
+function PresetIcon({ mode, className }: { mode: AnalysisMode | null | undefined, className?: string }) {
+    if (mode === 'docSimple') return <FileText className={cn("pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-[#7c3aed]", className)} />;
+    if (mode === 'vaultSimple') return <Zap className={cn("pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-[#7c3aed]", className)} />;
+    return <Brain className={cn("pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-[#7c3aed]", className)} />;
+}
 
 export const RecentAIAnalysis: React.FC<{
     onClose?: () => void;
@@ -159,7 +168,9 @@ export const RecentAIAnalysis: React.FC<{
         }
     };
 
-    return (recentRecords.length <= 0 ? null :
+    const saveFolder = AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder?.trim() || 'ChatFolder/AI-Analysis';
+
+    return (
         <div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
             <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
                 <History className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
@@ -181,6 +192,12 @@ export const RecentAIAnalysis: React.FC<{
                 ref={recentListRef}
                 className="pktw-space-y-2 pktw-max-h-72 pktw-overflow-y-auto pktw-pr-1"
             >
+                {recentRecords.length === 0 && autoSaveEnabled ? (
+                    <div className="pktw-py-4 pktw-px-2 pktw-text-center pktw-text-xs pktw-text-[#6b7280]">
+                        <p className="pktw-mb-1">Auto-save is on. No saved analyses yet.</p>
+                        <p className="pktw-text-[11px] pktw-opacity-90">Completed analyses will be saved to <code className="pktw-bg-white pktw-px-1 pktw-rounded">{saveFolder}</code></p>
+                    </div>
+                ) : null}
                 {recentRecords.map((item) => (
                     <div
                         key={item.vault_rel_path}
@@ -197,16 +214,22 @@ export const RecentAIAnalysis: React.FC<{
                         style={{ cursor: 'pointer' }}
                     >
                         <div className="pktw-flex pktw-flex-col pktw-p-2 pktw-gap-1.5 pktw-text-left">
-                            <div className="pktw-flex pktw-items-start pktw-justify-between pktw-gap-4">
-                                <span
-                                    className="
-                                        pktw-text-sm pktw-font-semibold pktw-text-[#1a1c1e] 
-                                        pktw-line-clamp-2 pktw-flex-1
-                                        group-hover:pktw-text-white
-                                    "
-                                >
-                                    {item.title || item.query || '(empty query)'}
-                                </span>
+                            <div className="pktw-flex pktw-items-start pktw-justify-between pktw-gap-2">
+                                <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-min-w-0 pktw-flex-1">
+                                    <PresetIcon
+                                        mode={(item.analysis_preset ?? undefined) as AnalysisMode | undefined}
+                                        className="group-hover:pktw-text-white"
+                                    />
+                                    <span
+                                        className="
+                                            pktw-text-sm pktw-font-semibold pktw-text-[#1a1c1e] 
+                                            pktw-line-clamp-2 pktw-flex-1 pktw-min-w-0
+                                            group-hover:pktw-text-white
+                                        "
+                                    >
+                                        {item.title || item.query || '(empty query)'}
+                                    </span>
+                                </div>
                                 <span
                                     className="
                                         pktw-text-[10px] pktw-text-[#9ca3af] pktw-mt-0.5

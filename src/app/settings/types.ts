@@ -134,6 +134,12 @@ export interface SearchSettings {
 	aiAnalysisAutoSaveFolder: string;
 
 	/**
+	 * When true, exclude docs under aiAnalysisAutoSaveFolder from local search and graph tools during AI analysis.
+	 * Default: true
+	 */
+	aiAnalysisExcludeAutoSaveFolderFromSearch: boolean;
+
+	/**
 	 * How many recent AI analysis entries to keep for quick access.
 	 * Default: 5
 	 */
@@ -234,6 +240,7 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 
 	aiAnalysisAutoSaveEnabled: true,
 	aiAnalysisAutoSaveFolder: 'ChatFolder/AI-Analysis',
+	aiAnalysisExcludeAutoSaveFolderFromSearch: true,
 	aiAnalysisHistoryLimit: 5,
 
 	inspectorLinks: DEFAULT_INSPECTOR_LINKS_SETTINGS,

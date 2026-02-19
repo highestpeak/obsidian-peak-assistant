@@ -285,29 +285,30 @@ export const StreamingStepsDisplay: React.FC<{
 				// Defer clear so completed list (with prev step) can render first
 				setTimeout(() => clear(), 0);
 			}
-			const descDelta = typeof payload.description === 'string' ? payload.description : '';
+			const newDesc = typeof payload.description === 'string' ? payload.description : '';
 			const titleChanged = typeof payload.title === 'string';
 			if (titleChanged) titleJustChangedRef.current = true;
-			// Same stepId: do not add new step, only update
+			// Same stepId: overwrite title/description (no append) so we don't get "Improving...Summarizing..." concatenation
 			setEventStepIds((ids) => (ids.includes(stepId) ? ids : [...ids, stepId]));
 			setEventStepsById((by) => {
 				const existing = by[stepId];
 				const newTitle =
 					typeof payload.title === 'string' ? payload.title : (existing?.title ?? 'Step');
+				const description = newDesc !== '' ? newDesc : (existing?.description ?? '');
 				return {
 					...by,
 					[stepId]: {
 						title: newTitle,
-						description: (existing?.description ?? '') + descDelta,
+						description,
 						startedAtMs: existing?.startedAtMs ?? Date.now(),
 					},
 				};
 			});
 			setEventCurrentStepId(stepId);
-			if (descDelta) {
+			if (newDesc) {
 				const prefix = titleJustChangedRef.current ? '\n' : '';
 				if (prefix) titleJustChangedRef.current = false;
-				appendText(prefix + descDelta);
+				appendText(prefix + newDesc);
 			}
 		} else if (type === 'ui-step-delta') {
 			const deltaDesc = typeof payload.descriptionDelta === 'string' ? payload.descriptionDelta : '';
@@ -333,6 +334,12 @@ export const StreamingStepsDisplay: React.FC<{
 	}, [clear, appendText]);
 
 	useSubscribeUIEvent(new Set(['ui-step', 'ui-step-delta']), handleUIEvent);
+
+	// On complete, clear current step so the last step shows as finished (no perpetual timer).
+	const handleComplete = useCallback(() => {
+		setEventCurrentStepId(null);
+	}, []);
+	useSubscribeUIEvent(new Set(['complete']), handleComplete);
 
 	// Reset current step container when step changes (store path only; event path clears in handler).
 	// Defer clear so completed list is updated first and old step stays visible.

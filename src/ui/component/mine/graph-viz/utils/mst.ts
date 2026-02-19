@@ -20,6 +20,33 @@ function ufUnion(parent: Map<string, string>, a: string, b: string): void {
 	if (ra !== rb) parent.set(ra, rb);
 }
 
+/** Returns map nodeId -> component index (0, 1, 2, ...) from links. Isolated nodes get their own component. */
+export function computeConnectedComponents(
+	nodeIds: string[],
+	links: GraphVizLink[],
+	getLinkEndpointId: (ep: string | { id: string }) => string
+): Map<string, number> {
+	const parent = new Map<string, string>();
+	for (const l of links) {
+		const a = getLinkEndpointId(l.source);
+		const b = getLinkEndpointId(l.target);
+		if (a === b) continue;
+		ufUnion(parent, a, b);
+	}
+	for (const id of nodeIds) {
+		ufFind(parent, id);
+	}
+	const rootToIndex = new Map<string, number>();
+	let nextIndex = 0;
+	const result = new Map<string, number>();
+	for (const id of nodeIds) {
+		const root = ufFind(parent, id);
+		if (!rootToIndex.has(root)) rootToIndex.set(root, nextIndex++);
+		result.set(id, rootToIndex.get(root)!);
+	}
+	return result;
+}
+
 /**
  * Normalize raw weight to [0,1] for MST selection.
  * - semantic: 0..1 unchanged; 0..100 as percent; larger values log-compressed.

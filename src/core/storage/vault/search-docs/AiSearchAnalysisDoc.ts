@@ -44,6 +44,18 @@ const REGEX_FRONTMATTER = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
 const REGEX_YAML_KEY = (key: string) => new RegExp(`^${key}:\\s*(.+)$`, 'm');
 const REGEX_CRLF = /\r\n/g;
 
+/** Options for buildMarkdown: control which sections are written by mode and debug. */
+export interface BuildMarkdownOptions {
+	/** When set, full-only sections (Overview, Topics, Graph, Dashboard, etc.) are written only for vaultFull. */
+	runAnalysisMode?: AnalysisMode;
+	/** When true, Steps section is written; when false or omitted, Steps are omitted (e.g. when dev tools off). */
+	includeSteps?: boolean;
+}
+
+function isFullAnalysisMode(mode?: AnalysisMode): boolean {
+	return mode === 'vaultFull';
+}
+
 /** Single chat message for snapshot (graph/source/block context chats). */
 export type SnapshotChatMessage = { role: string; content: string };
 
@@ -168,8 +180,11 @@ function parseFrontmatter(raw: string): {
 		return s === 'true' || s === '1';
 	};
 	const runMode = getStr('runAnalysisMode').toLowerCase();
+	const presetRaw = getStr('analysisPreset').toLowerCase();
 	const runAnalysisMode: AnalysisMode | undefined =
-		runMode === 'simple' || runMode === 'full' ? runMode : undefined;
+		runMode === 'docsimple' ? 'docSimple' : runMode === 'vaultsimple' ? 'vaultSimple' : runMode === 'vaultfull' ? 'vaultFull'
+			: presetRaw === 'docsimple' ? 'docSimple' : presetRaw === 'vaultsimple' ? 'vaultSimple' : presetRaw === 'vaultfull' ? 'vaultFull'
+				: undefined;
 	return {
 		created: getStr('created'),
 		title: getStr('title'),
@@ -248,6 +263,50 @@ function extractMermaidBlock(text: string): string {
 	const end = rest.indexOf('```');
 	if (end === -1) return '';
 	return rest.slice(0, end).trim();
+}
+
+/** Extract first ```json ... ``` block from section text. Used for full graph (nodes+edges) persistence. */
+function extractGraphJsonBlock(text: string): string {
+	const start = text.indexOf('```json');
+	if (start === -1) return '';
+	const rest = text.slice(start + '```json'.length);
+	const end = rest.indexOf('```');
+	if (end === -1) return '';
+	return rest.slice(0, end).trim();
+}
+
+/**
+ * Parse JSON graph payload into AISearchGraph. Expects { nodes: [...], edges: [...] }.
+ * Prefer this over Mermaid when present so edges are not lost.
+ */
+function parseGraphJson(raw: string): AISearchGraph | null {
+	try {
+		const data = JSON.parse(raw) as { nodes?: unknown[]; edges?: unknown[] };
+		if (!data || typeof data !== 'object') return null;
+		const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+		const edges = Array.isArray(data.edges) ? data.edges : [];
+		const normalizedNodes = nodes.map((n: any) => ({
+			id: String(n?.id ?? ''),
+			type: String(n?.type ?? 'concept'),
+			title: String(n?.title ?? n?.label ?? n?.id ?? ''),
+			...(typeof n?.path === 'string' ? { path: n.path } : {}),
+			attributes: n?.attributes && typeof n.attributes === 'object' ? n.attributes : {},
+		})).filter((n) => n.id);
+		const normalizedEdges = edges.map((e: any) => {
+			const weight = typeof e?.weight === 'number' ? e.weight : (e?.attributes?.weight ?? 1);
+			return {
+				id: String(e?.id ?? `${e?.source}-${e?.target}`),
+				source: String(e?.source ?? ''),
+				target: String(e?.target ?? ''),
+				type: String(e?.type ?? e?.kind ?? 'link'),
+				attributes: e?.attributes && typeof e.attributes === 'object' ? { ...e.attributes, weight } : { weight },
+			};
+		}).filter((e) => e.source && e.target);
+		if (normalizedNodes.length === 0 && normalizedEdges.length === 0) return null;
+		return { nodes: normalizedNodes, edges: normalizedEdges };
+	} catch {
+		return null;
+	}
 }
 
 /** Extract all mermaid blocks from section text in order. */
@@ -473,14 +532,17 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		// ignore invalid JSON
 	}
 
-	const graphBody = extractMermaidBlock(graphText);
-	const graph = graphBody ? parseMermaidToGraph(graphBody) : null;
+	const graphJsonBody = extractGraphJsonBlock(graphText);
+	const graphMermaidBody = extractMermaidBlock(graphText);
+	const graph = parseGraphJson(graphJsonBody) ?? (graphMermaidBody ? parseMermaidToGraph(graphMermaidBody) : null);
 
+	// Continue Analysis: sections are ## Question (H2); content follows and may contain ### (H3) and below
 	const fullAnalysisFollowUp: Array<{ title: string; content: string }> = [];
-	const continueBlocks = continueAnalysisText.split(/\n###\s+/).filter(Boolean);
+	const continueBlocks = continueAnalysisText.split(/\n##\s+/).filter(Boolean);
 	for (const blk of continueBlocks) {
 		const firstLineEnd = blk.indexOf('\n');
-		const title = firstLineEnd === -1 ? blk.trim() : blk.slice(0, firstLineEnd).trim();
+		const firstLine = firstLineEnd === -1 ? blk.trim() : blk.slice(0, firstLineEnd).trim();
+		const title = firstLine.replace(/^#+\s*/, '').trim();
 		const content = firstLineEnd === -1 ? '' : blk.slice(firstLineEnd + 1).trim();
 		if (title) fullAnalysisFollowUp.push({ title, content });
 	}
@@ -579,6 +641,33 @@ function escapeYamlScalar(value: string): string {
 	return JSON.stringify(v);
 }
 
+/** Rebase markdown headings so the minimum level becomes baseLevel (1–6). Used so Continue Analysis answers start at H3. */
+function rebaseHeadings(markdown: string, baseLevel: number): string {
+	const lines = markdown.split('\n');
+	let minLevel = 7;
+	for (const line of lines) {
+		const m = line.match(/^(#{1,6})\s+/);
+		if (m) {
+			const level = m[1].length;
+			if (level < minLevel) minLevel = level;
+		}
+	}
+	if (minLevel > 6) return markdown;
+	const shift = baseLevel - minLevel;
+	if (shift === 0) return markdown;
+	const result: string[] = [];
+	for (const line of lines) {
+		const m = line.match(/^(#{1,6})(\s+.*)$/);
+		if (m) {
+			const newLevel = Math.min(6, Math.max(1, m[1].length + shift));
+			result.push('#'.repeat(newLevel) + m[2]);
+		} else {
+			result.push(line);
+		}
+	}
+	return result.join('\n');
+}
+
 function escapeMermaidLabel(label: string): string {
 	return String(label ?? '')
 		.replace(/"/g, '\\"')
@@ -598,7 +687,7 @@ function buildMermaidBlock(graph: GraphPreview | null | undefined): string {
 		if (!id) continue;
 		lines.push(`  ${id}["${escapeMermaidLabel(n.label)}"]`);
 	}
-	for (const e of graph.edges.slice(0, 80)) {
+	for (const e of (graph.edges ?? []).slice(0, 80)) {
 		const from = nodeIds.get(e.from_node_id);
 		const to = nodeIds.get(e.to_node_id);
 		if (from && to) lines.push(`  ${from} --> ${to}`);
@@ -626,9 +715,24 @@ function aiSearchGraphToGraphPreview(ai: AISearchGraph | null): GraphPreview | n
 
 /**
  * Build markdown from AiSearchAnalysisDocModel.
+ * Use options to write sections only when relevant (e.g. full-only sections for vaultFull, Steps when dev tools on).
  */
-export function buildMarkdown(docModel: AiSearchAnalysisDocModel): string {
+export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: BuildMarkdownOptions): string {
 	const lines: string[] = [];
+	const fullOnly = isFullAnalysisMode(options?.runAnalysisMode ?? docModel.runAnalysisMode);
+
+	const pushFollowupHistory = (sectionTitle: string, items: SectionAnalyzeResult[] | undefined) => {
+		if (!items?.length) return;
+		lines.push(sectionTitle);
+		lines.push('');
+		for (const { question, answer } of items) {
+			lines.push(`### ${question.replace(/\n/g, ' ').trim()}`);
+			lines.push('');
+			lines.push(answer);
+			lines.push('');
+		}
+	};
+
 	const now = docModel.created || new Date().toISOString();
 	lines.push('---');
 	lines.push('type: ai-search-result');
@@ -654,44 +758,46 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel): string {
 	lines.push(docModel.query);
 	lines.push('');
 
-	const overviewVersions = docModel.overviewMermaidVersions ?? [];
-	const overviewActiveIndex = docModel.overviewMermaidActiveIndex ?? 0;
-	const activeOverview = overviewVersions[overviewActiveIndex]?.trim();
-	if (activeOverview) {
-		lines.push(SECTION_OVERVIEW);
-		lines.push('');
-		lines.push('```mermaid');
-		lines.push(getMermaidInner(activeOverview));
-		lines.push('```');
-		lines.push('');
-	}
-	if (overviewVersions.length > 0) {
-		lines.push(SECTION_OVERVIEW_HISTORY);
-		lines.push('');
-		lines.push(`ActiveIndex: ${overviewActiveIndex}`);
-		lines.push('');
-		for (const m of overviewVersions) {
-			if (m?.trim()) {
-				lines.push('```mermaid');
-				lines.push(getMermaidInner(m));
-				lines.push('```');
-				lines.push('');
-			}
+	if (fullOnly) {
+		const overviewVersions = docModel.overviewMermaidVersions ?? [];
+		const overviewActiveIndex = docModel.overviewMermaidActiveIndex ?? 0;
+		const activeOverview = overviewVersions[overviewActiveIndex]?.trim();
+		if (activeOverview) {
+			lines.push(SECTION_OVERVIEW);
+			lines.push('');
+			lines.push('```mermaid');
+			lines.push(getMermaidInner(activeOverview));
+			lines.push('```');
+			lines.push('');
 		}
-	}
-
-	if (docModel.topics.length) {
-		lines.push(SECTION_KEY_TOPICS);
-		lines.push('');
-		for (const t of docModel.topics) {
-			lines.push(`- ${t.label}${t.weight != null ? ` (weight: ${t.weight})` : ''}`);
-			if (t.suggestQuestions?.length) {
-				for (const q of t.suggestQuestions) {
-					lines.push(`  - ${q.replace(/\n/g, ' ').trim()}`);
+		if (overviewVersions.length > 0) {
+			lines.push(SECTION_OVERVIEW_HISTORY);
+			lines.push('');
+			lines.push(`ActiveIndex: ${overviewActiveIndex}`);
+			lines.push('');
+			for (const m of overviewVersions) {
+				if (m?.trim()) {
+					lines.push('```mermaid');
+					lines.push(getMermaidInner(m));
+					lines.push('```');
+					lines.push('');
 				}
 			}
 		}
-		lines.push('');
+
+		if (docModel.topics.length) {
+			lines.push(SECTION_KEY_TOPICS);
+			lines.push('');
+			for (const t of docModel.topics) {
+				lines.push(`- ${t.label}${t.weight != null ? ` (weight: ${t.weight})` : ''}`);
+				if (t.suggestQuestions?.length) {
+					for (const q of t.suggestQuestions) {
+						lines.push(`  - ${q.replace(/\n/g, ' ').trim()}`);
+					}
+				}
+			}
+			lines.push('');
+		}
 	}
 
 	lines.push(SECTION_SOURCES);
@@ -704,7 +810,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel): string {
 	}
 	lines.push('');
 
-	if (Object.keys(docModel.topicInspectResults).length > 0) {
+	if (fullOnly && Object.keys(docModel.topicInspectResults).length > 0) {
 		lines.push(SECTION_TOPIC_INSPECT);
 		lines.push('');
 		for (const [topic, items] of Object.entries(docModel.topicInspectResults)) {
@@ -718,109 +824,109 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel): string {
 		}
 	}
 
-	const hasExpansions =
-		Object.keys(docModel.topicAnalyzeResults).length > 0 ||
-		Object.keys(docModel.topicGraphResults).length > 0;
-	if (hasExpansions) {
-		lines.push(SECTION_TOPIC_EXPANSIONS);
-		lines.push('');
-		const expansionTopics = new Set([
-			...Object.keys(docModel.topicAnalyzeResults),
-			...Object.keys(docModel.topicGraphResults),
-		]);
-		for (const topic of Array.from(expansionTopics)) {
-			lines.push(`## ${topic}`);
+	if (fullOnly) {
+		const hasExpansions =
+			Object.keys(docModel.topicAnalyzeResults).length > 0 ||
+			Object.keys(docModel.topicGraphResults).length > 0;
+		if (hasExpansions) {
+			lines.push(SECTION_TOPIC_EXPANSIONS);
 			lines.push('');
-			const qaList = docModel.topicAnalyzeResults[topic];
-			if (qaList?.length) {
-				lines.push('### Analyze');
+			const expansionTopics = new Set([
+				...Object.keys(docModel.topicAnalyzeResults),
+				...Object.keys(docModel.topicGraphResults),
+			]);
+			for (const topic of Array.from(expansionTopics)) {
+				lines.push(`## ${topic}`);
 				lines.push('');
-				for (const qa of qaList) {
-					lines.push(`**Q:** ${qa.question}`);
+				const qaList = docModel.topicAnalyzeResults[topic];
+				if (qaList?.length) {
+					lines.push('### Analyze');
 					lines.push('');
-					lines.push(qa.answer);
+					for (const qa of qaList) {
+						lines.push(`**Q:** ${qa.question}`);
+						lines.push('');
+						lines.push(qa.answer);
+						lines.push('');
+					}
+				}
+				const topicGraph = docModel.topicGraphResults[topic];
+				if (topicGraph && (topicGraph.nodes?.length > 0 || topicGraph.edges?.length > 0)) {
+					lines.push('### Graph');
+					lines.push('');
+					lines.push(buildMermaidBlock(topicGraph));
 					lines.push('');
 				}
 			}
-			const topicGraph = docModel.topicGraphResults[topic];
-			if (topicGraph && (topicGraph.nodes?.length > 0 || topicGraph.edges?.length > 0)) {
-				lines.push('### Graph');
-				lines.push('');
-				lines.push(buildMermaidBlock(topicGraph));
+		}
+
+		if (docModel.dashboardBlocks.length > 0) {
+			lines.push(SECTION_DASHBOARD);
+			lines.push('');
+			for (const b of docModel.dashboardBlocks) {
+				const label = b.title || b.id;
+				lines.push(`### ${label}`);
+				lines.push(`renderEngine: ${b.renderEngine}`);
+				if (b.markdown?.trim()) lines.push(b.markdown.trim());
+				if (b.mermaidCode?.trim()) lines.push('```mermaid\n' + b.mermaidCode.trim() + '\n```');
+				if (b.items?.length) {
+					for (const item of b.items) {
+						lines.push(`- **${item.title}**: ${item.description ?? ''}`);
+					}
+				}
 				lines.push('');
 			}
 		}
-	}
 
-	if (docModel.dashboardBlocks.length > 0) {
-		lines.push(SECTION_DASHBOARD);
-		lines.push('');
-		for (const b of docModel.dashboardBlocks) {
-			const label = b.title || b.id;
-			lines.push(`### ${label}`);
-			lines.push(`renderEngine: ${b.renderEngine}`);
-			if (b.markdown?.trim()) lines.push(b.markdown.trim());
-			if (b.mermaidCode?.trim()) lines.push('```mermaid\n' + b.mermaidCode.trim() + '\n```');
-			if (b.items?.length) {
-				for (const item of b.items) {
-					lines.push(`- **${item.title}**: ${item.description ?? ''}`);
-				}
-			}
+		if (docModel.blockChatRecords && Object.keys(docModel.blockChatRecords).length > 0) {
+			lines.push(SECTION_BLOCK_CHAT_RECORDS);
+			lines.push('');
+			lines.push(JSON.stringify(docModel.blockChatRecords));
 			lines.push('');
 		}
+
+		lines.push(SECTION_KNOWLEDGE_GRAPH);
+		lines.push('');
+		if (docModel.graph && (docModel.graph.nodes.length > 0 || docModel.graph.edges.length > 0)) {
+			lines.push('```json');
+			lines.push(JSON.stringify({ nodes: docModel.graph.nodes, edges: docModel.graph.edges }));
+			lines.push('```');
+			lines.push('');
+		}
+		const graphPreview = docModel.graph ? aiSearchGraphToGraphPreview(docModel.graph) : null;
+		lines.push(buildMermaidBlock(graphPreview));
+		lines.push('');
+
+		pushFollowupHistory(SECTION_GRAPH_FOLLOWUPS, docModel.graphFollowups);
+		if (docModel.blocksFollowupsByBlockId && Object.keys(docModel.blocksFollowupsByBlockId).length > 0) {
+			lines.push(SECTION_BLOCKS_FOLLOWUPS_BY_BLOCK);
+			lines.push('');
+			lines.push(JSON.stringify(docModel.blocksFollowupsByBlockId));
+			lines.push('');
+		} else {
+			pushFollowupHistory(SECTION_BLOCKS_FOLLOWUPS, docModel.blocksFollowups);
+		}
 	}
 
-	if (docModel.blockChatRecords && Object.keys(docModel.blockChatRecords).length > 0) {
-		lines.push(SECTION_BLOCK_CHAT_RECORDS);
-		lines.push('');
-		lines.push(JSON.stringify(docModel.blockChatRecords));
-		lines.push('');
-	}
+	pushFollowupHistory(SECTION_SOURCES_FOLLOWUPS, docModel.sourcesFollowups);
 
-	lines.push(SECTION_KNOWLEDGE_GRAPH);
-	lines.push('');
-	const graphPreview = docModel.graph ? aiSearchGraphToGraphPreview(docModel.graph) : null;
-	lines.push(buildMermaidBlock(graphPreview));
-	lines.push('');
-
+	// Continue Analysis: each question = H2; answer content rebased so all headings start at H3 (baseHeading 3)
 	if (docModel.fullAnalysisFollowUp?.length) {
+		const continueBaseHeading = 3;
 		lines.push(SECTION_CONTINUE_ANALYSIS);
 		lines.push('');
 		for (const entry of docModel.fullAnalysisFollowUp) {
-			lines.push(`### ${entry.title}`);
+			lines.push(`## ${entry.title.replace(/\n/g, ' ').trim()}`);
 			lines.push('');
-			lines.push(entry.content);
+			lines.push(rebaseHeadings(entry.content, continueBaseHeading));
 			lines.push('');
 		}
 	}
 
-	const pushFollowupHistory = (sectionTitle: string, items: SectionAnalyzeResult[] | undefined) => {
-		if (!items?.length) return;
-		lines.push(sectionTitle);
-		lines.push('');
-		for (const { question, answer } of items) {
-			lines.push(`### ${question.replace(/\n/g, ' ').trim()}`);
-			lines.push('');
-			lines.push(answer);
-			lines.push('');
-		}
-	};
-	pushFollowupHistory(SECTION_GRAPH_FOLLOWUPS, docModel.graphFollowups);
-	if (docModel.blocksFollowupsByBlockId && Object.keys(docModel.blocksFollowupsByBlockId).length > 0) {
-		lines.push(SECTION_BLOCKS_FOLLOWUPS_BY_BLOCK);
-		lines.push('');
-		lines.push(JSON.stringify(docModel.blocksFollowupsByBlockId));
-		lines.push('');
-	} else {
-		pushFollowupHistory(SECTION_BLOCKS_FOLLOWUPS, docModel.blocksFollowups);
-	}
-	pushFollowupHistory(SECTION_SOURCES_FOLLOWUPS, docModel.sourcesFollowups);
-
-	if (docModel.steps?.length) {
+	if (options?.includeSteps && (docModel.steps?.length ?? 0) > 0) {
 		lines.push(SECTION_STEPS);
 		lines.push('');
-		for (let i = 0; i < docModel.steps.length; i++) {
-			const step = docModel.steps[i];
+		for (let i = 0; i < docModel.steps!.length; i++) {
+			const step = docModel.steps![i];
 			lines.push(`### Step ${i + 1}: ${step.title}`);
 			if (step.startedAtMs != null || step.endedAtMs != null) {
 				lines.push(`(startedAt: ${step.startedAtMs ?? '-'}, endedAt: ${step.endedAtMs ?? '-'})`);

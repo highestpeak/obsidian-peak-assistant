@@ -8,8 +8,8 @@ import { CollapsibleSettingsSection } from '@/ui/component/shared-ui/Collapsible
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
 import type { LLMOutputControlSettings, ModelCapabilities } from '@/core/providers/types';
 import { OutputControlSettingsList } from '@/ui/component/mine/LLMOutputControlSettings';
-import { EventBus, ViewEventType, SettingsUpdatedEvent } from '@/core/eventBus';
-import { PromptId, CONFIGURABLE_PROMPT_IDS } from '@/service/prompt/PromptId';
+import { EventBus, ViewEventType } from '@/core/eventBus';
+import { CONFIGURABLE_PROMPT_IDS, SEARCH_AI_ANALYSIS_PROMPT_IDS } from '@/service/prompt/PromptId';
 import { Button } from '@/ui/component/shared-ui/button';
 
 interface ChatTabProps {
@@ -27,132 +27,83 @@ interface ModelConfigItem {
 	onChange: (provider: string, modelId: string) => Promise<void>;
 }
 
-/**
- * Reset All Models Section Component
- */
-function ResetAllModelsSection({
-	resetAllMode,
-	setResetAllMode,
-	resetAllModel,
-	setResetAllModel,
-	showConfirmDialog,
-	setShowConfirmDialog,
+/** Shared section for batch-apply model to multiple configs. Manages its own selection + confirm state. */
+function BatchModelApplySection({
+	label,
+	description,
+	buttonLabel,
 	models,
 	isLoading,
 	loadModels,
-	modelConfigs,
-	settingsUpdates,
-	settings,
+	onApply,
+	renderConfirmContent,
+	variant = 'neutral',
 }: {
-	resetAllMode: boolean;
-	setResetAllMode: (mode: boolean) => void;
-	resetAllModel: { provider: string; modelId: string } | undefined;
-	setResetAllModel: (model: { provider: string; modelId: string } | undefined) => void;
-	showConfirmDialog: boolean;
-	setShowConfirmDialog: (show: boolean) => void;
+	label: string;
+	description: string;
+	buttonLabel: string;
 	models: ModelInfoForSwitch[];
 	isLoading: boolean;
 	loadModels: () => void;
-	modelConfigs: ModelConfigItem[];
-	settingsUpdates: SettingsUpdates;
-	settings: MyPluginSettings;
+	onApply: (model: { provider: string; modelId: string }) => Promise<void>;
+	renderConfirmContent: (model: { provider: string; modelId: string }) => React.ReactNode;
+	variant?: 'neutral' | 'destructive';
 }) {
-	// Handle applying the selected model to all configurations
-	const handleApplyToAllModels = async () => {
-		if (!resetAllModel) return; // Guard against undefined
+	const [isSelecting, setIsSelecting] = useState(false);
+	const [selectedModel, setSelectedModel] = useState<{ provider: string; modelId: string } | undefined>();
+	const [showConfirm, setShowConfirm] = useState(false);
 
+	const handleApply = async () => {
+		if (!selectedModel) return;
 		try {
-			// Build a single update object with all model configurations
-			const updates: Partial<MyPluginSettings> = {
-				ai: {
-					...settings.ai,
-					defaultModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId },
-					promptModelMap: {
-						...settings.ai.promptModelMap,
-						...CONFIGURABLE_PROMPT_IDS.reduce((acc, promptId) => ({
-							...acc,
-							[promptId]: { provider: resetAllModel.provider, modelId: resetAllModel.modelId }
-						}), {})
-					}
-				},
-				search: {
-					...settings.search,
-					searchSummaryModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId },
-					aiAnalysisModel: {
-						...settings.search.aiAnalysisModel,
-						thoughtAgentModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId },
-						searchAgentModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId }
-					},
-					chunking: {
-						...settings.search.chunking,
-						embeddingModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId },
-						rerankModel: { provider: resetAllModel.provider, modelId: resetAllModel.modelId }
-					}
-				}
-			};
-
-			// Apply all updates in a single batch operation
-			await settingsUpdates.updateSettings(updates);
-
-		} catch (error) {
-			console.error('[ModelConfigTab] Error updating all models:', error);
+			await onApply(selectedModel);
 		} finally {
-			// Reset state
-			setResetAllMode(false);
-			setShowConfirmDialog(false);
-			setResetAllModel(undefined);
+			setIsSelecting(false);
+			setShowConfirm(false);
+			setSelectedModel(undefined);
 		}
 	};
 
+	const confirmDialogClasses = variant === 'destructive'
+		? 'pktw-bg-amber-50 pktw-border-amber-200'
+		: 'pktw-bg-muted/50 pktw-border';
+
 	return (
 		<div className="pktw-mb-6 pktw-space-y-4">
-			{/* first row: left + right */}
 			<div className="pktw-flex pktw-items-center pktw-gap-4">
-				{/* Left side: label and description */}
 				<div className="pktw-flex-1 pktw-min-w-0">
-					<label className="pktw-block pktw-text-sm pktw-font-medium pktw-mb-1">
-						Reset All Models
-					</label>
-
-					<p className="pktw-text-xs pktw-text-muted-foreground">
-						Apply a new model to all configurable AI, search, and embedding settings at once. Useful for quickly switching your default provider or primary model across the plugin.
-					</p>
+					<label className="pktw-block pktw-text-sm pktw-font-medium pktw-mb-1">{label}</label>
+					<p className="pktw-text-xs pktw-text-muted-foreground">{description}</p>
 				</div>
-				{/* Right side: selector */}
 				<div className="pktw-flex-shrink-0 pktw-w-64 pktw-flex pktw-items-center pktw-justify-start pktw-min-h-[3rem]">
-					{!resetAllMode && (
-						<div className="pktw-space-y-3">
-							<Button
-								onClick={() => setResetAllMode(true)}
-								size="sm"
-								variant="outline"
-								className="pktw-text-xs pktw-bg-red-600 hover:pktw-bg-red-700 pktw-text-white"
-							>
-								Reset All
-							</Button>
-						</div>
+					{!isSelecting && (
+						<Button
+							onClick={() => setIsSelecting(true)}
+							size="sm"
+							variant="outline"
+							className={variant === 'destructive' ? 'pktw-text-xs pktw-bg-red-600 hover:pktw-bg-red-700 pktw-text-white' : undefined}
+						>
+							{buttonLabel}
+						</Button>
 					)}
-					{resetAllMode && !showConfirmDialog && (
-						<div className="">
+					{isSelecting && !showConfirm && (
+						<div className="pktw-flex pktw-items-center pktw-gap-2">
 							<ModelSelector
 								models={models}
 								isLoading={isLoading}
-								currentModel={resetAllModel}
+								currentModel={selectedModel}
 								onChange={async (provider, modelId) => {
-									setResetAllModel({ provider, modelId });
-									setShowConfirmDialog(true);
+									setSelectedModel({ provider, modelId });
+									setShowConfirm(true);
 								}}
 								placeholder="Select model"
 								onMenuOpen={loadModels}
 							/>
 							<Button
-								onClick={() => {
-									setResetAllMode(false);
-									setResetAllModel(undefined);
-								}}
+								onClick={() => { setIsSelecting(false); setSelectedModel(undefined); }}
 								size="sm"
 								variant="outline"
-								className="pktw-text-xs pktw-bg-gray-600 hover:pktw-bg-gray-700 pktw-text-white pktw-ml-4"
+								className="pktw-text-xs pktw-bg-gray-600 hover:pktw-bg-gray-700 pktw-text-white pktw-ml-2"
 							>
 								Cancel
 							</Button>
@@ -160,52 +111,27 @@ function ResetAllModelsSection({
 					)}
 				</div>
 			</div>
-
-			{/* second row: confirm dialog */}
-			{showConfirmDialog && resetAllModel && (
-				<div className="pktw-flex pktw-items-start pktw-gap-4 pktw-p-4 pktw-bg-amber-50 pktw-border pktw-border-amber-200 pktw-rounded-md">
-					{/* Left side: warning message */}
+			{showConfirm && selectedModel && (
+				<div className={`pktw-flex pktw-items-start pktw-gap-4 pktw-p-4 pktw-border pktw-rounded-md ${confirmDialogClasses}`}>
 					<div className="pktw-flex-1 pktw-min-w-0">
-						<span className="pktw-text-sm pktw-font-medium pktw-text-amber-800 pktw-mb-2">
-							⚠️ Confirm Reset All Models
-						</span>
-						<div className="pktw-text-sm pktw-text-amber-700 pktw-space-y-1">
-							<p>
-								You are about to apply <strong>{resetAllModel.provider} / {resetAllModel.modelId}</strong> to:
-							</p>
-							<ul className="pktw-list-disc pktw-list-inside pktw-ml-4 pktw-space-y-1">
-								<li>All model configurations (Default, Search, Embedding, etc.)</li>
-								<li>All configurable prompts ({CONFIGURABLE_PROMPT_IDS.length} types)</li>
-							</ul>
-							<p className="pktw-font-medium pktw-pt-2">
-								This action will override all existing model selections. This cannot be undone.
-							</p>
-						</div>
+						{renderConfirmContent(selectedModel)}
 					</div>
-					{/* Right side: buttons */}
-					<div className="pktw-flex-shrink-0 pktw-w-64 pktw-flex pktw-items-center pktw-justify-start pktw-min-h-[3rem]">
-						<div className="pktw-space-y-3">
-							<div className="pktw-flex pktw-items-center pktw-gap-3 pktw-justify-end">
-								<Button
-									onClick={() => {
-										setShowConfirmDialog(false);
-										setResetAllModel(undefined);
-									}}
-									size="sm"
-									variant="outline"
-									className="pktw-text-xs pktw-bg-gray-600 hover:pktw-bg-gray-700 pktw-text-white"
-								>
-									Cancel
-								</Button>
-								<Button
-									onClick={handleApplyToAllModels}
-									size="sm"
-									className="pktw-text-xs pktw-bg-red-600 hover:pktw-bg-red-700 pktw-ml-10"
-								>
-									Confirm
-								</Button>
-							</div>
-						</div>
+					<div className="pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-gap-2">
+						<Button
+							onClick={() => { setShowConfirm(false); setSelectedModel(undefined); }}
+							size="sm"
+							variant="outline"
+							className={variant === 'destructive' ? 'pktw-text-xs pktw-bg-gray-600 hover:pktw-bg-gray-700 pktw-text-white' : undefined}
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={handleApply}
+							size="sm"
+							className={variant === 'destructive' ? 'pktw-text-xs pktw-bg-red-600 hover:pktw-bg-red-700' : undefined}
+						>
+							Confirm
+						</Button>
 					</div>
 				</div>
 			)}
@@ -289,9 +215,6 @@ function ModelSelectorField({
 export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, eventBus }: ChatTabProps) {
 	const [models, setModels] = useState<ModelInfoForSwitch[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const [resetAllMode, setResetAllMode] = useState(false);
-	const [resetAllModel, setResetAllModel] = useState<{ provider: string; modelId: string } | undefined>();
-	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
 	// Load models function
 	const loadModels = useCallback(async () => {
@@ -335,27 +258,27 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 			currentModel: settings.ai.defaultModel,
 			onChange: (provider, modelId) => updateDefaultModel(provider, modelId),
 		},
-		{
-			id: 'searchSummary',
-			label: 'Search Summary Model',
-			description: 'Model for generating search result summaries. Falls back to default model if not configured.',
-			currentModel: settings.search.searchSummaryModel,
-			onChange: (provider, modelId) => updateSearchModel('searchSummaryModel', provider, modelId),
-		},
-		{
-			id: 'thoughtAgent',
-			label: 'AI Search Thought Agent',
-			description: 'Model for the coordinator agent that plans and orchestrates AI search tasks. Falls back to default model if not configured.',
-			currentModel: settings.search.aiAnalysisModel?.thoughtAgentModel,
-			onChange: (provider, modelId) => updateAIAnalysisModel('thoughtAgentModel', provider, modelId),
-		},
-		{
-			id: 'searchAgent',
-			label: 'AI Search Agent',
-			description: 'Model for the executor agent that performs searches and content analysis. Falls back to default model if not configured.',
-			currentModel: settings.search.aiAnalysisModel?.searchAgentModel,
-			onChange: (provider, modelId) => updateAIAnalysisModel('searchAgentModel', provider, modelId),
-		},
+		// {
+		// 	id: 'searchSummary',
+		// 	label: 'Search Summary Model',
+		// 	description: 'Model for generating search result summaries. Falls back to default model if not configured.',
+		// 	currentModel: settings.search.searchSummaryModel,
+		// 	onChange: (provider, modelId) => updateSearchModel('searchSummaryModel', provider, modelId),
+		// },
+		// {
+		// 	id: 'thoughtAgent',
+		// 	label: 'AI Search Thought Agent',
+		// 	description: 'Model for the coordinator agent that plans and orchestrates AI search tasks. Falls back to default model if not configured.',
+		// 	currentModel: settings.search.aiAnalysisModel?.thoughtAgentModel,
+		// 	onChange: (provider, modelId) => updateAIAnalysisModel('thoughtAgentModel', provider, modelId),
+		// },
+		// {
+		// 	id: 'searchAgent',
+		// 	label: 'AI Search Agent',
+		// 	description: 'Model for the executor agent that performs searches and content analysis. Falls back to default model if not configured.',
+		// 	currentModel: settings.search.aiAnalysisModel?.searchAgentModel,
+		// 	onChange: (provider, modelId) => updateAIAnalysisModel('searchAgentModel', provider, modelId),
+		// },
 		{
 			id: 'embedding',
 			label: 'Embedding Model',
@@ -391,58 +314,110 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 					</p>
 				</div>
 
-				<ResetAllModelsSection
-					resetAllMode={resetAllMode}
-					setResetAllMode={setResetAllMode}
-					resetAllModel={resetAllModel}
-					setResetAllModel={setResetAllModel}
-					showConfirmDialog={showConfirmDialog}
-					setShowConfirmDialog={setShowConfirmDialog}
+				<BatchModelApplySection
+					label="Reset All Models"
+					description="Apply a new model to all configurable AI, search, and embedding settings at once. Useful for quickly switching your default provider or primary model across the plugin."
+					buttonLabel="Reset All"
 					models={models}
 					isLoading={isLoading}
 					loadModels={loadModels}
-					modelConfigs={modelConfigs}
-					settingsUpdates={settingsUpdates}
-					settings={settings}
+					variant="destructive"
+					onApply={async (model) => {
+						const updates: Partial<MyPluginSettings> = {
+							ai: {
+								...settings.ai,
+								defaultModel: { provider: model.provider, modelId: model.modelId },
+								promptModelMap: {
+									...settings.ai.promptModelMap,
+									...CONFIGURABLE_PROMPT_IDS.reduce((acc, promptId) => ({
+										...acc,
+										[promptId]: { provider: model.provider, modelId: model.modelId }
+									}), {})
+								}
+							},
+							search: {
+								...settings.search,
+								searchSummaryModel: { provider: model.provider, modelId: model.modelId },
+								aiAnalysisModel: {
+									...settings.search.aiAnalysisModel,
+									thoughtAgentModel: { provider: model.provider, modelId: model.modelId },
+									searchAgentModel: { provider: model.provider, modelId: model.modelId }
+								},
+								chunking: {
+									...settings.search.chunking,
+									embeddingModel: { provider: model.provider, modelId: model.modelId },
+									rerankModel: { provider: model.provider, modelId: model.modelId }
+								}
+							}
+						};
+						await settingsUpdates.updateSettings(updates);
+					}}
+					renderConfirmContent={(model) => (
+						<>
+							<span className="pktw-text-sm pktw-font-medium pktw-text-amber-800 pktw-mb-2">
+								⚠️ Confirm Reset All Models
+							</span>
+							<div className="pktw-text-sm pktw-text-amber-700 pktw-space-y-1">
+								<p>
+									You are about to apply <strong>{model.provider} / {model.modelId}</strong> to:
+								</p>
+								<ul className="pktw-list-disc pktw-list-inside pktw-ml-4 pktw-space-y-1">
+									<li>All model configurations (Default, Search, Embedding, etc.)</li>
+									<li>All configurable prompts ({CONFIGURABLE_PROMPT_IDS.length} types)</li>
+								</ul>
+								<p className="pktw-font-medium pktw-pt-2">
+									This action will override all existing model selections. This cannot be undone.
+								</p>
+							</div>
+						</>
+					)}
 				/>
 
-				<div className="pktw-space-y-6">
-					{modelConfigs.map((config) => {
-						// Require tools capability for agent-like models
-						const requiresTools = config.id === 'thoughtAgent' || config.id === 'searchAgent';
-						
-						return (
-							<ModelSelectorField
-								key={config.id}
-								label={config.label}
-								description={config.description}
-								currentModel={config.currentModel}
-								onChange={config.onChange}
-								models={models}
-								isLoading={isLoading}
-								onMenuOpen={loadModels}
-								requiredCapabilities={requiresTools ? { tools: true } : undefined}
-							/>
-						);
-					})}
-					{CONFIGURABLE_PROMPT_IDS
-						.map((promptId) => {
+				{/* Search AI Analysis Section */}
+				<CollapsibleSettingsSection title="Search AI Analysis" defaultOpen={false}>
+					<div className="pktw-mb-4">
+						<p className="pktw-text-sm pktw-text-muted-foreground">
+							Model configuration for Search AI Analysis prompts. Each prompt can have its own model; falls back to default if not configured.
+						</p>
+					</div>
+					<BatchModelApplySection
+						label="Set All Search AI Analysis"
+						description={`Apply one model to all Search AI Analysis prompts (${SEARCH_AI_ANALYSIS_PROMPT_IDS.length} prompts) at once.`}
+						buttonLabel="Set All"
+						models={models}
+						isLoading={isLoading}
+						loadModels={loadModels}
+						onApply={async (model) => {
+							const promptMap = SEARCH_AI_ANALYSIS_PROMPT_IDS.reduce(
+								(acc, promptId) => ({ ...acc, [promptId]: { provider: model.provider, modelId: model.modelId } }),
+								{} as Record<string, { provider: string; modelId: string }>
+							);
+							await settingsUpdates.updateSettings({
+								ai: { ...settings.ai, promptModelMap: { ...settings.ai.promptModelMap, ...promptMap } },
+							});
+						}}
+						renderConfirmContent={(model) => (
+							<>
+								<span className="pktw-text-sm pktw-font-medium pktw-mb-2">Confirm</span>
+								<p className="pktw-text-sm pktw-text-muted-foreground">
+									Apply <strong>{model.provider} / {model.modelId}</strong> to all {SEARCH_AI_ANALYSIS_PROMPT_IDS.length} Search AI Analysis prompts?
+								</p>
+							</>
+						)}
+					/>
+					<div className="pktw-space-y-6">
+						{SEARCH_AI_ANALYSIS_PROMPT_IDS.map((promptId) => {
 							const promptLabel = promptId
 								.split('-')
 								.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 								.join(' ');
-							return { promptId, promptLabel };
-						})
-						.sort((a, b) => a.promptLabel.localeCompare(b.promptLabel))
-						.map(({ promptId, promptLabel }) => {
 							const promptModel = settings.ai.promptModelMap?.[promptId];
 							const currentModel = promptModel || settings.ai.defaultModel;
-
 							return (
 								<ModelSelectorField
 									key={promptId}
 									label={promptLabel}
-									description={`Model for ${promptId} prompt. Falls back to default model if not configured.`}
+									description={`Model for ${promptId} prompt. Falls back to default if not configured.`}
 									currentModel={currentModel}
 									onChange={(provider, modelId) => updatePromptModel(promptId, provider, modelId)}
 									models={models}
@@ -451,7 +426,63 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 								/>
 							);
 						})}
-				</div>
+					</div>
+				</CollapsibleSettingsSection>
+
+				{/* Default & Other Models Section */}
+				<CollapsibleSettingsSection title="Default & Other Models" defaultOpen={false}>
+					<div className="pktw-mb-4">
+						<p className="pktw-text-sm pktw-text-muted-foreground">
+							Default model, embedding, rerank, and other configurable prompts. Falls back to default model if not configured.
+						</p>
+					</div>
+					<div className="pktw-space-y-6">
+						{modelConfigs.map((config) => {
+							// Require tools capability for agent-like models
+							const requiresTools = config.id === 'thoughtAgent' || config.id === 'searchAgent';
+
+							return (
+								<ModelSelectorField
+									key={config.id}
+									label={config.label}
+									description={config.description}
+									currentModel={config.currentModel}
+									onChange={config.onChange}
+									models={models}
+									isLoading={isLoading}
+									onMenuOpen={loadModels}
+									requiredCapabilities={requiresTools ? { tools: true } : undefined}
+								/>
+							);
+						})}
+						{CONFIGURABLE_PROMPT_IDS
+							.map((promptId) => {
+								const promptLabel = promptId
+									.split('-')
+									.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+									.join(' ');
+								return { promptId, promptLabel };
+							})
+							.sort((a, b) => a.promptLabel.localeCompare(b.promptLabel))
+							.map(({ promptId, promptLabel }) => {
+								const promptModel = settings.ai.promptModelMap?.[promptId];
+								const currentModel = promptModel || settings.ai.defaultModel;
+
+								return (
+									<ModelSelectorField
+										key={promptId}
+										label={promptLabel}
+										description={`Model for ${promptId} prompt. Falls back to default model if not configured.`}
+										currentModel={currentModel}
+										onChange={(provider, modelId) => updatePromptModel(promptId, provider, modelId)}
+										models={models}
+										isLoading={isLoading}
+										onMenuOpen={loadModels}
+									/>
+								);
+							})}
+					</div>
+				</CollapsibleSettingsSection>
 			</CollapsibleSettingsSection>
 
 			{/* LLM Output Control Settings Section */}

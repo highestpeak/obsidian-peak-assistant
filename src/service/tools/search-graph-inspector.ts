@@ -20,6 +20,27 @@ const SorterOption = z.enum([
     'outlinks_count_desc', 'outlinks_count_asc'
 ]);
 
+/** Valid time-window enum values for filters. */
+const TIME_WITHIN_VALUES = ['today', 'yesterday', 'this_week', 'this_month', 'last_3_months', 'this_year'] as const;
+const TimeWithinEnum = z.enum(TIME_WITHIN_VALUES);
+
+/** Map common invalid LLM outputs to valid enum (e.g. last_3_years -> this_year). */
+const TIME_WITHIN_NORMALIZE: Record<string, (typeof TIME_WITHIN_VALUES)[number]> = {
+    last_3_years: 'this_year',
+    last_2_years: 'this_year',
+    last_year: 'this_year',
+    last_6_months: 'last_3_months',
+    last_month: 'this_month',
+    last_week: 'this_week',
+    recent: 'this_month',
+};
+function normalizeTimeWithin(val: unknown): (typeof TIME_WITHIN_VALUES)[number] | undefined {
+    if (val == null) return undefined;
+    const s = String(val).trim().toLowerCase();
+    if (TIME_WITHIN_VALUES.includes(s as any)) return s as (typeof TIME_WITHIN_VALUES)[number];
+    return TIME_WITHIN_NORMALIZE[s] ?? 'this_year';
+}
+
 // Define filter options - eliminate logical redundancy
 const FilterOption = z.object({
     tag_category_boolean_expression: z.string().optional()
@@ -33,29 +54,17 @@ const FilterOption = z.object({
     path: z.string().optional().describe("Regex or prefix for file paths"),
 
     /**
-     * Semantic time filtering
-     * AI will match natural language (e.g., "yesterday", "this week", "recent month") to these ranges
-     *  High tolerance: AI will never fail due to incorrect date format (e.g., 12/05/2026 vs 05/12/2026).
+     * Semantic time filtering. Invalid values (e.g. last_3_years) are normalized to the closest valid option.
      */
-    modified_within: z.enum([
-        'today',        // 24 hours
-        'yesterday',    // 48 hours
-        'this_week',    // 7 days
-        'this_month',   // 30 days
-        // user often seeks "recent quarter" work
-        'last_3_months', // 90 days
-        'this_year'     // 365 days
-    ]).optional(),
+    modified_within: z.preprocess(
+        (val) => normalizeTimeWithin(val),
+        TimeWithinEnum.optional()
+    ),
 
-    created_within: z.enum([
-        'today',
-        'yesterday',
-        'this_week',
-        'this_month',
-        // user often seeks "recent quarter" work
-        'last_3_months',
-        'this_year',
-    ]).optional()
+    created_within: z.preprocess(
+        (val) => normalizeTimeWithin(val),
+        TimeWithinEnum.optional()
+    ),
 });
 
 // Define semantic filter (optional advanced feature) - prevent hallucination

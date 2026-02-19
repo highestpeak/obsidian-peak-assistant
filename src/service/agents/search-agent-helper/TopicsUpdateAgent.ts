@@ -2,12 +2,12 @@ import { Experimental_Agent as Agent, stepCountIs } from 'ai';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import { ErrorRetryInfo, PromptId } from '@/service/prompt/PromptId';
-import { DashboardUpdateContext, InnerAgentContext } from '../AISearchAgent';
-import { topicUpdateTool, getTopicToolFormatGuidance } from './DashboardUpdateToolBuilder';
+import { AISearchUpdateContext, InnerAgentContext } from '../AISearchAgent';
+import { topicUpdateTool, getTopicToolFormatGuidance } from './helpers/DashboardUpdateToolBuilder';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import type { AgentTool } from '@/service/tools/types';
 import { RESULT_UPDATE_TOOL_NAMES } from '../AISearchAgent';
-import { streamTransform, withRetryStream } from '@/core/providers/helpers/stream-helper';
+import { buildPromptTraceDebugEvent, streamTransform, withRetryStream } from '@/core/providers/helpers/stream-helper';
 
 const DEFAULT_MAX_STEPS = 18;
 
@@ -16,9 +16,10 @@ type TopicsUpdateToolSet = {
     update_topics: AgentTool;
 };
 
+/** Uses getModelForPrompt(AiAnalysisDashboardUpdateTopics). */
 export class TopicsUpdateAgent {
     private readonly aiServiceManager: AIServiceManager;
-    private readonly options: { provider: string; model: string, enableWebSearch?: boolean; enableLocalSearch?: boolean };
+    private readonly options: { enableWebSearch?: boolean; enableLocalSearch?: boolean };
     private readonly context: InnerAgentContext;
 
     private agent: Agent<TopicsUpdateToolSet>;
@@ -26,13 +27,14 @@ export class TopicsUpdateAgent {
     constructor(
         params: {
             aiServiceManager: AIServiceManager,
-            options: { provider: string; model: string, enableWebSearch?: boolean; enableLocalSearch?: boolean },
+            options: { enableWebSearch?: boolean; enableLocalSearch?: boolean },
             context: InnerAgentContext,
         }
     ) {
         this.aiServiceManager = params.aiServiceManager;
-        this.options = params.options;
+        this.options = { enableWebSearch: params.options.enableWebSearch, enableLocalSearch: params.options.enableLocalSearch };
         this.context = params.context;
+        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisDashboardUpdateTopics);
         const { getResult, searchHistory } = this.context;
 
         const tools: TopicsUpdateToolSet = {
@@ -44,8 +46,8 @@ export class TopicsUpdateAgent {
 
         this.agent = new Agent<TopicsUpdateToolSet>({
             model: this.aiServiceManager.getMultiChat()
-                .getProviderService(this.options.provider)
-                .modelClient(this.options.model),
+                .getProviderService(provider)
+                .modelClient(modelId),
             tools,
             stopWhen: [
                 stepCountIs(DEFAULT_MAX_STEPS),
@@ -54,7 +56,7 @@ export class TopicsUpdateAgent {
     }
 
     public async *stream(
-        variables: DashboardUpdateContext
+        variables: AISearchUpdateContext
     ): AsyncGenerator<LLMStreamEvent> {
         yield* withRetryStream(
             variables,
@@ -63,7 +65,7 @@ export class TopicsUpdateAgent {
     }
 
     private async *realStreamInterlal(
-        variables: DashboardUpdateContext,
+        variables: AISearchUpdateContext,
         errorRetryInfo?: ErrorRetryInfo
     ): AsyncGenerator<LLMStreamEvent> {
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisDashboardUpdateTopics);
@@ -74,6 +76,7 @@ export class TopicsUpdateAgent {
             toolFormatGuidance: getTopicToolFormatGuidance(),
         });
 
+        yield buildPromptTraceDebugEvent('topics-update-prompt', StreamTriggerName.SEARCH_TOPICS_AGENT, system, prompt);
         const result = this.agent.stream({
             system, prompt,
         });

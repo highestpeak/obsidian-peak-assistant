@@ -12,7 +12,8 @@ import { AppContext } from '@/app/context/AppContext';
 import type { UIPreviewGraph } from '@/ui/component/mine/graph-viz/types';
 import type { DashboardBlock, DashboardBlockItem } from '@/service/agents/AISearchAgent';
 import { FollowupChatAgent } from '@/service/agents/search-agent-helper/FollowupChatAgent';
-import type { LLMStreamEvent } from '@/core/providers/types';
+import type { LLMStreamEvent, LLMUsage } from '@/core/providers/types';
+import { AIServiceManager } from '@/service/chat/service-manager';
 
 /** Sanitize AI-generated filename: remove invalid filesystem chars. */
 function sanitizeFilename(s: string): string {
@@ -53,25 +54,19 @@ const CANDIDATE_FOLDERS_MAX = 12;
  * Falls back to chatWithPromptStream when agent is unavailable (e.g. mock env).
  */
 export async function* streamSearchFollowup(
-    manager: { renderPrompt: (id: PromptId, vars: any) => Promise<string>; chatWithPromptStream: (id: PromptId, vars: any) => AsyncGenerator<LLMStreamEvent> },
+    manager: AIServiceManager,
     promptId: PromptId,
     variables: Record<string, unknown>
 ): AsyncGenerator<LLMStreamEvent> {
     try {
-        const plugin = AppContext.getInstance().plugin;
-        const searchModel = plugin?.settings?.search?.aiAnalysisModel?.searchAgentModel;
-        if (!searchModel?.provider || !searchModel?.modelId || AppContext.getInstance().isMockEnv) {
+        if (AppContext.getInstance().isMockEnv) {
             yield* manager.chatWithPromptStream(promptId, variables);
             return;
         }
         const historySearchFn = getLastAnalysisHistorySearch();
         const agent = new FollowupChatAgent(
             manager as any,
-            {
-                searchAgentProvider: searchModel.provider,
-                searchAgentModel: searchModel.modelId,
-                enableLocalSearch: true,
-            },
+            { enableLocalSearch: true },
             historySearchFn,
             searchCurrentResult
         );
@@ -87,6 +82,8 @@ export async function* streamSearchFollowup(
 /** Handlers for consuming followup stream (same agent events everywhere). */
 export type ConsumeFollowupStreamHandlers = {
     onDelta?: (acc: string) => void;
+    /** Called when a prompt-stream-result event includes usage (merge with main analysis tokens). */
+    onUsage?: (usage: LLMUsage) => void;
 };
 
 /**
@@ -102,8 +99,10 @@ export async function consumeFollowupStream(
         if (event.type === 'prompt-stream-delta' && typeof (event as any).delta === 'string') {
             acc += (event as any).delta;
             handlers?.onDelta?.(acc);
-        } else if (event.type === 'prompt-stream-result' && (event as any).output != null) {
-            acc = typeof (event as any).output === 'string' ? (event as any).output : acc;
+        } else if (event.type === 'prompt-stream-result') {
+            const ev = event as { output?: unknown; usage?: LLMUsage };
+            if (ev.output != null) acc = typeof ev.output === 'string' ? ev.output : acc;
+            if (ev.usage) handlers?.onUsage?.(ev.usage);
         } else if (event.type === 'error') {
             throw (event as any).error;
         }
@@ -244,7 +243,10 @@ export function useAnalyzeTopic() {
         const variables = topicConfig.getVariables(question);
         const stream = streamSearchFollowup(manager, topicConfig.promptId, variables);
         try {
-            const acc = await consumeFollowupStream(stream, { onDelta });
+            const acc = await consumeFollowupStream(stream, {
+                onDelta,
+                onUsage: (usage) => useAIAnalysisStore.getState().accumulateUsage(usage),
+            });
             useAIAnalysisStore.getState().setTopicAnalyzeResult(topic, question, acc);
         } catch (e) {
             console.warn('[useAnalyzeTopic] Analyze failed:', e);
@@ -278,7 +280,7 @@ export function useRegenerateOverviewMermaid() {
     const sources = useAIAnalysisStore((s) => s.sources ?? []);
     const dashboardBlocks = useAIAnalysisStore((s) => s.dashboardBlocks ?? []);
     const pushOverviewMermaidVersion = useAIAnalysisStore((s) => s.pushOverviewMermaidVersion);
-    const analysisMode = useAIAnalysisStore((s) => s.runAnalysisMode ?? 'full');
+    const analysisMode = useAIAnalysisStore((s) => s.runAnalysisMode ?? 'vaultFull');
 
     const [isRegenerating, setIsRegenerating] = useState(false);
 
@@ -342,17 +344,16 @@ export function useGraphFollowupChatConfig(params: {
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
     });
-    const promptId = PromptId.AiAnalysisFollowupGraph;
+    const promptId = PromptId.AiAnalysisFollowup;
     const getVariables = useCallback((question: string) => {
         const nodeLabels = (uiGraph?.nodes ?? []).slice(0, 30).map(n => `- ${n.label}`).join('\n');
-        return {
-            question,
-            nodeLabels: nodeLabels || '(empty)',
-            nodeCount: (uiGraph?.nodes ?? []).length,
-            edgeCount: (uiGraph?.edges ?? []).length,
-            originalQuery: searchQuery ?? '',
-            mainSummary: mainSummary ?? '',
-        };
+        const contextContent = [
+            `Main summary: ${mainSummary ?? ''}`,
+            `Nodes: ${(uiGraph?.nodes ?? []).length}, Edges: ${(uiGraph?.edges ?? []).length}`,
+            '## Sample nodes',
+            nodeLabels || '(empty)',
+        ].join('\n\n');
+        return { originalQuery: searchQuery ?? '', question, contextContent };
     }, [uiGraph, searchQuery, mainSummary]);
     const initialQuestion = graphChatNodeContext
         ? `Discuss "${graphChatNodeContext.label}" in the graph.`
@@ -371,12 +372,11 @@ export function useGraphFollowupChatConfig(params: {
 export function useSummaryFollowupChatConfig(params: { summary: string }): InlineFollowupChatConfig {
     const { summary } = params;
     const { searchQuery } = useSharedStore();
-    const promptId = PromptId.AiAnalysisFollowupSummary;
-    const getVariables = useCallback((question: string) => ({
-        question,
-        summary: summary ?? '',
-        originalQuery: searchQuery ?? '',
-    }), [summary, searchQuery]);
+    const promptId = PromptId.AiAnalysisFollowup;
+    const getVariables = useCallback((question: string) => {
+        const contextContent = `Summary (current):\n${summary ?? ''}`;
+        return { originalQuery: searchQuery ?? '', question, contextContent };
+    }, [summary, searchQuery]);
     return {
         promptId,
         getVariables,
@@ -390,12 +390,11 @@ export function useSummaryFollowupChatConfig(params: { summary: string }): Inlin
 export function useContinueAnalysisFollowupChatConfig(params: { summary: string }): InlineFollowupChatConfig {
     const { summary } = params;
     const { searchQuery } = useSharedStore();
-    const promptId = PromptId.AiAnalysisFollowupFull;
-    const getVariables = useCallback((question: string) => ({
-        question,
-        summary: summary?.length ? summary : '(empty)',
-        originalQuery: searchQuery ?? '',
-    }), [summary, searchQuery]);
+    const promptId = PromptId.AiAnalysisFollowup;
+    const getVariables = useCallback((question: string) => {
+        const contextContent = `Current analysis summary:\n${summary?.length ? summary : '(empty)'}`;
+        return { originalQuery: searchQuery ?? '', question, contextContent };
+    }, [summary, searchQuery]);
     return {
         promptId,
         getVariables,
@@ -419,18 +418,17 @@ export function useBlocksFollowupChatConfig(params: {
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
     });
-    const promptId = PromptId.AiAnalysisFollowupBlocks;
-    const getVariables = useCallback((question: string) => ({
-        question,
-        blocksText: (dashboardBlocks ?? []).map((b) => {
+    const promptId = PromptId.AiAnalysisFollowup;
+    const getVariables = useCallback((question: string) => {
+        const blocksText = (dashboardBlocks ?? []).map((b) => {
             const label = b.title || 'Block';
             const itemsPreview = b.items?.slice(0, 5).map((i) => i.title).join(', ') || '';
             const md = (b.markdown || b.mermaidCode || '').slice(0, 200);
             return `- ${label}${itemsPreview ? ` (${itemsPreview})` : ''}${md ? `: ${md}` : ''}`;
-        }).join('\n') || '(empty)',
-        originalQuery: searchQuery ?? '',
-        mainSummary: mainSummary ?? '',
-    }), [dashboardBlocks, searchQuery, mainSummary]);
+        }).join('\n') || '(empty)';
+        const contextContent = `Main summary: ${mainSummary ?? ''}\n\n## Blocks\n${blocksText}`;
+        return { originalQuery: searchQuery ?? '', question, contextContent };
+    }, [dashboardBlocks, searchQuery, mainSummary]);
     const initialQuestion = blocksChatItemContext
         ? `Discuss: "${blocksChatItemContext.item.title}". ${blocksChatItemContext.item.description ?? ''}`.trim()
         : blocksChatContext
@@ -458,13 +456,12 @@ export function useSourcesFollowupChatConfig(params: {
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
     });
-    const promptId = PromptId.AiAnalysisFollowupSources;
-    const getVariables = useCallback((question: string) => ({
-        question,
-        sourcesList: sources.slice(0, 10).map((s) => `- ${s.title || s.path}`).join('\n') || '(empty)',
-        originalQuery: searchQuery ?? '',
-        mainSummary: mainSummary ?? '',
-    }), [sources, searchQuery, mainSummary]);
+    const promptId = PromptId.AiAnalysisFollowup;
+    const getVariables = useCallback((question: string) => {
+        const sourcesList = sources.slice(0, 10).map((s) => `- ${s.title || s.path}`).join('\n') || '(empty)';
+        const contextContent = `Main summary: ${mainSummary ?? ''}\n\n## Sources (sample)\n${sourcesList}`;
+        return { originalQuery: searchQuery ?? '', question, contextContent };
+    }, [sources, searchQuery, mainSummary]);
     return {
         promptId,
         getVariables,
@@ -481,12 +478,11 @@ export function useTopicFollowupChatConfig(params: {
 }): InlineFollowupChatConfig {
     const { summary, topicLabel } = params;
     const { searchQuery } = useSharedStore();
-    const promptId = PromptId.AiAnalysisFollowupFull;
-    const getVariables = useCallback((question: string) => ({
-        question,
-        summary,
-        originalQuery: searchQuery ?? '',
-    }), [summary, searchQuery]);
+    const promptId = PromptId.AiAnalysisFollowup;
+    const getVariables = useCallback((question: string) => {
+        const contextContent = `Current analysis summary:\n${summary}`;
+        return { originalQuery: searchQuery ?? '', question, contextContent };
+    }, [summary, searchQuery]);
     return {
         promptId,
         getVariables,

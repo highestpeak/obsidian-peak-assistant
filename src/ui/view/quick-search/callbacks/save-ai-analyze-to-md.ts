@@ -1,3 +1,4 @@
+import { TFile } from 'obsidian';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { GraphNodeType } from '@/core/po/graph.po';
@@ -5,7 +6,7 @@ import { AppContext } from '@/app/context/AppContext';
 import type { AISearchGraph, AISearchSource } from '@/service/agents/AISearchAgent';
 import type { DashboardBlock } from '@/service/agents/AISearchAgent';
 import type { SearchResultItem } from '@/service/search/types';
-import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
+import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot, type BuildMarkdownOptions } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 import type { CompletedAnalysisSnapshot } from '@/ui/view/quick-search/store/aiAnalysisStore';
 
 /** Source shape for export/save; compatible with AISearchSource (path, title, score.average, reasoning). */
@@ -52,11 +53,16 @@ export async function saveAiAnalyzeResultToMarkdown(params: SaveAnalysisResultPa
 		await ensureFolder(app, fullFolderPath);
 	}
 
+	const buildOptions: BuildMarkdownOptions = {
+		runAnalysisMode: params.snapshot?.runAnalysisMode,
+		includeSteps: ctx.settings?.enableDevTools === true,
+	};
+
 	let content: string;
 	if (params.snapshot) {
 		const docModel = fromCompletedAnalysisSnapshot(params.snapshot, params.query, params.webEnabled === true);
 		docModel.created = new Date().toISOString();
-		content = buildAiSearchAnalysisMarkdown(docModel);
+		content = buildAiSearchAnalysisMarkdown(docModel, buildOptions);
 	} else {
 		const r = params.result!;
 		const snapshot: CompletedAnalysisSnapshot = {
@@ -84,7 +90,7 @@ export async function saveAiAnalyzeResultToMarkdown(params: SaveAnalysisResultPa
 		};
 		const docModel = fromCompletedAnalysisSnapshot(snapshot, params.query, params.webEnabled === true);
 		docModel.created = new Date().toISOString();
-		content = buildAiSearchAnalysisMarkdown(docModel);
+		content = buildAiSearchAnalysisMarkdown(docModel, buildOptions);
 	}
 
 	const existing = app.vault.getAbstractFileByPath(filePath);
@@ -97,6 +103,18 @@ export async function saveAiAnalyzeResultToMarkdown(params: SaveAnalysisResultPa
 	return { path: finalPath };
 }
 
+/**
+ * Overwrite an existing AI analysis document at path with new content.
+ * Use after follow-up content or usage changes to keep the saved file in sync.
+ */
+export async function persistAnalysisDocToPath(path: string, content: string): Promise<void> {
+	const app = AppContext.getInstance().app;
+	const file = app.vault.getAbstractFileByPath(path);
+	if (file && file instanceof TFile) {
+		await app.vault.modify(file, content);
+	}
+}
+
 function sanitizeFileName(name: string): string {
 	return name
 		.trim()
@@ -107,6 +125,7 @@ function sanitizeFileName(name: string): string {
 
 /**
  * Build markdown from snapshot (for copy, etc). Uses AiSearchAnalysisDoc format.
+ * Uses runAnalysisMode from snapshot and enableDevTools from app settings for section filtering.
  */
 export function buildAiAnalyzeMarkdownFromSnapshot(
 	snapshot: CompletedAnalysisSnapshot,
@@ -115,7 +134,11 @@ export function buildAiAnalyzeMarkdownFromSnapshot(
 ): string {
 	const docModel = fromCompletedAnalysisSnapshot(snapshot, query, webEnabled);
 	docModel.created = new Date().toISOString();
-	return buildAiSearchAnalysisMarkdown(docModel);
+	const options: BuildMarkdownOptions = {
+		runAnalysisMode: snapshot.runAnalysisMode,
+		includeSteps: AppContext.getInstance().settings?.enableDevTools === true,
+	};
+	return buildAiSearchAnalysisMarkdown(docModel, options);
 }
 
 /**

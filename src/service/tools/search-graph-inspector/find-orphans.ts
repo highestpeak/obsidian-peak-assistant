@@ -3,6 +3,7 @@ import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import { template as ORPHAN_NOTES_TEMPLATE } from "../templates/orphan-notes";
 import { buildResponse } from "../types";
+import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
 // Define types for orphan analysis
 type OrphanNode = GraphNode & { orphanType: string; }
@@ -11,8 +12,11 @@ export async function findOrphanNotes(params: any) {
     const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
     const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
 
-    // Level 1: Hard Orphans (no connections) - get full orphan data without JOIN
-    const hardOrphanIds = await graphEdgeRepo.getHardOrphans(params.limit || 100);
+    let hardOrphanIds = await graphEdgeRepo.getHardOrphans(params.limit || 100);
+    const excludeCtx = await getAiAnalysisExcludeContext();
+    if (excludeCtx) {
+        hardOrphanIds = hardOrphanIds.filter((id) => !excludeCtx.excludedDocIds.has(id));
+    }
     let filteredHardOrphans: OrphanNode[] = [];
     if (hardOrphanIds.length > 0) {
         const hardOrphanNodeMap = await graphNodeRepo.getByIds(hardOrphanIds);

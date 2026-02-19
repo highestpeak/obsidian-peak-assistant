@@ -1,9 +1,9 @@
 import { z } from "zod/v3";
 
-import { SearchAgentResult } from "../AISearchAgent";
+import { SearchAgentResult } from "../../AISearchAgent";
 import { normalizeFilePath } from "@/core/utils/file-utils";
 import { createUpdateResultTool, getUpdateResultFormatGuidance, NO_MEANINGFUL_CONTENT_MESSAGE, DEFAULT_PLACEHOLDER, safeText, norm, normPath, commonValidatePath } from "@/service/tools/field-update-tool-array";
-import { normalizeMermaidForDisplay } from "@/core/utils/mermaid-utils";
+import { normalizeMermaidForDisplay, validateMermaid } from "@/core/utils/mermaid-utils";
 import { safeAgentTool } from "@/service/tools/types";
 
 /** Normalizes tool arg: LLM may send { input: string } instead of a plain string. */
@@ -22,9 +22,13 @@ export function overviewMermaidUpdateTool(
         description: 'Set the overview Mermaid diagram. Call with valid Mermaid code.',
         inputSchema: overviewMermaidInputSchema,
         execute: async (input) => {
+            const raw = input ?? '';
+            const validation = await validateMermaid(raw);
+            if (!validation.valid) {
+                throw new Error(`Mermaid parse failed: ${validation.message}`);
+            }
             const agentResult = getResult();
-            // todo maybe we should remove normalized to make code more simple
-            agentResult.overviewMermaid = normalizeMermaidForDisplay(input ?? '');
+            agentResult.overviewMermaid = normalizeMermaidForDisplay(raw);
         },
     });
 }
@@ -37,12 +41,13 @@ export function getTopicToolFormatGuidance(): string {
     });
 }
 
-/** Format guidance for update_sources prompt. */
+/** Format guidance for update_sources prompt. Path must include .md and must be from evidence paths. */
 export function getSourcesToolFormatGuidance(): string {
-    return getUpdateResultFormatGuidance({
+    const base = getUpdateResultFormatGuidance({
         fieldName: 'sources',
         itemExample: '{ "path": "path/to/file.md", "title": "Title", "reasoning": "Why relevant.", "badges": ["relevant"], "score": { "physical": 85, "semantic": 90, "average": 87 } }',
     });
+    return `${base} path must include .md and must be copied from evidence (Key paths from evidence or search_analysis_context); do not guess extensions.`;
 }
 
 /** Format guidance for update_graph_nodes / update_graph_edges prompt (both tools in one block). */
@@ -55,15 +60,16 @@ export function getGraphToolFormatGuidance(): string {
         fieldName: 'graph.edges',
         itemExample: '{ "source": "nodeId1", "target": "nodeId2", "type": "link", "label": "" }',
     });
-    return `update_graph_nodes: ${nodes} update_graph_edges: ${edges}`;
+    return `update_graph_nodes: ${nodes} Do NOT include any type: prefix in label (e.g. no file:, concept:, tag:). File nodes: use readable filename for label, path must be vault-relative. update_graph_edges: ${edges}`;
 }
 
-/** Format guidance for add_dashboard_blocks prompt. */
+/** Format guidance for add_dashboard_blocks prompt. Emphasizes MARKDOWN/MERMAID/TILE and required fields. */
 export function getDashboardBlocksToolFormatGuidance(): string {
-    return getUpdateResultFormatGuidance({
+    const base = getUpdateResultFormatGuidance({
         fieldName: 'dashboardBlocks',
-        itemExample: '{ "renderEngine": "MERMAID", "mermaidCode": "flowchart LR\\n  A[Start] --> B[Step] --> C[End]", "title": "Process", "weight": 6 }',
+        itemExample: '{ "renderEngine": "MARKDOWN", "markdown": "## Section\\n\\nShort paragraph or bullet list.", "title": "Block Title", "weight": 6 }',
     });
+    return `${base}\n\nEngine rules: renderEngine "MARKDOWN" requires "markdown" (non-empty string). renderEngine "MERMAID" requires "mermaidCode". renderEngine "TILE" requires "items" array. Examples: MARKDOWN: { "renderEngine": "MARKDOWN", "markdown": "Content here.", "title": "Title", "weight": 5 }. MERMAID: { "renderEngine": "MERMAID", "mermaidCode": "flowchart LR\\n  A --> B", "title": "Diagram", "weight": 6 }. TILE: { "renderEngine": "TILE", "items": [{ "title": "Item 1", "description": "optional" }], "title": "Tiles", "weight": 4 }.`;
 }
 
 export function topicUpdateTool(
@@ -128,6 +134,20 @@ function looksLikeFilePath(path: string): boolean {
     if (!path || typeof path !== 'string') return false;
     const p = path.trim();
     return p.includes('/') || /\.(md|markdown)$/i.test(p);
+}
+
+/** Strip type: prefix from display text only (do not change ids). Covers file:, concept:, tag:, topic:, cosmo:, node:, document:. */
+function stripTypedPrefixForDisplay(text: string): string {
+    if (!text || typeof text !== 'string') return text;
+    const s = text.trim();
+    const lower = s.toLowerCase();
+    const prefixes = ['file:', 'concept:', 'tag:', 'topic:', 'cosmo:', 'node:', 'document:'];
+    for (const p of prefixes) {
+        if (lower.startsWith(p)) {
+            return s.slice(p.length).replace(/^-+|\s+/g, ' ').trim() || s;
+        }
+    }
+    return s;
 }
 
 export function graphNodesUpdateTool(
@@ -226,6 +246,14 @@ export function graphNodesUpdateTool(
                     d.path ? normalizeFilePath(d.path) : d.label
                 );
                 if (!d.id || d.id === DEFAULT_PLACEHOLDER) d.id = fallbackId;
+
+                // Display title: strip type prefix; for file/document use basename to avoid long path in pills.
+                let displayTitle = stripTypedPrefixForDisplay(d.label ?? d.id ?? '');
+                if (FILE_NODE_TYPE.has(d.type) && displayTitle && (displayTitle.includes('/') || /\.(md|markdown)$/i.test(displayTitle))) {
+                    const base = displayTitle.split('/').filter(Boolean).pop() ?? displayTitle;
+                    displayTitle = base.replace(/\.(md|markdown)$/i, '') || base;
+                }
+                d.title = displayTitle || d.label || d.id;
 
                 return d;
             })
@@ -373,7 +401,19 @@ export function sourcesUpdateTool(
                 reasoning: z.string().default(DEFAULT_PLACEHOLDER).describe('Why it was selected or rejected. Please provide a detailed explanation. but no more than 100 words.'),
                 badges: z.array(z.string()).default(() => []).describe('Badges of the source. It will be used to display the source in the UI. eg: "important", "relevant", "interesting", etc.'),
                 score: z.preprocess(
-                    (val) => (typeof val === 'number' ? { average: val } : val),
+                    (val) => {
+                        if (typeof val === 'number') return { average: val, physical: val, semantic: val };
+                        if (val && typeof val === 'object') {
+                            const o = val as { physical?: number; semantic?: number; average?: number };
+                            const avg = o.average ?? 0;
+                            return {
+                                physical: o.physical ?? avg,
+                                semantic: o.semantic ?? avg,
+                                average: avg,
+                            };
+                        }
+                        return val;
+                    },
                     z.object({
                         physical: z.number().min(0).max(100).optional(),
                         semantic: z.number().min(0).max(100).optional(),
@@ -453,8 +493,23 @@ export function dashboardBlocksUpdateTool(
             (raw: any) => {
                 if (!raw || typeof raw !== 'object') return raw;
                 const title = raw.title != null ? String(raw.title).trim() : undefined;
-                const engine = String(raw.renderEngine ?? 'MARKDOWN').toUpperCase();
-                return { ...raw, title: title || undefined, renderEngine: engine };
+                let engine = String(raw.renderEngine ?? 'MARKDOWN').toUpperCase();
+                let markdown = raw.markdown != null ? String(raw.markdown).trim() : '';
+                const summary = raw.summary != null ? String(raw.summary).trim() : '';
+                const topics = Array.isArray(raw.topics) ? raw.topics : [];
+                if (engine === 'MARKDOWN' && !markdown) {
+                    if (summary) markdown = summary;
+                    if (topics.length > 0) {
+                        const bulletLines = topics.map((t: any) => {
+                            const label = t?.label ?? t?.name ?? t?.title ?? String(t);
+                            return `- ${typeof label === 'string' ? label : String(label)}`;
+                        });
+                        markdown = markdown ? `${markdown}\n\n${bulletLines.join('\n')}` : bulletLines.join('\n');
+                    }
+                    if (!markdown && title) markdown = title;
+                    if (!markdown) markdown = 'Content not yet generated.';
+                }
+                return { ...raw, title: title || undefined, renderEngine: engine, markdown: markdown || undefined };
             },
             z.intersection(
                 z.object({
@@ -469,10 +524,29 @@ export function dashboardBlocksUpdateTool(
         identityKeyBuilder: (item) => {
             const id = safeText(item.id);
             if (id && !id.startsWith('block:')) return `id:${id}`;
-            const title = safeText(item.title);
-            const engine = safeText(item.renderEngine);
-            const composite = `${title}\n${engine}`.trim();
-            return composite ? `text:${norm(composite)}` : null;
+            const title = normalizeBlockTitle(safeText(item.title));
+            const engine = norm(safeText(item.renderEngine));
+            const composite = [title, engine].filter(Boolean).join('\n');
+            return composite ? `text:${composite}` : (id ? `id:${id}` : null);
+        },
+    }, {
+        validateItem: async (item: any) => {
+            if (String(item?.renderEngine ?? '').toUpperCase() !== 'MERMAID') return { valid: true };
+            const code = item?.mermaidCode != null ? String(item.mermaidCode).trim() : '';
+            if (!code) return { valid: false, reason: 'MERMAID block requires non-empty mermaidCode.' };
+            const validation = await validateMermaid(code);
+            return validation.valid ? { valid: true } : { valid: false, reason: `Mermaid parse failed: ${validation.message}` };
         },
     });
+}
+
+/** Normalize block title for dedupe: strip markdown, collapse whitespace, lowercase. */
+function normalizeBlockTitle(raw: string): string {
+    if (!raw) return '';
+    let t = raw
+        .replace(/#{1,6}\s*/g, '')
+        .replace(/\*{1,3}|_{1,3}|`+/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return norm(t);
 }

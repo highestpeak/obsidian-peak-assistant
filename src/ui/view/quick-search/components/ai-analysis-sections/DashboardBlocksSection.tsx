@@ -334,7 +334,7 @@ export const DashboardBlocksSection: React.FC<{
 									</Button>
 								</HoverCardTrigger>
 								{(blocksFollowupHistoryByBlockId[block.id]?.length ?? 0) > 0 ? (
-									<HoverCardContent align="end" className="pktw-w-56 pktw-max-w-[min(90vw,320px)] pktw-p-1 pktw-z-[10000] pktw-max-h-64 pktw-overflow-y-auto">
+									<HoverCardContent align="end" className="pktw-w-56 pktw-max-w-[min(90vw,320px)] pktw-p-1 pktw-z-[10000] pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
 										{(blocksFollowupHistoryByBlockId[block.id] ?? []).map((item, idx) => (
 											<Button
 												key={idx}

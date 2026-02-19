@@ -44,7 +44,9 @@ function getNodeFillByConfig(
 	config: GraphConfig,
 	nodeIdsWithSemantic: Set<string>
 ): string {
-	if ((d.type ?? '').toLowerCase() === 'tag') return config.tagNodeFill;
+	const t = (d.type ?? '').toLowerCase();
+	if (t === 'tag') return config.tagNodeFill;
+	if (t === 'concept') return config.conceptNodeFill;
 	return nodeIdsWithSemantic.has(d.id) ? config.semanticNodeFill : config.physicalNodeFill;
 }
 

@@ -1,9 +1,11 @@
 import { hashText } from "@/core/utils/hash-utils";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
+import { Notice } from "obsidian";
 import { CompletedAnalysisSnapshot, useAIAnalysisStore } from "../store/aiAnalysisStore";
 import { AppContext } from "@/app/context/AppContext";
 import { useSharedStore } from "../store/sharedStore";
-import { buildAiAnalyzeMarkdown, ExportSource, saveAiAnalyzeResultToMarkdown } from "../callbacks/save-ai-analyze-to-md";
+import { buildAiAnalyzeMarkdown, ExportSource, saveAiAnalyzeResultToMarkdown, persistAnalysisDocToPath } from "../callbacks/save-ai-analyze-to-md";
+import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot, type BuildMarkdownOptions } from "@/core/storage/vault/search-docs/AiSearchAnalysisDoc";
 import { AISearchSource } from "@/service/agents/AISearchAgent";
 import { AIAnalysisHistoryRecord } from "@/service/AIAnalysisHistoryService";
 import { generateStableUuid } from "@/core/utils/id-utils";
@@ -53,6 +55,12 @@ export function useAIAnalysisResult() {
         setAutoSaveState,
         recordError,
         getHasGraphData,
+        analysisCompleted,
+        fullAnalysisFollowUp,
+        restoredFromVaultPath,
+        graphFollowupHistory,
+        blocksFollowupHistoryByBlockId,
+        sourcesFollowupHistory,
     } = useAIAnalysisStore();
 
     /** Current summary for display (streaming = summaryChunks, else selected from summaries). */
@@ -108,13 +116,45 @@ export function useAIAnalysisResult() {
                 content: s.reasoning,
             }));
 
-            const saved = await saveAiAnalyzeResultToMarkdown({
-                folderPath: AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder!,
-                fileName,
-                query: searchQuery,
-                snapshot: replaySnapshot,
-                webEnabled,
-            });
+            const settings = AppContext.getInstance().settings.search;
+            const defaultFolder = 'ChatFolder/AI-Analysis';
+            let folderPath = (settings.aiAnalysisAutoSaveFolder?.trim()) || defaultFolder;
+
+            let saved: { path: string };
+            try {
+                saved = await saveAiAnalyzeResultToMarkdown({
+                    folderPath,
+                    fileName,
+                    query: searchQuery,
+                    snapshot: replaySnapshot,
+                    webEnabled,
+                });
+            } catch (firstErr) {
+                const msg = firstErr instanceof Error ? firstErr.message : String(firstErr);
+                const isPathRelated = /folder|path|directory|create|write/i.test(msg);
+                if (isPathRelated && folderPath !== '') {
+                    folderPath = '';
+                    try {
+                        saved = await saveAiAnalyzeResultToMarkdown({
+                            folderPath,
+                            fileName,
+                            query: searchQuery,
+                            snapshot: replaySnapshot,
+                            webEnabled,
+                        });
+                        new Notice('Auto-save: saved to vault root (configured folder failed).', 5000);
+                    } catch (fallbackErr) {
+                        const fallbackMessage = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+                        console.warn('[AISearchTab] auto-save failed (including vault root fallback):', fallbackErr);
+                        new Notice(`Auto-save failed: ${fallbackMessage}`, 8000);
+                        return;
+                    }
+                } else {
+                    console.warn('[AISearchTab] auto-save failed:', firstErr);
+                    new Notice(`Auto-save failed: ${msg}`, 8000);
+                    return;
+                }
+            }
 
             const record: AIAnalysisHistoryRecord = {
                 id: generateStableUuid(saved.path),
@@ -129,13 +169,16 @@ export function useAIAnalysisResult() {
                 graph_nodes_count: getHasGraphData() ? (graph?.nodes?.length ?? 0) : 0,
                 graph_edges_count: getHasGraphData() ? (graph?.edges?.length ?? 0) : 0,
                 duration: duration ?? null,
+                analysis_preset: st.analysisMode ?? null,
             };
             await AppContext.getInstance().aiAnalysisHistoryService.insertOrIgnore(record as any);
 
-            // Mark as saved to prevent duplicates across modal reopen.
-            setAutoSaveState({ lastRunId: analysisRunId, lastSavedSummaryHash: summaryHash });
+            // Mark as saved and store path for "Open in document" button.
+            setAutoSaveState({ lastRunId: analysisRunId, lastSavedSummaryHash: summaryHash, lastSavedPath: saved.path });
         } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
             console.warn('[AISearchTab] auto-save failed:', e);
+            new Notice(`Auto-save failed: ${message}`, 8000);
         }
     }, [
         searchQuery,
@@ -151,6 +194,103 @@ export function useAIAnalysisResult() {
         webEnabled,
         topicInspectResults,
         getHasGraphData,
+        setAutoSaveState,
+    ]);
+
+    // Persist current analysis (follow-up content + merged usage) to the saved doc whenever they change.
+    const pathForPersist = restoredFromVaultPath ?? autoSaveState?.lastSavedPath ?? null;
+    useEffect(() => {
+        if (!analysisCompleted) return;
+
+        const buildSnapshot = (): CompletedAnalysisSnapshot => {
+            const st = useAIAnalysisStore.getState();
+            return {
+                version: 1,
+                title: st.title ?? undefined,
+                summaries: st.summaries?.length ? st.summaries : [summary],
+                summaryVersion: st.summaryVersion ?? 1,
+                runAnalysisMode: st.runAnalysisMode ?? undefined,
+                analysisStartedAtMs,
+                duration,
+                usage: st.usage ?? null,
+                topics: st.topics ?? [],
+                dashboardBlocks: st.dashboardBlocks ?? [],
+                sources: st.sources ?? [],
+                graph: st.graph ?? null,
+                overviewMermaidVersions: (st.overviewMermaidVersions ?? []).length > 0 ? st.overviewMermaidVersions : undefined,
+                overviewMermaidActiveIndex: (st.overviewMermaidVersions ?? []).length > 0 ? (st.overviewMermaidActiveIndex ?? 0) : undefined,
+                topicInspectResults: st.topicInspectResults ?? {},
+                topicAnalyzeResults: st.topicAnalyzeResults ?? {},
+                topicGraphResults: st.topicGraphResults ?? {},
+                blockChatRecords: Object.keys(st.blockChatRecords ?? {}).length > 0 ? st.blockChatRecords : undefined,
+                steps: st.steps ?? [],
+                fullAnalysisFollowUp: st.fullAnalysisFollowUp ?? [],
+                graphFollowups: (st.graphFollowupHistory ?? []).length > 0 ? st.graphFollowupHistory : undefined,
+                blocksFollowupsByBlockId: Object.keys(st.blocksFollowupHistoryByBlockId ?? {}).length > 0 ? st.blocksFollowupHistoryByBlockId : undefined,
+                sourcesFollowups: (st.sourcesFollowupHistory ?? []).length > 0 ? st.sourcesFollowupHistory : undefined,
+            };
+        };
+
+        if (!pathForPersist) {
+            // Create doc on first follow-up or token change so we have a path to persist to.
+            const ensureAnalysisDocExists = async () => {
+                const st = useAIAnalysisStore.getState();
+                const settings = AppContext.getInstance().settings.search;
+                const defaultFolder = 'ChatFolder/AI-Analysis';
+                const folderPath = (settings.aiAnalysisAutoSaveFolder?.trim()) || defaultFolder;
+                const displayTitle = (st.title?.trim() || searchQuery.slice(0, 48) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 60);
+                const ts = Date.now();
+                const fileName = `${ts} - ${displayTitle}`;
+                try {
+                    const saved = await saveAiAnalyzeResultToMarkdown({
+                        folderPath,
+                        fileName,
+                        query: searchQuery,
+                        snapshot: buildSnapshot(),
+                        webEnabled,
+                    });
+                    const summaryHash = hashText(`${summary}::t${topics.length}::s${sources.length}`);
+                    setAutoSaveState({ lastRunId: analysisRunId, lastSavedSummaryHash: summaryHash, lastSavedPath: saved.path });
+                } catch (e) {
+                    console.warn('[useAIAnalysisResult] ensureAnalysisDocExists failed:', e);
+                }
+            };
+            void ensureAnalysisDocExists();
+            return;
+        }
+
+        const persist = async () => {
+            try {
+                const snapshot = buildSnapshot();
+                const docModel = fromCompletedAnalysisSnapshot(snapshot, searchQuery, webEnabled);
+                docModel.created = docModel.created || new Date().toISOString();
+                const buildOptions: BuildMarkdownOptions = {
+                    runAnalysisMode: snapshot.runAnalysisMode,
+                    includeSteps: AppContext.getInstance().settings?.enableDevTools === true,
+                };
+                const content = buildAiSearchAnalysisMarkdown(docModel, buildOptions);
+                await persistAnalysisDocToPath(pathForPersist, content);
+            } catch (e) {
+                console.warn('[useAIAnalysisResult] persist to doc failed:', e);
+            }
+        };
+        void persist();
+    }, [
+        analysisCompleted,
+        pathForPersist,
+        fullAnalysisFollowUp,
+        usage,
+        graphFollowupHistory,
+        blocksFollowupHistoryByBlockId,
+        sourcesFollowupHistory,
+        summary,
+        topics,
+        sources,
+        analysisStartedAtMs,
+        duration,
+        analysisRunId,
+        searchQuery,
+        webEnabled,
         setAutoSaveState,
     ]);
 
@@ -180,7 +320,7 @@ export function useAIAnalysisResult() {
             const stepsSection = st.steps!
                 .map((step, i) => {
                     const title = `### Step ${i + 1}: ${step.title}`;
-                    const body = getStepText(step).trim();
+                    const body = (getStepText(step) ?? '').trim();
                     return body ? `${title}\n\n${body}` : title;
                 })
                 .join('\n\n');
@@ -441,9 +581,9 @@ export function useAnalyzeGraphResults() {
             } else if (toolName === 'graph_traversal') {
                 output = await graphTraversalTool().execute({
                     start_note_path: input.start_note_path,
-                    hops: 1,
-                    limit: 15,
-                    include_semantic_paths: true,
+                    hops: input.hops ?? 1,
+                    limit: input.limit ?? 15,
+                    include_semantic_paths: input.include_semantic_paths !== false,
                     response_format: 'structured',
                 });
             } else if (toolName === 'find_path') {

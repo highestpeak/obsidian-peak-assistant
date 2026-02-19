@@ -19,14 +19,12 @@ import { linkKey, getLinkEndpointId } from '../utils/link-key';
 import { computeNodeBounds, computeFitTransform } from '../core/graphBounds';
 import { useGraphContainer } from './useGraphContainer';
 import { useGraphSimulation } from './useGraphSimulation';
-import { useGraphHoverHighlight } from './useGraphHoverHighlight';
 import { useGraphRenderJoin, type ScheduleRenderJoinOpts } from './useGraphRenderJoin';
 import type { GraphInteractionContext } from '../core/canvas';
 
-/** DOM refs: graph area div, SVG root, effect canvas, main canvas (when renderBackend=canvas). */
+/** DOM refs: graph area div, effect canvas, main canvas. */
 export type DomRefs = {
 	graphAreaRef: React.RefObject<HTMLDivElement | null>;
-	svgRef: React.RefObject<SVGSVGElement | null>;
 	effectCanvasRef: React.RefObject<HTMLCanvasElement | null>;
 	mainCanvasRef: React.RefObject<HTMLCanvasElement | null>;
 };
@@ -71,10 +69,12 @@ export type StreamingRefs = {
 	tickCountRef: React.MutableRefObject<number>;
 };
 
-/** Effects/computed refs (hubs, community, visible subset). */
+/** Effects/computed refs (hubs, community, visible subset, connected components). */
 export type EffectsRefs = {
 	hubNodeIdsRef: React.MutableRefObject<string[]>;
 	communityMapRef: React.MutableRefObject<Map<string, number>>;
+	/** Node id -> connected component index (0, 1, 2, ...). Used for inter-component repulsion when multiple MSTs. */
+	componentMapRef: React.MutableRefObject<Map<string, number>>;
 	visibleNodesRef: React.MutableRefObject<GraphVizNode[]>;
 	/** MST-filtered visible links; used for canvas drawing and neighbor computation. */
 	visibleLinksRef: React.MutableRefObject<GraphVizLink[]>;
@@ -138,7 +138,6 @@ export type ApplyPatchOpts = {
 
 export type UseGraphEngineResult = {
 	graphAreaRef: React.RefObject<HTMLDivElement | null>;
-	svgRef: React.RefObject<SVGSVGElement | null>;
 	mainCanvasRef: React.RefObject<HTMLCanvasElement | null>;
 	scheduleDrawRef: React.MutableRefObject<(() => void) | null>;
 	simulationRef: React.MutableRefObject<d3.Simulation<GraphVizNode, GraphVizLink> | null>;
@@ -159,10 +158,11 @@ export type UseGraphEngineResult = {
 	scheduleRenderJoin: (source?: string, opts?: ScheduleRenderJoinOpts) => void;
 	zoomLevel: number;
 	hasData: boolean;
-	interactionContext: GraphInteractionContext | null;
+	/** True when current graph has at least one concept node (for showing concept color in settings). */
+	hasConceptNodes: boolean;
+	interactionContext: GraphInteractionContext;
 	hoveredNodeId: string | null;
 	setHoveredNodeId: (id: string | null) => void;
-	renderBackend: 'canvas' | 'svg';
 	onFoldNode: (nodeId: string) => void;
 	pathStartNodeId: string | null;
 	onSetPathStartNode: (nodeId: string) => void;
@@ -193,11 +193,8 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 		nodeContextMenu,
 	} = params;
 
-	const renderBackend: 'canvas' | 'svg' = 'canvas';
-
-	// Refs: DOM
+	// Refs: DOM (canvas-only rendering)
 	const graphAreaRef = useRef<HTMLDivElement>(null);
-	const svgRef = useRef<SVGSVGElement>(null);
 	const effectCanvasRef = useRef<HTMLCanvasElement>(null);
 	const mainCanvasRef = useRef<HTMLCanvasElement>(null);
 	const scheduleDrawRef = useRef<(() => void) | null>(null);
@@ -234,9 +231,10 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 	const throttleTickRef = useRef(false);
 	const tickCountRef = useRef(0);
 
-	// Refs: effects / computed (hubs, community, visible subset)
+	// Refs: effects / computed (hubs, community, connected components, visible subset)
 	const hubNodeIdsRef = useRef<string[]>([]);
 	const communityMapRef = useRef<Map<string, number>>(new Map());
+	const componentMapRef = useRef<Map<string, number>>(new Map());
 	const visibleNodesRef = useRef<GraphVizNode[]>([]);
 	const visibleLinksRef = useRef<GraphVizLink[]>([]);
 
@@ -256,6 +254,7 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 	const [version, setVersion] = useState(0);
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const [hasData, setHasData] = useState(false);
+	const [hasConceptNodes, setHasConceptNodes] = useState(false);
 
 	const pathResultRef = useRef<{ pathNodeIds: string[]; pathLinkKeys: Set<string> } | null>(null);
 	const pathResultT0Ref = useRef<number>(0);
@@ -275,7 +274,7 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 	const { resizeTick, containerSizeRef } = useGraphContainer(graphAreaRef);
 
 	// Ref groups for clearer passing and maintenance
-	const domRefs: DomRefs = { graphAreaRef, svgRef, effectCanvasRef, mainCanvasRef };
+	const domRefs: DomRefs = { graphAreaRef, effectCanvasRef, mainCanvasRef };
 	const simulationZoomRefs: SimulationZoomRefs = {
 		simulationRef,
 		zoomRef,
@@ -306,7 +305,7 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 	};
 	// Stable ref so useGraphSimulation config effect does not run on every hover (which would restart sim and cause jitter)
 	const effectsRefs = useMemo<EffectsRefs>(
-		() => ({ hubNodeIdsRef, communityMapRef, visibleNodesRef, visibleLinksRef }),
+		() => ({ hubNodeIdsRef, communityMapRef, componentMapRef, visibleNodesRef, visibleLinksRef }),
 		[]
 	);
 	const contextRefs: ContextRefs = { configRef, foldedSetRef, pathStartIdRef };
@@ -324,7 +323,6 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 		config,
 		setZoomLevel,
 		getEdgeStyle,
-		renderBackend,
 		scheduleDrawRef,
 	});
 
@@ -352,21 +350,7 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 		onNodeContextMenu,
 		nodeContextMenu,
 		onNodeClick,
-		renderBackend,
 		scheduleDrawRef,
-	});
-
-	// --- Hover: dim non-hovered nodes/links (SVG only; canvas does it in draw) ---
-	useGraphHoverHighlight({
-		hoveredNodeId,
-		version,
-		config,
-		foldedSet,
-		normalizeNodeId,
-		getEdgeStyle,
-		layerRefs,
-		graphDataRefs,
-		renderBackend,
 	});
 
 	useEffect(() => {
@@ -403,6 +387,7 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 				weight: typeof l.weight === 'number' ? l.weight : 1,
 			}));
 			if (!hasData && nodes.length > 0) setHasData(true);
+			setHasConceptNodes(nodes.some((n) => (String(n.type ?? '').toLowerCase() === 'concept')));
 			pendingVersionBumpRef.current = true;
 			markStreaming();
 			const phase = opts?.streamPhase;
@@ -436,16 +421,16 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 			const finalTransform = d3Zoom.zoomIdentity.translate(translateX, translateY).scale(scale);
 			zoomTransformRef.current = { x: translateX, y: translateY, k: scale };
 			setZoomLevel(scale);
-			const zoomTarget = renderBackend === 'canvas' ? mainCanvasRef.current : svgRef.current;
+			const zoomTarget = mainCanvasRef.current;
 			if (zoomTarget) d3Selection.select(zoomTarget as SVGSVGElement).call(zoomRef.current!.transform, finalTransform);
 			scheduleDrawRef.current?.();
 		},
-		[renderBackend]
+		[]
 	);
 
 	const handleZoom = useCallback((delta: number) => {
 		if (!zoomRef.current) return;
-		const zoomTarget = renderBackend === 'canvas' ? mainCanvasRef.current : svgRef.current;
+		const zoomTarget = mainCanvasRef.current;
 		if (!zoomTarget) return;
 		const sel = d3Selection.select(zoomTarget as SVGSVGElement);
 		const currentTransform = d3Zoom.zoomTransform(sel.node() as Element);
@@ -454,7 +439,7 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 		sel.call(zoomRef.current.transform, newTransform);
 		setZoomLevel(newScale);
 		scheduleDrawRef.current?.();
-	}, [renderBackend]);
+	}, []);
 
 	const relayout = useCallback(() => {
 		for (const n of nodesRef.current) {
@@ -473,6 +458,7 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 		pathfindingEdgesRef.current = [];
 		visibleLinksRef.current = [];
 		setHasData(false);
+		setHasConceptNodes(false);
 		streamingRef.current = false;
 		if (streamingOffTimerRef.current != null) {
 			window.clearTimeout(streamingOffTimerRef.current);
@@ -635,31 +621,27 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 		[setFoldedSet, scheduleRenderJoin, normalizeNodeId]
 	);
 
-	const interactionContext: GraphInteractionContext | null = useMemo(
-		() =>
-			renderBackend === 'canvas'
-				? {
-						configRef,
-						foldedSetRef,
-						pathStartIdRef,
-						pathSelectModeRef,
-						nodesRef,
-						linksRef,
-						normalizeNodeId,
-						setPathResult,
-						setFoldedSet,
-						setContextMenu,
-						nodeContextMenu: nodeContextMenu ?? null,
-						onNodeContextMenu,
-						onNodeClick,
-						scheduleRenderJoin,
-						onSetPathStartNode,
-						onSetPathEndNode,
-						exitPathSelectMode,
-					}
-				: null,
+	const interactionContext: GraphInteractionContext = useMemo(
+		() => ({
+			configRef,
+			foldedSetRef,
+			pathStartIdRef,
+			pathSelectModeRef,
+			nodesRef,
+			linksRef,
+			normalizeNodeId,
+			setPathResult,
+			setFoldedSet,
+			setContextMenu,
+			nodeContextMenu: nodeContextMenu ?? null,
+			onNodeContextMenu,
+			onNodeClick,
+			scheduleRenderJoin,
+			onSetPathStartNode,
+			onSetPathEndNode,
+			exitPathSelectMode,
+		}),
 		[
-			renderBackend,
 			normalizeNodeId,
 			setPathResult,
 			setFoldedSet,
@@ -676,7 +658,6 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 
 	return {
 		graphAreaRef,
-		svgRef,
 		mainCanvasRef,
 		scheduleDrawRef,
 		simulationRef,
@@ -695,10 +676,10 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 		scheduleRenderJoin,
 		zoomLevel,
 		hasData,
+		hasConceptNodes,
 		interactionContext,
 		hoveredNodeId,
 		setHoveredNodeId,
-		renderBackend,
 		onFoldNode,
 		pathStartNodeId,
 		onSetPathStartNode,

@@ -3,13 +3,13 @@ import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import type { GraphPatch } from '@/core/providers/ui-events/graph';
 import { ErrorRetryInfo, PromptId, type PromptVariables } from '@/service/prompt/PromptId';
-import { DashboardUpdateContext, InnerAgentContext } from '../AISearchAgent';
+import { AISearchUpdateContext, InnerAgentContext } from '../AISearchAgent';
 import type { AISearchEdge, AISearchNode } from '../AISearchAgent';
-import { graphNodesUpdateTool, graphEdgesUpdateTool, getGraphToolFormatGuidance } from './DashboardUpdateToolBuilder';
+import { graphNodesUpdateTool, graphEdgesUpdateTool, getGraphToolFormatGuidance } from './helpers/DashboardUpdateToolBuilder';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import type { AgentTool } from '@/service/tools/types';
 import { RESULT_UPDATE_TOOL_NAMES } from '../AISearchAgent';
-import { streamTransform, withRetryStream } from '@/core/providers/helpers/stream-helper';
+import { buildPromptTraceDebugEvent, streamTransform, withRetryStream } from '@/core/providers/helpers/stream-helper';
 
 const DEFAULT_MAX_STEPS = 18;
 
@@ -21,9 +21,10 @@ type GraphUpdateToolSet = {
     update_graph_edges: AgentTool;
 };
 
+/** Uses getModelForPrompt(AiAnalysisDashboardUpdateGraph). */
 export class GraphUpdateAgent {
     private readonly aiServiceManager: AIServiceManager;
-    private readonly options: { provider: string; model: string, enableWebSearch?: boolean; enableLocalSearch?: boolean };
+    private readonly options: { enableWebSearch?: boolean; enableLocalSearch?: boolean };
     private readonly context: InnerAgentContext;
 
     private agent: Agent<GraphUpdateToolSet>;
@@ -31,13 +32,14 @@ export class GraphUpdateAgent {
     constructor(
         params: {
             aiServiceManager: AIServiceManager,
-            options: { provider: string; model: string, enableWebSearch?: boolean; enableLocalSearch?: boolean },
+            options: { enableWebSearch?: boolean; enableLocalSearch?: boolean },
             context: InnerAgentContext,
         }
     ) {
         this.aiServiceManager = params.aiServiceManager;
-        this.options = params.options;
+        this.options = { enableWebSearch: params.options.enableWebSearch, enableLocalSearch: params.options.enableLocalSearch };
         this.context = params.context;
+        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisDashboardUpdateGraph);
         const { getResult, getVerifiedPaths, searchHistory } = this.context;
 
         const tools: GraphUpdateToolSet = {
@@ -50,8 +52,8 @@ export class GraphUpdateAgent {
 
         this.agent = new Agent<GraphUpdateToolSet>({
             model: this.aiServiceManager.getMultiChat()
-                .getProviderService(this.options.provider)
-                .modelClient(this.options.model),
+                .getProviderService(provider)
+                .modelClient(modelId),
             tools,
             stopWhen: [
                 stepCountIs(DEFAULT_MAX_STEPS),
@@ -63,7 +65,7 @@ export class GraphUpdateAgent {
      * @param opts.stepId When set, yields ui-signal(channel='graph', kind='patch') after each graph tool-result (incremental patch).
      */
     public async *stream(
-        variables: DashboardUpdateContext,
+        variables: AISearchUpdateContext,
         opts?: { stepId?: string },
     ): AsyncGenerator<LLMStreamEvent> {
         yield* withRetryStream(
@@ -84,7 +86,7 @@ export class GraphUpdateAgent {
         const g = this.context.getResult().graph;
         const toPatchNode = (n: AISearchNode) => ({
             id: n.id,
-            label: n.title ?? n.id,
+            label: n.title ?? (n as any).label ?? n.id,
             type: n.type,
             ...(n.path ? { path: n.path } : {}),
             ...(n.attributes && Object.keys(n.attributes).length ? { attributes: n.attributes } : {}),
@@ -114,7 +116,7 @@ export class GraphUpdateAgent {
     }
 
     private async *realStreamInterlal(
-        variables: DashboardUpdateContext,
+        variables: AISearchUpdateContext,
         errorRetryInfo?: ErrorRetryInfo,
         stepId?: string,
     ): AsyncGenerator<LLMStreamEvent> {
@@ -126,6 +128,7 @@ export class GraphUpdateAgent {
             toolFormatGuidance: getGraphToolFormatGuidance(),
         } as PromptVariables[typeof PromptId.AiAnalysisDashboardUpdateGraph]);
 
+        yield buildPromptTraceDebugEvent('graph-update-prompt', StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT, system, prompt);
         const result = this.agent.stream({ system, prompt });
         let graphSnapshotBeforeTool: { nodeIds: Set<string>; edgeKeys: Set<string> } | null = null;
         yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT, {

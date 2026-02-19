@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { AISearchGraph, AISearchSource, AISearchTopic, type AnalysisMode, DashboardBlock } from '@/service/agents/AISearchAgent';
 
 export type { AnalysisMode };
-import { LLMUsage } from '@/core/providers/types';
+
+import { LLMUsage, mergeTokenUsage } from '@/core/providers/types';
 import type { SearchResultItem } from '@/service/search/types';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import { SnapshotChatMessage } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
@@ -136,7 +137,7 @@ export interface UIStepRecord {
 export type CompletedAnalysisSnapshot = {
 	/** Snapshot schema version. */
 	version: 1;
-	/** Mode used for this run (for display filtering). Omit = full. */
+	/** Mode used for this run: docSimple | vaultSimple | vaultFull. Omit = vaultFull. */
 	runAnalysisMode?: AnalysisMode;
 	analysisStartedAtMs?: number | null;
 	duration?: number | null;
@@ -201,7 +202,7 @@ interface AIAnalysisStore {
 	// before analysis
 	triggerAnalysis: number;
 	webEnabled: boolean;
-	/** Simple = summary + sources only; Full = topics, graph, blocks, etc. */
+	/** docSimple | vaultSimple | vaultFull. Required for agent. */
 	analysisMode: AnalysisMode;
 
 	/**
@@ -217,6 +218,8 @@ interface AIAnalysisStore {
 	autoSaveState: {
 		lastRunId: string | null;
 		lastSavedSummaryHash: string | null;
+		/** Vault path of the file from last auto-save; used for "Open in document" button. */
+		lastSavedPath: string | null;
 	};
 	/**
 	 * Whether the Quick Search modal is currently open.
@@ -278,6 +281,10 @@ interface AIAnalysisStore {
 
 	/** Follow-up sections from "Continue Analysis" (each user question → answer); cleared on reset. */
 	fullAnalysisFollowUp: Array<{ title: string; content: string }>;
+	/** Suggested follow-up questions from dedicated agent (full session context); not from topics. */
+	suggestedFollowUpQuestions: string[];
+	/** Currently streaming follow-up (question + accumulating content). Null when idle or done. */
+	followUpStreaming: { question: string; content: string } | null;
 	/** Per-topic vault inspect results (key = topic label). */
 	topicInspectResults: Record<string, SearchResultItem[]>;
 	/** Per-topic completed Analyze Q&A. */
@@ -322,6 +329,10 @@ interface AIAnalysisStore {
 	appendCompletedUiStep: (step: UIStepRecord) => void;
 	/** Set/switch current streaming step; pushes previous to steps if present. */
 	setCurrentUiStep: (stepId: string, title: string, description?: string) => void;
+	/** Overwrite current step title/description when stepId matches (no push to completed). */
+	updateCurrentUiStep: (stepId: string, title: string, description?: string) => void;
+	/** Clear current streaming step (e.g. on analysis complete so last step shows as finished). */
+	clearCurrentUiStep: () => void;
 	/** Append delta to current step description/title. */
 	appendCurrentUiStepDelta: (descriptionDelta?: string, titleDelta?: string) => void;
 	startSummaryStreaming: () => void;
@@ -349,8 +360,12 @@ interface AIAnalysisStore {
 	pushOverviewMermaidVersion: (code: string, opts?: { makeActive?: boolean; dedupe?: boolean }) => void;
 	setTitle: (title: string | null) => void;
 	setUsage: (usage: LLMUsage) => void;
+	/** Add follow-up chat usage to current analysis usage (merged totals). */
+	accumulateUsage: (usage: LLMUsage) => void;
 	setDuration: (duration: number) => void;
 	setFullAnalysisFollowUp: (question: string, answer: string, mode: 'append' | 'replace') => void;
+	setSuggestedFollowUpQuestions: (questions: string[]) => void;
+	setFollowUpStreaming: (payload: { question: string; content: string } | null) => void;
 	setTopicModalOpen: (topic: string | null) => void;
 	setTopicInspectResults: (topic: string, items: SearchResultItem[]) => void;
 	setTopicAnalyzeResult: (topic: string, question: string, answer: string) => void;
@@ -360,7 +375,7 @@ interface AIAnalysisStore {
 	setTopicGraphResult: (topic: string, graph: GraphPreview | null) => void;
 	setTopicGraphLoading: (topic: string | null) => void;
 	setTopicInspectLoading: (topic: string | null) => void;
-	setAutoSaveState: (state: { lastRunId?: string | null; lastSavedSummaryHash?: string | null }) => void;
+	setAutoSaveState: (state: { lastRunId?: string | null; lastSavedSummaryHash?: string | null; lastSavedPath?: string | null }) => void;
 	setAiModalOpen: (open: boolean) => void;
 
 	/**
@@ -392,13 +407,14 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	// before analysis
 	triggerAnalysis: 0,
 	webEnabled: false,
-	analysisMode: 'full',
+	analysisMode: 'vaultFull',
 	analysisRunId: null,
 	restoredFromHistory: false,
 	restoredFromVaultPath: null,
 	autoSaveState: {
 		lastRunId: null,
 		lastSavedSummaryHash: null,
+		lastSavedPath: null,
 	},
 	aiModalOpen: false,
 	runAnalysisMode: null,
@@ -431,6 +447,8 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	usage: null,
 	duration: null,
 	fullAnalysisFollowUp: [],
+	suggestedFollowUpQuestions: [],
+	followUpStreaming: null,
 	topicInspectResults: {},
 	topicAnalyzeResults: {},
 	topicModalOpen: null,
@@ -494,6 +512,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			analysisRunId: `run:${ts}`,
 			restoredFromHistory: false,
 			restoredFromVaultPath: null,
+			autoSaveState: { ...get().autoSaveState, lastSavedPath: null },
 			runAnalysisMode: mode,
 			currentStep: null,
 			steps: [],
@@ -503,7 +522,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	startStreaming: () => set({ hasStartedStreaming: true, analyzingBeforeFirstToken: false }),
 	markCompleted: () => {
 		set((state) => {
-			const fullSummary = state.summaryChunks.join('');
+			const fullSummary = (state.summaryChunks ?? []).join('');
 			const nextSummaries = fullSummary ? [...state.summaries, fullSummary] : state.summaries;
 			return {
 				isAnalyzing: false,
@@ -539,6 +558,20 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			};
 		});
 	},
+	updateCurrentUiStep: (stepId: string, title: string, description?: string) => {
+		set((state) => {
+			const cur = state.currentStep;
+			if (!cur || cur.stepId !== stepId) return state;
+			return {
+				currentStep: {
+					...cur,
+					title: title || cur.title,
+					description: description !== undefined && description !== null ? description : cur.description,
+				},
+			};
+		});
+	},
+	clearCurrentUiStep: () => set({ currentStep: null }),
 	appendCurrentUiStepDelta: (descriptionDelta?: string, titleDelta?: string) => {
 		set((state) => {
 			const cur = state.currentStep;
@@ -637,6 +670,9 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	setUsage: (usage: LLMUsage) => {
 		set({ usage, hasAnalyzed: true });
 	},
+	accumulateUsage: (usage: LLMUsage) => {
+		set((s) => ({ usage: mergeTokenUsage(s.usage, usage), hasAnalyzed: true }));
+	},
 	setDuration: (duration: number) => {
 		set({ duration, hasAnalyzed: true });
 	},
@@ -646,6 +682,12 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			if (mode === 'replace') return { fullAnalysisFollowUp: [entry] };
 			return { fullAnalysisFollowUp: [...(s.fullAnalysisFollowUp ?? []), entry] };
 		});
+	},
+	setSuggestedFollowUpQuestions: (questions: string[]) => {
+		set({ suggestedFollowUpQuestions: questions ?? [] });
+	},
+	setFollowUpStreaming: (payload: { question: string; content: string } | null) => {
+		set({ followUpStreaming: payload });
 	},
 	setTopicModalOpen: (topic: string | null) => {
 		set({ topicModalOpen: topic });
@@ -692,6 +734,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			autoSaveState: {
 				lastRunId: state.lastRunId !== undefined ? state.lastRunId : s.autoSaveState.lastRunId,
 				lastSavedSummaryHash: state.lastSavedSummaryHash !== undefined ? state.lastSavedSummaryHash : s.autoSaveState.lastSavedSummaryHash,
+				lastSavedPath: state.lastSavedPath !== undefined ? state.lastSavedPath : s.autoSaveState.lastSavedPath,
 			},
 		}));
 	},
@@ -749,7 +792,8 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 			topicInspectLoading: null,
 			usage: snapshot.usage ?? null,
 			duration: snapshot.duration ?? null,
-			runAnalysisMode: snapshot.runAnalysisMode ?? 'full',
+			runAnalysisMode: snapshot.runAnalysisMode ?? 'vaultFull',
+			analysisMode: snapshot.runAnalysisMode ?? 'vaultFull',
 			fullAnalysisFollowUp: snapshot.fullAnalysisFollowUp ?? [],
 			graphFollowupHistory: snapshot.graphFollowups ?? [],
 			blocksFollowupHistoryByBlockId: snapshot.blocksFollowupsByBlockId ?? (snapshot.blocksFollowups?.length ? { __legacy__: snapshot.blocksFollowups } : {}),
@@ -798,12 +842,15 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 		usage: null,
 		duration: null,
 		fullAnalysisFollowUp: [],
+		suggestedFollowUpQuestions: [],
+		followUpStreaming: null,
 		runAnalysisMode: null,
+		autoSaveState: { lastRunId: null, lastSavedSummaryHash: null, lastSavedPath: null },
 	}),
 
 	// Computed getters
 	getCurrentStepText: () => get().currentStep?.description ?? '',
-	getStepText: (step: UIStepRecord) => step.description,
+	getStepText: (step: UIStepRecord) => step?.description ?? '',
 
 	getHasGraphData: () => {
 		const graph = get().graph;
@@ -813,12 +860,13 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 		(get().getHasSummarySection() || get().getHasTopicsSection() || get().getHasDashboardBlocksSection() || get().getHasSourcesSection()),
 	getHasSummarySection: () => {
 		const s = get();
-		return s.analysisCompleted && ((s.summaries.length > 0) || s.summaryChunks.join('').trim().length > 0);
+		return s.analysisCompleted && ((s.summaries?.length ?? 0) > 0 || (s.summaryChunks ?? []).join('').trim().length > 0);
 	},
 	getSummary: () => {
 		const s = get();
-		if (s.isSummaryStreaming || (s.isAnalyzing && s.summaryChunks.length > 0)) {
-			return s.summaryChunks.join('');
+		const chunks = s.summaryChunks ?? [];
+		if (s.isSummaryStreaming || (s.isAnalyzing && chunks.length > 0)) {
+			return chunks.join('');
 		}
 		const list = s.summaries;
 		const idx = (s.summaryVersion ?? 1) - 1;
@@ -826,7 +874,7 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	},
 	getHasTopicsSection: () => get().analysisCompleted && get().topics.length > 0,
 	getHasDashboardBlocksSection: () => get().analysisCompleted && (get().dashboardBlocks ?? []).length > 0,
-	getHasSourcesSection: () => get().analysisCompleted && get().sources.length > 0,
+	getHasSourcesSection: () => get().sources.length > 0,
 	getActiveOverviewMermaid: () => {
 		const s = get();
 		const versions = s.overviewMermaidVersions ?? [];

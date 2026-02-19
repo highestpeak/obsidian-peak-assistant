@@ -309,6 +309,8 @@ export const LinksTab: React.FC<{
 		}
 	}, [physical, semantic]);
 
+	const clearAllTokens = useCallback(() => setSelectedTokens(new Set()), []);
+
 	if (loading) {
 		return (
 			<div className={cn('pktw-text-sm pktw-text-[#6b7280]', className)}>
@@ -335,7 +337,6 @@ export const LinksTab: React.FC<{
 
 	const showTier3 = mode === 'keywords' || mode === 'tags';
 	const tier3Tokens = mode === 'keywords' ? topKeywords : topTags;
-	const clearAllTokens = useCallback(() => setSelectedTokens(new Set()), []);
 
 	return (
 		<div className={cn('pktw-flex pktw-flex-col pktw-gap-3', className)}>
@@ -597,7 +598,7 @@ export const LinkItemRow: React.FC<{
 				<HoverCardTrigger asChild>{content}</HoverCardTrigger>
 				<HoverCardContent
 					align="start"
-					className="pktw-max-w-xs pktw-text-xs pktw-leading-relaxed"
+					className="pktw-max-w-xs pktw-text-xs pktw-leading-relaxed pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto"
 				>
 					<p className="pktw-line-clamp-3">{item.summary}</p>
 				</HoverCardContent>

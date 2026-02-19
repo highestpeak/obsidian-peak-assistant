@@ -459,6 +459,24 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 						</div>
 					</div>
 
+					{/* Exclude AI analysis folder from search during AI analysis */}
+					<div className="pktw-flex pktw-items-start pktw-gap-4">
+						<div className="pktw-flex-1 pktw-min-w-0">
+							<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+								Exclude AI Analysis Folder From Search (AI Analysis Only)
+							</label>
+							<p className="pktw-text-xs pktw-text-muted-foreground">
+								When enabled, local search and graph tools used during AI analysis will not return or traverse notes under the AI Analysis save folder above.
+							</p>
+						</div>
+						<div className="pktw-flex-shrink-0 pktw-flex pktw-items-center">
+							<Switch
+								checked={settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch ?? true}
+								onChange={(value) => updateSearch('aiAnalysisExcludeAutoSaveFolderFromSearch', value)}
+							/>
+						</div>
+					</div>
+
 					{/* Recent History Limit */}
 					<div className="pktw-flex pktw-items-start pktw-gap-4">
 						<div className="pktw-flex-1 pktw-min-w-0">

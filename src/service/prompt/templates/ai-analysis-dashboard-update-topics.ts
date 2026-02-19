@@ -7,7 +7,12 @@ This is your {{errorRetryInfo.attemptTimes}}th attempt to update the topics. Las
 Try your best to fix the error and update the topics.
 {{/if}}
 
-# Latest Evidence (Focus Here): 
+# WHAT YOU ARE GIVEN (and why)
+- **Latest Evidence**: the newest signals since the last update. Use this to decide what changed and what must be reflected now.
+- **Current Dashboard State**: the existing topics/questions. Use this to preserve continuity (refine, merge, reprioritize) instead of rewriting from scratch.
+- **Execution Plan** (\`plan.topicsPlan\`): explicit task instructions from the planner. Follow it faithfully; it exists to keep the dashboard coherent across agents.
+
+# Latest Evidence (Focus Here)
 <<<
 {{recentEvidenceHint}}
 >>>
@@ -16,6 +21,13 @@ Try your best to fix the error and update the topics.
 <<<
 {{currentResultSnapshot}}
 >>>
+
+{{#if plan.topicsPlan}}
+# EXECUTION PLAN (follow faithfully)
+{{#each plan.topicsPlan}}
+- {{this}}
+{{/each}}
+{{/if}}
 
 # INSTRUCTION
 Analyze the "Latest Evidence" provided above. Your task is to:

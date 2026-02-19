@@ -1,7 +1,7 @@
 /**
  * Perf debug: microtask counter + click logger.
  * Helps confirm microtask flood (e.g. 5125 microtasks on single click).
- * Only counts queueMicrotask; Promise.then uses same queue but is not counted.
+ * Microtasks queued from animation libs (framer-motion / motion) are excluded to avoid false positives.
  * Disable: localStorage.PERF_DEBUG='false'
  */
 
@@ -12,6 +12,14 @@ let microtaskCount = 0;
 let firstOverThresholdStack: string | null = null;
 let scheduledLog = false;
 const THRESHOLD = 500;
+
+/** Stack substrings that indicate the microtask was queued by animation lib (framer-motion / motion). */
+const ANIMATION_STACK_MARKS = ['processBatch', 'MotionValue', 'updateAndNotify', 'tick'];
+
+function isAnimationDrivenStack(stack: string | null): boolean {
+	if (!stack) return false;
+	return ANIMATION_STACK_MARKS.some((mark) => stack.includes(mark));
+}
 
 function logMicrotaskFlood() {
 	const count = microtaskCount;
@@ -29,15 +37,19 @@ function wrapQueueMicrotask() {
 	if (typeof queueMicrotask !== 'function') return;
 	const orig = queueMicrotask.bind(window);
 	(window as any).queueMicrotask = function (cb: () => void) {
+		let stack: string | null = null;
+		try {
+			stack = new Error().stack ?? null;
+		} catch {
+			// ignore
+		}
+		if (isAnimationDrivenStack(stack)) {
+			orig(cb);
+			return;
+		}
 		microtaskCount++;
 		if (microtaskCount >= THRESHOLD) {
-			if (!firstOverThresholdStack) {
-				try {
-					firstOverThresholdStack = new Error().stack ?? null;
-				} catch {
-					firstOverThresholdStack = '(stack unavailable)';
-				}
-			}
+			if (!firstOverThresholdStack) firstOverThresholdStack = stack;
 			if (!scheduledLog) {
 				scheduledLog = true;
 				setTimeout(logMicrotaskFlood, 0);

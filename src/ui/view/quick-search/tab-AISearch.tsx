@@ -63,6 +63,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		getHasSourcesSection,
 		summaryChunks,
 		setFullAnalysisFollowUp,
+		setFollowUpStreaming,
 		fullAnalysisFollowUp,
 		dashboardBlocks,
 		getActiveOverviewMermaid,
@@ -78,6 +79,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		setContextChatModal,
 		restoredFromHistory,
 		restoredFromVaultPath,
+		autoSaveState,
 		title: titleFromStore,
 		steps,
 	} = useAIAnalysisStore();
@@ -101,6 +103,9 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		&& (!isAnalyzing || (analyzingBeforeFirstToken && !hasStartedStreaming))
 		// finished analysis, no need to show pre-streaming state
 		&& (!analysisCompleted);
+
+	/** Path to open "saved analysis file" (from history restore or last auto-save). */
+	const openAnalysisPath = restoredFromVaultPath ?? autoSaveState?.lastSavedPath ?? null;
 
 	// track refs for quick navigation ========================================================
 
@@ -184,7 +189,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
 			{/* Sub navigation (below input, outside frames) */}
-			{getHasCompletedContent() ? (
+			{(getHasCompletedContent() || (hasStartedStreaming && !analysisCompleted)) ? (
 				<div className="pktw-flex-shrink-0 pktw-px-4">
 					<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-3 pktw-p-2 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white">
 						{/* Title on the left (typewriter when just completed, plain when restored from history) */}
@@ -197,104 +202,104 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 						</div>
 						{/* Nav buttons on the right */}
 						<div className="pktw-flex pktw-flex-shrink-0 pktw-flex-wrap pktw-gap-2">
-						{getHasSummarySection() ? (
-							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(summaryRef)}>Summary</Button>
-						) : null}
-						{getActiveOverviewMermaid?.()?.trim() ? (
-							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(overviewRef)}>Overview</Button>
-						) : null}
-						{getHasTopicsSection() ? (
-							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(topicsRef)}>Topics</Button>
-						) : null}
-						{getHasGraphData() ? (
-							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(graphSectionRef)}>Graph</Button>
-						) : null}
-						{getHasSourcesSection() ? (
-							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(sourcesRef)}>Sources</Button>
-						) : null}
-						{settings.enableDevTools && ((steps?.length ?? 0) > 0 || (hasStartedStreaming && !analysisCompleted)) ? (
-							<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(stepsRef)}>Steps</Button>
-						) : null}
-						{getHasDashboardBlocksSection() ? (
-							(dashboardBlocks?.length ?? 0) > 1 ? (
-								<HoverCard openDelay={150} closeDelay={100}>
-									<HoverCardTrigger asChild>
-										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(dashboardBlocksRef)}>Blocks</Button>
-									</HoverCardTrigger>
-									<HoverCardContent side="bottom" align="start" className="pktw-w-auto pktw-min-w-[160px] pktw-py-1">
-										<div className="pktw-flex pktw-flex-col pktw-gap-0.5">
-											{(dashboardBlocks ?? []).map((b) => {
-												const raw = b.title || 'Block';
-												const label = raw.replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').trim() || 'Block';
-												return (
-													<Button
-														key={b.id}
-														variant="ghost"
-														style={{ cursor: 'pointer' }}
-														className="pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-rounded pktw-truncate pktw-flex pktw-justify-start"
-														onClick={() => scrollToBlock(b.id)}
-													>
-														{label}
-													</Button>
-												);
-											})}
-											{(fullAnalysisFollowUp?.length ?? 0) > 0 ? (
-												<>
-													<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-mt-1 pktw-pt-2" />
-													{(fullAnalysisFollowUp ?? []).map((s, i) => {
-														const raw = s.title || 'Continue';
-														const label = raw.replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
-														return (
-															<Button
-																key={i}
-																variant="ghost"
-																style={{ cursor: 'pointer' }}
-																className="pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-rounded pktw-truncate pktw-flex pktw-justify-start"
-																onClick={() => scrollToContinueSection(i)}
-															>
-																{label.slice(0, 48)}{label.length > 48 ? '…' : ''}
-															</Button>
-														);
-													})}
-												</>
-											) : null}
-										</div>
-									</HoverCardContent>
-								</HoverCard>
-							) : (
-								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(dashboardBlocksRef)}>Blocks</Button>
-							)
-						) : null}
-						{(fullAnalysisFollowUp?.length ?? 0) > 0 ? (
-							(fullAnalysisFollowUp?.length ?? 0) > 1 ? (
-								<HoverCard openDelay={150} closeDelay={100}>
-									<HoverCardTrigger asChild>
-										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(continueAnalysisRef)}>Continue</Button>
-									</HoverCardTrigger>
-									<HoverCardContent side="bottom" align="start" className="pktw-w-auto pktw-min-w-[180px] pktw-py-1">
-										<div className="pktw-flex pktw-flex-col pktw-gap-0.5">
-											{(fullAnalysisFollowUp ?? []).map((s, i) => {
-												const raw = s.title || 'Continue';
-												const label = raw.replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
-												return (
-													<Button
-														key={i}
-														variant="ghost"
-														style={{ cursor: 'pointer' }}
-														className="pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-rounded pktw-truncate pktw-flex pktw-justify-start"
-														onClick={() => scrollToContinueSection(i)}
-													>
-														{label.slice(0, 48)}{label.length > 48 ? '…' : ''}
-													</Button>
-												);
-											})}
-										</div>
-									</HoverCardContent>
-								</HoverCard>
-							) : (
-								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToContinueSection(0)}>Continue</Button>
-							)
-						) : null}
+							{getHasSummarySection() ? (
+								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(summaryRef)}>Summary</Button>
+							) : null}
+							{getActiveOverviewMermaid?.()?.trim() ? (
+								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(overviewRef)}>Overview</Button>
+							) : null}
+							{getHasTopicsSection() ? (
+								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(topicsRef)}>Topics</Button>
+							) : null}
+							{getHasGraphData() ? (
+								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(graphSectionRef)}>Graph</Button>
+							) : null}
+							{getHasSourcesSection() ? (
+								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(sourcesRef)}>Sources</Button>
+							) : null}
+							{settings.enableDevTools && ((steps?.length ?? 0) > 0 || (hasStartedStreaming && !analysisCompleted)) ? (
+								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(stepsRef)}>Steps</Button>
+							) : null}
+							{getHasDashboardBlocksSection() ? (
+								(dashboardBlocks?.length ?? 0) > 1 ? (
+									<HoverCard openDelay={150} closeDelay={100}>
+										<HoverCardTrigger asChild>
+											<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(dashboardBlocksRef)}>Blocks</Button>
+										</HoverCardTrigger>
+										<HoverCardContent side="bottom" align="start" className="pktw-w-auto pktw-min-w-[160px] pktw-py-1 pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
+											<div className="pktw-flex pktw-flex-col pktw-gap-0.5">
+												{(dashboardBlocks ?? []).map((b) => {
+													const raw = b.title || 'Block';
+													const label = raw.replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').trim() || 'Block';
+													return (
+														<Button
+															key={b.id}
+															variant="ghost"
+															style={{ cursor: 'pointer' }}
+															className="pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-rounded pktw-truncate pktw-flex pktw-justify-start"
+															onClick={() => scrollToBlock(b.id)}
+														>
+															{label}
+														</Button>
+													);
+												})}
+												{(fullAnalysisFollowUp?.length ?? 0) > 0 ? (
+													<>
+														<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-mt-1 pktw-pt-2" />
+														{(fullAnalysisFollowUp ?? []).map((s, i) => {
+															const raw = s.title || 'Continue';
+															const label = raw.replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
+															return (
+																<Button
+																	key={i}
+																	variant="ghost"
+																	style={{ cursor: 'pointer' }}
+																	className="pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-rounded pktw-truncate pktw-flex pktw-justify-start"
+																	onClick={() => scrollToContinueSection(i)}
+																>
+																	{label.slice(0, 48)}{label.length > 48 ? '…' : ''}
+																</Button>
+															);
+														})}
+													</>
+												) : null}
+											</div>
+										</HoverCardContent>
+									</HoverCard>
+								) : (
+									<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(dashboardBlocksRef)}>Blocks</Button>
+								)
+							) : null}
+							{(fullAnalysisFollowUp?.length ?? 0) > 0 ? (
+								(fullAnalysisFollowUp?.length ?? 0) > 1 ? (
+									<HoverCard openDelay={150} closeDelay={100}>
+										<HoverCardTrigger asChild>
+											<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(continueAnalysisRef)}>Continue</Button>
+										</HoverCardTrigger>
+										<HoverCardContent side="bottom" align="start" className="pktw-w-auto pktw-min-w-[180px] pktw-py-1 pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
+											<div className="pktw-flex pktw-flex-col pktw-gap-0.5">
+												{(fullAnalysisFollowUp ?? []).map((s, i) => {
+													const raw = s.title || 'Continue';
+													const label = raw.replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
+													return (
+														<Button
+															key={i}
+															variant="ghost"
+															style={{ cursor: 'pointer' }}
+															className="pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-rounded pktw-truncate pktw-flex pktw-justify-start"
+															onClick={() => scrollToContinueSection(i)}
+														>
+															{label.slice(0, 48)}{label.length > 48 ? '…' : ''}
+														</Button>
+													);
+												})}
+											</div>
+										</HoverCardContent>
+									</HoverCard>
+								) : (
+									<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToContinueSection(0)}>Continue</Button>
+								)
+							) : null}
 						</div>
 					</div>
 				</div>
@@ -302,7 +307,14 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 			{/* Main Content - extra top/side padding for IntelligenceFrame glow to avoid clipping */}
 			<div ref={contentContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-pt-6 pktw-px-4 pktw-pb-5">
-				{error ? (<AIAnalysisErrorState error={error} onRetry={handleRetry} />) : null}
+				{error ? (
+					<>
+						<AIAnalysisErrorState error={error} onRetry={handleRetry} />
+						<p className="pktw-text-xs pktw-text-[#6b7280] pktw-mt-2 pktw-mb-1">
+							You can still save this analysis using &quot;Save to File&quot; in the footer.
+						</p>
+					</>
+				) : null}
 
 				<AnimatePresence mode="wait" initial={false}>
 					{/* Analysis Before First Token - Center AISearchState */}
@@ -330,7 +342,17 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 							exit={{ opacity: 0, y: -10 }}
 							transition={{ duration: 0.25 }}
 						>
-							<StreamingAnalysis onClose={onClose} stepsRef={stepsRef} />
+							<StreamingAnalysis
+								onClose={onClose}
+								stepsRef={stepsRef}
+								sectionRefs={{
+									summaryRef,
+									topicsRef,
+									dashboardBlocksRef,
+									graphSectionRef,
+									sourcesRef,
+								}}
+							/>
 						</motion.div>
 					) : null}
 
@@ -366,7 +388,12 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 					<div ref={continueAnalysisBlockRef} className="pktw-mt-6 pktw-scroll-mt-4">
 						<InlineFollowupChat
 							{...continueAnalysisConfig}
-							onApply={(answer, mode, question) => setFullAnalysisFollowUp(question ?? 'Continue', answer, mode)}
+							outputPlace="parent"
+							onStreamingReplace={(text, ctx) => setFollowUpStreaming(ctx?.question ? { question: ctx.question, content: text ?? '' } : null)}
+							onApply={(answer, mode, question) => {
+								setFollowUpStreaming(null);
+								setFullAnalysisFollowUp(question ?? 'Continue', answer, mode);
+							}}
 						/>
 					</div>
 				) : null}
@@ -415,9 +442,9 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 								>
 									<Save className="pktw-w-3.5 pktw-h-3.5" />
 								</Button>
-								{restoredFromHistory && restoredFromVaultPath ? (
+								{openAnalysisPath ? (
 									<Button
-										onClick={() => void createOpenSourceCallback(onClose)(restoredFromVaultPath)}
+										onClick={() => void createOpenSourceCallback(onClose)(openAnalysisPath)}
 										size="sm"
 										variant="ghost"
 										className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-[#6d28d9] pktw-border-0 pktw-shadow-none focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"

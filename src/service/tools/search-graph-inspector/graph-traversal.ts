@@ -5,6 +5,7 @@ import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, distillClusterNodesData, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import { template as GRAPH_TRAVERSAL_TEMPLATE } from "../templates/graph-traversal";
 import { buildResponse } from "../types";
+import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
 type GraphTraversalResult = GraphNode
     & {
@@ -49,10 +50,15 @@ export async function graphTraversal(params: any) {
         return `Graph Traversal Failed. Start note node "${start_note_path}" not found in graph database.`;
     }
 
+    const excludeCtx = await getAiAnalysisExcludeContext();
+    const visited = new Set<string>([startNode.id]);
+    if (excludeCtx) {
+        excludeCtx.excludedDocIds.forEach((id) => visited.add(id));
+    }
+
     // BFS traversal - collect both nodes and edges for visualization
     let isTimeOut = false;
     const startTime = Date.now();
-    const visited = new Set([startNode.id]);
     const queue: Array<GraphTraversalResult> = [
         { ...startNode, depth: 0, foundBy: 'physical_neighbors' },
     ];
@@ -101,8 +107,10 @@ export async function graphTraversal(params: any) {
             const decayMap = [limit, 3, 1];
             semanticLimit = decayMap[current.depth] ?? 0;
         }
+        const semanticFilterSet = new Set([...inComingNode, ...outGoingNode]);
+        if (excludeCtx) excludeCtx.excludedDocIds.forEach((id) => semanticFilterSet.add(id));
         const semanticNodes = include_semantic_paths && current.type === "document"
-            ? await getSemanticNeighbors(current.id, semanticLimit, new Set([...inComingNode, ...outGoingNode]))
+            ? await getSemanticNeighbors(current.id, semanticLimit, semanticFilterSet)
             : [];
 
         const connectedNodesMap = await sqliteStoreManager.getGraphNodeRepo()

@@ -10,6 +10,8 @@ import * as d3Zoom from 'd3-zoom';
 import type { GraphVizNode, GraphVizLink } from '../types';
 import type { GraphConfig } from '../config';
 import type { DomRefs, SimulationZoomRefs, LayerRefs, StreamingRefs, GraphDataRefs, EffectsRefs } from './useGraphEngine';
+import { getLinkEndpointId } from '../utils/link-key';
+import { computeConnectedComponents } from '../utils/mst';
 
 export type UseGraphSimulationParams = {
 	domRefs: DomRefs;
@@ -23,7 +25,6 @@ export type UseGraphSimulationParams = {
 	config: GraphConfig;
 	setZoomLevel: (k: number) => void;
 	getEdgeStyle: (edge: { kind: string; weight: number }) => { stroke?: string; strokeOpacity?: number; strokeDasharray?: string | null; strokeWidth?: number };
-	renderBackend?: 'canvas' | 'svg';
 	scheduleDrawRef?: React.MutableRefObject<(() => void) | null>;
 };
 
@@ -39,11 +40,9 @@ export function useGraphSimulation({
 	config,
 	setZoomLevel,
 	getEdgeStyle,
-	renderBackend = 'svg',
 	scheduleDrawRef,
 }: UseGraphSimulationParams): void {
-	const { svgRef, graphAreaRef, effectCanvasRef, mainCanvasRef } = domRefs;
-	const useCanvas = renderBackend === 'canvas';
+	const { graphAreaRef, effectCanvasRef, mainCanvasRef } = domRefs;
 	const { simulationRef, zoomRef, zoomTransformRef, userInteractedRef } = simulationZoomRefs;
 	const { rootGRef, linksLayerRef, nodesLayerRef, labelsLayerRef, linkSelRef, nodeSelRef, labelSelRef } = layerRefs;
 	const { throttleTickRef, tickCountRef } = streamingRefs;
@@ -88,9 +87,9 @@ export function useGraphSimulation({
 		return config.linkStrength * scale;
 	};
 
-	// Mount: create SVG (if SVG mode) or use canvas, zoom, simulation, tick handler.
+	// Mount: zoom on canvas, simulation, tick handler (canvas redraw on tick).
 	useEffect(() => {
-		const zoomTarget = useCanvas ? mainCanvasRef.current : svgRef.current;
+		const zoomTarget = mainCanvasRef.current;
 		if (!zoomTarget || !graphAreaRef.current) return;
 
 		const container = graphAreaRef.current;
@@ -98,19 +97,8 @@ export function useGraphSimulation({
 		const height = container.clientHeight || 400;
 		containerSizeRef.current = { width, height };
 
-		if (!useCanvas) {
-			const svg = d3Selection.select(svgRef.current!);
-			svg.selectAll('*').remove();
-			svg.attr('viewBox', `0 0 ${width} ${height}`);
-			const g = svg.append('g');
-			rootGRef.current = g as unknown as typeof rootGRef.current;
-			linksLayerRef.current = g.append('g').attr('data-layer', 'links') as unknown as typeof linksLayerRef.current;
-			nodesLayerRef.current = g.append('g').attr('data-layer', 'nodes') as unknown as typeof nodesLayerRef.current;
-			labelsLayerRef.current = g.append('g').attr('data-layer', 'labels') as unknown as typeof labelsLayerRef.current;
-		}
-
 		const zoom = d3Zoom
-			.zoom<SVGSVGElement | HTMLCanvasElement, unknown>()
+			.zoom<HTMLCanvasElement, unknown>()
 			.scaleExtent([0.02, 100])
 			.on('zoom', (event) => {
 				if ((event as { sourceEvent?: unknown }).sourceEvent) {
@@ -118,16 +106,16 @@ export function useGraphSimulation({
 				}
 				zoomTransformRef.current = { x: event.transform.x, y: event.transform.y, k: event.transform.k };
 				setZoomLevel(event.transform.k);
-				if (!useCanvas && rootGRef.current) {
-					rootGRef.current.attr('transform', event.transform);
-				}
 				scheduleDrawRef?.current?.();
 			});
-		zoomRef.current = zoom;
+		zoomRef.current = zoom as unknown as typeof zoomRef.current;
 		d3Selection.select(zoomTarget).call(zoom);
 
+		// Gate runs first each tick: when graph has 2+ connected components, disable charge so
+		// subgraphs stay cohesive (link-only); componentRepulsion then pushes components apart.
 		const simulation = d3
 			.forceSimulation<GraphVizNode, GraphVizLink>([] as GraphVizNode[])
+			.force('componentChargeGate', () => {})
 			.force(
 				'link',
 				d3
@@ -169,32 +157,7 @@ export function useGraphSimulation({
 
 		simulation.on('tick', () => {
 			tickCountRef.current += 1;
-			if (useCanvas) {
-				scheduleDrawRef?.current?.();
-				return;
-			}
-			if (throttleTickRef.current && tickCountRef.current % 2 !== 0) return;
-
-			const now = performance.now();
-			if (now - lastFrameStart >= 16) {
-				lastFrameStart = now;
-				ticksThisFrame = 0;
-			}
-			ticksThisFrame += 1;
-
-			const linkSel = linkSelRef.current;
-			const nodeSel = nodeSelRef.current;
-			const labelSel = labelSelRef.current;
-			if (linkSel) {
-				linkSel
-					.attr('x1', (d) => (d.source as GraphVizNode).x!)
-					.attr('y1', (d) => (d.source as GraphVizNode).y!)
-					.attr('x2', (d) => (d.target as GraphVizNode).x!)
-					.attr('y2', (d) => (d.target as GraphVizNode).y!);
-			}
-			if (nodeSel) nodeSel.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
-			if (labelSel)
-				labelSel.attr('x', (d) => d.x!).attr('y', (d) => d.y!).attr('dy', (d) => (d.r + 12) + 'px');
+			scheduleDrawRef?.current?.();
 		});
 
 		simulationRef.current = simulation;
@@ -205,18 +168,14 @@ export function useGraphSimulation({
 		};
 	}, []);
 
-	// Resize: update viewBox (SVG), canvas, zoom transform, center force (no sim restart).
+	// Resize: canvas size, zoom transform, center force (no sim restart).
 	useEffect(() => {
 		if (!graphAreaRef.current) return;
 		const { width, height } = containerSizeRef.current;
 		const w = width > 0 ? width : 400;
 		const h = height > 0 ? height : 400;
-		const zoomTarget = useCanvas ? mainCanvasRef.current : svgRef.current;
+		const zoomTarget = mainCanvasRef.current;
 		if (!zoomTarget) return;
-		if (!useCanvas && svgRef.current) {
-			const svg = d3Selection.select(svgRef.current);
-			svg.attr('viewBox', `0 0 ${w} ${h}`);
-		}
 
 		if (zoomRef.current) {
 			const t = zoomTransformRef.current;
@@ -247,9 +206,9 @@ export function useGraphSimulation({
 			(sim.force('x') as d3.ForceX<GraphVizNode>)?.x(w / 2);
 			(sim.force('y') as d3.ForceY<GraphVizNode>)?.y(h / 2);
 		}
-	}, [resizeTick, useCanvas]);
+	}, [resizeTick]);
 
-	// Config sync: update forces and link/node styles when config changes (SVG only).
+	// Config sync: update forces when config changes.
 	useEffect(() => {
 		const simulation = simulationRef.current;
 		if (!simulation) return;
@@ -323,108 +282,157 @@ export function useGraphSimulation({
 			simulation.force('cluster', null);
 		}
 
+		// Component repulsion: when graph has multiple connected components, push them apart.
+		// Use componentRepulsionStrength; when 0 we still register the gate so charge is disabled for multi-component.
+		const chargeForce = simulation.force('charge') as d3.ForceManyBody<GraphVizNode>;
+		const componentRepulsionStrength = Math.max(0, config.componentRepulsionStrength ?? 0.35);
+
+		if (effectsRefs) {
+			const componentMapRef = effectsRefs.componentMapRef;
+			// Gate: run first each tick. Backfill component map from current simulation when ref is empty
+			// so it works in every scenario (Graph Debug, AI Search graph, streaming, etc.).
+			// Disable charge when 2+ components so subgraphs stay cohesive (link-only).
+			simulation.force('componentChargeGate', () => {
+				const nodes = simulation.nodes() as GraphVizNode[];
+				let compMap = componentMapRef.current;
+				if ((!compMap || compMap.size === 0) && nodes.length > 0) {
+					const linkForce = simulation.force('link') as d3.ForceLink<GraphVizNode, GraphVizLink> | undefined;
+					const links = (linkForce?.links?.() ?? []) as GraphVizLink[];
+					compMap = computeConnectedComponents(
+						nodes.map((n) => n.id),
+						links,
+						getLinkEndpointId
+					);
+					componentMapRef.current = compMap;
+				}
+				if (!compMap || compMap.size === 0) {
+					chargeForce.strength(config.chargeStrength);
+					return;
+				}
+				const numComponents = new Set(compMap.values()).size;
+				if (numComponents >= 2) {
+					chargeForce.strength(0);
+				} else {
+					chargeForce.strength(config.chargeStrength);
+				}
+			});
+
+			if (componentRepulsionStrength > 0) {
+				const repulsion = componentRepulsionStrength;
+				/** Min gap between component bounding boxes so subgraphs do not intersect. */
+				const componentGap = 100;
+				/** When AABBs overlap, push strength (not scaled by alpha) so overlap is removed. */
+				const overlapPushStrength = 0.8;
+				simulation.force('componentRepulsion', (alpha: number) => {
+					const nodes = simulation.nodes() as GraphVizNode[];
+					const compMap = componentMapRef.current;
+					const numComponents = compMap ? new Set(compMap.values()).size : 0;
+					if (numComponents < 2) return;
+					// Per-component AABB (with node radius) and center
+					const boxByComp = new Map<
+						number,
+						{ minX: number; maxX: number; minY: number; maxY: number; cx: number; cy: number; n: number }
+					>();
+					for (const n of nodes) {
+						const c = compMap.get(n.id);
+						if (c === undefined) continue;
+						const x = n.x ?? 0;
+						const y = n.y ?? 0;
+						const r = n.r ?? 10;
+						const curr = boxByComp.get(c) ?? {
+							minX: Infinity,
+							maxX: -Infinity,
+							minY: Infinity,
+							maxY: -Infinity,
+							cx: 0,
+							cy: 0,
+							n: 0,
+						};
+						curr.minX = Math.min(curr.minX, x - r);
+						curr.maxX = Math.max(curr.maxX, x + r);
+						curr.minY = Math.min(curr.minY, y - r);
+						curr.maxY = Math.max(curr.maxY, y + r);
+						curr.cx += x;
+						curr.cy += y;
+						curr.n += 1;
+						boxByComp.set(c, curr);
+					}
+					const compIds = Array.from(boxByComp.keys());
+					for (const c of compIds) {
+						const b = boxByComp.get(c)!;
+						if (b.n === 0) continue;
+						b.cx /= b.n;
+						b.cy /= b.n;
+					}
+					// Expand boxes by half gap so we require gap between them
+					const half = componentGap / 2;
+					for (let i = 0; i < compIds.length; i++) {
+						for (let j = i + 1; j < compIds.length; j++) {
+							const ci = compIds[i];
+							const cj = compIds[j];
+							const bi = boxByComp.get(ci)!;
+							const bj = boxByComp.get(cj)!;
+							const leftI = bi.minX - half;
+							const rightI = bi.maxX + half;
+							const topI = bi.minY - half;
+							const bottomI = bi.maxY + half;
+							const leftJ = bj.minX - half;
+							const rightJ = bj.maxX + half;
+							const topJ = bj.minY - half;
+							const bottomJ = bj.maxY + half;
+							const overlapX = Math.min(rightI, rightJ) - Math.max(leftI, leftJ);
+							const overlapY = Math.min(bottomI, bottomJ) - Math.max(topI, topJ);
+							const overlap = overlapX > 0 && overlapY > 0 ? Math.min(overlapX, overlapY) : 0;
+							const dx = bi.cx - bj.cx;
+							const dy = bi.cy - bj.cy;
+							const dist = Math.sqrt(dx * dx + dy * dy + 1e-6);
+							const dirX = dx / dist;
+							const dirY = dy / dist;
+							// When overlapping: strong constant push to separate; else inverse-distance repulsion (scaled so it is effective).
+							const push = overlap > 0
+								? overlap * overlapPushStrength
+								: (alpha * repulsion * 200) / Math.max(dist, 40);
+							for (const n of nodes) {
+								const c = compMap.get(n.id);
+								if (c === undefined) continue;
+								if (c === ci) {
+									n.vx = (n.vx ?? 0) + dirX * push;
+									n.vy = (n.vy ?? 0) + dirY * push;
+								} else if (c === cj) {
+									n.vx = (n.vx ?? 0) - dirX * push;
+									n.vy = (n.vy ?? 0) - dirY * push;
+								}
+							}
+						}
+					}
+				});
+			} else {
+				simulation.force('componentRepulsion', null);
+			}
+		} else {
+			simulation.force('componentChargeGate', () => {});
+			simulation.force('componentRepulsion', null);
+		}
+
 		const centerXStrength = (config.centerStrength * 9) / 25;
 		const centerYStrength = (config.centerStrength * 12) / 25;
 
-		if (useCanvas) {
-			const linkForce = simulation.force('link') as d3.ForceLink<GraphVizNode, GraphVizLink>;
-			const chargeForce = simulation.force('charge') as d3.ForceManyBody<GraphVizNode>;
-			const forceX = simulation.force('x') as d3.ForceX<GraphVizNode>;
-			const forceY = simulation.force('y') as d3.ForceY<GraphVizNode>;
-			const collisionForce = simulation.force('collision') as d3.ForceCollide<GraphVizNode>;
-			if (linkForce) {
-				linkForce.distance((d: unknown) => linkDistance(d as GraphVizLink));
-				linkForce.strength((d: unknown) => linkStrength(d as GraphVizLink));
-			}
-			if (chargeForce) {
-				chargeForce.strength(config.chargeStrength);
-				chargeForce.distanceMax(280);
-			}
-			if (forceX) forceX.strength(centerXStrength);
-			if (forceY) forceY.strength(centerYStrength);
-			if (collisionForce) collisionForce.radius((d: GraphVizNode) => (d.r ?? 10) + config.collisionRadius);
-			// Restart so force changes (sliders) take effect immediately
-			simulation.alpha(0.1).restart();
-			return;
-		}
-
 		const linkForce = simulation.force('link') as d3.ForceLink<GraphVizNode, GraphVizLink>;
-		const chargeForce = simulation.force('charge') as d3.ForceManyBody<GraphVizNode>;
 		const forceX = simulation.force('x') as d3.ForceX<GraphVizNode>;
 		const forceY = simulation.force('y') as d3.ForceY<GraphVizNode>;
 		const collisionForce = simulation.force('collision') as d3.ForceCollide<GraphVizNode>;
-
 		if (linkForce) {
 			linkForce.distance((d: unknown) => linkDistance(d as GraphVizLink));
 			linkForce.strength((d: unknown) => linkStrength(d as GraphVizLink));
 		}
 		if (chargeForce) {
-			chargeForce.strength(config.chargeStrength);
 			chargeForce.distanceMax(280);
+			// Strength is set each tick by componentChargeGate when effectsRefs present
+			if (!effectsRefs) chargeForce.strength(config.chargeStrength);
 		}
 		if (forceX) forceX.strength(centerXStrength);
 		if (forceY) forceY.strength(centerYStrength);
 		if (collisionForce) collisionForce.radius((d: GraphVizNode) => (d.r ?? 10) + config.collisionRadius);
 		simulation.alpha(0.1).restart();
-
-		const linkSel = linkSelRef.current;
-		const nodeSel = nodeSelRef.current;
-		const semanticDash =
-			config.semanticEdgeStyle === 'dashed' ? '4 3' : config.semanticEdgeStyle === 'dotted' ? '2 2' : null;
-		const physicalDash =
-			config.physicalEdgeStyle === 'dashed' ? '4 3' : config.physicalEdgeStyle === 'dotted' ? '2 2' : null;
-		if (linkSel) {
-			linkSel.attr(
-				'stroke',
-				(d: GraphVizLink) =>
-					d.kind === 'semantic'
-						? config.semanticLinkStroke
-						: d.kind === 'path' || d.kind === 'physical'
-							? config.physicalLinkStroke
-							: (getEdgeStyle({ kind: d.kind, weight: d.weight }).stroke ?? '#d1d5db')
-			);
-			linkSel.attr(
-				'stroke-opacity',
-				(d: GraphVizLink) =>
-					d.kind === 'semantic'
-						? config.semanticEdgeOpacity
-						: d.kind === 'physical' || d.kind === 'path'
-							? config.physicalEdgeOpacity
-							: (getEdgeStyle({ kind: d.kind, weight: d.weight }).strokeOpacity ?? 0.4)
-			);
-			linkSel.attr(
-				'stroke-dasharray',
-				(d: GraphVizLink) => (d.kind === 'semantic' ? semanticDash : physicalDash)
-			);
-			linkSel.attr(
-				'stroke-width',
-				(d: GraphVizLink) =>
-					d.kind === 'semantic'
-						? (getEdgeStyle({ kind: d.kind, weight: d.weight }).strokeWidth ?? 1) * config.semanticEdgeWidthScale
-						: d.kind === 'physical' || d.kind === 'path'
-							? (getEdgeStyle({ kind: d.kind, weight: d.weight }).strokeWidth ?? 1) * config.physicalEdgeWidthScale
-							: (getEdgeStyle({ kind: d.kind, weight: d.weight }).strokeWidth ?? 1)
-			);
-		}
-		if (nodeSel) {
-			const resolved = graphDataRefs.linksRef.current;
-			const nodeIdsWithSemantic = new Set<string>();
-			for (const l of resolved) {
-				if (l.kind === 'semantic') {
-					nodeIdsWithSemantic.add((l.source as GraphVizNode).id);
-					nodeIdsWithSemantic.add((l.target as GraphVizNode).id);
-				}
-			}
-			const getFill = (d: GraphVizNode) =>
-				(d.type ?? '').toLowerCase() === 'tag'
-					? config.tagNodeFill
-					: nodeIdsWithSemantic.has(d.id)
-						? config.semanticNodeFill
-						: config.physicalNodeFill;
-			nodeSel.select('.node-shape-circle').attr('fill', getFill);
-			nodeSel.select('.node-shape-path').attr('fill', getFill);
-			nodeSel.select('g.lucide-icon path').attr('fill', getFill).attr('stroke', getFill);
-			nodeSel.select('g.lucide-icon circle').attr('fill', getFill);
-		}
-	}, [config, getEdgeStyle, effectsRefs]);
+	}, [config, effectsRefs]);
 }

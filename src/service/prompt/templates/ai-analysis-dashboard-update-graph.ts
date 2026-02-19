@@ -7,6 +7,11 @@ Note: This is attempt {{errorRetryInfo.attemptTimes}}. Last error: {{errorRetryI
 Check for orphaned edges or invalid node IDs.
 {{/if}}
 
+# WHAT YOU ARE GIVEN (and why)
+- **Latest Evidence**: the newest signals. Use it to discover new entities and relationships.
+- **Current Graph State**: the existing topology. Use it to avoid duplicate nodes/edges and to keep continuity.
+- **Execution Plan** (\`plan.graphPlan\`): planner instructions that tell you what relationships/structures matter now. Follow it faithfully, but do not fabricate.
+
 # LATEST EVIDENCE (New Graph Candidates)
 <<<
 {{recentEvidenceHint}}
@@ -16,6 +21,13 @@ Check for orphaned edges or invalid node IDs.
 <<<
 {{currentResultSnapshot}}
 >>>
+
+{{#if plan.graphPlan}}
+# EXECUTION PLAN (follow faithfully)
+{{#each plan.graphPlan}}
+- {{this}}
+{{/each}}
+{{/if}}
 
 # INSTRUCTION
 Analyze the "Latest Evidence" to identify new entities and their relationships to existing nodes.

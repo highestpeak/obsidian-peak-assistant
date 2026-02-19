@@ -42,12 +42,10 @@ type SearchToolSet = {
 export interface RawSearchAgentOptions {
     enableWebSearch?: boolean;
     enableLocalSearch?: boolean;
-    searchAgentProvider: string;
-    searchAgentModel: string;
 }
 
 // search inspector agent max steps.
-const DEFAULT_MAX_SEARCH_AGENT_STEPS = 50;
+export const DEFAULT_MAX_SEARCH_AGENT_STEPS = 50;
 
 export class RawSearchAgent {
     /**
@@ -80,14 +78,15 @@ export class RawSearchAgent {
             searchTools.recent_changes_whole_vault = recentChangesWholeVaultTool();
             searchTools.local_search_whole_vault = localSearchWholeVaultTool();
         }
+        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.RawAiSearch);
         const outputControl = this.aiServiceManager.getSettings?.()?.defaultOutputControl;
         const temperature = outputControl?.temperature ?? 0.5;
         const maxOutputTokens = outputControl?.maxOutputTokens ?? 4096;
 
         this.searchAgent = new Agent<SearchToolSet>({
             model: this.aiServiceManager.getMultiChat()
-                .getProviderService(this.options.searchAgentProvider)
-                .modelClient(this.options.searchAgentModel),
+                .getProviderService(provider)
+                .modelClient(modelId),
             tools: searchTools,
             stopWhen: [
                 stepCountIs(DEFAULT_MAX_SEARCH_AGENT_STEPS),
@@ -109,7 +108,7 @@ export class RawSearchAgent {
         }
 
         const system = await this.aiServiceManager.renderPrompt(
-            PromptId.AiSearchSystem,
+            PromptId.RawAiSearch,
             await genSystemInfo()
         );
         // read and learn: https://gist.github.com/sshh12/25ad2e40529b269a88b80e7cf1c38084
@@ -300,49 +299,73 @@ export class RawSearchAgent {
 
 
     /**
-     * Register paths from tool outputs as verified.
-     * Called when processing vault_inspector or content_reader results.
+     * Register paths from tool outputs as verified (for sources fallback and evidence hint).
+     * Unwraps safeAgentTool { result } and hybrid { data }, then extracts paths from known shapes.
      */
     private registerVerifiedPathsFromToolOutput(toolName: string, output: any): void {
         if (!output) return;
         if (!this.appendVerifiedPaths) return;
 
         try {
-            // Handle structured output with results array (local_search, etc.)
-            if (output.results && Array.isArray(output.results)) {
-                for (const item of output.results) {
-                    if (item.path) {
-                        this.appendVerifiedPaths([item.path]);
-                    }
+            // Unwrap: safeAgentTool returns { result, durationMs }; hybrid returns { data, template }
+            let data = output?.result ?? output;
+            if (output?.data != null) data = output.data;
+
+            const addPath = (path: string) => {
+                if (path && typeof path === 'string' && path.trim()) this.appendVerifiedPaths?.([path.trim()]);
+            };
+
+            // results[] (local_search_whole_vault, etc.)
+            if (data?.results && Array.isArray(data.results)) {
+                for (const item of data.results) {
+                    if (item.path) addPath(item.path);
                 }
             }
-            // Handle data.results pattern (hybrid mode)
-            if (output.data?.results && Array.isArray(output.data.results)) {
-                for (const item of output.data.results) {
-                    if (item.path) {
-                        this.appendVerifiedPaths([item.path]);
-                    }
-                }
-            }
-            // Handle graph nodes
-            if (output.levels && Array.isArray(output.levels)) {
-                for (const level of output.levels) {
+            // levels[].documentNodes (graph_traversal)
+            if (data?.levels && Array.isArray(data.levels)) {
+                for (const level of data.levels) {
                     if (level.documentNodes && Array.isArray(level.documentNodes)) {
                         for (const node of level.documentNodes) {
-                            // Graph nodes may have path in attributes
                             const attrs = typeof node.attributes === 'string'
-                                ? JSON.parse(node.attributes)
+                                ? (() => { try { return JSON.parse(node.attributes); } catch { return null; } })()
                                 : node.attributes;
-                            if (attrs?.path) {
-                                this.appendVerifiedPaths([attrs.path]);
-                            }
+                            if (attrs?.path) addPath(attrs.path);
+                            if (node.path) addPath(node.path);
                         }
                     }
                 }
             }
-            // Handle content_reader responses
-            if (toolName === 'content_reader' && typeof output === 'object' && output.path) {
-                this.appendVerifiedPaths([output.path]);
+            // graph.nodes[] (graph_traversal structured)
+            if (data?.graph?.nodes && Array.isArray(data.graph.nodes)) {
+                for (const node of data.graph.nodes) {
+                    if (node.path) addPath(node.path);
+                    const attrs = typeof node.attributes === 'string'
+                        ? (() => { try { return JSON.parse(node.attributes); } catch { return null; } })()
+                        : node.attributes;
+                    if (attrs?.path) addPath(attrs.path);
+                }
+            }
+            // inspect_note_context: note_path + clusters with documentNodes
+            if (toolName === 'inspect_note_context' && data?.note_path) addPath(data.note_path);
+            for (const key of ['incoming', 'outgoing', 'semanticNeighbors']) {
+                const cluster = data?.[key];
+                if (cluster?.documentNodes && Array.isArray(cluster.documentNodes)) {
+                    for (const node of cluster.documentNodes) {
+                        const attrs = typeof node.attributes === 'string'
+                            ? (() => { try { return JSON.parse(node.attributes); } catch { return null; } })()
+                            : node.attributes;
+                        if (attrs?.path) addPath(attrs.path);
+                        if (node.path) addPath(node.path);
+                    }
+                }
+            }
+            // content_reader
+            if (toolName === 'content_reader' && data?.path) addPath(data.path);
+            // recent_changes / explore_folder: items with path
+            if (data?.items && Array.isArray(data.items)) {
+                for (const item of data.items) {
+                    if (item.path) addPath(item.path);
+                }
             }
         } catch (error) {
             console.warn(`[AISearchAgent] Error extracting paths from tool output: ${error}`);
@@ -350,7 +373,8 @@ export class RawSearchAgent {
     }
 }
 
-function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | undefined {
+/** Shared with DocSimpleAgent for tool-call UI events. */
+export function buildToolCallUIEvent(chunk: any, stepId: string): LLMStreamEvent | undefined {
     const toolName = chunk.toolName;
     if (!toolName) return undefined;
     const input = chunk.input ?? {};

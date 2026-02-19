@@ -425,7 +425,7 @@ const MOCK_AI_ANALYSIS_RECORDS_INIT: MockAIAnalysisRecord[] = Array.from({ lengt
 
 	const docModel = fromCompletedAnalysisSnapshot(snapshot, query, false);
 	docModel.created = new Date(nowTs).toISOString();
-	const markdown = buildMarkdown(docModel);
+	const markdown = buildMarkdown(docModel, { runAnalysisMode: 'vaultFull', includeSteps: false });
 
 	return {
 		id: `mock-ai-${i + 1}`,

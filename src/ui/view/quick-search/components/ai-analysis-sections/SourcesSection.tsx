@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FileText, Info, MessageCircle } from 'lucide-react';
+import { FileText, Info, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { mixSearchResultsBySource } from '@/core/utils/source-mixer';
 import { getSourceIcon } from '@/ui/view/shared/file-utils';
 import type { SearchResultItem } from '@/service/search/types';
@@ -9,6 +9,17 @@ import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/sh
 import { InlineFollowupChat } from '@/ui/component/mine/InlineFollowupChat';
 import { useSourcesFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 import { useAIAnalysisStore } from '../../store/aiAnalysisStore';
+
+/** When false, show only a single "Score" (AI-generated); Physical/Semantic/Average gauges are kept in code but not rendered. */
+const SHOW_SCORE_BREAKDOWN = false;
+
+/** Effective score for sorting/collapsing: finalScore ?? score ?? scoreDetail.average ?? 0 */
+function getEffectiveScore(source: SearchResultItem): number {
+	const n = source.finalScore ?? source.score;
+	if (typeof n === 'number') return n;
+	const avg = source.scoreDetail?.average;
+	return typeof avg === 'number' ? avg : 0;
+}
 
 /** Radius and center for the semicircle gauge. */
 const GAUGE_R = 22;
@@ -86,6 +97,68 @@ const ScoreGauge: React.FC<{ label: string; value: number; color: string }> = ({
 	);
 };
 
+/** Single source card (title, path, score, reasoning). */
+const SourceCard: React.FC<{
+	source: SearchResultItem;
+	index: number;
+	onOpen: () => void;
+}> = ({ source, index, onOpen }) => (
+	<div
+		className="pktw-p-3 pktw-rounded-lg pktw-bg-white pktw-border pktw-border-[#e5e7eb] hover:pktw-border-[#7c3aed]/30 hover:pktw-bg-[#fafafa] pktw-cursor-pointer pktw-transition-all pktw-group"
+		style={{
+			opacity: 0,
+			transform: 'translateY(-8px)',
+			animation: `fadeInSlide 0.3s ease-out ${index * 0.1}s forwards`
+		}}
+		onClick={onOpen}
+	>
+		<div className="pktw-flex pktw-items-center pktw-gap-2">
+			<div className="pktw-flex-shrink-0">{getSourceIcon(source.source)}</div>
+			<div className="pktw-flex-1 pktw-min-w-0">
+				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-min-w-0">
+					<div className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-truncate group-hover:pktw-text-[#7c3aed] pktw-min-w-0">
+						{source.title}
+					</div>
+					{source.badges && source.badges.length > 0 ? (
+						<div className="pktw-flex pktw-flex-wrap pktw-gap-1 pktw-flex-shrink-0">
+							{source.badges.map((badge, i) => (
+								<span key={i} className="pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed] pktw-font-medium" title={badge}>
+									{badge}
+								</span>
+							))}
+						</div>
+					) : null}
+				</div>
+				<div className="pktw-text-xs pktw-text-[#999999] pktw-truncate">{source.path}</div>
+			</div>
+			{SHOW_SCORE_BREAKDOWN && source.scoreDetail ? (
+				<div className="pktw-flex pktw-items-flex-end pktw-gap-2 pktw-flex-shrink-0" title="Score breakdown: Physical / Semantic / Average">
+					<ScoreGauge label="Physical" value={source.scoreDetail.physical} color="#3b82f6" />
+					<ScoreGauge label="Semantic" value={source.scoreDetail.semantic} color="#8b5cf6" />
+					<ScoreGauge label="Average" value={source.scoreDetail.average} color="#22c55e" />
+				</div>
+			) : (
+				<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-flex-shrink-0" title="Score (AI-generated)">
+					<span className="pktw-text-xs pktw-text-[#6c757d] pktw-font-medium">
+						{typeof (source.finalScore ?? source.score) === 'number'
+							? (source.finalScore ?? source.score ?? 0).toFixed(0)
+							: source.scoreDetail?.average != null
+								? String(Math.round(source.scoreDetail.average))
+								: ''}
+					</span>
+					<span className="pktw-text-[9px] pktw-text-[#9ca3af]">Score</span>
+				</div>
+			)}
+		</div>
+		{source.content && (
+			<div className="pktw-mt-2 pktw-flex pktw-items-center pktw-gap-1.5">
+				<Info className="pktw-w-3 pktw-h-3 pktw-text-[#999999] pktw-flex-shrink-0" aria-hidden />
+				<span className="pktw-text-xs pktw-text-[#6c757d] pktw-leading-relaxed pktw-line-clamp-2">{source.content}</span>
+			</div>
+		)}
+	</div>
+);
+
 /**
  * Top sources section component showing relevant files with reasoning, badges, and score breakdown
  */
@@ -110,40 +183,51 @@ export const TopSourcesSection: React.FC<{
 		return mixSearchResultsBySource(sources, 2);
 	}, [sources]);
 
-	// animate the sources one by one
+	// Split: scored (score > 0) shown first; zero-score sources collapsed by default
+	const { scoredSources, zeroScoreSources } = React.useMemo(() => {
+		const scored: SearchResultItem[] = [];
+		const zero: SearchResultItem[] = [];
+		for (const s of mixedSources) {
+			if (getEffectiveScore(s) > 0) scored.push(s);
+			else zero.push(s);
+		}
+		return { scoredSources: scored, zeroScoreSources: zero };
+	}, [mixedSources]);
+
+	const [expandZeroScore, setExpandZeroScore] = useState(false);
+
+	// Animate scored sources one by one
 	const [visibleCount, setVisibleCount] = React.useState(0);
 	React.useEffect(() => {
-		if (mixedSources.length === 0) {
+		if (scoredSources.length === 0) {
 			setVisibleCount(0);
 			return;
 		}
 
 		if (skipAnimation) {
-			// Skip animation and show all items immediately
-			setVisibleCount(mixedSources.length);
+			setVisibleCount(scoredSources.length);
 			return;
 		}
 
-		// Reset and animate items one by one
 		setVisibleCount(0);
 		let current = 0;
 		const interval = setInterval(() => {
 			current++;
 			setVisibleCount(current);
-			if (current >= mixedSources.length) {
-				clearInterval(interval);
-			}
-		}, 100); // Show one item every 100ms
+			if (current >= scoredSources.length) clearInterval(interval);
+		}, 100);
 
 		return () => clearInterval(interval);
-	}, [mixedSources.length, skipAnimation]);
+	}, [scoredSources.length, skipAnimation]);
 
 	return (
 		<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3 pktw-w-full pktw-group">
 				<FileText className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
 				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Top Sources</span>
-				<span className="pktw-text-xs pktw-text-[#999999]">({mixedSources.length} files)</span>
+				<span className="pktw-text-xs pktw-text-[#999999]">
+					({mixedSources.length} files{zeroScoreSources.length > 0 ? `, ${zeroScoreSources.length} with score 0` : ''})
+				</span>
 				<div className="pktw-flex-1" />
 				<HoverCard openDelay={100} closeDelay={150}>
 					<HoverCardTrigger asChild>
@@ -159,7 +243,7 @@ export const TopSourcesSection: React.FC<{
 						</Button>
 					</HoverCardTrigger>
 					{sourcesFollowupHistory.length > 0 && (
-						<HoverCardContent align="end" className="pktw-w-48 pktw-p-1 pktw-z-[10000]">
+						<HoverCardContent align="end" className="pktw-w-48 pktw-p-1 pktw-z-[10000] pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
 							{sourcesFollowupHistory.map((item, idx) => (
 								<Button
 									key={idx}
@@ -214,73 +298,37 @@ export const TopSourcesSection: React.FC<{
 				) : null}
 			</AnimatePresence>
 			<div className="pktw-space-y-3">
-				{mixedSources.slice(0, visibleCount).map((source, index) => (
-					<div
-						key={source.id || index}
-						className="pktw-p-3 pktw-rounded-lg pktw-bg-white pktw-border pktw-border-[#e5e7eb] hover:pktw-border-[#7c3aed]/30 hover:pktw-bg-[#fafafa] pktw-cursor-pointer pktw-transition-all pktw-group"
-						style={{
-							opacity: 0,
-							transform: 'translateY(-8px)',
-							animation: `fadeInSlide 0.3s ease-out ${index * 0.1}s forwards`
-						}}
-						onClick={() => onOpen(source)}
-					>
-						{/* Header row: icon, title, score */}
-						<div className="pktw-flex pktw-items-center pktw-gap-2">
-							<div className="pktw-flex-shrink-0">
-								{getSourceIcon(source.source)}
-							</div>
-							<div className="pktw-flex-1 pktw-min-w-0">
-								<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-min-w-0">
-									<div className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-truncate group-hover:pktw-text-[#7c3aed] pktw-min-w-0">
-										{source.title}
-									</div>
-									{source.badges && source.badges.length > 0 ? (
-										<div className="pktw-flex pktw-flex-wrap pktw-gap-1 pktw-flex-shrink-0">
-											{source.badges.map((badge, i) => (
-												<span
-													key={i}
-													className="pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed] pktw-font-medium"
-													title={badge}
-												>
-													{badge}
-												</span>
-											))}
-										</div>
-									) : null}
-								</div>
-								<div className="pktw-text-xs pktw-text-[#999999] pktw-truncate">
-									{source.path}
-								</div>
-							</div>
-							{/* Score breakdown: horizontal gauges (Physical, Semantic, Average) */}
-							{source.scoreDetail ? (
-								<div
-									className="pktw-flex pktw-items-flex-end pktw-gap-2 pktw-flex-shrink-0"
-									title="Score breakdown: Physical / Semantic / Average"
-								>
-									<ScoreGauge label="Physical" value={source.scoreDetail.physical} color="#3b82f6" />
-									<ScoreGauge label="Semantic" value={source.scoreDetail.semantic} color="#8b5cf6" />
-									<ScoreGauge label="Average" value={source.scoreDetail.average} color="#22c55e" />
-								</div>
+				{/* Scored sources (score > 0) */}
+				{scoredSources.slice(0, visibleCount).map((source, index) => (
+					<SourceCard key={source.id || `s-${index}`} source={source} index={index} onOpen={() => onOpen(source)} />
+				))}
+				{/* Zero-score sources: collapsed by default */}
+				{zeroScoreSources.length > 0 && (
+					<div className="pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-white/80 pktw-overflow-hidden">
+						<button
+							type="button"
+							className="pktw-w-full pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-left hover:pktw-bg-[#f5f3ff]/50 pktw-transition-colors"
+							onClick={() => setExpandZeroScore((v) => !v)}
+							aria-expanded={expandZeroScore}
+						>
+							{expandZeroScore ? (
+								<ChevronDown className="pktw-w-4 pktw-h-4 pktw-text-[#6b7280] pktw-shrink-0" />
 							) : (
-								<div className="pktw-text-xs pktw-text-[#6c757d] pktw-font-medium">
-									{(source.finalScore ?? source.score) ? (source.finalScore ?? source.score ?? 0).toFixed(2) : ''}
-								</div>
+								<ChevronRight className="pktw-w-4 pktw-h-4 pktw-text-[#6b7280] pktw-shrink-0" />
 							)}
-						</div>
-
-						{/* Reasoning row (content field) */}
-						{source.content && (
-							<div className="pktw-mt-2 pktw-flex pktw-items-center pktw-gap-1.5">
-								<Info className="pktw-w-3 pktw-h-3 pktw-text-[#999999] pktw-flex-shrink-0" aria-hidden />
-								<span className="pktw-text-xs pktw-text-[#6c757d] pktw-leading-relaxed pktw-line-clamp-2">
-									{source.content}
-								</span>
+							<span className="pktw-text-xs pktw-text-[#6b7280]">
+								{zeroScoreSources.length} source{zeroScoreSources.length !== 1 ? 's' : ''} with score 0
+							</span>
+						</button>
+						{expandZeroScore && (
+							<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-p-2 pktw-space-y-2">
+								{zeroScoreSources.map((source, index) => (
+									<SourceCard key={source.id || `z-${index}`} source={source} index={index} onOpen={() => onOpen(source)} />
+								))}
 							</div>
 						)}
 					</div>
-				))}
+				)}
 			</div>
 		</div>
 	);

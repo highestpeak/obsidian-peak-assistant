@@ -223,7 +223,7 @@ export function drawGraph(opts: DrawGraphOptions): void {
 
 		ctx.save();
 		ctx.translate(nx, ny);
-		if (kind === 'tag' && scale != null) {
+		if ((kind === 'tag' || kind === 'concept') && scale != null) {
 			ctx.scale(scale, scale);
 			ctx.translate(-12, -12);
 			ctx.fillStyle = fill;

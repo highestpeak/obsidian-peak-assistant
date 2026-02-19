@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Tag, FileText } from 'lucide-react';
+import { Tag, FileText, LayoutGrid } from 'lucide-react';
 import { DashboardBlock, AISearchTopic, AISearchSource } from '@/service/agents/AISearchAgent';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 
@@ -38,7 +38,9 @@ export const IncrementalContent: React.FC<{
 	dashboardBlocks: DashboardBlock[];
 	topics: AISearchTopic[];
 	sources: AISearchSource[];
-}> = ({ dashboardBlocks, topics, sources }) => {
+	topicsRef?: React.RefObject<HTMLDivElement | null>;
+	sourcesRef?: React.RefObject<HTMLDivElement | null>;
+}> = ({ dashboardBlocks, topics, sources, topicsRef, sourcesRef }) => {
 	// Track previous state for diff calculation
 	const prevStateRef = React.useRef({
 		dashboardBlocks: [] as DashboardBlock[],
@@ -75,6 +77,8 @@ export const IncrementalContent: React.FC<{
 		const removedTopics = prev.topics.filter(topic => !dedupedTopics.find(t => t.label === topic.label));
 		const newSources = dedupedSources.filter(source => !prev.sources.find(p => p.id === source.id));
 		const removedSources = prev.sources.filter(source => !dedupedSources.find(s => s.id === source.id));
+		const newBlocks = dedupedBlocks.filter(block => !prev.dashboardBlocks.find(p => p.id === block.id));
+		const removedBlocks = prev.dashboardBlocks.filter(block => !dedupedBlocks.find(b => b.id === block.id));
 
 		prevStateRef.current = {
 			dashboardBlocks: dedupedBlocks,
@@ -87,6 +91,8 @@ export const IncrementalContent: React.FC<{
 			removedTopics,
 			newSources,
 			removedSources,
+			newBlocks,
+			removedBlocks,
 		};
 	}, [dedupedBlocks, dedupedTopics, dedupedSources]);
 
@@ -94,6 +100,7 @@ export const IncrementalContent: React.FC<{
 		<div className="pktw-space-y-4">
 			{/* Topics with stagger animation */}
 			{(dedupedTopics.length > 0 || diff.newTopics.length > 0 || diff.removedTopics.length > 0) && (
+				<div ref={topicsRef} className="pktw-scroll-mt-4">
 				<motion.div 
 					className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]"
 					initial={{ opacity: 0, y: 10 }}
@@ -148,10 +155,12 @@ export const IncrementalContent: React.FC<{
 						</AnimatePresence>
 					</motion.div>
 				</motion.div>
+				</div>
 			)}
 
 			{/* Sources with layout animation */}
 			{(dedupedSources.length > 0 || diff.newSources.length > 0 || diff.removedSources.length > 0) && (
+				<div ref={sourcesRef} className="pktw-scroll-mt-4">
 				<motion.div 
 					className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]"
 					initial={{ opacity: 0, y: 10 }}
@@ -210,6 +219,47 @@ export const IncrementalContent: React.FC<{
 							</AnimatePresence>
 						</div>
 					</LayoutGroup>
+				</motion.div>
+				</div>
+			)}
+
+			{/* Blocks diff: Added / Removed */}
+			{(diff.newBlocks.length > 0 || diff.removedBlocks.length > 0) && (
+				<motion.div
+					className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]"
+					initial={{ opacity: 0, y: 10 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.3 }}
+				>
+					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
+						<LayoutGrid className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
+						<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Blocks</span>
+					</div>
+					<div className="pktw-space-y-1.5 pktw-text-xs">
+						<AnimatePresence mode="popLayout">
+							{diff.newBlocks.map((block, index) => (
+								<motion.div
+									key={`new-block-${block.id}-${index}`}
+									className="pktw-text-green-700"
+									variants={itemVariants}
+									initial="hidden"
+									animate="show"
+								>
+									+ Added block: {block.title?.trim() || block.id || 'Untitled'}
+								</motion.div>
+							))}
+							{diff.removedBlocks.map((block, index) => (
+								<motion.div
+									key={`removed-block-${block.id}-${index}`}
+									className="pktw-text-red-700 pktw-line-through"
+									variants={itemVariants}
+									exit="exit"
+								>
+									- Removed block: {block.title?.trim() || block.id || 'Untitled'}
+								</motion.div>
+							))}
+						</AnimatePresence>
+					</div>
 				</motion.div>
 			)}
 		</div>

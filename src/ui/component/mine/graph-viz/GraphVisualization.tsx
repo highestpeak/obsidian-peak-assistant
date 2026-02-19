@@ -263,6 +263,7 @@ export const GraphVisualization = forwardRef<GraphVisualizationHandle, GraphVisu
 						onReset={() => setTimeout(() => engine.fitToView(true), 100)}
 						position={settings.settingsPanelPosition}
 						show={settings.showControls}
+						hasConceptNodes={engine.hasConceptNodes}
 					/>
 
 					<div className="pktw-absolute pktw-bottom-2 pktw-right-2 pktw-z-10 pktw-bg-white/80 pktw-backdrop-blur-sm pktw-px-2 pktw-py-1 pktw-rounded pktw-text-xs pktw-text-[#6c757d] pktw-border pktw-border-[#e5e7eb]">
@@ -278,18 +279,7 @@ export const GraphVisualization = forwardRef<GraphVisualizationHandle, GraphVisu
 						</div>
 					) : null}
 
-					{engine.renderBackend === 'svg' && (
-						<svg
-							ref={engine.svgRef as React.RefObject<SVGSVGElement>}
-							width="100%"
-							height="100%"
-							viewBox="0 0 400 400"
-							className="pktw-cursor-move"
-							style={{ touchAction: 'none' }}
-						/>
-					)}
-
-					{engine.renderBackend === 'canvas' && engine.interactionContext && (
+					{engine.interactionContext && (
 						<GraphMainCanvas
 							canvasRef={engine.mainCanvasRef}
 							effectsCanvasRefs={engine.effectsCanvasRefs}
@@ -326,7 +316,7 @@ export const GraphVisualization = forwardRef<GraphVisualizationHandle, GraphVisu
 					{!engine.hasData && <GraphEmptyState message={emptyMessage} />}
 				</div>
 
-				{/* {showToolsPanel ? (
+				{showToolsPanel ? (
 					<div className="pktw-flex-shrink-0 pktw-border-t pktw-border-[#e5e7eb] pktw-bg-[#fafafa] pktw-px-2 pktw-py-2 pktw-flex pktw-flex-col pktw-gap-2">
 						<GraphToolsPanel
 							config={config}
@@ -342,7 +332,7 @@ export const GraphVisualization = forwardRef<GraphVisualizationHandle, GraphVisu
 							hops={graphBelowExtraAnalysisArea?.hops ?? null}
 						/>
 					</div>
-				) : null} */}
+				) : null}
 			</div>
 			{nodeContextMenu && contextMenu.open && contextMenu.node ? (
 				<NodeContextMenu

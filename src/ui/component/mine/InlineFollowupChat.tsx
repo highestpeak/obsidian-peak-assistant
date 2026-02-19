@@ -4,6 +4,7 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { PromptId } from '@/service/prompt/PromptId';
 import { streamSearchFollowup, consumeFollowupStream } from '@/ui/view/quick-search/hooks/useAIAnalysisPostAIInteractions';
+import { useAIAnalysisStore } from '@/ui/view/quick-search/store/aiAnalysisStore';
 
 type ApplyMode = 'append' | 'replace';
 
@@ -32,8 +33,8 @@ export const InlineFollowupChat: React.FC<{
 	/** When true, hide Append/Replace mode toggle. */
 	hideModeToggle?: boolean;
 	applyMode?: ApplyMode;
-	/** When 'modal', answer is shown in a modal; input stays inline. */
-	outputPlace?: 'inline' | 'modal';
+	/** When 'modal', answer is shown in a modal; when 'parent', parent renders answer (no inline display here). */
+	outputPlace?: 'inline' | 'modal' | 'parent';
 	/** Called when modal opens (outputPlace=replace). Opens before streaming starts. */
 	onOpenModal?: (question: string) => void;
 	/** When mode=replace, stream chunks here so parent can render in-place. If set, answer is not shown inline. Pass null to clear. */
@@ -76,6 +77,9 @@ export const InlineFollowupChat: React.FC<{
 			if (mode === 'replace' && onStreamingReplace) {
 				onStreamingReplace('', { question: q });
 			}
+			if (outputPlace === 'parent' && onStreamingReplace) {
+				onStreamingReplace('', { question: q });
+			}
 
 			const variables = getVariables(q);
 			const stream = useSearchAgent
@@ -86,6 +90,7 @@ export const InlineFollowupChat: React.FC<{
 					setAnswer(answerSoFar);
 					onStreamingReplace?.(answerSoFar, { question: q });
 				},
+				onUsage: (usage) => useAIAnalysisStore.getState().accumulateUsage(usage),
 			});
 
 			setQuestion('');

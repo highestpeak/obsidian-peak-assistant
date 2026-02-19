@@ -4,6 +4,7 @@ import { KEY_NODES_RRF_K, RRF_RANKING_POOL_SIZE } from "@/core/constant";
 import { template as FIND_KEY_NODES_TEMPLATE } from "../templates/find-key-nodes";
 import { buildResponse } from "../types";
 import { emptyMap } from "@/core/utils/collection-utils";
+import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
 /**
  * Get unique categories connected to each node to detect bridge nodes
@@ -43,16 +44,18 @@ export async function findKeyNodes(params: any) {
         }
     )
 
-    // Calculate RRF scores using the dedicated function
-    const sortedNodes = await calculateKeyNoteRRFScores(
+    const sortedNodesRaw = await calculateKeyNoteRRFScores(
         semanticResults,
         allOutDegreeStats,
         allInDegreeStats,
         !!semantic_filter,
         limit
     );
+    const excludeCtx = await getAiAnalysisExcludeContext();
+    const sortedNodes = excludeCtx
+        ? sortedNodesRaw.filter((n) => !excludeCtx.excludedDocIds.has(n.nodeId))
+        : sortedNodesRaw;
 
-    // Separate into source nodes (high out-degree) and sink nodes (high in-degree) from the top candidates
     const candidateNodeIds = sortedNodes.map(node => node.nodeId);
 
     // Get degree stats only for candidate nodes

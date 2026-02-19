@@ -556,6 +556,18 @@ ${sourcesList}${topicsList}
 		return this.promptService.getPromptInfo(promptId);
 	}
 
+	/**
+	 * Resolve provider and model for a prompt. Uses promptModelMap first, then defaultModel.
+	 * Used by AiAnalysis sub-agents instead of thoughtAgent.
+	 */
+	getModelForPrompt(promptId: PromptId): { provider: string; modelId: string } {
+		const promptModel = this.settings.promptModelMap?.[promptId];
+		if (promptModel) return { provider: promptModel.provider, modelId: promptModel.modelId };
+		const defaultModel = this.settings.defaultModel;
+		if (defaultModel) return { provider: defaultModel.provider, modelId: defaultModel.modelId };
+		throw new Error('No model configuration available. Please configure defaultModel in settings.');
+	}
+
 	async renderPrompt<T extends PromptId>(
 		promptId: T,
 		variables: PromptVariables[T] | null

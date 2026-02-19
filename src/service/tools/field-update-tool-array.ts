@@ -64,11 +64,14 @@ export interface UpdateResultRobustParameters {
      */
     dataTransform?: (data: any, schema?: z.ZodType) => any,
     validatePath?: (item: any) => Promise<{ valid: boolean, reason?: string, resolvedPath?: string }>,
+    /** When set, run after path validation for add operations. If invalid, tool throws so retry can run. */
+    validateItem?: (item: any) => Promise<{ valid: boolean; reason?: string }>,
 }
 const defaultRobustParameters: UpdateResultRobustParameters = {
     normalizeOperation: (raw: unknown) => { return raw; },
     dataTransform: (data: unknown, schema?: z.ZodType) => { return data; },
     validatePath: async (item: any) => { return { valid: true }; },
+    validateItem: async () => { return { valid: true }; },
 };
 
 const defaultGetRemoveId = (value: unknown): string => {
@@ -252,6 +255,7 @@ export function createUpdateResultTool(
     let normalizeOperation = robustParameters?.normalizeOperation ?? defaultRobustParameters.normalizeOperation;
     let dataTransform = robustParameters.dataTransform ?? defaultRobustParameters.dataTransform;
     let validatePath = robustParameters.validatePath ?? defaultRobustParameters.validatePath;
+    const validateItem = robustParameters.validateItem ?? defaultRobustParameters.validateItem;
     // if have identity key func then use it, otherwise use default id fetch
     const buildIdentityKey: BuildIdentityKeyFn = buildIdentityKeyParams ?? ((item) => {
         if (!item || typeof item !== 'object') return null;
@@ -391,6 +395,10 @@ export function createUpdateResultTool(
         }
         if (pathValidation.resolvedPath) {
             item = { ...item, path: pathValidation.resolvedPath };
+        }
+        const itemValidation = await validateItem!(item);
+        if (!itemValidation.valid) {
+            throw new Error(itemValidation.reason ?? 'Item validation failed');
         }
 
         const currentResult = getCurrentResult();

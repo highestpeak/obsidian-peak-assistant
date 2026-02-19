@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Sparkles, MessageCircle, History } from 'lucide-react';
+import { Sparkles, MessageCircle, Copy, Check } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { AnalysisTimer } from '../../../../component/mine/IntelligenceFrame';
 import { StreamdownIsolated } from '@/ui/component/mine';
@@ -8,6 +8,7 @@ import { InlineFollowupChat } from '../../../../component/mine/InlineFollowupCha
 import { useAIAnalysisStore } from '../../store';
 import { useSummaryFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 import { useStreamdownWikilinkClick } from '../../callbacks/useStreamdownWikilinkClick';
+import { copyText } from '@/ui/view/shared/common-utils';
 
 /**
  * Summary content component - displays the AI analysis summary with incremental rendering
@@ -90,13 +91,31 @@ export const SummaryContent: React.FC<{
         onToggleFollowup?.();
     }, [onToggleFollowup]);
 
+    const [copied, setCopied] = useState(false);
+    const handleCopySummary = useCallback(async () => {
+        if (!displaySummary) return;
+        await copyText(displaySummary);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    }, [displaySummary]);
+
     return (
         <div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
             <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3 pktw-group">
                 <Sparkles className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
                 <span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">AI Analysis</span>
                 <div className="pktw-flex-1" />
-
+                {displaySummary ? (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="pktw-shadow-none pktw-rounded-md pktw-opacity-70 hover:pktw-opacity-100"
+                        title={copied ? 'Copied' : 'Copy summary'}
+                        onClick={() => void handleCopySummary()}
+                    >
+                        {copied ? <Check className="pktw-w-4 pktw-h-4 pktw-text-green-600" /> : <Copy className="pktw-w-4 pktw-h-4 pktw-text-[#6c757d]" />}
+                    </Button>
+                ) : null}
                 {summaryVersions ? (
                     <HoverCard openDelay={100} closeDelay={150}>
                         <HoverCardTrigger asChild>
@@ -113,7 +132,7 @@ export const SummaryContent: React.FC<{
                             </Button>
                         </HoverCardTrigger>
                         {/* Version history */}
-                        <HoverCardContent align="end" className="pktw-w-48 pktw-p-1 pktw-z-[10000]">
+                        <HoverCardContent align="end" className="pktw-w-48 pktw-p-1 pktw-z-[10000] pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
                             {summaryVersions.map((_, idx) => (
                                 <Button
                                     key={idx}

@@ -5,6 +5,7 @@ import { buildResponse, withTimeoutMessage } from "../types";
 import { template as GRAPH_PATH_FINDING_TEMPLATE } from "../templates/graph-path-finding";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import type { Database as DbSchema } from "@/core/storage/sqlite/ddl";
+import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
 // Helper: get single doc meta by id (wraps batch API)
 async function getDocMetaById(id: string): Promise<DbSchema['doc_meta'] | null> {
@@ -115,6 +116,8 @@ interface SearchContext {
     filters?: any;
     forbiddenEdges: Set<string>;
     includeSemantic: boolean;
+    /** Doc IDs to exclude from path expansion (e.g. AI analysis auto-save folder). */
+    excludedDocIds: Set<string>;
 }
 
 /** Hub analysis result */
@@ -229,6 +232,9 @@ export async function findPath(params: any) {
         embeddingRepo.getAverageEmbeddingForDoc(endNode.id)
     ]);
 
+    const excludeCtx = await getAiAnalysisExcludeContext();
+    const excludedDocIds = excludeCtx?.excludedDocIds ?? new Set<string>();
+
     // Build search context
     const context: SearchContext = {
         startId: startNode.id,
@@ -239,6 +245,7 @@ export async function findPath(params: any) {
         filters,
         forbiddenEdges: new Set(),
         includeSemantic: include_semantic_paths ?? false,
+        excludedDocIds,
     };
 
     // Execute multi-strategy search with timeout
@@ -405,7 +412,8 @@ async function reliableStrategy(context: SearchContext): Promise<ScoredPath[]> {
             forbiddenEdges,
             false,  // Physical only
             context.maxHops,
-            context.filters
+            context.filters,
+            context.excludedDocIds
         );
 
         if (!path) break;
@@ -517,7 +525,8 @@ async function aStarSearch(context: SearchContext): Promise<PathSegment[] | null
         const neighbors = await getSmartNeighbors(
             current.nodeId,
             true, // Include semantic
-            consecutiveSemanticCount >= 4 // More permissive than default 3
+            consecutiveSemanticCount >= 4, // More permissive than default 3
+            context.excludedDocIds
         );
 
         // Apply filters if provided
@@ -669,7 +678,8 @@ async function fallbackStrategy(context: SearchContext): Promise<ScoredPath[]> {
         new Set(), // No forbidden edges
         true, // Always include semantic
         Math.max(context.maxHops * 2, 8), // Double hop limit, minimum 8
-        context.filters
+        context.filters,
+        context.excludedDocIds
     );
 
     if (path) {
@@ -721,7 +731,8 @@ async function brainstormStrategy(context: SearchContext): Promise<ScoredPath[]>
             context.includeSemantic,
             context.maxHops,
             context.filters,
-            forceCrossDomain ? endFolder : null
+            forceCrossDomain ? endFolder : null,
+            context.excludedDocIds
         );
 
         if (!path) break;
@@ -810,7 +821,8 @@ async function bidirectionalBFSWithDomainPreference(
     includeSemantic: boolean,
     maxHops: number,
     filters?: any,
-    avoidFolder?: string | null
+    avoidFolder?: string | null,
+    excludedDocIds?: Set<string>
 ): Promise<PathSegment[] | null> {
     const startVisited = new Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>();
     const endVisited = new Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>();
@@ -825,15 +837,14 @@ async function bidirectionalBFSWithDomainPreference(
     while (startQueue.length > 0 && endQueue.length > 0 && hops < maxHops) {
         // Expand from start with domain preference
         const startResult = await expandFrontierWithDomainPreference(
-            startQueue, startVisited, endVisited, forbiddenEdges, includeSemantic, filters, avoidFolder
+            startQueue, startVisited, endVisited, forbiddenEdges, includeSemantic, filters, avoidFolder, excludedDocIds
         );
         if (startResult.found && startResult.intersectId) {
             return reconstructPath(startResult.intersectId, startVisited, endVisited);
         }
 
-        // Expand from end
         const endResult = await expandFrontierWithDomainPreference(
-            endQueue, endVisited, startVisited, forbiddenEdges, includeSemantic, filters, avoidFolder
+            endQueue, endVisited, startVisited, forbiddenEdges, includeSemantic, filters, avoidFolder, excludedDocIds
         );
         if (endResult.found && endResult.intersectId) {
             return reconstructPath(endResult.intersectId, startVisited, endVisited);
@@ -878,7 +889,8 @@ async function temporalStrategy(context: SearchContext): Promise<ScoredPath[]> {
         context.endId,
         Math.max(context.maxHops * 1.5, context.maxHops + 2), // Increase hop limit for temporal
         isForward,
-        context.filters
+        context.filters,
+        context.excludedDocIds
     );
 
     if (path && path.length > 0) {
@@ -906,7 +918,8 @@ async function temporalBFS(
     endId: string,
     maxHops: number,
     isForward: boolean,
-    filters?: any
+    filters?: any,
+    excludedDocIds?: Set<string>
 ): Promise<PathSegment[] | null> {
     const visited = new Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; timestamp: number }>();
 
@@ -954,20 +967,18 @@ async function temporalBFS(
 
         for (const current of currentLevelNodes) {
             // Physical-first approach: prefer physical neighbors, use semantic as fallback
-            let neighbors = await getPhysicalNeighbors(current.id, 10); // Start with physical only, limit to 10
+            let neighbors = await getPhysicalNeighbors(current.id, 10, excludedDocIds);
 
-            // If too few physical neighbors, add limited semantic neighbors (max 3)
             if (neighbors.length < 3) {
                 const physicalIds = new Set(neighbors.map(n => n.id));
+                if (excludedDocIds?.size) excludedDocIds.forEach((id) => physicalIds.add(id));
                 const semanticNeighbors = await getSemanticNeighbors(current.id, 3, physicalIds);
-                neighbors.push(...semanticNeighbors.map(s => ({
-                    id: s.id,
-                    foundBy: 'semantic_neighbors' as const,
-                    similarity: s.similarity
-                })));
+                for (const s of semanticNeighbors) {
+                    if (excludedDocIds?.has(s.id)) continue;
+                    neighbors.push({ id: s.id, foundBy: 'semantic_neighbors' as const, similarity: s.similarity });
+                }
             }
 
-            // Filter by filters if provided
             let filteredNeighbors = neighbors;
             if (filters) {
                 const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(
@@ -977,7 +988,6 @@ async function temporalBFS(
                 filteredNeighbors = applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
             }
 
-            // Batch fetch neighbor timestamps (only for filtered neighbors)
             const neighborIds = filteredNeighbors.map(n => n.id);
             const neighborMetasMap = await getDocMetasByIds(neighborIds);
 
@@ -1089,7 +1099,8 @@ async function bidirectionalBFS(
     forbiddenEdges: Set<string>,
     includeSemantic: boolean,
     maxHops: number,
-    filters?: any
+    filters?: any,
+    excludedDocIds?: Set<string>
 ): Promise<PathSegment[] | null> {
     const startVisited = new Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>();
     const endVisited = new Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>();
@@ -1104,15 +1115,14 @@ async function bidirectionalBFS(
     while (startQueue.length > 0 && endQueue.length > 0 && hops < maxHops) {
         // Expand from start
         const startResult = await expandFrontier(
-            startQueue, startVisited, endVisited, forbiddenEdges, includeSemantic, filters
+            startQueue, startVisited, endVisited, forbiddenEdges, includeSemantic, filters, excludedDocIds
         );
         if (startResult.found && startResult.intersectId) {
             return reconstructPath(startResult.intersectId, startVisited, endVisited);
         }
 
-        // Expand from end
         const endResult = await expandFrontier(
-            endQueue, endVisited, startVisited, forbiddenEdges, includeSemantic, filters
+            endQueue, endVisited, startVisited, forbiddenEdges, includeSemantic, filters, excludedDocIds
         );
         if (endResult.found && endResult.intersectId) {
             return reconstructPath(endResult.intersectId, startVisited, endVisited);
@@ -1133,14 +1143,15 @@ async function expandFrontier(
     otherVisited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>,
     forbiddenEdges: Set<string>,
     includeSemantic: boolean,
-    filters?: any
+    filters?: any,
+    excludedDocIds?: Set<string>
 ): Promise<{ found: boolean; intersectId?: string }> {
     const nextQueue: string[] = [];
 
     for (const currentId of queue) {
         let neighbors = includeSemantic
-            ? await getMixedNeighbors(currentId, true)
-            : await getPhysicalNeighbors(currentId);
+            ? await getMixedNeighbors(currentId, true, 20, excludedDocIds)
+            : await getPhysicalNeighbors(currentId, 20, excludedDocIds);
 
         if (filters) {
             const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(
@@ -1186,14 +1197,15 @@ async function expandFrontierWithDomainPreference(
     forbiddenEdges: Set<string>,
     includeSemantic: boolean,
     filters?: any,
-    avoidFolder?: string | null
+    avoidFolder?: string | null,
+    excludedDocIds?: Set<string>
 ): Promise<{ found: boolean; intersectId?: string }> {
     const nextQueue: string[] = [];
 
     for (const currentId of queue) {
         let neighbors = includeSemantic
-            ? await getMixedNeighbors(currentId, true)
-            : await getPhysicalNeighbors(currentId);
+            ? await getMixedNeighbors(currentId, true, 20, excludedDocIds)
+            : await getPhysicalNeighbors(currentId, 20, excludedDocIds);
 
         // Sort neighbors to prefer those in different folders
         if (avoidFolder) {
@@ -1250,9 +1262,9 @@ async function expandFrontierWithDomainPreference(
 // ============================================================================
 
 /**
- * Get only physical neighbors.
+ * Get only physical neighbors. Optionally exclude doc IDs (e.g. AI analysis folder).
  */
-async function getPhysicalNeighbors(nodeId: string, limit: number = 20): Promise<NeighborNode[]> {
+async function getPhysicalNeighbors(nodeId: string, limit: number = 20, excludedDocIds?: Set<string>): Promise<NeighborNode[]> {
     const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
     const neighbors: NeighborNode[] = [];
 
@@ -1261,6 +1273,7 @@ async function getPhysicalNeighbors(nodeId: string, limit: number = 20): Promise
 
     for (const edge of physicalEdges) {
         const neighborId = edge.from_node_id === nodeId ? edge.to_node_id : edge.from_node_id;
+        if (excludedDocIds?.has(neighborId)) continue;
         if (!seenIds.has(neighborId)) {
             seenIds.add(neighborId);
             neighbors.push({ id: neighborId, foundBy: 'physical_neighbors' });
@@ -1271,18 +1284,17 @@ async function getPhysicalNeighbors(nodeId: string, limit: number = 20): Promise
 }
 
 /**
- * Get mixed neighbors (physical + semantic).
+ * Get mixed neighbors (physical + semantic). Optionally exclude doc IDs.
  */
-async function getMixedNeighbors(nodeId: string, includeSemantic: boolean, limit: number = 20): Promise<NeighborNode[]> {
+async function getMixedNeighbors(nodeId: string, includeSemantic: boolean, limit: number = 20, excludedDocIds?: Set<string>): Promise<NeighborNode[]> {
     const neighbors: NeighborNode[] = [];
 
-    // Physical neighbors first
-    const physicalNeighbors = await getPhysicalNeighbors(nodeId, limit);
+    const physicalNeighbors = await getPhysicalNeighbors(nodeId, limit, excludedDocIds);
     neighbors.push(...physicalNeighbors);
 
     const physicalIds = new Set(physicalNeighbors.map(n => n.id));
+    if (excludedDocIds) excludedDocIds.forEach((id) => physicalIds.add(id));
 
-    // Add semantic neighbors if requested
     if (includeSemantic) {
         const semanticNeighbors = await getSemanticNeighbors(
             nodeId,
@@ -1290,6 +1302,7 @@ async function getMixedNeighbors(nodeId: string, includeSemantic: boolean, limit
             physicalIds
         );
         for (const neighbor of semanticNeighbors) {
+            if (excludedDocIds?.has(neighbor.id)) continue;
             neighbors.push({
                 id: neighbor.id,
                 foundBy: 'semantic_neighbors',
@@ -1302,25 +1315,25 @@ async function getMixedNeighbors(nodeId: string, includeSemantic: boolean, limit
 }
 
 /**
- * Smart neighbor selection with semantic throttling.
+ * Smart neighbor selection with semantic throttling. Optionally exclude doc IDs.
  */
 async function getSmartNeighbors(
     nodeId: string,
     includeSemantic: boolean,
-    throttleSemantic: boolean
+    throttleSemantic: boolean,
+    excludedDocIds?: Set<string>
 ): Promise<NeighborNode[]> {
     const neighbors: NeighborNode[] = [];
 
-    // Always get physical neighbors
-    const physicalNeighbors = await getPhysicalNeighbors(nodeId, 20);
+    const physicalNeighbors = await getPhysicalNeighbors(nodeId, 20, excludedDocIds);
     neighbors.push(...physicalNeighbors);
 
-    // Only add semantic if allowed and not throttled
     if (includeSemantic && !throttleSemantic && physicalNeighbors.length < 3) {
         const physicalIds = new Set(physicalNeighbors.map(n => n.id));
-        // Increase semantic neighbor count for better exploration, especially in A*
-        const semanticNeighbors = await getSemanticNeighbors(nodeId, 15, physicalIds); // Increased from 5 to 15
+        if (excludedDocIds) excludedDocIds.forEach((id) => physicalIds.add(id));
+        const semanticNeighbors = await getSemanticNeighbors(nodeId, 15, physicalIds);
         for (const neighbor of semanticNeighbors) {
+            if (excludedDocIds?.has(neighbor.id)) continue;
             neighbors.push({
                 id: neighbor.id,
                 foundBy: 'semantic_neighbors',

@@ -4,6 +4,7 @@ import { distillClusterNodesData, SemanticNeighborNode } from "./common";
 import { getSemanticNeighbors } from "./common";
 import { mapGetAll } from "@/core/utils/collection-utils";
 import { buildResponse } from "../types";
+import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
 /**
  * {@link INSPECT_NOTE_CONTEXT_TEMPLATE}
@@ -17,14 +18,16 @@ export async function inspectNoteContext(params: any) {
         return `Note not found in database: ${note_path}`;
     }
 
-    // Get limited edges by type (each type limited to limit)
-    // If this document has 100 tags (Tag) and 2 referenced notes (Note), setting a simple limit of 20 might only display the top 20 tags, potentially overshadowing those two important referenced notes. Using 'limitPerType' with a value of 20 assigns 20 names each to Tags and Notes categories respectively.
     const inAndOutEdges = await sqliteStoreManager.getGraphEdgeRepo()
         .getAllEdgesForNode(docMeta.id, limit);
-    // Extract nodeTo and nodeFrom from inAndOutEdges
-    // inComingNode --> currentNode --> outGoingNode
-    const inComingNode = inAndOutEdges.filter(e => e.to_node_id === docMeta.id).map(e => e.from_node_id);
-    const outGoingNode = inAndOutEdges.filter(e => e.from_node_id === docMeta.id).map(e => e.to_node_id);
+    let inComingNode = inAndOutEdges.filter(e => e.to_node_id === docMeta.id).map(e => e.from_node_id);
+    let outGoingNode = inAndOutEdges.filter(e => e.from_node_id === docMeta.id).map(e => e.to_node_id);
+
+    const excludeCtx = await getAiAnalysisExcludeContext();
+    if (excludeCtx) {
+        inComingNode = inComingNode.filter((id) => !excludeCtx.excludedDocIds.has(id));
+        outGoingNode = outGoingNode.filter((id) => !excludeCtx.excludedDocIds.has(id));
+    }
     const connectedNodesMap = await sqliteStoreManager.getGraphNodeRepo()
         .getByIds([...inComingNode, ...outGoingNode]);
 
@@ -44,6 +47,9 @@ export async function inspectNoteContext(params: any) {
         }
     }
 
+    if (excludeCtx) {
+        excludeCtx.excludedDocIds.forEach((id) => neighborDocumentsIds.add(id));
+    }
     const semanticNeighbors: SemanticNeighborNode[] = include_semantic_paths
         ? await getSemanticNeighbors(docMeta.id, limit, neighborDocumentsIds)
         : [];

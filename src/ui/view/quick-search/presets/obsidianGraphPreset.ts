@@ -77,8 +77,21 @@ function obsidianGetNodeStyle(node: GraphVizNode): { fill: string; r?: number } 
 	return { fill: '#7c3aed' };
 }
 
+/** Strip display prefix so UI does not show "concept:" or "file:" in labels. */
+function stripLabelPrefix(label: string): string {
+	const s = label.trim();
+	if (s.startsWith('concept:')) return s.slice('concept:'.length).replace(/-/g, ' ').trim();
+	if (s.startsWith('file:')) {
+		const rest = s.slice('file:'.length).trim();
+		const base = rest.split('/').filter(Boolean).pop() || rest;
+		return base.replace(/\.(md|markdown)$/i, '') || base;
+	}
+	return s;
+}
+
 function obsidianGetNodeLabel(node: GraphVizNode, mode: 'full' | 'short'): string {
-	const raw = (node.label || '').trim();
+	let raw = (node.label || '').trim();
+	raw = stripLabelPrefix(raw);
 	if (raw) {
 		return mode === 'short' && raw.length > SHORT_LABEL_MAX_LEN ? raw.substring(0, SHORT_LABEL_MAX_LEN) + '...' : raw;
 	}
@@ -134,7 +147,12 @@ function obsidianGetNodeLabel(node: GraphVizNode, mode: 'full' | 'short'): strin
 	return mode === 'short' && id.length > SHORT_LABEL_MAX_LEN ? id.substring(0, SHORT_LABEL_MAX_LEN) + '...' : id;
 }
 
+/** Prefer explicit path/attributes.path so file/document nodes open the real path (id may be normalized). */
 function obsidianExtractPathFromNode(node: GraphVizNode): string | null {
+	const path = (node as GraphVizNode & { path?: string }).path;
+	if (path && typeof path === 'string' && path.trim()) return path.trim();
+	const attrsPath = (node as GraphVizNode & { attributes?: { path?: string } }).attributes?.path;
+	if (attrsPath && typeof attrsPath === 'string' && attrsPath.trim()) return attrsPath.trim();
 	const id = node.id ?? '';
 	if (id.startsWith('file:')) return id.slice('file:'.length);
 	if (id.startsWith('node:')) {

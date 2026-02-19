@@ -22,11 +22,7 @@ import * as aiAnalysisSessionSummary from './templates/ai-analysis-session-summa
 import * as imageSummary from './templates/image-summary';
 import * as imageDescription from './templates/image-description';
 import * as folderProjectSummary from './templates/folder-project-summary';
-import * as aiAnalysisFollowupSummary from './templates/ai-analysis-followup-summary';
-import * as aiAnalysisFollowupGraph from './templates/ai-analysis-followup-graph';
-import * as aiAnalysisFollowupSources from './templates/ai-analysis-followup-sources';
-import * as aiAnalysisFollowupBlocks from './templates/ai-analysis-followup-blocks';
-import * as aiAnalysisFollowupFull from './templates/ai-analysis-followup-full';
+import * as aiAnalysisFollowup from './templates/ai-analysis-followup';
 import * as aiAnalysisFollowupSystem from './templates/ai-analysis-followup-system';
 import * as aiAnalysisSummarySystem from './templates/ai-analysis-dashboard-result-summary-system';
 import * as aiAnalysisSummary from './templates/ai-analysis-dashboard-result-summary';
@@ -41,7 +37,21 @@ import * as aiAnalysisDashboardUpdateGraph from './templates/ai-analysis-dashboa
 import * as aiAnalysisDashboardUpdateGraphSystem from './templates/ai-analysis-dashboard-update-graph-system';
 import * as aiAnalysisDashboardUpdateBlocks from './templates/ai-analysis-dashboard-update-blocks';
 import * as aiAnalysisDashboardUpdateBlocksSystem from './templates/ai-analysis-dashboard-update-blocks-system';
+import * as aiAnalysisReviewBlocks from './templates/ai-analysis-review-blocks';
+import * as aiAnalysisReviewBlocksSystem from './templates/ai-analysis-review-blocks-system';
+import * as aiAnalysisDashboardUpdatePlan from './templates/ai-analysis-dashboard-update-plan';
+import * as aiAnalysisDashboardUpdatePlanSystem from './templates/ai-analysis-dashboard-update-plan-system';
+import * as aiAnalysisFinalRefine from './templates/ai-analysis-final-refine';
+import * as aiAnalysisFinalRefineSystem from './templates/ai-analysis-final-refine-system';
+import * as aiAnalysisFinalRefineSources from './templates/ai-analysis-final-refine-sources';
+import * as aiAnalysisFinalRefineSourcesSystem from './templates/ai-analysis-final-refine-sources-system';
+import * as aiAnalysisFinalRefineGraph from './templates/ai-analysis-final-refine-graph';
+import * as aiAnalysisFinalRefineGraphSystem from './templates/ai-analysis-final-refine-graph-system';
 import * as aiAnalysisSaveFilename from './templates/ai-analysis-save-filename';
+import * as aiAnalysisDocSimpleScope from './templates/ai-analysis-doc-simple-scope';
+import * as aiAnalysisDocSimpleSystem from './templates/ai-analysis-doc-simple-system';
+import * as aiAnalysisSuggestFollowUpQuestionsSystem from './templates/ai-analysis-suggest-follow-up-questions-system';
+import * as aiAnalysisSuggestFollowUpQuestions from './templates/ai-analysis-suggest-follow-up-questions';
 import * as aiAnalysisSaveFolder from './templates/ai-analysis-save-folder';
 import * as aiAnalysisTitle from './templates/ai-analysis-dashboard-title';
 import * as docTypeClassifyJson from './templates/doc-type-classify-json';
@@ -52,7 +62,7 @@ import * as profileFromVaultJson from './templates/profile-from-vault-json';
 import * as userProfileOrganizeMarkdown from './templates/user-profile-organize-markdown';
 import * as messageResources from './templates/message-resources';
 import { SystemInfo } from '../tools/system-info';
-import { DashboardUpdateContext } from '../agents/AISearchAgent';
+import { AnalysisMode, AISearchUpdateContext } from '../agents/AISearchAgent';
 
 /**
  * Prompt template definition.
@@ -64,11 +74,6 @@ export interface PromptTemplate {
 	expectsJson?: boolean;
 	/** Additional instructions for JSON output (e.g., "Return only JSON array") */
 	jsonConstraint?: string;
-	/** System prompt for the prompt if this template is a user prompt. */
-	// todo 分离系统提示和用户提示，让用户提示可以更灵活地使用系统提示。这样用户可以灵活配置，我们仅仅需要改一下 prompt service 的 render 即可
-	//  这么做是因为很多时候系统提示是更宪法级的 用户提示会包括很多当前上下文信息
-	//  有时候本 prpmpt 本身就是 system prompt 那么这个字段就是空
-	// systemPrompt?: string;
 }
 
 /**
@@ -124,8 +129,8 @@ export enum PromptId {
 	DocTagGenerateJson = 'doc-tag-generate-json',
 
 	// Search prompts
-	AiSearchSystem = 'ai-search-system',
-	ThoughtAgentSystem = 'thought-agent-system',
+	RawAiSearch = 'ai-search-system',
+	ThoughtAgent = 'thought-agent-system',
 	/** Session history compression for ThoughtAgent; preserves user background, pains, evidence paths. */
 	AiAnalysisSessionSummary = 'ai-analysis-session-summary',
 	// AI analysis dashboard update agent (update overviewMermaid/sources/topics/graph/blocks from memory evidence)
@@ -143,14 +148,27 @@ export enum PromptId {
 	AiAnalysisDashboardUpdateGraph = 'ai-analysis-dashboard-update-graph',
 	AiAnalysisDashboardUpdateBlocksSystem = 'ai-analysis-dashboard-update-blocks-system',
 	AiAnalysisDashboardUpdateBlocks = 'ai-analysis-dashboard-update-blocks',
+	AiAnalysisReviewBlocksSystem = 'ai-analysis-review-blocks-system',
+	AiAnalysisReviewBlocks = 'ai-analysis-review-blocks',
+	AiAnalysisDashboardUpdatePlanSystem = 'ai-analysis-dashboard-update-plan-system',
+	AiAnalysisDashboardUpdatePlan = 'ai-analysis-dashboard-update-plan',
+	AiAnalysisFinalRefineSystem = 'ai-analysis-final-refine-system',
+	AiAnalysisFinalRefine = 'ai-analysis-final-refine',
+	AiAnalysisFinalRefineSourcesSystem = 'ai-analysis-final-refine-sources-system',
+	AiAnalysisFinalRefineSources = 'ai-analysis-final-refine-sources',
+	AiAnalysisFinalRefineGraphSystem = 'ai-analysis-final-refine-graph-system',
+	AiAnalysisFinalRefineGraph = 'ai-analysis-final-refine-graph',
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
 	AiAnalysisTitle = 'ai-analysis-title',
-	// AI analysis inline follow-up prompts
-	AiAnalysisFollowupSummary = 'ai-analysis-followup-summary',
-	AiAnalysisFollowupGraph = 'ai-analysis-followup-graph',
-	AiAnalysisFollowupSources = 'ai-analysis-followup-sources',
-	AiAnalysisFollowupBlocks = 'ai-analysis-followup-blocks',
-	AiAnalysisFollowupFull = 'ai-analysis-followup-full',
+	/** Doc Simple mode: scope prefix (current file only + full coverage). */
+	AiAnalysisDocSimpleScope = 'ai-analysis-doc-simple-scope',
+	/** Doc Simple mode: system prompt for single-file Q&A agent. */
+	AiAnalysisDocSimpleSystem = 'ai-analysis-doc-simple-system',
+	AiAnalysisSuggestFollowUpQuestionsSystem = 'ai-analysis-suggest-follow-up-questions-system',
+	/** Suggest follow-up questions from full session context (not from topics). */
+	AiAnalysisSuggestFollowUpQuestions = 'ai-analysis-suggest-follow-up-questions',
+	/** Unified follow-up user prompt (Summary, Graph, Sources, Blocks, Full). Caller builds contextContent. */
+	AiAnalysisFollowup = 'ai-analysis-followup',
 	/** System prompt for all follow-up chats (Topic, Continue, Graph, Blocks, Sources). */
 	AiAnalysisFollowupSystem = 'ai-analysis-followup-system',
 	// AI analysis save dialog (filename/folder suggestions)
@@ -168,6 +186,35 @@ export enum PromptId {
 }
 
 /**
+ * Search AI Analysis–specific prompt IDs. Each can have its own provider/model in promptModelMap.
+ * Shown in a dedicated "Search AI Analysis" section with a "Set All" control.
+ */
+export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
+	PromptId.RawAiSearch,
+	PromptId.ThoughtAgent,
+	PromptId.AiAnalysisSessionSummary,
+	PromptId.AiAnalysisSummary,
+	PromptId.AiAnalysisDiagnosisJson,
+	PromptId.AiAnalysisOverviewMermaid,
+	PromptId.AiAnalysisDashboardUpdateSources,
+	PromptId.AiAnalysisDashboardUpdateTopics,
+	PromptId.AiAnalysisDashboardUpdateGraph,
+	PromptId.AiAnalysisDashboardUpdateBlocks,
+	PromptId.AiAnalysisReviewBlocks,
+	PromptId.AiAnalysisDashboardUpdatePlan,
+	PromptId.AiAnalysisFinalRefine,
+	PromptId.AiAnalysisTitle,
+	PromptId.AiAnalysisDocSimpleScope,
+	PromptId.AiAnalysisDocSimpleSystem,
+	PromptId.AiAnalysisSuggestFollowUpQuestions,
+	PromptId.AiAnalysisFollowup,
+	PromptId.AiAnalysisFollowupSystem,
+
+	PromptId.AiAnalysisSaveFileName,
+	PromptId.AiAnalysisSaveFolder,
+] as const;
+
+/**
  * Prompt IDs that allow model configuration in settings.
  * Only prompts listed here will appear in the Model Configuration UI.
  * 
@@ -181,7 +228,7 @@ export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.ProjectSummaryFull,
 
 	// Search prompts - users may want specialized models for search
-	PromptId.AiAnalysisSummary,
+	// AiAnalysis* prompts are in SEARCH_AI_ANALYSIS_PROMPT_IDS, not here
 	PromptId.SearchRerankRankGpt,
 
 	// Application prompts - title generation may benefit from different models
@@ -206,12 +253,6 @@ export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.DocTypeClassifyJson,
 	PromptId.DocTagGenerateJson,
 
-	// AI analysis follow-up prompts
-	PromptId.AiAnalysisFollowupSummary,
-	PromptId.AiAnalysisFollowupGraph,
-	PromptId.AiAnalysisFollowupSources,
-	PromptId.AiAnalysisFollowupBlocks,
-	PromptId.AiAnalysisFollowupFull,
 ] as const;
 
 /**
@@ -257,8 +298,8 @@ export interface PromptVariables {
 		query: string;
 		documents: Array<{ index: number; text: string; boostInfo?: string }>;
 	};
-	[PromptId.AiSearchSystem]: SystemInfo;
-	[PromptId.ThoughtAgentSystem]: { analysisMode?: 'simple' | 'full'; simpleMode?: boolean };
+	[PromptId.RawAiSearch]: SystemInfo;
+	[PromptId.ThoughtAgent]: { analysisMode?: AnalysisMode; simpleMode?: boolean };
 	[PromptId.SourcesUpdateAgentSystem]: { text: string; lastError?: string };
 	[PromptId.TopicsUpdateAgentSystem]: { text: string; lastError?: string };
 	[PromptId.GraphUpdateAgentSystem]: { text: string; lastError?: string };
@@ -322,26 +363,39 @@ export interface PromptVariables {
 		title?: string;
 		existingTags?: string[];
 	};
-	[PromptId.AiAnalysisFollowupSummary]: { question: string; summary: string; originalQuery?: string };
-	[PromptId.AiAnalysisFollowupGraph]: { question: string; nodeLabels: string; nodeCount: number; edgeCount: number; originalQuery?: string; mainSummary?: string };
-	[PromptId.AiAnalysisFollowupSources]: { question: string; sourcesList: string; originalQuery?: string; mainSummary?: string };
-	[PromptId.AiAnalysisFollowupBlocks]: { question: string; blocksText: string; originalQuery?: string; mainSummary?: string };
-	[PromptId.AiAnalysisFollowupFull]: { question: string; summary: string; originalQuery?: string };
+	/** originalQuery, question, contextContent (caller builds based on section). */
+	[PromptId.AiAnalysisFollowup]: { originalQuery: string; question: string; contextContent: string };
+	/** System prompt for all follow-up chats; no variables. */
+	[PromptId.AiAnalysisFollowupSystem]: Record<string, never>;
 	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
+	[PromptId.AiAnalysisDocSimpleScope]: { scopeValue: string; userPrompt: string; fileContent: string };
+	[PromptId.AiAnalysisDocSimpleSystem]: Record<string, never>;
+	[PromptId.AiAnalysisSuggestFollowUpQuestionsSystem]: Record<string, never>;
+	[PromptId.AiAnalysisSuggestFollowUpQuestions]: { sessionContext: string };
 
 	[PromptId.AiAnalysisSummarySystem]: Record<string, never>;
-	[PromptId.AiAnalysisSummary]: DashboardUpdateContext & { diagnosisJson?: string };
+	[PromptId.AiAnalysisSummary]: AISearchUpdateContext & { diagnosisJson?: string };
 	[PromptId.AiAnalysisDiagnosisJson]: { originalQuery: string; recentEvidenceHint: string; currentResultSnapshot: string };
 	[PromptId.AiAnalysisOverviewMermaidSystem]: Record<string, never>;
-	[PromptId.AiAnalysisOverviewMermaid]: DashboardUpdateContext & ErrorRetryInfo;
+	[PromptId.AiAnalysisOverviewMermaid]: AISearchUpdateContext & ErrorRetryInfo;
 	[PromptId.AiAnalysisDashboardUpdateSourcesSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateSources]: DashboardUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisDashboardUpdateSources]: AISearchUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateTopicsSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateTopics]: DashboardUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisDashboardUpdateTopics]: AISearchUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateGraphSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateGraph]: DashboardUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisDashboardUpdateGraph]: AISearchUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateBlocks]: DashboardUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisDashboardUpdateBlocks]: AISearchUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisReviewBlocksSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReviewBlocks]: AISearchUpdateContext & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisDashboardUpdatePlanSystem]: Record<string, never>;
+	[PromptId.AiAnalysisDashboardUpdatePlan]: AISearchUpdateContext;
+	[PromptId.AiAnalysisFinalRefineSystem]: Record<string, never>;
+	[PromptId.AiAnalysisFinalRefine]: AISearchUpdateContext & { toolFormatGuidance?: string; refineMode?: 'sources_only' | 'graph_only' | 'full' };
+	[PromptId.AiAnalysisFinalRefineSourcesSystem]: Record<string, never>;
+	[PromptId.AiAnalysisFinalRefineSources]: AISearchUpdateContext & { toolFormatGuidance?: string; sourcesBatch?: { start: number; end: number; indexPlusOne: number; total: number } };
+	[PromptId.AiAnalysisFinalRefineGraphSystem]: Record<string, never>;
+	[PromptId.AiAnalysisFinalRefineGraph]: AISearchUpdateContext & { toolFormatGuidance?: string };
 
 	[PromptId.AiAnalysisSaveFileName]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string; candidateFoldersFromSearch?: string; defaultSaveFolder?: string };
@@ -395,8 +449,8 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptInfo> = {
 	[PromptId.ProjectSummaryShort]: createTemplate(projectSummaryShort),
 	[PromptId.ProjectSummaryFull]: createTemplate(projectSummaryFull),
 	[PromptId.SearchRerankRankGpt]: createTemplate(searchRerankRankGpt),
-	[PromptId.AiSearchSystem]: createTemplate(aiSearchSystem),
-	[PromptId.ThoughtAgentSystem]: createTemplate(thoughtAgentSystem),
+	[PromptId.RawAiSearch]: createTemplate(aiSearchSystem),
+	[PromptId.ThoughtAgent]: createTemplate(thoughtAgentSystem),
 	[PromptId.SourcesUpdateAgentSystem]: createTemplate(sourcesUpdateAgentSystem),
 	[PromptId.TopicsUpdateAgentSystem]: createTemplate(topicsUpdateAgentSystem),
 	[PromptId.GraphUpdateAgentSystem]: createTemplate(graphUpdateAgentSystem),
@@ -412,13 +466,16 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptInfo> = {
 	[PromptId.ImageDescription]: createTemplate(imageDescription),
 	[PromptId.ImageSummary]: createTemplate(imageSummary),
 	[PromptId.FolderProjectSummary]: createTemplate(folderProjectSummary),
-	[PromptId.AiAnalysisFollowupSummary]: createTemplate(aiAnalysisFollowupSummary),
-	[PromptId.AiAnalysisFollowupGraph]: createTemplate(aiAnalysisFollowupGraph),
-	[PromptId.AiAnalysisFollowupSources]: createTemplate(aiAnalysisFollowupSources),
-	[PromptId.AiAnalysisFollowupBlocks]: createTemplate(aiAnalysisFollowupBlocks),
-	[PromptId.AiAnalysisFollowupFull]: createTemplate(aiAnalysisFollowupFull),
+	[PromptId.AiAnalysisFollowup]: createTemplate(aiAnalysisFollowup),
 	[PromptId.AiAnalysisFollowupSystem]: createTemplate(aiAnalysisFollowupSystem),
 	[PromptId.AiAnalysisTitle]: createTemplate(aiAnalysisTitle),
+	[PromptId.AiAnalysisDocSimpleScope]: createTemplate(aiAnalysisDocSimpleScope),
+	[PromptId.AiAnalysisDocSimpleSystem]: createTemplate(aiAnalysisDocSimpleSystem),
+	[PromptId.AiAnalysisSuggestFollowUpQuestionsSystem]: createTemplate(aiAnalysisSuggestFollowUpQuestionsSystem),
+	[PromptId.AiAnalysisSuggestFollowUpQuestions]: {
+		...createTemplate(aiAnalysisSuggestFollowUpQuestions),
+		systemPromptId: PromptId.AiAnalysisSuggestFollowUpQuestionsSystem,
+	},
 
 	[PromptId.AiAnalysisSummarySystem]: createTemplate(aiAnalysisSummarySystem),
 	[PromptId.AiAnalysisSummary]: {
@@ -455,6 +512,31 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptInfo> = {
 	[PromptId.AiAnalysisDashboardUpdateBlocks]: {
 		...createTemplate(aiAnalysisDashboardUpdateBlocks),
 		systemPromptId: PromptId.AiAnalysisDashboardUpdateBlocksSystem,
+	},
+	[PromptId.AiAnalysisReviewBlocksSystem]: createTemplate(aiAnalysisReviewBlocksSystem),
+	[PromptId.AiAnalysisReviewBlocks]: {
+		...createTemplate(aiAnalysisReviewBlocks),
+		systemPromptId: PromptId.AiAnalysisReviewBlocksSystem,
+	},
+	[PromptId.AiAnalysisDashboardUpdatePlanSystem]: createTemplate(aiAnalysisDashboardUpdatePlanSystem),
+	[PromptId.AiAnalysisDashboardUpdatePlan]: {
+		...createTemplate(aiAnalysisDashboardUpdatePlan),
+		systemPromptId: PromptId.AiAnalysisDashboardUpdatePlanSystem,
+	},
+	[PromptId.AiAnalysisFinalRefineSystem]: createTemplate(aiAnalysisFinalRefineSystem),
+	[PromptId.AiAnalysisFinalRefine]: {
+		...createTemplate(aiAnalysisFinalRefine),
+		systemPromptId: PromptId.AiAnalysisFinalRefineSystem,
+	},
+	[PromptId.AiAnalysisFinalRefineSourcesSystem]: createTemplate(aiAnalysisFinalRefineSourcesSystem),
+	[PromptId.AiAnalysisFinalRefineSources]: {
+		...createTemplate(aiAnalysisFinalRefineSources),
+		systemPromptId: PromptId.AiAnalysisFinalRefineSourcesSystem,
+	},
+	[PromptId.AiAnalysisFinalRefineGraphSystem]: createTemplate(aiAnalysisFinalRefineGraphSystem),
+	[PromptId.AiAnalysisFinalRefineGraph]: {
+		...createTemplate(aiAnalysisFinalRefineGraph),
+		systemPromptId: PromptId.AiAnalysisFinalRefineGraphSystem,
 	},
 
 	[PromptId.AiAnalysisSaveFileName]: createTemplate(aiAnalysisSaveFilename),

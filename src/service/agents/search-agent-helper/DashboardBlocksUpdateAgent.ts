@@ -2,12 +2,12 @@ import { Experimental_Agent as Agent, stepCountIs } from 'ai';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import { ErrorRetryInfo, PromptId, type PromptVariables } from '@/service/prompt/PromptId';
-import { DashboardUpdateContext, InnerAgentContext, type AnalysisMode } from '../AISearchAgent';
-import { dashboardBlocksUpdateTool, getDashboardBlocksToolFormatGuidance } from './DashboardUpdateToolBuilder';
+import { AISearchUpdateContext, InnerAgentContext, type AnalysisMode } from '../AISearchAgent';
+import { dashboardBlocksUpdateTool, getDashboardBlocksToolFormatGuidance } from './helpers/DashboardUpdateToolBuilder';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import type { AgentTool } from '@/service/tools/types';
 import { RESULT_UPDATE_TOOL_NAMES } from '../AISearchAgent';
-import { streamTransform, withRetryStream } from '@/core/providers/helpers/stream-helper';
+import { buildPromptTraceDebugEvent, streamTransform, withRetryStream } from '@/core/providers/helpers/stream-helper';
 
 const DEFAULT_MAX_STEPS = 18;
 
@@ -16,9 +16,10 @@ type BlocksUpdateToolSet = {
     add_dashboard_blocks: AgentTool;
 };
 
+/** Uses getModelForPrompt(AiAnalysisDashboardUpdateBlocks). */
 export class DashboardBlocksUpdateAgent {
     private readonly aiServiceManager: AIServiceManager;
-    private readonly options: { provider: string; model: string, enableWebSearch?: boolean; enableLocalSearch?: boolean, analysisMode?: AnalysisMode };
+    private readonly options: { enableWebSearch?: boolean; enableLocalSearch?: boolean; analysisMode: AnalysisMode };
     private readonly context: InnerAgentContext;
 
     private agent: Agent<BlocksUpdateToolSet>;
@@ -26,13 +27,14 @@ export class DashboardBlocksUpdateAgent {
     constructor(
         params: {
             aiServiceManager: AIServiceManager,
-            options: { provider: string; model: string, enableWebSearch?: boolean; enableLocalSearch?: boolean, analysisMode?: AnalysisMode },
+            options: { provider?: string; model?: string; enableWebSearch?: boolean; enableLocalSearch?: boolean; analysisMode: AnalysisMode },
             context: InnerAgentContext,
         }
     ) {
         this.aiServiceManager = params.aiServiceManager;
-        this.options = params.options;
+        this.options = { enableWebSearch: params.options.enableWebSearch, enableLocalSearch: params.options.enableLocalSearch, analysisMode: params.options.analysisMode };
         this.context = params.context;
+        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisDashboardUpdateBlocks);
         const { getResult, searchHistory } = this.context;
 
         const tools: BlocksUpdateToolSet = {
@@ -44,8 +46,8 @@ export class DashboardBlocksUpdateAgent {
 
         this.agent = new Agent<BlocksUpdateToolSet>({
             model: this.aiServiceManager.getMultiChat()
-                .getProviderService(this.options.provider)
-                .modelClient(this.options.model),
+                .getProviderService(provider)
+                .modelClient(modelId),
             tools,
             stopWhen: [
                 stepCountIs(DEFAULT_MAX_STEPS),
@@ -54,7 +56,7 @@ export class DashboardBlocksUpdateAgent {
     }
 
     public async *stream(
-        variables: DashboardUpdateContext
+        variables: AISearchUpdateContext
     ): AsyncGenerator<LLMStreamEvent> {
         yield* withRetryStream(
             variables,
@@ -63,7 +65,7 @@ export class DashboardBlocksUpdateAgent {
     }
 
     private async *realStreamInterlal(
-        variables: DashboardUpdateContext,
+        variables: AISearchUpdateContext,
         errorRetryInfo?: ErrorRetryInfo,
     ): AsyncGenerator<LLMStreamEvent> {
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisDashboardUpdateBlocks);
@@ -74,6 +76,7 @@ export class DashboardBlocksUpdateAgent {
             toolFormatGuidance: getDashboardBlocksToolFormatGuidance(),
         } as PromptVariables[typeof PromptId.AiAnalysisDashboardUpdateBlocks]);
 
+        yield buildPromptTraceDebugEvent('dashboard-update-blocks-prompt', StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT, system, prompt);
         const result = this.agent.stream({ system, prompt });
         yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT, {
             yieldEventPostProcessor: (chunk: any) => {

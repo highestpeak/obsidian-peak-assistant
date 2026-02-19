@@ -462,9 +462,12 @@ export enum StreamTriggerName {
 	SEARCH_SOURCES_AGENT = 'search-sources-agent',
 	SEARCH_DASHBOARD_AGENT = 'search-dashboard-agent',
 	SEARCH_DASHBOARD_UPDATE_AGENT = 'search-dashboard-update-agent',
+	SEARCH_REVIEW_BLOCKS = 'search-review-blocks',
 	SEARCH_SUMMARY = 'search-summary',
 	SEARCH_TITLE = 'search-title',
 	SEARCH_OVERVIEW_MERMAID = 'search-overview-mermaid',
+	DOC_SIMPLE_AGENT = 'doc-simple-agent',
+	FOLLOW_UP_QUESTION_AGENT = 'follow-up-question-agent',
 }
 
 export enum ToolEvent {
@@ -484,6 +487,10 @@ export enum ToolEvent {
 
 export enum UIStepType {
 	STEPS_DISPLAY = 'steps-display',
+}
+
+export enum UISignalChannel {
+	GRAPH = 'graph',
 }
 
 /**

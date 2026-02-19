@@ -2,16 +2,15 @@ import { AnalysisTimer } from "../../../../component/mine/IntelligenceFrame";
 import React, { useCallback } from "react";
 import { AnimatedSparkles } from "@/ui/component/mine";
 import { useAIAnalysisStore } from "../../store";
+import { PRESET_LABELS } from "../../SearchModal";
 
-/**
- * Combined state component for AI search - shows loading or ready state
- */
 export const AIAnalysisPreStreamingState: React.FC = () => {
     const {
         isAnalyzing,
         analysisCompleted,
         isSummaryStreaming,
         analysisStartedAtMs,
+        analysisMode,
     } = useAIAnalysisStore();
 
     const checkIfAnalyzing = useCallback(() => {
@@ -26,6 +25,11 @@ export const AIAnalysisPreStreamingState: React.FC = () => {
             <span className="pktw-font-semibold pktw-text-[#2e3338] pktw-mb-2">
                 {checkIfAnalyzing() || isSummaryStreaming ? 'Analyzing...' : 'Ready to Analyze with AI'}
             </span>
+            {!(checkIfAnalyzing() || isSummaryStreaming) && analysisMode ? (
+                <span className="pktw-text-[#9ca3af] pktw-font-semibold pktw-mb-1">
+                    {PRESET_LABELS[analysisMode].full}
+                </span>
+            ) : null}
             {analysisStartedAtMs && (checkIfAnalyzing() || isSummaryStreaming) ? (
                 <div className="pktw-mb-2">
                     <AnalysisTimer startedAtMs={analysisStartedAtMs} isRunning={true} />

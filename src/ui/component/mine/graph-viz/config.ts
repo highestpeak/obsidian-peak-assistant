@@ -36,6 +36,8 @@ export interface GraphConfig {
 
 	/** Fill color for tag-type nodes. */
 	tagNodeFill: string;
+	/** Fill color for concept-type nodes. Only shown in settings when graph has concept nodes. */
+	conceptNodeFill: string;
 	/** Highlight high-degree (hub) nodes with a halo. */
 	highlightHubs: boolean;
 	/** Number of top-degree nodes to highlight as hubs. */
@@ -64,6 +66,8 @@ export interface GraphConfig {
 	clusterForceStrength: number;
 	/** Repulsion between cluster centroids so groups don't overlap. 0 = off. */
 	clusterRepulsionStrength: number;
+	/** Repulsion between connected components (multiple MSTs). Pushes separate components apart. 0 = off. */
+	componentRepulsionStrength: number;
 	/** MST edges: link strength multiplier (stronger spring for tree backbone). */
 	mstLinkStrengthScale: number;
 	/** Non-MST edges: link strength multiplier (weaker so layout follows tree). */
@@ -106,6 +110,7 @@ export const DEFAULT_CONFIG: GraphConfig = {
 	showTags: true,
 	showSemanticEdges: true,
 	tagNodeFill: '#d97706',
+	conceptNodeFill: '#0ea5e9',
 	semanticEdgeStyle: 'dashed',
 	semanticEdgeOpacity: 0.35,
 	semanticEdgeWidthScale: 1,
@@ -126,6 +131,7 @@ export const DEFAULT_CONFIG: GraphConfig = {
 	clusterLayout: true,
 	clusterForceStrength: 0.02,
 	clusterRepulsionStrength: 0.12,
+	componentRepulsionStrength: 0.6,
 	mstLinkStrengthScale: 1.5,
 	nonMstLinkStrengthScale: 0.3,
 	mstLinkDistanceScale: 0.7,

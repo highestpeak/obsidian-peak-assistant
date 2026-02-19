@@ -24,5 +24,5 @@ export const STREAM_TIME_SLICE_MS = 10;
 /** During streaming, coalesce renderJoin calls; min interval between runs. */
 export const STREAMING_JOIN_MS = 280;
 
-/** Lucide icon viewBox size; used to scale tag icon to node radius. */
+/** Lucide icon viewBox size; used to scale node icons to node radius. */
 export const LUCIDE_VIEWBOX = 24;

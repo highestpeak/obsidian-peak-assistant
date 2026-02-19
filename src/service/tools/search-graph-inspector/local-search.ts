@@ -4,6 +4,7 @@ import { buildResponse } from "../types";
 import { applyFiltersAndSorters } from "./common";
 import { SearchResultItem, SearchSnippet } from "@/service/search/types";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
+import { getAiAnalysisExcludeContext, pathUnderExcludedFolder } from "./ai-analysis-exclude";
 
 /**
  * Convert SearchSnippet to a text string with highlights marked using **bold** syntax.
@@ -103,13 +104,18 @@ async function getSearchResultItemFieldGetter(items: SearchResultItem[], filters
 
 export async function localSearch(params: any) {
     const { query, searchMode, scopeMode, scopeValue, limit, response_format, filters, sorter } = params;
-    const { items, duration } = await AppContext.getInstance().searchClient.search({
+    const { items: rawItems, duration } = await AppContext.getInstance().searchClient.search({
         text: query,
         searchMode: searchMode,
         scopeMode: scopeMode,
         scopeValue: scopeValue,
         topK: limit,
     });
+
+    const excludeCtx = await getAiAnalysisExcludeContext();
+    const items = excludeCtx
+        ? rawItems.filter((i) => !pathUnderExcludedFolder(i.path ?? "", excludeCtx.folderPath))
+        : rawItems;
 
     // Use path-aware field getter instead of graph node ID based getter
     const itemFieldGetter = await getSearchResultItemFieldGetter(items, filters, sorter);

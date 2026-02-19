@@ -1,5 +1,29 @@
 import { DEFAULT_TOOL_ERROR_RETRY_TIMES } from "@/core/constant";
 import { LLMStreamEvent, StreamTriggerName, UIStepType } from "../types";
+
+/** Max chars per prompt for pk-debug (avoids huge console dumps). */
+export const PK_DEBUG_PROMPT_TRUNCATE_CHARS = 2000;
+
+/** Build a pk-debug event for prompt trace (system + user truncated). */
+export function buildPromptTraceDebugEvent(
+    debugName: string,
+    triggerName: StreamTriggerName,
+    system: string,
+    prompt: string,
+): LLMStreamEvent {
+    const cap = PK_DEBUG_PROMPT_TRUNCATE_CHARS;
+    return {
+        type: 'pk-debug',
+        debugName,
+        triggerName,
+        extra: {
+            system: system.slice(0, cap),
+            prompt: prompt.slice(0, cap),
+            systemLen: system.length,
+            promptLen: prompt.length,
+        },
+    };
+}
 import { convertMessagesToText, generateToolCallId } from "../adapter/ai-sdk-adapter";
 import { buildToolCorrectionMessageFromChunk, buildToolResultStreamEventFromChunk } from "./message-helper";
 import { ErrorRetryInfo } from "@/service/prompt/PromptId";
@@ -178,4 +202,12 @@ export function getDeltaEventDeltaText(event: LLMStreamEvent): string {
             return event.delta;
     }
     return '';
+}
+
+export function checkIfDeltaEvent(type: LLMStreamEvent['type']) {
+    return type === 'text-delta'
+        || type === 'reasoning-delta'
+        || type === 'prompt-stream-delta'
+        || type === 'tool-input-delta'
+        || type === 'ui-step-delta';
 }

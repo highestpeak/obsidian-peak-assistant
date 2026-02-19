@@ -1,5 +1,5 @@
 /**
- * Path2D cache for node shapes (circle, diamond, triangle) and Lucide Tag icon.
+ * Path2D cache for node shapes (circle, diamond, triangle) and Lucide icons for tag/concept nodes.
  * Avoids per-frame Path2D allocations.
  */
 
@@ -7,7 +7,9 @@ import { icons } from 'lucide';
 import type { GraphVizNode } from '../../types';
 import { LUCIDE_VIEWBOX } from '../constants';
 
-const LUCIDE_TAG_ICON = icons.Tag as Array<[string, Record<string, string>]>;
+type LucideIconData = Array<[string, Record<string, string>]>;
+const LUCIDE_TAG_ICON = icons.Tag as LucideIconData;
+const LUCIDE_PUZZLE_ICON = icons.Puzzle as LucideIconData;
 
 const shapeCache = new Map<string, Path2D>();
 
@@ -55,11 +57,11 @@ function trianglePath(r: number): Path2D {
 }
 
 let cachedTagPath: Path2D | null = null;
+let cachedCommandPath: Path2D | null = null;
 
-function getTagIconPath(): Path2D {
-	if (cachedTagPath) return cachedTagPath;
+function buildIconPath(iconData: Array<[string, Record<string, string>]>): Path2D {
 	const p = new Path2D();
-	for (const item of LUCIDE_TAG_ICON) {
+	for (const item of iconData) {
 		const tag = item[0];
 		const attrs = (item as [string, Record<string, string>])[1] ?? {};
 		if (tag === 'path' && attrs.d) p.addPath(new Path2D(attrs.d));
@@ -70,11 +72,22 @@ function getTagIconPath(): Path2D {
 			p.arc(cx, cy, r, 0, Math.PI * 2);
 		}
 	}
-	cachedTagPath = p;
 	return p;
 }
 
-export type NodeShapeKind = 'circle' | 'diamond' | 'triangle' | 'tag';
+function getTagIconPath(): Path2D {
+	if (cachedTagPath) return cachedTagPath;
+	cachedTagPath = buildIconPath(LUCIDE_TAG_ICON);
+	return cachedTagPath;
+}
+
+function getCommandIconPath(): Path2D {
+	if (cachedCommandPath) return cachedCommandPath;
+	cachedCommandPath = buildIconPath(LUCIDE_PUZZLE_ICON);
+	return cachedCommandPath;
+}
+
+export type NodeShapeKind = 'circle' | 'diamond' | 'triangle' | 'tag' | 'concept';
 
 export function getNodeShapePath2D(d: GraphVizNode): { path: Path2D; kind: NodeShapeKind; scale?: number } {
 	const r = d.r ?? 10;
@@ -83,12 +96,17 @@ export function getNodeShapePath2D(d: GraphVizNode): { path: Path2D; kind: NodeS
 		const scale = (2 * r) / LUCIDE_VIEWBOX;
 		return { path: getTagIconPath(), kind: 'tag', scale };
 	}
+	if (t === 'concept') {
+		const scale = (2 * r) / LUCIDE_VIEWBOX;
+		return { path: getCommandIconPath(), kind: 'concept', scale };
+	}
 	if (t === 'topic') return { path: diamondPath(r), kind: 'diamond' };
-	if (t === 'concept') return { path: trianglePath(r), kind: 'triangle' };
 	return { path: circlePath(r), kind: 'circle' };
 }
 
 /** Clear cache when config changes (e.g. radius scale). Call rarely. */
 export function clearShapeCache(): void {
 	shapeCache.clear();
+	cachedTagPath = null;
+	cachedCommandPath = null;
 }

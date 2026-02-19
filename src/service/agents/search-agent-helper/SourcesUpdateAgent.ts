@@ -2,12 +2,12 @@ import { Experimental_Agent as Agent, stepCountIs } from 'ai';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import { ErrorRetryInfo, PromptId } from '@/service/prompt/PromptId';
-import { DashboardUpdateContext, InnerAgentContext } from '../AISearchAgent';
-import { sourcesUpdateTool, getSourcesToolFormatGuidance } from './DashboardUpdateToolBuilder';
+import { AISearchUpdateContext, InnerAgentContext } from '../AISearchAgent';
+import { sourcesUpdateTool, getSourcesToolFormatGuidance } from './helpers/DashboardUpdateToolBuilder';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import type { AgentTool } from '@/service/tools/types';
 import { RESULT_UPDATE_TOOL_NAMES } from '../AISearchAgent';
-import { streamTransform, withRetryStream } from '@/core/providers/helpers/stream-helper';
+import { buildPromptTraceDebugEvent, streamTransform, withRetryStream } from '@/core/providers/helpers/stream-helper';
 
 const DEFAULT_MAX_STEPS = 18;
 
@@ -16,9 +16,10 @@ type SourcesUpdateToolSet = {
     update_sources: AgentTool;
 };
 
+/** Uses getModelForPrompt(AiAnalysisDashboardUpdateSources). */
 export class SourcesUpdateAgent {
     private readonly aiServiceManager: AIServiceManager;
-    private readonly options: { provider: string; model: string, enableWebSearch?: boolean; enableLocalSearch?: boolean };
+    private readonly options: { enableWebSearch?: boolean; enableLocalSearch?: boolean };
     private readonly context: InnerAgentContext;
 
     private agent: Agent<SourcesUpdateToolSet>;
@@ -26,13 +27,14 @@ export class SourcesUpdateAgent {
     constructor(
         params: {
             aiServiceManager: AIServiceManager,
-            options: { provider: string; model: string, enableWebSearch?: boolean; enableLocalSearch?: boolean },
+            options: { provider?: string; model?: string; enableWebSearch?: boolean; enableLocalSearch?: boolean },
             context: InnerAgentContext,
         }
     ) {
         this.aiServiceManager = params.aiServiceManager;
-        this.options = params.options;
+        this.options = { enableWebSearch: params.options.enableWebSearch, enableLocalSearch: params.options.enableLocalSearch };
         this.context = params.context;
+        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisDashboardUpdateSources);
         const { getResult, getVerifiedPaths, searchHistory } = this.context;
 
         const tools: SourcesUpdateToolSet = {
@@ -44,8 +46,8 @@ export class SourcesUpdateAgent {
 
         this.agent = new Agent<SourcesUpdateToolSet>({
             model: this.aiServiceManager.getMultiChat()
-                .getProviderService(this.options.provider)
-                .modelClient(this.options.model),
+                .getProviderService(provider)
+                .modelClient(modelId),
             tools,
             stopWhen: [
                 stepCountIs(DEFAULT_MAX_STEPS),
@@ -54,7 +56,7 @@ export class SourcesUpdateAgent {
     }
 
     public async *stream(
-        variables: DashboardUpdateContext
+        variables: AISearchUpdateContext
     ): AsyncGenerator<LLMStreamEvent> {
         yield* withRetryStream(
             variables,
@@ -63,7 +65,7 @@ export class SourcesUpdateAgent {
     }
 
     private async *realStreamInterlal(
-        variables: DashboardUpdateContext,
+        variables: AISearchUpdateContext,
         errorRetryInfo?: ErrorRetryInfo,
     ): AsyncGenerator<LLMStreamEvent> {
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisDashboardUpdateSources);
@@ -74,6 +76,7 @@ export class SourcesUpdateAgent {
             toolFormatGuidance: getSourcesToolFormatGuidance(),
         });
 
+        yield buildPromptTraceDebugEvent('sources-update-prompt', StreamTriggerName.SEARCH_SOURCES_AGENT, system, prompt);
         const result = this.agent.stream({ system, prompt });
         yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_SOURCES_AGENT, {
             yieldEventPostProcessor: (chunk: any) => {

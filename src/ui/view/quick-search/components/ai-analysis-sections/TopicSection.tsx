@@ -236,6 +236,8 @@ export const TopicSection: React.FC<TagCloudSectionProps> = ({
 		setShowAddInput(false);
 	}, [addTopicValue, addTopic]);
 
+	if (!topics || topics.length === 0) return null;
+
 	return (
 		<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]" data-topic-menu>
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">

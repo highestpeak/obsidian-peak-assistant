@@ -128,7 +128,7 @@ export const useGraphAnimationStore = create<GraphAnimationStore>((set, get) => 
 }));
 
 /** Persist graph patch to store. Patch is incremental (only new/changed nodes/edges); setGraph merges via mergeAISearchGraphs. */
-function persistPatchToStore(patch: any): void {
+export function persistPatchToStore(patch: any): void {
 	try {
 		const nodes: AISearchNode[] = (patch?.upsertNodes ?? []).map((n: any) => {
 			const id = String(n.id);

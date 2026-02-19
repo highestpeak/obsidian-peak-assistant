@@ -1,9 +1,11 @@
 import { AppContext } from "@/app/context/AppContext";
+import { DEFAULT_SEARCH_SETTINGS } from "@/app/settings/types";
 import { generateToolCallId } from "@/core/providers/adapter/ai-sdk-adapter";
 import { convertMessagesToText } from "@/core/providers/adapter/ai-sdk-adapter";
 import { buildLLMRequestMessage, concatLLMRequestMessages } from "@/core/providers/helpers/message-helper";
-import { LLMRequestMessage, LLMStreamEvent, LLMUsage, mergeTokenUsage, OneGenerationContext, StreamTriggerName, ToolEvent } from "@/core/providers/types";
+import { LLMRequestMessage, LLMStreamEvent, LLMUsage, mergeTokenUsage, OneGenerationContext, StreamTriggerName, ToolEvent, UIStepType } from "@/core/providers/types";
 import { refreshableMemoizeSupplier, Supplier } from "@/core/utils/functions";
+import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
 import { AIServiceManager } from "@/service/chat/service-manager";
 import { PromptId } from "@/service/prompt/PromptId";
 
@@ -43,15 +45,15 @@ export interface AgentMemory {
 const DEFAULT_MAX_RECENT_MESSAGES = 10;
 const DEFAULT_SUMMARY_UPDATE_THRESHOLD = 5;
 
+/**
+ * Manages agent memory and session summarization.
+ * Uses getModelForPrompt(AiAnalysisSessionSummary) for summarization model.
+ */
 export class AgentMemoryManager {
     private agentMemory: AgentMemory;
 
     constructor(
         private readonly aiServiceManager: AIServiceManager,
-        private readonly options: {
-            thoughtAgentModel: string;
-            thoughtAgentProvider: string;
-        }
     ) {
     }
 
@@ -75,16 +77,19 @@ export class AgentMemoryManager {
         oneGenerationContext: OneGenerationContext,
         thoughtText: string,
     ): LLMRequestMessage {
-        const reasoningText = oneGenerationContext.reasoningTextChunks.join('');
+        const reasoningChunks = oneGenerationContext.reasoningTextChunks ?? [];
+        const reasoningText = reasoningChunks.join('');
+        const thoughtStr = (thoughtText ?? '').trim();
+        const reasoningStr = (reasoningText ?? '').trim();
         const thoughtMessage: LLMRequestMessage = {
             role: 'assistant',
             content: []
         }
-        if (thoughtText.trim().length > 0) {
-            thoughtMessage.content.push({ type: 'text', text: thoughtText.trim() });
+        if (thoughtStr.length > 0) {
+            thoughtMessage.content.push({ type: 'text', text: thoughtStr });
         }
-        if (reasoningText.trim().length > 0) {
-            thoughtMessage.content.push({ type: 'reasoning', text: reasoningText.trim() });
+        if (reasoningStr.length > 0) {
+            thoughtMessage.content.push({ type: 'reasoning', text: reasoningStr });
         }
         if (oneGenerationContext.toolCalls.length > 0) {
             thoughtMessage.content.push(
@@ -124,9 +129,10 @@ export class AgentMemoryManager {
             };
         }
 
+        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisSessionSummary);
         const tokenLimits = await this.aiServiceManager.getModelTokenLimits(
-            this.options.thoughtAgentModel,
-            this.options.thoughtAgentProvider
+            modelId,
+            provider
         );
         if (!tokenLimits) {
             const shouldSummarize = history.length - this.agentMemory.lastSummaryIndex > DEFAULT_SUMMARY_UPDATE_THRESHOLD;
@@ -170,6 +176,14 @@ export class AgentMemoryManager {
         // Check if summarization is needed based on token limits
         const { shouldSummarize, reason } = await this.shouldSummarizeHistory();
         if (!shouldSummarize) {
+            yield {
+                type: 'pk-debug',
+                debugName: 'summary_context_messages_not_needed',
+                triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+                extra: {
+                    reason,
+                },
+            };
             return;
         }
 
@@ -190,15 +204,36 @@ export class AgentMemoryManager {
                 messagesToSummarize: messagesToSummarizeText,
             },
         };
+        const stepId = generateUuidWithoutHyphens();
+        yield {
+            type: 'ui-step',
+            uiType: UIStepType.STEPS_DISPLAY,
+            stepId,
+            title: 'Summarizing context messages...',
+            description: 'Trying to build next prompt with the summary...',
+            triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+        }
 
         // Generate summary with decision-critical structure (user background, pains, evidence paths)
-        const wordCountLimit = AppContext.getInstance().settings.search.aiAnalysisSessionSummaryWordCount ?? 3000;
+        const wordCountLimit = AppContext.getInstance().settings.search.aiAnalysisSessionSummaryWordCount ?? DEFAULT_SEARCH_SETTINGS.aiAnalysisSessionSummaryWordCount;
         const summaryStream = this.aiServiceManager.chatWithPromptStream(PromptId.AiAnalysisSessionSummary, {
             content: messagesToSummarizeText,
             userQuery: this.agentMemory.initialPrompt ?? '',
             wordCount: `up to ${wordCountLimit} characters (words)`,
         })
         for await (const chunk of summaryStream) {
+            if (chunk.type === 'prompt-stream-delta') {
+                yield {
+                    type: 'ui-step-delta',
+                    uiType: UIStepType.STEPS_DISPLAY,
+                    stepId,
+                    titleDelta: 'building...',
+                    descriptionDelta: chunk.delta,
+                    triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+                };
+            } else {
+                yield chunk;
+            }
             if (chunk.type === 'prompt-stream-result') {
                 this.accumulateTokenUsage(chunk.usage);
                 this.agentMemory.sessionSummary = chunk.output;

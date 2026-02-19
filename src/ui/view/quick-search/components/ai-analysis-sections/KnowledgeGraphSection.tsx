@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { TrendingUp, Copy, MessageCircle, Maximize2, X } from 'lucide-react';
+import { TrendingUp, Copy, MessageCircle, Maximize2, X, Frame, Tag } from 'lucide-react';
 import { AppContext } from '@/app/context/AppContext';
 import { openFile } from '@/core/utils/obsidian-utils';
 import { GraphVisualization, GraphVisualizationHandle, GraphVizNodeHoverInfo, GraphVizNodeInfo } from '@/ui/component/mine/GraphVisualization';
@@ -15,9 +15,11 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { InlineFollowupChat } from '@/ui/component/mine/InlineFollowupChat';
 import { useGraphFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 import { useAnalyzeGraphResults } from '../../hooks/useAIAnalysisResult';
+import { toolOutputToGraphPatch } from '@/ui/component/mine/graph-viz/utils/graphPatches';
+import { persistPatchToStore } from '@/ui/component/mine/graph-viz/graphAnimationStore';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/shared-ui/hover-card';
 import { AISearchNode } from '@/service/agents/AISearchAgent';
-import { DEFAULT_NODE_TYPE } from '@/service/agents/search-agent-helper/DashboardUpdateToolBuilder';
+import { DEFAULT_NODE_TYPE } from '@/service/agents/search-agent-helper/helpers/DashboardUpdateToolBuilder';
 import { convertGraphToGraphPreview } from '@/ui/view/shared/graph-utils';
 import { copyText } from '@/ui/view/shared/common-utils';
 import { logClick } from '@/core/utils/perf-debug';
@@ -54,6 +56,14 @@ function getPillClassNameForNodeType(nodeType: string): string {
 	return PILL_PALETTE[idx];
 }
 
+/** Icon for node type in sidebar (matches graph node shape: concept=Frame, tag=Tag). */
+function NodeTypeIcon({ nodeType }: { nodeType: string }) {
+	const t = (nodeType ?? '').toLowerCase();
+	if (t === 'concept') return <Frame className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#0ea5e9]" />;
+	if (t === 'tag') return <Tag className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#d97706]" />;
+	return null;
+}
+
 /** Sidebar panel: Key Topics–style capsules (soft bg, no border, pill shape) per node type. */
 const LabeledPillPanel: React.FC<{
 	items: string[];
@@ -66,6 +76,7 @@ const LabeledPillPanel: React.FC<{
 	return (
 		<div className="pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-p-3">
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-2">
+				<NodeTypeIcon nodeType={nodeType} />
 				<span className="pktw-text-xs pktw-font-semibold pktw-text-[#2e3338]">{label}</span>
 				<span className="pktw-text-[11px] pktw-text-[#9ca3af]">({items.length})</span>
 				<div className="pktw-flex-1" />
@@ -100,7 +111,7 @@ const LabeledPillPanel: React.FC<{
 };
 
 /**
- * Knowledge graph section component
+ * Knowledge graph section component. Optional height/overflow control for Streaming vs Completed.
  */
 export const KnowledgeGraphSection: React.FC<{
 	/**
@@ -108,7 +119,11 @@ export const KnowledgeGraphSection: React.FC<{
 	 * Used when a node click opens a document.
 	 */
 	onClose?: () => void;
-}> = ({ onClose }) => {
+	/** Optional max-height class for the graph card (e.g. streaming view). */
+	maxHeightClassName?: string;
+	/** Optional class for the outer container (overflow, min-height). */
+	containerClassName?: string;
+}> = ({ onClose, maxHeightClassName, containerClassName }) => {
 
 	const { graph: aiGraph, title: analysisTitle } = useAIAnalysisStore();
 	const uiGraph = useMemo(() => convertGraphToGraphPreview(aiGraph), [aiGraph]);
@@ -145,7 +160,26 @@ export const KnowledgeGraphSection: React.FC<{
 		appendGraphFollowup,
 	} = useAIAnalysisStore();
 
-	const { runGraphTool } = useAnalyzeGraphResults();
+	const { runGraphTool: runGraphToolBase } = useAnalyzeGraphResults();
+	const [graphHops, setGraphHops] = useState(1);
+
+	/** Wraps runGraphTool: injects hops for graph_traversal; on result applies patch to viz and persists to store. */
+	const runGraphTool = useCallback(
+		async (tool: 'inspect_note_context' | 'graph_traversal' | 'find_path' | 'find_key_nodes', input: Record<string, unknown>) => {
+			const merged =
+				tool === 'graph_traversal'
+					? { ...input, hops: (input.hops as number) ?? graphHops, limit: (input.limit as number) ?? 15 }
+					: input;
+			const output = await runGraphToolBase(tool, merged);
+			const patch = toolOutputToGraphPatch(tool, output);
+			if (patch && graphRef.current) {
+				await graphRef.current.applyPatch(patch);
+				persistPatchToStore(patch);
+			}
+			return output;
+		},
+		[runGraphToolBase, graphHops]
+	);
 
 	const [graphChatNodeContext, setGraphChatNodeContext] = useState<GraphVizNodeInfo | null>(null);
 	const [followupOpen, setFollowupOpen] = useState(false);
@@ -291,13 +325,32 @@ export const KnowledgeGraphSection: React.FC<{
 	return (
 		<div
 			ref={containerRef}
-			className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb] pktw-flex pktw-flex-col pktw-items-center"
+			className={cn(
+				'pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb] pktw-flex pktw-flex-col pktw-items-center',
+				containerClassName
+			)}
 		>
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3 pktw-w-full pktw-group">
 				<TrendingUp className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
 				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">
 					Knowledge Graph
 				</span>
+				<span className="pktw-text-[11px] pktw-text-[#9ca3af]">Expand:</span>
+				{[1, 2, 3].map((h) => (
+					<Button
+						key={h}
+						variant="ghost"
+						size="sm"
+						className={cn(
+							'pktw-h-6 pktw-min-w-[28px] pktw-px-1.5 pktw-text-xs',
+							graphHops === h ? 'pktw-bg-[#7c3aed]/15 pktw-text-[#7c3aed]' : 'pktw-opacity-70 hover:pktw-opacity-100'
+						)}
+						onClick={() => setGraphHops(h)}
+						title={`Expand neighborhood with ${h} hop(s)`}
+					>
+						{h}
+					</Button>
+				))}
 				<div className="pktw-flex-1" />
 				<Button
 					variant="ghost"
@@ -325,7 +378,7 @@ export const KnowledgeGraphSection: React.FC<{
 						</Button>
 					</HoverCardTrigger>
 					{/* Version history */}
-					{graphFollowupHistory.length > 0 && <HoverCardContent align="end" className="pktw-w-48 pktw-p-1 pktw-z-[10000]">
+					{graphFollowupHistory.length > 0 && <HoverCardContent align="end" className="pktw-w-48 pktw-p-1 pktw-z-[10000] pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
 						{graphFollowupHistory.map((item, idx) => (
 							<Button
 								key={idx}
@@ -387,9 +440,10 @@ export const KnowledgeGraphSection: React.FC<{
 			<div
 				className={cn(
 					useSidePanel ? 'pktw-w-full pktw-flex pktw-flex-nowrap pktw-gap-3 pktw-items-stretch pktw-min-w-0' : 'pktw-w-full pktw-relative',
-					fullscreenOpen && 'pktw-hidden'
+					fullscreenOpen && 'pktw-hidden',
+					maxHeightClassName
 				)}
-				style={!fullscreenOpen && !useSidePanel ? { height: 260 } : undefined}
+				style={!fullscreenOpen && !useSidePanel && !maxHeightClassName ? { height: 260 } : undefined}
 			>
 				<div
 					ref={inlineContainerRef}

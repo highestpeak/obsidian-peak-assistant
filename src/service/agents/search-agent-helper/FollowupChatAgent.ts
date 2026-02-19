@@ -16,7 +16,7 @@ import { contentReaderTool } from '@/service/tools/content-reader';
 import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import { PromptId } from '@/service/prompt/PromptId';
-import type { LLMStreamEvent } from '@/core/providers/types';
+import { mergeTokenUsage, type LLMStreamEvent, type LLMUsage } from '@/core/providers/types';
 
 const DEFAULT_MAX_FOLLOWUP_STEPS = 20;
 
@@ -39,8 +39,6 @@ type FollowupToolSet = {
 };
 
 export interface FollowupChatAgentOptions {
-    searchAgentProvider: string;
-    searchAgentModel: string;
     enableLocalSearch?: boolean;
 }
 
@@ -78,10 +76,11 @@ export class FollowupChatAgent {
             tools.recent_changes_whole_vault = recentChangesWholeVaultTool();
             tools.local_search_whole_vault = localSearchWholeVaultTool();
         }
+        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.RawAiSearch);
         this.agent = new Agent<FollowupToolSet>({
             model: this.aiServiceManager.getMultiChat()
-                .getProviderService(this.options.searchAgentProvider)
-                .modelClient(this.options.searchAgentModel),
+                .getProviderService(provider)
+                .modelClient(modelId),
             tools,
             stopWhen: [
                 stepCountIs(DEFAULT_MAX_FOLLOWUP_STEPS),
@@ -101,6 +100,15 @@ export class FollowupChatAgent {
         const prompt = await this.aiServiceManager.renderPrompt(promptId, variables);
         const result = this.agent.stream({ system, prompt });
         let acc = '';
+        let accumulatedUsage: LLMUsage | null = null;
+        const toUsage = (u: unknown): LLMUsage | null => {
+            if (!u || typeof u !== 'object') return null;
+            const o = u as Record<string, unknown>;
+            const inT = typeof o.inputTokens === 'number' ? o.inputTokens : 0;
+            const outT = typeof o.outputTokens === 'number' ? o.outputTokens : 0;
+            const totalT = typeof o.totalTokens === 'number' ? o.totalTokens : inT + outT || 0;
+            return { inputTokens: inT, outputTokens: outT, totalTokens: totalT };
+        };
         for await (const chunk of result.fullStream) {
             switch (chunk.type) {
                 case 'text-delta':
@@ -109,9 +117,16 @@ export class FollowupChatAgent {
                         yield { type: 'prompt-stream-delta', id: 'followup', promptId, delta: (chunk as any).text } as any;
                     }
                     break;
-                case 'finish':
-                    yield { type: 'prompt-stream-result', id: 'followup', promptId, output: acc.trim() } as any;
+                case 'finish-step': {
+                    const stepUsage = toUsage((chunk as { usage?: unknown }).usage);
+                    if (stepUsage) accumulatedUsage = mergeTokenUsage(accumulatedUsage, stepUsage);
                     break;
+                }
+                case 'finish': {
+                    const total = toUsage((chunk as { totalUsage?: unknown }).totalUsage) ?? accumulatedUsage;
+                    yield { type: 'prompt-stream-result', id: 'followup', promptId, output: acc.trim(), usage: total ?? undefined } as any;
+                    break;
+                }
                 case 'error':
                     yield { type: 'error', error: (chunk as any).error } as any;
                     break;

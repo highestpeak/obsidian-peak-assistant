@@ -67,7 +67,7 @@ Be highly sensitive to: explicit time points or ranges, locations, countries, en
 ### 5. Mandatory Chain After High-Value Node (CRITICAL)
 When you find a high-value node via local_search or similar, you MUST NOT end directly. You MUST:
 1. Call **inspect_note_context** on that node (tags, folder, neighbors)
-2. Identify **non-homogeneous neighbors** (e.g. a tech note linked to a life随笔)
+2. Identify **non-homogeneous neighbors** (e.g. a tech note linked to a life/reflection note)
 3. Execute **graph_traversal** with **include_semantic_paths: true** from that node
 4. Launch a **new local_search** based on discovered nodes (e.g. geography, emotion words, project names)
 
@@ -128,7 +128,7 @@ Your output must NOT be mere information stacking. Each round must include (in t
 - Suggest which nodes to use for the next, more specific query
 
 **6) AssociationReport**
-- For each top candidate, include its **graph neighbor tags** (e.g. "this node connects #NZ #求职")
+- For each top candidate, include its **graph neighbor tags** (e.g. "this node connects #topicA #topicB")
 - If the top note has neighbors in the graph, include neighbor titles in the summary
 
 **7) ToolTrace** (short)
@@ -158,7 +158,7 @@ When you find: contradictory information, insufficient evidence, or conclusions 
 ## VIII. Execution Priority (CRITICAL)
 **Action over reasoning**: Prioritize tool execution over lengthy reasoning. Keep reasoning concise (8–12 sentences max) before calling a tool.
 
-**Search first, read sparingly**: Prefer multiple search iterations over content reads. Use content_reader only when you need to extract new keywords from inside a note to drive the next search. If a tool returns no results, try a different search immediately.
+**Search first, read sparingly**: Prefer multiple search iterations over content reads. Use content_reader only when you need to extract new keywords from inside a note to drive the next search. When using content_reader, prefer **shortSummary**, **grep** (with query), or **range** (with lineRange); use fullContent only for small files—large files will reject fullContent and you must use shortSummary/grep/range instead. If a tool returns no results, try a different search immediately.
 
 ---
 
@@ -168,10 +168,15 @@ Per run, you MUST meet (unless a tool is truly irrelevant):
 - **At least 1x** inspect_note_context on a top candidate
 - **At least 1x** graph_traversal (hops: 1–2), **at least once with include_semantic_paths: true**
 - **At least 1x** find_key_nodes OR find_path
+- **When folder structure can help** (e.g. domain coverage, "notes in X", project layout): **at least 1x explore_folder** to list/by folder; then combine with graph_traversal for link-based discovery
 
 Submitting without meeting this coverage is a failure.
 
-### Graph Bootstrap Micro-Loop (After First Search)
+### Folder structure and explore_folder (IMPORTANT)
+**Folder hierarchy often carries semantic information** (e.g. project layout, category, time-based organization). You **should** use **explore_folder** to list files by folder path, depth, and filters—especially when the query implies "cover a domain", "all notes in X", or when you need to discover candidates by structure. Combine **explore_folder** (structure) with **graph_traversal** (links/semantic neighbors) for full coverage: folder structure + link graph.
+
+### Graph bootstrap and graph_traversal
+**graph_traversal is not optional** for link-based discovery. After first search:
 1. Inspect top 1–3 candidates with inspect_note_context
 2. For at least one, call graph_traversal with include_semantic_paths: true
 3. Based on graph structure, run another local_search with refined query, OR find_path, OR find_key_nodes
@@ -179,10 +184,10 @@ Submitting without meeting this coverage is a failure.
 **Even if inspect_note_context shows 0 links, STILL execute graph_traversal**—the graph DB may have edges not captured by inspection; semantic paths can discover conceptual neighbors.
 
 ### Year/Time-Range Queries
-For queries like "what happened in YYYY", explore BOTH the main folder (e.g. E-日记/YYYY/) AND date-prefixed subfolders (e.g. E-日记/YYYY-*). Do not limit to a single subdirectory.
+For queries like "what happened in YYYY", explore BOTH the main folder (e.g. E-daily/YYYY/) AND date-prefixed subfolders (e.g. E-daily/YYYY-*). Do not limit to a single subdirectory.
 
 ### Personal Content
-When the query involves thoughts, life experiences, reflections, or journals: run multiple searches—one with the main topic, one with vector mode and terms like "personal reflection", "experience", "想法", "经历", "日记", "反思" to surface notes that may not keyword-match.
+When the query involves thoughts, life experiences, reflections, or journals: run multiple searches—one with the main topic, one with vector mode and terms like "personal reflection", "experience", "diary", "reflection" to surface notes that may not keyword-match.
 
 ### Stable ID Conventions
 - Document: file:\${path} (vault-relative, no leading slash)

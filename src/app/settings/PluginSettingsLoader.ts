@@ -208,6 +208,9 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 	if (typeof (rawSearch as any).aiAnalysisAutoSaveFolder === 'string') {
 		settings.aiAnalysisAutoSaveFolder = (rawSearch as any).aiAnalysisAutoSaveFolder;
 	}
+	if (typeof (rawSearch as any).aiAnalysisExcludeAutoSaveFolderFromSearch === 'boolean') {
+		settings.aiAnalysisExcludeAutoSaveFolderFromSearch = (rawSearch as any).aiAnalysisExcludeAutoSaveFolderFromSearch;
+	}
 	if (typeof (rawSearch as any).aiAnalysisHistoryLimit === 'number') {
 		settings.aiAnalysisHistoryLimit = Math.max(1, Math.min(50, (rawSearch as any).aiAnalysisHistoryLimit));
 	}

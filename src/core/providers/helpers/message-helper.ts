@@ -74,10 +74,11 @@ export function buildToolCorrectionMessageFromChunk(chunk: any): LLMRequestMessa
 export function buildToolErrorStreamEvent(toolName: string, errorMessage: string, chunk: any, triggerName: StreamTriggerName): LLMStreamEvent {
     return {
         type: 'error',
+        toolName,
         error: new Error(`Tool ${toolName} failed: ${errorMessage}`),
         triggerName,
         extra: { toolName, toolCallId: (chunk as any).toolCallId },
-    }
+    } as LLMStreamEvent;
 }
 
 export function buildToolResultStreamEventFromChunk(chunk: any, triggerName: StreamTriggerName): LLMStreamEvent {
@@ -85,8 +86,9 @@ export function buildToolResultStreamEventFromChunk(chunk: any, triggerName: Str
     const toolName = (chunk as any).toolName ?? 'unknown';
     return {
         type: 'error',
+        toolName,
         error: new Error(`Tool ${toolName} failed: ${errMsg}`),
         extra: { toolName, toolCallId: (chunk as any).toolCallId },
         triggerName,
-    }
+    } as LLMStreamEvent;
 }

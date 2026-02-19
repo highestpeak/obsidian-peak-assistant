@@ -42,12 +42,15 @@ export interface GraphSettingsPanelProps {
 	onReset: () => void;
 	position: { top: number; right: number } | null;
 	show: boolean;
+	/** When true, show Concept node color in Colors section. */
+	hasConceptNodes?: boolean;
 }
 
 export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 	config,
 	onConfigChange,
 	onReset,
+	hasConceptNodes = false,
 	position,
 	show,
 }) => {
@@ -329,6 +332,17 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-[#e5e7eb]"
 						/>
 					</label>
+					{hasConceptNodes && (
+						<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[#6c757d]" title="Fill color for concept-type nodes.">
+							<span className="pktw-w-24">Concept node</span>
+							<input
+								type="color"
+								value={config.conceptNodeFill}
+								onChange={(e) => onConfigChange({ ...config, conceptNodeFill: e.target.value })}
+								className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-[#e5e7eb]"
+							/>
+						</label>
+					)}
 					<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[#6c757d]" title="Stroke color for semantic edges.">
 						<span className="pktw-w-24">Semantic link</span>
 						<input
@@ -371,19 +385,53 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 				<div className="pktw-space-y-2 pktw-mb-3">
 					<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[#6c757d]" title="Number of highest-degree nodes to highlight as hubs.">
 						<span className="pktw-w-24">Top N</span>
-						<input
-							type="number"
-							min={1}
-							max={500}
-							value={config.hubTopN}
-							onChange={(e) =>
-								onConfigChange({
-									...config,
-									hubTopN: Math.max(1, Math.min(500, parseInt(e.target.value, 10) || 1)),
-								})
-							}
-							className="pktw-w-16 pktw-text-xs pktw-rounded pktw-border pktw-border-[#e5e7eb] pktw-px-1"
-						/>
+						<div className="pktw-flex pktw-items-center pktw-rounded pktw-border pktw-border-[#e5e7eb] pktw-overflow-hidden pktw-bg-white">
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="pktw-h-6 pktw-w-6 pktw-p-0 pktw-rounded-none pktw-border-r pktw-border-[#e5e7eb] hover:pktw-bg-[#f3f4f6]"
+								onClick={() =>
+									onConfigChange({
+										...config,
+										hubTopN: Math.max(1, config.hubTopN - 1),
+									})
+								}
+								disabled={config.hubTopN <= 1}
+								aria-label="Decrease"
+							>
+								−
+							</Button>
+							<input
+								type="number"
+								min={1}
+								max={500}
+								value={config.hubTopN}
+								onChange={(e) =>
+									onConfigChange({
+										...config,
+										hubTopN: Math.max(1, Math.min(500, parseInt(e.target.value, 10) || 1)),
+									})
+								}
+								className="pktw-w-12 pktw-h-6 pktw-text-center pktw-text-xs pktw-border-0 pktw-bg-transparent focus:pktw-outline-none focus:pktw-ring-0 pktw-[appearance:textfield] pktw-[&::-webkit-outer-spin-button]:appearance-none pktw-[&::-webkit-inner-spin-button]:appearance-none"
+							/>
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="pktw-h-6 pktw-w-6 pktw-p-0 pktw-rounded-none pktw-border-l pktw-border-[#e5e7eb] hover:pktw-bg-[#f3f4f6]"
+								onClick={() =>
+									onConfigChange({
+										...config,
+										hubTopN: Math.min(500, config.hubTopN + 1),
+									})
+								}
+								disabled={config.hubTopN >= 500}
+								aria-label="Increase"
+							>
+								+
+							</Button>
+						</div>
 					</label>
 					<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[#6c757d]" title="Halo color for hub nodes.">
 						<span className="pktw-w-24">Hub color</span>

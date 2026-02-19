@@ -20,8 +20,8 @@ export class BooleanExpressionParser {
     private tokens: string[] = [];
 
     constructor(expression: string) {
-        this.expression = expression;
-        this.ast = this.parse(expression);
+        this.expression = expression == null ? '' : String(expression).trim();
+        this.ast = this.expression ? this.parse(this.expression) : null!;
     }
 
     /**
@@ -29,7 +29,8 @@ export class BooleanExpressionParser {
      */
     parse(expression: string): BooleanExpression {
         this.pos = 0;
-        this.tokens = this.tokenize(expression.trim());
+        const input = expression == null ? '' : String(expression).trim();
+        this.tokens = this.tokenize(input);
         const result = this.parseExpression();
         // Check for unmatched parentheses or extra tokens
         if (this.pos < this.tokens.length) {
@@ -44,6 +45,7 @@ export class BooleanExpressionParser {
     extractDimensions(): { tags: string[], categories: string[] } {
         const tags: string[] = [];
         const categories: string[] = [];
+        if (!this.ast) return { tags, categories };
 
         const traverse = (expr: BooleanExpression) => {
             switch (expr.type) {
@@ -109,12 +111,13 @@ export class BooleanExpressionParser {
             }
         };
 
-        const conditions = buildConditions(this.ast!);
+        if (!this.ast) return '';
+        const conditions = buildConditions(this.ast);
         return conditions.join(' OR ');
     }
 
     rootEvaluate(note: { tags?: string[], category?: string }): boolean {
-        return this.evaluate(this.ast!, note);
+        return this.ast ? this.evaluate(this.ast, note) : false;
     }
 
     /**
@@ -139,12 +142,13 @@ export class BooleanExpressionParser {
 
     private tokenize(input: string): string[] {
         const tokens: string[] = [];
+        const lower = input.toLowerCase();
         let i = 0;
 
         while (i < input.length) {
             const char = input[i];
 
-            if (char === ' ') {
+            if (/\s/.test(char)) {
                 i++;
                 continue;
             }
@@ -155,54 +159,50 @@ export class BooleanExpressionParser {
                 continue;
             }
 
-            if (char === 'A' && input.substring(i, i + 3) === 'AND') {
+            // Case-insensitive AND / OR / NOT
+            if (lower.substring(i, i + 3) === 'and') {
                 tokens.push('AND');
                 i += 3;
                 continue;
             }
-
-            if (char === 'O' && input.substring(i, i + 2) === 'OR') {
+            if (lower.substring(i, i + 2) === 'or') {
                 tokens.push('OR');
                 i += 2;
                 continue;
             }
-
-            if (char === 'N' && input.substring(i, i + 3) === 'NOT') {
+            if (lower.substring(i, i + 3) === 'not') {
                 tokens.push('NOT');
                 i += 3;
                 continue;
             }
 
-            // Parse tag: or category: expressions
-            if (char === 't' && input.substring(i, i + 4) === 'tag:') {
+            // Case-insensitive tag: (preserve original for value)
+            if (lower.substring(i, i + 4) === 'tag:') {
                 const start = i;
                 i += 4;
-                const valueStart = i;
                 while (i < input.length && !/\s/.test(input[i]) && input[i] !== ')' && input[i] !== '(') {
                     i++;
                 }
                 const token = input.substring(start, i);
-                // Check if there's an actual value after "tag:"
-                if (token.length === 4) { // Just "tag:" with no value
+                if (token.length === 4) {
                     throw new Error(`Invalid tag expression: ${token} (missing value after tag:)`);
                 }
-                tokens.push(token);
+                tokens.push('tag:' + token.slice(4));
                 continue;
             }
 
-            if (char === 'c' && input.substring(i, i + 9) === 'category:') {
+            // Case-insensitive category: (preserve original for value)
+            if (lower.substring(i, i + 9) === 'category:') {
                 const start = i;
                 i += 9;
-                const valueStart = i;
                 while (i < input.length && !/\s/.test(input[i]) && input[i] !== ')' && input[i] !== '(') {
                     i++;
                 }
                 const token = input.substring(start, i);
-                // Check if there's an actual value after "category:"
-                if (token.length === 9) { // Just "category:" with no value
+                if (token.length === 9) {
                     throw new Error(`Invalid category expression: ${token} (missing value after category:)`);
                 }
-                tokens.push(token);
+                tokens.push('category:' + token.slice(9));
                 continue;
             }
 

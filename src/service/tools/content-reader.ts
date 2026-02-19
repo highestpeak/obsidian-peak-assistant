@@ -28,8 +28,8 @@ export function contentReaderTool(): AgentTool {
         inputSchema: z.object({
             path: z.string().describe("path related to vault root."),
             mode: z.enum(["fullContent", "shortSummary", "fullSummary", "range", "grep", "meta"])
-                .default("fullContent")
-                .describe("reading mode: 'fullContent' get full content, \
+                .default("shortSummary")
+                .describe("reading mode: prefer 'shortSummary', 'grep', or 'range'; 'fullContent' only for small files (see size limit), \
                     'shortSummary' get short summary, len <" + AppContext.getInstance().settings.search.shortSummaryLength + " \
                     'fullSummary' get full summary, len <" + AppContext.getInstance().settings.search.fullSummaryLength + " \
                     'range' get specific lines (1-based, inclusive), \
@@ -79,6 +79,13 @@ export function contentReaderTool(): AgentTool {
             const fullContent = (sourceFileInfo?.content ?? cacheFileInfo?.content ?? "No content found").toString();
 
             if (mode === "fullContent") {
+                const FULL_CONTENT_MAX_CHARS = 40_000;
+                if (fullContent.length > FULL_CONTENT_MAX_CHARS) {
+                    return {
+                        path,
+                        content: `fullContent refused: file is too large (${fullContent.length} chars, max ${FULL_CONTENT_MAX_CHARS}). Use mode 'shortSummary', 'grep' (with query), or 'range' (with lineRange) instead.`,
+                    };
+                }
                 return fullContent || "";
             }
 

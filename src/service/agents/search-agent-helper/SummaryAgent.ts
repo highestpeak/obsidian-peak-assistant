@@ -1,14 +1,14 @@
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import { PromptId } from '@/service/prompt/PromptId';
-import type { DashboardUpdateContext, InnerAgentContext, SearchAgentResult } from '../AISearchAgent';
+import type { AISearchUpdateContext, InnerAgentContext, SearchAgentResult } from '../AISearchAgent';
 import type { AgentMemory } from './AgentMemoryManager';
 import type { AISearchAgentOptions } from '../AISearchAgent';
 import { Experimental_Agent as Agent } from 'ai';
 import { AgentTool } from '@/service/tools/types';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
-import { streamTransform } from '@/core/providers/helpers/stream-helper';
+import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
 
 type SummaryToolSet = {
     search_analysis_context: AgentTool;
@@ -25,21 +25,22 @@ export interface SummaryAgentContext {
 
 /**
  * Agent for producing the comprehensive synthesis summary.
+ * Uses getModelForPrompt for AiAnalysisDiagnosisJson and AiAnalysisSummary.
  */
 export class SummaryAgent {
     private readonly aiServiceManager: AIServiceManager;
-    private readonly options: { provider: string; model: string, enableWebSearch?: boolean; enableLocalSearch?: boolean };
+    private readonly options: { enableWebSearch?: boolean; enableLocalSearch?: boolean };
     private readonly context: InnerAgentContext;
 
     private agent: Agent<SummaryToolSet>;
 
     constructor(params: {
         aiServiceManager: AIServiceManager,
-        options: { provider: string; model: string, enableWebSearch?: boolean; enableLocalSearch?: boolean },
+        options: { enableWebSearch?: boolean; enableLocalSearch?: boolean },
         context: InnerAgentContext,
     }) {
         this.aiServiceManager = params.aiServiceManager;
-        this.options = params.options;
+        this.options = { enableWebSearch: params.options.enableWebSearch, enableLocalSearch: params.options.enableLocalSearch };
         this.context = params.context;
         const {  searchHistory } = this.context;
 
@@ -50,14 +51,15 @@ export class SummaryAgent {
             submit_final_answer: submitFinalAnswerTool(),
         };
 
+        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisSummary);
         const outputControl = this.aiServiceManager.getSettings?.()?.defaultOutputControl;
         const temperature = outputControl?.temperature ?? 0.6;
         const maxOutputTokens = outputControl?.maxOutputTokens ?? 4096;
 
         this.agent = new Agent<SummaryToolSet>({
             model: this.aiServiceManager.getMultiChat()
-                .getProviderService(this.options.provider)
-                .modelClient(this.options.model),
+                .getProviderService(provider)
+                .modelClient(modelId),
             tools,
             temperature,
             maxOutputTokens,
@@ -68,13 +70,14 @@ export class SummaryAgent {
      * Stream summary generation.
      * In full mode: runs Step-A (diagnosis JSON) then Step-B (markdown synthesis). In simple mode: Step-B only.
      */
-    public async *stream(variables: DashboardUpdateContext): AsyncGenerator<LLMStreamEvent> {
+    public async *stream(variables: AISearchUpdateContext): AsyncGenerator<LLMStreamEvent> {
         let diagnosisJson: string | undefined;
-        const analysisMode = variables.analysisMode ?? 'full';
+        const analysisMode = variables.analysisMode;
         const snapshotForDiagnosis = variables.currentResultSnapshotForSummary ?? variables.currentResultSnapshot;
 
-        if (analysisMode === 'full') {
+        if (analysisMode === 'vaultFull') {
             try {
+                const diagModel = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisDiagnosisJson);
                 const diagnosisRaw = await this.aiServiceManager.chatWithPrompt(
                     PromptId.AiAnalysisDiagnosisJson,
                     {
@@ -82,8 +85,8 @@ export class SummaryAgent {
                         recentEvidenceHint: variables.recentEvidenceHint ?? '',
                         currentResultSnapshot: snapshotForDiagnosis,
                     },
-                    this.options.provider,
-                    this.options.model,
+                    diagModel.provider,
+                    diagModel.modelId,
                 );
                 const trimmed = (diagnosisRaw ?? '').trim();
                 if (trimmed.length > 0) {
@@ -101,6 +104,7 @@ export class SummaryAgent {
             diagnosisJson,
         });
 
+        yield buildPromptTraceDebugEvent('summary-prompt', StreamTriggerName.SEARCH_SUMMARY, system, prompt);
         const result = this.agent.stream({
             system: system,
             prompt,

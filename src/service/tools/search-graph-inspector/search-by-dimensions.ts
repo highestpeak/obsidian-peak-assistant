@@ -5,15 +5,22 @@ import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
 import { template as SEARCH_BY_DIMENSIONS_TEMPLATE } from "../templates/search-by-dimensions";
 import Handlebars from "handlebars";
 import { buildResponse } from "../types";
+import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
 export async function searchByDimensions(params: any) {
     const { boolean_expression, semantic_filter, filters, sorter, limit, response_format } = params;
-    if (!boolean_expression) {
+    const expr = typeof boolean_expression === 'string' ? boolean_expression.trim() : '';
+    if (!expr) {
         return "No search dimensions specified. Please specify a boolean_expression like 'tag:javascript AND category:programming'.";
     }
 
-    // Parse the boolean expression
-    const parser = new BooleanExpressionParser(boolean_expression);
+    let parser: BooleanExpressionParser;
+    try {
+        parser = new BooleanExpressionParser(expr);
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return `Invalid boolean_expression: ${msg}. Use only tag:value, category:value, AND, OR, NOT, and parentheses. Example: tag:javascript AND category:programming`;
+    }
 
     // Extract all tags and categories from the expression
     const { tags: expressionTags, categories: expressionCategories } = parser.extractDimensions();
@@ -21,12 +28,15 @@ export async function searchByDimensions(params: any) {
         return 'Boolean expression must contain at least one tag or category filter.';
     }
 
-    // Find matching documents by expression
-    const { success: matchingDocumentsSuccess, message: matchingDocumentsMessage, data: matchingExpressionDocNodes }
+    const { success: matchingDocumentsSuccess, message: matchingDocumentsMessage, data: rawMatchingDocNodes }
         = await findByExpressionWhere(parser, expressionTags, expressionCategories);
-    if (!matchingDocumentsSuccess || !matchingExpressionDocNodes) {
+    if (!matchingDocumentsSuccess || !rawMatchingDocNodes) {
         return matchingDocumentsMessage || 'Error finding matching documents.';
     }
+    const excludeCtx = await getAiAnalysisExcludeContext();
+    const matchingExpressionDocNodes = excludeCtx
+        ? new Map([...rawMatchingDocNodes].filter(([id]) => !excludeCtx.excludedDocIds.has(id)))
+        : rawMatchingDocNodes;
 
     type nodeWithSimilarityScore = GraphNode & { similarityScore: number };
     let docsAlignToSemantic: Map<string, GraphNode | nodeWithSimilarityScore> = matchingExpressionDocNodes;

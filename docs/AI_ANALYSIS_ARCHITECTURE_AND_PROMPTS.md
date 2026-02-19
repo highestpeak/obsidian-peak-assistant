@@ -182,11 +182,7 @@ Handlers are wired in [AISearchAgent.initManualToolCallHandlers](src/service/age
 
 | Category | PromptId / Template | Purpose | Key Variables | Where used |
 |----------|---------------------|----------|----------------|-------------|
-| Follow-up · Summary | `AiAnalysisFollowupSummary` | Answer questions about the current summary | `question`, `summary` | [useAIAnalysisPostAIInteractions.useSummaryFollowupChatConfig](src/ui/view/quick-search/hooks/useAIAnalysisPostAIInteractions.ts) → InlineFollowupChat |
-| Follow-up · Graph | `AiAnalysisFollowupGraph` | Answer questions about the graph | `question`, `nodeLabels`, `nodeCount`, `edgeCount` | `useGraphFollowupChatConfig` |
-| Follow-up · Sources | `AiAnalysisFollowupSources` | Answer questions about sources list | `question`, `sourcesList` | `useSourcesFollowupChatConfig` |
-| Follow-up · Blocks | `AiAnalysisFollowupBlocks` | Answer questions about dashboard blocks | `question`, `blocksText` | `useBlocksFollowupChatConfig` |
-| Follow-up · Full / Continue | `AiAnalysisFollowupFull` | Follow-up or “continue analysis” over full summary | `question`, `summary` | `useContinueAnalysisFollowupChatConfig`, `useTopicFollowupChatConfig`; TopicSection’s “analyze topic” uses `chatWithPromptStream(AiAnalysisFollowupFull, { question, summary })` |
+| Follow-up (unified) | `AiAnalysisFollowup` | Answer follow-up questions (Summary, Graph, Sources, Blocks, Full). Caller builds `contextContent`. | `originalQuery`, `question`, `contextContent` | [useAIAnalysisPostAIInteractions](src/ui/view/quick-search/hooks/useAIAnalysisPostAIInteractions.ts) configs → InlineFollowupChat → [FollowupChatAgent](src/service/agents/search-agent-helper/FollowupChatAgent.ts) |
 
 ### Save Suggestions
 
@@ -241,11 +237,7 @@ Handlers are wired in [AISearchAgent.initManualToolCallHandlers](src/service/age
 | `TopicsUpdateAgentSystem` | `templates/topics-update-agent-system.ts` |
 | `GraphUpdateAgentSystem` | `templates/graph-update-agent-system.ts` |
 | `DashboardBlocksUpdateAgentSystem` | `templates/ai-analysis-dashboard-update-blocks-system.ts` |
-| `AiAnalysisFollowupSummary` | `templates/ai-analysis-followup-summary.ts` |
-| `AiAnalysisFollowupGraph` | `templates/ai-analysis-followup-graph.ts` |
-| `AiAnalysisFollowupSources` | `templates/ai-analysis-followup-sources.ts` |
-| `AiAnalysisFollowupBlocks` | `templates/ai-analysis-followup-blocks.ts` |
-| `AiAnalysisFollowupFull` | `templates/ai-analysis-followup-full.ts` |
+| `AiAnalysisFollowup` | `templates/ai-analysis-followup.ts` |
 | `AiAnalysisSaveFileName` | `templates/ai-analysis-save-filename.ts` |
 | `AiAnalysisSaveFolder` | `templates/ai-analysis-save-folder.ts` |
 
@@ -256,11 +248,7 @@ Handlers are wired in [AISearchAgent.initManualToolCallHandlers](src/service/age
 These prompt IDs are in `CONFIGURABLE_PROMPT_IDS` in [PromptId.ts](src/service/prompt/PromptId.ts), so users can assign a different model per prompt in settings:
 
 - `SearchAiSummary`
-- `AiAnalysisFollowupSummary`
-- `AiAnalysisFollowupGraph`
-- `AiAnalysisFollowupSources`
-- `AiAnalysisFollowupBlocks`
-- `AiAnalysisFollowupFull`
+- `AiAnalysisFollowup`
 
 (ThoughtAgent and SearchAgent system prompts use the analysis model configuration and pass `temperature` / `maxOutputTokens` from `getSettings().defaultOutputControl` into the Agent constructor. Dimension update agents use the ThoughtAgent model. Session summary, diagnosis, and summary prompts use the ThoughtAgent provider/model when invoked from the pipeline; save prompts use the default or their configured model when present.)
 

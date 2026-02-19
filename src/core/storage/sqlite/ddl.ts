@@ -186,6 +186,8 @@ export interface Database {
 		graph_nodes_count: number | null;
 		graph_edges_count: number | null;
 		duration: number | null;
+		/** Analysis preset for history icon and restore: docSimple | vaultSimple | vaultFull. */
+		analysis_preset: string | null;
 	};
 }
 
@@ -484,6 +486,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN duration INTEGER`);
 	tryExec(`ALTER TABLE ai_analysis_record DROP COLUMN meta_json`);
 	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN title TEXT`);
+	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN analysis_preset TEXT`);
 }
 
 

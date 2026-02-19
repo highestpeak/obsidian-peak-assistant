@@ -1,6 +1,6 @@
 import Handlebars from 'handlebars';
-import type { SearchAgentResult, AISearchSource, AISearchTopic, DashboardBlock, AISearchNode } from '../AISearchAgent';
-import { template as RESULT_SNAPSHOT_TEMPLATE } from './templates/result-snapshot';
+import type { SearchAgentResult, AISearchSource, AISearchTopic, DashboardBlock, AISearchNode } from '../../AISearchAgent';
+import { template as RESULT_SNAPSHOT_TEMPLATE } from '../templates/result-snapshot';
 
 const MAX_TOPICS = 12;
 const MAX_SOURCES = 15;

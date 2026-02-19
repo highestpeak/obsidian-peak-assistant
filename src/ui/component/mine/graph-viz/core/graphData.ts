@@ -7,6 +7,14 @@ import type { GraphVizNode, GraphVizLink } from '../types';
 import { getLinkEndpointId } from '../utils/link-key';
 import type { GraphPatch } from '../utils/graphPatches';
 
+/** Derive node type from id prefix so concept/tag get correct shape (e.g. Frame icon). */
+function nodeTypeFromId(id: string, defaultType: string): string {
+	const lower = String(id ?? '').trim().toLowerCase();
+	if (lower.startsWith('concept:')) return 'concept';
+	if (lower.startsWith('tag:')) return 'tag';
+	return defaultType;
+}
+
 export type UpsertNodeInput = { id: string; label: string; type?: string; badges?: string[] };
 
 type LinkRecord = { source: string; target: string; kind: string; weight: number };
@@ -65,16 +73,17 @@ export function createGraphDataCache() {
 				}
 			}
 
-			// Upsert edges; ensure nodes exist
+			// Upsert edges; ensure nodes exist (derive type from id so concept/tag get correct icon)
 			const ensureNode = (id: string) => {
 				if (nodeById.has(id)) return;
 				const label = id.replace(/^(node:|concept:|tag:|file:)/i, '').replace(/-/g, ' ');
-				const style = getNodeStyle({ id, label, type: defaultNodeType, badges: [], r: 0 } as GraphVizNode);
+				const nodeType = nodeTypeFromId(id, defaultNodeType);
+				const style = getNodeStyle({ id, label, type: nodeType, badges: [], r: 0 } as GraphVizNode);
 				const r = style.r ?? 10;
 				nodeById.set(id, {
 					id,
 					label,
-					type: defaultNodeType,
+					type: nodeType,
 					badges: [] as string[],
 					r,
 					enterTime: typeof performance !== 'undefined' ? performance.now() : 0,
@@ -105,21 +114,39 @@ export function createGraphDataCache() {
 
 			const nodes = Array.from(nodeById.values());
 
-			// Position new nodes near neighbors
+			// Position new nodes near neighbors (or in default area so they are never all at 0,0)
 			const nodeByIdLookup = new Map(nodes.map((n) => [n.id, n]));
 			const spread = 90;
+			const defaultCenterX = 300;
+			const defaultCenterY = 300;
+			const defaultSpan = 200;
 			for (const rec of linkByKey.values()) {
 				const a = nodeByIdLookup.get(rec.source);
 				const b = nodeByIdLookup.get(rec.target);
 				if (!a || !b) continue;
-				if ((a.x === undefined || a.y === undefined) && b.x !== undefined && b.y !== undefined) {
-					a.x = b.x + (Math.random() - 0.5) * spread;
-					a.y = b.y + (Math.random() - 0.5) * spread;
+				const bx = b.x ?? defaultCenterX;
+				const by = b.y ?? defaultCenterY;
+				const ax = a.x ?? defaultCenterX;
+				const ay = a.y ?? defaultCenterY;
+				if ((a.x === undefined || a.y === undefined) && (b.x !== undefined && b.y !== undefined)) {
+					a.x = b.x! + (Math.random() - 0.5) * spread;
+					a.y = b.y! + (Math.random() - 0.5) * spread;
+				} else if (a.x === undefined || a.y === undefined) {
+					a.x = bx + (Math.random() - 0.5) * spread;
+					a.y = by + (Math.random() - 0.5) * spread;
 				}
-				if ((b.x === undefined || b.y === undefined) && a.x !== undefined && a.y !== undefined) {
+				if ((b.x === undefined || b.y === undefined) && (a.x !== undefined && a.y !== undefined)) {
 					b.x = a.x + (Math.random() - 0.5) * spread;
 					b.y = a.y + (Math.random() - 0.5) * spread;
+				} else if (b.x === undefined || b.y === undefined) {
+					b.x = ax + (Math.random() - 0.5) * spread;
+					b.y = ay + (Math.random() - 0.5) * spread;
 				}
+			}
+			for (const n of nodes) {
+				if (n.x !== undefined && n.y !== undefined) continue;
+				n.x = defaultCenterX + (Math.random() - 0.5) * defaultSpan;
+				n.y = defaultCenterY + (Math.random() - 0.5) * defaultSpan;
 			}
 
 			const nodeIds = new Set(nodes.map((n) => n.id));
@@ -211,9 +238,10 @@ export function upsertEdges(
 	function ensureNode(id: string): void {
 		if (nodeById.has(id)) return;
 		const label = id.replace(/^(node:|concept:|tag:|file:)/i, '').replace(/-/g, ' ');
-		const style = getNodeStyle({ id, label, type: defaultNodeType, badges: [], r: 0 } as GraphVizNode);
+		const nodeType = nodeTypeFromId(id, defaultNodeType);
+		const style = getNodeStyle({ id, label, type: nodeType, badges: [], r: 0 } as GraphVizNode);
 		const r = style.r ?? 10;
-		const newNode = { id, label, type: defaultNodeType, badges: [] as string[], r } as GraphVizNode;
+		const newNode = { id, label, type: nodeType, badges: [] as string[], r } as GraphVizNode;
 		nodeById.set(id, newNode);
 	}
 
