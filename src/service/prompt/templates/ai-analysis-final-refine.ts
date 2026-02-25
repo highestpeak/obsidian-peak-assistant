@@ -4,7 +4,7 @@ export const template = `# CONTEXT
 
 # CURRENT STATE (to refine)
 <<<
-{{currentResultSnapshot}}
+{{{currentResultSnapshot}}}
 >>>
 
 {{#if refineMode}}
@@ -28,7 +28,7 @@ Use \`search_analysis_context\` if you need to recall evidence before updating.
 
 {{#if toolFormatGuidance}}
 # TOOL FORMAT
-{{toolFormatGuidance}}
+{{{toolFormatGuidance}}}
 {{/if}}
 
 Execute the tools now.`;

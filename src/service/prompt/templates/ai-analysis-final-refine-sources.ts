@@ -1,30 +1,27 @@
 /**
- * User prompt for sources-only refine. Optional batch: refine only indices [start, end) (batch index+1 of total).
+ * User prompt for sources-only refine.
  */
 export const template = `# CONTEXT
+
+use the context to better understand the user's query and purpose of the analysis.
+
 - **Original query**: {{originalQuery}}
-- **Analysis mode**: {{analysisMode}}
+- **Agent memory message**: {{agentMemoryMessage}}
 
-{{#if sourcesBatch}}
-# BATCH REFINE
-You are refining **only** sources at indices **{{sourcesBatch.start}} to {{sourcesBatch.end}}** (batch **{{sourcesBatch.indexPlusOne}}** of **{{sourcesBatch.total}}**).
-Return the **complete** sources list in \`update_sources\`: **modify only** the entries in this range; copy all other entries **unchanged** (same order, same content).
-{{/if}}
-
-# CURRENT STATE (sources to refine)
+# CURRENT SOURCES (score these)
 <<<
-{{currentResultSnapshot}}
+{{{sources}}}
 >>>
 
 # TASK
 Call \`update_sources\` **once** with the full list:
 - Reorder by relevance (most relevant first).
-- For **each** source set \`reasoning\` (≤100 words) and \`score\` (physical, semantic, average 0–100). Use \`search_analysis_context\` to justify. Do not leave scores at 0.
+- For **each** source set \`reasoning\` (≤100 words) and \`score\` (physical, semantic, average 0–100). Use \`search_analysis_context\` to justify.
 - Optionally set \`badges\` (e.g. "key", "relevant").
 
 {{#if toolFormatGuidance}}
 # TOOL FORMAT
-{{toolFormatGuidance}}
+{{{toolFormatGuidance}}}
 {{/if}}
 
 Execute the tool now.`;

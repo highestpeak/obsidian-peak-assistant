@@ -1,7 +1,5 @@
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings, SearchSettings } from '@/app/settings/types';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
-import { DEFAULT_COMMAND_HIDDEN_SETTINGS } from '@/service/CommandHiddenControlService';
-
 /**
  * Get string value from source or return default.
  */
@@ -238,15 +236,6 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		// Core settings (normalized)
 		ai: normalizeAIServiceSettings(raw),
 		search: normalizeSearchSettings(raw),
-
-		// Command hidden settings
-		commandHidden: (() => {
-			const source = raw?.commandHidden;
-			if (source && typeof source === 'object') {
-				return { ...DEFAULT_COMMAND_HIDDEN_SETTINGS, ...source };
-			}
-			return DEFAULT_COMMAND_HIDDEN_SETTINGS;
-		})(),
 	};
 
 	// SQLite backend setting

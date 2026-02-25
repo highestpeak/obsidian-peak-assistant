@@ -14,6 +14,7 @@ import { UserProfileService } from '@/service/chat/context/UserProfileService';
 import { ContextUpdateService } from './context/ContextUpdateService';
 import { EventBus } from '@/core/eventBus';
 import { createChatMessage } from './utils/chat-message-builder';
+import type { TemplateManager } from '@/core/template/TemplateManager';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -30,7 +31,8 @@ export class AIServiceManager {
 
 	constructor(
 		private readonly app: App,
-		private settings: AIServiceSettings
+		private settings: AIServiceSettings,
+		private readonly templateManager?: TemplateManager,
 	) {
 		// === Settings initialization ===
 		// Merge given settings with defaults
@@ -55,8 +57,7 @@ export class AIServiceManager {
 			providerConfigs,
 			defaultOutputControl: this.settings.defaultOutputControl,
 		});
-		// Create prompt service
-		this.promptService = new PromptService(this.app, this.settings, this.multiChat);
+		this.promptService = new PromptService(this.app, this.settings, this.multiChat, this.templateManager);
 
 		// Initialize context service if profile is enabled
 		if (this.settings.profileEnabled) {
@@ -70,6 +71,11 @@ export class AIServiceManager {
 
 		// Note: ProjectService and ConversationService are initialized in init() method
 		// to avoid circular dependency with DocumentLoaderManager
+	}
+
+	/** For on-demand template loading (prompts, tool results, agent context). Cleared on plugin unload. */
+	getTemplateManager(): TemplateManager | undefined {
+		return this.templateManager;
 	}
 
 	/**
@@ -111,6 +117,13 @@ export class AIServiceManager {
 			this.conversationService,
 			this.projectService,
 		);
+	}
+
+	/**
+	 * Release event subscriptions and timers. Call from plugin onunload.
+	 */
+	cleanup(): void {
+		this.contextUpdateService?.cleanup();
 	}
 
 	/**

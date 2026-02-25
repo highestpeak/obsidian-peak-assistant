@@ -4,7 +4,9 @@ import { GraphEdge } from "@/core/storage/sqlite/repositories/GraphEdgeRepo";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, distillClusterNodesData, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import { template as GRAPH_TRAVERSAL_TEMPLATE } from "../templates/graph-traversal";
-import { buildResponse } from "../types";
+import { buildResponse, buildResponseFromRendered } from "../types";
+import type { TemplateManager } from "@/core/template/TemplateManager";
+import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
 type GraphTraversalResult = GraphNode
@@ -34,7 +36,7 @@ export interface GraphVisualizationEdge {
     type: string;
     weight: number;
 }
-export async function graphTraversal(params: any) {
+export async function graphTraversal(params: any, templateManager?: TemplateManager) {
     const { start_note_path, hops, include_semantic_paths, limit, response_format, filters, sorter } = params;
     const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
     const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
@@ -202,16 +204,19 @@ export async function graphTraversal(params: any) {
         edge => visitedNodeIds.has(edge.from_node_id) && visitedNodeIds.has(edge.to_node_id)
     );
 
-    // Render template with graph field for UI visualization
-    return buildResponse(response_format, GRAPH_TRAVERSAL_TEMPLATE, {
+    const data = {
         isTimeOut,
         start_note_path,
         hops,
         levels,
-        // Graph field for UI real-time visualization (structured output only)
         graph: {
             nodes: graphVisualizationNodes,
             edges: graphVisualizationEdges
         }
-    });
+    };
+    if (templateManager) {
+        const rendered = await templateManager.render(ToolTemplateId.GraphTraversal, data);
+        return buildResponseFromRendered(response_format, data, rendered);
+    }
+    return buildResponse(response_format, GRAPH_TRAVERSAL_TEMPLATE, data);
 }

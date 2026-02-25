@@ -12,6 +12,7 @@ interface SharedStore {
 	setActiveTab: (tab: TabType) => void;
 	setVaultSearchQuery: (query: string) => void;
 	setSearchQuery: (query: string) => void;
+	reset: () => void;
 }
 
 export const useSharedStore = create<SharedStore>((set) => ({
@@ -22,4 +23,9 @@ export const useSharedStore = create<SharedStore>((set) => ({
 	setActiveTab: (tab: TabType) => set({ activeTab: tab }),
 	setVaultSearchQuery: (query: string) => set({ vaultSearchQuery: query }),
 	setSearchQuery: (query: string) => set({ searchQuery: query }),
+	reset: () => set({
+		activeTab: 'vault',
+		vaultSearchQuery: '',
+		searchQuery: '',
+	}),
 }));

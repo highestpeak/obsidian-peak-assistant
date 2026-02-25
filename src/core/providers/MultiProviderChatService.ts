@@ -45,6 +45,14 @@ export class MultiProviderChatService implements LLMProviderService {
 	}
 
 	/**
+	 * Clear the global singleton instance.
+	 * Call from plugin onunload to release memory.
+	 */
+	public static clearInstance(): void {
+		MultiProviderChatService.instance = undefined;
+	}
+
+	/**
 	 * Merge request outputControl with global default settings
 	 */
 	private mergeOutputControl(request: LLMRequest): LLMRequest {

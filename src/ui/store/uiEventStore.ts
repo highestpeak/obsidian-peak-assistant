@@ -53,6 +53,11 @@ interface UIEventStore {
 	 * Clear event history
 	 */
 	clearHistory: () => void;
+
+	/**
+	 * Reset the entire store
+	 */
+	reset: () => void;
 }
 
 const MAX_HISTORY_SIZE = 100; // Prevent memory leaks
@@ -85,6 +90,11 @@ export const useUIEventStore = create<UIEventStore>((set, get) => ({
 	clearLastEvent: () => set({ lastEvent: null }),
 
 	clearHistory: () => set({ eventHistory: [] }),
+
+	reset: () => set({
+		lastEvent: null,
+		eventHistory: [],
+	}),
 }));
 
 /**

@@ -38,6 +38,22 @@ export type DrawGraphOptions = {
 };
 
 const isPhysicalLink = (k: string) => k === 'path' || k === 'physical';
+
+/** Read mindflow opacityHint from node/edge attributes (0–1). */
+function mindflowOpacityHint(obj: { attributes?: Record<string, unknown> } | undefined): number | undefined {
+	const mf = obj?.attributes && typeof obj.attributes === 'object' && (obj.attributes as any).mindflow;
+	if (mf && typeof mf === 'object' && typeof (mf as any).opacityHint === 'number') {
+		const v = (mf as any).opacityHint;
+		return Math.max(0, Math.min(1, v));
+	}
+	return undefined;
+}
+
+/** Check if edge is main path from mindflow attributes. */
+function isMindflowMain(l: GraphVizLink): boolean {
+	const mf = l.attributes && typeof l.attributes === 'object' && (l.attributes as any).mindflow;
+	return !!(mf && typeof mf === 'object' && (mf as any).main);
+}
 /** Non-semantic links (physical, path, wiki, file, etc.) use physical config styling. */
 const isPhysicalLikeLink = (k: string) => k !== 'semantic';
 
@@ -73,6 +89,8 @@ function getLinkOpacity(
 	linkKeyVal?: string,
 	leafEdgeKeys?: Set<string>
 ): number {
+	const mfHint = mindflowOpacityHint(d);
+	if (mfHint !== undefined) return highlighted ? 1 : mfHint;
 	if (highlighted) return 1;
 	if (skeletonMode && !d.isMSTEdge) return 0.2;
 	// Backbone use MST opacity; terminal (leaf) use original
@@ -120,7 +138,8 @@ function getLinkWidth(
 	linkKeyVal?: string,
 	leafEdgeKeys?: Set<string>
 ): number {
-	const base = getEdgeStyle({ kind: l.kind, weight: l.weight }).strokeWidth ?? 1;
+	let base = getEdgeStyle({ kind: l.kind, weight: l.weight }).strokeWidth ?? 1;
+	if (isMindflowMain(l)) base = Math.max(base, 2.5);
 	if (skeletonMode && !l.isMSTEdge) {
 		return l.kind === 'semantic' ? base * config.semanticEdgeWidthScale : isPhysicalLikeLink(l.kind) ? base * config.physicalEdgeWidthScale : base;
 	}
@@ -216,6 +235,8 @@ export function drawGraph(opts: DrawGraphOptions): void {
 			const fade = Math.min(1, (now - d.enterTime) / NODE_ENTER_FADE_MS);
 			alpha *= fade;
 		}
+		const mfHint = mindflowOpacityHint(d);
+		if (mfHint !== undefined) alpha *= mfHint;
 		ctx.globalAlpha = alpha;
 
 		const fill = getNodeFill(d);
@@ -287,6 +308,8 @@ export function drawGraph(opts: DrawGraphOptions): void {
 			const fade = Math.min(1, (now - d.enterTime) / NODE_ENTER_FADE_MS);
 			alpha *= fade;
 		}
+		const mfHintLabels = mindflowOpacityHint(d);
+		if (mfHintLabels !== undefined) alpha *= mfHintLabels;
 		ctx.globalAlpha = alpha;
 		const short = getNodeLabel(d, 'short');
 		ctx.fillText(short, nx, ny + r + 12);

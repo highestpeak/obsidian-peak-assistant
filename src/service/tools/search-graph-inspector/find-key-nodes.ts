@@ -2,7 +2,9 @@ import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
 import { KEY_NODES_RRF_K, RRF_RANKING_POOL_SIZE } from "@/core/constant";
 import { template as FIND_KEY_NODES_TEMPLATE } from "../templates/find-key-nodes";
-import { buildResponse } from "../types";
+import { buildResponse, buildResponseFromRendered } from "../types";
+import type { TemplateManager } from "@/core/template/TemplateManager";
+import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { emptyMap } from "@/core/utils/collection-utils";
 import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
@@ -24,7 +26,7 @@ async function getNodeCategoryConnections(nodeIds: string[]): Promise<Map<string
     return categoryCountMap;
 }
 
-export async function findKeyNodes(params: any) {
+export async function findKeyNodes(params: any, templateManager?: TemplateManager) {
     const { limit, semantic_filter, response_format, filters, sorter } = params;
     const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
     const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
@@ -124,9 +126,12 @@ export async function findKeyNodes(params: any) {
         allKeyNodes = applyFiltersAndSorters(allKeyNodes, filters, sorter, undefined, itemFiledGetter);
     }
 
-    return buildResponse(response_format, FIND_KEY_NODES_TEMPLATE, {
-        key_nodes: allKeyNodes
-    });
+    const data = { key_nodes: allKeyNodes };
+    if (templateManager) {
+        const rendered = await templateManager.render(ToolTemplateId.FindKeyNodes, data);
+        return buildResponseFromRendered(response_format, data, rendered);
+    }
+    return buildResponse(response_format, FIND_KEY_NODES_TEMPLATE, data);
 }
 
 /**

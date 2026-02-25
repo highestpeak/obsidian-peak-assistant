@@ -2,16 +2,17 @@ import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { AppContext } from "@/app/context/AppContext";
 import { TFile, TFolder } from "obsidian";
 import { template as EXPLORE_FOLDER_TEMPLATE } from "../templates/explore-folder";
-import Handlebars from "handlebars";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter } from "./common";
-import { buildResponse } from "../types";
+import { buildResponse, buildResponseFromRendered } from "../types";
+import type { TemplateManager } from "@/core/template/TemplateManager";
+import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
 /**
  * we do not use database to get the structure. to get better performance.
  * path prefix match may cost time
  */
-export async function exploreFolder(params: any) {
+export async function exploreFolder(params: any, templateManager?: TemplateManager) {
     const { folderPath, recursive, max_depth, limit, response_format, filters, sorter } = params;
 
     // Get the target folder
@@ -53,8 +54,7 @@ export async function exploreFolder(params: any) {
     // Get doc statistics by docIds
     const docStats = await getDocStatisticsByDocIds(finalDocIdsMaps, limit);
 
-    // Render template
-    return buildResponse(response_format, EXPLORE_FOLDER_TEMPLATE, {
+    const data = {
         current_path: folderPath,
         recursive,
         max_depth: max_depth || 3,
@@ -62,7 +62,12 @@ export async function exploreFolder(params: any) {
         tagDesc,
         categoryDesc,
         docStats
-    });
+    };
+    if (templateManager) {
+        const rendered = await templateManager.render(ToolTemplateId.ExploreFolder, data);
+        return buildResponseFromRendered(response_format, data, rendered);
+    }
+    return buildResponse(response_format, EXPLORE_FOLDER_TEMPLATE, data);
 }
 
 type IterFile = {

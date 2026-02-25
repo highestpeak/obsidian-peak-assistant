@@ -17,12 +17,12 @@ Negative: NO parentheses in bullet text. NO [notes]. Each bullet max 10 words. D
 
 Current profile:
 ---
-{{currentProfileMarkdown}}
+{{{currentProfileMarkdown}}}
 ---
 {{#if newItemsMarkdown}}
 New items to merge:
 ---
-{{newItemsMarkdown}}
+{{{newItemsMarkdown}}}
 ---
 {{/if}}
 

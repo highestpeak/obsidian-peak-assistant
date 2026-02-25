@@ -34,12 +34,30 @@ import { SEARCH_DB_FILENAME, META_DB_FILENAME } from '@/core/constant';
  * - better-sqlite3 (native, fastest, requires manual installation)
  * - sql.js (pure JS, default, cross-platform)
  */
-class SqliteStoreManager {
+export class SqliteStoreManager {
+	private static instance: SqliteStoreManager | null = null;
+
+	public static getInstance(): SqliteStoreManager {
+		if (!SqliteStoreManager.instance) {
+			SqliteStoreManager.instance = new SqliteStoreManager();
+		}
+		return SqliteStoreManager.instance;
+	}
+
+	public static clearInstance(): void {
+		if (SqliteStoreManager.instance) {
+			SqliteStoreManager.instance.close();
+			SqliteStoreManager.instance = null;
+		}
+	}
+
 	// Database connections
 	private searchStore: SqliteDatabase | null = null;
 	private metaStore: SqliteDatabase | null = null;
 	private app: App | null = null;
 	private isVectorSearchAvailable: boolean = false;
+	/** Set at start of close() so getters throw and no new work starts; avoids in-flight DB ops after close. */
+	private closing = false;
 
 	// Search database repositories (search.sqlite)
 	private docMetaRepo: DocMetaRepo | null = null;
@@ -241,8 +259,8 @@ class SqliteStoreManager {
 	 * Throws error if not initialized.
 	 */
 	getSearchContext(): Kysely<DbSchema> {
-		if (!this.searchStore) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.searchStore) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.searchStore.kysely();
 	}
@@ -265,15 +283,15 @@ class SqliteStoreManager {
 	 * Check if the stores are initialized.
 	 */
 	isInitialized(): boolean {
-		return this.searchStore !== null && this.metaStore !== null;
+		return !this.closing && this.searchStore !== null && this.metaStore !== null;
 	}
 
 	/**
 	 * Get DocMetaRepo instance.
 	 */
 	getDocMetaRepo(): DocMetaRepo {
-		if (!this.docMetaRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.docMetaRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.docMetaRepo;
 	}
@@ -282,8 +300,8 @@ class SqliteStoreManager {
 	 * Get DocChunkRepo instance.
 	 */
 	getDocChunkRepo(): DocChunkRepo {
-		if (!this.docChunkRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.docChunkRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.docChunkRepo;
 	}
@@ -292,8 +310,8 @@ class SqliteStoreManager {
 	 * Get EmbeddingRepo instance.
 	 */
 	getEmbeddingRepo(): EmbeddingRepo {
-		if (!this.embeddingRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.embeddingRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.embeddingRepo;
 	}
@@ -310,8 +328,8 @@ class SqliteStoreManager {
 	 * Get IndexStateRepo instance.
 	 */
 	getIndexStateRepo(): IndexStateRepo {
-		if (!this.indexStateRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.indexStateRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.indexStateRepo;
 	}
@@ -320,8 +338,8 @@ class SqliteStoreManager {
 	 * Get DocStatisticsRepo instance.
 	 */
 	getDocStatisticsRepo(): DocStatisticsRepo {
-		if (!this.docStatisticsRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.docStatisticsRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.docStatisticsRepo;
 	}
@@ -330,8 +348,8 @@ class SqliteStoreManager {
 	 * Get GraphNodeRepo instance.
 	 */
 	getGraphNodeRepo(): GraphNodeRepo {
-		if (!this.graphNodeRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.graphNodeRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.graphNodeRepo;
 	}
@@ -340,8 +358,8 @@ class SqliteStoreManager {
 	 * Get GraphEdgeRepo instance.
 	 */
 	getGraphEdgeRepo(): GraphEdgeRepo {
-		if (!this.graphEdgeRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.graphEdgeRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.graphEdgeRepo;
 	}
@@ -350,8 +368,8 @@ class SqliteStoreManager {
 	 * Get GraphStore instance.
 	 */
 	getGraphStore(): GraphStore {
-		if (!this.graphStore) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.graphStore) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.graphStore;
 	}
@@ -360,8 +378,8 @@ class SqliteStoreManager {
 	 * Get UserProfileProcessedHashRepo instance (search DB).
 	 */
 	getUserProfileProcessedHashRepo(): UserProfileProcessedHashRepo {
-		if (!this.userProfileProcessedHashRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.userProfileProcessedHashRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.userProfileProcessedHashRepo;
 	}
@@ -370,8 +388,8 @@ class SqliteStoreManager {
 	 * Get ChatProjectRepo instance.
 	 */
 	getChatProjectRepo(): ChatProjectRepo {
-		if (!this.chatProjectRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.chatProjectRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.chatProjectRepo;
 	}
@@ -380,8 +398,8 @@ class SqliteStoreManager {
 	 * Get ChatConversationRepo instance.
 	 */
 	getChatConversationRepo(): ChatConversationRepo {
-		if (!this.chatConversationRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.chatConversationRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.chatConversationRepo;
 	}
@@ -390,8 +408,8 @@ class SqliteStoreManager {
 	 * Get ChatMessageRepo instance.
 	 */
 	getChatMessageRepo(): ChatMessageRepo {
-		if (!this.chatMessageRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.chatMessageRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.chatMessageRepo;
 	}
@@ -400,8 +418,8 @@ class SqliteStoreManager {
 	 * Get ChatMessageResourceRepo instance.
 	 */
 	getChatMessageResourceRepo(): ChatMessageResourceRepo {
-		if (!this.chatMessageResourceRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.chatMessageResourceRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.chatMessageResourceRepo;
 	}
@@ -410,8 +428,8 @@ class SqliteStoreManager {
 	 * Get ChatStarRepo instance.
 	 */
 	getChatStarRepo(): ChatStarRepo {
-		if (!this.chatStarRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.chatStarRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.chatStarRepo;
 	}
@@ -420,8 +438,8 @@ class SqliteStoreManager {
 	 * Get AIAnalysisRepo instance (meta.sqlite).
 	 */
 	getAIAnalysisRepo(): AIAnalysisRepo {
-		if (!this.aiAnalysisRepo) {
-			throw new Error('SqliteStoreManager not initialized. Call init() first.');
+		if (this.closing || !this.aiAnalysisRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
 		}
 		return this.aiAnalysisRepo;
 	}
@@ -445,28 +463,26 @@ class SqliteStoreManager {
 	}
 
 	close(): void {
-		// Close search database
-		if (this.searchStore) {
-			// sql.js needs to save before closing
-			if (this.searchStore.databaseType() === 'sql.js' && 'save' in this.searchStore) {
-				(this.searchStore as any).save();
+		this.closing = true;
+		try {
+			if (this.searchStore) {
+				if (this.searchStore.databaseType() === 'sql.js' && 'save' in this.searchStore) {
+					(this.searchStore as any).save();
+				}
+				this.searchStore.close();
+				this.searchStore = null;
 			}
-			this.searchStore.close();
-			this.searchStore = null;
-		}
-
-		// Close meta database
-		if (this.metaStore) {
-			// sql.js needs to save before closing
-			if (this.metaStore.databaseType() === 'sql.js' && 'save' in this.metaStore) {
-				(this.metaStore as any).save();
+			if (this.metaStore) {
+				if (this.metaStore.databaseType() === 'sql.js' && 'save' in this.metaStore) {
+					(this.metaStore as any).save();
+				}
+				this.metaStore.close();
+				this.metaStore = null;
 			}
-			this.metaStore.close();
-			this.metaStore = null;
+		} catch (e) {
+			console.warn('[SqliteStoreManager] Error during close (ignored):', e);
 		}
-
 		this.app = null;
-		// Clear repositories
 		this.docMetaRepo = null;
 		this.docChunkRepo = null;
 		this.embeddingRepo = null;
@@ -480,6 +496,8 @@ class SqliteStoreManager {
 		this.chatMessageRepo = null;
 		this.chatMessageResourceRepo = null;
 		this.chatStarRepo = null;
+		this.aiAnalysisRepo = null;
+		this.userProfileProcessedHashRepo = null;
 	}
 }
 
@@ -487,4 +505,4 @@ class SqliteStoreManager {
  * Global singleton instance.
  */
 // todo change to another way to build instance of SqliteStoreManager like AppContext.getInstance()
-export const sqliteStoreManager = new SqliteStoreManager();
+export const sqliteStoreManager = SqliteStoreManager.getInstance();

@@ -5,6 +5,8 @@ import { App, Modal, Setting, TextComponent } from 'obsidian';
  */
 export class InputModal extends Modal {
 	private inputValue = '';
+	private inputHandler: ((e: Event) => void) | null = null;
+	private keydownHandler: ((evt: KeyboardEvent) => void) | null = null;
 
 	constructor(
 		app: App,
@@ -41,12 +43,11 @@ export class InputModal extends Modal {
 		if (this.initialValue) {
 			inputEl.value = this.initialValue;
 		}
-		
-		inputEl.addEventListener('input', (e) => {
+
+		this.inputHandler = (e) => {
 			this.inputValue = (e.target as HTMLInputElement).value;
-		});
-		
-		inputEl.addEventListener('keydown', (evt) => {
+		};
+		this.keydownHandler = (evt) => {
 			if (evt.key === 'Enter' && !evt.shiftKey) {
 				evt.preventDefault();
 				this.handleSubmit();
@@ -55,7 +56,9 @@ export class InputModal extends Modal {
 				evt.preventDefault();
 				this.handleCancel();
 			}
-		});
+		};
+		inputEl.addEventListener('input', this.inputHandler);
+		inputEl.addEventListener('keydown', this.keydownHandler);
 
 		const buttonContainer = contentEl.createDiv({ cls: 'peak-input-modal__button-container' });
 		new Setting(buttonContainer)
@@ -78,8 +81,14 @@ export class InputModal extends Modal {
 	}
 
 	onClose(): void {
-		const { contentEl } = this;
-		contentEl.empty();
+		const inputEl = this.contentEl.querySelector('input');
+		if (inputEl && this.inputHandler && this.keydownHandler) {
+			inputEl.removeEventListener('input', this.inputHandler);
+			inputEl.removeEventListener('keydown', this.keydownHandler);
+		}
+		this.inputHandler = null;
+		this.keydownHandler = null;
+		this.contentEl.empty();
 	}
 
 	private handleSubmit(): void {

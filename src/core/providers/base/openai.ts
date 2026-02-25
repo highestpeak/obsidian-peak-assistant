@@ -21,7 +21,7 @@ const OPENAI_DEFAULT_BASE = 'https://api.openai.com/v1';
 interface ModelMapping {
 	/** Actual API model ID to use for API calls (may include date suffix for AI SDK 5 v2 compatibility) */
 	modelId: string;
-	/** Icon identifier for UI display, compatible with @lobehub/icons ModelIcon component */
+	/** Icon identifier for UI display (SafeModelIcon) */
 	icon: string;
 	/** Token limits for this model */
 	tokenLimits?: ModelTokenLimits;
@@ -198,7 +198,7 @@ export function getKnownOpenAIModelIds(): readonly string[] {
 
 /**
  * Get icon identifier for a model ID by looking up in MODEL_ID_MAP.
- * Used by UI components (e.g., @lobehub/icons ModelIcon) to display the correct icon.
+ * Used by SafeModelIcon to display the model icon.
  * 
  * @param modelId - User-facing model ID
  * @returns Icon identifier from MODEL_ID_MAP, or modelId as fallback

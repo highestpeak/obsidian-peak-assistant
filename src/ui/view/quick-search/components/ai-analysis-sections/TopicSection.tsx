@@ -3,7 +3,12 @@ import { Sparkles, Plus } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAIAnalysisStore } from '../../store';
+import {
+	useAIAnalysisSummaryStore,
+	useAIAnalysisResultStore,
+	useAIAnalysisTopicsStore,
+	getHasGraphData,
+} from '../../store/aiAnalysisStore';
 import { useAnalyzeTopicResults } from '../../hooks/useAIAnalysisResult';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
 import { TopicMenuPopover } from '../ai-analysis-topic-section/TopicMenuPopover';
@@ -105,24 +110,22 @@ export const TopicSection: React.FC<TagCloudSectionProps> = ({
 	topics = [],
 	onClose,
 }) => {
-	const {
-		summaryChunks,
-		sources,
-		topicAnalyzeStreaming,
-		topicAnalyzeResults,
-		topicInspectResults,
-		topicGraphResults,
-		topicGraphLoading,
-		topicInspectLoading,
-		addTopic,
-		setTopicGraphLoading,
-		setTopicGraphResult,
-		setTopicAnalyzeStreaming,
-		setTopicAnalyzeStreamingAppend,
-		setTopicAnalyzeResult,
-		setTopicModalOpen,
-		getHasGraphData,
-	} = useAIAnalysisStore();
+	const summaryChunks = useAIAnalysisSummaryStore((s) => s.summaryChunks);
+	const sources = useAIAnalysisResultStore((s) => s.sources);
+	const addTopic = useAIAnalysisResultStore((s) => s.addTopic);
+
+	const topicAnalyzeStreaming = useAIAnalysisTopicsStore((s) => s.topicAnalyzeStreaming);
+	const topicAnalyzeResults = useAIAnalysisTopicsStore((s) => s.topicAnalyzeResults);
+	const topicInspectResults = useAIAnalysisTopicsStore((s) => s.topicInspectResults);
+	const topicGraphResults = useAIAnalysisTopicsStore((s) => s.topicGraphResults);
+	const topicGraphLoading = useAIAnalysisTopicsStore((s) => s.topicGraphLoading);
+	const topicInspectLoading = useAIAnalysisTopicsStore((s) => s.topicInspectLoading);
+	const setTopicGraphLoading = useAIAnalysisTopicsStore((s) => s.setTopicGraphLoading);
+	const setTopicGraphResult = useAIAnalysisTopicsStore((s) => s.setTopicGraphResult);
+	const setTopicAnalyzeStreaming = useAIAnalysisTopicsStore((s) => s.setTopicAnalyzeStreaming);
+	const setTopicAnalyzeStreamingAppend = useAIAnalysisTopicsStore((s) => s.setTopicAnalyzeStreamingAppend);
+	const setTopicAnalyzeResult = useAIAnalysisTopicsStore((s) => s.setTopicAnalyzeResult);
+	const setTopicModalOpen = useAIAnalysisTopicsStore((s) => s.setTopicModalOpen);
 
 	const streamingTextLengthRef = useRef(0);
 
@@ -222,7 +225,7 @@ export const TopicSection: React.FC<TagCloudSectionProps> = ({
 	const handleAddTopicConfirm = useCallback(() => {
 		const trimmed = addTopicValue.trim();
 		if (!trimmed) return;
-		const current = useAIAnalysisStore.getState().topics;
+		const current = useAIAnalysisResultStore.getState().topics;
 		const seen = new Set(current.map((t) => String(t.label).toLowerCase()));
 		if (seen.has(trimmed.toLowerCase())) {
 			setUserInputDuplicate(true);

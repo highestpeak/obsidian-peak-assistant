@@ -1,18 +1,24 @@
 import { SummaryContent } from "../ai-analysis-sections/SummarySection";
 import { IntelligenceFrame } from "../../../../component/mine/IntelligenceFrame";
-import { useAIAnalysisStore } from "../../store/aiAnalysisStore";
-import { useGraphAnimationStore } from "../../store";
+import {
+	useAIAnalysisRuntimeStore,
+	useAIAnalysisSummaryStore,
+	useAIAnalysisResultStore,
+	useAIAnalysisStepsStore,
+} from "../../store/aiAnalysisStore";
 import { StreamingStepsDisplay } from "../ai-analysis-sections/StepsDisplay";
-import React from "react";
-import { KnowledgeGraphSection } from "../ai-analysis-sections/KnowledgeGraphSection";
-import { IncrementalContent } from "../IncrementalContent";
+import React, { useMemo } from "react";
+import { MermaidMindFlowSection } from "@/ui/view/quick-search/components/ai-analysis-sections/MermaidMindFlowSection";
+import { TopicSection } from "../ai-analysis-sections/TopicSection";
 import { DashboardBlocksSection } from "../ai-analysis-sections/DashboardBlocksSection";
 import { TopSourcesSection } from "../ai-analysis-sections/SourcesSection";
 import { createOpenSourceCallback } from "../../callbacks/open-source-file";
 import { convertSourcesToSearchResultItems } from "../../hooks/useAIAnalysisResult";
+import { StreamdownIsolated } from "@/ui/component/mine";
 
 export type StreamingAnalysisSectionRefs = {
 	summaryRef?: React.RefObject<HTMLDivElement>;
+	overviewRef?: React.RefObject<HTMLDivElement>;
 	topicsRef?: React.RefObject<HTMLDivElement>;
 	dashboardBlocksRef?: React.RefObject<HTMLDivElement>;
 	graphSectionRef?: React.RefObject<HTMLDivElement>;
@@ -24,26 +30,53 @@ export const StreamingAnalysis: React.FC<{
 	stepsRef?: React.RefObject<HTMLDivElement>;
 	sectionRefs?: StreamingAnalysisSectionRefs;
 }> = ({ onClose, stepsRef, sectionRefs }) => {
-	const {
-		isAnalyzing,
-		isSummaryStreaming,
-		hasStartedStreaming,
-		steps,
-		currentStep,
-		stepTrigger,
-		analysisStartedAtMs,
-		analysisCompleted,
-		duration,
-		dashboardBlocks,
-		topics,
-		sources,
-		getHasGraphData,
-		runAnalysisMode,
-	} = useAIAnalysisStore();
-	const { queue, mode } = useGraphAnimationStore();
+	const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
+	const analysisStartedAtMs = useAIAnalysisRuntimeStore((s) => s.analysisStartedAtMs);
+	const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
+	const duration = useAIAnalysisRuntimeStore((s) => s.duration);
+	const dashboardUpdatedLine = useAIAnalysisRuntimeStore((s) => s.dashboardUpdatedLine);
+	const runAnalysisMode = useAIAnalysisRuntimeStore((s) => s.runAnalysisMode);
+	const hasStartedStreaming = useAIAnalysisRuntimeStore((s) => s.hasStartedStreaming);
+
+	const isSummaryStreaming = useAIAnalysisSummaryStore((s) => s.isSummaryStreaming);
+
+	const dashboardBlocks = useAIAnalysisResultStore((s) => s.dashboardBlocks);
+	const topics = useAIAnalysisResultStore((s) => s.topics);
+	const sources = useAIAnalysisResultStore((s) => s.sources);
+	const graph = useAIAnalysisResultStore((s) => s.graph);
+	const overviewMermaidVersions = useAIAnalysisResultStore((s) => s.overviewMermaidVersions);
+	const overviewMermaidActiveIndex = useAIAnalysisResultStore((s) => s.overviewMermaidActiveIndex);
+	const mindflowMermaid = useAIAnalysisResultStore((s) => s.mindflowMermaid);
+	const mindflowProgress = useAIAnalysisResultStore((s) => s.mindflowProgress);
+
+	const steps = useAIAnalysisStepsStore((s) => s.steps);
 
 	const isSimpleMode = runAnalysisMode === 'docSimple' || runAnalysisMode === 'vaultSimple';
-	const showGraphPanel = !isSimpleMode && (getHasGraphData() || queue.length > 0 || mode !== 'idle');
+	const showMindFlow = !isSimpleMode && (mindflowMermaid ?? '').trim().length > 0;
+	const displayOverview = (overviewMermaidVersions ?? [])[overviewMermaidActiveIndex ?? 0] ?? '';
+
+	const dedupedTopics = useMemo(() => {
+		const seen = new Set<string>();
+		return (topics ?? []).filter((t: any) => {
+			const key = String(t?.label ?? '').trim().toLowerCase();
+			if (!key) return false;
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+	}, [topics]);
+	const dedupedSources = useMemo(() => {
+		const seen = new Set<string>();
+		return (sources ?? []).filter((s: any) => {
+			const path = String(s?.path ?? '').trim();
+			const id = String(s?.id ?? '').trim();
+			const key = path ? `path:${path}` : (id ? `id:${id}` : '');
+			if (!key) return false;
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+	}, [sources]);
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-4 pktw-h-full">
@@ -66,8 +99,8 @@ export const StreamingAnalysis: React.FC<{
 					<div ref={stepsRef} className="pktw-scroll-mt-24">
 						<StreamingStepsDisplay
 							steps={steps}
-							currentStep={currentStep}
-							stepTrigger={stepTrigger}
+							currentStep={null}
+							stepTrigger={0}
 							startedAtMs={analysisStartedAtMs}
 							isRunning={isAnalyzing && !analysisCompleted}
 							finalDurationMs={analysisCompleted ? duration : null}
@@ -76,41 +109,56 @@ export const StreamingAnalysis: React.FC<{
 				</div>
 			</IntelligenceFrame>
 
-			{/* Two-column: height grows with content (max 360px) to avoid large blank area at start. */}
-			<div className="pktw-flex pktw-gap-4 pktw-min-h-0 pktw-max-h-[360px] pktw-overflow-hidden pktw-shrink-0">
-				{/* Left: change log (topics/sources/blocks diff) only */}
-				<div className={`pktw-flex pktw-flex-col pktw-gap-4 pktw-min-h-0 pktw-overflow-hidden ${showGraphPanel ? 'pktw-w-[40%]' : 'pktw-flex-1'}`}>
-					<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-space-y-4">
-						<IncrementalContent
-							dashboardBlocks={dashboardBlocks ?? []}
-							topics={topics}
-							sources={sources}
-							topicsRef={sectionRefs?.topicsRef}
-							sourcesRef={sectionRefs?.sourcesRef}
-						/>
-						{(sources?.length ?? 0) > 0 ? (
-							<div ref={sectionRefs?.sourcesRef} className="pktw-scroll-mt-4">
-								<TopSourcesSection
-									sources={convertSourcesToSearchResultItems(sources ?? [])}
-									onOpen={onClose ? createOpenSourceCallback(onClose) : (s) => { }}
-									skipAnimation={!analysisCompleted}
-								/>
-							</div>
-						) : null}
+			{/* Overview (Mermaid) – streamed via ui-signal when submit_overview_mermaid tool result arrives */}
+			{!isSimpleMode && displayOverview?.trim() ? (
+				<div ref={sectionRefs?.overviewRef} className="pktw-scroll-mt-4">
+					<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border-0 pktw-flex pktw-flex-col pktw-gap-2">
+						<span className="pktw-text-xs pktw-font-semibold pktw-text-[#6b7280]">Overview</span>
+						<StreamdownIsolated
+							className="pktw-w-full pktw-min-w-0 pktw-text-left pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none pktw-select-text"
+							isAnimating={false}
+						>
+							{displayOverview}
+						</StreamdownIsolated>
 					</div>
 				</div>
+			) : null}
 
-				{/* Right: graph with configurable height (no outer max-h cap) */}
-				{showGraphPanel ? (
-					<div ref={sectionRefs?.graphSectionRef} className="pktw-w-[60%] pktw-flex pktw-flex-col pktw-min-h-0 pktw-overflow-hidden">
-						<KnowledgeGraphSection
-							onClose={onClose}
-							maxHeightClassName="pktw-min-h-[160px] pktw-max-h-[50vh]"
-							containerClassName="pktw-flex-1 pktw-min-h-0"
-						/>
-					</div>
-				) : null}
-			</div>
+			{showMindFlow ? (
+				<div ref={sectionRefs?.graphSectionRef} className="pktw-w-full pktw-flex pktw-flex-col pktw-min-h-0 pktw-overflow-hidden">
+					<MermaidMindFlowSection
+						mindflowMermaid={mindflowMermaid}
+						mindflowProgress={mindflowProgress}
+						maxHeightClassName="pktw-min-h-[160px]"
+						containerClassName="pktw-flex-1 pktw-min-h-0"
+					/>
+				</div>
+			) : null}
+
+			{/* Dashboard Updated line (from DashboardUpdateAgent, latest only) */}
+			{!isSimpleMode && (dashboardUpdatedLine ?? '').trim() ? (
+				<div className="pktw-text-xs pktw-text-[#6b7280] pktw-py-1">
+					{dashboardUpdatedLine}
+				</div>
+			) : null}
+
+			{/* Topics (same style as Completed) */}
+			{!isSimpleMode && dedupedTopics.length > 0 ? (
+				<div ref={sectionRefs?.topicsRef} className="pktw-scroll-mt-4">
+					<TopicSection topics={dedupedTopics} onClose={onClose} />
+				</div>
+			) : null}
+
+			{dedupedSources.length > 0 ? (
+				<div ref={sectionRefs?.sourcesRef} className="pktw-scroll-mt-4">
+					<TopSourcesSection
+						sources={convertSourcesToSearchResultItems(dedupedSources)}
+						onOpen={onClose ? createOpenSourceCallback(onClose) : () => {}}
+						skipAnimation={!analysisCompleted}
+						graph={graph}
+					/>
+				</div>
+			) : null}
 
 			{/* Full-width Blocks below two columns (same layout as Completed) */}
 			{(dashboardBlocks?.length ?? 0) > 0 ? (

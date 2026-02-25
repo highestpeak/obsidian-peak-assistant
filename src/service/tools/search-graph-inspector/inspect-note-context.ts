@@ -3,13 +3,15 @@ import { template as INSPECT_NOTE_CONTEXT_TEMPLATE } from "../templates/inspect-
 import { distillClusterNodesData, SemanticNeighborNode } from "./common";
 import { getSemanticNeighbors } from "./common";
 import { mapGetAll } from "@/core/utils/collection-utils";
-import { buildResponse } from "../types";
+import { buildResponse, buildResponseFromRendered } from "../types";
+import type { TemplateManager } from "@/core/template/TemplateManager";
+import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
 /**
  * {@link INSPECT_NOTE_CONTEXT_TEMPLATE}
  */
-export async function inspectNoteContext(params: any) {
+export async function inspectNoteContext(params: any, templateManager?: TemplateManager) {
     const { note_path, limit, include_semantic_paths, response_format } = params;
     // Get note metadata
     const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
@@ -54,20 +56,23 @@ export async function inspectNoteContext(params: any) {
         ? await getSemanticNeighbors(docMeta.id, limit, neighborDocumentsIds)
         : [];
 
-    return buildResponse(response_format, INSPECT_NOTE_CONTEXT_TEMPLATE, {
+    const data = {
         note_path,
         tags,
         categories,
-        // we don't need to render tag or categories from incoming and outgoing nodes. as we already have them in the two fields above.
         incoming: await distillClusterNodesData(
             mapGetAll(connectedNodesMap, inComingNode), limit
         ),
         outgoing: await distillClusterNodesData(
             mapGetAll(connectedNodesMap, outGoingNode), limit
         ),
-        // only document nodes are semantic neighbors.
         semanticNeighbors: await distillClusterNodesData(
             semanticNeighbors, limit
         ),
-    });
+    };
+    if (templateManager) {
+        const rendered = await templateManager.render(ToolTemplateId.InspectNoteContext, data);
+        return buildResponseFromRendered(response_format, data, rendered);
+    }
+    return buildResponse(response_format, INSPECT_NOTE_CONTEXT_TEMPLATE, data);
 }

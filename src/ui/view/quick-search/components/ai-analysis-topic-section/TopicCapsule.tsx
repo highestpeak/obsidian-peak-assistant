@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
-import { useAIAnalysisStore, type SectionAnalyzeResult } from '../../store/aiAnalysisStore';
+import { useAIAnalysisTopicsStore, type SectionAnalyzeResult } from '../../store/aiAnalysisStore';
 import { Button } from '@/ui/component/shared-ui/button';
 
 const SUMMARY_MAX_LEN = 80;
@@ -29,7 +29,9 @@ export const TopicCapsule: React.FC<TopicCapsuleProps> = ({
 	onHover,
 	onLeave,
 }) => {
-	const { topicAnalyzeResults, topicAnalyzeStreaming, setTopicModalOpen } = useAIAnalysisStore();
+	const topicAnalyzeResults = useAIAnalysisTopicsStore((s) => s.topicAnalyzeResults);
+	const topicAnalyzeStreaming = useAIAnalysisTopicsStore((s) => s.topicAnalyzeStreaming);
+	const setTopicModalOpen = useAIAnalysisTopicsStore((s) => s.setTopicModalOpen);
 	const summary = getTopicSummary(
 		topicAnalyzeResults?.[topicLabel] ?? [],
 		topicAnalyzeStreaming?.topic === topicLabel ? topicAnalyzeStreaming.chunks.join('') : null

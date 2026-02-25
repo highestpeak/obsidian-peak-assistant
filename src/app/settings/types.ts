@@ -1,5 +1,4 @@
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
-import { CommandHiddenSettings, DEFAULT_COMMAND_HIDDEN_SETTINGS } from '@/service/CommandHiddenControlService';
 import type { DocumentType } from '@/core/document/types';
 import { PromptId, CONFIGURABLE_PROMPT_IDS } from '@/service/prompt/PromptId';
 
@@ -348,9 +347,6 @@ export interface MyPluginSettings {
 	ai: AIServiceSettings;
 	search: SearchSettings;
 
-	// the try to replace other plugins' functions' settings
-	commandHidden: CommandHiddenSettings;
-
 	/**
 	 * SQLite backend preference.
 	 * - 'auto': Automatically detect and use better-sqlite3 if available, otherwise use sql.js
@@ -390,8 +386,6 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 
 	ai: DEFAULT_AI_SERVICE_SETTINGS,
 	search: DEFAULT_SEARCH_SETTINGS,
-
-	commandHidden: DEFAULT_COMMAND_HIDDEN_SETTINGS,
 
 	sqliteBackend: 'auto', // Auto-detect: try better-sqlite3 first, fallback to sql.js
 

@@ -165,6 +165,10 @@ export function useGraphSimulation({
 		return () => {
 			simulation.stop();
 			simulationRef.current = null;
+			// Remove zoom listener so callback (and refs) can be GC'd; clear zoomRef to release behavior
+			const z = zoomRef.current as { on?: (type: string, listener: null) => unknown } | null;
+			if (z?.on) z.on('zoom', null);
+			zoomRef.current = null;
 		};
 	}, []);
 

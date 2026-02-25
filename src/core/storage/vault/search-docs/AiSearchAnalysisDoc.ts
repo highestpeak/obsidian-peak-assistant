@@ -26,6 +26,7 @@ const SECTION_SUMMARY = '# Summary';
 const SECTION_QUERY = '# Query';
 const SECTION_OVERVIEW = '# Overview';
 const SECTION_OVERVIEW_HISTORY = '# Overview History';
+const SECTION_MINDFLOW = '# MindFlow';
 const SECTION_KEY_TOPICS = '# Key Topics';
 const SECTION_SOURCES = '# Sources';
 const SECTION_TOPIC_INSPECT = '# Topic Inspect Results';
@@ -102,6 +103,8 @@ export interface AiSearchAnalysisDocModel {
 	overviewMermaidActiveIndex?: number;
 	// all versions of overview mermaid
 	overviewMermaidVersions?: string[];
+	/** MindFlow thinking diagram (raw Mermaid code) from MindFlowAgent. Latest only. */
+	mindflowMermaid?: string;
 }
 
 const EMPTY_DOC_MODEL: AiSearchAnalysisDocModel = {
@@ -339,6 +342,7 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 	const query = querySection || fm.query;
 	const overviewSection = extractSection(body, 'Overview');
 	const overviewHistorySection = extractSection(body, 'Overview History');
+	const mindflowSection = extractSection(body, 'MindFlow');
 	let overviewMermaidVersions: string[] = [];
 	let overviewMermaidActiveIndex = 0;
 	if (overviewHistorySection.trim()) {
@@ -357,6 +361,8 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 			overviewMermaidActiveIndex = 0;
 		}
 	}
+	const mindflowMermaidRaw = extractMermaidBlock(mindflowSection);
+	const mindflowMermaid = mindflowMermaidRaw?.trim() ? normalizeMermaidForDisplay(mindflowMermaidRaw) : undefined;
 	const topicsText = extractSection(body, 'Key Topics');
 	const sourcesText = extractSection(body, 'Sources');
 	const inspectText = extractSection(body, 'Topic Inspect Results');
@@ -633,6 +639,7 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		steps: steps.length ? steps : undefined,
 		overviewMermaidVersions: overviewMermaidVersions.length ? overviewMermaidVersions : undefined,
 		overviewMermaidActiveIndex: overviewMermaidVersions.length ? overviewMermaidActiveIndex : undefined,
+		mindflowMermaid,
 	};
 }
 
@@ -783,6 +790,15 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 					lines.push('');
 				}
 			}
+		}
+		const mindflow = (docModel.mindflowMermaid ?? '').trim();
+		if (mindflow) {
+			lines.push(SECTION_MINDFLOW);
+			lines.push('');
+			lines.push('```mermaid');
+			lines.push(getMermaidInner(mindflow));
+			lines.push('```');
+			lines.push('');
 		}
 
 		if (docModel.topics.length) {
@@ -972,6 +988,7 @@ export function toCompletedAnalysisSnapshot(
 		steps: docModel.steps,
 		overviewMermaidVersions: docModel.overviewMermaidVersions?.length ? docModel.overviewMermaidVersions : undefined,
 		overviewMermaidActiveIndex: docModel.overviewMermaidVersions?.length ? (docModel.overviewMermaidActiveIndex ?? 0) : undefined,
+		mindflowMermaid: docModel.mindflowMermaid?.trim() ? docModel.mindflowMermaid : undefined,
 	};
 }
 
@@ -1023,5 +1040,6 @@ export function fromCompletedAnalysisSnapshot(
 		blocksFollowupsByBlockId: snapshot.blocksFollowupsByBlockId,
 		sourcesFollowups: snapshot.sourcesFollowups,
 		steps: snapshot.steps,
+		mindflowMermaid: snapshot.mindflowMermaid?.trim() ? snapshot.mindflowMermaid : undefined,
 	};
 }

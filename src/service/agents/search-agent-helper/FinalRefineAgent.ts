@@ -1,96 +1,92 @@
-import { Experimental_Agent as Agent, stepCountIs } from 'ai';
+import { Experimental_Agent as Agent, hasToolCall, stepCountIs } from 'ai';
 import { AIServiceManager } from '@/service/chat/service-manager';
-import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
-import type { GraphPatch } from '@/core/providers/ui-events/graph';
-import { PromptId, type PromptVariables } from '@/service/prompt/PromptId';
-import { AISearchUpdateContext, InnerAgentContext } from '../AISearchAgent';
-import type { AISearchEdge, AISearchNode } from '../AISearchAgent';
+import { LLMRequestMessage, LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
+import { PromptId } from '@/service/prompt/PromptId';
+import type { AISearchSource } from '../AISearchAgent';
 import {
     sourcesUpdateTool,
-    graphNodesUpdateTool,
-    graphEdgesUpdateTool,
+    updateSourceScoresTool,
     getSourcesToolFormatGuidance,
     getGraphToolFormatGuidance,
 } from './helpers/DashboardUpdateToolBuilder';
-import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import type { AgentTool } from '@/service/tools/types';
-import { RESULT_UPDATE_TOOL_NAMES } from '../AISearchAgent';
-import { buildPromptTraceDebugEvent, checkIfDeltaEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
+import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { AgentContextManager, AgentMemoryToolSet } from './AgentContextManager';
+import { convertMessagesToText } from '@/core/providers/adapter/ai-sdk-adapter';
 
 const DEFAULT_MAX_STEPS = 8;
 
-const FINAL_REFINE_GRAPH_TOOLS = new Set(['update_graph_nodes', 'update_graph_edges']);
+/**
+ * Refine modes for FinalRefineAgent.
+ * - sources_scores_only: Batch update scores without reasoning.
+ * - sources_full_only: Full source refinement with reasoning (top sources by score).
+ * - full: Both sources and graph refinement.
+ */
+export enum RefineMode {
+    SOURCES_SCORES_ONLY = 'sources_scores_only',
+    SOURCES_FULL_ONLY = 'sources_full_only',
+    FULL = 'full',
+}
 
-type FinalRefineToolSet = {
+/** Number of refine rounds for sources + graph. */
+export const REFINE_ROUNDS = 1;
+
+/** Batch size for sources refinement. */
+export const REFINE_SOURCES_BATCH_SIZE = 12;
+
+/** Score threshold calculation methods for selecting high-value sources. */
+export type ScoreThresholdMethod = 'median' | 'mean' | 'percentile';
+
+/**
+ * Calculate score threshold using specified method.
+ * Sources with score >= threshold will be selected for full refinement.
+ */
+export function calculateScoreThreshold(
+    scores: number[],
+    method: ScoreThresholdMethod = 'median',
+    percentile: number = 50,
+): number {
+    if (scores.length === 0) return 0;
+    const sorted = [...scores].sort((a, b) => a - b);
+
+    switch (method) {
+        case 'median': {
+            const mid = Math.floor(sorted.length / 2);
+            return sorted.length % 2 === 0
+                ? (sorted[mid - 1] + sorted[mid]) / 2
+                : sorted[mid];
+        }
+        case 'mean': {
+            return scores.reduce((sum, s) => sum + s, 0) / scores.length;
+        }
+        case 'percentile': {
+            const idx = Math.ceil((percentile / 100) * sorted.length) - 1;
+            return sorted[Math.max(0, idx)];
+        }
+        default:
+            return sorted[Math.floor(sorted.length / 2)];
+    }
+}
+
+type FinalRefineToolSet = AgentMemoryToolSet & {
     search_analysis_context: AgentTool;
-    update_sources: AgentTool;
-    update_graph_nodes: AgentTool;
-    update_graph_edges: AgentTool;
+    update_sources?: AgentTool;
+    update_source_scores?: AgentTool;
 };
 
-function edgeKey(e: { from_node_id: string; to_node_id: string; kind?: string }): string {
-    return `${String(e.from_node_id)}|${String(e.kind ?? 'link')}|${String(e.to_node_id)}`;
+export type FinalSourcesScoreRefineContext = {
+    sources: string;
 }
 
-/**
- * Split a graph patch into one patch per node (1 node + edges touching that node) for one-by-one UI animation.
- */
-function splitPatchIntoSingleNodePatches(patch: GraphPatch): GraphPatch[] {
-    const nodes = patch.upsertNodes ?? [];
-    const edges = patch.upsertEdges ?? [];
-    if (nodes.length === 0) return [];
-    const result: GraphPatch[] = [];
-    for (const node of nodes) {
-        const nodeId = node.id;
-        const nodeEdges = edges.filter((e) => e.from_node_id === nodeId || e.to_node_id === nodeId);
-        result.push({
-            upsertNodes: [node],
-            upsertEdges: nodeEdges,
-            meta: patch.meta ?? { toolName: 'final_refine', label: 'Refining graph…' },
-        });
-    }
-    return result;
+export type FinalSourcesReasonRefineContext = {
+    sources: string;
 }
 
-/**
- * Build delta patch from snapshot to current graph (same logic as GraphUpdateAgent.resultGraphToDeltaPatch).
- */
-function resultGraphToDeltaPatch(
-    getResult: () => { graph: { nodes: AISearchNode[]; edges: AISearchEdge[] } },
-    snapshot: { nodeIds: Set<string>; edgeKeys: Set<string> } | null
-): GraphPatch {
-    const g = getResult().graph;
-    const toPatchNode = (n: AISearchNode) => ({
-        id: n.id,
-        label: n.title ?? (n as any).label ?? n.id,
-        type: n.type,
-        ...(n.path ? { path: n.path } : {}),
-        ...(n.attributes && Object.keys(n.attributes).length ? { attributes: n.attributes } : {}),
-    });
-    const toPatchEdge = (e: AISearchEdge) => ({
-        from_node_id: e.source,
-        to_node_id: e.target,
-        kind: e.type,
-        ...(typeof (e.attributes?.weight) === 'number' ? { weight: e.attributes.weight } : {}),
-    });
-    if (!snapshot) {
-        return {
-            upsertNodes: g.nodes.map(toPatchNode),
-            upsertEdges: g.edges.map(toPatchEdge),
-            meta: { toolName: 'final_refine', label: 'Refining graph…' },
-        };
-    }
-    const newNodes = g.nodes.filter((n) => !snapshot.nodeIds.has(n.id)).map(toPatchNode);
-    const newEdges = g.edges
-        .filter((e) => !snapshot.edgeKeys.has(`${e.source}|${e.type}|${e.target}`))
-        .map(toPatchEdge);
-    return {
-        upsertNodes: newNodes,
-        upsertEdges: newEdges,
-        meta: { toolName: 'final_refine', label: 'Refining graph…' },
-    };
-}
+export type FinalRefineContext = (FinalSourcesScoreRefineContext | FinalSourcesReasonRefineContext) & {
+    originalQuery: string;
+    agentMemoryMessage: string;
+};
 
 /**
  * Single LLM pass to refine sources (reorder, add reasoning) and graph (add concept/tag nodes and edges).
@@ -99,141 +95,241 @@ function resultGraphToDeltaPatch(
  */
 export class FinalRefineAgent {
     private readonly aiServiceManager: AIServiceManager;
-    private readonly context: InnerAgentContext;
+    private readonly context: AgentContextManager;
 
-    private agent: Agent<FinalRefineToolSet>;
+    private sourceScoreAgent: Agent<FinalRefineToolSet>;
+    private sourceReasonAgent: Agent<FinalRefineToolSet>;
 
     constructor(params: {
         aiServiceManager: AIServiceManager;
-        context: InnerAgentContext;
+        context: AgentContextManager;
     }) {
         this.aiServiceManager = params.aiServiceManager;
         this.context = params.context;
-        const { getResult, getVerifiedPaths, searchHistory } = this.context;
 
-        const tools: FinalRefineToolSet = {
-            search_analysis_context: searchMemoryStoreTool(searchHistory, {
-                description: 'Search the analysis session history for evidence. Use to justify source reasoning or graph edges.',
-            }),
-            update_sources: sourcesUpdateTool(getResult, getVerifiedPaths),
-            update_graph_nodes: graphNodesUpdateTool(getResult, getVerifiedPaths),
-            update_graph_edges: graphEdgesUpdateTool(getResult),
-        };
-
-        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisFinalRefine);
-        this.agent = new Agent<FinalRefineToolSet>({
+        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisFinalRefineSourceScores);
+        this.sourceScoreAgent = new Agent<FinalRefineToolSet>({
             model: this.aiServiceManager.getMultiChat()
                 .getProviderService(provider)
                 .modelClient(modelId),
-            tools,
-            stopWhen: [stepCountIs(DEFAULT_MAX_STEPS)],
+            tools: {
+                ...this.context.getAgentMemoryTool(),
+                update_source_scores: updateSourceScoresTool(),
+            },
+            stopWhen: [stepCountIs(DEFAULT_MAX_STEPS), hasToolCall('update_source_scores')],
+        });
+
+        const { provider: provider2, modelId: modelId2 } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisFinalRefineSources);
+        this.sourceReasonAgent = new Agent<FinalRefineToolSet>({
+            model: this.aiServiceManager.getMultiChat()
+                .getProviderService(provider2)
+                .modelClient(modelId2),
+            tools: {
+                ...this.context.getAgentMemoryTool(),
+                update_sources: sourcesUpdateTool(),
+            },
+            stopWhen: [stepCountIs(DEFAULT_MAX_STEPS), hasToolCall('update_sources')],
         });
     }
 
-    /** refineMode: sources only (description), graph only (connections), or full. sourcesBatch: when set, refine only that batch of sources. */
+    /**
+     * Stream a single refine step.
+     * @param refineMode Which mode to use.
+     */
     public async *stream(
-        variables: AISearchUpdateContext,
+        variables: FinalRefineContext,
         opts?: {
             stepId?: string;
-            refineMode?: 'sources_only' | 'graph_only' | 'full';
-            sourcesBatch?: { index: number; start: number; end: number; total: number };
+            refineMode?: RefineMode;
         }
     ): AsyncGenerator<LLMStreamEvent> {
         const stepId = opts?.stepId ?? generateUuidWithoutHyphens();
-        const refineMode = opts?.refineMode ?? 'full';
-        const sourcesBatch = opts?.sourcesBatch;
+        const refineMode = opts?.refineMode ?? RefineMode.FULL;
 
-        const toolFormatGuidance =
-            refineMode === 'graph_only'
-                ? getGraphToolFormatGuidance()
-                : refineMode === 'sources_only'
-                  ? getSourcesToolFormatGuidance()
-                  : [getSourcesToolFormatGuidance(), getGraphToolFormatGuidance()].join('\n\n');
-
-        let systemPromptId: PromptId;
-        let promptId: PromptId;
-        let promptVars: Record<string, unknown>;
-
-        if (refineMode === 'sources_only') {
-            systemPromptId = PromptId.AiAnalysisFinalRefineSourcesSystem;
-            promptId = PromptId.AiAnalysisFinalRefineSources;
-            promptVars = {
-                ...variables,
-                toolFormatGuidance,
-                sourcesBatch: sourcesBatch
-                    ? {
-                          start: sourcesBatch.start,
-                          end: sourcesBatch.end,
-                          indexPlusOne: sourcesBatch.index + 1,
-                          total: sourcesBatch.total,
-                      }
-                    : undefined,
-            };
-        } else if (refineMode === 'graph_only') {
-            systemPromptId = PromptId.AiAnalysisFinalRefineGraphSystem;
-            promptId = PromptId.AiAnalysisFinalRefineGraph;
-            promptVars = { ...variables, toolFormatGuidance };
-        } else {
-            systemPromptId = PromptId.AiAnalysisFinalRefineSystem;
-            promptId = PromptId.AiAnalysisFinalRefine;
-            promptVars = { ...variables, toolFormatGuidance, refineMode: undefined };
-        }
-
+        const { systemPromptId, promptId, promptVars, agent } = this.getRefinePromptConfig(refineMode, variables);
         const promptInfo = await this.aiServiceManager.getPromptInfo(promptId);
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId ?? systemPromptId, {});
         const prompt = await this.aiServiceManager.renderPrompt(promptId, promptVars as any);
 
         yield buildPromptTraceDebugEvent(
-            'final-refine-prompt',
-            StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
+            StreamTriggerName.SEARCH_FINAL_REFINE_AGENT,
             system,
             prompt
         );
 
-        const result = this.agent.stream({ system, prompt });
-        let graphSnapshotBeforeTool: { nodeIds: Set<string>; edgeKeys: Set<string> } | null = null;
+        const result = agent.stream({ system, prompt });
 
-        yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT, {
-            yieldEventPostProcessor: (chunk: any) =>
-                RESULT_UPDATE_TOOL_NAMES.has(chunk.toolName) ? { extra: { currentResult: this.context.getResult() } } : {},
-            chunkEventInterceptor: (chunk: any) => {
-                if (chunk.type === 'tool-call' && FINAL_REFINE_GRAPH_TOOLS.has(chunk.toolName)) {
-                    const g = this.context.getResult().graph;
-                    graphSnapshotBeforeTool = {
-                        nodeIds: new Set(g.nodes.map((n) => n.id)),
-                        edgeKeys: new Set(g.edges.map((e) => edgeKey({ from_node_id: e.source, to_node_id: e.target, kind: e.type }))),
-                    };
+        yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_FINAL_REFINE_AGENT, {
+            yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
+            yieldEventPostProcessor: (chunk: any) => {
+                if (chunk.type === 'tool-result') {
+                    if (chunk.toolName === 'update_sources' || chunk.toolName === 'update_source_scores') {
+                        return this.context.yieldAgentResult();
+                    }
                 }
-            },
-            yieldExtraAfterEvent: (chunk: any) => {
-                if (checkIfDeltaEvent(chunk)) {
-                    return {
-                        type: 'ui-step-delta',
-                        uiType: UIStepType.STEPS_DISPLAY,
-                        stepId,
-                        descriptionDelta: (chunk as any).text,
-                        triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
-                    };
-                }
-
-                if (chunk.type == 'tool-result' && FINAL_REFINE_GRAPH_TOOLS.has(chunk.toolName)) {
-                    const patch = resultGraphToDeltaPatch(this.context.getResult, graphSnapshotBeforeTool);
-                    graphSnapshotBeforeTool = null;
-                    const singleNodePatches = splitPatchIntoSingleNodePatches(patch);
-                    return singleNodePatches.map((p, i) => ({
-                        type: 'ui-signal' as const,
-                        id: `sig-final-refine-${Date.now()}-${i}`,
-                        channel: 'graph' as const,
-                        kind: 'patch' as const,
-                        entityId: stepId ?? 'final-refine',
-                        payload: {
-                            patch: p,
-                            overlayText: p.meta?.label ?? 'Refining graph…',
-                            effect: undefined,
-                        },
-                    }));
-                }
-            },
+                return {};
+            }
         });
+    }
+
+    /**
+     * Multi-round refine: score all sources, then refine top sources (by adaptive threshold).
+     * Encapsulates the loop logic previously in AISearchAgent.streamFullAnalysis.
+     */
+    public async *streamSourcesRefine(
+        opts?: {
+            scoreThresholdMethod?: ScoreThresholdMethod;
+            /** Minimum percentile to include (e.g., 50 = top 50%). Default 50. */
+            minPercentile?: number;
+        },
+    ): AsyncGenerator<LLMStreamEvent> {
+        const {
+            scoreThresholdMethod = 'median',
+            minPercentile = 50,
+        } = opts ?? {};
+        const stepId = generateUuidWithoutHyphens();
+
+        const agentMemoryMessageText = this.context.getCachedCurrentPromptMessageText();
+
+        const sources = this.context.getAgentResult().sources;
+        const totalSources = sources.length;
+
+        // Phase 1: batch source scores (no reasoning)
+        if (totalSources > 0) {
+            yield* this.streamSingleRefineStep(
+                stepId,
+                'Scoring sources…',
+                RefineMode.SOURCES_SCORES_ONLY,
+                {
+                    originalQuery: this.context.getInitialPrompt(),
+                    sources: JSON.stringify(sources),
+                    agentMemoryMessage: agentMemoryMessageText,
+                },
+            );
+        }
+
+        // Get current sources and refine those above the adaptive threshold
+        const currentSources = this.context.getAgentResult().sources;
+        if (currentSources.length <= 0) {
+            return;
+        }
+        const topSourceIndices = this.selectTopSourceIndices(
+            currentSources,
+            scoreThresholdMethod,
+            minPercentile,
+        );
+        if (topSourceIndices.length <= 0) {
+            return;
+        }
+        const selectedSources = topSourceIndices
+            .map((i) => currentSources[i])
+            .filter((s) => (s.score?.average ?? 0) > 0);
+        if (selectedSources.length <= 0) {
+            return;
+        }
+
+        // Phase 2: refine top sources only. We only refine sources that are above the adaptive threshold, which is more efficient and meaningful.
+        yield* this.streamSingleRefineStep(
+            stepId,
+            `Refining ${selectedSources.length} sources…`,
+            RefineMode.SOURCES_FULL_ONLY,
+            {
+                originalQuery: this.context.getInitialPrompt(),
+                sources: JSON.stringify(selectedSources),
+                agentMemoryMessage: agentMemoryMessageText,
+            },
+        );
+    }
+
+    /**
+     * Select source indices that are above the adaptive score threshold.
+     */
+    private selectTopSourceIndices(
+        sources: AISearchSource[],
+        method: ScoreThresholdMethod,
+        minPercentile: number,
+    ): number[] {
+        const scores = sources.map((s) => s.score?.average ?? 0);
+        const threshold = calculateScoreThreshold(scores, method, minPercentile);
+        const indices: number[] = [];
+        for (let i = 0; i < sources.length; i++) {
+            if ((sources[i].score?.average ?? 0) >= threshold) {
+                indices.push(i);
+            }
+        }
+        return indices;
+    }
+
+    /**
+     * Single refine step with UI events.
+     */
+    private async *streamSingleRefineStep(
+        stepId: string,
+        stepTitle: string,
+        refineMode: RefineMode,
+        variables: FinalRefineContext,
+    ): AsyncGenerator<LLMStreamEvent> {
+        yield {
+            type: 'ui-step',
+            uiType: UIStepType.STEPS_DISPLAY,
+            stepId,
+            title: stepTitle,
+            description: this.getRefineStepDescription(refineMode),
+            triggerName: StreamTriggerName.SEARCH_FINAL_REFINE_AGENT,
+        };
+
+        yield* this.stream(variables, { stepId, refineMode });
+    }
+
+    private getRefineStepDescription(mode: RefineMode): string {
+        switch (mode) {
+            case RefineMode.SOURCES_SCORES_ONLY:
+                return 'Scoring sources…';
+            case RefineMode.SOURCES_FULL_ONLY:
+                return 'Refining sources…';
+            default:
+                return 'Refining results…';
+        }
+    }
+
+    /** Resolve prompt IDs and variables based on refine mode. */
+    private getRefinePromptConfig(
+        mode: RefineMode,
+        variables: FinalRefineContext,
+    ): {
+        systemPromptId: PromptId;
+        promptId: PromptId;
+        promptVars: Record<string, unknown>;
+        toolFormatGuidance: string;
+        agent: Agent<FinalRefineToolSet>;
+    } {
+        switch (mode) {
+            case RefineMode.SOURCES_SCORES_ONLY:
+                return {
+                    systemPromptId: PromptId.AiAnalysisFinalRefineSourceScoresSystem,
+                    promptId: PromptId.AiAnalysisFinalRefineSourceScores,
+                    promptVars: { ...variables },
+                    toolFormatGuidance: '',
+                    agent: this.sourceScoreAgent,
+                };
+            case RefineMode.SOURCES_FULL_ONLY:
+                return {
+                    systemPromptId: PromptId.AiAnalysisFinalRefineSourcesSystem,
+                    promptId: PromptId.AiAnalysisFinalRefineSources,
+                    promptVars: { ...variables, toolFormatGuidance: getSourcesToolFormatGuidance() },
+                    toolFormatGuidance: getSourcesToolFormatGuidance(),
+                    agent: this.sourceReasonAgent,
+                };
+            default: {
+                const fullGuidance = [getSourcesToolFormatGuidance(), getGraphToolFormatGuidance()].join('\n\n');
+                return {
+                    systemPromptId: PromptId.AiAnalysisFinalRefineSystem,
+                    promptId: PromptId.AiAnalysisFinalRefine,
+                    promptVars: { ...variables, toolFormatGuidance: fullGuidance, refineMode: undefined },
+                    toolFormatGuidance: fullGuidance,
+                    agent: this.sourceReasonAgent,
+                };
+            }
+        }
     }
 }

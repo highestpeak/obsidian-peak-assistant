@@ -162,14 +162,6 @@ class LRUCache<T> {
 		this.cleanup();
 		return this.cache.size;
 	}
-
-	// Clean up timer when instance is no longer needed
-	destroy(): void {
-		if (this.cleanupTimer) {
-			clearInterval(this.cleanupTimer);
-			this.cleanupTimer = undefined;
-		}
-	}
 }
 
 /**
@@ -218,4 +210,11 @@ export function getCachedBooleanExpression(expression: string | undefined): Bool
 		booleanExpressionCache.set(expression, parser);
 	}
 	return parser;
+}
+
+/** Clear all caches and stop timers. Call on plugin unload to avoid leaks. */
+export function clearFormatUtilsCaches(): void {
+	regexCache.clear();
+	semanticDateRangeCache.clear();
+	booleanExpressionCache.clear();
 }

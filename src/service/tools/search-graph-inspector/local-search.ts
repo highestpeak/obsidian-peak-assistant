@@ -1,6 +1,8 @@
 import { AppContext } from "@/app/context/AppContext";
 import { template as LOCAL_SEARCH_TEMPLATE } from "../templates/local-search";
-import { buildResponse } from "../types";
+import { buildResponse, buildResponseFromRendered } from "../types";
+import type { TemplateManager } from "@/core/template/TemplateManager";
+import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { applyFiltersAndSorters } from "./common";
 import { SearchResultItem, SearchSnippet } from "@/service/search/types";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
@@ -102,7 +104,7 @@ async function getSearchResultItemFieldGetter(items: SearchResultItem[], filters
     });
 }
 
-export async function localSearch(params: any) {
+export async function localSearch(params: any, templateManager?: TemplateManager) {
     const { query, searchMode, scopeMode, scopeValue, limit, response_format, filters, sorter } = params;
     const { items: rawItems, duration } = await AppContext.getInstance().searchClient.search({
         text: query,
@@ -121,13 +123,17 @@ export async function localSearch(params: any) {
     const itemFieldGetter = await getSearchResultItemFieldGetter(items, filters, sorter);
     const filteredItems = applyFiltersAndSorters(items, filters, sorter, limit, itemFieldGetter);
 
-    // Slim down results to reduce token output (remove content field)
     const slimResults = slimSearchResults(filteredItems);
 
-    // Render template
-    return buildResponse(response_format, LOCAL_SEARCH_TEMPLATE, {
+    const data = {
         query: query,
         results: slimResults,
         searchTime: duration
-    });
+    };
+
+    if (templateManager) {
+        const rendered = await templateManager.render(ToolTemplateId.LocalSearch, data);
+        return buildResponseFromRendered(response_format, data, rendered);
+    }
+    return buildResponse(response_format, LOCAL_SEARCH_TEMPLATE, data);
 }

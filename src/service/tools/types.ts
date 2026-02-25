@@ -1,6 +1,9 @@
-import { z } from "zod/v3"
-import Handlebars from 'handlebars';
+import type { ZodType } from "@/core/schemas";
+import { ZodError } from "@/core/schemas";
+import { getCompiledBounded } from '@/core/template-engine-helper';
 import { LLMStreamEvent, StreamTriggerName } from "@/core/providers/types";
+
+export { clearBuildResponseCompileCache } from '@/core/template-engine-helper';
 
 /**
  * Don't use ToolSet from ai sdk directly; it slows TS and may crash IDE.
@@ -8,7 +11,7 @@ import { LLMStreamEvent, StreamTriggerName } from "@/core/providers/types";
  */
 export interface AgentTool {
     description: string;
-    inputSchema: z.ZodType;
+    inputSchema: ZodType;
     execute: (input?: any) => Promise<any>;
 }
 
@@ -29,9 +32,9 @@ export function safeAgentTool(tool: AgentTool): AgentTool {
                     durationMs: Date.now() - start,
                 };
             } catch (error) {
-                if (error instanceof z.ZodError) {
+                if (error instanceof ZodError) {
                     return {
-                        error: "[Tool Safe Wrapper][Zod] Not valid parameters: " + error.errors.map(e => e.message).join(", "),
+                        error: "[Tool Safe Wrapper][Zod] Not valid parameters: " + error.errors.map((e: { message: string }) => e.message).join(", "),
                         durationMs: Date.now() - start,
                     };
                 }
@@ -79,19 +82,39 @@ export async function withTimeoutMessage<T>(
 
 /**
  * Build the response based on the response format.
- * @param template - Fallback to structured format if not provided.
+ * Uses a bounded compile cache to avoid re-compiling the same template every call (prevents Handlebars memory leak).
  */
 export function buildResponse(responseFormat: 'structured' | 'markdown' | 'hybrid', template: string | undefined, result: any) {
     switch (responseFormat) {
         case 'structured':
             return result;
         case 'markdown':
-            return template ? Handlebars.compile(template)(result) : result;
+            return template ? getCompiledBounded(template)(result) : result;
         case 'hybrid':
             return {
                 data: result,
-                template: template ? Handlebars.compile(template)(result) : result,
+                template: template ? getCompiledBounded(template)(result) : result,
             };
+        default:
+            throw new Error(`Invalid response format: ${responseFormat}`);
+    }
+}
+
+/**
+ * Build response when markdown is already rendered (e.g. from TemplateManager).
+ */
+export function buildResponseFromRendered(
+    responseFormat: 'structured' | 'markdown' | 'hybrid',
+    result: any,
+    renderedMarkdown: string,
+) {
+    switch (responseFormat) {
+        case 'structured':
+            return result;
+        case 'markdown':
+            return renderedMarkdown;
+        case 'hybrid':
+            return { data: result, template: renderedMarkdown };
         default:
             throw new Error(`Invalid response format: ${responseFormat}`);
     }

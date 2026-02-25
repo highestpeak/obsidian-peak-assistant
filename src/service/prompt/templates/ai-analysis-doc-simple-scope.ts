@@ -10,14 +10,14 @@ export const template = `**Scope: current file only.** Current file path: \`{{sc
 # Current file content
 
 <<<
-{{fileContent}}
+{{{fileContent}}}
 >>>
 
 ---
 
 # User request
 
-{{userPrompt}}
+{{{userPrompt}}}
 
 **Language:** Analyze and respond in the same language as the user request above (e.g. if the user wrote in Chinese, respond in Chinese).`;
 

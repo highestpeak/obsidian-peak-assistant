@@ -326,12 +326,13 @@ export const GraphMainCanvas: React.FC<GraphMainCanvasProps> = ({
 		canvas.addEventListener('pointerdown', handlePointerDown, { capture: true });
 		window.addEventListener('pointerup', handlePointerUp);
 		canvas.addEventListener('pointercancel', handlePointerCancel);
-		canvas.addEventListener('pointerleave', () => {
+		const handlePointerLeave = () => {
 			setHoveredNodeId(null);
 			onNodeHover?.(null);
 			handlePointerCancel();
 			scheduleDrawRef.current?.();
-		});
+		};
+		canvas.addEventListener('pointerleave', handlePointerLeave);
 		canvas.addEventListener('click', handleClick);
 		canvas.addEventListener('contextmenu', handleContextMenu);
 
@@ -339,9 +340,9 @@ export const GraphMainCanvas: React.FC<GraphMainCanvasProps> = ({
 			canvas.removeEventListener('pointerenter', handlePointerEnter);
 			canvas.removeEventListener('pointermove', handlePointerMove);
 			canvas.removeEventListener('pointerdown', handlePointerDown, { capture: true });
-			canvas.removeEventListener('pointerup', handlePointerUp);
 			window.removeEventListener('pointerup', handlePointerUp);
 			canvas.removeEventListener('pointercancel', handlePointerCancel);
+			canvas.removeEventListener('pointerleave', handlePointerLeave);
 			canvas.removeEventListener('click', handleClick);
 			canvas.removeEventListener('contextmenu', handleContextMenu);
 		};

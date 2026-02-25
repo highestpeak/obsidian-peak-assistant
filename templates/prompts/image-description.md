@@ -1,0 +1,1 @@
+Please describe this image in detail, including any text visible in the image (OCR), objects, scenes, and any other relevant information.

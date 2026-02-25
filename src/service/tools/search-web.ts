@@ -1,5 +1,5 @@
 import { chromium, type Browser, type Page } from 'playwright';
-import { z } from "zod/v3"
+import { localWebSearchInputSchema, perplexityWebSearchInputSchema } from '@/core/schemas/tools/searchWeb';
 import { AgentTool, safeAgentTool } from './types';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { PROVIDER_ID_PERPLEXITY } from '@/core/providers/base/perplexity';
@@ -323,16 +323,7 @@ class GoogleSearchTool {
 export function localWebSearchTool(): AgentTool {
 	return safeAgentTool({
 		description: 'Search web using local chromium browser',
-		inputSchema: z.object({
-			query: z.string().describe('The search query'),
-			limit: z.number()
-				.int()
-				.positive()
-				.max(50, 'Maximum number of results is 50')
-				.default(10)
-				.describe('Maximum number of results to return')
-				.optional(),
-		}),
+		inputSchema: localWebSearchInputSchema,
 		execute: async ({ query, limit }) => {
 			const response = await new GoogleSearchTool().search(query, limit);
 			return {
@@ -361,9 +352,7 @@ export function perplexityWebSearchTool(): AgentTool {
 
 	return safeAgentTool({
 		description: 'Search web using perplexity',
-		inputSchema: z.object({
-			query: z.string().describe('The search query'),
-		}),
+		inputSchema: perplexityWebSearchInputSchema,
 		execute: async ({ query }) => {
 			const start = Date.now();
 			const response = await MultiProviderChatService.getInstance()

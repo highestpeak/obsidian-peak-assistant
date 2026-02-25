@@ -1,22 +1,21 @@
 import { streamObject } from 'ai';
-import { z } from 'zod/v3';
+import { suggestedFollowUpQuestionsSchema } from '@/core/schemas/agents';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 import type { LLMStreamEvent } from '@/core/providers/types';
-import { StreamTriggerName } from '@/core/providers/types';
+import { StreamTriggerName, UIStepType } from '@/core/providers/types';
+import { streamTransform } from '@/core/providers/helpers/stream-helper';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { AgentContextManager } from './AgentContextManager';
 
-const schema = z.object({
-    questions: z.array(z.string()).describe('Follow-up questions the user might ask next'),
-});
+export type { SuggestedFollowUpQuestions } from '@/core/schemas/agents';
 
-export type SuggestedFollowUpQuestions = z.infer<typeof schema>;
-
-export type FollowUpQuestionAgentOptions = {
-    aiServiceManager: AIServiceManager;
-    options?: { provider: string; model: string };
-    onTokenUsage?: (usage: import('@/core/providers/types').LLMUsage) => void;
-};
+export interface FollowUpQuestionVariables {
+    initialPrompt: string;
+    agentMemoryMessage: string;
+    topics?: string;
+    dashboardBlocks?: string;
+}
 
 /**
  * Agent for suggesting follow-up questions from the full analysis session.
@@ -25,11 +24,14 @@ export type FollowUpQuestionAgentOptions = {
  */
 export class FollowUpQuestionAgent {
     private readonly aiServiceManager: AIServiceManager;
-    private readonly onTokenUsage?: FollowUpQuestionAgentOptions['onTokenUsage'];
+    private readonly context: AgentContextManager;
 
-    constructor(params: FollowUpQuestionAgentOptions) {
+    constructor(params: {
+        aiServiceManager: AIServiceManager;
+        context: AgentContextManager;
+    }) {
         this.aiServiceManager = params.aiServiceManager;
-        this.onTokenUsage = params.onTokenUsage;
+        this.context = params.context;
     }
 
     /**
@@ -37,15 +39,20 @@ export class FollowUpQuestionAgent {
      * Call setQuestions when done to receive the final list.
      */
     public async *stream(
-        variables: { sessionContext: string },
-        opts?: { setQuestions?: (q: string[]) => void; stepId?: string; triggerName?: StreamTriggerName }
+        stepId: string,
     ): AsyncGenerator<LLMStreamEvent> {
-        const stepId = opts?.stepId ?? generateUuidWithoutHyphens();
-        const triggerName = opts?.triggerName ?? StreamTriggerName.FOLLOW_UP_QUESTION_AGENT;
+        stepId = stepId ?? generateUuidWithoutHyphens();
 
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisSuggestFollowUpQuestions);
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
-        const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisSuggestFollowUpQuestions, variables);
+        const hasTopics = this.context.getAgentResult().topics?.length ?? 0 > 0;
+        const hasDashboardBlocks = this.context.getAgentResult().dashboardBlocks?.length ?? 0 > 0;
+        const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisSuggestFollowUpQuestions, {
+            initialPrompt: this.context.getInitialPrompt(),
+            agentMemoryMessage: this.context.getLatestMessageText(),
+            topics: hasTopics ? JSON.stringify(this.context.getAgentResult().topics) : undefined,
+            dashboardBlocks: hasDashboardBlocks ? JSON.stringify(this.context.getAgentResult().dashboardBlocks) : undefined,
+        });
 
         const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisSuggestFollowUpQuestions);
         const model = this.aiServiceManager.getMultiChat()
@@ -54,24 +61,29 @@ export class FollowUpQuestionAgent {
 
         const result = streamObject({
             model,
-            schema,
+            schema: suggestedFollowUpQuestionsSchema,
             schemaName: 'SuggestedFollowUpQuestions',
             schemaDescription: 'Follow-up questions from the analysis session.',
             system,
             prompt,
         });
 
-        for await (const part of result.fullStream) {
-            if (part.type === 'text-delta') {
-                yield { type: 'text-delta', text: part.textDelta, triggerName };
-            }
-            if (part.type === 'finish') {
-                this.onTokenUsage?.(part.usage as import('@/core/providers/types').LLMUsage);
-                const obj = await result.object;
-                const questions = obj.questions ?? [];
-                opts?.setQuestions?.(questions);
-                yield { type: 'on-step-finish', text: '', finishReason: part.finishReason, usage: part.usage, triggerName };
-            }
+        yield* streamTransform(
+            result.fullStream,
+            StreamTriggerName.FOLLOW_UP_QUESTION_AGENT,
+            {
+                yieldUIStep: stepId ? { uiType: UIStepType.STEPS_DISPLAY, stepId } : undefined,
+                chunkEventInterceptor: (chunk) => {
+                    if (chunk.type === 'finish') {
+                        const obj = (chunk as any).object as SuggestedFollowUpQuestions | undefined;
+                        this.context.getAgentResult().suggestedFollowUpQuestions = obj?.questions ?? [];
+                    }
+                },
+            },
+        );
+        if (result.object) {
+            const obj = await result.object;
+            this.context.getAgentResult().suggestedFollowUpQuestions = obj?.questions ?? [];
         }
     }
 }

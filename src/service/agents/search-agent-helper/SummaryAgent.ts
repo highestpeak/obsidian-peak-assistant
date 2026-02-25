@@ -1,123 +1,159 @@
-import { AIServiceManager } from '@/service/chat/service-manager';
-import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
-import { PromptId } from '@/service/prompt/PromptId';
-import type { AISearchUpdateContext, InnerAgentContext, SearchAgentResult } from '../AISearchAgent';
-import type { AgentMemory } from './AgentMemoryManager';
-import type { AISearchAgentOptions } from '../AISearchAgent';
 import { Experimental_Agent as Agent } from 'ai';
-import { AgentTool } from '@/service/tools/types';
-import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
-import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
+import { AIServiceManager } from '@/service/chat/service-manager';
+import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
+import { PromptId } from '@/service/prompt/PromptId';
+import type { AgentContextManager, AgentMemoryToolSet } from './AgentContextManager';
 import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
+import { AgentTool, ManualToolCallHandler } from '@/service/tools/types';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import { MermaidOverviewAgent } from './MermaidOverviewAgent';
+import { callAgentTool } from '@/service/tools/call-agent-tool';
+import { RawSearchAgent } from './RawSearchAgent';
 
-type SummaryToolSet = {
-    search_analysis_context: AgentTool;
-    submit_final_answer: AgentTool;
+type SummaryToolSet = AgentMemoryToolSet & {
+    call_search_agent: AgentTool;
 };
 
-export interface SummaryAgentContext {
-    getResult: () => SearchAgentResult;
-    getMemory: () => AgentMemory;
-    options: AISearchAgentOptions;
-    setSummary: (summary: string) => void;
-    searchHistory: (query: string, options?: { maxChars?: number }) => string;
+export interface AiSummaryVariables {
+    originalQuery: string;
+    summary: string;
 }
 
 /**
- * Agent for producing the comprehensive synthesis summary.
- * Uses getModelForPrompt for AiAnalysisDiagnosisJson and AiAnalysisSummary.
+ * Produces the comprehensive synthesis summary. Uses an Agent with tools to fetch
+ * dashboard state, thought history, and block content before writing the summary.
  */
 export class SummaryAgent {
     private readonly aiServiceManager: AIServiceManager;
-    private readonly options: { enableWebSearch?: boolean; enableLocalSearch?: boolean };
-    private readonly context: InnerAgentContext;
+    private readonly context: AgentContextManager;
+    private summaryAgent: Agent<SummaryToolSet>;
+    private mermaidOverviewAgent: MermaidOverviewAgent;
+    private rawSearchAgent: RawSearchAgent;
 
-    private agent: Agent<SummaryToolSet>;
+    /** Store for call_search_agent: execute awaits; manual handler resolves. Per-stream, set in realStreamInternal. */
+    private readonly manualCallSearchAgent?: ManualToolCallHandler;
 
     constructor(params: {
-        aiServiceManager: AIServiceManager,
-        options: { enableWebSearch?: boolean; enableLocalSearch?: boolean },
-        context: InnerAgentContext,
+        aiServiceManager: AIServiceManager;
+        context: AgentContextManager;
+        rawSearchAgent: RawSearchAgent;
     }) {
         this.aiServiceManager = params.aiServiceManager;
-        this.options = { enableWebSearch: params.options.enableWebSearch, enableLocalSearch: params.options.enableLocalSearch };
         this.context = params.context;
-        const {  searchHistory } = this.context;
-
-        const tools: SummaryToolSet = {
-            search_analysis_context: searchMemoryStoreTool(searchHistory, {
-                description: 'Search the analysis session history for relevant context. Use to look up search tool results, prior steps, and evidence traces.',
-            }),
-            submit_final_answer: submitFinalAnswerTool(),
-        };
+        this.rawSearchAgent = params.rawSearchAgent;
+        this.mermaidOverviewAgent = new MermaidOverviewAgent(params);
 
         const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisSummary);
-        const outputControl = this.aiServiceManager.getSettings?.()?.defaultOutputControl;
-        const temperature = outputControl?.temperature ?? 0.6;
-        const maxOutputTokens = outputControl?.maxOutputTokens ?? 4096;
-
-        this.agent = new Agent<SummaryToolSet>({
-            model: this.aiServiceManager.getMultiChat()
-                .getProviderService(provider)
-                .modelClient(modelId),
-            tools,
-            temperature,
-            maxOutputTokens,
+        const model = this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId);
+        this.summaryAgent = new Agent<SummaryToolSet>({
+            model,
+            tools: {
+                ...this.context.getAgentMemoryTool(),
+                call_search_agent: callAgentTool('search'),
+            },
         });
+
+        this.manualCallSearchAgent = {
+            toolName: 'call_search_agent',
+            triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
+            handle: this.rawSearchAgent.manualToolCallHandle.bind(this.rawSearchAgent),
+            outputGetter: (resultCollector) => resultCollector.searchResultChunks,
+        }
+    }
+
+    public async *streamMultiStep(
+        opts: {
+            streamTitle?: boolean;
+            streamSummary?: boolean;
+            streamMermaidOverview?: boolean;
+        }
+    ): AsyncGenerator<LLMStreamEvent> {
+        const stepId = generateUuidWithoutHyphens();
+        if (opts.streamTitle) {
+            yield* this.streamTitle({ stepId });
+        }
+        if (opts.streamSummary) {
+            yield* this.streamSummary({ stepId });
+        }
+        if (opts.streamMermaidOverview) {
+            yield* this.streamMermaidOverview({ stepId });
+        }
     }
 
     /**
-     * Stream summary generation.
-     * In full mode: runs Step-A (diagnosis JSON) then Step-B (markdown synthesis). In simple mode: Step-B only.
+     * Generate and set agentResult.title (used for save filename, recent list, folder suggestion).
      */
-    public async *stream(variables: AISearchUpdateContext): AsyncGenerator<LLMStreamEvent> {
-        let diagnosisJson: string | undefined;
-        const analysisMode = variables.analysisMode;
-        const snapshotForDiagnosis = variables.currentResultSnapshotForSummary ?? variables.currentResultSnapshot;
+    public async *streamTitle(
+        opts?: { stepId?: string }
+    ): AsyncGenerator<LLMStreamEvent> {
+        const stepId = opts?.stepId ?? generateUuidWithoutHyphens();
+        yield {
+            type: 'ui-step',
+            uiType: UIStepType.STEPS_DISPLAY,
+            stepId,
+            title: 'Summarizing the analysis...',
+            triggerName: StreamTriggerName.SEARCH_TITLE,
+        };
 
-        if (analysisMode === 'vaultFull') {
-            try {
-                const diagModel = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisDiagnosisJson);
-                const diagnosisRaw = await this.aiServiceManager.chatWithPrompt(
-                    PromptId.AiAnalysisDiagnosisJson,
-                    {
-                        originalQuery: variables.originalQuery ?? '',
-                        recentEvidenceHint: variables.recentEvidenceHint ?? '',
-                        currentResultSnapshot: snapshotForDiagnosis,
-                    },
-                    diagModel.provider,
-                    diagModel.modelId,
-                );
-                const trimmed = (diagnosisRaw ?? '').trim();
-                if (trimmed.length > 0) {
-                    diagnosisJson = trimmed;
-                }
-            } catch {
-                diagnosisJson = undefined;
+        const stream = this.aiServiceManager.chatWithPromptStream(PromptId.AiAnalysisTitle, {
+            query: this.context.getInitialPrompt() ?? '',
+            summary: this.context.getLatestMessageText(),
+        });
+        for await (const chunk of stream) {
+            if (chunk.type === 'prompt-stream-result') {
+                this.context.getAgentResult().title = String(chunk.output ?? '').trim() || undefined;
             }
+            yield { ...chunk, triggerName: StreamTriggerName.SEARCH_TITLE };
         }
+    }
+
+    /**
+     * Run summary agent with tools; collect all text-delta as the final summary.
+     */
+    public async *streamSummary(
+        opts?: { stepId?: string }
+    ): AsyncGenerator<LLMStreamEvent> {
+        const stepId = opts?.stepId ?? generateUuidWithoutHyphens();
+        yield {
+            type: 'ui-step',
+            uiType: UIStepType.STEPS_DISPLAY,
+            stepId,
+            title: 'Summarizing the analysis...',
+            triggerName: StreamTriggerName.SEARCH_SUMMARY,
+        };
 
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisSummary);
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisSummary, {
-            ...variables,
-            diagnosisJson,
+            originalQuery: this.context.getInitialPrompt() ?? '',
+            summary: this.context.getLatestMessageText(),
         });
 
-        yield buildPromptTraceDebugEvent('summary-prompt', StreamTriggerName.SEARCH_SUMMARY, system, prompt);
-        const result = this.agent.stream({
-            system: system,
-            prompt,
-        });
+        yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_SUMMARY, system, prompt);
+
+        const result = this.summaryAgent.stream({ system, prompt });
         const summaryCollector: string[] = [];
         yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_SUMMARY, {
+            yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
             yieldEventPostProcessor: (chunk: any) => {
                 if (chunk.type === 'text-delta') {
-                    summaryCollector.push(chunk.text ?? '');
+                    summaryCollector.push(chunk.text ?? (chunk as any).textDelta ?? '');
                 }
                 return chunk;
             },
+            manualToolCallHandlers: {
+                call_search_agent: this.manualCallSearchAgent!,
+            },
         });
-        this.context.getResult().summary = summaryCollector.join('');
+
+        this.context.getAgentResult().summary = summaryCollector.join('');
+    }
+
+    public async *streamMermaidOverview(
+        opts?: { stepId?: string }
+    ): AsyncGenerator<LLMStreamEvent> {
+        yield* this.mermaidOverviewAgent.stream(
+            opts
+        );
     }
 }

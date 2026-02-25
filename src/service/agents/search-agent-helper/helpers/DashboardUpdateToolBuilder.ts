@@ -1,34 +1,150 @@
-import { z } from "zod/v3";
-
-import { SearchAgentResult } from "../../AISearchAgent";
+import type { ZodType } from "@/core/schemas";
+import { getCurrentAnalysisContext, type UpdateResultHandlers } from "@/core/analysis-context-holder";
+import {
+	DEFAULT_PLACEHOLDER,
+	dashboardBlockItemSchema,
+	graphEdgeItemSchema,
+	graphNodeItemSchema,
+	overviewMermaidInputSchema,
+	sourceItemSchema,
+	topicItemSchema,
+	updateSourceScoresInputSchema,
+} from "@/core/schemas/agents/search-agent-schemas";
+import type { AISearchSource } from "../../AISearchAgent";
 import { normalizeFilePath } from "@/core/utils/file-utils";
-import { createUpdateResultTool, getUpdateResultFormatGuidance, NO_MEANINGFUL_CONTENT_MESSAGE, DEFAULT_PLACEHOLDER, safeText, norm, normPath, commonValidatePath } from "@/service/tools/field-update-tool-array";
-import { normalizeMermaidForDisplay, validateMermaid } from "@/core/utils/mermaid-utils";
+import { createUpdateResultTool, getUpdateResultFormatGuidance, safeText, norm, normPath, commonValidatePath } from "@/service/tools/field-update-tool-array";
+import { validateMermaid, wrapMermaidCode } from "@/core/utils/mermaid-utils";
 import { safeAgentTool } from "@/service/tools/types";
 
-/** Normalizes tool arg: LLM may send { input: string } instead of a plain string. */
-const overviewMermaidInputSchema = z.preprocess(
-    (val) =>
-        typeof val === 'object' && val !== null && 'input' in val && typeof (val as { input: unknown }).input === 'string'
-            ? (val as { input: string }).input
-            : val,
-    z.string().describe('Raw Mermaid diagram code (e.g. flowchart TD\\n  A[label] --> B[label])'),
-);
+let _handlersMap: Record<string, UpdateResultHandlers> | null = null;
 
-export function overviewMermaidUpdateTool(
-    getResult: () => SearchAgentResult,
-) {
+/**
+ * Returns per-field handlers for update-result tools. Handlers do not close over session;
+ * they use getCurrentAnalysisContext() at runtime for getResult/getVerifiedPaths.
+ */
+export function getUpdateResultHandlersMap(): Record<string, UpdateResultHandlers> {
+    if (_handlersMap) return _handlersMap;
+    _handlersMap = {
+        topics: {
+            identityKeyBuilder: (item) => {
+                const label = safeText(item.label);
+                return label ? `label:${norm(label)}` : null;
+            },
+        },
+        'graph.nodes': {
+            identityKeyBuilder: (item) => {
+                const path = safeText(item.path);
+                if (path && path !== DEFAULT_PLACEHOLDER) return `path:${normPath(path)}`;
+                const id = safeText(item.id);
+                return id ? `id:${id}` : null;
+            },
+            dataTransform: (data: any, schema?: ZodType) => {
+                if (data.operation === 'add') {
+                    const item = data.item;
+                    const result = schema?.safeParse(item);
+                    if (!result?.success) {
+                        const errorMessage = result?.error?.message;
+                        if (errorMessage?.includes('Document/file nodes must have a valid path')) {
+                            console.warn(`[UpdateResultTool] Discarding document/file node with placeholder path for ${data.targetField}: ${item?.path}`);
+                            return { ...data, _skip: true };
+                        }
+                    }
+                }
+                return data;
+            },
+            validatePath: async (item) => {
+                const nodeType = String(item?.type ?? 'document').trim().toLowerCase();
+                const shouldValidatePath = (nodeType === 'document' || nodeType === 'file');
+                if (shouldValidatePath) {
+                    if (item.path === DEFAULT_PLACEHOLDER || item.path === 'Untitled') {
+                        return { valid: false, reason: "path is a placeholder value. Please provide a valid file path." };
+                    }
+                    const ctx = getCurrentAnalysisContext();
+                    if (!ctx) return { valid: false, reason: 'Session ended or unloaded.' };
+                    return await commonValidatePath(item.path, ctx.getVerifiedPaths());
+                }
+                return { valid: true };
+            },
+        },
+        'graph.edges': {
+            identityKeyBuilder: (item) => {
+                const id = safeText(item.id);
+                if (id && id.startsWith('edge:')) return `id:${id}`;
+                const source = safeText(item.source);
+                const target = safeText(item.target);
+                if (!source || !target) return null;
+                return `edge:${norm(source)}::${norm(target)}::${norm(item.type ?? '')}::${norm(item.label ?? '')}`;
+            },
+            dataTransform: (data: any, schema?: ZodType) => {
+                if (data.operation === 'add') {
+                    const item = data.item;
+                    const result = schema?.safeParse(item);
+                    if (!result?.success) {
+                        const errorMessage = result?.error?.message;
+                        if (errorMessage?.includes('source and target are required') || errorMessage?.includes('source and target cannot be the same')) {
+                            console.warn(`[UpdateResultTool] Discarding graph edge with invalid source/target for ${data.targetField}`);
+                            return { ...data, _skip: true };
+                        }
+                    }
+                }
+                return data;
+            },
+        },
+        sources: {
+            identityKeyBuilder: (item) => {
+                const path = safeText(item.path);
+                if (path && path !== DEFAULT_PLACEHOLDER) return `path:${normPath(path)}`;
+                const id = safeText(item.id);
+                return id ? `id:${id}` : null;
+            },
+            validatePath: async (item) => {
+                const ctx = getCurrentAnalysisContext();
+                if (!ctx) return { valid: false, reason: 'Session ended or unloaded.' };
+                return await commonValidatePath(item.path, ctx.getVerifiedPaths());
+            },
+        },
+        dashboardBlocks: {
+            identityKeyBuilder: (item) => {
+                const id = safeText(item.id);
+                if (id && !id.startsWith('block:')) return `id:${id}`;
+                const title = normalizeBlockTitle(safeText(item.title));
+                const engine = norm(safeText(item.renderEngine));
+                const composite = [title, engine].filter(Boolean).join('\n');
+                return composite ? `text:${composite}` : (id ? `id:${id}` : null);
+            },
+            validateItem: async (item: any) => {
+                if (String(item?.renderEngine ?? '').toUpperCase() !== 'MERMAID') return { valid: true };
+                const code = item?.mermaidCode != null ? String(item.mermaidCode).trim() : '';
+                if (!code) return { valid: false, reason: 'MERMAID block requires non-empty mermaidCode.' };
+                const validation = await validateMermaid(code);
+                return validation.valid ? { valid: true } : { valid: false, reason: `Mermaid parse failed: ${validation.message}` };
+            },
+        },
+    };
+    return _handlersMap;
+}
+
+/** Normalize block title for dedupe: strip markdown, collapse whitespace, lowercase. */
+function normalizeBlockTitle(raw: string): string {
+    if (!raw) return '';
+    let t = raw
+        .replace(/#{1,6}\s*/g, '')
+        .replace(/\*{1,3}|_{1,3}|`+/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return norm(t);
+}
+
+export function overviewMermaidUpdateTool() {
     return safeAgentTool({
         description: 'Set the overview Mermaid diagram. Call with valid Mermaid code.',
         inputSchema: overviewMermaidInputSchema,
         execute: async (input) => {
+            const ctx = getCurrentAnalysisContext();
+            if (!ctx) throw new Error('Session ended or unloaded.');
             const raw = input ?? '';
-            const validation = await validateMermaid(raw);
-            if (!validation.valid) {
-                throw new Error(`Mermaid parse failed: ${validation.message}`);
-            }
-            const agentResult = getResult();
-            agentResult.overviewMermaid = normalizeMermaidForDisplay(raw);
+            ctx.getResult().overviewMermaid = wrapMermaidCode(raw);
+            return raw;
         },
     });
 }
@@ -69,43 +185,13 @@ export function getDashboardBlocksToolFormatGuidance(): string {
         fieldName: 'dashboardBlocks',
         itemExample: '{ "renderEngine": "MARKDOWN", "markdown": "## Section\\n\\nShort paragraph or bullet list.", "title": "Block Title", "weight": 6 }',
     });
-    return `${base}\n\nEngine rules: renderEngine "MARKDOWN" requires "markdown" (non-empty string). renderEngine "MERMAID" requires "mermaidCode". renderEngine "TILE" requires "items" array. Examples: MARKDOWN: { "renderEngine": "MARKDOWN", "markdown": "Content here.", "title": "Title", "weight": 5 }. MERMAID: { "renderEngine": "MERMAID", "mermaidCode": "flowchart LR\\n  A --> B", "title": "Diagram", "weight": 6 }. TILE: { "renderEngine": "TILE", "items": [{ "title": "Item 1", "description": "optional" }], "title": "Tiles", "weight": 4 }.`;
+    return `${base}\n\nEngine rules: renderEngine "MARKDOWN" requires "markdown" (non-empty string; must be substantive: 2-4 paragraphs or 5+ detailed list items with reasoning—no thin blocks). renderEngine "MERMAID" requires "mermaidCode". renderEngine "TILE" and "ACTION_GROUP" require "items" array; each item: { "id" (optional), "title", "description" (optional), "icon" (optional), "color" (optional) }.\nExamples:\n- MARKDOWN (substantive): { "renderEngine": "MARKDOWN", "markdown": "## Section\\n\\nFirst paragraph with detailed reasoning...\\n\\nSecond paragraph with evidence from [[source.md]]...\\n\\n- Point 1 with explanation\\n- Point 2 with explanation", "title": "Block Title", "weight": 6 }\n- MERMAID: { "renderEngine": "MERMAID", "mermaidCode": "flowchart LR\\n  A --> B", "title": "Diagram", "weight": 6 }\n- TILE: { "renderEngine": "TILE", "items": [{ "title": "Item 1", "description": "optional" }], "title": "Tiles", "weight": 4 }\n- ACTION_GROUP: { "renderEngine": "ACTION_GROUP", "items": [{ "title": "Next step 1", "description": "What to do" }], "title": "Next Actions", "weight": 5 }`;
 }
 
-export function topicUpdateTool(
-    getResult: () => SearchAgentResult,
-) {
+export function topicUpdateTool() {
     return createUpdateResultTool({
         fieldName: 'topics',
-        itemSchema: z.preprocess((raw: any) => {
-            if (!raw || typeof raw !== 'object') return raw;
-
-            const label = raw.label ?? raw.name ?? raw.title;
-
-            return {
-                ...raw,
-                label: label ? String(label).trim() : undefined,
-            };
-        }, z.object({
-            label: z.string().default(DEFAULT_PLACEHOLDER),
-            weight: z.number().min(0).max(1).optional().describe('How important this topic is. eg: 0.5, 0.75, 1.0'),
-            suggestQuestions: z.array(z.string()).optional().describe(
-                'Suggested questions to ask about this topic. '
-                + 'Please provide at least 3 questions. at most 5 questions. Each question should be a single sentence no more than 10 words.'
-                + 'eg: "What is the main idea of the topic?"'
-            ),
-        })
-            .superRefine((data, ctx) => {
-                if ((!data.label || data.label === DEFAULT_PLACEHOLDER) && (data.weight === undefined)) {
-                    ctx.addIssue({ code: z.ZodIssueCode.custom, message: NO_MEANINGFUL_CONTENT_MESSAGE });
-                }
-            })
-        ),
-        getCurrentResult: getResult,
-        identityKeyBuilder: (item) => {
-            const label = safeText(item.label);
-            return label ? `label:${norm(label)}` : null;
-        },
+        itemSchema: topicItemSchema,
         toolDescription: 'Update dashboard topics. Call with a single argument: { "operations": [ ... ] }. '
             + 'operations MUST be an array of objects (never strings). '
             + 'Each object: either { "operation": "add", "targetField": "topics", "item": { "label": "Topic Name", "weight": 0.8, "suggestQuestions": ["Q1?", "Q2?"] } } '
@@ -114,439 +200,54 @@ export function topicUpdateTool(
     });
 }
 
-export const DEFAULT_NODE_TYPE = 'cosmo';
-const FILE_NODE_TYPE = new Set(['file', 'document', 'doc']);
-const OTHER_NODE_TYPE = new Set([DEFAULT_NODE_TYPE, 'concept', 'tag', 'topic']);
-const RECOMMENDED_TYPES = new Set([...Array.from(OTHER_NODE_TYPE), ...Array.from(FILE_NODE_TYPE)]);
-
-/** Humanize label: strip node_ prefix, replace underscores/hyphens with spaces, trim. */
-function humanizeNodeLabel(raw: string): string {
-    if (!raw || typeof raw !== 'string') return raw;
-    let s = raw.trim();
-    if (!s) return s;
-    if (s.toLowerCase().startsWith('node_')) s = s.slice(5).trim();
-    s = s.replace(/[_\u2013\u2014-]+/g, ' ').replace(/\s+/g, ' ').trim();
-    return s || raw;
-}
-
-/** True if path looks like a vault file path (has slash or .md). */
-function looksLikeFilePath(path: string): boolean {
-    if (!path || typeof path !== 'string') return false;
-    const p = path.trim();
-    return p.includes('/') || /\.(md|markdown)$/i.test(p);
-}
-
-/** Strip type: prefix from display text only (do not change ids). Covers file:, concept:, tag:, topic:, cosmo:, node:, document:. */
-function stripTypedPrefixForDisplay(text: string): string {
-    if (!text || typeof text !== 'string') return text;
-    const s = text.trim();
-    const lower = s.toLowerCase();
-    const prefixes = ['file:', 'concept:', 'tag:', 'topic:', 'cosmo:', 'node:', 'document:'];
-    for (const p of prefixes) {
-        if (lower.startsWith(p)) {
-            return s.slice(p.length).replace(/^-+|\s+/g, ' ').trim() || s;
-        }
-    }
-    return s;
-}
-
-export function graphNodesUpdateTool(
-    getResult: () => SearchAgentResult,
-    getVerifiedPaths: () => Set<string>,
-) {
-    const normalizeSpecialKey = (raw: unknown): string => {
-        const text = String(raw ?? '').trim().toLowerCase();
-        return text.replace(/[_\s]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-    };
-    const toNormalizedCosmoNodeId = (type: string, idOrPath: string): string => `${type}:${normalizeSpecialKey(idOrPath)}`;
-    const isPlaceholder = (s: string) => !s || s.trim() === '' || s === DEFAULT_PLACEHOLDER || s === 'Untitled';
+export function graphNodesUpdateTool() {
     return createUpdateResultTool({
         fieldName: 'graph.nodes',
-        itemSchema: z.preprocess(
-            (raw: any) => {
-                if (!raw || typeof raw !== 'object') return raw;
-
-                // sometimes llm will use other names for specific field. to avoid failure, we should convert them to the standard field.
-                const type = raw.type ?? raw.nodeType;
-                const label = raw.label ?? raw.nodeName ?? raw.title;
-
-                return {
-                    ...raw,
-                    type: type ? String(type).trim() : undefined,
-                    label: label ? String(label).trim() : undefined,
-                };
-            },
-            z.object({
-                id: z.string().optional(),
-                type: z.string()
-                    .default(DEFAULT_NODE_TYPE)
-                    // we give some possible types for llm to choose from
-                    .describe(`Type of the node. Recommended: ${Array.from(RECOMMENDED_TYPES).join(', ')}. You can also use custom types if appropriate.`),
-                label: z.string().default(DEFAULT_PLACEHOLDER).describe('The label of the node. It will be displayed in the graph.'),
-                path: z.string().optional().describe(`${FILE_NODE_TYPE.size > 0 ? Array.from(FILE_NODE_TYPE).join(', ') : 'document'} nodes must have a valid path.`),
-                attributes: z.record(z.any()).default(() => ({})).describe('Attributes of the node. It will be used to store the node\'s metadata. User can see this via a hover tooltip.'),
-            })
-        )
-            .transform((data) => {
-                const d = data as any;
-                // If path is present and looks like a file path, treat as file node so it renders as openable (circle).
-                if (d.path && !isPlaceholder(String(d.path)) && looksLikeFilePath(d.path)) {
-                    d.type = 'file';
-                }
-                if (FILE_NODE_TYPE.has(d.type)) {
-                    if (!d.path || isPlaceholder(String(d.path ?? ''))) {
-                        const derivedPath = (() => {
-                            // 1. try to get path from attributes
-                            const attrsPath = d?.attributes?.path;
-                            if (attrsPath && !isPlaceholder(String(attrsPath))) return attrsPath;
-
-                            // 2. try to get path from id
-                            const rawId = String(d.id ?? '').trim();
-                            if (rawId.startsWith('file:')) {
-                                const pathFromId = rawId.slice('file:'.length).replace(/^\/+/, '').trim();
-                                if (pathFromId && !isPlaceholder(pathFromId)) return pathFromId;
-                            }
-
-                            return null;
-                        })();
-
-                        // if any of the above got a value, assign it
-                        if (derivedPath) {
-                            d.path = derivedPath;
-                        }
-                    }
-                }
-
-                // Derive label from path basename when missing or placeholder
-                if (isPlaceholder(String(d.label ?? ''))) {
-                    const normalizedPath = normalizeFilePath(d.path);
-                    const basename = normalizedPath.split('/').filter(Boolean).pop() ?? normalizedPath;
-                    const displayName = basename.replace(/\.(md|markdown)$/i, '') || basename;
-                    d.label = displayName;
-                }
-                // Humanize label: snake_case / node_xxx -> readable (for display).
-                if (d.label && d.label !== DEFAULT_PLACEHOLDER && d.label !== 'Untitled') {
-                    d.label = humanizeNodeLabel(d.label);
-                }
-
-                const findFileNodeType = Array.from(FILE_NODE_TYPE).find(type => d.id && d.id.startsWith(type + ':'));
-                if (findFileNodeType) {
-                    // if id is a file node, convert it to the standard id. sometimes id format from path by llm is not normalized.
-                    d.id = toNormalizedCosmoNodeId('file', d.id.slice(findFileNodeType.length + 1));
-                } else {
-                    const findOtherNodeType = Array.from(OTHER_NODE_TYPE).find(type => d.id && d.id.startsWith(type + ':'));
-                    if (findOtherNodeType) {
-                        d.id = toNormalizedCosmoNodeId(findOtherNodeType, d.id.slice(findOtherNodeType.length + 1));
-                    }
-                }
-
-                // if id is not set, use path／label to generate a fallback id.
-                const fallbackId = toNormalizedCosmoNodeId(
-                    FILE_NODE_TYPE.has(d.type) ? 'file' : d.type,
-                    d.path ? normalizeFilePath(d.path) : d.label
-                );
-                if (!d.id || d.id === DEFAULT_PLACEHOLDER) d.id = fallbackId;
-
-                // Display title: strip type prefix; for file/document use basename to avoid long path in pills.
-                let displayTitle = stripTypedPrefixForDisplay(d.label ?? d.id ?? '');
-                if (FILE_NODE_TYPE.has(d.type) && displayTitle && (displayTitle.includes('/') || /\.(md|markdown)$/i.test(displayTitle))) {
-                    const base = displayTitle.split('/').filter(Boolean).pop() ?? displayTitle;
-                    displayTitle = base.replace(/\.(md|markdown)$/i, '') || base;
-                }
-                d.title = displayTitle || d.label || d.id;
-
-                return d;
-            })
-            .superRefine((data, ctx) => {
-                const type = data.type;
-
-                if (FILE_NODE_TYPE.has(type)) {
-                    if (!data.path || isPlaceholder(String(data.path ?? ''))) {
-                        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Document/file nodes must have a valid path.", path: ["path"] });
-                        return;
-                    }
-                } else if (type === 'concept' || type === 'tag') {
-                    if (data.path === DEFAULT_PLACEHOLDER || data.path === 'Untitled') data.path = undefined;
-                    const rawLabel = String(data.label || '').trim();
-                    if (isPlaceholder(rawLabel)) {
-                        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Concept/tag nodes must have a non-empty label or title (not Untitled).", path: ["label"] });
-                        return;
-                    }
-                }
-                if (
-                    data.label === DEFAULT_PLACEHOLDER
-                    && (!data.path || data.path === DEFAULT_PLACEHOLDER)
-                    && (!data.attributes || Object.keys(data.attributes).length === 0)
-                ) {
-                    ctx.addIssue({ code: z.ZodIssueCode.custom, message: NO_MEANINGFUL_CONTENT_MESSAGE });
-                }
-            }),
-        getCurrentResult: getResult,
-        identityKeyBuilder: (item) => {
-            const path = safeText(item.path);
-            if (path && path !== DEFAULT_PLACEHOLDER) return `path:${normPath(path)}`;
-            const id = safeText(item.id);
-            return id ? `id:${id}` : null;
-        },
-    }, {
-        dataTransform: (data: any, schema?: z.ZodType) => {
-            if (data.operation === 'add') {
-                let item = data.item;
-                const result = schema?.safeParse(item);
-                if (!result?.success) {
-                    const errorMessage = result?.error?.message;
-                    // Discard: document/file node with placeholder path (Untitled)
-                    if (errorMessage?.includes('Document/file nodes must have a valid path')) {
-                        console.warn(`[UpdateResultTool] Discarding document/file node with placeholder path for ${data.targetField}: ${item?.path}`);
-                        return { ...data, _skip: true };
-                    }
-                }
-            }
-            return data;
-        },
-        validatePath: async (item) => {
-            const nodeType = String(item?.type ?? 'document').trim().toLowerCase();
-            // validate ONLY for document/file nodes (concept/tag nodes should not carry file paths)
-            const shouldValidatePath = (nodeType === 'document' || nodeType === 'file');
-            if (shouldValidatePath) {
-                // Skip validation for placeholder values
-                if (item.path === DEFAULT_PLACEHOLDER || item.path === 'Untitled') {
-                    return {
-                        valid: false,
-                        reason: "path is a placeholder value. Please provide a valid file path.",
-                    };
-                }
-                return await commonValidatePath(item.path, getVerifiedPaths());
-            }
-            return { valid: true };
-        },
+        itemSchema: graphNodeItemSchema,
     });
 }
 
-export function graphEdgesUpdateTool(
-    getResult: () => SearchAgentResult,
-) {
+export function graphEdgesUpdateTool() {
     return createUpdateResultTool({
         fieldName: 'graph.edges',
-        itemSchema: z.preprocess(
-            (raw: any) => {
-                if (!raw || typeof raw !== 'object') return raw;
+        itemSchema: graphEdgeItemSchema,
+    });
+}
 
-                // sometimes llm will use other names for specific field. to avoid failure, we should convert them to the standard field.
-                const source = raw.source ?? raw.sourceId ?? raw.startNode ?? raw.from_node_id;
-                const target = raw.target ?? raw.targetId ?? raw.endNode ?? raw.to_node_id;
-
-                return {
-                    ...raw,
-                    source: source ? String(source).trim() : undefined,
-                    target: target ? String(target).trim() : undefined,
-                };
-            },
-            z.object({
-                id: z.string().default(() => `edge:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
-                source: z.string().optional().describe('The source node id or path.'),
-                target: z.string().optional().describe('The target node id or path.'),
-                type: z.string().default('link').describe('The type of the edge. Recommended: physical_link, semantic_link, inspire, brainstorm, etc.'),
-                label: z.string().default('').describe('The label of the edge. It will be displayed in the graph.'),
-                attributes: z.record(z.any()).default(() => ({})).describe('Attributes of the edge. It will be used to store the edge\'s metadata. User can see this via a hover tooltip.'),
-            })
-        )
-            .refine((data) => data.source && data.target, {
-                message: "source and target are required", path: ["source"]
-            })
-        // they can be the same. some document may have self-loop edges.
-        // .refine((data) => data.source !== data.target, {
-        //     message: "source and target cannot be the same", path: ["source"]
-        // })
-        ,
-        getCurrentResult: getResult,
-        identityKeyBuilder: (item) => {
-            const id = safeText(item.id);
-            if (id && id.startsWith('edge:')) return `id:${id}`;
-            const source = safeText(item.source);
-            const target = safeText(item.target);
-            if (!source || !target) return null;
-            return `edge:${norm(source)}::${norm(target)}::${norm(item.type ?? '')}::${norm(item.label ?? '')}`;
-        },
-    }, {
-        dataTransform: (data: any, schema?: z.ZodType) => {
-            if (data.operation === 'add') {
-                let item = data.item;
-                const result = schema?.safeParse(item);
-                if (!result?.success) {
-                    const errorMessage = result?.error?.message;
-                    // Discard: graph edge with missing or invalid source/target
-                    if (errorMessage?.includes('source and target are required') || errorMessage?.includes('source and target cannot be the same')) {
-                        console.warn(`[UpdateResultTool] Discarding graph edge with invalid source/target for ${data.targetField}`);
-                        return { ...data, _skip: true };
-                    }
+/** Batch update source scores without reasoning. Use first pass before reasoning on top N. */
+export function updateSourceScoresTool() {
+    return safeAgentTool({
+        description: 'Batch update source scores. Call first to score all sources; low-relevance ones get 0. No reasoning needed.',
+        inputSchema: updateSourceScoresInputSchema,
+        execute: async (input) => {
+            const ctx = getCurrentAnalysisContext();
+            if (!ctx) throw new Error('Session ended or unloaded.');
+            const result = ctx.getResult();
+            const scores = input?.scores ?? [];
+            const pathToLower = (p: string) => String(p ?? '').trim().toLowerCase();
+            for (const { sourceId, score } of scores) {
+                const idOrPath = String(sourceId ?? '').trim();
+                if (!idOrPath) continue;
+                const lower = pathToLower(idOrPath);
+                const src = result.sources.find((s: AISearchSource) => (s.id && s.id.toLowerCase() === lower) || pathToLower(s.path ?? '') === lower);
+                if (src) {
+                    src.score = { average: score, physical: score, semantic: score };
                 }
             }
-            return data;
         },
     });
 }
 
-export function sourcesUpdateTool(
-    getResult: () => SearchAgentResult,
-    getVerifiedPaths: () => Set<string>,
-) {
+export function sourcesUpdateTool() {
     return createUpdateResultTool({
         fieldName: 'sources',
-        itemSchema: z
-            .object({
-                id: z.string().default(() => `src:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
-                title: z.string().default(DEFAULT_PLACEHOLDER),
-                path: z.string().default(DEFAULT_PLACEHOLDER).describe('The path of the source. It will be used to open the source in the file explorer.'),
-                reasoning: z.string().default(DEFAULT_PLACEHOLDER).describe('Why it was selected or rejected. Please provide a detailed explanation. but no more than 100 words.'),
-                badges: z.array(z.string()).default(() => []).describe('Badges of the source. It will be used to display the source in the UI. eg: "important", "relevant", "interesting", etc.'),
-                score: z.preprocess(
-                    (val) => {
-                        if (typeof val === 'number') return { average: val, physical: val, semantic: val };
-                        if (val && typeof val === 'object') {
-                            const o = val as { physical?: number; semantic?: number; average?: number };
-                            const avg = o.average ?? 0;
-                            return {
-                                physical: o.physical ?? avg,
-                                semantic: o.semantic ?? avg,
-                                average: avg,
-                            };
-                        }
-                        return val;
-                    },
-                    z.object({
-                        physical: z.number().min(0).max(100).optional(),
-                        semantic: z.number().min(0).max(100).optional(),
-                        average: z.number().min(0).max(100).optional(),
-                    }).optional()
-                ),
-            })
-            .superRefine((data, ctx) => {
-                if ((data.title === DEFAULT_PLACEHOLDER)
-                    && (!data.path || data.path === DEFAULT_PLACEHOLDER)
-                    && (!data.reasoning || data.reasoning === DEFAULT_PLACEHOLDER)
-                    && (!data.badges || data.badges.length === 0)
-                ) {
-                    ctx.addIssue({ code: z.ZodIssueCode.custom, message: NO_MEANINGFUL_CONTENT_MESSAGE });
-                }
-            }),
-        getCurrentResult: getResult,
-        identityKeyBuilder: (item) => {
-            const path = safeText(item.path);
-            if (path && path !== DEFAULT_PLACEHOLDER) return `path:${normPath(path)}`;
-            const id = safeText(item.id);
-            return id ? `id:${id}` : null;
-        },
-    }, {
-        validatePath: async (item) => {
-            return await commonValidatePath(item.path, getVerifiedPaths());
-        },
+        itemSchema: sourceItemSchema,
     });
 }
 
-/**
- * Dashboard block schemas. To add a new block type (e.g. TODO_LIST, SUGGEST_QUESTIONS):
- * 1. Add literal to DashboardRenderEngine in AISearchAgent.ts
- * 2. Add schema here and include it in BlockContentSchema below
- * 3. Add render case in DashboardBlocksSection.tsx BlockContent
- */
-const DASHBOARD_BLOCK_CONTENT_SCHEMAS = {
-    MARKDOWN: z.object({
-        renderEngine: z.literal('MARKDOWN'),
-        markdown: z.string().min(1, "Markdown content is required for MARKDOWN engine"),
-    }),
-    MERMAID: z.object({
-        renderEngine: z.literal('MERMAID'),
-        mermaidCode: z.string().min(1, "Mermaid code is required for MERMAID engine"),
-    }),
-    TILE: z.object({
-        renderEngine: z.literal('TILE'),
-        items: z.array(z.object({
-            id: z.string().default(() => `item:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
-            title: z.string().default(DEFAULT_PLACEHOLDER),
-            description: z.string().optional(),
-            icon: z.string().optional(),
-            color: z.string().optional(),
-        }))
-            .min(1, "Items are required for TILE engine")
-            .describe('Items of the block. It will be displayed in the UI. eg: "item1", "item2", etc.'),
-    }),
-    ACTION_GROUP: z.object({
-        renderEngine: z.literal('ACTION_GROUP'),
-        items: z.array(z.any()),
-    }),
-} as const;
-
-const BlockContentSchema = z.discriminatedUnion("renderEngine", [
-    DASHBOARD_BLOCK_CONTENT_SCHEMAS.MARKDOWN,
-    DASHBOARD_BLOCK_CONTENT_SCHEMAS.MERMAID,
-    DASHBOARD_BLOCK_CONTENT_SCHEMAS.TILE,
-    DASHBOARD_BLOCK_CONTENT_SCHEMAS.ACTION_GROUP,
-]);
-
-export function dashboardBlocksUpdateTool(
-    getResult: () => SearchAgentResult,
-) {
+export function dashboardBlocksUpdateTool() {
     return createUpdateResultTool({
         fieldName: 'dashboardBlocks',
-        itemSchema: z.preprocess(
-            (raw: any) => {
-                if (!raw || typeof raw !== 'object') return raw;
-                const title = raw.title != null ? String(raw.title).trim() : undefined;
-                let engine = String(raw.renderEngine ?? 'MARKDOWN').toUpperCase();
-                let markdown = raw.markdown != null ? String(raw.markdown).trim() : '';
-                const summary = raw.summary != null ? String(raw.summary).trim() : '';
-                const topics = Array.isArray(raw.topics) ? raw.topics : [];
-                if (engine === 'MARKDOWN' && !markdown) {
-                    if (summary) markdown = summary;
-                    if (topics.length > 0) {
-                        const bulletLines = topics.map((t: any) => {
-                            const label = t?.label ?? t?.name ?? t?.title ?? String(t);
-                            return `- ${typeof label === 'string' ? label : String(label)}`;
-                        });
-                        markdown = markdown ? `${markdown}\n\n${bulletLines.join('\n')}` : bulletLines.join('\n');
-                    }
-                    if (!markdown && title) markdown = title;
-                    if (!markdown) markdown = 'Content not yet generated.';
-                }
-                return { ...raw, title: title || undefined, renderEngine: engine, markdown: markdown || undefined };
-            },
-            z.intersection(
-                z.object({
-                    id: z.string().default(() => `block:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
-                    title: z.string().optional().describe('The title of the block. It will be displayed.'),
-                    weight: z.number().min(0).max(10).optional().describe('Used for grid layout. 0-10; 1-3 small, 4-6 medium, 7-10 full-width.'),
-                }),
-                BlockContentSchema
-            )
-        ),
-        getCurrentResult: getResult,
-        identityKeyBuilder: (item) => {
-            const id = safeText(item.id);
-            if (id && !id.startsWith('block:')) return `id:${id}`;
-            const title = normalizeBlockTitle(safeText(item.title));
-            const engine = norm(safeText(item.renderEngine));
-            const composite = [title, engine].filter(Boolean).join('\n');
-            return composite ? `text:${composite}` : (id ? `id:${id}` : null);
-        },
-    }, {
-        validateItem: async (item: any) => {
-            if (String(item?.renderEngine ?? '').toUpperCase() !== 'MERMAID') return { valid: true };
-            const code = item?.mermaidCode != null ? String(item.mermaidCode).trim() : '';
-            if (!code) return { valid: false, reason: 'MERMAID block requires non-empty mermaidCode.' };
-            const validation = await validateMermaid(code);
-            return validation.valid ? { valid: true } : { valid: false, reason: `Mermaid parse failed: ${validation.message}` };
-        },
+        itemSchema: dashboardBlockItemSchema,
     });
-}
-
-/** Normalize block title for dedupe: strip markdown, collapse whitespace, lowercase. */
-function normalizeBlockTitle(raw: string): string {
-    if (!raw) return '';
-    let t = raw
-        .replace(/#{1,6}\s*/g, '')
-        .replace(/\*{1,3}|_{1,3}|`+/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    return norm(t);
 }

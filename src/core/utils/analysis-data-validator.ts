@@ -12,7 +12,11 @@ export interface ValidationReport {
 }
 
 /** Validate mermaid code. Returns { valid: true } or { valid: false, error }. */
-export async function validateMermaidCode(code: string): Promise<{ valid: true } | { valid: false; error: string }> {
+export async function validateMermaidCode(code?: string): Promise<{ valid: true } | { valid: false; error: string }> {
+    if (!code || code.trim() === '') return {
+        valid: false,
+        error: 'Empty mermaid code'
+    };
     const inner = getMermaidInner(code || '').trim();
     if (!inner) return { valid: false, error: 'Empty mermaid code' };
     try {

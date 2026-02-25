@@ -21,6 +21,9 @@ export class AppContext {
 
 	private static instance: AppContext | null = null;
 
+	/** Unsubscribe from EventBus so workspace ref is released on unload. */
+	private unsubscribeSettingsUpdated?: () => void;
+
 	public static getInstance(): AppContext {
 		if (!AppContext.instance) {
 			throw new BusinessError(
@@ -29,6 +32,19 @@ export class AppContext {
 			);
 		}
 		return AppContext.instance;
+	}
+
+	/**
+	 * Clear singleton and unsubscribe from workspace events.
+	 * Must be called from plugin onunload to break reference chains and allow GC.
+	 */
+	public static clearForUnload(): void {
+		if (AppContext.instance) {
+			AppContext.instance.unsubscribeSettingsUpdated?.();
+			// Explicitly clean up window globals to break closure-based memory leaks
+			AppContext.instance.handleDevToolsSettingChange(false);
+			AppContext.instance = null;
+		}
 	}
 
 	constructor(
@@ -48,7 +64,7 @@ export class AppContext {
 
 		this.handleDevToolsSettingChange(this.settings.enableDevTools ?? false);
 
-		EventBus.getInstance(app).on(ViewEventType.SETTINGS_UPDATED, (event) => {
+		this.unsubscribeSettingsUpdated = EventBus.getInstance(app).on(ViewEventType.SETTINGS_UPDATED, (event) => {
 			const previousEnableDevTools = this.settings.enableDevTools ?? false;
 			this.settings = this.plugin!.settings!;
 
@@ -88,6 +104,7 @@ export class AppContext {
 		} else {
 			if (typeof window !== 'undefined') {
 				if ((window as any).testGraphTools) delete (window as any).testGraphTools;
+				if ((window as any).indexDocument) delete (window as any).indexDocument;
 				if ((window as any).cleanupGraphTable) delete (window as any).cleanupGraphTable;
 				console.log('🔧 Graph Inspector Test Tools disabled');
 			}

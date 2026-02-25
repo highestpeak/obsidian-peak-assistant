@@ -79,6 +79,14 @@ export class RerankProviderManager {
 	}
 
 	/**
+	 * Clear the global singleton instance.
+	 * Call from plugin onunload to release memory.
+	 */
+	static clearInstance(): void {
+		RerankProviderManager.instance = null;
+	}
+
+	/**
 	 * Create a rerank provider instance.
 	 */
 	create(config: RerankProviderConfig): RerankProvider | null {

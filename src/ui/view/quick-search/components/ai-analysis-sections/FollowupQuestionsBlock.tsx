@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { useAIAnalysisStore } from '../../store/aiAnalysisStore';
+import { useAIAnalysisInteractionsStore, useAIAnalysisRuntimeStore } from '../../store/aiAnalysisStore';
 import { useContinueAnalysisFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 import { streamSearchFollowup, consumeFollowupStream } from '../../hooks/useAIAnalysisPostAIInteractions';
 
@@ -24,9 +24,9 @@ export type FollowupQuestionsBlockProps = {
  */
 export const FollowupQuestionsBlock: React.FC<FollowupQuestionsBlockProps> = ({ summary }) => {
 	const { manager } = useServiceContext();
-	const suggestedFollowUpQuestions = useAIAnalysisStore((s) => s.suggestedFollowUpQuestions);
-	const setFullAnalysisFollowUp = useAIAnalysisStore((s) => s.setFullAnalysisFollowUp);
-	const setFollowUpStreaming = useAIAnalysisStore((s) => s.setFollowUpStreaming);
+	const suggestedFollowUpQuestions = useAIAnalysisInteractionsStore((s) => s.suggestedFollowUpQuestions);
+	const setFullAnalysisFollowUp = useAIAnalysisInteractionsStore((s) => s.setFullAnalysisFollowUp);
+	const setFollowUpStreaming = useAIAnalysisInteractionsStore((s) => s.setFollowUpStreaming);
 	const [loadingQuestion, setLoadingQuestion] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
@@ -52,10 +52,10 @@ export const FollowupQuestionsBlock: React.FC<FollowupQuestionsBlockProps> = ({ 
 				);
 				const answer = await consumeFollowupStream(stream, {
 					onDelta: (acc) => {
-						const prev = useAIAnalysisStore.getState().followUpStreaming;
+						const prev = useAIAnalysisInteractionsStore.getState().followUpStreaming;
 						if (prev) setFollowUpStreaming({ ...prev, content: acc });
 					},
-					onUsage: (usage) => useAIAnalysisStore.getState().accumulateUsage(usage),
+					onUsage: (usage) => useAIAnalysisRuntimeStore.getState().accumulateUsage(usage),
 				});
 				setFullAnalysisFollowUp(question, answer, 'append');
 			} catch (e) {

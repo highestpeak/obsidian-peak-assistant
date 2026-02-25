@@ -14,6 +14,7 @@ import { AppContext } from '@/app/context/AppContext';
 export class ViewManager {
 	private readonly viewSwicthConsistenter: ViewSwitchConsistentHandler;
 	private readonly viewCreators: Map<string, ViewCreator> = new Map();
+	private ribbonIconEl: HTMLElement | null = null;
 
 	constructor(
 		private readonly plugin: MyPlugin,
@@ -58,16 +59,20 @@ export class ViewManager {
 	}
 
 	/**
-	 * Detach plugin views on unload.
+	 * Detach plugin views and remove ribbon icon (and its click listener) on unload.
 	 */
 	unload(): void {
+		if (this.ribbonIconEl?.parentNode) {
+			this.ribbonIconEl.remove();
+		}
+		this.ribbonIconEl = null;
 		this.viewCreators.forEach((creator, type) => {
 			this.plugin.app.workspace.getLeavesOfType(type).forEach((leaf) => leaf.detach());
 		});
 	}
 
 	private registerRibbon(): void {
-		this.plugin.addRibbonIcon('message-circle', 'Open Peak Assistant', () => {
+		this.ribbonIconEl = this.plugin.addRibbonIcon('message-circle', 'Open Peak Assistant', () => {
 			void this.viewSwicthConsistenter.activateChatView();
 		});
 	}

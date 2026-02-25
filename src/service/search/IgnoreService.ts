@@ -21,6 +21,14 @@ export class IgnoreService {
 	}
 
 	/**
+	 * Clear the global singleton instance.
+	 * Call from plugin onunload to release memory.
+	 */
+	static clearInstance(): void {
+		IgnoreService.instance = null;
+	}
+
+	/**
 	 * Initialize the global singleton instance.
 	 * Should be called once during plugin initialization.
 	 */

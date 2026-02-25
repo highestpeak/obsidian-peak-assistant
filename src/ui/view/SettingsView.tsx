@@ -2,13 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ViewEventType } from '@/core/eventBus';
 import { GeneralTab } from './settings/GeneralTab';
 import { ModelConfigTab } from './settings/ModelConfigTab';
-import { CosmoPluginsTab } from './settings/CosmoPluginsTab';
 import { SearchSettingsTab } from './settings/SearchSettingsTab';
 import { useSettingsUpdate } from './settings/hooks/useSettingsUpdate';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { MyPluginSettings } from '@/app/settings/types';
 
-type TabId = 'general' | 'ai-models' | 'search' | 'cosmo-plugins';
+type TabId = 'general' | 'ai-models' | 'search';
 
 /**
  * Root component for plugin settings with tab navigation.
@@ -45,7 +44,6 @@ export function SettingsRoot() {
 		{ id: 'general', label: 'General' },
 		{ id: 'ai-models', label: 'Model Config' },
 		{ id: 'search', label: 'Doc & Search' },
-		{ id: 'cosmo-plugins', label: 'Cosmo Plugins' },
 	];
 
 	return (
@@ -78,13 +76,6 @@ export function SettingsRoot() {
 				)}
 				{activeTab === 'search' && (
 					<SearchSettingsTab settings={settings} settingsUpdates={settingsUpdates} />
-				)}
-				{activeTab === 'cosmo-plugins' && (
-					<CosmoPluginsTab
-						settings={settings}
-						commandHiddenControlService={plugin.commandHiddenControlService}
-						updateSettings={updateSettingsAndSync}
-					/>
 				)}
 			</div>
 		</div>

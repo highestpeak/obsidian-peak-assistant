@@ -8,43 +8,56 @@ import { createElement, icons } from 'lucide';
 import { CHAT_PROJECT_SUMMARY_FILENAME } from '@/core/constant';
 
 /**
- * Register workspace-level reactive events
+ * Register workspace-level reactive events. Uses plugin.registerEvent so listeners are auto-removed on unload.
  */
 export function registerCoreEvents(plugin: MyPlugin, viewManager: ViewManager): void {
 	const eventBus = EventBus.getInstance(plugin.app);
+	const app = plugin.app;
 
-	// Handle active leaf change for view switching
-	eventBus.on('active-leaf-change', (leaf) => {
-		viewManager.getViewSwitchConsistentHandler().handleActiveLeafChange(leaf);
-	});
+	plugin.registerEvent(
+		app.workspace.on('active-leaf-change', (leaf) => {
+			viewManager.getViewSwitchConsistentHandler().handleActiveLeafChange(leaf);
+		}),
+	);
 
-	// Handle file open to add chat view button for conversation files
-	eventBus.on('file-open', (file) => {
-		removeAllChatViewButtons();
-		
-		if (file && file.extension === 'md') {
-			handleConversationFileOpen(plugin, viewManager, file, eventBus);
-		}
-	});
-
-	// Also handle active leaf change to update button when switching views
-	eventBus.on('active-leaf-change', (leaf) => {
-		removeAllChatViewButtons();
-		
-		const markdownView = leaf?.view;
-		if (markdownView && markdownView instanceof MarkdownView) {
-			const file = markdownView.file;
+	plugin.registerEvent(
+		app.workspace.on('file-open', (file: TFile | null) => {
+			removeAllChatViewButtons();
 			if (file && file.extension === 'md') {
 				handleConversationFileOpen(plugin, viewManager, file, eventBus);
 			}
-		}
-	});
+		}),
+	);
+
+	plugin.registerEvent(
+		app.workspace.on('active-leaf-change', (leaf) => {
+			removeAllChatViewButtons();
+			const markdownView = leaf?.view;
+			if (markdownView && markdownView instanceof MarkdownView) {
+				const file = markdownView.file;
+				if (file && file.extension === 'md') {
+					handleConversationFileOpen(plugin, viewManager, file, eventBus);
+				}
+			}
+		}),
+	);
+}
+
+/** Pending timeouts that schedule addChatViewButton; cleared on unload to avoid holding plugin refs. */
+const pendingConversationTimeouts = new Set<ReturnType<typeof setTimeout>>();
+
+/**
+ * Clear all pending conversation-file timeouts. Call from plugin onunload to avoid detached timer callbacks holding plugin/viewManager.
+ */
+export function clearPendingConversationTimeouts(): void {
+	pendingConversationTimeouts.forEach((id) => clearTimeout(id));
+	pendingConversationTimeouts.clear();
 }
 
 /**
- * Remove all chat view buttons
+ * Remove all chat view buttons from the DOM. Call on plugin unload so button listeners (which capture plugin/viewManager) are released.
  */
-function removeAllChatViewButtons(): void {
+export function removeAllChatViewButtons(): void {
 	const buttons = document.querySelectorAll('.peak-chat-view-button-container');
 	buttons.forEach(button => button.remove());
 }
@@ -71,11 +84,11 @@ async function handleConversationFileOpen(
 		// Check if it's a conversation file (has id in frontmatter)
 		if (frontmatter?.data?.id && typeof frontmatter.data.id === 'string') {
 			const conversationId = frontmatter.data.id as string;
-			
-			// Wait for markdown view to be ready
-			setTimeout(() => {
+			const id = setTimeout(() => {
+				pendingConversationTimeouts.delete(id);
 				addChatViewButton(plugin, viewManager, file, conversationId, eventBus);
 			}, 100);
+			pendingConversationTimeouts.add(id);
 		}
 	} catch (error) {
 		// File might not be a conversation, silently ignore

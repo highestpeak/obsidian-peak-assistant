@@ -3,7 +3,7 @@ import { Copy, Search, MessageSquare, FileEdit, FileText, Network } from 'lucide
 import type { SearchResultItem } from '@/service/search/types';
 import type { AISearchSource } from '@/service/agents/AISearchAgent';
 import { Button } from '@/ui/component/shared-ui/button';
-import { useAIAnalysisStore } from '../../store/aiAnalysisStore';
+import { useAIAnalysisTopicsStore } from '../../store/aiAnalysisStore';
 import { useAnalyzeTopic } from '../../hooks/useAIAnalysisPostAIInteractions';
 
 const MENU_ITEM_CLASS =
@@ -58,7 +58,7 @@ export const TopicMenuPopover: React.FC<TopicMenuPopoverProps> = ({
 	onViewGraphForTopic,
 	onClose,
 }) => {
-	const { setTopicModalOpen } = useAIAnalysisStore();
+	const setTopicModalOpen = useAIAnalysisTopicsStore((s) => s.setTopicModalOpen);
 
 	const { handleStartAnalyze } = useAnalyzeTopic();
 

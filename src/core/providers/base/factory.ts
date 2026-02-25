@@ -134,6 +134,14 @@ export class ProviderServiceFactory {
 	}
 
 	/**
+	 * Clear the global singleton instance.
+	 * Call from plugin onunload to release memory.
+	 */
+	static clearInstance(): void {
+		ProviderServiceFactory.instance = null;
+	}
+
+	/**
 	 * Create a service instance for a provider
 	 */
 	create(providerId: string, config: ProviderConfig): LLMProviderService | null {

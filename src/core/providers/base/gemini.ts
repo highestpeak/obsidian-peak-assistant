@@ -20,7 +20,7 @@ const GEMINI_DEFAULT_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 interface ModelMapping {
 	/** Actual API model ID to use for API calls */
 	modelId: string;
-	/** Icon identifier for UI display, compatible with @lobehub/icons ModelIcon component */
+	/** Icon identifier for UI display (SafeModelIcon) */
 	icon: string;
 	/** Token limits for this model */
 	tokenLimits?: ModelTokenLimits;

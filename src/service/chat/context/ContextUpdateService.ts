@@ -4,6 +4,7 @@ import type { ConversationService } from '../service-conversation';
 import type { ProjectService } from '../service-project';
 import type { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import type { ChatContextWindow, ChatConversation } from '../types';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 /**
  * Service to automatically update summaries based on events.
@@ -14,6 +15,8 @@ export class ContextUpdateService {
 	private conversationTimers = new Map<string, NodeJS.Timeout>();
 	private projectTimers = new Map<string, NodeJS.Timeout>();
 	private unsubscribeHandlers: (() => void)[] = [];
+	/** Set in cleanup() so queued timer callbacks bail before touching DB and avoid OperationalError retention. */
+	private disposed = false;
 
 	constructor(
 		private readonly eventBus: EventBus,
@@ -48,12 +51,14 @@ export class ContextUpdateService {
 			console.debug('[ContextUpdateService] Setting debounce timer for conversation:', conversationId);
 			// Set debounce timer - will check message count difference when timer fires
 			const timer = setTimeout(async () => {
+				if (this.disposed || !sqliteStoreManager.isInitialized()) return;
 				console.debug('[ContextUpdateService] Timer triggered for conversation:', conversationId);
 				// Timer triggers: count messages and compare with last update from DB
 				const [currentMessageCount, conversationMeta] = await Promise.all([
 					this.storage.countMessages(conversationId),
 					this.storage.readConversationMeta(conversationId),
 				]);
+				if (this.disposed || !sqliteStoreManager.isInitialized()) return;
 				const lastUpdateMessageIndex = conversationMeta?.contextLastMessageIndex || 0;
 				const messageCountDiff = currentMessageCount - lastUpdateMessageIndex;
 
@@ -77,6 +82,7 @@ export class ContextUpdateService {
 				console.debug('[ContextUpdateService] Setting debounce timer for project:', projectId);
 				// Simple debounce for project updates
 				const timer = setTimeout(async () => {
+					if (this.disposed || !sqliteStoreManager.isInitialized()) return;
 					console.debug('[ContextUpdateService] Timer triggered for project:', projectId);
 					await this.updateProjectSummary(projectId);
 					this.projectTimers.delete(projectId);
@@ -217,10 +223,10 @@ export class ContextUpdateService {
 
 
 	/**
-	 * Cleanup and unsubscribe
+	 * Cleanup and unsubscribe. Set disposed first so any queued timer callback bails before touching DB.
 	 */
 	cleanup(): void {
-		// Clear all timers
+		this.disposed = true;
 		for (const timer of this.conversationTimers.values()) {
 			clearTimeout(timer);
 		}
@@ -230,7 +236,6 @@ export class ContextUpdateService {
 		this.conversationTimers.clear();
 		this.projectTimers.clear();
 
-		// Unsubscribe from events
 		for (const unsubscribe of this.unsubscribeHandlers) {
 			unsubscribe();
 		}

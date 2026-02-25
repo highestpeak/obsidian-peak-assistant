@@ -169,6 +169,9 @@ export class EventBus {
 	private static instance: EventBus | null = null;
 	private app: App;
 
+	/** All active unsubscribe fns; cleared and invoked in offAll() so workspace refs are released. */
+	private readonly subscribers: Array<() => void> = [];
+
 	private constructor(app: App) {
 		this.app = app;
 	}
@@ -181,6 +184,30 @@ export class EventBus {
 			EventBus.instance = new EventBus(app);
 		}
 		return EventBus.instance;
+	}
+
+	/**
+	 * Remove all subscriptions from workspace, then clear singleton.
+	 * Call from plugin onunload so old refs are released and next load gets a fresh instance.
+	 */
+	static destroyInstance(): void {
+		if (EventBus.instance) {
+			EventBus.instance.offAll();
+			EventBus.instance = null;
+		}
+	}
+
+	/** Unregister every subscription so workspace no longer holds refs to plugin closures. */
+	private offAll(): void {
+		const list = this.subscribers;
+		this.subscribers.length = 0;
+		for (const fn of list) {
+			try {
+				fn();
+			} catch (e) {
+				console.warn('[EventBus] offAll: unsubscribe threw', e);
+			}
+		}
 	}
 
 	/**
@@ -198,7 +225,13 @@ export class EventBus {
 	on(eventType: string, callback: (...args: any[]) => void): () => void;
 	on(eventType: ViewEventType | string, callback: any): () => void {
 		const ref = this.app.workspace.on(eventType as any, callback);
-		return () => this.app.workspace.offref(ref);
+		const unsubscribe = () => this.app.workspace.offref(ref);
+		this.subscribers.push(unsubscribe);
+		return () => {
+			const i = this.subscribers.indexOf(unsubscribe);
+			if (i !== -1) this.subscribers.splice(i, 1);
+			unsubscribe();
+		};
 	}
 }
 

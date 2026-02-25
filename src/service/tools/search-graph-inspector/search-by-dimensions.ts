@@ -3,11 +3,12 @@ import { BooleanExpressionParser } from "./boolean-expression-parser";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
 import { template as SEARCH_BY_DIMENSIONS_TEMPLATE } from "../templates/search-by-dimensions";
-import Handlebars from "handlebars";
-import { buildResponse } from "../types";
+import { buildResponse, buildResponseFromRendered } from "../types";
+import type { TemplateManager } from "@/core/template/TemplateManager";
+import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
-export async function searchByDimensions(params: any) {
+export async function searchByDimensions(params: any, templateManager?: TemplateManager) {
     const { boolean_expression, semantic_filter, filters, sorter, limit, response_format } = params;
     const expr = typeof boolean_expression === 'string' ? boolean_expression.trim() : '';
     if (!expr) {
@@ -76,13 +77,18 @@ export async function searchByDimensions(params: any) {
         itemFiledGetter
     );
 
-    return buildResponse(response_format, SEARCH_BY_DIMENSIONS_TEMPLATE, {
+    const data = {
         boolean_expression,
         items: filtered,
         total_found: matchingExpressionDocNodes.size,
         semantic_filtered_cnt: matchingExpressionDocNodes.size - docsAlignToSemantic.size,
         all_filtered_cnt: matchingExpressionDocNodes.size - filtered.length,
-    });
+    };
+    if (templateManager) {
+        const rendered = await templateManager.render(ToolTemplateId.SearchByDimensions, data);
+        return buildResponseFromRendered(response_format, data, rendered);
+    }
+    return buildResponse(response_format, SEARCH_BY_DIMENSIONS_TEMPLATE, data);
 }
 
 async function findByExpressionWhere(

@@ -1,7 +1,16 @@
 import { hashText } from "@/core/utils/hash-utils";
 import { useCallback, useEffect } from "react";
 import { Notice } from "obsidian";
-import { CompletedAnalysisSnapshot, useAIAnalysisStore } from "../store/aiAnalysisStore";
+import {
+	CompletedAnalysisSnapshot,
+	useAIAnalysisRuntimeStore,
+	useAIAnalysisResultStore,
+	useAIAnalysisTopicsStore,
+	useAIAnalysisInteractionsStore,
+	useAIAnalysisSummaryStore,
+	useAIAnalysisStepsStore,
+	buildCompletedAnalysisSnapshot,
+} from "../store/aiAnalysisStore";
 import { AppContext } from "@/app/context/AppContext";
 import { useSharedStore } from "../store/sharedStore";
 import { buildAiAnalyzeMarkdown, ExportSource, saveAiAnalyzeResultToMarkdown, persistAnalysisDocToPath } from "../callbacks/save-ai-analyze-to-md";
@@ -41,33 +50,33 @@ export const convertSourcesToSearchResultItems = (aiSources: AISearchSource[]): 
 export function useAIAnalysisResult() {
     const { searchQuery } = useSharedStore();
 
-    const {
-        webEnabled,
-        analysisStartedAtMs,
-        graph,
-        topics,
-        sources,
-        topicInspectResults,
-        usage,
-        duration,
-        analysisRunId,
-        autoSaveState,
-        setAutoSaveState,
-        recordError,
-        getHasGraphData,
-        analysisCompleted,
-        fullAnalysisFollowUp,
-        restoredFromVaultPath,
-        graphFollowupHistory,
-        blocksFollowupHistoryByBlockId,
-        sourcesFollowupHistory,
-    } = useAIAnalysisStore();
+    const webEnabled = useAIAnalysisRuntimeStore((s) => s.webEnabled);
+    const analysisStartedAtMs = useAIAnalysisRuntimeStore((s) => s.analysisStartedAtMs);
+    const usage = useAIAnalysisRuntimeStore((s) => s.usage);
+    const duration = useAIAnalysisRuntimeStore((s) => s.duration);
+    const analysisRunId = useAIAnalysisRuntimeStore((s) => s.analysisRunId);
+    const autoSaveState = useAIAnalysisRuntimeStore((s) => s.autoSaveState);
+    const setAutoSaveState = useAIAnalysisRuntimeStore((s) => s.setAutoSaveState);
+    const recordError = useAIAnalysisRuntimeStore((s) => s.recordError);
+    const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
+    const restoredFromVaultPath = useAIAnalysisRuntimeStore((s) => s.restoredFromVaultPath);
 
-    /** Current summary for display (streaming = summaryChunks, else selected from summaries). */
-    const summary = useAIAnalysisStore((s) => {
-        if (s.isSummaryStreaming || (s.isAnalyzing && s.summaryChunks.length > 0)) {
-            return s.summaryChunks.join('');
-        }
+    const graph = useAIAnalysisResultStore((s) => s.graph);
+    const topics = useAIAnalysisResultStore((s) => s.topics);
+    const sources = useAIAnalysisResultStore((s) => s.sources);
+    const getHasGraphData = useAIAnalysisResultStore((s) => s.getHasGraphData);
+
+    const topicInspectResults = useAIAnalysisTopicsStore((s) => s.topicInspectResults);
+
+    const fullAnalysisFollowUp = useAIAnalysisInteractionsStore((s) => s.fullAnalysisFollowUp);
+    const graphFollowupHistory = useAIAnalysisInteractionsStore((s) => s.graphFollowupHistory);
+    const blocksFollowupHistoryByBlockId = useAIAnalysisInteractionsStore((s) => s.blocksFollowupHistoryByBlockId);
+    const sourcesFollowupHistory = useAIAnalysisInteractionsStore((s) => s.sourcesFollowupHistory);
+
+    const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
+    const summary = useAIAnalysisSummaryStore((s) => {
+        const chunks = s.summaryChunks ?? [];
+        if (s.isSummaryStreaming || (isAnalyzing && chunks.length > 0)) return chunks.join('');
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
@@ -81,33 +90,10 @@ export function useAIAnalysisResult() {
         if (alreadySavedSameRunSameSummary) return;
 
         try {
-            const st = useAIAnalysisStore.getState();
-            const replaySnapshot: CompletedAnalysisSnapshot = {
-                version: 1,
-                title: st.title ?? undefined,
-                summaries: st.summaries?.length ? st.summaries : [summary],
-                summaryVersion: st.summaryVersion ?? 1,
-                runAnalysisMode: st.runAnalysisMode ?? undefined,
-                analysisStartedAtMs,
-                duration,
-                usage: usage ?? null,
-                topics: st.topics ?? [],
-                dashboardBlocks: st.dashboardBlocks ?? [],
-                sources: st.sources ?? [],
-                graph: st.graph ?? null,
-                overviewMermaidVersions: (st.overviewMermaidVersions ?? []).length > 0 ? st.overviewMermaidVersions : undefined,
-                overviewMermaidActiveIndex: (st.overviewMermaidVersions ?? []).length > 0 ? (st.overviewMermaidActiveIndex ?? 0) : undefined,
-                topicInspectResults: st.topicInspectResults ?? {},
-                topicAnalyzeResults: st.topicAnalyzeResults ?? {},
-                topicGraphResults: st.topicGraphResults ?? {},
-                blockChatRecords: Object.keys(st.blockChatRecords ?? {}).length > 0 ? st.blockChatRecords : undefined,
-                steps: st.steps ?? [],
-                fullAnalysisFollowUp: st.fullAnalysisFollowUp ?? [],
-            };
-
+            const replaySnapshot = buildCompletedAnalysisSnapshot();
+            const rt = useAIAnalysisRuntimeStore.getState();
             const ts = Date.now();
-            const today = new Date().toISOString().slice(0, 10);
-            const displayTitle = (st.title?.trim() || searchQuery.slice(0, 48) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 60);
+            const displayTitle = (rt.title?.trim() || searchQuery.slice(0, 48) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 60);
             const fileName = `${ts} - ${displayTitle}`;
             const exportSources: ExportSource[] = sources.map(s => ({
                 path: s.path,
@@ -160,7 +146,7 @@ export function useAIAnalysisResult() {
                 id: generateStableUuid(saved.path),
                 vault_rel_path: saved.path,
                 query: searchQuery || null,
-                title: st.title?.trim() || null,
+                title: rt.title?.trim() || null,
                 created_at_ts: ts,
                 web_enabled: webEnabled ? 1 : 0,
                 estimated_tokens: usage?.totalTokens ?? null,
@@ -169,7 +155,7 @@ export function useAIAnalysisResult() {
                 graph_nodes_count: getHasGraphData() ? (graph?.nodes?.length ?? 0) : 0,
                 graph_edges_count: getHasGraphData() ? (graph?.edges?.length ?? 0) : 0,
                 duration: duration ?? null,
-                analysis_preset: st.analysisMode ?? null,
+                analysis_preset: rt.analysisMode ?? null,
             };
             await AppContext.getInstance().aiAnalysisHistoryService.insertOrIgnore(record as any);
 
@@ -202,43 +188,13 @@ export function useAIAnalysisResult() {
     useEffect(() => {
         if (!analysisCompleted) return;
 
-        const buildSnapshot = (): CompletedAnalysisSnapshot => {
-            const st = useAIAnalysisStore.getState();
-            return {
-                version: 1,
-                title: st.title ?? undefined,
-                summaries: st.summaries?.length ? st.summaries : [summary],
-                summaryVersion: st.summaryVersion ?? 1,
-                runAnalysisMode: st.runAnalysisMode ?? undefined,
-                analysisStartedAtMs,
-                duration,
-                usage: st.usage ?? null,
-                topics: st.topics ?? [],
-                dashboardBlocks: st.dashboardBlocks ?? [],
-                sources: st.sources ?? [],
-                graph: st.graph ?? null,
-                overviewMermaidVersions: (st.overviewMermaidVersions ?? []).length > 0 ? st.overviewMermaidVersions : undefined,
-                overviewMermaidActiveIndex: (st.overviewMermaidVersions ?? []).length > 0 ? (st.overviewMermaidActiveIndex ?? 0) : undefined,
-                topicInspectResults: st.topicInspectResults ?? {},
-                topicAnalyzeResults: st.topicAnalyzeResults ?? {},
-                topicGraphResults: st.topicGraphResults ?? {},
-                blockChatRecords: Object.keys(st.blockChatRecords ?? {}).length > 0 ? st.blockChatRecords : undefined,
-                steps: st.steps ?? [],
-                fullAnalysisFollowUp: st.fullAnalysisFollowUp ?? [],
-                graphFollowups: (st.graphFollowupHistory ?? []).length > 0 ? st.graphFollowupHistory : undefined,
-                blocksFollowupsByBlockId: Object.keys(st.blocksFollowupHistoryByBlockId ?? {}).length > 0 ? st.blocksFollowupHistoryByBlockId : undefined,
-                sourcesFollowups: (st.sourcesFollowupHistory ?? []).length > 0 ? st.sourcesFollowupHistory : undefined,
-            };
-        };
-
         if (!pathForPersist) {
-            // Create doc on first follow-up or token change so we have a path to persist to.
             const ensureAnalysisDocExists = async () => {
-                const st = useAIAnalysisStore.getState();
+                const rt = useAIAnalysisRuntimeStore.getState();
                 const settings = AppContext.getInstance().settings.search;
                 const defaultFolder = 'ChatFolder/AI-Analysis';
                 const folderPath = (settings.aiAnalysisAutoSaveFolder?.trim()) || defaultFolder;
-                const displayTitle = (st.title?.trim() || searchQuery.slice(0, 48) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 60);
+                const displayTitle = (rt.title?.trim() || searchQuery.slice(0, 48) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 60);
                 const ts = Date.now();
                 const fileName = `${ts} - ${displayTitle}`;
                 try {
@@ -246,7 +202,7 @@ export function useAIAnalysisResult() {
                         folderPath,
                         fileName,
                         query: searchQuery,
-                        snapshot: buildSnapshot(),
+                        snapshot: buildCompletedAnalysisSnapshot(),
                         webEnabled,
                     });
                     const summaryHash = hashText(`${summary}::t${topics.length}::s${sources.length}`);
@@ -261,7 +217,7 @@ export function useAIAnalysisResult() {
 
         const persist = async () => {
             try {
-                const snapshot = buildSnapshot();
+                const snapshot = buildCompletedAnalysisSnapshot();
                 const docModel = fromCompletedAnalysisSnapshot(snapshot, searchQuery, webEnabled);
                 docModel.created = docModel.created || new Date().toISOString();
                 const buildOptions: BuildMarkdownOptions = {
@@ -295,7 +251,9 @@ export function useAIAnalysisResult() {
     ]);
 
     const handleCopyAll = useCallback(async () => {
-        const st = useAIAnalysisStore.getState();
+        const top = useAIAnalysisTopicsStore.getState();
+        const res = useAIAnalysisResultStore.getState();
+        const steps = useAIAnalysisStepsStore.getState().steps;
         const markdown = buildAiAnalyzeMarkdown({
             query: searchQuery,
             webEnabled,
@@ -308,19 +266,18 @@ export function useAIAnalysisResult() {
                 content: s.reasoning,
             })),
             topicInspectResults: topicInspectResults ?? {},
-            topicAnalyzeResults: st.topicAnalyzeResults ?? {},
-            topicGraphResults: st.topicGraphResults ?? {},
+            topicAnalyzeResults: top.topicAnalyzeResults ?? {},
+            topicGraphResults: res.topicGraphResults ?? {},
             estimatedTokens: usage?.totalTokens ?? 0,
         }, graph ?? undefined);
 
         const enableDevTools = AppContext.getInstance().plugin?.settings?.enableDevTools ?? false;
         let textToCopy = markdown;
-        if (enableDevTools && (st.steps?.length ?? 0) > 0) {
-            const getStepText = useAIAnalysisStore.getState().getStepText;
-            const stepsSection = st.steps!
+        if (enableDevTools && (steps?.length ?? 0) > 0) {
+            const stepsSection = steps!
                 .map((step, i) => {
                     const title = `### Step ${i + 1}: ${step.title}`;
-                    const body = (getStepText(step) ?? '').trim();
+                    const body = (step.description ?? '').trim();
                     return body ? `${title}\n\n${body}` : title;
                 })
                 .join('\n\n');
@@ -341,30 +298,7 @@ export function useAIAnalysisResult() {
             })()
             : folderPath;
 
-        const st = useAIAnalysisStore.getState();
-        const snapshot: CompletedAnalysisSnapshot = {
-            version: 1,
-            title: st.title ?? undefined,
-            summaries: st.summaries?.length ? st.summaries : [summary],
-            summaryVersion: st.summaryVersion ?? 1,
-            runAnalysisMode: st.runAnalysisMode ?? undefined,
-            analysisStartedAtMs,
-            duration,
-            usage: usage ?? null,
-            topics: st.topics ?? [],
-            dashboardBlocks: st.dashboardBlocks ?? [],
-            sources: st.sources ?? [],
-            graph: st.graph ?? null,
-            topicInspectResults: st.topicInspectResults ?? {},
-            topicAnalyzeResults: st.topicAnalyzeResults ?? {},
-            topicGraphResults: st.topicGraphResults ?? {},
-            blockChatRecords: Object.keys(st.blockChatRecords ?? {}).length > 0 ? st.blockChatRecords : undefined,
-            steps: st.steps ?? [],
-            fullAnalysisFollowUp: st.fullAnalysisFollowUp ?? [],
-            graphFollowups: st.graphFollowupHistory?.length ? st.graphFollowupHistory : undefined,
-            blocksFollowupsByBlockId: Object.keys(st.blocksFollowupHistoryByBlockId ?? {}).length > 0 ? st.blocksFollowupHistoryByBlockId : undefined,
-            sourcesFollowups: st.sourcesFollowupHistory?.length ? st.sourcesFollowupHistory : undefined,
-        };
+        const snapshot = buildCompletedAnalysisSnapshot();
         await saveAiAnalyzeResultToMarkdown({
             folderPath: normalizedFolder,
             fileName: fileName,
@@ -478,10 +412,13 @@ export function useAIAnalysisResult() {
 }
 
 export function useAnalyzeTopicResults() {
+    const summaryChunks = useAIAnalysisSummaryStore((s) => s.summaryChunks);
+    const sources = useAIAnalysisResultStore((s) => s.sources);
+    const topicInspectResults = useAIAnalysisTopicsStore((s) => s.topicInspectResults);
+    const setTopicInspectResults = useAIAnalysisTopicsStore((s) => s.setTopicInspectResults);
+    const setTopicInspectLoading = useAIAnalysisTopicsStore((s) => s.setTopicInspectLoading);
 
-    const { summaryChunks, sources, topicInspectResults, setTopicInspectResults, setTopicInspectLoading } = useAIAnalysisStore();
-
-    const summary = summaryChunks.join('');
+    const summary = (summaryChunks ?? []).join('');
 
     const handleCopyTopicInfo = useCallback(async (topic: string) => {
         const inspectList = topicInspectResults[topic] ?? [];
@@ -511,7 +448,8 @@ export function useAnalyzeTopicResults() {
     const handleInspectTopic = useCallback(async (topic: string) => {
         setTopicInspectLoading(topic);
         try {
-            const tool = localSearchWholeVaultTool();
+            const tm = AppContext.getInstance().manager.getTemplateManager?.();
+            const tool = localSearchWholeVaultTool(tm);
             const out = await tool.execute({
                 query: topic,
                 searchMode: 'hybrid',

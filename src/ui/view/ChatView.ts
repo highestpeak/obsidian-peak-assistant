@@ -8,8 +8,8 @@ import { AppContext } from '@/app/context/AppContext';
 export const CHAT_VIEW_TYPE = 'peak-chat-view';
 
 export class ChatView extends ItemView {
-	// Views
 	private reactRenderer: ReactRenderer | null = null;
+	private openRafId: number | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -39,13 +39,17 @@ export class ChatView extends ItemView {
 		this.reactRenderer = new ReactRenderer(this.containerEl);
 
 		// Initial render - delay to ensure container is in DOM
-		requestAnimationFrame(() => {
+		this.openRafId = requestAnimationFrame(() => {
+			this.openRafId = null;
 			this.render();
 		});
 	}
 
 	async onClose(): Promise<void> {
-		// Clean up React renderer
+		if (this.openRafId != null) {
+			cancelAnimationFrame(this.openRafId);
+			this.openRafId = null;
+		}
 		if (this.reactRenderer) {
 			this.reactRenderer.unmount();
 			this.reactRenderer = null;

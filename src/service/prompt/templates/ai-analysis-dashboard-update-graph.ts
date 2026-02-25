@@ -3,7 +3,7 @@ export const template = `# CONTEXTUAL DATA
 - **Current Analysis Mode**: {{analysisMode}}
 
 {{#if errorRetryInfo.attemptTimes}}
-Note: This is attempt {{errorRetryInfo.attemptTimes}}. Last error: {{errorRetryInfo.lastAttemptErrorMessages}}.
+Note: This is attempt {{errorRetryInfo.attemptTimes}}. Last error: {{{errorRetryInfo.lastAttemptErrorMessages}}}.
 Check for orphaned edges or invalid node IDs.
 {{/if}}
 
@@ -14,18 +14,18 @@ Check for orphaned edges or invalid node IDs.
 
 # LATEST EVIDENCE (New Graph Candidates)
 <<<
-{{recentEvidenceHint}}
+{{{recentEvidenceHint}}}
 >>>
 
 # CURRENT GRAPH STATE
 <<<
-{{currentResultSnapshot}}
+{{{currentResultSnapshot}}}
 >>>
 
 {{#if plan.graphPlan}}
 # EXECUTION PLAN (follow faithfully)
 {{#each plan.graphPlan}}
-- {{this}}
+- {{{this}}}
 {{/each}}
 {{/if}}
 
@@ -41,7 +41,7 @@ Use the same language as the user's original query for all node and edge labels.
 
 {{#if toolFormatGuidance}}
 # update_graph_nodes / update_graph_edges FORMAT
-{{toolFormatGuidance}}
+{{{toolFormatGuidance}}}
 
 {{/if}}
 # EXECUTION

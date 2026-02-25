@@ -147,6 +147,14 @@ export class BetterSqliteStore implements SqliteDatabase {
 	// Cache for better-sqlite3 module if successfully loaded
 	private static cachedBetterSqlite3: typeof import('better-sqlite3') | null = null;
 
+	/**
+	 * Clear the cached better-sqlite3 module.
+	 * Call from plugin onunload to release memory.
+	 */
+	public static clearInstance(): void {
+		BetterSqliteStore.cachedBetterSqlite3 = null;
+	}
+
 	private constructor(db: BetterSqlite3Database) {
 		this.db = db;
 
@@ -623,12 +631,20 @@ export class BetterSqliteStore implements SqliteDatabase {
 	}
 
 	/**
-	 * Close the database connection.
+	 * Close the database connection and release resources.
 	 */
 	close(): void {
 		if (this.db) {
-			this.db.close();
+			try {
+				this.db.close();
+			} catch (e) {
+				console.warn('[BetterSqliteStore] Error closing database:', e);
+			}
 			this.db = null as any;
+		}
+		// Clear Kysely instance and its dialect/driver to break reference chains
+		if (this.kyselyInstance) {
+			(this.kyselyInstance as any) = null;
 		}
 	}
 

@@ -6,12 +6,12 @@ export const template = `You are a helpful assistant. Suggest a vault-relative f
 
 Search query: {{query}}
 {{#if summary}}
-Summary excerpt: {{summary}}
+Summary excerpt: {{{summary}}}
 {{/if}}
 
 {{#if candidateFoldersFromSearch}}
 Candidate folders from semantic search (pick one or suggest a similar path):
-{{candidateFoldersFromSearch}}
+{{{candidateFoldersFromSearch}}}
 {{/if}}
 {{#if defaultSaveFolder}}
 Default save folder for AI analysis (optional fallback): {{defaultSaveFolder}}

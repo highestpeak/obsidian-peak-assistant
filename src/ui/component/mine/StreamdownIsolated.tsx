@@ -15,8 +15,8 @@ import { code } from "@streamdown/code";
 // import { math } from "@streamdown/math";
 import { createMathPlugin } from '@streamdown/math';
 const math = createMathPlugin({
-  singleDollarTextMath: true, // Enable $...$ syntax (default: false)
-  errorColor: '#dc2626',      // Custom error color (default: "var(--color-muted-foreground)")
+	singleDollarTextMath: true, // Enable $...$ syntax (default: false)
+	errorColor: '#dc2626',      // Custom error color (default: "var(--color-muted-foreground)")
 });
 
 /** Rehype plugins (KaTeX, raw, sanitize, harden). */
@@ -237,13 +237,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 			const root = (rootRef as React.MutableRefObject<Root | null>).current;
 			(rootRef as React.MutableRefObject<Root | null>).current = null;
 			if (root) {
-				queueMicrotask(() => {
-					try {
-						root.unmount();
-					} catch {
-						// ignore
-					}
-				});
+				root.unmount();
 			}
 		};
 	}, [useFallback]);
@@ -276,7 +270,8 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 					}}
 					mermaid={{
 						config: {
-							startOnLoad: true,
+							// Disable auto window.load listener to avoid zombie listeners on plugin reload (memory leak)
+							startOnLoad: false,
 						},
 					}}
 					linkSafety={linkSafety}

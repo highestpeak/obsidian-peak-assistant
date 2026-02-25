@@ -5,7 +5,7 @@ export const template = `You are a helpful assistant. Generate a concise, file-s
 
 Search query: {{query}}
 {{#if summary}}
-Summary excerpt: {{summary}}
+Summary excerpt: {{{summary}}}
 {{/if}}
 
 Rules:

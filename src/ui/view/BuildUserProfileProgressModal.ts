@@ -6,6 +6,7 @@ import { App, Modal } from 'obsidian';
  */
 export class BuildUserProfileProgressModal extends Modal {
 	private progressEl: HTMLParagraphElement | null = null;
+	private cancelClickHandler: (() => void) | null = null;
 
 	constructor(
 		app: App,
@@ -22,10 +23,11 @@ export class BuildUserProfileProgressModal extends Modal {
 		this.progressEl = contentEl.createEl('p', { cls: 'peak-build-profile-progress' });
 		this.progressEl.setText('Preparing...');
 		const cancelBtn = contentEl.createEl('button', { text: 'Cancel', cls: 'mod-warning' });
-		cancelBtn.addEventListener('click', () => {
+		this.cancelClickHandler = () => {
 			this.onCancel();
 			this.close();
-		});
+		};
+		cancelBtn.addEventListener('click', this.cancelClickHandler);
 	}
 
 	/**
@@ -38,7 +40,11 @@ export class BuildUserProfileProgressModal extends Modal {
 	}
 
 	onClose(): void {
-		// Any close (Escape, backdrop, Cancel button) should abort the running build.
+		const cancelBtn = this.contentEl.querySelector('button.mod-warning');
+		if (cancelBtn && this.cancelClickHandler) {
+			cancelBtn.removeEventListener('click', this.cancelClickHandler);
+		}
+		this.cancelClickHandler = null;
 		this.onCancel();
 		this.progressEl = null;
 		this.contentEl.empty();

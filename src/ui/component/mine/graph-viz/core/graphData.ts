@@ -17,7 +17,7 @@ function nodeTypeFromId(id: string, defaultType: string): string {
 
 export type UpsertNodeInput = { id: string; label: string; type?: string; badges?: string[] };
 
-type LinkRecord = { source: string; target: string; kind: string; weight: number };
+type LinkRecord = { source: string; target: string; kind: string; weight: number; attributes?: Record<string, unknown> };
 
 export type GraphDataCacheOpts = {
 	getNodeStyle: (node: GraphVizNode) => { fill?: string; r?: number };
@@ -57,10 +57,12 @@ export function createGraphDataCache() {
 					r: 0,
 				} as GraphVizNode);
 				const r = style.r ?? 10;
+				const attrs = (n.attributes && typeof n.attributes === 'object') ? n.attributes as Record<string, unknown> : undefined;
 				if (existing) {
 					existing.label = String(n.label ?? existing.label);
 					existing.type = nodeType;
 					existing.badges = n.badges ?? existing.badges;
+					if (attrs) existing.attributes = { ...(existing.attributes ?? {}), ...attrs };
 				} else {
 					nodeById.set(id, {
 						id,
@@ -69,6 +71,7 @@ export function createGraphDataCache() {
 						badges: n.badges,
 						r,
 						enterTime: typeof performance !== 'undefined' ? performance.now() : 0,
+						...(attrs ? { attributes: attrs } : {}),
 					} as GraphVizNode);
 				}
 			}
@@ -95,12 +98,16 @@ export function createGraphDataCache() {
 				ensureNode(source);
 				ensureNode(target);
 				const kind = String(e.kind ?? defaultEdgeKind);
-				// Keep edge weights finite; NaN would break downstream pathfinding cost comparisons.
 				const weight = typeof e.weight === 'number' && Number.isFinite(e.weight) ? e.weight : 1;
+				const attrs = (e.attributes && typeof e.attributes === 'object') ? e.attributes as Record<string, unknown> : undefined;
 				const k = linkKey(source, target, kind, normalizeNodeId);
 				const existing = linkByKey.get(k);
-				if (existing) existing.weight = weight;
-				else linkByKey.set(k, { source, target, kind, weight });
+				if (existing) {
+					existing.weight = weight;
+					if (attrs) existing.attributes = { ...(existing.attributes ?? {}), ...attrs };
+				} else {
+					linkByKey.set(k, { source, target, kind, weight, ...(attrs ? { attributes: attrs } : {}) });
+				}
 			}
 
 			// Remove nodes
@@ -161,6 +168,7 @@ export function createGraphDataCache() {
 					target: tgtNode,
 					kind: rec.kind,
 					weight: Number.isFinite(rec.weight) ? rec.weight : 1,
+					...(rec.attributes ? { attributes: rec.attributes } : {}),
 				} as GraphVizLink);
 			}
 

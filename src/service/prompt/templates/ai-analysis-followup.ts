@@ -9,10 +9,10 @@ export const template = `You are helping the user with a follow-up question abou
 ## Analysis context (may be incomplete — use tools for full coverage)
 Original query: {{originalQuery}}
 
-{{contextContent}}
+{{{contextContent}}}
 
 ## User question
-{{question}}
+{{{question}}}
 
 Return markdown. Be concise and grounded in retrieved analysis. Use bullets or short headings when helpful.`;
 

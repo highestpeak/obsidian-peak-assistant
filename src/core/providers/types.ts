@@ -51,7 +51,7 @@ export interface ProviderMetaData {
 	name: string;
 	defaultBaseUrl: string;
 	/**
-	 * Icon identifier string for @lobehub/icons ProviderIcon component.
+	 * Icon identifier for UI (provider icon).
 	 * This string will be passed directly to ProviderIcon's `provider` prop.
 	 * Each provider should return the appropriate provider icon identifier (e.g., 'openai', 'anthropic', 'google', 'openrouter', 'ollama').
 	 * The icon mapping logic is centralized in each provider's getProviderMetadata() method.
@@ -61,7 +61,7 @@ export interface ProviderMetaData {
 	 * return { id: 'openai', name: 'OpenAI', defaultBaseUrl: '...', icon: 'openai' };
 	 * 
 	 * // In UI component:
-	 * import { ProviderIcon } from '@lobehub/icons';
+	 * Rendered by SafeProviderIcon (lucide Server icon).
 	 * {metadata.icon && <ProviderIcon provider={metadata.icon} size={20} />}
 	 */
 	icon?: string;
@@ -72,7 +72,7 @@ export interface ModelMetaData {
 	displayName: string;
 	modelType?: ModelType;
 	/**
-	 * Icon identifier string for @lobehub/icons ModelIcon component.
+	 * Icon identifier for UI (model icon).
 	 * This string will be passed directly to ModelIcon's `model` prop.
 	 * Each provider should return the appropriate model icon identifier (e.g., 'gpt-4.1', 'claude-3-5-sonnet').
 	 * The icon mapping logic is centralized in each provider's getAvailableModels() method.
@@ -82,7 +82,7 @@ export interface ModelMetaData {
 	 * return [{ id: 'gpt-4.1', displayName: 'GPT-4.1', icon: 'gpt-4.1' }];
 	 * 
 	 * // In UI component:
-	 * import { ModelIcon } from '@lobehub/icons';
+	 * Rendered by SafeModelIcon (lucide Bot icon).
 	 * {modelInfo.icon && <ModelIcon model={modelInfo.icon} size={16} />}
 	 */
 	icon?: string;
@@ -370,15 +370,20 @@ export function mergeTokenUsage(usage1?: LLMUsage | null, usage2?: LLMUsage | nu
 
 type RawStreamEvent =
 	// from AI-SDK StreamTextOnChunkCallback types
+	{ type: 'text-start';} |
 	{ type: 'text-delta'; text: string; } |
+	{ type: 'text-end';} |
+	{ type: 'reasoning-start';} |
 	{ type: 'reasoning-delta'; text: string; } |
+	{ type: 'reasoning-end';} |
 	({ type: 'source'; } | LLMResponseSource) |
 	{ type: 'tool-call'; id?: string; toolName: string; input?: any; } |
 	{ type: 'tool-input-start'; id?: string; toolName: string; } |
 	{ type: 'tool-input-delta'; id?: string; delta: string; } |
 	{ type: 'tool-result'; id?: string; toolName: string; input?: any; output?: any; } |
 	// from project usage
-	{ type: 'on-step-finish'; text: string, finishReason: FinishReason, usage: LLMUsage } |
+	{ type: 'on-step-start'; text?: string; } |
+	{ type: 'on-step-finish'; text: string, finishReason: FinishReason, usage: LLMUsage, result?: any } |
 	{ type: 'complete'; usage: LLMUsage, finishReason: FinishReason, durationMs?: number, result?: any } |
 	{ type: 'error'; error: Error, durationMs?: number } |
 	{ type: 'unSupported'; chunk: any, comeFrom?: string } |
@@ -404,8 +409,8 @@ type RawStreamEvent =
 	{ type: 'ui-step-delta'; uiType: UIStepType, stepId: string; titleDelta?: string; descriptionDelta?: string; } |
 	{
 		type: 'ui-signal';
-		channel: string;
-		kind: string;
+		channel: UISignalChannel;
+		kind: UISignalKind;
 		entityId: string;
 		id?: string;
 		payload?: any;
@@ -459,9 +464,13 @@ export enum StreamTriggerName {
 	SEARCH_INSPECTOR_AGENT = 'search-inspector-agent',
 	SEARCH_GRAPH_AGENT = 'search-graph-agent',
 	SEARCH_TOPICS_AGENT = 'search-topics-agent',
+	SEARCH_SOURCES_FROM_VERIFIED_PATHS = 'search-sources-from-verified-paths',
 	SEARCH_SOURCES_AGENT = 'search-sources-agent',
 	SEARCH_DASHBOARD_AGENT = 'search-dashboard-agent',
 	SEARCH_DASHBOARD_UPDATE_AGENT = 'search-dashboard-update-agent',
+	SEARCH_FINAL_REFINE_AGENT = 'search-final-refine-agent',
+	SEARCH_MINDFLOW_AGENT = 'search-mindflow-agent',
+	SEARCH_COMPLETION_JUDGE = 'search-completion-judge',
 	SEARCH_REVIEW_BLOCKS = 'search-review-blocks',
 	SEARCH_SUMMARY = 'search-summary',
 	SEARCH_TITLE = 'search-title',
@@ -491,6 +500,16 @@ export enum UIStepType {
 
 export enum UISignalChannel {
 	GRAPH = 'graph',
+	MINDFLOW_PROGRESS = 'mindflow-progress',
+	MINDFLOW_MERMAID = 'mindflow-mermaid',
+	OVERVIEW_MERMAID = 'overview-mermaid',
+}
+
+export enum UISignalKind {
+	PATCH = 'patch',
+	STAGE = 'stage',
+	PROGRESS = 'progress',
+	COMPLETE = 'complete',
 }
 
 /**

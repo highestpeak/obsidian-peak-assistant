@@ -7,7 +7,8 @@ import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { GlobeOff } from '@/ui/component/icon';
-import { useSharedStore, useVaultSearchStore, useAIAnalysisStore } from './store';
+import { useSharedStore, useVaultSearchStore } from './store';
+import { useAIAnalysisRuntimeStore, resetAIAnalysisAll } from './store/aiAnalysisStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
@@ -69,17 +70,14 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
 	const { app } = useServiceContext();
 	const { searchQuery, setSearchQuery } = useSharedStore();
-	const {
-		webEnabled,
-		toggleWeb,
-		resetAnalysisState,
-		isAnalyzing,
-		hasAnalyzed,
-		analysisCompleted,
-		setAiModalOpen,
-		analysisMode,
-		setAnalysisMode,
-	} = useAIAnalysisStore();
+	const webEnabled = useAIAnalysisRuntimeStore((s) => s.webEnabled);
+	const toggleWeb = useAIAnalysisRuntimeStore((s) => s.toggleWeb);
+	const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
+	const hasAnalyzed = useAIAnalysisRuntimeStore((s) => s.hasAnalyzed);
+	const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
+	const setAiModalOpen = useAIAnalysisRuntimeStore((s) => s.setAiModalOpen);
+	const analysisMode = useAIAnalysisRuntimeStore((s) => s.analysisMode);
+	const setAnalysisMode = useAIAnalysisRuntimeStore((s) => s.setAnalysisMode);
 	const { performAnalysis, cancel } = useAIAnalysis();
 	const hasResult = hasAnalyzed || analysisCompleted;
 	const activeFilePath = getActiveNoteDetail(app).activeFile?.path ?? null;
@@ -119,10 +117,6 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 			e.stopPropagation();
 			inputRef.current.select();
 			return;
-		}
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			handleAnalyze();
 		}
 	};
 
@@ -182,6 +176,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 								value={searchQuery}
 								onChange={setSearchQuery}
 								onKeyDown={handleInputKeyDown}
+								onEnterSubmit={handleAnalyze}
 								placeholder="Ask AI anything about your vault..."
 								enableSearchTags={true}
 								singleLine={true}
@@ -206,7 +201,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					<div className="pktw-flex pktw-items-center pktw-gap-2">
 						{!isAnalyzing && hasResult && (
 							<Button
-								onClick={() => resetAnalysisState()}
+								onClick={() => resetAIAnalysisAll()}
 								style={{ cursor: 'pointer' }}
 								variant="outline"
 								className="pktw-shadow-none pktw-px-4 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-border-[#e5e7eb] pktw-bg-white pktw-text-[#6c757d]"
@@ -289,7 +284,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const { app } = useServiceContext();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
 	const { updateParsedQuery, isSearching, quickSearchMode } = useVaultSearchStore();
-	const { incrementTriggerAnalysis, resetAnalysisState } = useAIAnalysisStore();
+	const incrementTriggerAnalysis = useAIAnalysisRuntimeStore((s) => s.incrementTriggerAnalysis);
 	const inspectorOpen = vaultSearchQuery.includes('[[');
 	/**
 	 * Display mode is derived from the raw input prefix, not from store mode.
@@ -324,7 +319,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 		setSearchQuery(vaultSearchQuery);
 		setActiveTab('ai');
 		incrementTriggerAnalysis();
-		resetAnalysisState();
+		resetAIAnalysisAll();
 	};
 
 	const handleInputKeyDown = (e: React.KeyboardEvent) => {

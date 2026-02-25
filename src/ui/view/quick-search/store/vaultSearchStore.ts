@@ -33,6 +33,7 @@ interface VaultSearchStore {
 	updateParsedQuery: (app: App, searchQuery: string) => void;
 	setLastSearchData: (data: { results: SearchResultItem[]; duration: number | null }) => void;
 	setIsSearching: (isSearching: boolean) => void;
+	reset: () => void;
 }
 
 export const DEFAULT_SEARCH_QUERY: SearchQuery = { text: '', scopeMode: 'vault', topK: 50 };
@@ -74,6 +75,15 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 		lastSearchDuration: duration,
 	}),
 	setIsSearching: (isSearching) => set({ isSearching }),
+	reset: () => set({
+		quickSearchMode: 'vault',
+		inFileSearch: undefined,
+		goToLine: undefined,
+		parsedQuery: DEFAULT_SEARCH_QUERY,
+		lastSearchDuration: null,
+		isSearching: false,
+		lastSearchResults: [],
+	}),
 }));
 
 

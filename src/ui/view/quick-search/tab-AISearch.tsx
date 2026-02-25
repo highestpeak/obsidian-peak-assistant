@@ -5,7 +5,22 @@ import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { Button } from '@/ui/component/shared-ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { formatDuration, formatTokenCount } from '@/core/utils/format-utils';
-import { useSharedStore, useAIAnalysisStore, useGraphQueuePump } from './store';
+import { useSharedStore, useGraphQueuePump } from './store';
+import {
+	useAIAnalysisRuntimeStore,
+	useAIAnalysisSummaryStore,
+	useAIAnalysisResultStore,
+	useAIAnalysisTopicsStore,
+	useAIAnalysisInteractionsStore,
+	useAIAnalysisStepsStore,
+	resetAIAnalysisAll,
+	getHasGraphData,
+	getHasCompletedContent,
+	getHasSummarySection,
+	getHasTopicsSection,
+	getHasDashboardBlocksSection,
+	getHasSourcesSection,
+} from './store/aiAnalysisStore';
 import { useAIAnalysis } from './hooks/useAIAnalysis';
 import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -42,47 +57,43 @@ const AISearchFooterHints: React.FC<{}> = ({ }) => (
  * AI search tab, showing analysis summary, sources, and insights.
  */
 export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) => {
-	const {
-		triggerAnalysis,
-		isAnalyzing,
-		analysisRunId,
-		analyzingBeforeFirstToken,
-		hasStartedStreaming,
-		hasAnalyzed,
-		analysisCompleted,
-		error,
-		usage,
-		duration,
-		recordError,
-		resetAnalysisState,
-		getHasGraphData,
-		getHasCompletedContent,
-		getHasSummarySection,
-		getHasTopicsSection,
-		getHasDashboardBlocksSection,
-		getHasSourcesSection,
-		summaryChunks,
-		setFullAnalysisFollowUp,
-		setFollowUpStreaming,
-		fullAnalysisFollowUp,
-		dashboardBlocks,
-		getActiveOverviewMermaid,
-		topicAnalyzeResults,
-		topicInspectResults,
-		topicGraphResults,
-		topicModalOpen,
-		setTopicModalOpen,
-		topicAnalyzeStreaming,
-		topicGraphLoading,
-		topicInspectLoading,
-		contextChatModal,
-		setContextChatModal,
-		restoredFromHistory,
-		restoredFromVaultPath,
-		autoSaveState,
-		title: titleFromStore,
-		steps,
-	} = useAIAnalysisStore();
+	const triggerAnalysis = useAIAnalysisRuntimeStore((s) => s.triggerAnalysis);
+	const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
+	const analysisRunId = useAIAnalysisRuntimeStore((s) => s.analysisRunId);
+	const analyzingBeforeFirstToken = useAIAnalysisRuntimeStore((s) => s.analyzingBeforeFirstToken);
+	const hasStartedStreaming = useAIAnalysisRuntimeStore((s) => s.hasStartedStreaming);
+	const hasAnalyzed = useAIAnalysisRuntimeStore((s) => s.hasAnalyzed);
+	const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
+	const error = useAIAnalysisRuntimeStore((s) => s.error);
+	const usage = useAIAnalysisRuntimeStore((s) => s.usage);
+	const duration = useAIAnalysisRuntimeStore((s) => s.duration);
+	const recordError = useAIAnalysisRuntimeStore((s) => s.recordError);
+	const restoredFromHistory = useAIAnalysisRuntimeStore((s) => s.restoredFromHistory);
+	const restoredFromVaultPath = useAIAnalysisRuntimeStore((s) => s.restoredFromVaultPath);
+	const autoSaveState = useAIAnalysisRuntimeStore((s) => s.autoSaveState);
+	const titleFromStore = useAIAnalysisRuntimeStore((s) => s.title);
+
+	const summaryChunks = useAIAnalysisSummaryStore((s) => s.summaryChunks);
+
+	const dashboardBlocks = useAIAnalysisResultStore((s) => s.dashboardBlocks);
+	const getActiveOverviewMermaid = useAIAnalysisResultStore((s) => s.getActiveOverviewMermaid);
+
+	const topicAnalyzeResults = useAIAnalysisTopicsStore((s) => s.topicAnalyzeResults);
+	const topicInspectResults = useAIAnalysisTopicsStore((s) => s.topicInspectResults);
+	const topicGraphResults = useAIAnalysisTopicsStore((s) => s.topicGraphResults);
+	const topicModalOpen = useAIAnalysisTopicsStore((s) => s.topicModalOpen);
+	const setTopicModalOpen = useAIAnalysisTopicsStore((s) => s.setTopicModalOpen);
+	const topicAnalyzeStreaming = useAIAnalysisTopicsStore((s) => s.topicAnalyzeStreaming);
+	const topicGraphLoading = useAIAnalysisTopicsStore((s) => s.topicGraphLoading);
+	const topicInspectLoading = useAIAnalysisTopicsStore((s) => s.topicInspectLoading);
+
+	const setFullAnalysisFollowUp = useAIAnalysisInteractionsStore((s) => s.setFullAnalysisFollowUp);
+	const setFollowUpStreaming = useAIAnalysisInteractionsStore((s) => s.setFollowUpStreaming);
+	const fullAnalysisFollowUp = useAIAnalysisInteractionsStore((s) => s.fullAnalysisFollowUp);
+	const contextChatModal = useAIAnalysisInteractionsStore((s) => s.contextChatModal);
+	const setContextChatModal = useAIAnalysisInteractionsStore((s) => s.setContextChatModal);
+
+	const steps = useAIAnalysisStepsStore((s) => s.steps);
 	const titleDisplay = useTypewriterEffect({
 		text: titleFromStore ?? '',
 		enabled: !!(titleFromStore?.trim()) && !restoredFromHistory,
@@ -166,7 +177,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 	const handleRetry = () => {
 		recordError('Retry analysis');
-		resetAnalysisState();
+		resetAIAnalysisAll();
 		setRetryTrigger(prev => prev + 1);
 	};
 
@@ -347,6 +358,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 								stepsRef={stepsRef}
 								sectionRefs={{
 									summaryRef,
+									overviewRef,
 									topicsRef,
 									dashboardBlocksRef,
 									graphSectionRef,

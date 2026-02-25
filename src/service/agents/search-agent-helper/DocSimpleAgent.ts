@@ -19,7 +19,8 @@ import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
 import { DocumentLoaderManager } from "@/core/document/loader/helper/DocumentLoaderManager";
 import { buildToolCallUIEvent, DEFAULT_MAX_SEARCH_AGENT_STEPS } from "./RawSearchAgent";
 import { submitFinalAnswerTool } from "@/service/tools/submit-final-answer";
-import { getDeltaEventDeltaText } from "@/core/providers/helpers/stream-helper";
+import { streamTransform } from "@/core/providers/helpers/stream-helper";
+import { emptyUsage, LLMUsage, mergeTokenUsage } from "@/core/providers/types";
 
 type DocSimpleToolSet = {
 	content_reader: AgentTool;
@@ -68,15 +69,15 @@ export class DocSimpleAgent {
 			tools: {
 				content_reader: contentReaderTool(),
 				submit_final_answer: submitFinalAnswerTool(),
-				inspect_note_context: inspectNoteContextTool(),
-				graph_traversal: graphTraversalTool(),
-				find_path: findPathTool(),
-				find_key_nodes: findKeyNodesTool(),
-				find_orphans: findOrphansTool(),
-				search_by_dimensions: searchByDimensionsTool(),
-				explore_folder: exploreFolderTool(),
-				recent_changes_whole_vault: recentChangesWholeVaultTool(),
-				local_search_whole_vault: localSearchWholeVaultTool(),
+				inspect_note_context: inspectNoteContextTool(this.aiServiceManager.getTemplateManager?.()),
+				graph_traversal: graphTraversalTool(this.aiServiceManager.getTemplateManager?.()),
+				find_path: findPathTool(this.aiServiceManager.getTemplateManager?.()),
+				find_key_nodes: findKeyNodesTool(this.aiServiceManager.getTemplateManager?.()),
+				find_orphans: findOrphansTool(this.aiServiceManager.getTemplateManager?.()),
+				search_by_dimensions: searchByDimensionsTool(this.aiServiceManager.getTemplateManager?.()),
+				explore_folder: exploreFolderTool(this.aiServiceManager.getTemplateManager?.()),
+				recent_changes_whole_vault: recentChangesWholeVaultTool(this.aiServiceManager.getTemplateManager?.()),
+				local_search_whole_vault: localSearchWholeVaultTool(this.aiServiceManager.getTemplateManager?.()),
 			},
 			stopWhen: [
 				stepCountIs(DEFAULT_MAX_SEARCH_AGENT_STEPS),
@@ -87,7 +88,7 @@ export class DocSimpleAgent {
 		});
 	}
 
-	async stream(userPrompt: string, opts: { scopeValue?: string }): Promise<AsyncGenerator<LLMStreamEvent>> {
+	async *stream(userPrompt: string, opts: { scopeValue?: string }): AsyncGenerator<LLMStreamEvent> {
 		const scopeValue = opts?.scopeValue;
 		if (!scopeValue || !scopeValue.trim()) {
 			return (async function* (): AsyncGenerator<LLMStreamEvent> {
@@ -118,148 +119,73 @@ export class DocSimpleAgent {
 
 		const result = this.searchAgent.stream({ system, prompt });
 		const startedAt = Date.now();
-		const svc = this.aiServiceManager;
 
-		let textRunId = generateUuidWithoutHyphens();
-		let reasoningRunId = generateUuidWithoutHyphens();
-		return (async function* (): AsyncGenerator<LLMStreamEvent> {
-			let answerText = "";
-			let totalUsage: any = undefined;
-
-			yield {
-				type: "ui-step",
+		yield {
+			type: "ui-step",
+			uiType: UIStepType.STEPS_DISPLAY,
+			stepId: generateUuidWithoutHyphens(),
+			title: "Answering in current document...",
+			description: "DocSimpleAgent is generating an answer.",
+			triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
+		};
+		let answerText: string[] = [];
+		let totalUsage: LLMUsage = emptyUsage();
+		yield* streamTransform(result.fullStream, StreamTriggerName.DOC_SIMPLE_AGENT, {
+			yieldUIStep: {
 				uiType: UIStepType.STEPS_DISPLAY,
 				stepId: generateUuidWithoutHyphens(),
-				title: "Answering in current document...",
-				description: "DocSimpleAgent is generating an answer.",
-				triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-			};
-
-			for await (const chunk of result.fullStream) {
-				switch (chunk.type) {
-					case "text-start":
-						yield {
-							type: "ui-step",
-							uiType: UIStepType.STEPS_DISPLAY,
-							stepId: generateUuidWithoutHyphens(),
-							title: "Answering in current document... Thinking...",
-							description: "Thinking about the request...",
-							triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-						};
-						textRunId = generateUuidWithoutHyphens();
-						yield { type: "prompt-stream-start", id: textRunId, promptId: PromptId.AiAnalysisSummary };
-						break;
-					case "text-delta": {
-						const delta = getDeltaEventDeltaText(chunk);
-						answerText += delta;
-						yield { type: "prompt-stream-delta", id: textRunId, promptId: PromptId.AiAnalysisSummary, delta };
-						yield {
-							type: "ui-step-delta",
-							uiType: UIStepType.STEPS_DISPLAY,
-							stepId: textRunId,
-							descriptionDelta: delta,
-							triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-						};
-						break;
-					}
-					case "reasoning-start":
-						reasoningRunId = generateUuidWithoutHyphens();
-						yield {
-							type: "ui-step",
-							uiType: UIStepType.STEPS_DISPLAY,
-							stepId: reasoningRunId,
-							title: "Answering in current document... Reasoning...",
-							description: "Reasoning about the request...",
-							triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-						};
-						break;
-					case "reasoning-delta": {
-						const delta = getDeltaEventDeltaText(chunk);
-						yield {
-							type: "ui-step-delta",
-							uiType: UIStepType.STEPS_DISPLAY,
-							stepId: reasoningRunId,
-							descriptionDelta: delta,
-							triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-						};
-						break;
-					}
-					case "tool-call": {
-						const callId = (chunk as any).toolCallId ?? `docsimple-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-						yield {
-							type: "tool-call",
-							id: callId,
-							toolName: (chunk as any).toolName,
-							input: (chunk as any).input,
-							triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-						};
-						const uiEvent = buildToolCallUIEvent(chunk, generateUuidWithoutHyphens());
-						if (uiEvent) yield uiEvent;
-						break;
-					}
-					case "tool-result": {
-						const resultId = (chunk as any).toolCallId ?? `docsimple-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-						yield {
-							type: "tool-result",
-							id: resultId,
-							toolName: (chunk as any).toolName,
-							input: (chunk as any).input,
-							output: (chunk as any).output,
-							triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-						};
-						break;
-					}
-					case "tool-error": {
-						const errMsg =
-							typeof (chunk as any).error === "string"
-								? (chunk as any).error
-								: (chunk as any).error?.message ?? JSON.stringify((chunk as any).error);
-						const toolName = (chunk as any).toolName ?? "unknown";
-						yield {
-							type: "error",
-							error: new Error(`Tool ${toolName} failed: ${errMsg}`),
-							triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-							extra: { toolName, toolCallId: (chunk as any).toolCallId },
-						};
-						break;
-					}
-					case "finish":
-						totalUsage = (chunk as any).totalUsage;
-						break;
-					default:
-						break;
+			},
+			chunkEventInterceptor: (chunk: any) => {
+				if (chunk.type === "text-delta") {
+					answerText.push(chunk.delta);
 				}
-			}
+			},
+			yieldEventPostProcessor: (chunk: any) => {
+				if (chunk.type === 'tool-call') {
+					const uiEvent = buildToolCallUIEvent(chunk, generateUuidWithoutHyphens());
+					if (uiEvent) return uiEvent;
+				}
+				if (chunk.type === 'finish') {
+					totalUsage = mergeTokenUsage(totalUsage, chunk.usage);
+				}
+				return {};
+			},
+		});
+		const finalAnswerText = answerText.join('').trim() || "(No answer generated.)";
 
-			// Generate title
-			let title: string | undefined = undefined;
-			try {
-				const t = await svc.chatWithPrompt(PromptId.AiAnalysisTitle, {
-					query: userPrompt,
-					summary: answerText.trim() || undefined,
-				});
-				title = typeof t === "string" ? t.trim() : "";
-				if (!title) title = userPrompt.trim().slice(0, 80);
-			} catch {
-				title = userPrompt.trim().slice(0, 80);
+		// Generate title
+		let title: string | undefined = undefined;
+		const stream = this.aiServiceManager.chatWithPromptStream(
+			PromptId.AiAnalysisTitle,
+			{
+				query: userPrompt,
+				summary: finalAnswerText,
+			},
+		);
+		for await (const chunk of stream) {
+			if (chunk.type === 'prompt-stream-result') {
+				title = String(chunk.output ?? '').trim() || undefined;
+				totalUsage = mergeTokenUsage(totalUsage, chunk.usage);
 			}
+			yield { ...chunk, triggerName: StreamTriggerName.DOC_SIMPLE_AGENT };
+		}
+		if (!title) title = userPrompt.trim().slice(0, 80);
 
-			yield {
-				type: "complete",
-				finishReason: "stop",
-				usage: totalUsage,
-				durationMs: Date.now() - startedAt,
-				result: {
-					title,
-					summary: answerText.trim() || "(No answer generated.)",
-					topics: [],
-					sources: [],
-					graph: { nodes: [], edges: [] },
-					dashboardBlocks: [],
-					suggestedFollowUpQuestions: [],
-				},
-				triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-			};
-		})();
+		yield {
+			type: "complete",
+			finishReason: "stop",
+			usage: totalUsage,
+			durationMs: Date.now() - startedAt,
+			result: {
+				title,
+				summary: finalAnswerText,
+				topics: [],
+				sources: [],
+				graph: { nodes: [], edges: [] },
+				dashboardBlocks: [],
+				suggestedFollowUpQuestions: [],
+			},
+			triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
+		};
 	}
 }

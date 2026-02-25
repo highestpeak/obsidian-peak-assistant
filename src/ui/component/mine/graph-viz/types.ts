@@ -47,6 +47,8 @@ export type GraphVizLink = {
 	kind: string;
 	/** Set by layout: true if edge is in maximum spanning tree (stronger spring in force layout). */
 	isMSTEdge?: boolean;
+	/** Mindflow/domain attributes (e.g. mindflow.main, mindflow.opacityHint). */
+	attributes?: Record<string, unknown>;
 };
 
 export type GraphSnapshot = {

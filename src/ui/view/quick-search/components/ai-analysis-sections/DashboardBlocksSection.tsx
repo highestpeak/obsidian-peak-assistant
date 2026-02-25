@@ -6,7 +6,7 @@ import type { DashboardBlock, DashboardBlockItem } from '@/service/agents/AISear
 import { normalizeMermaidForDisplay } from '@/core/utils/mermaid-utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/shared-ui/hover-card';
-import { useAIAnalysisStore } from '../../store/aiAnalysisStore';
+import { useAIAnalysisInteractionsStore } from '../../store/aiAnalysisStore';
 
 /** Content-proportional width: more content => wider; floor >= 1 so row always fills (no blank). */
 const MIN_WIDTH_FLOOR = 200;
@@ -250,7 +250,8 @@ export const DashboardBlocksSection: React.FC<{
 	onOpenChatForItem?: (block: DashboardBlock, item: DashboardBlockItem) => void;
 }> = ({ blocks, blockRef, isStreaming = false, followupOpen, followupSlot, anchor, onOpenChatForBlock, onOpenChatForItem }) => {
 	const [copiedBlockId, setCopiedBlockId] = useState<string | null>(null);
-	const { blocksFollowupHistoryByBlockId, setContextChatModal } = useAIAnalysisStore();
+	const blocksFollowupHistoryByBlockId = useAIAnalysisInteractionsStore((s) => s.blocksFollowupHistoryByBlockId);
+	const setContextChatModal = useAIAnalysisInteractionsStore((s) => s.setContextChatModal);
 
 	const handleCopyBlock = useCallback(async (block: DashboardBlock) => {
 		const text = getBlockCopyText(block);

@@ -1,7 +1,9 @@
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GRAPH_INSPECT_STEP_TIME_LIMIT } from "@/core/constant";
 import { PATH_FINDING_CONSTANTS } from "@/core/constant";
-import { buildResponse, withTimeoutMessage } from "../types";
+import { buildResponse, buildResponseFromRendered, withTimeoutMessage } from "../types";
+import type { TemplateManager } from "@/core/template/TemplateManager";
+import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { template as GRAPH_PATH_FINDING_TEMPLATE } from "../templates/graph-path-finding";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import type { Database as DbSchema } from "@/core/storage/sqlite/ddl";
@@ -198,7 +200,7 @@ export const PATH_STRING_SEPARATOR = ' -> ';
  * Find diverse paths between two notes using multiple strategies.
  * Returns paths from all strategy types for comprehensive discovery.
  */
-export async function findPath(params: any) {
+export async function findPath(params: any, templateManager?: TemplateManager) {
     const { start_note_path, end_note_path, limit, include_semantic_paths, response_format, filters } = params;
     const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
 
@@ -304,15 +306,19 @@ export async function findPath(params: any) {
         };
     });
 
-    // Add hub and context intersection analysis to template
     const analysisSection = buildAnalysisSection(hubAnalysis, contextIntersection);
 
-    return buildResponse(response_format, GRAPH_PATH_FINDING_TEMPLATE, {
+    const data = {
         start_note_path,
         end_note_path,
         paths: templatePaths,
         analysis: analysisSection,
-    });
+    };
+    if (templateManager) {
+        const rendered = await templateManager.render(ToolTemplateId.GraphPathFinding, data);
+        return buildResponseFromRendered(response_format, data, rendered);
+    }
+    return buildResponse(response_format, GRAPH_PATH_FINDING_TEMPLATE, data);
 }
 
 // ============================================================================

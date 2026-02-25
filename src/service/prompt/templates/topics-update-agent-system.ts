@@ -11,13 +11,13 @@ Each operation must be one of:
 targetField must always be "topics".
 
 {{#if lastError}}
-Previous attempt failed: {{lastError}}
+Previous attempt failed: {{{lastError}}}
 Fix and output only a valid JSON array again.
 
 {{/if}}
 User request from Thought agent:
 ---
-{{text}}
+{{{text}}}
 ---
 
 Output only the JSON array:`;

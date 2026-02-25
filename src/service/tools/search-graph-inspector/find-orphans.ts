@@ -2,12 +2,14 @@ import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import { template as ORPHAN_NOTES_TEMPLATE } from "../templates/orphan-notes";
-import { buildResponse } from "../types";
+import { buildResponse, buildResponseFromRendered } from "../types";
+import type { TemplateManager } from "@/core/template/TemplateManager";
+import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
 // Define types for orphan analysis
 type OrphanNode = GraphNode & { orphanType: string; }
-export async function findOrphanNotes(params: any) {
+export async function findOrphanNotes(params: any, templateManager?: TemplateManager) {
     const { filters, sorter, limit, response_format } = params;
     const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
     const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
@@ -57,12 +59,16 @@ export async function findOrphanNotes(params: any) {
         };
     });
 
-    return buildResponse(response_format, ORPHAN_NOTES_TEMPLATE, {
+    const data = {
         total_count: cadidateAllOrphanNodes.length,
         filtered_count: finalAllOrphanNodes.length,
         hard_orphans: hardOrphans,
-        // soft_orphans: [] // TODO: implement soft orphans
-    });
+    };
+    if (templateManager) {
+        const rendered = await templateManager.render(ToolTemplateId.OrphanNotes, data);
+        return buildResponseFromRendered(response_format, data, rendered);
+    }
+    return buildResponse(response_format, ORPHAN_NOTES_TEMPLATE, data);
 }
 
 /**

@@ -1,5 +1,12 @@
 import { refreshableMemoizeSupplier } from '@/core/utils/functions';
-import { useAIAnalysisStore } from './store';
+import {
+	useAIAnalysisRuntimeStore,
+	useAIAnalysisSummaryStore,
+	useAIAnalysisResultStore,
+	useAIAnalysisTopicsStore,
+	useAIAnalysisInteractionsStore,
+	useAIAnalysisStepsStore,
+} from './store/aiAnalysisStore';
 
 const DEFAULT_MAX_CHARS = 4000;
 const CONTEXT_LINES = 2;
@@ -15,19 +22,22 @@ let resultIndexInvalidateSeed = 0;
 
 /** State for core index (Title, Summary, Topics, Sources, Blocks, Graph, Steps). */
 function getResultIndexStateCore() {
-    const s = useAIAnalysisStore.getState();
+    const rt = useAIAnalysisRuntimeStore.getState();
+    const sum = useAIAnalysisSummaryStore.getState();
+    const res = useAIAnalysisResultStore.getState();
+    const steps = useAIAnalysisStepsStore.getState();
     return {
         seed: resultIndexInvalidateSeed,
-        runId: s.analysisRunId ?? '',
-        summaryVersion: s.summaryVersion ?? 0,
-        summariesLen: s.summaries?.length ?? 0,
-        summaryChunksLen: s.summaryChunks?.length ?? 0,
-        topicsLen: s.topics?.length ?? 0,
-        sourcesLen: s.sources?.length ?? 0,
-        blocksLen: s.dashboardBlocks?.length ?? 0,
-        graphNodes: s.graph?.nodes?.length ?? 0,
-        graphEdges: s.graph?.edges?.length ?? 0,
-        stepsLen: s.steps?.length ?? 0,
+        runId: rt.analysisRunId ?? '',
+        summaryVersion: sum.summaryVersion ?? 0,
+        summariesLen: sum.summaries?.length ?? 0,
+        summaryChunksLen: sum.summaryChunks?.length ?? 0,
+        topicsLen: res.topics?.length ?? 0,
+        sourcesLen: res.sources?.length ?? 0,
+        blocksLen: res.dashboardBlocks?.length ?? 0,
+        graphNodes: res.graph?.nodes?.length ?? 0,
+        graphEdges: res.graph?.edges?.length ?? 0,
+        stepsLen: steps.steps?.length ?? 0,
     };
 }
 
@@ -53,13 +63,14 @@ function coreStateChanged(
 
 /** State for followups index only (changes often with Q&A). */
 function getResultIndexStateFollowups() {
-    const s = useAIAnalysisStore.getState();
+    const interactions = useAIAnalysisInteractionsStore.getState();
+    const topics = useAIAnalysisTopicsStore.getState();
     return {
         seed: resultIndexInvalidateSeed,
-        followUpLen: s.fullAnalysisFollowUp?.length ?? 0,
-        topicResultsKeys: Object.keys(s.topicAnalyzeResults ?? {}).length,
-        graphFollowupLen: s.graphFollowupHistory?.length ?? 0,
-        sourcesFollowupLen: s.sourcesFollowupHistory?.length ?? 0,
+        followUpLen: interactions.fullAnalysisFollowUp?.length ?? 0,
+        topicResultsKeys: Object.keys(topics.topicAnalyzeResults ?? {}).length,
+        graphFollowupLen: interactions.graphFollowupHistory?.length ?? 0,
+        sourcesFollowupLen: interactions.sourcesFollowupHistory?.length ?? 0,
     };
 }
 
@@ -109,23 +120,26 @@ export function invalidateFollowupContextCache(): void {
 
 /** Build core index (Title, Summary, Topics, Sources, Blocks, Graph, Steps). */
 function buildResultIndexCore(): string {
-    const s = useAIAnalysisStore.getState();
+    const rt = useAIAnalysisRuntimeStore.getState();
+    const sum = useAIAnalysisSummaryStore.getState();
+    const res = useAIAnalysisResultStore.getState();
+    const stepsStore = useAIAnalysisStepsStore.getState();
     const lines: string[] = [];
 
     lines.push('[Title]');
-    lines.push(s.title ?? '');
+    lines.push(rt.title ?? '');
 
     const summary =
-        s.summaries?.length && s.summaryVersion != null
-            ? s.summaries[(s.summaryVersion ?? 1) - 1] ?? s.summaries[0] ?? ''
-            : s.summaryChunks?.join('') ?? '';
+        sum.summaries?.length && sum.summaryVersion != null
+            ? sum.summaries[(sum.summaryVersion ?? 1) - 1] ?? sum.summaries[0] ?? ''
+            : sum.summaryChunks?.join('') ?? '';
     lines.push('');
     lines.push('[Summary]');
     lines.push(summary);
 
     lines.push('');
     lines.push('[Topics]');
-    for (const t of s.topics ?? []) {
+    for (const t of res.topics ?? []) {
         lines.push(`- ${t.label}`);
         if (t.suggestQuestions?.length) {
             t.suggestQuestions.forEach((q) => lines.push(`  ? ${q}`));
@@ -134,7 +148,7 @@ function buildResultIndexCore(): string {
 
     lines.push('');
     lines.push('[Sources]');
-    for (const src of s.sources ?? []) {
+    for (const src of res.sources ?? []) {
         lines.push(`- ${src.title ?? ''} | ${src.path ?? ''}`);
         if (src.reasoning) lines.push(`  ${src.reasoning}`);
         if (src.badges?.length) lines.push(`  badges: ${src.badges.join(', ')}`);
@@ -142,7 +156,7 @@ function buildResultIndexCore(): string {
 
     lines.push('');
     lines.push('[Blocks]');
-    for (const b of s.dashboardBlocks ?? []) {
+    for (const b of res.dashboardBlocks ?? []) {
         const label = b.title ?? b.id ?? 'Block';
         lines.push(`- ${label} (${b.renderEngine ?? ''})`);
         const md = (b.markdown ?? b.mermaidCode ?? '').slice(0, 300);
@@ -151,7 +165,7 @@ function buildResultIndexCore(): string {
 
     lines.push('');
     lines.push('[Graph]');
-    const g = s.graph;
+    const g = res.graph;
     if (g) {
         lines.push(`nodes: ${g.nodes?.length ?? 0}, edges: ${g.edges?.length ?? 0}`);
         const nodes = (g.nodes ?? []).slice(0, MAX_NODES_PREVIEW);
@@ -164,7 +178,7 @@ function buildResultIndexCore(): string {
 
     lines.push('');
     lines.push('[Steps]');
-    for (const step of s.steps ?? []) {
+    for (const step of stepsStore.steps ?? []) {
         const text = step.description?.slice(0, STEP_TEXT_MAX) ?? '';
         lines.push(`- ${step.title}: ${text}`);
     }
@@ -174,26 +188,27 @@ function buildResultIndexCore(): string {
 
 /** Build followups-only index (changes often with Q&A). */
 function buildResultIndexFollowups(): string {
-    const s = useAIAnalysisStore.getState();
+    const interactions = useAIAnalysisInteractionsStore.getState();
+    const topics = useAIAnalysisTopicsStore.getState();
     const lines: string[] = [];
 
     lines.push('[Followups]');
-    for (const f of s.fullAnalysisFollowUp ?? []) {
+    for (const f of interactions.fullAnalysisFollowUp ?? []) {
         lines.push(`Q: ${f.title ?? ''}`);
         lines.push(`A: ${(f.content ?? '').slice(0, 200)}`);
     }
-    const topicResults = s.topicAnalyzeResults ?? {};
+    const topicResults = topics.topicAnalyzeResults ?? {};
     for (const [topic, arr] of Object.entries(topicResults)) {
         for (const item of arr ?? []) {
             lines.push(`Topic[${topic}] Q: ${item.question}`);
             lines.push(`A: ${(item.answer ?? '').slice(0, 200)}`);
         }
     }
-    for (const item of s.graphFollowupHistory ?? []) {
+    for (const item of interactions.graphFollowupHistory ?? []) {
         lines.push(`Graph Q: ${item.question}`);
         lines.push(`A: ${(item.answer ?? '').slice(0, 200)}`);
     }
-    for (const item of s.sourcesFollowupHistory ?? []) {
+    for (const item of interactions.sourcesFollowupHistory ?? []) {
         lines.push(`Sources Q: ${item.question}`);
         lines.push(`A: ${(item.answer ?? '').slice(0, 200)}`);
     }

@@ -9,6 +9,7 @@ import { AppContext } from '@/app/context/AppContext';
  */
 export class ConfirmModal extends Modal {
 	private reactRenderer: ReactRenderer | null = null;
+	private closed = false;
 
 	constructor(
 		app: App,
@@ -40,7 +41,7 @@ export class ConfirmModal extends Modal {
 				{
 					open: true,
 					onOpenChange: (open: boolean) => {
-						if (!open) {
+						if (!open && !this.closed) {
 							this.close();
 						}
 					},
@@ -57,6 +58,7 @@ export class ConfirmModal extends Modal {
 	}
 
 	onClose(): void {
+		this.closed = true;
 		if (this.reactRenderer) {
 			this.reactRenderer.unmount();
 			this.reactRenderer = null;

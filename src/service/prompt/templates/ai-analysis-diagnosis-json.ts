@@ -8,9 +8,9 @@ From the user's query and the evidence below, produce a **structured diagnosis**
 # INPUT
 - **Original query**: {{originalQuery}}
 - **Evidence / reasoning trace**:
-<<< {{recentEvidenceHint}} >>>
+<<< {{{recentEvidenceHint}}} >>>
 - **Current result snapshot** (topics, sources, blocks, graph):
-<<< {{currentResultSnapshot}} >>>
+<<< {{{currentResultSnapshot}}} >>>
 
 # REQUIRED JSON SHAPE
 {

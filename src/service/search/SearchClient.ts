@@ -137,9 +137,12 @@ export class SearchClient {
 		});
 	}
 
+	/**
+	 * Release resources and services.
+	 */
 	dispose(): void {
-		// Note: We don't close the global singleton here as it may be used by other components.
-		// The singleton should be closed at plugin unload.
+		this.queryService = null;
+		this.aiSearchService = null;
 	}
 }
 

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { create } from 'zustand';
-import { useAIAnalysisStore } from '@/ui/view/quick-search/store/aiAnalysisStore';
+import { useAIAnalysisResultStore } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import type { AISearchGraph, AISearchNode, AISearchEdge } from '@/service/agents/AISearchAgent';
 import { useSubscribeUIEvent } from '@/ui/store/uiEventStore';
 import type { GraphPatch } from '@/core/providers/ui-events/graph';
+import { UISignalChannel } from '@/core/providers/types';
 
 /** Queue item driven by ui-signal(channel='graph'). */
 export type GraphSignalKind = 'stage' | 'patch' | 'effect';
@@ -55,10 +56,15 @@ export interface GraphQueueItem {
 	payload: GraphSignalQueuePayload;
 }
 
+/** Optional ref for direct patch apply (avoids props graph → clear re-apply during streaming). */
+export type GraphApplyPatchRef = { applyPatch: (patch: import('@/core/providers/ui-events/graph').GraphPatch) => void | Promise<void> };
+
 interface GraphAnimationStore {
 	mode: GraphAnimationMode;
 	queue: GraphQueueItem[];
 	current: GraphQueueItem | null;
+	/** Set by KnowledgeGraphSection; queue pump calls applyPatch when processing patch items. */
+	graphApplyPatchRef: GraphApplyPatchRef | null;
 	/**
 	 * Human-readable overlay text displayed on top of the graph.
 	 */
@@ -80,7 +86,9 @@ interface GraphAnimationStore {
 	setMode: (mode: GraphAnimationMode) => void;
 	setOverlayText: (text: string | null) => void;
 	setEffect: (effect: GraphVisualEffect) => void;
+	setGraphApplyPatchRef: (ref: GraphApplyPatchRef | null) => void;
 	clear: () => void;
+	reset: () => void;
 }
 
 const MAX_QUEUE_SIZE = 200;
@@ -89,6 +97,7 @@ export const useGraphAnimationStore = create<GraphAnimationStore>((set, get) => 
 	mode: 'idle',
 	queue: [],
 	current: null,
+	graphApplyPatchRef: null,
 	overlayText: null,
 	effect: { type: 'none', intensity: 0, startedAtMs: Date.now() },
 
@@ -118,10 +127,19 @@ export const useGraphAnimationStore = create<GraphAnimationStore>((set, get) => 
 			startedAtMs: effect.startedAtMs ?? Date.now(),
 		}
 	}),
+	setGraphApplyPatchRef: (ref) => set({ graphApplyPatchRef: ref }),
 	clear: () => set({
 		mode: 'idle',
 		queue: [],
 		current: null,
+		overlayText: null,
+		effect: { type: 'none', intensity: 0, startedAtMs: Date.now() },
+	}),
+	reset: () => set({
+		mode: 'idle',
+		queue: [],
+		current: null,
+		graphApplyPatchRef: null,
 		overlayText: null,
 		effect: { type: 'none', intensity: 0, startedAtMs: Date.now() },
 	}),
@@ -150,16 +168,18 @@ export function persistPatchToStore(patch: any): void {
 			const source = String(e.from_node_id);
 			const target = String(e.to_node_id);
 			const type = String(e.kind ?? 'unknown');
+			const attrs = (e.attributes && typeof e.attributes === 'object') ? e.attributes as Record<string, unknown> : {};
+			const weightAttrs = typeof e.weight === 'number' ? { weight: e.weight } : {};
 			return {
 				id: `e:${source}|${type}|${target}`,
 				source,
 				type,
 				target,
-				attributes: typeof e.weight === 'number' ? { weight: e.weight } : {},
+				attributes: { ...attrs, ...weightAttrs },
 			};
 		});
 		const g: AISearchGraph = { nodes, edges };
-		useAIAnalysisStore.getState().setGraph(g);
+		useAIAnalysisResultStore.getState().setGraph(g);
 	} catch (e) {
 		console.warn('[graphAnimationStore] persistPatchToStore failed:', e);
 	}
@@ -178,7 +198,7 @@ export function useGraphQueuePump(): void {
 
 	useSubscribeUIEvent('ui-signal', (eventType, raw) => {
 		const ev = raw as { channel?: string; kind?: string; entityId?: string; id?: string; payload?: GraphSignalQueuePayload };
-		if (ev?.channel !== 'graph') return;
+		if (ev?.channel !== UISignalChannel.GRAPH) return;
 		const kind = (ev.kind ?? 'stage') as GraphSignalKind;
 		enqueue({
 			id: ev.id ?? `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -228,6 +248,10 @@ export function useGraphQueuePump(): void {
 		}
 
 		if (item.kind === 'patch' && p.patch) {
+			const applyRef = useGraphAnimationStore.getState().graphApplyPatchRef;
+			if (applyRef?.applyPatch) {
+				await Promise.resolve(applyRef.applyPatch(p.patch));
+			}
 			persistPatchToStore(p.patch);
 			useGraphAnimationStore.getState().setMode('rendering');
 			useGraphAnimationStore.getState().setOverlayText(p.overlayText ?? p.patch.meta?.label ?? 'Applying results…');

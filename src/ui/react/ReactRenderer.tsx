@@ -8,6 +8,7 @@ export class ReactRenderer {
 	private root: Root | null = null;
 	private container: HTMLElement;
 	private pendingElement: React.ReactElement | null = null;
+	private pendingRafId: number | null = null;
 
 	constructor(container: HTMLElement) {
 		this.container = container;
@@ -36,12 +37,13 @@ export class ReactRenderer {
 		
 		// Ensure the container is in the DOM
 		if (!targetContainer.isConnected) {
-			// Store element for retry and schedule a delayed render
 			this.pendingElement = element;
-			requestAnimationFrame(() => {
+			this.pendingRafId = requestAnimationFrame(() => {
+				this.pendingRafId = null;
 				if (this.pendingElement) {
-					this.render(this.pendingElement);
+					const next = this.pendingElement;
 					this.pendingElement = null;
+					this.render(next);
 				}
 			});
 			return;
@@ -52,9 +54,14 @@ export class ReactRenderer {
 	}
 
 	/**
-	 * Unmount the React component
+	 * Unmount the React component. Clears pending delayed render to avoid holding closures.
 	 */
 	unmount(): void {
+		if (this.pendingRafId != null) {
+			cancelAnimationFrame(this.pendingRafId);
+			this.pendingRafId = null;
+		}
+		this.pendingElement = null;
 		if (this.root) {
 			try {
 				this.root.unmount();

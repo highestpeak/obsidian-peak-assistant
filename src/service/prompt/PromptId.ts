@@ -41,10 +41,16 @@ import * as aiAnalysisReviewBlocks from './templates/ai-analysis-review-blocks';
 import * as aiAnalysisReviewBlocksSystem from './templates/ai-analysis-review-blocks-system';
 import * as aiAnalysisDashboardUpdatePlan from './templates/ai-analysis-dashboard-update-plan';
 import * as aiAnalysisDashboardUpdatePlanSystem from './templates/ai-analysis-dashboard-update-plan-system';
+import * as aiAnalysisMindflowAgent from './templates/ai-analysis-mindflow-agent';
+import * as aiAnalysisMindflowAgentSystem from './templates/ai-analysis-mindflow-agent-system';
+import * as aiAnalysisCompletionJudge from './templates/ai-analysis-completion-judge';
+import * as aiAnalysisCompletionJudgeSystem from './templates/ai-analysis-completion-judge-system';
 import * as aiAnalysisFinalRefine from './templates/ai-analysis-final-refine';
 import * as aiAnalysisFinalRefineSystem from './templates/ai-analysis-final-refine-system';
 import * as aiAnalysisFinalRefineSources from './templates/ai-analysis-final-refine-sources';
 import * as aiAnalysisFinalRefineSourcesSystem from './templates/ai-analysis-final-refine-sources-system';
+import * as aiAnalysisFinalRefineSourceScores from './templates/ai-analysis-final-refine-source-scores';
+import * as aiAnalysisFinalRefineSourceScoresSystem from './templates/ai-analysis-final-refine-source-scores-system';
 import * as aiAnalysisFinalRefineGraph from './templates/ai-analysis-final-refine-graph';
 import * as aiAnalysisFinalRefineGraphSystem from './templates/ai-analysis-final-refine-graph-system';
 import * as aiAnalysisSaveFilename from './templates/ai-analysis-save-filename';
@@ -62,7 +68,16 @@ import * as profileFromVaultJson from './templates/profile-from-vault-json';
 import * as userProfileOrganizeMarkdown from './templates/user-profile-organize-markdown';
 import * as messageResources from './templates/message-resources';
 import { SystemInfo } from '../tools/system-info';
-import { AnalysisMode, AISearchUpdateContext } from '../agents/AISearchAgent';
+import { AnalysisMode } from '../agents/AISearchAgent';
+import { MindFlowVariables } from '../agents/search-agent-helper/MindFlowAgent';
+import { FinalRefineContext, FinalSourcesScoreRefineContext } from '../agents/search-agent-helper/FinalRefineAgent';
+import { DashboardUpdateContext } from '../agents/search-agent-helper/DashboardUpdateAgent';
+import { DashboardBlockVariables } from '../agents/search-agent-helper/DashboardBlocksUpdateAgent';
+import { TopicsUpdateVariables } from '../agents/search-agent-helper/TopicsUpdateAgent';
+import { ReviewBlocksVariables } from '../agents/search-agent-helper/ReviewBlocksAgent';
+import { FollowUpQuestionVariables } from '../agents/search-agent-helper/FollowUpQuestionAgent';
+import { AiSummaryVariables } from '../agents/search-agent-helper/SummaryAgent';
+import { MermaidOverviewVariables } from '../agents/search-agent-helper/MermaidOverviewAgent';
 
 /**
  * Prompt template definition.
@@ -152,10 +167,16 @@ export enum PromptId {
 	AiAnalysisReviewBlocks = 'ai-analysis-review-blocks',
 	AiAnalysisDashboardUpdatePlanSystem = 'ai-analysis-dashboard-update-plan-system',
 	AiAnalysisDashboardUpdatePlan = 'ai-analysis-dashboard-update-plan',
+	AiAnalysisMindflowAgentSystem = 'ai-analysis-mindflow-agent-system',
+	AiAnalysisMindflowAgent = 'ai-analysis-mindflow-agent',
+	AiAnalysisCompletionJudgeSystem = 'ai-analysis-completion-judge-system',
+	AiAnalysisCompletionJudge = 'ai-analysis-completion-judge',
 	AiAnalysisFinalRefineSystem = 'ai-analysis-final-refine-system',
 	AiAnalysisFinalRefine = 'ai-analysis-final-refine',
 	AiAnalysisFinalRefineSourcesSystem = 'ai-analysis-final-refine-sources-system',
 	AiAnalysisFinalRefineSources = 'ai-analysis-final-refine-sources',
+	AiAnalysisFinalRefineSourceScoresSystem = 'ai-analysis-final-refine-source-scores-system',
+	AiAnalysisFinalRefineSourceScores = 'ai-analysis-final-refine-source-scores',
 	AiAnalysisFinalRefineGraphSystem = 'ai-analysis-final-refine-graph-system',
 	AiAnalysisFinalRefineGraph = 'ai-analysis-final-refine-graph',
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
@@ -202,6 +223,8 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisDashboardUpdateBlocks,
 	PromptId.AiAnalysisReviewBlocks,
 	PromptId.AiAnalysisDashboardUpdatePlan,
+	PromptId.AiAnalysisMindflowAgent,
+	PromptId.AiAnalysisCompletionJudge,
 	PromptId.AiAnalysisFinalRefine,
 	PromptId.AiAnalysisTitle,
 	PromptId.AiAnalysisDocSimpleScope,
@@ -367,35 +390,66 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisFollowup]: { originalQuery: string; question: string; contextContent: string };
 	/** System prompt for all follow-up chats; no variables. */
 	[PromptId.AiAnalysisFollowupSystem]: Record<string, never>;
-	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
 	[PromptId.AiAnalysisDocSimpleScope]: { scopeValue: string; userPrompt: string; fileContent: string };
 	[PromptId.AiAnalysisDocSimpleSystem]: Record<string, never>;
 	[PromptId.AiAnalysisSuggestFollowUpQuestionsSystem]: Record<string, never>;
-	[PromptId.AiAnalysisSuggestFollowUpQuestions]: { sessionContext: string };
+	[PromptId.AiAnalysisSuggestFollowUpQuestions]: FollowUpQuestionVariables;
 
+	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSummarySystem]: Record<string, never>;
-	[PromptId.AiAnalysisSummary]: AISearchUpdateContext & { diagnosisJson?: string };
+	[PromptId.AiAnalysisSummary]: AiSummaryVariables & { retrievedSessionContext?: string };
 	[PromptId.AiAnalysisDiagnosisJson]: { originalQuery: string; recentEvidenceHint: string; currentResultSnapshot: string };
 	[PromptId.AiAnalysisOverviewMermaidSystem]: Record<string, never>;
-	[PromptId.AiAnalysisOverviewMermaid]: AISearchUpdateContext & ErrorRetryInfo;
+	[PromptId.AiAnalysisOverviewMermaid]: MermaidOverviewVariables & ErrorRetryInfo;
 	[PromptId.AiAnalysisDashboardUpdateSourcesSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateSources]: AISearchUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisDashboardUpdateSources]: ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateTopicsSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateTopics]: AISearchUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisDashboardUpdateTopics]: TopicsUpdateVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
+	/**
+	 * @deprecated
+	 */
 	[PromptId.AiAnalysisDashboardUpdateGraphSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateGraph]: AISearchUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
+	/**
+	 * @deprecated
+	 */
+	[PromptId.AiAnalysisDashboardUpdateGraph]: ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateBlocks]: AISearchUpdateContext & ErrorRetryInfo & { toolFormatGuidance?: string };
-	[PromptId.AiAnalysisReviewBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisReviewBlocks]: AISearchUpdateContext & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisDashboardUpdateBlocks]: DashboardBlockVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdatePlanSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdatePlan]: AISearchUpdateContext;
+	[PromptId.AiAnalysisDashboardUpdatePlan]: DashboardUpdateContext;
+	[PromptId.AiAnalysisReviewBlocksSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReviewBlocks]: ReviewBlocksVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisMindflowAgentSystem]: Record<string, never>;
+	[PromptId.AiAnalysisMindflowAgent]: MindFlowVariables & ErrorRetryInfo;
+	/**
+	 * @deprecated
+	 */
+	[PromptId.AiAnalysisCompletionJudgeSystem]: Record<string, never>;
+	/**
+	 * @deprecated
+	 */
+	[PromptId.AiAnalysisCompletionJudge]: {
+		originalQuery: string;
+		estimatedCompleteness: number;
+		statusLabel: string;
+		goalAlignment?: string;
+		critique?: string;
+		recentEvidenceHint?: string;
+	};
 	[PromptId.AiAnalysisFinalRefineSystem]: Record<string, never>;
-	[PromptId.AiAnalysisFinalRefine]: AISearchUpdateContext & { toolFormatGuidance?: string; refineMode?: 'sources_only' | 'graph_only' | 'full' };
+	[PromptId.AiAnalysisFinalRefine]: FinalRefineContext & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisFinalRefineSourcesSystem]: Record<string, never>;
-	[PromptId.AiAnalysisFinalRefineSources]: AISearchUpdateContext & { toolFormatGuidance?: string; sourcesBatch?: { start: number; end: number; indexPlusOne: number; total: number } };
+	[PromptId.AiAnalysisFinalRefineSources]: FinalRefineContext & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisFinalRefineSourceScoresSystem]: Record<string, never>;
+	[PromptId.AiAnalysisFinalRefineSourceScores]: FinalRefineContext;
+	/**
+	 * @deprecated
+	 */
 	[PromptId.AiAnalysisFinalRefineGraphSystem]: Record<string, never>;
-	[PromptId.AiAnalysisFinalRefineGraph]: AISearchUpdateContext & { toolFormatGuidance?: string };
+	/**
+	 * @deprecated
+	 */
+	[PromptId.AiAnalysisFinalRefineGraph]: { toolFormatGuidance?: string };
 
 	[PromptId.AiAnalysisSaveFileName]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string; candidateFoldersFromSearch?: string; defaultSaveFolder?: string };
@@ -436,47 +490,10 @@ export interface PromptVariables {
 	};
 }
 
-export type PromptInfo = PromptTemplate & { systemPromptId?: PromptId }
+export type PromptInfo = PromptTemplate & { systemPromptId?: PromptId };
 
-/**
- * Central prompt registry.
- * All prompts are loaded from individual template files in the templates/ directory.
- */
+/** Central prompt registry; all prompts are loaded from templates/ directory. */
 export const PROMPT_REGISTRY: Record<PromptId, PromptInfo> = {
-	[PromptId.ConversationSystem]: createTemplate(conversationSystem),
-	[PromptId.ConversationSummaryShort]: createTemplate(conversationSummaryShort),
-	[PromptId.ConversationSummaryFull]: createTemplate(conversationSummaryFull),
-	[PromptId.ProjectSummaryShort]: createTemplate(projectSummaryShort),
-	[PromptId.ProjectSummaryFull]: createTemplate(projectSummaryFull),
-	[PromptId.SearchRerankRankGpt]: createTemplate(searchRerankRankGpt),
-	[PromptId.RawAiSearch]: createTemplate(aiSearchSystem),
-	[PromptId.ThoughtAgent]: createTemplate(thoughtAgentSystem),
-	[PromptId.SourcesUpdateAgentSystem]: createTemplate(sourcesUpdateAgentSystem),
-	[PromptId.TopicsUpdateAgentSystem]: createTemplate(topicsUpdateAgentSystem),
-	[PromptId.GraphUpdateAgentSystem]: createTemplate(graphUpdateAgentSystem),
-	[PromptId.ApplicationGenerateTitle]: createTemplate(applicationGenerateTitle),
-	[PromptId.MemoryExtractCandidatesJson]: createTemplate(memoryExtractCandidatesJson),
-	[PromptId.MemoryUpdateBulletList]: createTemplate(memoryUpdateBulletList),
-	[PromptId.UserProfileUpdateJson]: createTemplate(userProfileUpdateJson),
-	[PromptId.InstructionUpdate]: createTemplate(instructionUpdate),
-	[PromptId.PromptQualityEvalJson]: createTemplate(promptQualityEvalJson),
-	[PromptId.PromptRewriteWithLibrary]: createTemplate(promptRewriteWithLibrary),
-	[PromptId.DocSummary]: createTemplate(docSummary),
-	[PromptId.AiAnalysisSessionSummary]: createTemplate(aiAnalysisSessionSummary),
-	[PromptId.ImageDescription]: createTemplate(imageDescription),
-	[PromptId.ImageSummary]: createTemplate(imageSummary),
-	[PromptId.FolderProjectSummary]: createTemplate(folderProjectSummary),
-	[PromptId.AiAnalysisFollowup]: createTemplate(aiAnalysisFollowup),
-	[PromptId.AiAnalysisFollowupSystem]: createTemplate(aiAnalysisFollowupSystem),
-	[PromptId.AiAnalysisTitle]: createTemplate(aiAnalysisTitle),
-	[PromptId.AiAnalysisDocSimpleScope]: createTemplate(aiAnalysisDocSimpleScope),
-	[PromptId.AiAnalysisDocSimpleSystem]: createTemplate(aiAnalysisDocSimpleSystem),
-	[PromptId.AiAnalysisSuggestFollowUpQuestionsSystem]: createTemplate(aiAnalysisSuggestFollowUpQuestionsSystem),
-	[PromptId.AiAnalysisSuggestFollowUpQuestions]: {
-		...createTemplate(aiAnalysisSuggestFollowUpQuestions),
-		systemPromptId: PromptId.AiAnalysisSuggestFollowUpQuestionsSystem,
-	},
-
 	[PromptId.AiAnalysisSummarySystem]: createTemplate(aiAnalysisSummarySystem),
 	[PromptId.AiAnalysisSummary]: {
 		...createTemplate(aiAnalysisSummary),
@@ -523,6 +540,16 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptInfo> = {
 		...createTemplate(aiAnalysisDashboardUpdatePlan),
 		systemPromptId: PromptId.AiAnalysisDashboardUpdatePlanSystem,
 	},
+	[PromptId.AiAnalysisMindflowAgentSystem]: createTemplate(aiAnalysisMindflowAgentSystem),
+	[PromptId.AiAnalysisMindflowAgent]: {
+		...createTemplate(aiAnalysisMindflowAgent),
+		systemPromptId: PromptId.AiAnalysisMindflowAgentSystem,
+	},
+	[PromptId.AiAnalysisCompletionJudgeSystem]: createTemplate(aiAnalysisCompletionJudgeSystem),
+	[PromptId.AiAnalysisCompletionJudge]: {
+		...createTemplate(aiAnalysisCompletionJudge),
+		systemPromptId: PromptId.AiAnalysisCompletionJudgeSystem,
+	},
 	[PromptId.AiAnalysisFinalRefineSystem]: createTemplate(aiAnalysisFinalRefineSystem),
 	[PromptId.AiAnalysisFinalRefine]: {
 		...createTemplate(aiAnalysisFinalRefine),
@@ -532,6 +559,11 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptInfo> = {
 	[PromptId.AiAnalysisFinalRefineSources]: {
 		...createTemplate(aiAnalysisFinalRefineSources),
 		systemPromptId: PromptId.AiAnalysisFinalRefineSourcesSystem,
+	},
+	[PromptId.AiAnalysisFinalRefineSourceScoresSystem]: createTemplate(aiAnalysisFinalRefineSourceScoresSystem),
+	[PromptId.AiAnalysisFinalRefineSourceScores]: {
+		...createTemplate(aiAnalysisFinalRefineSourceScores),
+		systemPromptId: PromptId.AiAnalysisFinalRefineSourceScoresSystem,
 	},
 	[PromptId.AiAnalysisFinalRefineGraphSystem]: createTemplate(aiAnalysisFinalRefineGraphSystem),
 	[PromptId.AiAnalysisFinalRefineGraph]: {
@@ -548,4 +580,37 @@ export const PROMPT_REGISTRY: Record<PromptId, PromptInfo> = {
 	[PromptId.ProfileFromVaultJson]: createTemplate(profileFromVaultJson),
 	[PromptId.UserProfileOrganizeMarkdown]: createTemplate(userProfileOrganizeMarkdown),
 	[PromptId.MessageResources]: createTemplate(messageResources),
+	[PromptId.ConversationSystem]: createTemplate(conversationSystem),
+	[PromptId.ConversationSummaryShort]: createTemplate(conversationSummaryShort),
+	[PromptId.ConversationSummaryFull]: createTemplate(conversationSummaryFull),
+	[PromptId.ProjectSummaryShort]: createTemplate(projectSummaryShort),
+	[PromptId.ProjectSummaryFull]: createTemplate(projectSummaryFull),
+	[PromptId.SearchRerankRankGpt]: createTemplate(searchRerankRankGpt),
+	[PromptId.RawAiSearch]: createTemplate(aiSearchSystem),
+	[PromptId.ThoughtAgent]: createTemplate(thoughtAgentSystem),
+	[PromptId.SourcesUpdateAgentSystem]: createTemplate(sourcesUpdateAgentSystem),
+	[PromptId.TopicsUpdateAgentSystem]: createTemplate(topicsUpdateAgentSystem),
+	[PromptId.GraphUpdateAgentSystem]: createTemplate(graphUpdateAgentSystem),
+	[PromptId.ApplicationGenerateTitle]: createTemplate(applicationGenerateTitle),
+	[PromptId.MemoryExtractCandidatesJson]: createTemplate(memoryExtractCandidatesJson),
+	[PromptId.MemoryUpdateBulletList]: createTemplate(memoryUpdateBulletList),
+	[PromptId.UserProfileUpdateJson]: createTemplate(userProfileUpdateJson),
+	[PromptId.InstructionUpdate]: createTemplate(instructionUpdate),
+	[PromptId.PromptQualityEvalJson]: createTemplate(promptQualityEvalJson),
+	[PromptId.PromptRewriteWithLibrary]: createTemplate(promptRewriteWithLibrary),
+	[PromptId.DocSummary]: createTemplate(docSummary),
+	[PromptId.AiAnalysisSessionSummary]: createTemplate(aiAnalysisSessionSummary),
+	[PromptId.ImageDescription]: createTemplate(imageDescription),
+	[PromptId.ImageSummary]: createTemplate(imageSummary),
+	[PromptId.FolderProjectSummary]: createTemplate(folderProjectSummary),
+	[PromptId.AiAnalysisFollowup]: createTemplate(aiAnalysisFollowup),
+	[PromptId.AiAnalysisFollowupSystem]: createTemplate(aiAnalysisFollowupSystem),
+	[PromptId.AiAnalysisTitle]: createTemplate(aiAnalysisTitle),
+	[PromptId.AiAnalysisDocSimpleScope]: createTemplate(aiAnalysisDocSimpleScope),
+	[PromptId.AiAnalysisDocSimpleSystem]: createTemplate(aiAnalysisDocSimpleSystem),
+	[PromptId.AiAnalysisSuggestFollowUpQuestionsSystem]: createTemplate(aiAnalysisSuggestFollowUpQuestionsSystem),
+	[PromptId.AiAnalysisSuggestFollowUpQuestions]: {
+		...createTemplate(aiAnalysisSuggestFollowUpQuestions),
+		systemPromptId: PromptId.AiAnalysisSuggestFollowUpQuestionsSystem,
+	},
 };

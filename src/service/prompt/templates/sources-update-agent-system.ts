@@ -11,13 +11,13 @@ Each operation must be one of:
 targetField must always be "sources". Paths must be vault-relative (e.g. "folder/note.md"). Only use paths that exist in the vault or were returned by search tools. Never use "Untitled" as path—use the exact path from search results.
 
 {{#if lastError}}
-Previous attempt failed: {{lastError}}
+Previous attempt failed: {{{lastError}}}
 Fix and output only a valid JSON array again.
 
 {{/if}}
 User request from Thought agent:
 ---
-{{text}}
+{{{text}}}
 ---
 
 Output only the JSON array:`;

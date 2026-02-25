@@ -1,3 +1,63 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+
+/* MindFlow blink: animate node group + fill so both border and background pulse */
+@keyframes mindflow-blink-soft {
+  0%, 100% { opacity: 1; fill-opacity: 1; }
+  50% { opacity: 0.55; fill-opacity: 0.65; }
+}
+@keyframes mindflow-blink-strong {
+  0%, 100% { opacity: 1; fill-opacity: 1; }
+  50% { opacity: 0.5; fill-opacity: 0.55; }
+}
+
+/* MindFlow node states - Mermaid adds :::classname to node groups */
+g.thinking rect,
+g.thinking polygon,
+g.thinking path,
+rect.thinking,
+polygon.thinking,
+path.thinking {
+  stroke: #a855f7 !important;
+  stroke-width: 2px !important;
+  fill: #f3e8ff !important;
+}
+g.thinking,
+g.node.thinking,
+g.thinking rect,
+g.thinking polygon,
+g.thinking path {
+  animation: mindflow-blink-strong 1.2s ease-in-out infinite;
+}
+g.exploring rect,
+g.exploring polygon,
+g.exploring path,
+rect.exploring,
+polygon.exploring,
+path.exploring {
+  stroke: #60a5fa !important;
+  stroke-width: 2px !important;
+  fill: #dbeafe !important;
+}
+g.exploring,
+g.node.exploring,
+g.exploring rect,
+g.exploring polygon,
+g.exploring path {
+  animation: mindflow-blink-soft 1.2s ease-in-out infinite;
+}
+g.verified rect,
+g.verified polygon,
+g.verified path {
+  stroke: #22c55e !important;
+  stroke-width: 2px !important;
+  fill: #dcfce7 !important;
+}
+g.pruned rect,
+g.pruned polygon,
+g.pruned path {
+  stroke: #6b7280 !important;
+  fill: #f3f4f6 !important;
+  opacity: 0.5;
+}

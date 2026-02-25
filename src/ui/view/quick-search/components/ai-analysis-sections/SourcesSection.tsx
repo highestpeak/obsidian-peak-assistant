@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FileText, Info, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, Info, MessageCircle, ChevronDown, ChevronRight, List, Network, Loader2, Maximize2, X } from 'lucide-react';
 import { mixSearchResultsBySource } from '@/core/utils/source-mixer';
 import { getSourceIcon } from '@/ui/view/shared/file-utils';
 import type { SearchResultItem } from '@/service/search/types';
@@ -8,7 +9,10 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/shared-ui/hover-card';
 import { InlineFollowupChat } from '@/ui/component/mine/InlineFollowupChat';
 import { useSourcesFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
-import { useAIAnalysisStore } from '../../store/aiAnalysisStore';
+import { useAIAnalysisInteractionsStore } from '../../store/aiAnalysisStore';
+import { GraphVisualization, GraphVisualizationHandle } from '@/ui/component/mine/GraphVisualization';
+import { createObsidianGraphPreset } from '../../presets/obsidianGraphPreset';
+import { buildSourcesGraphWithDiscoveredEdges, getCachedSourcesGraph, type SourcesGraph } from '@/service/tools/search-graph-inspector/build-sources-graph';
 
 /** When false, show only a single "Score" (AI-generated); Physical/Semantic/Average gauges are kept in code but not rendered. */
 const SHOW_SCORE_BREAKDOWN = false;
@@ -159,22 +163,66 @@ const SourceCard: React.FC<{
 	</div>
 );
 
+/** Hook: build sources graph (cached); uses cache when same sources, skips rebuild. */
+function useSourcesGraph(sources: SearchResultItem[]): { graph: SourcesGraph | null; loading: boolean } {
+	const cached = useMemo(() => getCachedSourcesGraph(sources), [sources]);
+	const [graph, setGraph] = useState<SourcesGraph | null>(() => cached ?? null);
+	const [loading, setLoading] = useState(() => !cached);
+
+	useEffect(() => {
+		if (!sources.length) {
+			setGraph(null);
+			setLoading(false);
+			return;
+		}
+		const c = getCachedSourcesGraph(sources);
+		if (c) {
+			setGraph(c);
+			setLoading(false);
+			return;
+		}
+		let cancelled = false;
+		setLoading(true);
+		buildSourcesGraphWithDiscoveredEdges(sources)
+			.then((g) => {
+				if (!cancelled) setGraph(g);
+			})
+			.catch((err) => {
+				if (!cancelled) console.warn('[SourcesSection] buildSourcesGraph failed:', err);
+			})
+			.finally(() => {
+				if (!cancelled) setLoading(false);
+			});
+		return () => { cancelled = true; };
+	}, [sources]);
+
+	return { graph, loading };
+}
+
 /**
- * Top sources section component showing relevant files with reasoning, badges, and score breakdown
+ * Top sources section component showing relevant files with reasoning, badges, and score breakdown.
+ * Supports List and Graph views.
  */
 export const TopSourcesSection: React.FC<{
 	sources: SearchResultItem[];
 	onOpen: (source: SearchResultItem | string) => void;
 	skipAnimation?: boolean;
+	/** Deprecated: edges are now discovered via graph-inspector tools. Kept for API compat. */
+	graph?: { nodes: { id: string; path?: string }[]; edges: { source: string; target: string; type?: string }[] } | null;
 }> = ({ sources, onOpen, skipAnimation = false }) => {
 
-	const {
-		setContextChatModal,
-		appendSourcesFollowup,
-		sourcesFollowupHistory,
-	} = useAIAnalysisStore();
+	const setContextChatModal = useAIAnalysisInteractionsStore((s) => s.setContextChatModal);
+	const appendSourcesFollowup = useAIAnalysisInteractionsStore((s) => s.appendSourcesFollowup);
+	const sourcesFollowupHistory = useAIAnalysisInteractionsStore((s) => s.sourcesFollowupHistory);
 
 	const [showSourcesFollowup, setShowSourcesFollowup] = useState(false);
+	const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
+	const [fullscreenOpen, setFullscreenOpen] = useState(false);
+
+	const graphRef = useRef<GraphVisualizationHandle>(null);
+	// Store container elements in state to trigger re-render when mounted (fixes portal target being null on first paint)
+	const [inlineContainerEl, setInlineContainerEl] = useState<HTMLDivElement | null>(null);
+	const [fullscreenContainerEl, setFullscreenContainerEl] = useState<HTMLDivElement | null>(null);
 
 	const sourcesFollowupConfig = useSourcesFollowupChatConfig({ sources });
 
@@ -195,6 +243,28 @@ export const TopSourcesSection: React.FC<{
 	}, [mixedSources]);
 
 	const [expandZeroScore, setExpandZeroScore] = useState(false);
+
+	const { graph: sourcesGraph, loading: sourcesGraphLoading } = useSourcesGraph(mixedSources);
+
+	// Fit to view when fullscreen opens; Esc to close
+	useEffect(() => {
+		if (fullscreenOpen) {
+			setTimeout(() => graphRef.current?.fitToView(true), 100);
+			const onKeyDown = (e: KeyboardEvent) => {
+				if (e.key === 'Escape') setFullscreenOpen(false);
+			};
+			document.addEventListener('keydown', onKeyDown);
+			return () => document.removeEventListener('keydown', onKeyDown);
+		}
+	}, [fullscreenOpen]);
+
+	const obsidianPreset = useMemo(() => createObsidianGraphPreset({
+		onOpenPath: onOpen ? (path: string) => onOpen(path) : undefined,
+		openFile: async (path: string) => {
+			if (typeof onOpen === 'function') onOpen(path);
+		},
+		copyText: async (t: string) => { await navigator.clipboard.writeText(t); },
+	}), [onOpen]);
 
 	// Animate scored sources one by one
 	const [visibleCount, setVisibleCount] = React.useState(0);
@@ -229,6 +299,21 @@ export const TopSourcesSection: React.FC<{
 					({mixedSources.length} files{zeroScoreSources.length > 0 ? `, ${zeroScoreSources.length} with score 0` : ''})
 				</span>
 				<div className="pktw-flex-1" />
+				{mixedSources.length > 0 ? (
+					<div className="pktw-flex pktw-gap-1">
+						<Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="sm" onClick={() => setViewMode('list')} title="List view">
+							<List className="pktw-w-4 pktw-h-4" />
+						</Button>
+						<Button variant={viewMode === 'graph' ? 'secondary' : 'ghost'} size="sm" onClick={() => setViewMode('graph')} title="Graph view">
+							<Network className="pktw-w-4 pktw-h-4" />
+						</Button>
+						{viewMode === 'graph' && sourcesGraph ? (
+							<Button variant="ghost" size="sm" onClick={() => setFullscreenOpen(true)} title="Fullscreen (use tools)">
+								<Maximize2 className="pktw-w-4 pktw-h-4" />
+							</Button>
+						) : null}
+					</div>
+				) : null}
 				<HoverCard openDelay={100} closeDelay={150}>
 					<HoverCardTrigger asChild>
 						<Button
@@ -297,39 +382,106 @@ export const TopSourcesSection: React.FC<{
 					</motion.div>
 				) : null}
 			</AnimatePresence>
-			<div className="pktw-space-y-3">
-				{/* Scored sources (score > 0) */}
-				{scoredSources.slice(0, visibleCount).map((source, index) => (
-					<SourceCard key={source.id || `s-${index}`} source={source} index={index} onOpen={() => onOpen(source)} />
-				))}
-				{/* Zero-score sources: collapsed by default */}
-				{zeroScoreSources.length > 0 && (
-					<div className="pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-white/80 pktw-overflow-hidden">
-						<button
-							type="button"
-							className="pktw-w-full pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-left hover:pktw-bg-[#f5f3ff]/50 pktw-transition-colors"
-							onClick={() => setExpandZeroScore((v) => !v)}
-							aria-expanded={expandZeroScore}
-						>
-							{expandZeroScore ? (
-								<ChevronDown className="pktw-w-4 pktw-h-4 pktw-text-[#6b7280] pktw-shrink-0" />
-							) : (
-								<ChevronRight className="pktw-w-4 pktw-h-4 pktw-text-[#6b7280] pktw-shrink-0" />
-							)}
-							<span className="pktw-text-xs pktw-text-[#6b7280]">
-								{zeroScoreSources.length} source{zeroScoreSources.length !== 1 ? 's' : ''} with score 0
-							</span>
-						</button>
-						{expandZeroScore && (
-							<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-p-2 pktw-space-y-2">
-								{zeroScoreSources.map((source, index) => (
-									<SourceCard key={source.id || `z-${index}`} source={source} index={index} onOpen={() => onOpen(source)} />
-								))}
+			{viewMode === 'graph' ? (
+				<div className="pktw-h-[260px] pktw-w-full pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-white pktw-overflow-hidden pktw-relative">
+					{sourcesGraphLoading ? (
+						<div className="pktw-h-full pktw-w-full pktw-flex pktw-items-center pktw-justify-center pktw-text-[#6b7280] pktw-text-sm">
+							<Loader2 className="pktw-w-5 pktw-h-5 pktw-animate-spin pktw-mr-2" />
+							Discovering connections…
+						</div>
+					) : !sourcesGraph ? (
+						<div className="pktw-h-full pktw-w-full pktw-flex pktw-items-center pktw-justify-center pktw-text-[#6b7280] pktw-text-sm">
+							No graph data
+						</div>
+					) : (
+						<>
+							<div
+								ref={setInlineContainerEl}
+								className={fullscreenOpen ? 'pktw-hidden' : 'pktw-h-full pktw-w-full'}
+							/>
+							{/* Fullscreen overlay: always in DOM for stable portal ref */}
+							<div
+								className={
+									fullscreenOpen
+										? 'pktw-fixed pktw-inset-0 pktw-bg-black/30 pktw-z-[10000] pktw-flex pktw-items-center pktw-justify-center pktw-p-4'
+										: 'pktw-fixed pktw-inset-0 pktw-bg-black/30 pktw-z-[10000] pktw-flex pktw-items-center pktw-justify-center pktw-p-4 pktw-pointer-events-none pktw-invisible'
+								}
+								style={fullscreenOpen ? undefined : { visibility: 'hidden' }}
+								onClick={(e) => fullscreenOpen && e.target === e.currentTarget && setFullscreenOpen(false)}
+							>
+								<motion.div
+									initial={false}
+									animate={{ opacity: fullscreenOpen ? 1 : 0 }}
+									transition={{ duration: 0.2 }}
+									className="pktw-bg-white pktw-rounded-lg pktw-shadow-xl pktw-border pktw-border-[#e5e7eb] pktw-w-full pktw-h-full pktw-max-w-[95vw] pktw-max-h-[95vh] pktw-flex pktw-flex-col pktw-overflow-hidden"
+									onClick={(e) => e.stopPropagation()}
+									style={!fullscreenOpen ? { pointerEvents: 'none' as const } : undefined}
+								>
+									<div className="pktw-flex pktw-items-center pktw-justify-between pktw-p-2 pktw-border-b pktw-border-[#e5e7eb] pktw-shrink-0">
+										<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338] pktw-truncate">Sources Graph</span>
+										<Button variant="ghost" size="icon" className="pktw-rounded-md" title="Close" onClick={() => setFullscreenOpen(false)}>
+											<X className="pktw-w-5 pktw-h-5" />
+										</Button>
+									</div>
+									<div ref={setFullscreenContainerEl} className="pktw-flex-1 pktw-min-h-0 pktw-flex pktw-flex-col pktw-p-4 pktw-overflow-hidden" />
+								</motion.div>
 							</div>
-						)}
-					</div>
-				)}
-			</div>
+							{(() => {
+								const portalTarget = fullscreenOpen ? fullscreenContainerEl : inlineContainerEl;
+								return portalTarget
+									? createPortal(
+										<GraphVisualization
+											ref={graphRef}
+											{...obsidianPreset}
+											graph={sourcesGraph}
+											containerClassName={fullscreenOpen ? 'pktw-w-full pktw-h-full pktw-min-h-[400px]' : 'pktw-h-full pktw-w-full'}
+											showToolsPanel={fullscreenOpen}
+											showToolbar={fullscreenOpen}
+											hideTitle={fullscreenOpen}
+										/>,
+										portalTarget
+									)
+									: null;
+							})()}
+						</>
+					)}
+				</div>
+			) : (
+				<div className="pktw-space-y-3">
+					{/* Scored sources (score > 0) */}
+					{scoredSources.slice(0, visibleCount).map((source, index) => (
+						<SourceCard key={source.id || `s-${index}`} source={source} index={index} onOpen={() => onOpen(source)} />
+					))}
+					{/* Zero-score sources: collapsed by default */}
+					{zeroScoreSources.length > 0 && (
+						<div className="pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-white/80 pktw-overflow-hidden">
+							<Button
+								variant="ghost"
+								size="sm"
+								className="pktw-w-full pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-group"
+								onClick={() => setExpandZeroScore((v) => !v)}
+								aria-expanded={expandZeroScore}
+							>
+								{expandZeroScore ? (
+									<ChevronDown className="pktw-w-4 pktw-h-4 pktw-text-[#6b7280] group-hover:pktw-text-white pktw-shrink-0" />
+								) : (
+									<ChevronRight className="pktw-w-4 pktw-h-4 pktw-text-[#6b7280] group-hover:pktw-text-white pktw-shrink-0" />
+								)}
+								<span className="pktw-text-xs group-hover:pktw-text-white">
+									{zeroScoreSources.length} source{zeroScoreSources.length !== 1 ? 's' : ''} with score 0
+								</span>
+							</Button>
+							{expandZeroScore && (
+								<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-p-2 pktw-space-y-2">
+									{zeroScoreSources.map((source, index) => (
+										<SourceCard key={source.id || `z-${index}`} source={source} index={index} onOpen={() => onOpen(source)} />
+									))}
+								</div>
+							)}
+						</div>
+					)}
+				</div>
+			)}
 		</div>
 	);
 };

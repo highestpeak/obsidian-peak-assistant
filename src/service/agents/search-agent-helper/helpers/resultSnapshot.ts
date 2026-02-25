@@ -1,6 +1,6 @@
-import Handlebars from 'handlebars';
 import type { SearchAgentResult, AISearchSource, AISearchTopic, DashboardBlock, AISearchNode } from '../../AISearchAgent';
-import { template as RESULT_SNAPSHOT_TEMPLATE } from '../templates/result-snapshot';
+import type { TemplateManager } from '@/core/template/TemplateManager';
+import { AgentTemplateId } from '@/core/template/TemplateRegistry';
 
 const MAX_TOPICS = 12;
 const MAX_SOURCES = 15;
@@ -11,9 +11,12 @@ const SUMMARY_EXCERPT_MAX_CHARS = 500;
 
 /**
  * Build a dense text snapshot of the current result for the summary prompt.
- * Uses a Handlebars template; reduces token noise and focuses on topics, sources, blocks, and key graph nodes.
+ * Uses TemplateManager; reduces token noise and focuses on topics, sources, blocks, and key graph nodes.
  */
-export function buildMinifiedResultSnapshot(result: SearchAgentResult): string {
+export async function buildMinifiedResultSnapshot(
+    result: SearchAgentResult,
+    templateManager: TemplateManager,
+): Promise<string> {
     const topics = (result.topics ?? []).slice(0, MAX_TOPICS).map((t: AISearchTopic) => ({
         label: t.label,
         weight: t.weight,
@@ -53,5 +56,5 @@ export function buildMinifiedResultSnapshot(result: SearchAgentResult): string {
         summaryExcerpt: result.summary?.trim() ? result.summary.trim().slice(0, SUMMARY_EXCERPT_MAX_CHARS) : undefined,
     };
 
-    return Handlebars.compile(RESULT_SNAPSHOT_TEMPLATE)(payload);
+    return templateManager.render(AgentTemplateId.ResultSnapshot, payload);
 }

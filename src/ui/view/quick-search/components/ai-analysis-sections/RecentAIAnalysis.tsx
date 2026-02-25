@@ -3,7 +3,7 @@ import { History, FileText, Zap, Brain } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
 import { AppContext } from '@/app/context/AppContext';
-import { CompletedAnalysisSnapshot, useAIAnalysisStore } from '../../store/aiAnalysisStore';
+import { CompletedAnalysisSnapshot, loadCompletedAnalysisSnapshot } from '../../store/aiAnalysisStore';
 import type { AnalysisMode } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 import { TFile } from 'obsidian';
@@ -76,7 +76,7 @@ export const RecentAIAnalysis: React.FC<{
                 ...loaded.snapshot,
                 analysisStartedAtMs: (loaded.snapshot.analysisStartedAtMs ?? (Number.isFinite(createdAt) ? createdAt : null)) ?? null,
             };
-            useAIAnalysisStore.getState().loadCompletedAnalysis(snapshot, path);
+            loadCompletedAnalysisSnapshot(snapshot, path);
             if (loaded.query != null && loaded.query !== '') {
                 useSharedStore.getState().setSearchQuery(loaded.query);
             }

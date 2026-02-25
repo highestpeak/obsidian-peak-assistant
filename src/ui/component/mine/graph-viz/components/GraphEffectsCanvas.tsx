@@ -7,6 +7,27 @@ import { EffectsCanvasRefs } from '../hooks/useGraphEngine';
 
 const HULL_COLORS = ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#f97316', '#eab308'];
 
+/** 
+ * MindFlow state animation colors (local constants, not exported). 
+ * see src/service/agents/search-agent-helper/mindflow/types.ts for more details.
+ * */
+const MINDFLOW_COLORS = {
+	thinking: '#a855f7',   // purple - active thinking
+	exploring: '#60a5fa',  // blue - exploring
+	verified: '#22c55e',   // green - verified/confirmed
+	pruned: '#6b7280',     // gray - pruned/dead-end
+} as const;
+
+type MindflowState = keyof typeof MINDFLOW_COLORS;
+
+/** Read mindflow state from node attributes. */
+function getMindflowState(n: GraphVizNode): MindflowState | undefined {
+	const mf = n.attributes?.mindflow as { state?: string } | undefined;
+	const state = mf?.state;
+	if (state && state in MINDFLOW_COLORS) return state as MindflowState;
+	return undefined;
+}
+
 export interface GraphEffectsCanvasProps {
 	effect: GraphVisualEffect | undefined;
 	canvasRefs: EffectsCanvasRefs;
@@ -26,6 +47,8 @@ export interface GraphEffectsCanvasProps {
 	pathResultVersion?: number;
 	/** Same as used when computing path (e.g. linkKey(l, normalizeNodeId)). */
 	getLinkKey?: (l: GraphVizLink) => string;
+	/** When true, draw breathing/pulse animations for MindFlow states (exploring, thinking). */
+	mindflowAnimations?: boolean;
 }
 
 function getKindsForEffect(effectType: GraphVisualEffectType, effectKindMap: EffectKindMap): string[] {
@@ -86,6 +109,7 @@ export const GraphEffectsCanvas: React.FC<GraphEffectsCanvasProps> = ({
 	pathColor = '#22c55e',
 	pathResultVersion = 0,
 	getLinkKey = (l) => linkKey(l, (id) => id),
+	mindflowAnimations = false,
 }) => {
 
 	const { canvasRef, nodesRef, linksRef, visibleNodesRef, zoomTransformRef, containerSizeRef, resizeTick, hubNodeIdsRef, communityMapRef, pathResultRef, pathResultT0Ref, streamingRef, isDraggingRef, normalizeNodeId } = canvasRefs;
@@ -102,7 +126,7 @@ export const GraphEffectsCanvas: React.FC<GraphEffectsCanvasProps> = ({
 		/** Skip hub/community overlay during streaming or drag; read refs in loop for current value. */
 		const skipHeavyOverlayFn = () => !!(streamingRef?.current || isDraggingRef?.current);
 		const staticOverlay = highlightHubs || communityMode || hasPath;
-		const needsLoop = (effType !== 'none' && intensity > 0) || staticOverlay;
+		const needsLoop = (effType !== 'none' && intensity > 0) || staticOverlay || mindflowAnimations;
 		if (!needsLoop) {
 			const { width, height } = containerSizeRef.current;
 			ctx.clearRect(0, 0, width, height);
@@ -329,6 +353,47 @@ export const GraphEffectsCanvas: React.FC<GraphEffectsCanvasProps> = ({
 				}
 			}
 
+			// MindFlow state animations: breathing/pulse for exploring/thinking, stable glow for verified
+			if (mindflowAnimations) {
+				const hasPos = (n: GraphVizNode) => typeof n.x === 'number' && typeof n.y === 'number';
+				for (const n of nodesLoop) {
+					if (!hasPos(n)) continue;
+					const state = getMindflowState(n);
+					if (!state) continue;
+
+					const p = toScreen(n.x, n.y);
+					const baseR = Math.max(8, (n.r ?? 8) * 1.2);
+					const color = MINDFLOW_COLORS[state];
+
+					if (state === 'exploring') {
+						// Slow breathing pulse (like a heartbeat)
+						const breath = 0.4 + 0.6 * Math.sin(t * 2.5);
+						drawGlowDot(p.x, p.y, baseR, color, 0.35 * breath);
+					} else if (state === 'thinking') {
+						// Faster pulse with expanding ring effect
+						const pulse = 0.5 + 0.5 * Math.sin(t * 4);
+						const ringPhase = (t * 1.5) % 1;
+						const ringR = baseR * (1 + ringPhase * 0.8);
+						const ringAlpha = 0.3 * (1 - ringPhase);
+						// Outer expanding ring
+						ctx.save();
+						ctx.globalAlpha = ringAlpha;
+						ctx.strokeStyle = color;
+						ctx.lineWidth = 2;
+						ctx.beginPath();
+						ctx.arc(p.x, p.y, ringR, 0, Math.PI * 2);
+						ctx.stroke();
+						ctx.restore();
+						// Inner glow
+						drawGlowDot(p.x, p.y, baseR * 0.8, color, 0.4 * pulse);
+					} else if (state === 'verified') {
+						// Stable subtle glow (no animation, just a soft halo)
+						drawGlowDot(p.x, p.y, baseR * 0.9, color, 0.25);
+					}
+					// pruned: no animation effect (just opacity handled by renderer)
+				}
+			}
+
 			frameCount += 1;
 			if (throttleStaticOverlay) {
 				throttleTimer = setTimeout(() => {
@@ -351,7 +416,7 @@ export const GraphEffectsCanvas: React.FC<GraphEffectsCanvasProps> = ({
 			const { width, height } = containerSizeRef.current;
 			ctx.clearRect(0, 0, width, height);
 		};
-	}, [effect?.type, effect?.intensity, effect?.startedAtMs, resizeTick, effectKindMap, highlightHubs, hubColor, communityMode, maxCommunityHulls, pathMode, pathColor, pathResultVersion]);
+	}, [effect?.type, effect?.intensity, effect?.startedAtMs, resizeTick, effectKindMap, highlightHubs, hubColor, communityMode, maxCommunityHulls, pathMode, pathColor, pathResultVersion, mindflowAnimations]);
 
 	return (
 		<canvas

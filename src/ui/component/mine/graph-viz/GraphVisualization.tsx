@@ -311,6 +311,7 @@ export const GraphVisualization = forwardRef<GraphVisualizationHandle, GraphVisu
 						pathColor={config.pathColor}
 						pathResultVersion={engine.pathResult?.pathNodeIds.length ?? 0}
 						getLinkKey={(l) => linkKey(l, normalizeNodeId)}
+						mindflowAnimations={config.mindflowAnimations}
 					/>
 
 					{!engine.hasData && <GraphEmptyState message={emptyMessage} />}

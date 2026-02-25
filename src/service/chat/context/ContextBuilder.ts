@@ -8,10 +8,6 @@ import type { ModelCapabilities } from '@/core/providers/types';
 import type { App } from 'obsidian';
 import { getImageMimeType, getFileMimeType } from '@/core/document/helper/FileTypeUtils';
 import { readFileAsBase64 } from '@/core/utils/obsidian-utils';
-import Handlebars from 'handlebars';
-import * as contextMemoryTemplate from '@/service/prompt/templates/context-memory';
-import * as userProfileTemplate from '@/service/prompt/templates/user-profile-context';
-import * as messageResourcesTemplate from '@/service/prompt/templates/message-resources';
 
 /**
  * Context building options
@@ -39,22 +35,12 @@ const DEFAULT_TOKEN_BUDGET = 16000;
  * Combines system prompts, project/conv summaries, recent messages, and resource summaries.
  */
 export class ContextBuilder {
-	private readonly contextMemoryTemplate: HandlebarsTemplateDelegate;
-	private readonly userProfileTemplate: HandlebarsTemplateDelegate;
-	private readonly messageResourcesTemplate: HandlebarsTemplateDelegate;
-
 	constructor(
 		private readonly promptService: PromptService,
 		private readonly resourceSummaryService: ResourceSummaryService,
 		private readonly userProfileService?: UserProfileService,
 	) {
-		// Pre-compile templates during initialization
-		this.contextMemoryTemplate = Handlebars.compile(contextMemoryTemplate.template);
-		this.userProfileTemplate = Handlebars.compile(userProfileTemplate.template);
-		this.messageResourcesTemplate = Handlebars.compile(messageResourcesTemplate.template);
-
-		// Register custom helpers
-		Handlebars.registerHelper('join', (array: any[], separator: string) => array.join(separator));
+		// Handlebars 'join' helper registered once in registerTemplateEngineHelpers() to avoid leak on each ContextBuilder creation
 	}
 
 	/**
@@ -165,8 +151,7 @@ export class ContextBuilder {
 			})),
 		};
 
-		// Render using pre-compiled template
-		const contextText = this.contextMemoryTemplate(templateVars).trim();
+		const contextText = (await this.promptService.render(PromptId.ContextMemory, templateVars)).trim();
 
 		if (!contextText) {
 			return null;
@@ -195,8 +180,7 @@ export class ContextBuilder {
 			})),
 		};
 
-		// Render using pre-compiled template
-		const contextText = this.userProfileTemplate(templateVars).trim();
+		const contextText = (await this.promptService.render(PromptId.UserProfileContext, templateVars)).trim();
 
 		return {
 			role: 'user',
@@ -238,8 +222,7 @@ export class ContextBuilder {
 					}
 				}
 			} else {
-				// Use pre-compiled template for message resources
-				const attachmentText = this.messageResourcesTemplate({
+				const attachmentText = await this.promptService.render(PromptId.MessageResources, {
 					resources: message.resources.map(resource => ({ id: resource.id }))
 				});
 				contentParts.push({

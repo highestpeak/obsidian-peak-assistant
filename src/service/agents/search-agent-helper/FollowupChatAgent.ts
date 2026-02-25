@@ -66,15 +66,16 @@ export class FollowupChatAgent {
             submit_final_answer: submitFinalAnswerTool(),
         };
         if (this.options.enableLocalSearch) {
-            tools.inspect_note_context = inspectNoteContextTool();
-            tools.graph_traversal = graphTraversalTool();
-            tools.find_path = findPathTool();
-            tools.find_key_nodes = findKeyNodesTool();
-            tools.find_orphans = findOrphansTool();
-            tools.search_by_dimensions = searchByDimensionsTool();
-            tools.explore_folder = exploreFolderTool();
-            tools.recent_changes_whole_vault = recentChangesWholeVaultTool();
-            tools.local_search_whole_vault = localSearchWholeVaultTool();
+            const tm = this.aiServiceManager.getTemplateManager?.();
+            tools.inspect_note_context = inspectNoteContextTool(tm);
+            tools.graph_traversal = graphTraversalTool(tm);
+            tools.find_path = findPathTool(tm);
+            tools.find_key_nodes = findKeyNodesTool(tm);
+            tools.find_orphans = findOrphansTool(tm);
+            tools.search_by_dimensions = searchByDimensionsTool(tm);
+            tools.explore_folder = exploreFolderTool(tm);
+            tools.recent_changes_whole_vault = recentChangesWholeVaultTool(tm);
+            tools.local_search_whole_vault = localSearchWholeVaultTool(tm);
         }
         const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.RawAiSearch);
         this.agent = new Agent<FollowupToolSet>({

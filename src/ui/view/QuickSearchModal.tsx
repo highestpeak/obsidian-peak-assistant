@@ -1,6 +1,5 @@
 import React from 'react';
 import { Modal } from 'obsidian';
-import { logClick } from '@/core/utils/perf-debug';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { QuickSearchModalContent } from './quick-search/SearchModal';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
@@ -45,7 +44,6 @@ export class QuickSearchModal extends Modal {
 	}
 
 	onClose(): void {
-		logClick('QuickSearchModal.onClose');
 		if (this.reactRenderer) {
 			this.reactRenderer.unmount();
 			this.reactRenderer = null;

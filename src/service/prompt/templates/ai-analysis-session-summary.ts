@@ -8,7 +8,7 @@ export const template = `You are summarizing an AI analysis session so the coord
 **User query (anchor):** {{userQuery}}
 
 **Conversation to compress:**
-{{content}}
+{{{content}}}
 
 Output a structured summary (markdown) within the length limit: {{wordCount}}. Include these sections when the conversation contains relevant signals; omit a section only if there is no evidence:
 

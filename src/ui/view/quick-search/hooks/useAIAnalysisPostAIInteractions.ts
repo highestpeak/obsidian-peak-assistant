@@ -5,7 +5,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { PromptId } from '@/service/prompt/PromptId';
-import { useAIAnalysisStore } from '../store/aiAnalysisStore';
+import {
+	useAIAnalysisRuntimeStore,
+	useAIAnalysisResultStore,
+	useAIAnalysisSummaryStore,
+	useAIAnalysisTopicsStore,
+} from '../store/aiAnalysisStore';
 import { useSharedStore } from '../store/sharedStore';
 import { getLastAnalysisHistorySearch, searchCurrentResult } from '../followupContextRuntime';
 import { AppContext } from '@/app/context/AppContext';
@@ -151,11 +156,11 @@ async function getCandidateFoldersFromSearch(
 export function useGenerateResultSaveField() {
     const { manager, searchClient } = useServiceContext();
     const { searchQuery } = useSharedStore();
-    const title = useAIAnalysisStore((s) => s.title ?? '');
-    const summary = useAIAnalysisStore((s) => {
-        if (s.isSummaryStreaming || (s.isAnalyzing && s.summaryChunks.length > 0)) {
-            return s.summaryChunks.join('');
-        }
+    const title = useAIAnalysisRuntimeStore((s) => s.title ?? '');
+    const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
+    const summary = useAIAnalysisSummaryStore((s) => {
+        const chunks = s.summaryChunks ?? [];
+        if (s.isSummaryStreaming || (isAnalyzing && chunks.length > 0)) return chunks.join('');
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
@@ -222,8 +227,11 @@ export function useGenerateResultSaveField() {
 }
 
 export function useAnalyzeTopic() {
-    const { summaryChunks, setTopicAnalyzeStreaming, setTopicAnalyzeStreamingAppend, setTopicModalOpen } = useAIAnalysisStore();
-    const summary = summaryChunks.join('');
+    const summaryChunks = useAIAnalysisSummaryStore((s) => s.summaryChunks);
+    const setTopicAnalyzeStreaming = useAIAnalysisTopicsStore((s) => s.setTopicAnalyzeStreaming);
+    const setTopicAnalyzeStreamingAppend = useAIAnalysisTopicsStore((s) => s.setTopicAnalyzeStreamingAppend);
+    const setTopicModalOpen = useAIAnalysisTopicsStore((s) => s.setTopicModalOpen);
+    const summary = (summaryChunks ?? []).join('');
     const { manager } = useServiceContext();
     const topicConfig = useTopicFollowupChatConfig({ summary, topicLabel: null });
 
@@ -237,7 +245,7 @@ export function useAnalyzeTopic() {
         const onDelta = (answerSoFar: string) => {
             const chunk = answerSoFar.length > lastLengthRef.current ? answerSoFar.slice(lastLengthRef.current) : '';
             lastLengthRef.current = answerSoFar.length;
-            if (chunk) useAIAnalysisStore.getState().setTopicAnalyzeStreamingAppend(chunk);
+            if (chunk) useAIAnalysisTopicsStore.getState().setTopicAnalyzeStreamingAppend(chunk);
         };
 
         const variables = topicConfig.getVariables(question);
@@ -245,18 +253,18 @@ export function useAnalyzeTopic() {
         try {
             const acc = await consumeFollowupStream(stream, {
                 onDelta,
-                onUsage: (usage) => useAIAnalysisStore.getState().accumulateUsage(usage),
+                onUsage: (usage) => useAIAnalysisRuntimeStore.getState().accumulateUsage(usage),
             });
-            useAIAnalysisStore.getState().setTopicAnalyzeResult(topic, question, acc);
+            useAIAnalysisTopicsStore.getState().setTopicAnalyzeResult(topic, question, acc);
         } catch (e) {
             console.warn('[useAnalyzeTopic] Analyze failed:', e);
-            useAIAnalysisStore.getState().setTopicAnalyzeResult(
+            useAIAnalysisTopicsStore.getState().setTopicAnalyzeResult(
                 topic,
                 question,
                 e instanceof Error ? e.message : String(e)
             );
         } finally {
-            useAIAnalysisStore.getState().setTopicAnalyzeStreaming(null);
+            useAIAnalysisTopicsStore.getState().setTopicAnalyzeStreaming(null);
         }
     }, [summary, manager, topicConfig, setTopicAnalyzeStreaming, setTopicAnalyzeStreamingAppend, setTopicModalOpen]);
 
@@ -269,18 +277,20 @@ export function useAnalyzeTopic() {
 export function useRegenerateOverviewMermaid() {
     const { manager } = useServiceContext();
     const { searchQuery } = useSharedStore();
-    const currentSummary = useAIAnalysisStore((s) => {
-        if (s.isSummaryStreaming || (s.isAnalyzing && s.summaryChunks.length > 0)) return s.summaryChunks.join('');
+    const isAnalyzing2 = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
+    const currentSummary = useAIAnalysisSummaryStore((s) => {
+        const chunks = s.summaryChunks ?? [];
+        if (s.isSummaryStreaming || (isAnalyzing2 && chunks.length > 0)) return chunks.join('');
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
     });
-    const topics = useAIAnalysisStore((s) => s.topics ?? []);
-    const graph = useAIAnalysisStore((s) => s.graph);
-    const sources = useAIAnalysisStore((s) => s.sources ?? []);
-    const dashboardBlocks = useAIAnalysisStore((s) => s.dashboardBlocks ?? []);
-    const pushOverviewMermaidVersion = useAIAnalysisStore((s) => s.pushOverviewMermaidVersion);
-    const analysisMode = useAIAnalysisStore((s) => s.runAnalysisMode ?? 'vaultFull');
+    const topics = useAIAnalysisResultStore((s) => s.topics ?? []);
+    const graph = useAIAnalysisResultStore((s) => s.graph);
+    const sources = useAIAnalysisResultStore((s) => s.sources ?? []);
+    const dashboardBlocks = useAIAnalysisResultStore((s) => s.dashboardBlocks ?? []);
+    const pushOverviewMermaidVersion = useAIAnalysisResultStore((s) => s.pushOverviewMermaidVersion);
+    const analysisMode = useAIAnalysisRuntimeStore((s) => s.runAnalysisMode ?? 'vaultFull');
 
     const [isRegenerating, setIsRegenerating] = useState(false);
 
@@ -338,8 +348,10 @@ export function useGraphFollowupChatConfig(params: {
 }): InlineFollowupChatConfig {
     const { uiGraph, graphChatNodeContext } = params;
     const { searchQuery } = useSharedStore();
-    const mainSummary = useAIAnalysisStore((s) => {
-        if (s.isSummaryStreaming || (s.isAnalyzing && s.summaryChunks.length > 0)) return s.summaryChunks.join('');
+    const isAnalyzing3 = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
+    const mainSummary = useAIAnalysisSummaryStore((s) => {
+        const chunks = s.summaryChunks ?? [];
+        if (s.isSummaryStreaming || (isAnalyzing3 && chunks.length > 0)) return chunks.join('');
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
@@ -412,8 +424,10 @@ export function useBlocksFollowupChatConfig(params: {
 }): InlineFollowupChatConfig {
     const { dashboardBlocks, blocksChatContext, blocksChatItemContext } = params;
     const { searchQuery } = useSharedStore();
-    const mainSummary = useAIAnalysisStore((s) => {
-        if (s.isSummaryStreaming || (s.isAnalyzing && s.summaryChunks.length > 0)) return s.summaryChunks.join('');
+    const isAnalyzing3 = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
+    const mainSummary = useAIAnalysisSummaryStore((s) => {
+        const chunks = s.summaryChunks ?? [];
+        if (s.isSummaryStreaming || (isAnalyzing3 && chunks.length > 0)) return chunks.join('');
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
@@ -450,8 +464,10 @@ export function useSourcesFollowupChatConfig(params: {
 }): InlineFollowupChatConfig {
     const { sources } = params;
     const { searchQuery } = useSharedStore();
-    const mainSummary = useAIAnalysisStore((s) => {
-        if (s.isSummaryStreaming || (s.isAnalyzing && s.summaryChunks.length > 0)) return s.summaryChunks.join('');
+    const isAnalyzing3 = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
+    const mainSummary = useAIAnalysisSummaryStore((s) => {
+        const chunks = s.summaryChunks ?? [];
+        if (s.isSummaryStreaming || (isAnalyzing3 && chunks.length > 0)) return chunks.join('');
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';

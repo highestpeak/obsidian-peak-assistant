@@ -1,10 +1,17 @@
 import { convertSourcesToSearchResultItems } from "../../hooks/useAIAnalysisResult";
-import { useAIAnalysisStore } from "../../store";
+import {
+    useAIAnalysisRuntimeStore,
+    useAIAnalysisSummaryStore,
+    useAIAnalysisResultStore,
+    useAIAnalysisInteractionsStore,
+    useAIAnalysisStepsStore,
+} from "../../store/aiAnalysisStore";
 import { useMemo, useState, useEffect } from "react";
 import { IntelligenceFrame } from "../../../../component/mine/IntelligenceFrame";
 import { SummaryContent } from "../ai-analysis-sections/SummarySection";
 import { TopicSection } from "../ai-analysis-sections/TopicSection";
-import { KnowledgeGraphSection } from "../ai-analysis-sections/KnowledgeGraphSection";
+import { MermaidMindFlowSection } from "@/ui/view/quick-search/components/ai-analysis-sections/MermaidMindFlowSection";
+import { OverviewMermaidSection } from "@/ui/view/quick-search/components/ai-analysis-sections/OverviewMermaidSection";
 import { TopSourcesSection } from "../ai-analysis-sections/SourcesSection";
 import { InlineFollowupChat } from "../../../../component/mine/InlineFollowupChat";
 import { DashboardBlocksSection } from "../ai-analysis-sections/DashboardBlocksSection";
@@ -14,14 +21,14 @@ import { createOpenSourceCallback } from "../../callbacks/open-source-file";
 import { useBlocksFollowupChatConfig, useRegenerateOverviewMermaid } from "../../hooks/useAIAnalysisPostAIInteractions";
 import React from "react";
 import { StreamdownIsolated } from "@/ui/component/mine";
-import { MessageCircle, RefreshCw, Copy, Check } from "lucide-react";
+import { MessageCircle, Copy, Check, ChevronDown, ChevronRight } from "lucide-react";
 import { useStreamdownWikilinkClick } from "../../callbacks/useStreamdownWikilinkClick";
 import { useSharedStore } from "../../store/sharedStore";
 import { Button } from "@/ui/component/shared-ui/button";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/ui/component/shared-ui/hover-card";
 import { StreamingStepsDisplay } from "../ai-analysis-sections/StepsDisplay";
 import { AppContext } from "@/app/context/AppContext";
 import { copyText } from "@/ui/view/shared/common-utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/ui/component/shared-ui/collapsible";
 
 export const CompletedAIAnalysis: React.FC<{
     onClose?: () => void;
@@ -41,32 +48,31 @@ export const CompletedAIAnalysis: React.FC<{
 
     const handleStreamdownClick = useStreamdownWikilinkClick(onOpenWikilink);
 
-    const {
-        setContextChatModal,
-        appendBlocksFollowup,
-        blocksFollowupHistoryByBlockId,
-        contextChatModal,
-        summaryChunks,
-        analysisStartedAtMs,
-        duration,
-        topics,
-        dashboardBlocks,
-        sources,
-        overviewMermaidVersions,
-        overviewMermaidActiveIndex,
-        setOverviewMermaidActiveIndex,
-        pushOverviewMermaidVersion,
-        fullAnalysisFollowUp,
-        followUpStreaming,
-        runAnalysisMode,
-        getHasGraphData,
-        graph,
-        steps,
-        currentStep,
-        stepTrigger,
-        getSummary,
-    } = useAIAnalysisStore();
-    const { searchQuery } = useSharedStore();
+    const analysisStartedAtMs = useAIAnalysisRuntimeStore((s) => s.analysisStartedAtMs);
+    const duration = useAIAnalysisRuntimeStore((s) => s.duration);
+    const runAnalysisMode = useAIAnalysisRuntimeStore((s) => s.runAnalysisMode);
+
+    const summaryChunks = useAIAnalysisSummaryStore((s) => s.summaryChunks);
+    const getSummary = useAIAnalysisSummaryStore((s) => s.getSummary);
+
+    const topics = useAIAnalysisResultStore((s) => s.topics);
+    const dashboardBlocks = useAIAnalysisResultStore((s) => s.dashboardBlocks);
+    const sources = useAIAnalysisResultStore((s) => s.sources);
+    const overviewMermaidVersions = useAIAnalysisResultStore((s) => s.overviewMermaidVersions);
+    const overviewMermaidActiveIndex = useAIAnalysisResultStore((s) => s.overviewMermaidActiveIndex);
+    const setOverviewMermaidActiveIndex = useAIAnalysisResultStore((s) => s.setOverviewMermaidActiveIndex);
+    const mindflowMermaid = useAIAnalysisResultStore((s) => s.mindflowMermaid);
+    const mindflowProgress = useAIAnalysisResultStore((s) => s.mindflowProgress);
+    const graph = useAIAnalysisResultStore((s) => s.graph);
+
+    const setContextChatModal = useAIAnalysisInteractionsStore((s) => s.setContextChatModal);
+    const appendBlocksFollowup = useAIAnalysisInteractionsStore((s) => s.appendBlocksFollowup);
+    const blocksFollowupHistoryByBlockId = useAIAnalysisInteractionsStore((s) => s.blocksFollowupHistoryByBlockId);
+    const contextChatModal = useAIAnalysisInteractionsStore((s) => s.contextChatModal);
+    const fullAnalysisFollowUp = useAIAnalysisInteractionsStore((s) => s.fullAnalysisFollowUp);
+    const followUpStreaming = useAIAnalysisInteractionsStore((s) => s.followUpStreaming);
+
+    const steps = useAIAnalysisStepsStore((s) => s.steps);
     const { regenerateOverview, isRegenerating } = useRegenerateOverviewMermaid();
     const settings = AppContext.getInstance().settings;
     const isSimpleMode = runAnalysisMode === 'docSimple' || runAnalysisMode === 'vaultSimple';
@@ -74,8 +80,8 @@ export const CompletedAIAnalysis: React.FC<{
     const [showBlocksFollowup, setShowBlocksFollowup] = useState(false);
     const [blocksChatContext, setBlocksChatContext] = useState<DashboardBlock | null>(null);
     const [blocksChatItemContext, setBlocksChatItemContext] = useState<{ block: DashboardBlock; item: DashboardBlockItem } | null>(null);
-    const [overviewCopied, setOverviewCopied] = useState(false);
     const [copiedContinueIndex, setCopiedContinueIndex] = useState<number | null>(null);
+    const [mindflowOpen, setMindflowOpen] = useState(false);
 
     useEffect(() => {
         if (!showBlocksFollowup) {
@@ -130,6 +136,32 @@ export const CompletedAIAnalysis: React.FC<{
 
     return (
         <div className="pktw-flex pktw-flex-col pktw-gap-4">
+            {/* MindFlow (collapsible, default collapsed, before Summary) */}
+            {!isSimpleMode && (mindflowMermaid ?? '').trim() ? (
+                <Collapsible open={mindflowOpen} onOpenChange={setMindflowOpen}>
+                    <CollapsibleTrigger className="pktw-w-full pktw-group pktw-shadow-none">
+                        <div className="pktw-w-full pktw-flex pktw-items-center pktw-justify-start pktw-gap-2 pktw-py-1.5 pktw-transition-colors hover:pktw-bg-muted/50 pktw-rounded-md pktw-px-1">
+                            {mindflowOpen ? (
+                                <ChevronDown className="pktw-size-3.5 pktw-text-muted-foreground" />
+                            ) : (
+                                <ChevronRight className="pktw-size-3.5 pktw-text-muted-foreground" />
+                            )}
+                            <span className="pktw-text-xs pktw-font-semibold pktw-text-[#6b7280]">Mind Flow</span>
+                        </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                        <div className="pktw-mt-2">
+                            <MermaidMindFlowSection
+                                mindflowMermaid={mindflowMermaid ?? ''}
+                                mindflowProgress={mindflowProgress}
+                                maxHeightClassName="pktw-min-h-[120px]"
+                                containerClassName=""
+                            />
+                        </div>
+                    </CollapsibleContent>
+                </Collapsible>
+            ) : null}
+
             {/* Summary: only this area should have the frame */}
             {summaryChunks && summaryChunks.length > 0 ? (
                 <div ref={summaryRef} className="pktw-scroll-mt-24">
@@ -146,78 +178,14 @@ export const CompletedAIAnalysis: React.FC<{
             {/* Overview (Mermaid): full mode only; simple mode is chat-with-doc + raw search, no overview */}
             {!isSimpleMode && (displayOverview?.trim() || isRegenerating) && (
                 <div ref={overviewRef} className="pktw-scroll-mt-24">
-                    <div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border-0 pktw-flex pktw-flex-col pktw-gap-2">
-                        <div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2">
-                            <span className="pktw-text-xs pktw-font-semibold pktw-text-[#6b7280]">Overview</span>
-                            <div className="pktw-flex pktw-items-center pktw-gap-1">
-                                {displayOverview?.trim() ? (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="pktw-h-7 pktw-w-7 pktw-shadow-none"
-                                        title={overviewCopied ? 'Copied' : 'Copy overview'}
-                                        onClick={async () => {
-                                            await copyText(displayOverview);
-                                            setOverviewCopied(true);
-                                            setTimeout(() => setOverviewCopied(false), 1500);
-                                        }}
-                                    >
-                                        {overviewCopied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#6c757d]" />}
-                                    </Button>
-                                ) : null}
-                                {((overviewMermaidVersions?.length ?? 0) > 1 || displayOverview?.trim()) && (
-                                    <HoverCard openDelay={100} closeDelay={150}>
-                                        <HoverCardTrigger asChild>
-                                            <Button variant="ghost" size="sm" className="pktw-h-7 pktw-px-2 pktw-text-xs">
-                                                {(overviewMermaidActiveIndex ?? 0) === (overviewMermaidVersions?.length ?? 1) - 1
-                                                    ? 'Current'
-                                                    : `Previous ${(overviewMermaidVersions?.length ?? 0) - 1 - (overviewMermaidActiveIndex ?? 0)}`}
-                                            </Button>
-                                        </HoverCardTrigger>
-                                        <HoverCardContent align="end" className="pktw-w-48 pktw-p-1 pktw-z-[10000] pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
-                                            {(overviewMermaidVersions ?? []).map((_, idx) => {
-                                                const len = overviewMermaidVersions!.length;
-                                                const targetIndex = len - 1 - idx;
-                                                const isCurrent = idx === 0;
-                                                const label = isCurrent ? 'Current' : `Previous ${idx}`;
-                                                return (
-                                                    <Button
-                                                        key={idx}
-                                                        variant="ghost"
-                                                        style={{ cursor: 'pointer' }}
-                                                        onClick={() => setOverviewMermaidActiveIndex(targetIndex)}
-                                                        className={`pktw-w-full pktw-justify-start pktw-px-2 pktw-py-1.5 pktw-text-sm pktw-font-normal pktw-shadow-none ${(overviewMermaidActiveIndex ?? 0) === targetIndex ? 'pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed]' : ''}`}
-                                                    >
-                                                        {label}
-                                                    </Button>
-                                                );
-                                            })}
-                                        </HoverCardContent>
-                                    </HoverCard>
-                                )}
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="pktw-h-7 pktw-px-2 pktw-text-xs"
-                                    onClick={regenerateOverview}
-                                    disabled={isRegenerating}
-                                >
-                                    <RefreshCw className={`pktw-w-3.5 pktw-h-3.5 pktw-mr-1 ${isRegenerating ? 'pktw-animate-spin' : ''}`} />
-                                    {isRegenerating ? 'Generating…' : 'Regenerate'}
-                                </Button>
-                            </div>
-                        </div>
-                        {displayOverview?.trim() ? (
-                            <StreamdownIsolated
-                                className="pktw-w-full pktw-min-w-0 pktw-text-left pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none pktw-select-text"
-                                isAnimating={false}
-                            >
-                                {displayOverview}
-                            </StreamdownIsolated>
-                        ) : isRegenerating ? (
-                            <span className="pktw-text-xs pktw-text-[#6b7280]">Generating overview diagram…</span>
-                        ) : null}
-                    </div>
+                    <OverviewMermaidSection
+                        displayOverview={displayOverview}
+                        overviewMermaidVersions={overviewMermaidVersions}
+                        overviewMermaidActiveIndex={overviewMermaidActiveIndex}
+                        setOverviewMermaidActiveIndex={setOverviewMermaidActiveIndex}
+                        regenerateOverview={regenerateOverview}
+                        isRegenerating={isRegenerating}
+                    />
                 </div>
             )}
 
@@ -231,15 +199,6 @@ export const CompletedAIAnalysis: React.FC<{
                 </div>
             )}
 
-            {/* Graph (hidden in simple mode) */}
-            {!isSimpleMode && getHasGraphData() && (
-                <div ref={graphSectionRef} className="pktw-scroll-mt-24">
-                    <KnowledgeGraphSection
-                        onClose={onClose}
-                    />
-                </div>
-            )}
-
             {/* Sources (full width) */}
             {dedupedSources.length > 0 && (
                 <div ref={sourcesRef} className="pktw-scroll-mt-24">
@@ -247,6 +206,7 @@ export const CompletedAIAnalysis: React.FC<{
                         sources={convertSourcesToSearchResultItems(dedupedSources)}
                         onOpen={createOpenSourceCallback(onClose)}
                         skipAnimation={true}
+                        graph={graph}
                     />
                 </div>
             )}
@@ -398,8 +358,8 @@ export const CompletedAIAnalysis: React.FC<{
                 <div ref={stepsRef} className="pktw-scroll-mt-24">
                     <StreamingStepsDisplay
                         steps={steps ?? []}
-                        currentStep={currentStep}
-                        stepTrigger={stepTrigger}
+                        currentStep={null}
+                        stepTrigger={0}
                         registerCurrentStepRender={undefined}
                         startedAtMs={analysisStartedAtMs}
                         isRunning={false}

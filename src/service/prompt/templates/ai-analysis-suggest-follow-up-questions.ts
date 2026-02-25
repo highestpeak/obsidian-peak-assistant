@@ -1,14 +1,19 @@
 /**
- * User prompt for follow-up question suggestion. Session context; execution rules.
- * System prompt holds constitutional principles.
+ * User prompt for follow-up question suggestion. Variables: FollowUpQuestionVariables.
  */
 export const template = `# SESSION CONTEXT
 
-You are given a compressed view of the **entire analysis session** (user query, reasoning steps, search results, summary).
-
+- **User query**: {{initialPrompt}}
+- **Latest analysis context**:
 <<<
-{{sessionContext}}
+{{{agentMemoryMessage}}}
 >>>
+{{#if topics}}
+- **Current topics**: {{{topics}}}
+{{/if}}
+{{#if dashboardBlocks}}
+- **Current dashboard blocks**: {{{dashboardBlocks}}}
+{{/if}}
 
 # TASK
 

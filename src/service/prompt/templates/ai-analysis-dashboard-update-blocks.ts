@@ -1,53 +1,48 @@
-export const template = `# MOMENTUM
-The analysis has reached a new frontier. You must now project the latent logic of the latest evidence into the spatial landscape.
-
-# OBSERVATION WINDOW
-- **Original Intent**: {{originalQuery}}
-- **Active Mode**: {{analysisMode}}
-
-# WHAT YOU ARE GIVEN (and why)
-- **Evidence Stream**: the newest signals. Use it to decide what must be synthesized now.
-- **Existing Landscape**: the current dashboard blocks. Use it to refine/replace without duplicating roles.
-- **Execution Plan** (\`plan.blockPlan\`): planner instructions describing what block missions to fulfill. Follow it faithfully; it exists to keep the dashboard coherent across agents.
-
-# THE EVIDENCE STREAM
+/**
+ * User prompt for dashboard blocks update. Variables: DashboardBlockVariables & ErrorRetryInfo & toolFormatGuidance.
+ * Use call_search_agent (rawSearchAgent) when you need to look up content from the vault.
+ */
+export const template = `# OBSERVATION
+- **Analysis context** (latest messages):
 <<<
-{{recentEvidenceHint}}
+{{{agentMemoryMessage}}}
 >>>
+Use get_analysis_message_by_index to fetch a specific message by 0-based index when needed.
 
-# THE EXISTING LANDSCAPE
-<<<
-{{currentResultSnapshot}}
->>>
+# CONTEXT TOOLS (REQUIRED)
+- **search_analysis_context**: Call 2–4 times before writing blocks. Query by keywords, topic names, or paths from Sources.
+- **get_analysis_message_by_index**: Fetch full text of one message by 0-based index.
+- **call_search_agent**: Use when you need to **look up content from the vault** (e.g. a concept, path, or question). Prefer searching over guessing—call_search_agent runs a real vault search.
 
-{{#if plan.blockPlan}}
-# EXECUTION PLAN (follow faithfully)
-{{#each plan.blockPlan}}
-- {{this}}
+# BLOCK PLAN (follow faithfully)
+{{#each blockPlan}}
+- {{{this}}}
 {{/each}}
+
+# CURRENT DASHBOARD BLOCKS (refine or add; avoid duplicates)
+{{#if currentDashboardBlocks}}
+<<<
+{{{currentDashboardBlocks}}}
+>>>
 {{/if}}
 
 # DIRECTIVE
-1. **Plan then generate**: First decide internally the block outline and order (e.g. Contradictions, Blindspots, Challenge questions, Action plan/timeline, Todo, Suggest questions, then synthesis). Then call the tool to output blocks one by one or in a small batch—do not dump all content in one call when you have many sections.
-2. **Answer-first**: Produce **synthesis and answers** (conclusions, recommendations, tradeoffs, next steps). Include at most **0–3** follow-up questions in narrative blocks; do not make question lists the main content. If the tool supports a dedicated follow-up questions block (clickable items), prefer using it so the user can continue the analysis with one click.
-3. **Evaluate Volume**: Scan the 'Evidence Stream'. Is this a deep narrative analysis or a collection of brief signals?
-4. **Prefer diagrams for structure**: If the evidence has **relationships**, **processes**, **flows**, **comparisons**, or **decision trees**, include at least one block that visualizes the structure (diagram/flow/map). Do not reduce the dashboard to only prose when structure is present.
-5. **Calibrate Weight**:
-   - Assign **High Weight (7-10)** to long-form text or complex diagrams that require the full horizon to be legible.
-   - Assign **Medium/Low Weight (1-6)** to modular items or concise lists that can share the space.
-6. **Harmonize Layout**: Prevent "Jagged Logic"—do not place a high-density, deep block next to a shallow one if it creates unbalanced white space.
-7. **Refine or Birth**: Determine if existing blocks should expand to hold this new truth, or if a new spatial dimension must be born.
-8. **No duplicate roles**: Do not add a block that duplicates an existing block's role. To improve an existing block, use \`remove\` (with \`removeId\` = that block's \`id\`) then \`add\` the new version, or merge content.
+0. **Gather context first**: Use search_analysis_context and get_analysis_message_by_index; use **call_search_agent** when you need to find or verify content in the vault.
+1. **Plan then generate**: Decide block outline and order, then call add_dashboard_blocks (one by one or small batch).
+2. **Answer-first + substantive**: Each MARKDOWN block must be substantive (2–4 paragraphs or 5+ detailed items with reasoning). Include evidence, quotes, or comparison. Avoid thin blocks.
+3. **Type richness**: When evidence has process, flow, hierarchy, or multi-entity relationships, add at least 1 MERMAID block. Plus MARKDOWN and 1 ACTION_GROUP or TILE.
+4. **No duplicate roles**: Do not add a block that duplicates an existing one. Use remove (removeId) then add to update.
 
-# OUTPUT LANGUAGE
-Use the same language as the user's original query for all block titles and content (markdown, mermaid, tile text). When adding wikilinks, use vault-relative path only (e.g. \`[[folder/note.md]]\`), not \`[[tag]]\`.
+{{#if errorRetryInfo.attemptTimes}}
+# RETRY (attempt {{errorRetryInfo.attemptTimes}})
+Last error: {{{errorRetryInfo.lastAttemptErrorMessages}}}. Fix and try again.
+{{/if}}
 
 {{#if toolFormatGuidance}}
 # add_dashboard_blocks FORMAT
-{{toolFormatGuidance}}
-
+{{{toolFormatGuidance}}}
 {{/if}}
-# TRIGGER
-Execute the balanced manifestation of thought now.`;
+
+Execute now.`;
 
 export const expectsJson = false;

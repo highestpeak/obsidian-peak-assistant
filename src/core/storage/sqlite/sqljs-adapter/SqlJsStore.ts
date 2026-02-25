@@ -356,6 +356,10 @@ export class SqlJsStore implements SqliteDatabase {
 			this.db.close();
 			this.db = null as any;
 		}
+		// Clear Kysely instance and its dialect/driver to break reference chains
+		if (this.kyselyInstance) {
+			(this.kyselyInstance as any) = null;
+		}
 	}
 
 	/**

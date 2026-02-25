@@ -4,8 +4,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { TrendingUp, Copy, MessageCircle, Maximize2, X, Frame, Tag } from 'lucide-react';
 import { AppContext } from '@/app/context/AppContext';
 import { openFile } from '@/core/utils/obsidian-utils';
-import { GraphVisualization, GraphVisualizationHandle, GraphVizNodeHoverInfo, GraphVizNodeInfo } from '@/ui/component/mine/GraphVisualization';
-import { useAIAnalysisStore, useGraphAnimationStore } from '@/ui/view/quick-search/store';
+import { GraphVisualization, GraphVisualizationHandle, GraphVizNodeHoverInfo, GraphVizNodeInfo, type UIPreviewGraph } from '@/ui/component/mine/GraphVisualization';
+import { useGraphAnimationStore } from '@/ui/view/quick-search/store';
+import { useAIAnalysisRuntimeStore, useAIAnalysisResultStore, useAIAnalysisInteractionsStore } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { createOpenSourceCallback } from '@/ui/view/quick-search/callbacks/open-source-file';
 import {
 	createObsidianGraphPreset,
@@ -22,7 +23,6 @@ import { AISearchNode } from '@/service/agents/AISearchAgent';
 import { DEFAULT_NODE_TYPE } from '@/service/agents/search-agent-helper/helpers/DashboardUpdateToolBuilder';
 import { convertGraphToGraphPreview } from '@/ui/view/shared/graph-utils';
 import { copyText } from '@/ui/view/shared/common-utils';
-import { logClick } from '@/core/utils/perf-debug';
 import { cn } from '@/ui/react/lib/utils';
 
 /**
@@ -125,8 +125,12 @@ export const KnowledgeGraphSection: React.FC<{
 	containerClassName?: string;
 }> = ({ onClose, maxHeightClassName, containerClassName }) => {
 
-	const { graph: aiGraph, title: analysisTitle } = useAIAnalysisStore();
+	const aiGraph = useAIAnalysisResultStore((s) => s.graph);
+	const analysisTitle = useAIAnalysisRuntimeStore((s) => s.title);
+	const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
 	const uiGraph = useMemo(() => convertGraphToGraphPreview(aiGraph), [aiGraph]);
+	/** Stable empty graph during streaming to avoid useGraphStreaming clear on every store update. */
+	const stableEmptyGraph = useMemo<UIPreviewGraph | null>(() => ({ nodes: [], edges: [] }), []);
 
 	/**
 	 * Collect all other node types (not DEFAULT_NODE_TYPE=document) and their labels.
@@ -153,12 +157,9 @@ export const KnowledgeGraphSection: React.FC<{
 
 	const hasSidePanelContent = otherNodeTypes.size > 0 && Array.from(otherNodeTypes.values()).some(labels => labels.length > 0);
 
-	const {
-		analysisCompleted,
-		graphFollowupHistory,
-		setContextChatModal,
-		appendGraphFollowup,
-	} = useAIAnalysisStore();
+	const graphFollowupHistory = useAIAnalysisInteractionsStore((s) => s.graphFollowupHistory);
+	const setContextChatModal = useAIAnalysisInteractionsStore((s) => s.setContextChatModal);
+	const appendGraphFollowup = useAIAnalysisInteractionsStore((s) => s.appendGraphFollowup);
 
 	const { runGraphTool: runGraphToolBase } = useAnalyzeGraphResults();
 	const [graphHops, setGraphHops] = useState(1);
@@ -196,6 +197,15 @@ export const KnowledgeGraphSection: React.FC<{
 	// Path start for "Find path from start" in graph node context menu (owned by Section, passed to Viz).
 	const [pathStart, setPathStart] = useState<string | null>(null);
 	const [hover, setHover] = useState<GraphVizNodeHoverInfo | null>(null);
+
+	// Register graphRef for direct patch apply during streaming (avoids props graph → clear re-apply).
+	useEffect(() => {
+		const applyPatch = (patch: import('@/core/providers/ui-events/graph').GraphPatch) => {
+			graphRef.current?.applyPatch(patch);
+		};
+		useGraphAnimationStore.getState().setGraphApplyPatchRef({ applyPatch });
+		return () => useGraphAnimationStore.getState().setGraphApplyPatchRef(null);
+	}, []);
 
 	// graph rendering progress's animation
 
@@ -254,7 +264,7 @@ export const KnowledgeGraphSection: React.FC<{
 			<GraphVisualization
 				ref={graphRef}
 				{...obsidianPreset}
-				graph={uiGraph}
+				graph={analysisCompleted ? uiGraph : stableEmptyGraph}
 				effect={effect}
 				title={analysisTitle ?? undefined}
 				hideTitle={fullscreenOpen}
@@ -357,10 +367,7 @@ export const KnowledgeGraphSection: React.FC<{
 					size="icon"
 					className="pktw-shadow-none pktw-rounded-md pktw-border pktw-opacity-40 hover:pktw-opacity-100"
 					title="Fullscreen"
-					onClick={() => {
-					logClick('graph-fullscreen-open');
-					setFullscreenOpen(true);
-				}}
+					onClick={() => setFullscreenOpen(true)}
 				>
 					<Maximize2 className="pktw-w-4 pktw-h-4" />
 				</Button>
@@ -493,10 +500,7 @@ export const KnowledgeGraphSection: React.FC<{
 				)}
 				style={fullscreenOpen ? undefined : { visibility: 'hidden' }}
 				onClick={(e) => {
-					if (fullscreenOpen && e.target === e.currentTarget) {
-						logClick('graph-fullscreen-backdrop-close');
-						setFullscreenOpen(false);
-					}
+					if (fullscreenOpen && e.target === e.currentTarget) setFullscreenOpen(false);
 				}}
 			>
 				<motion.div

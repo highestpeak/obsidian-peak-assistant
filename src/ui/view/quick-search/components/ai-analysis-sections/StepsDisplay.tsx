@@ -256,6 +256,9 @@ export const StreamingStepsDisplay: React.FC<{
 	const eventCurrentStepIdRef = useRef<string | null>(null);
 	eventCurrentStepIdRef.current = eventCurrentStepId;
 	const titleJustChangedRef = useRef(false);
+	// Accumulate deltas in ref to avoid setEventStepsById + string concat on every delta (GC/crash).
+	type DeltaAccum = { stepId: string; titleChunks: string[]; descChunks: string[]; startedAtMs: number };
+	const deltaAccumRef = useRef<DeltaAccum | null>(null);
 
 	// Use the shared incremental renderer hook
 	const { appendText, clear, resetUserScroll } = useIncrementalRenderer(
@@ -270,8 +273,22 @@ export const StreamingStepsDisplay: React.FC<{
 			setEventStepIds([]);
 			setEventStepsById({});
 			setEventCurrentStepId(null);
+			deltaAccumRef.current = null;
 		}
 	}, [startedAtMs, isRunning]);
+
+	// Flush accumulated deltas to eventStepsById (only when step completes - avoids thousands of setState calls).
+	const flushDeltaAccum = useCallback(() => {
+		const acc = deltaAccumRef.current;
+		if (!acc) return;
+		deltaAccumRef.current = null;
+		const title = acc.titleChunks.join('') || 'Step';
+		const description = acc.descChunks.join('');
+		setEventStepsById((by) => ({
+			...by,
+			[acc.stepId]: { title, description, startedAtMs: acc.startedAtMs },
+		}));
+	}, []);
 
 	// Subscribe to ui-step and ui-step-delta (steps-display only)
 	const handleUIEvent = useCallback((type: string, payload: any) => {
@@ -282,28 +299,20 @@ export const StreamingStepsDisplay: React.FC<{
 		if (type === 'ui-step') {
 			const prev = eventCurrentStepIdRef.current;
 			if (prev && prev !== stepId) {
-				// Defer clear so completed list (with prev step) can render first
+				flushDeltaAccum();
 				setTimeout(() => clear(), 0);
 			}
 			const newDesc = typeof payload.description === 'string' ? payload.description : '';
 			const titleChanged = typeof payload.title === 'string';
 			if (titleChanged) titleJustChangedRef.current = true;
-			// Same stepId: overwrite title/description (no append) so we don't get "Improving...Summarizing..." concatenation
+			const ts = Date.now();
+			const newTitle = typeof payload.title === 'string' ? payload.title : 'Step';
+			deltaAccumRef.current = { stepId, titleChunks: newTitle ? [newTitle] : [], descChunks: newDesc ? [newDesc] : [], startedAtMs: ts };
 			setEventStepIds((ids) => (ids.includes(stepId) ? ids : [...ids, stepId]));
-			setEventStepsById((by) => {
-				const existing = by[stepId];
-				const newTitle =
-					typeof payload.title === 'string' ? payload.title : (existing?.title ?? 'Step');
-				const description = newDesc !== '' ? newDesc : (existing?.description ?? '');
-				return {
-					...by,
-					[stepId]: {
-						title: newTitle,
-						description,
-						startedAtMs: existing?.startedAtMs ?? Date.now(),
-					},
-				};
-			});
+			setEventStepsById((by) => ({
+				...by,
+				[stepId]: { title: newTitle, description: newDesc, startedAtMs: by[stepId]?.startedAtMs ?? ts },
+			}));
 			setEventCurrentStepId(stepId);
 			if (newDesc) {
 				const prefix = titleJustChangedRef.current ? '\n' : '';
@@ -314,31 +323,29 @@ export const StreamingStepsDisplay: React.FC<{
 			const deltaDesc = typeof payload.descriptionDelta === 'string' ? payload.descriptionDelta : '';
 			const deltaTitle = typeof payload.titleDelta === 'string' ? payload.titleDelta : '';
 			if (deltaTitle) titleJustChangedRef.current = true;
-			setEventStepsById((by) => {
-				const cur = by[stepId] ?? { title: '', description: '', startedAtMs: Date.now() };
-				return {
-					...by,
-					[stepId]: {
-						...cur,
-						title: cur.title + deltaTitle,
-						description: cur.description + deltaDesc,
-					},
-				};
-			});
+			// Accumulate in ref only - no setEventStepsById (was causing GC/crash from thousands of updates).
+			let acc = deltaAccumRef.current;
+			if (!acc || acc.stepId !== stepId) {
+				acc = { stepId, titleChunks: [], descChunks: [], startedAtMs: Date.now() };
+				deltaAccumRef.current = acc;
+			}
+			if (deltaDesc) acc.descChunks.push(deltaDesc);
+			if (deltaTitle) acc.titleChunks.push(deltaTitle);
 			if (deltaDesc && eventCurrentStepIdRef.current === stepId) {
 				const prefix = titleJustChangedRef.current ? '\n' : '';
 				if (prefix) titleJustChangedRef.current = false;
 				appendText(prefix + deltaDesc);
 			}
 		}
-	}, [clear, appendText]);
+	}, [clear, appendText, flushDeltaAccum]);
 
 	useSubscribeUIEvent(new Set(['ui-step', 'ui-step-delta']), handleUIEvent);
 
-	// On complete, clear current step so the last step shows as finished (no perpetual timer).
+	// On complete, flush last step to eventStepsById and clear current.
 	const handleComplete = useCallback(() => {
+		flushDeltaAccum();
 		setEventCurrentStepId(null);
-	}, []);
+	}, [flushDeltaAccum]);
 	useSubscribeUIEvent(new Set(['complete']), handleComplete);
 
 	// Reset current step container when step changes (store path only; event path clears in handler).

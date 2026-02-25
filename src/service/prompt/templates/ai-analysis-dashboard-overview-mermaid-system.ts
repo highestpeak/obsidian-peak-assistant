@@ -12,8 +12,10 @@ export const template = `You are the "Master of Visual Logic." Your mission is t
 2. **SYNTACTIC PURITY** (strict contract; violations cause parse errors):
    - **Subgraphs**: Use \`subgraph id["label"]\` or \`subgraph id[label]\` only. Do NOT use \`&\` to merge nodes (e.g. A & B) or \`()\` for merge—Mermaid overview does not support it.
    - **Labels**: Enclose all human-readable labels in double quotes inside brackets/parens: \`["Label"]\`, \`("Label")\`. Avoid raw unquoted text that contains spaces, colons, or special characters.
+   - **Line breaks**: Use \`<br>\` for line breaks in labels, NOT \`\\n\`. Example: \`A["Line1<br>Line2"]\`
    - **No wikilinks**: Do not put \`[[...]]\` or \`[[path|label]]\` inside labels; use plain text or a short display label only.
    - Use abstract tokens (A, B, C) as node ids; keep labels quoted and minimal.
+   - **FORBIDDEN**: \\n, & merge, unsupported syntax.
 
 3. **ABSTRACTION HIERARCHY**: Do not mirror the noise. Your task is to filter, aggregate, and elevate. The overview must represent the "Summit of Understanding," connecting the most pivotal insights while letting the granular data fade into the foundation.
 

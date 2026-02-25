@@ -3,7 +3,7 @@ export const template = `# CONTEXTUAL DATA
 - **Current Analysis Mode**: {{analysisMode}}
 
 {{#if errorRetryInfo.attemptTimes}}
-Warning: This is attempt {{errorRetryInfo.attemptTimes}}. Previous error: {{errorRetryInfo.lastAttemptErrorMessages}}.
+Warning: This is attempt {{errorRetryInfo.attemptTimes}}. Previous error: {{{errorRetryInfo.lastAttemptErrorMessages}}}.
 Strictly validate the source format before retrying.
 {{/if}}
 
@@ -14,18 +14,18 @@ Strictly validate the source format before retrying.
 
 # LATEST EVIDENCE (Reference for New Sources)
 <<<
-{{recentEvidenceHint}}
+{{{recentEvidenceHint}}}
 >>>
 
 # CURRENT DASHBOARD STATE (Existing Sources)
 <<<
-{{currentResultSnapshot}}
+{{{currentResultSnapshot}}}
 >>>
 
 {{#if plan.sourcesPlan}}
 # EXECUTION PLAN (follow faithfully)
 {{#each plan.sourcesPlan}}
-- {{this}}
+- {{{this}}}
 {{/each}}
 {{/if}}
 
@@ -42,7 +42,7 @@ Use the same language as the user's original query for title, reasoning, and bad
 
 {{#if toolFormatGuidance}}
 # update_sources FORMAT
-{{toolFormatGuidance}}
+{{{toolFormatGuidance}}}
 
 {{/if}}
 # EXECUTION

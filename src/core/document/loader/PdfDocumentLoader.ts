@@ -9,24 +9,72 @@ import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens, generateStableUuid } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
-import * as pdfjsLib from 'pdfjs-dist';
-// Import the worker to auto-register it in the bundle
-import 'pdfjs-dist/build/pdf.worker.mjs';
 
-/**
- * Default options for PDF.js getDocument calls in bundled environment.
- */
-const PDF_JS_OPTIONS = {
-	// Standard font data URL for PDF.js
-	standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.394/standard_fonts/',
-	// Character map URLs for proper text extraction
-	cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.394/cmaps/',
+/** CDN base for pdfjs-dist worker; avoids bundling the heavy worker. */
+const PDFJS_CDN_VERSION = '5.4.394';
+const PDF_JS_DOC_OPTIONS = {
+	standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_CDN_VERSION}/standard_fonts/`,
+	cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_CDN_VERSION}/cmaps/`,
 	cMapPacked: true,
 };
 
+let pdfWorkerSrcConfigured = false;
+
 /**
- * PDF document loader using Mozilla's pdfjs-dist.
- * Uses pdfjs-dist directly to parse PDF from buffer without temporary files.
+ * Ensures GlobalWorkerOptions.workerSrc is set once (CDN). Call before getDocument.
+ * Keeps worker out of bundle and avoids static import of pdf.worker.mjs.
+ */
+function ensurePdfWorkerSrc(): void {
+	if (pdfWorkerSrcConfigured) return;
+	try {
+		const pdfjs = require('pdfjs-dist') as typeof import('pdfjs-dist');
+		if (pdfjs.GlobalWorkerOptions) {
+			pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_CDN_VERSION}/build/pdf.worker.mjs`;
+			pdfWorkerSrcConfigured = true;
+		}
+	} catch (e) {
+		console.warn('[PdfDocumentLoader] pdfjs-dist not available (external); PDF text extraction will fail.', e);
+	}
+}
+
+/**
+ * Extracts plain text from a PDF buffer. Isolated function: no closure over loader/app/prompts.
+ * Loads pdfjs-dist only when called (lazy). Calls loadingTask.destroy() and page.cleanup() for disposal.
+ */
+async function extractTextFromPdfBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
+	ensurePdfWorkerSrc();
+	const pdfjs = require('pdfjs-dist') as typeof import('pdfjs-dist');
+	const uint8Array = new Uint8Array(arrayBuffer);
+	const loadingOptions = {
+		data: uint8Array,
+		...PDF_JS_DOC_OPTIONS,
+	};
+	const loadingTask = pdfjs.getDocument(loadingOptions);
+	try {
+		const pdfDocument = await loadingTask.promise;
+		const pageTexts: string[] = [];
+		for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+			const page = await pdfDocument.getPage(pageNum);
+			try {
+				const textContent = await page.getTextContent();
+				const pageText = (textContent.items as { str?: string }[])
+					.map((item) => item.str ?? '')
+					.join(' ');
+				pageTexts.push(pageText);
+			} finally {
+				if (typeof page.cleanup === 'function') page.cleanup();
+			}
+		}
+		if (typeof pdfDocument.cleanup === 'function') pdfDocument.cleanup();
+		return pageTexts.join('\n\n');
+	} finally {
+		if (typeof loadingTask.destroy === 'function') loadingTask.destroy();
+	}
+}
+
+/**
+ * PDF document loader using Mozilla's pdfjs-dist (loaded at runtime when needed).
+ * Worker loaded from CDN; no static import of pdfjs or worker to keep bundle small.
  */
 export class PdfDocumentLoader implements DocumentLoader {
 	constructor(
@@ -107,9 +155,6 @@ export class PdfDocumentLoader implements DocumentLoader {
 		if (batch.length) yield batch;
 	}
 
-	/**
-	 * Get summary for a PDF document
-	 */
 	async getSummary(
 		source: Document | string,
 		provider?: string,
@@ -126,34 +171,12 @@ export class PdfDocumentLoader implements DocumentLoader {
 
 	private async readPdfFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
 		try {
-			// Read PDF as binary
 			const arrayBuffer = await this.app.vault.readBinary(file);
 			const sourceContentHash = binaryContentHash(arrayBuffer);
 
 			let cacheContent = '';
 			if (genCacheContent) {
-				// Parse PDF using pdfjs-dist directly from buffer
-				const uint8Array = new Uint8Array(arrayBuffer);
-				const loadingOptions = {
-					data: uint8Array,
-					// Use configured options for fonts and CMaps
-					...PDF_JS_OPTIONS,
-				};
-				const loadingTask = pdfjsLib.getDocument(loadingOptions);
-				const pdfDocument = await loadingTask.promise;
-
-				// Extract text from all pages
-				const pageTexts: string[] = [];
-				for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
-					const page = await pdfDocument.getPage(pageNum);
-					const textContent = await page.getTextContent();
-					const pageText = textContent.items
-						.map((item: any) => item.str)
-						.join(' ');
-					pageTexts.push(pageText);
-				}
-
-				cacheContent = pageTexts.join('\n\n');
+				cacheContent = await extractTextFromPdfBuffer(arrayBuffer);
 			}
 
 			return {
@@ -166,7 +189,7 @@ export class PdfDocumentLoader implements DocumentLoader {
 					size: file.stat.size,
 					mtime: file.stat.mtime,
 					ctime: file.stat.ctime,
-					content: '', // PDF has no text content in source
+					content: '',
 				},
 				cacheFileInfo: {
 					path: file.path,
@@ -175,7 +198,7 @@ export class PdfDocumentLoader implements DocumentLoader {
 					size: file.stat.size,
 					mtime: file.stat.mtime,
 					ctime: file.stat.ctime,
-					content: cacheContent, // Extracted text content
+					content: cacheContent,
 				},
 				metadata: {
 					title: file.basename,
@@ -194,4 +217,3 @@ export class PdfDocumentLoader implements DocumentLoader {
 		}
 	}
 }
-

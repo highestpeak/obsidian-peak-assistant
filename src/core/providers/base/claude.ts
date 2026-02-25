@@ -22,7 +22,7 @@ const CLAUDE_DEFAULT_BASE = 'https://api.anthropic.com/v1';
 interface ModelMapping {
 	/** Actual API model ID to use for API calls */
 	modelId: string;
-	/** Icon identifier for UI display, compatible with @lobehub/icons ModelIcon component */
+	/** Icon identifier for UI display (SafeModelIcon) */
 	icon: string;
 	/** Token limits for this model */
 	tokenLimits?: ModelTokenLimits;

@@ -17,6 +17,7 @@ export interface GraphPatchEdge {
 	to_node_id: string;
 	weight?: number;
 	kind?: string;
+	attributes?: Record<string, unknown>;
 }
 
 export interface GraphPatch {

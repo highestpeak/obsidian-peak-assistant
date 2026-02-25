@@ -140,6 +140,34 @@ const wasmInlinePlugin = {
 };
 
 /**
+ * After bundle is written, patch main.js so Error.__BluebirdErrorTypes__ is configurable: true.
+ * Bluebird sets it configurable: false so we cannot delete it at runtime; we have code control so we fix it at build time.
+ */
+const bluebirdConfigurablePlugin = {
+	name: 'bluebird-configurable',
+	setup(build) {
+		build.onEnd(async (result) => {
+			if (result.errors.length) return;
+			const outPath = path.join(__dirname, 'main.js');
+			try {
+				const content = await fs.promises.readFile(outPath, 'utf8');
+				// Match both dev (configurable: false) and prod minified (configurable:!1)
+				const patched = content.replace(
+					/(Error,\s*["']__BluebirdErrorTypes__["'][^)]*?)configurable:\s*(?:false|!1)/g,
+					'$1configurable: true'
+				);
+				if (patched !== content) {
+					await fs.promises.writeFile(outPath, patched, 'utf8');
+					console.log('[bluebird-configurable] Patched __BluebirdErrorTypes__ to configurable: true in main.js');
+				}
+			} catch (e) {
+				console.warn('[bluebird-configurable] Patch failed:', e?.message);
+			}
+		});
+	},
+};
+
+/**
  * Plugin to fix createRequire(import.meta.url) issues in bundled code
  * Some packages like @langchain/community use createRequire(import.meta.url)
  * In CommonJS output, we can use __filename directly instead
@@ -190,17 +218,22 @@ const shared = {
 	banner: { js: banner },
 	bundle: true,
 	platform: "node",
+	define: {
+		"process.env.NODE_ENV": prod ? '"production"' : '"development"',
+	},
 	plugins: [
 		alias({
 			"@": path.resolve(__dirname, "src"),
 		}),
 		fixImportMetaPlugin,
 		wasmInlinePlugin, // For any .wasm file imports (may not be needed for sql.js)
+		bluebirdConfigurablePlugin,
 	],
 	external: [
 		"obsidian",
 		"electron",
 		"better-sqlite3", // Mark as external so it loads from node_modules (native module)
+		"pdfjs-dist", // Heavy lib: load at runtime to keep main.js small; worker loaded via GlobalWorkerOptions.workerSrc (CDN)
 		"@codemirror/autocomplete",
 		"@codemirror/collab",
 		"@codemirror/commands",
@@ -237,10 +270,26 @@ const mainContext = await esbuild.context({
 	entryPoints: ["main.ts"],
 	format: "cjs",
 	outfile: "main.js",
+	metafile: true,
 });
 
 if (prod) {
-	await mainContext.rebuild();
+	const result = await mainContext.rebuild();
+	if (process.env.BUNDLE_METAFILE && result.metafile) {
+		const outputs = result.metafile.outputs;
+		const outEntry = Object.keys(outputs)[0];
+		const outMeta = outEntry && outputs[outEntry];
+		if (outMeta) {
+			const inputs = Object.entries(result.metafile.inputs)
+				.map(([k, b]) => [k.replace(__dirname + path.sep, ""), b.bytes])
+				.sort((a, b) => b[1] - a[1]);
+			console.log("\n[Bundle] Total:", (outMeta.bytes / 1024 / 1024).toFixed(2), "MB");
+			console.log("[Bundle] Top 50 inputs by size:");
+			inputs.slice(0, 50).forEach(([k, b], i) =>
+				console.log(" ", (i + 1) + ".", (b / 1024).toFixed(1) + " KB", k)
+			);
+		}
+	}
 	process.exit(0);
 } else {
 	await mainContext.watch();

@@ -1,19 +1,22 @@
 import { App, normalizePath, TFile } from 'obsidian';
-import { PromptId, type PromptVariables, PROMPT_REGISTRY, PromptInfo } from './PromptId';
+import { PromptId, type PromptVariables, PromptInfo } from './PromptId';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import type { AIServiceSettings } from '@/app/settings/types';
-import Handlebars from 'handlebars';
+import type { CompiledTemplate } from '@/core/template-engine-helper';
+import { compileTemplate } from '@/core/template-engine-helper';
 import { LLMStreamEvent, MessagePart } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import type { TemplateManager } from '@/core/template/TemplateManager';
+import { getTemplateMetadata } from '@/core/template/TemplateRegistry';
 
 /**
- * Unified prompt service with code-first templates and optional file overrides.
+ * Unified prompt service: templates loaded on demand via TemplateManager, with optional vault overrides.
  */
 export class PromptService {
 	private promptFolder: string;
-	private readonly cache = new Map<string, string>();
-	private readonly templateCache = new Map<string, HandlebarsTemplateDelegate>();
+	private readonly overrideCache = new Map<string, string>();
+	private readonly overrideCompiledCache = new Map<string, CompiledTemplate>();
 	private chat?: MultiProviderChatService;
 	private settings?: AIServiceSettings;
 
@@ -21,6 +24,7 @@ export class PromptService {
 		private readonly app: App,
 		settings: AIServiceSettings,
 		chat?: MultiProviderChatService,
+		private readonly templateManager?: TemplateManager,
 	) {
 		this.promptFolder = normalizePath(settings.promptFolder);
 		this.chat = chat;
@@ -39,7 +43,7 @@ export class PromptService {
 	 */
 	setPromptFolder(folder: string): void {
 		this.promptFolder = normalizePath(folder);
-		this.cache.clear();
+		this.overrideCache.clear();
 	}
 
 	/**
@@ -75,8 +79,10 @@ export class PromptService {
 		if (!this.chat) {
 			throw new Error('Chat service not available. Call setChatService() first.');
 		}
-		const template = PROMPT_REGISTRY[promptId];
-		const systemPrompt = template.systemPromptId ? PROMPT_REGISTRY[template.systemPromptId!].template : undefined;
+		const meta = getTemplateMetadata(promptId);
+		const systemPrompt = meta.systemPromptId && this.templateManager
+			? await this.templateManager.getTemplate(meta.systemPromptId)
+			: undefined;
 		const promptText = await this.render(promptId, variables);
 
 		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
@@ -133,8 +139,10 @@ export class PromptService {
 		if (!this.chat) {
 			throw new Error('Chat service not available. Call setChatService() first.');
 		}
-		const template = PROMPT_REGISTRY[promptId];
-		const systemPrompt = template.systemPromptId ? PROMPT_REGISTRY[template.systemPromptId!].template : undefined;
+		const meta = getTemplateMetadata(promptId);
+		const systemPrompt = meta.systemPromptId && this.templateManager
+			? await this.templateManager.getTemplate(meta.systemPromptId)
+			: undefined;
 		const promptText = await this.render(promptId, variables);
 
 		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
@@ -193,46 +201,49 @@ export class PromptService {
 	async getPromptInfo<T extends PromptId>(
 		promptId: T
 	): Promise<PromptInfo> {
-		return PROMPT_REGISTRY[promptId];
+		const meta = getTemplateMetadata(promptId);
+		const template = this.templateManager
+			? await this.templateManager.getTemplate(promptId)
+			: '';
+		return {
+			template,
+			expectsJson: meta.expectsJson,
+			jsonConstraint: meta.jsonConstraint,
+			systemPromptId: meta.systemPromptId,
+		};
 	}
 
 	/**
 	 * Render a prompt with variables using Handlebars.
-	 * First checks for file override, then falls back to code template.
-	 * 
-	 * If variables are null, returns the template without variables.
+	 * First checks for vault file override, then uses TemplateManager.
 	 */
 	async render<K extends PromptId>(
 		id: K,
 		variables: PromptVariables[K] | null,
 	): Promise<string> {
-		// Try to load override from file
 		const override = await this.loadOverride(id);
 		if (override) {
-			if (!variables) {
-				return override;
-			}
-			return this.renderHandlebarsTemplate(override, variables as Record<string, any>);
+			if (!variables) return override;
+			return this.renderHandlebarsTemplate(override, variables as Record<string, unknown>, true);
 		}
-
-		// Use code template
-		return this.renderCodeTemplate(id, variables);
+		if (!this.templateManager) {
+			throw new Error('TemplateManager not set; cannot render prompt.');
+		}
+		const data = (variables ?? {}) as Record<string, unknown>;
+		return this.templateManager.render(id, data);
 	}
 
 	/**
 	 * Load prompt override from vault file if exists.
 	 */
 	private async loadOverride(id: PromptId): Promise<string | undefined> {
-		// console.debug(`[PromptService] Loading prompt override for: ${id}`);
 		const cacheKey = `override:${id}`;
-		if (this.cache.has(cacheKey)) {
-			console.debug(`[PromptService] Loading prompt override from cache for: ${id}`);
-			return this.cache.get(cacheKey);
+		if (this.overrideCache.has(cacheKey)) {
+			return this.overrideCache.get(cacheKey);
 		}
 
 		const fileName = `${id}.prompt.md`;
 		const filePath = normalizePath(`${this.promptFolder}/${fileName}`);
-		// console.debug(`[PromptService] Checking for prompt override at: ${filePath}`);
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 
 		if (!(file instanceof TFile)) {
@@ -241,8 +252,7 @@ export class PromptService {
 
 		try {
 			const content = (await this.app.vault.read(file)).trim();
-			console.debug(`[PromptService] Loaded prompt override for: ${id}`, { content });
-			this.cache.set(cacheKey, content);
+			this.overrideCache.set(cacheKey, content);
 			return content;
 		} catch (error) {
 			console.warn(`Failed to load prompt override for ${id}:`, error);
@@ -251,42 +261,29 @@ export class PromptService {
 	}
 
 	/**
-	 * Render code template with variables using Handlebars.
+	 * Render a string template with Handlebars. Used for vault overrides.
 	 */
-	private renderCodeTemplate<K extends PromptId>(
-		id: K,
-		variables: PromptVariables[K] | null,
+	private renderHandlebarsTemplate(
+		template: string,
+		vars: Record<string, unknown>,
+		useOverrideCache: boolean,
 	): string {
-		const template = PROMPT_REGISTRY[id];
-		if (!template) {
-			throw new Error(`Prompt template not found: ${id}`);
+		let compiled: CompiledTemplate;
+		if (useOverrideCache) {
+			if (!this.overrideCompiledCache.has(template)) {
+				this.overrideCompiledCache.set(template, compileTemplate(template));
+			}
+			compiled = this.overrideCompiledCache.get(template)!;
+		} else {
+			compiled = compileTemplate(template);
 		}
-		if (!variables) {
-			return template.template;
-		}
-
-		return this.renderHandlebarsTemplate(template.template, variables as Record<string, any>);
-	}
-
-	/**
-	 * Render template using Handlebars.
-	 */
-	private renderHandlebarsTemplate(template: string, vars: Record<string, any>): string {
-		// Check cache first
-		if (!this.templateCache.has(template)) {
-			const compiled = Handlebars.compile(template);
-			this.templateCache.set(template, compiled);
-		}
-
-		const compiled = this.templateCache.get(template)!;
 		const result = compiled(vars).trim();
 
-		// Debug: log if messages array exists but wasn't rendered
 		if (vars.messages && Array.isArray(vars.messages) && vars.messages.length > 0) {
-			const hasMessagesInResult = result.includes(vars.messages[0]?.content || '');
-			if (!hasMessagesInResult) {
+			const firstContent = (vars.messages[0] as { content?: string })?.content || '';
+			if (!result.includes(firstContent)) {
 				console.warn('[PromptService] Messages may not have been rendered correctly:', {
-					messageCount: vars.messages.length,
+					messageCount: (vars.messages as unknown[]).length,
 					resultPreview: result.substring(0, 200),
 				});
 			}

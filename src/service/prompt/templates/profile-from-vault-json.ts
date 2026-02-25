@@ -17,7 +17,7 @@ Each object: "text", "category" (Location, Employment, Education, Preferences, T
 
 Content:
 ---
-{{vaultContent}}
+{{{vaultContent}}}
 ---
 
 BAD: extracting a long paragraph about deforestation or Dr. Goodall. BAD: {"text": "Based in Auckland (8 words)", ...}

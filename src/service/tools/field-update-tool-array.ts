@@ -1,5 +1,7 @@
-import { z } from "zod/v3";
-
+import type { ZodType } from "@/core/schemas";
+import { createUpdateResultInputSchema } from "@/core/schemas/tools/updateResultOperations";
+import { NO_MEANINGFUL_CONTENT_MESSAGE } from "@/core/schemas/agents/search-agent-schemas";
+import { getCurrentAnalysisContext } from "@/core/analysis-context-holder";
 import { safeAgentTool } from "@/service/tools/types";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { AppContext } from "@/app/context/AppContext";
@@ -7,8 +9,7 @@ import { AppContext } from "@/app/context/AppContext";
 export const norm = (v: unknown) => String(v ?? '').trim().toLowerCase();
 export const normPath = (v: unknown) => String(v ?? '').trim().replace(/^\/+/, '');
 export const safeText = (v: unknown) => String(v ?? '').trim();
-// Constants for validation
-export const NO_MEANINGFUL_CONTENT_MESSAGE = "has no meaningful content, discarding";
+export { NO_MEANINGFUL_CONTENT_MESSAGE };
 // Constants for item validation and defaults
 export const DEFAULT_PLACEHOLDER = "Untitled";
 /** Substring to detect add/merge success in result */
@@ -30,12 +31,10 @@ export function getUpdateResultFormatGuidance(opts: { fieldName: string; itemExa
         + `Do NOT use string elements (no JSON strings, no "upsert:...", no "UpsertTopic(...)" etc).`;
 }
 export interface UpdateResultRequiredParameters {
-    fieldName: string,
-    itemSchema: z.ZodType,
-    getCurrentResult: () => any,
-    identityKeyBuilder: BuildIdentityKeyFn,
+    fieldName: string;
+    itemSchema: ZodType;
     /** Override tool description for stricter LLM guidance (e.g. exact JSON shape). */
-    toolDescription?: string,
+    toolDescription?: string;
 }
 /**
  * Some LLM may act not well, we need to provide some robust fixes.
@@ -62,15 +61,15 @@ export interface UpdateResultRobustParameters {
      * 
      * Usually we can send a _skip: true field back to indicate the operation is skipped.
      */
-    dataTransform?: (data: any, schema?: z.ZodType) => any,
+    dataTransform?: (data: any, schema?: ZodType) => any,
     validatePath?: (item: any) => Promise<{ valid: boolean, reason?: string, resolvedPath?: string }>,
     /** When set, run after path validation for add operations. If invalid, tool throws so retry can run. */
     validateItem?: (item: any) => Promise<{ valid: boolean; reason?: string }>,
 }
 const defaultRobustParameters: UpdateResultRobustParameters = {
     normalizeOperation: (raw: unknown) => { return raw; },
-    dataTransform: (data: unknown, schema?: z.ZodType) => { return data; },
-    validatePath: async (item: any) => { return { valid: true }; },
+    dataTransform: (data: unknown, _schema?: ZodType) => { return data; },
+    validatePath: async (_item: any) => { return { valid: true }; },
     validateItem: async () => { return { valid: true }; },
 };
 
@@ -160,7 +159,7 @@ const commonNormalizeOperation = (raw: unknown) => {
     }
     return raw;
 }
-const commonDataTransform = (data: any, schema: z.ZodType) => {
+const commonDataTransform = (data: any, schema: ZodType) => {
     if (data.operation === 'add') {
         const item = data.item;
         // Skip add operations with missing or non-object item (LLM may output null/undefined)
@@ -251,53 +250,35 @@ export function createUpdateResultTool(
     /** optional parameters */
     robustParameters: UpdateResultRobustParameters = defaultRobustParameters,
 ) {
-    const { fieldName, itemSchema, getCurrentResult, identityKeyBuilder: buildIdentityKeyParams, toolDescription: customToolDescription } = requiredParameters;
-    let normalizeOperation = robustParameters?.normalizeOperation ?? defaultRobustParameters.normalizeOperation;
-    let dataTransform = robustParameters.dataTransform ?? defaultRobustParameters.dataTransform;
-    let validatePath = robustParameters.validatePath ?? defaultRobustParameters.validatePath;
-    const validateItem = robustParameters.validateItem ?? defaultRobustParameters.validateItem;
-    // if have identity key func then use it, otherwise use default id fetch
-    const buildIdentityKey: BuildIdentityKeyFn = buildIdentityKeyParams ?? ((item) => {
+    const { fieldName, itemSchema, toolDescription: customToolDescription } = requiredParameters;
+    const defaultBuildIdentityKey: BuildIdentityKeyFn = (item) => {
         if (!item || typeof item !== 'object') return null;
         const id = String((item as any).id ?? '').trim();
         return id ? `id:${id}` : null;
-    });
+    };
 
-    const addOperationSchema = z.object({
-        operation: z.literal('add'),
-        targetField: z.literal(fieldName),
-        item: itemSchema,
-    });
-
-    const removeOperationSchema = z.object({
-        operation: z.literal('remove'),
-        targetField: z.literal(fieldName),
-        removeId: z.string().min(1, { message: "removeId is required" }),
-    });
-
-    // Use discriminated union with plain schemas, then apply item validation transform
     const finalNormalizeOperation = (raw: unknown) => {
         const normalized = makeAddRemoveNormalizer(fieldName)(raw);
-        return commonNormalizeOperation(
-            normalizeOperation!(normalized)
-        );
+        const ctx = getCurrentAnalysisContext();
+        const normOp = ctx?.getHandlers(fieldName)?.normalizeOperation ?? robustParameters?.normalizeOperation ?? defaultRobustParameters.normalizeOperation;
+        return commonNormalizeOperation(normOp!(normalized));
     };
     const finalDataTransform = (data: unknown) => {
+        const ctx = getCurrentAnalysisContext();
+        const dataTransformFn = ctx?.getHandlers(fieldName)?.dataTransform ?? robustParameters?.dataTransform ?? defaultRobustParameters.dataTransform;
         const result = commonDataTransform(
-            dataTransform!(data, itemSchema),
+            dataTransformFn!(data, itemSchema),
             itemSchema
         );
         const op = result && typeof result === 'object' && 'operation' in result ? (result as { operation: string }).operation : undefined;
         if (op === 'remove') return result;
 
-        // Validate item only for add operations
         const fallbackSafeParse = itemSchema.safeParse(result.item);
         if (!fallbackSafeParse.success) {
             throw new Error(`Invalid item for targetField "${fieldName}": ${fallbackSafeParse.error.message}`);
         }
         return result;
     };
-    /** LLM sometimes sends operation as JSON string; parse before normalizing. */
     const parseOperationRaw = (raw: unknown): unknown => {
         if (typeof raw === 'string') {
             try {
@@ -308,21 +289,18 @@ export function createUpdateResultTool(
         }
         return raw;
     };
-    const operationSchema = z.any()
-        .transform(parseOperationRaw)
-        .transform(finalNormalizeOperation)
-        .pipe(
-            z.discriminatedUnion(
-                'operation',
-                [addOperationSchema, removeOperationSchema]
-            ).transform(finalDataTransform)
-        );
 
     const operationsArrayDesc = getUpdateResultFormatGuidance({ fieldName });
-    const inputSchema = z.object({
-        operations: z.array(operationSchema)
-            .describe(operationsArrayDesc),
-    });
+    const inputSchema = createUpdateResultInputSchema(
+        fieldName,
+        itemSchema,
+        {
+            parseRaw: parseOperationRaw,
+            normalize: finalNormalizeOperation,
+            dataTransform: finalDataTransform,
+        },
+        operationsArrayDesc
+    );
 
     const description = customToolDescription ?? (
         `A high-precision atomic state management tool to synchronize the analysis dashboard.\n`
@@ -333,6 +311,9 @@ export function createUpdateResultTool(
         description,
         inputSchema: inputSchema,
         execute: async (input) => {
+            if (!getCurrentAnalysisContext()) {
+                return 'Session ended or unloaded. Cannot update result.';
+            }
             const ops = input.operations ?? [];
             if (ops.length === 0) {
                 return 'Skipped: operations array was empty. Do not call this tool with an empty array; provide at least one operation.';
@@ -389,19 +370,28 @@ export function createUpdateResultTool(
     }
 
     async function addItem(targetField: string, item: any): Promise<string> {
-        const pathValidation = await validatePath!(item);
+        const ctx = getCurrentAnalysisContext();
+        if (!ctx) {
+            return 'Session ended or unloaded. Cannot update result.';
+        }
+        const handlers = ctx.getHandlers(targetField);
+        const validatePathFn = handlers?.validatePath ?? robustParameters?.validatePath ?? defaultRobustParameters.validatePath;
+        const validateItemFn = handlers?.validateItem ?? robustParameters?.validateItem ?? defaultRobustParameters.validateItem;
+        const buildIdentityKey = handlers?.identityKeyBuilder ?? defaultBuildIdentityKey;
+
+        const pathValidation = await validatePathFn!(item);
         if (!pathValidation.valid) {
             return pathValidation.reason!;
         }
         if (pathValidation.resolvedPath) {
             item = { ...item, path: pathValidation.resolvedPath };
         }
-        const itemValidation = await validateItem!(item);
+        const itemValidation = await validateItemFn!(item);
         if (!itemValidation.valid) {
             throw new Error(itemValidation.reason ?? 'Item validation failed');
         }
 
-        const currentResult = getCurrentResult();
+        const currentResult = ctx.getResult();
         // targetField maybe like "graph.nodes" or "dashboardBlocks"
         const arrayPath = targetField.split('.');
         let current: any = currentResult;
@@ -440,7 +430,13 @@ export function createUpdateResultTool(
     }
 
     function removeItem(targetField: string, removeId: string) {
-        const currentResult = getCurrentResult();
+        const ctx = getCurrentAnalysisContext();
+        if (!ctx) {
+            return `Session ended or unloaded. Cannot remove from ${targetField}.`;
+        }
+        const handlers = ctx.getHandlers(targetField);
+        const buildIdentityKey = handlers?.identityKeyBuilder ?? defaultBuildIdentityKey;
+        const currentResult = ctx.getResult();
         const arrayPath = targetField.split('.');
         let current: any = currentResult;
 

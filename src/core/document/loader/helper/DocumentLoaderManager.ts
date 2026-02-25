@@ -45,6 +45,14 @@ export class DocumentLoaderManager {
 	}
 
 	/**
+	 * Clear the global singleton instance.
+	 * Call from plugin onunload to release memory.
+	 */
+	static clearInstance(): void {
+		DocumentLoaderManager.instance = null;
+	}
+
+	/**
 	 * Initialize the global singleton instance.
 	 * Should be called once during plugin initialization.
 	 * @param aiServiceManager Optional AI service manager for loaders that need AI capabilities (e.g., image description).

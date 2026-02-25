@@ -2,34 +2,32 @@ import React, { useState } from 'react';
 import { ChatViewComponent } from '@/ui/view/chat-view/ChatViewComponent';
 import { ViewMode } from '@/ui/view/chat-view/store/chatViewStore';
 import { SettingsRoot } from '@/ui/view/SettingsView';
-import DailyAnalysis from '@/ui/view/DailyAnalysis';
 import { ProjectListViewComponent } from '@/ui/view/project-list-view/ProjectListView';
 import { MessageHistoryViewComponent } from '@/ui/view/message-history-view/MessageHistoryView';
 import { MessagesViewComponent } from '@/ui/view/chat-view/view-Messages';
 import { HomeViewComponent } from '@/ui/view/chat-view/view-Home';
 import { QuickSearchModalContent } from '@/ui/view/quick-search/SearchModal';
-import { logClick } from '@/core/utils/perf-debug';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useProjectStore } from '@/ui/store/projectStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { MockPlugin } from './mocks/services/MockPlugin';
 import { ConfirmDialog } from '@/ui/view/modals/ConfirmDialog';
-import { Settings, Search, BarChart3, MessageSquare, X, Trash2, Network, Link2 } from 'lucide-react';
+import { Settings, Search, MessageSquare, X, Trash2, Network, Link2, GitBranch } from 'lucide-react';
 import { GraphDebugView } from './views/GraphDebugView';
 import { LinksTabMockView } from './views/LinksTabMockView';
+import { MindFlowTestView } from './views/MindFlowTestView';
 
 /**
  * Router component for desktop development
  * Matches the real Obsidian interface layout:
  * - Chat mode: Three-column layout (Project List | Chat View | Message History)
  * - Settings: Full-screen
- * - Daily Analysis: Full-screen
  */
 export const DesktopRouter: React.FC<{
 	useMockAI: boolean;
 	onToggleMockAI: () => void;
 }> = ({ useMockAI, onToggleMockAI }) => {
-	const [currentView, setCurrentView] = useState<'chat' | 'settings' | 'daily' | 'graph-debug' | 'links-mock'>('chat');
+	const [currentView, setCurrentView] = useState<'chat' | 'settings' | 'graph-debug' | 'links-mock' | 'mindflow-test'>('chat');
 	const [showSearchModal, setShowSearchModal] = useState(false);
 	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 	const { eventBus } = useServiceContext();
@@ -37,20 +35,6 @@ export const DesktopRouter: React.FC<{
 	const activeConversation = useProjectStore((state) => state.activeConversation);
 	const chatViewStore = useChatViewStore();
 	const viewMode = chatViewStore.viewMode || ViewMode.ALL_PROJECTS;
-
-	// Mock data for DailyAnalysis
-	const mockDailyData = {
-		focusPoints: ['Focus point 1', 'Focus point 2', 'Focus point 3'],
-		dispersalPoints: ['Distraction 1', 'Distraction 2'],
-		emotionalScores: [
-			{ category: 'Happiness', value: 7 },
-			{ category: 'Energy', value: 6 },
-			{ category: 'Focus', value: 8 },
-		],
-		growthInsights: ['Insight 1', 'Insight 2'],
-		overallEvaluation: 'Overall evaluation text',
-		totalStayDuration: 3600,
-	};
 
 	// Navigation bar component
 	const NavigationBar = () => (
@@ -121,25 +105,6 @@ export const DesktopRouter: React.FC<{
 				Settings
 			</button>
 			<button
-				onClick={() => setCurrentView('daily')}
-				style={{
-					display: 'flex',
-					alignItems: 'center',
-					gap: '6px',
-					padding: '6px 12px',
-					borderRadius: '6px',
-					border: 'none',
-					backgroundColor: currentView === 'daily' ? '#e9ecef' : 'transparent',
-					color: currentView === 'daily' ? '#000' : '#666',
-					cursor: 'pointer',
-					fontSize: '14px',
-					fontWeight: currentView === 'daily' ? '500' : '400',
-				}}
-			>
-				<BarChart3 size={16} />
-				Daily Analysis
-			</button>
-			<button
 				onClick={() => setCurrentView('graph-debug')}
 				style={{
 					display: 'flex',
@@ -178,6 +143,26 @@ export const DesktopRouter: React.FC<{
 			>
 				<Link2 size={16} />
 				Links Mock
+			</button>
+			<button
+				onClick={() => setCurrentView('mindflow-test')}
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: '6px',
+					padding: '6px 12px',
+					borderRadius: '6px',
+					border: 'none',
+					backgroundColor: currentView === 'mindflow-test' ? '#e9ecef' : 'transparent',
+					color: currentView === 'mindflow-test' ? '#000' : '#666',
+					cursor: 'pointer',
+					fontSize: '14px',
+					fontWeight: currentView === 'mindflow-test' ? '500' : '400',
+				}}
+				title="Paste Mermaid to test MindFlow blink/highlight"
+			>
+				<GitBranch size={16} />
+				MindFlow Test
 			</button>
 			<button
 				onClick={() => setShowConfirmDialog(true)}
@@ -246,24 +231,13 @@ export const DesktopRouter: React.FC<{
 		</div>
 	);
 
-	// Render Settings or Daily Analysis as full-screen
+	// Render Settings as full-screen
 	if (currentView === 'settings') {
 		return (
 			<div className="h-full w-full flex flex-col" style={{ backgroundColor: '#ffffff', height: '100%', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 				<NavigationBar />
 				<div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
 					<SettingsRoot />
-				</div>
-			</div>
-		);
-	}
-
-	if (currentView === 'daily') {
-		return (
-			<div className="h-full w-full flex flex-col" style={{ backgroundColor: '#ffffff', height: '100%', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-				<NavigationBar />
-				<div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
-					<DailyAnalysis data={mockDailyData as any} />
 				</div>
 			</div>
 		);
@@ -286,6 +260,17 @@ export const DesktopRouter: React.FC<{
 				<NavigationBar />
 				<div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
 					<LinksTabMockView />
+				</div>
+			</div>
+		);
+	}
+
+	if (currentView === 'mindflow-test') {
+		return (
+			<div className="h-full w-full flex flex-col" style={{ backgroundColor: '#ffffff', height: '100%', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+				<NavigationBar />
+				<div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+					<MindFlowTestView />
 				</div>
 			</div>
 		);
@@ -347,10 +332,7 @@ export const DesktopRouter: React.FC<{
 						justifyContent: 'center',
 						zIndex: 1000,
 					}}
-					onClick={() => {
-						logClick('search-modal-backdrop-close');
-						setShowSearchModal(false);
-					}}
+					onClick={() => setShowSearchModal(false)}
 				>
 					<div
 						style={{

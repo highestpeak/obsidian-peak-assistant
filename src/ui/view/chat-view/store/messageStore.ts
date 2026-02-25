@@ -50,6 +50,7 @@ export interface MessageStore {
 	completeToolCall: (toolName: string, output?: any) => void;
 	endToolSequence: () => void;
 	clearToolCalls: () => void;
+	reset: () => void;
 }
 
 export const useMessageStore = create<MessageStore>((set, get) => ({
@@ -174,6 +175,16 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
 			isToolSequenceActive: false,
 			currentToolName: null,
 		}),
-
+	reset: () => set({
+		messages: [],
+		streamingMessageId: null,
+		streamingContent: '',
+		streamingRole: null,
+		reasoningContent: '',
+		isReasoningActive: false,
+		currentToolCalls: [],
+		isToolSequenceActive: false,
+		currentToolName: null,
+	}),
 }));
 

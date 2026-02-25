@@ -1,6 +1,6 @@
 import { AppContext } from "@/app/context/AppContext";
+import { makeContentReaderInputSchema } from "@/core/schemas/tools/contentReader";
 import { AgentTool, safeAgentTool } from "./types";
-import { z } from "zod/v3"
 import { DocumentLoaderManager } from "@/core/document/loader/helper/DocumentLoaderManager";
 
 function escapeRegExpLiteral(input: string): string {
@@ -23,43 +23,14 @@ function buildAutoRegex(query: string, caseSensitive: boolean): { regex: RegExp;
  * Simple tool to read the content of a specific file (note) by its path.
  */
 export function contentReaderTool(): AgentTool {
+    const settings = AppContext.getInstance().settings.search;
+    const inputSchema = makeContentReaderInputSchema({
+        shortSummaryLength: settings.shortSummaryLength,
+        fullSummaryLength: settings.fullSummaryLength,
+    });
     return safeAgentTool({
         description: "Read the content of a specific file (note) by its path.",
-        inputSchema: z.object({
-            path: z.string().describe("path related to vault root."),
-            mode: z.enum(["fullContent", "shortSummary", "fullSummary", "range", "grep", "meta"])
-                .default("shortSummary")
-                .describe("reading mode: prefer 'shortSummary', 'grep', or 'range'; 'fullContent' only for small files (see size limit), \
-                    'shortSummary' get short summary, len <" + AppContext.getInstance().settings.search.shortSummaryLength + " \
-                    'fullSummary' get full summary, len <" + AppContext.getInstance().settings.search.fullSummaryLength + " \
-                    'range' get specific lines (1-based, inclusive), \
-                    'grep' search within a single file and return matched lines"
-                ),
-            lineRange: z.object({
-                start: z.number().describe("The start line (1-based). Must be positive.").int().positive(),
-                end: z.number().describe("The end line (1-based). Must be positive and >= start.").int().positive(),
-            })
-                .refine(
-                    (obj) => typeof obj.start === "number" && typeof obj.end === "number" && obj.end >= obj.start,
-                    { message: "end must be greater than or equal to start" }
-                )
-                .optional()
-                .describe("the range of lines of parsed document content to read."),
-            query: z.string().optional().describe("Search query used by grep mode. Treated as RegExp by default; falls back to literal match if invalid."),
-            case_sensitive: z.boolean().optional().default(true).describe("Case sensitive search for grep mode. Default true."),
-            max_matches: z.number().int().min(1).max(50).optional().default(50).describe("Maximum number of matches for grep mode (hard cap 50)."),
-        }).superRefine((data, ctx) => {
-            if (data.mode === "range") {
-                if (!data.lineRange) {
-                    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["lineRange"], message: "lineRange is required when mode is 'range'" });
-                }
-            }
-            if (data.mode === "grep") {
-                if (!data.query || !data.query.trim()) {
-                    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["query"], message: "query is required when mode is 'grep'" });
-                }
-            }
-        }),
+        inputSchema,
         execute: async ({ path, mode, lineRange, query, case_sensitive, max_matches }) => {
             const isMetaLoad = mode === "meta";
 

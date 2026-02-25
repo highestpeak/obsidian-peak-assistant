@@ -3,6 +3,7 @@ import { cn } from '@/ui/react/lib/utils';
 import CodeMirror from '@uiw/react-codemirror';
 import { EditorView, placeholder as cmPlaceholder, keymap } from '@codemirror/view';
 import { Prec } from '@codemirror/state';
+import { insertNewline } from '@codemirror/commands';
 import { tagPlugin } from '@/ui/component/mine/tagPlugin';
 
 export interface CodeMirrorInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'children' | 'value' | 'onChange'> {
@@ -18,6 +19,8 @@ export interface CodeMirrorInputProps extends Omit<React.InputHTMLAttributes<HTM
   enableSearchTags?: boolean;
   /** Whether this is a single line input (affects height styling) */
   singleLine?: boolean;
+  /** When provided: Enter triggers this callback, Ctrl+Enter inserts newline */
+  onEnterSubmit?: () => void;
 }
 
 const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void }, CodeMirrorInputProps>(
@@ -28,6 +31,7 @@ const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void }, CodeMir
     placeholder,
     enableSearchTags = false,
     singleLine = false,
+    onEnterSubmit,
     className,
     ...inputProps
   }, ref) => {
@@ -81,6 +85,26 @@ const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void }, CodeMir
         ])),
       ];
 
+      // When onEnterSubmit is provided: Enter submits, Ctrl+Enter inserts newline
+      if (onEnterSubmit) {
+        exts.push(Prec.high(keymap.of([
+          {
+            key: 'Enter',
+            run: () => {
+              onEnterSubmit();
+              return true;
+            }
+          },
+          {
+            key: 'Mod-Enter',
+            run: (view) => {
+              insertNewline(view);
+              return true;
+            }
+          }
+        ])));
+      }
+
       // Add placeholder if provided
       if (placeholder) {
         exts.push(cmPlaceholder(placeholder));
@@ -92,7 +116,7 @@ const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void }, CodeMir
       }
 
       return exts;
-    }, [placeholder, enableSearchTags]);
+    }, [placeholder, enableSearchTags, onEnterSubmit]);
 
     return (
       <div className={cn('pktw-relative', containerClassName)}>

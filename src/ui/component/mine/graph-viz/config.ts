@@ -94,6 +94,8 @@ export interface GraphConfig {
 	mstLeafOpacity: number;
 	/** Leaf edge width scale in skeleton mode. */
 	mstLeafWidthScale: number;
+	/** Draw breathing/pulse animations for MindFlow states (exploring, thinking, verified). */
+	mindflowAnimations: boolean;
 }
 
 /** Defaults tuned for clustered layout (related nodes stay together) and Obsidian-like colors. */
@@ -144,6 +146,7 @@ export const DEFAULT_CONFIG: GraphConfig = {
 	skeletonMinBranchNodes: 3,
 	mstLeafOpacity: 0.25,
 	mstLeafWidthScale: 0.6,
+	mindflowAnimations: true,
 };
 
 /** Slider shows 0-100; actual force value = sliderValue * SCALE (0-1). */

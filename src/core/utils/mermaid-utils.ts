@@ -4,6 +4,9 @@
 
 import mermaid from 'mermaid';
 
+// Prevent Mermaid from adding a window.load listener (avoids zombie listeners on plugin reload)
+mermaid.initialize?.({ startOnLoad: false });
+
 const MERMAID_FENCE = '```mermaid';
 
 /** Extract inner Mermaid code from optional ```mermaid ... ``` wrapper. */
@@ -59,7 +62,11 @@ export function normalizeMermaidForDisplay(raw: string): string {
     const code = extractMermaidCode(raw);
     const sanitized = sanitizeMermaidOverview(code);
     if (!sanitized) return '';
-    return `${MERMAID_FENCE}\n${sanitized}\n\`\`\``;
+    return wrapMermaidCode(sanitized);
+}
+
+export function wrapMermaidCode(code: string): string {
+    return `${MERMAID_FENCE}\n${code}\n\`\`\``;
 }
 
 /** Decode common HTML entities in Mermaid labels. */

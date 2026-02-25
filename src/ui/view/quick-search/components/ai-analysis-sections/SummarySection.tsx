@@ -5,7 +5,7 @@ import { AnalysisTimer } from '../../../../component/mine/IntelligenceFrame';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import { Button } from '@/ui/component/shared-ui/button';
 import { InlineFollowupChat } from '../../../../component/mine/InlineFollowupChat';
-import { useAIAnalysisStore } from '../../store';
+import { useAIAnalysisRuntimeStore, useAIAnalysisSummaryStore } from '../../store/aiAnalysisStore';
 import { useSummaryFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 import { useStreamdownWikilinkClick } from '../../callbacks/useStreamdownWikilinkClick';
 import { copyText } from '@/ui/view/shared/common-utils';
@@ -30,11 +30,9 @@ export const SummaryContent: React.FC<{
 
     const handleStreamdownClick = useStreamdownWikilinkClick(onOpenWikilink);
 
-    const {
-        isAnalyzing,
-        analysisCompleted,
-        summaryChunks,
-    } = useAIAnalysisStore();
+    const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
+    const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
+    const summaryChunks = useAIAnalysisSummaryStore((s) => s.summaryChunks);
 
     // Memoize summary text calculation to avoid unnecessary joins on every render
     const baseSummary = useMemo(() => summaryChunks.join(''), [summaryChunks]);

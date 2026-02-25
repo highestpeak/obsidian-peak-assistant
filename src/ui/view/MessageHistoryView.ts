@@ -11,6 +11,7 @@ export const MESSAGE_HISTORY_VIEW_TYPE = 'peak-message-history-view';
  */
 export class MessageHistoryView extends ItemView {
 	private reactRenderer: ReactRenderer | null = null;
+	private openRafId: number | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -47,8 +48,8 @@ export class MessageHistoryView extends ItemView {
 		// Create React renderer - containerEl structure: [header, content]
 		// We render into the content area (children[1])
 		this.reactRenderer = new ReactRenderer(this.containerEl);
-		// Initial render - delay to ensure container is in DOM
-		requestAnimationFrame(() => {
+		this.openRafId = requestAnimationFrame(() => {
+			this.openRafId = null;
 			this.render();
 		});
 	}
@@ -66,6 +67,10 @@ export class MessageHistoryView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		if (this.openRafId != null) {
+			cancelAnimationFrame(this.openRafId);
+			this.openRafId = null;
+		}
 		if (this.reactRenderer) {
 			this.reactRenderer.unmount();
 			this.reactRenderer = null;

@@ -22,6 +22,7 @@ interface ProjectStore {
 	clearExpandedProjects: () => void;
 	updateProject: (project: ChatProject) => void;
 	updateConversation: (conversation: ChatConversation) => void;
+	reset: () => void;
 }
 
 export const useProjectStore = create<ProjectStore>((set: any) => ({
@@ -93,5 +94,14 @@ export const useProjectStore = create<ProjectStore>((set: any) => ({
 			newConversations.set(conversation.meta.id, conversation);
 			return { conversations: newConversations };
 		}),
+	reset: () => set({
+		projects: new Map(),
+		conversations: new Map(),
+		expandedProjects: new Set(),
+		activeProject: null,
+		activeConversation: null,
+		isProjectsCollapsed: false,
+		isConversationsCollapsed: false,
+	}),
 }));
 

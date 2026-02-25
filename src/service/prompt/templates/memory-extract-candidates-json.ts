@@ -10,12 +10,12 @@ export const template = `Extract potential long-term memory items from this conv
 
 {{#if context}}
 {{#each context}}
-{{@key}}: {{this}}
+{{@key}}: {{{this}}}
 {{/each}}
 {{/if}}
 
-User: {{userMessage}}
-Assistant: {{assistantReply}}
+User: {{{userMessage}}}
+Assistant: {{{assistantReply}}}
 
 Return a JSON array of memory candidate objects, each with:
 - "text": the memory statement (concise, specific)

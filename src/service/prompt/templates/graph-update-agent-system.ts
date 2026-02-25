@@ -12,13 +12,13 @@ Each operation must be one of:
 targetField must be "graph.nodes" or "graph.edges". Document/file nodes: require valid path; title/label default to filename if omitted. Concept/tag nodes: require meaningful label (never use "Untitled").
 
 {{#if lastError}}
-Previous attempt failed: {{lastError}}
+Previous attempt failed: {{{lastError}}}
 Fix and output only a valid JSON array again.
 
 {{/if}}
 User request from Thought agent:
 ---
-{{text}}
+{{{text}}}
 ---
 
 Output only the JSON array:`;

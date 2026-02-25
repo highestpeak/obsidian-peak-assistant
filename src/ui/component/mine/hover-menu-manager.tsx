@@ -32,9 +32,29 @@ function unregisterMenu(closeFn: () => void) {
 }
 
 // Export functions for external use
-(window as any).closeAllMenusExcept = closeAllMenusExcept;
-(window as any).registerMenu = registerMenu;
-(window as any).unregisterMenu = unregisterMenu;
+// These are now wrapped in an installation function to manage lifecycle and avoid memory leaks
+export function installHoverMenuGlobals() {
+	if (typeof window === 'undefined') return () => {};
+
+	(window as any).closeAllMenusExcept = closeAllMenusExcept;
+	(window as any).registerMenu = registerMenu;
+	(window as any).unregisterMenu = unregisterMenu;
+
+	return () => {
+		// Close all menus and clear Set so no refs to plugin closures remain
+		try {
+			openMenus.forEach((fn) => fn());
+		} catch (_) { /* ignore */ }
+		openMenus.clear();
+		// Replace with no-ops so original function objects (and their closure over openMenus) become unreachable
+		(window as any).closeAllMenusExcept = function () {};
+		(window as any).registerMenu = function () {};
+		(window as any).unregisterMenu = function () {};
+		delete (window as any).closeAllMenusExcept;
+		delete (window as any).registerMenu;
+		delete (window as any).unregisterMenu;
+	};
+}
 
 export interface HoverMenuConfig {
 	/** Unique identifier for the menu */

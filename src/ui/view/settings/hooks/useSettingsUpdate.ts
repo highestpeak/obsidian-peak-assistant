@@ -43,11 +43,6 @@ export function useSettingsUpdate(
 				await plugin.aiServiceManager?.init();
 			}
 
-			// Handle command hidden settings side effects
-			if (updates.commandHidden) {
-				plugin.commandHiddenControlService?.updateSettings(plugin.settings.commandHidden);
-			}
-
 			// Handle search settings side effects
 			if (updates.search) {
 				DocumentLoaderManager.getInstance().updateSettings(

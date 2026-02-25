@@ -41,6 +41,14 @@ export class IndexService {
 	}
 
 	/**
+	 * Clear the global singleton instance.
+	 * Call from plugin onunload to release memory.
+	 */
+	static clearInstance(): void {
+		IndexService.instance = null;
+	}
+
+	/**
 	 * Initialize IndexService with AIServiceManager for embedding generation.
 	 * This should be called once during plugin initialization in main.ts.
 	 * Can also be called when settings are updated to refresh the service instance.

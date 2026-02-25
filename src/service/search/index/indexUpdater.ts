@@ -1,4 +1,4 @@
-import type { App, TAbstractFile, EventRef } from 'obsidian';
+import type { App, EventRef, TAbstractFile } from 'obsidian';
 import { TFile } from 'obsidian';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { SearchSettings } from '@/app/settings/types';
@@ -21,9 +21,14 @@ export class SearchUpdateListener {
 	private readonly upsertPaths = new Set<string>();
 	private readonly deletePaths = new Set<string>();
 	private timer: number | null = null;
-	private readonly vaultRefs: EventRef[] = [];
-	private readonly workspaceRefs: EventRef[] = [];
 	private settingsUnsubscribe: (() => void) | null = null;
+	/** Set on dispose so late timer callback or flush skips work and does not touch DB after unload. */
+	private disposed = false;
+	/** In-flight flush promise; disposed waits for it so we close DB after flush settles and avoid OperationalError. */
+	private lastFlushPromise: Promise<void> | null = null;
+	/** Refs for vault/workspace listeners; used by restartWithNewInterval to offref before re-registering. */
+	private vaultRefs: EventRef[] = [];
+	private workspaceRefs: EventRef[] = [];
 	constructor(
 		private readonly app: App,
 		private readonly plugin: MyPlugin,
@@ -36,20 +41,24 @@ export class SearchUpdateListener {
 
 	/**
 	 * Start listening to vault changes, file open events, and settings updates.
+	 * Uses plugin.registerEvent so listeners are auto-removed on plugin unload.
 	 */
 	start(): void {
-		this.vaultRefs.push(
-			this.app.vault.on('modify', (file: TAbstractFile) => this.enqueueUpsert(file)),
-			this.app.vault.on('create', (file: TAbstractFile) => this.enqueueUpsert(file)),
-			this.app.vault.on('delete', (file: TAbstractFile) => this.enqueueDelete(file)),
-			this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => this.enqueueRename(file, oldPath)),
-		);
-		this.workspaceRefs.push(
-			this.app.workspace.on('file-open', (file: TFile | null) => {
-				// Record file open asynchronously (best-effort, don't block)
-				void this.handleFileOpen(file);
-			}),
-		);
+		const rModify = this.app.vault.on('modify', (file: TAbstractFile) => this.enqueueUpsert(file));
+		const rCreate = this.app.vault.on('create', (file: TAbstractFile) => this.enqueueUpsert(file));
+		const rDelete = this.app.vault.on('delete', (file: TAbstractFile) => this.enqueueDelete(file));
+		const rRename = this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => this.enqueueRename(file, oldPath));
+		this.vaultRefs.push(rModify, rCreate, rDelete, rRename);
+		this.plugin.registerEvent(rModify);
+		this.plugin.registerEvent(rCreate);
+		this.plugin.registerEvent(rDelete);
+		this.plugin.registerEvent(rRename);
+
+		const rFileOpen = this.app.workspace.on('file-open', (file: TFile | null) => {
+			void this.handleFileOpen(file);
+		});
+		this.workspaceRefs.push(rFileOpen);
+		this.plugin.registerEvent(rFileOpen);
 
 		// Listen for settings updates to restart if indexRefreshInterval changed
 		const eventBus = EventBus.getInstance(this.app);
@@ -62,19 +71,16 @@ export class SearchUpdateListener {
 	}
 
 	/**
-	 * Stop listening and flush pending updates.
+	 * Stop listening, wait for in-flight flush to settle (then close DB safely), then clear pending.
+	 * Await this before closing SQLite so no flush rejects with OperationalError and retains bundle.
 	 */
 	async dispose(): Promise<void> {
-		for (const ref of this.vaultRefs) {
-			this.app.vault.offref(ref);
-		}
-		for (const ref of this.workspaceRefs) {
-			this.app.workspace.offref(ref);
-		}
+		this.disposed = true;
+		for (const ref of this.vaultRefs) this.app.vault.offref(ref);
+		for (const ref of this.workspaceRefs) this.app.workspace.offref(ref);
 		this.vaultRefs.length = 0;
 		this.workspaceRefs.length = 0;
 
-		// Remove settings update listener
 		if (this.settingsUnsubscribe) {
 			this.settingsUnsubscribe();
 			this.settingsUnsubscribe = null;
@@ -84,7 +90,14 @@ export class SearchUpdateListener {
 			window.clearTimeout(this.timer);
 			this.timer = null;
 		}
-		await this.flush();
+		this.upsertPaths.clear();
+		this.deletePaths.clear();
+
+		// Wait for in-flight flush to finish so we never close DB while it runs (avoids OperationalError retention)
+		if (this.lastFlushPromise) {
+			await this.lastFlushPromise;
+			this.lastFlushPromise = null;
+		}
 	}
 
 	private enqueueUpsert(file: TAbstractFile): void {
@@ -115,17 +128,17 @@ export class SearchUpdateListener {
 	 */
 	private async handleFileOpen(file: TFile | null): Promise<void> {
 		if (!file || !(file instanceof TFile)) return;
-		
+		if (this.disposed) return;
 		if (!sqliteStoreManager.isInitialized()) {
 			// Store not initialized yet, skip
 			console.warn('sqliteStoreManager not initialized, skipping file open:', file.path);
 			return;
 		}
-		
+
 		try {
 			const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
 			const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
-			
+
 			// Get doc_id from path
 			const meta = await docMetaRepo.getByPath(file.path);
 			if (!meta) {
@@ -143,11 +156,14 @@ export class SearchUpdateListener {
 		if (this.timer) return;
 		this.timer = window.setTimeout(() => {
 			this.timer = null;
+			if (this.disposed) return;
 			void this.flush();
 		}, this.debounceMs);
 	}
 
 	private async flush(): Promise<void> {
+		if (this.disposed) return;
+		if (!sqliteStoreManager.isInitialized()) return;
 		const deletePaths = Array.from(this.deletePaths);
 		const upsertPaths = Array.from(this.upsertPaths);
 		this.deletePaths.clear();
@@ -158,24 +174,27 @@ export class SearchUpdateListener {
 		try {
 			console.log('flush start processing. flush id: ', uuid);
 
-			// Execute delete and upsert operations in parallel
-			Promise.all([
+			const work = Promise.all([
 				deletePaths.length > 0
 					? IndexService.getInstance().deleteDocuments(deletePaths)
 					: Promise.resolve(),
 				upsertPaths.length > 0
 					? this.indexDocuments(upsertPaths)
 					: Promise.resolve(),
-			]).then(() => {
-				console.log(`[SearchUpdateListener] Flush completed: deleted ${deletePaths.length} files, indexed ${upsertPaths.length} files`);
-			}).catch((e) => {
-				console.error('Search update operations failed:', e);
-			});
-
+			])
+				.then(() => {
+					console.log(`[SearchUpdateListener] Flush completed: deleted ${deletePaths.length} files, indexed ${upsertPaths.length} files`);
+				})
+				.catch((e) => {
+					console.error('Search update operations failed:', e);
+				})
+				.finally(() => {
+					this.lastFlushPromise = null;
+					console.log('flush end processing. flush id: ', uuid, 'duration: ', Date.now() - startTime, 'ms');
+				});
+			this.lastFlushPromise = work;
 		} catch (e) {
 			console.error('Search update flush failed:', e);
-		} finally {
-			console.log('flush end processing. flush id: ', uuid, 'duration: ', Date.now() - startTime, 'ms');
 		}
 	}
 

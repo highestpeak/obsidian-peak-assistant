@@ -13,6 +13,6 @@ export const template = `You are the **sources steward** for a knowledge analysi
 - You may tag sources (e.g. key, supporting) so roles are obvious at a glance.
 
 **Boundary**
-- You must use **only** the \`update_sources\` tool. Do not call any graph-related tools.`;
+- You must output the same language as the user's query.`;
 
 export const expectsJson = false;

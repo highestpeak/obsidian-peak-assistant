@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { getCleanQuery, type UIStepRecord } from '../store/aiAnalysisStore';
-import { useSharedStore, useAIAnalysisStore } from '@/ui/view/quick-search/store';
+import {
+	getCleanQuery,
+	type UIStepRecord,
+	useAIAnalysisRuntimeStore,
+	useAIAnalysisStepsStore,
+	useAIAnalysisSummaryStore,
+	useAIAnalysisResultStore,
+	useAIAnalysisTopicsStore,
+	useAIAnalysisInteractionsStore,
+	resetAIAnalysisAll,
+	markAIAnalysisCompleted,
+} from '../store/aiAnalysisStore';
+import { useSharedStore } from '@/ui/view/quick-search/store';
 import { setLastAnalysisHistorySearch, invalidateFollowupContextCache } from '../followupContextRuntime';
 import { AppContext } from '@/app/context/AppContext';
 import { SearchAgentResult } from '@/service/agents/AISearchAgent';
-import { RESULT_UPDATE_TOOL_NAMES } from '@/service/agents/AISearchAgent';
-import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
+import { LLMStreamEvent, StreamTriggerName, UISignalChannel } from '@/core/providers/types';
 import { checkIfDeltaEvent, getDeltaEventDeltaText } from '@/core/providers/helpers/stream-helper';
-import { PromptId } from '@/service/prompt/PromptId';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { Notice } from 'obsidian';
 import { normalizeMermaidForDisplay } from '@/core/utils/mermaid-utils';
@@ -15,34 +24,33 @@ import { normalizeMermaidForDisplay } from '@/core/utils/mermaid-utils';
 export function useAIAnalysis() {
 	const { searchQuery } = useSharedStore();
 
-	const {
-		webEnabled,
-		analysisMode,
-		setUsage,
-		setDuration,
-		setSummary,
-		appendSummaryDelta,
-		setGraph,
-		setDashboardBlocks,
-		setTopics,
-		setSources,
-		pushOverviewMermaidVersion,
-		setTitle,
-		setSuggestedFollowUpQuestions,
-		startAnalyzing,
-		startStreaming,
-		markCompleted,
-		recordError,
-		startSummaryStreaming,
-		resetAnalysisState,
-		updateWebFromQuery,
-		appendCompletedUiStep,
-		setCurrentUiStep,
-		updateCurrentUiStep,
-		appendCurrentUiStepDelta,
-	} = useAIAnalysisStore();
+	const webEnabled = useAIAnalysisRuntimeStore((s) => s.webEnabled);
+	const analysisMode = useAIAnalysisRuntimeStore((s) => s.analysisMode);
+	const updateWebFromQuery = useAIAnalysisRuntimeStore((s) => s.updateWebFromQuery);
+	const startAnalyzing = useAIAnalysisRuntimeStore((s) => s.startAnalyzing);
+	const startStreaming = useAIAnalysisRuntimeStore((s) => s.startStreaming);
+	const recordError = useAIAnalysisRuntimeStore((s) => s.recordError);
+	const setUsage = useAIAnalysisRuntimeStore((s) => s.setUsage);
+	const setDuration = useAIAnalysisRuntimeStore((s) => s.setDuration);
+	const setTitle = useAIAnalysisRuntimeStore((s) => s.setTitle);
+	const setDashboardUpdatedLine = useAIAnalysisRuntimeStore((s) => s.setDashboardUpdatedLine);
+	const setHasAnalyzed = useAIAnalysisRuntimeStore((s) => s.setHasAnalyzed);
+
+	const appendCompletedUiStep = useAIAnalysisStepsStore((s) => s.appendCompletedUiStep);
+
+	const appendSummaryDelta = useAIAnalysisSummaryStore((s) => s.appendSummaryDelta);
+	const setSummary = useAIAnalysisSummaryStore((s) => s.setSummary);
+
+	const setGraph = useAIAnalysisResultStore((s) => s.setGraph);
+	const setDashboardBlocks = useAIAnalysisResultStore((s) => s.setDashboardBlocks);
+	const setTopics = useAIAnalysisResultStore((s) => s.setTopics);
+	const setSources = useAIAnalysisResultStore((s) => s.setSources);
+	const pushOverviewMermaidVersion = useAIAnalysisResultStore((s) => s.pushOverviewMermaidVersion);
+
+	const setSuggestedFollowUpQuestions = useAIAnalysisInteractionsStore((s) => s.setSuggestedFollowUpQuestions);
 
 	// Chronological timeline for debug: every step in order with agent, input, output, token delta
+	// mainly for debugging.
 	type TimelineEntry = {
 		ts: number;
 		eventType: string;
@@ -55,30 +63,55 @@ export function useAIAnalysis() {
 	const timelineRef = useRef<TimelineEntry[]>([]);
 	const pushTimeline = (event: LLMStreamEvent) => {
 		try {
+			// Skip ui-step-delta for timeline (redundant with text-delta; causes duplicated output)
+			if (event.type === 'ui-step-delta') return;
+
 			const anyEvent = event as any;
 			const isDelta = checkIfDeltaEvent(event.type);
-			const deltaText = getDeltaEventDeltaText(event) || (event.type === 'ui-step-delta' ? anyEvent.descriptionDelta : undefined);
+			const deltaText = getDeltaEventDeltaText(event);
 			const arr = timelineRef.current;
 
+			// Merge delta events with previous delta
 			if (isDelta && arr.length > 0 && checkIfDeltaEvent(arr[arr.length - 1].eventType as LLMStreamEvent['type'])) {
 				const prev = arr[arr.length - 1];
 				const base = String(prev.output ?? '').replace(/\s*\[\w[-.\w]*\]\s*$/, '');
+				// eg: xxxx [text-delta]
 				prev.output = base + (deltaText || '') + (event.type ? ` [${event.type}]` : '');
 				prev.ts = Date.now();
 				return;
+			}
+
+			// Build what identifier for tool events and ui-signal
+			const currentWhat = anyEvent.toolName
+				? `${anyEvent.toolName}${anyEvent.id ? ` (${anyEvent.id})` : ''}`
+				: anyEvent.promptId
+					? `${anyEvent.promptId}`
+					: anyEvent.debugName
+						? anyEvent.debugName
+						: event.type === 'ui-signal'
+							? `${anyEvent.channel ?? 'signal'}:${anyEvent.kind ?? 'event'}${anyEvent.entityId ? ` (${anyEvent.entityId})` : ''}`
+							: 'unknown';
+
+			// Merge tool-result with matching tool-call (search backwards; ui-delta etc. may appear in between)
+			if (event.type === 'tool-result' && arr.length > 0) {
+				for (let i = arr.length - 1; i >= 0; i--) {
+					const candidate = arr[i];
+					if (candidate.eventType === 'tool-call' && candidate.what === currentWhat) {
+						candidate.eventType = 'tool-call+result';
+						candidate.output = anyEvent.output !== undefined
+							? anyEvent.toolName !== 'content_reader' ? anyEvent.output : 'content_reader_skipped'
+							: candidate.output;
+						candidate.ts = Date.now();
+						return;
+					}
+				}
 			}
 
 			arr.push({
 				ts: Date.now(),
 				eventType: event.type,
 				agent: event.triggerName || 'unknown',
-				what: anyEvent.toolName
-					? `${anyEvent.toolName}${anyEvent.id ? ` (${anyEvent.id})` : ''}`
-					: anyEvent.promptId
-						? `${anyEvent.promptId}`
-						: anyEvent.debugName
-							? anyEvent.debugName
-							: 'unknown',
+				what: currentWhat,
 				input: anyEvent.input,
 				output: anyEvent.output !== undefined
 					? anyEvent.toolName !== 'content_reader' ? anyEvent.output : 'content_reader_skipped'
@@ -86,7 +119,9 @@ export function useAIAnalysis() {
 						? [anyEvent.title, anyEvent.description].filter(Boolean).join('. ')
 						: deltaText
 							? deltaText + (event.type ? ` [${event.type}]` : '')
-							: anyEvent.error?.message ?? String(anyEvent.error) ?? (anyEvent.extra ?? undefined),
+							: event.type === 'ui-signal'
+								? { channel: anyEvent.channel, kind: anyEvent.kind, entityId: anyEvent.entityId, payload: anyEvent.payload }
+								: anyEvent.extra ?? (anyEvent.error ? (anyEvent.error?.message ?? String(anyEvent.error)) : undefined),
 				tokens: anyEvent.usage ? {
 					inputTokens: anyEvent.usage.inputTokens ?? 0,
 					outputTokens: anyEvent.usage.outputTokens ?? 0,
@@ -98,14 +133,37 @@ export function useAIAnalysis() {
 		}
 	};
 
+	/** Group consecutive timeline entries with the same agent into { agent, items } blocks. */
+	const reorganizeTimelineByAgent = (entries: TimelineEntry[]): Array<{ agent: string; items: TimelineEntry[] }> => {
+		if (entries.length === 0) return [];
+		const result: Array<{ agent: string; items: TimelineEntry[] }> = [];
+		let currentAgent = entries[0].agent ?? 'unknown';
+		let currentItems: TimelineEntry[] = [entries[0]];
+
+		for (let i = 1; i < entries.length; i++) {
+			const agent = entries[i].agent ?? 'unknown';
+			if (agent === currentAgent) {
+				currentItems.push(entries[i]);
+			} else {
+				result.push({ agent: currentAgent, items: currentItems });
+				currentAgent = agent;
+				currentItems = [entries[i]];
+			}
+		}
+		result.push({ agent: currentAgent, items: currentItems });
+		return result;
+	};
+
 	// Analysis start time for duration tracking
 	const analysisStartTimeRef = useRef<number>(0);
 
-	// Current UI step (from ui-step) for persisting to store when next step or complete
-	const currentUiStepRef = useRef<UIStepRecord | null>(null);
+	// Current UI step (from ui-step) for persisting to store when next step or complete.
+	// Uses chunk arrays to avoid O(n) string concatenation on every delta (GC pressure).
+	type UiStepAccum = { stepId: string; titleChunks: string[]; descChunks: string[]; startedAtMs: number };
+	const currentUiStepRef = useRef<UiStepAccum | UIStepRecord | null>(null);
 
-	// Summary delta buffer to reduce store update frequency.
-	const summaryDeltaBufferRef = useRef<string>('');
+	// Summary delta buffer to reduce store update frequency. Use array to avoid O(n) string += per delta.
+	const summaryDeltaBufferRef = useRef<string[]>([]);
 	const summaryFlushTimerRef = useRef<number | null>(null);
 
 	const flushSummaryBuffer = useCallback(() => {
@@ -113,22 +171,22 @@ export function useAIAnalysis() {
 			window.clearTimeout(summaryFlushTimerRef.current);
 			summaryFlushTimerRef.current = null;
 		}
-		const buf = summaryDeltaBufferRef.current;
-		if (!buf) return;
-		appendSummaryDelta(buf);
-		summaryDeltaBufferRef.current = '';
+		const chunks = summaryDeltaBufferRef.current;
+		if (chunks.length === 0) return;
+		appendSummaryDelta(chunks.join(''));
+		summaryDeltaBufferRef.current = [];
 	}, [appendSummaryDelta]);
 
 	const bufferSummaryDelta = useCallback((delta: string) => {
 		if (!delta) return;
-		summaryDeltaBufferRef.current += delta;
+		summaryDeltaBufferRef.current.push(delta);
 		if (summaryFlushTimerRef.current) return;
 		summaryFlushTimerRef.current = window.setTimeout(() => {
 			summaryFlushTimerRef.current = null;
-			const buf = summaryDeltaBufferRef.current;
-			if (!buf) return;
-			appendSummaryDelta(buf);
-			summaryDeltaBufferRef.current = '';
+			const chunks = summaryDeltaBufferRef.current;
+			if (chunks.length === 0) return;
+			appendSummaryDelta(chunks.join(''));
+			summaryDeltaBufferRef.current = [];
 		}, 120);
 	}, [appendSummaryDelta]);
 
@@ -139,12 +197,10 @@ export function useAIAnalysis() {
 
 	// Real agent when not mock; MockAISearchAgent in desktop dev so one code path
 	const aiSearchAgent = useMemo(() => {
-		const plugin = AppContext.getInstance().plugin;
 		return AppContext.searchAgent({
 			enableWebSearch: webEnabled,
 			enableLocalSearch: true,
 			analysisMode: analysisMode ?? 'vaultFull',
-			maxMultiAgentIterations: plugin.settings.search.maxMultiAgentIterations,
 		});
 	}, [webEnabled, analysisMode]);
 
@@ -157,32 +213,18 @@ export function useAIAnalysis() {
 	 * Apply search result to state
 	 */
 	const applySearchResult = useCallback((result: SearchAgentResult) => {
-		if (result.summary) {
-			setSummary(result.summary);
-		}
-		if (result.graph) {
-			setGraph(result.graph);
-		}
-		if (result.dashboardBlocks) {
-			setDashboardBlocks(result.dashboardBlocks);
-		}
-		if (result.topics) {
-			setTopics(result.topics);
-		}
-		if (result.sources) {
-			setSources(result.sources);
-		}
+		if (result.summary) setSummary(result.summary);
+		if (result.graph) setGraph(result.graph);
+		if (result.dashboardBlocks) setDashboardBlocks(result.dashboardBlocks);
+		if (result.topics) setTopics(result.topics);
+		if (result.sources) setSources(result.sources);
 		if (result.overviewMermaid !== undefined && result.overviewMermaid != null) {
-			const code = normalizeMermaidForDisplay(result.overviewMermaid);
-			pushOverviewMermaidVersion(code, { makeActive: true, dedupe: true });
+			pushOverviewMermaidVersion(normalizeMermaidForDisplay(result.overviewMermaid), { makeActive: true, dedupe: true });
 		}
-		if (result.title !== undefined) {
-			setTitle(result.title ?? null);
-		}
-		if (result.suggestedFollowUpQuestions !== undefined) {
-			setSuggestedFollowUpQuestions(result.suggestedFollowUpQuestions ?? []);
-		}
-	}, [setSummary, setGraph, setDashboardBlocks, setTopics, setSources, pushOverviewMermaidVersion, setTitle, setSuggestedFollowUpQuestions]);
+		if (result.title !== undefined) setTitle(result.title ?? null);
+		if (result.suggestedFollowUpQuestions !== undefined) setSuggestedFollowUpQuestions(result.suggestedFollowUpQuestions ?? []);
+		setHasAnalyzed(true);
+	}, [setSummary, setGraph, setDashboardBlocks, setTopics, setSources, pushOverviewMermaidVersion, setTitle, setSuggestedFollowUpQuestions, setHasAnalyzed]);
 
 	/**
 	 * Handle the final result from AISearchAgent
@@ -201,8 +243,7 @@ export function useAIAnalysis() {
 		applySearchResult(finalResult);
 
 		// Notice (success): only when modal is closed and not canceled.
-		// Use store state directly to avoid stale closures.
-		if (!didCancelRef.current && !noticeSentRef.current && !useAIAnalysisStore.getState().aiModalOpen) {
+		if (!didCancelRef.current && !noticeSentRef.current && !useAIAnalysisRuntimeStore.getState().aiModalOpen) {
 			noticeSentRef.current = true;
 			new Notice(
 				'AI Analysis completed. Reopen Quick Search → AI Analysis tab to view results.',
@@ -232,14 +273,14 @@ export function useAIAnalysis() {
 				return;
 			}
 
-			resetAnalysisState();
+			resetAIAnalysisAll();
 			invalidateFollowupContextCache();
 			startAnalyzing();
 			didCancelRef.current = false;
 			noticeSentRef.current = false;
 			timelineRef.current = [];
 			analysisStartTimeRef.current = Date.now();
-			summaryDeltaBufferRef.current = '';
+			summaryDeltaBufferRef.current = [];
 			if (summaryFlushTimerRef.current) {
 				window.clearTimeout(summaryFlushTimerRef.current);
 				summaryFlushTimerRef.current = null;
@@ -249,8 +290,7 @@ export function useAIAnalysis() {
 
 			// Process the stream directly
 			for await (const event of stream) {
-				// avoid closure trap. use useAIAnalysisStore.getState() to get the latest state. otherwise always get the old state.
-				if (!useAIAnalysisStore.getState().hasStartedStreaming) {
+				if (!useAIAnalysisRuntimeStore.getState().hasStartedStreaming) {
 					console.debug('[useAIAnalysis] Starting streaming');
 					startStreaming();
 				}
@@ -270,43 +310,40 @@ export function useAIAnalysis() {
 				// 	console.debug('[useAIAnalysis] delta event:', event.triggerName);
 				// }
 
-				pushTimeline(event);
+				// pushTimeline(event);
 
 				switch (event.type) {
-					case 'text-delta':
-					case 'reasoning-delta':
-						break;
-					case 'tool-call':
-						break;
-					case 'tool-result': {
-						if (RESULT_UPDATE_TOOL_NAMES.has(event.toolName)) {
-							const currentResult = event.extra?.currentResult as SearchAgentResult | undefined;
-							if (currentResult) {
-								applySearchResult(currentResult);
+					case 'text-start': {
+						if (event.triggerName === StreamTriggerName.SEARCH_SUMMARY || event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT) {
+							if (!useAIAnalysisSummaryStore.getState().isSummaryStreaming) {
+								useAIAnalysisSummaryStore.getState().startSummaryStreaming();
 							}
 						}
 						break;
 					}
-					case 'prompt-stream-start': {
-						const pid = event.promptId as string;
-						if (pid === PromptId.AiAnalysisSummary) {
-							startSummaryStreaming();
-						}
-						break;
-					}
-					case 'prompt-stream-delta':
-						if (event.promptId === PromptId.AiAnalysisSummary) {
-							const delta = event.delta || '';
+					case 'text-delta':
+						if (event.triggerName === StreamTriggerName.SEARCH_SUMMARY || event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT) {
+							const delta = getDeltaEventDeltaText(event);
 							bufferSummaryDelta(delta);
 							// publish event for UI rendering
 							useUIEventStore.getState().publish('summary-delta', { text: delta });
 						}
 						break;
-					case 'prompt-stream-result': {
-						const ev = event as { promptId: string; output?: unknown; usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number } };
-						if (ev.promptId === PromptId.AiAnalysisSummary) {
+					case 'text-end':
+						if (event.triggerName === StreamTriggerName.SEARCH_SUMMARY || event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT) {
 							flushSummaryBuffer();
-							setSummary(ev.output as string);
+							// setSummary(ev.output as string);
+						}
+						break;
+					case 'reasoning-delta':
+						break;
+					case 'tool-call':
+						break;
+					case 'tool-result': {
+						const currentResult = event.extra?.currentResult as SearchAgentResult | undefined;
+						if (currentResult) {
+							console.log('[useAIAnalysis] tool-result applySearchResult');
+							applySearchResult(currentResult);
 						}
 						break;
 					}
@@ -315,50 +352,66 @@ export function useAIAnalysis() {
 						const stepId = event.stepId as string | undefined;
 						const title = typeof event.title === 'string' ? event.title : '';
 						const description = typeof event.description === 'string' ? event.description : '';
+						if (event.triggerName === StreamTriggerName.SEARCH_DASHBOARD_AGENT && title === 'Dashboard Updated' && description) {
+							setDashboardUpdatedLine(description);
+						}
 						if (stepId) {
 							const prev = currentUiStepRef.current;
 							if (prev && prev.stepId !== stepId) {
-								appendCompletedUiStep({ ...prev, endedAtMs: Date.now() });
+								const toAppend: UIStepRecord = 'titleChunks' in prev
+									? { stepId: prev.stepId, title: prev.titleChunks.join('') || 'Step', description: prev.descChunks.join(''), startedAtMs: prev.startedAtMs, endedAtMs: Date.now() }
+									: { ...prev, endedAtMs: Date.now() };
+								appendCompletedUiStep(toAppend);
 							}
-							if (prev && prev.stepId === stepId) {
-								const newTitle = title || prev.title;
-								const newDescription = description !== '' ? description : prev.description;
-								currentUiStepRef.current = { ...prev, title: newTitle, description: newDescription };
-								updateCurrentUiStep(stepId, newTitle, newDescription);
-							} else {
-								currentUiStepRef.current = { stepId, title: title || 'Step', description, startedAtMs: Date.now() };
-								setCurrentUiStep(stepId, title || 'Step', description);
+							if (!prev || prev.stepId !== stepId) {
+								currentUiStepRef.current = { stepId, titleChunks: title ? [title] : [], descChunks: description ? [description] : [], startedAtMs: Date.now() };
+							} else if ('titleChunks' in prev) {
+								prev.titleChunks = title ? [title] : prev.titleChunks;
+								prev.descChunks = description !== '' ? [description] : prev.descChunks;
 							}
 						}
 						break;
 					}
 					case 'ui-step-delta': {
 						useUIEventStore.getState().publish(event.type, event);
+						// Skip store update: StepsDisplay subscribes to events and renders. appendCurrentUiStepDelta
+						// caused O(n) string concat + store set on every delta → GC pressure and crash.
 						const descDelta = typeof event.descriptionDelta === 'string' ? event.descriptionDelta : '';
 						const titleDelta = typeof event.titleDelta === 'string' ? event.titleDelta : '';
 						if (descDelta || titleDelta) {
-							appendCurrentUiStepDelta(descDelta, titleDelta);
 							const cur = currentUiStepRef.current;
-							if (cur) {
-								currentUiStepRef.current = {
-									...cur,
-									title: cur.title + titleDelta,
-									description: cur.description + descDelta,
-								};
+							if (cur && 'descChunks' in cur) {
+								if (descDelta) cur.descChunks.push(descDelta);
+								if (titleDelta) cur.titleChunks.push(titleDelta);
 							}
 						}
 						break;
 					}
-					case 'ui-signal':
+					case 'ui-signal': {
+						const ev = event as { channel?: string; payload?: { mermaid?: string; progress?: unknown } };
+						if (ev.channel === UISignalChannel.OVERVIEW_MERMAID && typeof ev.payload?.mermaid === 'string') {
+							pushOverviewMermaidVersion(ev.payload.mermaid.trim(), { makeActive: true, dedupe: true });
+						}
+						// // MindFlowAgent sends one combined signal at finish with { mermaid, progress }; single set = one re-render
+						if (ev.channel === UISignalChannel.MINDFLOW_MERMAID && ev.payload) {
+							const p = ev.payload as { mermaid?: string; progress?: unknown };
+							useAIAnalysisResultStore.getState().setMindflowSnapshot({
+								...(typeof p.mermaid === 'string' && { mermaid: p.mermaid.trim() }),
+								...(p.progress != null && { progress: p.progress as any }),
+							});
+						}
 						useUIEventStore.getState().publish(event.type, event);
 						break;
+					}
 					case 'complete': {
 						const lastStep = currentUiStepRef.current;
 						if (lastStep) {
-							appendCompletedUiStep({ ...lastStep, endedAtMs: Date.now() });
+							const toAppend: UIStepRecord = 'titleChunks' in lastStep
+								? { stepId: lastStep.stepId, title: lastStep.titleChunks.join('') || 'Step', description: lastStep.descChunks.join(''), startedAtMs: lastStep.startedAtMs, endedAtMs: Date.now() }
+								: { ...lastStep, endedAtMs: Date.now() };
+							appendCompletedUiStep(toAppend);
 							currentUiStepRef.current = null;
 						}
-						useAIAnalysisStore.getState().clearCurrentUiStep();
 						useUIEventStore.getState().publish('complete', event);
 						// Only apply final result and notice for top-level complete (thought agent), not inner agents (e.g. inspector)
 						if (event.triggerName === StreamTriggerName.SEARCH_THOUGHT_AGENT || event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT) {
@@ -367,15 +420,9 @@ export function useAIAnalysis() {
 						break;
 					}
 					case 'error': {
-						const errMsg = event.error?.message ?? String(event.error);
-						recordError(errMsg);
-						// Notice (error): only when modal is closed and not canceled.
-						if (!didCancelRef.current && !noticeSentRef.current && !useAIAnalysisStore.getState().aiModalOpen) {
-							noticeSentRef.current = true;
-							new Notice(
-								'AI Analysis failed. Reopen Quick Search → AI Analysis tab for details.',
-								8000,
-							);
+						if (AppContext.getInstance().plugin.settings.enableDevTools) {
+							const errMsg = event.error?.message ?? String(event.error);
+							recordError(errMsg);
 						}
 						break;
 					}
@@ -394,7 +441,7 @@ export function useAIAnalysis() {
 				: 'Failed to connect to AI service. Please check your network connection and try again.';
 			recordError(errorMessage);
 			// Notice (error): only when modal is closed and not canceled.
-			if (!didCancelRef.current && !noticeSentRef.current && !useAIAnalysisStore.getState().aiModalOpen) {
+			if (!didCancelRef.current && !noticeSentRef.current && !useAIAnalysisRuntimeStore.getState().aiModalOpen) {
 				noticeSentRef.current = true;
 				new Notice(
 					'AI Analysis failed. Reopen Quick Search → AI Analysis tab for details.',
@@ -403,31 +450,31 @@ export function useAIAnalysis() {
 			}
 		} finally {
 			flushSummaryBuffer();
-			// Build debug dump: single chronological timeline (every step in order with agent, input, output, token delta)
-			const aiAnalysisStoreState = useAIAnalysisStore.getState();
+			const rt = useAIAnalysisRuntimeStore.getState();
+			const sum = useAIAnalysisSummaryStore.getState();
+			const res = useAIAnalysisResultStore.getState();
 			const debugDump = {
 				meta: {
 					query: searchQuery,
 					webEnabled,
 					totalDurationMs: Date.now() - analysisStartTimeRef.current,
-					usage: aiAnalysisStoreState.usage,
-					hasError: !!aiAnalysisStoreState.error,
-					error: aiAnalysisStoreState.error,
-					sourcesCount: aiAnalysisStoreState.sources.length,
-					topicsCount: aiAnalysisStoreState.topics.length,
-					dashboardBlocksCount: aiAnalysisStoreState.dashboardBlocks?.length ?? 0,
-					graphNodesCount: aiAnalysisStoreState.graph?.nodes?.length ?? 0,
-					graphEdgesCount: aiAnalysisStoreState.graph?.edges?.length ?? 0
+					usage: rt.usage,
+					hasError: !!rt.error,
+					error: rt.error,
+					sourcesCount: (res.sources ?? []).length,
+					topicsCount: (res.topics ?? []).length,
+					dashboardBlocksCount: (res.dashboardBlocks ?? []).length,
+					graphNodesCount: (res.graph?.nodes ?? []).length,
+					graphEdgesCount: (res.graph?.edges ?? []).length,
 				},
-				timeline: timelineRef.current,
-				summary: (aiAnalysisStoreState.summaryChunks ?? []).join(''),
-				summaryLen: (aiAnalysisStoreState.summaryChunks ?? []).join('').length
+				timeline: reorganizeTimelineByAgent(timelineRef.current),
+				summary: (sum.summaryChunks ?? []).join(''),
+				summaryLen: (sum.summaryChunks ?? []).join('').length,
 			};
 			console.debug('[useAIAnalysis] debugDumpJson', JSON.stringify(debugDump));
 
-			// Persist history search for follow-up agent (memory only, not store)
 			try {
-				const runId = aiAnalysisStoreState.analysisRunId ?? null;
+				const runId = rt.analysisRunId ?? null;
 				if (aiSearchAgent) {
 					setLastAnalysisHistorySearch(
 						(q, opts) => aiSearchAgent.searchHistory(q, opts),
@@ -443,13 +490,13 @@ export function useAIAnalysis() {
 			// Reset refs for next analysis
 			timelineRef.current = [];
 			analysisStartTimeRef.current = 0;
-			summaryDeltaBufferRef.current = '';
+			summaryDeltaBufferRef.current = [];
 			if (summaryFlushTimerRef.current) {
 				window.clearTimeout(summaryFlushTimerRef.current);
 				summaryFlushTimerRef.current = null;
 			}
 
-			markCompleted();
+			markAIAnalysisCompleted();
 			// Clear abort controller
 			if (controller) {
 				abortControllerRef.current = null;
@@ -461,15 +508,11 @@ export function useAIAnalysis() {
 		aiSearchAgent,
 		applySearchResult,
 		recordError,
-		resetAnalysisState,
 		startAnalyzing,
 		startStreaming,
-		markCompleted,
-		startSummaryStreaming,
-		appendSummaryDelta,
 		bufferSummaryDelta,
 		flushSummaryBuffer,
-		handleFinalResult
+		handleFinalResult,
 	]);
 
 	/**
