@@ -193,22 +193,15 @@ export interface Database {
 
 
 /**
- * Database interface that supports both sql.js and better-sqlite3.
- * Both libraries provide an `exec()` method for running SQL statements.
+ * Database interface for schema migration (exec).
  */
 interface SqliteDatabaseLike {
 	exec(sql: string): void;
 }
 
 /**
- * Apply schema migrations. Keep this idempotent.
- *
- * Supports both:
- * - sql.js Database (from @/core/storage/sqlite/SqliteMetadataStore - deprecated)
- * - better-sqlite3 Database (from @/core/storage/sqlite/BetterSqliteStore)
- *
- * Both implement the `exec()` method, so this migration works with either.
- * Uses raw SQL for simplicity and full SQLite feature support (FTS5, etc.).
+ * Apply schema migrations. Idempotent. Works with better-sqlite3 adapter.
+ * Uses raw SQL for full SQLite feature support (FTS5, etc.).
  */
 export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	const tryExec = (sql: string) => {

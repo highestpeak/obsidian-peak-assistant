@@ -3,17 +3,11 @@ import { Kysely } from 'kysely';
 
 /**
  * Database adapter interface compatible with Kysely's SqliteDialect.
- * 
- * All backends (better-sqlite3, sql.js) must implement this interface through adapters.
- * This is the type used by repositories (DocChunkRepo, EmbeddingRepo, etc.)
- * to work with raw SQL operations.
+ * Used by repositories (DocChunkRepo, EmbeddingRepo, etc.) for raw SQL.
  */
 
-
-/**
- * Supported SQLite backend types.
- */
-export type SqliteStoreType = 'better-sqlite3' | 'sql.js';
+/** Supported SQLite backend (only better-sqlite3). */
+export type SqliteStoreType = 'better-sqlite3';
 
 export interface SqliteDatabase {
 	exec(sql: string): void;

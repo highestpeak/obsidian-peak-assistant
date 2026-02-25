@@ -206,7 +206,7 @@ export class BetterSqliteStore implements SqliteDatabase {
 								'1. Navigate to: .obsidian/plugins/obsidian-peak-assistant/',
 								'2. Run: npm install better-sqlite3',
 								'3. Rebuild for Electron (see README.md for details)',
-								'Falling back to sql.js (default, works out of the box).'
+								'better-sqlite3 is required for this plugin.'
 							].join('\n')
 						);
 						return false;
@@ -239,7 +239,7 @@ export class BetterSqliteStore implements SqliteDatabase {
 					'This is usually because the native module is missing or incompatible with Electron\'s Node.js version. ' +
 					'To fix: Rebuild better-sqlite3 for Electron using electron-rebuild. ' +
 					'See src/core/storage/README.md for detailed instructions. ' +
-					'Falling back to sql.js (default, works out of the box).',
+					'better-sqlite3 is required for this plugin.',
 					error
 				);
 				return false;
@@ -415,7 +415,7 @@ export class BetterSqliteStore implements SqliteDatabase {
 					'better-sqlite3 native module failed to load. ' +
 					'This usually means the .node file is missing or incompatible. ' +
 					'Please ensure better-sqlite3 is properly installed in the plugin directory, ' +
-					'or use sql.js instead (set sqliteBackend to "sql.js" in settings). ' +
+					'Install and rebuild better-sqlite3 in the plugin directory. ' +
 					`Original error: ${error.message}`
 				);
 			}

@@ -71,7 +71,6 @@ export default defineConfig({
 			'better-sqlite3',
 			'@langchain/community/document_loaders/web/playwright',
 			'es-toolkit',
-			'sqljs-wasm', // Virtual module created by esbuild plugin, doesn't exist as real package
 		],
 	},
 	ssr: {
@@ -82,7 +81,6 @@ export default defineConfig({
 			'playwright-core',
 			'better-sqlite3',
 			'es-toolkit',
-			'sqljs-wasm', // Virtual module created by esbuild plugin
 		],
 	},
 	define: {

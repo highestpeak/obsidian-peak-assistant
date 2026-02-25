@@ -348,12 +348,11 @@ export interface MyPluginSettings {
 	search: SearchSettings;
 
 	/**
-	 * SQLite backend preference.
-	 * - 'auto': Automatically detect and use better-sqlite3 if available, otherwise use sql.js
-	 * - 'better-sqlite3': Force use better-sqlite3 (requires manual installation)
-	 * - 'sql.js': Force use sql.js (default, cross-platform)
+	 * SQLite backend preference. Only better-sqlite3 is supported.
+	 * - 'auto': Use better-sqlite3 (must be available)
+	 * - 'better-sqlite3': Use better-sqlite3
 	 */
-	sqliteBackend?: 'auto' | 'better-sqlite3' | 'sql.js';
+	sqliteBackend?: 'auto' | 'better-sqlite3';
 
 	/**
 	 * Enable development tools for testing graph inspector tools in DevTools console.
@@ -387,7 +386,7 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	ai: DEFAULT_AI_SERVICE_SETTINGS,
 	search: DEFAULT_SEARCH_SETTINGS,
 
-	sqliteBackend: 'auto', // Auto-detect: try better-sqlite3 first, fallback to sql.js
+	sqliteBackend: 'auto',
 
 	enableDevTools: false, // Disabled by default for security
 

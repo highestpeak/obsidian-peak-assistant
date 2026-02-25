@@ -19,127 +19,6 @@ if you want to view the source, please visit the github repository of this plugi
 const prod = (process.argv[2] === "production");
 
 /**
- * Custom plugin to inline WASM files as Base64 data URLs.
- * 
- * This plugin handles:
- * 1. Direct .wasm file imports (if any dependencies import .wasm files)
- * 2. Virtual module 'sqljs-wasm' that provides sql.js WASM binary as Base64
- * 3. Replaces require('sqljs-wasm') calls in source code with actual Base64 string
- */
-const wasmInlinePlugin = {
-	name: 'wasm-inline',
-	setup(build) {
-		// Pre-load WASM file once at plugin setup
-		let wasmBase64 = null;
-		
-		// Try to load sql.js WASM file
-		const loadWasmFile = async () => {
-			if (wasmBase64 !== null) {
-				return wasmBase64;
-			}
-			
-			const possiblePaths = [
-				path.join(__dirname, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'),
-				path.join(__dirname, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm.js'),
-			];
-
-			for (const wasmPath of possiblePaths) {
-				try {
-					if (fs.existsSync(wasmPath)) {
-						const wasmBytes = await fs.promises.readFile(wasmPath);
-						wasmBase64 = wasmBytes.toString('base64');
-						console.log(`[wasm-inline] Loaded sql.js WASM from: ${wasmPath} (${wasmBase64.length} bytes Base64)`);
-						return wasmBase64;
-					}
-				} catch (error) {
-					// Try next path
-					continue;
-				}
-			}
-			
-			console.warn(`[wasm-inline] Could not find sql.js WASM file. Tried: ${possiblePaths.join(', ')}`);
-			return null;
-		};
-
-		// Handle virtual module 'sqljs-wasm' that provides sql.js WASM binary
-		build.onResolve({ filter: /^sqljs-wasm$/ }, (args) => {
-			return { path: args.path, namespace: 'sqljs-wasm' };
-		});
-
-		build.onLoad({ filter: /.*/, namespace: 'sqljs-wasm' }, async (args) => {
-			const base64 = await loadWasmFile();
-			if (!base64) {
-				throw new Error('Could not load sql.js WASM file');
-			}
-			
-			// Export as CommonJS module (since we're using format: 'cjs')
-			// Use JSON.stringify to properly escape the base64 string
-			return {
-				contents: `module.exports = { wasmBase64: ${JSON.stringify(base64)} };`,
-				loader: 'js',
-			};
-		});
-
-		// Also replace require('sqljs-wasm') calls in source files
-		build.onLoad({ filter: /SqlJsStore\.ts$/ }, async (args) => {
-			try {
-				const contents = await fs.promises.readFile(args.path, 'utf8');
-				if (contents.includes('sqljs-wasm')) {
-					const base64 = await loadWasmFile();
-					if (base64) {
-						// Replace require('sqljs-wasm') with the actual module export
-						// Match various formats: require('sqljs-wasm'), require("sqljs-wasm"), etc.
-						const replaced = contents.replace(
-							/const wasmModule = require\(['"]sqljs-wasm['"]\);/g,
-							`const wasmModule = { wasmBase64: ${JSON.stringify(base64)} };`
-						);
-						if (replaced !== contents) {
-							console.log(`[wasm-inline] Replaced require('sqljs-wasm') in ${args.path}`);
-							return {
-								contents: replaced,
-								loader: 'ts',
-							};
-						}
-					}
-				}
-			} catch (error) {
-				// If replacement fails, continue with normal processing
-				console.warn(`[wasm-inline] Could not replace require('sqljs-wasm') in ${args.path}:`, error.message);
-			}
-			return undefined; // Let esbuild handle it normally
-		});
-
-		// Handle direct .wasm file imports
-		build.onResolve({ filter: /\.wasm$/ }, (args) => {
-			// Resolve WASM files to absolute paths
-			let wasmPath = args.path;
-			if (!path.isAbsolute(wasmPath)) {
-				// Resolve relative to the importing file
-				wasmPath = path.resolve(path.dirname(args.importer), wasmPath);
-			}
-			return { path: wasmPath, namespace: 'wasm-inline' };
-		});
-
-		// Load WASM files and convert to Base64 data URL
-		build.onLoad({ filter: /.*/, namespace: 'wasm-inline' }, async (args) => {
-			try {
-				const wasmBytes = await fs.promises.readFile(args.path);
-				const base64 = wasmBytes.toString('base64');
-				const dataUrl = `data:application/wasm;base64,${base64}`;
-				
-				return {
-					contents: `export default "${dataUrl}";`,
-					loader: 'js',
-				};
-			} catch (error) {
-				console.error(`[wasm-inline] Failed to load WASM file: ${args.path}`, error);
-				throw error;
-			}
-		});
-	},
-};
-
-/**
  * After bundle is written, patch main.js so Error.__BluebirdErrorTypes__ is configurable: true.
  * Bluebird sets it configurable: false so we cannot delete it at runtime; we have code control so we fix it at build time.
  */
@@ -224,9 +103,9 @@ const shared = {
 	plugins: [
 		alias({
 			"@": path.resolve(__dirname, "src"),
+			"lucide-react": path.resolve(__dirname, "node_modules/lucide-react/dist/cjs/lucide-react.js"),
 		}),
 		fixImportMetaPlugin,
-		wasmInlinePlugin, // For any .wasm file imports (may not be needed for sql.js)
 		bluebirdConfigurablePlugin,
 	],
 	external: [
@@ -255,8 +134,6 @@ const shared = {
 		".woff2": "empty",
 		".ttf": "empty",
 		".eot": "empty",
-		// WASM files are inlined as Base64 data URLs by wasmInlinePlugin (if any dependencies import .wasm files)
-		// Note: sql.js loads WASM dynamically, so this may not be needed
 	},
 	target: "es2018",
 	logLevel: "info",

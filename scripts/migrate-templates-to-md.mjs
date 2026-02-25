@@ -1,6 +1,10 @@
 /**
  * One-time migration: extract template strings from .ts files and write to .md under templates/prompts|agents|tools.
  * Run from repo root: node scripts/migrate-templates-to-md.mjs
+ *
+ * NOTE: Migration is complete. All templates now live under templates/ and are loaded via src/core/template
+ * (TemplateRegistry + TemplateManager). The source paths below (src/service/prompt/templates/, etc.) no longer exist;
+ * this script is kept for reference only.
  */
 import fs from 'fs';
 import path from 'path';

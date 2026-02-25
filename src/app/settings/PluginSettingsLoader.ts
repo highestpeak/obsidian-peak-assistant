@@ -240,7 +240,7 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 
 	// SQLite backend setting
 	const sqliteBackend = raw?.sqliteBackend;
-	if (sqliteBackend === 'auto' || sqliteBackend === 'better-sqlite3' || sqliteBackend === 'sql.js') {
+	if (sqliteBackend === 'auto' || sqliteBackend === 'better-sqlite3') {
 		settings.sqliteBackend = sqliteBackend;
 	}
 

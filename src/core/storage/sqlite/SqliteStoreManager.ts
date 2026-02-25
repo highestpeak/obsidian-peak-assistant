@@ -1,7 +1,6 @@
 import type { App } from 'obsidian';
 import path from 'path';
 import { BetterSqliteStore } from './better-sqlite3-adapter/BetterSqliteStore';
-import { SqlJsStore } from './sqljs-adapter/SqlJsStore';
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from './ddl';
 import type { SqliteStoreType, SqliteDatabase } from './types';
@@ -30,9 +29,7 @@ import { SEARCH_DB_FILENAME, META_DB_FILENAME } from '@/core/constant';
  * across different parts of the application without passing it through
  * multiple layers.
  * 
- * Supports multiple backends:
- * - better-sqlite3 (native, fastest, requires manual installation)
- * - sql.js (pure JS, default, cross-platform)
+ * Uses better-sqlite3 only (native backend).
  */
 export class SqliteStoreManager {
 	private static instance: SqliteStoreManager | null = null;
@@ -81,86 +78,33 @@ export class SqliteStoreManager {
 
 	/**
 	 * Create a database connection with the specified path and settings.
-	 * Returns both the database connection and the backend type used.
 	 */
 	private async createDatabaseConnection(
 		dbFilePath: string,
-		settings?: { sqliteBackend?: 'auto' | 'better-sqlite3' | 'sql.js' }
+		settings?: { sqliteBackend?: 'auto' | 'better-sqlite3' }
 	): Promise<SqliteDatabase> {
-		const userSetting = settings?.sqliteBackend;
-		let selectedBackend = await this.selectBackend(userSetting);
-
-		// Open database with selected backend
-		// If better-sqlite3 fails, automatically fallback to sql.js
-		try {
-			switch (selectedBackend) {
-				case 'better-sqlite3': {
-					const result = await BetterSqliteStore.open({ dbFilePath, app: this.app ?? undefined });
-					this.isVectorSearchAvailable = result.sqliteVecAvailable;
-					return result.store;
-				}
-				case 'sql.js': {
-					const result = await SqlJsStore.open({ dbFilePath });
-					this.isVectorSearchAvailable = false;
-					return result;
-				}
-			}
-		} catch (error) {
-			// If better-sqlite3 fails to open (e.g., native module loading failed),
-			// automatically fallback to sql.js
-			if (selectedBackend === 'better-sqlite3') {
-				console.error('[SqliteStoreManager] Failed to open database with better-sqlite3:', error);
-				console.log('[SqliteStoreManager] Automatically falling back to sql.js');
-				this.isVectorSearchAvailable = false;
-				return await SqlJsStore.open({ dbFilePath });
-			} else {
-				// Re-throw error for sql.js (should not fail, but if it does, we need to know)
-				throw error;
-			}
-		}
+		await this.selectBackend(settings?.sqliteBackend);
+		const result = await BetterSqliteStore.open({ dbFilePath, app: this.app ?? undefined });
+		this.isVectorSearchAvailable = result.sqliteVecAvailable;
+		return result.store;
 	}
 
 	/**
-	 * Select the appropriate SQLite backend based on user settings and availability.
-	 *
-	 * Priority order:
-	 * 1. User setting (if explicitly set in settings)
-	 * 2. Auto-detect better-sqlite3 (if available)
-	 * 3. Default to sql.js
-	 *
-	 * @param userSetting - User's backend preference from settings ('auto' | 'better-sqlite3' | 'sql.js' | undefined)
-	 * @returns Selected backend type
+	 * Ensures better-sqlite3 is available. Throws if not (no fallback backend).
 	 */
-	private async selectBackend(userSetting?: 'auto' | 'better-sqlite3' | 'sql.js'): Promise<SqliteStoreType> {
-		// Priority 1: User setting (if explicitly set)
-		if (userSetting && userSetting !== 'auto') {
-			if (userSetting === 'better-sqlite3') {
-				const available = await BetterSqliteStore.checkAvailable(this.app ?? undefined);
-				if (available) {
-					console.log('[SqliteStoreManager] Using better-sqlite3 (user preference)');
-					return 'better-sqlite3';
-				} else {
-					console.warn('[SqliteStoreManager] better-sqlite3 requested but not available, falling back to sql.js');
-					return 'sql.js';
-				}
-			} else {
-				console.log('[SqliteStoreManager] Using sql.js (user preference)');
-				return 'sql.js';
-			}
+	private async selectBackend(userSetting?: 'auto' | 'better-sqlite3'): Promise<void> {
+		const available = await BetterSqliteStore.checkAvailable(this.app ?? undefined);
+		if (!available) {
+			throw new Error(
+				'better-sqlite3 is required but not available. ' +
+				'Install it in the plugin directory (e.g. npm install better-sqlite3) and rebuild for Electron.'
+			);
 		}
-
-		// Priority 2: Auto-detect better-sqlite3 (if available)
-		if (userSetting === 'auto' || !userSetting) {
-			const available = await BetterSqliteStore.checkAvailable(this.app ?? undefined);
-			if (available) {
-				console.log('[SqliteStoreManager] Using better-sqlite3 (auto-detected)');
-				return 'better-sqlite3';
-			}
+		if (userSetting === 'better-sqlite3') {
+			console.log('[SqliteStoreManager] Using better-sqlite3 (user preference)');
+		} else {
+			console.log('[SqliteStoreManager] Using better-sqlite3 (auto-detected)');
 		}
-
-		// Priority 3: Default to sql.js
-		console.log('[SqliteStoreManager] Using sql.js (default, cross-platform)');
-		return 'sql.js';
 	}
 
 	/**
@@ -196,21 +140,18 @@ export class SqliteStoreManager {
 	 * Initialize the database connection.
 	 * Should be called once during plugin initialization.
 	 *
-	 * Backend selection priority:
-	 * 1. User setting (if explicitly set in settings)
-	 * 2. Auto-detect better-sqlite3 (if available)
-	 * 3. Default to sql.js
+	 * Requires better-sqlite3 (no other backend).
 	 *
 	 * @param app - Obsidian app instance
 	 * @param storageFolder - Storage folder path (relative to vault root)
 	 * @param filename - Database filename (default: SEARCH_DB_FILENAME)
-	 * @param settings - Optional plugin settings (if provided, will use sqliteBackend from settings)
+	 * @param settings - Optional plugin settings (sqliteBackend is ignored; kept for API compatibility)
 	 */
 	async init(params: {
 		app: App;
 		storageFolder?: string;
 		filename?: string;
-		settings?: { sqliteBackend?: 'auto' | 'better-sqlite3' | 'sql.js' };
+		settings?: { sqliteBackend?: 'auto' | 'better-sqlite3' };
 	}): Promise<void> {
 		if (this.searchStore || this.metaStore) {
 			console.warn('SqliteStoreManager already initialized, closing existing connections');
@@ -445,37 +386,18 @@ export class SqliteStoreManager {
 	}
 
 	/**
-	 * Close the database connection.
+	 * No-op for compatibility. better-sqlite3 persists to file automatically.
 	 */
-	/**
-	 * Save both databases (for sql.js backend).
-	 * This is a no-op for other backends.
-	 */
-	save(): void {
-		// Save search database
-		if (this.searchStore && this.searchStore.databaseType() === 'sql.js' && 'save' in this.searchStore) {
-			(this.searchStore as any).save();
-		}
-		// Save meta database
-		if (this.metaStore && this.metaStore.databaseType() === 'sql.js' && 'save' in this.metaStore) {
-			(this.metaStore as any).save();
-		}
-	}
+	save(): void {}
 
 	close(): void {
 		this.closing = true;
 		try {
 			if (this.searchStore) {
-				if (this.searchStore.databaseType() === 'sql.js' && 'save' in this.searchStore) {
-					(this.searchStore as any).save();
-				}
 				this.searchStore.close();
 				this.searchStore = null;
 			}
 			if (this.metaStore) {
-				if (this.metaStore.databaseType() === 'sql.js' && 'save' in this.metaStore) {
-					(this.metaStore as any).save();
-				}
 				this.metaStore.close();
 				this.metaStore = null;
 			}

@@ -1,6 +1,5 @@
 import { Notice, App } from 'obsidian';
 import type { ViewManager } from '@/app/view/ViewManager';
-import { SqlJsStore } from './sqljs-adapter/SqlJsStore';
 import { BetterSqliteStore } from './better-sqlite3-adapter/BetterSqliteStore';
 import type { SqliteDatabase } from './types';
 import { Kysely } from 'kysely';
@@ -119,8 +118,7 @@ class TestRepository {
 }
 
 /**
- * Verify database health across multiple database backends and configurations.
- * Tests both sql.js (in-memory and file-based) and better-sqlite3 (file-based).
+ * Verify database health for better-sqlite3 backend.
  */
 export async function verifyDatabaseHealth(app: App, settings: MyPluginSettings): Promise<void> {
 	const testResults: string[] = [];
@@ -128,7 +126,6 @@ export async function verifyDatabaseHealth(app: App, settings: MyPluginSettings)
 	let passedTests = 0;
 
 	try {
-		// Get storage folder from settings
 		const storageFolder = settings.dataStorageFolder?.trim();
 		const basePath = (app.vault.adapter as any)?.basePath;
 
@@ -136,52 +133,31 @@ export async function verifyDatabaseHealth(app: App, settings: MyPluginSettings)
 			throw new Error('Cannot determine vault base path for database testing');
 		}
 
-		// Test configurations: [backend, dbPath, description]
-		const testConfigs = [
-			['sql.js', ':memory:', 'SQL.js in-memory database'] as const,
-			['sql.js', path.join(basePath, storageFolder, 'test-health-sqljs.db'), 'SQL.js file-based database'] as const,
-			['better-sqlite3', path.join(basePath, storageFolder, 'test-health-better.db'), 'Better-SQLite3 file-based database'] as const,
-		];
+		const dbPath = path.join(basePath, storageFolder ?? '', 'test-health-better.db');
 
-		for (const [backend, dbPath, description] of testConfigs) {
+		try {
+			const result = await BetterSqliteStore.open({ dbFilePath: dbPath, app });
+			const testDb = result.store;
+
+			testResults.push('✅ Better-SQLite3 file-based database creation: PASSED');
+
+			const testResult = await verifyOneDatabaseType(testDb);
+			testResults.push(...testResult.results);
+			passedTests += testResult.passedTests;
+			totalTests += testResult.totalTests;
+
+			testDb.close();
+
 			try {
-				let testDb: SqliteDatabase;
-
-				if (backend === 'sql.js') {
-					testDb = await SqlJsStore.open({ dbFilePath: dbPath });
-				} else if (backend === 'better-sqlite3') {
-					const result = await BetterSqliteStore.open({ dbFilePath: dbPath, app });
-					testDb = result.store;
-				} else {
-					throw new Error(`Unknown backend: ${backend}`);
+				const fs = require('fs');
+				if (fs.existsSync(dbPath)) {
+					fs.unlinkSync(dbPath);
 				}
-
-				testResults.push(`✅ ${description} creation: PASSED`);
-
-				// Run comprehensive tests on this database type
-				const testResult = await verifyOneDatabaseType(testDb);
-				testResults.push(...testResult.results);
-				passedTests += testResult.passedTests;
-				totalTests += testResult.totalTests;
-
-				// Close test database
-				testDb.close();
-
-				// Clean up file-based test databases
-				if (dbPath !== ':memory:') {
-					try {
-						const fs = require('fs');
-						if (fs.existsSync(dbPath)) {
-							fs.unlinkSync(dbPath);
-						}
-					} catch (cleanupError) {
-						console.warn(`Failed to cleanup test database ${dbPath}:`, cleanupError);
-					}
-				}
-
-			} catch (error) {
-				testResults.push(`❌ ${description} test: FAILED - ${error}`);
+			} catch (cleanupError) {
+				console.warn(`Failed to cleanup test database ${dbPath}:`, cleanupError);
 			}
+		} catch (error) {
+			testResults.push(`❌ Better-SQLite3 test: FAILED - ${error}`);
 		}
 
 		// Summary
