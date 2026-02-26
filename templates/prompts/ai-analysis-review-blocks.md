@@ -1,3 +1,6 @@
+# USER'S ORIGINAL QUERY
+{{originalQuery}}
+
 # OBSERVATION
 - **Analysis context**: {{{agentMemoryMessage}}}
 

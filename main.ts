@@ -29,7 +29,7 @@ import { TemplateManager } from '@/core/template/TemplateManager';
 import { createPluginDirContentProvider } from '@/core/template/PluginDirContentProvider';
 import { clearTemplateEngineForUnload } from '@/core/template-engine-helper';
 import { clearFormatUtilsCaches } from '@/core/utils/format-utils';
-import { getPluginDir } from '@/core/utils/obsidian-utils';
+import { getPluginDirAbsolute } from '@/core/utils/obsidian-utils';
 import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
 import { resetAIAnalysisAll, useAIAnalysisStore } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { useVaultSearchStore } from '@/ui/view/quick-search/store/vaultSearchStore';
@@ -90,10 +90,10 @@ export default class MyPlugin extends Plugin {
 		// // 	this
 		// // )
 
-		// Template manager loads prompts/templates from plugin dir on demand
+		// Template manager loads prompts/templates from plugin dir on demand (absolute path for Node fs)
 		try {
-			const pluginDir = getPluginDir(this.app, this.manifest.id);
-			this.templateManager = new TemplateManager(createPluginDirContentProvider(() => pluginDir));
+			const pluginDirAbsolute = getPluginDirAbsolute(this.app, this.manifest.id);
+			this.templateManager = new TemplateManager(createPluginDirContentProvider(pluginDirAbsolute));
 		} catch (e) {
 			console.warn('[Peak Assistant] TemplateManager not available (plugin dir unresolved); prompts will use vault overrides only.', e);
 		}

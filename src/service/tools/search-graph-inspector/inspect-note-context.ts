@@ -1,5 +1,5 @@
+import { AppContext } from "@/app/context/AppContext";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
-import { template as INSPECT_NOTE_CONTEXT_TEMPLATE } from "../templates/inspect-note-context";
 import { distillClusterNodesData, SemanticNeighborNode } from "./common";
 import { getSemanticNeighbors } from "./common";
 import { mapGetAll } from "@/core/utils/collection-utils";
@@ -8,9 +8,7 @@ import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 
-/**
- * {@link INSPECT_NOTE_CONTEXT_TEMPLATE}
- */
+/** Inspect note context (tags, categories, in/out links, semantic neighbors). */
 export async function inspectNoteContext(params: any, templateManager?: TemplateManager) {
     const { note_path, limit, include_semantic_paths, response_format } = params;
     // Get note metadata
@@ -70,9 +68,10 @@ export async function inspectNoteContext(params: any, templateManager?: Template
             semanticNeighbors, limit
         ),
     };
-    if (templateManager) {
-        const rendered = await templateManager.render(ToolTemplateId.InspectNoteContext, data);
+    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+    if (tm) {
+        const rendered = await tm.render(ToolTemplateId.InspectNoteContext, data);
         return buildResponseFromRendered(response_format, data, rendered);
     }
-    return buildResponse(response_format, INSPECT_NOTE_CONTEXT_TEMPLATE, data);
+    return buildResponse(response_format, undefined, data);
 }

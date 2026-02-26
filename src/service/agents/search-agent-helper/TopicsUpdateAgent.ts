@@ -1,4 +1,4 @@
-import { Experimental_Agent as Agent, stepCountIs } from 'ai';
+import { Experimental_Agent as Agent } from 'ai';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { ErrorRetryInfo, PromptId } from '@/service/prompt/PromptId';
@@ -8,13 +8,13 @@ import { buildPromptTraceDebugEvent, streamTransform, withRetryStream } from '@/
 import { AgentContextManager, AgentMemoryToolSet } from './AgentContextManager';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 
-const DEFAULT_MAX_STEPS = 18;
-
 type TopicsUpdateToolSet = AgentMemoryToolSet & {
     update_topics: AgentTool;
 };
 
 export interface TopicsUpdateVariables {
+    /** User's original query; output must use the same language. */
+    originalQuery: string;
     agentMemoryMessage: string;
     topicPlan: string[];
     currentTopics?: string;
@@ -47,9 +47,6 @@ export class TopicsUpdateAgent {
                 .getProviderService(provider)
                 .modelClient(modelId),
             tools,
-            stopWhen: [
-                stepCountIs(DEFAULT_MAX_STEPS),
-            ],
         });
     }
 
@@ -60,6 +57,7 @@ export class TopicsUpdateAgent {
         yield* withRetryStream(
             {},
             (_, retryCtx) => this.realStreamInterlal(topicsPlan, retryCtx, stepId),
+            { triggerName: StreamTriggerName.SEARCH_TOPICS_AGENT },
         );
     }
 
@@ -69,9 +67,11 @@ export class TopicsUpdateAgent {
         stepId?: string
     ): AsyncGenerator<LLMStreamEvent> {
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisDashboardUpdateTopics);
+        const originalQuery = this.context.getInitialPrompt() ?? '';
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
         const hasTopics = this.context.getAgentResult().topics?.length ?? 0 > 0;
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDashboardUpdateTopics, {
+            originalQuery,
             topicPlan: topicPlan,
             agentMemoryMessage: this.context.getLatestMessageText(),
             currentTopics: hasTopics ? JSON.stringify(this.context.getAgentResult().topics) : undefined,

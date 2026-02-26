@@ -6,10 +6,10 @@ import { useCallback, useRef, useState } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { PromptId } from '@/service/prompt/PromptId';
 import {
-	useAIAnalysisRuntimeStore,
-	useAIAnalysisResultStore,
-	useAIAnalysisSummaryStore,
-	useAIAnalysisTopicsStore,
+    useAIAnalysisRuntimeStore,
+    useAIAnalysisResultStore,
+    useAIAnalysisSummaryStore,
+    useAIAnalysisTopicsStore,
 } from '../store/aiAnalysisStore';
 import { useSharedStore } from '../store/sharedStore';
 import { getLastAnalysisHistorySearch, searchCurrentResult } from '../followupContextRuntime';
@@ -19,6 +19,7 @@ import type { DashboardBlock, DashboardBlockItem } from '@/service/agents/AISear
 import { FollowupChatAgent } from '@/service/agents/search-agent-helper/FollowupChatAgent';
 import type { LLMStreamEvent, LLMUsage } from '@/core/providers/types';
 import { AIServiceManager } from '@/service/chat/service-manager';
+import { getMermaidInner, wrapMermaidCode } from '@/core/utils/mermaid-utils';
 
 /** Sanitize AI-generated filename: remove invalid filesystem chars. */
 function sanitizeFilename(s: string): string {
@@ -318,8 +319,8 @@ export function useRegenerateOverviewMermaid() {
             };
             const stream = manager.chatWithPromptStream(PromptId.AiAnalysisOverviewMermaid, variables as any);
             const raw = (await consumeFollowupStream(stream)).trim();
-            const { normalizeMermaidForDisplay } = await import('@/core/utils/mermaid-utils');
-            const code = normalizeMermaidForDisplay(raw);
+            const inner = getMermaidInner(raw);
+            const code = inner.trim() ? wrapMermaidCode(inner) : '';
             if (code) pushOverviewMermaidVersion(code, { makeActive: true });
         } finally {
             setIsRegenerating(false);

@@ -1,5 +1,4 @@
 import { AppContext } from "@/app/context/AppContext";
-import { template as RECENT_CHANGES_TEMPLATE } from "../templates/recent-changes";
 import { buildResponse, buildResponseFromRendered } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
@@ -19,9 +18,10 @@ export async function getRecentChanges(params: any, templateManager?: TemplateMa
     const finalItems = applyFiltersAndSorters(candidateItems, filters, sorter, limit, itemFiledGetter);
 
     const data = { items: finalItems };
-    if (templateManager) {
-        const rendered = await templateManager.render(ToolTemplateId.RecentChanges, data);
+    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+    if (tm) {
+        const rendered = await tm.render(ToolTemplateId.RecentChanges, data);
         return buildResponseFromRendered(response_format, data, rendered);
     }
-    return buildResponse(response_format, RECENT_CHANGES_TEMPLATE, data);
+    return buildResponse(response_format, undefined, data);
 }

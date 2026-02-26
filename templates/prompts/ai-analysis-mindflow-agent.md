@@ -6,10 +6,7 @@
 ## OBSERVATION
 - **Agent memory** (recent guidence and real progress; use for context):
 <<<
-{{#each agentMemoryMessage}}
----
-{{{this}}}
-{{/each}}
+{{{agentMemoryMessage}}}
 >>>
 {{#if previousMindflowMermaid}}
 - **Previous thinking diagram** (evolve this incrementally; do not replace with a completely new structure):
@@ -51,9 +48,11 @@
 - First line MUST be: \`flowchart TD\`
 - Node format: \`N1["label"]:::state\` where state is EXACTLY: thinking, exploring, verified, or pruned
 - Node IDs: alphanumeric only (N1, N2, A, B)
+- **Short labels**: One short phrase or 1–2 lines per node. No long paragraphs or bullet lists in a node.
 - Line breaks in labels: use \`<br>\` NOT \`\\n\`
 - Edge format: \`A -->|"label"| B\` or \`A --> B\`
 - Main path edges: use \`main:\` prefix in label
+- **Balanced layout**: Mix vertical and horizontal flow; branch and rejoin. Avoid a single long vertical chain or one long horizontal row—balance the shape so the diagram is easy to scan.
 - FORBIDDEN: subgraphs, & merge, click, style, classDef, \\n
 
 ## DIAGRAM EVOLUTION (IMPORTANT)

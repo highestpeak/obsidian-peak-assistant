@@ -1,14 +1,12 @@
-import { Experimental_Agent as Agent, hasToolCall, stepCountIs } from 'ai';
+import { Experimental_Agent as Agent } from 'ai';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName, UISignalChannel, UISignalKind, UIStepType } from '@/core/providers/types';
 import { ErrorRetryInfo, PromptId } from '@/service/prompt/PromptId';
 import type { AgentTool } from '@/service/tools/types';
 import { overviewMermaidUpdateTool } from './helpers/DashboardUpdateToolBuilder';
-import { buildErrorRetryInfo, buildPromptTraceDebugEvent, RetryContext, streamTransform, withRetryStream } from '@/core/providers/helpers/stream-helper';
-import { validateMermaidCode } from '@/core/utils/analysis-data-validator';
+import { buildErrorRetryInfo, buildPromptTraceDebugEvent, streamTransform, withRetryStream, type RetryContext } from '@/core/providers/helpers/stream-helper';
 import type { AgentContextManager, AgentMemoryToolSet } from './AgentContextManager';
-
-const DEFAULT_MAX_STEPS = 10;
+import { MermaidFixAgent } from './MermaidFixAgent';
 
 type MermaidToolSet = AgentMemoryToolSet & {
     submit_overview_mermaid: AgentTool;
@@ -28,6 +26,7 @@ export interface MermaidOverviewVariables {
 export class MermaidOverviewAgent {
     private readonly aiServiceManager: AIServiceManager;
     private readonly context: AgentContextManager;
+    private readonly mermaidFixAgent: MermaidFixAgent;
 
     private agent: Agent<MermaidToolSet>;
 
@@ -37,6 +36,7 @@ export class MermaidOverviewAgent {
     }) {
         this.aiServiceManager = params.aiServiceManager;
         this.context = params.context;
+        this.mermaidFixAgent = new MermaidFixAgent(params.aiServiceManager);
 
         const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisOverviewMermaid);
         const tools: MermaidToolSet = {
@@ -48,16 +48,12 @@ export class MermaidOverviewAgent {
                 .getProviderService(provider)
                 .modelClient(modelId),
             tools,
-            stopWhen: [
-                stepCountIs(DEFAULT_MAX_STEPS),
-                hasToolCall('submit_overview_mermaid'),
-            ],
         });
     }
 
     /**
-     * Stream overview Mermaid generation. Retries on tool error or on post-stream validation failure (empty/invalid diagram).
-     * When errorRetryInfo is provided (e.g. from caller), runs a single repair pass without inner retry loop.
+     * Stream overview Mermaid generation. Retries on tool/stream error only. If validation fails,
+     * uses MermaidFixAgent to fix (up to 2 fix retries) instead of re-running the full agent.
      */
     public async *stream(
         opts?: { stepId?: string; },
@@ -65,33 +61,18 @@ export class MermaidOverviewAgent {
         const { stepId } = opts ?? {};
         const self = this;
 
-        let validMermaid = true;
-        let generationCount = 0;
-        do {
-            generationCount++;
+        yield* withRetryStream(
+            {},
+            async function* (_, retryCtx) {
+                yield* self.realStreamInternal(stepId, retryCtx);
+            },
+            { maxRetries: 2, triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID },
+        );
 
-            yield* withRetryStream(
-                {},
-                async function* (_, retryCtx) {
-                    yield* self.realStreamInternal(stepId, retryCtx);
-                },
-                { maxRetries: 2 },
-            );
-
-            const overview = (self.context.getAgentResult().overviewMermaid ?? '').trim();
-            const validation = await validateMermaidCode(overview);
-            if (!validation.valid) {
-                validMermaid = false;
-                yield {
-                    type: "pk-debug",
-                    debugName: "overview_mermaid_validation_failed",
-                    triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID,
-                    extra: {
-                        error: validation.error,
-                    },
-                }
-            }
-        } while (!validMermaid && generationCount < 3);
+        const overview = (self.context.getAgentResult().overviewMermaid ?? '').trim();
+        yield* self.mermaidFixAgent.ifInvalidThenFix(overview, (m) => {
+            self.context.getAgentResult().overviewMermaid = m;
+        });
     }
 
     /**
@@ -102,9 +83,10 @@ export class MermaidOverviewAgent {
         retryCtx?: ErrorRetryInfo | RetryContext,
     ): AsyncGenerator<LLMStreamEvent> {
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisOverviewMermaid);
+        const originalQuery = this.context.getInitialPrompt() ?? '';
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisOverviewMermaid, {
-            originalQuery: this.context.getInitialPrompt() ?? '',
+            originalQuery,
             agentMemoryMessage: this.context.getLatestMessageText(),
             lastMermaid: this.context.getMindflowContext()?.lastMermaid,
             ...buildErrorRetryInfo(retryCtx) ?? {},

@@ -1,5 +1,5 @@
 import { streamObject } from 'ai';
-import { suggestedFollowUpQuestionsSchema } from '@/core/schemas/agents';
+import { SuggestedFollowUpQuestions, suggestedFollowUpQuestionsSchema } from '@/core/schemas/agents';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 import type { LLMStreamEvent } from '@/core/providers/types';
@@ -41,6 +41,14 @@ export class FollowUpQuestionAgent {
     public async *stream(
         stepId: string,
     ): AsyncGenerator<LLMStreamEvent> {
+        yield {
+            type: 'ui-step',
+            uiType: UIStepType.STEPS_DISPLAY,
+            stepId,
+            title: 'Suggesting follow-up questions...',
+            triggerName: StreamTriggerName.FOLLOW_UP_QUESTION_AGENT,
+        };
+
         stepId = stepId ?? generateUuidWithoutHyphens();
 
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisSuggestFollowUpQuestions);

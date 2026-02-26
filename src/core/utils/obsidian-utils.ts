@@ -1,3 +1,4 @@
+import path from 'path';
 import { AppContext } from '@/app/context/AppContext';
 import type { App } from 'obsidian';
 import { normalizePath, TFile } from 'obsidian';
@@ -14,6 +15,19 @@ export function getPluginDir(app: App, pluginId: string = DEFAULT_PLUGIN_ID): st
 		throw new Error(`Plugin directory cannot be resolved: plugin '${pluginId}' not found`);
 	}
 	return pluginDir;
+}
+
+/**
+ * Resolve plugin directory as absolute path for Node fs (e.g. template file reads).
+ * Uses vault adapter basePath so paths work regardless of process.cwd().
+ */
+export function getPluginDirAbsolute(app: App, pluginId: string = DEFAULT_PLUGIN_ID): string {
+	const vaultBase = (app.vault.adapter as any)?.basePath as string | undefined;
+	if (!vaultBase) {
+		throw new Error('Vault base path not available (e.g. non-filesystem vault)');
+	}
+	const pluginDir = getPluginDir(app, pluginId);
+	return path.join(vaultBase, pluginDir);
 }
 
 /**

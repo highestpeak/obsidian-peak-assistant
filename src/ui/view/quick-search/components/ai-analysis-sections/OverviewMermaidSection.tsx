@@ -4,10 +4,11 @@ import { Copy, Check, RefreshCw } from "lucide-react";
 import { Button } from "@/ui/component/shared-ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/ui/component/shared-ui/hover-card";
 import { copyText } from "@/ui/view/shared/common-utils";
+import { wrapMermaidCode } from "@/core/utils/mermaid-utils";
 
 export interface OverviewMermaidSectionProps {
 	/** Current overview text (mermaid or markdown) to display. */
-	displayOverview: string;
+	overviewProp: string;
 	/** All versions for "Current / Previous" switcher. */
 	overviewMermaidVersions?: string[];
 	/** Index into overviewMermaidVersions for the active version. */
@@ -19,7 +20,7 @@ export interface OverviewMermaidSectionProps {
 
 /** Overview (Mermaid) block: copy, version switcher, regenerate, and content. */
 export const OverviewMermaidSection: React.FC<OverviewMermaidSectionProps> = ({
-	displayOverview,
+	overviewProp,
 	overviewMermaidVersions,
 	overviewMermaidActiveIndex,
 	setOverviewMermaidActiveIndex,
@@ -30,20 +31,22 @@ export const OverviewMermaidSection: React.FC<OverviewMermaidSectionProps> = ({
 	const versions = overviewMermaidVersions ?? [];
 	const activeIndex = overviewMermaidActiveIndex ?? 0;
 
+	const displayMermaid = wrapMermaidCode(overviewProp);
+
 	return (
 
 		<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border-0 pktw-flex pktw-flex-col pktw-gap-2">
 			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2">
 				<span className="pktw-text-xs pktw-font-semibold pktw-text-[#6b7280]">Overview</span>
 				<div className="pktw-flex pktw-items-center pktw-gap-1">
-					{displayOverview?.trim() ? (
+					{overviewProp?.trim() ? (
 						<Button
 							variant="ghost"
 							size="icon"
 							className="pktw-h-7 pktw-w-7 pktw-shadow-none"
 							title={overviewCopied ? "Copied" : "Copy overview"}
 							onClick={async () => {
-								await copyText(displayOverview);
+								await copyText(overviewProp);
 								setOverviewCopied(true);
 								setTimeout(() => setOverviewCopied(false), 1500);
 							}}
@@ -55,7 +58,7 @@ export const OverviewMermaidSection: React.FC<OverviewMermaidSectionProps> = ({
 							)}
 						</Button>
 					) : null}
-					{(versions.length > 1 || displayOverview?.trim()) && (
+					{(versions.length > 1 || overviewProp?.trim()) && (
 						<HoverCard openDelay={100} closeDelay={150}>
 							<HoverCardTrigger asChild>
 								<Button variant="ghost" size="sm" className="pktw-h-7 pktw-px-2 pktw-text-xs">
@@ -102,12 +105,12 @@ export const OverviewMermaidSection: React.FC<OverviewMermaidSectionProps> = ({
 					</Button>
 				</div>
 			</div>
-			{displayOverview?.trim() ? (
+			{displayMermaid?.trim() ? (
 				<StreamdownIsolated
 					className="pktw-w-full pktw-min-w-0 pktw-text-left pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none pktw-select-text"
 					isAnimating={false}
 				>
-					{displayOverview}
+					{displayMermaid}
 				</StreamdownIsolated>
 			) : isRegenerating ? (
 				<span className="pktw-text-xs pktw-text-[#6b7280]">Generating overview diagram…</span>

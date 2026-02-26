@@ -6,7 +6,6 @@ import {
 	useAIAnalysisStepsStore,
 	useAIAnalysisSummaryStore,
 	useAIAnalysisResultStore,
-	useAIAnalysisTopicsStore,
 	useAIAnalysisInteractionsStore,
 	resetAIAnalysisAll,
 	markAIAnalysisCompleted,
@@ -19,7 +18,6 @@ import { LLMStreamEvent, StreamTriggerName, UISignalChannel } from '@/core/provi
 import { checkIfDeltaEvent, getDeltaEventDeltaText } from '@/core/providers/helpers/stream-helper';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { Notice } from 'obsidian';
-import { normalizeMermaidForDisplay } from '@/core/utils/mermaid-utils';
 
 export function useAIAnalysis() {
 	const { searchQuery } = useSharedStore();
@@ -113,7 +111,8 @@ export function useAIAnalysis() {
 				agent: event.triggerName || 'unknown',
 				what: currentWhat,
 				input: anyEvent.input,
-				output: anyEvent.output !== undefined
+				// to avoid later object reference issues, we stringify the output. get the current snapshot of the output.
+				output: JSON.stringify(anyEvent.output !== undefined
 					? anyEvent.toolName !== 'content_reader' ? anyEvent.output : 'content_reader_skipped'
 					: anyEvent.title || anyEvent.description
 						? [anyEvent.title, anyEvent.description].filter(Boolean).join('. ')
@@ -121,7 +120,8 @@ export function useAIAnalysis() {
 							? deltaText + (event.type ? ` [${event.type}]` : '')
 							: event.type === 'ui-signal'
 								? { channel: anyEvent.channel, kind: anyEvent.kind, entityId: anyEvent.entityId, payload: anyEvent.payload }
-								: anyEvent.extra ?? (anyEvent.error ? (anyEvent.error?.message ?? String(anyEvent.error)) : undefined),
+								: anyEvent.extra ?? (anyEvent.error ? (anyEvent.error?.message ?? String(anyEvent.error)) : undefined)
+				),
 				tokens: anyEvent.usage ? {
 					inputTokens: anyEvent.usage.inputTokens ?? 0,
 					outputTokens: anyEvent.usage.outputTokens ?? 0,
@@ -219,7 +219,7 @@ export function useAIAnalysis() {
 		if (result.topics) setTopics(result.topics);
 		if (result.sources) setSources(result.sources);
 		if (result.overviewMermaid !== undefined && result.overviewMermaid != null) {
-			pushOverviewMermaidVersion(normalizeMermaidForDisplay(result.overviewMermaid), { makeActive: true, dedupe: true });
+			pushOverviewMermaidVersion(result.overviewMermaid, { makeActive: true, dedupe: true });
 		}
 		if (result.title !== undefined) setTitle(result.title ?? null);
 		if (result.suggestedFollowUpQuestions !== undefined) setSuggestedFollowUpQuestions(result.suggestedFollowUpQuestions ?? []);
@@ -310,7 +310,7 @@ export function useAIAnalysis() {
 				// 	console.debug('[useAIAnalysis] delta event:', event.triggerName);
 				// }
 
-				// pushTimeline(event);
+				pushTimeline(event);
 
 				switch (event.type) {
 					case 'text-start': {
@@ -352,7 +352,7 @@ export function useAIAnalysis() {
 						const stepId = event.stepId as string | undefined;
 						const title = typeof event.title === 'string' ? event.title : '';
 						const description = typeof event.description === 'string' ? event.description : '';
-						if (event.triggerName === StreamTriggerName.SEARCH_DASHBOARD_AGENT && title === 'Dashboard Updated' && description) {
+						if (event.triggerName === StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT && title === 'Dashboard Updated' && description) {
 							setDashboardUpdatedLine(description);
 						}
 						if (stepId) {

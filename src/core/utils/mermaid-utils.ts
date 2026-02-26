@@ -54,17 +54,6 @@ export async function validateMermaid(definition: string): Promise<{ valid: true
     }
 }
 
-/**
- * Normalize Mermaid content to renderable format. Apply once when storing; render directly to Streamdown.
- * Streamdown handles unclosed fences during streaming.
- */
-export function normalizeMermaidForDisplay(raw: string): string {
-    const code = extractMermaidCode(raw);
-    const sanitized = sanitizeMermaidOverview(code);
-    if (!sanitized) return '';
-    return wrapMermaidCode(sanitized);
-}
-
 export function wrapMermaidCode(code: string): string {
     return `${MERMAID_FENCE}\n${code}\n\`\`\``;
 }

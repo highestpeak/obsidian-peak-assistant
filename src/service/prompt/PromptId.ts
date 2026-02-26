@@ -37,19 +37,11 @@ export enum PromptId {
 
 	SearchRerankRankGpt = 'search-rerank-rank-gpt',
 
-	/** Dimension update agents: turn Thought agent text into operations JSON (one prompt per dimension) */
-	SourcesUpdateAgentSystem = 'sources-update-agent-system',
-	TopicsUpdateAgentSystem = 'topics-update-agent-system',
-	GraphUpdateAgentSystem = 'graph-update-agent-system',
-
 	// Application prompts (title generation)
 	ApplicationGenerateTitle = 'application-generate-title',
 
 	// Memory/Profile prompts
 	MemoryExtractCandidatesJson = 'memory-extract-candidates-json',
-	MemoryUpdateBulletList = 'memory-update-bullet-list',
-	UserProfileUpdateJson = 'user-profile-update-json',
-	InstructionUpdate = 'instruction-update',
 
 	// Prompt rewrite prompts
 	PromptQualityEvalJson = 'prompt-quality-eval-json',
@@ -72,16 +64,10 @@ export enum PromptId {
 	// AI analysis dashboard update agent (update overviewMermaid/sources/topics/graph/blocks from memory evidence)
 	AiAnalysisSummarySystem = 'ai-analysis-summary-system',
 	AiAnalysisSummary = 'search-ai-summary',
-	/** Step-A of summary chaining: structured diagnosis JSON for Step-B synthesis. */
-	AiAnalysisDiagnosisJson = 'ai-analysis-diagnosis-json',
 	AiAnalysisOverviewMermaidSystem = 'ai-analysis-overview-mermaid-system',
 	AiAnalysisOverviewMermaid = 'ai-analysis-overview-mermaid',
-	AiAnalysisDashboardUpdateSourcesSystem = 'ai-analysis-dashboard-update-sources-system',
-	AiAnalysisDashboardUpdateSources = 'ai-analysis-dashboard-update-sources',
 	AiAnalysisDashboardUpdateTopicsSystem = 'ai-analysis-dashboard-update-topics-system',
 	AiAnalysisDashboardUpdateTopics = 'ai-analysis-dashboard-update-topics',
-	AiAnalysisDashboardUpdateGraphSystem = 'ai-analysis-dashboard-update-graph-system',
-	AiAnalysisDashboardUpdateGraph = 'ai-analysis-dashboard-update-graph',
 	AiAnalysisDashboardUpdateBlocksSystem = 'ai-analysis-dashboard-update-blocks-system',
 	AiAnalysisDashboardUpdateBlocks = 'ai-analysis-dashboard-update-blocks',
 	AiAnalysisReviewBlocksSystem = 'ai-analysis-review-blocks-system',
@@ -90,16 +76,15 @@ export enum PromptId {
 	AiAnalysisDashboardUpdatePlan = 'ai-analysis-dashboard-update-plan',
 	AiAnalysisMindflowAgentSystem = 'ai-analysis-mindflow-agent-system',
 	AiAnalysisMindflowAgent = 'ai-analysis-mindflow-agent',
-	AiAnalysisCompletionJudgeSystem = 'ai-analysis-completion-judge-system',
-	AiAnalysisCompletionJudge = 'ai-analysis-completion-judge',
+	/** Fix invalid Mermaid code using parse error; used after validation fails in MindFlow/Overview. */
+	AiAnalysisMermaidFixSystem = 'ai-analysis-mermaid-fix-system',
+	AiAnalysisMermaidFix = 'ai-analysis-mermaid-fix',
 	AiAnalysisFinalRefineSystem = 'ai-analysis-final-refine-system',
 	AiAnalysisFinalRefine = 'ai-analysis-final-refine',
 	AiAnalysisFinalRefineSourcesSystem = 'ai-analysis-final-refine-sources-system',
 	AiAnalysisFinalRefineSources = 'ai-analysis-final-refine-sources',
 	AiAnalysisFinalRefineSourceScoresSystem = 'ai-analysis-final-refine-source-scores-system',
 	AiAnalysisFinalRefineSourceScores = 'ai-analysis-final-refine-source-scores',
-	AiAnalysisFinalRefineGraphSystem = 'ai-analysis-final-refine-graph-system',
-	AiAnalysisFinalRefineGraph = 'ai-analysis-final-refine-graph',
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
 	AiAnalysisTitle = 'ai-analysis-title',
 	/** Doc Simple mode: scope prefix (current file only + full coverage). */
@@ -136,16 +121,12 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.ThoughtAgent,
 	PromptId.AiAnalysisSessionSummary,
 	PromptId.AiAnalysisSummary,
-	PromptId.AiAnalysisDiagnosisJson,
 	PromptId.AiAnalysisOverviewMermaid,
-	PromptId.AiAnalysisDashboardUpdateSources,
 	PromptId.AiAnalysisDashboardUpdateTopics,
-	PromptId.AiAnalysisDashboardUpdateGraph,
 	PromptId.AiAnalysisDashboardUpdateBlocks,
 	PromptId.AiAnalysisReviewBlocks,
 	PromptId.AiAnalysisDashboardUpdatePlan,
 	PromptId.AiAnalysisMindflowAgent,
-	PromptId.AiAnalysisCompletionJudge,
 	PromptId.AiAnalysisFinalRefine,
 	PromptId.AiAnalysisTitle,
 	PromptId.AiAnalysisDocSimpleScope,
@@ -153,6 +134,8 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisSuggestFollowUpQuestions,
 	PromptId.AiAnalysisFollowup,
 	PromptId.AiAnalysisFollowupSystem,
+	PromptId.AiAnalysisFinalRefineSources,
+	PromptId.AiAnalysisFinalRefineSourceScores,
 
 	PromptId.AiAnalysisSaveFileName,
 	PromptId.AiAnalysisSaveFolder,
@@ -180,9 +163,6 @@ export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
 
 	// Memory/Profile prompts
 	PromptId.MemoryExtractCandidatesJson,
-	PromptId.MemoryUpdateBulletList,
-	PromptId.UserProfileUpdateJson,
-	PromptId.InstructionUpdate,
 
 	// Prompt rewrite prompts
 	PromptId.PromptQualityEvalJson,
@@ -244,9 +224,6 @@ export interface PromptVariables {
 	};
 	[PromptId.RawAiSearch]: SystemInfo;
 	[PromptId.ThoughtAgent]: { analysisMode?: AnalysisMode; simpleMode?: boolean };
-	[PromptId.SourcesUpdateAgentSystem]: { text: string; lastError?: string };
-	[PromptId.TopicsUpdateAgentSystem]: { text: string; lastError?: string };
-	[PromptId.GraphUpdateAgentSystem]: { text: string; lastError?: string };
 	[PromptId.ApplicationGenerateTitle]: {
 		messages: Array<{ role: string; content: string }>;
 		contextInfo?: string;
@@ -255,19 +232,6 @@ export interface PromptVariables {
 		userMessage: string;
 		assistantReply: string;
 		context?: Record<string, string>;
-	};
-	[PromptId.MemoryUpdateBulletList]: {
-		newStatement: string;
-		existingMemories: string[];
-	};
-	[PromptId.UserProfileUpdateJson]: {
-		recentConversations: Array<{ summary: string; topics?: string[] }>;
-		existingProfile?: string;
-	};
-	[PromptId.InstructionUpdate]: {
-		profile: string;
-		recentSummary: string;
-		existingInstructions?: string;
 	};
 	[PromptId.PromptQualityEvalJson]: {
 		prompt: string;
@@ -319,21 +283,10 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSummarySystem]: Record<string, never>;
 	[PromptId.AiAnalysisSummary]: AiSummaryVariables & { retrievedSessionContext?: string };
-	[PromptId.AiAnalysisDiagnosisJson]: { originalQuery: string; recentEvidenceHint: string; currentResultSnapshot: string };
 	[PromptId.AiAnalysisOverviewMermaidSystem]: Record<string, never>;
 	[PromptId.AiAnalysisOverviewMermaid]: MermaidOverviewVariables & ErrorRetryInfo;
-	[PromptId.AiAnalysisDashboardUpdateSourcesSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateSources]: ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateTopicsSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDashboardUpdateTopics]: TopicsUpdateVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
-	/**
-	 * @deprecated
-	 */
-	[PromptId.AiAnalysisDashboardUpdateGraphSystem]: Record<string, never>;
-	/**
-	 * @deprecated
-	 */
-	[PromptId.AiAnalysisDashboardUpdateGraph]: ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateBlocksSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDashboardUpdateBlocks]: DashboardBlockVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdatePlanSystem]: Record<string, never>;
@@ -342,35 +295,14 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisReviewBlocks]: ReviewBlocksVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisMindflowAgentSystem]: Record<string, never>;
 	[PromptId.AiAnalysisMindflowAgent]: MindFlowVariables & ErrorRetryInfo;
-	/**
-	 * @deprecated
-	 */
-	[PromptId.AiAnalysisCompletionJudgeSystem]: Record<string, never>;
-	/**
-	 * @deprecated
-	 */
-	[PromptId.AiAnalysisCompletionJudge]: {
-		originalQuery: string;
-		estimatedCompleteness: number;
-		statusLabel: string;
-		goalAlignment?: string;
-		critique?: string;
-		recentEvidenceHint?: string;
-	};
+	[PromptId.AiAnalysisMermaidFixSystem]: Record<string, never>;
+	[PromptId.AiAnalysisMermaidFix]: { invalidCode: string; validationError: string };
 	[PromptId.AiAnalysisFinalRefineSystem]: Record<string, never>;
 	[PromptId.AiAnalysisFinalRefine]: FinalRefineContext & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisFinalRefineSourcesSystem]: Record<string, never>;
 	[PromptId.AiAnalysisFinalRefineSources]: FinalRefineContext & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisFinalRefineSourceScoresSystem]: Record<string, never>;
 	[PromptId.AiAnalysisFinalRefineSourceScores]: FinalRefineContext;
-	/**
-	 * @deprecated
-	 */
-	[PromptId.AiAnalysisFinalRefineGraphSystem]: Record<string, never>;
-	/**
-	 * @deprecated
-	 */
-	[PromptId.AiAnalysisFinalRefineGraph]: { toolFormatGuidance?: string };
 
 	[PromptId.AiAnalysisSaveFileName]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string; candidateFoldersFromSearch?: string; defaultSaveFolder?: string };

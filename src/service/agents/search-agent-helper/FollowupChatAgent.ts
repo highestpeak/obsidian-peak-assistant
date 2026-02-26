@@ -1,5 +1,5 @@
 import { AIServiceManager } from '@/service/chat/service-manager';
-import { Experimental_Agent as Agent, hasToolCall, stepCountIs } from 'ai';
+import { Experimental_Agent as Agent } from 'ai';
 import type { AgentTool } from '@/service/tools/types';
 import {
     inspectNoteContextTool,
@@ -17,8 +17,6 @@ import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import { PromptId } from '@/service/prompt/PromptId';
 import { mergeTokenUsage, type LLMStreamEvent, type LLMUsage } from '@/core/providers/types';
-
-const DEFAULT_MAX_FOLLOWUP_STEPS = 20;
 
 export type HistorySearchFn = (query: string, options?: { maxChars?: number }) => string;
 
@@ -83,10 +81,6 @@ export class FollowupChatAgent {
                 .getProviderService(provider)
                 .modelClient(modelId),
             tools,
-            stopWhen: [
-                stepCountIs(DEFAULT_MAX_FOLLOWUP_STEPS),
-                hasToolCall('submit_final_answer'),
-            ],
         });
     }
 

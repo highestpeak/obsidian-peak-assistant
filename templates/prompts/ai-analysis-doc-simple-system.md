@@ -30,5 +30,5 @@ Your job is **synthesis**, not mere extraction.
 ## IV. Output Format
 
 - Be concise but complete. Prefer clarity over brevity when the topic demands it.
-- Use the same language as the user's question by default.
+- Use the same language as the user's question (provided in the user message) by default.
 - Produce your answer as plain text output. Do not call submit_final_answer or any finalization tool—your text output is the answer.

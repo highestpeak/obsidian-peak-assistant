@@ -1,7 +1,6 @@
-import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { AppContext } from "@/app/context/AppContext";
+import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { TFile, TFolder } from "obsidian";
-import { template as EXPLORE_FOLDER_TEMPLATE } from "../templates/explore-folder";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter } from "./common";
 import { buildResponse, buildResponseFromRendered } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
@@ -63,11 +62,12 @@ export async function exploreFolder(params: any, templateManager?: TemplateManag
         categoryDesc,
         docStats
     };
-    if (templateManager) {
-        const rendered = await templateManager.render(ToolTemplateId.ExploreFolder, data);
+    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+    if (tm) {
+        const rendered = await tm.render(ToolTemplateId.ExploreFolder, data);
         return buildResponseFromRendered(response_format, data, rendered);
     }
-    return buildResponse(response_format, EXPLORE_FOLDER_TEMPLATE, data);
+    return buildResponse(response_format, undefined, data);
 }
 
 type IterFile = {

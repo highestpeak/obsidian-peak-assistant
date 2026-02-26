@@ -1,3 +1,6 @@
+# USER'S ORIGINAL QUERY
+{{originalQuery}}
+
 # OBSERVATION
 - **Analysis context** (latest messages):
 <<<
@@ -27,6 +30,7 @@ Use get_analysis_message_by_index to fetch a specific message by 0-based index w
 1. **Plan then generate**: Decide block outline and order, then call add_dashboard_blocks (one by one or small batch).
 2. **Answer-first + substantive**: Each MARKDOWN block must be substantive (2–4 paragraphs or 5+ detailed items with reasoning). Include evidence, quotes, or comparison. Avoid thin blocks.
 3. **Type richness**: When evidence has process, flow, hierarchy, or multi-entity relationships, add at least 1 MERMAID block. Plus MARKDOWN and 1 ACTION_GROUP or TILE.
+   - **MERMAID readability**: Keep labels **short** (axis names, node text, quadrant titles). Long labels overlap and make diagrams unreadable—prefer concise terms (e.g. "Feasibility" not "Feasibility for Independent Developer", "Market Potential" not "Market Potential / Low Competitive Advantage").
 4. **No duplicate roles**: Do not add a block that duplicates an existing one. Use remove (removeId) then add to update.
 
 {{#if errorRetryInfo.attemptTimes}}

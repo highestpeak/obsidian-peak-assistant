@@ -230,12 +230,8 @@ Handlers are wired in [AISearchAgent.initManualToolCallHandlers](src/service/age
 | `ThoughtAgentSystem` | `templates/ai-analysis-agent-thought-system.ts` |
 | `AiSearchSystem` | `templates/ai-analysis-agent-raw-search-system.ts` |
 | `AiAnalysisSessionSummary` | `templates/ai-analysis-session-summary.ts` |
-| `AiAnalysisDiagnosisJson` | `templates/ai-analysis-diagnosis-json.ts` |
 | `AiAnalysisSummarySystem` | `templates/ai-analysis-dashboard-result-summary-system.ts` |
 | `AiAnalysisSummary` (SearchAiSummary) | `templates/ai-analysis-dashboard-result-summary.ts` |
-| `SourcesUpdateAgentSystem` | `templates/sources-update-agent-system.ts` |
-| `TopicsUpdateAgentSystem` | `templates/topics-update-agent-system.ts` |
-| `GraphUpdateAgentSystem` | `templates/graph-update-agent-system.ts` |
 | `DashboardBlocksUpdateAgentSystem` | `templates/ai-analysis-dashboard-update-blocks-system.ts` |
 | `AiAnalysisFollowup` | `templates/ai-analysis-followup.ts` |
 | `AiAnalysisSaveFileName` | `templates/ai-analysis-save-filename.ts` |
@@ -250,7 +246,7 @@ These prompt IDs are in `CONFIGURABLE_PROMPT_IDS` in [PromptId.ts](src/service/p
 - `SearchAiSummary`
 - `AiAnalysisFollowup`
 
-(ThoughtAgent and SearchAgent system prompts use the analysis model configuration and pass `temperature` / `maxOutputTokens` from `getSettings().defaultOutputControl` into the Agent constructor. Dimension update agents use the ThoughtAgent model. Session summary, diagnosis, and summary prompts use the ThoughtAgent provider/model when invoked from the pipeline; save prompts use the default or their configured model when present.)
+(ThoughtAgent and SearchAgent system prompts use the analysis model configuration and pass `temperature` / `maxOutputTokens` from `getSettings().defaultOutputControl` into the Agent constructor. Dimension update agents use the ThoughtAgent model. Session summary and summary prompts use the ThoughtAgent provider/model when invoked from the pipeline; save prompts use the default or their configured model when present.)
 
 ### AISearchAgent implementation notes
 
@@ -260,4 +256,4 @@ These prompt IDs are in `CONFIGURABLE_PROMPT_IDS` in [PromptId.ts](src/service/p
 | [AISearchAgent.buildEvidenceHintFromContext](src/service/agents/AISearchAgent.ts) | Merges latest message text, call_search_agent tool-result summaries, and verifiedPaths; uses `lastOneGenerationContext` when no context is passed (e.g. finish phase). Capped at EVIDENCE_HINT_MAX_CHARS (6000). |
 | [AISearchAgent.lastOneGenerationContext](src/service/agents/AISearchAgent.ts) | Stores the last ThoughtAgent step’s context so the final summary still gets tool evidence when `buildDashboardUpdateContext()` is called without arguments. |
 | [resultSnapshot.buildMinifiedResultSnapshot](src/service/agents/search-agent-helper/resultSnapshot.ts) | Builds payload from `SearchAgentResult` and renders with Handlebars using [templates/result-snapshot.ts](src/service/agents/search-agent-helper/templates/result-snapshot.ts). |
-| [SummaryAgent.stream](src/service/agents/search-agent-helper/SummaryAgent.ts) | In full mode: runs Step-A (AiAnalysisDiagnosisJson) then Step-B (AiAnalysisSummary with diagnosisJson). Uses search_analysis_context tool; system/user prompts guide when to call it. |
+| [SummaryAgent.stream](src/service/agents/search-agent-helper/SummaryAgent.ts) | In full mode runs AiAnalysisSummary. Uses search_analysis_context tool; system/user prompts guide when to call it. |

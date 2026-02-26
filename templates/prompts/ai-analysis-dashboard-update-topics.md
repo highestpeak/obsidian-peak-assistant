@@ -1,3 +1,6 @@
+# USER'S ORIGINAL QUERY
+{{originalQuery}}
+
 # OBSERVATION
 - **Analysis context**: use this to decide what topics and questions to surface.
 

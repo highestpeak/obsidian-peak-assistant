@@ -8,13 +8,13 @@
  * FILE STRUCTURE:
  * - Frontmatter: type, version, created, query, webEnabled, duration, estimatedTokens, analysisStartedAt
  * - Body sections (fixed order): Summary, Query, Key Topics, Sources, Topic Inspect Results,
- *   Topic Expansions, Dashboard Blocks, Knowledge Graph
+ *   Topic Expansions, Dashboard Blocks, ...
  *
  * Run with: npx tsx src/core/storage/vault/search-docs/test/AiSearchAnalysisDoc.test.ts
  */
 
 import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock } from '@/service/agents/AISearchAgent';
-import { getMermaidInner, normalizeMermaidForDisplay } from '@/core/utils/mermaid-utils';
+import { getMermaidInner } from '@/core/utils/mermaid-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { SearchResultItem } from '@/service/search/types';
 import type { LLMUsage } from '@/core/providers/types';
@@ -33,7 +33,6 @@ const SECTION_TOPIC_INSPECT = '# Topic Inspect Results';
 const SECTION_TOPIC_EXPANSIONS = '# Topic Expansions';
 const SECTION_DASHBOARD = '# Dashboard Blocks';
 const SECTION_BLOCK_CHAT_RECORDS = '# Block Chat Records';
-const SECTION_KNOWLEDGE_GRAPH = '# Knowledge Graph';
 const SECTION_CONTINUE_ANALYSIS = '# Continue Analysis';
 const SECTION_GRAPH_FOLLOWUPS = '# Graph Follow-ups';
 const SECTION_BLOCKS_FOLLOWUPS = '# Blocks Follow-ups';
@@ -200,39 +199,6 @@ function parseFrontmatter(raw: string): {
 	};
 }
 
-function parseMermaidToGraph(body: string): AISearchGraph | null {
-	const nodeLabelById = new Map<string, string>();
-	const edges: Array<{ from: string; to: string }> = [];
-	for (const rawLine of body.split('\n')) {
-		const line = rawLine.trim();
-		if (!line) continue;
-		const nodeMatch = line.match(/^([A-Za-z0-9_]+)\["([\s\S]*?)"\]$/);
-		if (nodeMatch) {
-			nodeLabelById.set(nodeMatch[1], nodeMatch[2]);
-			continue;
-		}
-		const edgeMatch = line.match(/^([A-Za-z0-9_]+)\s*-->\s*([A-Za-z0-9_]+)\b/);
-		if (edgeMatch) edges.push({ from: edgeMatch[1], to: edgeMatch[2] });
-	}
-	if (nodeLabelById.size === 0 && edges.length === 0) return null;
-	return {
-		nodes: Array.from(nodeLabelById.entries()).map(([id, label]) => ({
-			id,
-			type: 'concept',
-			title: label || id,
-			path: undefined,
-			attributes: {},
-		})),
-		edges: edges.map((e) => ({
-			id: `${e.from}->${e.to}`,
-			source: e.from,
-			target: e.to,
-			type: 'link',
-			attributes: { weight: 1 },
-		})),
-	};
-}
-
 function parseMermaidToPreview(body: string): GraphPreview | null {
 	const allowedTypes: GraphNodeType[] = ['document', 'tag', 'category', 'concept', 'link', 'resource', 'custom'];
 	const nodeLabelById = new Map<string, string>();
@@ -266,50 +232,6 @@ function extractMermaidBlock(text: string): string {
 	const end = rest.indexOf('```');
 	if (end === -1) return '';
 	return rest.slice(0, end).trim();
-}
-
-/** Extract first ```json ... ``` block from section text. Used for full graph (nodes+edges) persistence. */
-function extractGraphJsonBlock(text: string): string {
-	const start = text.indexOf('```json');
-	if (start === -1) return '';
-	const rest = text.slice(start + '```json'.length);
-	const end = rest.indexOf('```');
-	if (end === -1) return '';
-	return rest.slice(0, end).trim();
-}
-
-/**
- * Parse JSON graph payload into AISearchGraph. Expects { nodes: [...], edges: [...] }.
- * Prefer this over Mermaid when present so edges are not lost.
- */
-function parseGraphJson(raw: string): AISearchGraph | null {
-	try {
-		const data = JSON.parse(raw) as { nodes?: unknown[]; edges?: unknown[] };
-		if (!data || typeof data !== 'object') return null;
-		const nodes = Array.isArray(data.nodes) ? data.nodes : [];
-		const edges = Array.isArray(data.edges) ? data.edges : [];
-		const normalizedNodes = nodes.map((n: any) => ({
-			id: String(n?.id ?? ''),
-			type: String(n?.type ?? 'concept'),
-			title: String(n?.title ?? n?.label ?? n?.id ?? ''),
-			...(typeof n?.path === 'string' ? { path: n.path } : {}),
-			attributes: n?.attributes && typeof n.attributes === 'object' ? n.attributes : {},
-		})).filter((n) => n.id);
-		const normalizedEdges = edges.map((e: any) => {
-			const weight = typeof e?.weight === 'number' ? e.weight : (e?.attributes?.weight ?? 1);
-			return {
-				id: String(e?.id ?? `${e?.source}-${e?.target}`),
-				source: String(e?.source ?? ''),
-				target: String(e?.target ?? ''),
-				type: String(e?.type ?? e?.kind ?? 'link'),
-				attributes: e?.attributes && typeof e.attributes === 'object' ? { ...e.attributes, weight } : { weight },
-			};
-		}).filter((e) => e.source && e.target);
-		if (normalizedNodes.length === 0 && normalizedEdges.length === 0) return null;
-		return { nodes: normalizedNodes, edges: normalizedEdges };
-	} catch {
-		return null;
-	}
 }
 
 /** Extract all mermaid blocks from section text in order. */
@@ -349,27 +271,43 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		const blocks = extractAllMermaidBlocks(overviewHistorySection);
 		const activeLine = overviewHistorySection.match(/^ActiveIndex:\s*(\d+)/m);
 		overviewMermaidActiveIndex = activeLine ? Math.max(0, parseInt(activeLine[1], 10)) : 0;
-		overviewMermaidVersions = blocks.length > 0 ? blocks.map((b) => normalizeMermaidForDisplay(b)) : [];
+		// Store raw inner content only; dedupe by content so one overview does not become multiple history entries
+		const seen = new Set<string>();
+		overviewMermaidVersions =
+			blocks.length > 0
+				? blocks
+						.map((b) => getMermaidInner(b).trim())
+						.filter((inner) => {
+							if (!inner) return false;
+							if (seen.has(inner)) return false;
+							seen.add(inner);
+							return true;
+						})
+				: [];
 		if (overviewMermaidActiveIndex >= overviewMermaidVersions.length && overviewMermaidVersions.length > 0) {
 			overviewMermaidActiveIndex = overviewMermaidVersions.length - 1;
 		}
 	}
 	if (overviewMermaidVersions.length === 0 && overviewSection) {
 		const single = extractMermaidBlock(overviewSection);
-		if (single) {
-			overviewMermaidVersions = [normalizeMermaidForDisplay(single)];
+		if (single?.trim()) {
+			overviewMermaidVersions = [getMermaidInner(single).trim()];
 			overviewMermaidActiveIndex = 0;
 		}
 	}
 	const mindflowMermaidRaw = extractMermaidBlock(mindflowSection);
-	const mindflowMermaid = mindflowMermaidRaw?.trim() ? normalizeMermaidForDisplay(mindflowMermaidRaw) : undefined;
+	const mindflowMermaid = mindflowMermaidRaw?.trim()
+		? (() => {
+				const inner = getMermaidInner(mindflowMermaidRaw).trim();
+				return inner ? inner : undefined;
+		  })()
+		: undefined;
 	const topicsText = extractSection(body, 'Key Topics');
 	const sourcesText = extractSection(body, 'Sources');
 	const inspectText = extractSection(body, 'Topic Inspect Results');
 	const expansionsText = extractSection(body, 'Topic Expansions');
 	const dashboardText = extractSection(body, 'Dashboard Blocks');
 	const blockChatRecordsText = extractSection(body, 'Block Chat Records');
-	const graphText = extractSection(body, 'Knowledge Graph');
 	const continueAnalysisText = extractSection(body, 'Continue Analysis');
 	const graphFollowupsText = extractSection(body, 'Graph Follow-ups');
 	const blocksFollowupsText = extractSection(body, 'Blocks Follow-ups');
@@ -538,9 +476,8 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		// ignore invalid JSON
 	}
 
-	const graphJsonBody = extractGraphJsonBlock(graphText);
-	const graphMermaidBody = extractMermaidBlock(graphText);
-	const graph = parseGraphJson(graphJsonBody) ?? (graphMermaidBody ? parseMermaidToGraph(graphMermaidBody) : null);
+	// Knowledge Graph section no longer loaded from document (persistence removed).
+	const graph: AISearchGraph | null = null;
 
 	// Continue Analysis: sections are ## Question (H2); content follows and may contain ### (H3) and below
 	const fullAnalysisFollowUp: Array<{ title: string; content: string }> = [];
@@ -768,15 +705,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 	if (fullOnly) {
 		const overviewVersions = docModel.overviewMermaidVersions ?? [];
 		const overviewActiveIndex = docModel.overviewMermaidActiveIndex ?? 0;
-		const activeOverview = overviewVersions[overviewActiveIndex]?.trim();
-		if (activeOverview) {
-			lines.push(SECTION_OVERVIEW);
-			lines.push('');
-			lines.push('```mermaid');
-			lines.push(getMermaidInner(activeOverview));
-			lines.push('```');
-			lines.push('');
-		}
+		// Only write Overview History; current overview = versions[activeIndex], no separate Overview section.
 		if (overviewVersions.length > 0) {
 			lines.push(SECTION_OVERVIEW_HISTORY);
 			lines.push('');
@@ -785,7 +714,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 			for (const m of overviewVersions) {
 				if (m?.trim()) {
 					lines.push('```mermaid');
-					lines.push(getMermaidInner(m));
+					lines.push(m);
 					lines.push('```');
 					lines.push('');
 				}
@@ -796,7 +725,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 			lines.push(SECTION_MINDFLOW);
 			lines.push('');
 			lines.push('```mermaid');
-			lines.push(getMermaidInner(mindflow));
+			lines.push(mindflow);
 			lines.push('```');
 			lines.push('');
 		}
@@ -900,17 +829,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 			lines.push('');
 		}
 
-		lines.push(SECTION_KNOWLEDGE_GRAPH);
-		lines.push('');
-		if (docModel.graph && (docModel.graph.nodes.length > 0 || docModel.graph.edges.length > 0)) {
-			lines.push('```json');
-			lines.push(JSON.stringify({ nodes: docModel.graph.nodes, edges: docModel.graph.edges }));
-			lines.push('```');
-			lines.push('');
-		}
-		const graphPreview = docModel.graph ? aiSearchGraphToGraphPreview(docModel.graph) : null;
-		lines.push(buildMermaidBlock(graphPreview));
-		lines.push('');
+		// Knowledge Graph section no longer persisted (removed).
 
 		pushFollowupHistory(SECTION_GRAPH_FOLLOWUPS, docModel.graphFollowups);
 		if (docModel.blocksFollowupsByBlockId && Object.keys(docModel.blocksFollowupsByBlockId).length > 0) {
@@ -1021,7 +940,10 @@ export function fromCompletedAnalysisSnapshot(
 			const versions = snapshot.overviewMermaidVersions ?? [];
 			const raw = snapshot.overviewMermaidActiveIndex as number | string | undefined;
 			if (versions.length > 0) return versions;
-			if (typeof raw === 'string' && String(raw).trim()) return [normalizeMermaidForDisplay(raw)];
+			if (typeof raw === 'string' && String(raw).trim()) {
+				const inner = getMermaidInner(raw).trim();
+				return inner ? [inner] : [];
+			}
 			return [];
 		})(),
 		overviewMermaidActiveIndex: (() => {

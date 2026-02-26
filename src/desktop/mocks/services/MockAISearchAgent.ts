@@ -190,9 +190,9 @@ export async function* mockAIAnalysisStream(
 	// Result-update tools (thought agent): emit one aggregate tool-result so UI still gets currentResult
 	const callId3 = `mock-call-${Date.now()}-3`;
 	await delay(chunkDelayMs);
-	yield { type: 'tool-call', id: callId3, toolName: 'add_dashboard_blocks', input: { text: 'Add mock dashboard blocks for insights and suggestions.' }, triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT };
+	yield { type: 'tool-call', id: callId3, toolName: 'add_dashboard_blocks', input: { text: 'Add mock dashboard blocks for insights and suggestions.' }, triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT };
 	await delay(chunkDelayMs);
-	yield { type: 'tool-result', id: callId3, toolName: 'add_dashboard_blocks', output: { result: { updated: true } }, triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT, extra: { currentResult: fullResult } };
+	yield { type: 'tool-result', id: callId3, toolName: 'add_dashboard_blocks', output: { result: { updated: true } }, triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT, extra: { currentResult: fullResult } };
 
 	await delay(phaseDelayMs);
 

@@ -168,7 +168,7 @@ When adding items, use the exact structure below. Wrong structure causes silent 
 **Dashboard blocks** (structure used by the system; you do not call any tool for them): renderEngine "TILE"|"MARKDOWN"|"ACTION_GROUP"|"MERMAID", weight 0–10, TILE/ACTION_GROUP items: [{ id, title, description?, icon?, color? }], MARKDOWN: markdown, MERMAID: mermaidCode.
 
 ### Multi-iteration rule (CRITICAL)
-Run at least 2–3 evidence-gathering cycles. Each cycle: gather evidence, then only call submit_final_answer when you have sufficient evidence.
+Run at least 2–3 evidence-gathering cycles. Each cycle: call_search_agent → receive evidence pack → then only call **submit_final_answer** when you have sufficient evidence. **You MUST call submit_final_answer to end the analysis.** Do not stop after reasoning or after the last search round without calling submit_final_answer.
 
 {{#unless simpleMode}}
 ### Visualization expectations
@@ -188,7 +188,7 @@ Exception: skip search only for purely meta requests (e.g. "stop", "cancel") or 
 
 ## XI. Output Standards (Final Self-Check)
 
-Before submitting, ask yourself:
+**You must call submit_final_answer** to end the analysis. Before that: **write 2–3 sentences in the conversation** as your final summary (what was discovered, the main insight or limitation). Then call submit_final_answer. The written summary is required so the user sees a conclusion in natural language. After that, ask yourself:
 
 1. Does this conclusion obviously depend on this user's unique background?
 2. Is there a clear distinction between: past vs now, ideal state vs real constraints?
@@ -197,13 +197,14 @@ Before submitting, ask yourself:
 
 Only if all are yes, output the conclusion.
 
-**Final summary format**: Provide a 2–3 sentence meta-narrative—what was discovered, the main insight, and what the user should do next. Avoid raw bullet lists; this guides the final synthesis. When referencing notes, use Obsidian wikilinks only: \`[[path]]\` or \`[[path|display text]]\`, not quotes or \`"text"(path)\`.
+**Final summary format**: Before calling submit_final_answer, **output 2–3 sentences in the conversation** (not only in tool payloads): what was discovered, the main insight, and what the user should do next. Avoid raw bullet lists. When referencing notes, use Obsidian wikilinks only: \`[[path]]\` or \`[[path|display text]]\`, not quotes or \`"text"(path)\`. This written output is required so the system can show the conclusion to the user.
 
 ---
 
 ## XII. Anti-Patterns
 
 - **Output without search**: Never submit without having gathered evidence at least once
+- **End without submit_final_answer**: You MUST call submit_final_answer to end the analysis. Ending after the last search or after reasoning without calling submit_final_answer is invalid
 - **Stall**: If evidence returns empty or vague, add a block noting the limitation, try ONE more context-driven search (reference paths/concepts from prior results), then synthesize with what you have. Never exceed 3 iterations without at least 1 source
 - **Indefinite looping**: Do not loop hoping for better results. Work with what you have
 

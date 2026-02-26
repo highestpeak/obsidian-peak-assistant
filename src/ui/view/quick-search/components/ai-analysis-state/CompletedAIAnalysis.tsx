@@ -179,7 +179,7 @@ export const CompletedAIAnalysis: React.FC<{
             {!isSimpleMode && (displayOverview?.trim() || isRegenerating) && (
                 <div ref={overviewRef} className="pktw-scroll-mt-24">
                     <OverviewMermaidSection
-                        displayOverview={displayOverview}
+                        overviewProp={displayOverview}
                         overviewMermaidVersions={overviewMermaidVersions}
                         overviewMermaidActiveIndex={overviewMermaidActiveIndex}
                         setOverviewMermaidActiveIndex={setOverviewMermaidActiveIndex}

@@ -55,7 +55,7 @@ export class SummaryAgent {
 
         this.manualCallSearchAgent = {
             toolName: 'call_search_agent',
-            triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
+            triggerName: StreamTriggerName.SEARCH_SUMMARY,
             handle: this.rawSearchAgent.manualToolCallHandle.bind(this.rawSearchAgent),
             outputGetter: (resultCollector) => resultCollector.searchResultChunks,
         }
@@ -123,9 +123,10 @@ export class SummaryAgent {
         };
 
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisSummary);
+        const originalQuery = this.context.getInitialPrompt() ?? '';
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisSummary, {
-            originalQuery: this.context.getInitialPrompt() ?? '',
+            originalQuery,
             summary: this.context.getLatestMessageText(),
         });
 

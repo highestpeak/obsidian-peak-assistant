@@ -1,7 +1,7 @@
 import { LLMRequestMessage, LLMStreamEvent, mergeTokenUsage, OneGenerationContext, StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { toReActThoughtPromptMessages, generateToolCallId, convertMessagesToText, getToolErrorMessage } from '@/core/providers/adapter/ai-sdk-adapter';
 import { localWebSearchTool } from '@/service/tools/search-web';
-import { Experimental_Agent as Agent, hasToolCall, stepCountIs } from 'ai';
+import { Experimental_Agent as Agent, hasToolCall } from 'ai';
 import { PromptId } from '@/service/prompt/PromptId';
 import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
 import { AgentTool, ManualToolCallHandler } from '@/service/tools/types';
@@ -246,7 +246,6 @@ export class AISearchAgent {
                 submit_final_answer: submitFinalAnswerTool(),
             },
             stopWhen: [
-                stepCountIs(1),
                 hasToolCall('submit_final_answer'),
             ],
             temperature: thoughtTemperature,
@@ -320,7 +319,6 @@ export class AISearchAgent {
         const cfg = getAgentConfig(this.options.analysisMode);
         let iterationCount = 0;
         let reActStartTimeMs = Date.now();
-        let isSubmitResultCalled = false;
 
         // Initial pre-thought: plan the first exploration step (only once before loop)
         yield* this.runMindFlowAgent('pre-thought');
@@ -356,7 +354,6 @@ export class AISearchAgent {
             try {
                 yield* this.runThoughtAgent(
                     oneGenerationContext,
-                    () => { isSubmitResultCalled = true; },
                     getThoughtText,
                 );
                 // Build thought message and update agent memory
@@ -371,14 +368,6 @@ export class AISearchAgent {
 
                 // check if the result is good enough.
                 let phaseResult: { shouldBreak: boolean } = { shouldBreak: false };
-                yield {
-                    type: 'ui-step',
-                    uiType: UIStepType.STEPS_DISPLAY,
-                    stepId: generateUuidWithoutHyphens(),
-                    title: 'Evaluating progress...',
-                    description: '',
-                    triggerName: StreamTriggerName.SEARCH_COMPLETION_JUDGE,
-                };
                 const latestProgress = this.agentContextManager.getLatestMindflowProgress();
                 yield* this.mindFlowAgent.checkMindFlowProgreeDecision(
                     iterationCount, latestProgress, (shouldBreak) => {
@@ -403,28 +392,14 @@ export class AISearchAgent {
                 };
                 continue;
             }
-
-            // ThoughtAgent decided to submit final answer, end the loop
-            if (isSubmitResultCalled) {
-                console.debug('[AISearchAgent] ThoughtAgent decided to submit final answer, end the loop');
-                break;
-            }
-        }
-
-        if (!isSubmitResultCalled) {
-            yield {
-                type: 'pk-debug',
-                debugName: 'Exited_loop_without_submitting',
-                extra: {
-                    messages: 'Exited loop without submitting (max iterations or early stop)',
-                    reActStartTimeMs,
-                    reActEndTimeMs: Date.now(),
-                    reActDurationMs: Date.now() - reActStartTimeMs,
-                },
-            }
         }
 
         yield* this.finishReActLoop(reActStartTimeMs);
+
+        // many final agents may call search agent, so we need to emit the sources from verified paths again.
+        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths()) {
+            yield ev;
+        }
     }
 
     private async *runMindFlowAgent(
@@ -435,14 +410,6 @@ export class AISearchAgent {
         }
 
         const mfStepId = generateUuidWithoutHyphens();
-        yield {
-            type: 'ui-step',
-            uiType: UIStepType.STEPS_DISPLAY,
-            stepId: mfStepId,
-            title: phase === 'pre-thought' ? 'Planning next exploration...' : 'Reflecting on findings...',
-            description: '',
-            triggerName: StreamTriggerName.SEARCH_MINDFLOW_AGENT,
-        };
         for await (const ev of this.mindFlowAgent.stream({ stepId: mfStepId, phase })) {
             accumulateTokenUsage(ev, (usage) => this.agentContextManager.accumulateTokenUsage(usage));
             yield ev;
@@ -451,7 +418,6 @@ export class AISearchAgent {
 
     private async *runThoughtAgent(
         oneGenerationContext: OneGenerationContext,
-        setSubmitResultCalled: (called: boolean) => void,
         getThoughtText: () => string,
     ): AsyncGenerator<LLMStreamEvent> {
         const stepId = generateUuidWithoutHyphens();
@@ -536,9 +502,6 @@ export class AISearchAgent {
                 case 'tool-call': {
                     const toolCallId = (chunk as { toolCallId?: string }).toolCallId ?? generateToolCallId();
                     oneGenerationContext.toolCalls.push({ toolCallId, toolName: chunk.toolName, input: chunk.input });
-                    if (chunk.toolName === 'submit_final_answer') {
-                        setSubmitResultCalled(true);
-                    }
                     yield {
                         type: 'tool-call',
                         id: toolCallId,
@@ -642,11 +605,9 @@ export class AISearchAgent {
 
         // the graph has already been changed to be a mind flow display not sources relationship.
         // Deterministic streaming write: new verified paths -> placeholder source + single-node graph patch.
-        console.debug('[AISearchAgent] emitStreamingSourcesFromVerifiedPaths');
-        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths()) {
+        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths(StreamTriggerName.SEARCH_THOUGHT_AGENT)) {
             yield ev;
         }
-        console.debug('[AISearchAgent] emitStreamingSourcesFromVerifiedPaths done');
     }
 
     private async *finishReActLoop(reActStartTimeMs: number): AsyncGenerator<LLMStreamEvent> {
@@ -691,7 +652,7 @@ export class AISearchAgent {
 
     private async *streamSimpleAnalysis(): AsyncGenerator<LLMStreamEvent> {
         // Simple refine for non-vaultFull modes
-        yield* this.finalRefineAgent.streamSourcesRefine();
+        yield* this.finalRefineAgent.streamSourcesRefine({ analysisMode: this.options.analysisMode });
 
         yield* this.summaryAgent.streamMultiStep({
             streamTitle: true,
@@ -701,7 +662,7 @@ export class AISearchAgent {
     }
 
     private async *streamFullAnalysis(): AsyncGenerator<LLMStreamEvent> {
-        yield* this.finalRefineAgent.streamSourcesRefine();
+        yield* this.finalRefineAgent.streamSourcesRefine({ analysisMode: this.options.analysisMode });
 
         yield* this.dashboardUpdateAgent.runDashboardUpdate();
 

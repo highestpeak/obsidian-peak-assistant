@@ -26,7 +26,7 @@ export const mindflowProgressInputSchema = z.object({
 		.describe('e.g. "Deepening hidden clues", "Cross-checking evidence"'),
 	goalAlignment: z.string().optional().describe("Sub-questions + verified paths"),
 	critique: z.string().optional().describe("Self-correction: what went wrong, how to fix"),
-	decision: z.enum(["continue", "stop"]).describe("Whether to continue or stop"),
+	decision: z.enum(["continue", "stop"]).default("continue").describe("Whether to continue or stop"),
 });
 
 // ----- review blocks -----

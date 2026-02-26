@@ -1,4 +1,4 @@
-import { Experimental_Agent as Agent, stepCountIs } from 'ai';
+import { Experimental_Agent as Agent } from 'ai';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { ErrorRetryInfo, PromptId, type PromptVariables } from '@/service/prompt/PromptId';
@@ -16,8 +16,6 @@ import { AgentContextManager, AgentMemoryToolSet } from './AgentContextManager';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { callAgentTool } from '@/service/tools/call-agent-tool';
 
-const DEFAULT_MAX_STEPS = 18;
-
 type BlocksUpdateToolSet = AgentMemoryToolSet & {
     call_search_agent: AgentTool;
     add_dashboard_blocks: AgentTool;
@@ -25,6 +23,8 @@ type BlocksUpdateToolSet = AgentMemoryToolSet & {
 }
 
 export interface DashboardBlockVariables {
+    /** User's original query; output must use the same language. */
+    originalQuery: string;
     agentMemoryMessage: string;
     blockPlan: string[];
     currentDashboardBlocks?: string;
@@ -72,19 +72,22 @@ export class DashboardBlocksUpdateAgent {
         this.agent = new Agent<BlocksUpdateToolSet>({
             model: this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId),
             tools,
-            stopWhen: [stepCountIs(DEFAULT_MAX_STEPS)],
         });
 
         this.manualCallSearchAgent = {
             toolName: 'call_search_agent',
-            triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
+            triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
             handle: this.rawSearchAgent.manualToolCallHandle.bind(this.rawSearchAgent),
             outputGetter: (resultCollector) => resultCollector.searchResultChunks,
         }
     }
 
     public async *stream(blockPlan: string[], stepId?: string): AsyncGenerator<LLMStreamEvent> {
-        yield* withRetryStream({}, (_, retryCtx) => this.realStreamInternal(blockPlan, retryCtx, stepId));
+        yield* withRetryStream(
+            {},
+            (_, retryCtx) => this.realStreamInternal(blockPlan, retryCtx, stepId),
+            { triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT },
+        );
     }
 
     private async *realStreamInternal(
@@ -93,9 +96,11 @@ export class DashboardBlocksUpdateAgent {
         stepId?: string
     ): AsyncGenerator<LLMStreamEvent> {
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisDashboardUpdateBlocks);
+        const originalQuery = this.context.getInitialPrompt() ?? '';
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
         const hasDashboardBlocks = this.context.getAgentResult().dashboardBlocks?.length ?? 0 > 0;
         const promptVars: PromptVariables[typeof PromptId.AiAnalysisDashboardUpdateBlocks] = {
+            originalQuery,
             blockPlan,
             agentMemoryMessage: this.context.getLatestMessageText(),
             currentDashboardBlocks: hasDashboardBlocks ? JSON.stringify(this.context.getAgentResult().dashboardBlocks) : undefined,
@@ -112,7 +117,7 @@ export class DashboardBlocksUpdateAgent {
             stepId,
             title: 'Updating dashboard blocks...',
             description: 'Updating dashboard blocks',
-            triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT,
+            triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
         }
         yield buildPromptTraceDebugEvent(
             StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,

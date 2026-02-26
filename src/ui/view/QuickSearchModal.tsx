@@ -44,11 +44,17 @@ export class QuickSearchModal extends Modal {
 	}
 
 	onClose(): void {
-		if (this.reactRenderer) {
-			this.reactRenderer.unmount();
-			this.reactRenderer = null;
+		const r = this.reactRenderer;
+		this.reactRenderer = null;
+		if (r) {
+			// Defer to next macrotask so root.unmount() never runs during commit (AnimatePresence etc.)
+			setTimeout(() => {
+				r.unmount();
+				this.contentEl.empty();
+			}, 0);
+		} else {
+			this.contentEl.empty();
 		}
-		this.contentEl.empty();
 	}
 }
 

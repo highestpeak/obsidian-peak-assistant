@@ -11,9 +11,8 @@ import {
 	updateSourceScoresInputSchema,
 } from "@/core/schemas/agents/search-agent-schemas";
 import type { AISearchSource } from "../../AISearchAgent";
-import { normalizeFilePath } from "@/core/utils/file-utils";
 import { createUpdateResultTool, getUpdateResultFormatGuidance, safeText, norm, normPath, commonValidatePath } from "@/service/tools/field-update-tool-array";
-import { validateMermaid, wrapMermaidCode } from "@/core/utils/mermaid-utils";
+import { validateMermaid } from "@/core/utils/mermaid-utils";
 import { safeAgentTool } from "@/service/tools/types";
 
 let _handlersMap: Record<string, UpdateResultHandlers> | null = null;
@@ -137,13 +136,13 @@ function normalizeBlockTitle(raw: string): string {
 
 export function overviewMermaidUpdateTool() {
     return safeAgentTool({
-        description: 'Set the overview Mermaid diagram. Call with valid Mermaid code.',
+        description: 'Set the overview Mermaid diagram. Use short node labels and a balanced layout (mix vertical/horizontal, avoid one long chain) for easy viewing. Call with valid Mermaid code.',
         inputSchema: overviewMermaidInputSchema,
         execute: async (input) => {
             const ctx = getCurrentAnalysisContext();
             if (!ctx) throw new Error('Session ended or unloaded.');
             const raw = input ?? '';
-            ctx.getResult().overviewMermaid = wrapMermaidCode(raw);
+            ctx.getResult().overviewMermaid = raw;
             return raw;
         },
     });

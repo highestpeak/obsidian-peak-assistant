@@ -3,7 +3,7 @@
  * Emits GraphPatch via ui-signal; updates agentResult.graph.
  */
 
-import { Experimental_Agent as Agent, hasToolCall, stepCountIs } from 'ai';
+import { Experimental_Agent as Agent } from 'ai';
 import {
 	mindflowMermaidInputSchema,
 	mindflowProgressInputSchema,
@@ -14,13 +14,13 @@ import { LLMStreamEvent, StreamTriggerName, UIStepType, UISignalChannel, UISigna
 import { ErrorRetryInfo, PromptId } from '@/service/prompt/PromptId';
 import { safeAgentTool } from '@/service/tools/types';
 import type { AgentTool } from '@/service/tools/types';
-import { buildPromptTraceDebugEvent, streamTransform, withRetryStream, type RetryContext } from '@/core/providers/helpers/stream-helper';
+import { buildErrorRetryInfo, buildPromptTraceDebugEvent, streamTransform, withRetryStream, type RetryContext } from '@/core/providers/helpers/stream-helper';
 import { MINDFLOW_STATE_SYNTAX } from './mindflow/types';
 import { AgentContextManager, AgentMemoryToolSet } from './AgentContextManager';
+import { MermaidFixAgent } from './MermaidFixAgent';
 import { convertMessagesToText } from '@/core/providers/adapter/ai-sdk-adapter';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 
-const DEFAULT_MAX_STEPS = 15;
 const MINDFLOW_PROGRESS_UI_ITERATION = 5;
 
 const MINDFLOW_TOOL_NAMES = new Set(['submit_mindflow_mermaid', 'submit_mindflow_trace', 'submit_mindflow_progress']);
@@ -57,6 +57,7 @@ export interface MindFlowVariables {
 export class MindFlowAgent {
 	private readonly aiServiceManager: AIServiceManager;
 	private readonly context: AgentContextManager;
+	private readonly mermaidFixAgent: MermaidFixAgent;
 	private agent: Agent<MindFlowToolSet>;
 	private prevMermaid: string | null = null;
 
@@ -66,6 +67,7 @@ export class MindFlowAgent {
 	}) {
 		this.aiServiceManager = params.aiServiceManager;
 		this.context = params.context;
+		this.mermaidFixAgent = new MermaidFixAgent(params.aiServiceManager);
 
 		const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisMindflowAgent);
 		const tools: MindFlowToolSet = {
@@ -92,16 +94,12 @@ export class MindFlowAgent {
 				.getProviderService(provider)
 				.modelClient(modelId),
 			tools,
-			stopWhen: [
-				stepCountIs(DEFAULT_MAX_STEPS),
-				hasToolCall('submit_mindflow_progress'),
-			],
 		});
 	}
 
 	private buildMermaidTool(): AgentTool {
 		return safeAgentTool({
-			description: `Submit the current thinking tree as constrained flowchart TD Mermaid. Use nodes with :::${MINDFLOW_STATE_SYNTAX} and edges A -->|"main: supports"| B.`,
+			description: `Submit the current thinking tree as constrained flowchart TD Mermaid. Use nodes with :::${MINDFLOW_STATE_SYNTAX} and edges A -->|"main: supports"| B. Keep node labels short (one phrase); prefer a balanced layout (mix vertical/horizontal, branch and rejoin) so the diagram is easy to view.`,
 			inputSchema: mindflowMermaidInputSchema,
 			execute: async (input) => {
 				const raw = (input?.code ?? '').trim();
@@ -150,13 +148,27 @@ export class MindFlowAgent {
 		this.prevMermaid = null;
 	}
 
+	/**
+	 * Stream MindFlow Mermaid + progress. Retries on tool/stream error only. If mermaid validation
+	 * fails after the run, uses MermaidFixAgent to fix (up to 2 fix retries) instead of re-running the full agent.
+	 */
 	public async *stream(
 		opts?: { stepId?: string; phase?: MindFlowPhase },
 	): AsyncGenerator<LLMStreamEvent> {
+		const { stepId, phase } = opts ?? {};
+		const self = this;
+
 		yield* withRetryStream(
 			{},
-			(_, retryCtx) => this.realStreamInternal(retryCtx, opts?.stepId, opts?.phase),
+			(_, retryCtx) => self.realStreamInternal(retryCtx, stepId, phase),
+			{ maxRetries: 2, triggerName: StreamTriggerName.SEARCH_MINDFLOW_AGENT },
 		);
+
+		const mermaid = (self.prevMermaid ?? self.context.getMindflowContext()?.lastMermaid ?? '').trim();
+		yield* self.mermaidFixAgent.ifInvalidThenFix(mermaid, (m) => {
+			self.prevMermaid = m;
+			self.context.setLastMermaid(m);
+		});
 	}
 
 	private async *realStreamInternal(
@@ -164,27 +176,34 @@ export class MindFlowAgent {
 		stepId?: string,
 		phase?: MindFlowPhase,
 	): AsyncGenerator<LLMStreamEvent> {
+		stepId = stepId ?? generateUuidWithoutHyphens()
+		yield {
+			type: 'ui-step',
+			uiType: UIStepType.STEPS_DISPLAY,
+			stepId,
+			title: phase === 'pre-thought' ? 'Planning next exploration...' : 'Reflecting on findings...',
+			description: '',
+			triggerName: StreamTriggerName.SEARCH_MINDFLOW_AGENT,
+		};
+
 		// we can get the whole ReAct chain of messages from the agent memory.
 		let agentMemoryMessage: any[] = [];
 		for await (const chunk of this.context.buildCurrentPrompt((prompt: LLMRequestMessage[]) => {
 			agentMemoryMessage.push(prompt);
-		})) {
+		}, StreamTriggerName.SEARCH_MINDFLOW_AGENT)) {
 			yield chunk;
 		}
 
 		// build prompts
 		const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisMindflowAgent);
+		const userQuery = this.context.getInitialPrompt() ?? '';
 		const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
 		const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisMindflowAgent, {
 			phase: phase ?? 'pre-thought',
-			userQuery: this.context.getInitialPrompt(),
+			userQuery,
 			agentMemoryMessage: convertMessagesToText(agentMemoryMessage[0] as LLMRequestMessage[]),
 			previousMindflowMermaid: this.prevMermaid ?? undefined,
-			...(retryCtx && {
-				attemptTimes: retryCtx?.attemptTimes,
-				lastAttemptErrorMessages: !retryCtx ? undefined
-					: ('lastAttemptErrorMessages' in retryCtx ? retryCtx.lastAttemptErrorMessages : (retryCtx as RetryContext).lastRetryText)
-			}),
+			...buildErrorRetryInfo(retryCtx) ?? {},
 		});
 		yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_MINDFLOW_AGENT, system, prompt);
 
@@ -195,6 +214,7 @@ export class MindFlowAgent {
 		let lastProgress: MindflowProgress | null = null;
 		const self = this;
 		yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_MINDFLOW_AGENT, {
+			yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
 			yieldEventPostProcessor: (chunk: any) => {
 				return MINDFLOW_TOOL_NAMES.has(chunk.toolName)
 					? { extra: { currentResult: self.context.getAgentResult() } }
@@ -224,15 +244,18 @@ export class MindFlowAgent {
 					return undefined;
 				}
 				if (chunk.type === 'finish') {
-					self.prevMermaid = lastMermaid;
-					self.context.setLastMermaid(lastMermaid);
+					// if mermaid is empty, we still use the old one to ensure the ui is not empty.
+					if (lastMermaid && lastMermaid.trim().length > 0) {
+						self.prevMermaid = lastMermaid;
+						self.context.setLastMermaid(lastMermaid);
+					}
 					return {
 						type: 'ui-signal',
 						id: `sig-mindflow-snapshot-${Date.now()}`,
 						channel: UISignalChannel.MINDFLOW_MERMAID,
 						kind: UISignalKind.STAGE,
 						entityId: stepId,
-						payload: { mermaid: lastMermaid, progress: lastProgress },
+						payload: { mermaid: self.prevMermaid, progress: lastProgress },
 					};
 				}
 				return undefined;
@@ -245,6 +268,15 @@ export class MindFlowAgent {
 		lastProgress: MindflowProgress | undefined,
 		setShouldBreak: (shouldBreak: boolean) => void,
 	): AsyncGenerator<LLMStreamEvent> {
+		yield {
+			type: 'ui-step',
+			uiType: UIStepType.STEPS_DISPLAY,
+			stepId: generateUuidWithoutHyphens(),
+			title: 'Evaluating progress...',
+			description: '',
+			triggerName: StreamTriggerName.SEARCH_MINDFLOW_AGENT,
+		};
+
 		if (iterationCount < MINDFLOW_PROGRESS_UI_ITERATION) {
 			setShouldBreak(false);
 			return;
@@ -257,13 +289,14 @@ export class MindFlowAgent {
 				kind: UISignalKind.PROGRESS,
 				entityId: generateUuidWithoutHyphens(),
 				payload: lastProgress,
+				triggerName: StreamTriggerName.SEARCH_MINDFLOW_AGENT,
 			};
 		}
 		if (lastProgress?.decision === 'stop') {
 			yield {
 				type: 'pk-debug',
 				debugName: 'mindflow-stop',
-				triggerName: StreamTriggerName.SEARCH_COMPLETION_JUDGE,
+				triggerName: StreamTriggerName.SEARCH_MINDFLOW_AGENT,
 				extra: { reason: 'MindFlow decided to stop', progress: lastProgress },
 			};
 			setShouldBreak(true);

@@ -11,8 +11,8 @@ import { PromptId } from "@/service/prompt/PromptId";
 import type { MindflowProgress } from "./MindFlowAgent";
 import { AgentTemplateId } from "@/core/template/TemplateRegistry";
 import {
-	getAnalysisMessageByIndexInputSchema,
-	searchMemoryStoreInputSchema,
+    getAnalysisMessageByIndexInputSchema,
+    searchMemoryStoreInputSchema,
 } from "@/core/schemas/tools/searchMemoryStore";
 import { SearchAgentResult } from "../AISearchAgent";
 import { AgentTool, safeAgentTool } from "@/service/tools/types";
@@ -257,7 +257,8 @@ export class AgentContextManager {
      * Build current prompt with agent memory, yielding progress events during summarization
      */
     public async *buildCurrentPrompt(
-        setPrompt?: (prompt: LLMRequestMessage[]) => void
+        setPrompt?: (prompt: LLMRequestMessage[]) => void,
+        triggerName?: StreamTriggerName,
     ): AsyncGenerator<LLMStreamEvent> {
         // Check if summarization is needed based on token limits
         const { shouldSummarize, reason } = await this.shouldSummarizeHistory();
@@ -265,7 +266,7 @@ export class AgentContextManager {
             yield {
                 type: 'pk-debug',
                 debugName: 'summary_context_messages_not_needed',
-                triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+                triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
                 extra: {
                     reason,
                 },
@@ -277,7 +278,7 @@ export class AgentContextManager {
         }
 
         try {
-            yield* this.summarizeHistory(reason);
+            yield* this.summarizeHistory(reason, triggerName);
         } catch (error) {
             console.error('[buildCurrentPrompt] Error summarizing history:', error);
         } finally {
@@ -339,7 +340,7 @@ export class AgentContextManager {
         };
     }
 
-    private async *summarizeHistory(reason?: string): AsyncGenerator<LLMStreamEvent> {
+    private async *summarizeHistory(reason?: string, triggerName?: StreamTriggerName): AsyncGenerator<LLMStreamEvent> {
         // Calculate which messages need to be summarized
         const history = this.thinkingMemory.historyMessages;
         let messagesToSummarize: LLMRequestMessage[] = history.slice(0, -DEFAULT_SUMMARY_UPDATE_THRESHOLD)
@@ -351,7 +352,7 @@ export class AgentContextManager {
             type: 'tool-call',
             id: toolCallId,
             toolName: ToolEvent.summary_context_messages,
-            triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+            triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
             input: {
                 reason,
                 messagesToSummarize: messagesToSummarizeText,
@@ -364,7 +365,7 @@ export class AgentContextManager {
             stepId,
             title: 'Summarizing context messages...',
             description: 'Trying to build next prompt with the summary...',
-            triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+            triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
         }
 
         // Generate summary with decision-critical structure (user background, pains, evidence paths)
@@ -383,11 +384,14 @@ export class AgentContextManager {
                     stepId,
                     titleDelta: 'building...',
                     descriptionDelta: chunk.delta,
-                    triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+                    triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
                 };
                 hasEmitUiDeltaOnSummary = true;
             } else {
-                yield chunk;
+                yield {
+                    ...chunk,
+                    triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
+                };
             }
             if (chunk.type === 'prompt-stream-result') {
                 this.thinkingMemory.sessionSummary = chunk.output;
@@ -407,7 +411,7 @@ export class AgentContextManager {
             type: 'tool-result',
             id: toolCallId,
             toolName: ToolEvent.summary_context_messages,
-            triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+            triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
             input: {
                 reason,
                 messagesToSummarize: messagesToSummarizeText,

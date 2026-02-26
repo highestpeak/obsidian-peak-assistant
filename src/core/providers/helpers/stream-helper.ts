@@ -61,7 +61,7 @@ export function accumulateTokenUsage(event: LLMStreamEvent, accumulateFunc: (usa
 }
 
 /**
- * A generic stream retry wrapper.
+ * A generic stream retry wrapper. When retry is triggered, yields a pk-debug event with error info before the next attempt.
  */
 export async function* withRetryStream<TVariables>(
     variables: TVariables,
@@ -70,6 +70,8 @@ export async function* withRetryStream<TVariables>(
         maxRetries?: number;
         retryCondition?: (event: LLMStreamEvent) => boolean;
         getRetryText?: (event: LLMStreamEvent) => string;
+        /** Used for pk-debug when retry is triggered so timeline can attribute the event. */
+        triggerName?: StreamTriggerName;
     }
 ): AsyncGenerator<LLMStreamEvent> {
     let lastRetryText = '';
@@ -107,8 +109,20 @@ export async function* withRetryStream<TVariables>(
             yield event;
         }
 
-        // if the stream didn't need to retry, break the loop
         if (!shouldRetry) break;
+
+        // Yield debug so caller/timeline sees why we are retrying.
+        yield {
+            type: 'pk-debug',
+            debugName: 'retry_stream_triggered',
+            triggerName: options?.triggerName,
+            extra: {
+                attemptTimes: i + 1,
+                nextAttempt: i + 2,
+                maxAttempts: maxRetries + 1,
+                lastRetryText,
+            },
+        };
     }
 }
 

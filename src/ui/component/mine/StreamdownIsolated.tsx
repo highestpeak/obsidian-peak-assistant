@@ -237,7 +237,15 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 			const root = (rootRef as React.MutableRefObject<Root | null>).current;
 			(rootRef as React.MutableRefObject<Root | null>).current = null;
 			if (root) {
-				root.unmount();
+				// Defer to next macrotask so unmount never runs during commit (AnimatePresence branch switch).
+				const r = root;
+				setTimeout(() => {
+					try {
+						r.unmount();
+					} catch (e) {
+						if (DEBUG) console.warn('[StreamdownIsolated] unmount error:', e);
+					}
+				}, 0);
 			}
 		};
 	}, [useFallback]);

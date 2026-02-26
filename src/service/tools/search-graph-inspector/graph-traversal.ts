@@ -1,9 +1,9 @@
+import { AppContext } from "@/app/context/AppContext";
 import { GRAPH_INSPECT_STEP_TIME_LIMIT } from "@/core/constant";
 import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
 import { GraphEdge } from "@/core/storage/sqlite/repositories/GraphEdgeRepo";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, distillClusterNodesData, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
-import { template as GRAPH_TRAVERSAL_TEMPLATE } from "../templates/graph-traversal";
 import { buildResponse, buildResponseFromRendered } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
@@ -214,9 +214,10 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
             edges: graphVisualizationEdges
         }
     };
-    if (templateManager) {
-        const rendered = await templateManager.render(ToolTemplateId.GraphTraversal, data);
+    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+    if (tm) {
+        const rendered = await tm.render(ToolTemplateId.GraphTraversal, data);
         return buildResponseFromRendered(response_format, data, rendered);
     }
-    return buildResponse(response_format, GRAPH_TRAVERSAL_TEMPLATE, data);
+    return buildResponse(response_format, undefined, data);
 }

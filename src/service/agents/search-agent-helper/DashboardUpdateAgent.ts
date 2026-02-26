@@ -1,7 +1,7 @@
 import { Experimental_Agent as Agent } from 'ai';
 import {
-	submitBlocksPlanInputSchema,
-	submitTopicsPlanInputSchema,
+    submitBlocksPlanInputSchema,
+    submitTopicsPlanInputSchema,
 } from '@/core/schemas/agents';
 import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
@@ -30,6 +30,8 @@ export type BlockPlanAgentToolSet = AgentMemoryToolSet & {
 };
 
 export type DashboardUpdateContext = {
+    /** User's original query; plan instructions must be in the same language. */
+    originalQuery: string;
     agentMemoryMessage: string;
     verifiedPaths: string[];
     /** Current blocks (for loop generation); optional snapshot string for template. */
@@ -105,7 +107,7 @@ export class DashboardUpdateAgent {
     /** 
      * Emit placeholder sources and single-node graph patches for newly verified paths during search stream. 
      * */
-    public async *emitStreamingSourcesFromVerifiedPaths(): AsyncGenerator<LLMStreamEvent> {
+    public async *emitStreamingSourcesFromVerifiedPaths(triggerName?: StreamTriggerName): AsyncGenerator<LLMStreamEvent> {
         const emittedSourcePaths = this.context.getEmittedSourcePaths();
         const existingSourcesPathsSet = new Set(
             this.context.getAgentResult().sources.map(s => (s.path ?? '').toLowerCase()).filter(Boolean)
@@ -143,7 +145,7 @@ export class DashboardUpdateAgent {
             type: 'tool-result',
             id: `update_sources-${generateUuidWithoutHyphens()}`,
             toolName: 'update_sources',
-            triggerName: StreamTriggerName.SEARCH_SOURCES_FROM_VERIFIED_PATHS,
+            triggerName: triggerName ?? StreamTriggerName.SEARCH_SOURCES_FROM_VERIFIED_PATHS,
             ...this.context.yieldAgentResult(),
         };
     }
@@ -180,7 +182,7 @@ export class DashboardUpdateAgent {
                     yield {
                         type: 'pk-debug',
                         debugName: 'no-topics-plan-found',
-                        triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT,
+                        triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
                     }
                 }
 
@@ -192,7 +194,7 @@ export class DashboardUpdateAgent {
                     yield {
                         type: 'pk-debug',
                         debugName: 'no-blocks-plan-found',
-                        triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT,
+                        triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
                     }
                 }
 
@@ -208,11 +210,11 @@ export class DashboardUpdateAgent {
             yield {
                 type: 'pk-debug',
                 debugName: 'dashboard-update-agent-error',
-                triggerName: StreamTriggerName.SEARCH_DASHBOARD_AGENT,
+                triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
                 extra: { error: String(e) },
             } as LLMStreamEvent;
         } finally {
-            yield this.uiStep(stepId, 'Dashboard Updated. ', 'Dashboard Updated', StreamTriggerName.SEARCH_DASHBOARD_AGENT);
+            yield this.uiStep(stepId, 'Dashboard Updated. ', 'Dashboard Updated', StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT);
         }
     }
 
@@ -224,26 +226,28 @@ export class DashboardUpdateAgent {
         stepId: string,
     ): AsyncGenerator<LLMStreamEvent> {
         this.lastPlan = { topicsPlan: [], blockPlan: [] };
-        yield this.uiStep(stepId, 'Updating dashboard (final)', 'Generating plan...', StreamTriggerName.SEARCH_DASHBOARD_AGENT);
+        yield this.uiStep(stepId, 'Updating dashboard (final)', 'Generating plan...', StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT);
         const agentMemoryMessageText = this.context.getCachedCurrentPromptMessageText();
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisDashboardUpdatePlan);
+        const originalQuery = this.context.getInitialPrompt() ?? '';
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
         const hasDashboardBlocks = this.context.getAgentResult().dashboardBlocks?.length ?? 0 > 0;
         const dashboardBlocks = hasDashboardBlocks ? this.context.getAgentResult().dashboardBlocks : undefined;
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDashboardUpdatePlan, {
+            originalQuery,
             agentMemoryMessage: agentMemoryMessageText,
             verifiedPaths: Array.from(this.context.getVerifiedPaths()),
             dashboardBlocksSnapshot: dashboardBlocks?.length ? JSON.stringify(dashboardBlocks, null, 2) : undefined,
         });
-        yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_DASHBOARD_AGENT, system, prompt);
+        yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT, system, prompt);
         const result = this.blockPlanAgent.stream({
             system, prompt,
         });
-        yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_DASHBOARD_AGENT, {
+        yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT, {
             yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId: stepId },
         });
         this.fillFallbackPlanIfNeed();
-        yield this.uiStep(stepId, 'Dashboard Update Plan', '\nPlan: ' + JSON.stringify(this.lastPlan, null, 2), StreamTriggerName.SEARCH_DASHBOARD_AGENT);
+        yield this.uiStep(stepId, 'Dashboard Update Plan', '\nPlan: ' + JSON.stringify(this.lastPlan, null, 2), StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT);
     }
 
     private uiStep(stepId: string, title: string, description: string, triggerName: StreamTriggerName): LLMStreamEvent {
@@ -262,13 +266,6 @@ export class DashboardUpdateAgent {
     ): AsyncGenerator<LLMStreamEvent> {
         stepId = stepId ?? generateUuidWithoutHyphens();
         try {
-            yield {
-                type: 'ui-step',
-                uiType: UIStepType.STEPS_DISPLAY,
-                stepId,
-                title: 'Suggesting follow-up questions...',
-                triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-            };
             yield* this.followUpQuestionAgent.stream(stepId);
         } catch (e) {
             console.warn('[AISearchAgent] Suggest follow-up questions failed; leaving empty.', e);

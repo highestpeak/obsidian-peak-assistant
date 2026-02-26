@@ -1,8 +1,8 @@
-import { Experimental_Agent as Agent, hasToolCall, stepCountIs } from 'ai';
+import { Experimental_Agent as Agent } from 'ai';
 import { AIServiceManager } from '@/service/chat/service-manager';
-import { LLMRequestMessage, LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
+import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { PromptId } from '@/service/prompt/PromptId';
-import type { AISearchSource } from '../AISearchAgent';
+import type { AISearchSource, AnalysisMode } from '../AISearchAgent';
 import {
     sourcesUpdateTool,
     updateSourceScoresTool,
@@ -13,9 +13,6 @@ import type { AgentTool } from '@/service/tools/types';
 import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { AgentContextManager, AgentMemoryToolSet } from './AgentContextManager';
-import { convertMessagesToText } from '@/core/providers/adapter/ai-sdk-adapter';
-
-const DEFAULT_MAX_STEPS = 8;
 
 /**
  * Refine modes for FinalRefineAgent.
@@ -84,6 +81,7 @@ export type FinalSourcesReasonRefineContext = {
 }
 
 export type FinalRefineContext = (FinalSourcesScoreRefineContext | FinalSourcesReasonRefineContext) & {
+    analysisMode: AnalysisMode;
     originalQuery: string;
     agentMemoryMessage: string;
 };
@@ -116,7 +114,6 @@ export class FinalRefineAgent {
                 ...this.context.getAgentMemoryTool(),
                 update_source_scores: updateSourceScoresTool(),
             },
-            stopWhen: [stepCountIs(DEFAULT_MAX_STEPS), hasToolCall('update_source_scores')],
         });
 
         const { provider: provider2, modelId: modelId2 } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisFinalRefineSources);
@@ -128,7 +125,6 @@ export class FinalRefineAgent {
                 ...this.context.getAgentMemoryTool(),
                 update_sources: sourcesUpdateTool(),
             },
-            stopWhen: [stepCountIs(DEFAULT_MAX_STEPS), hasToolCall('update_sources')],
         });
     }
 
@@ -181,11 +177,13 @@ export class FinalRefineAgent {
             scoreThresholdMethod?: ScoreThresholdMethod;
             /** Minimum percentile to include (e.g., 50 = top 50%). Default 50. */
             minPercentile?: number;
+            analysisMode?: AnalysisMode;
         },
     ): AsyncGenerator<LLMStreamEvent> {
         const {
             scoreThresholdMethod = 'median',
             minPercentile = 50,
+            analysisMode = 'vaultFull',
         } = opts ?? {};
         const stepId = generateUuidWithoutHyphens();
 
@@ -201,6 +199,7 @@ export class FinalRefineAgent {
                 'Scoring sources…',
                 RefineMode.SOURCES_SCORES_ONLY,
                 {
+                    analysisMode,
                     originalQuery: this.context.getInitialPrompt(),
                     sources: JSON.stringify(sources),
                     agentMemoryMessage: agentMemoryMessageText,
@@ -234,6 +233,7 @@ export class FinalRefineAgent {
             `Refining ${selectedSources.length} sources…`,
             RefineMode.SOURCES_FULL_ONLY,
             {
+                analysisMode,
                 originalQuery: this.context.getInitialPrompt(),
                 sources: JSON.stringify(selectedSources),
                 agentMemoryMessage: agentMemoryMessageText,

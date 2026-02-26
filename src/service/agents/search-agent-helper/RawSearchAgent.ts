@@ -1,6 +1,6 @@
 
 import { AIServiceManager } from "@/service/chat/service-manager";
-import { Experimental_Agent as Agent, hasToolCall, stepCountIs } from 'ai';
+import { Experimental_Agent as Agent, hasToolCall } from 'ai';
 import { AgentTool, safeAgentTool } from "@/service/tools/types";
 import {
     inspectNoteContextTool,
@@ -48,9 +48,6 @@ export interface RawSearchAgentOptions {
     enableLocalSearch?: boolean;
 }
 
-// search inspector agent max steps.
-export const DEFAULT_MAX_SEARCH_AGENT_STEPS = 50;
-
 export class RawSearchAgent {
     /**
      * Search Agent - sub agent for search tasks
@@ -95,7 +92,6 @@ export class RawSearchAgent {
                 .modelClient(modelId),
             tools: searchTools,
             stopWhen: [
-                stepCountIs(DEFAULT_MAX_SEARCH_AGENT_STEPS),
                 hasToolCall('submit_final_answer'),
             ],
             temperature,
@@ -149,7 +145,6 @@ export class RawSearchAgent {
             triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
         };
 
-        let finalSummary: string = '';
         let finalEvidencePack: { candidateNotes: unknown[]; newContextNodes: unknown[] } = { candidateNotes: [], newContextNodes: [] };
         const reasoningTextChunks: string[] = [];
         const thoughtTextChunks: string[] = [];
@@ -192,7 +187,6 @@ export class RawSearchAgent {
                         return {
                             extra: {
                                 result: {
-                                    summary: finalSummary,
                                     text: thoughtTextChunks.join('').trim(),
                                     reasoning: reasoningTextChunks.join('').trim(),
                                     evidencePack: finalEvidencePack,
@@ -310,10 +304,34 @@ export class RawSearchAgent {
             }
             // content_reader
             if (toolName === 'content_reader' && data?.path) addPath(data.path);
-            // recent_changes / explore_folder: items with path
+            // find_path: start/end note path + paths[].pathString (e.g. "[[path1]] -> [[path2]]")
+            if (toolName === 'find_path') {
+                if (data?.start_note_path) addPath(data.start_note_path);
+                if (data?.end_note_path) addPath(data.end_note_path);
+                if (data?.paths && Array.isArray(data.paths)) {
+                    for (const p of data.paths) {
+                        const pathString = p?.pathString;
+                        if (typeof pathString === 'string') {
+                            for (const m of pathString.matchAll(/\[\[([^\]]*)\]\]/g)) {
+                                if (m[1]) addPath(m[1]);
+                            }
+                        }
+                    }
+                }
+            }
+            // recent_changes (items[].path) / search_by_dimensions (items[].attributes.path): items with path
             if (data?.items && Array.isArray(data.items)) {
                 for (const item of data.items) {
-                    if (item.path) addPath(item.path);
+                    if (item.path)
+                        addPath(item.path);
+                    // search_by_dimensions: graph node attributes with path
+                    if (item.attributes) {
+                        const attrs = typeof item.attributes === 'string'
+                            ? (() => { try { return JSON.parse(item.attributes); } catch { return null; } })()
+                            : item.attributes;
+                        if (attrs?.path)
+                            addPath(attrs.path);
+                    }
                 }
             }
         } catch (error) {

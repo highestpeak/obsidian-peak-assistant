@@ -1,7 +1,7 @@
+import { AppContext } from "@/app/context/AppContext";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
-import { template as ORPHAN_NOTES_TEMPLATE } from "../templates/orphan-notes";
 import { buildResponse, buildResponseFromRendered } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
@@ -64,11 +64,12 @@ export async function findOrphanNotes(params: any, templateManager?: TemplateMan
         filtered_count: finalAllOrphanNodes.length,
         hard_orphans: hardOrphans,
     };
-    if (templateManager) {
-        const rendered = await templateManager.render(ToolTemplateId.OrphanNotes, data);
+    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+    if (tm) {
+        const rendered = await tm.render(ToolTemplateId.OrphanNotes, data);
         return buildResponseFromRendered(response_format, data, rendered);
     }
-    return buildResponse(response_format, ORPHAN_NOTES_TEMPLATE, data);
+    return buildResponse(response_format, undefined, data);
 }
 
 /**

@@ -460,21 +460,17 @@ export interface OneGenerationContext {
 }
 
 export enum StreamTriggerName {
+	SEARCH_MINDFLOW_AGENT = 'search-mindflow-agent',
 	SEARCH_THOUGHT_AGENT = 'search-thought-agent',
 	SEARCH_INSPECTOR_AGENT = 'search-inspector-agent',
-	SEARCH_GRAPH_AGENT = 'search-graph-agent',
-	SEARCH_TOPICS_AGENT = 'search-topics-agent',
 	SEARCH_SOURCES_FROM_VERIFIED_PATHS = 'search-sources-from-verified-paths',
-	SEARCH_SOURCES_AGENT = 'search-sources-agent',
-	SEARCH_DASHBOARD_AGENT = 'search-dashboard-agent',
 	SEARCH_DASHBOARD_UPDATE_AGENT = 'search-dashboard-update-agent',
+	SEARCH_TOPICS_AGENT = 'search-topics-agent',
 	SEARCH_FINAL_REFINE_AGENT = 'search-final-refine-agent',
-	SEARCH_MINDFLOW_AGENT = 'search-mindflow-agent',
-	SEARCH_COMPLETION_JUDGE = 'search-completion-judge',
-	SEARCH_REVIEW_BLOCKS = 'search-review-blocks',
 	SEARCH_SUMMARY = 'search-summary',
 	SEARCH_TITLE = 'search-title',
 	SEARCH_OVERVIEW_MERMAID = 'search-overview-mermaid',
+	SEARCH_MERMAID_FIX = 'search-mermaid-fix',
 	DOC_SIMPLE_AGENT = 'doc-simple-agent',
 	FOLLOW_UP_QUESTION_AGENT = 'follow-up-question-agent',
 }

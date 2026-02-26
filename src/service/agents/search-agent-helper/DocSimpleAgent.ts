@@ -1,5 +1,5 @@
 import { AIServiceManager } from "@/service/chat/service-manager";
-import { Experimental_Agent as Agent, hasToolCall, stepCountIs } from "ai";
+import { Experimental_Agent as Agent, hasToolCall } from "ai";
 import { AgentTool } from "@/service/tools/types";
 import { contentReaderTool } from "@/service/tools/content-reader";
 import {
@@ -17,7 +17,7 @@ import { LLMStreamEvent, StreamTriggerName, UIStepType } from "@/core/providers/
 import { PromptId } from "@/service/prompt/PromptId";
 import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
 import { DocumentLoaderManager } from "@/core/document/loader/helper/DocumentLoaderManager";
-import { buildToolCallUIEvent, DEFAULT_MAX_SEARCH_AGENT_STEPS } from "./RawSearchAgent";
+import { buildToolCallUIEvent } from "./RawSearchAgent";
 import { submitFinalAnswerTool } from "@/service/tools/submit-final-answer";
 import { streamTransform } from "@/core/providers/helpers/stream-helper";
 import { emptyUsage, LLMUsage, mergeTokenUsage } from "@/core/providers/types";
@@ -80,7 +80,6 @@ export class DocSimpleAgent {
 				local_search_whole_vault: localSearchWholeVaultTool(this.aiServiceManager.getTemplateManager?.()),
 			},
 			stopWhen: [
-				stepCountIs(DEFAULT_MAX_SEARCH_AGENT_STEPS),
 				hasToolCall('submit_final_answer'),
 			],
 			temperature,
@@ -115,7 +114,7 @@ export class DocSimpleAgent {
 			userPrompt,
 			fileContent,
 		});
-		const system = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDocSimpleSystem, null);
+		const system = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDocSimpleSystem, {});
 
 		const result = this.searchAgent.stream({ system, prompt });
 		const startedAt = Date.now();

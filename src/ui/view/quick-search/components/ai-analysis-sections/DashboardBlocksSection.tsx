@@ -3,7 +3,7 @@ import { AnimatePresence, motion, LayoutGroup } from 'framer-motion';
 import { Copy, MessageCircle } from 'lucide-react';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import type { DashboardBlock, DashboardBlockItem } from '@/service/agents/AISearchAgent';
-import { normalizeMermaidForDisplay } from '@/core/utils/mermaid-utils';
+import { getMermaidInner, wrapMermaidCode } from '@/core/utils/mermaid-utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/shared-ui/hover-card';
 import { useAIAnalysisInteractionsStore } from '../../store/aiAnalysisStore';
@@ -213,7 +213,8 @@ const BlockContent: React.FC<{
 
 	if (renderEngine === 'MERMAID' && (mermaidCode?.trim() || markdown?.trim())) {
 		const raw = mermaidCode?.trim() || markdown?.trim() || '';
-		const content = normalizeMermaidForDisplay(raw);
+		const inner = getMermaidInner(raw);
+		const content = inner.trim() ? wrapMermaidCode(inner) : '';
 		return (
 			<StreamdownIsolated
 				className="pktw-select-text pktw-w-full pktw-min-w-0 pktw-text-left pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none"

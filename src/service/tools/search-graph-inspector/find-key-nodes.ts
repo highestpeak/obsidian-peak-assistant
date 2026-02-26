@@ -1,7 +1,7 @@
+import { AppContext } from "@/app/context/AppContext";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
 import { KEY_NODES_RRF_K, RRF_RANKING_POOL_SIZE } from "@/core/constant";
-import { template as FIND_KEY_NODES_TEMPLATE } from "../templates/find-key-nodes";
 import { buildResponse, buildResponseFromRendered } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
@@ -127,11 +127,12 @@ export async function findKeyNodes(params: any, templateManager?: TemplateManage
     }
 
     const data = { key_nodes: allKeyNodes };
-    if (templateManager) {
-        const rendered = await templateManager.render(ToolTemplateId.FindKeyNodes, data);
+    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+    if (tm) {
+        const rendered = await tm.render(ToolTemplateId.FindKeyNodes, data);
         return buildResponseFromRendered(response_format, data, rendered);
     }
-    return buildResponse(response_format, FIND_KEY_NODES_TEMPLATE, data);
+    return buildResponse(response_format, undefined, data);
 }
 
 /**

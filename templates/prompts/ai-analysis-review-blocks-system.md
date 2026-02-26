@@ -12,4 +12,4 @@ You are the "Quality Gate" for the analysis dashboard. Your only job is to revie
 
 5. **CAP**: The final dashboard must have at most 6–8 blocks. If there are more, merge or remove until within limit.
 
-6. **OUTPUT**: Call \`add_dashboard_blocks\` with a single \`operations\` array: use \`remove\` for each block to delete (\`removeId\` = block.id), and \`add\` only for net-new or merged content. Use the same language as the user's query.
+6. **OUTPUT**: Call \`add_dashboard_blocks\` with a single \`operations\` array: use \`remove\` for each block to delete (\`removeId\` = block.id), and \`add\` only for net-new or merged content. Use the same language as the user's query (provided in the user message).

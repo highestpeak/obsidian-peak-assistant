@@ -1,5 +1,4 @@
 import { AppContext } from "@/app/context/AppContext";
-import { template as LOCAL_SEARCH_TEMPLATE } from "../templates/local-search";
 import { buildResponse, buildResponseFromRendered } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
@@ -131,9 +130,10 @@ export async function localSearch(params: any, templateManager?: TemplateManager
         searchTime: duration
     };
 
-    if (templateManager) {
-        const rendered = await templateManager.render(ToolTemplateId.LocalSearch, data);
+    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+    if (tm) {
+        const rendered = await tm.render(ToolTemplateId.LocalSearch, data);
         return buildResponseFromRendered(response_format, data, rendered);
     }
-    return buildResponse(response_format, LOCAL_SEARCH_TEMPLATE, data);
+    return buildResponse(response_format, undefined, data);
 }

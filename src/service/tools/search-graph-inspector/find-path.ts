@@ -1,10 +1,10 @@
+import { AppContext } from "@/app/context/AppContext";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GRAPH_INSPECT_STEP_TIME_LIMIT } from "@/core/constant";
 import { PATH_FINDING_CONSTANTS } from "@/core/constant";
 import { buildResponse, buildResponseFromRendered, withTimeoutMessage } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
-import { template as GRAPH_PATH_FINDING_TEMPLATE } from "../templates/graph-path-finding";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import type { Database as DbSchema } from "@/core/storage/sqlite/ddl";
 import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
@@ -314,11 +314,12 @@ export async function findPath(params: any, templateManager?: TemplateManager) {
         paths: templatePaths,
         analysis: analysisSection,
     };
-    if (templateManager) {
-        const rendered = await templateManager.render(ToolTemplateId.GraphPathFinding, data);
+    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+    if (tm) {
+        const rendered = await tm.render(ToolTemplateId.GraphPathFinding, data);
         return buildResponseFromRendered(response_format, data, rendered);
     }
-    return buildResponse(response_format, GRAPH_PATH_FINDING_TEMPLATE, data);
+    return buildResponse(response_format, undefined, data);
 }
 
 // ============================================================================

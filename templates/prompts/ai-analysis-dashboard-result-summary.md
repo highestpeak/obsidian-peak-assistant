@@ -5,8 +5,8 @@ The user ran a search. You are given their **original question** and the **searc
 - **Original query (user intent)**: {{originalQuery}}
 
 # RETRIEVED SESSION CONTEXT
-{{#if retrievedSessionContext}}
-<<< {{{retrievedSessionContext}}} >>>
+{{#if summary}}
+<<< {{{summary}}} >>>
 {{/if}}
 
 # TOOLS
