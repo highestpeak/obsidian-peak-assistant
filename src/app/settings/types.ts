@@ -114,9 +114,8 @@ export interface SearchSettings {
 	maxMultiAgentIterations: number;
 
 	/**
-	 * Word limit hint for ThoughtAgent history session summarization.
-	 * This summary is injected back into the context when history grows too large.
-	 * Default: 1200
+	 * Word limit hint for AI analysis session summarization.
+	 * Injected into context when history grows too large. Default: 1200
 	 */
 	aiAnalysisSessionSummaryWordCount: number;
 

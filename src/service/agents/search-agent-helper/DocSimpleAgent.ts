@@ -133,6 +133,11 @@ export class DocSimpleAgent {
 			yieldUIStep: {
 				uiType: UIStepType.STEPS_DISPLAY,
 				stepId: generateUuidWithoutHyphens(),
+				uiEventGenerator: (chunk: any) => {
+					if (chunk.type === 'tool-call') {
+						return buildToolCallUIEvent(chunk, generateUuidWithoutHyphens());
+					}
+				},
 			},
 			chunkEventInterceptor: (chunk: any) => {
 				if (chunk.type === "text-delta") {
@@ -140,10 +145,6 @@ export class DocSimpleAgent {
 				}
 			},
 			yieldEventPostProcessor: (chunk: any) => {
-				if (chunk.type === 'tool-call') {
-					const uiEvent = buildToolCallUIEvent(chunk, generateUuidWithoutHyphens());
-					if (uiEvent) return uiEvent;
-				}
 				if (chunk.type === 'finish') {
 					totalUsage = mergeTokenUsage(totalUsage, chunk.usage);
 				}

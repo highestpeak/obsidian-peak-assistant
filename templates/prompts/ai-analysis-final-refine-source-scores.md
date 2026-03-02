@@ -1,9 +1,12 @@
 # CONTEXT
 
-use the context to better understand the user's query and purpose of the analysis.
+Use the context to better understand the user's query and purpose of the analysis.
 
 - **Original query**: {{originalQuery}}
-- **Agent memory message**: {{agentMemoryMessage}}
+- **Evidence (verified facts)**:
+<<<
+{{{evidencePack}}}
+>>>
 
 # CURRENT SOURCES (score these)
 <<<

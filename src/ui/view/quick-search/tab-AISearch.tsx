@@ -108,12 +108,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 	const continueAnalysisBlockRef = useRef<HTMLDivElement>(null);
 
-	// Determine if we should show the pre-streaming analysis state (centered AI search state)
-	const showPreStreamingState = !error
-		// not usefull information to show pre-streaming state
-		&& (!isAnalyzing || (analyzingBeforeFirstToken && !hasStartedStreaming))
-		// finished analysis, no need to show pre-streaming state
-		&& (!analysisCompleted);
+	// Pre-streaming state only when not yet analyzing; once analyzing, show StreamingAnalysis so StepDisplay is mounted before first ui-step
+	const showPreStreamingState = !error && !isAnalyzing && !analysisCompleted;
 
 	/** Path to open "saved analysis file" (from history restore or last auto-save). */
 	const openAnalysisPath = restoredFromVaultPath ?? autoSaveState?.lastSavedPath ?? null;
@@ -344,8 +340,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 						</motion.div>
 					) : null}
 
-					{/* Streaming Started - Two Column Layout */}
-					{hasStartedStreaming && !analysisCompleted ? (
+					{/* Mount as soon as analyzing so StepDisplay can receive first ui-step (MindFlow "Planning...") */}
+					{(isAnalyzing || hasStartedStreaming) && !analysisCompleted ? (
 						<motion.div
 							key="stream"
 							initial={{ opacity: 0, y: 10 }}

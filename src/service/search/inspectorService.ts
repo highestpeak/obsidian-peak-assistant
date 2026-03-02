@@ -1,13 +1,16 @@
 /**
  * Inspector data service: links (physical + semantic), graph traversal, find path, inspect note.
  * Uses sqliteStoreManager and search-graph-inspector helpers.
+ * When current file is under ChatFolder, uses ChatDB and resolves outlink targets (vault notes) from VaultDB (cross-DB fallback).
  */
 
+import type { IndexTenant } from '@/core/storage/sqlite/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { getPathFromNode, getSemanticNeighbors } from '@/service/tools/search-graph-inspector/common';
 import { graphTraversal, GraphVisualizationEdge, GraphVisualizationNode } from '@/service/tools/search-graph-inspector/graph-traversal';
 import { findPath } from '@/service/tools/search-graph-inspector/find-path';
 import { inspectNoteContext } from '@/service/tools/search-graph-inspector/inspect-note-context';
+import { getIndexTenantForPath } from '@/service/search/index/indexService';
 import { AISearchGraph } from '../agents/AISearchAgent';
 import { generateStableUuid } from '@/core/utils/id-utils';
 
@@ -55,16 +58,16 @@ export async function getInspectorLinks(
 	inspectorOptions: GetInspectorLinksOptions
 ): Promise<{ physical: InspectorLinkItem[]; semantic: InspectorLinkItem[] }> {
 	const { includeSemantic: incSem, includeMetadata: incMeta } = inspectorOptions;
-	const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-	const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
-	const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
+	const tenant: IndexTenant = getIndexTenantForPath(currentPath);
+	const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
+	const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
+	const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
 
 	const docMeta = await docMetaRepo.getByPath(currentPath);
 	if (!docMeta) {
 		return { physical: [], semantic: [] };
 	}
 
-	// All edges (incoming + outgoing) for this node
 	const edges = await graphEdgeRepo.getAllEdgesForNode(docMeta.id, LINKS_LIMIT);
 	const inIds = edges.filter((e) => e.to_node_id === docMeta.id).map((e) => e.from_node_id);
 	const outIds = edges.filter((e) => e.from_node_id === docMeta.id).map((e) => e.to_node_id);
@@ -90,7 +93,7 @@ export async function getInspectorLinks(
 			.map(n => n.id));
 		filterDocIds.add(docMeta.id);
 
-		const semanticNodes = await getSemanticNeighbors(docMeta.id, SEMANTIC_LIMIT, filterDocIds);
+		const semanticNodes = await getSemanticNeighbors(docMeta.id, SEMANTIC_LIMIT, filterDocIds, tenant);
 		for (const n of semanticNodes) {
 			if (n.type !== 'document' || !n.label) continue;
 			const path = getPathFromNode(n);
@@ -107,7 +110,7 @@ export async function getInspectorLinks(
 
 	if (incMeta) {
 		const combined = [...physical, ...semantic];
-		const enriched = await attachLinkMetadata(combined);
+		const enriched = await attachLinkMetadataCrossTenant(combined);
 		const pathToEnriched = new Map(enriched.map((e) => [e.path, e]));
 		physical = physical
 			.map((p) => pathToEnriched.get(p.path))
@@ -120,27 +123,46 @@ export async function getInspectorLinks(
 	return { physical, semantic };
 }
 
-/** Attach backlinks, mtime, summary to link items. */
-async function attachLinkMetadata(items: InspectorLinkItem[]): Promise<InspectorLinkItem[]> {
+/** Attach backlinks, mtime, summary; resolves meta from vault or chat tenant per path (cross-DB fallback for outlinks). */
+async function attachLinkMetadataCrossTenant(items: InspectorLinkItem[]): Promise<InspectorLinkItem[]> {
 	if (!items.length) return items;
 	const paths = [...new Set(items.map((i) => i.path).filter(Boolean))];
-	const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-	const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
 
-	const metaMap = await docMetaRepo.getByPaths(paths);
-	const docIds = [...metaMap.values()].map((d) => d.id).filter(Boolean);
-	const backlinksMap = docIds.length
-		? await graphEdgeRepo.countInComingEdges(docIds)
-		: new Map<string, number>();
+	const byTenant = new Map<IndexTenant, string[]>();
+	for (const p of paths) {
+		const t = getIndexTenantForPath(p);
+		const list = byTenant.get(t) ?? [];
+		list.push(p);
+		byTenant.set(t, list);
+	}
 
-	const pathToId = new Map<string, string>();
-	for (const [path, meta] of metaMap) {
-		if (meta.id) pathToId.set(path, meta.id);
+	const metaMap = new Map<string, { id: string; mtime?: number | null; summary?: string | null; tags?: string | null }>();
+	for (const [t, tenantPaths] of byTenant) {
+		const repo = sqliteStoreManager.getDocMetaRepo(t);
+		const m = await repo.getByPaths(tenantPaths);
+		for (const [path, meta] of m) {
+			if (meta?.id) metaMap.set(path, { id: meta.id, mtime: meta.mtime, summary: meta.summary, tags: meta.tags });
+		}
+	}
+
+	const backlinksByPath = new Map<string, number>();
+	for (const [t, tenantPaths] of byTenant) {
+		const pathToId = new Map<string, string>();
+		for (const p of tenantPaths) {
+			const id = metaMap.get(p)?.id;
+			if (id) pathToId.set(p, id);
+		}
+		const ids = [...pathToId.values()];
+		if (!ids.length) continue;
+		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(t);
+		const countMap = await graphEdgeRepo.countInComingEdges(ids);
+		for (const [path, docId] of pathToId) {
+			backlinksByPath.set(path, countMap.get(docId) ?? 0);
+		}
 	}
 
 	return items.map((item) => {
 		const meta = metaMap.get(item.path);
-		const docId = pathToId.get(item.path);
 		let tags: string[] = [];
 		if (meta?.tags) {
 			try {
@@ -149,12 +171,12 @@ async function attachLinkMetadata(items: InspectorLinkItem[]): Promise<Inspector
 					? parsed.filter((t): t is string => typeof t === 'string').map((t) => String(t).trim()).filter(Boolean)
 					: [];
 			} catch {
-				// ignore invalid JSON
+				// ignore
 			}
 		}
 		return {
 			...item,
-			backlinks: docId ? backlinksMap.get(docId) ?? 0 : 0,
+			backlinks: backlinksByPath.get(item.path) ?? 0,
 			mtime: meta?.mtime ?? null,
 			summary: meta?.summary ?? null,
 			tags,

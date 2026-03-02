@@ -144,7 +144,8 @@ export class QueryService {
 
 		// Apply ranking boosts and optional LLM rerank
 		sw.start('reranking');
-		const ranked = await this.reranker.rerank(resultItems, termRaw, scopeValue, enableLLMRerank);
+		const tenant = query?.indexTenant ?? 'vault';
+		const ranked = await this.reranker.rerank(resultItems, termRaw, scopeValue, enableLLMRerank, tenant);
 		sw.stop();
 
 		// Log timing information
@@ -208,7 +209,8 @@ export class QueryService {
 			scopeMode,
 			scopeValue,
 			topK,
-			searchMode: 'vector'
+			searchMode: 'vector',
+			indexTenant: query.indexTenant,
 		};
 
 		try {
@@ -339,11 +341,12 @@ export class QueryService {
 		// We'll take topK after scoring
 		const searchLimit = Math.min(topK * 3, 100); // Search more, then filter
 
-		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		const tenant = query?.indexTenant ?? 'vault';
+		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
 
-		// Execute search with OR query to match any keyword
-		const fulltextRows = docChunkRepo.searchFts(ftsQuery, searchLimit, mode, scope);
+		// Execute search with OR query to match any keyword (exclude folders applied in SQL)
+		const fulltextRows = docChunkRepo.searchFts(ftsQuery, searchLimit, mode, scope, query.excludeFolderPrefixes);
 		if (!fulltextRows.length) {
 			return [];
 		}
@@ -402,9 +405,7 @@ export class QueryService {
 		});
 
 		// Sort by score descending and take topK
-		return items
-			.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-			.slice(0, topK);
+		return items.sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, topK);
 	}
 
 	/**
@@ -420,12 +421,13 @@ export class QueryService {
 		const termRaw = query?.text ?? '';
 		const topK = Number(query?.topK ?? DEFAULT_SEARCH_TOP_K);
 
-		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
-		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		const tenant = query?.indexTenant ?? 'vault';
+		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
+		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
 
-		// Use searchSimilarAndGetId for combined vector search and embedding/doc mapping
-		const vectorResults = await embeddingRepo.searchSimilarAndGetId(embedding, topK, mode, scope);
+		// Use searchSimilarAndGetId for combined vector search and embedding/doc mapping (exclude folders in SQL)
+		const vectorResults = await embeddingRepo.searchSimilarAndGetId(embedding, topK, mode, scope, query.excludeFolderPrefixes);
 		if (!vectorResults.length) {
 			return [];
 		}
@@ -512,11 +514,12 @@ export class QueryService {
 		// Increase limit to allow for re-ranking by keyword match count
 		const searchLimit = Math.min(topK * 3, 100);
 
-		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		const tenant = query?.indexTenant ?? 'vault';
+		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
 
-		// Execute meta search with OR query to match any keyword
-		const metaRows = docChunkRepo.searchMetaFts(ftsQuery, searchLimit, mode, scope);
+		// Execute meta search with OR query to match any keyword (exclude folders applied in SQL)
+		const metaRows = docChunkRepo.searchMetaFts(ftsQuery, searchLimit, mode, scope, query.excludeFolderPrefixes);
 		if (!metaRows.length) {
 			return [];
 		}
@@ -579,9 +582,7 @@ export class QueryService {
 		});
 
 		// Sort by score descending and take topK
-		return items
-			.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-			.slice(0, topK);
+		return items.sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, topK);
 	}
 
 	/**

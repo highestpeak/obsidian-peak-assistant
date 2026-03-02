@@ -1,14 +1,11 @@
-import { AppContext } from "@/app/context/AppContext";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GRAPH_INSPECT_STEP_TIME_LIMIT } from "@/core/constant";
 import { PATH_FINDING_CONSTANTS } from "@/core/constant";
-import { buildResponse, buildResponseFromRendered, withTimeoutMessage } from "../types";
+import { buildResponse, withTimeoutMessage } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import type { Database as DbSchema } from "@/core/storage/sqlite/ddl";
-import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
-
 // Helper: get single doc meta by id (wraps batch API)
 async function getDocMetaById(id: string): Promise<DbSchema['doc_meta'] | null> {
     const results = await sqliteStoreManager.getDocMetaRepo().getByIds([id]);
@@ -234,9 +231,6 @@ export async function findPath(params: any, templateManager?: TemplateManager) {
         embeddingRepo.getAverageEmbeddingForDoc(endNode.id)
     ]);
 
-    const excludeCtx = await getAiAnalysisExcludeContext();
-    const excludedDocIds = excludeCtx?.excludedDocIds ?? new Set<string>();
-
     // Build search context
     const context: SearchContext = {
         startId: startNode.id,
@@ -247,7 +241,7 @@ export async function findPath(params: any, templateManager?: TemplateManager) {
         filters,
         forbiddenEdges: new Set(),
         includeSemantic: include_semantic_paths ?? false,
-        excludedDocIds,
+        excludedDocIds: new Set<string>(),
     };
 
     // Execute multi-strategy search with timeout
@@ -314,12 +308,7 @@ export async function findPath(params: any, templateManager?: TemplateManager) {
         paths: templatePaths,
         analysis: analysisSection,
     };
-    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
-    if (tm) {
-        const rendered = await tm.render(ToolTemplateId.GraphPathFinding, data);
-        return buildResponseFromRendered(response_format, data, rendered);
-    }
-    return buildResponse(response_format, undefined, data);
+    return buildResponse(response_format, ToolTemplateId.GraphPathFinding, data, { templateManager });
 }
 
 // ============================================================================

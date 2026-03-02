@@ -20,11 +20,12 @@
 {{/if}}
 {{/if}}
 
-{{#if docStats.topRecentEdited}}
+{{#if docStats.topRecentEdited.totalItems}}
 ### 🕒 Recently Edited Files
-{{#each docStats.topRecentEdited}}
-- [[{{path}}]] ({{humanReadableTime updated_at}})
+{{#each docStats.topRecentEdited.items}}
+- [[{{path}}]] ({{humanReadableTime updated_at}}){{#if (gt sameGroupCount 1)}} _({{sameGroupCount}} similar)_{{/if}}
 {{/each}}
+_... {{docStats.topRecentEdited.totalItems}} items → {{docStats.topRecentEdited.totalGroups}} groups ({{docStats.topRecentEdited.compressedCount}} compressed)_
 {{/if}}
 
 {{#if docStats.topWordCount}}
@@ -48,15 +49,27 @@
 {{/each}}
 {{/if}}
 
-## 📂 File Tree
-{{#each fileTree}}
-{{> fileTreeItem}}{{/each}}
-
-{{#*inline "fileTreeItem"}}
-{{#if (eq type "folder")}}
-- 📁 **{{path}}/**{{#if children}}
-{{#each children}}  {{> fileTreeItem}}{{/each}}{{/if}}
-{{else}}
-- 📄 [[{{path}}]]
+{{#if docStats.hasTopLinks}}
+### 🔗 Top by in-degree
+{{#each docStats.topLinksIn}}
+- [[{{path}}]]: {{inDegree}}
+{{/each}}
+### 🔗 Top by out-degree
+{{#each docStats.topLinksOut}}
+- [[{{path}}]]: {{outDegree}}
+{{/each}}
 {{/if}}
-{{/inline}}
+
+## 📂 File Tree
+{{#each fileTree}}{{> fileTreeItem}}{{/each}}
+{{#if rootOmitted}}- _... and {{rootOmitted.total}} more_{{#if rootOmitted.folderCount}} ({{rootOmitted.folderCount}} folders){{/if}}{{#each rootOmitted.byExt}} {{@key}}: {{this}}{{/each}}{{/if}}
+{{~#*inline "fileTreeItem"~}}
+{{indent depth}}- {{#if (eq type "folder")}}📁 **{{name}}/**
+{{#if (nonEmpty children)}}
+{{#each children}}{{> fileTreeItem}}{{/each}}
+{{~/if~}}
+{{~#if omitted~}}
+{{indent (inc depth)}}- _... and {{omitted.total}} more_{{#if omitted.folderCount}} ({{omitted.folderCount}} folders){{/if}}{{#each omitted.byExt}} {{@key}}: {{this}}{{/each}}
+{{/if}}
+{{else}}📄 [[{{linkPath}}]]{{similarLabel (lookup @root.sameGroupCountByPath path)}}
+{{/if~}}{{/inline}}

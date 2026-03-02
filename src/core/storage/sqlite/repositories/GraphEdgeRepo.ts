@@ -139,6 +139,26 @@ export class GraphEdgeRepo {
 	}
 
 	/**
+	 * Edge-only aggregate: filter by type, group by to_node_id, count. No join.
+	 * Caller should then look up graph_nodes by to_node_id and sum counts by (type, label).
+	 */
+	async getTagCategoryEdgeCountsByToNode(fromNodeIds?: string[]): Promise<Array<{ to_node_id: string; count: number }>> {
+		let q = this.db
+			.selectFrom('graph_edges')
+			.select(['to_node_id', sql<number>`count(*)`.as('count')])
+			.where('type', 'in', ['tagged', 'categorized'])
+			.groupBy('to_node_id');
+		if (fromNodeIds !== undefined && fromNodeIds.length > 0) {
+			q = q.where('from_node_id', 'in', fromNodeIds);
+		}
+		const rows = await q.execute();
+		return rows.map((r: { to_node_id: string; count: number | string }) => ({
+			to_node_id: r.to_node_id,
+			count: Number(r.count),
+		}));
+	}
+
+	/**
 	 * group count node's in coming edges by type.
 	 * return a map: to_node_id -> count
 	 */
@@ -394,20 +414,16 @@ export class GraphEdgeRepo {
 	}
 
 	/**
-	 * Get top nodes by degree metrics (in-degree, out-degree).
-	 * Returns only node IDs grouped by degree type.
+	 * Get top nodes by degree metrics (in-degree, out-degree). Queries in and out separately.
 	 *
-	 * @param limit Maximum number of nodes to return per degree type. If not provided, returns all nodes.
-	 * @param nodeIdFilter Optional list of node IDs to filter by. If provided, only consider degrees for these nodes.
-	 *
-	 * TODO: refactor suggestion - add some fields to the node table, as cache fields, such as total degree, out degree, in degree etc.
-	 *  by sacrificing write to improve query! it can be used in find key note, and it has great value -- or just put it in the statistics table
+	 * @param limit Max nodes per degree type. Omitted = return all.
+	 * @param nodeIdFilter Optional node IDs to restrict to.
+	 * @param edgeType Optional edge relationship type (e.g. 'references', 'tagged') to filter by; not node type.
 	 */
-	async getTopNodeIdsByDegree(limit?: number, nodeIdFilter?: string[]): Promise<{
+	async getTopNodeIdsByDegree(limit?: number, nodeIdFilter?: string[], edgeType?: string): Promise<{
 		topByOutDegree: Array<{ nodeId: string; outDegree: number }>;
 		topByInDegree: Array<{ nodeId: string; inDegree: number }>;
 	}> {
-		// Get out-degree stats (only node IDs and counts)
 		let outDegreeQuery = this.db
 			.selectFrom('graph_edges')
 			.select([
@@ -417,7 +433,6 @@ export class GraphEdgeRepo {
 			.groupBy('from_node_id')
 			.orderBy('outDegree', 'desc');
 
-		// Get in-degree stats (only node IDs and counts)
 		let inDegreeQuery = this.db
 			.selectFrom('graph_edges')
 			.select([
@@ -427,7 +442,10 @@ export class GraphEdgeRepo {
 			.groupBy('to_node_id')
 			.orderBy('inDegree', 'desc');
 
-		// Apply node ID filter if provided
+		if (edgeType !== undefined) {
+			outDegreeQuery = outDegreeQuery.where('type', '=', edgeType);
+			inDegreeQuery = inDegreeQuery.where('type', '=', edgeType);
+		}
 		if (nodeIdFilter && nodeIdFilter.length > 0) {
 			outDegreeQuery = outDegreeQuery.where('from_node_id', 'in', nodeIdFilter);
 			inDegreeQuery = inDegreeQuery.where('to_node_id', 'in', nodeIdFilter);

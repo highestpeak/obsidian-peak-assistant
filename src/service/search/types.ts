@@ -53,6 +53,15 @@ export interface SearchQuery {
 	 * Defaults to 'fulltext'.
 	 */
 	searchMode?: 'fulltext' | 'vector' | 'hybrid';
+	/**
+	 * Exclude folder mode: paths starting with any of these prefixes are excluded from search.
+	 * E.g. ['templates/', 'trash/'] — leading slash optional; folder semantics (prefix/ or exact name).
+	 */
+	excludeFolderPrefixes?: string[];
+	/**
+	 * Index tenant: 'vault' = search.sqlite (default), 'chat' = meta.sqlite (ChatFolder index).
+	 */
+	indexTenant?: 'vault' | 'chat';
 }
 
 /**

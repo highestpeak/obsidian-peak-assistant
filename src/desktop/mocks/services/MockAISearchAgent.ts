@@ -36,19 +36,6 @@ function buildMockSearchAgentResult(query: string): SearchAgentResult {
 			score: { physical: 70, semantic: 75, average: 72 },
 		},
 	];
-	const graph: AISearchGraph = {
-		nodes: [
-			{ id: 'file:Folder/MockNoteOne.md', type: 'document', title: 'Mock Note One', path: 'Folder/MockNoteOne.md', attributes: {} },
-			{ id: 'file:Folder/MockNoteTwo.md', type: 'document', title: 'Mock Note Two', path: 'Folder/MockNoteTwo.md', attributes: {} },
-			{ id: 'concept:mock-concept-a', type: 'concept', title: 'Mock Concept A', attributes: {} },
-			{ id: 'tag:mock-tag', type: 'tag', title: 'mock-tag', attributes: {} },
-		],
-		edges: [
-			{ id: 'e1', source: 'concept:mock-concept-a', target: 'file:Folder/MockNoteOne.md', type: 'link', attributes: { weight: 1 } },
-			{ id: 'e2', source: 'file:Folder/MockNoteOne.md', target: 'file:Folder/MockNoteTwo.md', type: 'link', attributes: { weight: 1 } },
-			{ id: 'e3', source: 'tag:mock-tag', target: 'file:Folder/MockNoteTwo.md', type: 'link', attributes: { weight: 1 } },
-		],
-	};
 	// Long markdown (>800 chars) → contentHint "long" → wider block
 	const longMarkdown = `## Thought evolution analysis hypothesis
 
@@ -119,7 +106,6 @@ function buildMockSearchAgentResult(query: string): SearchAgentResult {
 		summary,
 		topics,
 		sources,
-		graph,
 		dashboardBlocks,
 		overviewMermaid,
 	};
@@ -183,7 +169,7 @@ export async function* mockAIAnalysisStream(
 		await delay(chunkDelayMs);
 		yield { type: 'tool-call', id: callId2, toolName: 'graph_traversal', input: { start_note_path: 'Folder/MockNoteOne.md', max_steps: 5 }, triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT };
 		await delay(chunkDelayMs);
-		yield { type: 'tool-result', id: callId2, toolName: 'graph_traversal', output: { result: { nodes: fullResult.graph.nodes, edges: fullResult.graph.edges } }, triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT };
+		yield { type: 'tool-result', id: callId2, toolName: 'graph_traversal', output: { result: {  } }, triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT };
 		await delay(phaseDelayMs);
 	}
 

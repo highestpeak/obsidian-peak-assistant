@@ -86,7 +86,7 @@ export const PromptInputSubmit: React.FC<PromptInputSubmitProps> = ({
 				const recognition = new SpeechRecognitionClass() as SpeechRecognition;
 				recognition.continuous = false; // Auto-stop when silence detected
 				recognition.interimResults = false;
-				recognition.lang = 'zh-CN'; // Default to Chinese, can be made configurable
+				recognition.lang = 'en-US'; // Default to English, can be made configurable
 
 				recognition.onstart = () => {
 					setIsRecording(true);

@@ -245,6 +245,27 @@ export function buildCoreCommands(
 			},
 		},
 		{
+			id: 'peak-migrate-chatfolder-to-chat-db',
+			name: 'Migrate ChatFolder index to Chat DB (one-time)',
+			callback: async () => {
+				if (!searchSettings) {
+					new Notice('Search settings not available. Restart the plugin.', 5000);
+					return;
+				}
+				try {
+					new Notice('Migrating ChatFolder index from Vault DB to Chat DB...', 3000);
+					const result = await IndexService.getInstance().migrateChatFolderFromVaultToChat(searchSettings);
+					new Notice(
+						`Migration done: reindexed ${result.reindexed} path(s) to Chat DB, removed ${result.deletedFromVault} from Vault DB.`,
+						6000,
+					);
+				} catch (e) {
+					console.error('[Register] migrateChatFolderToChatDb failed:', e);
+					new Notice('Migration failed. See console for details.', 5000);
+				}
+			},
+		},
+		{
 			id: 'peak-cleanup-useless-data',
 			name: 'Cleanup Useless Data',
 			callback: async () => {

@@ -427,6 +427,23 @@ export function convertMessagesToText(messages: LLMRequestMessage[]): string {
     return lines.join('\n');
 }
 
+export function convertModelMessagesToText(messages: ModelMessage[]): string {
+    const lines: string[] = [];
+    for (const msg of messages) {
+        const role = (msg as { role?: string }).role ?? 'unknown';
+        const content = (msg as { content?: unknown[] }).content;
+        if (!Array.isArray(content)) continue;
+        const textParts: string[] = [];
+        for (const part of content) {
+            if (typeof part === 'string') textParts.push(part);
+            else if (part && typeof part === 'object' && 'text' in part && typeof (part as { text: string }).text === 'string')
+                textParts.push((part as { text: string }).text);
+        }
+        if (textParts.length > 0) lines.push(`${role}: ${textParts.join(' ')}`);
+    }
+    return lines.join('\n');
+}
+
 export function getToolErrorMessage(chunk: any): string {
     return typeof (chunk as any).error === 'string'
         ? (chunk as any).error

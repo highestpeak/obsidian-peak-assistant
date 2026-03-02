@@ -1,12 +1,9 @@
-import { AppContext } from "@/app/context/AppContext";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
-import { buildResponse, buildResponseFromRendered } from "../types";
+import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
-import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
-
 // Define types for orphan analysis
 type OrphanNode = GraphNode & { orphanType: string; }
 export async function findOrphanNotes(params: any, templateManager?: TemplateManager) {
@@ -14,11 +11,7 @@ export async function findOrphanNotes(params: any, templateManager?: TemplateMan
     const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
     const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
 
-    let hardOrphanIds = await graphEdgeRepo.getHardOrphans(params.limit || 100);
-    const excludeCtx = await getAiAnalysisExcludeContext();
-    if (excludeCtx) {
-        hardOrphanIds = hardOrphanIds.filter((id) => !excludeCtx.excludedDocIds.has(id));
-    }
+    const hardOrphanIds = await graphEdgeRepo.getHardOrphans(params.limit || 100);
     let filteredHardOrphans: OrphanNode[] = [];
     if (hardOrphanIds.length > 0) {
         const hardOrphanNodeMap = await graphNodeRepo.getByIds(hardOrphanIds);
@@ -64,12 +57,7 @@ export async function findOrphanNotes(params: any, templateManager?: TemplateMan
         filtered_count: finalAllOrphanNodes.length,
         hard_orphans: hardOrphans,
     };
-    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
-    if (tm) {
-        const rendered = await tm.render(ToolTemplateId.OrphanNotes, data);
-        return buildResponseFromRendered(response_format, data, rendered);
-    }
-    return buildResponse(response_format, undefined, data);
+    return buildResponse(response_format, ToolTemplateId.OrphanNotes, data, { templateManager });
 }
 
 /**

@@ -15,7 +15,7 @@ import { IndexService } from '@/service/search/index/indexService';
 import { IgnoreService } from '@/service/search/IgnoreService';
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { BetterSqliteStore } from '@/core/storage/sqlite/better-sqlite3-adapter/BetterSqliteStore';
-import { SEARCH_DB_FILENAME } from '@/core/constant';
+import { VAULT_DB_FILENAME } from '@/core/constant';
 import { clearCurrentAnalysisContext } from '@/core/analysis-context-holder';
 import { AppContext } from '@/app/context/AppContext';
 import { EventBus } from '@/core/eventBus';
@@ -109,7 +109,7 @@ export default class MyPlugin extends Plugin {
 		await sqliteStoreManager.init({ 
 			app: this.app, 
 			storageFolder: this.settings.dataStorageFolder, 
-			filename: SEARCH_DB_FILENAME,
+			filename: VAULT_DB_FILENAME,
 			settings: { sqliteBackend: this.settings.sqliteBackend }
 		});
 

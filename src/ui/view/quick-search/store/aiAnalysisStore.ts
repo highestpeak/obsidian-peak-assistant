@@ -205,6 +205,9 @@ export const useAIAnalysisRuntimeStore = create<{
 	setDashboardUpdatedLine: (line: string) => void;
 	setHasAnalyzed: (v: boolean) => void;
 	resetRuntime: () => void;
+	pendingFirstUiStep: UIStepRecord | null;
+	setPendingFirstUiStep: (e: UIStepRecord | null) => void;
+	clearPendingFirstUiStep: () => void;
 }>((set, get) => ({
 	triggerAnalysis: 0,
 	webEnabled: false,
@@ -288,7 +291,11 @@ export const useAIAnalysisRuntimeStore = create<{
 		duration: null,
 		runAnalysisMode: null,
 		autoSaveState: { lastRunId: null, lastSavedSummaryHash: null, lastSavedPath: null },
+		pendingFirstUiStep: null,
 	}),
+	pendingFirstUiStep: null,
+	setPendingFirstUiStep: (e: UIStepRecord | null) => set({ pendingFirstUiStep: e }),
+	clearPendingFirstUiStep: () => set({ pendingFirstUiStep: null }),
 }));
 
 /** Completed steps only; real-time rendering is event-driven (ui-step/ui-step-delta). */

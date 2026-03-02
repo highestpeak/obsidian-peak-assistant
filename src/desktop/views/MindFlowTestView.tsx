@@ -5,12 +5,12 @@
 
 import React, { useState, useMemo } from 'react';
 import { MermaidMindFlowSection } from '@/ui/view/quick-search/components/ai-analysis-sections/MermaidMindFlowSection';
-import type { MindflowProgress } from '@/service/agents/search-agent-helper/MindFlowAgent';
+import type { MindflowDecision, MindflowProgress } from '@/service/agents/search-agent-helper/MindFlowAgent';
 
 const DEFAULT_SAMPLE = `flowchart TD
   N1["Query:<br>All my indie development product ideas comprehensive evaluation"]:::verified
   N2["Sub-query:<br>How to understand and decompose the user's demand for 'comprehensive evaluation'?"]:::verified
-  N3["Sub-query:<br>Collect and整理用户提到的所有独立开发产品 idea"]:::thinking
+  N3["Sub-query:<br>Collect and organize all indie product ideas mentioned by the user"]:::thinking
   N4["Sub-query:<br>Determine the evaluation standards and dimensions"]:::verified
   N1 -->|"main: leads to"| N2
   N1 -->|"main: leads to"| N3
@@ -22,8 +22,10 @@ const DEFAULT_PROGRESS_JSON = `{
   "statusLabel": "Deepening hidden clues",
   "goalAlignment": "Sub-questions + verified paths",
   "critique": "Need more evidence for evaluation criteria",
-  "decision": "continue"
+  "decision": "CONTINUE_SEARCH"
 }`;
+
+const VALID_DECISIONS: MindflowDecision[] = ['CONTINUE_SEARCH', 'REQUEST_COMPRESSION', 'FINAL_ANSWER'];
 
 function parseProgressJson(json: string): MindflowProgress | null {
 	const s = json.trim();
@@ -32,7 +34,10 @@ function parseProgressJson(json: string): MindflowProgress | null {
 		const o = JSON.parse(s) as Record<string, unknown>;
 		const completeness = typeof o.estimatedCompleteness === 'number' ? o.estimatedCompleteness : 0;
 		const statusLabel = typeof o.statusLabel === 'string' ? o.statusLabel : '';
-		const decision = o.decision === 'stop' ? 'stop' as const : 'continue' as const;
+		const rawDecision = o.decision;
+		const decision: MindflowDecision = typeof rawDecision === 'string' && (VALID_DECISIONS as string[]).includes(rawDecision)
+			? (rawDecision as MindflowDecision)
+			: 'CONTINUE_SEARCH';
 		return {
 			estimatedCompleteness: completeness,
 			statusLabel,
@@ -105,7 +110,7 @@ export const MindFlowTestView: React.FC = () => {
 							fontSize: 11,
 							resize: 'none',
 						}}
-						placeholder='{"estimatedCompleteness": 45, "statusLabel": "...", "decision": "continue"}'
+						placeholder='{"estimatedCompleteness": 45, "statusLabel": "...", "decision": "CONTINUE_SEARCH"}'
 						value={progressJson}
 						onChange={(e) => setProgressJson(e.target.value)}
 						spellCheck={false}

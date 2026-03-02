@@ -18,9 +18,10 @@ type ReviewToolSet = AgentMemoryToolSet & {
 export interface ReviewBlocksVariables {
 	/** User's original query; output must use the same language. */
 	originalQuery: string;
-	agentMemoryMessage: string;
 	/** JSON string of current dashboard blocks for prompt display. */
 	currentBlocksSnapshot: string;
+	/** Gold standard: numbered confirmed facts. Every block claim must be traceable to these. */
+	confirmedFacts?: string;
 }
 
 /**
@@ -46,7 +47,8 @@ export class ReviewBlocksAgent {
 			...this.context.getAgentMemoryTool(),
 			organize_dashboard_blocks: dashboardBlocksUpdateTool(),
 			need_more_dashboard_blocks: safeAgentTool({
-				description: 'If you think we need more dashboard blocks/or if they are not good enough, you should call this tool to mark it. if good enough, you should not call this tool.',
+				description:
+					'Call when blocks are insufficient or a high-value Confirmed Fact is missing from all blocks. You MUST provide a concrete reason in format: "Missing Fact: #N (theme); Recommendation: <what block type to add>." Never output vague text like "not detailed enough".',
 				inputSchema: needMoreDashboardBlocksInputSchema,
 				execute: async (input) => {
 					this.needMoreDashboardBlocks = input.reason;
@@ -116,10 +118,16 @@ export class ReviewBlocksAgent {
 		const originalQuery = this.context.getInitialPrompt() ?? '';
 		const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
 		const dashboardBlocks = this.context.getAgentResult().dashboardBlocks ?? [];
+		const dossier = this.context.getDossierForSummary();
+		const confirmedFactsList = dossier.confirmedFacts ?? [];
+		const confirmedFacts =
+			confirmedFactsList.length > 0
+				? confirmedFactsList.map((f, i) => `Fact #${i + 1}: ${f}`).join('\n')
+				: undefined;
 		const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisReviewBlocks, {
 			originalQuery,
-			agentMemoryMessage: this.context.getLatestMessageText(),
 			currentBlocksSnapshot: JSON.stringify(dashboardBlocks),
+			confirmedFacts,
 			...buildErrorRetryInfo(retryCtx) ?? {},
 			toolFormatGuidance: getDashboardBlocksToolFormatGuidance(),
 		} as PromptVariables[typeof PromptId.AiAnalysisReviewBlocks]);

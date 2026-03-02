@@ -12,9 +12,11 @@ export type { SuggestedFollowUpQuestions } from '@/core/schemas/agents';
 
 export interface FollowUpQuestionVariables {
     initialPrompt: string;
-    agentMemoryMessage: string;
-    topics?: string;
+    /** Final dashboard blocks (conclusions, diagrams, actions). Primary input when present. */
     dashboardBlocks?: string;
+    /** Gold standard facts; use with blocks to suggest targeted follow-ups. */
+    confirmedFacts?: string;
+    topics?: string;
 }
 
 /**
@@ -54,12 +56,20 @@ export class FollowUpQuestionAgent {
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisSuggestFollowUpQuestions);
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
         const hasTopics = this.context.getAgentResult().topics?.length ?? 0 > 0;
-        const hasDashboardBlocks = this.context.getAgentResult().dashboardBlocks?.length ?? 0 > 0;
+        const dashboardBlocks = this.context.getAgentResult().dashboardBlocks;
+        const hasDashboardBlocks = (dashboardBlocks?.length ?? 0) > 0;
+        const dossier = this.context.getDossierForSummary();
+        const confirmedFactsList = dossier.confirmedFacts ?? [];
+        const confirmedFactsText =
+            confirmedFactsList.length > 0
+                ? confirmedFactsList.map((f, i) => `Fact #${i + 1}: ${f}`).join('\n')
+                : undefined;
+        // No raw memory: only dashboard blocks + confirmed facts (and topics).
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisSuggestFollowUpQuestions, {
             initialPrompt: this.context.getInitialPrompt(),
-            agentMemoryMessage: this.context.getLatestMessageText(),
+            dashboardBlocks: hasDashboardBlocks ? JSON.stringify(dashboardBlocks) : undefined,
+            confirmedFacts: confirmedFactsText,
             topics: hasTopics ? JSON.stringify(this.context.getAgentResult().topics) : undefined,
-            dashboardBlocks: hasDashboardBlocks ? JSON.stringify(this.context.getAgentResult().dashboardBlocks) : undefined,
         });
 
         const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisSuggestFollowUpQuestions);

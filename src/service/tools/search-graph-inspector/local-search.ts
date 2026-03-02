@@ -1,12 +1,10 @@
 import { AppContext } from "@/app/context/AppContext";
-import { buildResponse, buildResponseFromRendered } from "../types";
+import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { applyFiltersAndSorters } from "./common";
 import { SearchResultItem, SearchSnippet } from "@/service/search/types";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
-import { getAiAnalysisExcludeContext, pathUnderExcludedFolder } from "./ai-analysis-exclude";
-
 /**
  * Convert SearchSnippet to a text string with highlights marked using **bold** syntax.
  */
@@ -111,16 +109,12 @@ export async function localSearch(params: any, templateManager?: TemplateManager
         scopeMode: scopeMode,
         scopeValue: scopeValue,
         topK: limit,
+        indexTenant: 'vault',
     });
 
-    const excludeCtx = await getAiAnalysisExcludeContext();
-    const items = excludeCtx
-        ? rawItems.filter((i) => !pathUnderExcludedFolder(i.path ?? "", excludeCtx.folderPath))
-        : rawItems;
-
     // Use path-aware field getter instead of graph node ID based getter
-    const itemFieldGetter = await getSearchResultItemFieldGetter(items, filters, sorter);
-    const filteredItems = applyFiltersAndSorters(items, filters, sorter, limit, itemFieldGetter);
+    const itemFieldGetter = await getSearchResultItemFieldGetter(rawItems, filters, sorter);
+    const filteredItems = applyFiltersAndSorters(rawItems, filters, sorter, limit, itemFieldGetter);
 
     const slimResults = slimSearchResults(filteredItems);
 
@@ -130,10 +124,5 @@ export async function localSearch(params: any, templateManager?: TemplateManager
         searchTime: duration
     };
 
-    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
-    if (tm) {
-        const rendered = await tm.render(ToolTemplateId.LocalSearch, data);
-        return buildResponseFromRendered(response_format, data, rendered);
-    }
-    return buildResponse(response_format, undefined, data);
+    return buildResponse(response_format, ToolTemplateId.LocalSearch, data, { templateManager });
 }

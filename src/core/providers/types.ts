@@ -370,12 +370,12 @@ export function mergeTokenUsage(usage1?: LLMUsage | null, usage2?: LLMUsage | nu
 
 type RawStreamEvent =
 	// from AI-SDK StreamTextOnChunkCallback types
-	{ type: 'text-start';} |
+	{ type: 'text-start'; } |
 	{ type: 'text-delta'; text: string; } |
-	{ type: 'text-end';} |
-	{ type: 'reasoning-start';} |
+	{ type: 'text-end'; } |
+	{ type: 'reasoning-start'; } |
 	{ type: 'reasoning-delta'; text: string; } |
-	{ type: 'reasoning-end';} |
+	{ type: 'reasoning-end'; } |
 	({ type: 'source'; } | LLMResponseSource) |
 	{ type: 'tool-call'; id?: string; toolName: string; input?: any; } |
 	{ type: 'tool-input-start'; id?: string; toolName: string; } |
@@ -392,19 +392,22 @@ type RawStreamEvent =
 	{ type: 'prompt-stream-delta'; id?: string; promptId: string; delta?: string; } |
 	{ type: 'prompt-stream-result'; id?: string; promptId: string; output?: any; usage?: LLMUsage } |
 	// for debug purpose.
-	{ type: 'pk-debug'; debugName: string; } |
-	/**
-	 * UI stream events: two complementary tracks (do not conflict; both are needed).
-	 *
-	 * 1) ui-step / ui-step-delta — Timeline events (log / progress narration).
-	 *    - Drive the Steps list UI: persistent rows with progress, timestamps, nesting.
-	 *    - Semantics: "what I am doing" (user-facing, durable as conversation history).
-	 *
-	 * 2) ui-signal — Component control signals (action / command).
-	 *    - Drive specific UI components: Graph canvas, Dashboard, Toast, etc.
-	 *    - Semantics: "do this now" (ephemeral: animate, apply patch, change state).
-	 *    - Subscribers filter by channel (e.g. channel === 'graph'); kind + payload are component-specific.
-	 */
+	{ type: 'pk-debug'; debugName: string; }
+	;
+
+/**
+ * UI stream events: two complementary tracks (do not conflict; both are needed).
+ *
+ * 1) ui-step / ui-step-delta — Timeline events (log / progress narration).
+ *    - Drive the Steps list UI: persistent rows with progress, timestamps, nesting.
+ *    - Semantics: "what I am doing" (user-facing, durable as conversation history).
+ *
+ * 2) ui-signal — Component control signals (action / command).
+ *    - Drive specific UI components: Graph canvas, Dashboard, Toast, etc.
+ *    - Semantics: "do this now" (ephemeral: animate, apply patch, change state).
+ *    - Subscribers filter by channel (e.g. channel === 'graph'); kind + payload are component-specific.
+ */
+export type RawUIStreamEvent =
 	{ type: 'ui-step'; uiType: UIStepType, stepId: string; title: string; description?: string; } |
 	{ type: 'ui-step-delta'; uiType: UIStepType, stepId: string; titleDelta?: string; descriptionDelta?: string; } |
 	{
@@ -414,55 +417,25 @@ type RawStreamEvent =
 		entityId: string;
 		id?: string;
 		payload?: any;
-	}
-	;
+		/**
+		 * legacy field for better code maintainability.
+		 */
+		stepId?: string;
+	};
 
 export type LLMStreamEvent =
-	RawStreamEvent & {
+	(RawStreamEvent | RawUIStreamEvent) & {
 		// some times we need to pass stream trigger name to the event.
 		// as we may manual control the loop process.
 		triggerName?: StreamTriggerName;
 		extra?: any;
 	};
 
-/**
- * Context for one generation. All useful intermediate results are stored in this context.
- */
-export interface OneGenerationContext {
-	/**
-	 * System prompt for this generation.
-	 */
-	systemPrompt?: string;
-	/**
-	 * User prompt for this generation.
-	 */
-	userPrompt?: string;
-	/**
-	 * Chunks of thought text.
-	 */
-	thoughtTextChunks: string[];
-	/**
-	 * Chunks of reasoning text.
-	 */
-	reasoningTextChunks: string[];
-	/**
-	 * Tool calls.
-	 */
-	toolCalls: Array<{ toolCallId: string; toolName: string; input: any }>;
-	/**
-	 * Tool results.
-	 */
-	toolResults: Array<{ toolCallId: string; toolName: string; output: ToolResultOutput }>;
-	/**
-	 * Token usage of the step.
-	 */
-	stepTokenUsage: LLMUsage;
-}
-
 export enum StreamTriggerName {
 	SEARCH_MINDFLOW_AGENT = 'search-mindflow-agent',
 	SEARCH_THOUGHT_AGENT = 'search-thought-agent',
 	SEARCH_INSPECTOR_AGENT = 'search-inspector-agent',
+	SEARCH_KNOWLEDGE_AGENT = 'search-knowledge-agent',
 	SEARCH_SOURCES_FROM_VERIFIED_PATHS = 'search-sources-from-verified-paths',
 	SEARCH_DASHBOARD_UPDATE_AGENT = 'search-dashboard-update-agent',
 	SEARCH_TOPICS_AGENT = 'search-topics-agent',

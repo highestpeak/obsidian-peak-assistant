@@ -116,23 +116,16 @@ export const useSubscribeUIEvent = (
 	useEffect(() => {
 		const unsub = useUIEventStore.subscribe((state) => {
 			const event = state.lastEvent;
-			// no event, do nothing
-			if (!event) {
-				return;
-			}
-
-			// subscribe to all events
+			if (!event) return;
 			if (!eventType) {
 				callback(event.type, event.payload);
 				return;
 			}
-			// subscribe to specific event
-			else if (typeof eventType === 'string' && event.type === eventType) {
+			if (typeof eventType === 'string' && event.type === eventType) {
 				callback(event.type, event.payload);
 				return;
 			}
-			// subscribe to specific events
-			else if (eventType instanceof Set && eventType.has(event.type)) {
+			if (eventType instanceof Set && eventType.has(event.type)) {
 				callback(event.type, event.payload);
 				return;
 			}

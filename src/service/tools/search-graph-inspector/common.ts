@@ -1,3 +1,4 @@
+import type { IndexTenant } from "@/core/storage/sqlite/types";
 import { GraphNodeType } from "@/core/po";
 import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
@@ -13,29 +14,26 @@ import { parseSemanticDateRange } from "@/core/utils/date-utils";
 export type SemanticNeighborNode = GraphNode & { similarity: string }
 
 // Doc-to-Doc Retrieval
-export async function getSemanticNeighbors(docId: string, limit: number, filterDocIds: Set<string> = EMPTY_SET):
-    Promise<SemanticNeighborNode[]> {
-    // Get embedding repository for vector search
-    const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
+export async function getSemanticNeighbors(
+    docId: string,
+    limit: number,
+    filterDocIds: Set<string> = EMPTY_SET,
+    tenant: IndexTenant = 'vault',
+): Promise<SemanticNeighborNode[]> {
+    const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
 
-    // Get average embedding vector for this document
     const averageVector = await embeddingRepo.getAverageEmbeddingForDoc(docId);
 
     if (!averageVector) {
         return [];
     }
 
-    // Perform semantic search
-    // If you want 'limit' semantic neighbors, but 3 of them are already your structural neighbors, after filtering you'll only have limit - 3 left. 
-    // So, fetch more at first (e.g., limit * 2), then after filtering, slice(0, limit) to ensure you still return the full number of semantic neighbors to the Agent.
     const searchResults = await embeddingRepo.searchSimilarAndGetId(
         averageVector, limit * 2,
         'excludeDocIdsSet', { excludeDocIdsSet: filterDocIds }
     );
-    // Get unique doc_ids and fetch their metadata
     const resultDocIds = Array.from(new Set(searchResults.map(r => r.doc_id)));
-    // doc info
-    const resultDocNodesMap = await sqliteStoreManager.getGraphNodeRepo().getByIds(resultDocIds);
+    const resultDocNodesMap = await sqliteStoreManager.getGraphNodeRepo(tenant).getByIds(resultDocIds);
 
     return searchResults.map(r => {
         const docId = r.doc_id;
@@ -407,10 +405,18 @@ function shouldIncludeItem<T>(item: T, filters?: any, itemFiledGetter?: ItemFile
 
 type CompareFn<T> = (a: T, b: T) => number;
 type ValToCompareGetter<T> = (item: T) => number;
+const SORTER_WHITELIST = [
+    'result_rank_asc', 'result_rank_desc', 'modified_asc', 'modified_desc',
+    'created_asc', 'created_desc', 'total_links_count_asc', 'total_links_count_desc',
+    'backlinks_count_asc', 'backlinks_count_desc', 'outlinks_count_asc', 'outlinks_count_desc',
+] as const;
+
 function getCompareFn<T>(sorter: string, itemFiledGetter?: ItemFiledGetter<T>): CompareFn<T> {
+    const normalized = typeof sorter === 'string' ? sorter.trim() : '';
+    const sorterKey = SORTER_WHITELIST.includes(normalized as typeof SORTER_WHITELIST[number]) ? normalized : sorter;
     let valToCompareGetter: ValToCompareGetter<T> | null = null;
 
-    switch (sorter) {
+    switch (sorterKey) {
         case 'result_rank_asc':
         case 'result_rank_desc':
             valToCompareGetter = (item: T) => itemFiledGetter?.(item).getResultRank?.() || 0;
@@ -418,6 +424,10 @@ function getCompareFn<T>(sorter: string, itemFiledGetter?: ItemFiledGetter<T>): 
         case 'modified_asc':
         case 'modified_desc':
             valToCompareGetter = (item: T) => itemFiledGetter?.(item).getModified?.()?.getTime() || 0;
+            break;
+        case 'created_asc':
+        case 'created_desc':
+            valToCompareGetter = (item: T) => itemFiledGetter?.(item).getCreated?.()?.getTime() || 0;
             break;
         case 'total_links_count_asc':
         case 'total_links_count_desc':
@@ -435,7 +445,7 @@ function getCompareFn<T>(sorter: string, itemFiledGetter?: ItemFiledGetter<T>): 
             throw new Error(`Invalid sorter: ${sorter}`);
     }
 
-    if (sorter.endsWith('_desc')) {
+    if (sorterKey.endsWith('_desc')) {
         return (a: T, b: T) => {
             const aVal = valToCompareGetter(a);
             const bVal = valToCompareGetter(b);

@@ -1,80 +1,82 @@
-import { AppContext } from "@/app/context/AppContext";
-import { DEFAULT_SEARCH_SETTINGS } from "@/app/settings/types";
 import { generateToolCallId } from "@/core/providers/adapter/ai-sdk-adapter";
 import { convertMessagesToText } from "@/core/providers/adapter/ai-sdk-adapter";
-import { buildLLMRequestMessage, concatLLMRequestMessages } from "@/core/providers/helpers/message-helper";
-import { LLMRequestMessage, LLMStreamEvent, LLMUsage, mergeTokenUsage, OneGenerationContext, StreamTriggerName, ToolEvent, UIStepType } from "@/core/providers/types";
+import { buildLLMRequestMessage } from "@/core/providers/helpers/message-helper";
+import { LLMRequestMessage, LLMUsage, mergeTokenUsage } from "@/core/providers/types";
 import { refreshableMemoizeSupplier, Supplier } from "@/core/utils/functions";
-import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
 import { AIServiceManager } from "@/service/chat/service-manager";
-import { PromptId } from "@/service/prompt/PromptId";
-import type { MindflowProgress } from "./MindFlowAgent";
-import { AgentTemplateId } from "@/core/template/TemplateRegistry";
+import type { RawSearchInfoForMindFlowInput, MindflowProgress, MindFlowResult } from "./MindFlowAgent";
 import {
     getAnalysisMessageByIndexInputSchema,
     searchMemoryStoreInputSchema,
 } from "@/core/schemas/tools/searchMemoryStore";
 import { SearchAgentResult } from "../AISearchAgent";
 import { AgentTool, safeAgentTool } from "@/service/tools/types";
+import {
+    type InternalDossier,
+    type EvidencePack,
+    type RawSearchRun,
+    type DossierSourceEntry,
+    DEFAULT_RECENT_ROUNDS_KEEP,
+    DOSSIER_FACTS_COMPRESS_THRESHOLD,
+} from "./dossier-types";
+import { RawSearchAgentGenerationResult } from "./RawSearchAgent";
+import { ifStringNoBlankThenConcat, isBlankString } from "@/core/utils/common-utils";
+import type { KnowledgePanel } from "@/core/schemas/agents/search-agent-schemas";
 
-/**
- * Context from MindFlowAgent available to ThoughtAgent.
- * Contains thinking progress history, self-critique, and decision signals.
- */
-export interface MindflowContext {
-    /** All progress snapshots; latest is used for prompt. */
-    progressHistory?: MindflowProgress[];
-    traces?: string[];
-    lastMermaid?: string;
-}
-
-export interface AgentMemory {
-    /**
-     * the original prompt from user
-     */
+/** Session-only state (summary, usage, mindflow, last thought). Dossier is the single source of truth for chain/facts/sources/rawLogs. */
+interface SessionState {
     initialPrompt: string;
-    /**
-     * all messages in the session
-     * messages includes tool calls and results.
-     * actually. these will include the discovered_key_nodes, rejected_nodes, etc. so we don't need to store them separately.
-     */
-    historyMessages: LLMRequestMessage[];
-    /**
-     * summary of the session for 0~n messages due to the context window of the model
-     */
-    sessionSummary: string;
-    /**
-     * index of the last summary
-     */
     lastSummaryIndex: number;
-    /**
-     * latest messages in the session
-     */
-    latestMessages: LLMRequestMessage[];
-    /**
-     * total token usage for the session
-     */
     totalTokenUsage: LLMUsage;
-    /**
-     * Latest context from MindFlowAgent (thinking progress, critique, decision).
-     * ThoughtAgent uses this to understand the current planning state.
-     */
-    mindflowContext?: MindflowContext;
-    /**
-     * Last one generation context from ThoughtAgent.
-     * ThoughtAgent uses this to understand the current planning state.
-     */
-    lastOneGenerationContext?: OneGenerationContext;
+    mindflowContext?: MindFlowResult[];
 }
 
-export interface SearchEvidence {
-    searchSummaries: string[];
-    candidateNotesLines: string[];
-    newContextNodesLines: string[];
+/** Serializable snapshot of search memory for debug (window.__peakSearchDebug). */
+export interface SearchMemoryDebugSnapshot {
+    sessionState: {
+        initialPromptPreview: string;
+        lastSummaryIndex: number;
+        totalTokenUsage: LLMUsage;
+        mindflowContextLength: number;
+    };
+    agentResult: {
+        title: string;
+        summaryLength: number;
+        topicsCount: number;
+        sourcesCount: number;
+        dashboardBlocksCount: number;
+        suggestedFollowUpQuestionsCount: number;
+    };
+    verifiedPaths: string[];
+    emittedSourcePaths: string[];
+    dossier: {
+        rawSearchRunsCount: number;
+        factsCount: number;
+        sourcesCount: number;
+        rawSearchExecutionSummaryLength: number;
+        sourcePathsSample: string[];
+    };
 }
 
-const DEFAULT_MAX_RECENT_MESSAGES = 10;
-const DEFAULT_SUMMARY_UPDATE_THRESHOLD = 5;
+/** Serializable state for replay / "from round X" testing. Use getReplayState() and restoreReplayState(). */
+export interface ReplayState {
+    sessionState: {
+        initialPrompt: string;
+        lastSummaryIndex: number;
+        totalTokenUsage: LLMUsage;
+        mindflowContext?: MindFlowResult[];
+    };
+    dossier: {
+        rawSearchRuns: RawSearchRun[];
+        /** Serialized as [path_or_url, EvidencePack[]][] for JSON. */
+        factsArray: [string, EvidencePack[]][];
+        rawSearchExecutionSummary: string[];
+        sources: DossierSourceEntry[];
+    };
+    verifiedPaths: string[];
+    emittedSourcePaths: string[];
+}
+
 const DEFAULT_GREP_MAX_MATCHES = 50;
 
 export type AgentMemoryToolSet = {
@@ -101,7 +103,7 @@ function buildAutoRegex(query: string, caseSensitive: boolean): { regex: RegExp;
  */
 export class AgentContextManager {
 
-    private thinkingMemory: AgentMemory;
+    private sessionState: SessionState;
 
     /**
     * Agent result
@@ -117,12 +119,40 @@ export class AgentContextManager {
      * */
     private emittedSourcePaths: Set<string> = new Set();
 
-    /** Evidence accumulated from all search rounds (for SummaryAgent's initial prompt). */
-    private accumulatedSearchEvidence: SearchEvidence = {
-        searchSummaries: [],
-        candidateNotesLines: [],
-        newContextNodesLines: [],
-    };
+    /** InternalDossier: Map / Chain / Facts / Sources / RawLogs. Single source of truth for research flow. */
+    private dossier: InternalDossier = this.createEmptyDossier();
+
+    /** Recent Knowledge Panel versions (max 5). Used by MindFlow for audit and by finish agents. */
+    private knowledgePanels: KnowledgePanel[] = [];
+    private static readonly MAX_KNOWLEDGE_PANELS = 5;
+
+    private createEmptyDossier(): InternalDossier {
+        return {
+            rawSearchRuns: [],
+            facts: new Map(),
+            rawSearchExecutionSummary: [],
+            sources: [],
+        };
+    }
+
+    /** RawSearch runs (one per stream). */
+    private getRuns(): RawSearchRun[] {
+        return this.dossier.rawSearchRuns ?? [];
+    }
+
+    /** Flatten facts map to array (for summary, compress, and callers that need iteration). */
+    public getFactsList(): EvidencePack[] {
+        const out: EvidencePack[] = [];
+        for (const arr of this.dossier.facts.values()) {
+            out.push(...arr);
+        }
+        return out;
+    }
+
+    /** Claim list only (for RawSearch to avoid duplicate facts). No quotes or snippets. */
+    public getExistingFactClaimsForRawSearch(): string[] {
+        return this.getFactsList().flatMap((pack) => pack.facts.map((f) => f.claim));
+    }
 
     constructor(
         private readonly aiServiceManager: AIServiceManager,
@@ -130,425 +160,238 @@ export class AgentContextManager {
     }
 
     public resetAgentMemory(initialPrompt: string): void {
-        this.thinkingMemory = {
+        this.sessionState = {
             initialPrompt,
-            sessionSummary: '',
-            historyMessages: [buildLLMRequestMessage('user', initialPrompt)],
-            latestMessages: [buildLLMRequestMessage('user', initialPrompt)],
             lastSummaryIndex: 0,
-            totalTokenUsage: {
-                inputTokens: 0,
-                outputTokens: 0,
-                totalTokens: 0,
-            },
+            totalTokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
             mindflowContext: undefined,
-            lastOneGenerationContext: undefined,
         };
-    }
-
-    /**
-     * Append a progress snapshot from MindFlowAgent.
-     */
-    public appendMindflowProgress(progress: MindflowProgress): void {
-        if (!this.thinkingMemory.mindflowContext) {
-            this.thinkingMemory.mindflowContext = {};
-        }
-        if (!this.thinkingMemory.mindflowContext.progressHistory) {
-            this.thinkingMemory.mindflowContext.progressHistory = [];
-        }
-        this.thinkingMemory.mindflowContext.progressHistory.push(progress);
-    }
-
-    /**
-     * Append a trace from MindFlowAgent.
-     */
-    public appendMindflowTrace(trace: string): void {
-        if (!this.thinkingMemory.mindflowContext) {
-            this.thinkingMemory.mindflowContext = {};
-        }
-        if (!this.thinkingMemory.mindflowContext.traces) {
-            this.thinkingMemory.mindflowContext.traces = [];
-        }
-        this.thinkingMemory.mindflowContext.traces.push(trace);
-    }
-
-    public setLastMermaid(mermaid: string): void {
-        if (!this.thinkingMemory.mindflowContext) {
-            this.thinkingMemory.mindflowContext = {};
-        }
-        this.thinkingMemory.mindflowContext.lastMermaid = mermaid;
-    }
-
-    public getMindflowContext(): MindflowContext | undefined {
-        return this.thinkingMemory.mindflowContext;
-    }
-
-    /** Get the latest mindflow progress (for decision logic). */
-    public getLatestMindflowProgress(): MindflowProgress | undefined {
-        const history = this.thinkingMemory.mindflowContext?.progressHistory;
-        return history && history.length > 0 ? history[history.length - 1] : undefined;
-    }
-
-    public pushIterationErrorMessage(message: LLMRequestMessage): void {
-        this.thinkingMemory.latestMessages.push(message);
-    }
-
-    public pushIterationThoughtMessage(
-        oneGenerationContext: OneGenerationContext,
-        thoughtText: string,
-    ): LLMRequestMessage {
-        const reasoningChunks = oneGenerationContext.reasoningTextChunks ?? [];
-        const reasoningText = reasoningChunks.join('');
-        const thoughtStr = (thoughtText ?? '').trim();
-        const reasoningStr = (reasoningText ?? '').trim();
-        const thoughtMessage: LLMRequestMessage = {
-            role: 'assistant',
-            content: []
-        }
-        if (thoughtStr.length > 0) {
-            thoughtMessage.content.push({ type: 'text', text: thoughtStr });
-        }
-        if (reasoningStr.length > 0) {
-            thoughtMessage.content.push({ type: 'reasoning', text: reasoningStr });
-        }
-        if (oneGenerationContext.toolCalls.length > 0) {
-            thoughtMessage.content.push(
-                ...oneGenerationContext.toolCalls.map(({ toolCallId, toolName, input }) => ({
-                    type: 'tool-call' as const,
-                    toolCallId,
-                    toolName,
-                    input
-                }))
-            );
-        }
-        if (oneGenerationContext.toolResults.length > 0) {
-            thoughtMessage.content.push(
-                ...oneGenerationContext.toolResults.map(({ toolCallId, toolName, output }) => ({
-                    type: 'tool-result' as const,
-                    toolCallId,
-                    toolName,
-                    output
-                }))
-            );
-        }
-        this.thinkingMemory.historyMessages.push(thoughtMessage);
-        this.thinkingMemory.latestMessages.push(thoughtMessage);
-        this.thinkingMemory.totalTokenUsage = mergeTokenUsage(this.thinkingMemory.totalTokenUsage, oneGenerationContext.stepTokenUsage);
-        return thoughtMessage;
-    }
-
-    private cachedCurrentPromptMessage: LLMRequestMessage[] = [];
-    private cachedCurrentPromptMessageText: string = '';
-
-    private cacheCurrentPromptMessage(messages: LLMRequestMessage[]): void {
-        this.cachedCurrentPromptMessage = messages;
-        this.cachedCurrentPromptMessageText = convertMessagesToText(messages);
-    }
-
-    public getCachedCurrentPromptMessage(): LLMRequestMessage[] {
-        return this.cachedCurrentPromptMessage;
-    }
-
-    public getCachedCurrentPromptMessageText(): string {
-        return this.cachedCurrentPromptMessageText;
-    }
-
-    /**
-     * Build current prompt with agent memory, yielding progress events during summarization
-     */
-    public async *buildCurrentPrompt(
-        setPrompt?: (prompt: LLMRequestMessage[]) => void,
-        triggerName?: StreamTriggerName,
-    ): AsyncGenerator<LLMStreamEvent> {
-        // Check if summarization is needed based on token limits
-        const { shouldSummarize, reason } = await this.shouldSummarizeHistory();
-        if (!shouldSummarize) {
-            yield {
-                type: 'pk-debug',
-                debugName: 'summary_context_messages_not_needed',
-                triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
-                extra: {
-                    reason,
-                },
-            };
-            const messages = await this.agentMemoryToPrompt();
-            setPrompt?.(messages);
-            this.cacheCurrentPromptMessage(messages);
-            return;
-        }
-
-        try {
-            yield* this.summarizeHistory(reason, triggerName);
-        } catch (error) {
-            console.error('[buildCurrentPrompt] Error summarizing history:', error);
-        } finally {
-            const messages = await this.agentMemoryToPrompt();
-            setPrompt?.(messages);
-            this.cacheCurrentPromptMessage(messages);
-        }
-    }
-
-    /**
-     * Check if current conversation context exceeds token limits and needs summarization
-     */
-    private async shouldSummarizeHistory(): Promise<{ shouldSummarize: boolean, reason?: string }> {
-        const history = this.thinkingMemory.historyMessages;
-        if (history.length <= DEFAULT_SUMMARY_UPDATE_THRESHOLD) {
-            return {
-                shouldSummarize: false,
-                reason: `history length(${history.length}) is less than or equal to ${DEFAULT_SUMMARY_UPDATE_THRESHOLD}`
-            };
-        }
-
-        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisSessionSummary);
-        const tokenLimits = await this.aiServiceManager.getModelTokenLimits(
-            modelId,
-            provider
-        );
-        if (!tokenLimits) {
-            const shouldSummarize = history.length - this.thinkingMemory.lastSummaryIndex > DEFAULT_SUMMARY_UPDATE_THRESHOLD;
-            // Fall back to message count based logic if token limits are not available
-            return {
-                shouldSummarize,
-                reason: `No available token limits. Fall back to message count based logic. history length(${history.length}) - lastSummaryIndex(${this.thinkingMemory.lastSummaryIndex}) > ${DEFAULT_SUMMARY_UPDATE_THRESHOLD}`
-            };
-        }
-
-        // Use recommended summary threshold or 80% of max tokens as default
-        const summaryThreshold = tokenLimits.recommendedSummaryThreshold ??
-            (tokenLimits.maxInputTokens ? Math.floor(tokenLimits.maxInputTokens * 0.8) :
-                (tokenLimits.maxTokens ? Math.floor(tokenLimits.maxTokens * 0.8) : 0));
-
-        if (summaryThreshold <= 0) {
-            // Fall back to message count based logic
-            const shouldSummarize = history.length - this.thinkingMemory.lastSummaryIndex > DEFAULT_SUMMARY_UPDATE_THRESHOLD;
-            return {
-                shouldSummarize,
-                reason: `Summary threshold is less than or equal to 0. Fall back to message count based logic. history length(${history.length}) - lastSummaryIndex(${this.thinkingMemory.lastSummaryIndex}) > ${DEFAULT_SUMMARY_UPDATE_THRESHOLD}`
-            };
-        }
-
-        // Estimate tokens for recent messages since last summary
-        const recentMessages = history.slice(this.thinkingMemory.lastSummaryIndex);
-        const estimatedTokens = this.aiServiceManager.estimateTokens(
-            recentMessages
-        );
-
-        return {
-            shouldSummarize: estimatedTokens > summaryThreshold,
-            reason: `Token estimation: ${estimatedTokens} tokens, threshold: ${summaryThreshold}`
-        };
-    }
-
-    private async *summarizeHistory(reason?: string, triggerName?: StreamTriggerName): AsyncGenerator<LLMStreamEvent> {
-        // Calculate which messages need to be summarized
-        const history = this.thinkingMemory.historyMessages;
-        let messagesToSummarize: LLMRequestMessage[] = history.slice(0, -DEFAULT_SUMMARY_UPDATE_THRESHOLD)
-        const messagesToSummarizeText = concatLLMRequestMessages(messagesToSummarize);
-
-        // If history is long (based on token limits), do summarization
-        const toolCallId = generateToolCallId();
-        yield {
-            type: 'tool-call',
-            id: toolCallId,
-            toolName: ToolEvent.summary_context_messages,
-            triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
-            input: {
-                reason,
-                messagesToSummarize: messagesToSummarizeText,
-            },
-        };
-        const stepId = generateUuidWithoutHyphens();
-        yield {
-            type: 'ui-step',
-            uiType: UIStepType.STEPS_DISPLAY,
-            stepId,
-            title: 'Summarizing context messages...',
-            description: 'Trying to build next prompt with the summary...',
-            triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
-        }
-
-        // Generate summary with decision-critical structure (user background, pains, evidence paths)
-        const wordCountLimit = AppContext.getInstance().settings.search.aiAnalysisSessionSummaryWordCount ?? DEFAULT_SEARCH_SETTINGS.aiAnalysisSessionSummaryWordCount;
-        const summaryStream = this.aiServiceManager.chatWithPromptStream(PromptId.AiAnalysisSessionSummary, {
-            content: messagesToSummarizeText,
-            userQuery: this.thinkingMemory.initialPrompt ?? '',
-            wordCount: `up to ${wordCountLimit} characters (words)`,
-        })
-        let hasEmitUiDeltaOnSummary = false;
-        for await (const chunk of summaryStream) {
-            if (chunk.type === 'prompt-stream-delta' && !hasEmitUiDeltaOnSummary) {
-                yield {
-                    type: 'ui-step-delta',
-                    uiType: UIStepType.STEPS_DISPLAY,
-                    stepId,
-                    titleDelta: 'building...',
-                    descriptionDelta: chunk.delta,
-                    triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
-                };
-                hasEmitUiDeltaOnSummary = true;
-            } else {
-                yield {
-                    ...chunk,
-                    triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
-                };
-            }
-            if (chunk.type === 'prompt-stream-result') {
-                this.thinkingMemory.sessionSummary = chunk.output;
-            }
-        }
-
-        this.thinkingMemory.sessionSummary =
-            `[SummaryRange] ${this.thinkingMemory.lastSummaryIndex} - ${messagesToSummarize.length - 1} `
-            + `of total ${this.thinkingMemory.historyMessages.length} messages\n`
-            + `[Summary] ${this.thinkingMemory.sessionSummary}`;
-        this.thinkingMemory.lastSummaryIndex = messagesToSummarize.length - 1;
-        this.thinkingMemory.latestMessages = DEFAULT_MAX_RECENT_MESSAGES > this.thinkingMemory.historyMessages.length
-            ? this.thinkingMemory.historyMessages
-            : [...this.thinkingMemory.historyMessages.slice(-DEFAULT_MAX_RECENT_MESSAGES),];
-
-        yield {
-            type: 'tool-result',
-            id: toolCallId,
-            toolName: ToolEvent.summary_context_messages,
-            triggerName: triggerName ?? StreamTriggerName.SEARCH_THOUGHT_AGENT,
-            input: {
-                reason,
-                messagesToSummarize: messagesToSummarizeText,
-            },
-            output: {
-                type: 'text',
-                value: this.thinkingMemory.sessionSummary,
-            }
-        };
-    }
-
-    /**
-     * Convert agent memory to LLMRequestMessage array.
-     * Includes mindflow context if available, so ThoughtAgent can see MindFlowAgent's thinking progress.
-     */
-    private async agentMemoryToPrompt(): Promise<LLMRequestMessage[]> {
-        const messages: LLMRequestMessage[] = [];
-
-        // Add session summary if present
-        if (this.thinkingMemory.sessionSummary && this.thinkingMemory.sessionSummary.trim().length > 0) {
-            messages.push(buildLLMRequestMessage('assistant', this.thinkingMemory.sessionSummary));
-        }
-
-        messages.push(...this.thinkingMemory.latestMessages);
-
-        const mfMsg = await this.buildMindflowContextMessage();
-        if (mfMsg) {
-            console.debug('[agentMemoryToPrompt] Mindflow context message:', mfMsg);
-            messages.push(mfMsg);
-        }
-
-        return messages;
-    }
-
-    /**
-     * Build a message describing current MindFlow thinking state using template.
-     */
-    private async buildMindflowContextMessage(): Promise<LLMRequestMessage | null> {
-        const mfCtx = this.thinkingMemory.mindflowContext;
-        if (!mfCtx) {
-            return null;
-        }
-
-        const progressHistory = mfCtx.progressHistory ?? [];
-        const progress = progressHistory.length > 0 ? progressHistory[progressHistory.length - 1] : undefined;
-        const recentTraces = (mfCtx.traces ?? []).slice(-3);
-        const payload = {
-            hasProgress: !!progress,
-            statusLabel: progress?.statusLabel ?? 'In Progress',
-            estimatedCompleteness: progress?.estimatedCompleteness ?? 0,
-            goalAlignment: progress?.goalAlignment,
-            critique: progress?.critique,
-            decision: progress?.decision,
-            hasTraces: recentTraces.length > 0,
-            tracesLine: recentTraces.join(' → '),
-        };
-        if (!payload.hasProgress && !payload.hasTraces) {
-            return null;
-        }
-
-        const tm = this.aiServiceManager.getTemplateManager?.();
-        const text = tm
-            ? (await tm.render(AgentTemplateId.MindflowContext, payload)).trim()
-            : '';
-        if (!text) {
-            return null;
-        }
-
-        return buildLLMRequestMessage('assistant', text);
-    }
-
-    public accumulateTokenUsage(usage?: LLMUsage): void {
-        if (!usage) {
-            return;
-        }
-        this.thinkingMemory.totalTokenUsage = mergeTokenUsage(this.thinkingMemory.totalTokenUsage, usage);
-    }
-
-    public getAgentMemory(): AgentMemory {
-        return this.thinkingMemory;
-    }
-
-    /**
-     * Number of messages in the analysis session (latestMessages). For use with getAnalysisMessageAt.
-     */
-    /** Returns count of latest messages; 0 when memory not yet initialized (before resetAgentMemory). */
-    public getAnalysisMessageCount(): number {
-        return this.thinkingMemory?.latestMessages?.length ?? 0;
-    }
-
-    /**
-     * Returns the text of one message by 0-based index. Uses latestMessages.
-     */
-    public getAnalysisMessageAt(index: number): string {
-        const messages = this.thinkingMemory?.latestMessages ?? [];
-        if (index < 0 || index >= messages.length) {
-            return '';
-        }
-        return convertMessagesToText([messages[index]]);
-    }
-
-    private latestMessageTextSupplier: Supplier<string> = refreshableMemoizeSupplier<string, number>(
-        () => {
-            const messages = this.thinkingMemory?.latestMessages ?? [];
-            if (messages.length === 0) {
-                return this.thinkingMemory?.initialPrompt ?? '';
-            }
-            return convertMessagesToText([
-                messages[messages.length - 1]
-            ]);
-        },
-        () => this.thinkingMemory?.latestMessages?.length ?? 0,
-        (lastLength, currentLength) => lastLength !== currentLength
-    );
-
-    public getLatestMessageText(): string {
-        return this.latestMessageTextSupplier();
-    }
-
-    public getInitialPrompt(): string {
-        return this.thinkingMemory?.initialPrompt ?? '';
-    }
-
-    public resetAgentResult(): SearchAgentResult {
         this.agentResult = {
             title: '',
             summary: '',
             topics: [],
-            graph: { nodes: [], edges: [] },
             sources: [],
             dashboardBlocks: [],
             suggestedFollowUpQuestions: [],
         };
         this.verifiedPaths.clear();
         this.emittedSourcePaths.clear();
-        this.accumulatedSearchEvidence = { searchSummaries: [], candidateNotesLines: [], newContextNodesLines: [] };
-        return this.agentResult;
+        this.dossier = this.createEmptyDossier();
+        this.knowledgePanels = [];
+    }
+
+    public getSessionState(): SessionState {
+        return this.sessionState;
+    }
+
+    public addMindFlowResult(result: MindFlowResult): void {
+        if (!this.sessionState.mindflowContext) {
+            this.sessionState.mindflowContext = [];
+        }
+        this.sessionState.mindflowContext.push(result);
+    }
+
+    /** Get the latest mindflow progress (for decision logic). */
+    public getLatestMindflowProgress(): MindflowProgress | undefined {
+        if (!this.sessionState.mindflowContext || this.sessionState.mindflowContext.length === 0) {
+            return undefined;
+        }
+        return this.sessionState.mindflowContext[this.sessionState.mindflowContext.length - 1]?.progress;
+    }
+
+    /** MindFlow trajectory for search_analysis_context / search history. */
+    public getMindflowProgressHistory(): MindflowProgress[] {
+        return this.sessionState.mindflowContext?.flatMap((m) => (m.progress ? [m.progress] : [])) ?? [];
+    }
+
+    public getLatestMindflowMermaid(): string | undefined {
+        if (!this.sessionState.mindflowContext || this.sessionState.mindflowContext.length === 0) {
+            return undefined;
+        }
+        return this.sessionState.mindflowContext[this.sessionState.mindflowContext.length - 1]?.mermaid;
+    }
+
+    /**
+     * format eg:
+     * ...
+     * Status Label: In Progress
+     * Confirmed Facts: Fact 1, Fact 2
+     * 
+     * Status Label: In Progress
+     * Confirmed Facts: Fact 3, Fact 4
+     * 
+     * Status Label: In Progress
+     * Confirmed Facts: Fact 5, Fact 6
+     * ...
+     */
+    public getLatestMindflowProgressHistory(): string[] | undefined {
+        if (!this.sessionState.mindflowContext || this.sessionState.mindflowContext.length === 0) {
+            return undefined;
+        }
+        return this.sessionState.mindflowContext?.flatMap(m => m.progress)
+            .filter(p => p !== undefined)
+            .map(p =>
+                ifStringNoBlankThenConcat({ prefix: 'Status Label: ', value: p.statusLabel })
+                + ifStringNoBlankThenConcat({ prefix: 'Confirmed Facts: ', value: p.confirmed_facts })
+                + '\n'
+            );
+    }
+
+    /**
+     * stepFromLast = 1: latest RawSearch run, 2: 2nd latest, ...
+     */
+    public getRawSearchInfoForMindFlowInput(stepFromLast: number): RawSearchInfoForMindFlowInput | undefined {
+        const runs = this.getRuns();
+        if (runs.length === 0 || stepFromLast < 1 || stepFromLast > runs.length) {
+            return undefined;
+        }
+        const run = runs[runs.length - stepFromLast];
+        return {
+            latestLoopDelta: this.getRawSearchLoopDelta(run),
+            latestLoopRawSearchExecutionSummarys: [run.executionSummary],
+            latestLoopRawSearchEvidenceFoundStatisticsInfo: JSON.stringify({
+                evidencePackCount: run.evidencePackCount,
+                factCount: run.factCount,
+            }),
+        };
+    }
+
+    private getRawSearchLoopDelta(run?: RawSearchRun): string | undefined {
+        if (!run) return undefined;
+        const report = run.rawSearchReport;
+        const tactical = report?.tactical_summary ?? '';
+        const leadsStr = Array.isArray(report?.discovered_leads) && report.discovered_leads.length > 0
+            ? report.discovered_leads.join(', ')
+            : '';
+        const suggestion = report?.battlefield_assessment?.suggestion ?? '';
+        const deltaText =
+            ifStringNoBlankThenConcat({ prefix: 'Tactical Summary: ', value: tactical }) +
+            ifStringNoBlankThenConcat({ prefix: 'Discovered Leads: ', value: leadsStr }) +
+            ifStringNoBlankThenConcat({ prefix: 'Suggestion: ', value: suggestion }) +
+            ifStringNoBlankThenConcat({ prefix: 'Execution Summary: ', value: run.executionSummary }) +
+            ifStringNoBlankThenConcat({ prefix: 'Evidence Stats: ', value: `packs=${run.evidencePackCount} facts=${run.factCount}` });
+        return isBlankString(deltaText) ? undefined : `RawSearch Last Loop Delta: ${deltaText}`;
+    }
+
+    public addRawSearchResult(result: RawSearchAgentGenerationResult, options?: { prompt?: string }): void {
+        const runs = this.dossier.rawSearchRuns ?? (this.dossier.rawSearchRuns = []);
+        const executionSummary = (result.executionSummary ?? '').trim();
+        const evidencePackCount = result.evidencePack?.length ?? 0;
+        const factCount = result.evidencePack?.reduce((acc, p) => acc + (p.facts?.length ?? 0), 0) ?? 0;
+        runs.push({
+            prompt: options?.prompt,
+            executionSummary: executionSummary || '(no summary)',
+            rawSearchReport: result.rawSearchReport ?? null,
+            evidencePackCount,
+            factCount,
+        });
+        if (executionSummary) this.dossier.rawSearchExecutionSummary.push(result.executionSummary);
+        if (result.evidencePack?.length) this.appendDossierFacts(result.evidencePack);
+    }
+
+    /** Push a new Knowledge Panel from KnowledgeAgent; keep last N only. */
+    public addKnowledgePanel(panel: KnowledgePanel): void {
+        this.knowledgePanels.push(panel);
+        if (this.knowledgePanels.length > AgentContextManager.MAX_KNOWLEDGE_PANELS) {
+            this.knowledgePanels.shift();
+        }
+    }
+
+    /** Latest Knowledge Panel (if any). */
+    public getLatestKnowledgePanel(): KnowledgePanel | undefined {
+        return this.knowledgePanels.length > 0 ? this.knowledgePanels[this.knowledgePanels.length - 1] : undefined;
+    }
+
+    /** Formatted Knowledge Panel for MindFlow prompt (truncated). */
+    public getKnowledgePanelForMindFlow(maxChars: number = 8000): string {
+        const panel = this.getLatestKnowledgePanel();
+        if (!panel) return '';
+        const parts: string[] = [];
+        parts.push(`## Knowledge Panel (stats: facts=${panel.panel_stats.fact_count} packs=${panel.panel_stats.pack_count} sources=${panel.panel_stats.source_count} condensed=${panel.panel_stats.condensed})`);
+        for (const c of panel.clusters) {
+            parts.push(`### ${c.label} (${c.id})`);
+            parts.push(c.summary);
+            parts.push(`Paths: ${c.supporting_evidence_paths.join(', ')}`);
+            if (c.key_claims?.length) parts.push(`Claims: ${c.key_claims.slice(0, 5).join('; ')}`);
+        }
+        if (panel.conflicts?.length) {
+            parts.push('## Conflicts');
+            for (const cf of panel.conflicts) {
+                parts.push(`- ${cf.topic}: ${cf.conflicting_claims.join(' vs ')} (${cf.evidence_paths.join(', ')})`);
+            }
+        }
+        if (panel.open_questions?.length) {
+            parts.push('## Open questions');
+            parts.push(panel.open_questions.slice(0, 10).join('\n'));
+        }
+        const text = parts.join('\n\n');
+        return text.length <= maxChars ? text : text.slice(0, maxChars) + '\n...(truncated)';
+    }
+
+    /**
+     * Append evidence packs to dossier. Dedup by origin.path_or_url (mark previous superseded).
+     * O(1) per path: lookup by path_or_url in Map, no full scan.
+     */
+    public appendDossierFacts(packs: EvidencePack[]): void {
+        for (const pack of packs) {
+            const key = pack.origin.path_or_url;
+            const arr = this.dossier.facts.get(key) ?? [];
+            for (const existing of arr) {
+                if (!existing.superseded) existing.superseded = true;
+            }
+            arr.push({ ...pack });
+            this.dossier.facts.set(key, arr);
+        }
+        const total = this.getFactsList().length;
+        if (total > DOSSIER_FACTS_COMPRESS_THRESHOLD) {
+            this.compressDossierFacts();
+        }
+    }
+
+    private compressDossierFacts(): void {
+        const facts = this.getFactsList();
+        const keep = Math.floor(DOSSIER_FACTS_COMPRESS_THRESHOLD / 2);
+        const toCondense = facts.filter((_, i) => i < facts.length - keep && !facts[i]?.superseded);
+        if (toCondense.length === 0) return;
+        const claimsAndQuotes: string[] = [];
+        for (const pack of toCondense) {
+            if (pack.superseded) continue;
+            for (const f of pack.facts) {
+                claimsAndQuotes.push(`- ${f.claim}: "${(f.quote || '').slice(0, 200)}..."`);
+            }
+            pack.superseded = true;
+        }
+        const condensed: EvidencePack = {
+            origin: { tool: 'condensed', path_or_url: '_condensed' },
+            facts: toCondense.flatMap((p) => p.facts).slice(0, 30),
+            snippet: { type: 'condensed', content: claimsAndQuotes.join('\n').slice(0, 4000) },
+            superseded: false,
+        };
+        const remaining = facts.filter((p) => !p.superseded);
+        const newMap = new Map<string, EvidencePack[]>();
+        newMap.set('_condensed', [condensed]);
+        for (const p of remaining) {
+            const k = p.origin.path_or_url;
+            const arr = newMap.get(k) ?? [];
+            arr.push(p);
+            newMap.set(k, arr);
+        }
+        this.dossier.facts = newMap;
+    }
+
+    public accumulateTokenUsage(usage?: LLMUsage): void {
+        if (!usage) {
+            return;
+        }
+        this.sessionState.totalTokenUsage = mergeTokenUsage(this.sessionState.totalTokenUsage, usage);
+    }
+
+    public getTotalTokenUsage(): LLMUsage {
+        return this.sessionState.totalTokenUsage;
+    }
+
+    public getInitialPrompt(): string {
+        return this.sessionState?.initialPrompt ?? '';
     }
 
     public yieldAgentResult(): { extra: { currentResult: SearchAgentResult } } {
@@ -560,9 +403,6 @@ export class AgentContextManager {
     }
 
     public getAgentResult(): SearchAgentResult {
-        if (!this.agentResult) {
-            this.agentResult = this.resetAgentResult();
-        }
         return this.agentResult;
     }
 
@@ -574,12 +414,24 @@ export class AgentContextManager {
         if (!paths) {
             return;
         }
-        if (typeof paths === 'string') {
-            if (paths.trim()) {
-                this.verifiedPaths.add(paths);
+        const arr = typeof paths === 'string' ? [paths] : paths;
+        for (const p of arr) {
+            const t = p?.trim();
+            if (!t) continue;
+            this.verifiedPaths.add(t);
+            const isUrl = t.startsWith('http://') || t.startsWith('https://');
+            this.appendDossierSources([t], isUrl ? 'url' : 'vault_path');
+        }
+    }
+
+    /** Append verified sources (vault paths or URLs). */
+    private appendDossierSources(pathsOrUrls: string[], kind: 'vault_path' | 'url'): void {
+        for (const p of pathsOrUrls) {
+            const t = p?.trim();
+            if (!t) continue;
+            if (!this.dossier.sources.some((s) => s.path_or_url === t)) {
+                this.dossier.sources.push({ path_or_url: t, kind });
             }
-        } else {
-            paths.forEach(path => this.verifiedPaths.add(path));
         }
     }
 
@@ -587,16 +439,129 @@ export class AgentContextManager {
         return this.emittedSourcePaths;
     }
 
-    public accumulateSearchEvidence(evidence: SearchEvidence): void {
-        this.accumulatedSearchEvidence = {
-            searchSummaries: [...this.accumulatedSearchEvidence.searchSummaries, ...evidence.searchSummaries],
-            candidateNotesLines: [...this.accumulatedSearchEvidence.candidateNotesLines, ...evidence.candidateNotesLines],
-            newContextNodesLines: [...this.accumulatedSearchEvidence.newContextNodesLines, ...evidence.newContextNodesLines],
+    /**
+     * Serializable snapshot of current search memory for debug (e.g. window.__peakSearchDebug.getSnapshot()).
+     */
+    public getDebugSnapshot(): SearchMemoryDebugSnapshot {
+        const res = this.agentResult;
+        const factsList = this.getFactsList();
+        const maxPromptPreview = 300;
+        return {
+            sessionState: {
+                initialPromptPreview: (this.sessionState?.initialPrompt ?? '').slice(0, maxPromptPreview),
+                lastSummaryIndex: this.sessionState?.lastSummaryIndex ?? 0,
+                totalTokenUsage: this.sessionState?.totalTokenUsage ?? { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+                mindflowContextLength: this.sessionState?.mindflowContext?.length ?? 0,
+            },
+            agentResult: {
+                title: res?.title ?? '',
+                summaryLength: (res?.summary ?? '').length,
+                topicsCount: (res?.topics ?? []).length,
+                sourcesCount: (res?.sources ?? []).length,
+                dashboardBlocksCount: (res?.dashboardBlocks ?? []).length,
+                suggestedFollowUpQuestionsCount: (res?.suggestedFollowUpQuestions ?? []).length,
+            },
+            verifiedPaths: Array.from(this.verifiedPaths),
+            emittedSourcePaths: Array.from(this.emittedSourcePaths),
+            dossier: {
+                rawSearchRunsCount: this.dossier.rawSearchRuns?.length ?? 0,
+                factsCount: factsList.length,
+                sourcesCount: this.dossier.sources?.length ?? 0,
+                rawSearchExecutionSummaryLength: this.dossier.rawSearchExecutionSummary?.length ?? 0,
+                sourcePathsSample: (this.dossier.sources ?? []).slice(0, 30).map((s) => s.path_or_url),
+            },
         };
     }
 
-    public getAccumulatedSearchEvidence(): SearchEvidence {
-        return this.accumulatedSearchEvidence;
+    /** For dev/replay: return serializable state (e.g. paste in console or pass as initialState). */
+    public getReplayState(): ReplayState {
+        const factsArray: [string, EvidencePack[]][] = [];
+        this.dossier.facts.forEach((arr, key) => factsArray.push([key, arr]));
+        return {
+            sessionState: {
+                initialPrompt: this.sessionState?.initialPrompt ?? '',
+                lastSummaryIndex: this.sessionState?.lastSummaryIndex ?? 0,
+                totalTokenUsage: this.sessionState?.totalTokenUsage ?? { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+                mindflowContext: this.sessionState?.mindflowContext ? [...this.sessionState.mindflowContext] : undefined,
+            },
+            dossier: {
+                rawSearchRuns: [...(this.dossier.rawSearchRuns ?? [])],
+                factsArray,
+                rawSearchExecutionSummary: [...(this.dossier.rawSearchExecutionSummary ?? [])],
+                sources: [...(this.dossier.sources ?? [])],
+            },
+            verifiedPaths: Array.from(this.verifiedPaths),
+            emittedSourcePaths: Array.from(this.emittedSourcePaths),
+        };
+    }
+
+    /** Restore state from getReplayState() (e.g. continue from round X). */
+    public restoreReplayState(state: ReplayState): void {
+        this.sessionState = {
+            initialPrompt: state.sessionState.initialPrompt,
+            lastSummaryIndex: state.sessionState.lastSummaryIndex,
+            totalTokenUsage: state.sessionState.totalTokenUsage,
+            mindflowContext: state.sessionState.mindflowContext ? [...state.sessionState.mindflowContext] : undefined,
+        };
+        this.verifiedPaths = new Set(state.verifiedPaths ?? []);
+        this.emittedSourcePaths = new Set(state.emittedSourcePaths ?? []);
+        const facts = new Map<string, EvidencePack[]>();
+        for (const [key, arr] of state.dossier.factsArray ?? []) {
+            facts.set(key, [...arr]);
+        }
+        this.dossier = {
+            rawSearchRuns: [...(state.dossier.rawSearchRuns ?? [])],
+            facts,
+            rawSearchExecutionSummary: [...(state.dossier.rawSearchExecutionSummary ?? [])],
+            sources: [...(state.dossier.sources ?? [])],
+        };
+    }
+
+    public getDossier(): InternalDossier {
+        return this.dossier;
+    }
+
+    /**
+     * Coverage summary for MindFlow prompt: verified path count, fact count, sample paths.
+     * Used to inject "crisis" (low coverage = high risk) and triangulation hints.
+     */
+    public getCoverageSummaryForMindFlow(): { verifiedPathsCount: number; factCount: number; samplePaths: string[] } {
+        const paths = this.getVerifiedPaths();
+        const facts = this.getFactsList().filter((p) => !p.superseded);
+        const samplePaths = Array.from(paths).slice(0, 15);
+        return {
+            verifiedPathsCount: paths.size,
+            factCount: facts.length,
+            samplePaths,
+        };
+    }
+
+    /**
+     * Returns structured data for SummaryAgent/Dashboard: verified fact sheet, source map, last MindFlow decision.
+     * Uses sessionState.mindflowContext (getLatestMindflowProgress) for lastDecision, confirmedFacts, gaps.
+     */
+    public getDossierForSummary(): {
+        verifiedFactSheet: string;
+        sourceMap: string;
+        lastDecision: string;
+        confirmedFacts: string[];
+        gaps: string[];
+    } {
+        const progress = this.getLatestMindflowProgress();
+        const factLines = this.getFactsList()
+            .filter((p) => !p.superseded)
+            .flatMap((p) => p.facts.map((f) => `- ${f.claim} (${p.origin.path_or_url}): "${(f.quote || '').slice(0, 150)}..."`));
+        const sourceLines = this.dossier.sources.map((s) => s.path_or_url);
+        const lastDecision = progress
+            ? [progress.decision, progress.instruction, progress.critique].filter(Boolean).join('; ')
+            : '';
+        return {
+            verifiedFactSheet: factLines.join('\n'),
+            sourceMap: sourceLines.join('\n'),
+            lastDecision,
+            confirmedFacts: progress?.confirmed_facts ?? [],
+            gaps: progress?.gaps ?? [],
+        };
     }
 
     public getAgentMemoryTool(): AgentMemoryToolSet {
@@ -614,36 +579,90 @@ export class AgentContextManager {
                 description: 'Return the full text of one analysis message by 0-based index. valid indices 0 to count-1. Use to fetch a specific step for detailed evidence.',
                 inputSchema: getAnalysisMessageByIndexInputSchema,
                 execute: async (input) => {
-                    const count = this.getAnalysisMessageCount();
+                    const runs = this.getRuns();
+                    const count = 1 + runs.length;
                     const index = input.index;
                     if (index < 0 || index >= count) {
                         return {
-                            content: `Invalid index ${index}. Valid range is 0 to ${count - 1}. Total messages: ${count}. I return the latest message instead.` + this.latestMessageTextSupplier(),
+                            content: `Invalid index ${index}. Valid range is 0 to ${count - 1}. Total messages: ${count}.`,
                         };
                     }
                     const text = this.getAnalysisMessageAt(index);
-                    return { content: text || '(empty message). I return the latest message instead.' + this.getLatestMessageText() };
+                    return { content: text || '(empty message).' };
                 },
             }),
         }
     }
 
-    /**
-     * Full message-context memory as single text. Cached; refreshed only when message length changes.
-     */
+    /** Text of message at index: 0 = initial prompt, 1+ = round (run prompt + summary + report). */
+    private getAnalysisMessageAt(index: number): string {
+        if (index === 0) return this.sessionState?.initialPrompt ?? '';
+        const runs = this.getRuns();
+        const roundIndex = index - 1;
+        if (roundIndex < 0 || roundIndex >= runs.length) return '';
+        const run = runs[roundIndex]!;
+        let text = (run.prompt ?? '').trim();
+        if (run.executionSummary) text += (text ? '\n' : '') + 'Result: ' + run.executionSummary;
+        if (run.rawSearchReport?.tactical_summary) text += (text ? '\n' : '') + 'Tactical: ' + run.rawSearchReport.tactical_summary;
+        if (run.rawSearchReport?.discovered_leads?.length) text += (text ? '\n' : '') + 'Leads: ' + run.rawSearchReport.discovered_leads.join(', ');
+        return text;
+    }
+
+    /** Full memory as single text (derived from rawSearchRuns). Cached by runs length. */
     private fullMemoryTextSupplier: Supplier<string> = refreshableMemoizeSupplier<string, number>(
         () => {
-            const summary = this.thinkingMemory?.sessionSummary ?? '';
-            const messagesText = convertMessagesToText(this.thinkingMemory?.latestMessages ?? []);
-            return (summary ? `[Session Summary]\n${summary}\n\n` : '') + `[Recent Messages]\n${messagesText}`;
+            const messagesText = convertMessagesToText(this.buildDerivedRecentMessages());
+            return `[Recent Messages]\n${messagesText}`;
         },
-        () => this.thinkingMemory?.latestMessages?.length ?? 0,
-        (lastLen, currentLen) => lastLen !== currentLen
+        () => this.getRuns().length,
+        (a, b) => a !== b
     );
 
+    /** Build recent messages from dossier (user + last N RawSearch runs). */
+    private buildDerivedRecentMessages(): LLMRequestMessage[] {
+        const runs = this.getRuns();
+        const messages: LLMRequestMessage[] = [
+            buildLLMRequestMessage('user', this.sessionState.initialPrompt ?? ''),
+        ];
+        const n = Math.min(DEFAULT_RECENT_ROUNDS_KEEP, runs.length);
+        if (n === 0) return messages;
+        const start = runs.length - n;
+        for (let i = 0; i < n; i++) {
+            const run = runs[start + i]!;
+            const tid = generateToolCallId();
+            const value = run.executionSummary + (run.rawSearchReport?.tactical_summary ? '\nTactical: ' + run.rawSearchReport.tactical_summary : '');
+            const content: LLMRequestMessage['content'] = [];
+            if ((run.prompt ?? '').trim()) content.push({ type: 'text', text: (run.prompt ?? '').trim() });
+            content.push(
+                { type: 'tool-call' as const, toolCallId: tid, toolName: 'raw_search_run', input: { prompt: run.prompt } },
+                { type: 'tool-result' as const, toolCallId: tid, toolName: 'raw_search_run', output: { type: 'text' as const, value } }
+            );
+            messages.push({ role: 'assistant', content });
+        }
+        return messages;
+    }
+
     /**
-     * Grep over full memory text (content-reader style). Query as RegExp; fallback to literal.
+     * Search history messages by query. Uses cached full memory text; grep (RegExp/literal) when query present.
      */
+    public searchHistory(query: string, options?: { maxChars?: number }): string {
+        const maxChars = options?.maxChars ?? 4000;
+        const fullText = this.fullMemoryTextSupplier();
+        const q = (query ?? '').trim();
+        if (!q) {
+            return fullText.slice(0, maxChars);
+        }
+        const matches = this.grepInMemoryText(fullText, q, { contextLines: 2 });
+        const result =
+            matches.length > 0
+                ? matches.map((m) => `Line ${m.line}:\n${m.text}`).join('\n---\n')
+                : fullText.slice(0, maxChars);
+        return result.slice(0, maxChars);
+    }
+
+    /**
+    * Grep over full memory text (content-reader style). Query as RegExp; fallback to literal.
+    */
     private grepInMemoryText(
         fullText: string,
         query: string,
@@ -674,23 +693,5 @@ export class AgentContextManager {
             }
         }
         return matches;
-    }
-
-    /**
-     * Search history messages by query. Uses cached full memory text; grep (RegExp/literal) when query present.
-     */
-    public searchHistory(query: string, options?: { maxChars?: number }): string {
-        const maxChars = options?.maxChars ?? 4000;
-        const fullText = this.fullMemoryTextSupplier();
-        const q = (query ?? '').trim();
-        if (!q) {
-            return fullText.slice(0, maxChars);
-        }
-        const matches = this.grepInMemoryText(fullText, q, { contextLines: 2 });
-        const result =
-            matches.length > 0
-                ? matches.map((m) => `Line ${m.line}:\n${m.text}`).join('\n---\n')
-                : fullText.slice(0, maxChars);
-        return result.slice(0, maxChars);
     }
 }

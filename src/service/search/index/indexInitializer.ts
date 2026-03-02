@@ -6,7 +6,7 @@ import type { DocumentType } from '@/core/document/types';
 import { IndexProgressTracker } from '../support/progress-tracker';
 import { IndexService } from '@/service/search/index/indexService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { INDEX_CHECK_BATCH_SIZE, SEARCH_DB_FILENAME } from '@/core/constant';
+import { INDEX_CHECK_BATCH_SIZE, VAULT_DB_FILENAME } from '@/core/constant';
 import { getFileSize } from '@/core/utils/obsidian-utils';
 
 /**
@@ -273,8 +273,8 @@ export class IndexInitializer {
 		}
 
 		const dbFilePath = this.storageFolder
-			? `${this.storageFolder.trim().replace(/^\/+/, '').replace(/\/+$/, '')}/${SEARCH_DB_FILENAME}`
-			: SEARCH_DB_FILENAME;
+			? `${this.storageFolder.trim().replace(/^\/+/, '').replace(/\/+$/, '')}/${VAULT_DB_FILENAME}`
+			: VAULT_DB_FILENAME;
 		const storageSize = await getFileSize(this.app, dbFilePath);
 
 		progressTracker.showComplete({

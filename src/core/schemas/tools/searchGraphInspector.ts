@@ -108,9 +108,9 @@ export const SemanticOptions = z.object({
 	include_semantic_paths: z
 		.boolean()
 		.optional()
-		.default(false)
+		.default(true)
 		.describe(
-			"Include document semantic connection paths. Only semantic connection to document nodes."
+			"Include document semantic connection paths (vector-similar neighbors). Prefer true for richer discovery; set false only when you need physical links only."
 		),
 	semantic_filter: SemanticFilter.optional().describe(
 		"Semantic pruning/relevance filtering. The conceptual anchor for filtering. " +
@@ -236,6 +236,13 @@ export const exploreFolderInputSchema = z
 	})
 	.merge(BaseLimit)
 	.extend({
+		limit: z
+			.number()
+			.min(1)
+			.max(100)
+			.optional()
+			.default(50)
+			.describe("Per-folder item cap; use ≥50 for inventory/full-list breadth."),
 		filters: FilterOption.optional(),
 		sorter: SorterOption.optional(),
 		response_format: ResponseFormat.shape.response_format.default("markdown"),

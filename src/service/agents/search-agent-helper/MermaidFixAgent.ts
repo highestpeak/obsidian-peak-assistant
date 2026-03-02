@@ -8,7 +8,7 @@ import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import { PromptId } from '@/service/prompt/PromptId';
 import { validateMermaidCode } from '@/core/utils/analysis-data-validator';
-import { getMermaidInner } from '@/core/utils/mermaid-utils';
+import { getMermaidInner, normalizeMermaidNodeStyleColons } from '@/core/utils/mermaid-utils';
 import { withRetryStream } from '@/core/providers/helpers/stream-helper';
 import type { ErrorRetryInfo } from '@/service/prompt/PromptId';
 
@@ -66,10 +66,12 @@ export class MermaidFixAgent {
 			{
 				maxRetries: MERMAID_FIX_MAX_RETRIES,
 				triggerName,
-				getRetryText: (e) =>
-					e.type === 'error' && (e as any).extra?.retryPayload
-						? JSON.stringify((e as any).extra.retryPayload)
-						: (e as any).error?.message ?? '',
+				eventRetryCheckFn: (e) => {
+					if (e.type === 'error' && (e as any).extra?.retryPayload) {
+						return { shouldRetry: true, retryText: JSON.stringify((e as any).extra.retryPayload) };
+					}
+					return { shouldRetry: false, retryText: '' };
+				}
 			},
 		);
 
@@ -142,13 +144,14 @@ export class MermaidFixAgent {
 			return;
 		}
 
-		ref.fixedMermaid = mermaid;
-		onFixed?.(mermaid);
+		const normalized = normalizeMermaidNodeStyleColons(mermaid);
+		ref.fixedMermaid = normalized;
+		onFixed?.(normalized);
 		yield {
 			type: 'pk-debug',
 			debugName: 'mermaid_fix_result',
 			triggerName,
-			extra: { fixedMermaid: mermaid },
+			extra: { fixedMermaid: normalized },
 		};
 	}
 }

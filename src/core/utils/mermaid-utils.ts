@@ -32,6 +32,20 @@ export function getMermaidInner(fullOrInner: string): string {
     return extractMermaidCode(fullOrInner.trim());
 }
 
+/** MindFlow node states; style must use three colons: ]:::state. LLMs often output ]::state by mistake. */
+const MERMAID_STYLE_TWO_COLON_STATES = ['thinking', 'exploring', 'verified', 'pruned'];
+
+/**
+ * Normalize ]::state to ]:::state for known class names. Mermaid requires three colons for node styling.
+ */
+export function normalizeMermaidNodeStyleColons(code: string): string {
+    let s = code;
+    for (const state of MERMAID_STYLE_TWO_COLON_STATES) {
+        s = s.replace(new RegExp(`\\]::${state}(?![a-z])`, 'gi'), `]:::${state}`);
+    }
+    return s;
+}
+
 /**
  * Validate Mermaid diagram syntax using mermaid.parse(). Use to trigger retry on invalid output.
  * @returns { valid: true } or { valid: false, message } with parse error description.

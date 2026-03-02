@@ -358,9 +358,6 @@ export const CompletedAIAnalysis: React.FC<{
                 <div ref={stepsRef} className="pktw-scroll-mt-24">
                     <StreamingStepsDisplay
                         steps={steps ?? []}
-                        currentStep={null}
-                        stepTrigger={0}
-                        registerCurrentStepRender={undefined}
                         startedAtMs={analysisStartedAtMs}
                         isRunning={false}
                         finalDurationMs={duration}

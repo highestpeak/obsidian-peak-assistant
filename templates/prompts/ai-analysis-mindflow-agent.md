@@ -3,61 +3,79 @@
 ## USER QUERY (subject of the thinking tree — do not ask for it)
 {{{userQuery}}}
 
-## OBSERVATION
-- **Agent memory** (recent guidence and real progress; use for context):
-<<<
-{{{agentMemoryMessage}}}
->>>
+{{#if webSearchEnabled}}
+## Web search
+**Enabled.** You may instruct RawSearch to use web search when the query clearly needs external or live information (e.g. current events, market data). Otherwise keep search vault-only.
+{{else}}
+## Web search
+**Disabled.** Restrict all instruction to vault-only tools. Do not add any web-search step or intent.
+{{/if}}
+
+{{#if vault_map}}
+## Vault map (terrain — use for directory/keyword targets)
+- **Structure (2–3 levels):**  
+{{{vault_map.structure}}}
+- **Top tags:** {{vault_map.topTags}}
+- **Capabilities:** {{vault_map.capabilities}}
+{{#if vault_map.description}}
+- **User description:** {{{vault_map.description}}}
+{{/if}}
+{{/if}}
+
+{{#if coverageSummary}}
+## Coverage (verified paths & facts — low = high risk)
+- **Verified paths:** {{coverageSummary.verifiedPathsCount}}
+- **Facts:** {{coverageSummary.factCount}}
+{{#if coverageSummary.samplePaths.length}}
+- **Sample paths:** {{#each coverageSummary.samplePaths}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+{{/if}}
+
+{{#if knowledge_panel}}
+## Knowledge Panel (current structured evidence — use for audit and decision)
+{{{knowledge_panel}}}
+{{/if}}
+
+{{#if confirmedFacts}}
+## Inventory — Confirmed
+{{#each confirmedFacts}}
+- {{this}}
+{{/each}}
+{{/if}}
+
 {{#if previousMindflowMermaid}}
-- **Previous thinking diagram** (evolve this incrementally; do not replace with a completely new structure):
+## Previous thinking diagram (evolve incrementally)
 \`\`\`mermaid
 {{{previousMindflowMermaid}}}
 \`\`\`
 {{/if}}
-{{#if lastAttemptErrorMessages}}
-- **Last attempt errors** (attempt {{attemptTimes}}): {{{lastAttemptErrorMessages}}}
+
+{{#if rollingMindflowHistory}}
+## Rolling MindFlow history (status + confirmed from previous rounds)
+{{#each rollingMindflowHistory}}
+- {{this}}
+{{/each}}
 {{/if}}
+
+{{#if latestRawSearchInfo}}
+## Latest RawSearch runs (last 2)
+{{#each latestRawSearchInfo}}
+- {{{latestLoopDelta}}}
+{{/each}}
+{{/if}}
+
+{{#if lastAttemptErrorMessages}}
+## Last attempt errors (attempt {{attemptTimes}})
+{{{lastAttemptErrorMessages}}}
+{{/if}}
+
+---
 
 ## DIRECTIVE
-- Remember: the flowchart nodes must describe **the user's question and its exploration** (sub-questions, concepts, evidence). Never use tool names or "how to use tools" as node labels.
 {{#if (eq phase "pre-thought")}}
-**PRE-THOUGHT PHASE**: Plan the next exploration step before ThoughtAgent acts.
-1. Analyze what has been explored so far and identify gaps.
-2. Update the Mermaid flowchart via \`submit_mindflow_mermaid\` to highlight the current thinking state and proposed exploration paths (about the user query and evidence, not about tools).
-3. Call \`submit_mindflow_trace\` to describe what ThoughtAgent should focus on next.
-4. Call \`submit_mindflow_progress\` with:
-   - estimatedCompleteness (0-100)
-   - statusLabel (e.g. "Identifying next clue", "Planning exploration", "Preparing to verify")
-   - goalAlignment (sub-questions + current progress on each)
-   - critique (what's missing, what could go wrong)
-   - decision: always "continue" in pre-thought
+**Pre-thought.** (1) From the user query, derive **all** dimensions that apply using the **Dimension Library** (use only those relevant; often 5–8). (2) In **\`submit_mindflow_mermaid\`**, show **every** derived dimension as a node with state (e.g. "DimensionName – missing" or "– partial") plus at least one fallback branch. (3) In **\`submit_mindflow_progress\`**, set **gaps** to **all** missing/partial dimensions by name (same names as in the Mermaid). (4) Choose **one** dimension for this round. (5) Set **instruction** using the **Tactical Library**: instruction **must** start with one of the **ten** tactics — \`[HUB_RECON]\`, \`[BRIDGE_FINDING]\`, \`[INVENTORY_SCAN]\`, \`[SEED_EXPANSION]\`, \`[PULSE_DETECTION]\`, \`[CONFLICT_DIVE]\`, \`[GHOST_HUNTING]\`, \`[REASONING_RECOVERY]\`, \`[EDGE_CASE_PROBING]\`, \`[OMNISCIENT_RECON]\` — and specify the corresponding params; then MapSketch + ReconSequence + Deliverable. Use the Decision Framework to choose (diffuse/global query → OMNISCIENT_RECON first; full list or evaluate-all-in-zone → INVENTORY_SCAN first for full path list, then HUB_RECON/SEED_EXPANSION as needed; current state → PULSE_DETECTION; relationship/contrast → BRIDGE_FINDING; last round ZERO_RESULTS → GHOST_HUNTING; CONFLICT present → CONFLICT_DIVE; have seed → SEED_EXPANSION; what I thought before / why dropped → REASONING_RECOVERY; inspiration / non-mainstream → EDGE_CASE_PROBING; other → HUB_RECON). Do not write natural language only. Call \`submit_mindflow_trace\` → \`submit_mindflow_mermaid\` → \`submit_mindflow_progress\`. **Order**: (1) directory sniff when relevant, (2) cross-lingual concept when relevant, (3) deep search last.
 {{else}}
-**POST-THOUGHT PHASE**: Reflect on ThoughtAgent's actions and decide whether to continue.
-1. Evaluate what ThoughtAgent just discovered or concluded (about the user query and evidence).
-2. Update the Mermaid flowchart via \`submit_mindflow_mermaid\` to mark verified findings, prune dead ends, and update the main path. Keep nodes about the search content, not tools.
-3. Call \`submit_mindflow_trace\` to summarize the outcome of this iteration.
-4. Call \`submit_mindflow_progress\` with:
-   - estimatedCompleteness (0-100)
-   - statusLabel (e.g. "Cross-checking evidence", "Converging main path", "Ready to conclude")
-   - goalAlignment (sub-questions + whether each has a verified path)
-   - critique (mandatory self-correction: what went wrong, what to fix)
-   - decision: "continue" if more exploration needed, "stop" if answer is ready
+**Post-thought.** Update coverage from RawSearch outcome and Knowledge Panel. Call the three tools in order. **Coverage**: Tag confirmed_facts and gaps by dimension. For **every** \`CONTINUE_SEARCH\`, set **instruction** with the **Tactical Library**: must start with one of the ten tactics (including \`[PULSE_DETECTION]\`, \`[CONFLICT_DIVE]\`, \`[GHOST_HUNTING]\`, \`[REASONING_RECOVERY]\`, \`[EDGE_CASE_PROBING]\`, \`[OMNISCIENT_RECON]\`) and specify params; then MapSketch + ReconSequence. If the last RawSearch round returned \`[SEARCH_COMPLETED: ZERO_RESULTS]\`, prefer **[GHOST_HUNTING]**. Use **Latest RawSearch runs** (discovered_leads, paths tried) and **gaps** to refine. Do not give a generic dimension-only or natural-language-only instruction. If evidence is from only one path/region and a dimension is still missing, pick a tactic that covers another zone (e.g. HUB_RECON with Zone B). If panel has conflicts, use \`CONTINUE_SEARCH\` with adjudication and a clear tactic. If fact count high and panel missing/stale, use \`REQUEST_COMPRESSION\`. When coverage is sufficient for Summary or timebox/saturation, use \`FINAL_ANSWER\` and, if applicable, add **REFLECTIVE_INDEXING** Suggested Links in critique.
 {{/if}}
-
-## MERMAID RULES (CRITICAL - MUST FOLLOW)
-- First line MUST be: \`flowchart TD\`
-- Node format: \`N1["label"]:::state\` where state is EXACTLY: thinking, exploring, verified, or pruned
-- Node IDs: alphanumeric only (N1, N2, A, B)
-- **Short labels**: One short phrase or 1–2 lines per node. No long paragraphs or bullet lists in a node.
-- Line breaks in labels: use \`<br>\` NOT \`\\n\`
-- Edge format: \`A -->|"label"| B\` or \`A --> B\`
-- Main path edges: use \`main:\` prefix in label
-- **Balanced layout**: Mix vertical and horizontal flow; branch and rejoin. Avoid a single long vertical chain or one long horizontal row—balance the shape so the diagram is easy to scan.
-- FORBIDDEN: subgraphs, & merge, click, style, classDef, \\n
-
-## DIAGRAM EVOLUTION (IMPORTANT)
-- Prefer **incremental updates**: when a previous diagram exists, refine it (add a few nodes, change state, prune) rather than outputting a totally new layout.
-- Avoid **sudden large structural changes**: do not add many new nodes in one step; do not explode one concept into a long flat list of nodes.
-- When the answer or evidence spans many items, **do not create one node per item**. Prefer a small number of summary or group nodes (e.g. one node "Key findings (N items)" or "Evidence cluster" with a short label) so the diagram stays readable and stable.
 
 Proceed.

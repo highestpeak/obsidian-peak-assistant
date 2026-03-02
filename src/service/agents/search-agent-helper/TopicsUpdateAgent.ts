@@ -15,7 +15,8 @@ type TopicsUpdateToolSet = AgentMemoryToolSet & {
 export interface TopicsUpdateVariables {
     /** User's original query; output must use the same language. */
     originalQuery: string;
-    agentMemoryMessage: string;
+    /** Only evidence input: confirmed facts (no raw session memory). */
+    confirmedFacts?: string;
     topicPlan: string[];
     currentTopics?: string;
 }
@@ -70,10 +71,17 @@ export class TopicsUpdateAgent {
         const originalQuery = this.context.getInitialPrompt() ?? '';
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
         const hasTopics = this.context.getAgentResult().topics?.length ?? 0 > 0;
+        const dossier = this.context.getDossierForSummary();
+        const confirmedFactsList = dossier.confirmedFacts ?? [];
+        const confirmedFactsText =
+            confirmedFactsList.length > 0
+                ? confirmedFactsList.map((f, i) => `Fact #${i + 1}: ${f}`).join('\n')
+                : undefined;
+        // No raw memory: only confirmedFacts (and topic plan / current topics).
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDashboardUpdateTopics, {
             originalQuery,
             topicPlan: topicPlan,
-            agentMemoryMessage: this.context.getLatestMessageText(),
+            confirmedFacts: confirmedFactsText,
             currentTopics: hasTopics ? JSON.stringify(this.context.getAgentResult().topics) : undefined,
             ...(errorRetryInfo ? { errorRetryInfo } : {}),
             toolFormatGuidance: getTopicToolFormatGuidance(),

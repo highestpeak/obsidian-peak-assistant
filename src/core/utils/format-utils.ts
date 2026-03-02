@@ -202,12 +202,21 @@ export function getCachedSemanticDateRange(semantic: string): Date {
 }
 
 const booleanExpressionCache = new LRUCache<BooleanExpressionParser>(50);
+/** Returns a parser for tag/category boolean expressions, or null if invalid/malformed (e.g. JSON). */
 export function getCachedBooleanExpression(expression: string | undefined): BooleanExpressionParser | null {
 	if (!expression) return null;
+	const trimmed = String(expression).trim();
+	// Reject obvious non-expressions (e.g. JSON object passed by mistake)
+	if (trimmed.startsWith("{") || trimmed.startsWith("[")) return null;
 	let parser = booleanExpressionCache.get(expression);
 	if (!parser) {
-		parser = new BooleanExpressionParser(expression);
-		booleanExpressionCache.set(expression, parser);
+		try {
+			parser = new BooleanExpressionParser(expression);
+			booleanExpressionCache.set(expression, parser);
+		} catch (e) {
+			console.warn("[getCachedBooleanExpression] Invalid expression, skipping filter:", trimmed.slice(0, 80), e);
+			return null;
+		}
 	}
 	return parser;
 }

@@ -14,32 +14,252 @@ export type SuggestedFollowUpQuestions = z.infer<typeof suggestedFollowUpQuestio
 
 // ----- mindflow -----
 export const mindflowMermaidInputSchema = z.object({
-	code: z.string().describe("Mermaid flowchart TD code"),
+	code: z
+		.string()
+		.min(1, "code is required; provide Mermaid flowchart TD code (e.g. flowchart TD A --> B).")
+		.describe("Mermaid flowchart TD code"),
 });
 export const mindflowTraceInputSchema = z.object({
-	text: z.string().describe("Trace text"),
+	text: z
+		.string()
+		.min(1, "text is required; provide a short trace of what you are doing or planning.")
+		.describe("Trace text"),
 });
 export const mindflowProgressInputSchema = z.object({
 	estimatedCompleteness: z.number().min(0).max(100).describe("0-100"),
 	statusLabel: z
 		.string()
+		.min(1, "statusLabel is required (e.g. 'Deepening hidden clues', 'Cross-checking evidence').")
 		.describe('e.g. "Deepening hidden clues", "Cross-checking evidence"'),
-	goalAlignment: z.string().optional().describe("Sub-questions + verified paths"),
+	goalAlignment: z.string().optional().describe("Sub-questions + verified paths. with global alignment: where is the current overall goal."),
 	critique: z.string().optional().describe("Self-correction: what went wrong, how to fix"),
-	decision: z.enum(["continue", "stop"]).default("continue").describe("Whether to continue or stop"),
+	decision: z
+		.enum(["CONTINUE_SEARCH", "REQUEST_COMPRESSION", "FINAL_ANSWER"])
+		.default("CONTINUE_SEARCH")
+		.describe("CONTINUE_SEARCH = hand off to Search; REQUEST_COMPRESSION = hand off to KnowledgeAgent; FINAL_ANSWER = enough to synthesize, exit loop."),
+	confirmed_facts: z.array(z.string()).optional().describe("Facts already verified from evidence; for RawSearch context"),
+	gaps: z
+		.array(z.string())
+		.describe("Logical gaps (which dimension of info is missing), not which file. Use empty array [] if nothing is missing."),
+	instruction: z
+		.string()
+		.min(10, "instruction is required (min 10 chars). High-level task: intent + constraints. No query syntax or concrete paths.")
+		.describe("High-level task book for next agent: intent and constraints only. No query keywords or file paths."),
 });
+
+// ----- knowledge panel (KnowledgeAgent output) -----
+export const knowledgePanelClusterSchema = z.object({
+	id: z.string().describe("Unique cluster id"),
+	label: z.string().describe("Short label for the cluster"),
+	summary: z.string().describe("One-paragraph summary of this cluster"),
+	supporting_evidence_paths: z.array(z.string()).describe("path_or_url from evidence; anchors only"),
+	key_claims: z.array(z.string()).describe("Key claims in this cluster (from evidence, no fabrication)"),
+	related_terms: z.array(z.string()).optional().describe("Related terms for discovery"),
+});
+export const knowledgePanelConflictSchema = z.object({
+	topic: z.string().describe("Topic where conflict exists"),
+	conflicting_claims: z.array(z.string()).describe("Conflicting claim summaries"),
+	evidence_paths: z.array(z.string()).describe("path_or_url for each side"),
+});
+export const knowledgePanelStatsSchema = z.object({
+	fact_count: z.number().describe("Total distinct facts in panel"),
+	pack_count: z.number().describe("Evidence pack count"),
+	source_count: z.number().describe("Unique path_or_url count"),
+	condensed: z.boolean().describe("Whether this panel is a compression of many packs"),
+});
+
+export const knowledgePanelSchema = z.object({
+	clusters: z.array(knowledgePanelClusterSchema).describe("Thematic clusters from evidence"),
+	conflicts: z.array(knowledgePanelConflictSchema).describe("Detected conflicts between sources"),
+	open_questions: z.array(z.string()).describe("Open questions not yet answered by evidence"),
+	panel_stats: knowledgePanelStatsSchema.describe("Panel statistics"),
+});
+export type KnowledgePanel = z.infer<typeof knowledgePanelSchema>;
+
+export const submitKnowledgePanelInputSchema = z.object({
+	clusters: z.array(knowledgePanelClusterSchema).describe("Thematic clusters from evidence"),
+	conflicts: z.array(knowledgePanelConflictSchema).describe("Detected conflicts between sources"),
+	open_questions: z.array(z.string()).describe("Open questions not yet answered by evidence"),
+	panel_stats: knowledgePanelStatsSchema.describe("Panel statistics"),
+});
+export type SubmitKnowledgePanelInput = z.infer<typeof submitKnowledgePanelInputSchema>;
+
+// ----- thought report (split: per-round vs final) -----
+
+/** Call after each evidence-gathering round to record reflection and next-direction. */
+export const submitReasoningDeltaInputSchema = z.object({
+	reasoning_delta: z.string().describe("How your reasoning changed after this round; suggest next direction (e.g. 'Initially B seemed key; results point to C—suggest next round focus on C')."),
+});
+
+export type SubmitReasoningDeltaInput = z.infer<typeof submitReasoningDeltaInputSchema>;
+
+/** Call once at end of Thought run to submit final finding, optional suspicion, and discovered leads. */
+export const submitFinalThoughtReportInputSchema = z
+	.object({
+		finding_summary: z
+			.string()
+			.min(1, "finding_summary is required and cannot be blank. Provide a short finding summary (what was found).")
+			.describe("1–2 sentences summarizing the overall finding of this Thought run."),
+		instruction_suspicion: z
+			.string()
+			.optional()
+			.describe("If you think the instruction has logical risk (e.g. pleasing MindFlow), point it out."),
+		discovered_leads: z
+			.array(z.string())
+			.optional()
+			.describe("Paths or targets discovered this run that MindFlow should consider for the next round."),
+	});
+
+export type SubmitFinalThoughtReportInput = z.infer<typeof submitFinalThoughtReportInputSchema>;
 
 // ----- review blocks -----
 export const needMoreDashboardBlocksInputSchema = z.object({
 	reason: z.string().describe("The reason why we need more dashboard blocks."),
 });
 
-// ----- raw search -----
-export const submitEvidencePackInputSchema = z.object({
-	summary: z.string().optional().describe("Short summary of evidence gathered"),
-	candidateNotes: z.array(z.any()).optional().describe("Candidate notes (paths or note refs)"),
-	newContextNodes: z.array(z.any()).optional().describe("New context nodes for query evolution"),
+// ----- raw search (EvidencePack for dossier) -----
+export const evidencePackOriginSchema = z.object({
+	tool: z.string().describe("e.g. content_reader, web_search, local_search"),
+	path_or_url: z.string().describe("Vault path or URL"),
 });
+export const evidenceFactSchema = z.object({
+	claim: z.string().min(1, "claim is required and cannot be blank. Provide a short claim (what was found)."),
+	quote: z.string().min(1, "quote is required and cannot be blank. Provide a short quote (the quote from the source)."),
+	confidence: z.enum(["high", "medium", "low"]).optional(),
+});
+export const evidenceSnippetSchema = z.object({
+	type: z.enum(["extract", "condensed"]),
+	content: z.string().min(1, "content is required and cannot be blank. Provide a short content (the content of the source)."),
+});
+export const evidencePackSchema = z.object({
+	evidence_id: z.string().min(1, "evidence_id is required and cannot be blank. Provide a short evidence_id (the id of the evidence)."),
+	origin: evidencePackOriginSchema,
+	summary: z.string().min(1, "summary is required and cannot be blank. Provide a short summary (what was found)."),
+	facts: z.array(evidenceFactSchema),
+	snippet: evidenceSnippetSchema,
+	tags: z.array(z.string()).optional(),
+	relevance: z.string().optional(),
+	superseded: z.boolean().optional(),
+});
+export type EvidencePackSchemaType = z.infer<typeof evidencePackSchema>;
+
+const submitEvidencePackBaseSchema = z
+	.object({
+		status: z.enum(["SUCCESS", "PARTIAL", "FAILED"]).optional().describe("Round outcome"),
+		knowledge_gain: z.string().optional().describe("What was discovered this round"),
+		unresolved_queries: z.string().optional().describe("What is still missing"),
+		suggested_next_steps: z.string().optional().describe("Suggested next search"),
+		evidence_pack: z.array(evidencePackSchema)
+			.describe("Structured evidence packs (facts + quotes + snippet). Required when status is SUCCESS or PARTIAL; may be empty when FAILED."),
+	})
+	.refine(
+		(data) =>
+			data.status === "FAILED" || (Array.isArray(data.evidence_pack) && data.evidence_pack.length >= 1),
+		{
+			message:
+				"When status is SUCCESS or PARTIAL you must provide at least one evidence_pack with origin, facts (each with quote), and snippet. When status is FAILED you may submit an empty evidence_pack array.",
+		}
+	);
+
+/** Map legacy fields (summary, candidateNotes, newContextNodes) into evidence_pack, then return canonical shape. */
+export const submitEvidencePackInputSchema = z.preprocess(
+	(raw: unknown) => {
+		if (raw == null || typeof raw !== "object") return raw;
+		const o = raw as Record<string, unknown>;
+		const base = Array.isArray(o.evidence_pack) ? [...o.evidence_pack] : [];
+
+		const summary = typeof o.summary === "string" ? o.summary.trim() : "";
+		if (summary) {
+			base.push({
+				origin: { tool: "legacy", path_or_url: "_summary" },
+				facts: [],
+				snippet: { type: "condensed", content: summary.slice(0, 8000) },
+			});
+		}
+
+		const candidateNotes = Array.isArray(o.candidateNotes) ? o.candidateNotes : [];
+		for (const note of candidateNotes) {
+			const path =
+				typeof note === "string"
+					? note
+					: note && typeof note === "object" && "path" in note && typeof (note as { path: unknown }).path === "string"
+						? (note as { path: string }).path
+						: "";
+			if (!path) continue;
+			const why =
+				note && typeof note === "object" && "why" in note && typeof (note as { why: unknown }).why === "string"
+					? (note as { why: string }).why
+					: path;
+			const confidence =
+				note && typeof note === "object" && "confidence" in note
+					? (note as { confidence: unknown }).confidence
+					: undefined;
+			const conf =
+				confidence === "High" || confidence === "Medium" || confidence === "Low"
+					? (confidence as string).toLowerCase()
+					: undefined;
+			base.push({
+				origin: { tool: "legacy", path_or_url: path },
+				facts: [{ claim: why, quote: "", ...(conf ? { confidence: conf } : {}) }],
+			});
+		}
+
+		const newContextNodes = Array.isArray(o.newContextNodes) ? o.newContextNodes : [];
+		if (newContextNodes.length > 0) {
+			const content =
+				newContextNodes
+					.map((n) =>
+						typeof n === "string" ? n : typeof n === "object" && n !== null ? JSON.stringify(n) : String(n)
+					)
+					.join("\n") || "(new context nodes)";
+			base.push({
+				origin: { tool: "legacy", path_or_url: "_new_context_nodes" },
+				facts: [],
+				snippet: { type: "condensed", content: content.slice(0, 4000) },
+			});
+		}
+
+		const evidencePack = base.length ? base : (Array.isArray(o.evidence_pack) ? o.evidence_pack : []);
+		const status = evidencePack.length === 0 ? "FAILED" : (o.status === "FAILED" ? "FAILED" : (o.status ?? "SUCCESS"));
+		return {
+			status,
+			knowledge_gain: o.knowledge_gain,
+			unresolved_queries: o.unresolved_queries,
+			suggested_next_steps: o.suggested_next_steps,
+			evidence_pack: evidencePack,
+		};
+	},
+	submitEvidencePackBaseSchema
+);
+
+export const submitExecutionSummaryInputSchema = z.object({
+	summary: z
+		.string()
+		.min(1, "summary is required and cannot be blank. Provide a short execution summary (what was searched and what was found).")
+		.describe("The summary of the execution."),
+});
+
+/** RawSearch report for MindFlow: tactical summary, discovered leads, battlefield assessment. */
+export const submitRawSearchReportInputSchema = z.object({
+	tactical_summary: z
+		.string()
+		.min(1, "tactical_summary is required. What you tried (keywords, paths scanned), pivots (e.g. path X missing, turned to Y).")
+		.describe("What you did this run: keywords tried, paths scanned, pivots (e.g. path X not found, turned to Y)."),
+	discovered_leads: z
+		.array(z.string())
+		.optional()
+		.describe("Paths, folder names, or related terms found while reading; for MindFlow to consider next round."),
+	battlefield_assessment: z
+		.object({
+			search_density: z.enum(["High", "Low"]).optional().describe("File density in this area."),
+			match_quality: z.enum(["Exact", "Fuzzy", "None"]).optional().describe("How well results matched the target."),
+			suggestion: z.string().optional().describe("e.g. next round try keyword 'X' because it appeared in file A."),
+		})
+		.optional()
+		.describe("Assessment of this run for MindFlow."),
+});
+
+export type SubmitRawSearchReportInput = z.infer<typeof submitRawSearchReportInputSchema>;
 
 // ----- dashboard update plan -----
 const TOPICS_PLAN_MAX = 50;
@@ -61,12 +281,23 @@ export const dashboardUpdatePlanSchema = z.object({
 });
 
 export const submitTopicsPlanInputSchema = z
-	.object({ plan: z.array(z.string()) })
+	.object({
+		plan: z
+			.array(z.string())
+			.max(8)
+			.describe("5–8 topic instructions; theme synthesis, not isolated topics."),
+	})
 	.describe("Each plan describes a topic to be created or updated.");
 
 export const submitBlocksPlanInputSchema = z
-	.object({ plan: z.array(z.string()) })
-	.describe("Each plan describes a block to be created or updated.");
+	.object({
+		plan: z
+			.array(z.string())
+			.describe(
+				"Block instructions. Each string MUST reference Confirmed Facts by index (e.g. 'Based on Fact #3 and #5') and, when the block needs vault content, include the data source path or a clear lookup hint so the Blocks agent can call_search_agent."
+			),
+	})
+	.describe("Submit the blocks update plan with evidence binding and optional source paths.");
 
 // ----- dashboard update tools -----
 /** Placeholder string for empty/untitled fields. Used in schemas only. */
@@ -79,9 +310,9 @@ export const NO_MEANINGFUL_CONTENT_MESSAGE = "has no meaningful content, discard
 export const overviewMermaidInputSchema = z.preprocess(
 	(val) =>
 		typeof val === "object" &&
-		val !== null &&
-		"input" in val &&
-		typeof (val as { input: unknown }).input === "string"
+			val !== null &&
+			"input" in val &&
+			typeof (val as { input: unknown }).input === "string"
 			? (val as { input: string }).input
 			: val,
 	z
@@ -202,8 +433,8 @@ export const topicItemSchema = z
 					.optional()
 					.describe(
 						"Suggested questions to ask about this topic. " +
-							"Please provide at least 3 questions. at most 5 questions. Each question should be a single sentence no more than 10 words." +
-							'eg: "What is the main idea of the topic?"'
+						"Please provide at least 3 questions. at most 5 questions. Each question should be a single sentence no more than 10 words." +
+						'eg: "What is the main idea of the topic?"'
 					),
 			})
 			.superRefine((data, ctx) => {
@@ -349,17 +580,17 @@ export const graphNodeItemSchema = z
 					attrsPath && !isPlaceholder(String(attrsPath))
 						? attrsPath
 						: (() => {
-								const rawId = String(d.id ?? "").trim();
-								if (rawId.startsWith("file:")) {
-									const pathFromId = rawId
-										.slice("file:".length)
-										.replace(/^\/+/, "")
-										.trim();
-									if (pathFromId && !isPlaceholder(pathFromId))
-										return pathFromId;
-								}
-								return null;
-							})();
+							const rawId = String(d.id ?? "").trim();
+							if (rawId.startsWith("file:")) {
+								const pathFromId = rawId
+									.slice("file:".length)
+									.replace(/^\/+/, "")
+									.trim();
+								if (pathFromId && !isPlaceholder(pathFromId))
+									return pathFromId;
+							}
+							return null;
+						})();
 				if (derivedPath) d.path = derivedPath;
 			}
 		}

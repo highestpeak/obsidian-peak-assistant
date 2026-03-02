@@ -254,6 +254,7 @@ export class DocChunkRepo {
 		limit: number,
 		scopeMode?: SearchScopeMode,
 		scopeValue?: SearchScopeValue,
+		excludeFolderPrefixes?: string[],
 	): Array<{
 		chunkId: string;
 		docId: string;
@@ -270,9 +271,21 @@ export class DocChunkRepo {
 			pathFilter = 'AND dm.path = ?';
 			pathParams.push(scopeValue.currentFilePath);
 		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
-			const folderPath = scopeValue.folderPath;
-			pathFilter = 'AND (dm.path = ? OR dm.path LIKE ?)';
-			pathParams.push(folderPath, `${folderPath}/%`);
+			const folderPath = (scopeValue.folderPath ?? '').trim().replace(/\/+$/, '') || undefined;
+			if (folderPath) {
+				pathFilter = 'AND (dm.path = ? OR dm.path LIKE ?)';
+				pathParams.push(folderPath, `${folderPath}/%`);
+			}
+		}
+
+		// Exclude paths under given folder prefixes (path = exact or path LIKE prefix/%)
+		if (excludeFolderPrefixes?.length) {
+			for (const p of excludeFolderPrefixes) {
+				const folderLike = p.endsWith('/') ? p : p + '/';
+				const exact = folderLike.slice(0, -1);
+				pathFilter += ' AND NOT (dm.path LIKE ? OR dm.path = ?)';
+				pathParams.push(`${folderLike}%`, exact);
+			}
 		}
 
 		const sql = `
@@ -314,6 +327,7 @@ export class DocChunkRepo {
 		limit: number,
 		scopeMode?: SearchScopeMode,
 		scopeValue?: SearchScopeValue,
+		excludeFolderPrefixes?: string[],
 	): Array<{
 		docId: string;
 		path: string;
@@ -328,9 +342,21 @@ export class DocChunkRepo {
 			pathFilter = 'AND mf.path = ?';
 			pathParams.push(scopeValue.currentFilePath);
 		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
-			const folderPath = scopeValue.folderPath;
-			pathFilter = 'AND (mf.path = ? OR mf.path LIKE ?)';
-			pathParams.push(folderPath, `${folderPath}/%`);
+			const folderPath = (scopeValue.folderPath ?? '').trim().replace(/\/+$/, '') || undefined;
+			if (folderPath) {
+				pathFilter = 'AND (mf.path = ? OR mf.path LIKE ?)';
+				pathParams.push(folderPath, `${folderPath}/%`);
+			}
+		}
+
+		// Exclude paths under given folder prefixes
+		if (excludeFolderPrefixes?.length) {
+			for (const p of excludeFolderPrefixes) {
+				const folderLike = p.endsWith('/') ? p : p + '/';
+				const exact = folderLike.slice(0, -1);
+				pathFilter += ' AND NOT (mf.path LIKE ? OR mf.path = ?)';
+				pathParams.push(`${folderLike}%`, exact);
+			}
 		}
 
 		const sql = `

@@ -3,6 +3,7 @@ import { AppContext } from "@/app/context/AppContext";
 import { ActiveFile, getActiveNoteDetail, readFileAsText } from "@/core/utils/obsidian-utils";
 import { GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT, VAULT_DESCRIPTION_FILENAME } from "@/core/constant";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
+import { exploreFolder } from "@/service/tools/search-graph-inspector/explore-folder";
 
 type SystemTimeInfo = {
     timestamp: string;
@@ -122,6 +123,44 @@ export type SystemInfo = {
     current_focus: ActiveFile | null;
     vault_description?: string;
     tag_cloud?: string;
+};
+
+/** Vault "map" for MindFlow pre-thought: structure, tags, description, capabilities. Fed once per loop start. */
+export interface VaultPersona {
+    /** User-written vault description (e.g. "My AI research notes"). */
+    description?: string;
+    /** Auto-identified domains (reserved; empty for now). */
+    domain: string[];
+    /** Directory outline (2–3 levels) for "which drawer holds what". */
+    structure: string;
+    /** Top tags with counts (e.g. "#tag(12), #other(5)"). */
+    topTags: string;
+    /** One-line capability hint (e.g. "Many tech docs; no real-time news"). */
+    capabilities: string;
+}
+
+/**
+ * Build VaultPersona for MindFlow pre-thought. Use only when phase === 'pre-thought'.
+ */
+export async function getVaultPersona(): Promise<VaultPersona> {
+    const [vaultDescription, tagCloud] = await Promise.all([
+        getVaultDescription(),
+        getTagCloud(),
+    ]);
+    const stats = getVaultStatistics();
+    const tm = AppContext.getInstance().manager.getTemplateManager?.();
+    const exploreResult = await exploreFolder(
+        { folderPath: "/", recursive: true, max_depth: 2, limit: 100, response_format: "markdown" },
+        tm
+    );
+    return {
+        description: vaultDescription,
+        domain: [],
+        structure: exploreResult,
+        topTags: tagCloud || '(none)',
+        capabilities: `${stats.markdownFiles} markdown, ${stats.otherFiles} other files`
+            + (stats.totalFiles < 20 ? `small vault; consider external search if needed` : ``),
+    };
 }
 /**
  * System information tool for Obsidian

@@ -42,7 +42,7 @@ export function clearBuildResponseCompileCache(): void {
 /** Helper names we register; unregister on unload so HandlebarsEnvironment can release _exception2 and error refs. */
 const REGISTERED_HELPER_NAMES = [
 	'join', 'humanReadableTime', 'eq', 'gt', 'lt', 'gte', 'lte',
-	'formatNodeLabel', 'hasNodeType', 'inc', 'toYaml'
+	'formatNodeLabel', 'hasNodeType', 'inc', 'toYaml', 'similarLabel', 'lookup', 'nonEmpty'
 ];
 
 /**
@@ -102,6 +102,19 @@ export function registerTemplateEngineHelpers() {
     Handlebars.registerHelper('lte', function (a, b) {
         return a <= b;
     });
+    /** Returns " _(N similar)_" when count > 1, else "". Use in partials so sameGroupCount is passed explicitly. */
+    Handlebars.registerHelper('similarLabel', function (count: number | undefined) {
+        const n = typeof count === 'number' ? count : 0;
+        return n > 1 ? ` _(${n} similar)_` : '';
+    });
+    /** (obj, key) => obj[key]. Use e.g. (lookup @root.sameGroupCountByLinkPath linkPath) so value comes from root. */
+    Handlebars.registerHelper('lookup', function (obj: unknown, key: string) {
+        return obj != null && typeof obj === 'object' && key != null
+            ? (obj as Record<string, unknown>)[key]
+            : undefined;
+    });
+    /** True only when value is an array with at least one element (use for {{#if (nonEmpty children)}}). */
+    Handlebars.registerHelper('nonEmpty', (arr: unknown) => Array.isArray(arr) && arr.length > 0);
     Handlebars.registerHelper('formatNodeLabel', function (label, type) {
         switch (type) {
             case 'tag':
@@ -118,6 +131,11 @@ export function registerTemplateEngineHelpers() {
     });
     Handlebars.registerHelper('inc', function (value) {
         return parseInt(value) + 1;
+    });
+    /** Repeat spaces for tree indent: depth 0 => '', depth 1 => 4 spaces, etc. */
+    Handlebars.registerHelper('indent', function (depth: number) {
+        const d = Number(depth) || 0;
+        return ' '.repeat(4 * d);
     });
     Handlebars.registerHelper('toYaml', (jsonStr, baseIndent) => {
         try {

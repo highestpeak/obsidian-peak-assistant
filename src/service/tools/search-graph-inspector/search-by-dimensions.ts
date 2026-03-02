@@ -1,13 +1,10 @@
-import { AppContext } from "@/app/context/AppContext";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
 import { BooleanExpressionParser } from "./boolean-expression-parser";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
-import { buildResponse, buildResponseFromRendered } from "../types";
+import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
-import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
-
 export async function searchByDimensions(params: any, templateManager?: TemplateManager) {
     const { boolean_expression, semantic_filter, filters, sorter, limit, response_format } = params;
     const expr = typeof boolean_expression === 'string' ? boolean_expression.trim() : '';
@@ -29,15 +26,11 @@ export async function searchByDimensions(params: any, templateManager?: Template
         return 'Boolean expression must contain at least one tag or category filter.';
     }
 
-    const { success: matchingDocumentsSuccess, message: matchingDocumentsMessage, data: rawMatchingDocNodes }
+    const { success: matchingDocumentsSuccess, message: matchingDocumentsMessage, data: matchingExpressionDocNodes }
         = await findByExpressionWhere(parser, expressionTags, expressionCategories);
-    if (!matchingDocumentsSuccess || !rawMatchingDocNodes) {
+    if (!matchingDocumentsSuccess || !matchingExpressionDocNodes) {
         return matchingDocumentsMessage || 'Error finding matching documents.';
     }
-    const excludeCtx = await getAiAnalysisExcludeContext();
-    const matchingExpressionDocNodes = excludeCtx
-        ? new Map([...rawMatchingDocNodes].filter(([id]) => !excludeCtx.excludedDocIds.has(id)))
-        : rawMatchingDocNodes;
 
     type nodeWithSimilarityScore = GraphNode & { similarityScore: number };
     let docsAlignToSemantic: Map<string, GraphNode | nodeWithSimilarityScore> = matchingExpressionDocNodes;
@@ -48,15 +41,12 @@ export async function searchByDimensions(params: any, templateManager?: Template
             semantic_filter, 'limitIdsSet',
             { limitIdsSet: new Set(Array.from(matchingExpressionDocNodes.values()).map(document => document.id)) }
         );
-        // Filter matchingDocuments by nodes found in semanticSearchResults and store the semantic score
         if (semanticSearchResults && semanticSearchResults.length > 0) {
             let semanticScoreMap = new Map(semanticSearchResults.map(res => [res.nodeId, res.score]));
-            // Only include documents present in semanticSearchResults
             docsAlignToSemantic = new Map(
                 Array.from(matchingExpressionDocNodes.entries())
                     .filter(([id]) => semanticScoreMap.has(id))
                     .map(([id, docNode]) => {
-                        // Attach score property onto the doc for downstream formatting
                         return [id, { ...docNode, score: semanticScoreMap.get(id) }];
                     })
             );
@@ -84,12 +74,7 @@ export async function searchByDimensions(params: any, templateManager?: Template
         semantic_filtered_cnt: matchingExpressionDocNodes.size - docsAlignToSemantic.size,
         all_filtered_cnt: matchingExpressionDocNodes.size - filtered.length,
     };
-    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
-    if (tm) {
-        const rendered = await tm.render(ToolTemplateId.SearchByDimensions, data);
-        return buildResponseFromRendered(response_format, data, rendered);
-    }
-    return buildResponse(response_format, undefined, data);
+    return buildResponse(response_format, ToolTemplateId.SearchByDimensions, data, { templateManager });
 }
 
 async function findByExpressionWhere(

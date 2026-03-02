@@ -1,7 +1,10 @@
 # CONTEXT
 - **Original query**: {{originalQuery}}
 - **Analysis mode**: {{analysisMode}}
-- **Agent memory message**: {{{agentMemoryMessage}}}
+- **Evidence (verified facts)**:
+<<<
+{{{evidencePack}}}
+>>>
 
 {{#if refineMode}}
 {{#if (eq refineMode "sources_only")}}

@@ -1,6 +1,6 @@
 # OBSERVATION
 - **The Core Intent**: {{originalQuery}}
-- **Current analysis context**:
+- **Current analysis context** (Verified Fact Sheet / evidence—anchor nodes to these facts):
 <<<
 {{{agentMemoryMessage}}}
 >>>
@@ -14,16 +14,15 @@
 {{#if attemptTimes}}
 # REPAIR (attempt {{attemptTimes}})
 The previous diagram failed validation. Error: {{{lastAttemptErrorMessages}}}
-Output valid Mermaid only: fix node ids (no dots), quote labels with parentheses/special chars, use <br> for line breaks (NOT \\n), avoid unsupported syntax.
+Output valid Mermaid only: fix node ids (no dots), quote labels, use <br> for line breaks (NOT \\n), avoid unsupported syntax. Keep node count ≤15 and label length ≤12 chars (or <br> wrap).
 {{/if}}
 
 # DIRECTIVE
-1. **Perceive the Pattern**: Is the logic expanding (Mindmap), progressing (Timeline), structured (Flowchart), or systemic (ER)?
-2. **Richness**: Produce at least 6–12 nodes. Include key topics, main concepts, and conclusions. Use subgraph to group related nodes. Keep each label short (one phrase); no long blocks of text per node.
-3. **Balanced layout**: Mix vertical and horizontal flow; avoid a single long vertical or horizontal chain. Branch and group so the diagram is balanced and easy to scan.
-4. **Syntax**: Use \`<br>\` for line breaks in labels, NOT \`\\n\`. FORBIDDEN: \\n, & merge.
+1. **Chart type**: Match content—Mindmap for tree, Quadrant for value/cost comparison, Timeline for stages, Flowchart only for causal/dependency. Do not default to flowchart.
+2. **Fact anchoring**: Key nodes must include fact refs in labels, e.g. \`A["Core bottleneck [Fact #3]"]\`.
+3. **Subgraphs**: Partition into at least Known facts, Conflicts, Conclusions (or equivalent). No single flat spider web.
+4. **Conflict mapping**: Where facts contradict, use \`-.->\` or dashed edge and label "Conflict" or "Divergence". Show both consensus and friction.
+5. **Visual hygiene**: ≤15 nodes; ≤30 chars (or ~12 words) per label; use \`<br>\` for wrap, max 2–3 lines; balanced layout, no single long chain.
+6. **Syntax**: \`<br>\` for line breaks. FORBIDDEN: \\n, & merge. Use same language as the user's query for all labels.
 
-# OUTPUT LANGUAGE
-Use the same language as the user's original query for all labels.
-
-Project the geometry of this analysis now.
+Output the Mermaid diagram code now.

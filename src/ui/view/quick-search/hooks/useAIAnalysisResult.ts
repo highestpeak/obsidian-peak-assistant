@@ -10,10 +10,12 @@ import {
 	useAIAnalysisSummaryStore,
 	useAIAnalysisStepsStore,
 	buildCompletedAnalysisSnapshot,
+	type SectionAnalyzeResult,
 } from "../store/aiAnalysisStore";
+import type { GraphPreview } from "@/core/storage/graph/types";
 import { AppContext } from "@/app/context/AppContext";
 import { useSharedStore } from "../store/sharedStore";
-import { buildAiAnalyzeMarkdown, ExportSource, saveAiAnalyzeResultToMarkdown, persistAnalysisDocToPath } from "../callbacks/save-ai-analyze-to-md";
+import { buildAiAnalyzeMarkdown, ExportSource, saveAiAnalyzeResultToMarkdown, persistAnalysisDocToPath, type BuildAiAnalyzeMarkdownParams } from "../callbacks/save-ai-analyze-to-md";
 import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot, type BuildMarkdownOptions } from "@/core/storage/vault/search-docs/AiSearchAnalysisDoc";
 import { AISearchSource } from "@/service/agents/AISearchAgent";
 import { AIAnalysisHistoryRecord } from "@/service/AIAnalysisHistoryService";
@@ -251,25 +253,30 @@ export function useAIAnalysisResult() {
     ]);
 
     const handleCopyAll = useCallback(async () => {
-        const top = useAIAnalysisTopicsStore.getState();
-        const res = useAIAnalysisResultStore.getState();
         const steps = useAIAnalysisStepsStore.getState().steps;
-        const markdown = buildAiAnalyzeMarkdown({
-            query: searchQuery,
-            webEnabled,
-            summary,
-            topics,
-            sources: sources.map(s => ({
-                path: s.path,
-                title: s.title,
-                score: s.score?.average,
-                content: s.reasoning,
-            })),
-            topicInspectResults: topicInspectResults ?? {},
-            topicAnalyzeResults: top.topicAnalyzeResults ?? {},
-            topicGraphResults: res.topicGraphResults ?? {},
-            estimatedTokens: usage?.totalTokens ?? 0,
-        }, graph ?? undefined);
+        const topicsState = useAIAnalysisTopicsStore.getState() as Record<string, unknown>;
+        const topicAnalyze = (topicsState["topicAnalyzeResults"] as Record<string, SectionAnalyzeResult[]> | undefined) ?? {};
+        const topicGraph = (topicsState["topicGraphResults"] as Record<string, GraphPreview | null> | undefined) ?? {};
+        const markdown = buildAiAnalyzeMarkdown(
+            {
+                query: searchQuery,
+                webEnabled,
+                summary,
+                topics,
+                sources: sources.map(s => ({
+                    path: s.path,
+                    title: s.title,
+                    score: s.score?.average,
+                    content: s.reasoning,
+                })),
+                topicInspectResults: topicInspectResults ?? {},
+                topicAnalyzeResults: topicAnalyze,
+                // @ts-ignore - BuildAiAnalyzeMarkdownParams has topicGraphResults; TS can infer result store type in this scope
+                topicGraphResults: topicGraph,
+                estimatedTokens: usage?.totalTokens ?? 0,
+            } as BuildAiAnalyzeMarkdownParams,
+            graph ?? undefined
+        );
 
         const enableDevTools = AppContext.getInstance().plugin?.settings?.enableDevTools ?? false;
         let textToCopy = markdown;

@@ -1,28 +1,23 @@
-import { makeCallAgentToolInputSchema, updateDimensionToolInputSchema } from "@/core/schemas/tools/callAgentTool";
+import { makeCallAgentToolInputSchema } from "@/core/schemas/tools/callAgentTool";
 import { AgentTool, safeAgentTool } from "./types";
 
-/**
- * make an agent to a tool.
- */
-export function callAgentTool(agentName: string): AgentTool {
-    return safeAgentTool({
-        description: `Execute a task using the ${agentName} agent. Provide a specific prompt that focuses on gathering relevant information.`,
-        inputSchema: makeCallAgentToolInputSchema(agentName),
-        execute: async (params) => {
-            const prompt = (params?.prompt ?? params?.query) ?? "";
-            return { prompt };
-        },
-    });
+export interface CallAgentToolOptions {
+	/** Patterns to reject in prompt; passed to schema. Caller defines (e.g. vault-search forbid dialogue patterns). */
+	forbidDialoguePatterns?: RegExp[];
+	/** Message when prompt matches forbidDialoguePatterns. Caller defines. */
+	forbidDialogueMessage?: string;
 }
 
 /**
- * Tool for dimension update agents (sources, topics, graph, dashboard blocks).
- * Thought agent passes text describing what to add/remove; the sub-agent turns it into operations.
+ * Make an agent available as a tool. Caller passes options (e.g. forbidDialoguePatterns + message) from outside so the schema stays generic.
  */
-export function updateDimensionTool(dimensionName: string, description: string): AgentTool {
+export function callAgentTool(agentName: string, options?: CallAgentToolOptions): AgentTool {
     return safeAgentTool({
-        description,
-        inputSchema: updateDimensionToolInputSchema,
-        execute: async () => ({ delegated: true }),
+        description: `Execute a task using the ${agentName} agent. Provide a specific prompt that focuses on gathering relevant information.`,
+        inputSchema: makeCallAgentToolInputSchema(agentName, options),
+        execute: async (params) => {
+            const prompt = params.prompt;
+            return { prompt };
+        },
     });
 }

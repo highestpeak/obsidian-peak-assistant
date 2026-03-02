@@ -9,10 +9,10 @@ import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 import { TopicsUpdateAgent } from './TopicsUpdateAgent';
-import { DashboardBlocksUpdateAgent } from './DashboardBlocksUpdateAgent';
+import { DashboardBlocksAgent } from './DashboardBlocksAgent';
 import { ReviewBlocksAgent } from './ReviewBlocksAgent';
 import { getFileNameFromPath, normalizeFilePath } from '@/core/utils/file-utils';
-import { AgentContextManager, AgentMemoryToolSet } from './AgentContextManager';
+import { AgentContextManager } from './AgentContextManager';
 import { RawSearchAgent } from './RawSearchAgent';
 import { FollowUpQuestionAgent } from './FollowUpQuestionAgent';
 import { AgentTool, safeAgentTool } from '@/service/tools/types';
@@ -24,7 +24,8 @@ export type DashboardUpdatePlan = {
 
 const STREAMING_SOURCE_TOP_K = 20;
 
-export type BlockPlanAgentToolSet = AgentMemoryToolSet & {
+/** Plan agent has no search/memory tools—only plan submission. Search is delegated to Blocks agent. */
+export type BlockPlanAgentToolSet = {
     submit_topics_plan: AgentTool;
     submit_blocks_plan: AgentTool;
 };
@@ -32,20 +33,23 @@ export type BlockPlanAgentToolSet = AgentMemoryToolSet & {
 export type DashboardUpdateContext = {
     /** User's original query; plan instructions must be in the same language. */
     originalQuery: string;
-    agentMemoryMessage: string;
     verifiedPaths: string[];
-    /** Current blocks (for loop generation); optional snapshot string for template. */
-    dashboardBlocksSnapshot?: string;
+    /** Numbered confirmed facts (Fact #1, #2, ...) for evidence binding in blockPlan. */
+    confirmedFacts?: string;
+    /** When present, planner must address this gap in the next plan (from Review agent). */
+    lastReviewGapMessage?: string;
+    /** Current dashboard blocks JSON; used for gap-first diff against confirmedFacts. */
+    currentDashboardBlocks?: string;
 };
 
 /**
  * Central orchestrator for dashboard update flow: topics, sources, graph, blocks, review.
  * Consolidates logic so AISearchAgent only needs this single entry point.
  */
-export class DashboardUpdateAgent {
+export class DashboardAgent {
     private readonly blockPlanAgent: Agent<BlockPlanAgentToolSet>;
     private readonly topicsAgent: TopicsUpdateAgent;
-    private readonly blocksAgent: DashboardBlocksUpdateAgent;
+    private readonly blocksAgent: DashboardBlocksAgent;
     private readonly reviewAgent: ReviewBlocksAgent;
     private readonly followUpQuestionAgent: FollowUpQuestionAgent;
 
@@ -54,6 +58,8 @@ export class DashboardUpdateAgent {
 
     /** Last plan from runDashboardUpdate; passed to streamReview so review can reference blockPlan. */
     private lastPlan: DashboardUpdatePlan = { topicsPlan: [], blockPlan: [] };
+    /** Review agent feedback from previous round when we are in a retry loop. */
+    private lastReviewGapMessage: string | undefined;
     /** Fallback plan when planner returns empty arrays. */
     private static readonly FALLBACK_PLAN: DashboardUpdatePlan = {
         topicsPlan: ['Add at least 10 topics from full session evidence'],
@@ -80,7 +86,6 @@ export class DashboardUpdateAgent {
                 .getProviderService(provider)
                 .modelClient(modelId),
             tools: {
-                ...this.context.getAgentMemoryTool(),
                 submit_topics_plan: safeAgentTool({
                     description: 'Submit the topics update plan.',
                     inputSchema: submitTopicsPlanInputSchema,
@@ -89,7 +94,7 @@ export class DashboardUpdateAgent {
                     },
                 }),
                 submit_blocks_plan: safeAgentTool({
-                    description: 'Submit the blocks update plan.',
+                    description: 'Submit the blocks update plan. Each plan item MUST reference Confirmed Facts by index (e.g. "Based on Fact #3 and #5") and, when applicable, include the data source path or vault path so the Blocks agent knows where to call_search_agent.',
                     inputSchema: submitBlocksPlanInputSchema,
                     execute: async (input) => {
                         self.lastPlan.blockPlan.push(...(input?.plan ?? []));
@@ -99,7 +104,7 @@ export class DashboardUpdateAgent {
         });
 
         this.topicsAgent = new TopicsUpdateAgent({ aiServiceManager, context });
-        this.blocksAgent = new DashboardBlocksUpdateAgent({ aiServiceManager, context, rawSearchAgent: params.rawSearchAgent });
+        this.blocksAgent = new DashboardBlocksAgent({ aiServiceManager, context, rawSearchAgent: params.rawSearchAgent });
         this.reviewAgent = new ReviewBlocksAgent({ aiServiceManager, context });
         this.followUpQuestionAgent = new FollowUpQuestionAgent(params);
     }
@@ -150,15 +155,6 @@ export class DashboardUpdateAgent {
         };
     }
 
-    private fillFallbackPlanIfNeed() {
-        if (this.lastPlan.topicsPlan.length <= 0) {
-            this.lastPlan.topicsPlan = DashboardUpdateAgent.FALLBACK_PLAN.topicsPlan;
-        }
-        if (this.lastPlan.blockPlan.length <= 0) {
-            this.lastPlan.blockPlan = DashboardUpdateAgent.FALLBACK_PLAN.blockPlan;
-        }
-    }
-
     /**
      * Dashboard update: plan (topicsPlan, sourcePlan, blockPlan), then stream topics + blocks.
      * Review is done by AISearchAgent.streamFullAnalysis.
@@ -167,11 +163,12 @@ export class DashboardUpdateAgent {
         const stepId = generateUuidWithoutHyphens();
         let needMoreDashboardBlocks = undefined;
         let generatingTimes = 0;
+        this.lastReviewGapMessage = undefined;
         try {
             do {
                 generatingTimes++;
 
-                // plan
+                // plan (on retry, lastReviewGapMessage was set by previous review)
                 yield* this.streamDashboardPlan(stepId);
 
                 // topic
@@ -186,9 +183,13 @@ export class DashboardUpdateAgent {
                     }
                 }
 
-                // block
+                // block (pass review feedback on retry so Blocks agent fixes the same issues)
                 if ((this.lastPlan.blockPlan?.length ?? 0) > 0) {
-                    yield* this.blocksAgent.stream(this.lastPlan.blockPlan, stepId);
+                    yield* this.blocksAgent.stream(
+                        this.lastPlan.blockPlan,
+                        stepId,
+                        generatingTimes > 1 ? this.lastReviewGapMessage : undefined,
+                    );
                 } else {
                     // this should not happen
                     yield {
@@ -201,6 +202,7 @@ export class DashboardUpdateAgent {
                 // review blocks
                 yield* this.reviewAgent.stream(stepId);
                 needMoreDashboardBlocks = this.reviewAgent.getNeedMoreDashboardBlocksAndReset();
+                this.lastReviewGapMessage = needMoreDashboardBlocks ?? undefined;
 
                 // if need more dashboard blocks, we should generate again. but not more than 3 times.
             } while (needMoreDashboardBlocks && generatingTimes < 3);
@@ -219,25 +221,32 @@ export class DashboardUpdateAgent {
     }
 
     /**
-     * Stream structured plan using AI SDK streamObject. Yields text-delta and on-step-finish.
-     * Call setPlan when done to receive the final plan.
+     * Stream structured plan. Yields text-delta and on-step-finish.
+     * Slim input: only originalQuery, verifiedPaths, confirmedFacts, lastReviewGapMessage, currentDashboardBlocks
+     * (no full agentMemoryMessage / search process). When lastReviewGapMessage is set (retry), planner must address it.
      */
     private async *streamDashboardPlan(
         stepId: string,
     ): AsyncGenerator<LLMStreamEvent> {
         this.lastPlan = { topicsPlan: [], blockPlan: [] };
         yield this.uiStep(stepId, 'Updating dashboard (final)', 'Generating plan...', StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT);
-        const agentMemoryMessageText = this.context.getCachedCurrentPromptMessageText();
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisDashboardUpdatePlan);
         const originalQuery = this.context.getInitialPrompt() ?? '';
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
-        const hasDashboardBlocks = this.context.getAgentResult().dashboardBlocks?.length ?? 0 > 0;
-        const dashboardBlocks = hasDashboardBlocks ? this.context.getAgentResult().dashboardBlocks : undefined;
+        const dossier = this.context.getDossierForSummary();
+        const confirmedFactsList = dossier.confirmedFacts ?? [];
+        const confirmedFactsText = confirmedFactsList.length
+            ? confirmedFactsList.map((f, i) => `${i + 1}. ${f}`).join('\n')
+            : '';
+        const currentBlocks = this.context.getAgentResult().dashboardBlocks;
+        const currentDashboardBlocks =
+            currentBlocks?.length ? JSON.stringify(currentBlocks) : undefined;
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDashboardUpdatePlan, {
             originalQuery,
-            agentMemoryMessage: agentMemoryMessageText,
             verifiedPaths: Array.from(this.context.getVerifiedPaths()),
-            dashboardBlocksSnapshot: dashboardBlocks?.length ? JSON.stringify(dashboardBlocks, null, 2) : undefined,
+            confirmedFacts: confirmedFactsText || undefined,
+            lastReviewGapMessage: this.lastReviewGapMessage,
+            currentDashboardBlocks,
         });
         yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT, system, prompt);
         const result = this.blockPlanAgent.stream({
@@ -248,6 +257,15 @@ export class DashboardUpdateAgent {
         });
         this.fillFallbackPlanIfNeed();
         yield this.uiStep(stepId, 'Dashboard Update Plan', '\nPlan: ' + JSON.stringify(this.lastPlan, null, 2), StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT);
+    }
+
+    private fillFallbackPlanIfNeed() {
+        if (this.lastPlan.topicsPlan.length <= 0) {
+            this.lastPlan.topicsPlan = DashboardAgent.FALLBACK_PLAN.topicsPlan;
+        }
+        if (this.lastPlan.blockPlan.length <= 0) {
+            this.lastPlan.blockPlan = DashboardAgent.FALLBACK_PLAN.blockPlan;
+        }
     }
 
     private uiStep(stepId: string, title: string, description: string, triggerName: StreamTriggerName): LLMStreamEvent {

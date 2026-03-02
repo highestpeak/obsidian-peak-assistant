@@ -1,13 +1,10 @@
-import { AppContext } from "@/app/context/AppContext";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
 import { KEY_NODES_RRF_K, RRF_RANKING_POOL_SIZE } from "@/core/constant";
-import { buildResponse, buildResponseFromRendered } from "../types";
+import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { emptyMap } from "@/core/utils/collection-utils";
-import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
-
 /**
  * Get unique categories connected to each node to detect bridge nodes
  */
@@ -46,18 +43,13 @@ export async function findKeyNodes(params: any, templateManager?: TemplateManage
         }
     )
 
-    const sortedNodesRaw = await calculateKeyNoteRRFScores(
+    const sortedNodes = await calculateKeyNoteRRFScores(
         semanticResults,
         allOutDegreeStats,
         allInDegreeStats,
         !!semantic_filter,
         limit
     );
-    const excludeCtx = await getAiAnalysisExcludeContext();
-    const sortedNodes = excludeCtx
-        ? sortedNodesRaw.filter((n) => !excludeCtx.excludedDocIds.has(n.nodeId))
-        : sortedNodesRaw;
-
     const candidateNodeIds = sortedNodes.map(node => node.nodeId);
 
     // Get degree stats only for candidate nodes
@@ -127,12 +119,7 @@ export async function findKeyNodes(params: any, templateManager?: TemplateManage
     }
 
     const data = { key_nodes: allKeyNodes };
-    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
-    if (tm) {
-        const rendered = await tm.render(ToolTemplateId.FindKeyNodes, data);
-        return buildResponseFromRendered(response_format, data, rendered);
-    }
-    return buildResponse(response_format, undefined, data);
+    return buildResponse(response_format, ToolTemplateId.FindKeyNodes, data, { templateManager });
 }
 
 /**

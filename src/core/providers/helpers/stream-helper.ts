@@ -1,5 +1,5 @@
 import { DEFAULT_TOOL_ERROR_RETRY_TIMES } from "@/core/constant";
-import { emptyUsage, LLMStreamEvent, mergeTokenUsage, StreamTriggerName, UIStepType, type LLMUsage } from "../types";
+import { emptyUsage, LLMStreamEvent, mergeTokenUsage, RawUIStreamEvent, StreamTriggerName, UIStepType, type LLMUsage } from "../types";
 import type { FinishReason } from "ai";
 
 /** Max chars per prompt for pk-debug (avoids huge console dumps). */
@@ -16,7 +16,8 @@ export function buildPromptTraceDebugEvent(
         debugName: 'prompt-trace',
         triggerName,
         extra: {
-            system: system ?? 'undefined',
+            // no system prompt show in debug. as system is immutable in most cases (design this for cache)
+            // system: system ?? 'undefined',
             prompt: prompt ?? 'undefined',
             systemLen: system?.length ?? 'undefined',
             promptLen: prompt?.length ?? 'undefined',
@@ -68,8 +69,18 @@ export async function* withRetryStream<TVariables>(
     streamFactory: (vars: TVariables, retryCtx?: ErrorRetryInfo | RetryContext) => AsyncGenerator<LLMStreamEvent>,
     options?: {
         maxRetries?: number;
-        retryCondition?: (event: LLMStreamEvent) => boolean;
-        getRetryText?: (event: LLMStreamEvent) => string;
+        /**
+         * if true, the stream will be broken when the eventRetryCheckFn returns true.
+         */
+        ifEventRetryBreakStream?: boolean;
+        /**
+         * check every event to determine if the stream should be retried.
+         */
+        eventRetryCheckFn?: (event: LLMStreamEvent) => { shouldRetry: boolean, retryText: string };
+        /**
+         * check after the stream is finished to determine if the stream should be retried.
+         */
+        postStreamRetryCheckFn?: () => { shouldRetry: boolean, retryText: string };
         /** Used for pk-debug when retry is triggered so timeline can attribute the event. */
         triggerName?: StreamTriggerName;
     }
@@ -78,18 +89,29 @@ export async function* withRetryStream<TVariables>(
     let shouldRetry = false;
 
     const maxRetries = options?.maxRetries ?? DEFAULT_TOOL_ERROR_RETRY_TIMES;
-    const retryCondition = options?.retryCondition ?? ((event: LLMStreamEvent) => {
-        if (event.type === 'error') return true;
-        // Detect tool-result with error field (from safeAgentTool)
-        if (event.type === 'tool-result' && event.output?.error) return true;
-        return false;
-    });
-    const getRetryText = options?.getRetryText ?? ((event: LLMStreamEvent) => {
-        // Handle tool-result with error field
-        if (event.type === 'tool-result' && event.output?.error) {
-            return `Tool "${event.toolName}" returned error: ${event.output.error}`;
+    const realEventRetryCheckFn = ((event: LLMStreamEvent): { shouldRetry: boolean, retryText: string } => {
+        const eventRetryCheckResult = options?.eventRetryCheckFn?.(event);
+        if (eventRetryCheckResult?.shouldRetry) {
+            return eventRetryCheckResult;
         }
-        return convertMessagesToText([buildToolCorrectionMessageFromChunk(event)]);
+
+        if (event.type === 'error')
+            return {
+                shouldRetry: true,
+                retryText: convertMessagesToText([buildToolCorrectionMessageFromChunk(event)])
+            };
+
+        // Detect tool-result with error field (from safeAgentTool)
+        if (event.type === 'tool-result' && event.output?.error)
+            return {
+                shouldRetry: true,
+                retryText: `Tool "${event.toolName}" returned error: ${event.output.error}`
+            };
+
+        return {
+            shouldRetry: false,
+            retryText: '',
+        };
     });
 
     // retry = 1 is more readable than retry = 0. so we start from 0 and end at maxRetries + 1.
@@ -102,14 +124,26 @@ export async function* withRetryStream<TVariables>(
         );
 
         for await (const event of stream) {
-            if (retryCondition(event)) {
-                lastRetryText = getRetryText(event);
+            const { shouldRetry: shouldEventRetry, retryText } = realEventRetryCheckFn(event);
+            if (shouldEventRetry) {
+                lastRetryText = retryText;
                 shouldRetry = true;
+                if (options?.ifEventRetryBreakStream) {
+                    break;
+                }
             }
             yield event;
         }
 
-        if (!shouldRetry) break;
+        if (!shouldRetry) {
+            const { shouldRetry: shouldPostStreamRetry, retryText } = options?.postStreamRetryCheckFn?.() ?? { shouldRetry: false, retryText: '' };
+            if (shouldPostStreamRetry) {
+                lastRetryText = retryText;
+                shouldRetry = true;
+            } else {
+                break;
+            }
+        }
 
         // Yield debug so caller/timeline sees why we are retrying.
         yield {
@@ -126,35 +160,39 @@ export async function* withRetryStream<TVariables>(
     }
 }
 
+export interface EventProcessor {
+    toolResultChunkPostProcessor?: (chunk: any) => LLMStreamEvent | {};
+    chunkEventInterceptor?: (chunk: any) => void;
+    yieldEventPostProcessor?: (chunk: any) => LLMStreamEvent | { extra?: any } | {};
+    /** Return extra event(s) to yield after the main event for this chunk. */
+    yieldExtraAfterEvent?: (chunk: any) => LLMStreamEvent | LLMStreamEvent[] | void;
+    /** Auto-yield ui-step-delta for delta events (text-delta, reasoning-delta). */
+    yieldUIStep?: {
+        uiType: UIStepType;
+        stepId: string;
+        /** Only handles ui-step and ui-step-delta events. */
+        uiEventGenerator?: (chunk: any) => RawUIStreamEvent | RawUIStreamEvent[] | void;
+    };
+    /** 
+     * Manual handlers: run handler on tool-call, yield events, skip tool-result from stream.
+     * we use this maninly when tool result is a stream of events.
+     *  */
+    manualToolCallHandlers?: Record<string, ManualToolCallHandler>;
+}
+
 export async function* streamTransform<TOOLS extends ToolSet>(
     fullStream: AsyncIterableStream<TextStreamPart<TOOLS>> | AsyncIterable<ObjectStreamPartLike>,
     triggerName: StreamTriggerName,
-    eventProcessor: {
-        toolResultChunkPostProcessor?: (chunk: any) => LLMStreamEvent | {};
-        chunkEventInterceptor?: (chunk: any) => void;
-        yieldEventPostProcessor?: (chunk: any) => LLMStreamEvent | { extra?: any } | {};
-        /** Return extra event(s) to yield after the main event for this chunk. */
-        yieldExtraAfterEvent?: (chunk: any) => LLMStreamEvent | LLMStreamEvent[] | void;
-        /** Auto-yield ui-step-delta for delta events (text-delta, reasoning-delta). */
-        yieldUIStep?: {
-            uiType: UIStepType;
-            stepId: string;
-            uiEventGenerator?: (chunk: any) => LLMStreamEvent | LLMStreamEvent[] | void;
-        };
-        /** 
-         * Manual handlers: run handler on tool-call, yield events, skip tool-result from stream.
-         * we use this maninly when tool result is a stream of events.
-         *  */
-        manualToolCallHandlers?: Record<string, ManualToolCallHandler>;
-    }
+    eventProcessor: EventProcessor
 ): AsyncGenerator<LLMStreamEvent> {
-    const uiStep = eventProcessor.yieldUIStep;
     let manualToolTokenUsage: LLMUsage = emptyUsage();
 
     for await (const chunk of fullStream) {
         eventProcessor.chunkEventInterceptor?.(chunk);
         let yieldEvent: LLMStreamEvent | undefined = undefined;
         let deltaText: string | undefined = undefined;
+        /** Reused for manual tool-result so tool-call and tool-result share the same id. */
+        let lastToolCallId: string | undefined;
 
         switch (chunk.type) {
             case 'text-start': {
@@ -200,28 +238,14 @@ export async function* streamTransform<TOOLS extends ToolSet>(
                 break;
             }
             case 'tool-call': {
-                const toolCallId = (chunk as { toolCallId?: string }).toolCallId ?? generateToolCallId();
+                lastToolCallId = (chunk as { toolCallId?: string }).toolCallId ?? generateToolCallId();
                 yieldEvent = {
                     type: 'tool-call',
-                    id: toolCallId,
+                    id: lastToolCallId,
                     toolName: chunk.toolName,
                     input: chunk.input,
                     triggerName,
                 };
-                const manualToolHandler = eventProcessor.manualToolCallHandlers?.[chunk.toolName];
-                if (manualToolHandler) {
-                    const resultCollector: Record<string, any> = {};
-                    yield* manualToolHandler.handle(chunk.input, resultCollector);
-                    manualToolTokenUsage = mergeTokenUsage(manualToolTokenUsage, resultCollector.stepTokenUsage);
-                    yield {
-                        type: 'tool-result',
-                        id: toolCallId,
-                        toolName: chunk.toolName,
-                        input: chunk.input,
-                        output: manualToolHandler.outputGetter?.(resultCollector) ?? resultCollector,
-                        triggerName: manualToolHandler.triggerName,
-                    };
-                }
                 break;
             }
             case 'tool-input-delta': {
@@ -279,55 +303,104 @@ export async function* streamTransform<TOOLS extends ToolSet>(
                 break;
         }
         if (yieldEvent) {
-            yieldEvent = {
-                ...yieldEvent,
-                ...(eventProcessor.yieldEventPostProcessor ? eventProcessor.yieldEventPostProcessor(chunk) : {}),
-                triggerName,
-            };
-            yield yieldEvent;
+            yield* yieldChunkEvent<TOOLS>(yieldEvent, eventProcessor, triggerName, chunk, deltaText);
+        }
 
-            // Auto-yield ui-step-delta for delta events when yieldUIStep is configured
-            if (uiStep && deltaText !== undefined) {
-                const uiEvent = uiStep.uiEventGenerator?.(chunk);
-                if (uiEvent) {
-                    if (Array.isArray(uiEvent)) {
-                        for (const e of uiEvent) {
-                            yield e;
-                        }
-                    } else {
-                        yield uiEvent;
-                    }
-                } else {
-                    yield {
-                        type: 'ui-step-delta',
-                        uiType: uiStep.uiType,
-                        stepId: uiStep.stepId,
-                        descriptionDelta: deltaText,
-                        triggerName,
-                    };
-                }
-            }
+        if (chunk.type === 'tool-call') {
+            const manualToolHandler = eventProcessor.manualToolCallHandlers?.[chunk.toolName];
+            if (manualToolHandler) {
+                const resultCollector: Record<string, any> = {};
+                yield* manualToolHandler.handle(chunk.input, resultCollector);
+                manualToolTokenUsage = mergeTokenUsage(manualToolTokenUsage, resultCollector.stepTokenUsage);
+                const toolCallId = lastToolCallId ?? generateToolCallId();
 
-            const extra = eventProcessor.yieldExtraAfterEvent?.(chunk);
-            if (extra !== undefined && extra !== null) {
-                if (Array.isArray(extra)) {
-                    for (const e of extra)
-                        yield {
-                            ...e,
-                            triggerName,
-                        };
-                } else {
-                    yield {
-                        ...extra,
-                        triggerName,
-                    };
-                }
+                const toolResultOutput = manualToolHandler.outputGetter?.(resultCollector) ?? resultCollector;
+                yield* yieldChunkEvent<TOOLS>(
+                    {
+                        type: 'tool-result',
+                        id: toolCallId,
+                        toolName: chunk.toolName,
+                        input: chunk.input,
+                        output: toolResultOutput,
+                    },
+                    eventProcessor,
+                    triggerName,
+                    // manual create tool-result chunk to align with chunk type
+                    {
+                        type: 'tool-result' as const,
+                        toolCallId,
+                        toolName: chunk.toolName,
+                        input: chunk.input,
+                        output: toolResultOutput,
+                    } as TextStreamPart<TOOLS> | ObjectStreamPartLike,
+                    deltaText
+                );
             }
         }
     }
 }
 
-export const DELTA_EVENT_TYPES = new Set(['text-delta', 'reasoning-delta', 'prompt-stream-delta', 'tool-input-delta']);
+async function* yieldChunkEvent<TOOLS extends ToolSet>(
+    yieldEvent: LLMStreamEvent, eventProcessor: EventProcessor, triggerName: StreamTriggerName,
+    chunk: TextStreamPart<TOOLS> | ObjectStreamPartLike, deltaText?: string
+): AsyncGenerator<LLMStreamEvent> {
+    const uiStep = eventProcessor.yieldUIStep;
+
+    yieldEvent = {
+        ...yieldEvent,
+        ...(eventProcessor.yieldEventPostProcessor ? eventProcessor.yieldEventPostProcessor(chunk) : {}),
+        triggerName,
+    };
+    yield yieldEvent;
+
+    // Auto-yield ui-step-delta for delta events when yieldUIStep is configured
+    if (uiStep && deltaText !== undefined) {
+        const uiEvent = uiStep.uiEventGenerator?.(chunk);
+        if (uiEvent) {
+            if (Array.isArray(uiEvent)) {
+                for (const e of uiEvent) {
+                    yield {
+                        ...e,
+                        stepId: uiStep.stepId,
+                        triggerName,
+                    };
+                }
+            } else {
+                yield {
+                    ...uiEvent,
+                    stepId: uiStep.stepId,
+                    triggerName,
+                };
+            }
+        } else {
+            yield {
+                type: 'ui-step-delta',
+                uiType: uiStep.uiType,
+                stepId: uiStep.stepId,
+                descriptionDelta: deltaText,
+                triggerName,
+            };
+        }
+    }
+
+    const extra = eventProcessor.yieldExtraAfterEvent?.(chunk);
+    if (extra !== undefined && extra !== null) {
+        if (Array.isArray(extra)) {
+            for (const e of extra)
+                yield {
+                    ...e,
+                    triggerName,
+                };
+        } else {
+            yield {
+                ...extra,
+                triggerName,
+            };
+        }
+    }
+}
+
+export const DELTA_EVENT_TYPES = new Set(['text-delta', 'reasoning-delta', 'prompt-stream-delta', 'tool-input-delta', 'ui-step-delta']);
 export function getDeltaEventDeltaText(event: LLMStreamEvent): string {
     switch (event.type) {
         case 'text-delta':
@@ -338,14 +411,12 @@ export function getDeltaEventDeltaText(event: LLMStreamEvent): string {
             return event.delta ?? '';
         case 'tool-input-delta':
             return event.delta;
+        case 'ui-step-delta':
+            return (event.titleDelta ?? '') + (event.descriptionDelta ?? '');
     }
     return '';
 }
 
 export function checkIfDeltaEvent(type: LLMStreamEvent['type']) {
-    return type === 'text-delta'
-        || type === 'reasoning-delta'
-        || type === 'prompt-stream-delta'
-        || type === 'tool-input-delta'
-        || type === 'ui-step-delta';
+    return DELTA_EVENT_TYPES.has(type);
 }

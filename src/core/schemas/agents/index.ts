@@ -9,6 +9,8 @@ export {
 	mindflowProgressInputSchema,
 	needMoreDashboardBlocksInputSchema,
 	submitEvidencePackInputSchema,
+	submitRawSearchReportInputSchema,
+	type SubmitRawSearchReportInput,
 	dashboardUpdatePlanSchema,
 	submitTopicsPlanInputSchema,
 	submitBlocksPlanInputSchema,

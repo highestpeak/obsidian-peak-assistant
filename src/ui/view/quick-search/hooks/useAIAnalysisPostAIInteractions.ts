@@ -66,7 +66,7 @@ export async function* streamSearchFollowup(
 ): AsyncGenerator<LLMStreamEvent> {
     try {
         if (AppContext.getInstance().isMockEnv) {
-            yield* manager.chatWithPromptStream(promptId, variables);
+            yield* manager.chatWithPromptStream(promptId, variables as any);
             return;
         }
         const historySearchFn = getLastAnalysisHistorySearch();
@@ -80,7 +80,7 @@ export async function* streamSearchFollowup(
             yield evt;
         }
     } catch {
-        yield* manager.chatWithPromptStream(promptId, variables);
+        yield* manager.chatWithPromptStream(promptId, variables as any);
         return;
     }
 }

@@ -141,10 +141,8 @@ export function buildAiAnalyzeMarkdownFromSnapshot(
 	return buildAiSearchAnalysisMarkdown(docModel, options);
 }
 
-/**
- * Build a Markdown document for saving AI analysis results (legacy params; delegates to AiSearchAnalysisDoc).
- */
-export function buildAiAnalyzeMarkdown(params: {
+/** Params for buildAiAnalyzeMarkdown (exported for use in hooks). */
+export type BuildAiAnalyzeMarkdownParams = {
 	query: string;
 	webEnabled: boolean;
 	summary: string;
@@ -154,7 +152,12 @@ export function buildAiAnalyzeMarkdown(params: {
 	topicAnalyzeResults?: Record<string, ExportTopicAnalyzeResult[]>;
 	topicGraphResults?: Record<string, GraphPreview | null>;
 	estimatedTokens?: number;
-}, originalGraph?: AISearchGraph): string {
+};
+
+/**
+ * Build a Markdown document for saving AI analysis results (legacy params; delegates to AiSearchAnalysisDoc).
+ */
+export function buildAiAnalyzeMarkdown(params: BuildAiAnalyzeMarkdownParams, originalGraph?: AISearchGraph): string {
 	const snapshot: CompletedAnalysisSnapshot = {
 		version: 1,
 		summaries: params.summary ? [params.summary] : [],

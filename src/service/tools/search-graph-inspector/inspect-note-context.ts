@@ -1,13 +1,10 @@
-import { AppContext } from "@/app/context/AppContext";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { distillClusterNodesData, SemanticNeighborNode } from "./common";
 import { getSemanticNeighbors } from "./common";
 import { mapGetAll } from "@/core/utils/collection-utils";
-import { buildResponse, buildResponseFromRendered } from "../types";
+import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
-import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
-
 /** Inspect note context (tags, categories, in/out links, semantic neighbors). */
 export async function inspectNoteContext(params: any, templateManager?: TemplateManager) {
     const { note_path, limit, include_semantic_paths, response_format } = params;
@@ -20,14 +17,9 @@ export async function inspectNoteContext(params: any, templateManager?: Template
 
     const inAndOutEdges = await sqliteStoreManager.getGraphEdgeRepo()
         .getAllEdgesForNode(docMeta.id, limit);
-    let inComingNode = inAndOutEdges.filter(e => e.to_node_id === docMeta.id).map(e => e.from_node_id);
-    let outGoingNode = inAndOutEdges.filter(e => e.from_node_id === docMeta.id).map(e => e.to_node_id);
+    const inComingNode = inAndOutEdges.filter(e => e.to_node_id === docMeta.id).map(e => e.from_node_id);
+    const outGoingNode = inAndOutEdges.filter(e => e.from_node_id === docMeta.id).map(e => e.to_node_id);
 
-    const excludeCtx = await getAiAnalysisExcludeContext();
-    if (excludeCtx) {
-        inComingNode = inComingNode.filter((id) => !excludeCtx.excludedDocIds.has(id));
-        outGoingNode = outGoingNode.filter((id) => !excludeCtx.excludedDocIds.has(id));
-    }
     const connectedNodesMap = await sqliteStoreManager.getGraphNodeRepo()
         .getByIds([...inComingNode, ...outGoingNode]);
 
@@ -47,9 +39,6 @@ export async function inspectNoteContext(params: any, templateManager?: Template
         }
     }
 
-    if (excludeCtx) {
-        excludeCtx.excludedDocIds.forEach((id) => neighborDocumentsIds.add(id));
-    }
     const semanticNeighbors: SemanticNeighborNode[] = include_semantic_paths
         ? await getSemanticNeighbors(docMeta.id, limit, neighborDocumentsIds)
         : [];
@@ -68,10 +57,5 @@ export async function inspectNoteContext(params: any, templateManager?: Template
             semanticNeighbors, limit
         ),
     };
-    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
-    if (tm) {
-        const rendered = await tm.render(ToolTemplateId.InspectNoteContext, data);
-        return buildResponseFromRendered(response_format, data, rendered);
-    }
-    return buildResponse(response_format, undefined, data);
+    return buildResponse(response_format, ToolTemplateId.InspectNoteContext, data, { templateManager });
 }

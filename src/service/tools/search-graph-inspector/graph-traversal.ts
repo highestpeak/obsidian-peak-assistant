@@ -1,14 +1,11 @@
-import { AppContext } from "@/app/context/AppContext";
 import { GRAPH_INSPECT_STEP_TIME_LIMIT } from "@/core/constant";
 import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
 import { GraphEdge } from "@/core/storage/sqlite/repositories/GraphEdgeRepo";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, distillClusterNodesData, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
-import { buildResponse, buildResponseFromRendered } from "../types";
+import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
-import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
-
 type GraphTraversalResult = GraphNode
     & {
         depth: number;
@@ -52,11 +49,7 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
         return `Graph Traversal Failed. Start note node "${start_note_path}" not found in graph database.`;
     }
 
-    const excludeCtx = await getAiAnalysisExcludeContext();
     const visited = new Set<string>([startNode.id]);
-    if (excludeCtx) {
-        excludeCtx.excludedDocIds.forEach((id) => visited.add(id));
-    }
 
     // BFS traversal - collect both nodes and edges for visualization
     let isTimeOut = false;
@@ -110,7 +103,6 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
             semanticLimit = decayMap[current.depth] ?? 0;
         }
         const semanticFilterSet = new Set([...inComingNode, ...outGoingNode]);
-        if (excludeCtx) excludeCtx.excludedDocIds.forEach((id) => semanticFilterSet.add(id));
         const semanticNodes = include_semantic_paths && current.type === "document"
             ? await getSemanticNeighbors(current.id, semanticLimit, semanticFilterSet)
             : [];
@@ -214,10 +206,5 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
             edges: graphVisualizationEdges
         }
     };
-    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
-    if (tm) {
-        const rendered = await tm.render(ToolTemplateId.GraphTraversal, data);
-        return buildResponseFromRendered(response_format, data, rendered);
-    }
-    return buildResponse(response_format, undefined, data);
+    return buildResponse(response_format, ToolTemplateId.GraphTraversal, data, { templateManager });
 }

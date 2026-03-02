@@ -15,7 +15,7 @@ import {
 import { contentReaderTool } from '@/service/tools/content-reader';
 import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
-import { PromptId } from '@/service/prompt/PromptId';
+import { PromptId, type PromptVariables } from '@/service/prompt/PromptId';
 import { mergeTokenUsage, type LLMStreamEvent, type LLMUsage } from '@/core/providers/types';
 
 export type HistorySearchFn = (query: string, options?: { maxChars?: number }) => string;
@@ -92,7 +92,7 @@ export class FollowupChatAgent {
         variables: Record<string, unknown>
     ): AsyncGenerator<LLMStreamEvent> {
         const system = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisFollowupSystem, {});
-        const prompt = await this.aiServiceManager.renderPrompt(promptId, variables);
+        const prompt = await this.aiServiceManager.renderPrompt(promptId, variables as PromptVariables[PromptId]);
         const result = this.agent.stream({ system, prompt });
         let acc = '';
         let accumulatedUsage: LLMUsage | null = null;

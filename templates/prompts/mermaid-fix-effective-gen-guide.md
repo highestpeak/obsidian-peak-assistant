@@ -75,7 +75,8 @@ This section is your exhaustive internal reference guide. You must apply these r
        *   Example: `flowchart LR`
    *   **Nodes:**
        *   Syntax: `id[Text Label]`, `id("Text Label")`, `id(["Text Label"])`, `id[["Text Label"]]`, `id>"Text Label"]`, `id[/Text Label/]`, `id[\Text Label\]`, `id[/"Text Label"/]`, `id[\"Text Label"/]`, `id(/"Text Label"/)`, `id((\"Text Label"/))`, `id{"Text Label"}`, `id{{"Text Label"}}`.
-       *   Default: `id[Text]` (Rectangle)
+       *   **CRITICAL — Rectangle `id[...]` labels:** The content inside square brackets is parsed as a single token. **You must wrap the entire label in one pair of double quotes:** `id["Your full label here"]`. **Never put unescaped double quotes inside the brackets** (e.g. `id[Search for "keyword"]` causes a parse error). If the label contains a quote character, use the quoted form for the whole label and escape internal quotes per renderer (or rephrase to avoid quotes).
+       *   Default: `id[Text]` (Rectangle) or `id["Text"]` (Rectangle, safe when label has spaces/special chars)
        *   Rounded: `id(Text)`
        *   Stadium-shaped: `id([Text])`
        *   Subroutine-shape: `id[[Text]]`

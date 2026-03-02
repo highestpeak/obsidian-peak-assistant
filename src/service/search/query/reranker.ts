@@ -1,6 +1,7 @@
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { SearchSettings } from '@/app/settings/types';
 import type { SearchResultItem, SearchScopeValue } from '../types';
+import type { IndexTenant } from '@/core/storage/sqlite/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
 import type { RerankDocument } from '@/core/providers/rerank/types';
@@ -41,6 +42,7 @@ export class Reranker {
 		query: string,
 		scopeValue?: SearchScopeValue,
 		enableLLMRerank: boolean = false,
+		indexTenant: IndexTenant = 'vault',
 	): Promise<SearchResultItem[]> {
 		if (!query || items.length === 0) {
 			return items.map((i) => ({ ...i, score: i.score ?? 0 })) as SearchResultItem[];
@@ -48,12 +50,12 @@ export class Reranker {
 
 		// Get ranking signals and related paths for boost context.
 		// eg: last open time, open count, etc.
-		const signals = await this.getSignalsForPaths(items.map((i) => i.path));
+		const signals = await this.getSignalsForPaths(items.map((i) => i.path), indexTenant);
 		const related = scopeValue?.currentFilePath
 			? await this.getRelatedPathsWithinHops({
 				startPath: scopeValue.currentFilePath,
 				maxHops: 2,
-			})
+			}, indexTenant)
 			: new Set<string>();
 
 		// Apply ranking boosts (always performed for better relevance)
@@ -89,10 +91,10 @@ export class Reranker {
 	/**
 	 * Get ranking signals for given paths.
 	 */
-	private async getSignalsForPaths(paths: string[]): Promise<RankingSignals> {
+	private async getSignalsForPaths(paths: string[], tenant: IndexTenant = 'vault'): Promise<RankingSignals> {
 		if (!paths.length) return new Map();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
+		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
+		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
 
 		// Get doc_ids from paths
 		const metaMap = await docMetaRepo.getByPaths(paths);
@@ -114,9 +116,9 @@ export class Reranker {
 	/**
 	 * Get related document paths within N hops using GraphStore.
 	 */
-	private async getRelatedPathsWithinHops(params: { startPath: string; maxHops: number }): Promise<Set<string>> {
+	private async getRelatedPathsWithinHops(params: { startPath: string; maxHops: number }, tenant: IndexTenant = 'vault'): Promise<Set<string>> {
 		const maxHops = Math.max(1, Number(params.maxHops ?? 2));
-		const graphStore = sqliteStoreManager.getGraphStore();
+		const graphStore = sqliteStoreManager.getGraphStore(tenant);
 		return await graphStore.getRelatedFilePaths({
 			currentFilePath: params.startPath,
 			maxHops,

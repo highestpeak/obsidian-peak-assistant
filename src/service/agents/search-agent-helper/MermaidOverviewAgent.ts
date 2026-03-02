@@ -85,10 +85,12 @@ export class MermaidOverviewAgent {
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisOverviewMermaid);
         const originalQuery = this.context.getInitialPrompt() ?? '';
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
+        const dossier = this.context.getDossierForSummary();
+        const overviewContext = dossier.verifiedFactSheet || (dossier.confirmedFacts?.length ? dossier.confirmedFacts.join('\n') : '(No verified facts yet.)');
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisOverviewMermaid, {
             originalQuery,
-            agentMemoryMessage: this.context.getLatestMessageText(),
-            lastMermaid: this.context.getMindflowContext()?.lastMermaid,
+            agentMemoryMessage: overviewContext,
+            lastMermaid: this.context.getLatestMindflowMermaid(),
             ...buildErrorRetryInfo(retryCtx) ?? {},
         });
 

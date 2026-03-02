@@ -3,7 +3,8 @@ import { Activity, ChevronDown, ChevronRight, Check } from 'lucide-react';
 import { type UIStepRecord } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { motion } from 'framer-motion';
 import { AnalysisTimer } from '@/ui/component/mine/IntelligenceFrame';
-import { useSubscribeUIEvent } from '@/ui/store/uiEventStore';
+import { useSubscribeUIEvent, useUIEventStore } from '@/ui/store/uiEventStore';
+import { useStepDisplayReplayStore } from '@/ui/view/quick-search/store/stepDisplayReplayStore';
 import { UIStepType } from '@/core/providers/types';
 
 export type StreamingDisplayMethods = {
@@ -226,14 +227,17 @@ const useIncrementalRenderer = (
  * Inspired by the thinkingSteps design pattern with incremental rendering
  */
 export const StreamingStepsDisplay: React.FC<{
-	steps: UIStepRecord[];
-	currentStep: UIStepRecord | null;
-	stepTrigger: number;
+	/** Omit when streaming; steps are driven by ui-step events. Pass when showing completed analysis from store. */
+	steps?: UIStepRecord[];
+	/** Omit when streaming; current step comes from ui-step events. */
+	currentStep?: UIStepRecord | null;
+	/** Omit when streaming. */
+	stepTrigger?: number;
 	registerCurrentStepRender?: (methods: StreamingDisplayMethods) => void;
 	startedAtMs?: number | null;
 	isRunning?: boolean;
 	finalDurationMs?: number | null;
-}> = ({ steps, currentStep, stepTrigger, startedAtMs, isRunning, finalDurationMs }) => {
+}> = ({ steps = [], currentStep = null, stepTrigger = 0, startedAtMs, isRunning, finalDurationMs }) => {
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const currentStepContainerRef = useRef<HTMLDivElement>(null);
 	const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
@@ -341,6 +345,17 @@ export const StreamingStepsDisplay: React.FC<{
 
 	useSubscribeUIEvent(new Set(['ui-step', 'ui-step-delta']), handleUIEvent);
 
+	const streamStarted = useStepDisplayReplayStore((s) => s.streamStarted);
+	// Replay last ui-step on load when we mounted after it was published (read from UI event store)
+	useEffect(() => {
+		if (!streamStarted) return;
+		const last = useUIEventStore.getState().lastEvent;
+		if (last?.type !== 'ui-step' || last.payload?.uiType !== UIStepType.STEPS_DISPLAY) return;
+		const stepId = last.payload?.stepId;
+		if (!stepId || eventStepIds.includes(stepId)) return;
+		handleUIEvent('ui-step', last.payload);
+	}, [streamStarted, eventStepIds, handleUIEvent]);
+
 	// On complete, flush last step to eventStepsById and clear current.
 	const handleComplete = useCallback(() => {
 		flushDeltaAccum();
@@ -381,7 +396,7 @@ export const StreamingStepsDisplay: React.FC<{
 			const completedIds = idx >= 0 ? eventStepIds.slice(0, idx) : eventStepIds;
 			list = completedIds.map((id) => eventStepsById[id]).filter(Boolean) as EventStep[];
 		} else {
-			list = steps.map((step) => ({
+			list = (steps ?? []).map((step) => ({
 				title: step.title,
 				description: step.description,
 				fullText: step.description,

@@ -3,7 +3,7 @@
  * Used before UI render to catch and fix errors early.
  */
 import type { SearchAgentResult, DashboardBlock } from '@/service/agents/AISearchAgent';
-import { getMermaidInner } from './mermaid-utils';
+import { getMermaidInner, normalizeMermaidNodeStyleColons } from './mermaid-utils';
 
 export interface ValidationReport {
     blockErrors: Array<{ blockId: string; renderEngine: string; errors: string[] }>;
@@ -17,16 +17,18 @@ export async function validateMermaidCode(code?: string): Promise<{ valid: true 
         valid: false,
         error: 'Empty mermaid code'
     };
-    const inner = getMermaidInner(code || '').trim();
+    let inner = getMermaidInner(code || '').trim();
     if (!inner) return { valid: false, error: 'Empty mermaid code' };
+    inner = normalizeMermaidNodeStyleColons(inner);
     try {
         const mermaid = await import('mermaid').then((m) => m.default);
         mermaid.initialize?.({ startOnLoad: false, suppressErrorRendering: true });
-        const result = await mermaid.parse(inner, { suppressErrors: true });
-        if (result === false) return { valid: false, error: 'Mermaid parse failed (syntax invalid)' };
+        // Do not use suppressErrors: true — when invalid, parse throws and we need the message for MermaidFixAgent.
+        await mermaid.parse(inner);
         return { valid: true };
-    } catch (e: any) {
-        return { valid: false, error: String(e?.message ?? e ?? 'Unknown mermaid parse error') };
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e ?? 'Unknown mermaid parse error');
+        return { valid: false, error: msg };
     }
 }
 

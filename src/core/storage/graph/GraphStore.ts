@@ -332,18 +332,43 @@ export class GraphStore {
 	}
 
 	/**
-	 * @returns Map<docId, { tags: string[]; categories: string[] }>
+	 * Tag/category stats for given doc ids, or full vault when docIds is undefined.
+	 * When docIds is undefined (root), aggregates in SQL only — no edges loaded into memory.
 	 */
-	async getTagsAndCategoriesByDocIds(docIds: string[]):
+	async getTagsAndCategoriesByDocIds(docIds: string[] | undefined):
 		Promise<{
 			idMapToTagsAndCategories: Map<string, { tags: string[]; categories: string[] }>,
 			tagCounts: Map<string, number>,
 			categoryCounts: Map<string, number>,
 		}> {
+		if (docIds === undefined) {
+			const edgeCounts = await this.edgeRepo.getTagCategoryEdgeCountsByToNode();
+			if (!edgeCounts.length) {
+				return { idMapToTagsAndCategories: new Map(), tagCounts: new Map(), categoryCounts: new Map() };
+			}
+			const toNodeIds = [...new Set(edgeCounts.map((e) => e.to_node_id))];
+			const nodeMap = await this.nodeRepo.getByIds(toNodeIds);
+			const tagCounts = new Map<string, number>();
+			const categoryCounts = new Map<string, number>();
+			for (const { to_node_id, count } of edgeCounts) {
+				const node = nodeMap.get(to_node_id);
+				if (!node) continue;
+				if (node.type === 'tag') {
+					tagCounts.set(node.label, (tagCounts.get(node.label) ?? 0) + count);
+				} else if (node.type === 'category') {
+					categoryCounts.set(node.label, (categoryCounts.get(node.label) ?? 0) + count);
+				}
+			}
+			return {
+				idMapToTagsAndCategories: new Map(),
+				tagCounts,
+				categoryCounts,
+			};
+		}
+
 		const allTagCategoryEdge = await this.edgeRepo.getByFromNodesAndTypes(docIds, ['tagged', 'categorized']);
 		const allTagCategoryNodeMap = await this.nodeRepo.getByIds(allTagCategoryEdge.map(edge => edge.to_node_id));
 
-		// Count occurrences of each tag and category across docIds from allTagCategoryEdge
 		const tagCounts: Map<string, number> = new Map();
 		const categoryCounts: Map<string, number> = new Map();
 		for (const edge of allTagCategoryEdge) {

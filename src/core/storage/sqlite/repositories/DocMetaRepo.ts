@@ -204,21 +204,45 @@ export class DocMetaRepo {
 	}
 
 	/**
-	 * Get document IDs by folder path (including subfolders).
+	 * Get document IDs by folder path (including subfolders). Path-based only; no full-table load.
+	 * Empty folderPath returns [] (callers should treat root as full-vault via other APIs, not by loading all ids).
 	 */
-	async getByFolderPath(folderPath: string): Promise<{ id: string, path: string }[]> {
-		if (!folderPath) return [];
+	async getIdsByFolderPath(folderPath: string): Promise<{ id: string, path: string }[]> {
+		if (folderPath === '') return [];
 		const rows = await this.db
 			.selectFrom('doc_meta')
 			.select(['id', 'path'])
 			.where((eb) =>
 				eb.or([
 					eb('path', 'like', `${folderPath}/%`),
-					eb('path', '=', folderPath)
+					eb('path', '=', folderPath),
 				])
 			)
 			.execute();
-		return rows.map(row => ({ id: row.id, path: row.path }));
+		return rows.map((row) => ({ id: row.id, path: row.path }));
+	}
+
+	/**
+	 * Get document IDs whose path is under any of the given folder prefixes.
+	 * Used for exclude-folder filtering (path = exact or path LIKE prefix/%).
+	 */
+	async getIdsByPathPrefixes(prefixes: string[]): Promise<{ id: string; path: string }[]> {
+		if (!prefixes.length) return [];
+		const rows = await this.db
+			.selectFrom('doc_meta')
+			.select(['id', 'path'])
+			.where((eb) =>
+				eb.or(prefixes.map((p) => {
+					const folderLike = p.endsWith('/') ? p : p + '/';
+					const exact = folderLike.slice(0, -1);
+					return eb.or([
+						eb('path', 'like', `${folderLike}%`),
+						eb('path', '=', exact),
+					]);
+				})),
+			)
+			.execute();
+		return rows.map((row) => ({ id: row.id, path: row.path }));
 	}
 
 	/**

@@ -386,7 +386,7 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 								Max Multi-Agent Iterations
 							</label>
 							<p className="pktw-text-xs pktw-text-muted-foreground">
-								Maximum iterations for the ThoughtAgent-SearchAgent ReAct loop. Default: 10
+								Maximum iterations for the MindFlow–RawSearch ReAct loop. Default: 10
 							</p>
 						</div>
 						{/* Right side: input */}
@@ -401,7 +401,7 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 						</div>
 					</div>
 
-					{/* ThoughtAgent Session Summary Word Count */}
+					{/* AI Analysis Session Summary Word Count */}
 					<div className="pktw-flex pktw-items-start pktw-gap-4">
 						<div className="pktw-flex-1 pktw-min-w-0">
 							<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">

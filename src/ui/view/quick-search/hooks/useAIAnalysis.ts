@@ -14,9 +14,11 @@ import { useSharedStore } from '@/ui/view/quick-search/store';
 import { setLastAnalysisHistorySearch, invalidateFollowupContextCache } from '../followupContextRuntime';
 import { AppContext } from '@/app/context/AppContext';
 import { SearchAgentResult } from '@/service/agents/AISearchAgent';
+import { mountSearchMemoryDebug, clearSearchMemoryDebug } from '@/service/agents/search-agent-helper/searchMemoryDebugMount';
 import { LLMStreamEvent, StreamTriggerName, UISignalChannel } from '@/core/providers/types';
 import { checkIfDeltaEvent, getDeltaEventDeltaText } from '@/core/providers/helpers/stream-helper';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
+import { useStepDisplayReplayStore } from '../store/stepDisplayReplayStore';
 import { Notice } from 'obsidian';
 
 export function useAIAnalysis() {
@@ -90,20 +92,19 @@ export function useAIAnalysis() {
 							? `${anyEvent.channel ?? 'signal'}:${anyEvent.kind ?? 'event'}${anyEvent.entityId ? ` (${anyEvent.entityId})` : ''}`
 							: 'unknown';
 
-			// Merge tool-result with matching tool-call (search backwards; ui-delta etc. may appear in between)
-			if (event.type === 'tool-result' && arr.length > 0) {
-				for (let i = arr.length - 1; i >= 0; i--) {
-					const candidate = arr[i];
-					if (candidate.eventType === 'tool-call' && candidate.what === currentWhat) {
-						candidate.eventType = 'tool-call+result';
-						candidate.output = anyEvent.output !== undefined
-							? anyEvent.toolName !== 'content_reader' ? anyEvent.output : 'content_reader_skipped'
-							: candidate.output;
-						candidate.ts = Date.now();
-						return;
-					}
-				}
-			}
+			// Never store full content_reader output in timeline (too large)
+			const isContentReader = anyEvent.toolName === 'content_reader';
+			const rawOutput = anyEvent.output !== undefined && !isContentReader
+				? anyEvent.output
+				: anyEvent.output !== undefined && isContentReader
+					? 'content_reader_skipped'
+					: anyEvent.title || anyEvent.description
+						? [anyEvent.title, anyEvent.description].filter(Boolean).join('. ')
+						: deltaText
+							? deltaText + (event.type ? ` [${event.type}]` : '')
+							: event.type === 'ui-signal'
+								? { channel: anyEvent.channel, kind: anyEvent.kind, entityId: anyEvent.entityId, payload: anyEvent.payload }
+								: anyEvent.extra ?? (anyEvent.error ? (anyEvent.error?.message ?? String(anyEvent.error)) : undefined);
 
 			arr.push({
 				ts: Date.now(),
@@ -111,17 +112,7 @@ export function useAIAnalysis() {
 				agent: event.triggerName || 'unknown',
 				what: currentWhat,
 				input: anyEvent.input,
-				// to avoid later object reference issues, we stringify the output. get the current snapshot of the output.
-				output: JSON.stringify(anyEvent.output !== undefined
-					? anyEvent.toolName !== 'content_reader' ? anyEvent.output : 'content_reader_skipped'
-					: anyEvent.title || anyEvent.description
-						? [anyEvent.title, anyEvent.description].filter(Boolean).join('. ')
-						: deltaText
-							? deltaText + (event.type ? ` [${event.type}]` : '')
-							: event.type === 'ui-signal'
-								? { channel: anyEvent.channel, kind: anyEvent.kind, entityId: anyEvent.entityId, payload: anyEvent.payload }
-								: anyEvent.extra ?? (anyEvent.error ? (anyEvent.error?.message ?? String(anyEvent.error)) : undefined)
-				),
+				output: JSON.stringify(rawOutput),
 				tokens: anyEvent.usage ? {
 					inputTokens: anyEvent.usage.inputTokens ?? 0,
 					outputTokens: anyEvent.usage.outputTokens ?? 0,
@@ -197,10 +188,12 @@ export function useAIAnalysis() {
 
 	// Real agent when not mock; MockAISearchAgent in desktop dev so one code path
 	const aiSearchAgent = useMemo(() => {
+		const maxIter = AppContext.getInstance().settings?.search?.maxMultiAgentIterations;
 		return AppContext.searchAgent({
 			enableWebSearch: webEnabled,
 			enableLocalSearch: true,
 			analysisMode: analysisMode ?? 'vaultFull',
+			maxMultiAgentIterations: typeof maxIter === 'number' ? maxIter : undefined,
 		});
 	}, [webEnabled, analysisMode]);
 
@@ -214,7 +207,6 @@ export function useAIAnalysis() {
 	 */
 	const applySearchResult = useCallback((result: SearchAgentResult) => {
 		if (result.summary) setSummary(result.summary);
-		if (result.graph) setGraph(result.graph);
 		if (result.dashboardBlocks) setDashboardBlocks(result.dashboardBlocks);
 		if (result.topics) setTopics(result.topics);
 		if (result.sources) setSources(result.sources);
@@ -274,6 +266,7 @@ export function useAIAnalysis() {
 			}
 
 			resetAIAnalysisAll();
+			useStepDisplayReplayStore.getState().reset();
 			invalidateFollowupContextCache();
 			startAnalyzing();
 			didCancelRef.current = false;
@@ -286,6 +279,10 @@ export function useAIAnalysis() {
 				summaryFlushTimerRef.current = null;
 			}
 
+			if (AppContext.getInstance().settings?.enableDevTools && aiSearchAgent) {
+				mountSearchMemoryDebug(aiSearchAgent);
+			}
+
 			const stream = await aiSearchAgent!.stream(searchQuery, scopeValue ? { scopeValue } : undefined);
 
 			// Process the stream directly
@@ -293,6 +290,7 @@ export function useAIAnalysis() {
 				if (!useAIAnalysisRuntimeStore.getState().hasStartedStreaming) {
 					console.debug('[useAIAnalysis] Starting streaming');
 					startStreaming();
+					useStepDisplayReplayStore.getState().setStreamStarted(true);
 				}
 				// Check if analysis is being cancelled
 				if (signal?.aborted) {
@@ -342,7 +340,7 @@ export function useAIAnalysis() {
 					case 'tool-result': {
 						const currentResult = event.extra?.currentResult as SearchAgentResult | undefined;
 						if (currentResult) {
-							console.log('[useAIAnalysis] tool-result applySearchResult');
+							// console.log('[useAIAnalysis] tool-result applySearchResult');
 							applySearchResult(currentResult);
 						}
 						break;
@@ -449,6 +447,7 @@ export function useAIAnalysis() {
 				);
 			}
 		} finally {
+			clearSearchMemoryDebug();
 			flushSummaryBuffer();
 			const rt = useAIAnalysisRuntimeStore.getState();
 			const sum = useAIAnalysisSummaryStore.getState();

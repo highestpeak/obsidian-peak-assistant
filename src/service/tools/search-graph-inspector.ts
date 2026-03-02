@@ -146,9 +146,13 @@ export function localSearchWholeVaultTool(templateManager?: TemplateManager): Ag
         description: `Full-text and semantic search across the vault. Use keywords or semantic description to find relevant notes.`,
         inputSchema: localSearchWholeVaultInputSchema,
         execute: async (params) => {
+            const rawFolder = params.folder_path;
+            const folderPath = rawFolder != null && String(rawFolder).trim() !== ''
+                ? String(rawFolder).trim().replace(/\/+$/, '')
+                : undefined;
             const scopeValue = {
                 currentFilePath: params.current_file_path,
-                folderPath: params.folder_path,
+                folderPath,
                 limitIdsSet: params.limit_ids_set
             };
             return await localSearch(

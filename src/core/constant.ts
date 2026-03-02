@@ -19,12 +19,12 @@ export const INDEX_CHECK_BATCH_SIZE = 100;
 /**
  * Search database filename.
  */
-export const SEARCH_DB_FILENAME = 'search.sqlite';
+export const VAULT_DB_FILENAME = 'vault.sqlite';
 
 /**
  * Meta database filename for chat and project data.
  */
-export const META_DB_FILENAME = 'meta.sqlite';
+export const CHAT_DB_FILENAME = 'chat.sqlite';
 
 /**
  * Progress update interval in milliseconds for indexing operations.

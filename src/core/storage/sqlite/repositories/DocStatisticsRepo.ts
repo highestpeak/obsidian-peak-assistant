@@ -227,85 +227,94 @@ export class DocStatisticsRepo {
 			.execute();
 	}
 
+	/** Total row count (for full-vault stats). */
+	async countAll(): Promise<number> {
+		const r = await this.db
+			.selectFrom('doc_statistics')
+			.select(({ fn }) => fn.countAll().as('c'))
+			.executeTakeFirst();
+		return Number(r?.c ?? 0);
+	}
+
 	/**
-	 * Get top documents by updated_at within doc_ids.
+	 * Get top documents by updated_at. When docIds is undefined, uses full table (e.g. root folder).
 	 */
-	async getTopRecentEditedByDocIds(docIds: string[], limit: number): Promise<Array<{ doc_id: string, updated_at: number }>> {
-		if (!docIds.length) return [];
-		const rows = await this.db
+	async getTopRecentEditedByDocIds(docIds: string[] | undefined, limit: number): Promise<Array<{ doc_id: string, updated_at: number }>> {
+		if (docIds !== undefined && docIds.length === 0) return [];
+		let q = this.db
 			.selectFrom('doc_statistics')
 			.select(['doc_id', 'updated_at'])
-			.where('doc_id', 'in', docIds)
 			.where('updated_at', 'is not', null)
 			.orderBy('updated_at', 'desc')
-			.limit(limit)
-			.execute();
+			.limit(limit);
+		if (docIds !== undefined) q = q.where('doc_id', 'in', docIds);
+		const rows = await q.execute();
 		return rows as Array<{ doc_id: string, updated_at: number }>;
 	}
 
 	/**
-	 * Get top documents by word_count within doc_ids.
+	 * Get top documents by word_count. When docIds is undefined, uses full table.
 	 */
-	async getTopWordCountByDocIds(docIds: string[], limit: number): Promise<Array<{ doc_id: string, word_count: number }>> {
-		if (!docIds.length) return [];
-		const rows = await this.db
+	async getTopWordCountByDocIds(docIds: string[] | undefined, limit: number): Promise<Array<{ doc_id: string, word_count: number }>> {
+		if (docIds !== undefined && docIds.length === 0) return [];
+		let q = this.db
 			.selectFrom('doc_statistics')
 			.select(['doc_id', 'word_count'])
-			.where('doc_id', 'in', docIds)
 			.where('word_count', 'is not', null)
 			.orderBy('word_count', 'desc')
-			.limit(limit)
-			.execute();
+			.limit(limit);
+		if (docIds !== undefined) q = q.where('doc_id', 'in', docIds);
+		const rows = await q.execute();
 		return rows as Array<{ doc_id: string, word_count: number }>;
 	}
 
 	/**
-	 * Get top documents by char_count within doc_ids.
+	 * Get top documents by char_count. When docIds is undefined, uses full table.
 	 */
-	async getTopCharCountByDocIds(docIds: string[], limit: number): Promise<Array<{ doc_id: string, char_count: number }>> {
-		if (!docIds.length) return [];
-		const rows = await this.db
+	async getTopCharCountByDocIds(docIds: string[] | undefined, limit: number): Promise<Array<{ doc_id: string, char_count: number }>> {
+		if (docIds !== undefined && docIds.length === 0) return [];
+		let q = this.db
 			.selectFrom('doc_statistics')
 			.select(['doc_id', 'char_count'])
-			.where('doc_id', 'in', docIds)
 			.where('char_count', 'is not', null)
 			.orderBy('char_count', 'desc')
-			.limit(limit)
-			.execute();
+			.limit(limit);
+		if (docIds !== undefined) q = q.where('doc_id', 'in', docIds);
+		const rows = await q.execute();
 		return rows as Array<{ doc_id: string, char_count: number }>;
 	}
 
 	/**
-	 * Get top documents by richness_score within doc_ids.
+	 * Get top documents by richness_score. When docIds is undefined, uses full table.
 	 */
-	async getTopRichnessByDocIds(docIds: string[], limit: number): Promise<Array<{ doc_id: string, richness_score: number }>> {
-		if (!docIds.length) return [];
-		const rows = await this.db
+	async getTopRichnessByDocIds(docIds: string[] | undefined, limit: number): Promise<Array<{ doc_id: string, richness_score: number }>> {
+		if (docIds !== undefined && docIds.length === 0) return [];
+		let q = this.db
 			.selectFrom('doc_statistics')
 			.select(['doc_id', 'richness_score'])
-			.where('doc_id', 'in', docIds)
 			.where('richness_score', 'is not', null)
 			.orderBy('richness_score', 'desc')
-			.limit(limit)
-			.execute();
+			.limit(limit);
+		if (docIds !== undefined) q = q.where('doc_id', 'in', docIds);
+		const rows = await q.execute();
 		return rows as Array<{ doc_id: string, richness_score: number }>;
 	}
 
 	/**
-	 * Get language statistics within doc_ids.
+	 * Get language statistics. When docIds is undefined, uses full table.
 	 */
-	async getLanguageStatsByDocIds(docIds: string[]): Promise<Array<{ language: string, count: number }>> {
-		if (!docIds.length) return [];
-		const rows = await this.db
+	async getLanguageStatsByDocIds(docIds: string[] | undefined): Promise<Array<{ language: string, count: number }>> {
+		if (docIds !== undefined && docIds.length === 0) return [];
+		let q = this.db
 			.selectFrom('doc_statistics')
 			.select(({ fn }) => [
 				'language',
 				fn.count<number>('doc_id').as('count')
 			])
-			.where('doc_id', 'in', docIds)
 			.where('language', 'is not', null)
-			.groupBy('language')
-			.execute();
+			.groupBy('language');
+		if (docIds !== undefined) q = q.where('doc_id', 'in', docIds);
+		const rows = await q.execute();
 		return rows as Array<{ language: string, count: number }>;
 	}
 }

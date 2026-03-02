@@ -2,6 +2,15 @@ import type { ZodType } from "@/core/schemas";
 import { ZodError } from "@/core/schemas";
 import { getCompiledBounded } from '@/core/template-engine-helper';
 import { LLMStreamEvent, StreamTriggerName } from "@/core/providers/types";
+import { ToolTemplateId, type ToolTemplateId as ToolTemplateIdType } from "@/core/template/TemplateRegistry";
+import type { TemplateManager } from "@/core/template/TemplateManager";
+import { AppContext } from "@/app/context/AppContext";
+
+const TOOL_TEMPLATE_IDS = new Set<string>(Object.values(ToolTemplateId));
+
+function isToolTemplateId(s: string): s is ToolTemplateIdType {
+    return TOOL_TEMPLATE_IDS.has(s);
+}
 
 export { clearBuildResponseCompileCache } from '@/core/template-engine-helper';
 
@@ -33,8 +42,9 @@ export function safeAgentTool(tool: AgentTool): AgentTool {
                 };
             } catch (error) {
                 if (error instanceof ZodError) {
+                    const details = error.errors.map((e: { message: string }) => e.message).join("; ");
                     return {
-                        error: "[Tool Safe Wrapper][Zod] Not valid parameters: " + error.errors.map((e: { message: string }) => e.message).join(", "),
+                        error: "FAILED: Invalid or missing parameters. " + details + " Fix and re-run the tool with the required fields.",
                         durationMs: Date.now() - start,
                     };
                 }
@@ -80,41 +90,41 @@ export async function withTimeoutMessage<T>(
     ]);
 }
 
-/**
- * Build the response based on the response format.
- * Uses a bounded compile cache to avoid re-compiling the same template every call (prevents Handlebars memory leak).
- */
-export function buildResponse(responseFormat: 'structured' | 'markdown' | 'hybrid', template: string | undefined, result: any) {
-    switch (responseFormat) {
-        case 'structured':
-            return result;
-        case 'markdown':
-            return template ? getCompiledBounded(template)(result) : result;
-        case 'hybrid':
-            return {
-                data: result,
-                template: template ? getCompiledBounded(template)(result) : result,
-            };
-        default:
-            throw new Error(`Invalid response format: ${responseFormat}`);
-    }
+export interface BuildResponseOptions {
+    templateManager?: TemplateManager;
 }
 
 /**
- * Build response when markdown is already rendered (e.g. from TemplateManager).
+ * Build the response based on the response format.
+ * When templateId is provided, renders only when format is 'markdown' or 'hybrid' (lazy render).
+ * When template is a string, uses bounded compile cache (prevents Handlebars memory leak).
  */
-export function buildResponseFromRendered(
+export async function buildResponse(
     responseFormat: 'structured' | 'markdown' | 'hybrid',
+    templateOrId: string | ToolTemplateId | undefined,
     result: any,
-    renderedMarkdown: string,
-) {
+    options?: BuildResponseOptions,
+): Promise<any> {
+    if (responseFormat === 'structured') {
+        return result;
+    }
+    let rendered: string | undefined;
+    if (templateOrId !== undefined) {
+        const useTemplateManager = typeof templateOrId === 'string' ? isToolTemplateId(templateOrId) : true;
+        if (useTemplateManager) {
+            const tm = options?.templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+            if (tm) {
+                rendered = await tm.render(templateOrId as ToolTemplateIdType, result);
+            }
+        } else {
+            rendered = getCompiledBounded(templateOrId as string)(result);
+        }
+    }
     switch (responseFormat) {
-        case 'structured':
-            return result;
         case 'markdown':
-            return renderedMarkdown;
+            return rendered ?? result;
         case 'hybrid':
-            return { data: result, template: renderedMarkdown };
+            return { data: result, template: rendered ?? result };
         default:
             throw new Error(`Invalid response format: ${responseFormat}`);
     }

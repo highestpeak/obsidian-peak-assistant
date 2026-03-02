@@ -26,7 +26,11 @@ const MermaidMindFlowSectionInner: React.FC<{
 							<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-flex-wrap">
 								<span>{progress.statusLabel}</span>
 								<span>{progress.estimatedCompleteness}%</span>
-								<span className={`pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-text-[9px] pktw-font-medium ${progress.decision === 'stop' ? 'pktw-bg-emerald-100 pktw-text-emerald-700' : 'pktw-bg-blue-100 pktw-text-blue-700'}`}>
+								<span className={`pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-text-[9px] pktw-font-medium ${
+									progress.decision === 'FINAL_ANSWER' ? 'pktw-bg-emerald-100 pktw-text-emerald-700' :
+									progress.decision === 'REQUEST_COMPRESSION' ? 'pktw-bg-amber-100 pktw-text-amber-700' :
+									'pktw-bg-blue-100 pktw-text-blue-700'
+								}`}>
 									{progress.decision}
 								</span>
 							</div>

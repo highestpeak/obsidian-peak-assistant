@@ -1,4 +1,6 @@
 import type { Chunk } from './types';
+import { AppContext } from '@/app/context/AppContext';
+import type { IndexTenant } from '@/core/storage/sqlite/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { GraphEdgeRepo } from '@/core/storage/sqlite/repositories/GraphEdgeRepo';
 import { normalizeTextForFts } from '../support/segmenter';
@@ -13,6 +15,15 @@ import { Stopwatch } from '@/core/utils/Stopwatch';
 import { getFileNameFromPath } from '@/core/utils/file-utils';
 
 export type StorageType = 'sqlite' | 'graph';
+
+/** Resolve index tenant from path: under settings.ai.rootFolder => chat, else vault. */
+export function getIndexTenantForPath(path: string): IndexTenant {
+	const rootFolder = AppContext.getInstance().settings?.ai?.rootFolder?.trim();
+	if (!rootFolder) return 'vault';
+	const normalized = path.replace(/^\/+/, '');
+	const prefix = rootFolder.endsWith('/') ? rootFolder.replace(/\/+$/, '') : rootFolder;
+	return (normalized === prefix || normalized.startsWith(prefix + '/')) ? 'chat' : 'vault';
+}
 
 export interface GetIndexStatusResponse {
 	indexBuiltAt: number | null;
@@ -147,32 +158,30 @@ export class IndexService {
 				);
 			}
 
+			const tenant = getIndexTenantForPath(docPath);
+
 			// Save all data within a transaction for consistency and to prevent deadlocks
 			sw.start('Save doc meta');
-			console.debug(`[IndexService] Saving doc meta for document: ${docPath}`);
-			await this.saveDocMeta(doc);
+			console.debug(`[IndexService] Saving doc meta for document: ${docPath} (tenant: ${tenant})`);
+			await this.saveDocMeta(doc, tenant);
 			sw.stop();
 
 			sw.start('Save search data');
 			console.debug(`[IndexService] Saving search data for document: ${docPath}`);
-			// Save search data (FTS and embeddings, not chunk data - reduce storage space)
 			const embeddingModelName = embeddingModel ? `${embeddingModel.provider}:${embeddingModel.modelId}` : undefined;
-			await this.saveSearchData(doc.id, doc.sourceFileInfo.path, doc.metadata.title, chunks, embeddingModelName);
+			await this.saveSearchData(doc.id, doc.sourceFileInfo.path, doc.metadata.title, chunks, embeddingModelName, tenant);
 			sw.stop();
 
 			sw.start('Save graph data');
-			// Save graph data (all document types have graph)
-			await this.upsertGraph(doc);
+			await this.upsertGraph(doc, tenant);
 			sw.stop();
 
 			sw.start('Update doc statistics');
-			// Update document statistics (word count, char count, etc.)
-			await this.updateDocStatistics(doc);
+			await this.updateDocStatistics(doc, tenant);
 			sw.stop();
 
 			sw.start('Update index state');
-			// Finally: Update index state (only after graph is complete)
-			await this.updateIndexState();
+			await this.updateIndexState(tenant);
 			sw.stop();
 		} catch (error) {
 			console.error(`[IndexService] Error indexing document:`, {
@@ -199,16 +208,60 @@ export class IndexService {
 	): Promise<void> {
 		if (!paths.length) return;
 
-		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
-		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
-		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
-		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-		const kdb = sqliteStoreManager.getSearchContext();
+		const byTenant = new Map<IndexTenant, string[]>();
+		for (const p of paths) {
+			const t = getIndexTenantForPath(p);
+			const list = byTenant.get(t) ?? [];
+			list.push(p);
+			byTenant.set(t, list);
+		}
 
-		await kdb.transaction().execute(async (trx) => {
-			// Get doc_ids from paths
+		for (const [tenant, tenantPaths] of byTenant) {
+			const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+			const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
+			const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
+			const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
+			const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
+			const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
+			const kdb = sqliteStoreManager.getIndexContext(tenant);
+
+			await kdb.transaction().execute(async () => {
+				const metaMap = await docMetaRepo.getByPaths(tenantPaths);
+				const docIds = Array.from(metaMap.values()).map((m) => m.id);
+
+				docChunkRepo.deleteFtsByDocIds(docIds);
+				docChunkRepo.deleteMetaFtsByDocIds(docIds);
+				await docChunkRepo.deleteByDocIds(docIds);
+				await embeddingRepo.deleteByDocIds(docIds);
+				await docStatisticsRepo.deleteByDocIds(docIds);
+				await docMetaRepo.deleteByPaths(tenantPaths);
+				await graphEdgeRepo.deleteByNodeIds(docIds);
+				await graphNodeRepo.deleteByIds(docIds);
+			});
+		}
+
+		onAfterMutation?.(['sqlite', 'graph']);
+	}
+
+	/**
+	 * Delete documents from a single index tenant only (for migration: remove from vault after re-indexing to chat).
+	 */
+	async deleteDocumentsFromTenant(
+		paths: string[],
+		tenant: IndexTenant,
+		onAfterMutation?: (types: StorageType[]) => void,
+	): Promise<void> {
+		if (!paths.length) return;
+
+		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
+		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
+		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
+		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
+		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
+		const kdb = sqliteStoreManager.getIndexContext(tenant);
+
+		await kdb.transaction().execute(async () => {
 			const metaMap = await docMetaRepo.getByPaths(paths);
 			const docIds = Array.from(metaMap.values()).map((m) => m.id);
 
@@ -218,13 +271,42 @@ export class IndexService {
 			await embeddingRepo.deleteByDocIds(docIds);
 			await docStatisticsRepo.deleteByDocIds(docIds);
 			await docMetaRepo.deleteByPaths(paths);
-
-			// Graph cleanup: remove document node(s). Keep tag/link nodes to avoid expensive GC.
-			await graphEdgeRepo.deleteByNodeIds(paths);
-			await graphNodeRepo.deleteByIds(paths);
+			await graphEdgeRepo.deleteByNodeIds(docIds);
+			await graphNodeRepo.deleteByIds(docIds);
 		});
 
 		onAfterMutation?.(['sqlite', 'graph']);
+	}
+
+	/**
+	 * Rebuild-style migration: list ChatFolder paths from VaultDB, re-index them into ChatDB, delete from VaultDB, then cleanup both.
+	 * Call this once to migrate existing ChatFolder index data from search.sqlite to meta.sqlite.
+	 */
+	async migrateChatFolderFromVaultToChat(settings: SearchSettings): Promise<{ reindexed: number; deletedFromVault: number }> {
+		const rootFolder = AppContext.getInstance().settings?.ai?.rootFolder?.trim();
+		if (!rootFolder) {
+			return { reindexed: 0, deletedFromVault: 0 };
+		}
+
+		const vaultMeta = sqliteStoreManager.getDocMetaRepo('vault');
+		const rows = await vaultMeta.getIdsByPathPrefixes([rootFolder]);
+		const paths = rows.map((r) => r.path);
+		if (!paths.length) {
+			return { reindexed: 0, deletedFromVault: 0 };
+		}
+
+		// Re-index each path into ChatDB (indexDocument routes by getIndexTenantForPath => chat)
+		for (const path of paths) {
+			await this.indexDocument(path, settings);
+		}
+
+		// Remove from VaultDB only
+		await this.deleteDocumentsFromTenant(paths, 'vault');
+
+		// Cleanup both DBs
+		await this.cleanupOrphanedSearchIndexData();
+
+		return { reindexed: paths.length, deletedFromVault: paths.length };
 	}
 
 	/**
@@ -236,30 +318,26 @@ export class IndexService {
 	async clearAllIndexData(
 		onAfterMutation?: (types: StorageType[]) => void,
 	): Promise<void> {
-		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
-		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
-		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
-		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-		const indexStateRepo = sqliteStoreManager.getIndexStateRepo();
+		const tenants: IndexTenant[] = ['vault', 'chat'];
+		for (const tenant of tenants) {
+			const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+			const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
+			const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
+			const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
+			const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
+			const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
+			const indexStateRepo = sqliteStoreManager.getIndexStateRepo(tenant);
 
-		// Clear all FTS data
-		docChunkRepo.deleteAllFts();
-		docChunkRepo.deleteAllMetaFts();
-
-		// Clear all document-related data
-		await docChunkRepo.deleteAll();
-		await embeddingRepo.deleteAll();
-		await docStatisticsRepo.deleteAll();
-		await docMetaRepo.deleteAll();
-
-		// Clear all graph data (including tags, links, etc.)
-		await graphEdgeRepo.deleteAll();
-		await graphNodeRepo.deleteAll();
-
-		// Reset index state
-		await indexStateRepo.clearAll();
+			docChunkRepo.deleteAllFts();
+			docChunkRepo.deleteAllMetaFts();
+			await docChunkRepo.deleteAll();
+			await embeddingRepo.deleteAll();
+			await docStatisticsRepo.deleteAll();
+			await docMetaRepo.deleteAll();
+			await graphEdgeRepo.deleteAll();
+			await graphNodeRepo.deleteAll();
+			await indexStateRepo.clearAll();
+		}
 
 		onAfterMutation?.(['sqlite', 'graph']);
 	}
@@ -277,14 +355,7 @@ export class IndexService {
 		stats: number;
 		graphNodes: number;
 	}> {
-		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
-		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
-		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
-		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-		const kdb = sqliteStoreManager.getSearchContext();
-
+		const tenants: IndexTenant[] = ['vault', 'chat'];
 		let metaFts = 0;
 		let fts = 0;
 		let chunks = 0;
@@ -292,28 +363,38 @@ export class IndexService {
 		let stats = 0;
 		let graphNodes = 0;
 
-		await kdb.transaction().execute(async () => {
-			metaFts = docChunkRepo.cleanupOrphanMetaFts();
-			fts = docChunkRepo.cleanupOrphanFts();
-			chunks = await docChunkRepo.cleanupOrphanChunks();
-			embeddings = await embeddingRepo.cleanupOrphanEmbeddings();
-			stats = await docStatisticsRepo.cleanupOrphanStats();
+		for (const tenant of tenants) {
+			const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+			const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
+			const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
+			const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
+			const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
+			const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
+			const kdb = sqliteStoreManager.getIndexContext(tenant);
 
-			const pathMap = await docMetaRepo.getAllIndexedPaths();
-			const paths = Array.from(pathMap.keys());
-			const idRows = paths.length > 0 ? await docMetaRepo.getIdsByPaths(paths) : [];
-			const validDocIds = new Set(idRows.map((r) => r.id));
+			await kdb.transaction().execute(async () => {
+				metaFts += docChunkRepo.cleanupOrphanMetaFts();
+				fts += docChunkRepo.cleanupOrphanFts();
+				chunks += await docChunkRepo.cleanupOrphanChunks();
+				embeddings += await embeddingRepo.cleanupOrphanEmbeddings();
+				stats += await docStatisticsRepo.cleanupOrphanStats();
 
-			const orphanDocNodes = await graphNodeRepo
-				.getByType('document')
-				.then((nodes) => nodes.filter((n) => !validDocIds.has(n.id)).map((n) => n.id));
+				const pathMap = await docMetaRepo.getAllIndexedPaths();
+				const paths = Array.from(pathMap.keys());
+				const idRows = paths.length > 0 ? await docMetaRepo.getIdsByPaths(paths) : [];
+				const validDocIds = new Set(idRows.map((r) => r.id));
 
-			if (orphanDocNodes.length > 0) {
-				await graphEdgeRepo.deleteByNodeIds(orphanDocNodes);
-				await graphNodeRepo.deleteByIds(orphanDocNodes);
-				graphNodes = orphanDocNodes.length;
-			}
-		});
+				const orphanDocNodes = await graphNodeRepo
+					.getByType('document')
+					.then((nodes) => nodes.filter((n) => !validDocIds.has(n.id)).map((n) => n.id));
+
+				if (orphanDocNodes.length > 0) {
+					await graphEdgeRepo.deleteByNodeIds(orphanDocNodes);
+					await graphNodeRepo.deleteByIds(orphanDocNodes);
+					graphNodes += orphanDocNodes.length;
+				}
+			});
+		}
 
 		return { metaFts, fts, chunks, embeddings, stats, graphNodes };
 	}
@@ -322,7 +403,7 @@ export class IndexService {
 	 * Get index status including build timestamp and indexed document count.
 	 */
 	async getIndexStatus(): Promise<GetIndexStatusResponse> {
-		const indexStateRepo = sqliteStoreManager.getIndexStateRepo();
+		const indexStateRepo = sqliteStoreManager.getIndexStateRepo('vault');
 		const builtAtRaw = await indexStateRepo.get(INDEX_STATE_KEYS.builtAt);
 		const indexedRaw = await indexStateRepo.get(INDEX_STATE_KEYS.indexedDocs);
 		const indexBuiltAt = builtAtRaw != null ? Number(builtAtRaw) : null;
@@ -368,9 +449,9 @@ export class IndexService {
 	/**
 	 * Save search data (FTS and embeddings) to database.
 	 */
-	private async saveSearchData(docId: string, path: string, title: string, chunks: Chunk[], embeddingModel?: string): Promise<void> {
-		const docChunkRepo = sqliteStoreManager.getDocChunkRepo();
-		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
+	private async saveSearchData(docId: string, path: string, title: string, chunks: Chunk[], embeddingModel?: string, tenant: IndexTenant = 'vault'): Promise<void> {
+		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
 		const now = Date.now();
 
 		// Delete existing FTS and embeddings for this doc
@@ -420,9 +501,9 @@ export class IndexService {
 	/**
 	 * Save document metadata to database.
 	 */
-	private async saveDocMeta(doc: Document): Promise<void> {
+	private async saveDocMeta(doc: Document, tenant: IndexTenant = 'vault'): Promise<void> {
 		const startTime = Date.now();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
 
 		try {
 			await docMetaRepo.upsert({
@@ -451,8 +532,8 @@ export class IndexService {
 	 * Update document statistics (word count, char count, updated_at, etc.).
 	 * Initializes statistics if they don't exist, updates if they do.
 	 */
-	private async updateDocStatistics(doc: Document): Promise<void> {
-		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
+	private async updateDocStatistics(doc: Document, tenant: IndexTenant = 'vault'): Promise<void> {
+		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
 
 		// Calculate word count and char count from content
 		// Content is stored in sourceFileInfo.content for text files
@@ -493,8 +574,8 @@ export class IndexService {
 	/**
 	 * Update index state (document count and build timestamp).
 	 */
-	private async updateIndexState(): Promise<void> {
-		const indexStateRepo = sqliteStoreManager.getIndexStateRepo();
+	private async updateIndexState(tenant: IndexTenant = 'vault'): Promise<void> {
+		const indexStateRepo = sqliteStoreManager.getIndexStateRepo(tenant);
 		const now = Date.now();
 
 		const indexedCount = await indexStateRepo.get(INDEX_STATE_KEYS.indexedDocs);
@@ -507,10 +588,10 @@ export class IndexService {
 	 * Upsert graph relationships for a document.
 	 * Uses data directly from Document object (references, tags, categories).
 	 */
-	private async upsertGraph(doc: Document): Promise<void> {
+	private async upsertGraph(doc: Document, tenant: IndexTenant = 'vault'): Promise<void> {
 		console.debug(`[IndexService] Upserting graph for document: `, JSON.stringify(doc));
-		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
+		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
 
 		// Use document UUID as node ID (doc.id is already a UUID)
 		const docNodeId = doc.id;

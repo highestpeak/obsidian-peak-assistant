@@ -3,7 +3,7 @@ import path from 'path';
 import { BetterSqliteStore } from './better-sqlite3-adapter/BetterSqliteStore';
 import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from './ddl';
-import type { SqliteStoreType, SqliteDatabase } from './types';
+import type { IndexTenant, SqliteStoreType, SqliteDatabase } from './types';
 import { ensureFolderRecursive } from '@/core/utils/vault-utils';
 import { DocMetaRepo } from './repositories/DocMetaRepo';
 import { DocChunkRepo } from './repositories/DocChunkRepo';
@@ -20,7 +20,7 @@ import { ChatMessageResourceRepo } from './repositories/ChatMessageResourceRepo'
 import { ChatStarRepo } from './repositories/ChatStarRepo';
 import { AIAnalysisRepo } from './repositories/AIAnalysisRepo';
 import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcessedHashRepo';
-import { SEARCH_DB_FILENAME, META_DB_FILENAME } from '@/core/constant';
+import { VAULT_DB_FILENAME, CHAT_DB_FILENAME } from '@/core/constant';
 
 /**
  * Global singleton manager for SQLite database connection.
@@ -56,7 +56,7 @@ export class SqliteStoreManager {
 	/** Set at start of close() so getters throw and no new work starts; avoids in-flight DB ops after close. */
 	private closing = false;
 
-	// Search database repositories (search.sqlite)
+	// Search database repositories (search.sqlite) — vault index tenant
 	private docMetaRepo: DocMetaRepo | null = null;
 	private docChunkRepo: DocChunkRepo | null = null;
 	private embeddingRepo: EmbeddingRepo | null = null;
@@ -67,7 +67,17 @@ export class SqliteStoreManager {
 	private graphStore: GraphStore | null = null;
 	private userProfileProcessedHashRepo: UserProfileProcessedHashRepo | null = null;
 
-	// Meta database repositories (meta.sqlite)
+	// Meta database index repositories (meta.sqlite) — chat index tenant (ChatFolder)
+	private docMetaRepoChat: DocMetaRepo | null = null;
+	private docChunkRepoChat: DocChunkRepo | null = null;
+	private embeddingRepoChat: EmbeddingRepo | null = null;
+	private indexStateRepoChat: IndexStateRepo | null = null;
+	private docStatisticsRepoChat: DocStatisticsRepo | null = null;
+	private graphNodeRepoChat: GraphNodeRepo | null = null;
+	private graphEdgeRepoChat: GraphEdgeRepo | null = null;
+	private graphStoreChat: GraphStore | null = null;
+
+	// Meta database repositories (meta.sqlite) — chat/ai tables only
 	private chatProjectRepo: ChatProjectRepo | null = null;
 	private chatConversationRepo: ChatConversationRepo | null = null;
 	private chatMessageRepo: ChatMessageRepo | null = null;
@@ -161,11 +171,11 @@ export class SqliteStoreManager {
 		this.app = params.app;
 
 		// Create search database connection
-		const searchDbPath = await this.buildDatabasePath(params.app, params.storageFolder, SEARCH_DB_FILENAME);
+		const searchDbPath = await this.buildDatabasePath(params.app, params.storageFolder, VAULT_DB_FILENAME);
 		this.searchStore = await this.createDatabaseConnection(searchDbPath, params.settings);
 
 		// Create meta database connection
-		const metaDbPath = await this.buildDatabasePath(params.app, params.storageFolder, META_DB_FILENAME);
+		const metaDbPath = await this.buildDatabasePath(params.app, params.storageFolder, CHAT_DB_FILENAME);
 		this.metaStore = await this.createDatabaseConnection(metaDbPath, params.settings);
 
 		// Initialize search database repositories
@@ -184,7 +194,7 @@ export class SqliteStoreManager {
 		this.graphStore = new GraphStore(this.graphNodeRepo, this.graphEdgeRepo);
 		this.userProfileProcessedHashRepo = new UserProfileProcessedHashRepo(searchKdb);
 
-		// Initialize meta database repositories
+		// Initialize meta database repositories (chat/ai tables)
 		const metaKdb = this.metaStore.kysely<DbSchema>();
 		this.chatProjectRepo = new ChatProjectRepo(metaKdb);
 		this.chatConversationRepo = new ChatConversationRepo(metaKdb);
@@ -192,6 +202,17 @@ export class SqliteStoreManager {
 		this.chatMessageResourceRepo = new ChatMessageResourceRepo(metaKdb);
 		this.chatStarRepo = new ChatStarRepo(metaKdb);
 		this.aiAnalysisRepo = new AIAnalysisRepo(metaKdb);
+
+		// Chat index tenant (same schema as search, on meta.sqlite)
+		this.docMetaRepoChat = new DocMetaRepo(metaKdb);
+		this.docChunkRepoChat = new DocChunkRepo(metaKdb, this.metaStore);
+		this.embeddingRepoChat = new EmbeddingRepo(metaKdb, this.metaStore, this.docMetaRepoChat);
+		this.embeddingRepoChat.initializeVecEmbeddingsTableCache();
+		this.indexStateRepoChat = new IndexStateRepo(metaKdb);
+		this.docStatisticsRepoChat = new DocStatisticsRepo(metaKdb);
+		this.graphNodeRepoChat = new GraphNodeRepo(metaKdb);
+		this.graphEdgeRepoChat = new GraphEdgeRepo(metaKdb);
+		this.graphStoreChat = new GraphStore(this.graphNodeRepoChat, this.graphEdgeRepoChat);
 	}
 
 	/**
@@ -200,10 +221,17 @@ export class SqliteStoreManager {
 	 * Throws error if not initialized.
 	 */
 	getSearchContext(): Kysely<DbSchema> {
-		if (this.closing || !this.searchStore) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.searchStore.kysely();
+		return this.getIndexContext('vault');
+	}
+
+	/**
+	 * Get Kysely for the given index tenant (vault = search.sqlite, chat = meta.sqlite).
+	 */
+	getIndexContext(tenant: IndexTenant = 'vault'): Kysely<DbSchema> {
+		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
+		const store = tenant === 'chat' ? this.metaStore : this.searchStore;
+		if (!store) throw new Error('SqliteStoreManager not initialized or is closing.');
+		return store.kysely();
 	}
 
 	/**
@@ -228,33 +256,33 @@ export class SqliteStoreManager {
 	}
 
 	/**
-	 * Get DocMetaRepo instance.
+	 * Get DocMetaRepo for the given index tenant (default: vault).
 	 */
-	getDocMetaRepo(): DocMetaRepo {
-		if (this.closing || !this.docMetaRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.docMetaRepo;
+	getDocMetaRepo(tenant: IndexTenant = 'vault'): DocMetaRepo {
+		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
+		const repo = tenant === 'chat' ? this.docMetaRepoChat : this.docMetaRepo;
+		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
+		return repo;
 	}
 
 	/**
-	 * Get DocChunkRepo instance.
+	 * Get DocChunkRepo for the given index tenant (default: vault).
 	 */
-	getDocChunkRepo(): DocChunkRepo {
-		if (this.closing || !this.docChunkRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.docChunkRepo;
+	getDocChunkRepo(tenant: IndexTenant = 'vault'): DocChunkRepo {
+		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
+		const repo = tenant === 'chat' ? this.docChunkRepoChat : this.docChunkRepo;
+		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
+		return repo;
 	}
 
 	/**
-	 * Get EmbeddingRepo instance.
+	 * Get EmbeddingRepo for the given index tenant (default: vault).
 	 */
-	getEmbeddingRepo(): EmbeddingRepo {
-		if (this.closing || !this.embeddingRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.embeddingRepo;
+	getEmbeddingRepo(tenant: IndexTenant = 'vault'): EmbeddingRepo {
+		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
+		const repo = tenant === 'chat' ? this.embeddingRepoChat : this.embeddingRepo;
+		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
+		return repo;
 	}
 
 	/**
@@ -266,53 +294,53 @@ export class SqliteStoreManager {
 	}
 
 	/**
-	 * Get IndexStateRepo instance.
+	 * Get IndexStateRepo for the given index tenant (default: vault).
 	 */
-	getIndexStateRepo(): IndexStateRepo {
-		if (this.closing || !this.indexStateRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.indexStateRepo;
+	getIndexStateRepo(tenant: IndexTenant = 'vault'): IndexStateRepo {
+		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
+		const repo = tenant === 'chat' ? this.indexStateRepoChat : this.indexStateRepo;
+		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
+		return repo;
 	}
 
 	/**
-	 * Get DocStatisticsRepo instance.
+	 * Get DocStatisticsRepo for the given index tenant (default: vault).
 	 */
-	getDocStatisticsRepo(): DocStatisticsRepo {
-		if (this.closing || !this.docStatisticsRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.docStatisticsRepo;
+	getDocStatisticsRepo(tenant: IndexTenant = 'vault'): DocStatisticsRepo {
+		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
+		const repo = tenant === 'chat' ? this.docStatisticsRepoChat : this.docStatisticsRepo;
+		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
+		return repo;
 	}
 
 	/**
-	 * Get GraphNodeRepo instance.
+	 * Get GraphNodeRepo for the given index tenant (default: vault).
 	 */
-	getGraphNodeRepo(): GraphNodeRepo {
-		if (this.closing || !this.graphNodeRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.graphNodeRepo;
+	getGraphNodeRepo(tenant: IndexTenant = 'vault'): GraphNodeRepo {
+		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
+		const repo = tenant === 'chat' ? this.graphNodeRepoChat : this.graphNodeRepo;
+		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
+		return repo;
 	}
 
 	/**
-	 * Get GraphEdgeRepo instance.
+	 * Get GraphEdgeRepo for the given index tenant (default: vault).
 	 */
-	getGraphEdgeRepo(): GraphEdgeRepo {
-		if (this.closing || !this.graphEdgeRepo) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.graphEdgeRepo;
+	getGraphEdgeRepo(tenant: IndexTenant = 'vault'): GraphEdgeRepo {
+		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
+		const repo = tenant === 'chat' ? this.graphEdgeRepoChat : this.graphEdgeRepo;
+		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
+		return repo;
 	}
 
 	/**
-	 * Get GraphStore instance.
+	 * Get GraphStore for the given index tenant (default: vault).
 	 */
-	getGraphStore(): GraphStore {
-		if (this.closing || !this.graphStore) {
-			throw new Error('SqliteStoreManager not initialized or is closing.');
-		}
-		return this.graphStore;
+	getGraphStore(tenant: IndexTenant = 'vault'): GraphStore {
+		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
+		const store = tenant === 'chat' ? this.graphStoreChat : this.graphStore;
+		if (!store) throw new Error('SqliteStoreManager not initialized or is closing.');
+		return store;
 	}
 
 	/**
@@ -413,6 +441,14 @@ export class SqliteStoreManager {
 		this.graphNodeRepo = null;
 		this.graphEdgeRepo = null;
 		this.graphStore = null;
+		this.docMetaRepoChat = null;
+		this.docChunkRepoChat = null;
+		this.embeddingRepoChat = null;
+		this.indexStateRepoChat = null;
+		this.docStatisticsRepoChat = null;
+		this.graphNodeRepoChat = null;
+		this.graphEdgeRepoChat = null;
+		this.graphStoreChat = null;
 		this.chatProjectRepo = null;
 		this.chatConversationRepo = null;
 		this.chatMessageRepo = null;

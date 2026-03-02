@@ -6,11 +6,12 @@ import type MyPlugin from 'main';
 import { MyPluginSettings } from '../settings/types';
 import { BusinessError, ErrorCode } from '@/core/errors';
 import { EventBus, ViewEventType } from '@/core/eventBus';
-import { GraphInspectorTestTools } from '@/app/context/test-tools';
+import { GraphInspectorTestTools, AISearchAgentTestTools } from '@/app/context/test-tools';
 import { cleanupGraphTable } from '@/app/context/graph-cleanup';
 import { IndexService } from '@/service/search/index/indexService';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { AISearchAgent, AISearchAgentOptions } from '@/service/agents/AISearchAgent';
+import { getVaultPersona } from '@/service/tools/system-info';
 
 /**
  * Application context containing all global dependencies.
@@ -88,15 +89,19 @@ export class AppContext {
 			// Dynamically initialize test tools when setting is enabled
 			if (typeof window !== 'undefined') {
 				(window as any).testGraphTools = new GraphInspectorTestTools();
+				(window as any).testAISearchTools = new AISearchAgentTestTools();
 				(window as any).indexDocument = (docPath: string) => IndexService.getInstance().indexDocument(docPath, this.settings.search);
+				(window as any).getVaultPersona = () => getVaultPersona();
 				(window as any).cleanupGraphTable = () => cleanupGraphTable();
 
 				console.debug('🔧 Graph Inspector Test Tools initialized!');
 				console.debug('📖 Usage: window.testGraphTools.inspectNote("path/to/note.md")');
+				console.debug('📖 Usage: await window.testAISearchTools.testMindFlow("your question")');
 				console.debug('📖 Usage: window.indexDocument("path/to/note.md")');
 				console.debug('📖 Usage: await window.cleanupGraphTable() — clean graph_nodes/edges (nodes whose path not in doc_meta, orphan edges)');
 				console.debug('📖 Available methods:', [
 					...Object.getOwnPropertyNames(GraphInspectorTestTools.prototype).filter(name => name !== 'constructor'),
+					'testAISearchTools.testMindFlow',
 					'indexDocument',
 					'cleanupGraphTable',
 				]);
@@ -104,6 +109,7 @@ export class AppContext {
 		} else {
 			if (typeof window !== 'undefined') {
 				if ((window as any).testGraphTools) delete (window as any).testGraphTools;
+				if ((window as any).testAISearchTools) delete (window as any).testAISearchTools;
 				if ((window as any).indexDocument) delete (window as any).indexDocument;
 				if ((window as any).cleanupGraphTable) delete (window as any).cleanupGraphTable;
 				console.log('🔧 Graph Inspector Test Tools disabled');

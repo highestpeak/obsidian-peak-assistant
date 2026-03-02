@@ -1,26 +1,17 @@
-import { LLMRequestMessage, LLMStreamEvent, mergeTokenUsage, OneGenerationContext, StreamTriggerName, UIStepType } from '@/core/providers/types';
-import { toReActThoughtPromptMessages, generateToolCallId, convertMessagesToText, getToolErrorMessage } from '@/core/providers/adapter/ai-sdk-adapter';
-import { localWebSearchTool } from '@/service/tools/search-web';
-import { Experimental_Agent as Agent, hasToolCall } from 'ai';
-import { PromptId } from '@/service/prompt/PromptId';
-import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
-import { AgentTool, ManualToolCallHandler } from '@/service/tools/types';
-import { buildToolCorrectionMessage, buildToolErrorStreamEvent } from '@/core/providers/helpers/message-helper';
+import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import { AIServiceManager } from '../chat/service-manager';
 import { RawSearchAgent } from './search-agent-helper/RawSearchAgent';
-import { callAgentTool } from '../tools/call-agent-tool';
 import { setCurrentAnalysisContext } from '@/core/analysis-context-holder';
 import { getUpdateResultHandlersMap } from './search-agent-helper/helpers/DashboardUpdateToolBuilder';
 import { AgentContextManager } from './search-agent-helper/AgentContextManager';
 import { SummaryAgent } from './search-agent-helper/SummaryAgent';
-import { DashboardUpdateAgent } from './search-agent-helper/DashboardUpdateAgent';
+import { DashboardAgent } from './search-agent-helper/DashboardAgent';
 import { FinalRefineAgent } from './search-agent-helper/FinalRefineAgent';
 import { MindFlowAgent, MindFlowPhase } from './search-agent-helper/MindFlowAgent';
+import { KnowledgeAgent } from './search-agent-helper/KnowledgeAgent';
 import { DocSimpleAgent } from './search-agent-helper/DocSimpleAgent';
-import { memoizeSupplier } from '@/core/utils/functions';
-import { emptyUsage } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
-import { accumulateTokenUsage, buildPromptTraceDebugEvent } from '@/core/providers/helpers/stream-helper';
+import { accumulateTokenUsage } from '@/core/providers/helpers/stream-helper';
 
 /** docSimple = current note only; vaultSimple = vault search then summarize; vaultFull = deep vault analysis. */
 export type AnalysisMode = 'docSimple' | 'vaultSimple' | 'vaultFull';
@@ -34,15 +25,11 @@ export interface AISearchAgentOptions {
      * Maximum wall clock time in milliseconds for the entire search.
      */
     maxWallClockMs?: number;
+    /**
+     * Max ReAct loop iterations (MindFlow + RawSearch). When set, overrides mode default; clamped 1–50.
+     */
+    maxMultiAgentIterations?: number;
 }
-
-/**
- * Tool set for thought agent (coordinator).
- */
-type ThoughtToolSet = {
-    call_search_agent: AgentTool;
-    submit_final_answer: AgentTool;
-};
 
 /** Agent loop config per analysis mode. */
 interface AgentLoopConfig {
@@ -73,11 +60,6 @@ function getAgentConfig(mode: AnalysisMode): AgentLoopConfig {
 
 /** How to render the block content. Add new type in DashboardUpdateToolBuilder + DashboardBlocksSection. */
 export type DashboardRenderEngine = 'MARKDOWN' | 'TILE' | 'ACTION_GROUP' | 'MERMAID';
-
-/**
- * @deprecated
- */
-export const RESULT_UPDATE_TOOL_NAMES = new Set(['update_sources', 'update_source_scores', 'update_topics', 'update_graph', 'add_dashboard_blocks']);
 
 /** Single item in a TILE or ACTION_GROUP block. */
 export interface DashboardBlockItem {
@@ -165,10 +147,6 @@ export interface SearchAgentResult {
     /** Short display title (generated at end of analysis). */
     title?: string;
     summary: string;
-    /**
-     * @deprecated
-     * */
-    graph: AISearchGraph;
     dashboardBlocks?: DashboardBlock[];
     topics: AISearchTopic[];
     sources: AISearchSource[];
@@ -189,19 +167,12 @@ export class AISearchAgent {
      * */
     private docSimpleAgent: DocSimpleAgent;
 
-    /** 
-     * MindFlow agent: thinking tree, progress, continue/stop decision 
-     * */
+    /** MindFlow agent: audit, target definition, continue/stop decision. */
     private mindFlowAgent: MindFlowAgent;
-    /**
-     * Thought Agent - main coordinator for ReAct loop
-     */
-    private thoughtAgent: Agent<ThoughtToolSet>;
-    /**
-     * Search Agent - sub agent for search tasks
-     */
+    /** RawSearch agent: tactical execution (tools + evidence + report). */
     private searchAgent: RawSearchAgent;
-
+    /** KnowledgeAgent: compress evidence into Knowledge Panel (vaultFull only). */
+    private knowledgeAgent: KnowledgeAgent;
     /** 
      * Finish-phase agents 
      * */
@@ -210,20 +181,12 @@ export class AISearchAgent {
     /** 
      * Dashboard update orchestrator: topics, sources, graph, blocks, review 
      * */
-    private dashboardUpdateAgent: DashboardUpdateAgent;
-
-    /**
-     * Manual tool call handlers
-     */
-    private manualToolCallHandlers: Record<string, ManualToolCallHandler> = {};
+    private dashboardUpdateAgent: DashboardAgent;
 
     /**
      * Agent memory
      */
     private agentContextManager: AgentContextManager;
-
-    /** Last thought-step context, so finish-phase (e.g. summary) can use its tool evidence when context is not passed. */
-    private lastOneGenerationContext: OneGenerationContext | undefined;
 
     constructor(
         private readonly aiServiceManager: AIServiceManager,
@@ -233,55 +196,37 @@ export class AISearchAgent {
 
         this.agentContextManager = new AgentContextManager(this.aiServiceManager);
 
-        const { provider: thoughtProvider, modelId: thoughtModel } = this.aiServiceManager.getModelForPrompt(PromptId.ThoughtAgent);
-        const outputControl = this.aiServiceManager.getSettings()?.defaultOutputControl;
-        const thoughtTemperature = outputControl?.temperature ?? 0.6;
-        const thoughtMaxTokens = outputControl?.maxOutputTokens ?? 4096;
-        this.thoughtAgent = new Agent<ThoughtToolSet>({
-            model: this.aiServiceManager.getMultiChat()
-                .getProviderService(thoughtProvider)
-                .modelClient(thoughtModel),
-            tools: {
-                call_search_agent: callAgentTool('search'),
-                submit_final_answer: submitFinalAnswerTool(),
-            },
-            stopWhen: [
-                hasToolCall('submit_final_answer'),
-            ],
-            temperature: thoughtTemperature,
-            maxOutputTokens: thoughtMaxTokens,
-        });
-
-        this.searchAgent = new RawSearchAgent(
-            this.aiServiceManager,
-            { enableWebSearch: this.options.enableWebSearch, enableLocalSearch: this.options.enableLocalSearch },
-            this.agentContextManager,
-        );
-        this.manualToolCallHandlers['call_search_agent'] = {
-            toolName: 'call_search_agent',
-            triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-            handle: this.searchAgent.manualToolCallHandle.bind(this.searchAgent),
-            outputGetter: (resultCollector) => resultCollector.searchResultChunks,
-        };
-
         const innerAgentCreateParams = {
             aiServiceManager: this.aiServiceManager,
             context: this.agentContextManager,
-            rawSearchAgent: this.searchAgent,
             options: {
                 enableWebSearch: this.options.enableWebSearch,
                 enableLocalSearch: this.options.enableLocalSearch,
                 analysisMode: this.options.analysisMode,
             },
         };
-        this.mindFlowAgent = new MindFlowAgent(innerAgentCreateParams);
-        this.summaryAgent = new SummaryAgent(innerAgentCreateParams);
-        this.finalRefineAgent = new FinalRefineAgent(innerAgentCreateParams);
-        this.dashboardUpdateAgent = new DashboardUpdateAgent(innerAgentCreateParams);
+        this.searchAgent = new RawSearchAgent(innerAgentCreateParams);
+        this.knowledgeAgent = new KnowledgeAgent({
+            aiServiceManager: this.aiServiceManager,
+            context: this.agentContextManager,
+        });
+
+        const innerAgentCreateParamsWithSearchAgent = {
+            ...innerAgentCreateParams,
+            rawSearchAgent: this.searchAgent,
+        };
+        this.mindFlowAgent = new MindFlowAgent({
+            aiServiceManager: this.aiServiceManager,
+            context: this.agentContextManager,
+            options: { enableWebSearch: this.options.enableWebSearch },
+        });
+        this.summaryAgent = new SummaryAgent(innerAgentCreateParamsWithSearchAgent);
+        this.finalRefineAgent = new FinalRefineAgent(innerAgentCreateParamsWithSearchAgent);
+        this.dashboardUpdateAgent = new DashboardAgent(innerAgentCreateParamsWithSearchAgent);
     }
 
     /**
-     * Stream search results with ReAct loop (ThoughtAgent coordinates SearchAgent)
+     * Stream search results with ReAct loop (MindFlow sets target, RawSearch executes).
      * @param opts.scopeValue Used by DocSimpleAgent (current file path)
      */
     async stream(prompt: string, opts?: { scopeValue?: string }): Promise<AsyncGenerator<LLMStreamEvent>> {
@@ -293,14 +238,17 @@ export class AISearchAgent {
         }
 
         // vaultSimple vaultFull try to execute the loop.
-        this.agentContextManager.resetAgentResult();
-        this.mindFlowAgent.resetSessionState();
         setCurrentAnalysisContext({
             getResult: () => this.agentContextManager.getAgentResult(),
             getVerifiedPaths: () => this.agentContextManager.getVerifiedPaths(),
             getHandlers: (fieldName) => getUpdateResultHandlersMap()[fieldName],
         });
         return this.executeReActLoop();
+    }
+
+    /** Exposed for debug mount (e.g. window.__peakSearchDebug.getSnapshot). */
+    public getContextManager(): AgentContextManager {
+        return this.agentContextManager;
     }
 
     /**
@@ -311,28 +259,30 @@ export class AISearchAgent {
     }
 
     /**
-     * Execute the ReAct loop (ThoughtAgent coordinates SearchAgent)
-     * Implements controlled state machine with early stop and time budget.
+     * Execute the ReAct loop: MindFlow(pre) → [RawSearch → MindFlow(post) → decision]*.
      */
     private async *executeReActLoop(): AsyncGenerator<LLMStreamEvent> {
-        // iteration control
-        const cfg = getAgentConfig(this.options.analysisMode);
+        const baseCfg = getAgentConfig(this.options.analysisMode);
+        const userMaxIter = this.options.maxMultiAgentIterations;
+        const maxIterations = typeof userMaxIter === 'number'
+            ? Math.max(1, Math.min(50, Math.min(baseCfg.maxMultiAgentIterations, userMaxIter)))
+            : baseCfg.maxMultiAgentIterations;
+        const maxWallClockMs = this.options.maxWallClockMs ?? baseCfg.maxWallClockMs;
+        const cfg = { ...baseCfg, maxMultiAgentIterations: maxIterations, maxWallClockMs };
         let iterationCount = 0;
-        let reActStartTimeMs = Date.now();
+        const reActStartTimeMs = Date.now();
 
-        // Initial pre-thought: plan the first exploration step (only once before loop)
         yield* this.runMindFlowAgent('pre-thought');
 
         while (iterationCount < cfg.maxMultiAgentIterations) {
             iterationCount++;
 
-            // Check time budget before starting new iteration
             const elapsedMs = Date.now() - reActStartTimeMs;
             if (elapsedMs > cfg.maxWallClockMs) {
                 yield {
                     type: 'pk-debug',
-                    debugName: 'thought-agent-time-budget-exceeded',
-                    triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+                    debugName: 'react-time-budget-exceeded',
+                    triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
                     extra: {
                         reason: `[AISearchAgent] Time budget exceeded (${elapsedMs}ms > ${cfg.maxWallClockMs}ms), forcing synthesis`,
                     },
@@ -340,53 +290,80 @@ export class AISearchAgent {
                 break;
             }
 
-            // run thought agent (wrapped in try-catch so one iteration error does not terminate entire AI Analysis)
-            const oneGenerationContext: OneGenerationContext = {
-                thoughtTextChunks: [],
-                reasoningTextChunks: [],
-                toolCalls: [],
-                toolResults: [],
-                stepTokenUsage: emptyUsage(),
-            };
-            const getThoughtText = memoizeSupplier(
-                () => (oneGenerationContext.thoughtTextChunks ?? []).join('').trim(),
-            );
             try {
-                yield* this.runThoughtAgent(
-                    oneGenerationContext,
-                    getThoughtText,
-                );
-                // Build thought message and update agent memory
-                const thoughtText = getThoughtText();
-                this.agentContextManager.pushIterationThoughtMessage(
-                    oneGenerationContext,
-                    thoughtText ?? '',
-                );
-                this.lastOneGenerationContext = oneGenerationContext;
+                const progress = this.agentContextManager.getLatestMindflowProgress();
+                const decision = progress?.decision;
+
+                if (this.options.analysisMode === 'vaultFull' && decision === 'FINAL_ANSWER') {
+                    console.debug('[AISearchAgent] Planner decided FINAL_ANSWER, end the loop');
+                    break;
+                }
+
+                if (this.options.analysisMode === 'vaultFull' && decision === 'REQUEST_COMPRESSION') {
+                    const dossier = this.agentContextManager.getDossierForSummary();
+                    const lastRaw = this.agentContextManager.getRawSearchInfoForMindFlowInput(1);
+                    yield* this.knowledgeAgent.stream({
+                        evidenceSummary: dossier.verifiedFactSheet,
+                        sourceMap: dossier.sourceMap,
+                        lastRawSearchDelta: lastRaw?.latestLoopDelta,
+                        userQuery: this.agentContextManager.getInitialPrompt(),
+                    });
+                    yield* this.runMindFlowAgent('post-thought');
+                    continue;
+                }
+
+                const instruction = (progress?.instruction ?? '').trim() || this.agentContextManager.getInitialPrompt();
+                const userQuery = this.agentContextManager.getInitialPrompt();
+                const existingFacts = this.agentContextManager.getExistingFactClaimsForRawSearch().join('\n');
+
+                yield* this.searchAgent.stream({
+                    prompt: instruction,
+                    userOriginalQuery: userQuery,
+                    currentThoughtInstruction: progress?.instruction,
+                    existing_facts: existingFacts || undefined,
+                });
+
+                for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths(StreamTriggerName.SEARCH_INSPECTOR_AGENT)) {
+                    yield ev;
+                }
 
                 yield* this.runMindFlowAgent('post-thought');
 
-                // check if the result is good enough.
+                if (this.options.analysisMode === 'vaultSimple') {
+                    break;
+                }
+
                 let phaseResult: { shouldBreak: boolean } = { shouldBreak: false };
-                const latestProgress = this.agentContextManager.getLatestMindflowProgress();
                 yield* this.mindFlowAgent.checkMindFlowProgreeDecision(
-                    iterationCount, latestProgress, (shouldBreak) => {
-                        phaseResult.shouldBreak = shouldBreak;
-                    }
+                    iterationCount,
+                    (shouldBreak) => { phaseResult.shouldBreak = shouldBreak; }
                 );
                 if (phaseResult.shouldBreak) {
-                    console.debug('[AISearchAgent] CompletionJudge decided to stop, end the loop');
+                    console.debug('[AISearchAgent] Planner decided FINAL_ANSWER, end the loop');
+                    break;
+                }
+                // Early stop when near time budget so we synthesize instead of starting another round.
+                const elapsedAfterRound = Date.now() - reActStartTimeMs;
+                if (elapsedAfterRound >= 0.8 * cfg.maxWallClockMs) {
+                    yield {
+                        type: 'pk-debug',
+                        debugName: 'react-time-80-percent',
+                        triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
+                        extra: {
+                            reason: `[AISearchAgent] Time at 80% of budget (${elapsedAfterRound}ms), forcing synthesis after this round.`,
+                        },
+                    };
                     break;
                 }
             } catch (err) {
                 const message = err instanceof Error ? err.message : String(err);
-                console.error('[AISearchAgent] Thought agent iteration error (continuing next iteration):', err);
+                console.error('[AISearchAgent] RawSearch iteration error (continuing next iteration):', err);
                 yield {
                     type: 'pk-debug',
-                    debugName: 'thought-agent-iteration-error',
-                    triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+                    debugName: 'rawsearch-iteration-error',
+                    triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
                     extra: {
-                        reason: `[AISearchAgent] Thought agent error: ${message}. Continuing next iteration.`,
+                        reason: `[AISearchAgent] RawSearch error: ${message}. Continuing next iteration.`,
                         error: message,
                     },
                 };
@@ -396,7 +373,6 @@ export class AISearchAgent {
 
         yield* this.finishReActLoop(reActStartTimeMs);
 
-        // many final agents may call search agent, so we need to emit the sources from verified paths again.
         for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths()) {
             yield ev;
         }
@@ -416,200 +392,6 @@ export class AISearchAgent {
         }
     }
 
-    private async *runThoughtAgent(
-        oneGenerationContext: OneGenerationContext,
-        getThoughtText: () => string,
-    ): AsyncGenerator<LLMStreamEvent> {
-        const stepId = generateUuidWithoutHyphens();
-        yield {
-            type: 'ui-step',
-            uiType: UIStepType.STEPS_DISPLAY,
-            stepId,
-            title: 'Thinking about your request...',
-            description: 'Thinking',
-            triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-        };
-
-        // user prompt
-        let currentPromptHolder: any[] = [];
-        for await (const chunk of this.agentContextManager.buildCurrentPrompt((prompt: LLMRequestMessage[]) => {
-            currentPromptHolder.push(prompt);
-        })) {
-            yield chunk;
-        }
-        // Get the final prompt after summarization is complete
-        const currentPrompt = currentPromptHolder[0] as LLMRequestMessage[];
-        const nextThoughtPrompt = toReActThoughtPromptMessages(currentPrompt);
-        oneGenerationContext.userPrompt = convertMessagesToText(currentPrompt ?? []);
-        // system prompt
-        const systemPrompt = await this.aiServiceManager.renderPrompt(PromptId.ThoughtAgent, {
-            analysisMode: this.options.analysisMode,
-            simpleMode: this.options.analysisMode === 'vaultSimple'
-        });
-        oneGenerationContext.systemPrompt = systemPrompt;
-        // call agent
-        const thoughtStream = this.thoughtAgent.stream({
-            system: systemPrompt,
-            prompt: nextThoughtPrompt,
-        });
-
-        yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_THOUGHT_AGENT, systemPrompt, oneGenerationContext.userPrompt);
-        // Process thoughtAgent's stream in real-time
-        for await (const chunk of thoughtStream.fullStream) {
-            switch (chunk.type) {
-                case 'text-start':
-                    yield {
-                        type: 'ui-step',
-                        uiType: UIStepType.STEPS_DISPLAY,
-                        stepId,
-                        title: 'Thinking about your request... Thinking...',
-                        description: 'Start to think about the request...',
-                        triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-                    };
-                    break;
-                case 'text-delta':
-                    oneGenerationContext.thoughtTextChunks.push(chunk.text);
-                    yield { type: 'text-delta', text: chunk.text, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
-                    yield {
-                        type: 'ui-step-delta',
-                        uiType: UIStepType.STEPS_DISPLAY,
-                        stepId,
-                        descriptionDelta: chunk.text,
-                        triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-                    };
-                    break;
-                case 'reasoning-start':
-                    yield {
-                        type: 'ui-step',
-                        uiType: UIStepType.STEPS_DISPLAY,
-                        stepId,
-                        title: 'Thinking about your request... Reasoning...',
-                        description: 'Start to reason about the request...',
-                        triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-                    };
-                    break;
-                case 'reasoning-delta':
-                    oneGenerationContext.reasoningTextChunks.push(chunk.text);
-                    yield { type: 'reasoning-delta', text: chunk.text, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
-                    yield {
-                        type: 'ui-step-delta',
-                        uiType: UIStepType.STEPS_DISPLAY,
-                        stepId,
-                        descriptionDelta: chunk.text,
-                        triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-                    };
-                    break;
-                case 'tool-call': {
-                    const toolCallId = (chunk as { toolCallId?: string }).toolCallId ?? generateToolCallId();
-                    oneGenerationContext.toolCalls.push({ toolCallId, toolName: chunk.toolName, input: chunk.input });
-                    yield {
-                        type: 'tool-call',
-                        id: toolCallId,
-                        toolName: chunk.toolName,
-                        input: chunk.input,
-                        triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-                    };
-
-                    const manualToolCallHandler = this.manualToolCallHandlers[chunk.toolName];
-                    if (manualToolCallHandler) {
-                        const resultCollector: Record<string, any> = {};
-                        yield* manualToolCallHandler.handle(chunk.input, resultCollector);
-                        oneGenerationContext.stepTokenUsage = mergeTokenUsage(oneGenerationContext.stepTokenUsage, resultCollector.stepTokenUsage);
-                        oneGenerationContext.toolResults.push({
-                            toolCallId,
-                            toolName: chunk.toolName,
-                            output: {
-                                type: 'text',
-                                value: JSON.stringify(manualToolCallHandler.outputGetter?.(resultCollector) ?? resultCollector),
-                            }
-                        });
-                        yield {
-                            type: 'tool-result',
-                            id: toolCallId,
-                            toolName: chunk.toolName,
-                            input: chunk.input,
-                            output: manualToolCallHandler.outputGetter?.(resultCollector) ?? resultCollector,
-                            triggerName: manualToolCallHandler.triggerName,
-                        };
-                    }
-                    break;
-                }
-                case 'tool-result':
-                    // already handled by manual tool call handler.
-                    if (this.manualToolCallHandlers[chunk.toolName]) {
-                        break;
-                    }
-
-                    const toolCallId = (chunk as { toolCallId?: string }).toolCallId ?? generateToolCallId();
-                    oneGenerationContext.toolResults.push({
-                        toolCallId,
-                        toolName: chunk.toolName,
-                        output: {
-                            type: 'text',
-                            value: JSON.stringify(chunk.output),
-                        }
-                    });
-                    yield {
-                        type: 'tool-result',
-                        id: toolCallId,
-                        toolName: chunk.toolName,
-                        input: chunk.input,
-                        output: chunk.output,
-                        triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
-                        extra: {
-                            currentResult: this.agentContextManager.getAgentResult(),
-                        },
-                    };
-                    break;
-                case 'finish':
-                    oneGenerationContext.stepTokenUsage = mergeTokenUsage(oneGenerationContext.stepTokenUsage, chunk.totalUsage);
-                    yield {
-                        type: 'on-step-finish',
-                        text: getThoughtText(),
-                        finishReason: chunk.finishReason,
-                        usage: chunk.totalUsage,
-                        triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT
-                    };
-                    break;
-                case 'tool-error': {
-                    const errMsg = getToolErrorMessage(chunk);
-                    const toolName = (chunk as any).toolName ?? 'unknown';
-
-                    // All errors must be yield as error.
-                    yield buildToolErrorStreamEvent(toolName, errMsg, chunk, StreamTriggerName.SEARCH_THOUGHT_AGENT);
-
-                    // try to inject corrective reminder into agent memory for next iteration
-                    this.agentContextManager.pushIterationErrorMessage(
-                        buildToolCorrectionMessage(toolName, errMsg)
-                    );
-                    break;
-                }
-                case 'start':
-                case 'start-step':
-                case 'reasoning-end':
-                case 'text-end':
-                case 'finish-step':
-                case 'tool-input-start':
-                case 'tool-input-delta':
-                case 'tool-input-end':
-                    // devtools will merge these duplicate logs.
-                    console.debug('[AISearchAgent] thoughtAgent skip. one of the following types: '
-                        + 'start, start-step, reasoning-start, reasoning-end, text-start, text-end, '
-                        + 'finish-step, tool-input-start, tool-input-delta, tool-input-end');
-                    break;
-                default:
-                    yield { type: 'unSupported', chunk: chunk, comeFrom: 'thoughtAgent', triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
-                    break;
-            }
-        }
-
-        // the graph has already been changed to be a mind flow display not sources relationship.
-        // Deterministic streaming write: new verified paths -> placeholder source + single-node graph patch.
-        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths(StreamTriggerName.SEARCH_THOUGHT_AGENT)) {
-            yield ev;
-        }
-    }
-
     private async *finishReActLoop(reActStartTimeMs: number): AsyncGenerator<LLMStreamEvent> {
         for await (const ev of this.finishReActLoopInternal(reActStartTimeMs)) {
             accumulateTokenUsage(ev, (usage) => this.agentContextManager.accumulateTokenUsage(usage));
@@ -618,9 +400,6 @@ export class AISearchAgent {
     }
 
     private async *finishReActLoopInternal(reActStartTimeMs: number): AsyncGenerator<LLMStreamEvent> {
-        // all thought finish. trigger prompt gen once. and later we can use the cached prompt.
-        yield* this.agentContextManager.buildCurrentPrompt();
-
         switch (this.options.analysisMode) {
             case 'vaultSimple':
                 yield* this.streamSimpleAnalysis();
@@ -632,7 +411,7 @@ export class AISearchAgent {
                 yield {
                     type: 'error',
                     error: new Error('Analysis mode not supported'),
-                    triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+                    triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
                     extra: {
                         analysisMode: this.options.analysisMode,
                     },
@@ -643,15 +422,15 @@ export class AISearchAgent {
         yield {
             type: 'complete',
             finishReason: 'stop',
-            usage: this.agentContextManager.getAgentMemory().totalTokenUsage,
+            usage: this.agentContextManager.getTotalTokenUsage(),
             durationMs: Date.now() - reActStartTimeMs,
             result: this.agentContextManager.getAgentResult(),
-            triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+            triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
         };
     }
 
     private async *streamSimpleAnalysis(): AsyncGenerator<LLMStreamEvent> {
-        // Simple refine for non-vaultFull modes
+        yield* this.finalRefineAgent.streamHoleFill({ analysisMode: this.options.analysisMode });
         yield* this.finalRefineAgent.streamSourcesRefine({ analysisMode: this.options.analysisMode });
 
         yield* this.summaryAgent.streamMultiStep({
@@ -662,6 +441,7 @@ export class AISearchAgent {
     }
 
     private async *streamFullAnalysis(): AsyncGenerator<LLMStreamEvent> {
+        yield* this.finalRefineAgent.streamHoleFill({ analysisMode: this.options.analysisMode });
         yield* this.finalRefineAgent.streamSourcesRefine({ analysisMode: this.options.analysisMode });
 
         yield* this.dashboardUpdateAgent.runDashboardUpdate();

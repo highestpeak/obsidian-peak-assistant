@@ -53,8 +53,18 @@ export class EmbeddingRepo {
 	 * Get embedding rowids by folder path (including subfolders).
 	 */
 	private async getEmbeddingRowidsByFolder(folderPath: string): Promise<number[]> {
-		const docIds = (await this.docMetaRepo.getByFolderPath(folderPath)).map(d => d.id);
+		const docIds = (await this.docMetaRepo.getIdsByFolderPath(folderPath)).map(d => d.id);
 		return this.getEmbeddingRowidsByDocIds(docIds);
+	}
+
+	/**
+	 * Get embedding rowids for docs whose path is under any of the given folder prefixes.
+	 * Used for exclude-folder filtering in KNN query.
+	 */
+	private async getEmbeddingRowidsByPathPrefixes(prefixes: string[]): Promise<number[]> {
+		if (!prefixes.length) return [];
+		const docs = await this.docMetaRepo.getIdsByPathPrefixes(prefixes);
+		return this.getEmbeddingRowidsByDocIds(docs.map((d) => d.id));
 	}
 
 	/**
@@ -467,11 +477,12 @@ export class EmbeddingRepo {
 		limit: number,
 		scopeMode?: SearchScopeMode,
 		scopeValue?: SearchScopeValue,
+		excludeFolderPrefixes?: string[],
 	): Promise<Array<
 		{ id: string; doc_id: string; chunk_id: string; embedding: Buffer, distance: number; similarity: number }
 	>> {
 		// Perform semantic search
-		const searchResults = await this.searchSimilar(queryEmbedding, limit, scopeMode, scopeValue);
+		const searchResults = await this.searchSimilar(queryEmbedding, limit, scopeMode, scopeValue, excludeFolderPrefixes);
 		if (!searchResults.length) {
 			return [];
 		}
@@ -523,6 +534,7 @@ export class EmbeddingRepo {
 		limit: number,
 		scopeMode?: SearchScopeMode,
 		scopeValue?: SearchScopeValue,
+		excludeFolderPrefixes?: string[],
 	): Promise<Array<{
 		embedding_id: string;
 		distance: number;
@@ -551,17 +563,29 @@ export class EmbeddingRepo {
 		if (scopeMode === 'inFile' && scopeValue?.currentFilePath) {
 			scopedRowids = await this.getEmbeddingRowidsByPath([scopeValue.currentFilePath]);
 		} else if (scopeMode === 'inFolder' && scopeValue?.folderPath) {
-			scopedRowids = await this.getEmbeddingRowidsByFolder(scopeValue.folderPath);
+			const folderPath = (scopeValue.folderPath ?? '').trim().replace(/\/+$/, '') || undefined;
+			if (folderPath) {
+				scopedRowids = await this.getEmbeddingRowidsByFolder(folderPath);
+			}
 		} else if (scopeMode === 'limitIdsSet' && scopeValue?.limitIdsSet) {
 			scopedRowids = this.getEmbeddingRowidsByIds(Array.from(scopeValue.limitIdsSet));
 		}
-		// Build KNN query with optional rowid filter
-		let rowidFilter = scopedRowids && scopedRowids.length > 0
-			? `AND ve.rowid IN (${scopedRowids.map(() => '?').join(',')})`
-			: '';
+		// Rowids to exclude (folder prefixes and/or excludeDocIdsSet)
+		let excludeRowids: number[] = [];
 		if (scopeMode === 'excludeDocIdsSet' && scopeValue?.excludeDocIdsSet && scopeValue.excludeDocIdsSet.size > 0) {
-			scopedRowids = this.getEmbeddingRowidsByDocIds(Array.from(scopeValue.excludeDocIdsSet));
-			rowidFilter = `AND ve.rowid NOT IN (${scopedRowids.map(() => '?').join(',')})`;
+			excludeRowids = this.getEmbeddingRowidsByDocIds(Array.from(scopeValue.excludeDocIdsSet));
+		}
+		if (excludeFolderPrefixes?.length) {
+			const prefixRowids = await this.getEmbeddingRowidsByPathPrefixes(excludeFolderPrefixes);
+			excludeRowids = [...excludeRowids, ...prefixRowids];
+		}
+		// Build KNN query with optional rowid filter
+		let rowidFilter = '';
+		if (scopedRowids && scopedRowids.length > 0) {
+			rowidFilter = `AND ve.rowid IN (${scopedRowids.map(() => '?').join(',')})`;
+		}
+		if (excludeRowids.length > 0) {
+			rowidFilter += ` AND ve.rowid NOT IN (${excludeRowids.map(() => '?').join(',')})`;
 		}
 
 		// Step 1: KNN search - always direct on vec_embeddings table
@@ -582,6 +606,9 @@ export class EmbeddingRepo {
 		knnParams = [embeddingBuffer, limit];
 		if (scopedRowids && scopedRowids.length > 0) {
 			knnParams.push(...scopedRowids);
+		}
+		if (excludeRowids.length > 0) {
+			knnParams.push(...excludeRowids);
 		}
 
 		const knnStmt = this.rawDb.prepare(sql);

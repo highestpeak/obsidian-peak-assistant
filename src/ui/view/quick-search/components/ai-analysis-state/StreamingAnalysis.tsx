@@ -4,7 +4,6 @@ import {
 	useAIAnalysisRuntimeStore,
 	useAIAnalysisSummaryStore,
 	useAIAnalysisResultStore,
-	useAIAnalysisStepsStore,
 } from "../../store/aiAnalysisStore";
 import { StreamingStepsDisplay } from "../ai-analysis-sections/StepsDisplay";
 import React, { useMemo } from "react";
@@ -48,8 +47,6 @@ export const StreamingAnalysis: React.FC<{
 	const overviewMermaidActiveIndex = useAIAnalysisResultStore((s) => s.overviewMermaidActiveIndex);
 	const mindflowMermaid = useAIAnalysisResultStore((s) => s.mindflowMermaid);
 	const mindflowProgress = useAIAnalysisResultStore((s) => s.mindflowProgress);
-
-	const steps = useAIAnalysisStepsStore((s) => s.steps);
 
 	const isSimpleMode = runAnalysisMode === 'docSimple' || runAnalysisMode === 'vaultSimple';
 	const showMindFlow = !isSimpleMode && (mindflowMermaid ?? '').trim().length > 0;
@@ -98,9 +95,6 @@ export const StreamingAnalysis: React.FC<{
 					) : null}
 					<div ref={stepsRef} className="pktw-scroll-mt-24">
 						<StreamingStepsDisplay
-							steps={steps}
-							currentStep={null}
-							stepTrigger={0}
 							startedAtMs={analysisStartedAtMs}
 							isRunning={isAnalyzing && !analysisCompleted}
 							finalDurationMs={analysisCompleted ? duration : null}

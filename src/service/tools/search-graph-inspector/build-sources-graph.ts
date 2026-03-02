@@ -1,7 +1,6 @@
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { getSemanticNeighbors } from "./common";
 import { getPathFromNode } from "./common";
-import { getAiAnalysisExcludeContext } from "./ai-analysis-exclude";
 import type { SearchResultItem } from "@/service/search/types";
 import { normalizeFilePath } from "@/core/utils/file-utils";
 
@@ -86,8 +85,6 @@ export async function buildSourcesGraphWithDiscoveredEdges(
 	}
 
 	const sourceDocIds = new Set(docIdToDisplayId.keys());
-	const excludeCtx = await getAiAnalysisExcludeContext();
-	const excludedDocIds = excludeCtx?.excludedDocIds ?? new Set<string>();
 
 	const nodes: SourcesGraph["nodes"] = sources.map((s) => {
 		const path = (s as any).path ?? (s as any).source ?? "";
@@ -101,7 +98,6 @@ export async function buildSourcesGraphWithDiscoveredEdges(
 	const EDGE_LIMIT = 30;
 
 	for (const docId of sourceDocIds) {
-		if (excludedDocIds.has(docId)) continue;
 		const fromDisplayId = docIdToDisplayId.get(docId);
 		if (!fromDisplayId) continue;
 
@@ -110,14 +106,12 @@ export async function buildSourcesGraphWithDiscoveredEdges(
 		const neighborIds = new Set<string>();
 		for (const e of physicalEdges) {
 			const neighborId = e.from_node_id === docId ? e.to_node_id : e.from_node_id;
-			if (excludedDocIds.has(neighborId)) continue;
 			neighborIds.add(neighborId);
 		}
 
 		// Semantic neighbors (when physical neighbors are few)
 		if (neighborIds.size < 5) {
 			const physicalPlusExcluded = new Set(neighborIds);
-			excludedDocIds.forEach((id) => physicalPlusExcluded.add(id));
 			physicalPlusExcluded.add(docId);
 			const semantic = await getSemanticNeighbors(docId, 10, physicalPlusExcluded);
 			for (const n of semantic) {
