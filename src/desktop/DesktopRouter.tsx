@@ -159,10 +159,10 @@ export const DesktopRouter: React.FC<{
 					fontSize: '14px',
 					fontWeight: currentView === 'mindflow-test' ? '500' : '400',
 				}}
-				title="Paste Mermaid to test MindFlow blink/highlight"
+				title="Paste Mermaid to test slot diagram display"
 			>
 				<GitBranch size={16} />
-				MindFlow Test
+				Slot Mermaid Test
 			</button>
 			<button
 				onClick={() => setShowConfirmDialog(true)}

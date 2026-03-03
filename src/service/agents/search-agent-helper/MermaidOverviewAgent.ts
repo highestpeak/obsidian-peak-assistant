@@ -90,7 +90,7 @@ export class MermaidOverviewAgent {
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisOverviewMermaid, {
             originalQuery,
             agentMemoryMessage: overviewContext,
-            lastMermaid: this.context.getLatestMindflowMermaid(),
+            lastMermaid: this.context.getAgentResult().overviewMermaid,
             ...buildErrorRetryInfo(retryCtx) ?? {},
         });
 

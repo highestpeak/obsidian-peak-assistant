@@ -1,8 +1,5 @@
 // Prompt content is loaded from templates/ via TemplateManager + TemplateRegistry (src/core/template).
-import { SystemInfo } from '../tools/system-info';
-import { AnalysisMode } from '../agents/AISearchAgent';
-import { MindFlowVariables } from '../agents/search-agent-helper/MindFlowAgent';
-import { FinalRefineContext, FinalSourcesScoreRefineContext } from '../agents/search-agent-helper/FinalRefineAgent';
+import { FinalRefineContext } from '../agents/search-agent-helper/FinalRefineAgent';
 import { DashboardUpdateContext } from '../agents/search-agent-helper/DashboardAgent';
 import { DashboardBlockVariables } from '../agents/search-agent-helper/DashboardBlocksAgent';
 import { TopicsUpdateVariables } from '../agents/search-agent-helper/TopicsUpdateAgent';
@@ -10,9 +7,7 @@ import { ReviewBlocksVariables } from '../agents/search-agent-helper/ReviewBlock
 import { FollowUpQuestionVariables } from '../agents/search-agent-helper/FollowUpQuestionAgent';
 import { AiSummaryVariables } from '../agents/search-agent-helper/SummaryAgent';
 import { MermaidOverviewVariables } from '../agents/search-agent-helper/MermaidOverviewAgent';
-import { RawSearchVariables } from '../agents/search-agent-helper/RawSearchAgent';
-import { KnowledgeAgentVariables } from '../agents/search-agent-helper/KnowledgeAgent';
-
+import { ConsolidatedTaskWithId, DimensionChoice, RawSearchReport, RawSearchReportWithDimension } from '@/core/schemas/agents/search-agent-schemas';
 /**
  * Prompt template definition.
  */
@@ -59,10 +54,6 @@ export enum PromptId {
 	DocTagGenerateJson = 'doc-tag-generate-json',
 
 	// Search prompts
-	/** System prompt for RawSearch (butcher: evidence pack rules). */
-	RawAiSearchSystem = 'ai-analysis-agent-raw-search-system',
-	/** User prompt for RawSearch (search_task, task_context, existing_facts). */
-	RawAiSearch = 'ai-analysis-agent-raw-search',
 	/** Session history compression; preserves user background, pains, evidence paths. */
 	AiAnalysisSessionSummary = 'ai-analysis-session-summary',
 	// AI analysis dashboard update agent (update overviewMermaid/sources/topics/graph/blocks from memory evidence)
@@ -78,12 +69,7 @@ export enum PromptId {
 	AiAnalysisReviewBlocks = 'ai-analysis-review-blocks',
 	AiAnalysisDashboardUpdatePlanSystem = 'ai-analysis-dashboard-update-plan-system',
 	AiAnalysisDashboardUpdatePlan = 'ai-analysis-dashboard-update-plan',
-	AiAnalysisMindflowAgentSystem = 'ai-analysis-mindflow-agent-system',
-	AiAnalysisMindflowAgent = 'ai-analysis-mindflow-agent',
-	/** KnowledgeAgent: compress evidence into Knowledge Panel (clusters, conflicts, open_questions). */
-	AiAnalysisKnowledgeAgentSystem = 'ai-analysis-knowledge-agent-system',
-	AiAnalysisKnowledgeAgent = 'ai-analysis-knowledge-agent',
-	/** Fix invalid Mermaid code using parse error; used after validation fails in MindFlow/Overview. */
+	/** Fix invalid Mermaid code using parse error; used after overview validation fails. */
 	AiAnalysisMermaidFixSystem = 'ai-analysis-mermaid-fix-system',
 	AiAnalysisMermaidFix = 'ai-analysis-mermaid-fix',
 	AiAnalysisFinalRefineSystem = 'ai-analysis-final-refine-system',
@@ -101,6 +87,20 @@ export enum PromptId {
 	AiAnalysisSuggestFollowUpQuestionsSystem = 'ai-analysis-suggest-follow-up-questions-system',
 	/** Suggest follow-up questions from full session context (not from topics). */
 	AiAnalysisSuggestFollowUpQuestions = 'ai-analysis-suggest-follow-up-questions',
+	/** Slot-routing: lightweight query classification (queryType, hints). JSON output. */
+	AiAnalysisQueryClassifierSystem = 'ai-analysis-query-classifier-system',
+	AiAnalysisQueryClassifier = 'ai-analysis-query-classifier',
+	/** Dimension Recon Agent: breadth exploration, submit_rawsearch_report only. */
+	AiAnalysisDimensionReconSystem = 'ai-analysis-dimension-recon-system',
+	AiAnalysisDimensionRecon = 'ai-analysis-dimension-recon',
+	/** Dimension Evidence Agent: precise collection from leads, submit_evidence_pack. */
+	AiAnalysisDimensionEvidenceSystem = 'ai-analysis-dimension-evidence-system',
+	AiAnalysisDimensionEvidence = 'ai-analysis-dimension-evidence',
+	/** Task Consolidator: merge recon reports into evidence execution blueprint (JSON). */
+	AiAnalysisTaskConsolidatorSystem = 'ai-analysis-task-consolidator-system',
+	AiAnalysisTaskConsolidator = 'ai-analysis-task-consolidator',
+	/** Batch evidence: multiple tasks (path + extraction_focus + dimensions) in one run; submit with completed_task_ids. */
+	AiAnalysisDimensionEvidenceBatch = 'ai-analysis-dimension-evidence-batch',
 	/** Unified follow-up user prompt (Summary, Graph, Sources, Blocks, Full). Caller builds contextContent. */
 	AiAnalysisFollowup = 'ai-analysis-followup',
 	/** System prompt for all follow-up chats (Topic, Continue, Graph, Blocks, Sources). */
@@ -124,7 +124,6 @@ export enum PromptId {
  * Shown in a dedicated "Search AI Analysis" section with a "Set All" control.
  */
 export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
-	PromptId.RawAiSearch,
 	PromptId.AiAnalysisSessionSummary,
 	PromptId.AiAnalysisSummary,
 	PromptId.AiAnalysisOverviewMermaid,
@@ -132,14 +131,17 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisDashboardUpdateBlocks,
 	PromptId.AiAnalysisReviewBlocks,
 	PromptId.AiAnalysisDashboardUpdatePlan,
-	PromptId.AiAnalysisMindflowAgent,
-	PromptId.AiAnalysisKnowledgeAgent,
 	PromptId.AiAnalysisMermaidFix,
 	PromptId.AiAnalysisFinalRefine,
 	PromptId.AiAnalysisTitle,
 	PromptId.AiAnalysisDocSimpleScope,
 	PromptId.AiAnalysisDocSimpleSystem,
 	PromptId.AiAnalysisSuggestFollowUpQuestions,
+	PromptId.AiAnalysisQueryClassifier,
+	PromptId.AiAnalysisDimensionRecon,
+	PromptId.AiAnalysisDimensionEvidence,
+	PromptId.AiAnalysisDimensionEvidenceBatch,
+	PromptId.AiAnalysisTaskConsolidator,
 	PromptId.AiAnalysisFollowup,
 	PromptId.AiAnalysisFollowupSystem,
 	PromptId.AiAnalysisFinalRefineSources,
@@ -230,8 +232,6 @@ export interface PromptVariables {
 		query: string;
 		documents: Array<{ index: number; text: string; boostInfo?: string }>;
 	};
-	[PromptId.RawAiSearchSystem]: SystemInfo;
-	[PromptId.RawAiSearch]: RawSearchVariables & ErrorRetryInfo;
 	[PromptId.ApplicationGenerateTitle]: {
 		messages: Array<{ role: string; content: string }>;
 		contextInfo?: string;
@@ -287,6 +287,27 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisDocSimpleSystem]: Record<string, never>;
 	[PromptId.AiAnalysisSuggestFollowUpQuestionsSystem]: Record<string, never>;
 	[PromptId.AiAnalysisSuggestFollowUpQuestions]: FollowUpQuestionVariables;
+	[PromptId.AiAnalysisQueryClassifierSystem]: Record<string, never>;
+	[PromptId.AiAnalysisQueryClassifier]: {
+		userQuery: string;
+		vaultSkeleton?: string;
+		vaultDescription?: string;
+		functionalTagsMapping?: string;
+	};
+	[PromptId.AiAnalysisDimensionReconSystem]: Record<string, never>;
+	[PromptId.AiAnalysisDimensionRecon]: { dimensionId: string; intent_description: string; userQuery: string; scopePath?: string; scopeAnchor?: string };
+	[PromptId.AiAnalysisDimensionEvidenceSystem]: Record<string, never>;
+	[PromptId.AiAnalysisDimensionEvidence]: { userQuery: string; dimension: DimensionChoice; report: RawSearchReport };
+	[PromptId.AiAnalysisTaskConsolidatorSystem]: Record<string, never>;
+	[PromptId.AiAnalysisTaskConsolidator]: { 
+		userQuery: string;
+		dimensions: Array<DimensionChoice>;
+		reports: Array<RawSearchReportWithDimension>;
+	 };
+	[PromptId.AiAnalysisDimensionEvidenceBatch]: { 
+		userQuery: string; 
+		tasks: Array<ConsolidatedTaskWithId>;
+	};
 
 	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSummarySystem]: Record<string, never>;
@@ -307,10 +328,6 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisDashboardUpdatePlan]: DashboardUpdateContext;
 	[PromptId.AiAnalysisReviewBlocksSystem]: Record<string, never>;
 	[PromptId.AiAnalysisReviewBlocks]: ReviewBlocksVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
-	[PromptId.AiAnalysisMindflowAgentSystem]: Record<string, never>;
-	[PromptId.AiAnalysisMindflowAgent]: MindFlowVariables & ErrorRetryInfo;
-	[PromptId.AiAnalysisKnowledgeAgentSystem]: Record<string, never>;
-	[PromptId.AiAnalysisKnowledgeAgent]: KnowledgeAgentVariables;
 	[PromptId.AiAnalysisMermaidFixSystem]: Record<string, never>;
 	[PromptId.AiAnalysisMermaidFix]: { invalidCode: string; validationError: string };
 	[PromptId.AiAnalysisFinalRefineSystem]: Record<string, never>;

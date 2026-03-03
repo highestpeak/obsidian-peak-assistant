@@ -32,7 +32,7 @@ export class MermaidFixAgent {
 		if (!validation.valid) {
 			yield {
 				type: 'pk-debug',
-				debugName: 'mindflow_mermaid_validation_failed',
+				debugName: 'mermaid_validation_failed',
 				triggerName: StreamTriggerName.SEARCH_MERMAID_FIX,
 				extra: { error: validation.error },
 			};

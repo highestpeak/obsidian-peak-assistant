@@ -338,7 +338,7 @@ export type InlineFollowupChatConfig = {
     initialQuestion?: string;
     title: string;
     placeholder: string;
-    /** Use RawSearchAgent so search tools and analysis summary are used for better answers. */
+    /** Use search agent (slot pipeline + tools) for follow-up answers. */
     useSearchAgent?: boolean;
 };
 

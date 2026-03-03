@@ -1,16 +1,13 @@
 import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import { AIServiceManager } from '../chat/service-manager';
-import { RawSearchAgent } from './search-agent-helper/RawSearchAgent';
 import { setCurrentAnalysisContext } from '@/core/analysis-context-holder';
 import { getUpdateResultHandlersMap } from './search-agent-helper/helpers/DashboardUpdateToolBuilder';
 import { AgentContextManager } from './search-agent-helper/AgentContextManager';
 import { SummaryAgent } from './search-agent-helper/SummaryAgent';
 import { DashboardAgent } from './search-agent-helper/DashboardAgent';
 import { FinalRefineAgent } from './search-agent-helper/FinalRefineAgent';
-import { MindFlowAgent, MindFlowPhase } from './search-agent-helper/MindFlowAgent';
-import { KnowledgeAgent } from './search-agent-helper/KnowledgeAgent';
+import { SlotRecallAgent } from './search-agent-helper/SlotRecallAgent';
 import { DocSimpleAgent } from './search-agent-helper/DocSimpleAgent';
-import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { accumulateTokenUsage } from '@/core/providers/helpers/stream-helper';
 
 /** docSimple = current note only; vaultSimple = vault search then summarize; vaultFull = deep vault analysis. */
@@ -25,37 +22,6 @@ export interface AISearchAgentOptions {
      * Maximum wall clock time in milliseconds for the entire search.
      */
     maxWallClockMs?: number;
-    /**
-     * Max ReAct loop iterations (MindFlow + RawSearch). When set, overrides mode default; clamped 1–50.
-     */
-    maxMultiAgentIterations?: number;
-}
-
-/** Agent loop config per analysis mode. */
-interface AgentLoopConfig {
-    maxMultiAgentIterations: number;
-    maxWallClockMs: number;
-}
-
-function getAgentConfig(mode: AnalysisMode): AgentLoopConfig {
-    switch (mode) {
-        case 'docSimple':
-            return {
-                maxMultiAgentIterations: 1,
-                maxWallClockMs: 5 * 60 * 1000,
-            };
-        case 'vaultSimple':
-            return {
-                maxMultiAgentIterations: 10,
-                maxWallClockMs: 5 * 60 * 1000,
-            };
-        case 'vaultFull':
-        default:
-            return {
-                maxMultiAgentIterations: 100,
-                maxWallClockMs: 10 * 60 * 1000,
-            };
-    }
 }
 
 /** How to render the block content. Add new type in DashboardUpdateToolBuilder + DashboardBlocksSection. */
@@ -157,22 +123,14 @@ export interface SearchAgentResult {
 }
 
 /**
- * Search Agent.
- * ReAct architecture.
- * Multi agent architecture. (SubAgents)
+ * Search Agent. Slot-based pipeline for vault: SlotRecallAgent (classify → recall) then finish agents (FinalRefine, Summary, Dashboard).
  */
 export class AISearchAgent {
-    /** 
-     * DocSimple: single-file Q&A agent. Created only when analysisMode === 'docSimple'. 
-     * */
+    /** DocSimple: single-file Q&A agent when analysisMode === 'docSimple'. */
     private docSimpleAgent: DocSimpleAgent;
 
-    /** MindFlow agent: audit, target definition, continue/stop decision. */
-    private mindFlowAgent: MindFlowAgent;
-    /** RawSearch agent: tactical execution (tools + evidence + report). */
-    private searchAgent: RawSearchAgent;
-    /** KnowledgeAgent: compress evidence into Knowledge Panel (vaultFull only). */
-    private knowledgeAgent: KnowledgeAgent;
+    /** Slot-based recall pipeline: classify → strategy → parallel recall → slot UI. */
+    private slotRecallAgent: SlotRecallAgent;
     /** 
      * Finish-phase agents 
      * */
@@ -205,28 +163,15 @@ export class AISearchAgent {
                 analysisMode: this.options.analysisMode,
             },
         };
-        this.searchAgent = new RawSearchAgent(innerAgentCreateParams);
-        this.knowledgeAgent = new KnowledgeAgent({
-            aiServiceManager: this.aiServiceManager,
-            context: this.agentContextManager,
-        });
+        this.slotRecallAgent = new SlotRecallAgent(this.aiServiceManager, this.agentContextManager);
 
-        const innerAgentCreateParamsWithSearchAgent = {
-            ...innerAgentCreateParams,
-            rawSearchAgent: this.searchAgent,
-        };
-        this.mindFlowAgent = new MindFlowAgent({
-            aiServiceManager: this.aiServiceManager,
-            context: this.agentContextManager,
-            options: { enableWebSearch: this.options.enableWebSearch },
-        });
-        this.summaryAgent = new SummaryAgent(innerAgentCreateParamsWithSearchAgent);
-        this.finalRefineAgent = new FinalRefineAgent(innerAgentCreateParamsWithSearchAgent);
-        this.dashboardUpdateAgent = new DashboardAgent(innerAgentCreateParamsWithSearchAgent);
+        this.summaryAgent = new SummaryAgent(innerAgentCreateParams);
+        this.finalRefineAgent = new FinalRefineAgent(innerAgentCreateParams);
+        this.dashboardUpdateAgent = new DashboardAgent(innerAgentCreateParams);
     }
 
     /**
-     * Stream search results with ReAct loop (MindFlow sets target, RawSearch executes).
+     * Stream search results. DocSimple: single-file Q&A; vault: SlotRecallAgent then finish agents.
      * @param opts.scopeValue Used by DocSimpleAgent (current file path)
      */
     async stream(prompt: string, opts?: { scopeValue?: string }): Promise<AsyncGenerator<LLMStreamEvent>> {
@@ -237,13 +182,12 @@ export class AISearchAgent {
             return this.docSimpleAgent!.stream(prompt, { scopeValue: opts?.scopeValue });
         }
 
-        // vaultSimple vaultFull try to execute the loop.
         setCurrentAnalysisContext({
             getResult: () => this.agentContextManager.getAgentResult(),
             getVerifiedPaths: () => this.agentContextManager.getVerifiedPaths(),
             getHandlers: (fieldName) => getUpdateResultHandlersMap()[fieldName],
         });
-        return this.executeReActLoop();
+        return this.executeSlotPipeline();
     }
 
     /** Exposed for debug mount (e.g. window.__peakSearchDebug.getSnapshot). */
@@ -259,135 +203,23 @@ export class AISearchAgent {
     }
 
     /**
-     * Execute the ReAct loop: MindFlow(pre) → [RawSearch → MindFlow(post) → decision]*.
+     * Slot-based pipeline: SlotRecallAgent (classify → recall → slot UI) → streaming sources → finish agents.
      */
-    private async *executeReActLoop(): AsyncGenerator<LLMStreamEvent> {
-        const baseCfg = getAgentConfig(this.options.analysisMode);
-        const userMaxIter = this.options.maxMultiAgentIterations;
-        const maxIterations = typeof userMaxIter === 'number'
-            ? Math.max(1, Math.min(50, Math.min(baseCfg.maxMultiAgentIterations, userMaxIter)))
-            : baseCfg.maxMultiAgentIterations;
-        const maxWallClockMs = this.options.maxWallClockMs ?? baseCfg.maxWallClockMs;
-        const cfg = { ...baseCfg, maxMultiAgentIterations: maxIterations, maxWallClockMs };
-        let iterationCount = 0;
-        const reActStartTimeMs = Date.now();
+    private async *executeSlotPipeline(): AsyncGenerator<LLMStreamEvent> {
+        const pipelineStartMs = Date.now();
 
-        yield* this.runMindFlowAgent('pre-thought');
-
-        while (iterationCount < cfg.maxMultiAgentIterations) {
-            iterationCount++;
-
-            const elapsedMs = Date.now() - reActStartTimeMs;
-            if (elapsedMs > cfg.maxWallClockMs) {
-                yield {
-                    type: 'pk-debug',
-                    debugName: 'react-time-budget-exceeded',
-                    triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
-                    extra: {
-                        reason: `[AISearchAgent] Time budget exceeded (${elapsedMs}ms > ${cfg.maxWallClockMs}ms), forcing synthesis`,
-                    },
-                };
-                break;
-            }
-
-            try {
-                const progress = this.agentContextManager.getLatestMindflowProgress();
-                const decision = progress?.decision;
-
-                if (this.options.analysisMode === 'vaultFull' && decision === 'FINAL_ANSWER') {
-                    console.debug('[AISearchAgent] Planner decided FINAL_ANSWER, end the loop');
-                    break;
-                }
-
-                if (this.options.analysisMode === 'vaultFull' && decision === 'REQUEST_COMPRESSION') {
-                    const dossier = this.agentContextManager.getDossierForSummary();
-                    const lastRaw = this.agentContextManager.getRawSearchInfoForMindFlowInput(1);
-                    yield* this.knowledgeAgent.stream({
-                        evidenceSummary: dossier.verifiedFactSheet,
-                        sourceMap: dossier.sourceMap,
-                        lastRawSearchDelta: lastRaw?.latestLoopDelta,
-                        userQuery: this.agentContextManager.getInitialPrompt(),
-                    });
-                    yield* this.runMindFlowAgent('post-thought');
-                    continue;
-                }
-
-                const instruction = (progress?.instruction ?? '').trim() || this.agentContextManager.getInitialPrompt();
-                const userQuery = this.agentContextManager.getInitialPrompt();
-                const existingFacts = this.agentContextManager.getExistingFactClaimsForRawSearch().join('\n');
-
-                yield* this.searchAgent.stream({
-                    prompt: instruction,
-                    userOriginalQuery: userQuery,
-                    currentThoughtInstruction: progress?.instruction,
-                    existing_facts: existingFacts || undefined,
-                });
-
-                for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths(StreamTriggerName.SEARCH_INSPECTOR_AGENT)) {
-                    yield ev;
-                }
-
-                yield* this.runMindFlowAgent('post-thought');
-
-                if (this.options.analysisMode === 'vaultSimple') {
-                    break;
-                }
-
-                let phaseResult: { shouldBreak: boolean } = { shouldBreak: false };
-                yield* this.mindFlowAgent.checkMindFlowProgreeDecision(
-                    iterationCount,
-                    (shouldBreak) => { phaseResult.shouldBreak = shouldBreak; }
-                );
-                if (phaseResult.shouldBreak) {
-                    console.debug('[AISearchAgent] Planner decided FINAL_ANSWER, end the loop');
-                    break;
-                }
-                // Early stop when near time budget so we synthesize instead of starting another round.
-                const elapsedAfterRound = Date.now() - reActStartTimeMs;
-                if (elapsedAfterRound >= 0.8 * cfg.maxWallClockMs) {
-                    yield {
-                        type: 'pk-debug',
-                        debugName: 'react-time-80-percent',
-                        triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
-                        extra: {
-                            reason: `[AISearchAgent] Time at 80% of budget (${elapsedAfterRound}ms), forcing synthesis after this round.`,
-                        },
-                    };
-                    break;
-                }
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                console.error('[AISearchAgent] RawSearch iteration error (continuing next iteration):', err);
-                yield {
-                    type: 'pk-debug',
-                    debugName: 'rawsearch-iteration-error',
-                    triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
-                    extra: {
-                        reason: `[AISearchAgent] RawSearch error: ${message}. Continuing next iteration.`,
-                        error: message,
-                    },
-                };
-                continue;
-            }
-        }
-
-        yield* this.finishReActLoop(reActStartTimeMs);
-
-        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths()) {
+        for await (const ev of this.slotRecallAgent.stream()) {
+            accumulateTokenUsage(ev, (usage) => this.agentContextManager.accumulateTokenUsage(usage));
             yield ev;
         }
-    }
 
-    private async *runMindFlowAgent(
-        phase: MindFlowPhase,
-    ): AsyncGenerator<LLMStreamEvent> {
-        if (this.options.analysisMode !== 'vaultFull') {
-            return;
+        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths(StreamTriggerName.SEARCH_AI_AGENT)) {
+            yield ev;
         }
 
-        const mfStepId = generateUuidWithoutHyphens();
-        for await (const ev of this.mindFlowAgent.stream({ stepId: mfStepId, phase })) {
-            accumulateTokenUsage(ev, (usage) => this.agentContextManager.accumulateTokenUsage(usage));
+        yield* this.finishReActLoop(pipelineStartMs);
+
+        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths()) {
             yield ev;
         }
     }
@@ -411,7 +243,7 @@ export class AISearchAgent {
                 yield {
                     type: 'error',
                     error: new Error('Analysis mode not supported'),
-                    triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
+                    triggerName: StreamTriggerName.SEARCH_AI_AGENT,
                     extra: {
                         analysisMode: this.options.analysisMode,
                     },
@@ -425,7 +257,7 @@ export class AISearchAgent {
             usage: this.agentContextManager.getTotalTokenUsage(),
             durationMs: Date.now() - reActStartTimeMs,
             result: this.agentContextManager.getAgentResult(),
-            triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT,
+            triggerName: StreamTriggerName.SEARCH_AI_AGENT,
         };
     }
 

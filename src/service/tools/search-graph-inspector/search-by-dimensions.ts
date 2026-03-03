@@ -17,7 +17,7 @@ export async function searchByDimensions(params: any, templateManager?: Template
         parser = new BooleanExpressionParser(expr);
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        return `Invalid boolean_expression: ${msg}. Use only tag:value, category:value, AND, OR, NOT, and parentheses. Example: tag:javascript AND category:programming`;
+        return `Invalid boolean_expression: ${msg}. Use only tag:value, category:value, AND, OR, NOT, and parentheses. Example: tag:javascript AND category:programming. Attention. Only one word. do not use space. do not use special characters.`;
     }
 
     // Extract all tags and categories from the expression

@@ -144,32 +144,32 @@ export async function* mockAIAnalysisStream(
 	// Thought agent talking
 	for (const word of ['I will ', 'search for ', `"${query.slice(0, 30)}${query.length > 30 ? '...' : ''}" `, 'and gather ', 'relevant notes.\n']) {
 		await delay(chunkDelayMs);
-		yield { type: 'text-delta', text: word, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+		yield { type: 'text-delta', text: word, triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT };
 	}
 
 	// Reasoning delta
 	await delay(chunkDelayMs);
-	yield { type: 'reasoning-delta', text: 'Planning: call search agent then add_dashboard_blocks.\n', triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+	yield { type: 'reasoning-delta', text: 'Planning: call search agent then add_dashboard_blocks.\n', triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT };
 
 	await delay(phaseDelayMs);
 
 	// Tool: call_search_agent
 	const callId1 = `mock-call-${Date.now()}-1`;
 	await delay(chunkDelayMs);
-	yield { type: 'tool-call', id: callId1, toolName: 'call_search_agent', input: { prompt: query }, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+	yield { type: 'tool-call', id: callId1, toolName: 'call_search_agent', input: { prompt: query }, triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT };
 	// Simulate search agent running (real flow can take minutes)
 	await delay(simulatedSearchMs);
 	await delay(chunkDelayMs);
-	yield { type: 'tool-result', id: callId1, toolName: 'call_search_agent', output: { result: { prompt: query } }, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+	yield { type: 'tool-result', id: callId1, toolName: 'call_search_agent', output: { result: { prompt: query } }, triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT };
 
 	await delay(phaseDelayMs);
 
 	if (scenario === 'full') {
 		const callId2 = `mock-call-${Date.now()}-2`;
 		await delay(chunkDelayMs);
-		yield { type: 'tool-call', id: callId2, toolName: 'graph_traversal', input: { start_note_path: 'Folder/MockNoteOne.md', max_steps: 5 }, triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT };
+		yield { type: 'tool-call', id: callId2, toolName: 'graph_traversal', input: { start_note_path: 'Folder/MockNoteOne.md', max_steps: 5 }, triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT };
 		await delay(chunkDelayMs);
-		yield { type: 'tool-result', id: callId2, toolName: 'graph_traversal', output: { result: {  } }, triggerName: StreamTriggerName.SEARCH_INSPECTOR_AGENT };
+		yield { type: 'tool-result', id: callId2, toolName: 'graph_traversal', output: { result: {  } }, triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT };
 		await delay(phaseDelayMs);
 	}
 
@@ -184,15 +184,15 @@ export async function* mockAIAnalysisStream(
 
 	// Summary stream (SearchAiSummary)
 	await delay(chunkDelayMs);
-	yield { type: 'prompt-stream-start', promptId: PromptId.AiAnalysisSummary, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+	yield { type: 'prompt-stream-start', promptId: PromptId.AiAnalysisSummary, triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT };
 	const summaryText = fullResult.summary;
 	const summaryChunkSize = Math.max(1, Math.floor(summaryText.length / 12));
 	for (let i = 0; i < summaryText.length; i += summaryChunkSize) {
 		await delay(chunkDelayMs);
-		yield { type: 'prompt-stream-delta', promptId: PromptId.AiAnalysisSummary, delta: summaryText.slice(i, i + summaryChunkSize), triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+		yield { type: 'prompt-stream-delta', promptId: PromptId.AiAnalysisSummary, delta: summaryText.slice(i, i + summaryChunkSize), triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT };
 	}
 	await delay(chunkDelayMs);
-	yield { type: 'prompt-stream-result', promptId: PromptId.AiAnalysisSummary, output: summaryText, triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT };
+	yield { type: 'prompt-stream-result', promptId: PromptId.AiAnalysisSummary, output: summaryText, triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT };
 
 	await delay(phaseDelayMs);
 
@@ -236,7 +236,7 @@ export async function* mockAIAnalysisStream(
 		usage: { inputTokens: 100, outputTokens: 200, totalTokens: 300 },
 		durationMs: 1500,
 		result: fullResult,
-		triggerName: StreamTriggerName.SEARCH_THOUGHT_AGENT,
+		triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT,
 	};
 }
 

@@ -65,9 +65,9 @@ function getVaultStatistics(): SystemVaultStatistics {
 }
 
 /**
- * Get vault description from the prompt folder
+ * Vault capability schema: user-written description of what the knowledge base contains (e.g. "Personal life records, product methodology, tech articles"). Used to give the classifier confidence that a dimension is likely answerable.
  */
-async function getVaultDescription(): Promise<string | undefined> {
+export async function getVaultDescription(): Promise<string | undefined> {
     try {
         const settings = AppContext.getInstance().settings;
 

@@ -68,6 +68,13 @@ export class Stopwatch {
 		this.currentSegment = null;
 	}
 
+	getLastDuration(): number {
+		if (this.segments.length === 0) {
+			return 0;
+		}
+		return this.segments[this.segments.length - 1].duration ?? 0;
+	}
+
 	/**
 	 * Get the total elapsed time from the first segment start to now (or last segment end).
 	 */

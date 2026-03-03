@@ -186,6 +186,7 @@ export async function* streamTransform<TOOLS extends ToolSet>(
     eventProcessor: EventProcessor
 ): AsyncGenerator<LLMStreamEvent> {
     let manualToolTokenUsage: LLMUsage = emptyUsage();
+    let startTime = Date.now();
 
     for await (const chunk of fullStream) {
         eventProcessor.chunkEventInterceptor?.(chunk);
@@ -285,6 +286,7 @@ export async function* streamTransform<TOOLS extends ToolSet>(
                     type: 'on-step-finish',
                     text: `${triggerName} finish.`,
                     finishReason,
+                    durationMs: Date.now() - startTime,
                     usage: mergeTokenUsage(usage ?? emptyUsage(), manualToolTokenUsage),
                     triggerName,
                 };
@@ -363,14 +365,14 @@ async function* yieldChunkEvent<TOOLS extends ToolSet>(
                         ...e,
                         stepId: uiStep.stepId,
                         triggerName,
-                    };
+                    } as LLMStreamEvent;
                 }
             } else {
                 yield {
                     ...uiEvent,
                     stepId: uiStep.stepId,
                     triggerName,
-                };
+                } as LLMStreamEvent;
             }
         } else {
             yield {
@@ -419,4 +421,49 @@ export function getDeltaEventDeltaText(event: LLMStreamEvent): string {
 
 export function checkIfDeltaEvent(type: LLMStreamEvent['type']) {
     return DELTA_EVENT_TYPES.has(type);
+}
+
+type ParallelEntry = { index: number; result: IteratorResult<LLMStreamEvent> };
+
+/**
+ * Merge multiple async generators of LLMStreamEvent into one; yields whenever any source yields.
+ * Each source runs concurrently; events are interleaved by completion order.
+ * Yields `parallel-stream-progress` events when the set of completed streams changes (initial 0/N and each completion).
+ */
+export async function* parallelStream(
+    streamGenerator: AsyncGenerator<LLMStreamEvent>[],
+): AsyncGenerator<LLMStreamEvent> {
+    if (streamGenerator.length === 0) return;
+
+    const total = streamGenerator.length;
+    const completedIndices = new Set<number>();
+    const pending = new Map<number, Promise<ParallelEntry>>();
+
+    const runNext = (index: number): Promise<ParallelEntry> =>
+        streamGenerator[index].next().then((result) => ({ index, result }));
+
+    const yieldProgress = () =>
+        ({
+            type: 'parallel-stream-progress' as const,
+            completed: completedIndices.size,
+            total,
+            completedIndices: [...completedIndices],
+        }) as LLMStreamEvent;
+
+    yield yieldProgress();
+
+    for (let i = 0; i < total; i++) {
+        pending.set(i, runNext(i));
+    }
+    while (pending.size > 0) {
+        const { index, result } = await Promise.race(pending.values());
+        if (result.done) {
+            pending.delete(index);
+            completedIndices.add(index);
+            yield yieldProgress();
+        } else {
+            yield result.value;
+            pending.set(index, runNext(index));
+        }
+    }
 }

@@ -4,12 +4,9 @@ import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/
 import { PromptId } from '@/service/prompt/PromptId';
 import type { AgentContextManager, AgentMemoryToolSet } from './AgentContextManager';
 import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
-import { AgentTool, ManualToolCallHandler, safeAgentTool } from '@/service/tools/types';
+import { AgentTool, safeAgentTool } from '@/service/tools/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { MermaidOverviewAgent } from './MermaidOverviewAgent';
-import { callAgentTool } from '@/service/tools/call-agent-tool';
-import { CALL_SEARCH_AGENT_OPTIONS } from '@/service/agents/search-agent-helper/RawSearchAgent';
-import { RawSearchAgent } from './RawSearchAgent';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { DashboardBlock } from '../AISearchAgent';
 import { z } from 'zod/v3';
@@ -18,7 +15,6 @@ import { z } from 'zod/v3';
 const MIN_SUMMARY_LENGTH = 200;
 
 type SummaryToolSet = AgentMemoryToolSet & {
-    call_search_agent: AgentTool;
     get_full_content: AgentTool;
     read_block_content: AgentTool;
     get_thought_history: AgentTool;
@@ -38,10 +34,6 @@ export class SummaryAgent {
     private readonly context: AgentContextManager;
     private summaryAgent: Agent<SummaryToolSet>;
     private mermaidOverviewAgent: MermaidOverviewAgent;
-    private rawSearchAgent: RawSearchAgent;
-
-    /** Store for call_search_agent: execute awaits; manual handler resolves. Per-stream, set in realStreamInternal. */
-    private readonly manualCallSearchAgent?: ManualToolCallHandler;
 
     /** Accumulated summary text from stream; length used by prepareStep to decide if more output is needed. */
     private _summaryCollector: string[] = [];
@@ -49,11 +41,9 @@ export class SummaryAgent {
     constructor(params: {
         aiServiceManager: AIServiceManager;
         context: AgentContextManager;
-        rawSearchAgent: RawSearchAgent;
     }) {
         this.aiServiceManager = params.aiServiceManager;
         this.context = params.context;
-        this.rawSearchAgent = params.rawSearchAgent;
         this.mermaidOverviewAgent = new MermaidOverviewAgent(params);
 
         const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisSummary);
@@ -73,7 +63,6 @@ export class SummaryAgent {
             },
             tools: {
                 ...this.context.getAgentMemoryTool(),
-                call_search_agent: callAgentTool('search', CALL_SEARCH_AGENT_OPTIONS),
                 get_full_content: safeAgentTool({
                     description:
                         'Read full content of a path from Source Map. Use when: (1) snippet is cut off or has [REDACTED], or (2) data (e.g. %, amount, legal) lacks context (time range, applicable object). Max 3 calls per run. Do not use for new discovery.',
@@ -81,8 +70,7 @@ export class SummaryAgent {
                     execute: async ({ path }) => {
                         const p = (path ?? '').trim();
                         const allowed = self.context.getVerifiedPaths();
-                        const inDossier = self.context.getDossier().sources.some((s) => s.path_or_url === p);
-                        if (!p || (!allowed.has(p) && !inDossier)) {
+                        if (!p || !allowed.has(p)) {
                             return { content: 'Path not in dossier or verified list. Use only paths from the Source Map.' };
                         }
                         try {
@@ -115,45 +103,20 @@ export class SummaryAgent {
                 }),
                 get_thought_history: safeAgentTool({
                     description:
-                        'Get MindFlow thought at a step (inner monologue: critique, instruction, gaps). Use at least once to surface Divergence—e.g. if MindFlow doubted Fact #3, mention uncertainty in Summary.',
+                        'Get coverage context: confirmed facts and gaps from the slot/dossier. Use to surface uncertainty or missing dimensions in the Summary.',
                     inputSchema: z.object({
-                        stepIndex: z.number().optional().describe('0-based step index; omit for last 3 steps'),
+                        stepIndex: z.number().optional().describe('Unused; kept for schema compatibility'),
                     }),
-                    execute: async (input) => {
-                        const history = self.context.getMindflowProgressHistory();
-                        if (!history.length) return { content: 'No thought history available.' };
-                        const stepIndex = input?.stepIndex;
-                        const slice =
-                            stepIndex != null
-                                ? stepIndex >= 0 && stepIndex < history.length
-                                    ? [history[stepIndex]!]
-                                    : history.slice(-3)
-                                : history.slice(-3);
-                        const lines = slice.map((p, i) => {
-                            const idx = stepIndex != null && slice.length === 1 ? stepIndex : history.length - slice.length + i;
-                            return [
-                                `[Step ${idx}]`,
-                                `Status: ${p.statusLabel ?? ''}`,
-                                p.critique ? `Critique: ${p.critique}` : '',
-                                p.instruction ? `Instruction: ${p.instruction}` : '',
-                                p.gaps?.length ? `Gaps: ${p.gaps.join('; ')}` : '',
-                                p.confirmed_facts?.length ? `Confirmed: ${p.confirmed_facts.join(', ')}` : '',
-                            ]
-                                .filter(Boolean)
-                                .join('\n');
-                        });
-                        return { content: lines.join('\n\n') };
+                    execute: async () => {
+                        const d = self.context.getDossierForSummary();
+                        const lines: string[] = [];
+                        if (d.confirmedFacts?.length) lines.push('Confirmed facts: ' + d.confirmedFacts.join('; '));
+                        if (d.gaps?.length) lines.push('Gaps (missing or partial): ' + d.gaps.join('; '));
+                        return { content: lines.length ? lines.join('\n') : 'No thought history. Use verified fact sheet and source map.' };
                     },
                 }),
             },
         });
-
-        this.manualCallSearchAgent = {
-            toolName: 'call_search_agent',
-            triggerName: StreamTriggerName.SEARCH_SUMMARY,
-            handle: this.rawSearchAgent.manualToolCallHandle.bind(this.rawSearchAgent),
-            outputGetter: (resultCollector) => resultCollector.searchResultChunks,
-        }
     }
 
     public async *streamMultiStep(
@@ -245,9 +208,6 @@ export class SummaryAgent {
                     this._summaryCollector.push(chunk.text ?? (chunk as any).textDelta ?? '');
                 }
                 return chunk;
-            },
-            manualToolCallHandlers: {
-                call_search_agent: this.manualCallSearchAgent!,
             },
         });
 

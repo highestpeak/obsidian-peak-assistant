@@ -96,12 +96,12 @@ export class AppContext {
 
 				console.debug('🔧 Graph Inspector Test Tools initialized!');
 				console.debug('📖 Usage: window.testGraphTools.inspectNote("path/to/note.md")');
-				console.debug('📖 Usage: await window.testAISearchTools.testMindFlow("your question")');
+				console.debug('📖 Usage: await window.testAISearchTools.testSlotRecall("your question")');
 				console.debug('📖 Usage: window.indexDocument("path/to/note.md")');
 				console.debug('📖 Usage: await window.cleanupGraphTable() — clean graph_nodes/edges (nodes whose path not in doc_meta, orphan edges)');
 				console.debug('📖 Available methods:', [
 					...Object.getOwnPropertyNames(GraphInspectorTestTools.prototype).filter(name => name !== 'constructor'),
-					'testAISearchTools.testMindFlow',
+					'testAISearchTools.testSlotRecall',
 					'indexDocument',
 					'cleanupGraphTable',
 				]);

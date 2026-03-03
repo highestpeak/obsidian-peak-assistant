@@ -13,7 +13,6 @@ import { DashboardBlocksAgent } from './DashboardBlocksAgent';
 import { ReviewBlocksAgent } from './ReviewBlocksAgent';
 import { getFileNameFromPath, normalizeFilePath } from '@/core/utils/file-utils';
 import { AgentContextManager } from './AgentContextManager';
-import { RawSearchAgent } from './RawSearchAgent';
 import { FollowUpQuestionAgent } from './FollowUpQuestionAgent';
 import { AgentTool, safeAgentTool } from '@/service/tools/types';
 
@@ -73,7 +72,6 @@ export class DashboardAgent {
     constructor(params: {
         aiServiceManager: AIServiceManager;
         context: AgentContextManager;
-        rawSearchAgent: RawSearchAgent;
     }) {
         const { aiServiceManager, context } = params;
         this.context = context;
@@ -94,7 +92,7 @@ export class DashboardAgent {
                     },
                 }),
                 submit_blocks_plan: safeAgentTool({
-                    description: 'Submit the blocks update plan. Each plan item MUST reference Confirmed Facts by index (e.g. "Based on Fact #3 and #5") and, when applicable, include the data source path or vault path so the Blocks agent knows where to call_search_agent.',
+                    description: 'Submit the blocks update plan. Each plan item MUST reference Confirmed Facts by index (e.g. "Based on Fact #3 and #5") and, when applicable, include the data source path or vault path.',
                     inputSchema: submitBlocksPlanInputSchema,
                     execute: async (input) => {
                         self.lastPlan.blockPlan.push(...(input?.plan ?? []));
@@ -104,7 +102,7 @@ export class DashboardAgent {
         });
 
         this.topicsAgent = new TopicsUpdateAgent({ aiServiceManager, context });
-        this.blocksAgent = new DashboardBlocksAgent({ aiServiceManager, context, rawSearchAgent: params.rawSearchAgent });
+        this.blocksAgent = new DashboardBlocksAgent({ aiServiceManager, context });
         this.reviewAgent = new ReviewBlocksAgent({ aiServiceManager, context });
         this.followUpQuestionAgent = new FollowUpQuestionAgent(params);
     }

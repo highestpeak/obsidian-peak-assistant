@@ -188,12 +188,10 @@ export function useAIAnalysis() {
 
 	// Real agent when not mock; MockAISearchAgent in desktop dev so one code path
 	const aiSearchAgent = useMemo(() => {
-		const maxIter = AppContext.getInstance().settings?.search?.maxMultiAgentIterations;
 		return AppContext.searchAgent({
 			enableWebSearch: webEnabled,
 			enableLocalSearch: true,
 			analysisMode: analysisMode ?? 'vaultFull',
-			maxMultiAgentIterations: typeof maxIter === 'number' ? maxIter : undefined,
 		});
 	}, [webEnabled, analysisMode]);
 
@@ -392,11 +390,10 @@ export function useAIAnalysis() {
 						}
 						// // MindFlowAgent sends one combined signal at finish with { mermaid, progress }; single set = one re-render
 						if (ev.channel === UISignalChannel.MINDFLOW_MERMAID && ev.payload) {
-							const p = ev.payload as { mermaid?: string; progress?: unknown };
-							useAIAnalysisResultStore.getState().setMindflowSnapshot({
-								...(typeof p.mermaid === 'string' && { mermaid: p.mermaid.trim() }),
-								...(p.progress != null && { progress: p.progress as any }),
-							});
+							const p = ev.payload as { mermaid?: string };
+							if (typeof p.mermaid === 'string') {
+								useAIAnalysisResultStore.getState().setMindflowSnapshot({ mermaid: p.mermaid.trim() });
+							}
 						}
 						useUIEventStore.getState().publish(event.type, event);
 						break;
@@ -412,7 +409,7 @@ export function useAIAnalysis() {
 						}
 						useUIEventStore.getState().publish('complete', event);
 						// Only apply final result and notice for top-level complete (thought agent), not inner agents (e.g. inspector)
-						if (event.triggerName === StreamTriggerName.SEARCH_THOUGHT_AGENT || event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT) {
+						if (event.triggerName === StreamTriggerName.SEARCH_AI_AGENT || event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT) {
 							handleFinalResult(event);
 						}
 						break;

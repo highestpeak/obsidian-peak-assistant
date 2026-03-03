@@ -10,15 +10,11 @@ import {
     localSearchWholeVaultTool
 } from "../../service/tools/search-graph-inspector";
 import { AppContext } from "@/app/context/AppContext";
-import { AgentContextManager, type ReplayState } from "@/service/agents/search-agent-helper/AgentContextManager";
-import { MindFlowAgent } from "@/service/agents/search-agent-helper/MindFlowAgent";
-import type { MindFlowPhase, MindFlowResult } from "@/service/agents/search-agent-helper/MindFlowAgent";
-import { RawSearchAgent } from "@/service/agents/search-agent-helper/RawSearchAgent";
-import { DashboardAgent } from "@/service/agents/search-agent-helper/DashboardAgent";
+import { AgentContextManager } from "@/service/agents/search-agent-helper/AgentContextManager";
+import { SlotRecallAgent } from "@/service/agents/search-agent-helper/SlotRecallAgent";
 import type { LLMStreamEvent } from "@/core/providers/types";
-import { emptyUsage, mergeTokenUsage, StreamTriggerName } from "@/core/providers/types";
+import { emptyUsage, mergeTokenUsage } from "@/core/providers/types";
 import { DELTA_EVENT_TYPES, getDeltaEventDeltaText } from "@/core/providers/helpers/stream-helper";
-import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
 
 /**
  * Global test interface for search-graph-inspector tools
@@ -177,12 +173,12 @@ export async function* streamWithStreamLog(
 ): AsyncGenerator<LLMStreamEvent> {
     let deltaBuffer: string[] = [];
     const allLog: any[] = [];
-    
+
     const flushDelta = () => {
         if (deltaBuffer.length > 0) {
             const log = deltaBuffer.join('');
             allLog.push(log);
-            console.log('[stream-delta]', log);
+            console.debug('[stream-delta]', log);
             deltaBuffer = [];
         }
     };
@@ -190,11 +186,12 @@ export async function* streamWithStreamLog(
     try {
         for await (const ev of stream) {
             if (DELTA_EVENT_TYPES.has(ev.type)) {
+                console.debug('[stream-delta]', ev.type);
                 deltaBuffer.push(getDeltaEventDeltaText(ev));
             } else {
                 flushDelta();
                 allLog.push(ev);
-                console.log('[stream-event]', ev.type, JSON.stringify(ev));
+                console.debug('[stream-event]', ev.type, JSON.stringify(ev));
             }
             if (ev.type === 'on-step-finish') {
                 totalTokenUsage = mergeTokenUsage(totalTokenUsage, ev.usage);
@@ -203,129 +200,32 @@ export async function* streamWithStreamLog(
         }
     } finally {
         flushDelta();
-        allLog.push({type: 'total-token-usage', totalTokenUsage});
-        console.log('[stream-all-log]', JSON.stringify(allLog));
+        allLog.push({ type: 'total-token-usage', totalTokenUsage });
+        console.debug('[stream-all-log]', JSON.stringify(allLog));
     }
 }
 
 /**
- * Dev-only test tools for AISearchAgent and sub-agents (MindFlow, RawSearch, etc.).
- * Built from AppContext (manager, settings). Available as window.testAISearchTools when enableDevTools.
+ * Dev-only test tools for AISearchAgent slot pipeline.
+ * Available as window.testAISearchTools when enableDevTools.
  */
 export class AISearchAgentTestTools {
-    /**
-     * Run MindFlowAgent once with a user query and optional phase.
-     * Uses a fresh AgentContextManager and AppContext.manager; returns last MindFlow result.
-     */
-    async testMindFlow(
-        userQuery: string,
-        phase: MindFlowPhase = 'pre-thought'
-    ): Promise<any> {
+    /** Run SlotRecallAgent once with a user query; returns event count and slot coverage from context. */
+    async testSlotRecall(userQuery: string, skipSearch = true): Promise<any> {
+        const start = Date.now();
         const ctx = AppContext.getInstance();
         const context = new AgentContextManager(ctx.manager);
         context.resetAgentMemory(userQuery);
-        const mindFlowAgent = new MindFlowAgent({
-            aiServiceManager: ctx.manager,
-            context,
-        });
+        const agent = new SlotRecallAgent(ctx.manager, context);
         let eventCount = 0;
-        for await (const _ev of streamWithStreamLog(mindFlowAgent.stream({ phase }))) {
+        for await (const _ev of streamWithStreamLog(agent.stream({ skipSearch }))) {
             eventCount++;
         }
-        const result = context.getSessionState()?.mindflowContext;
-        return { result, eventCount };
-    }
-
-    /**
-     * Run one or more ReAct rounds (MindFlow pre-thought → [RawSearch → emit sources → MindFlow post-thought]) without finish phase.
-     * Use returned contextState as initialState to continue from a later round (e.g. paste in console).
-     *
-     * @param userQuery User query (used when not restoring from initialState).
-     * @param opts.rounds Number of rounds to run (default 1).
-     * @param opts.initialState State from previous run (getReplayState / return value's contextState); when set, skips pre-thought and runs from this state.
-     * @param opts.startFromRound Optional 1-based round index hint when using initialState (for logging only).
-     */
-    async testOneReActRound(
-        userQuery: string,
-        opts?: { rounds?: number; initialState?: ReplayState; startFromRound?: number }
-    ): Promise<{
-        result: { mindflowContext?: MindFlowResult[]; debugSnapshot: any };
-        eventCount: number;
-        contextState: ReplayState;
-    }> {
-        const ctx = AppContext.getInstance();
-        const context = new AgentContextManager(ctx.manager);
-        const rounds = Math.max(0, opts?.rounds ?? 1);
-
-        const innerOptions = {
-            enableWebSearch: false,
-            enableLocalSearch: true,
-            analysisMode: 'vaultFull' as const,
-        };
-        const innerAgentCreateParams = {
-            aiServiceManager: ctx.manager,
-            context,
-            options: innerOptions,
-        };
-        const searchAgent = new RawSearchAgent(innerAgentCreateParams);
-        const mindFlowAgent = new MindFlowAgent({
-            aiServiceManager: ctx.manager,
-            context,
-            options: { enableWebSearch: innerOptions.enableWebSearch },
-        });
-        const dashboardUpdateAgent = new DashboardAgent({
-            ...innerAgentCreateParams,
-            rawSearchAgent: searchAgent,
-        });
-
-        async function* combinedStream(): AsyncGenerator<LLMStreamEvent> {
-            if (opts?.initialState != null) {
-                context.restoreReplayState(opts.initialState);
-                if (opts.startFromRound != null) {
-                    console.log(`[testOneReActRound] Resuming from round ${opts.startFromRound}, running ${rounds} round(s).`);
-                }
-            } else {
-                context.resetAgentMemory(userQuery);
-                if (rounds > 0) {
-                    yield* mindFlowAgent.stream({
-                        stepId: generateUuidWithoutHyphens(),
-                        phase: 'pre-thought',
-                    });
-                }
-            }
-
-            for (let r = 0; r < rounds; r++) {
-                const progress = context.getLatestMindflowProgress();
-                const instruction = (progress?.instruction ?? '').trim() || context.getInitialPrompt();
-                const userOriginalQuery = context.getInitialPrompt();
-                const existingFacts = context.getExistingFactClaimsForRawSearch().join('\n') || undefined;
-
-                yield* searchAgent.stream({
-                    prompt: instruction,
-                    userOriginalQuery,
-                    currentThoughtInstruction: progress?.instruction,
-                    existing_facts: existingFacts,
-                });
-
-                yield* dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths(StreamTriggerName.SEARCH_INSPECTOR_AGENT);
-
-                yield* mindFlowAgent.stream({
-                    stepId: generateUuidWithoutHyphens(),
-                    phase: 'post-thought',
-                });
-            }
-        }
-
-        let eventCount = 0;
-        for await (const _ev of streamWithStreamLog(combinedStream())) {
-            eventCount++;
-        }
-
-        const result = {
-            mindflowContext: context.getSessionState()?.mindflowContext,
+        const end = Date.now();
+        const duration = end - start;
+        return {
             debugSnapshot: context.getDebugSnapshot(),
+            duration,
         };
-        const contextState = context.getReplayState();
-        return { result, eventCount, contextState };
     }
 }

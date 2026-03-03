@@ -46,7 +46,6 @@ export const StreamingAnalysis: React.FC<{
 	const overviewMermaidVersions = useAIAnalysisResultStore((s) => s.overviewMermaidVersions);
 	const overviewMermaidActiveIndex = useAIAnalysisResultStore((s) => s.overviewMermaidActiveIndex);
 	const mindflowMermaid = useAIAnalysisResultStore((s) => s.mindflowMermaid);
-	const mindflowProgress = useAIAnalysisResultStore((s) => s.mindflowProgress);
 
 	const isSimpleMode = runAnalysisMode === 'docSimple' || runAnalysisMode === 'vaultSimple';
 	const showMindFlow = !isSimpleMode && (mindflowMermaid ?? '').trim().length > 0;
@@ -122,7 +121,6 @@ export const StreamingAnalysis: React.FC<{
 				<div ref={sectionRefs?.graphSectionRef} className="pktw-w-full pktw-flex pktw-flex-col pktw-min-h-0 pktw-overflow-hidden">
 					<MermaidMindFlowSection
 						mindflowMermaid={mindflowMermaid}
-						mindflowProgress={mindflowProgress}
 						maxHeightClassName="pktw-min-h-[160px]"
 						containerClassName="pktw-flex-1 pktw-min-h-0"
 					/>

@@ -13,8 +13,6 @@ import type { AgentTool } from '@/service/tools/types';
 import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { AgentContextManager, AgentMemoryToolSet } from './AgentContextManager';
-import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
-import type { EvidencePack } from './dossier-types';
 
 /**
  * Refine modes for FinalRefineAgent.
@@ -33,10 +31,6 @@ export const REFINE_ROUNDS = 1;
 
 /** Batch size for sources refinement. */
 export const REFINE_SOURCES_BATCH_SIZE = 12;
-
-/** Max paths to fill in one hole-fill run (content_reader for missing snippets). */
-const HOLE_FILL_MAX_PATHS = 5;
-const HOLE_FILL_SNIPPET_MAX = 800;
 
 /** Score threshold calculation methods for selecting high-value sources. */
 export type ScoreThresholdMethod = 'median' | 'mean' | 'percentile';
@@ -175,72 +169,17 @@ export class FinalRefineAgent {
         });
     }
 
-    /**
-     * Hole-fill: for key paths in dossier that lack snippet/quote, read content and append one EvidencePack.
-     * Does not introduce new themes or conclusions; only fills missing extract so Summary can cite.
-     */
-    public async *streamHoleFill(opts?: { analysisMode?: AnalysisMode }): AsyncGenerator<LLMStreamEvent> {
+    /** No-op: slot pipeline uses AgentContextManager slot storage for evidence; legacy dossier hole-fill removed. */
+    public async *streamHoleFill(_opts?: { analysisMode?: AnalysisMode }): AsyncGenerator<LLMStreamEvent> {
         const stepId = generateUuidWithoutHyphens();
         yield {
             type: 'ui-step',
             uiType: UIStepType.STEPS_DISPLAY,
             stepId,
             title: 'Filling evidence gaps…',
-            description: 'Checking dossier for missing snippets; reading key paths if needed.',
+            description: '',
             triggerName: StreamTriggerName.SEARCH_FINAL_REFINE_AGENT,
         };
-
-        const dossier = this.context.getDossier();
-        const pathsToCheck = dossier.sources
-            .filter((s) => s.kind === 'vault_path')
-            .map((s) => s.path_or_url)
-            .filter((p) => !p.startsWith('http'));
-        const factsList = this.context.getFactsList();
-        const hasSnippet = (path: string) =>
-            factsList.some(
-                (p) => !p.superseded && p.origin.path_or_url === path && (p.snippet?.content?.length ?? 0) > 0,
-            );
-        const missing = pathsToCheck.filter((p) => !hasSnippet(p)).slice(0, HOLE_FILL_MAX_PATHS);
-
-        let filled = 0;
-        try {
-            const loader = DocumentLoaderManager.getInstance();
-            for (const path of missing) {
-                const doc = await loader.readByPath(path, true);
-
-                const summary = typeof doc?.summary === 'string' ? doc.summary.trim() : '';
-                const useSummary = summary.length > 0;
-                let raw = summary;
-
-                if (!useSummary) {
-                    const content = doc?.cacheFileInfo?.content ?? doc?.sourceFileInfo?.content;
-                    if (!content) continue;
-                    raw = String(content);
-                }
-
-                const snippetContent = raw.length > HOLE_FILL_SNIPPET_MAX ? raw.slice(0, HOLE_FILL_SNIPPET_MAX) + '…' : raw;
-                const pack: EvidencePack = {
-                    origin: { tool: 'content_reader', path_or_url: path },
-                    facts: [],
-                    snippet: { type: useSummary ? 'condensed' : 'extract', content: snippetContent },
-                };
-                this.context.appendDossierFacts([pack]);
-                filled++;
-            }
-        } catch (e) {
-            console.warn('[FinalRefineAgent] hole-fill read error:', e);
-        }
-
-        if (filled > 0) {
-            yield {
-                type: 'ui-step',
-                uiType: UIStepType.STEPS_DISPLAY,
-                stepId,
-                title: 'Filling evidence gaps… Done',
-                description: `Filled ${filled} path(s) with snippet.`,
-                triggerName: StreamTriggerName.SEARCH_FINAL_REFINE_AGENT,
-            };
-        }
     }
 
     /**

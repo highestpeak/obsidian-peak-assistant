@@ -75,7 +75,7 @@ export class FollowupChatAgent {
             tools.recent_changes_whole_vault = recentChangesWholeVaultTool(tm);
             tools.local_search_whole_vault = localSearchWholeVaultTool(tm);
         }
-        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.RawAiSearch);
+        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisFollowup);
         this.agent = new Agent<FollowupToolSet>({
             model: this.aiServiceManager.getMultiChat()
                 .getProviderService(provider)

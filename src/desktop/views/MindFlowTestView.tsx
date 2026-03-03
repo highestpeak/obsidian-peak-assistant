@@ -1,11 +1,9 @@
 /**
- * MindFlow Mermaid test view for mock desktop. Paste Mermaid content and
- * MindflowProgress JSON to test diagram + progress display.
+ * Slot Mermaid test view for mock desktop. Paste Mermaid content to test diagram display.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { MermaidMindFlowSection } from '@/ui/view/quick-search/components/ai-analysis-sections/MermaidMindFlowSection';
-import type { MindflowDecision, MindflowProgress } from '@/service/agents/search-agent-helper/MindFlowAgent';
 
 const DEFAULT_SAMPLE = `flowchart TD
   N1["Query:<br>All my indie development product ideas comprehensive evaluation"]:::verified
@@ -17,44 +15,8 @@ const DEFAULT_SAMPLE = `flowchart TD
   N1 -->|"main: leads to"| N4
 `;
 
-const DEFAULT_PROGRESS_JSON = `{
-  "estimatedCompleteness": 45,
-  "statusLabel": "Deepening hidden clues",
-  "goalAlignment": "Sub-questions + verified paths",
-  "critique": "Need more evidence for evaluation criteria",
-  "decision": "CONTINUE_SEARCH"
-}`;
-
-const VALID_DECISIONS: MindflowDecision[] = ['CONTINUE_SEARCH', 'REQUEST_COMPRESSION', 'FINAL_ANSWER'];
-
-function parseProgressJson(json: string): MindflowProgress | null {
-	const s = json.trim();
-	if (!s) return null;
-	try {
-		const o = JSON.parse(s) as Record<string, unknown>;
-		const completeness = typeof o.estimatedCompleteness === 'number' ? o.estimatedCompleteness : 0;
-		const statusLabel = typeof o.statusLabel === 'string' ? o.statusLabel : '';
-		const rawDecision = o.decision;
-		const decision: MindflowDecision = typeof rawDecision === 'string' && (VALID_DECISIONS as string[]).includes(rawDecision)
-			? (rawDecision as MindflowDecision)
-			: 'CONTINUE_SEARCH';
-		return {
-			estimatedCompleteness: completeness,
-			statusLabel,
-			goalAlignment: typeof o.goalAlignment === 'string' ? o.goalAlignment : undefined,
-			critique: typeof o.critique === 'string' ? o.critique : undefined,
-			decision,
-		};
-	} catch {
-		return null;
-	}
-}
-
 export const MindFlowTestView: React.FC = () => {
 	const [content, setContent] = useState(DEFAULT_SAMPLE);
-	const [progressJson, setProgressJson] = useState(DEFAULT_PROGRESS_JSON);
-
-	const progress = useMemo(() => parseProgressJson(progressJson), [progressJson]);
 
 	return (
 		<div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -67,10 +29,10 @@ export const MindFlowTestView: React.FC = () => {
 				}}
 			>
 				<h2 style={{ margin: 0, marginBottom: 8, fontSize: 16, fontWeight: 600 }}>
-					MindFlow Mermaid Test
+					Slot Mermaid Test
 				</h2>
 				<p style={{ margin: 0, fontSize: 12, color: '#666' }}>
-					Paste Mermaid flowchart and MindflowProgress JSON to test diagram + progress display.
+					Paste Mermaid flowchart to test diagram display.
 				</p>
 			</div>
 			<div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 16, gap: 16 }}>
@@ -95,32 +57,10 @@ export const MindFlowTestView: React.FC = () => {
 						spellCheck={false}
 					/>
 				</div>
-				<div>
-					<label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 4 }}>
-						MindflowProgress JSON (estimatedCompleteness, statusLabel, goalAlignment, critique, decision)
-					</label>
-					<textarea
-						style={{
-							width: '100%',
-							height: 100,
-							padding: 12,
-							border: '1px solid #ddd',
-							borderRadius: 8,
-							fontFamily: 'monospace',
-							fontSize: 11,
-							resize: 'none',
-						}}
-						placeholder='{"estimatedCompleteness": 45, "statusLabel": "...", "decision": "CONTINUE_SEARCH"}'
-						value={progressJson}
-						onChange={(e) => setProgressJson(e.target.value)}
-						spellCheck={false}
-					/>
-				</div>
 				<div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
 					{content.trim() ? (
 						<MermaidMindFlowSection
 							mindflowMermaid={content.trim()}
-							mindflowProgress={progress}
 							maxHeightClassName=""
 						/>
 					) : (

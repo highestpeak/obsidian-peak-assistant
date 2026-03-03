@@ -26,7 +26,7 @@ const SECTION_SUMMARY = '# Summary';
 const SECTION_QUERY = '# Query';
 const SECTION_OVERVIEW = '# Overview';
 const SECTION_OVERVIEW_HISTORY = '# Overview History';
-const SECTION_MINDFLOW = '# MindFlow';
+const SECTION_SLOT_MERMAID = '# Slot coverage';
 const SECTION_KEY_TOPICS = '# Key Topics';
 const SECTION_SOURCES = '# Sources';
 const SECTION_TOPIC_INSPECT = '# Topic Inspect Results';
@@ -102,7 +102,7 @@ export interface AiSearchAnalysisDocModel {
 	overviewMermaidActiveIndex?: number;
 	// all versions of overview mermaid
 	overviewMermaidVersions?: string[];
-	/** MindFlow thinking diagram (raw Mermaid code) from MindFlowAgent. Latest only. */
+	/** Slot coverage diagram (raw Mermaid code). Latest only. */
 	mindflowMermaid?: string;
 }
 
@@ -264,7 +264,7 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 	const query = querySection || fm.query;
 	const overviewSection = extractSection(body, 'Overview');
 	const overviewHistorySection = extractSection(body, 'Overview History');
-	const mindflowSection = extractSection(body, 'MindFlow');
+	const mindflowSection = extractSection(body, 'Slot coverage') || extractSection(body, 'MindFlow');
 	let overviewMermaidVersions: string[] = [];
 	let overviewMermaidActiveIndex = 0;
 	if (overviewHistorySection.trim()) {
@@ -722,7 +722,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 		}
 		const mindflow = (docModel.mindflowMermaid ?? '').trim();
 		if (mindflow) {
-			lines.push(SECTION_MINDFLOW);
+			lines.push(SECTION_SLOT_MERMAID);
 			lines.push('');
 			lines.push('```mermaid');
 			lines.push(mindflow);

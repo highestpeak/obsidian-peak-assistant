@@ -386,7 +386,7 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 								Max Multi-Agent Iterations
 							</label>
 							<p className="pktw-text-xs pktw-text-muted-foreground">
-								Maximum iterations for the MindFlow–RawSearch ReAct loop. Default: 10
+								Deprecated; slot pipeline does not use iterations.
 							</p>
 						</div>
 						{/* Right side: input */}

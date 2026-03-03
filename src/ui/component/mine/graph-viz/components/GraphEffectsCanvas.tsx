@@ -9,7 +9,7 @@ const HULL_COLORS = ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f4
 
 /** 
  * MindFlow state animation colors (local constants, not exported). 
- * see src/service/agents/search-agent-helper/mindflow/types.ts for more details.
+ * Node attributes may include mindflow state (e.g. exploring, verified) for animation.
  * */
 const MINDFLOW_COLORS = {
 	thinking: '#a855f7',   // purple - active thinking

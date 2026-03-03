@@ -15,6 +15,7 @@ import { ContextUpdateService } from './context/ContextUpdateService';
 import { EventBus } from '@/core/eventBus';
 import { createChatMessage } from './utils/chat-message-builder';
 import type { TemplateManager } from '@/core/template/TemplateManager';
+import { AgentTemplateId } from '@/core/template/TemplateRegistry';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -579,6 +580,15 @@ ${sourcesList}${topicsList}
 		const defaultModel = this.settings.defaultModel;
 		if (defaultModel) return { provider: defaultModel.provider, modelId: defaultModel.modelId };
 		throw new Error('No model configuration available. Please configure defaultModel in settings.');
+	}
+
+	async renderTemplate<T extends AgentTemplateId>(
+		templateId: T,
+		variables: Record<string, unknown>
+	): Promise<string> {
+		const tm = this.getTemplateManager?.();
+		if (!tm) throw new Error('TemplateManager not available');
+		return tm.render(templateId, variables);
 	}
 
 	async renderPrompt<T extends PromptId>(

@@ -5,6 +5,342 @@
 import { z } from "zod/v3";
 import { normalizeFilePath } from "@/core/utils/file-utils";
 
+// ----- query classifier -----
+
+/** Semantic depth axis: 15 dimension ids (6 groups: base → causal → practice → evaluation → context → action). */
+export const SEMANTIC_DIMENSION_IDS = [
+	'essence_definition',
+	'history_origin',
+	'why_mechanism',
+	'evidence_source',
+	'pitfall_misconception',
+	'how_method',
+	'example_case',
+	'options_comparison',
+	'cost_risk_limit',
+	'applicable_condition',
+	'impact_consequence',
+	'related_extension',
+	'next_action',
+	'trend_future',
+	'tool_resource',
+] as const;
+
+/** Topology breadth axis: inventory/catalog listing. */
+export const AXIS_TOPOLOGY_ID = 'inventory_mapping' as const;
+/** Temporal dynamic axis: change/evolution comparison. */
+export const AXIS_TEMPORAL_ID = 'temporal_mapping' as const;
+
+/** All dimension ids (semantic 15 + topology + temporal). */
+export const ALL_DIMENSION_IDS = [...SEMANTIC_DIMENSION_IDS, AXIS_TOPOLOGY_ID, AXIS_TEMPORAL_ID] as const;
+
+const semanticDimensionIdsEnum = z.enum(SEMANTIC_DIMENSION_IDS).describe(
+		`One of the 15 dimension ids, grouped as follows:
+
+1. **Base (essence & origin)**
+   - essence_definition: Core identity, definition, concept; "what it is". e.g. Define "first principle" as "decomposing from basic truths".
+   - history_origin: Development, source, background; "where it came from". e.g. First principle from Aristotle, later popularized by Elon Musk.
+
+2. **Causal (mechanism & verification)**
+   - why_mechanism: Cause, mechanism, principle; "why". e.g. Information clutter reduces density due to cognitive switching cost.
+   - evidence_source: Evidence, citation, supporting data; "what supports it". e.g. Cite Shannon information theory.
+   - pitfall_misconception: Common pitfalls, misconceptions, traps. e.g. Mistaking that every problem needs all slots.
+
+3. **Practice (method & example)**
+   - how_method: Method, procedure, how-to; "how to do". e.g. Decompose: define first, then mechanism.
+   - example_case: Examples, cases, stories; concrete illustration. e.g. Use "quantum computing" to demonstrate.
+
+4. **Evaluation (options & cost)**
+   - options_comparison: Alternatives, comparison, options; "what choices". e.g. Separate slots vs mixed.
+   - cost_risk_limit: Cost, risk, limit, boundary, tradeoff. e.g. Too many slots fragments information.
+
+5. **Context (applicability & impact)**
+   - applicable_condition: Who it is for, when, scenario; "when to use". e.g. For complex decisions like AI prompt design.
+   - impact_consequence: Impact, consequence, outcome; "what follows". e.g. Using slots can improve efficiency 20–40%.
+   - related_extension: Related concepts, links, further reading. e.g. Link to "Chain of Thought" prompting.
+
+6. **Action (future & resource)**
+   - next_action: Next step, action suggestion; immediately actionable. e.g. Try slots on one problem.
+   - trend_future: Trend, future, prediction, potential. e.g. In the AI era, slot frameworks may automate.
+   - tool_resource: Tools, resources, books, software. e.g. Use Mind Maps to visualize dimensions.`
+);
+
+export type SemanticDimensionId = z.infer<typeof semanticDimensionIdsEnum>;
+
+export type AllDimensionId = (typeof ALL_DIMENSION_IDS)[number];
+
+/** Reusable scope for a dimension (path, tags, anchor_entity). */
+const scopeConstraintSchema = z
+	.object({
+		path: z.string().optional().describe('Folder or file path to lock this dimension to.'),
+		tags: z
+			.array(z.string())
+			.optional()
+			.describe(
+				'Topic tags (what content is about) and/or functional tags (what role in answering). Prefer functional tags from the provided mapping for semantic main recall; topic tags as optional recall booster when query is vague.'
+			),
+		anchor_entity: z
+			.string()
+			.optional()
+			.describe(
+				'Main subject/entity that this dimension is about. Agent 2 uses it as a retrieval hook.'
+			),
+	})
+	.optional();
+
+/** One semantic dimension target: intent + scope + retrieval orientation. */
+const semanticDimensionChoiceSchema = z.object({
+	id: semanticDimensionIdsEnum,
+	intent_description: z
+		.string()
+		.min(1, 'intent_description is required.')
+		.describe(
+			'Concrete search goal for this dimension in human language (what to look for in this dimension).'
+		),
+	scope_constraint: scopeConstraintSchema.describe('Search scope for this dimension.'),
+	retrieval_orientation: z
+		.enum(['relational', 'chronological', 'statistical', 'categorical'])
+		.optional()
+		.describe(
+			'Retrieval tendency: relational (links/paths), chronological (recent/history), statistical (data), categorical (definitions/tags).'
+		),
+});
+
+/** One topology-axis dimension (inventory_mapping): EXHAUSTIVE INVENTORY only; no teleology. */
+const topologyDimensionChoiceSchema = z.object({
+	intent_description: z
+		.string()
+		.min(1)
+		.describe(
+			'Only WHAT to scan and WHERE. No WHY (e.g. no "for comparison", "to evaluate"). MUST include "regardless of status or quality" and "list ALL items to ensure no omission". Forbidden: quality/success filters (successful, good, relevant, best).'
+		),
+	scope_constraint: scopeConstraintSchema.describe(
+		'Physical boundary. Path is the most stable anchor; tags are valid as navigation/dimension. When using tags, prefer user-mentioned or vault-known names to avoid empty results.'
+		),
+});
+
+/** One temporal-axis dimension (temporal_mapping): change/evolution. intent_description is enough. */
+const temporalDimensionChoiceSchema = z.object({
+	intent_description: z.string().min(1).describe('Goal: compare recent vs historical change/evolution.'),
+	scope_constraint: scopeConstraintSchema,
+});
+
+export const USER_APPEAL_TYPES = [
+	'cognitive_learning',
+	'task_instrumental',
+	'emotional_resonance',
+	'identity_validation',
+	'risk_aversion',
+	'inspiration_perspective',
+	'existential_meaning',
+	'control_framework',
+	'moral_tribal',
+] as const;
+
+export type UserAppealType = (typeof USER_APPEAL_TYPES)[number];
+
+export const USER_APPEAL_LABELS: Record<UserAppealType, string> = {
+	cognitive_learning: 'Learning / cognitive',
+	task_instrumental: 'Task / instrumental',
+	emotional_resonance: 'Emotional resonance',
+	identity_validation: 'Identity validation',
+	risk_aversion: 'Risk aversion / reassurance',
+	inspiration_perspective: 'Inspiration / perspective',
+	existential_meaning: 'Existential / meaning',
+	control_framework: 'Control / causal framework',
+	moral_tribal: 'Moral / tribal justice',
+};
+
+export const queryClassifierOutputSchema = z.object({
+	/** Semantic depth axis: one or more of the 15 dimension ids. */
+	semantic_dimensions: z
+		.array(semanticDimensionChoiceSchema)
+		.min(1)
+		.describe(
+			'Semantic axis. One or more dimension targets. Same id may repeat with different intent_description. Each may have scope_constraint and retrieval_orientation.'
+		),
+	/** Topology breadth axis: inventory/audit (full list), not semantic search. Required; use [] when point-type only. */
+	topology_dimensions: z
+		.array(topologyDimensionChoiceSchema)
+		.min(1)
+		.describe(
+			'Topology axis: physical inventory of entities under path/tag. List-first, no quality filter. Empty array only if query is strictly point-type (single entity), not surface-type (collection).'
+		),
+	/** Temporal dynamic axis: change/evolution comparison. Required; use [] when not applicable. */
+	temporal_dimensions: z
+		.array(temporalDimensionChoiceSchema)
+		.min(1)
+		.describe(
+			'Temporal axis. Zero or more temporal_mapping targets. Empty array if no change/trend/evolution intent.'
+		),
+	user_persona_config: z
+		.object({
+			appeal: z.enum(USER_APPEAL_TYPES as unknown as [string, ...string[]]).optional().describe('User appeal type.'),
+			detail_level: z.enum(['concise', 'comprehensive', 'technical']).optional().default('comprehensive').describe('Output detail level.'),
+		})
+		.optional()
+		.describe('Global preference for summary style only.'),
+	is_cross_domain: z
+		.boolean()
+		.describe(
+			'When true, Agent 2 may break out of scope_constraint to correlate across the whole vault.'
+		),
+});
+
+export type QueryClassifierOutput = z.infer<typeof queryClassifierOutputSchema>;
+export type SemanticDimensionChoice = z.infer<typeof semanticDimensionChoiceSchema>;
+export type TopologyDimensionChoice = z.infer<typeof topologyDimensionChoiceSchema>;
+export type TemporalDimensionChoice = z.infer<typeof temporalDimensionChoiceSchema>;
+
+/** Unified dimension choice for pipeline (semantic + topology + temporal flattened). */
+export const dimensionChoiceSchema = z.object({
+	id: z.enum(ALL_DIMENSION_IDS),
+	intent_description: z.string().min(1),
+	scope_constraint: scopeConstraintSchema,
+	retrieval_orientation: z.enum(['relational', 'chronological', 'statistical', 'categorical']).optional(),
+	output_format: z.enum(['list', 'tree']).optional(),
+	mustIncludeKeywords: z.array(z.string()).optional(),
+});
+export type DimensionChoice = z.infer<typeof dimensionChoiceSchema>;
+
+export const defaultClassify: QueryClassifierOutput = {
+	semantic_dimensions: [
+		{
+			id: 'essence_definition',
+			intent_description: 'Semantic axis: Focuses on the core subject, concept, or content being queried. Used for “what is/topic/content” type questions and summarization of main points or purposes.'
+		}
+	],
+	topology_dimensions: [
+		{
+			intent_description: 'Topological breadth axis: Determines whether the query targets a "point" (a specific entity) or a "surface" (a set or collection). If it involves collections (such as all/list/directory/relationships), the Inventory_Mapping dimension is activated to enumerate all relevant entities/paths (highest priority).'
+		}
+	],
+	temporal_dimensions: [
+		{
+			intent_description: 'Spatiotemporal dynamics axis: Determines if the query concerns "change/recent/evolution/comparison/trend". If so, the Delta_Comparison dimension is activated to focus on differences, versions, or historical shifts.'
+		}
+	],
+	user_persona_config: {
+		appeal: 'cognitive_learning',
+		detail_level: 'comprehensive',
+	},
+	is_cross_domain: false,
+};
+
+// ----- RawSearch (Recon / Evidence) -----
+
+/** Battlefield assessment for RawSearch report. */
+export const battlefieldAssessmentSchema = z.object({
+	search_density: z.enum(['High', 'Medium', 'Low']).optional(),
+	match_quality: z.enum(['Exact', 'Fuzzy', 'None']).optional(),
+	suggestion: z.string().optional().describe('e.g. try visa-related tags or widen scope'),
+});
+
+/** Report from Recon Agent: tactical summary + leads + assessment. */
+export const rawSearchReportSchema = z.object({
+	tactical_summary: z.string().max(3500).describe('Up to 500 words: descriptive summary or preliminary inventory list; for topology use manifest style (list items with one-line intro each)'),
+	discovered_leads: z.array(z.string()).describe('Paths, file names, or entity names for deeper evidence collection (10–30 preferred)'),
+	battlefield_assessment: battlefieldAssessmentSchema.optional(),
+});
+export type RawSearchReport = z.infer<typeof rawSearchReportSchema>;
+export type RawSearchReportWithDimension = { dimension: AllDimensionId; } & RawSearchReport;
+
+/** Single fact with quote (for EvidencePack). */
+export const evidenceFactSchema = z.object({
+	claim: z.string().describe('One-sentence claim from the source'),
+	quote: z.string().describe('Exact quote supporting the claim'),
+	confidence: z.enum(['high', 'medium', 'low']).optional(),
+});
+
+/** One evidence pack: one source, summary + facts + snippet. */
+export const evidencePackSchema = z.object({
+	origin: z.object({
+		tool: z.string().describe('Tool that produced this source (e.g. content_reader, local_search)'),
+		path_or_url: z.string().describe('File path or URL of the source'),
+	}),
+	summary: z.string().optional().describe('Short summary of this pack'),
+	facts: z.array(evidenceFactSchema).describe('1–5 facts with claim+quote'),
+	snippet: z.object({ type: z.enum(['extract', 'condensed']), content: z.string() }).optional().describe('Key excerpt from source'),
+});
+export type EvidencePack = z.infer<typeof evidencePackSchema>;
+
+export const submitEvidencePackInputSchema = z.object({
+	packs: z.array(evidencePackSchema).min(1).max(12).describe('3–8 evidence packs; each with origin, facts, optional snippet'),
+});
+
+/** Input for mark_task_completed: only taskId. */
+export const markTaskCompletedInputSchema = z.object({
+	taskId: z.string().describe('ID of the task that is now completed'),
+});
+
+export const consolidatedTaskSchema = z.object({
+	path: z.string(),
+	relevant_dimension_ids: z.array(
+		/** Consolidator: one path, which dimensions need it, synthesized focus, priority. taskId assigned by runner. */
+		z.object({
+			id: z.enum(ALL_DIMENSION_IDS),
+			intent: z.string().describe('From original dimension intent_description or merged extraction intent'),
+		})
+	),
+	extraction_focus: z.string().describe('Synthesized focus for Evidence Agent for this file'),
+	priority: z.enum(['Crucial', 'Secondary']).describe('Crucial if 3+ dimensions need it; Secondary or drop if marginal'),
+	task_load: z.enum(['high', 'medium', 'low']).optional().describe('For grouping and concurrency'),
+});
+export type ConsolidatedTask = z.infer<typeof consolidatedTaskSchema>;
+
+export type ConsolidatedTaskWithId = ConsolidatedTask & { taskId: string };
+
+export const consolidatorOutputSchema = z.object({
+	consolidated_tasks: z.array(consolidatedTaskSchema),
+	global_recon_insight: z.string().describe('One-sentence summary of current recon state'),
+});
+export type ConsolidatorOutput = z.infer<typeof consolidatorOutputSchema>;
+
+/** Level 1: Core functional views. */
+export const FUNCTIONAL_TAG_CORE = [
+	'current_state',
+	'goal_intent',
+	'constraint',
+	'resource',
+	'skill_stack',
+	'past_attempt',
+	'idea_candidate',
+	'decision_opinion',
+] as const;
+
+/** Level 2: Optional enhancement. */
+export const FUNCTIONAL_TAG_ENHANCEMENT = [
+	'timeline_event',
+	'external_context',
+	'emotion_attitude',
+	'evidence_data',
+] as const;
+
+/**
+ * todo currently we didn't generate these tags. so just define them here and no use it.
+ */
+export const FUNCTIONAL_TAG_IDS = [...FUNCTIONAL_TAG_CORE, ...FUNCTIONAL_TAG_ENHANCEMENT] as const;
+export type FunctionalTagId = (typeof FUNCTIONAL_TAG_IDS)[number];
+
+/** Maps each of the 15 dimension ids to functional tag ids used for recall/slot targeting. */
+export const SEARCH_CLASSIFY_TO_FUNCTIONAL_TAGS: Record<SemanticDimensionId, FunctionalTagId[]> = {
+	essence_definition: ['current_state'],
+	history_origin: ['timeline_event', 'external_context'],
+	why_mechanism: ['goal_intent', 'constraint'],
+	evidence_source: ['evidence_data'],
+	pitfall_misconception: ['constraint'],
+	how_method: ['skill_stack', 'idea_candidate'],
+	example_case: ['idea_candidate', 'evidence_data'],
+	options_comparison: ['decision_opinion', 'idea_candidate'],
+	cost_risk_limit: ['constraint'],
+	applicable_condition: ['current_state', 'external_context'],
+	impact_consequence: ['decision_opinion', 'evidence_data'],
+	related_extension: ['external_context', 'idea_candidate'],
+	next_action: ['past_attempt', 'idea_candidate', 'resource'],
+	trend_future: ['timeline_event', 'external_context'],
+	tool_resource: ['resource'],
+};
+
 // ----- follow-up questions -----
 /** Schema for streamObject in FollowUpQuestionAgent. */
 export const suggestedFollowUpQuestionsSchema = z.object({
@@ -12,254 +348,10 @@ export const suggestedFollowUpQuestionsSchema = z.object({
 });
 export type SuggestedFollowUpQuestions = z.infer<typeof suggestedFollowUpQuestionsSchema>;
 
-// ----- mindflow -----
-export const mindflowMermaidInputSchema = z.object({
-	code: z
-		.string()
-		.min(1, "code is required; provide Mermaid flowchart TD code (e.g. flowchart TD A --> B).")
-		.describe("Mermaid flowchart TD code"),
-});
-export const mindflowTraceInputSchema = z.object({
-	text: z
-		.string()
-		.min(1, "text is required; provide a short trace of what you are doing or planning.")
-		.describe("Trace text"),
-});
-export const mindflowProgressInputSchema = z.object({
-	estimatedCompleteness: z.number().min(0).max(100).describe("0-100"),
-	statusLabel: z
-		.string()
-		.min(1, "statusLabel is required (e.g. 'Deepening hidden clues', 'Cross-checking evidence').")
-		.describe('e.g. "Deepening hidden clues", "Cross-checking evidence"'),
-	goalAlignment: z.string().optional().describe("Sub-questions + verified paths. with global alignment: where is the current overall goal."),
-	critique: z.string().optional().describe("Self-correction: what went wrong, how to fix"),
-	decision: z
-		.enum(["CONTINUE_SEARCH", "REQUEST_COMPRESSION", "FINAL_ANSWER"])
-		.default("CONTINUE_SEARCH")
-		.describe("CONTINUE_SEARCH = hand off to Search; REQUEST_COMPRESSION = hand off to KnowledgeAgent; FINAL_ANSWER = enough to synthesize, exit loop."),
-	confirmed_facts: z.array(z.string()).optional().describe("Facts already verified from evidence; for RawSearch context"),
-	gaps: z
-		.array(z.string())
-		.describe("Logical gaps (which dimension of info is missing), not which file. Use empty array [] if nothing is missing."),
-	instruction: z
-		.string()
-		.min(10, "instruction is required (min 10 chars). High-level task: intent + constraints. No query syntax or concrete paths.")
-		.describe("High-level task book for next agent: intent and constraints only. No query keywords or file paths."),
-});
-
-// ----- knowledge panel (KnowledgeAgent output) -----
-export const knowledgePanelClusterSchema = z.object({
-	id: z.string().describe("Unique cluster id"),
-	label: z.string().describe("Short label for the cluster"),
-	summary: z.string().describe("One-paragraph summary of this cluster"),
-	supporting_evidence_paths: z.array(z.string()).describe("path_or_url from evidence; anchors only"),
-	key_claims: z.array(z.string()).describe("Key claims in this cluster (from evidence, no fabrication)"),
-	related_terms: z.array(z.string()).optional().describe("Related terms for discovery"),
-});
-export const knowledgePanelConflictSchema = z.object({
-	topic: z.string().describe("Topic where conflict exists"),
-	conflicting_claims: z.array(z.string()).describe("Conflicting claim summaries"),
-	evidence_paths: z.array(z.string()).describe("path_or_url for each side"),
-});
-export const knowledgePanelStatsSchema = z.object({
-	fact_count: z.number().describe("Total distinct facts in panel"),
-	pack_count: z.number().describe("Evidence pack count"),
-	source_count: z.number().describe("Unique path_or_url count"),
-	condensed: z.boolean().describe("Whether this panel is a compression of many packs"),
-});
-
-export const knowledgePanelSchema = z.object({
-	clusters: z.array(knowledgePanelClusterSchema).describe("Thematic clusters from evidence"),
-	conflicts: z.array(knowledgePanelConflictSchema).describe("Detected conflicts between sources"),
-	open_questions: z.array(z.string()).describe("Open questions not yet answered by evidence"),
-	panel_stats: knowledgePanelStatsSchema.describe("Panel statistics"),
-});
-export type KnowledgePanel = z.infer<typeof knowledgePanelSchema>;
-
-export const submitKnowledgePanelInputSchema = z.object({
-	clusters: z.array(knowledgePanelClusterSchema).describe("Thematic clusters from evidence"),
-	conflicts: z.array(knowledgePanelConflictSchema).describe("Detected conflicts between sources"),
-	open_questions: z.array(z.string()).describe("Open questions not yet answered by evidence"),
-	panel_stats: knowledgePanelStatsSchema.describe("Panel statistics"),
-});
-export type SubmitKnowledgePanelInput = z.infer<typeof submitKnowledgePanelInputSchema>;
-
-// ----- thought report (split: per-round vs final) -----
-
-/** Call after each evidence-gathering round to record reflection and next-direction. */
-export const submitReasoningDeltaInputSchema = z.object({
-	reasoning_delta: z.string().describe("How your reasoning changed after this round; suggest next direction (e.g. 'Initially B seemed key; results point to C—suggest next round focus on C')."),
-});
-
-export type SubmitReasoningDeltaInput = z.infer<typeof submitReasoningDeltaInputSchema>;
-
-/** Call once at end of Thought run to submit final finding, optional suspicion, and discovered leads. */
-export const submitFinalThoughtReportInputSchema = z
-	.object({
-		finding_summary: z
-			.string()
-			.min(1, "finding_summary is required and cannot be blank. Provide a short finding summary (what was found).")
-			.describe("1–2 sentences summarizing the overall finding of this Thought run."),
-		instruction_suspicion: z
-			.string()
-			.optional()
-			.describe("If you think the instruction has logical risk (e.g. pleasing MindFlow), point it out."),
-		discovered_leads: z
-			.array(z.string())
-			.optional()
-			.describe("Paths or targets discovered this run that MindFlow should consider for the next round."),
-	});
-
-export type SubmitFinalThoughtReportInput = z.infer<typeof submitFinalThoughtReportInputSchema>;
-
 // ----- review blocks -----
 export const needMoreDashboardBlocksInputSchema = z.object({
 	reason: z.string().describe("The reason why we need more dashboard blocks."),
 });
-
-// ----- raw search (EvidencePack for dossier) -----
-export const evidencePackOriginSchema = z.object({
-	tool: z.string().describe("e.g. content_reader, web_search, local_search"),
-	path_or_url: z.string().describe("Vault path or URL"),
-});
-export const evidenceFactSchema = z.object({
-	claim: z.string().min(1, "claim is required and cannot be blank. Provide a short claim (what was found)."),
-	quote: z.string().min(1, "quote is required and cannot be blank. Provide a short quote (the quote from the source)."),
-	confidence: z.enum(["high", "medium", "low"]).optional(),
-});
-export const evidenceSnippetSchema = z.object({
-	type: z.enum(["extract", "condensed"]),
-	content: z.string().min(1, "content is required and cannot be blank. Provide a short content (the content of the source)."),
-});
-export const evidencePackSchema = z.object({
-	evidence_id: z.string().min(1, "evidence_id is required and cannot be blank. Provide a short evidence_id (the id of the evidence)."),
-	origin: evidencePackOriginSchema,
-	summary: z.string().min(1, "summary is required and cannot be blank. Provide a short summary (what was found)."),
-	facts: z.array(evidenceFactSchema),
-	snippet: evidenceSnippetSchema,
-	tags: z.array(z.string()).optional(),
-	relevance: z.string().optional(),
-	superseded: z.boolean().optional(),
-});
-export type EvidencePackSchemaType = z.infer<typeof evidencePackSchema>;
-
-const submitEvidencePackBaseSchema = z
-	.object({
-		status: z.enum(["SUCCESS", "PARTIAL", "FAILED"]).optional().describe("Round outcome"),
-		knowledge_gain: z.string().optional().describe("What was discovered this round"),
-		unresolved_queries: z.string().optional().describe("What is still missing"),
-		suggested_next_steps: z.string().optional().describe("Suggested next search"),
-		evidence_pack: z.array(evidencePackSchema)
-			.describe("Structured evidence packs (facts + quotes + snippet). Required when status is SUCCESS or PARTIAL; may be empty when FAILED."),
-	})
-	.refine(
-		(data) =>
-			data.status === "FAILED" || (Array.isArray(data.evidence_pack) && data.evidence_pack.length >= 1),
-		{
-			message:
-				"When status is SUCCESS or PARTIAL you must provide at least one evidence_pack with origin, facts (each with quote), and snippet. When status is FAILED you may submit an empty evidence_pack array.",
-		}
-	);
-
-/** Map legacy fields (summary, candidateNotes, newContextNodes) into evidence_pack, then return canonical shape. */
-export const submitEvidencePackInputSchema = z.preprocess(
-	(raw: unknown) => {
-		if (raw == null || typeof raw !== "object") return raw;
-		const o = raw as Record<string, unknown>;
-		const base = Array.isArray(o.evidence_pack) ? [...o.evidence_pack] : [];
-
-		const summary = typeof o.summary === "string" ? o.summary.trim() : "";
-		if (summary) {
-			base.push({
-				origin: { tool: "legacy", path_or_url: "_summary" },
-				facts: [],
-				snippet: { type: "condensed", content: summary.slice(0, 8000) },
-			});
-		}
-
-		const candidateNotes = Array.isArray(o.candidateNotes) ? o.candidateNotes : [];
-		for (const note of candidateNotes) {
-			const path =
-				typeof note === "string"
-					? note
-					: note && typeof note === "object" && "path" in note && typeof (note as { path: unknown }).path === "string"
-						? (note as { path: string }).path
-						: "";
-			if (!path) continue;
-			const why =
-				note && typeof note === "object" && "why" in note && typeof (note as { why: unknown }).why === "string"
-					? (note as { why: string }).why
-					: path;
-			const confidence =
-				note && typeof note === "object" && "confidence" in note
-					? (note as { confidence: unknown }).confidence
-					: undefined;
-			const conf =
-				confidence === "High" || confidence === "Medium" || confidence === "Low"
-					? (confidence as string).toLowerCase()
-					: undefined;
-			base.push({
-				origin: { tool: "legacy", path_or_url: path },
-				facts: [{ claim: why, quote: "", ...(conf ? { confidence: conf } : {}) }],
-			});
-		}
-
-		const newContextNodes = Array.isArray(o.newContextNodes) ? o.newContextNodes : [];
-		if (newContextNodes.length > 0) {
-			const content =
-				newContextNodes
-					.map((n) =>
-						typeof n === "string" ? n : typeof n === "object" && n !== null ? JSON.stringify(n) : String(n)
-					)
-					.join("\n") || "(new context nodes)";
-			base.push({
-				origin: { tool: "legacy", path_or_url: "_new_context_nodes" },
-				facts: [],
-				snippet: { type: "condensed", content: content.slice(0, 4000) },
-			});
-		}
-
-		const evidencePack = base.length ? base : (Array.isArray(o.evidence_pack) ? o.evidence_pack : []);
-		const status = evidencePack.length === 0 ? "FAILED" : (o.status === "FAILED" ? "FAILED" : (o.status ?? "SUCCESS"));
-		return {
-			status,
-			knowledge_gain: o.knowledge_gain,
-			unresolved_queries: o.unresolved_queries,
-			suggested_next_steps: o.suggested_next_steps,
-			evidence_pack: evidencePack,
-		};
-	},
-	submitEvidencePackBaseSchema
-);
-
-export const submitExecutionSummaryInputSchema = z.object({
-	summary: z
-		.string()
-		.min(1, "summary is required and cannot be blank. Provide a short execution summary (what was searched and what was found).")
-		.describe("The summary of the execution."),
-});
-
-/** RawSearch report for MindFlow: tactical summary, discovered leads, battlefield assessment. */
-export const submitRawSearchReportInputSchema = z.object({
-	tactical_summary: z
-		.string()
-		.min(1, "tactical_summary is required. What you tried (keywords, paths scanned), pivots (e.g. path X missing, turned to Y).")
-		.describe("What you did this run: keywords tried, paths scanned, pivots (e.g. path X not found, turned to Y)."),
-	discovered_leads: z
-		.array(z.string())
-		.optional()
-		.describe("Paths, folder names, or related terms found while reading; for MindFlow to consider next round."),
-	battlefield_assessment: z
-		.object({
-			search_density: z.enum(["High", "Low"]).optional().describe("File density in this area."),
-			match_quality: z.enum(["Exact", "Fuzzy", "None"]).optional().describe("How well results matched the target."),
-			suggestion: z.string().optional().describe("e.g. next round try keyword 'X' because it appeared in file A."),
-		})
-		.optional()
-		.describe("Assessment of this run for MindFlow."),
-});
-
-export type SubmitRawSearchReportInput = z.infer<typeof submitRawSearchReportInputSchema>;
 
 // ----- dashboard update plan -----
 const TOPICS_PLAN_MAX = 50;

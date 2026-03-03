@@ -62,7 +62,6 @@ export const CompletedAIAnalysis: React.FC<{
     const overviewMermaidActiveIndex = useAIAnalysisResultStore((s) => s.overviewMermaidActiveIndex);
     const setOverviewMermaidActiveIndex = useAIAnalysisResultStore((s) => s.setOverviewMermaidActiveIndex);
     const mindflowMermaid = useAIAnalysisResultStore((s) => s.mindflowMermaid);
-    const mindflowProgress = useAIAnalysisResultStore((s) => s.mindflowProgress);
     const graph = useAIAnalysisResultStore((s) => s.graph);
 
     const setContextChatModal = useAIAnalysisInteractionsStore((s) => s.setContextChatModal);
@@ -153,7 +152,6 @@ export const CompletedAIAnalysis: React.FC<{
                         <div className="pktw-mt-2">
                             <MermaidMindFlowSection
                                 mindflowMermaid={mindflowMermaid ?? ''}
-                                mindflowProgress={mindflowProgress}
                                 maxHeightClassName="pktw-min-h-[120px]"
                                 containerClassName=""
                             />

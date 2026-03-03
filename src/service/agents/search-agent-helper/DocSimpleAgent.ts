@@ -17,7 +17,7 @@ import { LLMStreamEvent, StreamTriggerName, UIStepType } from "@/core/providers/
 import { PromptId } from "@/service/prompt/PromptId";
 import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
 import { DocumentLoaderManager } from "@/core/document/loader/helper/DocumentLoaderManager";
-import { buildToolCallUIEvent } from "./RawSearchAgent";
+import { buildToolCallUIEvent } from "./helpers/tool-call-ui";
 import { submitFinalAnswerTool } from "@/service/tools/submit-final-answer";
 import { streamTransform } from "@/core/providers/helpers/stream-helper";
 import { emptyUsage, LLMUsage, mergeTokenUsage } from "@/core/providers/types";

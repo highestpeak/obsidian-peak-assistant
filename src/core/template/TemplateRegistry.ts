@@ -23,12 +23,11 @@ export const ToolTemplateId = {
 export type ToolTemplateId = (typeof ToolTemplateId)[keyof typeof ToolTemplateId];
 
 /**
- * Agent helper template IDs (result snapshot, evidence hint, mindflow context).
+ * Agent helper template IDs (result snapshot, evidence hint).
  */
 export const AgentTemplateId = {
 	ResultSnapshot: 'result-snapshot',
 	EvidenceHint: 'evidence-hint',
-	MindflowContext: 'mindflow-context',
 } as const;
 
 export type AgentTemplateId = (typeof AgentTemplateId)[keyof typeof AgentTemplateId];
@@ -101,8 +100,15 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-doc-simple-system': meta('prompts', 'ai-analysis-doc-simple-system'),
 	'ai-analysis-suggest-follow-up-questions-system': meta('prompts', 'ai-analysis-suggest-follow-up-questions-system'),
 	'ai-analysis-suggest-follow-up-questions': meta('prompts', 'ai-analysis-suggest-follow-up-questions', { systemPromptId: 'ai-analysis-suggest-follow-up-questions-system' as PromptId }),
-	'ai-analysis-agent-raw-search-system': meta('prompts', 'ai-analysis-agent-raw-search-system'),
-	'ai-analysis-agent-raw-search': meta('prompts', 'ai-analysis-agent-raw-search', { systemPromptId: 'ai-analysis-agent-raw-search-system' as PromptId }),
+	'ai-analysis-query-classifier-system': meta('prompts', 'ai-analysis-query-classifier-system'),
+	'ai-analysis-query-classifier': meta('prompts', 'ai-analysis-query-classifier', { expectsJson: true, jsonConstraint: 'Return only the JSON object, no markdown or explanation.', systemPromptId: 'ai-analysis-query-classifier-system' as PromptId }),
+	'ai-analysis-dimension-recon-system': meta('prompts', 'ai-analysis-dimension-recon-system'),
+	'ai-analysis-dimension-recon': meta('prompts', 'ai-analysis-dimension-recon', { systemPromptId: 'ai-analysis-dimension-recon-system' as PromptId }),
+	'ai-analysis-dimension-evidence-system': meta('prompts', 'ai-analysis-dimension-evidence-system'),
+	'ai-analysis-dimension-evidence': meta('prompts', 'ai-analysis-dimension-evidence', { systemPromptId: 'ai-analysis-dimension-evidence-system' as PromptId }),
+	'ai-analysis-task-consolidator-system': meta('prompts', 'ai-analysis-task-consolidator-system'),
+	'ai-analysis-task-consolidator': meta('prompts', 'ai-analysis-task-consolidator', { expectsJson: true, jsonConstraint: 'Return only the JSON object, no markdown or explanation.', systemPromptId: 'ai-analysis-task-consolidator-system' as PromptId }),
+	'ai-analysis-dimension-evidence-batch': meta('prompts', 'ai-analysis-dimension-evidence-batch', { systemPromptId: 'ai-analysis-dimension-evidence-system' as PromptId }),
 	'ai-analysis-summary-system': meta('prompts', 'ai-analysis-dashboard-result-summary-system'),
 	'search-ai-summary': meta('prompts', 'ai-analysis-dashboard-result-summary', { systemPromptId: 'ai-analysis-summary-system' as PromptId }),
 	'ai-analysis-overview-mermaid-system': meta('prompts', 'ai-analysis-dashboard-overview-mermaid-system'),
@@ -115,10 +121,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-review-blocks': meta('prompts', 'ai-analysis-review-blocks', { systemPromptId: 'ai-analysis-review-blocks-system' as PromptId }),
 	'ai-analysis-dashboard-update-plan-system': meta('prompts', 'ai-analysis-dashboard-update-plan-system'),
 	'ai-analysis-dashboard-update-plan': meta('prompts', 'ai-analysis-dashboard-update-plan', { systemPromptId: 'ai-analysis-dashboard-update-plan-system' as PromptId }),
-	'ai-analysis-mindflow-agent-system': meta('prompts', 'ai-analysis-mindflow-agent-system'),
-	'ai-analysis-mindflow-agent': meta('prompts', 'ai-analysis-mindflow-agent', { systemPromptId: 'ai-analysis-mindflow-agent-system' as PromptId }),
-	'ai-analysis-knowledge-agent-system': meta('prompts', 'ai-analysis-knowledge-agent-system'),
-	'ai-analysis-knowledge-agent': meta('prompts', 'ai-analysis-knowledge-agent', { systemPromptId: 'ai-analysis-knowledge-agent-system' as PromptId }),
 	'ai-analysis-mermaid-fix-system': meta('prompts', 'ai-analysis-mermaid-fix-system'),
 	'ai-analysis-mermaid-fix': meta('prompts', 'ai-analysis-mermaid-fix', { systemPromptId: 'ai-analysis-mermaid-fix-system' as PromptId }),
 	'ai-analysis-final-refine-system': meta('prompts', 'ai-analysis-final-refine-system'),
@@ -151,7 +153,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	// --- Agents ---
 	[AgentTemplateId.ResultSnapshot]: meta('agents', 'result-snapshot'),
 	[AgentTemplateId.EvidenceHint]: meta('agents', 'evidence-hint'),
-	[AgentTemplateId.MindflowContext]: meta('agents', 'mindflow-context'),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {

@@ -1,7 +1,5 @@
 import { create } from 'zustand';
 import { AISearchGraph, AISearchSource, AISearchTopic, type AnalysisMode, DashboardBlock } from '@/service/agents/AISearchAgent';
-import type { MindflowProgress } from '@/service/agents/search-agent-helper/MindFlowAgent';
-
 export type { AnalysisMode };
 
 import { LLMUsage, mergeTokenUsage } from '@/core/providers/types';
@@ -134,10 +132,8 @@ export type CompletedAnalysisSnapshot = {
 	overviewMermaidActiveIndex?: number;
 	// all versions of overview mermaid
 	overviewMermaidVersions?: string[];
-	/** MindFlow thinking diagram (raw Mermaid code) from MindFlowAgent. Latest only. */
+	/** Slot coverage diagram (raw Mermaid code) from slot pipeline. Latest only. */
 	mindflowMermaid?: string;
-	/** MindFlow progress (completeness, status, decision) from submit_mindflow_progress. Latest only. */
-	mindflowProgress?: MindflowProgress;
 
 	/** Continue Analysis Q&A (user question → answer). */
 	fullAnalysisFollowUp?: Array<{ title: string; content: string }>;
@@ -520,7 +516,6 @@ export const useAIAnalysisResultStore = create<{
 	overviewMermaidVersions: string[];
 	overviewMermaidActiveIndex: number;
 	mindflowMermaid: string;
-	mindflowProgress: MindflowProgress | null;
 	setGraph: (graph: AISearchGraph) => void;
 	setDashboardBlocks: (blocks: DashboardBlock[]) => void;
 	addTopic: (topic: AISearchTopic) => void;
@@ -530,9 +525,8 @@ export const useAIAnalysisResultStore = create<{
 	setOverviewMermaidVersions: (versions: string[]) => void;
 	pushOverviewMermaidVersion: (code: string, opts?: { makeActive?: boolean; dedupe?: boolean }) => void;
 	setMindflowMermaid: (code: string) => void;
-	setMindflowProgress: (progress: MindflowProgress | null) => void;
-	/** Set both at once (one store update). Use for combined MindFlow snapshot. */
-	setMindflowSnapshot: (payload: { mermaid?: string; progress?: MindflowProgress | null }) => void;
+	/** Set mermaid (e.g. from MindFlow/slot pipeline). */
+	setMindflowSnapshot: (payload: { mermaid?: string }) => void;
 	getHasGraphData: () => boolean;
 	getActiveOverviewMermaid: () => string;
 	resetResult: () => void;
@@ -544,7 +538,6 @@ export const useAIAnalysisResultStore = create<{
 	overviewMermaidVersions: [],
 	overviewMermaidActiveIndex: 0,
 	mindflowMermaid: '',
-	mindflowProgress: null,
 	setGraph: (graph) => set((s) => ({
 		graph: mergeAISearchGraphs(s.graph, graph),
 	})),
@@ -572,12 +565,9 @@ export const useAIAnalysisResultStore = create<{
 		});
 	},
 	setMindflowMermaid: (code) => set({ mindflowMermaid: code ?? '' }),
-	setMindflowProgress: (p) => set({ mindflowProgress: p ?? null }),
 	setMindflowSnapshot: (payload) => set((s) => {
-		const next: Partial<{ mindflowMermaid: string; mindflowProgress: MindflowProgress | null }> = {};
-		if (payload.mermaid !== undefined) next.mindflowMermaid = payload.mermaid ?? '';
-		if (payload.progress !== undefined) next.mindflowProgress = payload.progress ?? null;
-		return next;
+		if (payload.mermaid === undefined) return s;
+		return { mindflowMermaid: payload.mermaid ?? '' };
 	}),
 	getHasGraphData: () => {
 		const g = get().graph;
@@ -597,7 +587,6 @@ export const useAIAnalysisResultStore = create<{
 		overviewMermaidVersions: [],
 		overviewMermaidActiveIndex: 0,
 		mindflowMermaid: '',
-		mindflowProgress: null,
 	}),
 }));
 
@@ -646,7 +635,6 @@ export function buildCompletedAnalysisSnapshot(): CompletedAnalysisSnapshot {
 		overviewMermaidVersions: (res.overviewMermaidVersions ?? []).length > 0 ? res.overviewMermaidVersions : undefined,
 		overviewMermaidActiveIndex: (res.overviewMermaidVersions ?? []).length > 0 ? (res.overviewMermaidActiveIndex ?? 0) : undefined,
 		mindflowMermaid: (res.mindflowMermaid ?? '').trim() ? res.mindflowMermaid : undefined,
-		mindflowProgress: res.mindflowProgress ?? undefined,
 		fullAnalysisFollowUp: int.fullAnalysisFollowUp ?? [],
 		graphFollowups: int.graphFollowupHistory ?? [],
 		blocksFollowupsByBlockId: int.blocksFollowupHistoryByBlockId ?? undefined,
@@ -702,7 +690,6 @@ export function loadCompletedAnalysisSnapshot(snapshot: CompletedAnalysisSnapsho
 		overviewMermaidVersions: ovVersFinal,
 		overviewMermaidActiveIndex: ovIdx,
 		mindflowMermaid: (snapshot.mindflowMermaid ?? '').trim() ? snapshot.mindflowMermaid! : '',
-		mindflowProgress: snapshot.mindflowProgress ?? null,
 	});
 
 	useAIAnalysisTopicsStore.setState({
@@ -836,10 +823,8 @@ interface AIAnalysisStore {
 	/** Overview diagram (raw Mermaid code) from MermaidOverviewAgent. */
 	overviewMermaidActiveIndex: number;
 	overviewMermaidVersions: string[];
-	/** MindFlow thinking diagram (raw Mermaid code) from MindFlowAgent. */
+	/** Slot coverage diagram (raw Mermaid code). */
 	mindflowMermaid: string;
-	/** MindFlow progress from submit_mindflow_progress. */
-	mindflowProgress: MindflowProgress | null;
 	/** Latest "Dashboard Updated" line from DashboardUpdateAgent (e.g. "Dashboard Updated. +2 topics, +3 blocks"). */
 	dashboardUpdatedLine: string;
 	usage: LLMUsage | null;
@@ -925,7 +910,6 @@ interface AIAnalysisStore {
 	/** Append a new overview mermaid version; optionally set as active and dedupe against last. */
 	pushOverviewMermaidVersion: (code: string, opts?: { makeActive?: boolean; dedupe?: boolean }) => void;
 	setMindflowMermaid: (code: string) => void;
-	setMindflowProgress: (progress: MindflowProgress | null) => void;
 	setDashboardUpdatedLine: (line: string) => void;
 	setTitle: (title: string | null) => void;
 	setUsage: (usage: LLMUsage) => void;
@@ -1014,7 +998,6 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 	overviewMermaidActiveIndex: 0,
 	overviewMermaidVersions: [],
 	mindflowMermaid: '',
-	mindflowProgress: null,
 	dashboardUpdatedLine: '',
 	usage: null,
 	duration: null,
@@ -1241,7 +1224,6 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 		});
 	},
 	setMindflowMermaid: (code: string) => set({ mindflowMermaid: code ?? '', hasAnalyzed: true }),
-	setMindflowProgress: (progress) => set({ mindflowProgress: progress ?? null, hasAnalyzed: true }),
 	setDashboardUpdatedLine: (line: string) => set({ dashboardUpdatedLine: line ?? '', hasAnalyzed: true }),
 	setTitle: (title: string | null) => {
 		set({ title, hasAnalyzed: true });
@@ -1410,7 +1392,6 @@ export const useAIAnalysisStore = create<AIAnalysisStore>((set, get) => ({
 		overviewMermaidActiveIndex: 0,
 		overviewMermaidVersions: [],
 		mindflowMermaid: '',
-		mindflowProgress: null,
 		dashboardUpdatedLine: '',
 		topicInspectResults: {},
 		topicAnalyzeResults: {},

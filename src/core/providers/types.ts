@@ -383,7 +383,7 @@ type RawStreamEvent =
 	{ type: 'tool-result'; id?: string; toolName: string; input?: any; output?: any; } |
 	// from project usage
 	{ type: 'on-step-start'; text?: string; } |
-	{ type: 'on-step-finish'; text: string, finishReason: FinishReason, usage: LLMUsage, result?: any } |
+	{ type: 'on-step-finish'; text: string, finishReason: FinishReason, usage: LLMUsage, durationMs?: number, result?: any } |
 	{ type: 'complete'; usage: LLMUsage, finishReason: FinishReason, durationMs?: number, result?: any } |
 	{ type: 'error'; error: Error, durationMs?: number } |
 	{ type: 'unSupported'; chunk: any, comeFrom?: string } |
@@ -421,21 +421,29 @@ export type RawUIStreamEvent =
 		 * legacy field for better code maintainability.
 		 */
 		stepId?: string;
-	};
+	} |
+	/** Progress of parallel merged streams: how many of the N streams have completed. */
+	{ type: 'parallel-stream-progress'; completed: number; total: number; completedIndices?: number[] };
 
 export type LLMStreamEvent =
 	(RawStreamEvent | RawUIStreamEvent) & {
 		// some times we need to pass stream trigger name to the event.
 		// as we may manual control the loop process.
 		triggerName?: StreamTriggerName;
+		/**
+		 * The timestamp of the trigger event.
+		 */
+		triggerTimestamp?: number;
 		extra?: any;
 	};
 
 export enum StreamTriggerName {
-	SEARCH_MINDFLOW_AGENT = 'search-mindflow-agent',
-	SEARCH_THOUGHT_AGENT = 'search-thought-agent',
-	SEARCH_INSPECTOR_AGENT = 'search-inspector-agent',
-	SEARCH_KNOWLEDGE_AGENT = 'search-knowledge-agent',
+	SEARCH_AI_AGENT = 'search-ai-agent',
+	SEARCH_RAW_AGENT = 'search-raw-agent',
+	SEARCH_RAW_AGENT_RECON = 'search-raw-agent-recon',
+	SEARCH_RAW_AGENT_TASK_CONSOLIDATOR = 'search-raw-agent-task-consolidator',
+	SEARCH_RAW_AGENT_EVIDENCE = 'search-raw-agent-evidence',
+	SEARCH_SLOT_RECALL_AGENT = 'search-slot-recall-agent',
 	SEARCH_SOURCES_FROM_VERIFIED_PATHS = 'search-sources-from-verified-paths',
 	SEARCH_DASHBOARD_UPDATE_AGENT = 'search-dashboard-update-agent',
 	SEARCH_TOPICS_AGENT = 'search-topics-agent',
