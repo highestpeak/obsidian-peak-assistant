@@ -12,6 +12,8 @@ import {
 import { AppContext } from "@/app/context/AppContext";
 import { AgentContextManager } from "@/service/agents/search-agent-helper/AgentContextManager";
 import { SlotRecallAgent } from "@/service/agents/search-agent-helper/SlotRecallAgent";
+import { groupConsolidatedTasksGravity, taskLoadScore, type GroupingOptions } from "@/service/agents/search-agent-helper/helpers/gravityGrouping";
+import type { ConsolidatedTaskWithId } from "@/core/schemas/agents/search-agent-schemas";
 import type { LLMStreamEvent } from "@/core/providers/types";
 import { emptyUsage, mergeTokenUsage } from "@/core/providers/types";
 import { DELTA_EVENT_TYPES, getDeltaEventDeltaText } from "@/core/providers/helpers/stream-helper";
@@ -226,6 +228,38 @@ export class AISearchAgentTestTools {
         return {
             debugSnapshot: context.getDebugSnapshot(),
             duration,
+        };
+    }
+
+    /**
+     * Test gravity-merge grouping with saved consolidator data (no full search run).
+     * Available as window.testGroupingTools when enableDevTools.
+     * Usage: paste consolidated_tasks from pk-debug "parallelSearchResultAfterTaskConsolidator", add taskId, then:
+     *   await window.testGroupingTools.testGrouping(tasksWithIds, { maxEvidenceConcurrency: 12 })
+     * Run gravity grouping on tasks (with optional graph affinity when DB is ready).
+     * Returns { groups, groupCount, totalTasks, opts } and logs to console.
+     */
+    async testGrouping(
+        tasks: ConsolidatedTaskWithId[],
+        opts: GroupingOptions = {},
+    ): Promise<{ groups: ConsolidatedTaskWithId[][]; groupCount: number; totalTasks: number; opts: GroupingOptions }> {
+        const withIds = tasks.map((t, i) =>
+            'taskId' in t && t.taskId ? t : { ...t, taskId: `task-${i}` }
+        ) as ConsolidatedTaskWithId[];
+        const groups = await groupConsolidatedTasksGravity(withIds, opts);
+        const totalScore = withIds.reduce((s, t) => s + taskLoadScore(t), 0);
+        console.debug('[testGrouping] input tasks:', withIds.length, 'totalScore:', totalScore, 'opts:', opts);
+        console.debug('[testGrouping] output groups:', groups.length, groups.map((g, i) => ({
+            groupIndex: i,
+            taskCount: g.length,
+            score: g.reduce((s, t) => s + taskLoadScore(t), 0),
+            paths: g.map((t) => t.path),
+        })));
+        return {
+            groups,
+            groupCount: groups.length,
+            totalTasks: withIds.length,
+            opts,
         };
     }
 }

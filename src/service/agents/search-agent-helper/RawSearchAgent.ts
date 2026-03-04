@@ -28,6 +28,7 @@ import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { buildPromptTraceDebugEvent, parallelStream, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
 import { Stopwatch } from '@/core/utils/Stopwatch';
+import { groupConsolidatedTasksGravity } from './helpers/gravityGrouping';
 
 export class RawSearchAgent {
 
@@ -232,7 +233,11 @@ class ReconAgent {
 		const consolidatedTasks = consolidatorOutput.consolidated_tasks.map((t, i) =>
 			({ ...t, taskId: `task-${i}` })
 		);
-		const groups = this.groupConsolidatedTasks(consolidatedTasks, { maxPerGroup: 6, groupBy: 'dirname' });
+		const groups = await groupConsolidatedTasksGravity(consolidatedTasks, {
+			maxCapacity: 15,
+			targetLoadPerGroup: 8,
+			maxEvidenceConcurrency: 12,
+		});
 		yield {
 			type: 'pk-debug',
 			debugName: 'parallelSearchResultAfterGroupConsolidatedTasks',
@@ -324,45 +329,6 @@ class ReconAgent {
 			};
 			return;
 		}
-	}
-
-	// todo need more intelligent group strategy.
-	private groupConsolidatedTasks(
-		tasks: ConsolidatedTaskWithId[],
-		opts: { maxPerGroup?: number; groupBy?: 'dirname' | 'taskLoad' } = {},
-	): ConsolidatedTaskWithId[][] {
-		const maxPerGroup = opts.maxPerGroup ?? 6;
-		const groupBy = opts.groupBy ?? 'dirname';
-
-		if (tasks.length === 0) return [];
-		if (tasks.length <= maxPerGroup) return [tasks];
-
-		const keyOf = (t: ConsolidatedTaskWithId): string => {
-			if (groupBy === 'dirname') {
-				const idx = t.path.replace(/\\/g, '/').lastIndexOf('/');
-				return idx >= 0 ? t.path.slice(0, idx) : '';
-			}
-			return t.task_load ?? 'medium';
-		};
-
-		const buckets = new Map<string, ConsolidatedTaskWithId[]>();
-		for (const t of tasks) {
-			const k = keyOf(t);
-			let arr = buckets.get(k);
-			if (!arr) {
-				arr = [];
-				buckets.set(k, arr);
-			}
-			arr.push(t);
-		}
-
-		const groups: ConsolidatedTaskWithId[][] = [];
-		for (const arr of buckets.values()) {
-			for (let i = 0; i < arr.length; i += maxPerGroup) {
-				groups.push(arr.slice(i, i + maxPerGroup));
-			}
-		}
-		return groups;
 	}
 
 	/**

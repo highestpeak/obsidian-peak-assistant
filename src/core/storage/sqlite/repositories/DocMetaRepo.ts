@@ -223,6 +223,25 @@ export class DocMetaRepo {
 	}
 
 	/**
+	 * Count documents under a folder path (path = folderPath or path like folderPath/%).
+	 * Used for same-parent decay: more files on disk in that dir → smaller affinity bonus.
+	 */
+	async countByFolderPath(folderPath: string): Promise<number> {
+		if (folderPath === '') return 0;
+		const row = await this.db
+			.selectFrom('doc_meta')
+			.select(({ fn }) => fn.count<number>('id').as('cnt'))
+			.where((eb) =>
+				eb.or([
+					eb('path', 'like', `${folderPath}/%`),
+					eb('path', '=', folderPath),
+				])
+			)
+			.executeTakeFirst();
+		return Number(row?.cnt ?? 0);
+	}
+
+	/**
 	 * Get document IDs whose path is under any of the given folder prefixes.
 	 * Used for exclude-folder filtering (path = exact or path LIKE prefix/%).
 	 */
