@@ -139,6 +139,19 @@ export class GraphEdgeRepo {
 	}
 
 	/**
+	 * Get edges by to_node_ids and types (batch). No join.
+	 */
+	async getByToNodesAndTypes(toNodeIds: string[], types: string[]): Promise<{ to_node_id: string; from_node_id: string }[]> {
+		if (!toNodeIds.length || !types.length) return [];
+		return await this.db
+			.selectFrom('graph_edges')
+			.select(['to_node_id', 'from_node_id'])
+			.where('to_node_id', 'in', toNodeIds)
+			.where('type', 'in', types)
+			.execute();
+	}
+
+	/**
 	 * Edge-only aggregate: filter by type, group by to_node_id, count. No join.
 	 * Caller should then look up graph_nodes by to_node_id and sum counts by (type, label).
 	 */
@@ -592,6 +605,122 @@ export class GraphEdgeRepo {
 			.orderBy('count', 'desc')
 			.limit(limit)
 			.execute();
+	}
+
+	/**
+	 * count in-degree and out-degree for target node ids.
+	 * Chunks nodeIds to avoid SQL variable limit; merges in memory.
+	 */
+	async getDegreeMapsByNodeIdsChunked(
+		nodeIds: string[],
+		edgeType: string = 'references'
+	): Promise<{ inMap: Map<string, number>; outMap: Map<string, number> }> {
+		const inMap = new Map<string, number>();
+		const outMap = new Map<string, number>();
+		const CHUNK = 400;
+		for (let i = 0; i < nodeIds.length; i += CHUNK) {
+			const c = nodeIds.slice(i, i + CHUNK);
+			const [inChunk, outChunk] = await Promise.all([
+				this.countInComingEdges(c, edgeType),
+				this.countOutgoingEdges(c, edgeType),
+			]);
+			for (const [nid, count] of inChunk) inMap.set(nid, (inMap.get(nid) ?? 0) + count);
+			for (const [nid, count] of outChunk) outMap.set(nid, (outMap.get(nid) ?? 0) + count);
+		}
+		return { inMap, outMap };
+	}
+
+	/**
+	 * Returns all edges that have *both* endpoints in the given node set ("intra" = within the set).
+	 * Used when drawing a subgraph (e.g. top-N nodes): we need every link between those nodes.
+	 *
+	 * Why two queries?
+	 * - getByFromNodesAndTypes(nodeIds): edges whose *source* is in nodeIds. That gives us A→B when A is in the set
+	 *   (B may be outside). We then keep only edges where B is also in nodeIds.
+	 * - getByToNodesAndTypes(nodeIds): edges whose *target* is in nodeIds. That gives us C→D when D is in the set.
+	 *   We then keep only edges where C is also in nodeIds. So we get edges that would be missed if we only queried by from.
+	 * The same edge can appear in both result sets, so we dedupe by (from_node_id, to_node_id) before returning.
+	 *
+	 * @param nodeIds - Node IDs that define the subgraph (e.g. top 20 by degree).
+	 * @param edgeType - Edge type to filter (default 'references').
+	 * @returns List of edges { from_node_id, to_node_id } with both ends in nodeIds, no duplicates.
+	 */
+	async getIntraEdges(
+		nodeIds: string[],
+		edgeType: string = 'references'
+	): Promise<Array<{ from_node_id: string; to_node_id: string }>> {
+		if (!nodeIds.length) return [];
+		const types = [edgeType];
+		const [fromEdges, toEdges] = await Promise.all([
+			this.getByFromNodesAndTypes(nodeIds, types),
+			this.getByToNodesAndTypes(nodeIds, types),
+		]);
+		const nodeSet = new Set(nodeIds);
+		const seen = new Set<string>();
+		const result: Array<{ from_node_id: string; to_node_id: string }> = [];
+		for (const e of fromEdges) {
+			if (!nodeSet.has(e.to_node_id)) continue;
+			const key = `${e.from_node_id}\t${e.to_node_id}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			result.push(e);
+		}
+		for (const e of toEdges) {
+			if (!nodeSet.has(e.from_node_id)) continue;
+			const key = `${e.from_node_id}\t${e.to_node_id}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			result.push(e);
+		}
+		return result;
+	}
+
+	/**
+	 * For a set of "internal" nodes (e.g. docs in the group's folders), returns the top external nodes
+	 * that are most connected to this set—both directions. Used to draw "Group → external" and
+	 * "external → Group" links in the shared-context Mermaid graph.
+	 *
+	 * - extOut: nodes that internal nodes link *to* (outgoing). Sorted by number of edges from internal to that node; top limitK.
+	 * - extIn: nodes that link *into* internal nodes (incoming). Sorted by number of edges from that node to internal; top limitK.
+	 *
+	 * Why chunk? internalIds can be large (all docs under several folders). We avoid a single huge IN (...)
+	 * by splitting into chunks of 400, querying edges for each chunk, and aggregating counts in memory.
+	 * No SQL JOIN with doc_meta; internal set is passed in by the caller (who got it from DocMetaRepo).
+	 *
+	 * @param internalIds - Document/node IDs considered "inside" the group (e.g. from getIdsByPathPrefixes).
+	 * @param edgeType - Edge type (default 'references').
+	 * @param limitK - Max number of external nodes to return per direction.
+	 * @returns { extOut: [{ to_node_id, count }], extIn: [{ from_node_id, count }] } sorted by count descending.
+	 */
+	async getExternalEdgeCountsChunked(
+		internalIds: string[],
+		edgeType: string = 'references',
+		limitK: number
+	): Promise<{
+		extOut: Array<{ to_node_id: string; count: number }>;
+		extIn: Array<{ from_node_id: string; count: number }>;
+	}> {
+		const internalSet = new Set(internalIds);
+		const outByTo = new Map<string, number>();
+		const inByFrom = new Map<string, number>();
+		const CHUNK = 400;
+		const types = [edgeType];
+		for (let i = 0; i < internalIds.length; i += CHUNK) {
+			const c = internalIds.slice(i, i + CHUNK);
+			const [outEdges, inEdges] = await Promise.all([
+				this.getByFromNodesAndTypes(c, types),
+				this.getByToNodesAndTypes(c, types),
+			]);
+			for (const e of outEdges) {
+				if (!internalSet.has(e.to_node_id)) outByTo.set(e.to_node_id, (outByTo.get(e.to_node_id) ?? 0) + 1);
+			}
+			for (const e of inEdges) {
+				if (!internalSet.has(e.from_node_id)) inByFrom.set(e.from_node_id, (inByFrom.get(e.from_node_id) ?? 0) + 1);
+			}
+		}
+		const extOut = [...outByTo.entries()].sort((a, b) => b[1] - a[1]).slice(0, limitK).map(([to_node_id, count]) => ({ to_node_id, count }));
+		const extIn = [...inByFrom.entries()].sort((a, b) => b[1] - a[1]).slice(0, limitK).map(([from_node_id, count]) => ({ from_node_id, count }));
+		return { extOut, extIn };
 	}
 
 	/**

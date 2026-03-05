@@ -111,13 +111,12 @@ export class DashboardAgent {
      * Emit placeholder sources and single-node graph patches for newly verified paths during search stream. 
      * */
     public async *emitStreamingSourcesFromVerifiedPaths(triggerName?: StreamTriggerName): AsyncGenerator<LLMStreamEvent> {
-        const emittedSourcePaths = this.context.getEmittedSourcePaths();
         const existingSourcesPathsSet = new Set(
             this.context.getAgentResult().sources.map(s => (s.path ?? '').toLowerCase()).filter(Boolean)
         );
 
         const newPaths = Array.from(this.context.getVerifiedPaths())
-            .filter((p) => !emittedSourcePaths.has(p))
+            .filter((p) => !existingSourcesPathsSet.has(p.trim().toLowerCase()))
             .slice(0, STREAMING_SOURCE_TOP_K);
 
         for (const path of newPaths) {
@@ -125,8 +124,6 @@ export class DashboardAgent {
             if (!normPath) continue;
             const lowerPath = normPath.toLowerCase();
             const title = getFileNameFromPath(normPath);
-
-            emittedSourcePaths.add(path);
 
             // add sources
             if (!existingSourcesPathsSet.has(lowerPath)) {

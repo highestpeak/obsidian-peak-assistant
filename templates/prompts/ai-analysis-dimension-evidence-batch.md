@@ -1,5 +1,15 @@
 User question: {{userQuery}}
 
+{{#if showSchedulerContext}}
+# Scheduler-provided context (you may disagree)
+- **Topic (preliminary):** {{topicAnchor}}
+- **Focus for this group:** {{groupFocus}}
+{{#if groupSharedContext}}
+{{{groupSharedContext}}}
+{{/if}}
+If after reading the full file you find it does **not** match this theme, prefer the file's actual content and in your facts note: "Deviates from expected theme; actually discusses ...".
+{{/if}}
+
 # Tasks to complete (read each path once; extract for all listed dimensions)
 
 {{#each tasks}}

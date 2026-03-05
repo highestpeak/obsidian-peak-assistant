@@ -83,3 +83,23 @@ export function tokenizePathOrLabel(text: string, locale?: string): string[] {
 	if (!withSpaces) return [];
 	return normalizeTextForFts(withSpaces).split(/\s+/).filter(Boolean);
 }
+
+/**
+ * English stopwords for graph keyword nodes. Used when building "kw" nodes from doc basenames
+ * so common words do not become meaningless cluster labels. Minimal set; extend as needed.
+ */
+export const EN_STOPWORDS = new Set<string>(['the', 'and']);
+
+/**
+ * Filter tokens for graph keyword clustering: drop stopwords, length < 2, and pure digits.
+ * Design: keep only tokens that are likely to be meaningful theme labels (e.g. "peak", "assistant")
+ * and avoid noise (e.g. "a", "1", "the"). Use after tokenizePathOrLabel when building kw→doc edges.
+ */
+export function filterTokensForGraph(tokens: string[]): string[] {
+	return tokens.filter(
+		(t) =>
+			t.length >= 2 &&
+			!EN_STOPWORDS.has(t.toLowerCase()) &&
+			!/^\d+$/.test(t)
+	);
+}

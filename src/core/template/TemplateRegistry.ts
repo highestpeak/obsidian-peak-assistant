@@ -28,6 +28,7 @@ export type ToolTemplateId = (typeof ToolTemplateId)[keyof typeof ToolTemplateId
 export const AgentTemplateId = {
 	ResultSnapshot: 'result-snapshot',
 	EvidenceHint: 'evidence-hint',
+	EvidenceGroupSharedContext: 'evidence-group-shared-context',
 } as const;
 
 export type AgentTemplateId = (typeof AgentTemplateId)[keyof typeof AgentTemplateId];
@@ -108,6 +109,8 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-dimension-evidence': meta('prompts', 'ai-analysis-dimension-evidence', { systemPromptId: 'ai-analysis-dimension-evidence-system' as PromptId }),
 	'ai-analysis-task-consolidator-system': meta('prompts', 'ai-analysis-task-consolidator-system'),
 	'ai-analysis-task-consolidator': meta('prompts', 'ai-analysis-task-consolidator', { expectsJson: true, jsonConstraint: 'Return only the JSON object, no markdown or explanation.', systemPromptId: 'ai-analysis-task-consolidator-system' as PromptId }),
+	'ai-analysis-group-context-system': meta('prompts', 'ai-analysis-group-context-system'),
+	'ai-analysis-group-context-single': meta('prompts', 'ai-analysis-group-context-single', { expectsJson: true, jsonConstraint: 'Return only the JSON object with topic_anchor and group_focus, no markdown or explanation.', systemPromptId: 'ai-analysis-group-context-system' as PromptId }),
 	'ai-analysis-dimension-evidence-batch': meta('prompts', 'ai-analysis-dimension-evidence-batch', { systemPromptId: 'ai-analysis-dimension-evidence-system' as PromptId }),
 	'ai-analysis-summary-system': meta('prompts', 'ai-analysis-dashboard-result-summary-system'),
 	'search-ai-summary': meta('prompts', 'ai-analysis-dashboard-result-summary', { systemPromptId: 'ai-analysis-summary-system' as PromptId }),
@@ -153,6 +156,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	// --- Agents ---
 	[AgentTemplateId.ResultSnapshot]: meta('agents', 'result-snapshot'),
 	[AgentTemplateId.EvidenceHint]: meta('agents', 'evidence-hint'),
+	[AgentTemplateId.EvidenceGroupSharedContext]: meta('agents', 'evidence-group-shared-context'),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {

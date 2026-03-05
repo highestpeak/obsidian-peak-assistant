@@ -20,9 +20,10 @@ import {
 } from '@/service/tools/search-graph-inspector';
 import { PromptId } from '@/service/prompt/PromptId';
 import { consolidatorOutputSchema, rawSearchReportSchema, submitEvidencePackInputSchema, markTaskCompletedInputSchema, type RawSearchReport } from '@/core/schemas/agents/search-agent-schemas';
-import type { ConsolidatedTaskWithId, ConsolidatorOutput, EvidencePack, RawSearchReportWithDimension } from '@/core/schemas/agents/search-agent-schemas';
+import type { ConsolidatedTaskWithId, ConsolidatorOutput, EvidenceTaskGroup, EvidencePack, RawSearchReportWithDimension } from '@/core/schemas/agents/search-agent-schemas';
 import type { DimensionChoice } from '@/core/schemas/agents/search-agent-schemas';
 import { AgentContextManager } from './AgentContextManager';
+import { GroupContextAgent } from './GroupContextAgent';
 import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { buildPromptTraceDebugEvent, parallelStream, streamTransform } from '@/core/providers/helpers/stream-helper';
@@ -65,28 +66,35 @@ export class RawSearchAgent {
 		const { dimensions, onAllEvidenceFinish, onGroupEvidenceFinish } = options;
 
 		stopWatch.start("batchStreamRecon");
-		let groups: ConsolidatedTaskWithId[][] = [];
+		let evidenceTaskGroups: EvidenceTaskGroup[] = [];
 		yield* this.reconAgent.batchStreamRecon({
 			dimensions,
 			stepId: generateUuidWithoutHyphens(),
-			onReconFinish: (g) => groups = g
+			onReconFinish: (eg) => {
+				evidenceTaskGroups = eg;
+			},
 		});
+		this.context.setRecallEvidenceTaskGroups(evidenceTaskGroups);
 		stopWatch.stop();
 
 		const evidencePacks: EvidencePack[] = [];
 		stopWatch.start("parallelStreamTaskEvidence");
-		const groupStreams = groups.map((group) => {
+		const groupStreams = evidenceTaskGroups.map((eg) => {
 			const evidenceAgent = new EvidenceAgent(this.aiServiceManager, this.context);
 			return evidenceAgent.streamTaskEvidence({
-				tasks: group,
+				tasks: eg.tasks,
+				groupFocus: eg.group_focus,
+				topicAnchor: eg.topic_anchor,
+				groupSharedContext: eg.sharedContext,
 				stepId: generateUuidWithoutHyphens(),
 				onEvidenceFinish: (p) => {
 					evidencePacks.push(...p);
-					onGroupEvidenceFinish?.(group, p);
+					onGroupEvidenceFinish?.(eg.tasks, p);
 				},
 			});
 		});
 		yield* parallelStream(groupStreams);
+		this.context.setRecallEvidencePacks(evidencePacks);
 		stopWatch.stop();
 
 		yield {
@@ -94,7 +102,7 @@ export class RawSearchAgent {
 			debugName: 'streamSearchResultAfterGroupEvidence',
 			triggerName: StreamTriggerName.SEARCH_RAW_AGENT,
 			extra: {
-				groups,
+				evidenceGroups: evidenceTaskGroups,
 				evidencePacks,
 				stepDuration: stopWatch.getLastDuration(),
 				totalDuration: stopWatch.getTotalElapsed(),
@@ -164,7 +172,7 @@ class ReconAgent {
 	async *batchStreamRecon(options: {
 		dimensions: DimensionChoice[],
 		stepId?: string,
-		onReconFinish?: (groupTasks: ConsolidatedTaskWithId[][]) => void,
+		onReconFinish?: (evidenceTaskGroups: EvidenceTaskGroup[]) => void,
 	}): AsyncGenerator<LLMStreamEvent> {
 		let { dimensions, stepId, onReconFinish } = options;
 		if (!stepId) {
@@ -233,14 +241,10 @@ class ReconAgent {
 		const consolidatedTasks = consolidatorOutput.consolidated_tasks.map((t, i) =>
 			({ ...t, taskId: `task-${i}` })
 		);
-		const groups = await groupConsolidatedTasksGravity(consolidatedTasks, {
-			maxCapacity: 15,
-			targetLoadPerGroup: 8,
-			maxEvidenceConcurrency: 12,
-		});
+		const groups = await groupConsolidatedTasksGravity(consolidatedTasks);
 		yield {
 			type: 'pk-debug',
-			debugName: 'parallelSearchResultAfterGroupConsolidatedTasks',
+			debugName: 'groupConsolidatedTasksGravity',
 			triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
 			extra: {
 				groups,
@@ -248,7 +252,29 @@ class ReconAgent {
 				totalDuration: stopWatch.getTotalElapsed(),
 			},
 		}
-		onReconFinish?.(groups);
+
+		stopWatch.start("streamGroupContextRefinement");
+		let evidenceTaskGroups: EvidenceTaskGroup[] = [];
+		const groupContextAgent = new GroupContextAgent(this.aiServiceManager, this.context);
+		yield* groupContextAgent.streamAllGroupsContext({
+			groups,
+			dimensions,
+			stepId,
+			onRefinementFinish: (eg) => { evidenceTaskGroups = eg; },
+		});
+		stopWatch.stop();
+		yield {
+			type: 'pk-debug',
+			debugName: 'groupContextRefinement',
+			triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
+			extra: {
+				evidenceGroups: evidenceTaskGroups,
+				stepDuration: stopWatch.getLastDuration(),
+				totalDuration: stopWatch.getTotalElapsed(),
+			},
+		};
+
+		onReconFinish?.(evidenceTaskGroups);
 	}
 
 	private async *streamTaskConsolidator(
@@ -268,7 +294,7 @@ class ReconAgent {
 				type: 'pk-debug',
 				debugName: 'parallelSearchResultAfterClassify',
 				triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
-				extra: { evidencePacks: this.context.getDimensionPacks(), reconReports: reports },
+				extra: { evidencePacks: this.context.getRecallEvidencePacks(), reconReports: reports },
 			};
 			return;
 		}
@@ -325,7 +351,7 @@ class ReconAgent {
 				type: 'pk-debug',
 				debugName: 'parallelSearchResultAfterClassify',
 				triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
-				extra: { evidencePacks: this.context.getDimensionPacks(), reconReports: reports },
+				extra: { evidencePacks: this.context.getRecallEvidencePacks(), reconReports: reports },
 			};
 			return;
 		}
@@ -382,7 +408,7 @@ type EvidenceAgentBatchTools = EvidenceAgentTools & {
 	mark_task_completed: AgentTool;
 };
 
-class EvidenceAgent {
+export class EvidenceAgent {
 
 	/** Batch evidence: multiple submit_evidence_pack + mark_task_completed. */
 	private batchAgent: Agent<EvidenceAgentBatchTools>;
@@ -495,6 +521,9 @@ class EvidenceAgent {
 
 	public async *streamTaskEvidence(options: {
 		tasks: ConsolidatedTaskWithId[];
+		topicAnchor?: string;
+		groupFocus?: string;
+		groupSharedContext?: string;
 		stepId?: string;
 		onEvidenceFinish?: (evidencePacks: EvidencePack[]) => void;
 	}): AsyncGenerator<LLMStreamEvent> {
@@ -504,9 +533,16 @@ class EvidenceAgent {
 		this.resetTasks(options.tasks);
 
 		const system = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDimensionEvidenceSystem, {});
+		const topicAnchor = options.topicAnchor ?? '';
+		const groupFocus = options.groupFocus ?? '';
+		const groupSharedContext = options.groupSharedContext ?? '';
 		const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDimensionEvidenceBatch, {
 			userQuery: this.context.getInitialPrompt(),
 			tasks: this.tasks,
+			topicAnchor,
+			groupFocus,
+			groupSharedContext,
+			showSchedulerContext: !!(topicAnchor || groupFocus || groupSharedContext),
 		});
 
 		yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_RAW_AGENT_EVIDENCE, system, prompt);

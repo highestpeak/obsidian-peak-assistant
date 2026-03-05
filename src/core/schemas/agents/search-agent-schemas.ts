@@ -292,9 +292,40 @@ export type ConsolidatedTaskWithId = ConsolidatedTask & { taskId: string };
 
 export const consolidatorOutputSchema = z.object({
 	consolidated_tasks: z.array(consolidatedTaskSchema),
-	global_recon_insight: z.string().describe('One-sentence summary of current recon state'),
+	global_recon_insight: z.string().describe('up to 500 words summary of current recon state'),
 });
 export type ConsolidatorOutput = z.infer<typeof consolidatorOutputSchema>;
+
+/** Per-group output from Group Context Refinement LLM (topic + focus for Evidence Agent). */
+export const groupContextItemSchema = z.object({
+	topic_anchor: z.string().describe('Unified theme for this group of files'),
+	group_focus: z.string().describe('Instruction for Evidence Agent: what to compare and dig for when reading these files'),
+});
+export type GroupContextItem = z.infer<typeof groupContextItemSchema>;
+
+/** Input for set_group_context tool: one group's topic_anchor and group_focus (group_index 0-based). */
+export const setGroupContextInputSchema = z.object({
+	group_index: z.number().int().min(0).describe('0-based index of the group'),
+	topic_anchor: z.string().describe('Unified theme for this group of files'),
+	group_focus: z.string().describe('Instruction for Evidence Agent: what to compare and dig for'),
+});
+export type SetGroupContextInput = z.infer<typeof setGroupContextInputSchema>;
+
+export const groupContextRefinementOutputSchema = z.object({
+	groups: z.array(groupContextItemSchema).describe('One item per input group, same order'),
+});
+export type GroupContextRefinementOutput = z.infer<typeof groupContextRefinementOutputSchema>;
+
+/** Full evidence group: tasks + scheduler-generated context (topic_anchor, group_focus) for Evidence Agent. sharedContext is markdown rendered from programmatic stats (folders, tags, intra-group graph). */
+export interface EvidenceTaskGroup {
+	groupId: string;
+	topic_anchor: string;
+	group_focus: string;
+	tasks: ConsolidatedTaskWithId[];
+	/** Rendered markdown from buildEvidenceGroupSharedContext (folders, top tags, mermaid graph). */
+	sharedContext?: string;
+	clustering_reason?: string;
+}
 
 /** Level 1: Core functional views. */
 export const FUNCTIONAL_TAG_CORE = [

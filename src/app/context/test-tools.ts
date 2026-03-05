@@ -13,10 +13,14 @@ import { AppContext } from "@/app/context/AppContext";
 import { AgentContextManager } from "@/service/agents/search-agent-helper/AgentContextManager";
 import { SlotRecallAgent } from "@/service/agents/search-agent-helper/SlotRecallAgent";
 import { groupConsolidatedTasksGravity, taskLoadScore, type GroupingOptions } from "@/service/agents/search-agent-helper/helpers/gravityGrouping";
-import type { ConsolidatedTaskWithId } from "@/core/schemas/agents/search-agent-schemas";
+import type { ConsolidatedTaskWithId, DimensionChoice, EvidenceTaskGroup, EvidencePack } from "@/core/schemas/agents/search-agent-schemas";
 import type { LLMStreamEvent } from "@/core/providers/types";
 import { emptyUsage, mergeTokenUsage } from "@/core/providers/types";
-import { DELTA_EVENT_TYPES, getDeltaEventDeltaText } from "@/core/providers/helpers/stream-helper";
+import { DELTA_EVENT_TYPES, getDeltaEventDeltaText, parallelStream } from "@/core/providers/helpers/stream-helper";
+import { GroupContextAgent } from "@/service/agents/search-agent-helper/GroupContextAgent";
+import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
+import { buildEvidenceGroupSharedContext } from "@/service/agents/search-agent-helper/helpers/buildEvidenceGroupSharedContext";
+import { EvidenceAgent } from "@/service/agents/search-agent-helper/RawSearchAgent";
 
 /**
  * Global test interface for search-graph-inspector tools
@@ -239,7 +243,7 @@ export class AISearchAgentTestTools {
      * Run gravity grouping on tasks (with optional graph affinity when DB is ready).
      * Returns { groups, groupCount, totalTasks, opts } and logs to console.
      */
-    async testGrouping(
+    async testGroupConsolidatedTasksGravity(
         tasks: ConsolidatedTaskWithId[],
         opts: GroupingOptions = {},
     ): Promise<{ groups: ConsolidatedTaskWithId[][]; groupCount: number; totalTasks: number; opts: GroupingOptions }> {
@@ -249,7 +253,8 @@ export class AISearchAgentTestTools {
         const groups = await groupConsolidatedTasksGravity(withIds, opts);
         const totalScore = withIds.reduce((s, t) => s + taskLoadScore(t), 0);
         console.debug('[testGrouping] input tasks:', withIds.length, 'totalScore:', totalScore, 'opts:', opts);
-        console.debug('[testGrouping] output groups:', groups.length, groups.map((g, i) => ({
+        console.debug('[testGrouping] output groups:', groups);
+        console.debug('[testGrouping] output groups stats:', groups.length, groups.map((g, i) => ({
             groupIndex: i,
             taskCount: g.length,
             score: g.reduce((s, t) => s + taskLoadScore(t), 0),
@@ -260,6 +265,104 @@ export class AISearchAgentTestTools {
             groupCount: groups.length,
             totalTasks: withIds.length,
             opts,
+        };
+    }
+
+    async testGroupContextAgent(
+        testData: {
+            groups: ConsolidatedTaskWithId[][],
+            dimensions: DimensionChoice[],
+        }
+    ): Promise<{ eventCount: number; evidenceGroups: EvidenceTaskGroup[] }> {
+        const ctx = AppContext.getInstance();
+        const context = new AgentContextManager(ctx.manager);
+        const groupContextAgent = new GroupContextAgent(ctx.manager, context);
+        let evidenceGroups: EvidenceTaskGroup[] = [];
+        let eventCount = 0;
+        for await (const _ev of streamWithStreamLog(
+            groupContextAgent.streamAllGroupsContext({
+                groups: testData.groups,
+                dimensions: testData.dimensions,
+                stepId: generateUuidWithoutHyphens(),
+                onRefinementFinish: (eg) => { evidenceGroups = eg; },
+            })
+        )) {
+            eventCount++;
+        }
+        console.debug('[testGroupContextAgent] evidenceGroups:', evidenceGroups);
+        return {
+            eventCount,
+            evidenceGroups,
+        };
+    }
+
+    async testGroupContextAgentWithSharedContext(
+        testData: {
+            groups: ConsolidatedTaskWithId[][],
+        }
+    ): Promise<any> {
+        const { groups } = testData;
+        const ctx = AppContext.getInstance();
+        const tm = ctx.manager.getTemplateManager?.();
+        const sharedContexts = await Promise.all(
+            groups.map((tasks) => buildEvidenceGroupSharedContext(tasks, tm))
+        );
+        return {
+            sharedContexts,
+        };
+    }
+
+    async testEvidenceAgent(
+        testData: {
+            groups: ConsolidatedTaskWithId[][],
+            dimensions: DimensionChoice[],
+        }
+    ): Promise<any> {
+        const ctx = AppContext.getInstance();
+        const context = new AgentContextManager(ctx.manager);
+
+        const evidencePacks: EvidencePack[] = [];
+        const streamGenerator = async function* (): AsyncGenerator<LLMStreamEvent> {
+            let evidenceGroups: EvidenceTaskGroup[] = [];
+            const groupContextAgent = new GroupContextAgent(ctx.manager, context);
+            yield* groupContextAgent.streamAllGroupsContext({
+                groups: testData.groups,
+                dimensions: testData.dimensions,
+                stepId: generateUuidWithoutHyphens(),
+                onRefinementFinish: (eg) => { evidenceGroups = eg; },
+            });
+
+            const groupStreams = evidenceGroups.map((eg) => {
+                const evidenceAgent = new EvidenceAgent(ctx.manager, context);
+                return evidenceAgent.streamTaskEvidence({
+                    tasks: eg.tasks,
+                    groupFocus: eg.group_focus,
+                    topicAnchor: eg.topic_anchor,
+                    groupSharedContext: eg.sharedContext,
+                    stepId: generateUuidWithoutHyphens(),
+                    onEvidenceFinish: (p) => {
+                        evidencePacks.push(...p);
+                    },
+                });
+            });
+            yield* parallelStream(groupStreams);
+        }
+
+        const startTime = Date.now();
+        let eventCount = 0;
+        for await (const _ev of streamWithStreamLog(
+            streamGenerator()
+        )) {
+            eventCount++;
+        }
+
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        console.debug('[testEvidenceAgent] duration:', duration, '. evidencePacks:', JSON.stringify(evidencePacks));
+        return {
+            duration,
+            eventCount,
+            evidencePacks,
         };
     }
 }

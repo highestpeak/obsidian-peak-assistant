@@ -7,33 +7,16 @@ import {
 } from "@/core/schemas/tools/searchMemoryStore";
 import { SearchAgentResult } from "../AISearchAgent";
 import { AgentTool, safeAgentTool } from "@/service/tools/types";
-import type { AllDimensionId, EvidencePack, RawSearchReport } from "@/core/schemas/agents/search-agent-schemas";
-
-/** Session-only state (prompt, usage). */
-interface SessionState {
-    initialPrompt: string;
-    totalTokenUsage: LLMUsage;
-}
-
-/** Stored entry: EvidencePack + optional superseded flag (same path added again). */
-interface DimensionEvidenceEntry {
-    pack: EvidencePack;
-    superseded?: boolean;
-}
-
-/** Full report per run; discovered_leads kept for consolidator and dedup. */
-export type RawSearchRunReportEntry = RawSearchReport & {
-    runId: string;
-    runMode: 'initial' | 'recon' | 'evidence';
-    dimension: AllDimensionId;
-};
+import type {
+    DimensionChoice,
+    EvidenceTaskGroup,
+    EvidencePack,
+} from "@/core/schemas/agents/search-agent-schemas";
 
 /** Serializable snapshot of search memory for debug (window.__peakSearchDebug). */
 export interface SearchMemoryDebugSnapshot {
-    sessionState: {
-        initialPromptPreview: string;
-        totalTokenUsage: LLMUsage;
-    };
+    initialPromptPreview: string;
+    totalTokenUsage: LLMUsage;
     agentResult: {
         title: string;
         summaryLength: number;
@@ -43,10 +26,15 @@ export interface SearchMemoryDebugSnapshot {
         suggestedFollowUpQuestionsCount: number;
     };
     verifiedPaths: string[];
-    emittedSourcePaths: string[];
     dossier: {
         verifiedPathsCount: number;
         sourcePathsSample: string[];
+    };
+    /** Recall pipeline: dimensions (after classify), evidenceGroups (after recon), evidencePacks (final). */
+    recallPipeline?: {
+        dimensionsCount: number;
+        evidenceGroupsCount: number;
+        evidencePacksCount: number;
     };
 }
 
@@ -76,38 +64,37 @@ function buildAutoRegex(query: string, caseSensitive: boolean): { regex: RegExp;
  */
 export class AgentContextManager {
 
-    private sessionState: SessionState;
+    /** Initial prompt. */
+    private initialPrompt: string = '';
 
-    /**
-    * Agent result
-    */
-    private agentResult: SearchAgentResult;
-
-    /**
-     * Set of verified paths (paths that exist in vault/DB or appeared in tool outputs)
-     */
+    /** Verified paths (exist in vault/DB or appeared in tool outputs). */
     private verifiedPaths: Set<string> = new Set();
-    /** 
-     * Paths already emitted as incremental source + graph node during this run (streaming write). 
-     * */
-    private emittedSourcePaths: Set<string> = new Set();
 
-    /** Dimension evidence: dimension id -> entries (pack + superseded). getDossierForSummary reads from here. */
-    private byDimensions = new Map<AllDimensionId, DimensionEvidenceEntry[]>();
+    /** Recall pipeline snapshot: dimensions after classify, then evidenceGroups after recon, then final evidencePacks. */
+    private recallDimensions: DimensionChoice[] = [];
+    private recallEvidenceTaskGroups: EvidenceTaskGroup[] = [];
+    private recallEvidencePacks: EvidencePack[] = [];
 
-    /** Raw search runs: appended report entries (no discovered_leads). */
-    private rawSearchRunReports: RawSearchRunReportEntry[] = [];
+    /** Agent result. */
+    private totalTokenUsage: LLMUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+    private agentResult: SearchAgentResult;
 
     constructor(
         private readonly aiServiceManager: AIServiceManager,
     ) {
+        this.agentResult = {
+            title: '',
+            summary: '',
+            topics: [],
+            sources: [],
+            dashboardBlocks: [],
+            suggestedFollowUpQuestions: [],
+        };
     }
 
     public resetAgentMemory(initialPrompt: string): void {
-        this.sessionState = {
-            initialPrompt,
-            totalTokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-        };
+        this.initialPrompt = initialPrompt ?? '';
+        this.totalTokenUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
         this.agentResult = {
             title: '',
             summary: '',
@@ -117,72 +104,49 @@ export class AgentContextManager {
             suggestedFollowUpQuestions: [],
         };
         this.verifiedPaths.clear();
-        this.emittedSourcePaths.clear();
-        this.byDimensions.clear();
-        this.rawSearchRunReports = [];
+        this.recallDimensions = [];
+        this.recallEvidenceTaskGroups = [];
+        this.recallEvidencePacks = [];
     }
 
-    /** Append raw search (recon) report; full report kept for consolidator/dedup. */
-    public setRawSearchRunReport(
-        runId: string,
-        runMode: RawSearchRunReportEntry['runMode'],
-        dimensionId: AllDimensionId,
-        report: RawSearchReport
-    ): void {
-        this.rawSearchRunReports.push({ ...report, runId, runMode, dimension: dimensionId });
+    /** Set dimensions extracted after classify (for recall pipeline snapshot). */
+    public setRecallDimensions(dimensions: DimensionChoice[]): void {
+        this.recallDimensions = dimensions ?? [];
     }
 
-    public getRawSearchRunReports(): RawSearchRunReportEntry[] {
-        return this.rawSearchRunReports;
+    /** Set evidence groups after recon + grouping (for recall pipeline snapshot). */
+    public setRecallEvidenceTaskGroups(groups: EvidenceTaskGroup[]): void {
+        this.recallEvidenceTaskGroups = groups ?? [];
     }
 
-    /** Append evidence packs for a dimension (slot pipeline). Same path in same dimension marks previous as superseded. */
-    public appendDimensionPacks(dimensionId: AllDimensionId, packs: EvidencePack[]): void {
-        for (const pack of packs) {
-            const arr = this.byDimensions.get(dimensionId) ?? [];
-            const key = pack.origin.path_or_url;
-            for (const existing of arr) {
-                if (existing.pack.origin.path_or_url === key) existing.superseded = true;
-            }
-            arr.push({ pack, superseded: false });
-            this.byDimensions.set(dimensionId, arr);
-        }
+    /** Set final evidence packs after evidence phase (for recall pipeline snapshot). */
+    public setRecallEvidencePacks(packs: EvidencePack[]): void {
+        this.recallEvidencePacks = packs ?? [];
     }
 
-    /** Get non-superseded packs for a dimension, or all dimensions if dimensionId omitted. */
-    public getDimensionPacks(dimensionId?: AllDimensionId): (EvidencePack & { dimensionId: AllDimensionId })[] {
-        if (dimensionId != null) {
-            return (this.byDimensions.get(dimensionId) ?? [])
-                .filter((e) => !e.superseded)
-                .map((e) => ({ ...e.pack, dimensionId }));
-        }
-        const out: (EvidencePack & { dimensionId: AllDimensionId })[] = [];
-        for (const did of this.byDimensions.keys()) {
-            out.push(
-                ...this.getDimensionPacks(did)
-                    .map((p) => ({ ...p, dimensionId: did }))
-            );
-        }
-        return out;
+    public getRecallDimensions(): DimensionChoice[] {
+        return this.recallDimensions;
     }
 
-    public getSessionState(): SessionState {
-        return this.sessionState;
+    public getRecallEvidenceTaskGroups(): EvidenceTaskGroup[] {
+        return this.recallEvidenceTaskGroups;
+    }
+
+    public getRecallEvidencePacks(): EvidencePack[] {
+        return this.recallEvidencePacks;
     }
 
     public accumulateTokenUsage(usage?: LLMUsage): void {
-        if (!usage) {
-            return;
-        }
-        this.sessionState.totalTokenUsage = mergeTokenUsage(this.sessionState.totalTokenUsage, usage);
+        if (!usage) return;
+        this.totalTokenUsage = mergeTokenUsage(this.totalTokenUsage, usage);
     }
 
     public getTotalTokenUsage(): LLMUsage {
-        return this.sessionState.totalTokenUsage;
+        return this.totalTokenUsage;
     }
 
     public getInitialPrompt(): string {
-        return this.sessionState?.initialPrompt ?? '';
+        return this.initialPrompt ?? '';
     }
 
     public yieldAgentResult(): { extra: { currentResult: SearchAgentResult } } {
@@ -210,10 +174,6 @@ export class AgentContextManager {
         }
     }
 
-    public getEmittedSourcePaths(): Set<string> {
-        return this.emittedSourcePaths;
-    }
-
     /**
      * Serializable snapshot of current search memory for debug (e.g. window.__peakSearchDebug.getSnapshot()).
      */
@@ -222,10 +182,8 @@ export class AgentContextManager {
         const maxPromptPreview = 300;
         const paths = Array.from(this.verifiedPaths);
         return {
-            sessionState: {
-                initialPromptPreview: (this.sessionState?.initialPrompt ?? '').slice(0, maxPromptPreview),
-                totalTokenUsage: this.sessionState?.totalTokenUsage ?? { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-            },
+            initialPromptPreview: (this.initialPrompt ?? '').slice(0, maxPromptPreview),
+            totalTokenUsage: this.totalTokenUsage ?? { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
             agentResult: {
                 title: res?.title ?? '',
                 summaryLength: (res?.summary ?? '').length,
@@ -235,17 +193,26 @@ export class AgentContextManager {
                 suggestedFollowUpQuestionsCount: (res?.suggestedFollowUpQuestions ?? []).length,
             },
             verifiedPaths: paths,
-            emittedSourcePaths: Array.from(this.emittedSourcePaths),
             dossier: {
                 verifiedPathsCount: paths.length,
                 sourcePathsSample: paths.slice(0, 30),
             },
+            recallPipeline:
+                this.recallDimensions.length > 0 ||
+                    this.recallEvidenceTaskGroups.length > 0 ||
+                    this.recallEvidencePacks.length > 0
+                    ? {
+                        dimensionsCount: this.recallDimensions.length,
+                        evidenceGroupsCount: this.recallEvidenceTaskGroups.length,
+                        evidencePacksCount: this.recallEvidencePacks.length,
+                    }
+                    : undefined,
         };
     }
 
     /**
      * Returns structured data for SummaryAgent/Dashboard: verified fact sheet, source map, confirmed facts, gaps.
-     * When slot pipeline has run (bySlot has data), reads from slot atoms; otherwise from verifiedPaths only.
+     * Uses recallEvidencePacks when present; otherwise verifiedPaths only.
      */
     public getDossierForSummary(): {
         verifiedFactSheet: string;
@@ -254,8 +221,8 @@ export class AgentContextManager {
         confirmedFacts: string[];
         gaps: string[];
     } {
-        if (this.byDimensions.size > 0) {
-            const packs = this.getDimensionPacks();
+        const packs = this.recallEvidencePacks;
+        if (packs.length > 0) {
             const verifiedFactSheet = packs
                 .map((p) => {
                     const claim = p.summary ?? p.facts[0]?.claim ?? '';
@@ -302,7 +269,7 @@ export class AgentContextManager {
                     if (index !== 0) {
                         return { content: `Invalid index ${index}. Valid range is 0 to 0 (initial prompt only).` };
                     }
-                    const text = this.sessionState?.initialPrompt ?? '';
+                    const text = this.initialPrompt ?? '';
                     return { content: text || '(empty message).' };
                 },
             }),
@@ -312,7 +279,7 @@ export class AgentContextManager {
     /** Full memory as single text (initial prompt only; no legacy runs). */
     private fullMemoryTextSupplier: Supplier<string> = refreshableMemoizeSupplier<string, number>(
         () => {
-            const prompt = this.sessionState?.initialPrompt ?? '';
+            const prompt = this.initialPrompt ?? '';
             return `[User]\n${prompt}`;
         },
         () => this.verifiedPaths.size,

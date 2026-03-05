@@ -99,6 +99,10 @@ export enum PromptId {
 	/** Task Consolidator: merge recon reports into evidence execution blueprint (JSON). */
 	AiAnalysisTaskConsolidatorSystem = 'ai-analysis-task-consolidator-system',
 	AiAnalysisTaskConsolidator = 'ai-analysis-task-consolidator',
+	/** Group Context: system prompt for single-group topic_anchor + group_focus (used by GroupContextAgent). */
+	AiAnalysisGroupContextSystem = 'ai-analysis-group-context-system',
+	/** Single-group context: one group's enriched files → topic_anchor + group_focus. */
+	AiAnalysisGroupContextSingle = 'ai-analysis-group-context-single',
 	/** Batch evidence: multiple tasks (path + extraction_focus + dimensions) in one run; submit with completed_task_ids. */
 	AiAnalysisDimensionEvidenceBatch = 'ai-analysis-dimension-evidence-batch',
 	/** Unified follow-up user prompt (Summary, Graph, Sources, Blocks, Full). Caller builds contextContent. */
@@ -142,6 +146,7 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisDimensionEvidence,
 	PromptId.AiAnalysisDimensionEvidenceBatch,
 	PromptId.AiAnalysisTaskConsolidator,
+	PromptId.AiAnalysisGroupContextSingle,
 	PromptId.AiAnalysisFollowup,
 	PromptId.AiAnalysisFollowupSystem,
 	PromptId.AiAnalysisFinalRefineSources,
@@ -299,14 +304,34 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisDimensionEvidenceSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDimensionEvidence]: { userQuery: string; dimension: DimensionChoice; report: RawSearchReport };
 	[PromptId.AiAnalysisTaskConsolidatorSystem]: Record<string, never>;
-	[PromptId.AiAnalysisTaskConsolidator]: { 
+	[PromptId.AiAnalysisTaskConsolidator]: {
 		userQuery: string;
 		dimensions: Array<DimensionChoice>;
 		reports: Array<RawSearchReportWithDimension>;
-	 };
-	[PromptId.AiAnalysisDimensionEvidenceBatch]: { 
-		userQuery: string; 
+	};
+	[PromptId.AiAnalysisGroupContextSystem]: Record<string, never>;
+	/** Single-group: one group's files with dimension intents, priority, task_load. */
+	[PromptId.AiAnalysisGroupContextSingle]: {
+		userQuery: string;
+		dimensions: Array<DimensionChoice>;
+		groupIndex: number;
+		files: Array<{
+			path: string;
+			extraction_focus: string;
+			priority: string;
+			task_load?: string;
+			relevant_dimension_ids: Array<{ id: string; intent: string }>;
+		}>;
+	};
+	[PromptId.AiAnalysisDimensionEvidenceBatch]: {
+		userQuery: string;
 		tasks: Array<ConsolidatedTaskWithId>;
+		topicAnchor?: string;
+		groupFocus?: string;
+		/** Rendered shared-context markdown (folders, tags, intra-group graph). */
+		groupSharedContext?: string;
+		/** True when topicAnchor, groupFocus, or groupSharedContext is provided (for template conditional). */
+		showSchedulerContext?: boolean;
 	};
 
 	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };

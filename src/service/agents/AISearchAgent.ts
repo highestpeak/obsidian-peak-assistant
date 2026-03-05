@@ -217,16 +217,13 @@ export class AISearchAgent {
             yield ev;
         }
 
-        yield* this.finishReActLoop(pipelineStartMs);
-
-        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths()) {
+        // finishReActLoop
+        for await (const ev of this.finishReActLoopInternal(pipelineStartMs)) {
+            accumulateTokenUsage(ev, (usage) => this.agentContextManager.accumulateTokenUsage(usage));
             yield ev;
         }
-    }
 
-    private async *finishReActLoop(reActStartTimeMs: number): AsyncGenerator<LLMStreamEvent> {
-        for await (const ev of this.finishReActLoopInternal(reActStartTimeMs)) {
-            accumulateTokenUsage(ev, (usage) => this.agentContextManager.accumulateTokenUsage(usage));
+        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths()) {
             yield ev;
         }
     }

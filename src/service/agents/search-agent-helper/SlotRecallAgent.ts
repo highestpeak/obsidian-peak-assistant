@@ -115,6 +115,7 @@ export class SlotRecallAgent {
 		}
 
 		const dimensions = this.getDimensionsForRecall(queryClassify);
+		this.context.setRecallDimensions(dimensions);
 		const evidencePacks: EvidencePack[] = [];
 		yield* this.rawSearchAgent.streamSearch({
 			dimensions,
