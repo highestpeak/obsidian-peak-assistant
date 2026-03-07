@@ -1,37 +1,34 @@
 # USER'S ORIGINAL QUERY
 {{originalQuery}}
 
-# CONFIRMED FACTS (only evidence source besides call_search_agent results)
-Do not reference any information not in this list or in the results of \`call_search_agent\`. When a fact is too thin to support a block, use \`call_search_agent\` to fetch from the vault—do not invent or use other context.
+# CONFIRMED FACTS (primary evidence)
+Do not reference any information not in this list. When a fact is too thin, you may only use **content_reader** on paths explicitly mentioned in the block plan (e.g. \`[[path/to/note.md]]\`)—do not search or invent.
+{{#if (nonEmpty confirmedFactsList)}}
 <<<
-{{{confirmedFacts}}}
+{{#each confirmedFactsList}}
+Fact #{{inc @index}}: {{{this}}}
+{{/each}}
 >>>
+{{else}}
+(No confirmed facts yet; use search_analysis_context and/or content_reader on paths explicitly mentioned in the block plan.)
+{{/if}}
 
 # CONTEXT TOOLS
-- **call_search_agent**: When Confirmed Facts do not provide enough material for a block (e.g. Fact #N is too brief), call this to search the vault. This is the only way to get more evidence—never fabricate.
-- **search_analysis_context** / **get_analysis_message_by_index**: Optional; use only to retrieve prior summarized context by keyword or index when useful.
+- **search_analysis_context**: Optional; retrieve prior structured session context by keyword, stage, or id.
+- **content_reader**: Read full content of a specific \`[[path]]\` explicitly mentioned in the block plan. Use only when needed to complete or validate details.
 
 # BLOCK PLAN (follow faithfully)
 {{#each blockPlan}}
 - {{{this}}}
 {{/each}}
 
-# CURRENT DASHBOARD BLOCKS (refine or add; avoid duplicates)
-{{#if currentDashboardBlocks}}
-<<<
-{{{currentDashboardBlocks}}}
->>>
-{{/if}}
-
 # DIRECTIVE
-0. **Gather context first**: Use search_analysis_context and get_analysis_message_by_index; use **call_search_agent** when Confirmed Facts are insufficient. If Facts cannot support 3 paragraphs or a diagram, **must** call call_search_agent—never write "cannot conclude from existing materials."
+0. **Translator mode**: Follow the block plan faithfully; do not change, reorder, or “optimize” the plan. Generate blocks as instructed.
 1. **Plan then generate**: Decide block outline and order, then call add_dashboard_blocks (one by one or small batch).
-2. **Citation strength**: Each MARKDOWN block must **explicitly bind at least 2 Confirmed Facts** (cite Fact #N). If a block cites only 1 Fact, it is too thin—either merge with another block or use call_search_agent to deepen evidence.
-3. **Anti-thin structure**: Each MARKDOWN block must use a **three-part structure**: [Conclusion] + [Evidence / quotes] + [Logical inference]. Target **300–500 words per MARKDOWN block**. No block that is conclusion-only without evidence or inference.
-4. **Type richness**: When evidence has process, flow, hierarchy, or multi-entity relationships, add at least 1 MERMAID block. Plus MARKDOWN and 1 ACTION_GROUP or TILE.
-   - **MERMAID readability**: Keep labels **short**. **Max 15 nodes** per diagram; if logic is too complex, split in plan into two blocks.
-   - **MERMAID logic**: Prefer diagrams that show **conflict**, **trade-off**, or **choice** (quadrantChart, flowchart with branches)—not just known linear flow.
-5. **No duplicate roles**: Do not add a block that duplicates an existing one. Use remove (removeId) then add to update.
+2. **Consulting-report structure (SCQA/MECE)**: MARKDOWN blocks must follow body/appendices style: [Conclusion headline] + [Evidence / quotes with [[path]]] + [Logical inference]. Each block must **explicitly bind at least 2 Confirmed Facts** (cite Fact #N). Target **300–500 words per MARKDOWN block**. No conclusion-only blocks.
+3. **Next actions block**: Include one **MARKDOWN** block for "Next actions (action items)" (concrete next steps, TODOs, experiments)—prefer MARKDOWN over ACTION_GROUP or TILE.
+4. **MERMAID only when structural**: When evidence has process, flow, hierarchy, or multi-entity relationships, add at most 1–2 MERMAID blocks. Keep labels **short**; **max 15 nodes** per diagram. Prefer **conflict**, **trade-off**, or **choice** (quadrantChart, flowchart with branches).
+5. **Evidence discipline**: If Confirmed Facts are insufficient, you may use content_reader only for \`[[path]]\` explicitly present in the block plan. Otherwise, write conservatively and mark unsupported claims as (speculation).
 
 {{#if errorRetryInfo.attemptTimes}}
 # RETRY (attempt {{errorRetryInfo.attemptTimes}})

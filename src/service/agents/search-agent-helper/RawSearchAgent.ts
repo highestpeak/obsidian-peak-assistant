@@ -26,6 +26,8 @@ import { AgentContextManager } from './AgentContextManager';
 import { GroupContextAgent } from './GroupContextAgent';
 import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import type { SearchUILane } from './helpers/search-ui-events';
+import { makeStepId, uiStageSignal, uiStepStart } from './helpers/search-ui-events';
 import { buildPromptTraceDebugEvent, parallelStream, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
 import { Stopwatch } from '@/core/utils/Stopwatch';
@@ -58,18 +60,20 @@ export class RawSearchAgent {
 	}
 
 	async *streamSearch(options: {
-		dimensions: DimensionChoice[],
-		onAllEvidenceFinish: (evidencePacks: EvidencePack[]) => void,
-		onGroupEvidenceFinish?: (groupTasks: ConsolidatedTaskWithId[], evidencePacks: EvidencePack[]) => void,
+		runStepId?: string;
+		dimensions: DimensionChoice[];
+		onAllEvidenceFinish: (evidencePacks: EvidencePack[]) => void;
+		onGroupEvidenceFinish?: (groupTasks: ConsolidatedTaskWithId[], evidencePacks: EvidencePack[]) => void;
 	}): AsyncGenerator<LLMStreamEvent> {
 		const stopWatch = new Stopwatch("streamSearch");
-		const { dimensions, onAllEvidenceFinish, onGroupEvidenceFinish } = options;
+		const { runStepId, dimensions, onAllEvidenceFinish, onGroupEvidenceFinish } = options;
 
 		stopWatch.start("batchStreamRecon");
 		let evidenceTaskGroups: EvidenceTaskGroup[] = [];
 		yield* this.reconAgent.batchStreamRecon({
+			runStepId,
 			dimensions,
-			stepId: generateUuidWithoutHyphens(),
+			stepId: runStepId ?? generateUuidWithoutHyphens(),
 			onReconFinish: (eg) => {
 				evidenceTaskGroups = eg;
 			},
@@ -79,14 +83,17 @@ export class RawSearchAgent {
 
 		const evidencePacks: EvidencePack[] = [];
 		stopWatch.start("parallelStreamTaskEvidence");
-		const groupStreams = evidenceTaskGroups.map((eg) => {
+		const groupStreams = evidenceTaskGroups.map((eg, idx) => {
 			const evidenceAgent = new EvidenceAgent(this.aiServiceManager, this.context);
+			const groupId = eg.groupId ?? `group_${String(idx).padStart(3, '0')}`;
 			return evidenceAgent.streamTaskEvidence({
 				tasks: eg.tasks,
 				groupFocus: eg.group_focus,
 				topicAnchor: eg.topic_anchor,
 				groupSharedContext: eg.sharedContext,
-				stepId: generateUuidWithoutHyphens(),
+				stepId: runStepId ? makeStepId({ runStepId, stage: 'evidence', lane: { laneType: 'group', laneId: groupId, index: idx }, agent: 'EvidenceAgent' }) : generateUuidWithoutHyphens(),
+				runStepId,
+				groupId,
 				onEvidenceFinish: (p) => {
 					evidencePacks.push(...p);
 					onGroupEvidenceFinish?.(eg.tasks, p);
@@ -170,27 +177,47 @@ class ReconAgent {
 	}
 
 	async *batchStreamRecon(options: {
-		dimensions: DimensionChoice[],
-		stepId?: string,
-		onReconFinish?: (evidenceTaskGroups: EvidenceTaskGroup[]) => void,
+		runStepId?: string;
+		dimensions: DimensionChoice[];
+		stepId?: string;
+		onReconFinish?: (evidenceTaskGroups: EvidenceTaskGroup[]) => void;
 	}): AsyncGenerator<LLMStreamEvent> {
-		let { dimensions, stepId, onReconFinish } = options;
+		let { runStepId, dimensions, stepId, onReconFinish } = options;
 		if (!stepId) {
-			stepId = generateUuidWithoutHyphens();
+			stepId = runStepId ?? generateUuidWithoutHyphens();
+		}
+
+		const reconMeta = runStepId
+			? { runStepId, stage: 'recon' as const, agent: 'RawSearchAgent.Recon' }
+			: null;
+		if (reconMeta) {
+			yield uiStepStart(reconMeta, {
+				title: 'Parallel recon…',
+				description: `${dimensions.length} dimension(s)`,
+				triggerName: StreamTriggerName.SEARCH_RAW_AGENT_RECON,
+			});
 		}
 
 		const stopWatch = new Stopwatch("batchStreamRecon");
 		stopWatch.start("parallel_all_dimensions_recon");
-		// parallel all dimension's recon
 		const reports: RawSearchReportWithDimension[] = [];
 		const reconStreams = dimensions.map((dimension, index) => {
-			const dimensionStepId = `${index}-${dimension.id}-${generateUuidWithoutHyphens()}`;
+			const lane: SearchUILane = { laneType: 'dimension', laneId: dimension.id, index };
+			const dimensionStepId =
+				reconMeta && runStepId
+					? makeStepId({ ...reconMeta, lane })
+					: `${index}-${dimension.id}-${generateUuidWithoutHyphens()}`;
 			return this.streamRecon(dimension, dimensionStepId, (report) => {
 				reports.push({ dimension: dimension.id, ...report });
-			});
+			}, runStepId ? { runStepId, lane } : undefined);
 		});
 		yield* parallelStream(reconStreams);
 		stopWatch.stop();
+		if (reconMeta) {
+			yield uiStageSignal(reconMeta, { status: 'complete', payload: { dimensions: dimensions.length }, triggerName: StreamTriggerName.SEARCH_RAW_AGENT_RECON });
+		}
+
+		this.context.setReconReports(reports);
 
 		yield {
 			type: 'pk-debug',
@@ -211,6 +238,7 @@ class ReconAgent {
 			stepId,
 			onConsolidatorFinish: (p) => {
 				consolidatorOutput = p;
+				this.context.setConsolidatorOutput(p);
 			},
 		});
 		stopWatch.stop();
@@ -238,10 +266,25 @@ class ReconAgent {
 		}
 
 		stopWatch.start("groupConsolidatedTasks");
+		const groupingMeta = stepId ? { runStepId: stepId, stage: 'grouping' as const, agent: 'RawSearchAgent' } : null;
+		if (groupingMeta) {
+			yield uiStepStart(groupingMeta, {
+				title: 'Grouping tasks…',
+				description: `${consolidatorOutput.consolidated_tasks.length} task(s)`,
+				triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
+			});
+		}
 		const consolidatedTasks = consolidatorOutput.consolidated_tasks.map((t, i) =>
 			({ ...t, taskId: `task-${i}` })
 		);
 		const groups = await groupConsolidatedTasksGravity(consolidatedTasks);
+		if (groupingMeta) {
+			yield uiStageSignal(groupingMeta, {
+				status: 'complete',
+				payload: { groupCount: groups.length },
+				triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
+			});
+		}
 		yield {
 			type: 'pk-debug',
 			debugName: 'groupConsolidatedTasksGravity',
@@ -279,14 +322,16 @@ class ReconAgent {
 
 	private async *streamTaskConsolidator(
 		options: {
-			dimensions: DimensionChoice[],
-			reports: RawSearchReportWithDimension[],
-			stepId?: string,
+			dimensions: DimensionChoice[];
+			reports: RawSearchReportWithDimension[];
+			stepId?: string;
 			onConsolidatorFinish?: (consolidatorOutput: ConsolidatorOutput) => void;
 		}
 	): AsyncGenerator<LLMStreamEvent> {
 		let { dimensions, reports, stepId, onConsolidatorFinish } = options;
 		stepId = stepId ?? generateUuidWithoutHyphens();
+		const consolidateMeta = { runStepId: stepId, stage: 'consolidate' as const, agent: 'RawSearchAgent.Consolidator' };
+		const stepIdConsolidate = makeStepId(consolidateMeta);
 
 		const hasLeads = reports.some((r) => (r.discovered_leads?.length ?? 0) > 0);
 		if (!hasLeads || reports.length === 0) {
@@ -298,16 +343,12 @@ class ReconAgent {
 			};
 			return;
 		}
-		yield {
-			type: 'ui-step',
-			uiType: UIStepType.STEPS_DISPLAY,
-			stepId,
-			title: 'Consolidating tasks...',
+		yield uiStepStart(consolidateMeta, {
+			title: 'Consolidating tasks…',
 			description: '',
 			triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
-		};
+		});
 
-		// 2) Consolidator: merge reports into execution blueprint.
 		try {
 			const system = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisTaskConsolidatorSystem, {});
 			const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisTaskConsolidator, {
@@ -327,7 +368,7 @@ class ReconAgent {
 			});
 			yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR, system, prompt);
 			yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR, {
-				yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
+				yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId: stepIdConsolidate },
 				chunkEventInterceptor: (chunk) => {
 					if (chunk.type === 'finish') {
 						const obj = (chunk as { object?: unknown }).object;
@@ -341,12 +382,18 @@ class ReconAgent {
 			if (parsed.success) {
 				onConsolidatorFinish?.(parsed.data);
 			}
+			yield uiStageSignal(consolidateMeta, { status: 'complete', triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR });
 		} catch (err) {
 			yield {
 				type: 'error',
 				error: err instanceof Error ? err : new Error(String(err)),
 				triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
 			};
+			yield uiStageSignal(consolidateMeta, {
+				status: 'error',
+				payload: { error: err instanceof Error ? err.message : String(err) },
+				triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
+			});
 			yield {
 				type: 'pk-debug',
 				debugName: 'parallelSearchResultAfterClassify',
@@ -361,9 +408,24 @@ class ReconAgent {
 	 * Recon mode: breadth exploration. Returns report with discovered_leads.
 	 * No content_reader; must call submit_rawsearch_report when done.
 	 */
-	async *streamRecon(dimension: DimensionChoice, stepId?: string, reportCollector?: (report: RawSearchReport) => void): AsyncGenerator<LLMStreamEvent> {
+	async *streamRecon(
+		dimension: DimensionChoice,
+		stepId?: string,
+		reportCollector?: (report: RawSearchReport) => void,
+		meta?: { runStepId: string; lane: SearchUILane }
+	): AsyncGenerator<LLMStreamEvent> {
 		if (!stepId) {
 			stepId = generateUuidWithoutHyphens();
+		}
+		if (meta) {
+			yield uiStepStart(
+				{ runStepId: meta.runStepId, stage: 'recon', lane: meta.lane, agent: 'RawSearchAgent.Recon' },
+				{
+					title: `Recon: ${dimension.id}`,
+					description: (dimension.intent_description ?? '').slice(0, 200),
+					triggerName: StreamTriggerName.SEARCH_RAW_AGENT_RECON,
+				}
+			);
 		}
 		const system = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDimensionReconSystem, {});
 		const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDimensionRecon, {
@@ -525,12 +587,30 @@ export class EvidenceAgent {
 		groupFocus?: string;
 		groupSharedContext?: string;
 		stepId?: string;
+		runStepId?: string;
+		groupId?: string;
 		onEvidenceFinish?: (evidencePacks: EvidencePack[]) => void;
 	}): AsyncGenerator<LLMStreamEvent> {
 		if (options.tasks.length === 0) return;
 
 		const stepId = options.stepId ?? generateUuidWithoutHyphens();
 		this.resetTasks(options.tasks);
+
+		if (options.runStepId && options.groupId != null) {
+			yield uiStepStart(
+				{
+					runStepId: options.runStepId,
+					stage: 'evidence',
+					lane: { laneType: 'group', laneId: options.groupId },
+					agent: 'EvidenceAgent',
+				},
+				{
+					title: `Evidence: ${options.groupId}`,
+					description: `${options.tasks.length} task(s)`,
+					triggerName: StreamTriggerName.SEARCH_RAW_AGENT_EVIDENCE,
+				}
+			);
+		}
 
 		const system = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDimensionEvidenceSystem, {});
 		const topicAnchor = options.topicAnchor ?? '';

@@ -197,19 +197,7 @@ export const CompletedAIAnalysis: React.FC<{
                 </div>
             )}
 
-            {/* Sources (full width) */}
-            {dedupedSources.length > 0 && (
-                <div ref={sourcesRef} className="pktw-scroll-mt-24">
-                    <TopSourcesSection
-                        sources={convertSourcesToSearchResultItems(dedupedSources)}
-                        onOpen={createOpenSourceCallback(onClose)}
-                        skipAnimation={true}
-                        graph={graph}
-                    />
-                </div>
-            )}
-
-            {/* Dashboard Blocks (before Topics, hidden in simple mode) */}
+            {/* Dashboard Blocks (consulting order: after Topics, before Sources; hidden in simple mode) */}
             {!isSimpleMode && (dashboardBlocks?.length ?? 0) > 0 && (
                 <DashboardBlocksSection
                     blocks={dashboardBlocks ?? []}
@@ -273,6 +261,18 @@ export const CompletedAIAnalysis: React.FC<{
                         />
                     }
                 />
+            )}
+
+            {/* Sources (consulting order: last in main report) */}
+            {dedupedSources.length > 0 && (
+                <div ref={sourcesRef} className="pktw-scroll-mt-24">
+                    <TopSourcesSection
+                        sources={convertSourcesToSearchResultItems(dedupedSources)}
+                        onOpen={createOpenSourceCallback(onClose)}
+                        skipAnimation={true}
+                        graph={graph}
+                    />
+                </div>
             )}
 
             {/* Continue Analysis: history + streaming (above Follow-up Questions so new answers appear here) */}

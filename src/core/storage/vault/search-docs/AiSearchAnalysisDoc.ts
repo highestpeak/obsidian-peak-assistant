@@ -743,6 +743,32 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 			}
 			lines.push('');
 		}
+
+		// Consulting report order: Dashboard Blocks before Sources
+		if (docModel.dashboardBlocks.length > 0) {
+			lines.push(SECTION_DASHBOARD);
+			lines.push('');
+			for (const b of docModel.dashboardBlocks) {
+				const label = b.title || b.id;
+				lines.push(`### ${label}`);
+				lines.push(`renderEngine: ${b.renderEngine}`);
+				if (b.markdown?.trim()) lines.push(b.markdown.trim());
+				if (b.mermaidCode?.trim()) lines.push('```mermaid\n' + b.mermaidCode.trim() + '\n```');
+				if (b.items?.length) {
+					for (const item of b.items) {
+						lines.push(`- **${item.title}**: ${item.description ?? ''}`);
+					}
+				}
+				lines.push('');
+			}
+		}
+
+		if (docModel.blockChatRecords && Object.keys(docModel.blockChatRecords).length > 0) {
+			lines.push(SECTION_BLOCK_CHAT_RECORDS);
+			lines.push('');
+			lines.push(JSON.stringify(docModel.blockChatRecords));
+			lines.push('');
+		}
 	}
 
 	lines.push(SECTION_SOURCES);
@@ -802,31 +828,6 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 					lines.push('');
 				}
 			}
-		}
-
-		if (docModel.dashboardBlocks.length > 0) {
-			lines.push(SECTION_DASHBOARD);
-			lines.push('');
-			for (const b of docModel.dashboardBlocks) {
-				const label = b.title || b.id;
-				lines.push(`### ${label}`);
-				lines.push(`renderEngine: ${b.renderEngine}`);
-				if (b.markdown?.trim()) lines.push(b.markdown.trim());
-				if (b.mermaidCode?.trim()) lines.push('```mermaid\n' + b.mermaidCode.trim() + '\n```');
-				if (b.items?.length) {
-					for (const item of b.items) {
-						lines.push(`- **${item.title}**: ${item.description ?? ''}`);
-					}
-				}
-				lines.push('');
-			}
-		}
-
-		if (docModel.blockChatRecords && Object.keys(docModel.blockChatRecords).length > 0) {
-			lines.push(SECTION_BLOCK_CHAT_RECORDS);
-			lines.push('');
-			lines.push(JSON.stringify(docModel.blockChatRecords));
-			lines.push('');
 		}
 
 		// Knowledge Graph section no longer persisted (removed).

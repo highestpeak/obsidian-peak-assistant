@@ -55,11 +55,11 @@ export class FollowUpQuestionAgent {
 
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisSuggestFollowUpQuestions);
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
-        const hasTopics = this.context.getAgentResult().topics?.length ?? 0 > 0;
-        const dashboardBlocks = this.context.getAgentResult().dashboardBlocks;
+        const topics = this.context.getTopics();
+        const hasTopics = (topics?.length ?? 0) > 0;
+        const dashboardBlocks = this.context.getDashboardBlocks();
         const hasDashboardBlocks = (dashboardBlocks?.length ?? 0) > 0;
-        const dossier = this.context.getDossierForSummary();
-        const confirmedFactsList = dossier.confirmedFacts ?? [];
+        const confirmedFactsList = this.context.getConfirmedFacts();
         const confirmedFactsText =
             confirmedFactsList.length > 0
                 ? confirmedFactsList.map((f, i) => `Fact #${i + 1}: ${f}`).join('\n')
@@ -69,7 +69,7 @@ export class FollowUpQuestionAgent {
             initialPrompt: this.context.getInitialPrompt(),
             dashboardBlocks: hasDashboardBlocks ? JSON.stringify(dashboardBlocks) : undefined,
             confirmedFacts: confirmedFactsText,
-            topics: hasTopics ? JSON.stringify(this.context.getAgentResult().topics) : undefined,
+            topics: hasTopics ? JSON.stringify(topics) : undefined,
         });
 
         const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisSuggestFollowUpQuestions);
@@ -94,14 +94,14 @@ export class FollowUpQuestionAgent {
                 chunkEventInterceptor: (chunk) => {
                     if (chunk.type === 'finish') {
                         const obj = (chunk as any).object as SuggestedFollowUpQuestions | undefined;
-                        this.context.getAgentResult().suggestedFollowUpQuestions = obj?.questions ?? [];
+                        this.context.setSuggestedFollowUpQuestions(obj?.questions ?? []);
                     }
                 },
             },
         );
         if (result.object) {
             const obj = await result.object;
-            this.context.getAgentResult().suggestedFollowUpQuestions = obj?.questions ?? [];
+            this.context.setSuggestedFollowUpQuestions(obj?.questions ?? []);
         }
     }
 }

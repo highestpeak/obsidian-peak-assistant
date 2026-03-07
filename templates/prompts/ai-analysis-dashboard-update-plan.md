@@ -8,6 +8,20 @@
 >>>
 {{/if}}
 
+{{#if reconBriefing}}
+# RECON BRIEFING (recon view, not final conclusions—use for context only)
+<<<
+{{{reconBriefing}}}
+>>>
+{{/if}}
+
+{{#if evidenceGroupIndex}}
+# EVIDENCE TASK GROUP INDEX (topic_anchor, group_focus, key paths; input to evidence phase)
+<<<
+{{{evidenceGroupIndex}}}
+>>>
+{{/if}}
+
 {{#if lastReviewGapMessage}}
 # REVIEW GAP (MUST ADDRESS IN THIS PLAN)
 The previous dashboard round was deemed insufficient. You **must** produce a plan that addresses this. The **first** item in \`blockPlan\` **must** be: "REPAIR: [solve the specific issue stated below]".
@@ -32,13 +46,13 @@ Compare with confirmedFacts above: which facts are not yet visualized? Which blo
 {{/if}}
 
 # TASK
-Produce a dashboard update plan. You **must** output \`blockPlan\`; each plan item must **describe exactly what to do** (what to add/refine, why, and success shape).
+Produce a **consulting-report style** dashboard plan: MECE pillars (Topics) and block plan with headline, chart type, Fact refs, and paragraph shape. Output \`blockPlan\` and \`topicsPlan\`.
 
-**Dashboard purpose**: Multi-angle, comprehensive analysis so the user gets diverse results (topics, sources, synthesis, diagrams, actions) in a single run.
+**Dashboard purpose**: Executive-style report: synthesis first, then topics/pillars, then blocks (conclusions, evidence, diagrams, next actions), then sources. Prefer **MARKDOWN** for almost all blocks; use MERMAID only when structure is strong (flow, comparison, hierarchy).
 
-**Gap rule**: Compare CONFIRMED FACTS with CURRENT DASHBOARD BLOCKS. If key numbers, conclusions, or decision points from the facts list are missing from the dashboard, you **must** add corresponding tasks to \`blockPlan\`. Do not reference any information not in CONFIRMED FACTS, VERIFIED PATHS, or CURRENT DASHBOARD.
+**Gap rule**: Compare CONFIRMED FACTS with CURRENT DASHBOARD BLOCKS. If key numbers, conclusions, or decision points are missing, add tasks to \`blockPlan\`. Do not reference any information not in CONFIRMED FACTS, RECON BRIEFING, EVIDENCE TASK GROUP INDEX, VERIFIED PATHS, or CURRENT DASHBOARD.
 
 Rules:
-1. **blockPlan**: 3–12 items. When \`lastReviewGapMessage\` is set, **first** item must be "REPAIR: [specific issue]". Each item must cite target fact numbers (e.g. "Based on Fact #3 and #7"). Include at least: (a) one Mermaid diagram when evidence has structure, (b) one synthesis/conclusions instruction, (c) one action/TODO block instruction.
-2. **topicsPlan**: **5–8 items max**; theme synthesis (aggregate facts into pillars), not isolated topics.
-3. Ground every item only in CONFIRMED FACTS and current dashboard; do not invent entities or paths.
+1. **topicsPlan**: **3–6 MECE pillars** (theme synthesis). Each item = one pillar that aggregates facts; not isolated topics.
+2. **blockPlan**: 3–12 items. When \`lastReviewGapMessage\` is set, **first** item must be "REPAIR: [specific issue]". Each item must include: (a) **headline** (one conclusion sentence), (b) **chart type** if applicable (mermaid/table/compare), (c) **Fact refs** (e.g. "Fact #3, #7"), (d) **expected shape** (paragraph structure; avoid thin blocks). Prefer MARKDOWN; use MERMAID only when evidence has clear structure. **De-emphasize TILE/ACTION_GROUP**: use a single MARKDOWN "Next actions (action items)" block instead of ACTION_GROUP when possible.
+3. Ground every item only in CONFIRMED FACTS, RECON BRIEFING, EVIDENCE TASK GROUP INDEX, and current dashboard; do not invent entities or paths.

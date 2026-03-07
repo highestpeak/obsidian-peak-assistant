@@ -526,7 +526,7 @@ function buildKeywordCluster(
 	keptTokens = keptTokens.filter((t) => !toRemove.has(t)).slice(0, MAX_KW_TOKENS);
 	for (const t of toRemove) tokenToIds.delete(t);
 
-	// Merge tokens with identical doc-set into one display label (e.g. "编辑 / 方案")
+	// Merge tokens with identical doc-set into one display label (e.g. "edit / plan")
 	const docSetSignature = (t: string) => [...(tokenToIds.get(t) ?? [])].sort().join(',');
 	const sigToTokens = new Map<string, string[]>();
 	for (const t of keptTokens) {

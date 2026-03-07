@@ -117,9 +117,8 @@ export class ReviewBlocksAgent {
 		const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisReviewBlocks);
 		const originalQuery = this.context.getInitialPrompt() ?? '';
 		const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
-		const dashboardBlocks = this.context.getAgentResult().dashboardBlocks ?? [];
-		const dossier = this.context.getDossierForSummary();
-		const confirmedFactsList = dossier.confirmedFacts ?? [];
+        const dashboardBlocks = this.context.getDashboardBlocks();
+		const confirmedFactsList = this.context.getConfirmedFacts();
 		const confirmedFacts =
 			confirmedFactsList.length > 0
 				? confirmedFactsList.map((f, i) => `Fact #${i + 1}: ${f}`).join('\n')

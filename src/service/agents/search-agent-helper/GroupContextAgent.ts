@@ -13,6 +13,7 @@ import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { buildPromptTraceDebugEvent, parallelStream, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { buildEvidenceGroupSharedContext } from './helpers/buildEvidenceGroupSharedContext';
+import { makeStepId, uiStepStart } from './helpers/search-ui-events';
 
 export class GroupContextAgent {
 	constructor(
@@ -83,6 +84,16 @@ export class GroupContextAgent {
 			return;
 		}
 
+		const runStepId = options.stepId ?? generateUuidWithoutHyphens();
+		const laneId = `group_${String(groupIndex).padStart(3, '0')}`;
+		const meta = { runStepId, stage: 'groupContext' as const, lane: { laneType: 'group' as const, laneId, index: groupIndex }, agent: 'GroupContextAgent' };
+		const stepId = makeStepId(meta);
+		yield uiStepStart(meta, {
+			title: `Group context: ${laneId}`,
+			description: `${tasks.length} file(s)`,
+			triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
+		});
+
 		console.debug('[streamGroupContext] tasks:', tasks);
 		const files = tasks.map((t) => ({
 			path: t.path,
@@ -113,7 +124,6 @@ export class GroupContextAgent {
 		});
 
 		yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR, system, prompt);
-		const stepId = options.stepId ?? generateUuidWithoutHyphens();
 		yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR, {
 			yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
 		});

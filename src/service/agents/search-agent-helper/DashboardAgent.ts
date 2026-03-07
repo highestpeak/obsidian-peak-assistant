@@ -4,7 +4,7 @@ import {
     submitTopicsPlanInputSchema,
 } from '@/core/schemas/agents';
 import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
-import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
+import { buildPromptTraceDebugEvent, mergeStreamsWithConcurrency, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
@@ -12,6 +12,7 @@ import { TopicsUpdateAgent } from './TopicsUpdateAgent';
 import { DashboardBlocksAgent } from './DashboardBlocksAgent';
 import { ReviewBlocksAgent } from './ReviewBlocksAgent';
 import { getFileNameFromPath, normalizeFilePath } from '@/core/utils/file-utils';
+import type { AISearchSource } from '../AISearchAgent';
 import { AgentContextManager } from './AgentContextManager';
 import { FollowUpQuestionAgent } from './FollowUpQuestionAgent';
 import { AgentTool, safeAgentTool } from '@/service/tools/types';
@@ -35,6 +36,10 @@ export type DashboardUpdateContext = {
     verifiedPaths: string[];
     /** Numbered confirmed facts (Fact #1, #2, ...) for evidence binding in blockPlan. */
     confirmedFacts?: string;
+    /** Recon briefing (global_recon_insight + per-dimension tactical_summary) for planner context. */
+    reconBriefing?: string;
+    /** Evidence group index (topic_anchor, group_focus, paths) for planner context. */
+    evidenceGroupIndex?: string;
     /** When present, planner must address this gap in the next plan (from Review agent). */
     lastReviewGapMessage?: string;
     /** Current dashboard blocks JSON; used for gap-first diff against confirmedFacts. */
@@ -64,7 +69,7 @@ export class DashboardAgent {
         topicsPlan: ['Add at least 10 topics from full session evidence'],
         blockPlan: [
             'Add a synthesis block: conclusions, tradeoffs, and recommendations (MARKDOWN)',
-            'Add an action/TODO block: concrete next steps or experiments (ACTION_GROUP or TILE)',
+            'Add a Next actions (action items) block: concrete next steps or experiments (MARKDOWN)',
             'Add a Mermaid diagram block if evidence has structure (flow, comparison, hierarchy)',
         ],
     };
@@ -111,33 +116,36 @@ export class DashboardAgent {
      * Emit placeholder sources and single-node graph patches for newly verified paths during search stream. 
      * */
     public async *emitStreamingSourcesFromVerifiedPaths(triggerName?: StreamTriggerName): AsyncGenerator<LLMStreamEvent> {
+        const currentSources = this.context.getSources();
         const existingSourcesPathsSet = new Set(
-            this.context.getAgentResult().sources.map(s => (s.path ?? '').toLowerCase()).filter(Boolean)
+            currentSources.map(s => (s.path ?? '').toLowerCase()).filter(Boolean)
         );
 
         const newPaths = Array.from(this.context.getVerifiedPaths())
             .filter((p) => !existingSourcesPathsSet.has(p.trim().toLowerCase()))
             .slice(0, STREAMING_SOURCE_TOP_K);
 
+        const added: AISearchSource[] = [];
         for (const path of newPaths) {
             const normPath = normalizeFilePath(path.trim());
             if (!normPath) continue;
             const lowerPath = normPath.toLowerCase();
             const title = getFileNameFromPath(normPath);
 
-            // add sources
             if (!existingSourcesPathsSet.has(lowerPath)) {
                 existingSourcesPathsSet.add(lowerPath);
-                this.context.getAgentResult().sources.push({
+                added.push({
                     id: `src:stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                     title: title,
                     path: normPath,
-                    // placeholder reasoning. will be replaced by the actual reasoning from refine agent
                     reasoning: 'From evidence during search (streaming).',
                     badges: [],
                     score: { average: 0, physical: 0, semantic: 0 },
                 });
             }
+        }
+        if (added.length > 0) {
+            this.context.setSources([...currentSources, ...added]);
         }
 
         // update sources
@@ -178,13 +186,18 @@ export class DashboardAgent {
                     }
                 }
 
-                // block (pass review feedback on retry so Blocks agent fixes the same issues)
+                // block (per plan-line concurrency; pass review feedback on retry)
                 if ((this.lastPlan.blockPlan?.length ?? 0) > 0) {
-                    yield* this.blocksAgent.stream(
-                        this.lastPlan.blockPlan,
-                        stepId,
-                        generatingTimes > 1 ? this.lastReviewGapMessage : undefined,
-                    );
+                    const reviewFeedback = generatingTimes > 1 ? this.lastReviewGapMessage : undefined;
+                    const factories = this.lastPlan.blockPlan.map((planLine, index) => () => {
+                        const agent = new DashboardBlocksAgent({
+                            aiServiceManager: this.aiServiceManager,
+                            context: this.context,
+                        });
+                        const blockStepId = `${stepId}:${index}`;
+                        return agent.streamOnePlanLine(planLine, blockStepId, reviewFeedback);
+                    });
+                    yield* mergeStreamsWithConcurrency(3, factories);
                 } else {
                     // this should not happen
                     yield {
@@ -216,6 +229,49 @@ export class DashboardAgent {
     }
 
     /**
+     * Run topics + blocks + review + follow-up using an external plan (e.g. from ReportPlanAgent).
+     * Skips streamDashboardPlan; use when plan is already provided.
+     */
+    public async *runDashboardUpdateWithPlan(plan: DashboardUpdatePlan): AsyncGenerator<LLMStreamEvent> {
+        const stepId = generateUuidWithoutHyphens();
+        this.lastPlan = { topicsPlan: plan.topicsPlan ?? [], blockPlan: plan.blockPlan ?? [] };
+        this.lastReviewGapMessage = undefined;
+        if (this.lastPlan.topicsPlan.length === 0) {
+            this.lastPlan.topicsPlan = DashboardAgent.FALLBACK_PLAN.topicsPlan;
+        }
+        if (this.lastPlan.blockPlan.length === 0) {
+            this.lastPlan.blockPlan = DashboardAgent.FALLBACK_PLAN.blockPlan;
+        }
+        try {
+            if (this.lastPlan.topicsPlan.length > 0) {
+                yield* this.topicsAgent.stream(this.lastPlan.topicsPlan, stepId);
+            }
+            if (this.lastPlan.blockPlan.length > 0) {
+                const factories = this.lastPlan.blockPlan.map((planLine, index) => () => {
+                    const agent = new DashboardBlocksAgent({
+                        aiServiceManager: this.aiServiceManager,
+                        context: this.context,
+                    });
+                    const blockStepId = `${stepId}:${index}`;
+                    return agent.streamOnePlanLine(planLine, blockStepId, undefined);
+                });
+                yield* mergeStreamsWithConcurrency(3, factories);
+            }
+            yield* this.reviewAgent.stream(stepId);
+            yield* this.streamFollowUpQuestions(stepId);
+        } catch (e) {
+            yield {
+                type: 'pk-debug',
+                debugName: 'dashboard-update-agent-error',
+                triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
+                extra: { error: String(e) },
+            } as LLMStreamEvent;
+        } finally {
+            yield this.uiStep(stepId, 'Dashboard Updated.', 'Dashboard Updated', StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT);
+        }
+    }
+
+    /**
      * Stream structured plan. Yields text-delta and on-step-finish.
      * Slim input: only originalQuery, verifiedPaths, confirmedFacts, lastReviewGapMessage, currentDashboardBlocks
      * (no full agentMemoryMessage / search process). When lastReviewGapMessage is set (retry), planner must address it.
@@ -228,18 +284,19 @@ export class DashboardAgent {
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisDashboardUpdatePlan);
         const originalQuery = this.context.getInitialPrompt() ?? '';
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
-        const dossier = this.context.getDossierForSummary();
-        const confirmedFactsList = dossier.confirmedFacts ?? [];
+        const confirmedFactsList = this.context.getConfirmedFacts();
         const confirmedFactsText = confirmedFactsList.length
             ? confirmedFactsList.map((f, i) => `${i + 1}. ${f}`).join('\n')
             : '';
-        const currentBlocks = this.context.getAgentResult().dashboardBlocks;
+        const currentBlocks = this.context.getDashboardBlocks();
         const currentDashboardBlocks =
             currentBlocks?.length ? JSON.stringify(currentBlocks) : undefined;
         const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDashboardUpdatePlan, {
             originalQuery,
             verifiedPaths: Array.from(this.context.getVerifiedPaths()),
             confirmedFacts: confirmedFactsText || undefined,
+            reconBriefing: this.context.getReconBriefing() || undefined,
+            evidenceGroupIndex: this.context.getEvidenceGroupIndex() || undefined,
             lastReviewGapMessage: this.lastReviewGapMessage,
             currentDashboardBlocks,
         });
@@ -282,7 +339,7 @@ export class DashboardAgent {
             yield* this.followUpQuestionAgent.stream(stepId);
         } catch (e) {
             console.warn('[AISearchAgent] Suggest follow-up questions failed; leaving empty.', e);
-            this.context.getAgentResult().suggestedFollowUpQuestions = [];
+            this.context.setSuggestedFollowUpQuestions([]);
         }
     }
 }

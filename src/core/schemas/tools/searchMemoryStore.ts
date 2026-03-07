@@ -7,14 +7,6 @@ export const searchMemoryStoreInputSchema = z.object({
 
 export const getAnalysisMessageCountInputSchema = z.object({});
 
-export const getAnalysisMessageByIndexInputSchema = z.object({
-	index: z
-		.number()
-		.int()
-		.min(0)
-		.describe("0-based index of the message (0 = first message, count-1 = last)"),
-});
-
 /** Factory so describe() can show default maxChars without closing over options. */
 export function makeGetThoughtHistoryInputSchema(defaultMaxChars: number) {
 	return z.object({

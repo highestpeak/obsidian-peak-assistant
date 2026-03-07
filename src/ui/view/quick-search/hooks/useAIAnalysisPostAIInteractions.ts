@@ -314,10 +314,9 @@ export function useRegenerateOverviewMermaid() {
             ].join('\n');
             const variables = {
                 originalQuery: searchQuery ?? '',
-                analysisMode,
                 currentResultSnapshot,
             };
-            const stream = manager.chatWithPromptStream(PromptId.AiAnalysisOverviewMermaid, variables as any);
+            const stream = manager.chatWithPromptStream(PromptId.AiAnalysisOverviewRegenerate, variables);
             const raw = (await consumeFollowupStream(stream)).trim();
             const inner = getMermaidInner(raw);
             const code = inner.trim() ? wrapMermaidCode(inner) : '';

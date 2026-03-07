@@ -25,7 +25,7 @@ export type IterFile = {
     mtime?: number;
     /** When > 1, this file is the representative of a group (same normalized name pattern). */
     sameGroupCount?: number;
-    /** Display pattern e.g. "*-PeakAssistant-开发日志-*.png" when sameGroupCount > 1. */
+    /** Display pattern e.g. "*-PeakAssistant-dev-log-*.png" when sameGroupCount > 1. */
     patternName?: string;
     children?: IterFile[];
     /** Present when this folder had more than limit children; rest summarized here. */

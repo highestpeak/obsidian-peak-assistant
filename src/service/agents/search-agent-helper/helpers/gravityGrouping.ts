@@ -573,7 +573,7 @@ function capacityBalance(
 }
 
 /**
- * Final phase: "收编" (absorption) — repeatedly pick the weakest group and merge it into the best receiver.
+ * Final phase: absorption — repeatedly pick the weakest group and merge it into the best receiver.
  *
  * Design:
  * • Average line: averageLoad = totalScore / maxGroups; group is "too small" if load < averageLoad * 0.7.

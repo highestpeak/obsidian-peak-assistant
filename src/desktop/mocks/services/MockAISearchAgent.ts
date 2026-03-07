@@ -107,7 +107,7 @@ function buildMockSearchAgentResult(query: string): SearchAgentResult {
 		topics,
 		sources,
 		dashboardBlocks,
-		overviewMermaid,
+		evidenceMermaidOverviewAgent: overviewMermaid,
 	};
 }
 
@@ -211,18 +211,18 @@ export async function* mockAIAnalysisStream(
 		await delay(phaseDelayMs);
 	}
 
-	// Overview Mermaid stream (AiAnalysisOverviewMermaid)
-	const mermaidText = fullResult.overviewMermaid ?? '';
+	// Overview Mermaid stream (pipeline uses LogicModel + Render; mock yields Render-style stream)
+	const mermaidText = fullResult.evidenceMermaidOverviewAgent ?? '';
 	if (mermaidText) {
 		await delay(chunkDelayMs);
-		yield { type: 'prompt-stream-start', promptId: PromptId.AiAnalysisOverviewMermaid, triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID };
+		yield { type: 'prompt-stream-start', promptId: PromptId.AiAnalysisOverviewMermaidRender, triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID };
 		const mermaidChunkSize = Math.max(1, Math.floor(mermaidText.length / 8));
 		for (let i = 0; i < mermaidText.length; i += mermaidChunkSize) {
 			await delay(chunkDelayMs);
-			yield { type: 'prompt-stream-delta', promptId: PromptId.AiAnalysisOverviewMermaid, delta: mermaidText.slice(i, i + mermaidChunkSize), triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID };
+			yield { type: 'prompt-stream-delta', promptId: PromptId.AiAnalysisOverviewMermaidRender, delta: mermaidText.slice(i, i + mermaidChunkSize), triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID };
 		}
 		await delay(chunkDelayMs);
-		yield { type: 'prompt-stream-result', promptId: PromptId.AiAnalysisOverviewMermaid, output: mermaidText, triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID };
+		yield { type: 'prompt-stream-result', promptId: PromptId.AiAnalysisOverviewMermaidRender, output: mermaidText, triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID };
 		await delay(phaseDelayMs);
 	}
 

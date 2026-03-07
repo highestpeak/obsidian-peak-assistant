@@ -2,12 +2,19 @@
 import { FinalRefineContext } from '../agents/search-agent-helper/FinalRefineAgent';
 import { DashboardUpdateContext } from '../agents/search-agent-helper/DashboardAgent';
 import { DashboardBlockVariables } from '../agents/search-agent-helper/DashboardBlocksAgent';
+import type { UserPersonaConfig } from '../agents/search-agent-helper/AgentContextManager';
 import { TopicsUpdateVariables } from '../agents/search-agent-helper/TopicsUpdateAgent';
 import { ReviewBlocksVariables } from '../agents/search-agent-helper/ReviewBlocksAgent';
 import { FollowUpQuestionVariables } from '../agents/search-agent-helper/FollowUpQuestionAgent';
 import { AiSummaryVariables } from '../agents/search-agent-helper/SummaryAgent';
-import { MermaidOverviewVariables } from '../agents/search-agent-helper/MermaidOverviewAgent';
-import { ConsolidatedTaskWithId, DimensionChoice, RawSearchReport, RawSearchReportWithDimension } from '@/core/schemas/agents/search-agent-schemas';
+import {
+	ConsolidatedTaskWithId,
+	DimensionChoice,
+	type EvidencePack,
+	type EvidenceTaskGroup,
+	RawSearchReport,
+	RawSearchReportWithDimension,
+} from '@/core/schemas/agents/search-agent-schemas';
 /**
  * Prompt template definition.
  */
@@ -59,8 +66,14 @@ export enum PromptId {
 	// AI analysis dashboard update agent (update overviewMermaid/sources/topics/graph/blocks from memory evidence)
 	AiAnalysisSummarySystem = 'ai-analysis-summary-system',
 	AiAnalysisSummary = 'search-ai-summary',
-	AiAnalysisOverviewMermaidSystem = 'ai-analysis-overview-mermaid-system',
-	AiAnalysisOverviewMermaid = 'ai-analysis-overview-mermaid',
+	/** Regenerate overview from current result snapshot (UI only; not used by pipeline). */
+	AiAnalysisOverviewRegenerate = 'ai-analysis-overview-regenerate',
+	/** Phase 1 of weaveEvidence2MermaidOverview: logic model only (no Mermaid). */
+	AiAnalysisOverviewLogicModelSystem = 'ai-analysis-overview-logic-model-system',
+	AiAnalysisOverviewLogicModel = 'ai-analysis-overview-logic-model',
+	/** Phase 2: render logic model → flowchart Mermaid. */
+	AiAnalysisOverviewMermaidRenderSystem = 'ai-analysis-overview-mermaid-render-system',
+	AiAnalysisOverviewMermaidRender = 'ai-analysis-overview-mermaid-render',
 	AiAnalysisDashboardUpdateTopicsSystem = 'ai-analysis-dashboard-update-topics-system',
 	AiAnalysisDashboardUpdateTopics = 'ai-analysis-dashboard-update-topics',
 	AiAnalysisDashboardUpdateBlocksSystem = 'ai-analysis-dashboard-update-blocks-system',
@@ -69,6 +82,18 @@ export enum PromptId {
 	AiAnalysisReviewBlocks = 'ai-analysis-review-blocks',
 	AiAnalysisDashboardUpdatePlanSystem = 'ai-analysis-dashboard-update-plan-system',
 	AiAnalysisDashboardUpdatePlan = 'ai-analysis-dashboard-update-plan',
+	/** Report plan: section-by-section consulting report outline (ReportPlanAgent). */
+	AiAnalysisReportPlanSystem = 'ai-analysis-report-plan-system',
+	AiAnalysisReportPlan = 'ai-analysis-report-plan',
+	/** Visual blueprint: per-block visual prescription after report plan (VisualBlueprintAgent). */
+	AiAnalysisVisualBlueprintSystem = 'ai-analysis-visual-blueprint-system',
+	AiAnalysisVisualBlueprint = 'ai-analysis-visual-blueprint',
+	/** Report body blocks: dashboard blocks for main report sections (ReportAgent phase4). */
+	AiAnalysisReportBodyBlocksSystem = 'ai-analysis-report-body-blocks-system',
+	AiAnalysisReportBodyBlocks = 'ai-analysis-report-body-blocks',
+	/** Report appendices blocks: dashboard blocks for appendices (ReportAgent phase5). */
+	AiAnalysisReportAppendicesBlocksSystem = 'ai-analysis-report-appendices-blocks-system',
+	AiAnalysisReportAppendicesBlocks = 'ai-analysis-report-appendices-blocks',
 	/** Fix invalid Mermaid code using parse error; used after overview validation fails. */
 	AiAnalysisMermaidFixSystem = 'ai-analysis-mermaid-fix-system',
 	AiAnalysisMermaidFix = 'ai-analysis-mermaid-fix',
@@ -130,11 +155,15 @@ export enum PromptId {
 export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisSessionSummary,
 	PromptId.AiAnalysisSummary,
-	PromptId.AiAnalysisOverviewMermaid,
+	PromptId.AiAnalysisOverviewLogicModel,
+	PromptId.AiAnalysisOverviewMermaidRender,
+	PromptId.AiAnalysisOverviewRegenerate,
 	PromptId.AiAnalysisDashboardUpdateTopics,
 	PromptId.AiAnalysisDashboardUpdateBlocks,
 	PromptId.AiAnalysisReviewBlocks,
 	PromptId.AiAnalysisDashboardUpdatePlan,
+	PromptId.AiAnalysisReportPlan,
+	PromptId.AiAnalysisVisualBlueprint,
 	PromptId.AiAnalysisMermaidFix,
 	PromptId.AiAnalysisFinalRefine,
 	PromptId.AiAnalysisTitle,
@@ -337,20 +366,42 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSummarySystem]: Record<string, never>;
 	[PromptId.AiAnalysisSummary]: AiSummaryVariables & {
-		retrievedSessionContext?: string;
 		verifiedFactSheet?: string;
-		sourceMap?: string;
-		lastDecision?: string;
 		dashboardBlockIds?: string;
+		userPersonaConfig?: UserPersonaConfig;
 	};
-	[PromptId.AiAnalysisOverviewMermaidSystem]: Record<string, never>;
-	[PromptId.AiAnalysisOverviewMermaid]: MermaidOverviewVariables & ErrorRetryInfo;
+	[PromptId.AiAnalysisOverviewRegenerate]: { originalQuery: string; currentResultSnapshot: string };
+	[PromptId.AiAnalysisOverviewLogicModelSystem]: Record<string, never>;
+	[PromptId.AiAnalysisOverviewLogicModel]: { userQuery: string; evidencePacks: EvidencePack[]; repairHint?: string };
+	[PromptId.AiAnalysisOverviewMermaidRenderSystem]: Record<string, never>;
+	[PromptId.AiAnalysisOverviewMermaidRender]: { userQuery: string; logicModelJson: string };
 	[PromptId.AiAnalysisDashboardUpdateTopicsSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDashboardUpdateTopics]: TopicsUpdateVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateBlocksSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDashboardUpdateBlocks]: DashboardBlockVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdatePlanSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDashboardUpdatePlan]: DashboardUpdateContext;
+	[PromptId.AiAnalysisReportPlanSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReportPlan]: {
+		originalQuery: string;
+		overviewMermaid?: string;
+		verifiedFactSheet?: string[];
+		evidenceTaskGroups?: EvidenceTaskGroup[];
+	};
+	[PromptId.AiAnalysisVisualBlueprintSystem]: Record<string, never>;
+	[PromptId.AiAnalysisVisualBlueprint]: {
+		originalQuery: string;
+		overviewMermaid?: string;
+		/** Lightweight facts context: keep as list; template decides count/sample rendering. */
+		confirmedFacts?: string[];
+		/** The first block slot to start prescribing (subsequent blocks come from tool output). */
+		firstBlockId?: string;
+		firstBlockRequirements?: string;
+	};
+	[PromptId.AiAnalysisReportBodyBlocksSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReportBodyBlocks]: DashboardBlockVariables & ErrorRetryInfo & { toolFormatGuidance?: string; userPersonaConfig?: UserPersonaConfig };
+	[PromptId.AiAnalysisReportAppendicesBlocksSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReportAppendicesBlocks]: DashboardBlockVariables & ErrorRetryInfo & { toolFormatGuidance?: string; userPersonaConfig?: UserPersonaConfig };
 	[PromptId.AiAnalysisReviewBlocksSystem]: Record<string, never>;
 	[PromptId.AiAnalysisReviewBlocks]: ReviewBlocksVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisMermaidFixSystem]: Record<string, never>;

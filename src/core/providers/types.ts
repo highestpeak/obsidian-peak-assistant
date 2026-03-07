@@ -451,6 +451,8 @@ export enum StreamTriggerName {
 	SEARCH_SUMMARY = 'search-summary',
 	SEARCH_TITLE = 'search-title',
 	SEARCH_OVERVIEW_MERMAID = 'search-overview-mermaid',
+	SEARCH_REPORT_PLAN_AGENT = 'search-report-plan-agent',
+	SEARCH_VISUAL_BLUEPRINT_AGENT = 'search-visual-blueprint-agent',
 	SEARCH_MERMAID_FIX = 'search-mermaid-fix',
 	DOC_SIMPLE_AGENT = 'doc-simple-agent',
 	FOLLOW_UP_QUESTION_AGENT = 'follow-up-question-agent',
@@ -480,6 +482,8 @@ export enum UISignalChannel {
 	MINDFLOW_PROGRESS = 'mindflow-progress',
 	MINDFLOW_MERMAID = 'mindflow-mermaid',
 	OVERVIEW_MERMAID = 'overview-mermaid',
+	/** Search pipeline stage control: start / progress / complete / error. */
+	SEARCH_STAGE = 'search-stage',
 }
 
 export enum UISignalKind {

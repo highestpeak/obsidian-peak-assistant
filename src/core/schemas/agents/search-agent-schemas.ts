@@ -379,6 +379,94 @@ export const suggestedFollowUpQuestionsSchema = z.object({
 });
 export type SuggestedFollowUpQuestions = z.infer<typeof suggestedFollowUpQuestionsSchema>;
 
+// ----- overview logic model (Phase 1 for weaveEvidence2MermaidOverview) -----
+const OVERVIEW_NODE_KINDS = ['nucleus', 'decision', 'fact', 'heuristic'] as const;
+const OVERVIEW_EDGE_RELATIONS = ['cause', 'prerequisite', 'conflict', 'feedback', 'correlate', 'synergy'] as const;
+const OVERVIEW_NODES_MIN = 6;
+const OVERVIEW_NODES_MAX = 12;
+
+const overviewLogicModelNucleusSchema = z.object({
+	nodeIndex: z.number().int().min(0).describe('Index of the nucleus node in the nodes array (0-based); Mermaid phase will assign id N1, N2, ... by order'),
+	statement: z.string().describe('Core tension or central claim'),
+	hiddenOpposition: z.string().optional().describe('Implicit opposite (e.g. cost vs benefit)'),
+});
+
+const overviewLogicModelNodeSchema = z.object({
+	label: z.string().max(60).describe('Short display label'),
+	kind: z.enum(OVERVIEW_NODE_KINDS),
+	importance: z.number().min(0).max(10),
+	confidence: z.enum(['high', 'medium', 'low']),
+	sourceRefs: z.array(z.string()).describe('Fact refs e.g. F1, F2 or source ids'),
+	clusterId: z.string().optional(),
+});
+
+const overviewLogicModelEdgeSchema = z.object({
+	fromIndex: z.number().int().min(0),
+	toIndex: z.number().int().min(0),
+	relation: z.enum(OVERVIEW_EDGE_RELATIONS),
+	label: z.string().max(40),
+	rationaleFactRefs: z.array(z.string()).optional(),
+});
+
+const overviewLogicModelClusterSchema = z.object({
+	id: z.string(),
+	title: z.string().max(30),
+	nodeIndices: z.array(z.number().int().min(0)),
+});
+
+const overviewLogicModelTimelineSchema = z.object({
+	phases: z.array(z.object({
+		phaseId: z.string(),
+		label: z.string(),
+		nodeIndices: z.array(z.number().int().min(0)),
+	})).optional(),
+}).optional();
+
+export const overviewLogicModelSchema = z.object({
+	nucleus: overviewLogicModelNucleusSchema,
+	nodes: z.array(overviewLogicModelNodeSchema).min(OVERVIEW_NODES_MIN).max(OVERVIEW_NODES_MAX),
+	edges: z.array(overviewLogicModelEdgeSchema),
+	clusters: z.array(overviewLogicModelClusterSchema).optional(),
+	timeline: overviewLogicModelTimelineSchema,
+}).superRefine((data, ctx) => {
+	const hasConflictOrFeedback = data.edges.some(e => e.relation === 'conflict' || e.relation === 'feedback');
+	if (!hasConflictOrFeedback) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: 'At least one edge must have relation "conflict" or "feedback". Rescan evidence for tensions or loops.',
+		});
+	}
+	const n = data.nodes.length;
+	if (data.nucleus.nodeIndex >= n) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: `nucleus.nodeIndex ${data.nucleus.nodeIndex} must be < nodes.length (${n}).`,
+		});
+	}
+	for (const e of data.edges) {
+		if (e.fromIndex >= n || e.toIndex >= n) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `Edge fromIndex ${e.fromIndex} toIndex ${e.toIndex} must be < nodes.length (${n}).`,
+			});
+			break;
+		}
+	}
+	for (const c of data.clusters ?? []) {
+		for (const i of c.nodeIndices) {
+			if (i >= n) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `Cluster ${c.id} nodeIndex ${i} must be < nodes.length (${n}).`,
+				});
+				break;
+			}
+		}
+	}
+});
+
+export type OverviewLogicModel = z.infer<typeof overviewLogicModelSchema>;
+
 // ----- review blocks -----
 export const needMoreDashboardBlocksInputSchema = z.object({
 	reason: z.string().describe("The reason why we need more dashboard blocks."),
@@ -421,6 +509,251 @@ export const submitBlocksPlanInputSchema = z
 			),
 	})
 	.describe("Submit the blocks update plan with evidence binding and optional source paths.");
+
+// ----- report plan (ReportPlanAgent) -----
+
+/** Ordered phase IDs for section-by-section report planning. Single source of truth. */
+export const REPORT_PLAN_PHASE_IDS = [
+	"intent_insight",
+	"summary_spec",
+	"overview_mermaid",
+	"topics",
+	"body_intent_insight",
+	"body_scqa",
+	"body_methodology",
+	"body_insight_pillar",
+	"body_recommendations_roadmap",
+	"body_risks_dependencies",
+	"body_next_actions",
+	"body_followup_questions",
+	"appendices",
+	"actions_todo_list",
+	"actions_followup_questions",
+] as const;
+
+export type ReportPlanPhaseId = (typeof REPORT_PLAN_PHASE_IDS)[number];
+
+/** Body phases (subset of REPORT_PLAN_PHASE_IDS) that produce BodyBlockSpec[]. Single source of truth. */
+export const REPORT_PLAN_BODY_PHASE_IDS: readonly ReportPlanPhaseId[] = REPORT_PLAN_PHASE_IDS.filter(
+	(id): id is ReportPlanPhaseId => id.startsWith('body_')
+);
+
+/**
+ * Detailed requirements per phase for submit_phase_and_get_next_to_plan tool return.
+ * Single source of truth; ReportPlanAgent reads this only.
+ */
+export const REPORT_PLAN_PHASE_REQUIREMENTS: Record<ReportPlanPhaseId, string> = {
+	intent_insight: `**Intent insight (tone-setting)** — Plan this section first. Each phase is a chapter and can have multiple pages; submit one page per tool call, use status "draft" to add more pages for this phase, "final" when done.
+- Output: one paragraph that will set the tone for the whole report.
+- Analyze the user question's subtext (motives, constraints, success criteria).
+- State assumed context and confidence level.
+- This feeds into summary "answer" and key recommendations; keep it concise.`,
+
+	summary_spec: `**Summary spec** — Plan what the Executive Summary must contain (summary is generated last, after blocks).
+- **Length**: 1–2 pages, ~1000 words / ~7000 characters; 1.5 screens on 16" MacBook, 1 screen on 27" display.
+- **Structure**: (1) First paragraph MUST answer the user question (from intent insight) and give **key recommendations** in totalizing language; (2) 3–5 bullets of **supporting rationale** (each 2–4 sentences); (3) **"So what"** high-level impact; (4) Only the most critical numbers/facts to make recommendations credible; (5) **References to later sections** — every key point must link to a block (click to jump). **Must stand alone**: an executive reading only this understands what to do and why. Summary is the "map"; dashboard blocks are the "microscope". No duplicate fact-listing; narrative only. Total-over-part structure throughout.`,
+
+	overview_mermaid: `**Overview Mermaid** — Plan the diagram that appears right after the summary.
+- **Constraint**: Keep only the **Top 10 core nodes** that support the Top-level Recommendation; avoid graph explosion.
+- Specify: diagram type, node naming rules, and how nodes cite evidence (Fact # / path).`,
+
+	topics: `**Topics (Pillars)** — Plan the topic blocks that act as MECE pillars.
+- 3–6 pillars; each pillar = one conclusion + why it matters + 1–3 block refs (which body blocks support it).
+- Topics are anchors for the body; avoid scattered or overlapping themes.`,
+
+	body_intent_insight: `**Body block: Intent insight** — Plan one page for this chapter (block id report_body_intent_insight). Can have multiple pages; use "draft" for more, "final" when done. Short paragraph that restates the intent insight (user subtext, success criteria) as the opening of the body. Evidence binding: which Fact # or paths.`,
+
+	body_scqa: `**Body block: Situation & objectives (SCQA)** — Plan one page (block id report_body_scqa). Use "draft"/"final" for multi-page.
+- **Content**: SCQA-style context: (S)ituation / client context & scope; (C)omplication, key question, constraints; consensus and conflict, controversy and risk; (Q) key question; (A)nswer, goals, success metrics.
+- Specify: short intro paragraph, then structure (bullets/table if needed). Evidence: Fact #, [[path]]. Chart/table shape if any.`,
+
+	body_methodology: `**Body block: Approach & methodology** — Plan one page (block id report_body_methodology). Use "draft"/"final" for multi-page.
+- **Content**: Analytical approach (frameworks, models, interviews, benchmarks); data sources and quality (scope); key assumptions and limitations.
+- Specify: paragraph skeleton, optional flowchart or table. Evidence binding. Word target ~300–500.`,
+
+	body_insight_pillar: `**Body block(s): Insight sections (per pillar)** — This phase usually has multiple pages (one per pillar). Submit one page per call with block id report_body_pillar_1, report_body_pillar_2, …; use "draft" until last pillar, then "final".
+- **Each page must include**: (1) **Insight headline** — one full-sentence conclusion; (2) **Why it matters** — 2–3 sentences on strategic implication; (3) **Evidence** — 1–3 charts/tables with labelled takeaways, short bullet list of key data points, source notes under charts; (4) **What to do** — clear action or policy implication; (5) **Risks/uncertainties** for this insight.
+- Specify for each page: blockId, title, paragraph skeleton, chart/table type, evidence binding, risks hint. Keep narrative on insights, not process. Each block is a supporting argument for the summary.`,
+
+	body_recommendations_roadmap: `**Body block: Recommendations & roadmap** — Plan one page (block id report_body_recommendations_roadmap). Use "draft"/"final" for multi-page.
+- **Content**: Prioritized recommendation list (3–7 items), each with benefit, complexity, owner; timelines; phased roadmap; high-level financial case and KPIs to track.
+- Specify: table or list shape, optional Gantt/timeline Mermaid. Evidence binding.`,
+
+	body_risks_dependencies: `**Body block: Risks & dependencies** — Plan one page (block id report_body_risks_dependencies). Use "draft"/"final" for multi-page.
+- **Content**: (1) Blind spots — what the evidence does not cover; (2) Logic links — cross-domain connections that support the argument; (3) Forward-looking — trends from evidence; (4) Missing dimensions — empty evidence in some dimensions; prompt user to fill gaps.
+- Specify: premortem/risk-audit structure, optional flowchart for failure paths. Evidence binding.`,
+
+	body_next_actions: `**Body block: Next actions (TODO)** — Plan one page (block id report_body_next_actions). Use "draft"/"final" for multi-page.
+- **Content**: Actionable items list derived from Evidence's implicitly suggested next actions. Concrete TODOs the user can execute.
+- Specify: list shape, evidence binding (which facts suggest which action).`,
+
+	body_followup_questions: `**Body block: Follow-up questions** — Plan one page (block id report_body_followup_questions). Use "draft"/"final" for multi-page.
+- **Content**: High-value follow-up questions (gaps, blind spots, alternatives, missing dimensions). Not filler; questions that extend the analysis.
+- Specify: how many, tone (Socratic / guiding).`,
+
+	appendices: `**Appendices** — This phase can have multiple pages (one per appendix block). Submit one page per call; use "draft" for more, "final" when done. Block ids report_appendices or report_appendices_1, report_appendices_2, …
+- **Content**: Full data tables; modelling assumptions; sensitivity analyses; edge cases not in core story but needed for scrutiny; detailed analyses per insight (extra cuts, alternative scenarios); methodology deep dives; glossary, references, interview guides, survey instruments.
+- **Surprise markers**: Mark high-surprise findings with a lightning icon or [SURPRISE_HIGH] in Markdown so the core report stays concise but remains rigorous and audit-able.`,
+
+	actions_todo_list: `**Actions: TODO list spec** — Plan how to generate the actionable items list.
+- Base on Evidence's \`implicitly suggested next actions\`. Specify: format (bullets, numbered), grouping, and binding to Fact # / block refs.`,
+
+	actions_followup_questions: `**Actions: Follow-up questions spec** — Plan how to generate follow-up questions.
+- Rules for high-value questions: fill gaps, blind spots, alternatives, missing dimensions. Socratic tone where appropriate.`,
+};
+
+/** Input for submit_phase_and_get_next_to_plan tool. */
+export const submitReportPhaseInputSchema = z.object({
+	phaseId: z
+		.string()
+		.describe(
+			"Current section phase id (chapter). Same phase can be submitted multiple times for multiple pages; use status to control when to advance."
+		),
+	planMarkdown: z
+		.string()
+		.min(1)
+		.describe(
+			"Plan for this page/slide of the section: purpose, output shape, evidence binding, word/structural constraints, citation format. One page per call."
+		),
+	dependencies: z
+		.array(z.string())
+		.optional()
+		.describe("BlockIds, Fact #N, or SourceIDs this section depends on."),
+	status: z
+		.enum(["draft", "final"])
+		.optional()
+		.default("final")
+		.describe(
+			"Use 'draft' to submit another page for the same phase (you receive the same phaseId again). Use 'final' when this phase has no more pages (you receive the next phase)."
+		),
+});
+
+export type SubmitReportPhaseInput = z.infer<typeof submitReportPhaseInputSchema>;
+
+/** Tool return: next section to plan or done. When status was "draft", nextPhaseId is the same phase (more pages). */
+export interface SubmitReportPhaseOutput {
+	nextPhaseId: string | null;
+	nextRequirementsMarkdown: string;
+	done: boolean;
+}
+
+/** Spec for one body block in the report plan. */
+export const bodyBlockSpecSchema = z.object({
+	blockId: z.string().describe("Stable id for this block (no colons); used for (#block-<id>) anchors."),
+	title: z.string().describe("Block display title."),
+	role: z.string().describe("Role: e.g. SCQA, methodology, pillar, recommendations, risks, next_actions, followup_questions."),
+	paragraphSkeleton: z.string().optional().describe("SCQA or narrative skeleton; bullet/paragraph structure."),
+	evidenceBinding: z.string().optional().describe("Fact #N, [[path]], or SourceID binding rules."),
+	chartOrTableShape: z.string().optional().describe("Table headers or mermaid diagram type + node/label hints."),
+	risksUncertaintyHint: z.string().optional().describe("Gaps, assumptions, or uncertainty to surface."),
+	wordTarget: z.number().optional().describe("Target word count (e.g. 300-500)."),
+});
+
+export type BodyBlockSpec = z.infer<typeof bodyBlockSpecSchema>;
+
+/** Spec for one appendix block. */
+export const appendicesBlockSpecSchema = z.object({
+	blockId: z.string(),
+	title: z.string(),
+	role: z.string().describe("e.g. data_tables, sensitivity_analysis, methodology_deep_dive, glossary, references."),
+	contentHint: z.string().optional().describe("What to include; surprise-high markers if applicable."),
+});
+
+export type AppendicesBlockSpec = z.infer<typeof appendicesBlockSpecSchema>;
+
+/** Full report plan produced by ReportPlanAgent. */
+export const reportPlanSchema = z.object({
+	intentInsight: z.string().optional().describe("One paragraph: user subtext, assumed context, success criteria, confidence."),
+	summarySpec: z
+		.string()
+		.optional()
+		.describe("Constraints: ~1000 words, answer-first, key recommendations, 3-5 rationale bullets, so-what impact, block anchors."),
+	overviewMermaidSpec: z
+		.string()
+		.optional()
+		.describe("Top 10 core nodes; diagram type; node naming and citation rules."),
+	topicsSpec: z.string().optional().describe("3-6 MECE pillars; one conclusion + why + block refs per pillar."),
+	bodyBlocksSpec: z.array(bodyBlockSpecSchema).optional().default([]),
+	appendicesBlocksSpec: z.array(appendicesBlockSpecSchema).optional().default([]),
+	actionItemsSpec: z.string().optional().describe("TODO list rules from evidence next_action / implicitly suggested."),
+	followupQuestionsSpec: z.string().optional().describe("High-value follow-up rules: fill gaps, blind spots, alternatives."),
+	sourcesViewsSpec: z.string().optional().describe("List / graph / evidence cards generation; reuse SourcesSection where possible."),
+});
+
+export type ReportPlan = z.infer<typeof reportPlanSchema>;
+
+// ----- visual blueprint (VisualBlueprintAgent) -----
+
+/** Task type driving chart choice: compare, trend, composition, etc. */
+export const visualTaskTypeSchema = z.enum([
+	'compare', 'trend', 'composition', 'distribution', 'relationship',
+	'hierarchy', 'process', 'roadmap', 'table', 'network', 'other',
+]);
+export type VisualTaskType = z.infer<typeof visualTaskTypeSchema>;
+
+/** Mermaid diagram type for prescription. */
+export const mermaidDiagramTypeSchema = z.enum([
+	'flowchart', 'mindmap', 'timeline', 'gantt', 'quadrantChart', 'pie', 'xyChart', 'treemap', 'other',
+]);
+export type MermaidDiagramType = z.infer<typeof mermaidDiagramTypeSchema>;
+
+/** Single visual prescription: diagram type, reason, mapping, and execution hint. */
+export const visualDiagramPrescriptionSchema = z.object({
+	diagramType: mermaidDiagramTypeSchema.describe('Mermaid diagram type.'),
+	reason: z.string().optional().describe('Why this chart; guideline reference.'),
+	dataMapping: z.string().optional().describe('X/category, Y/size, or axis mapping.'),
+	mermaidDirectiveCard: z.string().optional().describe('Short instruction for section agent: syntax + constraints.'),
+});
+
+export type VisualDiagramPrescription = z.infer<typeof visualDiagramPrescriptionSchema>;
+
+/** Audience precision: scan = high-level, analyst = detail. */
+export const audiencePrecisionSchema = z.enum(['scan', 'analyst']);
+export type AudiencePrecision = z.infer<typeof audiencePrecisionSchema>;
+
+/** Data type for the block content. */
+export const visualDataTypeSchema = z.enum(['qualitative', 'quantitative', 'mixed']);
+export type VisualDataType = z.infer<typeof visualDataTypeSchema>;
+
+/** One block's visual prescription from Visual Architect. */
+export const visualPrescriptionSchema = z.object({
+	blockId: z.string().describe('Stable block id from report plan.'),
+	title: z.string().describe('Block display title.'),
+	audiencePrecision: audiencePrecisionSchema.optional().describe('Who consumes: scan or analyst.'),
+	dataType: visualDataTypeSchema.optional().describe('Qualitative, quantitative, or mixed.'),
+	needVisual: z.boolean().describe('Whether this block should include a diagram.'),
+	primary: visualDiagramPrescriptionSchema.optional().describe('Main diagram prescription.'),
+	secondary: visualDiagramPrescriptionSchema.optional().describe('Optional second diagram.'),
+	warnings: z.array(z.string()).optional().describe('e.g. avoid pie, prefer bar; qualitative → mindmap.'),
+});
+
+export type VisualPrescription = z.infer<typeof visualPrescriptionSchema>;
+
+/** Full visual blueprint produced by VisualBlueprintAgent. */
+export const reportVisualBlueprintSchema = z.object({
+	blocks: z.array(visualPrescriptionSchema).default([]).describe('Per-block prescriptions.'),
+	globalStyleNotes: z.string().optional().describe('Global diversity/consistency notes.'),
+});
+
+export type ReportVisualBlueprint = z.infer<typeof reportVisualBlueprintSchema>;
+
+/** Input for submit_prescription_and_get_next tool. */
+export const submitPrescriptionInputSchema = z.object({
+	blockId: z.string().describe('Current block id.'),
+	title: z.string().optional().describe('Block title.'),
+	prescriptionMarkdown: z.string().optional().describe('Human-readable prescription.'),
+	prescription: visualPrescriptionSchema.optional().describe('Structured prescription.'),
+	status: z.enum(['draft', 'final']).optional().default('final').describe('final = done with this block, advance to next.'),
+});
+
+export type SubmitPrescriptionInput = z.infer<typeof submitPrescriptionInputSchema>;
+
+/** Tool return: next block to prescribe or done. */
+export interface SubmitPrescriptionOutput {
+	nextBlockId: string | null;
+	nextRequirementsMarkdown: string;
+	done: boolean;
+}
 
 // ----- dashboard update tools -----
 /** Placeholder string for empty/untitled fields. Used in schemas only. */

@@ -83,7 +83,7 @@ export type FinalSourcesReasonRefineContext = {
 export type FinalRefineContext = (FinalSourcesScoreRefineContext | FinalSourcesReasonRefineContext) & {
     analysisMode: AnalysisMode;
     originalQuery: string;
-    /** Verified fact sheet (evidence pack) for scoring/refining sources; from getDossierForSummary(). */
+    /** Verified fact sheet (evidence pack) for scoring/refining sources; from context.getVerifiedFactSheet(). */
     evidencePack: string;
 };
 
@@ -91,6 +91,7 @@ export type FinalRefineContext = (FinalSourcesScoreRefineContext | FinalSourcesR
  * Single LLM pass to refine sources (reorder, add reasoning) and graph (add concept/tag nodes and edges).
  * Emits graph updates as one-patch-per-node so the UI can animate node-by-node.
  * Uses getModelForPrompt(AiAnalysisFinalRefine).
+ * @deprecated
  */
 export class FinalRefineAgent {
     private readonly aiServiceManager: AIServiceManager;
@@ -200,10 +201,9 @@ export class FinalRefineAgent {
             analysisMode = 'vaultFull',
         } = opts ?? {};
         const stepId = generateUuidWithoutHyphens();
-        const dossier = this.context.getDossierForSummary();
-        const evidencePack = dossier.verifiedFactSheet || '(No verified facts yet.)';
+        const evidencePack = this.context.getVerifiedFactSheet().join('\n') || '(No verified facts yet.)';
 
-        const sources = this.context.getAgentResult().sources;
+        const sources = this.context.getSources();
         const totalSources = sources.length;
 
         // Phase 1: batch source scores (no reasoning)
@@ -222,7 +222,7 @@ export class FinalRefineAgent {
         }
 
         // Get current sources and refine those above the adaptive threshold
-        const currentSources = this.context.getAgentResult().sources;
+        const currentSources = this.context.getSources();
         if (currentSources.length <= 0) {
             return;
         }

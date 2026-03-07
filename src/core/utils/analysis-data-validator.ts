@@ -83,7 +83,7 @@ export async function validateAnalysisData(result: SearchAgentResult): Promise<V
     }
 
     let overviewMermaidError: string | undefined;
-    const overview = (result.overviewMermaid ?? '').trim();
+    const overview = (result.evidenceMermaidOverviewAgent ?? '').trim();
     if (overview) {
         const v = await validateMermaidCode(overview);
         if (!v.valid) overviewMermaidError = v.error;

@@ -42,7 +42,8 @@ export function clearBuildResponseCompileCache(): void {
 /** Helper names we register; unregister on unload so HandlebarsEnvironment can release _exception2 and error refs. */
 const REGISTERED_HELPER_NAMES = [
 	'join', 'humanReadableTime', 'eq', 'gt', 'lt', 'gte', 'lte',
-	'formatNodeLabel', 'hasNodeType', 'inc', 'toYaml', 'similarLabel', 'lookup', 'nonEmpty'
+	'take', 'toJson',
+	'formatNodeLabel', 'hasNodeType', 'inc', 'toYaml', 'similarLabel', 'lookup', 'nonEmpty', 'flattenEvidenceFacts'
 ];
 
 /**
@@ -84,6 +85,28 @@ export function registerTemplateEngineHelpers() {
     Handlebars.registerHelper('join', (array: unknown[] | unknown, separator: string) =>
         Array.isArray(array) ? array.join(separator ?? ',') : String(array ?? '')
     );
+    /** Take first N items from an array; returns [] for non-array inputs. */
+    Handlebars.registerHelper('take', (arr: unknown, n: number) => {
+        if (!Array.isArray(arr)) return [];
+        const limit = typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+        return arr.slice(0, limit);
+    });
+    /** Truncate string to maxLen chars; append "..." if truncated. */
+    Handlebars.registerHelper('truncate', (str: unknown, maxLen: number) => {
+        const s = typeof str === 'string' ? str : String(str ?? '');
+        const len = typeof maxLen === 'number' ? maxLen : 300;
+        if (s.length <= len) return s;
+        return s.slice(0, len) + '...';
+    });
+    /** JSON.stringify for objects/arrays; returns empty string for non-values. */
+    Handlebars.registerHelper('toJson', (value: unknown) => {
+        if (value === undefined || value === null) return '';
+        try {
+            return JSON.stringify(value, null, 2);
+        } catch {
+            return String(value);
+        }
+    });
     Handlebars.registerHelper('humanReadableTime', function (timestamp: number) {
         return timestamp ? humanReadableTime(timestamp) : 'N/A';
     });
@@ -115,6 +138,23 @@ export function registerTemplateEngineHelpers() {
     });
     /** True only when value is an array with at least one element (use for {{#if (nonEmpty children)}}). */
     Handlebars.registerHelper('nonEmpty', (arr: unknown) => Array.isArray(arr) && arr.length > 0);
+    /** Flatten evidence packs to fact-only entries for templates: [{ n, claim, sourceId }]. No summary or fallback logic; template should output summary per pack. */
+    Handlebars.registerHelper('flattenEvidenceFacts', (packs: unknown) => {
+        if (!Array.isArray(packs)) return [];
+        const out: Array<{ n: number; claim: string; sourceId: string }> = [];
+        let n = 0;
+        for (let i = 0; i < packs.length; i++) {
+            const p = packs[i] as { facts?: Array<{ claim?: string }> };
+            const sourceId = `S${i + 1}`;
+            const facts = Array.isArray(p?.facts) ? p.facts : [];
+            for (const f of facts) {
+                n++;
+                const claim = (f?.claim ?? '').trim();
+                out.push({ n, claim, sourceId });
+            }
+        }
+        return out;
+    });
     Handlebars.registerHelper('formatNodeLabel', function (label, type) {
         switch (type) {
             case 'tag':

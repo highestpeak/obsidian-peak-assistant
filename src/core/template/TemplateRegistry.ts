@@ -29,6 +29,7 @@ export const AgentTemplateId = {
 	ResultSnapshot: 'result-snapshot',
 	EvidenceHint: 'evidence-hint',
 	EvidenceGroupSharedContext: 'evidence-group-shared-context',
+	ReportBlockBlueprintLine: 'report-block-blueprint-line',
 } as const;
 
 export type AgentTemplateId = (typeof AgentTemplateId)[keyof typeof AgentTemplateId];
@@ -114,8 +115,11 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-dimension-evidence-batch': meta('prompts', 'ai-analysis-dimension-evidence-batch', { systemPromptId: 'ai-analysis-dimension-evidence-system' as PromptId }),
 	'ai-analysis-summary-system': meta('prompts', 'ai-analysis-dashboard-result-summary-system'),
 	'search-ai-summary': meta('prompts', 'ai-analysis-dashboard-result-summary', { systemPromptId: 'ai-analysis-summary-system' as PromptId }),
-	'ai-analysis-overview-mermaid-system': meta('prompts', 'ai-analysis-dashboard-overview-mermaid-system'),
-	'ai-analysis-overview-mermaid': meta('prompts', 'ai-analysis-dashboard-overview-mermaid', { systemPromptId: 'ai-analysis-overview-mermaid-system' as PromptId }),
+	'ai-analysis-overview-regenerate': meta('prompts', 'ai-analysis-overview-regenerate'),
+	'ai-analysis-overview-logic-model-system': meta('prompts', 'ai-analysis-overview-logic-model-system'),
+	'ai-analysis-overview-logic-model': meta('prompts', 'ai-analysis-overview-logic-model', { expectsJson: true, jsonConstraint: 'Return only the JSON object, no markdown or explanation.', systemPromptId: 'ai-analysis-overview-logic-model-system' as PromptId }),
+	'ai-analysis-overview-mermaid-render-system': meta('prompts', 'ai-analysis-overview-mermaid-render-system'),
+	'ai-analysis-overview-mermaid-render': meta('prompts', 'ai-analysis-overview-mermaid-render', { systemPromptId: 'ai-analysis-overview-mermaid-render-system' as PromptId }),
 	'ai-analysis-dashboard-update-topics-system': meta('prompts', 'ai-analysis-dashboard-update-topics-system'),
 	'ai-analysis-dashboard-update-topics': meta('prompts', 'ai-analysis-dashboard-update-topics', { systemPromptId: 'ai-analysis-dashboard-update-topics-system' as PromptId }),
 	'ai-analysis-dashboard-update-blocks-system': meta('prompts', 'ai-analysis-dashboard-update-blocks-system'),
@@ -124,6 +128,14 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-review-blocks': meta('prompts', 'ai-analysis-review-blocks', { systemPromptId: 'ai-analysis-review-blocks-system' as PromptId }),
 	'ai-analysis-dashboard-update-plan-system': meta('prompts', 'ai-analysis-dashboard-update-plan-system'),
 	'ai-analysis-dashboard-update-plan': meta('prompts', 'ai-analysis-dashboard-update-plan', { systemPromptId: 'ai-analysis-dashboard-update-plan-system' as PromptId }),
+	'ai-analysis-report-plan-system': meta('prompts', 'ai-analysis-report-plan-system'),
+	'ai-analysis-report-plan': meta('prompts', 'ai-analysis-report-plan', { systemPromptId: 'ai-analysis-report-plan-system' as PromptId }),
+	'ai-analysis-visual-blueprint-system': meta('prompts', 'ai-analysis-visual-blueprint-system'),
+	'ai-analysis-visual-blueprint': meta('prompts', 'ai-analysis-visual-blueprint', { systemPromptId: 'ai-analysis-visual-blueprint-system' as PromptId }),
+	'ai-analysis-report-body-blocks-system': meta('prompts', 'ai-analysis-report-body-blocks-system'),
+	'ai-analysis-report-body-blocks': meta('prompts', 'ai-analysis-report-body-blocks', { systemPromptId: 'ai-analysis-report-body-blocks-system' as PromptId }),
+	'ai-analysis-report-appendices-blocks-system': meta('prompts', 'ai-analysis-report-appendices-blocks-system'),
+	'ai-analysis-report-appendices-blocks': meta('prompts', 'ai-analysis-report-appendices-blocks', { systemPromptId: 'ai-analysis-report-appendices-blocks-system' as PromptId }),
 	'ai-analysis-mermaid-fix-system': meta('prompts', 'ai-analysis-mermaid-fix-system'),
 	'ai-analysis-mermaid-fix': meta('prompts', 'ai-analysis-mermaid-fix', { systemPromptId: 'ai-analysis-mermaid-fix-system' as PromptId }),
 	'ai-analysis-final-refine-system': meta('prompts', 'ai-analysis-final-refine-system'),
@@ -157,6 +169,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[AgentTemplateId.ResultSnapshot]: meta('agents', 'result-snapshot'),
 	[AgentTemplateId.EvidenceHint]: meta('agents', 'evidence-hint'),
 	[AgentTemplateId.EvidenceGroupSharedContext]: meta('agents', 'evidence-group-shared-context'),
+	[AgentTemplateId.ReportBlockBlueprintLine]: meta('agents', 'report-block-blueprint-line'),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {

@@ -1,4 +1,5 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import {
 	Streamdown,
@@ -6,8 +7,16 @@ import {
 	defaultRemarkPlugins,
 } from 'streamdown';
 import type { PluggableList } from 'unified';
+import { AppContext } from '@/app/context/AppContext';
 import { STREAMDOWN_ISOLATED_CSS } from '@/styles/streamdown-isolated-css';
 import { remarkWikilink } from './streamdown';
+import {
+	loadWikilinkPreview,
+	parseWikilinkHrefToPath,
+	resolveWikilinkTargetToPath,
+	WikilinkHoverCard,
+	type PreviewResult,
+} from './streamdown/WikilinkHoverPreview';
 import { mermaid } from "@streamdown/mermaid";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
@@ -38,6 +47,17 @@ function injectMermaidPart(shadowRoot: ShadowRoot): void {
 	});
 }
 
+/** Get wikilink href from an element (same logic as click handler). */
+function getWikilinkHref(el: HTMLElement): string | null {
+	let href = el.getAttribute?.('href') ?? el.getAttribute?.('data-href') ?? '';
+	if (!href && el.getAttribute?.('data-streamdown') === 'link') {
+		const text = (el.textContent ?? '').trim();
+		const match = text.match(/^\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
+		if (match) href = `#peak-wikilink=${encodeURIComponent(match[1].trim())}`;
+	}
+	return href && parseWikilinkHrefToPath(href) !== null ? href : null;
+}
+
 /** Observe shadow DOM and inject part on mermaid blocks when they appear (initial + streaming). */
 function setupMermaidPartInjection(shadowRoot: ShadowRoot): () => void {
 	injectMermaidPart(shadowRoot);
@@ -49,11 +69,13 @@ function setupMermaidPartInjection(shadowRoot: ShadowRoot): () => void {
 /** Min length for STREAMDOWN_ISOLATED_CSS to be considered complete (host + streamdown Tailwind + KaTeX). */
 const MIN_ISOLATED_CSS_LENGTH = 5000;
 
-/** Allow wikilinks to open without Streamdown link-safety modal; other links still show modal. */
+/** Allow wikilinks and internal block anchors without Streamdown link-safety modal; other links still show modal. */
 const linkSafety = {
 	enabled: true,
 	onLinkCheck: (url: string) =>
-		url.startsWith('#peak-wikilink=') || url.startsWith('peak://wikilink/'),
+		url.startsWith('#peak-wikilink=') ||
+		url.startsWith('peak://wikilink/') ||
+		url.startsWith('#block-'),
 };
 
 /** Move Mermaid fullscreen overlay from shadow to body so it covers viewport. */
@@ -126,14 +148,24 @@ function FallbackStreamdown({
  */
 const DEBUG = false;
 
+const HOVER_DEBOUNCE_MS = 180;
+const HOVER_CLOSE_DELAY_MS = 100;
+
+type HoverState = { path: string; rect: DOMRect; preview: PreviewResult | null; loading: boolean };
+
 export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => {
 	const { children, isAnimating = false, className, onClick } = props;
 	const [useFallback, setUseFallback] = useState(false);
+	const [hoverState, setHoverState] = useState<HoverState | null>(null);
 	const hostRef = useRef<HTMLDivElement | null>(null);
 	const rootRef = useRef<Root | null>(null);
 	const cleanupRef = useRef<(() => void) | null>(null);
 	const onClickRef = useRef(onClick);
+	const setHoverStateRef = useRef(setHoverState);
+	const hoverDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const closeDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	onClickRef.current = onClick;
+	setHoverStateRef.current = setHoverState;
 
 	useLayoutEffect(() => {
 		if (useFallback) return;
@@ -212,10 +244,47 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 				cb(synthetic);
 			};
 			shadow.addEventListener('click', clickHandler, true);
+
+			const app = AppContext.getInstance().app;
+			const mouseoverHandler = (e: MouseEvent) => {
+				const path = e.composedPath?.() ?? [];
+				const link = path.find(
+					(n): n is HTMLElement =>
+						n instanceof HTMLElement &&
+						(n.tagName === 'A' || n.getAttribute?.('data-streamdown') === 'link')
+				);
+				if (!link) return;
+				const href = getWikilinkHref(link);
+				if (!href) return;
+				const raw = parseWikilinkHrefToPath(href);
+				if (!raw || raw.startsWith('#')) return;
+				const resolved = resolveWikilinkTargetToPath(raw, app);
+				if (!resolved) return;
+				const rect = link.getBoundingClientRect();
+				if (hoverDebounceRef.current) clearTimeout(hoverDebounceRef.current);
+				if (closeDelayRef.current) clearTimeout(closeDelayRef.current);
+				closeDelayRef.current = null;
+				hoverDebounceRef.current = setTimeout(() => {
+					setHoverStateRef.current?.({ path: resolved, rect, preview: null, loading: true });
+				}, HOVER_DEBOUNCE_MS);
+			};
+			const mouseoutHandler = () => {
+				if (hoverDebounceRef.current) {
+					clearTimeout(hoverDebounceRef.current);
+					hoverDebounceRef.current = null;
+				}
+				if (closeDelayRef.current) clearTimeout(closeDelayRef.current);
+				closeDelayRef.current = setTimeout(() => setHoverStateRef.current?.(null), HOVER_CLOSE_DELAY_MS);
+			};
+			shadow.addEventListener('mouseover', mouseoverHandler, true);
+			shadow.addEventListener('mouseout', mouseoutHandler, true);
+
 			const prevCleanup = cleanupRef.current;
 			cleanupRef.current = () => {
 				prevCleanup?.();
 				shadow.removeEventListener('click', clickHandler, true);
+				shadow.removeEventListener('mouseover', mouseoverHandler, true);
+				shadow.removeEventListener('mouseout', mouseoutHandler, true);
 			};
 			if (DEBUG) {
 				console.log(
@@ -234,6 +303,9 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 		return () => {
 			cleanupRef.current?.();
 			cleanupRef.current = null;
+			if (hoverDebounceRef.current) clearTimeout(hoverDebounceRef.current);
+			if (closeDelayRef.current) clearTimeout(closeDelayRef.current);
+			setHoverStateRef.current?.(null);
 			const root = (rootRef as React.MutableRefObject<Root | null>).current;
 			(rootRef as React.MutableRefObject<Root | null>).current = null;
 			if (root) {
@@ -295,6 +367,32 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 		}
 	}, [children, isAnimating, useFallback]);
 
+	// Load wikilink preview when hover target is set (shadow mode only).
+	useEffect(() => {
+		if (!hoverState?.path || useFallback) return;
+		const path = hoverState.path;
+		let cancelled = false;
+		const app = AppContext.getInstance().app;
+		loadWikilinkPreview(path, app).then((preview) => {
+			if (!cancelled)
+				setHoverState((prev) => (prev && prev.path === path ? { ...prev, preview, loading: false } : prev));
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [hoverState?.path, useFallback]);
+
+	const handleHoverClose = useCallback(() => {
+		if (closeDelayRef.current) clearTimeout(closeDelayRef.current);
+		closeDelayRef.current = null;
+		setHoverState(null);
+	}, []);
+
+	const handleEnterCard = useCallback(() => {
+		if (closeDelayRef.current) clearTimeout(closeDelayRef.current);
+		closeDelayRef.current = null;
+	}, []);
+
 	if (useFallback) {
 		if (DEBUG) {
 			console.log('[StreamdownIsolated] Using fallback (Light DOM).');
@@ -303,15 +401,29 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 	}
 
 	return (
-		<div
-			ref={(el) => {
-				(hostRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
-			}}
-			className={className}
-			data-streamdown-root
-			data-streamdown-mode="shadow"
-			style={{ display: 'block', minHeight: '1em' }}
-		/>
+		<>
+			<div
+				ref={(el) => {
+					(hostRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+				}}
+				className={className}
+				data-streamdown-root
+				data-streamdown-mode="shadow"
+				style={{ display: 'block', minHeight: '1em' }}
+			/>
+			{hoverState &&
+				createPortal(
+					<WikilinkHoverCard
+						path={hoverState.path}
+						preview={hoverState.preview}
+						loading={hoverState.loading}
+						rect={hoverState.rect}
+						onClose={handleHoverClose}
+						onEnterCard={handleEnterCard}
+					/>,
+					document.body
+				)}
+		</>
 	);
 };
 

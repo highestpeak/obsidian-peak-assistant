@@ -141,6 +141,14 @@ export const StreamingAnalysis: React.FC<{
 				</div>
 			) : null}
 
+			{/* Dashboard Blocks (consulting order: after Topics, before Sources) */}
+			{(dashboardBlocks?.length ?? 0) > 0 ? (
+				<div ref={sectionRefs?.dashboardBlocksRef} className="pktw-mt-4 pktw-scroll-mt-4 pktw-w-full">
+					<DashboardBlocksSection blocks={dashboardBlocks ?? []} isStreaming={!analysisCompleted} />
+				</div>
+			) : null}
+
+			{/* Sources (consulting order: last) */}
 			{dedupedSources.length > 0 ? (
 				<div ref={sectionRefs?.sourcesRef} className="pktw-scroll-mt-4">
 					<TopSourcesSection
@@ -149,13 +157,6 @@ export const StreamingAnalysis: React.FC<{
 						skipAnimation={!analysisCompleted}
 						graph={graph}
 					/>
-				</div>
-			) : null}
-
-			{/* Full-width Blocks below two columns (same layout as Completed) */}
-			{(dashboardBlocks?.length ?? 0) > 0 ? (
-				<div ref={sectionRefs?.dashboardBlocksRef} className="pktw-mt-4 pktw-scroll-mt-4 pktw-w-full">
-					<DashboardBlocksSection blocks={dashboardBlocks ?? []} isStreaming={!analysisCompleted} />
 				</div>
 			) : null}
 		</div>

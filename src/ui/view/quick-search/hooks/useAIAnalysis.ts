@@ -14,7 +14,7 @@ import { useSharedStore } from '@/ui/view/quick-search/store';
 import { setLastAnalysisHistorySearch, invalidateFollowupContextCache } from '../followupContextRuntime';
 import { AppContext } from '@/app/context/AppContext';
 import { SearchAgentResult } from '@/service/agents/AISearchAgent';
-import { mountSearchMemoryDebug, clearSearchMemoryDebug } from '@/service/agents/search-agent-helper/searchMemoryDebugMount';
+import { mountSearchMemoryDebug, clearSearchMemoryDebug } from '@/service/agents/search-agent-helper/helpers/searchMemoryDebugMount';
 import { LLMStreamEvent, StreamTriggerName, UISignalChannel } from '@/core/providers/types';
 import { checkIfDeltaEvent, getDeltaEventDeltaText } from '@/core/providers/helpers/stream-helper';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
@@ -208,8 +208,8 @@ export function useAIAnalysis() {
 		if (result.dashboardBlocks) setDashboardBlocks(result.dashboardBlocks);
 		if (result.topics) setTopics(result.topics);
 		if (result.sources) setSources(result.sources);
-		if (result.overviewMermaid !== undefined && result.overviewMermaid != null) {
-			pushOverviewMermaidVersion(result.overviewMermaid, { makeActive: true, dedupe: true });
+		if (result.evidenceMermaidOverviewAgent !== undefined && result.evidenceMermaidOverviewAgent != null) {
+			pushOverviewMermaidVersion(result.evidenceMermaidOverviewAgent, { makeActive: true, dedupe: true });
 		}
 		if (result.title !== undefined) setTitle(result.title ?? null);
 		if (result.suggestedFollowUpQuestions !== undefined) setSuggestedFollowUpQuestions(result.suggestedFollowUpQuestions ?? []);

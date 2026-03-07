@@ -7,6 +7,7 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { AgentContextManager } from './AgentContextManager';
+import { makeStepId, uiStepStart } from './helpers/search-ui-events';
 import { streamObject } from 'ai';
 import { PromptId } from '@/service/prompt/PromptId';
 import { getVaultDescription } from '@/service/tools/system-info';
@@ -36,9 +37,9 @@ function formatFunctionalTagsMapping(
 }
 
 export interface SlotRecallAgentOptions {
+	/** Root step id from AISearchAgent for unified stepId tree. */
+	runStepId?: string;
 	vaultSkeleton?: string;
-
-	// debug option
 	skipSearch?: boolean;
 }
 
@@ -62,23 +63,23 @@ export class SlotRecallAgent {
 	 * 2) yield "Running parallel recall...", run pipeline.
 	 */
 	async *stream(opts?: SlotRecallAgentOptions): AsyncGenerator<LLMStreamEvent> {
-		const stepId = generateUuidWithoutHyphens();
+		const runStepId = opts?.runStepId ?? generateUuidWithoutHyphens();
 		const streamStartTime = Date.now();
 
-		yield {
-			type: 'ui-step',
-			uiType: UIStepType.STEPS_DISPLAY,
-			stepId,
-			title: 'Classifying query...',
-			description: '',
-			triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT,
-			triggerTimestamp: Date.now(),
-		};
+		yield uiStepStart(
+			{ runStepId, stage: 'classify' as const, agent: 'SlotRecallAgent' },
+			{
+				title: 'Classifying query…',
+				description: '',
+				triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT,
+			}
+		);
 
 		let queryClassify: QueryClassifierOutput = defaultClassify;
 		try {
 			yield* this.classifyQuery({
-				stepId,
+				runStepId,
+				stepId: undefined,
 				vaultSkeleton: opts?.vaultSkeleton,
 				onClassifyFinish: (p) => { queryClassify = p; },
 			});
@@ -91,14 +92,16 @@ export class SlotRecallAgent {
 			queryClassify = defaultClassify;
 		}
 
-		yield {
-			type: 'ui-step',
-			uiType: UIStepType.STEPS_DISPLAY,
-			stepId,
-			title: 'Running parallel recall...',
-			description: '',
-			triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT,
-		};
+		this.context.setUserPersonaConfig(queryClassify.user_persona_config ?? undefined);
+
+		yield uiStepStart(
+			{ runStepId, stage: 'recon' as const, agent: 'SlotRecallAgent' },
+			{
+				title: 'Running parallel recall…',
+				description: '',
+				triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT,
+			}
+		);
 
 		yield {
 			type: 'pk-debug',
@@ -118,10 +121,11 @@ export class SlotRecallAgent {
 		this.context.setRecallDimensions(dimensions);
 		const evidencePacks: EvidencePack[] = [];
 		yield* this.rawSearchAgent.streamSearch({
+			runStepId,
 			dimensions,
 			onAllEvidenceFinish: (p) => {
 				evidencePacks.push(...p);
-			}
+			},
 		});
 		yield {
 			type: 'pk-debug',
@@ -140,12 +144,16 @@ export class SlotRecallAgent {
 
 	private async *classifyQuery(
 		options?: {
+			runStepId?: string;
 			vaultSkeleton?: string;
 			stepId?: string;
 			onClassifyFinish?: (classifierOutput: QueryClassifierOutput) => void;
 		}
 	): AsyncGenerator<LLMStreamEvent> {
-		const stepId = options?.stepId ?? generateUuidWithoutHyphens();
+		const meta = options?.runStepId
+			? { runStepId: options.runStepId, stage: 'classify' as const, agent: 'SlotRecallAgent' }
+			: null;
+		const stepId = meta ? makeStepId(meta) : (options?.stepId ?? generateUuidWithoutHyphens());
 
 		const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisQueryClassifier);
 		const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});

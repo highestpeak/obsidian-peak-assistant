@@ -70,9 +70,9 @@ export class TopicsUpdateAgent {
         const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisDashboardUpdateTopics);
         const originalQuery = this.context.getInitialPrompt() ?? '';
         const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
-        const hasTopics = this.context.getAgentResult().topics?.length ?? 0 > 0;
-        const dossier = this.context.getDossierForSummary();
-        const confirmedFactsList = dossier.confirmedFacts ?? [];
+        const topics = this.context.getTopics();
+        const hasTopics = (topics?.length ?? 0) > 0;
+        const confirmedFactsList = this.context.getConfirmedFacts();
         const confirmedFactsText =
             confirmedFactsList.length > 0
                 ? confirmedFactsList.map((f, i) => `Fact #${i + 1}: ${f}`).join('\n')
@@ -82,7 +82,7 @@ export class TopicsUpdateAgent {
             originalQuery,
             topicPlan: topicPlan,
             confirmedFacts: confirmedFactsText,
-            currentTopics: hasTopics ? JSON.stringify(this.context.getAgentResult().topics) : undefined,
+            currentTopics: hasTopics ? JSON.stringify(topics) : undefined,
             ...(errorRetryInfo ? { errorRetryInfo } : {}),
             toolFormatGuidance: getTopicToolFormatGuidance(),
         });

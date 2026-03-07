@@ -1,5 +1,5 @@
-import type { AISearchAgent } from '../AISearchAgent';
-import type { SearchMemoryDebugSnapshot } from './AgentContextManager';
+import type { AISearchAgent } from '../../AISearchAgent';
+import type { SearchMemoryDebugSnapshot } from '../AgentContextManager';
 
 const WINDOW_KEY = '__peakSearchDebug' as const;
 

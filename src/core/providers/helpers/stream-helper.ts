@@ -62,6 +62,44 @@ export function accumulateTokenUsage(event: LLMStreamEvent, accumulateFunc: (usa
 }
 
 /**
+ * Run multiple async generators with a concurrency limit; yield events as they arrive (merge order).
+ */
+export async function* mergeStreamsWithConcurrency<T>(
+    limit: number,
+    factories: Array<() => AsyncGenerator<T>>,
+): AsyncGenerator<T> {
+    const queue = [...factories];
+    type PoolEntry = { gen: AsyncGenerator<T>; next: Promise<IteratorResult<T>> };
+    const pool: PoolEntry[] = [];
+
+    function startNext(): boolean {
+        if (queue.length === 0) return false;
+        const factory = queue.shift()!;
+        const gen = factory();
+        pool.push({ gen, next: gen.next() });
+        return true;
+    }
+
+    for (let i = 0; i < limit && queue.length > 0; i++) {
+        startNext();
+    }
+
+    while (pool.length > 0) {
+        const { index, result } = await Promise.race(
+            pool.map((p, i) => p.next.then((r) => ({ index: i, result: r }))),
+        );
+        const entry = pool[index]!;
+        if (result.done) {
+            pool.splice(index, 1);
+            startNext();
+        } else {
+            yield result.value;
+            entry.next = entry.gen.next();
+        }
+    }
+}
+
+/**
  * A generic stream retry wrapper. When retry is triggered, yields a pk-debug event with error info before the next attempt.
  */
 export async function* withRetryStream<TVariables>(
@@ -425,14 +463,34 @@ export function checkIfDeltaEvent(type: LLMStreamEvent['type']) {
 
 type ParallelEntry = { index: number; result: IteratorResult<LLMStreamEvent> };
 
+export type ParallelStreamOptions = {
+    /** When set with factories, run at most this many streams at a time; factories are started as slots free up. */
+    limit?: number;
+};
+
 /**
  * Merge multiple async generators of LLMStreamEvent into one; yields whenever any source yields.
- * Each source runs concurrently; events are interleaved by completion order.
- * Yields `parallel-stream-progress` events when the set of completed streams changes (initial 0/N and each completion).
+ *
+ * - **Default** (single arg: array of generators): all run concurrently; yields `parallel-stream-progress` on completion changes.
+ * - **With options** (factories + `options: { limit: N }`): at most N streams at a time; factories created on demand; still yields `parallel-stream-progress`.
  */
 export async function* parallelStream(
-    streamGenerator: AsyncGenerator<LLMStreamEvent>[],
+    sourcesOrFactories: AsyncGenerator<LLMStreamEvent>[] | Array<() => AsyncGenerator<LLMStreamEvent>>,
+    options?: ParallelStreamOptions,
 ): AsyncGenerator<LLMStreamEvent> {
+    const useLimit = options != null && typeof options.limit === 'number';
+    const isFactories =
+        sourcesOrFactories.length > 0 && typeof (sourcesOrFactories as unknown[])[0] === 'function';
+
+    if (useLimit && isFactories) {
+        yield* parallelStreamWithLimit(
+            sourcesOrFactories as Array<() => AsyncGenerator<LLMStreamEvent>>,
+            options.limit!,
+        );
+        return;
+    }
+
+    const streamGenerator = sourcesOrFactories as AsyncGenerator<LLMStreamEvent>[];
     if (streamGenerator.length === 0) return;
 
     const total = streamGenerator.length;
@@ -464,6 +522,60 @@ export async function* parallelStream(
         } else {
             yield result.value;
             pending.set(index, runNext(index));
+        }
+    }
+}
+
+async function* parallelStreamWithLimit(
+    factories: Array<() => AsyncGenerator<LLMStreamEvent>>,
+    limit: number,
+): AsyncGenerator<LLMStreamEvent> {
+    if (factories.length === 0) return;
+
+    const total = factories.length;
+    const queue = [...factories];
+    let completed = 0;
+    type PoolEntry = {
+        gen: AsyncGenerator<LLMStreamEvent>;
+        next: Promise<{ entry: PoolEntry; result: IteratorResult<LLMStreamEvent> }>;
+    };
+    const pool: PoolEntry[] = [];
+
+    const yieldProgress = () =>
+        ({
+            type: 'parallel-stream-progress' as const,
+            completed,
+            total,
+        }) as LLMStreamEvent;
+
+    yield yieldProgress();
+
+    function startNext(): boolean {
+        if (queue.length === 0) return false;
+        const factory = queue.shift()!;
+        const gen = factory();
+        const entry: PoolEntry = {
+            gen,
+            next: gen.next().then((result) => ({ entry, result })),
+        };
+        pool.push(entry);
+        return true;
+    }
+
+    for (let i = 0; i < limit && queue.length > 0; i++) {
+        startNext();
+    }
+
+    while (pool.length > 0) {
+        const { entry, result } = await Promise.race(pool.map((p) => p.next));
+        if (result.done) {
+            pool.splice(pool.indexOf(entry), 1);
+            completed++;
+            yield yieldProgress();
+            startNext();
+        } else {
+            yield result.value;
+            entry.next = entry.gen.next().then((r) => ({ entry, result: r }));
         }
     }
 }

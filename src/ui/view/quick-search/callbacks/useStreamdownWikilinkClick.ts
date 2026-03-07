@@ -64,6 +64,14 @@ export function useStreamdownWikilinkClick(
 				const match = text.match(/^\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
 				if (match) href = `#peak-wikilink=${encodeURIComponent(match[1].trim())}`;
 			}
+			const isBlockAnchor = /^#block-[a-zA-Z0-9_-]+$/.test(href.trim());
+			if (isBlockAnchor) {
+				evt.preventDefault();
+				evt.stopPropagation();
+				const id = href.trim().slice(1);
+				document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				return;
+			}
 			const isHash = href.startsWith('#peak-wikilink=');
 			const isPeak = href.startsWith('peak://wikilink/');
 			const isObsidian = href.startsWith('obsidian://open');
