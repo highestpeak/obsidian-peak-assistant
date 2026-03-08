@@ -229,6 +229,13 @@ export function resolveModelCapabilities(model?: { capabilities?: ModelCapabilit
 	};
 }
 
+export interface ProviderOptionsConfig {
+	noReasoning?: boolean;
+	reasoningEffort?: 'low' | 'medium' | 'high';
+}
+
+export type ProviderOptions = Record<string, Record<string, JSONValue>>;
+
 export interface LLMProviderService {
 	blockChat(request: LLMRequest<any>): Promise<LLMResponse>;
 	streamChat(request: LLMRequest<any>): AsyncGenerator<LLMStreamEvent>;
@@ -238,8 +245,9 @@ export interface LLMProviderService {
 	getProviderId(): string;
 	/**
 	 * Get model client for this provider
+	 * openrouter can only set option when the model is created.
 	 */
-	modelClient(model: string): LanguageModel;
+	modelClient(model: string, optionConfig?: ProviderOptionsConfig): LanguageModel;
 	/**
 	 * Get list of available models for this provider
 	 * Returns empty array if models cannot be fetched or provider doesn't support listing
@@ -249,6 +257,12 @@ export interface LLMProviderService {
 	 * Get provider metadata (name and default baseUrl)
 	 */
 	getProviderMetadata(): ProviderMetaData;
+	/**
+	 * different providers may have different options.
+	 * we have so many places to get no reasoning options.
+	 * see ai-sdk type ProviderOptions = SharedV2ProviderOptions;
+	 */
+	getProviderOptions(optionConfig: ProviderOptionsConfig): ProviderOptions | undefined;
 	/**
 	 * Generate embeddings for texts.
 	 * @param texts - Array of texts to generate embeddings for

@@ -13,7 +13,7 @@
  * Run with: npx tsx src/core/storage/vault/search-docs/test/AiSearchAnalysisDoc.test.ts
  */
 
-import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock } from '@/service/agents/AISearchAgent';
+import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock, EvidenceIndex } from '@/service/agents/AISearchAgent';
 import { getMermaidInner } from '@/core/utils/mermaid-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { SearchResultItem } from '@/service/search/types';
@@ -29,6 +29,7 @@ const SECTION_OVERVIEW_HISTORY = '# Overview History';
 const SECTION_SLOT_MERMAID = '# Slot coverage';
 const SECTION_KEY_TOPICS = '# Key Topics';
 const SECTION_SOURCES = '# Sources';
+const SECTION_EVIDENCE = '# Evidence';
 const SECTION_TOPIC_INSPECT = '# Topic Inspect Results';
 const SECTION_TOPIC_EXPANSIONS = '# Topic Expansions';
 const SECTION_DASHBOARD = '# Dashboard Blocks';
@@ -98,6 +99,8 @@ export interface AiSearchAnalysisDocModel {
 	sourcesFollowups?: SectionAnalyzeResult[];
 	/** All completed UI steps for replay. */
 	steps?: UIStepRecord[];
+	/** Evidence by path for Sources Evidence view (claim/quote per file). Replay-only when loading from doc. */
+	evidenceIndex?: EvidenceIndex;
 	/** Overview diagram (raw Mermaid code). */
 	overviewMermaidActiveIndex?: number;
 	// all versions of overview mermaid
@@ -304,6 +307,7 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		: undefined;
 	const topicsText = extractSection(body, 'Key Topics');
 	const sourcesText = extractSection(body, 'Sources');
+	const evidenceText = extractSection(body, 'Evidence');
 	const inspectText = extractSection(body, 'Topic Inspect Results');
 	const expansionsText = extractSection(body, 'Topic Expansions');
 	const dashboardText = extractSection(body, 'Dashboard Blocks');
@@ -517,6 +521,19 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 	}
 	const sourcesFollowups = parseFollowupHistory(sourcesFollowupsText);
 
+	let evidenceIndex: EvidenceIndex | undefined;
+	try {
+		const raw = evidenceText.trim();
+		if (raw) {
+			const parsed = JSON.parse(raw) as EvidenceIndex;
+			if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+				evidenceIndex = parsed;
+			}
+		}
+	} catch {
+		// ignore invalid JSON
+	}
+
 	const steps: UIStepRecord[] = [];
 	const stepBlocks = stepsText.split(/\n###\s+Step\s+\d+:\s+/).filter(Boolean);
 	for (let i = 0; i < stepBlocks.length; i++) {
@@ -573,6 +590,7 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		blocksFollowups: blocksFollowups.length ? blocksFollowups : undefined,
 		blocksFollowupsByBlockId,
 		sourcesFollowups: sourcesFollowups.length ? sourcesFollowups : undefined,
+		evidenceIndex,
 		steps: steps.length ? steps : undefined,
 		overviewMermaidVersions: overviewMermaidVersions.length ? overviewMermaidVersions : undefined,
 		overviewMermaidActiveIndex: overviewMermaidVersions.length ? overviewMermaidActiveIndex : undefined,
@@ -781,6 +799,13 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 	}
 	lines.push('');
 
+	if (docModel.evidenceIndex && Object.keys(docModel.evidenceIndex).length > 0) {
+		lines.push(SECTION_EVIDENCE);
+		lines.push('');
+		lines.push(JSON.stringify(docModel.evidenceIndex));
+		lines.push('');
+	}
+
 	if (fullOnly && Object.keys(docModel.topicInspectResults).length > 0) {
 		lines.push(SECTION_TOPIC_INSPECT);
 		lines.push('');
@@ -905,6 +930,7 @@ export function toCompletedAnalysisSnapshot(
 		blocksFollowups: docModel.blocksFollowups,
 		blocksFollowupsByBlockId: docModel.blocksFollowupsByBlockId,
 		sourcesFollowups: docModel.sourcesFollowups,
+		evidenceIndex: docModel.evidenceIndex && Object.keys(docModel.evidenceIndex).length > 0 ? docModel.evidenceIndex : undefined,
 		steps: docModel.steps,
 		overviewMermaidVersions: docModel.overviewMermaidVersions?.length ? docModel.overviewMermaidVersions : undefined,
 		overviewMermaidActiveIndex: docModel.overviewMermaidVersions?.length ? (docModel.overviewMermaidActiveIndex ?? 0) : undefined,
@@ -962,6 +988,7 @@ export function fromCompletedAnalysisSnapshot(
 		blocksFollowups: snapshot.blocksFollowups,
 		blocksFollowupsByBlockId: snapshot.blocksFollowupsByBlockId,
 		sourcesFollowups: snapshot.sourcesFollowups,
+		evidenceIndex: snapshot.evidenceIndex && Object.keys(snapshot.evidenceIndex).length > 0 ? snapshot.evidenceIndex : undefined,
 		steps: snapshot.steps,
 		mindflowMermaid: snapshot.mindflowMermaid?.trim() ? snapshot.mindflowMermaid : undefined,
 	};

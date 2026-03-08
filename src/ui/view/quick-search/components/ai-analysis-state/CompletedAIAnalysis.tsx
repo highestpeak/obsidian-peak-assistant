@@ -58,6 +58,7 @@ export const CompletedAIAnalysis: React.FC<{
     const topics = useAIAnalysisResultStore((s) => s.topics);
     const dashboardBlocks = useAIAnalysisResultStore((s) => s.dashboardBlocks);
     const sources = useAIAnalysisResultStore((s) => s.sources);
+    const evidenceIndex = useAIAnalysisResultStore((s) => s.evidenceIndex);
     const overviewMermaidVersions = useAIAnalysisResultStore((s) => s.overviewMermaidVersions);
     const overviewMermaidActiveIndex = useAIAnalysisResultStore((s) => s.overviewMermaidActiveIndex);
     const setOverviewMermaidActiveIndex = useAIAnalysisResultStore((s) => s.setOverviewMermaidActiveIndex);
@@ -264,12 +265,13 @@ export const CompletedAIAnalysis: React.FC<{
             )}
 
             {/* Sources (consulting order: last in main report) */}
-            {dedupedSources.length > 0 && (
+            {(dedupedSources.length > 0 || Object.keys(evidenceIndex).some((p) => ((evidenceIndex[p]?.summaries?.length ?? 0) + (evidenceIndex[p]?.facts?.length ?? 0)) > 0)) && (
                 <div ref={sourcesRef} className="pktw-scroll-mt-24">
                     <TopSourcesSection
                         sources={convertSourcesToSearchResultItems(dedupedSources)}
                         onOpen={createOpenSourceCallback(onClose)}
                         skipAnimation={true}
+                        evidenceIndex={evidenceIndex}
                         graph={graph}
                     />
                 </div>

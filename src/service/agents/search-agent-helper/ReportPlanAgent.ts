@@ -130,9 +130,24 @@ export class ReportPlanAgent {
 
 		yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_REPORT_PLAN_AGENT, system, prompt);
 
+		const reportPlanMeta = { runStepId: stepId, stage: 'reportPlan' as const, agent: 'ReportPlanAgent' };
 		const result = this.textPlanAgent.stream({ system, prompt });
 		yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_REPORT_PLAN_AGENT, {
 			yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
+			yieldExtraAfterEvent: (chunk) => {
+				if (chunk.type === 'tool-result' && (chunk as { toolName?: string }).toolName === 'submit_phase_and_get_next_to_plan') {
+					const input = (chunk as { input?: { phaseId?: string } }).input;
+					return uiStageSignal(reportPlanMeta, {
+						status: 'progress',
+						payload: {
+							phaseId: input?.phaseId,
+							index: this.phasePlans.length,
+							total: REPORT_PLAN_PHASE_IDS.length,
+						},
+						triggerName: StreamTriggerName.SEARCH_REPORT_PLAN_AGENT,
+					});
+				}
+			},
 		});
 
 		const reportPlan = this.buildReportPlanFromPhases();

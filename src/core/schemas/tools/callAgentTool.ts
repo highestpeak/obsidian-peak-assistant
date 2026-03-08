@@ -28,7 +28,7 @@ export function makeCallAgentToolInputSchema(
 ) {
 	const base = z.object({
 		prompt: z.string().min(1, "prompt is required.").describe("Query or prompt for this agent call"),
-		reasoning_before_call: z.string().optional().default("").describe("Why this call is needed; will be recorded to Chain"),
+		reasoning_before_call: z.string().nullable().default("").describe("Why this call is needed; will be recorded to Chain"),
 	});
 
 	const patterns = options?.forbidDialoguePatterns;

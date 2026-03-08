@@ -8,6 +8,8 @@ import {
 	ModelTokenLimits,
 	ModelCapabilities,
 	ModelType,
+	ProviderOptions,
+	ProviderOptionsConfig,
 } from '../types';
 import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai';
 import { embedMany, type EmbeddingModel, type LanguageModel } from 'ai';
@@ -275,6 +277,14 @@ export class OpenAIChatService implements LLMProviderService {
 			name: 'OpenAI',
 			defaultBaseUrl: OPENAI_DEFAULT_BASE,
 			icon: 'openai',
+		};
+	}
+
+	getProviderOptions(optionConfig: ProviderOptionsConfig): ProviderOptions | undefined {
+		return {
+			openai: {
+				reasoningEffort: optionConfig.noReasoning ? 'none' : optionConfig.reasoningEffort ?? 'medium',
+			},
 		};
 	}
 

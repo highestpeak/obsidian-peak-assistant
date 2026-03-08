@@ -69,24 +69,22 @@ export type SemanticDimensionId = z.infer<typeof semanticDimensionIdsEnum>;
 
 export type AllDimensionId = (typeof ALL_DIMENSION_IDS)[number];
 
-/** Reusable scope for a dimension (path, tags, anchor_entity). */
+/** Reusable scope for a dimension (path, tags, anchor_entity). Nullable for Azure/OpenRouter (required key, value object | null). */
 const scopeConstraintSchema = z
 	.object({
-		path: z.string().optional().describe('Folder or file path to lock this dimension to.'),
+		path: z.string().describe('Folder or file path to lock this dimension to; use "" when none.'),
 		tags: z
 			.array(z.string())
-			.optional()
 			.describe(
-				'Topic tags (what content is about) and/or functional tags (what role in answering). Prefer functional tags from the provided mapping for semantic main recall; topic tags as optional recall booster when query is vague.'
+				'Topic tags and/or functional tags for recall; use [] when none. Prefer functional tags from the provided mapping.'
 			),
 		anchor_entity: z
 			.string()
-			.optional()
 			.describe(
-				'Main subject/entity that this dimension is about. Agent 2 uses it as a retrieval hook.'
+				'Main subject/entity this dimension is about; use "" when none. Agent 2 uses it as a retrieval hook.'
 			),
 	})
-	.optional();
+	.nullable();
 
 /** One semantic dimension target: intent + scope + retrieval orientation. */
 const semanticDimensionChoiceSchema = z.object({
@@ -100,9 +98,9 @@ const semanticDimensionChoiceSchema = z.object({
 	scope_constraint: scopeConstraintSchema.describe('Search scope for this dimension.'),
 	retrieval_orientation: z
 		.enum(['relational', 'chronological', 'statistical', 'categorical'])
-		.optional()
+		.nullable()
 		.describe(
-			'Retrieval tendency: relational (links/paths), chronological (recent/history), statistical (data), categorical (definitions/tags).'
+			'Retrieval tendency: relational (links/paths), chronological (recent/history), statistical (data), categorical (definitions/tags). Use null when no preference.'
 		),
 });
 
@@ -175,10 +173,10 @@ export const queryClassifierOutputSchema = z.object({
 		),
 	user_persona_config: z
 		.object({
-			appeal: z.enum(USER_APPEAL_TYPES as unknown as [string, ...string[]]).optional().describe('User appeal type.'),
-			detail_level: z.enum(['concise', 'comprehensive', 'technical']).optional().default('comprehensive').describe('Output detail level.'),
+			appeal: z.enum(USER_APPEAL_TYPES as unknown as [string, ...string[]]).nullable().describe('User appeal type.'),
+			detail_level: z.enum(['concise', 'comprehensive', 'technical']).nullable().describe('Output detail level; use null for default.'),
 		})
-		.optional()
+		.nullable()
 		.describe('Global preference for summary style only.'),
 	is_cross_domain: z
 		.boolean()
@@ -197,9 +195,9 @@ export const dimensionChoiceSchema = z.object({
 	id: z.enum(ALL_DIMENSION_IDS),
 	intent_description: z.string().min(1),
 	scope_constraint: scopeConstraintSchema,
-	retrieval_orientation: z.enum(['relational', 'chronological', 'statistical', 'categorical']).optional(),
-	output_format: z.enum(['list', 'tree']).optional(),
-	mustIncludeKeywords: z.array(z.string()).optional(),
+	retrieval_orientation: z.enum(['relational', 'chronological', 'statistical', 'categorical']).nullable(),
+	output_format: z.enum(['list', 'tree']).nullable(),
+	mustIncludeKeywords: z.array(z.string()).nullable(),
 });
 export type DimensionChoice = z.infer<typeof dimensionChoiceSchema>;
 
@@ -207,17 +205,21 @@ export const defaultClassify: QueryClassifierOutput = {
 	semantic_dimensions: [
 		{
 			id: 'essence_definition',
-			intent_description: 'Semantic axis: Focuses on the core subject, concept, or content being queried. Used for “what is/topic/content” type questions and summarization of main points or purposes.'
+			intent_description: 'Semantic axis: Focuses on the core subject, concept, or content being queried. Used for “what is/topic/content” type questions and summarization of main points or purposes.',
+			scope_constraint: null,
+			retrieval_orientation: null,
 		}
 	],
 	topology_dimensions: [
 		{
-			intent_description: 'Topological breadth axis: Determines whether the query targets a "point" (a specific entity) or a "surface" (a set or collection). If it involves collections (such as all/list/directory/relationships), the Inventory_Mapping dimension is activated to enumerate all relevant entities/paths (highest priority).'
+			intent_description: 'Topological breadth axis: Determines whether the query targets a "point" (a specific entity) or a "surface" (a set or collection). If it involves collections (such as all/list/directory/relationships), the Inventory_Mapping dimension is activated to enumerate all relevant entities/paths (highest priority).',
+			scope_constraint: null,
 		}
 	],
 	temporal_dimensions: [
 		{
-			intent_description: 'Spatiotemporal dynamics axis: Determines if the query concerns "change/recent/evolution/comparison/trend". If so, the Delta_Comparison dimension is activated to focus on differences, versions, or historical shifts.'
+			intent_description: 'Spatiotemporal dynamics axis: Determines if the query concerns "change/recent/evolution/comparison/trend". If so, the Delta_Comparison dimension is activated to focus on differences, versions, or historical shifts.',
+			scope_constraint: null,
 		}
 	],
 	user_persona_config: {
@@ -231,16 +233,16 @@ export const defaultClassify: QueryClassifierOutput = {
 
 /** Battlefield assessment for RawSearch report. */
 export const battlefieldAssessmentSchema = z.object({
-	search_density: z.enum(['High', 'Medium', 'Low']).optional(),
-	match_quality: z.enum(['Exact', 'Fuzzy', 'None']).optional(),
-	suggestion: z.string().optional().describe('e.g. try visa-related tags or widen scope'),
+	search_density: z.enum(['High', 'Medium', 'Low']).nullable(),
+	match_quality: z.enum(['Exact', 'Fuzzy', 'None']).nullable(),
+	suggestion: z.string().nullable().describe('e.g. try visa-related tags or widen scope'),
 });
 
 /** Report from Recon Agent: tactical summary + leads + assessment. */
 export const rawSearchReportSchema = z.object({
 	tactical_summary: z.string().max(3500).describe('Up to 500 words: descriptive summary or preliminary inventory list; for topology use manifest style (list items with one-line intro each)'),
 	discovered_leads: z.array(z.string()).describe('Paths, file names, or entity names for deeper evidence collection (10–30 preferred)'),
-	battlefield_assessment: battlefieldAssessmentSchema.optional(),
+	battlefield_assessment: battlefieldAssessmentSchema.nullable(),
 });
 export type RawSearchReport = z.infer<typeof rawSearchReportSchema>;
 export type RawSearchReportWithDimension = { dimension: AllDimensionId; } & RawSearchReport;
@@ -249,7 +251,7 @@ export type RawSearchReportWithDimension = { dimension: AllDimensionId; } & RawS
 export const evidenceFactSchema = z.object({
 	claim: z.string().describe('One-sentence claim from the source'),
 	quote: z.string().describe('Exact quote supporting the claim'),
-	confidence: z.enum(['high', 'medium', 'low']).optional(),
+	confidence: z.enum(['high', 'medium', 'low']).nullable(),
 });
 
 /** One evidence pack: one source, summary + facts + snippet. */
@@ -258,9 +260,9 @@ export const evidencePackSchema = z.object({
 		tool: z.string().describe('Tool that produced this source (e.g. content_reader, local_search)'),
 		path_or_url: z.string().describe('File path or URL of the source'),
 	}),
-	summary: z.string().optional().describe('Short summary of this pack'),
+	summary: z.string().nullable().describe('Short summary of this pack'),
 	facts: z.array(evidenceFactSchema).describe('1–5 facts with claim+quote'),
-	snippet: z.object({ type: z.enum(['extract', 'condensed']), content: z.string() }).optional().describe('Key excerpt from source'),
+	snippet: z.object({ type: z.enum(['extract', 'condensed']), content: z.string() }).nullable().describe('Key excerpt from source'),
 });
 export type EvidencePack = z.infer<typeof evidencePackSchema>;
 
@@ -284,7 +286,7 @@ export const consolidatedTaskSchema = z.object({
 	),
 	extraction_focus: z.string().describe('Synthesized focus for Evidence Agent for this file'),
 	priority: z.enum(['Crucial', 'Secondary']).describe('Crucial if 3+ dimensions need it; Secondary or drop if marginal'),
-	task_load: z.enum(['high', 'medium', 'low']).optional().describe('For grouping and concurrency'),
+	task_load: z.enum(['high', 'medium', 'low']).nullable().describe('For grouping and concurrency'),
 });
 export type ConsolidatedTask = z.infer<typeof consolidatedTaskSchema>;
 
@@ -388,7 +390,7 @@ const OVERVIEW_NODES_MAX = 12;
 const overviewLogicModelNucleusSchema = z.object({
 	nodeIndex: z.number().int().min(0).describe('Index of the nucleus node in the nodes array (0-based); Mermaid phase will assign id N1, N2, ... by order'),
 	statement: z.string().describe('Core tension or central claim'),
-	hiddenOpposition: z.string().optional().describe('Implicit opposite (e.g. cost vs benefit)'),
+	hiddenOpposition: z.string().nullable().describe('Implicit opposite (e.g. cost vs benefit)'),
 });
 
 const overviewLogicModelNodeSchema = z.object({
@@ -397,7 +399,7 @@ const overviewLogicModelNodeSchema = z.object({
 	importance: z.number().min(0).max(10),
 	confidence: z.enum(['high', 'medium', 'low']),
 	sourceRefs: z.array(z.string()).describe('Fact refs e.g. F1, F2 or source ids'),
-	clusterId: z.string().optional(),
+	clusterId: z.string().nullable(),
 });
 
 const overviewLogicModelEdgeSchema = z.object({
@@ -405,7 +407,7 @@ const overviewLogicModelEdgeSchema = z.object({
 	toIndex: z.number().int().min(0),
 	relation: z.enum(OVERVIEW_EDGE_RELATIONS),
 	label: z.string().max(40),
-	rationaleFactRefs: z.array(z.string()).optional(),
+	rationaleFactRefs: z.array(z.string()).nullable(),
 });
 
 const overviewLogicModelClusterSchema = z.object({
@@ -419,14 +421,14 @@ const overviewLogicModelTimelineSchema = z.object({
 		phaseId: z.string(),
 		label: z.string(),
 		nodeIndices: z.array(z.number().int().min(0)),
-	})).optional(),
-}).optional();
+	})).nullable(),
+}).nullable();
 
 export const overviewLogicModelSchema = z.object({
 	nucleus: overviewLogicModelNucleusSchema,
 	nodes: z.array(overviewLogicModelNodeSchema).min(OVERVIEW_NODES_MIN).max(OVERVIEW_NODES_MAX),
 	edges: z.array(overviewLogicModelEdgeSchema),
-	clusters: z.array(overviewLogicModelClusterSchema).optional(),
+	clusters: z.array(overviewLogicModelClusterSchema).nullable(),
 	timeline: overviewLogicModelTimelineSchema,
 }).superRefine((data, ctx) => {
 	const hasConflictOrFeedback = data.edges.some(e => e.relation === 'conflict' || e.relation === 'feedback');
@@ -481,14 +483,14 @@ export const dashboardUpdatePlanSchema = z.object({
 	topicsPlan: z
 		.array(z.string())
 		.max(TOPICS_PLAN_MAX)
-		.optional()
+		.nullable()
 		.describe("5-50 short topic instructions; avoid exhaustive lists"),
 	blockPlan: z
 		.array(z.string())
 		.max(BLOCK_PLAN_MAX)
-		.optional()
+		.nullable()
 		.describe("3-12 block instructions"),
-	note: z.string().optional(),
+	note: z.string().nullable(),
 });
 
 export const submitTopicsPlanInputSchema = z
@@ -617,11 +619,11 @@ export const submitReportPhaseInputSchema = z.object({
 		),
 	dependencies: z
 		.array(z.string())
-		.optional()
+		.nullable()
 		.describe("BlockIds, Fact #N, or SourceIDs this section depends on."),
 	status: z
 		.enum(["draft", "final"])
-		.optional()
+		.nullable()
 		.default("final")
 		.describe(
 			"Use 'draft' to submit another page for the same phase (you receive the same phaseId again). Use 'final' when this phase has no more pages (you receive the next phase)."
@@ -642,11 +644,11 @@ export const bodyBlockSpecSchema = z.object({
 	blockId: z.string().describe("Stable id for this block (no colons); used for (#block-<id>) anchors."),
 	title: z.string().describe("Block display title."),
 	role: z.string().describe("Role: e.g. SCQA, methodology, pillar, recommendations, risks, next_actions, followup_questions."),
-	paragraphSkeleton: z.string().optional().describe("SCQA or narrative skeleton; bullet/paragraph structure."),
-	evidenceBinding: z.string().optional().describe("Fact #N, [[path]], or SourceID binding rules."),
-	chartOrTableShape: z.string().optional().describe("Table headers or mermaid diagram type + node/label hints."),
-	risksUncertaintyHint: z.string().optional().describe("Gaps, assumptions, or uncertainty to surface."),
-	wordTarget: z.number().optional().describe("Target word count (e.g. 300-500)."),
+	paragraphSkeleton: z.string().nullable().describe("SCQA or narrative skeleton; bullet/paragraph structure."),
+	evidenceBinding: z.string().nullable().describe("Fact #N, [[path]], or SourceID binding rules."),
+	chartOrTableShape: z.string().nullable().describe("Table headers or mermaid diagram type + node/label hints."),
+	risksUncertaintyHint: z.string().nullable().describe("Gaps, assumptions, or uncertainty to surface."),
+	wordTarget: z.number().nullable().describe("Target word count (e.g. 300-500)."),
 });
 
 export type BodyBlockSpec = z.infer<typeof bodyBlockSpecSchema>;
@@ -656,28 +658,28 @@ export const appendicesBlockSpecSchema = z.object({
 	blockId: z.string(),
 	title: z.string(),
 	role: z.string().describe("e.g. data_tables, sensitivity_analysis, methodology_deep_dive, glossary, references."),
-	contentHint: z.string().optional().describe("What to include; surprise-high markers if applicable."),
+	contentHint: z.string().nullable().describe("What to include; surprise-high markers if applicable."),
 });
 
 export type AppendicesBlockSpec = z.infer<typeof appendicesBlockSpecSchema>;
 
 /** Full report plan produced by ReportPlanAgent. */
 export const reportPlanSchema = z.object({
-	intentInsight: z.string().optional().describe("One paragraph: user subtext, assumed context, success criteria, confidence."),
+	intentInsight: z.string().nullable().describe("One paragraph: user subtext, assumed context, success criteria, confidence."),
 	summarySpec: z
 		.string()
-		.optional()
+		.nullable()
 		.describe("Constraints: ~1000 words, answer-first, key recommendations, 3-5 rationale bullets, so-what impact, block anchors."),
 	overviewMermaidSpec: z
 		.string()
-		.optional()
+		.nullable()
 		.describe("Top 10 core nodes; diagram type; node naming and citation rules."),
-	topicsSpec: z.string().optional().describe("3-6 MECE pillars; one conclusion + why + block refs per pillar."),
-	bodyBlocksSpec: z.array(bodyBlockSpecSchema).optional().default([]),
-	appendicesBlocksSpec: z.array(appendicesBlockSpecSchema).optional().default([]),
-	actionItemsSpec: z.string().optional().describe("TODO list rules from evidence next_action / implicitly suggested."),
-	followupQuestionsSpec: z.string().optional().describe("High-value follow-up rules: fill gaps, blind spots, alternatives."),
-	sourcesViewsSpec: z.string().optional().describe("List / graph / evidence cards generation; reuse SourcesSection where possible."),
+	topicsSpec: z.string().nullable().describe("3-6 MECE pillars; one conclusion + why + block refs per pillar."),
+	bodyBlocksSpec: z.array(bodyBlockSpecSchema).nullable().default([]),
+	appendicesBlocksSpec: z.array(appendicesBlockSpecSchema).nullable().default([]),
+	actionItemsSpec: z.string().nullable().describe("TODO list rules from evidence next_action / implicitly suggested."),
+	followupQuestionsSpec: z.string().nullable().describe("High-value follow-up rules: fill gaps, blind spots, alternatives."),
+	sourcesViewsSpec: z.string().nullable().describe("List / graph / evidence cards generation; reuse SourcesSection where possible."),
 });
 
 export type ReportPlan = z.infer<typeof reportPlanSchema>;
@@ -700,9 +702,9 @@ export type MermaidDiagramType = z.infer<typeof mermaidDiagramTypeSchema>;
 /** Single visual prescription: diagram type, reason, mapping, and execution hint. */
 export const visualDiagramPrescriptionSchema = z.object({
 	diagramType: mermaidDiagramTypeSchema.describe('Mermaid diagram type.'),
-	reason: z.string().optional().describe('Why this chart; guideline reference.'),
-	dataMapping: z.string().optional().describe('X/category, Y/size, or axis mapping.'),
-	mermaidDirectiveCard: z.string().optional().describe('Short instruction for section agent: syntax + constraints.'),
+	reason: z.string().nullable().describe('Why this chart; guideline reference.'),
+	dataMapping: z.string().nullable().describe('X/category, Y/size, or axis mapping.'),
+	mermaidDirectiveCard: z.string().nullable().describe('Short instruction for section agent: syntax + constraints.'),
 });
 
 export type VisualDiagramPrescription = z.infer<typeof visualDiagramPrescriptionSchema>;
@@ -719,12 +721,12 @@ export type VisualDataType = z.infer<typeof visualDataTypeSchema>;
 export const visualPrescriptionSchema = z.object({
 	blockId: z.string().describe('Stable block id from report plan.'),
 	title: z.string().describe('Block display title.'),
-	audiencePrecision: audiencePrecisionSchema.optional().describe('Who consumes: scan or analyst.'),
-	dataType: visualDataTypeSchema.optional().describe('Qualitative, quantitative, or mixed.'),
+	audiencePrecision: audiencePrecisionSchema.nullable().describe('Who consumes: scan or analyst.'),
+	dataType: visualDataTypeSchema.nullable().describe('Qualitative, quantitative, or mixed.'),
 	needVisual: z.boolean().describe('Whether this block should include a diagram.'),
-	primary: visualDiagramPrescriptionSchema.optional().describe('Main diagram prescription.'),
-	secondary: visualDiagramPrescriptionSchema.optional().describe('Optional second diagram.'),
-	warnings: z.array(z.string()).optional().describe('e.g. avoid pie, prefer bar; qualitative → mindmap.'),
+	primary: visualDiagramPrescriptionSchema.nullable().describe('Main diagram prescription.'),
+	secondary: visualDiagramPrescriptionSchema.nullable().describe('Optional second diagram.'),
+	warnings: z.array(z.string()).nullable().describe('e.g. avoid pie, prefer bar; qualitative → mindmap.'),
 });
 
 export type VisualPrescription = z.infer<typeof visualPrescriptionSchema>;
@@ -732,7 +734,7 @@ export type VisualPrescription = z.infer<typeof visualPrescriptionSchema>;
 /** Full visual blueprint produced by VisualBlueprintAgent. */
 export const reportVisualBlueprintSchema = z.object({
 	blocks: z.array(visualPrescriptionSchema).default([]).describe('Per-block prescriptions.'),
-	globalStyleNotes: z.string().optional().describe('Global diversity/consistency notes.'),
+	globalStyleNotes: z.string().nullable().describe('Global diversity/consistency notes.'),
 });
 
 export type ReportVisualBlueprint = z.infer<typeof reportVisualBlueprintSchema>;
@@ -740,10 +742,10 @@ export type ReportVisualBlueprint = z.infer<typeof reportVisualBlueprintSchema>;
 /** Input for submit_prescription_and_get_next tool. */
 export const submitPrescriptionInputSchema = z.object({
 	blockId: z.string().describe('Current block id.'),
-	title: z.string().optional().describe('Block title.'),
-	prescriptionMarkdown: z.string().optional().describe('Human-readable prescription.'),
-	prescription: visualPrescriptionSchema.optional().describe('Structured prescription.'),
-	status: z.enum(['draft', 'final']).optional().default('final').describe('final = done with this block, advance to next.'),
+	title: z.string().nullable().describe('Block title.'),
+	prescriptionMarkdown: z.string().nullable().describe('Human-readable prescription.'),
+	prescription: visualPrescriptionSchema.nullable().describe('Structured prescription.'),
+	status: z.enum(['draft', 'final']).nullable().default('final').describe('final = done with this block, advance to next.'),
 });
 
 export type SubmitPrescriptionInput = z.infer<typeof submitPrescriptionInputSchema>;
@@ -822,9 +824,9 @@ export const DASHBOARD_BLOCK_CONTENT_SCHEMAS = {
 								`item:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 						),
 					title: z.string().default(DEFAULT_PLACEHOLDER),
-					description: z.string().optional(),
-					icon: z.string().optional(),
-					color: z.string().optional(),
+					description: z.string().nullable(),
+					icon: z.string().nullable(),
+					color: z.string().nullable(),
 				})
 			)
 			.min(1, "Items are required for TILE engine")
@@ -844,9 +846,9 @@ export const DASHBOARD_BLOCK_CONTENT_SCHEMAS = {
 								`item:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 						),
 					title: z.string().default(DEFAULT_PLACEHOLDER),
-					description: z.string().optional(),
-					icon: z.string().optional(),
-					color: z.string().optional(),
+					description: z.string().nullable(),
+					icon: z.string().nullable(),
+					color: z.string().nullable(),
 				})
 			)
 			.min(1, "Items are required for ACTION_GROUP engine")
@@ -880,13 +882,13 @@ export const topicItemSchema = z
 					.number()
 					.min(0)
 					.max(1)
-					.optional()
+					.nullable()
 					.describe(
 						"How important this topic is. eg: 0.5, 0.75, 1.0"
 					),
 				suggestQuestions: z
 					.array(z.string())
-					.optional()
+					.nullable()
 					.describe(
 						"Suggested questions to ask about this topic. " +
 						"Please provide at least 3 questions. at most 5 questions. Each question should be a single sentence no more than 10 words." +
@@ -990,7 +992,7 @@ export const graphNodeItemSchema = z
 			};
 		},
 		z.object({
-			id: z.string().optional(),
+			id: z.string().nullable(),
 			type: z
 				.string()
 				.default(DEFAULT_NODE_TYPE)
@@ -1005,7 +1007,7 @@ export const graphNodeItemSchema = z
 				),
 			path: z
 				.string()
-				.optional()
+				.nullable()
 				.describe(
 					`${FILE_NODE_TYPE.size > 0 ? Array.from(FILE_NODE_TYPE).join(", ") : "document"} nodes must have a valid path.`
 				),
@@ -1175,11 +1177,11 @@ export const graphEdgeItemSchema = z.preprocess(
 				),
 			source: z
 				.string()
-				.optional()
+				.nullable()
 				.describe("The source node id or path."),
 			target: z
 				.string()
-				.optional()
+				.nullable()
 				.describe("The target node id or path."),
 			type: z
 				.string()
@@ -1254,11 +1256,11 @@ export const sourceItemSchema = z
 			},
 			z
 				.object({
-					physical: z.number().min(0).max(100).optional(),
-					semantic: z.number().min(0).max(100).optional(),
-					average: z.number().min(0).max(100).optional(),
+					physical: z.number().min(0).max(100).nullable(),
+					semantic: z.number().min(0).max(100).nullable(),
+					average: z.number().min(0).max(100).nullable(),
 				})
-				.optional()
+				.nullable()
 		),
 	})
 	.superRefine((data, ctx) => {
@@ -1319,13 +1321,13 @@ export const dashboardBlockItemSchema = z.preprocess(
 				),
 			title: z
 				.string()
-				.optional()
+				.nullable()
 				.describe("The title of the block. It will be displayed."),
 			weight: z
 				.number()
 				.min(0)
 				.max(10)
-				.optional()
+				.nullable()
 				.describe(
 					"Used for grid layout. 0-10; 1-3 small, 4-6 medium, 7-10 full-width."
 				),

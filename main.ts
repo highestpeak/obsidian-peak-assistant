@@ -31,7 +31,7 @@ import { clearTemplateEngineForUnload } from '@/core/template-engine-helper';
 import { clearFormatUtilsCaches } from '@/core/utils/format-utils';
 import { getPluginDirAbsolute } from '@/core/utils/obsidian-utils';
 import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
-import { resetAIAnalysisAll, useAIAnalysisStore } from '@/ui/view/quick-search/store/aiAnalysisStore';
+import { resetAIAnalysisAll } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { useVaultSearchStore } from '@/ui/view/quick-search/store/vaultSearchStore';
 import { useSharedStore } from '@/ui/view/quick-search/store/sharedStore';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
@@ -278,7 +278,6 @@ export default class MyPlugin extends Plugin {
 			useGraphAnimationStore.getState().reset();
 			useChatViewStore.getState().reset();
 			resetAIAnalysisAll();
-			useAIAnalysisStore.getState().resetAnalysisState();
 		} catch (e) {
 			console.warn('[Peak Assistant] Store reset on unload:', e);
 		}

@@ -2,7 +2,7 @@ import { z } from "zod/v3";
 
 export const searchMemoryStoreInputSchema = z.object({
 	query: z.string().describe("Search query (keyword or phrase)"),
-	maxChars: z.number().min(100).max(8000).optional().describe("Max chars to return (default 4000)"),
+	maxChars: z.number().min(100).max(8000).nullable().describe("Max chars to return (default 4000)"),
 });
 
 export const getAnalysisMessageCountInputSchema = z.object({});
@@ -15,7 +15,7 @@ export function makeGetThoughtHistoryInputSchema(defaultMaxChars: number) {
 			.int()
 			.min(1000)
 			.max(20000)
-			.optional()
+			.nullable()
 			.describe(`Max chars to return (default ${defaultMaxChars})`),
 	});
 }

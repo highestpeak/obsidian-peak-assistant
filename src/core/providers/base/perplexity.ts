@@ -8,6 +8,8 @@ import {
 	ModelTokenLimits,
 	ModelCapabilities,
 	ModelType,
+	ProviderOptionsConfig,
+	ProviderOptions,
 } from '../types';
 import { createPerplexity, type PerplexityProvider } from '@ai-sdk/perplexity';
 import { type LanguageModel } from 'ai';
@@ -175,6 +177,10 @@ export class PerplexityChatService implements LLMProviderService {
 			defaultBaseUrl: PERPLEXITY_DEFAULT_BASE,
 			icon: 'perplexity',
 		};
+	}
+
+	getProviderOptions(optionConfig: ProviderOptionsConfig): ProviderOptions | undefined {
+		return undefined;
 	}
 
 	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {

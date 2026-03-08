@@ -62,7 +62,6 @@ export class DocSimpleAgent {
 		const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisDocSimpleSystem);
 		const outputControl = this.aiServiceManager.getSettings?.()?.defaultOutputControl;
 		const temperature = outputControl?.temperature ?? 0.3;
-		const maxOutputTokens = outputControl?.maxOutputTokens ?? 4096;
 
 		this.searchAgent = new Agent<DocSimpleToolSet>({
 			model: this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId),
@@ -83,7 +82,6 @@ export class DocSimpleAgent {
 				hasToolCall('submit_final_answer'),
 			],
 			temperature,
-			maxOutputTokens,
 		});
 	}
 

@@ -4,12 +4,12 @@
  */
 
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { streamObject } from 'ai';
+import { streamText, Output } from 'ai';
 import { PromptId } from '@/service/prompt/PromptId';
 import { groupContextItemSchema, type GroupContextItem } from '@/core/schemas/agents/search-agent-schemas';
 import type { ConsolidatedTaskWithId, DimensionChoice, EvidenceTaskGroup } from '@/core/schemas/agents/search-agent-schemas';
 import type { AgentContextManager } from './AgentContextManager';
-import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
+import { LLMStreamEvent, ProviderOptionsConfig, StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { buildPromptTraceDebugEvent, parallelStream, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { buildEvidenceGroupSharedContext } from './helpers/buildEvidenceGroupSharedContext';
@@ -19,7 +19,7 @@ export class GroupContextAgent {
 	constructor(
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly context: AgentContextManager,
-	) {}
+	) { }
 
 	/**
 	 * Run one stream per group in parallel; assemble EvidenceGroup[] and call onRefinementFinish when all done.
@@ -112,15 +112,21 @@ export class GroupContextAgent {
 			files,
 		});
 
+		const providerOptionsConfig: ProviderOptionsConfig = {
+			noReasoning: false,
+			reasoningEffort: 'low',
+		}
 		const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisGroupContextSingle);
-		const model = this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId);
-		const result = streamObject({
+		const model = this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId, providerOptionsConfig);
+		const providerOptions = this.aiServiceManager.getMultiChat().getProviderService(provider).getProviderOptions(providerOptionsConfig);
+		const result = streamText({
 			model,
-			schema: groupContextItemSchema,
-			schemaName: 'GroupContextItem',
-			schemaDescription: 'Topic anchor and group focus for this file group.',
 			system,
 			prompt,
+			providerOptions,
+			experimental_output: Output.object({
+				schema: groupContextItemSchema,
+			}),
 		});
 
 		yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR, system, prompt);
@@ -128,8 +134,8 @@ export class GroupContextAgent {
 			yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
 		});
 
-		const obj = await result.object;
-		const parsed = groupContextItemSchema.safeParse(obj);
+		const text = await result.text;
+		const parsed = groupContextItemSchema.safeParse(JSON.parse(text));
 		if (parsed.success) {
 			onFinish?.(parsed.data);
 		} else {

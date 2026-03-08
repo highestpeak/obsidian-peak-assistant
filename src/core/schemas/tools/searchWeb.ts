@@ -10,7 +10,7 @@ export const localWebSearchInputSchema = z.object({
 		.max(50, "Maximum number of results is 50")
 		.default(10)
 		.describe("Maximum number of results to return")
-		.optional(),
+		.nullable(),
 });
 
 /** Input schema for Perplexity web search tool. Pure schema only. */

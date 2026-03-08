@@ -10,7 +10,7 @@ import {
 } from '@/core/providers/helpers/stream-helper';
 import type { AgentContextManager } from './AgentContextManager';
 import { MermaidFixAgent } from './MermaidFixAgent';
-import { streamObject } from 'ai';
+import { streamText, Output } from 'ai';
 import { overviewLogicModelSchema, type OverviewLogicModel } from '@/core/schemas/agents/search-agent-schemas';
 import { getMermaidInner, sanitizeMermaidOverview } from '@/core/utils/mermaid-utils';
 import { validateMermaidCode } from '@/core/utils/analysis-data-validator';
@@ -184,31 +184,26 @@ export class EvidenceMermaidOverviewWeaveAgent {
 
 				const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisOverviewLogicModel);
 				const model = this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId);
-				const result = streamObject({
+				const result = streamText({
 					model,
-					schema: overviewLogicModelSchema,
-					schemaName: 'OverviewLogicModel',
-					schemaDescription: 'Logic map from evidence: nucleus, nodes, edges, clusters.',
 					system,
 					prompt,
+					experimental_output: Output.object({
+						schema: overviewLogicModelSchema,
+					}),
 				});
 
 				yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_OVERVIEW_MERMAID, {
 					yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
-					chunkEventInterceptor: (chunk) => {
-						if (chunk.type === 'finish') {
-							const raw = (chunk as { object?: unknown }).object;
-							const parsed = overviewLogicModelSchema.safeParse(raw);
-							if (parsed.success) {
-								out.model = parsed.data;
-								out.error = null;
-							} else {
-								out.error = parsed.error.message;
-							}
-						}
-					},
 				});
-				await result.object;
+				const text = await result.text;
+				const parsed = overviewLogicModelSchema.safeParse(JSON.parse(text));
+				if (parsed.success) {
+					out.model = parsed.data;
+					out.error = null;
+				} else {
+					out.error = parsed.error.message;
+				}
 			}.bind(this),
 			{
 				maxRetries: 1,

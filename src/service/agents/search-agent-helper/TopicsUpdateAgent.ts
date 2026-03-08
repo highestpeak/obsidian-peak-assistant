@@ -40,6 +40,7 @@ export class TopicsUpdateAgent {
 
         const tools: TopicsUpdateToolSet = {
             ...this.context.getAgentMemoryTool(),
+            // context injected by src/core/analysis-context-holder.ts
             update_topics: topicUpdateTool(),
         };
 

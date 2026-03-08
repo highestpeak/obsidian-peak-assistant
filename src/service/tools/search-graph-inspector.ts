@@ -125,6 +125,25 @@ export function exploreFolderTool(templateManager?: TemplateManager): AgentTool 
 }
 
 /**
+ * explore_folder variant that always returns Markdown.
+ * Useful for recon/breadth agents to prevent structured output from inflating context.
+ */
+export function exploreFolderToolMarkdownOnly(templateManager?: TemplateManager): AgentTool {
+    return safeAgentTool({
+        description:
+            `Inspect vault structure with spatial navigation (Markdown-only output). `
+            + `This tool will always return Markdown regardless of response_format.`,
+        inputSchema: exploreFolderInputSchema,
+        execute: async (params) => {
+            return await exploreFolder(
+                { ...params, response_format: 'markdown', mode: 'explore_folder' },
+                templateManager
+            );
+        }
+    });
+}
+
+/**
  * Tool 8: recent_changes_whole_vault
  */
 export function recentChangesWholeVaultTool(templateManager?: TemplateManager): AgentTool {

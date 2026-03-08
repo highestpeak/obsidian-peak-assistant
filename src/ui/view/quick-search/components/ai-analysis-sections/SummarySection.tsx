@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Sparkles, MessageCircle, Copy, Check } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { AnalysisTimer } from '../../../../component/mine/IntelligenceFrame';
@@ -32,32 +32,16 @@ export const SummaryContent: React.FC<{
 
     const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
     const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
-    const summaryChunks = useAIAnalysisSummaryStore((s) => s.summaryChunks);
+    const getSummary = useAIAnalysisSummaryStore((s) => s.getSummary);
+    const summaries = useAIAnalysisSummaryStore((s) => s.summaries);
+    const summaryVersion = useAIAnalysisSummaryStore((s) => s.summaryVersion);
+    const setSummary = useAIAnalysisSummaryStore((s) => s.setSummary);
+    const setSummaryVersion = useAIAnalysisSummaryStore((s) => s.setSummaryVersion);
 
-    // Memoize summary text calculation to avoid unnecessary joins on every render
-    const baseSummary = useMemo(() => summaryChunks.join(''), [summaryChunks]);
-    const [summaryVersions, setSummaryVersions] = useState<string[]>(() => (baseSummary ? [baseSummary] : []));
-    const [activeSummaryIndex, setActiveSummaryIndex] = useState(0);
-
-    useEffect(() => {
-        if (baseSummary && summaryVersions.length === 0) {
-            setSummaryVersions([baseSummary]);
-        }
-    }, [baseSummary]);
-    // Freeze final summary into version 0 when streaming completes
-    useEffect(() => {
-        if (!analysisCompleted || !baseSummary) return;
-        setSummaryVersions((prev) => {
-            if (prev.length === 0) return [baseSummary];
-            if (prev[0] === baseSummary) return prev;
-            return [baseSummary, ...prev.slice(1)];
-        });
-    }, [analysisCompleted, baseSummary]);
-    const summary = baseSummary;
-
+    const summaryFromStore = getSummary();
     const [streamingReplace, setStreamingReplace] = useState<string | null>(null);
 
-    const currentSummary = summaryVersions[activeSummaryIndex] ?? summary ?? '';
+    const currentSummary = summaryFromStore ?? '';
     const summaryFollowupConfig = useSummaryFollowupChatConfig({ summary: currentSummary });
 
     const onStreamingReplace = useCallback((text: string | null) => {
@@ -66,20 +50,12 @@ export const SummaryContent: React.FC<{
 
     const onApply = useCallback((answer: string, mode: 'append' | 'replace') => {
         if (mode === 'replace') {
-            setSummaryVersions((prev) => [...prev, answer]);
-            setActiveSummaryIndex((prev) => prev + 1);
+            setSummary(answer);
         }
         setStreamingReplace(null);
-    }, []);
+    }, [setSummary]);
 
-    // During streaming, always show live baseSummary; after completion use summaryVersions for history.
-    const displaySummary = streamingReplace != null
-        ? streamingReplace
-        : (isAnalyzing && !analysisCompleted)
-            ? summary
-            : (summaryVersions?.length && summaryVersions.length > 0)
-                ? (summaryVersions[activeSummaryIndex] ?? summary)
-                : summary;
+    const displaySummary = streamingReplace != null ? streamingReplace : summaryFromStore ?? '';
     // Wikilinks [[...]] are parsed by remarkWikilink in StreamdownIsolated; click handled by handleStreamdownClick.
     const renderedSummary = displaySummary;
 
@@ -114,30 +90,28 @@ export const SummaryContent: React.FC<{
                         {copied ? <Check className="pktw-w-4 pktw-h-4 pktw-text-green-600" /> : <Copy className="pktw-w-4 pktw-h-4 pktw-text-[#6c757d]" />}
                     </Button>
                 ) : null}
-                {summaryVersions ? (
+                {(summaries?.length ?? 0) > 0 ? (
                     <HoverCard openDelay={100} closeDelay={150}>
                         <HoverCardTrigger asChild>
-                            {/* Chat Again. Follow-up chat panel. */}
                             <Button
                                 variant="ghost"
                                 style={{ cursor: 'pointer' }}
                                 onClick={localToggleFollowup}
-                                className={`pktw-shadow-none pktw-rounded-md pktw-border pktw-opacity-40`}
+                                className="pktw-shadow-none pktw-rounded-md pktw-border pktw-opacity-40"
                                 size="icon"
                                 title={showSummaryFollowup ? 'Hide follow-up' : 'Open follow-up'}
                             >
                                 <MessageCircle className="pktw-w-5 pktw-h-5" />
                             </Button>
                         </HoverCardTrigger>
-                        {/* Version history */}
                         <HoverCardContent align="end" className="pktw-w-48 pktw-p-1 pktw-z-[10000] pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
-                            {summaryVersions.map((_, idx) => (
+                            {(summaries ?? []).map((_, idx) => (
                                 <Button
                                     key={idx}
                                     variant="ghost"
                                     style={{ cursor: 'pointer' }}
-                                    onClick={() => setActiveSummaryIndex(idx)}
-                                    className={`pktw-w-full pktw-justify-start pktw-px-2 pktw-py-1.5 pktw-text-sm pktw-font-normal pktw-shadow-none ${idx === activeSummaryIndex ? 'pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed]' : ''}`}
+                                    onClick={() => setSummaryVersion(idx + 1)}
+                                    className={`pktw-w-full pktw-justify-start pktw-px-2 pktw-py-1.5 pktw-text-sm pktw-font-normal pktw-shadow-none ${idx + 1 === summaryVersion ? 'pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed]' : ''}`}
                                 >
                                     {idx === 0 ? 'Original' : `After Q${idx}`}
                                 </Button>

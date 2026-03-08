@@ -166,9 +166,24 @@ export class VisualBlueprintAgent {
 		};
 		yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_VISUAL_BLUEPRINT_AGENT, system, prompt);
 
+		const visualMeta = { runStepId: stepId, stage: 'visualBlueprint' as const, agent: 'VisualBlueprintAgent' };
 		const result = this.visualBlueprintAgent.stream({ system, prompt });
 		yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_VISUAL_BLUEPRINT_AGENT, {
 			yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
+			yieldExtraAfterEvent: (chunk) => {
+				if (chunk.type === 'tool-result' && (chunk as { toolName?: string }).toolName === 'submit_prescription_and_get_next') {
+					const input = (chunk as { input?: { blockId?: string } }).input;
+					return uiStageSignal(visualMeta, {
+						status: 'progress',
+						payload: {
+							blockId: input?.blockId,
+							index: this.prescriptions.length,
+							total: blockPlanCounts,
+						},
+						triggerName: StreamTriggerName.SEARCH_VISUAL_BLUEPRINT_AGENT,
+					});
+				}
+			},
 		});
 
 		const blueprint: ReportVisualBlueprint = {

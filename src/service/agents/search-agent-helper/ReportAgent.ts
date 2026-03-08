@@ -1,7 +1,7 @@
 import { AIServiceManager } from "@/service/chat/service-manager";
 import { AgentContextManager } from "./AgentContextManager";
 import { LLMStreamEvent, StreamTriggerName, UIStepType } from "@/core/providers/types";
-import { mergeStreamsWithConcurrency } from "@/core/providers/helpers/stream-helper";
+import { mergeStreamsWithConcurrency, parallelStream } from "@/core/providers/helpers/stream-helper";
 import { AnalysisMode } from "../AISearchAgent";
 import { EvidenceMermaidOverviewWeaveAgent } from "./EvidenceMermaidOverviewWeaveAgent";
 import { ReportPlanAgent } from "./ReportPlanAgent";
@@ -11,6 +11,7 @@ import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
 import { PromptId } from "@/service/prompt/PromptId";
 import { type ReportBlockBlueprintItem } from "./helpers/report-block-plan-weaver";
 import { makeStepId, uiStageSignal } from "./helpers/search-ui-events";
+import { TopicsUpdateAgent } from "./TopicsUpdateAgent";
 
 const REPORT_BLOCK_CONCURRENCY = 3;
 
@@ -18,7 +19,7 @@ export class ReportAgent {
     private readonly evidenceMermaidOverviewWeaveAgent: EvidenceMermaidOverviewWeaveAgent;
     private readonly reportPlanAgent: ReportPlanAgent;
     private readonly summaryAgent: SummaryAgent;
-
+    private readonly topicsUpdateAgent: TopicsUpdateAgent;
     constructor(
         private readonly aiServiceManager: AIServiceManager,
         private readonly context: AgentContextManager,
@@ -26,6 +27,7 @@ export class ReportAgent {
         this.evidenceMermaidOverviewWeaveAgent = new EvidenceMermaidOverviewWeaveAgent({ aiServiceManager, context });
         this.reportPlanAgent = new ReportPlanAgent(aiServiceManager, context);
         this.summaryAgent = new SummaryAgent({ aiServiceManager, context });
+        this.topicsUpdateAgent = new TopicsUpdateAgent({ aiServiceManager, context });
     }
 
     public async *streamReport(opts: { analysisMode: AnalysisMode; runStepId?: string }): AsyncGenerator<LLMStreamEvent> {
@@ -48,6 +50,14 @@ export class ReportAgent {
                 return;
             }
         }
+
+        yield* parallelStream([
+            this.summaryAgent.streamTitle({ stepId: rootStepId }),
+            this.topicsUpdateAgent.stream(
+                [this.context.getReportPlan()?.topicsSpec ?? this.context.getVerifiedFactSheet().join('\n')],
+                rootStepId
+            ),
+        ])
 
         yield uiStageSignal(
             { runStepId: rootStepId, stage: 'reportBlock', agent: 'ReportAgent' },

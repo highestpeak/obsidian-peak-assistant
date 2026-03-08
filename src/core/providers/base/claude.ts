@@ -8,6 +8,8 @@ import {
 	ModelTokenLimits,
 	ModelCapabilities,
 	ModelType,
+	ProviderOptionsConfig,
+	ProviderOptions,
 } from '../types';
 import { createAnthropic, type AnthropicProvider } from '@ai-sdk/anthropic';
 import { type LanguageModel } from 'ai';
@@ -153,7 +155,7 @@ export class ClaudeChatService implements LLMProviderService {
 		return MODEL_ID_MAP[modelId]?.modelId || modelId;
 	}
 
-	modelClient(model: string): LanguageModel {
+	modelClient(model: string, optionConfig?: ProviderOptionsConfig): LanguageModel {
 		return this.client(this.normalizeModelId(model)) as unknown as LanguageModel;
 	}
 
@@ -186,6 +188,15 @@ export class ClaudeChatService implements LLMProviderService {
 			name: 'Anthropic',
 			defaultBaseUrl: CLAUDE_DEFAULT_BASE,
 			icon: 'anthropic',
+		};
+	}
+
+	getProviderOptions(optionConfig: ProviderOptionsConfig): ProviderOptions | undefined {
+		return {
+			anthropic: {
+				thinking: optionConfig.noReasoning ? 'disabled' : 'enabled',
+				effort: optionConfig.reasoningEffort ?? 'low',
+			},
 		};
 	}
 

@@ -3,9 +3,6 @@ import { AIServiceManager } from '../chat/service-manager';
 import { setCurrentAnalysisContext } from '@/core/analysis-context-holder';
 import { getUpdateResultHandlersMap } from './search-agent-helper/helpers/DashboardUpdateToolBuilder';
 import { AgentContextManager } from './search-agent-helper/AgentContextManager';
-import { SummaryAgent } from './search-agent-helper/SummaryAgent';
-import { DashboardAgent } from './search-agent-helper/DashboardAgent';
-import { FinalRefineAgent } from './search-agent-helper/FinalRefineAgent';
 import { SlotRecallAgent } from './search-agent-helper/SlotRecallAgent';
 import { DocSimpleAgent } from './search-agent-helper/DocSimpleAgent';
 import { accumulateTokenUsage } from '@/core/providers/helpers/stream-helper';
@@ -13,6 +10,7 @@ import { ReportAgent } from './search-agent-helper/ReportAgent';
 import type { ReportPlan, ReportVisualBlueprint } from '@/core/schemas/agents/search-agent-schemas';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { uiStageSignal, uiStepStart } from './search-agent-helper/helpers/search-ui-events';
+import { getFileNameFromPath, normalizeFilePath } from '@/core/utils/file-utils';
 
 /** docSimple = current note only; vaultSimple = vault search then summarize; vaultFull = deep vault analysis. */
 export type AnalysisMode = 'docSimple' | 'vaultSimple' | 'vaultFull';
@@ -113,6 +111,12 @@ export interface AISearchGraph {
     edges: AISearchEdge[];
 }
 
+/** Evidence index by path: summaries and facts (claim + quote) for Evidence view in Sources. */
+export type EvidenceIndex = Record<string, {
+    summaries: string[];
+    facts: Array<{ claim: string; quote: string; groupId?: string }>;
+}>;
+
 export interface SearchAgentResult {
     /** Short display title (generated at end of analysis). */
     title?: string;
@@ -128,6 +132,8 @@ export interface SearchAgentResult {
     reportPlan?: ReportPlan;
     /** Per-block visual prescriptions from VisualBlueprintAgent (after report plan). */
     reportVisualBlueprint?: ReportVisualBlueprint;
+    /** Evidence by path for Sources Evidence view (built from recall evidence packs). */
+    evidenceIndex?: EvidenceIndex;
 }
 
 /**
@@ -141,15 +147,6 @@ export class AISearchAgent {
     private slotRecallAgent: SlotRecallAgent;
 
     private reportAgent: ReportAgent;
-    /** 
-     * Finish-phase agents 
-     * */
-    private summaryAgent: SummaryAgent;
-    private finalRefineAgent: FinalRefineAgent;
-    /** 
-     * Dashboard update orchestrator: topics, sources, graph, blocks, review 
-     * */
-    private dashboardUpdateAgent: DashboardAgent;
 
     /**
      * Agent memory
@@ -175,9 +172,6 @@ export class AISearchAgent {
         };
         this.slotRecallAgent = new SlotRecallAgent(this.aiServiceManager, this.agentContextManager);
 
-        this.summaryAgent = new SummaryAgent(innerAgentCreateParams);
-        this.finalRefineAgent = new FinalRefineAgent(innerAgentCreateParams);
-        this.dashboardUpdateAgent = new DashboardAgent(innerAgentCreateParams);
         this.reportAgent = new ReportAgent(this.aiServiceManager, this.agentContextManager);
     }
 
@@ -254,7 +248,7 @@ export class AISearchAgent {
             { runStepId, stage: 'sourcesStreaming', agent: 'AISearchAgent' },
             { status: 'start', triggerName: StreamTriggerName.SEARCH_AI_AGENT }
         );
-        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths(StreamTriggerName.SEARCH_AI_AGENT)) {
+        for await (const ev of this.emitStreamingSourcesFromVerifiedPaths(StreamTriggerName.SEARCH_AI_AGENT)) {
             yield ev;
         }
         yield uiStageSignal(
@@ -287,7 +281,7 @@ export class AISearchAgent {
             { status: 'complete', triggerName: StreamTriggerName.SEARCH_AI_AGENT }
         );
 
-        for await (const ev of this.dashboardUpdateAgent.emitStreamingSourcesFromVerifiedPaths()) {
+        for await (const ev of this.emitStreamingSourcesFromVerifiedPaths()) {
             yield ev;
         }
 
@@ -301,4 +295,52 @@ export class AISearchAgent {
         };
     }
 
+    /** 
+     * Emit placeholder sources and single-node graph patches for newly verified paths during search stream. 
+     * */
+    public async *emitStreamingSourcesFromVerifiedPaths(triggerName?: StreamTriggerName): AsyncGenerator<LLMStreamEvent> {
+        const currentSources = this.agentContextManager.getSources();
+        const existingSourcesPathsSet = new Set(
+            currentSources.map(s => (s.path ?? '').toLowerCase()).filter(Boolean)
+        );
+
+        const newPaths = Array.from(this.agentContextManager.getVerifiedPaths())
+            .filter((p) => !existingSourcesPathsSet.has(p.trim().toLowerCase()))
+            .slice(0, STREAMING_SOURCE_TOP_K);
+
+        const added: AISearchSource[] = [];
+        for (const path of newPaths) {
+            const normPath = normalizeFilePath(path.trim());
+            if (!normPath) continue;
+            const lowerPath = normPath.toLowerCase();
+            const title = getFileNameFromPath(normPath);
+
+            if (!existingSourcesPathsSet.has(lowerPath)) {
+                existingSourcesPathsSet.add(lowerPath);
+                added.push({
+                    id: `src:stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    title: title,
+                    path: normPath,
+                    reasoning: 'From evidence during search (streaming).',
+                    badges: [],
+                    score: { average: 0, physical: 0, semantic: 0 },
+                });
+            }
+        }
+        if (added.length > 0) {
+            this.agentContextManager.setSources([...currentSources, ...added]);
+        }
+
+        // update sources
+        yield {
+            type: 'tool-result',
+            id: `update_sources-${generateUuidWithoutHyphens()}`,
+            toolName: 'update_sources',
+            triggerName: triggerName ?? StreamTriggerName.SEARCH_SOURCES_FROM_VERIFIED_PATHS,
+            ...this.agentContextManager.yieldAgentResult(),
+        };
+    }
+
 }
+
+const STREAMING_SOURCE_TOP_K = 20;

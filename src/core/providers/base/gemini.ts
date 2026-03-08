@@ -5,6 +5,8 @@ import {
 	ModelCapabilities,
 	ModelTokenLimits,
 	ModelType,
+	ProviderOptions,
+	ProviderOptionsConfig,
 } from '../types';
 import { createGoogleGenerativeAI, GoogleGenerativeAIProvider } from '@ai-sdk/google';
 import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
@@ -182,6 +184,21 @@ export class GeminiChatService implements LLMProviderService {
 			name: 'Google',
 			defaultBaseUrl: GEMINI_DEFAULT_BASE,
 			icon: 'google',
+		};
+	}
+
+	getProviderOptions(optionConfig: ProviderOptionsConfig): ProviderOptions | undefined {
+		/**
+		 * https://v5.ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai#:~:text=Optional.%20Controls%20the%20thinking,by%20Gemini%203%20models.
+		 */
+		const reasoningEffort = optionConfig.reasoningEffort === 'medium' ? 'low' : optionConfig.reasoningEffort ?? 'low';
+		return {
+			google: {
+				thinkingConfig: {
+					thinkingLevel: reasoningEffort,
+					includeThoughts: optionConfig.noReasoning ? false : true,
+				},
+			}
 		};
 	}
 

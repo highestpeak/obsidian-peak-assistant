@@ -8,6 +8,8 @@ import {
 	ModelTokenLimits,
 	ModelCapabilities,
 	ModelType,
+	ProviderOptionsConfig,
+	ProviderOptions,
 } from '../types';
 import { modelMetadataCache } from '@/core/utils/ttl-cache';
 import { createOllama, type OllamaProvider } from 'ollama-ai-provider-v2';
@@ -116,7 +118,7 @@ function getModelIcon(family?: string, name?: string): string {
  */
 function getOllamaTokenLimits(modelName: string, contextLength?: number): ModelTokenLimits {
 	const defaultContextLength = contextLength ?? 4096;
-	
+
 	// Common Ollama model context window sizes (from model families)
 	const modelLimits: Record<string, ModelTokenLimits> = {
 		'llama2': { maxTokens: 4096, maxInputTokens: 4096, recommendedSummaryThreshold: 3000 },
@@ -303,6 +305,14 @@ export class OllamaChatService implements LLMProviderService {
 			name: 'Ollama',
 			defaultBaseUrl: OLLAMA_DEFAULT_BASE,
 			icon: 'ollama',
+		};
+	}
+
+	getProviderOptions(optionConfig: ProviderOptionsConfig): ProviderOptions | undefined {
+		return {
+			ollama: {
+				think: optionConfig.noReasoning ? false : true
+			}
 		};
 	}
 

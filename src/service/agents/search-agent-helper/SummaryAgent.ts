@@ -6,7 +6,6 @@ import type { AgentContextManager, AgentMemoryToolSet } from './AgentContextMana
 import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { AgentTool, safeAgentTool } from '@/service/tools/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
-import { EvidenceMermaidOverviewWeaveAgent } from './EvidenceMermaidOverviewWeaveAgent';
 import { uiStageSignal } from './helpers/search-ui-events';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { DashboardBlock } from '../AISearchAgent';
@@ -38,7 +37,6 @@ export class SummaryAgent {
     private readonly aiServiceManager: AIServiceManager;
     private readonly context: AgentContextManager;
     private summaryAgent: Agent<SummaryToolSet>;
-    private mermaidOverviewAgent: EvidenceMermaidOverviewWeaveAgent;
 
     /** Accumulated summary text from stream; length used by prepareStep to decide if more output is needed. */
     private _summaryCollector: string[] = [];
@@ -49,7 +47,6 @@ export class SummaryAgent {
     }) {
         this.aiServiceManager = params.aiServiceManager;
         this.context = params.context;
-        this.mermaidOverviewAgent = new EvidenceMermaidOverviewWeaveAgent(params);
 
         const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisSummary);
         const model = this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId);
@@ -108,25 +105,6 @@ export class SummaryAgent {
                 }),
             },
         });
-    }
-
-    public async *streamMultiStep(
-        opts: {
-            streamTitle?: boolean;
-            streamSummary?: boolean;
-            streamMermaidOverview?: boolean;
-        }
-    ): AsyncGenerator<LLMStreamEvent> {
-        const stepId = generateUuidWithoutHyphens();
-        if (opts.streamTitle) {
-            yield* this.streamTitle({ stepId });
-        }
-        if (opts.streamSummary) {
-            yield* this.streamSummary({ stepId });
-        }
-        if (opts.streamMermaidOverview) {
-            yield* this.streamMermaidOverview({ stepId });
-        }
     }
 
     /**
@@ -201,13 +179,5 @@ export class SummaryAgent {
 
         this.context.setSummary(this._summaryCollector.join(''));
         yield uiStageSignal(summaryMeta, { status: 'complete', triggerName: StreamTriggerName.SEARCH_SUMMARY });
-    }
-
-    public async *streamMermaidOverview(
-        opts?: { stepId?: string }
-    ): AsyncGenerator<LLMStreamEvent> {
-        yield* this.mermaidOverviewAgent.stream(
-            opts
-        );
     }
 }

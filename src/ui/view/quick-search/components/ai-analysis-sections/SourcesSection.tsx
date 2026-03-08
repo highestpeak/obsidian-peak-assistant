@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FileText, Info, MessageCircle, ChevronDown, ChevronRight, List, Network, Loader2, Maximize2, X } from 'lucide-react';
+import { FileText, Info, MessageCircle, ChevronDown, ChevronRight, List, Network, Loader2, Maximize2, X, BookOpen } from 'lucide-react';
 import { mixSearchResultsBySource } from '@/core/utils/source-mixer';
 import { getSourceIcon } from '@/ui/view/shared/file-utils';
 import type { SearchResultItem } from '@/service/search/types';
@@ -13,6 +13,7 @@ import { useAIAnalysisInteractionsStore } from '../../store/aiAnalysisStore';
 import { GraphVisualization, GraphVisualizationHandle } from '@/ui/component/mine/GraphVisualization';
 import { createObsidianGraphPreset } from '../../presets/obsidianGraphPreset';
 import { buildSourcesGraphWithDiscoveredEdges, getCachedSourcesGraph, type SourcesGraph } from '@/service/tools/search-graph-inspector/build-sources-graph';
+import type { EvidenceIndex } from '@/service/agents/AISearchAgent';
 
 /** When false, show only a single "Score" (AI-generated); Physical/Semantic/Average gauges are kept in code but not rendered. */
 const SHOW_SCORE_BREAKDOWN = false;
@@ -163,6 +164,91 @@ const SourceCard: React.FC<{
 	</div>
 );
 
+/** Evidence view: by-path list with expandable claims/quotes. */
+const EvidenceView: React.FC<{
+	evidenceIndex: EvidenceIndex;
+	evidencePaths: string[];
+	onOpenPath: (path: string) => void;
+}> = ({ evidenceIndex, evidencePaths, onOpenPath }) => {
+	const [expandedPath, setExpandedPath] = useState<string | null>(null);
+	return (
+		<div className="pktw-space-y-2">
+			{evidencePaths.map((path) => {
+				const entry = evidenceIndex[path];
+				if (!entry) return null;
+				const summaries = entry.summaries ?? [];
+				const facts = entry.facts ?? [];
+				const isExpanded = expandedPath === path;
+				return (
+					<div
+						key={path}
+						className="pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-white pktw-overflow-hidden"
+					>
+						<button
+							type="button"
+							className="pktw-w-full pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-left hover:pktw-bg-[#f9fafb] pktw-transition-colors"
+							onClick={() => setExpandedPath((p) => (p === path ? null : path))}
+						>
+							{isExpanded ? (
+								<ChevronDown className="pktw-w-4 pktw-h-4 pktw-text-[#6b7280] pktw-shrink-0" />
+							) : (
+								<ChevronRight className="pktw-w-4 pktw-h-4 pktw-text-[#6b7280] pktw-shrink-0" />
+							)}
+							<FileText className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed] pktw-shrink-0" />
+							<span className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-truncate pktw-flex-1" title={path}>
+								{path.split(/[/\\]/).pop() ?? path}
+							</span>
+							<span className="pktw-text-xs pktw-text-[#6b7280] pktw-shrink-0">
+								{summaries.length + facts.length} item{(summaries.length + facts.length) !== 1 ? 's' : ''}
+							</span>
+						</button>
+						{isExpanded && (
+							<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-p-3 pktw-space-y-3">
+								<button
+									type="button"
+									className="pktw-text-xs pktw-text-[#7c3aed] hover:pktw-underline"
+									onClick={() => onOpenPath(path)}
+								>
+									Open file
+								</button>
+								{summaries.length > 0 && (
+									<div>
+										<div className="pktw-text-[10px] pktw-font-medium pktw-text-[#6b7280] pktw-mb-1">Summaries</div>
+										<ul className="pktw-text-xs pktw-text-[#374151] pktw-space-y-1 pktw-list-disc pktw-pl-4">
+											{summaries.slice(0, 3).map((s, i) => (
+												<li key={i} className="pktw-line-clamp-2">{s}</li>
+											))}
+											{summaries.length > 3 && <li className="pktw-text-[#6b7280]">+{summaries.length - 3} more</li>}
+										</ul>
+									</div>
+								)}
+								{facts.length > 0 && (
+									<div>
+										<div className="pktw-text-[10px] pktw-font-medium pktw-text-[#6b7280] pktw-mb-1">Claims & quotes</div>
+										<ul className="pktw-space-y-2">
+											{facts.slice(0, 8).map((f, i) => (
+												<li key={i} className="pktw-text-xs pktw-border-l-2 pktw-border-[#7c3aed]/30 pktw-pl-2">
+													<span className="pktw-text-[#374151]">{f.claim}</span>
+													{f.quote && (
+														<blockquote className="pktw-mt-1 pktw-text-[#6b7280] pktw-italic pktw-line-clamp-2">
+															{f.quote}
+														</blockquote>
+													)}
+												</li>
+											))}
+											{facts.length > 8 && <li className="pktw-text-[#6b7280] pktw-text-xs">+{facts.length - 8} more</li>}
+										</ul>
+									</div>
+								)}
+							</div>
+						)}
+					</div>
+				);
+			})}
+		</div>
+	);
+};
+
 /** Hook: build sources graph (cached); uses cache when same sources, skips rebuild. */
 function useSourcesGraph(sources: SearchResultItem[]): { graph: SourcesGraph | null; loading: boolean } {
 	const cached = useMemo(() => getCachedSourcesGraph(sources), [sources]);
@@ -207,16 +293,20 @@ export const TopSourcesSection: React.FC<{
 	sources: SearchResultItem[];
 	onOpen: (source: SearchResultItem | string) => void;
 	skipAnimation?: boolean;
+	/** Evidence index by path for Evidence view (claim/quote per file). */
+	evidenceIndex?: EvidenceIndex;
 	/** Deprecated: edges are now discovered via graph-inspector tools. Kept for API compat. */
 	graph?: { nodes: { id: string; path?: string }[]; edges: { source: string; target: string; type?: string }[] } | null;
-}> = ({ sources, onOpen, skipAnimation = false }) => {
+}> = ({ sources, onOpen, skipAnimation = false, evidenceIndex = {} }) => {
 
 	const setContextChatModal = useAIAnalysisInteractionsStore((s) => s.setContextChatModal);
 	const appendSourcesFollowup = useAIAnalysisInteractionsStore((s) => s.appendSourcesFollowup);
 	const sourcesFollowupHistory = useAIAnalysisInteractionsStore((s) => s.sourcesFollowupHistory);
 
 	const [showSourcesFollowup, setShowSourcesFollowup] = useState(false);
-	const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
+	const [viewMode, setViewMode] = useState<'list' | 'graph' | 'evidence'>('list');
+	const evidencePaths = useMemo(() => Object.keys(evidenceIndex).filter((p) => (evidenceIndex[p]?.summaries?.length ?? 0) + (evidenceIndex[p]?.facts?.length ?? 0) > 0), [evidenceIndex]);
+	const hasEvidenceView = evidencePaths.length > 0;
 	const [fullscreenOpen, setFullscreenOpen] = useState(false);
 
 	const graphRef = useRef<GraphVisualizationHandle>(null);
@@ -299,7 +389,7 @@ export const TopSourcesSection: React.FC<{
 					({mixedSources.length} files{zeroScoreSources.length > 0 ? `, ${zeroScoreSources.length} with score 0` : ''})
 				</span>
 				<div className="pktw-flex-1" />
-				{mixedSources.length > 0 ? (
+				{mixedSources.length > 0 || hasEvidenceView ? (
 					<div className="pktw-flex pktw-gap-1">
 						<Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="sm" onClick={() => setViewMode('list')} title="List view">
 							<List className="pktw-w-4 pktw-h-4" />
@@ -307,6 +397,11 @@ export const TopSourcesSection: React.FC<{
 						<Button variant={viewMode === 'graph' ? 'secondary' : 'ghost'} size="sm" onClick={() => setViewMode('graph')} title="Graph view">
 							<Network className="pktw-w-4 pktw-h-4" />
 						</Button>
+						{hasEvidenceView && (
+							<Button variant={viewMode === 'evidence' ? 'secondary' : 'ghost'} size="sm" onClick={() => setViewMode('evidence')} title="Evidence view">
+								<BookOpen className="pktw-w-4 pktw-h-4" />
+							</Button>
+						)}
 						{viewMode === 'graph' && sourcesGraph ? (
 							<Button variant="ghost" size="sm" onClick={() => setFullscreenOpen(true)} title="Fullscreen (use tools)">
 								<Maximize2 className="pktw-w-4 pktw-h-4" />
@@ -446,6 +541,8 @@ export const TopSourcesSection: React.FC<{
 						</>
 					)}
 				</div>
+			) : viewMode === 'evidence' ? (
+				<EvidenceView evidenceIndex={evidenceIndex} evidencePaths={evidencePaths} onOpenPath={onOpen} />
 			) : (
 				<div className="pktw-space-y-3">
 					{/* Scored sources (score > 0) */}

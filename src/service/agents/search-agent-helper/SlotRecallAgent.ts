@@ -7,8 +7,8 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { AgentContextManager } from './AgentContextManager';
-import { makeStepId, uiStepStart } from './helpers/search-ui-events';
-import { streamObject } from 'ai';
+import { makeStepId, uiStageSignal, uiStepStart } from './helpers/search-ui-events';
+import { streamText, Output } from 'ai';
 import { PromptId } from '@/service/prompt/PromptId';
 import { getVaultDescription } from '@/service/tools/system-info';
 import { streamTransform } from '@/core/providers/helpers/stream-helper';
@@ -44,7 +44,7 @@ export interface SlotRecallAgentOptions {
 }
 
 /**
- * Runs classifier (streamObject) then slot pipeline. Yields UI steps and signals.
+ * Runs classifier (streamText + experimental_output) then slot pipeline. Yields UI steps and signals.
  */
 export class SlotRecallAgent {
 
@@ -59,7 +59,7 @@ export class SlotRecallAgent {
 
 	/**
 	 * Stream:
-	 * 1) yield "Classifying...", run classifier (streamObject);
+	 * 1) yield "Classifying...", run classifier (streamText + Output.object);
 	 * 2) yield "Running parallel recall...", run pipeline.
 	 */
 	async *stream(opts?: SlotRecallAgentOptions): AsyncGenerator<LLMStreamEvent> {
@@ -92,7 +92,31 @@ export class SlotRecallAgent {
 			queryClassify = defaultClassify;
 		}
 
-		this.context.setUserPersonaConfig(queryClassify.user_persona_config ?? undefined);
+		// Cap semantic dimensions at 10: merge any excess (tail) into one by string concatenation.
+		if (queryClassify.semantic_dimensions.length > 10) {
+			const tail = queryClassify.semantic_dimensions.slice(10);
+			const mergedIntent = tail.map((d) => d.intent_description).join(' ');
+			const mergedDimension = {
+				id: tail[0].id,
+				intent_description: mergedIntent,
+				scope_constraint: null,
+				retrieval_orientation: null,
+			};
+			queryClassify = {
+				...queryClassify,
+				semantic_dimensions: [...queryClassify.semantic_dimensions.slice(0, 10), mergedDimension],
+			};
+		}
+
+		const raw = queryClassify.user_persona_config;
+		this.context.setUserPersonaConfig(
+			raw == null
+				? undefined
+				: {
+						appeal: raw.appeal ?? undefined,
+						detail_level: raw.detail_level ?? undefined,
+					}
+		);
 
 		yield uiStepStart(
 			{ runStepId, stage: 'recon' as const, agent: 'SlotRecallAgent' },
@@ -109,7 +133,10 @@ export class SlotRecallAgent {
 			triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT,
 			triggerTimestamp: Date.now(),
 			extra: {
-				queryClassify
+				queryClassify,
+				durationLabel: 'queryClassifyResult',
+				stepDuration: Date.now() - streamStartTime,
+				totalDuration: Date.now() - streamStartTime,
 			},
 		}
 
@@ -119,6 +146,10 @@ export class SlotRecallAgent {
 
 		const dimensions = this.getDimensionsForRecall(queryClassify);
 		this.context.setRecallDimensions(dimensions);
+		yield uiStageSignal(
+			{ runStepId, stage: 'classify', agent: 'SlotRecallAgent' },
+			{ status: 'complete', payload: { dimensions }, triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT },
+		);
 		const evidencePacks: EvidencePack[] = [];
 		yield* this.rawSearchAgent.streamSearch({
 			runStepId,
@@ -168,33 +199,21 @@ export class SlotRecallAgent {
 
 		const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisQueryClassifier);
 		const model = this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId);
-		const result = streamObject({
+		const result = streamText({
 			model,
-			schema: queryClassifierOutputSchema,
-			schemaName: 'QueryClassifierOutput',
-			schemaDescription: 'Query type and routing hints for the user question.',
 			system,
 			prompt,
+			experimental_output: Output.object({
+				schema: queryClassifierOutputSchema,
+			}),
 		});
 
-		yield* streamTransform(
-			result.fullStream,
-			StreamTriggerName.SEARCH_SLOT_RECALL_AGENT,
-			{
-				yieldUIStep: stepId ? { uiType: UIStepType.STEPS_DISPLAY, stepId } : undefined,
-				chunkEventInterceptor: (chunk) => {
-					if (chunk.type === 'finish') {
-						const raw = (chunk as { object?: unknown }).object;
-						const parsed = queryClassifierOutputSchema.safeParse(raw);
-						if (parsed.success) options?.onClassifyFinish?.(parsed.data);
-					}
-				},
-			},
-		);
-		if (result.object) {
-			const obj = await result.object;
-			options?.onClassifyFinish?.(obj);
-		}
+		yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_SLOT_RECALL_AGENT, {
+			yieldUIStep: stepId ? { uiType: UIStepType.STEPS_DISPLAY, stepId } : undefined,
+		});
+		const text = await result.text;
+		const parsed = queryClassifierOutputSchema.safeParse(JSON.parse(text));
+		if (parsed.success) options?.onClassifyFinish?.(parsed.data);
 	}
 
 	private getDimensionsForRecall(output: QueryClassifierOutput): DimensionChoice[] {
@@ -209,6 +228,8 @@ export class SlotRecallAgent {
 			intent_description: d.intent_description,
 			scope_constraint: d.scope_constraint,
 			retrieval_orientation: d.retrieval_orientation,
+			output_format: null,
+			mustIncludeKeywords: null,
 		}));
 
 		const topologySource: TopologyDimensionChoice[] = topology_dimensions && topology_dimensions.length > 0
@@ -218,6 +239,9 @@ export class SlotRecallAgent {
 			id: AXIS_TOPOLOGY_ID,
 			intent_description: d.intent_description,
 			scope_constraint: d.scope_constraint,
+			retrieval_orientation: null,
+			output_format: null,
+			mustIncludeKeywords: null,
 		}));
 
 		const temporalSource: TemporalDimensionChoice[] = temporal_dimensions && temporal_dimensions.length > 0
@@ -227,6 +251,9 @@ export class SlotRecallAgent {
 			id: AXIS_TEMPORAL_ID,
 			intent_description: d.intent_description,
 			scope_constraint: d.scope_constraint,
+			retrieval_orientation: null,
+			output_format: null,
+			mustIncludeKeywords: null,
 		}));
 
 		const finalDimensions: DimensionChoice[] = [];

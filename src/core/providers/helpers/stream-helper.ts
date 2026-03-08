@@ -30,7 +30,7 @@ import { ErrorRetryInfo } from "@/service/prompt/PromptId";
 import { AsyncIterableStream, TextStreamPart, ToolSet } from "ai";
 import { ManualToolCallHandler } from "@/service/tools/types";
 
-/** Part types from streamObject().fullStream (ObjectStreamPart). Use for type cast when passing result.fullStream. */
+/** Part types: streamText().fullStream (TextStreamPart) or legacy streamObject (ObjectStreamPart). */
 export type ObjectStreamPartLike =
     | { type: 'text-delta'; textDelta: string }
     | { type: 'object'; object: unknown }
@@ -225,6 +225,9 @@ export async function* streamTransform<TOOLS extends ToolSet>(
 ): AsyncGenerator<LLMStreamEvent> {
     let manualToolTokenUsage: LLMUsage = emptyUsage();
     let startTime = Date.now();
+    // help to debug delta event duration
+    let deltaStartTimestamp = Date.now();
+    let deltaTextChunks: string[] = [];
 
     for await (const chunk of fullStream) {
         eventProcessor.chunkEventInterceptor?.(chunk);
@@ -235,6 +238,8 @@ export async function* streamTransform<TOOLS extends ToolSet>(
 
         switch (chunk.type) {
             case 'text-start': {
+                deltaStartTimestamp = Date.now();
+                deltaTextChunks = [];
                 yieldEvent = {
                     type: 'text-start',
                 };
@@ -243,6 +248,7 @@ export async function* streamTransform<TOOLS extends ToolSet>(
             case 'text-delta': {
                 const text = (chunk as any).text ?? (chunk as any).textDelta ?? '';
                 deltaText = text;
+                deltaTextChunks.push(text);
                 yieldEvent = {
                     type: 'text-delta',
                     text,
@@ -253,10 +259,17 @@ export async function* streamTransform<TOOLS extends ToolSet>(
             case 'text-end': {
                 yieldEvent = {
                     type: 'text-end',
+                    extra: {
+                        deltaText: deltaTextChunks.join(''),
+                        durationMs: Date.now() - deltaStartTimestamp,
+                    },
                 };
+                deltaTextChunks = [];
                 break;
             }
             case 'reasoning-start': {
+                deltaTextChunks = [];
+                deltaStartTimestamp = Date.now();
                 yieldEvent = {
                     type: 'reasoning-start',
                 };
@@ -264,6 +277,7 @@ export async function* streamTransform<TOOLS extends ToolSet>(
             }
             case 'reasoning-delta':
                 deltaText = chunk.text;
+                deltaTextChunks.push(deltaText);
                 yieldEvent = {
                     type: 'reasoning-delta',
                     text: chunk.text,
@@ -273,7 +287,12 @@ export async function* streamTransform<TOOLS extends ToolSet>(
             case 'reasoning-end': {
                 yieldEvent = {
                     type: 'reasoning-end',
+                    extra: {
+                        deltaText: deltaTextChunks.join(''),
+                        durationMs: Date.now() - deltaStartTimestamp,
+                    },
                 };
+                deltaTextChunks = [];
                 break;
             }
             case 'tool-call': {
@@ -287,8 +306,26 @@ export async function* streamTransform<TOOLS extends ToolSet>(
                 };
                 break;
             }
+            case 'tool-input-start': {
+                deltaStartTimestamp = Date.now();
+                deltaTextChunks = [];
+                break;
+            }
             case 'tool-input-delta': {
                 deltaText = chunk.delta;
+                deltaTextChunks.push(deltaText);
+                break;
+            }
+            case 'tool-input-end': {
+                yieldEvent = {
+                    type: 'pk-debug',
+                    debugName: 'tool-input-end-duration',
+                    extra: {
+                        deltaText: deltaTextChunks.join(''),
+                        durationMs: Date.now() - deltaStartTimestamp,
+                    },
+                };
+                deltaTextChunks = [];
                 break;
             }
             case 'tool-result': {
@@ -386,9 +423,13 @@ async function* yieldChunkEvent<TOOLS extends ToolSet>(
 ): AsyncGenerator<LLMStreamEvent> {
     const uiStep = eventProcessor.yieldUIStep;
 
+    const eventPostProcessorResult = eventProcessor.yieldEventPostProcessor ? eventProcessor.yieldEventPostProcessor(chunk) : {};
     yieldEvent = {
         ...yieldEvent,
-        ...(eventProcessor.yieldEventPostProcessor ? eventProcessor.yieldEventPostProcessor(chunk) : {}),
+        ...(eventPostProcessorResult),
+        extra: 'extra' in eventPostProcessorResult && eventPostProcessorResult.extra != null
+            ? { ...yieldEvent.extra, ...eventPostProcessorResult.extra }
+            : yieldEvent.extra,
         triggerName,
     };
     yield yieldEvent;

@@ -3,12 +3,20 @@ import { useState } from "react";
 import React from "react";
 import { Button } from "@/ui/component/shared-ui/button";
 
+/** Detect schema/object validation errors from streamObject (e.g. AI SDK). */
+function isSchemaMismatchError(error: string): boolean {
+    return /no object generated|response did not match schema|did not match schema/i.test(error);
+}
+
 /**
  * Error state component for AI search failures
  */
 export const AIAnalysisErrorState: React.FC<{ error: string; onRetry: () => void }> = ({ error, onRetry }) => {
     const [copied, setCopied] = useState(false);
     const [expanded, setExpanded] = useState(false);
+    const friendlyMessage = isSchemaMismatchError(error)
+        ? 'The model response did not match the expected format. You can try again or save the current analysis below.'
+        : error;
 
     const handleCopy = async () => {
         try {
@@ -60,7 +68,7 @@ export const AIAnalysisErrorState: React.FC<{ error: string; onRetry: () => void
                         </Button>
                     </div>
                     <div className="pktw-text-xs pktw-text-[#6c757d] pktw-mt-1 pktw-line-clamp-2">
-                        {error}
+                        {friendlyMessage}
                     </div>
                     {expanded ? (
                         <pre className="pktw-mt-2 pktw-text-[11px] pktw-leading-relaxed pktw-bg-white/70 pktw-border pktw-border-red-200 pktw-rounded pktw-p-2 pktw-max-h-40 pktw-overflow-auto pktw-whitespace-pre-wrap pktw-break-words">

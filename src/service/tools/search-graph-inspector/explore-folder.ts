@@ -1,7 +1,6 @@
 import { AppContext } from "@/app/context/AppContext";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { TFile, TFolder } from "obsidian";
-import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 
@@ -44,7 +43,11 @@ export async function exploreFolder(params: any, templateManager?: TemplateManag
     const perFolderLimit = Math.max(1, Number(limit) ?? DEFAULT_LIMIT);
 
     const vault = AppContext.getInstance().app.vault;
-    const normalizedPath = folderPath === "/" ? "" : (folderPath ?? "").replace(/^\/+|\/+$/g, "");
+    const normalizedPath = normalizeVaultFolderPath(folderPath);
+    const exclusions = getExploreFolderExclusions();
+    if (exclusions.enabled && isPathExcluded(normalizedPath, exclusions.excludedPathPrefixes)) {
+        return renderExploreFolderExcludedMarkdown(folderPath, exclusions.excludedPathPrefixes);
+    }
     const targetFolder = normalizedPath === ""
         ? vault.getRoot()
         : vault.getAbstractFileByPath(normalizedPath) as TFolder;
@@ -53,7 +56,13 @@ export async function exploreFolder(params: any, templateManager?: TemplateManag
     }
 
     // Full tree from vault (with mtime) for collecting paths and for limiting
-    const fullTree = getFolderStructure(targetFolder, recursive, max_depth ?? 3, 0);
+    const fullTree = getFolderStructure(
+        targetFolder,
+        recursive,
+        max_depth ?? 3,
+        0,
+        exclusions.enabled ? exclusions.excludedPathPrefixes : undefined,
+    );
     const allCandidateFilePaths = getAllFilePaths(fullTree);
     if (!allCandidateFilePaths.length) {
         return "No files found in the folder";
@@ -61,10 +70,15 @@ export async function exploreFolder(params: any, templateManager?: TemplateManag
 
     // One pass: sort+limit+omitted at every level (including root) inside limitAndSortTree
     const { items: finalFileTree, omitted: rootOmitted } = limitAndSortTree(fullTree, perFolderLimit);
+    const visibleFilePaths = getAllFilePaths(finalFileTree);
 
-    // Folder-level stats by path only (no docId list): tag/category and statistics for this folder (or full vault when root)
-    const { tagDesc, categoryDesc } = await getTagsAndCategoriesByFolderPath(normalizedPath, perFolderLimit);
-    const docStats = await getDocStatisticsByFolderPath(normalizedPath, perFolderLimit);
+    // Stats: when exclusions are enabled, compute stats from visible paths only to avoid leaking excluded folders.
+    const { tagDesc, categoryDesc } = exclusions.enabled
+        ? await getTagsAndCategoriesByDocPaths(visibleFilePaths, perFolderLimit)
+        : await getTagsAndCategoriesByFolderPath(normalizedPath, perFolderLimit);
+    const docStats = exclusions.enabled
+        ? await getDocStatisticsByDocPaths(visibleFilePaths, perFolderLimit)
+        : await getDocStatisticsByFolderPath(normalizedPath, perFolderLimit);
 
     const sameGroupCountByPath = buildSameGroupCountByPath(finalFileTree);
     const data = {
@@ -78,15 +92,24 @@ export async function exploreFolder(params: any, templateManager?: TemplateManag
         categoryDesc,
         docStats,
     };
-    return buildResponse(response_format, ToolTemplateId.ExploreFolder, data, { templateManager });
+    return buildExploreFolderResponse(response_format, data, templateManager);
 }
 
 /**
  * Get folder structure from vault; each node has mtime from Obsidian stat for later sort.
  */
-function getFolderStructure(folder: TFolder, recursive: boolean, maxDepth: number, currentDepth: number): IterFile[] {
+function getFolderStructure(
+    folder: TFolder,
+    recursive: boolean,
+    maxDepth: number,
+    currentDepth: number,
+    excludedPathPrefixes?: string[],
+): IterFile[] {
     const result: IterFile[] = [];
     for (const child of folder.children) {
+        if (excludedPathPrefixes?.length && isPathExcluded(child.path, excludedPathPrefixes)) {
+            continue;
+        }
         const mtime = (child as TFile & TFolder).stat?.mtime ?? 0;
         const name = child.path.split("/").pop() ?? child.path;
         const base: Partial<IterFile> = { path: child.path, name, mtime };
@@ -98,7 +121,7 @@ function getFolderStructure(folder: TFolder, recursive: boolean, maxDepth: numbe
                 depth: 0,
             } as IterFile;
             if (recursive && currentDepth < maxDepth - 1) {
-                folderItem.children = getFolderStructure(child, recursive, maxDepth, currentDepth + 1);
+                folderItem.children = getFolderStructure(child, recursive, maxDepth, currentDepth + 1, excludedPathPrefixes);
             }
             result.push(folderItem);
         } else if (child instanceof TFile) {
@@ -443,6 +466,292 @@ async function getDocStatisticsByFolderPath(
 
     return {
         totalFiles,
+        topRecentEdited: {
+            ...topRecentEdited,
+            compressedCount: topRecentEdited.totalItems - topRecentEdited.totalGroups,
+        },
+        topWordCount: topWordCount.map((item) => ({ path: idToPathMap.get(item.doc_id) ?? item.doc_id, word_count: item.word_count })),
+        topCharCount: topCharCount.map((item) => ({ path: idToPathMap.get(item.doc_id) ?? item.doc_id, char_count: item.char_count })),
+        topRichness: topRichness.map((item) => ({ path: idToPathMap.get(item.doc_id) ?? item.doc_id, richness_score: item.richness_score })),
+        topLinksIn: topLinksInRaw.map((item) => ({
+            path: idToPathMap.get(item.node_id) ?? item.node_id,
+            inDegree: item.inDegree,
+        })),
+        topLinksOut: topLinksOutRaw.map((item) => ({
+            path: idToPathMap.get(item.node_id) ?? item.node_id,
+            outDegree: item.outDegree,
+        })),
+        hasTopLinks: topLinksInRaw.length > 0 || topLinksOutRaw.length > 0,
+        languageStats: Object.keys(languageStats).length > 0 ? languageStats : undefined,
+    };
+}
+
+/**
+ * Normalize vault folder path:
+ * - "/" or empty -> ""
+ * - trim spaces
+ * - remove leading/trailing slashes
+ */
+function normalizeVaultFolderPath(folderPath: unknown): string {
+    const raw = folderPath == null ? "" : String(folderPath).trim();
+    if (raw === "" || raw === "/") return "";
+    return raw.replace(/^\/+|\/+$/g, "");
+}
+
+/**
+ * True when `path` is exactly an excluded prefix, or is under it (prefix + "/...").
+ * `path` and prefixes are vault-relative (no leading slash), but may be "" (root).
+ */
+function isPathExcluded(path: string, excludedPathPrefixes: string[]): boolean {
+    if (!excludedPathPrefixes.length) return false;
+    const p = normalizeVaultFolderPath(path);
+    if (p === "") return false;
+    for (const rawPrefix of excludedPathPrefixes) {
+        const prefix = normalizeVaultFolderPath(rawPrefix);
+        if (!prefix) continue;
+        if (p === prefix) return true;
+        if (p.startsWith(prefix + "/")) return true;
+    }
+    return false;
+}
+
+/**
+ * Compute excluded path prefixes for explore_folder based on plugin settings.
+ * When `aiAnalysisExcludeAutoSaveFolderFromSearch` is enabled:
+ * - exclude `ai.rootFolder` (default: ChatFolder)
+ * - exclude `search.aiAnalysisAutoSaveFolder` (default: ChatFolder/AI-Analysis)
+ */
+function getExploreFolderExclusions(): { enabled: boolean; excludedPathPrefixes: string[] } {
+    const settings = AppContext.getInstance().settings;
+    const enabled = settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch ?? true;
+    if (!enabled) return { enabled: false, excludedPathPrefixes: [] };
+
+    const rootFolder = normalizeVaultFolderPath(settings.ai.rootFolder);
+    const autoSaveFolder = normalizeVaultFolderPath(settings.search.aiAnalysisAutoSaveFolder);
+    const excludedPathPrefixes = Array.from(new Set([rootFolder, autoSaveFolder].filter(Boolean)));
+    return { enabled: excludedPathPrefixes.length > 0, excludedPathPrefixes };
+}
+
+/**
+ * Render a compact Markdown-only message when a folder is excluded by settings.
+ */
+function renderExploreFolderExcludedMarkdown(requestedFolderPath: unknown, excludedPrefixes: string[]): string {
+    const req = requestedFolderPath == null ? "" : String(requestedFolderPath);
+    const list = excludedPrefixes.map((p) => `- \`${p}\``).join("\n");
+    return [
+        `## explore_folder`,
+        ``,
+        `The requested folder is excluded by settings and cannot be explored.`,
+        ``,
+        `- Requested: \`${req}\``,
+        `- Excluded prefixes:`,
+        list || `- (none)`,
+    ].join("\n");
+}
+
+/**
+ * Build Markdown-only response for explore_folder.
+ * Never returns structured JSON when response_format is "markdown" or "hybrid".
+ */
+async function buildExploreFolderResponse(
+    responseFormat: 'structured' | 'markdown' | 'hybrid',
+    data: any,
+    templateManager?: TemplateManager,
+): Promise<any> {
+    if (responseFormat === 'structured') return data;
+
+    const markdown = await renderExploreFolderMarkdown(data, templateManager);
+    if (responseFormat === 'markdown') return markdown;
+    return { data, template: markdown };
+}
+
+/**
+ * Render Markdown for explore_folder. Uses template when available, falls back to a minimal tree.
+ */
+async function renderExploreFolderMarkdown(data: any, templateManager?: TemplateManager): Promise<string> {
+    const tm = templateManager ?? AppContext.getInstance().manager.getTemplateManager?.();
+    if (tm) {
+        try {
+            const rendered = await tm.render(ToolTemplateId.ExploreFolder, data);
+            if (typeof rendered === 'string' && rendered.trim() !== '') return rendered;
+        } catch {
+            // fall back
+        }
+    }
+    return fallbackExploreFolderMarkdown(data);
+}
+
+/**
+ * Minimal, stable Markdown fallback when template rendering is unavailable.
+ * Keeps output small and readable for LLM reasoning.
+ */
+function fallbackExploreFolderMarkdown(data: any): string {
+    const root = data?.current_path ?? "/";
+    const maxDepth = data?.max_depth ?? 3;
+    const recursive = Boolean(data?.recursive);
+    const lines: string[] = [];
+    lines.push(`## Folder: \`${root}\``);
+    lines.push(``);
+    lines.push(`- recursive: \`${String(recursive)}\``);
+    lines.push(`- max_depth: \`${String(maxDepth)}\``);
+    lines.push(``);
+    lines.push(`\`\`\``);
+    const tree = Array.isArray(data?.fileTree) ? (data.fileTree as IterFile[]) : [];
+    for (const node of tree) {
+        lines.push(...renderTreeLines(node));
+    }
+    if (!tree.length) lines.push("(empty)");
+    lines.push(`\`\`\``);
+
+    const omitted = data?.rootOmitted as OmittedSummary | undefined;
+    if (omitted?.total) {
+        lines.push(``);
+        lines.push(`- omitted_at_root: ${omitted.total} item(s) (folders: ${omitted.folderCount})`);
+    }
+    return lines.join("\n");
+}
+
+function renderTreeLines(node: IterFile): string[] {
+    const indent = "  ".repeat(Math.max(0, node.depth ?? 0));
+    const suffix = node.type === "folder" ? "/" : "";
+    const group = node.sameGroupCount && node.sameGroupCount > 1
+        ? ` (x${node.sameGroupCount}${node.patternName ? `, ${node.patternName}` : ""})`
+        : "";
+    const line = `${indent}${node.name}${suffix}${group}`;
+    const out = [line];
+    if (node.type === "folder" && node.children?.length) {
+        for (const child of node.children) {
+            out.push(...renderTreeLines(child));
+        }
+    }
+    return out;
+}
+
+/**
+ * Tag/category stats from a list of paths. This is a sample-based view (only the provided paths).
+ */
+async function getTagsAndCategoriesByDocPaths(
+    paths: string[],
+    topN: number = 20,
+): Promise<{ tagDesc: string; categoryDesc: string }> {
+    const uniquePaths = [...new Set(paths)].filter(Boolean);
+    if (!uniquePaths.length) return { tagDesc: "", categoryDesc: "" };
+
+    const docIdsMaps = await sqliteStoreManager.getDocMetaRepo().getIdsByPaths(uniquePaths);
+    const docIds = docIdsMaps.map((m) => m.id);
+    if (!docIds.length) return { tagDesc: "", categoryDesc: "" };
+
+    const { tagCounts, categoryCounts } = await sqliteStoreManager.getGraphStore().getTagsAndCategoriesByDocIds(docIds);
+    const tagDesc = Array.from(tagCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, topN)
+        .map(([name, count]) => `${name}(${count})`)
+        .join(", ");
+    const categoryDesc = Array.from(categoryCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, topN)
+        .map(([name, count]) => `${name}(${count})`)
+        .join(", ");
+    return { tagDesc, categoryDesc };
+}
+
+/**
+ * Doc statistics from a list of paths. This is a sample-based view (only the provided paths).
+ * Shape matches `getDocStatisticsByFolderPath` for template compatibility.
+ */
+async function getDocStatisticsByDocPaths(
+    paths: string[],
+    topK: number = 5,
+): Promise<{
+    totalFiles: number;
+    topRecentEdited: {
+        items: Array<{ path: string; updated_at: number; sameGroupCount: number }>;
+        totalItems: number;
+        totalGroups: number;
+        compressedCount: number;
+    };
+    topWordCount: Array<{ path: string; word_count: number }>;
+    topCharCount: Array<{ path: string; char_count: number }>;
+    topRichness: Array<{ path: string; richness_score: number }>;
+    topLinksIn: Array<{ path: string; inDegree: number }>;
+    topLinksOut: Array<{ path: string; outDegree: number }>;
+    hasTopLinks: boolean;
+    languageStats?: Record<string, number>;
+}> {
+    const uniquePaths = [...new Set(paths)].filter(Boolean);
+    if (!uniquePaths.length) {
+        return {
+            totalFiles: 0,
+            topRecentEdited: { items: [], totalItems: 0, totalGroups: 0, compressedCount: 0 },
+            topWordCount: [],
+            topCharCount: [],
+            topRichness: [],
+            topLinksIn: [],
+            topLinksOut: [],
+            hasTopLinks: false,
+            languageStats: undefined,
+        };
+    }
+
+    const cappedPaths = uniquePaths.slice(0, 2000);
+    const docIdsMaps = await sqliteStoreManager.getDocMetaRepo().getIdsByPaths(cappedPaths);
+    const docIds = docIdsMaps.map((m) => m.id);
+    if (!docIds.length) {
+        return {
+            totalFiles: 0,
+            topRecentEdited: { items: [], totalItems: 0, totalGroups: 0, compressedCount: 0 },
+            topWordCount: [],
+            topCharCount: [],
+            topRichness: [],
+            topLinksIn: [],
+            topLinksOut: [],
+            hasTopLinks: false,
+            languageStats: undefined,
+        };
+    }
+
+    const docStatsRepo = sqliteStoreManager.getDocStatisticsRepo();
+    const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+    const idToPathMap = new Map(docIdsMaps.map((m) => [m.id, m.path]));
+
+    const [
+        topRecentEditedRaw,
+        topWordCount,
+        topCharCount,
+        topRichness,
+        languageStatsRows,
+        { topLinksInRaw, topLinksOutRaw },
+    ] = await Promise.all([
+        docStatsRepo.getTopRecentEditedByDocIds(docIds, topK),
+        docStatsRepo.getTopWordCountByDocIds(docIds, topK),
+        docStatsRepo.getTopCharCountByDocIds(docIds, topK),
+        docStatsRepo.getTopRichnessByDocIds(docIds, topK),
+        docStatsRepo.getLanguageStatsByDocIds(docIds),
+        graphEdgeRepo.countEdges(docIds).then(({ incoming, outgoing }) => ({
+            topLinksInRaw: [...incoming.entries()]
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, topK)
+                .map(([node_id, inDegree]) => ({ node_id, inDegree })),
+            topLinksOutRaw: [...outgoing.entries()]
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, topK)
+                .map(([node_id, outDegree]) => ({ node_id, outDegree })),
+        })),
+    ]);
+
+    const languageStats: Record<string, number> = {};
+    for (const row of languageStatsRows) {
+        languageStats[row.language] = row.count;
+    }
+
+    const topRecentEditedList = topRecentEditedRaw.map((item) => ({
+        path: idToPathMap.get(item.doc_id) ?? item.doc_id,
+        updated_at: item.updated_at,
+    }));
+    const topRecentEdited = compressRecentEdited(topRecentEditedList);
+
+    return {
+        totalFiles: docIds.length,
         topRecentEdited: {
             ...topRecentEdited,
             compressedCount: topRecentEdited.totalItems - topRecentEdited.totalGroups,

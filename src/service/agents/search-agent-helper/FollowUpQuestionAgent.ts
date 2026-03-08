@@ -1,4 +1,4 @@
-import { streamObject } from 'ai';
+import { streamText, Output } from 'ai';
 import { SuggestedFollowUpQuestions, suggestedFollowUpQuestionsSchema } from '@/core/schemas/agents';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
@@ -77,31 +77,20 @@ export class FollowUpQuestionAgent {
             .getProviderService(provider)
             .modelClient(modelId);
 
-        const result = streamObject({
+        const result = streamText({
             model,
-            schema: suggestedFollowUpQuestionsSchema,
-            schemaName: 'SuggestedFollowUpQuestions',
-            schemaDescription: 'Follow-up questions from the analysis session.',
             system,
             prompt,
+            experimental_output: Output.object({
+                schema: suggestedFollowUpQuestionsSchema,
+            }),
         });
 
-        yield* streamTransform(
-            result.fullStream,
-            StreamTriggerName.FOLLOW_UP_QUESTION_AGENT,
-            {
-                yieldUIStep: stepId ? { uiType: UIStepType.STEPS_DISPLAY, stepId } : undefined,
-                chunkEventInterceptor: (chunk) => {
-                    if (chunk.type === 'finish') {
-                        const obj = (chunk as any).object as SuggestedFollowUpQuestions | undefined;
-                        this.context.setSuggestedFollowUpQuestions(obj?.questions ?? []);
-                    }
-                },
-            },
-        );
-        if (result.object) {
-            const obj = await result.object;
-            this.context.setSuggestedFollowUpQuestions(obj?.questions ?? []);
-        }
+        yield* streamTransform(result.fullStream, StreamTriggerName.FOLLOW_UP_QUESTION_AGENT, {
+            yieldUIStep: stepId ? { uiType: UIStepType.STEPS_DISPLAY, stepId } : undefined,
+        });
+        const text = await result.text;
+        const obj = suggestedFollowUpQuestionsSchema.safeParse(JSON.parse(text));
+        this.context.setSuggestedFollowUpQuestions(obj.success ? obj.data.questions : []);
     }
 }

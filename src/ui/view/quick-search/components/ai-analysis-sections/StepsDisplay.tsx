@@ -6,6 +6,7 @@ import { AnalysisTimer } from '@/ui/component/mine/IntelligenceFrame';
 import { useSubscribeUIEvent, useUIEventStore } from '@/ui/store/uiEventStore';
 import { useStepDisplayReplayStore } from '@/ui/view/quick-search/store/stepDisplayReplayStore';
 import { UIStepType } from '@/core/providers/types';
+import { SearchPipelineVisualizer } from './SearchPipelineVisualizer';
 
 export type StreamingDisplayMethods = {
 	appendText: (text: string) => void;
@@ -238,6 +239,7 @@ export const StreamingStepsDisplay: React.FC<{
 	isRunning?: boolean;
 	finalDurationMs?: number | null;
 }> = ({ steps = [], currentStep = null, stepTrigger = 0, startedAtMs, isRunning, finalDurationMs }) => {
+	const showVisualizer = Boolean(startedAtMs || isRunning);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const currentStepContainerRef = useRef<HTMLDivElement>(null);
 	const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
@@ -260,9 +262,10 @@ export const StreamingStepsDisplay: React.FC<{
 	const eventCurrentStepIdRef = useRef<string | null>(null);
 	eventCurrentStepIdRef.current = eventCurrentStepId;
 	const titleJustChangedRef = useRef(false);
-	// Accumulate deltas in ref to avoid setEventStepsById + string concat on every delta (GC/crash).
+	// Accumulate deltas per stepId so parallel steps and late-arriving deltas are not lost.
 	type DeltaAccum = { stepId: string; titleChunks: string[]; descChunks: string[]; startedAtMs: number };
 	const deltaAccumRef = useRef<DeltaAccum | null>(null);
+	const stepAccumsRef = useRef<Record<string, DeltaAccum>>({});
 
 	// Use the shared incremental renderer hook
 	const { appendText, clear, resetUserScroll } = useIncrementalRenderer(
@@ -278,14 +281,13 @@ export const StreamingStepsDisplay: React.FC<{
 			setEventStepsById({});
 			setEventCurrentStepId(null);
 			deltaAccumRef.current = null;
+			stepAccumsRef.current = {};
 		}
 	}, [startedAtMs, isRunning]);
 
-	// Flush accumulated deltas to eventStepsById (only when step completes - avoids thousands of setState calls).
-	const flushDeltaAccum = useCallback(() => {
-		const acc = deltaAccumRef.current;
+	// Flush one step's accum to eventStepsById (used when switching step or on complete).
+	const flushStepAccum = useCallback((acc: DeltaAccum | null) => {
 		if (!acc) return;
-		deltaAccumRef.current = null;
 		const title = acc.titleChunks.join('') || 'Step';
 		const description = acc.descChunks.join('');
 		setEventStepsById((by) => ({
@@ -303,7 +305,8 @@ export const StreamingStepsDisplay: React.FC<{
 		if (type === 'ui-step') {
 			const prev = eventCurrentStepIdRef.current;
 			if (prev && prev !== stepId) {
-				flushDeltaAccum();
+				flushStepAccum(deltaAccumRef.current);
+				deltaAccumRef.current = null;
 				setTimeout(() => clear(), 0);
 			}
 			const newDesc = typeof payload.description === 'string' ? payload.description : '';
@@ -311,7 +314,9 @@ export const StreamingStepsDisplay: React.FC<{
 			if (titleChanged) titleJustChangedRef.current = true;
 			const ts = Date.now();
 			const newTitle = typeof payload.title === 'string' ? payload.title : 'Step';
-			deltaAccumRef.current = { stepId, titleChunks: newTitle ? [newTitle] : [], descChunks: newDesc ? [newDesc] : [], startedAtMs: ts };
+			const acc: DeltaAccum = { stepId, titleChunks: newTitle ? [newTitle] : [], descChunks: newDesc ? [newDesc] : [], startedAtMs: ts };
+			stepAccumsRef.current[stepId] = acc;
+			deltaAccumRef.current = acc;
 			setEventStepIds((ids) => (ids.includes(stepId) ? ids : [...ids, stepId]));
 			setEventStepsById((by) => ({
 				...by,
@@ -327,21 +332,21 @@ export const StreamingStepsDisplay: React.FC<{
 			const deltaDesc = typeof payload.descriptionDelta === 'string' ? payload.descriptionDelta : '';
 			const deltaTitle = typeof payload.titleDelta === 'string' ? payload.titleDelta : '';
 			if (deltaTitle) titleJustChangedRef.current = true;
-			// Accumulate in ref only - no setEventStepsById (was causing GC/crash from thousands of updates).
-			let acc = deltaAccumRef.current;
-			if (!acc || acc.stepId !== stepId) {
+			let acc = stepAccumsRef.current[stepId];
+			if (!acc) {
 				acc = { stepId, titleChunks: [], descChunks: [], startedAtMs: Date.now() };
-				deltaAccumRef.current = acc;
+				stepAccumsRef.current[stepId] = acc;
 			}
 			if (deltaDesc) acc.descChunks.push(deltaDesc);
 			if (deltaTitle) acc.titleChunks.push(deltaTitle);
+			// Live append only for the current step so user sees text-delta/reasoning-delta stream.
 			if (deltaDesc && eventCurrentStepIdRef.current === stepId) {
 				const prefix = titleJustChangedRef.current ? '\n' : '';
 				if (prefix) titleJustChangedRef.current = false;
 				appendText(prefix + deltaDesc);
 			}
 		}
-	}, [clear, appendText, flushDeltaAccum]);
+	}, [clear, appendText, flushStepAccum]);
 
 	useSubscribeUIEvent(new Set(['ui-step', 'ui-step-delta']), handleUIEvent);
 
@@ -356,11 +361,15 @@ export const StreamingStepsDisplay: React.FC<{
 		handleUIEvent('ui-step', last.payload);
 	}, [streamStarted, eventStepIds, handleUIEvent]);
 
-	// On complete, flush last step to eventStepsById and clear current.
+	// On complete, flush all step accums (including late-arriving deltas for parallel steps) to eventStepsById.
 	const handleComplete = useCallback(() => {
-		flushDeltaAccum();
+		for (const acc of Object.values(stepAccumsRef.current)) {
+			flushStepAccum(acc);
+		}
+		stepAccumsRef.current = {};
+		deltaAccumRef.current = null;
 		setEventCurrentStepId(null);
-	}, [flushDeltaAccum]);
+	}, [flushStepAccum]);
 	useSubscribeUIEvent(new Set(['complete']), handleComplete);
 
 	// Reset current step container when step changes (store path only; event path clears in handler).
@@ -427,8 +436,8 @@ export const StreamingStepsDisplay: React.FC<{
 	}, [eventStepIds.length, eventCurrentStepId, eventStepsById, currentStep]);
 
 	return (
-		<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb] pktw-max-h-96">
-			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
+		<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-max-h-[420px] pktw-flex pktw-flex-col pktw-overflow-hidden">
+			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3 pktw-px-4 pktw-pt-3 pktw-shrink-0">
 				<Activity className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
 				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Analysis Steps</span>
 				<div className="pktw-flex-1" />
@@ -443,8 +452,7 @@ export const StreamingStepsDisplay: React.FC<{
 
 			<div
 				ref={scrollContainerRef}
-				// Keep ripple indicators visible at the edges.
-				className="pktw-h-64 pktw-overflow-y-auto pktw-overflow-x-visible pktw-scroll-smooth pktw-px-1"
+				className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-overflow-x-visible pktw-scroll-smooth pktw-px-4 pktw-pb-4"
 			>
 				{/* Completed steps: unified list from event or store */}
 				{completedStepsForDisplay.map((step, index) => {
@@ -532,6 +540,11 @@ export const StreamingStepsDisplay: React.FC<{
 					</div>
 				)}
 			</div>
+			{showVisualizer && (
+				<div className="pktw-shrink-0 pktw-border-t pktw-border-[#e5e7eb] pktw-px-4 pktw-py-3">
+					<SearchPipelineVisualizer isStreaming={isRunning} />
+				</div>
+			)}
 		</div>
 	);
 };

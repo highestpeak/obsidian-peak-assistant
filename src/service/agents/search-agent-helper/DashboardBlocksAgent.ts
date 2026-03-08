@@ -14,7 +14,7 @@ import { AgentContextManager, AgentMemoryToolSet } from './AgentContextManager';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { AgentTemplateId } from '@/core/template/TemplateRegistry';
 import type { ReportBlockBlueprintItem } from './helpers/report-block-plan-weaver';
-import { uiStepStart } from './helpers/search-ui-events';
+import { uiStageSignal, uiStepStart } from './helpers/search-ui-events';
 
 type BlocksUpdateToolSet = AgentMemoryToolSet & {
     add_dashboard_blocks: AgentTool;
@@ -85,20 +85,16 @@ export class DashboardBlocksAgent {
         runStepId?: string,
         blockId?: string,
     ): AsyncGenerator<LLMStreamEvent> {
-        if (runStepId && blockId != null) {
-            yield uiStepStart(
-                {
-                    runStepId,
-                    stage: 'reportBlock',
-                    lane: { laneType: 'block', laneId: blockId },
-                    agent: 'DashboardBlocksAgent',
-                },
-                {
-                    title: `Report block: ${blockId}`,
-                    description: ('spec' in item && item.spec?.title) ? item.spec.title : blockId,
-                    triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
-                },
-            );
+        const blockMeta = runStepId && blockId != null
+            ? { runStepId, stage: 'reportBlock' as const, lane: { laneType: 'block' as const, laneId: blockId }, agent: 'DashboardBlocksAgent' as const }
+            : null;
+        if (blockMeta) {
+            yield uiStepStart(blockMeta, {
+                title: `Report block: ${blockId}`,
+                description: ('spec' in item && item.spec?.title) ? item.spec.title : blockId,
+                triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT,
+            });
+            yield uiStageSignal(blockMeta, { status: 'start', payload: { blockId }, triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT });
         }
         const templateManager = this.aiServiceManager.getTemplateManager();
         let planLine: string;
@@ -114,6 +110,9 @@ export class DashboardBlocksAgent {
                 this.realStreamInternal(blockPlan, retryCtx, stepId, reviewFeedback, promptOverride),
             { triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT },
         );
+        if (blockMeta) {
+            yield uiStageSignal(blockMeta, { status: 'complete', payload: { blockId: blockId! }, triggerName: StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT });
+        }
     }
 
     /**

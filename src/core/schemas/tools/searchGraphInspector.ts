@@ -49,7 +49,7 @@ export function normalizeTimeWithin(
 export const FilterOption = z.object({
 	tag_category_boolean_expression: z
 		.string()
-		.optional()
+		.nullable()
 		.describe(
 			"Complex boolean expression for filtering. Supports: tag:value, category:value, AND, OR, NOT, parentheses. " +
 				"Category/tags refers to a field in the metadata of the note." +
@@ -57,14 +57,14 @@ export const FilterOption = z.object({
 		),
 	type: z
 		.enum(["note", "folder", "file", "all"])
-		.optional()
+		.nullable()
 		.default("all")
 		.describe(
 			"note (markdown only), file (attachments), folder, or all (everything). Default is 'all'."
 		),
-	path: z.string().optional().describe("Regex or prefix for file paths"),
-	modified_within: z.preprocess((val) => normalizeTimeWithin(val), TimeWithinEnum.optional()),
-	created_within: z.preprocess((val) => normalizeTimeWithin(val), TimeWithinEnum.optional()),
+	path: z.string().nullable().describe("Regex or prefix for file paths"),
+	modified_within: z.preprocess((val) => normalizeTimeWithin(val), TimeWithinEnum.nullable()),
+	created_within: z.preprocess((val) => normalizeTimeWithin(val), TimeWithinEnum.nullable()),
 });
 
 export const SemanticFilter = z.object({
@@ -97,7 +97,7 @@ export const BaseLimit = z.object({
 		.number()
 		.min(1)
 		.max(100)
-		.optional()
+		.nullable()
 		.default(20)
 		.describe(
 			"Maximum number of results(each step inner also. not so strictly.)"
@@ -107,12 +107,12 @@ export const BaseLimit = z.object({
 export const SemanticOptions = z.object({
 	include_semantic_paths: z
 		.boolean()
-		.optional()
+		.nullable()
 		.default(true)
 		.describe(
 			"Include document semantic connection paths (vector-similar neighbors). Prefer true for richer discovery; set false only when you need physical links only."
 		),
-	semantic_filter: SemanticFilter.optional().describe(
+	semantic_filter: SemanticFilter.nullable().describe(
 		"Semantic pruning/relevance filtering. The conceptual anchor for filtering. " +
 			"Instead of 'AI', use 'Large language model architecture and training' to ensure vector relevance."
 	),
@@ -144,16 +144,16 @@ export const graphTraversalInputSchema = z
 	})
 	.merge(SemanticOptions)
 	.extend({
-		filters: FilterOption.optional().describe(
+		filters: FilterOption.nullable().describe(
 			"Only filter document nodes in each level."
 		),
-		sorter: SorterOption.optional().describe("Only sort document nodes in each level."),
+		sorter: SorterOption.nullable().describe("Only sort document nodes in each level."),
 		response_format: ResponseFormat.shape.response_format.default("structured"),
 		limit: z
 			.number()
 			.min(1)
 			.max(100)
-			.optional()
+			.nullable()
 			.default(15)
 			.describe(
 				"Maximum number of results. do not set too large as it may cause context overflow."
@@ -167,7 +167,7 @@ export const findPathInputSchema = z
 	})
 	.merge(BaseLimit)
 	.extend({
-		filters: FilterOption.optional().describe(
+		filters: FilterOption.nullable().describe(
 			"Filter nodes in the path. May cost much more time and resources. As the graph algorithm is time-consuming."
 		),
 		include_semantic_paths: SemanticOptions.shape.include_semantic_paths,
@@ -178,9 +178,9 @@ export const findKeyNodesInputSchema = z
 	.object({})
 	.merge(BaseLimit)
 	.extend({
-		filters: FilterOption.optional(),
-		sorter: SorterOption.optional().default("backlinks_count_desc"),
-		semantic_filter: SemanticOptions.shape.semantic_filter.optional(),
+		filters: FilterOption.nullable(),
+		sorter: SorterOption.nullable().default("backlinks_count_desc"),
+		semantic_filter: SemanticOptions.shape.semantic_filter.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("markdown"),
 	});
 
@@ -189,11 +189,11 @@ export const findOrphansInputSchema = z.object({}).extend({
 		.number()
 		.min(1)
 		.max(1000)
-		.optional()
+		.nullable()
 		.default(50)
 		.describe("Maximum number of results."),
-	filters: FilterOption.optional(),
-	sorter: SorterOption.optional(),
+	filters: FilterOption.nullable(),
+	sorter: SorterOption.nullable(),
 	response_format: ResponseFormat.shape.response_format.default("markdown"),
 });
 
@@ -210,8 +210,8 @@ export const searchByDimensionsInputSchema = z
 	})
 	.merge(BaseLimit)
 	.extend({
-		filters: FilterOption.omit({ tag_category_boolean_expression: true }).optional(),
-		sorter: SorterOption.optional(),
+		filters: FilterOption.omit({ tag_category_boolean_expression: true }).nullable(),
+		sorter: SorterOption.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("structured"),
 	});
 
@@ -228,7 +228,7 @@ export const exploreFolderInputSchema = z
 			.number()
 			.min(1)
 			.max(3)
-			.optional()
+			.nullable()
 			.default(2)
 			.describe(
 				"Only active when recursive: true. Use max_depth: 1 for quick navigation, use max_depth: 3 only for deep structure mapping."
@@ -240,11 +240,11 @@ export const exploreFolderInputSchema = z
 			.number()
 			.min(1)
 			.max(100)
-			.optional()
+			.nullable()
 			.default(50)
 			.describe("Per-folder item cap; use ≥50 for inventory/full-list breadth."),
-		filters: FilterOption.optional(),
-		sorter: SorterOption.optional(),
+		filters: FilterOption.nullable(),
+		sorter: SorterOption.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("markdown"),
 	});
 
@@ -252,8 +252,8 @@ export const recentChangesWholeVaultInputSchema = z
 	.object({})
 	.merge(BaseLimit)
 	.extend({
-		filters: FilterOption.optional(),
-		sorter: SorterOption.optional(),
+		filters: FilterOption.nullable(),
+		sorter: SorterOption.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("markdown"),
 	});
 
@@ -262,14 +262,14 @@ export const localSearchWholeVaultInputSchema = z
 		query: z.string().describe("The query to search for"),
 		searchMode: z
 			.enum(["fulltext", "vector", "hybrid"])
-			.optional()
+			.nullable()
 			.default("fulltext")
 			.describe(
 				"Search mode: 'fulltext' (text only), 'vector' (embedding-based), or 'hybrid' (combine both)."
 			),
 		scopeMode: z
 			.enum(["vault", "inFile", "inFolder", "limitIdsSet"])
-			.optional()
+			.nullable()
 			.default("vault")
 			.describe(
 				"Scope of search: 'vault' (entire vault), 'inFile' (current file), 'inFolder' (a folder and its subnotes), or 'limitIdsSet' (specific note ids set)."
@@ -277,18 +277,18 @@ export const localSearchWholeVaultInputSchema = z
 		current_file_path: z
 			.string()
 			.nullable()
-			.optional()
+			.nullable()
 			.describe(
 				"Current file path (if any). Used for inFile mode and directory boost."
 			),
 		folder_path: z
 			.string()
 			.nullable()
-			.optional()
+			.nullable()
 			.describe("Folder path (if inFolder mode)."),
 		limit_ids_set: z
 			.array(z.string())
-			.optional()
+			.nullable()
 			.describe(
 				"Set of note/document ids to limit search within (if limitIdsSet mode)."
 			),
@@ -296,14 +296,14 @@ export const localSearchWholeVaultInputSchema = z
 			.number()
 			.min(1)
 			.max(100)
-			.optional()
+			.nullable()
 			.default(20)
 			.describe(
 				"Maximum number of results. Use 15-25 for broader coverage; 8-12 for fast narrow search."
 			),
 	})
 	.extend({
-		filters: FilterOption.optional(),
-		sorter: SorterOption.optional(),
+		filters: FilterOption.nullable(),
+		sorter: SorterOption.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("structured"),
 	});

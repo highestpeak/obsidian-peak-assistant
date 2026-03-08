@@ -7,6 +7,8 @@ import {
 	LLMStreamEvent,
 	ModelTokenLimits,
 	ModelCapabilities,
+	ProviderOptionsConfig,
+	ProviderOptions,
 } from '../types';
 import { modelMetadataCache } from '@/core/utils/ttl-cache';
 import { createOpenRouter, type OpenRouterProvider } from '@openrouter/ai-sdk-provider';
@@ -214,8 +216,14 @@ export class OpenRouterChatService implements LLMProviderService {
 		return 'openrouter';
 	}
 
-	modelClient(model: string): LanguageModel {
-		return this.client(model) as unknown as LanguageModel;
+	modelClient(model: string, optionConfig?: ProviderOptionsConfig): LanguageModel {
+		return this.client(model, {
+			reasoning: {
+				enabled: !optionConfig?.noReasoning,
+				exclude: optionConfig?.noReasoning,
+				effort: optionConfig?.reasoningEffort ?? 'medium',
+			},
+		}) as unknown as LanguageModel;
 	}
 
 	/**
@@ -451,6 +459,10 @@ export class OpenRouterChatService implements LLMProviderService {
 			defaultBaseUrl: OPENROUTER_DEFAULT_BASE,
 			icon: 'openrouter',
 		};
+	}
+
+	getProviderOptions(optionConfig: ProviderOptionsConfig): ProviderOptions | undefined {
+		return undefined;
 	}
 
 	async generateEmbeddings(texts: string[], model: string): Promise<number[][]> {

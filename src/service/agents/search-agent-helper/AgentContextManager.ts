@@ -2,7 +2,7 @@ import { LLMUsage, mergeTokenUsage } from "@/core/providers/types";
 import { refreshableMemoizeSupplier, Supplier } from "@/core/utils/functions";
 import { AIServiceManager } from "@/service/chat/service-manager";
 import { searchMemoryStoreInputSchema } from "@/core/schemas/tools/searchMemoryStore";
-import { AISearchSource, AISearchTopic, DashboardBlock, SearchAgentResult } from "../AISearchAgent";
+import { AISearchSource, AISearchTopic, DashboardBlock, SearchAgentResult, type EvidenceIndex } from "../AISearchAgent";
 import { AgentTool, safeAgentTool } from "@/service/tools/types";
 import { contentReaderTool } from "@/service/tools/content-reader";
 import type {
@@ -447,6 +447,20 @@ export class AgentContextManager {
             set reportVisualBlueprint(v: ReportVisualBlueprint | undefined) {
                 self.setReportVisualBlueprint(v);
             },
+            get evidenceIndex(): EvidenceIndex {
+                const packs = self.getRecallEvidencePacks();
+                const index: EvidenceIndex = {};
+                for (const p of packs) {
+                    const path = p.origin?.path_or_url ?? '';
+                    if (!path) continue;
+                    if (!index[path]) index[path] = { summaries: [], facts: [] };
+                    if (p.summary) index[path].summaries.push(p.summary);
+                    for (const f of p.facts ?? []) {
+                        index[path].facts.push({ claim: f.claim, quote: f.quote });
+                    }
+                }
+                return index;
+            },
         };
     }
 
@@ -574,27 +588,6 @@ export class AgentContextManager {
                 ? `Dimensions chosen: ${dims.map((d) => `${d.id} (${(d.intent_description ?? '').slice(0, 80)})`).join('; ')}`
                 : '';
         return [prompt, dimLine].filter(Boolean).join('\n');
-    }
-
-    /** Dimensions section: id + intent per dimension. */
-    private getDimensionsSectionText(): string {
-        return this.recallDimensions.map((d) => `${d.id}: ${d.intent_description ?? ''}`).join('\n');
-    }
-
-    /** Consolidator section: global insight + task count/summary. */
-    private getConsolidatorSectionText(): string {
-        const c = this.consolidatorOutput;
-        if (!c) return '';
-        const parts: string[] = [];
-        if (c.global_recon_insight?.trim()) parts.push(c.global_recon_insight.trim());
-        const tasks = c.consolidated_tasks ?? [];
-        if (tasks.length > 0) {
-            parts.push(`consolidated_tasks: ${tasks.length}`);
-            tasks.slice(0, 30).forEach((t, i) => {
-                parts.push(`  ${t.path}: ${(t.extraction_focus ?? '').slice(0, 120)}`);
-            });
-        }
-        return parts.join('\n');
     }
 
     /** Evidence task group index (paths per group) for prompt context. */

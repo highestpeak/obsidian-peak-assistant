@@ -4,7 +4,7 @@
  */
 
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { Experimental_Agent as Agent, hasToolCall, streamObject } from 'ai';
+import { Experimental_Agent as Agent, streamText, Output } from 'ai';
 import { safeAgentTool, type AgentTool } from '@/service/tools/types';
 import { contentReaderTool } from '@/service/tools/content-reader';
 import {
@@ -13,6 +13,7 @@ import {
 	findKeyNodesTool,
 	searchByDimensionsTool,
 	exploreFolderTool,
+	exploreFolderToolMarkdownOnly,
 	recentChangesWholeVaultTool,
 	localSearchWholeVaultTool,
 	findPathTool,
@@ -20,18 +21,60 @@ import {
 } from '@/service/tools/search-graph-inspector';
 import { PromptId } from '@/service/prompt/PromptId';
 import { consolidatorOutputSchema, rawSearchReportSchema, submitEvidencePackInputSchema, markTaskCompletedInputSchema, type RawSearchReport } from '@/core/schemas/agents/search-agent-schemas';
-import type { ConsolidatedTaskWithId, ConsolidatorOutput, EvidenceTaskGroup, EvidencePack, RawSearchReportWithDimension } from '@/core/schemas/agents/search-agent-schemas';
+import type { ConsolidatedTaskWithId, ConsolidatorOutput, EvidenceTaskGroup, EvidencePack, RawSearchReportWithDimension, AllDimensionId } from '@/core/schemas/agents/search-agent-schemas';
 import type { DimensionChoice } from '@/core/schemas/agents/search-agent-schemas';
 import { AgentContextManager } from './AgentContextManager';
 import { GroupContextAgent } from './GroupContextAgent';
-import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
+import { LLMStreamEvent, ProviderOptionsConfig, StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { SearchUILane } from './helpers/search-ui-events';
 import { makeStepId, uiStageSignal, uiStepStart } from './helpers/search-ui-events';
 import { buildPromptTraceDebugEvent, parallelStream, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
 import { Stopwatch } from '@/core/utils/Stopwatch';
+import { getVaultPersona } from '@/service/tools/system-info';
 import { groupConsolidatedTasksGravity } from './helpers/gravityGrouping';
+
+/** Build a ConsolidatorOutput from recon reports when the LLM consolidator returns null. One task per unique path from discovered_leads. */
+function buildFallbackConsolidatorOutput(
+	dimensions: DimensionChoice[],
+	reports: RawSearchReportWithDimension[],
+): ConsolidatorOutput {
+	const dimensionMap = new Map<AllDimensionId, DimensionChoice>();
+	for (const dimension of dimensions) {
+		dimensionMap.set(dimension.id, dimension);
+	}
+
+	const allPaths = [...new Set(reports.flatMap((r) => r.discovered_leads ?? []))];
+	const pathToDimensionMap: Record<string, DimensionChoice[]> = {};
+	for (const report of reports) {
+		for (const path of report.discovered_leads ?? []) {
+			if (!pathToDimensionMap[path]) {
+				pathToDimensionMap[path] = [];
+			}
+			const dimension = dimensionMap.get(report.dimension);
+			if (dimension) {
+				pathToDimensionMap[path].push(dimension);
+			}
+		}
+	}
+	const consolidated_tasks = allPaths.map((path) => {
+		return {
+			path,
+			relevant_dimension_ids: pathToDimensionMap[path].map((dimension) => ({
+				id: dimension.id,
+				intent: dimension.intent_description,
+			})),
+			extraction_focus: `Extract evidence for this file.`,
+			priority: 'Secondary' as const,
+			task_load: 'medium' as const,
+		};
+	});
+	return {
+		consolidated_tasks,
+		global_recon_insight: 'Fallback: tasks derived from recon discovered_leads only (consolidator output was null).',
+	};
+}
 
 export class RawSearchAgent {
 
@@ -80,6 +123,17 @@ export class RawSearchAgent {
 		});
 		this.context.setRecallEvidenceTaskGroups(evidenceTaskGroups);
 		stopWatch.stop();
+		yield {
+			type: 'pk-debug',
+			debugName: 'parallelSearchResultAfterBatchRecon',
+			triggerName: StreamTriggerName.SEARCH_RAW_AGENT,
+			extra: {
+				evidenceTaskGroups,
+				durationLabel: 'parallelSearchResultAfterBatchRecon',
+				totalDuration: stopWatch.getTotalElapsed(),
+				stepDuration: stopWatch.getLastDuration(),
+			},
+		}
 
 		const evidencePacks: EvidencePack[] = [];
 		stopWatch.start("parallelStreamTaskEvidence");
@@ -100,7 +154,21 @@ export class RawSearchAgent {
 				},
 			});
 		});
-		yield* parallelStream(groupStreams);
+		const evidenceMeta = runStepId ? { runStepId, stage: 'evidence' as const, agent: 'RawSearchAgent' } : null;
+		for await (const ev of parallelStream(groupStreams)) {
+			yield ev;
+			if (ev.type === 'parallel-stream-progress' && evidenceMeta) {
+				yield uiStageSignal(evidenceMeta, {
+					status: 'progress',
+					payload: {
+						completed: (ev as { completed: number }).completed,
+						total: (ev as { total: number }).total,
+						completedIndices: (ev as { completedIndices?: number[] }).completedIndices ?? [],
+					},
+					triggerName: StreamTriggerName.SEARCH_RAW_AGENT_EVIDENCE,
+				});
+			}
+		}
 		this.context.setRecallEvidencePacks(evidencePacks);
 		stopWatch.stop();
 
@@ -111,6 +179,7 @@ export class RawSearchAgent {
 			extra: {
 				evidenceGroups: evidenceTaskGroups,
 				evidencePacks,
+				durationLabel: 'streamSearchResultAfterGroupEvidence',
 				stepDuration: stopWatch.getLastDuration(),
 				totalDuration: stopWatch.getTotalElapsed(),
 			},
@@ -134,46 +203,11 @@ type ReconAgentTools = {
 }
 
 class ReconAgent {
-	private reconAgent: Agent<ReconAgentTools>;
 
 	constructor(
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly context: AgentContextManager,
 	) {
-		const temperature = this.aiServiceManager.getSettings?.()?.defaultOutputControl?.temperature;
-		const maxTokens = this.aiServiceManager.getSettings?.()?.defaultOutputControl?.maxOutputTokens;
-
-		const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisDimensionEvidence);
-		const tm = this.aiServiceManager.getTemplateManager?.();
-		this.reconAgent = new Agent<ReconAgentTools>({
-			model: this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId),
-			tools: {
-				submit_rawsearch_report: safeAgentTool({
-					description:
-						'Submit the recon report. tactical_summary: descriptive summary or preliminary inventory list (up to 500 words). Use discovered_leads to pass specific paths/entities for deeper evidence collection. Optional battlefield_assessment. Call once when done exploring.',
-					inputSchema: rawSearchReportSchema,
-					execute: async (input) => {
-						const report = input as RawSearchReport;
-						const parsed = rawSearchReportSchema.safeParse(report);
-						if (!parsed.success) return { ok: false, error: parsed.error.message };
-						this.context.appendVerifiedPaths(report?.discovered_leads ?? []);
-						return { ok: true };
-					},
-				}),
-				inspect_note_context: inspectNoteContextTool(tm),
-				graph_traversal: graphTraversalTool(tm),
-				find_path: findPathTool(tm),
-				find_key_nodes: findKeyNodesTool(tm),
-				find_orphans: findOrphansTool(tm),
-				search_by_dimensions: searchByDimensionsTool(tm),
-				explore_folder: exploreFolderTool(tm),
-				recent_changes_whole_vault: recentChangesWholeVaultTool(tm),
-				local_search_whole_vault: localSearchWholeVaultTool(tm),
-			},
-			stopWhen: [hasToolCall('submit_rawsearch_report')],
-			temperature,
-			maxOutputTokens: maxTokens,
-		});
 	}
 
 	async *batchStreamRecon(options: {
@@ -211,7 +245,20 @@ class ReconAgent {
 				reports.push({ dimension: dimension.id, ...report });
 			}, runStepId ? { runStepId, lane } : undefined);
 		});
-		yield* parallelStream(reconStreams);
+		for await (const ev of parallelStream(reconStreams)) {
+			yield ev;
+			if (ev.type === 'parallel-stream-progress' && reconMeta) {
+				yield uiStageSignal(reconMeta, {
+					status: 'progress',
+					payload: {
+						completed: (ev as { completed: number }).completed,
+						total: (ev as { total: number }).total,
+						completedIndices: (ev as { completedIndices?: number[] }).completedIndices ?? [],
+					},
+					triggerName: StreamTriggerName.SEARCH_RAW_AGENT_RECON,
+				});
+			}
+		}
 		stopWatch.stop();
 		if (reconMeta) {
 			yield uiStageSignal(reconMeta, { status: 'complete', payload: { dimensions: dimensions.length }, triggerName: StreamTriggerName.SEARCH_RAW_AGENT_RECON });
@@ -225,6 +272,7 @@ class ReconAgent {
 			triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
 			extra: {
 				reconReports: reports,
+				durationLabel: 'parallelSearchResultAfterRecon',
 				stepDuration: stopWatch.getLastDuration(),
 			},
 		}
@@ -249,20 +297,15 @@ class ReconAgent {
 			triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
 			extra: {
 				consolidatorOutput,
+				durationLabel: 'parallelSearchResultAfterTaskConsolidator',
 				stepDuration: stopWatch.getLastDuration(),
+				totalDuration: stopWatch.getTotalElapsed(),
 			},
 		}
 
 		if (!consolidatorOutput) {
-			yield {
-				type: 'error',
-				error: new Error('Consolidator output is null'),
-				triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
-				extra: {
-					totalDuration: stopWatch.getTotalElapsed(),
-				},
-			};
-			return;
+			consolidatorOutput = buildFallbackConsolidatorOutput(dimensions, reports);
+			this.context.setConsolidatorOutput(consolidatorOutput);
 		}
 
 		stopWatch.start("groupConsolidatedTasks");
@@ -280,7 +323,7 @@ class ReconAgent {
 		const groups = await groupConsolidatedTasksGravity(consolidatedTasks);
 		if (groupingMeta) {
 			yield uiStageSignal(groupingMeta, {
-				status: 'complete',
+				status: 'progress',
 				payload: { groupCount: groups.length },
 				triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
 			});
@@ -291,6 +334,7 @@ class ReconAgent {
 			triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
 			extra: {
 				groups,
+				durationLabel: 'groupConsolidatedTasksGravity',
 				stepDuration: stopWatch.getLastDuration(),
 				totalDuration: stopWatch.getTotalElapsed(),
 			},
@@ -312,12 +356,26 @@ class ReconAgent {
 			triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
 			extra: {
 				evidenceGroups: evidenceTaskGroups,
+				durationLabel: 'groupContextRefinement',
 				stepDuration: stopWatch.getLastDuration(),
 				totalDuration: stopWatch.getTotalElapsed(),
 			},
 		};
 
 		onReconFinish?.(evidenceTaskGroups);
+		if (groupingMeta) {
+			yield uiStageSignal(groupingMeta, {
+				status: 'complete',
+				payload: {
+					groups: evidenceTaskGroups.map((g) => ({
+						groupId: g.groupId,
+						topic_anchor: g.topic_anchor,
+						group_focus: g.group_focus,
+					})),
+				},
+				triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR,
+			});
+		}
 	}
 
 	private async *streamTaskConsolidator(
@@ -357,31 +415,28 @@ class ReconAgent {
 				reports,
 			});
 			const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisTaskConsolidator);
-			const model = this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId);
-			const result = streamObject({
+			const providerOptionsConfig: ProviderOptionsConfig = {
+				noReasoning: false,
+				reasoningEffort: 'low',
+			}
+			const model = this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId, providerOptionsConfig);
+			const providerOptions = this.aiServiceManager.getMultiChat().getProviderService(provider).getProviderOptions(providerOptionsConfig);
+			const result = streamText({
 				model,
-				schema: consolidatorOutputSchema,
-				schemaName: 'ConsolidatorOutput',
-				schemaDescription: 'Consolidated evidence tasks and global recon insight.',
 				system,
 				prompt,
+				providerOptions,
+				experimental_output: Output.object({
+					schema: consolidatorOutputSchema,
+				}),
 			});
 			yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR, system, prompt);
 			yield* streamTransform(result.fullStream, StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR, {
 				yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId: stepIdConsolidate },
-				chunkEventInterceptor: (chunk) => {
-					if (chunk.type === 'finish') {
-						const obj = (chunk as { object?: unknown }).object;
-						const parsed = consolidatorOutputSchema.safeParse(obj);
-						if (parsed.success) onConsolidatorFinish?.(parsed.data);
-					}
-				},
 			});
-			const obj = await result.object;
-			const parsed = consolidatorOutputSchema.safeParse(obj);
-			if (parsed.success) {
-				onConsolidatorFinish?.(parsed.data);
-			}
+			const text = await result.text;
+			const parsed = consolidatorOutputSchema.safeParse(JSON.parse(text));
+			if (parsed.success) onConsolidatorFinish?.(parsed.data);
 			yield uiStageSignal(consolidateMeta, { status: 'complete', triggerName: StreamTriggerName.SEARCH_RAW_AGENT_TASK_CONSOLIDATOR });
 		} catch (err) {
 			yield {
@@ -402,6 +457,62 @@ class ReconAgent {
 			};
 			return;
 		}
+	}
+
+	async *streamRecon(
+		dimension: DimensionChoice,
+		stepId?: string,
+		reportCollector?: (report: RawSearchReport) => void,
+		meta?: { runStepId: string; lane: SearchUILane }
+	): AsyncGenerator<LLMStreamEvent> {
+		const singleReconAgent = new SingleReconAgent(this.aiServiceManager, this.context);
+		yield* singleReconAgent.streamRecon(dimension, stepId, reportCollector, meta);
+	}
+
+}
+
+class SingleReconAgent {
+
+	private submitReportSuccess = false;
+	private reconAgent: Agent<ReconAgentTools>;
+
+	constructor(
+		private readonly aiServiceManager: AIServiceManager,
+		private readonly context: AgentContextManager,
+	) {
+		const temperature = this.aiServiceManager.getSettings?.()?.defaultOutputControl?.temperature;
+
+		const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisDimensionEvidence);
+		const tm = this.aiServiceManager.getTemplateManager?.();
+		this.reconAgent = new Agent<ReconAgentTools>({
+			model: this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId),
+			tools: {
+				submit_rawsearch_report: safeAgentTool({
+					description:
+						'Submit the recon report. tactical_summary: descriptive summary or preliminary inventory list (up to 500 words). Use discovered_leads to pass specific paths/entities for deeper evidence collection. Optional battlefield_assessment. Call once when done exploring.',
+					inputSchema: rawSearchReportSchema,
+					execute: async (input) => {
+						const report = input as RawSearchReport;
+						const parsed = rawSearchReportSchema.safeParse(report);
+						if (!parsed.success) return { ok: false, error: parsed.error.message };
+						this.context.appendVerifiedPaths(report?.discovered_leads ?? []);
+						this.submitReportSuccess = true;
+						return { ok: true };
+					},
+				}),
+				inspect_note_context: inspectNoteContextTool(tm),
+				graph_traversal: graphTraversalTool(tm),
+				find_path: findPathTool(tm),
+				find_key_nodes: findKeyNodesTool(tm),
+				find_orphans: findOrphansTool(tm),
+				search_by_dimensions: searchByDimensionsTool(tm),
+				explore_folder: exploreFolderToolMarkdownOnly(tm),
+				recent_changes_whole_vault: recentChangesWholeVaultTool(tm),
+				local_search_whole_vault: localSearchWholeVaultTool(tm),
+			},
+			stopWhen: [() => this.submitReportSuccess],
+			temperature,
+		});
 	}
 
 	/**
@@ -428,12 +539,17 @@ class ReconAgent {
 			);
 		}
 		const system = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDimensionReconSystem, {});
+		const persona = await getVaultPersona();
 		const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDimensionRecon, {
 			dimensionId: dimension.id,
 			intent_description: dimension.intent_description,
 			userQuery: this.context.getInitialPrompt(),
 			scopePath: dimension.scope_constraint?.path,
 			scopeAnchor: dimension.scope_constraint?.anchor_entity,
+			vaultDescription: persona.description,
+			vaultStructure: persona.structure,
+			vaultTopTags: persona.topTags,
+			vaultCapabilities: persona.capabilities,
 		});
 
 		yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_RAW_AGENT_RECON, system, prompt);
@@ -512,7 +628,6 @@ export class EvidenceAgent {
 				() => this.allTasksMarkedCompleted(),
 			],
 			temperature,
-			maxOutputTokens: maxTokens,
 		});
 
 		this.singleAgent = new Agent<EvidenceAgentTools & { submit_final_answer: AgentTool }>({
@@ -525,7 +640,6 @@ export class EvidenceAgent {
 				({ steps }) => this.hasSubmitFinalAnswer(steps) && this.evidencePacks.length > 0,
 			],
 			temperature,
-			maxOutputTokens: maxTokens,
 		});
 	}
 
@@ -627,9 +741,40 @@ export class EvidenceAgent {
 
 		yield buildPromptTraceDebugEvent(StreamTriggerName.SEARCH_RAW_AGENT_EVIDENCE, system, prompt);
 
+		const evidenceMeta =
+			options.runStepId && options.groupId != null
+				? {
+					runStepId: options.runStepId,
+					stage: 'evidence' as const,
+					lane: { laneType: 'group' as const, laneId: options.groupId },
+					agent: 'EvidenceAgent' as const,
+				}
+				: null;
 		const stream = this.batchAgent.stream({ system, prompt });
 		yield* streamTransform(stream.fullStream, StreamTriggerName.SEARCH_RAW_AGENT_EVIDENCE, {
 			yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
+			yieldExtraAfterEvent: (chunk) => {
+				if (!evidenceMeta) return;
+				if (chunk.type === 'tool-call' && (chunk as { toolName?: string }).toolName === 'content_reader') {
+					const input = (chunk as { input?: { path?: string } }).input;
+					return uiStageSignal(evidenceMeta, {
+						status: 'progress',
+						payload: { groupId: options.groupId, currentPath: input?.path },
+						triggerName: StreamTriggerName.SEARCH_RAW_AGENT_EVIDENCE,
+					});
+				}
+				if (chunk.type === 'tool-result' && (chunk as { toolName?: string }).toolName === 'mark_task_completed') {
+					return uiStageSignal(evidenceMeta, {
+						status: 'progress',
+						payload: {
+							groupId: options.groupId,
+							completedTasks: this.completedTaskIds.size,
+							totalTasks: this.requiredTaskIds.size,
+						},
+						triggerName: StreamTriggerName.SEARCH_RAW_AGENT_EVIDENCE,
+					});
+				}
+			},
 		});
 		options.onEvidenceFinish?.(this.evidencePacks);
 	}

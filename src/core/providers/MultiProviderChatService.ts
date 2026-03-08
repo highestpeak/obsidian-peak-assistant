@@ -1,4 +1,4 @@
-import { LLMProviderService, ProviderConfig, ModelMetaData, ProviderMetaData, LLMStreamEvent, LLMOutputControlSettings, ModelTokenLimits } from './types';
+import { LLMProviderService, ProviderConfig, ModelMetaData, ProviderMetaData, LLMStreamEvent, LLMOutputControlSettings, ModelTokenLimits, ProviderOptionsConfig, ProviderOptions } from './types';
 import { LLMRequest } from './types';
 import { ProviderServiceFactory } from './base/factory';
 import { BusinessError, ErrorCode } from '@/core/errors';
@@ -111,6 +111,10 @@ export class MultiProviderChatService implements LLMProviderService {
 			name: 'Multi Provider',
 			defaultBaseUrl: '',
 		};
+	}
+
+	getProviderOptions(optionConfig: ProviderOptionsConfig): ProviderOptions {
+		throw new Error('unsupported operation: getProviderOptions');
 	}
 
 	async generateEmbeddings(texts: string[], model: string, provider?: string): Promise<number[][]> {

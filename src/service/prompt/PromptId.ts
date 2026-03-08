@@ -1,6 +1,4 @@
 // Prompt content is loaded from templates/ via TemplateManager + TemplateRegistry (src/core/template).
-import { FinalRefineContext } from '../agents/search-agent-helper/FinalRefineAgent';
-import { DashboardUpdateContext } from '../agents/search-agent-helper/DashboardAgent';
 import { DashboardBlockVariables } from '../agents/search-agent-helper/DashboardBlocksAgent';
 import type { UserPersonaConfig } from '../agents/search-agent-helper/AgentContextManager';
 import { TopicsUpdateVariables } from '../agents/search-agent-helper/TopicsUpdateAgent';
@@ -80,8 +78,6 @@ export enum PromptId {
 	AiAnalysisDashboardUpdateBlocks = 'ai-analysis-dashboard-update-blocks',
 	AiAnalysisReviewBlocksSystem = 'ai-analysis-review-blocks-system',
 	AiAnalysisReviewBlocks = 'ai-analysis-review-blocks',
-	AiAnalysisDashboardUpdatePlanSystem = 'ai-analysis-dashboard-update-plan-system',
-	AiAnalysisDashboardUpdatePlan = 'ai-analysis-dashboard-update-plan',
 	/** Report plan: section-by-section consulting report outline (ReportPlanAgent). */
 	AiAnalysisReportPlanSystem = 'ai-analysis-report-plan-system',
 	AiAnalysisReportPlan = 'ai-analysis-report-plan',
@@ -97,12 +93,6 @@ export enum PromptId {
 	/** Fix invalid Mermaid code using parse error; used after overview validation fails. */
 	AiAnalysisMermaidFixSystem = 'ai-analysis-mermaid-fix-system',
 	AiAnalysisMermaidFix = 'ai-analysis-mermaid-fix',
-	AiAnalysisFinalRefineSystem = 'ai-analysis-final-refine-system',
-	AiAnalysisFinalRefine = 'ai-analysis-final-refine',
-	AiAnalysisFinalRefineSourcesSystem = 'ai-analysis-final-refine-sources-system',
-	AiAnalysisFinalRefineSources = 'ai-analysis-final-refine-sources',
-	AiAnalysisFinalRefineSourceScoresSystem = 'ai-analysis-final-refine-source-scores-system',
-	AiAnalysisFinalRefineSourceScores = 'ai-analysis-final-refine-source-scores',
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
 	AiAnalysisTitle = 'ai-analysis-title',
 	/** Doc Simple mode: scope prefix (current file only + full coverage). */
@@ -161,11 +151,9 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisDashboardUpdateTopics,
 	PromptId.AiAnalysisDashboardUpdateBlocks,
 	PromptId.AiAnalysisReviewBlocks,
-	PromptId.AiAnalysisDashboardUpdatePlan,
 	PromptId.AiAnalysisReportPlan,
 	PromptId.AiAnalysisVisualBlueprint,
 	PromptId.AiAnalysisMermaidFix,
-	PromptId.AiAnalysisFinalRefine,
 	PromptId.AiAnalysisTitle,
 	PromptId.AiAnalysisDocSimpleScope,
 	PromptId.AiAnalysisDocSimpleSystem,
@@ -178,8 +166,6 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisGroupContextSingle,
 	PromptId.AiAnalysisFollowup,
 	PromptId.AiAnalysisFollowupSystem,
-	PromptId.AiAnalysisFinalRefineSources,
-	PromptId.AiAnalysisFinalRefineSourceScores,
 
 	PromptId.AiAnalysisSaveFileName,
 	PromptId.AiAnalysisSaveFolder,
@@ -329,7 +315,7 @@ export interface PromptVariables {
 		functionalTagsMapping?: string;
 	};
 	[PromptId.AiAnalysisDimensionReconSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDimensionRecon]: { dimensionId: string; intent_description: string; userQuery: string; scopePath?: string; scopeAnchor?: string };
+	[PromptId.AiAnalysisDimensionRecon]: { dimensionId: string; intent_description: string; userQuery: string; scopePath?: string; scopeAnchor?: string; vaultDescription?: string; vaultStructure?: string; vaultTopTags?: string; vaultCapabilities?: string };
 	[PromptId.AiAnalysisDimensionEvidenceSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDimensionEvidence]: { userQuery: string; dimension: DimensionChoice; report: RawSearchReport };
 	[PromptId.AiAnalysisTaskConsolidatorSystem]: Record<string, never>;
@@ -348,7 +334,7 @@ export interface PromptVariables {
 			path: string;
 			extraction_focus: string;
 			priority: string;
-			task_load?: string;
+			task_load?: string | null;
 			relevant_dimension_ids: Array<{ id: string; intent: string }>;
 		}>;
 	};
@@ -379,8 +365,6 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisDashboardUpdateTopics]: TopicsUpdateVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisDashboardUpdateBlocksSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDashboardUpdateBlocks]: DashboardBlockVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
-	[PromptId.AiAnalysisDashboardUpdatePlanSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdatePlan]: DashboardUpdateContext;
 	[PromptId.AiAnalysisReportPlanSystem]: Record<string, never>;
 	[PromptId.AiAnalysisReportPlan]: {
 		originalQuery: string;
@@ -406,12 +390,6 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisReviewBlocks]: ReviewBlocksVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
 	[PromptId.AiAnalysisMermaidFixSystem]: Record<string, never>;
 	[PromptId.AiAnalysisMermaidFix]: { invalidCode: string; validationError: string };
-	[PromptId.AiAnalysisFinalRefineSystem]: Record<string, never>;
-	[PromptId.AiAnalysisFinalRefine]: FinalRefineContext & { toolFormatGuidance?: string };
-	[PromptId.AiAnalysisFinalRefineSourcesSystem]: Record<string, never>;
-	[PromptId.AiAnalysisFinalRefineSources]: FinalRefineContext & { toolFormatGuidance?: string };
-	[PromptId.AiAnalysisFinalRefineSourceScoresSystem]: Record<string, never>;
-	[PromptId.AiAnalysisFinalRefineSourceScores]: FinalRefineContext;
 
 	[PromptId.AiAnalysisSaveFileName]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string; candidateFoldersFromSearch?: string; defaultSaveFolder?: string };

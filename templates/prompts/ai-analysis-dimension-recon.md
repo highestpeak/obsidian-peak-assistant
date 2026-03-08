@@ -1,7 +1,17 @@
 Dimension: {{dimensionId}}
-Intent (what to look for): {{intent_description}}
+Intent (what to look for): {{{intent_description}}}
 
 User question: {{userQuery}}
+
+Vault context:
+{{#vaultDescription}}Description: {{vaultDescription}}
+
+{{/vaultDescription}}{{#vaultStructure}}Structure:
+{{vaultStructure}}
+
+{{/vaultStructure}}Top tags: {{vaultTopTags}}
+Capabilities: {{vaultCapabilities}}
+
 {{#scopePath}}
 Scope path (prefer this area): {{scopePath}}
 {{/scopePath}}

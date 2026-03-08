@@ -30,21 +30,21 @@ export function makeContentReaderInputSchema(params: ContentReaderSchemaParams) 
 					(obj) => typeof obj.start === "number" && typeof obj.end === "number" && obj.end >= obj.start,
 					{ message: "end must be greater than or equal to start" }
 				)
-				.optional()
+				.nullable()
 				.describe("the range of lines of parsed document content to read."),
 			query: z
 				.string()
-				.optional()
+				.nullable()
 				.describe(
 					"Search query used by grep mode. Treated as RegExp by default; falls back to literal match if invalid."
 				),
-			case_sensitive: z.boolean().optional().default(true).describe("Case sensitive search for grep mode. Default true."),
+			case_sensitive: z.boolean().nullable().default(true).describe("Case sensitive search for grep mode. Default true."),
 			max_matches: z
 				.number()
 				.int()
 				.min(1)
 				.max(50)
-				.optional()
+				.nullable()
 				.default(50)
 				.describe("Maximum number of matches for grep mode (hard cap 50)."),
 		})
