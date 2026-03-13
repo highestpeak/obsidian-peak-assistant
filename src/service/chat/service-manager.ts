@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart, LLMRequestMessage, ModelTokenLimits } from '@/core/providers/types';
+import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart, LLMRequestMessage, ModelTokenLimits, ProviderOptionsConfig, ProviderOptions } from '@/core/providers/types';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef } from './types';
@@ -16,6 +16,7 @@ import { EventBus } from '@/core/eventBus';
 import { createChatMessage } from './utils/chat-message-builder';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { AgentTemplateId } from '@/core/template/TemplateRegistry';
+import { LanguageModel } from 'ai';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -580,6 +581,18 @@ ${sourcesList}${topicsList}
 		const defaultModel = this.settings.defaultModel;
 		if (defaultModel) return { provider: defaultModel.provider, modelId: defaultModel.modelId };
 		throw new Error('No model configuration available. Please configure defaultModel in settings.');
+	}
+
+	getModelInstanceForPrompt(promptId: PromptId, providerOptionsConfig?: ProviderOptionsConfig): {
+		model: LanguageModel,
+		providerOptions?: ProviderOptions
+	} {
+		const { provider, modelId } = this.getModelForPrompt(promptId);
+		const providerService = this.getMultiChat().getProviderService(provider)
+		return {
+			model: providerService.modelClient(modelId, providerOptionsConfig),
+			providerOptions: providerOptionsConfig ?  providerService.getProviderOptions(providerOptionsConfig) : undefined,
+		}
 	}
 
 	async renderTemplate<T extends AgentTemplateId>(

@@ -35,7 +35,7 @@ export const AXIS_TEMPORAL_ID = 'temporal_mapping' as const;
 export const ALL_DIMENSION_IDS = [...SEMANTIC_DIMENSION_IDS, AXIS_TOPOLOGY_ID, AXIS_TEMPORAL_ID] as const;
 
 const semanticDimensionIdsEnum = z.enum(SEMANTIC_DIMENSION_IDS).describe(
-		`One of the 15 dimension ids, grouped as follows:
+	`One of the 15 dimension ids, grouped as follows:
 
 1. **Base (essence & origin)**
    - essence_definition: Core identity, definition, concept; "what it is". e.g. Define "first principle" as "decomposing from basic truths".
@@ -93,7 +93,7 @@ const semanticDimensionChoiceSchema = z.object({
 		.string()
 		.min(1, 'intent_description is required.')
 		.describe(
-			'Concrete search goal for this dimension in human language (what to look for in this dimension).'
+			'Concrete search task for this dimension: state what to search/retrieve in imperative form (e.g. "Search for notes that define X and list…", "Find content comparing A with B…"). Not a topic label or passive summary—must read as an actionable retrieval instruction.'
 		),
 	scope_constraint: scopeConstraintSchema.describe('Search scope for this dimension.'),
 	retrieval_orientation: z
@@ -114,7 +114,7 @@ const topologyDimensionChoiceSchema = z.object({
 		),
 	scope_constraint: scopeConstraintSchema.describe(
 		'Physical boundary. Path is the most stable anchor; tags are valid as navigation/dimension. When using tags, prefer user-mentioned or vault-known names to avoid empty results.'
-		),
+	),
 });
 
 /** One temporal-axis dimension (temporal_mapping): change/evolution. intent_description is enough. */
@@ -201,6 +201,32 @@ export const dimensionChoiceSchema = z.object({
 });
 export type DimensionChoice = z.infer<typeof dimensionChoiceSchema>;
 
+// ----- Search Architect (Dimension-to-Task Collapse) -----
+
+/** One physical search task: merged scope + unified query, covers one or more logical dimensions. */
+export const physicalSearchTaskSchema = z.object({
+	unified_intent: z.string().min(1).describe('Synthesized search instruction (not a keyword list): one imperative retrieval mission that merges the intent_description of all covered dimensions. Same style as dimension intent—e.g. "Search for notes that define X, compare alternatives, and state applicable conditions and trends."'),
+	covered_dimension_ids: z.array(z.enum(ALL_DIMENSION_IDS)).min(1).describe('Logical dimension ids that this task will feed; results are mapped back to each.'),
+	search_priority: z.number().int().min(0).describe('Execution order; lower = higher priority.'),
+	scope_constraint: scopeConstraintSchema.describe('Merged path/tags/anchor for this task; use intersection or dominant scope of covered dimensions.'),
+});
+export type PhysicalSearchTask = z.infer<typeof physicalSearchTaskSchema>;
+
+/** Search Architect output: collapsed physical tasks. Count is dynamic (1..N) based on overlap. */
+export const searchArchitectOutputSchema = z.object({
+	physical_tasks: z.array(physicalSearchTaskSchema).min(1).describe('Physical recon tasks; each runs once and results map to covered_dimension_ids.'),
+});
+export type SearchArchitectOutput = z.infer<typeof searchArchitectOutputSchema>;
+
+/** Task + paths + messages + history for physical-task recon; used for debug and onReconFinish payload. messages are ModelMessage[] from RawSearchAgent. */
+export type PhysicalTaskReconResult = {
+	task: PhysicalSearchTask;
+	paths: string[];
+	/** Conversation messages from the recon loop (plan + path-submit rounds). */
+	messages: unknown[];
+	pathSubmitHistory: PathSubmitHistoryEntry[];
+};
+
 export const defaultClassify: QueryClassifierOutput = {
 	semantic_dimensions: [
 		{
@@ -231,20 +257,59 @@ export const defaultClassify: QueryClassifierOutput = {
 
 // ----- RawSearch (Recon / Evidence) -----
 
-/** Battlefield assessment for RawSearch report. */
+/** Battlefield assessment for RawSearch report. Kept short to avoid long path-submit output. */
 export const battlefieldAssessmentSchema = z.object({
 	search_density: z.enum(['High', 'Medium', 'Low']).nullable(),
 	match_quality: z.enum(['Exact', 'Fuzzy', 'None']).nullable(),
-	suggestion: z.string().nullable().describe('e.g. try visa-related tags or widen scope'),
+	suggestion: z.string().max(400).nullable().describe('Short hint for evidence phase; ~50 words max'),
 });
 
-/** Report from Recon Agent: tactical summary + leads + assessment. */
+/** Input for submit_recon_paths: incremental path list; merged into final report when request_submit_report triggers report generation. */
+export const submitReconPathsSchema = z.object({
+	paths: z.array(z.string()).describe('Full set of in-scope, relevant paths from that tool result (no sample/subset). Prefer one call; if splitting, use large batches (e.g. 100-200).'),
+});
+export type SubmitReconPathsInput = z.infer<typeof submitReconPathsSchema>;
+
+/** Report from Recon Agent: tactical summary + leads + assessment. Produced by path-submit step to guide subsequent search. */
 export const rawSearchReportSchema = z.object({
-	tactical_summary: z.string().max(3500).describe('Up to 500 words: descriptive summary or preliminary inventory list; for topology use manifest style (list items with one-line intro each)'),
-	discovered_leads: z.array(z.string()).describe('Paths, file names, or entity names for deeper evidence collection (10–30 preferred)'),
+	tactical_summary: z.string().max(2000).describe('Short summary or compact manifest; max 300 words. Prefer signal over length.'),
+	discovered_leads: z.array(z.string()).describe('Paths or entity names for deeper evidence collection. No fixed maximum; include all relevant items for this dimension; prefer comprehensive coverage.'),
 	battlefield_assessment: battlefieldAssessmentSchema.nullable(),
 });
-export type RawSearchReport = z.infer<typeof rawSearchReportSchema>;
+export type RawSearchReport = z.infer<typeof rawSearchReportSchema> & { search_history_summary?: string };
+
+/** LLM describes how to acquire paths: expand these folder prefixes (code will list all files under them). */
+export const leadStrategySchema = z.object({
+	must_expand_prefixes: z.array(z.string()).describe('Folder path prefixes to expand to full file list (e.g. "kb2-learn-prd/B-2-创意和想法管理/A-All Ideas/"). Code will list every file under each prefix.'),
+	include_path_regex: z.array(z.string()).nullable().describe('Optional: include only paths matching any of these regexes (applied to vault paths). Use null when not needed.'),
+	exclude_path_regex: z.array(z.string()).nullable().describe('Optional: exclude paths matching any of these regexes. Use null when not needed.'),
+	max_expand_results: z.number().min(1).max(10000).nullable().describe('Cap total paths from expansion (default 5000). Use null for default.'),
+});
+
+/** LLM describes a scoped search to run; code will execute and collect result paths. */
+export const searchPlanItemSchema = z.object({
+	scope_path: z.string().describe('Folder path to search within (e.g. "kb2-learn-prd/B-2-创意和想法管理/").'),
+	query: z.string().describe('Search query (keywords or semantic description).'),
+	search_mode: z.enum(['fulltext', 'vector', 'hybrid']).nullable().describe('Search mode. Use null for default fulltext.'),
+	top_k: z.number().min(1).max(200).nullable().describe('Max results. Use null for default 80.'),
+});
+
+/** Path-submit step: LLM outputs strategy + small leads; code resolves to full path list. */
+export const pathSubmitOutputSchema = z.object({
+	tactical_summary: z.string().max(2000).describe('Short summary or compact inventory from this round; max 300 words.'),
+	battlefield_assessment: battlefieldAssessmentSchema.nullable(),
+	lead_strategy: leadStrategySchema.nullable().describe('How to acquire paths by expanding folders and/or filtering vault paths by regex. Use null when not needed.'),
+	search_plan: z.array(searchPlanItemSchema).nullable().describe('Scoped searches to run; code will execute each and collect result paths. Use null when not needed.'),
+	discovered_leads: z.array(z.string()).max(20).nullable().describe('At most 20 scattered .md file paths only. Do not list images, excalidraw, or paths under must_expand_prefixes (those are auto-expanded). Use null when not needed.'),
+	/** When true, recon loop ends after this round; system will generate the final report. Set from battlefield + coverage assessment. */
+	should_submit_report: z.boolean().describe('True when coverage is complete, round budget is reached, or further exploration adds no new leads; false to continue next round.'),
+});
+export type PathSubmitHistoryEntry = {
+	lead_strategy?: PathSubmitOutput['lead_strategy'];
+	search_plan?: PathSubmitOutput['search_plan'];
+	resolved_count?: number
+};
+export type PathSubmitOutput = z.infer<typeof pathSubmitOutputSchema>;
 export type RawSearchReportWithDimension = { dimension: AllDimensionId; } & RawSearchReport;
 
 /** Single fact with quote (for EvidencePack). */
@@ -324,7 +389,7 @@ export interface EvidenceTaskGroup {
 	topic_anchor: string;
 	group_focus: string;
 	tasks: ConsolidatedTaskWithId[];
-	/** Rendered markdown from buildEvidenceGroupSharedContext (folders, top tags, mermaid graph). */
+	/** Rendered markdown from weavePathsToContext (folders, top tags, mermaid graph); set per-group or from recon weaved context. */
 	sharedContext?: string;
 	clustering_reason?: string;
 }

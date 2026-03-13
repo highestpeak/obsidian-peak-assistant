@@ -36,6 +36,9 @@ export class ReportPlanAgent {
 
 	private phasePlans: Array<{ phaseId: string; planMarkdown: string }> = [];
 
+	/** Set to true when submit_phase_and_get_next_to_plan returns done: true (all phases completed). Used by stopWhen. */
+	private allPhasesCompleted = false;
+
 	constructor(
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly context: AgentContextManager,
@@ -46,7 +49,8 @@ export class ReportPlanAgent {
 			tools: {
 				...this.context.getAgentMemoryTool(),
 				submit_phase_and_get_next_to_plan: this.submitPhaseAndGetNextToPlan(),
-			}
+			},
+			stopWhen: [() => this.allPhasesCompleted]
 		});
 		this.visualBlueprintAgent = new VisualBlueprintAgent(aiServiceManager, context);
 	}
@@ -77,10 +81,12 @@ export class ReportPlanAgent {
 				const nextIdx = idx < 0 ? REPORT_PLAN_PHASE_IDS.length : idx + 1;
 				const nextPhaseId: ReportPlanPhaseId | null = nextIdx < REPORT_PLAN_PHASE_IDS.length ? REPORT_PLAN_PHASE_IDS[nextIdx] : null;
 				const nextRequirementsMarkdown = nextPhaseId ? REPORT_PLAN_PHASE_REQUIREMENTS[nextPhaseId] ?? `Plan the section: ${nextPhaseId}.` : '';
+				const done = nextPhaseId === null;
+				if (done) this.allPhasesCompleted = true;
 				return {
 					nextPhaseId,
 					nextRequirementsMarkdown,
-					done: nextPhaseId === null,
+					done,
 				};
 			},
 		});
@@ -88,6 +94,7 @@ export class ReportPlanAgent {
 
 	public async *streamPlan(opts?: { stepId?: string }): AsyncGenerator<LLMStreamEvent> {
 		this.phasePlans = [];
+		this.allPhasesCompleted = false;
 		const stepId = opts?.stepId ?? generateUuidWithoutHyphens();
 		const reportPlanMeta = { runStepId: stepId, stage: 'reportPlan' as const, agent: 'ReportPlanAgent' };
 		yield uiStageSignal(reportPlanMeta, { status: 'start', triggerName: StreamTriggerName.SEARCH_REPORT_PLAN_AGENT });
@@ -188,6 +195,10 @@ export class ReportPlanAgent {
 					title,
 					role: pid,
 					paragraphSkeleton: pages[i],
+					evidenceBinding: null,
+					chartOrTableShape: null,
+					risksUncertaintyHint: null,
+					wordTarget: null,
 				});
 			}
 		}
@@ -206,14 +217,15 @@ export class ReportPlanAgent {
 		}
 
 		return {
-			intentInsight: get('intent_insight'),
-			summarySpec: get('summary_spec'),
-			overviewMermaidSpec: get('overview_mermaid'),
-			topicsSpec: get('topics'),
+			intentInsight: get('intent_insight') ?? null,
+			summarySpec: get('summary_spec') ?? null,
+			overviewMermaidSpec: get('overview_mermaid') ?? null,
+			topicsSpec: get('topics') ?? null,
 			bodyBlocksSpec,
 			appendicesBlocksSpec,
-			actionItemsSpec: get('actions_todo_list'),
-			followupQuestionsSpec: get('actions_followup_questions'),
+			actionItemsSpec: get('actions_todo_list') ?? null,
+			followupQuestionsSpec: get('actions_followup_questions') ?? null,
+			sourcesViewsSpec: null,
 		};
 	}
 }

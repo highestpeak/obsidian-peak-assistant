@@ -9,6 +9,8 @@ import type {
     DimensionChoice,
     EvidenceTaskGroup,
     EvidencePack,
+    PhysicalSearchTask,
+    RawSearchReport,
     RawSearchReportWithDimension,
     ConsolidatorOutput,
     ReportPlan,
@@ -97,10 +99,14 @@ export class AgentContextManager {
      * After Classify before Recon. User persona from classifier (appeal, detail_level). Persisted after classify for report phases. 
      */
     private userPersonaConfig: UserPersonaConfig | null = null;
-    /** 
-     * After Recon before Evidence. Recon reports per dimension (persisted after batchStreamRecon for dossier/finish). 
+    /**
+     * After Recon. Recon reports per dimension (persisted after batchStreamRecon for dossier/finish).
      */
     private reconReports: RawSearchReportWithDimension[] = [];
+    /**
+     * After Recon. Weaved context markdown (structure + mesh) from mergePaths; set by SlotRecallAgent onReconFinish.
+     */
+    private reconWeavedContext: string | undefined = undefined;
     /** 
      * After Recon before Evidence. Consolidator output (persisted after streamTaskConsolidator for dossier/finish). 
      */
@@ -180,6 +186,7 @@ export class AgentContextManager {
         this.recallEvidenceTaskGroups = [];
         this.recallEvidencePacks = [];
         this.reconReports = [];
+        this.reconWeavedContext = undefined;
         this.consolidatorOutput = null;
         this.userPersonaConfig = null;
     }
@@ -325,8 +332,36 @@ export class AgentContextManager {
         this.reconReports = reports ?? [];
     }
 
+    /** Persist recon from physical-task flow: mergedPaths applied per dimension for compatibility with getReconReports(). */
+    public setReconReportsFromPhysicalTasks(physicalTasks: PhysicalSearchTask[], mergedPaths: string[]): void {
+        const expanded: RawSearchReportWithDimension[] = [];
+        for (const task of physicalTasks) {
+            for (const dimId of task.covered_dimension_ids) {
+                expanded.push({
+                    dimension: dimId,
+                    tactical_summary: '',
+                    discovered_leads: mergedPaths,
+                    battlefield_assessment: null,
+                });
+            }
+        }
+        this.reconReports = expanded;
+    }
+
+    public addReconReport(report: RawSearchReportWithDimension): void {
+        this.reconReports.push(report);
+    }
+
     public getReconReports(): RawSearchReportWithDimension[] {
         return this.reconReports;
+    }
+
+    public setReconWeavedContext(value: string | undefined): void {
+        this.reconWeavedContext = value;
+    }
+
+    public getReconWeavedContext(): string | undefined {
+        return this.reconWeavedContext;
     }
 
     /** Persist consolidator output (from RawSearchAgent after streamTaskConsolidator). */
@@ -351,6 +386,10 @@ export class AgentContextManager {
     /** Set final evidence packs after evidence phase (for recall pipeline snapshot). */
     public setRecallEvidencePacks(packs: EvidencePack[]): void {
         this.recallEvidencePacks = packs ?? [];
+    }
+
+    public addRecallEvidencePack(pack: EvidencePack): void {
+        this.recallEvidencePacks.push(pack);
     }
 
     public getRecallDimensions(): DimensionChoice[] {

@@ -31,7 +31,7 @@ export type SearchUIStage =
 
 /** Lane descriptor for parallel branches so UI can group by lane. */
 export interface SearchUILane {
-	laneType: 'dimension' | 'group' | 'block' | 'planLine';
+	laneType: 'dimension' | 'physical-task' | 'group' | 'block' | 'planLine';
 	laneId: string;
 	index?: number;
 }

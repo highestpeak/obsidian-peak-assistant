@@ -455,6 +455,8 @@ export enum StreamTriggerName {
 	SEARCH_AI_AGENT = 'search-ai-agent',
 	SEARCH_RAW_AGENT = 'search-raw-agent',
 	SEARCH_RAW_AGENT_RECON = 'search-raw-agent-recon',
+	SEARCH_RAW_AGENT_RECON_PLAN_STEP = 'search-raw-agent-recon-plan-step',
+	SEARCH_RAW_AGENT_RECON_PATH_SUBMIT_STEP = 'search-raw-agent-recon-path-submit-step',
 	SEARCH_RAW_AGENT_TASK_CONSOLIDATOR = 'search-raw-agent-task-consolidator',
 	SEARCH_RAW_AGENT_EVIDENCE = 'search-raw-agent-evidence',
 	SEARCH_SLOT_RECALL_AGENT = 'search-slot-recall-agent',

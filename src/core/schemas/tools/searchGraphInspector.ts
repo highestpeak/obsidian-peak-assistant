@@ -47,14 +47,14 @@ export function normalizeTimeWithin(
 }
 
 export const FilterOption = z.object({
-	tag_category_boolean_expression: z
-		.string()
-		.nullable()
-		.describe(
-			"Complex boolean expression for filtering. Supports: tag:value, category:value, AND, OR, NOT, parentheses. " +
-				"Category/tags refers to a field in the metadata of the note." +
-				"Example: '(tag:react OR tag:vue) AND category:frontend'"
-		),
+	// tag_category_boolean_expression: z
+	// 	.string()
+	// 	.nullable()
+	// 	.describe(
+	// 		"Complex boolean expression for filtering. Use only tag:value, category:value, AND, OR, NOT, and parentheses. " +
+	// 			"Each value must be a single word (no spaces, no special characters). " +
+	// 			"Example: tag:javascript AND category:programming or (tag:react OR tag:vue) AND category:frontend."
+	// 	),
 	type: z
 		.enum(["note", "folder", "file", "all"])
 		.nullable()
@@ -202,15 +202,17 @@ export const searchByDimensionsInputSchema = z
 		boolean_expression: z
 			.string()
 			.describe(
-				"Complex boolean expression for filtering. Supports: tag:value, category:value, AND, OR, NOT, parentheses. " +
-					"Category/tags refers to a field in the metadata of the note." +
-					"Example: '(tag:react OR tag:vue) AND category:frontend'." +
-					"If no results are found, try relaxing the boolean constraints or switching to OR logic"
+				"Complex boolean expression for filtering. Use only tag:value, category:value, AND, OR, NOT, and parentheses. " +
+					"Each value must be a single word (no spaces, no special characters). " +
+					"Example: tag:javascript AND category:programming or (tag:react OR tag:vue) AND category:frontend. " +
+					"If no results are found, try relaxing the boolean constraints or switching to OR logic."
 			),
 	})
 	.merge(BaseLimit)
 	.extend({
-		filters: FilterOption.omit({ tag_category_boolean_expression: true }).nullable(),
+		filters: FilterOption.omit({ 
+			// tag_category_boolean_expression: true
+		 }).nullable(),
 		sorter: SorterOption.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("structured"),
 	});
@@ -247,6 +249,11 @@ export const exploreFolderInputSchema = z
 		sorter: SorterOption.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("markdown"),
 	});
+
+export const grepFileTreeInputSchema = z.object({
+	pattern: z.string().min(1).describe("Search pattern (substring or regex) to match against vault file paths. Use to find anchor paths or folder names quickly."),
+	limit: z.number().min(1).max(500).nullable().default(200).describe("Max number of matching paths to return (default 200)."),
+});
 
 export const recentChangesWholeVaultInputSchema = z
 	.object({})

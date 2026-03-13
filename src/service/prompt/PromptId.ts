@@ -69,6 +69,9 @@ export enum PromptId {
 	/** Phase 1 of weaveEvidence2MermaidOverview: logic model only (no Mermaid). */
 	AiAnalysisOverviewLogicModelSystem = 'ai-analysis-overview-logic-model-system',
 	AiAnalysisOverviewLogicModel = 'ai-analysis-overview-logic-model',
+	/** Logic model from recon bundle only (reconReports + reconGraphSummary); used by ReconOverviewWeaveAgent with tools. */
+	AiAnalysisOverviewLogicModelFromReconSystem = 'ai-analysis-overview-logic-model-from-recon-system',
+	AiAnalysisOverviewLogicModelFromRecon = 'ai-analysis-overview-logic-model-from-recon',
 	/** Phase 2: render logic model → flowchart Mermaid. */
 	AiAnalysisOverviewMermaidRenderSystem = 'ai-analysis-overview-mermaid-render-system',
 	AiAnalysisOverviewMermaidRender = 'ai-analysis-overview-mermaid-render',
@@ -78,6 +81,8 @@ export enum PromptId {
 	AiAnalysisDashboardUpdateBlocks = 'ai-analysis-dashboard-update-blocks',
 	AiAnalysisReviewBlocksSystem = 'ai-analysis-review-blocks-system',
 	AiAnalysisReviewBlocks = 'ai-analysis-review-blocks',
+	AiAnalysisDashboardUpdatePlanSystem = 'ai-analysis-dashboard-update-plan-system',
+	AiAnalysisDashboardUpdatePlan = 'ai-analysis-dashboard-update-plan',
 	/** Report plan: section-by-section consulting report outline (ReportPlanAgent). */
 	AiAnalysisReportPlanSystem = 'ai-analysis-report-plan-system',
 	AiAnalysisReportPlan = 'ai-analysis-report-plan',
@@ -105,9 +110,20 @@ export enum PromptId {
 	/** Slot-routing: lightweight query classification (queryType, hints). JSON output. */
 	AiAnalysisQueryClassifierSystem = 'ai-analysis-query-classifier-system',
 	AiAnalysisQueryClassifier = 'ai-analysis-query-classifier',
-	/** Dimension Recon Agent: breadth exploration, submit_rawsearch_report only. */
+	/** Search Architect: collapse dimensions into physical tasks (dimension-to-task collapse). */
+	AiAnalysisSearchArchitectSystem = 'ai-analysis-search-architect-system',
+	AiAnalysisSearchArchitect = 'ai-analysis-search-architect',
+	/** Dimension Recon Agent: breadth exploration; stop driven by path-submit should_submit_report, final report produced by system. */
 	AiAnalysisDimensionReconSystem = 'ai-analysis-dimension-recon-system',
 	AiAnalysisDimensionRecon = 'ai-analysis-dimension-recon',
+	/** Recon loop (internal): plan step system. */
+	AiAnalysisReconLoopPlanSystem = 'ai-analysis-recon-loop-plan-system',
+	/** Recon loop (internal): plan step user message. */
+	AiAnalysisReconLoopPlan = 'ai-analysis-recon-loop-plan',
+	/** Recon loop (internal): path-submit step system only. */
+	AiAnalysisReconLoopPathSubmitSystem = 'ai-analysis-recon-loop-path-submit-system',
+	/** Recon loop (internal): final report step system only. */
+	AiAnalysisReconLoopReportSystem = 'ai-analysis-recon-loop-report-system',
 	/** Dimension Evidence Agent: precise collection from leads, submit_evidence_pack. */
 	AiAnalysisDimensionEvidenceSystem = 'ai-analysis-dimension-evidence-system',
 	AiAnalysisDimensionEvidence = 'ai-analysis-dimension-evidence',
@@ -146,6 +162,7 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisSessionSummary,
 	PromptId.AiAnalysisSummary,
 	PromptId.AiAnalysisOverviewLogicModel,
+	PromptId.AiAnalysisOverviewLogicModelFromRecon,
 	PromptId.AiAnalysisOverviewMermaidRender,
 	PromptId.AiAnalysisOverviewRegenerate,
 	PromptId.AiAnalysisDashboardUpdateTopics,
@@ -159,7 +176,12 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisDocSimpleSystem,
 	PromptId.AiAnalysisSuggestFollowUpQuestions,
 	PromptId.AiAnalysisQueryClassifier,
+	PromptId.AiAnalysisSearchArchitect,
 	PromptId.AiAnalysisDimensionRecon,
+	PromptId.AiAnalysisReconLoopPlanSystem,
+	PromptId.AiAnalysisReconLoopPlan,
+	PromptId.AiAnalysisReconLoopPathSubmitSystem,
+	PromptId.AiAnalysisReconLoopReportSystem,
 	PromptId.AiAnalysisDimensionEvidence,
 	PromptId.AiAnalysisDimensionEvidenceBatch,
 	PromptId.AiAnalysisTaskConsolidator,
@@ -314,8 +336,14 @@ export interface PromptVariables {
 		vaultDescription?: string;
 		functionalTagsMapping?: string;
 	};
+	[PromptId.AiAnalysisSearchArchitectSystem]: Record<string, never>;
+	[PromptId.AiAnalysisSearchArchitect]: { userQuery: string; dimensionsJson: string };
 	[PromptId.AiAnalysisDimensionReconSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDimensionRecon]: { dimensionId: string; intent_description: string; userQuery: string; scopePath?: string; scopeAnchor?: string; vaultDescription?: string; vaultStructure?: string; vaultTopTags?: string; vaultCapabilities?: string };
+	[PromptId.AiAnalysisDimensionRecon]: { userQuery: string; dimensionId?: string; intent_description?: string; unified_intent?: string; coveredDimensionIds?: string; inventoryRequiresManifest?: boolean; scopePath?: string; scopeAnchor?: string; scopeTags?: string; vaultDescription?: string; vaultStructure?: string; vaultTopTags?: string; vaultCapabilities?: string };
+	[PromptId.AiAnalysisReconLoopPlanSystem]: { maxIterations: number };
+	[PromptId.AiAnalysisReconLoopPlan]: { userQuery: string; dimensionId?: string; intent_description?: string; unified_intent?: string; coveredDimensionIds?: string; inventoryRequiresManifest?: boolean; scopePath?: string; scopeAnchor?: string; scopeTags?: string; vaultDescription?: string; vaultStructure?: string; vaultTopTags?: string; vaultCapabilities?: string };
+	[PromptId.AiAnalysisReconLoopPathSubmitSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReconLoopReportSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDimensionEvidenceSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDimensionEvidence]: { userQuery: string; dimension: DimensionChoice; report: RawSearchReport };
 	[PromptId.AiAnalysisTaskConsolidatorSystem]: Record<string, never>;
@@ -359,6 +387,13 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisOverviewRegenerate]: { originalQuery: string; currentResultSnapshot: string };
 	[PromptId.AiAnalysisOverviewLogicModelSystem]: Record<string, never>;
 	[PromptId.AiAnalysisOverviewLogicModel]: { userQuery: string; evidencePacks: EvidencePack[]; repairHint?: string };
+	[PromptId.AiAnalysisOverviewLogicModelFromReconSystem]: Record<string, never>;
+	[PromptId.AiAnalysisOverviewLogicModelFromRecon]: {
+		userQuery: string;
+		reconReports: Array<{ dimension: string; tactical_summary: string | null; discovered_leads: string[] }>;
+		reconGraphSummary: string;
+		repairHint?: string;
+	};
 	[PromptId.AiAnalysisOverviewMermaidRenderSystem]: Record<string, never>;
 	[PromptId.AiAnalysisOverviewMermaidRender]: { userQuery: string; logicModelJson: string };
 	[PromptId.AiAnalysisDashboardUpdateTopicsSystem]: Record<string, never>;
@@ -388,6 +423,8 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisReportAppendicesBlocks]: DashboardBlockVariables & ErrorRetryInfo & { toolFormatGuidance?: string; userPersonaConfig?: UserPersonaConfig };
 	[PromptId.AiAnalysisReviewBlocksSystem]: Record<string, never>;
 	[PromptId.AiAnalysisReviewBlocks]: ReviewBlocksVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
+	[PromptId.AiAnalysisDashboardUpdatePlanSystem]: Record<string, never>;
+	[PromptId.AiAnalysisDashboardUpdatePlan]: Record<string, unknown>;
 	[PromptId.AiAnalysisMermaidFixSystem]: Record<string, never>;
 	[PromptId.AiAnalysisMermaidFix]: { invalidCode: string; validationError: string };
 

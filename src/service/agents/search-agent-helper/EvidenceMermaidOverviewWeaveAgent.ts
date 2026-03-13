@@ -16,7 +16,9 @@ import { getMermaidInner, sanitizeMermaidOverview } from '@/core/utils/mermaid-u
 import { validateMermaidCode } from '@/core/utils/analysis-data-validator';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { EvidencePack } from '@/core/schemas/agents/search-agent-schemas';
-import { forwardPromptStreamWithUiDelta, makeStepId, uiStageSignal } from './helpers/search-ui-events';
+import { makeStepId, uiStageSignal } from './helpers/search-ui-events';
+import type { ReconSynthesisBundle } from './helpers/recon-synthesis-helper';
+import { ReconOverviewWeaveAgent } from './ReconOverviewWeaveAgent';
 
 export interface MermaidOverviewVariables {
 	originalQuery: string;
@@ -44,6 +46,73 @@ export class EvidenceMermaidOverviewWeaveAgent {
 		this.aiServiceManager = params.aiServiceManager;
 		this.context = params.context;
 		this.mermaidFixAgent = new MermaidFixAgent(params.aiServiceManager);
+	}
+
+	/**
+	 * Recon-only entry: dedicated agent with content_reader and inspect_note_context builds logic model
+	 * from ReconSynthesisBundle (prompt uses reconReports + reconGraphSummary); then phase2 renders Mermaid.
+	 */
+	public async *streamFromReconBundle(bundle: ReconSynthesisBundle, stepId?: string): AsyncGenerator<LLMStreamEvent> {
+		const id = stepId ?? generateUuidWithoutHyphens();
+		if (bundle.reports.length === 0) {
+			this.context.setEvidenceWeavedMermaidOverviewAgent('');
+			return;
+		}
+
+		const reconAgent = new ReconOverviewWeaveAgent(this.aiServiceManager, this.context);
+		yield* reconAgent.stream(bundle, id);
+
+		const logicModel = reconAgent.getSubmittedModel();
+		if (!logicModel) {
+			this.context.setEvidenceWeavedMermaidOverviewAgent('');
+			yield uiStageSignal(
+				{ runStepId: id, stage: 'overview', agent: 'EvidenceMermaidOverviewWeaveAgent' },
+				{ status: 'error', payload: { error: 'No logic model submitted by recon overview agent.' }, triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID },
+			);
+			return;
+		}
+
+		const overviewMeta = { runStepId: id, stage: 'overview' as const, agent: 'EvidenceMermaidOverviewWeaveAgent' };
+		const phase2Out: Phase2Out = { renderOutput: '' };
+		yield* this.phase2StreamRender(id, logicModel, phase2Out);
+
+		let mermaid = getMermaidInner(phase2Out.renderOutput).trim();
+		if (!mermaid) {
+			this.context.setEvidenceWeavedMermaidOverviewAgent('');
+			return;
+		}
+		mermaid = sanitizeMermaidOverview(mermaid);
+
+		const validation = await validateMermaidCode(mermaid);
+		if (!validation.valid) {
+			yield* this.mermaidFixAgent.ifInvalidThenFix(mermaid, (fixed) => {
+				this.context.setEvidenceWeavedMermaidOverviewAgent(fixed);
+			});
+		} else {
+			this.context.setEvidenceWeavedMermaidOverviewAgent(mermaid);
+		}
+
+		const finalOverview = this.context.getEvidenceWeavedMermaidOverview();
+		if (finalOverview) {
+			yield uiStageSignal(overviewMeta, { status: 'complete', triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID });
+			yield {
+				type: 'pk-debug',
+				debugName: 'agent-result',
+				triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID,
+				...this.context.yieldAgentResult(),
+			};
+			yield {
+				type: 'ui-signal',
+				channel: UISignalChannel.OVERVIEW_MERMAID,
+				kind: UISignalKind.COMPLETE,
+				entityId: 'overview-mermaid',
+				payload: { mermaid: finalOverview },
+			};
+		}
+
+		yield* this.mermaidFixAgent.ifInvalidThenFix(this.context.getEvidenceWeavedMermaidOverview(), (fixed) => {
+			this.context.setEvidenceWeavedMermaidOverviewAgent(fixed);
+		});
 	}
 
 	/**
@@ -221,13 +290,14 @@ export class EvidenceMermaidOverviewWeaveAgent {
 
 	/**
 	 * Phase 2: stream Mermaid render from logic model; accumulates raw output into out.renderOutput.
-	 * Uses forwardPromptStreamWithUiDelta so prompt-stream-delta is also emitted as ui-step-delta.
+	 * Uses streamText + streamTransform (same as phase1); fallback to result.reasoningText when result.text is empty.
 	 */
 	private async *phase2StreamRender(
 		stepId: string,
 		logicModel: OverviewLogicModel,
 		out: Phase2Out,
 	): AsyncGenerator<LLMStreamEvent> {
+		const triggerName = StreamTriggerName.SEARCH_OVERVIEW_MERMAID;
 		const overviewMeta = { runStepId: stepId, stage: 'overview' as const, agent: 'EvidenceMermaidOverviewWeaveAgent' };
 		const phase2StepId = makeStepId(overviewMeta);
 		yield {
@@ -235,30 +305,28 @@ export class EvidenceMermaidOverviewWeaveAgent {
 			uiType: UIStepType.STEPS_DISPLAY,
 			stepId: phase2StepId,
 			title: 'Rendering overview mermaid…',
-			triggerName: StreamTriggerName.SEARCH_OVERVIEW_MERMAID,
+			triggerName,
 		};
 
 		const userQuery = this.context.getInitialPrompt() ?? '';
 		const logicModelJson = JSON.stringify(logicModel);
-		const renderStream = this.aiServiceManager.chatWithPromptStream(PromptId.AiAnalysisOverviewMermaidRender, {
+		const system = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisOverviewMermaidRenderSystem, {});
+		const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisOverviewMermaidRender, {
 			userQuery,
 			logicModelJson,
 		});
+		yield buildPromptTraceDebugEvent(triggerName, system, prompt);
 
-		const self = this;
-		const wrappedStream = (async function* (): AsyncGenerator<LLMStreamEvent> {
-			for await (const ev of renderStream) {
-				accumulateTokenUsage(ev, (u) => self.context.accumulateTokenUsage(u));
-				if (ev.type === 'prompt-stream-result' && (ev as { output?: unknown }).output != null) {
-					out.renderOutput = String((ev as { output: unknown }).output).trim();
-				}
-				yield ev;
-			}
-		})();
-		yield* forwardPromptStreamWithUiDelta(
-			overviewMeta,
-			wrappedStream,
-			StreamTriggerName.SEARCH_OVERVIEW_MERMAID,
-		);
+		const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisOverviewMermaidRender);
+		const model = this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId);
+		const result = streamText({ model, system, prompt });
+
+		yield* streamTransform(result.fullStream, triggerName, {
+			yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId: phase2StepId },
+		});
+
+		const text = await result.text;
+		const reasoningText = await (result as { reasoningText?: Promise<string | undefined> }).reasoningText ?? '';
+		out.renderOutput = (text?.trim() || String(reasoningText ?? '').trim() || '').trim();
 	}
 }

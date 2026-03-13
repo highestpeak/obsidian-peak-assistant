@@ -6,6 +6,7 @@ import {
 	findOrphansInputSchema,
 	findPathInputSchema,
 	graphTraversalInputSchema,
+	grepFileTreeInputSchema,
 	inspectNoteContextInputSchema,
 	localSearchWholeVaultInputSchema,
 	recentChangesWholeVaultInputSchema,
@@ -18,6 +19,7 @@ import { findKeyNodes } from "./search-graph-inspector/find-key-nodes";
 import { findOrphanNotes } from "./search-graph-inspector/find-orphans";
 import { searchByDimensions } from "./search-graph-inspector/search-by-dimensions";
 import { exploreFolder } from "./search-graph-inspector/explore-folder";
+import { grepFileTree } from "./search-graph-inspector/grep-file-tree";
 import { getRecentChanges } from "./search-graph-inspector/recent-change-whole-vault";
 import { localSearch } from "./search-graph-inspector/local-search";
 
@@ -34,6 +36,20 @@ export function inspectNoteContextTool(templateManager?: TemplateManager): Agent
     });
 }
 
+/** inspect_note_context variant that always returns Markdown. Used in recon to avoid structured output inflating context. */
+export function inspectNoteContextToolMarkdownOnly(templateManager?: TemplateManager): AgentTool {
+    return safeAgentTool({
+        description: `[Deep Dive] Use this tool to understand a single note's identity (tags, connections, location). Returns Markdown only.`,
+        inputSchema: inspectNoteContextInputSchema,
+        execute: async (params) => {
+            return await inspectNoteContext(
+                { ...params, response_format: 'markdown', mode: 'inspect_note_context' },
+                templateManager
+            );
+        }
+    });
+}
+
 /**
  * Tool 2: graph_traversal
  * hops=3 limit=30 structured output for a normal doc may lead to 100KB output witch may count to 50k tokens.
@@ -46,6 +62,20 @@ export function graphTraversalTool(templateManager?: TemplateManager): AgentTool
         inputSchema: graphTraversalInputSchema,
         execute: async (params) => {
             return await graphTraversal({ ...params, mode: 'graph_traversal' }, templateManager);
+        }
+    });
+}
+
+/** graph_traversal variant that always returns Markdown. Used in recon to avoid structured output inflating context. */
+export function graphTraversalToolMarkdownOnly(templateManager?: TemplateManager): AgentTool {
+    return safeAgentTool({
+        description: `[Relational Discovery] Explore related notes within N degrees of separation (hops). Returns Markdown only.`,
+        inputSchema: graphTraversalInputSchema,
+        execute: async (params) => {
+            return await graphTraversal(
+                { ...params, response_format: 'markdown', mode: 'graph_traversal' },
+                templateManager
+            );
         }
     });
 }
@@ -98,7 +128,9 @@ export function findOrphansTool(templateManager?: TemplateManager): AgentTool {
  */
 export function searchByDimensionsTool(templateManager?: TemplateManager): AgentTool {
     return safeAgentTool({
-        description: `Complex multi-criteria searches. Advanced filtering by tags, folders, time ranges with boolean logic. E.g. "(tag:react OR tag:vue) AND category:frontend"`,
+        description: `Complex multi-criteria searches. Advanced filtering by tags, folders, time ranges with boolean logic. ` +
+            `Use only tag:value, category:value, AND, OR, NOT, and parentheses. Each value must be a single word (no spaces, no special characters). ` +
+            `Example: tag:javascript AND category:programming or (tag:react OR tag:vue) AND category:frontend`,
         inputSchema: searchByDimensionsInputSchema,
         execute: async (params) => {
             return await searchByDimensions({ ...params, mode: 'search_by_dimensions' }, templateManager);
@@ -140,6 +172,20 @@ export function exploreFolderToolMarkdownOnly(templateManager?: TemplateManager)
                 templateManager
             );
         }
+    });
+}
+
+/**
+ * Tool: grep_file_tree — fast anchor finding over full vault path list.
+ */
+export function grepFileTreeTool(): AgentTool {
+    return safeAgentTool({
+        description:
+            `[Anchor phase] Grep the full vault file tree by pattern (substring or regex). `
+            + `Returns matching paths so you can choose which folders to explore_folder or which nodes to graph_traversal. `
+            + `Use in recon to quickly find anchor paths or directory names.`,
+        inputSchema: grepFileTreeInputSchema,
+        execute: async (params) => grepFileTree(params),
     });
 }
 

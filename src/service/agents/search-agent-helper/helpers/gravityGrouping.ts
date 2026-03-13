@@ -722,3 +722,30 @@ function splitGroupByPathAndAffinity(
 	const right = g.filter((t) => rightPaths.has(t.path));
 	return { left, right };
 }
+
+/**
+ * Build affinity-based graph + Louvain communities for a path list (e.g. recon discovered_leads).
+ * Used by recon-synthesis to produce a rich graph: direct links, same-parent IDF, co-citation, shared tags, similarity.
+ */
+export async function buildAffinityGraphForPaths(paths: string[]): Promise<{
+	paths: string[];
+	adjacency: { to: number; weight: number }[][];
+	communityByIndex: Map<number, number>;
+}> {
+	if (paths.length === 0) return { paths: [], adjacency: [], communityByIndex: new Map() };
+	const N = paths.length;
+	const parentSet = new Set(paths.map((p) => parentPathFromPath(p)));
+	const parentPathToFileCount = await getFileCountPerParentPath(parentSet);
+	const pathToLinksAndTags = await getLinksAndTagsForPaths(paths);
+	const similarityCache = await getPairwiseSimilarityScores(paths);
+	const A = buildAffinityMatrix(
+		N,
+		paths,
+		pathToLinksAndTags,
+		parentPathToFileCount,
+		(i, j) => (i === j ? 0 : (similarityCache[i]?.[j] ?? 0)),
+	);
+	const adj = buildAdjacencyFromMatrix(N, A, MIN_AFFINITY_THRESHOLD);
+	const communityByIndex = louvainFromAdjacency(N, adj, paths);
+	return { paths, adjacency: adj, communityByIndex };
+}
