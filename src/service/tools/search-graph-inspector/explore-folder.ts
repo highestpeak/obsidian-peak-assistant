@@ -1,4 +1,6 @@
 import { AppContext } from "@/app/context/AppContext";
+import { humanReadableTime } from "@/core/utils/date-utils";
+import { compactPathsForPrompt, compactPathsWithSuffix } from "@/core/utils/pathTreeCompact";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { TFile, TFolder } from "obsidian";
 import type { TemplateManager } from "@/core/template/TemplateManager";
@@ -81,11 +83,44 @@ export async function exploreFolder(params: any, templateManager?: TemplateManag
         : await getDocStatisticsByFolderPath(normalizedPath, perFolderLimit);
 
     const sameGroupCountByPath = buildSameGroupCountByPath(finalFileTree);
+    const compactFileTree = compactPathsForPrompt(visibleFilePaths, 80, 6000);
+    const compactRecentEdited = docStats.topRecentEdited.items.length > 0
+        ? compactPathsWithSuffix(
+            docStats.topRecentEdited.items.map((i) => ({
+                path: i.path,
+                suffix: ` (${humanReadableTime(i.updated_at)})${(i.sameGroupCount ?? 0) > 1 ? ` _(${i.sameGroupCount} similar)_` : ''}`,
+            })),
+            40,
+            3500,
+        )
+        : '';
+    const compactWordCount = docStats.topWordCount.length > 0
+        ? compactPathsWithSuffix(docStats.topWordCount.map((i) => ({ path: i.path, suffix: `: ${i.word_count} words` })), 40, 3500)
+        : '';
+    const compactCharCount = docStats.topCharCount.length > 0
+        ? compactPathsWithSuffix(docStats.topCharCount.map((i) => ({ path: i.path, suffix: `: ${i.char_count} characters` })), 40, 3500)
+        : '';
+    const compactRichness = docStats.topRichness.length > 0
+        ? compactPathsWithSuffix(docStats.topRichness.map((i) => ({ path: i.path, suffix: `: ${i.richness_score} richness` })), 40, 3500)
+        : '';
+    const compactTopLinksIn = docStats.topLinksIn.length > 0
+        ? compactPathsWithSuffix(docStats.topLinksIn.map((i) => ({ path: i.path, suffix: `: ${i.inDegree}` })), 40, 3500)
+        : '';
+    const compactTopLinksOut = docStats.topLinksOut.length > 0
+        ? compactPathsWithSuffix(docStats.topLinksOut.map((i) => ({ path: i.path, suffix: `: ${i.outDegree}` })), 40, 3500)
+        : '';
     const data = {
         current_path: folderPath,
         recursive,
         max_depth: max_depth || 3,
         fileTree: finalFileTree,
+        compactFileTree,
+        compactRecentEdited,
+        compactWordCount,
+        compactCharCount,
+        compactRichness,
+        compactTopLinksIn,
+        compactTopLinksOut,
         sameGroupCountByPath,
         rootOmitted,
         tagDesc,
@@ -530,6 +565,21 @@ function getExploreFolderExclusions(): { enabled: boolean; excludedPathPrefixes:
     const autoSaveFolder = normalizeVaultFolderPath(settings.search.aiAnalysisAutoSaveFolder);
     const excludedPathPrefixes = Array.from(new Set([rootFolder, autoSaveFolder].filter(Boolean)));
     return { enabled: excludedPathPrefixes.length > 0, excludedPathPrefixes };
+}
+
+/** Returns all vault file paths (respecting explore_folder exclusions) for use by grep_file_tree. */
+export function getFullVaultFilePathsForGrep(): string[] {
+    const vault = AppContext.getInstance().app.vault;
+    const root = vault.getRoot();
+    const exclusions = getExploreFolderExclusions();
+    const tree = getFolderStructure(
+        root,
+        true,
+        50,
+        0,
+        exclusions.enabled ? exclusions.excludedPathPrefixes : undefined,
+    );
+    return getAllFilePaths(tree);
 }
 
 /**

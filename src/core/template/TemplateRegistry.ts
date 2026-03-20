@@ -29,6 +29,8 @@ export const AgentTemplateId = {
 	ResultSnapshot: 'result-snapshot',
 	EvidenceHint: 'evidence-hint',
 	EvidenceGroupSharedContext: 'evidence-group-shared-context',
+	/** Weaved context from recon merged paths (structure + mesh). */
+	WeavePathsContext: 'weave-paths-context',
 	ReportBlockBlueprintLine: 'report-block-blueprint-line',
 } as const;
 
@@ -104,8 +106,14 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-suggest-follow-up-questions': meta('prompts', 'ai-analysis-suggest-follow-up-questions', { systemPromptId: 'ai-analysis-suggest-follow-up-questions-system' as PromptId }),
 	'ai-analysis-query-classifier-system': meta('prompts', 'ai-analysis-query-classifier-system'),
 	'ai-analysis-query-classifier': meta('prompts', 'ai-analysis-query-classifier', { expectsJson: true, jsonConstraint: 'Return only the JSON object, no markdown or explanation.', systemPromptId: 'ai-analysis-query-classifier-system' as PromptId }),
+	'ai-analysis-search-architect-system': meta('prompts', 'ai-analysis-search-architect-system'),
+	'ai-analysis-search-architect': meta('prompts', 'ai-analysis-search-architect', { expectsJson: true, jsonConstraint: 'Return only the JSON object with physical_tasks, no markdown or explanation.', systemPromptId: 'ai-analysis-search-architect-system' as PromptId }),
 	'ai-analysis-dimension-recon-system': meta('prompts', 'ai-analysis-dimension-recon-system'),
 	'ai-analysis-dimension-recon': meta('prompts', 'ai-analysis-dimension-recon', { systemPromptId: 'ai-analysis-dimension-recon-system' as PromptId }),
+	'ai-analysis-recon-loop-plan-system': meta('prompts', 'ai-analysis-recon-loop-plan-system'),
+	'ai-analysis-recon-loop-plan': meta('prompts', 'ai-analysis-recon-loop-plan', { systemPromptId: 'ai-analysis-recon-loop-plan-system' as PromptId }),
+	'ai-analysis-recon-loop-path-submit-system': meta('prompts', 'ai-analysis-recon-loop-path-submit-system'),
+	'ai-analysis-recon-loop-report-system': meta('prompts', 'ai-analysis-recon-loop-report-system'),
 	'ai-analysis-dimension-evidence-system': meta('prompts', 'ai-analysis-dimension-evidence-system'),
 	'ai-analysis-dimension-evidence': meta('prompts', 'ai-analysis-dimension-evidence', { systemPromptId: 'ai-analysis-dimension-evidence-system' as PromptId }),
 	'ai-analysis-task-consolidator-system': meta('prompts', 'ai-analysis-task-consolidator-system'),
@@ -118,6 +126,8 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-overview-regenerate': meta('prompts', 'ai-analysis-overview-regenerate'),
 	'ai-analysis-overview-logic-model-system': meta('prompts', 'ai-analysis-overview-logic-model-system'),
 	'ai-analysis-overview-logic-model': meta('prompts', 'ai-analysis-overview-logic-model', { expectsJson: true, jsonConstraint: 'Return only the JSON object, no markdown or explanation.', systemPromptId: 'ai-analysis-overview-logic-model-system' as PromptId }),
+	'ai-analysis-overview-logic-model-from-recon-system': meta('prompts', 'ai-analysis-overview-logic-model-from-recon-system'),
+	'ai-analysis-overview-logic-model-from-recon': meta('prompts', 'ai-analysis-overview-logic-model-from-recon', { systemPromptId: 'ai-analysis-overview-logic-model-from-recon-system' as PromptId }),
 	'ai-analysis-overview-mermaid-render-system': meta('prompts', 'ai-analysis-overview-mermaid-render-system'),
 	'ai-analysis-overview-mermaid-render': meta('prompts', 'ai-analysis-overview-mermaid-render', { systemPromptId: 'ai-analysis-overview-mermaid-render-system' as PromptId }),
 	'ai-analysis-dashboard-update-topics-system': meta('prompts', 'ai-analysis-dashboard-update-topics-system'),
@@ -138,12 +148,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-report-appendices-blocks': meta('prompts', 'ai-analysis-report-appendices-blocks', { systemPromptId: 'ai-analysis-report-appendices-blocks-system' as PromptId }),
 	'ai-analysis-mermaid-fix-system': meta('prompts', 'ai-analysis-mermaid-fix-system'),
 	'ai-analysis-mermaid-fix': meta('prompts', 'ai-analysis-mermaid-fix', { systemPromptId: 'ai-analysis-mermaid-fix-system' as PromptId }),
-	'ai-analysis-final-refine-system': meta('prompts', 'ai-analysis-final-refine-system'),
-	'ai-analysis-final-refine': meta('prompts', 'ai-analysis-final-refine', { systemPromptId: 'ai-analysis-final-refine-system' as PromptId }),
-	'ai-analysis-final-refine-sources-system': meta('prompts', 'ai-analysis-final-refine-sources-system'),
-	'ai-analysis-final-refine-sources': meta('prompts', 'ai-analysis-final-refine-sources', { systemPromptId: 'ai-analysis-final-refine-sources-system' as PromptId }),
-	'ai-analysis-final-refine-source-scores-system': meta('prompts', 'ai-analysis-final-refine-source-scores-system'),
-	'ai-analysis-final-refine-source-scores': meta('prompts', 'ai-analysis-final-refine-source-scores', { systemPromptId: 'ai-analysis-final-refine-source-scores-system' as PromptId }),
 	'ai-analysis-save-filename': meta('prompts', 'ai-analysis-save-filename'),
 	'ai-analysis-save-folder': meta('prompts', 'ai-analysis-save-folder'),
 	'doc-type-classify-json': meta('prompts', 'doc-type-classify-json', { expectsJson: true, jsonConstraint: 'Return only the JSON object, nothing else.' }),
@@ -169,6 +173,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[AgentTemplateId.ResultSnapshot]: meta('agents', 'result-snapshot'),
 	[AgentTemplateId.EvidenceHint]: meta('agents', 'evidence-hint'),
 	[AgentTemplateId.EvidenceGroupSharedContext]: meta('agents', 'evidence-group-shared-context'),
+	[AgentTemplateId.WeavePathsContext]: meta('agents', 'weave-paths-context'),
 	[AgentTemplateId.ReportBlockBlueprintLine]: meta('agents', 'report-block-blueprint-line'),
 };
 

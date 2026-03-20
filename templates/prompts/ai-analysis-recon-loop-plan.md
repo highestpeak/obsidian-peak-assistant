@@ -11,7 +11,7 @@ Unified intent (what to look for): {{{unified_intent}}}
 Covered dimensions (this task feeds): {{coveredDimensionIds}}
 {{/if}}
 {{#if inventoryRequiresManifest}}
-This task requires **full coverage** (manifest). If a tool returns "N of M" with M > N, call again with limit >= M. Submit every relevant path via submit_recon_paths; do not submit the final report until the list is complete or you document why not.
+This task requires **full coverage** (manifest). If a tool returns "N of M" with M > N, call again with limit >= M. Submit every relevant path via the path-submit step; do not call request_submit_report until the list is complete or you document why not.
 {{/if}}
 
 User question: {{userQuery}}
@@ -35,4 +35,4 @@ Anchor entity: {{scopeAnchor}}
 Scope tags (filter/navigate by): {{scopeTags}}
 {{/if}}
 
-State your search plan, then execute it. After each tool that returns paths, call submit_recon_paths with the full set of relevant paths from that result (one or two large batches). If gaps remain, adjust and search again. No content_reader. When coverage is complete, call request_submit_report once (paths from submit_recon_paths are merged automatically into the final report).
+State your search plan in 1–2 short sentences, then call tools. After each round the system will ask you to submit paths from the tool results. When coverage is complete or you have used your rounds, call request_submit_report once.

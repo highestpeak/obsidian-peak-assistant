@@ -12,7 +12,6 @@ import type { AgentContextManager } from './AgentContextManager';
 import { LLMStreamEvent, ProviderOptionsConfig, StreamTriggerName, UIStepType } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { buildPromptTraceDebugEvent, parallelStream, streamTransform } from '@/core/providers/helpers/stream-helper';
-import { buildEvidenceGroupSharedContext } from './helpers/buildEvidenceGroupSharedContext';
 import { makeStepId, uiStepStart } from './helpers/search-ui-events';
 
 export class GroupContextAgent {
@@ -52,17 +51,12 @@ export class GroupContextAgent {
 
 		yield* parallelStream(groupStreams);
 
-		const tm = this.aiServiceManager.getTemplateManager?.();
-		const sharedContexts = await Promise.all(
-			groups.map((tasks) => buildEvidenceGroupSharedContext(tasks, tm))
-		);
-
 		const evidenceTaskGroups: EvidenceTaskGroup[] = groups.map((tasks, i) => ({
 			groupId: `group_${String(i).padStart(3, '0')}`,
 			topic_anchor: results[i]?.topic_anchor ?? '',
 			group_focus: results[i]?.group_focus ?? '',
 			tasks,
-			sharedContext: sharedContexts[i] || undefined,
+			sharedContext: undefined,
 			clustering_reason: 'Vector similarity & graph co-citation',
 		}));
 		onRefinementFinish?.(evidenceTaskGroups);

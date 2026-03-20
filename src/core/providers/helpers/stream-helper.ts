@@ -230,6 +230,19 @@ export async function* streamTransform<TOOLS extends ToolSet>(
     let deltaTextChunks: string[] = [];
 
     for await (const chunk of fullStream) {
+        if (!checkIfModeDeltaEvent(chunk.type) && deltaTextChunks.length > 0) {
+            yield {
+                type: 'pk-debug',
+                debugName: 'delta-text-flush',
+                extra: {
+                    deltaText: deltaTextChunks.join(''),
+                    durationMs: Date.now() - deltaStartTimestamp,
+                },
+            }
+            deltaStartTimestamp = Date.now();
+            deltaTextChunks = [];
+        }
+
         eventProcessor.chunkEventInterceptor?.(chunk);
         let yieldEvent: LLMStreamEvent | undefined = undefined;
         let deltaText: string | undefined = undefined;
@@ -500,6 +513,10 @@ export function getDeltaEventDeltaText(event: LLMStreamEvent): string {
 
 export function checkIfDeltaEvent(type: LLMStreamEvent['type']) {
     return DELTA_EVENT_TYPES.has(type);
+}
+
+function checkIfModeDeltaEvent(type: any) {
+    return type === 'text-delta' || type === 'reasoning-delta' || type === 'tool-input-delta';
 }
 
 type ParallelEntry = { index: number; result: IteratorResult<LLMStreamEvent> };

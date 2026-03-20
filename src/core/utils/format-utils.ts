@@ -171,9 +171,26 @@ class LRUCache<T> {
 const regexCache = new LRUCache<RegExp>(50);
 
 /**
- * Get or create a cached RegExp
- * @param pattern - The regex pattern string
- * @returns Compiled RegExp object
+ * Convert glob-like pattern to regex (e.g. "*.md" -> ".*\\.md").
+ * Used when the pattern fails to compile as a raw regex.
+ */
+function globToRegexPattern(glob: string): string {
+	return glob
+		.split("")
+		.map((c) => {
+			if (c === "*") return ".*";
+			if (c === "?") return ".";
+			if (/[.+^${}()|[\]\\]/.test(c)) return "\\" + c;
+			return c;
+		})
+		.join("");
+}
+
+/**
+ * Get or create a cached RegExp.
+ * If the pattern fails to compile (e.g. glob "*.md"), tries interpreting it as a glob.
+ * @param pattern - Regex or glob-like pattern string
+ * @returns Compiled RegExp
  */
 export function getCachedRegex(pattern: string): RegExp {
 	let regex = regexCache.get(pattern);
@@ -182,9 +199,14 @@ export function getCachedRegex(pattern: string): RegExp {
 			regex = new RegExp(pattern);
 			regexCache.set(pattern, regex);
 		} catch (e) {
-			console.error('[getCachedRegex] Error compiling regex:', e);
-			// If pattern is invalid, return a regex that matches nothing
-			regex = /^$/;
+			try {
+				const asRegex = globToRegexPattern(pattern);
+				regex = new RegExp(asRegex);
+				regexCache.set(pattern, regex);
+			} catch (e2) {
+				console.error("[getCachedRegex] Error compiling regex:", e);
+				regex = /^$/;
+			}
 		}
 	}
 	return regex;

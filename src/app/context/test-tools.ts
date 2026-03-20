@@ -13,14 +13,14 @@ import { AppContext } from "@/app/context/AppContext";
 import { AgentContextManager } from "@/service/agents/search-agent-helper/AgentContextManager";
 import { SlotRecallAgent } from "@/service/agents/search-agent-helper/SlotRecallAgent";
 import { groupConsolidatedTasksGravity, taskLoadScore, type GroupingOptions } from "@/service/agents/search-agent-helper/helpers/gravityGrouping";
-import type { ConsolidatedTaskWithId, DimensionChoice, EvidenceTaskGroup, EvidencePack } from "@/core/schemas/agents/search-agent-schemas";
+import type { ConsolidatedTaskWithId, DimensionChoice, EvidenceTaskGroup, PhysicalSearchTask, PhysicalTaskReconResult } from "@/core/schemas/agents/search-agent-schemas";
 import type { LLMStreamEvent } from "@/core/providers/types";
 import { emptyUsage, mergeTokenUsage } from "@/core/providers/types";
-import { DELTA_EVENT_TYPES, getDeltaEventDeltaText, parallelStream } from "@/core/providers/helpers/stream-helper";
+import { DELTA_EVENT_TYPES, getDeltaEventDeltaText } from "@/core/providers/helpers/stream-helper";
 import { GroupContextAgent } from "@/service/agents/search-agent-helper/GroupContextAgent";
 import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
-import { buildEvidenceGroupSharedContext } from "@/service/agents/search-agent-helper/helpers/buildEvidenceGroupSharedContext";
-import { EvidenceAgent } from "@/service/agents/search-agent-helper/RawSearchAgent";
+import { weavePathsToContext } from "@/service/agents/search-agent-helper/helpers/weavePathsToContext";
+import { ReconAgent } from "@/service/agents/search-agent-helper/RawSearchAgent";
 
 /**
  * Global test interface for search-graph-inspector tools
@@ -177,35 +177,21 @@ export class GraphInspectorTestTools {
 export async function* streamWithStreamLog(
     stream: AsyncGenerator<LLMStreamEvent>,
 ): AsyncGenerator<LLMStreamEvent> {
-    let deltaBuffer: string[] = [];
     const allLog: any[] = [];
 
-    const flushDelta = () => {
-        if (deltaBuffer.length > 0) {
-            const log = deltaBuffer.join('');
-            allLog.push(log);
-            console.debug('[stream-delta]', log);
-            deltaBuffer = [];
-        }
-    };
     let totalTokenUsage = emptyUsage();
     try {
         for await (const ev of stream) {
-            if (DELTA_EVENT_TYPES.has(ev.type)) {
-                console.debug('[stream-delta]', ev.type);
-                deltaBuffer.push(getDeltaEventDeltaText(ev));
-            } else {
-                flushDelta();
+            if (!DELTA_EVENT_TYPES.has(ev.type)) {
                 allLog.push(ev);
-                console.debug('[stream-event]', ev.type, JSON.stringify(ev));
             }
+            console.debug('[stream-event]', ev.type, JSON.stringify(ev));
             if (ev.type === 'on-step-finish') {
                 totalTokenUsage = mergeTokenUsage(totalTokenUsage, ev.usage);
             }
             yield ev;
         }
     } finally {
-        flushDelta();
         allLog.push({ type: 'total-token-usage', totalTokenUsage });
         console.debug('[stream-all-log]', JSON.stringify(allLog));
     }
@@ -216,15 +202,41 @@ export async function* streamWithStreamLog(
  * Available as window.testAISearchTools when enableDevTools.
  */
 export class AISearchAgentTestTools {
+    /**
+     * Run streamReconForPhysicalTask once for a single physical task.
+     * Usage: pass a PhysicalSearchTask (e.g. from pk-debug physicalTaskResults, or build one). Optionally pass userQuery to set context; defaults to a short placeholder.
+     * Returns { result, duration, eventCount }.
+     */
+    async testStreamReconForPhysicalTask(
+        physicalTask: PhysicalSearchTask,
+        userQuery: string = 'List relevant notes for the given dimensions.',
+    ): Promise<{ result: PhysicalTaskReconResult | null; duration: number; eventCount: number }> {
+        const start = Date.now();
+        const ctx = AppContext.getInstance();
+        const context = new AgentContextManager(ctx.manager);
+        context.resetAgentMemory(userQuery);
+        const agent = new ReconAgent(ctx.manager, context);
+        let result: PhysicalTaskReconResult | null = null;
+        let eventCount = 0;
+        for await (const _ev of streamWithStreamLog(
+            agent.streamReconForPhysicalTask(physicalTask, generateUuidWithoutHyphens(), (r) => { result = r; }),
+        )) {
+            eventCount++;
+        }
+        const duration = Date.now() - start;
+        console.debug('[testStreamReconForPhysicalTask] result:', result, 'duration:', duration, 'eventCount:', eventCount);
+        return { result, duration, eventCount };
+    }
+
     /** Run SlotRecallAgent once with a user query; returns event count and slot coverage from context. */
-    async testSlotRecall(userQuery: string, skipSearch = true): Promise<any> {
+    async testSlotRecall(userQuery: string, skipStreamSearchArchitect = false, skipSearch = true): Promise<any> {
         const start = Date.now();
         const ctx = AppContext.getInstance();
         const context = new AgentContextManager(ctx.manager);
         context.resetAgentMemory(userQuery);
         const agent = new SlotRecallAgent(ctx.manager, context);
         let eventCount = 0;
-        for await (const _ev of streamWithStreamLog(agent.stream({ skipSearch }))) {
+        for await (const _ev of streamWithStreamLog(agent.stream({ skipStreamSearchArchitect, skipSearch }))) {
             eventCount++;
         }
         const end = Date.now();
@@ -305,64 +317,11 @@ export class AISearchAgentTestTools {
         const ctx = AppContext.getInstance();
         const tm = ctx.manager.getTemplateManager?.();
         const sharedContexts = await Promise.all(
-            groups.map((tasks) => buildEvidenceGroupSharedContext(tasks, tm))
+            groups.map((tasks) => weavePathsToContext(tasks.map((t) => t.path), tm))
         );
         return {
             sharedContexts,
         };
     }
 
-    async testEvidenceAgent(
-        testData: {
-            groups: ConsolidatedTaskWithId[][],
-            dimensions: DimensionChoice[],
-        }
-    ): Promise<any> {
-        const ctx = AppContext.getInstance();
-        const context = new AgentContextManager(ctx.manager);
-
-        const evidencePacks: EvidencePack[] = [];
-        const streamGenerator = async function* (): AsyncGenerator<LLMStreamEvent> {
-            let evidenceGroups: EvidenceTaskGroup[] = [];
-            const groupContextAgent = new GroupContextAgent(ctx.manager, context);
-            yield* groupContextAgent.streamAllGroupsContext({
-                groups: testData.groups,
-                dimensions: testData.dimensions,
-                stepId: generateUuidWithoutHyphens(),
-                onRefinementFinish: (eg) => { evidenceGroups = eg; },
-            });
-
-            const groupStreams = evidenceGroups.map((eg) => {
-                const evidenceAgent = new EvidenceAgent(ctx.manager, context);
-                return evidenceAgent.streamTaskEvidence({
-                    tasks: eg.tasks,
-                    groupFocus: eg.group_focus,
-                    topicAnchor: eg.topic_anchor,
-                    groupSharedContext: eg.sharedContext,
-                    stepId: generateUuidWithoutHyphens(),
-                    onEvidenceFinish: (p) => {
-                        evidencePacks.push(...p);
-                    },
-                });
-            });
-            yield* parallelStream(groupStreams);
-        }
-
-        const startTime = Date.now();
-        let eventCount = 0;
-        for await (const _ev of streamWithStreamLog(
-            streamGenerator()
-        )) {
-            eventCount++;
-        }
-
-        const endTime = Date.now();
-        const duration = endTime - startTime;
-        console.debug('[testEvidenceAgent] duration:', duration, '. evidencePacks:', JSON.stringify(evidencePacks));
-        return {
-            duration,
-            eventCount,
-            evidencePacks,
-        };
-    }
 }
