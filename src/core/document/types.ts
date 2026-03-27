@@ -16,6 +16,8 @@
  * - Performance: caching for expensive operations (PDF, Image, Canvas)
  */
 
+import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
+
 /**
  * All document type values as a constant array.
  * This is the source of truth for all document types.
@@ -121,13 +123,42 @@ export interface DocumentMetadata {
 	 */
 	title: string;
 	/**
-	 * Document tags (from frontmatter, #tags, or extracted).
+	 * Topic tags — LLM-assigned when indexing with AI (what the note is about for search/graph).
+	 * Ids only; same order as {@link topicTagEntries} when present.
 	 */
-	tags: string[];
+	topicTags: string[];
 	/**
-	 * Document categories or classifications.
+	 * Topic tags with optional per-note labels (LLM); omitted when only plain ids exist.
 	 */
-	categories?: string[];
+	topicTagEntries?: TopicTagEntry[];
+	/**
+	 * Functional tags (closed id + optional per-note label); LLM-assigned when indexing with AI.
+	 */
+	functionalTagEntries: FunctionalTagEntry[];
+	/**
+	 * Keyword tags from inline #hashtags and frontmatter `tags` (user-side; not LLM).
+	 */
+	keywordTags: string[];
+	/**
+	 * User-only keywords (frontmatter + inline #tags). Drives Mobius `KeywordTag` edges; excludes TextRank-only terms.
+	 */
+	userKeywordTags?: string[];
+	/**
+	 * TextRank extractive terms only; kept for prompts / affinity, not written as graph keyword nodes.
+	 */
+	textrankKeywordTerms?: string[];
+	/**
+	 * LLM time context tags (prefix `Time…`, e.g. TimeYear2025). Empty when AI path skipped.
+	 */
+	timeTags?: string[];
+	/**
+	 * LLM geography context tags (prefix `Geo…`, e.g. GeoCountryChina).
+	 */
+	geoTags?: string[];
+	/**
+	 * LLM person/entity tags (prefix `Person…`).
+	 */
+	personTags?: string[];
 	/**
 	 * Special document types (daily note, profile, principle, etc.).
 	 */
@@ -136,6 +167,10 @@ export interface DocumentMetadata {
 	 * Frontmatter data (YAML/JSON).
 	 */
 	frontmatter?: Record<string, unknown>;
+	/**
+	 * LLM-inferred document creation time (epoch ms); set by markdown loader via TagService when AI tagging runs.
+	 */
+	inferCreatedAt?: number | null;
 	/**
 	 * Custom metadata fields.
 	 */
@@ -231,6 +266,11 @@ export interface Document {
 	summary?: string | null;
 
 	/**
+	 * Long-form summary (separate from {@link cacheFileInfo}; not for cache file body).
+	 */
+	fullSummary?: string | null;
+
+	/**
 	 * MD5 hash of content (for deduplication).
 	 * Prevents duplicate embedding and processing.
 	 */
@@ -245,7 +285,7 @@ export interface Document {
 /**
  * Special resource types that are not regular documents
  */
-export type SpecialResourceType = 'tag' | 'folder' | 'category';
+export type SpecialResourceType = 'tag' | 'folder';
 
 /**
  * All possible resource kinds (document types + special resource types)

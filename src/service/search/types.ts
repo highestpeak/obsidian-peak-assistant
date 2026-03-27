@@ -1,5 +1,6 @@
 import type { DocumentType } from '@/core/document/types';
 import type { GraphPreview } from '@/core/storage/graph/types';
+import type { ChunkType } from '@/service/search/index/chunkTypes';
 
 /**
  * File/Resource type for search results and file listing
@@ -135,14 +136,34 @@ export interface SearchResultItem {
 		semantic: number;
 		average: number;
 	};
+	/**
+	 * Indexed document id (`mobius_node.node_id` for notes); set when chunk-level hit is resolved.
+	 */
+	docId?: string;
+	/**
+	 * Chunk id for vector/FTS hits (embedding / `doc_chunk.chunk_id`).
+	 */
+	chunkId?: string;
+	/**
+	 * Chunk provenance for rerank and display.
+	 */
+	chunkType?: ChunkType;
 }
 
 /**
  * Returned by search() calls.
  */
+/** Optional anchor from the current retrieval pass (for agents / expansion). */
+export interface RuntimeHubHint {
+	anchorPath: string;
+	anchorScore: number;
+}
+
 export interface SearchResponse {
 	query: SearchQuery;
 	items: SearchResultItem[];
+	/** Best-effort top result anchor after rerank (not persisted). */
+	runtimeHub?: RuntimeHubHint;
 }
 
 /**

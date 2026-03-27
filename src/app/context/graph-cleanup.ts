@@ -1,51 +1,46 @@
 import { sql } from 'kysely';
+import { GRAPH_DOCUMENT_LIKE_NODE_TYPES } from '@/core/po/graph.po';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
-/** Node types that represent a document (id = path / doc_meta.id). */
-const DOC_NODE_TYPES = ['document', 'file', 'doc'] as const;
-
 export interface GraphCleanupResult {
-	/** Edges whose from/to node no longer exist in graph_nodes */
+	/** Edges whose from/to node no longer exist in mobius_node */
 	orphanEdgesDeleted: number;
-	/** Nodes whose id (path) is not in doc_meta; their incident edges are deleted first */
-	nodesWithoutDocMetaDeleted: number;
+	/** Document-like nodes whose id is not in indexed doc set; incident edges deleted first */
+	nodesWithoutIndexedDocumentDeleted: number;
 }
 
 /**
- * Removes dirty data from graph_nodes and graph_edges:
+ * Removes dirty data from mobius_node / mobius_edge:
  * 1. Orphan edges: edges that reference non-existent nodes.
- * 2. Nodes whose id (path) is not in doc_meta: delete those nodes and all edges touching them.
+ * 2. Document-like nodes not backed by an indexed document row: delete those nodes and incident edges.
  *
  * Call from DevTools: window.cleanupGraphTable()
  */
 export async function cleanupGraphTable(): Promise<GraphCleanupResult> {
 	const kdb = sqliteStoreManager.getSearchContext();
-	const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-	const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+	const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 
-	// Valid doc ids = ids (paths) present in doc_meta
-	const pathMap = await docMetaRepo.getAllIndexedPaths();
+	const pathMap = await indexedDocumentRepo.getAllIndexedPaths();
 	const paths = Array.from(pathMap.keys());
-	const idRows = paths.length > 0 ? await docMetaRepo.getIdsByPaths(paths) : [];
+	const idRows = paths.length > 0 ? await indexedDocumentRepo.getIdsByPaths(paths) : [];
 	const validDocIds = new Set(idRows.map((r) => r.id));
 
-	// All graph nodes whose id is not in doc_meta (path missing in doc_meta) -> to be deleted
 	const allNodeIdsToCheck: string[] = [];
-	for (const t of DOC_NODE_TYPES) {
-		const nodes = await graphNodeRepo.getByType(t);
+	for (const t of GRAPH_DOCUMENT_LIKE_NODE_TYPES) {
+		const nodes = await mobiusNodeRepo.getByType(t);
 		allNodeIdsToCheck.push(...nodes.map((n) => n.id));
 	}
-	const nodeIdsWithoutDocMeta = [...new Set(allNodeIdsToCheck)].filter((id) => !validDocIds.has(id));
+	const nodeIdsWithoutIndexedDocument = [...new Set(allNodeIdsToCheck)].filter((id) => !validDocIds.has(id));
 
 	let orphanEdgesDeleted = 0;
 
 	await kdb.transaction().execute(async (trx) => {
-		// 1. Orphan edges: from/to not in graph_nodes
 		const orphanEdgeRows = await trx
-			.selectFrom('graph_edges')
+			.selectFrom('mobius_edge')
 			.select('id')
 			.where(
-				sql<boolean>`from_node_id NOT IN (SELECT id FROM graph_nodes) OR to_node_id NOT IN (SELECT id FROM graph_nodes)`
+				sql<boolean>`from_node_id NOT IN (SELECT node_id FROM mobius_node) OR to_node_id NOT IN (SELECT node_id FROM mobius_node)`,
 			)
 			.execute();
 
@@ -54,28 +49,27 @@ export async function cleanupGraphTable(): Promise<GraphCleanupResult> {
 			const chunkSize = 500;
 			for (let i = 0; i < orphanEdgeIds.length; i += chunkSize) {
 				const chunk = orphanEdgeIds.slice(i, i + chunkSize);
-				await trx.deleteFrom('graph_edges').where('id', 'in', chunk).execute();
+				await trx.deleteFrom('mobius_edge').where('id', 'in', chunk).execute();
 			}
 			orphanEdgesDeleted = orphanEdgeIds.length;
 		}
 
-		// 2. Nodes whose path (id) is not in doc_meta: delete incident edges then nodes
-		if (nodeIdsWithoutDocMeta.length > 0) {
+		if (nodeIdsWithoutIndexedDocument.length > 0) {
 			await trx
-				.deleteFrom('graph_edges')
+				.deleteFrom('mobius_edge')
 				.where((eb) =>
 					eb.or([
-						eb('from_node_id', 'in', nodeIdsWithoutDocMeta),
-						eb('to_node_id', 'in', nodeIdsWithoutDocMeta),
-					])
+						eb('from_node_id', 'in', nodeIdsWithoutIndexedDocument),
+						eb('to_node_id', 'in', nodeIdsWithoutIndexedDocument),
+					]),
 				)
 				.execute();
-			await trx.deleteFrom('graph_nodes').where('id', 'in', nodeIdsWithoutDocMeta).execute();
+			await trx.deleteFrom('mobius_node').where('node_id', 'in', nodeIdsWithoutIndexedDocument).execute();
 		}
 	});
 
 	return {
 		orphanEdgesDeleted,
-		nodesWithoutDocMetaDeleted: nodeIdsWithoutDocMeta.length,
+		nodesWithoutIndexedDocumentDeleted: nodeIdsWithoutIndexedDocument.length,
 	};
 }

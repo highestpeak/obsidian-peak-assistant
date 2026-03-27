@@ -9,7 +9,12 @@ import type { SettingsUpdates } from './hooks/useSettingsUpdate';
 import type { LLMOutputControlSettings, ModelCapabilities } from '@/core/providers/types';
 import { OutputControlSettingsList } from '@/ui/component/mine/LLMOutputControlSettings';
 import { EventBus, ViewEventType } from '@/core/eventBus';
-import { CONFIGURABLE_PROMPT_IDS, SEARCH_AI_ANALYSIS_PROMPT_IDS } from '@/service/prompt/PromptId';
+import {
+	ALL_MODEL_CONFIG_PROMPT_IDS,
+	CONFIGURABLE_PROMPT_IDS,
+	INDEXING_AND_HUB_PROMPT_IDS,
+	SEARCH_AI_ANALYSIS_PROMPT_IDS,
+} from '@/service/prompt/PromptId';
 import { Button } from '@/ui/component/shared-ui/button';
 
 interface ChatTabProps {
@@ -329,7 +334,7 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 								defaultModel: { provider: model.provider, modelId: model.modelId },
 								promptModelMap: {
 									...settings.ai.promptModelMap,
-									...CONFIGURABLE_PROMPT_IDS.reduce((acc, promptId) => ({
+									...ALL_MODEL_CONFIG_PROMPT_IDS.reduce((acc, promptId) => ({
 										...acc,
 										[promptId]: { provider: model.provider, modelId: model.modelId }
 									}), {})
@@ -363,7 +368,7 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 								</p>
 								<ul className="pktw-list-disc pktw-list-inside pktw-ml-4 pktw-space-y-1">
 									<li>All model configurations (Default, Search, Embedding, etc.)</li>
-									<li>All configurable prompts ({CONFIGURABLE_PROMPT_IDS.length} types)</li>
+									<li>All configurable prompts ({ALL_MODEL_CONFIG_PROMPT_IDS.length} types)</li>
 								</ul>
 								<p className="pktw-font-medium pktw-pt-2">
 									This action will override all existing model selections. This cannot be undone.
@@ -407,6 +412,62 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 					/>
 					<div className="pktw-space-y-6">
 						{SEARCH_AI_ANALYSIS_PROMPT_IDS.map((promptId) => {
+							const promptLabel = promptId
+								.split('-')
+								.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+								.join(' ');
+							const promptModel = settings.ai.promptModelMap?.[promptId];
+							const currentModel = promptModel || settings.ai.defaultModel;
+							return (
+								<ModelSelectorField
+									key={promptId}
+									label={promptLabel}
+									description={`Model for ${promptId} prompt. Falls back to default if not configured.`}
+									currentModel={currentModel}
+									onChange={(provider, modelId) => updatePromptModel(promptId, provider, modelId)}
+									models={models}
+									isLoading={isLoading}
+									onMenuOpen={loadModels}
+								/>
+							);
+						})}
+					</div>
+				</CollapsibleSettingsSection>
+
+				{/* Indexing & Hub Prompts Section */}
+				<CollapsibleSettingsSection title="Indexing & Hub Prompts" defaultOpen={false}>
+					<div className="pktw-mb-4">
+						<p className="pktw-text-sm pktw-text-muted-foreground">
+							Model configuration for indexing and Hub discovery prompts. Each prompt can have its own model; falls back to default if not configured (see PromptService fallbacks for related prompts).
+						</p>
+					</div>
+					<BatchModelApplySection
+						label="Set All Indexing & Hub Prompts"
+						description={`Apply one model to all Indexing & Hub prompts (${INDEXING_AND_HUB_PROMPT_IDS.length} prompts) at once.`}
+						buttonLabel="Set All"
+						models={models}
+						isLoading={isLoading}
+						loadModels={loadModels}
+						onApply={async (model) => {
+							const promptMap = INDEXING_AND_HUB_PROMPT_IDS.reduce(
+								(acc, promptId) => ({ ...acc, [promptId]: { provider: model.provider, modelId: model.modelId } }),
+								{} as Record<string, { provider: string; modelId: string }>
+							);
+							await settingsUpdates.updateSettings({
+								ai: { ...settings.ai, promptModelMap: { ...settings.ai.promptModelMap, ...promptMap } },
+							});
+						}}
+						renderConfirmContent={(model) => (
+							<>
+								<span className="pktw-text-sm pktw-font-medium pktw-mb-2">Confirm</span>
+								<p className="pktw-text-sm pktw-text-muted-foreground">
+									Apply <strong>{model.provider} / {model.modelId}</strong> to all {INDEXING_AND_HUB_PROMPT_IDS.length} Indexing &amp; Hub prompts?
+								</p>
+							</>
+						)}
+					/>
+					<div className="pktw-space-y-6">
+						{INDEXING_AND_HUB_PROMPT_IDS.map((promptId) => {
 							const promptLabel = promptId
 								.split('-')
 								.map((word) => word.charAt(0).toUpperCase() + word.slice(1))

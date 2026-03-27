@@ -9,6 +9,7 @@ import { GraphVisualization } from '@/ui/component/mine/GraphVisualization';
 import { Button } from '@/ui/component/shared-ui/button';
 import { X } from 'lucide-react';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
+import { isIndexedNoteNodeType } from '@/core/po/graph.po';
 import { createObsidianGraphPreset } from '../../presets/obsidianGraphPreset';
 
 /**
@@ -61,7 +62,7 @@ export async function loadGraphForTopic(topic: string): Promise<GraphPreview> {
 		return keyPatch ? patchToPreview(keyPatch) : { nodes: [], edges: [] };
 	}
 	const firstDocId = keyPatch.upsertNodes.find(
-		(n) => n.type === 'document' && (n.id.includes('.md') || n.id.includes('/'))
+		(n) => isIndexedNoteNodeType(String(n.type)) && (n.id.includes('.md') || n.id.includes('/'))
 	)?.id;
 	let merged = keyPatch;
 	if (firstDocId) {

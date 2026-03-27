@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import React, { useState, useEffect, useRef } from 'react';
 import { App, TFile } from 'obsidian';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../shared-ui/hover-card';
@@ -158,7 +159,7 @@ export const ResourcePreviewHover: React.FC<ResourcePreviewHoverProps> = ({
 					// For all other files, try to read as text or show file name
 					try {
 						const content = await app.vault.read(file);
-						const lines = content.split('\n').slice(0, 10).join('\n');
+						const lines = content.split('\n').slice(0, SLICE_CAPS.ui.resourcePreviewLines).join('\n');
 						setPreviewContent(lines || '(Empty file)');
 						setIsImagePreview(false);
 						setIsPdfPreview(false);

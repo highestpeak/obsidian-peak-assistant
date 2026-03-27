@@ -1,6 +1,6 @@
 # ChatConversationDoc Tests
 
-This directory contains tests for the `ChatConversationDoc.parse`, `buildMarkdown`, and `appendMessagesToContent` methods.
+Tests live under `test/chat-docs/` (see repo root `test/` folder). Fixtures are in `test/chat-docs/fixtures/`.
 
 ## Test Structure
 
@@ -12,26 +12,8 @@ Each test case is stored in a separate markdown file with a `caseN-` prefix:
 
 ## Running Tests
 
-### Option 1: Using tsx (Recommended)
-
 ```bash
-npx tsx src/core/storage/vault/chat-docs/test/ChatConversationDoc.test.ts
-```
-
-### Option 2: Using ts-node
-
-```bash
-npx ts-node src/core/storage/vault/chat-docs/test/ChatConversationDoc.test.ts
-```
-
-### Option 3: Compile and Run
-
-```bash
-# First, build the TypeScript files (using your build process)
-npm run build
-
-# Then run the compiled JavaScript (adjust path as needed)
-node dist/core/storage/vault/chat-docs/test/ChatConversationDoc.test.js
+npm run test -- test/chat-docs/ChatConversationDoc.test.ts
 ```
 
 ## Test Cases

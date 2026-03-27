@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import { BooleanExpressionParser } from "@/service/tools/search-graph-inspector/boolean-expression-parser";
 import { parseSemanticDateRange } from "./date-utils";
 
@@ -228,6 +229,7 @@ const booleanExpressionCache = new LRUCache<BooleanExpressionParser>(50);
 export function getCachedBooleanExpression(expression: string | undefined): BooleanExpressionParser | null {
 	if (!expression) return null;
 	const trimmed = String(expression).trim();
+	if (!trimmed) return null;
 	// Reject obvious non-expressions (e.g. JSON object passed by mistake)
 	if (trimmed.startsWith("{") || trimmed.startsWith("[")) return null;
 	let parser = booleanExpressionCache.get(expression);
@@ -236,7 +238,7 @@ export function getCachedBooleanExpression(expression: string | undefined): Bool
 			parser = new BooleanExpressionParser(expression);
 			booleanExpressionCache.set(expression, parser);
 		} catch (e) {
-			console.warn("[getCachedBooleanExpression] Invalid expression, skipping filter:", trimmed.slice(0, 80), e);
+			console.warn("[getCachedBooleanExpression] Invalid expression, skipping filter:", trimmed.slice(0, SLICE_CAPS.utils.logExpressionPreview), e);
 			return null;
 		}
 	}

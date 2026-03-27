@@ -107,15 +107,15 @@ export class SearchClient {
 	}
 
 	async getRecent(topK?: number): Promise<SearchResponse['items']> {
-		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 		const limit = Math.max(1, Number(topK ?? 20));
-		const recent = await docStatisticsRepo.getRecent(limit);
+		const recent = await mobiusNodeRepo.getRecent(limit);
 		if (!recent.length) return [];
 
 		// Fetch metadata separately (avoid JOIN)
 		const docIds = recent.map((r) => r.docId);
-		const metaRows = await docMetaRepo.getByIds(docIds);
+		const metaRows = await indexedDocumentRepo.getByIds(docIds);
 		const metaById = new Map(metaRows.map((m) => [m.id, m]));
 
 		// Create a map of docId to lastOpenTs for quick lookup

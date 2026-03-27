@@ -2,6 +2,7 @@
  * All post-completion AI requests for search (regenerate overview, save dialog fields,
  * topic analyze, inline follow-ups) should go through this module for consistent context and maintainability.
  */
+import { SLICE_CAPS } from '@/core/constant';
 import { useCallback, useRef, useState } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { PromptId } from '@/service/prompt/PromptId';
@@ -23,12 +24,12 @@ import { getMermaidInner, wrapMermaidCode } from '@/core/utils/mermaid-utils';
 
 /** Sanitize AI-generated filename: remove invalid filesystem chars. */
 function sanitizeFilename(s: string): string {
-    return s.replace(/[/\\:*?"<>|]/g, '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'untitled';
+    return s.replace(/[/\\:*?"<>|]/g, '').replace(/\s+/g, ' ').trim().slice(0, SLICE_CAPS.ui.analysisTitleSanitize) || 'untitled';
 }
 
 /** Process folder path from AI output. */
 function processFolderPath(s: string): string {
-    return s.replace(/^\/+|\/+$/g, '').trim().slice(0, 200);
+    return s.replace(/^\/+|\/+$/g, '').trim().slice(0, SLICE_CAPS.ui.analysisTitlePath);
 }
 
 /**
@@ -127,7 +128,7 @@ async function getCandidateFoldersFromSearch(
     try {
         const res = await searchClient.search(
             {
-                text: searchText.trim().slice(0, 300),
+                text: searchText.trim().slice(0, SLICE_CAPS.ui.analysisSearchText),
                 scopeMode: 'vault',
                 topK: 24,
                 searchMode: 'hybrid',
@@ -175,7 +176,7 @@ export function useGenerateResultSaveField() {
     ) => {
         const result = await manager.chatWithPrompt(promptId, {
             query: searchQuery,
-            summary: summary ? summary.slice(0, 500) : undefined,
+            summary: summary ? summary.slice(0, SLICE_CAPS.ui.analysisSummary) : undefined,
         });
         const processed = processResult(result);
         if (processed) {
@@ -199,7 +200,7 @@ export function useGenerateResultSaveField() {
         setTypewriterTarget: (target: string) => void,
         setTypewriterEnabled: (enabled: boolean) => void
     ) => {
-        const searchText = [title, searchQuery, summary?.slice(0, 400)].filter(Boolean).join(' ').trim() || searchQuery;
+        const searchText = [title, searchQuery, summary?.slice(0, SLICE_CAPS.ui.analysisSummaryInSearch)].filter(Boolean).join(' ').trim() || searchQuery;
         const candidateFolders = await getCandidateFoldersFromSearch(searchClient, searchText);
         const candidateFoldersFromSearch = candidateFolders.length
             ? candidateFolders.map((f) => `- ${f}`).join('\n')
@@ -207,7 +208,7 @@ export function useGenerateResultSaveField() {
         const defaultSaveFolder = AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder?.trim() || undefined;
         const result = await manager.chatWithPrompt(PromptId.AiAnalysisSaveFolder, {
             query: searchQuery,
-            summary: summary ? summary.slice(0, 500) : undefined,
+            summary: summary ? summary.slice(0, SLICE_CAPS.ui.analysisSummary) : undefined,
             candidateFoldersFromSearch,
             defaultSaveFolder,
         });
@@ -301,10 +302,10 @@ export function useRegenerateOverviewMermaid() {
             const topicsText = topics.map((t: { label?: string }) => t.label).join(', ');
             const graphSummary =
                 graph?.nodes?.length || graph?.edges?.length
-                    ? `Nodes: ${graph?.nodes?.length ?? 0}, Edges: ${graph?.edges?.length ?? 0}. Sample: ${(graph?.nodes ?? []).slice(0, 8).map((n: { title?: string }) => n.title).join(', ')}`
+                    ? `Nodes: ${graph?.nodes?.length ?? 0}, Edges: ${graph?.edges?.length ?? 0}. Sample: ${(graph?.nodes ?? []).slice(0, SLICE_CAPS.ui.analysisGraphNodes).map((n: { title?: string }) => n.title).join(', ')}`
                     : '';
-            const sourcesSummary = sources.slice(0, 6).map((s: { title?: string; path?: string }) => s.title || s.path).join(', ') || '';
-            const blocksSummary = dashboardBlocks.slice(0, 5).map((b: { title?: string; id: string }) => b.title || b.id).join(', ') || '';
+            const sourcesSummary = sources.slice(0, SLICE_CAPS.ui.analysisSourcesSummary).map((s: { title?: string; path?: string }) => s.title || s.path).join(', ') || '';
+            const blocksSummary = dashboardBlocks.slice(0, SLICE_CAPS.ui.analysisBlocksSummary).map((b: { title?: string; id: string }) => b.title || b.id).join(', ') || '';
             const currentResultSnapshot = [
                 `Summary: ${currentSummary || '(none)'}`,
                 `Topics: ${topicsText || '(none)'}`,
@@ -358,7 +359,7 @@ export function useGraphFollowupChatConfig(params: {
     });
     const promptId = PromptId.AiAnalysisFollowup;
     const getVariables = useCallback((question: string) => {
-        const nodeLabels = (uiGraph?.nodes ?? []).slice(0, 30).map(n => `- ${n.label}`).join('\n');
+        const nodeLabels = (uiGraph?.nodes ?? []).slice(0, SLICE_CAPS.ui.analysisNodeLabels).map(n => `- ${n.label}`).join('\n');
         const contextContent = [
             `Main summary: ${mainSummary ?? ''}`,
             `Nodes: ${(uiGraph?.nodes ?? []).length}, Edges: ${(uiGraph?.edges ?? []).length}`,
@@ -436,8 +437,8 @@ export function useBlocksFollowupChatConfig(params: {
     const getVariables = useCallback((question: string) => {
         const blocksText = (dashboardBlocks ?? []).map((b) => {
             const label = b.title || 'Block';
-            const itemsPreview = b.items?.slice(0, 5).map((i) => i.title).join(', ') || '';
-            const md = (b.markdown || b.mermaidCode || '').slice(0, 200);
+            const itemsPreview = b.items?.slice(0, SLICE_CAPS.ui.analysisItemsPreview).map((i) => i.title).join(', ') || '';
+            const md = (b.markdown || b.mermaidCode || '').slice(0, SLICE_CAPS.ui.analysisBlockMarkdown);
             return `- ${label}${itemsPreview ? ` (${itemsPreview})` : ''}${md ? `: ${md}` : ''}`;
         }).join('\n') || '(empty)';
         const contextContent = `Main summary: ${mainSummary ?? ''}\n\n## Blocks\n${blocksText}`;
@@ -474,7 +475,7 @@ export function useSourcesFollowupChatConfig(params: {
     });
     const promptId = PromptId.AiAnalysisFollowup;
     const getVariables = useCallback((question: string) => {
-        const sourcesList = sources.slice(0, 10).map((s) => `- ${s.title || s.path}`).join('\n') || '(empty)';
+        const sourcesList = sources.slice(0, SLICE_CAPS.ui.analysisSourcesList).map((s) => `- ${s.title || s.path}`).join('\n') || '(empty)';
         const contextContent = `Main summary: ${mainSummary ?? ''}\n\n## Sources (sample)\n${sourcesList}`;
         return { originalQuery: searchQuery ?? '', question, contextContent };
     }, [sources, searchQuery, mainSummary]);

@@ -34,10 +34,6 @@ export function useSettingsUpdate(
 
 			// Handle AI settings side effects
 			if (updates.ai) {
-				// If promptFolder changed, update it separately
-				if (updates.ai.promptFolder !== undefined) {
-					plugin.aiServiceManager?.setPromptFolder(plugin.settings.ai.promptFolder);
-				}
 				plugin.aiServiceManager?.updateSettings(plugin.settings.ai);
 				plugin.aiServiceManager?.refreshDefaultServices();
 				await plugin.aiServiceManager?.init();

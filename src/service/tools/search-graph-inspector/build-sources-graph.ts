@@ -67,14 +67,14 @@ export async function buildSourcesGraphWithDiscoveredEdges(
 	}
 	const uniquePaths = [...pathSet];
 
-	const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-	const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
-	const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
+	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+	const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
+	const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
 
-	const pathToDocMeta = await docMetaRepo.getByPaths(uniquePaths);
+	const pathToIndexedDoc = await indexedDocumentRepo.getByPaths(uniquePaths);
 	const pathToDocId = new Map<string, string>();
 	const docIdToDisplayId = new Map<string, string>();
-	for (const [path, meta] of pathToDocMeta) {
+	for (const [path, meta] of pathToIndexedDoc) {
 		if (!meta?.id) continue;
 		const n = normPath(path);
 		const displayId = pathToDisplayId.get(n);
@@ -102,7 +102,7 @@ export async function buildSourcesGraphWithDiscoveredEdges(
 		if (!fromDisplayId) continue;
 
 		// Physical edges
-		const physicalEdges = await graphEdgeRepo.getAllEdgesForNode(docId, EDGE_LIMIT);
+		const physicalEdges = await mobiusEdgeRepo.getAllEdgesForNode(docId, EDGE_LIMIT);
 		const neighborIds = new Set<string>();
 		for (const e of physicalEdges) {
 			const neighborId = e.from_node_id === docId ? e.to_node_id : e.from_node_id;
@@ -121,7 +121,7 @@ export async function buildSourcesGraphWithDiscoveredEdges(
 
 		// Resolve neighbor doc_ids to paths
 		const neighborNodes = neighborIds.size > 0
-			? await graphNodeRepo.getByIds([...neighborIds])
+			? await mobiusNodeRepo.getByIds([...neighborIds])
 			: new Map();
 		for (const [, node] of neighborNodes) {
 			if (node.type !== "document") continue;

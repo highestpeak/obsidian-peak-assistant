@@ -3,6 +3,7 @@
  * Exposes only applyPatch, clear, fitToView, resize API, and effectsCanvasRefs for GraphEffectsCanvas.
  */
 
+import { SLICE_CAPS } from '@/core/constant';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3-force';
 import * as d3Selection from 'd3-selection';
@@ -533,8 +534,8 @@ export function useGraphEngine(params: UseGraphEngineParams): UseGraphEngineResu
 				snapshotEdgesTouchEnd: edgesTouchEnd.length,
 				linksRefTouchStart: linksTouchStart.length,
 				visibleLinksTouchStart: visibleLinksTouchStart.length,
-				snapshotTouchStartSample: edgesTouchStart.slice(0, 3),
-				linksRefTouchStartSample: linksTouchStart.slice(0, 3).map((l) => ({
+				snapshotTouchStartSample: edgesTouchStart.slice(0, SLICE_CAPS.graphViz.debugTouchSample),
+				linksRefTouchStartSample: linksTouchStart.slice(0, SLICE_CAPS.graphViz.debugTouchSample).map((l) => ({
 					a: norm(getLinkEndpointId(l.source)),
 					b: norm(getLinkEndpointId(l.target)),
 					kind: l.kind,

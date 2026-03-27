@@ -6,6 +6,7 @@ import React, { useCallback, useState } from 'react';
 import { GraphVisualization } from '@/ui/component/mine/GraphVisualization';
 import { createObsidianGraphPreset } from '@/ui/view/quick-search/presets/obsidianGraphPreset';
 import type { UIPreviewGraph, GraphSnapshot } from '@/ui/component/mine/graph-viz';
+import { GraphNodeType } from '@/core/po/graph.po';
 import { MOCK_INSPECTOR_GRAPH } from '../mocks/inspectorMockData';
 
 /** Convert GraphSnapshot (Copy JSON format: source/target) to UIPreviewGraph (from_node_id/to_node_id). */
@@ -14,7 +15,7 @@ function snapshotToUIPreview(snapshot: GraphSnapshot): UIPreviewGraph {
 		nodes: (snapshot.nodes ?? []).map((n) => ({
 			id: n.id,
 			label: n.label ?? n.id,
-			type: n.type ?? 'document',
+			type: n.type ?? GraphNodeType.Document,
 			badges: n.badges,
 			attributes: n.attributes,
 		})),

@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
+import { SLICE_CAPS } from '@/core/constant';
 import { v4 as uuidv4 } from 'uuid';
-import { hashMD5 } from './hash-utils';
 
 /**
  * Generate a UUID without hyphens.
@@ -21,38 +21,89 @@ export function generateStableUuid(input: string): string {
 	// Use MD5 hash of input to create deterministic UUID-like string
 	const hash = createHash('md5').update(input).digest('hex');
 	// Convert first 32 characters to UUID format: 8-4-4-4-12, then remove hyphens
-	const uuidWithHyphens = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
+	const e = SLICE_CAPS.hash.md5UuidSliceEnds;
+	const uuidWithHyphens = `${hash.slice(0, e[0])}-${hash.slice(e[0], e[1])}-${hash.slice(e[1], e[2])}-${hash.slice(e[2], e[3])}-${hash.slice(e[3], e[4])}`;
 	return uuidWithHyphens.replace(/-/g, '');
 }
 
+// --- Document nodes ---
+
 /**
- * Generate a stable document ID from file path.
- * Uses SHA-256 hash to ensure same path always generates same ID.
- * 
- * Why SHA-256 instead of MD5?
- * - MD5 is 128-bit (2^128 possibilities), collision risk exists (though very low)
- * - SHA-256 is 256-bit (2^256 possibilities), collision risk is negligible
- * - SHA-256 is cryptographically secure (MD5 is broken for security)
- * - Both are deterministic (same path = same ID)
- * 
- * Collision analysis:
- * - For 1 billion documents, MD5 collision probability: ~0.0000000000000001%
- * - For 1 billion documents, SHA-256 collision probability: Practically zero
- * 
- * @param path File path (or URL for web documents) @deprecated use generateUuidWithoutHyphens instead
- * @returns Stable document ID (64-character hex string)
+ * Stable document node id from vault path (deterministic).
  */
 export function generateDocIdFromPath(path: string): string {
-	// try {
-	// 	// Use Node.js crypto module for SHA-256
-	// 	return createHash('sha256').update(path).digest('hex');
-	// } catch (error) {
-	// 	// Fallback to MD5 if crypto is not available (should not happen in Node.js)
-	// 	console.warn('SHA-256 hash not available, falling back to MD5:', error);
-	// 	return hashMD5(path);
-	// }
-	// too long to use sha256, use uuid instead
 	return generateStableUuid(path ?? '');
+}
+
+/**
+ * Retry seed when path-stable id collides ({@link pickDocumentNodeIdCandidate}, attempt ≥ 1).
+ */
+export function stableDocumentNodeIdRetrySeed(path: string, attemptIndex: number): string {
+	return generateStableUuid(`${path}\0#${attemptIndex}`);
+}
+
+/**
+ * Last-resort document node id when primary + retry candidates still collide (path + timestamp).
+ */
+export function stableDocumentNodeIdTimeFallback(path: string, timestampMs: number): string {
+	return generateStableUuid(`${path}\0${timestampMs}`);
+}
+
+/**
+ * Next candidate for a document node_id: attempt 0 = path-stable id, then {@link stableDocumentNodeIdRetrySeed}.
+ */
+export function pickDocumentNodeIdCandidate(path: string, attemptIndex: number): string {
+	if (attemptIndex === 0) return generateDocIdFromPath(path);
+	return stableDocumentNodeIdRetrySeed(path, attemptIndex);
+}
+
+// --- Mobius graph: folders & edges ---
+
+/** Mobius `Folder` node id for tenant + folder path. */
+export function stableMobiusFolderNodeId(tenant: string, folderPath: string): string {
+	return generateStableUuid(`mobius-folder:${tenant}:${folderPath}`);
+}
+
+/** Primary key for `mobius_edge` (historical seed: concatenated ids + type, no separators). */
+export function stableMobiusEdgeId(fromNodeId: string, toNodeId: string, edgeType: string): string {
+	return generateStableUuid(fromNodeId + toNodeId + edgeType);
+}
+
+/**
+ * Edge id for inspector / graph visualization payloads (distinct seed from {@link stableMobiusEdgeId}).
+ */
+export function stableGraphVisualizationEdgeId(
+	fromNodeId: string,
+	toNodeId: string,
+	edgeType: string,
+): string {
+	return generateStableUuid(`${fromNodeId}-${toNodeId}-${edgeType}`);
+}
+
+// --- Mobius tag nodes ---
+
+/** `topic_tag` node id. */
+export function stableTopicTagNodeId(tag: string): string {
+	return generateStableUuid(`tag:${tag}`);
+}
+
+/** `functional_tag` node id. */
+export function stableFunctionalTagNodeId(tag: string): string {
+	return generateStableUuid(`functional:${tag}`);
+}
+
+/** `keyword_tag` node id. */
+export function stableKeywordTagNodeId(tag: string): string {
+	return generateStableUuid(`keyword:${tag}`);
+}
+
+/** `context_tag` node id. */
+export function stableContextTagNodeId(axis: 'time' | 'geo' | 'person', label: string): string {
+	return generateStableUuid(`context:${axis}:${label}`);
+}
+
+export function stableHubClusterNodeId(tenant: string, hash: string): string {
+	return generateStableUuid(`hub-cluster:${tenant}:${hash}`);
 }
 
 /**

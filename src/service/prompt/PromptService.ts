@@ -3,12 +3,42 @@ import { PromptId, type PromptVariables, PromptInfo } from './PromptId';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import type { AIServiceSettings } from '@/app/settings/types';
+import { getAIPromptFolder } from '@/app/settings/types';
 import type { CompiledTemplate } from '@/core/template-engine-helper';
 import { compileTemplate } from '@/core/template-engine-helper';
 import { LLMStreamEvent, MessagePart } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { getTemplateMetadata } from '@/core/template/TemplateRegistry';
+
+/**
+ * Prefer explicit promptModelMap entry, then related-prompt fallbacks; callers use defaultModel when undefined.
+ * Indexing/Hub-related chains: DocSummaryShort/Full → DocSummary; Hub* → HubDocSummary → DocSummary (see PromptId).
+ */
+function pickPromptModelEntry(
+	settings: AIServiceSettings | undefined,
+	promptId: PromptId,
+): { provider: string; modelId: string } | undefined {
+	const map = settings?.promptModelMap;
+	if (!map) return undefined;
+	const direct = map[promptId];
+	if (direct) return direct;
+	if (promptId === PromptId.DocSummaryShort || promptId === PromptId.DocSummaryFull) {
+		return map[PromptId.DocSummary];
+	}
+	if (promptId === PromptId.HubDocSummary) {
+		return map[PromptId.HubDocSummary] ?? map[PromptId.DocSummary];
+	}
+	if (promptId === PromptId.HubDiscoverJudge) {
+		return map[PromptId.HubDiscoverJudge] ?? map[PromptId.HubDocSummary] ?? map[PromptId.DocSummary];
+	}
+	if (promptId === PromptId.HubDiscoverRoundReview) {
+		return (
+			map[PromptId.HubDiscoverRoundReview] ?? map[PromptId.HubDiscoverJudge] ?? map[PromptId.HubDocSummary] ?? map[PromptId.DocSummary]
+		);
+	}
+	return undefined;
+}
 
 /**
  * Unified prompt service: templates loaded on demand via TemplateManager, with optional vault overrides.
@@ -26,7 +56,7 @@ export class PromptService {
 		chat?: MultiProviderChatService,
 		private readonly templateManager?: TemplateManager,
 	) {
-		this.promptFolder = normalizePath(settings.promptFolder);
+		this.promptFolder = getAIPromptFolder();
 		this.chat = chat;
 		this.settings = settings;
 	}
@@ -87,9 +117,8 @@ export class PromptService {
 
 		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
 		if (!provider || !model) {
-			// Check promptModelMap first
-			if (this.settings?.promptModelMap?.[promptId]) {
-				const promptModel = this.settings.promptModelMap[promptId];
+			const promptModel = pickPromptModelEntry(this.settings, promptId);
+			if (promptModel) {
 				provider = promptModel.provider;
 				model = promptModel.modelId;
 			} else if (this.settings?.defaultModel) {
@@ -147,9 +176,8 @@ export class PromptService {
 
 		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
 		if (!provider || !model) {
-			// Check promptModelMap first
-			if (this.settings?.promptModelMap?.[promptId]) {
-				const promptModel = this.settings.promptModelMap[promptId];
+			const promptModel = pickPromptModelEntry(this.settings, promptId);
+			if (promptModel) {
 				provider = promptModel.provider;
 				model = promptModel.modelId;
 			} else if (this.settings?.defaultModel) {

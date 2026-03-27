@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import { refreshableMemoizeSupplier } from '@/core/utils/functions';
 import {
 	useAIAnalysisRuntimeStore,
@@ -10,8 +11,6 @@ import {
 
 const DEFAULT_MAX_CHARS = 4000;
 const CONTEXT_LINES = 2;
-const MAX_NODES_PREVIEW = 30;
-const STEP_TEXT_MAX = 200;
 
 type HistorySearchFn = (query: string, options?: { maxChars?: number }) => string;
 
@@ -159,7 +158,7 @@ function buildResultIndexCore(): string {
     for (const b of res.dashboardBlocks ?? []) {
         const label = b.title ?? b.id ?? 'Block';
         lines.push(`- ${label} (${b.renderEngine ?? ''})`);
-        const md = (b.markdown ?? b.mermaidCode ?? '').slice(0, 300);
+        const md = (b.markdown ?? b.mermaidCode ?? '').slice(0, SLICE_CAPS.ui.followupMarkdown);
         if (md) lines.push(`  ${md}`);
     }
 
@@ -168,7 +167,7 @@ function buildResultIndexCore(): string {
     const g = res.graph;
     if (g) {
         lines.push(`nodes: ${g.nodes?.length ?? 0}, edges: ${g.edges?.length ?? 0}`);
-        const nodes = (g.nodes ?? []).slice(0, MAX_NODES_PREVIEW);
+        const nodes = (g.nodes ?? []).slice(0, SLICE_CAPS.ui.analysisNodeLabels);
         for (const n of nodes) {
             lines.push(`- ${n.title ?? n.id ?? ''} | ${n.type ?? ''} | ${n.path ?? ''}`);
         }
@@ -179,7 +178,7 @@ function buildResultIndexCore(): string {
     lines.push('');
     lines.push('[Steps]');
     for (const step of stepsStore.steps ?? []) {
-        const text = step.description?.slice(0, STEP_TEXT_MAX) ?? '';
+        const text = step.description?.slice(0, SLICE_CAPS.ui.followupAnswer) ?? '';
         lines.push(`- ${step.title}: ${text}`);
     }
 
@@ -195,22 +194,22 @@ function buildResultIndexFollowups(): string {
     lines.push('[Followups]');
     for (const f of interactions.fullAnalysisFollowUp ?? []) {
         lines.push(`Q: ${f.title ?? ''}`);
-        lines.push(`A: ${(f.content ?? '').slice(0, 200)}`);
+        lines.push(`A: ${(f.content ?? '').slice(0, SLICE_CAPS.ui.followupAnswer)}`);
     }
     const topicResults = topics.topicAnalyzeResults ?? {};
     for (const [topic, arr] of Object.entries(topicResults)) {
         for (const item of arr ?? []) {
             lines.push(`Topic[${topic}] Q: ${item.question}`);
-            lines.push(`A: ${(item.answer ?? '').slice(0, 200)}`);
+            lines.push(`A: ${(item.answer ?? '').slice(0, SLICE_CAPS.ui.followupAnswer)}`);
         }
     }
     for (const item of interactions.graphFollowupHistory ?? []) {
         lines.push(`Graph Q: ${item.question}`);
-        lines.push(`A: ${(item.answer ?? '').slice(0, 200)}`);
+        lines.push(`A: ${(item.answer ?? '').slice(0, SLICE_CAPS.ui.followupAnswer)}`);
     }
     for (const item of interactions.sourcesFollowupHistory ?? []) {
         lines.push(`Sources Q: ${item.question}`);
-        lines.push(`A: ${(item.answer ?? '').slice(0, 200)}`);
+        lines.push(`A: ${(item.answer ?? '').slice(0, SLICE_CAPS.ui.followupAnswer)}`);
     }
 
     return lines.join('\n');

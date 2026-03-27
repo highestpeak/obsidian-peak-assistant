@@ -497,6 +497,111 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 							/>
 						</div>
 					</div>
+
+					{/* Hub discover settings */}
+					<div className="pktw-border-t pktw-pt-6 pktw-mt-6">
+						<h4 className="pktw-text-sm pktw-font-semibold pktw-text-foreground pktw-mb-4">
+							Hub Discover
+						</h4>
+
+						<div className="pktw-flex pktw-items-start pktw-gap-4 pktw-mb-6">
+							<div className="pktw-flex-1 pktw-min-w-0">
+								<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+									Enable Hub Discover LLM Round Review
+								</label>
+								<p className="pktw-text-xs pktw-text-muted-foreground">
+									One structured review per maintenance run over coverage metrics and the selected hub set (does not remove hubs). Turn off for fully deterministic discovery.
+								</p>
+							</div>
+							<div className="pktw-flex-shrink-0 pktw-flex pktw-items-center">
+								<Switch
+									checked={settings.search.hubDiscover?.enableLlmJudge ?? false}
+									onChange={(value) =>
+										updateSearch('hubDiscover', {
+											...(settings.search.hubDiscover ?? {}),
+											enableLlmJudge: value,
+										})
+									}
+								/>
+							</div>
+						</div>
+
+						<div className="pktw-flex pktw-items-start pktw-gap-4 pktw-mb-6">
+							<div className="pktw-flex-1 pktw-min-w-0">
+								<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+									Max Hub Discover Rounds
+								</label>
+								<p className="pktw-text-xs pktw-text-muted-foreground">
+									How many rounds the maintenance pass may use when deciding whether the vault still has valuable unexplored hub candidates.
+								</p>
+							</div>
+							<div className="pktw-flex-shrink-0 pktw-w-64">
+								<NumberInputWithConfirm
+									value={settings.search.hubDiscover?.maxRounds ?? 3}
+									onConfirm={(value) =>
+										updateSearch('hubDiscover', {
+											...(settings.search.hubDiscover ?? {}),
+											maxRounds: value,
+										})
+									}
+									min={1}
+									max={10}
+									placeholder="3"
+								/>
+							</div>
+						</div>
+
+						<div className="pktw-flex pktw-items-start pktw-gap-4 pktw-mb-6">
+							<div className="pktw-flex-1 pktw-min-w-0">
+								<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+									Max Hub Judge Calls
+								</label>
+								<p className="pktw-text-xs pktw-text-muted-foreground">
+									Legacy setting (reserved). Round review uses a single call when enabled.
+								</p>
+							</div>
+							<div className="pktw-flex-shrink-0 pktw-w-64">
+								<NumberInputWithConfirm
+									value={settings.search.hubDiscover?.maxJudgeCalls ?? 20}
+									onConfirm={(value) =>
+										updateSearch('hubDiscover', {
+											...(settings.search.hubDiscover ?? {}),
+											maxJudgeCalls: value,
+										})
+									}
+									min={0}
+									max={100}
+									placeholder="20"
+								/>
+							</div>
+						</div>
+
+						<div className="pktw-flex pktw-items-start pktw-gap-4">
+							<div className="pktw-flex-1 pktw-min-w-0">
+								<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
+									Min Coverage Gain
+								</label>
+								<p className="pktw-text-xs pktw-text-muted-foreground">
+									Lower values continue discovering more hubs; higher values stop earlier once the remaining candidates add little new vault coverage.
+								</p>
+							</div>
+							<div className="pktw-flex-shrink-0 pktw-w-64">
+								<NumberInputWithConfirm
+									value={settings.search.hubDiscover?.minCoverageGain ?? 0.04}
+									onConfirm={(value) =>
+										updateSearch('hubDiscover', {
+											...(settings.search.hubDiscover ?? {}),
+											minCoverageGain: value,
+										})
+									}
+									min={0}
+									max={1}
+									step={0.01}
+									placeholder="0.04"
+								/>
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

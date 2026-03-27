@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import { hashText } from "@/core/utils/hash-utils";
 import { useCallback, useEffect } from "react";
 import { Notice } from "obsidian";
@@ -19,7 +20,7 @@ import { buildAiAnalyzeMarkdown, ExportSource, saveAiAnalyzeResultToMarkdown, pe
 import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot, type BuildMarkdownOptions } from "@/core/storage/vault/search-docs/AiSearchAnalysisDoc";
 import { AISearchSource } from "@/service/agents/AISearchAgent";
 import { AIAnalysisHistoryRecord } from "@/service/AIAnalysisHistoryService";
-import { generateStableUuid } from "@/core/utils/id-utils";
+import { generateDocIdFromPath } from "@/core/utils/id-utils";
 import { CHAT_VIEW_TYPE } from "../../ChatView";
 import { EventBus, SelectionChangedEvent } from "@/core/eventBus";
 import { SearchResultItem } from "@/service/search/types";
@@ -95,7 +96,7 @@ export function useAIAnalysisResult() {
             const replaySnapshot = buildCompletedAnalysisSnapshot();
             const rt = useAIAnalysisRuntimeStore.getState();
             const ts = Date.now();
-            const displayTitle = (rt.title?.trim() || searchQuery.slice(0, 48) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 60);
+            const displayTitle = (rt.title?.trim() || searchQuery.slice(0, SLICE_CAPS.ui.analysisDisplayTitle) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, SLICE_CAPS.ui.analysisDisplayTitleTrim);
             const fileName = `${ts} - ${displayTitle}`;
             const exportSources: ExportSource[] = sources.map(s => ({
                 path: s.path,
@@ -145,7 +146,7 @@ export function useAIAnalysisResult() {
             }
 
             const record: AIAnalysisHistoryRecord = {
-                id: generateStableUuid(saved.path),
+                id: generateDocIdFromPath(saved.path),
                 vault_rel_path: saved.path,
                 query: searchQuery || null,
                 title: rt.title?.trim() || null,
@@ -196,7 +197,7 @@ export function useAIAnalysisResult() {
                 const settings = AppContext.getInstance().settings.search;
                 const defaultFolder = 'ChatFolder/AI-Analysis';
                 const folderPath = (settings.aiAnalysisAutoSaveFolder?.trim()) || defaultFolder;
-                const displayTitle = (rt.title?.trim() || searchQuery.slice(0, 48) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 60);
+                const displayTitle = (rt.title?.trim() || searchQuery.slice(0, SLICE_CAPS.ui.analysisDisplayTitle) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, SLICE_CAPS.ui.analysisDisplayTitleTrim);
                 const ts = Date.now();
                 const fileName = `${ts} - ${displayTitle}`;
                 try {

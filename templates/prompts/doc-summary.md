@@ -1,4 +1,7 @@
-Summarize this document concisely ({{#if wordCount}}{{wordCount}}{{else}}200-500{{/if}} characters).
+{{! Deprecated: use doc-summary-short.md. Kept for existing vault overrides of prompt id `doc-summary`. }}
+Write **exactly one sentence** that captures what this note is about and why it matters. No bullet list, no markdown headings, no preamble.
+
+Target: at most ~{{#if maxWords}}{{maxWords}}{{else}}40{{/if}} words. Be factual and dense.
 
 {{#if title}}
 Title: {{title}}
@@ -11,4 +14,4 @@ Path: {{path}}
 Content:
 {{content}}
 
-Provide a concise summary focusing on key points and main ideas.
+Output only the single sentence.

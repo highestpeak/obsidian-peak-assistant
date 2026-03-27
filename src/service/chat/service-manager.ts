@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import { App } from 'obsidian';
 import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart, LLMRequestMessage, ModelTokenLimits, ProviderOptionsConfig, ProviderOptions } from '@/core/providers/types';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
@@ -7,7 +8,13 @@ import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId, PromptInfo, PromptVariables } from '@/service/prompt/PromptId';
 import { ProjectService } from './service-project';
 import { ConversationService } from './service-conversation';
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
+import {
+	AIServiceSettings,
+	DEFAULT_AI_SERVICE_SETTINGS,
+	getAIProfileFilePath,
+	getAIPromptFolder,
+	getAIResourcesSummaryFolder,
+} from '@/app/settings/types';
 import { ResourceSummaryService } from './context/ResourceSummaryService';
 import { IndexService } from '@/service/search/index/indexService';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
@@ -15,8 +22,9 @@ import { ContextUpdateService } from './context/ContextUpdateService';
 import { EventBus } from '@/core/eventBus';
 import { createChatMessage } from './utils/chat-message-builder';
 import type { TemplateManager } from '@/core/template/TemplateManager';
-import { AgentTemplateId } from '@/core/template/TemplateRegistry';
-import { LanguageModel } from 'ai';
+import { AgentTemplateId, getTemplateMetadata } from '@/core/template/TemplateRegistry';
+import { LanguageModel, streamObject } from 'ai';
+import type { z } from 'zod/v3';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -50,7 +58,7 @@ export class AIServiceManager {
 		this.resourceSummaryService = new ResourceSummaryService(
 			this.app,
 			this.settings.rootFolder,
-			this.settings.resourcesSummaryFolder
+			getAIResourcesSummaryFolder(),
 		);
 
 		// === Service construction ===
@@ -67,7 +75,7 @@ export class AIServiceManager {
 				this.app,
 				this.promptService,
 				this.multiChat,
-				this.settings.profileFilePath || `${this.settings.rootFolder}/User-Profile.md`,
+				getAIProfileFilePath(),
 			);
 		}
 
@@ -165,7 +173,7 @@ export class AIServiceManager {
 		this.storage = new ChatStorageService(this.app, {
 			rootFolder: this.settings.rootFolder,
 		});
-		this.promptService.setPromptFolder(this.settings.promptFolder);
+		this.promptService.setPromptFolder(getAIPromptFolder());
 		this.promptService.setSettings(this.settings);
 		this.refreshDefaultServices();
 	}
@@ -184,7 +192,7 @@ export class AIServiceManager {
 				this.app,
 				this.promptService,
 				this.multiChat,
-				this.settings.profileFilePath || `${this.settings.rootFolder}/User-Profile.md`,
+				getAIProfileFilePath(),
 			);
 		}
 
@@ -195,7 +203,7 @@ export class AIServiceManager {
 		this.resourceSummaryService = new ResourceSummaryService(
 			this.app,
 			this.settings.rootFolder,
-			this.settings.resourcesSummaryFolder
+			getAIResourcesSummaryFolder(),
 		);
 		this.conversationService = new ConversationService(
 			this.app,
@@ -305,7 +313,7 @@ export class AIServiceManager {
 		console.debug('[AIServiceManager] Conversation title:', title);
 
 		// Build content with sources as markdown links for context
-		const sourcesList = params.sources.slice(0, 10).map((s, i) => {
+		const sourcesList = params.sources.slice(0, SLICE_CAPS.chat.sourcesList).map((s, i) => {
 			const link = `[[${s.path}|${s.title}]]`;
 			const snippet = s.content ? `\n  - ${s.content.substring(0, 200)}...` : '';
 			return `${i + 1}. ${link}${snippet}`;
@@ -576,8 +584,32 @@ ${sourcesList}${topicsList}
 	 * Used by AiAnalysis sub-agents instead of thoughtAgent.
 	 */
 	getModelForPrompt(promptId: PromptId): { provider: string; modelId: string } {
-		const promptModel = this.settings.promptModelMap?.[promptId];
+		const map = this.settings.promptModelMap;
+		const promptModel = map?.[promptId];
 		if (promptModel) return { provider: promptModel.provider, modelId: promptModel.modelId };
+		if (
+			(promptId === PromptId.DocSummaryShort || promptId === PromptId.DocSummaryFull) &&
+			map?.[PromptId.DocSummary]
+		) {
+			const m = map[PromptId.DocSummary];
+			return { provider: m.provider, modelId: m.modelId };
+		}
+		if (promptId === PromptId.HubDocSummary && map?.[PromptId.DocSummary]) {
+			const m = map[PromptId.DocSummary];
+			return { provider: m.provider, modelId: m.modelId };
+		}
+		if (promptId === PromptId.HubDiscoverJudge) {
+			const m = map?.[PromptId.HubDiscoverJudge] ?? map?.[PromptId.HubDocSummary] ?? map?.[PromptId.DocSummary];
+			if (m) return { provider: m.provider, modelId: m.modelId };
+		}
+		if (promptId === PromptId.HubDiscoverRoundReview) {
+			const m =
+				map?.[PromptId.HubDiscoverRoundReview] ??
+				map?.[PromptId.HubDiscoverJudge] ??
+				map?.[PromptId.HubDocSummary] ??
+				map?.[PromptId.DocSummary];
+			if (m) return { provider: m.provider, modelId: m.modelId };
+		}
 		const defaultModel = this.settings.defaultModel;
 		if (defaultModel) return { provider: defaultModel.provider, modelId: defaultModel.modelId };
 		throw new Error('No model configuration available. Please configure defaultModel in settings.');
@@ -623,6 +655,42 @@ ${sourcesList}${topicsList}
 		extraParts?: MessagePart[]
 	): Promise<string> {
 		return this.promptService.chatWithPrompt(promptId, variables, provider, model, extraParts);
+	}
+
+	/**
+	 * Renders a prompt template then runs AI SDK `streamObject`; awaits the final `object` (no streaming to UI).
+	 * Use for structured JSON outputs instead of `chatWithPrompt` + `JSON.parse`.
+	 */
+	async streamObjectWithPrompt<T extends PromptId, S extends z.ZodTypeAny>(
+		promptId: T,
+		variables: PromptVariables[T] | null,
+		schema: S,
+		opts?: { provider?: string; modelId?: string },
+	): Promise<z.infer<S>> {
+		const meta = getTemplateMetadata(promptId);
+		const tm = this.templateManager;
+		const systemPrompt =
+			meta.systemPromptId && tm ? await tm.getTemplate(meta.systemPromptId) : undefined;
+		const promptText = await this.renderPrompt(promptId, variables);
+		let model: LanguageModel;
+		let providerOptions: ProviderOptions | undefined;
+		if (opts?.provider && opts?.modelId) {
+			const ps = this.getMultiChat().getProviderService(opts.provider);
+			model = ps.modelClient(opts.modelId, {});
+			providerOptions = ps.getProviderOptions({});
+		} else {
+			const m = this.getModelInstanceForPrompt(promptId);
+			model = m.model;
+			providerOptions = m.providerOptions;
+		}
+		const result = streamObject({
+			model,
+			...(systemPrompt ? { system: systemPrompt } : {}),
+			prompt: promptText,
+			schema,
+			...(providerOptions ? { providerOptions } : {}),
+		});
+		return (await result.object) as z.infer<S>;
 	}
 
 	/**

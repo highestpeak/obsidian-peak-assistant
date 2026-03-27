@@ -1,3 +1,4 @@
+import { GraphNodeType } from '@/core/po/graph.po';
 import Handlebars from 'handlebars';
 import { humanReadableTime } from '@/core/utils/date-utils';
 import yaml from 'js-yaml';
@@ -157,11 +158,11 @@ export function registerTemplateEngineHelpers() {
     });
     Handlebars.registerHelper('formatNodeLabel', function (label, type) {
         switch (type) {
-            case 'tag':
+            case GraphNodeType.TopicTag:
                 return `#${label}`;
-            case 'category':
+            case GraphNodeType.FunctionalTag:
                 return `📁${label}`;
-            case 'document':
+            case GraphNodeType.Document:
             default:
                 return `[[${label}]]`;
         }

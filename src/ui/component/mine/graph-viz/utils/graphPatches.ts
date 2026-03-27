@@ -4,6 +4,8 @@
  */
 
 import type { GraphPatch, GraphPatchEdge, GraphPatchNode } from '@/core/providers/ui-events/graph';
+import { SLICE_CAPS } from '@/core/constant';
+import { GraphNodeType } from '@/core/po/graph.po';
 
 export type { GraphPatch, GraphPatchEdge, GraphPatchNode };
 
@@ -85,7 +87,7 @@ function convertGraphTraversal(output: any): GraphPatch | null {
 		return {
 			id: String(n.id),
 			label: String(n.label ?? n.id),
-			type: String(n.type ?? 'document'),
+			type: String(n.type ?? GraphNodeType.Document),
 			badges: n.foundBy ? [String(n.foundBy)] : undefined,
 			...(path ? { path } : {}),
 			...(n.attributes && typeof n.attributes === 'object' ? { attributes: n.attributes as Record<string, unknown> } : {}),
@@ -100,7 +102,7 @@ function convertGraphTraversal(output: any): GraphPatch | null {
 			const normalized: GraphPatchNode = {
 				...n,
 				id: special.id,
-				type: n.type && n.type !== 'document' ? n.type : special.type,
+				type: n.type && n.type !== GraphNodeType.Document ? n.type : special.type,
 				label: n.label && n.label !== n.id ? n.label : special.label,
 			};
 			nodesById.set(normalized.id, normalized);
@@ -156,7 +158,11 @@ function convertInspectNoteContext(output: any): GraphPatch | null {
 
 	// We use the doc path string as a stable UI id for the center node.
 	const centerId = `file:${notePath}`;
-	const centerNode: GraphPatchNode = { id: centerId, label: notePath.split('/').pop() || notePath, type: 'document' };
+	const centerNode: GraphPatchNode = {
+		id: centerId,
+		label: notePath.split('/').pop() || notePath,
+		type: GraphNodeType.Document,
+	};
 
 	const nodes: GraphPatchNode[] = [centerNode];
 	const edges: GraphPatchEdge[] = [];
@@ -171,7 +177,7 @@ function convertInspectNoteContext(output: any): GraphPatch | null {
 			nodes.push({
 				id,
 				label: String(d.label ?? id),
-				type: String(d.type ?? 'document'),
+				type: String(d.type ?? GraphNodeType.Document),
 				...(path ? { path } : {}),
 				...(attrs && Object.keys(attrs).length ? { attributes: attrs } : {}),
 			});
@@ -208,13 +214,13 @@ function convertFindKeyNodes(output: any): GraphPatch | null {
 		if (n.direction === 'out') badges.push('Source');
 		if (n.direction === 'in') badges.push('Sink');
 		if (n.nodeType) badges.push(String(n.nodeType));
-		return { id, label, type: String(n.type ?? 'document'), badges };
+		return { id, label, type: String(n.type ?? GraphNodeType.Document), badges };
 	});
 
 	return {
 		upsertNodes: dedupeNodes(nodes),
 		upsertEdges: [],
-		focus: { nodeIds: nodes.slice(0, 8).map(n => n.id), mode: 'mixed' },
+		focus: { nodeIds: nodes.slice(0, SLICE_CAPS.graphViz.graphPatchFocus).map(n => n.id), mode: 'mixed' },
 		meta: { toolName: 'find_key_nodes', label: 'Identifying key nodes…' },
 	};
 }
@@ -235,7 +241,7 @@ function convertFindPath(output: any): GraphPatch | null {
 	const nodes: GraphPatchNode[] = labels.map((label) => ({
 		id: `note:${label}`,
 		label,
-		type: 'document',
+		type: GraphNodeType.Document,
 	}));
 
 	const edges: GraphPatchEdge[] = [];

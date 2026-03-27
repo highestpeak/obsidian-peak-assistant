@@ -8,6 +8,7 @@ import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
+import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 
 /**
  * HTML/XML document loader.
@@ -51,10 +52,11 @@ export class HtmlXmlDocumentLoader implements DocumentLoader {
 		const minSize = settings.minDocumentSizeForChunking;
 
 		if (content.length <= minSize) {
-			return [{
+			return assembleIndexedChunks(doc, [{
 				docId: doc.id,
+				chunkType: 'body_raw',
 				content: content,
-			}];
+			}]);
 		}
 
 		// Split by meaningful tags while respecting size constraints
@@ -101,6 +103,7 @@ export class HtmlXmlDocumentLoader implements DocumentLoader {
 				const chunkContent = content.substring(start, end);
 				chunks.push({
 					docId: doc.id,
+					chunkType: 'body_raw',
 					content: chunkContent,
 					chunkId: generateUuidWithoutHyphens(),
 					chunkIndex: chunkIndex++,
@@ -108,7 +111,7 @@ export class HtmlXmlDocumentLoader implements DocumentLoader {
 				start = end - overlap;
 				if (start >= content.length) break;
 			}
-			return chunks;
+			return assembleIndexedChunks(doc, chunks);
 		}
 
 		// Group segments into chunks respecting size constraints
@@ -120,6 +123,7 @@ export class HtmlXmlDocumentLoader implements DocumentLoader {
 				if (currentChunk.length > 0) {
 					chunks.push({
 						docId: doc.id,
+						chunkType: 'body_raw',
 						content: currentChunk,
 						chunkId: generateUuidWithoutHyphens(),
 						chunkIndex: chunkIndex++,
@@ -133,6 +137,7 @@ export class HtmlXmlDocumentLoader implements DocumentLoader {
 					const chunkContent = segment.substring(segStart, segEnd);
 					chunks.push({
 						docId: doc.id,
+						chunkType: 'body_raw',
 						content: chunkContent,
 						chunkId: generateUuidWithoutHyphens(),
 						chunkIndex: chunkIndex++,
@@ -144,6 +149,7 @@ export class HtmlXmlDocumentLoader implements DocumentLoader {
 				// Save current chunk and start new one with overlap
 				chunks.push({
 					docId: doc.id,
+					chunkType: 'body_raw',
 					content: currentChunk,
 					chunkId: generateUuidWithoutHyphens(),
 					chunkIndex: chunkIndex++,
@@ -160,13 +166,14 @@ export class HtmlXmlDocumentLoader implements DocumentLoader {
 		if (currentChunk.length > 0) {
 			chunks.push({
 				docId: doc.id,
+				chunkType: 'body_raw',
 				content: currentChunk,
 				chunkId: generateUuidWithoutHyphens(),
 				chunkIndex: chunkIndex++,
 			});
 		}
 
-		return chunks;
+		return assembleIndexedChunks(doc, chunks);
 	}
 
 	async *scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
@@ -238,7 +245,9 @@ export class HtmlXmlDocumentLoader implements DocumentLoader {
 				},
 				metadata: {
 					title: file.basename,
-					tags: [],
+					topicTags: [],
+					functionalTagEntries: [],
+					keywordTags: [],
 				},
 				contentHash,
 				references: {

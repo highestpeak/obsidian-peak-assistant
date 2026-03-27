@@ -8,6 +8,14 @@ import { BusinessError, ErrorCode } from '@/core/errors';
 import { EventBus, ViewEventType } from '@/core/eventBus';
 import { GraphInspectorTestTools, AISearchAgentTestTools } from '@/app/context/test-tools';
 import { cleanupGraphTable } from '@/app/context/graph-cleanup';
+import {
+	debugBatchIndex,
+	debugExplainPathCoverage,
+	debugHubDiscoverSnapshot,
+	debugIndexDocument,
+	debugRunMaintenance,
+	debugValidateSubset,
+} from '@/app/context/index-debug-tools';
 import { IndexService } from '@/service/search/index/indexService';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { AISearchAgent, AISearchAgentOptions } from '@/service/agents/AISearchAgent';
@@ -33,6 +41,11 @@ export class AppContext {
 			);
 		}
 		return AppContext.instance;
+	}
+
+	/** Obsidian `App` from the initialized singleton. */
+	public static getApp(): App {
+		return AppContext.getInstance().app;
 	}
 
 	/**
@@ -91,6 +104,13 @@ export class AppContext {
 				(window as any).testGraphTools = new GraphInspectorTestTools();
 				(window as any).testAISearchTools = new AISearchAgentTestTools();
 				(window as any).indexDocument = (docPath: string) => IndexService.getInstance().indexDocument(docPath, this.settings.search);
+				const getSearch = () => this.settings.search;
+				(window as any).debugIndexDocument = (docPath: string) => debugIndexDocument(docPath, getSearch);
+				(window as any).debugBatchIndex = (paths: string[]) => debugBatchIndex(paths, getSearch);
+				(window as any).debugRunMaintenance = (tenants?: ('vault' | 'chat')[]) => debugRunMaintenance(tenants);
+				(window as any).debugHubDiscoverSnapshot = (tenant?: 'vault' | 'chat') => debugHubDiscoverSnapshot(tenant);
+				(window as any).debugValidateSubset = (opts: Parameters<typeof debugValidateSubset>[0]) => debugValidateSubset(opts);
+				(window as any).debugExplainPathCoverage = (docPath: string) => debugExplainPathCoverage(docPath);
 				(window as any).getVaultPersona = () => getVaultPersona();
 				(window as any).cleanupGraphTable = () => cleanupGraphTable();
 
@@ -98,11 +118,23 @@ export class AppContext {
 				console.debug('📖 Usage: window.testGraphTools.inspectNote("path/to/note.md")');
 				console.debug('📖 Usage: await window.testAISearchTools.testSlotRecall("your question")');
 				console.debug('📖 Usage: window.indexDocument("path/to/note.md")');
-				console.debug('📖 Usage: await window.cleanupGraphTable() — clean graph_nodes/edges (nodes whose path not in doc_meta, orphan edges)');
+				console.debug('📖 Usage: await window.debugIndexDocument("path/to/note.md") — index + snapshot');
+				console.debug('📖 Usage: await window.debugBatchIndex(["a.md","b.md"])');
+				console.debug('📖 Usage: await window.debugRunMaintenance() — full Mobius maintenance');
+				console.debug('📖 Usage: await window.debugHubDiscoverSnapshot() — hub discovery (can be slow)');
+				console.debug('📖 Usage: await window.debugValidateSubset({ pathPrefixes: ["Projects"] })');
+				console.debug('📖 Usage: await window.debugExplainPathCoverage("path/to/note.md")');
+				console.debug('📖 Usage: await window.cleanupGraphTable() — clean mobius_node/edge orphans and doc nodes missing from index');
 				console.debug('📖 Available methods:', [
 					...Object.getOwnPropertyNames(GraphInspectorTestTools.prototype).filter(name => name !== 'constructor'),
 					'testAISearchTools.testSlotRecall',
 					'indexDocument',
+					'debugIndexDocument',
+					'debugBatchIndex',
+					'debugRunMaintenance',
+					'debugHubDiscoverSnapshot',
+					'debugValidateSubset',
+					'debugExplainPathCoverage',
 					'cleanupGraphTable',
 				]);
 			}
@@ -111,6 +143,12 @@ export class AppContext {
 				if ((window as any).testGraphTools) delete (window as any).testGraphTools;
 				if ((window as any).testAISearchTools) delete (window as any).testAISearchTools;
 				if ((window as any).indexDocument) delete (window as any).indexDocument;
+				if ((window as any).debugIndexDocument) delete (window as any).debugIndexDocument;
+				if ((window as any).debugBatchIndex) delete (window as any).debugBatchIndex;
+				if ((window as any).debugRunMaintenance) delete (window as any).debugRunMaintenance;
+				if ((window as any).debugHubDiscoverSnapshot) delete (window as any).debugHubDiscoverSnapshot;
+				if ((window as any).debugValidateSubset) delete (window as any).debugValidateSubset;
+				if ((window as any).debugExplainPathCoverage) delete (window as any).debugExplainPathCoverage;
 				if ((window as any).cleanupGraphTable) delete (window as any).cleanupGraphTable;
 				console.log('🔧 Graph Inspector Test Tools disabled');
 			}

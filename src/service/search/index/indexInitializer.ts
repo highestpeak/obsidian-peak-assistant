@@ -22,6 +22,46 @@ export class IndexInitializer {
 	}
 
 	/**
+	 * When maintenance debt crosses threshold, runs full Mobius maintenance (aggregates + PageRank + semantic edges).
+	 */
+	private async runMobiusMaintenanceIfDue(): Promise<void> {
+		if (!sqliteStoreManager.isInitialized()) return;
+		if (!(await IndexService.getInstance().isMobiusMaintenanceRecommended())) return;
+		let n = new Notice('Mobius: running graph maintenance…', 0);
+		const setMsg = (text: string) => {
+			const nn = n as Notice & { setMessage?: (m: string) => void };
+			if (typeof nn.setMessage === 'function') nn.setMessage(text);
+			else {
+				n.hide();
+				n = new Notice(text, 0);
+			}
+		};
+		try {
+			await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
+				onProgress: (ev) => {
+					if (ev.phase === 'semantic_related') {
+						setMsg(`Mobius: semantic edges · ${ev.tenant} ${ev.processed}/${ev.total}`);
+						return;
+					}
+					const phaseLabel =
+						ev.phase === 'semantic_pagerank_edges'
+							? 'semantic PR edges'
+							: ev.phase === 'semantic_pagerank_persist'
+								? 'semantic PR persist'
+								: ev.phase;
+					setMsg(`Mobius: ${ev.tenant} · ${phaseLabel} · batch ${ev.batchIndex ?? 0}`);
+				},
+			});
+			n.hide();
+			new Notice('Mobius graph maintenance completed.', 4000);
+		} catch (e) {
+			n.hide();
+			console.error('[IndexInitializer] Mobius maintenance failed:', e);
+			new Notice('Mobius graph maintenance failed. See console.', 5000);
+		}
+	}
+
+	/**
 	 * Check index status and perform incremental indexing for new/modified files.
 	 *
 	 * This is necessary because:
@@ -76,6 +116,8 @@ export class IndexInitializer {
 						8000,
 					);
 				}
+			} else {
+				await this.runMobiusMaintenanceIfDue();
 			}
 		} catch (e) {
 			console.error('Index check/update failed:', e);
@@ -114,6 +156,7 @@ export class IndexInitializer {
 		console.log(`[IndexInitializer] Total files to index: ${filesToIndex.length} (counted in ${countDuration.toFixed(2)}ms)`);
 
 		await this.indexNewAndModifiedFiles(filesToIndex);
+		await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat']);
 	}
 
 	/**
@@ -146,7 +189,7 @@ export class IndexInitializer {
 				this.indexNewAndModifiedFiles(pathsToIndex),
 			]);
 			console.log(`[IndexInitializer] Incremental indexing completed: ${pathsToIndex.length} files processed`);
-
+			await this.runMobiusMaintenanceIfDue();
 		} catch (e) {
 			console.error('Incremental indexing failed:', e);
 		}
@@ -174,7 +217,7 @@ export class IndexInitializer {
 	private async checkAndDeleteRemovedFiles(): Promise<void> {
 		console.debug('[IndexInitializer] Checking and deleting removed files');
 		const loaderManager = DocumentLoaderManager.getInstance();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 
 		// First, scan vault to collect all current file paths
 		// Performance: O(n) where n = number of markdown files
@@ -212,7 +255,7 @@ export class IndexInitializer {
 		const batchSize = INDEX_CHECK_BATCH_SIZE;
 
 		while (true) {
-			const indexedBatch = await docMetaRepo.getIndexedPathsBatch(offset, batchSize);
+			const indexedBatch = await indexedDocumentRepo.getIndexedPathsBatch(offset, batchSize);
 			if (indexedBatch.length === 0) {
 				break;
 			}
@@ -290,11 +333,9 @@ export class IndexInitializer {
 	 * to efficiently identify files that need indexing. It avoids loading all indexed paths
 	 * upfront by checking indexed status in batches as vault files are scanned.
 	 * 
-	 * Why doc_meta represents indexed status:
-	 * - Documents are only written to doc_meta table after successful indexing completion
-	 *   (see IndexService.indexDocumentGroup)
-	 * - When documents are deleted, they are removed from doc_meta (see IndexService.deleteDocuments)
-	 * - Therefore, presence in doc_meta reliably indicates a document is indexed
+	 * Indexed status is determined by an indexed document row on `mobius_node` (queried via IndexedDocumentRepo):
+	 * - Written when indexing completes (see IndexService.indexDocument).
+	 * - Removed when documents are deleted from the index (see IndexService.deleteDocuments).
 	 * 
 	 * @returns filesToIndex: list of document paths that need indexing
 	 */
@@ -335,9 +376,9 @@ export class IndexInitializer {
 	): Promise<string[]> {
 		if (currentBatch.length === 0) return [];
 
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 		const pathsToCheck = currentBatch.map(d => d.path);
-		const indexedMap = await docMetaRepo.batchCheckIndexed(pathsToCheck);
+		const indexedMap = await indexedDocumentRepo.batchCheckIndexed(pathsToCheck);
 		const maybeIndexArray: Array<{ path: string; mtime: number; type: DocumentType }> = [];
 
 		for (const docItem of currentBatch) {
@@ -358,7 +399,7 @@ export class IndexInitializer {
 
 	/**
 	 * Process batch of files that need content hash checking.
-	 * Loads documents, calculates content hashes, and checks if they already exist in doc_meta.
+	 * Loads documents, calculates content hashes, and checks if a matching hash exists among indexed documents (Mobius).
 	 * Only files without matching content hash are returned.
 	 * 
 	 * @param maybeIndexArray - Array of document metadata that need content hash checking
@@ -368,7 +409,7 @@ export class IndexInitializer {
 		maybeIndexArray: Array<{ path: string; mtime: number; type: DocumentType }>,
 	): Promise<string[]> {
 		const loaderManager = DocumentLoaderManager.getInstance();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 		const filesToIndex: string[] = [];
 
 		// Load documents and calculate content hashes
@@ -386,10 +427,10 @@ export class IndexInitializer {
 			}
 		}
 
-		// Batch check if content hashes exist in doc_meta
+		// Batch check if content hashes exist for any indexed document (Mobius-backed IndexedDocumentRepo)
 		if (pathToHash.size > 0) {
 			const contentHashes = Array.from(pathToHash.values());
-			const existingHashes = await docMetaRepo.batchGetByContentHashes(contentHashes);
+			const existingHashes = await indexedDocumentRepo.batchGetByContentHashes(contentHashes);
 
 			// Only add files whose content hash does not exist
 			for (const [path, contentHash] of pathToHash.entries()) {

@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import { ChatConversation, ChatProject, ChatMessage } from '@/service/chat/types';
 import { LLMStreamEvent, ModelInfoForSwitch } from '@/core/providers/types';
 import { TFile } from 'obsidian';
@@ -369,8 +370,8 @@ export class MockAIServiceManager {
 
 			// Stream response content character by character
 			const responseChars = mockResponse.split('')
-				// mock response too long, so we only stream the first 200 characters for testing. if need more, change it.
-				.slice(0, 300);
+				// mock response too long, so we only stream a prefix for testing; tune SLICE_CAPS.mocks.mockAIServiceSummary.
+				.slice(0, SLICE_CAPS.mocks.mockAIServiceSummary);
 			for (let i = 0; i < responseChars.length; i++) {
 				await new Promise(resolve => setTimeout(resolve, delay));
 				const char = responseChars[i];
@@ -549,7 +550,7 @@ This plugin is designed to help you manage conversations and projects with AI as
 	async chatWithPrompt(promptId: string, variables: any): Promise<string> {
 		const query = variables?.query ?? 'Query';
 		if (promptId === 'ai-analysis-save-filename') {
-			return `AI Analysis - ${query.slice(0, 40)} - ${new Date().toISOString().slice(0, 10)}`;
+			return `AI Analysis - ${query.slice(0, SLICE_CAPS.mocks.mockAIServiceTitle)} - ${new Date().toISOString().slice(0, SLICE_CAPS.date.isoDateChars)}`;
 		}
 		if (promptId === 'ai-analysis-save-folder') {
 			return 'Analysis/AI Searches';

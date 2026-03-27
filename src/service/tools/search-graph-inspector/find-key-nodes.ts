@@ -1,3 +1,4 @@
+import { GRAPH_TAGGED_EDGE_TYPES } from '@/core/po/graph.po';
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
 import { KEY_NODES_RRF_K, RRF_RANKING_POOL_SIZE } from "@/core/constant";
@@ -11,8 +12,8 @@ import { emptyMap } from "@/core/utils/collection-utils";
 async function getNodeCategoryConnections(nodeIds: string[]): Promise<Map<string, number>> {
     if (!nodeIds.length) return new Map();
 
-    const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
-    const categoryConnections = await graphEdgeRepo.getByFromNodesAndTypes(nodeIds, ['categorized']);
+    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
+    const categoryConnections = await mobiusEdgeRepo.getByFromNodesAndTypes(nodeIds, [...GRAPH_TAGGED_EDGE_TYPES]);
 
     const categoryCountMap = new Map<string, number>();
     for (const edge of categoryConnections) {
@@ -25,12 +26,12 @@ async function getNodeCategoryConnections(nodeIds: string[]): Promise<Map<string
 
 export async function findKeyNodes(params: any, templateManager?: TemplateManager) {
     const { limit, semantic_filter, response_format, filters, sorter } = params;
-    const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-    const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
 
     // Get top nodes' degree statistics for RRF calculation
     const { topByOutDegree: allOutDegreeStats, topByInDegree: allInDegreeStats } =
-        await graphEdgeRepo.getTopNodeIdsByDegree(RRF_RANKING_POOL_SIZE);
+        await mobiusEdgeRepo.getTopNodeIdsByDegree(RRF_RANKING_POOL_SIZE);
 
     // Apply semantic filter to the node pool for RRF calculation
     const semanticResults = await getSemanticSearchResults(
@@ -57,10 +58,10 @@ export async function findKeyNodes(params: any, templateManager?: TemplateManage
     //     to calculate accurate ranking scores, avoiding bias from considering too few nodes.
     //     Then we use the user-specified limit (a smaller number, e.g., 10-20) on top of this pool.
     const { topByOutDegree: candidateOutDegrees, topByInDegree: candidateInDegrees } =
-        await graphEdgeRepo.getTopNodeIdsByDegree(limit, candidateNodeIds);
+        await mobiusEdgeRepo.getTopNodeIdsByDegree(limit, candidateNodeIds);
 
     // Batch fetch node labels
-    const nodeMap = await graphNodeRepo.getByIds(candidateNodeIds);
+    const nodeMap = await mobiusNodeRepo.getByIds(candidateNodeIds);
 
     // Group nodes by semantic relevance and type
     type KeyNode = {

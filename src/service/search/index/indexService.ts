@@ -1,25 +1,84 @@
 import type { Chunk } from './types';
 import { AppContext } from '@/app/context/AppContext';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
+import type { IndexedDocumentRecord } from '@/core/storage/sqlite/ddl';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { GraphEdgeRepo } from '@/core/storage/sqlite/repositories/GraphEdgeRepo';
+import { MobiusEdgeRepo } from '@/core/storage/sqlite/repositories/MobiusEdgeRepo';
 import { normalizeTextForFts } from '../support/segmenter';
-import type { SearchSettings } from '@/app/settings/types';
-import type { Document } from '@/core/document/types';
-import { INDEX_STATE_KEYS } from '@/core/constant';
+import { getAIHubSummaryFolder, type SearchSettings } from '@/app/settings/types';
+import type { Document, DocumentReference } from '@/core/document/types';
+import {
+	INDEX_FRONTMATTER_KEYS,
+	INDEX_LONG_RANGE_LCA_MAX_DEPTH,
+	INDEX_STATE_KEYS,
+	MOBIUS_MAINTENANCE_DEBT_INDEX_DOC,
+	MOBIUS_MAINTENANCE_DEBT_PER_DELETE,
+	MOBIUS_MAINTENANCE_DEBT_RENAME,
+	MOBIUS_MAINTENANCE_DIRTY_THRESHOLD,
+	MOBIUS_MAINTENANCE_STATE_KEYS,
+	PAGERANK_ALGORITHM_VERSION,
+	PAGERANK_EDGE_BATCH_SIZE,
+	SEMANTIC_PAGERANK_ALGORITHM_VERSION,
+	FOLDER_HUB_STATS_DOC_PAGE_SIZE,
+} from '@/core/constant';
+import {
+	accumulateSemanticOutgoingWeightSums,
+	computeSemanticPageRankStreaming,
+	computeVaultPageRankStreaming,
+} from '@/service/search/index/helper/documentPageRank';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
-import { generateUuidWithoutHyphens, generateStableUuid } from '@/core/utils/id-utils';
-import { normalizePath } from 'obsidian';
+import {
+	generateDocIdFromPath,
+	generateUuidWithoutHyphens,
+	stableDocumentNodeIdTimeFallback,
+	stableMobiusFolderNodeId,
+} from '@/core/utils/id-utils';
 import { AIServiceManager } from '@/service/chat/service-manager';
+import { parseLooseTimestampToMs } from '@/core/utils/date-utils';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import { getFileNameFromPath } from '@/core/utils/file-utils';
-
+import {
+	GraphEdgeType,
+	GraphNodeType,
+	GRAPH_DOCUMENT_LIKE_NODE_TYPES,
+	GRAPH_TAG_NODE_TYPES,
+	isIndexedNoteNodeType,
+} from '@/core/po/graph.po';
+import {
+	SemanticRelatedEdgesRebuildService,
+	type RebuildSemanticEdgesBatchResult,
+} from '@/service/search/index/helper/semanticRelatedEdges';
+import { crossesTopLevelFolder, pathLcaDepth, pathSegments } from '@/core/utils/vault-path-utils';
+import {
+	encodeIndexedTagsBlob,
+	filterValidFunctionalTagEntries,
+	graphKeywordTagsForMobius,
+} from '@/core/document/helper/TagService';
+import {
+	stableContextTagNodeId,
+	stableFunctionalTagNodeId,
+	stableKeywordTagNodeId,
+	stableTopicTagNodeId,
+	upsertDocumentTagEdges,
+} from '@/service/search/index/helper/mobiusTagEdges';
+import { isVaultPathUnderPrefix } from '@/core/utils/hub-path-utils';
+import { HubDocService } from '@/service/search/index/helper/hub';
 export type StorageType = 'sqlite' | 'graph';
 
-/** Resolve index tenant from path: under settings.ai.rootFolder => chat, else vault. */
+/** Batch-loaded path → indexed id + title for outgoing refs that omit `docId`. */
+type PathIndexedDocInfo = { id: string; title: string | null };
+
+/**
+ * Resolve index tenant from path.
+ * Hub summary subtree is indexed in vault DB even when physically under chat rootFolder.
+ */
 export function getIndexTenantForPath(path: string): IndexTenant {
-	const rootFolder = AppContext.getInstance().settings?.ai?.rootFolder?.trim();
-	if (!rootFolder) return 'vault';
+	const ctx = AppContext.getInstance();
+	const hubFolder = getAIHubSummaryFolder();
+	if (hubFolder && isVaultPathUnderPrefix(path, hubFolder)) {
+		return 'vault';
+	}
+	const rootFolder = ctx.settings.ai.rootFolder.trim();
 	const normalized = path.replace(/^\/+/, '');
 	const prefix = rootFolder.endsWith('/') ? rootFolder.replace(/\/+$/, '') : rootFolder;
 	return (normalized === prefix || normalized.startsWith(prefix + '/')) ? 'chat' : 'vault';
@@ -31,70 +90,280 @@ export interface GetIndexStatusResponse {
 	isReady: boolean;
 }
 
+/** Batch size for Mobius aggregate keyset pagination inside {@link IndexService.runMobiusGlobalMaintenance}. */
+export const DEFAULT_MOBIUS_AGGREGATE_BATCH_SIZE = 200;
+
+/** Phases that use {@link MobiusGlobalMaintenanceProgress.batchIndex} / `idsInBatch`. */
+export type MobiusGlobalMaintenanceBatchPhase =
+	| 'tag_doc_count'
+	| 'document_degrees'
+	| 'pagerank_edges'
+	| 'pagerank_persist'
+	| 'semantic_pagerank_edges'
+	| 'semantic_pagerank_persist'
+	| 'folder_hub_stats'
+	| 'hub_discovery'
+	| 'hub_materialize'
+	| 'hub_index';
+
+/** All maintenance progress phases (batch-style or `semantic_related`). */
+export type MobiusGlobalMaintenancePhase = MobiusGlobalMaintenanceBatchPhase | 'semantic_related';
+
 /**
- * Index service for document and graph indexing operations.
+ * Progress events for {@link IndexService.runMobiusGlobalMaintenance}.
+ * Fields by phase: batch phases set `batchIndex` + `idsInBatch`; `semantic_related` sets `processed` + `total`.
  */
-export class IndexService {
+export type MobiusGlobalMaintenanceProgress = {
+	tenant: IndexTenant;
+	phase: MobiusGlobalMaintenancePhase;
+	batchIndex?: number;
+	idsInBatch?: number;
+	processed?: number;
+	total?: number;
+};
 
-	private static instance: IndexService | null = null;
-	private static isIndexingCancelled = false;
-	private aiServiceManager: AIServiceManager;
+/** Options for {@link IndexService.runMobiusGlobalMaintenance}. */
+export interface MobiusGlobalMaintenanceOptions {
+	onProgress?: (ev: MobiusGlobalMaintenanceProgress) => void;
+}
 
-	private constructor() {
-		// Private constructor to prevent direct instantiation.
-	}
+/** Yields so the UI can stay responsive during long aggregate passes. */
+async function yieldForLargePass(): Promise<void> {
+	await new Promise<void>((resolve) => setTimeout(resolve, 0));
+}
 
-	static getInstance(): IndexService {
-		if (!IndexService.instance) {
-			IndexService.instance = new IndexService();
+/**
+ * Index lifecycle: delete, clear, rename, status, and maintenance debt bookkeeping.
+ */
+class IndexCrudService {
+	/**
+	 * Delete documents by paths. Removes chunks, embeddings, indexed document rows on Mobius, and document graph nodes/edges for those ids.
+	 *
+	 * Notes:
+	 * - Does not delete tag/hub nodes shared by other documents (only edges from removed docs are cleared via node delete scope).
+	 * - Runs in a per-tenant transaction.
+	 */
+	async deleteDocuments(
+		paths: string[],
+		onAfterMutation?: (types: StorageType[]) => void,
+	): Promise<void> {
+		if (!paths.length) return;
+
+		const byTenant = new Map<IndexTenant, string[]>();
+		for (const p of paths) {
+			const t = getIndexTenantForPath(p);
+			const list = byTenant.get(t) ?? [];
+			list.push(p);
+			byTenant.set(t, list);
 		}
-		return IndexService.instance;
+
+		for (const [tenant, tenantPaths] of byTenant) {
+			const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+			const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+			const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
+			const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+			const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+			const kdb = sqliteStoreManager.getIndexContext(tenant);
+
+			const metaMap = await indexedDocumentRepo.getByPaths(tenantPaths);
+			const docIds = Array.from(metaMap.values()).map((m) => m.id);
+
+			await kdb.transaction().execute(async () => {
+				docChunkRepo.deleteFtsByDocIds(docIds);
+				docChunkRepo.deleteMetaFtsByDocIds(docIds);
+				await docChunkRepo.deleteByDocIds(docIds);
+				await embeddingRepo.deleteByDocIds(docIds);
+				await mobiusNodeRepo.deleteDocumentStatisticsByDocIds(docIds);
+				await mobiusEdgeRepo.deleteByNodeIds(docIds);
+				await indexedDocumentRepo.deleteByPaths(tenantPaths);
+				await mobiusNodeRepo.deleteByIds(docIds);
+			});
+			if (docIds.length > 0) {
+				await this.addMaintenanceDebt(tenant, MOBIUS_MAINTENANCE_DEBT_PER_DELETE * docIds.length);
+			}
+		}
+
+		onAfterMutation?.(['sqlite', 'graph']);
 	}
 
 	/**
-	 * Clear the global singleton instance.
-	 * Call from plugin onunload to release memory.
+	 * Clear all index data: chunks, embeddings, Mobius nodes/edges (via repos), and index_state.
+	 * Destructive and cannot be undone.
 	 */
-	static clearInstance(): void {
-		IndexService.instance = null;
+	async clearAllIndexData(onAfterMutation?: (types: StorageType[]) => void): Promise<void> {
+		const tenants: IndexTenant[] = ['vault', 'chat'];
+		for (const tenant of tenants) {
+			const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+			const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+			const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
+			const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+			const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+			const indexStateRepo = sqliteStoreManager.getIndexStateRepo(tenant);
+
+			docChunkRepo.deleteAllFts();
+			docChunkRepo.deleteAllMetaFts();
+			await docChunkRepo.deleteAll();
+			await embeddingRepo.deleteAll();
+			await mobiusNodeRepo.clearAllDocumentStatistics();
+			await mobiusEdgeRepo.deleteAll();
+			await indexedDocumentRepo.deleteAll();
+			await mobiusNodeRepo.deleteAll();
+			await indexStateRepo.clearAll();
+		}
+
+		onAfterMutation?.(['sqlite', 'graph']);
 	}
 
 	/**
-	 * Initialize IndexService with AIServiceManager for embedding generation.
-	 * This should be called once during plugin initialization in main.ts.
-	 * Can also be called when settings are updated to refresh the service instance.
+	 * Clean up orphan FTS/chunk/embedding rows and stray document nodes on Mobius when no indexed document remains for that path set.
 	 */
-	init(aiServiceManager: AIServiceManager): void {
-		this.aiServiceManager = aiServiceManager;
+	async cleanupOrphanedSearchIndexData(): Promise<{
+		metaFts: number;
+		fts: number;
+		chunks: number;
+		embeddings: number;
+		stats: number;
+		graphNodes: number;
+	}> {
+		const tenants: IndexTenant[] = ['vault', 'chat'];
+		let metaFts = 0;
+		let fts = 0;
+		let chunks = 0;
+		let embeddings = 0;
+		let stats = 0;
+		let graphNodes = 0;
+
+		for (const tenant of tenants) {
+			const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+			const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+			const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
+			const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+			const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+			const kdb = sqliteStoreManager.getIndexContext(tenant);
+
+			await kdb.transaction().execute(async () => {
+				metaFts += docChunkRepo.cleanupOrphanMetaFts();
+				fts += docChunkRepo.cleanupOrphanFts();
+				chunks += await docChunkRepo.cleanupOrphanChunks();
+				embeddings += await embeddingRepo.cleanupOrphanEmbeddings();
+				stats += await mobiusNodeRepo.cleanupOrphanStats();
+
+				const pathMap = await indexedDocumentRepo.getAllIndexedPaths();
+				const paths = Array.from(pathMap.keys());
+				const idRows = paths.length > 0 ? await indexedDocumentRepo.getIdsByPaths(paths) : [];
+				const validDocIds = new Set(idRows.map((r) => r.id));
+
+				const orphanDocNodes: string[] = [];
+				for (const t of GRAPH_DOCUMENT_LIKE_NODE_TYPES) {
+					const nodes = await mobiusNodeRepo.getByType(t);
+					orphanDocNodes.push(...nodes.filter((n) => !validDocIds.has(n.id)).map((n) => n.id));
+				}
+
+				if (orphanDocNodes.length > 0) {
+					await mobiusEdgeRepo.deleteByNodeIds(orphanDocNodes);
+					await mobiusNodeRepo.deleteByIds(orphanDocNodes);
+					graphNodes += orphanDocNodes.length;
+				}
+			});
+		}
+
+		return { metaFts, fts, chunks, embeddings, stats, graphNodes };
+	}
+
+	/** Index build timestamp and document count (vault tenant). */
+	async getIndexStatus(): Promise<GetIndexStatusResponse> {
+		const indexStateRepo = sqliteStoreManager.getIndexStateRepo('vault');
+		const builtAtRaw = await indexStateRepo.get(INDEX_STATE_KEYS.builtAt);
+		const indexedRaw = await indexStateRepo.get(INDEX_STATE_KEYS.indexedDocs);
+		const indexBuiltAt = builtAtRaw != null ? Number(builtAtRaw) : null;
+		const indexedDocs = indexedRaw != null ? Number(indexedRaw) : null;
+		return {
+			indexBuiltAt: Number.isFinite(indexBuiltAt as any) ? indexBuiltAt : null,
+			indexedDocs: Number.isFinite(indexedDocs as any) ? indexedDocs : null,
+			isReady: Boolean(builtAtRaw),
+		};
 	}
 
 	/**
-	 * Cancel ongoing indexing operations.
+	 * Updates path on the indexed document (Mobius + FTS + graph node attributes) without changing node id.
+	 * @returns true if a row was updated under oldPath.
 	 */
-	static cancelIndexing(): void {
-		IndexService.isIndexingCancelled = true;
+	async renameDocumentPath(oldPath: string, newPath: string): Promise<boolean> {
+		const tenantOld = getIndexTenantForPath(oldPath);
+		const tenantNew = getIndexTenantForPath(newPath);
+		if (tenantOld !== tenantNew) return false;
+		const tenant = tenantOld;
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+		const meta = await indexedDocumentRepo.getByPath(oldPath);
+		if (!meta) return false;
+		const docId = meta.id;
+		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+		const kdb = sqliteStoreManager.getIndexContext(tenant);
+		const title = meta.title ?? getFileNameFromPath(newPath);
+		const normTitle = normalizeTextForFts(title);
+		const ts = Date.now();
+
+		await kdb.transaction().execute(async () => {
+			await indexedDocumentRepo.updatePathById(docId, newPath);
+			docChunkRepo.replaceMetaFts({ doc_id: docId, path: newPath, title: normTitle });
+			const gn = await mobiusNodeRepo.getById(docId);
+			if (gn) {
+				let attrs: Record<string, unknown> = {};
+				try {
+					attrs = JSON.parse(gn.attributes) as Record<string, unknown>;
+				} catch {
+					attrs = {};
+				}
+				attrs.path = newPath;
+				await mobiusNodeRepo.updateById(docId, {
+					label: title,
+					attributes: JSON.stringify(attrs),
+					updated_at: ts,
+				});
+			}
+		});
+		await this.addMaintenanceDebt(tenant, MOBIUS_MAINTENANCE_DEBT_RENAME);
+		return true;
 	}
 
-	/**
-	 * Reset the cancellation flag.
-	 */
-	static resetCancellation(): void {
-		IndexService.isIndexingCancelled = false;
+	/** True when maintenance debt reached the threshold in vault or chat DB. */
+	async isMobiusMaintenanceRecommended(): Promise<boolean> {
+		for (const tenant of ['vault', 'chat'] as const) {
+			const v = await sqliteStoreManager.getIndexStateRepo(tenant).get(MOBIUS_MAINTENANCE_STATE_KEYS.needed);
+			if (v === '1') return true;
+		}
+		return false;
 	}
 
-	/**
-	 * Check if indexing has been cancelled.
-	 */
-	static isCancelled(): boolean {
-		return IndexService.isIndexingCancelled;
+	/** Accumulate maintenance debt after successful incremental graph/search writes. */
+	async addMaintenanceDebt(tenant: IndexTenant, delta: number): Promise<void> {
+		if (delta <= 0) return;
+		if (!sqliteStoreManager.isInitialized()) return;
+		const indexStateRepo = sqliteStoreManager.getIndexStateRepo(tenant);
+		const raw = await indexStateRepo.get(MOBIUS_MAINTENANCE_STATE_KEYS.dirtyScore);
+		const prev = Number(raw ?? 0);
+		const base = Number.isFinite(prev) && prev >= 0 ? prev : 0;
+		const next = base + delta;
+		await indexStateRepo.set(MOBIUS_MAINTENANCE_STATE_KEYS.dirtyScore, String(next));
+		if (next >= MOBIUS_MAINTENANCE_DIRTY_THRESHOLD) {
+			await indexStateRepo.set(MOBIUS_MAINTENANCE_STATE_KEYS.needed, '1');
+		}
 	}
+}
+
+/**
+ * Single-document indexing: load, chunk, embeddings, Mobius + FTS persist.
+ */
+class IndexSingleService {
+	constructor(
+		private readonly aiServiceManager: AIServiceManager,
+		private readonly crud: IndexCrudService,
+	) {}
 
 	/**
 	 * Index a document by path with chunking strategy applied.
 	 * This method handles document loading and chunking internally based on settings.
-	 *
-	 * @param docPath - Document path to index
-	 * @param settings - Search settings containing chunking configuration
 	 */
 	async indexDocument(
 		docPath: string,
@@ -125,6 +394,9 @@ export class IndexService {
 				return;
 			}
 
+			const tenant = getIndexTenantForPath(doc.sourceFileInfo.path);
+			doc.id = await this.resolveDocumentNodeId(doc.sourceFileInfo.path, tenant);
+
 			// Check if indexing has been cancelled
 			if (IndexService.isCancelled()) {
 				console.log(`[IndexService] Indexing cancelled for ${doc.sourceFileInfo.path}`);
@@ -137,16 +409,15 @@ export class IndexService {
 				return;
 			}
 
-			// Chunk content using loader's chunkContent method
+			// Chunk content (body + derived chunks from loader)
 			sw.start('Chunk content');
 			const chunks = await loader.chunkContent(doc, settings.chunking);
 			sw.stop();
-
 			// Check if vector search is available (requires sqlite-vec extension)
 			const vectorSearchAvailable = sqliteStoreManager.isVectorSearchEnabled();
-
 			// Generate embeddings for chunks if embedding model is configured AND vector search is available
 			const embeddingModel = settings.chunking.embeddingModel;
+			const embeddingModelName = embeddingModel ? `${embeddingModel.provider}:${embeddingModel.modelId}` : undefined;
 			if (embeddingModel && vectorSearchAvailable) {
 				sw.start('Generate embeddings');
 				await this.generateAndFillEmbeddings(chunks, embeddingModel);
@@ -158,30 +429,40 @@ export class IndexService {
 				);
 			}
 
-			const tenant = getIndexTenantForPath(docPath);
+			/**
+			 * Single transaction: indexed document row (incl. stats) → FTS/embeddings → tag/ref graph → aggregates → index_state
+			 * Writes document index in one DB transaction: full `mobius_node` document row (metadata + stats),
+			 * FTS + embeddings, related graph nodes/edges, aggregate columns, then index_state.
+			 */
+			sw.start('Persist index (transaction: mobius + FTS + graph + aggregates + index_state)');
+			console.debug(`[IndexService] Persist index for: ${docPath} (tenant: ${tenant})`);
+			const pathToIndexedDocInfo = await this.loadPathToIndexedDocInfoMap(doc, tenant);
+			const indexedByTargetId = await this.loadIndexedRecordsForOutgoingTargets(doc, tenant, pathToIndexedDocInfo);
+			const kdb = sqliteStoreManager.getIndexContext(tenant);
+			await kdb.transaction().execute(async () => {
+				// basic node for current doc
+				await this.upsertIndexedDocument(doc, tenant);
+				// doc reference and tagged edges
+				await this.upsertGraphEdgesForDocument(doc, tenant, pathToIndexedDocInfo, indexedByTargetId);
+				// folder contains edges
+				await this.upsertFolderContainsEdgesForDocument(doc, tenant);
+				// refresh document and tag statistics fields
+				await this.refreshMobiusAggregatesForIndexedDocument(doc, tenant, pathToIndexedDocInfo);
 
-			// Save all data within a transaction for consistency and to prevent deadlocks
-			sw.start('Save doc meta');
-			console.debug(`[IndexService] Saving doc meta for document: ${docPath} (tenant: ${tenant})`);
-			await this.saveDocMeta(doc, tenant);
-			sw.stop();
+				// FTS + embeddings
+				await this.saveSearchData(
+					doc.id,
+					doc.sourceFileInfo.path,
+					doc.metadata.title,
+					chunks,
+					embeddingModelName,
+					tenant,
+				);
 
-			sw.start('Save search data');
-			console.debug(`[IndexService] Saving search data for document: ${docPath}`);
-			const embeddingModelName = embeddingModel ? `${embeddingModel.provider}:${embeddingModel.modelId}` : undefined;
-			await this.saveSearchData(doc.id, doc.sourceFileInfo.path, doc.metadata.title, chunks, embeddingModelName, tenant);
-			sw.stop();
-
-			sw.start('Save graph data');
-			await this.upsertGraph(doc, tenant);
-			sw.stop();
-
-			sw.start('Update doc statistics');
-			await this.updateDocStatistics(doc, tenant);
-			sw.stop();
-
-			sw.start('Update index state');
-			await this.updateIndexState(tenant);
+				// index_state
+				await this.updateIndexState(tenant);
+			});
+			await this.crud.addMaintenanceDebt(tenant, MOBIUS_MAINTENANCE_DEBT_INDEX_DOC);
 			sw.stop();
 		} catch (error) {
 			console.error(`[IndexService] Error indexing document:`, {
@@ -196,223 +477,33 @@ export class IndexService {
 	}
 
 	/**
-	 * Delete documents by paths. Removes all related data including chunks, embeddings, statistics, and graph nodes.
-	 *
-	 * Notes:
-	 * - Graph cleanup: removes document node(s) but keeps tag/link nodes to avoid expensive GC.
-	 * - All deletions are executed within a single transaction for consistency.
+	 * Stable node_id for a vault path: reuse existing indexed document on `mobius_node`, else allocate.
+	 * First tries path-stable id; on collision, one fallback using path + timestamp seed.
 	 */
-	async deleteDocuments(
-		paths: string[],
-		onAfterMutation?: (types: StorageType[]) => void,
-	): Promise<void> {
-		if (!paths.length) return;
-
-		const byTenant = new Map<IndexTenant, string[]>();
-		for (const p of paths) {
-			const t = getIndexTenantForPath(p);
-			const list = byTenant.get(t) ?? [];
-			list.push(p);
-			byTenant.set(t, list);
+	private async resolveDocumentNodeId(path: string, tenant: IndexTenant): Promise<string> {
+		const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+		const existing = await mobiusRepo.getByPath(path);
+		if (existing && isIndexedNoteNodeType(existing.type)) {
+			return existing.node_id;
 		}
 
-		for (const [tenant, tenantPaths] of byTenant) {
-			const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
-			const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
-			const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
-			const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
-			const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
-			const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
-			const kdb = sqliteStoreManager.getIndexContext(tenant);
-
-			await kdb.transaction().execute(async () => {
-				const metaMap = await docMetaRepo.getByPaths(tenantPaths);
-				const docIds = Array.from(metaMap.values()).map((m) => m.id);
-
-				docChunkRepo.deleteFtsByDocIds(docIds);
-				docChunkRepo.deleteMetaFtsByDocIds(docIds);
-				await docChunkRepo.deleteByDocIds(docIds);
-				await embeddingRepo.deleteByDocIds(docIds);
-				await docStatisticsRepo.deleteByDocIds(docIds);
-				await docMetaRepo.deleteByPaths(tenantPaths);
-				await graphEdgeRepo.deleteByNodeIds(docIds);
-				await graphNodeRepo.deleteByIds(docIds);
-			});
-		}
-
-		onAfterMutation?.(['sqlite', 'graph']);
-	}
-
-	/**
-	 * Delete documents from a single index tenant only (for migration: remove from vault after re-indexing to chat).
-	 */
-	async deleteDocumentsFromTenant(
-		paths: string[],
-		tenant: IndexTenant,
-		onAfterMutation?: (types: StorageType[]) => void,
-	): Promise<void> {
-		if (!paths.length) return;
-
-		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
-		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
-		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
-		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
-		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
-		const kdb = sqliteStoreManager.getIndexContext(tenant);
-
-		await kdb.transaction().execute(async () => {
-			const metaMap = await docMetaRepo.getByPaths(paths);
-			const docIds = Array.from(metaMap.values()).map((m) => m.id);
-
-			docChunkRepo.deleteFtsByDocIds(docIds);
-			docChunkRepo.deleteMetaFtsByDocIds(docIds);
-			await docChunkRepo.deleteByDocIds(docIds);
-			await embeddingRepo.deleteByDocIds(docIds);
-			await docStatisticsRepo.deleteByDocIds(docIds);
-			await docMetaRepo.deleteByPaths(paths);
-			await graphEdgeRepo.deleteByNodeIds(docIds);
-			await graphNodeRepo.deleteByIds(docIds);
-		});
-
-		onAfterMutation?.(['sqlite', 'graph']);
-	}
-
-	/**
-	 * Rebuild-style migration: list ChatFolder paths from VaultDB, re-index them into ChatDB, delete from VaultDB, then cleanup both.
-	 * Call this once to migrate existing ChatFolder index data from search.sqlite to meta.sqlite.
-	 */
-	async migrateChatFolderFromVaultToChat(settings: SearchSettings): Promise<{ reindexed: number; deletedFromVault: number }> {
-		const rootFolder = AppContext.getInstance().settings?.ai?.rootFolder?.trim();
-		if (!rootFolder) {
-			return { reindexed: 0, deletedFromVault: 0 };
-		}
-
-		const vaultMeta = sqliteStoreManager.getDocMetaRepo('vault');
-		const rows = await vaultMeta.getIdsByPathPrefixes([rootFolder]);
-		const paths = rows.map((r) => r.path);
-		if (!paths.length) {
-			return { reindexed: 0, deletedFromVault: 0 };
-		}
-
-		// Re-index each path into ChatDB (indexDocument routes by getIndexTenantForPath => chat)
-		for (const path of paths) {
-			await this.indexDocument(path, settings);
-		}
-
-		// Remove from VaultDB only
-		await this.deleteDocumentsFromTenant(paths, 'vault');
-
-		// Cleanup both DBs
-		await this.cleanupOrphanedSearchIndexData();
-
-		return { reindexed: paths.length, deletedFromVault: paths.length };
-	}
-
-	/**
-	 * Clear all index data. Removes all indexed documents, chunks, embeddings, statistics, and graph data.
-	 * This is a destructive operation that cannot be undone.
-	 *
-	 * @param onAfterMutation - Callback to notify after data mutation
-	 */
-	async clearAllIndexData(
-		onAfterMutation?: (types: StorageType[]) => void,
-	): Promise<void> {
-		const tenants: IndexTenant[] = ['vault', 'chat'];
-		for (const tenant of tenants) {
-			const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
-			const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
-			const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
-			const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
-			const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
-			const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
-			const indexStateRepo = sqliteStoreManager.getIndexStateRepo(tenant);
-
-			docChunkRepo.deleteAllFts();
-			docChunkRepo.deleteAllMetaFts();
-			await docChunkRepo.deleteAll();
-			await embeddingRepo.deleteAll();
-			await docStatisticsRepo.deleteAll();
-			await docMetaRepo.deleteAll();
-			await graphEdgeRepo.deleteAll();
-			await graphNodeRepo.deleteAll();
-			await indexStateRepo.clearAll();
-		}
-
-		onAfterMutation?.(['sqlite', 'graph']);
-	}
-
-	/**
-	 * Clean up orphan records: doc_meta_fts, doc_fts, doc_chunk, embedding, doc_statistics, graph
-	 * where the parent doc_meta no longer exists. Fixes inconsistency when doc_meta was deleted
-	 * but child tables were not cleaned.
-	 */
-	async cleanupOrphanedSearchIndexData(): Promise<{
-		metaFts: number;
-		fts: number;
-		chunks: number;
-		embeddings: number;
-		stats: number;
-		graphNodes: number;
-	}> {
-		const tenants: IndexTenant[] = ['vault', 'chat'];
-		let metaFts = 0;
-		let fts = 0;
-		let chunks = 0;
-		let embeddings = 0;
-		let stats = 0;
-		let graphNodes = 0;
-
-		for (const tenant of tenants) {
-			const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
-			const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
-			const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
-			const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
-			const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
-			const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
-			const kdb = sqliteStoreManager.getIndexContext(tenant);
-
-			await kdb.transaction().execute(async () => {
-				metaFts += docChunkRepo.cleanupOrphanMetaFts();
-				fts += docChunkRepo.cleanupOrphanFts();
-				chunks += await docChunkRepo.cleanupOrphanChunks();
-				embeddings += await embeddingRepo.cleanupOrphanEmbeddings();
-				stats += await docStatisticsRepo.cleanupOrphanStats();
-
-				const pathMap = await docMetaRepo.getAllIndexedPaths();
-				const paths = Array.from(pathMap.keys());
-				const idRows = paths.length > 0 ? await docMetaRepo.getIdsByPaths(paths) : [];
-				const validDocIds = new Set(idRows.map((r) => r.id));
-
-				const orphanDocNodes = await graphNodeRepo
-					.getByType('document')
-					.then((nodes) => nodes.filter((n) => !validDocIds.has(n.id)).map((n) => n.id));
-
-				if (orphanDocNodes.length > 0) {
-					await graphEdgeRepo.deleteByNodeIds(orphanDocNodes);
-					await graphNodeRepo.deleteByIds(orphanDocNodes);
-					graphNodes += orphanDocNodes.length;
-				}
-			});
-		}
-
-		return { metaFts, fts, chunks, embeddings, stats, graphNodes };
-	}
-
-	/**
-	 * Get index status including build timestamp and indexed document count.
-	 */
-	async getIndexStatus(): Promise<GetIndexStatusResponse> {
-		const indexStateRepo = sqliteStoreManager.getIndexStateRepo('vault');
-		const builtAtRaw = await indexStateRepo.get(INDEX_STATE_KEYS.builtAt);
-		const indexedRaw = await indexStateRepo.get(INDEX_STATE_KEYS.indexedDocs);
-		const indexBuiltAt = builtAtRaw != null ? Number(builtAtRaw) : null;
-		const indexedDocs = indexedRaw != null ? Number(indexedRaw) : null;
-		return {
-			indexBuiltAt: Number.isFinite(indexBuiltAt as any) ? indexBuiltAt : null,
-			indexedDocs: Number.isFinite(indexedDocs as any) ? indexedDocs : null,
-			isReady: Boolean(builtAtRaw),
+		const tryCandidate = async (candidate: string): Promise<string | null> => {
+			const row = await mobiusRepo.getByNodeId(candidate);
+			if (!row) return candidate;
+			if (row.path === path && isIndexedNoteNodeType(row.type)) return candidate;
+			return null;
 		};
+
+		const primary = generateDocIdFromPath(path);
+		const first = await tryCandidate(primary);
+		if (first !== null) return first;
+
+		const ts = Date.now();
+		const fallback = stableDocumentNodeIdTimeFallback(path, ts);
+		const second = await tryCandidate(fallback);
+		if (second !== null) return second;
+
+		throw new Error(`[IndexService] Failed to allocate document node id for path: ${path}`);
 	}
 
 	/**
@@ -454,9 +545,10 @@ export class IndexService {
 		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
 		const now = Date.now();
 
-		// Delete existing FTS and embeddings for this doc
+		// Delete existing FTS, doc_chunk rows, and embeddings for this doc
 		docChunkRepo.deleteFtsByDocId(docId);
 		docChunkRepo.deleteMetaFtsByDocId(docId);
+		await docChunkRepo.deleteByDocId(docId);
 		await embeddingRepo.deleteByDocIds([docId]);
 
 		// Save meta FTS (title/path) - once per document
@@ -467,26 +559,41 @@ export class IndexService {
 			title: normTitle,
 		});
 
-		// Save FTS and embeddings
+		// Save doc_chunk, FTS, and embeddings
 		for (const chunk of chunks) {
 			const chunkId = chunk.chunkId ?? generateUuidWithoutHyphens();
 			const chunkIndex = Number(chunk.chunkIndex ?? 0);
-			// Save FTS content
 			const normContent = normalizeTextForFts(chunk.content ?? '');
+			const metaJson =
+				chunk.chunkMeta && Object.keys(chunk.chunkMeta).length > 0
+					? JSON.stringify(chunk.chunkMeta)
+					: null;
+
+			await docChunkRepo.upsertChunk({
+				chunk_id: chunkId,
+				doc_id: docId,
+				chunk_index: chunkIndex,
+				chunk_type: chunk.chunkType,
+				chunk_meta_json: metaJson,
+				title: chunk.title ?? null,
+				mtime: now,
+				content_raw: chunk.content ?? null,
+				content_fts_norm: normContent,
+			});
 
 			docChunkRepo.insertFts({
 				chunk_id: chunkId,
 				doc_id: docId,
-				content: normContent, // Normalized content for FTS search
+				content: normContent,
 			});
 
-			// Save embedding
 			if (Array.isArray(chunk.embedding) && chunk.embedding.length > 0) {
 				await embeddingRepo.upsert({
 					id: chunkId,
 					doc_id: docId,
 					chunk_id: chunkId,
 					chunk_index: chunkIndex,
+					chunk_type: chunk.chunkType,
 					content_hash: '',
 					ctime: now,
 					mtime: now,
@@ -499,14 +606,56 @@ export class IndexService {
 	}
 
 	/**
-	 * Save document metadata to database.
+	 * Computes word/char counts and timestamps for the document row on `mobius_node`.
 	 */
-	private async saveDocMeta(doc: Document, tenant: IndexTenant = 'vault'): Promise<void> {
+	private computeDocumentStatistics(doc: Document): {
+		word_count: number | null;
+		char_count: number | null;
+		last_open_ts: number;
+		row_updated_at: number;
+	} {
+		const content = doc.sourceFileInfo.content ?? '';
+		const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+		const charCount = content.length;
+
+		const fm = doc.metadata.frontmatter;
+		const fromFmUpdated =
+			parseLooseTimestampToMs(fm?.[INDEX_FRONTMATTER_KEYS.updatedAt]) ??
+			parseLooseTimestampToMs(fm?.[INDEX_FRONTMATTER_KEYS.updated]);
+		const updatedAt =
+			fromFmUpdated !== undefined
+				? fromFmUpdated
+				: (doc.sourceFileInfo.ctime ?? doc.sourceFileInfo.mtime ?? Date.now());
+
+		return {
+			word_count: wordCount > 0 ? wordCount : null,
+			char_count: charCount > 0 ? charCount : null,
+			last_open_ts: updatedAt,
+			row_updated_at: updatedAt,
+		};
+	}
+
+	/**
+	 * `mobius_node.type` for indexed notes: `hub_doc` for everything under `{root}/Hub-Summaries`
+	 * (including auto `Hub-*.md` and user `Manual/*.md`).
+	 */
+	private resolveMobiusGraphNodeTypeForPath(path: string): GraphNodeType {
+		const hub = getAIHubSummaryFolder();
+		if (hub && isVaultPathUnderPrefix(path, hub)) return GraphNodeType.HubDoc;
+		return GraphNodeType.Document;
+	}
+
+	/**
+	 * Upserts the indexed document row on `mobius_node` via IndexedDocumentRepo (document or hub_doc; stats columns).
+	 */
+	private async upsertIndexedDocument(doc: Document, tenant: IndexTenant = 'vault'): Promise<void> {
 		const startTime = Date.now();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+		const stats = this.computeDocumentStatistics(doc);
+		const llmInferCreated = doc.metadata.inferCreatedAt;
 
 		try {
-			await docMetaRepo.upsert({
+			await indexedDocumentRepo.upsert({
 				id: doc.id,
 				path: doc.sourceFileInfo.path,
 				type: doc.type,
@@ -516,59 +665,39 @@ export class IndexService {
 				ctime: doc.sourceFileInfo.ctime ?? null,
 				content_hash: doc.contentHash ?? null,
 				summary: doc.summary ?? null,
-				tags: doc.metadata.tags ? JSON.stringify(doc.metadata.tags) : null,
+				full_summary: doc.fullSummary ?? null,
+				tags: encodeIndexedTagsBlob({
+					topicTags: doc.metadata.topicTags ?? [],
+					topicTagEntries: doc.metadata.topicTagEntries,
+					functionalTagEntries: doc.metadata.functionalTagEntries ?? [],
+					keywordTags: doc.metadata.keywordTags ?? [],
+					...(doc.metadata.userKeywordTags !== undefined
+						? { userKeywordTags: doc.metadata.userKeywordTags }
+						: {}),
+					...(doc.metadata.textrankKeywordTerms?.length
+						? { textrankKeywordTerms: doc.metadata.textrankKeywordTerms }
+						: {}),
+					timeTags: doc.metadata.timeTags ?? [],
+					geoTags: doc.metadata.geoTags ?? [],
+					personTags: doc.metadata.personTags ?? [],
+				}),
+				word_count: stats.word_count,
+				char_count: stats.char_count,
+				last_open_ts: stats.last_open_ts,
+				row_updated_at: stats.row_updated_at,
+				...(typeof llmInferCreated === 'number' && Number.isFinite(llmInferCreated)
+					? { infer_created_at: llmInferCreated }
+					: {}),
+				mobiusGraphNodeType: this.resolveMobiusGraphNodeTypeForPath(doc.sourceFileInfo.path),
 			});
 			const elapsed = Date.now() - startTime;
 			if (elapsed > 100) {
-				console.warn(`[IndexService] saveDocMeta took ${elapsed}ms for ${doc.sourceFileInfo.path}`);
+				console.warn(`[IndexService] upsertIndexedDocument took ${elapsed}ms for ${doc.sourceFileInfo.path}`);
 			}
 		} catch (error) {
-			console.error(`[IndexService] Error saving doc meta for ${doc.sourceFileInfo.path}:`, error);
+			console.error(`[IndexService] Error upserting indexed document for ${doc.sourceFileInfo.path}:`, error);
 			throw error;
 		}
-	}
-
-	/**
-	 * Update document statistics (word count, char count, updated_at, etc.).
-	 * Initializes statistics if they don't exist, updates if they do.
-	 */
-	private async updateDocStatistics(doc: Document, tenant: IndexTenant = 'vault'): Promise<void> {
-		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
-
-		// Calculate word count and char count from content
-		// Content is stored in sourceFileInfo.content for text files
-		const content = doc.sourceFileInfo.content ?? '';
-		const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
-		const charCount = content.length;
-
-		// Determine updated_at: prefer frontmatter updated_at, fallback to ctime, then mtime
-		let updatedAt: number;
-		const frontmatterUpdated = doc.metadata.frontmatter?.['updated_at'] || doc.metadata.frontmatter?.['updated'];
-		if (frontmatterUpdated) {
-			// Try to parse as timestamp (number) or date string
-			if (typeof frontmatterUpdated === 'number') {
-				updatedAt = frontmatterUpdated;
-			} else if (typeof frontmatterUpdated === 'string') {
-				const parsed = Date.parse(frontmatterUpdated);
-				updatedAt = isNaN(parsed) ? (doc.sourceFileInfo.ctime ?? doc.sourceFileInfo.mtime ?? Date.now()) : parsed;
-			} else {
-				updatedAt = doc.sourceFileInfo.ctime ?? doc.sourceFileInfo.mtime ?? Date.now();
-			}
-		} else {
-			// Fallback to file creation time, then modification time
-			updatedAt = doc.sourceFileInfo.ctime ?? doc.sourceFileInfo.mtime ?? Date.now();
-		}
-
-		// Upsert statistics (creates if not exists, updates if exists)
-		await docStatisticsRepo.upsert({
-			doc_id: doc.id,
-			word_count: wordCount > 0 ? wordCount : null,
-			char_count: charCount > 0 ? charCount : null,
-			language: null, // Language detection can be added later if needed
-			richness_score: null, // Richness score calculation can be added later if needed
-			last_open_ts: updatedAt,
-			updated_at: updatedAt,
-		});
 	}
 
 	/**
@@ -585,86 +714,761 @@ export class IndexService {
 	}
 
 	/**
-	 * Upsert graph relationships for a document.
-	 * Uses data directly from Document object (references, tags, categories).
+	 * Batch-load indexed document id + title for outgoing link targets that omit `docId`, so edges use the same node id as the DB (e.g. after path collision handling / renames).
 	 */
-	private async upsertGraph(doc: Document, tenant: IndexTenant = 'vault'): Promise<void> {
-		console.debug(`[IndexService] Upserting graph for document: `, JSON.stringify(doc));
-		const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
-		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
+	private async loadPathToIndexedDocInfoMap(doc: Document, tenant: IndexTenant): Promise<Map<string, PathIndexedDocInfo>> {
+		const paths = [...new Set(doc.references.outgoing.filter((r) => !r.docId).map((r) => r.fullPath))];
+		if (paths.length === 0) return new Map();
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+		const byPath = await indexedDocumentRepo.getByPaths(paths);
+		const out = new Map<string, PathIndexedDocInfo>();
+		for (const p of paths) {
+			const row = byPath.get(p);
+			if (row) out.set(p, { id: row.id, title: row.title });
+		}
+		return out;
+	}
 
-		// Use document UUID as node ID (doc.id is already a UUID)
+	/**
+	 * Loads indexed rows for all resolved outgoing target node ids (covers refs with `docId` and path-based resolution).
+	 */
+	private async loadIndexedRecordsForOutgoingTargets(
+		doc: Document,
+		tenant: IndexTenant,
+		pathMap: Map<string, PathIndexedDocInfo>,
+	): Promise<Map<string, IndexedDocumentRecord>> {
+		const ids = new Set<string>();
+		for (const ref of doc.references.outgoing) {
+			ids.add(this.resolveOutgoingTargetNodeId(ref, pathMap));
+		}
+		if (ids.size === 0) return new Map();
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+		const rows = await indexedDocumentRepo.getByIds([...ids]);
+		return new Map(rows.map((r) => [r.id, r]));
+	}
+
+	/** Resolves Mobius document node id for an outgoing reference (parser id, indexed row, or path-stable fallback). */
+	private resolveOutgoingTargetNodeId(ref: DocumentReference, pathMap: Map<string, PathIndexedDocInfo>): string {
+		return ref.docId ?? pathMap.get(ref.fullPath)?.id ?? generateDocIdFromPath(ref.fullPath);
+	}
+
+	/**
+	 * Upserts tag nodes (topic / functional / keyword) and ref edges for this document. The document `mobius_node` row is written only by {@link upsertIndexedDocument}.
+	 */
+	private async upsertGraphEdgesForDocument(
+		doc: Document,
+		tenant: IndexTenant,
+		pathMap: Map<string, PathIndexedDocInfo>,
+		indexedByTargetId: Map<string, IndexedDocumentRecord>,
+	): Promise<void> {
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+
 		const docNodeId = doc.id;
-
-		// Document node
-		await graphNodeRepo.upsert({
-			id: docNodeId,
-			type: 'document',
-			label: doc.metadata.title ?? normalizePath(doc.sourceFileInfo.path),
-			attributes: JSON.stringify({ path: doc.sourceFileInfo.path }),
-		});
+		const lcaMax = INDEX_LONG_RANGE_LCA_MAX_DEPTH;
+		const sourcePath = doc.sourceFileInfo.path;
 
 		// Outgoing references (links from this document to other documents)
 		for (const ref of doc.references.outgoing) {
-			// Use referenced document's UUID if available, otherwise create a path-based placeholder
-			const targetNodeId = ref.docId ?? generateStableUuid(ref.fullPath);
+			const targetNodeId = this.resolveOutgoingTargetNodeId(ref, pathMap);
+			const fallbackLabel = getFileNameFromPath(ref.fullPath);
+			const indexed = indexedByTargetId.get(targetNodeId);
+			const label = indexed?.title?.trim() ? indexed.title.trim() : fallbackLabel;
 
 			// Ensure target document node exists (it will be created/updated when that document is indexed)
-			await graphNodeRepo.upsert({
+			await mobiusNodeRepo.upsert({
 				id: targetNodeId,
-				type: 'document',
-				// todo WARNING. label should be the title of the document, not the path. but this node was gen by fallback not by markdown processor parse.
-				label: getFileNameFromPath(ref.fullPath),
+				type: GraphNodeType.Document,
+				label,
 				attributes: JSON.stringify({ path: ref.fullPath }),
 			});
-			await graphEdgeRepo.upsert({
-				id: GraphEdgeRepo.generateEdgeId(docNodeId, targetNodeId, 'references'),
+			const lcaDepth = pathLcaDepth(sourcePath, ref.fullPath);
+			const crosses = crossesTopLevelFolder(sourcePath, ref.fullPath);
+			const longRange = crosses && lcaDepth <= lcaMax;
+			await mobiusEdgeRepo.upsert({
+				id: MobiusEdgeRepo.generateEdgeId(docNodeId, targetNodeId, GraphEdgeType.References),
 				from_node_id: docNodeId,
 				to_node_id: targetNodeId,
-				type: 'references',
+				type: GraphEdgeType.References,
 				weight: 1.0,
-				attributes: JSON.stringify({}),
+				attributes: JSON.stringify({ longRange, lcaDepth }),
 			});
 		}
 
-		// Tags
-		for (const tag of doc.metadata.tags ?? []) {
-			const tagId = generateStableUuid(`tag:${tag}`);
-			await graphNodeRepo.upsert({
-				id: tagId,
-				type: 'tag',
-				label: tag,
-				attributes: JSON.stringify({ tagName: tag }),
-			});
-			await graphEdgeRepo.upsert({
-				id: GraphEdgeRepo.generateEdgeId(docNodeId, tagId, 'tagged'),
-				from_node_id: docNodeId,
-				to_node_id: tagId,
-				type: 'tagged',
-				weight: 1.0,
-				attributes: JSON.stringify({}),
-			});
+		// Replace tag edges (topic / functional / keyword / context) so removed tags and old TextRank keywords do not linger.
+		for (const t of [
+			GraphEdgeType.TaggedTopic,
+			GraphEdgeType.TaggedFunctional,
+			GraphEdgeType.TaggedKeyword,
+			GraphEdgeType.TaggedContext,
+		]) {
+			await mobiusEdgeRepo.deleteByFromNodeAndType(docNodeId, t);
 		}
 
-		// Categories (if available)
-		for (const category of doc.metadata.categories ?? []) {
-			const categoryId = generateStableUuid(`category:${category}`);
-			await graphNodeRepo.upsert({
-				id: categoryId,
-				type: 'category',
-				label: category,
-				attributes: JSON.stringify({ categoryName: category }),
+		const functionalSanitized = filterValidFunctionalTagEntries(doc.metadata.functionalTagEntries ?? []);
+
+		const topicItems =
+			doc.metadata.topicTagEntries?.length
+				? doc.metadata.topicTagEntries
+				: (doc.metadata.topicTags ?? []).map((id) => ({ id }));
+		await upsertDocumentTagEdges(tenant, docNodeId, {
+			nodeType: GraphNodeType.TopicTag,
+			items: topicItems,
+		});
+
+		await upsertDocumentTagEdges(tenant, docNodeId, {
+			nodeType: GraphNodeType.FunctionalTag,
+			items: functionalSanitized,
+		});
+
+		await upsertDocumentTagEdges(tenant, docNodeId, {
+			nodeType: GraphNodeType.KeywordTag,
+			items: graphKeywordTagsForMobius(doc.metadata),
+		});
+
+		const contextTriples: Array<{ axis: 'time' | 'geo' | 'person'; label: string }> = [
+			...(doc.metadata.timeTags ?? []).map((label) => ({ axis: 'time' as const, label })),
+			...(doc.metadata.geoTags ?? []).map((label) => ({ axis: 'geo' as const, label })),
+			...(doc.metadata.personTags ?? []).map((label) => ({ axis: 'person' as const, label })),
+		];
+		await upsertDocumentTagEdges(tenant, docNodeId, {
+			nodeType: GraphNodeType.ContextTag,
+			items: contextTriples,
+		});
+	}
+
+	/**
+	 * Adds folder hierarchy `contains` edges (Folder nodes → child folder or document).
+	 */
+	private async upsertFolderContainsEdgesForDocument(doc: Document, tenant: IndexTenant): Promise<void> {
+		const path = doc.sourceFileInfo.path;
+		const parts = pathSegments(path);
+		if (parts.length < 2) {
+			return;
+		}
+
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+		const now = Date.now();
+
+		for (let i = 0; i < parts.length - 1; i++) {
+			const folderPath = parts.slice(0, i + 1).join('/');
+			const folderId = stableMobiusFolderNodeId(tenant, folderPath);
+			const label = parts[i] ?? folderPath;
+			await mobiusNodeRepo.upsert({
+				id: folderId,
+				type: GraphNodeType.Folder,
+				label,
+				attributes: JSON.stringify({ path: folderPath }),
+				created_at: now,
+				updated_at: now,
 			});
-			await graphEdgeRepo.upsert({
-				id: GraphEdgeRepo.generateEdgeId(docNodeId, categoryId, 'categorized'),
-				from_node_id: docNodeId,
-				to_node_id: categoryId,
-				type: 'categorized',
-				weight: 1.0,
-				attributes: JSON.stringify({}),
+
+			if (i > 0) {
+				const parentFolderPath = parts.slice(0, i).join('/');
+				const parentId = stableMobiusFolderNodeId(tenant, parentFolderPath);
+				await mobiusEdgeRepo.upsert({
+					id: MobiusEdgeRepo.generateEdgeId(parentId, folderId, GraphEdgeType.Contains),
+					from_node_id: parentId,
+					to_node_id: folderId,
+					type: GraphEdgeType.Contains,
+					weight: 1.0,
+					attributes: JSON.stringify({}),
+				});
+			}
+		}
+
+		const lastFolderPath = parts.slice(0, -1).join('/');
+		const lastFolderId = stableMobiusFolderNodeId(tenant, lastFolderPath);
+		await mobiusEdgeRepo.upsert({
+			id: MobiusEdgeRepo.generateEdgeId(lastFolderId, doc.id, GraphEdgeType.Contains),
+			from_node_id: lastFolderId,
+			to_node_id: doc.id,
+			type: GraphEdgeType.Contains,
+			weight: 1.0,
+			attributes: JSON.stringify({}),
+		});
+	}
+
+	/**
+	 * After edges are written: set this doc's outgoing counts from the parsed graph, recompute incoming for this doc and linked doc nodes, refresh tag_doc_count for touched tags.
+	 */
+	private async refreshMobiusAggregatesForIndexedDocument(
+		doc: Document,
+		tenant: IndexTenant,
+		pathMap: Map<string, PathIndexedDocInfo>,
+	): Promise<void> {
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+		const now = Date.now();
+
+		/**
+		 * Outgoing reference and tagged edges, matching {@link upsertGraphEdgesForDocument}.
+		 */
+		const docOutgoing = doc.references.outgoing.length;
+		const functionalN = filterValidFunctionalTagEntries(doc.metadata.functionalTagEntries ?? []).length;
+		const ctxN =
+			(doc.metadata.timeTags ?? []).length +
+			(doc.metadata.geoTags ?? []).length +
+			(doc.metadata.personTags ?? []).length;
+		const otherOutgoing =
+			(doc.metadata.topicTags ?? []).length + functionalN + (doc.metadata.keywordTags ?? []).length + ctxN;
+		const outgoing = { doc_outgoing_cnt: docOutgoing, other_outgoing_cnt: otherOutgoing };
+		await mobiusNodeRepo.setDocumentOutgoingDegreeCounts(
+			doc.id,
+			outgoing.doc_outgoing_cnt,
+			outgoing.other_outgoing_cnt,
+			now,
+		);
+
+		/**
+		 * refresh document incoming degrees for this doc and linked doc nodes
+		 */
+		const docIdsForIncoming = Array.from(
+			new Set([
+				doc.id,
+				...doc.references.outgoing.map((r) => this.resolveOutgoingTargetNodeId(r, pathMap)),
+			]),
+		);
+		await mobiusNodeRepo.refreshDocumentIncomingDegreesForNodeIds(docIdsForIncoming, now);
+
+		/**
+		 * refresh tag_doc_count for touched tags
+		 */
+		const tagNodeIds = [
+			...(doc.metadata.topicTags ?? []).map((t) => stableTopicTagNodeId(t)),
+			...filterValidFunctionalTagEntries(doc.metadata.functionalTagEntries ?? []).map((e) =>
+				stableFunctionalTagNodeId(e.id),
+			),
+			...graphKeywordTagsForMobius(doc.metadata).map((k) => stableKeywordTagNodeId(k)),
+			...(doc.metadata.timeTags ?? []).map((label) => stableContextTagNodeId('time', label)),
+			...(doc.metadata.geoTags ?? []).map((label) => stableContextTagNodeId('geo', label)),
+			...(doc.metadata.personTags ?? []).map((label) => stableContextTagNodeId('person', label)),
+		];
+		if (tagNodeIds.length) {
+			await mobiusNodeRepo.refreshTagDocCountsForTagNodeIds(tagNodeIds, now);
+		}
+	}
+}
+
+/**
+ * Full Mobius maintenance: aggregates, reference PageRank, semantic edges, semantic PageRank, hub docs.
+ */
+class GlobalMaintenanceService {
+	/** Clears debt after a successful full maintenance pass for the given tenants. */
+	private async resetMaintenanceDebtAfterFullMaintenance(tenants: IndexTenant[]): Promise<void> {
+		const now = Date.now();
+		for (const tenant of tenants) {
+			const indexStateRepo = sqliteStoreManager.getIndexStateRepo(tenant);
+			await indexStateRepo.set(MOBIUS_MAINTENANCE_STATE_KEYS.dirtyScore, '0');
+			await indexStateRepo.set(MOBIUS_MAINTENANCE_STATE_KEYS.needed, '0');
+			await indexStateRepo.set(MOBIUS_MAINTENANCE_STATE_KEYS.lastFullAt, String(now));
+		}
+	}
+
+	/**
+	 * Full Mobius maintenance: aggregate columns, reference-graph PageRank, `semantic_related` rebuild, then weighted semantic PageRank.
+	 */
+	async runMobiusGlobalMaintenance(
+		tenants: IndexTenant[] = ['vault', 'chat'],
+		options?: MobiusGlobalMaintenanceOptions,
+	): Promise<void> {
+		const onProgress = options?.onProgress;
+		const sw = new Stopwatch('[IndexService] runMobiusGlobalMaintenance');
+
+		sw.start('mobius_aggregates');
+		for (const tenant of tenants) {
+			await this.refreshMobiusAggregatesInternal(tenant, onProgress);
+		}
+		sw.stop();
+
+		sw.start('mobius_pagerank');
+		for (const tenant of tenants) {
+			await this.computeAndPersistVaultPageRankInternal(tenant, onProgress);
+		}
+		sw.stop();
+
+		sw.start('semantic_related_edges');
+		const semanticRebuildResults: RebuildSemanticEdgesBatchResult[] = [];
+		for (const tenant of tenants) {
+			const r = await SemanticRelatedEdgesRebuildService.rebuildForTenant(tenant, {
+				onProgress: !onProgress ? undefined : (p) =>
+					onProgress({
+						tenant: p.tenant,
+						phase: 'semantic_related',
+						processed: p.processed,
+						total: p.total,
+					})
+			});
+			semanticRebuildResults.push(r);
+			await yieldForLargePass();
+		}
+		sw.stop();
+
+		sw.start('semantic_pagerank');
+		for (let i = 0; i < tenants.length; i++) {
+			const tenant = tenants[i]!;
+			const rebuild = semanticRebuildResults[i];
+			if (rebuild?.skipped) continue;
+			await this.computeAndPersistSemanticPageRankInternal(tenant, onProgress);
+		}
+		sw.stop();
+
+		if (tenants.includes('vault')) {
+			sw.start('folder_hub_stats');
+			await this.rebuildFolderHubStatsForVaultInternal(onProgress);
+			sw.stop();
+		}
+
+		if (tenants.includes('vault')) {
+			sw.start('hub_docs');
+			await this.generateAndIndexHubDocsInternal(onProgress);
+			sw.stop();
+		}
+
+		sw.print();
+		await this.resetMaintenanceDebtAfterFullMaintenance(tenants);
+	}
+
+	private async generateAndIndexHubDocsInternal(
+		onProgress?: (ev: MobiusGlobalMaintenanceProgress) => void,
+	): Promise<void> {
+		const ctx = AppContext.getInstance();
+		const hub = new HubDocService(() => ctx.settings.search);
+		await hub.generateAndIndexHubDocsForMaintenance({
+			onProgress: (ev) => {
+				onProgress?.({
+					tenant: 'vault',
+					phase: ev.phase,
+					batchIndex: ev.batchIndex,
+					idsInBatch: ev.idsInBatch,
+				});
+			},
+		});
+	}
+
+	/**
+	 * Rebuild tag_doc_count and document degree columns via **paged SQL** (keyset on `node_id`, LIMIT = {@link DEFAULT_MOBIUS_AGGREGATE_BATCH_SIZE}).
+	 */
+	private async refreshMobiusAggregatesInternal(
+		tenant: IndexTenant,
+		onProgress: ((ev: MobiusGlobalMaintenanceProgress) => void) | undefined,
+	): Promise<void> {
+		const now = Date.now();
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+
+		// tag count
+		await mobiusNodeRepo.forEachNodeIdsByTypesKeyset(
+			GRAPH_TAG_NODE_TYPES,
+			DEFAULT_MOBIUS_AGGREGATE_BATCH_SIZE,
+			async (ids, batchIndex) => {
+				await mobiusNodeRepo.refreshTagDocCountsForTagNodeIds(ids, now);
+				onProgress?.({
+					tenant,
+					phase: 'tag_doc_count',
+					batchIndex,
+					idsInBatch: ids.length,
+				});
+			},
+			yieldForLargePass,
+		);
+
+		// document degree
+		await mobiusNodeRepo.forEachNodeIdsByTypesKeyset(
+			GRAPH_DOCUMENT_LIKE_NODE_TYPES,
+			DEFAULT_MOBIUS_AGGREGATE_BATCH_SIZE,
+			async (ids, batchIndex) => {
+				await mobiusNodeRepo.refreshDocumentDegreesForNodeIds(ids, now);
+				onProgress?.({
+					tenant,
+					phase: 'document_degrees',
+					batchIndex,
+					idsInBatch: ids.length,
+				});
+			},
+			yieldForLargePass,
+		);
+	}
+
+	/**
+	 * Runs global PageRank on the directed **references** subgraph (wiki links between document-like nodes)
+	 * and writes `pagerank` / `pagerank_updated_at` / `pagerank_version` on `mobius_node` (dedicated columns).
+	 *
+	 * **Why not load the whole graph into memory?** The math needs many iterations; each iteration
+	 * re-scans `mobius_edge` in batches and only keeps O(N) state (ranks + out-degrees), not O(E) adjacency lists.
+	 *
+	 * **Out-degree source:** `doc_outgoing_cnt` on `mobius_node` — it counts reference edges to other
+	 * document-like targets. This run should follow `refreshDocumentDegreesForNodeIds` in full maintenance
+	 * so counts match the edges we scan.
+	 */
+	private async computeAndPersistVaultPageRankInternal(
+		tenant: IndexTenant,
+		onProgress: ((ev: MobiusGlobalMaintenanceProgress) => void) | undefined,
+	): Promise<void> {
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+
+		// One row per PageRank vertex: document / hub_doc, plus cached wiki-reference out-degree.
+		const vertices = await mobiusNodeRepo.listDocLikePageRankVertices();
+		const nodeIds = vertices.map((v) => v.node_id);
+		// Parallel array to nodeIds[i]: used as denominator when spreading rank along outgoing edges.
+		const outDeg = new Int32Array(vertices.length);
+		for (let i = 0; i < vertices.length; i++) {
+			outDeg[i] = vertices[i]!.doc_outgoing_cnt;
+		}
+
+		// Inside: repeated power iterations until L1 diff < tolerance (see helper). Each iteration calls
+		// the callback below once to stream all reference edges.
+		const scores = await computeVaultPageRankStreaming(
+			nodeIds,
+			outDeg,
+			async (visit, iterIndex) => {
+				let edgeBatchIndex = 0;
+				// Full pass over references edges for this iteration; visit() feeds the PageRank kernel.
+				for await (const batch of mobiusEdgeRepo.iterateReferenceEdgeBatches(PAGERANK_EDGE_BATCH_SIZE)) {
+					for (const e of batch) {
+						visit(e.from_node_id, e.to_node_id);
+					}
+					// Report edge-scan progress only on the first iteration — same UX as a single “load edges”
+					// phase; later iterations would spam identical batch counts.
+					if (iterIndex === 0) {
+						onProgress?.({
+							tenant,
+							phase: 'pagerank_edges',
+							batchIndex: edgeBatchIndex++,
+							idsInBatch: batch.length,
+						});
+					}
+					// Let the UI breathe: each batch can be large and iterations repeat many times.
+					await yieldForLargePass();
+				}
+			},
+		);
+
+		const now = Date.now();
+		const version = PAGERANK_ALGORITHM_VERSION;
+		const persistChunk = 200;
+		let n = 0;
+		let persistBatchIndex = 0;
+
+		// Persist PageRank scalars on `mobius_node` (not `attributes_json`). Chunk + yield for large vaults.
+		for (const id of nodeIds) {
+			const score = scores.get(id) ?? 0;
+			await mobiusNodeRepo.setPageRankForDocLikeNode(
+				id,
+				{
+					pagerank: score,
+					pagerank_updated_at: now,
+					pagerank_version: version,
+				},
+				now,
+			);
+			n++;
+			if (n % persistChunk === 0) {
+				onProgress?.({
+					tenant,
+					phase: 'pagerank_persist',
+					batchIndex: persistBatchIndex++,
+					idsInBatch: persistChunk,
+				});
+				await yieldForLargePass();
+			}
+		}
+		// Final partial chunk (e.g. last 37 nodes when N mod 200 !== 0).
+		const remainder = n % persistChunk;
+		if (remainder > 0) {
+			onProgress?.({
+				tenant,
+				phase: 'pagerank_persist',
+				batchIndex: persistBatchIndex++,
+				idsInBatch: remainder,
 			});
 		}
 	}
 
+	/**
+	 * Weighted PageRank on `semantic_related` (edge weights = similarity). Runs after semantic edge rebuild.
+	 */
+	private async computeAndPersistSemanticPageRankInternal(
+		tenant: IndexTenant,
+		onProgress: ((ev: MobiusGlobalMaintenanceProgress) => void) | undefined,
+	): Promise<void> {
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+		const nodeIds = await mobiusNodeRepo.listDocLikeSemanticPageRankVertices();
+		if (!nodeIds.length) return;
+
+		const outgoingWeightSum = await accumulateSemanticOutgoingWeightSums(nodeIds, async (visit) => {
+			for await (const batch of mobiusEdgeRepo.iterateSemanticRelatedEdgeBatches(PAGERANK_EDGE_BATCH_SIZE)) {
+				for (const e of batch) {
+					visit(e.from_node_id, e.to_node_id, e.weight);
+				}
+				await yieldForLargePass();
+			}
+		});
+
+		const scores = await computeSemanticPageRankStreaming(
+			nodeIds,
+			outgoingWeightSum,
+			async (visit, iterIndex) => {
+				let edgeBatchIndex = 0;
+				for await (const batch of mobiusEdgeRepo.iterateSemanticRelatedEdgeBatches(PAGERANK_EDGE_BATCH_SIZE)) {
+					for (const e of batch) {
+						visit(e.from_node_id, e.to_node_id, e.weight);
+					}
+					if (iterIndex === 0) {
+						onProgress?.({
+							tenant,
+							phase: 'semantic_pagerank_edges',
+							batchIndex: edgeBatchIndex++,
+							idsInBatch: batch.length,
+						});
+					}
+					await yieldForLargePass();
+				}
+			},
+		);
+
+		const now = Date.now();
+		const version = SEMANTIC_PAGERANK_ALGORITHM_VERSION;
+		const persistChunk = 200;
+		let n = 0;
+		let persistBatchIndex = 0;
+		for (const id of nodeIds) {
+			const score = scores.get(id) ?? 0;
+			await mobiusNodeRepo.setSemanticPageRankForDocLikeNode(
+				id,
+				{
+					semantic_pagerank: score,
+					semantic_pagerank_updated_at: now,
+					semantic_pagerank_version: version,
+				},
+				now,
+			);
+			n++;
+			if (n % persistChunk === 0) {
+				onProgress?.({
+					tenant,
+					phase: 'semantic_pagerank_persist',
+					batchIndex: persistBatchIndex++,
+					idsInBatch: persistChunk,
+				});
+				await yieldForLargePass();
+			}
+		}
+		const remainder = n % persistChunk;
+		if (remainder > 0) {
+			onProgress?.({
+				tenant,
+				phase: 'semantic_pagerank_persist',
+				batchIndex: persistBatchIndex++,
+				idsInBatch: remainder,
+			});
+		}
+	}
+
+	/**
+	 * Rolls up document PageRank / degrees into materialized columns on `folder` nodes (vault only).
+	 * Must run after reference + semantic PageRank are persisted on documents.
+	 */
+	private async rebuildFolderHubStatsForVaultInternal(
+		onProgress: ((ev: MobiusGlobalMaintenanceProgress) => void) | undefined,
+	): Promise<void> {
+		const tenant: IndexTenant = 'vault';
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+		const now = Date.now();
+		await mobiusNodeRepo.clearFolderHubMaterializedStatsColumns(now);
+
+		const hubFolder = getAIHubSummaryFolder();
+		type Agg = { count: number; sumPr: number; sumSpr: number; maxInc: number; maxOut: number };
+		const byFolder = new Map<string, Agg>();
+
+		let afterNodeId: string | null = null;
+		let docPageIndex = 0;
+		for (;;) {
+			const page = await mobiusNodeRepo.listDocumentRowsForFolderHubStatsKeyset(
+				afterNodeId,
+				FOLDER_HUB_STATS_DOC_PAGE_SIZE,
+				hubFolder,
+			);
+			if (!page.length) break;
+
+			for (const r of page) {
+				const path = r.path ?? '';
+				if (!path) continue;
+
+				const pr = typeof r.pagerank === 'number' && Number.isFinite(r.pagerank) ? r.pagerank : 0;
+				const spr =
+					typeof r.semantic_pagerank === 'number' && Number.isFinite(r.semantic_pagerank)
+						? r.semantic_pagerank
+						: 0;
+				const inc = Math.max(0, Math.floor(Number(r.doc_incoming_cnt ?? 0)));
+				const outd = Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0)));
+
+				let cur = path;
+				for (;;) {
+					const slash = cur.lastIndexOf('/');
+					if (slash <= 0) break;
+					const folder = cur.slice(0, slash);
+					if (hubFolder && isVaultPathUnderPrefix(folder, hubFolder)) break;
+
+					let agg = byFolder.get(folder);
+					if (!agg) {
+						agg = { count: 0, sumPr: 0, sumSpr: 0, maxInc: 0, maxOut: 0 };
+						byFolder.set(folder, agg);
+					}
+					agg.count += 1;
+					agg.sumPr += pr;
+					agg.sumSpr += spr;
+					agg.maxInc = Math.max(agg.maxInc, inc);
+					agg.maxOut = Math.max(agg.maxOut, outd);
+					cur = folder;
+				}
+			}
+
+			afterNodeId = page[page.length - 1]!.node_id;
+			onProgress?.({
+				tenant,
+				phase: 'folder_hub_stats',
+				batchIndex: docPageIndex++,
+				idsInBatch: page.length,
+			});
+			await yieldForLargePass();
+		}
+
+		const writeAt = Date.now();
+		let folderWriteIndex = 0;
+		for (const [folderPath, agg] of byFolder) {
+			const nodeId = stableMobiusFolderNodeId(tenant, folderPath);
+			const n = agg.count;
+			const avgPr = agg.sumPr / Math.max(1, n);
+			const avgSpr = agg.sumSpr / Math.max(1, n);
+			await mobiusNodeRepo.updateFolderNodeHubMaterializedStats(
+				nodeId,
+				{
+					tagDocCount: n,
+					avgPagerank: avgPr,
+					avgSemanticPagerank: avgSpr,
+					maxDocIncoming: agg.maxInc,
+					maxDocOutgoing: agg.maxOut,
+				},
+				writeAt,
+			);
+			folderWriteIndex++;
+			if (folderWriteIndex % 150 === 0) {
+				await yieldForLargePass();
+			}
+		}
+	}
 }
 
+/**
+ * Public facade: single entry for indexing, CRUD, and global Mobius maintenance.
+ * Delegates to {@link IndexSingleService}, {@link IndexCrudService}, {@link GlobalMaintenanceService}.
+ */
+export class IndexService {
+	private static instance: IndexService | null = null;
+	private static isIndexingCancelled = false;
+	private aiServiceManager: AIServiceManager | undefined;
+	private readonly crud = new IndexCrudService();
+	private single: IndexSingleService | null = null;
+	private readonly globalMaintenance = new GlobalMaintenanceService();
+
+	private constructor() {
+		// Private constructor to prevent direct instantiation.
+	}
+
+	private ensureSingle(): IndexSingleService {
+		if (!this.aiServiceManager) {
+			throw new Error('[IndexService] init(AIServiceManager) must be called before indexing');
+		}
+		if (!this.single) {
+			this.single = new IndexSingleService(this.aiServiceManager, this.crud);
+		}
+		return this.single;
+	}
+
+	static getInstance(): IndexService {
+		if (!IndexService.instance) {
+			IndexService.instance = new IndexService();
+		}
+		return IndexService.instance;
+	}
+
+	/**
+	 * Clear the global singleton instance.
+	 * Call from plugin onunload to release memory.
+	 */
+	static clearInstance(): void {
+		IndexService.instance = null;
+	}
+
+	/**
+	 * Initialize IndexService with AIServiceManager for embedding generation.
+	 * This should be called once during plugin initialization in main.ts.
+	 * Can also be called when settings are updated to refresh the service instance.
+	 */
+	init(aiServiceManager: AIServiceManager): void {
+		this.aiServiceManager = aiServiceManager;
+		this.single = new IndexSingleService(aiServiceManager, this.crud);
+	}
+
+	/** Cancel ongoing indexing operations. */
+	static cancelIndexing(): void {
+		IndexService.isIndexingCancelled = true;
+	}
+
+	/** Reset the cancellation flag. */
+	static resetCancellation(): void {
+		IndexService.isIndexingCancelled = false;
+	}
+
+	/** Check if indexing has been cancelled. */
+	static isCancelled(): boolean {
+		return IndexService.isIndexingCancelled;
+	}
+
+	async indexDocument(docPath: string, settings: SearchSettings): Promise<void> {
+		return this.ensureSingle().indexDocument(docPath, settings);
+	}
+
+	async deleteDocuments(
+		paths: string[],
+		onAfterMutation?: (types: StorageType[]) => void,
+	): Promise<void> {
+		return this.crud.deleteDocuments(paths, onAfterMutation);
+	}
+
+	async clearAllIndexData(onAfterMutation?: (types: StorageType[]) => void): Promise<void> {
+		return this.crud.clearAllIndexData(onAfterMutation);
+	}
+
+	async cleanupOrphanedSearchIndexData(): Promise<{
+		metaFts: number;
+		fts: number;
+		chunks: number;
+		embeddings: number;
+		stats: number;
+		graphNodes: number;
+	}> {
+		return this.crud.cleanupOrphanedSearchIndexData();
+	}
+
+	async getIndexStatus(): Promise<GetIndexStatusResponse> {
+		return this.crud.getIndexStatus();
+	}
+
+	async renameDocumentPath(oldPath: string, newPath: string): Promise<boolean> {
+		return this.crud.renameDocumentPath(oldPath, newPath);
+	}
+
+	async isMobiusMaintenanceRecommended(): Promise<boolean> {
+		return this.crud.isMobiusMaintenanceRecommended();
+	}
+
+	async runMobiusGlobalMaintenance(
+		tenants: IndexTenant[] = ['vault', 'chat'],
+		options?: MobiusGlobalMaintenanceOptions,
+	): Promise<void> {
+		return this.globalMaintenance.runMobiusGlobalMaintenance(tenants, options);
+	}
+}

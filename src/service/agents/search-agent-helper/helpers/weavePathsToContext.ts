@@ -5,6 +5,7 @@
 
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { AgentTemplateId } from '@/core/template/TemplateRegistry';
+import { GRAPH_TAGGED_EDGE_TYPES, GraphEdgeType } from '@/core/po/graph.po';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { tokenizePathOrLabel, filterTokensForGraph } from '@/service/search/support/segmenter';
 
@@ -121,10 +122,10 @@ function chunk<T>(arr: T[], size: number): T[][] {
 
 async function getIdsByPathsChunked(paths: string[]): Promise<{ id: string; path: string }[]> {
 	if (paths.length === 0) return [];
-	const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
+	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 	const results: { id: string; path: string }[] = [];
 	for (const c of chunk(paths, GET_IDS_BY_PATHS_CHUNK)) {
-		const rows = await docMetaRepo.getIdsByPaths(c);
+		const rows = await indexedDocumentRepo.getIdsByPaths(c);
 		results.push(...rows);
 	}
 	return results;
@@ -151,10 +152,9 @@ async function buildFolderLinesFromPaths(
 	hasFolderTagDesc: boolean;
 	folderTagDesc: string;
 }>> {
-	const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-	const docStatsRepo = sqliteStoreManager.getDocStatisticsRepo();
-	const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
-	const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
+	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+	const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+	const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
 	const folderToPaths = new Map<string, string[]>();
 	for (const p of paths) {
 		const dir = dirname(p) || '(root)';
@@ -187,7 +187,7 @@ async function buildFolderLinesFromPaths(
 		const folderPath = folderKey === '' ? '(root)' : folderKey;
 		const inGroupCount = groupPaths.length;
 		const totalInFolder =
-			folderKey === '' ? await docStatsRepo.countAll() : await docMetaRepo.countByFolderPath(folderKey);
+			folderKey === '' ? await mobiusNodeRepo.countAllDocumentStatisticsRows() : await indexedDocumentRepo.countByFolderPath(folderKey);
 		const extraCount = Math.max(0, totalInFolder - inGroupCount);
 		const groupDocIds = groupPaths.map((p) => idByPath.get(p)).filter(Boolean) as string[];
 		if (groupDocIds.length === 0) {
@@ -201,10 +201,10 @@ async function buildFolderLinesFromPaths(
 			continue;
 		}
 		const [topRecentRaw, topWordCountRaw, edgeCounts, tagCountsRaw] = await Promise.all([
-			docStatsRepo.getTopRecentEditedByDocIds(groupDocIds, FOLDER_STATS_EACH),
-			docStatsRepo.getTopWordCountByDocIds(groupDocIds, FOLDER_STATS_EACH),
-			graphEdgeRepo.countEdges(groupDocIds, 'references'),
-			chunkedTagCountsByFromNodes(graphEdgeRepo, groupDocIds, FOLDER_TOP_TAGS),
+			mobiusNodeRepo.getTopRecentEditedByDocIds(groupDocIds, FOLDER_STATS_EACH),
+			mobiusNodeRepo.getTopWordCountByDocIds(groupDocIds, FOLDER_STATS_EACH),
+			mobiusEdgeRepo.countEdges(groupDocIds, GraphEdgeType.References),
+			chunkedTagCountsByFromNodes(mobiusEdgeRepo, groupDocIds, FOLDER_TOP_TAGS),
 		]);
 		const uniqueIds = [...new Set([
 			...topRecentRaw.map((r) => r.doc_id),
@@ -213,7 +213,7 @@ async function buildFolderLinesFromPaths(
 			...Array.from(edgeCounts.outgoing.keys()),
 		])];
 		const idToPath = new Map(
-			(uniqueIds.length ? await docMetaRepo.getByIds(uniqueIds) : []).map((m) => [m.id, m.path] as const)
+			(uniqueIds.length ? await indexedDocumentRepo.getByIds(uniqueIds) : []).map((m) => [m.id, m.path] as const)
 		);
 		const strip = (p: string) => stripFolderPrefixForDisplay(p, folderKey);
 		const topRecent = topRecentRaw.map((r) => ({ path: strip(idToPath.get(r.doc_id) ?? r.doc_id) }));
@@ -240,7 +240,7 @@ async function buildFolderLinesFromPaths(
 			.slice(0, NAME_KEYWORDS_TOP)
 			.map(([keyword, count]) => ({ keyword, count }));
 		const tagNodeIds = tagCountsRaw.map((r) => r.to_node_id);
-		const tagNodeMap = tagNodeIds.length ? await graphNodeRepo.getByIds(tagNodeIds) : new Map();
+		const tagNodeMap = tagNodeIds.length ? await mobiusNodeRepo.getByIds(tagNodeIds) : new Map();
 		const folderTagDesc = tagCountsRaw
 			.map((r) => { const label = tagNodeMap.get(r.to_node_id)?.label ?? r.to_node_id; return `${label}(${r.count})`; })
 			.join(', ');
@@ -266,7 +266,7 @@ async function chunkedTagCountsByFromNodes(
 	if (!fromNodeIds.length || limitN <= 0) return [];
 	const byTo = new Map<string, number>();
 	for (const c of chunk(fromNodeIds, EDGE_QUERY_CHUNK)) {
-		const edges = await graphEdgeRepo.getByFromNodesAndTypes(c, ['tagged']);
+		const edges = await graphEdgeRepo.getByFromNodesAndTypes(c, [...GRAPH_TAGGED_EDGE_TYPES]);
 		for (const e of edges) byTo.set(e.to_node_id, (byTo.get(e.to_node_id) ?? 0) + 1);
 	}
 	return [...byTo.entries()].sort((a, b) => b[1] - a[1]).slice(0, limitN).map(([to_node_id, count]) => ({ to_node_id, count }));
@@ -429,10 +429,10 @@ async function loadMermaidGraphDataFromPaths(
 	pathById: Map<string, string>
 ): Promise<MermaidGraphData | null> {
 	if (internalIds.length === 0) return null;
-	const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
-	const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-	const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-	const { inMap: internalInDegreeMap, outMap: internalOutDegreeMap } = await graphEdgeRepo.getDegreeMapsByNodeIdsChunked(internalIds, 'references');
+	const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
+	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+	const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+	const { inMap: internalInDegreeMap, outMap: internalOutDegreeMap } = await mobiusEdgeRepo.getDegreeMapsByNodeIdsChunked(internalIds, GraphEdgeType.References);
 	const allNodeIds = new Set([...internalInDegreeMap.keys(), ...internalOutDegreeMap.keys()]);
 	const totalByNode = new Map<string, number>();
 	for (const nid of allNodeIds) {
@@ -444,9 +444,9 @@ async function loadMermaidGraphDataFromPaths(
 	const topSet = new Set(topByDegree);
 	const internalSet = new Set(internalIds);
 	const [fromEdges, toEdges, { extOut, extIn }] = await Promise.all([
-		graphEdgeRepo.getByFromNodesAndTypes(topByDegree, ['references']),
-		graphEdgeRepo.getByToNodesAndTypes(topByDegree, ['references']),
-		graphEdgeRepo.getExternalEdgeCountsChunked(internalIds, 'references', GRAPH_EXTERNAL_NODES_TOP_K),
+		mobiusEdgeRepo.getByFromNodesAndTypes(topByDegree, [GraphEdgeType.References]),
+		mobiusEdgeRepo.getByToNodesAndTypes(topByDegree, [GraphEdgeType.References]),
+		mobiusEdgeRepo.getExternalEdgeCountsChunked(internalIds, GraphEdgeType.References, GRAPH_EXTERNAL_NODES_TOP_K),
 	]);
 	const connectorScore = new Map<string, number>();
 	for (const e of fromEdges) {
@@ -459,7 +459,7 @@ async function loadMermaidGraphDataFromPaths(
 	}
 	const connectors = [...connectorScore.entries()].sort((a, b) => b[1] - a[1]).slice(0, CONNECTOR_MAX).map(([id]) => id);
 	const internalNodeIds_TopReference = [...topByDegree, ...connectors];
-	const intraEdges = await graphEdgeRepo.getIntraEdges(internalNodeIds_TopReference, 'references');
+	const intraEdges = await mobiusEdgeRepo.getIntraEdges(internalNodeIds_TopReference, GraphEdgeType.References);
 	const allExtNodeIds = [...new Set([...extOut.map((r) => r.to_node_id), ...extIn.map((r) => r.from_node_id)])];
 	const extOutIdSet = new Set(extOut.map((r) => r.to_node_id));
 	const extInIdSet = new Set(extIn.map((r) => r.from_node_id));
@@ -467,16 +467,16 @@ async function loadMermaidGraphDataFromPaths(
 	const extOutOnlyIds = [...extOutIdSet].filter((id) => !extInIdSet.has(id));
 	const extInOnlyIds = [...extInIdSet].filter((id) => !extOutIdSet.has(id));
 	if (allExtNodeIds.length > 0) {
-		const { inMap: extInMap, outMap: extOutMap } = await graphEdgeRepo.getDegreeMapsByNodeIdsChunked(allExtNodeIds, 'references');
+		const { inMap: extInMap, outMap: extOutMap } = await mobiusEdgeRepo.getDegreeMapsByNodeIdsChunked(allExtNodeIds, GraphEdgeType.References);
 		for (const [id, d] of extInMap) internalInDegreeMap.set(id, d);
 		for (const [id, d] of extOutMap) internalOutDegreeMap.set(id, d);
 	}
 	const allNodeIdToPath = new Map(pathById);
-	const metaRows = await docMetaRepo.getByIds([...internalNodeIds_TopReference, ...allExtNodeIds]);
+	const metaRows = await indexedDocumentRepo.getByIds([...internalNodeIds_TopReference, ...allExtNodeIds]);
 	for (const m of metaRows) allNodeIdToPath.set(m.id, m.path);
 	const extIdsWithoutPath = allExtNodeIds.filter((id) => !allNodeIdToPath.has(id));
 	if (extIdsWithoutPath.length > 0) {
-		const graphNodeMap = await graphNodeRepo.getByIds(extIdsWithoutPath);
+		const graphNodeMap = await mobiusNodeRepo.getByIds(extIdsWithoutPath);
 		for (const id of extIdsWithoutPath) allNodeIdToPath.set(id, graphNodeMap.get(id)?.label ?? id);
 	}
 	const nodeIdToAlias = buildIdToAlias([...internalNodeIds_TopReference, ...allExtNodeIds]);
@@ -603,7 +603,7 @@ export async function weavePathsToContext(
 	if (!templateManager) return '';
 	const normalized = [...new Set(paths)].filter((p) => /\.md$/i.test(p)).sort();
 	if (normalized.length === 0) return '';
-	const graphStore = sqliteStoreManager.getGraphStore();
+	const graphRepo = sqliteStoreManager.getGraphRepo();
 	try {
 		const idMaps = await getIdsByPathsChunked(normalized);
 		const pathById = new Map(idMaps.map((m) => [m.id, m.path]));
@@ -611,8 +611,17 @@ export async function weavePathsToContext(
 		const docIds = idMaps.map((m) => m.id);
 		if (docIds.length === 0) return '';
 		const folderLines = await buildFolderLinesFromPaths(normalized, idByPath);
-		const { tagCounts } = await graphStore.getTagsAndCategoriesByDocIds(docIds);
-		const tagDesc = Array.from(tagCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, TOP_TAGS).map(([name, count]) => `${name}(${count})`).join(', ');
+		const { topicTagCounts, keywordTagCounts } = await graphRepo.getTagsByDocIds(docIds);
+		const tagDesc = Array.from(topicTagCounts.entries())
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, TOP_TAGS)
+			.map(([name, count]) => `${name}(${count})`)
+			.join(', ');
+		const userKeywordTagDesc = Array.from(keywordTagCounts.entries())
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, TOP_TAGS)
+			.map(([name, count]) => `${name}(${count})`)
+			.join(', ');
 		const pathsForGraph = normalized.length > MAX_PATHS_FOR_GRAPH ? normalized.slice(0, MAX_PATHS_FOR_GRAPH) : normalized;
 		const idMapsForGraph = pathsForGraph.length === normalized.length ? idMaps : await getIdsByPathsChunked(pathsForGraph);
 		const internalIdsForGraph = idMapsForGraph.map((m) => m.id);
@@ -630,6 +639,8 @@ export async function weavePathsToContext(
 		const payload = {
 			hasFolderLines: folderLines.length > 0, folderLines,
 			hasTagDesc: !!tagDesc.trim(), tagDesc,
+			hasUserKeywordTagDesc: !!userKeywordTagDesc.trim(),
+			userKeywordTagDesc,
 			hasMermaidCode: !!mermaidCode, mermaidCode,
 		};
 		return await templateManager.render(AgentTemplateId.WeavePathsContext, payload);

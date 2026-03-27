@@ -19,6 +19,17 @@ export class AIAnalysisHistoryService {
 	async insertOrIgnore(record: AIAnalysisHistoryRecord): Promise<void> {
 		const repo = sqliteStoreManager.getAIAnalysisRepo();
 		await repo.insertOrIgnore(record as any);
+		try {
+			await sqliteStoreManager.getMobiusOperationRepo().insertAiAnalysisOperation({
+				recordId: record.id,
+				createdAtTs: record.created_at_ts,
+				vaultRelPath: record.vault_rel_path,
+				query: record.query,
+				title: record.title,
+			});
+		} catch (e) {
+			console.debug('[AIAnalysisHistoryService] mobius_operation insert skipped:', e);
+		}
 	}
 
 	async deleteAll(): Promise<void> {

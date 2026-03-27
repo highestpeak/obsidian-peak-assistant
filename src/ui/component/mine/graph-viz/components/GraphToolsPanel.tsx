@@ -2,6 +2,7 @@
  * Graph tools panel: Path (Discover path input + result) and optional Hops.
  * Display (Tags, Semantic edges) and Analysis (Hubs, MST, Hulls) are in Settings and toolbar.
  */
+import { SLICE_CAPS } from '@/core/constant';
 import React, { useState, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { Route, Focus } from 'lucide-react';
@@ -124,7 +125,7 @@ export const GraphToolsPanel: React.FC<GraphToolsPanelProps> = ({
 								list={datalistId}
 							/>
 							<datalist id={datalistId}>
-								{(findPath.candidatePaths ?? []).slice(0, 20).map((item) => (
+								{(findPath.candidatePaths ?? []).slice(0, SLICE_CAPS.graphViz.candidatePathsPanel).map((item) => (
 									<option key={item.path} value={item.path}>
 										{item.label || item.path}
 									</option>

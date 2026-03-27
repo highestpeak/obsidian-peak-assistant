@@ -30,6 +30,7 @@ import { createPluginDirContentProvider } from '@/core/template/PluginDirContent
 import { clearTemplateEngineForUnload } from '@/core/template-engine-helper';
 import { clearFormatUtilsCaches } from '@/core/utils/format-utils';
 import { getPluginDirAbsolute } from '@/core/utils/obsidian-utils';
+import { hydrateCodeStopwordsFromTemplateManager } from '@/core/utils/markdown-utils';
 import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
 import { resetAIAnalysisAll } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { useVaultSearchStore } from '@/ui/view/quick-search/store/vaultSearchStore';
@@ -96,6 +97,16 @@ export default class MyPlugin extends Plugin {
 			this.templateManager = new TemplateManager(createPluginDirContentProvider(pluginDirAbsolute));
 		} catch (e) {
 			console.warn('[Peak Assistant] TemplateManager not available (plugin dir unresolved); prompts will use vault overrides only.', e);
+		}
+		if (this.templateManager) {
+			try {
+				await hydrateCodeStopwordsFromTemplateManager(this.templateManager);
+			} catch (e) {
+				console.warn(
+					'[Peak Assistant] Failed to load templates/indexing/code-stopwords.md; code keyword hints may be noisier.',
+					e,
+				);
+			}
 		}
 
 		// Create AIServiceManager (ConversationService and ProjectService will be initialized in init())

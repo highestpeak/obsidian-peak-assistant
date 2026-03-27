@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import { PromptId } from '@/service/prompt/PromptId';
@@ -85,8 +86,9 @@ function buildMockSearchAgentResult(query: string): SearchAgentResult {
 		},
 	];
 
+	const mq = SLICE_CAPS.mocks.mockQuery;
 	const mockTitle = query.trim().length > 0
-		? `Mock: ${query.slice(0, 50)}${query.length > 50 ? '…' : ''}`
+		? `Mock: ${query.slice(0, mq)}${query.length > mq ? '…' : ''}`
 		: 'Mock AI Analysis';
 
 	const overviewMermaid = `flowchart LR
@@ -142,7 +144,8 @@ export async function* mockAIAnalysisStream(
 	const fullResult = buildMockSearchAgentResult(query);
 
 	// Thought agent talking
-	for (const word of ['I will ', 'search for ', `"${query.slice(0, 30)}${query.length > 30 ? '...' : ''}" `, 'and gather ', 'relevant notes.\n']) {
+	const qs = SLICE_CAPS.mocks.mockQueryShort;
+	for (const word of ['I will ', 'search for ', `"${query.slice(0, qs)}${query.length > qs ? '...' : ''}" `, 'and gather ', 'relevant notes.\n']) {
 		await delay(chunkDelayMs);
 		yield { type: 'text-delta', text: word, triggerName: StreamTriggerName.SEARCH_SLOT_RECALL_AGENT };
 	}

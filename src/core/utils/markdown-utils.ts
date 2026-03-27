@@ -54,6 +54,7 @@
  * - Type-safe with full TypeScript support
  */
 
+import { SLICE_CAPS } from '@/core/constant';
 import matter from 'gray-matter';
 import type { DocumentReferences, DocumentReference } from '../document/types';
 import type { Root, Heading, Text, Link } from 'mdast';
@@ -63,6 +64,10 @@ import remarkGfm from 'remark-gfm';
 import remarkWikiLink from 'remark-wiki-link';
 import { visit } from 'unist-util-visit';
 import { toString } from 'mdast-util-to-string';
+import { compileTemplate } from '../template-engine-helper';
+import type { TemplateManager } from '../template/TemplateManager';
+import { IndexingTemplateId } from '../template/TemplateRegistry';
+import type { ChunkingSettings } from '../../app/settings/types';
 
 /**
  * Parsed frontmatter result
@@ -333,4 +338,175 @@ export async function parseMarkdownWithRemark(
  */
 export function codeBlock(type: string, content: string): string {
 	return `\`\`\`${type}\n${content.trim()}\n\`\`\``;
+}
+
+// --- Chunking / code-fence helpers (stopwords: templates/indexing/code-stopwords.md via Handlebars) ---
+
+/** Default placeholder when {@link ChunkingSettings.codeBlockPlaceholder} is unset. */
+export const DEFAULT_CODE_BLOCK_PLACEHOLDER = '\n\n[code omitted]\n\n';
+
+/** How many keyword tokens to keep in the rich placeholder. */
+const CODE_KEYWORD_TOP_N = 6;
+
+/** Min token length after normalization. */
+const MIN_TOKEN_LEN = 2;
+
+/**
+ * Parses rendered stopword template body into a lowercase set (one word per line; `#` line comments).
+ */
+function parseCodeStopwordsRendered(rendered: string): Set<string> {
+	const set = new Set<string>();
+	for (const line of rendered.split(/\r?\n/)) {
+		const trimmed = line.trim();
+		if (!trimmed || trimmed.startsWith('#')) continue;
+		for (const w of trimmed.split(/\s+/)) {
+			if (w) set.add(w.toLowerCase());
+		}
+	}
+	return set;
+}
+
+let codeStopwordsSet: Set<string> | null = null;
+
+function getCodeStopwords(): Set<string> {
+	return codeStopwordsSet ?? new Set<string>();
+}
+
+/**
+ * Loads and compiles `IndexingTemplateId.CodeStopwords` with Handlebars, then builds the in-memory stopword set.
+ * Call from plugin onload before indexing (e.g. before DocumentLoaderManager.init).
+ *
+ * @param variables Optional context (e.g. `extraStopwords` from settings) merged into the template.
+ */
+export async function hydrateCodeStopwordsFromTemplateManager(
+	tm: TemplateManager,
+	variables: Record<string, unknown> = {},
+): Promise<void> {
+	const raw = await tm.getTemplate(IndexingTemplateId.CodeStopwords);
+	const rendered = compileTemplate(raw)({ extraStopwords: [], ...variables });
+	codeStopwordsSet = parseCodeStopwordsRendered(rendered);
+}
+
+/** Test hook: apply already-rendered template output (same parsing as production). */
+export function setCodeStopwordsForTests(rendered: string): void {
+	codeStopwordsSet = parseCodeStopwordsRendered(rendered);
+}
+
+/** Reset stopwords cache (e.g. tests). */
+export function resetCodeStopwordsForTests(): void {
+	codeStopwordsSet = null;
+}
+
+const IDENT_RE = /[A-Za-z_][A-Za-z0-9_]{1,63}/g;
+
+/**
+ * Parses fenced code block info (language id after ```).
+ */
+export function parseFenceLang(infoLine: string): string {
+	const raw = infoLine.trim().split(/\s+/)[0] ?? '';
+	if (!raw) return 'unknown';
+	const cleaned = raw.replace(/[^a-zA-Z0-9.+#-]/g, '').toLowerCase();
+	return cleaned.slice(0, SLICE_CAPS.utils.chunkSlugFallback) || 'unknown';
+}
+
+/**
+ * Splits camelCase / PascalCase / snake_case tokens into rough word pieces.
+ */
+function expandIdentifier(id: string): string[] {
+	const withSplits = id
+		.replace(/([a-z])([A-Z])/g, '$1 $2')
+		.replace(/([A-Z])([A-Z][a-z])/g, '$1 $2');
+	return withSplits.split(/[^a-zA-Z0-9_]+/).filter((p) => p.length >= MIN_TOKEN_LEN);
+}
+
+/**
+ * Top frequency keywords from code text after stopword filtering (for index placeholders only).
+ */
+export function extractCodeKeywordsForIndex(code: string, topN: number): string[] {
+	const counts = new Map<string, number>();
+	let m: RegExpExecArray | null;
+	const re = new RegExp(IDENT_RE.source, 'g');
+	while ((m = re.exec(code)) !== null) {
+		const id = m[0];
+		for (const part of expandIdentifier(id)) {
+			const w = part.toLowerCase();
+			if (w.length < MIN_TOKEN_LEN) continue;
+			if (/^\d+$/.test(w)) continue;
+			if (getCodeStopwords().has(w)) continue;
+			counts.set(w, (counts.get(w) ?? 0) + 1);
+		}
+	}
+	const ranked = [...counts.entries()].sort((a, b) => {
+		if (b[1] !== a[1]) return b[1] - a[1];
+		return a[0].localeCompare(b[0]);
+	});
+	const out: string[] = [];
+	const seen = new Set<string>();
+	for (const [w] of ranked) {
+		if (seen.has(w)) continue;
+		seen.add(w);
+		out.push(w);
+		if (out.length >= topN) break;
+	}
+	return out;
+}
+
+/**
+ * One-line placeholder when a fenced block is omitted (embedding-friendly hint).
+ */
+export function buildCodeOmittedPlaceholder(infoLine: string, inner: string): string {
+	const lang = parseFenceLang(infoLine);
+	const lines = inner.length === 0 ? 0 : inner.split(/\r?\n/).length;
+	const chars = inner.length;
+	const kw = extractCodeKeywordsForIndex(inner, CODE_KEYWORD_TOP_N);
+	const kwPart = kw.length ? ` kw=${kw.join(',')}` : '';
+	return `\n\n[code omitted lang=${lang} lines=${lines} chars=${chars}${kwPart}]\n\n`;
+}
+
+function replaceFencedCodeBlocks(
+	content: string,
+	maxKeep: number,
+	fallbackPlaceholder: string,
+	useRichOmit: boolean,
+): string {
+	const re = /```([^\n]*)\n([\s\S]*?)```/g;
+	return content.replace(re, (_full, infoLine: string, inner: string) => {
+		if (maxKeep <= 0) {
+			return useRichOmit ? buildCodeOmittedPlaceholder(infoLine, inner) : fallbackPlaceholder;
+		}
+		if (inner.length <= maxKeep) return '```' + infoLine + '\n' + inner + '\n```';
+		return '```' + infoLine + '\n' + inner.slice(0, maxKeep) + '\n...\n```';
+	});
+}
+
+/**
+ * Replaces fenced ``` blocks with placeholder or truncated copy before chunking.
+ * When `maxCodeChunkChars` is 0, each block becomes a compact `[code omitted lang=…]` line unless
+ * a custom non-default `codeBlockPlaceholder` is set (then that string is used for every block).
+ */
+export function preprocessMarkdownForChunking(
+	content: string,
+	settings: Pick<ChunkingSettings, 'skipCodeBlocksInChunking' | 'codeBlockPlaceholder' | 'maxCodeChunkChars'>,
+): string {
+	const skip = settings.skipCodeBlocksInChunking === true;
+	if (!skip) return content;
+
+	const configured = settings.codeBlockPlaceholder;
+	const fallbackPlaceholder = configured ?? DEFAULT_CODE_BLOCK_PLACEHOLDER;
+	const useRichOmit = configured === undefined || configured === DEFAULT_CODE_BLOCK_PLACEHOLDER;
+
+	const maxKeep = Math.max(0, settings.maxCodeChunkChars ?? 0);
+	return replaceFencedCodeBlocks(content, maxKeep, fallbackPlaceholder, useRichOmit);
+}
+
+/**
+ * Collects markdown heading lines for compact navigation / evidence hints.
+ */
+export function extractHeadingSkeleton(content: string, maxChars = 8000): string {
+	const lines = content.split(/\r?\n/).filter((l) => /^#{1,6}\s+/.test(l));
+	let out = lines.join('\n');
+	if (out.length > maxChars) {
+		out = out.slice(0, maxChars);
+	}
+	return out;
 }

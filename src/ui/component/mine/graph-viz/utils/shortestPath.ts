@@ -2,6 +2,7 @@
  * Dijkstra shortest path on visible graph. Undirected; cost = 1 / max(weight, eps).
  * When normalizeNodeId is provided, node set and link endpoints use normalized ids so pathfinding is consistent.
  */
+import { SLICE_CAPS } from '@/core/constant';
 import type { GraphVizLink, GraphVizNode } from '../types';
 import { getLinkEndpointId } from './link-key';
 
@@ -64,7 +65,7 @@ export function shortestPath(
 	console.debug('[GraphViz:Path:shortestPath] Source neighbors sample', {
 		sourceId,
 		sourceDegree,
-		neighbors: (adj.get(sourceId) ?? []).slice(0, 6).map((x) => x.id),
+		neighbors: (adj.get(sourceId) ?? []).slice(0, SLICE_CAPS.graphViz.shortestPathNeighbors).map((x) => x.id),
 	});
 
 	// Dijkstra with a real heap (lazy updates). Do NOT pre-fill heap with Infinity nodes:
@@ -160,6 +161,6 @@ export function shortestPath(
 		}));
 		return { pathNodeIds: [], pathLinkKeys: new Set() };
 	}
-	console.debug('[GraphViz:Path:shortestPath] Path found', JSON.stringify({ pathLength: pathNodeIds.length, pathNodeIds: pathNodeIds.slice(0, 10) }));
+	console.debug('[GraphViz:Path:shortestPath] Path found', JSON.stringify({ pathLength: pathNodeIds.length, pathNodeIds: pathNodeIds.slice(0, SLICE_CAPS.graphViz.shortestPathDebugIds) }));
 	return { pathNodeIds, pathLinkKeys };
 }

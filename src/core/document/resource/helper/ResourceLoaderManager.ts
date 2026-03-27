@@ -14,7 +14,7 @@ export class ResourceLoaderManager {
     private readonly loaderMap = new Map<SpecialResourceType, ResourceLoader>();
     private readonly documentLoaderManager: DocumentLoaderManager;
     private readonly aiServiceManager: AIServiceManager;
-    private readonly specialTypes: Set<SpecialResourceType> = new Set(['tag', 'folder', 'category']);
+    private readonly specialTypes: Set<SpecialResourceType> = new Set(['tag', 'folder']);
 
     constructor(app: App, aiServiceManager: AIServiceManager, documentLoaderManager?: DocumentLoaderManager) {
         // Use provided DocumentLoaderManager or get singleton instance

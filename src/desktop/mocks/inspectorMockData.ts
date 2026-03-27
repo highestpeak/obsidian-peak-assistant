@@ -1,3 +1,5 @@
+import { GraphNodeType } from '@/core/po/graph.po';
+
 /**
  * Mock data for Inspector (Find path, Links candidates) in desktop/mock environment.
  * Use this when wiring mock inspector service so UI can show sample data without real vault.
@@ -36,11 +38,11 @@ export const MOCK_INSPECTOR_PATH_RESULT: { paths: string[]; markdown?: string } 
 /** Mock graph for Graph section (nodes + edges). */
 export const MOCK_INSPECTOR_GRAPH: { nodes: Array<{ id: string; label: string; type: string; path?: string }>; edges: Array<{ from_node_id: string; to_node_id: string; type?: string }> } = {
 	nodes: [
-		{ id: 'current', label: 'Current note', type: 'document', path: 'Current note.md' },
-		{ id: 'kg', label: 'Knowledge Graph', type: 'document', path: 'Knowledge Graph.md' },
-		{ id: 'gt', label: 'Graph Traversal', type: 'document', path: 'Graph Traversal.md' },
-		{ id: 'ss', label: 'Semantic Search', type: 'document', path: 'Semantic Search.md' },
-		{ id: 'vs', label: 'Vault Search', type: 'document', path: 'Vault Search.md' },
+		{ id: 'current', label: 'Current note', type: GraphNodeType.Document, path: 'Current note.md' },
+		{ id: 'kg', label: 'Knowledge Graph', type: GraphNodeType.Document, path: 'Knowledge Graph.md' },
+		{ id: 'gt', label: 'Graph Traversal', type: GraphNodeType.Document, path: 'Graph Traversal.md' },
+		{ id: 'ss', label: 'Semantic Search', type: GraphNodeType.Document, path: 'Semantic Search.md' },
+		{ id: 'vs', label: 'Vault Search', type: GraphNodeType.Document, path: 'Vault Search.md' },
 	],
 	edges: [
 		{ from_node_id: 'current', to_node_id: 'kg', type: 'physical' },

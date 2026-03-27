@@ -1,7 +1,7 @@
 import { App } from 'obsidian';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { LLMProviderService, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, ToolEvent } from '@/core/providers/types';
-import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
+import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, getAIUploadFolder } from '@/app/settings/types';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { DEFAULT_SUMMARY } from '@/core/constant';
 import { EventBus, MessageSentEvent, ConversationCreatedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
@@ -41,6 +41,7 @@ interface ChatPreparationResult {
 
 /**
  * Service for managing chat conversations.
+ * Expects {@link AIServiceSettings} with a non-empty {@link AIServiceSettings.rootFolder} (same as {@link AIServiceManager}).
  */
 export class ConversationService {
 	private readonly contextBuilder: ContextBuilder;
@@ -55,7 +56,7 @@ export class ConversationService {
 		private readonly resourceSummaryService: ResourceSummaryService,
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly profileService?: UserProfileService,
-		private readonly settings?: AIServiceSettings,
+		private readonly settings: AIServiceSettings,
 	) {
 		this.resourceLoaderManager = new ResourceLoaderManager(this.app, this.aiServiceManager, DocumentLoaderManager.getInstance());
 		// Initialize context builder
@@ -133,8 +134,7 @@ export class ConversationService {
 			return [];
 		}
 
-		// Get upload folder from settings
-		const uploadFolder = this.settings?.uploadFolder || 'uploads';
+		const uploadFolder = getAIUploadFolder();
 
 		// Upload files to vault
 		const uploadedPaths = await uploadFilesToVault(this.app, files, uploadFolder);

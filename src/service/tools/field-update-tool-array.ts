@@ -199,8 +199,8 @@ export async function commonValidatePath(path: string, verifiedPaths: Set<string
 
     // Check if path exists in DB
     try {
-        const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-        const docMeta = await docMetaRepo.getByPath(path);
+        const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+        const docMeta = await indexedDocumentRepo.getByPath(path);
         if (docMeta) {
             verifiedPaths.add(path);
             return { valid: true };

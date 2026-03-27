@@ -7,6 +7,7 @@ import {
 	findPathInputSchema,
 	graphTraversalInputSchema,
 	grepFileTreeInputSchema,
+	hubLocalGraphInputSchema,
 	inspectNoteContextInputSchema,
 	localSearchWholeVaultInputSchema,
 	recentChangesWholeVaultInputSchema,
@@ -22,6 +23,7 @@ import { exploreFolder } from "./search-graph-inspector/explore-folder";
 import { grepFileTree } from "./search-graph-inspector/grep-file-tree";
 import { getRecentChanges } from "./search-graph-inspector/recent-change-whole-vault";
 import { localSearch } from "./search-graph-inspector/local-search";
+import { hubLocalGraph } from "./search-graph-inspector/hub-local-graph";
 
 /**
  * Tool 1: inspect_note_context
@@ -81,6 +83,19 @@ export function graphTraversalToolMarkdownOnly(templateManager?: TemplateManager
 }
 
 /**
+ * Tool: hub_local_graph
+ */
+export function hubLocalGraphTool(templateManager?: TemplateManager): AgentTool {
+    return safeAgentTool({
+        description: `[Hub Local Graph] Build a weighted local graph around one note to inspect how a hub should expand, where it should stop, and which nodes/edges matter most.`,
+        inputSchema: hubLocalGraphInputSchema,
+        execute: async (params) => {
+            return await hubLocalGraph(params, templateManager);
+        }
+    });
+}
+
+/**
  * Tool 3: find_path
  * no support for sorting multiple paths by relevance/modification. meaningless for most cases. and also meaningless for sorting nodes in the path.
  */
@@ -123,14 +138,14 @@ export function findOrphansTool(templateManager?: TemplateManager): AgentTool {
 /**
  * Tool 6: search_by_dimensions
  * example: user asks: "find the low-risk financial suggestions suitable for a layperson in my personal finance notes."
- *     AI => search_by_dimensions: tag:FinancialPlanning OR category:Finance
+ *     AI => search_by_dimensions: tag:FinancialPlanning OR functional:Finance
  *     AI => semantic_filter: "layperson、low-risk、stable income、anti-greed"
  */
 export function searchByDimensionsTool(templateManager?: TemplateManager): AgentTool {
     return safeAgentTool({
         description: `Complex multi-criteria searches. Advanced filtering by tags, folders, time ranges with boolean logic. ` +
-            `Use only tag:value, category:value, AND, OR, NOT, and parentheses. Each value must be a single word (no spaces, no special characters). ` +
-            `Example: tag:javascript AND category:programming or (tag:react OR tag:vue) AND category:frontend`,
+            `Use only tag:value, functional:value, AND, OR, NOT, and parentheses. Each value must be a single word (no spaces, no special characters). ` +
+            `Example: tag:javascript AND functional:programming or (tag:react OR tag:vue) AND functional:frontend`,
         inputSchema: searchByDimensionsInputSchema,
         execute: async (params) => {
             return await searchByDimensions({ ...params, mode: 'search_by_dimensions' }, templateManager);

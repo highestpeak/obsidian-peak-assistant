@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import { LLMUsage, mergeTokenUsage } from "@/core/providers/types";
 import { refreshableMemoizeSupplier, Supplier } from "@/core/utils/functions";
 import { AIServiceManager } from "@/service/chat/service-manager";
@@ -536,7 +537,7 @@ export class AgentContextManager {
             verifiedPaths: paths,
             dossier: {
                 verifiedPathsCount: paths.length,
-                sourcePathsSample: paths.slice(0, 30),
+                sourcePathsSample: paths.slice(0, SLICE_CAPS.agent.sourcePathsSample),
             },
             recallPipeline:
                 this.recallDimensions.length > 0 ||
@@ -580,7 +581,7 @@ export class AgentContextManager {
             for (const f of p.facts ?? []) {
                 const claim = (f.claim ?? '').trim();
                 const quote = (f.quote ?? '').slice(0, maxQuoteLen);
-                const key = claim.slice(0, 80);
+                const key = claim.slice(0, SLICE_CAPS.agent.claimKey);
                 if (!claim || seenClaims.has(key)) continue;
                 seenClaims.add(key);
                 group.factEntries.push({ claim, quote });
@@ -611,7 +612,7 @@ export class AgentContextManager {
         if (reports.length > 0) {
             parts.push('Per-dimension tactical summary:');
             for (const r of reports) {
-                const t = (r.tactical_summary ?? '').trim().slice(0, 400);
+                const t = (r.tactical_summary ?? '').trim().slice(0, SLICE_CAPS.agent.tacticalSummary);
                 if (t) parts.push(`[${r.dimension}] ${t}`);
             }
         }
@@ -624,7 +625,7 @@ export class AgentContextManager {
         const dims = this.recallDimensions;
         const dimLine =
             dims.length > 0
-                ? `Dimensions chosen: ${dims.map((d) => `${d.id} (${(d.intent_description ?? '').slice(0, 80)})`).join('; ')}`
+                ? `Dimensions chosen: ${dims.map((d) => `${d.id} (${(d.intent_description ?? '').slice(0, SLICE_CAPS.agent.dimensionIntent)})`).join('; ')}`
                 : '';
         return [prompt, dimLine].filter(Boolean).join('\n');
     }
@@ -637,9 +638,9 @@ export class AgentContextManager {
         groups.forEach((eg, i) => {
             const id = eg.groupId ?? `group-${i}`;
             const paths = [...new Set((eg.tasks ?? []).map((t) => t.path).filter(Boolean))];
-            const focus = (eg.group_focus ?? '').slice(0, 200);
-            const shared = eg.sharedContext ? `\n  sharedContext (excerpt): ${eg.sharedContext.slice(0, 300)}...` : '';
-            lines.push(`- ${id} | topic_anchor: ${eg.topic_anchor} | group_focus: ${focus}${shared}\n  paths: ${paths.slice(0, 12).join(', ')}`);
+            const focus = (eg.group_focus ?? '').slice(0, SLICE_CAPS.agent.groupFocus);
+            const shared = eg.sharedContext ? `\n  sharedContext (excerpt): ${eg.sharedContext.slice(0, SLICE_CAPS.agent.sharedContext)}...` : '';
+            lines.push(`- ${id} | topic_anchor: ${eg.topic_anchor} | group_focus: ${focus}${shared}\n  paths: ${paths.slice(0, SLICE_CAPS.agent.evidencePaths).join(', ')}`);
         });
         return lines.join('\n');
     }
@@ -739,7 +740,7 @@ export class AgentContextManager {
                 if (dim) out = out.filter((r) => r.dimension === dim);
                 if (pathLower) out = out.filter((r) => (r.discovered_leads ?? []).some((p) => p.toLowerCase().includes(pathLower)));
                 if (out.length === 0) return '';
-                return out.map((r) => `[${r.dimension}] ${(r.tactical_summary ?? '').trim().slice(0, 400)}`).join('\n');
+                return out.map((r) => `[${r.dimension}] ${(r.tactical_summary ?? '').trim().slice(0, SLICE_CAPS.agent.tacticalSummary)}`).join('\n');
             }
             case 'Consolidator': {
                 const c = this.consolidatorOutput;
@@ -750,7 +751,7 @@ export class AgentContextManager {
                     return true;
                 });
                 const insight = pathLower || dim ? '' : (c.global_recon_insight ?? '').trim();
-                const taskLines = tasks.slice(0, 30).map((t) => `${t.path}: ${(t.extraction_focus ?? '').slice(0, 120)}`);
+                const taskLines = tasks.slice(0, SLICE_CAPS.agent.extractionTasks).map((t) => `${t.path}: ${(t.extraction_focus ?? '').slice(0, SLICE_CAPS.agent.extractionFocus)}`);
                 return [insight, ...taskLines].filter(Boolean).join('\n');
             }
             case 'EvidenceGroups': {
@@ -763,7 +764,7 @@ export class AgentContextManager {
                 return gs.map((eg, i) => {
                     const id = eg.groupId ?? `group-${i}`;
                     const paths = [...new Set((eg.tasks ?? []).map((t) => t.path).filter(Boolean))];
-                    return `${id} | ${eg.topic_anchor} | ${(eg.group_focus ?? '').slice(0, 200)}\n  paths: ${paths.slice(0, 12).join(', ')}`;
+                    return `${id} | ${eg.topic_anchor} | ${(eg.group_focus ?? '').slice(0, SLICE_CAPS.agent.groupFocus)}\n  paths: ${paths.slice(0, SLICE_CAPS.agent.evidencePaths).join(', ')}`;
                 }).join('\n');
             }
             case 'Evidence': {

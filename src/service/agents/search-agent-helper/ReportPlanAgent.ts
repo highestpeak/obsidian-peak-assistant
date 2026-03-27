@@ -66,7 +66,7 @@ export class ReportPlanAgent {
 				const status = (input?.status ?? 'final') as 'draft' | 'final';
 				if (phaseId && planMarkdown) {
 					this.phasePlans.push({ phaseId, planMarkdown });
-					// self.context.appendAnalysisHistory('Evidence', `[ReportPlan] ${phaseId}: ${planMarkdown.slice(0, 200)}...`, {
+					// self.context.appendAnalysisHistory('Evidence', `[ReportPlan] ${phaseId}: ${planMarkdown.slice(0, 200)}...`, { // same cap as SLICE_CAPS.agent.reportPlanMarkdown
 					// 	blockIds: [phaseId],
 					// });
 				}

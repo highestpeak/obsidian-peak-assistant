@@ -6,5 +6,5 @@ export type { EmbeddingPO } from './embedding.po';
 export type { DocStatisticsPO } from './doc-statistics.po';
 // @deprecated OramaDocumentPO has been moved to _deprecated and will be removed
 // export type { OramaDocumentPO } from './orama-document.po';
-export type * from './graph.po';
+export * from './graph.po';
 

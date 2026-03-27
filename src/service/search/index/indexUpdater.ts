@@ -3,7 +3,7 @@ import { TFile } from 'obsidian';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { SearchSettings } from '@/app/settings/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { IndexService } from '@/service/search/index/indexService';
+import { IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { EventBus } from '@/core/eventBus';
 import type MyPlugin from 'main';
@@ -20,6 +20,8 @@ export class SearchUpdateListener {
 	private readonly loaderManager: DocumentLoaderManager;
 	private readonly upsertPaths = new Set<string>();
 	private readonly deletePaths = new Set<string>();
+	/** Pending vault renames: process before deletes/upserts so stable doc id is preserved. */
+	private readonly pendingRenames: Array<{ oldPath: string; newPath: string }> = [];
 	private timer: number | null = null;
 	private settingsUnsubscribe: (() => void) | null = null;
 	/** Set on dispose so late timer callback or flush skips work and does not touch DB after unload. */
@@ -92,6 +94,7 @@ export class SearchUpdateListener {
 		}
 		this.upsertPaths.clear();
 		this.deletePaths.clear();
+		this.pendingRenames.length = 0;
 
 		// Wait for in-flight flush to finish so we never close DB while it runs (avoids OperationalError retention)
 		if (this.lastFlushPromise) {
@@ -118,7 +121,12 @@ export class SearchUpdateListener {
 	}
 
 	private enqueueRename(file: TAbstractFile, oldPath: string): void {
-		if (oldPath) this.deletePaths.add(oldPath);
+		if (!(file instanceof TFile)) return;
+		if (!this.loaderManager.getLoaderForFile(file)) return;
+		if (oldPath) {
+			this.pendingRenames.push({ oldPath, newPath: file.path });
+			this.deletePaths.delete(oldPath);
+		}
 		this.upsertPaths.delete(oldPath);
 		this.enqueueUpsert(file);
 	}
@@ -136,16 +144,18 @@ export class SearchUpdateListener {
 		}
 
 		try {
-			const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-			const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
+			const tenant = getIndexTenantForPath(file.path);
+			const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+			const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
 
 			// Get doc_id from path
-			const meta = await docMetaRepo.getByPath(file.path);
+			const meta = await indexedDocumentRepo.getByPath(file.path);
 			if (!meta) {
 				// Document not indexed yet, skip
 				return;
 			}
-			await docStatisticsRepo.recordOpen(meta.id, Date.now());
+			const ts = Date.now();
+			await mobiusNodeRepo.recordOpen(meta.id, ts);
 		} catch (e) {
 			// Silently ignore errors (file might not be indexed yet or store not initialized)
 			console.debug('Failed to record file open:', file.path, e);
@@ -164,6 +174,7 @@ export class SearchUpdateListener {
 	private async flush(): Promise<void> {
 		if (this.disposed) return;
 		if (!sqliteStoreManager.isInitialized()) return;
+		const renameBatch = this.pendingRenames.splice(0, this.pendingRenames.length);
 		const deletePaths = Array.from(this.deletePaths);
 		const upsertPaths = Array.from(this.upsertPaths);
 		this.deletePaths.clear();
@@ -174,16 +185,27 @@ export class SearchUpdateListener {
 		try {
 			console.log('flush start processing. flush id: ', uuid);
 
-			const work = Promise.all([
-				deletePaths.length > 0
-					? IndexService.getInstance().deleteDocuments(deletePaths)
-					: Promise.resolve(),
-				upsertPaths.length > 0
-					? this.indexDocuments(upsertPaths)
-					: Promise.resolve(),
-			])
+			const work = (async () => {
+				for (const { oldPath, newPath } of renameBatch) {
+					try {
+						await IndexService.getInstance().renameDocumentPath(oldPath, newPath);
+					} catch (e) {
+						console.warn('[SearchUpdateListener] renameDocumentPath failed:', oldPath, newPath, e);
+					}
+				}
+				await Promise.all([
+					deletePaths.length > 0
+						? IndexService.getInstance().deleteDocuments(deletePaths)
+						: Promise.resolve(),
+					upsertPaths.length > 0
+						? this.indexDocuments(upsertPaths)
+						: Promise.resolve(),
+				]);
+			})()
 				.then(() => {
-					console.log(`[SearchUpdateListener] Flush completed: deleted ${deletePaths.length} files, indexed ${upsertPaths.length} files`);
+					console.log(
+						`[SearchUpdateListener] Flush completed: renamed ${renameBatch.length}, deleted ${deletePaths.length} files, indexed ${upsertPaths.length} files`,
+					);
 				})
 				.catch((e) => {
 					console.error('Search update operations failed:', e);
@@ -235,6 +257,7 @@ export class SearchUpdateListener {
 		// Clear pending operations
 		this.upsertPaths.clear();
 		this.deletePaths.clear();
+		this.pendingRenames.length = 0;
 
 		// Update debounceMs with new value
 		(this as any).debounceMs = this.plugin.settings.search.indexRefreshInterval;

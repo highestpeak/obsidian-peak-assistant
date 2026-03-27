@@ -1,4 +1,7 @@
+import { SLICE_CAPS } from '@/core/constant';
+import { GraphEdgeType } from '@/core/po/graph.po';
 import { AppContext } from "@/app/context/AppContext";
+import { getAIHubSummaryFolder } from '@/app/settings/types';
 import { humanReadableTime } from "@/core/utils/date-utils";
 import { compactPathsForPrompt, compactPathsWithSuffix } from "@/core/utils/pathTreeCompact";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
@@ -75,7 +78,7 @@ export async function exploreFolder(params: any, templateManager?: TemplateManag
     const visibleFilePaths = getAllFilePaths(finalFileTree);
 
     // Stats: when exclusions are enabled, compute stats from visible paths only to avoid leaking excluded folders.
-    const { tagDesc, categoryDesc } = exclusions.enabled
+    const { tagDesc, userKeywordTagDesc, categoryDesc } = exclusions.enabled
         ? await getTagsAndCategoriesByDocPaths(visibleFilePaths, perFolderLimit)
         : await getTagsAndCategoriesByFolderPath(normalizedPath, perFolderLimit);
     const docStats = exclusions.enabled
@@ -124,6 +127,7 @@ export async function exploreFolder(params: any, templateManager?: TemplateManag
         sameGroupCountByPath,
         rootOmitted,
         tagDesc,
+        userKeywordTagDesc,
         categoryDesc,
         docStats,
     };
@@ -383,26 +387,31 @@ function buildSameGroupCountByPath(tree: IterFile[]): Record<string, number> {
 async function getTagsAndCategoriesByFolderPath(
     pathPrefix: string,
     topN: number = 20,
-): Promise<{ tagDesc: string, categoryDesc: string }> {
-    const graphStore = sqliteStoreManager.getGraphStore();
+): Promise<{ tagDesc: string; userKeywordTagDesc: string; categoryDesc: string }> {
+    const graphRepo = sqliteStoreManager.getGraphRepo();
     const docIds = pathPrefix === ""
         ? undefined
-        : (await sqliteStoreManager.getDocMetaRepo().getIdsByFolderPath(pathPrefix)).map((m) => m.id);
+        : (await sqliteStoreManager.getIndexedDocumentRepo().getIdsByFolderPath(pathPrefix)).map((m) => m.id);
     if (docIds !== undefined && docIds.length === 0) {
-        return { tagDesc: "", categoryDesc: "" };
+        return { tagDesc: "", userKeywordTagDesc: "", categoryDesc: "" };
     }
-    const { tagCounts, categoryCounts } = await graphStore.getTagsAndCategoriesByDocIds(docIds);
-    const tagDesc = Array.from(tagCounts.entries())
+    const { topicTagCounts, functionalTagCounts, keywordTagCounts } = await graphRepo.getTagsByDocIds(docIds);
+    const tagDesc = Array.from(topicTagCounts.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, topN)
         .map(([name, count]) => `${name}(${count})`)
         .join(", ");
-    const categoryDesc = Array.from(categoryCounts.entries())
+    const userKeywordTagDesc = Array.from(keywordTagCounts.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, topN)
         .map(([name, count]) => `${name}(${count})`)
         .join(", ");
-    return { tagDesc, categoryDesc };
+    const categoryDesc = Array.from(functionalTagCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, topN)
+        .map(([name, count]) => `${name}(${count})`)
+        .join(", ");
+    return { tagDesc, userKeywordTagDesc, categoryDesc };
 }
 
 /**
@@ -429,10 +438,10 @@ async function getDocStatisticsByFolderPath(
     hasTopLinks: boolean;
     languageStats?: Record<string, number>;
 }> {
-    const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-    const docStatsRepo = sqliteStoreManager.getDocStatisticsRepo();
-    const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
-    const docIdsMaps = pathPrefix === "" ? null : await docMetaRepo.getIdsByFolderPath(pathPrefix);
+    const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
+    const docIdsMaps = pathPrefix === "" ? null : await indexedDocumentRepo.getIdsByFolderPath(pathPrefix);
     const docIds = docIdsMaps === null ? undefined : docIdsMaps.map((m) => m.id);
     if (docIds !== undefined && docIds.length === 0) {
         return {
@@ -457,19 +466,19 @@ async function getDocStatisticsByFolderPath(
         totalFiles,
         { topLinksInRaw, topLinksOutRaw },
     ] = await Promise.all([
-        docStatsRepo.getTopRecentEditedByDocIds(docIds, topK),
-        docStatsRepo.getTopWordCountByDocIds(docIds, topK),
-        docStatsRepo.getTopCharCountByDocIds(docIds, topK),
-        docStatsRepo.getTopRichnessByDocIds(docIds, topK),
-        docStatsRepo.getLanguageStatsByDocIds(docIds),
-        docIds === undefined ? docStatsRepo.countAll() : Promise.resolve(docIds.length),
+        mobiusNodeRepo.getTopRecentEditedByDocIds(docIds, topK),
+        mobiusNodeRepo.getTopWordCountByDocIds(docIds, topK),
+        mobiusNodeRepo.getTopCharCountByDocIds(docIds, topK),
+        mobiusNodeRepo.getTopRichnessByDocIds(docIds, topK),
+        mobiusNodeRepo.getLanguageStatsByDocIds(docIds),
+        docIds === undefined ? mobiusNodeRepo.countAllDocumentStatisticsRows() : Promise.resolve(docIds.length),
         // Edge type in graph_edges is relationship type (e.g. 'references', 'tagged'), not node type; use no filter to count all edges.
         pathPrefix === ""
-            ? graphEdgeRepo.getTopNodeIdsByDegree(topK, undefined, 'references').then((r) => ({
+            ? mobiusEdgeRepo.getTopNodeIdsByDegree(topK, undefined, GraphEdgeType.References).then((r) => ({
                 topLinksInRaw: r.topByInDegree.map((x) => ({ node_id: x.nodeId, inDegree: x.inDegree })),
                 topLinksOutRaw: r.topByOutDegree.map((x) => ({ node_id: x.nodeId, outDegree: x.outDegree })),
             }))
-            : graphEdgeRepo.countEdges(docIds!).then(({ incoming, outgoing }) => ({
+            : mobiusEdgeRepo.countEdges(docIds!).then(({ incoming, outgoing }) => ({
                 topLinksInRaw: [...incoming.entries()].sort((a, b) => b[1] - a[1]).slice(0, topK).map(([node_id, inDegree]) => ({ node_id, inDegree })),
                 topLinksOutRaw: [...outgoing.entries()].sort((a, b) => b[1] - a[1]).slice(0, topK).map(([node_id, outDegree]) => ({ node_id, outDegree })),
             })),
@@ -486,7 +495,7 @@ async function getDocStatisticsByFolderPath(
     const uniqueIds = [...new Set(allDocIdsFromTops)];
     const idToPathMap = docIdsMaps !== null
         ? new Map(docIdsMaps.map((m) => [m.id, m.path]))
-        : new Map((uniqueIds.length ? await docMetaRepo.getByIds(uniqueIds) : []).map((m) => [m.id, m.path]));
+        : new Map((uniqueIds.length ? await indexedDocumentRepo.getByIds(uniqueIds) : []).map((m) => [m.id, m.path]));
 
     const languageStats: Record<string, number> = {};
     for (const row of languageStatsRows) {
@@ -541,6 +550,11 @@ function isPathExcluded(path: string, excludedPathPrefixes: string[]): boolean {
     if (!excludedPathPrefixes.length) return false;
     const p = normalizeVaultFolderPath(path);
     if (p === "") return false;
+    /** Hub summaries live under chat root but must remain explorable. */
+    const hub = normalizeVaultFolderPath(getAIHubSummaryFolder());
+    if (hub && (p === hub || p.startsWith(hub + "/"))) {
+        return false;
+    }
     for (const rawPrefix of excludedPathPrefixes) {
         const prefix = normalizeVaultFolderPath(rawPrefix);
         if (!prefix) continue;
@@ -683,26 +697,32 @@ function renderTreeLines(node: IterFile): string[] {
 async function getTagsAndCategoriesByDocPaths(
     paths: string[],
     topN: number = 20,
-): Promise<{ tagDesc: string; categoryDesc: string }> {
+): Promise<{ tagDesc: string; userKeywordTagDesc: string; categoryDesc: string }> {
     const uniquePaths = [...new Set(paths)].filter(Boolean);
-    if (!uniquePaths.length) return { tagDesc: "", categoryDesc: "" };
+    if (!uniquePaths.length) return { tagDesc: "", userKeywordTagDesc: "", categoryDesc: "" };
 
-    const docIdsMaps = await sqliteStoreManager.getDocMetaRepo().getIdsByPaths(uniquePaths);
+    const docIdsMaps = await sqliteStoreManager.getIndexedDocumentRepo().getIdsByPaths(uniquePaths);
     const docIds = docIdsMaps.map((m) => m.id);
-    if (!docIds.length) return { tagDesc: "", categoryDesc: "" };
+    if (!docIds.length) return { tagDesc: "", userKeywordTagDesc: "", categoryDesc: "" };
 
-    const { tagCounts, categoryCounts } = await sqliteStoreManager.getGraphStore().getTagsAndCategoriesByDocIds(docIds);
-    const tagDesc = Array.from(tagCounts.entries())
+    const { topicTagCounts, functionalTagCounts, keywordTagCounts } =
+        await sqliteStoreManager.getGraphRepo().getTagsByDocIds(docIds);
+    const tagDesc = Array.from(topicTagCounts.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, topN)
         .map(([name, count]) => `${name}(${count})`)
         .join(", ");
-    const categoryDesc = Array.from(categoryCounts.entries())
+    const userKeywordTagDesc = Array.from(keywordTagCounts.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, topN)
         .map(([name, count]) => `${name}(${count})`)
         .join(", ");
-    return { tagDesc, categoryDesc };
+    const categoryDesc = Array.from(functionalTagCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, topN)
+        .map(([name, count]) => `${name}(${count})`)
+        .join(", ");
+    return { tagDesc, userKeywordTagDesc, categoryDesc };
 }
 
 /**
@@ -743,8 +763,8 @@ async function getDocStatisticsByDocPaths(
         };
     }
 
-    const cappedPaths = uniquePaths.slice(0, 2000);
-    const docIdsMaps = await sqliteStoreManager.getDocMetaRepo().getIdsByPaths(cappedPaths);
+    const cappedPaths = uniquePaths.slice(0, SLICE_CAPS.inspector.exploreFolderPaths);
+    const docIdsMaps = await sqliteStoreManager.getIndexedDocumentRepo().getIdsByPaths(cappedPaths);
     const docIds = docIdsMaps.map((m) => m.id);
     if (!docIds.length) {
         return {
@@ -760,8 +780,8 @@ async function getDocStatisticsByDocPaths(
         };
     }
 
-    const docStatsRepo = sqliteStoreManager.getDocStatisticsRepo();
-    const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
     const idToPathMap = new Map(docIdsMaps.map((m) => [m.id, m.path]));
 
     const [
@@ -772,12 +792,12 @@ async function getDocStatisticsByDocPaths(
         languageStatsRows,
         { topLinksInRaw, topLinksOutRaw },
     ] = await Promise.all([
-        docStatsRepo.getTopRecentEditedByDocIds(docIds, topK),
-        docStatsRepo.getTopWordCountByDocIds(docIds, topK),
-        docStatsRepo.getTopCharCountByDocIds(docIds, topK),
-        docStatsRepo.getTopRichnessByDocIds(docIds, topK),
-        docStatsRepo.getLanguageStatsByDocIds(docIds),
-        graphEdgeRepo.countEdges(docIds).then(({ incoming, outgoing }) => ({
+        mobiusNodeRepo.getTopRecentEditedByDocIds(docIds, topK),
+        mobiusNodeRepo.getTopWordCountByDocIds(docIds, topK),
+        mobiusNodeRepo.getTopCharCountByDocIds(docIds, topK),
+        mobiusNodeRepo.getTopRichnessByDocIds(docIds, topK),
+        mobiusNodeRepo.getLanguageStatsByDocIds(docIds),
+        mobiusEdgeRepo.countEdges(docIds).then(({ incoming, outgoing }) => ({
             topLinksInRaw: [...incoming.entries()]
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, topK)

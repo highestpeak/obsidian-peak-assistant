@@ -10,9 +10,10 @@
  * - Body sections (fixed order): Summary, Query, Key Topics, Sources, Topic Inspect Results,
  *   Topic Expansions, Dashboard Blocks, ...
  *
- * Run with: npx tsx src/core/storage/vault/search-docs/test/AiSearchAnalysisDoc.test.ts
+ * Tests: npm run test -- test/search-docs/AiSearchAnalysisDoc.test.ts
  */
 
+import { SLICE_CAPS } from '@/core/constant';
 import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock, EvidenceIndex } from '@/service/agents/AISearchAgent';
 import { getMermaidInner } from '@/core/utils/mermaid-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
@@ -20,7 +21,7 @@ import type { SearchResultItem } from '@/service/search/types';
 import type { LLMUsage } from '@/core/providers/types';
 import type { AnalysisMode, UIStepRecord, CompletedAnalysisSnapshot, SectionAnalyzeResult } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { getSnapshotSummary } from '@/ui/view/quick-search/store/aiAnalysisStore';
-import type { GraphNodeType } from '@/core/po/graph.po';
+import { GraphNodeType } from '@/core/po/graph.po';
 
 const SECTION_SUMMARY = '# Summary';
 const SECTION_QUERY = '# Query';
@@ -202,8 +203,17 @@ function parseFrontmatter(raw: string): {
 	};
 }
 
+/** Node types allowed when reconstructing a preview from mermaid (no type in syntax). */
+const MERMAID_PREVIEW_NODE_TYPES: readonly GraphNodeType[] = [
+	GraphNodeType.TopicTag,
+	GraphNodeType.FunctionalTag,
+	GraphNodeType.Document,
+	GraphNodeType.Resource,
+	GraphNodeType.Folder,
+	GraphNodeType.HubDoc,
+];
+
 function parseMermaidToPreview(body: string): GraphPreview | null {
-	const allowedTypes: GraphNodeType[] = ['document', 'tag', 'category', 'concept', 'link', 'resource', 'custom'];
 	const nodeLabelById = new Map<string, string>();
 	const edges: Array<{ from: string; to: string }> = [];
 	for (const rawLine of body.split('\n')) {
@@ -222,7 +232,7 @@ function parseMermaidToPreview(body: string): GraphPreview | null {
 		nodes: Array.from(nodeLabelById.entries()).map(([id, label]) => ({
 			id,
 			label: label || id,
-			type: (allowedTypes.includes('document') ? 'document' : 'document') as GraphNodeType,
+			type: GraphNodeType.Document,
 		})),
 		edges: edges.map((e) => ({ from_node_id: e.from, to_node_id: e.to, weight: 1 })),
 	};
@@ -634,7 +644,7 @@ function escapeMermaidLabel(label: string): string {
 	return String(label ?? '')
 		.replace(/"/g, '\\"')
 		.replace(/\n/g, ' ')
-		.slice(0, 80);
+		.slice(0, SLICE_CAPS.utils.mermaidQuotedLabel);
 }
 
 function buildMermaidBlock(graph: GraphPreview | null | undefined): string {
@@ -642,14 +652,14 @@ function buildMermaidBlock(graph: GraphPreview | null | undefined): string {
 		return '```mermaid\nflowchart TD\n  A[No graph data]\n```';
 	}
 	const nodeIds = new Map<string, string>();
-	graph.nodes.slice(0, 40).forEach((n, idx) => nodeIds.set(n.id, `N${idx}`));
+	graph.nodes.slice(0, SLICE_CAPS.vaultDoc.aiSearchAnalysisGraphNodes).forEach((n, idx) => nodeIds.set(n.id, `N${idx}`));
 	const lines: string[] = ['```mermaid', 'flowchart TD'];
-	for (const n of graph.nodes.slice(0, 40)) {
+	for (const n of graph.nodes.slice(0, SLICE_CAPS.vaultDoc.aiSearchAnalysisGraphNodes)) {
 		const id = nodeIds.get(n.id);
 		if (!id) continue;
 		lines.push(`  ${id}["${escapeMermaidLabel(n.label)}"]`);
 	}
-	for (const e of (graph.edges ?? []).slice(0, 80)) {
+	for (const e of (graph.edges ?? []).slice(0, SLICE_CAPS.vaultDoc.aiSearchAnalysisGraphEdges)) {
 		const from = nodeIds.get(e.from_node_id);
 		const to = nodeIds.get(e.to_node_id);
 		if (from && to) lines.push(`  ${from} --> ${to}`);
@@ -660,12 +670,13 @@ function buildMermaidBlock(graph: GraphPreview | null | undefined): string {
 
 function aiSearchGraphToGraphPreview(ai: AISearchGraph | null): GraphPreview | null {
 	if (!ai) return null;
-	const allowedTypes: GraphNodeType[] = ['document', 'tag', 'category', 'concept', 'link', 'resource', 'custom'];
 	return {
 		nodes: ai.nodes.map((node) => ({
 			id: node.id,
 			label: node.title ?? node.id,
-			type: (allowedTypes.includes(node.type as GraphNodeType) ? node.type : 'document') as GraphNodeType,
+			type: (MERMAID_PREVIEW_NODE_TYPES.includes(node.type as GraphNodeType)
+				? (node.type as GraphNodeType)
+				: GraphNodeType.Document),
 		})),
 		edges: ai.edges.map((edge) => ({
 			from_node_id: edge.source,

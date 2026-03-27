@@ -51,12 +51,28 @@ export enum PromptId {
 
 	// Document analysis prompts (for future use)
 	DocSummary = 'doc-summary',
+	/** One-sentence short summary (preferred for indexing). */
+	DocSummaryShort = 'doc-summary-short',
+	/** Long-form summary; may use short summary + TextRank anchors. */
+	DocSummaryFull = 'doc-summary-full',
 	ImageDescription = 'image-description',
 	ImageSummary = 'image-summary',
 	FolderProjectSummary = 'folder-project-summary',
 	// Classify document type: principle, profile, index, daily, project, note, or other
 	DocTypeClassifyJson = 'doc-type-classify-json',
 	DocTagGenerateJson = 'doc-tag-generate-json',
+	/** System: Hub navigation note JSON fill (maintenance). Paired with {@link HubDocSummary}. */
+	HubDocSummarySystem = 'hub-doc-summary-system',
+	/** User: Hub metadata + draft markdown + vault excerpts → JSON for hub_doc sections. */
+	HubDocSummary = 'hub-doc-summary',
+	/** System: Gray-zone hub candidate judge (maintenance discover). */
+	HubDiscoverJudgeSystem = 'hub-discover-judge-system',
+	/** User: Candidate JSON → accept/reject for hub materialization. */
+	HubDiscoverJudge = 'hub-discover-judge',
+	/** System: Whole-round hub discovery review (coverage + next directions). */
+	HubDiscoverRoundReviewSystem = 'hub-discover-round-review-system',
+	/** User: Round summary JSON → structured review. */
+	HubDiscoverRoundReview = 'hub-discover-round-review',
 
 	// Search prompts
 	/** Session history compression; preserves user background, pains, evidence paths. */
@@ -194,9 +210,30 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 ] as const;
 
 /**
+ * Indexing and Hub–related prompt IDs. Each can have its own provider/model in promptModelMap.
+ * Shown in a dedicated "Indexing & Hub Prompts" section with a "Set All" control.
+ */
+export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
+	PromptId.DocSummary,
+	PromptId.DocSummaryShort,
+	PromptId.DocSummaryFull,
+	PromptId.ImageDescription,
+	PromptId.ImageSummary,
+	PromptId.FolderProjectSummary,
+	PromptId.DocTypeClassifyJson,
+	PromptId.DocTagGenerateJson,
+	PromptId.HubDocSummary,
+	PromptId.HubDiscoverJudge,
+	PromptId.HubDiscoverRoundReview,
+] as const;
+
+/**
  * Prompt IDs that allow model configuration in settings.
  * Only prompts listed here will appear in the Model Configuration UI.
- * 
+ *
+ * Search AI Analysis prompts are listed in {@link SEARCH_AI_ANALYSIS_PROMPT_IDS};
+ * indexing/Hub prompts are listed in {@link INDEXING_AND_HUB_PROMPT_IDS}.
+ *
  * Prompts not listed here (e.g., internal/system prompts) will always use the default model.
  */
 export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
@@ -220,22 +257,27 @@ export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.PromptQualityEvalJson,
 	PromptId.PromptRewriteWithLibrary,
 
-	// Document analysis prompts - users may want different models for different document types
-	PromptId.DocSummary,
-	PromptId.ImageDescription,
-	PromptId.ImageSummary,
-	PromptId.FolderProjectSummary,
-	// Classify document type: principle, profile, index, daily, project, note, or other
-	PromptId.DocTypeClassifyJson,
-	PromptId.DocTagGenerateJson,
-
 ] as const;
 
 /**
- * Check if a prompt ID allows model configuration.
+ * All prompt IDs exposed in Model Configuration UI (general + Search AI Analysis + Indexing & Hub).
+ * Used for bulk reset and counts; arrays are disjoint.
+ */
+export const ALL_MODEL_CONFIG_PROMPT_IDS: readonly PromptId[] = [
+	...CONFIGURABLE_PROMPT_IDS,
+	...SEARCH_AI_ANALYSIS_PROMPT_IDS,
+	...INDEXING_AND_HUB_PROMPT_IDS,
+] as const;
+
+/**
+ * Check if a prompt ID allows model configuration (general, Search AI Analysis, or Indexing & Hub sections).
  */
 export function isPromptModelConfigurable(promptId: PromptId): boolean {
-	return CONFIGURABLE_PROMPT_IDS.includes(promptId);
+	return (
+		CONFIGURABLE_PROMPT_IDS.includes(promptId) ||
+		SEARCH_AI_ANALYSIS_PROMPT_IDS.includes(promptId) ||
+		INDEXING_AND_HUB_PROMPT_IDS.includes(promptId)
+	);
 }
 
 export interface ErrorRetryInfo {
@@ -297,6 +339,26 @@ export interface PromptVariables {
 		path?: string;
 		wordCount?: string;
 	};
+	[PromptId.DocSummaryShort]: {
+		content: string;
+		title?: string;
+		path?: string;
+		/** Target length hint (words), for template `maxWords`. */
+		maxWords?: string;
+		/** Comma-separated TextRank terms. */
+		textrankKeywords?: string;
+		/** Numbered extractive sentences from TextRank. */
+		textrankSentences?: string;
+	};
+	[PromptId.DocSummaryFull]: {
+		content: string;
+		title?: string;
+		path?: string;
+		targetWords?: string;
+		shortSummary?: string;
+		textrankKeywords?: string;
+		textrankSentences?: string;
+	};
 	[PromptId.AiAnalysisSessionSummary]: {
 		content: string;
 		userQuery: string;
@@ -316,10 +378,40 @@ export interface PromptVariables {
 		title?: string;
 		path?: string;
 	};
+	[PromptId.HubDocSummarySystem]: Record<string, never>;
+	[PromptId.HubDocSummary]: {
+		/** JSON string of hub candidate metadata (graph signals, routes, members). */
+		hubMetadataJson: string;
+		/** Draft hub body without YAML frontmatter (structure reference). */
+		draftMarkdownBody: string;
+		/** Truncated vault excerpts or placeholder when empty. */
+		vaultExcerpts: string;
+	};
+	[PromptId.HubDiscoverJudgeSystem]: Record<string, never>;
+	[PromptId.HubDiscoverJudge]: {
+		/** JSON string of one hub candidate (path, scores, sourceKind, role). */
+		candidateJson: string;
+	};
+	[PromptId.HubDiscoverRoundReviewSystem]: Record<string, never>;
+	[PromptId.HubDiscoverRoundReview]: {
+		/** JSON string of HubDiscoverRoundSummary (metrics + hub cards + gaps). */
+		roundSummaryJson: string;
+	};
 	[PromptId.DocTagGenerateJson]: {
 		content: string;
 		title?: string;
-		existingTags?: string[];
+		/** Comma-separated topic hints (optional). */
+		existingTopicTags?: string;
+		/** Comma-separated user #tags / frontmatter tags (hints only). */
+		existingUserTags?: string;
+		/** TextRank top terms (comma-separated). */
+		textrankKeywords?: string;
+		/** TextRank numbered sentences. */
+		textrankSentences?: string;
+		/** Bullet list: dimension → allowed functional tag ids. */
+		functionalHintsTable: string;
+		/** Comma-separated functional tag ids for the prompt body. */
+		functionalTagList: string;
 	};
 	/** originalQuery, question, contextContent (caller builds based on section). */
 	[PromptId.AiAnalysisFollowup]: { originalQuery: string; question: string; contextContent: string };

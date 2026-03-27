@@ -1,3 +1,4 @@
+import { GraphNodeType } from '@/core/po/graph.po';
 import { AISearchGraph } from "@/service/agents/AISearchAgent";
 import { UIPreviewGraph } from "@/ui/component/mine/graph-viz/GraphVisualization";
 
@@ -7,7 +8,8 @@ export function convertGraphToGraphPreview(aiGraph: AISearchGraph | null): UIPre
         nodes: aiGraph.nodes.map(node => ({
             id: node.id,
             label: node.title || node.id,
-            type: node.type || 'document',
+            type: node.type || GraphNodeType.Document,
+            badges: typeof node.attributes?.roleHint === 'string' ? [String(node.attributes.roleHint)] : [],
             attributes: {
                 ...node.attributes,
                 path: node.path,
@@ -18,7 +20,7 @@ export function convertGraphToGraphPreview(aiGraph: AISearchGraph | null): UIPre
             from_node_id: edge.source,
             to_node_id: edge.target,
             kind: edge.type,
-            weight: edge.attributes.weight || 1,
+            weight: Number(edge.attributes.hubEdgeWeight ?? edge.attributes.weight ?? 1) || 1,
             attributes: {
                 ...edge.attributes,
             },

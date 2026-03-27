@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink } from 'lucide-react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
@@ -264,7 +265,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 																	className="pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-rounded pktw-truncate pktw-flex pktw-justify-start"
 																	onClick={() => scrollToContinueSection(i)}
 																>
-																	{label.slice(0, 48)}{label.length > 48 ? '…' : ''}
+																	{label.slice(0, SLICE_CAPS.ui.tabSearchLabel)}{label.length > SLICE_CAPS.ui.tabSearchLabel ? '…' : ''}
 																</Button>
 															);
 														})}
@@ -296,7 +297,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 															className="pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-rounded pktw-truncate pktw-flex pktw-justify-start"
 															onClick={() => scrollToContinueSection(i)}
 														>
-															{label.slice(0, 48)}{label.length > 48 ? '…' : ''}
+															{label.slice(0, SLICE_CAPS.ui.tabSearchLabel)}{label.length > SLICE_CAPS.ui.tabSearchLabel ? '…' : ''}
 														</Button>
 													);
 												})}

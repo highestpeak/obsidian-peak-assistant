@@ -9,7 +9,7 @@ The core idea behind this plugin's graph query solution is described below, focu
 - **Structured Design**: All node and edge information is uniformly stored in a SQLite database (sql.js or better-sqlite3), which is ideal for local operation within the Obsidian plugin environment.
 - **Supported Data**:
   - Document nodes and their metadata
-  - All relationships between nodes (such as explicit edges for tags, links, categories, etc.)
+  - All relationships between nodes (references, `tagged_topic` / `tagged_functional` / `tagged_keyword`, folder `contains`, etc.)
 - **Key Advantages**:
   - Efficient and lightweight: Basic operations like insert, delete, and neighbor node searches are performed with SQL, providing good performance
   - Only persistent storage is used, so it does not consume excessive memory
@@ -23,21 +23,11 @@ The core idea behind this plugin's graph query solution is described below, focu
 
 ---
 
-## 3. Dynamic Analysis Layer — In-Memory Graphology Graph
+## 3. Optional — In-Memory Graphology (advanced algorithms)
 
-- **On-Demand Temporary Construction**: Only when the user needs advanced graph algorithms (such as community detection, shortest path, multi-level graph analysis, etc.), the relevant nodes and edges are read from SQLite and an in-memory Graphology graph object is temporarily built.
-- **Minimal Graph Structure**: The in-memory graph only stores the essential graph structure:
-  - **Node IDs only** (no metadata like attributes, type, label)
-  - **Edge connections and weights** (no edge type or attributes)
-  - This keeps memory footprint minimal while preserving graph topology for algorithm execution
-- **On-Demand Metadata Loading**: Metadata (attributes, type, label) is stored in SQLite and queried on-demand via `GraphStore.getNode()` when needed, rather than being loaded into memory.
-- **Selective Loading**: Supports loading only nodes within N hops (typically 2) of specified center nodes, avoiding full graph loading for large datasets.
-- **Minimal Overhead**: Normally, no large in-memory graph objects persist; they are used only for analysis and are released immediately afterwards.
-- **Example Workflow**:  
-  1. User triggers analysis → SQLite queries required node IDs & edge connections within 2 hops → Build minimal in-memory graph (IDs + connections only)
-  2. Perform graph algorithm analysis using Graphology
-  3. Query metadata on-demand from SQLite if needed
-  4. Once the algorithm finishes, the in-memory structure is destroyed and memory is automatically released
+- **Default**: Relationship queries and UI previews use SQL via `MobiusEdgeRepo` / `GraphRepo` (no full-graph load).
+- **If needed**: For community detection, custom shortest path, etc., a caller may build a **temporary** Graphology graph from SQLite rows, then discard it. Metadata stays in SQLite; use `GraphRepo.getNode()` (or repos) when labels/types are required.
+- **Selective loading**: Prefer N-hop subgraphs (e.g. `GraphRepo.getPreview`) instead of loading the entire vault graph.
 
 ---
 

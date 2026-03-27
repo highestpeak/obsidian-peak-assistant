@@ -18,6 +18,9 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = (process.argv[2] === "production");
 
+/** Keep in sync with `SLICE_CAPS.build.esbuildLogInputs` in `src/core/constant.ts` (Node cannot import TS here). */
+const ESBUILD_LOG_TOP_INPUTS = 50;
+
 /**
  * After bundle is written, patch main.js so Error.__BluebirdErrorTypes__ is configurable: true.
  * Bluebird sets it configurable: false so we cannot delete it at runtime; we have code control so we fix it at build time.
@@ -162,7 +165,7 @@ if (prod) {
 				.sort((a, b) => b[1] - a[1]);
 			console.log("\n[Bundle] Total:", (outMeta.bytes / 1024 / 1024).toFixed(2), "MB");
 			console.log("[Bundle] Top 50 inputs by size:");
-			inputs.slice(0, 50).forEach(([k, b], i) =>
+			inputs.slice(0, ESBUILD_LOG_TOP_INPUTS).forEach(([k, b], i) =>
 				console.log(" ", (i + 1) + ".", (b / 1024).toFixed(1) + " KB", k)
 			);
 		}

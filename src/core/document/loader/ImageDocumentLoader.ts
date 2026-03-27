@@ -6,9 +6,10 @@ import { binaryContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings, SearchSettings } from '@/app/settings/types';
-import { generateUuidWithoutHyphens, generateStableUuid } from '@/core/utils/id-utils';
+import { generateDocIdFromPath, generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
+import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 
 /**
  * Image document loader.
@@ -45,10 +46,11 @@ export class ImageDocumentLoader implements DocumentLoader {
 		const minSize = settings.minDocumentSizeForChunking;
 
 		if (content.length <= minSize) {
-			return [{
+			return assembleIndexedChunks(doc, [{
 				docId: doc.id,
+				chunkType: 'body_raw',
 				content: content,
-			}];
+			}]);
 		}
 
 		const splitter = new RecursiveCharacterTextSplitter({
@@ -62,13 +64,14 @@ export class ImageDocumentLoader implements DocumentLoader {
 			const langchainDoc = langchainDocs[i];
 			chunks.push({
 				docId: doc.id,
+				chunkType: 'body_raw',
 				content: langchainDoc.pageContent,
 				chunkId: generateUuidWithoutHyphens(),
 				chunkIndex: i,
 			});
 		}
 
-		return chunks;
+		return assembleIndexedChunks(doc, chunks);
 	}
 
 	async *scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
@@ -136,7 +139,7 @@ export class ImageDocumentLoader implements DocumentLoader {
 			// const cacheContentHash = generateContentHash(cacheContent);
 
 			return {
-				id: generateStableUuid(file.path),
+				id: generateDocIdFromPath(file.path),
 				type: 'image',
 				sourceFileInfo: {
 					path: file.path,
@@ -158,7 +161,9 @@ export class ImageDocumentLoader implements DocumentLoader {
 				},
 				metadata: {
 					title: file.basename,
-					tags: [],
+					topicTags: [],
+					functionalTagEntries: [],
+					keywordTags: [],
 				},
 				contentHash: realContentHash,
 				references: {

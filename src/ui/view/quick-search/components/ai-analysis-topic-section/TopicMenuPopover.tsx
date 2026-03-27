@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import React, { useCallback } from 'react';
 import { Copy, Search, MessageSquare, FileEdit, FileText, Network } from 'lucide-react';
 import type { SearchResultItem } from '@/service/search/types';
@@ -149,7 +150,7 @@ export const TopicMenuPopover: React.FC<TopicMenuPopoverProps> = ({
 						View graph for this topic
 					</Button>
 				) : null}
-				{sources.slice(0, 6).map((s, i) => (
+				{sources.slice(0, SLICE_CAPS.ui.topicMenuSources).map((s, i) => (
 					<Button
 						variant="ghost"
 						style={{ cursor: 'pointer' }}

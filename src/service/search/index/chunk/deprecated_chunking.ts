@@ -177,6 +177,7 @@ export async function chunkContent(
 	if (content.length <= minSize) {
 		return [{
 			docId: documentId,
+			chunkType: 'body_raw',
 			content: content,
 		}];
 	}
@@ -197,6 +198,7 @@ export async function chunkContent(
 
 		chunks.push({
 			docId: documentId,
+			chunkType: 'body_raw',
 			content: chunkText,
 			chunkId: generateUuidWithoutHyphens(),
 			chunkIndex: i,

@@ -13,6 +13,7 @@ import {
 } from '../types';
 import { createAnthropic, type AnthropicProvider } from '@ai-sdk/anthropic';
 import { type LanguageModel } from 'ai';
+import { SLICE_CAPS } from '@/core/constant';
 import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
 
 const DEFAULT_CLAUDE_MAX_OUTPUT_TOKENS = 4096;
@@ -217,7 +218,7 @@ export class ClaudeChatService implements LLMProviderService {
 
 		// Try partial match (for dated versions)
 		for (const [key, value] of Object.entries(MODEL_ID_MAP)) {
-			if (model.includes(key) || key.includes(model.split('-').slice(0, 3).join('-'))) {
+			if (model.includes(key) || key.includes(model.split('-').slice(0, SLICE_CAPS.modelId.claudePrefixSegments).join('-'))) {
 				if (value.tokenLimits) {
 					return value.tokenLimits;
 				}

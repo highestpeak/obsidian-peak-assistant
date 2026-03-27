@@ -2,6 +2,7 @@
  * Pipeline stage visualizer: Classify (dimension ring) + Recon (points/ripple) + Grouping (bubbles) + Evidence (group progress, reading path).
  * Driven by search-stage ui-signal and parallel-stream-progress; uses real dimensions/groups from backend.
  */
+import { SLICE_CAPS } from '@/core/constant';
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
@@ -97,7 +98,7 @@ export const SearchPipelineVisualizer: React.FC<{ isStreaming?: boolean }> = ({ 
 					<div className="pktw-flex-1 pktw-min-w-0">
 						<div className="pktw-text-[10px] pktw-font-medium pktw-text-[#6b7280] pktw-mb-1.5">Result</div>
 						<div className="pktw-flex pktw-flex-wrap pktw-gap-1">
-							{blockOrder.slice(0, 12).map((blockId, i) => {
+							{blockOrder.slice(0, SLICE_CAPS.ui.searchPipelineBlocks).map((blockId, i) => {
 								const done = state.reportBlockCompleted.has(blockId);
 								return (
 									<motion.div

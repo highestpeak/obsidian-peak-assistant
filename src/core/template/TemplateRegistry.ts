@@ -3,7 +3,7 @@ import type { PromptId } from '@/service/prompt/PromptId';
 /**
  * Category of template. Determines base path under plugin directory.
  */
-export type TemplateCategory = 'prompts' | 'tools' | 'agents' | 'ui';
+export type TemplateCategory = 'prompts' | 'tools' | 'agents' | 'ui' | 'indexing';
 
 /**
  * Tool result / handler template IDs (search graph inspector, etc.).
@@ -37,9 +37,20 @@ export const AgentTemplateId = {
 export type AgentTemplateId = (typeof AgentTemplateId)[keyof typeof AgentTemplateId];
 
 /**
+ * Internal indexing templates (not prompts/tools).
+ */
+export const IndexingTemplateId = {
+	CodeStopwords: 'indexing-code-stopwords',
+	/** Hub-discover deterministic next-direction hint; render with `{ gapPrefixes: string[] }`. */
+	HubDiscoverNextDirections: 'indexing-hub-discover-next-directions',
+} as const;
+
+export type IndexingTemplateId = (typeof IndexingTemplateId)[keyof typeof IndexingTemplateId];
+
+/**
  * Union of all template identifiers.
  */
-export type TemplateId = PromptId | ToolTemplateId | AgentTemplateId;
+export type TemplateId = PromptId | ToolTemplateId | AgentTemplateId | IndexingTemplateId;
 
 /**
  * Metadata for a single template (path, options). No content.
@@ -62,6 +73,7 @@ const CATEGORY_PREFIX: Record<TemplateCategory, string> = {
 	tools: 'templates/tools',
 	agents: 'templates/agents',
 	ui: 'templates/ui',
+	indexing: 'templates/indexing',
 };
 
 function meta(
@@ -93,6 +105,8 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'prompt-quality-eval-json': meta('prompts', 'prompt-quality-eval-json', { expectsJson: true, jsonConstraint: 'Return only the JSON object, nothing else.' }),
 	'prompt-rewrite-with-library': meta('prompts', 'prompt-rewrite-with-library'),
 	'doc-summary': meta('prompts', 'doc-summary'),
+	'doc-summary-short': meta('prompts', 'doc-summary-short'),
+	'doc-summary-full': meta('prompts', 'doc-summary-full'),
 	'ai-analysis-session-summary': meta('prompts', 'ai-analysis-session-summary'),
 	'image-description': meta('prompts', 'image-description'),
 	'image-summary': meta('prompts', 'image-summary'),
@@ -151,7 +165,31 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-save-filename': meta('prompts', 'ai-analysis-save-filename'),
 	'ai-analysis-save-folder': meta('prompts', 'ai-analysis-save-folder'),
 	'doc-type-classify-json': meta('prompts', 'doc-type-classify-json', { expectsJson: true, jsonConstraint: 'Return only the JSON object, nothing else.' }),
-	'doc-tag-generate-json': meta('prompts', 'doc-tag-generate-json', { expectsJson: true, jsonConstraint: 'Return only the JSON array, nothing else.' }),
+	'doc-tag-generate-json': meta('prompts', 'doc-tag-generate-json', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only the JSON object with topicTagEntries, functionalTagEntries, context tag arrays, and optional inferCreatedAt string, nothing else.',
+	}),
+	'hub-doc-summary-system': meta('prompts', 'hub-doc-summary-system'),
+	'hub-doc-summary': meta('prompts', 'hub-doc-summary', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return exactly one JSON object with keys shortSummary, fullSummary, coreFacts, queryAnchors, tagTopicDistribution, timeDimension, keyPatterns. No markdown fences.',
+		systemPromptId: 'hub-doc-summary-system' as PromptId,
+	}),
+	'hub-discover-judge-system': meta('prompts', 'hub-discover-judge-system'),
+	'hub-discover-judge': meta('prompts', 'hub-discover-judge', {
+		expectsJson: true,
+		jsonConstraint: 'Return only JSON: { accept, confidence, reason }.',
+		systemPromptId: 'hub-discover-judge-system' as PromptId,
+	}),
+	'hub-discover-round-review-system': meta('prompts', 'hub-discover-round-review-system'),
+	'hub-discover-round-review': meta('prompts', 'hub-discover-round-review', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only JSON: coverageSufficient, quality, needAnotherRound, confidence, summary, strengths, issues, nextDirections, suggestedDiscoveryModes, targetPathPrefixes, stopReason.',
+		systemPromptId: 'hub-discover-round-review-system' as PromptId,
+	}),
 	'context-memory': meta('prompts', 'context-memory'),
 	'user-profile-context': meta('prompts', 'user-profile-context'),
 	'profile-from-vault-json': meta('prompts', 'profile-from-vault-json', { expectsJson: true, jsonConstraint: 'Return only the JSON array, nothing else.' }),
@@ -175,6 +213,10 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[AgentTemplateId.EvidenceGroupSharedContext]: meta('agents', 'evidence-group-shared-context'),
 	[AgentTemplateId.WeavePathsContext]: meta('agents', 'weave-paths-context'),
 	[AgentTemplateId.ReportBlockBlueprintLine]: meta('agents', 'report-block-blueprint-line'),
+
+	// --- Indexing (Handlebars; loaded at plugin boot for markdown chunking helpers) ---
+	[IndexingTemplateId.CodeStopwords]: meta('indexing', 'code-stopwords'),
+	[IndexingTemplateId.HubDiscoverNextDirections]: meta('indexing', 'hub-discover-next-directions'),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {

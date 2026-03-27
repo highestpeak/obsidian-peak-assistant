@@ -1,7 +1,13 @@
+import { normalizePath } from 'obsidian';
+import { AppContext } from '@/app/context/AppContext';
+import { BusinessError, ErrorCode } from '@/core/errors';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import type { DocumentType } from '@/core/document/types';
-import { PromptId, CONFIGURABLE_PROMPT_IDS } from '@/service/prompt/PromptId';
-
+import { PromptId, CONFIGURABLE_PROMPT_IDS, INDEXING_AND_HUB_PROMPT_IDS } from '@/service/prompt/PromptId';
+import {
+	DEFAULT_HUB_DISCOVER_SETTINGS,
+	type HubDiscoverSettings,
+} from '@/service/search/index/helper/hub/types';
 /**
  * Document chunking configuration.
  */
@@ -37,6 +43,19 @@ export interface ChunkingSettings {
 		provider: string;
 		modelId: string;
 	};
+	/**
+	 * When true, fenced/indented code blocks are replaced before chunking to reduce noisy embeddings.
+	 */
+	skipCodeBlocksInChunking?: boolean;
+	/**
+	 * When set, replaces each omitted fenced block (maxCodeChunkChars 0) with this exact string.
+	 * Omit to use per-block `[code omitted lang=… lines=… chars=… kw=…]` summaries.
+	 */
+	codeBlockPlaceholder?: string;
+	/**
+	 * Max characters per code block to keep (0 = omit code entirely, only placeholder).
+	 */
+	maxCodeChunkChars?: number;
 }
 
 /**
@@ -46,6 +65,9 @@ export const DEFAULT_CHUNKING_SETTINGS: ChunkingSettings = {
 	maxChunkSize: 1000,
 	chunkOverlap: 200,
 	minDocumentSizeForChunking: 1500,
+	skipCodeBlocksInChunking: false,
+	codeBlockPlaceholder: '\n\n[code omitted]\n\n',
+	maxCodeChunkChars: 0,
 };
 
 /**
@@ -147,6 +169,11 @@ export interface SearchSettings {
 	 * Inspector Links panel: filter tokens and folder grouping.
 	 */
 	inspectorLinks?: InspectorLinksSettings;
+
+	/**
+	 * Hub maintenance: multi-round candidate selection and optional LLM judge.
+	 */
+	hubDiscover?: HubDiscoverSettings;
 }
 
 /** Inspector Links panel settings */
@@ -242,15 +269,68 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	aiAnalysisHistoryLimit: 5,
 
 	inspectorLinks: DEFAULT_INSPECTOR_LINKS_SETTINGS,
+
+	hubDiscover: { ...DEFAULT_HUB_DISCOVER_SETTINGS },
 };
+
+/** Subfolder names under rootFolder (Prompts, Attachments, etc.). Only rootFolder is configurable. */
+export const AI_PATH_SUBFOLDERS = {
+	Prompts: 'Prompts',
+	Attachments: 'Attachments',
+	ResourcesSummary: 'resources-summary-cache',
+	HubSummaries: 'Hub-Summaries',
+	/** User-authored hub notes live here; not auto-overwritten by maintenance. */
+	ManualHubNotes: 'Manual',
+	UserProfile: 'system/User-Profile.md',
+} as const;
+
+/**
+ * Normalized AI root (`settings.ai.rootFolder`). Throws if empty after trim.
+ */
+function aiNormalizedRootFolder(): string {
+	const trimmed = AppContext.getInstance().settings.ai.rootFolder.trim();
+	if (!trimmed) {
+		throw new BusinessError(ErrorCode.CONFIGURATION_MISSING, 'AI rootFolder is empty; ensure settings are initialized.');
+	}
+	return normalizePath(trimmed.replace(/\/+$/, ''));
+}
+
+/** `{root}/Prompts` — vault-relative, normalized. */
+export function getAIPromptFolder(): string {
+	return normalizePath(`${aiNormalizedRootFolder()}/${AI_PATH_SUBFOLDERS.Prompts}`);
+}
+
+/** `{root}/Attachments` — vault-relative, normalized. */
+export function getAIUploadFolder(): string {
+	return normalizePath(`${aiNormalizedRootFolder()}/${AI_PATH_SUBFOLDERS.Attachments}`);
+}
+
+/** `{root}/resources-summary-cache` — vault-relative, normalized. */
+export function getAIResourcesSummaryFolder(): string {
+	return normalizePath(`${aiNormalizedRootFolder()}/${AI_PATH_SUBFOLDERS.ResourcesSummary}`);
+}
+
+/** `{root}/Hub-Summaries` — vault-relative, normalized. */
+export function getAIHubSummaryFolder(): string {
+	return normalizePath(`${aiNormalizedRootFolder()}/${AI_PATH_SUBFOLDERS.HubSummaries}`);
+}
+
+/** `{root}/Hub-Summaries/Manual` — user-authored hub notes; vault-relative, normalized. */
+export function getAIManualHubFolder(): string {
+	return normalizePath(`${getAIHubSummaryFolder()}/${AI_PATH_SUBFOLDERS.ManualHubNotes}`);
+}
+
+/** `{root}/system/User-Profile.md` — vault-relative, normalized. */
+export function getAIProfileFilePath(): string {
+	return normalizePath(`${aiNormalizedRootFolder()}/${AI_PATH_SUBFOLDERS.UserProfile}`);
+}
 
 /**
  * AI service configuration settings.
+ * Only rootFolder is configurable; Prompts, Attachments, etc. use getters such as {@link getAIPromptFolder}.
  */
 export interface AIServiceSettings {
 	rootFolder: string;
-	promptFolder: string;
-	uploadFolder: string;
 	defaultModel: {
 		provider: string;
 		modelId: string;
@@ -261,15 +341,6 @@ export interface AIServiceSettings {
 	 */
 	profileEnabled?: boolean;
 	/**
-	 * Path to user profile file (relative to vault root)
-	 */
-	profileFilePath?: string;
-	/**
-	 * Resources summary folder name (relative to rootFolder).
-	 * Used for storing resource summary notes (files, URLs, etc.).
-	 */
-	resourcesSummaryFolder: string;
-	/**
 	 * Enable prompt rewrite (auto-improve user prompts)
 	 */
 	promptRewriteEnabled?: boolean;
@@ -279,9 +350,9 @@ export interface AIServiceSettings {
 	 */
 	defaultOutputControl?: LLMOutputControlSettings;
 	/**
-	 * Model configuration map for configurable prompt IDs.
-	 * Only prompts in CONFIGURABLE_PROMPT_IDS should be included here.
-	 * If not configured for a specific prompt, falls back to defaultModel.
+	 * Model configuration map for prompt IDs shown in Model Configuration UI.
+	 * Includes general configurable prompts, Search AI Analysis, and Indexing & Hub prompts.
+	 * If not configured for a specific prompt, falls back to defaultModel (see PromptService fallbacks).
 	 */
 	promptModelMap?: Partial<Record<PromptId, { provider: string; modelId: string }>>;
 	/**
@@ -297,22 +368,18 @@ export interface AIServiceSettings {
  */
 export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	rootFolder: 'ChatFolder',
-	promptFolder: 'ChatFolder/Prompts',
-	uploadFolder: 'ChatFolder/Attachments',
-	resourcesSummaryFolder: 'ChatFolder/resources-summary-cache',
 	defaultModel: {
 		provider: 'openai',
 		modelId: 'gpt-4o-mini',
 	},
 	llmProviderConfigs: {},
 	profileEnabled: true,
-	profileFilePath: 'ChatFolder/system/User-Profile.md',
 	promptRewriteEnabled: false,
-	// Programmatically initialize promptModelMap with defaultModel only for configurable prompt IDs
+	// Programmatically initialize promptModelMap with defaultModel for general + Indexing & Hub prompts
 	promptModelMap: (() => {
 		const defaultModel = { provider: 'openai', modelId: 'gpt-4o-mini' };
 		const map: Partial<Record<PromptId, { provider: string; modelId: string }>> = {};
-		for (const promptId of CONFIGURABLE_PROMPT_IDS) {
+		for (const promptId of [...CONFIGURABLE_PROMPT_IDS, ...INDEXING_AND_HUB_PROMPT_IDS]) {
 			map[promptId] = { ...defaultModel };
 		}
 		return map;

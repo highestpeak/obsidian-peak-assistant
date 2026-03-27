@@ -1,4 +1,5 @@
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings, SearchSettings } from '@/app/settings/types';
+import { DEFAULT_HUB_DISCOVER_SETTINGS, type HubDiscoverSettings } from '@/service/search/index/helper/hub/types';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 /**
  * Get string value from source or return default.
@@ -25,11 +26,7 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 
 	const settings = { ...DEFAULT_AI_SERVICE_SETTINGS };
 
-	// Simple string fields
 	settings.rootFolder = getString(rawAI.rootFolder, settings.rootFolder);
-	settings.promptFolder = getString(rawAI.promptFolder, settings.promptFolder);
-	settings.uploadFolder = getString(rawAI.uploadFolder, settings.uploadFolder);
-	settings.resourcesSummaryFolder = getString(rawAI.resourcesSummaryFolder, settings.resourcesSummaryFolder);
 
 	// Default model
 	if (rawAI.defaultModel && typeof rawAI.defaultModel === 'object') {
@@ -47,7 +44,6 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 
 	// Profile settings
 	settings.profileEnabled = getBoolean(rawAI.profileEnabled, settings.profileEnabled ?? true);
-	settings.profileFilePath = getString(rawAI.profileFilePath, settings.profileFilePath ?? '');
 	settings.promptRewriteEnabled = getBoolean(rawAI.promptRewriteEnabled, settings.promptRewriteEnabled ?? false);
 
 	// Prompt model map
@@ -98,6 +94,18 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 			maxChunkSize: typeof rawChunking.maxChunkSize === 'number' ? rawChunking.maxChunkSize : DEFAULT_SEARCH_SETTINGS.chunking.maxChunkSize,
 			chunkOverlap: typeof rawChunking.chunkOverlap === 'number' ? rawChunking.chunkOverlap : DEFAULT_SEARCH_SETTINGS.chunking.chunkOverlap,
 			minDocumentSizeForChunking: typeof rawChunking.minDocumentSizeForChunking === 'number' ? rawChunking.minDocumentSizeForChunking : DEFAULT_SEARCH_SETTINGS.chunking.minDocumentSizeForChunking,
+			skipCodeBlocksInChunking:
+				typeof rawChunking.skipCodeBlocksInChunking === 'boolean'
+					? rawChunking.skipCodeBlocksInChunking
+					: DEFAULT_SEARCH_SETTINGS.chunking.skipCodeBlocksInChunking,
+			codeBlockPlaceholder:
+				typeof rawChunking.codeBlockPlaceholder === 'string'
+					? rawChunking.codeBlockPlaceholder
+					: DEFAULT_SEARCH_SETTINGS.chunking.codeBlockPlaceholder,
+			maxCodeChunkChars:
+				typeof rawChunking.maxCodeChunkChars === 'number'
+					? rawChunking.maxCodeChunkChars
+					: DEFAULT_SEARCH_SETTINGS.chunking.maxCodeChunkChars,
 		};
 
 		// Embedding model
@@ -211,6 +219,37 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 	}
 	if (typeof (rawSearch as any).aiAnalysisHistoryLimit === 'number') {
 		settings.aiAnalysisHistoryLimit = Math.max(1, Math.min(50, (rawSearch as any).aiAnalysisHistoryLimit));
+	}
+
+	const rawHub = rawSearch.hubDiscover as Partial<HubDiscoverSettings> | undefined;
+	if (rawHub && typeof rawHub === 'object') {
+		settings.hubDiscover = {
+			...DEFAULT_HUB_DISCOVER_SETTINGS,
+			enableLlmJudge:
+				typeof rawHub.enableLlmJudge === 'boolean' ? rawHub.enableLlmJudge : DEFAULT_HUB_DISCOVER_SETTINGS.enableLlmJudge,
+			maxJudgeCalls:
+				typeof rawHub.maxJudgeCalls === 'number'
+					? Math.max(0, Math.min(100, rawHub.maxJudgeCalls))
+					: DEFAULT_HUB_DISCOVER_SETTINGS.maxJudgeCalls,
+			minCoverageGain:
+				typeof rawHub.minCoverageGain === 'number'
+					? Math.max(0, Math.min(1, rawHub.minCoverageGain))
+					: DEFAULT_HUB_DISCOVER_SETTINGS.minCoverageGain,
+			maxRounds:
+				typeof rawHub.maxRounds === 'number'
+					? Math.max(1, Math.min(10, rawHub.maxRounds))
+					: DEFAULT_HUB_DISCOVER_SETTINGS.maxRounds,
+			judgeGrayZoneMin:
+				typeof rawHub.judgeGrayZoneMin === 'number'
+					? Math.max(0, Math.min(1, rawHub.judgeGrayZoneMin))
+					: DEFAULT_HUB_DISCOVER_SETTINGS.judgeGrayZoneMin,
+			judgeGrayZoneMax:
+				typeof rawHub.judgeGrayZoneMax === 'number'
+					? Math.max(0, Math.min(1, rawHub.judgeGrayZoneMax))
+					: DEFAULT_HUB_DISCOVER_SETTINGS.judgeGrayZoneMax,
+		};
+	} else {
+		settings.hubDiscover = { ...DEFAULT_HUB_DISCOVER_SETTINGS };
 	}
 
 	return settings;

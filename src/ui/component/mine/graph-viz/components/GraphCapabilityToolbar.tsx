@@ -3,6 +3,7 @@
  * Rendered in the below-graph area when graphBelowExtraAnalysisArea.hops / .findPath is provided.
  */
 
+import { SLICE_CAPS } from '@/core/constant';
 import React, { useState, useCallback, useId } from 'react';
 import { Focus, Route } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -95,7 +96,7 @@ export const GraphBelowExtraAnalysisArea: React.FC<GraphCapabilityToolbarProps> 
 							list={datalistId}
 						/>
 						<datalist id={datalistId}>
-							{candidatePaths.slice(0, 30).map((item) => (
+							{candidatePaths.slice(0, SLICE_CAPS.graphViz.candidatePathsToolbar).map((item) => (
 								<option key={item.path} value={item.path}>
 									{item.label || item.path}
 								</option>

@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import { Experimental_Agent as Agent, type LanguageModel, type ModelMessage, type PrepareStepResult, type StepResult } from 'ai';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { LLMStreamEvent, StreamTriggerName, UIStepType } from '@/core/providers/types';
@@ -124,7 +125,7 @@ export class SummaryAgent {
 
         const stream = this.aiServiceManager.chatWithPromptStream(PromptId.AiAnalysisTitle, {
             query: this.context.getInitialPrompt() ?? '',
-            summary: this.context.getVerifiedFactSheet().join('\n').slice(0, 500) ?? '',
+            summary: this.context.getVerifiedFactSheet().join('\n').slice(0, SLICE_CAPS.agent.summaryFacts) ?? '',
         });
         for await (const chunk of stream) {
             if (chunk.type === 'prompt-stream-result') {

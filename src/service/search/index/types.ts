@@ -1,3 +1,5 @@
+import type { ChunkMeta, ChunkType } from '@/service/search/index/chunkTypes';
+
 /**
  * Document chunking options.
  */
@@ -35,10 +37,21 @@ export interface DocumentChunkingOptions {
  */
 export interface Chunk {
 	/**
-	 * Document ID - links to doc_meta.id.
-	 * This is the identifier used in the database to associate chunks with documents.
+	 * Document node id (indexed document on `mobius_node`); used as doc_id in chunk/embedding tables.
 	 */
 	docId: string;
+	/**
+	 * Provenance: body split, LLM summary, TextRank salient sentence, etc.
+	 */
+	chunkType: ChunkType;
+	/**
+	 * Optional structured metadata (TextRank scores, summary source).
+	 */
+	chunkMeta?: ChunkMeta;
+	/**
+	 * Optional display title for snippet UX (e.g. summary label).
+	 */
+	title?: string;
 	/**
 	 * Chunk content (or document content if not chunked).
 	 */

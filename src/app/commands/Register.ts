@@ -9,13 +9,18 @@ import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
 import { SearchClient } from '@/service/search/SearchClient';
 import type { MyPluginSettings, SearchSettings } from '@/app/settings/types';
 import { IndexInitializer } from '@/service/search/index/indexInitializer';
-import { IndexService } from '@/service/search/index/indexService';
+import {
+	IndexService,
+	type MobiusGlobalMaintenanceBatchPhase,
+	type MobiusGlobalMaintenanceProgress,
+} from '@/service/search/index/indexService';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import { ConfirmModal } from '@/ui/view/ConfirmModal';
 import { BuildUserProfileProgressModal } from '@/ui/view/BuildUserProfileProgressModal';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { HubDocService } from '@/service/search/index/helper/hub';
 
 /**
  * Registers core commands exposed via Obsidian command palette.
@@ -76,6 +81,27 @@ export function buildCoreCommands(
 					title: DEFAULT_NEW_CONVERSATION_TITLE,
 					project: null,
 				});
+			},
+		},
+		{
+			id: 'peak-hub-generate-stub-summaries',
+			name: 'Generate / refresh Hub summaries (top candidates)',
+			callback: async () => {
+				if (!searchSettings) {
+					new Notice('Search settings are not available. Please restart the plugin.', 5000);
+					return;
+				}
+				try {
+					const svc = new HubDocService(() => searchSettings);
+					const { written } = await svc.generateAndIndexHubDocsForMaintenance();
+					new Notice(
+						`Hub: wrote or updated ${written.length} auto Hub-*.md file(s). Manual hubs under Hub-Summaries/Manual/ are only re-indexed, not overwritten.`,
+						7000,
+					);
+				} catch (e) {
+					console.error('[peak-hub-generate-stub-summaries]', e);
+					new Notice(`Hub generation failed: ${(e as Error).message}`, 8000);
+				}
 			},
 		},
 		{
@@ -245,23 +271,65 @@ export function buildCoreCommands(
 			},
 		},
 		{
-			id: 'peak-migrate-chatfolder-to-chat-db',
-			name: 'Migrate ChatFolder index to Chat DB (one-time)',
+			id: 'peak-mobius-full-maintenance',
+			name: 'Mobius: full graph maintenance',
 			callback: async () => {
-				if (!searchSettings) {
-					new Notice('Search settings not available. Restart the plugin.', 5000);
-					return;
-				}
+				let activeNotice = new Notice('Mobius: starting maintenance…', 0);
+				const setProgressText = (text: string) => {
+					const n = activeNotice as Notice & { setMessage?: (m: string) => void };
+					if (typeof n.setMessage === 'function') {
+						n.setMessage(text);
+					} else {
+						activeNotice.hide();
+						activeNotice = new Notice(text, 0);
+					}
+				};
+				const phaseLabel = (phase: MobiusGlobalMaintenanceBatchPhase): string => {
+					if (phase === 'tag_doc_count') return 'tag ↔ doc counts';
+					if (phase === 'document_degrees') return 'document degrees';
+					if (phase === 'pagerank_edges') return 'PageRank · reference edges';
+					if (phase === 'pagerank_persist') return 'PageRank · writing scores';
+					if (phase === 'semantic_pagerank_edges') return 'Semantic PageRank · edges';
+					if (phase === 'semantic_pagerank_persist') return 'Semantic PageRank · writing scores';
+					if (phase === 'folder_hub_stats') return 'folder hub stats';
+					return 'Semantic PageRank · writing scores';
+				};
 				try {
-					new Notice('Migrating ChatFolder index from Vault DB to Chat DB...', 3000);
-					const result = await IndexService.getInstance().migrateChatFolderFromVaultToChat(searchSettings);
-					new Notice(
-						`Migration done: reindexed ${result.reindexed} path(s) to Chat DB, removed ${result.deletedFromVault} from Vault DB.`,
-						6000,
-					);
+					await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
+						onProgress: (ev: MobiusGlobalMaintenanceProgress) => {
+							if (ev.phase === 'semantic_related') {
+								setProgressText(
+									`Mobius: ${ev.tenant} · semantic edges · ${ev.processed}/${ev.total} docs`,
+								);
+								return;
+							}
+							if (ev.phase === 'hub_discovery') {
+								setProgressText(
+									`Mobius: ${ev.tenant} · hub discovery · ${ev.idsInBatch} candidates`,
+								);
+								return;
+							}
+							if (ev.phase === 'hub_materialize') {
+								setProgressText(
+									`Mobius: ${ev.tenant} · hub docs · ${ev.batchIndex}/${ev.idsInBatch}`,
+								);
+								return;
+							}
+							if (ev.phase === 'hub_index') {
+								setProgressText(`Mobius: ${ev.tenant} · hub reindex · ${ev.idsInBatch} files`);
+								return;
+							}
+							setProgressText(
+								`Mobius: ${ev.tenant} · ${phaseLabel(ev.phase)} · batch ${ev.batchIndex ?? 0} · ${ev.idsInBatch ?? 0} items`,
+							);
+						},
+					});
+					activeNotice.hide();
+					new Notice('Mobius maintenance completed.', 3000);
 				} catch (e) {
-					console.error('[Register] migrateChatFolderToChatDb failed:', e);
-					new Notice('Migration failed. See console for details.', 5000);
+					activeNotice.hide();
+					console.error('[Register] peak-mobius-full-maintenance failed:', e);
+					new Notice('Mobius maintenance failed. See console.', 5000);
 				}
 			},
 		},
@@ -273,9 +341,9 @@ export function buildCoreCommands(
 				try {
 					new Notice('Starting cleanup of useless data...', 2000);
 
-					// Step 1: Orphan search index (doc_meta, chunks, embeddings, graph, etc.) — files deleted from vault but still in DB
-					const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-					const indexedPaths = await docMetaRepo.getAllIndexedPaths();
+					// Step 1: Indexed paths in DB but file removed from vault — remove index rows (Mobius + chunks + embeddings)
+					const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+					const indexedPaths = await indexedDocumentRepo.getAllIndexedPaths();
 					const vaultPathSet = new Set(app.vault.getFiles().map((f) => f.path));
 					const orphanPaths = Array.from(indexedPaths.keys()).filter((p) => !vaultPathSet.has(p));
 					if (orphanPaths.length > 0) {
@@ -285,11 +353,20 @@ export function buildCoreCommands(
 						new Notice('Search index: no orphaned documents found.', 3000);
 					}
 
-					// Step 1.5: Orphan child records (doc_meta_fts, doc_fts, doc_chunk, embedding, doc_statistics, graph) — meta gone but children remain
+					// Step 1.5: Orphan FTS/chunks/embeddings/stray document nodes when parent index row is inconsistent
 					const orphanResult = await IndexService.getInstance().cleanupOrphanedSearchIndexData();
-					const orphanTotal = orphanResult.metaFts + orphanResult.fts + orphanResult.chunks + orphanResult.embeddings + orphanResult.stats + orphanResult.graphNodes;
+					const orphanTotal =
+						orphanResult.metaFts +
+						orphanResult.fts +
+						orphanResult.chunks +
+						orphanResult.embeddings +
+						orphanResult.stats +
+						orphanResult.graphNodes;
 					if (orphanTotal > 0) {
-						new Notice(`Search index: cleaned ${orphanTotal} orphan child record(s) (meta_fts, fts, chunks, embeddings, stats, graph).`, 4000);
+						new Notice(
+							`Search index: cleaned ${orphanTotal} orphan record(s) (meta FTS, FTS, chunks, embeddings, stats, Mobius document nodes).`,
+							4000,
+						);
 					}
 
 					// Step 2: Orphan vec_embeddings (records not linked to embedding table)

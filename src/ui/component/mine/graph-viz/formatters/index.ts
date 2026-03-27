@@ -2,6 +2,8 @@
  * Graph snapshot formatters for copy/export.
  */
 
+import { SLICE_CAPS } from '@/core/constant';
+import { GraphNodeType } from '@/core/po/graph.po';
 import type { GraphSnapshot } from '../types';
 
 export interface SnapshotMarkdownOptions {
@@ -33,7 +35,10 @@ export function snapshotToMarkdown(
 
 	const typeCounts: Record<string, number> = { docs: docs.length };
 	for (const [groupName, types] of Object.entries(nodeTypeGroups)) {
-		const count = types.reduce((sum, t) => sum + snapshot.nodes.filter((n) => (n.type ?? 'document') === t).length, 0);
+		const count = types.reduce(
+			(sum, t) => sum + snapshot.nodes.filter((n) => (n.type ?? GraphNodeType.Document) === t).length,
+			0,
+		);
 		typeCounts[groupName] = count;
 	}
 
@@ -59,11 +64,11 @@ export function snapshotToMarkdown(
 
 	for (const [sectionName, types] of Object.entries(nodeTypeGroups)) {
 		if (types.length === 0) continue;
-		const items = snapshot.nodes.filter((n) => types.includes(n.type ?? 'document'));
+		const items = snapshot.nodes.filter((n) => types.includes(n.type ?? GraphNodeType.Document));
 		if (items.length === 0) continue;
 		const sectionTitle = sectionName.charAt(0).toUpperCase() + sectionName.slice(1);
 		lines.push(`### ${sectionTitle}`);
-		for (const n of items.slice(0, 80)) {
+		for (const n of items.slice(0, SLICE_CAPS.graphViz.formatItems)) {
 			lines.push(`- ${n.label}`);
 		}
 		lines.push('');
@@ -71,7 +76,7 @@ export function snapshotToMarkdown(
 
 	if (docs.length) {
 		lines.push('### Documents');
-		for (const d of docs.slice(0, 80)) {
+		for (const d of docs.slice(0, SLICE_CAPS.graphViz.formatDocs)) {
 			lines.push(`- ${d.label}`);
 		}
 		lines.push('');
@@ -79,7 +84,7 @@ export function snapshotToMarkdown(
 
 	if (snapshot.edges.length) {
 		lines.push('### Edges (sample)');
-		for (const e of snapshot.edges.slice(0, 120)) {
+		for (const e of snapshot.edges.slice(0, SLICE_CAPS.graphViz.formatEdges)) {
 			lines.push(`- ${e.source} -> ${e.target} (${e.kind})`);
 		}
 		lines.push('');
@@ -88,7 +93,7 @@ export function snapshotToMarkdown(
 }
 
 export function snapshotToMermaid(snapshot: GraphSnapshot): string {
-	const nodes = snapshot.nodes.slice(0, 60);
+	const nodes = snapshot.nodes.slice(0, SLICE_CAPS.graphViz.formatNodes);
 	const idMap = new Map<string, string>();
 	nodes.forEach((n, idx) => idMap.set(n.id, `n${idx}`));
 	const esc = (s: string) => s.replace(/"/g, '\\"');
@@ -100,7 +105,7 @@ export function snapshotToMermaid(snapshot: GraphSnapshot): string {
 		const label = esc(n.label || n.id);
 		lines.push(`${nid}["${label}"]`);
 	}
-	for (const e of snapshot.edges.slice(0, 120)) {
+	for (const e of snapshot.edges.slice(0, SLICE_CAPS.graphViz.formatEdges)) {
 		const a = idMap.get(e.source);
 		const b = idMap.get(e.target);
 		if (!a || !b) continue;

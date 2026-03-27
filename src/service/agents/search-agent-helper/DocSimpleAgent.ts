@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import { AIServiceManager } from "@/service/chat/service-manager";
 import { Experimental_Agent as Agent, hasToolCall } from "ai";
 import { AgentTool } from "@/service/tools/types";
@@ -167,7 +168,7 @@ export class DocSimpleAgent {
 			}
 			yield { ...chunk, triggerName: StreamTriggerName.DOC_SIMPLE_AGENT };
 		}
-		if (!title) title = userPrompt.trim().slice(0, 80);
+		if (!title) title = userPrompt.trim().slice(0, SLICE_CAPS.agent.docSimpleTitle);
 
 		yield {
 			type: "complete",

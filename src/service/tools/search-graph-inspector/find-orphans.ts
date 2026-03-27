@@ -1,5 +1,6 @@
+import { isIndexedNoteNodeType } from '@/core/po/graph.po';
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
-import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
+import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
@@ -8,13 +9,13 @@ import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 type OrphanNode = GraphNode & { orphanType: string; }
 export async function findOrphanNotes(params: any, templateManager?: TemplateManager) {
     const { filters, sorter, limit, response_format } = params;
-    const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-    const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
 
-    const hardOrphanIds = await graphEdgeRepo.getHardOrphans(params.limit || 100);
+    const hardOrphanIds = await mobiusEdgeRepo.getHardOrphans(params.limit || 100);
     let filteredHardOrphans: OrphanNode[] = [];
     if (hardOrphanIds.length > 0) {
-        const hardOrphanNodeMap = await graphNodeRepo.getByIds(hardOrphanIds);
+        const hardOrphanNodeMap = await mobiusNodeRepo.getByIds(hardOrphanIds);
         const hardOrphanNodes: OrphanNode[] = Array.from(hardOrphanNodeMap.values()).map(node => ({
             ...node,
             orphanType: 'hard'
@@ -71,7 +72,7 @@ async function findRevivalSuggestions(orphans: OrphanNode[]) {
 
     for (const orphan of orphans) {
         // Only consider note nodes for revival suggestions
-        if (orphan.type !== 'document') continue;
+        if (!isIndexedNoteNodeType(orphan.type)) continue;
         try {
             // Use getSemanticNeighbors to find semantically similar documents
             // Filter out only the current orphan node itself to find connections to active parts of the knowledge graph

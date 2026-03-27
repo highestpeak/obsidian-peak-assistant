@@ -1,21 +1,21 @@
 /**
- * Test file for ChatConversationDoc.parse, buildMarkdown and appendMessagesToContent methods
- * 
- * This test file reads markdown test cases from separate .md files
- * Run with: npx tsx src/core/storage/vault/chat-docs/test/ChatConversationDoc.test.ts
+ * Test file for ChatConversationDoc.parse, buildMarkdown and appendMessagesToContent methods.
+ * Fixtures live in ./fixtures/*.md
+ * Run with: npm run test -- test/chat-docs/ChatConversationDoc.test.ts
  */
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { ChatConversationDoc } from '../ChatConversationDoc';
-import type { ChatConversationDocModel, ChatConversationTopicDoc, ChatMessageDoc } from '../ChatConversationDoc';
+import { ChatConversationDoc } from '@/core/storage/vault/chat-docs/ChatConversationDoc';
+import type { ChatConversationDocModel, ChatConversationTopicDoc, ChatMessageDoc } from '@/core/storage/vault/chat-docs/ChatConversationDoc';
 import type { ChatMessage } from '@/service/chat/types';
 
 /**
- * Read test markdown file
+ * Read a fixture markdown file from test/chat-docs/fixtures.
+ * Uses cwd because bundled tests do not preserve __dirname next to this file.
  */
 function readTestFile(filename: string): string {
-	const filePath = join(__dirname, filename);
+	const filePath = join(process.cwd(), 'test', 'chat-docs', 'fixtures', filename);
 	return readFileSync(filePath, 'utf-8');
 }
 

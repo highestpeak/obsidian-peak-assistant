@@ -1,9 +1,12 @@
 import type { Kysely } from 'kysely';
+import { GRAPH_INDEXED_NOTE_NODE_TYPES } from '@/core/po/graph.po';
 import type { Database as DbSchema } from '../ddl';
 import type { SqliteDatabase } from '../types';
 import type { SearchScopeMode, SearchScopeValue } from '@/service/search/types';
 import { BusinessError, ErrorCode } from '@/core/errors';
-import { DocMetaRepo } from './DocMetaRepo';
+import { IndexedDocumentRepo } from './IndexedDocumentRepo';
+import { SEMANTIC_CHUNK_TYPE_ORDER } from '@/service/search/index/chunkTypes';
+import type { ChunkType } from '@/service/search/index/chunkTypes';
 
 /**
  * CRUD repository for `embedding` table.
@@ -16,7 +19,7 @@ export class EmbeddingRepo {
 	constructor(
 		private readonly db: Kysely<DbSchema>,
 		private readonly rawDb: SqliteDatabase,
-		private readonly docMetaRepo: DocMetaRepo,
+		private readonly indexedDocumentRepo: IndexedDocumentRepo,
 	) { }
 
 	/**
@@ -45,7 +48,7 @@ export class EmbeddingRepo {
 	 * Get embedding rowids by specific file paths.
 	 */
 	private async getEmbeddingRowidsByPath(paths: string[]): Promise<number[]> {
-		const docIds = (await this.docMetaRepo.getIdsByPaths(paths)).map(d => d.id);
+		const docIds = (await this.indexedDocumentRepo.getIdsByPaths(paths)).map(d => d.id);
 		return this.getEmbeddingRowidsByDocIds(docIds);
 	}
 
@@ -53,7 +56,7 @@ export class EmbeddingRepo {
 	 * Get embedding rowids by folder path (including subfolders).
 	 */
 	private async getEmbeddingRowidsByFolder(folderPath: string): Promise<number[]> {
-		const docIds = (await this.docMetaRepo.getIdsByFolderPath(folderPath)).map(d => d.id);
+		const docIds = (await this.indexedDocumentRepo.getIdsByFolderPath(folderPath)).map(d => d.id);
 		return this.getEmbeddingRowidsByDocIds(docIds);
 	}
 
@@ -63,7 +66,7 @@ export class EmbeddingRepo {
 	 */
 	private async getEmbeddingRowidsByPathPrefixes(prefixes: string[]): Promise<number[]> {
 		if (!prefixes.length) return [];
-		const docs = await this.docMetaRepo.getIdsByPathPrefixes(prefixes);
+		const docs = await this.indexedDocumentRepo.getIdsByPathPrefixes(prefixes);
 		return this.getEmbeddingRowidsByDocIds(docs.map((d) => d.id));
 	}
 
@@ -300,6 +303,7 @@ export class EmbeddingRepo {
 		doc_id: string;
 		chunk_id: string | null;
 		chunk_index: number | null;
+		chunk_type?: string | null;
 		content_hash: string;
 		ctime: number;
 		mtime: number;
@@ -310,17 +314,18 @@ export class EmbeddingRepo {
 		// Use raw SQL to get the rowid after insert
 		const insertStmt = this.rawDb.prepare(`
 			INSERT INTO embedding (
-				id, doc_id, chunk_id, chunk_index,
+				id, doc_id, chunk_id, chunk_index, chunk_type,
 				content_hash, ctime, mtime, embedding,
 				embedding_model, embedding_len
 			)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`);
 		const result = insertStmt.run(
 			embedding.id,
 			embedding.doc_id,
 			embedding.chunk_id,
 			embedding.chunk_index,
+			embedding.chunk_type ?? null,
 			embedding.content_hash,
 			embedding.ctime,
 			embedding.mtime,
@@ -338,6 +343,7 @@ export class EmbeddingRepo {
 		doc_id: string;
 		chunk_id: string | null;
 		chunk_index: number | null;
+		chunk_type?: string | null;
 		content_hash: string;
 		mtime: number;
 		embedding: Buffer;
@@ -366,6 +372,7 @@ export class EmbeddingRepo {
 		doc_id: string;
 		chunk_id?: string | null;
 		chunk_index?: number | null;
+		chunk_type?: string | null;
 		path?: string | null;
 		content_hash: string;
 		ctime: number;
@@ -387,6 +394,7 @@ export class EmbeddingRepo {
 				doc_id: embedding.doc_id,
 				chunk_id: embedding.chunk_id ?? null,
 				chunk_index: embedding.chunk_index ?? null,
+				chunk_type: embedding.chunk_type ?? null,
 				content_hash: embedding.content_hash,
 				mtime: embedding.mtime,
 				embedding: embeddingBuffer,
@@ -400,6 +408,7 @@ export class EmbeddingRepo {
 				doc_id: embedding.doc_id,
 				chunk_id: embedding.chunk_id ?? null,
 				chunk_index: embedding.chunk_index ?? null,
+				chunk_type: embedding.chunk_type ?? null,
 				content_hash: embedding.content_hash,
 				ctime: embedding.ctime,
 				mtime: embedding.mtime,
@@ -443,19 +452,34 @@ export class EmbeddingRepo {
 	}
 
 	/**
+	 * Distinct document ids that have at least one embedding row (batch semantic neighbor jobs).
+	 */
+	async listDistinctDocIdsWithEmbeddings(): Promise<string[]> {
+		const rows = await this.db.selectFrom('embedding').select('doc_id').groupBy('doc_id').execute();
+		return rows.map((r) => r.doc_id);
+	}
+
+	/**
 	 * Get embeddings by IDs (batch).
 	 * Used to fetch embedding records by their primary key (id).
 	 * Returns embedding as Buffer (BLOB format).
 	 */
-	async getByIds(ids: string[]): Promise<Array<{ id: string; doc_id: string; chunk_id: string; embedding: Buffer }>> {
+	async getByIds(ids: string[]): Promise<
+		Array<{ id: string; doc_id: string; chunk_id: string | null; chunk_type: string | null; embedding: Buffer }>
+	> {
 		if (!ids.length) return [];
 		const rows = await this.db
 			.selectFrom('embedding')
-			.select(['id', 'doc_id', 'chunk_id', 'embedding'])
+			.select(['id', 'doc_id', 'chunk_id', 'chunk_type', 'embedding'])
 			.where('id', 'in', ids)
-			.where('chunk_id', 'is not', null)
 			.execute();
-		return rows.filter((r): r is { id: string; doc_id: string; chunk_id: string; embedding: Buffer } => r.chunk_id != null);
+		return rows.map((r) => ({
+			id: r.id,
+			doc_id: r.doc_id,
+			chunk_id: r.chunk_id ?? null,
+			chunk_type: r.chunk_type ?? null,
+			embedding: r.embedding,
+		}));
 	}
 
 	/**
@@ -478,9 +502,17 @@ export class EmbeddingRepo {
 		scopeMode?: SearchScopeMode,
 		scopeValue?: SearchScopeValue,
 		excludeFolderPrefixes?: string[],
-	): Promise<Array<
-		{ id: string; doc_id: string; chunk_id: string; embedding: Buffer, distance: number; similarity: number }
-	>> {
+	): Promise<
+		Array<{
+			id: string;
+			doc_id: string;
+			chunk_id: string | null;
+			chunk_type: string | null;
+			embedding: Buffer;
+			distance: number;
+			similarity: number;
+		}>
+	> {
 		// Perform semantic search
 		const searchResults = await this.searchSimilar(queryEmbedding, limit, scopeMode, scopeValue, excludeFolderPrefixes);
 		if (!searchResults.length) {
@@ -740,13 +772,14 @@ export class EmbeddingRepo {
 	}
 
 	/**
-	 * Remove orphan embedding rows (doc_id not in doc_meta).
+	 * Remove orphan embedding rows (doc_id not linked to a document mobius node).
 	 */
 	async cleanupOrphanEmbeddings(): Promise<number> {
+		const ph = GRAPH_INDEXED_NOTE_NODE_TYPES.map(() => '?').join(', ');
 		const stmt = this.rawDb.prepare(`
-			SELECT rowid FROM embedding WHERE doc_id NOT IN (SELECT id FROM doc_meta)
+			SELECT rowid FROM embedding WHERE doc_id NOT IN (SELECT node_id FROM mobius_node WHERE type IN (${ph}))
 		`);
-		const rows = stmt.all() as Array<{ rowid: number }>;
+		const rows = stmt.all(...GRAPH_INDEXED_NOTE_NODE_TYPES) as Array<{ rowid: number }>;
 
 		if (rows.length > 0) {
 			const rowids = rows.map(r => r.rowid);
@@ -802,6 +835,8 @@ export class EmbeddingRepo {
 
 	/**
 	 * Computes the global mean semantic embedding vector for a document (Global Mean Pooling).
+	 * Feature code should use {@link getEmbeddingForSemanticSearch} for doc-level KNN; this is a fallback
+	 * when no prioritized typed chunk has an embedding.
 	 *
 	 * [Mathematical Principle & Representational Power]
 	 * This method operates under the "semantic centroid" assumption: in vector space, the arithmetic mean of a set of vectors represents their geometric centroid.
@@ -851,6 +886,35 @@ export class EmbeddingRepo {
 		}
 
 		return averageVector;
+	}
+
+	/**
+	 * **Single entry point** for doc-level semantic retrieval (KNN, inspector neighbors, path/grouping,
+	 * batch semantic edges). Call sites must not pick chunks via {@link getByDocId} for query vectors.
+	 *
+	 * Priority (first embedding found wins): `summary_short` → `summary_full` →
+	 * `salient_textrank_sentence` → `body_raw` (see {@link SEMANTIC_CHUNK_TYPE_ORDER}).
+	 * If none of those carry a vector, falls back to {@link getAverageEmbeddingForDoc} (mean of all chunks).
+	 */
+	async getEmbeddingForSemanticSearch(docId: string): Promise<number[] | null> {
+		const rows = await this.getByDocId(docId);
+		if (!rows.length) return null;
+
+		const byType = new Map<string, DbSchema['embedding'][]>();
+		for (const r of rows) {
+			const t = (r.chunk_type as ChunkType | null) ?? 'body_raw';
+			const arr = byType.get(t) ?? [];
+			arr.push(r);
+			byType.set(t, arr);
+		}
+		for (const t of SEMANTIC_CHUNK_TYPE_ORDER) {
+			const list = byType.get(t);
+			const first = list?.find((x) => x.embedding);
+			if (first?.embedding) {
+				return this.bufferToArray(first.embedding);
+			}
+		}
+		return this.getAverageEmbeddingForDoc(docId);
 	}
 
 	/**

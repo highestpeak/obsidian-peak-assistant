@@ -2,6 +2,7 @@
  * Utilities for Mermaid diagram code: normalize to renderable format and fix common LLM syntax errors.
  */
 
+import { SLICE_CAPS } from '@/core/constant';
 import mermaid from 'mermaid';
 
 // Prevent Mermaid from adding a window.load listener (avoids zombie listeners on plugin reload)
@@ -30,6 +31,13 @@ function extractMermaidCode(text: string): string {
  */
 export function getMermaidInner(fullOrInner: string): string {
     return extractMermaidCode(fullOrInner.trim());
+}
+
+/**
+ * Escape text for use inside Mermaid double-quoted node labels (e.g. flowchart LR center["..."]).
+ */
+export function escapeMermaidQuotedLabel(s: string): string {
+    return s.replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ').slice(0, SLICE_CAPS.utils.mermaidQuotedLabel);
 }
 
 /** MindFlow node states; style must use three colons: ]:::state. LLMs often output ]::state by mistake. */

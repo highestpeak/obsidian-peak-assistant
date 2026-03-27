@@ -1,9 +1,11 @@
+import { SLICE_CAPS } from '@/core/constant';
 import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock } from '@/service/agents/AISearchAgent';
 import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 import type { CompletedAnalysisSnapshot } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { buildMarkdown, fromCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 import type { SearchResultItem } from '@/service/search/types';
 import type { GraphPreview } from '@/core/storage/graph/types';
+import { GraphNodeType } from '@/core/po/graph.po';
 
 /** Record shape used by tab-AISearch for Recent AI Analysis list (matches ai_analysis_record) */
 export interface MockAIAnalysisRecord {
@@ -312,7 +314,7 @@ function buildTopicGraphResults(topics: AISearchTopic[], i: number): Record<stri
 		const nodes: GraphPreview['nodes'] = Array.from({ length: nodeCount }, (_, ni) => ({
 			id: `tg-${i}-${ti}-${ni}`,
 			label: ni === 0 ? t.label : `Sub-${String.fromCharCode(65 + ni)}`,
-			type: 'document' as const,
+			type: GraphNodeType.Document,
 		}));
 		const edges: GraphPreview['edges'] = [];
 		for (let ei = 0; ei < nodeCount - 1; ei++) {
@@ -367,14 +369,14 @@ const MOCK_AI_ANALYSIS_RECORDS_INIT: MockAIAnalysisRecord[] = Array.from({ lengt
 	const nodes: AISearchGraph['nodes'] = [
 		...sources.map((src, nidx) => ({
 			id: `file:${src.path}`,
-			type: 'document',
+			type: GraphNodeType.Document,
 			title: src.title,
 			path: src.path,
 			attributes: {}
 		})),
 		...topics.map((tp, nidx) => ({
 			id: `concept:${tp.label.toLowerCase().replace(' ', '-')}`,
-			type: 'concept',
+			type: GraphNodeType.Resource,
 			title: tp.label,
 			attributes: {}
 		}))
@@ -401,7 +403,8 @@ const MOCK_AI_ANALYSIS_RECORDS_INIT: MockAIAnalysisRecord[] = Array.from({ lengt
 	];
 	const summary = summaryParagraphs[i % summaryParagraphs.length];
 
-	const mockTitle = query ? `Mock: ${query.slice(0, 45)}${query.length > 45 ? '…' : ''}` : 'Mock AI Analysis';
+	const cap = SLICE_CAPS.mocks.mockTitle;
+	const mockTitle = query ? `Mock: ${query.slice(0, cap)}${query.length > cap ? '…' : ''}` : 'Mock AI Analysis';
 	const mermaidVariant = MERMAID_VARIANTS[i % MERMAID_VARIANTS.length];
 
 	const snapshot: CompletedAnalysisSnapshot = {

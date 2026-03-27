@@ -160,6 +160,23 @@ export const graphTraversalInputSchema = z
 			),
 	});
 
+export const hubLocalGraphInputSchema = z
+	.object({
+		center_note_path: z.string().describe("Vault-relative note path used as hub center."),
+		max_depth: z
+			.number()
+			.min(1)
+			.max(6)
+			.nullable()
+			.default(4)
+			.describe(
+				"Maximum local expansion depth for the hub neighborhood. Start with 2-4 and only increase when the graph is too sparse."
+			),
+	})
+	.extend({
+		response_format: ResponseFormat.shape.response_format.default("structured"),
+	});
+
 export const findPathInputSchema = z
 	.object({
 		start_note_path: z.string(),
@@ -202,9 +219,9 @@ export const searchByDimensionsInputSchema = z
 		boolean_expression: z
 			.string()
 			.describe(
-				"Complex boolean expression for filtering. Use only tag:value, category:value, AND, OR, NOT, and parentheses. " +
+				"Complex boolean expression for filtering. Use only tag:value, functional:value, AND, OR, NOT, and parentheses. " +
 					"Each value must be a single word (no spaces, no special characters). " +
-					"Example: tag:javascript AND category:programming or (tag:react OR tag:vue) AND category:frontend. " +
+					"Example: tag:javascript AND functional:programming or (tag:react OR tag:vue) AND functional:frontend. " +
 					"If no results are found, try relaxing the boolean constraints or switching to OR logic."
 			),
 	})

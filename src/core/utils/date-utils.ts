@@ -99,3 +99,51 @@ export function parseSemanticDateRange(semantic: 'today' | 'yesterday' | 'this_w
 		}
 	}
 }
+
+/**
+ * Parse frontmatter / LLM date fields to UTC epoch ms.
+ * Accepts ISO-like strings or numbers (unix seconds if value is below 1e10, else epoch ms).
+ */
+export function parseLooseTimestampToMs(value: unknown): number | undefined {
+	if (value == null) return undefined;
+	if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+		if (value < 10_000_000_000) return Math.round(value * 1000);
+		return Math.round(value);
+	}
+	if (typeof value === 'string') {
+		const compact = parseInferCreatedAtStringToMs(value);
+		if (compact !== undefined) return compact;
+		const t = Date.parse(value.trim());
+		if (!Number.isNaN(t)) return t;
+	}
+	return undefined;
+}
+
+/**
+ * Parses LLM-oriented creation time strings: compact `yyyyMMdd` or `yyyyMMdd HHmmss` / `yyyyMMddHHmmss`.
+ * Uses local timezone for the interpreted instant (best-effort for vault notes).
+ */
+export function parseInferCreatedAtStringToMs(raw: string): number | undefined {
+	const s = raw.trim();
+	if (!s) return undefined;
+
+	// Optional separator between date and time: space, T, or none (14 digits)
+	const m = s.match(
+		/^(\d{4})(\d{2})(\d{2})(?:[\sT]?(\d{2})(\d{2})(\d{2}))?$/,
+	);
+	if (!m) return undefined;
+
+	const y = Number(m[1]);
+	const mo = Number(m[2]);
+	const d = Number(m[3]);
+	if (mo < 1 || mo > 12 || d < 1 || d > 31) return undefined;
+
+	const hh = m[4] !== undefined ? Number(m[4]) : 0;
+	const mm = m[5] !== undefined ? Number(m[5]) : 0;
+	const ss = m[6] !== undefined ? Number(m[6]) : 0;
+	if (hh > 23 || mm > 59 || ss > 59) return undefined;
+
+	const dt = new Date(y, mo - 1, d, hh, mm, ss, 0);
+	const t = dt.getTime();
+	return Number.isNaN(t) ? undefined : t;
+}

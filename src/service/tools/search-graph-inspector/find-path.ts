@@ -1,21 +1,22 @@
+import { isIndexedNoteNodeType } from '@/core/po/graph.po';
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
-import { GRAPH_INSPECT_STEP_TIME_LIMIT } from "@/core/constant";
-import { PATH_FINDING_CONSTANTS } from "@/core/constant";
+import { GRAPH_INSPECT_STEP_TIME_LIMIT, PATH_FINDING_CONSTANTS, SLICE_CAPS } from "@/core/constant";
 import { buildResponse, withTimeoutMessage } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
-import type { Database as DbSchema } from "@/core/storage/sqlite/ddl";
-// Helper: get single doc meta by id (wraps batch API)
-async function getDocMetaById(id: string): Promise<DbSchema['doc_meta'] | null> {
-    const results = await sqliteStoreManager.getDocMetaRepo().getByIds([id]);
+import type { IndexedDocumentRecord } from "@/core/storage/sqlite/ddl";
+
+/** Single indexed document by node id (batch API). */
+async function getIndexedDocumentById(id: string): Promise<IndexedDocumentRecord | null> {
+    const results = await sqliteStoreManager.getIndexedDocumentRepo().getByIds([id]);
     return results.length > 0 ? results[0] : null;
 }
 
-// Helper: get multiple doc metas by ids as a Map
-async function getDocMetasByIds(ids: string[]): Promise<Map<string, DbSchema['doc_meta']>> {
-    const results = await sqliteStoreManager.getDocMetaRepo().getByIds(ids);
-    const map = new Map<string, DbSchema['doc_meta']>();
+/** Multiple indexed documents by node id as a Map. */
+async function getIndexedDocumentsByIds(ids: string[]): Promise<Map<string, IndexedDocumentRecord>> {
+    const results = await sqliteStoreManager.getIndexedDocumentRepo().getByIds(ids);
+    const map = new Map<string, IndexedDocumentRecord>();
     for (const meta of results) {
         map.set(meta.id, meta);
     }
@@ -199,23 +200,23 @@ export const PATH_STRING_SEPARATOR = ' -> ';
  */
 export async function findPath(params: any, templateManager?: TemplateManager) {
     const { start_note_path, end_note_path, limit, include_semantic_paths, response_format, filters } = params;
-    const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
+    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
 
     // Validate and fetch start/end nodes
-    const [startDocMeta, endDocMeta] = await Promise.all([
-        sqliteStoreManager.getDocMetaRepo().getByPath(start_note_path),
-        sqliteStoreManager.getDocMetaRepo().getByPath(end_note_path)
+    const [startIndexedDoc, endIndexedDoc] = await Promise.all([
+        sqliteStoreManager.getIndexedDocumentRepo().getByPath(start_note_path),
+        sqliteStoreManager.getIndexedDocumentRepo().getByPath(end_note_path)
     ]);
 
-    if (!startDocMeta || !endDocMeta) {
+    if (!startIndexedDoc || !endIndexedDoc) {
         return `# Path Finding Failed\n\n`
-            + `${!startDocMeta ? `Start note "${start_note_path}" not found.` : ''}`
-            + `${!endDocMeta ? `End note "${end_note_path}" not found.` : ''}`;
+            + `${!startIndexedDoc ? `Start note "${start_note_path}" not found.` : ''}`
+            + `${!endIndexedDoc ? `End note "${end_note_path}" not found.` : ''}`;
     }
 
     const [startNode, endNode] = await Promise.all([
-        graphNodeRepo.getById(startDocMeta.id),
-        graphNodeRepo.getById(endDocMeta.id)
+        mobiusNodeRepo.getById(startIndexedDoc.id),
+        mobiusNodeRepo.getById(endIndexedDoc.id)
     ]);
 
     if (!startNode || !endNode) {
@@ -227,8 +228,8 @@ export async function findPath(params: any, templateManager?: TemplateManager) {
     // Pre-fetch semantic vectors for A* heuristic
     const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
     const [startVector, endVector] = await Promise.all([
-        embeddingRepo.getAverageEmbeddingForDoc(startNode.id),
-        embeddingRepo.getAverageEmbeddingForDoc(endNode.id)
+        embeddingRepo.getEmbeddingForSemanticSearch(startNode.id),
+        embeddingRepo.getEmbeddingForSemanticSearch(endNode.id)
     ]);
 
     // Build search context
@@ -265,11 +266,11 @@ export async function findPath(params: any, templateManager?: TemplateManager) {
     // Set hub labels to paths for consistency
     if (hubAnalysis.length > 0) {
         const hubNodeIds = hubAnalysis.map(h => h.nodeId);
-        const hubNodesMap = await graphNodeRepo.getByIds(hubNodeIds);
+        const hubNodesMap = await mobiusNodeRepo.getByIds(hubNodeIds);
 
         for (const hub of hubAnalysis) {
             const node = hubNodesMap.get(hub.nodeId);
-            if (node && node.type === 'document') {
+            if (node && isIndexedNoteNodeType(node.type)) {
                 try {
                     hub.label = JSON.parse(node.attributes).path || hub.nodeId;
                 } catch {
@@ -282,7 +283,7 @@ export async function findPath(params: any, templateManager?: TemplateManager) {
     }
 
     // Convert paths to user-friendly format
-    const formattedPaths = await formatPathsForOutput(scoredPaths, graphNodeRepo);
+    const formattedPaths = await formatPathsForOutput(scoredPaths, mobiusNodeRepo);
 
     // Build template data
     const templatePaths = formattedPaths.slice(0, limit).map((pathData, index) => {
@@ -600,7 +601,7 @@ async function calculateHeuristic(
     maxHops: number
 ): Promise<number> {
     const embeddingRepo = sqliteStoreManager.getEmbeddingRepo();
-    const nodeVector = await embeddingRepo.getAverageEmbeddingForDoc(nodeId);
+    const nodeVector = await embeddingRepo.getEmbeddingForSemanticSearch(nodeId);
 
     if (!nodeVector) {
         return 2.0; // Small penalty for nodes without embeddings
@@ -705,8 +706,8 @@ async function brainstormStrategy(context: SearchContext): Promise<ScoredPath[]>
 
     // Get folder paths for domain analysis
     const [startMeta, endMeta] = await Promise.all([
-        getDocMetaById(context.startId),
-        getDocMetaById(context.endId)
+        getIndexedDocumentById(context.startId),
+        getIndexedDocumentById(context.endId)
     ]);
 
     if (!startMeta || !endMeta) return paths;
@@ -735,7 +736,7 @@ async function brainstormStrategy(context: SearchContext): Promise<ScoredPath[]>
 
         // Check if path actually crosses domains or has interesting semantic jumps
         const nodeIds = path.map(s => s.nodeId);
-        const metasMap = await getDocMetasByIds(nodeIds);
+        const metasMap = await getIndexedDocumentsByIds(nodeIds);
         const domains = new Set<string>();
         let semanticConnections = 0;
         let totalSimilarity = 0;
@@ -865,8 +866,8 @@ async function temporalStrategy(context: SearchContext): Promise<ScoredPath[]> {
 
     // Get timestamps for start and end nodes
     const [startMeta, endMeta] = await Promise.all([
-        getDocMetaById(context.startId),
-        getDocMetaById(context.endId)
+        getIndexedDocumentById(context.startId),
+        getIndexedDocumentById(context.endId)
     ]);
 
     if (!startMeta || !endMeta) return paths;
@@ -921,8 +922,8 @@ async function temporalBFS(
 
     // Get start and end timestamps for heuristic guidance
     const [startMeta, endMeta] = await Promise.all([
-        getDocMetaById(startId),
-        getDocMetaById(endId)
+        getIndexedDocumentById(startId),
+        getIndexedDocumentById(endId)
     ]);
     if (!startMeta || !endMeta) return null;
 
@@ -958,7 +959,7 @@ async function temporalBFS(
 
         // Limit processing per level to prevent explosion (max 5 nodes per level)
         // This bounds the search space and prevents exponential growth
-        const currentLevelNodes = queue.slice(0, 5);
+        const currentLevelNodes = queue.slice(0, SLICE_CAPS.inspector.pathFindQueueLevel);
         queue = queue.slice(5);
 
         for (const current of currentLevelNodes) {
@@ -985,7 +986,7 @@ async function temporalBFS(
             }
 
             const neighborIds = filteredNeighbors.map(n => n.id);
-            const neighborMetasMap = await getDocMetasByIds(neighborIds);
+            const neighborMetasMap = await getIndexedDocumentsByIds(neighborIds);
 
             // Score and filter neighbors by temporal relevance
             const scoredNeighbors = filteredNeighbors
@@ -1023,7 +1024,7 @@ async function temporalBFS(
                     };
                 })
                 .sort((a, b) => a.heuristicScore - b.heuristicScore) // Sort by temporal proximity to end time
-                .slice(0, 5); // Take only top 5 most temporally relevant neighbors - bounds search
+                .slice(0, SLICE_CAPS.inspector.pathFindQueueLevel); // Take only top N most temporally relevant neighbors - bounds search
 
             for (const { neighbor, neighborTime, heuristicScore } of scoredNeighbors) {
                 const connectionType = neighbor.foundBy === 'physical_neighbors'
@@ -1206,7 +1207,7 @@ async function expandFrontierWithDomainPreference(
         // Sort neighbors to prefer those in different folders
         if (avoidFolder) {
             const neighborIds = neighbors.map(n => n.id);
-            const metasMap = await getDocMetasByIds(neighborIds);
+            const metasMap = await getIndexedDocumentsByIds(neighborIds);
             const neighborsWithMeta = neighbors.map(n => {
                 const meta = metasMap.get(n.id);
                 return { ...n, folder: meta ? getParentFolder(meta.path) : '' };
@@ -1261,10 +1262,10 @@ async function expandFrontierWithDomainPreference(
  * Get only physical neighbors. Optionally exclude doc IDs (e.g. AI analysis folder).
  */
 async function getPhysicalNeighbors(nodeId: string, limit: number = 20, excludedDocIds?: Set<string>): Promise<NeighborNode[]> {
-    const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
     const neighbors: NeighborNode[] = [];
 
-    const physicalEdges = await graphEdgeRepo.getAllEdgesForNode(nodeId, limit);
+    const physicalEdges = await mobiusEdgeRepo.getAllEdgesForNode(nodeId, limit);
     const seenIds = new Set<string>();
 
     for (const edge of physicalEdges) {
@@ -1421,7 +1422,7 @@ function createEmptyScore(): PathScore {
  * Score all paths based on quality dimensions.
  */
 async function scorePaths(paths: ScoredPath[], allPaths: ScoredPath[]): Promise<ScoredPath[]> {
-    const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo();
+    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
 
     for (const path of paths) {
         const segments = path.segments;
@@ -1443,7 +1444,7 @@ async function scorePaths(paths: ScoredPath[], allPaths: ScoredPath[]): Promise<
         // Freshness (based on last access time)
         let freshnessSum = 0;
         const nodeIds = segments.map(s => s.nodeId);
-        const statsMap = await docStatisticsRepo.getByDocIds(nodeIds);
+        const statsMap = await mobiusNodeRepo.getByDocIds(nodeIds);
         const now = Date.now();
         const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
 
@@ -1551,7 +1552,7 @@ function calculateUniqueness(segments: PathSegment[], allPaths: ScoredPath[]): n
  */
 async function countDomainJumps(segments: PathSegment[]): Promise<number> {
     const nodeIds = segments.map(s => s.nodeId);
-    const metasMap = await getDocMetasByIds(nodeIds);
+    const metasMap = await getIndexedDocumentsByIds(nodeIds);
 
     let jumps = 0;
     let prevFolder: string | null = null;
@@ -1710,8 +1711,8 @@ function analyzeHubs(paths: ScoredPath[]): HubAnalysis[] {
  */
 async function analyzeContextIntersection(startId: string, endId: string): Promise<ContextIntersectionAnalysis | null> {
     const [startMeta, endMeta] = await Promise.all([
-        getDocMetaById(startId),
-        getDocMetaById(endId)
+        getIndexedDocumentById(startId),
+        getIndexedDocumentById(endId)
     ]);
 
     if (!startMeta || !endMeta) return null;
@@ -1820,12 +1821,12 @@ async function analyzeCommonParents(startId: string, endId: string): Promise<Arr
     type: string;
     connectionCount: number;
 }>> {
-    const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
 
     // Get all edges for start and end nodes
     const [startEdges, endEdges] = await Promise.all([
-        graphEdgeRepo.getAllEdgesForNode(startId, 50),
-        graphEdgeRepo.getAllEdgesForNode(endId, 50)
+        mobiusEdgeRepo.getAllEdgesForNode(startId, 50),
+        mobiusEdgeRepo.getAllEdgesForNode(endId, 50)
     ]);
 
     // Find nodes that have edges to BOTH start and end nodes
@@ -1848,8 +1849,8 @@ async function analyzeCommonParents(startId: string, endId: string): Promise<Arr
     if (commonParentIds.length === 0) return [];
 
     // Get node details for common parents
-    const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-    const parentNodes = await graphNodeRepo.getByIds(commonParentIds);
+    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+    const parentNodes = await mobiusNodeRepo.getByIds(commonParentIds);
 
     // Build result with connection strength
     const result = commonParentIds.map(parentId => {
@@ -1868,7 +1869,7 @@ async function analyzeCommonParents(startId: string, endId: string): Promise<Arr
         const connectionCount = startConnections + endConnections;
 
         let label = node.label;
-        if (node.type === 'document') {
+        if (isIndexedNoteNodeType(node.type)) {
             try {
                 const attributes = JSON.parse(node.attributes);
                 label = attributes.path || label;
@@ -1903,7 +1904,7 @@ function buildAnalysisSection(hubs: HubAnalysis[], contextIntersection: ContextI
     if (hubs.length > 0) {
         section += '\n\n## Knowledge Hubs\n\n';
         section += 'These nodes appear in multiple paths, acting as central connectors:\n\n';
-        for (const hub of hubs.slice(0, 3)) {
+        for (const hub of hubs.slice(0, SLICE_CAPS.inspector.pathFindHubs)) {
             section += `- **[[${hub.label}]]** (appears in ${hub.occurrenceCount} paths)\n`;
         }
     }
@@ -1928,8 +1929,8 @@ function buildAnalysisSection(hubs: HubAnalysis[], contextIntersection: ContextI
             // Common parents (structural relationships)
             if (contextIntersection.commonParents.length > 0) {
                 section += '**Common Reference Points:**\n';
-                for (const parent of contextIntersection.commonParents.slice(0, 3)) {
-                    const nodeLink = parent.type === 'document' ? `[[${parent.label}]]` : `**${parent.label}**`;
+                for (const parent of contextIntersection.commonParents.slice(0, SLICE_CAPS.inspector.pathFindCommonParents)) {
+                    const nodeLink = isIndexedNoteNodeType(parent.type) ? `[[${parent.label}]]` : `**${parent.label}**`;
                     section += `- ${nodeLink} (${parent.connectionCount} connections)\n`;
                 }
                 section += '\n';
@@ -1965,7 +1966,7 @@ function buildAnalysisSection(hubs: HubAnalysis[], contextIntersection: ContextI
  */
 async function formatPathsForOutput(
     paths: ScoredPath[],
-    graphNodeRepo: any
+    mobiusNodeRepo: any
 ): Promise<Array<{
     path: string[];
     connectionDetails: string;
@@ -1981,7 +1982,7 @@ async function formatPathsForOutput(
         }
     }
 
-    const nodesMap = await graphNodeRepo.getByIds(Array.from(allNodeIds));
+    const nodesMap = await mobiusNodeRepo.getByIds(Array.from(allNodeIds));
 
     return paths.map(scoredPath => {
         const nodeLabels: string[] = [];
@@ -1991,7 +1992,7 @@ async function formatPathsForOutput(
                 const node = nodesMap.get(segment.nodeId);
                 if (!node) {
                     nodeLabels.push(segment.nodeId);
-                } else if (node.type === 'document') {
+                } else if (isIndexedNoteNodeType(node.type)) {
                     nodeLabels.push(JSON.parse(node.attributes).path || segment.nodeId);
                 } else {
                     nodeLabels.push(node.type + node.label);

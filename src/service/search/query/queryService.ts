@@ -18,6 +18,7 @@ import {
 	SEARCH_SCORING_MAX_OCCURRENCES_META
 } from '@/core/constant';
 import { Stopwatch } from '@/core/utils/Stopwatch';
+import type { ChunkType } from '@/service/search/index/chunkTypes';
 
 /**
  * Query service for search operations.
@@ -152,7 +153,15 @@ export class QueryService {
 		sw.print(false);
 
 		const totalDuration = sw.getTotalElapsed();
-		return { query, items: ranked, duration: totalDuration };
+		const top = ranked[0];
+		const runtimeHub =
+			top?.path != null
+				? {
+						anchorPath: top.path,
+						anchorScore: top.finalScore ?? top.score ?? 0,
+					}
+				: undefined;
+		return { query, items: ranked, duration: totalDuration, runtimeHub };
 	}
 
 	/**
@@ -343,7 +352,7 @@ export class QueryService {
 
 		const tenant = query?.indexTenant ?? 'vault';
 		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 
 		// Execute search with OR query to match any keyword (exclude folders applied in SQL)
 		const fulltextRows = docChunkRepo.searchFts(ftsQuery, searchLimit, mode, scope, query.excludeFolderPrefixes);
@@ -351,10 +360,14 @@ export class QueryService {
 			return [];
 		}
 
-		// Fetch doc_meta separately (avoid JOIN)
+		// Fetch indexed document rows separately (avoid JOIN)
 		const docIds = Array.from(new Set(fulltextRows.map((r) => r.docId)));
-		const metaRows = await docMetaRepo.getByIds(docIds);
+		const metaRows = await indexedDocumentRepo.getByIds(docIds);
 		const metaById = new Map(metaRows.map((m) => [m.id, m]));
+
+		const chunkIds = [...new Set(fulltextRows.map((r) => r.chunkId))];
+		const chunkRows = chunkIds.length ? await docChunkRepo.getByChunkIds(chunkIds) : [];
+		const chunkTypeById = new Map(chunkRows.map((c) => [c.chunk_id, c.chunk_type as ChunkType]));
 
 		// Score results by keyword match count and BM25
 		const items: SearchResultItem[] = fulltextRows.map((r) => {
@@ -401,6 +414,9 @@ export class QueryService {
 				highlight: snippet ? { text: snippet.text, highlights: snippet.highlights } : null,
 				score,
 				finalScore: score,
+				docId: r.docId,
+				chunkId: r.chunkId,
+				chunkType: chunkTypeById.get(r.chunkId) ?? 'body_raw',
 			};
 		});
 
@@ -424,48 +440,50 @@ export class QueryService {
 		const tenant = query?.indexTenant ?? 'vault';
 		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
 		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 
 		// Use searchSimilarAndGetId for combined vector search and embedding/doc mapping (exclude folders in SQL)
 		const vectorResults = await embeddingRepo.searchSimilarAndGetId(embedding, topK, mode, scope, query.excludeFolderPrefixes);
 		if (!vectorResults.length) {
 			return [];
 		}
-		const scoreByChunk = new Map<string, number>();
+		const scoreByKey = new Map<string, number>();
 		for (const result of vectorResults) {
-			if (result.chunk_id) {
-				scoreByChunk.set(result.chunk_id, result.similarity);
-			}
+			const key = result.chunk_id ?? result.id;
+			scoreByKey.set(key, result.similarity);
 		}
 
-		// Get chunk IDs and fetch chunk data
-		const vecChunkIds = Array.from(scoreByChunk.keys());
-		const chunkRows = await docChunkRepo.getByChunkIds(vecChunkIds);
+		const chunkIds = vectorResults.filter((r) => r.chunk_id).map((r) => r.chunk_id as string);
+		const docOnlyEmb = vectorResults.filter((r) => !r.chunk_id);
 
-		// Fetch doc_meta separately (avoid JOIN)
-		const docIds = Array.from(new Set(chunkRows.map((r) => r.doc_id)));
-		const metaRows = await docMetaRepo.getByIds(docIds);
+		const chunkRows = chunkIds.length ? await docChunkRepo.getByChunkIds(chunkIds) : [];
+
+		const docIds = new Set<string>();
+		for (const r of chunkRows) docIds.add(r.doc_id);
+		for (const r of docOnlyEmb) docIds.add(r.doc_id);
+
+		const metaRows = await indexedDocumentRepo.getByIds(Array.from(docIds));
 		const metaById = new Map(metaRows.map((m) => [m.id, m]));
 
-		const items: SearchResultItem[] = chunkRows.map((r) => {
+		const items: SearchResultItem[] = [];
+
+		for (const r of chunkRows) {
 			const meta = metaById.get(r.doc_id);
 			const path = meta?.path ?? r.doc_id;
-			// For vector search, we need to get content from doc_fts or use content_raw
-			// Since we're using content_raw from getByChunkIds, keep it for now
 			const content = r.content_raw ?? '';
 			const snippet = buildHighlightSnippet(content, termRaw);
-			const score = Number(scoreByChunk.get(String(r.chunk_id)) ?? 0);
+			const score = Number(scoreByKey.get(String(r.chunk_id)) ?? 0);
+			const ct = (r.chunk_type as ChunkType) ?? 'body_raw';
 
-			// Title logic: use yaml title from meta, fallback to filename without extension
 			let title = meta?.title ?? null;
 			if (!title && path) {
 				const pathParts = path.split('/');
 				const filename = pathParts[pathParts.length - 1] || path;
-				title = filename.replace(/\.[^/.]+$/, ''); // Remove extension
+				title = filename.replace(/\.[^/.]+$/, '');
 			}
-			title = title || path; // Final fallback to path
+			title = title || path;
 
-			return {
+			items.push({
 				id: path,
 				type: (meta?.type ?? 'unknown') as SearchResultType,
 				title,
@@ -475,8 +493,41 @@ export class QueryService {
 				highlight: snippet ? { text: snippet.text, highlights: snippet.highlights } : null,
 				score,
 				finalScore: score,
-			};
-		});
+				docId: r.doc_id,
+				chunkId: r.chunk_id,
+				chunkType: ct,
+			});
+		}
+
+		for (const r of docOnlyEmb) {
+			const meta = metaById.get(r.doc_id);
+			const path = meta?.path ?? r.doc_id;
+			const summaryText = [meta?.summary, meta?.full_summary].filter(Boolean).join('\n\n') || '';
+			const snippet = buildHighlightSnippet(summaryText, termRaw);
+			const score = Number(scoreByKey.get(r.id) ?? 0);
+
+			let title = meta?.title ?? null;
+			if (!title && path) {
+				const pathParts = path.split('/');
+				const filename = pathParts[pathParts.length - 1] || path;
+				title = filename.replace(/\.[^/.]+$/, '');
+			}
+			title = title || path;
+
+			items.push({
+				id: path,
+				type: (meta?.type ?? 'unknown') as SearchResultType,
+				title,
+				path,
+				lastModified: Number(meta?.mtime ?? 0),
+				content: summaryText,
+				highlight: snippet ? { text: snippet.text, highlights: snippet.highlights } : null,
+				score,
+				finalScore: score,
+				docId: r.doc_id,
+				chunkType: (r.chunk_type as ChunkType | null) ?? undefined,
+			});
+		}
 
 		return items;
 	}
@@ -516,7 +567,7 @@ export class QueryService {
 
 		const tenant = query?.indexTenant ?? 'vault';
 		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 
 		// Execute meta search with OR query to match any keyword (exclude folders applied in SQL)
 		const metaRows = docChunkRepo.searchMetaFts(ftsQuery, searchLimit, mode, scope, query.excludeFolderPrefixes);
@@ -524,9 +575,9 @@ export class QueryService {
 			return [];
 		}
 
-		// Fetch doc_meta separately (avoid JOIN)
+		// Fetch indexed document rows separately (avoid JOIN)
 		const docIds = Array.from(new Set(metaRows.map((r) => r.docId)));
-		const metaRows_ = await docMetaRepo.getByIds(docIds);
+		const metaRows_ = await indexedDocumentRepo.getByIds(docIds);
 		const metaById = new Map(metaRows_.map((m) => [m.id, m]));
 
 		// Score results by keyword match count in title/path
@@ -590,38 +641,59 @@ export class QueryService {
 	 * This creates a "content match" where items that appear in either content source
 	 * are considered content hits with combined RRF scoring.
 	 */
-	private mergeContentSources<T extends { path: string }>(
+	private mergeContentSources<T extends { path: string; chunkType?: ChunkType }>(
 		textHits: Array<T & { score: number }>,
 		vectorHits: Array<T & { score: number }>,
 	): Array<T & { score: number }> {
-		const contentHits = new Map<string, { score: number; hit: T & { score: number } }>();
+		type Acc = { rrf: number; variants: Array<{ hit: T & { score: number }; sourceScore: number }> };
+		const byPath = new Map<string, Acc>();
 
-		// Add fulltext hits to content map
 		for (let rank = 1; rank <= textHits.length; rank++) {
 			const hit = textHits[rank - 1]!;
 			const id = hit.path;
 			const rrf = RRF_CONTENT_WEIGHT / (RRF_K + rank);
-			contentHits.set(id, { score: rrf, hit });
+			let acc = byPath.get(id);
+			if (!acc) {
+				acc = { rrf: 0, variants: [] };
+				byPath.set(id, acc);
+			}
+			acc.rrf += rrf;
+			acc.variants.push({ hit, sourceScore: hit.score ?? 0 });
 		}
 
-		// Add vector hits to content map (merge if already exists)
 		for (let rank = 1; rank <= vectorHits.length; rank++) {
 			const hit = vectorHits[rank - 1]!;
 			const id = hit.path;
 			const rrf = RRF_CONTENT_WEIGHT / (RRF_K + rank);
-			const existing = contentHits.get(id);
-			if (existing) {
-				// Merge with existing content hit, combine scores
-				existing.score += rrf;
-			} else {
-				contentHits.set(id, { score: rrf, hit });
+			let acc = byPath.get(id);
+			if (!acc) {
+				acc = { rrf: 0, variants: [] };
+				byPath.set(id, acc);
 			}
+			acc.rrf += rrf;
+			const anyHit = hit as T & { score: number; finalScore?: number };
+			acc.variants.push({
+				hit,
+				sourceScore: Number(anyHit.finalScore ?? anyHit.score ?? 0),
+			});
 		}
 
-		// Return deduplicated content hits sorted by score
-		return Array.from(contentHits.values())
-			.sort((a, b) => b.score - a.score)
-			.map((x) => ({ ...x.hit, score: x.score }));
+		const merged: Array<T & { score: number }> = [];
+		for (const [, acc] of byPath) {
+			let best = acc.variants[0]!;
+			let bestPick = best.sourceScore;
+			for (let i = 1; i < acc.variants.length; i++) {
+				const v = acc.variants[i]!;
+				const pick = v.sourceScore;
+				if (pick > bestPick) {
+					bestPick = pick;
+					best = v;
+				}
+			}
+			merged.push({ ...best.hit, score: acc.rrf });
+		}
+
+		return merged.sort((a, b) => b.score - a.score);
 	}
 
 	/**

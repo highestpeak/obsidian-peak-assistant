@@ -1,19 +1,21 @@
 import type { IndexTenant } from "@/core/storage/sqlite/types";
-import { GraphNodeType } from "@/core/po";
-import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
+import { GraphNodeType } from '@/core/po';
+import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { EMPTY_SET, emptyMap } from "@/core/utils/collection-utils";
-import { DocStatistics } from "@/core/storage/sqlite/repositories/DocStatisticsRepo";
+import { DocStatistics } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { GRAPH_RRF_WEIGHTS, RRF_K, PHYSICAL_CONNECTION_BONUS } from "@/core/constant";
 import { AppContext } from "@/app/context/AppContext";
 import { SearchScopeMode, SearchScopeValue } from "@/service/search/types";
 import { getFileTypeByPath } from "@/core/utils/obsidian-utils";
 import { getCachedBooleanExpression, getCachedRegex } from "@/core/utils/format-utils";
 import { parseSemanticDateRange } from "@/core/utils/date-utils";
+import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
+import type { FunctionalTagId } from '@/core/schemas/agents/search-agent-schemas';
 
 export type SemanticNeighborNode = GraphNode & { similarity: string }
 
-// Doc-to-Doc Retrieval
+/** Doc-level semantic neighbors; query vector comes only from {@link EmbeddingRepo.getEmbeddingForSemanticSearch}. */
 export async function getSemanticNeighbors(
     docId: string,
     limit: number,
@@ -22,18 +24,18 @@ export async function getSemanticNeighbors(
 ): Promise<SemanticNeighborNode[]> {
     const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
 
-    const averageVector = await embeddingRepo.getAverageEmbeddingForDoc(docId);
+    const queryVector = await embeddingRepo.getEmbeddingForSemanticSearch(docId);
 
-    if (!averageVector) {
+    if (!queryVector) {
         return [];
     }
 
     const searchResults = await embeddingRepo.searchSimilarAndGetId(
-        averageVector, limit * 2,
+        queryVector, limit * 2,
         'excludeDocIdsSet', { excludeDocIdsSet: filterDocIds }
     );
     const resultDocIds = Array.from(new Set(searchResults.map(r => r.doc_id)));
-    const resultDocNodesMap = await sqliteStoreManager.getGraphNodeRepo(tenant).getByIds(resultDocIds);
+    const resultDocNodesMap = await sqliteStoreManager.getMobiusNodeRepo(tenant).getByIds(resultDocIds);
 
     return searchResults.map(r => {
         const docId = r.doc_id;
@@ -80,14 +82,15 @@ export async function distillClusterNodesData(nodes: GraphNode[], limit: number,
     }
 
     // For compatibility with previous code, extract specific groups used below
-    let documentNodes = typeNodeMap['document'];
+    let documentNodes = typeNodeMap[GraphNodeType.Document];
     let omittedDocNodeCnt = 0;
     // Implement RRF (Reciprocal Rank Fusion) sorting based on connection density, update time, and similarity
     if (!ignoreDocumentNodes && documentNodes && documentNodes.length > 0) {
         const nodeIds = documentNodes.map(node => node.id);
 
-        const densityMap = await sqliteStoreManager.getGraphEdgeRepo().countEdges(nodeIds, 'document');
-        const docStatisticsMap = await sqliteStoreManager.getDocStatisticsRepo().getByDocIds(nodeIds);
+        // Omit edge type: use mobius_node degree columns (doc + other) for document nodes.
+        const densityMap = await sqliteStoreManager.getMobiusEdgeRepo().countEdges(nodeIds);
+        const docStatisticsMap = await sqliteStoreManager.getMobiusNodeRepo().getByDocIds(nodeIds);
 
         // Apply RRF sorting using the extracted function
         documentNodes = calculateDocumentRRF(documentNodes, densityMap.total, docStatisticsMap)
@@ -100,8 +103,8 @@ export async function distillClusterNodesData(nodes: GraphNode[], limit: number,
             omittedDocNodeCnt = originalCount - limit;
         }
     }
-    const tagNodes = typeNodeMap['tag'];
-    const categoryNodes = typeNodeMap['category'];
+    const tagNodes = typeNodeMap[GraphNodeType.TopicTag];
+    const categoryNodes = typeNodeMap[GraphNodeType.FunctionalTag];
 
     return {
         documentNodes,
@@ -249,9 +252,9 @@ export async function getSemanticSearchResults(
         // Extract paths from search results
         const paths = vectorResults.items.map(result => result.path);
 
-        // Convert paths to document IDs using doc_meta table
-        const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-        const pathToDocMap = await docMetaRepo.getByPaths(paths);
+        // Convert paths to document node ids (indexed documents on mobius_node)
+        const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+        const pathToDocMap = await indexedDocumentRepo.getByPaths(paths);
         const docIdMap = new Map<string, string>();
         for (const [path, docMeta] of pathToDocMap) {
             docIdMap.set(path, docMeta.id);
@@ -261,7 +264,7 @@ export async function getSemanticSearchResults(
         const semanticResults = vectorResults.items
             .map(result => {
                 const docId = docIdMap.get(result.path);
-                if (!docId) return null; // Skip if path not found in doc_meta
+                if (!docId) return null; // Skip if path not indexed
 
                 return {
                     nodeId: docId,
@@ -282,7 +285,13 @@ export type ItemFiledGetter<T> = (item: T) => {
     getPath?: () => string;
     getModified?: () => Date | undefined;
     getCreated?: () => Date | undefined;
+    /** Topic + keyword tags combined (display / legacy). */
     getTags?: () => string[];
+    getTopicTags?: () => string[];
+    /** Functional tag ids for this doc (derived from entries). */
+    getFunctionalTags?: () => string[];
+    getFunctionalTagEntries?: () => FunctionalTagEntry[];
+    getKeywordTags?: () => string[];
     getCategory?: () => string | undefined;
     getResultRank?: () => number;
     getTotalLinksCount?: () => number;
@@ -296,11 +305,22 @@ export function getPathFromNode(node?: GraphNode | null): string {
 }
 
 export async function getDefaultItemFiledGetter<T extends { id: string }>(nodeIds: string[], filters?: any, sorter?: string): Promise<ItemFiledGetter<T>> {
-    const nodesMap = await sqliteStoreManager.getGraphNodeRepo().getByIds(nodeIds);
-    const tagsAndCategoriesMap = filters?.tag_category_boolean_expression
-        ? (await sqliteStoreManager.getGraphStore().getTagsAndCategoriesByDocIds(nodeIds)).idMapToTagsAndCategories
-        : emptyMap<string, { tags: string[], categories: string[] }>();
-    const edgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+    const nodesMap = await sqliteStoreManager.getMobiusNodeRepo().getByIds(nodeIds);
+    const tagsTripleMap = filters?.tag_category_boolean_expression
+        ? (await sqliteStoreManager.getGraphRepo().getTagsByDocIds(nodeIds)).idMapToTags
+        : emptyMap<
+              string,
+              {
+                  topicTags: string[];
+                  topicTagEntries?: TopicTagEntry[];
+                  functionalTagEntries: FunctionalTagEntry[];
+                  keywordTags: string[];
+                  timeTags: string[];
+                  geoTags: string[];
+                  personTags: string[];
+              }
+          >();
+    const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
     const { incoming: inCominglinksCountMap, outgoing: outGoinglinksCountMap, total: totalLinksCountMap } =
         (sorter === 'backlinks_count_asc' || sorter === 'backlinks_count_desc' || sorter === 'outlinks_count_asc' || sorter === 'outlinks_count_desc')
             ? await edgeRepo.countEdges(nodeIds)
@@ -309,8 +329,22 @@ export async function getDefaultItemFiledGetter<T extends { id: string }>(nodeId
         getPath: () => getPathFromNode(nodesMap.get(node.id)),
         getModified: () => new Date(nodesMap.get(node.id)?.updated_at || Date.now()),
         getCreated: () => new Date(nodesMap.get(node.id)?.created_at || Date.now()),
-        getTags: () => tagsAndCategoriesMap.get(node.id)?.tags || [],
-        getCategory: () => tagsAndCategoriesMap.get(node.id)?.categories?.[0] || undefined,
+        getTopicTags: () => tagsTripleMap.get(node.id)?.topicTags ?? [],
+        getFunctionalTagEntries: () => tagsTripleMap.get(node.id)?.functionalTagEntries ?? [],
+        getFunctionalTags: () =>
+            tagsTripleMap.get(node.id)?.functionalTagEntries.map((e) => e.id) ?? [],
+        getKeywordTags: () => tagsTripleMap.get(node.id)?.keywordTags ?? [],
+        getTags: () => {
+            const t = tagsTripleMap.get(node.id);
+            return [
+                ...(t?.topicTags ?? []),
+                ...(t?.keywordTags ?? []),
+                ...(t?.timeTags ?? []),
+                ...(t?.geoTags ?? []),
+                ...(t?.personTags ?? []),
+            ];
+        },
+        getCategory: () => tagsTripleMap.get(node.id)?.functionalTagEntries?.[0]?.id,
         // all same rank
         getResultRank: () => 0,
         getTotalLinksCount: () => totalLinksCountMap.get(node.id) || 0,
@@ -392,12 +426,25 @@ function shouldIncludeItem<T>(item: T, filters?: any, itemFiledGetter?: ItemFile
         if (timeToFilterTime.getTime() < timeFilterTargetTime.getTime()) return false;
     }
 
-    // tag, category boolean filter boolean_expression
-    const itemTags = itemFiledGetter?.(item).getTags?.();
-    const itemCategory = itemFiledGetter?.(item).getCategory?.();
+    const g = itemFiledGetter?.(item);
     const tagCategoryBooleanExpression = getCachedBooleanExpression(filters?.tag_category_boolean_expression);
     if (tagCategoryBooleanExpression) {
-        return tagCategoryBooleanExpression.rootEvaluate({ tags: itemTags, category: itemCategory });
+        const hasSplit =
+            typeof g?.getTopicTags === 'function' ||
+            typeof g?.getKeywordTags === 'function' ||
+            typeof g?.getFunctionalTags === 'function';
+        const topicTags = hasSplit ? (g?.getTopicTags?.() ?? []) : (g?.getTags?.() ?? []);
+        const keywordTags = hasSplit ? (g?.getKeywordTags?.() ?? []) : [];
+        const functionalTagEntries: FunctionalTagEntry[] =
+            g?.getFunctionalTagEntries?.() ??
+            (g?.getFunctionalTags?.() ?? []).map((id) => ({ id: id as FunctionalTagId }));
+        return tagCategoryBooleanExpression.rootEvaluate({
+            topicTags,
+            functionalTagEntries,
+            keywordTags,
+            tags: topicTags,
+            category: functionalTagEntries[0]?.id ?? g?.getCategory?.(),
+        });
     }
 
     return true;

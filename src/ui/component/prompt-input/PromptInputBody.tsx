@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import React, { useRef, useCallback, useState, forwardRef, useEffect, useMemo, type TextareaHTMLAttributes } from 'react';
 import { cn } from '@/ui/react/lib/utils';
 import { usePromptInputContext } from './PromptInput';
@@ -42,7 +43,7 @@ const createCompletionSources = (
 
 		return {
 			from: match.from,
-			options: options.slice(0, 20).map(item => ({
+			options: options.slice(0, SLICE_CAPS.ui.promptOptions).map(item => ({
 				label: `@${item.value || item.label}`,
 				displayLabel: item.label,
 				// detail: item.description,
@@ -95,7 +96,7 @@ const createCompletionSources = (
 
 		return {
 			from: match.from,
-			options: options.slice(0, 20).map(item => ({
+			options: options.slice(0, SLICE_CAPS.ui.promptOptions).map(item => ({
 				label: `[[${item.value || item.label}]]`,
 				displayLabel: item.label,
 				// detail: item.description,
@@ -148,7 +149,7 @@ const createCompletionSources = (
 
 		return {
 			from: match.from,
-			options: options.slice(0, 20).map(item => ({
+			options: options.slice(0, SLICE_CAPS.ui.promptOptions).map(item => ({
 				label: `/${item.value || item.label}`,
 				displayLabel: item.label,
 				// detail: item.description,

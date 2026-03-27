@@ -71,12 +71,12 @@ npm run test -- path/to/specific.test.ts
 ```
 
 **Available Test Commands:**
-- `npm run test` - Run all `.test.ts` files found in the `src/` directory
-- `npm run test -- src/service/tools/search-graph-inspector/boolean-expression-parser.test.ts` - Run specific test file
+- `npm run test` - Run all `.test.ts` files under the `test/` directory
+- `npm run test -- test/boolean-expression-parser.test.ts` - Run specific test file
 
 **Current Test Coverage:**
 
-**Boolean Expression Parser** (`boolean-expression-parser.test.ts` - 54 tests):
+**Boolean Expression Parser** (`test/boolean-expression-parser.test.ts` - 54 tests):
 - Basic tag and category matching
 - AND, OR, NOT logical operations
 - Complex nested expressions with parentheses
@@ -86,7 +86,7 @@ npm run test -- path/to/specific.test.ts
 - `buildEdgeConditions` - Building SQL WHERE conditions
 - `evaluate` - Boolean expression evaluation against note data
 
-**Chat Conversation Document** (`ChatConversationDoc.test.ts`):
+**Chat Conversation Document** (`test/chat-docs/ChatConversationDoc.test.ts`):
 - Markdown generation with different configurations
 - Message deduplication and hash handling
 - Content parsing and formatting

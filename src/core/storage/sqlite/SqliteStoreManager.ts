@@ -5,14 +5,14 @@ import type { Kysely } from 'kysely';
 import type { Database as DbSchema } from './ddl';
 import type { IndexTenant, SqliteStoreType, SqliteDatabase } from './types';
 import { ensureFolderRecursive } from '@/core/utils/vault-utils';
-import { DocMetaRepo } from './repositories/DocMetaRepo';
+import { IndexedDocumentRepo } from './repositories/IndexedDocumentRepo';
 import { DocChunkRepo } from './repositories/DocChunkRepo';
 import { EmbeddingRepo } from './repositories/EmbeddingRepo';
 import { IndexStateRepo } from './repositories/IndexStateRepo';
-import { DocStatisticsRepo } from './repositories/DocStatisticsRepo';
-import { GraphNodeRepo } from './repositories/GraphNodeRepo';
-import { GraphEdgeRepo } from './repositories/GraphEdgeRepo';
-import { GraphStore } from '../graph/GraphStore';
+import { MobiusNodeRepo } from './repositories/MobiusNodeRepo';
+import { MobiusEdgeRepo } from './repositories/MobiusEdgeRepo';
+import { MobiusOperationRepo } from './repositories/MobiusOperationRepo';
+import { GraphRepo } from './repositories/GraphRepo';
 import { ChatProjectRepo } from './repositories/ChatProjectRepo';
 import { ChatConversationRepo } from './repositories/ChatConversationRepo';
 import { ChatMessageRepo } from './repositories/ChatMessageRepo';
@@ -57,25 +57,25 @@ export class SqliteStoreManager {
 	private closing = false;
 
 	// Search database repositories (search.sqlite) — vault index tenant
-	private docMetaRepo: DocMetaRepo | null = null;
+	private indexedDocumentRepo: IndexedDocumentRepo | null = null;
 	private docChunkRepo: DocChunkRepo | null = null;
 	private embeddingRepo: EmbeddingRepo | null = null;
 	private indexStateRepo: IndexStateRepo | null = null;
-	private docStatisticsRepo: DocStatisticsRepo | null = null;
-	private graphNodeRepo: GraphNodeRepo | null = null;
-	private graphEdgeRepo: GraphEdgeRepo | null = null;
-	private graphStore: GraphStore | null = null;
+	private graphRepo: GraphRepo | null = null;
 	private userProfileProcessedHashRepo: UserProfileProcessedHashRepo | null = null;
 
 	// Meta database index repositories (meta.sqlite) — chat index tenant (ChatFolder)
-	private docMetaRepoChat: DocMetaRepo | null = null;
+	private indexedDocumentRepoChat: IndexedDocumentRepo | null = null;
 	private docChunkRepoChat: DocChunkRepo | null = null;
 	private embeddingRepoChat: EmbeddingRepo | null = null;
 	private indexStateRepoChat: IndexStateRepo | null = null;
-	private docStatisticsRepoChat: DocStatisticsRepo | null = null;
-	private graphNodeRepoChat: GraphNodeRepo | null = null;
-	private graphEdgeRepoChat: GraphEdgeRepo | null = null;
-	private graphStoreChat: GraphStore | null = null;
+	private graphRepoChat: GraphRepo | null = null;
+	private mobiusNodeRepo: MobiusNodeRepo | null = null;
+	private mobiusEdgeRepo: MobiusEdgeRepo | null = null;
+	private mobiusNodeRepoChat: MobiusNodeRepo | null = null;
+	private mobiusEdgeRepoChat: MobiusEdgeRepo | null = null;
+	/** User operation log; uses meta.sqlite (same as chat/ai tables). */
+	private mobiusOperationRepo: MobiusOperationRepo | null = null;
 
 	// Meta database repositories (meta.sqlite) — chat/ai tables only
 	private chatProjectRepo: ChatProjectRepo | null = null;
@@ -181,17 +181,15 @@ export class SqliteStoreManager {
 		// Initialize search database repositories
 		const searchKdb = this.searchStore.kysely<DbSchema>();
 		const searchRawDb = this.searchStore;
-		this.docMetaRepo = new DocMetaRepo(searchKdb);
+		this.indexedDocumentRepo = new IndexedDocumentRepo(searchKdb);
 		this.docChunkRepo = new DocChunkRepo(searchKdb, searchRawDb);
-		this.embeddingRepo = new EmbeddingRepo(searchKdb, searchRawDb, this.docMetaRepo);
+		this.embeddingRepo = new EmbeddingRepo(searchKdb, searchRawDb, this.indexedDocumentRepo);
 		// Initialize vec_embeddings table cache (check once on plugin startup)
 		this.embeddingRepo.initializeVecEmbeddingsTableCache();
 		this.indexStateRepo = new IndexStateRepo(searchKdb);
-		this.docStatisticsRepo = new DocStatisticsRepo(searchKdb);
-		this.graphNodeRepo = new GraphNodeRepo(searchKdb);
-		this.graphEdgeRepo = new GraphEdgeRepo(searchKdb);
-		// Initialize GraphStore
-		this.graphStore = new GraphStore(this.graphNodeRepo, this.graphEdgeRepo);
+		this.mobiusNodeRepo = new MobiusNodeRepo(searchKdb);
+		this.mobiusEdgeRepo = new MobiusEdgeRepo(searchKdb);
+		this.graphRepo = new GraphRepo(this.mobiusNodeRepo, this.mobiusEdgeRepo);
 		this.userProfileProcessedHashRepo = new UserProfileProcessedHashRepo(searchKdb);
 
 		// Initialize meta database repositories (chat/ai tables)
@@ -204,15 +202,15 @@ export class SqliteStoreManager {
 		this.aiAnalysisRepo = new AIAnalysisRepo(metaKdb);
 
 		// Chat index tenant (same schema as search, on meta.sqlite)
-		this.docMetaRepoChat = new DocMetaRepo(metaKdb);
+		this.indexedDocumentRepoChat = new IndexedDocumentRepo(metaKdb);
 		this.docChunkRepoChat = new DocChunkRepo(metaKdb, this.metaStore);
-		this.embeddingRepoChat = new EmbeddingRepo(metaKdb, this.metaStore, this.docMetaRepoChat);
+		this.embeddingRepoChat = new EmbeddingRepo(metaKdb, this.metaStore, this.indexedDocumentRepoChat);
 		this.embeddingRepoChat.initializeVecEmbeddingsTableCache();
 		this.indexStateRepoChat = new IndexStateRepo(metaKdb);
-		this.docStatisticsRepoChat = new DocStatisticsRepo(metaKdb);
-		this.graphNodeRepoChat = new GraphNodeRepo(metaKdb);
-		this.graphEdgeRepoChat = new GraphEdgeRepo(metaKdb);
-		this.graphStoreChat = new GraphStore(this.graphNodeRepoChat, this.graphEdgeRepoChat);
+		this.mobiusNodeRepoChat = new MobiusNodeRepo(metaKdb);
+		this.mobiusEdgeRepoChat = new MobiusEdgeRepo(metaKdb);
+		this.graphRepoChat = new GraphRepo(this.mobiusNodeRepoChat, this.mobiusEdgeRepoChat);
+		this.mobiusOperationRepo = new MobiusOperationRepo(metaKdb);
 	}
 
 	/**
@@ -256,11 +254,11 @@ export class SqliteStoreManager {
 	}
 
 	/**
-	 * Get DocMetaRepo for the given index tenant (default: vault).
+	 * Get IndexedDocumentRepo for the given index tenant (default: vault).
 	 */
-	getDocMetaRepo(tenant: IndexTenant = 'vault'): DocMetaRepo {
+	getIndexedDocumentRepo(tenant: IndexTenant = 'vault'): IndexedDocumentRepo {
 		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.docMetaRepoChat : this.docMetaRepo;
+		const repo = tenant === 'chat' ? this.indexedDocumentRepoChat : this.indexedDocumentRepo;
 		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
 		return repo;
 	}
@@ -304,43 +302,43 @@ export class SqliteStoreManager {
 	}
 
 	/**
-	 * Get DocStatisticsRepo for the given index tenant (default: vault).
+	 * Graph semantics (preview, tags, N-hop) for the given index tenant (default: vault).
 	 */
-	getDocStatisticsRepo(tenant: IndexTenant = 'vault'): DocStatisticsRepo {
+	getGraphRepo(tenant: IndexTenant = 'vault'): GraphRepo {
 		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.docStatisticsRepoChat : this.docStatisticsRepo;
+		const repo = tenant === 'chat' ? this.graphRepoChat : this.graphRepo;
 		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
 		return repo;
 	}
 
 	/**
-	 * Get GraphNodeRepo for the given index tenant (default: vault).
+	 * Mobius node repo for the given index tenant (vault = search.sqlite, chat = meta.sqlite index).
 	 */
-	getGraphNodeRepo(tenant: IndexTenant = 'vault'): GraphNodeRepo {
+	getMobiusNodeRepo(tenant: IndexTenant = 'vault'): MobiusNodeRepo {
 		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.graphNodeRepoChat : this.graphNodeRepo;
+		const repo = tenant === 'chat' ? this.mobiusNodeRepoChat : this.mobiusNodeRepo;
 		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
 		return repo;
 	}
 
 	/**
-	 * Get GraphEdgeRepo for the given index tenant (default: vault).
+	 * Mobius edge repo for the given index tenant.
 	 */
-	getGraphEdgeRepo(tenant: IndexTenant = 'vault'): GraphEdgeRepo {
+	getMobiusEdgeRepo(tenant: IndexTenant = 'vault'): MobiusEdgeRepo {
 		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const repo = tenant === 'chat' ? this.graphEdgeRepoChat : this.graphEdgeRepo;
+		const repo = tenant === 'chat' ? this.mobiusEdgeRepoChat : this.mobiusEdgeRepo;
 		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
 		return repo;
 	}
 
 	/**
-	 * Get GraphStore for the given index tenant (default: vault).
+	 * Append-only operation log (meta.sqlite).
 	 */
-	getGraphStore(tenant: IndexTenant = 'vault'): GraphStore {
-		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
-		const store = tenant === 'chat' ? this.graphStoreChat : this.graphStore;
-		if (!store) throw new Error('SqliteStoreManager not initialized or is closing.');
-		return store;
+	getMobiusOperationRepo(): MobiusOperationRepo {
+		if (this.closing || !this.mobiusOperationRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
+		}
+		return this.mobiusOperationRepo;
 	}
 
 	/**
@@ -433,22 +431,21 @@ export class SqliteStoreManager {
 			console.warn('[SqliteStoreManager] Error during close (ignored):', e);
 		}
 		this.app = null;
-		this.docMetaRepo = null;
+		this.indexedDocumentRepo = null;
 		this.docChunkRepo = null;
 		this.embeddingRepo = null;
 		this.indexStateRepo = null;
-		this.docStatisticsRepo = null;
-		this.graphNodeRepo = null;
-		this.graphEdgeRepo = null;
-		this.graphStore = null;
-		this.docMetaRepoChat = null;
+		this.graphRepo = null;
+		this.indexedDocumentRepoChat = null;
 		this.docChunkRepoChat = null;
 		this.embeddingRepoChat = null;
 		this.indexStateRepoChat = null;
-		this.docStatisticsRepoChat = null;
-		this.graphNodeRepoChat = null;
-		this.graphEdgeRepoChat = null;
-		this.graphStoreChat = null;
+		this.graphRepoChat = null;
+		this.mobiusNodeRepo = null;
+		this.mobiusEdgeRepo = null;
+		this.mobiusNodeRepoChat = null;
+		this.mobiusEdgeRepoChat = null;
+		this.mobiusOperationRepo = null;
 		this.chatProjectRepo = null;
 		this.chatConversationRepo = null;
 		this.chatMessageRepo = null;

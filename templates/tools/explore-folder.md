@@ -3,8 +3,13 @@
 {{#if recursive}}*Recursive exploration (max depth: {{max_depth}})*{{else}}*Non-recursive exploration*{{/if}}
 
 {{#if tagDesc}}
-## 🏷️ Tags
+## 🏷️ Topic tags (LLM)
 {{tagDesc}}
+{{/if}}
+
+{{#if userKeywordTagDesc}}
+## 🏷️ User keywords
+{{userKeywordTagDesc}}
 {{/if}}
 
 {{#if categoryDesc}}

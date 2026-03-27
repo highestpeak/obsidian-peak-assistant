@@ -414,29 +414,29 @@ export const FUNCTIONAL_TAG_ENHANCEMENT = [
 	'evidence_data',
 ] as const;
 
-/**
- * todo currently we didn't generate these tags. so just define them here and no use it.
- */
+/** Closed vocabulary for indexer + doc-tag LLM + slot recall (see {@link SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS}). */
 export const FUNCTIONAL_TAG_IDS = [...FUNCTIONAL_TAG_CORE, ...FUNCTIONAL_TAG_ENHANCEMENT] as const;
 export type FunctionalTagId = (typeof FUNCTIONAL_TAG_IDS)[number];
 
-/** Maps each of the 15 dimension ids to functional tag ids used for recall/slot targeting. */
-export const SEARCH_CLASSIFY_TO_FUNCTIONAL_TAGS: Record<SemanticDimensionId, FunctionalTagId[]> = {
-	essence_definition: ['current_state'],
-	history_origin: ['timeline_event', 'external_context'],
-	why_mechanism: ['goal_intent', 'constraint'],
+/**
+ * Maps each semantic dimension to functional tag ids: union of slot-routing and doc-tag use cases (single source of truth).
+ */
+export const SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS: Record<SemanticDimensionId, FunctionalTagId[]> = {
+	essence_definition: ['current_state', 'idea_candidate'],
+	history_origin: ['timeline_event', 'external_context', 'past_attempt'],
+	why_mechanism: ['goal_intent', 'constraint', 'evidence_data', 'decision_opinion'],
 	evidence_source: ['evidence_data'],
-	pitfall_misconception: ['constraint'],
+	pitfall_misconception: ['constraint', 'past_attempt'],
 	how_method: ['skill_stack', 'idea_candidate'],
 	example_case: ['idea_candidate', 'evidence_data'],
 	options_comparison: ['decision_opinion', 'idea_candidate'],
-	cost_risk_limit: ['constraint'],
-	applicable_condition: ['current_state', 'external_context'],
-	impact_consequence: ['decision_opinion', 'evidence_data'],
+	cost_risk_limit: ['constraint', 'resource'],
+	applicable_condition: ['current_state', 'external_context', 'constraint'],
+	impact_consequence: ['decision_opinion', 'evidence_data', 'current_state'],
 	related_extension: ['external_context', 'idea_candidate'],
-	next_action: ['past_attempt', 'idea_candidate', 'resource'],
+	next_action: ['past_attempt', 'idea_candidate', 'resource', 'goal_intent'],
 	trend_future: ['timeline_event', 'external_context'],
-	tool_resource: ['resource'],
+	tool_resource: ['resource', 'skill_stack'],
 };
 
 // ----- follow-up questions -----

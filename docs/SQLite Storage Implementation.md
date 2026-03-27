@@ -152,10 +152,10 @@ The `syncWait()` function is used to bridge `wa-sqlite`'s async API with Kysely'
 
 See `ddl.ts` for complete schema definitions. Key tables:
 
-- `doc_meta`: Document metadata
+- `mobius_node` / `mobius_edge`: Unified graph and indexed document rows (`type=document` holds vault file metadata)
 - `doc_chunk`: Document chunks for search
 - `embedding`: Vector embeddings for semantic search
-- `graph_nodes` / `graph_edges`: Knowledge graph
+- `doc_meta_fts`: FTS5 virtual table for title/path search (not a legacy `doc_meta` table)
 - `chat_*`: Chat conversation data
 
 ## Usage Example
@@ -179,11 +179,12 @@ await embeddingRepo.upsert({
   // ...
 });
 
-// Use Kysely directly
-const db = sqliteStoreManager.getKysely();
+// Use Kysely directly (example: indexed documents live on mobius_node)
+const db = sqliteStoreManager.getIndexContext('vault');
 const results = await db
-  .selectFrom('doc_meta')
+  .selectFrom('mobius_node')
   .selectAll()
+  .where('type', '=', 'document')
   .execute();
 ```
 

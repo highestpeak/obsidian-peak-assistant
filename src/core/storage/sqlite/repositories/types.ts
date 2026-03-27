@@ -1,4 +1,5 @@
 import type { Database as DbSchema } from '../ddl';
+import type { ChunkType } from '@/service/search/index/chunkTypes';
 
 /**
  * Chunk data for upsert operations.
@@ -7,6 +8,8 @@ export type DocChunkInput = {
 	chunk_id: string;
 	doc_id: string;
 	chunk_index: number;
+	chunk_type: ChunkType;
+	chunk_meta_json: string | null;
 	title: string | null;
 	mtime: number | null;
 	content_raw: string | null;
@@ -16,7 +19,10 @@ export type DocChunkInput = {
 /**
  * Chunk data returned from queries.
  */
-export type DocChunkOutput = Pick<DbSchema['doc_chunk'], 'chunk_id' | 'doc_id' | 'title' | 'content_raw' | 'mtime'>;
+export type DocChunkOutput = Pick<
+	DbSchema['doc_chunk'],
+	'chunk_id' | 'doc_id' | 'chunk_type' | 'title' | 'content_raw' | 'mtime'
+>;
 
 /**
  * FTS insert parameters for content.

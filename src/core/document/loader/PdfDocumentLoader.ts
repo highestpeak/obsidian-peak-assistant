@@ -6,9 +6,10 @@ import { binaryContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
-import { generateUuidWithoutHyphens, generateStableUuid } from '@/core/utils/id-utils';
+import { generateDocIdFromPath, generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
+import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 
 /** CDN base for pdfjs-dist worker; avoids bundling the heavy worker. */
 const PDFJS_CDN_VERSION = '5.4.394';
@@ -105,10 +106,11 @@ export class PdfDocumentLoader implements DocumentLoader {
 		const minSize = settings.minDocumentSizeForChunking;
 
 		if (content.length <= minSize) {
-			return [{
+			return assembleIndexedChunks(doc, [{
 				docId: doc.id,
+				chunkType: 'body_raw',
 				content: content,
-			}];
+			}]);
 		}
 
 		const splitter = new RecursiveCharacterTextSplitter({
@@ -122,13 +124,14 @@ export class PdfDocumentLoader implements DocumentLoader {
 			const langchainDoc = langchainDocs[i];
 			chunks.push({
 				docId: doc.id,
+				chunkType: 'body_raw',
 				content: langchainDoc.pageContent,
 				chunkId: generateUuidWithoutHyphens(),
 				chunkIndex: i,
 			});
 		}
 
-		return chunks;
+		return assembleIndexedChunks(doc, chunks);
 	}
 
 	async *scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
@@ -180,7 +183,7 @@ export class PdfDocumentLoader implements DocumentLoader {
 			}
 
 			return {
-				id: generateStableUuid(file.path),
+				id: generateDocIdFromPath(file.path),
 				type: 'pdf',
 				sourceFileInfo: {
 					path: file.path,
@@ -202,7 +205,9 @@ export class PdfDocumentLoader implements DocumentLoader {
 				},
 				metadata: {
 					title: file.basename,
-					tags: [],
+					topicTags: [],
+					functionalTagEntries: [],
+					keywordTags: [],
 				},
 				contentHash: sourceContentHash,
 				references: {

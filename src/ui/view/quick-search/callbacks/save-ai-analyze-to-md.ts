@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import { TFile } from 'obsidian';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
@@ -120,7 +121,7 @@ function sanitizeFileName(name: string): string {
 		.trim()
 		.replace(/[\\\\/:*?\"<>|]/g, '-')
 		.replace(/\s+/g, ' ')
-		.slice(0, 120);
+		.slice(0, SLICE_CAPS.ui.saveAnalyzeMd);
 }
 
 /**

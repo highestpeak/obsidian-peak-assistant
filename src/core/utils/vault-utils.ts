@@ -8,7 +8,10 @@ import { App, normalizePath, TFile, TFolder } from 'obsidian';
  * @returns The TFolder object representing the folder.
  */
 export async function ensureFolder(app: App, folderPath: string): Promise<TFolder> {
-	const normalized = normalizePath(folderPath);
+	const normalized = normalizePath(folderPath.trim());
+	if (!normalized) {
+		throw new Error('Invalid folder path');
+	}
 	await ensureFolderRecursive(app, normalized);
 	// Mock vault (e.g. desktop dev) does not persist; skip strict check so save flow can return path from params/settings
 	if ((app as any).isMock) {
@@ -180,5 +183,22 @@ export function openAttachment(app: App, path: string): void {
 	const cleaned = path.replace(/^\[\[|\]\]$/g, '');
 	const normalized = cleaned.startsWith('/') ? cleaned.slice(1) : cleaned;
 	void app.workspace.openLinkText(normalized, '', true);
+}
+
+/**
+ * Read plaintext from a vault file with truncation. Returns null for missing paths, non-files, or read errors.
+ * Skips synthetic paths such as `__hub_cluster__/...` used for cluster hub candidates.
+ */
+export async function readVaultTextSnippet(app: App, vaultPath: string, maxChars: number): Promise<string | null> {
+	const p = normalizePath(vaultPath);
+	if (!p || p.startsWith('__hub_cluster__')) return null;
+	const f = app.vault.getAbstractFileByPath(p);
+	if (!(f instanceof TFile)) return null;
+	try {
+		const raw = await app.vault.cachedRead(f);
+		return raw.length <= maxChars ? raw : `${raw.slice(0, maxChars)}\n\n[truncated]`;
+	} catch {
+		return null;
+	}
 }
 

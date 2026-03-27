@@ -3,6 +3,7 @@ import { localWebSearchInputSchema, perplexityWebSearchInputSchema } from '@/cor
 import { AgentTool, safeAgentTool } from './types';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { PROVIDER_ID_PERPLEXITY } from '@/core/providers/base/perplexity';
+import { SLICE_CAPS } from '@/core/constant';
 import { AppContext } from '@/app/context/AppContext';
 import { BusinessError } from '@/core/errors';
 import { ErrorCode } from '@/core/errors';
@@ -157,7 +158,7 @@ class GoogleSearchTool {
 								results.push({
 									title: title.trim(),
 									url: this.normalizeUrl(url),
-									snippet: snippet.slice(0, 200),
+									snippet: snippet.slice(0, SLICE_CAPS.searchWeb.snippetShort),
 								});
 							}
 						}
@@ -214,7 +215,7 @@ class GoogleSearchTool {
 			return {
 				title,
 				url,
-				snippet: snippet.slice(0, 300),
+				snippet: snippet.slice(0, SLICE_CAPS.searchWeb.snippetLong),
 			};
 		} catch (error) {
 			console.warn('[GoogleSearchTool] Error extracting result:', error);

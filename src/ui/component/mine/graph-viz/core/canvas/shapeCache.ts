@@ -3,6 +3,7 @@
  * Avoids per-frame Path2D allocations.
  */
 
+import { GraphNodeType } from '@/core/po/graph.po';
 import { icons } from 'lucide';
 import type { GraphVizNode } from '../../types';
 import { LUCIDE_VIEWBOX } from '../constants';
@@ -91,12 +92,12 @@ export type NodeShapeKind = 'circle' | 'diamond' | 'triangle' | 'tag' | 'concept
 
 export function getNodeShapePath2D(d: GraphVizNode): { path: Path2D; kind: NodeShapeKind; scale?: number } {
 	const r = d.r ?? 10;
-	const t = (d.type || 'document').toLowerCase();
-	if (t === 'tag') {
+	const t = (d.type || GraphNodeType.Document).toLowerCase();
+	if (t === GraphNodeType.TopicTag || t === GraphNodeType.FunctionalTag) {
 		const scale = (2 * r) / LUCIDE_VIEWBOX;
 		return { path: getTagIconPath(), kind: 'tag', scale };
 	}
-	if (t === 'concept') {
+	if (t === GraphNodeType.Resource || t === GraphNodeType.Folder) {
 		const scale = (2 * r) / LUCIDE_VIEWBOX;
 		return { path: getCommandIconPath(), kind: 'concept', scale };
 	}

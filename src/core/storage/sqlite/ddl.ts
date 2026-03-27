@@ -1,22 +1,35 @@
 /**
+ * Indexed vault document fields (DTO). Persisted on `mobius_node` where `type = document`; not a separate table.
+ */
+export interface IndexedDocumentRecord {
+	id: string;
+	path: string;
+	type: string | null;
+	title: string | null;
+	size: number | null;
+	mtime: number | null;
+	ctime: number | null;
+	content_hash: string | null;
+	summary: string | null;
+	/** Long summary from `attributes_json.full_summary` when present (not a separate column). */
+	full_summary?: string | null;
+	tags: string | null;
+	last_processed_at: number | null;
+	frontmatter_json?: string | null;
+	/** Same-row statistics on `mobius_node` (optional; filled during indexing). */
+	word_count?: number | null;
+	char_count?: number | null;
+	last_open_ts?: number | null;
+	/** When set, written to `mobius_node.updated_at` for this document row. */
+	row_updated_at?: number | null;
+	/** LLM / frontmatter-derived creation estimate; persisted as `mobius_node.infer_created_at` (not filesystem `ctime`). */
+	infer_created_at?: number | null;
+}
+
+/**
  * Database schema definition for type safety.
  */
 export interface Database {
-	doc_meta: {
-		id: string;
-		// path almost is the primary key
-		path: string;
-		type: string | null;
-		title: string | null;
-		size: number | null;
-		mtime: number | null;
-		ctime: number | null;
-		content_hash: string | null;
-		summary: string | null;
-		tags: string | null;
-		last_processed_at: number | null;
-		frontmatter_json?: string | null;
-	};
 	index_state: {
 		key: string;
 		value: string | null;
@@ -26,6 +39,8 @@ export interface Database {
 		doc_id: string;
 		chunk_id: string | null;
 		chunk_index: number | null;
+		/** Redundant copy of `doc_chunk.chunk_type` for fast KNN filtering; SSOT is `doc_chunk`. */
+		chunk_type: string | null;
 		content_hash: string;
 		ctime: number;
 		mtime: number;
@@ -33,6 +48,7 @@ export interface Database {
 		embedding_model: string;
 		embedding_len: number;
 	};
+	/** Logical row shape for stats APIs; values live on `mobius_node` for document nodes. */
 	doc_statistics: {
 		doc_id: string;
 		word_count: number | null;
@@ -44,6 +60,7 @@ export interface Database {
 		open_count: number | null;
 		updated_at: number;
 	};
+	/** Logical graph node row for repos; stored in `mobius_node`. */
 	graph_nodes: {
 		/**
 		 * Node ID - normalized path (for document nodes) or prefixed identifier (for tags, categories, etc.).
@@ -57,6 +74,7 @@ export interface Database {
 		created_at: number;
 		updated_at: number;
 	};
+	/** Logical graph edge row for repos; stored in `mobius_edge`. */
 	graph_edges: {
 		id: string;
 		from_node_id: string;
@@ -71,6 +89,8 @@ export interface Database {
 		chunk_id: string;
 		doc_id: string;
 		chunk_index: number;
+		chunk_type: string;
+		chunk_meta_json: string | null;
 		title: string | null;
 		mtime: number | null;
 		content_raw: string | null;
@@ -189,6 +209,70 @@ export interface Database {
 		/** Analysis preset for history icon and restore: docSimple | vaultSimple | vaultFull. */
 		analysis_preset: string | null;
 	};
+	/**
+	 * Unified graph + doc meta node store (no FKs). Tag stats live on type=tag rows.
+	 * Tag-specific extras (e.g. quality flags) use `attributes_json`, not dedicated columns.
+	 */
+	mobius_node: {
+		node_id: string;
+		type: string;
+		label: string;
+		created_at: number;
+		infer_created_at: number | null;
+		updated_at: number;
+		last_open_ts: number | null;
+		open_count: number | null;
+		path: string | null;
+		title: string | null;
+		size: number | null;
+		mtime: number | null;
+		ctime: number | null;
+		content_hash: string | null;
+		summary: string | null;
+		tags_json: string | null;
+		word_count: number | null;
+		char_count: number | null;
+		language: string | null;
+		richness_score: number | null;
+		doc_incoming_cnt: number | null;
+		doc_outgoing_cnt: number | null;
+		other_incoming_cnt: number | null;
+		other_outgoing_cnt: number | null;
+		tag_doc_count: number | null;
+		/** Vault PageRank score (reference subgraph); not stored in `attributes_json`. */
+		pagerank: number | null;
+		pagerank_updated_at: number | null;
+		pagerank_version: number | null;
+		/** Weighted PageRank on `semantic_related` subgraph. */
+		semantic_pagerank: number | null;
+		semantic_pagerank_updated_at: number | null;
+		semantic_pagerank_version: number | null;
+		attributes_json: string;
+	};
+	/** Graph edges without foreign keys (parallel to graph_edges). */
+	mobius_edge: {
+		id: string;
+		from_node_id: string;
+		to_node_id: string;
+		type: string;
+		label: string | null;
+		weight: number;
+		attributes_json: string;
+		created_at: number;
+		updated_at: number;
+	};
+	/** User / product operation log (meta DB primary insert target). */
+	mobius_operation: {
+		id: string;
+		operation_type: string;
+		operation_desc: string;
+		created_at: number;
+		related_kind: string | null;
+		related_id: string | null;
+		important_level: number | null;
+		continuous_group_id: string | null;
+		meta_json: string | null;
+	};
 }
 
 
@@ -226,23 +310,9 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		}
 	};
 
+	// Indexed document metadata and graph topology live in mobius_node / mobius_edge (see below). Legacy
+	// physical tables doc_meta / graph_* / doc_statistics are not created for new databases.
 	db.exec(`
-		CREATE TABLE IF NOT EXISTS doc_meta (
-			id TEXT PRIMARY KEY,
-			path TEXT NOT NULL UNIQUE,
-			type TEXT,
-			title TEXT,
-			size INTEGER,
-			mtime INTEGER,
-			ctime INTEGER,
-			content_hash TEXT,
-			summary TEXT,
-			tags TEXT,
-			last_processed_at INTEGER,
-			frontmatter_json TEXT
-		);
-		CREATE INDEX IF NOT EXISTS idx_doc_meta_path ON doc_meta(path);
-		CREATE INDEX IF NOT EXISTS idx_doc_meta_content_hash ON doc_meta(content_hash);
 		CREATE TABLE IF NOT EXISTS index_state (
 			key TEXT PRIMARY KEY,
 			value TEXT
@@ -252,6 +322,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			doc_id TEXT NOT NULL,
 			chunk_id TEXT,
 			chunk_index INTEGER,
+			chunk_type TEXT,
 			content_hash TEXT NOT NULL,
 			ctime INTEGER NOT NULL,
 			mtime INTEGER NOT NULL,
@@ -262,44 +333,6 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_embedding_doc_id ON embedding(doc_id);
 		CREATE INDEX IF NOT EXISTS idx_embedding_chunk_id ON embedding(chunk_id);
 		CREATE INDEX IF NOT EXISTS idx_embedding_content_hash ON embedding(content_hash);
-		CREATE TABLE IF NOT EXISTS doc_statistics (
-			doc_id TEXT PRIMARY KEY,
-			word_count INTEGER,
-			char_count INTEGER,
-			language TEXT,
-			richness_score REAL,
-			last_open_ts INTEGER,
-			open_count INTEGER,
-			updated_at INTEGER NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_doc_statistics_doc_id ON doc_statistics(doc_id);
-		CREATE INDEX IF NOT EXISTS idx_doc_statistics_last_open_ts ON doc_statistics(last_open_ts);
-		CREATE TABLE IF NOT EXISTS graph_nodes (
-			id TEXT PRIMARY KEY,
-			type TEXT NOT NULL,
-			label TEXT NOT NULL,
-			attributes TEXT NOT NULL,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_graph_nodes_type ON graph_nodes(type);
-		CREATE INDEX IF NOT EXISTS idx_graph_nodes_updated_at ON graph_nodes(updated_at);
-		CREATE TABLE IF NOT EXISTS graph_edges (
-			id TEXT PRIMARY KEY,
-			from_node_id TEXT NOT NULL,
-			to_node_id TEXT NOT NULL,
-			type TEXT NOT NULL,
-			weight REAL NOT NULL DEFAULT 1.0,
-			attributes TEXT NOT NULL,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
-			FOREIGN KEY (from_node_id) REFERENCES graph_nodes(id) ON DELETE CASCADE,
-			FOREIGN KEY (to_node_id) REFERENCES graph_nodes(id) ON DELETE CASCADE
-		);
-		CREATE INDEX IF NOT EXISTS idx_graph_edges_from_node ON graph_edges(from_node_id);
-		CREATE INDEX IF NOT EXISTS idx_graph_edges_to_node ON graph_edges(to_node_id);
-		CREATE INDEX IF NOT EXISTS idx_graph_edges_type ON graph_edges(type);
-		CREATE INDEX IF NOT EXISTS idx_graph_edges_from_to ON graph_edges(from_node_id, to_node_id);
 		CREATE TABLE IF NOT EXISTS user_profile_processed_hash (
 			content_hash TEXT PRIMARY KEY,
 			processed_at INTEGER NOT NULL
@@ -312,6 +345,8 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			chunk_id TEXT PRIMARY KEY,
 			doc_id TEXT NOT NULL,
 			chunk_index INTEGER NOT NULL,
+			chunk_type TEXT NOT NULL DEFAULT 'body_raw',
+			chunk_meta_json TEXT,
 			title TEXT,
 			mtime INTEGER,
 			content_raw TEXT,
@@ -480,6 +515,77 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	tryExec(`ALTER TABLE ai_analysis_record DROP COLUMN meta_json`);
 	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN title TEXT`);
 	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN analysis_preset TEXT`);
+
+	// Mobius layer: merged nodes + edges without FKs; operations log.
+	// No DROP INDEX here: assume greenfield; indexes are defined once below.
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS mobius_node (
+			node_id TEXT PRIMARY KEY,
+			type TEXT NOT NULL,
+			label TEXT NOT NULL,
+			created_at INTEGER NOT NULL,
+			infer_created_at INTEGER,
+			updated_at INTEGER NOT NULL,
+			last_open_ts INTEGER,
+			open_count INTEGER,
+			path TEXT UNIQUE,
+			title TEXT,
+			size INTEGER,
+			mtime INTEGER,
+			ctime INTEGER,
+			content_hash TEXT,
+			summary TEXT,
+			tags_json TEXT,
+			word_count INTEGER,
+			char_count INTEGER,
+			language TEXT,
+			richness_score REAL,
+			doc_incoming_cnt INTEGER,
+			doc_outgoing_cnt INTEGER,
+			other_incoming_cnt INTEGER,
+			other_outgoing_cnt INTEGER,
+			tag_doc_count INTEGER,
+			pagerank REAL,
+			pagerank_updated_at INTEGER,
+			pagerank_version INTEGER,
+			semantic_pagerank REAL,
+			semantic_pagerank_updated_at INTEGER,
+			semantic_pagerank_version INTEGER,
+			attributes_json TEXT NOT NULL DEFAULT '{}'
+		);
+		CREATE INDEX IF NOT EXISTS idx_mobius_node_type_node_id ON mobius_node(type, node_id);
+		CREATE INDEX IF NOT EXISTS idx_mobius_node_path ON mobius_node(path);
+		CREATE INDEX IF NOT EXISTS idx_mobius_node_updated_at ON mobius_node(updated_at);
+		CREATE TABLE IF NOT EXISTS mobius_edge (
+			id TEXT PRIMARY KEY,
+			from_node_id TEXT NOT NULL,
+			to_node_id TEXT NOT NULL,
+			type TEXT NOT NULL,
+			label TEXT,
+			weight REAL NOT NULL DEFAULT 1.0,
+			attributes_json TEXT NOT NULL DEFAULT '{}',
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_mobius_edge_from_type ON mobius_edge(from_node_id, type);
+		CREATE INDEX IF NOT EXISTS idx_mobius_edge_to_type ON mobius_edge(to_node_id, type);
+		CREATE INDEX IF NOT EXISTS idx_mobius_edge_type_to ON mobius_edge(type, to_node_id);
+		CREATE INDEX IF NOT EXISTS idx_mobius_edge_from_to_type ON mobius_edge(from_node_id, to_node_id, type);
+		CREATE TABLE IF NOT EXISTS mobius_operation (
+			id TEXT PRIMARY KEY,
+			operation_type TEXT NOT NULL,
+			operation_desc TEXT NOT NULL,
+			created_at INTEGER NOT NULL,
+			related_kind TEXT,
+			related_id TEXT,
+			important_level INTEGER,
+			continuous_group_id TEXT,
+			meta_json TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_mobius_operation_created_at ON mobius_operation(created_at);
+		CREATE INDEX IF NOT EXISTS idx_mobius_operation_type_created_at ON mobius_operation(operation_type, created_at);
+		CREATE INDEX IF NOT EXISTS idx_mobius_operation_group ON mobius_operation(continuous_group_id);
+	`);
 }
 
 

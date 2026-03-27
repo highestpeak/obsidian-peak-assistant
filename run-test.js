@@ -10,14 +10,14 @@
  * 4. Displays detailed test results with pass/fail indicators
  *
  * Usage:
- *   node run-test.js                           # Run all .test.ts files in src/
+ *   node run-test.js                           # Run all .test.ts files under test/
  *   node run-test.js path/to/specific.test.ts   # Run specific test file
  *   npm run test                               # Run all tests (alias)
  *   npm run test -- path/to/specific.test.ts    # Run specific test file
  *
  * Examples:
  *   npm run test
- *   npm run test -- src/service/tools/search-graph-inspector/boolean-expression-parser.test.ts
+ *   npm run test -- test/boolean-expression-parser.test.ts
  */
 
 const { execSync } = require('child_process');
@@ -36,7 +36,7 @@ if (args.length > 0) {
         return arg.endsWith('.test.ts') ? arg : `${arg}.test.ts`;
     });
 } else {
-    // Find all .test.ts files in src/ directory
+    // Find all .test.ts files under test/ directory
     function findTestFiles(dir) {
         const files = [];
         const items = fs.readdirSync(dir);
@@ -55,7 +55,7 @@ if (args.length > 0) {
         return files;
     }
 
-    testFiles = findTestFiles('src');
+    testFiles = findTestFiles('test');
 }
 
 if (testFiles.length === 0) {
@@ -77,10 +77,16 @@ for (const testFile of testFiles) {
         // - Bundle the test file and its dependencies
         // - Output as CommonJS format for Node.js compatibility
         // - Target Node.js platform for proper module resolution
-        execSync(`npx esbuild ${testFile} --bundle --format=cjs --outfile=temp-test.js --platform=node`, {
-            stdio: 'inherit',
-            cwd: process.cwd()
-        });
+        // Obsidian is not installed for Node; tests may import hub modules that reference it.
+        // Externalize node_modules to keep bundles small and avoid pulling browser-only graphs into the test runner.
+        const obsidianStub = path.join(__dirname, 'test', 'stubs', 'obsidian-stub.cjs');
+        execSync(
+            `npx esbuild ${testFile} --bundle --format=cjs --outfile=temp-test.js --platform=node --tsconfig=tsconfig.json --alias:obsidian=${obsidianStub} --packages=external`,
+            {
+                stdio: 'inherit',
+                cwd: process.cwd(),
+            },
+        );
 
         // Step 2: Execute the compiled test file
         // - Runs all test cases defined in the test file

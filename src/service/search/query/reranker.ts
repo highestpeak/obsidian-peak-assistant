@@ -5,11 +5,17 @@ import type { IndexTenant } from '@/core/storage/sqlite/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
 import type { RerankDocument } from '@/core/providers/rerank/types';
+import {
+	INDEX_HUB_TIER_THRESHOLDS,
+	INDEX_SEARCH_HUB_INCOMING_BOOST,
+	INDEX_SEARCH_SECONDARY_INCOMING_BOOST,
+} from '@/core/constant';
+import type { DocRankingSignal } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 
 /**
  * Ranking signals for boosting search results.
  */
-export type RankingSignals = Map<string, { lastOpenTs: number; openCount: number }>;
+export type RankingSignals = Map<string, DocRankingSignal>;
 
 /**
  * Reranker for merging and reranking hybrid search results.
@@ -60,7 +66,11 @@ export class Reranker {
 
 		// Apply ranking boosts (always performed for better relevance)
 		const itemsWithScore = items.map((i) => ({ ...i, score: i.score ?? 0 })) as SearchResultItem[];
-		const boostedItems = this.applyRankingBoosts({ items: itemsWithScore, signals, relatedPaths: related });
+		const boostedItems = this.applyRankingBoosts({
+			items: itemsWithScore,
+			signals,
+			relatedPaths: related,
+		});
 
 		// Optional LLM reranking (expensive, only for high-quality requirements)
 		if (!enableLLMRerank) {
@@ -93,17 +103,17 @@ export class Reranker {
 	 */
 	private async getSignalsForPaths(paths: string[], tenant: IndexTenant = 'vault'): Promise<RankingSignals> {
 		if (!paths.length) return new Map();
-		const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
-		const docStatisticsRepo = sqliteStoreManager.getDocStatisticsRepo(tenant);
+		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
 
 		// Get doc_ids from paths
-		const metaMap = await docMetaRepo.getByPaths(paths);
+		const metaMap = await indexedDocumentRepo.getByPaths(paths);
 		const docIds = Array.from(metaMap.values()).map((m) => m.id);
-		const signals = await docStatisticsRepo.getSignalsForDocIds(docIds);
+		const signals = await mobiusNodeRepo.getSignalsForDocIds(docIds);
 
 		// Map back to paths
 		const pathToDocId = new Map(Array.from(metaMap.entries()).map(([path, meta]) => [path, meta.id]));
-		const result = new Map<string, { lastOpenTs: number; openCount: number }>();
+		const result = new Map<string, DocRankingSignal>();
 		for (const [path, docId] of pathToDocId.entries()) {
 			const signal = signals.get(docId);
 			if (signal) {
@@ -114,12 +124,12 @@ export class Reranker {
 	}
 
 	/**
-	 * Get related document paths within N hops using GraphStore.
+	 * Get related document paths within N hops using GraphRepo.
 	 */
 	private async getRelatedPathsWithinHops(params: { startPath: string; maxHops: number }, tenant: IndexTenant = 'vault'): Promise<Set<string>> {
 		const maxHops = Math.max(1, Number(params.maxHops ?? 2));
-		const graphStore = sqliteStoreManager.getGraphStore(tenant);
-		return await graphStore.getRelatedFilePaths({
+		const graphRepo = sqliteStoreManager.getGraphRepo(tenant);
+		return await graphRepo.getRelatedFilePaths({
 			currentFilePath: params.startPath,
 			maxHops,
 		});
@@ -275,7 +285,11 @@ export class Reranker {
 	 *    - Fixed value: 0.2 if file is related to current file (within 2 hops), 0 otherwise
 	 *    - Binary boost: either related or not (no distance weighting currently)
 	 *
-	 * Final score: baseScore + freqBoost + recencyBoost + graphBoost
+	 * Final score: baseScore + freqBoost + recencyBoost + graphBoost + anchorBoost
+	 *
+	 * Anchor boost: when `pagerankVersion` is set on the document node (`mobius_node.pagerank_version`),
+	 * hub-style boosts can use explicit `hubTier` signals when present; otherwise falls back to incoming
+	 * reference count thresholds.
 	 *
 	 * Potential extensions (not yet implemented):
 	 * - Recent 2-week access count: track and boost based on opens within last 14 days
@@ -298,9 +312,17 @@ export class Reranker {
 		const now = params.nowTs ?? Date.now();
 		const items = params.items.map((i) => ({ ...i }));
 
+		const th = INDEX_HUB_TIER_THRESHOLDS;
+		const hubBoostAmt = INDEX_SEARCH_HUB_INCOMING_BOOST;
+		const secBoostAmt = INDEX_SEARCH_SECONDARY_INCOMING_BOOST;
+
 		for (const item of items) {
 			const s = params.signals.get(item.path);
-			if (!s) continue;
+			const base = item.score ?? 0;
+			if (!s) {
+				item.finalScore = base;
+				continue;
+			}
 
 			// Frequency boost: logarithmic scaling of total open count
 			const freqBoost = Math.log1p(s.openCount) * 0.15;
@@ -313,9 +335,27 @@ export class Reranker {
 			// Graph boost: fixed boost for files related to current file (within 2 hops)
 			const graphBoost = params.relatedPaths.has(item.path) ? 0.2 : 0;
 
-			// Calculate final score as sum of base score and all boosts
-			const base = item.score ?? 0;
-			item.finalScore = base + freqBoost + recencyBoost + graphBoost;
+			// Hub boost: prefer vault PageRank tiers when computed; else incoming reference counts.
+			const inc = s.docIncomingCnt ?? 0;
+			let anchorBoost = 0;
+			const prReady = typeof s.pagerankVersion === 'number';
+			if (prReady) {
+				if (s.hubTier === 'hub') anchorBoost = hubBoostAmt;
+				else if (s.hubTier === 'secondary') anchorBoost = secBoostAmt;
+				else if (s.hubTier === 'none') anchorBoost = 0;
+				else {
+					if (inc >= th.hubIncomingMin) anchorBoost = hubBoostAmt;
+					else if (inc >= th.secondaryIncomingMin) anchorBoost = secBoostAmt;
+				}
+			} else {
+				if (inc >= th.hubIncomingMin) {
+					anchorBoost = hubBoostAmt;
+				} else if (inc >= th.secondaryIncomingMin) {
+					anchorBoost = secBoostAmt;
+				}
+			}
+
+			item.finalScore = base + freqBoost + recencyBoost + graphBoost + anchorBoost;
 		}
 
 		// Sort by final score (descending)

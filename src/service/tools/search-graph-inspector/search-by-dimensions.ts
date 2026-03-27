@@ -1,7 +1,8 @@
+import { GraphNodeType } from '@/core/po/graph.po';
 import { applyFiltersAndSorters, getDefaultItemFiledGetter, getSemanticSearchResults } from "./common";
 import { BooleanExpressionParser } from "./boolean-expression-parser";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
-import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
+import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
@@ -9,7 +10,7 @@ export async function searchByDimensions(params: any, templateManager?: Template
     const { boolean_expression, semantic_filter, filters, sorter, limit, response_format } = params;
     const expr = typeof boolean_expression === 'string' ? boolean_expression.trim() : '';
     if (!expr) {
-        return "No search dimensions specified. Please specify a boolean_expression like 'tag:javascript AND category:programming'.";
+        return "No search dimensions specified. Please specify a boolean_expression like 'tag:javascript AND functional:programming'.";
     }
 
     let parser: BooleanExpressionParser;
@@ -17,17 +18,17 @@ export async function searchByDimensions(params: any, templateManager?: Template
         parser = new BooleanExpressionParser(expr);
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        return `Invalid boolean_expression: ${msg}. Use only tag:value, category:value, AND, OR, NOT, and parentheses. Example: tag:javascript AND category:programming. Attention. Only one word. do not use space. do not use special characters.`;
+        return `Invalid boolean_expression: ${msg}. Use only tag:value, functional:value, AND, OR, NOT, and parentheses. Example: tag:javascript AND functional:programming. Attention. Only one word. do not use space. do not use special characters.`;
     }
 
-    // Extract all tags and categories from the expression
-    const { tags: expressionTags, categories: expressionCategories } = parser.extractDimensions();
-    if (expressionTags.length === 0 && expressionCategories.length === 0) {
-        return 'Boolean expression must contain at least one tag or category filter.';
+    const { tags: expressionTags, functionals: expressionFunctionals, keywords: expressionKeywords } =
+        parser.extractDimensions();
+    if (expressionTags.length === 0 && expressionFunctionals.length === 0 && expressionKeywords.length === 0) {
+        return 'Boolean expression must contain at least one tag:functional: or keyword: filter.';
     }
 
-    const { success: matchingDocumentsSuccess, message: matchingDocumentsMessage, data: matchingExpressionDocNodes }
-        = await findByExpressionWhere(parser, expressionTags, expressionCategories);
+    const { success: matchingDocumentsSuccess, message: matchingDocumentsMessage, data: matchingExpressionDocNodes } =
+        await findByExpressionWhere(expressionTags, expressionFunctionals, expressionKeywords);
     if (!matchingDocumentsSuccess || !matchingExpressionDocNodes) {
         return matchingDocumentsMessage || 'Error finding matching documents.';
     }
@@ -78,44 +79,34 @@ export async function searchByDimensions(params: any, templateManager?: Template
 }
 
 async function findByExpressionWhere(
-    parser: BooleanExpressionParser,
     expressionTags: string[],
-    expressionCategories: string[]
+    expressionFunctionals: string[],
+    expressionKeywords: string[],
 ): Promise<{ success: boolean; message?: string; data?: Map<string, GraphNode>; }> {
-    const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-    const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
 
-    // Find tag and category nodes that match the expression using SQL
-    const tagLookupMap = await graphNodeRepo.getByTypeAndLabels('tag', expressionTags)
-        // key: label(tag name), value: tag node id
-        .then(nodes => new Map(
-            nodes.map(node => [node.label, node.id])
-        ));
-    const categoryLookupMap = await graphNodeRepo.getByTypeAndLabels('category', expressionCategories)
-        // key: label(category name), value: category node id
-        .then(nodes => new Map(
-            nodes.map(node => [node.label, node.id])
-        ));
+    const tagLookupMap = await mobiusNodeRepo
+        .getByTypeAndLabels(GraphNodeType.TopicTag, expressionTags)
+        .then((nodes) => new Map(nodes.map((node) => [node.label, node.id])));
+    const functionalLookupMap = await mobiusNodeRepo
+        .getByTypeAndLabels(GraphNodeType.FunctionalTag, expressionFunctionals)
+        .then((nodes) => new Map(nodes.map((node) => [node.label, node.id])));
+    const keywordLookupMap = await mobiusNodeRepo
+        .getByTypeAndLabels(GraphNodeType.KeywordTag, expressionKeywords)
+        .then((nodes) => new Map(nodes.map((node) => [node.label, node.id])));
 
-    // Collect all target node IDs (tags and categories)
     const allTargetNodeIds: string[] = [];
-
-    // Add tag IDs
-    tagLookupMap.forEach((tagId) => {
-        allTargetNodeIds.push(tagId);
-    });
-
-    // Add category IDs
-    categoryLookupMap.forEach((categoryId) => {
-        allTargetNodeIds.push(categoryId);
-    });
+    tagLookupMap.forEach((id) => allTargetNodeIds.push(id));
+    functionalLookupMap.forEach((id) => allTargetNodeIds.push(id));
+    keywordLookupMap.forEach((id) => allTargetNodeIds.push(id));
 
     if (allTargetNodeIds.length === 0) {
-        return { success: false, message: 'No valid tags or categories found in expression.' };
+        return { success: false, message: 'No valid tag/functional/keyword nodes found for expression.' };
     }
 
     // Use GROUP BY and HAVING to find documents connected to ALL specified targets
-    const documentIds = await graphEdgeRepo.getSourceNodesConnectedToAllTargets(allTargetNodeIds);
+    const documentIds = await mobiusEdgeRepo.getSourceNodesConnectedToAllTargets(allTargetNodeIds);
 
     if (documentIds.length === 0) {
         return { success: false, message: 'No documents found matching all criteria.' };
@@ -123,6 +114,6 @@ async function findByExpressionWhere(
 
     return {
         success: true,
-        data: await graphNodeRepo.getByIds(documentIds)
+        data: await mobiusNodeRepo.getByIds(documentIds)
     };
 }

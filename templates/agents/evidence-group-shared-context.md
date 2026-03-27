@@ -24,8 +24,13 @@
 {{/if}}
 
 {{#if hasTagDesc}}
-## Tags (top in group)
+## Topic tags (LLM, top in group)
 {{{tagDesc}}}
+{{/if}}
+
+{{#if hasUserKeywordTagDesc}}
+## User keywords (top in group)
+{{{userKeywordTagDesc}}}
 {{/if}}
 
 {{#if hasMermaidCode}}

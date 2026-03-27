@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -215,7 +216,7 @@ const EvidenceView: React.FC<{
 									<div>
 										<div className="pktw-text-[10px] pktw-font-medium pktw-text-[#6b7280] pktw-mb-1">Summaries</div>
 										<ul className="pktw-text-xs pktw-text-[#374151] pktw-space-y-1 pktw-list-disc pktw-pl-4">
-											{summaries.slice(0, 3).map((s, i) => (
+											{summaries.slice(0, SLICE_CAPS.ui.sourcesSummaries).map((s, i) => (
 												<li key={i} className="pktw-line-clamp-2">{s}</li>
 											))}
 											{summaries.length > 3 && <li className="pktw-text-[#6b7280]">+{summaries.length - 3} more</li>}
@@ -226,7 +227,7 @@ const EvidenceView: React.FC<{
 									<div>
 										<div className="pktw-text-[10px] pktw-font-medium pktw-text-[#6b7280] pktw-mb-1">Claims & quotes</div>
 										<ul className="pktw-space-y-2">
-											{facts.slice(0, 8).map((f, i) => (
+											{facts.slice(0, SLICE_CAPS.ui.sourcesFacts).map((f, i) => (
 												<li key={i} className="pktw-text-xs pktw-border-l-2 pktw-border-[#7c3aed]/30 pktw-pl-2">
 													<span className="pktw-text-[#374151]">{f.claim}</span>
 													{f.quote && (

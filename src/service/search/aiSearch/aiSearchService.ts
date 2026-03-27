@@ -3,12 +3,13 @@ import type { SearchResultItem, AiAnalyzeResult } from '../types';
 import type { StreamingCallbacks } from '@/service/chat/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { GraphPreview } from '@/core/storage/graph/types';
-import type { GraphNodeType } from '@/core/po/graph.po';
+import { GraphNodeType } from '@/core/po/graph.po';
 import type { SearchSettings } from '@/app/settings/types';
 import {
 	AI_SEARCH_GRAPH_MAX_NODES_PER_SOURCE,
 	AI_SEARCH_GRAPH_MAX_HOPS,
 	AI_SEARCH_GRAPH_FINAL_MAX_NODES,
+	SLICE_CAPS,
 } from '@/core/constant';
 import { PromptId } from '@/service/prompt/PromptId';
 
@@ -47,7 +48,7 @@ export class AISearchService {
 			let graphContext: string | undefined;
 			if (graph && graph.nodes.length > 0) {
 				const nodeLabels = graph.nodes
-					.slice(0, 20)
+					.slice(0, SLICE_CAPS.aiSearch.graphNodeLabels)
 					.map((n) => n.label)
 					.join(', ');
 				graphContext = nodeLabels;
@@ -99,7 +100,7 @@ export class AISearchService {
 		try {
 			// Build sources array for prompt
 			const sourcesArray = sources
-				.slice(0, 5)
+				.slice(0, SLICE_CAPS.aiSearch.topicSources)
 				.map((s) => ({
 					title: s.title,
 					path: s.path,
@@ -109,7 +110,7 @@ export class AISearchService {
 			let graphContext: string | undefined;
 			if (graph && graph.nodes.length > 0) {
 				const nodeLabels = graph.nodes
-					.slice(0, 20)
+					.slice(0, SLICE_CAPS.aiSearch.topicGraphLabels)
 					.map((n) => n.label)
 					.join(', ');
 				graphContext = nodeLabels;
@@ -173,7 +174,7 @@ export class AISearchService {
 			return topics
 				.filter((t) => t.label && typeof t.weight === 'number')
 				.sort((a, b) => b.weight - a.weight)
-				.slice(0, 10);
+				.slice(0, SLICE_CAPS.aiSearch.topicResults);
 		} catch (error) {
 			console.warn('[AISearchService] Failed to parse topics from JSON:', error, 'content:', content);
 			// If parsing fails, return empty array
@@ -273,7 +274,7 @@ export class AISearchService {
 			return undefined;
 		}
 
-		const graphStore = sqliteStoreManager.getGraphStore();
+		const graphRepo = sqliteStoreManager.getGraphRepo();
 		const knownNodes = new Map<string, { id: string; label: string; type: string }>();
 		const allEdges: Array<{ from_node_id: string; to_node_id: string; weight: number }> = [];
 
@@ -282,7 +283,7 @@ export class AISearchService {
 		for (const source of sources) {
 			const sourcePath = source.path;
 			// Check if node exists in graph store, if not create a placeholder
-			const existingNode = await graphStore.getNode(sourcePath);
+			const existingNode = await graphRepo.getNode(sourcePath);
 			if (existingNode) {
 				knownNodes.set(sourcePath, {
 					id: sourcePath,
@@ -294,7 +295,7 @@ export class AISearchService {
 				knownNodes.set(sourcePath, {
 					id: sourcePath,
 					label: source.title || sourcePath.split('/').pop() || sourcePath,
-					type: 'document',
+					type: GraphNodeType.Document,
 				});
 			}
 		}
@@ -305,7 +306,7 @@ export class AISearchService {
 
 			try {
 				// Get preview for this source
-				const preview = await graphStore.getPreview({
+				const preview = await graphRepo.getPreview({
 					currentFilePath: sourcePath,
 					maxNodes: AI_SEARCH_GRAPH_MAX_NODES_PER_SOURCE,
 					maxHops: AI_SEARCH_GRAPH_MAX_HOPS,
@@ -349,13 +350,13 @@ export class AISearchService {
 			if (nodes.length >= AI_SEARCH_GRAPH_FINAL_MAX_NODES) break;
 			let label = nodeInfo.label;
 			// Add # prefix for tags
-			if (nodeInfo.type === 'tag') {
+			if (nodeInfo.type === GraphNodeType.TopicTag) {
 				label = `#${label}`;
 			}
 			nodes.push({
 				id,
 				label,
-				type: (nodeInfo.type === 'other' ? 'custom' : nodeInfo.type) as GraphNodeType,
+				type: (nodeInfo.type === 'other' ? GraphNodeType.Resource : nodeInfo.type) as GraphNodeType,
 			});
 		}
 

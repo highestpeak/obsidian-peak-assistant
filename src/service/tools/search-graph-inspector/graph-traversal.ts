@@ -1,6 +1,6 @@
 import { GRAPH_INSPECT_STEP_TIME_LIMIT } from "@/core/constant";
-import { GraphNode } from "@/core/storage/sqlite/repositories/GraphNodeRepo";
-import { GraphEdge } from "@/core/storage/sqlite/repositories/GraphEdgeRepo";
+import { GraphNode } from "@/core/storage/sqlite/repositories/MobiusNodeRepo";
+import { GraphEdge } from "@/core/storage/sqlite/repositories/MobiusEdgeRepo";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
 import { applyFiltersAndSorters, distillClusterNodesData, getDefaultItemFiledGetter, getSemanticNeighbors } from "./common";
 import { buildResponse } from "../types";
@@ -35,16 +35,16 @@ export interface GraphVisualizationEdge {
 }
 export async function graphTraversal(params: any, templateManager?: TemplateManager) {
     const { start_note_path, hops, include_semantic_paths, limit, response_format, filters, sorter } = params;
-    const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-    const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
 
     // Find start node
-    const startDocMeta = await sqliteStoreManager.getDocMetaRepo().getByPath(start_note_path);
-    if (!startDocMeta) {
+    const startIndexedDoc = await sqliteStoreManager.getIndexedDocumentRepo().getByPath(start_note_path);
+    if (!startIndexedDoc) {
         return `Graph Traversal Failed. Start note "${start_note_path}" not found in database.`;
     }
 
-    const startNode = await graphNodeRepo.getById(startDocMeta.id);
+    const startNode = await mobiusNodeRepo.getById(startIndexedDoc.id);
     if (!startNode) {
         return `Graph Traversal Failed. Start note node "${start_note_path}" not found in graph database.`;
     }
@@ -77,7 +77,7 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
         }
 
         // physical neighbors: two directions; And we limit by type to avoid too many edges.
-        const physicalInAndOutEdges = await graphEdgeRepo.getAllEdgesForNode(current.id, limit);
+        const physicalInAndOutEdges = await mobiusEdgeRepo.getAllEdgesForNode(current.id, limit);
         
         // Collect edges for visualization (only edges between visited or to-be-visited nodes)
         for (const edge of physicalInAndOutEdges) {
@@ -107,7 +107,7 @@ export async function graphTraversal(params: any, templateManager?: TemplateMana
             ? await getSemanticNeighbors(current.id, semanticLimit, semanticFilterSet)
             : [];
 
-        const connectedNodesMap = await sqliteStoreManager.getGraphNodeRepo()
+        const connectedNodesMap = await sqliteStoreManager.getMobiusNodeRepo()
             .getByIds([...inComingNode, ...outGoingNode]);
 
         for (const [nodeId, node] of connectedNodesMap) {

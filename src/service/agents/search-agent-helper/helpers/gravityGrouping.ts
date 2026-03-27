@@ -23,7 +23,9 @@
 import type { ConsolidatedTaskWithId } from '@/core/schemas/agents/search-agent-schemas';
 import { EMPTY_MAP } from '@/core/utils/collection-utils';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
+import { isIndexedNoteNodeType } from '@/core/po/graph.po';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { decodeIndexedTagsBlob } from '@/core/document/helper/TagService';
 import { getIndexTenantForPath } from '@/service/search/index/indexService';
 import { getPathFromNode } from '@/service/tools/search-graph-inspector/common';
 
@@ -188,7 +190,7 @@ async function getFileCountPerParentPath(parentPaths: Set<string>): Promise<Map<
 	const out = new Map<string, number>();
 	await Promise.all(
 		[...tenantToPaths.entries()].map(async ([tenant, paths]) => {
-			const repo = sqliteStoreManager.getDocMetaRepo(tenant);
+			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 			for (const p of paths) {
 				const count = await repo.countByFolderPath(p);
 				out.set(p, Math.max(1, count));
@@ -198,7 +200,7 @@ async function getFileCountPerParentPath(parentPaths: Set<string>): Promise<Map<
 	return out;
 }
 
-/** Load outlinks, backlinks, tags for each path (from graph + doc_meta). */
+/** Load outlinks, backlinks, tags for each path (from graph + indexed documents). */
 async function getLinksAndTagsForPaths(paths: string[]): Promise<Map<string, AffinityData>> {
 	const out = new Map<string, AffinityData>();
 	if (paths.length === 0) return out;
@@ -207,23 +209,23 @@ async function getLinksAndTagsForPaths(paths: string[]): Promise<Map<string, Aff
 		paths.map(async (path) => {
 			try {
 				const tenant: IndexTenant = getIndexTenantForPath(path);
-				const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
-				const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
-				const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
-				const docMeta = await docMetaRepo.getByPath(path);
+				const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+				const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+				const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+				const docMeta = await indexedDocumentRepo.getByPath(path);
 				if (!docMeta?.id) {
 					out.set(path, { ...empty, tags: parseTags(docMeta?.tags ?? null) });
 					return;
 				}
-				const edges = await graphEdgeRepo.getAllEdgesForNode(docMeta.id, EDGE_LIMIT);
+				const edges = await mobiusEdgeRepo.getAllEdgesForNode(docMeta.id, EDGE_LIMIT);
 				const inIds = edges.filter((e) => e.to_node_id === docMeta.id).map((e) => e.from_node_id);
 				const outIds = edges.filter((e) => e.from_node_id === docMeta.id).map((e) => e.to_node_id);
 				const allIds = [...new Set([...inIds, ...outIds])];
-				const nodesMap = await graphNodeRepo.getByIds(allIds);
+				const nodesMap = await mobiusNodeRepo.getByIds(allIds);
 				const outlinks: string[] = [];
 				const backlinks: string[] = [];
 				for (const node of nodesMap.values()) {
-					if (node.type === 'document' && node.label) {
+					if (isIndexedNoteNodeType(node.type) && node.label) {
 						const p = getPathFromNode(node);
 						if (p) {
 							if (outIds.includes(node.id)) outlinks.push(p);
@@ -252,7 +254,7 @@ async function getPairwiseSimilarityScores(paths: string[]): Promise<number[][]>
 			const tenant = getIndexTenantForPath(p);
 			pathToTenant.set(p, tenant);
 			try {
-				const repo = sqliteStoreManager.getDocMetaRepo(tenant);
+				const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 				const meta = await repo.getByPath(p);
 				if (meta?.id) pathToDocId.set(p, meta.id);
 			} catch {
@@ -271,7 +273,7 @@ async function getPairwiseSimilarityScores(paths: string[]): Promise<number[][]>
 		[...tenantToDocIds.entries()].map(async ([tenant, docIds]) => {
 			const embRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
 			for (const id of docIds) {
-				const vec = await embRepo.getAverageEmbeddingForDoc(id);
+				const vec = await embRepo.getEmbeddingForSemanticSearch(id);
 				if (vec && vec.length) docIdToVec.set(id, vec);
 			}
 		}),
@@ -319,15 +321,21 @@ function similaritySweetSpot(sim: number): number {
 }
 
 function parseTags(tagsJson: string | null | undefined): string[] {
-	if (!tagsJson) return [];
-	try {
-		const parsed = JSON.parse(tagsJson);
-		return Array.isArray(parsed)
-			? parsed.filter((t: unknown): t is string => typeof t === 'string').map((t) => String(t).trim()).filter(Boolean)
-			: [];
-	} catch {
-		return [];
-	}
+	const blob = decodeIndexedTagsBlob(tagsJson);
+	const topicFlat =
+		blob.topicTagEntries?.length ?
+			blob.topicTagEntries.flatMap((e) => [e.id, ...(e.label ? [e.label] : [])])
+		:	blob.topicTags;
+	return [
+		...new Set([
+			...topicFlat,
+			...blob.functionalTagEntries.flatMap((e) => [e.id, ...(e.label ? [e.label] : [])]),
+			...blob.keywordTags,
+			...blob.timeTags,
+			...blob.geoTags,
+			...blob.personTags,
+		]),
+	];
 }
 
 /** Set-based view for O(1) lookup in the inner loop. */

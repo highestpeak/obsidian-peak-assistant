@@ -24,8 +24,13 @@
 {{/if}}
 
 {{#if hasTagDesc}}
-## Tags (top in set)
+## Topic tags (LLM, top in set)
 {{{tagDesc}}}
+{{/if}}
+
+{{#if hasUserKeywordTagDesc}}
+## User keywords (top in set)
+{{{userKeywordTagDesc}}}
 {{/if}}
 
 {{#if hasMermaidCode}}

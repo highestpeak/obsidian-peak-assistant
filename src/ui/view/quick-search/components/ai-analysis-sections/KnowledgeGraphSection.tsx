@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -92,7 +93,7 @@ const LabeledPillPanel: React.FC<{
 				</Button>
 			</div>
 			<div className="pktw-flex pktw-flex-wrap pktw-gap-2">
-				{items.slice(0, 120).map((item, idx) => (
+				{items.slice(0, SLICE_CAPS.ui.knowledgeGraphItems).map((item, idx) => (
 					<Button
 						variant="ghost"
 						size="sm"

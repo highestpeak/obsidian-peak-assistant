@@ -10,6 +10,18 @@ import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
+import { preprocessMarkdownForChunking } from '@/core/utils/markdown-utils';
+import { extractTopicAndFunctionalTags, type DocLlmTagResult } from '@/core/document/helper/TagService';
+import {
+	EMPTY_TEXTRANK_RESULT,
+	computeKeywordTagBundles,
+	extractTextRankFeatures,
+	type TextRankResult,
+} from '@/core/document/loader/helper/textRank';
+import { assembleIndexedChunks, type TextrankSentenceStructured } from './helper/assembleIndexedChunks';
+
+/** Re-export for callers that import from this module. */
+export { assembleIndexedChunks, type TextrankSentenceStructured };
 
 /**
  * Markdown document loader.
@@ -43,25 +55,28 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	}
 
 	/**
-	 * Chunk content from a document using LangChain's RecursiveCharacterTextSplitter.
-	 * First calls getIndexableContent, then chunks the content using markdown-specific splitter.
+	 * Splits markdown body with RecursiveCharacterTextSplitter, then appends summary / TextRank chunks for indexing.
 	 */
 	async chunkContent(
 		doc: Document,
 		settings: ChunkingSettings,
 	): Promise<Chunk[]> {
-		const content = doc.sourceFileInfo.content;
+		let content = doc.sourceFileInfo.content;
 		const minSize = settings.minDocumentSizeForChunking;
 
 		// If content is too small, return as single chunk
 		if (content.length <= minSize) {
-			return [{
+			return assembleIndexedChunks(doc, [{
 				docId: doc.id,
+				chunkType: 'body_raw',
 				content: content,
-			}];
+			}]);
 		}
 
+		content = preprocessMarkdownForChunking(content, settings);
+
 		// Use LangChain's RecursiveCharacterTextSplitter for markdown
+		// the splitter will automatically split on headings and code blocks
 		const splitter = RecursiveCharacterTextSplitter.fromLanguage('markdown', {
 			chunkSize: settings.maxChunkSize,
 			chunkOverlap: settings.chunkOverlap,
@@ -76,13 +91,14 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 			const langchainDoc = langchainDocs[i];
 			chunks.push({
 				docId: doc.id,
+				chunkType: 'body_raw',
 				content: langchainDoc.pageContent,
 				chunkId: generateUuidWithoutHyphens(),
 				chunkIndex: i,
 			});
 		}
 
-		return chunks;
+		return assembleIndexedChunks(doc, chunks);
 	}
 
 	/**
@@ -132,7 +148,93 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 			// Extract title from parsed result or fallback to filename
 			let title = parseResult.title || file.basename;
 
-			const summaryContent = genCacheContent ? { shortSummary: null, fullSummary: null } : await this.getSummary(content);
+			// User tags: frontmatter `tags` + inline #hashtags (see parseMarkdownWithRemark `tags`).
+			const userKeywordTags = [...new Set(parseResult.tags.map((t) => String(t).trim()).filter(Boolean))];
+
+			// textrank + merged keywords for FTS; graph keyword edges use userKeywordTags only.
+			let mergedKeywordTags = userKeywordTags;
+			let textrankKeywordTerms: string[] = [];
+			let textRankSnapshot: TextRankResult = EMPTY_TEXTRANK_RESULT;
+			if (!genCacheContent) {
+				textRankSnapshot = extractTextRankFeatures(content);
+				const bundles = computeKeywordTagBundles(userKeywordTags, textRankSnapshot.topTerms);
+				mergedKeywordTags = bundles.mergedKeywordTags;
+				textrankKeywordTerms = bundles.textrankKeywordTerms;
+			}
+			const textrankKeywordsStructured = textRankSnapshot.topTerms.map(({ term, score }) => ({ term, score }));
+			const textrankSentencesStructured = textRankSnapshot.topSentences.map((s) => ({
+				text: s.text,
+				score: s.score,
+				index: s.index,
+			}));
+			// Comma-separated / numbered lines for LLM prompts only (metadata stores structured arrays).
+			const textrankKeywordsForLlm = textrankKeywordsStructured.map((t) => t.term).join(', ');
+			const textrankSentencesForLlm = textrankSentencesStructured.length
+				? textrankSentencesStructured.map((s, i) => `${i + 1}. ${s.text}`).join('\n')
+				: '';
+
+			// tag and summary gen by llm
+			const summaryDocStub = {
+				sourceFileInfo: {
+					path: file.path,
+					name: file.name,
+					extension: file.extension,
+					size: file.stat.size,
+					mtime: file.stat.mtime,
+					ctime: file.stat.ctime,
+					content,
+				},
+				cacheFileInfo: {
+					path: file.path,
+					name: file.name,
+					extension: file.extension,
+					size: file.stat.size,
+					mtime: file.stat.mtime,
+					ctime: file.stat.ctime,
+					content,
+				},
+				metadata: {
+					title,
+					topicTags: [] as string[],
+					topicTagEntries: [],
+					functionalTagEntries: [],
+					keywordTags: mergedKeywordTags,
+					userKeywordTags,
+					...(textrankKeywordTerms.length ? { textrankKeywordTerms } : {}),
+					custom: {
+						textrankKeywordsStructured,
+						textrankSentencesStructured,
+					},
+				},
+			} as unknown as Document;
+			const [tagRes, summaryContent]: [DocLlmTagResult, ResourceSummary] = await Promise.all([
+				this.aiServiceManager && !genCacheContent ? extractTopicAndFunctionalTags(content, this.aiServiceManager, {
+					title,
+					existingUserTags: userKeywordTags.length ? userKeywordTags.join(', ') : undefined,
+					textrankKeywords: textrankKeywordsForLlm || undefined,
+					textrankSentences: textrankSentencesForLlm || undefined,
+				}).catch((err) => {
+					console.warn('[MarkdownDocumentLoader] extractTopicAndFunctionalTags failed:', err);
+					return {
+						topicTagEntries: [],
+						topicTags: [] as string[],
+						functionalTagEntries: [],
+						timeTags: [] as string[],
+						geoTags: [] as string[],
+						personTags: [] as string[],
+					};
+				}) : Promise.resolve({
+					topicTagEntries: [],
+					topicTags: [] as string[],
+					functionalTagEntries: [],
+					timeTags: [] as string[],
+					geoTags: [] as string[],
+					personTags: [] as string[],
+				}),
+				genCacheContent || !this.aiServiceManager
+					? Promise.resolve<ResourceSummary>({ shortSummary: '', fullSummary: undefined })
+					: getDefaultDocumentSummary(summaryDocStub, this.aiServiceManager)
+			]);
 
 			return {
 				id: generateDocIdFromPath(file.path),
@@ -153,13 +255,30 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 					size: file.stat.size,
 					mtime: file.stat.mtime,
 					ctime: file.stat.ctime,
-					content: summaryContent.fullSummary ?? "",
+					content,
 				},
 				metadata: {
 					title,
-					tags: parseResult.tags,
+					topicTags: tagRes.topicTags,
+					topicTagEntries: tagRes.topicTagEntries.length ? tagRes.topicTagEntries : undefined,
+					functionalTagEntries: tagRes.functionalTagEntries,
+					keywordTags: mergedKeywordTags,
+					userKeywordTags,
+					...(textrankKeywordTerms.length ? { textrankKeywordTerms } : {}),
+					timeTags: tagRes.timeTags,
+					geoTags: tagRes.geoTags,
+					personTags: tagRes.personTags,
+					inferCreatedAt: tagRes.inferCreatedAtMs ?? null,
+					frontmatter: parseResult.frontmatter
+						? ({ ...parseResult.frontmatter } as Record<string, unknown>)
+						: undefined,
+					custom: {
+						textrankKeywordsStructured,
+						textrankSentencesStructured,
+					},
 				},
-				summary: summaryContent.shortSummary,
+				summary: summaryContent.shortSummary?.trim() ? summaryContent.shortSummary : null,
+				fullSummary: summaryContent.fullSummary ?? null,
 				contentHash,
 				references: parseResult.references,
 				lastProcessedAt: Date.now(),

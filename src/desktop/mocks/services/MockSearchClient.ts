@@ -271,26 +271,25 @@ export class MockSearchClient {
 				finalScore: 0.4,
 				source: 'local'
 			},
-			// Categories
 			{
-				id: 'category:work',
-				type: 'category',
+				id: 'functional:work',
+				type: 'tag',
 				title: 'Work',
-				path: 'category:work',
+				path: 'functional:work',
 				lastModified: Date.now() - 1209600000, // 14 days ago
-				content: 'Category for work-related content',
+				content: 'Functional tag for work-related content',
 				highlight: null,
 				score: 0.35,
 				finalScore: 0.35,
 				source: 'local'
 			},
 			{
-				id: 'category:personal',
-				type: 'category',
+				id: 'functional:personal',
+				type: 'tag',
 				title: 'Personal',
-				path: 'category:personal',
+				path: 'functional:personal',
 				lastModified: Date.now() - 1296000000, // 15 days ago
-				content: 'Category for personal notes and thoughts',
+				content: 'Functional tag for personal notes and thoughts',
 				highlight: null,
 				score: 0.3,
 				finalScore: 0.3,

@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import type { SearchAgentResult, AISearchSource, AISearchTopic, DashboardBlock } from '../../AISearchAgent';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { AgentTemplateId } from '@/core/template/TemplateRegistry';
@@ -5,8 +6,8 @@ import { AgentTemplateId } from '@/core/template/TemplateRegistry';
 const MAX_TOPICS = 12;
 const MAX_SOURCES = 15;
 const MAX_BLOCK_ITEMS = 5;
-const REASONING_MAX_CHARS = 120;
-const SUMMARY_EXCERPT_MAX_CHARS = 500;
+const REASONING_MAX_CHARS = SLICE_CAPS.agent.extractionFocus;
+const SUMMARY_EXCERPT_MAX_CHARS = SLICE_CAPS.agent.summaryFacts;
 
 /**
  * Build a dense text snapshot of the current result for the summary prompt.
@@ -19,7 +20,7 @@ export async function buildMinifiedResultSnapshot(
     const topics = (result.topics ?? []).slice(0, MAX_TOPICS).map((t: AISearchTopic) => ({
         label: t.label,
         weight: t.weight,
-        suggestQuestionsLine: (t.suggestQuestions ?? []).slice(0, 2).join('; ') || undefined,
+        suggestQuestionsLine: (t.suggestQuestions ?? []).slice(0, SLICE_CAPS.agent.suggestQuestions).join('; ') || undefined,
     }));
 
     const sources = (result.sources ?? []).slice(0, MAX_SOURCES).map((s: AISearchSource) => ({
@@ -29,7 +30,7 @@ export async function buildMinifiedResultSnapshot(
         scoreAvg: s.score?.average ?? s.score?.physical ?? 0,
     }));
 
-    const blocks = (result.dashboardBlocks ?? []).slice(0, 10).map((b: DashboardBlock) => ({
+    const blocks = (result.dashboardBlocks ?? []).slice(0, SLICE_CAPS.agent.dashboardBlocks).map((b: DashboardBlock) => ({
         title: b.title ?? b.id ?? '(block)',
         renderEngine: b.renderEngine,
         contentHint: b.markdown ? '[markdown]' : b.mermaidCode ? '[mermaid]' : '',

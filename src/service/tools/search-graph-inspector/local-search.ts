@@ -2,6 +2,7 @@ import { AppContext } from "@/app/context/AppContext";
 import { buildResponse } from "../types";
 import type { TemplateManager } from "@/core/template/TemplateManager";
 import { ToolTemplateId } from "@/core/template/TemplateRegistry";
+import type { FunctionalTagEntry, TopicTagEntry } from '@/core/document/helper/TagService';
 import { applyFiltersAndSorters } from "./common";
 import { SearchResultItem, SearchSnippet } from "@/service/search/types";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
@@ -63,20 +64,30 @@ function slimSearchResults(
 async function getSearchResultItemFieldGetter(items: SearchResultItem[], filters?: any, sorter?: string) {
     // Get doc metadata by paths for time-based filtering
     const paths = items.map(item => item.path);
-    const docMetaRepo = sqliteStoreManager.getDocMetaRepo();
-    const pathToMetaMap = await docMetaRepo.getByPaths(paths);
+    const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+    const pathToMetaMap = await indexedDocumentRepo.getByPaths(paths);
 
     // Build tags and categories map if needed for boolean expression filter
-    let tagsAndCategoriesMap = new Map<string, { tags: string[], categories: string[] }>();
+    let tagsTripleByPath = new Map<
+        string,
+        {
+            topicTags: string[];
+            topicTagEntries?: TopicTagEntry[];
+            functionalTagEntries: FunctionalTagEntry[];
+            keywordTags: string[];
+            timeTags: string[];
+            geoTags: string[];
+            personTags: string[];
+        }
+    >();
     if (filters?.tag_category_boolean_expression) {
-        const docIds = Array.from(pathToMetaMap.values()).map(meta => meta.id);
-        const graphData = await sqliteStoreManager.getGraphStore().getTagsAndCategoriesByDocIds(docIds);
-        // Map from docId to tags/categories, then we'll look up by path
-        const docIdToData = graphData.idMapToTagsAndCategories;
+        const docIds = Array.from(pathToMetaMap.values()).map((meta) => meta.id);
+        const graphData = await sqliteStoreManager.getGraphRepo().getTagsByDocIds(docIds);
+        const docIdToData = graphData.idMapToTags;
         for (const [path, meta] of pathToMetaMap) {
             const data = docIdToData.get(meta.id);
             if (data) {
-                tagsAndCategoriesMap.set(path, data);
+                tagsTripleByPath.set(path, data);
             }
         }
     }
@@ -92,8 +103,22 @@ async function getSearchResultItemFieldGetter(items: SearchResultItem[], filters
             const createTime = meta?.ctime ?? meta?.mtime;
             return createTime ? new Date(createTime) : undefined;
         },
-        getTags: () => tagsAndCategoriesMap.get(item.path)?.tags || [],
-        getCategory: () => tagsAndCategoriesMap.get(item.path)?.categories?.[0],
+        getTopicTags: () => tagsTripleByPath.get(item.path)?.topicTags ?? [],
+        getFunctionalTagEntries: () => tagsTripleByPath.get(item.path)?.functionalTagEntries ?? [],
+        getFunctionalTags: () =>
+            tagsTripleByPath.get(item.path)?.functionalTagEntries.map((e) => e.id) ?? [],
+        getKeywordTags: () => tagsTripleByPath.get(item.path)?.keywordTags ?? [],
+        getTags: () => {
+            const t = tagsTripleByPath.get(item.path);
+            return [
+                ...(t?.topicTags ?? []),
+                ...(t?.keywordTags ?? []),
+                ...(t?.timeTags ?? []),
+                ...(t?.geoTags ?? []),
+                ...(t?.personTags ?? []),
+            ];
+        },
+        getCategory: () => tagsTripleByPath.get(item.path)?.functionalTagEntries?.[0]?.id,
         getResultRank: () => item.finalScore || item.score || 0,
         getTotalLinksCount: () => 0, // Not available for search results
         getInCominglinksCount: () => 0,

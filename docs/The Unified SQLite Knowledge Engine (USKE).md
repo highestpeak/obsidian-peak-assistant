@@ -271,9 +271,8 @@ Due to Obsidian's plugin architecture, `better-sqlite3` may not work reliably ev
 
 #### Graph Search (Recursive CTE)
 - **Storage**:
-  - `graph_nodes` table: Node information (id, type, attributes)
-  - `graph_edges` table: Edge information (id, from_node, to_node, type, weight, attributes)
-  - `attributes` field uses JSON string to store dynamic properties
+  - `mobius_node` / `mobius_edge`: Node and edge rows (repos expose logical `graph_nodes` / `graph_edges` DTO shapes)
+  - `attributes_json` on edges and document metadata on nodes use JSON where needed
 - **Query**:
   - Use Recursive CTE to implement N-degree relationship queries (e.g., within 3 degrees)
   - A single SQL query returns all related node sets
@@ -281,26 +280,20 @@ Due to Obsidian's plugin architecture, `better-sqlite3` may not work reliably ev
 
 #### Dynamic Metadata (JSON1)
 - **Use Case**: frontmatter/YAML fields are not fixed, not suitable for creating columns for each field
-- **Storage**: `doc_meta.frontmatter_json` field stores JSON string
+- **Storage**: Indexed documents store optional `frontmatter_json` inside `mobius_node.attributes_json` (see `IndexedDocumentRecord` in `ddl` / `IndexedDocumentRepo`)
 - **Query**: Use JSON1 functions like `json_extract(...)`, `json_each(...)`
 - **Indexing**: Expression indexes can be added when necessary to speed up JSON field filtering
 
-### About InMemoryGraphAnalyzer
-`src/core/storage/graph/InMemoryGraphAnalyzer.ts` will be retained for **advanced graph algorithms** (Graphology).
-
-- **Default Path**: Basic "multi-hop relationship queries" use Recursive CTE (more memory-efficient, fewer SQL round trips)
-- **Advanced Path**: When complex algorithms are needed (e.g., community detection, complex shortest path), build temporary subgraphs on-demand for analysis
-
 ### Data Consistency Strategy
-- **Write**: Index writes should update `doc_meta/doc_chunk/doc_fts/embedding/vec_embeddings` simultaneously within a transaction
+- **Write**: Index writes should update `mobius_node` (document row) / `doc_chunk` / `doc_fts` / `doc_meta_fts` / `embedding` / `vec_embeddings` within transactions as implemented in `IndexService`
 - **Delete**: Cascade delete related chunk/fts/embedding by `path`, and synchronously clean up `recent_open` and graph data entries
 - **Migration**: Old indexes (Orama / sql.js bytes) are not automatically converted, prioritizing a stable path for "one-time index rebuild"
 
 ### Repository Architecture
 All data access is encapsulated through the Repository layer:
 - **Kysely-based Repositories**:
-  - `DocMetaRepo`, `DocChunkRepo`, `EmbeddingRepo`, `IndexStateRepo`
-  - `DocStatisticsRepo`, `GraphNodeRepo`, `GraphEdgeRepo`
+  - `IndexedDocumentRepo` (document rows on `mobius_node`), `DocChunkRepo`, `EmbeddingRepo`, `IndexStateRepo`
+  - `MobiusNodeRepo` (graph-node DTO, document statistics, aggregates), `MobiusEdgeRepo`, `GraphRepo` (previews, tag/category stats, N-hop helpers)
 - **FTS5 and sqlite-vec Operations**:
   - Use `rawDb` (sql.js or better-sqlite3 adapter) to directly execute raw SQL
   - Because Kysely has limited support for FTS5 `MATCH` and vec0 `MATCH`

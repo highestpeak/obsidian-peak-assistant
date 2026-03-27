@@ -1,3 +1,4 @@
+import { SLICE_CAPS } from '@/core/constant';
 import type { SearchSnippet } from '../types';
 
 /**
@@ -214,7 +215,7 @@ function createSnippetWindow(
 	windowAfter: number = 140
 ): SearchSnippet {
 	if (originalMatches.length === 0) {
-		return { text: content.slice(0, 200), highlights: [] };
+		return { text: content.slice(0, SLICE_CAPS.highlight.fallbackShort), highlights: [] };
 	}
 
 	// Find the best window that contains the most keyword matches
@@ -294,7 +295,7 @@ export function buildHighlightSnippet(content: string, query: string): SearchSni
 	const q = query.trim();
 	if (!content) return null;
 	if (!q) {
-		return { text: content.slice(0, 200), highlights: [] };
+		return { text: content.slice(0, SLICE_CAPS.highlight.fallbackShort), highlights: [] };
 	}
 
 	// Normalize content and query
@@ -303,13 +304,13 @@ export function buildHighlightSnippet(content: string, query: string): SearchSni
 	const normalizedQuery = normalizeQuery(q);
 
 	if (normalized.text.length === 0) {
-		return { text: content.slice(0, 200), highlights: [] };
+		return { text: content.slice(0, SLICE_CAPS.highlight.fallbackShort), highlights: [] };
 	}
 
 	// Split query into keywords for multi-keyword matching
 	const keywords = q.split(/\s+/).filter(k => k.length > 0);
 	if (keywords.length === 0) {
-		return { text: content.slice(0, 220), highlights: [] };
+		return { text: content.slice(0, SLICE_CAPS.highlight.fallbackLong), highlights: [] };
 	}
 
 	// Try to find full query match first (e.g., "topic command rebase" as a phrase)
@@ -358,7 +359,7 @@ export function buildHighlightSnippet(content: string, query: string): SearchSni
 	allMatches.sort((a, b) => a.start - b.start);
 
 	if (allMatches.length === 0) {
-		return { text: content.slice(0, 220), highlights: [] };
+		return { text: content.slice(0, SLICE_CAPS.highlight.fallbackLong), highlights: [] };
 	}
 
 	// Create snippet window around the best match (most keywords matched)

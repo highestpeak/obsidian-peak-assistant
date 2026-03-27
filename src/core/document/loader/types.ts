@@ -26,12 +26,8 @@ export interface DocumentLoader extends Summarizable {
 	readByPath(path: string, genCacheContent?: boolean): Promise<Document | null>;
 
 	/**
-	 * Chunk content from a document.
-	 * First calls getIndexableContent, then chunks the content using appropriate splitter.
-	 * 
-	 * @param doc - Document to chunk
-	 * @param settings - Chunking settings (chunk size, overlap, etc.)
-	 * @returns Array of chunks
+	 * Build search chunks for a document: body splits plus derived chunks (e.g. summaries, TextRank).
+	 * Implementations should return the final set ready for FTS/embeddings (see assembleIndexedChunks.ts; re-exported from MarkdownDocumentLoader).
 	 */
 	chunkContent(doc: Document, settings: ChunkingSettings): Promise<Chunk[]>;
 

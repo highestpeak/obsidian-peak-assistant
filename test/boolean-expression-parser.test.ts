@@ -1,13 +1,15 @@
-import { BooleanExpressionParser } from './boolean-expression-parser';
+import { GraphEdgeType } from '@/core/po/graph.po';
+import { stableFunctionalTagNodeId } from '@/core/utils/id-utils';
+import { BooleanExpressionParser } from '@/service/tools/search-graph-inspector/boolean-expression-parser';
 
 /**
  * Test cases for the BooleanExpressionParser
  */
 function runTests() {
-    // Test data
     const testNote = {
-        tags: ['javascript', 'react', 'frontend'],
-        category: 'programming'
+        topicTags: ['javascript', 'react', 'frontend'],
+        functionalTagEntries: [{ id: 'programming' as const }, { id: 'frontend' as const }],
+        keywordTags: [] as string[],
     };
 
     const testCases = [
@@ -22,14 +24,14 @@ function runTests() {
             description: 'Simple tag non-match'
         },
         {
-            expression: 'category:programming',
+            expression: 'functional:programming',
             expected: true,
-            description: 'Simple category match'
+            description: 'Simple functional tag match'
         },
         {
-            expression: 'category:design',
+            expression: 'functional:design',
             expected: false,
-            description: 'Simple category non-match'
+            description: 'Simple functional tag non-match'
         },
         {
             expression: 'tag:javascript AND tag:react',
@@ -62,7 +64,7 @@ function runTests() {
             description: 'NOT operation with tag present'
         },
         {
-            expression: '(tag:javascript OR tag:python) AND category:programming',
+            expression: '(tag:javascript OR tag:python) AND functional:programming',
             expected: true,
             description: 'Complex expression with parentheses'
         },
@@ -77,7 +79,7 @@ function runTests() {
             description: 'NOT with complex expression'
         },
         {
-            expression: '(tag:javascript AND tag:react) OR (tag:vue AND category:frontend)',
+            expression: '(tag:javascript AND tag:react) OR (tag:vue AND functional:frontend)',
             expected: true,
             description: 'Multiple nested expressions'
         },
@@ -87,9 +89,9 @@ function runTests() {
             description: 'Single tag (repeated for consistency)'
         },
         {
-            expression: 'category:programming',
+            expression: 'functional:programming',
             expected: true,
-            description: 'Single category (repeated for consistency)'
+            description: 'Single functional tag (repeated for consistency)'
         },
         {
             expression: 'tag:javascript   AND   tag:react',
@@ -97,7 +99,7 @@ function runTests() {
             description: 'Extra whitespace handling'
         },
         {
-            expression: '( tag:javascript OR tag:python ) AND category:programming',
+            expression: '( tag:javascript OR tag:python ) AND functional:programming',
             expected: true,
             description: 'Whitespace around parentheses'
         },
@@ -125,46 +127,50 @@ function runTests() {
     const dimensionTests = [
         {
             expression: 'tag:javascript',
-            expected: { tags: ['javascript'], categories: [] }
+            expected: { tags: ['javascript'], functionals: [], keywords: [] }
         },
         {
-            expression: 'category:programming',
-            expected: { tags: [], categories: ['programming'] }
+            expression: 'functional:programming',
+            expected: { tags: [], functionals: ['programming'], keywords: [] }
         },
         {
-            expression: 'tag:javascript AND category:programming',
-            expected: { tags: ['javascript'], categories: ['programming'] }
+            expression: 'keyword:obsidian',
+            expected: { tags: [], functionals: [], keywords: ['obsidian'] }
         },
         {
-            expression: '(tag:react OR tag:vue) AND category:frontend',
-            expected: { tags: ['react', 'vue'], categories: ['frontend'] }
+            expression: 'tag:javascript AND functional:programming',
+            expected: { tags: ['javascript'], functionals: ['programming'], keywords: [] }
+        },
+        {
+            expression: '(tag:react OR tag:vue) AND functional:frontend',
+            expected: { tags: ['react', 'vue'], functionals: ['frontend'], keywords: [] }
         },
         {
             expression: 'NOT tag:javascript',
-            expected: { tags: ['javascript'], categories: [] }
+            expected: { tags: ['javascript'], functionals: [], keywords: [] }
         },
         {
-            expression: 'tag:javascript AND tag:react AND category:programming',
-            expected: { tags: ['javascript', 'react'], categories: ['programming'] }
+            expression: 'tag:javascript AND tag:react AND functional:programming',
+            expected: { tags: ['javascript', 'react'], functionals: ['programming'], keywords: [] }
         },
         {
-            expression: '(tag:typescript OR tag:python) AND (category:backend OR category:programming)',
-            expected: { tags: ['typescript', 'python'], categories: ['backend', 'programming'] }
+            expression: '(tag:typescript OR tag:python) AND (functional:backend OR functional:programming)',
+            expected: { tags: ['typescript', 'python'], functionals: ['backend', 'programming'], keywords: [] }
         },
         {
             expression: 'tag:single-tag',
-            expected: { tags: ['single-tag'], categories: [] }
+            expected: { tags: ['single-tag'], functionals: [], keywords: [] }
         },
         {
-            expression: 'category:single-category',
-            expected: { tags: [], categories: ['single-category'] }
+            expression: 'functional:single-functional',
+            expected: { tags: [], functionals: ['single-functional'], keywords: [] }
         }
     ];
 
     for (const test of dimensionTests) {
         try {
             const parser = new BooleanExpressionParser(test.expression);
-            const ast = parser.ast!;
+            const ast = parser.ast;
             const result = parser.extractDimensions();
             const success = JSON.stringify(result) === JSON.stringify(test.expected);
             if (success) {
@@ -189,46 +195,51 @@ function runTests() {
         ['react', 'tag:react'],
         ['vue', 'tag:vue']
     ]);
-    const categoryLookup = new Map([
-        ['programming', 'category:programming'],
-        ['frontend', 'category:frontend']
+    const functionalLookup = new Map([
+        ['programming', stableFunctionalTagNodeId('programming')],
+        ['frontend', stableFunctionalTagNodeId('frontend')],
     ]);
+    const keywordLookup = new Map([['obsidian', 'keyword:obsidian']]);
 
     const edgeConditionTests = [
         {
             expression: 'tag:javascript',
-            expected: "(type = 'tagged' AND to_node_id = 'tag:javascript')"
+            expected: `(type = '${GraphEdgeType.TaggedTopic}' AND to_node_id = 'tag:javascript')`,
         },
         {
-            expression: 'category:programming',
-            expected: "(type = 'categorized' AND to_node_id = 'category:programming')"
+            expression: 'functional:programming',
+            expected: `(type = '${GraphEdgeType.TaggedFunctional}' AND to_node_id = '${stableFunctionalTagNodeId('programming')}')`,
         },
         {
-            expression: 'tag:javascript AND category:programming',
-            expected: "((type = 'tagged' AND to_node_id = 'tag:javascript')) AND ((type = 'categorized' AND to_node_id = 'category:programming'))"
+            expression: 'keyword:obsidian',
+            expected: `(type = '${GraphEdgeType.TaggedKeyword}' AND to_node_id = 'keyword:obsidian')`,
+        },
+        {
+            expression: 'tag:javascript AND functional:programming',
+            expected: `((type = '${GraphEdgeType.TaggedTopic}' AND to_node_id = 'tag:javascript')) AND ((type = '${GraphEdgeType.TaggedFunctional}' AND to_node_id = '${stableFunctionalTagNodeId('programming')}'))`,
         },
         {
             expression: 'tag:javascript OR tag:react',
-            expected: "(type = 'tagged' AND to_node_id = 'tag:javascript') OR (type = 'tagged' AND to_node_id = 'tag:react')"
+            expected: `(type = '${GraphEdgeType.TaggedTopic}' AND to_node_id = 'tag:javascript') OR (type = '${GraphEdgeType.TaggedTopic}' AND to_node_id = 'tag:react')`,
         },
         {
             expression: 'NOT tag:javascript',
-            expected: "(type = 'tagged' AND to_node_id = 'tag:javascript')"
+            expected: `(type = '${GraphEdgeType.TaggedTopic}' AND to_node_id = 'tag:javascript')`,
         },
         {
-            expression: '(tag:javascript OR tag:react) AND category:programming',
-            expected: "((type = 'tagged' AND to_node_id = 'tag:javascript') OR (type = 'tagged' AND to_node_id = 'tag:react')) AND ((type = 'categorized' AND to_node_id = 'category:programming'))"
+            expression: '(tag:javascript OR tag:react) AND functional:programming',
+            expected: `((type = '${GraphEdgeType.TaggedTopic}' AND to_node_id = 'tag:javascript') OR (type = '${GraphEdgeType.TaggedTopic}' AND to_node_id = 'tag:react')) AND ((type = '${GraphEdgeType.TaggedFunctional}' AND to_node_id = '${stableFunctionalTagNodeId('programming')}'))`,
         },
         {
             expression: 'tag:javascript AND tag:react AND tag:vue',
-            expected: "(((type = 'tagged' AND to_node_id = 'tag:javascript')) AND ((type = 'tagged' AND to_node_id = 'tag:react'))) AND ((type = 'tagged' AND to_node_id = 'tag:vue'))"
-        }
+            expected: `(((type = '${GraphEdgeType.TaggedTopic}' AND to_node_id = 'tag:javascript')) AND ((type = '${GraphEdgeType.TaggedTopic}' AND to_node_id = 'tag:react'))) AND ((type = '${GraphEdgeType.TaggedTopic}' AND to_node_id = 'tag:vue'))`,
+        },
     ];
 
     for (const test of edgeConditionTests) {
         try {
             const parser = new BooleanExpressionParser(test.expression);
-            const result = parser.buildEdgeConditions(tagLookup, categoryLookup);
+            const result = parser.buildEdgeConditions(tagLookup, functionalLookup, keywordLookup);
             const success = result === test.expected;
             if (success) {
                 console.log(`✅ PASS: buildEdgeConditions("${test.expression}")`);
@@ -277,7 +288,7 @@ function runTests() {
     console.log('\nTesting parsing errors...');
     const errorCases = [
         'tag:', // Incomplete tag
-        'category:', // Incomplete category
+        'functional:', // Incomplete functional
         'invalid:value', // Invalid dimension type
         'tag:javascript AND', // Incomplete AND
         '(tag:javascript', // Unclosed parenthesis

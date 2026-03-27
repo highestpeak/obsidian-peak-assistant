@@ -1,26 +1,19 @@
-import type { GraphNodePO, GraphEdgePO } from '@/core/po/graph.po';
+import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
 
 /**
- * Graph preview result for UI display.
- * Directly uses PO types, selecting only fields needed for display.
+ * Graph preview result for UI display (`graph_nodes` / `graph_edges` field picks).
  */
 export interface GraphPreview {
-	nodes: Pick<GraphNodePO, 'id' | 'label' | 'type'>[];
-	edges: Pick<GraphEdgePO, 'from_node_id' | 'to_node_id' | 'weight'>[];
+	nodes: Pick<DbSchema['graph_nodes'], 'id' | 'label' | 'type'>[];
+	edges: Pick<DbSchema['graph_edges'], 'from_node_id' | 'to_node_id' | 'weight'>[];
 }
 
 /**
  * Parameters for building a graph preview.
  */
 export interface GraphPreviewParams {
-	/**
-	 * Starting node ID or file path.
-	 */
+	/** Starting node ID or file path. */
 	startNodeId: string;
-	/**
-	 * Maximum number of nodes to include in preview.
-	 */
+	/** Maximum number of nodes to include in preview. */
 	maxNodes?: number;
 }
-
-

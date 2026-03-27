@@ -5,6 +5,7 @@ import type { AISearchGraph, AISearchNode, AISearchEdge } from '@/service/agents
 import { useSubscribeUIEvent } from '@/ui/store/uiEventStore';
 import type { GraphPatch } from '@/core/providers/ui-events/graph';
 import { UISignalChannel } from '@/core/providers/types';
+import { GraphNodeType } from '@/core/po/graph.po';
 
 /** Queue item driven by ui-signal(channel='graph'). */
 export type GraphSignalKind = 'stage' | 'patch' | 'effect';
@@ -158,7 +159,7 @@ export function persistPatchToStore(patch: any): void {
 			else if (id.startsWith('file:')) path = id.slice('file:'.length).replace(/^\/+/, '');
 			return {
 				id,
-				type: String(n.type ?? 'document'),
+				type: String(n.type ?? GraphNodeType.Document),
 				title,
 				...(path ? { path } : {}),
 				attributes: (n.attributes && typeof n.attributes === 'object') ? n.attributes : {},

@@ -1,16 +1,16 @@
 /**
  * Test file for AiSearchAnalysisDoc.parse and buildMarkdown methods.
- *
- * Run with: npx tsx src/core/storage/vault/search-docs/test/AiSearchAnalysisDoc.test.ts
+ * Fixtures live in ./fixtures/*.md
+ * Run with: npm run test -- test/search-docs/AiSearchAnalysisDoc.test.ts
  */
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { parse, buildMarkdown } from '../AiSearchAnalysisDoc';
-import type { AiSearchAnalysisDocModel } from '../AiSearchAnalysisDoc';
+import { parse, buildMarkdown } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
+import type { AiSearchAnalysisDocModel } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 
 function readTestFile(filename: string): string {
-	const filePath = join(__dirname, filename);
+	const filePath = join(process.cwd(), 'test', 'search-docs', 'fixtures', filename);
 	return readFileSync(filePath, 'utf-8');
 }
 

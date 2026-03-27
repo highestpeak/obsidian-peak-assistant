@@ -14,6 +14,7 @@ import type { AISearchSource } from "../../AISearchAgent";
 import { createUpdateResultTool, getUpdateResultFormatGuidance, safeText, norm, normPath, commonValidatePath } from "@/service/tools/field-update-tool-array";
 import { validateMermaid } from "@/core/utils/mermaid-utils";
 import { safeAgentTool } from "@/service/tools/types";
+import { GraphNodeType } from '@/core/po/graph.po';
 
 let _handlersMap: Record<string, UpdateResultHandlers> | null = null;
 
@@ -52,8 +53,9 @@ export function getUpdateResultHandlersMap(): Record<string, UpdateResultHandler
                 return data;
             },
             validatePath: async (item) => {
-                const nodeType = String(item?.type ?? 'document').trim().toLowerCase();
-                const shouldValidatePath = (nodeType === 'document' || nodeType === 'file');
+                const nodeType = String(item?.type ?? GraphNodeType.Document).trim().toLowerCase();
+                const shouldValidatePath =
+                    nodeType === GraphNodeType.Document || nodeType === GraphNodeType.HubDoc;
                 if (shouldValidatePath) {
                     if (item.path === DEFAULT_PLACEHOLDER || item.path === 'Untitled') {
                         return { valid: false, reason: "path is a placeholder value. Please provide a valid file path." };

@@ -2,6 +2,8 @@ import { AppContext } from "@/app/context/AppContext";
 import { makeContentReaderInputSchema } from "@/core/schemas/tools/contentReader";
 import { AgentTool, safeAgentTool } from "./types";
 import { DocumentLoaderManager } from "@/core/document/loader/helper/DocumentLoaderManager";
+import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
+import { getIndexTenantForPath } from "@/service/search/index/indexService";
 
 function escapeRegExpLiteral(input: string): string {
     return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -33,6 +35,27 @@ export function contentReaderTool(): AgentTool {
         inputSchema,
         execute: async ({ path, mode, lineRange, query, case_sensitive, max_matches }) => {
             const isMetaLoad = mode === "meta";
+
+            // Prefer SQLite index summaries when available (saves tokens vs loading full file).
+            if (!isMetaLoad && (mode === "shortSummary" || mode === "fullSummary")) {
+                try {
+                    const tenant = getIndexTenantForPath(path);
+                    const indexed = await sqliteStoreManager.getIndexedDocumentRepo(tenant).getByPath(path);
+                    if (indexed) {
+                        if (mode === "shortSummary" && indexed.summary?.trim()) {
+                            return indexed.summary;
+                        }
+                        if (mode === "fullSummary") {
+                            const full = indexed.full_summary?.trim() || indexed.summary?.trim();
+                            if (full) {
+                                return full;
+                            }
+                        }
+                    }
+                } catch {
+                    // Fall through to file-based read
+                }
+            }
 
             const document = await DocumentLoaderManager.getInstance().readByPath(path, !isMetaLoad);
             if (!document) {

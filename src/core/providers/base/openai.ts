@@ -13,6 +13,7 @@ import {
 } from '../types';
 import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai';
 import { embedMany, type EmbeddingModel, type LanguageModel } from 'ai';
+import { SLICE_CAPS } from '@/core/constant';
 import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
 
 const OPENAI_DEFAULT_BASE = 'https://api.openai.com/v1';
@@ -309,7 +310,7 @@ export class OpenAIChatService implements LLMProviderService {
 
 		// Try partial match (for dated versions)
 		for (const [key, value] of Object.entries(MODEL_ID_MAP)) {
-			if (model.includes(key) || key.includes(model.split('-').slice(0, 2).join('-'))) {
+			if (model.includes(key) || key.includes(model.split('-').slice(0, SLICE_CAPS.modelId.openaiPrefixSegments).join('-'))) {
 				if (value.tokenLimits) {
 					return value.tokenLimits;
 				}
@@ -332,7 +333,7 @@ export class OpenAIChatService implements LLMProviderService {
 
 		// Try partial match
 		for (const [key, value] of Object.entries(MODEL_ID_MAP)) {
-			if (modelId.includes(key) || key.includes(modelId.split('-').slice(0, 2).join('-'))) {
+			if (modelId.includes(key) || key.includes(modelId.split('-').slice(0, SLICE_CAPS.modelId.openaiPrefixSegments).join('-'))) {
 				if (value.capabilities) {
 					return value.capabilities;
 				}

@@ -1,5 +1,5 @@
-
 import { AppContext } from "@/app/context/AppContext";
+import { getAIPromptFolder } from "@/app/settings/types";
 import { ActiveFile, getActiveNoteDetail, readFileAsText } from "@/core/utils/obsidian-utils";
 import { GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT, VAULT_DESCRIPTION_FILENAME } from "@/core/constant";
 import { sqliteStoreManager } from "@/core/storage/sqlite/SqliteStoreManager";
@@ -69,10 +69,7 @@ function getVaultStatistics(): SystemVaultStatistics {
  */
 export async function getVaultDescription(): Promise<string | undefined> {
     try {
-        const settings = AppContext.getInstance().settings;
-
-        // Construct path to vault description file in prompt folder
-        const descriptionPath = `${settings.ai.promptFolder}/${VAULT_DESCRIPTION_FILENAME}`;
+        const descriptionPath = `${getAIPromptFolder()}/${VAULT_DESCRIPTION_FILENAME}`;
 
         // Read file content using utility function
         const content = await readFileAsText(descriptionPath);
@@ -88,11 +85,11 @@ export async function getVaultDescription(): Promise<string | undefined> {
  */
 async function getTagCloud(): Promise<string> {
     try {
-        const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo();
-        const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo();
+        const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+        const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
 
         // Query top 50 most used tags directly from graph_edges table
-        const topTagStats = await graphEdgeRepo.getTopTaggedNodes(GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT);
+        const topTagStats = await mobiusEdgeRepo.getTopTaggedNodes(GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT);
 
         if (topTagStats.length === 0) {
             return '';
@@ -100,7 +97,7 @@ async function getTagCloud(): Promise<string> {
 
         // Get tag labels for the top tag IDs
         const tagIds = topTagStats.map(stat => stat.tagId);
-        const tagNodesMap = await graphNodeRepo.getByIds(tagIds);
+        const tagNodesMap = await mobiusNodeRepo.getByIds(tagIds);
 
         // Format as "#tag (count), #tag (count), ..."
         return topTagStats

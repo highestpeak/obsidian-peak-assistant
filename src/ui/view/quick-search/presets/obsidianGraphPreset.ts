@@ -3,6 +3,7 @@
  * Provides edge styles, node styles, label, path extraction, click, effect mapping.
  */
 
+import { GraphNodeType } from '@/core/po/graph.po';
 import type {
 	EdgeStyle,
 	EffectKindMap,
@@ -64,17 +65,31 @@ function obsidianGetEdgeStyle(edge: { kind: string; weight: number }): EdgeStyle
 }
 
 function obsidianGetNodeStyle(node: GraphVizNode): { fill: string; r?: number } {
+	const hubNodeWeight = Number((node as GraphVizNode & { attributes?: { hubNodeWeight?: unknown } }).attributes?.hubNodeWeight ?? 0);
+	const roleHint = String((node as GraphVizNode & { attributes?: { roleHint?: unknown } }).attributes?.roleHint ?? '').toLowerCase();
+	const weightedRadius = Number.isFinite(hubNodeWeight) && hubNodeWeight > 0
+		? Math.max(10, Math.min(24, 10 + hubNodeWeight * 12))
+		: undefined;
 	if (node.badges?.includes('Source')) return { fill: '#16a34a' };
 	if (node.badges?.includes('Sink')) return { fill: '#f97316' };
 	if (node.badges?.includes('bridge')) return { fill: '#2563eb' };
 	if (node.badges?.includes('hub')) return { fill: '#06b6d4' };
 	if (node.badges?.includes('authority')) return { fill: '#ef4444' };
+	if (roleHint === 'core') return { fill: '#0ea5e9', r: weightedRadius ?? 20 };
+	if (roleHint === 'child_hub') return { fill: '#06b6d4', r: weightedRadius ?? 17 };
+	if (roleHint === 'bridge') return { fill: '#2563eb', r: weightedRadius ?? 15 };
+	if (roleHint === 'boundary') return { fill: '#6366f1', r: weightedRadius ?? 13 };
+	if (roleHint === 'folder') return { fill: '#a16207', r: weightedRadius ?? 14 };
 	const t = (node.type ?? '').toLowerCase();
-	if (t === 'tag') return { fill: '#d97706' };
-	if (t === 'concept') return { fill: '#0ea5e9' };
-	if (t === 'file' || t === 'document') return { fill: '#059669' };
-	if (t === 'inspire_idea') return { fill: '#7c3aed' };
-	return { fill: '#7c3aed' };
+	if (t === GraphNodeType.TopicTag) return { fill: '#d97706', r: weightedRadius };
+	if (t === GraphNodeType.FunctionalTag) return { fill: '#a855f7', r: weightedRadius };
+	if (t === GraphNodeType.ContextTag) return { fill: '#14b8a6', r: weightedRadius };
+	if (t === GraphNodeType.HubDoc) return { fill: '#0ea5e9', r: weightedRadius };
+	if (t === GraphNodeType.Resource) return { fill: '#64748b', r: weightedRadius };
+	if (t === GraphNodeType.Folder) return { fill: '#a16207', r: weightedRadius };
+	if (t === GraphNodeType.Document) return { fill: '#059669', r: weightedRadius };
+	if (t === 'inspire_idea') return { fill: '#7c3aed', r: weightedRadius };
+	return { fill: '#7c3aed', r: weightedRadius };
 }
 
 /** Strip display prefix so UI does not show "concept:" or "file:" in labels. */
@@ -170,7 +185,10 @@ const OBSIDIAN_EFFECT_KIND_MAP: EffectKindMap = {
 };
 
 const OBSIDIAN_SNAPSHOT_MARKDOWN_OPTIONS: SnapshotMarkdownOptions = {
-	nodeTypeGroups: { concepts: ['concept'], tags: ['tag'] },
+	nodeTypeGroups: {
+		concepts: [GraphNodeType.Resource, GraphNodeType.Folder],
+		tags: [GraphNodeType.TopicTag, GraphNodeType.FunctionalTag, GraphNodeType.KeywordTag],
+	},
 	edgeKindLabels: { physical: 'physical', semantic: 'semantic', path: 'path' },
 	title: 'Knowledge Graph',
 };
@@ -183,7 +201,12 @@ function createObsidianOnNodeClick(options: {
 	const { copyText, onOpenPath, openFile } = options;
 	return async (node: GraphVizNodeInfo) => {
 		try {
-			if (node.type === 'concept' || node.type === 'tag') {
+			if (
+				node.type === GraphNodeType.Resource ||
+				node.type === GraphNodeType.TopicTag ||
+				node.type === GraphNodeType.FunctionalTag ||
+				node.type === GraphNodeType.KeywordTag
+			) {
 				await copyText(node.label);
 				return;
 			}
@@ -246,7 +269,7 @@ export function createObsidianGraphPreset(
 		getNodeLabel: obsidianGetNodeLabel,
 		extractPathFromNode: obsidianExtractPathFromNode,
 		effectKindMap: OBSIDIAN_EFFECT_KIND_MAP,
-		defaultNodeType: 'document',
+		defaultNodeType: GraphNodeType.Document,
 		defaultEdgeKind: 'physical',
 		normalizeNodeId: obsidianNormalizeNodeId,
 		snapshotMarkdownOptions: OBSIDIAN_SNAPSHOT_MARKDOWN_OPTIONS,

@@ -1,4 +1,5 @@
 import type { Kysely } from 'kysely';
+import { GraphNodeType, GRAPH_INDEXED_NOTE_NODE_TYPES } from '@/core/po/graph.po';
 import type { Database as DbSchema } from '../ddl';
 import type { SqliteDatabase } from '../types';
 import type { DocChunkInput, DocChunkOutput, FtsInsertParams, FtsMetaInsertParams, FtsSearchResult } from './types';
@@ -86,30 +87,43 @@ export class DocChunkRepo {
 	}
 
 	/**
-	 * Remove orphan doc_meta_fts rows (doc_id not in doc_meta).
+	 * Remove orphan doc_meta_fts rows (doc_id not linked to a document mobius node).
 	 */
 	cleanupOrphanMetaFts(): number {
-		const stmt = this.rawDb.prepare(`DELETE FROM doc_meta_fts WHERE doc_id NOT IN (SELECT id FROM doc_meta)`);
-		const result = stmt.run();
+		const ph = GRAPH_INDEXED_NOTE_NODE_TYPES.map(() => '?').join(', ');
+		const stmt = this.rawDb.prepare(
+			`DELETE FROM doc_meta_fts WHERE doc_id NOT IN (SELECT node_id FROM mobius_node WHERE type IN (${ph}))`,
+		);
+		const result = stmt.run(...GRAPH_INDEXED_NOTE_NODE_TYPES);
 		return result.changes;
 	}
 
 	/**
-	 * Remove orphan doc_fts rows (doc_id not in doc_meta).
+	 * Remove orphan doc_fts rows (doc_id not linked to a document mobius node).
 	 */
 	cleanupOrphanFts(): number {
-		const stmt = this.rawDb.prepare(`DELETE FROM doc_fts WHERE doc_id NOT IN (SELECT id FROM doc_meta)`);
-		const result = stmt.run();
+		const ph = GRAPH_INDEXED_NOTE_NODE_TYPES.map(() => '?').join(', ');
+		const stmt = this.rawDb.prepare(
+			`DELETE FROM doc_fts WHERE doc_id NOT IN (SELECT node_id FROM mobius_node WHERE type IN (${ph}))`,
+		);
+		const result = stmt.run(...GRAPH_INDEXED_NOTE_NODE_TYPES);
 		return result.changes;
 	}
 
 	/**
-	 * Remove orphan doc_chunk rows (doc_id not in doc_meta).
+	 * Remove orphan doc_chunk rows (doc_id not linked to a document mobius node).
 	 */
 	async cleanupOrphanChunks(): Promise<number> {
 		const result = await this.db
 			.deleteFrom('doc_chunk')
-			.where('doc_id', 'not in', this.db.selectFrom('doc_meta').select('id'))
+			.where(
+				'doc_id',
+				'not in',
+				this.db
+					.selectFrom('mobius_node')
+					.select('node_id')
+					.where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES]),
+			)
 			.executeTakeFirst();
 		return Number((result as { numDeletedRows: bigint })?.numDeletedRows ?? 0);
 	}
@@ -141,6 +155,15 @@ export class DocChunkRepo {
 	}
 
 	/**
+	 * Replace meta FTS row for a document (e.g. after vault rename). FTS5 has no in-place path update.
+	 */
+	replaceMetaFts(params: FtsMetaInsertParams): void {
+		const del = this.rawDb.prepare(`DELETE FROM doc_meta_fts WHERE doc_id = ?`);
+		del.run(params.doc_id);
+		this.insertMetaFts(params);
+	}
+
+	/**
 	 * Check if chunk exists by chunk_id.
 	 */
 	async existsByChunkId(chunkId: string): Promise<boolean> {
@@ -162,6 +185,8 @@ export class DocChunkRepo {
 				chunk_id: chunk.chunk_id,
 				doc_id: chunk.doc_id,
 				chunk_index: chunk.chunk_index,
+				chunk_type: chunk.chunk_type,
+				chunk_meta_json: chunk.chunk_meta_json,
 				title: chunk.title,
 				mtime: chunk.mtime,
 				content_raw: chunk.content_raw,
@@ -173,7 +198,15 @@ export class DocChunkRepo {
 	/**
 	 * Update existing chunk by chunk_id.
 	 */
-	async updateByChunkId(chunkId: string, updates: Partial<Pick<DbSchema['doc_chunk'], 'doc_id' | 'chunk_index' | 'title' | 'mtime' | 'content_raw' | 'content_fts_norm'>>): Promise<void> {
+	async updateByChunkId(
+		chunkId: string,
+		updates: Partial<
+			Pick<
+				DbSchema['doc_chunk'],
+				'doc_id' | 'chunk_index' | 'chunk_type' | 'chunk_meta_json' | 'title' | 'mtime' | 'content_raw' | 'content_fts_norm'
+			>
+		>,
+	): Promise<void> {
 		await this.db
 			.updateTable('doc_chunk')
 			.set(updates)
@@ -192,6 +225,8 @@ export class DocChunkRepo {
 			await this.updateByChunkId(chunk.chunk_id, {
 				doc_id: chunk.doc_id,
 				chunk_index: chunk.chunk_index,
+				chunk_type: chunk.chunk_type,
+				chunk_meta_json: chunk.chunk_meta_json,
 				title: chunk.title,
 				mtime: chunk.mtime,
 				content_raw: chunk.content_raw,
@@ -204,45 +239,57 @@ export class DocChunkRepo {
 	}
 
 	/**
-	 * Get chunk data by chunk IDs from FTS table.
-	 * Note: This returns normalized content from FTS table, not raw content from doc_chunk.
+	 * Chunk rows for resolving vector hits. Prefers `doc_chunk` (SSOT); falls back to `doc_fts` for legacy rows.
 	 */
-	async getByChunkIds(chunkIds: string[]): Promise<Array<{
-		chunk_id: string;
-		doc_id: string;
-		title: string | null;
-		content_raw: string;
-		mtime: number | null;
-	}>> {
-		if (!chunkIds.length) return [];
-		const placeholders = chunkIds.map(() => '?').join(',');
-		const stmt = this.rawDb.prepare(`
-			SELECT
-				f.chunk_id,
-				f.doc_id,
-				f.content as content_raw,
-				NULL as mtime
-			FROM doc_fts f
-			WHERE f.chunk_id IN (${placeholders})
-		`);
-		const rows = stmt.all(...chunkIds) as Array<{
+	async getByChunkIds(chunkIds: string[]): Promise<
+		Array<{
 			chunk_id: string;
 			doc_id: string;
+			chunk_type: string;
+			title: string | null;
 			content_raw: string;
 			mtime: number | null;
-		}>;
-		return rows.map(row => ({
-			chunk_id: row.chunk_id,
-			doc_id: row.doc_id,
-			title: null,
-			content_raw: row.content_raw,
-			mtime: row.mtime,
-		}));
+		}>
+	> {
+		if (!chunkIds.length) return [];
+		const rows = await this.db
+			.selectFrom('doc_chunk')
+			.select(['chunk_id', 'doc_id', 'chunk_type', 'title', 'content_raw', 'mtime'])
+			.where('chunk_id', 'in', chunkIds)
+			.execute();
+		const map = new Map(rows.map((r) => [r.chunk_id, r]));
+		const missing = chunkIds.filter((id) => !map.has(id));
+		if (missing.length) {
+			const placeholders = missing.map(() => '?').join(',');
+			const stmt = this.rawDb.prepare(`
+				SELECT chunk_id, doc_id, content AS content_raw
+				FROM doc_fts
+				WHERE chunk_id IN (${placeholders})
+			`);
+			const ftsRows = stmt.all(...missing) as Array<{
+				chunk_id: string;
+				doc_id: string;
+				content_raw: string;
+			}>;
+			for (const fr of ftsRows) {
+				map.set(fr.chunk_id, {
+					chunk_id: fr.chunk_id,
+					doc_id: fr.doc_id,
+					chunk_type: 'body_raw',
+					title: null,
+					content_raw: fr.content_raw,
+					mtime: null,
+				});
+			}
+		}
+		return chunkIds
+			.map((id) => map.get(id))
+			.filter((x): x is NonNullable<typeof x> => x != null);
 	}
 
 	/**
 	 * Search FTS (full-text search).
-	 * Returns chunk_id, doc_id, and path. Caller should fetch doc_meta separately to avoid JOIN.
+	 * Returns chunk_id, doc_id, and path. Caller should fetch indexed document path/title separately to avoid JOIN.
 	 * 
 	 * @param term - Search term (normalized for FTS)
 	 * @param limit - Maximum number of results
@@ -297,7 +344,7 @@ export class DocChunkRepo {
 				f.content as content,
 				bm25(doc_fts) as bm25
 			FROM doc_fts f
-			INNER JOIN doc_meta dm ON f.doc_id = dm.id
+			INNER JOIN mobius_node dm ON f.doc_id = dm.node_id AND dm.type IN ('${GraphNodeType.Document}', '${GraphNodeType.HubDoc}')
 			WHERE doc_fts MATCH ?
 			${pathFilter}
 			ORDER BY bm25 ASC

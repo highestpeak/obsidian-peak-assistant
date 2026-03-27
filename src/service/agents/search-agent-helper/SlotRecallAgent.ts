@@ -2,6 +2,7 @@
  * SlotRecallAgent: classifier → batch recon (parallel) → consolidator → grouped batch evidence.
  */
 
+import { SLICE_CAPS } from '@/core/constant';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName, UIStepType } from '@/core/providers/types';
@@ -21,7 +22,7 @@ import {
 	PhysicalSearchTask,
 	QueryClassifierOutput,
 	queryClassifierOutputSchema,
-	SEARCH_CLASSIFY_TO_FUNCTIONAL_TAGS,
+	SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS,
 	SemanticDimensionChoice,
 	TemporalDimensionChoice,
 	TopologyDimensionChoice,
@@ -108,7 +109,7 @@ export class SlotRecallAgent {
 			};
 			queryClassify = {
 				...queryClassify,
-				semantic_dimensions: [...queryClassify.semantic_dimensions.slice(0, 10), mergedDimension],
+				semantic_dimensions: [...queryClassify.semantic_dimensions.slice(0, SLICE_CAPS.agent.slotRecallDimensions), mergedDimension],
 			};
 		}
 		const raw = queryClassify.user_persona_config;
@@ -241,7 +242,7 @@ export class SlotRecallAgent {
 		const promptInfo = await this.aiServiceManager.getPromptInfo(PromptId.AiAnalysisQueryClassifier);
 		const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});
 		const vaultDescription = await getVaultDescription();
-		const functionalTagsMapping = formatFunctionalTagsMapping(SEARCH_CLASSIFY_TO_FUNCTIONAL_TAGS);
+		const functionalTagsMapping = formatFunctionalTagsMapping(SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS);
 		const prompt = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisQueryClassifier, {
 			userQuery: this.context.getInitialPrompt(),
 			vaultSkeleton: options?.vaultSkeleton,

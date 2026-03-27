@@ -8,11 +8,15 @@ import type { IndexTenant } from '@/core/storage/sqlite/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { getPathFromNode, getSemanticNeighbors } from '@/service/tools/search-graph-inspector/common';
 import { graphTraversal, GraphVisualizationEdge, GraphVisualizationNode } from '@/service/tools/search-graph-inspector/graph-traversal';
+import { hubLocalGraph } from '@/service/tools/search-graph-inspector/hub-local-graph';
 import { findPath } from '@/service/tools/search-graph-inspector/find-path';
 import { inspectNoteContext } from '@/service/tools/search-graph-inspector/inspect-note-context';
 import { getIndexTenantForPath } from '@/service/search/index/indexService';
+import { SemanticRelatedEdgesReadService } from '@/service/search/index/helper/semanticRelatedEdges';
 import { AISearchGraph } from '../agents/AISearchAgent';
-import { generateStableUuid } from '@/core/utils/id-utils';
+import { stableGraphVisualizationEdgeId } from '@/core/utils/id-utils';
+import { GraphEdgeType, isIndexedNoteNodeType } from '@/core/po/graph.po';
+import { decodeIndexedTagsBlob } from '@/core/document/helper/TagService';
 
 const LINKS_LIMIT = 300;
 const SEMANTIC_LIMIT = 20;
@@ -32,8 +36,10 @@ export interface InspectorLinkItem {
 	mtime?: number | null;
 	/** Short summary for hover preview when metadata included */
 	summary?: string | null;
-	/** Tags from doc_meta (frontmatter + hashtags) when metadata included */
+	/** Tags from indexed document row (frontmatter + hashtags) when metadata included */
 	tags?: string[];
+	/** True when the graph edge is marked long-range (cross-folder highway). */
+	longRange?: boolean;
 }
 
 /** Payload shape: physical + semantic arrays (e.g. for copy/paste). */
@@ -59,29 +65,46 @@ export async function getInspectorLinks(
 ): Promise<{ physical: InspectorLinkItem[]; semantic: InspectorLinkItem[] }> {
 	const { includeSemantic: incSem, includeMetadata: incMeta } = inspectorOptions;
 	const tenant: IndexTenant = getIndexTenantForPath(currentPath);
-	const docMetaRepo = sqliteStoreManager.getDocMetaRepo(tenant);
-	const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(tenant);
-	const graphNodeRepo = sqliteStoreManager.getGraphNodeRepo(tenant);
+	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+	const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+	const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
 
-	const docMeta = await docMetaRepo.getByPath(currentPath);
+	const docMeta = await indexedDocumentRepo.getByPath(currentPath);
 	if (!docMeta) {
 		return { physical: [], semantic: [] };
 	}
 
-	const edges = await graphEdgeRepo.getAllEdgesForNode(docMeta.id, LINKS_LIMIT);
+	const edges = await mobiusEdgeRepo.getAllEdgesForNode(docMeta.id, LINKS_LIMIT);
+	const longRangeByNeighborId = new Map<string, boolean>();
+	for (const e of edges) {
+		if (e.type !== GraphEdgeType.References) {
+			continue;
+		}
+		let attrs: { longRange?: boolean } = {};
+		try {
+			attrs = JSON.parse(e.attributes || '{}') as { longRange?: boolean };
+		} catch {
+			attrs = {};
+		}
+		const neighborId = e.from_node_id === docMeta.id ? e.to_node_id : e.from_node_id;
+		if (attrs.longRange) {
+			longRangeByNeighborId.set(neighborId, true);
+		}
+	}
 	const inIds = edges.filter((e) => e.to_node_id === docMeta.id).map((e) => e.from_node_id);
 	const outIds = edges.filter((e) => e.from_node_id === docMeta.id).map((e) => e.to_node_id);
 	const allIds = [...new Set([...inIds, ...outIds])];
-	const nodesMap = await graphNodeRepo.getByIds(allIds);
+	const nodesMap = await mobiusNodeRepo.getByIds(allIds);
 
 	const physicalRaw: InspectorLinkItem[] = [];
 	for (const node of nodesMap.values()) {
-		if (node.type === 'document' && node.label) {
+		if (isIndexedNoteNodeType(node.type) && node.label) {
 			const path = getPathFromNode(node);
 			physicalRaw.push({
 				path,
 				label: node.label,
 				kind: 'physical',
+				longRange: longRangeByNeighborId.get(node.id) ?? false,
 			});
 		}
 	}
@@ -89,21 +112,51 @@ export async function getInspectorLinks(
 	let semanticRaw: InspectorLinkItem[] = [];
 	if (incSem) {
 		const filterDocIds = new Set([...nodesMap.values()]
-			.filter(n => n.type === 'document')
+			.filter((n) => isIndexedNoteNodeType(n.type))
 			.map(n => n.id));
 		filterDocIds.add(docMeta.id);
 
+		const graphSemanticItems = await SemanticRelatedEdgesReadService.loadGraphSemanticLinkItems(
+			docMeta.id,
+			tenant,
+			SEMANTIC_LIMIT,
+		);
+		const graphAsInspector: InspectorLinkItem[] = graphSemanticItems.map((g) => ({
+			path: g.path,
+			label: g.label,
+			kind: 'semantic',
+			similarity: g.similarity,
+		}));
+
 		const semanticNodes = await getSemanticNeighbors(docMeta.id, SEMANTIC_LIMIT, filterDocIds, tenant);
+		const vecAsInspector: InspectorLinkItem[] = [];
 		for (const n of semanticNodes) {
-			if (n.type !== 'document' || !n.label) continue;
+			if (!isIndexedNoteNodeType(n.type) || !n.label) continue;
 			const path = getPathFromNode(n);
-			semanticRaw.push({
+			if (!path) continue;
+			vecAsInspector.push({
 				path,
 				label: n.label,
 				kind: 'semantic',
-				similarity: (n as any).similarity,
+				similarity: (n as { similarity?: string }).similarity,
 			});
 		}
+
+		const similarityRank = (it: InspectorLinkItem): number => {
+			const s = it.similarity;
+			if (s == null) return -1;
+			const n = parseFloat(String(s).replace(/%/, ''));
+			return Number.isFinite(n) ? n : -1;
+		};
+		const mergedByPath = new Map<string, InspectorLinkItem>();
+		for (const it of [...graphAsInspector, ...vecAsInspector]) {
+			if (!it.path?.trim()) continue;
+			const cur = mergedByPath.get(it.path);
+			if (!cur || similarityRank(it) > similarityRank(cur)) {
+				mergedByPath.set(it.path, it);
+			}
+		}
+		semanticRaw = [...mergedByPath.values()];
 	}
 
 	let { physical, semantic } = filterAndSortLinks(physicalRaw, semanticRaw);
@@ -138,7 +191,7 @@ async function attachLinkMetadataCrossTenant(items: InspectorLinkItem[]): Promis
 
 	const metaMap = new Map<string, { id: string; mtime?: number | null; summary?: string | null; tags?: string | null }>();
 	for (const [t, tenantPaths] of byTenant) {
-		const repo = sqliteStoreManager.getDocMetaRepo(t);
+		const repo = sqliteStoreManager.getIndexedDocumentRepo(t);
 		const m = await repo.getByPaths(tenantPaths);
 		for (const [path, meta] of m) {
 			if (meta?.id) metaMap.set(path, { id: meta.id, mtime: meta.mtime, summary: meta.summary, tags: meta.tags });
@@ -154,8 +207,8 @@ async function attachLinkMetadataCrossTenant(items: InspectorLinkItem[]): Promis
 		}
 		const ids = [...pathToId.values()];
 		if (!ids.length) continue;
-		const graphEdgeRepo = sqliteStoreManager.getGraphEdgeRepo(t);
-		const countMap = await graphEdgeRepo.countInComingEdges(ids);
+		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(t);
+		const countMap = await mobiusEdgeRepo.countInComingEdges(ids);
 		for (const [path, docId] of pathToId) {
 			backlinksByPath.set(path, countMap.get(docId) ?? 0);
 		}
@@ -165,14 +218,18 @@ async function attachLinkMetadataCrossTenant(items: InspectorLinkItem[]): Promis
 		const meta = metaMap.get(item.path);
 		let tags: string[] = [];
 		if (meta?.tags) {
-			try {
-				const parsed = JSON.parse(meta.tags);
-				tags = Array.isArray(parsed)
-					? parsed.filter((t): t is string => typeof t === 'string').map((t) => String(t).trim()).filter(Boolean)
-					: [];
-			} catch {
-				// ignore
-			}
+			const blob = decodeIndexedTagsBlob(meta.tags);
+			const topicFlat =
+				blob.topicTagEntries?.length ?
+					blob.topicTagEntries.flatMap((e) => [e.id, ...(e.label ? [e.label] : [])])
+				:	blob.topicTags;
+			tags = [
+				...new Set([
+					...topicFlat,
+					...blob.keywordTags,
+					...blob.functionalTagEntries.flatMap((e) => [e.id, ...(e.label ? [e.label] : [])]),
+				]),
+			];
 		}
 		return {
 			...item,
@@ -217,6 +274,11 @@ function filterAndSortLinks(physicalRaw: InspectorLinkItem[], semanticRaw: Inspe
 		return Number.isFinite(n) ? n : -1;
 	};
 	physical.sort((a, b) => {
+		const aLr = a.longRange ? 1 : 0;
+		const bLr = b.longRange ? 1 : 0;
+		if (aLr !== bLr) {
+			return bLr - aLr;
+		}
 		const aBoth = pathsInBoth.has(a.path);
 		const bBoth = pathsInBoth.has(b.path);
 		if (aBoth && !bBoth) return -1;
@@ -265,7 +327,7 @@ export async function runInspectorGraph(
 					},
 				})),
 				edges: edges.map(edge => ({
-					id: generateStableUuid(`${edge.from_node_id}-${edge.to_node_id}-${edge.type}`),
+					id: stableGraphVisualizationEdgeId(edge.from_node_id, edge.to_node_id, edge.type),
 					source: edge.from_node_id,
 					target: edge.to_node_id,
 					type: edge.type,
@@ -277,6 +339,54 @@ export async function runInspectorGraph(
 		};
 	} catch (e) {
 		return { error: e instanceof Error ? e.message : 'Graph traversal failed' };
+	}
+}
+
+/**
+ * Run weighted local graph expansion for one hub-like note; returns structured graph for UI.
+ */
+export async function runInspectorHubLocalGraph(
+	startPath: string,
+	maxDepth: number = 4,
+): Promise<{ graph?: AISearchGraph; error?: string; frontierSummary?: Record<string, unknown>; coverageSummary?: Record<string, unknown> }> {
+	try {
+		const result = await hubLocalGraph({
+			center_note_path: startPath,
+			max_depth: maxDepth,
+			response_format: 'structured',
+		});
+		const graph = (result as { graph?: { nodes?: Array<GraphVisualizationNode & { path?: string; attributes?: Record<string, unknown> }>; edges?: Array<GraphVisualizationEdge & { attributes?: Record<string, unknown> }> } })?.graph;
+		const nodes = graph?.nodes ?? [];
+		const edges = graph?.edges ?? [];
+		return {
+			graph: {
+				nodes: nodes.map((node) => ({
+					id: node.id,
+					type: node.type,
+					title: node.label,
+					path: node.path,
+					attributes: {
+						...node.attributes,
+						depth: node.depth,
+						foundBy: node.foundBy,
+					},
+				})),
+				edges: edges.map((edge) => ({
+					id: stableGraphVisualizationEdgeId(edge.from_node_id, edge.to_node_id, edge.type),
+					source: edge.from_node_id,
+					target: edge.to_node_id,
+					type: edge.type,
+					attributes: {
+						weight: edge.weight,
+						...(edge as { attributes?: Record<string, unknown> }).attributes,
+					},
+				})),
+			},
+			frontierSummary: (result as { frontierSummary?: Record<string, unknown> }).frontierSummary,
+			coverageSummary: (result as { coverageSummary?: Record<string, unknown> }).coverageSummary,
+		};
+	} catch (e) {
+		return { error: e instanceof Error ? e.message : 'Hub local graph failed' };
 	}
 }
 

@@ -8,6 +8,7 @@ import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
+import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 
 /**
  * Table document loader for CSV and XLSX files.
@@ -50,6 +51,7 @@ export class TableDocumentLoader implements DocumentLoader {
 			if (row.length <= maxChunkSize) {
 				chunks.push({
 					docId: doc.id,
+					chunkType: 'body_raw',
 					content: row,
 					chunkId: generateUuidWithoutHyphens(),
 					chunkIndex: chunkIndex++,
@@ -62,6 +64,7 @@ export class TableDocumentLoader implements DocumentLoader {
 					const chunkContent = row.substring(start, end);
 					chunks.push({
 						docId: doc.id,
+						chunkType: 'body_raw',
 						content: chunkContent,
 						chunkId: generateUuidWithoutHyphens(),
 						chunkIndex: chunkIndex++,
@@ -72,7 +75,7 @@ export class TableDocumentLoader implements DocumentLoader {
 			}
 		}
 
-		return chunks;
+		return assembleIndexedChunks(doc, chunks);
 	}
 
 	async *scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
@@ -164,7 +167,9 @@ export class TableDocumentLoader implements DocumentLoader {
 				},
 				metadata: {
 					title: file.basename,
-					tags: [],
+					topicTags: [],
+					functionalTagEntries: [],
+					keywordTags: [],
 				},
 				contentHash,
 				references: {

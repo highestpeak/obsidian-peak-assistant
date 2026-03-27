@@ -9,6 +9,7 @@ import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
+import { assembleIndexedChunks } from './helper/assembleIndexedChunks';
 import officeParser from 'officeparser';
 
 /**
@@ -44,10 +45,11 @@ export class PptxDocumentLoader implements DocumentLoader {
 		const minSize = settings.minDocumentSizeForChunking;
 
 		if (content.length <= minSize) {
-			return [{
+			return assembleIndexedChunks(doc, [{
 				docId: doc.id,
+				chunkType: 'body_raw',
 				content: content,
-			}];
+			}]);
 		}
 
 		const splitter = new RecursiveCharacterTextSplitter({
@@ -61,13 +63,14 @@ export class PptxDocumentLoader implements DocumentLoader {
 			const langchainDoc = langchainDocs[i];
 			chunks.push({
 				docId: doc.id,
+				chunkType: 'body_raw',
 				content: langchainDoc.pageContent,
 				chunkId: generateUuidWithoutHyphens(),
 				chunkIndex: i,
 			});
 		}
 
-		return chunks;
+		return assembleIndexedChunks(doc, chunks);
 	}
 
 	async *scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
@@ -148,7 +151,9 @@ export class PptxDocumentLoader implements DocumentLoader {
 				},
 				metadata: {
 					title: file.basename,
-					tags: [],
+					topicTags: [],
+					functionalTagEntries: [],
+					keywordTags: [],
 				},
 				contentHash: sourceContentHash,
 				references: {

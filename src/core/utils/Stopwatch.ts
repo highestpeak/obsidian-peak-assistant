@@ -76,6 +76,13 @@ export class Stopwatch {
 	}
 
 	/**
+	 * Get the current running segment label, if any.
+	 */
+	getCurrentSegmentLabel(): string | null {
+		return this.currentSegment?.label ?? null;
+	}
+
+	/**
 	 * Get the total elapsed time from the first segment start to now (or last segment end).
 	 */
 	getTotalElapsed(): number {
