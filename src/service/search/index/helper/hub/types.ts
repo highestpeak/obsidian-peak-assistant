@@ -244,13 +244,6 @@ export type HubDiscoverStopDecision = {
 	coverageGainEstimate: number;
 };
 
-/** LLM output for gray-zone hub acceptance. */
-export type HubDiscoverJudgeResult = {
-	accept: boolean;
-	confidence: number;
-	reason: string;
-};
-
 /** One selected hub row for round summary (LLM + metrics). */
 export type HubDiscoverRoundSummaryHubCard = {
 	stableKey: string;

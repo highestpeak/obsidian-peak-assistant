@@ -47,6 +47,16 @@ export class IndexProgressTracker {
 	}
 
 	/**
+	 * Hide the progress notice without showing a completion banner (e.g. between multi-step pipelines).
+	 */
+	dismiss(): void {
+		if (this.notice) {
+			this.notice.hide();
+			this.notice = null;
+		}
+	}
+
+	/**
 	 * Update progress with current count.
 	 * Shows percentage, elapsed time, and estimated remaining time.
 	 */

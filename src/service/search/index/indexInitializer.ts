@@ -4,7 +4,11 @@ import type { SearchSettings } from '@/app/settings/types';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { DocumentType } from '@/core/document/types';
 import { IndexProgressTracker } from '../support/progress-tracker';
-import { IndexService } from '@/service/search/index/indexService';
+import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
+import {
+	runPendingLlmIndexEnrichment,
+	runPendingVectorIndexEnrichment,
+} from '@/service/search/index/llmIndexEnrichment';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { INDEX_CHECK_BATCH_SIZE, VAULT_DB_FILENAME } from '@/core/constant';
 import { getFileSize } from '@/core/utils/obsidian-utils';
@@ -125,6 +129,150 @@ export class IndexInitializer {
 	}
 
 	/**
+	 * Collect all vault paths that loaders consider indexable (respects ignore rules).
+	 */
+	private async collectAllIndexableFilePaths(): Promise<string[]> {
+		const loaderManager = DocumentLoaderManager.getInstance();
+		const filesToIndex: string[] = [];
+		for await (const batch of loaderManager.scanDocuments()) {
+			for (const docMeta of batch) {
+				const partialDoc = {
+					type: docMeta.type,
+					sourceFileInfo: { path: docMeta.path },
+				} as any;
+				if (loaderManager.shouldIndexDocument(partialDoc)) {
+					filesToIndex.push(docMeta.path);
+				}
+			}
+		}
+		return filesToIndex;
+	}
+
+	/**
+	 * Persistent bottom notice with updatable message (Obsidian 1.5+ `setMessage` when available).
+	 */
+	private openPipelineNotice(initial: string): { setMessage: (text: string) => void; hide: () => void } {
+		let n = new Notice(initial, 0);
+		const setMessage = (text: string) => {
+			const nn = n as Notice & { setMessage?: (m: string) => void };
+			if (typeof nn.setMessage === 'function') {
+				nn.setMessage(text);
+			} else {
+				n.hide();
+				n = new Notice(text, 0);
+			}
+		};
+		return {
+			setMessage,
+			hide: () => n.hide(),
+		};
+	}
+
+	/**
+	 * Full pipeline in order: FTS (fast core) → vector embeddings → LLM tags/summaries → Mobius maintenance.
+	 * Use when you want deferred enrichment explicitly instead of one-shot `manual_full` per file.
+	 */
+	async performStagedFullIndexing(showNotification: boolean): Promise<void> {
+		if (!sqliteStoreManager.isInitialized()) {
+			new Notice('Search index is not ready. Open the vault and wait for the plugin to load.', 6000);
+			return;
+		}
+
+		console.log('[IndexInitializer] Starting staged full pipeline (FTS → vector → LLM → maintenance)');
+		IndexService.resetCancellation();
+
+		const countStartTime = performance.now();
+		const filesToIndex = await this.collectAllIndexableFilePaths();
+		console.log(
+			`[IndexInitializer] Staged pipeline: ${filesToIndex.length} files (counted in ${(performance.now() - countStartTime).toFixed(2)}ms)`,
+		);
+
+		const progressTracker = new IndexProgressTracker(this.app, filesToIndex.length);
+		let indexedCount = 0;
+		try {
+			progressTracker.showStart('Peak: Step 1/4 — Full-text (FTS), no embeddings…');
+
+			let lastProgressUpdate = Date.now();
+			const PROGRESS_INTERVAL_MS = 2000;
+
+			for (const path of filesToIndex) {
+				if (IndexService.isCancelled() || progressTracker.isCancelled()) {
+					console.log(`[IndexInitializer] Staged pipeline cancelled at ${path}`);
+					progressTracker.dismiss();
+					return;
+				}
+				await IndexService.getInstance().indexDocument(
+					path,
+					this.settings,
+					defaultIndexDocumentOptions('listener_fast'),
+				);
+				indexedCount++;
+				if (Date.now() - lastProgressUpdate >= PROGRESS_INTERVAL_MS) {
+					progressTracker.updateProgress(indexedCount);
+					lastProgressUpdate = Date.now();
+				}
+			}
+		} catch (e) {
+			progressTracker.dismiss();
+			console.error('[IndexInitializer] Staged pipeline failed at FTS step:', e);
+			new Notice(`Peak: Step 1/4 failed — ${(e as Error).message}`, 8000);
+			return;
+		}
+
+		const dbFilePath = this.storageFolder
+			? `${this.storageFolder.trim().replace(/^\/+/, '').replace(/\/+$/, '')}/${VAULT_DB_FILENAME}`
+			: VAULT_DB_FILENAME;
+		const storageSize = await getFileSize(this.app, dbFilePath);
+
+		progressTracker.dismiss();
+		if (showNotification) {
+			const mb = storageSize > 0 ? (storageSize / 1024 / 1024).toFixed(2) : '0';
+			new Notice(`Peak: Step 1/4 done — FTS indexed ${indexedCount} file(s). DB ~${mb} MB.`, 5000);
+		}
+
+		const pipelineUi = this.openPipelineNotice('Peak: Step 2/4 — Vector embeddings…');
+		try {
+			await runPendingVectorIndexEnrichment(this.settings, {
+				onProgress: ({ processed, total, path }) => {
+					const short = path.length > 48 ? `${path.slice(0, 45)}…` : path;
+					pipelineUi.setMessage(`Peak: Step 2/4 — Vector ${processed}/${total}\n${short}`);
+				},
+			});
+			pipelineUi.setMessage('Peak: Step 3/4 — LLM tags & summaries…');
+			await runPendingLlmIndexEnrichment(this.settings, {
+				onProgress: ({ processed, total, path }) => {
+					const short = path.length > 48 ? `${path.slice(0, 45)}…` : path;
+					pipelineUi.setMessage(`Peak: Step 3/4 — LLM ${processed}/${total}\n${short}`);
+				},
+			});
+			pipelineUi.setMessage('Peak: Step 4/4 — Graph maintenance…');
+			await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
+				onProgress: (ev) => {
+					if (ev.phase === 'semantic_related') {
+						pipelineUi.setMessage(`Peak: Step 4/4 — ${ev.tenant} semantic edges ${ev.processed}/${ev.total}`);
+						return;
+					}
+					const phaseLabel =
+						ev.phase === 'semantic_pagerank_edges'
+							? 'semantic PR edges'
+							: ev.phase === 'semantic_pagerank_persist'
+								? 'semantic PR persist'
+								: ev.phase;
+					pipelineUi.setMessage(`Peak: Step 4/4 — ${ev.tenant} · ${phaseLabel} · batch ${ev.batchIndex ?? 0}`);
+				},
+			});
+			pipelineUi.hide();
+			if (showNotification) {
+				new Notice('Peak: Full pipeline finished (FTS → vector → LLM → maintenance).', 8000);
+			}
+		} catch (e) {
+			pipelineUi.hide();
+			console.error('[IndexInitializer] Staged pipeline failed:', e);
+			new Notice(`Peak pipeline failed: ${(e as Error).message}`, 8000);
+		}
+	}
+
+	/**
 	 * Perform full indexing of all documents with progress tracking.
 	 */
 	async performFullIndexing(showNotification: boolean): Promise<void> {
@@ -133,27 +281,12 @@ export class IndexInitializer {
 		// Reset cancellation flag
 		IndexService.resetCancellation();
 
-		const loaderManager = DocumentLoaderManager.getInstance();
-
-		// Step 1: Count total files first to show accurate progress
 		const countStartTime = performance.now();
 		console.log('[IndexInitializer] Counting total files...');
-		const filesToIndex: string[] = [];
-		for await (const batch of loaderManager.scanDocuments()) {
-			for (const docMeta of batch) {
-				// Count files that should be indexed (respecting settings)
-				// Create a partial document object with path info for ignore pattern checking
-				const partialDoc = {
-					type: docMeta.type,
-					sourceFileInfo: { path: docMeta.path }
-				} as any;
-				if (loaderManager.shouldIndexDocument(partialDoc)) {
-					filesToIndex.push(docMeta.path);
-				}
-			}
-		}
-		const countDuration = performance.now() - countStartTime;
-		console.log(`[IndexInitializer] Total files to index: ${filesToIndex.length} (counted in ${countDuration.toFixed(2)}ms)`);
+		const filesToIndex = await this.collectAllIndexableFilePaths();
+		console.log(
+			`[IndexInitializer] Total files to index: ${filesToIndex.length} (counted in ${(performance.now() - countStartTime).toFixed(2)}ms)`,
+		);
 
 		await this.indexNewAndModifiedFiles(filesToIndex);
 		await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat']);
@@ -305,7 +438,7 @@ export class IndexInitializer {
 			}
 
 			// Index document (chunking strategy is applied inside IndexService)
-			await IndexService.getInstance().indexDocument(path, this.settings);
+			await IndexService.getInstance().indexDocument(path, this.settings, defaultIndexDocumentOptions('manual_full'));
 			indexedCount += 1; // Count by document, not by chunks
 
 			// Update progress periodically
@@ -417,7 +550,10 @@ export class IndexInitializer {
 		const filesWithoutHash: string[] = [];
 
 		for (const docItem of maybeIndexArray) {
-			const doc = await loaderManager.readByPath(docItem.path, false);
+			const doc = await loaderManager.readByPath(docItem.path, false, {
+				includeLlmTags: false,
+				includeLlmSummary: false,
+			});
 			if (doc && doc.contentHash) {
 				pathToHash.set(docItem.path, doc.contentHash);
 			} else {

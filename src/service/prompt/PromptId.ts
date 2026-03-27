@@ -65,10 +65,6 @@ export enum PromptId {
 	HubDocSummarySystem = 'hub-doc-summary-system',
 	/** User: Hub metadata + draft markdown + vault excerpts → JSON for hub_doc sections. */
 	HubDocSummary = 'hub-doc-summary',
-	/** System: Gray-zone hub candidate judge (maintenance discover). */
-	HubDiscoverJudgeSystem = 'hub-discover-judge-system',
-	/** User: Candidate JSON → accept/reject for hub materialization. */
-	HubDiscoverJudge = 'hub-discover-judge',
 	/** System: Whole-round hub discovery review (coverage + next directions). */
 	HubDiscoverRoundReviewSystem = 'hub-discover-round-review-system',
 	/** User: Round summary JSON → structured review. */
@@ -223,7 +219,6 @@ export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.DocTypeClassifyJson,
 	PromptId.DocTagGenerateJson,
 	PromptId.HubDocSummary,
-	PromptId.HubDiscoverJudge,
 	PromptId.HubDiscoverRoundReview,
 ] as const;
 
@@ -386,11 +381,6 @@ export interface PromptVariables {
 		draftMarkdownBody: string;
 		/** Truncated vault excerpts or placeholder when empty. */
 		vaultExcerpts: string;
-	};
-	[PromptId.HubDiscoverJudgeSystem]: Record<string, never>;
-	[PromptId.HubDiscoverJudge]: {
-		/** JSON string of one hub candidate (path, scores, sourceKind, role). */
-		candidateJson: string;
 	};
 	[PromptId.HubDiscoverRoundReviewSystem]: Record<string, never>;
 	[PromptId.HubDiscoverRoundReview]: {

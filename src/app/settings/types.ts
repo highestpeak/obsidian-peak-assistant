@@ -285,10 +285,14 @@ export const AI_PATH_SUBFOLDERS = {
 } as const;
 
 /**
- * Normalized AI root (`settings.ai.rootFolder`). Throws if empty after trim.
+ * Normalized AI root. Pass `rootFolder` during bootstrap before {@link AppContext} exists; otherwise reads from AppContext.
  */
-function aiNormalizedRootFolder(): string {
-	const trimmed = AppContext.getInstance().settings.ai.rootFolder.trim();
+function aiNormalizedRootFolder(rootFolderOverride?: string): string {
+	const raw =
+		rootFolderOverride !== undefined
+			? rootFolderOverride
+			: AppContext.getInstance().settings.ai.rootFolder;
+	const trimmed = raw.trim();
 	if (!trimmed) {
 		throw new BusinessError(ErrorCode.CONFIGURATION_MISSING, 'AI rootFolder is empty; ensure settings are initialized.');
 	}
@@ -296,33 +300,33 @@ function aiNormalizedRootFolder(): string {
 }
 
 /** `{root}/Prompts` — vault-relative, normalized. */
-export function getAIPromptFolder(): string {
-	return normalizePath(`${aiNormalizedRootFolder()}/${AI_PATH_SUBFOLDERS.Prompts}`);
+export function getAIPromptFolder(rootFolder?: string): string {
+	return normalizePath(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.Prompts}`);
 }
 
 /** `{root}/Attachments` — vault-relative, normalized. */
-export function getAIUploadFolder(): string {
-	return normalizePath(`${aiNormalizedRootFolder()}/${AI_PATH_SUBFOLDERS.Attachments}`);
+export function getAIUploadFolder(rootFolder?: string): string {
+	return normalizePath(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.Attachments}`);
 }
 
 /** `{root}/resources-summary-cache` — vault-relative, normalized. */
-export function getAIResourcesSummaryFolder(): string {
-	return normalizePath(`${aiNormalizedRootFolder()}/${AI_PATH_SUBFOLDERS.ResourcesSummary}`);
+export function getAIResourcesSummaryFolder(rootFolder?: string): string {
+	return normalizePath(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.ResourcesSummary}`);
 }
 
 /** `{root}/Hub-Summaries` — vault-relative, normalized. */
-export function getAIHubSummaryFolder(): string {
-	return normalizePath(`${aiNormalizedRootFolder()}/${AI_PATH_SUBFOLDERS.HubSummaries}`);
+export function getAIHubSummaryFolder(rootFolder?: string): string {
+	return normalizePath(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.HubSummaries}`);
 }
 
 /** `{root}/Hub-Summaries/Manual` — user-authored hub notes; vault-relative, normalized. */
-export function getAIManualHubFolder(): string {
-	return normalizePath(`${getAIHubSummaryFolder()}/${AI_PATH_SUBFOLDERS.ManualHubNotes}`);
+export function getAIManualHubFolder(rootFolder?: string): string {
+	return normalizePath(`${getAIHubSummaryFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.ManualHubNotes}`);
 }
 
 /** `{root}/system/User-Profile.md` — vault-relative, normalized. */
-export function getAIProfileFilePath(): string {
-	return normalizePath(`${aiNormalizedRootFolder()}/${AI_PATH_SUBFOLDERS.UserProfile}`);
+export function getAIProfileFilePath(rootFolder?: string): string {
+	return normalizePath(`${aiNormalizedRootFolder(rootFolder)}/${AI_PATH_SUBFOLDERS.UserProfile}`);
 }
 
 /**

@@ -5,17 +5,6 @@ import { z } from 'zod/v3';
  * Keep hub-related prompts in this single module to avoid scattered schema files.
  */
 
-// --- Gray-zone hub acceptance (optional / legacy) ---
-
-/** Structured output for gray-zone hub candidate acceptance during maintenance discover. */
-export const hubDiscoverJudgeLlmSchema = z.object({
-	accept: z.boolean().describe('Whether this candidate should be materialized as a hub_doc'),
-	confidence: z.number().min(0).max(1).describe('Confidence in the decision'),
-	reason: z.string().max(500).describe('Short English rationale'),
-});
-
-export type HubDiscoverJudgeLlm = z.infer<typeof hubDiscoverJudgeLlmSchema>;
-
 // --- Whole-round discovery review ---
 
 /** Structured output for whole-round hub discovery review (maintenance). */

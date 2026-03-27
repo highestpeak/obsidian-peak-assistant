@@ -1,6 +1,6 @@
 import type { App, TAbstractFile } from 'obsidian';
 import { TFile } from 'obsidian';
-import type { DocumentLoader } from '../types';
+import type { DocumentLoader, DocumentLoaderReadOptions } from '../types';
 import type { DocumentType } from '@/core/document/types';
 import type { Document as CoreDocument } from '@/core/document/types';
 import type { SearchSettings } from '@/app/settings/types';
@@ -167,7 +167,11 @@ export class DocumentLoaderManager {
 	 * Read a document by its path using the appropriate loader.
 	 * Returns core Document model.
 	 */
-	async readByPath(path: string, genCacheContent?: boolean): Promise<CoreDocument | null> {
+	async readByPath(
+		path: string,
+		genCacheContent?: boolean,
+		readOptions?: DocumentLoaderReadOptions,
+	): Promise<CoreDocument | null> {
 		if (genCacheContent === undefined || genCacheContent === null) {
 			genCacheContent = true;
 		}
@@ -178,7 +182,7 @@ export class DocumentLoaderManager {
 		const loader = this.loaderMap.get(type);
 		if (!loader) return null;
 
-		return await loader.readByPath(path, genCacheContent);
+		return await loader.readByPath(path, genCacheContent, readOptions);
 	}
 
 	/**

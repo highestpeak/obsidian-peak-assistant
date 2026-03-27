@@ -31,6 +31,7 @@ import { clearTemplateEngineForUnload } from '@/core/template-engine-helper';
 import { clearFormatUtilsCaches } from '@/core/utils/format-utils';
 import { getPluginDirAbsolute } from '@/core/utils/obsidian-utils';
 import { hydrateCodeStopwordsFromTemplateManager } from '@/core/utils/markdown-utils';
+import { hydrateTextStopwordsFromTemplateManager } from '@/core/utils/stopword-utils';
 import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
 import { resetAIAnalysisAll } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { useVaultSearchStore } from '@/ui/view/quick-search/store/vaultSearchStore';
@@ -101,9 +102,10 @@ export default class MyPlugin extends Plugin {
 		if (this.templateManager) {
 			try {
 				await hydrateCodeStopwordsFromTemplateManager(this.templateManager);
+				await hydrateTextStopwordsFromTemplateManager(this.templateManager);
 			} catch (e) {
 				console.warn(
-					'[Peak Assistant] Failed to load templates/indexing/code-stopwords.md; code keyword hints may be noisier.',
+					'[Peak Assistant] Failed to hydrate stopword templates; keyword extraction may be noisier.',
 					e,
 				);
 			}

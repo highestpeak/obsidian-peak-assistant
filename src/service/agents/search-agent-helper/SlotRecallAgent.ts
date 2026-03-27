@@ -44,7 +44,8 @@ export interface SlotRecallAgentOptions {
 	/** Root step id from AISearchAgent for unified stepId tree. */
 	runStepId?: string;
 	vaultSkeleton?: string;
-	skipStreamSearchArchitect: boolean;
+	/** When true, stop after classify (skip search architect + recon). Default false. */
+	skipStreamSearchArchitect?: boolean;
 	skipSearch?: boolean;
 }
 

@@ -14,6 +14,10 @@ import {
 	type MobiusGlobalMaintenanceBatchPhase,
 	type MobiusGlobalMaintenanceProgress,
 } from '@/service/search/index/indexService';
+import {
+	runPendingLlmIndexEnrichment,
+	runPendingVectorIndexEnrichment,
+} from '@/service/search/index/llmIndexEnrichment';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import { ConfirmModal } from '@/ui/view/ConfirmModal';
 import { BuildUserProfileProgressModal } from '@/ui/view/BuildUserProfileProgressModal';
@@ -174,6 +178,76 @@ export function buildCoreCommands(
 				// Cancel ongoing indexing operations
 				IndexService.cancelIndexing();
 				new Notice('Index operation cancelled.', 3000);
+			},
+		},
+		{
+			id: 'peak-search-llm-enrich-pending',
+			name: 'Search: run deferred LLM enrichment (pending)',
+			callback: async () => {
+				if (!searchSettings) {
+					new Notice('Search settings are not available. Please restart the plugin.', 5000);
+					return;
+				}
+				try {
+					const { processed, errors, skippedWrongTenant } = await runPendingLlmIndexEnrichment(searchSettings);
+					const errText =
+						errors.length > 0 ? ` Errors: ${errors.length} (see console).` : '';
+					new Notice(
+						`LLM enrichment: processed ${processed} document(s).${skippedWrongTenant ? ` Skipped ${skippedWrongTenant} path(s) (tenant mismatch).` : ''}${errText}`,
+						errors.length ? 10000 : 6000,
+					);
+					if (errors.length) {
+						console.error('[peak-search-llm-enrich-pending]', errors);
+					}
+				} catch (e) {
+					console.error('[peak-search-llm-enrich-pending]', e);
+					new Notice(`LLM enrichment failed: ${(e as Error).message}`, 8000);
+				}
+			},
+		},
+		{
+			id: 'peak-search-staged-full-pipeline',
+			name: 'Search: full pipeline (FTS → vector → LLM → maintenance)',
+			callback: async () => {
+				if (!searchClient) {
+					new Notice('Search service is not available. Please restart the plugin.', 5000);
+					return;
+				}
+				if (!searchSettings) {
+					new Notice('Search settings are not available. Please restart the plugin.', 5000);
+					return;
+				}
+				try {
+					await indexInitializer.performStagedFullIndexing(true);
+				} catch (e) {
+					console.error('[peak-search-staged-full-pipeline]', e);
+					new Notice(`Pipeline failed: ${(e as Error).message}`, 8000);
+				}
+			},
+		},
+		{
+			id: 'peak-search-vector-enrich-pending',
+			name: 'Search: run deferred vector enrichment (pending)',
+			callback: async () => {
+				if (!searchSettings) {
+					new Notice('Search settings are not available. Please restart the plugin.', 5000);
+					return;
+				}
+				try {
+					const { processed, errors, skippedWrongTenant } = await runPendingVectorIndexEnrichment(searchSettings);
+					const errText =
+						errors.length > 0 ? ` Errors: ${errors.length} (see console).` : '';
+					new Notice(
+						`Vector enrichment: processed ${processed} document(s).${skippedWrongTenant ? ` Skipped ${skippedWrongTenant} path(s) (tenant mismatch).` : ''}${errText}`,
+						errors.length ? 10000 : 6000,
+					);
+					if (errors.length) {
+						console.error('[peak-search-vector-enrich-pending]', errors);
+					}
+				} catch (e) {
+					console.error('[peak-search-vector-enrich-pending]', e);
+					new Notice(`Vector enrichment failed: ${(e as Error).message}`, 8000);
+				}
 			},
 		},
 		// {

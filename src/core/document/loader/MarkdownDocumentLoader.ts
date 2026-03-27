@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
-import type { DocumentLoader } from './types';
+import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { parseMarkdownWithRemark } from '@/core/utils/markdown-utils';
 import { generateContentHash } from '@/core/utils/hash-utils';
@@ -12,12 +12,8 @@ import type { AIServiceManager } from '@/service/chat/service-manager';
 import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
 import { preprocessMarkdownForChunking } from '@/core/utils/markdown-utils';
 import { extractTopicAndFunctionalTags, type DocLlmTagResult } from '@/core/document/helper/TagService';
-import {
-	EMPTY_TEXTRANK_RESULT,
-	computeKeywordTagBundles,
-	extractTextRankFeatures,
-	type TextRankResult,
-} from '@/core/document/loader/helper/textRank';
+import { computeKeywordTagBundles, extractTextRankFeatures, stripForTextRank } from '@/core/document/loader/helper/textRank';
+import { resolveTextRankLocaleFromStripped } from '@/core/utils/stopword-utils';
 import { assembleIndexedChunks, type TextrankSentenceStructured } from './helper/assembleIndexedChunks';
 
 /** Re-export for callers that import from this module. */
@@ -47,11 +43,17 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	 * Read a markdown document by its path.
 	 * Returns core Document model.
 	 */
-	async readByPath(path: string, genCacheContent?: boolean): Promise<Document | null> {
+	async readByPath(
+		path: string,
+		_genCacheContent?: boolean,
+		readOptions?: DocumentLoaderReadOptions,
+	): Promise<Document | null> {
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (!file || !(file instanceof TFile)) return null;
 		if (!this.getSupportedExtensions().includes(file.extension.toLowerCase())) return null;
-		return await this.readMarkdownFile(file, genCacheContent);
+		const includeLlmTags = readOptions?.includeLlmTags ?? true;
+		const includeLlmSummary = readOptions?.includeLlmSummary ?? true;
+		return await this.readMarkdownFile(file, { includeLlmTags, includeLlmSummary });
 	}
 
 	/**
@@ -131,8 +133,13 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 
 	/**
 	 * Read a markdown file and convert to core Document model.
+	 * TextRank always runs. LLM tag/summary runs only when {@link DocumentLoaderReadOptions} allows (default: on).
 	 */
-	private async readMarkdownFile(file: TFile, genCacheContent?: boolean): Promise<Document | null> {
+	private async readMarkdownFile(
+		file: TFile,
+		readOptions: { includeLlmTags: boolean; includeLlmSummary: boolean },
+	): Promise<Document | null> {
+		const tRead = Date.now();
 		try {
 			const content = await this.app.vault.cachedRead(file);
 			const contentHash = generateContentHash(content);
@@ -154,13 +161,11 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 			// textrank + merged keywords for FTS; graph keyword edges use userKeywordTags only.
 			let mergedKeywordTags = userKeywordTags;
 			let textrankKeywordTerms: string[] = [];
-			let textRankSnapshot: TextRankResult = EMPTY_TEXTRANK_RESULT;
-			if (!genCacheContent) {
-				textRankSnapshot = extractTextRankFeatures(content);
-				const bundles = computeKeywordTagBundles(userKeywordTags, textRankSnapshot.topTerms);
-				mergedKeywordTags = bundles.mergedKeywordTags;
-				textrankKeywordTerms = bundles.textrankKeywordTerms;
-			}
+			const localeForTextRank = resolveTextRankLocaleFromStripped(stripForTextRank(content));
+			const textRankSnapshot = extractTextRankFeatures(content, { locale: localeForTextRank });
+			const bundles = computeKeywordTagBundles(userKeywordTags, textRankSnapshot.topTerms);
+			mergedKeywordTags = bundles.mergedKeywordTags;
+			textrankKeywordTerms = bundles.textrankKeywordTerms;
 			const textrankKeywordsStructured = textRankSnapshot.topTerms.map(({ term, score }) => ({ term, score }));
 			const textrankSentencesStructured = textRankSnapshot.topSentences.map((s) => ({
 				text: s.text,
@@ -207,34 +212,59 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 					},
 				},
 			} as unknown as Document;
+			const runTagLlm = readOptions.includeLlmTags && Boolean(this.aiServiceManager);
+			const runSummaryLlm = readOptions.includeLlmSummary && Boolean(this.aiServiceManager);
+			const tLlm = Date.now();
+			if (runTagLlm || runSummaryLlm) {
+				console.info('[MarkdownDocumentLoader] readMarkdownFile: LLM batch start', {
+					path: file.path,
+					contentChars: content.length,
+					elapsedSinceReadMs: tLlm - tRead,
+					runTagLlm,
+					runSummaryLlm,
+				});
+			}
+			const emptyTag: DocLlmTagResult = {
+				topicTagEntries: [],
+				topicTags: [] as string[],
+				functionalTagEntries: [],
+				timeTags: [] as string[],
+				geoTags: [] as string[],
+				personTags: [] as string[],
+				llmTagRunStatus: 'failed',
+			};
+			const failedTag: DocLlmTagResult = { ...emptyTag, llmTagRunStatus: 'failed' };
+			const skippedTag: DocLlmTagResult = { ...emptyTag, llmTagRunStatus: 'skipped' };
 			const [tagRes, summaryContent]: [DocLlmTagResult, ResourceSummary] = await Promise.all([
-				this.aiServiceManager && !genCacheContent ? extractTopicAndFunctionalTags(content, this.aiServiceManager, {
-					title,
-					existingUserTags: userKeywordTags.length ? userKeywordTags.join(', ') : undefined,
-					textrankKeywords: textrankKeywordsForLlm || undefined,
-					textrankSentences: textrankSentencesForLlm || undefined,
-				}).catch((err) => {
-					console.warn('[MarkdownDocumentLoader] extractTopicAndFunctionalTags failed:', err);
-					return {
-						topicTagEntries: [],
-						topicTags: [] as string[],
-						functionalTagEntries: [],
-						timeTags: [] as string[],
-						geoTags: [] as string[],
-						personTags: [] as string[],
-					};
-				}) : Promise.resolve({
-					topicTagEntries: [],
-					topicTags: [] as string[],
-					functionalTagEntries: [],
-					timeTags: [] as string[],
-					geoTags: [] as string[],
-					personTags: [] as string[],
-				}),
-				genCacheContent || !this.aiServiceManager
-					? Promise.resolve<ResourceSummary>({ shortSummary: '', fullSummary: undefined })
-					: getDefaultDocumentSummary(summaryDocStub, this.aiServiceManager)
+				runTagLlm
+					? extractTopicAndFunctionalTags(content, this.aiServiceManager!, {
+							title,
+							existingUserTags: userKeywordTags.length ? userKeywordTags.join(', ') : undefined,
+							textrankKeywords: textrankKeywordsForLlm || undefined,
+							textrankSentences: textrankSentencesForLlm || undefined,
+						}).catch((err) => {
+							console.warn('[MarkdownDocumentLoader] extractTopicAndFunctionalTags failed:', err);
+							return failedTag;
+						})
+					: Promise.resolve(skippedTag),
+				runSummaryLlm
+					? getDefaultDocumentSummary(summaryDocStub, this.aiServiceManager!)
+					: Promise.resolve<ResourceSummary>({ shortSummary: '', fullSummary: undefined }),
 			]);
+			if (runTagLlm || runSummaryLlm) {
+				console.info('[MarkdownDocumentLoader] readMarkdownFile: LLM batch done', {
+					path: file.path,
+					llmBatchMs: Date.now() - tLlm,
+					elapsedSinceReadMs: Date.now() - tRead,
+				});
+			}
+
+			const functionalTagStatus: 'pending' | 'failed' | 'success-empty' | 'success' =
+				!runTagLlm
+					? 'pending'
+					: tagRes.llmTagRunStatus === 'failed' || tagRes.functionalTagEntries.length === 0
+						? 'failed'
+						: 'success';
 
 			return {
 				id: generateDocIdFromPath(file.path),
@@ -259,26 +289,36 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 				},
 				metadata: {
 					title,
-					topicTags: tagRes.topicTags,
-					topicTagEntries: tagRes.topicTagEntries.length ? tagRes.topicTagEntries : undefined,
-					functionalTagEntries: tagRes.functionalTagEntries,
+					topicTags: runTagLlm ? tagRes.topicTags : [],
+					topicTagEntries: runTagLlm && tagRes.topicTagEntries.length ? tagRes.topicTagEntries : undefined,
+					functionalTagEntries: runTagLlm ? tagRes.functionalTagEntries : [],
 					keywordTags: mergedKeywordTags,
 					userKeywordTags,
 					...(textrankKeywordTerms.length ? { textrankKeywordTerms } : {}),
-					timeTags: tagRes.timeTags,
-					geoTags: tagRes.geoTags,
-					personTags: tagRes.personTags,
-					inferCreatedAt: tagRes.inferCreatedAtMs ?? null,
+					timeTags: runTagLlm ? tagRes.timeTags : [],
+					geoTags: runTagLlm ? tagRes.geoTags : [],
+					personTags: runTagLlm ? tagRes.personTags : [],
+					...(runTagLlm &&
+					tagRes.inferCreatedAtMs !== undefined &&
+					Number.isFinite(tagRes.inferCreatedAtMs)
+						? { inferCreatedAt: tagRes.inferCreatedAtMs }
+						: {}),
 					frontmatter: parseResult.frontmatter
 						? ({ ...parseResult.frontmatter } as Record<string, unknown>)
 						: undefined,
 					custom: {
 						textrankKeywordsStructured,
 						textrankSentencesStructured,
+						llmTagRunStatus: tagRes.llmTagRunStatus,
+						functionalTagStatus,
 					},
 				},
-				summary: summaryContent.shortSummary?.trim() ? summaryContent.shortSummary : null,
-				fullSummary: summaryContent.fullSummary ?? null,
+				...(runSummaryLlm
+					? {
+							summary: summaryContent.shortSummary?.trim() ? summaryContent.shortSummary : null,
+							fullSummary: summaryContent.fullSummary ?? null,
+						}
+					: {}),
 				contentHash,
 				references: parseResult.references,
 				lastProcessedAt: Date.now(),

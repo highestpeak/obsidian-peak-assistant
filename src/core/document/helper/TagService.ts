@@ -104,6 +104,33 @@ export function graphKeywordTagsForMobius(meta: {
 	return meta.keywordTags ?? [];
 }
 
+/**
+ * When LLM tags are skipped on a fast index, keep prior LLM-derived axes from DB and refresh deterministic keyword/TextRank fields from the current document metadata.
+ */
+export function mergeIndexedTagsBlobForFastIndex(
+	existingTagsJson: string | null | undefined,
+	meta: {
+		keywordTags?: string[];
+		userKeywordTags?: string[];
+		textrankKeywordTerms?: string[];
+	},
+): IndexedTagsBlob {
+	const existing = decodeIndexedTagsBlob(existingTagsJson ?? null);
+	return {
+		topicTags: [...existing.topicTags],
+		...(existing.topicTagEntries?.length ? { topicTagEntries: existing.topicTagEntries } : {}),
+		functionalTagEntries: [...existing.functionalTagEntries],
+		keywordTags: meta.keywordTags ?? [],
+		...(meta.userKeywordTags !== undefined ? { userKeywordTags: meta.userKeywordTags } : {}),
+		...(meta.textrankKeywordTerms?.length
+			? { textrankKeywordTerms: meta.textrankKeywordTerms }
+			: {}),
+		timeTags: [...existing.timeTags],
+		geoTags: [...existing.geoTags],
+		personTags: [...existing.personTags],
+	};
+}
+
 /** Encode tag blob for SQLite `tags_json`. */
 export function encodeIndexedTagsBlob(blob: IndexedTagsBlob): string | null {
 	const {
@@ -294,7 +321,8 @@ const docTagResponseSchema = z.object({
 	topicTagEntries: z.array(topicTagEntrySchema).max(12).default([]),
 	/** @deprecated LLM may still return plain strings; mapped to `{ id }` when topicTagEntries is empty. */
 	topicTags: z.array(z.string()).max(12).optional(),
-	functionalTagEntries: z.array(functionalTagEntrySchema).max(5).default([]),
+	/** At least one functional tag required; matches prompt (closed list). */
+	functionalTagEntries: z.array(functionalTagEntrySchema).min(1).max(5),
 	timeTags: z.array(z.string()).max(12).default([]),
 	geoTags: z.array(z.string()).max(12).default([]),
 	personTags: z.array(z.string()).max(12).default([]),
@@ -316,6 +344,8 @@ export type DocLlmTagResult = {
 	personTags: string[];
 	/** Normalized epoch ms after parsing {@link inferCreatedAt} from the model; undefined if unknown. */
 	inferCreatedAtMs?: number;
+	/** Runtime status for tag generation path. */
+	llmTagRunStatus: 'skipped' | 'failed' | 'success';
 };
 
 function buildDimensionFunctionalHintsTable(): string {
@@ -354,6 +384,7 @@ export async function extractTopicAndFunctionalTags(
 		timeTags: [],
 		geoTags: [],
 		personTags: [],
+		llmTagRunStatus: 'skipped',
 	};
 	if (!text.trim()) {
 		return empty;
@@ -374,6 +405,11 @@ export async function extractTopicAndFunctionalTags(
 	};
 
 	let normalized: z.infer<typeof docTagResponseSchema>;
+	const tTag = Date.now();
+	console.info('[MarkdownDocumentLoader] DocTagGenerateJson LLM start', {
+		title: options?.title ?? '',
+		contentChars: text.length,
+	});
 	try {
 		normalized = await ai.streamObjectWithPrompt(
 			PromptId.DocTagGenerateJson,
@@ -383,8 +419,19 @@ export async function extractTopicAndFunctionalTags(
 				? { provider: options.provider, modelId: options.modelId }
 				: undefined,
 		);
+		console.info('[MarkdownDocumentLoader] DocTagGenerateJson LLM done', {
+			title: options?.title ?? '',
+			elapsedMs: Date.now() - tTag,
+		});
 	} catch {
-		return empty;
+		console.info('[MarkdownDocumentLoader] DocTagGenerateJson LLM failed or skipped', {
+			title: options?.title ?? '',
+			elapsedMs: Date.now() - tTag,
+		});
+		return {
+			...empty,
+			llmTagRunStatus: 'failed',
+		};
 	}
 
 	let inferCreatedAtMs: number | undefined;
@@ -404,13 +451,27 @@ export async function extractTopicAndFunctionalTags(
 	);
 	const topicTags = topicTagEntries.map((e) => e.id);
 
+	const functionalTagEntries = filterValidFunctionalTagEntries(normalized.functionalTagEntries);
+	if (functionalTagEntries.length === 0) {
+		console.info('[MarkdownDocumentLoader] DocTagGenerateJson: no valid functional tags after filter', {
+			title: options?.title ?? '',
+		});
+		return {
+			...empty,
+			topicTagEntries,
+			topicTags,
+			llmTagRunStatus: 'failed',
+		};
+	}
+
 	return {
 		topicTagEntries,
 		topicTags,
-		functionalTagEntries: filterValidFunctionalTagEntries(normalized.functionalTagEntries),
+		functionalTagEntries,
 		timeTags: sanitizeContextTagsForAxis('time', normalized.timeTags),
 		geoTags: sanitizeContextTagsForAxis('geo', normalized.geoTags),
 		personTags: sanitizeContextTagsForAxis('person', normalized.personTags),
+		llmTagRunStatus: 'success',
 		...(inferCreatedAtMs !== undefined ? { inferCreatedAtMs } : {}),
 	};
 }

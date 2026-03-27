@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import type { DocumentLoader } from './types';
+import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { generateContentHash } from '@/core/utils/hash-utils';
 import { PlaywrightWebBaseLoader } from '@langchain/community/document_loaders/web/playwright';
@@ -40,7 +40,11 @@ export class UrlDocumentLoader implements DocumentLoader {
 		return ['url'];
 	}
 
-	async readByPath(path: string, genCacheContent?: boolean): Promise<Document | null> {
+	async readByPath(
+		path: string,
+		genCacheContent?: boolean,
+		_readOptions?: DocumentLoaderReadOptions,
+	): Promise<Document | null> {
 		// For URLs, path is the URL itself
 		if (!this.isValidUrl(path)) return null;
 		return await this.readUrl(path, genCacheContent);

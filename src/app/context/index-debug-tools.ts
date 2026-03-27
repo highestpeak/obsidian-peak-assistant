@@ -1,9 +1,13 @@
 import { normalizePath } from 'obsidian';
 import { GRAPH_TAGGED_EDGE_TYPES } from '@/core/po/graph.po';
+import { decodeIndexedTagsBlob } from '@/core/document/helper/TagService';
+import type { DocumentLoaderReadOptions } from '@/core/document/loader/types';
+import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
 import { createUint32Bitset, hasUint32Bit } from '@/core/utils/bit-util';
-import { IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
+import type { IndexDocumentReason } from '@/service/search/index/types';
+import { defaultIndexDocumentOptions, IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
 import {
 	HubCandidateDiscoveryService,
 	buildHubDiscoverDocCoverageIndex,
@@ -22,6 +26,16 @@ function requireDb(): void {
 		throw new Error('[index-debug] SQLite is not initialized. Open the vault and wait for the plugin to finish loading.');
 	}
 }
+
+/** DevTools `debugIndexDocument` mode → {@link IndexDocumentReason} for {@link defaultIndexDocumentOptions}. */
+export type DebugIndexDocumentMode = 'core_fast' | 'vector_only' | 'llm_only' | 'manual_full';
+
+const DEBUG_INDEX_MODE_TO_REASON: Record<DebugIndexDocumentMode, IndexDocumentReason> = {
+	core_fast: 'listener_fast',
+	vector_only: 'vector_enrich_only',
+	llm_only: 'llm_enrich_only',
+	manual_full: 'manual_full',
+};
 
 /**
  * Runs full hub discovery and collects per-round summaries (same pipeline as maintenance hub step).
@@ -123,35 +137,22 @@ async function countTaggedEdgesForDoc(tenant: IndexTenant, docId: string): Promi
 	return Number(r?.c ?? 0);
 }
 
-export type DebugIndexDocumentResult = {
-	path: string;
-	tenant: IndexTenant;
-	ok: boolean;
-	elapsedMs: number;
-	error?: string;
-	indexed?: {
-		nodeId: string;
-		title: string | null;
-		type: string | null;
-		chunkCount: number;
-		embeddingRowCount: number;
-	};
-	graph?: {
-		referenceEdgesIncidentSampled: number;
-		semanticEdgesIncidentSampled: number;
-		taggedEdgeCount: number;
-		docIncomingCnt: number | null;
-		docOutgoingCnt: number | null;
-		pagerank: number | null;
-		semanticPagerank: number | null;
-	};
-	localHubPreview?: {
-		nodeCount: number;
-		edgeCount: number;
-		stopReason?: string;
-	};
-	warnings: string[];
-};
+/** DevTools progress log for {@link debugIndexDocument} (uses info so default console level shows it). */
+function logDebugIndexDocument(
+	path: string,
+	tenant: IndexTenant,
+	t0: number,
+	phase: string,
+	extra?: Record<string, unknown>,
+): void {
+	console.info('[index-debug] debugIndexDocument', {
+		phase,
+		path,
+		tenant,
+		elapsedMs: Date.now() - t0,
+		...extra,
+	});
+}
 
 /**
  * Index one document and return a compact snapshot for DevTools (no full-text dump).
@@ -159,70 +160,263 @@ export type DebugIndexDocumentResult = {
 export async function debugIndexDocument(
 	docPath: string,
 	getSearchSettings: () => SearchSettings,
-): Promise<DebugIndexDocumentResult> {
+	mode: DebugIndexDocumentMode = 'manual_full',
+) {
 	const path = normalizePath(docPath.trim());
 	const tenant = getIndexTenantForPath(path);
 	const t0 = Date.now();
 	const warnings: string[] = [];
-	const out: DebugIndexDocumentResult = {
+	const out: Record<string, unknown> = {
 		path,
 		tenant,
+		mode,
 		ok: false,
 		elapsedMs: 0,
 		warnings,
 	};
 
+	logDebugIndexDocument(path, tenant, t0, 'start');
+
 	try {
 		requireDb();
-		await IndexService.getInstance().indexDocument(path, getSearchSettings());
-		out.ok = true;
 	} catch (e) {
 		out.error = (e as Error).message ?? String(e);
 		out.elapsedMs = Date.now() - t0;
+		logDebugIndexDocument(path, tenant, t0, 'requireDb_failed', { error: out.error });
 		return out;
 	}
 
-	out.elapsedMs = Date.now() - t0;
+	logDebugIndexDocument(path, tenant, t0, 'db_ready');
+
+	const settings = getSearchSettings();
+	const indexOptions = defaultIndexDocumentOptions(DEBUG_INDEX_MODE_TO_REASON[mode]);
+	const readOpts: DocumentLoaderReadOptions = {
+		includeLlmTags: indexOptions.includeLlmTags,
+		includeLlmSummary: indexOptions.includeLlmSummary,
+	};
+	const loaderManager = DocumentLoaderManager.getInstance();
+	logDebugIndexDocument(path, tenant, t0, 'readByPath_start', {
+		hint: 'Markdown: parallel LLM tag + summary inside loader; see [MarkdownDocumentLoader] logs',
+	});
+	const readDoc = await loaderManager.readByPath(path, true, readOpts);
+	if (!readDoc) {
+		out.error = 'readByPath returned null (unknown type or no loader)';
+		out.elapsedMs = Date.now() - t0;
+		warnings.push('Could not load document model; index step skipped.');
+		logDebugIndexDocument(path, tenant, t0, 'readByPath_null');
+		return out;
+	}
+
+	logDebugIndexDocument(path, tenant, t0, 'readByPath_ok', { docType: readDoc.type, docId: readDoc.id });
+
+	const pv = (t: string | null | undefined, max = 600) => {
+		const s = String(t ?? '').replace(/\s+/g, ' ').trim();
+		return !s ? '' : s.length > max ? `${s.slice(0, max)}…` : s;
+	};
+	const refTenant = (refs: { fullPath: string; docId?: string }[]) =>
+		refs.map((r) => ({ ...r, tenant: getIndexTenantForPath(r.fullPath) }));
+	const outgoingRefs = refTenant(readDoc.references?.outgoing ?? []);
+	out.read = {
+		id: readDoc.id,
+		type: readDoc.type,
+		sourcePreview: pv(readDoc.sourceFileInfo.content, 800),
+		cachePreview: pv(readDoc.cacheFileInfo.content, 800),
+		metadata: readDoc.metadata,
+		references: {
+			outgoing: outgoingRefs,
+			incoming: refTenant(readDoc.references?.incoming ?? []),
+			crossTenantOutgoing: outgoingRefs.filter((r) => r.tenant !== tenant),
+		},
+		summary: readDoc.summary,
+		contentHash: readDoc.contentHash,
+	};
+
+	const loader = loaderManager.getLoaderForDocumentType(readDoc.type);
+	if (loader) {
+		try {
+			logDebugIndexDocument(path, tenant, t0, 'chunkContent_start');
+			const chunks = await loader.chunkContent(readDoc, settings.chunking);
+			const byType: Record<string, number> = {};
+			for (const c of chunks) {
+				byType[c.chunkType] = (byType[c.chunkType] ?? 0) + 1;
+			}
+			out.chunks = {
+				count: chunks.length,
+				byType,
+				items: chunks.map((c) => ({
+					chunkId: c.chunkId,
+					chunkIndex: c.chunkIndex,
+					chunkType: c.chunkType,
+					title: c.title,
+					len: c.content?.length ?? 0,
+					preview: pv(c.content, 400),
+					meta: c.chunkMeta,
+					embLen: Array.isArray(c.embedding) ? c.embedding.length : 0,
+				})),
+			};
+			logDebugIndexDocument(path, tenant, t0, 'chunkContent_ok', { chunkCount: chunks.length });
+		} catch (e) {
+			warnings.push(`chunkContent failed: ${(e as Error).message ?? String(e)}`);
+			logDebugIndexDocument(path, tenant, t0, 'chunkContent_failed', {
+				error: (e as Error).message ?? String(e),
+			});
+		}
+	} else {
+		warnings.push(`No loader for document type: ${readDoc.type}`);
+		logDebugIndexDocument(path, tenant, t0, 'chunkContent_skipped', { reason: 'no_loader' });
+	}
+
+	out.indexOptions = indexOptions;
+	logDebugIndexDocument(path, tenant, t0, 'indexDocument_start', {
+		mode,
+		reason: indexOptions.reason,
+		includeCoreSearchIndex: indexOptions.includeCoreSearchIndex,
+		includeEmbeddings: indexOptions.includeEmbeddings,
+		includeLlmTags: indexOptions.includeLlmTags,
+		includeLlmSummary: indexOptions.includeLlmSummary,
+	});
+	try {
+		await IndexService.getInstance().indexDocument(path, settings, { ...indexOptions, preloadedDocument: readDoc });
+		out.ok = true;
+		logDebugIndexDocument(path, tenant, t0, 'indexDocument_ok');
+	} catch (e) {
+		out.error = (e as Error).message ?? String(e);
+		out.elapsedMs = Date.now() - t0;
+		logDebugIndexDocument(path, tenant, t0, 'indexDocument_failed', { error: out.error });
+		return out;
+	}
 
 	const indexedRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+	logDebugIndexDocument(path, tenant, t0, 'indexed_meta_lookup_start');
 	const meta = await indexedRepo.getByPath(path);
 	if (!meta) {
 		warnings.push('Document not found in indexed_document table after index (skipped or load failed).');
 		out.elapsedMs = Date.now() - t0;
+		logDebugIndexDocument(path, tenant, t0, 'indexed_meta_missing');
 		return out;
 	}
+
+	logDebugIndexDocument(path, tenant, t0, 'indexed_meta_ok', { docId: meta.id });
 
 	const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
 	const row = await mobiusRepo.getByPath(path);
 	const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+	logDebugIndexDocument(path, tenant, t0, 'graph_edges_start', { nodeId: meta.id });
 	const refInc = await edgeRepo.listReferenceEdgesIncidentToNode(meta.id, 5000);
+	logDebugIndexDocument(path, tenant, t0, 'graph_reference_edges_ok', { sampled: refInc.length });
 	const semInc = await edgeRepo.listSemanticRelatedEdgesIncidentToNode(meta.id, 2000);
+	logDebugIndexDocument(path, tenant, t0, 'graph_semantic_edges_ok', { sampled: semInc.length });
+
+	const parseJson = (raw: string | null | undefined) => {
+		if (raw == null || raw === '') return null;
+		try {
+			return JSON.parse(raw);
+		} catch {
+			return raw;
+		}
+	};
+
+	const kdb = sqliteStoreManager.getIndexContext(tenant);
+	logDebugIndexDocument(path, tenant, t0, 'doc_chunk_sample_start');
+	const docChunkRows = await kdb
+		.selectFrom('doc_chunk')
+		.select(['chunk_id', 'chunk_index', 'chunk_type', 'title', 'content_raw', 'chunk_meta_json'])
+		.where('doc_id', '=', meta.id)
+		.orderBy('chunk_index', 'asc')
+		.limit(120)
+		.execute();
+	logDebugIndexDocument(path, tenant, t0, 'doc_chunk_sample_ok', { rows: docChunkRows.length });
+	const persistedItems = docChunkRows.map((r) => ({
+		chunkId: r.chunk_id,
+		chunkIndex: r.chunk_index ?? 0,
+		chunkType: r.chunk_type,
+		title: r.title,
+		len: r.content_raw?.length ?? 0,
+		preview: pv(r.content_raw, 400),
+		meta: parseJson(r.chunk_meta_json),
+	}));
+	logDebugIndexDocument(path, tenant, t0, 'tagged_edges_sample_start');
+	const taggedRows = await kdb
+		.selectFrom('mobius_edge')
+		.select(['id', 'from_node_id', 'to_node_id', 'type', 'weight', 'attributes_json'])
+		.where('type', 'in', [...GRAPH_TAGGED_EDGE_TYPES])
+		.where((eb) => eb.or([eb('from_node_id', '=', meta.id), eb('to_node_id', '=', meta.id)]))
+		.limit(50)
+		.execute();
+	logDebugIndexDocument(path, tenant, t0, 'tagged_edges_sample_ok', { rows: taggedRows.length });
+	const taggedSample = taggedRows.map((r) => ({
+		id: r.id,
+		from: r.from_node_id,
+		to: r.to_node_id,
+		type: r.type,
+		weight: r.weight,
+		attrs: parseJson(r.attributes_json),
+	}));
+
+	logDebugIndexDocument(path, tenant, t0, 'chunk_embedding_counts_start');
+	const chunkCountTotal = await countChunksForDoc(tenant, meta.id);
+	const embeddingRowCount = await countEmbeddingsForDoc(tenant, meta.id);
+	logDebugIndexDocument(path, tenant, t0, 'chunk_embedding_counts_ok', {
+		chunkCount: chunkCountTotal,
+		embeddingRowCount,
+	});
 
 	out.indexed = {
 		nodeId: meta.id,
 		title: meta.title,
 		type: meta.type,
-		chunkCount: await countChunksForDoc(tenant, meta.id),
-		embeddingRowCount: await countEmbeddingsForDoc(tenant, meta.id),
+		chunkCount: chunkCountTotal,
+		embeddingRowCount,
 	};
+
+	if (row) {
+		const attrsParsed = parseJson(row.attributes_json) as Record<string, unknown> | null;
+		out.mobiusNode = {
+			row: { ...(row as Record<string, unknown>) },
+			tagsDecoded: decodeIndexedTagsBlob(row.tags_json),
+			attrsParsed,
+			pendingState: {
+				llmPending: attrsParsed?.llm_pending ?? null,
+				llmPendingReason: attrsParsed?.llm_pending_reason ?? null,
+				vectorPending: attrsParsed?.vector_pending ?? null,
+				vectorPendingReason: attrsParsed?.vector_pending_reason ?? null,
+				functionalTagsStatus: attrsParsed?.functional_tags_status ?? null,
+			},
+		};
+	}
+
+	out.persistedChunks = {
+		count: chunkCountTotal,
+		itemsSampled: persistedItems.length,
+		items: persistedItems,
+	};
+
+	logDebugIndexDocument(path, tenant, t0, 'tagged_edge_count_start');
+	const taggedEdgeCount = await countTaggedEdgesForDoc(tenant, meta.id);
+	logDebugIndexDocument(path, tenant, t0, 'tagged_edge_count_ok', { taggedEdgeCount });
 
 	out.graph = {
 		referenceEdgesIncidentSampled: refInc.length,
 		semanticEdgesIncidentSampled: semInc.length,
-		taggedEdgeCount: await countTaggedEdgesForDoc(tenant, meta.id),
+		taggedEdgeCount,
 		docIncomingCnt: row?.doc_incoming_cnt ?? null,
 		docOutgoingCnt: row?.doc_outgoing_cnt ?? null,
 		pagerank: typeof row?.pagerank === 'number' ? row.pagerank : null,
 		semanticPagerank: typeof row?.semantic_pagerank === 'number' ? row.semantic_pagerank : null,
+		referenceEdgesSample: refInc.slice(0, 50),
+		semanticEdgesSample: semInc.slice(0, 50),
+		taggedEdgesSample: taggedSample,
 	};
 
-	if (out.indexed.chunkCount === 0) {
+	const indexedSnap = out.indexed as { chunkCount?: number; embeddingRowCount?: number } | undefined;
+	if (indexedSnap?.chunkCount === 0) {
 		warnings.push('chunkCount is 0 — check loader / chunking settings.');
 	}
-	if (out.indexed.embeddingRowCount === 0) {
+	if (indexedSnap?.embeddingRowCount === 0) {
 		warnings.push('embeddingRowCount is 0 — vector extension off or embedding model not configured.');
 	}
 
+	logDebugIndexDocument(path, tenant, t0, 'localHubPreview_start');
 	try {
 		const local = await buildLocalHubGraphForPath({
 			tenant,
@@ -236,21 +430,24 @@ export async function debugIndexDocument(
 				edgeCount: local.edges.length,
 				stopReason: local.frontierSummary?.reason,
 			};
+			logDebugIndexDocument(path, tenant, t0, 'localHubPreview_ok', {
+				nodeCount: local.nodes.length,
+				edgeCount: local.edges.length,
+			});
+		} else {
+			logDebugIndexDocument(path, tenant, t0, 'localHubPreview_empty');
 		}
 	} catch (e) {
 		warnings.push(`local hub preview failed: ${(e as Error).message ?? e}`);
+		logDebugIndexDocument(path, tenant, t0, 'localHubPreview_failed', {
+			error: (e as Error).message ?? String(e),
+		});
 	}
 
+	out.elapsedMs = Date.now() - t0;
+	logDebugIndexDocument(path, tenant, t0, 'done', { ok: out.ok, warningCount: warnings.length });
 	return out;
 }
-
-export type DebugBatchIndexResult = {
-	total: number;
-	success: number;
-	failed: number;
-	elapsedMs: number;
-	results: DebugIndexDocumentResult[];
-};
 
 /**
  * Batch wrapper around {@link debugIndexDocument}.
@@ -258,11 +455,12 @@ export type DebugBatchIndexResult = {
 export async function debugBatchIndex(
 	paths: string[],
 	getSearchSettings: () => SearchSettings,
-): Promise<DebugBatchIndexResult> {
+	mode: DebugIndexDocumentMode = 'manual_full',
+) {
 	const t0 = Date.now();
-	const results: DebugIndexDocumentResult[] = [];
+	const results: Awaited<ReturnType<typeof debugIndexDocument>>[] = [];
 	for (const p of paths) {
-		results.push(await debugIndexDocument(p, getSearchSettings));
+		results.push(await debugIndexDocument(p, getSearchSettings, mode));
 	}
 	const success = results.filter((r) => r.ok).length;
 	return {

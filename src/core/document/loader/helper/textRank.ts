@@ -1,3 +1,5 @@
+import { normalizeForSearch, segmentToWhitespace } from '@/service/search/support/segmenter';
+import { getTextStopwordsForLocale } from '@/core/utils/stopword-utils';
 /**
  * Unsupervised TextRank: word co-occurrence graph + sentence similarity graph (Jaccard), PageRank scoring.
  * No external dependencies; safe for main-thread indexing.
@@ -32,10 +34,24 @@ export type TextRankOptions = {
 	iterations?: number;
 	/** Minimum token length for Latin words (default 2). */
 	minWordLength?: number;
+	/** Optional locale hint for tokenization (e.g. zh, en). */
+	locale?: string;
+	/** Optional stopword set override. */
+	stopwords?: Set<string>;
 };
 
 const DEFAULT_OPTS: Required<
-	Omit<TextRankOptions, 'maxContentChars' | 'wordWindow' | 'maxTerms' | 'maxSentences' | 'maxSentencesInGraph' | 'minWordLength'>
+	Omit<
+		TextRankOptions,
+		| 'maxContentChars'
+		| 'wordWindow'
+		| 'maxTerms'
+		| 'maxSentences'
+		| 'maxSentencesInGraph'
+		| 'minWordLength'
+		| 'locale'
+		| 'stopwords'
+	>
 > &
 	Required<Pick<TextRankOptions, 'maxContentChars' | 'wordWindow' | 'maxTerms' | 'maxSentences' | 'maxSentencesInGraph' | 'minWordLength'>> = {
 	maxContentChars: 120_000,
@@ -48,14 +64,6 @@ const DEFAULT_OPTS: Required<
 	minWordLength: 2,
 };
 
-/** Minimal English stopwords to reduce noise in word graph. */
-const STOP = new Set(
-	`the a an and or but if in on at to for of as is are was were be been being it its this that these those with from by not no
-		i you he she they we our their my your what which who whom when where why how all each both than then so too very can could
-		will would should may might must shall do does did done having have has had
-	`.split(/\s+/).filter(Boolean),
-);
-
 /**
  * Strip fenced code blocks and inline code for cleaner co-occurrence.
  */
@@ -66,16 +74,26 @@ export function stripForTextRank(markdown: string): string {
 }
 
 /**
- * Tokenize: ASCII words (length >= minLen) and single CJK codepoints.
+ * Tokenize using Intl.Segmenter output, then filter by stopwords and length.
  */
-export function tokenizeForTextRank(text: string, minWordLength: number): string[] {
-	const lower = text.toLowerCase();
+export function tokenizeForTextRank(
+	text: string,
+	minWordLength: number,
+	options?: { locale?: string; stopwords?: Set<string> },
+): string[] {
+	const locale = options?.locale;
+	const stopwords = options?.stopwords ?? getTextStopwordsForLocale(locale);
+	const segmented = segmentToWhitespace(text, locale);
 	const out: string[] = [];
-	const re = new RegExp(`[a-z]{${minWordLength},}|[\\u4e00-\\u9fff]`, 'g');
-	let m: RegExpExecArray | null;
-	while ((m = re.exec(lower)) !== null) {
-		const t = m[0];
-		if (/^[a-z]+$/.test(t) && STOP.has(t)) continue;
+	const minCjkLength = locale?.toLowerCase().startsWith('zh') ? 2 : 1;
+	for (const raw of segmented.split(/\s+/)) {
+		const t = normalizeForSearch(raw).trim();
+		if (!t) continue;
+		if (stopwords.has(t)) continue;
+		if (/^\d+$/.test(t)) continue;
+		if (/^[a-z]+$/.test(t) && t.length < minWordLength) continue;
+		if (/[\u4e00-\u9fff]/.test(t) && t.length < minCjkLength) continue;
+		if (/^\p{P}+$/u.test(t)) continue;
 		out.push(t);
 	}
 	return out;
@@ -208,12 +226,16 @@ function sentenceNodeIds(n: number): string[] {
  */
 export function extractTextRankFeatures(rawText: string, options?: TextRankOptions): TextRankResult {
 	const o = { ...DEFAULT_OPTS, ...options };
+	const stopwords = o.stopwords ?? getTextStopwordsForLocale(o.locale);
 	let text = stripForTextRank(rawText);
 	if (text.length > o.maxContentChars) {
 		text = text.slice(0, o.maxContentChars);
 	}
 
-	const tokens = tokenizeForTextRank(text, o.minWordLength);
+	const tokens = tokenizeForTextRank(text, o.minWordLength, {
+		locale: o.locale,
+		stopwords,
+	});
 	if (tokens.length === 0) {
 		return { topTerms: [], topSentences: [] };
 	}
@@ -231,7 +253,11 @@ export function extractTextRankFeatures(rawText: string, options?: TextRankOptio
 		sentences = sentences.slice(0, o.maxSentencesInGraph);
 	}
 
-	const tok = (s: string) => tokenizeForTextRank(s, o.minWordLength);
+	const tok = (s: string) =>
+		tokenizeForTextRank(s, o.minWordLength, {
+			locale: o.locale,
+			stopwords,
+		});
 	if (sentences.length < 2) {
 		const one = sentences[0];
 		return {

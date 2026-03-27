@@ -1,4 +1,6 @@
-import type { Chunk } from './types';
+import { normalizePath } from 'obsidian';
+import { type Chunk, defaultIndexDocumentOptions, type IndexDocumentOptions } from './types';
+import type { DocumentLoaderReadOptions } from '@/core/document/loader/types';
 import { AppContext } from '@/app/context/AppContext';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
 import type { IndexedDocumentRecord } from '@/core/storage/sqlite/ddl';
@@ -26,6 +28,7 @@ import {
 	computeSemanticPageRankStreaming,
 	computeVaultPageRankStreaming,
 } from '@/service/search/index/helper/documentPageRank';
+import { enforceChunkLengthWithOverlap } from '@/service/search/index/helper/safeChunking';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import {
 	generateDocIdFromPath,
@@ -50,9 +53,11 @@ import {
 } from '@/service/search/index/helper/semanticRelatedEdges';
 import { crossesTopLevelFolder, pathLcaDepth, pathSegments } from '@/core/utils/vault-path-utils';
 import {
+	decodeIndexedTagsBlob,
 	encodeIndexedTagsBlob,
 	filterValidFunctionalTagEntries,
 	graphKeywordTagsForMobius,
+	mergeIndexedTagsBlobForFastIndex,
 } from '@/core/document/helper/TagService';
 import {
 	stableContextTagNodeId,
@@ -64,6 +69,9 @@ import {
 import { isVaultPathUnderPrefix } from '@/core/utils/hub-path-utils';
 import { HubDocService } from '@/service/search/index/helper/hub';
 export type StorageType = 'sqlite' | 'graph';
+
+export type { IndexDocumentOptions, IndexDocumentReason } from './types';
+export { defaultIndexDocumentOptions } from './types';
 
 /** Batch-loaded path → indexed id + title for outgoing refs that omit `docId`. */
 type PathIndexedDocInfo = { id: string; title: string | null };
@@ -363,45 +371,70 @@ class IndexSingleService {
 
 	/**
 	 * Index a document by path with chunking strategy applied.
-	 * This method handles document loading and chunking internally based on settings.
+	 * Pass {@link IndexDocumentOptions} to control LLM tags/summary vs fast core index.
 	 */
 	async indexDocument(
 		docPath: string,
 		settings: SearchSettings,
+		indexOptions?: IndexDocumentOptions,
 	): Promise<void> {
+		const opts = indexOptions ?? defaultIndexDocumentOptions('manual_full');
 		const sw = new Stopwatch(`[IndexService] Indexing: ${docPath}`);
 
-		console.debug(`[IndexService] Index document: ${docPath}`);
+		console.debug(`[IndexService] Index document: ${docPath}`, opts.reason);
 		try {
-			// Load document content
 			const loaderManager = DocumentLoaderManager.getInstance();
 
-			// Get loader for document type
 			const partialDoc = {
 				type: loaderManager.getTypeForPath(docPath) ?? 'unknown',
-				sourceFileInfo: { path: docPath }
+				sourceFileInfo: { path: docPath },
 			} as any;
 			if (!loaderManager.shouldIndexDocument(partialDoc)) {
-				console.warn(`[IndexService] Skipping indexing for path: ${docPath}, type: ${partialDoc.type} (should not be indexed or has no loader)`);
+				console.warn(
+					`[IndexService] Skipping indexing for path: ${docPath}, type: ${partialDoc.type} (should not be indexed or has no loader)`,
+				);
 				return;
 			}
 
+			const readOpts: DocumentLoaderReadOptions = {
+				includeLlmTags: opts.includeLlmTags,
+				includeLlmSummary: opts.includeLlmSummary,
+			};
+
 			sw.start('Read document');
-			const doc = await loaderManager.readByPath(docPath, true);
+			const preload = opts.preloadedDocument;
+			let rawDoc: Document | null = null;
+			if (preload) {
+				const want = normalizePath(docPath);
+				const got = normalizePath(preload.sourceFileInfo?.path ?? '');
+				if (want !== got) {
+					console.warn(
+						`[IndexService] preloadedDocument path mismatch (expected ${want}, got ${got}); reloading from vault.`,
+					);
+					rawDoc = await loaderManager.readByPath(docPath, true, readOpts);
+				} else {
+					rawDoc = preload;
+				}
+			} else {
+				rawDoc = await loaderManager.readByPath(docPath, true, readOpts);
+			}
 			sw.stop();
-			if (!doc) {
+			if (!rawDoc) {
 				console.warn(`[IndexService] Failed to load document: ${docPath}`);
 				return;
 			}
 
-			const tenant = getIndexTenantForPath(doc.sourceFileInfo.path);
-			doc.id = await this.resolveDocumentNodeId(doc.sourceFileInfo.path, tenant);
+			const tenant = getIndexTenantForPath(rawDoc.sourceFileInfo.path);
+			rawDoc.id = await this.resolveDocumentNodeId(rawDoc.sourceFileInfo.path, tenant);
 
-			// Check if indexing has been cancelled
 			if (IndexService.isCancelled()) {
-				console.log(`[IndexService] Indexing cancelled for ${doc.sourceFileInfo.path}`);
+				console.log(`[IndexService] Indexing cancelled for ${rawDoc.sourceFileInfo.path}`);
 				return;
 			}
+
+			const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+			const existing = await indexedDocumentRepo.getByPath(rawDoc.sourceFileInfo.path);
+			const doc = this.applyDocumentMergeForIndex(rawDoc, existing, opts);
 
 			const loader = loaderManager.getLoaderForDocumentType(doc.type);
 			if (!loader) {
@@ -409,58 +442,101 @@ class IndexSingleService {
 				return;
 			}
 
-			// Chunk content (body + derived chunks from loader)
-			sw.start('Chunk content');
-			const chunks = await loader.chunkContent(doc, settings.chunking);
-			sw.stop();
-			// Check if vector search is available (requires sqlite-vec extension)
+			let chunks: Chunk[] = [];
+			if (opts.includeCoreSearchIndex) {
+				sw.start('Chunk content');
+				chunks = await loader.chunkContent(doc, settings.chunking);
+				chunks = enforceChunkLengthWithOverlap(chunks, settings.chunking);
+				sw.stop();
+			} else if (opts.includeEmbeddings) {
+				sw.start('Load chunks for vector enrichment');
+				chunks = await this.loadPersistedChunksForEmbedding(doc.id, tenant);
+				sw.stop();
+			}
+
 			const vectorSearchAvailable = sqliteStoreManager.isVectorSearchEnabled();
-			// Generate embeddings for chunks if embedding model is configured AND vector search is available
 			const embeddingModel = settings.chunking.embeddingModel;
 			const embeddingModelName = embeddingModel ? `${embeddingModel.provider}:${embeddingModel.modelId}` : undefined;
-			if (embeddingModel && vectorSearchAvailable) {
+			const canGenerateEmbeddings = opts.includeEmbeddings && embeddingModel != null && vectorSearchAvailable;
+			let vectorCompleted = false;
+			if (canGenerateEmbeddings) {
 				sw.start('Generate embeddings');
 				await this.generateAndFillEmbeddings(chunks, embeddingModel);
 				sw.stop();
+				vectorCompleted = true;
+			} else if (!opts.includeEmbeddings) {
+				console.debug(`[IndexService] Skipping embeddings by index options for ${doc.sourceFileInfo.path}`);
 			} else {
 				console.debug(
 					`[IndexService] Skipping embedding generation for ${doc.sourceFileInfo.path}. ` +
-					'Vector search may not be available (sqlite-vec extension not loaded). '
+						'Vector search may not be available (sqlite-vec extension not loaded). ',
 				);
 			}
 
-			/**
-			 * Single transaction: indexed document row (incl. stats) → FTS/embeddings → tag/ref graph → aggregates → index_state
-			 * Writes document index in one DB transaction: full `mobius_node` document row (metadata + stats),
-			 * FTS + embeddings, related graph nodes/edges, aggregate columns, then index_state.
-			 */
 			sw.start('Persist index (transaction: mobius + FTS + graph + aggregates + index_state)');
 			console.debug(`[IndexService] Persist index for: ${docPath} (tenant: ${tenant})`);
-			const pathToIndexedDocInfo = await this.loadPathToIndexedDocInfoMap(doc, tenant);
-			const indexedByTargetId = await this.loadIndexedRecordsForOutgoingTargets(doc, tenant, pathToIndexedDocInfo);
+			const shouldRefreshGraph = opts.includeCoreSearchIndex || opts.includeLlmTags || opts.includeLlmSummary;
+			const sameTenantOutgoing = shouldRefreshGraph
+				? this.filterOutgoingRefsForTenant(doc.references.outgoing, tenant)
+				: [];
+			if (shouldRefreshGraph && sameTenantOutgoing.length < doc.references.outgoing.length) {
+				console.debug(
+					`[IndexService] Same-tenant outgoing refs: ${sameTenantOutgoing.length}/${doc.references.outgoing.length} (skipped cross-tenant) for ${docPath}`,
+				);
+			}
+			const pathToIndexedDocInfo = shouldRefreshGraph
+				? await this.loadPathToIndexedDocInfoMap(tenant, sameTenantOutgoing)
+				: new Map<string, PathIndexedDocInfo>();
+			const indexedByTargetId = shouldRefreshGraph
+				? await this.loadIndexedRecordsForOutgoingTargets(
+						tenant,
+						pathToIndexedDocInfo,
+						sameTenantOutgoing,
+					)
+				: new Map<string, IndexedDocumentRecord>();
 			const kdb = sqliteStoreManager.getIndexContext(tenant);
 			await kdb.transaction().execute(async () => {
-				// basic node for current doc
-				await this.upsertIndexedDocument(doc, tenant);
-				// doc reference and tagged edges
-				await this.upsertGraphEdgesForDocument(doc, tenant, pathToIndexedDocInfo, indexedByTargetId);
-				// folder contains edges
-				await this.upsertFolderContainsEdgesForDocument(doc, tenant);
-				// refresh document and tag statistics fields
-				await this.refreshMobiusAggregatesForIndexedDocument(doc, tenant, pathToIndexedDocInfo);
+				await this.upsertIndexedDocument(doc, tenant, opts, existing);
+				if (shouldRefreshGraph) {
+					await this.upsertGraphEdgesForDocument(
+						doc,
+						tenant,
+						pathToIndexedDocInfo,
+						indexedByTargetId,
+						sameTenantOutgoing,
+						opts.includeLlmTags,
+					);
+					await this.upsertFolderContainsEdgesForDocument(doc, tenant);
+					await this.refreshMobiusAggregatesForIndexedDocument(
+						doc,
+						tenant,
+						pathToIndexedDocInfo,
+						sameTenantOutgoing,
+					);
+				}
 
-				// FTS + embeddings
-				await this.saveSearchData(
-					doc.id,
-					doc.sourceFileInfo.path,
-					doc.metadata.title,
-					chunks,
-					embeddingModelName,
-					tenant,
-				);
+				if (opts.includeCoreSearchIndex) {
+					await this.saveChunkAndFtsData(
+						doc.id,
+						doc.sourceFileInfo.path,
+						doc.metadata.title,
+						chunks,
+						tenant,
+					);
+					if (opts.includeEmbeddings) {
+						await this.saveEmbeddingData(doc.id, chunks, embeddingModelName, tenant);
+					} else {
+						await this.clearEmbeddingsForDoc(doc.id, tenant);
+					}
+				} else if (opts.includeEmbeddings) {
+					await this.saveEmbeddingData(doc.id, chunks, embeddingModelName, tenant);
+				}
 
-				// index_state
-				await this.updateIndexState(tenant);
+				await this.persistDeferredStateAfterIndex(doc, tenant, opts, vectorCompleted);
+
+				if (opts.incrementIndexState) {
+					await this.updateIndexState(tenant);
+				}
 			});
 			await this.crud.addMaintenanceDebt(tenant, MOBIUS_MAINTENANCE_DEBT_INDEX_DOC);
 			sw.stop();
@@ -468,11 +544,126 @@ class IndexSingleService {
 			console.error(`[IndexService] Error indexing document:`, {
 				docPath,
 				message: (error as Error).message ?? undefined,
-				stack: (error as Error).stack ?? undefined
+				stack: (error as Error).stack ?? undefined,
 			});
-			// throw error;
 		} finally {
 			sw.print();
+		}
+	}
+
+	/**
+	 * When fast index skips LLM, restore prior LLM-derived fields from DB for graph + upsert.
+	 */
+	private applyDocumentMergeForIndex(
+		doc: Document,
+		existing: IndexedDocumentRecord | null,
+		opts: IndexDocumentOptions,
+	): Document {
+		if (!existing || !opts.preserveExistingLlmDataWhenSkipped) {
+			return doc;
+		}
+		const merged: Document = {
+			...doc,
+			metadata: { ...doc.metadata },
+		};
+		if (!opts.includeLlmSummary) {
+			if (existing.summary !== undefined) {
+				merged.summary = existing.summary;
+			}
+			if (existing.full_summary !== undefined) {
+				merged.fullSummary = existing.full_summary;
+			}
+		}
+		if (!opts.includeLlmTags && existing.tags) {
+			const blob = decodeIndexedTagsBlob(existing.tags);
+			merged.metadata.topicTags = blob.topicTags;
+			if (blob.topicTagEntries?.length) {
+				merged.metadata.topicTagEntries = blob.topicTagEntries;
+			} else {
+				delete merged.metadata.topicTagEntries;
+			}
+			merged.metadata.functionalTagEntries = blob.functionalTagEntries;
+			merged.metadata.timeTags = blob.timeTags;
+			merged.metadata.geoTags = blob.geoTags;
+			merged.metadata.personTags = blob.personTags;
+			if (existing.infer_created_at != null) {
+				merged.metadata.inferCreatedAt = existing.infer_created_at;
+			}
+		}
+		return merged;
+	}
+
+	/**
+	 * Updates deferred LLM/vector enrichment markers in `attributes_json` after a successful index transaction.
+	 */
+	private async persistDeferredStateAfterIndex(
+		doc: Document,
+		tenant: IndexTenant,
+		opts: IndexDocumentOptions,
+		vectorCompleted: boolean,
+	): Promise<void> {
+		const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+		const hash = doc.contentHash ?? null;
+		const now = Date.now();
+		const functionalCount = filterValidFunctionalTagEntries(doc.metadata.functionalTagEntries ?? []).length;
+		const functionalStatus =
+			!opts.includeLlmTags
+				? ('pending' as const)
+				: functionalCount > 0
+					? ('success' as const)
+					: ('failed' as const);
+
+		const skippedAnyLlm = !opts.includeLlmTags || !opts.includeLlmSummary;
+		if (opts.markLlmPendingWhenSkipped && skippedAnyLlm) {
+			await repo.mergeDocumentLlmState(doc.id, {
+				llm_pending: true,
+				llm_pending_reason: opts.reason,
+				functional_tags_status: 'pending',
+			});
+		} else {
+			const patch: {
+				llm_pending: boolean;
+				llm_pending_reason: string | null;
+				llm_tags_source_hash?: string | null;
+				llm_summary_source_hash?: string | null;
+				llm_tags_generated_at?: number | null;
+				llm_summary_generated_at?: number | null;
+				functional_tags_status?: 'pending' | 'failed' | 'success-empty' | 'success';
+			} = {
+				llm_pending: false,
+				llm_pending_reason: null,
+				functional_tags_status: functionalStatus,
+			};
+			if (opts.includeLlmTags) {
+				patch.llm_tags_source_hash = hash;
+				patch.llm_tags_generated_at = now;
+			}
+			if (opts.includeLlmSummary) {
+				patch.llm_summary_source_hash = hash;
+				patch.llm_summary_generated_at = now;
+			}
+			if (opts.includeLlmTags || opts.includeLlmSummary) {
+				await repo.mergeDocumentLlmState(doc.id, patch);
+			}
+		}
+
+		if (opts.markVectorPendingWhenSkipped && !opts.includeEmbeddings) {
+			await repo.mergeDocumentVectorState(doc.id, {
+				vector_pending: true,
+				vector_pending_reason: opts.reason,
+			});
+		} else if (opts.includeEmbeddings && vectorCompleted) {
+			await repo.mergeDocumentVectorState(doc.id, {
+				vector_pending: false,
+				vector_pending_reason: null,
+				vector_source_hash: hash,
+				vector_generated_at: now,
+			});
+		} else if (opts.includeEmbeddings) {
+			await repo.mergeDocumentVectorState(doc.id, {
+				vector_pending: true,
+				vector_pending_reason: opts.reason,
+			});
 		}
 	}
 
@@ -532,24 +723,59 @@ class IndexSingleService {
 				chunks[i].embedding = embeddings[i];
 			}
 		} catch (error) {
-			console.error(`[IndexService] Failed to generate embeddings:`, error);
+			const maxChunk = chunks.reduce<Chunk | null>((acc, chunk) => {
+				if (!acc) return chunk;
+				return (chunk.content?.length ?? 0) > (acc.content?.length ?? 0) ? chunk : acc;
+			}, null);
+			console.error(`[IndexService] Failed to generate embeddings:`, {
+				error,
+				chunkCount: chunks.length,
+				maxChunkLen: maxChunk?.content?.length ?? 0,
+				maxChunkType: maxChunk?.chunkType ?? 'unknown',
+				maxChunkIndex: maxChunk?.chunkIndex ?? -1,
+			});
 			// Continue without embeddings rather than failing the entire indexing
 		}
 	}
 
 	/**
-	 * Save search data (FTS and embeddings) to database.
+	 * Load persisted doc chunks so vector-enrich pass can run without re-chunking.
 	 */
-	private async saveSearchData(docId: string, path: string, title: string, chunks: Chunk[], embeddingModel?: string, tenant: IndexTenant = 'vault'): Promise<void> {
+	private async loadPersistedChunksForEmbedding(docId: string, tenant: IndexTenant): Promise<Chunk[]> {
+		const kdb = sqliteStoreManager.getIndexContext(tenant);
+		const rows = await kdb
+			.selectFrom('doc_chunk')
+			.select(['chunk_id', 'chunk_index', 'chunk_type', 'title', 'content_raw'])
+			.where('doc_id', '=', docId)
+			.orderBy('chunk_index', 'asc')
+			.execute();
+		return rows.map((r) => ({
+			docId,
+			chunkType: r.chunk_type as Chunk['chunkType'],
+			content: r.content_raw ?? '',
+			chunkId: r.chunk_id,
+			chunkIndex: r.chunk_index ?? 0,
+			title: r.title ?? undefined,
+		}));
+	}
+
+	/**
+	 * Save chunk and FTS data to database. Embeddings are handled by {@link saveEmbeddingData}.
+	 */
+	private async saveChunkAndFtsData(
+		docId: string,
+		path: string,
+		title: string,
+		chunks: Chunk[],
+		tenant: IndexTenant = 'vault',
+	): Promise<void> {
 		const docChunkRepo = sqliteStoreManager.getDocChunkRepo(tenant);
-		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
 		const now = Date.now();
 
-		// Delete existing FTS, doc_chunk rows, and embeddings for this doc
+		// Delete existing FTS and doc_chunk rows for this doc.
 		docChunkRepo.deleteFtsByDocId(docId);
 		docChunkRepo.deleteMetaFtsByDocId(docId);
 		await docChunkRepo.deleteByDocId(docId);
-		await embeddingRepo.deleteByDocIds([docId]);
 
 		// Save meta FTS (title/path) - once per document
 		const normTitle = normalizeTextForFts(title ?? '');
@@ -559,9 +785,10 @@ class IndexSingleService {
 			title: normTitle,
 		});
 
-		// Save doc_chunk, FTS, and embeddings
+		// Save doc_chunk and FTS.
 		for (const chunk of chunks) {
 			const chunkId = chunk.chunkId ?? generateUuidWithoutHyphens();
+			chunk.chunkId = chunkId;
 			const chunkIndex = Number(chunk.chunkIndex ?? 0);
 			const normContent = normalizeTextForFts(chunk.content ?? '');
 			const metaJson =
@@ -586,23 +813,42 @@ class IndexSingleService {
 				doc_id: docId,
 				content: normContent,
 			});
-
-			if (Array.isArray(chunk.embedding) && chunk.embedding.length > 0) {
-				await embeddingRepo.upsert({
-					id: chunkId,
-					doc_id: docId,
-					chunk_id: chunkId,
-					chunk_index: chunkIndex,
-					chunk_type: chunk.chunkType,
-					content_hash: '',
-					ctime: now,
-					mtime: now,
-					embedding: chunk.embedding,
-					embedding_model: embeddingModel ?? 'unknown',
-					embedding_len: chunk.embedding.length,
-				});
-			}
 		}
+	}
+
+	/**
+	 * Save embeddings only. Existing rows for the doc are replaced to avoid stale vectors.
+	 */
+	private async saveEmbeddingData(
+		docId: string,
+		chunks: Chunk[],
+		embeddingModel?: string,
+		tenant: IndexTenant = 'vault',
+	): Promise<void> {
+		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
+		const now = Date.now();
+		await embeddingRepo.deleteByDocIds([docId]);
+		for (const chunk of chunks) {
+			if (!Array.isArray(chunk.embedding) || chunk.embedding.length === 0 || !chunk.chunkId) continue;
+			await embeddingRepo.upsert({
+				id: chunk.chunkId,
+				doc_id: docId,
+				chunk_id: chunk.chunkId,
+				chunk_index: Number(chunk.chunkIndex ?? 0),
+				chunk_type: chunk.chunkType,
+				content_hash: '',
+				ctime: now,
+				mtime: now,
+				embedding: chunk.embedding,
+				embedding_model: embeddingModel ?? 'unknown',
+				embedding_len: chunk.embedding.length,
+			});
+		}
+	}
+
+	private async clearEmbeddingsForDoc(docId: string, tenant: IndexTenant): Promise<void> {
+		const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
+		await embeddingRepo.deleteByDocIds([docId]);
 	}
 
 	/**
@@ -647,26 +893,21 @@ class IndexSingleService {
 
 	/**
 	 * Upserts the indexed document row on `mobius_node` via IndexedDocumentRepo (document or hub_doc; stats columns).
+	 * When LLM tags/summary are skipped but preserved, omits those columns so {@link IndexedDocumentRepo.upsert} keeps DB values.
 	 */
-	private async upsertIndexedDocument(doc: Document, tenant: IndexTenant = 'vault'): Promise<void> {
+	private async upsertIndexedDocument(
+		doc: Document,
+		tenant: IndexTenant,
+		opts: IndexDocumentOptions,
+		existing: IndexedDocumentRecord | null,
+	): Promise<void> {
 		const startTime = Date.now();
 		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 		const stats = this.computeDocumentStatistics(doc);
 		const llmInferCreated = doc.metadata.inferCreatedAt;
 
-		try {
-			await indexedDocumentRepo.upsert({
-				id: doc.id,
-				path: doc.sourceFileInfo.path,
-				type: doc.type,
-				title: doc.metadata.title ?? doc.id,
-				mtime: doc.sourceFileInfo.mtime ?? 0,
-				size: doc.sourceFileInfo.size ?? null,
-				ctime: doc.sourceFileInfo.ctime ?? null,
-				content_hash: doc.contentHash ?? null,
-				summary: doc.summary ?? null,
-				full_summary: doc.fullSummary ?? null,
-				tags: encodeIndexedTagsBlob({
+		const tagsJson = opts.includeLlmTags
+			? encodeIndexedTagsBlob({
 					topicTags: doc.metadata.topicTags ?? [],
 					topicTagEntries: doc.metadata.topicTagEntries,
 					functionalTagEntries: doc.metadata.functionalTagEntries ?? [],
@@ -680,16 +921,50 @@ class IndexSingleService {
 					timeTags: doc.metadata.timeTags ?? [],
 					geoTags: doc.metadata.geoTags ?? [],
 					personTags: doc.metadata.personTags ?? [],
-				}),
-				word_count: stats.word_count,
-				char_count: stats.char_count,
-				last_open_ts: stats.last_open_ts,
-				row_updated_at: stats.row_updated_at,
-				...(typeof llmInferCreated === 'number' && Number.isFinite(llmInferCreated)
-					? { infer_created_at: llmInferCreated }
-					: {}),
-				mobiusGraphNodeType: this.resolveMobiusGraphNodeTypeForPath(doc.sourceFileInfo.path),
-			});
+				})
+			: encodeIndexedTagsBlob(
+					mergeIndexedTagsBlobForFastIndex(existing?.tags ?? null, {
+						keywordTags: doc.metadata.keywordTags ?? [],
+						userKeywordTags: doc.metadata.userKeywordTags,
+						textrankKeywordTerms: doc.metadata.textrankKeywordTerms,
+					}),
+				);
+
+		const payload: Partial<IndexedDocumentRecord> & {
+			id: string;
+			path: string;
+			mobiusGraphNodeType?: GraphNodeType;
+		} = {
+			id: doc.id,
+			path: doc.sourceFileInfo.path,
+			type: doc.type,
+			title: doc.metadata.title ?? doc.id,
+			mtime: doc.sourceFileInfo.mtime ?? 0,
+			size: doc.sourceFileInfo.size ?? null,
+			ctime: doc.sourceFileInfo.ctime ?? null,
+			content_hash: doc.contentHash ?? null,
+			tags: tagsJson,
+			word_count: stats.word_count,
+			char_count: stats.char_count,
+			last_open_ts: stats.last_open_ts,
+			row_updated_at: stats.row_updated_at,
+			mobiusGraphNodeType: this.resolveMobiusGraphNodeTypeForPath(doc.sourceFileInfo.path),
+		};
+
+		if (opts.includeLlmSummary) {
+			payload.summary = doc.summary ?? null;
+			payload.full_summary = doc.fullSummary ?? null;
+		} else if (!opts.preserveExistingLlmDataWhenSkipped || !existing) {
+			payload.summary = doc.summary ?? null;
+			payload.full_summary = doc.fullSummary ?? null;
+		}
+
+		if (typeof llmInferCreated === 'number' && Number.isFinite(llmInferCreated)) {
+			payload.infer_created_at = llmInferCreated;
+		}
+
+		try {
+			await indexedDocumentRepo.upsert(payload as Parameters<typeof indexedDocumentRepo.upsert>[0]);
 			const elapsed = Date.now() - startTime;
 			if (elapsed > 100) {
 				console.warn(`[IndexService] upsertIndexedDocument took ${elapsed}ms for ${doc.sourceFileInfo.path}`);
@@ -716,8 +991,11 @@ class IndexSingleService {
 	/**
 	 * Batch-load indexed document id + title for outgoing link targets that omit `docId`, so edges use the same node id as the DB (e.g. after path collision handling / renames).
 	 */
-	private async loadPathToIndexedDocInfoMap(doc: Document, tenant: IndexTenant): Promise<Map<string, PathIndexedDocInfo>> {
-		const paths = [...new Set(doc.references.outgoing.filter((r) => !r.docId).map((r) => r.fullPath))];
+	private async loadPathToIndexedDocInfoMap(
+		tenant: IndexTenant,
+		sameTenantOutgoing: DocumentReference[],
+	): Promise<Map<string, PathIndexedDocInfo>> {
+		const paths = [...new Set(sameTenantOutgoing.filter((r) => !r.docId).map((r) => r.fullPath))];
 		if (paths.length === 0) return new Map();
 		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 		const byPath = await indexedDocumentRepo.getByPaths(paths);
@@ -733,12 +1011,12 @@ class IndexSingleService {
 	 * Loads indexed rows for all resolved outgoing target node ids (covers refs with `docId` and path-based resolution).
 	 */
 	private async loadIndexedRecordsForOutgoingTargets(
-		doc: Document,
 		tenant: IndexTenant,
 		pathMap: Map<string, PathIndexedDocInfo>,
+		sameTenantOutgoing: DocumentReference[],
 	): Promise<Map<string, IndexedDocumentRecord>> {
 		const ids = new Set<string>();
-		for (const ref of doc.references.outgoing) {
+		for (const ref of sameTenantOutgoing) {
 			ids.add(this.resolveOutgoingTargetNodeId(ref, pathMap));
 		}
 		if (ids.size === 0) return new Map();
@@ -753,13 +1031,24 @@ class IndexSingleService {
 	}
 
 	/**
+	 * Keeps only refs whose target path is indexed in the same tenant DB as the source document.
+	 * Cross-tenant wiki links are ignored (no cross-DB reference edges or placeholder nodes).
+	 */
+	private filterOutgoingRefsForTenant(outgoing: DocumentReference[], tenant: IndexTenant): DocumentReference[] {
+		return outgoing.filter((r) => getIndexTenantForPath(r.fullPath) === tenant);
+	}
+
+	/**
 	 * Upserts tag nodes (topic / functional / keyword) and ref edges for this document. The document `mobius_node` row is written only by {@link upsertIndexedDocument}.
+	 * When `includeLlmTagEdges` is false, only reference edges and keyword tag edges are refreshed (LLM topic/functional/context edges are left as-is).
 	 */
 	private async upsertGraphEdgesForDocument(
 		doc: Document,
 		tenant: IndexTenant,
 		pathMap: Map<string, PathIndexedDocInfo>,
 		indexedByTargetId: Map<string, IndexedDocumentRecord>,
+		sameTenantOutgoing: DocumentReference[],
+		includeLlmTagEdges: boolean,
 	): Promise<void> {
 		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
 		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
@@ -768,8 +1057,11 @@ class IndexSingleService {
 		const lcaMax = INDEX_LONG_RANGE_LCA_MAX_DEPTH;
 		const sourcePath = doc.sourceFileInfo.path;
 
-		// Outgoing references (links from this document to other documents)
-		for (const ref of doc.references.outgoing) {
+		// Replace all reference edges from this doc so removed links do not linger stale.
+		await mobiusEdgeRepo.deleteByFromNodeAndType(docNodeId, GraphEdgeType.References);
+
+		// Outgoing references (links from this document to other documents in the same tenant DB)
+		for (const ref of sameTenantOutgoing) {
 			const targetNodeId = this.resolveOutgoingTargetNodeId(ref, pathMap);
 			const fallbackLabel = getFileNameFromPath(ref.fullPath);
 			const indexed = indexedByTargetId.get(targetNodeId);
@@ -795,45 +1087,48 @@ class IndexSingleService {
 			});
 		}
 
-		// Replace tag edges (topic / functional / keyword / context) so removed tags and old TextRank keywords do not linger.
-		for (const t of [
-			GraphEdgeType.TaggedTopic,
-			GraphEdgeType.TaggedFunctional,
-			GraphEdgeType.TaggedKeyword,
-			GraphEdgeType.TaggedContext,
-		]) {
-			await mobiusEdgeRepo.deleteByFromNodeAndType(docNodeId, t);
+		if (includeLlmTagEdges) {
+			for (const t of [
+				GraphEdgeType.TaggedTopic,
+				GraphEdgeType.TaggedFunctional,
+				GraphEdgeType.TaggedContext,
+			]) {
+				await mobiusEdgeRepo.deleteByFromNodeAndType(docNodeId, t);
+			}
 		}
+		await mobiusEdgeRepo.deleteByFromNodeAndType(docNodeId, GraphEdgeType.TaggedKeyword);
 
 		const functionalSanitized = filterValidFunctionalTagEntries(doc.metadata.functionalTagEntries ?? []);
 
-		const topicItems =
-			doc.metadata.topicTagEntries?.length
-				? doc.metadata.topicTagEntries
-				: (doc.metadata.topicTags ?? []).map((id) => ({ id }));
-		await upsertDocumentTagEdges(tenant, docNodeId, {
-			nodeType: GraphNodeType.TopicTag,
-			items: topicItems,
-		});
+		if (includeLlmTagEdges) {
+			const topicItems =
+				doc.metadata.topicTagEntries?.length
+					? doc.metadata.topicTagEntries
+					: (doc.metadata.topicTags ?? []).map((id) => ({ id }));
+			await upsertDocumentTagEdges(tenant, docNodeId, {
+				nodeType: GraphNodeType.TopicTag,
+				items: topicItems,
+			});
 
-		await upsertDocumentTagEdges(tenant, docNodeId, {
-			nodeType: GraphNodeType.FunctionalTag,
-			items: functionalSanitized,
-		});
+			await upsertDocumentTagEdges(tenant, docNodeId, {
+				nodeType: GraphNodeType.FunctionalTag,
+				items: functionalSanitized,
+			});
+
+			const contextTriples: Array<{ axis: 'time' | 'geo' | 'person'; label: string }> = [
+				...(doc.metadata.timeTags ?? []).map((label) => ({ axis: 'time' as const, label })),
+				...(doc.metadata.geoTags ?? []).map((label) => ({ axis: 'geo' as const, label })),
+				...(doc.metadata.personTags ?? []).map((label) => ({ axis: 'person' as const, label })),
+			];
+			await upsertDocumentTagEdges(tenant, docNodeId, {
+				nodeType: GraphNodeType.ContextTag,
+				items: contextTriples,
+			});
+		}
 
 		await upsertDocumentTagEdges(tenant, docNodeId, {
 			nodeType: GraphNodeType.KeywordTag,
 			items: graphKeywordTagsForMobius(doc.metadata),
-		});
-
-		const contextTriples: Array<{ axis: 'time' | 'geo' | 'person'; label: string }> = [
-			...(doc.metadata.timeTags ?? []).map((label) => ({ axis: 'time' as const, label })),
-			...(doc.metadata.geoTags ?? []).map((label) => ({ axis: 'geo' as const, label })),
-			...(doc.metadata.personTags ?? []).map((label) => ({ axis: 'person' as const, label })),
-		];
-		await upsertDocumentTagEdges(tenant, docNodeId, {
-			nodeType: GraphNodeType.ContextTag,
-			items: contextTriples,
 		});
 	}
 
@@ -897,6 +1192,7 @@ class IndexSingleService {
 		doc: Document,
 		tenant: IndexTenant,
 		pathMap: Map<string, PathIndexedDocInfo>,
+		sameTenantOutgoing: DocumentReference[],
 	): Promise<void> {
 		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
 		const now = Date.now();
@@ -904,7 +1200,7 @@ class IndexSingleService {
 		/**
 		 * Outgoing reference and tagged edges, matching {@link upsertGraphEdgesForDocument}.
 		 */
-		const docOutgoing = doc.references.outgoing.length;
+		const docOutgoing = sameTenantOutgoing.length;
 		const functionalN = filterValidFunctionalTagEntries(doc.metadata.functionalTagEntries ?? []).length;
 		const ctxN =
 			(doc.metadata.timeTags ?? []).length +
@@ -926,7 +1222,7 @@ class IndexSingleService {
 		const docIdsForIncoming = Array.from(
 			new Set([
 				doc.id,
-				...doc.references.outgoing.map((r) => this.resolveOutgoingTargetNodeId(r, pathMap)),
+				...sameTenantOutgoing.map((r) => this.resolveOutgoingTargetNodeId(r, pathMap)),
 			]),
 		);
 		await mobiusNodeRepo.refreshDocumentIncomingDegreesForNodeIds(docIdsForIncoming, now);
@@ -1427,8 +1723,12 @@ export class IndexService {
 		return IndexService.isIndexingCancelled;
 	}
 
-	async indexDocument(docPath: string, settings: SearchSettings): Promise<void> {
-		return this.ensureSingle().indexDocument(docPath, settings);
+	async indexDocument(
+		docPath: string,
+		settings: SearchSettings,
+		indexOptions?: IndexDocumentOptions,
+	): Promise<void> {
+		return this.ensureSingle().indexDocument(docPath, settings, indexOptions);
 	}
 
 	async deleteDocuments(

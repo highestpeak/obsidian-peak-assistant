@@ -3,7 +3,7 @@ import { TFile } from 'obsidian';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { SearchSettings } from '@/app/settings/types';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
+import { defaultIndexDocumentOptions, IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { EventBus } from '@/core/eventBus';
 import type MyPlugin from 'main';
@@ -225,7 +225,7 @@ export class SearchUpdateListener {
 	 */
 	private async indexDocuments(paths: string[]): Promise<void> {
 		for (const p of paths) {
-			await IndexService.getInstance().indexDocument(p, this.settings);
+			await IndexService.getInstance().indexDocument(p, this.settings, defaultIndexDocumentOptions('listener_fast'));
 		}
 	}
 

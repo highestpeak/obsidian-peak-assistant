@@ -19,6 +19,19 @@ type DocAttrsJson = {
 	/** Local Mermaid snippet derived from `semantic_related` neighbors (not SSOT). */
 	semantic_overlay_mermaid?: string | null;
 	semantic_edge_rule_version?: number | null;
+	/** Content hash when LLM tags were last generated (deferred enrichment). */
+	llm_tags_source_hash?: string | null;
+	/** Content hash when LLM summaries were last generated. */
+	llm_summary_source_hash?: string | null;
+	llm_tags_generated_at?: number | null;
+	llm_summary_generated_at?: number | null;
+	llm_pending?: boolean;
+	llm_pending_reason?: string | null;
+	vector_source_hash?: string | null;
+	vector_generated_at?: number | null;
+	vector_pending?: boolean;
+	vector_pending_reason?: string | null;
+	functional_tags_status?: 'pending' | 'failed' | 'success-empty' | 'success';
 };
 
 /**
@@ -47,6 +60,17 @@ export class IndexedDocumentRepo {
 		hub_tier?: string | null;
 		summary_generated_at?: number | null;
 		heading_skeleton?: string | null;
+		llm_tags_source_hash?: string | null;
+		llm_summary_source_hash?: string | null;
+		llm_tags_generated_at?: number | null;
+		llm_summary_generated_at?: number | null;
+		llm_pending?: boolean;
+		llm_pending_reason?: string | null;
+		vector_source_hash?: string | null;
+		vector_generated_at?: number | null;
+		vector_pending?: boolean;
+		vector_pending_reason?: string | null;
+		functional_tags_status?: 'pending' | 'failed' | 'success-empty' | 'success';
 	}): string {
 		const prev = this.parseDocAttrs(params.existingJson ?? '{}');
 		const next: DocAttrsJson = {
@@ -63,6 +87,36 @@ export class IndexedDocumentRepo {
 				params.summary_generated_at !== undefined ? params.summary_generated_at : prev.summary_generated_at,
 			heading_skeleton:
 				params.heading_skeleton !== undefined ? params.heading_skeleton : prev.heading_skeleton,
+			llm_tags_source_hash:
+				params.llm_tags_source_hash !== undefined ? params.llm_tags_source_hash : prev.llm_tags_source_hash,
+			llm_summary_source_hash:
+				params.llm_summary_source_hash !== undefined
+					? params.llm_summary_source_hash
+					: prev.llm_summary_source_hash,
+			llm_tags_generated_at:
+				params.llm_tags_generated_at !== undefined
+					? params.llm_tags_generated_at
+					: prev.llm_tags_generated_at,
+			llm_summary_generated_at:
+				params.llm_summary_generated_at !== undefined
+					? params.llm_summary_generated_at
+					: prev.llm_summary_generated_at,
+			llm_pending: params.llm_pending !== undefined ? params.llm_pending : prev.llm_pending,
+			llm_pending_reason:
+				params.llm_pending_reason !== undefined ? params.llm_pending_reason : prev.llm_pending_reason,
+			vector_source_hash:
+				params.vector_source_hash !== undefined ? params.vector_source_hash : prev.vector_source_hash,
+			vector_generated_at:
+				params.vector_generated_at !== undefined ? params.vector_generated_at : prev.vector_generated_at,
+			vector_pending: params.vector_pending !== undefined ? params.vector_pending : prev.vector_pending,
+			vector_pending_reason:
+				params.vector_pending_reason !== undefined
+					? params.vector_pending_reason
+					: prev.vector_pending_reason,
+			functional_tags_status:
+				params.functional_tags_status !== undefined
+					? params.functional_tags_status
+					: prev.functional_tags_status,
 		};
 		return JSON.stringify(next);
 	}
@@ -292,7 +346,7 @@ export class IndexedDocumentRepo {
 				// Preserve LLM/indexed summary when the loader did not produce one (e.g. genCacheContent index path).
 				summary: doc.summary !== undefined && doc.summary !== null ? doc.summary : undefined,
 				full_summary: doc.full_summary !== undefined ? doc.full_summary : undefined,
-				tags: doc.tags ?? null,
+				tags: doc.tags !== undefined ? doc.tags : undefined,
 				last_processed_at: doc.last_processed_at ?? null,
 				frontmatter_json: doc.frontmatter_json ?? null,
 				word_count: doc.word_count,
@@ -487,5 +541,117 @@ export class IndexedDocumentRepo {
 			.where('content_hash', 'is not', null)
 			.execute();
 		return new Set(rows.map((row) => row.content_hash!).filter(Boolean));
+	}
+
+	/**
+	 * Merge LLM deferred-enrichment fields into `attributes_json` without touching other columns.
+	 */
+	async mergeDocumentLlmState(
+		docId: string,
+		patch: {
+			llm_tags_source_hash?: string | null;
+			llm_summary_source_hash?: string | null;
+			llm_tags_generated_at?: number | null;
+			llm_summary_generated_at?: number | null;
+			llm_pending?: boolean;
+			llm_pending_reason?: string | null;
+			functional_tags_status?: 'pending' | 'failed' | 'success-empty' | 'success';
+		},
+	): Promise<void> {
+		const row = await this.db
+			.selectFrom('mobius_node')
+			.selectAll()
+			.where('node_id', '=', docId)
+			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
+			.executeTakeFirst();
+		if (!row) return;
+
+		const attrs = this.buildDocumentAttributesJson({
+			existingJson: row.attributes_json,
+			llm_tags_source_hash: patch.llm_tags_source_hash,
+			llm_summary_source_hash: patch.llm_summary_source_hash,
+			llm_tags_generated_at: patch.llm_tags_generated_at,
+			llm_summary_generated_at: patch.llm_summary_generated_at,
+			llm_pending: patch.llm_pending,
+			llm_pending_reason: patch.llm_pending_reason,
+			functional_tags_status: patch.functional_tags_status,
+		});
+
+		await this.db
+			.updateTable('mobius_node')
+			.set({
+				attributes_json: attrs,
+				updated_at: Date.now(),
+			})
+			.where('node_id', '=', docId)
+			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
+			.execute();
+	}
+
+	/**
+	 * Merge vector deferred-enrichment fields into `attributes_json` without touching other columns.
+	 */
+	async mergeDocumentVectorState(
+		docId: string,
+		patch: {
+			vector_source_hash?: string | null;
+			vector_generated_at?: number | null;
+			vector_pending?: boolean;
+			vector_pending_reason?: string | null;
+		},
+	): Promise<void> {
+		const row = await this.db
+			.selectFrom('mobius_node')
+			.selectAll()
+			.where('node_id', '=', docId)
+			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
+			.executeTakeFirst();
+		if (!row) return;
+
+		const attrs = this.buildDocumentAttributesJson({
+			existingJson: row.attributes_json,
+			vector_source_hash: patch.vector_source_hash,
+			vector_generated_at: patch.vector_generated_at,
+			vector_pending: patch.vector_pending,
+			vector_pending_reason: patch.vector_pending_reason,
+		});
+
+		await this.db
+			.updateTable('mobius_node')
+			.set({
+				attributes_json: attrs,
+				updated_at: Date.now(),
+			})
+			.where('node_id', '=', docId)
+			.where('type', 'in', [...INDEXED_NOTE_ROW_TYPES])
+			.execute();
+	}
+
+	/** Paths whose `attributes_json` marks `llm_pending=true`. */
+	async listPathsWithPendingLlm(): Promise<string[]> {
+		const rows = await this.docNodeQuery()
+			.select(['path', 'attributes_json'])
+			.execute();
+		const out: string[] = [];
+		for (const r of rows) {
+			if (!r.path || !r.attributes_json) continue;
+			const attrs = this.parseDocAttrs(r.attributes_json);
+			if (attrs.llm_pending === true) out.push(r.path);
+		}
+		return out;
+	}
+
+	/** Paths whose `attributes_json` marks `vector_pending=true`. */
+	async listPathsWithPendingVector(): Promise<string[]> {
+		const rows = await this.docNodeQuery()
+			.select(['path', 'attributes_json'])
+			.execute();
+		const out: string[] = [];
+		for (const r of rows) {
+			if (!r.path || !r.attributes_json) continue;
+			const attrs = this.parseDocAttrs(r.attributes_json);
+			if (attrs.vector_pending === true) out.push(r.path);
+		}
+		return out;
 	}
 }

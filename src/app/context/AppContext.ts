@@ -16,7 +16,11 @@ import {
 	debugRunMaintenance,
 	debugValidateSubset,
 } from '@/app/context/index-debug-tools';
-import { IndexService } from '@/service/search/index/indexService';
+import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
+import {
+	runPendingLlmIndexEnrichment,
+	runPendingVectorIndexEnrichment,
+} from '@/service/search/index/llmIndexEnrichment';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { AISearchAgent, AISearchAgentOptions } from '@/service/agents/AISearchAgent';
 import { getVaultPersona } from '@/service/tools/system-info';
@@ -103,10 +107,30 @@ export class AppContext {
 			if (typeof window !== 'undefined') {
 				(window as any).testGraphTools = new GraphInspectorTestTools();
 				(window as any).testAISearchTools = new AISearchAgentTestTools();
-				(window as any).indexDocument = (docPath: string) => IndexService.getInstance().indexDocument(docPath, this.settings.search);
+				(window as any).indexDocument = (docPath: string) =>
+					IndexService.getInstance().indexDocument(
+						docPath,
+						this.settings.search,
+						defaultIndexDocumentOptions('listener_fast'),
+					);
+				(window as any).indexDocumentFull = (docPath: string) =>
+					IndexService.getInstance().indexDocument(
+						docPath,
+						this.settings.search,
+						defaultIndexDocumentOptions('manual_full'),
+					);
+				(window as any).runPendingLlmIndexEnrichment = () => runPendingLlmIndexEnrichment(this.settings.search);
+				(window as any).runPendingVectorIndexEnrichment = () =>
+					runPendingVectorIndexEnrichment(this.settings.search);
 				const getSearch = () => this.settings.search;
-				(window as any).debugIndexDocument = (docPath: string) => debugIndexDocument(docPath, getSearch);
-				(window as any).debugBatchIndex = (paths: string[]) => debugBatchIndex(paths, getSearch);
+				(window as any).debugIndexDocument = (
+					docPath: string,
+					mode: 'core_fast' | 'vector_only' | 'llm_only' | 'manual_full' = 'manual_full',
+				) => debugIndexDocument(docPath, getSearch, mode);
+				(window as any).debugBatchIndex = (
+					paths: string[],
+					mode: 'core_fast' | 'vector_only' | 'llm_only' | 'manual_full' = 'manual_full',
+				) => debugBatchIndex(paths, getSearch, mode);
 				(window as any).debugRunMaintenance = (tenants?: ('vault' | 'chat')[]) => debugRunMaintenance(tenants);
 				(window as any).debugHubDiscoverSnapshot = (tenant?: 'vault' | 'chat') => debugHubDiscoverSnapshot(tenant);
 				(window as any).debugValidateSubset = (opts: Parameters<typeof debugValidateSubset>[0]) => debugValidateSubset(opts);
@@ -117,9 +141,12 @@ export class AppContext {
 				console.debug('🔧 Graph Inspector Test Tools initialized!');
 				console.debug('📖 Usage: window.testGraphTools.inspectNote("path/to/note.md")');
 				console.debug('📖 Usage: await window.testAISearchTools.testSlotRecall("your question")');
-				console.debug('📖 Usage: window.indexDocument("path/to/note.md")');
-				console.debug('📖 Usage: await window.debugIndexDocument("path/to/note.md") — index + snapshot');
-				console.debug('📖 Usage: await window.debugBatchIndex(["a.md","b.md"])');
+				console.debug('📖 Usage: window.indexDocument("path/to/note.md") — fast core index');
+				console.debug('📖 Usage: window.indexDocumentFull("path/to/note.md") — full index + LLM');
+				console.debug('📖 Usage: await window.runPendingLlmIndexEnrichment() — deferred LLM for pending docs');
+				console.debug('📖 Usage: await window.runPendingVectorIndexEnrichment() — deferred vectors for pending docs');
+				console.debug('📖 Usage: await window.debugIndexDocument("path/to/note.md","manual_full")');
+				console.debug('📖 Usage: await window.debugBatchIndex(["a.md","b.md"],"core_fast")');
 				console.debug('📖 Usage: await window.debugRunMaintenance() — full Mobius maintenance');
 				console.debug('📖 Usage: await window.debugHubDiscoverSnapshot() — hub discovery (can be slow)');
 				console.debug('📖 Usage: await window.debugValidateSubset({ pathPrefixes: ["Projects"] })');
@@ -129,6 +156,9 @@ export class AppContext {
 					...Object.getOwnPropertyNames(GraphInspectorTestTools.prototype).filter(name => name !== 'constructor'),
 					'testAISearchTools.testSlotRecall',
 					'indexDocument',
+					'indexDocumentFull',
+					'runPendingLlmIndexEnrichment',
+					'runPendingVectorIndexEnrichment',
 					'debugIndexDocument',
 					'debugBatchIndex',
 					'debugRunMaintenance',
@@ -143,6 +173,9 @@ export class AppContext {
 				if ((window as any).testGraphTools) delete (window as any).testGraphTools;
 				if ((window as any).testAISearchTools) delete (window as any).testAISearchTools;
 				if ((window as any).indexDocument) delete (window as any).indexDocument;
+				if ((window as any).runPendingLlmIndexEnrichment) delete (window as any).runPendingLlmIndexEnrichment;
+				if ((window as any).runPendingVectorIndexEnrichment) delete (window as any).runPendingVectorIndexEnrichment;
+				if ((window as any).indexDocumentFull) delete (window as any).indexDocumentFull;
 				if ((window as any).debugIndexDocument) delete (window as any).debugIndexDocument;
 				if ((window as any).debugBatchIndex) delete (window as any).debugBatchIndex;
 				if ((window as any).debugRunMaintenance) delete (window as any).debugRunMaintenance;

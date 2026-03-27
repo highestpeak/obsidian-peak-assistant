@@ -3,7 +3,7 @@ import type { PromptId } from '@/service/prompt/PromptId';
 /**
  * Category of template. Determines base path under plugin directory.
  */
-export type TemplateCategory = 'prompts' | 'tools' | 'agents' | 'ui' | 'indexing';
+export type TemplateCategory = 'prompts' | 'tools' | 'agents' | 'ui' | 'indexing' | 'stopwords';
 
 /**
  * Tool result / handler template IDs (search graph inspector, etc.).
@@ -48,9 +48,21 @@ export const IndexingTemplateId = {
 export type IndexingTemplateId = (typeof IndexingTemplateId)[keyof typeof IndexingTemplateId];
 
 /**
+ * Stopword templates used by TextRank/token pipelines.
+ * Add `templates/stopwords/{stem}.md`, a new key here, and a {@link TEMPLATE_METADATA} row; hydration loads every id.
+ */
+export const StopwordTemplateId = {
+	Common: 'stopwords-common',
+	English: 'stopwords-en',
+	Chinese: 'stopwords-zh',
+} as const;
+
+export type StopwordTemplateId = (typeof StopwordTemplateId)[keyof typeof StopwordTemplateId];
+
+/**
  * Union of all template identifiers.
  */
-export type TemplateId = PromptId | ToolTemplateId | AgentTemplateId | IndexingTemplateId;
+export type TemplateId = PromptId | ToolTemplateId | AgentTemplateId | IndexingTemplateId | StopwordTemplateId;
 
 /**
  * Metadata for a single template (path, options). No content.
@@ -74,6 +86,7 @@ const CATEGORY_PREFIX: Record<TemplateCategory, string> = {
 	agents: 'templates/agents',
 	ui: 'templates/ui',
 	indexing: 'templates/indexing',
+	stopwords: 'templates/stopwords',
 };
 
 function meta(
@@ -168,7 +181,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'doc-tag-generate-json': meta('prompts', 'doc-tag-generate-json', {
 		expectsJson: true,
 		jsonConstraint:
-			'Return only the JSON object with topicTagEntries, functionalTagEntries, context tag arrays, and optional inferCreatedAt string, nothing else.',
+			'Return only the JSON object with topicTagEntries, functionalTagEntries (1–5 ids from closed list, never empty), context tag arrays, and optional inferCreatedAt string, nothing else.',
 	}),
 	'hub-doc-summary-system': meta('prompts', 'hub-doc-summary-system'),
 	'hub-doc-summary': meta('prompts', 'hub-doc-summary', {
@@ -176,12 +189,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 		jsonConstraint:
 			'Return exactly one JSON object with keys shortSummary, fullSummary, coreFacts, queryAnchors, tagTopicDistribution, timeDimension, keyPatterns. No markdown fences.',
 		systemPromptId: 'hub-doc-summary-system' as PromptId,
-	}),
-	'hub-discover-judge-system': meta('prompts', 'hub-discover-judge-system'),
-	'hub-discover-judge': meta('prompts', 'hub-discover-judge', {
-		expectsJson: true,
-		jsonConstraint: 'Return only JSON: { accept, confidence, reason }.',
-		systemPromptId: 'hub-discover-judge-system' as PromptId,
 	}),
 	'hub-discover-round-review-system': meta('prompts', 'hub-discover-round-review-system'),
 	'hub-discover-round-review': meta('prompts', 'hub-discover-round-review', {
@@ -217,6 +224,9 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	// --- Indexing (Handlebars; loaded at plugin boot for markdown chunking helpers) ---
 	[IndexingTemplateId.CodeStopwords]: meta('indexing', 'code-stopwords'),
 	[IndexingTemplateId.HubDiscoverNextDirections]: meta('indexing', 'hub-discover-next-directions'),
+	[StopwordTemplateId.Common]: meta('stopwords', 'common'),
+	[StopwordTemplateId.English]: meta('stopwords', 'en'),
+	[StopwordTemplateId.Chinese]: meta('stopwords', 'zh'),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {

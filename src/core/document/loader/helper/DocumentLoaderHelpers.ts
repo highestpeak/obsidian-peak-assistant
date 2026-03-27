@@ -130,6 +130,13 @@ export async function getDefaultDocumentSummary(
 	const needFull =
 		mode === 'short_then_full_if_long' && content.length > search.fullSummaryLength;
 
+	const tSum = Date.now();
+	console.info('[MarkdownDocumentLoader] DocSummary LLM start', {
+		path,
+		needFull,
+		prompts: needFull ? ['DocSummaryShort', 'DocSummaryFull'] : ['DocSummaryShort'],
+	});
+
 	// When `needFull`, short and full run in parallel (full omits optional gist; see doc-summary-full template).
 	const [shortSummary, fullSummary] = await Promise.all([
 		aiServiceManager.chatWithPrompt(PromptId.DocSummaryShort, shortVars, provider, modelId),
@@ -137,6 +144,12 @@ export async function getDefaultDocumentSummary(
 			? aiServiceManager.chatWithPrompt(PromptId.DocSummaryFull, fullVarsBase, provider, modelId)
 			: Promise.resolve(undefined),
 	]);
+
+	console.info('[MarkdownDocumentLoader] DocSummary LLM done', {
+		path,
+		needFull,
+		elapsedMs: Date.now() - tSum,
+	});
 
 	return { shortSummary, fullSummary };
 }

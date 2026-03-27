@@ -1,4 +1,101 @@
+import type { Document } from '@/core/document/types';
 import type { ChunkMeta, ChunkType } from '@/service/search/index/chunkTypes';
+
+/**
+ * Why this index run was triggered (drives default {@link IndexDocumentOptions}).
+ */
+export type IndexDocumentReason =
+	| 'listener_fast'
+	| 'startup_scan'
+	| 'manual_full'
+	| 'hub_maintenance'
+	| 'vector_enrich_only'
+	| 'llm_enrich_only';
+
+/**
+ * Per-index-run options: split core search indexing from LLM tags/summary.
+ * Use {@link defaultIndexDocumentOptions} for presets.
+ */
+export interface IndexDocumentOptions {
+	/** When false, skip embedding generation for this pass. */
+	includeEmbeddings: boolean;
+	includeLlmTags: boolean;
+	includeLlmSummary: boolean;
+	/** When LLM steps are skipped, keep existing DB tags/summary/infer_created_at. */
+	preserveExistingLlmDataWhenSkipped: boolean;
+	/** When LLM steps are skipped, mark doc for deferred enrichment in attributes_json. */
+	markLlmPendingWhenSkipped: boolean;
+	/** When false, skip chunking + FTS persistence. */
+	includeCoreSearchIndex: boolean;
+	/** When embeddings are skipped, mark doc for deferred vector enrichment in attributes_json. */
+	markVectorPendingWhenSkipped: boolean;
+	/** When false, do not bump index_state indexedDocs/builtAt (enrich-only pass). */
+	incrementIndexState: boolean;
+	reason: IndexDocumentReason;
+	/**
+	 * When set, skip loader read; must be the same vault path as the indexed `docPath` (normalized).
+	 * Avoids repeated read + duplicate LLM work when the caller already loaded the document.
+	 */
+	preloadedDocument?: Document;
+}
+
+/**
+ * Default options by reason. No plugin settings required.
+ */
+export function defaultIndexDocumentOptions(reason: IndexDocumentReason): IndexDocumentOptions {
+	switch (reason) {
+		case 'listener_fast':
+		case 'startup_scan':
+			return {
+				includeEmbeddings: false,
+				includeLlmTags: false,
+				includeLlmSummary: false,
+				preserveExistingLlmDataWhenSkipped: true,
+				markLlmPendingWhenSkipped: true,
+				includeCoreSearchIndex: true,
+				markVectorPendingWhenSkipped: true,
+				incrementIndexState: true,
+				reason,
+			};
+		case 'manual_full':
+		case 'hub_maintenance':
+			return {
+				includeEmbeddings: true,
+				includeLlmTags: true,
+				includeLlmSummary: true,
+				preserveExistingLlmDataWhenSkipped: false,
+				markLlmPendingWhenSkipped: false,
+				includeCoreSearchIndex: true,
+				markVectorPendingWhenSkipped: false,
+				incrementIndexState: true,
+				reason,
+			};
+		case 'vector_enrich_only':
+			return {
+				includeEmbeddings: true,
+				includeLlmTags: false,
+				includeLlmSummary: false,
+				preserveExistingLlmDataWhenSkipped: true,
+				markLlmPendingWhenSkipped: false,
+				includeCoreSearchIndex: false,
+				markVectorPendingWhenSkipped: false,
+				incrementIndexState: false,
+				reason,
+			};
+		case 'llm_enrich_only':
+			return {
+				includeEmbeddings: false,
+				includeLlmTags: true,
+				includeLlmSummary: true,
+				preserveExistingLlmDataWhenSkipped: false,
+				markLlmPendingWhenSkipped: false,
+				includeCoreSearchIndex: false,
+				markVectorPendingWhenSkipped: false,
+				incrementIndexState: false,
+				reason,
+			};
+	}
+}
 
 /**
  * Document chunking options.

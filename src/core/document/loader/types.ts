@@ -3,6 +3,15 @@ import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 
 /**
+ * Controls expensive LLM work during {@link DocumentLoader.readByPath}.
+ * When omitted, loaders default to full LLM (legacy behavior).
+ */
+export interface DocumentLoaderReadOptions {
+	includeLlmTags?: boolean;
+	includeLlmSummary?: boolean;
+}
+
+/**
  * Document loader interface for different file types.
  * 
  * Loaders should return core Document model, which can then be converted
@@ -23,7 +32,11 @@ export interface DocumentLoader extends Summarizable {
 	 * Read a document by its path.
 	 * Returns core Document model, or null if file cannot be read.
 	 */
-	readByPath(path: string, genCacheContent?: boolean): Promise<Document | null>;
+	readByPath(
+		path: string,
+		genCacheContent?: boolean,
+		readOptions?: DocumentLoaderReadOptions,
+	): Promise<Document | null>;
 
 	/**
 	 * Build search chunks for a document: body splits plus derived chunks (e.g. summaries, TextRank).

@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
-import type { DocumentLoader } from './types';
+import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { generateContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
@@ -30,7 +30,11 @@ export class JsonDocumentLoader implements DocumentLoader {
 		return ['json'];
 	}
 
-	async readByPath(path: string): Promise<Document | null> {
+	async readByPath(
+		path: string,
+		_genCache?: boolean,
+		_readOptions?: DocumentLoaderReadOptions,
+	): Promise<Document | null> {
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (!file || !(file instanceof TFile)) return null;
 		if (!this.getSupportedExtensions().includes(file.extension.toLowerCase())) return null;

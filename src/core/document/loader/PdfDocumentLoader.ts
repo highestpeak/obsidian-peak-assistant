@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
-import type { DocumentLoader } from './types';
+import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { binaryContentHash } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
@@ -91,7 +91,11 @@ export class PdfDocumentLoader implements DocumentLoader {
 		return ['pdf'];
 	}
 
-	async readByPath(filePath: string, genCacheContent?: boolean): Promise<Document | null> {
+	async readByPath(
+		filePath: string,
+		genCacheContent?: boolean,
+		_readOptions?: DocumentLoaderReadOptions,
+	): Promise<Document | null> {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (!file || !(file instanceof TFile)) return null;
 		if (!this.getSupportedExtensions().includes(file.extension.toLowerCase())) return null;

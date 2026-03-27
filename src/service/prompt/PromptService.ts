@@ -11,33 +11,12 @@ import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { getTemplateMetadata } from '@/core/template/TemplateRegistry';
 
-/**
- * Prefer explicit promptModelMap entry, then related-prompt fallbacks; callers use defaultModel when undefined.
- * Indexing/Hub-related chains: DocSummaryShort/Full → DocSummary; Hub* → HubDocSummary → DocSummary (see PromptId).
- */
+/** Exact `promptModelMap[promptId]` only; callers use `defaultModel` when missing. */
 function pickPromptModelEntry(
 	settings: AIServiceSettings | undefined,
 	promptId: PromptId,
 ): { provider: string; modelId: string } | undefined {
-	const map = settings?.promptModelMap;
-	if (!map) return undefined;
-	const direct = map[promptId];
-	if (direct) return direct;
-	if (promptId === PromptId.DocSummaryShort || promptId === PromptId.DocSummaryFull) {
-		return map[PromptId.DocSummary];
-	}
-	if (promptId === PromptId.HubDocSummary) {
-		return map[PromptId.HubDocSummary] ?? map[PromptId.DocSummary];
-	}
-	if (promptId === PromptId.HubDiscoverJudge) {
-		return map[PromptId.HubDiscoverJudge] ?? map[PromptId.HubDocSummary] ?? map[PromptId.DocSummary];
-	}
-	if (promptId === PromptId.HubDiscoverRoundReview) {
-		return (
-			map[PromptId.HubDiscoverRoundReview] ?? map[PromptId.HubDiscoverJudge] ?? map[PromptId.HubDocSummary] ?? map[PromptId.DocSummary]
-		);
-	}
-	return undefined;
+	return settings?.promptModelMap?.[promptId];
 }
 
 /**
@@ -56,7 +35,7 @@ export class PromptService {
 		chat?: MultiProviderChatService,
 		private readonly templateManager?: TemplateManager,
 	) {
-		this.promptFolder = getAIPromptFolder();
+		this.promptFolder = getAIPromptFolder(settings.rootFolder);
 		this.chat = chat;
 		this.settings = settings;
 	}

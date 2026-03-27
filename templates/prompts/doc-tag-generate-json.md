@@ -4,7 +4,9 @@ You label a vault note with **topic tags** (human-facing: what it is about), **f
 Functional tags MUST be chosen only from this closed list:
 {{functionalTagList}}
 
-Use the hints below: if the note clearly reflects a semantic dimension, prefer functional tags listed for that dimension (still pick 1–5 total that best fit the whole note).
+Use the hints below: if the note clearly reflects a semantic dimension, prefer functional tags listed for that dimension (still pick **1–5** total that best fit the whole note).
+
+**Functional tags are mandatory:** for any non-empty note you **must** output at least **one** `functionalTagEntries` object. Never return an empty `functionalTagEntries` array. If several roles fit, pick the **1–3** strongest; if uncertain, choose the **closest** id from the closed list rather than omitting functional tags.
 
 **Dimension → functional tag hints**
 {{functionalHintsTable}}
@@ -49,6 +51,6 @@ Return **only** a JSON object (no markdown fence), shape:
 
 Rules:
 - **topicTagEntries**: 3–12 objects. **id** = short stable topic phrase for search/graph (natural language or compact phrase). **label** = optional extra nuance for *this note* (how it uses the topic); omit or null if unnecessary.
-- functionalTagEntries: 1–5 objects; **id** must be exactly one id from the closed list above; **label** optional string (omit or use null if not needed).
+- **functionalTagEntries** (required): **1–5** objects, never `[]`. Each **id** must be exactly one id from the closed list above. **label** optional (omit or null if not needed). Do not skip this field.
 - timeTags / geoTags / personTags: each 0–8 items; must match prefix rules exactly.
 - **inferCreatedAt**: optional string only (never a number). Prefer compact form **`yyyyMMdd`** (date only) or **`yyyyMMdd HHmmss`** (24h, space between date and time). Example: `20250324 143052`. Use **null** or omit when you cannot infer reliably (do not guess from file path alone).

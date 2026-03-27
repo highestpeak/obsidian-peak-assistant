@@ -19,7 +19,7 @@ import { parseFrontmatter } from '@/core/utils/markdown-utils';
 import { escapeMermaidQuotedLabel } from '@/core/utils/mermaid-utils';
 import { ensureFolder, readVaultTextSnippet } from '@/core/utils/vault-utils';
 import { PromptId } from '@/service/prompt/PromptId';
-import { IndexService } from '@/service/search/index/indexService';
+import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
 import { HubCandidateDiscoveryService, listMarkdownPathsUnderFolder } from './hubDiscover';
 import { resolveHubDocAssembly } from './localGraphAssembler';
 import type { HubCandidate, HubDocArtifactParams, HubMaintenanceProgress } from './types';
@@ -56,7 +56,7 @@ export class HubDocService {
 
 		sw.start('indexManualHubDocs');
 		for (const p of listMarkdownPathsUnderFolder(manualHubFolder)) {
-			await indexService.indexDocument(p, searchSettings);
+			await indexService.indexDocument(p, searchSettings, defaultIndexDocumentOptions('hub_maintenance'));
 		}
 		sw.stop();
 
@@ -87,7 +87,7 @@ export class HubDocService {
 			async (c, _index, trace) => {
 				if (c.sourceKind === 'manual') {
 					trace.start('indexManual');
-					await indexService.indexDocument(c.path, searchSettings);
+					await indexService.indexDocument(c.path, searchSettings, defaultIndexDocumentOptions('hub_maintenance'));
 					trace.stop();
 					materializeCompleted++;
 					options?.onProgress?.({
@@ -138,7 +138,7 @@ export class HubDocService {
 					trace.stop();
 				}
 				trace.start('indexDoc');
-				await indexService.indexDocument(fullPath, searchSettings);
+				await indexService.indexDocument(fullPath, searchSettings, defaultIndexDocumentOptions('hub_maintenance'));
 				trace.stop();
 				materializeCompleted++;
 				options?.onProgress?.({

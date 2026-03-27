@@ -6,11 +6,9 @@ export type { ZodType } from './zod-types';
 export { ZodError } from './zod-types';
 export {
 	hubAssemblyHintsLlmSchema,
-	hubDiscoverJudgeLlmSchema,
 	hubDiscoverRoundReviewLlmSchema,
 	hubDocSummaryLlmSchema,
 	type HubAssemblyHintsLlm,
-	type HubDiscoverJudgeLlm,
 	type HubDiscoverRoundReviewLlm,
 	type HubDocSummaryLlm,
 } from './hubDiscoverLlm';

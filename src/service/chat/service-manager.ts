@@ -23,7 +23,7 @@ import { EventBus } from '@/core/eventBus';
 import { createChatMessage } from './utils/chat-message-builder';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { AgentTemplateId, getTemplateMetadata } from '@/core/template/TemplateRegistry';
-import { LanguageModel, streamObject } from 'ai';
+import { generateObject, LanguageModel } from 'ai';
 import type { z } from 'zod/v3';
 
 /**
@@ -58,7 +58,7 @@ export class AIServiceManager {
 		this.resourceSummaryService = new ResourceSummaryService(
 			this.app,
 			this.settings.rootFolder,
-			getAIResourcesSummaryFolder(),
+			getAIResourcesSummaryFolder(this.settings.rootFolder),
 		);
 
 		// === Service construction ===
@@ -75,7 +75,7 @@ export class AIServiceManager {
 				this.app,
 				this.promptService,
 				this.multiChat,
-				getAIProfileFilePath(),
+				getAIProfileFilePath(this.settings.rootFolder),
 			);
 		}
 
@@ -173,7 +173,7 @@ export class AIServiceManager {
 		this.storage = new ChatStorageService(this.app, {
 			rootFolder: this.settings.rootFolder,
 		});
-		this.promptService.setPromptFolder(getAIPromptFolder());
+		this.promptService.setPromptFolder(getAIPromptFolder(this.settings.rootFolder));
 		this.promptService.setSettings(this.settings);
 		this.refreshDefaultServices();
 	}
@@ -192,7 +192,7 @@ export class AIServiceManager {
 				this.app,
 				this.promptService,
 				this.multiChat,
-				getAIProfileFilePath(),
+				getAIProfileFilePath(this.settings.rootFolder),
 			);
 		}
 
@@ -203,7 +203,7 @@ export class AIServiceManager {
 		this.resourceSummaryService = new ResourceSummaryService(
 			this.app,
 			this.settings.rootFolder,
-			getAIResourcesSummaryFolder(),
+			getAIResourcesSummaryFolder(this.settings.rootFolder),
 		);
 		this.conversationService = new ConversationService(
 			this.app,
@@ -580,38 +580,11 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
-	 * Resolve provider and model for a prompt. Uses promptModelMap first, then defaultModel.
-	 * Used by AiAnalysis sub-agents instead of thoughtAgent.
+	 * Resolve model for a prompt: `promptModelMap[promptId]` if set, otherwise `defaultModel`.
 	 */
 	getModelForPrompt(promptId: PromptId): { provider: string; modelId: string } {
-		const map = this.settings.promptModelMap;
-		const promptModel = map?.[promptId];
-		if (promptModel) return { provider: promptModel.provider, modelId: promptModel.modelId };
-		if (
-			(promptId === PromptId.DocSummaryShort || promptId === PromptId.DocSummaryFull) &&
-			map?.[PromptId.DocSummary]
-		) {
-			const m = map[PromptId.DocSummary];
-			return { provider: m.provider, modelId: m.modelId };
-		}
-		if (promptId === PromptId.HubDocSummary && map?.[PromptId.DocSummary]) {
-			const m = map[PromptId.DocSummary];
-			return { provider: m.provider, modelId: m.modelId };
-		}
-		if (promptId === PromptId.HubDiscoverJudge) {
-			const m = map?.[PromptId.HubDiscoverJudge] ?? map?.[PromptId.HubDocSummary] ?? map?.[PromptId.DocSummary];
-			if (m) return { provider: m.provider, modelId: m.modelId };
-		}
-		if (promptId === PromptId.HubDiscoverRoundReview) {
-			const m =
-				map?.[PromptId.HubDiscoverRoundReview] ??
-				map?.[PromptId.HubDiscoverJudge] ??
-				map?.[PromptId.HubDocSummary] ??
-				map?.[PromptId.DocSummary];
-			if (m) return { provider: m.provider, modelId: m.modelId };
-		}
-		const defaultModel = this.settings.defaultModel;
-		if (defaultModel) return { provider: defaultModel.provider, modelId: defaultModel.modelId };
+		const m = this.settings.promptModelMap?.[promptId] ?? this.settings.defaultModel;
+		if (m) return { provider: m.provider, modelId: m.modelId };
 		throw new Error('No model configuration available. Please configure defaultModel in settings.');
 	}
 
@@ -658,8 +631,9 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
-	 * Renders a prompt template then runs AI SDK `streamObject`; awaits the final `object` (no streaming to UI).
-	 * Use for structured JSON outputs instead of `chatWithPrompt` + `JSON.parse`.
+	 * Renders a prompt template then runs AI SDK `generateObject` (non-streaming structured output).
+	 * Uses `noReasoning` on the model client so OpenRouter/Gemini does not stream long reasoning before JSON,
+	 * which previously could leave `streamObject().object` unresolved despite HTTP completing.
 	 */
 	async streamObjectWithPrompt<T extends PromptId, S extends z.ZodTypeAny>(
 		promptId: T,
@@ -672,25 +646,26 @@ ${sourcesList}${topicsList}
 		const systemPrompt =
 			meta.systemPromptId && tm ? await tm.getTemplate(meta.systemPromptId) : undefined;
 		const promptText = await this.renderPrompt(promptId, variables);
+		const structuredOpts: ProviderOptionsConfig = { noReasoning: true };
 		let model: LanguageModel;
 		let providerOptions: ProviderOptions | undefined;
 		if (opts?.provider && opts?.modelId) {
 			const ps = this.getMultiChat().getProviderService(opts.provider);
-			model = ps.modelClient(opts.modelId, {});
-			providerOptions = ps.getProviderOptions({});
+			model = ps.modelClient(opts.modelId, structuredOpts);
+			providerOptions = ps.getProviderOptions(structuredOpts);
 		} else {
-			const m = this.getModelInstanceForPrompt(promptId);
+			const m = this.getModelInstanceForPrompt(promptId, structuredOpts);
 			model = m.model;
 			providerOptions = m.providerOptions;
 		}
-		const result = streamObject({
+		const result = await generateObject({
 			model,
 			...(systemPrompt ? { system: systemPrompt } : {}),
 			prompt: promptText,
 			schema,
 			...(providerOptions ? { providerOptions } : {}),
 		});
-		return (await result.object) as z.infer<S>;
+		return result.object as z.infer<S>;
 	}
 
 	/**

@@ -257,7 +257,15 @@ export class DocChunkRepo {
 			.select(['chunk_id', 'doc_id', 'chunk_type', 'title', 'content_raw', 'mtime'])
 			.where('chunk_id', 'in', chunkIds)
 			.execute();
-		const map = new Map(rows.map((r) => [r.chunk_id, r]));
+		const map = new Map(
+			rows.map((r) => [
+				r.chunk_id,
+				{
+					...r,
+					content_raw: r.content_raw ?? '',
+				},
+			]),
+		);
 		const missing = chunkIds.filter((id) => !map.has(id));
 		if (missing.length) {
 			const placeholders = missing.map(() => '?').join(',');
