@@ -6,7 +6,7 @@ import type { AIServiceSettings } from '@/app/settings/types';
 import { getAIPromptFolder } from '@/app/settings/types';
 import type { CompiledTemplate } from '@/core/template-engine-helper';
 import { compileTemplate } from '@/core/template-engine-helper';
-import { LLMStreamEvent, MessagePart } from '@/core/providers/types';
+import { LLMStreamEvent, LLMUsage, MessagePart } from '@/core/providers/types';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { getTemplateMetadata } from '@/core/template/TemplateRegistry';
@@ -85,6 +85,20 @@ export class PromptService {
 		model?: string,
 		extraParts?: MessagePart[]
 	): Promise<string> {
+		const { text } = await this.chatWithPromptWithUsage(promptId, variables, provider, model, extraParts);
+		return text;
+	}
+
+	/**
+	 * Same as {@link chatWithPrompt} but returns token usage for billing / progress estimates.
+	 */
+	async chatWithPromptWithUsage<T extends PromptId>(
+		promptId: T,
+		variables: PromptVariables[T] | null,
+		provider?: string,
+		model?: string,
+		extraParts?: MessagePart[]
+	): Promise<{ text: string; usage: LLMUsage; provider: string; model: string }> {
 		if (!this.chat) {
 			throw new Error('Chat service not available. Call setChatService() first.');
 		}
@@ -94,14 +108,12 @@ export class PromptService {
 			: undefined;
 		const promptText = await this.render(promptId, variables);
 
-		// Get model configuration: use provided params, then check promptModelMap, then fallback to defaultModel
 		if (!provider || !model) {
 			const promptModel = pickPromptModelEntry(this.settings, promptId);
 			if (promptModel) {
 				provider = promptModel.provider;
 				model = promptModel.modelId;
 			} else if (this.settings?.defaultModel) {
-				// Fallback to defaultModel from settings
 				provider = this.settings.defaultModel.provider;
 				model = this.settings.defaultModel.modelId;
 			} else {
@@ -116,7 +128,6 @@ export class PromptService {
 			messages: [
 				{
 					role: 'user',
-					// MessageParts should be a flat array of MessagePart, which may contain text or other types (image, etc)
 					content: [
 						...(extraParts ?? []),
 						{ type: 'text', text: promptText },
@@ -124,7 +135,9 @@ export class PromptService {
 				},
 			],
 		});
-		return completion.content.map(part => part.type === 'text' ? part.text : '').join('').trim();
+		const text = completion.content.map(part => part.type === 'text' ? part.text : '').join('').trim();
+		const usage = (completion.totalUsage ?? completion.usage) as LLMUsage;
+		return { text, usage, provider, model };
 	}
 
 	/**

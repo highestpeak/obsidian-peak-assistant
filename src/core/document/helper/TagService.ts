@@ -1,4 +1,5 @@
 import { z } from 'zod/v3';
+import type { LLMUsage } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 import { parseInferCreatedAtStringToMs, parseLooseTimestampToMs } from '@/core/utils/date-utils';
@@ -307,22 +308,50 @@ export function filterValidFunctionalTagEntries(entries: FunctionalTagEntry[]): 
 
 // --- LLM topic/functional/context extraction (TextRank keywords come from MarkdownDocumentLoader) ---
 
-const functionalTagEntrySchema = z.object({
-	id: z.enum(FUNCTIONAL_TAG_IDS),
+/**
+ * LLM may return either canonical {@link FUNCTIONAL_TAG_IDS} or semantic dimension ids (see
+ * {@link SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS}). `generateObject` uses a loose id string, then we map here.
+ */
+const llmFunctionalTagEntryLooseSchema = z.object({
+	id: z.string().min(1).max(80),
 	label: z.string().max(MAX_FUNCTIONAL_LABEL_LEN).optional(),
 });
+
+/** Map one LLM `id` to a canonical functional tag (direct match or first tag for a semantic dimension). */
+export function mapLlmFunctionalIdToCanonical(raw: string): FunctionalTagId | null {
+	const id = String(raw).trim();
+	if (!id) return null;
+	if (functionalSet.has(id)) return id as FunctionalTagId;
+	if (Object.prototype.hasOwnProperty.call(SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS, id)) {
+		const mapped =
+			SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS[id as keyof typeof SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS];
+		return (mapped?.[0] as FunctionalTagId | undefined) ?? null;
+	}
+	return null;
+}
 
 const topicTagEntrySchema = z.object({
 	id: z.string().max(MAX_TOPIC_ID_LEN),
 	label: z.string().max(MAX_TOPIC_LABEL_LEN).optional(),
 });
 
+/** Vault-oriented document role (merged into tag JSON; optional). */
+const DOC_TYPE_LLM = [
+	'principle',
+	'profile',
+	'index',
+	'daily',
+	'project',
+	'note',
+	'other',
+] as const;
+
 const docTagResponseSchema = z.object({
 	topicTagEntries: z.array(topicTagEntrySchema).max(12).default([]),
 	/** @deprecated LLM may still return plain strings; mapped to `{ id }` when topicTagEntries is empty. */
 	topicTags: z.array(z.string()).max(12).optional(),
-	/** At least one functional tag required; matches prompt (closed list). */
-	functionalTagEntries: z.array(functionalTagEntrySchema).min(1).max(5),
+	/** At least one entry; ids normalized via {@link mapLlmFunctionalIdToCanonical}. */
+	functionalTagEntries: z.array(llmFunctionalTagEntryLooseSchema).min(1).max(5),
 	timeTags: z.array(z.string()).max(12).default([]),
 	geoTags: z.array(z.string()).max(12).default([]),
 	personTags: z.array(z.string()).max(12).default([]),
@@ -331,7 +360,52 @@ const docTagResponseSchema = z.object({
 	 * (24h). Omit or null if unknown.
 	 */
 	inferCreatedAt: z.string().max(48).optional().nullable(),
+	/**
+	 * Optional vault role hints; merged into functional tag labels in code (not separate result fields).
+	 */
+	docType: z.enum(DOC_TYPE_LLM).optional(),
+	docTypeConfidence: z.number().min(0).max(1).optional(),
+	docTypeReasoning: z.string().max(500).optional(),
 });
+
+/** Folds optional LLM `docType*` into one functional entry's label (same call as tags). */
+function mergeDocVaultRoleIntoFunctionalEntries(
+	entries: FunctionalTagEntry[],
+	docType: (typeof DOC_TYPE_LLM)[number] | undefined,
+	docTypeConfidence: number | undefined,
+	docTypeReasoning: string | undefined,
+): FunctionalTagEntry[] {
+	if (!docType || entries.length === 0) return entries;
+
+	const parts: string[] = [`vaultRole:${docType}`];
+	if (docTypeConfidence !== undefined && Number.isFinite(docTypeConfidence)) {
+		parts.push(`conf:${Math.round(Number(docTypeConfidence) * 100) / 100}`);
+	}
+	const reason = String(docTypeReasoning ?? '').trim().slice(0, 200);
+	if (reason) parts.push(reason);
+	const annotation = parts.join(' · ');
+
+	/** Vault docType nuance attaches under semantic dimension `essence_definition` (same functional ids as slot routing). */
+	const essenceIds = SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS.essence_definition;
+	let i = -1;
+	for (const fid of essenceIds) {
+		const idx = entries.findIndex((e) => e.id === fid);
+		if (idx >= 0) {
+			i = idx;
+			break;
+		}
+	}
+	if (i < 0) i = 0;
+	const next = entries.map((e, idx) => ({ ...e, ...(idx === i ? mergeLabel(e.label, annotation) : {}) }));
+	return filterValidFunctionalTagEntries(next);
+}
+
+function mergeLabel(existing: string | undefined, annotation: string): { label?: string } {
+	const prev = typeof existing === 'string' ? existing.trim() : '';
+	const combined = prev ? `${prev} | ${annotation}` : annotation;
+	const trimmed = combined.slice(0, MAX_FUNCTIONAL_LABEL_LEN);
+	return trimmed ? { label: trimmed } : {};
+}
 
 /** LLM output for doc tagging (topic + functional + context axes). */
 export type DocLlmTagResult = {
@@ -346,6 +420,9 @@ export type DocLlmTagResult = {
 	inferCreatedAtMs?: number;
 	/** Runtime status for tag generation path. */
 	llmTagRunStatus: 'skipped' | 'failed' | 'success';
+	/** Set when an LLM call ran; used for index enrichment telemetry. */
+	llmUsage?: LLMUsage;
+	llmCostUsd?: number;
 };
 
 function buildDimensionFunctionalHintsTable(): string {
@@ -405,13 +482,15 @@ export async function extractTopicAndFunctionalTags(
 	};
 
 	let normalized: z.infer<typeof docTagResponseSchema>;
+	let tagUsage: LLMUsage | undefined;
+	let tagCostUsd: number | undefined;
 	const tTag = Date.now();
 	console.info('[MarkdownDocumentLoader] DocTagGenerateJson LLM start', {
 		title: options?.title ?? '',
 		contentChars: text.length,
 	});
 	try {
-		normalized = await ai.streamObjectWithPrompt(
+		const tagResult = await ai.streamObjectWithPromptWithUsage(
 			PromptId.DocTagGenerateJson,
 			variables,
 			docTagResponseSchema,
@@ -419,14 +498,18 @@ export async function extractTopicAndFunctionalTags(
 				? { provider: options.provider, modelId: options.modelId }
 				: undefined,
 		);
+		normalized = tagResult.object;
+		tagUsage = tagResult.usage;
+		tagCostUsd = tagResult.costUsd;
 		console.info('[MarkdownDocumentLoader] DocTagGenerateJson LLM done', {
 			title: options?.title ?? '',
 			elapsedMs: Date.now() - tTag,
 		});
-	} catch {
-		console.info('[MarkdownDocumentLoader] DocTagGenerateJson LLM failed or skipped', {
+	} catch (err) {
+		console.warn('[MarkdownDocumentLoader] DocTagGenerateJson LLM failed or skipped', {
 			title: options?.title ?? '',
 			elapsedMs: Date.now() - tTag,
+			error: err instanceof Error ? err.message : String(err),
 		});
 		return {
 			...empty,
@@ -451,7 +534,15 @@ export async function extractTopicAndFunctionalTags(
 	);
 	const topicTags = topicTagEntries.map((e) => e.id);
 
-	const functionalTagEntries = filterValidFunctionalTagEntries(normalized.functionalTagEntries);
+	const mappedFunctional: FunctionalTagEntry[] = [];
+	for (const e of normalized.functionalTagEntries) {
+		const canonical = mapLlmFunctionalIdToCanonical(e.id);
+		if (!canonical) continue;
+		const label =
+			typeof e.label === 'string' ? e.label.trim().slice(0, MAX_FUNCTIONAL_LABEL_LEN) : '';
+		mappedFunctional.push(label ? { id: canonical, label } : { id: canonical });
+	}
+	let functionalTagEntries = filterValidFunctionalTagEntries(mappedFunctional);
 	if (functionalTagEntries.length === 0) {
 		console.info('[MarkdownDocumentLoader] DocTagGenerateJson: no valid functional tags after filter', {
 			title: options?.title ?? '',
@@ -461,8 +552,16 @@ export async function extractTopicAndFunctionalTags(
 			topicTagEntries,
 			topicTags,
 			llmTagRunStatus: 'failed',
+			...(tagUsage ? { llmUsage: tagUsage, llmCostUsd: tagCostUsd } : {}),
 		};
 	}
+
+	functionalTagEntries = mergeDocVaultRoleIntoFunctionalEntries(
+		functionalTagEntries,
+		normalized.docType,
+		normalized.docTypeConfidence,
+		normalized.docTypeReasoning,
+	);
 
 	return {
 		topicTagEntries,
@@ -473,6 +572,7 @@ export async function extractTopicAndFunctionalTags(
 		personTags: sanitizeContextTagsForAxis('person', normalized.personTags),
 		llmTagRunStatus: 'success',
 		...(inferCreatedAtMs !== undefined ? { inferCreatedAtMs } : {}),
+		...(tagUsage ? { llmUsage: tagUsage, llmCostUsd: tagCostUsd } : {}),
 	};
 }
 

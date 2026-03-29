@@ -37,7 +37,7 @@ export class HubDocService {
 
 	/**
 	 * Run hub discovery (merged sources, greedy coverage selection, optional whole-round LLM review), then LLM fill, materialize/update, reindex (vault only).
-	 * Discovery caps come from {@link computeHubDiscoverBudgets} inside {@link HubCandidateDiscoveryService.discoverAllHubCandidates}.
+	 * Discovery caps come from `computeHubDiscoverBudgets` in `discoverAllHubCandidates` on `HubCandidateDiscoveryService` (see `hubDiscover.ts`).
 	 */
 	async generateAndIndexHubDocsForMaintenance(options?: {
 		onProgress?: (ev: HubMaintenanceProgress) => void;

@@ -1,5 +1,5 @@
 import type { DocumentType, Document, ResourceSummary, Summarizable } from '@/core/document/types';
-import type { Chunk } from '@/service/search/index/types';
+import type { Chunk, LlmIndexingCompleteEvent } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 
 /**
@@ -9,6 +9,8 @@ import type { ChunkingSettings } from '@/app/settings/types';
 export interface DocumentLoaderReadOptions {
 	includeLlmTags?: boolean;
 	includeLlmSummary?: boolean;
+	/** Fires after markdown LLM tag + summary batch for this path (index telemetry). */
+	onLlmIndexingComplete?: (ev: LlmIndexingCompleteEvent) => void;
 }
 
 /**

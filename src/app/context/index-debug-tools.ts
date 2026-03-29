@@ -137,6 +137,357 @@ async function countTaggedEdgesForDoc(tenant: IndexTenant, docId: string): Promi
 	return Number(r?.c ?? 0);
 }
 
+/** Incident edge counts grouped by `mobius_edge.type` for one document node. */
+async function countEdgesByTypeForDoc(tenant: IndexTenant, docId: string): Promise<Record<string, number>> {
+	const kdb = sqliteStoreManager.getIndexContext(tenant);
+	const rows = await kdb
+		.selectFrom('mobius_edge')
+		.select((eb) => [eb.fn.count<number>('id').as('c'), 'type'])
+		.where((eb) => eb.or([eb('from_node_id', '=', docId), eb('to_node_id', '=', docId)]))
+		.groupBy('type')
+		.execute();
+	const out: Record<string, number> = {};
+	for (const r of rows) {
+		out[String(r.type)] = Number(r.c);
+	}
+	return out;
+}
+
+export type DebugDocumentSnapshotOptions = {
+	/**
+	 * When true, runs {@link debugExplainPathCoverage} (full hub discovery; can be very slow).
+	 * Default false for fast DB-only snapshots.
+	 */
+	includeHubCoverage?: boolean;
+	/** Max `doc_chunk` rows to sample with previews. Default 40. Set 0 to skip chunk samples. */
+	chunkSampleLimit?: number;
+	/** Max edges per reference/semantic sample list. Default 50. */
+	edgeSampleLimit?: number;
+};
+
+export type DebugDocumentSnapshotResult = {
+	path: string;
+	tenant: IndexTenant;
+	ok: boolean;
+	elapsedMs: number;
+	warnings: string[];
+	error?: string;
+	/** Indexed document row (`IndexedDocumentRepo`), when present. */
+	indexed: {
+		id: string;
+		path: string;
+		title: string | null;
+		type: string | null;
+		content_hash: string | null;
+		mtime: number | null;
+		last_processed_at: number | null;
+	} | null;
+	/** Short summary column + long-form fields from `attributes_json`. */
+	summary: {
+		short: string | null;
+		full: string | null;
+		hubTier: string | null;
+		summaryGeneratedAt: number | null;
+		headingSkeletonPreview: string | null;
+	} | null;
+	tags: ReturnType<typeof decodeIndexedTagsBlob> | null;
+	docAttrs: {
+		llmPending?: unknown;
+		llmPendingReason?: unknown;
+		vectorPending?: unknown;
+		vectorPendingReason?: unknown;
+		functionalTagsStatus?: unknown;
+		llmTagsGeneratedAt?: unknown;
+		llmSummaryGeneratedAt?: unknown;
+		vectorGeneratedAt?: unknown;
+		semanticOverlayPreview?: string | null;
+		frontmatterPreview?: string | null;
+	} | null;
+	mobiusNodeType: string | null;
+	counts: {
+		chunk: number;
+		embedding: number;
+		taggedEdges: number;
+		edgesByType: Record<string, number>;
+	};
+	graph: {
+		docIncomingCnt: number | null;
+		docOutgoingCnt: number | null;
+		otherIncomingCnt: number | null;
+		otherOutgoingCnt: number | null;
+		pagerank: number | null;
+		semanticPagerank: number | null;
+		wordCount: number | null;
+		charCount: number | null;
+		referenceEdgesIncidentSampled: number;
+		semanticEdgesIncidentSampled: number;
+		referenceEdgesSample: Array<{ from_node_id: string; to_node_id: string }>;
+		semanticEdgesSample: Array<{ from_node_id: string; to_node_id: string }>;
+		taggedEdgesSample: Array<{
+			id: string;
+			from: string;
+			to: string;
+			type: string;
+			weight: number | null;
+			attrs: unknown;
+		}>;
+	};
+	chunkSamples: Array<{
+		chunkId: string;
+		chunkIndex: number;
+		chunkType: string | null;
+		title: string | null;
+		len: number;
+		preview: string;
+		meta: unknown;
+	}> | null;
+	hubCoverage?: DebugExplainPathCoverageResult;
+};
+
+/**
+ * Read-only snapshot of indexed state for a vault/chat path: SQLite only (no re-index).
+ * Logs one structured object to the console for DevTools debugging.
+ */
+export async function debugDocumentSnapshot(
+	docPath: string,
+	options?: DebugDocumentSnapshotOptions,
+): Promise<DebugDocumentSnapshotResult> {
+	const path = normalizePath(docPath.trim());
+	const tenant = getIndexTenantForPath(path);
+	const t0 = Date.now();
+	const warnings: string[] = [];
+	const chunkLimit = options?.chunkSampleLimit ?? 40;
+	const edgeLim = options?.edgeSampleLimit ?? 50;
+
+	const pv = (t: string | null | undefined, max = 400) => {
+		const s = String(t ?? '').replace(/\s+/g, ' ').trim();
+		return !s ? '' : s.length > max ? `${s.slice(0, max)}…` : s;
+	};
+	const parseJson = (raw: string | null | undefined) => {
+		if (raw == null || raw === '') return null;
+		try {
+			return JSON.parse(raw);
+		} catch {
+			return raw;
+		}
+	};
+
+	const outBase: Omit<DebugDocumentSnapshotResult, 'hubCoverage'> & { hubCoverage?: DebugExplainPathCoverageResult } = {
+		path,
+		tenant,
+		ok: false,
+		elapsedMs: 0,
+		warnings,
+		indexed: null,
+		summary: null,
+		tags: null,
+		docAttrs: null,
+		mobiusNodeType: null,
+		counts: {
+			chunk: 0,
+			embedding: 0,
+			taggedEdges: 0,
+			edgesByType: {},
+		},
+		graph: {
+			docIncomingCnt: null,
+			docOutgoingCnt: null,
+			otherIncomingCnt: null,
+			otherOutgoingCnt: null,
+			pagerank: null,
+			semanticPagerank: null,
+			wordCount: null,
+			charCount: null,
+			referenceEdgesIncidentSampled: 0,
+			semanticEdgesIncidentSampled: 0,
+			referenceEdgesSample: [],
+			semanticEdgesSample: [],
+			taggedEdgesSample: [],
+		},
+		chunkSamples: null,
+	};
+
+	try {
+		requireDb();
+	} catch (e) {
+		const err = (e as Error).message ?? String(e);
+		const res: DebugDocumentSnapshotResult = {
+			...outBase,
+			ok: false,
+			error: err,
+			elapsedMs: Date.now() - t0,
+		};
+		console.info('[index-debug] debugDocumentSnapshot', res);
+		return res;
+	}
+
+	const indexedRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+	const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+	const meta = await indexedRepo.getByPath(path);
+	const row = await mobiusRepo.getByPath(path);
+	const docId = meta?.id ?? row?.node_id ?? null;
+
+	if (!docId) {
+		const res: DebugDocumentSnapshotResult = {
+			...outBase,
+			ok: false,
+			error: 'No indexed document or mobius_node row for this path.',
+			elapsedMs: Date.now() - t0,
+		};
+		warnings.push('Path not found in index (not indexed or wrong tenant).');
+		console.info('[index-debug] debugDocumentSnapshot', res);
+		return res;
+	}
+
+	if (meta) {
+		outBase.indexed = {
+			id: meta.id,
+			path: meta.path,
+			title: meta.title,
+			type: meta.type,
+			content_hash: meta.content_hash,
+			mtime: meta.mtime,
+			last_processed_at: meta.last_processed_at,
+		};
+	} else {
+		warnings.push('IndexedDocumentRepo.getByPath returned null; using mobius_node only.');
+	}
+
+	const attrsParsed = parseJson(row?.attributes_json) as Record<string, unknown> | null;
+	const fullSummary =
+		typeof attrsParsed?.full_summary === 'string' ? attrsParsed.full_summary : null;
+	const hubTier = typeof attrsParsed?.hub_tier === 'string' ? attrsParsed.hub_tier : null;
+	const summaryGeneratedAt =
+		typeof attrsParsed?.summary_generated_at === 'number' ? attrsParsed.summary_generated_at : null;
+	const headingSkeleton =
+		typeof attrsParsed?.heading_skeleton === 'string' ? attrsParsed.heading_skeleton : null;
+	const semanticOverlay =
+		typeof attrsParsed?.semantic_overlay_mermaid === 'string'
+			? attrsParsed.semantic_overlay_mermaid
+			: null;
+	const frontmatterJson =
+		typeof attrsParsed?.frontmatter_json === 'string' ? attrsParsed.frontmatter_json : null;
+
+	outBase.summary = {
+		short: row?.summary ?? null,
+		full: fullSummary,
+		hubTier,
+		summaryGeneratedAt,
+		headingSkeletonPreview: headingSkeleton ? pv(headingSkeleton, 600) : null,
+	};
+	outBase.tags = row?.tags_json != null ? decodeIndexedTagsBlob(row.tags_json) : null;
+	outBase.mobiusNodeType = row?.type ?? null;
+	outBase.docAttrs = {
+		llmPending: attrsParsed?.llm_pending,
+		llmPendingReason: attrsParsed?.llm_pending_reason,
+		vectorPending: attrsParsed?.vector_pending,
+		vectorPendingReason: attrsParsed?.vector_pending_reason,
+		functionalTagsStatus: attrsParsed?.functional_tags_status,
+		llmTagsGeneratedAt: attrsParsed?.llm_tags_generated_at,
+		llmSummaryGeneratedAt: attrsParsed?.llm_summary_generated_at,
+		vectorGeneratedAt: attrsParsed?.vector_generated_at,
+		semanticOverlayPreview: semanticOverlay ? pv(semanticOverlay, 500) : null,
+		frontmatterPreview: frontmatterJson ? pv(frontmatterJson, 800) : null,
+	};
+
+	const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+	const [chunkCount, embeddingCount, taggedEdgeCount, edgesByType, refInc, semInc] = await Promise.all([
+		countChunksForDoc(tenant, docId),
+		countEmbeddingsForDoc(tenant, docId),
+		countTaggedEdgesForDoc(tenant, docId),
+		countEdgesByTypeForDoc(tenant, docId),
+		edgeRepo.listReferenceEdgesIncidentToNode(docId, Math.max(edgeLim, 5000)),
+		edgeRepo.listSemanticRelatedEdgesIncidentToNode(docId, Math.max(edgeLim, 2000)),
+	]);
+
+	outBase.counts = {
+		chunk: chunkCount,
+		embedding: embeddingCount,
+		taggedEdges: taggedEdgeCount,
+		edgesByType,
+	};
+
+	const kdbForSamples = sqliteStoreManager.getIndexContext(tenant);
+	const taggedRows = await kdbForSamples
+		.selectFrom('mobius_edge')
+		.select(['id', 'from_node_id', 'to_node_id', 'type', 'weight', 'attributes_json'])
+		.where('type', 'in', [...GRAPH_TAGGED_EDGE_TYPES])
+		.where((eb) => eb.or([eb('from_node_id', '=', docId), eb('to_node_id', '=', docId)]))
+		.limit(edgeLim)
+		.execute();
+	const taggedSample: DebugDocumentSnapshotResult['graph']['taggedEdgesSample'] = taggedRows.map((r) => ({
+		id: r.id,
+		from: r.from_node_id,
+		to: r.to_node_id,
+		type: r.type,
+		weight: r.weight,
+		attrs: parseJson(r.attributes_json),
+	}));
+
+	let chunkSamples: DebugDocumentSnapshotResult['chunkSamples'] = null;
+	if (chunkLimit > 0) {
+		const docChunkRows = await kdbForSamples
+			.selectFrom('doc_chunk')
+			.select(['chunk_id', 'chunk_index', 'chunk_type', 'title', 'content_raw', 'chunk_meta_json'])
+			.where('doc_id', '=', docId)
+			.orderBy('chunk_index', 'asc')
+			.limit(chunkLimit)
+			.execute();
+		chunkSamples = docChunkRows.map((r) => ({
+			chunkId: r.chunk_id,
+			chunkIndex: r.chunk_index ?? 0,
+			chunkType: r.chunk_type,
+			title: r.title,
+			len: r.content_raw?.length ?? 0,
+			preview: pv(r.content_raw, 400),
+			meta: parseJson(r.chunk_meta_json),
+		}));
+	}
+
+	outBase.graph = {
+		docIncomingCnt: row?.doc_incoming_cnt ?? null,
+		docOutgoingCnt: row?.doc_outgoing_cnt ?? null,
+		otherIncomingCnt: row?.other_incoming_cnt ?? null,
+		otherOutgoingCnt: row?.other_outgoing_cnt ?? null,
+		pagerank: typeof row?.pagerank === 'number' ? row.pagerank : null,
+		semanticPagerank: typeof row?.semantic_pagerank === 'number' ? row.semantic_pagerank : null,
+		wordCount: row?.word_count ?? null,
+		charCount: row?.char_count ?? null,
+		referenceEdgesIncidentSampled: refInc.length,
+		semanticEdgesIncidentSampled: semInc.length,
+		referenceEdgesSample: refInc.slice(0, edgeLim),
+		semanticEdgesSample: semInc.slice(0, edgeLim),
+		taggedEdgesSample: taggedSample,
+	};
+
+	if (chunkCount === 0) {
+		warnings.push('chunk count is 0 — check loader / chunking / index.');
+	}
+	if (embeddingCount === 0) {
+		warnings.push('embedding count is 0 — vectors off or not embedded yet.');
+	}
+
+	let hubCoverage: DebugExplainPathCoverageResult | undefined;
+	if (options?.includeHubCoverage) {
+		try {
+			hubCoverage = await debugExplainPathCoverage(path);
+		} catch (e) {
+			warnings.push(`hub coverage failed: ${(e as Error).message ?? String(e)}`);
+		}
+	}
+
+	const res: DebugDocumentSnapshotResult = {
+		...outBase,
+		ok: true,
+		elapsedMs: Date.now() - t0,
+		...(hubCoverage !== undefined ? { hubCoverage } : {}),
+		chunkSamples,
+	};
+
+	console.info('[index-debug] debugDocumentSnapshot', res);
+	return res;
+}
+
 /** DevTools progress log for {@link debugIndexDocument} (uses info so default console level shows it). */
 function logDebugIndexDocument(
 	path: string,
@@ -276,7 +627,7 @@ export async function debugIndexDocument(
 		includeLlmSummary: indexOptions.includeLlmSummary,
 	});
 	try {
-		await IndexService.getInstance().indexDocument(path, settings, { ...indexOptions, preloadedDocument: readDoc });
+		await IndexService.getInstance().indexDocument(path, settings, indexOptions, readDoc);
 		out.ok = true;
 		logDebugIndexDocument(path, tenant, t0, 'indexDocument_ok');
 	} catch (e) {

@@ -1,11 +1,22 @@
-import { normalizePath } from 'obsidian';
-import { type Chunk, defaultIndexDocumentOptions, type IndexDocumentOptions } from './types';
+import { normalizePath, TFile } from 'obsidian';
+import { emptyUsage, type LLMUsage } from '@/core/providers/types';
+import {
+	LlmEnrichmentProgressTracker,
+	type PendingLlmEnrichmentProgress,
+} from '@/service/search/support/llm-enrichment-progress-tracker';
+import {
+	type Chunk,
+	defaultIndexDocumentOptions,
+	type IndexDocumentOptions,
+	type LlmIndexingCompleteEvent,
+} from './types';
 import type { DocumentLoaderReadOptions } from '@/core/document/loader/types';
 import { AppContext } from '@/app/context/AppContext';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
 import type { IndexedDocumentRecord } from '@/core/storage/sqlite/ddl';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { MobiusEdgeRepo } from '@/core/storage/sqlite/repositories/MobiusEdgeRepo';
+import { normalizeUsageTokens } from '@/service/search/support/llm-cost-utils';
 import { normalizeTextForFts } from '../support/segmenter';
 import { getAIHubSummaryFolder, type SearchSettings } from '@/app/settings/types';
 import type { Document, DocumentReference } from '@/core/document/types';
@@ -18,6 +29,7 @@ import {
 	MOBIUS_MAINTENANCE_DEBT_RENAME,
 	MOBIUS_MAINTENANCE_DIRTY_THRESHOLD,
 	MOBIUS_MAINTENANCE_STATE_KEYS,
+	LLM_PENDING_ENRICH_CONCURRENCY,
 	PAGERANK_ALGORITHM_VERSION,
 	PAGERANK_EDGE_BATCH_SIZE,
 	SEMANTIC_PAGERANK_ALGORITHM_VERSION,
@@ -38,6 +50,7 @@ import {
 } from '@/core/utils/id-utils';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { parseLooseTimestampToMs } from '@/core/utils/date-utils';
+import { mapWithConcurrency } from '@/core/utils/concurrent-utils';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import { getFileNameFromPath } from '@/core/utils/file-utils';
 import {
@@ -68,6 +81,7 @@ import {
 } from '@/service/search/index/helper/mobiusTagEdges';
 import { isVaultPathUnderPrefix } from '@/core/utils/hub-path-utils';
 import { HubDocService } from '@/service/search/index/helper/hub';
+import { emptyMap } from '@/core/utils/collection-utils';
 export type StorageType = 'sqlite' | 'graph';
 
 export type { IndexDocumentOptions, IndexDocumentReason } from './types';
@@ -367,7 +381,7 @@ class IndexSingleService {
 	constructor(
 		private readonly aiServiceManager: AIServiceManager,
 		private readonly crud: IndexCrudService,
-	) {}
+	) { }
 
 	/**
 	 * Index a document by path with chunking strategy applied.
@@ -377,6 +391,7 @@ class IndexSingleService {
 		docPath: string,
 		settings: SearchSettings,
 		indexOptions?: IndexDocumentOptions,
+		preloadedDocument?: Document,
 	): Promise<void> {
 		const opts = indexOptions ?? defaultIndexDocumentOptions('manual_full');
 		const sw = new Stopwatch(`[IndexService] Indexing: ${docPath}`);
@@ -399,10 +414,11 @@ class IndexSingleService {
 			const readOpts: DocumentLoaderReadOptions = {
 				includeLlmTags: opts.includeLlmTags,
 				includeLlmSummary: opts.includeLlmSummary,
+				...(opts.onLlmIndexingComplete ? { onLlmIndexingComplete: opts.onLlmIndexingComplete } : {}),
 			};
 
 			sw.start('Read document');
-			const preload = opts.preloadedDocument;
+			const preload = preloadedDocument;
 			let rawDoc: Document | null = null;
 			if (preload) {
 				const want = normalizePath(docPath);
@@ -469,7 +485,7 @@ class IndexSingleService {
 			} else {
 				console.debug(
 					`[IndexService] Skipping embedding generation for ${doc.sourceFileInfo.path}. ` +
-						'Vector search may not be available (sqlite-vec extension not loaded). ',
+					'Vector search may not be available (sqlite-vec extension not loaded). ',
 				);
 			}
 
@@ -486,14 +502,14 @@ class IndexSingleService {
 			}
 			const pathToIndexedDocInfo = shouldRefreshGraph
 				? await this.loadPathToIndexedDocInfoMap(tenant, sameTenantOutgoing)
-				: new Map<string, PathIndexedDocInfo>();
+				: emptyMap<string, PathIndexedDocInfo>();
 			const indexedByTargetId = shouldRefreshGraph
 				? await this.loadIndexedRecordsForOutgoingTargets(
-						tenant,
-						pathToIndexedDocInfo,
-						sameTenantOutgoing,
-					)
-				: new Map<string, IndexedDocumentRecord>();
+					tenant,
+					pathToIndexedDocInfo,
+					sameTenantOutgoing,
+				)
+				: emptyMap<string, IndexedDocumentRecord>();
 			const kdb = sqliteStoreManager.getIndexContext(tenant);
 			await kdb.transaction().execute(async () => {
 				await this.upsertIndexedDocument(doc, tenant, opts, existing);
@@ -908,27 +924,27 @@ class IndexSingleService {
 
 		const tagsJson = opts.includeLlmTags
 			? encodeIndexedTagsBlob({
-					topicTags: doc.metadata.topicTags ?? [],
-					topicTagEntries: doc.metadata.topicTagEntries,
-					functionalTagEntries: doc.metadata.functionalTagEntries ?? [],
-					keywordTags: doc.metadata.keywordTags ?? [],
-					...(doc.metadata.userKeywordTags !== undefined
-						? { userKeywordTags: doc.metadata.userKeywordTags }
-						: {}),
-					...(doc.metadata.textrankKeywordTerms?.length
-						? { textrankKeywordTerms: doc.metadata.textrankKeywordTerms }
-						: {}),
-					timeTags: doc.metadata.timeTags ?? [],
-					geoTags: doc.metadata.geoTags ?? [],
-					personTags: doc.metadata.personTags ?? [],
-				})
+				topicTags: doc.metadata.topicTags ?? [],
+				topicTagEntries: doc.metadata.topicTagEntries,
+				functionalTagEntries: doc.metadata.functionalTagEntries ?? [],
+				keywordTags: doc.metadata.keywordTags ?? [],
+				...(doc.metadata.userKeywordTags !== undefined
+					? { userKeywordTags: doc.metadata.userKeywordTags }
+					: {}),
+				...(doc.metadata.textrankKeywordTerms?.length
+					? { textrankKeywordTerms: doc.metadata.textrankKeywordTerms }
+					: {}),
+				timeTags: doc.metadata.timeTags ?? [],
+				geoTags: doc.metadata.geoTags ?? [],
+				personTags: doc.metadata.personTags ?? [],
+			})
 			: encodeIndexedTagsBlob(
-					mergeIndexedTagsBlobForFastIndex(existing?.tags ?? null, {
-						keywordTags: doc.metadata.keywordTags ?? [],
-						userKeywordTags: doc.metadata.userKeywordTags,
-						textrankKeywordTerms: doc.metadata.textrankKeywordTerms,
-					}),
-				);
+				mergeIndexedTagsBlobForFastIndex(existing?.tags ?? null, {
+					keywordTags: doc.metadata.keywordTags ?? [],
+					userKeywordTags: doc.metadata.userKeywordTags,
+					textrankKeywordTerms: doc.metadata.textrankKeywordTerms,
+				}),
+			);
 
 		const payload: Partial<IndexedDocumentRecord> & {
 			id: string;
@@ -1580,7 +1596,7 @@ class GlobalMaintenanceService {
 
 		let afterNodeId: string | null = null;
 		let docPageIndex = 0;
-		for (;;) {
+		for (; ;) {
 			const page = await mobiusNodeRepo.listDocumentRowsForFolderHubStatsKeyset(
 				afterNodeId,
 				FOLDER_HUB_STATS_DOC_PAGE_SIZE,
@@ -1601,7 +1617,7 @@ class GlobalMaintenanceService {
 				const outd = Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0)));
 
 				let cur = path;
-				for (;;) {
+				for (; ;) {
 					const slash = cur.lastIndexOf('/');
 					if (slash <= 0) break;
 					const folder = cur.slice(0, slash);
@@ -1656,6 +1672,29 @@ class GlobalMaintenanceService {
 		}
 	}
 }
+
+/** Batched deferred enrichment: LLM tags/summary after fast index (`llm_pending`). */
+export type LlmIndexEnrichmentResult = {
+	processed: number;
+	skippedWrongTenant: number;
+	errors: Array<{ path: string; message: string }>;
+};
+
+/** Batched deferred enrichment: vector embeddings after fast index (`vector_pending`). */
+export type VectorIndexEnrichmentResult = {
+	processed: number;
+	skippedWrongTenant: number;
+	errors: Array<{ path: string; message: string }>;
+};
+
+/** Progress for pending vector enrichment loops. */
+export type PendingEnrichmentProgress = {
+	processed: number;
+	total: number;
+	path: string;
+};
+
+export type { PendingLlmEnrichmentProgress } from '@/service/search/support/llm-enrichment-progress-tracker';
 
 /**
  * Public facade: single entry for indexing, CRUD, and global Mobius maintenance.
@@ -1727,8 +1766,13 @@ export class IndexService {
 		docPath: string,
 		settings: SearchSettings,
 		indexOptions?: IndexDocumentOptions,
+		/**
+		 * When set, skip loader read; must be the same vault path as the indexed `docPath` (normalized).
+		 * Avoids repeated read + duplicate LLM work when the caller already loaded the document.
+		 */
+		preloadedDocument?: Document,
 	): Promise<void> {
-		return this.ensureSingle().indexDocument(docPath, settings, indexOptions);
+		return this.ensureSingle().indexDocument(docPath, settings, indexOptions, preloadedDocument);
 	}
 
 	async deleteDocuments(
@@ -1770,5 +1814,244 @@ export class IndexService {
 		options?: MobiusGlobalMaintenanceOptions,
 	): Promise<void> {
 		return this.globalMaintenance.runMobiusGlobalMaintenance(tenants, options);
+	}
+
+	/**
+	 * LLM tags + summary for documents marked `llm_pending` (fast index deferred enrichment).
+	 * Does not bump global index_state; does not re-chunk unless options change.
+	 */
+	static async runPendingLlmIndexEnrichment(
+		settings: SearchSettings,
+		options?: { onProgress?: (ev: PendingLlmEnrichmentProgress) => void },
+	): Promise<LlmIndexEnrichmentResult> {
+		if (!sqliteStoreManager.isInitialized()) {
+			return {
+				processed: 0,
+				skippedWrongTenant: 0,
+				errors: [{ path: '', message: 'SQLite not initialized' }],
+			};
+		}
+
+		const indexSvc = IndexService.getInstance();
+		const baseOpts = defaultIndexDocumentOptions('llm_enrich_only');
+		const tenants: IndexTenant[] = ['vault', 'chat'];
+		let processed = 0;
+		let skippedWrongTenant = 0;
+		const errors: Array<{ path: string; message: string }> = [];
+
+		const pendingPaths: string[] = [];
+		for (const tenant of tenants) {
+			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+			const paths = await repo.listPathsWithPendingLlm();
+			for (const path of paths) {
+				if (getIndexTenantForPath(path) !== tenant) {
+					skippedWrongTenant++;
+					continue;
+				}
+				pendingPaths.push(path);
+			}
+		}
+		const total = pendingPaths.length;
+		let done = 0;
+		const batchStartMs = Date.now();
+		const ai = AppContext.getInstance().manager;
+		const tracker = new LlmEnrichmentProgressTracker(settings, ai);
+		const loaderMgr = DocumentLoaderManager.getInstance();
+
+		const readMarkdownContentChars = async (path: string): Promise<number> => {
+			const app = AppContext.getApp();
+			const f = app.vault.getAbstractFileByPath(path);
+			if (!f || !(f instanceof TFile)) return 0;
+			const ext = f.extension.toLowerCase();
+			if (ext !== 'md' && ext !== 'markdown') return 0;
+			const content = await app.vault.cachedRead(f);
+			return content.length;
+		};
+
+		/**
+		 * After each path finishes: read indexed row from SQLite and log full summary/tags text (DevTools).
+		 * Logs can be very large for long notes.
+		 */
+		const logPendingLlmEnrichmentDocComplete = async (params: {
+			path: string;
+			docType: string | null;
+			status: 'success' | 'error';
+			wallMs: number;
+			usage: LLMUsage;
+			costUsd: number;
+			done: number;
+			total: number;
+			error?: unknown;
+		}): Promise<void> => {
+			const tenant = getIndexTenantForPath(params.path);
+			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+			const indexed = await repo.getByPath(params.path);
+			const tok = normalizeUsageTokens(params.usage);
+			console.debug('[IndexService] pending LLM enrichment doc complete', {
+				path: params.path,
+				docType: params.docType,
+				tenant,
+				status: params.status,
+				done: params.done,
+				total: params.total,
+				wallMs: params.wallMs,
+				inputTokens: tok.input,
+				outputTokens: tok.output,
+				totalTokens: tok.total,
+				costUsd: params.costUsd,
+				summary: indexed?.summary ?? null,
+				fullSummary: indexed?.full_summary ?? null,
+				tagsJson: JSON.parse(indexed?.tags ?? '{}') ?? null,
+				inferCreatedAt: indexed?.infer_created_at ?? null,
+				lastProcessedAt: indexed?.last_processed_at ?? null,
+				error:
+					params.error instanceof Error
+						? params.error.message
+						: params.error != null
+							? String(params.error)
+							: undefined,
+			});
+		};
+
+		await mapWithConcurrency(pendingPaths, LLM_PENDING_ENRICH_CONCURRENCY, async (path) => {
+			const docType = loaderMgr.getTypeForPath(path);
+			let plan = tracker.emptyPlan();
+			if (docType === 'markdown') {
+				const chars = await readMarkdownContentChars(path);
+				plan = await tracker.planForMarkdownDoc(chars);
+			}
+
+			/** Per-path ref so concurrent workers do not share telemetry state. */
+			const llmTelemetry: { snapshot: { usage: LLMUsage; costUsd: number } | null } = {
+				snapshot: null,
+			};
+			const onLlmIndexingComplete = (ev: LlmIndexingCompleteEvent) => {
+				llmTelemetry.snapshot = { usage: ev.usage, costUsd: ev.costUsd };
+			};
+
+			const t0 = Date.now();
+			try {
+				await indexSvc.indexDocument(path, settings, {
+					...baseOpts,
+					onLlmIndexingComplete,
+				});
+				processed++;
+				done++;
+				const wallMs = Date.now() - t0;
+				const snap = llmTelemetry.snapshot;
+				const actual = {
+					durationMs: wallMs,
+					usage: snap?.usage ?? emptyUsage(),
+					costUsd: snap?.costUsd ?? 0,
+				};
+				tracker.recordDocComplete(plan, actual);
+				await logPendingLlmEnrichmentDocComplete({
+					path,
+					docType,
+					status: 'success',
+					wallMs,
+					usage: actual.usage,
+					costUsd: actual.costUsd,
+					done,
+					total,
+				});
+				options?.onProgress?.(
+					tracker.snapshot({
+						path,
+						processed: done,
+						total,
+						batchStartMs,
+						lastPlan: plan,
+						lastActual: actual,
+					}),
+				);
+			} catch (e) {
+				errors.push({ path, message: (e as Error).message ?? String(e) });
+				done++;
+				const wallMs = Date.now() - t0;
+				const snap = llmTelemetry.snapshot;
+				const actual = {
+					durationMs: wallMs,
+					usage: snap?.usage ?? emptyUsage(),
+					costUsd: snap?.costUsd ?? 0,
+				};
+				tracker.recordDocComplete(plan, actual);
+				await logPendingLlmEnrichmentDocComplete({
+					path,
+					docType,
+					status: 'error',
+					wallMs,
+					usage: actual.usage,
+					costUsd: actual.costUsd,
+					done,
+					total,
+					error: e,
+				});
+				options?.onProgress?.(
+					tracker.snapshot({
+						path,
+						processed: done,
+						total,
+						batchStartMs,
+						lastPlan: plan,
+						lastActual: actual,
+					}),
+				);
+			}
+		});
+
+		return { processed, skippedWrongTenant, errors };
+	}
+
+	/**
+	 * Vector embeddings for documents marked `vector_pending`; uses persisted chunks, no core FTS re-pass.
+	 */
+	static async runPendingVectorIndexEnrichment(
+		settings: SearchSettings,
+		options?: { onProgress?: (ev: PendingEnrichmentProgress) => void },
+	): Promise<VectorIndexEnrichmentResult> {
+		if (!sqliteStoreManager.isInitialized()) {
+			return {
+				processed: 0,
+				skippedWrongTenant: 0,
+				errors: [{ path: '', message: 'SQLite not initialized' }],
+			};
+		}
+
+		const index = IndexService.getInstance();
+		const opts = defaultIndexDocumentOptions('vector_enrich_only');
+		const tenants: IndexTenant[] = ['vault', 'chat'];
+		let processed = 0;
+		let skippedWrongTenant = 0;
+		const errors: Array<{ path: string; message: string }> = [];
+
+		const pendingPaths: string[] = [];
+		for (const tenant of tenants) {
+			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+			const paths = await repo.listPathsWithPendingVector();
+			for (const path of paths) {
+				if (getIndexTenantForPath(path) !== tenant) {
+					skippedWrongTenant++;
+					continue;
+				}
+				pendingPaths.push(path);
+			}
+		}
+		const total = pendingPaths.length;
+		let done = 0;
+		for (const path of pendingPaths) {
+			try {
+				await index.indexDocument(path, settings, opts);
+				processed++;
+				done++;
+				options?.onProgress?.({ processed: done, total, path });
+			} catch (e) {
+				errors.push({ path, message: (e as Error).message ?? String(e) });
+				done++;
+				options?.onProgress?.({ processed: done, total, path });
+			}
+		}
+
+		return { processed, skippedWrongTenant, errors };
 	}
 }

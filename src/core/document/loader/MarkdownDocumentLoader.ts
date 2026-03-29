@@ -9,7 +9,8 @@ import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
 import { generateUuidWithoutHyphens, generateDocIdFromPath } from '@/core/utils/id-utils';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import { getDefaultDocumentSummary } from './helper/DocumentLoaderHelpers';
+import { emptyUsage, mergeTokenUsage } from '@/core/providers/types';
+import { getDefaultDocumentSummary, type ResourceSummaryWithLlmMeta } from './helper/DocumentLoaderHelpers';
 import { preprocessMarkdownForChunking } from '@/core/utils/markdown-utils';
 import { extractTopicAndFunctionalTags, type DocLlmTagResult } from '@/core/document/helper/TagService';
 import { computeKeywordTagBundles, extractTextRankFeatures, stripForTextRank } from '@/core/document/loader/helper/textRank';
@@ -53,7 +54,11 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 		if (!this.getSupportedExtensions().includes(file.extension.toLowerCase())) return null;
 		const includeLlmTags = readOptions?.includeLlmTags ?? true;
 		const includeLlmSummary = readOptions?.includeLlmSummary ?? true;
-		return await this.readMarkdownFile(file, { includeLlmTags, includeLlmSummary });
+		return await this.readMarkdownFile(file, {
+			includeLlmTags,
+			includeLlmSummary,
+			onLlmIndexingComplete: readOptions?.onLlmIndexingComplete,
+		});
 	}
 
 	/**
@@ -68,11 +73,17 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 
 		// If content is too small, return as single chunk
 		if (content.length <= minSize) {
-			return assembleIndexedChunks(doc, [{
-				docId: doc.id,
-				chunkType: 'body_raw',
-				content: content,
-			}]);
+			return assembleIndexedChunks(
+				doc,
+				[
+					{
+						docId: doc.id,
+						chunkType: 'body_raw',
+						content: content,
+					},
+				],
+				settings,
+			);
 		}
 
 		content = preprocessMarkdownForChunking(content, settings);
@@ -100,7 +111,7 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 			});
 		}
 
-		return assembleIndexedChunks(doc, chunks);
+		return assembleIndexedChunks(doc, chunks, settings);
 	}
 
 	/**
@@ -137,7 +148,7 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 	 */
 	private async readMarkdownFile(
 		file: TFile,
-		readOptions: { includeLlmTags: boolean; includeLlmSummary: boolean },
+		readOptions: DocumentLoaderReadOptions & { includeLlmTags: boolean; includeLlmSummary: boolean },
 	): Promise<Document | null> {
 		const tRead = Date.now();
 		try {
@@ -235,7 +246,10 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 			};
 			const failedTag: DocLlmTagResult = { ...emptyTag, llmTagRunStatus: 'failed' };
 			const skippedTag: DocLlmTagResult = { ...emptyTag, llmTagRunStatus: 'skipped' };
-			const [tagRes, summaryContent]: [DocLlmTagResult, ResourceSummary] = await Promise.all([
+			const [tagRes, summaryContent]: [
+				DocLlmTagResult,
+				ResourceSummaryWithLlmMeta | { shortSummary: string; fullSummary?: undefined },
+			] = await Promise.all([
 				runTagLlm
 					? extractTopicAndFunctionalTags(content, this.aiServiceManager!, {
 							title,
@@ -249,13 +263,37 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 					: Promise.resolve(skippedTag),
 				runSummaryLlm
 					? getDefaultDocumentSummary(summaryDocStub, this.aiServiceManager!)
-					: Promise.resolve<ResourceSummary>({ shortSummary: '', fullSummary: undefined }),
+					: Promise.resolve<ResourceSummaryWithLlmMeta>({
+							shortSummary: '',
+							fullSummary: undefined,
+							llmUsage: emptyUsage(),
+							llmCostUsd: 0,
+						}),
 			]);
 			if (runTagLlm || runSummaryLlm) {
 				console.info('[MarkdownDocumentLoader] readMarkdownFile: LLM batch done', {
 					path: file.path,
 					llmBatchMs: Date.now() - tLlm,
 					elapsedSinceReadMs: Date.now() - tRead,
+				});
+			}
+
+			if (readOptions.onLlmIndexingComplete && (runTagLlm || runSummaryLlm)) {
+				let mergedUsage = emptyUsage();
+				let mergedCostUsd = 0;
+				if (runTagLlm && tagRes.llmUsage) {
+					mergedUsage = mergeTokenUsage(mergedUsage, tagRes.llmUsage);
+					mergedCostUsd += tagRes.llmCostUsd ?? 0;
+				}
+				if (runSummaryLlm && 'llmUsage' in summaryContent) {
+					mergedUsage = mergeTokenUsage(mergedUsage, summaryContent.llmUsage);
+					mergedCostUsd += summaryContent.llmCostUsd;
+				}
+				readOptions.onLlmIndexingComplete({
+					path: file.path,
+					durationMs: Date.now() - tLlm,
+					usage: mergedUsage,
+					costUsd: mergedCostUsd,
 				});
 			}
 

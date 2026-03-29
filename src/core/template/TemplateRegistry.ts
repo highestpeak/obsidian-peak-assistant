@@ -117,7 +117,6 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'memory-extract-candidates-json': meta('prompts', 'memory-extract-candidates-json', { expectsJson: true, jsonConstraint: 'Return only the JSON array, nothing else.' }),
 	'prompt-quality-eval-json': meta('prompts', 'prompt-quality-eval-json', { expectsJson: true, jsonConstraint: 'Return only the JSON object, nothing else.' }),
 	'prompt-rewrite-with-library': meta('prompts', 'prompt-rewrite-with-library'),
-	'doc-summary': meta('prompts', 'doc-summary'),
 	'doc-summary-short': meta('prompts', 'doc-summary-short'),
 	'doc-summary-full': meta('prompts', 'doc-summary-full'),
 	'ai-analysis-session-summary': meta('prompts', 'ai-analysis-session-summary'),
@@ -177,11 +176,10 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-mermaid-fix': meta('prompts', 'ai-analysis-mermaid-fix', { systemPromptId: 'ai-analysis-mermaid-fix-system' as PromptId }),
 	'ai-analysis-save-filename': meta('prompts', 'ai-analysis-save-filename'),
 	'ai-analysis-save-folder': meta('prompts', 'ai-analysis-save-folder'),
-	'doc-type-classify-json': meta('prompts', 'doc-type-classify-json', { expectsJson: true, jsonConstraint: 'Return only the JSON object, nothing else.' }),
 	'doc-tag-generate-json': meta('prompts', 'doc-tag-generate-json', {
 		expectsJson: true,
 		jsonConstraint:
-			'Return only the JSON object with topicTagEntries, functionalTagEntries (1–5 ids from closed list, never empty), context tag arrays, and optional inferCreatedAt string, nothing else.',
+			'Return only the JSON object with topicTagEntries, functionalTagEntries (1–5 ids from closed list, never empty), context tag arrays, optional inferCreatedAt, and optional docType/docTypeConfidence/docTypeReasoning (folded into functional labels server-side), nothing else.',
 	}),
 	'hub-doc-summary-system': meta('prompts', 'hub-doc-summary-system'),
 	'hub-doc-summary': meta('prompts', 'hub-doc-summary', {

@@ -10,6 +10,7 @@ import { GraphInspectorTestTools, AISearchAgentTestTools } from '@/app/context/t
 import { cleanupGraphTable } from '@/app/context/graph-cleanup';
 import {
 	debugBatchIndex,
+	debugDocumentSnapshot,
 	debugExplainPathCoverage,
 	debugHubDiscoverSnapshot,
 	debugIndexDocument,
@@ -17,10 +18,6 @@ import {
 	debugValidateSubset,
 } from '@/app/context/index-debug-tools';
 import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
-import {
-	runPendingLlmIndexEnrichment,
-	runPendingVectorIndexEnrichment,
-} from '@/service/search/index/llmIndexEnrichment';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { AISearchAgent, AISearchAgentOptions } from '@/service/agents/AISearchAgent';
 import { getVaultPersona } from '@/service/tools/system-info';
@@ -119,9 +116,10 @@ export class AppContext {
 						this.settings.search,
 						defaultIndexDocumentOptions('manual_full'),
 					);
-				(window as any).runPendingLlmIndexEnrichment = () => runPendingLlmIndexEnrichment(this.settings.search);
+				(window as any).runPendingLlmIndexEnrichment = () =>
+					IndexService.runPendingLlmIndexEnrichment(this.settings.search);
 				(window as any).runPendingVectorIndexEnrichment = () =>
-					runPendingVectorIndexEnrichment(this.settings.search);
+					IndexService.runPendingVectorIndexEnrichment(this.settings.search);
 				const getSearch = () => this.settings.search;
 				(window as any).debugIndexDocument = (
 					docPath: string,
@@ -135,6 +133,10 @@ export class AppContext {
 				(window as any).debugHubDiscoverSnapshot = (tenant?: 'vault' | 'chat') => debugHubDiscoverSnapshot(tenant);
 				(window as any).debugValidateSubset = (opts: Parameters<typeof debugValidateSubset>[0]) => debugValidateSubset(opts);
 				(window as any).debugExplainPathCoverage = (docPath: string) => debugExplainPathCoverage(docPath);
+				(window as any).debugDocumentSnapshot = (
+					docPath: string,
+					opts?: Parameters<typeof debugDocumentSnapshot>[1],
+				) => debugDocumentSnapshot(docPath, opts);
 				(window as any).getVaultPersona = () => getVaultPersona();
 				(window as any).cleanupGraphTable = () => cleanupGraphTable();
 
@@ -151,6 +153,7 @@ export class AppContext {
 				console.debug('📖 Usage: await window.debugHubDiscoverSnapshot() — hub discovery (can be slow)');
 				console.debug('📖 Usage: await window.debugValidateSubset({ pathPrefixes: ["Projects"] })');
 				console.debug('📖 Usage: await window.debugExplainPathCoverage("path/to/note.md")');
+				console.debug('📖 Usage: await window.debugDocumentSnapshot("path/to/note.md") — DB-only index snapshot (add { includeHubCoverage: true } for slow hub coverage)');
 				console.debug('📖 Usage: await window.cleanupGraphTable() — clean mobius_node/edge orphans and doc nodes missing from index');
 				console.debug('📖 Available methods:', [
 					...Object.getOwnPropertyNames(GraphInspectorTestTools.prototype).filter(name => name !== 'constructor'),
@@ -165,6 +168,7 @@ export class AppContext {
 					'debugHubDiscoverSnapshot',
 					'debugValidateSubset',
 					'debugExplainPathCoverage',
+					'debugDocumentSnapshot',
 					'cleanupGraphTable',
 				]);
 			}
@@ -182,6 +186,7 @@ export class AppContext {
 				if ((window as any).debugHubDiscoverSnapshot) delete (window as any).debugHubDiscoverSnapshot;
 				if ((window as any).debugValidateSubset) delete (window as any).debugValidateSubset;
 				if ((window as any).debugExplainPathCoverage) delete (window as any).debugExplainPathCoverage;
+				if ((window as any).debugDocumentSnapshot) delete (window as any).debugDocumentSnapshot;
 				if ((window as any).cleanupGraphTable) delete (window as any).cleanupGraphTable;
 				console.log('🔧 Graph Inspector Test Tools disabled');
 			}

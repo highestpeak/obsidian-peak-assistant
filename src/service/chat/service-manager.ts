@@ -1,6 +1,7 @@
 import { SLICE_CAPS } from '@/core/constant';
 import { App } from 'obsidian';
-import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart, LLMRequestMessage, ModelTokenLimits, ProviderOptionsConfig, ProviderOptions } from '@/core/providers/types';
+import { ModelInfoForSwitch, LLMUsage, emptyUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart, LLMRequestMessage, ModelTokenLimits, ProviderOptionsConfig, ProviderOptions } from '@/core/providers/types';
+import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef } from './types';
@@ -631,6 +632,28 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
+	 * Same as {@link chatWithPrompt} plus usage and resolved provider/model for cost display.
+	 */
+	async chatWithPromptWithUsage<T extends PromptId>(
+		promptId: T,
+		variables: PromptVariables[T] | null,
+		provider?: string,
+		model?: string,
+		extraParts?: MessagePart[],
+	): Promise<{ text: string; usage: LLMUsage; costUsd: number; provider: string; modelId: string }> {
+		const { text, usage, provider: p, model: m } = await this.promptService.chatWithPromptWithUsage(
+			promptId,
+			variables,
+			provider,
+			model,
+			extraParts,
+		);
+		const modelInfo = await this.getModelInfo(m, p);
+		const costUsd = computeUsdFromUsage(usage, modelInfo);
+		return { text, usage, costUsd, provider: p, modelId: m };
+	}
+
+	/**
 	 * Renders a prompt template then runs AI SDK `generateObject` (non-streaming structured output).
 	 * Uses `noReasoning` on the model client so OpenRouter/Gemini does not stream long reasoning before JSON,
 	 * which previously could leave `streamObject().object` unresolved despite HTTP completing.
@@ -641,6 +664,25 @@ ${sourcesList}${topicsList}
 		schema: S,
 		opts?: { provider?: string; modelId?: string },
 	): Promise<z.infer<S>> {
+		const { object } = await this.streamObjectWithPromptWithUsage(promptId, variables, schema, opts);
+		return object;
+	}
+
+	/**
+	 * Same as {@link streamObjectWithPrompt} plus usage and USD estimate for indexing telemetry.
+	 */
+	async streamObjectWithPromptWithUsage<T extends PromptId, S extends z.ZodTypeAny>(
+		promptId: T,
+		variables: PromptVariables[T] | null,
+		schema: S,
+		opts?: { provider?: string; modelId?: string },
+	): Promise<{
+		object: z.infer<S>;
+		usage: LLMUsage;
+		costUsd: number;
+		provider: string;
+		modelId: string;
+	}> {
 		const meta = getTemplateMetadata(promptId);
 		const tm = this.templateManager;
 		const systemPrompt =
@@ -649,12 +691,19 @@ ${sourcesList}${topicsList}
 		const structuredOpts: ProviderOptionsConfig = { noReasoning: true };
 		let model: LanguageModel;
 		let providerOptions: ProviderOptions | undefined;
+		let provider: string;
+		let modelId: string;
 		if (opts?.provider && opts?.modelId) {
+			provider = opts.provider;
+			modelId = opts.modelId;
 			const ps = this.getMultiChat().getProviderService(opts.provider);
 			model = ps.modelClient(opts.modelId, structuredOpts);
 			providerOptions = ps.getProviderOptions(structuredOpts);
 		} else {
 			const m = this.getModelInstanceForPrompt(promptId, structuredOpts);
+			const resolved = this.getModelForPrompt(promptId);
+			provider = resolved.provider;
+			modelId = resolved.modelId;
 			model = m.model;
 			providerOptions = m.providerOptions;
 		}
@@ -665,7 +714,10 @@ ${sourcesList}${topicsList}
 			schema,
 			...(providerOptions ? { providerOptions } : {}),
 		});
-		return result.object as z.infer<S>;
+		const usage = (result.usage ?? emptyUsage()) as LLMUsage;
+		const modelInfo = await this.getModelInfo(modelId, provider);
+		const costUsd = computeUsdFromUsage(usage, modelInfo);
+		return { object: result.object as z.infer<S>, usage, costUsd, provider, modelId };
 	}
 
 	/**

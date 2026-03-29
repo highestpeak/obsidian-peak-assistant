@@ -1,4 +1,5 @@
 import { AppContext } from '@/app/context/AppContext';
+import { emptyUsage, mergeTokenUsage, type LLMUsage } from '@/core/providers/types';
 import type { Document, ResourceSummary } from '@/core/document/types';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
@@ -20,6 +21,12 @@ export type DocumentSummaryOptions = {
 	textrankKeywords?: string;
 	/** TextRank numbered sentences (optional; else read from `document.metadata.custom`). */
 	textrankSentences?: string;
+};
+
+/** Summary text plus merged LLM usage for index telemetry. */
+export type ResourceSummaryWithLlmMeta = ResourceSummary & {
+	llmUsage: LLMUsage;
+	llmCostUsd: number;
 };
 
 type TextrankCustom = {
@@ -74,7 +81,7 @@ export async function getDefaultDocumentSummary(
 	provider?: string,
 	modelId?: string,
 	options?: DocumentSummaryOptions,
-): Promise<ResourceSummary> {
+): Promise<ResourceSummaryWithLlmMeta> {
 	if (!aiServiceManager) {
 		throw new Error('getDefaultDocumentSummary requires AIServiceManager to generate summaries');
 	}
@@ -131,25 +138,44 @@ export async function getDefaultDocumentSummary(
 		mode === 'short_then_full_if_long' && content.length > search.fullSummaryLength;
 
 	const tSum = Date.now();
-	console.info('[MarkdownDocumentLoader] DocSummary LLM start', {
+	console.info('[MarkdownDocumentLoader] document summary LLM start', {
 		path,
 		needFull,
 		prompts: needFull ? ['DocSummaryShort', 'DocSummaryFull'] : ['DocSummaryShort'],
 	});
 
-	// When `needFull`, short and full run in parallel (full omits optional gist; see doc-summary-full template).
-	const [shortSummary, fullSummary] = await Promise.all([
-		aiServiceManager.chatWithPrompt(PromptId.DocSummaryShort, shortVars, provider, modelId),
-		needFull
-			? aiServiceManager.chatWithPrompt(PromptId.DocSummaryFull, fullVarsBase, provider, modelId)
-			: Promise.resolve(undefined),
-	]);
+	let llmUsage = emptyUsage();
+	let llmCostUsd = 0;
+	let shortSummary: string;
+	let fullSummary: string | undefined;
 
-	console.info('[MarkdownDocumentLoader] DocSummary LLM done', {
+	if (needFull) {
+		const [shortRes, fullRes] = await Promise.all([
+			aiServiceManager.chatWithPromptWithUsage(PromptId.DocSummaryShort, shortVars, provider, modelId),
+			aiServiceManager.chatWithPromptWithUsage(PromptId.DocSummaryFull, fullVarsBase, provider, modelId),
+		]);
+		shortSummary = shortRes.text;
+		fullSummary = fullRes.text;
+		llmUsage = mergeTokenUsage(shortRes.usage, fullRes.usage);
+		llmCostUsd = shortRes.costUsd + fullRes.costUsd;
+	} else {
+		const shortRes = await aiServiceManager.chatWithPromptWithUsage(
+			PromptId.DocSummaryShort,
+			shortVars,
+			provider,
+			modelId,
+		);
+		shortSummary = shortRes.text;
+		fullSummary = undefined;
+		llmUsage = shortRes.usage;
+		llmCostUsd = shortRes.costUsd;
+	}
+
+	console.info('[MarkdownDocumentLoader] document summary LLM done', {
 		path,
 		needFull,
 		elapsedMs: Date.now() - tSum,
 	});
 
-	return { shortSummary, fullSummary };
+	return { shortSummary, fullSummary, llmUsage, llmCostUsd };
 }

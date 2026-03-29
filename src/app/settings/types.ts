@@ -395,7 +395,6 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 		topK: 50,
 		presencePenalty: 0.0,
 		frequencyPenalty: 0.0,
-		maxOutputTokens: 4096,
 		reasoningEffort: 'medium',
 		textVerbosity: 'medium',
 		timeoutTotalMs: 300000, // 5 minutes

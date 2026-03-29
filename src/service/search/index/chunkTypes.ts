@@ -22,6 +22,10 @@ export type ChunkMeta = {
 	textrankIndex?: number;
 	/** Where summary text came from when indexed. */
 	summarySource?: 'llm' | 'frontmatter';
+	/** Zero-based part index when a summary was split across multiple chunks. */
+	summarySliceIndex?: number;
+	/** Total parts when a summary was split across multiple chunks. */
+	summarySliceCount?: number;
 };
 
 /** Priority order for semantic doc–doc queries (higher index = lower priority). */

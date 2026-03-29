@@ -22,6 +22,21 @@ Output separate arrays. Each label MUST be **one CamelCase token** starting with
 
 Do not copy user #tags into these arrays unless they already match the prefix pattern after normalization.
 
+## Document type (vault role)
+Express the note’s **high-level role** primarily via **functional tag choice** and optional **labels** (same closed list). You may also emit the optional top-level fields below for structured output; downstream they are **merged into a functional tag label** (no separate storage).
+
+Classify the vault role (not MIME type). Pick exactly one **docType** from:
+
+- **principle** — durable rules, standards, “how we work”, evergreen doctrine.
+- **profile** — person/org/entity dossier, biography, contact, resume-like.
+- **index** — MOC, hub, curated list, table of contents for a topic area.
+- **daily** — journal, dated log, routine capture (often day-scoped).
+- **project** — scoped work with goals, tasks, milestones, deliverables.
+- **note** — general atomic note (default when nothing else clearly fits).
+- **other** — only when none of the above apply.
+
+Include **docTypeConfidence** in `[0,1]` (how sure you are) and a short **docTypeReasoning** (one sentence, max ~500 chars). If the role is unclear, still pick the **best single** label and lower confidence rather than using **other** unless truly none apply.
+
 {{#if title}}
 Title: {{title}}
 {{/if}}
@@ -47,10 +62,11 @@ TextRank anchor sentences (extractive; use to ground topic tags):
 {{/if}}
 
 Return **only** a JSON object (no markdown fence), shape:
-{"topicTagEntries":[{"id":"...","label":"optional short nuance"}],"functionalTagEntries":[{"id":"<id from closed list>","label":"optional short nuance"}],"timeTags":["..."],"geoTags":["..."],"personTags":["..."],"inferCreatedAt":null}
+{"topicTagEntries":[{"id":"...","label":"optional short nuance"}],"functionalTagEntries":[{"id":"<id from closed list>","label":"optional short nuance"}],"timeTags":["..."],"geoTags":["..."],"personTags":["..."],"inferCreatedAt":null,"docType":"note","docTypeConfidence":0.7,"docTypeReasoning":"..."}
 
 Rules:
 - **topicTagEntries**: 3–12 objects. **id** = short stable topic phrase for search/graph (natural language or compact phrase). **label** = optional extra nuance for *this note* (how it uses the topic); omit or null if unnecessary.
 - **functionalTagEntries** (required): **1–5** objects, never `[]`. Each **id** must be exactly one id from the closed list above. **label** optional (omit or null if not needed). Do not skip this field.
 - timeTags / geoTags / personTags: each 0–8 items; must match prefix rules exactly.
 - **inferCreatedAt**: optional string only (never a number). Prefer compact form **`yyyyMMdd`** (date only) or **`yyyyMMdd HHmmss`** (24h, space between date and time). Example: `20250324 143052`. Use **null** or omit when you cannot infer reliably (do not guess from file path alone).
+- **docType** / **docTypeConfidence** / **docTypeReasoning**: optional; **docType** must be one of `principle`, `profile`, `index`, `daily`, `project`, `note`, `other`. Prefer reflecting the role in **functionalTagEntries** first; these fields are optional extras merged into a functional **label** by the plugin.

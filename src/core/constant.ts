@@ -97,6 +97,12 @@ export const MANUAL_HUB_FRONTMATTER_KEYS = {
 export const HUB_MATERIALIZE_CONCURRENCY = 4;
 
 /**
+ * Parallel document passes for deferred LLM index enrichment (`llm_pending`).
+ * Caps concurrent `indexDocument` + LLM work; raise slowly to avoid provider 429s and SQLite contention.
+ */
+export const LLM_PENDING_ENRICH_CONCURRENCY = 12;
+
+/**
  * Default hub candidate cap scales sublinearly with document count: clamp(sqrt(docs) * scale, min, max).
  * Sub-pools (document/folder/cluster fetch, top-doc exclude) scale with this total; see `computeHubDiscoverBudgets`.
  */

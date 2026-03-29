@@ -49,8 +49,6 @@ export enum PromptId {
 	PromptQualityEvalJson = 'prompt-quality-eval-json',
 	PromptRewriteWithLibrary = 'prompt-rewrite-with-library',
 
-	// Document analysis prompts (for future use)
-	DocSummary = 'doc-summary',
 	/** One-sentence short summary (preferred for indexing). */
 	DocSummaryShort = 'doc-summary-short',
 	/** Long-form summary; may use short summary + TextRank anchors. */
@@ -58,8 +56,7 @@ export enum PromptId {
 	ImageDescription = 'image-description',
 	ImageSummary = 'image-summary',
 	FolderProjectSummary = 'folder-project-summary',
-	// Classify document type: principle, profile, index, daily, project, note, or other
-	DocTypeClassifyJson = 'doc-type-classify-json',
+	/** Topic + functional + context tags and optional vault document-type classification (same JSON). */
 	DocTagGenerateJson = 'doc-tag-generate-json',
 	/** System: Hub navigation note JSON fill (maintenance). Paired with {@link HubDocSummary}. */
 	HubDocSummarySystem = 'hub-doc-summary-system',
@@ -210,13 +207,11 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
  * Shown in a dedicated "Indexing & Hub Prompts" section with a "Set All" control.
  */
 export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
-	PromptId.DocSummary,
 	PromptId.DocSummaryShort,
 	PromptId.DocSummaryFull,
 	PromptId.ImageDescription,
 	PromptId.ImageSummary,
 	PromptId.FolderProjectSummary,
-	PromptId.DocTypeClassifyJson,
 	PromptId.DocTagGenerateJson,
 	PromptId.HubDocSummary,
 	PromptId.HubDiscoverRoundReview,
@@ -328,12 +323,6 @@ export interface PromptVariables {
 		originalPrompt: string;
 		qualityIssues: string[];
 	};
-	[PromptId.DocSummary]: {
-		content: string;
-		title?: string;
-		path?: string;
-		wordCount?: string;
-	};
 	[PromptId.DocSummaryShort]: {
 		content: string;
 		title?: string;
@@ -367,11 +356,6 @@ export interface PromptVariables {
 	};
 	[PromptId.FolderProjectSummary]: {
 		documents: Array<{ title: string; summary?: string; path: string }>;
-	};
-	[PromptId.DocTypeClassifyJson]: {
-		content: string;
-		title?: string;
-		path?: string;
 	};
 	[PromptId.HubDocSummarySystem]: Record<string, never>;
 	[PromptId.HubDocSummary]: {

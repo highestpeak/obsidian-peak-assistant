@@ -64,16 +64,22 @@ export class JsonDocumentLoader implements DocumentLoader {
 						chunkIndex: i,
 					});
 				}
-				return assembleIndexedChunks(doc, chunks);
+				return assembleIndexedChunks(doc, chunks, settings);
 			}
 
 			// Otherwise, treat as single structure and split by size/overlap
 			if (content.length <= minSize) {
-				return assembleIndexedChunks(doc, [{
-					docId: doc.id,
-					chunkType: 'body_raw',
-					content: content,
-				}]);
+				return assembleIndexedChunks(
+					doc,
+					[
+						{
+							docId: doc.id,
+							chunkType: 'body_raw',
+							content: content,
+						},
+					],
+					settings,
+				);
 			}
 
 			const splitter = new RecursiveCharacterTextSplitter({
@@ -94,15 +100,21 @@ export class JsonDocumentLoader implements DocumentLoader {
 				});
 			}
 
-			return assembleIndexedChunks(doc, chunks);
+			return assembleIndexedChunks(doc, chunks, settings);
 		} catch {
 			// If JSON parsing fails, treat as plain text
 			if (content.length <= minSize) {
-				return assembleIndexedChunks(doc, [{
-					docId: doc.id,
-					chunkType: 'body_raw',
-					content: content,
-				}]);
+				return assembleIndexedChunks(
+					doc,
+					[
+						{
+							docId: doc.id,
+							chunkType: 'body_raw',
+							content: content,
+						},
+					],
+					settings,
+				);
 			}
 
 			const splitter = new RecursiveCharacterTextSplitter({
@@ -123,7 +135,7 @@ export class JsonDocumentLoader implements DocumentLoader {
 				});
 			}
 
-			return assembleIndexedChunks(doc, chunks);
+			return assembleIndexedChunks(doc, chunks, settings);
 		}
 	}
 

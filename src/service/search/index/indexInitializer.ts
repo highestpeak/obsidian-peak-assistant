@@ -4,13 +4,14 @@ import type { SearchSettings } from '@/app/settings/types';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import type { DocumentType } from '@/core/document/types';
 import { IndexProgressTracker } from '../support/progress-tracker';
-import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
 import {
-	runPendingLlmIndexEnrichment,
-	runPendingVectorIndexEnrichment,
-} from '@/service/search/index/llmIndexEnrichment';
+	defaultIndexDocumentOptions,
+	IndexService,
+	type IndexDocumentReason,
+} from '@/service/search/index/indexService';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { INDEX_CHECK_BATCH_SIZE, VAULT_DB_FILENAME } from '@/core/constant';
+import { formatLlmEnrichmentProgressLine } from '@/service/search/support/llm-progress-format';
 import { getFileSize } from '@/core/utils/obsidian-utils';
 
 /**
@@ -91,7 +92,7 @@ export class IndexInitializer {
 				} else {
 					// Auto index disabled: notify user they can enable it or use command
 					new Notice(
-						'Search index not found. Enable "Auto Index" in settings or use command "Index Search" to build it.',
+						'Search index not found. Enable "Auto Index" in settings or use command "Search: fast index documents (FTS)" to build it.',
 						6000,
 					);
 				}
@@ -116,7 +117,7 @@ export class IndexInitializer {
 					// Auto index disabled: notify user to manually trigger indexing
 					const fileCount = filesToIndex.length;
 					new Notice(
-						`Search index has ${fileCount} file${fileCount === 1 ? '' : 's'} to update. Use command "Index Search" to update. Enable "Auto Index" in settings to update automatically.`,
+						`Search index has ${fileCount} file${fileCount === 1 ? '' : 's'} to update. Use command "Search: fast index documents (FTS)" to update. Enable "Auto Index" in settings to update automatically.`,
 						8000,
 					);
 				}
@@ -232,17 +233,19 @@ export class IndexInitializer {
 
 		const pipelineUi = this.openPipelineNotice('Peak: Step 2/4 — Vector embeddings…');
 		try {
-			await runPendingVectorIndexEnrichment(this.settings, {
+			await IndexService.runPendingVectorIndexEnrichment(this.settings, {
 				onProgress: ({ processed, total, path }) => {
 					const short = path.length > 48 ? `${path.slice(0, 45)}…` : path;
 					pipelineUi.setMessage(`Peak: Step 2/4 — Vector ${processed}/${total}\n${short}`);
 				},
 			});
 			pipelineUi.setMessage('Peak: Step 3/4 — LLM tags & summaries…');
-			await runPendingLlmIndexEnrichment(this.settings, {
-				onProgress: ({ processed, total, path }) => {
-					const short = path.length > 48 ? `${path.slice(0, 45)}…` : path;
-					pipelineUi.setMessage(`Peak: Step 3/4 — LLM ${processed}/${total}\n${short}`);
+			await IndexService.runPendingLlmIndexEnrichment(this.settings, {
+				onProgress: (ev) => {
+					const short = ev.path.length > 48 ? `${ev.path.slice(0, 45)}…` : ev.path;
+					pipelineUi.setMessage(
+						`Peak: Step 3/4 — LLM ${ev.processed}/${ev.total}\n${formatLlmEnrichmentProgressLine(ev)}\n${short}`,
+					);
 				},
 			});
 			pipelineUi.setMessage('Peak: Step 4/4 — Graph maintenance…');
@@ -329,6 +332,48 @@ export class IndexInitializer {
 	}
 
 	/**
+	 * Full vault pass: core FTS + chunks only (`listener_fast`). Defers vectors and LLM via pending flags.
+	 * Does not run graph maintenance; use the palette command "Search: run global maintenance" or the full pipeline.
+	 */
+	async performFastCoreFullIndexing(_showNotification: boolean): Promise<void> {
+		if (!sqliteStoreManager.isInitialized()) {
+			new Notice('Search index is not ready. Open the vault and wait for the plugin to load.', 6000);
+			return;
+		}
+		console.log('[IndexInitializer] Starting fast core (FTS) full indexing');
+		IndexService.resetCancellation();
+		const countStartTime = performance.now();
+		const filesToIndex = await this.collectAllIndexableFilePaths();
+		console.log(
+			`[IndexInitializer] Fast core full: ${filesToIndex.length} files (counted in ${(performance.now() - countStartTime).toFixed(2)}ms)`,
+		);
+		await this.indexDocumentPaths(filesToIndex, 'Peak: Fast index (FTS)…', 'listener_fast');
+	}
+
+	/**
+	 * Incremental fast core indexing: same semantics as {@link performIncrementalIndexing} but `listener_fast` only and no automatic maintenance.
+	 */
+	async performFastCoreIncrementalIndexing(filesToIndexPaths?: string[]): Promise<void> {
+		try {
+			IndexService.resetCancellation();
+			if (!filesToIndexPaths) {
+				new Notice('Scanning for index changes...', 5000);
+				const scanResult = await this.scanForIndexChanges();
+				filesToIndexPaths = scanResult.filesToIndex;
+				new Notice(`Scanning for index changes completed. files to index: ${filesToIndexPaths.length}`, 3000);
+			}
+			const pathsToIndex = filesToIndexPaths;
+			await Promise.all([
+				this.checkAndDeleteRemovedFiles(),
+				this.indexDocumentPaths(pathsToIndex, 'Peak: Fast index (FTS)…', 'listener_fast'),
+			]);
+			console.log(`[IndexInitializer] Fast core incremental completed: ${pathsToIndex.length} files processed`);
+		} catch (e) {
+			console.error('Fast core incremental indexing failed:', e);
+		}
+	}
+
+	/**
 	 * Check for deleted files and remove them from index.
 	 * Uses batch checking to avoid loading all indexed paths at once.
 	 * 
@@ -410,39 +455,36 @@ export class IndexInitializer {
 	}
 
 	/**
-	 * Index new and modified files.
-	 * Loads and indexes documents in batches to avoid loading all files into memory at once.
-	 * This approach is memory-efficient for large vaults.
+	 * Index paths with a fixed {@link IndexDocumentReason} preset (progress UI + completion stats).
 	 */
-	private async indexNewAndModifiedFiles(filesToIndexPaths: string[]): Promise<void> {
+	private async indexDocumentPaths(
+		filesToIndexPaths: string[],
+		progressStartLabel: string,
+		reason: IndexDocumentReason,
+	): Promise<void> {
 		if (filesToIndexPaths.length === 0) {
 			return;
 		}
 
 		const progressTracker = new IndexProgressTracker(this.app, filesToIndexPaths.length);
-
-		progressTracker.showStart('Indexing');
+		progressTracker.showStart(progressStartLabel);
 
 		let indexedCount = 0;
 		let lastProgressUpdate = Date.now();
-		// Use shorter interval for incremental indexing (faster updates)
-		const INCREMENTAL_PROGRESS_UPDATE_INTERVAL = 2000; // Update every 2 seconds for incremental
+		const PROGRESS_INTERVAL_MS = 2000;
+		const opts = defaultIndexDocumentOptions(reason);
 
-		// Process files one by one: load -> index (chunking handled in IndexService)
-		console.debug(`[IndexInitializer] Indexing started: ${filesToIndexPaths.length} files to process`);
+		console.debug(`[IndexInitializer] Indexing started: ${filesToIndexPaths.length} files (${reason})`);
 		for (const path of filesToIndexPaths) {
-			// Check if indexing has been cancelled
 			if (IndexService.isCancelled() || progressTracker?.isCancelled()) {
 				console.log(`[IndexInitializer] Indexing cancelled at ${path}`);
 				break;
 			}
 
-			// Index document (chunking strategy is applied inside IndexService)
-			await IndexService.getInstance().indexDocument(path, this.settings, defaultIndexDocumentOptions('manual_full'));
-			indexedCount += 1; // Count by document, not by chunks
+			await IndexService.getInstance().indexDocument(path, this.settings, opts);
+			indexedCount += 1;
 
-			// Update progress periodically
-			if (Date.now() - lastProgressUpdate >= INCREMENTAL_PROGRESS_UPDATE_INTERVAL) {
+			if (Date.now() - lastProgressUpdate >= PROGRESS_INTERVAL_MS) {
 				progressTracker.updateProgress(indexedCount);
 				lastProgressUpdate = Date.now();
 			}
@@ -457,6 +499,13 @@ export class IndexInitializer {
 			totalIndexed: indexedCount,
 			storageSize,
 		});
+	}
+
+	/**
+	 * Index new and modified files (`manual_full`: FTS + vectors + LLM in one pass).
+	 */
+	private async indexNewAndModifiedFiles(filesToIndexPaths: string[]): Promise<void> {
+		await this.indexDocumentPaths(filesToIndexPaths, 'Indexing', 'manual_full');
 	}
 
 	/**

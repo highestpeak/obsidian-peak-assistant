@@ -10,6 +10,18 @@ import { cn } from '@/ui/react/lib/utils';
 import { DOCUMENT_TYPES } from '@/core/document/types';
 import { getKnownPerplexityModelIds } from '@/core/providers/base/perplexity';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
+import {
+	DEFAULT_HUB_DISCOVER_SETTINGS,
+	type HubDiscoverSettings,
+} from '@/service/search/index/helper/hub/types';
+
+/** Merge persisted hub-discover fields with defaults so updates satisfy {@link HubDiscoverSettings}. */
+function applyHubDiscoverPatch(
+	current: HubDiscoverSettings | undefined,
+	patch: Partial<HubDiscoverSettings>,
+): HubDiscoverSettings {
+	return { ...DEFAULT_HUB_DISCOVER_SETTINGS, ...current, ...patch };
+}
 
 interface SearchSettingsTabProps {
 	settings: MyPluginSettings;
@@ -70,7 +82,7 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 							Auto Index on Startup
 						</label>
 						<p className="pktw-text-xs pktw-text-muted-foreground">
-							Automatically index files when Obsidian opens. If disabled, you can manually trigger indexing via command palette (Command+P: "Index Search").
+							Automatically index files when Obsidian opens. If disabled, you can manually trigger indexing via command palette (Command+P: "Search: fast index documents (FTS)").
 						</p>
 					</div>
 					{/* Right side: switch */}
@@ -517,10 +529,10 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 								<Switch
 									checked={settings.search.hubDiscover?.enableLlmJudge ?? false}
 									onChange={(value) =>
-										updateSearch('hubDiscover', {
-											...(settings.search.hubDiscover ?? {}),
-											enableLlmJudge: value,
-										})
+										updateSearch(
+											'hubDiscover',
+											applyHubDiscoverPatch(settings.search.hubDiscover, { enableLlmJudge: value }),
+										)
 									}
 								/>
 							</div>
@@ -539,10 +551,10 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 								<NumberInputWithConfirm
 									value={settings.search.hubDiscover?.maxRounds ?? 3}
 									onConfirm={(value) =>
-										updateSearch('hubDiscover', {
-											...(settings.search.hubDiscover ?? {}),
-											maxRounds: value,
-										})
+										updateSearch(
+											'hubDiscover',
+											applyHubDiscoverPatch(settings.search.hubDiscover, { maxRounds: value }),
+										)
 									}
 									min={1}
 									max={10}
@@ -564,10 +576,10 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 								<NumberInputWithConfirm
 									value={settings.search.hubDiscover?.maxJudgeCalls ?? 20}
 									onConfirm={(value) =>
-										updateSearch('hubDiscover', {
-											...(settings.search.hubDiscover ?? {}),
-											maxJudgeCalls: value,
-										})
+										updateSearch(
+											'hubDiscover',
+											applyHubDiscoverPatch(settings.search.hubDiscover, { maxJudgeCalls: value }),
+										)
 									}
 									min={0}
 									max={100}
@@ -589,10 +601,10 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 								<NumberInputWithConfirm
 									value={settings.search.hubDiscover?.minCoverageGain ?? 0.04}
 									onConfirm={(value) =>
-										updateSearch('hubDiscover', {
-											...(settings.search.hubDiscover ?? {}),
-											minCoverageGain: value,
-										})
+										updateSearch(
+											'hubDiscover',
+											applyHubDiscoverPatch(settings.search.hubDiscover, { minCoverageGain: value }),
+										)
 									}
 									min={0}
 									max={1}

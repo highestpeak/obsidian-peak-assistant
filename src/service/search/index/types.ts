@@ -1,5 +1,16 @@
 import type { Document } from '@/core/document/types';
+import type { LLMUsage } from '@/core/providers/types';
 import type { ChunkMeta, ChunkType } from '@/service/search/index/chunkTypes';
+
+/**
+ * Payload when markdown index-time LLM (tags + summary) completes for one document.
+ */
+export type LlmIndexingCompleteEvent = {
+	path: string;
+	durationMs: number;
+	usage: LLMUsage;
+	costUsd: number;
+};
 
 /**
  * Why this index run was triggered (drives default {@link IndexDocumentOptions}).
@@ -32,11 +43,8 @@ export interface IndexDocumentOptions {
 	/** When false, do not bump index_state indexedDocs/builtAt (enrich-only pass). */
 	incrementIndexState: boolean;
 	reason: IndexDocumentReason;
-	/**
-	 * When set, skip loader read; must be the same vault path as the indexed `docPath` (normalized).
-	 * Avoids repeated read + duplicate LLM work when the caller already loaded the document.
-	 */
-	preloadedDocument?: Document;
+	/** Optional; forwarded to markdown loader for LLM usage telemetry (e.g. pending enrichment progress). */
+	onLlmIndexingComplete?: (ev: LlmIndexingCompleteEvent) => void;
 }
 
 /**

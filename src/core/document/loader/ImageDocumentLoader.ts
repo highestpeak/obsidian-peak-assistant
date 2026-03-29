@@ -50,11 +50,17 @@ export class ImageDocumentLoader implements DocumentLoader {
 		const minSize = settings.minDocumentSizeForChunking;
 
 		if (content.length <= minSize) {
-			return assembleIndexedChunks(doc, [{
-				docId: doc.id,
-				chunkType: 'body_raw',
-				content: content,
-			}]);
+			return assembleIndexedChunks(
+				doc,
+				[
+					{
+						docId: doc.id,
+						chunkType: 'body_raw',
+						content: content,
+					},
+				],
+				settings,
+			);
 		}
 
 		const splitter = new RecursiveCharacterTextSplitter({
@@ -75,7 +81,7 @@ export class ImageDocumentLoader implements DocumentLoader {
 			});
 		}
 
-		return assembleIndexedChunks(doc, chunks);
+		return assembleIndexedChunks(doc, chunks, settings);
 	}
 
 	async *scanDocuments(params?: { limit?: number; batchSize?: number }): AsyncGenerator<Array<{ path: string; mtime: number; type: DocumentType }>> {
