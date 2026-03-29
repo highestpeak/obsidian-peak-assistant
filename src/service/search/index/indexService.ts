@@ -115,7 +115,7 @@ export interface GetIndexStatusResponse {
 /** Batch size for Mobius aggregate keyset pagination inside {@link IndexService.runMobiusGlobalMaintenance}. */
 export const DEFAULT_MOBIUS_AGGREGATE_BATCH_SIZE = 200;
 
-/** Phases that use {@link MobiusGlobalMaintenanceProgress.batchIndex} / `idsInBatch`. */
+/** Batch-style maintenance phases; progress detail is in {@link MobiusGlobalMaintenanceProgress.progressTextSuffix}. */
 export type MobiusGlobalMaintenanceBatchPhase =
 	| 'tag_doc_count'
 	| 'document_degrees'
@@ -123,6 +123,7 @@ export type MobiusGlobalMaintenanceBatchPhase =
 	| 'pagerank_persist'
 	| 'semantic_pagerank_edges'
 	| 'semantic_pagerank_persist'
+	| 'semantic_related'
 	| 'folder_hub_stats'
 	| 'hub_discovery'
 	| 'hub_materialize'
@@ -133,15 +134,12 @@ export type MobiusGlobalMaintenancePhase = MobiusGlobalMaintenanceBatchPhase | '
 
 /**
  * Progress events for {@link IndexService.runMobiusGlobalMaintenance}.
- * Fields by phase: batch phases set `batchIndex` + `idsInBatch`; `semantic_related` sets `processed` + `total`.
+ * Human-readable detail (batch counts, doc fractions, hub steps) is in `progressTextSuffix`.
  */
 export type MobiusGlobalMaintenanceProgress = {
 	tenant: IndexTenant;
 	phase: MobiusGlobalMaintenancePhase;
-	batchIndex?: number;
-	idsInBatch?: number;
-	processed?: number;
-	total?: number;
+	progressTextSuffix?: string;
 };
 
 /** Options for {@link IndexService.runMobiusGlobalMaintenance}. */
@@ -1307,8 +1305,7 @@ class GlobalMaintenanceService {
 					onProgress({
 						tenant: p.tenant,
 						phase: 'semantic_related',
-						processed: p.processed,
-						total: p.total,
+						progressTextSuffix: `${p.processed}/${p.total} docs`,
 					})
 			});
 			semanticRebuildResults.push(r);
@@ -1351,8 +1348,7 @@ class GlobalMaintenanceService {
 				onProgress?.({
 					tenant: 'vault',
 					phase: ev.phase,
-					batchIndex: ev.batchIndex,
-					idsInBatch: ev.idsInBatch,
+					progressTextSuffix: ev.progressTextSuffix,
 				});
 			},
 		});
@@ -1377,8 +1373,7 @@ class GlobalMaintenanceService {
 				onProgress?.({
 					tenant,
 					phase: 'tag_doc_count',
-					batchIndex,
-					idsInBatch: ids.length,
+					progressTextSuffix: `batch ${batchIndex ?? 0} · ${ids.length ?? 0} items`,
 				});
 			},
 			yieldForLargePass,
@@ -1393,8 +1388,7 @@ class GlobalMaintenanceService {
 				onProgress?.({
 					tenant,
 					phase: 'document_degrees',
-					batchIndex,
-					idsInBatch: ids.length,
+					progressTextSuffix: `batch ${batchIndex ?? 0} · ${ids.length ?? 0} items`,
 				});
 			},
 			yieldForLargePass,
@@ -1446,8 +1440,7 @@ class GlobalMaintenanceService {
 						onProgress?.({
 							tenant,
 							phase: 'pagerank_edges',
-							batchIndex: edgeBatchIndex++,
-							idsInBatch: batch.length,
+							progressTextSuffix: `batch ${edgeBatchIndex ?? 0} · ${batch.length ?? 0} items`,
 						});
 					}
 					// Let the UI breathe: each batch can be large and iterations repeat many times.
@@ -1476,11 +1469,11 @@ class GlobalMaintenanceService {
 			);
 			n++;
 			if (n % persistChunk === 0) {
+				persistBatchIndex++;
 				onProgress?.({
 					tenant,
 					phase: 'pagerank_persist',
-					batchIndex: persistBatchIndex++,
-					idsInBatch: persistChunk,
+					progressTextSuffix: `batch ${persistBatchIndex} · ${persistChunk} items`,
 				});
 				await yieldForLargePass();
 			}
@@ -1488,11 +1481,11 @@ class GlobalMaintenanceService {
 		// Final partial chunk (e.g. last 37 nodes when N mod 200 !== 0).
 		const remainder = n % persistChunk;
 		if (remainder > 0) {
+			persistBatchIndex++;
 			onProgress?.({
 				tenant,
 				phase: 'pagerank_persist',
-				batchIndex: persistBatchIndex++,
-				idsInBatch: remainder,
+				progressTextSuffix: `batch ${persistBatchIndex} · ${remainder} items`,
 			});
 		}
 	}
@@ -1528,11 +1521,11 @@ class GlobalMaintenanceService {
 						visit(e.from_node_id, e.to_node_id, e.weight);
 					}
 					if (iterIndex === 0) {
+						edgeBatchIndex++;
 						onProgress?.({
 							tenant,
 							phase: 'semantic_pagerank_edges',
-							batchIndex: edgeBatchIndex++,
-							idsInBatch: batch.length,
+							progressTextSuffix: `batch ${edgeBatchIndex} · ${batch.length ?? 0} items`,
 						});
 					}
 					await yieldForLargePass();
@@ -1558,22 +1551,22 @@ class GlobalMaintenanceService {
 			);
 			n++;
 			if (n % persistChunk === 0) {
+				persistBatchIndex++;
 				onProgress?.({
 					tenant,
 					phase: 'semantic_pagerank_persist',
-					batchIndex: persistBatchIndex++,
-					idsInBatch: persistChunk,
+					progressTextSuffix: `batch ${persistBatchIndex} · ${persistChunk} items`,
 				});
 				await yieldForLargePass();
 			}
 		}
 		const remainder = n % persistChunk;
 		if (remainder > 0) {
+			persistBatchIndex++;
 			onProgress?.({
 				tenant,
 				phase: 'semantic_pagerank_persist',
-				batchIndex: persistBatchIndex++,
-				idsInBatch: remainder,
+				progressTextSuffix: `batch ${persistBatchIndex} · ${remainder} items`,
 			});
 		}
 	}
@@ -1638,11 +1631,11 @@ class GlobalMaintenanceService {
 			}
 
 			afterNodeId = page[page.length - 1]!.node_id;
+			docPageIndex++;
 			onProgress?.({
 				tenant,
 				phase: 'folder_hub_stats',
-				batchIndex: docPageIndex++,
-				idsInBatch: page.length,
+				progressTextSuffix: `batch ${docPageIndex} · ${page.length ?? 0} items`,
 			});
 			await yieldForLargePass();
 		}

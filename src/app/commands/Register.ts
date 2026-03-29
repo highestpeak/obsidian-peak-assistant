@@ -20,7 +20,7 @@ import { BuildUserProfileProgressModal } from '@/ui/view/BuildUserProfileProgres
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { HubDocService } from '@/service/search/index/helper/hub';
+import { HubDocService, type HubDiscoverRoundSummary } from '@/service/search/index/helper/hub';
 import { formatLlmEnrichmentProgressLine } from '@/service/search/support/llm-progress-format';
 
 /**
@@ -218,6 +218,46 @@ function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 			},
 		},
 		{
+			id: 'peak-hub-generate-stub-summaries',
+			name: 'Search: generate / refresh Hub summaries (top candidates)',
+			callback: async () => {
+				if (!searchSettings) {
+					new Notice('Search settings are not available. Please restart the plugin.', 5000);
+					return;
+				}
+				try {
+					const svc = new HubDocService(() => searchSettings);
+					const roundSummaries: HubDiscoverRoundSummary[] = [];
+					const { written } = await svc.generateAndIndexHubDocsForMaintenance({
+						onProgress: (ev) => {
+							if (ev.phase === 'hub_discovery' && ev.roundSummary) {
+								roundSummaries.push(ev.roundSummary);
+							}
+						},
+					});
+					const discoveryLine =
+						roundSummaries.length === 0
+							? ''
+							: roundSummaries
+									.map(
+										(s) =>
+											`R${s.roundIndex}: ${s.selectedHubCount} hubs · ${(s.coverageRatio * 100).toFixed(1)}% cov`,
+									)
+									.join(' · ');
+					new Notice(
+						`Hub: wrote or updated ${written.length} auto Hub-*.md file(s).${discoveryLine ? ` Discovery: ${discoveryLine}.` : ''} Manual hubs under Hub-Summaries/Manual/ are only re-indexed, not overwritten.`,
+						9000,
+					);
+					if (roundSummaries.length) {
+						console.log('[peak-hub-generate-stub-summaries] roundSummaries', roundSummaries);
+					}
+				} catch (e) {
+					console.error('[peak-hub-generate-stub-summaries]', e);
+					new Notice(`Hub generation failed: ${(e as Error).message}`, 8000);
+				}
+			},
+		},
+		{
 			id: 'peak-search-global-maintenance',
 			name: 'Search: run global maintenance',
 			callback: async () => {
@@ -236,39 +276,19 @@ function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 					if (phase === 'document_degrees') return 'document degrees';
 					if (phase === 'pagerank_edges') return 'PageRank · reference edges';
 					if (phase === 'pagerank_persist') return 'PageRank · writing scores';
+					if (phase === 'semantic_related') return 'semantic edges';
 					if (phase === 'semantic_pagerank_edges') return 'Semantic PageRank · edges';
 					if (phase === 'semantic_pagerank_persist') return 'Semantic PageRank · writing scores';
 					if (phase === 'folder_hub_stats') return 'folder hub stats';
+					if (phase === 'hub_discovery') return 'hub discovery';
+					if (phase === 'hub_materialize') return 'hub docs';
+					if (phase === 'hub_index') return 'hub reindex';
 					return 'Semantic PageRank · writing scores';
 				};
 				try {
 					await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
 						onProgress: (ev: MobiusGlobalMaintenanceProgress) => {
-							if (ev.phase === 'semantic_related') {
-								setProgressText(
-									`Search: ${ev.tenant} · semantic edges · ${ev.processed}/${ev.total} docs`,
-								);
-								return;
-							}
-							if (ev.phase === 'hub_discovery') {
-								setProgressText(
-									`Search: ${ev.tenant} · hub discovery · ${ev.idsInBatch} candidates`,
-								);
-								return;
-							}
-							if (ev.phase === 'hub_materialize') {
-								setProgressText(
-									`Search: ${ev.tenant} · hub docs · ${ev.batchIndex}/${ev.idsInBatch}`,
-								);
-								return;
-							}
-							if (ev.phase === 'hub_index') {
-								setProgressText(`Search: ${ev.tenant} · hub reindex · ${ev.idsInBatch} files`);
-								return;
-							}
-							setProgressText(
-								`Search: ${ev.tenant} · ${phaseLabel(ev.phase)} · batch ${ev.batchIndex ?? 0} · ${ev.idsInBatch ?? 0} items`,
-							);
+							setProgressText(`Search: ${ev.tenant} · ${phaseLabel(ev.phase)} · ${ev.progressTextSuffix}`);
 						},
 					});
 					activeNotice.hide();
@@ -297,27 +317,6 @@ function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 				} catch (e) {
 					console.error('[peak-search-staged-full-pipeline]', e);
 					new Notice(`Pipeline failed: ${(e as Error).message}`, 8000);
-				}
-			},
-		},
-		{
-			id: 'peak-hub-generate-stub-summaries',
-			name: 'Search: generate / refresh Hub summaries (top candidates)',
-			callback: async () => {
-				if (!searchSettings) {
-					new Notice('Search settings are not available. Please restart the plugin.', 5000);
-					return;
-				}
-				try {
-					const svc = new HubDocService(() => searchSettings);
-					const { written } = await svc.generateAndIndexHubDocsForMaintenance();
-					new Notice(
-						`Hub: wrote or updated ${written.length} auto Hub-*.md file(s). Manual hubs under Hub-Summaries/Manual/ are only re-indexed, not overwritten.`,
-						7000,
-					);
-				} catch (e) {
-					console.error('[peak-hub-generate-stub-summaries]', e);
-					new Notice(`Hub generation failed: ${(e as Error).message}`, 8000);
 				}
 			},
 		},

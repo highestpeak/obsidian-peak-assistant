@@ -4,6 +4,7 @@ The user message contains three sections: hub metadata (JSON), draft hub markdow
 
 Your reply must be exactly one JSON object (UTF-8) with these keys:
 
+- "title": string, optional but preferred: a concise vault-facing hub title (≤120 chars); omit only if redundant with the draft heading.
 - "shortSummary": string, 1-2 sentences, high-recall navigation anchors.
 - "fullSummary": string, 800-1500 characters, precise affirmative language; describe scope, role in the vault, and how this hub relates to linked notes. Avoid hedging ("maybe", "perhaps").
 - "coreFacts": array of 3-5 short strings (facts supported by the input only).

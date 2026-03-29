@@ -974,19 +974,24 @@ export class MobiusEdgeRepo {
 		return rows as Array<{ from_node_id: string; to_node_id: string }>;
 	}
 
-	/** Semantic-related edges touching a node (cluster hub neighbors). */
+	/** Semantic-related edges touching a node (cluster hub neighbors), strongest first. */
 	async listSemanticRelatedEdgesIncidentToNode(nodeId: string, limit: number): Promise<
-		Array<{ from_node_id: string; to_node_id: string }>
+		Array<{ from_node_id: string; to_node_id: string; weight: number }>
 	> {
 		const lim = Math.max(1, limit);
 		const rows = await this.db
 			.selectFrom('mobius_edge')
-			.select(['from_node_id', 'to_node_id'])
+			.select(['from_node_id', 'to_node_id', 'weight'])
 			.where('type', '=', GraphEdgeType.SemanticRelated)
 			.where((eb) => eb.or([eb('from_node_id', '=', nodeId), eb('to_node_id', '=', nodeId)]))
+			.orderBy('weight desc')
 			.limit(lim)
 			.execute();
-		return rows as Array<{ from_node_id: string; to_node_id: string }>;
+		return rows.map((r) => ({
+			from_node_id: r.from_node_id,
+			to_node_id: r.to_node_id,
+			weight: typeof r.weight === 'number' && Number.isFinite(r.weight) ? r.weight : 1,
+		}));
 	}
 
 	/**

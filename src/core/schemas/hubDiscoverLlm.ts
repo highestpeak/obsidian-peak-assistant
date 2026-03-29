@@ -55,6 +55,8 @@ export type HubAssemblyHintsLlm = z.infer<typeof hubAssemblyHintsLlmSchema>;
 /** Zod schema for hub-doc-summary prompt structured output (AI SDK `streamObject`). */
 export const hubDocSummaryLlmSchema = z
 	.object({
+		/** Concise display title for the hub (Obsidian heading + frontmatter). */
+		title: z.string().max(200).optional(),
 		shortSummary: z.string(),
 		fullSummary: z.string(),
 		coreFacts: z.array(z.string()).default([]),

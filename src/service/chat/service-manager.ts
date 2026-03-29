@@ -662,7 +662,7 @@ ${sourcesList}${topicsList}
 		promptId: T,
 		variables: PromptVariables[T] | null,
 		schema: S,
-		opts?: { provider?: string; modelId?: string },
+		opts?: { provider?: string; modelId?: string; noReasoning?: boolean },
 	): Promise<z.infer<S>> {
 		const { object } = await this.streamObjectWithPromptWithUsage(promptId, variables, schema, opts);
 		return object;
@@ -675,7 +675,7 @@ ${sourcesList}${topicsList}
 		promptId: T,
 		variables: PromptVariables[T] | null,
 		schema: S,
-		opts?: { provider?: string; modelId?: string },
+		opts?: { provider?: string; modelId?: string; noReasoning?: boolean },
 	): Promise<{
 		object: z.infer<S>;
 		usage: LLMUsage;
@@ -688,7 +688,8 @@ ${sourcesList}${topicsList}
 		const systemPrompt =
 			meta.systemPromptId && tm ? await tm.getTemplate(meta.systemPromptId) : undefined;
 		const promptText = await this.renderPrompt(promptId, variables);
-		const structuredOpts: ProviderOptionsConfig = { noReasoning: true };
+		/** Default true: avoids long reasoning before JSON. Set false for endpoints that require reasoning (e.g. some OpenRouter Gemini routes). */
+		const structuredOpts: ProviderOptionsConfig = { noReasoning: opts?.noReasoning !== false };
 		let model: LanguageModel;
 		let providerOptions: ProviderOptions | undefined;
 		let provider: string;

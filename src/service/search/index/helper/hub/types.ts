@@ -5,8 +5,9 @@
 /** Progress events during hub maintenance. */
 export type HubMaintenanceProgress = {
 	phase: 'hub_discovery' | 'hub_materialize' | 'hub_index';
-	batchIndex: number;
-	idsInBatch: number;
+	progressTextSuffix: string;
+	/** Set when `phase === 'hub_discovery'` and a round just finished (greedy selection snapshot). */
+	roundSummary?: HubDiscoverRoundSummary;
 };
 
 /**
@@ -68,44 +69,115 @@ export type HubAssemblyHints = {
 };
 
 /**
- * Candidate scored for generating a HubDoc (not persisted until materialized).
+ * Cross-stage transport object for hub discovery → merge → selection → HubDoc materialization.
+ * Not persisted as a row; survives until a HubDoc file is written.
+ *
+ * **Field groups**
+ * - **Identity:** who this hub centers on (`nodeId`, `path`, `label`, `role`, `stableKey`).
+ * - **Intrinsic score:** how “hub-like” the node is (`graphScore`, optional `candidateScore` breakdown, raw signals).
+ * - **Provenance:** how it was found and merged across pipelines (`sourceKind`, `sourceKinds`, `sourceEvidence`,
+ *   `sourceConsensusScore`, `rankingScore`). See {@link mergeCandidatesByPriority} in `hubDiscover.ts`.
+ * - **Assembly:** neighborhood hints for local graph + HubDoc (`clusterMemberPaths`, `childHubRoutes`, `assemblyHints`).
+ *
+ * **Scores:** `graphScore` = one blended 0..1 hub strength; `candidateScore` = optional breakdown of that blend.
+ * `rankingScore` = discovery sort key: `min(1, graphScore + sourceConsensusScore)` after merge.
  */
 export type HubCandidate = {
+
+	// Identity
+
+	/** Mobius graph node id for the hub center. */
 	nodeId: string;
+	/** Vault path of the center note (or representative path for non-document hubs). */
 	path: string;
+	/** Display title; may differ from file basename after LLM or label sources. */
 	label: string;
+	/** Semantic role for YAML / UI; inferred or overridden (e.g. manual frontmatter). */
 	role: HubRole;
-	/** 0..1 combined ranking score. */
-	graphScore: number;
-	candidateScore?: HubCandidateScore;
-	/** Stable id for filenames and deduplication (kind-specific). */
-	stableKey: string;
-	pagerank?: number;
-	/** Weighted semantic graph centrality (`mobius_node.semantic_pagerank`). */
-	semanticPagerank?: number;
-	docIncomingCnt: number;
-	docOutgoingCnt: number;
-	/** Primary source for assembly / coverage rules; highest {@link SOURCE_PRIORITY} among {@link sourceKinds} after merge. */
-	sourceKind: HubSourceKind;
-	/** Distinct discovery sources that contributed (same `stableKey` merges union here). */
-	sourceKinds: HubSourceKind[];
-	/** Per-source scores for debugging, LLM context, and future weighting (one row per contributing kind after merge). */
-	sourceEvidence: HubCandidateSourceEvidence[];
-	/** Multi-source agreement bonus (capped); added to `graphScore` for ranking in discovery. */
-	sourceConsensusScore: number;
-	/** `min(1, graphScore + sourceConsensusScore)`; set when the candidate is built or merged. */
-	rankingScore: number;
 	/**
-	 * Member doc paths: cluster hubs (semantic neighbors); manual hubs (`hub_source_paths` after filters).
-	 * Full list for discovery/assembly; UI/LLM/frontmatter truncate at render time.
+	 * Dedup key across discovery lines (`document:…`, `manual-hub:…`, folder/cluster shapes).
+	 * Used for merge and stable HubDoc naming; not always interchangeable with `nodeId`.
+	 */
+	stableKey: string;
+
+	// Scores. Intrinsic score
+
+	/**
+	 * Single blended “how hub-like is this node?” score in 0..1 (PageRank + link degrees + semantic centrality, etc.).
+	 * When several discovery rows merge into one `stableKey`, this number is taken from the primary source row only.
+	 * It does **not** include the extra “several pipelines agreed” bump — that is folded into `rankingScore` instead.
+	 */
+	graphScore: number;
+	/**
+	 * Same hub as four named components (authority / links / semantic / manual boost), each 0..1.
+	 * They explain and tune `graphScore`; omit when only the final blend was computed.
+	 */
+	candidateScore?: HubCandidateScore;
+
+	// Provenance. how it was found and merged across pipelines
+
+	/** Document graph PageRank from `mobius_node.pagerank` (raw signal; also part of `candidateScore` blend). */
+	pagerank?: number;
+	/** Semantic graph centrality (`mobius_node.semantic_pagerank`); raw signal for `candidateScore`. */
+	semanticPagerank?: number;
+	/** Obsidian link-ish incoming edge count on the document graph (organizational signal). */
+	docIncomingCnt: number;
+	/** Obsidian link-ish outgoing edge count on the document graph (organizational signal). */
+	docOutgoingCnt: number;
+	/** Primary kind after merge: max {@link SOURCE_PRIORITY} among contributing lines; drives assembly/coverage behavior. */
+	sourceKind: HubSourceKind;
+	/** All distinct discovery kinds that contributed before/after merge (union for the same `stableKey`). */
+	sourceKinds: HubSourceKind[];
+	/** One evidence row per contributing kind after merge; used for debugging and LLM context. */
+	sourceEvidence: HubCandidateSourceEvidence[];
+	/** Multi-source agreement bonus (capped); boosts `rankingScore` when several pipelines agree. */
+	sourceConsensusScore: number;
+	/** Discovery selection score: `min(1, graphScore + sourceConsensusScore)`; sort hubs by this, not raw `graphScore`. */
+	rankingScore: number;
+
+	// Assembly
+
+	/**
+	 * Member vault paths: cluster hubs (semantic neighbors); manual hubs from filtered `hub_source_paths`.
+	 * Full list for assembly; UI / LLM / frontmatter slice at render time.
 	 */
 	clusterMemberPaths?: string[];
-	/** Child hub routes when expansion hits another hub (document hubs). */
+	/** Frontier exits to other hub documents during expansion (see `localGraphAssembler` / HubDoc “Topology Routes”). */
 	childHubRoutes?: HubChildRoute[];
 	/**
-	 * Assembly hints from discovery (tag anchors, child hubs, topology). Used by local graph build and HubDoc metadata.
+	 * Deterministic or merged hints (tags, child-hub boundaries, topology) for local graph build and HubDoc JSON metadata.
 	 */
 	assemblyHints?: HubAssemblyHints;
+	/** Cluster V1.1 only: scoring / cohesion / reject reason for debugging. */
+	clusterV11Debug?: HubClusterV11Debug;
+};
+
+/**
+ * Deterministic cluster hub discovery diagnostics (multi-signal affinity + cohesion gate).
+ */
+export type HubClusterV11Debug = {
+	seedNodeId: string;
+	seedPath: string;
+	recallCount: number;
+	afterPathFilterCount: number;
+	afterAffinityFilterCount: number;
+	cohesion: {
+		avgAffinity: number;
+		topicConsistency: number;
+		keywordConsistency: number;
+		titleConsensus: number;
+		cohesionScore: number;
+	};
+	cohesionPass: boolean;
+	rejectReason?: string;
+	members: Array<{
+		nodeId: string;
+		path: string;
+		affinity: number;
+		semanticSupport: number;
+		kept: boolean;
+		reason?: string;
+	}>;
 };
 
 export type HubChildRoute = { nodeId: string; path: string; label: string };
@@ -208,8 +280,8 @@ export type HubFeatureVector = {
 };
 
 /**
- * One-time document index for hub coverage bitsets: ordinal = row index in
- * {@link MobiusNodeRepo.listDocumentNodeIdPathForCoverageIndex} order.
+ * One-time document index for hub coverage bitsets: ordinal = index in `node_id` ascending order
+ * (same as {@link MobiusNodeRepo.listDocumentNodeIdPathForCoverageIndexKeyset} full scan).
  */
 export type HubDiscoverDocCoverageIndex = {
 	docCount: number;

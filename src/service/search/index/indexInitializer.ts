@@ -45,7 +45,7 @@ export class IndexInitializer {
 			await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
 				onProgress: (ev) => {
 					if (ev.phase === 'semantic_related') {
-						setMsg(`Mobius: semantic edges · ${ev.tenant} ${ev.processed}/${ev.total}`);
+						setMsg(`Mobius: semantic edges · ${ev.tenant} · ${ev.progressTextSuffix ?? ''}`);
 						return;
 					}
 					const phaseLabel =
@@ -54,7 +54,7 @@ export class IndexInitializer {
 							: ev.phase === 'semantic_pagerank_persist'
 								? 'semantic PR persist'
 								: ev.phase;
-					setMsg(`Mobius: ${ev.tenant} · ${phaseLabel} · batch ${ev.batchIndex ?? 0}`);
+					setMsg(`Mobius: ${ev.tenant} · ${phaseLabel} · ${ev.progressTextSuffix ?? ''}`);
 				},
 			});
 			n.hide();
@@ -252,7 +252,9 @@ export class IndexInitializer {
 			await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
 				onProgress: (ev) => {
 					if (ev.phase === 'semantic_related') {
-						pipelineUi.setMessage(`Peak: Step 4/4 — ${ev.tenant} semantic edges ${ev.processed}/${ev.total}`);
+						pipelineUi.setMessage(
+							`Peak: Step 4/4 — ${ev.tenant} semantic edges · ${ev.progressTextSuffix ?? ''}`,
+						);
 						return;
 					}
 					const phaseLabel =
@@ -261,7 +263,9 @@ export class IndexInitializer {
 							: ev.phase === 'semantic_pagerank_persist'
 								? 'semantic PR persist'
 								: ev.phase;
-					pipelineUi.setMessage(`Peak: Step 4/4 — ${ev.tenant} · ${phaseLabel} · batch ${ev.batchIndex ?? 0}`);
+					pipelineUi.setMessage(
+						`Peak: Step 4/4 — ${ev.tenant} · ${phaseLabel} · ${ev.progressTextSuffix ?? ''}`,
+					);
 				},
 			});
 			pipelineUi.hide();

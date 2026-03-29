@@ -129,6 +129,14 @@ export function buildFrontmatter<T extends object>(data: T): string {
 }
 
 /**
+ * Shallow-merge keys into YAML frontmatter while preserving body content.
+ */
+export function mergeYamlFrontmatter(markdown: string, patch: Record<string, unknown>): string {
+	const fm = matter(markdown);
+	return matter.stringify(fm.content, { ...fm.data, ...patch });
+}
+
+/**
  * Options for resolving wiki link text to full vault path (e.g. via Obsidian's metadataCache).
  * When provided, link targets that are names/titles will be resolved to full paths.
  */
@@ -385,6 +393,61 @@ export async function hydrateCodeStopwordsFromTemplateManager(
 	const raw = await tm.getTemplate(IndexingTemplateId.CodeStopwords);
 	const rendered = compileTemplate(raw)({ extraStopwords: [], ...variables });
 	codeStopwordsSet = parseCodeStopwordsRendered(rendered);
+}
+
+/** Inline default; keep in sync with `templates/indexing/cluster-hub-weak-title-tokens.md` until hydrate runs. */
+const DEFAULT_CLUSTER_HUB_WEAK_TITLE_TOKENS_RAW = `index
+mess
+temp
+draft
+note
+new
+copy
+xxx
+todo
+fixme
+readme
+untitled
+the
+and
+for
+with
+from
+a
+an
+of
+in
+to
+or
+vs
+v`;
+
+let clusterHubWeakTitleTokensSet: Set<string> | null = null;
+
+/**
+ * Weak title/filename tokens for cluster hub discovery (`extractMeaningfulTitleTokens` in clusterHubSignals).
+ * Uses template {@link IndexingTemplateId.ClusterHubWeakTitleTokens} after {@link hydrateClusterHubWeakTitleTokensFromTemplateManager}.
+ */
+export function getClusterHubWeakTitleTokens(): Set<string> {
+	return clusterHubWeakTitleTokensSet ?? parseCodeStopwordsRendered(DEFAULT_CLUSTER_HUB_WEAK_TITLE_TOKENS_RAW);
+}
+
+/**
+ * Loads `IndexingTemplateId.ClusterHubWeakTitleTokens` (Handlebars) into memory. Call from plugin onload with TemplateManager.
+ */
+export async function hydrateClusterHubWeakTitleTokensFromTemplateManager(tm: TemplateManager): Promise<void> {
+	const raw = await tm.getTemplate(IndexingTemplateId.ClusterHubWeakTitleTokens);
+	const rendered = compileTemplate(raw)({});
+	clusterHubWeakTitleTokensSet = parseCodeStopwordsRendered(rendered);
+}
+
+/** Test hook: same parsing as production. */
+export function setClusterHubWeakTitleTokensForTests(rendered: string): void {
+	clusterHubWeakTitleTokensSet = parseCodeStopwordsRendered(rendered);
+}
+
+export function resetClusterHubWeakTitleTokensForTests(): void {
+	clusterHubWeakTitleTokensSet = null;
 }
 
 /** Test hook: apply already-rendered template output (same parsing as production). */

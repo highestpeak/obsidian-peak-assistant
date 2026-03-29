@@ -6,6 +6,12 @@ import { normalizePath, TAbstractFile, TFile, TFolder } from 'obsidian';
 import { AppContext } from '@/app/context/AppContext';
 import { getAIHubSummaryFolder, getAIManualHubFolder } from '@/app/settings/types';
 import {
+	HUB_CLUSTER_V11_CONSOLE_DEBUG,
+	HUB_CLUSTER_V11_MIN_AVG_AFFINITY,
+	HUB_CLUSTER_V11_MIN_COHESION_SCORE,
+	HUB_CLUSTER_V11_MIN_MEMBER_AFFINITY,
+	HUB_CLUSTER_V11_RELAXED_MEMBER_AFFINITY,
+	HUB_CLUSTER_V11_SEMANTIC_STRONG_THRESHOLD,
 	HUB_DISCOVER_CLUSTER_MIN_SIZE,
 	HUB_DISCOVER_CLUSTER_SEMANTIC_NEIGHBOR_CAP,
 	HUB_DISCOVER_FOLDER_MAX_CANDIDATES,
@@ -14,6 +20,7 @@ import {
 	HUB_DISCOVER_LIMIT_MIN,
 	HUB_DISCOVER_LIMIT_SQRT_SCALE,
 	HUB_DISCOVER_REMAINING_CANDIDATE_SCORE_WEIGHT,
+	HUB_COVERAGE_INDEX_PAGE_SIZE,
 	HUB_SOURCE_CONSENSUS_MAX,
 	HUB_SOURCE_CONSENSUS_PER_EXTRA,
 	SLICE_CAPS,
@@ -41,12 +48,21 @@ import { stableHubClusterNodeId } from '@/core/utils/id-utils';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import { normalizeVaultPath } from '@/core/utils/vault-path-utils';
 import { PromptId } from '@/service/prompt/PromptId';
+import {
+	buildClusterAnchorSetsFromBlob,
+	computeClusterCohesionFromMembers,
+	computeMemberAffinity,
+	extractMeaningfulTitleTokens,
+	pickClusterHubLabel,
+	semanticSupportFromEdgeWeight,
+} from './clusterHubSignals';
 import type {
 	HubAssemblyHints,
 	HubAssemblyTopology,
 	HubCandidate,
 	HubCandidateScore,
 	HubCandidateSourceEvidence,
+	HubClusterV11Debug,
 	HubDiscoverAgentMode,
 	HubDiscoverCoverageGap,
 	HubDiscoverDocCoverageIndex,
@@ -427,20 +443,34 @@ function pathPrefixForGap(path: string): string {
 	return `${parts[0]}/${parts[1]}`;
 }
 
-/** Builds a stable document ordinal index for bitset coverage (one query per discovery run). */
-/** Document ordinal index for hub coverage bitsets (used by discovery and external callers). */
+/**
+ * Builds a stable document ordinal index for bitset coverage via keyset pages (avoids one huge SQLite result set).
+ */
 export async function buildHubDiscoverDocCoverageIndex(tenant: IndexTenant): Promise<HubDiscoverDocCoverageIndex> {
-	const rows = await sqliteStoreManager.getMobiusNodeRepo(tenant).listDocumentNodeIdPathForCoverageIndex();
+	const repo = sqliteStoreManager.getMobiusNodeRepo(tenant);
 	const ordinalByNodeId = new Map<string, number>();
 	const nodeIdByOrdinal: string[] = [];
 	const pathByOrdinal: (string | null)[] = [];
-	for (let i = 0; i < rows.length; i++) {
-		const r = rows[i]!;
-		ordinalByNodeId.set(r.node_id, i);
-		nodeIdByOrdinal.push(r.node_id);
-		pathByOrdinal.push(r.path);
+	let afterNodeId: string | null = null;
+	let pageIdx = 0;
+	for (; ;) {
+		const rows = await repo.listDocumentNodeIdPathForCoverageIndexKeyset(afterNodeId, HUB_COVERAGE_INDEX_PAGE_SIZE);
+		if (rows.length === 0) break;
+		const base = nodeIdByOrdinal.length;
+		for (let i = 0; i < rows.length; i++) {
+			const r = rows[i]!;
+			const ord = base + i;
+			ordinalByNodeId.set(r.node_id, ord);
+			nodeIdByOrdinal.push(r.node_id);
+			pathByOrdinal.push(r.path);
+		}
+		afterNodeId = rows[rows.length - 1]!.node_id;
+		pageIdx++;
+		if (pageIdx % 4 === 0) {
+			await new Promise<void>((resolve) => setTimeout(resolve, 0));
+		}
 	}
-	return { docCount: rows.length, ordinalByNodeId, nodeIdByOrdinal, pathByOrdinal };
+	return { docCount: nodeIdByOrdinal.length, ordinalByNodeId, nodeIdByOrdinal, pathByOrdinal };
 }
 
 /**
@@ -1079,7 +1109,8 @@ export class HubCandidateDiscoveryService {
 	}
 
 	/**
-	 * Cluster hubs from semantic PageRank seeds + 1-hop semantic edges.
+	 * Cluster hubs: semantic PageRank seeds + weighted 1-hop semantic edges, then Cluster V1.1 multi-signal
+	 * member scoring and cohesion gating (tags, keywords, title tokens, path structure).
 	 * Stops when `out.length` reaches `limit` (`clusterLimit` from `computeHubDiscoverBudgets`).
 	 */
 	private async discoverClusterHubCandidates(options: {
@@ -1101,6 +1132,10 @@ export class HubCandidateDiscoveryService {
 		const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
 		const seeds = await nodeRepo.listDocumentNodesForHubClusterSeeds(seedFetchLimit);
 
+		const v11Log = (...args: unknown[]) => {
+			if (HUB_CLUSTER_V11_CONSOLE_DEBUG) console.debug('[HubClusterV11]', ...args);
+		};
+
 		const out: HubCandidate[] = [];
 		for (const s of seeds) {
 			if (out.length >= limit) break;
@@ -1110,42 +1145,209 @@ export class HubCandidateDiscoveryService {
 			if (exclude.has(s.node_id)) continue;
 
 			const neighRows = await edgeRepo.listSemanticRelatedEdgesIncidentToNode(s.node_id, 200);
-
-			const memberIds = new Set<string>([s.node_id]);
+			const weightByNeighbor = new Map<string, number>();
+			const orderedNeighborIds: string[] = [];
 			for (const e of neighRows) {
 				const other = e.from_node_id === s.node_id ? e.to_node_id : e.from_node_id;
-				memberIds.add(other);
-				if (memberIds.size >= HUB_DISCOVER_CLUSTER_SEMANTIC_NEIGHBOR_CAP) break;
+				if (other === s.node_id) continue;
+				const w = e.weight;
+				const prev = weightByNeighbor.get(other);
+				if (prev === undefined || w > prev) weightByNeighbor.set(other, w);
+				if (!orderedNeighborIds.includes(other)) orderedNeighborIds.push(other);
+				if (orderedNeighborIds.length >= HUB_DISCOVER_CLUSTER_SEMANTIC_NEIGHBOR_CAP - 1) break;
 			}
-			if (memberIds.size < HUB_DISCOVER_CLUSTER_MIN_SIZE) continue;
 
-			const idList = [...memberIds];
-			const paths = await nodeRepo.listDocumentNodeIdPathByIds(idList);
-			const pathById = new Map(paths.map((r) => [r.node_id, r.path ?? '']));
-			const memberPaths = idList
-				.map((id) => pathById.get(id))
-				.filter((x): x is string => !!x && !(hubFolder && isVaultPathUnderPrefix(x, hubFolder)));
-			if (memberPaths.length < HUB_DISCOVER_CLUSTER_MIN_SIZE) continue;
+			const idList = [s.node_id, ...orderedNeighborIds];
+			const metaRows = await nodeRepo.listHubLocalGraphNodeMeta(idList);
+			const metaById = new Map(metaRows.map((r) => [r.node_id, r]));
+			const seedMeta = metaById.get(s.node_id);
+			if (!seedMeta?.path) continue;
 
-			const sortedKey = [...memberIds].sort().join('|');
+			const seedBlob = decodeIndexedTagsBlob(seedMeta.tags_json ?? null);
+			const anchor = buildClusterAnchorSetsFromBlob(seedBlob);
+			const seedTitleTokens = extractMeaningfulTitleTokens(seedMeta.path, seedMeta.label ?? s.label);
+
+			const anchorHasNoTags =
+				anchor.topics.size === 0 && anchor.functionals.size === 0 && anchor.keywords.size === 0;
+			if (anchorHasNoTags && seedTitleTokens.length < 2) {
+				v11Log('skip weak anchor (no tags/keywords and <2 title tokens)', s.node_id);
+				continue;
+			}
+
+			type EvalRow = {
+				id: string;
+				path: string;
+				label: string;
+				blob: ReturnType<typeof decodeIndexedTagsBlob>;
+				breakdown: ReturnType<typeof computeMemberAffinity>;
+				isSeed: boolean;
+			};
+			const evals: EvalRow[] = [];
+
+			for (const id of idList) {
+				const meta = metaById.get(id);
+				if (!meta?.path) continue;
+				if (hubFolder && isVaultPathUnderPrefix(meta.path, hubFolder)) continue;
+				if (prefixes.length && !pathMatchesAnyPrefix(meta.path, prefixes)) continue;
+
+				const blob = decodeIndexedTagsBlob(meta.tags_json ?? null);
+				const isSeed = id === s.node_id;
+				const sem = isSeed ? 1 : semanticSupportFromEdgeWeight(weightByNeighbor.get(id) ?? 1);
+				const breakdown = computeMemberAffinity({
+					anchor,
+					seedPath: seedMeta.path,
+					seedTitleTokens,
+					memberBlob: blob,
+					memberPath: meta.path,
+					memberLabel: meta.label,
+					semanticSupport: sem,
+					isSeed,
+				});
+				evals.push({
+					id,
+					path: meta.path,
+					label: meta.label ?? '',
+					blob,
+					breakdown,
+					isSeed,
+				});
+			}
+
+			const afterPathFilterCount = evals.length;
+			if (afterPathFilterCount < HUB_DISCOVER_CLUSTER_MIN_SIZE) {
+				v11Log('skip path filter', s.node_id, afterPathFilterCount);
+				continue;
+			}
+
+			const memberDebug: HubClusterV11Debug['members'] = [];
+			const kept: EvalRow[] = [];
+			for (const ev of evals) {
+				if (ev.isSeed) {
+					kept.push(ev);
+					memberDebug.push({
+						nodeId: ev.id,
+						path: ev.path,
+						affinity: ev.breakdown.affinity,
+						semanticSupport: ev.breakdown.semanticSupport,
+						kept: true,
+					});
+					continue;
+				}
+				const passes =
+					ev.breakdown.affinity >= HUB_CLUSTER_V11_MIN_MEMBER_AFFINITY ||
+					(ev.breakdown.semanticSupport >= HUB_CLUSTER_V11_SEMANTIC_STRONG_THRESHOLD &&
+						ev.breakdown.affinity >= HUB_CLUSTER_V11_RELAXED_MEMBER_AFFINITY);
+				if (passes) {
+					kept.push(ev);
+					memberDebug.push({
+						nodeId: ev.id,
+						path: ev.path,
+						affinity: ev.breakdown.affinity,
+						semanticSupport: ev.breakdown.semanticSupport,
+						kept: true,
+					});
+				} else {
+					memberDebug.push({
+						nodeId: ev.id,
+						path: ev.path,
+						affinity: ev.breakdown.affinity,
+						semanticSupport: ev.breakdown.semanticSupport,
+						kept: false,
+						reason: 'below_member_affinity_threshold',
+					});
+				}
+			}
+
+			const afterAffinityFilterCount = kept.length;
+			if (kept.length < HUB_DISCOVER_CLUSTER_MIN_SIZE) {
+				v11Log('skip affinity', s.node_id, afterAffinityFilterCount);
+				continue;
+			}
+
+			const cohesion = computeClusterCohesionFromMembers({
+				anchor,
+				seedTitleTokens,
+				members: kept.map((ev) => ({
+					blob: ev.blob,
+					path: ev.path,
+					label: ev.label,
+					affinity: ev.breakdown.affinity,
+				})),
+			});
+
+			const cohesionPass =
+				cohesion.cohesionScore >= HUB_CLUSTER_V11_MIN_COHESION_SCORE &&
+				cohesion.avgAffinity >= HUB_CLUSTER_V11_MIN_AVG_AFFINITY;
+
+			let rejectReason: string | undefined;
+			if (!cohesionPass) {
+				rejectReason =
+					cohesion.cohesionScore < HUB_CLUSTER_V11_MIN_COHESION_SCORE
+						? 'cohesion_score_low'
+						: 'avg_affinity_low';
+			}
+
+			const clusterV11Debug: HubClusterV11Debug = {
+				seedNodeId: s.node_id,
+				seedPath: seedMeta.path,
+				recallCount: idList.length,
+				afterPathFilterCount,
+				afterAffinityFilterCount,
+				cohesion: {
+					avgAffinity: cohesion.avgAffinity,
+					topicConsistency: cohesion.topicConsistency,
+					keywordConsistency: cohesion.keywordConsistency,
+					titleConsensus: cohesion.titleConsensus,
+					cohesionScore: cohesion.cohesionScore,
+				},
+				cohesionPass,
+				rejectReason,
+				members: memberDebug,
+			};
+
+			if (!cohesionPass) {
+				v11Log('reject', rejectReason, clusterV11Debug);
+				continue;
+			}
+
+			const memberPaths = kept.map((k) => k.path);
+			const sortedKey = [...kept.map((k) => k.id)].sort().join('|');
 			const h = hashSHA256(sortedKey).slice(0, SLICE_CAPS.hub.clusterHashHexPrefix);
 			const nodeId = stableHubClusterNodeId(tenant, h);
 			const spr =
 				typeof s.semantic_pagerank === 'number' && Number.isFinite(s.semantic_pagerank) ? s.semantic_pagerank : 0;
 			const pr = typeof s.pagerank === 'number' && Number.isFinite(s.pagerank) ? s.pagerank : 0;
 			const inc = s.doc_incoming_cnt ?? 0;
+
+			const seedStrength = Math.min(1, spr * 1.25);
+			const cohesionBlend = cohesion.cohesionScore;
+			const sizeScore = Math.min(1, kept.length * 0.07);
+			const graphScore = Math.min(1, seedStrength * 0.28 + cohesionBlend * 0.45 + sizeScore * 0.27);
+
 			const physicalAuthorityScore = Math.min(1, pr * 2);
-			const organizationalScore = Math.min(1, memberPaths.length * 0.04);
-			const semanticCentralityScore = Math.min(1, spr * 1.3);
-			const graphScore = Math.min(
-				1,
-				physicalAuthorityScore * 0.25 + organizationalScore * 0.2 + semanticCentralityScore * 0.55,
-			);
+			const organizationalScore = Math.min(1, kept.length * 0.05);
+			const semanticCentralityScore = Math.min(1, seedStrength * 0.55 + cohesionBlend * 0.45);
+
+			const label = pickClusterHubLabel({
+				anchor,
+				seedLabel: s.label ?? seedMeta.label ?? p,
+				memberBlobs: kept.map((k) => k.blob),
+			});
+
+			const assemblyHints: HubAssemblyHints = {
+				anchorTopicTags: [...anchor.topics].slice(0, 12),
+				anchorFunctionalTagIds: [...anchor.functionals].slice(0, 8),
+				anchorKeywords: [...anchor.keywords].slice(0, 16),
+				preferredChildHubNodeIds: [],
+				stopAtChildHub: true,
+				expectedTopology: 'clustered',
+				rationale: `Cluster V1.1 cohesion=${cohesion.cohesionScore.toFixed(3)} size=${kept.length}`,
+			};
 
 			out.push({
 				nodeId,
 				path: `__hub_cluster__/${h}`,
-				label: `Cluster (${memberPaths.length}) ${s.label || p}`,
+				label,
 				role: 'cluster_center',
 				graphScore,
 				candidateScore: {
@@ -1158,9 +1360,11 @@ export class HubCandidateDiscoveryService {
 				pagerank: pr,
 				semanticPagerank: spr,
 				docIncomingCnt: inc,
-				docOutgoingCnt: memberPaths.length,
+				docOutgoingCnt: kept.length,
 				...singleSourceHubProvenance('cluster', graphScore),
 				clusterMemberPaths: memberPaths,
+				assemblyHints,
+				clusterV11Debug,
 			});
 		}
 
@@ -1203,7 +1407,7 @@ export class HubCandidateDiscoveryService {
 		const modes = hints.suggestedDiscoveryModes;
 		const has = (m: HubDiscoverAgentMode) => modes.includes(m);
 		const prefixes = hints.targetPathPrefixes;
-		
+
 		const hubFolder = getAIHubSummaryFolder();
 		const rows = await sqliteStoreManager
 			.getMobiusNodeRepo(tenant)
@@ -1349,6 +1553,7 @@ export class HubCandidateDiscoveryService {
 						PromptId.HubDiscoverRoundReview,
 						{ roundSummaryJson: JSON.stringify(summary) },
 						hubDiscoverRoundReviewLlmSchema,
+						{ noReasoning: false },
 					);
 				} catch (e) {
 					console.warn('[applyHubDiscoverRoundReview] Round review failed:', e);
@@ -1357,10 +1562,18 @@ export class HubCandidateDiscoveryService {
 			}
 
 			// break checks
-			if (finalSelected.length >= budgets.limitTotal) break;
-			if (roundIndex >= hubDiscoverSetting.maxRounds) break;
 			const contDet = selection.stopDecision.continueDiscovery && finalSelected.length < budgets.limitTotal;
 			const contLlm = hubDiscoverSetting.enableLlmJudge && review?.needAnotherRound === true;
+			console.debug('[discoverAllHubCandidates] break checks', {
+				finalSelectedLength: finalSelected.length,
+				budgetsLimitTotal: budgets.limitTotal,
+				roundIndex,
+				maxRounds: hubDiscoverSetting.maxRounds,
+				contDet,
+				contLlm,
+			});
+			if (finalSelected.length >= budgets.limitTotal) break;
+			if (roundIndex >= hubDiscoverSetting.maxRounds) break;
 			if (!contDet && !contLlm) break;
 			if (newlyAdded.length === 0 && !contLlm) break;
 
@@ -1368,6 +1581,7 @@ export class HubCandidateDiscoveryService {
 			const nextRemaining = budgets.limitTotal - finalSelected.length;
 			sw.start(`round${roundIndex}.buildNextRoundHints`);
 			hints = await buildNextRoundHints(hubDiscoverSetting, review, summary, nextRemaining, roundIndex + 1);
+			console.debug('[buildNextRoundHints] next hints', hints);
 			sw.stop();
 		}
 

@@ -43,6 +43,8 @@ export const IndexingTemplateId = {
 	CodeStopwords: 'indexing-code-stopwords',
 	/** Hub-discover deterministic next-direction hint; render with `{ gapPrefixes: string[] }`. */
 	HubDiscoverNextDirections: 'indexing-hub-discover-next-directions',
+	/** Weak title/filename tokens filtered in cluster hub title token extraction. */
+	ClusterHubWeakTitleTokens: 'indexing-cluster-hub-weak-title-tokens',
 } as const;
 
 export type IndexingTemplateId = (typeof IndexingTemplateId)[keyof typeof IndexingTemplateId];
@@ -222,6 +224,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	// --- Indexing (Handlebars; loaded at plugin boot for markdown chunking helpers) ---
 	[IndexingTemplateId.CodeStopwords]: meta('indexing', 'code-stopwords'),
 	[IndexingTemplateId.HubDiscoverNextDirections]: meta('indexing', 'hub-discover-next-directions'),
+	[IndexingTemplateId.ClusterHubWeakTitleTokens]: meta('indexing', 'cluster-hub-weak-title-tokens'),
 	[StopwordTemplateId.Common]: meta('stopwords', 'common'),
 	[StopwordTemplateId.English]: meta('stopwords', 'en'),
 	[StopwordTemplateId.Chinese]: meta('stopwords', 'zh'),

@@ -1,7 +1,8 @@
 import type { App, EventRef, TAbstractFile } from 'obsidian';
 import { TFile } from 'obsidian';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
-import type { SearchSettings } from '@/app/settings/types';
+import { getAIHubSummaryFolder, getAIManualHubFolder, type SearchSettings } from '@/app/settings/types';
+import { isVaultPathUnderPrefix } from '@/core/utils/hub-path-utils';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { defaultIndexDocumentOptions, IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
@@ -103,10 +104,27 @@ export class SearchUpdateListener {
 		}
 	}
 
+	/**
+	 * Auto hub notes under Hub-Summaries are indexed by hub maintenance with `hub_maintenance`;
+	 * skipping here avoids racing duplicate upserts (e.g. mobius_node.path UNIQUE errors).
+	 */
+	private shouldDeferListenerIndexingForAutoHubDoc(path: string): boolean {
+		try {
+			const hubRoot = getAIHubSummaryFolder();
+			const manualRoot = getAIManualHubFolder();
+			if (!isVaultPathUnderPrefix(path, hubRoot)) return false;
+			if (isVaultPathUnderPrefix(path, manualRoot)) return false;
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	private enqueueUpsert(file: TAbstractFile): void {
 		if (!(file instanceof TFile)) return;
 		// Check if we have a loader for this file type
 		if (!this.loaderManager.getLoaderForFile(file)) return;
+		if (this.shouldDeferListenerIndexingForAutoHubDoc(file.path)) return;
 		this.upsertPaths.add(file.path);
 		this.schedule();
 	}
@@ -225,6 +243,7 @@ export class SearchUpdateListener {
 	 */
 	private async indexDocuments(paths: string[]): Promise<void> {
 		for (const p of paths) {
+			if (this.shouldDeferListenerIndexingForAutoHubDoc(p)) continue;
 			await IndexService.getInstance().indexDocument(p, this.settings, defaultIndexDocumentOptions('listener_fast'));
 		}
 	}

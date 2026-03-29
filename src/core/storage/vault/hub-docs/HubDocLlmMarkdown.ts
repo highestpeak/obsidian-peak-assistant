@@ -2,15 +2,23 @@
  * HubDoc markdown helpers: strip frontmatter for LLM context and apply structured LLM fill to section bodies.
  */
 
+import matter from 'gray-matter';
+import { HUB_DOC_METADATA_SECTION_TITLE, HUB_FRONTMATTER_KEYS } from '@/core/constant';
 import type { HubDocSummaryLlm } from '@/core/schemas/hubDiscoverLlm';
 import { parseFrontmatter } from '@/core/utils/markdown-utils';
 
 /**
- * Body after YAML frontmatter for prompt size control; returns full string when no frontmatter.
+ * Body after YAML frontmatter, with `# Hub Metadata` JSON block removed for prompt size control.
  */
 export function hubDocMarkdownBodyForLlm(markdown: string): string {
 	const parsed = parseFrontmatter<Record<string, unknown>>(markdown);
-	return parsed ? parsed.body : markdown;
+	let body = parsed ? parsed.body : markdown;
+	const marker = `\n# ${HUB_DOC_METADATA_SECTION_TITLE}\n`;
+	const idx = body.lastIndexOf(marker);
+	if (idx >= 0) {
+		body = body.slice(0, idx).trimEnd();
+	}
+	return body;
 }
 
 function replaceMarkdownH2Section(markdown: string, title: string, body: string, nextTitle: string): string {
@@ -38,10 +46,22 @@ function formatBulletAnchors(phrases: string[]): string {
 }
 
 /**
- * Merge validated LLM fields into the hub skeleton (keeps frontmatter and Mermaid block unchanged).
+ * Merge validated LLM fields into the hub skeleton (updates fill status, optional title H1 + fm; keeps Mermaid, Source scope, Hub Metadata).
  */
 export function applyHubDocLlmPayloadToMarkdown(markdown: string, p: HubDocSummaryLlm): string {
-	let out = markdown;
+	const fm = matter(markdown);
+	const data = { ...fm.data, [HUB_FRONTMATTER_KEYS.fillStatus]: 'ok' } as Record<string, unknown>;
+	const title = p.title
+		?.trim()
+		.replace(/\r?\n/g, ' ')
+		.replace(/#/g, '')
+		.trim();
+	if (title) data[HUB_FRONTMATTER_KEYS.hubTitle] = title;
+	let body = fm.content as string;
+	if (title) {
+		body = body.replace(/^# [^\n]+\r?\n\r?\n(?=# Short Summary\r?\n)/m, `# ${title}\n\n`);
+	}
+	let out = matter.stringify(body, data);
 	out = replaceMarkdownH2Section(out, 'Short Summary', p.shortSummary, 'Full Summary');
 	out = replaceMarkdownH2Section(out, 'Full Summary', p.fullSummary, 'Topology Routes');
 	let coreBlock = formatNumberedFacts(p.coreFacts);

@@ -1154,17 +1154,25 @@ export class MobiusNodeRepo {
 	}
 
 	/**
-	 * Lightweight document list for hub coverage bitsets (same filter as hub discovery: document + non-null path).
-	 * Ordinals are stable row indices (ordered by `node_id`).
+	 * One keyset page of documents for hub coverage ordinals (same filter as full index: `document`, non-null `path`, `node_id` asc).
+	 * Pass `afterNodeId = null` for the first page; then `last node_id` from the previous page until this returns `[]`.
 	 */
-	async listDocumentNodeIdPathForCoverageIndex(): Promise<Array<{ node_id: string; path: string | null }>> {
-		const rows = await this.db
+	async listDocumentNodeIdPathForCoverageIndexKeyset(
+		afterNodeId: string | null,
+		limit: number,
+	): Promise<Array<{ node_id: string; path: string | null }>> {
+		const lim = Math.max(1, Math.min(50_000, limit));
+		let q = this.db
 			.selectFrom('mobius_node')
 			.select(['node_id', 'path'])
 			.where('type', '=', GraphNodeType.Document)
 			.where('path', 'is not', null)
 			.orderBy('node_id')
-			.execute();
+			.limit(lim);
+		if (afterNodeId != null && afterNodeId !== '') {
+			q = q.where('node_id', '>', afterNodeId);
+		}
+		const rows = await q.execute();
 		return rows as Array<{ node_id: string; path: string | null }>;
 	}
 

@@ -14,11 +14,16 @@ import {
 	estimateCandidateCoverageBits,
 } from '@/service/search/index/helper/hub/hubDiscover';
 import { buildLocalHubGraphForPath } from '@/service/search/index/helper/hub/localGraphAssembler';
+import {
+	materializeHubDocFromCandidate,
+	type MaterializeHubDocFromCandidateResult,
+} from '@/service/search/index/helper/hub/hubDocServices';
 import type {
 	HubCandidate,
 	HubDiscoverDocCoverageIndex,
 	HubDiscoverRoundSummary,
 } from '@/service/search/index/helper/hub/types';
+import { getAIHubSummaryFolder } from '@/app/settings/types';
 import type { SearchSettings } from '@/app/settings/types';
 
 function requireDb(): void {
@@ -41,7 +46,7 @@ const DEBUG_INDEX_MODE_TO_REASON: Record<DebugIndexDocumentMode, IndexDocumentRe
  * Runs full hub discovery and collects per-round summaries (same pipeline as maintenance hub step).
  * May trigger LLM round review when `search.hubDiscover.enableLlmJudge` is true.
  */
-async function debugRunHubDiscoverWithReport(options?: {
+export async function debugRunHubDiscoverWithReport(options?: {
 	tenant?: IndexTenant;
 	onRoundComplete?: (summary: HubDiscoverRoundSummary) => void;
 }): Promise<{
@@ -58,6 +63,45 @@ async function debugRunHubDiscoverWithReport(options?: {
 		},
 	});
 	return { candidates, roundSummaries };
+}
+
+/**
+ * Materialize one {@link HubCandidate} (same pipeline as maintenance: manual re-index, or Hub-*.md + index).
+ * Pass `hubCandidatesForHubSet` from {@link debugRunHubDiscoverWithReport} for assembly parity with full maintenance.
+ */
+export async function debugMaterializeHubCandidate(
+	candidate: HubCandidate,
+	getSearchSettings: () => SearchSettings,
+	options?: {
+		hubPath?: string;
+		hubNodeIdSet?: Set<string>;
+		/** When set, builds `hubNodeIdSet` like maintenance (document + manual hub node ids). */
+		hubCandidatesForHubSet?: HubCandidate[];
+	},
+): Promise<MaterializeHubDocFromCandidateResult> {
+	requireDb();
+	const searchSettings = getSearchSettings();
+	const hubPath = options?.hubPath ?? getAIHubSummaryFolder();
+	let hubNodeIdSet = options?.hubNodeIdSet;
+	if (!hubNodeIdSet) {
+		if (options?.hubCandidatesForHubSet?.length) {
+			hubNodeIdSet = new Set(
+				options.hubCandidatesForHubSet
+					.filter((c) => c.sourceKind === 'document' || c.sourceKind === 'manual')
+					.map((c) => c.nodeId),
+			);
+		} else {
+			hubNodeIdSet = new Set(
+				candidate.sourceKind === 'document' || candidate.sourceKind === 'manual' ? [candidate.nodeId] : [],
+			);
+		}
+	}
+	return materializeHubDocFromCandidate(candidate, {
+		hubPath,
+		hubNodeIdSet,
+		searchSettings,
+		indexService: IndexService.getInstance(),
+	});
 }
 
 /** Precomputes per-candidate coverage bitsets (same semantics as greedy selection). */
@@ -827,7 +871,7 @@ export type DebugMaintenanceResult = {
 	ok: boolean;
 	elapsedMs: number;
 	error?: string;
-	phaseEvents: Array<{ key: string; tenant: string; phase: string; batchIndex?: number; idsInBatch?: number; processed?: number; total?: number }>;
+	phaseEvents: Array<{ key: string; tenant: string; phase: string; progressTextSuffix?: string }>;
 };
 
 /**
@@ -845,10 +889,7 @@ export async function debugRunMaintenance(
 					key: `${ev.tenant}:${ev.phase}`,
 					tenant: ev.tenant,
 					phase: ev.phase,
-					batchIndex: ev.batchIndex,
-					idsInBatch: ev.idsInBatch,
-					processed: ev.processed,
-					total: ev.total,
+					progressTextSuffix: ev.progressTextSuffix,
 				});
 			},
 		});

@@ -141,6 +141,9 @@ const shared = {
 	target: "es2018",
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
+	// Inline bundled licenses can break the output: nested `*/` inside dependency license text
+	// terminates the outer `/*! Bundled license information` block early, leaving invalid JS at EOF.
+	legalComments: prod ? "none" : "inline",
 	treeShaking: true,
 	minify: prod,
 };

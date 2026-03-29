@@ -75,7 +75,17 @@ export const HUB_FRONTMATTER_KEYS = {
 	autoHub: 'peak_auto_hub',
 	/** When true, full auto-updates are disabled (user takeover). */
 	userOwned: 'peak_user_owned',
+	/** LLM fill outcome: `pending` (skeleton), `ok`, or `failed`. */
+	fillStatus: 'hub_fill_status',
+	/** Human-readable hub title (mirrors first H1 when LLM succeeds). */
+	hubTitle: 'hub_title',
 } as const;
+
+/**
+ * H1 title for the machine-readable JSON block at the end of auto-generated HubDoc bodies.
+ * Parsed by tooling; excluded from Hub LLM draft body preview.
+ */
+export const HUB_DOC_METADATA_SECTION_TITLE = 'Hub Metadata';
 
 /**
  * Optional YAML on user-authored hubs under `Hub-Summaries/Manual/`. Read-only for discovery; never auto-written.
@@ -95,6 +105,9 @@ export const MANUAL_HUB_FRONTMATTER_KEYS = {
  * Limits parallel LLM calls and SQLite pressure; increase cautiously.
  */
 export const HUB_MATERIALIZE_CONCURRENCY = 4;
+
+/** Keyset page size when building hub coverage ordinal index (avoids one huge SQLite result set). */
+export const HUB_COVERAGE_INDEX_PAGE_SIZE = 2000;
 
 /**
  * Parallel document passes for deferred LLM index enrichment (`llm_pending`).
@@ -140,6 +153,36 @@ export const HUB_DISCOVER_CLUSTER_MIN_SIZE = 3;
 
 /** Cap on 1-hop semantic neighbors collected per cluster seed. */
 export const HUB_DISCOVER_CLUSTER_SEMANTIC_NEIGHBOR_CAP = 20;
+
+/**
+ * Cluster V1.1: multi-signal member affinity + cohesion gate (deterministic hub discovery).
+ * Tune in `clusterHubSignals.ts` consumers; weights should sum to 1 for interpretability.
+ */
+export const HUB_CLUSTER_V11_MEMBER_WEIGHTS = {
+	semantic: 0.22,
+	topic: 0.26,
+	functional: 0.12,
+	keyword: 0.22,
+	titleLexical: 0.14,
+	structural: 0.04,
+} as const;
+
+/** Minimum per-member affinity to keep a neighbor (after recall). Seed is never dropped. */
+export const HUB_CLUSTER_V11_MIN_MEMBER_AFFINITY = 0.42;
+/** When semantic edge weight maps to support >= this, a slightly weaker member may pass. */
+export const HUB_CLUSTER_V11_SEMANTIC_STRONG_THRESHOLD = 0.82;
+export const HUB_CLUSTER_V11_RELAXED_MEMBER_AFFINITY = 0.34;
+
+/** Cluster-level gate: require cohesion score >= this to emit a cluster hub candidate. */
+export const HUB_CLUSTER_V11_MIN_COHESION_SCORE = 0.5;
+/** Require mean member affinity (filtered set, including seed) >= this. */
+export const HUB_CLUSTER_V11_MIN_AVG_AFFINITY = 0.45;
+
+/** Map raw semantic edge weight to 0..1 support (weights often ~0.3–1.5). */
+export const HUB_CLUSTER_V11_SEMANTIC_WEIGHT_CAP = 1.35;
+
+/** Log verbose cluster V1.1 decisions to console (dev only). */
+export const HUB_CLUSTER_V11_CONSOLE_DEBUG = false;
 
 /**
  * Bonus when the same hub `stableKey` is contributed by multiple discovery pipelines (merge).
@@ -483,8 +526,8 @@ export const SLICE_CAPS = {
 		assemblyMemberPathsSample: 32,
 		/** Wiki-style member list lines in hub markdown skeleton. */
 		markdownMemberWikiLines: 24,
-		/** `hub_cluster_members` frontmatter list length. */
-		frontmatterClusterMembers: 48,
+		/** Max `hub_cluster_members` entries in Hub body JSON (`# Hub Metadata`). */
+		hubBodyMetadataClusterMembers: 48,
 		/** Routes / cluster paths embedded in Hub LLM metadata JSON. */
 		llmMetadataRoutes: 24,
 		/** Member notes to read snippets from for Hub LLM excerpts. */

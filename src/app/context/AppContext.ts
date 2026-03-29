@@ -14,6 +14,8 @@ import {
 	debugExplainPathCoverage,
 	debugHubDiscoverSnapshot,
 	debugIndexDocument,
+	debugMaterializeHubCandidate,
+	debugRunHubDiscoverWithReport,
 	debugRunMaintenance,
 	debugValidateSubset,
 } from '@/app/context/index-debug-tools';
@@ -130,6 +132,11 @@ export class AppContext {
 					mode: 'core_fast' | 'vector_only' | 'llm_only' | 'manual_full' = 'manual_full',
 				) => debugBatchIndex(paths, getSearch, mode);
 				(window as any).debugRunMaintenance = (tenants?: ('vault' | 'chat')[]) => debugRunMaintenance(tenants);
+				(window as any).debugRunHubDiscoverWithReport = (opts?: Parameters<typeof debugRunHubDiscoverWithReport>[0]) => debugRunHubDiscoverWithReport(opts);
+				(window as any).debugMaterializeHubCandidate = (
+					candidate: Parameters<typeof debugMaterializeHubCandidate>[0],
+					opts?: Parameters<typeof debugMaterializeHubCandidate>[2],
+				) => debugMaterializeHubCandidate(candidate, getSearch, opts);
 				(window as any).debugHubDiscoverSnapshot = (tenant?: 'vault' | 'chat') => debugHubDiscoverSnapshot(tenant);
 				(window as any).debugValidateSubset = (opts: Parameters<typeof debugValidateSubset>[0]) => debugValidateSubset(opts);
 				(window as any).debugExplainPathCoverage = (docPath: string) => debugExplainPathCoverage(docPath);
@@ -150,6 +157,10 @@ export class AppContext {
 				console.debug('📖 Usage: await window.debugIndexDocument("path/to/note.md","manual_full")');
 				console.debug('📖 Usage: await window.debugBatchIndex(["a.md","b.md"],"core_fast")');
 				console.debug('📖 Usage: await window.debugRunMaintenance() — full Mobius maintenance');
+				console.debug('📖 Usage: await window.debugRunHubDiscoverWithReport() — hub discovery (can be slow)');
+				console.debug(
+					'📖 Usage: await window.debugMaterializeHubCandidate(candidate, { hubCandidatesForHubSet }) — one Hub-*.md from a candidate',
+				);
 				console.debug('📖 Usage: await window.debugHubDiscoverSnapshot() — hub discovery (can be slow)');
 				console.debug('📖 Usage: await window.debugValidateSubset({ pathPrefixes: ["Projects"] })');
 				console.debug('📖 Usage: await window.debugExplainPathCoverage("path/to/note.md")');
@@ -165,6 +176,8 @@ export class AppContext {
 					'debugIndexDocument',
 					'debugBatchIndex',
 					'debugRunMaintenance',
+					'debugRunHubDiscoverWithReport',
+					'debugMaterializeHubCandidate',
 					'debugHubDiscoverSnapshot',
 					'debugValidateSubset',
 					'debugExplainPathCoverage',
@@ -183,6 +196,8 @@ export class AppContext {
 				if ((window as any).debugIndexDocument) delete (window as any).debugIndexDocument;
 				if ((window as any).debugBatchIndex) delete (window as any).debugBatchIndex;
 				if ((window as any).debugRunMaintenance) delete (window as any).debugRunMaintenance;
+				if ((window as any).debugRunHubDiscoverWithReport) delete (window as any).debugRunHubDiscoverWithReport;
+				if ((window as any).debugMaterializeHubCandidate) delete (window as any).debugMaterializeHubCandidate;
 				if ((window as any).debugHubDiscoverSnapshot) delete (window as any).debugHubDiscoverSnapshot;
 				if ((window as any).debugValidateSubset) delete (window as any).debugValidateSubset;
 				if ((window as any).debugExplainPathCoverage) delete (window as any).debugExplainPathCoverage;

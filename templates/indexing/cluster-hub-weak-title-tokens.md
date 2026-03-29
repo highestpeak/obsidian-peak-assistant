@@ -1,0 +1,29 @@
+{{!--
+  Tokens dropped when extracting title/filename terms for cluster hub discovery (Cluster V1.1).
+  One lowercase token per line; blank lines and lines starting with # are ignored.
+--}}
+index
+mess
+temp
+draft
+note
+new
+copy
+xxx
+todo
+fixme
+readme
+untitled
+the
+and
+for
+with
+from
+a
+an
+of
+in
+to
+or
+vs
+v
