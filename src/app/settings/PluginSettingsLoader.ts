@@ -225,8 +225,10 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 	if (rawHub && typeof rawHub === 'object') {
 		settings.hubDiscover = {
 			...DEFAULT_HUB_DISCOVER_SETTINGS,
-			enableLlmJudge:
-				typeof rawHub.enableLlmJudge === 'boolean' ? rawHub.enableLlmJudge : DEFAULT_HUB_DISCOVER_SETTINGS.enableLlmJudge,
+			enableLlmSemanticMerge:
+				typeof rawHub.enableLlmSemanticMerge === 'boolean'
+					? rawHub.enableLlmSemanticMerge
+					: DEFAULT_HUB_DISCOVER_SETTINGS.enableLlmSemanticMerge,
 			maxJudgeCalls:
 				typeof rawHub.maxJudgeCalls === 'number'
 					? Math.max(0, Math.min(100, rawHub.maxJudgeCalls))

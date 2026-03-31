@@ -197,6 +197,13 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 			'Return only JSON: coverageSufficient, quality, needAnotherRound, confidence, summary, strengths, issues, nextDirections, suggestedDiscoveryModes, targetPathPrefixes, stopReason.',
 		systemPromptId: 'hub-discover-round-review-system' as PromptId,
 	}),
+	'hub-semantic-merge-system': meta('prompts', 'hub-semantic-merge-system'),
+	'hub-semantic-merge': meta('prompts', 'hub-semantic-merge', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only JSON: mergeGroups (array of objects with representativeStableKey, memberStableKeys, reason, confidence 0-1, mergeKind duplicate|alias|same_topic, optional risks array). No markdown fences.',
+		systemPromptId: 'hub-semantic-merge-system' as PromptId,
+	}),
 	'context-memory': meta('prompts', 'context-memory'),
 	'user-profile-context': meta('prompts', 'user-profile-context'),
 	'profile-from-vault-json': meta('prompts', 'profile-from-vault-json', { expectsJson: true, jsonConstraint: 'Return only the JSON array, nothing else.' }),

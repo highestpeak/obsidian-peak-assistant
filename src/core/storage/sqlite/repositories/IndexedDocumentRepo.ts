@@ -239,6 +239,7 @@ export class IndexedDocumentRepo {
 				semantic_pagerank: null,
 				semantic_pagerank_updated_at: null,
 				semantic_pagerank_version: null,
+				folder_cohesion_score: null,
 				attributes_json: attrs,
 			})
 			.execute();

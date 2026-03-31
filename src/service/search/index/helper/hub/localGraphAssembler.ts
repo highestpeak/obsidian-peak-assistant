@@ -17,7 +17,7 @@ import { basenameFromPath, folderPrefixOfPath } from '@/core/utils/file-utils';
 import { GraphEdgeType, GraphNodeType } from '@/core/po/graph.po';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
-import { singleSourceHubProvenance } from './hubDiscover';
+import { computeHubRankingScore } from './hubDiscover';
 import type {
 	HubCandidate,
 	HubChildRoute,
@@ -42,6 +42,8 @@ type NodeMeta = {
 	type: string;
 	doc_incoming_cnt: number | null;
 	doc_outgoing_cnt: number | null;
+	other_incoming_cnt: number | null;
+	other_outgoing_cnt: number | null;
 	pagerank: number | null;
 	semantic_pagerank: number | null;
 	tags_json: string | null;
@@ -101,10 +103,21 @@ export function folderCohesion(path: string, centerFolder: string): number {
 
 /**
  * Penalize broad bridge nodes so they do not dominate local hub views.
+ * Folder rows use materialized subtree boundary totals (doc_* + other_*).
  */
-export function bridgePenalty(meta: { doc_incoming_cnt: number | null; doc_outgoing_cnt: number | null }): number {
-	const inc = meta.doc_incoming_cnt ?? 0;
-	const out = meta.doc_outgoing_cnt ?? 0;
+export function bridgePenalty(meta: {
+	doc_incoming_cnt: number | null;
+	doc_outgoing_cnt: number | null;
+	other_incoming_cnt?: number | null;
+	other_outgoing_cnt?: number | null;
+	type?: string;
+}): number {
+	let inc = meta.doc_incoming_cnt ?? 0;
+	let out = meta.doc_outgoing_cnt ?? 0;
+	if (meta.type === GraphNodeType.Folder) {
+		inc += meta.other_incoming_cnt ?? 0;
+		out += meta.other_outgoing_cnt ?? 0;
+	}
 	if (inc >= LH.bridgeDegree.highThreshold && out >= LH.bridgeDegree.highThreshold) return LH.bridgeDegree.penalty;
 	return 0;
 }
@@ -152,7 +165,7 @@ export function computeLocalHubEdgeWeight(input: {
 	const ew = LH.edgeWeight;
 	const wBase = typeof input.baseWeight === 'number' && Number.isFinite(input.baseWeight) ? input.baseWeight : ew.defaultBase;
 	const edgeTypeWeight =
-		input.edgeType === GraphEdgeType.References
+		input.edgeType === GraphEdgeType.References || input.edgeType === GraphEdgeType.ReferencesResource
 			? ew.references
 			: input.edgeType === GraphEdgeType.Contains
 				? ew.contains
@@ -164,7 +177,8 @@ export function computeLocalHubEdgeWeight(input: {
 			wBase * edgeTypeWeight * (1 - input.crossBoundaryPenalty * ew.crossPenaltyScale),
 		),
 		edgeTypeWeight,
-		semanticSupport: input.edgeType === GraphEdgeType.SemanticRelated ? wBase : 0,
+		semanticSupport:
+			input.edgeType === GraphEdgeType.SemanticRelated ? wBase : 0,
 	};
 }
 
@@ -222,8 +236,8 @@ function tagAlignmentScore(anchor: AnchorSets, blob: IndexedTagsBlob): number {
 	};
 	return clampLocalGraphScore(
 		tab.topics * jacc(anchor.topics, nodeTopics) +
-			tab.functionals * jacc(anchor.functionals, nodeFuncs) +
-			tab.keywords * jacc(anchor.keywords, nodeKw),
+		tab.functionals * jacc(anchor.functionals, nodeFuncs) +
+		tab.keywords * jacc(anchor.keywords, nodeKw),
 	);
 }
 
@@ -265,6 +279,8 @@ async function loadNodeMetaBatch(tenant: IndexTenant, nodeIds: string[]): Promis
 			type: r.type,
 			doc_incoming_cnt: r.doc_incoming_cnt,
 			doc_outgoing_cnt: r.doc_outgoing_cnt,
+			other_incoming_cnt: r.other_incoming_cnt ?? null,
+			other_outgoing_cnt: r.other_outgoing_cnt ?? null,
 			pagerank: r.pagerank,
 			semantic_pagerank: r.semantic_pagerank,
 			tags_json: r.tags_json ?? null,
@@ -353,6 +369,8 @@ async function buildLocalHubGraphForCandidate(options: {
 			type: centerRowsRaw.type,
 			doc_incoming_cnt: centerRowsRaw.doc_incoming_cnt,
 			doc_outgoing_cnt: centerRowsRaw.doc_outgoing_cnt,
+			other_incoming_cnt: centerRowsRaw.other_incoming_cnt ?? null,
+			other_outgoing_cnt: centerRowsRaw.other_outgoing_cnt ?? null,
 			pagerank: centerRowsRaw.pagerank,
 			semantic_pagerank: centerRowsRaw.semantic_pagerank,
 			tags_json: centerRowsRaw.tags_json ?? null,
@@ -387,7 +405,12 @@ async function buildLocalHubGraphForCandidate(options: {
 	let depth = 0;
 	let stopReason = 'max_depth_reached';
 
-	const edgeTypes = [GraphEdgeType.References, GraphEdgeType.Contains, GraphEdgeType.SemanticRelated];
+	const edgeTypes = [
+		GraphEdgeType.References,
+		GraphEdgeType.ReferencesResource,
+		GraphEdgeType.Contains,
+		GraphEdgeType.SemanticRelated,
+	];
 
 	while (frontier.size > 0 && depth < maxDepth && visited.size < LH.maxNodes) {
 		const frontierIds = [...frontier];
@@ -621,7 +644,11 @@ export async function buildLocalHubGraphForPath(options: {
 		stableKey: `path:${options.centerPath}`,
 		docIncomingCnt: 0,
 		docOutgoingCnt: 0,
-		...singleSourceHubProvenance('document', 1),
+		sourceKind: 'document',
+		sourceKinds: ['document'],
+		sourceEvidence: [{ kind: 'document', graphScore: 1 }],
+		sourceConsensusScore: 0,
+		rankingScore: computeHubRankingScore(1, 0),
 	};
 	return buildLocalHubGraphForCandidate({
 		tenant: options.tenant,

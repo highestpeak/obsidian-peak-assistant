@@ -1,7 +1,7 @@
 import type { ConsolidatedTaskWithId } from '@/core/schemas/agents/search-agent-schemas';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { AgentTemplateId } from '@/core/template/TemplateRegistry';
-import { GRAPH_TAGGED_EDGE_TYPES, GraphEdgeType } from '@/core/po/graph.po';
+import { GRAPH_TAGGED_EDGE_TYPES, GRAPH_WIKI_REFERENCE_EDGE_TYPES, GraphEdgeType } from '@/core/po/graph.po';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { tokenizePathOrLabel, filterTokensForGraph } from '@/service/search/support/segmenter';
 
@@ -313,7 +313,7 @@ async function buildFolderLines(paths: string[]): Promise<Array<{
 		const [topRecentRaw, topWordCountRaw, edgeCounts, tagCountsRaw] = await Promise.all([
 			mobiusNodeRepo.getTopRecentEditedByDocIds(folderDocIds, FOLDER_STATS_EACH),
 			mobiusNodeRepo.getTopWordCountByDocIds(folderDocIds, FOLDER_STATS_EACH),
-			mobiusEdgeRepo.countEdges(folderDocIds, GraphEdgeType.References),
+			mobiusEdgeRepo.countEdges(folderDocIds, GRAPH_WIKI_REFERENCE_EDGE_TYPES),
 			chunkedTagCountsByFromNodes(mobiusEdgeRepo, folderDocIds, FOLDER_TOP_TAGS),
 		]);
 
@@ -678,7 +678,7 @@ async function loadMermaidGraphData(
 	if (internalIds.length === 0) return null;
 
 	// get top reference nodes by degree within internal set
-	const { inMap: internalInDegreeMap, outMap: internalOutDegreeMap } = await mobiusEdgeRepo.getDegreeMapsByNodeIdsChunked(internalIds, GraphEdgeType.References);
+	const { inMap: internalInDegreeMap, outMap: internalOutDegreeMap } = await mobiusEdgeRepo.getDegreeMapsByNodeIdsChunked(internalIds, GRAPH_WIKI_REFERENCE_EDGE_TYPES);
 	const allNodeIds = new Set([...internalInDegreeMap.keys(), ...internalOutDegreeMap.keys()]);
 	const totalByNode = new Map<string, number>();
 	for (const nid of allNodeIds) {
@@ -694,9 +694,9 @@ async function loadMermaidGraphData(
 	const topSet = new Set(topByDegree);
 	const internalSet = new Set(internalIds);
 	const [fromEdges, toEdges, { extOut, extIn }] = await Promise.all([
-		mobiusEdgeRepo.getByFromNodesAndTypes(topByDegree, [GraphEdgeType.References]),
-		mobiusEdgeRepo.getByToNodesAndTypes(topByDegree, [GraphEdgeType.References]),
-		mobiusEdgeRepo.getExternalEdgeCountsChunked(internalIds, GraphEdgeType.References, GRAPH_EXTERNAL_NODES_TOP_K),
+		mobiusEdgeRepo.getByFromNodesAndTypes(topByDegree, [...GRAPH_WIKI_REFERENCE_EDGE_TYPES]),
+		mobiusEdgeRepo.getByToNodesAndTypes(topByDegree, [...GRAPH_WIKI_REFERENCE_EDGE_TYPES]),
+		mobiusEdgeRepo.getExternalEdgeCountsChunked(internalIds, GRAPH_WIKI_REFERENCE_EDGE_TYPES, GRAPH_EXTERNAL_NODES_TOP_K),
 	]);
 	const connectorScore = new Map<string, number>();
 	for (const e of fromEdges) {
@@ -714,7 +714,7 @@ async function loadMermaidGraphData(
 		.slice(0, CONNECTOR_MAX)
 		.map(([id]) => id);
 	const internalNodeIds_TopReference = [...topByDegree, ...connectors];
-	const intraEdges = await mobiusEdgeRepo.getIntraEdges(internalNodeIds_TopReference, GraphEdgeType.References);
+	const intraEdges = await mobiusEdgeRepo.getIntraEdges(internalNodeIds_TopReference, GRAPH_WIKI_REFERENCE_EDGE_TYPES);
 
 	const allExtNodeIds = [...new Set([
 		...extOut.map((r) => r.to_node_id),
@@ -728,7 +728,7 @@ async function loadMermaidGraphData(
 
 	// Load in/out degree for external nodes so ext out/in/mutual labels show real counts (not 0)
 	if (allExtNodeIds.length > 0) {
-		const { inMap: extInMap, outMap: extOutMap } = await mobiusEdgeRepo.getDegreeMapsByNodeIdsChunked(allExtNodeIds, GraphEdgeType.References);
+		const { inMap: extInMap, outMap: extOutMap } = await mobiusEdgeRepo.getDegreeMapsByNodeIdsChunked(allExtNodeIds, GRAPH_WIKI_REFERENCE_EDGE_TYPES);
 		for (const [id, d] of extInMap) internalInDegreeMap.set(id, d);
 		for (const [id, d] of extOutMap) internalOutDegreeMap.set(id, d);
 	}

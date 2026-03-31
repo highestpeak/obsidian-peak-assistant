@@ -58,6 +58,16 @@ export function fractionOfBitsNewSince(candidate: Uint32Array, covered: Uint32Ar
 	return newCount / Math.max(1, candidateCount);
 }
 
+/** Count of bits set in `candidate` but not yet in `covered` (unique new documents). */
+export function countBitsNewSince(candidate: Uint32Array, covered: Uint32Array): number {
+	let newCount = 0;
+	const n = Math.min(candidate.length, covered.length);
+	for (let i = 0; i < n; i++) {
+		newCount += popcountUint32((candidate[i] ?? 0) & ~(covered[i] ?? 0));
+	}
+	return newCount;
+}
+
 /**
  * Intersection size over min(set size a, set size b), as bit counts; 0 if disjoint.
  */

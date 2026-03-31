@@ -14,5 +14,11 @@ export {
 } from './localGraphAssembler';
 export {
 	HubCandidateDiscoveryService,
+	applySemanticMergePlanToFinalSelected,
+	buildSemanticMergeHubCardsPayload,
+	computeDocumentHubRepresentativeCandidateLimit,
 	estimateCandidateCoverageBits,
+	mergeHubAssemblyHintsGroup,
+	mergeSemanticHubGroup,
+	thinDocumentHubCandidatesRepresentative,
 } from './hubDiscover';

@@ -11,6 +11,7 @@ import { defaultIndexDocumentOptions, IndexService, getIndexTenantForPath } from
 import {
 	HubCandidateDiscoveryService,
 	buildHubDiscoverDocCoverageIndex,
+	computeHubDiscoverBudgets,
 	estimateCandidateCoverageBits,
 } from '@/service/search/index/helper/hub/hubDiscover';
 import { buildLocalHubGraphForPath } from '@/service/search/index/helper/hub/localGraphAssembler';
@@ -20,6 +21,7 @@ import {
 } from '@/service/search/index/helper/hub/hubDocServices';
 import type {
 	HubCandidate,
+	HubClusterDiscoveryStats,
 	HubDiscoverDocCoverageIndex,
 	HubDiscoverRoundSummary,
 } from '@/service/search/index/helper/hub/types';
@@ -43,8 +45,7 @@ const DEBUG_INDEX_MODE_TO_REASON: Record<DebugIndexDocumentMode, IndexDocumentRe
 };
 
 /**
- * Runs full hub discovery and collects per-round summaries (same pipeline as maintenance hub step).
- * May trigger LLM round review when `search.hubDiscover.enableLlmJudge` is true.
+ * Runs full hub discovery and collects the discovery summary (same pipeline as maintenance hub step).
  */
 export async function debugRunHubDiscoverWithReport(options?: {
 	tenant?: IndexTenant;
@@ -914,6 +915,135 @@ export type DebugHubDiscoverSnapshotResult = {
 		coverageRatio: number;
 	};
 };
+
+/** Result of running one first-round hub discovery leg in isolation (manual / document / folder). */
+export type DebugHubDiscoverSingleLegResult = {
+	tenant: IndexTenant;
+	leg: 'manual' | 'document' | 'folder';
+	docCount: number;
+	budgets: ReturnType<typeof computeHubDiscoverBudgets>;
+	candidateCount: number;
+	elapsedMs: number;
+	candidates: HubCandidate[];
+};
+
+async function runHubDiscoverSingleLeg(options: {
+	tenant: IndexTenant;
+	leg: DebugHubDiscoverSingleLegResult['leg'];
+}): Promise<DebugHubDiscoverSingleLegResult> {
+	const { tenant, leg } = options;
+	requireDb();
+	const docCoverageIndex = await buildHubDiscoverDocCoverageIndex(tenant);
+	const docCount = docCoverageIndex.docCount;
+	const budgets = computeHubDiscoverBudgets(docCount);
+	const discovery = new HubCandidateDiscoveryService();
+	const t0 = Date.now();
+	let candidates: HubCandidate[];
+	if (leg === 'manual') {
+		candidates = await discovery.discoverManualHubCandidates({ tenant });
+	} else if (leg === 'document') {
+		candidates = await discovery.discoverDocumentHubCandidates({
+			tenant,
+			limit: budgets.documentFetchLimit,
+			docCoverageIndex,
+			limitTotal: budgets.limitTotal,
+		});
+	} else {
+		candidates = await discovery.discoverFolderHubCandidates({
+			tenant,
+			limit: budgets.folderFetchLimit,
+		});
+	}
+	const res: DebugHubDiscoverSingleLegResult = {
+		tenant,
+		leg,
+		docCount,
+		budgets,
+		candidateCount: candidates.length,
+		elapsedMs: Date.now() - t0,
+		candidates,
+	};
+	console.info('[index-debug] debugHubDiscoverSingleLeg', {
+		tenant: res.tenant,
+		leg: res.leg,
+		docCount: res.docCount,
+		budgets: res.budgets,
+		candidateCount: res.candidateCount,
+		elapsedMs: res.elapsedMs,
+	});
+	return res;
+}
+
+/** First-round manual hub candidates only (paths under manual hub folder, indexed rows). */
+export async function debugHubDiscoverManualOnly(tenant: IndexTenant = 'vault'): Promise<DebugHubDiscoverSingleLegResult> {
+	return runHubDiscoverSingleLeg({ tenant, leg: 'manual' });
+}
+
+/** First-round document hub candidates only (SQL top documents by hub graph score). */
+export async function debugHubDiscoverDocumentOnly(tenant: IndexTenant = 'vault'): Promise<DebugHubDiscoverSingleLegResult> {
+	return runHubDiscoverSingleLeg({ tenant, leg: 'document' });
+}
+
+/** First-round folder hub candidates only (SQL top folder anchors). */
+export async function debugHubDiscoverFolderOnly(tenant: IndexTenant = 'vault'): Promise<DebugHubDiscoverSingleLegResult> {
+	return runHubDiscoverSingleLeg({ tenant, leg: 'folder' });
+}
+
+/** Result of running the first-round cluster hub discovery leg in isolation (includes per-stage stats). */
+export type DebugHubDiscoverClusterOnlyResult = {
+	tenant: IndexTenant;
+	docCount: number;
+	budgets: ReturnType<typeof computeHubDiscoverBudgets>;
+	candidateCount: number;
+	elapsedMs: number;
+	candidates: HubCandidate[];
+	clusterDiscovery: HubClusterDiscoveryStats;
+};
+
+/** First-round cluster hub candidates only (matches first-round exclude set from top document slice). */
+export async function debugHubDiscoverClusterOnly(
+	tenant: IndexTenant = 'vault',
+): Promise<DebugHubDiscoverClusterOnlyResult> {
+	requireDb();
+	const docCoverageIndex = await buildHubDiscoverDocCoverageIndex(tenant);
+	const docCount = docCoverageIndex.docCount;
+	const budgets = computeHubDiscoverBudgets(docCount);
+	const discovery = new HubCandidateDiscoveryService();
+	const t0 = Date.now();
+	const docs = await discovery.discoverDocumentHubCandidates({
+		tenant,
+		limit: budgets.documentFetchLimit,
+		docCoverageIndex,
+		limitTotal: budgets.limitTotal,
+	});
+	const topDocIds = new Set(
+		docs.slice(0, budgets.topDocExcludeLimit).map((d) => d.nodeId),
+	);
+	const { candidates, stats } = await discovery.discoverClusterHubCandidates({
+		tenant,
+		limit: budgets.clusterLimit,
+		seedFetchLimit: budgets.clusterSeedFetchLimit,
+		excludeNodeIds: topDocIds,
+	});
+	const res: DebugHubDiscoverClusterOnlyResult = {
+		tenant,
+		docCount,
+		budgets,
+		candidateCount: candidates.length,
+		elapsedMs: Date.now() - t0,
+		candidates,
+		clusterDiscovery: stats,
+	};
+	console.info('[index-debug] debugHubDiscoverClusterOnly', {
+		tenant: res.tenant,
+		docCount: res.docCount,
+		budgets: res.budgets,
+		candidateCount: res.candidateCount,
+		elapsedMs: res.elapsedMs,
+		clusterDiscovery: res.clusterDiscovery,
+	});
+	return res;
+}
 
 /**
  * Full hub discovery + optional union coverage stats. Can be expensive; same cost as maintenance hub-discovery step.

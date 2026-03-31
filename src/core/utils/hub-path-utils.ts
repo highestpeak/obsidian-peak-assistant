@@ -46,3 +46,13 @@ export function pathMatchesAnyPrefix(path: string, prefixes: string[]): boolean 
 	}
 	return false;
 }
+
+/**
+ * True when two vault folder paths are in a strict parent/child relationship (redundant as separate folder hubs).
+ */
+export function vaultFolderPathsNest(a: string, b: string): boolean {
+	const x = normalizeVaultPath(a);
+	const y = normalizeVaultPath(b);
+	if (!x || !y || x === y) return false;
+	return x.startsWith(`${y}/`) || y.startsWith(`${x}/`);
+}

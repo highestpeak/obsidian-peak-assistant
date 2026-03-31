@@ -77,7 +77,7 @@ export async function getInspectorLinks(
 	const edges = await mobiusEdgeRepo.getAllEdgesForNode(docMeta.id, LINKS_LIMIT);
 	const longRangeByNeighborId = new Map<string, boolean>();
 	for (const e of edges) {
-		if (e.type !== GraphEdgeType.References) {
+		if (e.type !== GraphEdgeType.References && e.type !== GraphEdgeType.ReferencesResource) {
 			continue;
 		}
 		let attrs: { longRange?: boolean } = {};

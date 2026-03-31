@@ -34,6 +34,9 @@ import {
 	PAGERANK_EDGE_BATCH_SIZE,
 	SEMANTIC_PAGERANK_ALGORITHM_VERSION,
 	FOLDER_HUB_STATS_DOC_PAGE_SIZE,
+	FOLDER_HUB_BOUNDARY_EDGE_BATCH_SIZE,
+	FOLDER_COHESION_MAX_DOCS,
+	FOLDER_COHESION_INTRA_EDGE_LIMIT,
 } from '@/core/constant';
 import {
 	accumulateSemanticOutgoingWeightSums,
@@ -80,7 +83,14 @@ import {
 	upsertDocumentTagEdges,
 } from '@/service/search/index/helper/mobiusTagEdges';
 import { isVaultPathUnderPrefix } from '@/core/utils/hub-path-utils';
-import { HubDocService } from '@/service/search/index/helper/hub';
+import {
+	countsAsDocOutgoingTarget,
+	graphNodeTypeForPlaceholderReferenceTarget,
+} from '@/core/document/helper/DocumentReferencePolicy';
+import {
+	computeFolderCohesionScore,
+	type FolderCohesionDocRef,
+} from '@/service/search/index/helper/hub/folderCohesion';
 import { emptyMap } from '@/core/utils/collection-utils';
 export type StorageType = 'sqlite' | 'graph';
 
@@ -124,10 +134,7 @@ export type MobiusGlobalMaintenanceBatchPhase =
 	| 'semantic_pagerank_edges'
 	| 'semantic_pagerank_persist'
 	| 'semantic_related'
-	| 'folder_hub_stats'
-	| 'hub_discovery'
-	| 'hub_materialize'
-	| 'hub_index';
+	| 'folder_hub_stats';
 
 /** All maintenance progress phases (batch-style or `semantic_related`). */
 export type MobiusGlobalMaintenancePhase = MobiusGlobalMaintenanceBatchPhase | 'semantic_related';
@@ -525,6 +532,7 @@ class IndexSingleService {
 						doc,
 						tenant,
 						pathToIndexedDocInfo,
+						indexedByTargetId,
 						sameTenantOutgoing,
 					);
 				}
@@ -1071,31 +1079,41 @@ class IndexSingleService {
 		const lcaMax = INDEX_LONG_RANGE_LCA_MAX_DEPTH;
 		const sourcePath = doc.sourceFileInfo.path;
 
-		// Replace all reference edges from this doc so removed links do not linger stale.
+		// Replace all wiki-style reference edges from this doc so removed links do not linger stale.
 		await mobiusEdgeRepo.deleteByFromNodeAndType(docNodeId, GraphEdgeType.References);
+		await mobiusEdgeRepo.deleteByFromNodeAndType(docNodeId, GraphEdgeType.ReferencesResource);
 
-		// Outgoing references (links from this document to other documents in the same tenant DB)
+		const loaderMgr = DocumentLoaderManager.getInstance();
+
+		// Outgoing references (same tenant): note-like targets use document/hub_doc; attachments use resource.
 		for (const ref of sameTenantOutgoing) {
 			const targetNodeId = this.resolveOutgoingTargetNodeId(ref, pathMap);
 			const fallbackLabel = getFileNameFromPath(ref.fullPath);
 			const indexed = indexedByTargetId.get(targetNodeId);
+			const docType = loaderMgr.getTypeForPath(ref.fullPath);
+			const isDocRef = countsAsDocOutgoingTarget(docType);
 			const label = indexed?.title?.trim() ? indexed.title.trim() : fallbackLabel;
 
-			// Ensure target document node exists (it will be created/updated when that document is indexed)
+			const targetGraphType = indexed
+				? this.resolveMobiusGraphNodeTypeForPath(ref.fullPath)
+				: graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, docType);
+
+			// Placeholder until the target file is indexed (full row from IndexedDocumentRepo).
 			await mobiusNodeRepo.upsert({
 				id: targetNodeId,
-				type: GraphNodeType.Document,
+				type: targetGraphType,
 				label,
-				attributes: JSON.stringify({ path: ref.fullPath }),
+				attributes: JSON.stringify({ path: ref.fullPath, docType: docType ?? undefined }),
 			});
 			const lcaDepth = pathLcaDepth(sourcePath, ref.fullPath);
 			const crosses = crossesTopLevelFolder(sourcePath, ref.fullPath);
 			const longRange = crosses && lcaDepth <= lcaMax;
+			const edgeType = isDocRef ? GraphEdgeType.References : GraphEdgeType.ReferencesResource;
 			await mobiusEdgeRepo.upsert({
-				id: MobiusEdgeRepo.generateEdgeId(docNodeId, targetNodeId, GraphEdgeType.References),
+				id: MobiusEdgeRepo.generateEdgeId(docNodeId, targetNodeId, edgeType),
 				from_node_id: docNodeId,
 				to_node_id: targetNodeId,
-				type: GraphEdgeType.References,
+				type: edgeType,
 				weight: 1.0,
 				attributes: JSON.stringify({ longRange, lcaDepth }),
 			});
@@ -1206,22 +1224,34 @@ class IndexSingleService {
 		doc: Document,
 		tenant: IndexTenant,
 		pathMap: Map<string, PathIndexedDocInfo>,
+		indexedByTargetId: Map<string, IndexedDocumentRecord>,
 		sameTenantOutgoing: DocumentReference[],
 	): Promise<void> {
 		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
 		const now = Date.now();
+		const loaderMgr = DocumentLoaderManager.getInstance();
 
 		/**
 		 * Outgoing reference and tagged edges, matching {@link upsertGraphEdgesForDocument}.
 		 */
-		const docOutgoing = sameTenantOutgoing.length;
+		let docOutgoing = 0;
+		let resourceRefOutgoing = 0;
+		for (const ref of sameTenantOutgoing) {
+			const dt = loaderMgr.getTypeForPath(ref.fullPath);
+			if (countsAsDocOutgoingTarget(dt)) docOutgoing++;
+			else resourceRefOutgoing++;
+		}
 		const functionalN = filterValidFunctionalTagEntries(doc.metadata.functionalTagEntries ?? []).length;
 		const ctxN =
 			(doc.metadata.timeTags ?? []).length +
 			(doc.metadata.geoTags ?? []).length +
 			(doc.metadata.personTags ?? []).length;
 		const otherOutgoing =
-			(doc.metadata.topicTags ?? []).length + functionalN + (doc.metadata.keywordTags ?? []).length + ctxN;
+			(doc.metadata.topicTags ?? []).length +
+			functionalN +
+			(doc.metadata.keywordTags ?? []).length +
+			ctxN +
+			resourceRefOutgoing;
 		const outgoing = { doc_outgoing_cnt: docOutgoing, other_outgoing_cnt: otherOutgoing };
 		await mobiusNodeRepo.setDocumentOutgoingDegreeCounts(
 			doc.id,
@@ -1231,15 +1261,20 @@ class IndexSingleService {
 		);
 
 		/**
-		 * refresh document incoming degrees for this doc and linked doc nodes
+		 * Refresh incoming degrees for this doc and linked document/hub_doc targets (skip resource-only placeholders).
 		 */
-		const docIdsForIncoming = Array.from(
-			new Set([
-				doc.id,
-				...sameTenantOutgoing.map((r) => this.resolveOutgoingTargetNodeId(r, pathMap)),
-			]),
-		);
-		await mobiusNodeRepo.refreshDocumentIncomingDegreesForNodeIds(docIdsForIncoming, now);
+		const docIdsForIncoming = new Set<string>([doc.id]);
+		for (const ref of sameTenantOutgoing) {
+			const targetId = this.resolveOutgoingTargetNodeId(ref, pathMap);
+			const indexed = indexedByTargetId.get(targetId);
+			const dt = loaderMgr.getTypeForPath(ref.fullPath);
+			if (indexed) {
+				docIdsForIncoming.add(targetId);
+			} else if (graphNodeTypeForPlaceholderReferenceTarget(ref.fullPath, dt) !== GraphNodeType.Resource) {
+				docIdsForIncoming.add(targetId);
+			}
+		}
+		await mobiusNodeRepo.refreshDocumentIncomingDegreesForNodeIds([...docIdsForIncoming], now);
 
 		/**
 		 * refresh tag_doc_count for touched tags
@@ -1260,8 +1295,50 @@ class IndexSingleService {
 	}
 }
 
+/** Folder path prefixes for a directory string, e.g. `a/b` → `['a','a/b']`. */
+function folderAncestorPathsFromFolderPath(folderPath: string): string[] {
+	if (!folderPath) return [];
+	const parts = folderPath.split('/').filter((p) => p.length > 0);
+	const out: string[] = [];
+	let acc = '';
+	for (let i = 0; i < parts.length; i++) {
+		acc = i === 0 ? parts[i]! : `${acc}/${parts[i]}`;
+		out.push(acc);
+	}
+	return out;
+}
+
 /**
- * Full Mobius maintenance: aggregates, reference PageRank, semantic edges, semantic PageRank, hub docs.
+ * Vault folder prefixes that contain this graph node (documents/resources: parent dir chain; folders: full chain).
+ */
+function membershipFolderPathsForGraphNode(type: string, path: string | null): Set<string> {
+	if (!path) return new Set();
+	if (type === GraphNodeType.Folder) {
+		return new Set(folderAncestorPathsFromFolderPath(path));
+	}
+	if (
+		type === GraphNodeType.Document ||
+		type === GraphNodeType.HubDoc ||
+		type === GraphNodeType.Resource
+	) {
+		const slash = path.lastIndexOf('/');
+		if (slash <= 0) return new Set();
+		return new Set(folderAncestorPathsFromFolderPath(path.slice(0, slash)));
+	}
+	return new Set();
+}
+
+/** Skip hub-summary subtree when materializing folder hub columns (aligned with document scan). */
+function folderHubStatsPathAllowed(folderPath: string, hubSummaryFolder: string): boolean {
+	const hub = hubSummaryFolder.trim();
+	if (!hub) return true;
+	if (folderPath === hub) return false;
+	if (isVaultPathUnderPrefix(folderPath, hub)) return false;
+	return true;
+}
+
+/**
+ * Full Mobius maintenance: aggregates, reference PageRank, semantic edges, semantic PageRank, optional folder hub stats.
  */
 class GlobalMaintenanceService {
 	/** Clears debt after a successful full maintenance pass for the given tenants. */
@@ -1328,30 +1405,8 @@ class GlobalMaintenanceService {
 			sw.stop();
 		}
 
-		if (tenants.includes('vault')) {
-			sw.start('hub_docs');
-			await this.generateAndIndexHubDocsInternal(onProgress);
-			sw.stop();
-		}
-
 		sw.print();
 		await this.resetMaintenanceDebtAfterFullMaintenance(tenants);
-	}
-
-	private async generateAndIndexHubDocsInternal(
-		onProgress?: (ev: MobiusGlobalMaintenanceProgress) => void,
-	): Promise<void> {
-		const ctx = AppContext.getInstance();
-		const hub = new HubDocService(() => ctx.settings.search);
-		await hub.generateAndIndexHubDocsForMaintenance({
-			onProgress: (ev) => {
-				onProgress?.({
-					tenant: 'vault',
-					phase: ev.phase,
-					progressTextSuffix: ev.progressTextSuffix,
-				});
-			},
-		});
 	}
 
 	/**
@@ -1393,6 +1448,18 @@ class GlobalMaintenanceService {
 			},
 			yieldForLargePass,
 		);
+	}
+
+	/**
+	 * Rebuilds tag_doc_count and document degree caches only (no PageRank, semantic edges, or folder hub stats).
+	 */
+	async runMobiusAggregateRefreshOnly(
+		tenants: IndexTenant[] = ['vault', 'chat'],
+		onProgress?: (ev: MobiusGlobalMaintenanceProgress) => void,
+	): Promise<void> {
+		for (const tenant of tenants) {
+			await this.refreshMobiusAggregatesInternal(tenant, onProgress);
+		}
 	}
 
 	/**
@@ -1572,7 +1639,7 @@ class GlobalMaintenanceService {
 	}
 
 	/**
-	 * Rolls up document PageRank / degrees into materialized columns on `folder` nodes (vault only).
+	 * Materializes folder hub columns on `type=folder` (vault): per-folder doc averages + subtree **boundary** degrees.
 	 * Must run after reference + semantic PageRank are persisted on documents.
 	 */
 	private async rebuildFolderHubStatsForVaultInternal(
@@ -1580,12 +1647,41 @@ class GlobalMaintenanceService {
 	): Promise<void> {
 		const tenant: IndexTenant = 'vault';
 		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
 		const now = Date.now();
 		await mobiusNodeRepo.clearFolderHubMaterializedStatsColumns(now);
 
 		const hubFolder = getAIHubSummaryFolder();
-		type Agg = { count: number; sumPr: number; sumSpr: number; maxInc: number; maxOut: number };
+		type Agg = {
+			count: number;
+			sumPr: number;
+			sumSpr: number;
+			docIn: number;
+			docOut: number;
+			otherIn: number;
+			otherOut: number;
+		};
 		const byFolder = new Map<string, Agg>();
+		/** Capped doc samples per folder for cohesion (same walk as subtree counts). */
+		const folderDocSamples = new Map<string, FolderCohesionDocRef[]>();
+
+		const getAgg = (folderPath: string): Agg => {
+			let agg = byFolder.get(folderPath);
+			if (!agg) {
+				agg = { count: 0, sumPr: 0, sumSpr: 0, docIn: 0, docOut: 0, otherIn: 0, otherOut: 0 };
+				byFolder.set(folderPath, agg);
+			}
+			return agg;
+		};
+
+		const pushFolderDocSample = (folderPath: string, doc: FolderCohesionDocRef) => {
+			let list = folderDocSamples.get(folderPath);
+			if (!list) {
+				list = [];
+				folderDocSamples.set(folderPath, list);
+			}
+			if (list.length < FOLDER_COHESION_MAX_DOCS) list.push(doc);
+		};
 
 		let afterNodeId: string | null = null;
 		let docPageIndex = 0;
@@ -1606,8 +1702,14 @@ class GlobalMaintenanceService {
 					typeof r.semantic_pagerank === 'number' && Number.isFinite(r.semantic_pagerank)
 						? r.semantic_pagerank
 						: 0;
-				const inc = Math.max(0, Math.floor(Number(r.doc_incoming_cnt ?? 0)));
-				const outd = Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0)));
+
+				const docRef: FolderCohesionDocRef = {
+					node_id: r.node_id,
+					path,
+					label: r.label,
+					tags_json: r.tags_json,
+					semantic_pagerank: r.semantic_pagerank,
+				};
 
 				let cur = path;
 				for (; ;) {
@@ -1616,16 +1718,11 @@ class GlobalMaintenanceService {
 					const folder = cur.slice(0, slash);
 					if (hubFolder && isVaultPathUnderPrefix(folder, hubFolder)) break;
 
-					let agg = byFolder.get(folder);
-					if (!agg) {
-						agg = { count: 0, sumPr: 0, sumSpr: 0, maxInc: 0, maxOut: 0 };
-						byFolder.set(folder, agg);
-					}
+					const agg = getAgg(folder);
 					agg.count += 1;
 					agg.sumPr += pr;
 					agg.sumSpr += spr;
-					agg.maxInc = Math.max(agg.maxInc, inc);
-					agg.maxOut = Math.max(agg.maxOut, outd);
+					pushFolderDocSample(folder, docRef);
 					cur = folder;
 				}
 			}
@@ -1635,7 +1732,41 @@ class GlobalMaintenanceService {
 			onProgress?.({
 				tenant,
 				phase: 'folder_hub_stats',
-				progressTextSuffix: `batch ${docPageIndex} · ${page.length ?? 0} items`,
+				progressTextSuffix: `docs batch ${docPageIndex} · ${page.length ?? 0} rows`,
+			});
+			await yieldForLargePass();
+		}
+
+		let edgeBatchIndex = 0;
+		for await (const batch of mobiusEdgeRepo.iterateMobiusEdgeBatchesWithEndpointMetadata(
+			FOLDER_HUB_BOUNDARY_EDGE_BATCH_SIZE,
+		)) {
+			for (const e of batch) {
+				const fromSet = membershipFolderPathsForGraphNode(e.from_type, e.from_path);
+				const toSet = membershipFolderPathsForGraphNode(e.to_type, e.to_path);
+				// Doc-degree bucket: only doc→doc wiki edges; attachment wiki links use `references_resource`.
+				const isDocRefEdge = e.type === GraphEdgeType.References;
+
+				for (const f of fromSet) {
+					if (!toSet.has(f) && folderHubStatsPathAllowed(f, hubFolder)) {
+						const agg = getAgg(f);
+						if (isDocRefEdge) agg.docOut += 1;
+						else agg.otherOut += 1;
+					}
+				}
+				for (const f of toSet) {
+					if (!fromSet.has(f) && folderHubStatsPathAllowed(f, hubFolder)) {
+						const agg = getAgg(f);
+						if (isDocRefEdge) agg.docIn += 1;
+						else agg.otherIn += 1;
+					}
+				}
+			}
+			edgeBatchIndex++;
+			onProgress?.({
+				tenant,
+				phase: 'folder_hub_stats',
+				progressTextSuffix: `edges batch ${edgeBatchIndex} · ${batch.length ?? 0} rows`,
 			});
 			await yieldForLargePass();
 		}
@@ -1647,14 +1778,28 @@ class GlobalMaintenanceService {
 			const n = agg.count;
 			const avgPr = agg.sumPr / Math.max(1, n);
 			const avgSpr = agg.sumSpr / Math.max(1, n);
+
+			let folderCohesionScore: number | null = null;
+			const samples = folderDocSamples.get(folderPath);
+			if (samples && samples.length >= 2) {
+				const intraEdges = await mobiusEdgeRepo.listSemanticRelatedEdgesWithinNodeSet(
+					samples.map((d) => d.node_id),
+					FOLDER_COHESION_INTRA_EDGE_LIMIT,
+				);
+				folderCohesionScore = computeFolderCohesionScore(samples, intraEdges);
+			}
+
 			await mobiusNodeRepo.updateFolderNodeHubMaterializedStats(
 				nodeId,
 				{
 					tagDocCount: n,
 					avgPagerank: avgPr,
 					avgSemanticPagerank: avgSpr,
-					maxDocIncoming: agg.maxInc,
-					maxDocOutgoing: agg.maxOut,
+					folderCohesionScore,
+					docIncoming: agg.docIn,
+					docOutgoing: agg.docOut,
+					otherIncoming: agg.otherIn,
+					otherOutgoing: agg.otherOut,
 				},
 				writeAt,
 			);
@@ -1807,6 +1952,16 @@ export class IndexService {
 		options?: MobiusGlobalMaintenanceOptions,
 	): Promise<void> {
 		return this.globalMaintenance.runMobiusGlobalMaintenance(tenants, options);
+	}
+
+	/**
+	 * Rebuilds tag_doc_count and document degree columns only (no PageRank / semantic / folder hub).
+	 */
+	async runMobiusAggregateRefreshOnly(
+		tenants: IndexTenant[] = ['vault', 'chat'],
+		onProgress?: (ev: MobiusGlobalMaintenanceProgress) => void,
+	): Promise<void> {
+		return this.globalMaintenance.runMobiusAggregateRefreshOnly(tenants, onProgress);
 	}
 
 	/**

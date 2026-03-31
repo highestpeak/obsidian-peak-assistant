@@ -21,7 +21,10 @@ export type GraphNodeType = (typeof GraphNodeType)[keyof typeof GraphNodeType];
  * Graph edge `type` values (mobius_edge). Canonical set only.
  */
 export const GraphEdgeType = {
+	/** Vault wiki link to a doc-like target (note / hub markdown / canvas / excalidraw per indexing policy). */
 	References: 'references',
+	/** Vault wiki link to a non-doc attachment target (image, pdf, office, etc.). */
+	ReferencesResource: 'references_resource',
 	/**
 	 * Inferred / rule-based / LLM-derived doc→doc relation (not a wiki link).
 	 * Distinct from {@link References}; use `attributes_json` for provenance.
@@ -46,6 +49,12 @@ export const GRAPH_TAGGED_EDGE_TYPES: readonly GraphEdgeType[] = [
 
 /** @deprecated Use {@link GRAPH_TAGGED_EDGE_TYPES}. */
 export const GRAPH_TAG_CATEGORY_EDGE_TYPES = GRAPH_TAGGED_EDGE_TYPES;
+
+/** Obsidian wiki links from notes (doc↔doc and doc↔attachment); excludes semantic/tags/contains. */
+export const GRAPH_WIKI_REFERENCE_EDGE_TYPES: readonly GraphEdgeType[] = [
+	GraphEdgeType.References,
+	GraphEdgeType.ReferencesResource,
+];
 
 /** Doc→doc edges that are not Obsidian wiki links (semantic / latent layer). */
 export const GRAPH_SEMANTIC_DOC_EDGE_TYPES: readonly GraphEdgeType[] = [GraphEdgeType.SemanticRelated];

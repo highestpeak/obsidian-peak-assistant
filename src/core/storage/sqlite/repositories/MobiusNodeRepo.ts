@@ -1,7 +1,15 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import type { Database as DbSchema } from '../ddl';
-import { FOLDER_HUB_MIN_DOCS } from '@/core/constant';
+import {
+	DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS,
+	FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT,
+	FOLDER_HUB_GRAPH_WEIGHT_COHESION,
+	FOLDER_HUB_GRAPH_WEIGHT_ORGANIZATIONAL,
+	FOLDER_HUB_GRAPH_WEIGHT_PHYSICAL,
+	FOLDER_HUB_GRAPH_WEIGHT_SEMANTIC,
+	FOLDER_HUB_MIN_DOCS,
+} from '@/core/constant';
 import {
 	GraphEdgeType,
 	GraphNodeType,
@@ -10,8 +18,25 @@ import {
 	GRAPH_TAG_NODE_TYPES,
 	isIndexedNoteNodeType,
 } from '@/core/po/graph.po';
+import { normalizeVaultPath } from '@/core/utils/vault-path-utils';
 
 export type MobiusNodeRow = DbSchema['mobius_node'];
+
+/** Escapes `%`, `_`, and `\` for SQLite `LIKE ... ESCAPE '\\'`. */
+function escapeSqlLikePatternForVaultPath(s: string): string {
+	return s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
+/**
+ * SQL predicate matching `pathMatchesAnyPrefix` (hub-path-utils) for one normalized prefix against `mobius_node.path`.
+ */
+function sqlMobiusPathMatchesHubDiscoverPrefix(pathRef: ReturnType<typeof sql.ref>, prefix: string) {
+	const p = normalizeVaultPath(prefix);
+	if (!p) return sql`1=0`;
+	const likePattern = escapeSqlLikePatternForVaultPath(`${p}/`) + '%';
+	const norm = sql<string>`trim(replace(coalesce(${pathRef}, ''), char(92), '/'), '/')`;
+	return sql`(${norm} = ${p} OR ${norm} LIKE ${likePattern} ESCAPE '\\' OR ${p} LIKE ${norm} || '/%')`;
+}
 
 /** Graph node DTO shape; rows live in `mobius_node`. */
 export type GraphNode = DbSchema['graph_nodes'];
@@ -72,12 +97,18 @@ export type MobiusNodeFolderHubDiscoveryRow = {
 	tag_doc_count: number | null;
 	pagerank: number | null;
 	semantic_pagerank: number | null;
+	/** Mean intra-folder cohesion; null if not computed yet. */
+	folder_cohesion_score: number | null;
 	doc_incoming_cnt: number | null;
 	doc_outgoing_cnt: number | null;
+	other_incoming_cnt: number | null;
+	other_outgoing_cnt: number | null;
 	hub_graph_score: number;
 	hub_physical_authority_score: number;
 	hub_organizational_score: number;
 	hub_semantic_centrality_score: number;
+	/** `folder_cohesion_score` × size reliability (see {@link FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT}). */
+	hub_cohesion_effective_score: number;
 };
 
 /**
@@ -86,12 +117,14 @@ export type MobiusNodeFolderHubDiscoveryRow = {
  */
 export type MobiusNodeHubLocalGraphMetaRow = Omit<MobiusNodeHubDiscoveryRow, 'word_count'> & {
 	tags_json: string | null;
+	other_incoming_cnt: number | null;
+	other_outgoing_cnt: number | null;
 };
 
 /** Semantic cluster hub seeds (ordered by `semantic_pagerank` in queries). */
 export type MobiusNodeHubClusterSeedRow = Pick<
 	MobiusNodeRow,
-	'node_id' | 'path' | 'label' | 'semantic_pagerank' | 'doc_incoming_cnt' | 'pagerank'
+	'node_id' | 'path' | 'label' | 'semantic_pagerank' | 'doc_incoming_cnt' | 'doc_outgoing_cnt' | 'pagerank'
 >;
 
 /** Id + vault path for coverage / member listing helpers. */
@@ -290,7 +323,12 @@ export class MobiusNodeRepo {
 			updated_at: node.updated_at,
 			last_open_ts: null,
 			open_count: null,
-			path: isIndexedNoteNodeType(node.type) || node.type === GraphNodeType.Folder ? path : null,
+			path:
+				isIndexedNoteNodeType(node.type) ||
+				node.type === GraphNodeType.Folder ||
+				node.type === GraphNodeType.Resource
+					? path
+					: null,
 			title: null,
 			size: null,
 			mtime: null,
@@ -313,6 +351,7 @@ export class MobiusNodeRepo {
 			semantic_pagerank: null,
 			semantic_pagerank_updated_at: null,
 			semantic_pagerank_version: null,
+			folder_cohesion_score: null,
 			attributes_json: node.attributes || '{}',
 		};
 	}
@@ -451,6 +490,27 @@ export class MobiusNodeRepo {
 					.execute();
 				return;
 			}
+			if (graphNode.type === GraphNodeType.Resource) {
+				let resourcePath: string | null = null;
+				try {
+					const a = JSON.parse(graphNode.attributes) as { path?: string };
+					if (typeof a?.path === 'string') resourcePath = a.path;
+				} catch {
+					resourcePath = null;
+				}
+				await this.db
+					.updateTable('mobius_node')
+					.set({
+						type: graphNode.type,
+						label: graphNode.label,
+						attributes_json: graphNode.attributes,
+						path: resourcePath,
+						updated_at: graphNode.updated_at ?? now,
+					})
+					.where('node_id', '=', graphNode.id)
+					.execute();
+				return;
+			}
 			await this.updateById(graphNode.id, {
 				type: graphNode.type,
 				label: graphNode.label,
@@ -562,6 +622,7 @@ export class MobiusNodeRepo {
 					semantic_pagerank: row.semantic_pagerank,
 					semantic_pagerank_updated_at: row.semantic_pagerank_updated_at,
 					semantic_pagerank_version: row.semantic_pagerank_version,
+					folder_cohesion_score: row.folder_cohesion_score,
 					attributes_json: row.attributes_json,
 				})
 				.where('node_id', '=', row.node_id)
@@ -978,8 +1039,8 @@ export class MobiusNodeRepo {
 	}
 
 	/**
-	 * Per-target counts for incoming edges (`to_node_id` in batch): References vs other.
-	 * Treats `References` as doc↔doc wiki links only (no `mobius_node` lookup).
+	 * Per-target counts for incoming edges (`to_node_id` in batch): doc-reference bucket vs other.
+	 * Only {@link GraphEdgeType.References} counts toward `doc`; {@link GraphEdgeType.ReferencesResource} is other.
 	 */
 	private async computeIncomingDocDegreeCountsBatch(nodeIds: string[]): Promise<Map<string, DocDegreeBucket>> {
 		const out = new Map<string, DocDegreeBucket>();
@@ -1008,7 +1069,7 @@ export class MobiusNodeRepo {
 	}
 
 	/**
-	 * Per-source counts for outgoing edges (`from_node_id` in batch): References vs other.
+	 * Per-source counts for outgoing edges (`from_node_id` in batch): doc-reference bucket vs other.
 	 * Same invariant as {@link computeIncomingDocDegreeCountsBatch}.
 	 */
 	private async computeOutgoingDocDegreeCountsBatch(nodeIds: string[]): Promise<Map<string, DocDegreeBucket>> {
@@ -1198,7 +1259,7 @@ export class MobiusNodeRepo {
 	}
 
 	/**
-	 * Clears materialized hub stats on folder nodes (`tag_doc_count`, `pagerank`, `semantic_pagerank`, doc degrees reused for folder rollup).
+	 * Clears materialized hub stats on folder nodes (`tag_doc_count`, `pagerank`, `semantic_pagerank`, boundary degree columns).
 	 */
 	async clearFolderHubMaterializedStatsColumns(now: number = Date.now()): Promise<void> {
 		await this.db
@@ -1207,8 +1268,11 @@ export class MobiusNodeRepo {
 				tag_doc_count: null,
 				pagerank: null,
 				semantic_pagerank: null,
+				folder_cohesion_score: null,
 				doc_incoming_cnt: null,
 				doc_outgoing_cnt: null,
+				other_incoming_cnt: null,
+				other_outgoing_cnt: null,
 				updated_at: now,
 			})
 			.where('type', '=', GraphNodeType.Folder)
@@ -1227,6 +1291,8 @@ export class MobiusNodeRepo {
 		Array<{
 			node_id: string;
 			path: string;
+			label: string | null;
+			tags_json: string | null;
 			pagerank: number | null;
 			semantic_pagerank: number | null;
 			doc_incoming_cnt: number | null;
@@ -1242,6 +1308,8 @@ export class MobiusNodeRepo {
 			.select([
 				'node_id',
 				'path',
+				'label',
+				'tags_json',
 				'pagerank',
 				'semantic_pagerank',
 				'doc_incoming_cnt',
@@ -1261,6 +1329,8 @@ export class MobiusNodeRepo {
 		return rows.map((r) => ({
 			node_id: r.node_id,
 			path: r.path!,
+			label: r.label,
+			tags_json: r.tags_json,
 			pagerank: r.pagerank,
 			semantic_pagerank: r.semantic_pagerank,
 			doc_incoming_cnt: r.doc_incoming_cnt,
@@ -1277,8 +1347,12 @@ export class MobiusNodeRepo {
 			tagDocCount: number;
 			avgPagerank: number;
 			avgSemanticPagerank: number;
-			maxDocIncoming: number;
-			maxDocOutgoing: number;
+			/** Null when fewer than two sample docs or cohesion not computed. */
+			folderCohesionScore: number | null;
+			docIncoming: number;
+			docOutgoing: number;
+			otherIncoming: number;
+			otherOutgoing: number;
 		},
 		now: number = Date.now(),
 	): Promise<void> {
@@ -1288,8 +1362,11 @@ export class MobiusNodeRepo {
 				tag_doc_count: stats.tagDocCount,
 				pagerank: stats.avgPagerank,
 				semantic_pagerank: stats.avgSemanticPagerank,
-				doc_incoming_cnt: stats.maxDocIncoming,
-				doc_outgoing_cnt: stats.maxDocOutgoing,
+				folder_cohesion_score: stats.folderCohesionScore,
+				doc_incoming_cnt: stats.docIncoming,
+				doc_outgoing_cnt: stats.docOutgoing,
+				other_incoming_cnt: stats.otherIncoming,
+				other_outgoing_cnt: stats.otherOutgoing,
 				updated_at: now,
 			})
 			.where('node_id', '=', nodeId)
@@ -1299,20 +1376,40 @@ export class MobiusNodeRepo {
 
 	/**
 	 * Top folder hub candidates from materialized columns on `type=folder` (excludes Hub-Summaries subtree).
-	 * Scoring matches folder branch in hub discovery; computed in SQL and ordered before limit.
+	 * Blends physical / organizational / semantic signals with size-weighted cohesion; see `FOLDER_HUB_GRAPH_WEIGHT_*`.
+	 *
+	 * When `pathPrefixes` is non-empty, only rows whose normalized path matches any prefix (same rules as hub discovery
+	 * `pathMatchesAnyPrefix`) are considered before ordering and `limit`.
+	 *
+	 * Optional `offset` skips the first N rows after the same ordering (pagination for post-filter compression).
 	 */
 	async listTopFolderNodesForHubDiscovery(
 		limit: number,
 		hubSummaryFolder: string,
+		pathPrefixes?: readonly string[],
+		offset?: number,
 	): Promise<MobiusNodeFolderHubDiscoveryRow[]> {
 		const lim = Math.max(1, limit);
+		const off = Math.max(0, Math.floor(offset ?? 0));
 		const hub = hubSummaryFolder.trim();
 		const likeUnderHub = hub ? `${hub}/%` : '';
 
+		const normalizedPrefixes = (pathPrefixes ?? [])
+			.map((x) => normalizeVaultPath(String(x)))
+			.filter((x) => x.length > 0);
+
 		const hubPhysical = sql<number>`min(1.0, coalesce(pagerank, 0.0) * 2.2)`;
-		const hubOrg = sql<number>`min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) * 0.18 + coalesce(doc_outgoing_cnt, 0) * 0.04)`;
+		const totalIn = sql<number>`coalesce(doc_incoming_cnt, 0) + coalesce(other_incoming_cnt, 0)`;
+		const totalOut = sql<number>`coalesce(doc_outgoing_cnt, 0) + coalesce(other_outgoing_cnt, 0)`;
+		const hubOrg = sql<number>`min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) * 0.18 + ln(1.0 + ${totalIn}) * 0.06 + ln(1.0 + ${totalOut}) * 0.06)`;
 		const hubSem = sql<number>`min(1.0, coalesce(semantic_pagerank, 0.0) * 1.0)`;
-		const hubGraph = sql<number>`min(1.0, (${hubPhysical} * 0.3) + (${hubOrg} * 0.45) + (${hubSem} * 0.25))`;
+		const lnRef = Math.log(1 + FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT);
+		const hubCohEff = sql<number>`coalesce(folder_cohesion_score, 0.0) * min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) / ${lnRef})`;
+		const wPhys = FOLDER_HUB_GRAPH_WEIGHT_PHYSICAL;
+		const wOrg = FOLDER_HUB_GRAPH_WEIGHT_ORGANIZATIONAL;
+		const wSem = FOLDER_HUB_GRAPH_WEIGHT_SEMANTIC;
+		const wCoh = FOLDER_HUB_GRAPH_WEIGHT_COHESION;
+		const hubGraph = sql<number>`min(1.0, (${hubPhysical} * ${wPhys}) + (${hubOrg} * ${wOrg}) + (${hubSem} * ${wSem}) + (${hubCohEff} * ${wCoh}))`;
 
 		let q = this.db
 			.selectFrom('mobius_node')
@@ -1323,11 +1420,15 @@ export class MobiusNodeRepo {
 				'tag_doc_count',
 				'pagerank',
 				'semantic_pagerank',
+				'folder_cohesion_score',
 				'doc_incoming_cnt',
 				'doc_outgoing_cnt',
+				'other_incoming_cnt',
+				'other_outgoing_cnt',
 				hubPhysical.as('hub_physical_authority_score'),
 				hubOrg.as('hub_organizational_score'),
 				hubSem.as('hub_semantic_centrality_score'),
+				hubCohEff.as('hub_cohesion_effective_score'),
 				hubGraph.as('hub_graph_score'),
 			])
 			.where('type', '=', GraphNodeType.Folder)
@@ -1338,7 +1439,15 @@ export class MobiusNodeRepo {
 			q = q.where((eb) => eb.and([eb('path', '!=', hub), eb('path', 'not like', likeUnderHub)]));
 		}
 
-		const rows = await q.orderBy('hub_graph_score', 'desc').limit(lim).execute();
+		if (normalizedPrefixes.length > 0) {
+			const pathRef = sql.ref('mobius_node.path');
+			const clauses = normalizedPrefixes.map((pref) => sqlMobiusPathMatchesHubDiscoverPrefix(pathRef, pref));
+			q = q.where(sql<boolean>`(${sql.join(clauses, sql` OR `)})`);
+		}
+
+		let q2 = q.orderBy('hub_graph_score', 'desc').limit(lim);
+		if (off > 0) q2 = q2.offset(off);
+		const rows = await q2.execute();
 		return rows as MobiusNodeFolderHubDiscoveryRow[];
 	}
 
@@ -1351,7 +1460,7 @@ export class MobiusNodeRepo {
 	 *
 	 * - `longDocWeak = min(0.08, (wc / 50000) * 0.08)`
 	 * - `hub_physical_authority_score = min(1, pr * 2.5 + longDocWeak)`
-	 * - `hub_organizational_score = min(1, inc * 0.035 + out * 0.055)`
+	 * - `hub_organizational_score = min(1, inc * w_in + out * w_out)` ({@link DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS})
 	 * - `hub_semantic_centrality_score = min(1, spr * 1.2)`
 	 * - `hub_graph_score = min(1, hub_physical_authority_score * 0.35 + hub_organizational_score * 0.25 + hub_semantic_centrality_score * 0.35)`
 	 *
@@ -1365,8 +1474,10 @@ export class MobiusNodeRepo {
 		const hub = hubSummaryFolder.trim();
 		const likeUnderHub = hub ? `${hub}/%` : '';
 
+		const wIn = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.incoming;
+		const wOut = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.outgoing;
 		const hubPhysical = sql<number>`min(1.0, (coalesce(pagerank, 0) * 2.5) + min(0.08, (coalesce(word_count, 0) / 50000.0) * 0.08))`;
-		const hubOrg = sql<number>`min(1.0, (coalesce(doc_incoming_cnt, 0) * 0.035) + (coalesce(doc_outgoing_cnt, 0) * 0.055))`;
+		const hubOrg = sql<number>`min(1.0, (coalesce(doc_incoming_cnt, 0) * ${wIn}) + (coalesce(doc_outgoing_cnt, 0) * ${wOut}))`;
 		const hubSem = sql<number>`min(1.0, coalesce(semantic_pagerank, 0) * 1.2)`;
 		const hubGraph = sql<number>`min(1.0, (${hubPhysical} * 0.35) + (${hubOrg} * 0.25) + (${hubSem} * 0.35))`;
 
@@ -1447,12 +1558,99 @@ export class MobiusNodeRepo {
 		const lim = Math.max(1, limit);
 		const rows = await this.db
 			.selectFrom('mobius_node')
-			.select(['node_id', 'path', 'label', 'semantic_pagerank', 'doc_incoming_cnt', 'pagerank'])
+			.select([
+				'node_id',
+				'path',
+				'label',
+				'semantic_pagerank',
+				'doc_incoming_cnt',
+				'doc_outgoing_cnt',
+				'pagerank',
+			])
 			.where('type', '=', GraphNodeType.Document)
 			.where('path', 'is not', null)
 			.orderBy('semantic_pagerank desc')
 			.limit(lim)
 			.execute();
+		return rows as MobiusNodeHubClusterSeedRow[];
+	}
+
+	/**
+	 * Cluster seeds by combined hub graph score (matches {@link listTopDocumentNodesForHubDiscovery} ordering)
+	 * so discovery is not biased only toward `semantic_pagerank` heads.
+	 */
+	async listDocumentNodesForHubClusterSeedsByHubGraphScore(
+		limit: number,
+		hubSummaryFolder: string,
+	): Promise<MobiusNodeHubClusterSeedRow[]> {
+		const lim = Math.max(1, limit);
+		const hub = hubSummaryFolder.trim();
+		const likeUnderHub = hub ? `${hub}/%` : '';
+
+		const wIn = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.incoming;
+		const wOut = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.outgoing;
+		const hubPhysical = sql<number>`min(1.0, (coalesce(pagerank, 0) * 2.5) + min(0.08, (coalesce(word_count, 0) / 50000.0) * 0.08))`;
+		const hubOrg = sql<number>`min(1.0, (coalesce(doc_incoming_cnt, 0) * ${wIn}) + (coalesce(doc_outgoing_cnt, 0) * ${wOut}))`;
+		const hubSem = sql<number>`min(1.0, coalesce(semantic_pagerank, 0) * 1.2)`;
+		const hubGraph = sql<number>`min(1.0, (${hubPhysical} * 0.35) + (${hubOrg} * 0.25) + (${hubSem} * 0.35))`;
+
+		let q = this.db
+			.selectFrom('mobius_node')
+			.select([
+				'node_id',
+				'path',
+				'label',
+				'semantic_pagerank',
+				'doc_incoming_cnt',
+				'doc_outgoing_cnt',
+				'pagerank',
+				hubGraph.as('hub_graph_score'),
+			])
+			.where('type', '=', GraphNodeType.Document)
+			.where('path', 'is not', null);
+
+		if (hub) {
+			q = q.where((eb) =>
+				eb.and([eb('path', '!=', hub), eb('path', 'not like', likeUnderHub)]),
+			);
+		}
+
+		const rows = await q.orderBy('hub_graph_score', 'desc').limit(lim).execute();
+		return rows as MobiusNodeHubClusterSeedRow[];
+	}
+
+	/**
+	 * Cluster seeds by classical PageRank (link authority), excluding Hub-Summaries subtree like other hub queries.
+	 */
+	async listDocumentNodesForHubClusterSeedsByPagerank(
+		limit: number,
+		hubSummaryFolder: string,
+	): Promise<MobiusNodeHubClusterSeedRow[]> {
+		const lim = Math.max(1, limit);
+		const hub = hubSummaryFolder.trim();
+		const likeUnderHub = hub ? `${hub}/%` : '';
+
+		let q = this.db
+			.selectFrom('mobius_node')
+			.select([
+				'node_id',
+				'path',
+				'label',
+				'semantic_pagerank',
+				'doc_incoming_cnt',
+				'doc_outgoing_cnt',
+				'pagerank',
+			])
+			.where('type', '=', GraphNodeType.Document)
+			.where('path', 'is not', null);
+
+		if (hub) {
+			q = q.where((eb) =>
+				eb.and([eb('path', '!=', hub), eb('path', 'not like', likeUnderHub)]),
+			);
+		}
+
+		const rows = await q.orderBy(sql`coalesce(pagerank, 0) desc`).limit(lim).execute();
 		return rows as MobiusNodeHubClusterSeedRow[];
 	}
 
@@ -1560,6 +1758,8 @@ export class MobiusNodeRepo {
 				'type',
 				'doc_incoming_cnt',
 				'doc_outgoing_cnt',
+				'other_incoming_cnt',
+				'other_outgoing_cnt',
 				'pagerank',
 				'semantic_pagerank',
 				'tags_json',
@@ -1590,6 +1790,8 @@ export class MobiusNodeRepo {
 				'type',
 				'doc_incoming_cnt',
 				'doc_outgoing_cnt',
+				'other_incoming_cnt',
+				'other_outgoing_cnt',
 				'pagerank',
 				'semantic_pagerank',
 				'tags_json',

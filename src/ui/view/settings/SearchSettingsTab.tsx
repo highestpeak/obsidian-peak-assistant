@@ -10,10 +10,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { DOCUMENT_TYPES } from '@/core/document/types';
 import { getKnownPerplexityModelIds } from '@/core/providers/base/perplexity';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
-import {
-	DEFAULT_HUB_DISCOVER_SETTINGS,
-	type HubDiscoverSettings,
-} from '@/service/search/index/helper/hub/types';
+import { DEFAULT_HUB_DISCOVER_SETTINGS, type HubDiscoverSettings } from '@/service/search/index/helper/hub/types';
 
 /** Merge persisted hub-discover fields with defaults so updates satisfy {@link HubDiscoverSettings}. */
 function applyHubDiscoverPatch(
@@ -519,19 +516,21 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 						<div className="pktw-flex pktw-items-start pktw-gap-4 pktw-mb-6">
 							<div className="pktw-flex-1 pktw-min-w-0">
 								<label className="pktw-block pktw-text-sm pktw-font-medium pktw-text-foreground pktw-mb-1">
-									Enable Hub Discover LLM Round Review
+									Enable LLM Semantic Hub Merge
 								</label>
 								<p className="pktw-text-xs pktw-text-muted-foreground">
-									One structured review per maintenance run over coverage metrics and the selected hub set (does not remove hubs). Turn off for fully deterministic discovery.
+									After discovery selection, call the merge model to fold duplicate or same-topic hubs (manual hubs are
+									never merged). Configure the model for the hub-semantic-merge prompt; override wording in{' '}
+									<code className="pktw-text-xs">hub-semantic-merge.md</code> in your vault templates if needed.
 								</p>
 							</div>
 							<div className="pktw-flex-shrink-0 pktw-flex pktw-items-center">
 								<Switch
-									checked={settings.search.hubDiscover?.enableLlmJudge ?? false}
+									checked={settings.search.hubDiscover?.enableLlmSemanticMerge ?? false}
 									onChange={(value) =>
 										updateSearch(
 											'hubDiscover',
-											applyHubDiscoverPatch(settings.search.hubDiscover, { enableLlmJudge: value }),
+											applyHubDiscoverPatch(settings.search.hubDiscover, { enableLlmSemanticMerge: value }),
 										)
 									}
 								/>
@@ -549,7 +548,7 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 							</div>
 							<div className="pktw-flex-shrink-0 pktw-w-64">
 								<NumberInputWithConfirm
-									value={settings.search.hubDiscover?.maxRounds ?? 3}
+									value={settings.search.hubDiscover?.maxRounds ?? 5}
 									onConfirm={(value) =>
 										updateSearch(
 											'hubDiscover',
@@ -558,7 +557,7 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 									}
 									min={1}
 									max={10}
-									placeholder="3"
+									placeholder="5"
 								/>
 							</div>
 						</div>
@@ -569,7 +568,7 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 									Max Hub Judge Calls
 								</label>
 								<p className="pktw-text-xs pktw-text-muted-foreground">
-									Legacy setting (reserved). Round review uses a single call when enabled.
+									Legacy setting (reserved); not used by the current hub pipeline.
 								</p>
 							</div>
 							<div className="pktw-flex-shrink-0 pktw-w-64">
@@ -599,7 +598,7 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 							</div>
 							<div className="pktw-flex-shrink-0 pktw-w-64">
 								<NumberInputWithConfirm
-									value={settings.search.hubDiscover?.minCoverageGain ?? 0.04}
+									value={settings.search.hubDiscover?.minCoverageGain ?? 0.02}
 									onConfirm={(value) =>
 										updateSearch(
 											'hubDiscover',
@@ -609,7 +608,7 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 									min={0}
 									max={1}
 									step={0.01}
-									placeholder="0.04"
+									placeholder="0.02"
 								/>
 							</div>
 						</div>

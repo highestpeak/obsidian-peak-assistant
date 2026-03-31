@@ -66,6 +66,10 @@ export enum PromptId {
 	HubDiscoverRoundReviewSystem = 'hub-discover-round-review-system',
 	/** User: Round summary JSON → structured review. */
 	HubDiscoverRoundReview = 'hub-discover-round-review',
+	/** System: Hub semantic merge (duplicate / same-topic folds). */
+	HubSemanticMergeSystem = 'hub-semantic-merge-system',
+	/** User: Hub card JSON → merge groups (does not invent stableKeys). */
+	HubSemanticMerge = 'hub-semantic-merge',
 
 	// Search prompts
 	/** Session history compression; preserves user background, pains, evidence paths. */
@@ -214,7 +218,7 @@ export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.FolderProjectSummary,
 	PromptId.DocTagGenerateJson,
 	PromptId.HubDocSummary,
-	PromptId.HubDiscoverRoundReview,
+	PromptId.HubSemanticMerge,
 ] as const;
 
 /**
@@ -370,6 +374,11 @@ export interface PromptVariables {
 	[PromptId.HubDiscoverRoundReview]: {
 		/** JSON string of HubDiscoverRoundSummary (metrics + hub cards + gaps). */
 		roundSummaryJson: string;
+	};
+	[PromptId.HubSemanticMergeSystem]: Record<string, never>;
+	[PromptId.HubSemanticMerge]: {
+		/** JSON array of hub cards for merge (stableKey, path, labels, signals). */
+		hubCardsJson: string;
 	};
 	[PromptId.DocTagGenerateJson]: {
 		content: string;

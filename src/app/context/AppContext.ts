@@ -12,6 +12,10 @@ import {
 	debugBatchIndex,
 	debugDocumentSnapshot,
 	debugExplainPathCoverage,
+	debugHubDiscoverClusterOnly,
+	debugHubDiscoverDocumentOnly,
+	debugHubDiscoverFolderOnly,
+	debugHubDiscoverManualOnly,
 	debugHubDiscoverSnapshot,
 	debugIndexDocument,
 	debugMaterializeHubCandidate,
@@ -138,6 +142,11 @@ export class AppContext {
 					opts?: Parameters<typeof debugMaterializeHubCandidate>[2],
 				) => debugMaterializeHubCandidate(candidate, getSearch, opts);
 				(window as any).debugHubDiscoverSnapshot = (tenant?: 'vault' | 'chat') => debugHubDiscoverSnapshot(tenant);
+				(window as any).debugHubDiscoverManualOnly = (tenant?: 'vault' | 'chat') => debugHubDiscoverManualOnly(tenant);
+				(window as any).debugHubDiscoverDocumentOnly = (tenant?: 'vault' | 'chat') =>
+					debugHubDiscoverDocumentOnly(tenant);
+				(window as any).debugHubDiscoverFolderOnly = (tenant?: 'vault' | 'chat') => debugHubDiscoverFolderOnly(tenant);
+				(window as any).debugHubDiscoverClusterOnly = (tenant?: 'vault' | 'chat') => debugHubDiscoverClusterOnly(tenant);
 				(window as any).debugValidateSubset = (opts: Parameters<typeof debugValidateSubset>[0]) => debugValidateSubset(opts);
 				(window as any).debugExplainPathCoverage = (docPath: string) => debugExplainPathCoverage(docPath);
 				(window as any).debugDocumentSnapshot = (
@@ -162,6 +171,9 @@ export class AppContext {
 					'📖 Usage: await window.debugMaterializeHubCandidate(candidate, { hubCandidatesForHubSet }) — one Hub-*.md from a candidate',
 				);
 				console.debug('📖 Usage: await window.debugHubDiscoverSnapshot() — hub discovery (can be slow)');
+				console.debug(
+					'📖 Usage: await window.debugHubDiscoverManualOnly() | debugHubDiscoverDocumentOnly() | debugHubDiscoverFolderOnly() | debugHubDiscoverClusterOnly() — one first-round leg',
+				);
 				console.debug('📖 Usage: await window.debugValidateSubset({ pathPrefixes: ["Projects"] })');
 				console.debug('📖 Usage: await window.debugExplainPathCoverage("path/to/note.md")');
 				console.debug('📖 Usage: await window.debugDocumentSnapshot("path/to/note.md") — DB-only index snapshot (add { includeHubCoverage: true } for slow hub coverage)');
@@ -179,6 +191,10 @@ export class AppContext {
 					'debugRunHubDiscoverWithReport',
 					'debugMaterializeHubCandidate',
 					'debugHubDiscoverSnapshot',
+					'debugHubDiscoverManualOnly',
+					'debugHubDiscoverDocumentOnly',
+					'debugHubDiscoverFolderOnly',
+					'debugHubDiscoverClusterOnly',
 					'debugValidateSubset',
 					'debugExplainPathCoverage',
 					'debugDocumentSnapshot',
@@ -199,6 +215,10 @@ export class AppContext {
 				if ((window as any).debugRunHubDiscoverWithReport) delete (window as any).debugRunHubDiscoverWithReport;
 				if ((window as any).debugMaterializeHubCandidate) delete (window as any).debugMaterializeHubCandidate;
 				if ((window as any).debugHubDiscoverSnapshot) delete (window as any).debugHubDiscoverSnapshot;
+				if ((window as any).debugHubDiscoverManualOnly) delete (window as any).debugHubDiscoverManualOnly;
+				if ((window as any).debugHubDiscoverDocumentOnly) delete (window as any).debugHubDiscoverDocumentOnly;
+				if ((window as any).debugHubDiscoverFolderOnly) delete (window as any).debugHubDiscoverFolderOnly;
+				if ((window as any).debugHubDiscoverClusterOnly) delete (window as any).debugHubDiscoverClusterOnly;
 				if ((window as any).debugValidateSubset) delete (window as any).debugValidateSubset;
 				if ((window as any).debugExplainPathCoverage) delete (window as any).debugExplainPathCoverage;
 				if ((window as any).debugDocumentSnapshot) delete (window as any).debugDocumentSnapshot;

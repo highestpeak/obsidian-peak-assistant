@@ -141,11 +141,14 @@ const shared = {
 	target: "es2018",
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
-	// Inline bundled licenses can break the output: nested `*/` inside dependency license text
-	// terminates the outer `/*! Bundled license information` block early, leaving invalid JS at EOF.
-	legalComments: prod ? "none" : "inline",
+	// Always strip bundled license comments: nested `*/` inside dependency license text can terminate
+	// the outer `/*! … */` block early and leave invalid JS (Obsidian eval: SyntaxError). Same as prod.
+	legalComments: "none",
 	treeShaking: true,
-	minify: prod,
+	// Always minify: @shikijs/langs ships grammar as JSON.parse('…') in a form that can produce
+	// invalid JavaScript when esbuild emits unminified output (Obsidian eval fails: SyntaxError).
+	keepNames: !prod,
+	minify: true,
 };
 
 const mainContext = await esbuild.context({

@@ -79,13 +79,11 @@ export class HubDocService {
 		sw.stop();
 
 		sw.start('discoverAllHubCandidates');
-		let discoveryRoundCount = 0;
 		const candidates = await this.discovery.discoverAllHubCandidates({
 			onRoundComplete: (summary) => {
-				discoveryRoundCount++;
 				options?.onProgress?.({
 					phase: 'hub_discovery',
-					progressTextSuffix: `round ${summary.roundIndex}/${summary.maxRounds}: ${summary.selectedHubCount} hubs · ${(summary.coverageRatio * 100).toFixed(1)}% cov`,
+					progressTextSuffix: `${summary.selectedHubCount} hubs · ${(summary.coverageRatio * 100).toFixed(1)}% cov`,
 					roundSummary: summary,
 				});
 			},
@@ -94,7 +92,7 @@ export class HubDocService {
 
 		options?.onProgress?.({
 			phase: 'hub_discovery',
-			progressTextSuffix: `done: ${candidates.length} candidate(s) · ${discoveryRoundCount} round(s)`,
+			progressTextSuffix: `done: ${candidates.length} candidate(s)`,
 		});
 
 		const hubNodeIdSet = new Set(
@@ -168,6 +166,9 @@ function buildHubDocBodyMetadataRecord(
 		meta.hub_organizational = Number(cs.organizationalScore.toFixed(4));
 		meta.hub_semantic_centrality = Number(cs.semanticCentralityScore.toFixed(4));
 		meta.hub_manual_boost = Number(cs.manualBoost.toFixed(4));
+		if (typeof cs.cohesionScore === 'number' && Number.isFinite(cs.cohesionScore)) {
+			meta.hub_folder_cohesion_effective = Number(cs.cohesionScore.toFixed(4));
+		}
 	}
 	const lg = assembly?.localHubGraph;
 	if (lg) {
@@ -194,6 +195,18 @@ function buildHubDocBodyMetadataRecord(
 	const members = assembly?.clusterMemberPaths ?? candidate.clusterMemberPaths;
 	if (members?.length) {
 		meta.hub_cluster_members = members.slice(0, SLICE_CAPS.hub.hubBodyMetadataClusterMembers);
+	}
+	if (candidate.mergedFromStableKeys?.length) {
+		meta.hub_merged_from_keys = candidate.mergedFromStableKeys;
+	}
+	if (candidate.mergedFromPaths?.length) {
+		meta.hub_merged_from_paths = candidate.mergedFromPaths.slice(0, 48);
+	}
+	if (typeof candidate.mergeConfidence === 'number' && Number.isFinite(candidate.mergeConfidence)) {
+		meta.hub_merge_confidence = Number(candidate.mergeConfidence.toFixed(4));
+	}
+	if (candidate.mergeRationale?.trim()) {
+		meta.hub_merge_rationale = candidate.mergeRationale.trim().slice(0, 2000);
 	}
 	return meta;
 }
@@ -230,6 +243,7 @@ export class HubMarkdownService {
 	 * - `hub_organizational` *(if `candidateScore`)*: in/out link degree signal; “organizational” center in the doc graph.
 	 * - `hub_semantic_centrality` *(if `candidateScore`)*: semantic PageRank term; centrality in the semantic graph.
 	 * - `hub_manual_boost` *(if `candidateScore`)*: policy weight (e.g. manual hubs); small contribution to blended score.
+	 * - `hub_folder_cohesion_effective` *(folder hubs)*: cohesion × size reliability; component of folder `hub_graph_score`.
 	 * - `hub_local_graph_nodes` *(if local graph)*: node count in the bounded neighborhood used for assembly.
 	 * - `hub_local_graph_edges` *(if local graph)*: edge count in that graph (capped during build).
 	 * - `hub_frontier_reason` *(if local graph)*: why expansion stopped (e.g. `max_depth_reached`, `child_hub`, `anti_explosion_novelty`).

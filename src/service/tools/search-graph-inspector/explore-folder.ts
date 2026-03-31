@@ -1,5 +1,5 @@
 import { SLICE_CAPS } from '@/core/constant';
-import { GraphEdgeType } from '@/core/po/graph.po';
+import { GRAPH_WIKI_REFERENCE_EDGE_TYPES } from '@/core/po/graph.po';
 import { AppContext } from "@/app/context/AppContext";
 import { getAIHubSummaryFolder } from '@/app/settings/types';
 import { humanReadableTime } from "@/core/utils/date-utils";
@@ -474,7 +474,7 @@ async function getDocStatisticsByFolderPath(
         docIds === undefined ? mobiusNodeRepo.countAllDocumentStatisticsRows() : Promise.resolve(docIds.length),
         // Edge type in graph_edges is relationship type (e.g. 'references', 'tagged'), not node type; use no filter to count all edges.
         pathPrefix === ""
-            ? mobiusEdgeRepo.getTopNodeIdsByDegree(topK, undefined, GraphEdgeType.References).then((r) => ({
+            ? mobiusEdgeRepo.getTopNodeIdsByDegree(topK, undefined, GRAPH_WIKI_REFERENCE_EDGE_TYPES).then((r) => ({
                 topLinksInRaw: r.topByInDegree.map((x) => ({ node_id: x.nodeId, inDegree: x.inDegree })),
                 topLinksOutRaw: r.topByOutDegree.map((x) => ({ node_id: x.nodeId, outDegree: x.outDegree })),
             }))

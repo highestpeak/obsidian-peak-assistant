@@ -247,6 +247,11 @@ export interface Database {
 		semantic_pagerank: number | null;
 		semantic_pagerank_updated_at: number | null;
 		semantic_pagerank_version: number | null;
+		/**
+		 * Folder-only: mean intra-folder cohesion (tags/titles + semantic_related density), 0..1.
+		 * Populated by {@link IndexService} folder hub stats rebuild; null for non-folder rows.
+		 */
+		folder_cohesion_score: number | null;
 		attributes_json: string;
 	};
 	/** Graph edges without foreign keys (parallel to graph_edges). */
@@ -551,6 +556,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			semantic_pagerank REAL,
 			semantic_pagerank_updated_at INTEGER,
 			semantic_pagerank_version INTEGER,
+			folder_cohesion_score REAL,
 			attributes_json TEXT NOT NULL DEFAULT '{}'
 		);
 		CREATE INDEX IF NOT EXISTS idx_mobius_node_type_node_id ON mobius_node(type, node_id);
@@ -586,6 +592,8 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_type_created_at ON mobius_operation(operation_type, created_at);
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_group ON mobius_operation(continuous_group_id);
 	`);
+	// Existing DBs: add folder cohesion on folder nodes (materialized during folder hub stats).
+	tryExec(`ALTER TABLE mobius_node ADD COLUMN folder_cohesion_score REAL`);
 }
 
 

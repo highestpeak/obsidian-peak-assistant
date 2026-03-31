@@ -38,6 +38,8 @@ export type HubCandidateScore = {
 	semanticCentralityScore: number;
 	/** Extra weight from manual / policy (0..1). */
 	manualBoost: number;
+	/** Folder hubs: cohesion × size reliability (matches SQL `hub_cohesion_effective_score`). */
+	cohesionScore?: number;
 };
 
 /** Expected shape of navigation around a hub (assembly hints). */
@@ -95,7 +97,8 @@ export type HubCandidate = {
 	/** Semantic role for YAML / UI; inferred or overridden (e.g. manual frontmatter). */
 	role: HubRole;
 	/**
-	 * Dedup key across discovery lines (`document:…`, `manual-hub:…`, folder/cluster shapes).
+	 * Dedup key across discovery lines: kind prefix + normalized vault path (`document:…`, `manual-hub:…`,
+	 * `folder:…`, `cluster:` + seed path). Prefer paths over node ids for merge / LLM payloads.
 	 * Used for merge and stable HubDoc naming; not always interchangeable with `nodeId`.
 	 */
 	stableKey: string;
@@ -150,6 +153,19 @@ export type HubCandidate = {
 	assemblyHints?: HubAssemblyHints;
 	/** Cluster V1.1 only: scoring / cohesion / reject reason for debugging. */
 	clusterV11Debug?: HubClusterV11Debug;
+
+	/**
+	 * After LLM semantic merge: stable keys absorbed into this representative hub (excluding the rep itself).
+	 */
+	mergedFromStableKeys?: string[];
+	/** Paths of absorbed hubs (for Hub metadata / debugging). */
+	mergedFromPaths?: string[];
+	/** Distinct source kinds among absorbed + representative (optional breadcrumb). */
+	mergedFromSourceKinds?: HubSourceKind[];
+	/** LLM merge rationale (English). */
+	mergeRationale?: string;
+	/** LLM confidence for the merge group (0..1). */
+	mergeConfidence?: number;
 };
 
 /**
@@ -166,6 +182,7 @@ export type HubClusterV11Debug = {
 		topicConsistency: number;
 		keywordConsistency: number;
 		titleConsensus: number;
+		intraClusterSemanticDensity: number;
 		cohesionScore: number;
 	};
 	cohesionPass: boolean;
@@ -328,6 +345,14 @@ export type HubDiscoverRoundSummaryHubCard = {
 	role: HubRole;
 	graphScore: number;
 	coverageSize: number;
+	/** Document-graph incoming link count (organizational signal). */
+	docIncomingCnt: number;
+	/** Document-graph outgoing link count (organizational signal). */
+	docOutgoingCnt: number;
+	/** Raw document graph PageRank when present. */
+	pagerank: number | null;
+	/** Raw semantic graph centrality when present. */
+	semanticPagerank: number | null;
 };
 
 /** Uncovered mass grouped by path prefix (deterministic gap hint). */
@@ -343,6 +368,27 @@ export type HubDiscoverOverlapPair = {
 	stableKeyB: string;
 	overlapRatio: number;
 	sharedNodeCount: number;
+};
+
+/**
+ * Cluster discovery pass counters (debug / LLM context; one batch per hub-discovery round).
+ */
+export type HubClusterDiscoveryStats = {
+	seedsFetched: number;
+	seedsRanked: number;
+	skippedWeakAnchor: number;
+	skippedPathFilter: number;
+	skippedAffinity: number;
+	skippedCohesion: number;
+	emitted: number;
+	/** Seeds skipped because path did not match follow-up `targetPathPrefixes` (when non-empty). */
+	skippedByTargetPrefix: number;
+	/** Cluster seeds that overlapped top document hubs and received soft score penalty (not skipped). */
+	seedTopDocOverlapSoftPenalty: number;
+	/** Candidates removed by coarse post-emit dedupe (family + member Jaccard). */
+	coarseDeduped: number;
+	/** Skipped because raw emit per-theme cap was reached (`HUB_DISCOVER_CLUSTER_RAW_MAX_PER_THEME`). */
+	skippedRawFamilyCap: number;
 };
 
 /**
@@ -375,6 +421,8 @@ export type HubDiscoverRoundSummary = {
 	hubCards: HubDiscoverRoundSummaryHubCard[];
 	topUncoveredFolders: HubDiscoverCoverageGap[];
 	topOverlapPairs: HubDiscoverOverlapPair[];
+	/** Present when cluster discovery ran this round. */
+	clusterDiscovery?: HubClusterDiscoveryStats;
 };
 
 /**
@@ -418,8 +466,11 @@ export const SOURCE_PRIORITY: Record<HubSourceKind, number> = {
 
 /** User-tunable hub discovery (SearchSettings.hubDiscover). */
 export type HubDiscoverSettings = {
-	/** When true, run one structured LLM review over the round summary (does not remove hubs). */
-	enableLlmJudge: boolean;
+	/**
+	 * When true, run structured LLM merge on the selected hub set (non-manual only).
+	 * Merge plan must reference existing `stableKey`s; manual hubs are always kept.
+	 */
+	enableLlmSemanticMerge: boolean;
 	/** Reserved (legacy gray-zone per-candidate judge); not used by round review. */
 	maxJudgeCalls: number;
 	/** Min marginal coverage gain (0..1) to keep adding hubs in multi-round. */
@@ -433,10 +484,10 @@ export type HubDiscoverSettings = {
 };
 
 export const DEFAULT_HUB_DISCOVER_SETTINGS: HubDiscoverSettings = {
-	enableLlmJudge: false,
+	enableLlmSemanticMerge: false,
 	maxJudgeCalls: 20,
-	minCoverageGain: 0.04,
-	maxRounds: 3,
+	minCoverageGain: 0.02,
+	maxRounds: 5,
 	judgeGrayZoneMin: 0.32,
 	judgeGrayZoneMax: 0.58,
 };

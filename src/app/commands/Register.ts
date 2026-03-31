@@ -280,10 +280,7 @@ function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 					if (phase === 'semantic_pagerank_edges') return 'Semantic PageRank · edges';
 					if (phase === 'semantic_pagerank_persist') return 'Semantic PageRank · writing scores';
 					if (phase === 'folder_hub_stats') return 'folder hub stats';
-					if (phase === 'hub_discovery') return 'hub discovery';
-					if (phase === 'hub_materialize') return 'hub docs';
-					if (phase === 'hub_index') return 'hub reindex';
-					return 'Semantic PageRank · writing scores';
+					return 'graph maintenance';
 				};
 				try {
 					await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat'], {
@@ -302,7 +299,7 @@ function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 		},
 		{
 			id: 'peak-search-staged-full-pipeline',
-			name: 'Search: full pipeline (FTS → vector → LLM → maintenance)',
+			name: 'Search: full pipeline (FTS → vector → LLM → maintenance → hub)',
 			callback: async () => {
 				if (!searchClient) {
 					new Notice('Search service is not available. Please restart the plugin.', 5000);

@@ -120,8 +120,8 @@ export const LLM_PENDING_ENRICH_CONCURRENCY = 12;
  * Sub-pools (document/folder/cluster fetch, top-doc exclude) scale with this total; see `computeHubDiscoverBudgets`.
  */
 export const HUB_DISCOVER_LIMIT_MIN = 40;
-export const HUB_DISCOVER_LIMIT_MAX = 200;
-export const HUB_DISCOVER_LIMIT_SQRT_SCALE = 3;
+export const HUB_DISCOVER_LIMIT_MAX = 320;
+export const HUB_DISCOVER_LIMIT_SQRT_SCALE = 5;
 
 /**
  * Greedy selection policy for multi-round hub discovery (`selectHubCandidatesMultiRound` in hubDiscover).
@@ -135,6 +135,11 @@ export const HUB_DISCOVER_GREEDY_SELECTION = {
 	strictFilterStartCount: 6,
 	/** `rankingScore` at or above this still passes when marginal coverage gain is low. */
 	strongHubScore: 0.48,
+	/**
+	 * Cluster hubs use a lower strong threshold in the main greedy pass (their `rankingScore` scale
+	 * is below folder hubs; reserve still guarantees thematic slots).
+	 */
+	clusterStrongHubScore: 0.33,
 	/** Marginal gain must be at least `minCoverageGain * usefulGainFactor` to count as “useful new coverage”. */
 	usefulGainFactor: 0.45,
 } as const;
@@ -148,35 +153,188 @@ export const HUB_DISCOVER_REMAINING_CANDIDATE_SCORE_WEIGHT = 0.15;
 /** Default max folder-hub candidates per fetch in hub discovery (`discoverFolderHubCandidates`). */
 export const HUB_DISCOVER_FOLDER_MAX_CANDIDATES = 15;
 
+/**
+ * Max share of final hub slots that may be folder hubs (reduces parent/child redundancy vs thematic clusters).
+ * Applied in `selectHubCandidatesMultiRound` after `seedSelected`.
+ */
+export const HUB_DISCOVER_FOLDER_MAX_SELECTED_FRACTION = 0.4;
+
+/**
+ * Hard cap on folder hubs in final selection (applied with {@link HUB_DISCOVER_FOLDER_MAX_SELECTED_FRACTION}).
+ * Reduces parent/child redundancy when the fraction alone allows too many folder slots.
+ */
+export const HUB_DISCOVER_FOLDER_MAX_SELECTED_ABS = 24;
+
+/**
+ * Max share of final hub slots that may be document hubs (greedy pass; seeds count toward this).
+ * Prevents low-diversity “all document hubs” when graph scores are noisy.
+ */
+export const HUB_DISCOVER_DOCUMENT_MAX_SELECTED_FRACTION = 0.45;
+
+/** Hard cap on document hubs (used with {@link HUB_DISCOVER_DOCUMENT_MAX_SELECTED_FRACTION}). */
+export const HUB_DISCOVER_DOCUMENT_MAX_SELECTED_ABS = 100;
+
+/** Floor for document hub cap on very small `limitTotal` values. */
+export const HUB_DISCOVER_DOCUMENT_MAX_SELECTED_MIN = 24;
+
+/**
+ * After SQL recall of top documents by hub graph score, shrink to representative document-hub candidates
+ * by one-hop reference coverage overlap (see `thinDocumentHubCandidatesRepresentative` in hubDiscover).
+ * Thresholds align with {@link HUB_DISCOVER_GREEDY_SELECTION.strongHubScore} in code where applicable.
+ */
+export const DOCUMENT_HUB_REPRESENTATIVE_THINNING = {
+	/** Top-ranked seeds kept before overlap filtering (capped by target limit). */
+	seedKeepCount: 12,
+	/** Min fraction of a candidate's coverage that is new vs union of already-selected centers. */
+	noveltyHigh: 0.012,
+	/** Weaker novelty floor when overlap vs any selected center is below {@link overlapHigh}. */
+	noveltyLow: 0.006,
+	/** Above this overlap coefficient vs a selected center, weak-novelty picks are rejected. */
+	overlapHigh: 0.72,
+	/** Above this overlap vs a selected center, strong hubs are still rejected unless novelty is high. */
+	overlapVeryHigh: 0.85,
+} as const;
+
+/**
+ * Document-hub representative pool cap vs final document slots (`maxDocumentSlots` from
+ * {@link HUB_DISCOVER_DOCUMENT_MAX_SELECTED_FRACTION}): `max + extra` vs `ceil(max * mult)`.
+ * Smaller than the older 1.6x buffer so DevTools / intermediate lists are less noisy.
+ */
+export const DOCUMENT_HUB_REPRESENTATIVE_POOL_CAP = {
+	extraOverMaxSlots: 12,
+	multipleOfMaxSlots: 1.25,
+} as const;
+
+/**
+ * Document hub `hub_organizational_score` in {@link MobiusNodeRepo.listTopDocumentNodesForHubDiscovery} and
+ * `HubCandidateDiscoveryService.scoreDocumentRow`: `min(1, inc * incomingWeight + out * outgoingWeight)`.
+ * Slightly favors incoming links vs outgoing vs the older 0.035 / 0.055 weights so “pure high-out” pages do not
+ * dominate; index notes with many outgoing links still score strongly (linear in out, capped at 1).
+ */
+export const DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS = {
+	incoming: 0.045,
+	outgoing: 0.048,
+} as const;
+
+/**
+ * Second-phase selection in hub discovery: maximize union document coverage toward this ratio.
+ */
+export const HUB_DISCOVER_COVERAGE_FILL_TARGET_RATIO = 0.95;
+
+/** Stop fill when the best remaining pick adds fewer than this many new documents (unless ratio threshold below applies). */
+export const HUB_DISCOVER_COVERAGE_FILL_MIN_NEW_DOCS = 8;
+
+/** Stop fill when the best remaining pick adds fewer than this fraction of vault docs (and {@link HUB_DISCOVER_COVERAGE_FILL_MIN_NEW_DOCS}). */
+export const HUB_DISCOVER_COVERAGE_FILL_MIN_NEW_DOC_RATIO = 0.005;
+
+/** Extra folder hub slots allowed only in the coverage-fill phase (after greedy + cluster reserve). */
+export const HUB_DISCOVER_FOLDER_FILL_EXTRA_SLOTS = 20;
+
+/** Extra document hub slots allowed only in the coverage-fill phase. */
+export const HUB_DISCOVER_DOCUMENT_FILL_EXTRA_SLOTS = 25;
+
+/**
+ * In coverage-fill, skip nested folder picks unless they add at least this many new documents.
+ */
+export const HUB_DISCOVER_COVERAGE_FILL_MIN_NESTED_FOLDER_NEW_DOCS = 12;
+
+/**
+ * In coverage-fill, if a cluster conflicts with an already-selected cluster, require at least this many new docs to keep it.
+ */
+export const HUB_DISCOVER_COVERAGE_FILL_MIN_CLUSTER_NEW_DOCS_WHEN_CONFLICT = 15;
+
 /** Minimum cluster member count (including seed) to emit a cluster hub candidate. */
 export const HUB_DISCOVER_CLUSTER_MIN_SIZE = 3;
 
 /** Cap on 1-hop semantic neighbors collected per cluster seed. */
-export const HUB_DISCOVER_CLUSTER_SEMANTIC_NEIGHBOR_CAP = 20;
+export const HUB_DISCOVER_CLUSTER_SEMANTIC_NEIGHBOR_CAP = 30;
+
+/** Max reference-link neighbors merged into cluster recall (per seed). */
+export const HUB_DISCOVER_CLUSTER_REFERENCE_NEIGHBOR_CAP = 10;
 
 /**
- * Cluster V1.1: multi-signal member affinity + cohesion gate (deterministic hub discovery).
- * Tune in `clusterHubSignals.ts` consumers; weights should sum to 1 for interpretability.
+ * Fetch `seedFetchLimit * this` rows from DB, rank by composite seed quality in TS, then iterate.
+ */
+export const HUB_DISCOVER_CLUSTER_SEED_FETCH_MULTIPLIER = 3;
+
+/**
+ * Soft overlap with top document hubs: multiply cluster `graphScore` by this when the seed is in
+ * `excludeNodeIds` (replaces hard skip so clusters can still form around strong topical centers).
+ */
+export const HUB_DISCOVER_CLUSTER_SEED_TOP_DOC_SCORE_FACTOR = 0.82;
+
+/**
+ * After emitting cluster hubs, drop near-duplicates by coarse theme family + member-path Jaccard
+ * before applying `limit` (keeps pool diversity).
+ */
+export const HUB_DISCOVER_CLUSTER_EMIT_DEDUPE_MAX_JACCARD = 0.52;
+
+/**
+ * Max cluster candidates per coarse theme family (see hubDiscover `clusterThemeFamilyKey`) during raw emit
+ * (before coarse dedupe). Reduces sibling clusters (e.g. many GOF pattern notes under one folder). Set to 0 to disable.
+ */
+export const HUB_DISCOVER_CLUSTER_RAW_MAX_PER_THEME = 2;
+
+/**
+ * Cluster V2: multi-signal member affinity + cohesion gate (deterministic hub discovery).
+ * Weights sum to 1; semantic recall + tags/keywords/title + light structure.
  */
 export const HUB_CLUSTER_V11_MEMBER_WEIGHTS = {
-	semantic: 0.22,
-	topic: 0.26,
-	functional: 0.12,
-	keyword: 0.22,
-	titleLexical: 0.14,
-	structural: 0.04,
+	semantic: 0.3,
+	topic: 0.22,
+	functional: 0.1,
+	keyword: 0.24,
+	titleLexical: 0.06,
+	structural: 0.08,
 } as const;
 
 /** Minimum per-member affinity to keep a neighbor (after recall). Seed is never dropped. */
-export const HUB_CLUSTER_V11_MIN_MEMBER_AFFINITY = 0.42;
+export const HUB_CLUSTER_V11_MIN_MEMBER_AFFINITY = 0.26;
 /** When semantic edge weight maps to support >= this, a slightly weaker member may pass. */
-export const HUB_CLUSTER_V11_SEMANTIC_STRONG_THRESHOLD = 0.82;
-export const HUB_CLUSTER_V11_RELAXED_MEMBER_AFFINITY = 0.34;
+export const HUB_CLUSTER_V11_SEMANTIC_STRONG_THRESHOLD = 0.68;
+export const HUB_CLUSTER_V11_RELAXED_MEMBER_AFFINITY = 0.22;
+/** Moderate semantic support + minimum affinity (weak semantic edges, some lexical/tag overlap). */
+export const HUB_CLUSTER_V11_SEMANTIC_BRIDGE_THRESHOLD = 0.52;
+export const HUB_CLUSTER_V11_BRIDGE_MEMBER_AFFINITY = 0.22;
 
 /** Cluster-level gate: require cohesion score >= this to emit a cluster hub candidate. */
-export const HUB_CLUSTER_V11_MIN_COHESION_SCORE = 0.5;
+export const HUB_CLUSTER_V11_MIN_COHESION_SCORE = 0.32;
 /** Require mean member affinity (filtered set, including seed) >= this. */
-export const HUB_CLUSTER_V11_MIN_AVG_AFFINITY = 0.45;
+export const HUB_CLUSTER_V11_MIN_AVG_AFFINITY = 0.27;
+
+/**
+ * Default weight for reference-only neighbors (no semantic edge): maps to ~0.74 support at cap 1.35,
+ * so structural recall is not over-penalized vs weak semantic edges.
+ */
+export const HUB_CLUSTER_V11_REFERENCE_EDGE_DEFAULT_WEIGHT = 1.0;
+
+/**
+ * After greedy hub selection, reserve up to this many slots for strong cluster hubs
+ * (so thematic clusters are not always dropped by coverage overlap with doc/folder hubs).
+ */
+export const HUB_DISCOVER_CLUSTER_RESERVE_MIN = 2;
+/** Upper bound for cluster slots after greedy + reserve (scales with `limitTotal` below). */
+export const HUB_DISCOVER_CLUSTER_RESERVE_MAX = 8;
+/**
+ * Minimum `graphScore` for reserve pool (cluster scores are ~0.2–0.35 for typical emitted clusters;
+ * 0.38 matched folder/doc scale and filtered out all clusters). If none pass, selection falls back
+ * to all unselected cluster candidates by `rankingScore`.
+ */
+export const HUB_DISCOVER_CLUSTER_RESERVE_MIN_GRAPH_SCORE = 0.24;
+
+/**
+ * When filling cluster reserve slots, skip a candidate if its member paths overlap an already-kept
+ * cluster (Jaccard index) above this — reduces duplicate “same island” clusters.
+ */
+export const HUB_DISCOVER_CLUSTER_RESERVE_MAX_MEMBER_JACCARD = 0.65;
+
+/**
+ * Max cluster hubs per coarse theme family in the reserve pass (from first anchor topic tag or label).
+ */
+export const HUB_DISCOVER_CLUSTER_RESERVE_MAX_PER_THEME = 1;
+
+/** Minimum length for a follow-up path prefix after sanitization (shorter strings are dropped). */
+export const HUB_DISCOVER_PREFIX_MIN_LENGTH = 3;
 
 /** Map raw semantic edge weight to 0..1 support (weights often ~0.3–1.5). */
 export const HUB_CLUSTER_V11_SEMANTIC_WEIGHT_CAP = 1.35;
@@ -191,11 +349,90 @@ export const HUB_CLUSTER_V11_CONSOLE_DEBUG = false;
 export const HUB_SOURCE_CONSENSUS_MAX = 0.12;
 export const HUB_SOURCE_CONSENSUS_PER_EXTRA = 0.04;
 
+/** Min LLM confidence to accept a semantic hub merge group (single-source kind). */
+export const HUB_SEMANTIC_MERGE_MIN_CONFIDENCE = 0.6;
+/** Min confidence when merging hubs of different primary `sourceKind`. */
+export const HUB_SEMANTIC_MERGE_CROSS_KIND_MIN_CONFIDENCE = 0.85;
+
 /** Minimum distinct documents under a folder path for folder hub candidates. */
 export const FOLDER_HUB_MIN_DOCS = 4;
 
 /** Keyset page size when scanning documents to rebuild folder hub materialized stats. */
 export const FOLDER_HUB_STATS_DOC_PAGE_SIZE = 200;
+
+/** Max documents per folder sampled for {@link computeFolderCohesionScore} during folder hub stats rebuild. */
+export const FOLDER_COHESION_MAX_DOCS = 200;
+
+/** Max semantic_related rows loaded when measuring intra-folder edge density. */
+export const FOLDER_COHESION_INTRA_EDGE_LIMIT = 1200;
+
+/**
+ * Folder `hub_graph_score` blend in {@link MobiusNodeRepo.listTopFolderNodesForHubDiscovery} (SQL). Sum = 1.
+ * Cohesion is multiplied by size reliability: min(1, ln(1+tag_doc_count)/ln(1+FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT)).
+ */
+export const FOLDER_HUB_GRAPH_WEIGHT_PHYSICAL = 0.25;
+export const FOLDER_HUB_GRAPH_WEIGHT_ORGANIZATIONAL = 0.35;
+export const FOLDER_HUB_GRAPH_WEIGHT_SEMANTIC = 0.15;
+export const FOLDER_HUB_GRAPH_WEIGHT_COHESION = 0.25;
+/** Doc-count reference for cohesion reliability cap (12 docs → R_size = 1). */
+export const FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT = 12;
+
+/** Batch size when scanning all `mobius_edge` rows with endpoint metadata for folder boundary degrees. */
+export const FOLDER_HUB_BOUNDARY_EDGE_BATCH_SIZE = 800;
+
+/**
+ * Folder hub discovery: SQL fetch batch size = ceil(limit * {@link FOLDER_HUB_DISCOVER_FETCH_BATCH_MULTIPLIER}).
+ * After nested-path compression, more rows may be fetched until enough representatives or max scan.
+ */
+export const FOLDER_HUB_DISCOVER_FETCH_BATCH_MULTIPLIER = 2;
+/** Max rows read from SQL relative to target limit (limit * this) before stopping pagination. */
+export const FOLDER_HUB_DISCOVER_MAX_SCAN_MULTIPLIER = 6;
+
+/** Nested folder compression: child wins if score is at least this much above parent. */
+export const FOLDER_HUB_DISCOVER_NEST_SCORE_CHILD_WIN = 0.03;
+/** Nested folder compression: child wins if cohesion is this much higher and child has enough docs. */
+export const FOLDER_HUB_DISCOVER_NEST_COHESION_CHILD_WIN = 0.1;
+export const FOLDER_HUB_DISCOVER_NEST_CHILD_MIN_DOCS_STRONG = 6;
+/** Large independent subtree: min docs and min share of parent's doc count. */
+export const FOLDER_HUB_DISCOVER_NEST_CHILD_MIN_DOCS_LARGE = 10;
+export const FOLDER_HUB_DISCOVER_NEST_CHILD_MIN_RATIO = 0.35;
+export const FOLDER_HUB_DISCOVER_NEST_SCORE_NEAR = 0.01;
+/** Prefer parent: small child by doc count and share of parent. */
+export const FOLDER_HUB_DISCOVER_NEST_SMALL_CHILD_MAX_DOCS = 6;
+export const FOLDER_HUB_DISCOVER_NEST_SMALL_CHILD_MAX_RATIO = 0.2;
+export const FOLDER_HUB_DISCOVER_NEST_SMALL_CHILD_SCORE_EPS = 0.015;
+export const FOLDER_HUB_DISCOVER_NEST_COHESION_NEAR = 0.06;
+/** Prefer parent: weak boundary degree vs parent. */
+export const FOLDER_HUB_DISCOVER_NEST_WEAK_CHILD_MAX_DOCS = 8;
+export const FOLDER_HUB_DISCOVER_NEST_WEAK_CHILD_BOUNDARY_RATIO = 0.35;
+export const FOLDER_HUB_DISCOVER_NEST_WEAK_CHILD_SCORE_EPS = 0.02;
+
+/**
+ * Nested folder resolution: parent keeps docs outside the child subtree (heuristic), or has other
+ * direct children in the candidate pool → prefer keeping both; {@link FOLDER_HUB_NEST_SHELL_*} flags a hollow parent.
+ */
+export const FOLDER_HUB_NEST_PARENT_RESIDUAL_MIN_DOCS = 8;
+export const FOLDER_HUB_NEST_PARENT_RESIDUAL_RATIO = 0.22;
+export const FOLDER_HUB_NEST_SHELL_MAX_RESIDUAL_DOCS = 4;
+export const FOLDER_HUB_NEST_SHELL_MAX_RESIDUAL_RATIO = 0.12;
+
+/**
+ * Structural "broad folder" soft penalty (no name lists): many docs + low effective cohesion,
+ * or org-heavy / sem-light profile vs cohesion. Capped by {@link FOLDER_HUB_BROAD_PENALTY_MAX}.
+ */
+export const FOLDER_HUB_BROAD_MIN_TAG_DOCS = 48;
+export const FOLDER_HUB_BROAD_MAX_EFFECTIVE_COHESION = 0.12;
+export const FOLDER_HUB_BROAD_PENALTY_BASE = 0.018;
+export const FOLDER_HUB_BROAD_PENALTY_DOC_SCALE = 0.045;
+export const FOLDER_HUB_BROAD_ORG_MIN = 0.48;
+export const FOLDER_HUB_BROAD_SEM_MAX = 0.3;
+export const FOLDER_HUB_BROAD_MISMATCH_PENALTY = 0.042;
+export const FOLDER_HUB_BROAD_PENALTY_MAX = 0.085;
+
+/** Stop SQL pagination once compressed rows reach this multiple of `limit` (pool for top-root quota). */
+export const FOLDER_HUB_DISCOVER_QUOTA_POOL_MULTIPLIER = 2.4;
+/** Max share of the final folder hub slots from one top-level vault root (first path segment). */
+export const FOLDER_HUB_TOP_ROOT_MAX_FRACTION = 0.38;
 
 /**
  * Indexing / search policy: long-range edges, rerank boosts.

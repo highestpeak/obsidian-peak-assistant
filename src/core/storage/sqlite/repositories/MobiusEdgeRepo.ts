@@ -4,6 +4,7 @@ import { stableMobiusEdgeId } from '@/core/utils/id-utils';
 import {
 	GRAPH_TAGGED_EDGE_TYPES,
 	GRAPH_TAG_NODE_TYPES,
+	GRAPH_WIKI_REFERENCE_EDGE_TYPES,
 	GraphEdgeType,
 	GraphNodeType,
 	isIndexedNoteNodeType,
@@ -239,7 +240,7 @@ export class MobiusEdgeRepo {
 	 * non-document ids fall back to `mobius_edge`.
 	 * When `type` is set, always aggregates from `mobius_edge` (cannot derive from cached columns).
 	 */
-	async countInComingEdges(nodeIds: string[], type?: string): Promise<Map<string, number>> {
+	async countInComingEdges(nodeIds: string[], type?: string | readonly string[]): Promise<Map<string, number>> {
 		if (!nodeIds.length) return new Map();
 		if (type !== undefined) {
 			return this.countIncomingEdgesFromEdgeTable(nodeIds, type);
@@ -250,7 +251,7 @@ export class MobiusEdgeRepo {
 	/**
 	 * Outgoing edge counts; same caching rules as {@link countInComingEdges}.
 	 */
-	async countOutgoingEdges(nodeIds: string[], type?: string): Promise<Map<string, number>> {
+	async countOutgoingEdges(nodeIds: string[], type?: string | readonly string[]): Promise<Map<string, number>> {
 		if (!nodeIds.length) return new Map();
 		if (type !== undefined) {
 			return this.countOutgoingEdgesFromEdgeTable(nodeIds, type);
@@ -258,13 +259,18 @@ export class MobiusEdgeRepo {
 		return this.countOutgoingEdgesFromNodeColumns(nodeIds);
 	}
 
-	private async countIncomingEdgesFromEdgeTable(nodeIds: string[], edgeType?: string): Promise<Map<string, number>> {
+	private async countIncomingEdgesFromEdgeTable(
+		nodeIds: string[],
+		edgeType?: string | readonly string[],
+	): Promise<Map<string, number>> {
 		let query = this.db
 			.selectFrom('mobius_edge')
 			.select(({ fn }) => [fn.count<number>('id').as('count'), 'to_node_id'])
 			.where('to_node_id', 'in', nodeIds);
 		if (edgeType !== undefined) {
-			query = query.where('type', '=', edgeType);
+			const types = typeof edgeType === 'string' ? [edgeType] : [...edgeType];
+			query =
+				types.length === 1 ? query.where('type', '=', types[0]!) : query.where('type', 'in', types);
 		}
 		const rows = await query.groupBy(['to_node_id']).execute();
 		const map = new Map<string, number>();
@@ -274,13 +280,18 @@ export class MobiusEdgeRepo {
 		return map;
 	}
 
-	private async countOutgoingEdgesFromEdgeTable(nodeIds: string[], edgeType?: string): Promise<Map<string, number>> {
+	private async countOutgoingEdgesFromEdgeTable(
+		nodeIds: string[],
+		edgeType?: string | readonly string[],
+	): Promise<Map<string, number>> {
 		let query = this.db
 			.selectFrom('mobius_edge')
 			.select(({ fn }) => [fn.count<number>('id').as('count'), 'from_node_id'])
 			.where('from_node_id', 'in', nodeIds);
 		if (edgeType !== undefined) {
-			query = query.where('type', '=', edgeType);
+			const types = typeof edgeType === 'string' ? [edgeType] : [...edgeType];
+			query =
+				types.length === 1 ? query.where('type', '=', types[0]!) : query.where('type', 'in', types);
 		}
 		const rows = await query.groupBy(['from_node_id']).execute();
 		const map = new Map<string, number>();
@@ -348,7 +359,10 @@ export class MobiusEdgeRepo {
 	 * group count node's edges by type.
 	 * return a map: node_id -> count
 	 */
-	async countEdges(nodeIds: string[], type?: string): Promise<{ incoming: Map<string, number>; outgoing: Map<string, number> , total: Map<string, number> }> {
+	async countEdges(
+		nodeIds: string[],
+		type?: string | readonly string[],
+	): Promise<{ incoming: Map<string, number>; outgoing: Map<string, number>; total: Map<string, number> }> {
 		const incoming = await this.countInComingEdges(nodeIds, type);
 		const outgoing = await this.countOutgoingEdges(nodeIds, type);
 		const total = new Map<string, number>();
@@ -418,7 +432,80 @@ export class MobiusEdgeRepo {
 	}
 
 	/**
-	 * Keyset-ordered batches of `references` edges (no JOIN). Callers filter by doc-like node ids in memory.
+	 * Streams all edges with endpoint `mobius_node` type/path resolved in memory (no SQL JOIN: edge page + `IN` lookup).
+	 */
+	async *iterateMobiusEdgeBatchesWithEndpointMetadata(
+		batchSize: number,
+	): AsyncGenerator<
+		Array<{
+			id: string;
+			type: string;
+			from_type: string;
+			from_path: string | null;
+			to_type: string;
+			to_path: string | null;
+		}>,
+		void,
+		undefined
+	> {
+		const limit = Math.max(1, batchSize);
+		let afterId: string | null = null;
+		for (;;) {
+			let q = this.db.selectFrom('mobius_edge').select(['id', 'type', 'from_node_id', 'to_node_id']);
+			if (afterId != null) {
+				q = q.where('id', '>', afterId);
+			}
+			const edgeRows = await q.orderBy('id', 'asc').limit(limit).execute();
+			if (edgeRows.length === 0) {
+				return;
+			}
+
+			const idSet = new Set<string>();
+			for (const e of edgeRows) {
+				idSet.add(String(e.from_node_id));
+				idSet.add(String(e.to_node_id));
+			}
+			const metaById = await this.loadMobiusNodeTypePathByIds([...idSet]);
+
+			yield edgeRows.map((e) => {
+				const from = metaById.get(String(e.from_node_id));
+				const to = metaById.get(String(e.to_node_id));
+				return {
+					id: String(e.id),
+					type: String(e.type),
+					from_type: from?.type ?? '',
+					from_path: from?.path ?? null,
+					to_type: to?.type ?? '',
+					to_path: to?.path ?? null,
+				};
+			});
+
+			afterId = String(edgeRows[edgeRows.length - 1]!.id);
+			if (edgeRows.length < limit) {
+				return;
+			}
+		}
+	}
+
+	/** Single-table lookup for endpoint resolution (used with {@link iterateMobiusEdgeBatchesWithEndpointMetadata}). */
+	private async loadMobiusNodeTypePathByIds(
+		nodeIds: string[],
+	): Promise<Map<string, { type: string; path: string | null }>> {
+		const out = new Map<string, { type: string; path: string | null }>();
+		if (!nodeIds.length) return out;
+		const rows = await this.db
+			.selectFrom('mobius_node')
+			.select(['node_id', 'type', 'path'])
+			.where('node_id', 'in', nodeIds)
+			.execute();
+		for (const r of rows) {
+			out.set(String(r.node_id), { type: String(r.type), path: r.path ?? null });
+		}
+		return out;
+	}
+
+	/**
+	 * Keyset-ordered batches of wiki reference edges (no JOIN). Callers filter by doc-like node ids in memory.
 	 */
 	async *iterateReferenceEdgeBatches(
 		batchSize: number,
@@ -429,7 +516,7 @@ export class MobiusEdgeRepo {
 			let q = this.db
 				.selectFrom('mobius_edge')
 				.select(['id', 'from_node_id', 'to_node_id'])
-				.where('type', '=', GraphEdgeType.References);
+				.where('type', 'in', [...GRAPH_WIKI_REFERENCE_EDGE_TYPES]);
 			if (afterId != null) {
 				q = q.where('id', '>', afterId);
 			}
@@ -619,7 +706,11 @@ export class MobiusEdgeRepo {
 	 * @param nodeIdFilter Optional node IDs to restrict to.
 	 * @param edgeType Optional edge relationship type (e.g. 'references', 'tagged') to filter by; not node type.
 	 */
-	async getTopNodeIdsByDegree(limit?: number, nodeIdFilter?: string[], edgeType?: string): Promise<{
+	async getTopNodeIdsByDegree(
+		limit?: number,
+		nodeIdFilter?: string[],
+		edgeType?: string | readonly string[],
+	): Promise<{
 		topByOutDegree: Array<{ nodeId: string; outDegree: number }>;
 		topByInDegree: Array<{ nodeId: string; inDegree: number }>;
 	}> {
@@ -642,8 +733,15 @@ export class MobiusEdgeRepo {
 			.orderBy('inDegree', 'desc');
 
 		if (edgeType !== undefined) {
-			outDegreeQuery = outDegreeQuery.where('type', '=', edgeType);
-			inDegreeQuery = inDegreeQuery.where('type', '=', edgeType);
+			const types = typeof edgeType === 'string' ? [edgeType] : [...edgeType];
+			outDegreeQuery =
+				types.length === 1
+					? outDegreeQuery.where('type', '=', types[0]!)
+					: outDegreeQuery.where('type', 'in', types);
+			inDegreeQuery =
+				types.length === 1
+					? inDegreeQuery.where('type', '=', types[0]!)
+					: inDegreeQuery.where('type', 'in', types);
 		}
 		if (nodeIdFilter && nodeIdFilter.length > 0) {
 			outDegreeQuery = outDegreeQuery.where('from_node_id', 'in', nodeIdFilter);
@@ -840,7 +938,7 @@ export class MobiusEdgeRepo {
 	 */
 	async getDegreeMapsByNodeIdsChunked(
 		nodeIds: string[],
-		edgeType: string = GraphEdgeType.References
+		edgeType: string | readonly string[] = GRAPH_WIKI_REFERENCE_EDGE_TYPES,
 	): Promise<{ inMap: Map<string, number>; outMap: Map<string, number> }> {
 		const inMap = new Map<string, number>();
 		const outMap = new Map<string, number>();
@@ -874,10 +972,10 @@ export class MobiusEdgeRepo {
 	 */
 	async getIntraEdges(
 		nodeIds: string[],
-		edgeType: string = GraphEdgeType.References
+		edgeType: string | readonly string[] = GRAPH_WIKI_REFERENCE_EDGE_TYPES,
 	): Promise<Array<{ from_node_id: string; to_node_id: string }>> {
 		if (!nodeIds.length) return [];
-		const types = [edgeType];
+		const types = typeof edgeType === 'string' ? [edgeType] : [...edgeType];
 		const [fromEdges, toEdges] = await Promise.all([
 			this.getByFromNodesAndTypes(nodeIds, types),
 			this.getByToNodesAndTypes(nodeIds, types),
@@ -921,8 +1019,8 @@ export class MobiusEdgeRepo {
 	 */
 	async getExternalEdgeCountsChunked(
 		internalIds: string[],
-		edgeType: string = GraphEdgeType.References,
-		limitK: number
+		edgeType: string | readonly string[] = GRAPH_WIKI_REFERENCE_EDGE_TYPES,
+		limitK: number,
 	): Promise<{
 		extOut: Array<{ to_node_id: string; count: number }>;
 		extIn: Array<{ from_node_id: string; count: number }>;
@@ -931,7 +1029,7 @@ export class MobiusEdgeRepo {
 		const outByTo = new Map<string, number>();
 		const inByFrom = new Map<string, number>();
 		const CHUNK = 400;
-		const types = [edgeType];
+		const types = typeof edgeType === 'string' ? [edgeType] : [...edgeType];
 		for (let i = 0; i < internalIds.length; i += CHUNK) {
 			const c = internalIds.slice(i, i + CHUNK);
 			const [outEdges, inEdges] = await Promise.all([
@@ -967,7 +1065,7 @@ export class MobiusEdgeRepo {
 		const rows = await this.db
 			.selectFrom('mobius_edge')
 			.select(['from_node_id', 'to_node_id'])
-			.where('type', '=', GraphEdgeType.References)
+			.where('type', 'in', [GraphEdgeType.References, GraphEdgeType.ReferencesResource])
 			.where((eb) => eb.or([eb('from_node_id', '=', nodeId), eb('to_node_id', '=', nodeId)]))
 			.limit(lim)
 			.execute();
@@ -985,6 +1083,32 @@ export class MobiusEdgeRepo {
 			.where('type', '=', GraphEdgeType.SemanticRelated)
 			.where((eb) => eb.or([eb('from_node_id', '=', nodeId), eb('to_node_id', '=', nodeId)]))
 			.orderBy('weight desc')
+			.limit(lim)
+			.execute();
+		return rows.map((r) => ({
+			from_node_id: r.from_node_id,
+			to_node_id: r.to_node_id,
+			weight: typeof r.weight === 'number' && Number.isFinite(r.weight) ? r.weight : 1,
+		}));
+	}
+
+	/**
+	 * Semantic-related edges with both endpoints in `nodeIds` (cluster intra-density).
+	 */
+	async listSemanticRelatedEdgesWithinNodeSet(
+		nodeIds: string[],
+		limit: number,
+	): Promise<Array<{ from_node_id: string; to_node_id: string; weight: number }>> {
+		const ids = [...new Set(nodeIds.filter(Boolean))];
+		if (ids.length < 2) return [];
+		const lim = Math.max(1, limit);
+		const rows = await this.db
+			.selectFrom('mobius_edge')
+			.select(['from_node_id', 'to_node_id', 'weight'])
+			.where('type', '=', GraphEdgeType.SemanticRelated)
+			.where('from_node_id', 'in', ids)
+			.where('to_node_id', 'in', ids)
+			.where((eb) => eb('from_node_id', '!=', eb.ref('to_node_id')))
 			.limit(lim)
 			.execute();
 		return rows.map((r) => ({

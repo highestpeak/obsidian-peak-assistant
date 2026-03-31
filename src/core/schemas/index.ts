@@ -8,9 +8,13 @@ export {
 	hubAssemblyHintsLlmSchema,
 	hubDiscoverRoundReviewLlmSchema,
 	hubDocSummaryLlmSchema,
+	hubSemanticMergeGroupLlmSchema,
+	hubSemanticMergeLlmSchema,
 	type HubAssemblyHintsLlm,
 	type HubDiscoverRoundReviewLlm,
 	type HubDocSummaryLlm,
+	type HubSemanticMergeGroupLlm,
+	type HubSemanticMergeLlm,
 } from './hubDiscoverLlm';
 export * from './tools';
 export * from './agents';
