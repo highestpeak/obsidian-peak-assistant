@@ -27,7 +27,11 @@ import {
 	type HubDiscoveryAgentLoopResult,
 	type HubDiscoveryAgentOptions,
 } from '@/service/agents/HubDiscoveryAgent';
-import { buildHubWorldSnapshot } from '@/service/agents/hub-helper/hubDiscoverySnapshot';
+import {
+	buildBackboneMap,
+	type BackboneMapResult,
+	type BuildBackboneMapOptions,
+} from '@/service/search/index/helper/backbone';
 
 /**
  * Global test interface for search-graph-inspector tools
@@ -409,6 +413,30 @@ export class AISearchAgentTestTools {
             });
         }
         return { result, duration, eventCount };
+    }
+
+    /**
+     * Builds deterministic backbone map: folder tree, optional virtual-* clusters, cross-folder highways.
+     * No LLM. Requires indexed SQLite.
+     *
+     * @example
+     * ```ts
+     * await window.testBackboneMap();
+     * await window.testAISearchTools.testBackboneMap({ maxDepth: 8, topBackboneEdges: 24 });
+     * ```
+     */
+    async testBackboneMap(options?: BuildBackboneMapOptions): Promise<BackboneMapResult | null> {
+        const ctx = AppContext.getInstance();
+        if (ctx.isMockEnv) {
+            console.debug('[testBackboneMap] skipped (mock env)');
+            return null;
+        }
+        const start = Date.now();
+        const result = await buildBackboneMap(options);
+        const duration = Date.now() - start;
+        console.debug('[testBackboneMap]', { duration, metrics: result.metrics, debug: result.debug });
+        console.debug('[testBackboneMap] markdown (first 2500 chars):\n', result.markdown.slice(0, 2500));
+        return result;
     }
 
 }

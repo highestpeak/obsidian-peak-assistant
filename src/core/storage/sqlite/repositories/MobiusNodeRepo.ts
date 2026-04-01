@@ -1893,6 +1893,25 @@ export class MobiusNodeRepo {
 		return m;
 	}
 
+	/**
+	 * Sums `doc_outgoing_cnt` for document nodes (matches folder-row `docOutgoing` semantics, doc links only).
+	 */
+	async sumDocumentOutgoingByNodeIds(nodeIds: string[]): Promise<number> {
+		const uniq = [...new Set(nodeIds.filter(Boolean))];
+		if (uniq.length === 0) return 0;
+		const rows = await this.db
+			.selectFrom('mobius_node')
+			.select(['doc_outgoing_cnt'])
+			.where('node_id', 'in', uniq)
+			.where('type', '=', GraphNodeType.Document)
+			.execute();
+		let s = 0;
+		for (const r of rows) {
+			s += Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0)));
+		}
+		return s;
+	}
+
 	/** Batch load fields needed for weighted local hub graph nodes. */
 	async listHubLocalGraphNodeMeta(nodeIds: string[]): Promise<MobiusNodeHubLocalGraphMetaRow[]> {
 		if (!nodeIds.length) return [];

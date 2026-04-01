@@ -169,7 +169,10 @@ export class AppContext {
 				console.debug('📖 Usage: await window.debugRunHubDiscoverWithReport() — hub discovery (can be slow)');
 				(window as any).testFolderHubDiscovery = (opts?: Record<string, unknown>) =>
 					(window as any).testAISearchTools.testFolderHubDiscovery(opts);
+				(window as any).testBackboneMap = (opts?: Record<string, unknown>) =>
+					(window as any).testAISearchTools.testBackboneMap(opts);
 				console.debug('📖 Usage: await window.testFolderHubDiscovery({ userGoal?: "..." }) — HubDiscoveryAgent (internal hub budgets)');
+				console.debug('📖 Usage: await window.testBackboneMap() — folder tree + backbone highways (deterministic, SQLite)');
 				console.debug(
 					'📖 Usage: await window.debugMaterializeHubCandidate(candidate, { hubCandidatesForHubSet }) — one Hub-*.md from a candidate',
 				);
@@ -203,6 +206,7 @@ export class AppContext {
 					'debugDocumentSnapshot',
 					'cleanupGraphTable',
 					'testFolderHubDiscovery',
+					'testBackboneMap',
 				]);
 			}
 		} else {
@@ -228,6 +232,7 @@ export class AppContext {
 				if ((window as any).debugDocumentSnapshot) delete (window as any).debugDocumentSnapshot;
 				if ((window as any).cleanupGraphTable) delete (window as any).cleanupGraphTable;
 				if ((window as any).testFolderHubDiscovery) delete (window as any).testFolderHubDiscovery;
+				if ((window as any).testBackboneMap) delete (window as any).testBackboneMap;
 				console.log('🔧 Graph Inspector Test Tools disabled');
 			}
 		}
