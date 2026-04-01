@@ -223,7 +223,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'hub-discovery-folder-deepen': meta('prompts', 'hub-discovery-folder-deepen', {
 		expectsJson: true,
 		jsonConstraint:
-			'Return only one JSON object matching the caller schema (confirmedFolderHubCandidates, rejectedFolders, refinedDocumentHubLeads, updatedCoverage, findingsSummary). No markdown fences.',
+			'Return only one JSON object matching the caller schema (confirmedFolderHubCandidates, optional folderNavigationGroups, rejectedFolders, refinedDocumentHubLeads, updatedCoverage, findingsSummary). No markdown fences.',
 		systemPromptId: 'hub-discovery-folder-deepen-system' as PromptId,
 	}),
 	'hub-discovery-folder-recon-plan-system': meta('prompts', 'hub-discovery-folder-recon-plan-system'),
@@ -234,7 +234,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'hub-discovery-folder-recon-submit': meta('prompts', 'hub-discovery-folder-recon-submit', {
 		expectsJson: true,
 		jsonConstraint:
-			'Return only one JSON object: confirmedFolderHubCandidates, rejectedFolderPaths, highwayFolderLeads, ignoredPathPrefixes, updatedCoverage, openQuestions, should_stop, findingsSummary.',
+			'Return only one JSON object: confirmedFolderHubCandidates, folderNavigationGroups, rejectedFolderPaths, highwayFolderLeads, ignoredPathPrefixes, updatedCoverage, openQuestions, should_stop, findingsSummary.',
 		systemPromptId: 'hub-discovery-folder-recon-submit-system' as PromptId,
 	}),
 	'hub-discovery-document-recon-plan-system': meta('prompts', 'hub-discovery-document-recon-plan-system'),

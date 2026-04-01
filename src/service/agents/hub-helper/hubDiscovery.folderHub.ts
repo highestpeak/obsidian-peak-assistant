@@ -4,7 +4,7 @@
 
 import { streamText } from 'ai';
 import type { ModelMessage } from 'ai';
-import { hubDiscoveryFolderReconSubmitSchema } from '@/core/schemas';
+import { hubDiscoveryFolderReconSubmitSchema, type RejectedFolderPathEntry } from '@/core/schemas';
 import { isBlankString } from '@/core/utils/common-utils';
 import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { StreamTriggerName, UIStepType, type LLMStreamEvent } from '@/core/providers/types';
@@ -16,7 +16,14 @@ import {
 } from './hubDiscovery.memory';
 import { buildFolderHubTools, executeReconToolCalls } from './hubDiscovery.tools';
 import { effectiveReconMaxIterations, type ReconLoopDebugOptions } from './hubDiscoveryDebug';
-import type { FolderHubCandidate, FolderReconMemory, FolderTreeNodeDigest, HighwayFolderLead, HubDiscoveryPrepContext } from './types';
+import type {
+	FolderHubCandidate,
+	FolderNavigationGroup,
+	FolderReconMemory,
+	FolderTreeNodeDigest,
+	HighwayFolderLead,
+	HubDiscoveryPrepContext,
+} from './types';
 
 /** Compact table of top folders by doc count / degrees for the first recon plan message. */
 export function buildFolderDigestMarkdown(nodes: FolderTreeNodeDigest[], maxLines: number): string {
@@ -34,6 +41,32 @@ export function buildFolderDigestMarkdown(nodes: FolderTreeNodeDigest[], maxLine
 	return [
 		'| Path | Docs | Degrees (in/out) | Subdirs | Max depth | Avg depth | IA tags | Keywords | File name tokens | Subfolder name tokens |',
 		'| --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- | --- |',
+		...lines,
+	].join('\n');
+}
+
+/** Compact table that spotlights deeper thematic candidates so plan doesn't stop at broad shallow folders. */
+export function buildDeepFolderDigestMarkdown(nodes: FolderTreeNodeDigest[], maxLines: number): string {
+	const scored = nodes
+		.filter((n) => n.depth >= 3)
+		.map((n) => ({
+			node: n,
+			score:
+				n.docCount * 1.25
+				+ n.docOutgoing * 0.12
+				+ Math.max(0, n.depth - 2) * 14
+				+ Math.max(0, n.childFolderCount - 1) * 5,
+		}))
+		.sort((a, b) => b.score - a.score || b.node.docCount - a.node.docCount || b.node.docOutgoing - a.node.docOutgoing);
+	const lines = scored.slice(0, maxLines).map(({ node: n }) => {
+		const keywords = n.topKeywords.slice(0, 6).join(', ') || '—';
+		const topics = n.topTopics.slice(0, 4).join(', ') || '—';
+		return `| \`${n.path}\` | ${n.depth} | ${n.docCount} | ${n.childFolderCount} | ${n.docOutgoing} | ${keywords} | ${topics} |`;
+	});
+	if (lines.length === 0) return '_(No depth >= 3 folder candidates found in snapshot.)_';
+	return [
+		'| Path | Depth | Docs | Subdirs | Out | Keywords | Topics |',
+		'| --- | ---: | ---: | ---: | ---: | --- | --- |',
 		...lines,
 	].join('\n');
 }
@@ -67,6 +100,7 @@ export async function* runFolderHubReconLoop(options: {
 	const maxIter = effectiveReconMaxIterations(budgetDerived, debug);
 	const folderTreeMarkdown = buildFolderTreePagesMarkdown(ctx);
 	const folderDigestMarkdown = buildFolderDigestMarkdown(ctx.world.nodes, 100);
+	const deepFolderDigestMarkdown = buildDeepFolderDigestMarkdown(ctx.world.nodes, 60);
 	let memory = buildInitialFolderReconMemory(ctx);
 	const messages: ModelMessage[] = [
 		{
@@ -75,6 +109,7 @@ export async function* runFolderHubReconLoop(options: {
 				userGoal: ctx.userGoal,
 				worldMetricsJson: JSON.stringify(ctx.worldMetricsForPrompt),
 				folderDigestMarkdown,
+				deepFolderDigestMarkdown,
 				baselineExcludedPrefixesJson: JSON.stringify(ctx.baselineExcludedPrefixes),
 			}),
 		},
@@ -206,7 +241,11 @@ export async function* runFolderHubReconLoop(options: {
 				...memory.confirmedFolderHubs,
 				...submit.confirmedFolderHubCandidates,
 			]),
-			rejectedFolderPaths: [...memory.rejectedFolderPaths, ...submit.rejectedFolderPaths],
+			folderNavigationGroups: mergeFolderNavigationGroups([
+				...memory.folderNavigationGroups,
+				...submit.folderNavigationGroups,
+			]),
+			rejectedFolderPaths: mergeRejectedFolderPathsByPath([...memory.rejectedFolderPaths, ...submit.rejectedFolderPaths]),
 			highwayFolderLeads: mergeHighwayFolderLeadsByPath([...memory.highwayFolderLeads, ...submit.highwayFolderLeads]),
 			ignoredPathPrefixes: [...new Set([...memory.ignoredPathPrefixes, ...submit.ignoredPathPrefixes])],
 			coverage: submit.updatedCoverage,
@@ -271,4 +310,38 @@ function mergeHighwayFolderLeadsByPath(leads: HighwayFolderLead[]): HighwayFolde
 		if (!prev || (h.confidence ?? 0) > (prev.confidence ?? 0)) byPath.set(p, { ...h, path: p });
 	}
 	return [...byPath.values()];
+}
+
+function mergeRejectedFolderPathsByPath(entries: RejectedFolderPathEntry[]): RejectedFolderPathEntry[] {
+	const byPath = new Map<string, RejectedFolderPathEntry>();
+	for (const entry of entries) {
+		const p = String(entry.path ?? '').trim();
+		if (!p) continue;
+		const prev = byPath.get(p);
+		if (!prev) {
+			byPath.set(p, { ...entry, path: p });
+			continue;
+		}
+		const nextReason = String(entry.reason ?? '').trim();
+		const prevReason = String(prev.reason ?? '').trim();
+		const shouldReplace =
+			!!entry.rejectionKind && !prev.rejectionKind
+			|| nextReason.length > prevReason.length;
+		if (shouldReplace) byPath.set(p, { ...prev, ...entry, path: p });
+	}
+	return [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+}
+
+function mergeFolderNavigationGroups(groups: FolderNavigationGroup[]): FolderNavigationGroup[] {
+	const byKey = new Map<string, FolderNavigationGroup>();
+	for (const group of groups) {
+		const members = [...new Set((group.memberPaths ?? []).map((p) => String(p ?? '').trim()).filter(Boolean))].sort();
+		if (members.length < 2) continue;
+		const key = members.join('|');
+		const prev = byKey.get(key);
+		if (!prev || (group.confidence ?? 0) > (prev.confidence ?? 0)) {
+			byKey.set(key, { ...group, memberPaths: members });
+		}
+	}
+	return [...byKey.values()].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
 }

@@ -49,6 +49,7 @@ export function mergeDocumentSubmitIntoMemory(
 export function buildInitialFolderReconMemory(ctx: HubDiscoveryPrepContext): FolderReconMemory {
 	return {
 		confirmedFolderHubs: [],
+		folderNavigationGroups: [],
 		rejectedFolderPaths: [],
 		highwayFolderLeads: [],
 		ignoredPathPrefixes: [...ctx.baselineExcludedPrefixes],

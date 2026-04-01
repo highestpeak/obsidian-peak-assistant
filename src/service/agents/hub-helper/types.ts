@@ -4,8 +4,10 @@ import type {
 	FolderDeepenRoundOutput,
 	FolderHubCandidate,
 	FolderIntuitionRoundOutput,
+	FolderNavigationGroup,
 	HighwayFolderLead,
 	HubDiscoveryDocumentReconSubmit,
+	RejectedFolderPathEntry,
 } from '@/core/schemas';
 import type { computeHubDiscoverBudgets } from '@/service/search/index/helper/hub/hubDiscover';
 import type { TemplateManager } from '@/core/template/TemplateManager';
@@ -100,6 +102,7 @@ export type HubDiscoveryAgentLoopResult = {
 	deepen?: FolderDeepenRoundOutput;
 	explores: ExploreFolderRunRecord[];
 	mergedFolderHubCandidates: FolderHubCandidate[];
+	mergedFolderNavigationGroups: FolderNavigationGroup[];
 	mergedDocumentHubLeads: DocumentHubLead[];
 	documentShortlist?: DocumentHubShortlistRow[];
 	/** One entry per folder round, same order as `folderRounds` (folder rounds run in parallel). */
@@ -114,8 +117,10 @@ export type HubDiscoveryAgentLoopResult = {
 export type FolderReconMemory = {
 	/** Final accepted folder hub candidates accumulated across iterations. */
 	confirmedFolderHubs: FolderHubCandidate[];
+	/** Final navigation groups formed from multiple related folders. */
+	folderNavigationGroups: FolderNavigationGroup[];
 	/** Explicitly rejected folder paths to avoid repeated reconsideration. */
-	rejectedFolderPaths: Array<{ path: string; reason: string }>;
+	rejectedFolderPaths: RejectedFolderPathEntry[];
 	/**
 	 * Cross-cutting "corridor" folders (often high-outgoing / mixed-topic) that help locate
 	 * document-level hubs (bridges / index / authority notes) in the next phase.
@@ -165,4 +170,11 @@ export type HubDiscoveryPrepContext = {
 	baselineExcludedPrefixes: string[];
 };
 
-export type { CoverageAssessment, DocumentHubLead, FolderHubCandidate, FolderIntuitionRoundOutput, HighwayFolderLead };
+export type {
+	CoverageAssessment,
+	DocumentHubLead,
+	FolderHubCandidate,
+	FolderIntuitionRoundOutput,
+	FolderNavigationGroup,
+	HighwayFolderLead,
+};

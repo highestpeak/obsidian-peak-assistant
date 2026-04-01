@@ -58,6 +58,51 @@ export type HubDocSummaryLlm = z.infer<typeof hubDocSummaryLlmSchema>;
 
 // --- HubDiscoveryAgent folder rounds ---
 
+/** Where navigation should land relative to this folder path. */
+export const folderHubLandingLevelSchema = z.enum(['here', 'both']);
+
+/** Optional standardized category for rejected folder paths. */
+export const folderHubRejectionKindSchema = z.enum([
+	'container_only',
+	'weak_theme',
+	'noisy_mixed',
+	'redundant_with_child',
+	'redundant_with_parent',
+	'insufficient_evidence',
+]);
+
+/** One rejected folder path (deepen round or recon submit). */
+export const rejectedFolderPathEntrySchema = z.object({
+	path: z.string(),
+	reason: z.string(),
+	rejectionKind: folderHubRejectionKindSchema.optional().describe(
+		'Optional machine-readable rejection category; use especially for container-like or weak-theme drops.',
+	),
+});
+
+export type RejectedFolderPathEntry = z.infer<typeof rejectedFolderPathEntrySchema>;
+export type FolderHubLandingLevel = z.infer<typeof folderHubLandingLevelSchema>;
+export type FolderHubRejectionKind = z.infer<typeof folderHubRejectionKindSchema>;
+
+/** Group kind for folders that are weak alone but useful together for navigation. */
+export const folderNavigationGroupKindSchema = z.enum(['parallel_roots', 'sibling_set', 'small_topic_bundle']);
+
+/** Final navigation group composed of multiple related folders. */
+export const folderNavigationGroupSchema = z.object({
+	label: z.string().describe('Short human label for the navigation group.'),
+	memberPaths: z
+		.array(z.string())
+		.min(2)
+		.describe('Vault-relative folder paths that together form one navigation group.'),
+	confidence: z.number().describe('0..1: confidence this folder group is useful for navigation.'),
+	reason: z.string().describe('Why these folders should be navigated as one group (English, concise).'),
+	groupKind: folderNavigationGroupKindSchema
+		.optional()
+		.describe('Optional machine-readable group kind for parallel roots or small sibling bundles.'),
+});
+
+export type FolderNavigationGroup = z.infer<typeof folderNavigationGroupSchema>;
+
 /** Single folder hub candidate from LLM folder-intuition or deepen rounds. */
 export const folderHubCandidateSchema = z.object({
 	path: z
@@ -65,22 +110,15 @@ export const folderHubCandidateSchema = z.object({
 		.describe('Vault-relative folder path; must be grounded in tool output, not invented.'),
 	label: z.string().optional().describe('Short human label for this hub (optional).'),
 	confidence: z.number().describe('0..1: confidence this folder is a valid organizational folder hub.'),
-	structuralRole: z
-		.enum(['root_anchor', 'domain_anchor', 'subdomain_anchor', 'container_only'])
-		.describe(
-			'Hierarchy role: root/domain/subdomain anchor vs container_only. Map archetypes from prompts (structural parent / thematic child / parent–child coexistence) to the closest role and explain in reason.',
-		),
-	semanticIndexNeed: z.enum(['none', 'light', 'full']),
+	landingLevel: folderHubLandingLevelSchema.describe(
+		'here: this folder is the best hub landing point; both: this folder and a deeper subfolder both have independent hub value.',
+	),
 	reason: z
 		.string()
 		.describe(
-			'Why this path qualifies as a folder hub: coverage, topic cohesion, non-empty container, and relationship to siblings/parent (English, concise).',
+			'Why this path qualifies as a folder hub: coverage, topic cohesion, and landing decision vs siblings/parent (English, concise).',
 		),
 	evidenceSummary: z.array(z.string()).optional(),
-	possibleDocumentHubHints: z
-		.array(z.string())
-		.optional()
-		.describe('Optional note paths to inspect later for document-level hubs (wikilink/graph anchors).'),
 });
 
 /** Coverage / stop hints after a folder round. */
@@ -134,7 +172,8 @@ export const folderIntuitionRoundSchema = z.object({
 /** Structured output: after explore_folder dossiers, refine candidates. */
 export const folderDeepenRoundSchema = z.object({
 	confirmedFolderHubCandidates: z.array(folderHubCandidateSchema),
-	rejectedFolders: z.array(z.object({ path: z.string(), reason: z.string() })),
+	folderNavigationGroups: z.array(folderNavigationGroupSchema).optional(),
+	rejectedFolders: z.array(rejectedFolderPathEntrySchema),
 	refinedDocumentHubLeads: z.array(documentHubLeadSchema),
 	updatedCoverage: coverageAssessmentSchema,
 	findingsSummary: z.string(),
@@ -168,9 +207,12 @@ export const hubDiscoveryFolderReconSubmitSchema = z.object({
 	confirmedFolderHubCandidates: z
 		.array(folderHubCandidateSchema)
 		.describe(
-			'All new or reaffirmed folder hubs supported by this iteration’s evidence. Submit multiple distinct paths when justified — breadth is expected; do not collapse to a single candidate unless only one folder clearly qualifies.',
+			'All new or reaffirmed final folder hubs supported by this iteration’s evidence. Do not include broad branches whose actual landing point is deeper.',
 		),
-	rejectedFolderPaths: z.array(z.object({ path: z.string(), reason: z.string() })),
+	folderNavigationGroups: z
+		.array(folderNavigationGroupSchema)
+		.describe('Optional navigation groups for parallel roots or small same-level folders that are more useful together than alone.'),
+	rejectedFolderPaths: z.array(rejectedFolderPathEntrySchema),
 	highwayFolderLeads: z.array(highwayFolderLeadSchema),
 	ignoredPathPrefixes: z.array(z.string()),
 	updatedCoverage: coverageAssessmentSchema,

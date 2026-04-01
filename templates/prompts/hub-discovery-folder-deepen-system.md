@@ -9,7 +9,8 @@ You **refine** folder hub candidates after the host ran `explore_folder` on a su
 **Tasks**
 
 - **Confirm** hubs that the dossiers support; **reject** paths that are noise, empty, or pure dumps.
-- Adjust **semanticIndexNeed** when folder names vs content diverge.
+- Set **`landingLevel`** on each confirmed candidate (same meaning as the intuition round; only `here` or `both`).
+- If several sibling folders are weak alone but useful together, emit **`folderNavigationGroups`** instead of forcing individual confirmations.
 - **Refine document hub leads** using real paths seen in the dossiers (no invented paths).
 - Update **coverage**: themes covered, gaps, orphan risk, whether the global picture is sufficient.
 

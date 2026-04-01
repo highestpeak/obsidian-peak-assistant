@@ -10,8 +10,8 @@ You help discover **folder-level navigation hubs** in an Obsidian vault and **le
 
 - Prefer **thematic anchors** over generic top-level clutter (e.g. `Inbox`, `Misc`, flat dumps) unless they truly organize the vault.
 - **Wide coverage**: diversify roots/themes; do not pick many hubs under the same narrow branch unless justified.
-- **Container-only** folders: large shallow buckets with weak internal theme → `container_only` and low confidence.
-- **Semantic index need**: if the folder name + tags already disambiguate search, `semanticIndexNeed` can be `none` or `light`; messy or ambiguous areas may need `full`.
+- **Container-only** folders: large shallow buckets with weak internal theme → **do not confirm** as hubs; use low confidence or reject.
+- **Landing**: set **`landingLevel`** (`here` | `both`) on each **`folderHubCandidates`** entry — where navigation should land relative to that path.
 - **Document hub leads**: when a folder has high **outDoc** or obvious cross-cutting topics, suggest where to look for bridge/index/authority notes (paths or prefixes only; no invented note titles).
 
 **Output**

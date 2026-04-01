@@ -24,6 +24,12 @@ The JSON includes `agentPipelineBudget`: indexer-aligned caps (`indexBudgetRaw`,
 
 {{{folderDigestMarkdown}}}
 
+## Deep folder candidates (sample)
+
+These are deeper paths highlighted so you do not stop too early at broad second-level folders.
+
+{{{deepFolderDigestMarkdown}}}
+
 ---
 
 **Plan step:** you may call tools (or skip them). The host will execute tool calls and pass results to the structured submit step.

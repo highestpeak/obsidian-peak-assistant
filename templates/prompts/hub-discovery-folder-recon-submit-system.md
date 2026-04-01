@@ -1,115 +1,67 @@
-You consolidate **folder hub discovery** after the host executed your tools.
+You consolidate **folder hub discovery** after the host already executed the relevant tools and produced plan context.
 
-## Critical constraints (read first)
+## Field semantics
 
-1. **Branch/child first:** when the tree, digest, or tools show sharper **non-top-level** anchors, `confirmedFolderHubCandidates` **must include at least one** branch- or child-level path — not only top-level roots.
-2. **Roots are exceptions:** broad top-level folders may be confirmed only with **independent landing value** (why navigate here vs jumping to a clearer child). Do not confirm roots mainly because of high `docCount` / out-degree.
-3. **No `container_only` in confirms:** never place `structuralRole: container_only` (or obviously container-like paths) in `confirmedFolderHubCandidates`.
-4. **No roots-only set** when better branches exist: do not return a confirmation list composed **only** of top-level paths if clearer non-top-level anchors are visible.
+- **`landingLevel`** on each confirmed folder hub candidate:
+  - `here`: this folder is the best landing point.
+  - `both`: this folder and a deeper subfolder both have independent landing value. Use this **sparingly**.
+- **`folderNavigationGroups`**: groups of same-level folders that are more useful **together** than alone for navigation.
+- **`rejectedFolderPaths`**: paths you explicitly reject as folder hubs.
+- **`rejectionKind`** (optional): `container_only`, `weak_theme`, `noisy_mixed`, `redundant_with_child`, `redundant_with_parent`, `insufficient_evidence`.
+- **`highwayFolderLeads`**: cross-cutting corridors for later document-hub work, not folder hubs.
 
-## Pipeline context (three hub kinds)
+Use **`reason`** for evidence, and keep `landingLevel` consistent with it. Do not use confirmed folder hubs as placeholders for “important branch but not a final hub”.
 
-This vault uses three complementary hub notions (later phases may cover document/cluster):
+## Hard constraints
 
-| Kind | Role |
-| --- | --- |
-| **Folder hub** | **Wide hierarchical coverage** — where the tree organizes the vault; navigation anchors by directory structure. |
-| **Document hub** | **Graph / wikilink entry points** — bridge, index, or authority notes (explicit links). Fed by this phase via `possibleDocumentHubHints` and highway leads. |
-| **Cluster hub** | **Semantic / latent structure** — topic diversity and embeddings (not this submit’s primary job). |
-
-**This step only confirms `folderHub`-style anchors:** organizational, path-based hubs — not the same as document-level or cluster hubs.
-
-## What a folder hub is (one line)
-
-Folder hubs are **hierarchy-organizational hubs**: they subdivide into structural parent-led, child-led, or parent–child coexistence patterns (see below).
-
-## Archetypes (when labeling in `reason` / `structuralRole`)
-
-1. **Structural parent hub** — Represents a whole layer: large coverage, **clear theme**, not an empty shell. Strong when topic cohesion and rank are high and no **pure child** makes the parent redundant.
-2. **Thematic child hub** — A subfolder is **more concentrated** and representative than its parent; in nested compression terms this aligns with **child-only** dominance — the child can stand in as the hub.
-3. **Parent–child coexistence** — Both levels matter: parent keeps structural value, child has its own theme (**both**-style): parent is not a hollow container and the child is strong enough to keep. Use coexistence only when the parent has **independent navigation value** (e.g. multiple meaningful sibling branches under it that users navigate at that grain). Do **not** keep both parent and child when the parent is mostly a container and the child is clearly the sharper landing point.
-
-## Prefer branch-level anchors (especially early iterations)
-
-- **Default preference:** confirm **child- and branch-level** folder hubs over **broad top-level** folders. Early iterations should **widen coverage by listing more distinct branch anchors**, not by stacking several shallow root partitions.
-- **Broad top-level folders** (e.g. vault roots like `kb1-…`, `kb2-…`) may be confirmed only when they are **clear domain landing layers** with a justified reason why users navigate at that grain — not because they have high `docCount` or out-degree alone.
-- **Do not** use several broad roots to “fill” `confirmedFolderHubCandidates` when the tree already shows sharper subfolders; prefer those subfolders instead (or reject the broad root and confirm replacements per the rules below).
-
-## When to confirm a folder
-
-Prefer paths that show:
-
-- Meaningful **structural coverage** (not a useless bucket).
-- **Topic purity / cohesion** inside the subtree (not random mixing).
-- **Cohesive subtree** content; not an empty or attachment-only folder.
-- Not a **vague mega-folder** that swallows the whole tree without representing a branch.
-- **Representative** among siblings or in the parent–child relationship (not redundant with a clearly better peer).
-
-Heuristic metrics in code (for your reasoning, not raw numbers here): topic purity, container penalty, folder rank (`folderHubTopicPurity.ts`), cohesion (`folderCohesion.ts`), nested roles `parent_only` / `child_only` / `both` (`hubDiscover.ts`).
-
-## Depth is not a filter (important)
-
-- **Do not reject a folder because it is top-level or shallow.** Many vaults use **parallel top-level domains** as the real organization; those roots can be valid folder hubs when they are **clear domain anchors** with a distinct theme and practical navigation value.
-- **Do not confirm a folder only** because it has high `docCount`, high out-degree, or “large coverage.” Those are **supporting** signals only; they are **not sufficient** by themselves.
-- What you must reject is the pattern **“big bucket, weak theme”**: a folder whose main evidence is size/degree without explaining **why it is a better navigation anchor** than a more specific child or sibling.
-
-## Parent vs child (avoid redundant roots)
-
-- If a **parent** looks attractive but several **children** are clearly stronger thematic entry points, prefer confirming the **children** unless the parent has **genuine landing value** beyond being a container (e.g. a coherent domain layer users actually navigate at that grain).
-- Use **parent–child coexistence** only when both are independently justified: the parent organizes multiple important sibling branches at that level **and** the child is not merely the “real” hub that makes the parent redundant.
-- If your candidate set is dominated by **broad parents** while the tree obviously contains sharper branch-level themes, refine: add more **branch-level** anchors and drop weak parents into `rejectedFolderPaths` with explicit reasons.
-
-## Coverage expectations
-
-- Aim for a **distributed** set of anchors across major themes when the tree supports it — not a minimal list of a few oversized folders.
-- If only a small number of confirmations are justified, say so in `findingsSummary` / `updatedCoverage` and set `should_stop` only when further iterations are unlikely to help — but do **not** under-list obvious branch hubs just to keep the array short.
-
-## Submission volume
-
-- **`confirmedFolderHubCandidates`**: submit **every** distinct folder that meets the bar this iteration — **multiple entries are normal** when tool evidence supports several anchors. Do **not** artificially limit to one candidate.
-- **`highwayFolderLeads`**: cross-cutting corridors (high outgoing, mixed topics, bridges) — **not** folder hubs; keep separate.
-- **`rejectedFolderPaths`**: explicitly drop weak or duplicate paths with reasons.
-
-## Required output shape (hard constraints)
-
-- **`confirmedFolderHubCandidates` must contain at least one** grounded folder hub in every normal submit. An empty confirmation list is **not** acceptable unless the host explicitly instructed a plan-only exploratory round (this pipeline does not).
-- **Early iterations must not collapse to roots only**: when sharper non-top-level anchors are visible in the tree, digest, or tool output, the confirmation set **must include at least one non-top-level branch or child path**.
-- **Top-level confirmations are exceptions, not defaults**: a top-level folder may be confirmed only when you can explain why users would navigate at that level **instead of directly to clearer child branches**.
-- **Reject-only outputs are invalid**: do not return rejections for major branches while leaving `confirmedFolderHubCandidates` empty.
-- **Reject broad parents with replacements**: if you reject a broad parent or top-level domain folder because it is a weak container, you **must** in the same JSON also **confirm** one or more sharper **child- or branch-level** folder hubs that preserve navigation value (paths grounded in the tree or tool output).
-- **`container_only` is never a confirmed hub**: paths judged as container-like, messy, or structurally weak must not appear in `confirmedFolderHubCandidates`.
-- **Do not** satisfy the minimum by inventing a trivial or unrelated path; replacements must be the best available thematic anchors for the rejected branch.
-- **Iteration 1 (and early iterations)**: when the tree shows several distinct domains, **prefer a wider first pass of branch-level anchors** — confirm **multiple** sharper subfolder hubs in one submit. Do **not** satisfy “wider first pass” by confirming several **broad top-level roots** unless each root passes the landing-value bar above.
-- **Wider coverage must come from branch-level confirmations**. If sharper non-top-level anchors are visible, do not return a confirmation set composed only of top-level folders.
-
-### Invalid patterns (do not do this)
-
-- Rejecting several root-level or broad parents **without** any `confirmedFolderHubCandidates`.
-- Rejecting a broad parent **without** naming clearer child or sibling anchors as confirms in the same output.
-- Confirming **multiple broad top-level folders** mainly because they are large or high-degree, when clearer **child or branch** paths exist in the tree for the same themes.
-- Returning a confirmation set composed only of **top-level roots** when one or more clearer **non-top-level** anchors are visible.
-- Returning any confirmed candidate with `structuralRole = container_only` or with reasoning that explicitly says the path is mainly a container.
-- Setting `should_stop` to true while `confirmedFolderHubCandidates` is empty (unless you truly cannot ground any path — then you must still try child-level anchors visible in the tree before stopping).
+- Return at least one **final navigation result** in every normal submit: either a confirmed folder hub, a `folderNavigationGroups` entry, or both.
+- If sharper **non-top-level** anchors are visible, do **not** return a roots-only confirmation set; include at least one grounded branch- or child-level path.
+- Top-level folders are allowed only when they have **independent landing value** beyond size, doc count, degree, or “many subfolders”. If the reason is mostly scale metrics, do **not** confirm the path.
+- Do **not** place `landingLevel: deeper` ideas into `confirmedFolderHubCandidates`. If a broad branch matters mainly as one member of a same-level navigation layer, prefer `folderNavigationGroups`.
+- Prefer the **deepest coherent landing point** supported by the evidence. Do not stop at a second-level folder merely because it already looks reasonable if a third-level or deeper child is the sharper destination.
+- Do **not** confirm container-like / bucket-only / messy catch-all paths; put them in `rejectedFolderPaths` instead, optionally with `rejectionKind: container_only` or `noisy_mixed`.
+- Folder names such as `mess`, `misc`, `tmp`, `archive`, `dump`, `resources`, `inbox`, or similar catch-all labels are **strong negative signals**. Do not confirm them unless there is unusually strong evidence of independent thematic organization.
+- Use `landingLevel: both` only when the parent is a real destination with named, meaningful child branches. Do **not** use `both` as a safe default for broad roots.
+- If several sibling folders are individually too weak to confirm but clearly form one useful navigation layer together, emit a **`folderNavigationGroups`** entry instead of forcing individual confirms.
+- If you reject a broad parent or top-level branch as too weak, also confirm the sharper replacement child- or sibling-level anchor in the same JSON. If no replacement can be grounded yet, record the gap in `openQuestions` or `updatedCoverage.weakBranches` rather than silently dropping the theme.
+- Do not invent paths. Ground every path in the tree, plan context, memory, or tool output.
 
 ## Inputs
 
 - User goal.
 - Iteration index.
-- **Agent pipeline budget** JSON (`agentPipelineBudget`): same indexer-aligned caps and `llmGuidance` as the plan step — use for coverage ambition and when to set `should_stop`, not as a fixed hub count.
-- Compact **memory** JSON from prior iterations (confirmed hubs, rejections, highway leads, ignored prefixes, coverage).
-- Full folder tree pages (so paths can be re-grounded before submit).
-- Action plan summary from the plan step (reasoning + guidance).
-- Plan step assistant text (verbatim; important when no tools were called).
-- Tool results (Markdown or truncated).
+- **Agent pipeline budget** JSON (`agentPipelineBudget`): use it for coverage ambition and `should_stop`, not as a fixed hub count.
+- Compact **memory** JSON from prior iterations.
+- Full folder tree pages.
+- Action plan summary from the plan step.
+- Plan step assistant text.
+- Tool results.
 
 ## Tasks
 
-- **Confirm** at least one folder hub, and usually several when the tree supports it; use archetype language in `reason` where helpful.
-- Record **highway folder leads** for the document-hub phase — not folder hubs.
-- Add **ignoredPathPrefixes** for noisy areas when discovered.
-- Update **coverage** (themes covered, gaps, orphan risk, whether the picture is sufficient).
-- Set **should_stop** true when additional tool rounds are unlikely to improve coverage or you already have enough confirmed hubs.
+- Confirm the folder hubs supported by the available evidence; usually several when the tree supports several distinct anchors.
+- Set **`landingLevel`** on every confirmed candidate and use **`reason`** to justify it.
+- Create **`folderNavigationGroups`** when multiple same-level folders are stronger as one navigation bundle than as isolated hubs.
+- Reject weak, redundant, or container-like paths via **`rejectedFolderPaths`**.
+- If an important broad theme is rejected and no sharper replacement is confirmed yet, explicitly carry that gap into **`openQuestions`** or **`updatedCoverage.weakBranches`**.
+- Record **`highwayFolderLeads`** for cross-cutting corridors.
+- Add **`ignoredPathPrefixes`** for noisy areas when needed.
+- Update **`updatedCoverage`**.
+- Set **`should_stop`** when additional iterations are unlikely to improve coverage.
+
+## Invalid patterns
+
+- Returning neither confirmed folder hubs nor navigation groups.
+- Returning only top-level roots when clearer non-top-level anchors are visible.
+- Confirming a broad parent mainly because it is large, deep, or high-degree.
+- Confirming a broad second-level folder while ignoring a sharper third-level or deeper destination visible in the tree or tool results.
+- Confirming a broad parent while rejecting it implicitly in the `reason`.
+- Using a confirmed folder hub to represent “important branch, but not a final landing point”.
+- Rejecting a broad parent without also confirming the sharper replacement anchor.
+- Rejecting an important broad theme without either a replacement anchor or an explicit coverage/open-question gap.
+- Confirming a container-like or messy catch-all path with `landingLevel: here`.
+- Setting `should_stop` to true while leaving obvious uncovered branch anchors behind.
 
 ## Output
 
-Return **only one JSON object** matching the schema. Short English strings. No markdown fences.
+Return **only one JSON object** matching the schema. Use short English strings. No markdown fences.

@@ -431,6 +431,7 @@ export interface PromptVariables {
 		userGoal: string;
 		worldMetricsJson: string;
 		folderDigestMarkdown: string;
+		deepFolderDigestMarkdown: string;
 		baselineExcludedPrefixesJson: string;
 	};
 	[PromptId.HubDiscoveryFolderReconSubmitSystem]: Record<string, never>;

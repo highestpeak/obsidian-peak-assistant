@@ -198,6 +198,7 @@ export class HubDiscoveryAgent {
 			deepen: undefined,
 			explores: [],
 			mergedFolderHubCandidates: [],
+			mergedFolderNavigationGroups: [],
 			mergedDocumentHubLeads: [],
 			// documentShortlist: ctx.initialDocumentShortlist,
 			folderCoverageAssessments: [],
@@ -223,6 +224,7 @@ export class HubDiscoveryAgent {
 			deepen: undefined,
 			explores: [],
 			mergedFolderHubCandidates: folderMemory.confirmedFolderHubs,
+			mergedFolderNavigationGroups: folderMemory.folderNavigationGroups,
 			mergedDocumentHubLeads: [],
 			// documentShortlist,
 			folderCoverageAssessments: [folderMemory.coverage],
@@ -264,24 +266,18 @@ export class HubDiscoveryAgent {
 				this.folderReconMemory = m;
 			},
 		});
-
 		const folderMemory = this.folderReconMemory;
 		if (!folderMemory) {
 			throw new Error('HubDiscoveryAgent: folder recon finished without memory (onComplete not invoked).');
 		}
-
 		yield {
 			type: 'pk-debug',
 			debugName: 'HubDiscoveryAgent folder recon memory (raw)',
 			extra: {
 				stopAt: stopAt ?? null,
 				folderReconMemory: folderMemory,
-				confirmedFolderHubs: folderMemory.confirmedFolderHubs,
-				highwayFolderLeads: folderMemory.highwayFolderLeads,
-				coverage: folderMemory.coverage,
 			},
 		};
-
 		if (shouldSkipDocumentRecon(stopAt)) {
 			throw new HubDiscoveryPipelineAbortError(
 				'skip_document_after_folder',
@@ -341,6 +337,7 @@ export class HubDiscoveryAgent {
 			deepen: undefined,
 			explores: [],
 			mergedFolderHubCandidates: folderMemory.confirmedFolderHubs,
+			mergedFolderNavigationGroups: folderMemory.folderNavigationGroups,
 			mergedDocumentHubLeads,
 			documentShortlist,
 			folderCoverageAssessments: [folderMemory.coverage],
@@ -376,6 +373,7 @@ export class HubDiscoveryAgent {
 				folderRounds: [],
 				explores: [],
 				mergedFolderHubCandidates: [],
+				mergedFolderNavigationGroups: [],
 				mergedDocumentHubLeads: [],
 				documentShortlist: [],
 				folderCoverageAssessments: [],
@@ -425,6 +423,7 @@ export class HubDiscoveryAgent {
 				folderRoundCount: result.folderRounds.length,
 				exploreCount: result.explores.length,
 				mergedFolderHubs: result.mergedFolderHubCandidates.length,
+				mergedFolderNavigationGroups: result.mergedFolderNavigationGroups.length,
 				highwayFolderLeads: result.highwayFolderLeads.length,
 				// documentShortlist: result.documentShortlist.length,
 				docLeads: result.mergedDocumentHubLeads.length,
