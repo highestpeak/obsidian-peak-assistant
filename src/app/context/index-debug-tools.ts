@@ -13,6 +13,7 @@ import {
 	buildHubDiscoverDocCoverageIndex,
 	computeHubDiscoverBudgets,
 	estimateCandidateCoverageBits,
+	type FolderHubDiscoveryDiagnosticsRow,
 } from '@/service/search/index/helper/hub/hubDiscover';
 import { buildLocalHubGraphForPath } from '@/service/search/index/helper/hub/localGraphAssembler';
 import {
@@ -24,6 +25,8 @@ import type {
 	HubClusterDiscoveryStats,
 	HubDiscoverDocCoverageIndex,
 	HubDiscoverRoundSummary,
+	HubPartitionMetrics,
+	NavigationHubGroup,
 } from '@/service/search/index/helper/hub/types';
 import { getAIHubSummaryFolder } from '@/app/settings/types';
 import type { SearchSettings } from '@/app/settings/types';
@@ -52,18 +55,29 @@ export async function debugRunHubDiscoverWithReport(options?: {
 	onRoundComplete?: (summary: HubDiscoverRoundSummary) => void;
 }): Promise<{
 	candidates: HubCandidate[];
+	navigationHubGroups: NavigationHubGroup[];
+	navigationHubs: HubCandidate[];
+	longTailHubs: HubCandidate[];
+	partitionMetrics: HubPartitionMetrics;
 	roundSummaries: HubDiscoverRoundSummary[];
 }> {
 	const discovery = new HubCandidateDiscoveryService();
 	const roundSummaries: HubDiscoverRoundSummary[] = [];
-	const candidates = await discovery.discoverAllHubCandidates({
+	const discoverResult = await discovery.discoverAllHubCandidates({
 		tenant: options?.tenant ?? 'vault',
 		onRoundComplete: (s) => {
 			roundSummaries.push(s);
 			options?.onRoundComplete?.(s);
 		},
 	});
-	return { candidates, roundSummaries };
+	return {
+		candidates: discoverResult.candidates,
+		navigationHubGroups: discoverResult.navigationHubGroups,
+		navigationHubs: discoverResult.navigationHubs,
+		longTailHubs: discoverResult.longTailHubs,
+		partitionMetrics: discoverResult.partitionMetrics,
+		roundSummaries,
+	};
 }
 
 /**
@@ -925,6 +939,8 @@ export type DebugHubDiscoverSingleLegResult = {
 	candidateCount: number;
 	elapsedMs: number;
 	candidates: HubCandidate[];
+	/** Present when `leg === 'folder'`: per-path purity / penalty / rank breakdown (tuning). */
+	folderDiagnostics?: FolderHubDiscoveryDiagnosticsRow[];
 };
 
 async function runHubDiscoverSingleLeg(options: {
@@ -939,6 +955,7 @@ async function runHubDiscoverSingleLeg(options: {
 	const discovery = new HubCandidateDiscoveryService();
 	const t0 = Date.now();
 	let candidates: HubCandidate[];
+	let folderDiagnostics: FolderHubDiscoveryDiagnosticsRow[] | undefined;
 	if (leg === 'manual') {
 		candidates = await discovery.discoverManualHubCandidates({ tenant });
 	} else if (leg === 'document') {
@@ -949,10 +966,12 @@ async function runHubDiscoverSingleLeg(options: {
 			limitTotal: budgets.limitTotal,
 		});
 	} else {
-		candidates = await discovery.discoverFolderHubCandidates({
+		const folderRun = await discovery.discoverFolderHubCandidatesWithDiagnostics({
 			tenant,
 			limit: budgets.folderFetchLimit,
 		});
+		candidates = folderRun.candidates;
+		folderDiagnostics = folderRun.diagnostics;
 	}
 	const res: DebugHubDiscoverSingleLegResult = {
 		tenant,
@@ -962,6 +981,7 @@ async function runHubDiscoverSingleLeg(options: {
 		candidateCount: candidates.length,
 		elapsedMs: Date.now() - t0,
 		candidates,
+		...(folderDiagnostics !== undefined ? { folderDiagnostics } : {}),
 	};
 	console.info('[index-debug] debugHubDiscoverSingleLeg', {
 		tenant: res.tenant,
@@ -970,6 +990,9 @@ async function runHubDiscoverSingleLeg(options: {
 		budgets: res.budgets,
 		candidateCount: res.candidateCount,
 		elapsedMs: res.elapsedMs,
+		...(res.folderDiagnostics?.length
+			? { folderDiagnosticsJson: JSON.stringify(res.folderDiagnostics) }
+			: {}),
 	});
 	return res;
 }

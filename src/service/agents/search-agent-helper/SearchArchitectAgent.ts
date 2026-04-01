@@ -49,7 +49,7 @@ export async function* streamSearchArchitect(
 		intent_description: d.intent_description,
 		scope_constraint: d.scope_constraint,
 	}));
-	const dimensionsJson = JSON.stringify(dimensionsPayload, null, 2);
+	const dimensionsJson = JSON.stringify(dimensionsPayload);
 
 	const promptInfo = await aiServiceManager.getPromptInfo(PromptId.AiAnalysisSearchArchitect);
 	const system = await aiServiceManager.renderPrompt(promptInfo.systemPromptId!, {});

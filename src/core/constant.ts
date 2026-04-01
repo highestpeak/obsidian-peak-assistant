@@ -110,6 +110,44 @@ export const HUB_MATERIALIZE_CONCURRENCY = 4;
 export const HUB_COVERAGE_INDEX_PAGE_SIZE = 2000;
 
 /**
+ * Post-discovery partition: navigation hub groups vs long-tail (`navigationHubGroups.ts`).
+ */
+export const HUB_NAVIGATION_PARTITION_MIN = 10;
+export const HUB_NAVIGATION_PARTITION_MAX = 18;
+
+/** Greedy navigation score blend (deterministic). */
+export const HUB_NAVIGATION_SCORE_WEIGHTS = {
+	newCoverageRatio: 0.45,
+	marginalFraction: 0.2,
+	rankingQuality: 0.22,
+	overlapPenalty: 0.18,
+} as const;
+
+export const HUB_NAVIGATION_TOP_LEVEL_FOLDER_PENALTY = 0.11;
+export const HUB_NAVIGATION_LOW_COHESION_FOLDER_PENALTY = 0.08;
+export const HUB_NAVIGATION_MANUAL_BONUS = 0.12;
+
+/**
+ * Legacy DSU merge thresholds (unused after seed-based grouping; kept for docs / tuning reference).
+ * @deprecated
+ */
+export const HUB_NAV_GROUP_AFFINITY_THRESHOLD = 0.52;
+/** @deprecated */
+export const HUB_NAV_GROUP_COVERAGE_STRONG_OVERLAP = 0.45;
+
+/** Seed absorb: minimum blended score (struct / semantic / coverage) for non-top-level seeds. */
+export const HUB_NAV_GROUP_SEED_ABSORB_COMBINED_MIN = 0.46;
+/** Absorb when anchor keywords/tags/labels align strongly (weak path). */
+export const HUB_NAV_GROUP_SEED_SEMANTIC_STRONG = 0.42;
+/** Structural score for nested paths under a top-level folder seed when depth gap is 2+ (needs semantic lift). */
+export const HUB_NAV_GROUP_TOP_LEVEL_DEEP_STRUCT = 0.22;
+
+/**
+ * When false, hub maintenance skips writing HubDoc files (discovery + navigation/long-tail partition still run).
+ */
+export const HUB_MAINTENANCE_MATERIALIZE_DOCS = false;
+
+/**
  * Parallel document passes for deferred LLM index enrichment (`llm_pending`).
  * Caps concurrent `indexDocument` + LLM work; raise slowly to avoid provider 429s and SQLite contention.
  */
@@ -433,6 +471,53 @@ export const FOLDER_HUB_BROAD_PENALTY_MAX = 0.085;
 export const FOLDER_HUB_DISCOVER_QUOTA_POOL_MULTIPLIER = 2.4;
 /** Max share of the final folder hub slots from one top-level vault root (first path segment). */
 export const FOLDER_HUB_TOP_ROOT_MAX_FRACTION = 0.38;
+
+/** Max documents sampled per folder when computing topic purity from `tags_json` (folder hub discovery). */
+export const FOLDER_HUB_TOPIC_STATS_MAX_DOCS = 2500;
+
+/** Weights for {@link computeFolderTopicPurity} (dominant tag coverage vs normalized HHI). */
+export const FOLDER_HUB_TOPIC_PURITY_DOMINANT_WEIGHT = 0.65;
+export const FOLDER_HUB_TOPIC_PURITY_HHI_WEIGHT = 0.35;
+
+/** `folderRank = hub_graph_score + WEIGHT * topicPurity - containerPenalty` in folder hub discovery. */
+export const FOLDER_HUB_FOLDER_RANK_PURITY_WEIGHT = 0.28;
+
+/** Cap for {@link computeFolderContainerPenalty}. */
+export const FOLDER_HUB_CONTAINER_PENALTY_MAX = 0.32;
+
+/**
+ * Legacy approximate max of the raw container penalty sum before cap; used to scale raw into [0, {@link FOLDER_HUB_CONTAINER_PENALTY_MAX}].
+ */
+export const FOLDER_HUB_CONTAINER_PENALTY_RAW_REF_MAX = 0.17;
+
+/** Direct child folder counts as "strong" when its topic purity is at or above this (container stats). */
+export const FOLDER_HUB_STRONG_CHILD_TOPIC_PURITY_MIN = 0.6;
+
+/** Promote direct child folder rows when parent container penalty exceeds this. */
+export const FOLDER_HUB_CHILD_PROMOTION_CONTAINER_THRESHOLD = 0.045;
+
+/** Below this topic purity, {@link computeFolderRank} applies {@link FOLDER_HUB_TOPIC_PURITY_LOW_RANK_MULTIPLIER}. */
+export const FOLDER_HUB_TOPIC_PURITY_LOW_THRESHOLD = 0.42;
+
+/** Multiplier on folderRank when topic purity is below {@link FOLDER_HUB_TOPIC_PURITY_LOW_THRESHOLD}. */
+export const FOLDER_HUB_TOPIC_PURITY_LOW_RANK_MULTIPLIER = 0.78;
+
+/** Enriched nest: child is too weak to compete. */
+export const FOLDER_HUB_NEST_CHILD_WEAK_TOPIC_PURITY = 0.6;
+
+/** Enriched nest: `child_only` when child is a strong specialized topic vs a container parent. */
+export const FOLDER_HUB_NEST_CHILD_ONLY_MIN_TOPIC_PURITY = 0.65;
+export const FOLDER_HUB_NEST_CHILD_ONLY_RANK_BUFFER = 0.08;
+export const FOLDER_HUB_NEST_CHILD_ONLY_MIN_PARENT_CONTAINER = 0.12;
+
+/** Enriched nest: keep both parent and child when parent still has independent topical mass. */
+export const FOLDER_HUB_NEST_BOTH_MIN_PARENT_RESIDUAL = 0.6;
+export const FOLDER_HUB_NEST_BOTH_MIN_PARENT_TOPIC_PURITY = 0.5;
+
+/**
+ * Discovery-time broadness penalty scale (multiply {@link folderHubStructuralBroadnessPenalty} before subtracting from folderRank).
+ */
+export const FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE = 0.5;
 
 /**
  * Indexing / search policy: long-range edges, rerank boosts.

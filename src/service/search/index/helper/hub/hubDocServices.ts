@@ -9,10 +9,11 @@ import type { SearchSettings } from '@/app/settings/types';
 import {
 	HUB_DOC_METADATA_SECTION_TITLE,
 	HUB_FRONTMATTER_KEYS,
+	HUB_MAINTENANCE_MATERIALIZE_DOCS,
 	HUB_MATERIALIZE_CONCURRENCY,
 	SLICE_CAPS,
 } from '@/core/constant';
-import { hubDocSummaryLlmSchema } from '@/core/schemas/hubDiscoverLlm';
+import { hubDocSummaryLlmSchema } from '@/core/schemas';
 import {
 	applyHubDocLlmPayloadToMarkdown,
 	hubDocMarkdownBodyForLlm,
@@ -79,7 +80,7 @@ export class HubDocService {
 		sw.stop();
 
 		sw.start('discoverAllHubCandidates');
-		const candidates = await this.discovery.discoverAllHubCandidates({
+		const discoverResult = await this.discovery.discoverAllHubCandidates({
 			onRoundComplete: (summary) => {
 				options?.onProgress?.({
 					phase: 'hub_discovery',
@@ -90,10 +91,20 @@ export class HubDocService {
 		});
 		sw.stop();
 
+		const { candidates, navigationHubGroups, longTailHubs, partitionMetrics } = discoverResult;
 		options?.onProgress?.({
 			phase: 'hub_discovery',
-			progressTextSuffix: `done: ${candidates.length} candidate(s)`,
+			progressTextSuffix: `done: ${candidates.length} cand · navGroups ${navigationHubGroups.length} (${partitionMetrics.navigationMemberCount} in nav) · tail ${longTailHubs.length} · navCov ${(partitionMetrics.navigationAbsoluteCoverageRatio * 100).toFixed(1)}%`,
 		});
+
+		if (!HUB_MAINTENANCE_MATERIALIZE_DOCS) {
+			options?.onProgress?.({
+				phase: 'hub_materialize',
+				progressTextSuffix: 'skipped (HUB_MAINTENANCE_MATERIALIZE_DOCS=false)',
+			});
+			sw.print(false);
+			return { written: [], skippedUserOwned: 0 };
+		}
 
 		const hubNodeIdSet = new Set(
 			candidates

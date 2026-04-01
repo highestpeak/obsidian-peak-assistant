@@ -28,7 +28,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var require_obsidian_stub = __commonJS({
   "test/stubs/obsidian-stub.cjs"(exports2, module2) {
     "use strict";
-    function normalizePath9(p) {
+    function normalizePath8(p) {
       return String(p ?? "").replace(/\\/g, "/").replace(/\/+/g, "/").replace(/\/$/, "");
     }
     var TAbstractFile2 = class {
@@ -45,12 +45,12 @@ var require_obsidian_stub = __commonJS({
         this.children = [];
       }
     };
-    module2.exports = { normalizePath: normalizePath9, TAbstractFile: TAbstractFile2, TFile: TFile20, TFolder: TFolder4 };
+    module2.exports = { normalizePath: normalizePath8, TAbstractFile: TAbstractFile2, TFile: TFile20, TFolder: TFolder4 };
   }
 });
 
 // src/service/search/index/helper/hub/hubDiscover.ts
-var import_obsidian22 = __toESM(require_obsidian_stub());
+var import_obsidian21 = __toESM(require_obsidian_stub());
 
 // src/core/errors.ts
 var BusinessError = class extends Error {
@@ -167,17 +167,6 @@ var hubSemanticMergeGroupLlmSchema = import_v32.z.object({
 });
 var hubSemanticMergeLlmSchema = import_v32.z.object({
   mergeGroups: import_v32.z.array(hubSemanticMergeGroupLlmSchema).max(80)
-});
-var hubSemanticMergeBlockGroupLlmSchema = import_v32.z.object({
-  representativeId: import_v32.z.string().max(32),
-  memberIds: import_v32.z.array(import_v32.z.string().max(32)).min(2).max(16),
-  reason: import_v32.z.string().max(400),
-  confidence: import_v32.z.number().min(0).max(1),
-  mergeKind: import_v32.z.enum(["duplicate", "alias", "same_topic"]),
-  risks: import_v32.z.array(hubSemanticMergeRiskSchema).max(4).optional()
-});
-var hubSemanticMergeBlockLlmSchema = import_v32.z.object({
-  mergeGroups: import_v32.z.array(hubSemanticMergeBlockGroupLlmSchema).max(12)
 });
 var hubDocSummaryLlmSchema = import_v32.z.object({
   /** Concise display title for the hub (Obsidian heading + frontmatter). */
@@ -2628,21 +2617,6 @@ var BetterSqliteStore = class _BetterSqliteStore {
 
 // src/core/utils/vault-utils.ts
 var import_obsidian = __toESM(require_obsidian_stub());
-async function ensureFolder(app, folderPath) {
-  const normalized = (0, import_obsidian.normalizePath)(folderPath.trim());
-  if (!normalized) {
-    throw new Error("Invalid folder path");
-  }
-  await ensureFolderRecursive(app, normalized);
-  if (app.isMock) {
-    return null;
-  }
-  const folder = app.vault.getAbstractFileByPath(normalized);
-  if (folder instanceof import_obsidian.TFolder) {
-    return folder;
-  }
-  throw new Error(`Unable to create or access folder: ${normalized}`);
-}
 async function ensureFolderRecursive(app, folderPath) {
   const parts = folderPath.split("/").filter((p) => p.length > 0);
   let currentPath = "";
@@ -4227,6 +4201,20 @@ var MANUAL_HUB_FRONTMATTER_KEYS = {
   hubSourcePaths: "hub_source_paths"
 };
 var HUB_COVERAGE_INDEX_PAGE_SIZE = 2e3;
+var HUB_NAVIGATION_PARTITION_MIN = 10;
+var HUB_NAVIGATION_PARTITION_MAX = 18;
+var HUB_NAVIGATION_SCORE_WEIGHTS = {
+  newCoverageRatio: 0.45,
+  marginalFraction: 0.2,
+  rankingQuality: 0.22,
+  overlapPenalty: 0.18
+};
+var HUB_NAVIGATION_TOP_LEVEL_FOLDER_PENALTY = 0.11;
+var HUB_NAVIGATION_LOW_COHESION_FOLDER_PENALTY = 0.08;
+var HUB_NAVIGATION_MANUAL_BONUS = 0.12;
+var HUB_NAV_GROUP_SEED_ABSORB_COMBINED_MIN = 0.46;
+var HUB_NAV_GROUP_SEED_SEMANTIC_STRONG = 0.42;
+var HUB_NAV_GROUP_TOP_LEVEL_DEEP_STRUCT = 0.22;
 var LLM_PENDING_ENRICH_CONCURRENCY = 12;
 var HUB_DISCOVER_LIMIT_MIN = 40;
 var HUB_DISCOVER_LIMIT_MAX = 320;
@@ -4354,6 +4342,23 @@ var FOLDER_HUB_BROAD_MISMATCH_PENALTY = 0.042;
 var FOLDER_HUB_BROAD_PENALTY_MAX = 0.085;
 var FOLDER_HUB_DISCOVER_QUOTA_POOL_MULTIPLIER = 2.4;
 var FOLDER_HUB_TOP_ROOT_MAX_FRACTION = 0.38;
+var FOLDER_HUB_TOPIC_STATS_MAX_DOCS = 2500;
+var FOLDER_HUB_TOPIC_PURITY_DOMINANT_WEIGHT = 0.65;
+var FOLDER_HUB_TOPIC_PURITY_HHI_WEIGHT = 0.35;
+var FOLDER_HUB_FOLDER_RANK_PURITY_WEIGHT = 0.18;
+var FOLDER_HUB_CONTAINER_PENALTY_MAX = 0.26;
+var FOLDER_HUB_CONTAINER_PENALTY_RAW_REF_MAX = 0.17;
+var FOLDER_HUB_STRONG_CHILD_TOPIC_PURITY_MIN = 0.6;
+var FOLDER_HUB_CHILD_PROMOTION_CONTAINER_THRESHOLD = 0.05;
+var FOLDER_HUB_TOPIC_PURITY_LOW_THRESHOLD = 0.45;
+var FOLDER_HUB_TOPIC_PURITY_LOW_RANK_MULTIPLIER = 0.82;
+var FOLDER_HUB_NEST_CHILD_WEAK_TOPIC_PURITY = 0.6;
+var FOLDER_HUB_NEST_CHILD_ONLY_MIN_TOPIC_PURITY = 0.68;
+var FOLDER_HUB_NEST_CHILD_ONLY_RANK_BUFFER = 0.08;
+var FOLDER_HUB_NEST_CHILD_ONLY_MIN_PARENT_CONTAINER = 0.07;
+var FOLDER_HUB_NEST_BOTH_MIN_PARENT_RESIDUAL = 0.6;
+var FOLDER_HUB_NEST_BOTH_MIN_PARENT_TOPIC_PURITY = 0.5;
+var FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE = 0.5;
 var INDEX_LONG_RANGE_LCA_MAX_DEPTH = 1;
 var HUB_ANTI_EXPLOSION_MAX_NEW_NODES = 32;
 var HUB_ANTI_EXPLOSION_MIN_NOVELTY_RATIO = 0.05;
@@ -5528,6 +5533,95 @@ var MobiusNodeRepo = class {
     let q2 = q.orderBy("hub_graph_score", "desc").limit(lim);
     if (off > 0) q2 = q2.offset(off);
     const rows = await q2.execute();
+    return rows;
+  }
+  /**
+   * Loads `tags_json` for documents under a folder path (exact folder or nested files), capped for purity stats.
+   */
+  async listDocumentTagsJsonUnderFolderPrefix(folderPath, limit) {
+    const p = normalizeVaultPath(folderPath);
+    if (!p) return [];
+    const lim = Math.max(1, limit);
+    const prefix = p.endsWith("/") ? p : `${p}/`;
+    const rows = await this.db.selectFrom("mobius_node").select("tags_json").where("type", "=", GraphNodeType.Document).where((eb) => eb.or([eb("path", "=", p), eb("path", "like", `${prefix}%`)])).limit(lim).execute();
+    return rows.map((r) => String(r.tags_json ?? ""));
+  }
+  /** Direct child folder vault paths under `parentPath` (one extra path segment). */
+  async listDirectChildFolderPaths(parentPath) {
+    const p = normalizeVaultPath(parentPath);
+    if (!p) return [];
+    const prefix = `${p}/`;
+    const rows = await this.db.selectFrom("mobius_node").select("path").where("type", "=", GraphNodeType.Folder).where("path", "like", `${prefix}%`).execute();
+    const parentSlashCount = (p.match(/\//g) ?? []).length;
+    const out = [];
+    for (const r of rows) {
+      const path3 = r.path ? normalizeVaultPath(r.path) : "";
+      if (!path3.startsWith(prefix)) continue;
+      const slashCount = (path3.match(/\//g) ?? []).length;
+      if (slashCount === parentSlashCount + 1) out.push(path3);
+    }
+    return out;
+  }
+  /** `tag_doc_count` for folder nodes at the given paths (missing paths omitted). */
+  async listFolderTagDocCountByPaths(paths) {
+    const uniq = [...new Set(paths.map((x) => normalizeVaultPath(String(x))).filter(Boolean))];
+    if (!uniq.length) return /* @__PURE__ */ new Map();
+    const rows = await this.db.selectFrom("mobius_node").select(["path", "tag_doc_count"]).where("type", "=", GraphNodeType.Folder).where("path", "in", uniq).execute();
+    const m = /* @__PURE__ */ new Map();
+    for (const r of rows) {
+      const path3 = r.path ? normalizeVaultPath(r.path) : "";
+      if (!path3) continue;
+      m.set(path3, Math.max(0, Number(r.tag_doc_count ?? 0)));
+    }
+    return m;
+  }
+  /**
+   * Folder hub discovery rows for specific paths (same score columns as {@link listTopFolderNodesForHubDiscovery}).
+   * Use for promoting direct children; may include rows below {@link FOLDER_HUB_MIN_DOCS} when `relaxMinDocs` is true.
+   */
+  async listFolderHubDiscoveryRowsByPaths(paths, hubSummaryFolder, options) {
+    const uniq = [...new Set(paths.map((x) => normalizeVaultPath(String(x))).filter(Boolean))];
+    if (!uniq.length) return [];
+    const hub = hubSummaryFolder.trim();
+    const likeUnderHub = hub ? `${hub}/%` : "";
+    const relax = options?.relaxMinDocs === true;
+    const hubPhysical = import_kysely2.sql`min(1.0, coalesce(pagerank, 0.0) * 2.2)`;
+    const totalIn = import_kysely2.sql`coalesce(doc_incoming_cnt, 0) + coalesce(other_incoming_cnt, 0)`;
+    const totalOut = import_kysely2.sql`coalesce(doc_outgoing_cnt, 0) + coalesce(other_outgoing_cnt, 0)`;
+    const hubOrg = import_kysely2.sql`min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) * 0.18 + ln(1.0 + ${totalIn}) * 0.06 + ln(1.0 + ${totalOut}) * 0.06)`;
+    const hubSem = import_kysely2.sql`min(1.0, coalesce(semantic_pagerank, 0.0) * 1.0)`;
+    const lnRef = Math.log(1 + FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT);
+    const hubCohEff = import_kysely2.sql`coalesce(folder_cohesion_score, 0.0) * min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) / ${lnRef})`;
+    const wPhys = FOLDER_HUB_GRAPH_WEIGHT_PHYSICAL;
+    const wOrg = FOLDER_HUB_GRAPH_WEIGHT_ORGANIZATIONAL;
+    const wSem = FOLDER_HUB_GRAPH_WEIGHT_SEMANTIC;
+    const wCoh = FOLDER_HUB_GRAPH_WEIGHT_COHESION;
+    const hubGraph = import_kysely2.sql`min(1.0, (${hubPhysical} * ${wPhys}) + (${hubOrg} * ${wOrg}) + (${hubSem} * ${wSem}) + (${hubCohEff} * ${wCoh}))`;
+    let q = this.db.selectFrom("mobius_node").select([
+      "node_id",
+      "path",
+      "label",
+      "tag_doc_count",
+      "pagerank",
+      "semantic_pagerank",
+      "folder_cohesion_score",
+      "doc_incoming_cnt",
+      "doc_outgoing_cnt",
+      "other_incoming_cnt",
+      "other_outgoing_cnt",
+      hubPhysical.as("hub_physical_authority_score"),
+      hubOrg.as("hub_organizational_score"),
+      hubSem.as("hub_semantic_centrality_score"),
+      hubCohEff.as("hub_cohesion_effective_score"),
+      hubGraph.as("hub_graph_score")
+    ]).where("type", "=", GraphNodeType.Folder).where("path", "is not", null).where("path", "in", uniq);
+    if (!relax) {
+      q = q.where("tag_doc_count", ">=", FOLDER_HUB_MIN_DOCS);
+    }
+    if (hub) {
+      q = q.where((eb) => eb.and([eb("path", "!=", hub), eb("path", "not like", likeUnderHub)]));
+    }
+    const rows = await q.execute();
     return rows;
   }
   /**
@@ -18878,139 +18972,433 @@ async function materializeHubDocFromCandidate(candidate2, options) {
   return { writtenPath: fullPath, skippedUserOwned: 0 };
 }
 
-// src/service/search/index/helper/hub/semanticMergeBatch.ts
-var import_obsidian20 = __toESM(require_obsidian_stub());
-var SEMANTIC_MERGE_BLOCK_MAX_HUBS = 12;
-var SLIM_TOPIC_TAGS = 6;
-var SLIM_KEYWORDS = 8;
-var SLIM_MEMBER_PATHS = 4;
-function blockingKeyForHubCandidate(c) {
-  const p = normalizeVaultPath(String(c.path ?? "").split("#")[0] ?? "");
-  if (p.startsWith("__hub_cluster__/") || p.startsWith("__hub_cluster__")) {
-    const m = (c.clusterMemberPaths ?? []).find((x) => x && !String(x).startsWith("__"));
-    if (m) {
-      const seg = pathSegments(normalizeVaultPath(String(m).split("#")[0] ?? ""))[0];
-      return seg ? `cluster:${seg}` : "cluster:__misc__";
+// src/core/utils/bit-util.ts
+function uint32BitsetWordCount(bitLength) {
+  return Math.ceil(Math.max(0, bitLength) / 32);
+}
+function createUint32Bitset(bitLength) {
+  return new Uint32Array(uint32BitsetWordCount(bitLength));
+}
+function setUint32Bit(bits, bitIndex) {
+  const wi = bitIndex >>> 5;
+  const mask = 1 << (bitIndex & 31);
+  bits[wi] |= mask;
+}
+function hasUint32Bit(bits, bitIndex) {
+  const wi = bitIndex >>> 5;
+  const mask = 1 << (bitIndex & 31);
+  return ((bits[wi] ?? 0) & mask) !== 0;
+}
+function popcountUint32(x) {
+  x >>>= 0;
+  x -= x >>> 1 & 1431655765;
+  x = (x & 858993459) + (x >>> 2 & 858993459);
+  return (x + (x >>> 4) & 252645135) * 16843009 >>> 24;
+}
+function countBitsUint32(bits) {
+  let t = 0;
+  for (let i = 0; i < bits.length; i++) t += popcountUint32(bits[i] ?? 0);
+  return t;
+}
+function fractionOfBitsNewSince(candidate2, covered) {
+  let candidateCount = 0;
+  let newCount = 0;
+  const n = Math.min(candidate2.length, covered.length);
+  for (let i = 0; i < n; i++) {
+    const c = candidate2[i] ?? 0;
+    const cov = covered[i] ?? 0;
+    candidateCount += popcountUint32(c);
+    newCount += popcountUint32(c & ~cov);
+  }
+  return newCount / Math.max(1, candidateCount);
+}
+function countBitsNewSince(candidate2, covered) {
+  let newCount = 0;
+  const n = Math.min(candidate2.length, covered.length);
+  for (let i = 0; i < n; i++) {
+    newCount += popcountUint32((candidate2[i] ?? 0) & ~(covered[i] ?? 0));
+  }
+  return newCount;
+}
+function overlapRatioMinUint32(a, b) {
+  let inter = 0;
+  let ca = 0;
+  let cb = 0;
+  const n = Math.max(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const va = a[i] ?? 0;
+    const vb = b[i] ?? 0;
+    inter += popcountUint32(va & vb);
+    ca += popcountUint32(va);
+    cb += popcountUint32(vb);
+  }
+  if (inter === 0) return 0;
+  const den = Math.min(ca, cb);
+  return den > 0 ? inter / den : 0;
+}
+
+// src/service/search/index/helper/hub/navigationHubGroups.ts
+function tokenizeLabel(s) {
+  const t = s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const out = /* @__PURE__ */ new Set();
+  for (const m of t.matchAll(/[\p{L}\p{N}]+/gu)) {
+    const w = m[0];
+    if (w.length >= 2) out.add(w);
+  }
+  return out;
+}
+function jaccard2(a, b) {
+  if (a.size === 0 && b.size === 0) return 0;
+  let inter = 0;
+  for (const x of a) {
+    if (b.has(x)) inter++;
+  }
+  const u = a.size + b.size - inter;
+  return u > 0 ? inter / u : 0;
+}
+function anchorKeywords(c) {
+  const k = c.assemblyHints?.anchorKeywords ?? [];
+  return new Set(k.map((x) => x.toLowerCase().trim()).filter(Boolean));
+}
+function anchorTopicTags(c) {
+  const t = c.assemblyHints?.anchorTopicTags ?? [];
+  return new Set(t.map((x) => String(x).trim()).filter(Boolean));
+}
+function vaultPathDepth(p) {
+  return pathSegments(normalizeVaultPath(p)).length;
+}
+function isDirectChildPath(parent, child) {
+  const pa = normalizeVaultPath(parent);
+  const pb = normalizeVaultPath(child);
+  if (!pa || !pb) return false;
+  if (pb === pa) return true;
+  if (!pb.startsWith(`${pa}/`)) return false;
+  const rest = pb.slice(pa.length + 1);
+  return !rest.includes("/");
+}
+function semanticAffinity(a, b) {
+  const kw = jaccard2(anchorKeywords(a), anchorKeywords(b));
+  const tag = jaccard2(anchorTopicTags(a), anchorTopicTags(b));
+  const lab = jaccard2(tokenizeLabel(a.label), tokenizeLabel(b.label));
+  return 0.4 * kw + 0.35 * tag + 0.25 * lab;
+}
+function pathStructuralAbsorbScore(seed, c) {
+  const pa = normalizeVaultPath(seed.path ?? "");
+  const pb = normalizeVaultPath(c.path ?? "");
+  if (!pa || !pb) return 0;
+  if (pa === pb) return 1;
+  const seedFolderTop = seed.sourceKind === "folder" && vaultPathDepth(pa) === 1;
+  if (seed.sourceKind === "cluster") {
+    for (const mp of seed.clusterMemberPaths ?? []) {
+      const m = normalizeVaultPath(mp);
+      if (!m) continue;
+      if (pb === m || pb.startsWith(`${m}/`) || pa === m || m.startsWith(`${pa}/`)) return 0.78;
     }
-    return "cluster:__no_member_path__";
   }
-  const seg0 = pathSegments(p)[0];
-  return seg0 ?? "__root__";
-}
-function buildSlimSemanticMergeCards(candidates) {
-  const eligible = candidates.filter((c) => c.sourceKind !== "manual");
-  const idToStableKey = /* @__PURE__ */ new Map();
-  const stableKeyToId = /* @__PURE__ */ new Map();
-  const cards = [];
-  let i = 0;
-  for (const c of eligible) {
-    const id = `h${String(i++).padStart(4, "0")}`;
-    const blockingKey = blockingKeyForHubCandidate(c);
-    idToStableKey.set(id, c.stableKey);
-    stableKeyToId.set(c.stableKey, id);
-    const topicTags = [...new Set(c.assemblyHints?.anchorTopicTags ?? [])].slice(0, SLIM_TOPIC_TAGS);
-    const keywords = [...new Set(c.assemblyHints?.anchorKeywords ?? [])].slice(0, SLIM_KEYWORDS);
-    const memberPaths = c.sourceKind === "cluster" ? [...new Set((c.clusterMemberPaths ?? []).filter(Boolean))].slice(0, SLIM_MEMBER_PATHS) : void 0;
-    cards.push({
-      id,
-      blockingKey,
-      stableKey: c.stableKey,
-      path: c.path,
-      label: c.label,
-      sourceKind: c.sourceKind,
-      role: c.role,
-      topicTags,
-      keywords,
-      ...memberPaths?.length ? { memberPaths } : {}
-    });
-  }
-  return { cards, idToStableKey, stableKeyToId };
-}
-function partitionSemanticMergeBlocks(slimCards) {
-  const byKey = /* @__PURE__ */ new Map();
-  for (const card of slimCards) {
-    const k = card.blockingKey;
-    let g = byKey.get(k);
-    if (!g) {
-      g = [];
-      byKey.set(k, g);
-    }
-    g.push(card);
-  }
-  const blocks = [];
-  let blockIndex = 0;
-  const keys = [...byKey.keys()].sort();
-  for (const blockingKey of keys) {
-    const group = (byKey.get(blockingKey) ?? []).sort((a, b) => a.id.localeCompare(b.id));
-    for (let off = 0; off < group.length; off += SEMANTIC_MERGE_BLOCK_MAX_HUBS) {
-      const chunk2 = group.slice(off, off + SEMANTIC_MERGE_BLOCK_MAX_HUBS);
-      blocks.push({
-        blockIndex,
-        blockingKey,
-        hubIds: chunk2.map((c) => c.id),
-        cards: chunk2
-      });
-      blockIndex++;
+  if (c.sourceKind === "cluster") {
+    for (const mp of c.clusterMemberPaths ?? []) {
+      const m = normalizeVaultPath(mp);
+      if (m && (isVaultPathUnderPrefix(m, pa) || isVaultPathUnderPrefix(pa, m))) return 0.74;
     }
   }
-  return blocks;
-}
-function blockSemanticMergePlanToFull(plan, idToStableKey, allowedIds) {
-  const mergeGroups = [];
-  for (const g of plan.mergeGroups ?? []) {
-    if (!allowedIds.has(g.representativeId)) continue;
-    const rep = idToStableKey.get(g.representativeId);
-    const members = g.memberIds.filter((id) => allowedIds.has(id)).map((id) => idToStableKey.get(id) ?? "");
-    const uniq = [...new Set(members.filter(Boolean))];
-    if (!rep || uniq.length < 2 || !uniq.includes(rep)) continue;
-    mergeGroups.push({
-      representativeStableKey: rep,
-      memberStableKeys: uniq,
-      reason: g.reason,
-      confidence: g.confidence,
-      mergeKind: g.mergeKind,
-      ...g.risks?.length ? { risks: g.risks } : {}
-    });
+  if (vaultFolderPathsNest(pa, pb) || vaultFolderPathsNest(pb, pa)) {
+    if (seedFolderTop) {
+      const rel = vaultPathDepth(pb) - vaultPathDepth(pa);
+      if (rel === 1 && isDirectChildPath(pa, pb)) return 0.76;
+      if (rel >= 2 && isVaultPathUnderPrefix(pb, pa)) return HUB_NAV_GROUP_TOP_LEVEL_DEEP_STRUCT;
+      if (rel >= 2 && isVaultPathUnderPrefix(pa, pb)) return HUB_NAV_GROUP_TOP_LEVEL_DEEP_STRUCT;
+      return HUB_NAV_GROUP_TOP_LEVEL_DEEP_STRUCT;
+    }
+    return 0.86;
   }
-  return { mergeGroups };
+  const da = parentDirPath(pa);
+  const db = parentDirPath(pb);
+  if (da && db && da === db) return 0.52;
+  const sa = pathSegments(pa);
+  const sb = pathSegments(pb);
+  if (sa[0] && sb[0] && sa[0] === sb[0]) return 0.1;
+  return 0;
 }
-function jsonCharLength(obj) {
-  try {
-    return JSON.stringify(obj).length;
-  } catch {
-    return 0;
+function pairwiseAffinity(a, b, bitsA, bitsB) {
+  const cov = overlapRatioMinUint32(bitsA, bitsB);
+  const pathP = pathStructuralAbsorbScore(a, b);
+  const kw = jaccard2(anchorKeywords(a), anchorKeywords(b));
+  const tag = jaccard2(anchorTopicTags(a), anchorTopicTags(b));
+  const lab = jaccard2(tokenizeLabel(a.label), tokenizeLabel(b.label));
+  return 0.28 * cov + 0.24 * pathP + 0.18 * kw + 0.16 * tag + 0.14 * lab;
+}
+function shouldAbsorbIntoSeed(seed, c, bitsSeed, bitsC) {
+  const struct = pathStructuralAbsorbScore(seed, c);
+  const sem = semanticAffinity(seed, c);
+  const cov = overlapRatioMinUint32(bitsSeed, bitsC);
+  const seedTopFolder = seed.sourceKind === "folder" && vaultPathDepth(normalizeVaultPath(seed.path ?? "")) === 1;
+  const combined = 0.32 * struct + 0.38 * sem + 0.3 * cov;
+  if (struct >= 0.82) return true;
+  if (sem >= HUB_NAV_GROUP_SEED_SEMANTIC_STRONG) return true;
+  if (cov >= 0.62 && sem >= 0.24) return true;
+  if (seedTopFolder) {
+    if (struct >= 0.7) return true;
+    if (combined >= 0.5 && (sem >= 0.28 || cov >= 0.45)) return true;
+    return combined >= 0.52;
   }
+  if (struct >= 0.45 && sem >= 0.28) return true;
+  return combined >= HUB_NAV_GROUP_SEED_ABSORB_COMBINED_MIN;
 }
-async function writeHubSemanticMergeDebugArtifacts(options) {
-  const { app, runId, summary, blocks, aggregatedPlan, skipWrite } = options;
-  if (skipWrite) return null;
-  const hubRoot = getAIHubSummaryFolder();
-  const dir = (0, import_obsidian20.normalizePath)(`${hubRoot}/_debug/hub-semantic-merge/${runId}`);
-  await ensureFolder(app, dir);
-  const writeJson = async (name, data) => {
-    const path3 = (0, import_obsidian20.normalizePath)(`${dir}/${name}`);
-    await app.vault.create(path3, JSON.stringify(data, null, 2));
+function pickRepresentative(members) {
+  const folders = members.filter((m) => m.sourceKind === "folder");
+  const nonTop = folders.filter((m) => vaultPathDepth(m.path ?? "") >= 2);
+  if (nonTop.length) {
+    return [...nonTop].sort((a, b) => {
+      const d = vaultPathDepth(b.path ?? "") - vaultPathDepth(a.path ?? "");
+      if (d !== 0) return d;
+      const pa = SOURCE_PRIORITY[b.sourceKind] - SOURCE_PRIORITY[a.sourceKind];
+      if (pa !== 0) return pa;
+      return b.rankingScore - a.rankingScore;
+    })[0];
+  }
+  const sorted = [...members].sort((a, b) => {
+    const pa = SOURCE_PRIORITY[b.sourceKind] - SOURCE_PRIORITY[a.sourceKind];
+    if (pa !== 0) return pa;
+    const r = b.rankingScore - a.rankingScore;
+    if (r !== 0) return r;
+    return a.stableKey.localeCompare(b.stableKey);
+  });
+  return sorted[0];
+}
+function orBitsTogether(members, bitsByStableKey, docCount) {
+  const u = createUint32Bitset(docCount);
+  for (const m of members) {
+    const b = bitsByStableKey.get(m.stableKey);
+    if (!b) continue;
+    const n = Math.min(u.length, b.length);
+    for (let i = 0; i < n; i++) u[i] |= b[i] ?? 0;
+  }
+  return u;
+}
+function meanInternalAffinity(indices, candidates, bitsByStableKey) {
+  if (indices.length < 2) return 1;
+  let sum = 0;
+  let cnt = 0;
+  for (let i = 0; i < indices.length; i++) {
+    for (let j = i + 1; j < indices.length; j++) {
+      const a = candidates[indices[i]];
+      const b = candidates[indices[j]];
+      const ba = bitsByStableKey.get(a.stableKey);
+      const bb = bitsByStableKey.get(b.stableKey);
+      sum += pairwiseAffinity(a, b, ba, bb);
+      cnt++;
+    }
+  }
+  return cnt > 0 ? sum / cnt : 1;
+}
+function isTopLevelVaultFolderHub(c) {
+  if (c.sourceKind !== "folder") return false;
+  const p = normalizeVaultPath(c.path ?? "");
+  return pathSegments(p).length === 1;
+}
+function navigationFolderCohesionPenalty(c) {
+  if (c.sourceKind !== "folder") return 0;
+  const coh = c.candidateScore?.cohesionScore;
+  if (typeof coh !== "number" || !Number.isFinite(coh)) return 0;
+  return coh < 0.14 ? HUB_NAVIGATION_LOW_COHESION_FOLDER_PENALTY : 0;
+}
+function mergeHubPartitionUnionBits(union, add) {
+  const n = Math.min(union.length, add.length);
+  for (let i = 0; i < n; i++) union[i] |= add[i] ?? 0;
+}
+function seedQualityScore(c, bits, docTotal) {
+  let q = c.rankingScore * 0.52 + c.graphScore * 0.18 + c.sourceConsensusScore * 0.14;
+  const coh = c.candidateScore?.cohesionScore;
+  if (typeof coh === "number" && c.sourceKind === "folder") q += Math.min(0.22, coh * 0.22);
+  if (bits && docTotal > 0) {
+    q += countBitsUint32(bits) / docTotal * 0.1;
+  }
+  const depth = vaultPathDepth(c.path ?? "");
+  if (c.sourceKind === "folder" && depth >= 3) q += 0.06;
+  if (c.sourceKind === "folder" && depth === 1) q -= 0.38;
+  return q;
+}
+function isEligibleSeed(c) {
+  if (c.sourceKind === "manual") return true;
+  if (c.sourceKind === "folder" && vaultPathDepth(c.path ?? "") <= 1) return false;
+  return true;
+}
+function buildNavigationHubGroups(candidates, bitsByStableKey, documentCount) {
+  const n = candidates.length;
+  if (n === 0) return [];
+  const docTotal = Math.max(0, documentCount);
+  const sortedIdx = candidates.map((_, i) => i).sort((ia, ib) => {
+    const a = candidates[ia];
+    const b = candidates[ib];
+    const ba = bitsByStableKey.get(a.stableKey);
+    const bb = bitsByStableKey.get(b.stableKey);
+    const sa = seedQualityScore(a, ba, docTotal);
+    const sb = seedQualityScore(b, bb, docTotal);
+    if (sb !== sa) return sb - sa;
+    return b.rankingScore - a.rankingScore;
+  });
+  const assigned = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const seedIdx of sortedIdx) {
+    if (assigned.has(seedIdx)) continue;
+    const seed = candidates[seedIdx];
+    const bitsSeed = bitsByStableKey.get(seed.stableKey);
+    if (!bitsSeed) {
+      assigned.add(seedIdx);
+      out.push(
+        buildOneGroup([seedIdx], candidates, bitsByStableKey, documentCount, docTotal)
+      );
+      continue;
+    }
+    if (!isEligibleSeed(seed)) {
+      assigned.add(seedIdx);
+      out.push(
+        buildOneGroup([seedIdx], candidates, bitsByStableKey, documentCount, docTotal)
+      );
+      continue;
+    }
+    const memberIdx = [seedIdx];
+    assigned.add(seedIdx);
+    for (let j = 0; j < n; j++) {
+      if (assigned.has(j) || j === seedIdx) continue;
+      const c = candidates[j];
+      const bitsC = bitsByStableKey.get(c.stableKey);
+      if (!bitsC) continue;
+      if (shouldAbsorbIntoSeed(seed, c, bitsSeed, bitsC)) {
+        memberIdx.push(j);
+        assigned.add(j);
+      }
+    }
+    out.push(buildOneGroup(memberIdx, candidates, bitsByStableKey, documentCount, docTotal));
+  }
+  out.sort((a, b) => b.groupScore - a.groupScore);
+  return out;
+}
+function buildOneGroup(memberIdx, candidates, bitsByStableKey, documentCount, docTotal) {
+  const members = memberIdx.map((idx) => candidates[idx]).sort((a, b) => b.rankingScore - a.rankingScore);
+  const memberStableKeys = members.map((m) => m.stableKey);
+  const sortedKeys = [...memberStableKeys].sort();
+  const groupKey = `navgrp:${hashSHA256(sortedKeys.join("|")).slice(0, 24)}`;
+  const rep = pickRepresentative(members);
+  const unionBits = orBitsTogether(members, bitsByStableKey, documentCount);
+  const unionCoverageSize = countBitsUint32(unionBits);
+  const internalAffinityMean = meanInternalAffinity(memberIdx, candidates, bitsByStableKey);
+  const maxR = Math.max(...members.map((m) => m.rankingScore));
+  const meanR = members.reduce((s, m) => s + m.rankingScore, 0) / members.length;
+  const sizeScore = docTotal > 0 ? unionCoverageSize / docTotal : 0;
+  const cohesionBoost = Math.max(0, internalAffinityMean);
+  const groupScore = 0.22 * sizeScore + 0.22 * maxR + 0.18 * meanR + 0.38 * cohesionBoost;
+  return {
+    groupKey,
+    title: rep.label,
+    representativeStableKey: rep.stableKey,
+    representativePath: rep.path,
+    representativeLabel: rep.label,
+    members,
+    memberStableKeys,
+    unionCoverageSize,
+    internalAffinityMean,
+    groupScore
   };
-  await writeJson("summary.json", summary);
-  await writeJson("aggregated-plan.json", aggregatedPlan);
-  for (const b of blocks) {
-    const idx = String(b.blockIndex).padStart(3, "0");
-    await writeJson(`block-${idx}-input.json`, {
-      blockIndex: b.blockIndex,
-      blockingKey: b.blockingKey,
-      hubIds: b.hubIds,
-      inputChars: b.inputChars,
-      cards: b.inputCards
-    });
-    await writeJson(`block-${idx}-output.json`, {
-      blockIndex: b.blockIndex,
-      blockingKey: b.blockingKey,
-      output: b.output,
-      mergedFullPlan: b.mergedFullPlan,
-      error: b.error
-    });
+}
+function partitionNavigationGroupsAndLongTail(options) {
+  const { groups, candidates, bitsByStableKey, docCoverageIndex } = options;
+  const docTotal = Math.max(0, docCoverageIndex.docCount);
+  const w = HUB_NAVIGATION_SCORE_WEIGHTS;
+  const groupUnionCache = /* @__PURE__ */ new Map();
+  for (const g of groups) {
+    groupUnionCache.set(g.groupKey, orBitsTogether(g.members, bitsByStableKey, docTotal));
   }
-  return dir;
+  const sorted = [...groups].sort((a, b) => b.groupScore - a.groupScore);
+  const union = createUint32Bitset(docTotal);
+  const navigationHubGroups = [];
+  const selectedGroupKeys = /* @__PURE__ */ new Set();
+  let stoppedReason = "init";
+  while (navigationHubGroups.length < HUB_NAVIGATION_PARTITION_MAX) {
+    let best = null;
+    let bestScore = -Infinity;
+    for (const g of sorted) {
+      if (selectedGroupKeys.has(g.groupKey)) continue;
+      const bits = groupUnionCache.get(g.groupKey);
+      const newCount = countBitsNewSince(bits, union);
+      let maxOv = 0;
+      for (const ng of navigationHubGroups) {
+        const nb = groupUnionCache.get(ng.groupKey);
+        maxOv = Math.max(maxOv, overlapRatioMinUint32(bits, nb));
+      }
+      const marginal = fractionOfBitsNewSince(bits, union);
+      const newRatio = docTotal > 0 ? newCount / docTotal : 0;
+      const rep = g.members.find((m) => m.stableKey === g.representativeStableKey) ?? g.members[0];
+      const quality = 0.5 * rep.rankingScore + 0.28 * rep.graphScore + 0.22 * Math.min(1, rep.sourceConsensusScore + 1e-3);
+      let penalty = 0;
+      if (isTopLevelVaultFolderHub(rep)) penalty += HUB_NAVIGATION_TOP_LEVEL_FOLDER_PENALTY;
+      penalty += navigationFolderCohesionPenalty(rep);
+      const bonus = rep.sourceKind === "manual" ? HUB_NAVIGATION_MANUAL_BONUS : 0;
+      let score = w.newCoverageRatio * newRatio + w.marginalFraction * marginal + w.rankingQuality * quality + 0.12 * g.internalAffinityMean - w.overlapPenalty * maxOv - penalty + bonus;
+      if (newCount === 0 && navigationHubGroups.length >= HUB_NAVIGATION_PARTITION_MIN) {
+        continue;
+      }
+      if (newCount === 0 && navigationHubGroups.length < HUB_NAVIGATION_PARTITION_MIN) {
+        score = quality * 0.65 - maxOv * 0.25 - penalty + bonus + 0.08 * g.internalAffinityMean;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = g;
+      }
+    }
+    if (!best) {
+      stoppedReason = "no_eligible_group";
+      break;
+    }
+    if (bestScore < 0 && navigationHubGroups.length >= HUB_NAVIGATION_PARTITION_MIN) {
+      stoppedReason = "low_score";
+      break;
+    }
+    navigationHubGroups.push(best);
+    selectedGroupKeys.add(best.groupKey);
+    mergeHubPartitionUnionBits(union, groupUnionCache.get(best.groupKey));
+    stoppedReason = navigationHubGroups.length >= HUB_NAVIGATION_PARTITION_MAX ? "max_cap" : "greedy_step";
+  }
+  let guard = 0;
+  while (navigationHubGroups.length < HUB_NAVIGATION_PARTITION_MIN && navigationHubGroups.length < groups.length && guard < groups.length) {
+    guard++;
+    let added = false;
+    for (const g of sorted) {
+      if (selectedGroupKeys.has(g.groupKey)) continue;
+      navigationHubGroups.push(g);
+      selectedGroupKeys.add(g.groupKey);
+      mergeHubPartitionUnionBits(union, groupUnionCache.get(g.groupKey));
+      added = true;
+      stoppedReason = "fill_min_ranking";
+      break;
+    }
+    if (!added) break;
+  }
+  const navMemberKeys = /* @__PURE__ */ new Set();
+  for (const g of navigationHubGroups) {
+    for (const k of g.memberStableKeys) navMemberKeys.add(k);
+  }
+  const longTailHubs = candidates.filter((c) => !navMemberKeys.has(c.stableKey));
+  const navigationHubs = navigationHubGroups.map(
+    (g) => g.members.find((m) => m.stableKey === g.representativeStableKey) ?? g.members[0]
+  );
+  const coveredCount = countBitsUint32(union);
+  const navRatio = docTotal > 0 ? coveredCount / docTotal : 0;
+  const navigationMemberCount = [...navMemberKeys].length;
+  return {
+    navigationHubGroups,
+    navigationHubs,
+    longTailHubs,
+    metrics: {
+      documentCount: docTotal,
+      navigationCount: navigationHubGroups.length,
+      navigationMemberCount,
+      longTailCount: longTailHubs.length,
+      navigationAbsoluteCoverageRatio: navRatio,
+      stoppedReason,
+      totalGroupCount: groups.length
+    }
+  };
 }
 
 // src/service/tools/search-graph-inspector/hub-local-graph.ts
@@ -22828,74 +23216,7 @@ async function cleanupGraphTable() {
 }
 
 // src/app/context/index-debug-tools.ts
-var import_obsidian21 = __toESM(require_obsidian_stub());
-
-// src/core/utils/bit-util.ts
-function uint32BitsetWordCount(bitLength) {
-  return Math.ceil(Math.max(0, bitLength) / 32);
-}
-function createUint32Bitset(bitLength) {
-  return new Uint32Array(uint32BitsetWordCount(bitLength));
-}
-function setUint32Bit(bits, bitIndex) {
-  const wi = bitIndex >>> 5;
-  const mask = 1 << (bitIndex & 31);
-  bits[wi] |= mask;
-}
-function hasUint32Bit(bits, bitIndex) {
-  const wi = bitIndex >>> 5;
-  const mask = 1 << (bitIndex & 31);
-  return ((bits[wi] ?? 0) & mask) !== 0;
-}
-function popcountUint32(x) {
-  x >>>= 0;
-  x -= x >>> 1 & 1431655765;
-  x = (x & 858993459) + (x >>> 2 & 858993459);
-  return (x + (x >>> 4) & 252645135) * 16843009 >>> 24;
-}
-function countBitsUint32(bits) {
-  let t = 0;
-  for (let i = 0; i < bits.length; i++) t += popcountUint32(bits[i] ?? 0);
-  return t;
-}
-function fractionOfBitsNewSince(candidate2, covered) {
-  let candidateCount = 0;
-  let newCount = 0;
-  const n = Math.min(candidate2.length, covered.length);
-  for (let i = 0; i < n; i++) {
-    const c = candidate2[i] ?? 0;
-    const cov = covered[i] ?? 0;
-    candidateCount += popcountUint32(c);
-    newCount += popcountUint32(c & ~cov);
-  }
-  return newCount / Math.max(1, candidateCount);
-}
-function countBitsNewSince(candidate2, covered) {
-  let newCount = 0;
-  const n = Math.min(candidate2.length, covered.length);
-  for (let i = 0; i < n; i++) {
-    newCount += popcountUint32((candidate2[i] ?? 0) & ~(covered[i] ?? 0));
-  }
-  return newCount;
-}
-function overlapRatioMinUint32(a, b) {
-  let inter = 0;
-  let ca = 0;
-  let cb = 0;
-  const n = Math.max(a.length, b.length);
-  for (let i = 0; i < n; i++) {
-    const va = a[i] ?? 0;
-    const vb = b[i] ?? 0;
-    inter += popcountUint32(va & vb);
-    ca += popcountUint32(va);
-    cb += popcountUint32(vb);
-  }
-  if (inter === 0) return 0;
-  const den = Math.min(ca, cb);
-  return den > 0 ? inter / den : 0;
-}
-
-// src/app/context/index-debug-tools.ts
+var import_obsidian20 = __toESM(require_obsidian_stub());
 function requireDb() {
   if (!sqliteStoreManager.isInitialized()) {
     throw new Error("[index-debug] SQLite is not initialized. Open the vault and wait for the plugin to finish loading.");
@@ -22910,14 +23231,21 @@ var DEBUG_INDEX_MODE_TO_REASON = {
 async function debugRunHubDiscoverWithReport(options) {
   const discovery = new HubCandidateDiscoveryService();
   const roundSummaries = [];
-  const candidates = await discovery.discoverAllHubCandidates({
+  const discoverResult = await discovery.discoverAllHubCandidates({
     tenant: options?.tenant ?? "vault",
     onRoundComplete: (s) => {
       roundSummaries.push(s);
       options?.onRoundComplete?.(s);
     }
   });
-  return { candidates, roundSummaries };
+  return {
+    candidates: discoverResult.candidates,
+    navigationHubGroups: discoverResult.navigationHubGroups,
+    navigationHubs: discoverResult.navigationHubs,
+    longTailHubs: discoverResult.longTailHubs,
+    partitionMetrics: discoverResult.partitionMetrics,
+    roundSummaries
+  };
 }
 async function debugMaterializeHubCandidate(candidate2, getSearchSettings, options) {
   requireDb();
@@ -22995,7 +23323,7 @@ async function countEdgesByTypeForDoc(tenant, docId) {
   return out;
 }
 async function debugDocumentSnapshot(docPath, options) {
-  const path3 = (0, import_obsidian21.normalizePath)(docPath.trim());
+  const path3 = (0, import_obsidian20.normalizePath)(docPath.trim());
   const tenant = getIndexTenantForPath(path3);
   const t0 = Date.now();
   const warnings = [];
@@ -23204,7 +23532,7 @@ function logDebugIndexDocument(path3, tenant, t0, phase, extra) {
   });
 }
 async function debugIndexDocument(docPath, getSearchSettings, mode = "manual_full") {
-  const path3 = (0, import_obsidian21.normalizePath)(docPath.trim());
+  const path3 = (0, import_obsidian20.normalizePath)(docPath.trim());
   const tenant = getIndexTenantForPath(path3);
   const t0 = Date.now();
   const warnings = [];
@@ -23615,10 +23943,10 @@ async function debugValidateSubset(options) {
   const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
   const resolved = /* @__PURE__ */ new Set();
   for (const p of options.paths ?? []) {
-    resolved.add((0, import_obsidian21.normalizePath)(p.trim()));
+    resolved.add((0, import_obsidian20.normalizePath)(p.trim()));
   }
   for (const raw of options.pathPrefixes ?? []) {
-    const prefix = (0, import_obsidian21.normalizePath)(raw.trim());
+    const prefix = (0, import_obsidian20.normalizePath)(raw.trim());
     const sqlPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
     const rows = await mobiusRepo.listDocumentNodeIdPathByPathPrefix(sqlPrefix, 8e3);
     for (const r of rows) {
@@ -23683,7 +24011,7 @@ async function debugValidateSubset(options) {
   };
 }
 async function debugExplainPathCoverage(docPath) {
-  const path3 = (0, import_obsidian21.normalizePath)(docPath.trim());
+  const path3 = (0, import_obsidian20.normalizePath)(docPath.trim());
   const t = getIndexTenantForPath(path3);
   requireDb();
   const hubTenant = "vault";
@@ -23881,6 +24209,92 @@ var AppContext = class _AppContext {
   }
 };
 
+// src/service/search/index/helper/hub/folderHubTopicPurity.ts
+function collectTagTokensFromBlob(blob) {
+  const s = /* @__PURE__ */ new Set();
+  for (const t of blob.topicTags) {
+    if (t) s.add(t.toLowerCase());
+  }
+  for (const e of blob.topicTagEntries ?? []) {
+    if (e.id) s.add(e.id.toLowerCase());
+  }
+  for (const k of blob.keywordTags ?? []) {
+    if (k) s.add(k.toLowerCase());
+  }
+  for (const k of blob.userKeywordTags ?? []) {
+    if (k) s.add(k.toLowerCase());
+  }
+  for (const k of blob.textrankKeywordTerms ?? []) {
+    if (k) s.add(k.toLowerCase());
+  }
+  return [...s];
+}
+function collectTagTokensFromTagsJson(raw) {
+  return collectTagTokensFromBlob(decodeIndexedTagsBlob(raw ?? null));
+}
+function aggregateTagDocFrequencies(tagsJsonRows) {
+  const tagDocFreq = /* @__PURE__ */ new Map();
+  let docCount = 0;
+  for (const raw of tagsJsonRows) {
+    docCount++;
+    const tokens = collectTagTokensFromTagsJson(raw ?? null);
+    const seen = new Set(tokens);
+    for (const t of seen) {
+      tagDocFreq.set(t, (tagDocFreq.get(t) ?? 0) + 1);
+    }
+  }
+  return { docCount, tagDocFreq };
+}
+function computeFolderTopicPurity(tagDocFreq, docCount) {
+  if (docCount <= 0 || tagDocFreq.size === 0) {
+    return { topicPurity: 0, dominantCoverage: 0, normalizedHhi: 0 };
+  }
+  let maxFt = 0;
+  let totalInst = 0;
+  for (const ft of tagDocFreq.values()) {
+    maxFt = Math.max(maxFt, ft);
+    totalInst += ft;
+  }
+  const dominantCoverage = Math.min(1, maxFt / docCount);
+  const tf = tagDocFreq.size;
+  let hhi = 0;
+  if (totalInst > 0) {
+    for (const f of tagDocFreq.values()) {
+      const p = f / totalInst;
+      hhi += p * p;
+    }
+  }
+  let normalizedHhi = 1;
+  if (tf <= 1) {
+    normalizedHhi = 1;
+  } else {
+    const minHhi = 1 / tf;
+    const denom = 1 - minHhi;
+    normalizedHhi = denom > 1e-9 ? Math.max(0, Math.min(1, (hhi - minHhi) / denom)) : 1;
+  }
+  const topicPurity = Math.min(
+    1,
+    FOLDER_HUB_TOPIC_PURITY_DOMINANT_WEIGHT * dominantCoverage + FOLDER_HUB_TOPIC_PURITY_HHI_WEIGHT * normalizedHhi
+  );
+  return { topicPurity, dominantCoverage, normalizedHhi };
+}
+function computeFolderContainerPenalty(input) {
+  const { parentTopicPurity, strongChildDocShare, residualRatio } = input;
+  const raw = 0.08 * strongChildDocShare + 0.05 * (1 - parentTopicPurity) + 0.04 * Math.max(0, 0.5 - residualRatio);
+  const scaled = FOLDER_HUB_CONTAINER_PENALTY_RAW_REF_MAX > 1e-9 ? raw * (FOLDER_HUB_CONTAINER_PENALTY_MAX / FOLDER_HUB_CONTAINER_PENALTY_RAW_REF_MAX) : raw;
+  return Math.min(FOLDER_HUB_CONTAINER_PENALTY_MAX, scaled);
+}
+function computeFolderRank(hubGraphScore, topicPurity, containerPenalty) {
+  let rank = hubGraphScore + FOLDER_HUB_FOLDER_RANK_PURITY_WEIGHT * topicPurity - containerPenalty;
+  if (topicPurity < FOLDER_HUB_TOPIC_PURITY_LOW_THRESHOLD) {
+    rank *= FOLDER_HUB_TOPIC_PURITY_LOW_RANK_MULTIPLIER;
+  }
+  return rank;
+}
+function isStrongTopicChildFolder(childTopicPurity) {
+  return childTopicPurity >= FOLDER_HUB_STRONG_CHILD_TOPIC_PURITY_MIN;
+}
+
 // src/service/search/index/helper/hub/hubDiscover.ts
 function sanitizeHubDiscoverPathPrefixes(prefixes) {
   const out = [];
@@ -23922,10 +24336,10 @@ function isValidGapPathPrefix(raw) {
   return true;
 }
 function documentHubStableKey(vaultPath) {
-  return `document:${(0, import_obsidian22.normalizePath)(vaultPath)}`;
+  return `document:${(0, import_obsidian21.normalizePath)(vaultPath)}`;
 }
 function clusterHubStableKey(seedVaultPath) {
-  return `cluster:${(0, import_obsidian22.normalizePath)(seedVaultPath)}`;
+  return `cluster:${(0, import_obsidian21.normalizePath)(seedVaultPath)}`;
 }
 function clusterGreedyConflictsWithSelected(candidate2, selected) {
   if (candidate2.sourceKind !== "cluster") return false;
@@ -24202,6 +24616,26 @@ function mergeHubAssemblyHintsGroup(group) {
   const winner = [...group].sort((a, b) => SOURCE_PRIORITY[b.sourceKind] - SOURCE_PRIORITY[a.sourceKind])[0];
   const topo = winner.assemblyHints?.expectedTopology;
   return topo ? { ...acc, expectedTopology: topo } : acc;
+}
+function buildSemanticMergeHubCardsPayload(candidates) {
+  return candidates.filter((c) => c.sourceKind !== "manual").map((c) => ({
+    stableKey: c.stableKey,
+    nodeId: c.nodeId,
+    path: c.path,
+    label: c.label,
+    role: c.role,
+    sourceKind: c.sourceKind,
+    sourceKinds: c.sourceKinds,
+    graphScore: c.graphScore,
+    rankingScore: c.rankingScore,
+    docIncomingCnt: c.docIncomingCnt,
+    docOutgoingCnt: c.docOutgoingCnt,
+    pagerank: c.pagerank ?? null,
+    semanticPagerank: c.semanticPagerank ?? null,
+    anchorTopicTags: (c.assemblyHints?.anchorTopicTags ?? []).slice(0, 16),
+    anchorKeywords: (c.assemblyHints?.anchorKeywords ?? []).slice(0, 24),
+    clusterMemberPathsSample: (c.clusterMemberPaths ?? []).slice(0, 8)
+  }));
 }
 function unionClusterMemberPathsForSemanticMerge(members, rep) {
   const s = /* @__PURE__ */ new Set();
@@ -24947,14 +25381,14 @@ async function buildHubDiscoverRoundSummary(options) {
 }
 function listMarkdownPathsUnderFolder(folderPath) {
   const app = AppContext.getApp();
-  const normalized = (0, import_obsidian22.normalizePath)(folderPath.trim());
+  const normalized = (0, import_obsidian21.normalizePath)(folderPath.trim());
   if (!normalized) return [];
   const abs = app.vault.getAbstractFileByPath(normalized);
-  if (!abs || !(abs instanceof import_obsidian22.TFolder)) return [];
+  if (!abs || !(abs instanceof import_obsidian21.TFolder)) return [];
   const out = [];
   const walk = (f) => {
-    if (f instanceof import_obsidian22.TFile && f.extension === "md") out.push(f.path);
-    else if (f instanceof import_obsidian22.TFolder) for (const ch of f.children) walk(ch);
+    if (f instanceof import_obsidian21.TFile && f.extension === "md") out.push(f.path);
+    else if (f instanceof import_obsidian21.TFolder) for (const ch of f.children) walk(ch);
   };
   walk(abs);
   return out.sort();
@@ -25001,7 +25435,7 @@ function buildParentToDirectChildrenMap(rows) {
   }
   return m;
 }
-function nestFolderHubRelation(parent, child, parentToDirectChildren) {
+function nestFolderHubRelationLegacy(parent, child, parentToDirectChildren) {
   const pp = normalizeVaultPath(String(parent.path ?? ""));
   const cp = normalizeVaultPath(String(child.path ?? ""));
   if (!pp || !cp || parentDirPath(cp) !== pp) return "both";
@@ -25022,7 +25456,24 @@ function nestFolderHubRelation(parent, child, parentToDirectChildren) {
   }
   return "both";
 }
-function compressNestedFolderHubDiscoveryRows(rows) {
+function nestFolderHubRelation(parent, child, parentToDirectChildren, enrich) {
+  const pp = normalizeVaultPath(String(parent.path ?? ""));
+  const cp = normalizeVaultPath(String(child.path ?? ""));
+  if (!pp || !cp || parentDirPath(cp) !== pp) return "both";
+  if (!enrich) return nestFolderHubRelationLegacy(parent, child, parentToDirectChildren);
+  const eP = enrich.get(pp);
+  const eC = enrich.get(cp);
+  if (!eP || !eC) return nestFolderHubRelationLegacy(parent, child, parentToDirectChildren);
+  if (eC.topicPurity < FOLDER_HUB_NEST_CHILD_WEAK_TOPIC_PURITY) return "parent_only";
+  if (eC.topicPurity >= FOLDER_HUB_NEST_CHILD_ONLY_MIN_TOPIC_PURITY && eC.folderRank >= eP.folderRank - FOLDER_HUB_NEST_CHILD_ONLY_RANK_BUFFER && eP.containerPenalty >= FOLDER_HUB_NEST_CHILD_ONLY_MIN_PARENT_CONTAINER) {
+    return "child_only";
+  }
+  if (eP.residualRatio >= FOLDER_HUB_NEST_BOTH_MIN_PARENT_RESIDUAL && eP.topicPurity >= FOLDER_HUB_NEST_BOTH_MIN_PARENT_TOPIC_PURITY) {
+    return "both";
+  }
+  return nestFolderHubRelationLegacy(parent, child, parentToDirectChildren);
+}
+function compressNestedFolderHubDiscoveryRows(rows, enrich) {
   if (rows.length === 0) return [];
   const byPath = /* @__PURE__ */ new Map();
   for (const r of rows) {
@@ -25040,7 +25491,7 @@ function compressNestedFolderHubDiscoveryRows(rows) {
       const parent = byPath.get(par);
       const child = byPath.get(childPath);
       if (!parent || !child) continue;
-      const rel = nestFolderHubRelation(parent, child, parentToDirectChildren);
+      const rel = nestFolderHubRelation(parent, child, parentToDirectChildren, enrich);
       if (rel === "parent_only" && active.has(childPath)) {
         active.delete(childPath);
         changed = true;
@@ -25051,8 +25502,78 @@ function compressNestedFolderHubDiscoveryRows(rows) {
     }
   }
   const out = [...active].map((p) => byPath.get(p));
-  out.sort((a, b) => Number(b.hub_graph_score ?? 0) - Number(a.hub_graph_score ?? 0));
+  out.sort((a, b) => folderHubDiscoverySortKey(b, enrich) - folderHubDiscoverySortKey(a, enrich));
   return out;
+}
+function folderHubDiscoverySortKey(r, enrich) {
+  const p = normalizeVaultPath(String(r.path ?? ""));
+  const e = enrich?.get(p);
+  if (e) return e.folderRank;
+  return Number(r.hub_graph_score ?? 0);
+}
+async function buildFolderHubEnrichmentMap(repo, rows) {
+  const rowPaths = rows.map((r) => normalizeVaultPath(String(r.path ?? ""))).filter(Boolean);
+  const childCache = /* @__PURE__ */ new Map();
+  const allPaths = new Set(rowPaths);
+  for (const p of rowPaths) {
+    let kids = childCache.get(p);
+    if (!kids) {
+      kids = await repo.listDirectChildFolderPaths(p);
+      childCache.set(p, kids);
+    }
+    for (const k of kids) allPaths.add(normalizeVaultPath(k));
+  }
+  const pathList = [...allPaths];
+  const topicPurityMap = /* @__PURE__ */ new Map();
+  const chunk2 = 10;
+  for (let i = 0; i < pathList.length; i += chunk2) {
+    const part = pathList.slice(i, i + chunk2);
+    await Promise.all(
+      part.map(async (path3) => {
+        const tags = await repo.listDocumentTagsJsonUnderFolderPrefix(path3, FOLDER_HUB_TOPIC_STATS_MAX_DOCS);
+        const { docCount, tagDocFreq } = aggregateTagDocFrequencies(tags);
+        const { topicPurity } = computeFolderTopicPurity(tagDocFreq, docCount);
+        topicPurityMap.set(path3, topicPurity);
+      })
+    );
+  }
+  const tagDocMap = await repo.listFolderTagDocCountByPaths(pathList);
+  const enrich = /* @__PURE__ */ new Map();
+  for (const p of rowPaths) {
+    const parentD = Math.max(1, tagDocMap.get(p) ?? 0);
+    const pt = topicPurityMap.get(p) ?? 0;
+    const childPaths = childCache.get(p) ?? await repo.listDirectChildFolderPaths(p);
+    let strongSum = 0;
+    let strongCount = 0;
+    for (const cp of childPaths) {
+      const cn = normalizeVaultPath(cp);
+      const purity = topicPurityMap.get(cn) ?? 0;
+      const cd = tagDocMap.get(cn) ?? 0;
+      if (isStrongTopicChildFolder(purity)) {
+        strongCount++;
+        strongSum += cd;
+      }
+    }
+    const strongChildDocShare = Math.min(1, strongSum / parentD);
+    const residualRatio = Math.max(0, (parentD - strongSum) / parentD);
+    const containerPenalty = computeFolderContainerPenalty({
+      parentTopicPurity: pt,
+      strongChildDocShare,
+      residualRatio
+    });
+    const row = rows.find((x) => normalizeVaultPath(String(x.path ?? "")) === p);
+    const hubGs = Number(row?.hub_graph_score ?? 0);
+    const folderRank = computeFolderRank(hubGs, pt, containerPenalty);
+    enrich.set(p, {
+      topicPurity: pt,
+      containerPenalty,
+      folderRank,
+      strongChildDocShare,
+      residualRatio,
+      strongChildCount: strongCount
+    });
+  }
+  return enrich;
 }
 function folderHubTopRootKey(vaultPath) {
   const segs = pathSegments(vaultPath);
@@ -25082,10 +25603,21 @@ function folderHubAdjustedGraphScore(r) {
   const gs = Number(r.hub_graph_score ?? 0);
   return Math.max(0, gs - folderHubStructuralBroadnessPenalty(r));
 }
-function selectFolderHubDiscoveryRowsWithTopRootQuota(rows, limit) {
+function folderHubDiscoveryAdjustedRank(r, enrich) {
+  const p = normalizeVaultPath(String(r.path ?? ""));
+  const broad = folderHubStructuralBroadnessPenalty(r);
+  const e = enrich?.get(p);
+  if (e) {
+    return Math.max(0, e.folderRank - FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE * broad);
+  }
+  return folderHubAdjustedGraphScore(r);
+}
+function selectFolderHubDiscoveryRowsWithTopRootQuota(rows, limit, enrich) {
   const lim = Math.max(1, limit);
   if (rows.length === 0) return [];
-  const sorted = [...rows].sort((a, b) => folderHubAdjustedGraphScore(b) - folderHubAdjustedGraphScore(a));
+  const sorted = [...rows].sort(
+    (a, b) => folderHubDiscoveryAdjustedRank(b, enrich) - folderHubDiscoveryAdjustedRank(a, enrich)
+  );
   const maxPerRoot = Math.max(1, Math.ceil(lim * FOLDER_HUB_TOP_ROOT_MAX_FRACTION));
   const picked = [];
   const countByRoot = /* @__PURE__ */ new Map();
@@ -25436,7 +25968,7 @@ var HubCandidateDiscoveryService = class {
       }
       let raw = "";
       const f = app.vault.getAbstractFileByPath(path3);
-      if (f instanceof import_obsidian22.TFile) {
+      if (f instanceof import_obsidian21.TFile) {
         try {
           raw = await app.vault.read(f);
         } catch {
@@ -25460,7 +25992,7 @@ var HubCandidateDiscoveryService = class {
           ...candidateScore,
           manualBoost: 1
         },
-        stableKey: `manual-hub:${(0, import_obsidian22.normalizePath)(row.path)}`,
+        stableKey: `manual-hub:${(0, import_obsidian21.normalizePath)(row.path)}`,
         pagerank: typeof row.pagerank === "number" && Number.isFinite(row.pagerank) ? row.pagerank : 0,
         semanticPagerank: typeof row.semantic_pagerank === "number" && Number.isFinite(row.semantic_pagerank) ? row.semantic_pagerank : 0,
         docIncomingCnt: inc,
@@ -25508,15 +26040,41 @@ var HubCandidateDiscoveryService = class {
       if (compressed.length >= poolTarget) break;
       if (chunk2.length < pageLimit) break;
     }
-    const compressedFinal = compressNestedFolderHubDiscoveryRows(accumulated);
-    const rows = selectFolderHubDiscoveryRowsWithTopRootQuota(compressedFinal, limit);
+    const compressedPass1 = compressNestedFolderHubDiscoveryRows(accumulated);
+    const enrichPass1 = await buildFolderHubEnrichmentMap(repo, compressedPass1);
+    const promotePathSet = /* @__PURE__ */ new Set();
+    for (const r of compressedPass1) {
+      const p = normalizeVaultPath(String(r.path ?? ""));
+      const e = enrichPass1.get(p);
+      if (e && e.containerPenalty > FOLDER_HUB_CHILD_PROMOTION_CONTAINER_THRESHOLD) {
+        for (const cp of await repo.listDirectChildFolderPaths(p)) {
+          promotePathSet.add(normalizeVaultPath(cp));
+        }
+      }
+    }
+    const promotedRows = promotePathSet.size > 0 ? await repo.listFolderHubDiscoveryRowsByPaths([...promotePathSet], hubFolder, { relaxMinDocs: true }) : [];
+    const byPathMerged = /* @__PURE__ */ new Map();
+    for (const r of compressedPass1) {
+      const np = normalizeVaultPath(String(r.path ?? ""));
+      if (np) byPathMerged.set(np, r);
+    }
+    for (const r of promotedRows) {
+      const np = normalizeVaultPath(String(r.path ?? ""));
+      if (np && !byPathMerged.has(np)) byPathMerged.set(np, r);
+    }
+    const mergedRows = [...byPathMerged.values()];
+    const enrichFinal = await buildFolderHubEnrichmentMap(repo, mergedRows);
+    const compressedFinal = compressNestedFolderHubDiscoveryRows(mergedRows, enrichFinal);
+    const rows = selectFolderHubDiscoveryRowsWithTopRootQuota(compressedFinal, limit, enrichFinal);
     const candidates = [];
     for (const r of rows) {
       const folderPath = r.path;
       const label = folderPath.includes("/") ? folderPath.slice(folderPath.lastIndexOf("/") + 1) : folderPath;
       const gs = r.hub_graph_score;
+      const np = normalizeVaultPath(String(folderPath ?? ""));
+      const e = enrichFinal.get(np);
       const broadPenalty = folderHubStructuralBroadnessPenalty(r);
-      const rankingBase = Math.max(0, gs - broadPenalty);
+      const rankingBase = e ? Math.max(0, e.folderRank - FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE * broadPenalty) : Math.max(0, gs - broadPenalty);
       candidates.push({
         nodeId: r.node_id,
         path: folderPath,
@@ -25530,7 +26088,7 @@ var HubCandidateDiscoveryService = class {
           manualBoost: 0,
           cohesionScore: r.hub_cohesion_effective_score
         },
-        stableKey: `folder:${(0, import_obsidian22.normalizePath)(folderPath)}`,
+        stableKey: `folder:${(0, import_obsidian21.normalizePath)(folderPath)}`,
         pagerank: typeof r.pagerank === "number" && Number.isFinite(r.pagerank) ? r.pagerank : 0,
         semanticPagerank: typeof r.semantic_pagerank === "number" && Number.isFinite(r.semantic_pagerank) ? r.semantic_pagerank : 0,
         docIncomingCnt: Math.max(0, Math.floor(Number(r.doc_incoming_cnt ?? 0))),
@@ -25917,7 +26475,21 @@ var HubCandidateDiscoveryService = class {
     sw.stop();
     if (candidatePool.length === 0) {
       sw.print();
-      return [];
+      return {
+        candidates: [],
+        navigationHubGroups: [],
+        navigationHubs: [],
+        longTailHubs: [],
+        partitionMetrics: {
+          documentCount: docCount,
+          navigationCount: 0,
+          navigationMemberCount: 0,
+          longTailCount: 0,
+          navigationAbsoluteCoverageRatio: 0,
+          stoppedReason: "empty_pool",
+          totalGroupCount: 0
+        }
+      };
     }
     sw.start("round1.selectHubCandidates");
     const selection = await selectHubCandidatesMultiRound({
@@ -25950,86 +26522,22 @@ var HubCandidateDiscoveryService = class {
       sw.start("round1.semanticMergeHints");
       const withHints = await attachDeterministicAssemblyHints(tenant, finalSelected);
       sw.stop();
-      const { cards: slimCards, idToStableKey } = buildSlimSemanticMergeCards(withHints);
-      if (slimCards.length < 2) {
+      const cards = buildSemanticMergeHubCardsPayload(withHints);
+      if (cards.length < 2) {
         sw.print();
-        return withHints;
+        return buildHubDiscoverAllResult(tenant, docCoverageIndex, withHints);
       }
-      const blocks = partitionSemanticMergeBlocks(slimCards);
       sw.start("round1.semanticMergeLlm");
-      const runId = `merge-${Date.now()}`;
-      const aggregated = { mergeGroups: [] };
-      const debugBlocks = [];
-      let totalInputChars = 0;
-      let maxBlockChars = 0;
       try {
-        for (const block of blocks) {
-          const allowedIds = new Set(block.hubIds);
-          const inputChars = jsonCharLength(block.cards);
-          totalInputChars += inputChars;
-          maxBlockChars = Math.max(maxBlockChars, inputChars);
-          try {
-            const blockPlan = await AppContext.getInstance().manager.streamObjectWithPrompt(
-              "hub-semantic-merge" /* HubSemanticMerge */,
-              {
-                hubCardsJson: JSON.stringify(block.cards)
-              },
-              hubSemanticMergeBlockLlmSchema,
-              { noReasoning: false }
-            );
-            const full = blockSemanticMergePlanToFull(blockPlan, idToStableKey, allowedIds);
-            aggregated.mergeGroups.push(...full.mergeGroups);
-            debugBlocks.push({
-              blockIndex: block.blockIndex,
-              blockingKey: block.blockingKey,
-              hubCount: block.hubIds.length,
-              hubIds: [...block.hubIds],
-              inputChars,
-              inputCards: block.cards,
-              output: blockPlan,
-              mergedFullPlan: full
-            });
-          } catch (be) {
-            console.warn(`[discoverAllHubCandidates] Semantic merge block ${block.blockIndex} failed:`, be);
-            debugBlocks.push({
-              blockIndex: block.blockIndex,
-              blockingKey: block.blockingKey,
-              hubCount: block.hubIds.length,
-              hubIds: [...block.hubIds],
-              inputChars,
-              inputCards: block.cards,
-              output: null,
-              error: String(be)
-            });
-          }
-        }
-        const debugSummary = {
-          runId,
-          createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-          totalSlimCards: slimCards.length,
-          blockCount: blocks.length,
-          totalInputChars,
-          maxBlockChars,
-          blocks: blocks.map((b) => ({
-            blockIndex: b.blockIndex,
-            blockingKey: b.blockingKey,
-            hubCount: b.hubIds.length,
-            inputChars: jsonCharLength(b.cards),
-            hubIds: [...b.hubIds]
-          }))
-        };
-        const debugDir = await writeHubSemanticMergeDebugArtifacts({
-          app: AppContext.getApp(),
-          runId,
-          summary: debugSummary,
-          blocks: debugBlocks,
-          aggregatedPlan: aggregated,
-          skipWrite: AppContext.getInstance().isMockEnv
-        });
-        if (debugDir) {
-          console.info("[HubDiscover] semantic merge debug artifacts:", debugDir);
-        }
-        finalSelectedForAssembly = applySemanticMergePlanToFinalSelected(withHints, aggregated);
+        const mergePlan = await AppContext.getInstance().manager.streamObjectWithPrompt(
+          "hub-semantic-merge" /* HubSemanticMerge */,
+          {
+            hubCardsJson: JSON.stringify(cards)
+          },
+          hubSemanticMergeLlmSchema,
+          { noReasoning: false }
+        );
+        finalSelectedForAssembly = applySemanticMergePlanToFinalSelected(withHints, mergePlan);
       } catch (e) {
         console.warn("[discoverAllHubCandidates] Semantic merge failed:", e);
         finalSelectedForAssembly = withHints;
@@ -26037,9 +26545,30 @@ var HubCandidateDiscoveryService = class {
       sw.stop();
     }
     sw.print();
-    return attachDeterministicAssemblyHints(tenant, finalSelectedForAssembly);
+    const withHintsFinal = await attachDeterministicAssemblyHints(tenant, finalSelectedForAssembly);
+    return buildHubDiscoverAllResult(tenant, docCoverageIndex, withHintsFinal);
   }
 };
+async function buildHubDiscoverAllResult(tenant, docCoverageIndex, candidates) {
+  const bitsByStableKey = /* @__PURE__ */ new Map();
+  for (const c of candidates) {
+    bitsByStableKey.set(c.stableKey, await estimateCandidateCoverageBits(tenant, c, docCoverageIndex));
+  }
+  const groups = buildNavigationHubGroups(candidates, bitsByStableKey, docCoverageIndex.docCount);
+  const { navigationHubGroups, navigationHubs, longTailHubs, metrics } = partitionNavigationGroupsAndLongTail({
+    groups,
+    candidates,
+    bitsByStableKey,
+    docCoverageIndex
+  });
+  return {
+    candidates,
+    navigationHubGroups,
+    navigationHubs,
+    longTailHubs,
+    partitionMetrics: metrics
+  };
+}
 
 // test/hub-discover-rounds.test.ts
 function assert(cond, msg) {

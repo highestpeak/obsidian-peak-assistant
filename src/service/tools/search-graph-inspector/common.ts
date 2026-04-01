@@ -15,6 +15,48 @@ import type { FunctionalTagId } from '@/core/schemas/agents/search-agent-schemas
 
 export type SemanticNeighborNode = GraphNode & { similarity: string }
 
+/**
+ * Grep-like matcher for vault paths.
+ *
+ * Semantics are aligned with `grep_file_tree`:
+ * - Treat `pattern` as a case-insensitive RegExp when valid
+ * - If RegExp construction fails, fall back to case-insensitive substring match
+ */
+export function matchVaultPathByGrepPattern(path: string, pattern: string): boolean {
+	const p = String(path ?? '');
+	const raw = String(pattern ?? '').trim();
+	if (!raw) return true;
+	try {
+		const re = new RegExp(raw, 'i');
+		return re.test(p);
+	} catch {
+		return p.toLowerCase().includes(raw.toLowerCase());
+	}
+}
+
+export function shouldIncludeNodeByGrepPattern(
+	node: { type?: unknown; attributes?: unknown } | null | undefined,
+	grepPattern: string | null | undefined,
+): boolean {
+	const raw = String(grepPattern ?? '').trim();
+	if (!raw) return true;
+	if (!node) return false;
+	// Only prune document nodes by path; keep non-document structural nodes.
+	if (node.type !== GraphNodeType.Document) return true;
+	let path = '';
+	try {
+		const attrs =
+			typeof node.attributes === 'string'
+				? JSON.parse(node.attributes || '{}')
+				: (node.attributes as Record<string, unknown> | null | undefined);
+		path = typeof attrs?.path === 'string' ? attrs.path : '';
+	} catch {
+		path = '';
+	}
+	if (!path) return true;
+	return matchVaultPathByGrepPattern(path, raw);
+}
+
 /** Doc-level semantic neighbors; query vector comes only from {@link EmbeddingRepo.getEmbeddingForSemanticSearch}. */
 export async function getSemanticNeighbors(
     docId: string,

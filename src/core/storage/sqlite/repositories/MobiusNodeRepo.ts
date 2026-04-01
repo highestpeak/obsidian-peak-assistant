@@ -1452,6 +1452,126 @@ export class MobiusNodeRepo {
 	}
 
 	/**
+	 * Loads `tags_json` for documents under a folder path (exact folder or nested files), capped for purity stats.
+	 */
+	async listDocumentTagsJsonUnderFolderPrefix(folderPath: string, limit: number): Promise<string[]> {
+		const p = normalizeVaultPath(folderPath);
+		if (!p) return [];
+		const lim = Math.max(1, limit);
+		const prefix = p.endsWith('/') ? p : `${p}/`;
+		const rows = await this.db
+			.selectFrom('mobius_node')
+			.select('tags_json')
+			.where('type', '=', GraphNodeType.Document)
+			.where((eb) => eb.or([eb('path', '=', p), eb('path', 'like', `${prefix}%`)]))
+			.limit(lim)
+			.execute();
+		return rows.map((r) => String(r.tags_json ?? ''));
+	}
+
+	/** Direct child folder vault paths under `parentPath` (one extra path segment). */
+	async listDirectChildFolderPaths(parentPath: string): Promise<string[]> {
+		const p = normalizeVaultPath(parentPath);
+		if (!p) return [];
+		const prefix = `${p}/`;
+		const rows = await this.db
+			.selectFrom('mobius_node')
+			.select('path')
+			.where('type', '=', GraphNodeType.Folder)
+			.where('path', 'like', `${prefix}%`)
+			.execute();
+		const parentSlashCount = (p.match(/\//g) ?? []).length;
+		const out: string[] = [];
+		for (const r of rows) {
+			const path = r.path ? normalizeVaultPath(r.path) : '';
+			if (!path.startsWith(prefix)) continue;
+			const slashCount = (path.match(/\//g) ?? []).length;
+			if (slashCount === parentSlashCount + 1) out.push(path);
+		}
+		return out;
+	}
+
+	/** `tag_doc_count` for folder nodes at the given paths (missing paths omitted). */
+	async listFolderTagDocCountByPaths(paths: string[]): Promise<Map<string, number>> {
+		const uniq = [...new Set(paths.map((x) => normalizeVaultPath(String(x))).filter(Boolean))];
+		if (!uniq.length) return new Map();
+		const rows = await this.db
+			.selectFrom('mobius_node')
+			.select(['path', 'tag_doc_count'])
+			.where('type', '=', GraphNodeType.Folder)
+			.where('path', 'in', uniq)
+			.execute();
+		const m = new Map<string, number>();
+		for (const r of rows) {
+			const path = r.path ? normalizeVaultPath(r.path) : '';
+			if (!path) continue;
+			m.set(path, Math.max(0, Number(r.tag_doc_count ?? 0)));
+		}
+		return m;
+	}
+
+	/**
+	 * Folder hub discovery rows for specific paths (same score columns as {@link listTopFolderNodesForHubDiscovery}).
+	 * Use for promoting direct children; may include rows below {@link FOLDER_HUB_MIN_DOCS} when `relaxMinDocs` is true.
+	 */
+	async listFolderHubDiscoveryRowsByPaths(
+		paths: string[],
+		hubSummaryFolder: string,
+		options?: { relaxMinDocs?: boolean },
+	): Promise<MobiusNodeFolderHubDiscoveryRow[]> {
+		const uniq = [...new Set(paths.map((x) => normalizeVaultPath(String(x))).filter(Boolean))];
+		if (!uniq.length) return [];
+		const hub = hubSummaryFolder.trim();
+		const likeUnderHub = hub ? `${hub}/%` : '';
+		const relax = options?.relaxMinDocs === true;
+
+		const hubPhysical = sql<number>`min(1.0, coalesce(pagerank, 0.0) * 2.2)`;
+		const totalIn = sql<number>`coalesce(doc_incoming_cnt, 0) + coalesce(other_incoming_cnt, 0)`;
+		const totalOut = sql<number>`coalesce(doc_outgoing_cnt, 0) + coalesce(other_outgoing_cnt, 0)`;
+		const hubOrg = sql<number>`min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) * 0.18 + ln(1.0 + ${totalIn}) * 0.06 + ln(1.0 + ${totalOut}) * 0.06)`;
+		const hubSem = sql<number>`min(1.0, coalesce(semantic_pagerank, 0.0) * 1.0)`;
+		const lnRef = Math.log(1 + FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT);
+		const hubCohEff = sql<number>`coalesce(folder_cohesion_score, 0.0) * min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) / ${lnRef})`;
+		const wPhys = FOLDER_HUB_GRAPH_WEIGHT_PHYSICAL;
+		const wOrg = FOLDER_HUB_GRAPH_WEIGHT_ORGANIZATIONAL;
+		const wSem = FOLDER_HUB_GRAPH_WEIGHT_SEMANTIC;
+		const wCoh = FOLDER_HUB_GRAPH_WEIGHT_COHESION;
+		const hubGraph = sql<number>`min(1.0, (${hubPhysical} * ${wPhys}) + (${hubOrg} * ${wOrg}) + (${hubSem} * ${wSem}) + (${hubCohEff} * ${wCoh}))`;
+
+		let q = this.db
+			.selectFrom('mobius_node')
+			.select([
+				'node_id',
+				'path',
+				'label',
+				'tag_doc_count',
+				'pagerank',
+				'semantic_pagerank',
+				'folder_cohesion_score',
+				'doc_incoming_cnt',
+				'doc_outgoing_cnt',
+				'other_incoming_cnt',
+				'other_outgoing_cnt',
+				hubPhysical.as('hub_physical_authority_score'),
+				hubOrg.as('hub_organizational_score'),
+				hubSem.as('hub_semantic_centrality_score'),
+				hubCohEff.as('hub_cohesion_effective_score'),
+				hubGraph.as('hub_graph_score'),
+			])
+			.where('type', '=', GraphNodeType.Folder)
+			.where('path', 'is not', null)
+			.where('path', 'in', uniq);
+		if (!relax) {
+			q = q.where('tag_doc_count', '>=', FOLDER_HUB_MIN_DOCS);
+		}
+		if (hub) {
+			q = q.where((eb) => eb.and([eb('path', '!=', hub), eb('path', 'not like', likeUnderHub)]));
+		}
+		const rows = await q.execute();
+		return rows as MobiusNodeFolderHubDiscoveryRow[];
+	}
+
+	/**
 	 * Top `document` rows by hub graph score, excluding paths under `hubSummaryFolder` (Hub-Summaries subtree).
 	 * Scoring matches in-app `HubCandidateDiscoveryService.scoreDocumentRow`; computed in SQL to avoid full-table loads.
 	 *
@@ -1744,6 +1864,33 @@ export class MobiusNodeRepo {
 	async listFolderHubDocMemberPathsSample(folderPath: string, limit: number = 40): Promise<string[]> {
 		const prefix = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
 		return this.listDocumentPathsByPathPrefix(prefix, limit);
+	}
+
+	/**
+	 * Batch-load doc link degrees for `type=folder` mobius rows by vault path (one round-trip).
+	 * Keys in the returned map use {@link normalizeVaultPath}.
+	 */
+	async listFolderDocDegreesByVaultPaths(
+		paths: string[],
+	): Promise<Map<string, { incoming: number; outgoing: number }>> {
+		const uniq = [...new Set(paths.map((p) => normalizeVaultPath(String(p ?? ''))).filter(Boolean))];
+		if (uniq.length === 0) return new Map();
+		const rows = await this.db
+			.selectFrom('mobius_node')
+			.select(['path', 'doc_incoming_cnt', 'doc_outgoing_cnt'])
+			.where('type', '=', GraphNodeType.Folder)
+			.where('path', 'in', uniq)
+			.execute();
+		const m = new Map<string, { incoming: number; outgoing: number }>();
+		for (const r of rows) {
+			const p = normalizeVaultPath(String(r.path ?? ''));
+			if (!p) continue;
+			m.set(p, {
+				incoming: Math.max(0, Math.floor(Number(r.doc_incoming_cnt ?? 0))),
+				outgoing: Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0))),
+			});
+		}
+		return m;
 	}
 
 	/** Batch load fields needed for weighted local hub graph nodes. */

@@ -4,7 +4,7 @@
 
 import matter from 'gray-matter';
 import { HUB_DOC_METADATA_SECTION_TITLE, HUB_FRONTMATTER_KEYS } from '@/core/constant';
-import type { HubDocSummaryLlm } from '@/core/schemas/hubDiscoverLlm';
+import type { HubDocSummaryLlm } from '@/core/schemas';
 import { parseFrontmatter } from '@/core/utils/markdown-utils';
 
 /**

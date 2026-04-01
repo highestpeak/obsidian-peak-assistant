@@ -457,6 +457,18 @@ export enum StreamTriggerName {
 	SEARCH_RAW_AGENT_RECON = 'search-raw-agent-recon',
 	SEARCH_RAW_AGENT_RECON_PLAN_STEP = 'search-raw-agent-recon-plan-step',
 	SEARCH_RAW_AGENT_RECON_PATH_SUBMIT_STEP = 'search-raw-agent-recon-path-submit-step',
+	/** Hub discovery: structured folder intuition round (generateObject). */
+	HUB_DISCOVERY_FOLDER_ROUND_STRUCTURE = 'hub-discovery-folder-round-structure',
+	/** Hub discovery: structured folder deepen after explore_folder. */
+	HUB_DISCOVERY_FOLDER_DEEPEN_STRUCTURE = 'hub-discovery-folder-deepen-structure',
+	/** Hub discovery: folder recon manual loop — plan step (streamText + tools). */
+	HUB_DISCOVERY_FOLDER_RECON_PLAN = 'hub-discovery-folder-recon-plan',
+	/** Hub discovery: folder recon — structured submit after plan + tools. */
+	HUB_DISCOVERY_FOLDER_RECON_SUBMIT = 'hub-discovery-folder-recon-submit',
+	/** Hub discovery: document recon manual loop — plan step. */
+	HUB_DISCOVERY_DOCUMENT_RECON_PLAN = 'hub-discovery-document-recon-plan',
+	/** Hub discovery: document recon — structured submit. */
+	HUB_DISCOVERY_DOCUMENT_RECON_SUBMIT = 'hub-discovery-document-recon-submit',
 	SEARCH_RAW_AGENT_TASK_CONSOLIDATOR = 'search-raw-agent-task-consolidator',
 	SEARCH_RAW_AGENT_EVIDENCE = 'search-raw-agent-evidence',
 	SEARCH_SLOT_RECALL_AGENT = 'search-slot-recall-agent',

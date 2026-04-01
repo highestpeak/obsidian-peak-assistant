@@ -70,6 +70,32 @@ export enum PromptId {
 	HubSemanticMergeSystem = 'hub-semantic-merge-system',
 	/** User: Hub card JSON → merge groups (does not invent stableKeys). */
 	HubSemanticMerge = 'hub-semantic-merge',
+	/** System: Hub discovery — folder intuition round (compact tree → structured JSON). */
+	HubDiscoveryFolderRoundSystem = 'hub-discovery-folder-round-system',
+	/** User payload: folder tree page + metrics + coverage (paired with {@link HubDiscoveryFolderRoundSystem}). */
+	HubDiscoveryFolderRound = 'hub-discovery-folder-round',
+	/** System: Hub discovery — refine after explore_folder dossiers. */
+	HubDiscoveryFolderDeepenSystem = 'hub-discovery-folder-deepen-system',
+	/** User payload: explore results + accumulated candidates (paired with {@link HubDiscoveryFolderDeepenSystem}). */
+	HubDiscoveryFolderDeepen = 'hub-discovery-folder-deepen',
+
+	/** System: Folder hub recon — plan step (optional tools; host executes calls before submit). */
+	HubDiscoveryFolderReconPlanSystem = 'hub-discovery-folder-recon-plan-system',
+	/** User: planning context — vault digest + metrics + exclusions. */
+	HubDiscoveryFolderReconPlan = 'hub-discovery-folder-recon-plan',
+	/** System: Folder hub recon — structured submit after host ran plan tools. */
+	HubDiscoveryFolderReconSubmitSystem = 'hub-discovery-folder-recon-submit-system',
+	/** User: memory + tree + plan text + tool results for folder submit. */
+	HubDiscoveryFolderReconSubmit = 'hub-discovery-folder-recon-submit',
+
+	/** System: Document hub recon — tool-using plan step (graph, hub_local_graph, inspect, find_path, grep). */
+	HubDiscoveryDocumentReconPlanSystem = 'hub-discovery-document-recon-plan-system',
+	/** User: seeds from folder recon + SQL shortlist. */
+	HubDiscoveryDocumentReconPlan = 'hub-discovery-document-recon-plan',
+	/** System: Document hub recon — structured submit after tools. */
+	HubDiscoveryDocumentReconSubmitSystem = 'hub-discovery-document-recon-submit-system',
+	/** User: assembled context for document submit. */
+	HubDiscoveryDocumentReconSubmit = 'hub-discovery-document-recon-submit',
 
 	// Search prompts
 	/** Session history compression; preserves user background, pains, evidence paths. */
@@ -219,6 +245,12 @@ export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.DocTagGenerateJson,
 	PromptId.HubDocSummary,
 	PromptId.HubSemanticMerge,
+	PromptId.HubDiscoveryFolderRound,
+	PromptId.HubDiscoveryFolderDeepen,
+	PromptId.HubDiscoveryFolderReconPlan,
+	PromptId.HubDiscoveryFolderReconSubmit,
+	PromptId.HubDiscoveryDocumentReconPlan,
+	PromptId.HubDiscoveryDocumentReconSubmit,
 ] as const;
 
 /**
@@ -379,6 +411,53 @@ export interface PromptVariables {
 	[PromptId.HubSemanticMerge]: {
 		/** JSON array of hub cards for merge (stableKey, path, labels, signals). */
 		hubCardsJson: string;
+	};
+	[PromptId.HubDiscoveryFolderRoundSystem]: Record<string, never>;
+	[PromptId.HubDiscoveryFolderRound]: {
+		folderTreePageMarkdown: string;
+		/** Round context: metrics, budgets, `folderTreePage`, `coverageState`; template formats (e.g. `toJson`). */
+		hubDiscoveryContext: Record<string, unknown>;
+		userGoal: string;
+	};
+	[PromptId.HubDiscoveryFolderDeepenSystem]: Record<string, never>;
+	[PromptId.HubDiscoveryFolderDeepen]: {
+		exploreResultsMarkdown: string;
+		accumulatedFolderHubsJson: string;
+		coverageStateJson: string;
+		userGoal: string;
+	};
+	[PromptId.HubDiscoveryFolderReconPlanSystem]: Record<string, never>;
+	[PromptId.HubDiscoveryFolderReconPlan]: {
+		userGoal: string;
+		worldMetricsJson: string;
+		folderDigestMarkdown: string;
+		baselineExcludedPrefixesJson: string;
+	};
+	[PromptId.HubDiscoveryFolderReconSubmitSystem]: Record<string, never>;
+	[PromptId.HubDiscoveryFolderReconSubmit]: {
+		userGoal: string;
+		iteration: number;
+		agentPipelineBudgetJson: string;
+		memoryJson: string;
+		folderTreeMarkdown: string;
+		actionPlanMarkdown: string;
+		actionOutputMarkdown: string;
+		toolResultsMarkdown: string;
+	};
+	[PromptId.HubDiscoveryDocumentReconPlanSystem]: Record<string, never>;
+	[PromptId.HubDiscoveryDocumentReconPlan]: {
+		userGoal: string;
+		folderHubCandidatesJson: string;
+		highwayFolderLeadsJson: string;
+		documentShortlistJson: string;
+		topOutgoingFoldersJson: string;
+	};
+	[PromptId.HubDiscoveryDocumentReconSubmitSystem]: Record<string, never>;
+	[PromptId.HubDiscoveryDocumentReconSubmit]: {
+		userGoal: string;
+		iteration: number;
+		memoryJson: string;
+		toolResultsMarkdown: string;
 	};
 	[PromptId.DocTagGenerateJson]: {
 		content: string;

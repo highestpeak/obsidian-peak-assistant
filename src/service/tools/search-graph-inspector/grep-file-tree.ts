@@ -1,4 +1,5 @@
 import { getFullVaultFilePathsForGrep } from "./explore-folder";
+import { matchVaultPathByGrepPattern } from "./common";
 
 const DEFAULT_LIMIT = 200;
 
@@ -14,13 +15,7 @@ export async function grepFileTree(params: {
 	const pattern = String(params.pattern).trim();
 	const allPaths = getFullVaultFilePathsForGrep();
 
-	let matched: string[];
-	try {
-		const asRegex = new RegExp(pattern, "i");
-		matched = allPaths.filter((p) => asRegex.test(p));
-	} catch {
-		matched = allPaths.filter((p) => p.toLowerCase().includes(pattern.toLowerCase()));
-	}
+	const matched = allPaths.filter((p) => matchVaultPathByGrepPattern(p, pattern));
 
 	const slice = matched.slice(0, limit);
 	const total = matched.length;

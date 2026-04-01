@@ -45,6 +45,14 @@ export const IndexingTemplateId = {
 	HubDiscoverNextDirections: 'indexing-hub-discover-next-directions',
 	/** Weak title/filename tokens filtered in cluster hub title token extraction. */
 	ClusterHubWeakTitleTokens: 'indexing-cluster-hub-weak-title-tokens',
+	/** Hub discovery agent: one page of folder tree for LLM (`folderRows` + Handlebars; no path mapping block). */
+	HubDiscoveryFolderTreePage: 'indexing-hub-discovery-folder-tree-page',
+	/** Hub discovery: empty-folder-tree placeholder Markdown. */
+	HubDiscoveryFolderTreeEmpty: 'indexing-hub-discovery-folder-tree-empty',
+	/** Hub discovery agent: default `userGoal` when caller omits `options.userGoal` (plain text; Handlebars optional). */
+	HubDiscoveryDefaultUserGoal: 'indexing-hub-discovery-default-user-goal',
+	/** Hub discovery agent: `agentPipelineBudget.note` in world metrics JSON (plain text for the LLM). */
+	HubDiscoveryPipelineBudgetNote: 'indexing-hub-discovery-pipeline-budget-note',
 } as const;
 
 export type IndexingTemplateId = (typeof IndexingTemplateId)[keyof typeof IndexingTemplateId];
@@ -204,6 +212,42 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 			'Return only JSON: mergeGroups (array of objects with representativeStableKey, memberStableKeys, reason, confidence 0-1, mergeKind duplicate|alias|same_topic, optional risks array). No markdown fences.',
 		systemPromptId: 'hub-semantic-merge-system' as PromptId,
 	}),
+	'hub-discovery-folder-round-system': meta('prompts', 'hub-discovery-folder-round-system'),
+	'hub-discovery-folder-round': meta('prompts', 'hub-discovery-folder-round', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only one JSON object matching the caller schema (folderHubCandidates, exploreFolderTasks, documentHubLeads, coverageAssessment, findingsSummary, optional ignoredFolders). No markdown fences.',
+		systemPromptId: 'hub-discovery-folder-round-system' as PromptId,
+	}),
+	'hub-discovery-folder-deepen-system': meta('prompts', 'hub-discovery-folder-deepen-system'),
+	'hub-discovery-folder-deepen': meta('prompts', 'hub-discovery-folder-deepen', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only one JSON object matching the caller schema (confirmedFolderHubCandidates, rejectedFolders, refinedDocumentHubLeads, updatedCoverage, findingsSummary). No markdown fences.',
+		systemPromptId: 'hub-discovery-folder-deepen-system' as PromptId,
+	}),
+	'hub-discovery-folder-recon-plan-system': meta('prompts', 'hub-discovery-folder-recon-plan-system'),
+	'hub-discovery-folder-recon-plan': meta('prompts', 'hub-discovery-folder-recon-plan', {
+		systemPromptId: 'hub-discovery-folder-recon-plan-system' as PromptId,
+	}),
+	'hub-discovery-folder-recon-submit-system': meta('prompts', 'hub-discovery-folder-recon-submit-system'),
+	'hub-discovery-folder-recon-submit': meta('prompts', 'hub-discovery-folder-recon-submit', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only one JSON object: confirmedFolderHubCandidates, rejectedFolderPaths, highwayFolderLeads, ignoredPathPrefixes, updatedCoverage, openQuestions, should_stop, findingsSummary.',
+		systemPromptId: 'hub-discovery-folder-recon-submit-system' as PromptId,
+	}),
+	'hub-discovery-document-recon-plan-system': meta('prompts', 'hub-discovery-document-recon-plan-system'),
+	'hub-discovery-document-recon-plan': meta('prompts', 'hub-discovery-document-recon-plan', {
+		systemPromptId: 'hub-discovery-document-recon-plan-system' as PromptId,
+	}),
+	'hub-discovery-document-recon-submit-system': meta('prompts', 'hub-discovery-document-recon-submit-system'),
+	'hub-discovery-document-recon-submit': meta('prompts', 'hub-discovery-document-recon-submit', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only one JSON object: refinedDocumentHubLeads, confirmedDocumentHubPaths, rejectedSeeds, openQuestions, should_stop, findingsSummary.',
+		systemPromptId: 'hub-discovery-document-recon-submit-system' as PromptId,
+	}),
 	'context-memory': meta('prompts', 'context-memory'),
 	'user-profile-context': meta('prompts', 'user-profile-context'),
 	'profile-from-vault-json': meta('prompts', 'profile-from-vault-json', { expectsJson: true, jsonConstraint: 'Return only the JSON array, nothing else.' }),
@@ -232,6 +276,10 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[IndexingTemplateId.CodeStopwords]: meta('indexing', 'code-stopwords'),
 	[IndexingTemplateId.HubDiscoverNextDirections]: meta('indexing', 'hub-discover-next-directions'),
 	[IndexingTemplateId.ClusterHubWeakTitleTokens]: meta('indexing', 'cluster-hub-weak-title-tokens'),
+	[IndexingTemplateId.HubDiscoveryFolderTreePage]: meta('indexing', 'hub-discovery-folder-tree-page'),
+	[IndexingTemplateId.HubDiscoveryFolderTreeEmpty]: meta('indexing', 'hub-discovery-folder-tree-empty'),
+	[IndexingTemplateId.HubDiscoveryDefaultUserGoal]: meta('indexing', 'hub-discovery-default-user-goal'),
+	[IndexingTemplateId.HubDiscoveryPipelineBudgetNote]: meta('indexing', 'hub-discovery-pipeline-budget-note'),
 	[StopwordTemplateId.Common]: meta('stopwords', 'common'),
 	[StopwordTemplateId.English]: meta('stopwords', 'en'),
 	[StopwordTemplateId.Chinese]: meta('stopwords', 'zh'),

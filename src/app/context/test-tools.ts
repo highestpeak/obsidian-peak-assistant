@@ -22,6 +22,12 @@ import { GroupContextAgent } from "@/service/agents/search-agent-helper/GroupCon
 import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
 import { weavePathsToContext } from "@/service/agents/search-agent-helper/helpers/weavePathsToContext";
 import { ReconAgent } from "@/service/agents/search-agent-helper/RawSearchAgent";
+import {
+	HubDiscoveryAgent,
+	type HubDiscoveryAgentLoopResult,
+	type HubDiscoveryAgentOptions,
+} from '@/service/agents/HubDiscoveryAgent';
+import { buildHubWorldSnapshot } from '@/service/agents/hub-helper/hubDiscoverySnapshot';
 
 /**
  * Global test interface for search-graph-inspector tools
@@ -324,6 +330,85 @@ export class AISearchAgentTestTools {
         return {
             sharedContexts,
         };
+    }
+
+    /**
+     * Run {@link HubDiscoveryAgent}: world snapshot → folder-hub recon (plan/tools/submit loop) → document-hub recon → SQL shortlist.
+     * Requires indexed SQLite, TemplateManager, and models for hub-discovery prompts.
+     *
+     * @example Full run (DevTools console)
+     * ```ts
+     * await window.testAISearchTools.testFolderHubDiscovery({ userGoal: 'Find navigation anchors' });
+     * // or shortcut:
+     * await window.testFolderHubDiscovery({ userGoal: '…' });
+     * ```
+     *
+     * @example Debug: stop after prep (no LLM recon)
+     * ```ts
+     * await window.testFolderHubDiscovery({ stopAt: 'prep' });
+     * ```
+     *
+     * @example Debug: stop after folder recon only (skip document phase)
+     * ```ts
+     * await window.testFolderHubDiscovery({ stopAt: 'folder_hub' });
+     * // same: stopAt: 'after_folder_recon'
+     * ```
+     *
+     * @example Debug: stop after round N plan or after round N submit
+     * `iteration` is 1-based. `folder_plan` stops after the folder plan step and host tool execution (before structured submit); `document_plan` stops after the document plan+tool step. Ensure caps are high enough.
+     * ```ts
+     * await window.testFolderHubDiscovery({ stopAt: { hook: 'folder_plan', iteration: 1 } });
+     * await window.testFolderHubDiscovery({ stopAt: { hook: 'folder_submit', iteration: 1 } });
+     * await window.testFolderHubDiscovery({ stopAt: { hook: 'document_plan', iteration: 1 } });
+     * await window.testFolderHubDiscovery({ stopAt: { hook: 'document_submit', iteration: 2 } });
+     * ```
+     *
+     * @example Debug: cap iteration counts (1–6 each)
+     * ```ts
+     * await window.testFolderHubDiscovery({
+     *   folderReconMaxIterations: 1,
+     *   documentReconMaxIterations: 1,
+     * });
+     * ```
+     */
+    async testFolderHubDiscovery(
+        options?: HubDiscoveryAgentOptions,
+    ): Promise<{ result: HubDiscoveryAgentLoopResult | null; duration: number; eventCount: number }> {
+        const start = Date.now();
+        const ctx = AppContext.getInstance();
+        const agent = new HubDiscoveryAgent(ctx.manager);
+        let result: HubDiscoveryAgentLoopResult | null = null;
+        let eventCount = 0;
+        for await (const _ev of streamWithStreamLog(
+            agent.streamRun(
+                {
+                    ...options,
+                },
+                (r) => {
+                    result = r;
+                },
+            ),
+        )) {
+            eventCount++;
+        }
+        const duration = Date.now() - start;
+        // Omit huge `documentShortlist` from console only; full result is still returned.
+        // `onFinish` assigns `result`, but TS may not narrow `let` across the async loop; cast for the log payload only.
+        const snapshot = result as HubDiscoveryAgentLoopResult | null;
+        if (snapshot == null) {
+            console.debug('[testFolderHubDiscovery]', { result: null, duration, eventCount });
+        } else {
+            console.debug('[testFolderHubDiscovery]', {
+                duration,
+                eventCount,
+                result: {
+                    ...snapshot,
+                    documentShortlist: undefined,
+                    documentShortlistCount: snapshot.documentShortlist?.length ?? 0,
+                },
+            });
+        }
+        return { result, duration, eventCount };
     }
 
 }

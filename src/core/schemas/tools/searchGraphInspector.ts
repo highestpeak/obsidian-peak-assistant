@@ -126,6 +126,12 @@ export const inspectNoteContextInputSchema = z
 	})
 	.merge(BaseLimit)
 	.extend({
+		grep_pattern: z
+			.string()
+			.nullable()
+			.describe(
+				"Grep-like path filter. If set, only keep neighbor document nodes whose vault path matches this pattern (regex, case-insensitive; falls back to substring when regex is invalid)."
+			),
 		include_semantic_paths: SemanticOptions.shape.include_semantic_paths,
 		response_format: ResponseFormat.shape.response_format.default("structured"),
 	});
@@ -144,6 +150,12 @@ export const graphTraversalInputSchema = z
 	})
 	.merge(SemanticOptions)
 	.extend({
+		grep_pattern: z
+			.string()
+			.nullable()
+			.describe(
+				"Grep-like path filter. If set, traversal prunes document nodes whose vault path does NOT match this pattern (regex, case-insensitive; falls back to substring when regex is invalid). Start node is always kept."
+			),
 		filters: FilterOption.nullable().describe(
 			"Only filter document nodes in each level."
 		),

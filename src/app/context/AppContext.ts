@@ -167,6 +167,9 @@ export class AppContext {
 				console.debug('📖 Usage: await window.debugBatchIndex(["a.md","b.md"],"core_fast")');
 				console.debug('📖 Usage: await window.debugRunMaintenance() — full Mobius maintenance');
 				console.debug('📖 Usage: await window.debugRunHubDiscoverWithReport() — hub discovery (can be slow)');
+				(window as any).testFolderHubDiscovery = (opts?: Record<string, unknown>) =>
+					(window as any).testAISearchTools.testFolderHubDiscovery(opts);
+				console.debug('📖 Usage: await window.testFolderHubDiscovery({ userGoal?: "..." }) — HubDiscoveryAgent (internal hub budgets)');
 				console.debug(
 					'📖 Usage: await window.debugMaterializeHubCandidate(candidate, { hubCandidatesForHubSet }) — one Hub-*.md from a candidate',
 				);
@@ -199,6 +202,7 @@ export class AppContext {
 					'debugExplainPathCoverage',
 					'debugDocumentSnapshot',
 					'cleanupGraphTable',
+					'testFolderHubDiscovery',
 				]);
 			}
 		} else {
@@ -223,6 +227,7 @@ export class AppContext {
 				if ((window as any).debugExplainPathCoverage) delete (window as any).debugExplainPathCoverage;
 				if ((window as any).debugDocumentSnapshot) delete (window as any).debugDocumentSnapshot;
 				if ((window as any).cleanupGraphTable) delete (window as any).cleanupGraphTable;
+				if ((window as any).testFolderHubDiscovery) delete (window as any).testFolderHubDiscovery;
 				console.log('🔧 Graph Inspector Test Tools disabled');
 			}
 		}

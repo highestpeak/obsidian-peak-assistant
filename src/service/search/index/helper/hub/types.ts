@@ -307,6 +307,57 @@ export type HubDiscoverDocCoverageIndex = {
 	pathByOrdinal: (string | null)[];
 };
 
+/** Post-discovery tier for UX / LLM: global navigation vs tail topics. */
+export type HubTier = 'navigation' | 'long_tail';
+
+/** Deterministic metrics for navigation vs long-tail partition. */
+export type HubPartitionMetrics = {
+	documentCount: number;
+	/** Number of navigation hub groups (target 10–18). */
+	navigationCount: number;
+	/** Total hub candidates assigned to selected navigation groups. */
+	navigationMemberCount: number;
+	longTailCount: number;
+	/** Share of indexed document nodes covered by the union of navigation groups (bitset estimate). */
+	navigationAbsoluteCoverageRatio: number;
+	stoppedReason: string;
+	/** Connected components before picking navigation groups. */
+	totalGroupCount?: number;
+};
+
+/**
+ * A navigation unit: multiple discovery candidates merged by affinity (path/tags/keywords/coverage).
+ * `members` retains full {@link HubCandidate} rows; `representative*` is for display and backward-compatible single-hub APIs.
+ */
+export type NavigationHubGroup = {
+	groupKey: string;
+	title: string;
+	representativeStableKey: string;
+	representativePath: string;
+	representativeLabel: string;
+	members: HubCandidate[];
+	memberStableKeys: string[];
+	/** OR of per-member coverage bitsets. */
+	unionCoverageSize: number;
+	/** Heuristic 0..1 for within-group relatedness. */
+	internalAffinityMean: number;
+	/** Used to rank groups before greedy navigation selection. */
+	groupScore: number;
+};
+
+/**
+ * Result of {@link HubCandidateDiscoveryService.discoverAllHubCandidates}: full candidate list plus navigation / long-tail split.
+ */
+export type HubDiscoverAllResult = {
+	candidates: HubCandidate[];
+	/** Topic-level navigation: each entry may combine several candidates. */
+	navigationHubGroups: NavigationHubGroup[];
+	/** One representative {@link HubCandidate} per navigation group (compatibility). */
+	navigationHubs: HubCandidate[];
+	longTailHubs: HubCandidate[];
+	partitionMetrics: HubPartitionMetrics;
+};
+
 /** State for multi-round hub candidate mining. */
 export type HubDiscoverRoundContext = {
 	roundIndex: number;
@@ -426,8 +477,7 @@ export type HubDiscoverRoundSummary = {
 };
 
 /**
- * LLM review of a full hub-discovery round (structured output; see zod schema).
- * Kept in domain types for documentation; runtime validation uses `hubDiscoverRoundReviewLlmSchema` in `hubDiscoverLlm.ts`.
+ * LLM review of a full hub-discovery round (domain shape; pair with hub-discover-round-review prompts when wired).
  */
 export type HubDiscoverRoundReview = {
 	coverageSufficient: boolean;

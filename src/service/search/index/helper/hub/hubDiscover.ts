@@ -66,6 +66,15 @@ import {
 	FOLDER_HUB_BROAD_SEM_MAX,
 	FOLDER_HUB_DISCOVER_QUOTA_POOL_MULTIPLIER,
 	FOLDER_HUB_TOP_ROOT_MAX_FRACTION,
+	FOLDER_HUB_TOPIC_STATS_MAX_DOCS,
+	FOLDER_HUB_CHILD_PROMOTION_CONTAINER_THRESHOLD,
+	FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE,
+	FOLDER_HUB_NEST_BOTH_MIN_PARENT_RESIDUAL,
+	FOLDER_HUB_NEST_BOTH_MIN_PARENT_TOPIC_PURITY,
+	FOLDER_HUB_NEST_CHILD_ONLY_MIN_PARENT_CONTAINER,
+	FOLDER_HUB_NEST_CHILD_ONLY_MIN_TOPIC_PURITY,
+	FOLDER_HUB_NEST_CHILD_ONLY_RANK_BUFFER,
+	FOLDER_HUB_NEST_CHILD_WEAK_TOPIC_PURITY,
 	HUB_DISCOVER_FOLDER_MAX_CANDIDATES,
 	HUB_DISCOVER_FOLDER_MAX_SELECTED_ABS,
 	HUB_DISCOVER_FOLDER_MAX_SELECTED_FRACTION,
@@ -87,10 +96,18 @@ import {
 	MANUAL_HUB_FRONTMATTER_KEYS,
 } from '@/core/constant';
 import { GRAPH_WIKI_REFERENCE_EDGE_TYPES } from '@/core/po/graph.po';
-import { hubSemanticMergeLlmSchema, type HubSemanticMergeLlm } from '@/core/schemas/hubDiscoverLlm';
+import { hubSemanticMergeLlmSchema, type HubSemanticMergeLlm } from '@/core/schemas';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import type { MobiusNodeFolderHubDiscoveryRow } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
+import type { MobiusNodeFolderHubDiscoveryRow, MobiusNodeRepo } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
+import {
+	aggregateTagDocFrequencies,
+	computeFolderContainerPenalty,
+	computeFolderRank,
+	computeFolderTopicPurity,
+	type FolderHubEnrichment,
+	isStrongTopicChildFolder,
+} from '@/service/search/index/helper/hub/folderHubTopicPurity';
 import {
 	countBitsNewSince,
 	countBitsUint32,
@@ -132,6 +149,7 @@ import type {
 	HubCandidateScore,
 	HubCandidateSourceEvidence,
 	HubClusterV11Debug,
+	HubDiscoverAllResult,
 	HubDiscoverCoverageGap,
 	HubDiscoverDocCoverageIndex,
 	HubDiscoverOverlapPair,
@@ -146,6 +164,10 @@ import type {
 	HubSourceKind,
 	MobiusNodeRow,
 } from './types';
+import {
+	buildNavigationHubGroups,
+	partitionNavigationGroupsAndLongTail,
+} from './navigationHubGroups';
 import { DEFAULT_HUB_DISCOVER_SETTINGS, SOURCE_PRIORITY } from './types';
 
 /**
@@ -1762,9 +1784,9 @@ function buildParentToDirectChildrenMap(
 export type FolderHubNestRelation = 'parent_only' | 'both' | 'child_only';
 
 /**
- * Resolves immediate parent/child: drop weak child, keep both when parent is structural, or drop hollow parent only when child dominates.
+ * Legacy parent/child resolution (no topic purity map).
  */
-export function nestFolderHubRelation(
+export function nestFolderHubRelationLegacy(
 	parent: MobiusNodeFolderHubDiscoveryRow,
 	child: MobiusNodeFolderHubDiscoveryRow,
 	parentToDirectChildren: Map<string, Set<string>>,
@@ -1801,10 +1823,45 @@ export function nestFolderHubRelation(
 }
 
 /**
+ * Parent/child resolution with optional enrichment (topic purity + container penalty + folderRank).
+ */
+export function nestFolderHubRelation(
+	parent: MobiusNodeFolderHubDiscoveryRow,
+	child: MobiusNodeFolderHubDiscoveryRow,
+	parentToDirectChildren: Map<string, Set<string>>,
+	enrich?: ReadonlyMap<string, FolderHubEnrichment>,
+): FolderHubNestRelation {
+	const pp = normalizeVaultPath(String(parent.path ?? ''));
+	const cp = normalizeVaultPath(String(child.path ?? ''));
+	if (!pp || !cp || parentDirPath(cp) !== pp) return 'both';
+	if (!enrich) return nestFolderHubRelationLegacy(parent, child, parentToDirectChildren);
+	const eP = enrich.get(pp);
+	const eC = enrich.get(cp);
+	if (!eP || !eC) return nestFolderHubRelationLegacy(parent, child, parentToDirectChildren);
+
+	if (eC.topicPurity < FOLDER_HUB_NEST_CHILD_WEAK_TOPIC_PURITY) return 'parent_only';
+	if (
+		eC.topicPurity >= FOLDER_HUB_NEST_CHILD_ONLY_MIN_TOPIC_PURITY &&
+		eC.folderRank >= eP.folderRank - FOLDER_HUB_NEST_CHILD_ONLY_RANK_BUFFER &&
+		eP.containerPenalty >= FOLDER_HUB_NEST_CHILD_ONLY_MIN_PARENT_CONTAINER
+	) {
+		return 'child_only';
+	}
+	if (
+		eP.residualRatio >= FOLDER_HUB_NEST_BOTH_MIN_PARENT_RESIDUAL &&
+		eP.topicPurity >= FOLDER_HUB_NEST_BOTH_MIN_PARENT_TOPIC_PURITY
+	) {
+		return 'both';
+	}
+	return nestFolderHubRelationLegacy(parent, child, parentToDirectChildren);
+}
+
+/**
  * Resolves nested folder paths: structural parents and strong children can coexist; only hollow parents drop for a dominant child.
  */
 export function compressNestedFolderHubDiscoveryRows(
 	rows: MobiusNodeFolderHubDiscoveryRow[],
+	enrich?: ReadonlyMap<string, FolderHubEnrichment>,
 ): MobiusNodeFolderHubDiscoveryRow[] {
 	if (rows.length === 0) return [];
 	const byPath = new Map<string, MobiusNodeFolderHubDiscoveryRow>();
@@ -1823,7 +1880,7 @@ export function compressNestedFolderHubDiscoveryRows(
 			const parent = byPath.get(par);
 			const child = byPath.get(childPath);
 			if (!parent || !child) continue;
-			const rel = nestFolderHubRelation(parent, child, parentToDirectChildren);
+			const rel = nestFolderHubRelation(parent, child, parentToDirectChildren, enrich);
 			if (rel === 'parent_only' && active.has(childPath)) {
 				active.delete(childPath);
 				changed = true;
@@ -1834,8 +1891,104 @@ export function compressNestedFolderHubDiscoveryRows(
 		}
 	}
 	const out = [...active].map((p) => byPath.get(p)!);
-	out.sort((a, b) => Number(b.hub_graph_score ?? 0) - Number(a.hub_graph_score ?? 0));
+	out.sort((a, b) => folderHubDiscoverySortKey(b, enrich) - folderHubDiscoverySortKey(a, enrich));
 	return out;
+}
+
+/** Sort key for compressed folder rows (hub_graph_score or enrichment-based rank). */
+function folderHubDiscoverySortKey(
+	r: MobiusNodeFolderHubDiscoveryRow,
+	enrich?: ReadonlyMap<string, FolderHubEnrichment>,
+): number {
+	const p = normalizeVaultPath(String(r.path ?? ''));
+	const e = enrich?.get(p);
+	if (e) return e.folderRank;
+	return Number(r.hub_graph_score ?? 0);
+}
+
+/**
+ * Builds topic purity, container penalty, and folderRank for folder hub rows (includes direct children for stats).
+ */
+export async function buildFolderHubEnrichmentMap(
+	repo: MobiusNodeRepo,
+	rows: MobiusNodeFolderHubDiscoveryRow[],
+): Promise<Map<string, FolderHubEnrichment>> {
+	const rowPaths = rows
+		.map((r) => normalizeVaultPath(String(r.path ?? '')))
+		.filter(Boolean);
+	const childCache = new Map<string, string[]>();
+	const allPaths = new Set<string>(rowPaths);
+	for (const p of rowPaths) {
+		let kids = childCache.get(p);
+		if (!kids) {
+			kids = await repo.listDirectChildFolderPaths(p);
+			childCache.set(p, kids);
+		}
+		for (const k of kids) allPaths.add(normalizeVaultPath(k));
+	}
+	const pathList = [...allPaths];
+	const topicPurityMap = new Map<
+		string,
+		{ topicPurity: number; dominantCoverage: number; normalizedHhi: number }
+	>();
+	const chunk = 10;
+	for (let i = 0; i < pathList.length; i += chunk) {
+		const part = pathList.slice(i, i + chunk);
+		await Promise.all(
+			part.map(async (path) => {
+				const tags = await repo.listDocumentTagsJsonUnderFolderPrefix(path, FOLDER_HUB_TOPIC_STATS_MAX_DOCS);
+				const { docCount, tagDocFreq } = aggregateTagDocFrequencies(tags);
+				const tp = computeFolderTopicPurity(tagDocFreq, docCount);
+				topicPurityMap.set(path, {
+					topicPurity: tp.topicPurity,
+					dominantCoverage: tp.dominantCoverage,
+					normalizedHhi: tp.normalizedHhi,
+				});
+			}),
+		);
+	}
+	const tagDocMap = await repo.listFolderTagDocCountByPaths(pathList);
+	const enrich = new Map<string, FolderHubEnrichment>();
+	for (const p of rowPaths) {
+		const parentD = Math.max(1, tagDocMap.get(p) ?? 0);
+		const tpRow = topicPurityMap.get(p);
+		const pt = tpRow?.topicPurity ?? 0;
+		const dominantCoverage = tpRow?.dominantCoverage ?? 0;
+		const normalizedHhi = tpRow?.normalizedHhi ?? 0;
+		const childPaths = childCache.get(p) ?? (await repo.listDirectChildFolderPaths(p));
+		let strongSum = 0;
+		let strongCount = 0;
+		for (const cp of childPaths) {
+			const cn = normalizeVaultPath(cp);
+			const purity = topicPurityMap.get(cn)?.topicPurity ?? 0;
+			const cd = tagDocMap.get(cn) ?? 0;
+			if (isStrongTopicChildFolder(purity)) {
+				strongCount++;
+				strongSum += cd;
+			}
+		}
+		const strongChildDocShare = Math.min(1, strongSum / parentD);
+		const residualRatio = Math.max(0, (parentD - strongSum) / parentD);
+		const containerPenalty = computeFolderContainerPenalty({
+			parentTopicPurity: pt,
+			strongChildDocShare,
+			residualRatio,
+		});
+		const row = rows.find((x) => normalizeVaultPath(String(x.path ?? '')) === p);
+		const hubGs = Number(row?.hub_graph_score ?? 0);
+		const folderRank = computeFolderRank(hubGs, pt, containerPenalty);
+		enrich.set(p, {
+			topicPurity: pt,
+			dominantCoverage,
+			normalizedHhi,
+			containerPenalty,
+			folderRank,
+			strongChildDocShare,
+			residualRatio,
+			strongChildCount: strongCount,
+		});
+	}
+	return enrich;
 }
 
 /** First path segment after normalize (vault "top root" for quota), or empty. */
@@ -1879,15 +2032,35 @@ export function folderHubAdjustedGraphScore(r: MobiusNodeFolderHubDiscoveryRow):
 }
 
 /**
+ * Final discovery rank: enrichment-based {@link FolderHubEnrichment#folderRank} with scaled broad penalty,
+ * or legacy {@link folderHubAdjustedGraphScore} when no enrichment entry exists.
+ */
+export function folderHubDiscoveryAdjustedRank(
+	r: MobiusNodeFolderHubDiscoveryRow,
+	enrich?: ReadonlyMap<string, FolderHubEnrichment>,
+): number {
+	const p = normalizeVaultPath(String(r.path ?? ''));
+	const broad = folderHubStructuralBroadnessPenalty(r);
+	const e = enrich?.get(p);
+	if (e) {
+		return Math.max(0, e.folderRank - FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE * broad);
+	}
+	return folderHubAdjustedGraphScore(r);
+}
+
+/**
  * Picks up to `limit` folder rows: sort by adjusted score, enforce per top-root cap, then fill remainder by score.
  */
 export function selectFolderHubDiscoveryRowsWithTopRootQuota(
 	rows: MobiusNodeFolderHubDiscoveryRow[],
 	limit: number,
+	enrich?: ReadonlyMap<string, FolderHubEnrichment>,
 ): MobiusNodeFolderHubDiscoveryRow[] {
 	const lim = Math.max(1, limit);
 	if (rows.length === 0) return [];
-	const sorted = [...rows].sort((a, b) => folderHubAdjustedGraphScore(b) - folderHubAdjustedGraphScore(a));
+	const sorted = [...rows].sort(
+		(a, b) => folderHubDiscoveryAdjustedRank(b, enrich) - folderHubDiscoveryAdjustedRank(a, enrich),
+	);
 	const maxPerRoot = Math.max(1, Math.ceil(lim * FOLDER_HUB_TOP_ROOT_MAX_FRACTION));
 	const picked: MobiusNodeFolderHubDiscoveryRow[] = [];
 	const countByRoot = new Map<string, number>();
@@ -1916,6 +2089,183 @@ export function selectFolderHubDiscoveryRowsWithTopRootQuota(
 	}
 
 	return picked;
+}
+
+/** Per-row diagnostics for folder hub discovery (DevTools / tuning). */
+export type FolderHubDiscoveryDiagnosticsRow = {
+	path: string;
+	hub_graph_score: number;
+	topicPurity: number;
+	dominantCoverage: number;
+	normalizedHhi: number;
+	containerPenalty: number;
+	strongChildDocShare: number;
+	residualRatio: number;
+	strongChildCount: number;
+	folderRank: number;
+	broadPenalty: number;
+	adjustedRank: number;
+	rankingScore: number;
+};
+
+/**
+ * Builds diagnostic rows aligned with final quota-selected folder hubs.
+ * When `orderedCandidates` is set (e.g. post-sort slice), output order matches that list.
+ */
+export function buildFolderHubDiscoveryDiagnostics(
+	finalRows: MobiusNodeFolderHubDiscoveryRow[],
+	enrichFinal: ReadonlyMap<string, FolderHubEnrichment>,
+	orderedCandidates?: HubCandidate[],
+): FolderHubDiscoveryDiagnosticsRow[] {
+	const byPath = new Map(
+		finalRows.map((r) => [normalizeVaultPath(String(r.path ?? '')), r] as const),
+	);
+	const sequence: MobiusNodeFolderHubDiscoveryRow[] = orderedCandidates?.length
+		? orderedCandidates
+				.map((c) => byPath.get(normalizeVaultPath(String(c.path ?? ''))))
+				.filter((r): r is MobiusNodeFolderHubDiscoveryRow => r != null)
+		: [...finalRows];
+	return sequence.map((r) => {
+		const np = normalizeVaultPath(String(r.path ?? ''));
+		const e = enrichFinal.get(np);
+		const broadPenalty = folderHubStructuralBroadnessPenalty(r);
+		const adjustedRank = folderHubDiscoveryAdjustedRank(r, enrichFinal);
+		const rankingBase = e
+			? Math.max(0, e.folderRank - FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE * broadPenalty)
+			: Math.max(0, Number(r.hub_graph_score ?? 0) - broadPenalty);
+		return {
+			path: String(r.path ?? ''),
+			hub_graph_score: Number(r.hub_graph_score ?? 0),
+			topicPurity: e?.topicPurity ?? 0,
+			dominantCoverage: e?.dominantCoverage ?? 0,
+			normalizedHhi: e?.normalizedHhi ?? 0,
+			containerPenalty: e?.containerPenalty ?? 0,
+			strongChildDocShare: e?.strongChildDocShare ?? 0,
+			residualRatio: e?.residualRatio ?? 0,
+			strongChildCount: e?.strongChildCount ?? 0,
+			folderRank: e?.folderRank ?? 0,
+			broadPenalty,
+			adjustedRank,
+			rankingScore: computeHubRankingScore(rankingBase, 0),
+		};
+	});
+}
+
+async function runFolderHubDiscoveryPipeline(options: {
+	tenant?: IndexTenant;
+	limit?: number;
+	targetPathPrefixes?: string[];
+}): Promise<{
+	candidates: HubCandidate[];
+	enrichFinal: Map<string, FolderHubEnrichment>;
+	finalRows: MobiusNodeFolderHubDiscoveryRow[];
+}> {
+	const tenant = options.tenant ?? 'vault';
+	const limit = Math.max(1, options.limit ?? HUB_DISCOVER_FOLDER_MAX_CANDIDATES);
+	const hubFolder = getAIHubSummaryFolder();
+	const prefixes = sanitizeHubDiscoverPathPrefixes(
+		(options.targetPathPrefixes ?? []).map((p) => String(p).trim()).filter(Boolean),
+	);
+
+	const batchSize = Math.max(1, Math.ceil(limit * FOLDER_HUB_DISCOVER_FETCH_BATCH_MULTIPLIER));
+	const maxScan = Math.max(batchSize, limit * FOLDER_HUB_DISCOVER_MAX_SCAN_MULTIPLIER);
+	const poolTarget = Math.max(limit, Math.ceil(limit * FOLDER_HUB_DISCOVER_QUOTA_POOL_MULTIPLIER));
+	const prefixArg = prefixes.length ? prefixes : undefined;
+	const repo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+
+	const accumulated: MobiusNodeFolderHubDiscoveryRow[] = [];
+	let sqlOffset = 0;
+	while (sqlOffset < maxScan) {
+		const pageLimit = Math.min(batchSize, maxScan - sqlOffset);
+		const chunk = await repo.listTopFolderNodesForHubDiscovery(
+			pageLimit,
+			hubFolder,
+			prefixArg,
+			sqlOffset,
+		);
+		if (!chunk.length) break;
+		accumulated.push(...chunk);
+		sqlOffset += chunk.length;
+		const compressed = compressNestedFolderHubDiscoveryRows(accumulated);
+		if (compressed.length >= poolTarget) break;
+		if (chunk.length < pageLimit) break;
+	}
+
+	const compressedPass1 = compressNestedFolderHubDiscoveryRows(accumulated);
+	const enrichPass1 = await buildFolderHubEnrichmentMap(repo, compressedPass1);
+
+	const promotePathSet = new Set<string>();
+	for (const r of compressedPass1) {
+		const p = normalizeVaultPath(String(r.path ?? ''));
+		const e = enrichPass1.get(p);
+		if (e && e.containerPenalty > FOLDER_HUB_CHILD_PROMOTION_CONTAINER_THRESHOLD) {
+			for (const cp of await repo.listDirectChildFolderPaths(p)) {
+				promotePathSet.add(normalizeVaultPath(cp));
+			}
+		}
+	}
+	const promotedRows =
+		promotePathSet.size > 0
+			? await repo.listFolderHubDiscoveryRowsByPaths([...promotePathSet], hubFolder, { relaxMinDocs: true })
+			: [];
+	const byPathMerged = new Map<string, MobiusNodeFolderHubDiscoveryRow>();
+	for (const r of compressedPass1) {
+		const np = normalizeVaultPath(String(r.path ?? ''));
+		if (np) byPathMerged.set(np, r);
+	}
+	for (const r of promotedRows) {
+		const np = normalizeVaultPath(String(r.path ?? ''));
+		if (np && !byPathMerged.has(np)) byPathMerged.set(np, r);
+	}
+	const mergedRows = [...byPathMerged.values()];
+	const enrichFinal = await buildFolderHubEnrichmentMap(repo, mergedRows);
+	const compressedFinal = compressNestedFolderHubDiscoveryRows(mergedRows, enrichFinal);
+	const rows = selectFolderHubDiscoveryRowsWithTopRootQuota(compressedFinal, limit, enrichFinal);
+
+	const candidates: HubCandidate[] = [];
+	for (const r of rows) {
+		const folderPath = r.path;
+		const label = folderPath.includes('/') ? folderPath.slice(folderPath.lastIndexOf('/') + 1) : folderPath;
+		const gs = r.hub_graph_score;
+		const np = normalizeVaultPath(String(folderPath ?? ''));
+		const e = enrichFinal.get(np);
+		const broadPenalty = folderHubStructuralBroadnessPenalty(r);
+		const rankingBase = e
+			? Math.max(0, e.folderRank - FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE * broadPenalty)
+			: Math.max(0, gs - broadPenalty);
+		candidates.push({
+			nodeId: r.node_id,
+			path: folderPath,
+			label,
+			role: 'folder_anchor',
+			graphScore: gs,
+			candidateScore: {
+				physicalAuthorityScore: r.hub_physical_authority_score,
+				organizationalScore: r.hub_organizational_score,
+				semanticCentralityScore: r.hub_semantic_centrality_score,
+				manualBoost: 0,
+				cohesionScore: r.hub_cohesion_effective_score,
+			},
+			stableKey: `folder:${normalizePath(folderPath)}`,
+			pagerank: typeof r.pagerank === 'number' && Number.isFinite(r.pagerank)
+				? r.pagerank : 0,
+			semanticPagerank: typeof r.semantic_pagerank === 'number' && Number.isFinite(r.semantic_pagerank)
+				? r.semantic_pagerank : 0,
+			docIncomingCnt: Math.max(0, Math.floor(Number(r.doc_incoming_cnt ?? 0))),
+			docOutgoingCnt: Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0))),
+			sourceKind: 'folder',
+			sourceKinds: ['folder'],
+			sourceEvidence: [{ kind: 'folder', graphScore: gs }],
+			sourceConsensusScore: 0,
+			rankingScore: computeHubRankingScore(rankingBase, 0),
+		});
+	}
+
+	candidates.sort((a, b) => b.rankingScore - a.rankingScore);
+	const sliced = candidates.slice(0, limit);
+	const pathSet = new Set(sliced.map((c) => normalizeVaultPath(String(c.path ?? ''))));
+	const finalRows = rows.filter((r) => pathSet.has(normalizeVaultPath(String(r.path ?? ''))));
+	return { candidates: sliced, enrichFinal, finalRows };
 }
 
 /**
@@ -2361,77 +2711,26 @@ export class HubCandidateDiscoveryService {
 		limit?: number;
 		targetPathPrefixes?: string[];
 	}): Promise<HubCandidate[]> {
-		const tenant = options.tenant ?? 'vault';
-		const limit = Math.max(1, options.limit ?? HUB_DISCOVER_FOLDER_MAX_CANDIDATES);
-		const hubFolder = getAIHubSummaryFolder();
-		const prefixes = sanitizeHubDiscoverPathPrefixes(
-			(options.targetPathPrefixes ?? []).map((p) => String(p).trim()).filter(Boolean),
-		);
+		const { candidates } = await runFolderHubDiscoveryPipeline(options);
+		return candidates;
+	}
 
-		const batchSize = Math.max(1, Math.ceil(limit * FOLDER_HUB_DISCOVER_FETCH_BATCH_MULTIPLIER));
-		const maxScan = Math.max(batchSize, limit * FOLDER_HUB_DISCOVER_MAX_SCAN_MULTIPLIER);
-		const poolTarget = Math.max(limit, Math.ceil(limit * FOLDER_HUB_DISCOVER_QUOTA_POOL_MULTIPLIER));
-		const prefixArg = prefixes.length ? prefixes : undefined;
-		const repo = sqliteStoreManager.getMobiusNodeRepo(tenant);
-
-		const accumulated: MobiusNodeFolderHubDiscoveryRow[] = [];
-		let sqlOffset = 0;
-		while (sqlOffset < maxScan) {
-			const pageLimit = Math.min(batchSize, maxScan - sqlOffset);
-			const chunk = await repo.listTopFolderNodesForHubDiscovery(
-				pageLimit,
-				hubFolder,
-				prefixArg,
-				sqlOffset,
-			);
-			if (!chunk.length) break;
-			accumulated.push(...chunk);
-			sqlOffset += chunk.length;
-			const compressed = compressNestedFolderHubDiscoveryRows(accumulated);
-			if (compressed.length >= poolTarget) break;
-			if (chunk.length < pageLimit) break;
-		}
-
-		const compressedFinal = compressNestedFolderHubDiscoveryRows(accumulated);
-		const rows = selectFolderHubDiscoveryRowsWithTopRootQuota(compressedFinal, limit);
-
-		const candidates: HubCandidate[] = [];
-		for (const r of rows) {
-			const folderPath = r.path;
-			const label = folderPath.includes('/') ? folderPath.slice(folderPath.lastIndexOf('/') + 1) : folderPath;
-			const gs = r.hub_graph_score;
-			const broadPenalty = folderHubStructuralBroadnessPenalty(r);
-			const rankingBase = Math.max(0, gs - broadPenalty);
-			candidates.push({
-				nodeId: r.node_id,
-				path: folderPath,
-				label,
-				role: 'folder_anchor',
-				graphScore: gs,
-				candidateScore: {
-					physicalAuthorityScore: r.hub_physical_authority_score,
-					organizationalScore: r.hub_organizational_score,
-					semanticCentralityScore: r.hub_semantic_centrality_score,
-					manualBoost: 0,
-					cohesionScore: r.hub_cohesion_effective_score,
-				},
-				stableKey: `folder:${normalizePath(folderPath)}`,
-				pagerank: typeof r.pagerank === 'number' && Number.isFinite(r.pagerank)
-					? r.pagerank : 0,
-				semanticPagerank: typeof r.semantic_pagerank === 'number' && Number.isFinite(r.semantic_pagerank)
-					? r.semantic_pagerank : 0,
-				docIncomingCnt: Math.max(0, Math.floor(Number(r.doc_incoming_cnt ?? 0))),
-				docOutgoingCnt: Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0))),
-				sourceKind: 'folder',
-				sourceKinds: ['folder'],
-				sourceEvidence: [{ kind: 'folder', graphScore: gs }],
-				sourceConsensusScore: 0,
-				rankingScore: computeHubRankingScore(rankingBase, 0),
-			});
-		}
-
-		candidates.sort((a, b) => b.rankingScore - a.rankingScore);
-		return candidates.slice(0, limit);
+	/**
+	 * Same as {@link discoverFolderHubCandidates} with per-row diagnostics for tuning (DevTools / JSON export).
+	 */
+	async discoverFolderHubCandidatesWithDiagnostics(options: {
+		tenant?: IndexTenant;
+		limit?: number;
+		targetPathPrefixes?: string[];
+	}): Promise<{
+		candidates: HubCandidate[];
+		diagnostics: FolderHubDiscoveryDiagnosticsRow[];
+	}> {
+		const { candidates, enrichFinal, finalRows } = await runFolderHubDiscoveryPipeline(options);
+		return {
+			candidates,
+			diagnostics: buildFolderHubDiscoveryDiagnostics(finalRows, enrichFinal, candidates),
+		};
 	}
 
 	/**
@@ -2864,7 +3163,7 @@ export class HubCandidateDiscoveryService {
 		tenant?: IndexTenant;
 		/** DevTools: called after the round summary is built (deterministic metrics). */
 		onRoundComplete?: (summary: HubDiscoverRoundSummary) => void;
-	}): Promise<HubCandidate[]> {
+	}): Promise<HubDiscoverAllResult> {
 		const sw = new Stopwatch('HubDiscover.discoverAllHubCandidates');
 		const tenant = options?.tenant ?? 'vault';
 		const hubDiscoverSetting: HubDiscoverSettings = AppContext.getInstance().settings.search.hubDiscover!;
@@ -2887,7 +3186,21 @@ export class HubCandidateDiscoveryService {
 		sw.stop();
 		if (candidatePool.length === 0) {
 			sw.print();
-			return [];
+			return {
+				candidates: [],
+				navigationHubGroups: [],
+				navigationHubs: [],
+				longTailHubs: [],
+				partitionMetrics: {
+					documentCount: docCount,
+					navigationCount: 0,
+					navigationMemberCount: 0,
+					longTailCount: 0,
+					navigationAbsoluteCoverageRatio: 0,
+					stoppedReason: 'empty_pool',
+					totalGroupCount: 0,
+				},
+			};
 		}
 
 		sw.start('round1.selectHubCandidates');
@@ -2927,7 +3240,7 @@ export class HubCandidateDiscoveryService {
 			const cards = buildSemanticMergeHubCardsPayload(withHints);
 			if (cards.length < 2) {
 				sw.print();
-				return withHints;
+				return buildHubDiscoverAllResult(tenant, docCoverageIndex, withHints);
 			}
 			sw.start('round1.semanticMergeLlm');
 			try {
@@ -2948,6 +3261,35 @@ export class HubCandidateDiscoveryService {
 		}
 
 		sw.print();
-		return attachDeterministicAssemblyHints(tenant, finalSelectedForAssembly);
+		const withHintsFinal = await attachDeterministicAssemblyHints(tenant, finalSelectedForAssembly);
+		return buildHubDiscoverAllResult(tenant, docCoverageIndex, withHintsFinal);
 	}
+}
+
+/**
+ * Builds coverage bitsets, clusters candidates into {@link NavigationHubGroup}s, then picks navigation groups vs long-tail.
+ */
+async function buildHubDiscoverAllResult(
+	tenant: IndexTenant,
+	docCoverageIndex: HubDiscoverDocCoverageIndex,
+	candidates: HubCandidate[],
+): Promise<HubDiscoverAllResult> {
+	const bitsByStableKey = new Map<string, Uint32Array>();
+	for (const c of candidates) {
+		bitsByStableKey.set(c.stableKey, await estimateCandidateCoverageBits(tenant, c, docCoverageIndex));
+	}
+	const groups = buildNavigationHubGroups(candidates, bitsByStableKey, docCoverageIndex.docCount);
+	const { navigationHubGroups, navigationHubs, longTailHubs, metrics } = partitionNavigationGroupsAndLongTail({
+		groups,
+		candidates,
+		bitsByStableKey,
+		docCoverageIndex,
+	});
+	return {
+		candidates,
+		navigationHubGroups,
+		navigationHubs,
+		longTailHubs,
+		partitionMetrics: metrics,
+	};
 }

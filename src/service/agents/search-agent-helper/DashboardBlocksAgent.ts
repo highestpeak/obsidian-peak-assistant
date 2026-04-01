@@ -101,7 +101,7 @@ export class DashboardBlocksAgent {
         if (templateManager) {
             planLine = await templateManager.render(AgentTemplateId.ReportBlockBlueprintLine, { item });
         } else {
-            planLine = JSON.stringify(item, null, 2);
+            planLine = JSON.stringify(item);
         }
         const blockPlan = [planLine];
         yield* withRetryStream(

@@ -15,10 +15,17 @@ export {
 export {
 	HubCandidateDiscoveryService,
 	applySemanticMergePlanToFinalSelected,
+	buildFolderHubDiscoveryDiagnostics,
+	buildFolderHubEnrichmentMap,
 	buildSemanticMergeHubCardsPayload,
 	computeDocumentHubRepresentativeCandidateLimit,
 	estimateCandidateCoverageBits,
+	folderHubDiscoveryAdjustedRank,
 	mergeHubAssemblyHintsGroup,
 	mergeSemanticHubGroup,
+	nestFolderHubRelationLegacy,
 	thinDocumentHubCandidatesRepresentative,
 } from './hubDiscover';
+export type { FolderHubDiscoveryDiagnosticsRow } from './hubDiscover';
+export type { FolderHubEnrichment } from './folderHubTopicPurity';
+export { buildNavigationHubGroups, partitionNavigationGroupsAndLongTail } from './navigationHubGroups';
