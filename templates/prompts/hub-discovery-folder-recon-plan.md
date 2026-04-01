@@ -22,6 +22,8 @@ The JSON includes `agentPipelineBudget`: indexer-aligned caps (`indexBudgetRaw`,
 
 ## Folder digest (sample)
 
+Sorted primarily by **folder rank / hub score** and **topic purity**, not by raw document count. Columns: **Docs (direct/total)** = notes in this folder only vs whole subtree; **Purity** = tag-distribution focus; **Container** = container penalty and strong-child / residual mass; **Rank** = enrichment `folderRank` and materialized `hub_graph_score`.
+
 {{{folderDigestMarkdown}}}
 
 ## Deep folder candidates (sample)

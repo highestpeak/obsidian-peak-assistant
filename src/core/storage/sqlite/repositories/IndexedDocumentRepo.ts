@@ -1,6 +1,8 @@
 import type { Kysely } from 'kysely';
+import { sql } from 'kysely';
 import type { Database as DbSchema, IndexedDocumentRecord } from '../ddl';
 import { GraphNodeType, isIndexedNoteNodeType } from '@/core/po/graph.po';
+import { normalizeVaultPath } from '@/core/utils/vault-path-utils';
 
 /** Indexed vault notes stored on `mobius_node` as `document` or promoted `hub_doc`. */
 const INDEXED_NOTE_ROW_TYPES = [GraphNodeType.Document, GraphNodeType.HubDoc] as const;
@@ -486,6 +488,20 @@ export class IndexedDocumentRepo {
 		return rows
 			.filter((row): row is { node_id: string; path: string } => row.path != null)
 			.map((row) => ({ id: row.node_id, path: row.path }));
+	}
+
+	/**
+	 * Counts indexed notes located directly under the folder (one path segment below), excluding notes in subfolders.
+	 */
+	async countDirectDocumentsInFolder(folderPath: string): Promise<number> {
+		const p = normalizeVaultPath(folderPath);
+		if (!p) return 0;
+		const row = await this.docNodeQuery()
+			.select(({ fn }) => fn.countAll<number>().as('cnt'))
+			.where('path', 'like', `${p}/%`)
+			.where(sql<boolean>`instr(substr(path, length(${p}) + 2), '/') = 0`)
+			.executeTakeFirst();
+		return Number(row?.cnt ?? 0);
 	}
 
 	async countByFolderPath(folderPath: string): Promise<number> {

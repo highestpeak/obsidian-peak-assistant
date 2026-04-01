@@ -8,6 +8,8 @@ import type { TemplateManager } from '@/core/template/TemplateManager';
 import { basenameFromPath } from '@/core/utils/file-utils';
 import { normalizeVaultPath } from '@/core/utils/vault-path-utils';
 import { IgnoreService } from '@/service/search/IgnoreService';
+import { buildFolderHubEnrichmentMap } from '@/service/search/index/helper/hub/hubDiscover';
+import type { MobiusNodeFolderHubDiscoveryRow } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 import { topTokensFromBasenames } from './hubDigestNameTokens';
 import type {
 	DocumentHubShortlistRow,
@@ -19,6 +21,23 @@ import type {
 
 /** How many top name tokens to keep for digest / compact tree. */
 const HUB_DIGEST_NAME_TOKEN_TOP = 6;
+
+/** Weighted top tags for the observation panel (topic + keyword mass shares). */
+function formatTopWeightedTopics(
+	topicTagCounts: Map<string, number>,
+	keywordTagCounts: Map<string, number>,
+	maxTopics: number,
+): string {
+	const merged = new Map<string, number>();
+	for (const [k, v] of topicTagCounts) merged.set(k, (merged.get(k) ?? 0) + v);
+	for (const [k, v] of keywordTagCounts) merged.set(k, (merged.get(k) ?? 0) + v);
+	const total = [...merged.values()].reduce((a, b) => a + b, 0);
+	if (total <= 0) return '';
+	const top = [...merged.entries()]
+		.sort((a, b) => b[1] - a[1])
+		.slice(0, maxTopics);
+	return top.map(([name, c]) => `${name}(${Math.round((100 * c) / total)}%)`).join(', ');
+}
 
 function normalizeVaultFolderPath(folderPath: unknown): string {
 	const raw = folderPath == null ? '' : String(folderPath).trim();
@@ -307,6 +326,7 @@ export async function buildHubWorldSnapshot(
 
 	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 	const graphRepo = sqliteStoreManager.getGraphRepo();
+	const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo();
 
 	const nodes: FolderTreeNodeDigest[] = [];
 	for (const row of rows) {
@@ -315,6 +335,7 @@ export async function buildHubWorldSnapshot(
 		let docCount = 0;
 		let topKeywords: string[] = [];
 		let topTopics: string[] = [];
+		let topTopicsWeighted: string | undefined;
 		let maps: Array<{ id: string; path: string }> = [];
 		try {
 			maps = await indexedDocumentRepo.getIdsByFolderPath(row.path);
@@ -330,10 +351,18 @@ export async function buildHubWorldSnapshot(
 					.sort((a, b) => b[1] - a[1])
 					.slice(0, 6)
 					.map(([name]) => name);
+				const weighted = formatTopWeightedTopics(topicTagCounts, keywordTagCounts, 3);
+				if (weighted) topTopicsWeighted = weighted;
 			}
 		} catch {
 			docCount = 0;
 			maps = [];
+		}
+		let directDocCount = 0;
+		try {
+			directDocCount = await indexedDocumentRepo.countDirectDocumentsInFolder(row.path);
+		} catch {
+			directDocCount = 0;
 		}
 		const fileBasenames = maps.map((m) => basenameFromPath(m.path));
 		const fileNameTokenSample =
@@ -357,13 +386,44 @@ export async function buildHubWorldSnapshot(
 			subtreeMaxDepth,
 			subtreeAvgDepth,
 			docCount,
+			directDocCount,
 			topKeywords,
 			topTopics,
+			topTopicsWeighted,
 			docOutgoing: deg.outgoing,
 			docIncoming: deg.incoming,
 			fileNameTokenSample,
 			subfolderNameTokenSample,
 		});
+	}
+
+	const hubFolder = getAIHubSummaryFolder();
+	let folderRows: MobiusNodeFolderHubDiscoveryRow[] = [];
+	try {
+		folderRows = await mobiusRepo.listFolderHubDiscoveryRowsByPaths(paths, hubFolder, { relaxMinDocs: true });
+	} catch {
+		folderRows = [];
+	}
+	const enrichMap =
+		folderRows.length > 0 ? await buildFolderHubEnrichmentMap(mobiusRepo, folderRows) : new Map();
+	const folderRowByPath = new Map(
+		folderRows.map((r) => [normalizeVaultPath(String(r.path ?? '')), r] as const),
+	);
+	for (const n of nodes) {
+		const np = normalizeVaultPath(n.path);
+		const e = enrichMap.get(np);
+		if (e) {
+			n.topicPurity = e.topicPurity;
+			n.containerPenalty = e.containerPenalty;
+			n.strongChildDocShare = e.strongChildDocShare;
+			n.residualRatio = e.residualRatio;
+			n.folderRank = e.folderRank;
+			n.strongChildCount = e.strongChildCount;
+		}
+		const fr = folderRowByPath.get(np);
+		if (fr && typeof fr.hub_graph_score === 'number') {
+			n.hubGraphScore = fr.hub_graph_score;
+		}
 	}
 
 	const metrics = await buildWorldMetrics(nodes);

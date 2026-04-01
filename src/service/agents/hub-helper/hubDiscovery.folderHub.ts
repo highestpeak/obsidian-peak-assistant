@@ -25,22 +25,66 @@ import type {
 	HubDiscoveryPrepContext,
 } from './types';
 
-/** Compact table of top folders by doc count / degrees for the first recon plan message. */
+/** Formats topic purity with a coarse tier for LLM skimming. */
+function purityDigestCell(n: FolderTreeNodeDigest): string {
+	const p = n.topicPurity;
+	if (p === undefined || Number.isNaN(p)) return '—';
+	const tier = p >= 0.65 ? 'High' : p >= 0.35 ? 'Med' : 'Low';
+	return `${p.toFixed(2)} (${tier})`;
+}
+
+/** Container / nest signals from folder-hub enrichment. */
+function containerDigestCell(n: FolderTreeNodeDigest): string {
+	if (
+		n.containerPenalty === undefined
+		&& n.strongChildDocShare === undefined
+		&& n.residualRatio === undefined
+	) {
+		return '—';
+	}
+	const pen = n.containerPenalty !== undefined ? n.containerPenalty.toFixed(2) : '—';
+	const sc = n.strongChildDocShare !== undefined ? `${Math.round(n.strongChildDocShare * 100)}%` : '—';
+	const res = n.residualRatio !== undefined ? `${Math.round(n.residualRatio * 100)}%` : '—';
+	return `pen ${pen} · child ${sc} · res ${res}`;
+}
+
+function rankDigestCell(n: FolderTreeNodeDigest): string {
+	const fr = n.folderRank;
+	const hg = n.hubGraphScore;
+	if (fr !== undefined && hg !== undefined) return `${fr.toFixed(2)} / ${hg.toFixed(2)}`;
+	if (fr !== undefined) return fr.toFixed(2);
+	if (hg !== undefined) return hg.toFixed(2);
+	return '—';
+}
+
+/**
+ * Prefer enrichment rank and purity over raw size (reduces “scale hallucination” in the plan step).
+ */
+function compareFolderDigestRows(a: FolderTreeNodeDigest, b: FolderTreeNodeDigest): number {
+	const ra = a.folderRank ?? a.hubGraphScore ?? 0;
+	const rb = b.folderRank ?? b.hubGraphScore ?? 0;
+	if (rb !== ra) return rb - ra;
+	const pa = a.topicPurity ?? 0;
+	const pb = b.topicPurity ?? 0;
+	if (pb !== pa) return pb - pa;
+	const ca = a.containerPenalty ?? 0;
+	const cb = b.containerPenalty ?? 0;
+	if (ca !== cb) return ca - cb;
+	return b.docCount - a.docCount;
+}
+
+/** Compact observation panel for folder recon plan: shape + purity, not only scale. */
 export function buildFolderDigestMarkdown(nodes: FolderTreeNodeDigest[], maxLines: number): string {
-	const sorted = [...nodes].sort((a, b) => b.docCount - a.docCount || b.docOutgoing - a.docOutgoing);
+	const sorted = [...nodes].sort(compareFolderDigestRows);
 	const lines = sorted.slice(0, maxLines).map((n) => {
-		const iaTags = n.topTopics.slice(0, 6).join(', ') || '—';
-		const keywords = n.topKeywords.slice(0, 6).join(', ') || '—';
-		const avgD = n.subtreeAvgDepth.toFixed(1);
-		const fileTok = n.fileNameTokenSample.length ? n.fileNameTokenSample.join(', ') : '—';
-		const subTok =
-			n.childFolderCount > 0 ? (n.subfolderNameTokenSample.length ? n.subfolderNameTokenSample.join(', ') : '—') : '—';
+		const dt = `${n.directDocCount}/${n.docCount}`;
+		const topics = n.topTopicsWeighted?.trim() || n.topTopics.slice(0, 3).join(', ') || '—';
 		const safe = (s: string) => s.replace(/\|/g, ' ');
-		return `| \`${n.path}\` | ${n.docCount} | in ${n.docIncoming} / out ${n.docOutgoing} | ${n.childFolderCount} | ${n.subtreeMaxDepth} | ${avgD} | ${iaTags} | ${keywords} | ${safe(fileTok)} | ${safe(subTok)} |`;
+		return `| \`${n.path}\` | ${n.depth} | ${dt} | ${purityDigestCell(n)} | ${containerDigestCell(n)} | ${rankDigestCell(n)} | ${safe(topics)} | in ${n.docIncoming} / out ${n.docOutgoing} |`;
 	});
 	return [
-		'| Path | Docs | Degrees (in/out) | Subdirs | Max depth | Avg depth | IA tags | Keywords | File name tokens | Subfolder name tokens |',
-		'| --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- | --- |',
+		'| Path | Depth | Docs (direct/total) | Purity | Container | Rank (fr / hub) | Top topics (weighted) | Degrees (in/out) |',
+		'| --- | ---: | --- | --- | --- | --- | --- | ---: |',
 		...lines,
 	].join('\n');
 }
@@ -52,21 +96,25 @@ export function buildDeepFolderDigestMarkdown(nodes: FolderTreeNodeDigest[], max
 		.map((n) => ({
 			node: n,
 			score:
-				n.docCount * 1.25
-				+ n.docOutgoing * 0.12
-				+ Math.max(0, n.depth - 2) * 14
-				+ Math.max(0, n.childFolderCount - 1) * 5,
+				(n.folderRank ?? n.hubGraphScore ?? 0) * 140
+				+ (n.topicPurity ?? 0) * 55
+				+ n.docCount * 0.45
+				+ n.docOutgoing * 0.1
+				+ Math.max(0, n.depth - 2) * 12
+				+ Math.max(0, n.childFolderCount - 1) * 4
+				- (n.containerPenalty ?? 0) * 30,
 		}))
-		.sort((a, b) => b.score - a.score || b.node.docCount - a.node.docCount || b.node.docOutgoing - a.node.docOutgoing);
+		.sort((a, b) => b.score - a.score || compareFolderDigestRows(a.node, b.node));
 	const lines = scored.slice(0, maxLines).map(({ node: n }) => {
 		const keywords = n.topKeywords.slice(0, 6).join(', ') || '—';
-		const topics = n.topTopics.slice(0, 4).join(', ') || '—';
-		return `| \`${n.path}\` | ${n.depth} | ${n.docCount} | ${n.childFolderCount} | ${n.docOutgoing} | ${keywords} | ${topics} |`;
+		const topics = n.topTopicsWeighted?.trim() || n.topTopics.slice(0, 4).join(', ') || '—';
+		const safe = (s: string) => s.replace(/\|/g, ' ');
+		return `| \`${n.path}\` | ${n.depth} | ${n.directDocCount}/${n.docCount} | ${purityDigestCell(n)} | ${n.childFolderCount} | ${n.docOutgoing} | ${safe(keywords)} | ${safe(topics)} |`;
 	});
 	if (lines.length === 0) return '_(No depth >= 3 folder candidates found in snapshot.)_';
 	return [
-		'| Path | Depth | Docs | Subdirs | Out | Keywords | Topics |',
-		'| --- | ---: | ---: | ---: | ---: | --- | --- |',
+		'| Path | Depth | Docs (d/t) | Purity | Subdirs | Out | Keywords | Topics |',
+		'| --- | ---: | --- | --- | ---: | ---: | --- | --- |',
 		...lines,
 	].join('\n');
 }

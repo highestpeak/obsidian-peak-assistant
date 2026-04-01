@@ -44,9 +44,24 @@ export type FolderTreeNodeDigest = {
 	subtreeMaxDepth: number;
 	/** Mean absolute depth over all folders in this subtree (this folder + descendants). */
 	subtreeAvgDepth: number;
+	/** Indexed notes under this folder path (recursive subtree), including nested subfolders. */
 	docCount: number;
+	/** Indexed notes directly in this folder (not in subfolders). */
+	directDocCount: number;
 	topKeywords: string[];
 	topTopics: string[];
+	/** Top topic + keyword tags with estimated share (for observation panel). */
+	topTopicsWeighted?: string;
+	/** Topic purity [0,1] from folder-hub enrichment when available. */
+	topicPurity?: number;
+	containerPenalty?: number;
+	strongChildDocShare?: number;
+	residualRatio?: number;
+	strongChildCount?: number;
+	/** Enrichment rank (graph + purity − container), when Mobius folder stats exist. */
+	folderRank?: number;
+	/** Materialized SQL hub_graph_score on folder node when present. */
+	hubGraphScore?: number;
 	docOutgoing: number;
 	docIncoming: number;
 	/** Top token stems from all indexed file basenames under this folder (recursive), by frequency. */
