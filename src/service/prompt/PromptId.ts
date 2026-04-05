@@ -97,6 +97,15 @@ export enum PromptId {
 	/** User: assembled context for document submit. */
 	HubDiscoveryDocumentReconSubmit = 'hub-discovery-document-recon-submit',
 
+	/** System: Knowledge intuition — plan step (tools optional). */
+	KnowledgeIntuitionPlanSystem = 'knowledge-intuition-plan-system',
+	/** User: backbone + folder digest + document shortlist for intuition planning. */
+	KnowledgeIntuitionPlan = 'knowledge-intuition-plan',
+	/** System: Knowledge intuition — structured submit after tools. */
+	KnowledgeIntuitionSubmitSystem = 'knowledge-intuition-submit-system',
+	/** User: memory + tool results for intuition submit. */
+	KnowledgeIntuitionSubmit = 'knowledge-intuition-submit',
+
 	// Search prompts
 	/** Session history compression; preserves user background, pains, evidence paths. */
 	AiAnalysisSessionSummary = 'ai-analysis-session-summary',
@@ -251,6 +260,8 @@ export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.HubDiscoveryFolderReconSubmit,
 	PromptId.HubDiscoveryDocumentReconPlan,
 	PromptId.HubDiscoveryDocumentReconSubmit,
+	PromptId.KnowledgeIntuitionPlan,
+	PromptId.KnowledgeIntuitionSubmit,
 ] as const;
 
 /**
@@ -458,6 +469,30 @@ export interface PromptVariables {
 		userGoal: string;
 		iteration: number;
 		memoryJson: string;
+		toolResultsMarkdown: string;
+	};
+	[PromptId.KnowledgeIntuitionPlanSystem]: Record<string, never>;
+	[PromptId.KnowledgeIntuitionPlan]: {
+		userGoal: string;
+		vaultName: string;
+		currentDateLabel: string;
+		vaultSummaryMarkdown: string;
+		baselineExcludedMarkdown: string;
+		backboneMarkdownExcerpt: string;
+		backboneEdgesMarkdown: string;
+		folderSignalsMarkdown: string;
+		documentShortlistMarkdown: string;
+		folderTreeMarkdown: string;
+	};
+	[PromptId.KnowledgeIntuitionSubmitSystem]: Record<string, never>;
+	[PromptId.KnowledgeIntuitionSubmit]: {
+		userGoal: string;
+		iteration: number;
+		memoryJson: string;
+		/** Deterministic counts for dynamic entry-point breadth. */
+		vaultScaleHintMarkdown: string;
+		folderTreeMarkdown: string;
+		backboneEdgesJson: string;
 		toolResultsMarkdown: string;
 	};
 	[PromptId.DocTagGenerateJson]: {

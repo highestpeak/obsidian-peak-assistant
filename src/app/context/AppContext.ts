@@ -171,8 +171,13 @@ export class AppContext {
 					(window as any).testAISearchTools.testFolderHubDiscovery(opts);
 				(window as any).testBackboneMap = (opts?: Record<string, unknown>) =>
 					(window as any).testAISearchTools.testBackboneMap(opts);
+				(window as any).testKnowledgeIntuition = (opts?: Record<string, unknown>) =>
+					(window as any).testAISearchTools.testKnowledgeIntuition(opts);
 				console.debug('📖 Usage: await window.testFolderHubDiscovery({ userGoal?: "..." }) — HubDiscoveryAgent (internal hub budgets)');
 				console.debug('📖 Usage: await window.testBackboneMap() — folder tree + backbone highways (deterministic, SQLite)');
+				console.debug(
+					'📖 Usage: await window.testKnowledgeIntuition({ userGoal?: "..." }) — KnowledgeIntuitionAgent (vault intuition skeleton)',
+				);
 				console.debug(
 					'📖 Usage: await window.debugMaterializeHubCandidate(candidate, { hubCandidatesForHubSet }) — one Hub-*.md from a candidate',
 				);
@@ -207,6 +212,7 @@ export class AppContext {
 					'cleanupGraphTable',
 					'testFolderHubDiscovery',
 					'testBackboneMap',
+					'testKnowledgeIntuition',
 				]);
 			}
 		} else {
@@ -233,6 +239,7 @@ export class AppContext {
 				if ((window as any).cleanupGraphTable) delete (window as any).cleanupGraphTable;
 				if ((window as any).testFolderHubDiscovery) delete (window as any).testFolderHubDiscovery;
 				if ((window as any).testBackboneMap) delete (window as any).testBackboneMap;
+				if ((window as any).testKnowledgeIntuition) delete (window as any).testKnowledgeIntuition;
 				console.log('🔧 Graph Inspector Test Tools disabled');
 			}
 		}

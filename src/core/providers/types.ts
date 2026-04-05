@@ -469,6 +469,10 @@ export enum StreamTriggerName {
 	HUB_DISCOVERY_DOCUMENT_RECON_PLAN = 'hub-discovery-document-recon-plan',
 	/** Hub discovery: document recon — structured submit. */
 	HUB_DISCOVERY_DOCUMENT_RECON_SUBMIT = 'hub-discovery-document-recon-submit',
+	/** Knowledge intuition: plan step (streamText + tools). */
+	KNOWLEDGE_INTUITION_PLAN = 'knowledge-intuition-plan',
+	/** Knowledge intuition: structured submit. */
+	KNOWLEDGE_INTUITION_SUBMIT = 'knowledge-intuition-submit',
 	SEARCH_RAW_AGENT_TASK_CONSOLIDATOR = 'search-raw-agent-task-consolidator',
 	SEARCH_RAW_AGENT_EVIDENCE = 'search-raw-agent-evidence',
 	SEARCH_SLOT_RECALL_AGENT = 'search-slot-recall-agent',

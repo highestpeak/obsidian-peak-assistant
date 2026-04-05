@@ -28,6 +28,11 @@ import {
 	type HubDiscoveryAgentOptions,
 } from '@/service/agents/HubDiscoveryAgent';
 import {
+	KnowledgeIntuitionAgent,
+	type KnowledgeIntuitionAgentResult,
+	type KnowledgeIntuitionAgentOptions,
+} from '@/service/agents/KnowledgeIntuitionAgent';
+import {
 	buildBackboneMap,
 	type BackboneMapResult,
 	type BuildBackboneMapOptions,
@@ -410,6 +415,45 @@ export class AISearchAgentTestTools {
                     documentShortlist: undefined,
                     documentShortlistCount: snapshot.documentShortlist?.length ?? 0,
                 },
+            });
+        }
+        return { result, duration, eventCount };
+    }
+
+    /**
+     * Run {@link KnowledgeIntuitionAgent}: backbone + folder digest prep → intuition recon (plan/tools/submit) → fixed markdown + JSON.
+     * Requires indexed SQLite, TemplateManager, and models for knowledge-intuition prompts.
+     *
+     * @example
+     * ```ts
+     * await window.testAISearchTools.testKnowledgeIntuition({ userGoal: 'Map this vault for navigation' });
+     * await window.testKnowledgeIntuition({ stopAt: 'prep' });
+     * ```
+     */
+    async testKnowledgeIntuition(
+        options?: KnowledgeIntuitionAgentOptions,
+    ): Promise<{ result: KnowledgeIntuitionAgentResult | null; duration: number; eventCount: number }> {
+        const start = Date.now();
+        const ctx = AppContext.getInstance();
+        const agent = new KnowledgeIntuitionAgent(ctx.manager);
+        let result: KnowledgeIntuitionAgentResult | null = null;
+        let eventCount = 0;
+        for await (const _ev of streamWithStreamLog(
+            agent.streamRun(options ?? {}, (r) => {
+                result = r;
+            }),
+        )) {
+            eventCount++;
+        }
+        const duration = Date.now() - start;
+        if (result == null) {
+            console.debug('[testKnowledgeIntuition]', { result: null, duration, eventCount });
+        } else {
+            console.debug('[testKnowledgeIntuition]', {
+                duration,
+                eventCount,
+                markdownPreview: result.markdown.slice(0, 2500),
+                json: result.json,
             });
         }
         return { result, duration, eventCount };

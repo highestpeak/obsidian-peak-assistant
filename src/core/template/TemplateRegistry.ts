@@ -53,6 +53,12 @@ export const IndexingTemplateId = {
 	HubDiscoveryDefaultUserGoal: 'indexing-hub-discovery-default-user-goal',
 	/** Hub discovery agent: `agentPipelineBudget.note` in world metrics JSON (plain text for the LLM). */
 	HubDiscoveryPipelineBudgetNote: 'indexing-hub-discovery-pipeline-budget-note',
+	/** Knowledge intuition agent: default `userGoal` when caller omits `options.userGoal` (plain text). */
+	KnowledgeIntuitionDefaultUserGoal: 'indexing-knowledge-intuition-default-user-goal',
+	/** Knowledge intuition agent: rendered vault skeleton Markdown (Handlebars; English). */
+	KnowledgeIntuitionSkeletonMarkdown: 'indexing-knowledge-intuition-skeleton-markdown',
+	/** Knowledge intuition agent: prep-only output when `stopAt: prep` (Handlebars; English). */
+	KnowledgeIntuitionPrepOnlyMarkdown: 'indexing-knowledge-intuition-prep-only-markdown',
 } as const;
 
 export type IndexingTemplateId = (typeof IndexingTemplateId)[keyof typeof IndexingTemplateId];
@@ -248,6 +254,17 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 			'Return only one JSON object: refinedDocumentHubLeads, confirmedDocumentHubPaths, rejectedSeeds, openQuestions, should_stop, findingsSummary.',
 		systemPromptId: 'hub-discovery-document-recon-submit-system' as PromptId,
 	}),
+	'knowledge-intuition-plan-system': meta('prompts', 'knowledge-intuition-plan-system'),
+	'knowledge-intuition-plan': meta('prompts', 'knowledge-intuition-plan', {
+		systemPromptId: 'knowledge-intuition-plan-system' as PromptId,
+	}),
+	'knowledge-intuition-submit-system': meta('prompts', 'knowledge-intuition-submit-system'),
+	'knowledge-intuition-submit': meta('prompts', 'knowledge-intuition-submit', {
+		expectsJson: true,
+		jsonConstraint:
+			'Return only one JSON object: findingsSummary, optional theme, partitions (max 6, entryPaths max 2 each), coreEntities (max 8, whyItMatters each), topology (max 8), evolution, entryPoints (max 24; count N from Vault scale in user prompt; intent, startPaths max 2, rich whatYouWillFind), optional openQuestions (max 6), should_stop.',
+		systemPromptId: 'knowledge-intuition-submit-system' as PromptId,
+	}),
 	'context-memory': meta('prompts', 'context-memory'),
 	'user-profile-context': meta('prompts', 'user-profile-context'),
 	'profile-from-vault-json': meta('prompts', 'profile-from-vault-json', { expectsJson: true, jsonConstraint: 'Return only the JSON array, nothing else.' }),
@@ -280,6 +297,9 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[IndexingTemplateId.HubDiscoveryFolderTreeEmpty]: meta('indexing', 'hub-discovery-folder-tree-empty'),
 	[IndexingTemplateId.HubDiscoveryDefaultUserGoal]: meta('indexing', 'hub-discovery-default-user-goal'),
 	[IndexingTemplateId.HubDiscoveryPipelineBudgetNote]: meta('indexing', 'hub-discovery-pipeline-budget-note'),
+	[IndexingTemplateId.KnowledgeIntuitionDefaultUserGoal]: meta('indexing', 'knowledge-intuition-default-user-goal'),
+	[IndexingTemplateId.KnowledgeIntuitionSkeletonMarkdown]: meta('indexing', 'knowledge-intuition-skeleton-markdown'),
+	[IndexingTemplateId.KnowledgeIntuitionPrepOnlyMarkdown]: meta('indexing', 'knowledge-intuition-prep-only-markdown'),
 	[StopwordTemplateId.Common]: meta('stopwords', 'common'),
 	[StopwordTemplateId.English]: meta('stopwords', 'en'),
 	[StopwordTemplateId.Chinese]: meta('stopwords', 'zh'),
