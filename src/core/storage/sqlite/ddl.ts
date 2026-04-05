@@ -594,6 +594,9 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	`);
 	// Existing DBs: add folder cohesion on folder nodes (materialized during folder hub stats).
 	tryExec(`ALTER TABLE mobius_node ADD COLUMN folder_cohesion_score REAL`);
+
+	// Legacy: folder intuition lived in a separate table; SSOT is now `mobius_node.attributes_json` on folder rows.
+	tryExec(`DROP TABLE IF EXISTS folder_intuition`);
 }
 
 

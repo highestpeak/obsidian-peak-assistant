@@ -26,6 +26,7 @@ import {
 import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { AISearchAgent, AISearchAgentOptions } from '@/service/agents/AISearchAgent';
+import { ConversationalSearchAgent, type ConversationalSearchOptions } from '@/service/agents/conversational';
 import { getVaultPersona } from '@/service/tools/system-info';
 
 /**
@@ -99,6 +100,11 @@ export class AppContext {
 
 	public static searchAgent(options: AISearchAgentOptions) {
 		return AppContext.getInstance().searchAgentFactory(AppContext.getInstance().manager, options);
+	}
+
+	/** Create a conversational (HITL) search agent. */
+	public static conversationalSearchAgent(options?: ConversationalSearchOptions): ConversationalSearchAgent {
+		return new ConversationalSearchAgent(AppContext.getInstance().manager, options);
 	}
 
 	/**

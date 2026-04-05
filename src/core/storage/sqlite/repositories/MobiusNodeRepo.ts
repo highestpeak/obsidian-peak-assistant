@@ -19,6 +19,10 @@ import {
 	isIndexedNoteNodeType,
 } from '@/core/po/graph.po';
 import { normalizeVaultPath } from '@/core/utils/vault-path-utils';
+import {
+	type FolderIntuition,
+	parseFolderIntuitionFromMobiusFolderRow,
+} from './folderIntuitionMobius';
 
 export type MobiusNodeRow = DbSchema['mobius_node'];
 
@@ -245,6 +249,39 @@ export class MobiusNodeRepo {
 			})
 			.where('node_id', '=', nodeId)
 			.where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES])
+			.execute();
+	}
+
+	/**
+	 * Merges keys into `attributes_json` for a folder node (`type = folder`) without dropping other fields.
+	 */
+	async mergeJsonAttributesForFolderNode(
+		nodeId: string,
+		merge: Record<string, unknown>,
+		now: number = Date.now(),
+	): Promise<void> {
+		const row = await this.db
+			.selectFrom('mobius_node')
+			.select('attributes_json')
+			.where('node_id', '=', nodeId)
+			.where('type', '=', GraphNodeType.Folder)
+			.executeTakeFirst();
+		if (!row) return;
+		let prev: Record<string, unknown> = {};
+		try {
+			prev = JSON.parse(row.attributes_json || '{}') as Record<string, unknown>;
+		} catch {
+			prev = {};
+		}
+		const next = { ...prev, ...merge };
+		await this.db
+			.updateTable('mobius_node')
+			.set({
+				attributes_json: JSON.stringify(next),
+				updated_at: now,
+			})
+			.where('node_id', '=', nodeId)
+			.where('type', '=', GraphNodeType.Folder)
 			.execute();
 	}
 
@@ -1449,6 +1486,46 @@ export class MobiusNodeRepo {
 		if (off > 0) q2 = q2.offset(off);
 		const rows = await q2.execute();
 		return rows as MobiusNodeFolderHubDiscoveryRow[];
+	}
+
+	/**
+	 * Top folder nodes for conversational search Orient: ordered by PageRank, then doc count under folder.
+	 * Intuition text lives in `attributes_json` (see {@link parseFolderIntuitionFromMobiusFolderRow}).
+	 */
+	async listTopFoldersForSearchOrient(limit: number = 30): Promise<FolderIntuition[]> {
+		const lim = Math.max(1, Math.floor(limit));
+		const rows = await this.db
+			.selectFrom('mobius_node')
+			.select([
+				'path',
+				'summary',
+				'attributes_json',
+				'tag_doc_count',
+				'folder_cohesion_score',
+				'pagerank',
+				'updated_at',
+			])
+			.where('type', '=', GraphNodeType.Folder)
+			.where('path', 'is not', null)
+			.orderBy(sql`coalesce(pagerank, 0) desc`)
+			.orderBy(sql`coalesce(tag_doc_count, 0) desc`)
+			.limit(lim)
+			.execute();
+
+		const out: FolderIntuition[] = [];
+		for (const r of rows) {
+			const m = parseFolderIntuitionFromMobiusFolderRow({
+				path: r.path,
+				summary: r.summary,
+				attributes_json: r.attributes_json,
+				tag_doc_count: r.tag_doc_count,
+				folder_cohesion_score: r.folder_cohesion_score,
+				pagerank: r.pagerank,
+				updated_at: r.updated_at,
+			});
+			if (m) out.push(m);
+		}
+		return out;
 	}
 
 	/**
