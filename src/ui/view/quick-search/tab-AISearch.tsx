@@ -8,13 +8,11 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/sh
 import { formatDuration, formatTokenCount } from '@/core/utils/format-utils';
 import { useSharedStore, useGraphQueuePump } from './store';
 import {
-	useAIAnalysisRuntimeStore,
 	useAIAnalysisSummaryStore,
 	useAIAnalysisResultStore,
 	useAIAnalysisTopicsStore,
 	useAIAnalysisInteractionsStore,
 	useAIAnalysisStepsStore,
-	resetAIAnalysisAll,
 	getHasGraphData,
 	getHasCompletedContent,
 	getHasSummarySection,
@@ -22,16 +20,13 @@ import {
 	getHasDashboardBlocksSection,
 	getHasSourcesSection,
 } from './store/aiAnalysisStore';
-import { useAIAnalysis } from './hooks/useAIAnalysis';
+import { useSearchSessionStore } from './store/searchSessionStore';
+import { useSearchSession } from './hooks/useSearchSession';
 import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
-import { AnimatePresence, motion } from 'framer-motion';
 import { RecentAIAnalysis } from './components/ai-analysis-sections/RecentAIAnalysis';
 import { useAIAnalysisResult } from './hooks/useAIAnalysisResult';
 import { AppContext } from '@/app/context/AppContext';
-import { StreamingAnalysis } from './components/ai-analysis-state/StreamingAnalysis';
-import { CompletedAIAnalysis } from './components/ai-analysis-state/CompletedAIAnalysis';
-import { AIAnalysisErrorState } from './components/ai-analysis-state/AIAnalysisErrorState';
-import { AIAnalysisPreStreamingState } from './components/ai-analysis-state/AIAnalysisPreStreamingState';
+import { SearchResultView } from './components/SearchResultView';
 import { SectionExtraChatModal } from './components/ai-analysis-modal/SectionExtraChatModal';
 import { InlineFollowupChat } from '../../component/mine/InlineFollowupChat';
 import { useContinueAnalysisFollowupChatConfig } from './hooks/useAIAnalysisPostAIInteractions';
@@ -58,22 +53,24 @@ const AISearchFooterHints: React.FC<{}> = ({ }) => (
  * AI search tab, showing analysis summary, sources, and insights.
  */
 export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) => {
-	const triggerAnalysis = useAIAnalysisRuntimeStore((s) => s.triggerAnalysis);
-	const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
-	const analysisRunId = useAIAnalysisRuntimeStore((s) => s.analysisRunId);
-	const analyzingBeforeFirstToken = useAIAnalysisRuntimeStore((s) => s.analyzingBeforeFirstToken);
-	const hasStartedStreaming = useAIAnalysisRuntimeStore((s) => s.hasStartedStreaming);
-	const hasAnalyzed = useAIAnalysisRuntimeStore((s) => s.hasAnalyzed);
-	const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
-	const error = useAIAnalysisRuntimeStore((s) => s.error);
-	const usage = useAIAnalysisRuntimeStore((s) => s.usage);
-	const duration = useAIAnalysisRuntimeStore((s) => s.duration);
-	const recordError = useAIAnalysisRuntimeStore((s) => s.recordError);
-	const restoredFromHistory = useAIAnalysisRuntimeStore((s) => s.restoredFromHistory);
-	const restoredFromVaultPath = useAIAnalysisRuntimeStore((s) => s.restoredFromVaultPath);
-	const autoSaveState = useAIAnalysisRuntimeStore((s) => s.autoSaveState);
-	const titleFromStore = useAIAnalysisRuntimeStore((s) => s.title);
+	// --- New session store reads ---
+	const sessionStatus = useSearchSessionStore((s) => s.status);
+	const sessionId = useSearchSessionStore((s) => s.id);
+	const hasStartedStreaming = useSearchSessionStore((s) => s.hasStartedStreaming);
+	const hasAnalyzed = useSearchSessionStore((s) => s.hasAnalyzed);
+	const error = useSearchSessionStore((s) => s.error);
+	const usage = useSearchSessionStore((s) => s.usage);
+	const duration = useSearchSessionStore((s) => s.duration);
+	const restoredFromHistory = useSearchSessionStore((s) => s.restoredFromHistory);
+	const restoredFromVaultPath = useSearchSessionStore((s) => s.restoredFromVaultPath);
+	const autoSaveState = useSearchSessionStore((s) => s.autoSaveState);
+	const titleFromStore = useSearchSessionStore((s) => s.title);
+	const triggerAnalysis = useSearchSessionStore((s) => s.triggerAnalysis);
 
+	const isAnalyzing = sessionStatus === 'starting' || sessionStatus === 'streaming';
+	const analysisCompleted = sessionStatus === 'completed';
+
+	// --- Old stores still needed (bridge keeps them populated) ---
 	const summaryChunks = useAIAnalysisSummaryStore((s) => s.summaryChunks);
 
 	const dashboardBlocks = useAIAnalysisResultStore((s) => s.dashboardBlocks);
@@ -109,9 +106,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 	const continueAnalysisBlockRef = useRef<HTMLDivElement>(null);
 
-	// Pre-streaming state only when not yet analyzing; once analyzing, show StreamingAnalysis so StepDisplay is mounted before first ui-step
-	const showPreStreamingState = !error && !isAnalyzing && !analysisCompleted;
-
 	/** Path to open "saved analysis file" (from history restore or last auto-save). */
 	const openAnalysisPath = restoredFromVaultPath ?? autoSaveState?.lastSavedPath ?? null;
 
@@ -144,8 +138,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 	// hooks for AI analysis ========================================================
 
-	// Use custom hook for AI analysis
-	const { performAnalysis, cancel } = useAIAnalysis();
+	// Use custom hook for AI analysis (new unified hook)
+	const { performAnalysis, cancel } = useSearchSession();
 
 	// Only trigger analysis when triggerAnalysis changes AND analysis is not completed
 	// Do NOT trigger on searchQuery changes to avoid wasting resources
@@ -173,8 +167,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	}, [retryTrigger]); // No need to include analysisCompleted for retry, as retry should always work
 
 	const handleRetry = () => {
-		recordError('Retry analysis');
-		resetAIAnalysisAll();
+		useSearchSessionStore.getState().recordError('Retry analysis');
+		useSearchSessionStore.getState().resetAll();
 		setRetryTrigger(prev => prev + 1);
 	};
 
@@ -189,15 +183,18 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		const autoSaveEnabled = AppContext.getInstance().settings.search.aiAnalysisAutoSaveEnabled ?? true;
 		if (!autoSaveEnabled) return;
 		if (error) return;
-		if (!analysisRunId) return;
+		if (!sessionId) return;
 
 		handleAutoSave();
-	}, [analysisCompleted, restoredFromHistory, error, analysisRunId, handleAutoSave]);
+	}, [analysisCompleted, restoredFromHistory, error, sessionId, handleAutoSave]);
+
+	// Nav bar condition: show when steps have content OR is streaming
+	const showNavBar = getHasCompletedContent() || (hasStartedStreaming && !analysisCompleted);
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
 			{/* Sub navigation (below input, outside frames) */}
-			{(getHasCompletedContent() || (hasStartedStreaming && !analysisCompleted)) ? (
+			{showNavBar ? (
 				<div className="pktw-flex-shrink-0 pktw-px-4">
 					<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-3 pktw-p-2 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white">
 						{/* Title on the left (typewriter when just completed, plain when restored from history) */}
@@ -315,82 +312,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 			{/* Main Content - extra top/side padding for IntelligenceFrame glow to avoid clipping */}
 			<div ref={contentContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-pt-6 pktw-px-4 pktw-pb-5">
-				{error ? (
-					<>
-						<AIAnalysisErrorState error={error} onRetry={handleRetry} />
-						<p className="pktw-text-xs pktw-text-[#6b7280] pktw-mt-2 pktw-mb-1">
-							You can still save this analysis using &quot;Save to File&quot; in the footer.
-						</p>
-					</>
-				) : null}
-
-				<AnimatePresence initial={false}>
-					{/* Analysis Before First Token - Center AISearchState */}
-					{showPreStreamingState ? (
-						<motion.div
-							key="pre"
-							initial={{ opacity: 0, y: 10 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, y: -10 }}
-							transition={{ duration: 0.25 }}
-							className="pktw-flex pktw-flex-col pktw-gap-4 pktw-h-full"
-						>
-							<AIAnalysisPreStreamingState />
-
-							<RecentAIAnalysis onClose={onClose} />
-						</motion.div>
-					) : null}
-
-					{/* Mount as soon as analyzing so StepDisplay can receive first ui-step (MindFlow "Planning...") */}
-					{(isAnalyzing || hasStartedStreaming) && !analysisCompleted ? (
-						<motion.div
-							key="stream"
-							initial={{ opacity: 0, y: 10 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0 }}
-							transition={{ duration: 0.15 }}
-						>
-							<StreamingAnalysis
-								onClose={onClose}
-								stepsRef={stepsRef}
-								sectionRefs={{
-									summaryRef,
-									overviewRef,
-									topicsRef,
-									dashboardBlocksRef,
-									graphSectionRef,
-									sourcesRef,
-								}}
-							/>
-						</motion.div>
-					) : null}
-
-					{/* Analysis Completed - Vertical Layout Transition */}
-					{analysisCompleted ? (
-						<motion.div
-							key="done"
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0, y: -10 }}
-							transition={{ duration: 0.2 }}
-						>
-							<CompletedAIAnalysis
-								onClose={onClose}
-								onOpenWikilink={onClose ? createOpenSourceCallback(onClose) : undefined}
-								sectionRefs={{
-									summaryRef,
-									overviewRef,
-									topicsRef,
-									dashboardBlocksRef,
-									graphSectionRef,
-									sourcesRef,
-									continueAnalysisRef,
-									stepsRef,
-								}}
-							/>
-						</motion.div>
-					) : null}
-				</AnimatePresence>
+				<SearchResultView onClose={onClose} onRetry={handleRetry} />
 
 				{/* Continue Analysis: inline at bottom of content area */}
 				{analysisCompleted && showContinueAnalysis ? (
