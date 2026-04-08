@@ -9,10 +9,11 @@ import { useServiceContext } from '@/ui/context/ServiceContext';
 import { GlobeOff } from '@/ui/component/icon';
 import { useSharedStore, useVaultSearchStore } from './store';
 import { useAIAnalysisRuntimeStore, resetAIAnalysisAll } from './store/aiAnalysisStore';
+import { useSearchSessionStore } from './store/searchSessionStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
-import { useAIAnalysis } from './hooks/useAIAnalysis';
+import { useSearchSession } from './hooks/useSearchSession';
 import { getActiveNoteDetail } from '@/core/utils/obsidian-utils';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { InspectorPanel } from './components/inspector/InspectorPanel';
@@ -70,16 +71,17 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
 	const { app } = useServiceContext();
 	const { searchQuery, setSearchQuery } = useSharedStore();
-	const webEnabled = useAIAnalysisRuntimeStore((s) => s.webEnabled);
-	const toggleWeb = useAIAnalysisRuntimeStore((s) => s.toggleWeb);
-	const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
-	const isInputFrozen = useAIAnalysisRuntimeStore((s) => s.isInputFrozen);
-	const hasAnalyzed = useAIAnalysisRuntimeStore((s) => s.hasAnalyzed);
-	const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
-	const setAiModalOpen = useAIAnalysisRuntimeStore((s) => s.setAiModalOpen);
-	const analysisMode = useAIAnalysisRuntimeStore((s) => s.analysisMode);
-	const setAnalysisMode = useAIAnalysisRuntimeStore((s) => s.setAnalysisMode);
-	const { performAnalysis, cancel } = useAIAnalysis();
+	const webEnabled = useSearchSessionStore((s) => s.webEnabled);
+	const toggleWeb = useSearchSessionStore((s) => s.toggleWeb);
+	const sessionStatus = useSearchSessionStore((s) => s.status);
+	const isInputFrozen = useSearchSessionStore((s) => s.isInputFrozen);
+	const hasAnalyzed = useSearchSessionStore((s) => s.hasAnalyzed);
+	const setAiModalOpen = useSearchSessionStore((s) => s.setAiModalOpen);
+	const analysisMode = useSearchSessionStore((s) => s.analysisMode);
+	const setAnalysisMode = useSearchSessionStore((s) => s.setAnalysisMode);
+	const { performAnalysis, cancel } = useSearchSession();
+	const isAnalyzing = sessionStatus === 'starting' || sessionStatus === 'streaming';
+	const analysisCompleted = sessionStatus === 'completed';
 	const hasResult = hasAnalyzed || analysisCompleted;
 	const activeFilePath = getActiveNoteDetail(app).activeFile?.path ?? null;
 	const isDocSimpleWithoutFile = analysisMode === 'docSimple' && !activeFilePath;
@@ -203,7 +205,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					<div className="pktw-flex pktw-items-center pktw-gap-2">
 						{!isAnalyzing && hasResult && (
 							<Button
-								onClick={() => resetAIAnalysisAll()}
+								onClick={() => { useSearchSessionStore.getState().resetAll(); resetAIAnalysisAll(); }}
 								style={{ cursor: 'pointer' }}
 								variant="outline"
 								className="pktw-shadow-none pktw-px-4 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-border-[#e5e7eb] pktw-bg-white pktw-text-[#6c757d]"
@@ -286,7 +288,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const { app } = useServiceContext();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
 	const { updateParsedQuery, isSearching, quickSearchMode } = useVaultSearchStore();
-	const incrementTriggerAnalysis = useAIAnalysisRuntimeStore((s) => s.incrementTriggerAnalysis);
+	const incrementTriggerAnalysis = useSearchSessionStore((s) => s.incrementTriggerAnalysis);
 	const inspectorOpen = vaultSearchQuery.includes('[[');
 	/**
 	 * Display mode is derived from the raw input prefix, not from store mode.
@@ -320,8 +322,9 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const handleAskAI = () => {
 		setSearchQuery(vaultSearchQuery);
 		setActiveTab('ai');
-		incrementTriggerAnalysis();
+		useSearchSessionStore.getState().resetAll();
 		resetAIAnalysisAll();
+		incrementTriggerAnalysis();
 	};
 
 	const handleInputKeyDown = (e: React.KeyboardEvent) => {
