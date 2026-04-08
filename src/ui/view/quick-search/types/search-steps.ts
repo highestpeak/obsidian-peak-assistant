@@ -46,10 +46,24 @@ export interface ClassifyStep extends BaseStep {
 	dimensions: { id: string; intent_description?: string }[];
 }
 
+export interface DecomposeTaskInfo {
+	id: string;
+	description: string;
+	targetAreas: string[];
+	toolHints: string[];
+}
+
 export interface DecomposeStep extends BaseStep {
 	type: 'decompose';
 	taskCount: number;
 	dimensionCount: number;
+	taskDescriptions: DecomposeTaskInfo[];
+}
+
+export interface ReconProgressEntry {
+	label: string;
+	detail: string;
+	timestamp: number;
 }
 
 export interface ReconStep extends BaseStep {
@@ -58,6 +72,8 @@ export interface ReconStep extends BaseStep {
 	completedIndices: number[];
 	total: number;
 	groupProgress: Record<string, { completedTasks: number; totalTasks: number; currentPath?: string }>;
+	/** Agent loop progress log — plan/tool call details per iteration */
+	progressLog: ReconProgressEntry[];
 }
 
 export interface PlanStep extends BaseStep {
@@ -177,9 +193,9 @@ export function createStep<T extends SearchStepType>(
 		case 'classify':
 			return { ...base, type: 'classify', dimensions: [] } as Extract<SearchStep, { type: T }>;
 		case 'decompose':
-			return { ...base, type: 'decompose', taskCount: 0, dimensionCount: 0 } as Extract<SearchStep, { type: T }>;
+			return { ...base, type: 'decompose', taskCount: 0, dimensionCount: 0, taskDescriptions: [] } as Extract<SearchStep, { type: T }>;
 		case 'recon':
-			return { ...base, type: 'recon', tasks: [], completedIndices: [], total: 0, groupProgress: {} } as Extract<SearchStep, { type: T }>;
+			return { ...base, type: 'recon', tasks: [], completedIndices: [], total: 0, groupProgress: {}, progressLog: [] } as Extract<SearchStep, { type: T }>;
 		case 'plan':
 			return { ...base, type: 'plan' } as Extract<SearchStep, { type: T }>;
 		case 'report':

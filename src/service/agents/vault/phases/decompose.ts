@@ -179,7 +179,17 @@ export async function* runDecomposePhase(options: {
 		channel: UISignalChannel.SEARCH_STAGE,
 		kind: UISignalKind.COMPLETE,
 		entityId: options.stepId,
-		payload: { stage: 'decompose', status: 'complete', taskCount: tasks.length },
+		payload: {
+			stage: 'decompose',
+			status: 'complete',
+			taskCount: tasks.length,
+			tasks: tasks.map((t) => ({
+				id: t.id,
+				description: t.description,
+				targetAreas: t.targetAreas,
+				toolHints: t.toolHints,
+			})),
+		},
 		triggerName: StreamTriggerName.SEARCH_AI_AGENT,
 	} as LLMStreamEvent;
 

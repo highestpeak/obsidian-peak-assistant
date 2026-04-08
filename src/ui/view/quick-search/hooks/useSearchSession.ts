@@ -435,13 +435,14 @@ export function useSearchSession() {
 						}
 					}
 
-					// Decompose: populate taskCount
+					// Decompose: populate taskCount + task descriptions
 					if (stage === 'decompose' && typeof payload.taskCount === 'number') {
 						if (ss.steps.some((st) => st.type === 'decompose')) {
 							store.getState().updateStep('decompose', (step) => ({
 								...step,
 								taskCount: payload.taskCount,
 								dimensionCount: payload.dimensionCount ?? step.dimensionCount,
+								taskDescriptions: Array.isArray(payload.tasks) ? payload.tasks : step.taskDescriptions,
 							}));
 						}
 					}
@@ -588,6 +589,19 @@ export function useSearchSession() {
 
 			// ---- Agent progress / stats ----
 			case 'agent-step-progress': {
+				// Capture in recon step for displaying plan/tool details
+				const progEv = event as any;
+				const ss = store.getState();
+				if (ss.steps.some((st) => st.type === 'recon' && st.status === 'running')) {
+					store.getState().updateStep('recon', (step) => ({
+						...step,
+						progressLog: [...step.progressLog, {
+							label: progEv.stepLabel ?? '',
+							detail: progEv.detail ?? '',
+							timestamp: Date.now(),
+						}],
+					}));
+				}
 				publish('agent-step-progress', event);
 				break;
 			}

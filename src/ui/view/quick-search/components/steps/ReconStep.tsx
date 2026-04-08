@@ -8,7 +8,6 @@ function ProgressBar({ value, max, label, currentPath }: {
 	currentPath?: string;
 }) {
 	const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
-
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-0.5">
 			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2">
@@ -35,55 +34,49 @@ function ProgressBar({ value, max, label, currentPath }: {
 }
 
 export const ReconStep: React.FC<{ step: ReconStepType }> = ({ step }) => {
-	// Per-task progress bars if tasks are available
-	if (step.tasks.length > 0) {
-		return (
-			<div className="pktw-flex pktw-flex-col pktw-gap-2">
-				{step.tasks.map((task) => {
-					const groupKey = String(task.index);
-					const groupProg = step.groupProgress[groupKey];
-					const currentPath = groupProg?.currentPath ?? task.currentPath;
-					return (
-						<ProgressBar
-							key={task.index}
-							label={task.label ?? `Task ${task.index + 1}`}
-							value={task.completedFiles}
-							max={task.totalFiles}
-							currentPath={currentPath}
-						/>
-					);
-				})}
-			</div>
-		);
-	}
-
-	// Fallback: single progress bar using total from groupProgress
-	const groupKeys = Object.keys(step.groupProgress);
-	if (groupKeys.length > 0) {
-		const aggregated = groupKeys.reduce(
-			(acc, key) => {
-				const g = step.groupProgress[key];
-				return {
-					completed: acc.completed + (g?.completedTasks ?? 0),
-					total: acc.total + (g?.totalTasks ?? 0),
-					currentPath: g?.currentPath ?? acc.currentPath,
-				};
-			},
-			{ completed: 0, total: 0, currentPath: undefined as string | undefined }
-		);
-		return (
-			<ProgressBar
-				value={aggregated.completed}
-				max={aggregated.total || step.total || 1}
-				currentPath={aggregated.currentPath}
-			/>
-		);
-	}
-
-	return (
+	// Show progress bar
+	const progressBar = step.tasks.length > 0 ? (
+		<div className="pktw-flex pktw-flex-col pktw-gap-2">
+			{step.tasks.map((task) => {
+				const groupProg = step.groupProgress[String(task.index)];
+				return (
+					<ProgressBar
+						key={task.index}
+						label={task.label ?? `Task ${task.index + 1}`}
+						value={task.completedFiles}
+						max={task.totalFiles}
+						currentPath={groupProg?.currentPath ?? task.currentPath}
+					/>
+				);
+			})}
+		</div>
+	) : (
 		<ProgressBar
 			value={step.completedIndices.length}
 			max={step.total || 1}
 		/>
+	);
+
+	// Show latest progress log entries (agent loop plan/tool details)
+	const recentLog = step.progressLog.slice(-6); // Show last 6 entries
+
+	return (
+		<div className="pktw-flex pktw-flex-col pktw-gap-2">
+			{progressBar}
+			{recentLog.length > 0 ? (
+				<div className="pktw-flex pktw-flex-col pktw-gap-0.5 pktw-mt-1">
+					{recentLog.map((entry, i) => (
+						<div key={i} className="pktw-flex pktw-items-start pktw-gap-1.5">
+							<span className="pktw-text-[10px] pktw-text-[#7c3aed] pktw-shrink-0 pktw-mt-px">▸</span>
+							<span className="pktw-text-[11px] pktw-text-[#6b7280] pktw-leading-snug">
+								{entry.label ? <span className="pktw-font-medium pktw-text-[#374151]">{entry.label}</span> : null}
+								{entry.label && entry.detail ? ' — ' : ''}
+								{entry.detail}
+							</span>
+						</div>
+					))}
+				</div>
+			) : null}
+		</div>
 	);
 };
