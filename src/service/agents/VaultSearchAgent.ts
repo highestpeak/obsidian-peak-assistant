@@ -105,13 +105,14 @@ export class VaultSearchAgent {
 
 		// --- Phase 4: Present Plan (HITL) ---
 		yield this.makeUIStep(stepId, 'Preparing research plan…', `${recon.evidence.length} sources found`);
-		yield* runPresentPlanPhase({
+		const planSnapshot = yield* runPresentPlanPhase({
 			userQuery,
 			classify,
 			recon,
 			aiServiceManager: this.aiServiceManager,
 			stepId,
 		});
+		this.state.planSnapshot = planSnapshot;
 	}
 
 	/**

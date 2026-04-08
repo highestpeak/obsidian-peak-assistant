@@ -8,7 +8,7 @@
  */
 
 import { streamObject } from 'ai';
-import { StreamTriggerName } from '@/core/providers/types';
+import { StreamTriggerName, UISignalChannel, UISignalKind } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { VaultSearchEvent } from '../types';
 import type { AgentTool } from '@/service/tools/types';
@@ -116,6 +116,8 @@ async function* runTaskRecon(options: {
 						prompt: userPrompt,
 						schema: pathSubmitOutputSchema,
 					});
+					// Must consume partialObjectStream to drive the AI SDK internal pipeline.
+					for await (const _partial of submitResult.partialObjectStream) { /* drive stream */ }
 					return await submitResult.object as PathSubmitOutput;
 				} catch {
 					return {
@@ -177,41 +179,66 @@ export async function* runReconPhase(options: {
 		extra: { taskCount: decompose.tasks.length },
 	};
 
-	// Collect promises for all tasks to run in parallel.
-	// Each task's async generator is consumed fully to get the final evidence array.
-	const taskPromises = decompose.tasks.map(async (task) => {
-		const generator = runTaskRecon({
-			task,
-			userQuery,
-			classify,
-			aiServiceManager,
-			stepId,
-		});
+	// Signal recon phase start with dimension info for ring visualization
+	const allDimensions = [
+		...classify.semantic_dimensions.map((d) => ({ id: d.id, intent_description: d.intent_description })),
+		...classify.topology_dimensions.map((d) => ({ id: d.id, intent_description: d.intent_description })),
+		...classify.temporal_dimensions.map((d) => ({ id: d.id, intent_description: d.intent_description })),
+	];
+	yield {
+		type: 'ui-signal',
+		channel: UISignalChannel.SEARCH_STAGE,
+		kind: UISignalKind.STAGE,
+		entityId: stepId,
+		payload: { stage: 'recon', status: 'start', dimensions: allDimensions, total: decompose.tasks.length },
+		triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+	} as VaultSearchEvent;
 
-		// Properly consume the async generator to completion
-		const iterator = generator[Symbol.asyncIterator]();
-		let result = await iterator.next();
-		while (!result.done) {
-			result = await iterator.next();
-		}
-
-		// result.value contains the return value from the generator
-		return result.value ?? [];
-	});
-
-	// Run all tasks in parallel
-	const allTaskResults = await Promise.all(taskPromises);
-
-	// Merge results, deduplicating by path
+	// Run tasks in parallel — yield progress signals as each completes.
 	const allEvidence: ReconEvidence[] = [];
 	const seenPaths = new Set<string>();
+	const completedIndices: number[] = [];
 
-	for (const taskEvidence of allTaskResults) {
-		for (const ev of taskEvidence) {
-			if (!seenPaths.has(ev.path)) {
-				seenPaths.add(ev.path);
-				allEvidence.push(ev);
+	// Start all tasks concurrently
+	type TaskResult = { index: number; evidence: ReconEvidence[] };
+	const completionQueue: TaskResult[] = [];
+	let notifyCompletion: (() => void) | null = null;
+
+	const taskPromises = decompose.tasks.map(async (task, i) => {
+		const gen = runTaskRecon({ task, userQuery, classify, aiServiceManager, stepId });
+		let r: IteratorResult<VaultSearchEvent, ReconEvidence[]>;
+		while (!(r = await gen.next()).done) { /* consume events */ }
+		completionQueue.push({ index: i, evidence: r.value });
+		notifyCompletion?.();
+	});
+
+	let tasksFinished = false;
+	Promise.all(taskPromises).then(() => {
+		tasksFinished = true;
+		notifyCompletion?.();
+	});
+
+	// Yield progress as each task completes
+	while (!tasksFinished || completionQueue.length > 0) {
+		if (completionQueue.length > 0) {
+			const completed = completionQueue.shift()!;
+			completedIndices.push(completed.index);
+			yield {
+				type: 'ui-signal',
+				channel: UISignalChannel.SEARCH_STAGE,
+				kind: UISignalKind.PROGRESS,
+				entityId: stepId,
+				payload: { stage: 'recon', status: 'progress', completedIndices: [...completedIndices], total: decompose.tasks.length },
+				triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+			} as VaultSearchEvent;
+			for (const ev of completed.evidence) {
+				if (!seenPaths.has(ev.path)) {
+					seenPaths.add(ev.path);
+					allEvidence.push(ev);
+				}
 			}
+		} else {
+			await new Promise<void>(resolve => { notifyCompletion = resolve; });
 		}
 	}
 

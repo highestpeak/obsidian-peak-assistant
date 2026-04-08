@@ -1,3 +1,6 @@
+# local MCP config (machine-specific paths)
+.mcp.json
+
 # vscode
 .vscode 
 

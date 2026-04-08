@@ -6,7 +6,7 @@ import { AnalysisTimer } from '@/ui/component/mine/IntelligenceFrame';
 import { useSubscribeUIEvent, useUIEventStore } from '@/ui/store/uiEventStore';
 import { useStepDisplayReplayStore } from '@/ui/view/quick-search/store/stepDisplayReplayStore';
 import { UIStepType } from '@/core/providers/types';
-import { SearchPipelineVisualizer } from './SearchPipelineVisualizer';
+import { SearchPipelineStrip } from './SearchPipelineStrip';
 
 export type StreamingDisplayMethods = {
 	appendText: (text: string) => void;
@@ -351,14 +351,25 @@ export const StreamingStepsDisplay: React.FC<{
 	useSubscribeUIEvent(new Set(['ui-step', 'ui-step-delta']), handleUIEvent);
 
 	const streamStarted = useStepDisplayReplayStore((s) => s.streamStarted);
-	// Replay last ui-step on load when we mounted after it was published (read from UI event store)
+	// Replay missed ui-step events on mount. The component may mount after events were published
+	// (e.g., AnimatePresence exit animation delays mounting by ~0.25s). Scan eventHistory
+	// instead of lastEvent since later events (ui-signal, pk-debug) overwrite lastEvent.
 	useEffect(() => {
 		if (!streamStarted) return;
-		const last = useUIEventStore.getState().lastEvent;
-		if (last?.type !== 'ui-step' || last.payload?.uiType !== UIStepType.STEPS_DISPLAY) return;
-		const stepId = last.payload?.stepId;
-		if (!stepId || eventStepIds.includes(stepId)) return;
-		handleUIEvent('ui-step', last.payload);
+		const history = useUIEventStore.getState().eventHistory;
+		// Replay missed ui-step and ui-step-delta events in order
+		const missed = history.filter(
+			(e) => (e.type === 'ui-step' || e.type === 'ui-step-delta')
+				&& e.payload?.uiType === UIStepType.STEPS_DISPLAY
+				&& e.payload?.stepId,
+		);
+		for (const evt of missed) {
+			if (evt.type === 'ui-step' && !eventStepIds.includes(evt.payload.stepId)) {
+				handleUIEvent('ui-step', evt.payload);
+			} else if (evt.type === 'ui-step-delta') {
+				handleUIEvent('ui-step-delta', evt.payload);
+			}
+		}
 	}, [streamStarted, eventStepIds, handleUIEvent]);
 
 	// On complete, flush all step accums (including late-arriving deltas for parallel steps) to eventStepsById.
@@ -542,7 +553,7 @@ export const StreamingStepsDisplay: React.FC<{
 			</div>
 			{showVisualizer && (
 				<div className="pktw-shrink-0 pktw-border-t pktw-border-[#e5e7eb] pktw-px-4 pktw-py-3">
-					<SearchPipelineVisualizer isStreaming={isRunning} />
+					<SearchPipelineStrip isStreaming={isRunning} />
 				</div>
 			)}
 		</div>

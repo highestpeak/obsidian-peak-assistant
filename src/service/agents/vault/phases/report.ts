@@ -10,7 +10,7 @@
 
 import { streamObject } from 'ai';
 import { z } from 'zod/v3';
-import { StreamTriggerName, type LLMStreamEvent } from '@/core/providers/types';
+import { StreamTriggerName, UIStepType, type LLMStreamEvent } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 import { weavePathsToContext } from '../../search-agent-helper/weavePathsToContext';
@@ -106,6 +106,28 @@ export async function* runReportPhase(options: {
 			prompt: userPrompt,
 			schema: reportOutputSchema,
 		});
+
+		// Stream partial report to show generation progress
+		let lastProgress = '';
+		for await (const partial of result.partialObjectStream) {
+			const parts: string[] = [];
+			if (partial.title) parts.push('Title ready');
+			if (partial.summary && partial.summary.length > 50) parts.push(`Summary ${partial.summary.length} chars`);
+			if (partial.topics?.length) parts.push(`${partial.topics.length} topics`);
+			if (partial.dashboard_blocks?.length) parts.push(`${partial.dashboard_blocks.length} blocks`);
+			if (partial.source_assessments?.length) parts.push(`${partial.source_assessments.length} sources`);
+			const progress = parts.join(', ');
+			if (progress && progress !== lastProgress) {
+				lastProgress = progress;
+				yield {
+					type: 'ui-step-delta',
+					uiType: UIStepType.STEPS_DISPLAY,
+					stepId,
+					descriptionDelta: `\n${progress}`,
+					triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+				} as LLMStreamEvent;
+			}
+		}
 		output = await result.object as ReportOutput;
 	} catch {
 		output = {

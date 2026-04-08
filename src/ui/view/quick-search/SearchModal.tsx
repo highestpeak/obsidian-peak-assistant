@@ -73,6 +73,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	const webEnabled = useAIAnalysisRuntimeStore((s) => s.webEnabled);
 	const toggleWeb = useAIAnalysisRuntimeStore((s) => s.toggleWeb);
 	const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
+	const isInputFrozen = useAIAnalysisRuntimeStore((s) => s.isInputFrozen);
 	const hasAnalyzed = useAIAnalysisRuntimeStore((s) => s.hasAnalyzed);
 	const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
 	const setAiModalOpen = useAIAnalysisRuntimeStore((s) => s.setAiModalOpen);
@@ -180,6 +181,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 								placeholder="Ask AI anything about your vault..."
 								enableSearchTags={true}
 								singleLine={true}
+								disabled={isInputFrozen}
 								containerClassName="pktw-w-full pktw-pl-11 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-muted-foreground pktw-rounded-full pktw-transition-all"
 								className="pktw-pr-12"
 							/>

@@ -178,6 +178,10 @@ export class AppContext {
 					(window as any).testAISearchTools.testBackboneMap(opts);
 				(window as any).testKnowledgeIntuition = (opts?: Record<string, unknown>) =>
 					(window as any).testAISearchTools.testKnowledgeIntuition(opts);
+				(window as any).testClassify = (query: string) =>
+					(window as any).testAISearchTools.testClassify(query);
+				(window as any).testPipelinePhases = (query: string) =>
+					(window as any).testAISearchTools.testPipelinePhases(query);
 				console.debug('📖 Usage: await window.testBackboneMap() — folder tree + backbone highways (deterministic, SQLite)');
 				console.debug(
 					'📖 Usage: await window.testKnowledgeIntuition({ userGoal?: "..." }) — KnowledgeIntuitionAgent (vault intuition skeleton)',
@@ -216,6 +220,8 @@ export class AppContext {
 					'cleanupGraphTable',
 					'testBackboneMap',
 					'testKnowledgeIntuition',
+					'testClassify',
+					'testPipelinePhases',
 				]);
 			}
 		} else {
@@ -242,6 +248,8 @@ export class AppContext {
 				if ((window as any).cleanupGraphTable) delete (window as any).cleanupGraphTable;
 				if ((window as any).testBackboneMap) delete (window as any).testBackboneMap;
 				if ((window as any).testKnowledgeIntuition) delete (window as any).testKnowledgeIntuition;
+				if ((window as any).testClassify) delete (window as any).testClassify;
+				if ((window as any).testPipelinePhases) delete (window as any).testPipelinePhases;
 				console.log('🔧 Graph Inspector Test Tools disabled');
 			}
 		}

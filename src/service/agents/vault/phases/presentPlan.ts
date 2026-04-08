@@ -67,6 +67,8 @@ export async function* runPresentPlanPhase(options: {
 			prompt: userPrompt,
 			schema: planOutputSchema,
 		});
+		// Must consume partialObjectStream to drive the AI SDK internal pipeline.
+		for await (const _partial of result.partialObjectStream) { /* drive stream */ }
 		output = await result.object as PlanOutput;
 	} catch {
 		output = {

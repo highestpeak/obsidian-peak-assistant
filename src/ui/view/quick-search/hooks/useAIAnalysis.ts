@@ -310,7 +310,10 @@ export function useAIAnalysis() {
 			timelineRef.current = [];
 			analysisStartTimeRef.current = 0;
 
-			markAIAnalysisCompleted();
+			// Guard: only mark completed if not already done (vault mode calls it earlier)
+			if (!useAIAnalysisRuntimeStore.getState().analysisCompleted) {
+				markAIAnalysisCompleted();
+			}
 			// Clear abort controller
 			if (controller) {
 				abortControllerRef.current = null;

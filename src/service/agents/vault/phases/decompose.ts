@@ -7,7 +7,7 @@
  */
 
 import { streamObject } from 'ai';
-import type { LLMStreamEvent } from '@/core/providers/types';
+import { StreamTriggerName, UISignalChannel, UISignalKind, type LLMStreamEvent } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { PromptId } from '@/service/prompt/PromptId';
@@ -63,17 +63,20 @@ async function* streamSearchArchitect(
 		}),
 	]);
 
-	const result = streamObject({
-		model,
-		system: systemPrompt,
-		prompt: userPrompt,
-		schema: searchArchitectOutputSchema,
-	});
-
 	let output: SearchArchitectOutput;
 	try {
+		const result = streamObject({
+			model,
+			system: systemPrompt,
+			prompt: userPrompt,
+			schema: searchArchitectOutputSchema,
+		});
+		// Must consume partialObjectStream to drive the AI SDK internal pipeline.
+		// Without this, result.object hangs indefinitely.
+		for await (const _partial of result.partialObjectStream) { /* drive stream */ }
 		output = (await result.object) as SearchArchitectOutput;
-	} catch {
+	} catch (err) {
+		console.error('[streamSearchArchitect] error:', err);
 		return fallbackPhysicalTasks(dimensions);
 	}
 
@@ -109,7 +112,7 @@ export async function* runDecomposePhase(options: {
 			id: d.id,
 			intent_description: d.intent_description,
 			scope_constraint: d.scope_constraint,
-			retrieval_orientation: d.retrieval_orientation,
+			retrieval_orientation: null,
 			output_format: null,
 			mustIncludeKeywords: null,
 		})),
@@ -141,7 +144,6 @@ export async function* runDecomposePhase(options: {
 				id: d.id,
 				intent: d.intent_description,
 				scope: d.scope_constraint?.path,
-				retrieval_orientation: d.retrieval_orientation,
 			})),
 		},
 	};
@@ -171,6 +173,15 @@ export async function* runDecomposePhase(options: {
 		targetAreas: pt.scope_constraint?.path ? [pt.scope_constraint.path] : [],
 		toolHints: inferToolHints(pt.covered_dimension_ids),
 	}));
+
+	yield {
+		type: 'ui-signal',
+		channel: UISignalChannel.SEARCH_STAGE,
+		kind: UISignalKind.COMPLETE,
+		entityId: options.stepId,
+		payload: { stage: 'decompose', status: 'complete', taskCount: tasks.length },
+		triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+	} as LLMStreamEvent;
 
 	return { tasks };
 }

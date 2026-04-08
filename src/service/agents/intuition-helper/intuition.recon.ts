@@ -28,8 +28,9 @@ function effectiveReconMaxIterations(budgetDerived: number, debug?: ReconLoopDeb
 	return base;
 }
 import { mergeIntuitionSubmitIntoMemory, buildInitialIntuitionMemory } from './intuition.memory';
-import { buildIntuitionTools, executeReconToolCalls } from './intuition.tools';
+import { executeToolCalls } from '@/service/agents/core/tool-executor';
 import type { IntuitionMemory, IntuitionPrepContext } from './types';
+import { exploreFolderToolMarkdownOnly, findPathTool, graphTraversalToolMarkdownOnly, grepFileTreeTool, hubLocalGraphTool, inspectNoteContextToolMarkdownOnly, localSearchWholeVaultTool } from '@/service/tools/search-graph-inspector';
 
 export type IntuitionReconCompleteCallback = (memory: IntuitionMemory) => void;
 
@@ -45,7 +46,15 @@ export async function* runKnowledgeIntuitionLoop(options: {
 }): AsyncGenerator<LLMStreamEvent, void> {
 	const { ctx, stepId, aiServiceManager, onComplete, debug } = options;
 	const stopwatch = new Stopwatch('Knowledge intuition recon');
-	const tools = buildIntuitionTools(ctx.tm);
+	const tools = {
+		explore_folder: exploreFolderToolMarkdownOnly(ctx.tm),
+		grep_file_tree: grepFileTreeTool(),
+		local_search_whole_vault: localSearchWholeVaultTool(ctx.tm),
+		inspect_note_context: inspectNoteContextToolMarkdownOnly(ctx.tm),
+		graph_traversal: graphTraversalToolMarkdownOnly(ctx.tm),
+		hub_local_graph: hubLocalGraphTool(ctx.tm),
+		find_path: findPathTool(ctx.tm),
+	}
 	const budgetDerived = Math.min(6, Math.max(3, Math.floor(ctx.indexBudgetRaw.limitTotal / 160)));
 	const maxIter = effectiveReconMaxIterations(budgetDerived, debug);
 
@@ -121,7 +130,7 @@ export async function* runKnowledgeIntuitionLoop(options: {
 		}
 		stopwatch.stop();
 
-		const { full: fullToolMessages, summary: summaryToolMessages } = await executeReconToolCalls(tools, planStepMessages);
+		const { full: fullToolMessages, summary: summaryToolMessages } = await executeToolCalls(tools, planStepMessages);
 		const toolResultsMarkdown =
 			fullToolMessages.length > 0
 				? fullToolMessages.map((m) => JSON.stringify(m.content)).join('\n\n')

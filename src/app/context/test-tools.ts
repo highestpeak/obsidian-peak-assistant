@@ -25,6 +25,10 @@ import {
 	type BuildBackboneMapOptions,
 } from '@/service/search/index/helper/backbone';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { runClassifyPhase } from '@/service/agents/vault/phases/classify';
+import { runDecomposePhase } from '@/service/agents/vault/phases/decompose';
+import { runIntuitionFeedbackPhase } from '@/service/agents/vault/phases/intuitionFeedback';
+import type { ClassifyResult, DecomposeResult } from '@/service/agents/vault/types';
 
 /**
  * Global test interface for search-graph-inspector tools
@@ -269,6 +273,88 @@ export class AISearchAgentTestTools {
      * await window.testAISearchTools.testBackboneMap({ maxDepth: 8, topBackboneEdges: 24 });
      * ```
      */
+    /**
+     * Run classify phase standalone. Measures latency and logs all events.
+     *
+     * @example
+     * ```ts
+     * await window.testAISearchTools.testClassify("搜索管道设计")
+     * await window.testClassify("peakassistant search pipeline")
+     * ```
+     */
+    async testClassify(query: string): Promise<{ result: ClassifyResult; duration: number; eventCount: number }> {
+        const start = Date.now();
+        const ctx = AppContext.getInstance();
+        const gen = runClassifyPhase({
+            userQuery: query,
+            aiServiceManager: ctx.manager,
+            stepId: 'test-classify',
+        });
+
+        let eventCount = 0;
+        let iterResult: IteratorResult<LLMStreamEvent, ClassifyResult>;
+        while (!(iterResult = await gen.next()).done) {
+            console.debug('[testClassify] event:', iterResult.value.type, iterResult.value);
+            eventCount++;
+        }
+
+        const classifyResult = iterResult.value;
+        const duration = Date.now() - start;
+        console.debug('[testClassify]', { duration, eventCount, result: classifyResult });
+        return { result: classifyResult, duration, eventCount };
+    }
+
+    /**
+     * Run classify → decompose → intuitionFeedback and report per-phase timings.
+     *
+     * @example
+     * ```ts
+     * await window.testPipelinePhases("搜索管道设计")
+     * ```
+     */
+    async testPipelinePhases(query: string) {
+        const ctx = AppContext.getInstance();
+        const mgr = ctx.manager;
+        const stepId = 'test-pipeline';
+        const timings: Record<string, number> = {};
+
+        // Phase 1: Classify
+        let t = Date.now();
+        const classifyGen = runClassifyPhase({ userQuery: query, aiServiceManager: mgr, stepId });
+        let r1: IteratorResult<any, ClassifyResult>;
+        while (!(r1 = await classifyGen.next()).done) {}
+        const classify = r1.value;
+        timings.classify = Date.now() - t;
+        console.debug('[testPipeline] classify:', timings.classify, 'ms', {
+            semantic: classify.semantic_dimensions.length,
+            topology: classify.topology_dimensions.length,
+            temporal: classify.temporal_dimensions.length,
+        });
+
+        // Phase 2: Decompose
+        t = Date.now();
+        const decomposeGen = runDecomposePhase({ userQuery: query, classify, aiServiceManager: mgr, stepId });
+        let r2: IteratorResult<any, DecomposeResult>;
+        while (!(r2 = await decomposeGen.next()).done) {}
+        const decompose = r2.value;
+        timings.decompose = Date.now() - t;
+        console.debug('[testPipeline] decompose:', timings.decompose, 'ms', {
+            taskCount: decompose.tasks.length,
+            tasks: decompose.tasks.map((t: any) => t.description?.slice(0, 60)),
+        });
+
+        // Phase 2.5: IntuitionFeedback (no LLM)
+        t = Date.now();
+        const ifGen = runIntuitionFeedbackPhase({ classify, stepId });
+        let r3: IteratorResult<any, any>;
+        while (!(r3 = await ifGen.next()).done) {}
+        timings.intuitionFeedback = Date.now() - t;
+
+        const total = Object.values(timings).reduce((a, b) => a + b, 0);
+        console.debug('[testPipeline] TIMINGS:', timings, 'TOTAL:', total, 'ms');
+        return { classify, decompose, timings, total };
+    }
+
     async testBackboneMap(options?: BuildBackboneMapOptions): Promise<BackboneMapResult | null> {
         const ctx = AppContext.getInstance();
         if (ctx.isMockEnv) {

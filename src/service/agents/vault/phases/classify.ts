@@ -10,7 +10,7 @@
 import { streamObject } from 'ai';
 import { AppContext } from '@/app/context/AppContext';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
-import { type LLMStreamEvent } from '@/core/providers/types';
+import { type LLMStreamEvent, UIStepType, StreamTriggerName, UISignalChannel, UISignalKind } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 import { queryClassifierOutputSchema, defaultClassify, type QueryClassifierOutput } from '@/core/schemas/agents/search-agent-schemas';
@@ -32,6 +32,16 @@ export async function* runClassifyPhase(options: {
 }): AsyncGenerator<LLMStreamEvent, ClassifyResult> {
 	const { userQuery, aiServiceManager, stepId, conversationHistory } = options;
 
+	// Signal classify phase start to pipeline visualizer
+	yield {
+		type: 'ui-signal',
+		channel: UISignalChannel.SEARCH_STAGE,
+		kind: UISignalKind.STAGE,
+		entityId: stepId,
+		payload: { stage: 'classify', status: 'start' },
+		triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+	} as LLMStreamEvent;
+
 	// --- Load precomputed context ---
 	const [folderIntuitions, globalIntuitionJson, quickSearchResults] = await Promise.all([
 		loadFolderIntuitions(),
@@ -49,6 +59,20 @@ export async function* runClassifyPhase(options: {
 			hasHistory: (conversationHistory?.length ?? 0) > 0,
 		},
 	};
+
+	// Show context summary to user during classify wait
+	const contextParts: string[] = [];
+	if (folderIntuitions.length > 0) contextParts.push(`${folderIntuitions.length} folders`);
+	if (quickSearchResults.length > 0) contextParts.push(`${quickSearchResults.length} initial leads`);
+	if (contextParts.length > 0) {
+		yield {
+			type: 'ui-step-delta',
+			uiType: UIStepType.STEPS_DISPLAY,
+			stepId,
+			descriptionDelta: ` · ${contextParts.join(', ')} loaded`,
+			triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+		} as LLMStreamEvent;
+	}
 
 	// --- Build context ---
 	const folderContext = folderIntuitions
@@ -80,19 +104,55 @@ export async function* runClassifyPhase(options: {
 		}),
 	]);
 
-	const result = streamObject({
-		model,
-		system: systemPrompt,
-		prompt: userPrompt,
-		schema: queryClassifierOutputSchema,
-	});
-
 	let output: QueryClassifierOutput;
 	try {
+		const result = streamObject({
+			model,
+			system: systemPrompt,
+			prompt: userPrompt,
+			schema: queryClassifierOutputSchema,
+		});
+
+		// Stream partial objects — emit dimension discoveries as ui-signal for Pipeline Strip pills
+		let lastDimCount = 0;
+		for await (const partial of result.partialObjectStream) {
+			const dims = [
+				...(partial.semantic_dimensions ?? []).filter((d: any) => d?.id).map((d: any) => ({ id: d.id, intent_description: d.intent_description })),
+				...(partial.topology_dimensions ?? []).filter((d: any) => d?.intent_description).map((d: any) => ({ id: 'inventory_mapping', intent_description: d.intent_description })),
+				...(partial.temporal_dimensions ?? []).filter((d: any) => d?.intent_description).map((d: any) => ({ id: 'temporal_mapping', intent_description: d.intent_description })),
+			];
+			if (dims.length > lastDimCount) {
+				lastDimCount = dims.length;
+				yield {
+					type: 'ui-signal',
+					channel: UISignalChannel.SEARCH_STAGE,
+					kind: UISignalKind.PROGRESS,
+					entityId: stepId,
+					payload: { stage: 'classify', status: 'progress', dimensions: dims },
+					triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+				} as LLMStreamEvent;
+			}
+		}
+		// partialObjectStream consumed = response finished = object already resolved
 		output = await result.object as QueryClassifierOutput;
 	} catch {
 		output = defaultClassify;
 	}
+
+	// Signal classify complete with all dimensions for visualizer ring
+	const allDimensions = [
+		...output.semantic_dimensions.map((d) => ({ id: d.id, intent_description: d.intent_description })),
+		...output.topology_dimensions.map((d) => ({ id: d.id, intent_description: d.intent_description })),
+		...output.temporal_dimensions.map((d) => ({ id: d.id, intent_description: d.intent_description })),
+	];
+	yield {
+		type: 'ui-signal',
+		channel: UISignalChannel.SEARCH_STAGE,
+		kind: UISignalKind.COMPLETE,
+		entityId: stepId,
+		payload: { stage: 'classify', status: 'complete', dimensions: allDimensions },
+		triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+	} as LLMStreamEvent;
 
 	yield {
 		type: 'pk-debug',
@@ -102,7 +162,6 @@ export async function* runClassifyPhase(options: {
 				id: d.id,
 				intent: d.intent_description,
 				scope: d.scope_constraint?.path,
-				retrieval_orientation: d.retrieval_orientation,
 			})),
 			topologyDimensions: output.topology_dimensions.map((d) => ({
 				intent: d.intent_description,
@@ -112,8 +171,6 @@ export async function* runClassifyPhase(options: {
 				intent: d.intent_description,
 				scope: d.scope_constraint?.path,
 			})),
-			userPersona: output.user_persona_config,
-			isCrossDomain: output.is_cross_domain,
 		},
 	};
 
@@ -122,8 +179,6 @@ export async function* runClassifyPhase(options: {
 		semantic_dimensions: output.semantic_dimensions,
 		topology_dimensions: output.topology_dimensions,
 		temporal_dimensions: output.temporal_dimensions,
-		user_persona_config: output.user_persona_config,
-		is_cross_domain: output.is_cross_domain,
 		// Additional context for pipeline
 		initialLeads: quickSearchResults,
 	};

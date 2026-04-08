@@ -13,7 +13,7 @@ import { isBlankString } from '@/core/utils/common-utils';
 import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import { executeToolCalls } from './tool-executor';
-import type { AgentLoopConfig, PeakAgentConfig, PeakAgentEvent, PeakAgentStats, PeakAgentLoopResult } from './types';
+import type { PeakAgentConfig, PeakAgentEvent, PeakAgentStats, PeakAgentLoopResult } from './types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { PromptId } from '@/service/prompt/PromptId';
 
@@ -29,6 +29,8 @@ export interface RunAgentLoopOptions<TState, TSubmit> {
 	stepId: string;
 	/** Trigger name for stream events. */
 	triggerName: StreamTriggerName;
+	/** Optional abort signal — checked before each iteration and threaded into streamText. */
+	signal?: AbortSignal;
 }
 
 /**
@@ -41,7 +43,7 @@ export interface RunAgentLoopOptions<TState, TSubmit> {
 export async function* runAgentLoop<TState, TSubmit>(
 	options: RunAgentLoopOptions<TState, TSubmit>,
 ): AsyncGenerator<PeakAgentEvent, PeakAgentLoopResult<TState>> {
-	const { config, stepId, triggerName } = options;
+	const { config, stepId, triggerName, signal } = options;
 	const { stepLabel } = config;
 	let state = options.initialState;
 	const globalStopwatch = new Stopwatch('PeakAgent.total');
@@ -51,13 +53,18 @@ export async function* runAgentLoop<TState, TSubmit>(
 	let totalToolCalls = 0;
 	let stoppedReason: PeakAgentStats['stoppedReason'] = 'max_iterations';
 	let totalUsage: LLMUsage = emptyUsage();
-	const perIterationMs: number[] = [];
 	const perIterationPhaseMs: Array<{ planMs: number; toolExecMs: number; submitMs: number }> = [];
 	const toolCallTimings: Array<{ toolName: string; durationMs: number }> = [];
 
 	const messages: ModelMessage[] = await config.buildInitialMessages(state);
 
 	for (let iter = 0; iter < config.maxIterations; iter++) {
+		// --- Abort check ---
+		if (signal?.aborted) {
+			stoppedReason = 'aborted';
+			break;
+		}
+
 		// --- Progress: plan start ---
 		yield {
 			type: 'agent-step-progress',
@@ -80,6 +87,7 @@ export async function* runAgentLoop<TState, TSubmit>(
 			messages: planInputMessages,
 			tools: config.tools,
 			toolChoice: config.toolChoice ?? 'auto',
+			abortSignal: signal,
 		});
 		yield* streamTransform(planResult.fullStream, triggerName, {
 			yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
@@ -117,8 +125,8 @@ export async function* runAgentLoop<TState, TSubmit>(
 				totalTokens: planUsage.totalTokens,
 			});
 		}
-		const planDurationMs = iterStopwatch.getLastDuration();
 		iterStopwatch.stop();
+		const planDurationMs = iterStopwatch.getLastDuration();
 
 		// --- Progress: tool execution ---
 		if (toolCalls.length > 0) {
@@ -133,18 +141,13 @@ export async function* runAgentLoop<TState, TSubmit>(
 
 		// --- Tool execution ---
 		iterStopwatch.start(`tool-exec-${iter}`);
-		const { full: fullToolMessages, summary: summaryToolMessages } =
+		const { full: fullToolMessages, summary: summaryToolMessages, timings: iterToolTimings } =
 			await executeToolCalls(config.tools, planStepMessages);
-		const toolExecDurationMs = iterStopwatch.getLastDuration();
 		iterStopwatch.stop();
+		const toolExecDurationMs = iterStopwatch.getLastDuration();
 
-		// Track per-tool timings (approximate: all tools share exec time equally)
-		if (toolCalls.length > 0) {
-			const perToolMs = Math.round(toolExecDurationMs / toolCalls.length);
-			for (const tc of toolCalls) {
-				toolCallTimings.push({ toolName: tc.toolName, durationMs: perToolMs });
-			}
-		}
+		// Track per-tool timings (real wall-clock time per tool from executeToolCalls)
+		toolCallTimings.push(...iterToolTimings);
 
 		// --- Submit step ---
 		let submit: TSubmit | undefined;
@@ -158,8 +161,8 @@ export async function* runAgentLoop<TState, TSubmit>(
 			};
 			iterStopwatch.start(`submit-${iter}`);
 			submit = await config.runSubmit(state, iter, planStepMessages, fullToolMessages);
-			submitDurationMs = iterStopwatch.getLastDuration();
 			iterStopwatch.stop();
+			submitDurationMs = iterStopwatch.getLastDuration();
 		}
 
 		// --- Merge into state ---
@@ -173,7 +176,6 @@ export async function* runAgentLoop<TState, TSubmit>(
 
 		// --- Track iteration timing ---
 		const iterMs = planDurationMs + toolExecDurationMs + submitDurationMs;
-		perIterationMs.push(iterMs);
 		perIterationPhaseMs.push({ planMs: planDurationMs, toolExecMs: toolExecDurationMs, submitMs: submitDurationMs });
 
 		// --- Yield debug ---
@@ -217,13 +219,12 @@ export async function* runAgentLoop<TState, TSubmit>(
 	const stopwatchSegments = iterStopwatch.getSegments();
 
 	const peakStats: PeakAgentStats = {
-		totalIterations: perIterationMs.length,
+		totalIterations: perIterationPhaseMs.length,
 		totalToolCalls,
 		stoppedReason,
 		totalInputTokens: totalUsage.inputTokens ?? 0,
 		totalOutputTokens: totalUsage.outputTokens ?? 0,
 		totalDurationMs,
-		perIterationMs,
 		perIterationPhaseMs,
 		toolCallTimings,
 		stopwatchSegments,

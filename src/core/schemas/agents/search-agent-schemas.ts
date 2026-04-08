@@ -86,7 +86,7 @@ const scopeConstraintSchema = z
 	})
 	.nullable();
 
-/** One semantic dimension target: intent + scope + retrieval orientation. */
+/** One semantic dimension target: intent + scope. */
 const semanticDimensionChoiceSchema = z.object({
 	id: semanticDimensionIdsEnum,
 	intent_description: z
@@ -96,12 +96,6 @@ const semanticDimensionChoiceSchema = z.object({
 			'Concrete search task for this dimension: state what to search/retrieve in imperative form (e.g. "Search for notes that define X and list…", "Find content comparing A with B…"). Not a topic label or passive summary—must read as an actionable retrieval instruction.'
 		),
 	scope_constraint: scopeConstraintSchema.describe('Search scope for this dimension.'),
-	retrieval_orientation: z
-		.enum(['relational', 'chronological', 'statistical', 'categorical'])
-		.nullable()
-		.describe(
-			'Retrieval tendency: relational (links/paths), chronological (recent/history), statistical (data), categorical (definitions/tags). Use null when no preference.'
-		),
 });
 
 /** One topology-axis dimension (inventory_mapping): EXHAUSTIVE INVENTORY only; no teleology. */
@@ -171,18 +165,6 @@ export const queryClassifierOutputSchema = z.object({
 		.describe(
 			'Temporal axis. Zero or more temporal_mapping targets. Empty array if no change/trend/evolution intent.'
 		),
-	user_persona_config: z
-		.object({
-			appeal: z.enum(USER_APPEAL_TYPES as unknown as [string, ...string[]]).nullable().describe('User appeal type.'),
-			detail_level: z.enum(['concise', 'comprehensive', 'technical']).nullable().describe('Output detail level; use null for default.'),
-		})
-		.nullable()
-		.describe('Global preference for summary style only.'),
-	is_cross_domain: z
-		.boolean()
-		.describe(
-			'When true, Agent 2 may break out of scope_constraint to correlate across the whole vault.'
-		),
 });
 
 export type QueryClassifierOutput = z.infer<typeof queryClassifierOutputSchema>;
@@ -233,26 +215,20 @@ export const defaultClassify: QueryClassifierOutput = {
 			id: 'essence_definition',
 			intent_description: 'Semantic axis: Focuses on the core subject, concept, or content being queried. Used for “what is/topic/content” type questions and summarization of main points or purposes.',
 			scope_constraint: null,
-			retrieval_orientation: null,
 		}
 	],
 	topology_dimensions: [
 		{
-			intent_description: 'Topological breadth axis: Determines whether the query targets a "point" (a specific entity) or a "surface" (a set or collection). If it involves collections (such as all/list/directory/relationships), the Inventory_Mapping dimension is activated to enumerate all relevant entities/paths (highest priority).',
+			intent_description: 'Topological breadth axis: Determines whether the query targets a “point” (a specific entity) or a “surface” (a set or collection). If it involves collections (such as all/list/directory/relationships), the Inventory_Mapping dimension is activated to enumerate all relevant entities/paths (highest priority).',
 			scope_constraint: null,
 		}
 	],
 	temporal_dimensions: [
 		{
-			intent_description: 'Spatiotemporal dynamics axis: Determines if the query concerns "change/recent/evolution/comparison/trend". If so, the Delta_Comparison dimension is activated to focus on differences, versions, or historical shifts.',
+			intent_description: 'Spatiotemporal dynamics axis: Determines if the query concerns “change/recent/evolution/comparison/trend”. If so, the Delta_Comparison dimension is activated to focus on differences, versions, or historical shifts.',
 			scope_constraint: null,
 		}
 	],
-	user_persona_config: {
-		appeal: 'cognitive_learning',
-		detail_level: 'comprehensive',
-	},
-	is_cross_domain: false,
 };
 
 // ----- RawSearch (Recon / Evidence) -----

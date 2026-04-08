@@ -11,7 +11,9 @@ export type DimensionChoice = { id: string; intent_description?: string };
 export type PipelineStage =
 	| 'idle'
 	| 'classify'
+	| 'decompose'
 	| 'recon'
+	| 'presentPlan'
 	| 'consolidate'
 	| 'grouping'
 	| 'evidence'
@@ -34,6 +36,7 @@ export interface SearchPipelineState {
 	reportBlockCompleted: Set<string>;
 	/** Block IDs in order (from visualBlueprint progress) for skeleton display. */
 	reportBlockOrder: string[];
+	taskCount: number;
 }
 
 const initial: SearchPipelineState = {
@@ -50,6 +53,7 @@ const initial: SearchPipelineState = {
 	visualBlueprintProgress: { index: 0, total: 0 },
 	reportBlockCompleted: new Set(),
 	reportBlockOrder: [],
+	taskCount: 0,
 };
 
 export function useSearchPipelineStage(opts?: { isStreaming?: boolean }) {
@@ -61,7 +65,25 @@ export function useSearchPipelineStage(opts?: { isStreaming?: boolean }) {
 		setState(initial);
 	}, []);
 
+	const phaseTransitionMap: Record<string, PipelineStage> = {
+		'classify': 'classify',
+		'decompose': 'decompose',
+		'recon': 'recon',
+		'present-plan': 'presentPlan',
+		'report': 'reportBlock',
+	};
+
 	const handleEvent = useCallback((type: string, payload: any) => {
+		if (type === 'phase-transition') {
+			const to = payload?.to as string;
+			if (to === 'complete') {
+				setState((s) => ({ ...s, stage: 'idle' }));
+			} else {
+				const mapped = phaseTransitionMap[to];
+				if (mapped) setState((s) => ({ ...s, stage: mapped }));
+			}
+			return;
+		}
 		if (type === 'ui-signal') {
 			const channel = payload?.channel;
 			const inner = payload?.payload ?? payload;
@@ -74,7 +96,7 @@ export function useSearchPipelineStage(opts?: { isStreaming?: boolean }) {
 			if (stage) {
 				setState((s) => ({ ...s, stage }));
 			}
-			if (status === 'complete' && inner?.dimensions) {
+			if (inner?.dimensions) {
 				const dimensions = Array.isArray(inner.dimensions) ? inner.dimensions : [];
 				setState((s) => ({
 					...s,
@@ -152,6 +174,9 @@ export function useSearchPipelineStage(opts?: { isStreaming?: boolean }) {
 					});
 				}
 			}
+			if (stage === 'decompose' && typeof inner?.taskCount === 'number') {
+				setState((s) => ({ ...s, taskCount: inner.taskCount }));
+			}
 			if (status === 'complete' && stage === 'grouping' && Array.isArray(inner?.groups)) {
 				setState((s) => ({ ...s, groups: inner.groups }));
 			}
@@ -182,7 +207,7 @@ export function useSearchPipelineStage(opts?: { isStreaming?: boolean }) {
 		}
 	}, []);
 
-	useSubscribeUIEvent(new Set(['ui-signal', 'parallel-stream-progress']), handleEvent);
+	useSubscribeUIEvent(new Set(['ui-signal', 'parallel-stream-progress', 'phase-transition']), handleEvent);
 
 	return { state, reset };
 }

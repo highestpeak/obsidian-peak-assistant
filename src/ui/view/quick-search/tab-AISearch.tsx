@@ -324,7 +324,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 					</>
 				) : null}
 
-				<AnimatePresence mode="wait" initial={false}>
+				<AnimatePresence initial={false}>
 					{/* Analysis Before First Token - Center AISearchState */}
 					{showPreStreamingState ? (
 						<motion.div
@@ -347,8 +347,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 							key="stream"
 							initial={{ opacity: 0, y: 10 }}
 							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, y: -10 }}
-							transition={{ duration: 0.25 }}
+							exit={{ opacity: 0 }}
+							transition={{ duration: 0.15 }}
 						>
 							<StreamingAnalysis
 								onClose={onClose}
@@ -369,10 +369,10 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 					{analysisCompleted ? (
 						<motion.div
 							key="done"
-							initial={{ opacity: 0, y: 10 }}
-							animate={{ opacity: 1, y: 0 }}
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
 							exit={{ opacity: 0, y: -10 }}
-							transition={{ duration: 0.25 }}
+							transition={{ duration: 0.2 }}
 						>
 							<CompletedAIAnalysis
 								onClose={onClose}

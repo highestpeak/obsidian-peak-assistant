@@ -33,6 +33,7 @@ const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void }, CodeMir
     singleLine = false,
     onEnterSubmit,
     className,
+    disabled,
     ...inputProps
   }, ref) => {
     const editorRef = React.useRef<any>(null);
@@ -65,6 +66,7 @@ const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void }, CodeMir
     const extensions = React.useMemo(() => {
       const exts = [
         EditorView.lineWrapping,
+        EditorView.editable.of(!disabled),
         EditorView.contentAttributes.of({ spellcheck: 'false' }),
         // High priority keymap to prevent Tab key from inserting tabs
         Prec.high(keymap.of([
@@ -116,7 +118,7 @@ const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void }, CodeMir
       }
 
       return exts;
-    }, [placeholder, enableSearchTags, onEnterSubmit]);
+    }, [placeholder, enableSearchTags, onEnterSubmit, disabled]);
 
     return (
       <div className={cn('pktw-relative', containerClassName)}>

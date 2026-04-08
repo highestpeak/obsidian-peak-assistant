@@ -62,18 +62,16 @@ export interface AgentLoopConfig<TState, TSubmit> {
 export interface PeakAgentStats {
 	totalIterations: number;
 	totalToolCalls: number;
-	stoppedReason: 'should_stop' | 'max_iterations' | 'callback_stop';
+	stoppedReason: 'should_stop' | 'max_iterations' | 'callback_stop' | 'aborted';
 	totalInputTokens: number;
 	totalOutputTokens: number;
 	totalDurationMs: number;
-	/** Wall-clock duration per iteration in milliseconds. */
-	perIterationMs: number[];
 	/** Per-tool-call timing with detailed label. */
 	toolCallTimings: Array<{ toolName: string; durationMs: number }>;
 	/** Per-iteration phase timings (plan, tool execution, submit). */
 	perIterationPhaseMs: Array<{ planMs: number; toolExecMs: number; submitMs: number }>;
 	/** Detailed Stopwatch segments for debugging (e.g., plan-0, tool-exec-0, submit-0). */
-	stopwatchSegments?: Array<{ label: string; durationMs: number }>;
+	stopwatchSegments: Array<{ label: string; durationMs: number }>;
 }
 
 /** Configuration for agent loop execution. */

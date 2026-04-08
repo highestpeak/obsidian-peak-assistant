@@ -221,6 +221,8 @@ export const useAIAnalysisRuntimeStore = create<{
 	/** Callback to send user feedback to the running VaultSearchAgent. */
 	hitlFeedbackCallback: ((feedback: UserFeedback) => void) | null;
 	setHitlFeedbackCallback: (cb: ((feedback: UserFeedback) => void) | null) => void;
+	/** True while analysis is in progress — top-level query input should be disabled. */
+	isInputFrozen: boolean;
 }>((set, get) => ({
 	phase: 'idle' as AnalysisPhase,
 	triggerAnalysis: 0,
@@ -245,6 +247,7 @@ export const useAIAnalysisRuntimeStore = create<{
 	dashboardUpdatedLine: '',
 	hitlState: null,
 	hitlFeedbackCallback: null,
+	isInputFrozen: false,
 	setHitlPause: (state) => set({ hitlState: { isPaused: true, ...state } }),
 	clearHitlPause: () => set({ hitlState: null }),
 	setHitlFeedbackCallback: (cb) => set({ hitlFeedbackCallback: cb }),
@@ -265,6 +268,7 @@ export const useAIAnalysisRuntimeStore = create<{
 		set({
 			phase: 'starting',
 			isAnalyzing: true,
+			isInputFrozen: true,
 			analyzingBeforeFirstToken: true,
 			analysisStartedAtMs: ts,
 			analysisRunId: `run:${ts}`,
@@ -278,10 +282,11 @@ export const useAIAnalysisRuntimeStore = create<{
 	markCompleted: () => set({
 		phase: 'completed',
 		isAnalyzing: false,
+		isInputFrozen: false,
 		hasStartedStreaming: false,
 		analysisCompleted: true,
 	}),
-	recordError: (e) => set({ phase: 'error', error: e }),
+	recordError: (e) => set({ phase: 'error', error: e, isInputFrozen: false }),
 	setAutoSaveState: (s) => set((prev) => ({
 		autoSaveState: {
 			lastRunId: s.lastRunId !== undefined ? s.lastRunId : prev.autoSaveState.lastRunId,
@@ -299,6 +304,7 @@ export const useAIAnalysisRuntimeStore = create<{
 	resetRuntime: () => set({
 		phase: 'idle',
 		isAnalyzing: false,
+		isInputFrozen: false,
 		analyzingBeforeFirstToken: false,
 		hasStartedStreaming: false,
 		hasAnalyzed: false,
