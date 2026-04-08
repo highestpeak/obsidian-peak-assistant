@@ -415,18 +415,59 @@ export function useSearchSession() {
 					useAIAnalysisResultStore.getState().pushOverviewMermaidVersion(code, { makeActive: true, dedupe: true });
 				}
 
-				// Search stage (recon progress)
+				// Search stage signals — route to correct step type
 				if (ev.channel === UISignalChannel.SEARCH_STAGE && ev.payload) {
 					const payload = ev.payload as any;
+					const stage = payload.stage as string | undefined;
 					const ss = store.getState();
-					if (ss.steps.some((st) => st.type === 'recon')) {
-						store.getState().updateStep('recon', (step) => ({
-							...step,
-							dimensions: payload.dimensions ?? step.dimensions,
-							completedIndices: payload.completedIndices ?? step.completedIndices,
-							tasks: payload.tasks ?? step.tasks,
-							groupProgress: payload.groupProgress ?? step.groupProgress,
-						}));
+
+					// Classify: populate dimensions
+					if (stage === 'classify' && Array.isArray(payload.dimensions)) {
+						if (ss.steps.some((st) => st.type === 'classify')) {
+							store.getState().updateStep('classify', (step) => ({
+								...step,
+								dimensions: payload.dimensions.map((d: any) =>
+									typeof d === 'object' && d !== null
+										? { id: d.id ?? '', intent_description: d.intent_description }
+										: { id: String(d), intent_description: '' }
+								),
+							}));
+						}
+					}
+
+					// Decompose: populate taskCount
+					if (stage === 'decompose' && typeof payload.taskCount === 'number') {
+						if (ss.steps.some((st) => st.type === 'decompose')) {
+							store.getState().updateStep('decompose', (step) => ({
+								...step,
+								taskCount: payload.taskCount,
+								dimensionCount: payload.dimensionCount ?? step.dimensionCount,
+							}));
+						}
+					}
+
+					// Recon: populate progress data
+					if (stage === 'recon' || (!stage && (payload.completedIndices || payload.total != null || payload.groupId != null))) {
+						if (ss.steps.some((st) => st.type === 'recon')) {
+							store.getState().updateStep('recon', (step) => {
+								const updated = { ...step };
+								if (Array.isArray(payload.completedIndices)) updated.completedIndices = payload.completedIndices;
+								if (typeof payload.total === 'number') updated.total = payload.total;
+								if (Array.isArray(payload.dimensions)) updated.dimensions = payload.dimensions;
+								// Per-group evidence progress
+								if (payload.groupId != null) {
+									updated.groupProgress = {
+										...updated.groupProgress,
+										[payload.groupId]: {
+											completedTasks: payload.completedTasks ?? updated.groupProgress[payload.groupId]?.completedTasks ?? 0,
+											totalTasks: payload.totalTasks ?? updated.groupProgress[payload.groupId]?.totalTasks ?? 0,
+											currentPath: payload.currentPath,
+										},
+									};
+								}
+								return updated;
+							});
+						}
 					}
 				}
 

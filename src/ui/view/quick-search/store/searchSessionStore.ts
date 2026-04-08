@@ -296,6 +296,13 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 		set((s) => {
 			const completedSteps = completeRunningSteps(s.steps);
 			const newStep = createStep(stepType);
+			// Carry forward classify dimension count to decompose step
+			if (stepType === 'decompose') {
+				const classifyStep = completedSteps.find((st) => st.type === 'classify');
+				if (classifyStep && classifyStep.type === 'classify') {
+					(newStep as any).dimensionCount = classifyStep.dimensions.length;
+				}
+			}
 			return { steps: [...completedSteps, newStep] };
 		});
 	},
