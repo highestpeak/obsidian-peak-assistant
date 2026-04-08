@@ -1,18 +1,19 @@
-// Prompt content is loaded from templates/ via TemplateManager + TemplateRegistry (src/core/template).
-import { DashboardBlockVariables } from '../agents/search-agent-helper/DashboardBlocksAgent';
-import type { UserPersonaConfig } from '../agents/search-agent-helper/AgentContextManager';
-import { TopicsUpdateVariables } from '../agents/search-agent-helper/TopicsUpdateAgent';
-import { ReviewBlocksVariables } from '../agents/search-agent-helper/ReviewBlocksAgent';
-import { FollowUpQuestionVariables } from '../agents/search-agent-helper/FollowUpQuestionAgent';
-import { AiSummaryVariables } from '../agents/search-agent-helper/SummaryAgent';
-import {
-	ConsolidatedTaskWithId,
-	DimensionChoice,
-	type EvidencePack,
-	type EvidenceTaskGroup,
-	RawSearchReport,
-	RawSearchReportWithDimension,
-} from '@/core/schemas/agents/search-agent-schemas';
+export interface UserPersonaConfig {
+	appeal?: string;
+	detail_level?: string;
+}
+export interface FollowUpQuestionVariables {
+	initialPrompt: string;
+	dashboardBlocks?: string;
+	confirmedFacts?: string;
+	topics?: string;
+}
+export interface AiSummaryVariables {
+	originalQuery: string;
+	userQuery: string;
+	mermaidOverview?: string;
+	dashboardBlockPlan?: string;
+}
 /**
  * Prompt template definition.
  */
@@ -70,28 +71,11 @@ export enum PromptId {
 	HubSemanticMergeSystem = 'hub-semantic-merge-system',
 	/** User: Hub card JSON → merge groups (does not invent stableKeys). */
 	HubSemanticMerge = 'hub-semantic-merge',
-	/** System: Hub discovery — folder intuition round (compact tree → structured JSON). */
-	HubDiscoveryFolderRoundSystem = 'hub-discovery-folder-round-system',
-	/** User payload: folder tree page + metrics + coverage (paired with {@link HubDiscoveryFolderRoundSystem}). */
-	HubDiscoveryFolderRound = 'hub-discovery-folder-round',
-	/** System: Hub discovery — refine after explore_folder dossiers. */
-	HubDiscoveryFolderDeepenSystem = 'hub-discovery-folder-deepen-system',
-	/** User payload: explore results + accumulated candidates (paired with {@link HubDiscoveryFolderDeepenSystem}). */
-	HubDiscoveryFolderDeepen = 'hub-discovery-folder-deepen',
-
-	/** System: Folder hub recon — plan step (optional tools; host executes calls before submit). */
-	HubDiscoveryFolderReconPlanSystem = 'hub-discovery-folder-recon-plan-system',
-	/** User: planning context — vault digest + metrics + exclusions. */
-	HubDiscoveryFolderReconPlan = 'hub-discovery-folder-recon-plan',
 	/** System: Folder hub recon — structured submit after host ran plan tools. */
 	HubDiscoveryFolderReconSubmitSystem = 'hub-discovery-folder-recon-submit-system',
 	/** User: memory + tree + plan text + tool results for folder submit. */
 	HubDiscoveryFolderReconSubmit = 'hub-discovery-folder-recon-submit',
 
-	/** System: Document hub recon — tool-using plan step (graph, hub_local_graph, inspect, find_path, grep). */
-	HubDiscoveryDocumentReconPlanSystem = 'hub-discovery-document-recon-plan-system',
-	/** User: seeds from folder recon + SQL shortlist. */
-	HubDiscoveryDocumentReconPlan = 'hub-discovery-document-recon-plan',
 	/** System: Document hub recon — structured submit after tools. */
 	HubDiscoveryDocumentReconSubmitSystem = 'hub-discovery-document-recon-submit-system',
 	/** User: assembled context for document submit. */
@@ -114,38 +98,9 @@ export enum PromptId {
 	AiAnalysisSummary = 'search-ai-summary',
 	/** Regenerate overview from current result snapshot (UI only; not used by pipeline). */
 	AiAnalysisOverviewRegenerate = 'ai-analysis-overview-regenerate',
-	/** Phase 1 of weaveEvidence2MermaidOverview: logic model only (no Mermaid). */
-	AiAnalysisOverviewLogicModelSystem = 'ai-analysis-overview-logic-model-system',
-	AiAnalysisOverviewLogicModel = 'ai-analysis-overview-logic-model',
-	/** Logic model from recon bundle only (reconReports + reconGraphSummary); used by ReconOverviewWeaveAgent with tools. */
-	AiAnalysisOverviewLogicModelFromReconSystem = 'ai-analysis-overview-logic-model-from-recon-system',
-	AiAnalysisOverviewLogicModelFromRecon = 'ai-analysis-overview-logic-model-from-recon',
 	/** Phase 2: render logic model → flowchart Mermaid. */
 	AiAnalysisOverviewMermaidRenderSystem = 'ai-analysis-overview-mermaid-render-system',
 	AiAnalysisOverviewMermaidRender = 'ai-analysis-overview-mermaid-render',
-	AiAnalysisDashboardUpdateTopicsSystem = 'ai-analysis-dashboard-update-topics-system',
-	AiAnalysisDashboardUpdateTopics = 'ai-analysis-dashboard-update-topics',
-	AiAnalysisDashboardUpdateBlocksSystem = 'ai-analysis-dashboard-update-blocks-system',
-	AiAnalysisDashboardUpdateBlocks = 'ai-analysis-dashboard-update-blocks',
-	AiAnalysisReviewBlocksSystem = 'ai-analysis-review-blocks-system',
-	AiAnalysisReviewBlocks = 'ai-analysis-review-blocks',
-	AiAnalysisDashboardUpdatePlanSystem = 'ai-analysis-dashboard-update-plan-system',
-	AiAnalysisDashboardUpdatePlan = 'ai-analysis-dashboard-update-plan',
-	/** Report plan: section-by-section consulting report outline (ReportPlanAgent). */
-	AiAnalysisReportPlanSystem = 'ai-analysis-report-plan-system',
-	AiAnalysisReportPlan = 'ai-analysis-report-plan',
-	/** Visual blueprint: per-block visual prescription after report plan (VisualBlueprintAgent). */
-	AiAnalysisVisualBlueprintSystem = 'ai-analysis-visual-blueprint-system',
-	AiAnalysisVisualBlueprint = 'ai-analysis-visual-blueprint',
-	/** Report body blocks: dashboard blocks for main report sections (ReportAgent phase4). */
-	AiAnalysisReportBodyBlocksSystem = 'ai-analysis-report-body-blocks-system',
-	AiAnalysisReportBodyBlocks = 'ai-analysis-report-body-blocks',
-	/** Report appendices blocks: dashboard blocks for appendices (ReportAgent phase5). */
-	AiAnalysisReportAppendicesBlocksSystem = 'ai-analysis-report-appendices-blocks-system',
-	AiAnalysisReportAppendicesBlocks = 'ai-analysis-report-appendices-blocks',
-	/** Fix invalid Mermaid code using parse error; used after overview validation fails. */
-	AiAnalysisMermaidFixSystem = 'ai-analysis-mermaid-fix-system',
-	AiAnalysisMermaidFix = 'ai-analysis-mermaid-fix',
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
 	AiAnalysisTitle = 'ai-analysis-title',
 	/** Doc Simple mode: scope prefix (current file only + full coverage). */
@@ -161,29 +116,68 @@ export enum PromptId {
 	/** Search Architect: collapse dimensions into physical tasks (dimension-to-task collapse). */
 	AiAnalysisSearchArchitectSystem = 'ai-analysis-search-architect-system',
 	AiAnalysisSearchArchitect = 'ai-analysis-search-architect',
-	/** Dimension Recon Agent: breadth exploration; stop driven by path-submit should_submit_report, final report produced by system. */
+	/** Dimension recon: system. */
 	AiAnalysisDimensionReconSystem = 'ai-analysis-dimension-recon-system',
+	/** Dimension recon: user prompt. */
 	AiAnalysisDimensionRecon = 'ai-analysis-dimension-recon',
-	/** Recon loop (internal): plan step system. */
-	AiAnalysisReconLoopPlanSystem = 'ai-analysis-recon-loop-plan-system',
-	/** Recon loop (internal): plan step user message. */
-	AiAnalysisReconLoopPlan = 'ai-analysis-recon-loop-plan',
-	/** Recon loop (internal): path-submit step system only. */
-	AiAnalysisReconLoopPathSubmitSystem = 'ai-analysis-recon-loop-path-submit-system',
-	/** Recon loop (internal): final report step system only. */
-	AiAnalysisReconLoopReportSystem = 'ai-analysis-recon-loop-report-system',
-	/** Dimension Evidence Agent: precise collection from leads, submit_evidence_pack. */
+	/** Dimension evidence: system. */
 	AiAnalysisDimensionEvidenceSystem = 'ai-analysis-dimension-evidence-system',
+	/** Dimension evidence: user prompt. */
 	AiAnalysisDimensionEvidence = 'ai-analysis-dimension-evidence',
-	/** Task Consolidator: merge recon reports into evidence execution blueprint (JSON). */
-	AiAnalysisTaskConsolidatorSystem = 'ai-analysis-task-consolidator-system',
-	AiAnalysisTaskConsolidator = 'ai-analysis-task-consolidator',
-	/** Group Context: system prompt for single-group topic_anchor + group_focus (used by GroupContextAgent). */
-	AiAnalysisGroupContextSystem = 'ai-analysis-group-context-system',
-	/** Single-group context: one group's enriched files → topic_anchor + group_focus. */
-	AiAnalysisGroupContextSingle = 'ai-analysis-group-context-single',
-	/** Batch evidence: multiple tasks (path + extraction_focus + dimensions) in one run; submit with completed_task_ids. */
+	/** Dimension evidence batch: user prompt. */
 	AiAnalysisDimensionEvidenceBatch = 'ai-analysis-dimension-evidence-batch',
+	/** Task consolidator: system. */
+	AiAnalysisTaskConsolidatorSystem = 'ai-analysis-task-consolidator-system',
+	/** Task consolidator: user prompt. */
+	AiAnalysisTaskConsolidator = 'ai-analysis-task-consolidator',
+	/** Group context: system. */
+	AiAnalysisGroupContextSystem = 'ai-analysis-group-context-system',
+	/** Group context single: user prompt. */
+	AiAnalysisGroupContextSingle = 'ai-analysis-group-context-single',
+	/** Overview logic model: system. */
+	AiAnalysisOverviewLogicModelSystem = 'ai-analysis-overview-logic-model-system',
+	/** Overview logic model: user prompt. */
+	AiAnalysisOverviewLogicModel = 'ai-analysis-overview-logic-model',
+	/** Overview logic model from recon: system. */
+	AiAnalysisOverviewLogicModelFromReconSystem = 'ai-analysis-overview-logic-model-from-recon-system',
+	/** Overview logic model from recon: user prompt. */
+	AiAnalysisOverviewLogicModelFromRecon = 'ai-analysis-overview-logic-model-from-recon',
+	/** Dashboard update topics: system. */
+	AiAnalysisDashboardUpdateTopicsSystem = 'ai-analysis-dashboard-update-topics-system',
+	/** Dashboard update topics: user prompt. */
+	AiAnalysisDashboardUpdateTopics = 'ai-analysis-dashboard-update-topics',
+	/** Dashboard update blocks: system. */
+	AiAnalysisDashboardUpdateBlocksSystem = 'ai-analysis-dashboard-update-blocks-system',
+	/** Dashboard update blocks: user prompt. */
+	AiAnalysisDashboardUpdateBlocks = 'ai-analysis-dashboard-update-blocks',
+	/** Report plan: system. */
+	AiAnalysisReportPlanSystem = 'ai-analysis-report-plan-system',
+	/** Report plan: user prompt. */
+	AiAnalysisReportPlan = 'ai-analysis-report-plan',
+	/** Visual blueprint: system. */
+	AiAnalysisVisualBlueprintSystem = 'ai-analysis-visual-blueprint-system',
+	/** Visual blueprint: user prompt. */
+	AiAnalysisVisualBlueprint = 'ai-analysis-visual-blueprint',
+	/** Report body blocks: system. */
+	AiAnalysisReportBodyBlocksSystem = 'ai-analysis-report-body-blocks-system',
+	/** Report body blocks: user prompt. */
+	AiAnalysisReportBodyBlocks = 'ai-analysis-report-body-blocks',
+	/** Report appendices blocks: system. */
+	AiAnalysisReportAppendicesBlocksSystem = 'ai-analysis-report-appendices-blocks-system',
+	/** Report appendices blocks: user prompt. */
+	AiAnalysisReportAppendicesBlocks = 'ai-analysis-report-appendices-blocks',
+	/** Review blocks: system. */
+	AiAnalysisReviewBlocksSystem = 'ai-analysis-review-blocks-system',
+	/** Review blocks: user prompt. */
+	AiAnalysisReviewBlocks = 'ai-analysis-review-blocks',
+	/** Dashboard update plan: system. */
+	AiAnalysisDashboardUpdatePlanSystem = 'ai-analysis-dashboard-update-plan-system',
+	/** Dashboard update plan: user prompt. */
+	AiAnalysisDashboardUpdatePlan = 'ai-analysis-dashboard-update-plan',
+	/** Mermaid fix: system. */
+	AiAnalysisMermaidFixSystem = 'ai-analysis-mermaid-fix-system',
+	/** Mermaid fix: user prompt. */
+	AiAnalysisMermaidFix = 'ai-analysis-mermaid-fix',
 	/** Unified follow-up user prompt (Summary, Graph, Sources, Blocks, Full). Caller builds contextContent. */
 	AiAnalysisFollowup = 'ai-analysis-followup',
 	/** System prompt for all follow-up chats (Topic, Continue, Graph, Blocks, Sources). */
@@ -191,6 +185,32 @@ export enum PromptId {
 	// AI analysis save dialog (filename/folder suggestions)
 	AiAnalysisSaveFileName = 'ai-analysis-save-filename',
 	AiAnalysisSaveFolder = 'ai-analysis-save-folder',
+
+	// Vault pipeline prompts (VaultSearchAgent phases)
+	/** Vault classify: system (static). */
+	AiAnalysisVaultClassifySystem = 'ai-analysis-vault-classify-system',
+	/** Vault classify: user prompt with query + vault context. */
+	AiAnalysisVaultClassify = 'ai-analysis-vault-classify',
+	/** Vault decompose: system (static). */
+	AiAnalysisVaultDecomposeSystem = 'ai-analysis-vault-decompose-system',
+	/** Vault decompose: user prompt with classify result. */
+	AiAnalysisVaultDecompose = 'ai-analysis-vault-decompose',
+	/** Vault recon plan: system with tool list (task-specific tool hints). */
+	AiAnalysisVaultReconPlanSystem = 'ai-analysis-vault-recon-plan-system',
+	/** Vault recon plan: user message with task + search leads. */
+	AiAnalysisVaultReconPlan = 'ai-analysis-vault-recon-plan',
+	/** Vault recon submit: system (static). */
+	AiAnalysisVaultReconSubmitSystem = 'ai-analysis-vault-recon-submit-system',
+	/** Vault recon submit: user message with tool results. */
+	AiAnalysisVaultReconSubmit = 'ai-analysis-vault-recon-submit',
+	/** Vault present-plan: system (static). */
+	AiAnalysisVaultPresentPlanSystem = 'ai-analysis-vault-present-plan-system',
+	/** Vault present-plan: user prompt with evidence list. */
+	AiAnalysisVaultPresentPlan = 'ai-analysis-vault-present-plan',
+	/** Vault report: system (static). */
+	AiAnalysisVaultReportSystem = 'ai-analysis-vault-report-system',
+	/** Vault report: user prompt with plan + evidence + context. */
+	AiAnalysisVaultReport = 'ai-analysis-vault-report',
 
 	// Context building templates (internal use)
 	ContextMemory = 'context-memory',
@@ -209,36 +229,26 @@ export enum PromptId {
 export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisSessionSummary,
 	PromptId.AiAnalysisSummary,
-	PromptId.AiAnalysisOverviewLogicModel,
-	PromptId.AiAnalysisOverviewLogicModelFromRecon,
 	PromptId.AiAnalysisOverviewMermaidRender,
 	PromptId.AiAnalysisOverviewRegenerate,
-	PromptId.AiAnalysisDashboardUpdateTopics,
-	PromptId.AiAnalysisDashboardUpdateBlocks,
-	PromptId.AiAnalysisReviewBlocks,
-	PromptId.AiAnalysisReportPlan,
-	PromptId.AiAnalysisVisualBlueprint,
-	PromptId.AiAnalysisMermaidFix,
 	PromptId.AiAnalysisTitle,
 	PromptId.AiAnalysisDocSimpleScope,
 	PromptId.AiAnalysisDocSimpleSystem,
 	PromptId.AiAnalysisSuggestFollowUpQuestions,
 	PromptId.AiAnalysisQueryClassifier,
 	PromptId.AiAnalysisSearchArchitect,
-	PromptId.AiAnalysisDimensionRecon,
-	PromptId.AiAnalysisReconLoopPlanSystem,
-	PromptId.AiAnalysisReconLoopPlan,
-	PromptId.AiAnalysisReconLoopPathSubmitSystem,
-	PromptId.AiAnalysisReconLoopReportSystem,
-	PromptId.AiAnalysisDimensionEvidence,
-	PromptId.AiAnalysisDimensionEvidenceBatch,
-	PromptId.AiAnalysisTaskConsolidator,
-	PromptId.AiAnalysisGroupContextSingle,
 	PromptId.AiAnalysisFollowup,
 	PromptId.AiAnalysisFollowupSystem,
-
 	PromptId.AiAnalysisSaveFileName,
 	PromptId.AiAnalysisSaveFolder,
+
+	// Vault pipeline
+	PromptId.AiAnalysisVaultClassify,
+	PromptId.AiAnalysisVaultDecompose,
+	PromptId.AiAnalysisVaultReconPlan,
+	PromptId.AiAnalysisVaultReconSubmit,
+	PromptId.AiAnalysisVaultPresentPlan,
+	PromptId.AiAnalysisVaultReport,
 ] as const;
 
 /**
@@ -254,11 +264,7 @@ export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.DocTagGenerateJson,
 	PromptId.HubDocSummary,
 	PromptId.HubSemanticMerge,
-	PromptId.HubDiscoveryFolderRound,
-	PromptId.HubDiscoveryFolderDeepen,
-	PromptId.HubDiscoveryFolderReconPlan,
 	PromptId.HubDiscoveryFolderReconSubmit,
-	PromptId.HubDiscoveryDocumentReconPlan,
 	PromptId.HubDiscoveryDocumentReconSubmit,
 	PromptId.KnowledgeIntuitionPlan,
 	PromptId.KnowledgeIntuitionSubmit,
@@ -423,28 +429,6 @@ export interface PromptVariables {
 		/** JSON array of hub cards for merge (stableKey, path, labels, signals). */
 		hubCardsJson: string;
 	};
-	[PromptId.HubDiscoveryFolderRoundSystem]: Record<string, never>;
-	[PromptId.HubDiscoveryFolderRound]: {
-		folderTreePageMarkdown: string;
-		/** Round context: metrics, budgets, `folderTreePage`, `coverageState`; template formats (e.g. `toJson`). */
-		hubDiscoveryContext: Record<string, unknown>;
-		userGoal: string;
-	};
-	[PromptId.HubDiscoveryFolderDeepenSystem]: Record<string, never>;
-	[PromptId.HubDiscoveryFolderDeepen]: {
-		exploreResultsMarkdown: string;
-		accumulatedFolderHubsJson: string;
-		coverageStateJson: string;
-		userGoal: string;
-	};
-	[PromptId.HubDiscoveryFolderReconPlanSystem]: Record<string, never>;
-	[PromptId.HubDiscoveryFolderReconPlan]: {
-		userGoal: string;
-		worldMetricsJson: string;
-		folderDigestMarkdown: string;
-		deepFolderDigestMarkdown: string;
-		baselineExcludedPrefixesJson: string;
-	};
 	[PromptId.HubDiscoveryFolderReconSubmitSystem]: Record<string, never>;
 	[PromptId.HubDiscoveryFolderReconSubmit]: {
 		userGoal: string;
@@ -455,14 +439,6 @@ export interface PromptVariables {
 		actionPlanMarkdown: string;
 		actionOutputMarkdown: string;
 		toolResultsMarkdown: string;
-	};
-	[PromptId.HubDiscoveryDocumentReconPlanSystem]: Record<string, never>;
-	[PromptId.HubDiscoveryDocumentReconPlan]: {
-		userGoal: string;
-		folderHubCandidatesJson: string;
-		highwayFolderLeadsJson: string;
-		documentShortlistJson: string;
-		topOutgoingFoldersJson: string;
 	};
 	[PromptId.HubDiscoveryDocumentReconSubmitSystem]: Record<string, never>;
 	[PromptId.HubDiscoveryDocumentReconSubmit]: {
@@ -528,44 +504,38 @@ export interface PromptVariables {
 	};
 	[PromptId.AiAnalysisSearchArchitectSystem]: Record<string, never>;
 	[PromptId.AiAnalysisSearchArchitect]: { userQuery: string; dimensionsJson: string };
+
 	[PromptId.AiAnalysisDimensionReconSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDimensionRecon]: { userQuery: string; dimensionId?: string; intent_description?: string; unified_intent?: string; coveredDimensionIds?: string; inventoryRequiresManifest?: boolean; scopePath?: string; scopeAnchor?: string; scopeTags?: string; vaultDescription?: string; vaultStructure?: string; vaultTopTags?: string; vaultCapabilities?: string };
-	[PromptId.AiAnalysisReconLoopPlanSystem]: { maxIterations: number };
-	[PromptId.AiAnalysisReconLoopPlan]: { userQuery: string; dimensionId?: string; intent_description?: string; unified_intent?: string; coveredDimensionIds?: string; inventoryRequiresManifest?: boolean; scopePath?: string; scopeAnchor?: string; scopeTags?: string; vaultDescription?: string; vaultStructure?: string; vaultTopTags?: string; vaultCapabilities?: string };
-	[PromptId.AiAnalysisReconLoopPathSubmitSystem]: Record<string, never>;
-	[PromptId.AiAnalysisReconLoopReportSystem]: Record<string, never>;
+	[PromptId.AiAnalysisDimensionRecon]: Record<string, any>;
 	[PromptId.AiAnalysisDimensionEvidenceSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDimensionEvidence]: { userQuery: string; dimension: DimensionChoice; report: RawSearchReport };
+	[PromptId.AiAnalysisDimensionEvidence]: Record<string, any>;
+	[PromptId.AiAnalysisDimensionEvidenceBatch]: Record<string, any>;
 	[PromptId.AiAnalysisTaskConsolidatorSystem]: Record<string, never>;
-	[PromptId.AiAnalysisTaskConsolidator]: {
-		userQuery: string;
-		dimensions: Array<DimensionChoice>;
-		reports: Array<RawSearchReportWithDimension>;
-	};
+	[PromptId.AiAnalysisTaskConsolidator]: Record<string, any>;
 	[PromptId.AiAnalysisGroupContextSystem]: Record<string, never>;
-	/** Single-group: one group's files with dimension intents, priority, task_load. */
-	[PromptId.AiAnalysisGroupContextSingle]: {
-		userQuery: string;
-		dimensions: Array<DimensionChoice>;
-		groupIndex: number;
-		files: Array<{
-			path: string;
-			extraction_focus: string;
-			priority: string;
-			task_load?: string | null;
-			relevant_dimension_ids: Array<{ id: string; intent: string }>;
-		}>;
-	};
-	[PromptId.AiAnalysisDimensionEvidenceBatch]: {
-		userQuery: string;
-		tasks: Array<ConsolidatedTaskWithId>;
-		topicAnchor?: string;
-		groupFocus?: string;
-		/** Rendered shared-context markdown (folders, tags, intra-group graph). */
-		groupSharedContext?: string;
-		/** True when topicAnchor, groupFocus, or groupSharedContext is provided (for template conditional). */
-		showSchedulerContext?: boolean;
-	};
+	[PromptId.AiAnalysisGroupContextSingle]: Record<string, any>;
+	[PromptId.AiAnalysisOverviewLogicModelSystem]: Record<string, never>;
+	[PromptId.AiAnalysisOverviewLogicModel]: Record<string, any>;
+	[PromptId.AiAnalysisOverviewLogicModelFromReconSystem]: Record<string, never>;
+	[PromptId.AiAnalysisOverviewLogicModelFromRecon]: Record<string, any>;
+	[PromptId.AiAnalysisDashboardUpdateTopicsSystem]: Record<string, never>;
+	[PromptId.AiAnalysisDashboardUpdateTopics]: Record<string, any>;
+	[PromptId.AiAnalysisDashboardUpdateBlocksSystem]: Record<string, never>;
+	[PromptId.AiAnalysisDashboardUpdateBlocks]: Record<string, any>;
+	[PromptId.AiAnalysisReportPlanSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReportPlan]: Record<string, any>;
+	[PromptId.AiAnalysisVisualBlueprintSystem]: Record<string, never>;
+	[PromptId.AiAnalysisVisualBlueprint]: Record<string, any>;
+	[PromptId.AiAnalysisReportBodyBlocksSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReportBodyBlocks]: Record<string, any>;
+	[PromptId.AiAnalysisReportAppendicesBlocksSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReportAppendicesBlocks]: Record<string, any>;
+	[PromptId.AiAnalysisReviewBlocksSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReviewBlocks]: Record<string, any>;
+	[PromptId.AiAnalysisDashboardUpdatePlanSystem]: Record<string, never>;
+	[PromptId.AiAnalysisDashboardUpdatePlan]: Record<string, any>;
+	[PromptId.AiAnalysisMermaidFixSystem]: Record<string, never>;
+	[PromptId.AiAnalysisMermaidFix]: Record<string, any>;
 
 	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSummarySystem]: Record<string, never>;
@@ -575,48 +545,8 @@ export interface PromptVariables {
 		userPersonaConfig?: UserPersonaConfig;
 	};
 	[PromptId.AiAnalysisOverviewRegenerate]: { originalQuery: string; currentResultSnapshot: string };
-	[PromptId.AiAnalysisOverviewLogicModelSystem]: Record<string, never>;
-	[PromptId.AiAnalysisOverviewLogicModel]: { userQuery: string; evidencePacks: EvidencePack[]; repairHint?: string };
-	[PromptId.AiAnalysisOverviewLogicModelFromReconSystem]: Record<string, never>;
-	[PromptId.AiAnalysisOverviewLogicModelFromRecon]: {
-		userQuery: string;
-		reconReports: Array<{ dimension: string; tactical_summary: string | null; discovered_leads: string[] }>;
-		reconGraphSummary: string;
-		repairHint?: string;
-	};
 	[PromptId.AiAnalysisOverviewMermaidRenderSystem]: Record<string, never>;
 	[PromptId.AiAnalysisOverviewMermaidRender]: { userQuery: string; logicModelJson: string };
-	[PromptId.AiAnalysisDashboardUpdateTopicsSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateTopics]: TopicsUpdateVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
-	[PromptId.AiAnalysisDashboardUpdateBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateBlocks]: DashboardBlockVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
-	[PromptId.AiAnalysisReportPlanSystem]: Record<string, never>;
-	[PromptId.AiAnalysisReportPlan]: {
-		originalQuery: string;
-		overviewMermaid?: string;
-		verifiedFactSheet?: string[];
-		evidenceTaskGroups?: EvidenceTaskGroup[];
-	};
-	[PromptId.AiAnalysisVisualBlueprintSystem]: Record<string, never>;
-	[PromptId.AiAnalysisVisualBlueprint]: {
-		originalQuery: string;
-		overviewMermaid?: string;
-		/** Lightweight facts context: keep as list; template decides count/sample rendering. */
-		confirmedFacts?: string[];
-		/** The first block slot to start prescribing (subsequent blocks come from tool output). */
-		firstBlockId?: string;
-		firstBlockRequirements?: string;
-	};
-	[PromptId.AiAnalysisReportBodyBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisReportBodyBlocks]: DashboardBlockVariables & ErrorRetryInfo & { toolFormatGuidance?: string; userPersonaConfig?: UserPersonaConfig };
-	[PromptId.AiAnalysisReportAppendicesBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisReportAppendicesBlocks]: DashboardBlockVariables & ErrorRetryInfo & { toolFormatGuidance?: string; userPersonaConfig?: UserPersonaConfig };
-	[PromptId.AiAnalysisReviewBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisReviewBlocks]: ReviewBlocksVariables & ErrorRetryInfo & { toolFormatGuidance?: string };
-	[PromptId.AiAnalysisDashboardUpdatePlanSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdatePlan]: Record<string, unknown>;
-	[PromptId.AiAnalysisMermaidFixSystem]: Record<string, never>;
-	[PromptId.AiAnalysisMermaidFix]: { invalidCode: string; validationError: string };
 
 	[PromptId.AiAnalysisSaveFileName]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string; candidateFoldersFromSearch?: string; defaultSaveFolder?: string };
@@ -654,6 +584,55 @@ export interface PromptVariables {
 		resources: Array<{
 			id: string;
 		}>;
+	};
+
+	// Vault pipeline
+	[PromptId.AiAnalysisVaultClassifySystem]: Record<string, never>;
+	[PromptId.AiAnalysisVaultClassify]: {
+		userQuery: string;
+		historyContext?: string;
+		folderContext?: string;
+		searchContext?: string;
+		globalIntuitionJson?: string;
+	};
+	[PromptId.AiAnalysisVaultDecomposeSystem]: Record<string, never>;
+	[PromptId.AiAnalysisVaultDecompose]: {
+		userQuery: string;
+		queryType: string;
+		understanding: string;
+		candidateAreas?: string;
+		initialLeads?: string;
+	};
+	[PromptId.AiAnalysisVaultReconPlanSystem]: {
+		toolSuggestions?: string;
+	};
+	[PromptId.AiAnalysisVaultReconPlan]: {
+		userQuery: string;
+		taskDescription: string;
+		targetAreas?: string;
+		initialLeads?: string;
+	};
+	[PromptId.AiAnalysisVaultReconSubmitSystem]: Record<string, never>;
+	[PromptId.AiAnalysisVaultReconSubmit]: {
+		userQuery: string;
+		taskDescription: string;
+		toolResultsMarkdown: string;
+	};
+	[PromptId.AiAnalysisVaultPresentPlanSystem]: Record<string, never>;
+	[PromptId.AiAnalysisVaultPresentPlan]: {
+		userQuery: string;
+		evidenceCount: string;
+		evidenceList: string;
+		moreCount?: string;
+	};
+	[PromptId.AiAnalysisVaultReportSystem]: Record<string, never>;
+	[PromptId.AiAnalysisVaultReport]: {
+		userQuery: string;
+		reportPlan: string;
+		proposedSections?: string;
+		evidenceCount: string;
+		evidenceList: string;
+		weavedContext?: string;
 	};
 }
 

@@ -116,8 +116,8 @@ export class AIServiceManager {
 			this.settings.defaultModel,
 			this.resourceSummaryService,
 			this,
-			this.profileService,
 			this.settings,
+			this.profileService,
 		);
 
 		// Initialize summary update service
@@ -214,8 +214,8 @@ export class AIServiceManager {
 			this.settings.defaultModel,
 			this.resourceSummaryService,
 			this,
-			this.profileService,
 			this.settings,
+			this.profileService,
 		);
 
 		// Reinitialize summary update service

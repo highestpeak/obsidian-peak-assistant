@@ -14,7 +14,7 @@
  */
 
 import { SLICE_CAPS } from '@/core/constant';
-import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock, EvidenceIndex } from '@/service/agents/AISearchAgent';
+import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock, EvidenceIndex } from '@/service/agents/shared-types';
 import { getMermaidInner } from '@/core/utils/mermaid-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
 import type { SearchResultItem } from '@/service/search/types';

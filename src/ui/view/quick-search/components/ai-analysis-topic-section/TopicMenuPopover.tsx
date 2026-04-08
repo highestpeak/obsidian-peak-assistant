@@ -2,7 +2,7 @@ import { SLICE_CAPS } from '@/core/constant';
 import React, { useCallback } from 'react';
 import { Copy, Search, MessageSquare, FileEdit, FileText, Network } from 'lucide-react';
 import type { SearchResultItem } from '@/service/search/types';
-import type { AISearchSource } from '@/service/agents/AISearchAgent';
+import type { AISearchSource } from '@/service/agents/shared-types';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useAIAnalysisTopicsStore } from '../../store/aiAnalysisStore';
 import { useAnalyzeTopic } from '../../hooks/useAIAnalysisPostAIInteractions';

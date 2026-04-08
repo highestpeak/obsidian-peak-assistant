@@ -13,7 +13,7 @@ import { findPath } from '@/service/tools/search-graph-inspector/find-path';
 import { inspectNoteContext } from '@/service/tools/search-graph-inspector/inspect-note-context';
 import { getIndexTenantForPath } from '@/service/search/index/indexService';
 import { SemanticRelatedEdgesReadService } from '@/service/search/index/helper/semanticRelatedEdges';
-import { AISearchGraph } from '../agents/AISearchAgent';
+import { AISearchGraph } from '../agents/shared-types';
 import { stableGraphVisualizationEdgeId } from '@/core/utils/id-utils';
 import { GraphEdgeType, isIndexedNoteNodeType } from '@/core/po/graph.po';
 import { decodeIndexedTagsBlob } from '@/core/document/helper/TagService';

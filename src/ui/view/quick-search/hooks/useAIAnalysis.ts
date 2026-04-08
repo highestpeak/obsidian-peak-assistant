@@ -12,14 +12,16 @@ import {
 import { useSharedStore } from '@/ui/view/quick-search/store';
 import { setLastAnalysisHistorySearch, invalidateFollowupContextCache } from '../followupContextRuntime';
 import { AppContext } from '@/app/context/AppContext';
-import { SearchAgentResult } from '@/service/agents/AISearchAgent';
-import { mountSearchMemoryDebug, clearSearchMemoryDebug } from '@/service/agents/search-agent-helper/helpers/searchMemoryDebugMount';
+import { SearchAgentResult } from '@/service/agents/shared-types';
 import { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 import { DELTA_EVENT_TYPES } from '@/core/providers/helpers/stream-helper';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { useStepDisplayReplayStore } from '../store/stepDisplayReplayStore';
 import { createAIAnalysisStreamDispatcher } from './aiAnalysisStreamDispatcher';
 import { Notice } from 'obsidian';
+import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
+import type { VaultHitlPauseEvent, VaultPhaseTransitionEvent } from '@/service/agents/vault/types';
+import type { UserFeedback } from '@/service/agents/core/types';
 
 export function useAIAnalysis() {
 	const { searchQuery } = useSharedStore();
@@ -96,14 +98,11 @@ export function useAIAnalysis() {
 	const didCancelRef = useRef<boolean>(false);
 	const noticeSentRef = useRef<boolean>(false);
 
-	// Real agent when not mock; MockAISearchAgent in desktop dev so one code path
-	const aiSearchAgent = useMemo(() => {
-		return AppContext.searchAgent({
-			enableWebSearch: webEnabled,
-			enableLocalSearch: true,
-			analysisMode: analysisMode ?? 'vaultFull',
-		});
-	}, [webEnabled, analysisMode]);
+	// DocSimpleAgent for docSimple mode; vault modes use VaultSearchAgent via vaultAgentRef.
+	const aiSearchAgent = useMemo(() => AppContext.searchAgent(), []);
+
+	// VaultSearchAgent ref — created per-session (not memoized, stateful).
+	const vaultAgentRef = useRef<VaultSearchAgent | null>(null);
 
 	// Detect @web@ trigger in search query (don't remove from display, just enable web mode)
 	useEffect(() => {
@@ -187,10 +186,6 @@ export function useAIAnalysis() {
 			timelineRef.current = [];
 			analysisStartTimeRef.current = Date.now();
 
-			if (AppContext.getInstance().settings?.enableDevTools && aiSearchAgent) {
-				mountSearchMemoryDebug(aiSearchAgent);
-			}
-
 			const publish = (type: string, payload: any) => useUIEventStore.getState().publish(type, payload);
 			const recordErrorOnlyWhenDevTools = (msg: string) => {
 				if (AppContext.getInstance().plugin.settings?.enableDevTools) recordError(msg);
@@ -215,23 +210,62 @@ export function useAIAnalysis() {
 				recordError: recordErrorOnlyWhenDevTools,
 				startStreaming,
 				onFinalResult: handleFinalResult,
+				onHitlPause: (ev: VaultHitlPauseEvent) => {
+					useAIAnalysisRuntimeStore.getState().setHitlPause({
+						pauseId: ev.pauseId,
+						phase: ev.phase,
+						snapshot: ev.snapshot,
+					});
+				},
+				onPhaseTransition: (_ev: VaultPhaseTransitionEvent) => {
+					// Phase transitions published via dispatcher.publish — no extra store action needed
+				},
 			});
 			dispatcher.reset();
 
-			const stream = await aiSearchAgent!.stream(searchQuery, scopeValue ? { scopeValue } : undefined);
+			// Shared event consumer helper
+			const consumeStream = async (gen: AsyncIterable<any>) => {
+				for await (const event of gen) {
+					if (!useAIAnalysisRuntimeStore.getState().hasStartedStreaming) {
+						console.debug('[useAIAnalysis] Starting streaming');
+						startStreaming();
+						useStepDisplayReplayStore.getState().setStreamStarted(true);
+					}
+					if (signal?.aborted) {
+						console.debug('[useAIAnalysis] Analysis cancelled by user');
+						break;
+					}
+					pushTimeline(event as LLMStreamEvent);
+					dispatcher!.consumeEvent(event as LLMStreamEvent);
+				}
+			};
 
-			for await (const event of stream) {
-				if (!useAIAnalysisRuntimeStore.getState().hasStartedStreaming) {
-					console.debug('[useAIAnalysis] Starting streaming');
-					startStreaming();
-					useStepDisplayReplayStore.getState().setStreamStarted(true);
+			// Use VaultSearchAgent for vault modes; legacy AISearchAgent for docSimple
+			const isVaultMode = analysisMode === 'vaultFull' || analysisMode === 'vaultSimple';
+
+			if (isVaultMode) {
+				vaultAgentRef.current = AppContext.vaultSearchAgent();
+
+				// Register HITL feedback callback for UI to call after user reviews plan
+				useAIAnalysisRuntimeStore.getState().setHitlFeedbackCallback(async (feedback: UserFeedback) => {
+					const agent = vaultAgentRef.current;
+					if (!agent) return;
+					useAIAnalysisRuntimeStore.getState().clearHitlPause();
+					await consumeStream(agent.continueWithFeedback(feedback));
+					if (!useAIAnalysisRuntimeStore.getState().hitlState) {
+						markAIAnalysisCompleted();
+					}
+				});
+
+				await consumeStream(vaultAgentRef.current.startSession(searchQuery));
+				// If pipeline paused at HITL, completion is deferred until user approves
+				if (!useAIAnalysisRuntimeStore.getState().hitlState) {
+					markAIAnalysisCompleted();
 				}
-				if (signal?.aborted) {
-					console.debug('[useAIAnalysis] Analysis cancelled by user');
-					break;
-				}
-				pushTimeline(event);
-				dispatcher.consumeEvent(event);
+				return;
+			} else {
+				const stream = aiSearchAgent.stream(searchQuery, scopeValue ? { scopeValue } : { scopeValue: undefined });
+				await consumeStream(stream);
 			}
 		} catch (err) {
 			const errorMessage = err instanceof Error
@@ -247,7 +281,6 @@ export function useAIAnalysis() {
 				);
 			}
 		} finally {
-			clearSearchMemoryDebug();
 			dispatcher?.flushSummaryBuffer();
 			const rt = useAIAnalysisRuntimeStore.getState();
 			const sum = useAIAnalysisSummaryStore.getState();
@@ -272,19 +305,7 @@ export function useAIAnalysis() {
 			};
 			console.debug('[useAIAnalysis] debugDumpJson', JSON.stringify(debugDump));
 
-			try {
-				const runId = rt.analysisRunId ?? null;
-				if (aiSearchAgent) {
-					setLastAnalysisHistorySearch(
-						(q, opts) => aiSearchAgent.searchHistory(q, opts),
-						runId
-					);
-				} else {
-					setLastAnalysisHistorySearch(null);
-				}
-			} catch {
-				setLastAnalysisHistorySearch(null);
-			}
+			setLastAnalysisHistorySearch(null);
 
 			timelineRef.current = [];
 			analysisStartTimeRef.current = 0;
@@ -298,7 +319,6 @@ export function useAIAnalysis() {
 	}, [
 		searchQuery,
 		webEnabled,
-		aiSearchAgent,
 		applySearchResult,
 		recordError,
 		startAnalyzing,

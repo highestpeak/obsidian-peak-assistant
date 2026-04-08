@@ -405,9 +405,11 @@ type RawStreamEvent =
 	{ type: 'prompt-stream-start'; id?: string; promptId: string; variables?: any; } |
 	{ type: 'prompt-stream-delta'; id?: string; promptId: string; delta?: string; } |
 	{ type: 'prompt-stream-result'; id?: string; promptId: string; output?: any; usage?: LLMUsage } |
+	// from vault agent
+	{ type: 'hitl-pause'; } |
+	{ type: 'phase-transition'; } |
 	// for debug purpose.
-	{ type: 'pk-debug'; debugName: string; }
-	;
+	{ type: 'pk-debug'; debugName: string; extra?: any; triggerName?: StreamTriggerName; triggerTimestamp?: number; };
 
 /**
  * UI stream events: two complementary tracks (do not conflict; both are needed).
@@ -439,8 +441,13 @@ export type RawUIStreamEvent =
 	/** Progress of parallel merged streams: how many of the N streams have completed. */
 	{ type: 'parallel-stream-progress'; completed: number; total: number; completedIndices?: number[] };
 
+/** Agent loop stream events (plan progress, stats, debug). */
+export type AgentStreamEvent =
+	{ type: 'agent-step-progress'; stepLabel: string; detail: string; } |
+	{ type: 'agent-stats'; stats: any; };
+
 export type LLMStreamEvent =
-	(RawStreamEvent | RawUIStreamEvent) & {
+	(RawStreamEvent | RawUIStreamEvent | AgentStreamEvent) & {
 		// some times we need to pass stream trigger name to the event.
 		// as we may manual control the loop process.
 		triggerName?: StreamTriggerName;

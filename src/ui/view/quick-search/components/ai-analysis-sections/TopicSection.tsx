@@ -16,7 +16,7 @@ import { TopicCapsule } from '../ai-analysis-topic-section/TopicCapsule';
 import { loadGraphForTopic } from '../ai-analysis-topic-section/TopicGraphPopover';
 import { InlineFollowupChat } from '@/ui/component/mine/InlineFollowupChat';
 import { useTopicFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
-import type { AISearchTopic } from '@/service/agents/AISearchAgent';
+import type { AISearchTopic } from '@/service/agents/shared-types';
 
 const getSizeClasses = (size: string) => {
 	switch (size) {

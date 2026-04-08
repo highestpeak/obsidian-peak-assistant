@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { create } from 'zustand';
 import { useAIAnalysisResultStore } from '@/ui/view/quick-search/store/aiAnalysisStore';
-import type { AISearchGraph, AISearchNode, AISearchEdge } from '@/service/agents/AISearchAgent';
+import type { AISearchGraph, AISearchNode, AISearchEdge } from '@/service/agents/shared-types';
 import { useSubscribeUIEvent } from '@/ui/store/uiEventStore';
 import type { GraphPatch } from '@/core/providers/ui-events/graph';
 import { UISignalChannel } from '@/core/providers/types';

@@ -55,8 +55,8 @@ export class ConversationService {
 		private readonly defaultModel: { provider: string; modelId: string },
 		private readonly resourceSummaryService: ResourceSummaryService,
 		private readonly aiServiceManager: AIServiceManager,
-		private readonly profileService?: UserProfileService,
 		private readonly settings: AIServiceSettings,
+		private readonly profileService?: UserProfileService,
 	) {
 		this.resourceLoaderManager = new ResourceLoaderManager(this.app, this.aiServiceManager, DocumentLoaderManager.getInstance());
 		// Initialize context builder

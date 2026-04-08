@@ -7,7 +7,7 @@ import type {
 	AISearchGraph,
 	AISearchSource,
 	AISearchTopic,
-} from '@/service/agents/AISearchAgent';
+} from '@/service/agents/shared-types';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -248,8 +248,8 @@ export async function* mockAIAnalysisStream(
  * so UI uses one code path for both real and mock.
  */
 export class MockAISearchAgent {
-	async stream(prompt: string, options?: MockAIAnalysisStreamOptions): Promise<AsyncGenerator<LLMStreamEvent>> {
-		return mockAIAnalysisStream(prompt, {
+	async *stream(prompt: string, options?: MockAIAnalysisStreamOptions): AsyncGenerator<LLMStreamEvent> {
+		yield* mockAIAnalysisStream(prompt, {
 			chunkDelayMs: DEFAULT_CHUNK_DELAY_MS,
 			phaseDelayMs: DEFAULT_PHASE_DELAY_MS,
 			simulatedSearchMs: DEFAULT_SIMULATED_SEARCH_MS,

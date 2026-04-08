@@ -1,6 +1,8 @@
 import { create } from 'zustand';
-import { AISearchGraph, AISearchSource, AISearchTopic, type AnalysisMode, DashboardBlock, type EvidenceIndex } from '@/service/agents/AISearchAgent';
+import { AISearchGraph, AISearchSource, AISearchTopic, type AnalysisMode, DashboardBlock, type EvidenceIndex } from '@/service/agents/shared-types';
 export type { AnalysisMode };
+import type { PlanSnapshot } from '@/service/agents/vault/types';
+import type { UserFeedback } from '@/service/agents/core/types';
 
 import { LLMUsage, mergeTokenUsage } from '@/core/providers/types';
 import type { SearchResultItem } from '@/service/search/types';
@@ -207,6 +209,18 @@ export const useAIAnalysisRuntimeStore = create<{
 	setDashboardUpdatedLine: (line: string) => void;
 	setHasAnalyzed: (v: boolean) => void;
 	resetRuntime: () => void;
+	/** HITL state: set when pipeline pauses for user input. */
+	hitlState: {
+		isPaused: boolean;
+		pauseId: string;
+		phase: string;
+		snapshot: PlanSnapshot;
+	} | null;
+	setHitlPause: (state: { pauseId: string; phase: string; snapshot: PlanSnapshot }) => void;
+	clearHitlPause: () => void;
+	/** Callback to send user feedback to the running VaultSearchAgent. */
+	hitlFeedbackCallback: ((feedback: UserFeedback) => void) | null;
+	setHitlFeedbackCallback: (cb: ((feedback: UserFeedback) => void) | null) => void;
 }>((set, get) => ({
 	phase: 'idle' as AnalysisPhase,
 	triggerAnalysis: 0,
@@ -229,6 +243,11 @@ export const useAIAnalysisRuntimeStore = create<{
 	usage: null,
 	duration: null,
 	dashboardUpdatedLine: '',
+	hitlState: null,
+	hitlFeedbackCallback: null,
+	setHitlPause: (state) => set({ hitlState: { isPaused: true, ...state } }),
+	clearHitlPause: () => set({ hitlState: null }),
+	setHitlFeedbackCallback: (cb) => set({ hitlFeedbackCallback: cb }),
 	incrementTriggerAnalysis: () => set((s) => ({ triggerAnalysis: s.triggerAnalysis + 1 })),
 	toggleWeb: (q) => {
 		if (q.includes('@web@')) {
@@ -294,6 +313,8 @@ export const useAIAnalysisRuntimeStore = create<{
 		duration: null,
 		runAnalysisMode: null,
 		autoSaveState: { lastRunId: null, lastSavedSummaryHash: null, lastSavedPath: null },
+		hitlState: null,
+		hitlFeedbackCallback: null,
 	}),
 }));
 

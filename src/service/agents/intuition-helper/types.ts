@@ -1,10 +1,64 @@
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import type { BackboneMapResult } from '@/service/search/index/helper/backbone';
-import type {
-	DocumentHubShortlistRow,
-	HubWorldSnapshot,
-} from '@/service/agents/hub-helper/types';
 import type { computeHubDiscoverBudgets } from '@/service/search/index/helper/hub/hubDiscover';
+
+/** One digest row used to render compact folder tree lines. */
+export type FolderTreeNodeDigest = {
+	path: string;
+	name: string;
+	depth: number;
+	childFolderCount: number;
+	subtreeMaxDepth: number;
+	subtreeAvgDepth: number;
+	docCount: number;
+	directDocCount: number;
+	topKeywords: string[];
+	topTopics: string[];
+	topTopicsWeighted?: string;
+	topicPurity?: number;
+	containerPenalty?: number;
+	strongChildDocShare?: number;
+	residualRatio?: number;
+	strongChildCount?: number;
+	folderRank?: number;
+	hubGraphScore?: number;
+	docOutgoing: number;
+	docIncoming: number;
+	fileNameTokenSample: string[];
+	subfolderNameTokenSample: string[];
+};
+
+export type HubFolderTreePage = {
+	pageId: string;
+	pageIndex: number;
+	totalPages: number;
+	compactTreeMarkdown: string;
+	pathsOnPage: string[];
+};
+
+export type WorldMetricsDigest = {
+	totalIndexedDocuments: number;
+	totalFoldersScanned: number;
+	topLevelBranchCount: number;
+	orphanHardSampleCount: number;
+	orphanRiskHint: 'low' | 'medium' | 'high';
+	topOutgoingFolders: Array<{ path: string; outgoing: number }>;
+};
+
+export type HubWorldSnapshot = {
+	pages: HubFolderTreePage[];
+	metrics: WorldMetricsDigest;
+	nodes: FolderTreeNodeDigest[];
+};
+
+/** Deterministic document hub shortlist row (SQL ranking). */
+export type DocumentHubShortlistRow = {
+	path: string;
+	label: string;
+	hubGraphScore: number;
+	docIncoming: number;
+	docOutgoing: number;
+};
 import type {
 	IntuitionEntity,
 	IntuitionEntryPoint,

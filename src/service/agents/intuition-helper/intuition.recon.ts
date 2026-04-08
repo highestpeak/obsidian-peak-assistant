@@ -11,7 +11,22 @@ import { StreamTriggerName, UIStepType, type LLMStreamEvent } from '@/core/provi
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
-import { effectiveReconMaxIterations, type ReconLoopDebugOptions } from '@/service/agents/hub-helper/hubDiscoveryDebug';
+export type ReconLoopDebugOptions = {
+	/** Overrides budget-derived iteration cap (clamped to 1..6). */
+	maxIterations?: number;
+	/** 1-based: exit after this iteration's plan + host tool execution (before structured submit). */
+	stopAfterPlanIteration?: number;
+	/** 1-based: exit after this iteration's submit and memory merge. */
+	stopAfterSubmitIteration?: number;
+};
+
+function effectiveReconMaxIterations(budgetDerived: number, debug?: ReconLoopDebugOptions): number {
+	const base = Math.max(1, Math.min(6, budgetDerived));
+	if (debug?.maxIterations !== undefined) {
+		return Math.max(1, Math.min(6, Math.min(base, debug.maxIterations)));
+	}
+	return base;
+}
 import { mergeIntuitionSubmitIntoMemory, buildInitialIntuitionMemory } from './intuition.memory';
 import { buildIntuitionTools, executeReconToolCalls } from './intuition.tools';
 import type { IntuitionMemory, IntuitionPrepContext } from './types';

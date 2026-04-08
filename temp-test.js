@@ -39,18 +39,18 @@ var require_obsidian_stub = __commonJS({
         this.extension = "md";
       }
     };
-    var TFolder4 = class extends TAbstractFile2 {
+    var TFolder7 = class extends TAbstractFile2 {
       constructor() {
         super();
         this.children = [];
       }
     };
-    module2.exports = { normalizePath: normalizePath8, TAbstractFile: TAbstractFile2, TFile: TFile20, TFolder: TFolder4 };
+    module2.exports = { normalizePath: normalizePath8, TAbstractFile: TAbstractFile2, TFile: TFile20, TFolder: TFolder7 };
   }
 });
 
 // src/service/search/index/helper/hub/hubDiscover.ts
-var import_obsidian21 = __toESM(require_obsidian_stub());
+var import_obsidian24 = __toESM(require_obsidian_stub());
 
 // src/core/errors.ts
 var BusinessError = class extends Error {
@@ -127,74 +127,19 @@ var EventBus = class _EventBus {
 var import_v3 = require("zod/v3");
 var ZodError = import_v3.z.ZodError;
 
-// src/core/schemas/hubDiscoverLlm.ts
-var import_v32 = require("zod/v3");
-var hubDiscoverRoundReviewLlmSchema = import_v32.z.object({
-  coverageSufficient: import_v32.z.boolean().describe("Whether selected hubs adequately cover the vault for navigation"),
-  quality: import_v32.z.enum(["good", "acceptable", "poor"]).describe("Overall quality of the hub set"),
-  needAnotherRound: import_v32.z.boolean().describe("Whether another discovery round would likely add value"),
-  confidence: import_v32.z.number().min(0).max(1).describe("Confidence in this assessment"),
-  summary: import_v32.z.string().max(800).describe("Short English summary"),
-  strengths: import_v32.z.array(import_v32.z.string()).max(10).describe("What works well"),
-  issues: import_v32.z.array(import_v32.z.string()).max(10).describe("Gaps or structural problems"),
-  nextDirections: import_v32.z.array(import_v32.z.string()).max(10).describe("Concrete directions for further discovery"),
-  suggestedDiscoveryModes: import_v32.z.array(import_v32.z.enum(["folder", "document", "cluster", "manual_seed"])).max(10).describe("Which discovery modes to emphasize next"),
-  targetPathPrefixes: import_v32.z.array(import_v32.z.string()).max(20).describe("Vault path prefixes to prioritize"),
-  stopReason: import_v32.z.string().max(500).describe("Why stopping or continuing")
-});
-var hubAssemblyHintsLlmSchema = import_v32.z.object({
-  hubs: import_v32.z.array(
-    import_v32.z.object({
-      stableKey: import_v32.z.string().max(512),
-      preferredChildHubNodeIds: import_v32.z.array(import_v32.z.string()).max(48).optional(),
-      stopAtChildHub: import_v32.z.boolean().optional(),
-      expectedTopology: import_v32.z.enum(["hierarchical", "clustered", "mixed"]).optional(),
-      deprioritizedBridgeNodeIds: import_v32.z.array(import_v32.z.string()).max(48).optional(),
-      rationale: import_v32.z.string().max(800).optional()
-    })
-  ).max(64)
-});
-var hubSemanticMergeRiskSchema = import_v32.z.enum(["cross_source_kind", "broad_folder_center", "disconnected_graph"]);
-var hubSemanticMergeGroupLlmSchema = import_v32.z.object({
-  representativeStableKey: import_v32.z.string().max(512).describe(
-    "Must be one of memberStableKeys (kind-prefixed normalized vault paths from input cards, not raw node ids)"
-  ),
-  memberStableKeys: import_v32.z.array(import_v32.z.string().max(512)).min(2).max(24).describe("Keys to merge exactly as in input hub cards; must exist in input"),
-  reason: import_v32.z.string().max(800).describe("Short English rationale"),
-  confidence: import_v32.z.number().min(0).max(1).describe("Confidence that merge is correct"),
-  mergeKind: import_v32.z.enum(["duplicate", "alias", "same_topic"]).describe("Why these are one hub"),
-  risks: import_v32.z.array(hubSemanticMergeRiskSchema).max(8).optional()
-});
-var hubSemanticMergeLlmSchema = import_v32.z.object({
-  mergeGroups: import_v32.z.array(hubSemanticMergeGroupLlmSchema).max(80)
-});
-var hubDocSummaryLlmSchema = import_v32.z.object({
-  /** Concise display title for the hub (Obsidian heading + frontmatter). */
-  title: import_v32.z.string().max(200).optional(),
-  shortSummary: import_v32.z.string(),
-  fullSummary: import_v32.z.string(),
-  coreFacts: import_v32.z.array(import_v32.z.string()).default([]),
-  queryAnchors: import_v32.z.array(import_v32.z.string()).default([]),
-  tagTopicDistribution: import_v32.z.string(),
-  timeDimension: import_v32.z.string(),
-  keyPatterns: import_v32.z.string().optional()
-}).refine((d) => d.shortSummary.trim().length > 0 || d.fullSummary.trim().length > 0, {
-  message: "At least one of shortSummary or fullSummary must be non-empty"
-});
-
 // src/core/schemas/tools/searchWeb.ts
-var import_v33 = require("zod/v3");
-var localWebSearchInputSchema = import_v33.z.object({
-  query: import_v33.z.string().describe("The search query"),
-  limit: import_v33.z.number().int().positive().max(50, "Maximum number of results is 50").default(10).describe("Maximum number of results to return").nullable()
+var import_v32 = require("zod/v3");
+var localWebSearchInputSchema = import_v32.z.object({
+  query: import_v32.z.string().describe("The search query"),
+  limit: import_v32.z.number().int().positive().max(50, "Maximum number of results is 50").default(10).describe("Maximum number of results to return").nullable()
 });
-var perplexityWebSearchInputSchema = import_v33.z.object({
-  query: import_v33.z.string().describe("The search query")
+var perplexityWebSearchInputSchema = import_v32.z.object({
+  query: import_v32.z.string().describe("The search query")
 });
 
 // src/core/schemas/tools/searchGraphInspector.ts
-var import_v34 = require("zod/v3");
-var SorterOption = import_v34.z.enum([
+var import_v33 = require("zod/v3");
+var SorterOption = import_v33.z.enum([
   "result_rank_desc",
   "result_rank_asc",
   "created_desc",
@@ -216,7 +161,7 @@ var TIME_WITHIN_VALUES = [
   "last_3_months",
   "this_year"
 ];
-var TimeWithinEnum = import_v34.z.enum(TIME_WITHIN_VALUES);
+var TimeWithinEnum = import_v33.z.enum(TIME_WITHIN_VALUES);
 var TIME_WITHIN_NORMALIZE = {
   last_3_years: "this_year",
   last_2_years: "this_year",
@@ -233,7 +178,7 @@ function normalizeTimeWithin(val) {
     return s;
   return TIME_WITHIN_NORMALIZE[s] ?? "this_year";
 }
-var FilterOption = import_v34.z.object({
+var FilterOption = import_v33.z.object({
   // tag_category_boolean_expression: z
   // 	.string()
   // 	.nullable()
@@ -242,69 +187,75 @@ var FilterOption = import_v34.z.object({
   // 			"Each value must be a single word (no spaces, no special characters). " +
   // 			"Example: tag:javascript AND category:programming or (tag:react OR tag:vue) AND category:frontend."
   // 	),
-  type: import_v34.z.enum(["note", "folder", "file", "all"]).nullable().default("all").describe(
+  type: import_v33.z.enum(["note", "folder", "file", "all"]).nullable().default("all").describe(
     "note (markdown only), file (attachments), folder, or all (everything). Default is 'all'."
   ),
-  path: import_v34.z.string().nullable().describe("Regex or prefix for file paths"),
-  modified_within: import_v34.z.preprocess((val) => normalizeTimeWithin(val), TimeWithinEnum.nullable()),
-  created_within: import_v34.z.preprocess((val) => normalizeTimeWithin(val), TimeWithinEnum.nullable())
+  path: import_v33.z.string().nullable().describe("Regex or prefix for file paths"),
+  modified_within: import_v33.z.preprocess((val) => normalizeTimeWithin(val), TimeWithinEnum.nullable()),
+  created_within: import_v33.z.preprocess((val) => normalizeTimeWithin(val), TimeWithinEnum.nullable())
 });
-var SemanticFilter = import_v34.z.object({
-  query: import_v34.z.string().describe(
+var SemanticFilter = import_v33.z.object({
+  query: import_v33.z.string().describe(
     "A descriptive phrase of the concept you're looking for. Example: 'advanced machine learning optimization' (don't use single keywords)."
   ),
-  topK: import_v34.z.number().min(1).max(50).default(20).describe("Number of top similar nodes to keep")
+  topK: import_v33.z.number().min(1).max(50).default(20).describe("Number of top similar nodes to keep")
 });
-var ResponseFormat = import_v34.z.object({
-  response_format: import_v34.z.enum(["structured", "markdown", "hybrid"]).default("hybrid").describe(
+var ResponseFormat = import_v33.z.object({
+  response_format: import_v33.z.enum(["structured", "markdown", "hybrid"]).default("hybrid").describe(
     "Choose 'markdown' if you need to reason about relationships, summarize content, or present findings. Choose 'structured' if you are performing multi-step operations for programmatic piping (e.g., getting IDs for another tool).Choose 'hybrid' if you need to get both data and context. But avoid this as it may cause context overflow(especially for graph_traversal)."
   )
 });
-var BaseLimit = import_v34.z.object({
-  limit: import_v34.z.number().min(1).max(100).nullable().default(20).describe(
+var BaseLimit = import_v33.z.object({
+  limit: import_v33.z.number().min(1).max(100).nullable().default(20).describe(
     "Maximum number of results(each step inner also. not so strictly.)"
   )
 });
-var SemanticOptions = import_v34.z.object({
-  include_semantic_paths: import_v34.z.boolean().nullable().default(true).describe(
+var SemanticOptions = import_v33.z.object({
+  include_semantic_paths: import_v33.z.boolean().nullable().default(true).describe(
     "Include document semantic connection paths (vector-similar neighbors). Prefer true for richer discovery; set false only when you need physical links only."
   ),
   semantic_filter: SemanticFilter.nullable().describe(
     "Semantic pruning/relevance filtering. The conceptual anchor for filtering. Instead of 'AI', use 'Large language model architecture and training' to ensure vector relevance."
   )
 });
-var inspectNoteContextInputSchema = import_v34.z.object({
-  note_path: import_v34.z.string()
+var inspectNoteContextInputSchema = import_v33.z.object({
+  note_path: import_v33.z.string()
 }).merge(BaseLimit).extend({
+  grep_pattern: import_v33.z.string().nullable().describe(
+    "Grep-like path filter. If set, only keep neighbor document nodes whose vault path matches this pattern (regex, case-insensitive; falls back to substring when regex is invalid)."
+  ),
   include_semantic_paths: SemanticOptions.shape.include_semantic_paths,
   response_format: ResponseFormat.shape.response_format.default("structured")
 });
-var graphTraversalInputSchema = import_v34.z.object({
-  start_note_path: import_v34.z.string(),
-  hops: import_v34.z.number().min(1).max(3).default(1).describe(
+var graphTraversalInputSchema = import_v33.z.object({
+  start_note_path: import_v33.z.string(),
+  hops: import_v33.z.number().min(1).max(3).default(1).describe(
     "3 hops is usually enough to cover a vast knowledge cluster. start with 1-2 hops. Only escalate to 3 hops if the results are too sparse."
   )
 }).merge(SemanticOptions).extend({
+  grep_pattern: import_v33.z.string().nullable().describe(
+    "Grep-like path filter. If set, traversal prunes document nodes whose vault path does NOT match this pattern (regex, case-insensitive; falls back to substring when regex is invalid). Start node is always kept."
+  ),
   filters: FilterOption.nullable().describe(
     "Only filter document nodes in each level."
   ),
   sorter: SorterOption.nullable().describe("Only sort document nodes in each level."),
   response_format: ResponseFormat.shape.response_format.default("structured"),
-  limit: import_v34.z.number().min(1).max(100).nullable().default(15).describe(
+  limit: import_v33.z.number().min(1).max(100).nullable().default(15).describe(
     "Maximum number of results. do not set too large as it may cause context overflow."
   )
 });
-var hubLocalGraphInputSchema = import_v34.z.object({
-  center_note_path: import_v34.z.string().describe("Vault-relative note path used as hub center."),
-  max_depth: import_v34.z.number().min(1).max(6).nullable().default(4).describe(
+var hubLocalGraphInputSchema = import_v33.z.object({
+  center_note_path: import_v33.z.string().describe("Vault-relative note path used as hub center."),
+  max_depth: import_v33.z.number().min(1).max(6).nullable().default(4).describe(
     "Maximum local expansion depth for the hub neighborhood. Start with 2-4 and only increase when the graph is too sparse."
   )
 }).extend({
   response_format: ResponseFormat.shape.response_format.default("structured")
 });
-var findPathInputSchema = import_v34.z.object({
-  start_note_path: import_v34.z.string(),
-  end_note_path: import_v34.z.string()
+var findPathInputSchema = import_v33.z.object({
+  start_note_path: import_v33.z.string(),
+  end_note_path: import_v33.z.string()
 }).merge(BaseLimit).extend({
   filters: FilterOption.nullable().describe(
     "Filter nodes in the path. May cost much more time and resources. As the graph algorithm is time-consuming."
@@ -312,20 +263,20 @@ var findPathInputSchema = import_v34.z.object({
   include_semantic_paths: SemanticOptions.shape.include_semantic_paths,
   response_format: ResponseFormat.shape.response_format.default("structured")
 });
-var findKeyNodesInputSchema = import_v34.z.object({}).merge(BaseLimit).extend({
+var findKeyNodesInputSchema = import_v33.z.object({}).merge(BaseLimit).extend({
   filters: FilterOption.nullable(),
   sorter: SorterOption.nullable().default("backlinks_count_desc"),
   semantic_filter: SemanticOptions.shape.semantic_filter.nullable(),
   response_format: ResponseFormat.shape.response_format.default("markdown")
 });
-var findOrphansInputSchema = import_v34.z.object({}).extend({
-  limit: import_v34.z.number().min(1).max(1e3).nullable().default(50).describe("Maximum number of results."),
+var findOrphansInputSchema = import_v33.z.object({}).extend({
+  limit: import_v33.z.number().min(1).max(1e3).nullable().default(50).describe("Maximum number of results."),
   filters: FilterOption.nullable(),
   sorter: SorterOption.nullable(),
   response_format: ResponseFormat.shape.response_format.default("markdown")
 });
-var searchByDimensionsInputSchema = import_v34.z.object({
-  boolean_expression: import_v34.z.string().describe(
+var searchByDimensionsInputSchema = import_v33.z.object({
+  boolean_expression: import_v33.z.string().describe(
     "Complex boolean expression for filtering. Use only tag:value, functional:value, AND, OR, NOT, and parentheses. Each value must be a single word (no spaces, no special characters). Example: tag:javascript AND functional:programming or (tag:react OR tag:vue) AND functional:frontend. If no results are found, try relaxing the boolean constraints or switching to OR logic."
   )
 }).merge(BaseLimit).extend({
@@ -335,45 +286,45 @@ var searchByDimensionsInputSchema = import_v34.z.object({
   sorter: SorterOption.nullable(),
   response_format: ResponseFormat.shape.response_format.default("structured")
 });
-var exploreFolderInputSchema = import_v34.z.object({
-  folderPath: import_v34.z.string().default("/").describe(
+var exploreFolderInputSchema = import_v33.z.object({
+  folderPath: import_v33.z.string().default("/").describe(
     "Folder path to inspect (relative to vault root, use '/' for root)"
   ),
-  recursive: import_v34.z.boolean().default(true),
-  max_depth: import_v34.z.number().min(1).max(3).nullable().default(2).describe(
+  recursive: import_v33.z.boolean().default(true),
+  max_depth: import_v33.z.number().min(1).max(3).nullable().default(2).describe(
     "Only active when recursive: true. Use max_depth: 1 for quick navigation, use max_depth: 3 only for deep structure mapping."
   )
 }).merge(BaseLimit).extend({
-  limit: import_v34.z.number().min(1).max(100).nullable().default(50).describe("Per-folder item cap; use \u226550 for inventory/full-list breadth."),
+  limit: import_v33.z.number().min(1).max(100).nullable().default(50).describe("Per-folder item cap; use \u226550 for inventory/full-list breadth."),
   filters: FilterOption.nullable(),
   sorter: SorterOption.nullable(),
   response_format: ResponseFormat.shape.response_format.default("markdown")
 });
-var grepFileTreeInputSchema = import_v34.z.object({
-  pattern: import_v34.z.string().min(1).describe("Search pattern (substring or regex) to match against vault file paths. Use to find anchor paths or folder names quickly."),
-  limit: import_v34.z.number().min(1).max(500).nullable().default(200).describe("Max number of matching paths to return (default 200).")
+var grepFileTreeInputSchema = import_v33.z.object({
+  pattern: import_v33.z.string().min(1).describe("Search pattern (substring or regex) to match against vault file paths. Use to find anchor paths or folder names quickly."),
+  limit: import_v33.z.number().min(1).max(500).nullable().default(200).describe("Max number of matching paths to return (default 200).")
 });
-var recentChangesWholeVaultInputSchema = import_v34.z.object({}).merge(BaseLimit).extend({
+var recentChangesWholeVaultInputSchema = import_v33.z.object({}).merge(BaseLimit).extend({
   filters: FilterOption.nullable(),
   sorter: SorterOption.nullable(),
   response_format: ResponseFormat.shape.response_format.default("markdown")
 });
-var localSearchWholeVaultInputSchema = import_v34.z.object({
-  query: import_v34.z.string().describe("The query to search for"),
-  searchMode: import_v34.z.enum(["fulltext", "vector", "hybrid"]).nullable().default("fulltext").describe(
+var localSearchWholeVaultInputSchema = import_v33.z.object({
+  query: import_v33.z.string().describe("The query to search for"),
+  searchMode: import_v33.z.enum(["fulltext", "vector", "hybrid"]).nullable().default("fulltext").describe(
     "Search mode: 'fulltext' (text only), 'vector' (embedding-based), or 'hybrid' (combine both)."
   ),
-  scopeMode: import_v34.z.enum(["vault", "inFile", "inFolder", "limitIdsSet"]).nullable().default("vault").describe(
+  scopeMode: import_v33.z.enum(["vault", "inFile", "inFolder", "limitIdsSet"]).nullable().default("vault").describe(
     "Scope of search: 'vault' (entire vault), 'inFile' (current file), 'inFolder' (a folder and its subnotes), or 'limitIdsSet' (specific note ids set)."
   ),
-  current_file_path: import_v34.z.string().nullable().nullable().describe(
+  current_file_path: import_v33.z.string().nullable().nullable().describe(
     "Current file path (if any). Used for inFile mode and directory boost."
   ),
-  folder_path: import_v34.z.string().nullable().nullable().describe("Folder path (if inFolder mode)."),
-  limit_ids_set: import_v34.z.array(import_v34.z.string()).nullable().describe(
+  folder_path: import_v33.z.string().nullable().nullable().describe("Folder path (if inFolder mode)."),
+  limit_ids_set: import_v33.z.array(import_v33.z.string()).nullable().describe(
     "Set of note/document ids to limit search within (if limitIdsSet mode)."
   ),
-  limit: import_v34.z.number().min(1).max(100).nullable().default(20).describe(
+  limit: import_v33.z.number().min(1).max(100).nullable().default(20).describe(
     "Maximum number of results. Use 15-25 for broader coverage; 8-12 for fast narrow search."
   )
 }).extend({
@@ -383,60 +334,28 @@ var localSearchWholeVaultInputSchema = import_v34.z.object({
 });
 
 // src/core/schemas/tools/contentReader.ts
-var import_v35 = require("zod/v3");
-function makeContentReaderInputSchema(params) {
-  const { shortSummaryLength, fullSummaryLength } = params;
-  return import_v35.z.object({
-    path: import_v35.z.string().describe("path related to vault root."),
-    mode: import_v35.z.enum(["fullContent", "shortSummary", "fullSummary", "range", "grep", "meta"]).default("shortSummary").describe(
-      `reading mode: prefer 'shortSummary', 'grep', or 'range'; 'fullContent' only for small files (see size limit), 'shortSummary' get short summary, len <${shortSummaryLength} 'fullSummary' get full summary, len <${fullSummaryLength} 'range' get specific lines (1-based, inclusive), 'grep' search within a single file and return matched lines`
-    ),
-    lineRange: import_v35.z.object({
-      start: import_v35.z.number().describe("The start line (1-based). Must be positive.").int().positive(),
-      end: import_v35.z.number().describe("The end line (1-based). Must be positive and >= start.").int().positive()
-    }).refine(
-      (obj) => typeof obj.start === "number" && typeof obj.end === "number" && obj.end >= obj.start,
-      { message: "end must be greater than or equal to start" }
-    ).nullable().describe("the range of lines of parsed document content to read."),
-    query: import_v35.z.string().nullable().describe(
-      "Search query used by grep mode. Treated as RegExp by default; falls back to literal match if invalid."
-    ),
-    case_sensitive: import_v35.z.boolean().nullable().default(true).describe("Case sensitive search for grep mode. Default true."),
-    max_matches: import_v35.z.number().int().min(1).max(50).nullable().default(50).describe("Maximum number of matches for grep mode (hard cap 50).")
-  }).superRefine((data, ctx) => {
-    if (data.mode === "range") {
-      if (!data.lineRange) {
-        ctx.addIssue({ code: import_v35.z.ZodIssueCode.custom, path: ["lineRange"], message: "lineRange is required when mode is 'range'" });
-      }
-    }
-    if (data.mode === "grep") {
-      if (!data.query || !data.query.trim()) {
-        ctx.addIssue({ code: import_v35.z.ZodIssueCode.custom, path: ["query"], message: "query is required when mode is 'grep'" });
-      }
-    }
-  });
-}
+var import_v34 = require("zod/v3");
 
 // src/core/schemas/tools/searchMemoryStore.ts
-var import_v36 = require("zod/v3");
-var searchMemoryStoreInputSchema = import_v36.z.object({
-  query: import_v36.z.string().describe("Search query (keyword or phrase)"),
-  maxChars: import_v36.z.number().min(100).max(8e3).nullable().describe("Max chars to return (default 4000)")
+var import_v35 = require("zod/v3");
+var searchMemoryStoreInputSchema = import_v35.z.object({
+  query: import_v35.z.string().describe("Search query (keyword or phrase)"),
+  maxChars: import_v35.z.number().min(100).max(8e3).nullable().describe("Max chars to return (default 4000)")
 });
-var getAnalysisMessageCountInputSchema = import_v36.z.object({});
+var getAnalysisMessageCountInputSchema = import_v35.z.object({});
 
 // src/core/schemas/tools/callAgentTool.ts
-var import_v37 = require("zod/v3");
+var import_v36 = require("zod/v3");
 
 // src/core/schemas/tools/submitFinalAnswer.ts
-var import_v38 = require("zod/v3");
-var submitFinalAnswerInputSchema = import_v38.z.object({});
+var import_v37 = require("zod/v3");
+var submitFinalAnswerInputSchema = import_v37.z.object({});
 
 // src/core/schemas/tools/submitOverviewLogicModel.ts
-var import_v310 = require("zod/v3");
+var import_v39 = require("zod/v3");
 
 // src/core/schemas/agents/search-agent-schemas.ts
-var import_v39 = require("zod/v3");
+var import_v38 = require("zod/v3");
 
 // src/core/utils/file-utils.ts
 function normalizeFilePath(path3) {
@@ -477,7 +396,7 @@ var SEMANTIC_DIMENSION_IDS = [
 var AXIS_TOPOLOGY_ID = "inventory_mapping";
 var AXIS_TEMPORAL_ID = "temporal_mapping";
 var ALL_DIMENSION_IDS = [...SEMANTIC_DIMENSION_IDS, AXIS_TOPOLOGY_ID, AXIS_TEMPORAL_ID];
-var semanticDimensionIdsEnum = import_v39.z.enum(SEMANTIC_DIMENSION_IDS).describe(
+var semanticDimensionIdsEnum = import_v38.z.enum(SEMANTIC_DIMENSION_IDS).describe(
   `One of the 15 dimension ids, grouped as follows:
 
 1. **Base (essence & origin)**
@@ -507,35 +426,35 @@ var semanticDimensionIdsEnum = import_v39.z.enum(SEMANTIC_DIMENSION_IDS).describ
    - trend_future: Trend, future, prediction, potential. e.g. In the AI era, slot frameworks may automate.
    - tool_resource: Tools, resources, books, software. e.g. Use Mind Maps to visualize dimensions.`
 );
-var scopeConstraintSchema = import_v39.z.object({
-  path: import_v39.z.string().describe('Folder or file path to lock this dimension to; use "" when none.'),
-  tags: import_v39.z.array(import_v39.z.string()).describe(
+var scopeConstraintSchema = import_v38.z.object({
+  path: import_v38.z.string().describe('Folder or file path to lock this dimension to; use "" when none.'),
+  tags: import_v38.z.array(import_v38.z.string()).describe(
     "Topic tags and/or functional tags for recall; use [] when none. Prefer functional tags from the provided mapping."
   ),
-  anchor_entity: import_v39.z.string().describe(
+  anchor_entity: import_v38.z.string().describe(
     'Main subject/entity this dimension is about; use "" when none. Agent 2 uses it as a retrieval hook.'
   )
 }).nullable();
-var semanticDimensionChoiceSchema = import_v39.z.object({
+var semanticDimensionChoiceSchema = import_v38.z.object({
   id: semanticDimensionIdsEnum,
-  intent_description: import_v39.z.string().min(1, "intent_description is required.").describe(
+  intent_description: import_v38.z.string().min(1, "intent_description is required.").describe(
     'Concrete search task for this dimension: state what to search/retrieve in imperative form (e.g. "Search for notes that define X and list\u2026", "Find content comparing A with B\u2026"). Not a topic label or passive summary\u2014must read as an actionable retrieval instruction.'
   ),
   scope_constraint: scopeConstraintSchema.describe("Search scope for this dimension."),
-  retrieval_orientation: import_v39.z.enum(["relational", "chronological", "statistical", "categorical"]).nullable().describe(
+  retrieval_orientation: import_v38.z.enum(["relational", "chronological", "statistical", "categorical"]).nullable().describe(
     "Retrieval tendency: relational (links/paths), chronological (recent/history), statistical (data), categorical (definitions/tags). Use null when no preference."
   )
 });
-var topologyDimensionChoiceSchema = import_v39.z.object({
-  intent_description: import_v39.z.string().min(1).describe(
+var topologyDimensionChoiceSchema = import_v38.z.object({
+  intent_description: import_v38.z.string().min(1).describe(
     'Only WHAT to scan and WHERE. No WHY (e.g. no "for comparison", "to evaluate"). MUST include "regardless of status or quality" and "list ALL items to ensure no omission". Forbidden: quality/success filters (successful, good, relevant, best).'
   ),
   scope_constraint: scopeConstraintSchema.describe(
     "Physical boundary. Path is the most stable anchor; tags are valid as navigation/dimension. When using tags, prefer user-mentioned or vault-known names to avoid empty results."
   )
 });
-var temporalDimensionChoiceSchema = import_v39.z.object({
-  intent_description: import_v39.z.string().min(1).describe("Goal: compare recent vs historical change/evolution."),
+var temporalDimensionChoiceSchema = import_v38.z.object({
+  intent_description: import_v38.z.string().min(1).describe("Goal: compare recent vs historical change/evolution."),
   scope_constraint: scopeConstraintSchema
 });
 var USER_APPEAL_TYPES = [
@@ -549,153 +468,126 @@ var USER_APPEAL_TYPES = [
   "control_framework",
   "moral_tribal"
 ];
-var queryClassifierOutputSchema = import_v39.z.object({
+var queryClassifierOutputSchema = import_v38.z.object({
   /** Semantic depth axis: one or more of the 15 dimension ids. */
-  semantic_dimensions: import_v39.z.array(semanticDimensionChoiceSchema).min(1).describe(
+  semantic_dimensions: import_v38.z.array(semanticDimensionChoiceSchema).min(1).describe(
     "Semantic axis. One or more dimension targets. Same id may repeat with different intent_description. Each may have scope_constraint and retrieval_orientation."
   ),
   /** Topology breadth axis: inventory/audit (full list), not semantic search. Required; use [] when point-type only. */
-  topology_dimensions: import_v39.z.array(topologyDimensionChoiceSchema).min(1).describe(
+  topology_dimensions: import_v38.z.array(topologyDimensionChoiceSchema).min(1).describe(
     "Topology axis: physical inventory of entities under path/tag. List-first, no quality filter. Empty array only if query is strictly point-type (single entity), not surface-type (collection)."
   ),
   /** Temporal dynamic axis: change/evolution comparison. Required; use [] when not applicable. */
-  temporal_dimensions: import_v39.z.array(temporalDimensionChoiceSchema).min(1).describe(
+  temporal_dimensions: import_v38.z.array(temporalDimensionChoiceSchema).min(1).describe(
     "Temporal axis. Zero or more temporal_mapping targets. Empty array if no change/trend/evolution intent."
   ),
-  user_persona_config: import_v39.z.object({
-    appeal: import_v39.z.enum(USER_APPEAL_TYPES).nullable().describe("User appeal type."),
-    detail_level: import_v39.z.enum(["concise", "comprehensive", "technical"]).nullable().describe("Output detail level; use null for default.")
+  user_persona_config: import_v38.z.object({
+    appeal: import_v38.z.enum(USER_APPEAL_TYPES).nullable().describe("User appeal type."),
+    detail_level: import_v38.z.enum(["concise", "comprehensive", "technical"]).nullable().describe("Output detail level; use null for default.")
   }).nullable().describe("Global preference for summary style only."),
-  is_cross_domain: import_v39.z.boolean().describe(
+  is_cross_domain: import_v38.z.boolean().describe(
     "When true, Agent 2 may break out of scope_constraint to correlate across the whole vault."
   )
 });
-var dimensionChoiceSchema = import_v39.z.object({
-  id: import_v39.z.enum(ALL_DIMENSION_IDS),
-  intent_description: import_v39.z.string().min(1),
+var dimensionChoiceSchema = import_v38.z.object({
+  id: import_v38.z.enum(ALL_DIMENSION_IDS),
+  intent_description: import_v38.z.string().min(1),
   scope_constraint: scopeConstraintSchema,
-  retrieval_orientation: import_v39.z.enum(["relational", "chronological", "statistical", "categorical"]).nullable(),
-  output_format: import_v39.z.enum(["list", "tree"]).nullable(),
-  mustIncludeKeywords: import_v39.z.array(import_v39.z.string()).nullable()
+  retrieval_orientation: import_v38.z.enum(["relational", "chronological", "statistical", "categorical"]).nullable(),
+  output_format: import_v38.z.enum(["list", "tree"]).nullable(),
+  mustIncludeKeywords: import_v38.z.array(import_v38.z.string()).nullable()
 });
-var physicalSearchTaskSchema = import_v39.z.object({
-  unified_intent: import_v39.z.string().min(1).describe('Synthesized search instruction (not a keyword list): one imperative retrieval mission that merges the intent_description of all covered dimensions. Same style as dimension intent\u2014e.g. "Search for notes that define X, compare alternatives, and state applicable conditions and trends."'),
-  covered_dimension_ids: import_v39.z.array(import_v39.z.enum(ALL_DIMENSION_IDS)).min(1).describe("Logical dimension ids that this task will feed; results are mapped back to each."),
-  search_priority: import_v39.z.number().int().min(0).describe("Execution order; lower = higher priority."),
+var physicalSearchTaskSchema = import_v38.z.object({
+  unified_intent: import_v38.z.string().min(1).describe('Synthesized search instruction (not a keyword list): one imperative retrieval mission that merges the intent_description of all covered dimensions. Same style as dimension intent\u2014e.g. "Search for notes that define X, compare alternatives, and state applicable conditions and trends."'),
+  covered_dimension_ids: import_v38.z.array(import_v38.z.enum(ALL_DIMENSION_IDS)).min(1).describe("Logical dimension ids that this task will feed; results are mapped back to each."),
+  search_priority: import_v38.z.number().int().min(0).describe("Execution order; lower = higher priority."),
   scope_constraint: scopeConstraintSchema.describe("Merged path/tags/anchor for this task; use intersection or dominant scope of covered dimensions.")
 });
-var searchArchitectOutputSchema = import_v39.z.object({
-  physical_tasks: import_v39.z.array(physicalSearchTaskSchema).min(1).describe("Physical recon tasks; each runs once and results map to covered_dimension_ids.")
+var searchArchitectOutputSchema = import_v38.z.object({
+  physical_tasks: import_v38.z.array(physicalSearchTaskSchema).min(1).describe("Physical recon tasks; each runs once and results map to covered_dimension_ids.")
 });
-var defaultClassify = {
-  semantic_dimensions: [
-    {
-      id: "essence_definition",
-      intent_description: "Semantic axis: Focuses on the core subject, concept, or content being queried. Used for \u201Cwhat is/topic/content\u201D type questions and summarization of main points or purposes.",
-      scope_constraint: null,
-      retrieval_orientation: null
-    }
-  ],
-  topology_dimensions: [
-    {
-      intent_description: 'Topological breadth axis: Determines whether the query targets a "point" (a specific entity) or a "surface" (a set or collection). If it involves collections (such as all/list/directory/relationships), the Inventory_Mapping dimension is activated to enumerate all relevant entities/paths (highest priority).',
-      scope_constraint: null
-    }
-  ],
-  temporal_dimensions: [
-    {
-      intent_description: 'Spatiotemporal dynamics axis: Determines if the query concerns "change/recent/evolution/comparison/trend". If so, the Delta_Comparison dimension is activated to focus on differences, versions, or historical shifts.',
-      scope_constraint: null
-    }
-  ],
-  user_persona_config: {
-    appeal: "cognitive_learning",
-    detail_level: "comprehensive"
-  },
-  is_cross_domain: false
-};
-var battlefieldAssessmentSchema = import_v39.z.object({
-  search_density: import_v39.z.enum(["High", "Medium", "Low"]).nullable(),
-  match_quality: import_v39.z.enum(["Exact", "Fuzzy", "None"]).nullable(),
-  suggestion: import_v39.z.string().max(400).nullable().describe("Short hint for evidence phase; ~50 words max")
+var battlefieldAssessmentSchema = import_v38.z.object({
+  search_density: import_v38.z.enum(["High", "Medium", "Low"]).nullable(),
+  match_quality: import_v38.z.enum(["Exact", "Fuzzy", "None"]).nullable(),
+  suggestion: import_v38.z.string().max(400).nullable().describe("Short hint for evidence phase; ~50 words max")
 });
-var submitReconPathsSchema = import_v39.z.object({
-  paths: import_v39.z.array(import_v39.z.string()).describe("Full set of in-scope, relevant paths from that tool result (no sample/subset). Prefer one call; if splitting, use large batches (e.g. 100-200).")
+var submitReconPathsSchema = import_v38.z.object({
+  paths: import_v38.z.array(import_v38.z.string()).describe("Full set of in-scope, relevant paths from that tool result (no sample/subset). Prefer one call; if splitting, use large batches (e.g. 100-200).")
 });
-var rawSearchReportSchema = import_v39.z.object({
-  tactical_summary: import_v39.z.string().max(2e3).describe("Short summary or compact manifest; max 300 words. Prefer signal over length."),
-  discovered_leads: import_v39.z.array(import_v39.z.string()).describe("Paths or entity names for deeper evidence collection. No fixed maximum; include all relevant items for this dimension; prefer comprehensive coverage."),
+var rawSearchReportSchema = import_v38.z.object({
+  tactical_summary: import_v38.z.string().max(2e3).describe("Short summary or compact manifest; max 300 words. Prefer signal over length."),
+  discovered_leads: import_v38.z.array(import_v38.z.string()).describe("Paths or entity names for deeper evidence collection. No fixed maximum; include all relevant items for this dimension; prefer comprehensive coverage."),
   battlefield_assessment: battlefieldAssessmentSchema.nullable()
 });
-var leadStrategySchema = import_v39.z.object({
-  must_expand_prefixes: import_v39.z.array(import_v39.z.string()).describe('Folder path prefixes to expand to full file list (e.g. "kb2-learn-prd/B-2-\u521B\u610F\u548C\u60F3\u6CD5\u7BA1\u7406/A-All Ideas/"). Code will list every file under each prefix.'),
-  include_path_regex: import_v39.z.array(import_v39.z.string()).nullable().describe("Optional: include only paths matching any of these regexes (applied to vault paths). Use null when not needed."),
-  exclude_path_regex: import_v39.z.array(import_v39.z.string()).nullable().describe("Optional: exclude paths matching any of these regexes. Use null when not needed."),
-  max_expand_results: import_v39.z.number().min(1).max(1e4).nullable().describe("Cap total paths from expansion (default 5000). Use null for default.")
+var leadStrategySchema = import_v38.z.object({
+  must_expand_prefixes: import_v38.z.array(import_v38.z.string()).describe('Folder path prefixes to expand to full file list (e.g. "kb2-learn-prd/B-2-\u521B\u610F\u548C\u60F3\u6CD5\u7BA1\u7406/A-All Ideas/"). Code will list every file under each prefix.'),
+  include_path_regex: import_v38.z.array(import_v38.z.string()).nullable().describe("Optional: include only paths matching any of these regexes (applied to vault paths). Use null when not needed."),
+  exclude_path_regex: import_v38.z.array(import_v38.z.string()).nullable().describe("Optional: exclude paths matching any of these regexes. Use null when not needed."),
+  max_expand_results: import_v38.z.number().min(1).max(1e4).nullable().describe("Cap total paths from expansion (default 5000). Use null for default.")
 });
-var searchPlanItemSchema = import_v39.z.object({
-  scope_path: import_v39.z.string().describe('Folder path to search within (e.g. "kb2-learn-prd/B-2-\u521B\u610F\u548C\u60F3\u6CD5\u7BA1\u7406/").'),
-  query: import_v39.z.string().describe("Search query (keywords or semantic description)."),
-  search_mode: import_v39.z.enum(["fulltext", "vector", "hybrid"]).nullable().describe("Search mode. Use null for default fulltext."),
-  top_k: import_v39.z.number().min(1).max(200).nullable().describe("Max results. Use null for default 80.")
+var searchPlanItemSchema = import_v38.z.object({
+  scope_path: import_v38.z.string().describe('Folder path to search within (e.g. "kb2-learn-prd/B-2-\u521B\u610F\u548C\u60F3\u6CD5\u7BA1\u7406/").'),
+  query: import_v38.z.string().describe("Search query (keywords or semantic description)."),
+  search_mode: import_v38.z.enum(["fulltext", "vector", "hybrid"]).nullable().describe("Search mode. Use null for default fulltext."),
+  top_k: import_v38.z.number().min(1).max(200).nullable().describe("Max results. Use null for default 80.")
 });
-var pathSubmitOutputSchema = import_v39.z.object({
-  tactical_summary: import_v39.z.string().max(2e3).describe("Short summary or compact inventory from this round; max 300 words."),
+var pathSubmitOutputSchema = import_v38.z.object({
+  tactical_summary: import_v38.z.string().max(2e3).describe("Short summary or compact inventory from this round; max 300 words."),
   battlefield_assessment: battlefieldAssessmentSchema.nullable(),
   lead_strategy: leadStrategySchema.nullable().describe("How to acquire paths by expanding folders and/or filtering vault paths by regex. Use null when not needed."),
-  search_plan: import_v39.z.array(searchPlanItemSchema).nullable().describe("Scoped searches to run; code will execute each and collect result paths. Use null when not needed."),
-  discovered_leads: import_v39.z.array(import_v39.z.string()).max(20).nullable().describe("At most 20 scattered .md file paths only. Do not list images, excalidraw, or paths under must_expand_prefixes (those are auto-expanded). Use null when not needed."),
+  search_plan: import_v38.z.array(searchPlanItemSchema).nullable().describe("Scoped searches to run; code will execute each and collect result paths. Use null when not needed."),
+  discovered_leads: import_v38.z.array(import_v38.z.string()).max(20).nullable().describe("At most 20 scattered .md file paths only. Do not list images, excalidraw, or paths under must_expand_prefixes (those are auto-expanded). Use null when not needed."),
   /** When true, recon loop ends after this round; system will generate the final report. Set from battlefield + coverage assessment. */
-  should_submit_report: import_v39.z.boolean().describe("True when coverage is complete, round budget is reached, or further exploration adds no new leads; false to continue next round.")
+  should_submit_report: import_v38.z.boolean().describe("True when coverage is complete, round budget is reached, or further exploration adds no new leads; false to continue next round.")
 });
-var evidenceFactSchema = import_v39.z.object({
-  claim: import_v39.z.string().describe("One-sentence claim from the source"),
-  quote: import_v39.z.string().describe("Exact quote supporting the claim"),
-  confidence: import_v39.z.enum(["high", "medium", "low"]).nullable()
+var evidenceFactSchema = import_v38.z.object({
+  claim: import_v38.z.string().describe("One-sentence claim from the source"),
+  quote: import_v38.z.string().describe("Exact quote supporting the claim"),
+  confidence: import_v38.z.enum(["high", "medium", "low"]).nullable()
 });
-var evidencePackSchema = import_v39.z.object({
-  origin: import_v39.z.object({
-    tool: import_v39.z.string().describe("Tool that produced this source (e.g. content_reader, local_search)"),
-    path_or_url: import_v39.z.string().describe("File path or URL of the source")
+var evidencePackSchema = import_v38.z.object({
+  origin: import_v38.z.object({
+    tool: import_v38.z.string().describe("Tool that produced this source (e.g. content_reader, local_search)"),
+    path_or_url: import_v38.z.string().describe("File path or URL of the source")
   }),
-  summary: import_v39.z.string().nullable().describe("Short summary of this pack"),
-  facts: import_v39.z.array(evidenceFactSchema).describe("1\u20135 facts with claim+quote"),
-  snippet: import_v39.z.object({ type: import_v39.z.enum(["extract", "condensed"]), content: import_v39.z.string() }).nullable().describe("Key excerpt from source")
+  summary: import_v38.z.string().nullable().describe("Short summary of this pack"),
+  facts: import_v38.z.array(evidenceFactSchema).describe("1\u20135 facts with claim+quote"),
+  snippet: import_v38.z.object({ type: import_v38.z.enum(["extract", "condensed"]), content: import_v38.z.string() }).nullable().describe("Key excerpt from source")
 });
-var submitEvidencePackInputSchema = import_v39.z.object({
-  packs: import_v39.z.array(evidencePackSchema).min(1).max(12).describe("3\u20138 evidence packs; each with origin, facts, optional snippet")
+var submitEvidencePackInputSchema = import_v38.z.object({
+  packs: import_v38.z.array(evidencePackSchema).min(1).max(12).describe("3\u20138 evidence packs; each with origin, facts, optional snippet")
 });
-var markTaskCompletedInputSchema = import_v39.z.object({
-  taskId: import_v39.z.string().describe("ID of the task that is now completed")
+var markTaskCompletedInputSchema = import_v38.z.object({
+  taskId: import_v38.z.string().describe("ID of the task that is now completed")
 });
-var consolidatedTaskSchema = import_v39.z.object({
-  path: import_v39.z.string(),
-  relevant_dimension_ids: import_v39.z.array(
+var consolidatedTaskSchema = import_v38.z.object({
+  path: import_v38.z.string(),
+  relevant_dimension_ids: import_v38.z.array(
     /** Consolidator: one path, which dimensions need it, synthesized focus, priority. taskId assigned by runner. */
-    import_v39.z.object({
-      id: import_v39.z.enum(ALL_DIMENSION_IDS),
-      intent: import_v39.z.string().describe("From original dimension intent_description or merged extraction intent")
+    import_v38.z.object({
+      id: import_v38.z.enum(ALL_DIMENSION_IDS),
+      intent: import_v38.z.string().describe("From original dimension intent_description or merged extraction intent")
     })
   ),
-  extraction_focus: import_v39.z.string().describe("Synthesized focus for Evidence Agent for this file"),
-  priority: import_v39.z.enum(["Crucial", "Secondary"]).describe("Crucial if 3+ dimensions need it; Secondary or drop if marginal"),
-  task_load: import_v39.z.enum(["high", "medium", "low"]).nullable().describe("For grouping and concurrency")
+  extraction_focus: import_v38.z.string().describe("Synthesized focus for Evidence Agent for this file"),
+  priority: import_v38.z.enum(["Crucial", "Secondary"]).describe("Crucial if 3+ dimensions need it; Secondary or drop if marginal"),
+  task_load: import_v38.z.enum(["high", "medium", "low"]).nullable().describe("For grouping and concurrency")
 });
-var consolidatorOutputSchema = import_v39.z.object({
-  consolidated_tasks: import_v39.z.array(consolidatedTaskSchema),
-  global_recon_insight: import_v39.z.string().describe("up to 500 words summary of current recon state")
+var consolidatorOutputSchema = import_v38.z.object({
+  consolidated_tasks: import_v38.z.array(consolidatedTaskSchema),
+  global_recon_insight: import_v38.z.string().describe("up to 500 words summary of current recon state")
 });
-var groupContextItemSchema = import_v39.z.object({
-  topic_anchor: import_v39.z.string().describe("Unified theme for this group of files"),
-  group_focus: import_v39.z.string().describe("Instruction for Evidence Agent: what to compare and dig for when reading these files")
+var groupContextItemSchema = import_v38.z.object({
+  topic_anchor: import_v38.z.string().describe("Unified theme for this group of files"),
+  group_focus: import_v38.z.string().describe("Instruction for Evidence Agent: what to compare and dig for when reading these files")
 });
-var setGroupContextInputSchema = import_v39.z.object({
-  group_index: import_v39.z.number().int().min(0).describe("0-based index of the group"),
-  topic_anchor: import_v39.z.string().describe("Unified theme for this group of files"),
-  group_focus: import_v39.z.string().describe("Instruction for Evidence Agent: what to compare and dig for")
+var setGroupContextInputSchema = import_v38.z.object({
+  group_index: import_v38.z.number().int().min(0).describe("0-based index of the group"),
+  topic_anchor: import_v38.z.string().describe("Unified theme for this group of files"),
+  group_focus: import_v38.z.string().describe("Instruction for Evidence Agent: what to compare and dig for")
 });
-var groupContextRefinementOutputSchema = import_v39.z.object({
-  groups: import_v39.z.array(groupContextItemSchema).describe("One item per input group, same order")
+var groupContextRefinementOutputSchema = import_v38.z.object({
+  groups: import_v38.z.array(groupContextItemSchema).describe("One item per input group, same order")
 });
 var FUNCTIONAL_TAG_CORE = [
   "current_state",
@@ -731,70 +623,70 @@ var SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS = {
   trend_future: ["timeline_event", "external_context"],
   tool_resource: ["resource", "skill_stack"]
 };
-var suggestedFollowUpQuestionsSchema = import_v39.z.object({
-  questions: import_v39.z.array(import_v39.z.string()).describe("Follow-up questions the user might ask next")
+var suggestedFollowUpQuestionsSchema = import_v38.z.object({
+  questions: import_v38.z.array(import_v38.z.string()).describe("Follow-up questions the user might ask next")
 });
 var OVERVIEW_NODE_KINDS = ["nucleus", "decision", "fact", "heuristic"];
 var OVERVIEW_EDGE_RELATIONS = ["cause", "prerequisite", "conflict", "feedback", "correlate", "synergy"];
 var OVERVIEW_NODES_MIN = 6;
 var OVERVIEW_NODES_MAX = 12;
-var overviewLogicModelNucleusSchema = import_v39.z.object({
-  nodeIndex: import_v39.z.number().int().min(0).describe("Index of the nucleus node in the nodes array (0-based); Mermaid phase will assign id N1, N2, ... by order"),
-  statement: import_v39.z.string().describe("Core tension or central claim"),
-  hiddenOpposition: import_v39.z.string().nullable().describe("Implicit opposite (e.g. cost vs benefit)")
+var overviewLogicModelNucleusSchema = import_v38.z.object({
+  nodeIndex: import_v38.z.number().int().min(0).describe("Index of the nucleus node in the nodes array (0-based); Mermaid phase will assign id N1, N2, ... by order"),
+  statement: import_v38.z.string().describe("Core tension or central claim"),
+  hiddenOpposition: import_v38.z.string().nullable().describe("Implicit opposite (e.g. cost vs benefit)")
 });
-var overviewLogicModelNodeSchema = import_v39.z.object({
-  label: import_v39.z.string().max(60).describe("Short display label"),
-  kind: import_v39.z.enum(OVERVIEW_NODE_KINDS),
-  importance: import_v39.z.number().min(0).max(10),
-  confidence: import_v39.z.enum(["high", "medium", "low"]),
-  sourceRefs: import_v39.z.array(import_v39.z.string()).describe("Fact refs e.g. F1, F2 or source ids"),
-  clusterId: import_v39.z.string().nullable()
+var overviewLogicModelNodeSchema = import_v38.z.object({
+  label: import_v38.z.string().max(60).describe("Short display label"),
+  kind: import_v38.z.enum(OVERVIEW_NODE_KINDS),
+  importance: import_v38.z.number().min(0).max(10),
+  confidence: import_v38.z.enum(["high", "medium", "low"]),
+  sourceRefs: import_v38.z.array(import_v38.z.string()).describe("Fact refs e.g. F1, F2 or source ids"),
+  clusterId: import_v38.z.string().nullable()
 });
-var overviewLogicModelEdgeSchema = import_v39.z.object({
-  fromIndex: import_v39.z.number().int().min(0),
-  toIndex: import_v39.z.number().int().min(0),
-  relation: import_v39.z.enum(OVERVIEW_EDGE_RELATIONS),
-  label: import_v39.z.string().max(40),
-  rationaleFactRefs: import_v39.z.array(import_v39.z.string()).nullable()
+var overviewLogicModelEdgeSchema = import_v38.z.object({
+  fromIndex: import_v38.z.number().int().min(0),
+  toIndex: import_v38.z.number().int().min(0),
+  relation: import_v38.z.enum(OVERVIEW_EDGE_RELATIONS),
+  label: import_v38.z.string().max(40),
+  rationaleFactRefs: import_v38.z.array(import_v38.z.string()).nullable()
 });
-var overviewLogicModelClusterSchema = import_v39.z.object({
-  id: import_v39.z.string(),
-  title: import_v39.z.string().max(30),
-  nodeIndices: import_v39.z.array(import_v39.z.number().int().min(0))
+var overviewLogicModelClusterSchema = import_v38.z.object({
+  id: import_v38.z.string(),
+  title: import_v38.z.string().max(30),
+  nodeIndices: import_v38.z.array(import_v38.z.number().int().min(0))
 });
-var overviewLogicModelTimelineSchema = import_v39.z.object({
-  phases: import_v39.z.array(import_v39.z.object({
-    phaseId: import_v39.z.string(),
-    label: import_v39.z.string(),
-    nodeIndices: import_v39.z.array(import_v39.z.number().int().min(0))
+var overviewLogicModelTimelineSchema = import_v38.z.object({
+  phases: import_v38.z.array(import_v38.z.object({
+    phaseId: import_v38.z.string(),
+    label: import_v38.z.string(),
+    nodeIndices: import_v38.z.array(import_v38.z.number().int().min(0))
   })).nullable()
 }).nullable();
-var overviewLogicModelSchema = import_v39.z.object({
+var overviewLogicModelSchema = import_v38.z.object({
   nucleus: overviewLogicModelNucleusSchema,
-  nodes: import_v39.z.array(overviewLogicModelNodeSchema).min(OVERVIEW_NODES_MIN).max(OVERVIEW_NODES_MAX),
-  edges: import_v39.z.array(overviewLogicModelEdgeSchema),
-  clusters: import_v39.z.array(overviewLogicModelClusterSchema).nullable(),
+  nodes: import_v38.z.array(overviewLogicModelNodeSchema).min(OVERVIEW_NODES_MIN).max(OVERVIEW_NODES_MAX),
+  edges: import_v38.z.array(overviewLogicModelEdgeSchema),
+  clusters: import_v38.z.array(overviewLogicModelClusterSchema).nullable(),
   timeline: overviewLogicModelTimelineSchema
 }).superRefine((data, ctx) => {
   const hasConflictOrFeedback = data.edges.some((e) => e.relation === "conflict" || e.relation === "feedback");
   if (!hasConflictOrFeedback) {
     ctx.addIssue({
-      code: import_v39.z.ZodIssueCode.custom,
+      code: import_v38.z.ZodIssueCode.custom,
       message: 'At least one edge must have relation "conflict" or "feedback". Rescan evidence for tensions or loops.'
     });
   }
   const n = data.nodes.length;
   if (data.nucleus.nodeIndex >= n) {
     ctx.addIssue({
-      code: import_v39.z.ZodIssueCode.custom,
+      code: import_v38.z.ZodIssueCode.custom,
       message: `nucleus.nodeIndex ${data.nucleus.nodeIndex} must be < nodes.length (${n}).`
     });
   }
   for (const e of data.edges) {
     if (e.fromIndex >= n || e.toIndex >= n) {
       ctx.addIssue({
-        code: import_v39.z.ZodIssueCode.custom,
+        code: import_v38.z.ZodIssueCode.custom,
         message: `Edge fromIndex ${e.fromIndex} toIndex ${e.toIndex} must be < nodes.length (${n}).`
       });
       break;
@@ -804,7 +696,7 @@ var overviewLogicModelSchema = import_v39.z.object({
     for (const i of c.nodeIndices) {
       if (i >= n) {
         ctx.addIssue({
-          code: import_v39.z.ZodIssueCode.custom,
+          code: import_v38.z.ZodIssueCode.custom,
           message: `Cluster ${c.id} nodeIndex ${i} must be < nodes.length (${n}).`
         });
         break;
@@ -812,21 +704,21 @@ var overviewLogicModelSchema = import_v39.z.object({
     }
   }
 });
-var needMoreDashboardBlocksInputSchema = import_v39.z.object({
-  reason: import_v39.z.string().describe("The reason why we need more dashboard blocks.")
+var needMoreDashboardBlocksInputSchema = import_v38.z.object({
+  reason: import_v38.z.string().describe("The reason why we need more dashboard blocks.")
 });
 var TOPICS_PLAN_MAX = 50;
 var BLOCK_PLAN_MAX = 12;
-var dashboardUpdatePlanSchema = import_v39.z.object({
-  topicsPlan: import_v39.z.array(import_v39.z.string()).max(TOPICS_PLAN_MAX).nullable().describe("5-50 short topic instructions; avoid exhaustive lists"),
-  blockPlan: import_v39.z.array(import_v39.z.string()).max(BLOCK_PLAN_MAX).nullable().describe("3-12 block instructions"),
-  note: import_v39.z.string().nullable()
+var dashboardUpdatePlanSchema = import_v38.z.object({
+  topicsPlan: import_v38.z.array(import_v38.z.string()).max(TOPICS_PLAN_MAX).nullable().describe("5-50 short topic instructions; avoid exhaustive lists"),
+  blockPlan: import_v38.z.array(import_v38.z.string()).max(BLOCK_PLAN_MAX).nullable().describe("3-12 block instructions"),
+  note: import_v38.z.string().nullable()
 });
-var submitTopicsPlanInputSchema = import_v39.z.object({
-  plan: import_v39.z.array(import_v39.z.string()).max(8).describe("5\u20138 topic instructions; theme synthesis, not isolated topics.")
+var submitTopicsPlanInputSchema = import_v38.z.object({
+  plan: import_v38.z.array(import_v38.z.string()).max(8).describe("5\u20138 topic instructions; theme synthesis, not isolated topics.")
 }).describe("Each plan describes a topic to be created or updated.");
-var submitBlocksPlanInputSchema = import_v39.z.object({
-  plan: import_v39.z.array(import_v39.z.string()).describe(
+var submitBlocksPlanInputSchema = import_v38.z.object({
+  plan: import_v38.z.array(import_v38.z.string()).describe(
     "Block instructions. Each string MUST reference Confirmed Facts by index (e.g. 'Based on Fact #3 and #5') and, when the block needs vault content, include the data source path or a clear lookup hint so the Blocks agent can call_search_agent."
   )
 }).describe("Submit the blocks update plan with evidence binding and optional source paths.");
@@ -850,46 +742,46 @@ var REPORT_PLAN_PHASE_IDS = [
 var REPORT_PLAN_BODY_PHASE_IDS = REPORT_PLAN_PHASE_IDS.filter(
   (id) => id.startsWith("body_")
 );
-var submitReportPhaseInputSchema = import_v39.z.object({
-  phaseId: import_v39.z.string().describe(
+var submitReportPhaseInputSchema = import_v38.z.object({
+  phaseId: import_v38.z.string().describe(
     "Current section phase id (chapter). Same phase can be submitted multiple times for multiple pages; use status to control when to advance."
   ),
-  planMarkdown: import_v39.z.string().min(1).describe(
+  planMarkdown: import_v38.z.string().min(1).describe(
     "Plan for this page/slide of the section: purpose, output shape, evidence binding, word/structural constraints, citation format. One page per call."
   ),
-  dependencies: import_v39.z.array(import_v39.z.string()).nullable().describe("BlockIds, Fact #N, or SourceIDs this section depends on."),
-  status: import_v39.z.enum(["draft", "final"]).nullable().default("final").describe(
+  dependencies: import_v38.z.array(import_v38.z.string()).nullable().describe("BlockIds, Fact #N, or SourceIDs this section depends on."),
+  status: import_v38.z.enum(["draft", "final"]).nullable().default("final").describe(
     "Use 'draft' to submit another page for the same phase (you receive the same phaseId again). Use 'final' when this phase has no more pages (you receive the next phase)."
   )
 });
-var bodyBlockSpecSchema = import_v39.z.object({
-  blockId: import_v39.z.string().describe("Stable id for this block (no colons); used for (#block-<id>) anchors."),
-  title: import_v39.z.string().describe("Block display title."),
-  role: import_v39.z.string().describe("Role: e.g. SCQA, methodology, pillar, recommendations, risks, next_actions, followup_questions."),
-  paragraphSkeleton: import_v39.z.string().nullable().describe("SCQA or narrative skeleton; bullet/paragraph structure."),
-  evidenceBinding: import_v39.z.string().nullable().describe("Fact #N, [[path]], or SourceID binding rules."),
-  chartOrTableShape: import_v39.z.string().nullable().describe("Table headers or mermaid diagram type + node/label hints."),
-  risksUncertaintyHint: import_v39.z.string().nullable().describe("Gaps, assumptions, or uncertainty to surface."),
-  wordTarget: import_v39.z.number().nullable().describe("Target word count (e.g. 300-500).")
+var bodyBlockSpecSchema = import_v38.z.object({
+  blockId: import_v38.z.string().describe("Stable id for this block (no colons); used for (#block-<id>) anchors."),
+  title: import_v38.z.string().describe("Block display title."),
+  role: import_v38.z.string().describe("Role: e.g. SCQA, methodology, pillar, recommendations, risks, next_actions, followup_questions."),
+  paragraphSkeleton: import_v38.z.string().nullable().describe("SCQA or narrative skeleton; bullet/paragraph structure."),
+  evidenceBinding: import_v38.z.string().nullable().describe("Fact #N, [[path]], or SourceID binding rules."),
+  chartOrTableShape: import_v38.z.string().nullable().describe("Table headers or mermaid diagram type + node/label hints."),
+  risksUncertaintyHint: import_v38.z.string().nullable().describe("Gaps, assumptions, or uncertainty to surface."),
+  wordTarget: import_v38.z.number().nullable().describe("Target word count (e.g. 300-500).")
 });
-var appendicesBlockSpecSchema = import_v39.z.object({
-  blockId: import_v39.z.string(),
-  title: import_v39.z.string(),
-  role: import_v39.z.string().describe("e.g. data_tables, sensitivity_analysis, methodology_deep_dive, glossary, references."),
-  contentHint: import_v39.z.string().nullable().describe("What to include; surprise-high markers if applicable.")
+var appendicesBlockSpecSchema = import_v38.z.object({
+  blockId: import_v38.z.string(),
+  title: import_v38.z.string(),
+  role: import_v38.z.string().describe("e.g. data_tables, sensitivity_analysis, methodology_deep_dive, glossary, references."),
+  contentHint: import_v38.z.string().nullable().describe("What to include; surprise-high markers if applicable.")
 });
-var reportPlanSchema = import_v39.z.object({
-  intentInsight: import_v39.z.string().nullable().describe("One paragraph: user subtext, assumed context, success criteria, confidence."),
-  summarySpec: import_v39.z.string().nullable().describe("Constraints: ~1000 words, answer-first, key recommendations, 3-5 rationale bullets, so-what impact, block anchors."),
-  overviewMermaidSpec: import_v39.z.string().nullable().describe("Top 10 core nodes; diagram type; node naming and citation rules."),
-  topicsSpec: import_v39.z.string().nullable().describe("3-6 MECE pillars; one conclusion + why + block refs per pillar."),
-  bodyBlocksSpec: import_v39.z.array(bodyBlockSpecSchema).nullable().default([]),
-  appendicesBlocksSpec: import_v39.z.array(appendicesBlockSpecSchema).nullable().default([]),
-  actionItemsSpec: import_v39.z.string().nullable().describe("TODO list rules from evidence next_action / implicitly suggested."),
-  followupQuestionsSpec: import_v39.z.string().nullable().describe("High-value follow-up rules: fill gaps, blind spots, alternatives."),
-  sourcesViewsSpec: import_v39.z.string().nullable().describe("List / graph / evidence cards generation; reuse SourcesSection where possible.")
+var reportPlanSchema = import_v38.z.object({
+  intentInsight: import_v38.z.string().nullable().describe("One paragraph: user subtext, assumed context, success criteria, confidence."),
+  summarySpec: import_v38.z.string().nullable().describe("Constraints: ~1000 words, answer-first, key recommendations, 3-5 rationale bullets, so-what impact, block anchors."),
+  overviewMermaidSpec: import_v38.z.string().nullable().describe("Top 10 core nodes; diagram type; node naming and citation rules."),
+  topicsSpec: import_v38.z.string().nullable().describe("3-6 MECE pillars; one conclusion + why + block refs per pillar."),
+  bodyBlocksSpec: import_v38.z.array(bodyBlockSpecSchema).nullable().default([]),
+  appendicesBlocksSpec: import_v38.z.array(appendicesBlockSpecSchema).nullable().default([]),
+  actionItemsSpec: import_v38.z.string().nullable().describe("TODO list rules from evidence next_action / implicitly suggested."),
+  followupQuestionsSpec: import_v38.z.string().nullable().describe("High-value follow-up rules: fill gaps, blind spots, alternatives."),
+  sourcesViewsSpec: import_v38.z.string().nullable().describe("List / graph / evidence cards generation; reuse SourcesSection where possible.")
 });
-var visualTaskTypeSchema = import_v39.z.enum([
+var visualTaskTypeSchema = import_v38.z.enum([
   "compare",
   "trend",
   "composition",
@@ -902,7 +794,7 @@ var visualTaskTypeSchema = import_v39.z.enum([
   "network",
   "other"
 ]);
-var mermaidDiagramTypeSchema = import_v39.z.enum([
+var mermaidDiagramTypeSchema = import_v38.z.enum([
   "flowchart",
   "mindmap",
   "timeline",
@@ -913,118 +805,118 @@ var mermaidDiagramTypeSchema = import_v39.z.enum([
   "treemap",
   "other"
 ]);
-var visualDiagramPrescriptionSchema = import_v39.z.object({
+var visualDiagramPrescriptionSchema = import_v38.z.object({
   diagramType: mermaidDiagramTypeSchema.describe("Mermaid diagram type."),
-  reason: import_v39.z.string().nullable().describe("Why this chart; guideline reference."),
-  dataMapping: import_v39.z.string().nullable().describe("X/category, Y/size, or axis mapping."),
-  mermaidDirectiveCard: import_v39.z.string().nullable().describe("Short instruction for section agent: syntax + constraints.")
+  reason: import_v38.z.string().nullable().describe("Why this chart; guideline reference."),
+  dataMapping: import_v38.z.string().nullable().describe("X/category, Y/size, or axis mapping."),
+  mermaidDirectiveCard: import_v38.z.string().nullable().describe("Short instruction for section agent: syntax + constraints.")
 });
-var audiencePrecisionSchema = import_v39.z.enum(["scan", "analyst"]);
-var visualDataTypeSchema = import_v39.z.enum(["qualitative", "quantitative", "mixed"]);
-var visualPrescriptionSchema = import_v39.z.object({
-  blockId: import_v39.z.string().describe("Stable block id from report plan."),
-  title: import_v39.z.string().describe("Block display title."),
+var audiencePrecisionSchema = import_v38.z.enum(["scan", "analyst"]);
+var visualDataTypeSchema = import_v38.z.enum(["qualitative", "quantitative", "mixed"]);
+var visualPrescriptionSchema = import_v38.z.object({
+  blockId: import_v38.z.string().describe("Stable block id from report plan."),
+  title: import_v38.z.string().describe("Block display title."),
   audiencePrecision: audiencePrecisionSchema.nullable().describe("Who consumes: scan or analyst."),
   dataType: visualDataTypeSchema.nullable().describe("Qualitative, quantitative, or mixed."),
-  needVisual: import_v39.z.boolean().describe("Whether this block should include a diagram."),
+  needVisual: import_v38.z.boolean().describe("Whether this block should include a diagram."),
   primary: visualDiagramPrescriptionSchema.nullable().describe("Main diagram prescription."),
   secondary: visualDiagramPrescriptionSchema.nullable().describe("Optional second diagram."),
-  warnings: import_v39.z.array(import_v39.z.string()).nullable().describe("e.g. avoid pie, prefer bar; qualitative \u2192 mindmap.")
+  warnings: import_v38.z.array(import_v38.z.string()).nullable().describe("e.g. avoid pie, prefer bar; qualitative \u2192 mindmap.")
 });
-var reportVisualBlueprintSchema = import_v39.z.object({
-  blocks: import_v39.z.array(visualPrescriptionSchema).default([]).describe("Per-block prescriptions."),
-  globalStyleNotes: import_v39.z.string().nullable().describe("Global diversity/consistency notes.")
+var reportVisualBlueprintSchema = import_v38.z.object({
+  blocks: import_v38.z.array(visualPrescriptionSchema).default([]).describe("Per-block prescriptions."),
+  globalStyleNotes: import_v38.z.string().nullable().describe("Global diversity/consistency notes.")
 });
-var submitPrescriptionInputSchema = import_v39.z.object({
-  blockId: import_v39.z.string().describe("Current block id."),
-  title: import_v39.z.string().nullable().describe("Block title."),
-  prescriptionMarkdown: import_v39.z.string().nullable().describe("Human-readable prescription."),
+var submitPrescriptionInputSchema = import_v38.z.object({
+  blockId: import_v38.z.string().describe("Current block id."),
+  title: import_v38.z.string().nullable().describe("Block title."),
+  prescriptionMarkdown: import_v38.z.string().nullable().describe("Human-readable prescription."),
   prescription: visualPrescriptionSchema.nullable().describe("Structured prescription."),
-  status: import_v39.z.enum(["draft", "final"]).nullable().default("final").describe("final = done with this block, advance to next.")
+  status: import_v38.z.enum(["draft", "final"]).nullable().default("final").describe("final = done with this block, advance to next.")
 });
 var DEFAULT_PLACEHOLDER = "Untitled";
 var NO_MEANINGFUL_CONTENT_MESSAGE = "has no meaningful content, discarding";
-var overviewMermaidInputSchema = import_v39.z.preprocess(
+var overviewMermaidInputSchema = import_v38.z.preprocess(
   (val) => typeof val === "object" && val !== null && "input" in val && typeof val.input === "string" ? val.input : val,
-  import_v39.z.string().describe(
+  import_v38.z.string().describe(
     "Raw Mermaid diagram code (e.g. flowchart TD\\n  A[label] --> B[label])"
   )
 );
-var updateSourceScoresInputSchema = import_v39.z.object({
-  scores: import_v39.z.array(
-    import_v39.z.object({
-      sourceId: import_v39.z.string().describe("Source id or path to match"),
-      score: import_v39.z.number().min(0).max(100).describe("Relevance score 0-100; 0 for low relevance")
+var updateSourceScoresInputSchema = import_v38.z.object({
+  scores: import_v38.z.array(
+    import_v38.z.object({
+      sourceId: import_v38.z.string().describe("Source id or path to match"),
+      score: import_v38.z.number().min(0).max(100).describe("Relevance score 0-100; 0 for low relevance")
     })
   ).describe("Source-score pairs to batch update")
 });
 var DASHBOARD_BLOCK_CONTENT_SCHEMAS = {
-  MARKDOWN: import_v39.z.object({
-    renderEngine: import_v39.z.literal("MARKDOWN"),
-    markdown: import_v39.z.string().min(1, "Markdown content is required for MARKDOWN engine")
+  MARKDOWN: import_v38.z.object({
+    renderEngine: import_v38.z.literal("MARKDOWN"),
+    markdown: import_v38.z.string().min(1, "Markdown content is required for MARKDOWN engine")
   }),
-  MERMAID: import_v39.z.object({
-    renderEngine: import_v39.z.literal("MERMAID"),
-    mermaidCode: import_v39.z.string().min(1, "Mermaid code is required for MERMAID engine")
+  MERMAID: import_v38.z.object({
+    renderEngine: import_v38.z.literal("MERMAID"),
+    mermaidCode: import_v38.z.string().min(1, "Mermaid code is required for MERMAID engine")
   }),
-  TILE: import_v39.z.object({
-    renderEngine: import_v39.z.literal("TILE"),
-    items: import_v39.z.array(
-      import_v39.z.object({
-        id: import_v39.z.string().default(
+  TILE: import_v38.z.object({
+    renderEngine: import_v38.z.literal("TILE"),
+    items: import_v38.z.array(
+      import_v38.z.object({
+        id: import_v38.z.string().default(
           () => `item:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
         ),
-        title: import_v39.z.string().default(DEFAULT_PLACEHOLDER),
-        description: import_v39.z.string().nullable(),
-        icon: import_v39.z.string().nullable(),
-        color: import_v39.z.string().nullable()
+        title: import_v38.z.string().default(DEFAULT_PLACEHOLDER),
+        description: import_v38.z.string().nullable(),
+        icon: import_v38.z.string().nullable(),
+        color: import_v38.z.string().nullable()
       })
     ).min(1, "Items are required for TILE engine").describe(
       'Items of the block. It will be displayed in the UI. eg: "item1", "item2", etc.'
     )
   }),
-  ACTION_GROUP: import_v39.z.object({
-    renderEngine: import_v39.z.literal("ACTION_GROUP"),
-    items: import_v39.z.array(
-      import_v39.z.object({
-        id: import_v39.z.string().default(
+  ACTION_GROUP: import_v38.z.object({
+    renderEngine: import_v38.z.literal("ACTION_GROUP"),
+    items: import_v38.z.array(
+      import_v38.z.object({
+        id: import_v38.z.string().default(
           () => `item:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
         ),
-        title: import_v39.z.string().default(DEFAULT_PLACEHOLDER),
-        description: import_v39.z.string().nullable(),
-        icon: import_v39.z.string().nullable(),
-        color: import_v39.z.string().nullable()
+        title: import_v38.z.string().default(DEFAULT_PLACEHOLDER),
+        description: import_v38.z.string().nullable(),
+        icon: import_v38.z.string().nullable(),
+        color: import_v38.z.string().nullable()
       })
     ).min(1, "Items are required for ACTION_GROUP engine").describe(
       "Action items: next steps, experiments, or TODOs. Same shape as TILE items."
     )
   })
 };
-var BlockContentSchema = import_v39.z.discriminatedUnion("renderEngine", [
+var BlockContentSchema = import_v38.z.discriminatedUnion("renderEngine", [
   DASHBOARD_BLOCK_CONTENT_SCHEMAS.MARKDOWN,
   DASHBOARD_BLOCK_CONTENT_SCHEMAS.MERMAID,
   DASHBOARD_BLOCK_CONTENT_SCHEMAS.TILE,
   DASHBOARD_BLOCK_CONTENT_SCHEMAS.ACTION_GROUP
 ]);
-var topicItemSchema = import_v39.z.preprocess(
+var topicItemSchema = import_v38.z.preprocess(
   (raw) => {
     if (!raw || typeof raw !== "object") return raw;
     const o = raw;
     const label = o.label ?? o.name ?? o.title;
     return { ...o, label: label ? String(label).trim() : void 0 };
   },
-  import_v39.z.object({
-    label: import_v39.z.string().default(DEFAULT_PLACEHOLDER),
-    weight: import_v39.z.number().min(0).max(1).nullable().describe(
+  import_v38.z.object({
+    label: import_v38.z.string().default(DEFAULT_PLACEHOLDER),
+    weight: import_v38.z.number().min(0).max(1).nullable().describe(
       "How important this topic is. eg: 0.5, 0.75, 1.0"
     ),
-    suggestQuestions: import_v39.z.array(import_v39.z.string()).nullable().describe(
+    suggestQuestions: import_v38.z.array(import_v38.z.string()).nullable().describe(
       'Suggested questions to ask about this topic. Please provide at least 3 questions. at most 5 questions. Each question should be a single sentence no more than 10 words.eg: "What is the main idea of the topic?"'
     )
   }).superRefine((data, ctx) => {
     if ((!data.label || data.label === DEFAULT_PLACEHOLDER) && data.weight === void 0) {
       ctx.addIssue({
-        code: import_v39.z.ZodIssueCode.custom,
+        code: import_v38.z.ZodIssueCode.custom,
         message: NO_MEANINGFUL_CONTENT_MESSAGE
       });
     }
@@ -1081,7 +973,7 @@ var normalizeSpecialKey = (raw) => {
 };
 var toNormalizedCosmoNodeId = (type, idOrPath) => `${type}:${normalizeSpecialKey(idOrPath)}`;
 var isPlaceholder = (s) => !s || s.trim() === "" || s === DEFAULT_PLACEHOLDER || s === "Untitled";
-var graphNodeItemSchema = import_v39.z.preprocess(
+var graphNodeItemSchema = import_v38.z.preprocess(
   (raw) => {
     if (!raw || typeof raw !== "object") return raw;
     const o = raw;
@@ -1093,18 +985,18 @@ var graphNodeItemSchema = import_v39.z.preprocess(
       label: label ? String(label).trim() : void 0
     };
   },
-  import_v39.z.object({
-    id: import_v39.z.string().nullable(),
-    type: import_v39.z.string().default(DEFAULT_NODE_TYPE).describe(
+  import_v38.z.object({
+    id: import_v38.z.string().nullable(),
+    type: import_v38.z.string().default(DEFAULT_NODE_TYPE).describe(
       `Type of the node. Recommended: ${Array.from(RECOMMENDED_TYPES).join(", ")}. You can also use custom types if appropriate.`
     ),
-    label: import_v39.z.string().default(DEFAULT_PLACEHOLDER).describe(
+    label: import_v38.z.string().default(DEFAULT_PLACEHOLDER).describe(
       "The label of the node. It will be displayed in the graph."
     ),
-    path: import_v39.z.string().nullable().describe(
+    path: import_v38.z.string().nullable().describe(
       `${FILE_NODE_TYPE.size > 0 ? Array.from(FILE_NODE_TYPE).join(", ") : "document"} nodes must have a valid path.`
     ),
-    attributes: import_v39.z.record(import_v39.z.any()).default(() => ({})).describe(
+    attributes: import_v38.z.record(import_v38.z.any()).default(() => ({})).describe(
       "Attributes of the node. It will be used to store the node's metadata. User can see this via a hover tooltip."
     )
   })
@@ -1177,7 +1069,7 @@ var graphNodeItemSchema = import_v39.z.preprocess(
   if (FILE_NODE_TYPE.has(type)) {
     if (!data.path || isPlaceholder(String(data.path ?? ""))) {
       ctx.addIssue({
-        code: import_v39.z.ZodIssueCode.custom,
+        code: import_v38.z.ZodIssueCode.custom,
         message: "Document/file nodes must have a valid path.",
         path: ["path"]
       });
@@ -1189,7 +1081,7 @@ var graphNodeItemSchema = import_v39.z.preprocess(
     const rawLabel = String(data.label || "").trim();
     if (isPlaceholder(rawLabel)) {
       ctx.addIssue({
-        code: import_v39.z.ZodIssueCode.custom,
+        code: import_v38.z.ZodIssueCode.custom,
         message: "Concept/tag nodes must have a non-empty label or title (not Untitled).",
         path: ["label"]
       });
@@ -1198,12 +1090,12 @@ var graphNodeItemSchema = import_v39.z.preprocess(
   }
   if (data.label === DEFAULT_PLACEHOLDER && (!data.path || data.path === DEFAULT_PLACEHOLDER) && (!data.attributes || Object.keys(data.attributes).length === 0)) {
     ctx.addIssue({
-      code: import_v39.z.ZodIssueCode.custom,
+      code: import_v38.z.ZodIssueCode.custom,
       message: NO_MEANINGFUL_CONTENT_MESSAGE
     });
   }
 });
-var graphEdgeItemSchema = import_v39.z.preprocess(
+var graphEdgeItemSchema = import_v38.z.preprocess(
   (raw) => {
     if (!raw || typeof raw !== "object") return raw;
     const o = raw;
@@ -1215,19 +1107,19 @@ var graphEdgeItemSchema = import_v39.z.preprocess(
       target: target ? String(target).trim() : void 0
     };
   },
-  import_v39.z.object({
-    id: import_v39.z.string().default(
+  import_v38.z.object({
+    id: import_v38.z.string().default(
       () => `edge:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     ),
-    source: import_v39.z.string().nullable().describe("The source node id or path."),
-    target: import_v39.z.string().nullable().describe("The target node id or path."),
-    type: import_v39.z.string().default("link").describe(
+    source: import_v38.z.string().nullable().describe("The source node id or path."),
+    target: import_v38.z.string().nullable().describe("The target node id or path."),
+    type: import_v38.z.string().default("link").describe(
       "The type of the edge. Recommended: physical_link, semantic_link, inspire, brainstorm, etc."
     ),
-    label: import_v39.z.string().default("").describe(
+    label: import_v38.z.string().default("").describe(
       "The label of the edge. It will be displayed in the graph."
     ),
-    attributes: import_v39.z.record(import_v39.z.any()).default(() => ({})).describe(
+    attributes: import_v38.z.record(import_v38.z.any()).default(() => ({})).describe(
       "Attributes of the edge. It will be used to store the edge's metadata. User can see this via a hover tooltip."
     )
   }).refine((data) => data.source && data.target, {
@@ -1235,21 +1127,21 @@ var graphEdgeItemSchema = import_v39.z.preprocess(
     path: ["source"]
   })
 );
-var sourceItemSchema = import_v39.z.object({
-  id: import_v39.z.string().default(
+var sourceItemSchema = import_v38.z.object({
+  id: import_v38.z.string().default(
     () => `src:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   ),
-  title: import_v39.z.string().default(DEFAULT_PLACEHOLDER),
-  path: import_v39.z.string().default(DEFAULT_PLACEHOLDER).describe(
+  title: import_v38.z.string().default(DEFAULT_PLACEHOLDER),
+  path: import_v38.z.string().default(DEFAULT_PLACEHOLDER).describe(
     "The path of the source. It will be used to open the source in the file explorer."
   ),
-  reasoning: import_v39.z.string().default(DEFAULT_PLACEHOLDER).describe(
+  reasoning: import_v38.z.string().default(DEFAULT_PLACEHOLDER).describe(
     "Why it was selected or rejected. Please provide a detailed explanation. but no more than 100 words."
   ),
-  badges: import_v39.z.array(import_v39.z.string()).default(() => []).describe(
+  badges: import_v38.z.array(import_v38.z.string()).default(() => []).describe(
     'Badges of the source. It will be used to display the source in the UI. eg: "important", "relevant", "interesting", etc. but please use your imagination to create more badges.'
   ),
-  score: import_v39.z.preprocess(
+  score: import_v38.z.preprocess(
     (val) => {
       if (typeof val === "number")
         return { average: val, physical: val, semantic: val };
@@ -1264,21 +1156,21 @@ var sourceItemSchema = import_v39.z.object({
       }
       return val;
     },
-    import_v39.z.object({
-      physical: import_v39.z.number().min(0).max(100).nullable(),
-      semantic: import_v39.z.number().min(0).max(100).nullable(),
-      average: import_v39.z.number().min(0).max(100).nullable()
+    import_v38.z.object({
+      physical: import_v38.z.number().min(0).max(100).nullable(),
+      semantic: import_v38.z.number().min(0).max(100).nullable(),
+      average: import_v38.z.number().min(0).max(100).nullable()
     }).nullable()
   )
 }).superRefine((data, ctx) => {
   if (data.title === DEFAULT_PLACEHOLDER && (!data.path || data.path === DEFAULT_PLACEHOLDER) && (!data.reasoning || data.reasoning === DEFAULT_PLACEHOLDER) && (!data.badges || data.badges.length === 0)) {
     ctx.addIssue({
-      code: import_v39.z.ZodIssueCode.custom,
+      code: import_v38.z.ZodIssueCode.custom,
       message: NO_MEANINGFUL_CONTENT_MESSAGE
     });
   }
 });
-var dashboardBlockItemSchema = import_v39.z.preprocess(
+var dashboardBlockItemSchema = import_v38.z.preprocess(
   (raw) => {
     if (!raw || typeof raw !== "object") return raw;
     const o = raw;
@@ -1309,13 +1201,13 @@ ${bulletLines.join("\n")}` : bulletLines.join("\n");
       markdown: markdown || void 0
     };
   },
-  import_v39.z.intersection(
-    import_v39.z.object({
-      id: import_v39.z.string().default(
+  import_v38.z.intersection(
+    import_v38.z.object({
+      id: import_v38.z.string().default(
         () => `block:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       ),
-      title: import_v39.z.string().nullable().describe("The title of the block. It will be displayed."),
-      weight: import_v39.z.number().min(0).max(10).nullable().describe(
+      title: import_v38.z.string().nullable().describe("The title of the block. It will be displayed."),
+      weight: import_v38.z.number().min(0).max(10).nullable().describe(
         "Used for grid layout. 0-10; 1-3 small, 4-6 medium, 7-10 full-width."
       )
     }),
@@ -1324,12 +1216,193 @@ ${bulletLines.join("\n")}` : bulletLines.join("\n");
 );
 
 // src/core/schemas/tools/submitOverviewLogicModel.ts
-var submitOverviewLogicModelInputSchema = import_v310.z.object({
+var submitOverviewLogicModelInputSchema = import_v39.z.object({
   logicModel: overviewLogicModelSchema
 });
 
 // src/core/schemas/tools/updateResultOperations.ts
+var import_v310 = require("zod/v3");
+
+// src/core/schemas/agents/knowledgeIntuition.ts
 var import_v311 = require("zod/v3");
+var intuitionPartitionSchema = import_v311.z.object({
+  label: import_v311.z.string(),
+  purpose: import_v311.z.string(),
+  /** 1–2 vault-relative folder prefixes to start browsing this area. */
+  entryPaths: import_v311.z.array(import_v311.z.string()).max(2)
+});
+var intuitionEntitySchema = import_v311.z.object({
+  name: import_v311.z.string(),
+  description: import_v311.z.string(),
+  location: import_v311.z.string(),
+  whyItMatters: import_v311.z.string()
+});
+var intuitionEntryPointSchema = import_v311.z.object({
+  intent: import_v311.z.string(),
+  startPaths: import_v311.z.array(import_v311.z.string()).max(2),
+  whatYouWillFind: import_v311.z.string()
+});
+var intuitionTopologySchema = import_v311.z.object({
+  from: import_v311.z.string(),
+  to: import_v311.z.string(),
+  relation: import_v311.z.string()
+});
+var knowledgeIntuitionSubmitSchema = import_v311.z.object({
+  findingsSummary: import_v311.z.string(),
+  theme: import_v311.z.string().optional(),
+  partitions: import_v311.z.array(intuitionPartitionSchema).max(6),
+  coreEntities: import_v311.z.array(intuitionEntitySchema).max(8),
+  topology: import_v311.z.array(intuitionTopologySchema).max(8),
+  evolution: import_v311.z.string(),
+  entryPoints: import_v311.z.array(intuitionEntryPointSchema).max(24),
+  openQuestions: import_v311.z.array(import_v311.z.string()).max(6).optional(),
+  should_stop: import_v311.z.boolean()
+});
+
+// src/core/schemas/agents/hubDiscover.ts
+var import_v312 = require("zod/v3");
+var hubSemanticMergeRiskSchema = import_v312.z.enum(["cross_source_kind", "broad_folder_center", "disconnected_graph"]);
+var hubSemanticMergeGroupLlmSchema = import_v312.z.object({
+  representativeStableKey: import_v312.z.string().max(512).describe(
+    "Must be one of memberStableKeys (kind-prefixed normalized vault paths from input cards, not raw node ids)"
+  ),
+  memberStableKeys: import_v312.z.array(import_v312.z.string().max(512)).min(2).max(24).describe("Keys to merge exactly as in input hub cards; must exist in input"),
+  reason: import_v312.z.string().max(800).describe("Short English rationale"),
+  confidence: import_v312.z.number().min(0).max(1).describe("Confidence that merge is correct"),
+  mergeKind: import_v312.z.enum(["duplicate", "alias", "same_topic"]).describe("Why these are one hub"),
+  risks: import_v312.z.array(hubSemanticMergeRiskSchema).max(8).optional()
+});
+var hubSemanticMergeLlmSchema = import_v312.z.object({
+  mergeGroups: import_v312.z.array(hubSemanticMergeGroupLlmSchema).max(80)
+});
+var hubDocSummaryLlmSchema = import_v312.z.object({
+  title: import_v312.z.string().max(200).optional(),
+  shortSummary: import_v312.z.string(),
+  fullSummary: import_v312.z.string(),
+  coreFacts: import_v312.z.array(import_v312.z.string()).default([]),
+  queryAnchors: import_v312.z.array(import_v312.z.string()).default([]),
+  tagTopicDistribution: import_v312.z.string(),
+  timeDimension: import_v312.z.string(),
+  keyPatterns: import_v312.z.string().optional()
+}).refine((d) => d.shortSummary.trim().length > 0 || d.fullSummary.trim().length > 0, {
+  message: "At least one of shortSummary or fullSummary must be non-empty"
+});
+var folderHubLandingLevelSchema = import_v312.z.enum(["here", "both"]);
+var folderHubRejectionKindSchema = import_v312.z.enum([
+  "container_only",
+  "weak_theme",
+  "noisy_mixed",
+  "redundant_with_child",
+  "redundant_with_parent",
+  "insufficient_evidence"
+]);
+var rejectedFolderPathEntrySchema = import_v312.z.object({
+  path: import_v312.z.string(),
+  reason: import_v312.z.string(),
+  rejectionKind: folderHubRejectionKindSchema.optional().describe(
+    "Optional machine-readable rejection category; use especially for container-like or weak-theme drops."
+  )
+});
+var folderNavigationGroupKindSchema = import_v312.z.enum(["parallel_roots", "sibling_set", "small_topic_bundle"]);
+var folderNavigationGroupSchema = import_v312.z.object({
+  label: import_v312.z.string().describe("Short human label for the navigation group."),
+  memberPaths: import_v312.z.array(import_v312.z.string()).min(2).describe("Vault-relative folder paths that together form one navigation group."),
+  confidence: import_v312.z.number().describe("0..1: confidence this folder group is useful for navigation."),
+  reason: import_v312.z.string().describe("Why these folders should be navigated as one group (English, concise)."),
+  groupKind: folderNavigationGroupKindSchema.optional().describe("Optional machine-readable group kind for parallel roots or small sibling bundles.")
+});
+var folderHubCandidateSchema = import_v312.z.object({
+  path: import_v312.z.string().describe("Vault-relative folder path; must be grounded in tool output, not invented."),
+  label: import_v312.z.string().optional().describe("Short human label for this hub (optional)."),
+  confidence: import_v312.z.number().describe("0..1: confidence this folder is a valid organizational folder hub."),
+  landingLevel: folderHubLandingLevelSchema.describe(
+    "here: this folder is the best hub landing point; both: this folder and a deeper subfolder both have independent hub value."
+  ),
+  reason: import_v312.z.string().describe(
+    "Why this path qualifies as a folder hub: coverage, topic cohesion, and landing decision vs siblings/parent (English, concise)."
+  ),
+  evidenceSummary: import_v312.z.array(import_v312.z.string()).optional()
+});
+var coverageAssessmentSchema = import_v312.z.object({
+  coveredRootPaths: import_v312.z.array(import_v312.z.string()),
+  coveredThemes: import_v312.z.array(import_v312.z.string()),
+  missingThemes: import_v312.z.array(import_v312.z.string()),
+  weakBranches: import_v312.z.array(import_v312.z.string()).optional(),
+  messyBranches: import_v312.z.array(import_v312.z.string()).optional(),
+  orphanRiskLevel: import_v312.z.enum(["low", "medium", "high"]),
+  globalPictureSufficient: import_v312.z.boolean()
+});
+var exploreFolderTaskSchema = import_v312.z.object({
+  path: import_v312.z.string(),
+  goal: import_v312.z.enum([
+    "clarify_boundary",
+    "find_subhubs",
+    "find_doc_bridges",
+    "validate_noise",
+    "estimate_semantic_need"
+  ]),
+  reason: import_v312.z.string()
+});
+var documentHubLeadSchema = import_v312.z.object({
+  sourceFolderPath: import_v312.z.string(),
+  targetPathPrefix: import_v312.z.string().optional(),
+  goal: import_v312.z.enum(["find_cross_folder_bridge", "find_index_note", "find_authority_note"]),
+  expectedRole: import_v312.z.enum(["bridge", "index", "authority"]),
+  reason: import_v312.z.string()
+});
+var ignoredFolderEntrySchema = import_v312.z.object({
+  path: import_v312.z.string(),
+  reason: import_v312.z.string()
+});
+var folderIntuitionRoundSchema = import_v312.z.object({
+  folderHubCandidates: import_v312.z.array(folderHubCandidateSchema),
+  exploreFolderTasks: import_v312.z.array(exploreFolderTaskSchema),
+  documentHubLeads: import_v312.z.array(documentHubLeadSchema),
+  ignoredFolders: import_v312.z.array(ignoredFolderEntrySchema).optional(),
+  coverageAssessment: coverageAssessmentSchema,
+  findingsSummary: import_v312.z.string()
+});
+var folderDeepenRoundSchema = import_v312.z.object({
+  confirmedFolderHubCandidates: import_v312.z.array(folderHubCandidateSchema),
+  folderNavigationGroups: import_v312.z.array(folderNavigationGroupSchema).optional(),
+  rejectedFolders: import_v312.z.array(rejectedFolderPathEntrySchema),
+  refinedDocumentHubLeads: import_v312.z.array(documentHubLeadSchema),
+  updatedCoverage: coverageAssessmentSchema,
+  findingsSummary: import_v312.z.string()
+});
+var highwayFolderLeadSchema = import_v312.z.object({
+  path: import_v312.z.string(),
+  reason: import_v312.z.string(),
+  signal: import_v312.z.enum(["high_outgoing", "cross_boundary", "mixed_topics", "bridge_corridor"]),
+  confidence: import_v312.z.number()
+});
+var hubDiscoveryFolderReconSubmitSchema = import_v312.z.object({
+  findingsSummary: import_v312.z.string().describe("Short iteration summary: evidence gathered, new confirmations/rejections, remaining gaps."),
+  confirmedFolderHubCandidates: import_v312.z.array(folderHubCandidateSchema).describe(
+    "All new or reaffirmed final folder hubs supported by this iteration\u2019s evidence. Do not include broad branches whose actual landing point is deeper."
+  ),
+  folderNavigationGroups: import_v312.z.array(folderNavigationGroupSchema).describe("Optional navigation groups for parallel roots or small same-level folders that are more useful together than alone."),
+  rejectedFolderPaths: import_v312.z.array(rejectedFolderPathEntrySchema),
+  highwayFolderLeads: import_v312.z.array(highwayFolderLeadSchema),
+  ignoredPathPrefixes: import_v312.z.array(import_v312.z.string()),
+  updatedCoverage: coverageAssessmentSchema,
+  openQuestions: import_v312.z.array(import_v312.z.string()).optional(),
+  should_stop: import_v312.z.boolean().describe("True when coverage is sufficient or further tool rounds are unlikely to add value.")
+});
+var confirmedDocumentHubPathSchema = import_v312.z.object({
+  path: import_v312.z.string(),
+  role: import_v312.z.enum(["bridge", "index", "authority"]),
+  reason: import_v312.z.string(),
+  confidence: import_v312.z.number()
+});
+var hubDiscoveryDocumentReconSubmitSchema = import_v312.z.object({
+  findingsSummary: import_v312.z.string(),
+  refinedDocumentHubLeads: import_v312.z.array(documentHubLeadSchema),
+  confirmedDocumentHubPaths: import_v312.z.array(confirmedDocumentHubPathSchema),
+  rejectedSeeds: import_v312.z.array(import_v312.z.object({ path: import_v312.z.string(), reason: import_v312.z.string() })),
+  openQuestions: import_v312.z.array(import_v312.z.string()).optional(),
+  should_stop: import_v312.z.boolean()
+});
 
 // src/core/po/graph.po.ts
 var GraphNodeType = {
@@ -1652,7 +1725,21 @@ var IndexingTemplateId = {
   /** Hub-discover deterministic next-direction hint; render with `{ gapPrefixes: string[] }`. */
   HubDiscoverNextDirections: "indexing-hub-discover-next-directions",
   /** Weak title/filename tokens filtered in cluster hub title token extraction. */
-  ClusterHubWeakTitleTokens: "indexing-cluster-hub-weak-title-tokens"
+  ClusterHubWeakTitleTokens: "indexing-cluster-hub-weak-title-tokens",
+  /** Hub discovery agent: one page of folder tree for LLM (`folderRows` + Handlebars; no path mapping block). */
+  HubDiscoveryFolderTreePage: "indexing-hub-discovery-folder-tree-page",
+  /** Hub discovery: empty-folder-tree placeholder Markdown. */
+  HubDiscoveryFolderTreeEmpty: "indexing-hub-discovery-folder-tree-empty",
+  /** Hub discovery agent: default `userGoal` when caller omits `options.userGoal` (plain text; Handlebars optional). */
+  HubDiscoveryDefaultUserGoal: "indexing-hub-discovery-default-user-goal",
+  /** Hub discovery agent: `agentPipelineBudget.note` in world metrics JSON (plain text for the LLM). */
+  HubDiscoveryPipelineBudgetNote: "indexing-hub-discovery-pipeline-budget-note",
+  /** Knowledge intuition agent: default `userGoal` when caller omits `options.userGoal` (plain text). */
+  KnowledgeIntuitionDefaultUserGoal: "indexing-knowledge-intuition-default-user-goal",
+  /** Knowledge intuition agent: rendered vault skeleton Markdown (Handlebars; English). */
+  KnowledgeIntuitionSkeletonMarkdown: "indexing-knowledge-intuition-skeleton-markdown",
+  /** Knowledge intuition agent: prep-only output when `stopAt: prep` (Handlebars; English). */
+  KnowledgeIntuitionPrepOnlyMarkdown: "indexing-knowledge-intuition-prep-only-markdown"
 };
 var StopwordTemplateId = {
   Common: "stopwords-common",
@@ -1768,6 +1855,48 @@ var TEMPLATE_METADATA = {
     jsonConstraint: "Return only JSON: mergeGroups (array of objects with representativeStableKey, memberStableKeys, reason, confidence 0-1, mergeKind duplicate|alias|same_topic, optional risks array). No markdown fences.",
     systemPromptId: "hub-semantic-merge-system"
   }),
+  "hub-discovery-folder-round-system": meta("prompts", "hub-discovery-folder-round-system"),
+  "hub-discovery-folder-round": meta("prompts", "hub-discovery-folder-round", {
+    expectsJson: true,
+    jsonConstraint: "Return only one JSON object matching the caller schema (folderHubCandidates, exploreFolderTasks, documentHubLeads, coverageAssessment, findingsSummary, optional ignoredFolders). No markdown fences.",
+    systemPromptId: "hub-discovery-folder-round-system"
+  }),
+  "hub-discovery-folder-deepen-system": meta("prompts", "hub-discovery-folder-deepen-system"),
+  "hub-discovery-folder-deepen": meta("prompts", "hub-discovery-folder-deepen", {
+    expectsJson: true,
+    jsonConstraint: "Return only one JSON object matching the caller schema (confirmedFolderHubCandidates, optional folderNavigationGroups, rejectedFolders, refinedDocumentHubLeads, updatedCoverage, findingsSummary). No markdown fences.",
+    systemPromptId: "hub-discovery-folder-deepen-system"
+  }),
+  "hub-discovery-folder-recon-plan-system": meta("prompts", "hub-discovery-folder-recon-plan-system"),
+  "hub-discovery-folder-recon-plan": meta("prompts", "hub-discovery-folder-recon-plan", {
+    systemPromptId: "hub-discovery-folder-recon-plan-system"
+  }),
+  "hub-discovery-folder-recon-submit-system": meta("prompts", "hub-discovery-folder-recon-submit-system"),
+  "hub-discovery-folder-recon-submit": meta("prompts", "hub-discovery-folder-recon-submit", {
+    expectsJson: true,
+    jsonConstraint: "Return only one JSON object: confirmedFolderHubCandidates, folderNavigationGroups, rejectedFolderPaths, highwayFolderLeads, ignoredPathPrefixes, updatedCoverage, openQuestions, should_stop, findingsSummary.",
+    systemPromptId: "hub-discovery-folder-recon-submit-system"
+  }),
+  "hub-discovery-document-recon-plan-system": meta("prompts", "hub-discovery-document-recon-plan-system"),
+  "hub-discovery-document-recon-plan": meta("prompts", "hub-discovery-document-recon-plan", {
+    systemPromptId: "hub-discovery-document-recon-plan-system"
+  }),
+  "hub-discovery-document-recon-submit-system": meta("prompts", "hub-discovery-document-recon-submit-system"),
+  "hub-discovery-document-recon-submit": meta("prompts", "hub-discovery-document-recon-submit", {
+    expectsJson: true,
+    jsonConstraint: "Return only one JSON object: refinedDocumentHubLeads, confirmedDocumentHubPaths, rejectedSeeds, openQuestions, should_stop, findingsSummary.",
+    systemPromptId: "hub-discovery-document-recon-submit-system"
+  }),
+  "knowledge-intuition-plan-system": meta("prompts", "knowledge-intuition-plan-system"),
+  "knowledge-intuition-plan": meta("prompts", "knowledge-intuition-plan", {
+    systemPromptId: "knowledge-intuition-plan-system"
+  }),
+  "knowledge-intuition-submit-system": meta("prompts", "knowledge-intuition-submit-system"),
+  "knowledge-intuition-submit": meta("prompts", "knowledge-intuition-submit", {
+    expectsJson: true,
+    jsonConstraint: "Return only one JSON object: findingsSummary, optional theme, partitions (max 6, entryPaths max 2 each), coreEntities (max 8, whyItMatters each), topology (max 8), evolution, entryPoints (max 24; count N from Vault scale in user prompt; intent, startPaths max 2, rich whatYouWillFind), optional openQuestions (max 6), should_stop.",
+    systemPromptId: "knowledge-intuition-submit-system"
+  }),
   "context-memory": meta("prompts", "context-memory"),
   "user-profile-context": meta("prompts", "user-profile-context"),
   "profile-from-vault-json": meta("prompts", "profile-from-vault-json", { expectsJson: true, jsonConstraint: "Return only the JSON array, nothing else." }),
@@ -1793,6 +1922,13 @@ var TEMPLATE_METADATA = {
   [IndexingTemplateId.CodeStopwords]: meta("indexing", "code-stopwords"),
   [IndexingTemplateId.HubDiscoverNextDirections]: meta("indexing", "hub-discover-next-directions"),
   [IndexingTemplateId.ClusterHubWeakTitleTokens]: meta("indexing", "cluster-hub-weak-title-tokens"),
+  [IndexingTemplateId.HubDiscoveryFolderTreePage]: meta("indexing", "hub-discovery-folder-tree-page"),
+  [IndexingTemplateId.HubDiscoveryFolderTreeEmpty]: meta("indexing", "hub-discovery-folder-tree-empty"),
+  [IndexingTemplateId.HubDiscoveryDefaultUserGoal]: meta("indexing", "hub-discovery-default-user-goal"),
+  [IndexingTemplateId.HubDiscoveryPipelineBudgetNote]: meta("indexing", "hub-discovery-pipeline-budget-note"),
+  [IndexingTemplateId.KnowledgeIntuitionDefaultUserGoal]: meta("indexing", "knowledge-intuition-default-user-goal"),
+  [IndexingTemplateId.KnowledgeIntuitionSkeletonMarkdown]: meta("indexing", "knowledge-intuition-skeleton-markdown"),
+  [IndexingTemplateId.KnowledgeIntuitionPrepOnlyMarkdown]: meta("indexing", "knowledge-intuition-prep-only-markdown"),
   [StopwordTemplateId.Common]: meta("stopwords", "common"),
   [StopwordTemplateId.English]: meta("stopwords", "en"),
   [StopwordTemplateId.Chinese]: meta("stopwords", "zh")
@@ -1876,11 +2012,11 @@ var import_path = __toESM(require("path"));
 
 // src/core/storage/sqlite/ddl.ts
 function migrateSqliteSchema(db) {
-  const tryExec = (sql4) => {
+  const tryExec = (sql5) => {
     try {
-      db.exec(sql4);
+      db.exec(sql5);
     } catch (error) {
-      if (sql4.includes("vec_embeddings")) {
+      if (sql5.includes("vec_embeddings")) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         console.warn(
           `[DDL] Failed to create vec_embeddings virtual table. Vector similarity search will not be available. This requires sqlite-vec extension to be loaded. Error: ${errorMsg}`
@@ -2110,6 +2246,7 @@ function migrateSqliteSchema(db) {
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_group ON mobius_operation(continuous_group_id);
 	`);
   tryExec(`ALTER TABLE mobius_node ADD COLUMN folder_cohesion_score REAL`);
+  tryExec(`DROP TABLE IF EXISTS folder_intuition`);
 }
 
 // src/core/storage/sqlite/better-sqlite3-adapter/BetterSqliteStore.ts
@@ -2142,8 +2279,8 @@ var CustomSqliteDriver = class {
   async destroy() {
   }
   async executeQuery(compiledQuery) {
-    const { sql: sql4, parameters } = compiledQuery;
-    const stmt = this.adapter.prepare(sql4);
+    const { sql: sql5, parameters } = compiledQuery;
+    const stmt = this.adapter.prepare(sql5);
     let result;
     if (parameters && parameters.length > 0) {
       if (stmt.reader) {
@@ -2194,8 +2331,8 @@ var CustomSqliteDialect = class {
   }
   createDriver() {
     return new CustomSqliteDriver({
-      exec: (sql4) => this.db.exec(sql4),
-      prepare: (sql4) => this.db.prepare(sql4)
+      exec: (sql5) => this.db.exec(sql5),
+      prepare: (sql5) => this.db.prepare(sql5)
     });
   }
   createQueryCompiler() {
@@ -2601,11 +2738,11 @@ var BetterSqliteStore = class _BetterSqliteStore {
   isOpen() {
     return this.db !== null && this.db.open;
   }
-  exec(sql4) {
-    this.db.exec(sql4);
+  exec(sql5) {
+    this.db.exec(sql5);
   }
-  prepare(sql4) {
-    return this.db.prepare(sql4);
+  prepare(sql5) {
+    return this.db.prepare(sql5);
   }
   kysely() {
     return this.kyselyInstance;
@@ -2666,6 +2803,39 @@ async function readVaultTextSnippet(app, vaultPath, maxChars) {
   } catch {
     return null;
   }
+}
+
+// src/core/storage/sqlite/repositories/IndexedDocumentRepo.ts
+var import_kysely2 = require("kysely");
+
+// src/core/utils/vault-path-utils.ts
+function normalizeVaultPath(path3) {
+  return path3.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
+}
+function pathSegments(path3) {
+  const n = normalizeVaultPath(path3);
+  if (!n) return [];
+  return n.split("/").filter(Boolean);
+}
+function parentDirPath(path3) {
+  const segs = pathSegments(path3);
+  if (segs.length <= 1) return "";
+  return segs.slice(0, -1).join("/");
+}
+function pathLcaDepth(a, b) {
+  const sa = pathSegments(a);
+  const sb = pathSegments(b);
+  let i = 0;
+  while (i < sa.length && i < sb.length && sa[i] === sb[i]) {
+    i++;
+  }
+  return i;
+}
+function crossesTopLevelFolder(a, b) {
+  const sa = pathSegments(a);
+  const sb = pathSegments(b);
+  if (!sa.length || !sb.length) return false;
+  return sa[0] !== sb[0];
 }
 
 // src/core/storage/sqlite/repositories/IndexedDocumentRepo.ts
@@ -2968,6 +3138,15 @@ var IndexedDocumentRepo = class {
       (eb) => eb.or([eb("path", "like", `${folderPath}/%`), eb("path", "=", folderPath)])
     ).execute();
     return rows.filter((row) => row.path != null).map((row) => ({ id: row.node_id, path: row.path }));
+  }
+  /**
+   * Counts indexed notes located directly under the folder (one path segment below), excluding notes in subfolders.
+   */
+  async countDirectDocumentsInFolder(folderPath) {
+    const p = normalizeVaultPath(folderPath);
+    if (!p) return 0;
+    const row = await this.docNodeQuery().select(({ fn }) => fn.countAll().as("cnt")).where("path", "like", `${p}/%`).where(import_kysely2.sql`instr(substr(path, length(${p}) + 2), '/') = 0`).executeTakeFirst();
+    return Number(row?.cnt ?? 0);
   }
   async countByFolderPath(folderPath) {
     if (folderPath === "") return 0;
@@ -3316,7 +3495,7 @@ var DocChunkRepo = class {
         pathParams.push(`${folderLike}%`, exact);
       }
     }
-    const sql4 = `
+    const sql5 = `
 			SELECT
 				f.chunk_id as chunkId,
 				f.doc_id as docId,
@@ -3331,7 +3510,7 @@ var DocChunkRepo = class {
 			ORDER BY bm25 ASC
 			LIMIT ?
 		`;
-    const stmt = this.rawDb.prepare(sql4);
+    const stmt = this.rawDb.prepare(sql5);
     return stmt.all(term, ...pathParams, limit);
   }
   /**
@@ -3363,7 +3542,7 @@ var DocChunkRepo = class {
         pathParams.push(`${folderLike}%`, exact);
       }
     }
-    const sql4 = `
+    const sql5 = `
 			SELECT
 				mf.doc_id as docId,
 				mf.path as path,
@@ -3375,7 +3554,7 @@ var DocChunkRepo = class {
 			ORDER BY bm25 ASC
 			LIMIT ?
 		`;
-    const stmt = this.rawDb.prepare(sql4);
+    const stmt = this.rawDb.prepare(sql5);
     return stmt.all(term, ...pathParams, limit);
   }
 };
@@ -3822,9 +4001,9 @@ var EmbeddingRepo = class {
     if (excludeRowids.length > 0) {
       rowidFilter += ` AND ve.rowid NOT IN (${excludeRowids.map(() => "?").join(",")})`;
     }
-    let sql4;
+    let sql5;
     let knnParams;
-    sql4 = `
+    sql5 = `
 			SELECT
 				ve.rowid,
 				ve.distance
@@ -3841,7 +4020,7 @@ var EmbeddingRepo = class {
     if (excludeRowids.length > 0) {
       knnParams.push(...excludeRowids);
     }
-    const knnStmt = this.rawDb.prepare(sql4);
+    const knnStmt = this.rawDb.prepare(sql5);
     const knnResults = knnStmt.all(...knnParams);
     if (!knnResults.length) {
       return [];
@@ -4156,7 +4335,7 @@ var IndexStateRepo = class {
 };
 
 // src/core/storage/sqlite/repositories/MobiusNodeRepo.ts
-var import_kysely2 = require("kysely");
+var import_kysely3 = require("kysely");
 
 // src/core/constant.ts
 var VAULT_DB_FILENAME = "vault.sqlite";
@@ -4345,17 +4524,17 @@ var FOLDER_HUB_TOP_ROOT_MAX_FRACTION = 0.38;
 var FOLDER_HUB_TOPIC_STATS_MAX_DOCS = 2500;
 var FOLDER_HUB_TOPIC_PURITY_DOMINANT_WEIGHT = 0.65;
 var FOLDER_HUB_TOPIC_PURITY_HHI_WEIGHT = 0.35;
-var FOLDER_HUB_FOLDER_RANK_PURITY_WEIGHT = 0.18;
-var FOLDER_HUB_CONTAINER_PENALTY_MAX = 0.26;
+var FOLDER_HUB_FOLDER_RANK_PURITY_WEIGHT = 0.28;
+var FOLDER_HUB_CONTAINER_PENALTY_MAX = 0.32;
 var FOLDER_HUB_CONTAINER_PENALTY_RAW_REF_MAX = 0.17;
 var FOLDER_HUB_STRONG_CHILD_TOPIC_PURITY_MIN = 0.6;
-var FOLDER_HUB_CHILD_PROMOTION_CONTAINER_THRESHOLD = 0.05;
-var FOLDER_HUB_TOPIC_PURITY_LOW_THRESHOLD = 0.45;
-var FOLDER_HUB_TOPIC_PURITY_LOW_RANK_MULTIPLIER = 0.82;
+var FOLDER_HUB_CHILD_PROMOTION_CONTAINER_THRESHOLD = 0.045;
+var FOLDER_HUB_TOPIC_PURITY_LOW_THRESHOLD = 0.42;
+var FOLDER_HUB_TOPIC_PURITY_LOW_RANK_MULTIPLIER = 0.78;
 var FOLDER_HUB_NEST_CHILD_WEAK_TOPIC_PURITY = 0.6;
-var FOLDER_HUB_NEST_CHILD_ONLY_MIN_TOPIC_PURITY = 0.68;
+var FOLDER_HUB_NEST_CHILD_ONLY_MIN_TOPIC_PURITY = 0.65;
 var FOLDER_HUB_NEST_CHILD_ONLY_RANK_BUFFER = 0.08;
-var FOLDER_HUB_NEST_CHILD_ONLY_MIN_PARENT_CONTAINER = 0.07;
+var FOLDER_HUB_NEST_CHILD_ONLY_MIN_PARENT_CONTAINER = 0.12;
 var FOLDER_HUB_NEST_BOTH_MIN_PARENT_RESIDUAL = 0.6;
 var FOLDER_HUB_NEST_BOTH_MIN_PARENT_TOPIC_PURITY = 0.5;
 var FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE = 0.5;
@@ -4618,34 +4797,51 @@ var SLICE_CAPS = {
   }
 };
 
-// src/core/utils/vault-path-utils.ts
-function normalizeVaultPath(path3) {
-  return path3.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
+// src/core/storage/sqlite/repositories/folderIntuitionMobius.ts
+var MOBIUS_FOLDER_INTUITION = {
+  ONE_LINER: "intuition_one_liner",
+  TYPICAL_QUESTIONS: "intuition_typical_questions",
+  NAVIGATION_HINTS: "intuition_navigation_hints",
+  TOP_TAGS: "intuition_top_tags",
+  TOP_KEYWORDS: "intuition_top_keywords",
+  BACKBONE_NEIGHBORS: "intuition_backbone_neighbors",
+  UPDATED_AT: "intuition_updated_at"
+};
+function safeStringArray(v) {
+  if (!Array.isArray(v)) return [];
+  return v.filter((x) => typeof x === "string");
 }
-function pathSegments(path3) {
-  const n = normalizeVaultPath(path3);
-  if (!n) return [];
-  return n.split("/").filter(Boolean);
-}
-function parentDirPath(path3) {
-  const segs = pathSegments(path3);
-  if (segs.length <= 1) return "";
-  return segs.slice(0, -1).join("/");
-}
-function pathLcaDepth(a, b) {
-  const sa = pathSegments(a);
-  const sb = pathSegments(b);
-  let i = 0;
-  while (i < sa.length && i < sb.length && sa[i] === sb[i]) {
-    i++;
+function safeParseAttrs(raw) {
+  if (!raw) return {};
+  try {
+    const o = JSON.parse(raw);
+    return o && typeof o === "object" && !Array.isArray(o) ? o : {};
+  } catch {
+    return {};
   }
-  return i;
 }
-function crossesTopLevelFolder(a, b) {
-  const sa = pathSegments(a);
-  const sb = pathSegments(b);
-  if (!sa.length || !sb.length) return false;
-  return sa[0] !== sb[0];
+function parseFolderIntuitionFromMobiusFolderRow(row) {
+  const folderPath = (row.path ?? "").trim();
+  if (!folderPath) return null;
+  const attrs = safeParseAttrs(row.attributes_json);
+  const fromAttr = typeof attrs[MOBIUS_FOLDER_INTUITION.ONE_LINER] === "string" ? attrs[MOBIUS_FOLDER_INTUITION.ONE_LINER] : "";
+  const summary = typeof row.summary === "string" ? row.summary : "";
+  const oneLiner = String(fromAttr).trim() || summary.trim() || folderPath;
+  const intuitionTs = attrs[MOBIUS_FOLDER_INTUITION.UPDATED_AT];
+  const updatedAt = typeof intuitionTs === "number" && Number.isFinite(intuitionTs) ? Math.floor(intuitionTs) : row.updated_at;
+  return {
+    folderPath,
+    oneLiner,
+    typicalQuestions: safeStringArray(attrs[MOBIUS_FOLDER_INTUITION.TYPICAL_QUESTIONS]),
+    navigationHints: safeStringArray(attrs[MOBIUS_FOLDER_INTUITION.NAVIGATION_HINTS]),
+    topicPurity: row.folder_cohesion_score,
+    docCount: Math.max(0, Math.floor(Number(row.tag_doc_count ?? 0))),
+    hubRank: row.pagerank,
+    topTags: safeStringArray(attrs[MOBIUS_FOLDER_INTUITION.TOP_TAGS]),
+    topKeywords: safeStringArray(attrs[MOBIUS_FOLDER_INTUITION.TOP_KEYWORDS]),
+    backboneNeighbors: safeStringArray(attrs[MOBIUS_FOLDER_INTUITION.BACKBONE_NEIGHBORS]),
+    updatedAt
+  };
 }
 
 // src/core/storage/sqlite/repositories/MobiusNodeRepo.ts
@@ -4654,12 +4850,12 @@ function escapeSqlLikePatternForVaultPath(s) {
 }
 function sqlMobiusPathMatchesHubDiscoverPrefix(pathRef, prefix) {
   const p = normalizeVaultPath(prefix);
-  if (!p) return import_kysely2.sql`1=0`;
+  if (!p) return import_kysely3.sql`1=0`;
   const likePattern = escapeSqlLikePatternForVaultPath(`${p}/`) + "%";
-  const norm = import_kysely2.sql`trim(replace(coalesce(${pathRef}, ''), char(92), '/'), '/')`;
-  return import_kysely2.sql`(${norm} = ${p} OR ${norm} LIKE ${likePattern} ESCAPE '\\' OR ${p} LIKE ${norm} || '/%')`;
+  const norm = import_kysely3.sql`trim(replace(coalesce(${pathRef}, ''), char(92), '/'), '/')`;
+  return import_kysely3.sql`(${norm} = ${p} OR ${norm} LIKE ${likePattern} ESCAPE '\\' OR ${p} LIKE ${norm} || '/%')`;
 }
-var MOBIUS_PATH_GAP_PREFIX_SQL = import_kysely2.sql`CASE WHEN instr(mobius_node.path, '/') = 0 THEN mobius_node.path ELSE substr(mobius_node.path, 1, instr(mobius_node.path, '/') - 1) || '/' || substr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), 1, CASE WHEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') > 0 THEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') - 1 ELSE length(substr(mobius_node.path, instr(mobius_node.path, '/') + 1)) END) END`;
+var MOBIUS_PATH_GAP_PREFIX_SQL = import_kysely3.sql`CASE WHEN instr(mobius_node.path, '/') = 0 THEN mobius_node.path ELSE substr(mobius_node.path, 1, instr(mobius_node.path, '/') - 1) || '/' || substr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), 1, CASE WHEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') > 0 THEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') - 1 ELSE length(substr(mobius_node.path, instr(mobius_node.path, '/') + 1)) END) END`;
 var MobiusNodeRepo = class {
   constructor(db) {
     this.db = db;
@@ -4732,6 +4928,24 @@ var MobiusNodeRepo = class {
       attributes_json: JSON.stringify(next),
       updated_at: now
     }).where("node_id", "=", nodeId).where("type", "in", [...GRAPH_INDEXED_NOTE_NODE_TYPES]).execute();
+  }
+  /**
+   * Merges keys into `attributes_json` for a folder node (`type = folder`) without dropping other fields.
+   */
+  async mergeJsonAttributesForFolderNode(nodeId, merge, now = Date.now()) {
+    const row = await this.db.selectFrom("mobius_node").select("attributes_json").where("node_id", "=", nodeId).where("type", "=", GraphNodeType.Folder).executeTakeFirst();
+    if (!row) return;
+    let prev = {};
+    try {
+      prev = JSON.parse(row.attributes_json || "{}");
+    } catch {
+      prev = {};
+    }
+    const next = { ...prev, ...merge };
+    await this.db.updateTable("mobius_node").set({
+      attributes_json: JSON.stringify(next),
+      updated_at: now
+    }).where("node_id", "=", nodeId).where("type", "=", GraphNodeType.Folder).execute();
   }
   /**
    * Clears cached semantic Mermaid overlay (and bumps rule version) on all document-like nodes
@@ -5038,7 +5252,7 @@ var MobiusNodeRepo = class {
   async recordOpen(docId, ts) {
     await this.db.updateTable("mobius_node").set({
       last_open_ts: ts,
-      open_count: import_kysely2.sql`coalesce(open_count, 0) + 1`,
+      open_count: import_kysely3.sql`coalesce(open_count, 0) + 1`,
       updated_at: ts
     }).where("node_id", "=", docId).where("type", "in", [...GRAPH_INDEXED_NOTE_NODE_TYPES]).execute();
   }
@@ -5237,7 +5451,7 @@ var MobiusNodeRepo = class {
    */
   async refreshTagDocCountsForTagNodeIds(tagNodeIds, now = Date.now()) {
     for (const id of tagNodeIds) {
-      await import_kysely2.sql`
+      await import_kysely3.sql`
 				UPDATE mobius_node SET
 					tag_doc_count = (
 						SELECT COUNT(DISTINCT e.from_node_id)
@@ -5274,8 +5488,8 @@ var MobiusNodeRepo = class {
     const ref = GraphEdgeType.References;
     const rows = await this.db.selectFrom("mobius_edge").select([
       "to_node_id",
-      import_kysely2.sql`sum(case when type = ${ref} then 1 else 0 end)`.as("doc_cnt"),
-      import_kysely2.sql`sum(case when type = ${ref} then 0 else 1 end)`.as("other_cnt")
+      import_kysely3.sql`sum(case when type = ${ref} then 1 else 0 end)`.as("doc_cnt"),
+      import_kysely3.sql`sum(case when type = ${ref} then 0 else 1 end)`.as("other_cnt")
     ]).where("to_node_id", "in", nodeIds).groupBy("to_node_id").execute();
     for (const row of rows) {
       const b = out.get(row.to_node_id);
@@ -5296,8 +5510,8 @@ var MobiusNodeRepo = class {
     const ref = GraphEdgeType.References;
     const rows = await this.db.selectFrom("mobius_edge").select([
       "from_node_id",
-      import_kysely2.sql`sum(case when type = ${ref} then 1 else 0 end)`.as("doc_cnt"),
-      import_kysely2.sql`sum(case when type = ${ref} then 0 else 1 end)`.as("other_cnt")
+      import_kysely3.sql`sum(case when type = ${ref} then 1 else 0 end)`.as("doc_cnt"),
+      import_kysely3.sql`sum(case when type = ${ref} then 0 else 1 end)`.as("other_cnt")
     ]).where("from_node_id", "in", nodeIds).groupBy("from_node_id").execute();
     for (const row of rows) {
       const b = out.get(row.from_node_id);
@@ -5368,7 +5582,7 @@ var MobiusNodeRepo = class {
     let fetchLimit = 100;
     const maxFetch = 1e4;
     while (out.length < lim && fetchLimit <= maxFetch) {
-      const rows = await this.db.selectFrom("mobius_node").select(["path", "node_id"]).where("type", "=", GraphNodeType.Document).where("path", "is not", null).where(import_kysely2.sql`(${MOBIUS_PATH_GAP_PREFIX_SQL}) = ${gapPrefix}`).orderBy("path").limit(fetchLimit).execute();
+      const rows = await this.db.selectFrom("mobius_node").select(["path", "node_id"]).where("type", "=", GraphNodeType.Document).where("path", "is not", null).where(import_kysely3.sql`(${MOBIUS_PATH_GAP_PREFIX_SQL}) = ${gapPrefix}`).orderBy("path").limit(fetchLimit).execute();
       for (const r of rows) {
         const p = r.path ?? "";
         if (!p) continue;
@@ -5492,18 +5706,18 @@ var MobiusNodeRepo = class {
     const hub = hubSummaryFolder.trim();
     const likeUnderHub = hub ? `${hub}/%` : "";
     const normalizedPrefixes = (pathPrefixes ?? []).map((x) => normalizeVaultPath(String(x))).filter((x) => x.length > 0);
-    const hubPhysical = import_kysely2.sql`min(1.0, coalesce(pagerank, 0.0) * 2.2)`;
-    const totalIn = import_kysely2.sql`coalesce(doc_incoming_cnt, 0) + coalesce(other_incoming_cnt, 0)`;
-    const totalOut = import_kysely2.sql`coalesce(doc_outgoing_cnt, 0) + coalesce(other_outgoing_cnt, 0)`;
-    const hubOrg = import_kysely2.sql`min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) * 0.18 + ln(1.0 + ${totalIn}) * 0.06 + ln(1.0 + ${totalOut}) * 0.06)`;
-    const hubSem = import_kysely2.sql`min(1.0, coalesce(semantic_pagerank, 0.0) * 1.0)`;
+    const hubPhysical = import_kysely3.sql`min(1.0, coalesce(pagerank, 0.0) * 2.2)`;
+    const totalIn = import_kysely3.sql`coalesce(doc_incoming_cnt, 0) + coalesce(other_incoming_cnt, 0)`;
+    const totalOut = import_kysely3.sql`coalesce(doc_outgoing_cnt, 0) + coalesce(other_outgoing_cnt, 0)`;
+    const hubOrg = import_kysely3.sql`min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) * 0.18 + ln(1.0 + ${totalIn}) * 0.06 + ln(1.0 + ${totalOut}) * 0.06)`;
+    const hubSem = import_kysely3.sql`min(1.0, coalesce(semantic_pagerank, 0.0) * 1.0)`;
     const lnRef = Math.log(1 + FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT);
-    const hubCohEff = import_kysely2.sql`coalesce(folder_cohesion_score, 0.0) * min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) / ${lnRef})`;
+    const hubCohEff = import_kysely3.sql`coalesce(folder_cohesion_score, 0.0) * min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) / ${lnRef})`;
     const wPhys = FOLDER_HUB_GRAPH_WEIGHT_PHYSICAL;
     const wOrg = FOLDER_HUB_GRAPH_WEIGHT_ORGANIZATIONAL;
     const wSem = FOLDER_HUB_GRAPH_WEIGHT_SEMANTIC;
     const wCoh = FOLDER_HUB_GRAPH_WEIGHT_COHESION;
-    const hubGraph = import_kysely2.sql`min(1.0, (${hubPhysical} * ${wPhys}) + (${hubOrg} * ${wOrg}) + (${hubSem} * ${wSem}) + (${hubCohEff} * ${wCoh}))`;
+    const hubGraph = import_kysely3.sql`min(1.0, (${hubPhysical} * ${wPhys}) + (${hubOrg} * ${wOrg}) + (${hubSem} * ${wSem}) + (${hubCohEff} * ${wCoh}))`;
     let q = this.db.selectFrom("mobius_node").select([
       "node_id",
       "path",
@@ -5526,14 +5740,44 @@ var MobiusNodeRepo = class {
       q = q.where((eb) => eb.and([eb("path", "!=", hub), eb("path", "not like", likeUnderHub)]));
     }
     if (normalizedPrefixes.length > 0) {
-      const pathRef = import_kysely2.sql.ref("mobius_node.path");
+      const pathRef = import_kysely3.sql.ref("mobius_node.path");
       const clauses = normalizedPrefixes.map((pref) => sqlMobiusPathMatchesHubDiscoverPrefix(pathRef, pref));
-      q = q.where(import_kysely2.sql`(${import_kysely2.sql.join(clauses, import_kysely2.sql` OR `)})`);
+      q = q.where(import_kysely3.sql`(${import_kysely3.sql.join(clauses, import_kysely3.sql` OR `)})`);
     }
     let q2 = q.orderBy("hub_graph_score", "desc").limit(lim);
     if (off > 0) q2 = q2.offset(off);
     const rows = await q2.execute();
     return rows;
+  }
+  /**
+   * Top folder nodes for conversational search Orient: ordered by PageRank, then doc count under folder.
+   * Intuition text lives in `attributes_json` (see {@link parseFolderIntuitionFromMobiusFolderRow}).
+   */
+  async listTopFoldersForSearchOrient(limit = 30) {
+    const lim = Math.max(1, Math.floor(limit));
+    const rows = await this.db.selectFrom("mobius_node").select([
+      "path",
+      "summary",
+      "attributes_json",
+      "tag_doc_count",
+      "folder_cohesion_score",
+      "pagerank",
+      "updated_at"
+    ]).where("type", "=", GraphNodeType.Folder).where("path", "is not", null).orderBy(import_kysely3.sql`coalesce(pagerank, 0) desc`).orderBy(import_kysely3.sql`coalesce(tag_doc_count, 0) desc`).limit(lim).execute();
+    const out = [];
+    for (const r of rows) {
+      const m = parseFolderIntuitionFromMobiusFolderRow({
+        path: r.path,
+        summary: r.summary,
+        attributes_json: r.attributes_json,
+        tag_doc_count: r.tag_doc_count,
+        folder_cohesion_score: r.folder_cohesion_score,
+        pagerank: r.pagerank,
+        updated_at: r.updated_at
+      });
+      if (m) out.push(m);
+    }
+    return out;
   }
   /**
    * Loads `tags_json` for documents under a folder path (exact folder or nested files), capped for purity stats.
@@ -5585,18 +5829,18 @@ var MobiusNodeRepo = class {
     const hub = hubSummaryFolder.trim();
     const likeUnderHub = hub ? `${hub}/%` : "";
     const relax = options?.relaxMinDocs === true;
-    const hubPhysical = import_kysely2.sql`min(1.0, coalesce(pagerank, 0.0) * 2.2)`;
-    const totalIn = import_kysely2.sql`coalesce(doc_incoming_cnt, 0) + coalesce(other_incoming_cnt, 0)`;
-    const totalOut = import_kysely2.sql`coalesce(doc_outgoing_cnt, 0) + coalesce(other_outgoing_cnt, 0)`;
-    const hubOrg = import_kysely2.sql`min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) * 0.18 + ln(1.0 + ${totalIn}) * 0.06 + ln(1.0 + ${totalOut}) * 0.06)`;
-    const hubSem = import_kysely2.sql`min(1.0, coalesce(semantic_pagerank, 0.0) * 1.0)`;
+    const hubPhysical = import_kysely3.sql`min(1.0, coalesce(pagerank, 0.0) * 2.2)`;
+    const totalIn = import_kysely3.sql`coalesce(doc_incoming_cnt, 0) + coalesce(other_incoming_cnt, 0)`;
+    const totalOut = import_kysely3.sql`coalesce(doc_outgoing_cnt, 0) + coalesce(other_outgoing_cnt, 0)`;
+    const hubOrg = import_kysely3.sql`min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) * 0.18 + ln(1.0 + ${totalIn}) * 0.06 + ln(1.0 + ${totalOut}) * 0.06)`;
+    const hubSem = import_kysely3.sql`min(1.0, coalesce(semantic_pagerank, 0.0) * 1.0)`;
     const lnRef = Math.log(1 + FOLDER_HUB_COHESION_SIZE_REF_DOC_COUNT);
-    const hubCohEff = import_kysely2.sql`coalesce(folder_cohesion_score, 0.0) * min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) / ${lnRef})`;
+    const hubCohEff = import_kysely3.sql`coalesce(folder_cohesion_score, 0.0) * min(1.0, ln(1.0 + coalesce(tag_doc_count, 0)) / ${lnRef})`;
     const wPhys = FOLDER_HUB_GRAPH_WEIGHT_PHYSICAL;
     const wOrg = FOLDER_HUB_GRAPH_WEIGHT_ORGANIZATIONAL;
     const wSem = FOLDER_HUB_GRAPH_WEIGHT_SEMANTIC;
     const wCoh = FOLDER_HUB_GRAPH_WEIGHT_COHESION;
-    const hubGraph = import_kysely2.sql`min(1.0, (${hubPhysical} * ${wPhys}) + (${hubOrg} * ${wOrg}) + (${hubSem} * ${wSem}) + (${hubCohEff} * ${wCoh}))`;
+    const hubGraph = import_kysely3.sql`min(1.0, (${hubPhysical} * ${wPhys}) + (${hubOrg} * ${wOrg}) + (${hubSem} * ${wSem}) + (${hubCohEff} * ${wCoh}))`;
     let q = this.db.selectFrom("mobius_node").select([
       "node_id",
       "path",
@@ -5645,10 +5889,10 @@ var MobiusNodeRepo = class {
     const likeUnderHub = hub ? `${hub}/%` : "";
     const wIn = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.incoming;
     const wOut = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.outgoing;
-    const hubPhysical = import_kysely2.sql`min(1.0, (coalesce(pagerank, 0) * 2.5) + min(0.08, (coalesce(word_count, 0) / 50000.0) * 0.08))`;
-    const hubOrg = import_kysely2.sql`min(1.0, (coalesce(doc_incoming_cnt, 0) * ${wIn}) + (coalesce(doc_outgoing_cnt, 0) * ${wOut}))`;
-    const hubSem = import_kysely2.sql`min(1.0, coalesce(semantic_pagerank, 0) * 1.2)`;
-    const hubGraph = import_kysely2.sql`min(1.0, (${hubPhysical} * 0.35) + (${hubOrg} * 0.25) + (${hubSem} * 0.35))`;
+    const hubPhysical = import_kysely3.sql`min(1.0, (coalesce(pagerank, 0) * 2.5) + min(0.08, (coalesce(word_count, 0) / 50000.0) * 0.08))`;
+    const hubOrg = import_kysely3.sql`min(1.0, (coalesce(doc_incoming_cnt, 0) * ${wIn}) + (coalesce(doc_outgoing_cnt, 0) * ${wOut}))`;
+    const hubSem = import_kysely3.sql`min(1.0, coalesce(semantic_pagerank, 0) * 1.2)`;
+    const hubGraph = import_kysely3.sql`min(1.0, (${hubPhysical} * 0.35) + (${hubOrg} * 0.25) + (${hubSem} * 0.35))`;
     let q = this.db.selectFrom("mobius_node").select([
       "node_id",
       "path",
@@ -5726,10 +5970,10 @@ var MobiusNodeRepo = class {
     const likeUnderHub = hub ? `${hub}/%` : "";
     const wIn = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.incoming;
     const wOut = DOCUMENT_HUB_ORGANIZATIONAL_SCORE_WEIGHTS.outgoing;
-    const hubPhysical = import_kysely2.sql`min(1.0, (coalesce(pagerank, 0) * 2.5) + min(0.08, (coalesce(word_count, 0) / 50000.0) * 0.08))`;
-    const hubOrg = import_kysely2.sql`min(1.0, (coalesce(doc_incoming_cnt, 0) * ${wIn}) + (coalesce(doc_outgoing_cnt, 0) * ${wOut}))`;
-    const hubSem = import_kysely2.sql`min(1.0, coalesce(semantic_pagerank, 0) * 1.2)`;
-    const hubGraph = import_kysely2.sql`min(1.0, (${hubPhysical} * 0.35) + (${hubOrg} * 0.25) + (${hubSem} * 0.35))`;
+    const hubPhysical = import_kysely3.sql`min(1.0, (coalesce(pagerank, 0) * 2.5) + min(0.08, (coalesce(word_count, 0) / 50000.0) * 0.08))`;
+    const hubOrg = import_kysely3.sql`min(1.0, (coalesce(doc_incoming_cnt, 0) * ${wIn}) + (coalesce(doc_outgoing_cnt, 0) * ${wOut}))`;
+    const hubSem = import_kysely3.sql`min(1.0, coalesce(semantic_pagerank, 0) * 1.2)`;
+    const hubGraph = import_kysely3.sql`min(1.0, (${hubPhysical} * 0.35) + (${hubOrg} * 0.25) + (${hubSem} * 0.35))`;
     let q = this.db.selectFrom("mobius_node").select([
       "node_id",
       "path",
@@ -5769,7 +6013,7 @@ var MobiusNodeRepo = class {
         (eb) => eb.and([eb("path", "!=", hub), eb("path", "not like", likeUnderHub)])
       );
     }
-    const rows = await q.orderBy(import_kysely2.sql`coalesce(pagerank, 0) desc`).limit(lim).execute();
+    const rows = await q.orderBy(import_kysely3.sql`coalesce(pagerank, 0) desc`).limit(lim).execute();
     return rows;
   }
   /** Resolve paths for a set of document node ids (cluster member listing). */
@@ -5823,6 +6067,38 @@ var MobiusNodeRepo = class {
     const prefix = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
     return this.listDocumentPathsByPathPrefix(prefix, limit);
   }
+  /**
+   * Batch-load doc link degrees for `type=folder` mobius rows by vault path (one round-trip).
+   * Keys in the returned map use {@link normalizeVaultPath}.
+   */
+  async listFolderDocDegreesByVaultPaths(paths) {
+    const uniq = [...new Set(paths.map((p) => normalizeVaultPath(String(p ?? ""))).filter(Boolean))];
+    if (uniq.length === 0) return /* @__PURE__ */ new Map();
+    const rows = await this.db.selectFrom("mobius_node").select(["path", "doc_incoming_cnt", "doc_outgoing_cnt"]).where("type", "=", GraphNodeType.Folder).where("path", "in", uniq).execute();
+    const m = /* @__PURE__ */ new Map();
+    for (const r of rows) {
+      const p = normalizeVaultPath(String(r.path ?? ""));
+      if (!p) continue;
+      m.set(p, {
+        incoming: Math.max(0, Math.floor(Number(r.doc_incoming_cnt ?? 0))),
+        outgoing: Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0)))
+      });
+    }
+    return m;
+  }
+  /**
+   * Sums `doc_outgoing_cnt` for document nodes (matches folder-row `docOutgoing` semantics, doc links only).
+   */
+  async sumDocumentOutgoingByNodeIds(nodeIds) {
+    const uniq = [...new Set(nodeIds.filter(Boolean))];
+    if (uniq.length === 0) return 0;
+    const rows = await this.db.selectFrom("mobius_node").select(["doc_outgoing_cnt"]).where("node_id", "in", uniq).where("type", "=", GraphNodeType.Document).execute();
+    let s = 0;
+    for (const r of rows) {
+      s += Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0)));
+    }
+    return s;
+  }
   /** Batch load fields needed for weighted local hub graph nodes. */
   async listHubLocalGraphNodeMeta(nodeIds) {
     if (!nodeIds.length) return [];
@@ -5866,7 +6142,7 @@ var MobiusNodeRepo = class {
 };
 
 // src/core/storage/sqlite/repositories/MobiusEdgeRepo.ts
-var import_kysely3 = require("kysely");
+var import_kysely4 = require("kysely");
 
 // src/core/utils/id-utils.ts
 var import_crypto = require("crypto");
@@ -6040,7 +6316,7 @@ var MobiusEdgeRepo = class _MobiusEdgeRepo {
    * Caller should then look up mobius_node by to_node_id and sum counts by (type, label).
    */
   async getTagCategoryEdgeCountsByToNode(fromNodeIds) {
-    let q = this.db.selectFrom("mobius_edge").select(["to_node_id", import_kysely3.sql`count(*)`.as("count")]).where("type", "in", [...GRAPH_TAGGED_EDGE_TYPES]).groupBy("to_node_id");
+    let q = this.db.selectFrom("mobius_edge").select(["to_node_id", import_kysely4.sql`count(*)`.as("count")]).where("type", "in", [...GRAPH_TAGGED_EDGE_TYPES]).groupBy("to_node_id");
     if (fromNodeIds !== void 0 && fromNodeIds.length > 0) {
       q = q.where("from_node_id", "in", fromNodeIds);
     }
@@ -6320,7 +6596,7 @@ var MobiusEdgeRepo = class _MobiusEdgeRepo {
    */
   async getSourceNodesConnectedToAllTargets(targetNodeIds) {
     if (targetNodeIds.length === 0) return [];
-    const result = await this.db.selectFrom("mobius_edge").select("from_node_id").where("to_node_id", "in", targetNodeIds).groupBy("from_node_id").having(import_kysely3.sql`COUNT(DISTINCT to_node_id)`, "=", targetNodeIds.length).execute();
+    const result = await this.db.selectFrom("mobius_edge").select("from_node_id").where("to_node_id", "in", targetNodeIds).groupBy("from_node_id").having(import_kysely4.sql`COUNT(DISTINCT to_node_id)`, "=", targetNodeIds.length).execute();
     return result.map((row) => row.from_node_id);
   }
   /**
@@ -6331,7 +6607,7 @@ var MobiusEdgeRepo = class _MobiusEdgeRepo {
     const cap = limit ?? 1e7;
     const d = GraphNodeType.Document;
     const h = GraphNodeType.HubDoc;
-    const result = await import_kysely3.sql`
+    const result = await import_kysely4.sql`
 			SELECT n.node_id AS node_id FROM mobius_node n
 			WHERE (
 				(n.type IN (${d}, ${h}) AND IFNULL(n.doc_outgoing_cnt,0) + IFNULL(n.other_outgoing_cnt,0) = 0)
@@ -6348,7 +6624,7 @@ var MobiusEdgeRepo = class _MobiusEdgeRepo {
     const cap = limit ?? 1e7;
     const d = GraphNodeType.Document;
     const h = GraphNodeType.HubDoc;
-    const result = await import_kysely3.sql`
+    const result = await import_kysely4.sql`
 			SELECT n.node_id AS node_id FROM mobius_node n
 			WHERE (
 				(n.type IN (${d}, ${h}) AND IFNULL(n.doc_incoming_cnt,0) + IFNULL(n.other_incoming_cnt,0) = 0)
@@ -6365,7 +6641,7 @@ var MobiusEdgeRepo = class _MobiusEdgeRepo {
     const cap = limit ?? 1e7;
     const d = GraphNodeType.Document;
     const h = GraphNodeType.HubDoc;
-    const result = await import_kysely3.sql`
+    const result = await import_kysely4.sql`
 			SELECT n.node_id AS node_id FROM mobius_node n
 			WHERE (
 				(
@@ -6506,7 +6782,7 @@ var MobiusEdgeRepo = class _MobiusEdgeRepo {
    * @param typesExclude - Types to exclude (edges of these types will not be included)
    */
   async getAllEdgesForNode(nodeId, limitPerType, typesExclude) {
-    const directionExpr = import_kysely3.sql`case when from_node_id = ${nodeId} then 'out' else 'in' end`;
+    const directionExpr = import_kysely4.sql`case when from_node_id = ${nodeId} then 'out' else 'in' end`;
     const query = this.db.with("ranked_edges", (qb) => {
       let baseQb = qb.selectFrom("mobius_edge").select([
         "id",
@@ -6520,7 +6796,7 @@ var MobiusEdgeRepo = class _MobiusEdgeRepo {
         // 1. define direction explicitly: if the edge is outgoing from the current node, mark as 'out', otherwise mark as 'in'
         directionExpr.as("direction"),
         // 2. add type and direction to partitionBy
-        import_kysely3.sql`row_number() over(
+        import_kysely4.sql`row_number() over(
 							partition by type, ${directionExpr} 
 							order by updated_at desc
 						)`.as("dir_type_rank")
@@ -8392,6 +8668,17 @@ function getCachedBooleanExpression(expression) {
 }
 
 // src/service/tools/search-graph-inspector/common.ts
+function matchVaultPathByGrepPattern(path3, pattern) {
+  const p = String(path3 ?? "");
+  const raw = String(pattern ?? "").trim();
+  if (!raw) return true;
+  try {
+    const re = new RegExp(raw, "i");
+    return re.test(p);
+  } catch {
+    return p.toLowerCase().includes(raw.toLowerCase());
+  }
+}
 async function getSemanticNeighbors(docId, limit, filterDocIds = EMPTY_SET, tenant = "vault") {
   const embeddingRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
   const queryVector = await embeddingRepo.getEmbeddingForSemanticSearch(docId);
@@ -10483,7 +10770,15 @@ var INDEXING_AND_HUB_PROMPT_IDS = [
   "folder-project-summary" /* FolderProjectSummary */,
   "doc-tag-generate-json" /* DocTagGenerateJson */,
   "hub-doc-summary" /* HubDocSummary */,
-  "hub-semantic-merge" /* HubSemanticMerge */
+  "hub-semantic-merge" /* HubSemanticMerge */,
+  "hub-discovery-folder-round" /* HubDiscoveryFolderRound */,
+  "hub-discovery-folder-deepen" /* HubDiscoveryFolderDeepen */,
+  "hub-discovery-folder-recon-plan" /* HubDiscoveryFolderReconPlan */,
+  "hub-discovery-folder-recon-submit" /* HubDiscoveryFolderReconSubmit */,
+  "hub-discovery-document-recon-plan" /* HubDiscoveryDocumentReconPlan */,
+  "hub-discovery-document-recon-submit" /* HubDiscoveryDocumentReconSubmit */,
+  "knowledge-intuition-plan" /* KnowledgeIntuitionPlan */,
+  "knowledge-intuition-submit" /* KnowledgeIntuitionSubmit */
 ];
 var CONFIGURABLE_PROMPT_IDS = [
   // Chat summary prompts - users may want different models for summaries
@@ -11443,13 +11738,7 @@ async function grepFileTree(params) {
   const limit = Math.min(DEFAULT_LIMIT2, Math.max(1, Number(params.limit) ?? DEFAULT_LIMIT2));
   const pattern = String(params.pattern).trim();
   const allPaths = getFullVaultFilePathsForGrep();
-  let matched;
-  try {
-    const asRegex = new RegExp(pattern, "i");
-    matched = allPaths.filter((p) => asRegex.test(p));
-  } catch {
-    matched = allPaths.filter((p) => p.toLowerCase().includes(pattern.toLowerCase()));
-  }
+  const matched = allPaths.filter((p) => matchVaultPathByGrepPattern(p, pattern));
   const slice = matched.slice(0, limit);
   const total = matched.length;
   const lines = slice.map((p) => `- ${p}`);
@@ -12870,7 +13159,7 @@ async function getDefaultDocumentSummary(doc, aiServiceManager, provider, modelI
 }
 
 // src/core/document/helper/TagService.ts
-var import_v312 = require("zod/v3");
+var import_v313 = require("zod/v3");
 var functionalSet = new Set(FUNCTIONAL_TAG_IDS);
 var EMPTY_TAGS_BLOB = {
   topicTags: [],
@@ -13061,9 +13350,9 @@ function filterValidFunctionalTagEntries(entries) {
   }
   return out;
 }
-var llmFunctionalTagEntryLooseSchema = import_v312.z.object({
-  id: import_v312.z.string().min(1).max(80),
-  label: import_v312.z.string().max(MAX_FUNCTIONAL_LABEL_LEN).optional()
+var llmFunctionalTagEntryLooseSchema = import_v313.z.object({
+  id: import_v313.z.string().min(1).max(80),
+  label: import_v313.z.string().max(MAX_FUNCTIONAL_LABEL_LEN).optional()
 });
 function mapLlmFunctionalIdToCanonical(raw) {
   const id = String(raw).trim();
@@ -13075,9 +13364,9 @@ function mapLlmFunctionalIdToCanonical(raw) {
   }
   return null;
 }
-var topicTagEntrySchema = import_v312.z.object({
-  id: import_v312.z.string().max(MAX_TOPIC_ID_LEN),
-  label: import_v312.z.string().max(MAX_TOPIC_LABEL_LEN).optional()
+var topicTagEntrySchema = import_v313.z.object({
+  id: import_v313.z.string().max(MAX_TOPIC_ID_LEN),
+  label: import_v313.z.string().max(MAX_TOPIC_LABEL_LEN).optional()
 });
 var DOC_TYPE_LLM = [
   "principle",
@@ -13088,26 +13377,26 @@ var DOC_TYPE_LLM = [
   "note",
   "other"
 ];
-var docTagResponseSchema = import_v312.z.object({
-  topicTagEntries: import_v312.z.array(topicTagEntrySchema).max(12).default([]),
+var docTagResponseSchema = import_v313.z.object({
+  topicTagEntries: import_v313.z.array(topicTagEntrySchema).max(12).default([]),
   /** @deprecated LLM may still return plain strings; mapped to `{ id }` when topicTagEntries is empty. */
-  topicTags: import_v312.z.array(import_v312.z.string()).max(12).optional(),
+  topicTags: import_v313.z.array(import_v313.z.string()).max(12).optional(),
   /** At least one entry; ids normalized via {@link mapLlmFunctionalIdToCanonical}. */
-  functionalTagEntries: import_v312.z.array(llmFunctionalTagEntryLooseSchema).min(1).max(5),
-  timeTags: import_v312.z.array(import_v312.z.string()).max(12).default([]),
-  geoTags: import_v312.z.array(import_v312.z.string()).max(12).default([]),
-  personTags: import_v312.z.array(import_v312.z.string()).max(12).default([]),
+  functionalTagEntries: import_v313.z.array(llmFunctionalTagEntryLooseSchema).min(1).max(5),
+  timeTags: import_v313.z.array(import_v313.z.string()).max(12).default([]),
+  geoTags: import_v313.z.array(import_v313.z.string()).max(12).default([]),
+  personTags: import_v313.z.array(import_v313.z.string()).max(12).default([]),
   /**
    * Best estimate of first authorship / event start. Prefer compact text: `yyyyMMdd` or `yyyyMMdd HHmmss`
    * (24h). Omit or null if unknown.
    */
-  inferCreatedAt: import_v312.z.string().max(48).optional().nullable(),
+  inferCreatedAt: import_v313.z.string().max(48).optional().nullable(),
   /**
    * Optional vault role hints; merged into functional tag labels in code (not separate result fields).
    */
-  docType: import_v312.z.enum(DOC_TYPE_LLM).optional(),
-  docTypeConfidence: import_v312.z.number().min(0).max(1).optional(),
-  docTypeReasoning: import_v312.z.string().max(500).optional()
+  docType: import_v313.z.enum(DOC_TYPE_LLM).optional(),
+  docTypeConfidence: import_v313.z.number().min(0).max(1).optional(),
+  docTypeReasoning: import_v313.z.string().max(500).optional()
 });
 function mergeDocVaultRoleIntoFunctionalEntries(entries, docType, docTypeConfidence, docTypeReasoning) {
   if (!docType || entries.length === 0) return entries;
@@ -17377,8 +17666,8 @@ var IndexSingleService = class {
         updated_at: now
       });
       if (i > 0) {
-        const parentFolderPath = parts.slice(0, i).join("/");
-        const parentId = stableMobiusFolderNodeId(tenant, parentFolderPath);
+        const parentFolderPath2 = parts.slice(0, i).join("/");
+        const parentId = stableMobiusFolderNodeId(tenant, parentFolderPath2);
         await mobiusEdgeRepo.upsert({
           id: MobiusEdgeRepo.generateEdgeId(parentId, folderId, GraphEdgeType.Contains),
           from_node_id: parentId,
@@ -19617,1010 +19906,6 @@ function localSearchWholeVaultTool(templateManager) {
   });
 }
 
-// src/core/utils/functions.ts
-function refreshableMemoizeSupplier(supplier, stateProvider, checkIsChanged) {
-  let cache;
-  let lastState;
-  let isComputed = false;
-  return () => {
-    const currentState = stateProvider();
-    if (!isComputed || checkIsChanged(lastState, currentState)) {
-      cache = supplier();
-      lastState = currentState;
-      isComputed = true;
-    }
-    return cache;
-  };
-}
-
-// src/service/tools/content-reader.ts
-function escapeRegExpLiteral(input) {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-function buildAutoRegex(query, caseSensitive) {
-  const flags = caseSensitive ? "g" : "gi";
-  try {
-    return { regex: new RegExp(query, flags), isLiteralFallback: false };
-  } catch {
-    return { regex: new RegExp(escapeRegExpLiteral(query), flags), isLiteralFallback: true };
-  }
-}
-function contentReaderTool() {
-  const settings = AppContext.getInstance().settings.search;
-  const inputSchema = makeContentReaderInputSchema({
-    shortSummaryLength: settings.shortSummaryLength,
-    fullSummaryLength: settings.fullSummaryLength
-  });
-  return safeAgentTool({
-    description: "Read the content of a specific file (note) by its path.",
-    inputSchema,
-    execute: async ({ path: path3, mode, lineRange, query, case_sensitive, max_matches }) => {
-      const isMetaLoad = mode === "meta";
-      if (!isMetaLoad && (mode === "shortSummary" || mode === "fullSummary")) {
-        try {
-          const tenant = getIndexTenantForPath(path3);
-          const indexed = await sqliteStoreManager.getIndexedDocumentRepo(tenant).getByPath(path3);
-          if (indexed) {
-            if (mode === "shortSummary" && indexed.summary?.trim()) {
-              return indexed.summary;
-            }
-            if (mode === "fullSummary") {
-              const full = indexed.full_summary?.trim() || indexed.summary?.trim();
-              if (full) {
-                return full;
-              }
-            }
-          }
-        } catch {
-        }
-      }
-      const document = await DocumentLoaderManager.getInstance().readByPath(path3, !isMetaLoad);
-      if (!document) {
-        return {
-          path: path3,
-          content: "File not found or not readable or not supported."
-        };
-      }
-      if (isMetaLoad) {
-        return document.metadata;
-      }
-      const { cacheFileInfo, sourceFileInfo, summary } = document;
-      const fullContent = (sourceFileInfo?.content ?? cacheFileInfo?.content ?? "No content found").toString();
-      if (mode === "fullContent") {
-        const FULL_CONTENT_MAX_CHARS = 4e4;
-        if (fullContent.length > FULL_CONTENT_MAX_CHARS) {
-          return {
-            path: path3,
-            content: `fullContent refused: file is too large (${fullContent.length} chars, max ${FULL_CONTENT_MAX_CHARS}). Use mode 'shortSummary', 'grep' (with query), or 'range' (with lineRange) instead.`
-          };
-        }
-        return fullContent || "";
-      }
-      if (mode === "shortSummary" && document.summary) {
-        return summary;
-      }
-      if (mode === "fullSummary") {
-        return document.cacheFileInfo.content;
-      }
-      if (mode === "range") {
-        const contentLines = (fullContent || "").split(/\r?\n/);
-        const startLine = Math.max(1, lineRange.start);
-        const endLine = Math.max(startLine, lineRange.end);
-        const startIdx = startLine - 1;
-        const endIdxExclusive = Math.min(contentLines.length, endLine);
-        return contentLines.slice(startIdx, endIdxExclusive).join("\n");
-      }
-      if (mode === "grep") {
-        const contentLines = (fullContent || "").split(/\r?\n/);
-        const cap = Math.min(50, max_matches ?? 50);
-        const { regex, isLiteralFallback } = buildAutoRegex(query, case_sensitive ?? true);
-        const matches = [];
-        for (let i = 0; i < contentLines.length; i++) {
-          const lineText = contentLines[i] ?? "";
-          regex.lastIndex = 0;
-          let guard = 0;
-          let m;
-          while ((m = regex.exec(lineText)) !== null) {
-            const col = (m.index ?? 0) + 1;
-            matches.push({ path: path3, line: i + 1, col, text: lineText });
-            if (matches.length >= cap) break;
-            if (m[0]?.length === 0) {
-              regex.lastIndex = Math.min(lineText.length, regex.lastIndex + 1);
-            }
-            guard++;
-            if (guard > 1e4) break;
-          }
-          if (matches.length >= cap) break;
-        }
-        return { matches };
-      }
-      return fullContent || "";
-    }
-  });
-}
-
-// src/service/agents/search-agent-helper/AgentContextManager.ts
-var ANALYSIS_HISTORY_STAGES = [
-  "Classify",
-  "Dimensions",
-  "Recon",
-  "Consolidator",
-  "EvidenceGroups",
-  "Evidence"
-];
-var DEFAULT_GREP_MAX_MATCHES = 50;
-function escapeRegExpLiteral2(input) {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-function buildAutoRegex2(query, caseSensitive) {
-  const flags = caseSensitive ? "g" : "gi";
-  try {
-    return { regex: new RegExp(query, flags), isLiteralFallback: false };
-  } catch {
-    return { regex: new RegExp(escapeRegExpLiteral2(query), flags), isLiteralFallback: true };
-  }
-}
-var AgentContextManager = class {
-  constructor(aiServiceManager) {
-    this.aiServiceManager = aiServiceManager;
-    /** Initial prompt. */
-    this.initialPrompt = "";
-    /** Verified paths (exist in vault/DB or appeared in tool outputs). */
-    this.verifiedPaths = /* @__PURE__ */ new Set();
-    /** 
-     * Recall pipeline snapshot: dimensions after classify, 
-     */
-    this.recallDimensions = [];
-    /** 
-     * After Classify before Recon. User persona from classifier (appeal, detail_level). Persisted after classify for report phases. 
-     */
-    this.userPersonaConfig = null;
-    /**
-     * After Recon. Recon reports per dimension (persisted after batchStreamRecon for dossier/finish).
-     */
-    this.reconReports = [];
-    /**
-     * After Recon. Weaved context markdown (structure + mesh) from mergePaths; set by SlotRecallAgent onReconFinish.
-     */
-    this.reconWeavedContext = void 0;
-    /** 
-     * After Recon before Evidence. Consolidator output (persisted after streamTaskConsolidator for dossier/finish). 
-     */
-    this.consolidatorOutput = null;
-    /** 
-     * Recall pipeline snapshot: evidenceGroups after recon. 
-     */
-    this.recallEvidenceTaskGroups = [];
-    /** 
-     * Recall pipeline snapshot: then final evidencePacks. 
-     */
-    this.recallEvidencePacks = [];
-    /** 
-     * Report pipeline snapshot: Topics from search agent (after report plan). 
-     */
-    this.topics = [];
-    /** 
-     * Report pipeline snapshot: Sources from search agent (after report plan). 
-     */
-    this.sources = [];
-    /** 
-     * Report pipeline snapshot: Dashboard blocks from dashboard blocks agent (after report plan). 
-     */
-    this.dashboardBlocks = [];
-    /** 
-     * Report pipeline snapshot: Summary from summary agent (after report plan). 
-     */
-    this.summary = "";
-    /** Report pipeline: short display title (e.g. for save filename, recent list). */
-    this.title = "";
-    this.totalTokenUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
-    /** Full memory as single text from structured sections (for keyword grep fallback). */
-    this.fullMemoryTextSupplier = refreshableMemoizeSupplier(
-      () => {
-        const prompt = this.initialPrompt ?? "";
-        const parts = ["[User]\n" + prompt];
-        for (const stage of ANALYSIS_HISTORY_STAGES) {
-          const text = this.getSectionText(stage, {});
-          if (text.trim()) parts.push(`[${stage}]
-${text}`);
-        }
-        return parts.join("\n\n");
-      },
-      () => this.verifiedPaths.size + this.recallDimensions.length + this.reconReports.length + (this.consolidatorOutput ? 1 : 0) + this.recallEvidenceTaskGroups.length + this.recallEvidencePacks.length,
-      (a, b) => a !== b
-    );
-  }
-  resetAgentMemory(initialPrompt) {
-    this.initialPrompt = initialPrompt ?? "";
-    this.totalTokenUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
-    this.title = "";
-    this.summary = "";
-    this.topics = [];
-    this.sources = [];
-    this.dashboardBlocks = [];
-    this.suggestedFollowUpQuestions = void 0;
-    this.mermaidOverviewFromEvidenceWeaved = void 0;
-    this.reportPlan = void 0;
-    this.reportVisualBlueprint = void 0;
-    this.reportBlockBlueprintItems = void 0;
-    this.verifiedPaths.clear();
-    this.recallDimensions = [];
-    this.recallEvidenceTaskGroups = [];
-    this.recallEvidencePacks = [];
-    this.reconReports = [];
-    this.reconWeavedContext = void 0;
-    this.consolidatorOutput = null;
-    this.userPersonaConfig = null;
-  }
-  /** Report pipeline: title (used for save filename, recent list). */
-  getTitle() {
-    return this.title ?? "";
-  }
-  setTitle(value) {
-    this.title = (value ?? "").trim() || "";
-  }
-  getSummary() {
-    return this.summary ?? "";
-  }
-  setSummary(value) {
-    this.summary = value ?? "";
-  }
-  getTopics() {
-    return this.topics ?? [];
-  }
-  setTopics(value) {
-    this.topics = value ?? [];
-  }
-  getSources() {
-    return this.sources ?? [];
-  }
-  setSources(value) {
-    this.sources = value ?? [];
-  }
-  getDashboardBlocks() {
-    return this.dashboardBlocks ?? [];
-  }
-  setDashboardBlocks(value) {
-    this.dashboardBlocks = value ?? [];
-  }
-  getSuggestedFollowUpQuestions() {
-    return this.suggestedFollowUpQuestions ?? [];
-  }
-  setSuggestedFollowUpQuestions(value) {
-    this.suggestedFollowUpQuestions = value ?? void 0;
-  }
-  getEvidenceWeavedMermaidOverview() {
-    return (this.mermaidOverviewFromEvidenceWeaved ?? "").trim();
-  }
-  setEvidenceWeavedMermaidOverviewAgent(value) {
-    this.mermaidOverviewFromEvidenceWeaved = value;
-  }
-  getReportPlan() {
-    return this.reportPlan;
-  }
-  setReportPlan(value) {
-    this.reportPlan = value;
-  }
-  /**
-   * Build a compact markdown "plan" so Summary can preview the report structure
-   * and reference blocks naturally via #block-<id> anchors.
-   *
-   * Prefers ReportPlan (body/appendices specs). Falls back to current dashboard blocks.
-   */
-  buildDashboardBlockPlanMarkdown() {
-    const plan = this.reportPlan;
-    const blocks = this.dashboardBlocks ?? [];
-    const lines = [];
-    if (plan && ((plan.bodyBlocksSpec?.length ?? 0) > 0 || (plan.appendicesBlocksSpec?.length ?? 0) > 0)) {
-      lines.push("Body blocks:");
-      for (const b of plan.bodyBlocksSpec ?? []) {
-        const parts = [];
-        parts.push(`- [${b.title}](#block-${b.blockId}) (id: ${b.blockId}; role: ${b.role}${b.wordTarget ? `; target: ~${b.wordTarget}w` : ""})`);
-        if (b.paragraphSkeleton) parts.push(`  - skeleton: ${b.paragraphSkeleton}`);
-        if (b.evidenceBinding) parts.push(`  - evidence: ${b.evidenceBinding}`);
-        if (b.risksUncertaintyHint) parts.push(`  - uncertainty: ${b.risksUncertaintyHint}`);
-        lines.push(...parts);
-      }
-      if ((plan.appendicesBlocksSpec?.length ?? 0) > 0) {
-        lines.push("", "Appendices blocks:");
-        for (const a of plan.appendicesBlocksSpec ?? []) {
-          const parts = [];
-          parts.push(`- [${a.title}](#block-${a.blockId}) (id: ${a.blockId}; role: ${a.role})`);
-          if (a.contentHint) parts.push(`  - hint: ${a.contentHint}`);
-          lines.push(...parts);
-        }
-      }
-    } else if (blocks.length > 0) {
-      lines.push("Current blocks:");
-      for (const b of blocks) {
-        const id = (b.id ?? "").trim();
-        if (!id) continue;
-        const title = (b.title ?? "").trim() || "(untitled)";
-        const engine = (b.renderEngine ?? "MARKDOWN").toUpperCase();
-        lines.push(`- [${title}](#block-${id}) (id: ${id}; engine: ${engine})`);
-      }
-    }
-    const text = lines.join("\n").trim();
-    return text ? text : void 0;
-  }
-  getReportVisualBlueprint() {
-    return this.reportVisualBlueprint;
-  }
-  setReportVisualBlueprint(value) {
-    this.reportVisualBlueprint = value;
-  }
-  /** Final weaved report block blueprint items (structured; internal report generation only). */
-  getReportBlockBlueprintItems() {
-    return this.reportBlockBlueprintItems ?? [];
-  }
-  setReportBlockBlueprintItems(value) {
-    this.reportBlockBlueprintItems = value ?? [];
-  }
-  /** Persist user persona from classifier (appeal, detail_level). Used by report phases for style. */
-  setUserPersonaConfig(config) {
-    this.userPersonaConfig = config && (config.appeal != null || config.detail_level != null) ? config : null;
-  }
-  getUserPersonaConfig() {
-    return this.userPersonaConfig;
-  }
-  /** Persist recon reports (from RawSearchAgent after batchStreamRecon). */
-  setReconReports(reports) {
-    this.reconReports = reports ?? [];
-  }
-  /** Persist recon from physical-task flow: mergedPaths applied per dimension for compatibility with getReconReports(). */
-  setReconReportsFromPhysicalTasks(physicalTasks, mergedPaths) {
-    const expanded = [];
-    for (const task of physicalTasks) {
-      for (const dimId of task.covered_dimension_ids) {
-        expanded.push({
-          dimension: dimId,
-          tactical_summary: "",
-          discovered_leads: mergedPaths,
-          battlefield_assessment: null
-        });
-      }
-    }
-    this.reconReports = expanded;
-  }
-  addReconReport(report) {
-    this.reconReports.push(report);
-  }
-  getReconReports() {
-    return this.reconReports;
-  }
-  setReconWeavedContext(value) {
-    this.reconWeavedContext = value;
-  }
-  getReconWeavedContext() {
-    return this.reconWeavedContext;
-  }
-  /** Persist consolidator output (from RawSearchAgent after streamTaskConsolidator). */
-  setConsolidatorOutput(out) {
-    this.consolidatorOutput = out ?? null;
-  }
-  getConsolidatorOutput() {
-    return this.consolidatorOutput;
-  }
-  /** Set dimensions extracted after classify (for recall pipeline snapshot). */
-  setRecallDimensions(dimensions) {
-    this.recallDimensions = dimensions ?? [];
-  }
-  /** Set evidence groups after recon + grouping (for recall pipeline snapshot). */
-  setRecallEvidenceTaskGroups(groups) {
-    this.recallEvidenceTaskGroups = groups ?? [];
-  }
-  /** Set final evidence packs after evidence phase (for recall pipeline snapshot). */
-  setRecallEvidencePacks(packs) {
-    this.recallEvidencePacks = packs ?? [];
-  }
-  addRecallEvidencePack(pack) {
-    this.recallEvidencePacks.push(pack);
-  }
-  getRecallDimensions() {
-    return this.recallDimensions;
-  }
-  getRecallEvidenceTaskGroups() {
-    return this.recallEvidenceTaskGroups;
-  }
-  getRecallEvidencePacks() {
-    return this.recallEvidencePacks;
-  }
-  accumulateTokenUsage(usage) {
-    if (!usage) return;
-    this.totalTokenUsage = mergeTokenUsage(this.totalTokenUsage, usage);
-  }
-  getTotalTokenUsage() {
-    return this.totalTokenUsage;
-  }
-  getInitialPrompt() {
-    return this.initialPrompt ?? "";
-  }
-  yieldAgentResult() {
-    return {
-      extra: {
-        currentResult: this.getAgentResult()
-      }
-    };
-  }
-  /**
-   * Returns a result view so that update-result tools mutate the same arrays (topics, sources, dashboardBlocks).
-   * Stream complete / UI still get a snapshot via this object; arrays are live references.
-   */
-  getAgentResult() {
-    const self = this;
-    return {
-      get title() {
-        return self.title || void 0;
-      },
-      set title(v) {
-        self.setTitle(v);
-      },
-      get summary() {
-        return self.summary ?? "";
-      },
-      set summary(v) {
-        self.setSummary(v);
-      },
-      get topics() {
-        return self.topics ?? [];
-      },
-      set topics(v) {
-        self.setTopics(v ?? []);
-      },
-      get sources() {
-        return self.sources ?? [];
-      },
-      set sources(v) {
-        self.setSources(v ?? []);
-      },
-      get dashboardBlocks() {
-        return self.dashboardBlocks ?? [];
-      },
-      set dashboardBlocks(v) {
-        self.setDashboardBlocks(v ?? []);
-      },
-      get suggestedFollowUpQuestions() {
-        return self.suggestedFollowUpQuestions;
-      },
-      set suggestedFollowUpQuestions(v) {
-        self.setSuggestedFollowUpQuestions(v);
-      },
-      get evidenceMermaidOverviewAgent() {
-        return self.mermaidOverviewFromEvidenceWeaved;
-      },
-      set evidenceMermaidOverviewAgent(v) {
-        self.setEvidenceWeavedMermaidOverviewAgent(v);
-      },
-      get reportPlan() {
-        return self.reportPlan;
-      },
-      set reportPlan(v) {
-        self.setReportPlan(v);
-      },
-      get reportVisualBlueprint() {
-        return self.reportVisualBlueprint;
-      },
-      set reportVisualBlueprint(v) {
-        self.setReportVisualBlueprint(v);
-      },
-      get evidenceIndex() {
-        const packs = self.getRecallEvidencePacks();
-        const index = {};
-        for (const p of packs) {
-          const path3 = p.origin?.path_or_url ?? "";
-          if (!path3) continue;
-          if (!index[path3]) index[path3] = { summaries: [], facts: [] };
-          if (p.summary) index[path3].summaries.push(p.summary);
-          for (const f of p.facts ?? []) {
-            index[path3].facts.push({ claim: f.claim, quote: f.quote });
-          }
-        }
-        return index;
-      }
-    };
-  }
-  getVerifiedPaths() {
-    return this.verifiedPaths;
-  }
-  appendVerifiedPaths(paths) {
-    if (!paths) return;
-    const arr = typeof paths === "string" ? [paths] : paths;
-    for (const p of arr) {
-      const t = p?.trim();
-      if (t) this.verifiedPaths.add(t);
-    }
-  }
-  /**
-   * Serializable snapshot of current search memory for debug (e.g. window.__peakSearchDebug.getSnapshot()).
-   */
-  getDebugSnapshot() {
-    const maxPromptPreview = 300;
-    const paths = Array.from(this.verifiedPaths);
-    return {
-      initialPromptPreview: (this.initialPrompt ?? "").slice(0, maxPromptPreview),
-      totalTokenUsage: this.totalTokenUsage ?? { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-      agentResult: {
-        title: this.title ?? "",
-        summaryLength: (this.summary ?? "").length,
-        topicsCount: (this.topics ?? []).length,
-        sourcesCount: (this.sources ?? []).length,
-        dashboardBlocksCount: (this.dashboardBlocks ?? []).length,
-        suggestedFollowUpQuestionsCount: (this.suggestedFollowUpQuestions ?? []).length
-      },
-      verifiedPaths: paths,
-      dossier: {
-        verifiedPathsCount: paths.length,
-        sourcePathsSample: paths.slice(0, SLICE_CAPS.agent.sourcePathsSample)
-      },
-      recallPipeline: this.recallDimensions.length > 0 || this.recallEvidenceTaskGroups.length > 0 || this.recallEvidencePacks.length > 0 ? {
-        dimensionsCount: this.recallDimensions.length,
-        evidenceGroupsCount: this.recallEvidenceTaskGroups.length,
-        evidencePacksCount: this.recallEvidencePacks.length
-      } : void 0
-    };
-  }
-  /**
-   * Verified fact sheet as lines: grouped by pathRef (once per path), then summary line(s), then each claim + quote per line. No snippet.
-   * Returns string[] so callers can join or slice as needed.
-   */
-  getVerifiedFactSheet() {
-    const packs = this.recallEvidencePacks;
-    if (packs.length === 0) return [];
-    const maxQuoteLen = 200;
-    const byPath = /* @__PURE__ */ new Map();
-    const seenClaimsByPath = /* @__PURE__ */ new Map();
-    for (const p of packs) {
-      const path3 = p.origin.path_or_url ?? "";
-      const pathRef = path3 ? `[[${path3}]]` : "";
-      if (!byPath.has(path3)) {
-        byPath.set(path3, { pathRef, summaries: [], factEntries: [] });
-        seenClaimsByPath.set(path3, /* @__PURE__ */ new Set());
-      }
-      const group = byPath.get(path3);
-      const seenClaims = seenClaimsByPath.get(path3);
-      const summary = (p.summary ?? "").trim();
-      if (summary) group.summaries.push(summary);
-      for (const f of p.facts ?? []) {
-        const claim = (f.claim ?? "").trim();
-        const quote = (f.quote ?? "").slice(0, maxQuoteLen);
-        const key = claim.slice(0, SLICE_CAPS.agent.claimKey);
-        if (!claim || seenClaims.has(key)) continue;
-        seenClaims.add(key);
-        group.factEntries.push({ claim, quote });
-      }
-    }
-    const lines = [];
-    for (const group of byPath.values()) {
-      lines.push(group.pathRef);
-      for (const s of group.summaries) lines.push(`  Summary: ${s}`);
-      for (const { claim, quote } of group.factEntries) {
-        const suffix = quote.length >= maxQuoteLen ? "..." : "";
-        lines.push(`  - ${claim}: "${quote}${suffix}"`);
-      }
-    }
-    return lines;
-  }
-  /** Recon briefing from consolidator + per-dimension tactical summaries. */
-  getReconBriefing() {
-    const parts = [];
-    const consolidator = this.consolidatorOutput;
-    if (consolidator?.global_recon_insight) {
-      parts.push("Recon briefing (recon view, not final conclusions):");
-      parts.push(consolidator.global_recon_insight.trim());
-    }
-    const reports = this.reconReports;
-    if (reports.length > 0) {
-      parts.push("Per-dimension tactical summary:");
-      for (const r of reports) {
-        const t = (r.tactical_summary ?? "").trim().slice(0, SLICE_CAPS.agent.tacticalSummary);
-        if (t) parts.push(`[${r.dimension}] ${t}`);
-      }
-    }
-    return parts.join("\n\n");
-  }
-  /** Classify section: initial prompt + dimensions chosen (from recall pipeline). */
-  getClassifySectionText() {
-    const prompt = (this.initialPrompt ?? "").trim();
-    const dims = this.recallDimensions;
-    const dimLine = dims.length > 0 ? `Dimensions chosen: ${dims.map((d) => `${d.id} (${(d.intent_description ?? "").slice(0, SLICE_CAPS.agent.dimensionIntent)})`).join("; ")}` : "";
-    return [prompt, dimLine].filter(Boolean).join("\n");
-  }
-  /** Evidence task group index (paths per group) for prompt context. */
-  getEvidenceGroupIndex() {
-    const groups = this.recallEvidenceTaskGroups;
-    if (groups.length === 0) return "";
-    const lines = ["Evidence task group index (input to evidence phase; paths to read per group):"];
-    groups.forEach((eg, i) => {
-      const id = eg.groupId ?? `group-${i}`;
-      const paths = [...new Set((eg.tasks ?? []).map((t) => t.path).filter(Boolean))];
-      const focus = (eg.group_focus ?? "").slice(0, SLICE_CAPS.agent.groupFocus);
-      const shared = eg.sharedContext ? `
-  sharedContext (excerpt): ${eg.sharedContext.slice(0, SLICE_CAPS.agent.sharedContext)}...` : "";
-      lines.push(`- ${id} | topic_anchor: ${eg.topic_anchor} | group_focus: ${focus}${shared}
-  paths: ${paths.slice(0, SLICE_CAPS.agent.evidencePaths).join(", ")}`);
-    });
-    return lines.join("\n");
-  }
-  /** Source map: unique paths from evidence packs, or verified paths when no packs. */
-  getSourceMap() {
-    const packs = this.recallEvidencePacks;
-    if (packs.length > 0) {
-      return [...new Set(packs.map((p) => p.origin.path_or_url).filter(Boolean))].join("\n");
-    }
-    return Array.from(this.verifiedPaths).join("\n");
-  }
-  /** Confirmed facts list derived from evidence packs (summary or first claim per pack). */
-  getConfirmedFacts() {
-    const packs = this.recallEvidencePacks;
-    if (packs.length === 0) return [];
-    return packs.map((p) => p.summary ?? p.facts[0]?.claim ?? "").filter(Boolean);
-  }
-  /** Dossier gaps (currently unused; reserved for future). */
-  getDossierGaps() {
-    return [];
-  }
-  /**
-   * Returns full dossier for Summary/Dashboard when multiple fields are needed at once.
-   * Prefer individual getters (getVerifiedFactSheet, getReconBriefing, etc.) when only a subset is needed.
-   */
-  getDossierForSummary() {
-    return {
-      verifiedFactSheet: this.getVerifiedFactSheet().join("\n"),
-      reconBriefing: this.getReconBriefing(),
-      evidenceGroupIndex: this.getEvidenceGroupIndex(),
-      sourceMap: this.getSourceMap(),
-      lastDecision: "",
-      confirmedFacts: this.getConfirmedFacts(),
-      gaps: this.getDossierGaps(),
-      userPersonaConfig: this.userPersonaConfig ?? void 0
-    };
-  }
-  getAgentMemoryTool() {
-    const self = this;
-    return {
-      search_analysis_context: safeAgentTool({
-        description: `Search the structured analysis session. Query: "list" or empty (overview), "stage:<Classify|Dimensions|Recon|Consolidator|EvidenceGroups|Evidence>", "path:<path>", "dimension:<id>", "group:<id>", or free-text keyword. E.g. "stage:Recon", "path:foo.md", or keywords (topic names, file paths).`,
-        inputSchema: searchMemoryStoreInputSchema,
-        execute: async (input) => {
-          const result = self.searchHistory(input.query, { maxChars: input.maxChars });
-          return { content: result };
-        }
-      }),
-      content_reader: contentReaderTool()
-    };
-  }
-  /**
-   * Single section text for a stage, optionally filtered by path/dimension/group.
-   * Used by fullMemoryTextSupplier and searchHistory.
-   */
-  getSectionText(stage, filters) {
-    const pathLower = filters.path?.toLowerCase() ?? "";
-    const dim = filters.dimension ?? "";
-    const groupId = filters.group ?? "";
-    switch (stage) {
-      case "Classify": {
-        const raw = this.getClassifySectionText();
-        if (dim && this.recallDimensions.some((d) => d.id === dim)) {
-          const d = this.recallDimensions.find((d2) => d2.id === dim);
-          return `${d.id}: ${d.intent_description ?? ""}`;
-        }
-        return raw;
-      }
-      case "Dimensions": {
-        const lines = this.recallDimensions.map((d) => `${d.id}: ${d.intent_description ?? ""}`);
-        if (dim) return lines.filter((l) => l.startsWith(dim + ":")).join("\n") || "";
-        return lines.join("\n");
-      }
-      case "Recon": {
-        const reports = this.reconReports;
-        if (reports.length === 0) return "";
-        let out = reports;
-        if (dim) out = out.filter((r) => r.dimension === dim);
-        if (pathLower) out = out.filter((r) => (r.discovered_leads ?? []).some((p) => p.toLowerCase().includes(pathLower)));
-        if (out.length === 0) return "";
-        return out.map((r) => `[${r.dimension}] ${(r.tactical_summary ?? "").trim().slice(0, SLICE_CAPS.agent.tacticalSummary)}`).join("\n");
-      }
-      case "Consolidator": {
-        const c = this.consolidatorOutput;
-        if (!c) return "";
-        const tasks = (c.consolidated_tasks ?? []).filter((t) => {
-          if (pathLower && !t.path.toLowerCase().includes(pathLower)) return false;
-          if (dim && !(t.relevant_dimension_ids ?? []).some((d) => d.id === dim)) return false;
-          return true;
-        });
-        const insight = pathLower || dim ? "" : (c.global_recon_insight ?? "").trim();
-        const taskLines = tasks.slice(0, SLICE_CAPS.agent.extractionTasks).map((t) => `${t.path}: ${(t.extraction_focus ?? "").slice(0, SLICE_CAPS.agent.extractionFocus)}`);
-        return [insight, ...taskLines].filter(Boolean).join("\n");
-      }
-      case "EvidenceGroups": {
-        const groups = this.recallEvidenceTaskGroups;
-        if (groups.length === 0) return "";
-        let gs = groups;
-        if (groupId) gs = gs.filter((eg) => (eg.groupId ?? "").includes(groupId) || groups.indexOf(eg) === parseInt(groupId, 10));
-        if (pathLower) gs = gs.filter((eg) => (eg.tasks ?? []).some((t) => (t.path ?? "").toLowerCase().includes(pathLower)));
-        if (gs.length === 0) return "";
-        return gs.map((eg, i) => {
-          const id = eg.groupId ?? `group-${i}`;
-          const paths = [...new Set((eg.tasks ?? []).map((t) => t.path).filter(Boolean))];
-          return `${id} | ${eg.topic_anchor} | ${(eg.group_focus ?? "").slice(0, SLICE_CAPS.agent.groupFocus)}
-  paths: ${paths.slice(0, SLICE_CAPS.agent.evidencePaths).join(", ")}`;
-        }).join("\n");
-      }
-      case "Evidence": {
-        const lines = this.getVerifiedFactSheet();
-        if (lines.length === 0) return "";
-        if (pathLower) {
-          const result = [];
-          let inBlock = false;
-          for (const l of lines) {
-            if (l.startsWith("[[") && l.toLowerCase().includes(pathLower)) inBlock = true;
-            if (inBlock) result.push(l);
-            if (inBlock && l.startsWith("[[") && !l.toLowerCase().includes(pathLower)) inBlock = false;
-          }
-          return result.length > 0 ? result.join("\n") : lines.filter((l) => l.toLowerCase().includes(pathLower)).join("\n");
-        }
-        if (groupId) {
-          const g = this.recallEvidenceTaskGroups.find((eg, i) => eg.groupId === groupId || `group-${i}` === groupId);
-          const paths = new Set((g?.tasks ?? []).map((t) => t.path).filter(Boolean));
-          if (paths.size === 0) return lines.join("\n");
-          return lines.filter((l) => Array.from(paths).some((p) => l.includes(p))).join("\n");
-        }
-        return lines.join("\n");
-      }
-      default:
-        return "";
-    }
-  }
-  /**
-   * Parse query mini-language: id:XXX, stage:X, path:X, dimension:X, group:X, list (or empty = list).
-   */
-  parseSearchQuery(query) {
-    const q = (query ?? "").trim();
-    const result = {};
-    if (!q || q.toLowerCase() === "list") {
-      result.list = true;
-      return result;
-    }
-    let rest = q;
-    const idMatch = rest.match(/\bid:(\S+)/i);
-    if (idMatch) {
-      result.id = idMatch[1].trim();
-      rest = rest.replace(idMatch[0], "").trim();
-    }
-    const stageMatch = rest.match(/\bstage:(\S+)/i);
-    if (stageMatch) {
-      result.stage = stageMatch[1].trim();
-      rest = rest.replace(stageMatch[0], "").trim();
-    }
-    const pathMatch = rest.match(/\bpath:(\S+)/i);
-    if (pathMatch) {
-      result.path = pathMatch[1].trim().replace(/^\[\[|\]\]$/g, "");
-      rest = rest.replace(pathMatch[0], "").trim();
-    }
-    const dimMatch = rest.match(/\bdimension:(\S+)/i);
-    if (dimMatch) {
-      result.dimension = dimMatch[1].trim();
-      rest = rest.replace(dimMatch[0], "").trim();
-    }
-    const groupMatch = rest.match(/\bgroup:(\S+)/i);
-    if (groupMatch) {
-      result.group = groupMatch[1].trim();
-      rest = rest.replace(groupMatch[0], "").trim();
-    }
-    if (rest.length > 0) result.keyword = rest;
-    return result;
-  }
-  /**
-   * Search structured analysis by query: list (overview), stage:/path:/dimension:/group: (filter), or keyword (grep on full memory).
-   */
-  searchHistory(query, options) {
-    const maxChars = options?.maxChars ?? 4e3;
-    const parsed = this.parseSearchQuery(query);
-    if (parsed.id) {
-      return `id: is not supported. Use "list" for overview or "stage:Classify|Dimensions|Recon|Consolidator|EvidenceGroups|Evidence", "path:<path>", "dimension:<id>", "group:<id>", or keyword.`.slice(0, maxChars);
-    }
-    if (parsed.list) {
-      const has = (stage2) => this.getSectionText(stage2, {}).trim().length > 0;
-      const stageLines = ANALYSIS_HISTORY_STAGES.map((s) => `  ${s}: ${has(s) ? "yes" : "no"}`).join("\n");
-      return `Analysis overview (query by stage/path/dimension/group or keyword)
-Stages:
-${stageLines}
-Use: stage:<Classify|Dimensions|Recon|Consolidator|EvidenceGroups|Evidence>, path:<path>, dimension:<id>, group:<id>, or free text.`.slice(0, maxChars);
-    }
-    const filters = {
-      path: parsed.path,
-      dimension: parsed.dimension,
-      group: parsed.group
-    };
-    const stage = parsed.stage?.trim();
-    let candidateText = "";
-    if (stage && ANALYSIS_HISTORY_STAGES.includes(stage)) {
-      candidateText = this.getSectionText(stage, filters);
-    } else if (parsed.path || parsed.dimension || parsed.group) {
-      const parts = [];
-      for (const s of ANALYSIS_HISTORY_STAGES) {
-        const t = this.getSectionText(s, filters);
-        if (t.trim()) parts.push(`[${s}]
-${t}`);
-      }
-      candidateText = parts.join("\n\n");
-    } else {
-      candidateText = this.fullMemoryTextSupplier();
-    }
-    if (parsed.keyword) {
-      const searchIn = candidateText.length > 0 ? candidateText : this.fullMemoryTextSupplier();
-      const matches = this.grepInMemoryText(searchIn, parsed.keyword, { contextLines: 2, maxMatches: 15 });
-      if (matches.length > 0) {
-        return matches.map((m) => `Line ${m.line}:
-${m.text}`).join("\n---\n").slice(0, maxChars);
-      }
-      if (candidateText.trim()) return candidateText.slice(0, maxChars);
-      return `No matches for "${parsed.keyword}". Use "list" to see available stages.`.slice(0, maxChars);
-    }
-    if (candidateText.trim()) return candidateText.slice(0, maxChars);
-    return `No content for the query. Use "list" to see available stages (Classify, Dimensions, Recon, Consolidator, EvidenceGroups, Evidence).`.slice(0, maxChars);
-  }
-  /** Grep over full memory text (fallback when entry filter returns no hits). */
-  grepInMemoryText(fullText, query, options) {
-    const cap = Math.min(DEFAULT_GREP_MAX_MATCHES, options?.maxMatches ?? DEFAULT_GREP_MAX_MATCHES);
-    const contextLines = options?.contextLines ?? 2;
-    const { regex } = buildAutoRegex2(query, options?.caseSensitive ?? false);
-    const lines = fullText.split(/\r?\n/);
-    const matches = [];
-    for (let i = 0; i < lines.length && matches.length < cap; i++) {
-      const lineText = lines[i] ?? "";
-      regex.lastIndex = 0;
-      let guard = 0;
-      let m;
-      while ((m = regex.exec(lineText)) !== null) {
-        const start = Math.max(0, i - contextLines);
-        const end = Math.min(lines.length, i + contextLines + 1);
-        const context = lines.slice(start, end).join("\n");
-        matches.push({ line: i + 1, text: context });
-        if (matches.length >= cap) break;
-        if (m[0]?.length === 0) {
-          regex.lastIndex = Math.min(lineText.length, regex.lastIndex + 1);
-        }
-        guard++;
-        if (guard > 1e4) break;
-      }
-    }
-    return matches;
-  }
-};
-
-// src/service/agents/search-agent-helper/helpers/search-ui-events.ts
-function stageToTriggerName(stage) {
-  const map = {
-    recall: "search-slot-recall-agent" /* SEARCH_SLOT_RECALL_AGENT */,
-    classify: "search-slot-recall-agent" /* SEARCH_SLOT_RECALL_AGENT */,
-    recon: "search-raw-agent-recon" /* SEARCH_RAW_AGENT_RECON */,
-    consolidate: "search-raw-agent-task-consolidator" /* SEARCH_RAW_AGENT_TASK_CONSOLIDATOR */,
-    grouping: "search-raw-agent-task-consolidator" /* SEARCH_RAW_AGENT_TASK_CONSOLIDATOR */,
-    groupContext: "search-raw-agent-task-consolidator" /* SEARCH_RAW_AGENT_TASK_CONSOLIDATOR */,
-    evidence: "search-raw-agent-evidence" /* SEARCH_RAW_AGENT_EVIDENCE */,
-    overview: "search-overview-mermaid" /* SEARCH_OVERVIEW_MERMAID */,
-    report: "search-ai-agent" /* SEARCH_AI_AGENT */,
-    reportPlan: "search-report-plan-agent" /* SEARCH_REPORT_PLAN_AGENT */,
-    visualBlueprint: "search-visual-blueprint-agent" /* SEARCH_VISUAL_BLUEPRINT_AGENT */,
-    reportBlock: "search-dashboard-update-agent" /* SEARCH_DASHBOARD_UPDATE_AGENT */,
-    summary: "search-summary" /* SEARCH_SUMMARY */,
-    sourcesStreaming: "search-sources-from-verified-paths" /* SEARCH_SOURCES_FROM_VERIFIED_PATHS */
-  };
-  return map[stage];
-}
-function makeStepId(meta2) {
-  const base = `search:${meta2.runStepId}:${meta2.stage}`;
-  if (meta2.lane) {
-    return `${base}:${meta2.lane.laneType}:${meta2.lane.laneId}`;
-  }
-  return base;
-}
-function makeStepExtra(meta2) {
-  return { meta: { ...meta2 } };
-}
-function uiStepStart(meta2, opts) {
-  const triggerName = opts.triggerName ?? stageToTriggerName(meta2.stage);
-  return {
-    type: "ui-step",
-    uiType: "steps-display" /* STEPS_DISPLAY */,
-    stepId: makeStepId(meta2),
-    title: opts.title,
-    description: opts.description ?? "",
-    triggerName,
-    triggerTimestamp: Date.now(),
-    extra: makeStepExtra(meta2)
-  };
-}
-function uiStageSignal(meta2, opts) {
-  const triggerName = opts.triggerName ?? stageToTriggerName(meta2.stage);
-  const entityId = `${meta2.stage}${meta2.lane ? `:${meta2.lane.laneId}` : ""}`;
-  const kind = opts.status === "complete" ? "complete" /* COMPLETE */ : opts.status === "progress" ? "progress" /* PROGRESS */ : "stage" /* STAGE */;
-  return {
-    type: "ui-signal",
-    channel: "search-stage" /* SEARCH_STAGE */,
-    kind,
-    entityId,
-    stepId: makeStepId(meta2),
-    payload: {
-      status: opts.status,
-      stage: meta2.stage,
-      lane: meta2.lane,
-      ...opts.payload
-    },
-    triggerName,
-    triggerTimestamp: Date.now(),
-    extra: makeStepExtra(meta2)
-  };
-}
-
-// src/service/agents/search-agent-helper/SlotRecallAgent.ts
-var import_ai4 = require("ai");
-
-// src/service/tools/system-info.ts
-function getVaultStatistics() {
-  const app = AppContext.getInstance().app;
-  const vaultName = app.vault.getName();
-  const allFiles = app.vault.getFiles();
-  const markdownFiles = allFiles.filter((f) => f.extension === "md");
-  const otherFiles = allFiles.filter((f) => f.extension !== "md");
-  return {
-    vaultName,
-    totalFiles: allFiles.length,
-    markdownFiles: markdownFiles.length,
-    otherFiles: otherFiles.length
-  };
-}
-async function getVaultDescription() {
-  try {
-    const descriptionPath = `${getAIPromptFolder()}/${VAULT_DESCRIPTION_FILENAME}`;
-    const content = await readFileAsText(descriptionPath);
-    return content?.trim() || void 0;
-  } catch (error) {
-    console.warn("[system-info] Error reading vault description:", error);
-    return void 0;
-  }
-}
-async function getTagCloud() {
-  try {
-    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
-    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
-    const topTagStats = await mobiusEdgeRepo.getTopTaggedNodes(GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT);
-    if (topTagStats.length === 0) {
-      return "";
-    }
-    const tagIds = topTagStats.map((stat) => stat.tagId);
-    const tagNodesMap = await mobiusNodeRepo.getByIds(tagIds);
-    return topTagStats.map((stat) => {
-      const tagNode = tagNodesMap.get(stat.tagId);
-      if (!tagNode) return null;
-      return `#${tagNode.label}(${stat.count})`;
-    }).filter((item) => item !== null).join(", ");
-  } catch (error) {
-    console.warn("[system-info] Error getting tag cloud:", error);
-    return "";
-  }
-}
-async function getVaultPersona() {
-  const [vaultDescription, tagCloud] = await Promise.all([
-    getVaultDescription(),
-    getTagCloud()
-  ]);
-  const stats = getVaultStatistics();
-  const tm = AppContext.getInstance().manager.getTemplateManager?.();
-  const exploreResult = await exploreFolder(
-    { folderPath: "/", recursive: true, max_depth: 2, limit: 100, response_format: "markdown" },
-    tm
-  );
-  return {
-    description: vaultDescription,
-    domain: [],
-    structure: exploreResult,
-    topTags: tagCloud || "(none)",
-    capabilities: `${stats.markdownFiles} markdown, ${stats.otherFiles} other files` + (stats.totalFiles < 20 ? `small vault; consider external search if needed` : ``)
-  };
-}
-
 // src/core/providers/adapter/ai-sdk-adapter.ts
 var import_ai = require("ai");
 function generateToolCallId() {
@@ -20916,91 +20201,4969 @@ var DELTA_EVENT_TYPES = /* @__PURE__ */ new Set(["text-delta", "reasoning-delta"
 function checkIfModeDeltaEvent(type) {
   return type === "text-delta" || type === "reasoning-delta" || type === "tool-input-delta";
 }
-async function* parallelStream(sourcesOrFactories, options) {
-  const useLimit = options != null && typeof options.limit === "number";
-  const isFactories = sourcesOrFactories.length > 0 && typeof sourcesOrFactories[0] === "function";
-  if (useLimit && isFactories) {
-    yield* parallelStreamWithLimit(
-      sourcesOrFactories,
-      options.limit
-    );
-    return;
-  }
-  const streamGenerator = sourcesOrFactories;
-  if (streamGenerator.length === 0) return;
-  const total = streamGenerator.length;
-  const completedIndices = /* @__PURE__ */ new Set();
-  const pending = /* @__PURE__ */ new Map();
-  const runNext = (index) => streamGenerator[index].next().then((result) => ({ index, result }));
-  const yieldProgress = () => ({
-    type: "parallel-stream-progress",
-    completed: completedIndices.size,
-    total,
-    completedIndices: [...completedIndices]
-  });
-  yield yieldProgress();
-  for (let i = 0; i < total; i++) {
-    pending.set(i, runNext(i));
-  }
-  while (pending.size > 0) {
-    const { index, result } = await Promise.race(pending.values());
-    if (result.done) {
-      pending.delete(index);
-      completedIndices.add(index);
-      yield yieldProgress();
-    } else {
-      yield result.value;
-      pending.set(index, runNext(index));
-    }
-  }
+
+// src/service/agents/hub-helper/hubDiscoverySnapshot.ts
+var import_ignore2 = __toESM(require("ignore"));
+var import_obsidian20 = __toESM(require_obsidian_stub());
+
+// src/service/agents/hub-helper/hubDigestNameTokens.ts
+function stripFileExtensionBasename(basename) {
+  const i = basename.lastIndexOf(".");
+  if (i <= 0) return basename;
+  return basename.slice(0, i);
 }
-async function* parallelStreamWithLimit(factories, limit) {
-  if (factories.length === 0) return;
-  const total = factories.length;
-  const queue = [...factories];
-  let completed = 0;
-  const pool = [];
-  const yieldProgress = () => ({
-    type: "parallel-stream-progress",
-    completed,
-    total
-  });
-  yield yieldProgress();
-  function startNext() {
-    if (queue.length === 0) return false;
-    const factory = queue.shift();
-    const gen = factory();
-    const entry = {
-      gen,
-      next: gen.next().then((result) => ({ entry, result }))
-    };
-    pool.push(entry);
-    return true;
-  }
-  for (let i = 0; i < limit && queue.length > 0; i++) {
-    startNext();
-  }
-  while (pool.length > 0) {
-    const { entry, result } = await Promise.race(pool.map((p) => p.next));
-    if (result.done) {
-      pool.splice(pool.indexOf(entry), 1);
-      completed++;
-      yield yieldProgress();
-      startNext();
-    } else {
-      yield result.value;
-      entry.next = entry.gen.next().then((r) => ({ entry, result: r }));
+function tokenizeHubDigestBasename(rawBasename) {
+  const base = stripFileExtensionBasename(rawBasename.trim());
+  if (!base) return [];
+  const withCamel = base.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
+  const parts = withCamel.split(/[\s\-_/\.，、]+/).filter(Boolean);
+  const out = [];
+  for (const p of parts) {
+    const t = p.trim();
+    if (!t) continue;
+    if (/^[\x00-\x7f]+$/.test(t)) {
+      const low = t.toLowerCase();
+      if (low.length >= 2) out.push(low);
+    } else if (t.length <= 32) {
+      out.push(t.toLowerCase());
     }
   }
+  return out;
+}
+function topTokensFromBasenames(basenames, maxTokens) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const name of basenames) {
+    for (const tok of tokenizeHubDigestBasename(name)) {
+      counts.set(tok, (counts.get(tok) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, Math.max(0, maxTokens)).map(([t]) => t);
 }
 
-// src/service/agents/search-agent-helper/RawSearchAgent.ts
+// src/service/agents/hub-helper/hubDiscoverySnapshot.ts
+var HUB_DIGEST_NAME_TOKEN_TOP = 6;
+function formatTopWeightedTopics(topicTagCounts, keywordTagCounts, maxTopics) {
+  const merged = /* @__PURE__ */ new Map();
+  for (const [k, v] of topicTagCounts) merged.set(k, (merged.get(k) ?? 0) + v);
+  for (const [k, v] of keywordTagCounts) merged.set(k, (merged.get(k) ?? 0) + v);
+  const total = [...merged.values()].reduce((a, b) => a + b, 0);
+  if (total <= 0) return "";
+  const top = [...merged.entries()].sort((a, b) => b[1] - a[1]).slice(0, maxTopics);
+  return top.map(([name, c]) => `${name}(${Math.round(100 * c / total)}%)`).join(", ");
+}
+function normalizeVaultFolderPath2(folderPath) {
+  const raw = folderPath == null ? "" : String(folderPath).trim();
+  if (raw === "" || raw === "/") return "";
+  return raw.replace(/^\/+|\/+$/g, "");
+}
+function getExploreFolderExcludedPrefixes() {
+  const settings = AppContext.getInstance().settings;
+  const enabled = settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch ?? true;
+  if (!enabled) return [];
+  const rootFolder = normalizeVaultFolderPath2(settings.ai.rootFolder);
+  const autoSaveFolder = normalizeVaultFolderPath2(settings.search.aiAnalysisAutoSaveFolder);
+  return [...new Set([rootFolder, autoSaveFolder].filter(Boolean))];
+}
+function isPathExcludedByPrefixes(path3, excludedPathPrefixes) {
+  if (!excludedPathPrefixes.length) return false;
+  const p = normalizeVaultFolderPath2(path3);
+  if (p === "") return false;
+  const hub = normalizeVaultFolderPath2(getAIHubSummaryFolder());
+  if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
+  for (const raw of excludedPathPrefixes) {
+    const prefix = normalizeVaultFolderPath2(raw);
+    if (!prefix) continue;
+    if (p === prefix) return true;
+    if (p.startsWith(`${prefix}/`)) return true;
+  }
+  return false;
+}
+function shouldIgnoreFolderForHubSnapshot(path3) {
+  const p = normalizeVaultFolderPath2(path3);
+  const hub = normalizeVaultFolderPath2(getAIHubSummaryFolder());
+  if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
+  try {
+    return IgnoreService.getInstance().shouldIgnore(path3);
+  } catch {
+    const patterns = AppContext.getInstance().settings.search.ignorePatterns ?? [];
+    if (!patterns.length) return false;
+    const ig = (0, import_ignore2.default)();
+    ig.add(patterns);
+    const clean = String(path3).replace(/\\/g, "/").replace(/^\//, "");
+    return ig.ignores(clean);
+  }
+}
+function buildFolderSubtreeStatsMap(root, excludedPathPrefixes) {
+  const map = /* @__PURE__ */ new Map();
+  function dfs(folder, depth) {
+    const visibleSubs = visibleChildFolders(folder, excludedPathPrefixes);
+    let sumDepths = depth;
+    let count = 1;
+    let maxDepth = depth;
+    for (const sub of visibleSubs) {
+      const a = dfs(sub, depth + 1);
+      sumDepths += a.sumDepths;
+      count += a.count;
+      maxDepth = Math.max(maxDepth, a.maxDepth);
+    }
+    map.set(normalizeVaultPath(folder.path), {
+      subtreeMaxDepth: maxDepth,
+      subtreeAvgDepth: count > 0 ? sumDepths / count : depth
+    });
+    return { sumDepths, count, maxDepth };
+  }
+  const top = root.children.filter((c) => c instanceof import_obsidian20.TFolder).sort((a, b) => a.path.localeCompare(b.path));
+  for (const ch of top) {
+    dfs(ch, 1);
+  }
+  return map;
+}
+function visibleChildFolders(folder, excludedPathPrefixes) {
+  const subs = folder.children.filter((c) => c instanceof import_obsidian20.TFolder).sort((a, b) => a.path.localeCompare(b.path));
+  return subs.filter(
+    (s) => !isPathExcludedByPrefixes(s.path, excludedPathPrefixes) && !shouldIgnoreFolderForHubSnapshot(s.path)
+  );
+}
+function collectFoldersDfsPreorder(folder, depth, maxDepth, maxFolders, excludedPathPrefixes, out) {
+  if (out.length >= maxFolders) return;
+  if (isPathExcludedByPrefixes(folder.path, excludedPathPrefixes)) return;
+  if (shouldIgnoreFolderForHubSnapshot(folder.path)) return;
+  const visibleSubs = visibleChildFolders(folder, excludedPathPrefixes);
+  const childFolderCount = visibleSubs.length;
+  out.push({ path: folder.path, depth, childFolderCount });
+  if (out.length >= maxFolders) return;
+  if (depth >= maxDepth) return;
+  for (const sub of visibleSubs) {
+    collectFoldersDfsPreorder(sub, depth + 1, maxDepth, maxFolders, excludedPathPrefixes, out);
+    if (out.length >= maxFolders) return;
+  }
+}
+function collectFolderTreeRows(root, maxDepth, maxFolders, excludedPathPrefixes) {
+  const out = [];
+  const top = root.children.filter((c) => c instanceof import_obsidian20.TFolder).sort((a, b) => a.path.localeCompare(b.path));
+  for (const ch of top) {
+    collectFoldersDfsPreorder(ch, 1, maxDepth, maxFolders, excludedPathPrefixes, out);
+    if (out.length >= maxFolders) break;
+  }
+  return out;
+}
+function sanitizeDigestCell(text) {
+  return text.replace(/\|/g, " ");
+}
+function compactTokenSampleList(tokens, maxChars) {
+  if (!tokens.length) return "\u2014";
+  const s = tokens.join(", ");
+  const t = s.length <= maxChars ? s : `${s.slice(0, Math.max(0, maxChars - 1))}\u2026`;
+  return sanitizeDigestCell(t);
+}
+async function chunkPages(nodes, maxNodesPerPage, tm) {
+  const lim = Math.max(64, Math.min(2e3, Math.max(1, Math.floor(maxNodesPerPage))));
+  if (nodes.length === 0) {
+    const compactTreeMarkdown = await tm.render(IndexingTemplateId.HubDiscoveryFolderTreeEmpty, {});
+    return [
+      {
+        pageId: "folder-page-empty",
+        pageIndex: 0,
+        totalPages: 1,
+        compactTreeMarkdown,
+        pathsOnPage: []
+      }
+    ];
+  }
+  const pages = [];
+  for (let i = 0; i < nodes.length; i += lim) {
+    const slice = nodes.slice(i, i + lim);
+    const pageIndex = pages.length;
+    const compactTreeMarkdown = await tm.render(IndexingTemplateId.HubDiscoveryFolderTreePage, {
+      folderRows: slice.map((n) => ({
+        displayName: n.name || basenameFromPath(n.path) || n.path,
+        depthMinusOne: Math.max(0, n.depth - 1),
+        docCount: n.docCount,
+        topKeywords: n.topKeywords,
+        topTopics: n.topTopics,
+        docOutgoing: n.docOutgoing,
+        docIncoming: n.docIncoming,
+        childFolderCount: n.childFolderCount,
+        subtreeMaxDepth: n.subtreeMaxDepth,
+        subtreeAvgDepthDisplay: n.subtreeAvgDepth.toFixed(1),
+        fileTokenSampleCompact: compactTokenSampleList(n.fileNameTokenSample, 120),
+        subfolderTokenSampleCompact: compactTokenSampleList(n.subfolderNameTokenSample, 120)
+      }))
+    });
+    pages.push({
+      pageId: `folder-page-${pageIndex}`,
+      pageIndex,
+      totalPages: 0,
+      compactTreeMarkdown,
+      pathsOnPage: slice.map((n) => n.path)
+    });
+  }
+  const nPages = pages.length;
+  for (const p of pages) p.totalPages = nPages;
+  return pages;
+}
+async function buildWorldMetrics(nodes) {
+  const vault = AppContext.getInstance().app.vault;
+  const root = vault.getRoot();
+  const topLevelBranchCount = root.children.filter((c) => c instanceof import_obsidian20.TFolder).length;
+  let totalIndexedDocuments = 0;
+  let orphanHardSampleCount = 0;
+  if (sqliteStoreManager.isInitialized()) {
+    totalIndexedDocuments = await sqliteStoreManager.getMobiusNodeRepo().countAllDocumentStatisticsRows();
+    const orphanIds = await sqliteStoreManager.getMobiusEdgeRepo().getHardOrphanNodeIds(3e3);
+    orphanHardSampleCount = orphanIds.length;
+  }
+  const topOutgoingFolders = [...nodes].map((n) => ({ path: n.path, outgoing: n.docOutgoing })).sort((a, b) => b.outgoing - a.outgoing).slice(0, 12);
+  let orphanRiskHint = "low";
+  if (totalIndexedDocuments > 0) {
+    const ratio = orphanHardSampleCount / Math.min(totalIndexedDocuments, 3e3);
+    if (ratio > 0.15) orphanRiskHint = "high";
+    else if (ratio > 0.05) orphanRiskHint = "medium";
+  }
+  return {
+    totalIndexedDocuments,
+    totalFoldersScanned: nodes.length,
+    topLevelBranchCount,
+    orphanHardSampleCount,
+    orphanRiskHint,
+    topOutgoingFolders
+  };
+}
+async function buildHubWorldSnapshot(options, templateManager) {
+  const { maxDepth, maxFolders, maxNodesPerPage, extraExcludePathPrefixes = [] } = options;
+  if (!sqliteStoreManager.isInitialized()) {
+    return {
+      pages: [],
+      metrics: {
+        totalIndexedDocuments: 0,
+        totalFoldersScanned: 0,
+        topLevelBranchCount: 0,
+        orphanHardSampleCount: 0,
+        orphanRiskHint: "low",
+        topOutgoingFolders: []
+      },
+      nodes: []
+    };
+  }
+  const vault = AppContext.getInstance().app.vault;
+  const root = vault.getRoot();
+  const excluded = [...getExploreFolderExcludedPrefixes(), ...extraExcludePathPrefixes.map((p) => normalizeVaultFolderPath2(p))];
+  const rows = collectFolderTreeRows(root, maxDepth, maxFolders, excluded);
+  const subtreeStatsMap = buildFolderSubtreeStatsMap(root, excluded);
+  const paths = rows.map((r) => r.path);
+  const degreeMap = await sqliteStoreManager.getMobiusNodeRepo().listFolderDocDegreesByVaultPaths(paths);
+  const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+  const graphRepo = sqliteStoreManager.getGraphRepo();
+  const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo();
+  const nodes = [];
+  for (const row of rows) {
+    const np = normalizeVaultPath(row.path);
+    const deg = degreeMap.get(np) ?? { incoming: 0, outgoing: 0 };
+    let docCount = 0;
+    let topKeywords = [];
+    let topTopics = [];
+    let topTopicsWeighted;
+    let maps = [];
+    try {
+      maps = await indexedDocumentRepo.getIdsByFolderPath(row.path);
+      docCount = maps.length;
+      if (docCount > 0) {
+        const docIds = maps.map((m) => m.id);
+        const { topicTagCounts, keywordTagCounts } = await graphRepo.getTagsByDocIds(docIds);
+        topTopics = [...topicTagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name]) => name);
+        topKeywords = [...keywordTagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name]) => name);
+        const weighted = formatTopWeightedTopics(topicTagCounts, keywordTagCounts, 3);
+        if (weighted) topTopicsWeighted = weighted;
+      }
+    } catch {
+      docCount = 0;
+      maps = [];
+    }
+    let directDocCount = 0;
+    try {
+      directDocCount = await indexedDocumentRepo.countDirectDocumentsInFolder(row.path);
+    } catch {
+      directDocCount = 0;
+    }
+    const fileBasenames = maps.map((m) => basenameFromPath(m.path));
+    const fileNameTokenSample = fileBasenames.length > 0 ? topTokensFromBasenames(fileBasenames, HUB_DIGEST_NAME_TOKEN_TOP) : [];
+    let subfolderNameTokenSample = [];
+    if (row.childFolderCount > 0) {
+      const af = vault.getAbstractFileByPath(row.path);
+      if (af instanceof import_obsidian20.TFolder) {
+        const childNames = visibleChildFolders(af, excluded).map((f) => basenameFromPath(f.path));
+        subfolderNameTokenSample = topTokensFromBasenames(childNames, HUB_DIGEST_NAME_TOKEN_TOP);
+      }
+    }
+    const st = subtreeStatsMap.get(np);
+    const subtreeMaxDepth = st?.subtreeMaxDepth ?? row.depth;
+    const subtreeAvgDepth = st?.subtreeAvgDepth ?? row.depth;
+    nodes.push({
+      path: row.path,
+      name: basenameFromPath(row.path),
+      depth: row.depth,
+      childFolderCount: row.childFolderCount,
+      subtreeMaxDepth,
+      subtreeAvgDepth,
+      docCount,
+      directDocCount,
+      topKeywords,
+      topTopics,
+      topTopicsWeighted,
+      docOutgoing: deg.outgoing,
+      docIncoming: deg.incoming,
+      fileNameTokenSample,
+      subfolderNameTokenSample
+    });
+  }
+  const hubFolder = getAIHubSummaryFolder();
+  let folderRows = [];
+  try {
+    folderRows = await mobiusRepo.listFolderHubDiscoveryRowsByPaths(paths, hubFolder, { relaxMinDocs: true });
+  } catch {
+    folderRows = [];
+  }
+  const enrichMap = folderRows.length > 0 ? await buildFolderHubEnrichmentMap(mobiusRepo, folderRows) : /* @__PURE__ */ new Map();
+  const folderRowByPath = new Map(
+    folderRows.map((r) => [normalizeVaultPath(String(r.path ?? "")), r])
+  );
+  for (const n of nodes) {
+    const np = normalizeVaultPath(n.path);
+    const e = enrichMap.get(np);
+    if (e) {
+      n.topicPurity = e.topicPurity;
+      n.containerPenalty = e.containerPenalty;
+      n.strongChildDocShare = e.strongChildDocShare;
+      n.residualRatio = e.residualRatio;
+      n.folderRank = e.folderRank;
+      n.strongChildCount = e.strongChildCount;
+    }
+    const fr = folderRowByPath.get(np);
+    if (fr && typeof fr.hub_graph_score === "number") {
+      n.hubGraphScore = fr.hub_graph_score;
+    }
+  }
+  const metrics = await buildWorldMetrics(nodes);
+  const pages = await chunkPages(nodes, maxNodesPerPage, templateManager);
+  return { pages, metrics, nodes };
+}
+async function buildDocumentHubShortlist(limit) {
+  if (!sqliteStoreManager.isInitialized()) return [];
+  const hubFolder = getAIHubSummaryFolder();
+  const rows = await sqliteStoreManager.getMobiusNodeRepo().listTopDocumentNodesForHubDiscovery(Math.max(1, limit), hubFolder);
+  return rows.map((r) => ({
+    path: String(r.path ?? ""),
+    label: String(r.label ?? ""),
+    hubGraphScore: typeof r.hub_graph_score === "number" ? r.hub_graph_score : 0,
+    docIncoming: Math.max(0, Math.floor(Number(r.doc_incoming_cnt ?? 0))),
+    docOutgoing: Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0)))
+  }));
+}
+
+// src/service/agents/hub-helper/hubDiscovery.document.ts
 var import_ai2 = require("ai");
 
 // src/core/utils/common-utils.ts
 function isBlankString(value) {
   return value === void 0 || value === null || value.trim() === "";
 }
+
+// src/service/agents/hub-helper/hubDiscovery.memory.ts
+function orphanHintToLevel(hint) {
+  if (hint === "high") return "high";
+  if (hint === "medium") return "medium";
+  return "low";
+}
+function mergeDocumentHubLeads(a, b) {
+  const key = (x) => `${x.sourceFolderPath}|${x.goal}|${x.targetPathPrefix ?? ""}|${x.expectedRole}`;
+  const m = /* @__PURE__ */ new Map();
+  for (const x of [...a, ...b]) m.set(key(x), x);
+  return [...m.values()];
+}
+function mergeDocumentSubmitIntoMemory(mem, submit) {
+  const byPath = new Map(mem.confirmedDocumentHubPaths.map((p) => [p.path, p]));
+  for (const p of submit.confirmedDocumentHubPaths) {
+    const prev = byPath.get(p.path);
+    if (!prev || (p.confidence ?? 0) >= (prev.confidence ?? 0)) byPath.set(p.path, p);
+  }
+  return {
+    refinedDocumentHubLeads: mergeDocumentHubLeads(mem.refinedDocumentHubLeads, submit.refinedDocumentHubLeads),
+    confirmedDocumentHubPaths: [...byPath.values()],
+    rejectedSeeds: [...mem.rejectedSeeds, ...submit.rejectedSeeds],
+    openQuestions: submit.openQuestions ?? mem.openQuestions
+  };
+}
+function buildInitialFolderReconMemory(ctx) {
+  return {
+    confirmedFolderHubs: [],
+    folderNavigationGroups: [],
+    rejectedFolderPaths: [],
+    highwayFolderLeads: [],
+    ignoredPathPrefixes: [...ctx.baselineExcludedPrefixes],
+    coverage: {
+      coveredRootPaths: [],
+      coveredThemes: [],
+      missingThemes: [],
+      weakBranches: [],
+      messyBranches: [],
+      orphanRiskLevel: orphanHintToLevel(ctx.world.metrics.orphanRiskHint),
+      globalPictureSufficient: false
+    },
+    openQuestions: []
+  };
+}
+function buildInitialDocumentReconMemory() {
+  return {
+    refinedDocumentHubLeads: [],
+    confirmedDocumentHubPaths: [],
+    rejectedSeeds: [],
+    openQuestions: []
+  };
+}
+function buildSyntheticFolderRound(folderMemory, findingsSummary) {
+  return {
+    folderHubCandidates: folderMemory.confirmedFolderHubs,
+    exploreFolderTasks: [],
+    documentHubLeads: [],
+    ignoredFolders: [],
+    coverageAssessment: folderMemory.coverage,
+    findingsSummary
+  };
+}
+function mergeLeadsFromConfirmedPaths(folderMemory, docMemory) {
+  const base = docMemory.refinedDocumentHubLeads;
+  const fromPaths = docMemory.confirmedDocumentHubPaths.map((p) => ({
+    sourceFolderPath: folderMemory.confirmedFolderHubs[0]?.path ?? "",
+    targetPathPrefix: p.path,
+    goal: p.role === "bridge" ? "find_cross_folder_bridge" : p.role === "index" ? "find_index_note" : "find_authority_note",
+    expectedRole: p.role,
+    reason: p.reason
+  }));
+  return mergeDocumentHubLeads(base, fromPaths);
+}
+
+// src/service/agents/hub-helper/hubDiscovery.tools.ts
+var TOOL_OUTPUT_MAX_CHARS = 14e3;
+function truncateForPrompt(text, maxChars) {
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars)}
+
+_(truncated)_`;
+}
+function buildFolderHubTools(tm) {
+  return {
+    explore_folder: exploreFolderToolMarkdownOnly(tm),
+    grep_file_tree: grepFileTreeTool(),
+    local_search_whole_vault: localSearchWholeVaultTool(tm),
+    inspect_note_context: inspectNoteContextToolMarkdownOnly(tm)
+  };
+}
+function buildDocumentHubTools(tm) {
+  return {
+    graph_traversal: graphTraversalToolMarkdownOnly(tm),
+    hub_local_graph: hubLocalGraphTool(tm),
+    inspect_note_context: inspectNoteContextToolMarkdownOnly(tm),
+    find_path: findPathTool(tm),
+    grep_file_tree: grepFileTreeTool(),
+    explore_folder: exploreFolderToolMarkdownOnly(tm),
+    local_search_whole_vault: localSearchWholeVaultTool(tm)
+  };
+}
+async function executeReconToolCalls(tools, planStepMessages) {
+  const toolCalls = planStepMessages.flatMap(
+    (msg) => msg.role === "assistant" && Array.isArray(msg.content) ? msg.content.filter((part) => part.type === "tool-call") : []
+  );
+  const full = [];
+  const summary = [];
+  for (const tc of toolCalls) {
+    const exec = tools[tc.toolName];
+    if (!exec?.execute) continue;
+    let output;
+    try {
+      output = await exec.execute(tc.input);
+    } catch (err) {
+      output = { error: err instanceof Error ? err.message : String(err) };
+    }
+    const toolResultGetter = (outputValue) => ({
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: tc.toolCallId,
+          toolName: tc.toolName,
+          output: typeof outputValue === "string" ? { type: "text", value: outputValue } : { type: "json", value: outputValue }
+        }
+      ]
+    });
+    const str = typeof output === "string" ? output : JSON.stringify(output);
+    full.push(toolResultGetter(truncateForPrompt(str, TOOL_OUTPUT_MAX_CHARS)));
+    summary.push(toolResultGetter("[truncated for context]"));
+  }
+  return { full, summary };
+}
+
+// src/service/agents/hub-helper/hubDiscoveryDebug.ts
+function clampInt(n, lo, hi) {
+  return Math.max(lo, Math.min(hi, Math.floor(n)));
+}
+function shouldSkipDocumentRecon(stopAt) {
+  if (stopAt === void 0) return false;
+  if (stopAt === "prep") return false;
+  if (stopAt === "folder_hub" || stopAt === "after_folder_recon") return true;
+  if (typeof stopAt === "object" && stopAt !== null && "hook" in stopAt) {
+    return stopAt.hook === "folder_plan" || stopAt.hook === "folder_submit";
+  }
+  return false;
+}
+function resolveFolderReconDebug(options) {
+  const { stopAt, folderReconMaxIterations: maxCap } = options;
+  const out = {};
+  if (maxCap !== void 0) out.maxIterations = clampInt(maxCap, 1, 6);
+  if (typeof stopAt === "object" && stopAt !== null && "hook" in stopAt) {
+    if (stopAt.hook === "folder_plan") {
+      out.stopAfterPlanIteration = clampInt(stopAt.iteration, 1, 99);
+    }
+    if (stopAt.hook === "folder_submit") {
+      out.stopAfterSubmitIteration = clampInt(stopAt.iteration, 1, 99);
+    }
+  }
+  if (out.maxIterations === void 0 && out.stopAfterPlanIteration === void 0 && out.stopAfterSubmitIteration === void 0) {
+    return void 0;
+  }
+  return out;
+}
+function resolveDocumentReconDebug(options) {
+  const { stopAt, documentReconMaxIterations: maxCap } = options;
+  const out = {};
+  if (maxCap !== void 0) out.maxIterations = clampInt(maxCap, 1, 6);
+  if (typeof stopAt === "object" && stopAt !== null && "hook" in stopAt) {
+    if (stopAt.hook === "document_plan") {
+      out.stopAfterPlanIteration = clampInt(stopAt.iteration, 1, 99);
+    }
+    if (stopAt.hook === "document_submit") {
+      out.stopAfterSubmitIteration = clampInt(stopAt.iteration, 1, 99);
+    }
+  }
+  if (out.maxIterations === void 0 && out.stopAfterPlanIteration === void 0 && out.stopAfterSubmitIteration === void 0) {
+    return void 0;
+  }
+  return out;
+}
+function effectiveReconMaxIterations(budgetDerived, debug) {
+  const base = Math.max(1, Math.min(6, budgetDerived));
+  if (debug?.maxIterations !== void 0) {
+    return Math.max(1, Math.min(6, Math.min(base, debug.maxIterations)));
+  }
+  return base;
+}
+
+// src/service/agents/hub-helper/hubDiscovery.document.ts
+async function* runDocumentHubReconLoop(options) {
+  const { ctx, folderMemory, stepId, aiServiceManager, onComplete, debug } = options;
+  const stopwatch = new Stopwatch("HubDiscovery document recon");
+  const tools = buildDocumentHubTools(ctx.tm);
+  const budgetDerived = Math.min(6, Math.max(3, Math.floor(ctx.suggestBudget.indexBudgetRaw.limitTotal / 180)));
+  const maxIter = effectiveReconMaxIterations(budgetDerived, debug);
+  let memory = buildInitialDocumentReconMemory();
+  const messages = [
+    {
+      role: "user",
+      content: await aiServiceManager.renderPrompt("hub-discovery-document-recon-plan" /* HubDiscoveryDocumentReconPlan */, {
+        userGoal: ctx.userGoal,
+        folderHubCandidatesJson: JSON.stringify(folderMemory.confirmedFolderHubs),
+        highwayFolderLeadsJson: JSON.stringify(folderMemory.highwayFolderLeads),
+        documentShortlistJson: JSON.stringify(ctx.initialDocumentShortlist),
+        topOutgoingFoldersJson: JSON.stringify(ctx.world.metrics.topOutgoingFolders)
+      })
+    }
+  ];
+  for (let iter = 0; iter < maxIter; iter++) {
+    const system = await aiServiceManager.renderPrompt("hub-discovery-document-recon-plan-system" /* HubDiscoveryDocumentReconPlanSystem */, {});
+    const planMessages = [
+      ...messages,
+      ...iter > 0 ? [
+        {
+          role: "user",
+          content: `[Iteration ${iter + 1}/${maxIter}] Document recon memory (JSON):
+` + JSON.stringify(memory)
+        }
+      ] : []
+    ];
+    yield buildPromptTraceDebugEvent(
+      "hub-discovery-document-recon-plan" /* HUB_DISCOVERY_DOCUMENT_RECON_PLAN */,
+      system,
+      JSON.stringify(planMessages)
+    );
+    stopwatch.start(`document recon plan iter ${iter}`);
+    const stepResult = (0, import_ai2.streamText)({
+      // Use the user prompt id for model selection (system prompts are not configurable).
+      model: aiServiceManager.getModelInstanceForPrompt("hub-discovery-document-recon-plan" /* HubDiscoveryDocumentReconPlan */).model,
+      system,
+      messages: planMessages,
+      tools,
+      toolChoice: "required"
+    });
+    yield* streamTransform(stepResult.fullStream, "hub-discovery-document-recon-plan" /* HUB_DISCOVERY_DOCUMENT_RECON_PLAN */, {
+      yieldUIStep: { uiType: "steps-display" /* STEPS_DISPLAY */, stepId }
+    });
+    const planStepMessages = [];
+    const responseReasoning = (await stepResult.reasoning).map((r) => r.text).join("\n");
+    if (!isBlankString(responseReasoning)) {
+      planStepMessages.push({ role: "assistant", content: responseReasoning });
+    }
+    const responseText = await stepResult.text;
+    if (!isBlankString(responseText)) {
+      planStepMessages.push({ role: "assistant", content: responseText });
+    }
+    const toolCalls = await stepResult.toolCalls;
+    if (toolCalls.length > 0) {
+      planStepMessages.push({
+        role: "assistant",
+        content: toolCalls.map((tc) => ({
+          type: "tool-call",
+          toolCallId: tc.toolCallId,
+          toolName: tc.toolName,
+          input: tc.input
+        }))
+      });
+    }
+    stopwatch.stop();
+    const { full: fullToolMessages, summary: summaryToolMessages } = await executeReconToolCalls(tools, planStepMessages);
+    const toolResultsMarkdown = fullToolMessages.length > 0 ? fullToolMessages.map((m) => JSON.stringify(m.content)).join("\n\n") : "(no tool calls executed)";
+    const iterOneBased = iter + 1;
+    const toolCallsPayload = toolCalls.map((tc) => ({
+      toolCallId: tc.toolCallId,
+      toolName: tc.toolName,
+      input: tc.input
+    }));
+    yield {
+      type: "pk-debug",
+      debugName: "HubDiscovery document recon plan+tools raw",
+      extra: {
+        iteration: iterOneBased,
+        maxIter,
+        reasoning: responseReasoning || void 0,
+        responseText: responseText || void 0,
+        toolCalls: toolCallsPayload,
+        toolResultsMarkdown,
+        memoryBeforeSubmit: memory
+      }
+    };
+    if (debug?.stopAfterPlanIteration === iterOneBased) {
+      yield {
+        type: "pk-debug",
+        debugName: "HubDiscovery document recon stop (after plan + tools)",
+        extra: {
+          stopped: true,
+          iteration: iterOneBased,
+          maxIter,
+          phase: "document_plan",
+          note: "Details are in the previous pk-debug: HubDiscovery document recon plan+tools raw"
+        }
+      };
+      onComplete(memory);
+      return;
+    }
+    const submit = await aiServiceManager.streamObjectWithPrompt(
+      "hub-discovery-document-recon-submit" /* HubDiscoveryDocumentReconSubmit */,
+      {
+        userGoal: ctx.userGoal,
+        iteration: iter + 1,
+        memoryJson: JSON.stringify(memory),
+        toolResultsMarkdown
+      },
+      hubDiscoveryDocumentReconSubmitSchema
+    );
+    yield {
+      type: "pk-debug",
+      debugName: "hub-discovery-document-recon-submit",
+      triggerName: "hub-discovery-document-recon-submit" /* HUB_DISCOVERY_DOCUMENT_RECON_SUBMIT */,
+      extra: {
+        iteration: iterOneBased,
+        leads: submit.refinedDocumentHubLeads.length,
+        confirmed_paths: submit.confirmedDocumentHubPaths.length,
+        should_stop: submit.should_stop,
+        submit
+      }
+    };
+    memory = mergeDocumentSubmitIntoMemory(memory, submit);
+    messages.push(...planStepMessages);
+    messages.push(...summaryToolMessages);
+    messages.push({
+      role: "assistant",
+      content: JSON.stringify({
+        findingsSummary: submit.findingsSummary,
+        should_stop: submit.should_stop
+      })
+    });
+    if (debug?.stopAfterSubmitIteration === iterOneBased) {
+      yield {
+        type: "pk-debug",
+        debugName: "HubDiscovery document recon stop (after submit)",
+        extra: {
+          stopped: true,
+          iteration: iterOneBased,
+          maxIter,
+          phase: "document_submit",
+          memoryAfterMerge: memory,
+          note: "Structured submit payload is in the previous pk-debug: hub-discovery-document-recon-submit"
+        }
+      };
+      onComplete(memory);
+      return;
+    }
+    if (submit.should_stop) break;
+  }
+  yield {
+    type: "pk-debug",
+    debugName: "HubDiscovery document recon complete",
+    extra: { stopwatch: stopwatch.toString(), leads: memory.refinedDocumentHubLeads.length }
+  };
+  onComplete(memory);
+}
+
+// src/service/agents/hub-helper/hubDiscovery.folderHub.ts
+var import_ai3 = require("ai");
+function purityDigestCell(n) {
+  const p = n.topicPurity;
+  if (p === void 0 || Number.isNaN(p)) return "\u2014";
+  const tier = p >= 0.65 ? "High" : p >= 0.35 ? "Med" : "Low";
+  return `${p.toFixed(2)} (${tier})`;
+}
+function containerDigestCell(n) {
+  if (n.containerPenalty === void 0 && n.strongChildDocShare === void 0 && n.residualRatio === void 0) {
+    return "\u2014";
+  }
+  const pen = n.containerPenalty !== void 0 ? n.containerPenalty.toFixed(2) : "\u2014";
+  const sc = n.strongChildDocShare !== void 0 ? `${Math.round(n.strongChildDocShare * 100)}%` : "\u2014";
+  const res = n.residualRatio !== void 0 ? `${Math.round(n.residualRatio * 100)}%` : "\u2014";
+  return `pen ${pen} \xB7 child ${sc} \xB7 res ${res}`;
+}
+function rankDigestCell(n) {
+  const fr = n.folderRank;
+  const hg = n.hubGraphScore;
+  if (fr !== void 0 && hg !== void 0) return `${fr.toFixed(2)} / ${hg.toFixed(2)}`;
+  if (fr !== void 0) return fr.toFixed(2);
+  if (hg !== void 0) return hg.toFixed(2);
+  return "\u2014";
+}
+function compareFolderDigestRows(a, b) {
+  const ra = a.folderRank ?? a.hubGraphScore ?? 0;
+  const rb = b.folderRank ?? b.hubGraphScore ?? 0;
+  if (rb !== ra) return rb - ra;
+  const pa = a.topicPurity ?? 0;
+  const pb = b.topicPurity ?? 0;
+  if (pb !== pa) return pb - pa;
+  const ca = a.containerPenalty ?? 0;
+  const cb = b.containerPenalty ?? 0;
+  if (ca !== cb) return ca - cb;
+  return b.docCount - a.docCount;
+}
+function buildFolderDigestMarkdown(nodes, maxLines) {
+  const sorted = [...nodes].sort(compareFolderDigestRows);
+  const lines = sorted.slice(0, maxLines).map((n) => {
+    const dt = `${n.directDocCount}/${n.docCount}`;
+    const topics = n.topTopicsWeighted?.trim() || n.topTopics.slice(0, 3).join(", ") || "\u2014";
+    const safe = (s) => s.replace(/\|/g, " ");
+    return `| \`${n.path}\` | ${n.depth} | ${dt} | ${purityDigestCell(n)} | ${containerDigestCell(n)} | ${rankDigestCell(n)} | ${safe(topics)} | in ${n.docIncoming} / out ${n.docOutgoing} |`;
+  });
+  return [
+    "| Path | Depth | Docs (direct/total) | Purity | Container | Rank (fr / hub) | Top topics (weighted) | Degrees (in/out) |",
+    "| --- | ---: | --- | --- | --- | --- | --- | ---: |",
+    ...lines
+  ].join("\n");
+}
+function buildDeepFolderDigestMarkdown(nodes, maxLines) {
+  const scored = nodes.filter((n) => n.depth >= 3).map((n) => ({
+    node: n,
+    score: (n.folderRank ?? n.hubGraphScore ?? 0) * 140 + (n.topicPurity ?? 0) * 55 + n.docCount * 0.45 + n.docOutgoing * 0.1 + Math.max(0, n.depth - 2) * 12 + Math.max(0, n.childFolderCount - 1) * 4 - (n.containerPenalty ?? 0) * 30
+  })).sort((a, b) => b.score - a.score || compareFolderDigestRows(a.node, b.node));
+  const lines = scored.slice(0, maxLines).map(({ node: n }) => {
+    const keywords = n.topKeywords.slice(0, 6).join(", ") || "\u2014";
+    const topics = n.topTopicsWeighted?.trim() || n.topTopics.slice(0, 4).join(", ") || "\u2014";
+    const safe = (s) => s.replace(/\|/g, " ");
+    return `| \`${n.path}\` | ${n.depth} | ${n.directDocCount}/${n.docCount} | ${purityDigestCell(n)} | ${n.childFolderCount} | ${n.docOutgoing} | ${safe(keywords)} | ${safe(topics)} |`;
+  });
+  if (lines.length === 0) return "_(No depth >= 3 folder candidates found in snapshot.)_";
+  return [
+    "| Path | Depth | Docs (d/t) | Purity | Subdirs | Out | Keywords | Topics |",
+    "| --- | ---: | --- | --- | ---: | ---: | --- | --- |",
+    ...lines
+  ].join("\n");
+}
+function buildFolderTreePagesMarkdown(ctx) {
+  if (ctx.world.pages.length === 0) return "_(No folder tree pages available.)_";
+  return ctx.world.pages.map((p) => `### Folder tree page ${p.pageIndex + 1}/${p.totalPages}
+
+${p.compactTreeMarkdown}`).join("\n\n");
+}
+async function* runFolderHubReconLoop(options) {
+  const { ctx, stepId, aiServiceManager, onComplete, debug } = options;
+  const stopwatch = new Stopwatch("HubDiscovery folder recon");
+  const tools = buildFolderHubTools(ctx.tm);
+  const budgetDerived = Math.min(6, Math.max(3, Math.floor(ctx.suggestBudget.indexBudgetRaw.limitTotal / 150)));
+  const maxIter = effectiveReconMaxIterations(budgetDerived, debug);
+  const folderTreeMarkdown = buildFolderTreePagesMarkdown(ctx);
+  const folderDigestMarkdown = buildFolderDigestMarkdown(ctx.world.nodes, 100);
+  const deepFolderDigestMarkdown = buildDeepFolderDigestMarkdown(ctx.world.nodes, 60);
+  let memory = buildInitialFolderReconMemory(ctx);
+  const messages = [
+    {
+      role: "user",
+      content: await aiServiceManager.renderPrompt("hub-discovery-folder-recon-plan" /* HubDiscoveryFolderReconPlan */, {
+        userGoal: ctx.userGoal,
+        worldMetricsJson: JSON.stringify(ctx.worldMetricsForPrompt),
+        folderDigestMarkdown,
+        deepFolderDigestMarkdown,
+        baselineExcludedPrefixesJson: JSON.stringify(ctx.baselineExcludedPrefixes)
+      })
+    }
+  ];
+  for (let iter = 0; iter < maxIter; iter++) {
+    const planSystem = await aiServiceManager.renderPrompt("hub-discovery-folder-recon-plan-system" /* HubDiscoveryFolderReconPlanSystem */, {});
+    const planMessages = [
+      ...messages,
+      ...iter > 0 ? [
+        {
+          role: "user",
+          content: `[Iteration ${iter + 1}/${maxIter}] Folder recon memory (JSON):
+` + JSON.stringify(memory)
+        }
+      ] : []
+    ];
+    yield buildPromptTraceDebugEvent("hub-discovery-folder-recon-plan" /* HUB_DISCOVERY_FOLDER_RECON_PLAN */, planSystem, JSON.stringify(planMessages));
+    stopwatch.start(`folder recon plan iter ${iter}`);
+    const planResult = (0, import_ai3.streamText)({
+      model: aiServiceManager.getModelInstanceForPrompt("hub-discovery-folder-recon-plan" /* HubDiscoveryFolderReconPlan */).model,
+      system: planSystem,
+      messages: planMessages,
+      tools,
+      toolChoice: "auto"
+    });
+    yield* streamTransform(planResult.fullStream, "hub-discovery-folder-recon-plan" /* HUB_DISCOVERY_FOLDER_RECON_PLAN */, {
+      yieldUIStep: { uiType: "steps-display" /* STEPS_DISPLAY */, stepId }
+    });
+    const planStepMessages = [];
+    const planReasoning = (await planResult.reasoning).map((r) => r.text).join("\n");
+    if (!isBlankString(planReasoning)) {
+      planStepMessages.push({ role: "assistant", content: planReasoning });
+    }
+    const planText = await planResult.text;
+    if (!isBlankString(planText)) {
+      planStepMessages.push({ role: "assistant", content: planText });
+    }
+    const toolCalls = await planResult.toolCalls;
+    if (toolCalls.length > 0) {
+      planStepMessages.push({
+        role: "assistant",
+        content: toolCalls.map((tc) => ({
+          type: "tool-call",
+          toolCallId: tc.toolCallId,
+          toolName: tc.toolName,
+          input: tc.input
+        }))
+      });
+    }
+    stopwatch.stop();
+    const { full: fullToolMessages, summary: summaryToolMessages } = await executeReconToolCalls(tools, planStepMessages);
+    const toolResultsMarkdown = fullToolMessages.length > 0 ? fullToolMessages.map((m) => JSON.stringify(m.content)).join("\n\n") : "(no tool calls executed)";
+    const iterOneBased = iter + 1;
+    const actionPlanMarkdown = [planReasoning, planText].filter((x) => !isBlankString(x)).join("\n\n").trim();
+    const toolCallsPayload = toolCalls.map((tc) => ({
+      toolCallId: tc.toolCallId,
+      toolName: tc.toolName,
+      input: tc.input
+    }));
+    yield {
+      type: "pk-debug",
+      debugName: "HubDiscovery folder recon plan+tools raw",
+      extra: {
+        iteration: iterOneBased,
+        maxIter,
+        planReasoning: planReasoning || void 0,
+        planText: planText || void 0,
+        toolCalls: toolCallsPayload,
+        toolResultsMarkdown: toolResultsMarkdown.slice(0, 200) + "(truncated)..."
+      }
+    };
+    if (debug?.stopAfterPlanIteration === iterOneBased) {
+      yield {
+        type: "pk-debug",
+        debugName: "HubDiscovery folder recon stop (after plan + tools)",
+        extra: {
+          stopped: true,
+          iteration: iterOneBased,
+          maxIter,
+          phase: "folder_plan",
+          note: "Details are in the previous pk-debug: HubDiscovery folder recon plan+tools raw"
+        }
+      };
+      onComplete(memory);
+      return;
+    }
+    const agentPipelineBudget = ctx.worldMetricsForPrompt.agentPipelineBudget;
+    const submit = await aiServiceManager.streamObjectWithPrompt(
+      "hub-discovery-folder-recon-submit" /* HubDiscoveryFolderReconSubmit */,
+      {
+        userGoal: ctx.userGoal,
+        iteration: iterOneBased,
+        agentPipelineBudgetJson: JSON.stringify(
+          agentPipelineBudget !== void 0 ? agentPipelineBudget : {}
+        ),
+        memoryJson: JSON.stringify(memory),
+        folderTreeMarkdown,
+        actionPlanMarkdown: actionPlanMarkdown || "(no explicit plan text returned)",
+        actionOutputMarkdown: planText || "(no plan text returned)",
+        toolResultsMarkdown
+      },
+      hubDiscoveryFolderReconSubmitSchema
+    );
+    yield {
+      type: "pk-debug",
+      debugName: "hub-discovery-folder-recon-submit",
+      triggerName: "hub-discovery-folder-recon-submit" /* HUB_DISCOVERY_FOLDER_RECON_SUBMIT */,
+      extra: {
+        iteration: iterOneBased,
+        maxIter,
+        submit
+      }
+    };
+    memory = {
+      confirmedFolderHubs: mergeFolderHubCandidatesByPath([
+        ...memory.confirmedFolderHubs,
+        ...submit.confirmedFolderHubCandidates
+      ]),
+      folderNavigationGroups: mergeFolderNavigationGroups([
+        ...memory.folderNavigationGroups,
+        ...submit.folderNavigationGroups
+      ]),
+      rejectedFolderPaths: mergeRejectedFolderPathsByPath([...memory.rejectedFolderPaths, ...submit.rejectedFolderPaths]),
+      highwayFolderLeads: mergeHighwayFolderLeadsByPath([...memory.highwayFolderLeads, ...submit.highwayFolderLeads]),
+      ignoredPathPrefixes: [.../* @__PURE__ */ new Set([...memory.ignoredPathPrefixes, ...submit.ignoredPathPrefixes])],
+      coverage: submit.updatedCoverage,
+      openQuestions: submit.openQuestions ?? memory.openQuestions
+    };
+    messages.push(...planStepMessages);
+    messages.push(...summaryToolMessages);
+    messages.push({
+      role: "assistant",
+      content: JSON.stringify({
+        findingsSummary: submit.findingsSummary,
+        should_stop: submit.should_stop,
+        confirmed_count: submit.confirmedFolderHubCandidates.length
+      })
+    });
+    if (debug?.stopAfterSubmitIteration === iterOneBased) {
+      yield {
+        type: "pk-debug",
+        debugName: "HubDiscovery folder recon stop (after submit)",
+        extra: {
+          stopped: true,
+          iteration: iterOneBased,
+          maxIter,
+          phase: "folder_submit",
+          memoryAfterMerge: memory,
+          note: "Structured submit payload is in the previous pk-debug: hub-discovery-folder-recon-submit"
+        }
+      };
+      onComplete(memory);
+      return;
+    }
+    if (submit.should_stop) break;
+  }
+  yield {
+    type: "pk-debug",
+    debugName: "HubDiscovery folder recon complete",
+    extra: { stopwatch: stopwatch.toString(), confirmedHubs: memory.confirmedFolderHubs.length }
+  };
+  onComplete(memory);
+}
+function mergeFolderHubCandidatesByPath(candidates) {
+  const byPath = /* @__PURE__ */ new Map();
+  for (const c of candidates) {
+    const p = String(c.path ?? "").trim();
+    if (!p) continue;
+    const prev = byPath.get(p);
+    if (!prev || (c.confidence ?? 0) > (prev.confidence ?? 0)) byPath.set(p, { ...c, path: p });
+  }
+  return [...byPath.values()].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
+}
+function mergeHighwayFolderLeadsByPath(leads) {
+  const byPath = /* @__PURE__ */ new Map();
+  for (const h of leads) {
+    const p = String(h.path ?? "").trim();
+    if (!p) continue;
+    const prev = byPath.get(p);
+    if (!prev || (h.confidence ?? 0) > (prev.confidence ?? 0)) byPath.set(p, { ...h, path: p });
+  }
+  return [...byPath.values()];
+}
+function mergeRejectedFolderPathsByPath(entries) {
+  const byPath = /* @__PURE__ */ new Map();
+  for (const entry of entries) {
+    const p = String(entry.path ?? "").trim();
+    if (!p) continue;
+    const prev = byPath.get(p);
+    if (!prev) {
+      byPath.set(p, { ...entry, path: p });
+      continue;
+    }
+    const nextReason = String(entry.reason ?? "").trim();
+    const prevReason = String(prev.reason ?? "").trim();
+    const shouldReplace = !!entry.rejectionKind && !prev.rejectionKind || nextReason.length > prevReason.length;
+    if (shouldReplace) byPath.set(p, { ...prev, ...entry, path: p });
+  }
+  return [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+}
+function mergeFolderNavigationGroups(groups) {
+  const byKey = /* @__PURE__ */ new Map();
+  for (const group of groups) {
+    const members = [...new Set((group.memberPaths ?? []).map((p) => String(p ?? "").trim()).filter(Boolean))].sort();
+    if (members.length < 2) continue;
+    const key = members.join("|");
+    const prev = byKey.get(key);
+    if (!prev || (group.confidence ?? 0) > (prev.confidence ?? 0)) {
+      byKey.set(key, { ...group, memberPaths: members });
+    }
+  }
+  return [...byKey.values()].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
+}
+
+// src/service/agents/HubDiscoveryAgent.ts
+function buildAgentPipelineBudgetLlmGuidance(limitTotal) {
+  const lt = Math.max(1, Math.floor(limitTotal));
+  const coverageAmbition = lt < 40 ? "low" : lt < 100 ? "medium" : "high";
+  const recommendedMinConfirmedCandidatesPerIteration = Math.max(
+    3,
+    Math.min(14, Math.floor(3 + lt * 0.1))
+  );
+  return {
+    coverageAmbition,
+    recommendedMinConfirmedCandidatesPerIteration,
+    earlyStopGuidance: "Prefer should_stop=false while large parts of the folder digest remain neither confirmed nor rejected, unless tool results show no further grounded paths.",
+    iterationBreadthHint: "Higher limitTotal means the vault supports broader multi-branch coverage in each iteration; avoid collapsing to only a few coarse roots when the tree shows distinct themes."
+  };
+}
+var HubDiscoveryPipelineAbortError = class extends Error {
+  constructor(reason, partialResult) {
+    super(
+      reason === "prep_only" ? "HubDiscoveryPipelineAbortError: prep_only" : "HubDiscoveryPipelineAbortError: skip_document_after_folder"
+    );
+    this.reason = reason;
+    this.partialResult = partialResult;
+    this.name = "HubDiscoveryPipelineAbortError";
+  }
+};
+var HubDiscoveryAgent = class {
+  constructor(aiServiceManager) {
+    this.aiServiceManager = aiServiceManager;
+  }
+  resetReconSession() {
+    this.folderReconMemory = void 0;
+    this.documentReconMemory = void 0;
+  }
+  async prepareHubDiscoveryContext(options) {
+    const tm = this.aiServiceManager.getTemplateManager?.();
+    if (!tm) {
+      throw new Error("HubDiscoveryAgent requires TemplateManager (plugin templates not loaded).");
+    }
+    const trimmedGoal = options.userGoal?.trim();
+    const userGoal = trimmedGoal || (await tm.render(IndexingTemplateId.HubDiscoveryDefaultUserGoal, {})).trim();
+    if (!userGoal) {
+      throw new Error("HubDiscoveryAgent: userGoal is empty and default user-goal template rendered empty.");
+    }
+    const pipelineBudgetNote = (await tm.render(IndexingTemplateId.HubDiscoveryPipelineBudgetNote, {})).trim();
+    if (!pipelineBudgetNote) {
+      throw new Error("HubDiscoveryAgent: agentPipelineBudget note template rendered empty.");
+    }
+    const documentNodeCount = sqliteStoreManager.isInitialized() ? await sqliteStoreManager.getMobiusNodeRepo().countAllDocumentStatisticsRows() : 0;
+    const indexBudgetRaw = computeHubDiscoverBudgets(documentNodeCount);
+    const { limitTotal, documentFetchLimit, folderFetchLimit } = indexBudgetRaw;
+    const globalTreeMaxDepth = Math.min(10, Math.max(6, 6 + Math.floor(limitTotal / 100)));
+    const maxFoldersInSnapshot = Math.min(8e3, Math.max(400, Math.floor(folderFetchLimit * 28)));
+    const maxNodesPerPage = Math.min(2e3, Math.max(320, Math.floor(limitTotal * 7)));
+    const estimatedFolderPages = Math.max(1, Math.ceil(maxFoldersInSnapshot / maxNodesPerPage));
+    const maxFolderPages = Math.min(20, Math.max(1, Math.min(estimatedFolderPages, Math.ceil(limitTotal * 0.4))));
+    const maxExploresPerPage = Math.min(32, Math.max(8, Math.ceil(limitTotal * 0.22)));
+    const docShortlistLimit = Math.min(500, Math.max(50, Math.floor(documentFetchLimit * 2)));
+    const suggestBudget = {
+      maxFolderPages,
+      maxExploresPerPage,
+      docShortlistLimit,
+      globalTreeMaxDepth,
+      maxFoldersInSnapshot,
+      maxNodesPerPage,
+      runDeepenRound: true,
+      indexBudgetRaw
+    };
+    const world = await buildHubWorldSnapshot(
+      {
+        maxDepth: suggestBudget.globalTreeMaxDepth,
+        maxFolders: suggestBudget.maxFoldersInSnapshot,
+        maxNodesPerPage: suggestBudget.maxNodesPerPage,
+        extraExcludePathPrefixes: []
+      },
+      tm
+    );
+    const worldMetricsForPrompt = {
+      ...world.metrics,
+      agentPipelineBudget: {
+        documentNodeCount,
+        indexBudgetRaw: suggestBudget.indexBudgetRaw,
+        maxFolderPages: suggestBudget.maxFolderPages,
+        maxExploresPerPage: suggestBudget.maxExploresPerPage,
+        docShortlistLimit: suggestBudget.docShortlistLimit,
+        snapshot: {
+          globalTreeMaxDepth: suggestBudget.globalTreeMaxDepth,
+          maxFoldersInSnapshot: suggestBudget.maxFoldersInSnapshot,
+          maxNodesPerPage: suggestBudget.maxNodesPerPage
+        },
+        note: pipelineBudgetNote,
+        llmGuidance: buildAgentPipelineBudgetLlmGuidance(suggestBudget.indexBudgetRaw.limitTotal)
+      }
+    };
+    const baselineExcludedPrefixes = getExploreFolderExcludedPrefixes();
+    const initialDocumentShortlist = await buildDocumentHubShortlist(suggestBudget.docShortlistLimit);
+    return {
+      tm,
+      userGoal,
+      suggestBudget,
+      world,
+      worldMetricsForPrompt,
+      documentNodeCount,
+      initialDocumentShortlist,
+      baselineExcludedPrefixes
+    };
+  }
+  /** Partial result when `stopAt: 'prep'` (no recon memory). */
+  buildResultAfterPrep(ctx) {
+    return {
+      world: ctx.world,
+      folderRounds: [],
+      deepen: void 0,
+      explores: [],
+      mergedFolderHubCandidates: [],
+      mergedFolderNavigationGroups: [],
+      mergedDocumentHubLeads: [],
+      // documentShortlist: ctx.initialDocumentShortlist,
+      folderCoverageAssessments: [],
+      lastCoverage: void 0,
+      highwayFolderLeads: []
+    };
+  }
+  /** Partial result when skipping document recon (`folder_hub`, `after_folder_recon`, or folder plan/submit hooks). */
+  async buildResultAfterFolderHub(ctx, folderMemory) {
+    const documentShortlist = await buildDocumentHubShortlist(ctx.suggestBudget.docShortlistLimit);
+    const findingsSummary = [
+      `Folder hubs: ${folderMemory.confirmedFolderHubs.length}; highway leads: ${folderMemory.highwayFolderLeads.length}.`,
+      `(Document recon skipped: debug stop before document phase.)`
+    ].join(" ");
+    const syntheticRound = buildSyntheticFolderRound(folderMemory, findingsSummary);
+    return {
+      // world: ctx.world,
+      folderRounds: [syntheticRound],
+      deepen: void 0,
+      explores: [],
+      mergedFolderHubCandidates: folderMemory.confirmedFolderHubs,
+      mergedFolderNavigationGroups: folderMemory.folderNavigationGroups,
+      mergedDocumentHubLeads: [],
+      // documentShortlist,
+      folderCoverageAssessments: [folderMemory.coverage],
+      lastCoverage: folderMemory.coverage,
+      highwayFolderLeads: folderMemory.highwayFolderLeads
+    };
+  }
+  async *runHubDiscoveryPipeline(options) {
+    this.resetReconSession();
+    const ctx = await this.prepareHubDiscoveryContext(options);
+    const stepId = generateUuidWithoutHyphens();
+    const stopAt = options.stopAt;
+    if (stopAt === "prep") {
+      yield {
+        type: "pk-debug",
+        debugName: "HubDiscoveryAgent prep snapshot (raw)",
+        extra: {
+          stopAt: "prep",
+          userGoal: ctx.userGoal,
+          worldMetrics: ctx.world.metrics,
+          folderTreeNodeCount: ctx.world.nodes.length,
+          initialDocumentShortlist: ctx.initialDocumentShortlist
+        }
+      };
+      throw new HubDiscoveryPipelineAbortError("prep_only", this.buildResultAfterPrep(ctx));
+    }
+    const folderReconDebug = resolveFolderReconDebug(options);
+    yield* runFolderHubReconLoop({
+      ctx,
+      stepId,
+      aiServiceManager: this.aiServiceManager,
+      debug: folderReconDebug,
+      onComplete: (m) => {
+        this.folderReconMemory = m;
+      }
+    });
+    const folderMemory = this.folderReconMemory;
+    if (!folderMemory) {
+      throw new Error("HubDiscoveryAgent: folder recon finished without memory (onComplete not invoked).");
+    }
+    yield {
+      type: "pk-debug",
+      debugName: "HubDiscoveryAgent folder recon memory (raw)",
+      extra: {
+        stopAt: stopAt ?? null,
+        folderReconMemory: folderMemory
+      }
+    };
+    if (shouldSkipDocumentRecon(stopAt)) {
+      throw new HubDiscoveryPipelineAbortError(
+        "skip_document_after_folder",
+        await this.buildResultAfterFolderHub(ctx, folderMemory)
+      );
+    }
+    yield {
+      type: "pk-debug",
+      debugName: "HubDiscoveryAgent document phase input (raw)",
+      extra: {
+        folderMemory,
+        initialDocumentShortlist: ctx.initialDocumentShortlist,
+        topOutgoingFolders: ctx.world.metrics.topOutgoingFolders
+      }
+    };
+    const documentReconDebug = resolveDocumentReconDebug(options);
+    yield* runDocumentHubReconLoop({
+      ctx,
+      folderMemory,
+      stepId,
+      aiServiceManager: this.aiServiceManager,
+      debug: documentReconDebug,
+      onComplete: (m) => {
+        this.documentReconMemory = m;
+      }
+    });
+    const docMemory = this.documentReconMemory;
+    if (!docMemory) {
+      throw new Error("HubDiscoveryAgent: document recon finished without memory (onComplete not invoked).");
+    }
+    const documentShortlist = await buildDocumentHubShortlist(ctx.suggestBudget.docShortlistLimit);
+    const mergedDocumentHubLeads = mergeLeadsFromConfirmedPaths(folderMemory, docMemory);
+    const findingsSummary = [
+      `Folder hubs: ${folderMemory.confirmedFolderHubs.length}; highway leads: ${folderMemory.highwayFolderLeads.length}.`,
+      `Document leads: ${docMemory.refinedDocumentHubLeads.length}; confirmed note paths: ${docMemory.confirmedDocumentHubPaths.length}.`
+    ].join(" ");
+    const syntheticRound = buildSyntheticFolderRound(folderMemory, findingsSummary);
+    yield {
+      type: "pk-debug",
+      debugName: "HubDiscoveryAgent document recon memory (raw)",
+      extra: {
+        documentReconMemory: docMemory,
+        mergedDocumentHubLeads
+      }
+    };
+    return {
+      world: ctx.world,
+      folderRounds: [syntheticRound],
+      deepen: void 0,
+      explores: [],
+      mergedFolderHubCandidates: folderMemory.confirmedFolderHubs,
+      mergedFolderNavigationGroups: folderMemory.folderNavigationGroups,
+      mergedDocumentHubLeads,
+      documentShortlist,
+      folderCoverageAssessments: [folderMemory.coverage],
+      lastCoverage: folderMemory.coverage,
+      highwayFolderLeads: folderMemory.highwayFolderLeads
+    };
+  }
+  async *streamRun(options = {}, onFinish) {
+    const ctx = AppContext.getInstance();
+    if (ctx.isMockEnv) {
+      yield {
+        type: "pk-debug",
+        debugName: "HubDiscoveryAgent skipped (mock env)",
+        extra: {}
+      };
+      onFinish?.({
+        world: {
+          pages: [],
+          metrics: {
+            totalIndexedDocuments: 0,
+            totalFoldersScanned: 0,
+            topLevelBranchCount: 0,
+            orphanHardSampleCount: 0,
+            orphanRiskHint: "low",
+            topOutgoingFolders: []
+          },
+          nodes: []
+        },
+        folderRounds: [],
+        explores: [],
+        mergedFolderHubCandidates: [],
+        mergedFolderNavigationGroups: [],
+        mergedDocumentHubLeads: [],
+        documentShortlist: [],
+        folderCoverageAssessments: [],
+        lastCoverage: void 0,
+        highwayFolderLeads: []
+      });
+      return;
+    }
+    yield {
+      type: "pk-debug",
+      debugName: "HubDiscoveryAgent start",
+      extra: {
+        hasUserGoal: Boolean(options.userGoal?.trim()),
+        stopAt: options.stopAt ?? "full",
+        folderReconMaxIterations: options.folderReconMaxIterations,
+        documentReconMaxIterations: options.documentReconMaxIterations
+      }
+    };
+    let result;
+    try {
+      result = yield* this.runHubDiscoveryPipeline(options);
+    } catch (err) {
+      if (err instanceof HubDiscoveryPipelineAbortError) {
+        yield {
+          type: "pk-debug",
+          debugName: "HubDiscoveryAgent pipeline abort",
+          extra: {
+            reason: err.reason,
+            partialResult: err.partialResult
+          }
+        };
+        onFinish?.(err.partialResult);
+        return;
+      }
+      throw err;
+    }
+    const debugTuning = options.folderReconMaxIterations != null || options.documentReconMaxIterations != null;
+    yield {
+      type: "pk-debug",
+      debugName: "HubDiscoveryAgent complete",
+      extra: {
+        stopAt: options.stopAt ?? "full",
+        stoppedEarly: options.stopAt !== void 0 || debugTuning,
+        folderRoundCount: result.folderRounds.length,
+        exploreCount: result.explores.length,
+        mergedFolderHubs: result.mergedFolderHubCandidates.length,
+        mergedFolderNavigationGroups: result.mergedFolderNavigationGroups.length,
+        highwayFolderLeads: result.highwayFolderLeads.length,
+        // documentShortlist: result.documentShortlist.length,
+        docLeads: result.mergedDocumentHubLeads.length
+      }
+    };
+    onFinish?.(result);
+  }
+};
+
+// src/service/agents/intuition-helper/intuition.memory.ts
+function normKey(s) {
+  return s.trim().toLowerCase();
+}
+function mergeStringLists(prev, next, max) {
+  return [...new Set([...prev, ...next].map((s) => s.trim()).filter(Boolean))].slice(0, max);
+}
+function mergePartitions(prev, next) {
+  const by = /* @__PURE__ */ new Map();
+  for (const p of prev) {
+    by.set(normKey(p.label), { ...p });
+  }
+  for (const p of next) {
+    const k = normKey(p.label);
+    const existing = by.get(k);
+    const paths = mergeStringLists(existing?.entryPaths ?? [], p.entryPaths ?? [], 2);
+    if (!existing || p.purpose.length >= (existing.purpose?.length ?? 0)) {
+      by.set(k, { ...p, label: p.label.trim(), entryPaths: paths });
+    } else {
+      by.set(k, { ...existing, entryPaths: paths });
+    }
+  }
+  return [...by.values()].slice(0, 6);
+}
+function mergeEntities(prev, next) {
+  const by = /* @__PURE__ */ new Map();
+  for (const e of prev) {
+    by.set(normKey(e.name), { ...e });
+  }
+  for (const e of next) {
+    const k = normKey(e.name);
+    const existing = by.get(k);
+    if (!existing || e.description.length >= existing.description.length) {
+      const w = e.whyItMatters?.trim();
+      by.set(k, {
+        ...e,
+        name: e.name.trim(),
+        whyItMatters: w || existing?.whyItMatters?.trim() || ""
+      });
+    }
+  }
+  return [...by.values()].slice(0, 8);
+}
+function mergeTopology(prev, next) {
+  const key = (t) => `${normKey(t.from)}\0${normKey(t.to)}\0${normKey(t.relation)}`;
+  const by = /* @__PURE__ */ new Map();
+  for (const t of prev) {
+    by.set(key(t), { ...t });
+  }
+  for (const t of next) {
+    const k = key(t);
+    const existing = by.get(k);
+    if (!existing || t.relation.length >= existing.relation.length) {
+      by.set(k, { ...t });
+    }
+  }
+  return [...by.values()].slice(0, 8);
+}
+function mergeEntryPoints(prev, next) {
+  const by = /* @__PURE__ */ new Map();
+  for (const e of prev) {
+    by.set(normKey(e.intent), { ...e });
+  }
+  for (const e of next) {
+    const k = normKey(e.intent);
+    const existing = by.get(k);
+    const startPaths = mergeStringLists(existing?.startPaths ?? [], e.startPaths ?? [], 2);
+    const whatYouWillFind = e.whatYouWillFind.trim();
+    if (!existing || whatYouWillFind.length >= (existing.whatYouWillFind?.length ?? 0)) {
+      by.set(k, {
+        intent: e.intent.trim(),
+        startPaths,
+        whatYouWillFind
+      });
+    } else {
+      by.set(k, { ...existing, startPaths });
+    }
+  }
+  return [...by.values()].slice(0, 24);
+}
+function buildInitialIntuitionMemory() {
+  return {
+    partitions: [],
+    coreEntities: [],
+    topology: [],
+    evolution: "",
+    entryPoints: [],
+    openQuestions: []
+  };
+}
+function mergeIntuitionSubmitIntoMemory(mem, submit) {
+  const theme = submit.theme?.trim() ? submit.theme.trim() : mem.theme;
+  const evolution = submit.evolution.trim().length >= mem.evolution.trim().length ? submit.evolution.trim() : mem.evolution;
+  const openQuestions = submit.openQuestions?.length ? [.../* @__PURE__ */ new Set([...mem.openQuestions, ...submit.openQuestions.map((s) => s.trim())])].filter(Boolean) : mem.openQuestions;
+  return {
+    theme,
+    partitions: mergePartitions(mem.partitions, submit.partitions),
+    coreEntities: mergeEntities(mem.coreEntities, submit.coreEntities),
+    topology: mergeTopology(mem.topology, submit.topology),
+    evolution: evolution || mem.evolution,
+    entryPoints: mergeEntryPoints(mem.entryPoints, submit.entryPoints),
+    openQuestions: openQuestions.slice(0, 6)
+  };
+}
+
+// src/service/agents/intuition-helper/intuition.render.ts
+var JSON_VERSION = "2026.05";
+function joinPaths(paths) {
+  return paths.filter(Boolean).join(" \xB7 ");
+}
+function buildSkeletonTemplateData(memory, meta2) {
+  const vaultName = meta2.vaultName.trim() || "Vault";
+  const themeLine = memory.theme?.trim() || "No strong single-theme signal; infer from partitions, entry points, and entities.";
+  const evolutionLine = memory.evolution.trim() || "Static library or no clear temporal signal detected.";
+  return {
+    vaultName,
+    dateLabel: meta2.dateLabel,
+    themeLine,
+    hasPartitions: memory.partitions.length > 0,
+    partitions: memory.partitions.map((p) => ({
+      label: p.label,
+      purpose: p.purpose,
+      entryPaths: p.entryPaths ?? [],
+      entryPathsLine: joinPaths(p.entryPaths ?? []),
+      hasEntryPaths: (p.entryPaths?.length ?? 0) > 0
+    })),
+    hasCoreEntities: memory.coreEntities.length > 0,
+    coreEntities: memory.coreEntities.map((e) => ({
+      name: e.name,
+      description: e.description,
+      location: e.location,
+      whyItMatters: e.whyItMatters?.trim() ?? "",
+      hasWhyItMatters: Boolean(e.whyItMatters?.trim())
+    })),
+    hasTopology: memory.topology.length > 0,
+    topology: memory.topology.map((t) => ({
+      from: t.from,
+      to: t.to,
+      relation: t.relation
+    })),
+    evolutionLine,
+    hasEntryPoints: memory.entryPoints.length > 0,
+    entryPoints: memory.entryPoints.map((e) => ({
+      intent: e.intent,
+      startPaths: e.startPaths ?? [],
+      startPathsLine: joinPaths(e.startPaths ?? []),
+      whatYouWillFind: e.whatYouWillFind
+    })),
+    hasOpenQuestions: memory.openQuestions.length > 0,
+    openQuestions: memory.openQuestions
+  };
+}
+async function renderIntuitionSkeletonMarkdown(tm, memory, meta2) {
+  const data = buildSkeletonTemplateData(memory, meta2);
+  return (await tm.render(IndexingTemplateId.KnowledgeIntuitionSkeletonMarkdown, data)).trim();
+}
+function renderIntuitionSkeletonJson(memory, meta2) {
+  return {
+    version: JSON_VERSION,
+    generatedAt: meta2.dateLabel,
+    vaultLabel: meta2.vaultName,
+    theme: memory.theme ?? "",
+    partitions: memory.partitions.map((p) => ({
+      label: p.label,
+      purpose: p.purpose,
+      entry_paths: p.entryPaths ?? []
+    })),
+    core_entities: memory.coreEntities.map((e) => ({
+      name: e.name,
+      description: e.description,
+      location: e.location,
+      why_it_matters: e.whyItMatters ?? ""
+    })),
+    topology: memory.topology.map((t) => ({
+      from: t.from,
+      to: t.to,
+      relation: t.relation
+    })),
+    evolution: memory.evolution,
+    entry_points: memory.entryPoints.map((e) => ({
+      intent: e.intent,
+      start_paths: e.startPaths,
+      what_you_will_find: e.whatYouWillFind
+    }))
+  };
+}
+
+// src/service/agents/intuition-helper/intuition.recon.ts
+var import_ai4 = require("ai");
+
+// src/service/agents/intuition-helper/intuition.tools.ts
+function buildIntuitionTools(tm) {
+  return {
+    ...buildFolderHubTools(tm),
+    graph_traversal: graphTraversalToolMarkdownOnly(tm),
+    hub_local_graph: hubLocalGraphTool(tm),
+    find_path: findPathTool(tm)
+  };
+}
+
+// src/service/agents/intuition-helper/intuition.recon.ts
+async function* runKnowledgeIntuitionLoop(options) {
+  const { ctx, stepId, aiServiceManager, onComplete, debug } = options;
+  const stopwatch = new Stopwatch("Knowledge intuition recon");
+  const tools = buildIntuitionTools(ctx.tm);
+  const budgetDerived = Math.min(6, Math.max(3, Math.floor(ctx.indexBudgetRaw.limitTotal / 160)));
+  const maxIter = effectiveReconMaxIterations(budgetDerived, debug);
+  let memory = buildInitialIntuitionMemory();
+  const messages = [
+    {
+      role: "user",
+      content: await aiServiceManager.renderPrompt("knowledge-intuition-plan" /* KnowledgeIntuitionPlan */, {
+        userGoal: ctx.userGoal,
+        vaultName: ctx.vaultName,
+        currentDateLabel: ctx.currentDateLabel,
+        vaultSummaryMarkdown: ctx.vaultSummaryMarkdown,
+        baselineExcludedMarkdown: ctx.baselineExcludedMarkdown,
+        backboneMarkdownExcerpt: ctx.backboneMarkdownExcerpt,
+        backboneEdgesMarkdown: ctx.backboneEdgesMarkdown,
+        folderSignalsMarkdown: ctx.folderSignalsMarkdown,
+        documentShortlistMarkdown: ctx.documentShortlistMarkdown,
+        folderTreeMarkdown: ctx.folderTreeMarkdown
+      })
+    }
+  ];
+  for (let iter = 0; iter < maxIter; iter++) {
+    const planSystem = await aiServiceManager.renderPrompt("knowledge-intuition-plan-system" /* KnowledgeIntuitionPlanSystem */, {});
+    const planMessages = [
+      ...messages,
+      ...iter > 0 ? [
+        {
+          role: "user",
+          content: `[Iteration ${iter + 1}/${maxIter}] Intuition memory (JSON):
+` + JSON.stringify(memory)
+        }
+      ] : []
+    ];
+    yield buildPromptTraceDebugEvent(
+      "knowledge-intuition-plan" /* KNOWLEDGE_INTUITION_PLAN */,
+      planSystem,
+      JSON.stringify(planMessages)
+    );
+    stopwatch.start(`knowledge intuition plan iter ${iter}`);
+    const planResult = (0, import_ai4.streamText)({
+      model: aiServiceManager.getModelInstanceForPrompt("knowledge-intuition-plan" /* KnowledgeIntuitionPlan */).model,
+      system: planSystem,
+      messages: planMessages,
+      tools,
+      toolChoice: "auto"
+    });
+    yield* streamTransform(planResult.fullStream, "knowledge-intuition-plan" /* KNOWLEDGE_INTUITION_PLAN */, {
+      yieldUIStep: { uiType: "steps-display" /* STEPS_DISPLAY */, stepId }
+    });
+    const planStepMessages = [];
+    const planReasoning = (await planResult.reasoning).map((r) => r.text).join("\n");
+    if (!isBlankString(planReasoning)) {
+      planStepMessages.push({ role: "assistant", content: planReasoning });
+    }
+    const planText = await planResult.text;
+    if (!isBlankString(planText)) {
+      planStepMessages.push({ role: "assistant", content: planText });
+    }
+    const toolCalls = await planResult.toolCalls;
+    if (toolCalls.length > 0) {
+      planStepMessages.push({
+        role: "assistant",
+        content: toolCalls.map((tc) => ({
+          type: "tool-call",
+          toolCallId: tc.toolCallId,
+          toolName: tc.toolName,
+          input: tc.input
+        }))
+      });
+    }
+    stopwatch.stop();
+    const { full: fullToolMessages, summary: summaryToolMessages } = await executeReconToolCalls(tools, planStepMessages);
+    const toolResultsMarkdown = fullToolMessages.length > 0 ? fullToolMessages.map((m) => JSON.stringify(m.content)).join("\n\n") : "(no tool calls executed)";
+    const iterOneBased = iter + 1;
+    yield {
+      type: "pk-debug",
+      debugName: "Knowledge intuition plan+tools raw",
+      extra: {
+        iteration: iterOneBased,
+        maxIter,
+        planReasoning: planReasoning || void 0,
+        planText: planText || void 0,
+        toolCalls: toolCalls.map((tc) => ({
+          toolCallId: tc.toolCallId,
+          toolName: tc.toolName,
+          input: tc.input
+        })),
+        toolResultsPreview: toolResultsMarkdown.slice(0, 400) + (toolResultsMarkdown.length > 400 ? "\u2026" : "")
+      }
+    };
+    if (debug?.stopAfterPlanIteration === iterOneBased) {
+      yield {
+        type: "pk-debug",
+        debugName: "Knowledge intuition stop (after plan + tools)",
+        extra: { stopped: true, iteration: iterOneBased, maxIter, phase: "intuition_plan" }
+      };
+      onComplete(memory);
+      return;
+    }
+    const submit = await aiServiceManager.streamObjectWithPrompt(
+      "knowledge-intuition-submit" /* KnowledgeIntuitionSubmit */,
+      {
+        userGoal: ctx.userGoal,
+        iteration: iterOneBased,
+        memoryJson: JSON.stringify(memory),
+        vaultScaleHintMarkdown: ctx.vaultScaleHintMarkdown,
+        folderTreeMarkdown: ctx.folderTreeMarkdown,
+        backboneEdgesJson: ctx.backboneEdgesJson,
+        toolResultsMarkdown
+      },
+      knowledgeIntuitionSubmitSchema
+    );
+    yield {
+      type: "pk-debug",
+      debugName: "knowledge-intuition-submit",
+      triggerName: "knowledge-intuition-submit" /* KNOWLEDGE_INTUITION_SUBMIT */,
+      extra: {
+        iteration: iterOneBased,
+        maxIter,
+        should_stop: submit.should_stop,
+        submit
+      }
+    };
+    memory = mergeIntuitionSubmitIntoMemory(memory, submit);
+    messages.push(...planStepMessages);
+    messages.push(...summaryToolMessages);
+    messages.push({
+      role: "assistant",
+      content: JSON.stringify({
+        findingsSummary: submit.findingsSummary,
+        should_stop: submit.should_stop
+      })
+    });
+    if (debug?.stopAfterSubmitIteration === iterOneBased) {
+      yield {
+        type: "pk-debug",
+        debugName: "Knowledge intuition stop (after submit)",
+        extra: {
+          stopped: true,
+          iteration: iterOneBased,
+          maxIter,
+          phase: "intuition_submit",
+          memoryAfterMerge: memory
+        }
+      };
+      onComplete(memory);
+      return;
+    }
+    if (submit.should_stop) break;
+  }
+  yield {
+    type: "pk-debug",
+    debugName: "Knowledge intuition recon complete",
+    extra: { stopwatch: stopwatch.toString() }
+  };
+  onComplete(memory);
+}
+
+// src/service/search/index/helper/backbone/backboneEdges.ts
+function pairKey(from, to) {
+  return `${from}=>${to}`;
+}
+async function buildBackboneEdges(options) {
+  const { validDocIdSet, nodeIdToPath, prMap, resolver, topK } = options;
+  const aggs = /* @__PURE__ */ new Map();
+  function bump(fromId, toId, kind, semW) {
+    if (!validDocIdSet.has(fromId) || !validDocIdSet.has(toId)) return;
+    const pFrom = nodeIdToPath.get(fromId);
+    const pTo = nodeIdToPath.get(toId);
+    if (!pFrom || !pTo) return;
+    const s1 = resolver.resolve(pFrom);
+    const s2 = resolver.resolve(pTo);
+    if (!s1 || !s2 || s1 === s2) return;
+    const prF = prMap.get(fromId)?.pr ?? 0;
+    const prT = prMap.get(toId)?.pr ?? 0;
+    const bridge = 0.5 * (prF + prT);
+    const key = pairKey(s1, s2);
+    let a = aggs.get(key);
+    if (!a) {
+      a = { from: s1, to: s2, referenceCount: 0, semanticWeightSum: 0, bridgePageRankMass: 0 };
+      aggs.set(key, a);
+    }
+    if (kind === "ref") {
+      a.referenceCount += 1;
+      a.bridgePageRankMass += bridge;
+    } else {
+      const w = Number.isFinite(semW) && semW > 0 ? semW : 0;
+      a.semanticWeightSum += w;
+      a.bridgePageRankMass += bridge * Math.min(1, w);
+    }
+  }
+  if (!sqliteStoreManager.isInitialized()) {
+    return { edges: [], pairCount: 0 };
+  }
+  const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
+  for await (const batch of edgeRepo.iterateReferenceEdgeBatches(2e3)) {
+    for (const e of batch) {
+      bump(e.from_node_id, e.to_node_id, "ref", 0);
+    }
+  }
+  for await (const batch of edgeRepo.iterateSemanticRelatedEdgeBatches(2e3)) {
+    for (const e of batch) {
+      bump(e.from_node_id, e.to_node_id, "sem", e.weight);
+    }
+  }
+  const scored = [...aggs.values()].map((a) => {
+    const weight = a.referenceCount + 0.35 * a.semanticWeightSum + 0.5 * Math.min(50, a.bridgePageRankMass);
+    const label = shortEdgeLabel(a.referenceCount, a.semanticWeightSum);
+    return { ...a, weight, label };
+  });
+  scored.sort((x, y) => y.weight - x.weight);
+  const picked = scored.slice(0, Math.max(1, topK));
+  const edges = picked.map((a, i) => ({
+    id: `H-${String(i + 1).padStart(3, "0")}`,
+    fromId: a.from,
+    toId: a.to,
+    fromLabel: resolver.label(a.from),
+    toLabel: resolver.label(a.to),
+    weight: a.weight,
+    referenceCount: a.referenceCount,
+    semanticWeightSum: a.semanticWeightSum,
+    bridgePageRankMass: a.bridgePageRankMass,
+    label: a.label
+  }));
+  return { edges, pairCount: aggs.size };
+}
+function shortEdgeLabel(ref, sem) {
+  if (ref > 0 && sem > 0) return "refs + semantic";
+  if (ref > 0) return "references";
+  return "semantic";
+}
+
+// src/service/search/index/helper/backbone/digestLoader.ts
+var import_obsidian22 = __toESM(require_obsidian_stub());
+
+// src/service/search/index/helper/backbone/vaultFolderScan.ts
+var import_ignore3 = __toESM(require("ignore"));
+var import_obsidian21 = __toESM(require_obsidian_stub());
+function normalizeVaultFolderPath3(folderPath) {
+  const raw = folderPath == null ? "" : String(folderPath).trim();
+  if (raw === "" || raw === "/") return "";
+  return raw.replace(/^\/+|\/+$/g, "");
+}
+function getBackboneExcludedPrefixes() {
+  const settings = AppContext.getInstance().settings;
+  const enabled = settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch ?? true;
+  if (!enabled) return [];
+  const rootFolder = normalizeVaultFolderPath3(settings.ai.rootFolder);
+  const autoSaveFolder = normalizeVaultFolderPath3(settings.search.aiAnalysisAutoSaveFolder);
+  return [...new Set([rootFolder, autoSaveFolder].filter(Boolean))];
+}
+function isPathExcludedByPrefixes2(path3, excludedPathPrefixes) {
+  if (!excludedPathPrefixes.length) return false;
+  const p = normalizeVaultFolderPath3(path3);
+  if (p === "") return false;
+  const hub = normalizeVaultFolderPath3(getAIHubSummaryFolder());
+  if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
+  for (const raw of excludedPathPrefixes) {
+    const prefix = normalizeVaultFolderPath3(raw);
+    if (!prefix) continue;
+    if (p === prefix) return true;
+    if (p.startsWith(`${prefix}/`)) return true;
+  }
+  return false;
+}
+function shouldIgnoreFolderForBackbone(path3) {
+  const p = normalizeVaultFolderPath3(path3);
+  const hub = normalizeVaultFolderPath3(getAIHubSummaryFolder());
+  if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
+  try {
+    return IgnoreService.getInstance().shouldIgnore(path3);
+  } catch {
+    const patterns = AppContext.getInstance().settings.search.ignorePatterns ?? [];
+    if (!patterns.length) return false;
+    const ig = (0, import_ignore3.default)();
+    ig.add(patterns);
+    const clean = String(path3).replace(/\\/g, "/").replace(/^\//, "");
+    return ig.ignores(clean);
+  }
+}
+function visibleChildFolders2(folder, excludedPathPrefixes) {
+  const subs = folder.children.filter((c) => c instanceof import_obsidian21.TFolder).sort((a, b) => a.path.localeCompare(b.path));
+  return subs.filter(
+    (s) => !isPathExcludedByPrefixes2(s.path, excludedPathPrefixes) && !shouldIgnoreFolderForBackbone(s.path)
+  );
+}
+function buildFolderSubtreeStatsMap2(root, excludedPathPrefixes) {
+  const map = /* @__PURE__ */ new Map();
+  function dfs(folder, depth) {
+    const visibleSubs = visibleChildFolders2(folder, excludedPathPrefixes);
+    let sumDepths = depth;
+    let count = 1;
+    let maxDepth = depth;
+    for (const sub of visibleSubs) {
+      const a = dfs(sub, depth + 1);
+      sumDepths += a.sumDepths;
+      count += a.count;
+      maxDepth = Math.max(maxDepth, a.maxDepth);
+    }
+    map.set(normalizeVaultPath(folder.path), {
+      subtreeMaxDepth: maxDepth,
+      subtreeAvgDepth: count > 0 ? sumDepths / count : depth
+    });
+    return { sumDepths, count, maxDepth };
+  }
+  const top = root.children.filter((c) => c instanceof import_obsidian21.TFolder).sort((a, b) => a.path.localeCompare(b.path));
+  for (const ch of top) {
+    dfs(ch, 1);
+  }
+  return map;
+}
+function collectFoldersDfsPreorder2(folder, depth, maxDepth, maxFolders, excludedPathPrefixes, out) {
+  if (out.length >= maxFolders) return;
+  if (isPathExcludedByPrefixes2(folder.path, excludedPathPrefixes)) return;
+  if (shouldIgnoreFolderForBackbone(folder.path)) return;
+  const visibleSubs = visibleChildFolders2(folder, excludedPathPrefixes);
+  const childFolderCount = visibleSubs.length;
+  out.push({ path: folder.path, depth, childFolderCount });
+  if (out.length >= maxFolders) return;
+  if (depth >= maxDepth) return;
+  for (const sub of visibleSubs) {
+    collectFoldersDfsPreorder2(sub, depth + 1, maxDepth, maxFolders, excludedPathPrefixes, out);
+    if (out.length >= maxFolders) return;
+  }
+}
+function collectFolderTreeRows2(root, maxDepth, maxFolders, excludedPathPrefixes) {
+  const out = [];
+  const top = root.children.filter((c) => c instanceof import_obsidian21.TFolder).sort((a, b) => a.path.localeCompare(b.path));
+  for (const ch of top) {
+    collectFoldersDfsPreorder2(ch, 1, maxDepth, maxFolders, excludedPathPrefixes, out);
+    if (out.length >= maxFolders) break;
+  }
+  return out;
+}
+
+// src/service/search/index/helper/backbone/tagDisplayRank.ts
+var TYPE_PRIOR = {
+  topic: 1,
+  keyword: 0.82,
+  functional: 0.22
+};
+var STATIC_ROW_NOISE = /* @__PURE__ */ new Set([
+  "todo",
+  "todolist",
+  "todo-list",
+  "mess",
+  "messy",
+  "waiting",
+  "pending",
+  "later",
+  "done",
+  "doing",
+  "inbox",
+  "index",
+  "archive",
+  "draft",
+  "wip"
+]);
+var MAX_FOLDER_COVERAGE_FOR_ROW = 0.1;
+function normalizeTagKey(tag) {
+  return tag.trim().toLowerCase();
+}
+function folderDfForTag(tag, stats) {
+  const d = stats.tagFolderDf.get(tag);
+  if (d !== void 0) return d;
+  const k = normalizeTagKey(tag);
+  for (const [t, df] of stats.tagFolderDf) {
+    if (normalizeTagKey(t) === k) return df;
+  }
+  return 0;
+}
+function shouldHideTagFromFolderRows(tag, stats) {
+  if (!tag.trim()) return false;
+  if (STATIC_ROW_NOISE.has(normalizeTagKey(tag))) return true;
+  const N = stats.folderCount;
+  if (N <= 0) return false;
+  const df = folderDfForTag(tag, stats);
+  if (df <= 0) return false;
+  return df / N >= MAX_FOLDER_COVERAGE_FOR_ROW;
+}
+function buildVaultNoiseTagLegend(stats, maxEntries = 80) {
+  if (stats.folderCount <= 0) return [];
+  const items = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const [tag, df] of stats.tagFolderDf) {
+    if (df <= 0) continue;
+    if (!shouldHideTagFromFolderRows(tag, stats)) continue;
+    const k = normalizeTagKey(tag);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    items.push({ tag, df });
+  }
+  items.sort((a, b) => b.df - a.df);
+  return items.slice(0, maxEntries).map(({ tag, df }) => `${tag} (${df} folders)`);
+}
+function firstVaultPathSegment(path3) {
+  const n = normalizeVaultPath(path3);
+  const parts = n.split("/").filter(Boolean);
+  return parts[0] ?? "";
+}
+function smoothIdf(df, n) {
+  if (n <= 0) return 1;
+  return Math.log((n + 1) / (df + 1)) + 1;
+}
+function buildTagGlobalStats(folders) {
+  const tagFolderSets = /* @__PURE__ */ new Map();
+  const tagRootSets = /* @__PURE__ */ new Map();
+  const allRoots = /* @__PURE__ */ new Set();
+  for (const f of folders) {
+    const root = firstVaultPathSegment(f.folderPath);
+    allRoots.add(root || "_");
+    const seenInFolder = /* @__PURE__ */ new Set();
+    const bump = (tag) => {
+      if (!tag || seenInFolder.has(tag)) return;
+      seenInFolder.add(tag);
+      let fs2 = tagFolderSets.get(tag);
+      if (!fs2) {
+        fs2 = /* @__PURE__ */ new Set();
+        tagFolderSets.set(tag, fs2);
+      }
+      fs2.add(f.folderPath);
+      let rs = tagRootSets.get(tag);
+      if (!rs) {
+        rs = /* @__PURE__ */ new Set();
+        tagRootSets.set(tag, rs);
+      }
+      rs.add(root || "_");
+    };
+    for (const t of f.topicTagCounts.keys()) {
+      if ((f.topicTagCounts.get(t) ?? 0) > 0) bump(t);
+    }
+    for (const t of f.keywordTagCounts.keys()) {
+      if ((f.keywordTagCounts.get(t) ?? 0) > 0) bump(t);
+    }
+    for (const t of f.functionalTagCounts.keys()) {
+      if ((f.functionalTagCounts.get(t) ?? 0) > 0) bump(t);
+    }
+  }
+  const N = folders.length;
+  const R = Math.max(1, allRoots.size);
+  const tagFolderDf = /* @__PURE__ */ new Map();
+  const tagRootDf = /* @__PURE__ */ new Map();
+  for (const [tag, set] of tagFolderSets) {
+    tagFolderDf.set(tag, set.size);
+  }
+  for (const [tag, set] of tagRootSets) {
+    tagRootDf.set(tag, set.size);
+  }
+  return {
+    folderCount: N,
+    rootBucketCount: R,
+    tagFolderDf,
+    tagRootDf
+  };
+}
+function rootDfForTag(tag, stats) {
+  const d = stats.tagRootDf.get(tag);
+  if (d !== void 0) return d;
+  const k = normalizeTagKey(tag);
+  for (const [t, df] of stats.tagRootDf) {
+    if (normalizeTagKey(t) === k) return df;
+  }
+  return 0;
+}
+function scoreTag(tf, tag, category, stats) {
+  if (tf <= 0) return 0;
+  const df = folderDfForTag(tag, stats);
+  const r = rootDfForTag(tag, stats);
+  const idfFolder = smoothIdf(df, stats.folderCount);
+  const idfRoot = smoothIdf(r, stats.rootBucketCount);
+  const prior = TYPE_PRIOR[category];
+  return tf * idfFolder * idfRoot * prior;
+}
+function rankTopicTagsForDisplay(topicTagCounts, stats, limit) {
+  return rankMapByScore(topicTagCounts, "topic", stats, limit, shouldHideTagFromFolderRows);
+}
+function rankKeywordTagsForDisplay(keywordTagCounts, functionalTagCounts, stats, limit) {
+  const entries = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const [tag, c] of keywordTagCounts) {
+    if (c <= 0) continue;
+    const fc = functionalTagCounts.get(tag) ?? 0;
+    const tf = c + fc;
+    const category = "keyword";
+    entries.push({ tag, tf, category });
+    seen.add(tag);
+  }
+  for (const [tag, c] of functionalTagCounts) {
+    if (c <= 0 || seen.has(tag)) continue;
+    entries.push({ tag, tf: c, category: "functional" });
+  }
+  entries.sort((a, b) => {
+    const sa = scoreTag(a.tf, a.tag, a.category, stats);
+    const sb = scoreTag(b.tf, b.tag, b.category, stats);
+    if (sb !== sa) return sb - sa;
+    return a.tag.localeCompare(b.tag);
+  });
+  const out = [];
+  for (const e of entries) {
+    if (shouldHideTagFromFolderRows(e.tag, stats)) continue;
+    out.push(e.tag);
+    if (out.length >= Math.max(0, limit)) break;
+  }
+  return out;
+}
+function rankMapByScore(counts, category, stats, limit, exclude) {
+  const scored = [...counts.entries()].filter(([, c]) => c > 0).map(([tag, tf]) => ({
+    tag,
+    s: scoreTag(tf, tag, category, stats)
+  })).sort((a, b) => {
+    if (b.s !== a.s) return b.s - a.s;
+    return a.tag.localeCompare(b.tag);
+  });
+  const out = [];
+  for (const x of scored) {
+    if (exclude(x.tag, stats)) continue;
+    out.push(x.tag);
+    if (out.length >= Math.max(0, limit)) break;
+  }
+  return out;
+}
+function pickCountsForWeightedLine(full, pickedNames) {
+  const m = /* @__PURE__ */ new Map();
+  for (const name of pickedNames) {
+    const c = full.get(name);
+    if (c !== void 0 && c > 0) m.set(name, c);
+  }
+  return m;
+}
+function mergeKeywordFunctionalForPicked(keywordFull, functionalFull, pickedNames) {
+  const m = /* @__PURE__ */ new Map();
+  for (const name of pickedNames) {
+    const k = keywordFull.get(name) ?? 0;
+    const f = functionalFull.get(name) ?? 0;
+    if (k + f > 0) m.set(name, k + f);
+  }
+  return m;
+}
+function emptyTagGlobalStats() {
+  return {
+    folderCount: 0,
+    rootBucketCount: 1,
+    tagFolderDf: /* @__PURE__ */ new Map(),
+    tagRootDf: /* @__PURE__ */ new Map()
+  };
+}
+
+// src/service/search/index/helper/backbone/digestLoader.ts
+var NAME_TOKEN_TOP = 6;
+function formatTopWeightedTopics2(topicTagCounts, keywordTagCounts, maxTopics) {
+  const merged = /* @__PURE__ */ new Map();
+  for (const [k, v] of topicTagCounts) merged.set(k, (merged.get(k) ?? 0) + v);
+  for (const [k, v] of keywordTagCounts) merged.set(k, (merged.get(k) ?? 0) + v);
+  const total = [...merged.values()].reduce((a, b) => a + b, 0);
+  if (total <= 0) return "";
+  const top = [...merged.entries()].sort((a, b) => b[1] - a[1]).slice(0, maxTopics);
+  return top.map(([name, c]) => `${name}(${Math.round(100 * c / total)}%)`).join(", ");
+}
+function topicPurityFromCounts(topicTagCounts) {
+  const total = [...topicTagCounts.values()].reduce((a, b) => a + b, 0);
+  if (total <= 0) return 1;
+  let h = 0;
+  for (const v of topicTagCounts.values()) {
+    const p = v / total;
+    h += p * p;
+  }
+  return h;
+}
+function buildFolderDescription(f) {
+  const theme = f.topTopics.slice(0, 2).join(", ") || "mixed topics";
+  if (f.topicPurity >= 0.5) {
+    return `Cohesive thematic branch around ${theme}.`;
+  }
+  if (f.docOutgoing > 40) {
+    return `Strong outbound links (${f.docOutgoing}); likely cross-folder corridor.`;
+  }
+  if (f.childFolderCount > 6) {
+    return `Wide container (${f.childFolderCount} subfolders); landing layer.`;
+  }
+  return `Mixed coverage (${theme}); ${f.docCount} indexed notes in subtree.`;
+}
+async function loadBackboneFolderNodes(rows, excludedPathPrefixes, subtreeStatsMap) {
+  if (!sqliteStoreManager.isInitialized() || rows.length === 0) {
+    return { folderNodes: [], recursiveMapsByFolder: /* @__PURE__ */ new Map(), tagGlobalStats: emptyTagGlobalStats() };
+  }
+  const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+  const graphRepo = sqliteStoreManager.getGraphRepo();
+  const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo();
+  const paths = rows.map((r) => r.path);
+  const degreeMap = await mobiusRepo.listFolderDocDegreesByVaultPaths(paths);
+  const vault = AppContext.getInstance().app.vault;
+  const recursiveMapsByFolder = /* @__PURE__ */ new Map();
+  const rawRows = [];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const np = normalizeVaultPath(row.path);
+    const deg = degreeMap.get(np) ?? { incoming: 0, outgoing: 0 };
+    let maps = [];
+    let topicTagCounts = /* @__PURE__ */ new Map();
+    let keywordTagCounts = /* @__PURE__ */ new Map();
+    let functionalTagCounts = /* @__PURE__ */ new Map();
+    try {
+      maps = await indexedDocumentRepo.getIdsByFolderPath(row.path);
+      recursiveMapsByFolder.set(np, maps);
+      const directMaps = maps.filter((m) => isDirectDocInFolder(m.path, row.path));
+      if (directMaps.length > 0) {
+        const docIds = directMaps.map((m) => m.id);
+        const t = await graphRepo.getTagsByDocIds(docIds);
+        topicTagCounts = t.topicTagCounts;
+        keywordTagCounts = t.keywordTagCounts;
+        functionalTagCounts = t.functionalTagCounts;
+      }
+    } catch {
+      maps = [];
+      recursiveMapsByFolder.set(np, []);
+    }
+    rawRows.push({ row, np, maps, topicTagCounts, keywordTagCounts, functionalTagCounts, deg });
+  }
+  const tagGlobalStats = buildTagGlobalStats(
+    rawRows.map((r) => ({
+      folderPath: r.np,
+      topicTagCounts: r.topicTagCounts,
+      keywordTagCounts: r.keywordTagCounts,
+      functionalTagCounts: r.functionalTagCounts
+    }))
+  );
+  const TOP_TOPIC = 5;
+  const TOP_KEYWORD = 6;
+  const out = [];
+  for (let i = 0; i < rawRows.length; i++) {
+    const raw = rawRows[i];
+    const row = raw.row;
+    const np = raw.np;
+    const maps = raw.maps;
+    const docCount = maps.length;
+    const topicPurity = topicPurityFromCounts(raw.topicTagCounts);
+    const topTopics = rankTopicTagsForDisplay(raw.topicTagCounts, tagGlobalStats, TOP_TOPIC);
+    const topKeywords = rankKeywordTagsForDisplay(
+      raw.keywordTagCounts,
+      raw.functionalTagCounts,
+      tagGlobalStats,
+      TOP_KEYWORD
+    );
+    const topicPick = pickCountsForWeightedLine(raw.topicTagCounts, topTopics);
+    const kwPick = mergeKeywordFunctionalForPicked(raw.keywordTagCounts, raw.functionalTagCounts, topKeywords);
+    const weighted = formatTopWeightedTopics2(topicPick, kwPick, 3);
+    const topTopicsWeighted = weighted || "";
+    let directDocCount = 0;
+    try {
+      directDocCount = await indexedDocumentRepo.countDirectDocumentsInFolder(row.path);
+    } catch {
+      directDocCount = 0;
+    }
+    const directFileMaps = maps.filter((m) => isDirectDocInFolder(m.path, row.path));
+    const fileBasenames = directFileMaps.map((m) => basenameFromPath(m.path));
+    const fileNameTokenSample = fileBasenames.length > 0 ? topTokensFromBasenames(fileBasenames, NAME_TOKEN_TOP) : [];
+    let subfolderNameTokenSample = [];
+    if (row.childFolderCount > 0) {
+      const af = vault.getAbstractFileByPath(row.path);
+      if (af instanceof import_obsidian22.TFolder) {
+        const childNames = visibleChildFolders2(af, excludedPathPrefixes).map((f) => basenameFromPath(f.path));
+        subfolderNameTokenSample = topTokensFromBasenames(childNames, NAME_TOKEN_TOP);
+      }
+    }
+    const st = subtreeStatsMap.get(np);
+    const subtreeMaxDepth = st?.subtreeMaxDepth ?? row.depth;
+    const subtreeAvgDepth = st?.subtreeAvgDepth ?? row.depth;
+    const id = `F-${String(i + 1).padStart(3, "0")}`;
+    const displayName = basenameFromPath(row.path) || row.path;
+    out.push({
+      id,
+      path: row.path,
+      displayName,
+      depth: row.depth,
+      childFolderCount: row.childFolderCount,
+      subtreeMaxDepth,
+      subtreeAvgDepth,
+      docCount,
+      directDocCount,
+      topKeywords,
+      topTopics,
+      topTopicsWeighted,
+      topicPurity,
+      docOutgoing: raw.deg.outgoing,
+      docIncoming: raw.deg.incoming,
+      fileNameTokenSample,
+      subfolderNameTokenSample,
+      pageRankMass: 0,
+      semanticPageRankMass: 0,
+      cityScore: 0,
+      isCity: false,
+      description: ""
+    });
+  }
+  for (const n of out) {
+    n.description = buildFolderDescription(n);
+  }
+  return { folderNodes: out, recursiveMapsByFolder, tagGlobalStats };
+}
+function parentFolderOfDocPath(docPath) {
+  return normalizeVaultPath(parentDirPath(docPath));
+}
+function isDirectDocInFolder(docPath, folderPath) {
+  return parentFolderOfDocPath(docPath) === normalizeVaultPath(folderPath);
+}
+
+// src/service/search/index/helper/backbone/pagerankMass.ts
+async function loadDocPageranks(docIds) {
+  const out = /* @__PURE__ */ new Map();
+  if (!docIds.length || !sqliteStoreManager.isInitialized()) return out;
+  const kdb = sqliteStoreManager.getIndexContext("vault");
+  const chunk2 = 900;
+  for (let i = 0; i < docIds.length; i += chunk2) {
+    const slice = docIds.slice(i, i + chunk2);
+    const rows = await kdb.selectFrom("mobius_node").select(["node_id", "pagerank", "semantic_pagerank"]).where("node_id", "in", slice).execute();
+    for (const r of rows) {
+      const id = String(r.node_id);
+      out.set(id, {
+        pr: typeof r.pagerank === "number" && Number.isFinite(r.pagerank) ? r.pagerank : 0,
+        spr: typeof r.semantic_pagerank === "number" && Number.isFinite(r.semantic_pagerank) ? r.semantic_pagerank : 0
+      });
+    }
+  }
+  return out;
+}
+
+// src/service/search/index/helper/backbone/renderBackboneMarkdown.ts
+function buildHighwayBodyLines(edgesOrdered) {
+  const byTriple = /* @__PURE__ */ new Map();
+  for (const e of edgesOrdered) {
+    byTriple.set(`${e.fromId}\0${e.toId}\0${e.label}`, e);
+  }
+  const consumed = /* @__PURE__ */ new Set();
+  const reciprocalRows = [];
+  for (const e of edgesOrdered) {
+    if (consumed.has(e.id)) continue;
+    const rev = byTriple.get(`${e.toId}\0${e.fromId}\0${e.label}`);
+    if (rev && rev.id !== e.id) {
+      const left = e.fromId.localeCompare(e.toId) <= 0 ? e.fromId : e.toId;
+      const right = e.fromId.localeCompare(e.toId) <= 0 ? e.toId : e.fromId;
+      const sortKey = `${left}\0${right}\0${e.label}`;
+      reciprocalRows.push({
+        left,
+        right,
+        label: e.label,
+        sortKey
+      });
+      consumed.add(e.id);
+      consumed.add(rev.id);
+    }
+  }
+  const remaining = [];
+  for (const e of edgesOrdered) {
+    if (!consumed.has(e.id)) remaining.push(e);
+  }
+  const byFrom = /* @__PURE__ */ new Map();
+  for (const e of remaining) {
+    const arr = byFrom.get(e.fromId) ?? [];
+    arr.push(e);
+    byFrom.set(e.fromId, arr);
+  }
+  for (const arr of byFrom.values()) {
+    arr.sort((a, b) => {
+      if (b.weight !== a.weight) return b.weight - a.weight;
+      return a.toId.localeCompare(b.toId);
+    });
+  }
+  const blocks = [];
+  for (const r of reciprocalRows.sort((a, b) => a.sortKey.localeCompare(b.sortKey))) {
+    blocks.push({
+      sortKey: r.sortKey,
+      lines: [`[${r.left}] <==> [${r.right}] : ${r.label}`]
+    });
+  }
+  for (const fromId of [...byFrom.keys()].sort((a, b) => a.localeCompare(b))) {
+    const arr = byFrom.get(fromId);
+    const lines = [];
+    if (arr.length === 1) {
+      const e = arr[0];
+      lines.push(`[${e.fromId}] ==> [${e.toId}] : ${e.label}`);
+    } else {
+      lines.push(`[${fromId}] ==> [${arr[0].toId}] : ${arr[0].label}`);
+      const pad = " ".repeat(`[${fromId}] `.length);
+      for (let i = 1; i < arr.length; i++) {
+        lines.push(`${pad}==> [${arr[i].toId}] : ${arr[i].label}`);
+      }
+    }
+    blocks.push({
+      sortKey: `${fromId}\0fan`,
+      lines
+    });
+  }
+  blocks.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  const out = [];
+  for (let i = 0; i < blocks.length; i++) {
+    if (i > 0) out.push("");
+    out.push(...blocks[i].lines);
+  }
+  return out;
+}
+function purityTier(p) {
+  if (p >= 0.5) return "High";
+  if (p >= 0.28) return "Med";
+  return "Low";
+}
+var safeCell = (s) => s.replace(/\|/g, " ");
+function keywordsStatsColumn(f) {
+  const kw = f.topKeywords.slice(0, 8).map(safeCell).filter(Boolean).join(", ");
+  if (f.childFolderCount > 0 && f.subfolderNameTokenSample.length > 0) {
+    const sub = f.subfolderNameTokenSample.slice(0, 8).map(safeCell).join(", ");
+    if (kw) return `sub:${sub} | kw:${kw}`;
+    return `sub:${sub}`;
+  }
+  return kw || "\u2014";
+}
+function topicsStatsColumn(f) {
+  const t = f.topTopicsWeighted.trim() || f.topTopics.slice(0, 4).join(", ");
+  return t ? safeCell(t) : "\u2014";
+}
+function statsCell(f) {
+  const dt = `${f.directDocCount}/${f.docCount}`;
+  const pur = `${f.topicPurity.toFixed(2)} (${purityTier(f.topicPurity)})`;
+  return `<| ${dt} | ${pur} | ${f.childFolderCount} | ${f.docOutgoing} | ${keywordsStatsColumn(f)} | ${topicsStatsColumn(f)} |>`;
+}
+function virtualStatsCell(v) {
+  const dt = `${v.memberCount}/${v.parentDirectDocCount}`;
+  const pur = `${v.topicPurity.toFixed(2)} (${purityTier(v.topicPurity)})`;
+  const kw = v.topKeywords.slice(0, 8).map(safeCell).filter(Boolean).join(", ") || "\u2014";
+  const topics = v.topTopicsWeighted.trim() || v.topTopics.slice(0, 4).map(safeCell).join(", ");
+  const tcol = topics ? safeCell(topics) : "\u2014";
+  return `<| ${dt} | ${pur} | 0 | ${v.docOutgoing} | ${kw} | ${tcol} |>`;
+}
+function folderLine(f, endpointIds) {
+  const indent = "  ".repeat(Math.max(0, f.depth - 1));
+  const name = f.displayName.endsWith("/") ? f.displayName.slice(0, -1) : f.displayName;
+  const bold = f.isCity ? `**${name}/**` : `${name}/`;
+  const hi = endpointIds.has(f.id) ? " `[==>]`" : "";
+  return `${indent}${f.id} ${bold} ${statsCell(f)}${hi}`;
+}
+function virtualLine(v, depth, endpointIds) {
+  const indent = "  ".repeat(Math.max(0, depth));
+  const name = v.displayName.endsWith("/") ? v.displayName.slice(0, -1) : v.displayName;
+  const bold = `**${name}/**`;
+  const hi = endpointIds.has(v.id) ? " `[==>]`" : "";
+  return `${indent}${v.id} ${bold} ${virtualStatsCell(v)}${hi}`;
+}
+function sortBackboneEdgesForDisplay(edges) {
+  return [...edges].sort((a, b) => {
+    const from = a.fromId.localeCompare(b.fromId);
+    if (from !== 0) return from;
+    if (b.weight !== a.weight) return b.weight - a.weight;
+    return a.toId.localeCompare(b.toId);
+  });
+}
+function folderTreeColumnLegendLines() {
+  return [
+    "## Column legend (stats grid)",
+    "",
+    "`<| direct/total | topic purity (tier) | subfolders | doc-out | keywords | topics |>`",
+    "",
+    "- **direct/total** \u2014 Notes directly in this folder / all indexed notes in this folder subtree (recursive).",
+    "- **topic purity (tier)** \u2014 Herfindahl concentration on **topic** tags of direct files only; tier High / Med / Low.",
+    "- **subfolders** \u2014 Immediate child folder count (always **0** on `V-###` virtual rows).",
+    "- **doc-out** \u2014 Outgoing wiki-style doc links: materialized on the folder node, or summed over member notes for virtual rows.",
+    "- **keywords** \u2014 `sub:` tokens from immediate child folder names; `kw:` keyword tags from direct files (after global de-noising).",
+    "- **topics** \u2014 Topic tags from direct files; may show weighted `name(%)` when available.",
+    "- **`[==>]`** \u2014 This `F-###` or `V-###` is an endpoint of at least one High-Speed Link in the section below.",
+    ""
+  ];
+}
+function renderBackboneMarkdown(options) {
+  const { folderNodes, virtualNodes, backboneEdges, maxNodesPerPage, noiseTagLegendLines = [] } = options;
+  const edgesOrdered = sortBackboneEdgesForDisplay(backboneEdges);
+  const endpointIds = /* @__PURE__ */ new Set();
+  for (const e of edgesOrdered) {
+    endpointIds.add(e.fromId);
+    endpointIds.add(e.toId);
+  }
+  const virtualByParent = /* @__PURE__ */ new Map();
+  for (const v of virtualNodes) {
+    const p = normalizeVaultPath(v.parentFolderPath);
+    const arr = virtualByParent.get(p) ?? [];
+    arr.push(v);
+    virtualByParent.set(p, arr);
+  }
+  for (const arr of virtualByParent.values()) {
+    arr.sort((a, b) => a.id.localeCompare(b.id));
+  }
+  const treeLines = [];
+  treeLines.push("# Folder Tree");
+  treeLines.push("");
+  if (noiseTagLegendLines.length > 0) {
+    treeLines.push("## Global status & high-frequency tags (not shown in folder rows)");
+    treeLines.push("");
+    treeLines.push(noiseTagLegendLines.join(", "));
+    treeLines.push("");
+  }
+  treeLines.push(...folderTreeColumnLegendLines());
+  for (const f of folderNodes) {
+    treeLines.push(folderLine(f, endpointIds));
+    const kids = virtualByParent.get(normalizeVaultPath(f.path));
+    if (kids?.length) {
+      for (const v of kids) {
+        treeLines.push(virtualLine(v, f.depth, endpointIds));
+      }
+    }
+  }
+  const highwayBody = buildHighwayBodyLines(edgesOrdered);
+  const highwayLines = ["", "# High-Speed Links (The Backbone)", "", ...highwayBody];
+  const fullMarkdown = [...treeLines, ...highwayLines].join("\n");
+  const lim = Math.max(40, Math.min(500, maxNodesPerPage));
+  const pageBodies = [];
+  for (let i = 0; i < treeLines.length; i += lim) {
+    pageBodies.push(treeLines.slice(i, i + lim).join("\n"));
+  }
+  const totalPages = Math.max(1, pageBodies.length);
+  const pages = pageBodies.map((markdown, pageIndex) => ({
+    pageIndex,
+    totalPages,
+    markdown: pageIndex === totalPages - 1 ? `${markdown}
+${highwayLines.join("\n")}` : `${markdown}
+
+_(continued\u2026)_
+`
+  }));
+  return { markdown: fullMarkdown, pages };
+}
+
+// src/service/search/index/helper/backbone/supernodeResolve.ts
+function parentFolderPath(folderPath) {
+  const n = normalizeVaultPath(folderPath);
+  if (!n) return "";
+  const segs = n.split("/").filter(Boolean);
+  if (segs.length <= 1) return "";
+  return segs.slice(0, -1).join("/");
+}
+function resolveFolderNodeIdForDocPath(docPath, pathToFolderNode) {
+  let p = parentFolderOfDocPath(docPath);
+  while (true) {
+    const n = pathToFolderNode.get(p);
+    if (n) return n.id;
+    if (!p) return void 0;
+    p = parentFolderPath(p);
+  }
+}
+function buildSupernodeResolver(folderNodes, virtualNodes) {
+  const pathToFolder = /* @__PURE__ */ new Map();
+  for (const f of folderNodes) {
+    pathToFolder.set(normalizeVaultPath(f.path), f);
+  }
+  const docPathToVirtualId = /* @__PURE__ */ new Map();
+  for (const v of virtualNodes) {
+    for (const p of v.memberDocPaths) {
+      const np = normalizeVaultPath(p);
+      if (!docPathToVirtualId.has(np)) docPathToVirtualId.set(np, v.id);
+    }
+  }
+  const idToLabel = /* @__PURE__ */ new Map();
+  for (const f of folderNodes) {
+    idToLabel.set(f.id, `${f.displayName}/`);
+  }
+  for (const v of virtualNodes) {
+    idToLabel.set(v.id, v.displayName);
+  }
+  return {
+    resolve: (docPath) => {
+      const np = normalizeVaultPath(docPath);
+      const vid = docPathToVirtualId.get(np);
+      if (vid) return vid;
+      return resolveFolderNodeIdForDocPath(docPath, pathToFolder);
+    },
+    label: (supernodeId) => idToLabel.get(supernodeId) ?? supernodeId
+  };
+}
+
+// src/service/search/index/helper/backbone/virtualFolders.ts
+var MIN_DIRECT = 8;
+var MAX_PURITY = 0.42;
+var MIN_CLUSTER = 3;
+var MIN_RATIO = 0.18;
+function prefixKeyFromBasename(basename) {
+  const noExt = basename.replace(/\.[^.]+$/, "");
+  const m = noExt.match(/^([a-zA-Z][a-zA-Z0-9]{2,})/);
+  if (m) return m[1].toLowerCase();
+  const parts = noExt.split(/[-_\s]+/).filter(Boolean);
+  return (parts[0] ?? "").toLowerCase().slice(0, 32);
+}
+async function buildVirtualNodesForMessyFolders(folderNodes, enableVirtualFolders, tagGlobalStats) {
+  if (!enableVirtualFolders || !sqliteStoreManager.isInitialized() || folderNodes.length === 0) {
+    return [];
+  }
+  const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+  const graphRepo = sqliteStoreManager.getGraphRepo();
+  const out = [];
+  let vCounter = 0;
+  for (const folder of folderNodes) {
+    if (folder.directDocCount < MIN_DIRECT || folder.topicPurity > MAX_PURITY) continue;
+    let maps = [];
+    try {
+      maps = await indexedDocumentRepo.getIdsByFolderPath(folder.path);
+    } catch {
+      continue;
+    }
+    const direct = maps.filter((m) => isDirectDocInFolder(m.path, folder.path));
+    if (direct.length < MIN_DIRECT) continue;
+    const byPrefix = /* @__PURE__ */ new Map();
+    for (const m of direct) {
+      const base = basenameFromPath(m.path);
+      const key = prefixKeyFromBasename(base);
+      if (key.length < 3) continue;
+      const arr = byPrefix.get(key) ?? [];
+      arr.push(m.path);
+      byPrefix.set(key, arr);
+    }
+    const nDirect = direct.length;
+    for (const [key, paths] of byPrefix) {
+      if (paths.length < MIN_CLUSTER) continue;
+      if (paths.length / nDirect < MIN_RATIO) continue;
+      vCounter++;
+      const id = `V-${String(vCounter).padStart(3, "0")}`;
+      let topTopics = [];
+      let topKeywords = [];
+      let topTopicsWeighted = "";
+      let topicPurity = 1;
+      try {
+        const docIds = await indexedDocumentRepo.getIdsByPaths(paths);
+        const ids = docIds.map((x) => x.id);
+        if (ids.length) {
+          const { topicTagCounts, keywordTagCounts, functionalTagCounts } = await graphRepo.getTagsByDocIds(ids);
+          topicPurity = topicPurityFromCounts(topicTagCounts);
+          topTopics = rankTopicTagsForDisplay(topicTagCounts, tagGlobalStats, 4);
+          topKeywords = rankKeywordTagsForDisplay(keywordTagCounts, functionalTagCounts, tagGlobalStats, 5);
+          const tp = pickCountsForWeightedLine(topicTagCounts, topTopics);
+          const kp = mergeKeywordFunctionalForPicked(keywordTagCounts, functionalTagCounts, topKeywords);
+          const weighted = formatTopWeightedTopics2(tp, kp, 3);
+          if (weighted) topTopicsWeighted = weighted;
+        }
+      } catch {
+      }
+      const displayName = `virtual-${key}/`;
+      out.push({
+        id,
+        parentFolderPath: normalizeVaultPath(folder.path),
+        displayName,
+        kind: "prefix",
+        memberDocPaths: [...paths].sort(),
+        memberCount: paths.length,
+        parentDirectDocCount: nDirect,
+        topKeywords,
+        topTopics,
+        topTopicsWeighted,
+        topicPurity,
+        docOutgoing: 0,
+        pageRankMass: 0,
+        description: `Filename prefix cluster "${key}" (${paths.length} notes).`
+      });
+    }
+  }
+  return out;
+}
+
+// src/service/search/index/helper/backbone/buildBackboneMap.ts
+function markCities(folderNodes, cityPercentile) {
+  if (folderNodes.length === 0) return;
+  const sorted = [...folderNodes].sort((a, b) => b.pageRankMass - a.pageRankMass);
+  const n = Math.max(1, Math.ceil(sorted.length * Math.min(0.5, Math.max(0.01, cityPercentile))));
+  const threshold = sorted[n - 1].pageRankMass;
+  for (const f of folderNodes) {
+    f.cityScore = f.pageRankMass;
+    f.isCity = f.pageRankMass > 0 && f.pageRankMass >= threshold;
+  }
+}
+async function buildBackboneMap(options) {
+  const maxDepth = options?.maxDepth ?? 10;
+  const maxFolders = options?.maxFolders ?? 8e3;
+  const maxNodesPerPage = options?.maxNodesPerPage ?? 120;
+  const topBackboneEdges = options?.topBackboneEdges ?? 32;
+  const cityPercentile = options?.cityPercentile ?? 0.05;
+  const enableVirtualFolders = options?.enableVirtualFolders ?? true;
+  const extraExclude = (options?.extraExcludePathPrefixes ?? []).map((p) => normalizeVaultPath(String(p)));
+  const empty = {
+    folderNodes: [],
+    virtualNodes: [],
+    backboneEdges: [],
+    metrics: {
+      totalFolders: 0,
+      totalVirtualNodes: 0,
+      totalIndexedDocuments: 0,
+      backboneEdgeCount: 0,
+      cityFolderCount: 0
+    },
+    markdown: "_SQLite index not ready; backbone map is empty._\n",
+    pages: [],
+    noiseTagLegend: [],
+    debug: { folderIdByPath: {}, docCount: 0, edgeWeightSamples: [] }
+  };
+  if (!sqliteStoreManager.isInitialized()) {
+    return empty;
+  }
+  const vault = AppContext.getInstance().app.vault;
+  const root = vault.getRoot();
+  const excluded = [...getBackboneExcludedPrefixes(), ...extraExclude.filter(Boolean)];
+  const rows = collectFolderTreeRows2(root, maxDepth, maxFolders, excluded);
+  const subtreeStats = buildFolderSubtreeStatsMap2(root, excluded);
+  const { folderNodes, recursiveMapsByFolder, tagGlobalStats } = await loadBackboneFolderNodes(
+    rows,
+    excluded,
+    subtreeStats
+  );
+  const allDocIds = /* @__PURE__ */ new Set();
+  const nodeIdToPath = /* @__PURE__ */ new Map();
+  for (const maps of recursiveMapsByFolder.values()) {
+    for (const m of maps) {
+      allDocIds.add(m.id);
+      nodeIdToPath.set(m.id, m.path);
+    }
+  }
+  const virtualNodes = await buildVirtualNodesForMessyFolders(folderNodes, enableVirtualFolders, tagGlobalStats);
+  const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+  const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+  const virtualMemberRows = /* @__PURE__ */ new Map();
+  for (const v of virtualNodes) {
+    const idRows = await indexedDocumentRepo.getIdsByPaths(v.memberDocPaths);
+    virtualMemberRows.set(v.id, idRows);
+    for (const r of idRows) {
+      allDocIds.add(r.id);
+      nodeIdToPath.set(r.id, r.path);
+    }
+    const memberIds = idRows.map((r) => r.id);
+    v.docOutgoing = await mobiusNodeRepo.sumDocumentOutgoingByNodeIds(memberIds);
+  }
+  const prMap = await loadDocPageranks([...allDocIds]);
+  for (const f of folderNodes) {
+    const maps = recursiveMapsByFolder.get(normalizeVaultPath(f.path)) ?? [];
+    let mass = 0;
+    let smass = 0;
+    for (const m of maps) {
+      const p = prMap.get(m.id);
+      mass += p?.pr ?? 0;
+      smass += p?.spr ?? 0;
+    }
+    f.pageRankMass = mass;
+    f.semanticPageRankMass = smass;
+  }
+  for (const v of virtualNodes) {
+    const idRows = virtualMemberRows.get(v.id) ?? [];
+    v.pageRankMass = idRows.reduce((s, r) => s + (prMap.get(r.id)?.pr ?? 0), 0);
+  }
+  markCities(folderNodes, cityPercentile);
+  const resolver = buildSupernodeResolver(folderNodes, virtualNodes);
+  const { edges: backboneEdges, pairCount } = await buildBackboneEdges({
+    validDocIdSet: allDocIds,
+    nodeIdToPath,
+    prMap,
+    resolver,
+    topK: topBackboneEdges
+  });
+  const noiseTagLegendLines = buildVaultNoiseTagLegend(tagGlobalStats);
+  const { markdown, pages } = renderBackboneMarkdown({
+    folderNodes,
+    virtualNodes,
+    backboneEdges,
+    maxNodesPerPage,
+    noiseTagLegendLines
+  });
+  let totalIndexedDocuments = allDocIds.size;
+  try {
+    totalIndexedDocuments = await sqliteStoreManager.getMobiusNodeRepo().countAllDocumentStatisticsRows();
+  } catch {
+  }
+  const folderIdByPath = {};
+  for (const f of folderNodes) {
+    folderIdByPath[normalizeVaultPath(f.path)] = f.id;
+  }
+  return {
+    folderNodes,
+    virtualNodes,
+    backboneEdges,
+    metrics: {
+      totalFolders: folderNodes.length,
+      totalVirtualNodes: virtualNodes.length,
+      totalIndexedDocuments,
+      backboneEdgeCount: backboneEdges.length,
+      cityFolderCount: folderNodes.filter((f) => f.isCity).length
+    },
+    markdown,
+    pages,
+    noiseTagLegend: noiseTagLegendLines,
+    debug: {
+      folderIdByPath,
+      docCount: allDocIds.size,
+      pairCountBeforeTopK: pairCount,
+      edgeWeightSamples: backboneEdges.slice(0, 16).map((e) => ({
+        fromId: e.fromId,
+        toId: e.toId,
+        weight: e.weight,
+        referenceCount: e.referenceCount,
+        semanticWeightSum: e.semanticWeightSum
+      }))
+    }
+  };
+}
+
+// src/service/agents/intuition-helper/intuitionPrep.ts
+var BACKBONE_MARKDOWN_EXCERPT_MAX = 14e3;
+var PLAN_FOLDER_DIGEST_MAX = 80;
+var PLAN_DEEP_FOLDER_DIGEST_MAX = 48;
+var PLAN_DOC_SHORTLIST_MAX = 80;
+function buildFolderTreePagesMarkdown2(world) {
+  if (world.pages.length === 0) return "_(No folder tree pages available.)_";
+  return world.pages.map((p) => `### Folder tree page ${p.pageIndex + 1}/${p.totalPages}
+
+${p.compactTreeMarkdown}`).join("\n\n");
+}
+function buildBackboneEdgesJson(backbone) {
+  const edges = backbone.backboneEdges.slice(0, 24).map((e) => ({
+    fromId: e.fromId,
+    toId: e.toId,
+    fromLabel: e.fromLabel,
+    toLabel: e.toLabel,
+    label: e.label,
+    weight: e.weight,
+    referenceCount: e.referenceCount
+  }));
+  return JSON.stringify(edges);
+}
+function buildVaultSummaryMarkdown(world, backbone, indexBudgetRaw) {
+  const m = world.metrics;
+  const b = backbone.metrics;
+  const topOut = m.topOutgoingFolders.slice(0, 3).map((x) => `\`${x.path}\` (${x.outgoing})`).join(", ");
+  return [
+    `- Indexed documents (world): ${m.totalIndexedDocuments}`,
+    `- Folders scanned (world): ${m.totalFoldersScanned}`,
+    `- Top-level branches: ${m.topLevelBranchCount}`,
+    `- Orphan risk: ${m.orphanRiskHint} (hard samples: ${m.orphanHardSampleCount})`,
+    `- Top outgoing folders: ${topOut || "\u2014"}`,
+    `- Backbone: folders ${b.totalFolders}, virtual nodes ${b.totalVirtualNodes}, backbone edges ${b.backboneEdgeCount}, city folders ${b.cityFolderCount}`,
+    `- Indexed documents (backbone): ${b.totalIndexedDocuments}`,
+    `- Index budget limitTotal: ${indexBudgetRaw.limitTotal}`
+  ].join("\n");
+}
+function buildBackboneEdgesMarkdown(backbone) {
+  const edges = backbone.backboneEdges.slice(0, 24);
+  if (edges.length === 0) return "_(No backbone edges in excerpt.)_";
+  return edges.map((e) => {
+    const w = typeof e.weight === "number" && !Number.isNaN(e.weight) ? e.weight.toFixed(3) : String(e.weight);
+    return `- ${e.fromLabel} \u2192 ${e.toLabel} \xB7 w ${w} \xB7 refs ${e.referenceCount} \xB7 ${e.label}`;
+  }).join("\n");
+}
+function buildDocumentShortlistMarkdown(rows, maxLines) {
+  if (rows.length === 0) return "_(No document shortlist; index may be empty.)_";
+  return rows.slice(0, maxLines).map(
+    (r) => `- \`${r.path}\` \xB7 hub ${r.hubGraphScore.toFixed(2)} \xB7 in/out ${r.docIncoming}/${r.docOutgoing} \xB7 ${r.label}`
+  ).join("\n");
+}
+function buildBaselineExcludedMarkdown(prefixes) {
+  if (prefixes.length === 0) return "_(none)_";
+  return prefixes.map((p) => `- \`${p}\``).join("\n");
+}
+function computeEntryPointsTargetCount(foldersScanned) {
+  const r = Math.round(foldersScanned / 11);
+  return Math.min(24, Math.max(4, r));
+}
+function buildVaultScaleHintMarkdown(world, backbone) {
+  const m = world.metrics;
+  const b = backbone.metrics;
+  const f = m.totalFoldersScanned;
+  const n = computeEntryPointsTargetCount(f);
+  return [
+    `- **Folders scanned** (snapshot) = **F**: ${f}`,
+    `- **Target entry point count N** (host-computed): **${n}** \u2014 emit **exactly ${n}** distinct \`entryPoints\` objects.`,
+    `- **Indexed documents** (world): ${m.totalIndexedDocuments}`,
+    `- **Top-level branches**: ${m.topLevelBranchCount}`,
+    `- **Backbone folder nodes** (map): ${b.totalFolders}`,
+    `- **City folders** (navigation hubs): ${b.cityFolderCount}`
+  ].join("\n");
+}
+function buildFolderSignalsMarkdown(folderTable, deepTable) {
+  return [
+    "### Ranked folders (sample)",
+    "",
+    folderTable,
+    "",
+    "### Deep folder candidates (depth \u2265 3)",
+    "",
+    deepTable
+  ].join("\n");
+}
+async function prepareIntuitionContext(options) {
+  const { userGoal, vaultName, currentDateLabel, tm } = options;
+  const documentNodeCount = sqliteStoreManager.isInitialized() ? await sqliteStoreManager.getMobiusNodeRepo().countAllDocumentStatisticsRows() : 0;
+  const indexBudgetRaw = computeHubDiscoverBudgets(documentNodeCount);
+  const { limitTotal, documentFetchLimit, folderFetchLimit } = indexBudgetRaw;
+  const globalTreeMaxDepth = Math.min(10, Math.max(6, 6 + Math.floor(limitTotal / 100)));
+  const maxFoldersInSnapshot = Math.min(8e3, Math.max(400, Math.floor(folderFetchLimit * 28)));
+  const maxNodesPerPage = Math.min(2e3, Math.max(320, Math.floor(limitTotal * 7)));
+  const docShortlistLimit = Math.min(500, Math.max(50, Math.floor(documentFetchLimit * 2)));
+  const baselineExcludedPrefixes = getExploreFolderExcludedPrefixes();
+  const world = await buildHubWorldSnapshot(
+    {
+      maxDepth: globalTreeMaxDepth,
+      maxFolders: maxFoldersInSnapshot,
+      maxNodesPerPage,
+      extraExcludePathPrefixes: []
+    },
+    tm
+  );
+  const backbone = await buildBackboneMap({
+    maxDepth: globalTreeMaxDepth,
+    maxFolders: maxFoldersInSnapshot,
+    maxNodesPerPage,
+    topBackboneEdges: Math.min(48, Math.max(16, Math.floor(limitTotal / 8))),
+    extraExcludePathPrefixes: []
+  });
+  const documentShortlist = await buildDocumentHubShortlist(docShortlistLimit);
+  const folderDigestMarkdown = buildFolderDigestMarkdown(world.nodes, PLAN_FOLDER_DIGEST_MAX);
+  const deepFolderDigestMarkdown = buildDeepFolderDigestMarkdown(world.nodes, PLAN_DEEP_FOLDER_DIGEST_MAX);
+  const folderSignalsMarkdown = buildFolderSignalsMarkdown(folderDigestMarkdown, deepFolderDigestMarkdown);
+  const folderTreeMarkdown = buildFolderTreePagesMarkdown2(world);
+  const backboneMarkdownExcerpt = backbone.markdown.length <= BACKBONE_MARKDOWN_EXCERPT_MAX ? backbone.markdown : `${backbone.markdown.slice(0, BACKBONE_MARKDOWN_EXCERPT_MAX)}
+
+_(truncated)_`;
+  const backboneEdgesJson = buildBackboneEdgesJson(backbone);
+  const backboneEdgesMarkdown = buildBackboneEdgesMarkdown(backbone);
+  const vaultSummaryMarkdown = buildVaultSummaryMarkdown(world, backbone, indexBudgetRaw);
+  const documentShortlistMarkdown = buildDocumentShortlistMarkdown(documentShortlist, PLAN_DOC_SHORTLIST_MAX);
+  const baselineExcludedMarkdown = buildBaselineExcludedMarkdown(baselineExcludedPrefixes);
+  const vaultScaleHintMarkdown = buildVaultScaleHintMarkdown(world, backbone);
+  const worldMetricsForPrompt = {
+    ...world.metrics,
+    indexBudgetRaw,
+    backboneMetrics: backbone.metrics
+  };
+  return {
+    tm,
+    userGoal,
+    vaultName,
+    currentDateLabel,
+    baselineExcludedPrefixes,
+    worldMetricsForPrompt,
+    backbone,
+    world,
+    documentShortlist,
+    folderSignalsMarkdown,
+    vaultSummaryMarkdown,
+    backboneEdgesMarkdown,
+    documentShortlistMarkdown,
+    baselineExcludedMarkdown,
+    vaultScaleHintMarkdown,
+    folderTreeMarkdown,
+    backboneMarkdownExcerpt,
+    backboneEdgesJson,
+    indexBudgetRaw
+  };
+}
+
+// src/service/agents/KnowledgeIntuitionAgent.ts
+var KnowledgeIntuitionPrepAbortError = class extends Error {
+  constructor(partialResult) {
+    super("KnowledgeIntuitionPrepAbortError: prep_only");
+    this.partialResult = partialResult;
+    this.name = "KnowledgeIntuitionPrepAbortError";
+  }
+};
+var KnowledgeIntuitionAgent = class {
+  constructor(aiServiceManager) {
+    this.aiServiceManager = aiServiceManager;
+  }
+  resetSession() {
+    this.intuitionMemory = void 0;
+  }
+  async buildPrepOnlyResult(ctx) {
+    const memory = buildInitialIntuitionMemory();
+    const markdown = (await ctx.tm.render(IndexingTemplateId.KnowledgeIntuitionPrepOnlyMarkdown, {
+      vaultName: ctx.vaultName,
+      dateLabel: ctx.currentDateLabel,
+      backboneExcerpt: ctx.backboneMarkdownExcerpt.slice(0, 6e3)
+    })).trim();
+    const json = renderIntuitionSkeletonJson(memory, {
+      vaultName: ctx.vaultName,
+      dateLabel: ctx.currentDateLabel
+    });
+    return { prep: ctx, memory, markdown, json };
+  }
+  resolveDebug(options) {
+    if (options.maxIterations == null) return void 0;
+    return { maxIterations: Math.max(1, Math.min(6, Math.floor(options.maxIterations))) };
+  }
+  async prepareContext(options) {
+    const tm = this.aiServiceManager.getTemplateManager?.();
+    if (!tm) {
+      throw new Error("KnowledgeIntuitionAgent requires TemplateManager (plugin templates not loaded).");
+    }
+    const trimmedGoal = options.userGoal?.trim();
+    const userGoal = trimmedGoal || (await tm.render(IndexingTemplateId.KnowledgeIntuitionDefaultUserGoal, {})).trim();
+    if (!userGoal) {
+      throw new Error(
+        "KnowledgeIntuitionAgent: userGoal is empty and default user-goal template rendered empty."
+      );
+    }
+    const vaultName = options.vaultName?.trim() || "Vault";
+    const currentDateLabel = options.currentDateLabel?.trim() || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    return prepareIntuitionContext({
+      userGoal,
+      vaultName,
+      currentDateLabel,
+      tm
+    });
+  }
+  async finalizeResult(ctx, memory) {
+    const markdown = await renderIntuitionSkeletonMarkdown(ctx.tm, memory, {
+      vaultName: ctx.vaultName,
+      dateLabel: ctx.currentDateLabel
+    });
+    const json = renderIntuitionSkeletonJson(memory, {
+      vaultName: ctx.vaultName,
+      dateLabel: ctx.currentDateLabel
+    });
+    return { prep: ctx, memory, markdown, json };
+  }
+  async *runPipeline(options) {
+    this.resetSession();
+    const ctx = await this.prepareContext(options);
+    const stepId = generateUuidWithoutHyphens();
+    if (options.stopAt === "prep") {
+      yield {
+        type: "pk-debug",
+        debugName: "KnowledgeIntuitionAgent prep snapshot (raw)",
+        extra: {
+          stopAt: "prep",
+          userGoal: ctx.userGoal,
+          metrics: ctx.world.metrics,
+          backboneMetrics: ctx.backbone.metrics,
+          folderTreeNodeCount: ctx.world.nodes.length
+        }
+      };
+      const partial = await this.buildPrepOnlyResult(ctx);
+      throw new KnowledgeIntuitionPrepAbortError(partial);
+    }
+    let memory;
+    yield* runKnowledgeIntuitionLoop({
+      ctx,
+      stepId,
+      aiServiceManager: this.aiServiceManager,
+      debug: this.resolveDebug(options),
+      onComplete: (m) => {
+        memory = m;
+        this.intuitionMemory = m;
+      }
+    });
+    if (!memory) {
+      throw new Error("KnowledgeIntuitionAgent: recon finished without memory (onComplete not invoked).");
+    }
+    return await this.finalizeResult(ctx, memory);
+  }
+  async *streamRun(options = {}, onFinish) {
+    const ctx = AppContext.getInstance();
+    if (ctx.isMockEnv) {
+      yield {
+        type: "pk-debug",
+        debugName: "KnowledgeIntuitionAgent skipped (mock env)",
+        extra: {}
+      };
+      const emptyMemory = buildInitialIntuitionMemory();
+      const mockResult = {
+        prep: {},
+        memory: emptyMemory,
+        markdown: "_KnowledgeIntuitionAgent skipped (mock env)_\n",
+        json: {
+          version: "2026.05",
+          theme: "",
+          partitions: [],
+          core_entities: [],
+          topology: [],
+          evolution: "",
+          entry_points: []
+        }
+      };
+      onFinish?.(mockResult);
+      return;
+    }
+    yield {
+      type: "pk-debug",
+      debugName: "KnowledgeIntuitionAgent start",
+      extra: {
+        hasUserGoal: Boolean(options.userGoal?.trim()),
+        stopAt: options.stopAt ?? "full",
+        maxIterations: options.maxIterations
+      }
+    };
+    let result;
+    try {
+      result = yield* this.runPipeline(options);
+    } catch (err) {
+      if (err instanceof KnowledgeIntuitionPrepAbortError) {
+        yield {
+          type: "pk-debug",
+          debugName: "KnowledgeIntuitionAgent pipeline abort (prep)",
+          extra: { partialResult: err.partialResult }
+        };
+        this.intuitionMemory = err.partialResult.memory;
+        onFinish?.(err.partialResult);
+        return;
+      }
+      throw err;
+    }
+    yield {
+      type: "pk-debug",
+      debugName: "KnowledgeIntuitionAgent complete",
+      extra: {
+        partitionCount: result.memory.partitions.length,
+        entityCount: result.memory.coreEntities.length,
+        topologyCount: result.memory.topology.length,
+        markdownChars: result.markdown.length
+      }
+    };
+    onFinish?.(result);
+  }
+};
+
+// src/app/context/test-tools.ts
+var GraphInspectorTestTools = class {
+  constructor() {
+    this.tools = {
+      inspect_note_context: inspectNoteContextTool(),
+      graph_traversal: graphTraversalTool(),
+      hub_local_graph: hubLocalGraphTool(),
+      find_path: findPathTool(),
+      find_key_nodes: findKeyNodesTool(),
+      find_orphans: findOrphansTool(),
+      search_by_dimensions: searchByDimensionsTool(),
+      explore_folder: exploreFolderTool(),
+      recent_changes_whole_vault: recentChangesWholeVaultTool(),
+      local_search_whole_vault: localSearchWholeVaultTool()
+    };
+  }
+  /**
+   * Execute a specific tool
+   */
+  async executeTool(name, params) {
+    try {
+      console.log(`\u{1F50D} Executing ${name} with params:`, params);
+      if (!this.tools[name]) {
+        throw new Error(`Tool ${name} not found`);
+      }
+      const result = await this.tools[name].execute(params);
+      console.log("\u2705 Tool execution result:", JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error("\u274C Tool execution failed:", error);
+      throw error;
+    }
+  }
+  // Convenience methods for each tool
+  async inspectNote(notePath, includeSemantic = false, limit = 10, responseFormat = "hybrid") {
+    return this.executeTool("inspect_note_context", {
+      note_path: notePath,
+      limit,
+      include_semantic_paths: includeSemantic,
+      response_format: responseFormat
+    });
+  }
+  async graphTraversal(startPath, hops = 1, limit = 20, responseFormat = "hybrid", includeSemantic = false, filters = void 0, sorter = void 0) {
+    return this.executeTool("graph_traversal", {
+      start_note_path: startPath,
+      hops,
+      limit,
+      response_format: responseFormat,
+      include_semantic_paths: includeSemantic,
+      filters,
+      sorter
+    });
+  }
+  async findPath(startPath, endPath, responseFormat = "hybrid", limit = 10, includeSemantic = false) {
+    return this.executeTool("find_path", {
+      start_note_path: startPath,
+      end_note_path: endPath,
+      response_format: responseFormat,
+      limit,
+      include_semantic_paths: includeSemantic
+    });
+  }
+  async findKeyNodes(limit = 20, responseFormat = "hybrid") {
+    return this.executeTool("find_key_nodes", {
+      limit,
+      response_format: responseFormat
+    });
+  }
+  async findOrphans(limit = 20, responseFormat = "hybrid") {
+    return this.executeTool("find_orphans", {
+      limit,
+      response_format: responseFormat
+    });
+  }
+  async searchByDimensions(expression, limit = 20, responseFormat = "hybrid") {
+    return this.executeTool("search_by_dimensions", {
+      boolean_expression: expression,
+      limit,
+      response_format: responseFormat
+    });
+  }
+  async exploreFolder(folderPath = "/", recursive = true, maxDepth = 2, responseFormat = "hybrid") {
+    return this.executeTool("explore_folder", {
+      folderPath,
+      recursive,
+      max_depth: maxDepth,
+      response_format: responseFormat
+    });
+  }
+  async getRecentChanges(limit = 20, responseFormat = "hybrid") {
+    return this.executeTool("recent_changes_whole_vault", {
+      limit,
+      response_format: responseFormat
+    });
+  }
+  async localSearch(query, searchMode = "hybrid", limit = 20, responseFormat = "hybrid") {
+    return this.executeTool("local_search_whole_vault", {
+      query,
+      searchMode,
+      limit,
+      response_format: responseFormat
+      // Pass flattened params if needed, or let them be undefined
+    });
+  }
+  // Utility methods
+  async getAppInfo() {
+    const app = AppContext.getInstance().app;
+    return {
+      vaultName: app.vault.getName(),
+      vaultPath: app.vault.getRoot(),
+      fileCount: app.vault.getFiles().length,
+      plugin: AppContext.getInstance().plugin
+    };
+  }
+  async listAllFiles(limit = 100) {
+    const app = AppContext.getInstance().app;
+    const files = app.vault.getFiles();
+    return files.slice(0, limit).map((f) => ({
+      path: f.path,
+      name: f.name,
+      size: f.stat.size,
+      mtime: new Date(f.stat.mtime).toISOString()
+    }));
+  }
+};
+async function* streamWithStreamLog(stream) {
+  const allLog = [];
+  let totalTokenUsage = emptyUsage();
+  try {
+    for await (const ev of stream) {
+      if (!DELTA_EVENT_TYPES.has(ev.type)) {
+        allLog.push(ev);
+      }
+      console.debug("[stream-event]", ev.type, JSON.stringify(ev));
+      if (ev.type === "on-step-finish") {
+        totalTokenUsage = mergeTokenUsage(totalTokenUsage, ev.usage);
+      }
+      yield ev;
+    }
+  } finally {
+    allLog.push({ type: "total-token-usage", totalTokenUsage });
+    console.debug("[stream-all-log]", JSON.stringify(allLog));
+  }
+}
+var AISearchAgentTestTools = class {
+  /**
+   * Run {@link HubDiscoveryAgent}: world snapshot → folder-hub recon (plan/tools/submit loop) → document-hub recon → SQL shortlist.
+   * Requires indexed SQLite, TemplateManager, and models for hub-discovery prompts.
+   *
+   * @example Full run (DevTools console)
+   * ```ts
+   * await window.testAISearchTools.testFolderHubDiscovery({ userGoal: 'Find navigation anchors' });
+   * // or shortcut:
+   * await window.testFolderHubDiscovery({ userGoal: '…' });
+   * ```
+   *
+   * @example Debug: stop after prep (no LLM recon)
+   * ```ts
+   * await window.testFolderHubDiscovery({ stopAt: 'prep' });
+   * ```
+   *
+   * @example Debug: stop after folder recon only (skip document phase)
+   * ```ts
+   * await window.testFolderHubDiscovery({ stopAt: 'folder_hub' });
+   * // same: stopAt: 'after_folder_recon'
+   * ```
+   *
+   * @example Debug: stop after round N plan or after round N submit
+   * `iteration` is 1-based. `folder_plan` stops after the folder plan step and host tool execution (before structured submit); `document_plan` stops after the document plan+tool step. Ensure caps are high enough.
+   * ```ts
+   * await window.testFolderHubDiscovery({ stopAt: { hook: 'folder_plan', iteration: 1 } });
+   * await window.testFolderHubDiscovery({ stopAt: { hook: 'folder_submit', iteration: 1 } });
+   * await window.testFolderHubDiscovery({ stopAt: { hook: 'document_plan', iteration: 1 } });
+   * await window.testFolderHubDiscovery({ stopAt: { hook: 'document_submit', iteration: 2 } });
+   * ```
+   *
+   * @example Debug: cap iteration counts (1–6 each)
+   * ```ts
+   * await window.testFolderHubDiscovery({
+   *   folderReconMaxIterations: 1,
+   *   documentReconMaxIterations: 1,
+   * });
+   * ```
+   */
+  async testFolderHubDiscovery(options) {
+    const start = Date.now();
+    const ctx = AppContext.getInstance();
+    const agent = new HubDiscoveryAgent(ctx.manager);
+    let result = null;
+    let eventCount = 0;
+    for await (const _ev of streamWithStreamLog(
+      agent.streamRun(
+        {
+          ...options
+        },
+        (r) => {
+          result = r;
+        }
+      )
+    )) {
+      eventCount++;
+    }
+    const duration = Date.now() - start;
+    const snapshot = result;
+    if (snapshot == null) {
+      console.debug("[testFolderHubDiscovery]", { result: null, duration, eventCount });
+    } else {
+      console.debug("[testFolderHubDiscovery]", {
+        duration,
+        eventCount,
+        result: {
+          ...snapshot,
+          documentShortlist: void 0,
+          documentShortlistCount: snapshot.documentShortlist?.length ?? 0
+        }
+      });
+    }
+    return { result, duration, eventCount };
+  }
+  /**
+   * Run {@link KnowledgeIntuitionAgent}: backbone + folder digest prep → intuition recon (plan/tools/submit) → fixed markdown + JSON.
+   * Requires indexed SQLite, TemplateManager, and models for knowledge-intuition prompts.
+   *
+   * @example
+   * ```ts
+   * await window.testAISearchTools.testKnowledgeIntuition({ userGoal: 'Map this vault for navigation' });
+   * await window.testKnowledgeIntuition({ stopAt: 'prep' });
+   * ```
+   */
+  async testKnowledgeIntuition(options) {
+    const start = Date.now();
+    const ctx = AppContext.getInstance();
+    const agent = new KnowledgeIntuitionAgent(ctx.manager);
+    let result = null;
+    let eventCount = 0;
+    for await (const _ev of streamWithStreamLog(
+      agent.streamRun(options ?? {}, (r) => {
+        result = r;
+      })
+    )) {
+      eventCount++;
+    }
+    const duration = Date.now() - start;
+    if (result == null) {
+      console.debug("[testKnowledgeIntuition]", { result: null, duration, eventCount });
+    } else {
+      console.debug("[testKnowledgeIntuition]", {
+        duration,
+        eventCount,
+        markdownPreview: result.markdown.slice(0, 2500),
+        json: result.json
+      });
+    }
+    return { result, duration, eventCount };
+  }
+  /**
+   * Builds deterministic backbone map: folder tree, optional virtual-* clusters, cross-folder highways.
+   * No LLM. Requires indexed SQLite.
+   *
+   * @example
+   * ```ts
+   * await window.testBackboneMap();
+   * await window.testAISearchTools.testBackboneMap({ maxDepth: 8, topBackboneEdges: 24 });
+   * ```
+   */
+  async testBackboneMap(options) {
+    const ctx = AppContext.getInstance();
+    if (ctx.isMockEnv) {
+      console.debug("[testBackboneMap] skipped (mock env)");
+      return null;
+    }
+    const start = Date.now();
+    const result = await buildBackboneMap(options);
+    const duration = Date.now() - start;
+    console.debug("[testBackboneMap]", { duration, metrics: result.metrics, debug: result.debug });
+    console.debug("[testBackboneMap] markdown (first 2500 chars):\n", result.markdown.slice(0, 2500));
+    return result;
+  }
+};
+
+// src/app/context/graph-cleanup.ts
+var import_kysely5 = require("kysely");
+async function cleanupGraphTable() {
+  const kdb = sqliteStoreManager.getSearchContext();
+  const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+  const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
+  const pathMap = await indexedDocumentRepo.getAllIndexedPaths();
+  const paths = Array.from(pathMap.keys());
+  const idRows = paths.length > 0 ? await indexedDocumentRepo.getIdsByPaths(paths) : [];
+  const validDocIds = new Set(idRows.map((r) => r.id));
+  const allNodeIdsToCheck = [];
+  for (const t of GRAPH_DOCUMENT_LIKE_NODE_TYPES) {
+    const nodes = await mobiusNodeRepo.getByType(t);
+    allNodeIdsToCheck.push(...nodes.map((n) => n.id));
+  }
+  const nodeIdsWithoutIndexedDocument = [...new Set(allNodeIdsToCheck)].filter((id) => !validDocIds.has(id));
+  let orphanEdgesDeleted = 0;
+  await kdb.transaction().execute(async (trx) => {
+    const orphanEdgeRows = await trx.selectFrom("mobius_edge").select("id").where(
+      import_kysely5.sql`from_node_id NOT IN (SELECT node_id FROM mobius_node) OR to_node_id NOT IN (SELECT node_id FROM mobius_node)`
+    ).execute();
+    const orphanEdgeIds = orphanEdgeRows.map((r) => r.id);
+    if (orphanEdgeIds.length > 0) {
+      const chunkSize = 500;
+      for (let i = 0; i < orphanEdgeIds.length; i += chunkSize) {
+        const chunk2 = orphanEdgeIds.slice(i, i + chunkSize);
+        await trx.deleteFrom("mobius_edge").where("id", "in", chunk2).execute();
+      }
+      orphanEdgesDeleted = orphanEdgeIds.length;
+    }
+    if (nodeIdsWithoutIndexedDocument.length > 0) {
+      await trx.deleteFrom("mobius_edge").where(
+        (eb) => eb.or([
+          eb("from_node_id", "in", nodeIdsWithoutIndexedDocument),
+          eb("to_node_id", "in", nodeIdsWithoutIndexedDocument)
+        ])
+      ).execute();
+      await trx.deleteFrom("mobius_node").where("node_id", "in", nodeIdsWithoutIndexedDocument).execute();
+    }
+  });
+  return {
+    orphanEdgesDeleted,
+    nodesWithoutIndexedDocumentDeleted: nodeIdsWithoutIndexedDocument.length
+  };
+}
+
+// src/app/context/index-debug-tools.ts
+var import_obsidian23 = __toESM(require_obsidian_stub());
+function requireDb() {
+  if (!sqliteStoreManager.isInitialized()) {
+    throw new Error("[index-debug] SQLite is not initialized. Open the vault and wait for the plugin to finish loading.");
+  }
+}
+var DEBUG_INDEX_MODE_TO_REASON = {
+  core_fast: "listener_fast",
+  vector_only: "vector_enrich_only",
+  llm_only: "llm_enrich_only",
+  manual_full: "manual_full"
+};
+async function debugRunHubDiscoverWithReport(options) {
+  const discovery = new HubCandidateDiscoveryService();
+  const roundSummaries = [];
+  const discoverResult = await discovery.discoverAllHubCandidates({
+    tenant: options?.tenant ?? "vault",
+    onRoundComplete: (s) => {
+      roundSummaries.push(s);
+      options?.onRoundComplete?.(s);
+    }
+  });
+  return {
+    candidates: discoverResult.candidates,
+    navigationHubGroups: discoverResult.navigationHubGroups,
+    navigationHubs: discoverResult.navigationHubs,
+    longTailHubs: discoverResult.longTailHubs,
+    partitionMetrics: discoverResult.partitionMetrics,
+    roundSummaries
+  };
+}
+async function debugMaterializeHubCandidate(candidate2, getSearchSettings, options) {
+  requireDb();
+  const searchSettings = getSearchSettings();
+  const hubPath = options?.hubPath ?? getAIHubSummaryFolder();
+  let hubNodeIdSet = options?.hubNodeIdSet;
+  if (!hubNodeIdSet) {
+    if (options?.hubCandidatesForHubSet?.length) {
+      hubNodeIdSet = new Set(
+        options.hubCandidatesForHubSet.filter((c) => c.sourceKind === "document" || c.sourceKind === "manual").map((c) => c.nodeId)
+      );
+    } else {
+      hubNodeIdSet = new Set(
+        candidate2.sourceKind === "document" || candidate2.sourceKind === "manual" ? [candidate2.nodeId] : []
+      );
+    }
+  }
+  return materializeHubDocFromCandidate(candidate2, {
+    hubPath,
+    hubNodeIdSet,
+    searchSettings,
+    indexService: IndexService.getInstance()
+  });
+}
+async function debugBuildCandidateCoverageBits(tenant, candidates) {
+  const docCoverageIndex = await buildHubDiscoverDocCoverageIndex(tenant);
+  const bitsByStableKey = /* @__PURE__ */ new Map();
+  for (const c of candidates) {
+    bitsByStableKey.set(c.stableKey, await estimateCandidateCoverageBits(tenant, c, docCoverageIndex));
+  }
+  return { docCoverageIndex, bitsByStableKey };
+}
+async function computeUnionCoverageForHubCandidates(tenant, candidates) {
+  const { docCoverageIndex, bitsByStableKey } = await debugBuildCandidateCoverageBits(tenant, candidates);
+  const union = createUint32Bitset(docCoverageIndex.docCount);
+  for (const bits of bitsByStableKey.values()) {
+    for (let wi = 0; wi < union.length; wi++) {
+      union[wi] |= bits[wi] ?? 0;
+    }
+  }
+  let coveredCount = 0;
+  const coveredNodeIds = /* @__PURE__ */ new Set();
+  for (let o = 0; o < docCoverageIndex.docCount; o++) {
+    if (hasUint32Bit(union, o)) {
+      coveredCount++;
+      coveredNodeIds.add(docCoverageIndex.nodeIdByOrdinal[o]);
+    }
+  }
+  const documentCount = docCoverageIndex.docCount;
+  const coverageRatio = documentCount > 0 ? coveredCount / documentCount : 0;
+  return { coveredNodeIds, documentCount, coveredCount, coverageRatio };
+}
+async function countChunksForDoc(tenant, docId) {
+  const kdb = sqliteStoreManager.getIndexContext(tenant);
+  const r = await kdb.selectFrom("doc_chunk").select((eb) => eb.fn.count("chunk_id").as("c")).where("doc_id", "=", docId).executeTakeFirst();
+  return Number(r?.c ?? 0);
+}
+async function countEmbeddingsForDoc(tenant, docId) {
+  const kdb = sqliteStoreManager.getIndexContext(tenant);
+  const r = await kdb.selectFrom("embedding").select((eb) => eb.fn.count("id").as("c")).where("doc_id", "=", docId).executeTakeFirst();
+  return Number(r?.c ?? 0);
+}
+async function countTaggedEdgesForDoc(tenant, docId) {
+  const kdb = sqliteStoreManager.getIndexContext(tenant);
+  const r = await kdb.selectFrom("mobius_edge").select((eb) => eb.fn.count("id").as("c")).where("type", "in", [...GRAPH_TAGGED_EDGE_TYPES]).where((eb) => eb.or([eb("from_node_id", "=", docId), eb("to_node_id", "=", docId)])).executeTakeFirst();
+  return Number(r?.c ?? 0);
+}
+async function countEdgesByTypeForDoc(tenant, docId) {
+  const kdb = sqliteStoreManager.getIndexContext(tenant);
+  const rows = await kdb.selectFrom("mobius_edge").select((eb) => [eb.fn.count("id").as("c"), "type"]).where((eb) => eb.or([eb("from_node_id", "=", docId), eb("to_node_id", "=", docId)])).groupBy("type").execute();
+  const out = {};
+  for (const r of rows) {
+    out[String(r.type)] = Number(r.c);
+  }
+  return out;
+}
+async function debugDocumentSnapshot(docPath, options) {
+  const path3 = (0, import_obsidian23.normalizePath)(docPath.trim());
+  const tenant = getIndexTenantForPath(path3);
+  const t0 = Date.now();
+  const warnings = [];
+  const chunkLimit = options?.chunkSampleLimit ?? 40;
+  const edgeLim = options?.edgeSampleLimit ?? 50;
+  const pv = (t, max = 400) => {
+    const s = String(t ?? "").replace(/\s+/g, " ").trim();
+    return !s ? "" : s.length > max ? `${s.slice(0, max)}\u2026` : s;
+  };
+  const parseJson = (raw) => {
+    if (raw == null || raw === "") return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw;
+    }
+  };
+  const outBase = {
+    path: path3,
+    tenant,
+    ok: false,
+    elapsedMs: 0,
+    warnings,
+    indexed: null,
+    summary: null,
+    tags: null,
+    docAttrs: null,
+    mobiusNodeType: null,
+    counts: {
+      chunk: 0,
+      embedding: 0,
+      taggedEdges: 0,
+      edgesByType: {}
+    },
+    graph: {
+      docIncomingCnt: null,
+      docOutgoingCnt: null,
+      otherIncomingCnt: null,
+      otherOutgoingCnt: null,
+      pagerank: null,
+      semanticPagerank: null,
+      wordCount: null,
+      charCount: null,
+      referenceEdgesIncidentSampled: 0,
+      semanticEdgesIncidentSampled: 0,
+      referenceEdgesSample: [],
+      semanticEdgesSample: [],
+      taggedEdgesSample: []
+    },
+    chunkSamples: null
+  };
+  try {
+    requireDb();
+  } catch (e) {
+    const err = e.message ?? String(e);
+    const res2 = {
+      ...outBase,
+      ok: false,
+      error: err,
+      elapsedMs: Date.now() - t0
+    };
+    console.info("[index-debug] debugDocumentSnapshot", res2);
+    return res2;
+  }
+  const indexedRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+  const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+  const meta2 = await indexedRepo.getByPath(path3);
+  const row = await mobiusRepo.getByPath(path3);
+  const docId = meta2?.id ?? row?.node_id ?? null;
+  if (!docId) {
+    const res2 = {
+      ...outBase,
+      ok: false,
+      error: "No indexed document or mobius_node row for this path.",
+      elapsedMs: Date.now() - t0
+    };
+    warnings.push("Path not found in index (not indexed or wrong tenant).");
+    console.info("[index-debug] debugDocumentSnapshot", res2);
+    return res2;
+  }
+  if (meta2) {
+    outBase.indexed = {
+      id: meta2.id,
+      path: meta2.path,
+      title: meta2.title,
+      type: meta2.type,
+      content_hash: meta2.content_hash,
+      mtime: meta2.mtime,
+      last_processed_at: meta2.last_processed_at
+    };
+  } else {
+    warnings.push("IndexedDocumentRepo.getByPath returned null; using mobius_node only.");
+  }
+  const attrsParsed = parseJson(row?.attributes_json);
+  const fullSummary = typeof attrsParsed?.full_summary === "string" ? attrsParsed.full_summary : null;
+  const hubTier = typeof attrsParsed?.hub_tier === "string" ? attrsParsed.hub_tier : null;
+  const summaryGeneratedAt = typeof attrsParsed?.summary_generated_at === "number" ? attrsParsed.summary_generated_at : null;
+  const headingSkeleton = typeof attrsParsed?.heading_skeleton === "string" ? attrsParsed.heading_skeleton : null;
+  const semanticOverlay = typeof attrsParsed?.semantic_overlay_mermaid === "string" ? attrsParsed.semantic_overlay_mermaid : null;
+  const frontmatterJson = typeof attrsParsed?.frontmatter_json === "string" ? attrsParsed.frontmatter_json : null;
+  outBase.summary = {
+    short: row?.summary ?? null,
+    full: fullSummary,
+    hubTier,
+    summaryGeneratedAt,
+    headingSkeletonPreview: headingSkeleton ? pv(headingSkeleton, 600) : null
+  };
+  outBase.tags = row?.tags_json != null ? decodeIndexedTagsBlob(row.tags_json) : null;
+  outBase.mobiusNodeType = row?.type ?? null;
+  outBase.docAttrs = {
+    llmPending: attrsParsed?.llm_pending,
+    llmPendingReason: attrsParsed?.llm_pending_reason,
+    vectorPending: attrsParsed?.vector_pending,
+    vectorPendingReason: attrsParsed?.vector_pending_reason,
+    functionalTagsStatus: attrsParsed?.functional_tags_status,
+    llmTagsGeneratedAt: attrsParsed?.llm_tags_generated_at,
+    llmSummaryGeneratedAt: attrsParsed?.llm_summary_generated_at,
+    vectorGeneratedAt: attrsParsed?.vector_generated_at,
+    semanticOverlayPreview: semanticOverlay ? pv(semanticOverlay, 500) : null,
+    frontmatterPreview: frontmatterJson ? pv(frontmatterJson, 800) : null
+  };
+  const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+  const [chunkCount, embeddingCount, taggedEdgeCount, edgesByType, refInc, semInc] = await Promise.all([
+    countChunksForDoc(tenant, docId),
+    countEmbeddingsForDoc(tenant, docId),
+    countTaggedEdgesForDoc(tenant, docId),
+    countEdgesByTypeForDoc(tenant, docId),
+    edgeRepo.listReferenceEdgesIncidentToNode(docId, Math.max(edgeLim, 5e3)),
+    edgeRepo.listSemanticRelatedEdgesIncidentToNode(docId, Math.max(edgeLim, 2e3))
+  ]);
+  outBase.counts = {
+    chunk: chunkCount,
+    embedding: embeddingCount,
+    taggedEdges: taggedEdgeCount,
+    edgesByType
+  };
+  const kdbForSamples = sqliteStoreManager.getIndexContext(tenant);
+  const taggedRows = await kdbForSamples.selectFrom("mobius_edge").select(["id", "from_node_id", "to_node_id", "type", "weight", "attributes_json"]).where("type", "in", [...GRAPH_TAGGED_EDGE_TYPES]).where((eb) => eb.or([eb("from_node_id", "=", docId), eb("to_node_id", "=", docId)])).limit(edgeLim).execute();
+  const taggedSample = taggedRows.map((r) => ({
+    id: r.id,
+    from: r.from_node_id,
+    to: r.to_node_id,
+    type: r.type,
+    weight: r.weight,
+    attrs: parseJson(r.attributes_json)
+  }));
+  let chunkSamples = null;
+  if (chunkLimit > 0) {
+    const docChunkRows = await kdbForSamples.selectFrom("doc_chunk").select(["chunk_id", "chunk_index", "chunk_type", "title", "content_raw", "chunk_meta_json"]).where("doc_id", "=", docId).orderBy("chunk_index", "asc").limit(chunkLimit).execute();
+    chunkSamples = docChunkRows.map((r) => ({
+      chunkId: r.chunk_id,
+      chunkIndex: r.chunk_index ?? 0,
+      chunkType: r.chunk_type,
+      title: r.title,
+      len: r.content_raw?.length ?? 0,
+      preview: pv(r.content_raw, 400),
+      meta: parseJson(r.chunk_meta_json)
+    }));
+  }
+  outBase.graph = {
+    docIncomingCnt: row?.doc_incoming_cnt ?? null,
+    docOutgoingCnt: row?.doc_outgoing_cnt ?? null,
+    otherIncomingCnt: row?.other_incoming_cnt ?? null,
+    otherOutgoingCnt: row?.other_outgoing_cnt ?? null,
+    pagerank: typeof row?.pagerank === "number" ? row.pagerank : null,
+    semanticPagerank: typeof row?.semantic_pagerank === "number" ? row.semantic_pagerank : null,
+    wordCount: row?.word_count ?? null,
+    charCount: row?.char_count ?? null,
+    referenceEdgesIncidentSampled: refInc.length,
+    semanticEdgesIncidentSampled: semInc.length,
+    referenceEdgesSample: refInc.slice(0, edgeLim),
+    semanticEdgesSample: semInc.slice(0, edgeLim),
+    taggedEdgesSample: taggedSample
+  };
+  if (chunkCount === 0) {
+    warnings.push("chunk count is 0 \u2014 check loader / chunking / index.");
+  }
+  if (embeddingCount === 0) {
+    warnings.push("embedding count is 0 \u2014 vectors off or not embedded yet.");
+  }
+  let hubCoverage;
+  if (options?.includeHubCoverage) {
+    try {
+      hubCoverage = await debugExplainPathCoverage(path3);
+    } catch (e) {
+      warnings.push(`hub coverage failed: ${e.message ?? String(e)}`);
+    }
+  }
+  const res = {
+    ...outBase,
+    ok: true,
+    elapsedMs: Date.now() - t0,
+    ...hubCoverage !== void 0 ? { hubCoverage } : {},
+    chunkSamples
+  };
+  console.info("[index-debug] debugDocumentSnapshot", res);
+  return res;
+}
+function logDebugIndexDocument(path3, tenant, t0, phase, extra) {
+  console.info("[index-debug] debugIndexDocument", {
+    phase,
+    path: path3,
+    tenant,
+    elapsedMs: Date.now() - t0,
+    ...extra
+  });
+}
+async function debugIndexDocument(docPath, getSearchSettings, mode = "manual_full") {
+  const path3 = (0, import_obsidian23.normalizePath)(docPath.trim());
+  const tenant = getIndexTenantForPath(path3);
+  const t0 = Date.now();
+  const warnings = [];
+  const out = {
+    path: path3,
+    tenant,
+    mode,
+    ok: false,
+    elapsedMs: 0,
+    warnings
+  };
+  logDebugIndexDocument(path3, tenant, t0, "start");
+  try {
+    requireDb();
+  } catch (e) {
+    out.error = e.message ?? String(e);
+    out.elapsedMs = Date.now() - t0;
+    logDebugIndexDocument(path3, tenant, t0, "requireDb_failed", { error: out.error });
+    return out;
+  }
+  logDebugIndexDocument(path3, tenant, t0, "db_ready");
+  const settings = getSearchSettings();
+  const indexOptions = defaultIndexDocumentOptions(DEBUG_INDEX_MODE_TO_REASON[mode]);
+  const readOpts = {
+    includeLlmTags: indexOptions.includeLlmTags,
+    includeLlmSummary: indexOptions.includeLlmSummary
+  };
+  const loaderManager = DocumentLoaderManager.getInstance();
+  logDebugIndexDocument(path3, tenant, t0, "readByPath_start", {
+    hint: "Markdown: parallel LLM tag + summary inside loader; see [MarkdownDocumentLoader] logs"
+  });
+  const readDoc = await loaderManager.readByPath(path3, true, readOpts);
+  if (!readDoc) {
+    out.error = "readByPath returned null (unknown type or no loader)";
+    out.elapsedMs = Date.now() - t0;
+    warnings.push("Could not load document model; index step skipped.");
+    logDebugIndexDocument(path3, tenant, t0, "readByPath_null");
+    return out;
+  }
+  logDebugIndexDocument(path3, tenant, t0, "readByPath_ok", { docType: readDoc.type, docId: readDoc.id });
+  const pv = (t, max = 600) => {
+    const s = String(t ?? "").replace(/\s+/g, " ").trim();
+    return !s ? "" : s.length > max ? `${s.slice(0, max)}\u2026` : s;
+  };
+  const refTenant = (refs) => refs.map((r) => ({ ...r, tenant: getIndexTenantForPath(r.fullPath) }));
+  const outgoingRefs = refTenant(readDoc.references?.outgoing ?? []);
+  out.read = {
+    id: readDoc.id,
+    type: readDoc.type,
+    sourcePreview: pv(readDoc.sourceFileInfo.content, 800),
+    cachePreview: pv(readDoc.cacheFileInfo.content, 800),
+    metadata: readDoc.metadata,
+    references: {
+      outgoing: outgoingRefs,
+      incoming: refTenant(readDoc.references?.incoming ?? []),
+      crossTenantOutgoing: outgoingRefs.filter((r) => r.tenant !== tenant)
+    },
+    summary: readDoc.summary,
+    contentHash: readDoc.contentHash
+  };
+  const loader = loaderManager.getLoaderForDocumentType(readDoc.type);
+  if (loader) {
+    try {
+      logDebugIndexDocument(path3, tenant, t0, "chunkContent_start");
+      const chunks = await loader.chunkContent(readDoc, settings.chunking);
+      const byType = {};
+      for (const c of chunks) {
+        byType[c.chunkType] = (byType[c.chunkType] ?? 0) + 1;
+      }
+      out.chunks = {
+        count: chunks.length,
+        byType,
+        items: chunks.map((c) => ({
+          chunkId: c.chunkId,
+          chunkIndex: c.chunkIndex,
+          chunkType: c.chunkType,
+          title: c.title,
+          len: c.content?.length ?? 0,
+          preview: pv(c.content, 400),
+          meta: c.chunkMeta,
+          embLen: Array.isArray(c.embedding) ? c.embedding.length : 0
+        }))
+      };
+      logDebugIndexDocument(path3, tenant, t0, "chunkContent_ok", { chunkCount: chunks.length });
+    } catch (e) {
+      warnings.push(`chunkContent failed: ${e.message ?? String(e)}`);
+      logDebugIndexDocument(path3, tenant, t0, "chunkContent_failed", {
+        error: e.message ?? String(e)
+      });
+    }
+  } else {
+    warnings.push(`No loader for document type: ${readDoc.type}`);
+    logDebugIndexDocument(path3, tenant, t0, "chunkContent_skipped", { reason: "no_loader" });
+  }
+  out.indexOptions = indexOptions;
+  logDebugIndexDocument(path3, tenant, t0, "indexDocument_start", {
+    mode,
+    reason: indexOptions.reason,
+    includeCoreSearchIndex: indexOptions.includeCoreSearchIndex,
+    includeEmbeddings: indexOptions.includeEmbeddings,
+    includeLlmTags: indexOptions.includeLlmTags,
+    includeLlmSummary: indexOptions.includeLlmSummary
+  });
+  try {
+    await IndexService.getInstance().indexDocument(path3, settings, indexOptions, readDoc);
+    out.ok = true;
+    logDebugIndexDocument(path3, tenant, t0, "indexDocument_ok");
+  } catch (e) {
+    out.error = e.message ?? String(e);
+    out.elapsedMs = Date.now() - t0;
+    logDebugIndexDocument(path3, tenant, t0, "indexDocument_failed", { error: out.error });
+    return out;
+  }
+  const indexedRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+  logDebugIndexDocument(path3, tenant, t0, "indexed_meta_lookup_start");
+  const meta2 = await indexedRepo.getByPath(path3);
+  if (!meta2) {
+    warnings.push("Document not found in indexed_document table after index (skipped or load failed).");
+    out.elapsedMs = Date.now() - t0;
+    logDebugIndexDocument(path3, tenant, t0, "indexed_meta_missing");
+    return out;
+  }
+  logDebugIndexDocument(path3, tenant, t0, "indexed_meta_ok", { docId: meta2.id });
+  const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+  const row = await mobiusRepo.getByPath(path3);
+  const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+  logDebugIndexDocument(path3, tenant, t0, "graph_edges_start", { nodeId: meta2.id });
+  const refInc = await edgeRepo.listReferenceEdgesIncidentToNode(meta2.id, 5e3);
+  logDebugIndexDocument(path3, tenant, t0, "graph_reference_edges_ok", { sampled: refInc.length });
+  const semInc = await edgeRepo.listSemanticRelatedEdgesIncidentToNode(meta2.id, 2e3);
+  logDebugIndexDocument(path3, tenant, t0, "graph_semantic_edges_ok", { sampled: semInc.length });
+  const parseJson = (raw) => {
+    if (raw == null || raw === "") return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw;
+    }
+  };
+  const kdb = sqliteStoreManager.getIndexContext(tenant);
+  logDebugIndexDocument(path3, tenant, t0, "doc_chunk_sample_start");
+  const docChunkRows = await kdb.selectFrom("doc_chunk").select(["chunk_id", "chunk_index", "chunk_type", "title", "content_raw", "chunk_meta_json"]).where("doc_id", "=", meta2.id).orderBy("chunk_index", "asc").limit(120).execute();
+  logDebugIndexDocument(path3, tenant, t0, "doc_chunk_sample_ok", { rows: docChunkRows.length });
+  const persistedItems = docChunkRows.map((r) => ({
+    chunkId: r.chunk_id,
+    chunkIndex: r.chunk_index ?? 0,
+    chunkType: r.chunk_type,
+    title: r.title,
+    len: r.content_raw?.length ?? 0,
+    preview: pv(r.content_raw, 400),
+    meta: parseJson(r.chunk_meta_json)
+  }));
+  logDebugIndexDocument(path3, tenant, t0, "tagged_edges_sample_start");
+  const taggedRows = await kdb.selectFrom("mobius_edge").select(["id", "from_node_id", "to_node_id", "type", "weight", "attributes_json"]).where("type", "in", [...GRAPH_TAGGED_EDGE_TYPES]).where((eb) => eb.or([eb("from_node_id", "=", meta2.id), eb("to_node_id", "=", meta2.id)])).limit(50).execute();
+  logDebugIndexDocument(path3, tenant, t0, "tagged_edges_sample_ok", { rows: taggedRows.length });
+  const taggedSample = taggedRows.map((r) => ({
+    id: r.id,
+    from: r.from_node_id,
+    to: r.to_node_id,
+    type: r.type,
+    weight: r.weight,
+    attrs: parseJson(r.attributes_json)
+  }));
+  logDebugIndexDocument(path3, tenant, t0, "chunk_embedding_counts_start");
+  const chunkCountTotal = await countChunksForDoc(tenant, meta2.id);
+  const embeddingRowCount = await countEmbeddingsForDoc(tenant, meta2.id);
+  logDebugIndexDocument(path3, tenant, t0, "chunk_embedding_counts_ok", {
+    chunkCount: chunkCountTotal,
+    embeddingRowCount
+  });
+  out.indexed = {
+    nodeId: meta2.id,
+    title: meta2.title,
+    type: meta2.type,
+    chunkCount: chunkCountTotal,
+    embeddingRowCount
+  };
+  if (row) {
+    const attrsParsed = parseJson(row.attributes_json);
+    out.mobiusNode = {
+      row: { ...row },
+      tagsDecoded: decodeIndexedTagsBlob(row.tags_json),
+      attrsParsed,
+      pendingState: {
+        llmPending: attrsParsed?.llm_pending ?? null,
+        llmPendingReason: attrsParsed?.llm_pending_reason ?? null,
+        vectorPending: attrsParsed?.vector_pending ?? null,
+        vectorPendingReason: attrsParsed?.vector_pending_reason ?? null,
+        functionalTagsStatus: attrsParsed?.functional_tags_status ?? null
+      }
+    };
+  }
+  out.persistedChunks = {
+    count: chunkCountTotal,
+    itemsSampled: persistedItems.length,
+    items: persistedItems
+  };
+  logDebugIndexDocument(path3, tenant, t0, "tagged_edge_count_start");
+  const taggedEdgeCount = await countTaggedEdgesForDoc(tenant, meta2.id);
+  logDebugIndexDocument(path3, tenant, t0, "tagged_edge_count_ok", { taggedEdgeCount });
+  out.graph = {
+    referenceEdgesIncidentSampled: refInc.length,
+    semanticEdgesIncidentSampled: semInc.length,
+    taggedEdgeCount,
+    docIncomingCnt: row?.doc_incoming_cnt ?? null,
+    docOutgoingCnt: row?.doc_outgoing_cnt ?? null,
+    pagerank: typeof row?.pagerank === "number" ? row.pagerank : null,
+    semanticPagerank: typeof row?.semantic_pagerank === "number" ? row.semantic_pagerank : null,
+    referenceEdgesSample: refInc.slice(0, 50),
+    semanticEdgesSample: semInc.slice(0, 50),
+    taggedEdgesSample: taggedSample
+  };
+  const indexedSnap = out.indexed;
+  if (indexedSnap?.chunkCount === 0) {
+    warnings.push("chunkCount is 0 \u2014 check loader / chunking settings.");
+  }
+  if (indexedSnap?.embeddingRowCount === 0) {
+    warnings.push("embeddingRowCount is 0 \u2014 vector extension off or embedding model not configured.");
+  }
+  logDebugIndexDocument(path3, tenant, t0, "localHubPreview_start");
+  try {
+    const local = await buildLocalHubGraphForPath({
+      tenant,
+      centerPath: path3,
+      hubNodeIdSet: /* @__PURE__ */ new Set(),
+      maxDepth: 3
+    });
+    if (local) {
+      out.localHubPreview = {
+        nodeCount: local.nodes.length,
+        edgeCount: local.edges.length,
+        stopReason: local.frontierSummary?.reason
+      };
+      logDebugIndexDocument(path3, tenant, t0, "localHubPreview_ok", {
+        nodeCount: local.nodes.length,
+        edgeCount: local.edges.length
+      });
+    } else {
+      logDebugIndexDocument(path3, tenant, t0, "localHubPreview_empty");
+    }
+  } catch (e) {
+    warnings.push(`local hub preview failed: ${e.message ?? e}`);
+    logDebugIndexDocument(path3, tenant, t0, "localHubPreview_failed", {
+      error: e.message ?? String(e)
+    });
+  }
+  out.elapsedMs = Date.now() - t0;
+  logDebugIndexDocument(path3, tenant, t0, "done", { ok: out.ok, warningCount: warnings.length });
+  return out;
+}
+async function debugBatchIndex(paths, getSearchSettings, mode = "manual_full") {
+  const t0 = Date.now();
+  const results = [];
+  for (const p of paths) {
+    results.push(await debugIndexDocument(p, getSearchSettings, mode));
+  }
+  const success = results.filter((r) => r.ok).length;
+  return {
+    total: results.length,
+    success,
+    failed: results.length - success,
+    elapsedMs: Date.now() - t0,
+    results
+  };
+}
+async function debugRunMaintenance(tenants = ["vault", "chat"]) {
+  const phaseEvents = [];
+  const t0 = Date.now();
+  try {
+    await IndexService.getInstance().runMobiusGlobalMaintenance(tenants, {
+      onProgress: (ev) => {
+        phaseEvents.push({
+          key: `${ev.tenant}:${ev.phase}`,
+          tenant: ev.tenant,
+          phase: ev.phase,
+          progressTextSuffix: ev.progressTextSuffix
+        });
+      }
+    });
+    return { ok: true, elapsedMs: Date.now() - t0, phaseEvents };
+  } catch (e) {
+    return {
+      ok: false,
+      elapsedMs: Date.now() - t0,
+      error: e.message ?? String(e),
+      phaseEvents
+    };
+  }
+}
+async function runHubDiscoverSingleLeg(options) {
+  const { tenant, leg } = options;
+  requireDb();
+  const docCoverageIndex = await buildHubDiscoverDocCoverageIndex(tenant);
+  const docCount = docCoverageIndex.docCount;
+  const budgets = computeHubDiscoverBudgets(docCount);
+  const discovery = new HubCandidateDiscoveryService();
+  const t0 = Date.now();
+  let candidates;
+  let folderDiagnostics;
+  if (leg === "manual") {
+    candidates = await discovery.discoverManualHubCandidates({ tenant });
+  } else if (leg === "document") {
+    candidates = await discovery.discoverDocumentHubCandidates({
+      tenant,
+      limit: budgets.documentFetchLimit,
+      docCoverageIndex,
+      limitTotal: budgets.limitTotal
+    });
+  } else {
+    const folderRun = await discovery.discoverFolderHubCandidatesWithDiagnostics({
+      tenant,
+      limit: budgets.folderFetchLimit
+    });
+    candidates = folderRun.candidates;
+    folderDiagnostics = folderRun.diagnostics;
+  }
+  const res = {
+    tenant,
+    leg,
+    docCount,
+    budgets,
+    candidateCount: candidates.length,
+    elapsedMs: Date.now() - t0,
+    candidates,
+    ...folderDiagnostics !== void 0 ? { folderDiagnostics } : {}
+  };
+  console.info("[index-debug] debugHubDiscoverSingleLeg", {
+    tenant: res.tenant,
+    leg: res.leg,
+    docCount: res.docCount,
+    budgets: res.budgets,
+    candidateCount: res.candidateCount,
+    elapsedMs: res.elapsedMs,
+    ...res.folderDiagnostics?.length ? { folderDiagnosticsJson: JSON.stringify(res.folderDiagnostics) } : {}
+  });
+  return res;
+}
+async function debugHubDiscoverManualOnly(tenant = "vault") {
+  return runHubDiscoverSingleLeg({ tenant, leg: "manual" });
+}
+async function debugHubDiscoverDocumentOnly(tenant = "vault") {
+  return runHubDiscoverSingleLeg({ tenant, leg: "document" });
+}
+async function debugHubDiscoverFolderOnly(tenant = "vault") {
+  return runHubDiscoverSingleLeg({ tenant, leg: "folder" });
+}
+async function debugHubDiscoverClusterOnly(tenant = "vault") {
+  requireDb();
+  const docCoverageIndex = await buildHubDiscoverDocCoverageIndex(tenant);
+  const docCount = docCoverageIndex.docCount;
+  const budgets = computeHubDiscoverBudgets(docCount);
+  const discovery = new HubCandidateDiscoveryService();
+  const t0 = Date.now();
+  const docs = await discovery.discoverDocumentHubCandidates({
+    tenant,
+    limit: budgets.documentFetchLimit,
+    docCoverageIndex,
+    limitTotal: budgets.limitTotal
+  });
+  const topDocIds = new Set(
+    docs.slice(0, budgets.topDocExcludeLimit).map((d) => d.nodeId)
+  );
+  const { candidates, stats } = await discovery.discoverClusterHubCandidates({
+    tenant,
+    limit: budgets.clusterLimit,
+    seedFetchLimit: budgets.clusterSeedFetchLimit,
+    excludeNodeIds: topDocIds
+  });
+  const res = {
+    tenant,
+    docCount,
+    budgets,
+    candidateCount: candidates.length,
+    elapsedMs: Date.now() - t0,
+    candidates,
+    clusterDiscovery: stats
+  };
+  console.info("[index-debug] debugHubDiscoverClusterOnly", {
+    tenant: res.tenant,
+    docCount: res.docCount,
+    budgets: res.budgets,
+    candidateCount: res.candidateCount,
+    elapsedMs: res.elapsedMs,
+    clusterDiscovery: res.clusterDiscovery
+  });
+  return res;
+}
+async function debugHubDiscoverSnapshot(tenant = "vault") {
+  requireDb();
+  const { candidates, roundSummaries } = await debugRunHubDiscoverWithReport({ tenant });
+  const union = await computeUnionCoverageForHubCandidates(tenant, candidates);
+  return {
+    candidates,
+    roundSummaries,
+    lastRoundSummary: roundSummaries.length ? roundSummaries[roundSummaries.length - 1] : null,
+    unionCoverage: {
+      documentCount: union.documentCount,
+      coveredCount: union.coveredCount,
+      coverageRatio: union.coverageRatio
+    }
+  };
+}
+async function debugValidateSubset(options) {
+  requireDb();
+  const tenant = options.tenant ?? "vault";
+  let candidates = options.candidates;
+  if (!candidates?.length) {
+    const r = await debugRunHubDiscoverWithReport({ tenant });
+    candidates = r.candidates;
+  }
+  const union = await computeUnionCoverageForHubCandidates(tenant, candidates);
+  const { docCoverageIndex, bitsByStableKey } = await debugBuildCandidateCoverageBits(tenant, candidates);
+  const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+  const resolved = /* @__PURE__ */ new Set();
+  for (const p of options.paths ?? []) {
+    resolved.add((0, import_obsidian23.normalizePath)(p.trim()));
+  }
+  for (const raw of options.pathPrefixes ?? []) {
+    const prefix = (0, import_obsidian23.normalizePath)(raw.trim());
+    const sqlPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
+    const rows = await mobiusRepo.listDocumentNodeIdPathByPathPrefix(sqlPrefix, 8e3);
+    for (const r of rows) {
+      if (r.path) resolved.add(r.path);
+    }
+  }
+  const pathsResolved = [...resolved].sort();
+  const perPath = [];
+  let subsetCovered = 0;
+  for (const p of pathsResolved) {
+    const nodeId = await mobiusRepo.getDocumentNodeIdByVaultPath(p);
+    if (!nodeId) {
+      perPath.push({
+        path: p,
+        nodeId: null,
+        coveredByUnion: false,
+        coveringHubs: []
+      });
+      continue;
+    }
+    const ord = docCoverageIndex.ordinalByNodeId.get(nodeId);
+    const coveredByUnion = ord !== void 0 && union.coveredNodeIds.has(nodeId);
+    if (coveredByUnion) subsetCovered++;
+    const coveringHubs = [];
+    if (ord !== void 0) {
+      for (const c of candidates) {
+        const bits = bitsByStableKey.get(c.stableKey);
+        if (bits && hasUint32Bit(bits, ord)) {
+          coveringHubs.push({
+            stableKey: c.stableKey,
+            path: c.path,
+            label: c.label,
+            sourceKind: c.sourceKind
+          });
+        }
+      }
+    }
+    perPath.push({
+      path: p,
+      nodeId,
+      coveredByUnion,
+      coveringHubs
+    });
+  }
+  const n = pathsResolved.length;
+  return {
+    tenant,
+    pathsResolved,
+    unionCoverage: {
+      documentCount: union.documentCount,
+      coveredCount: union.coveredCount,
+      coverageRatio: union.coverageRatio
+    },
+    subset: {
+      documentCount: n,
+      coveredCount: subsetCovered,
+      coverageRatio: n > 0 ? subsetCovered / n : 0,
+      coveredPaths: perPath.filter((x) => x.coveredByUnion).map((x) => x.path),
+      uncoveredPaths: perPath.filter((x) => !x.coveredByUnion).map((x) => x.path)
+    },
+    perPath
+  };
+}
+async function debugExplainPathCoverage(docPath) {
+  const path3 = (0, import_obsidian23.normalizePath)(docPath.trim());
+  const t = getIndexTenantForPath(path3);
+  requireDb();
+  const hubTenant = "vault";
+  const { candidates, roundSummaries } = await debugRunHubDiscoverWithReport({ tenant: hubTenant });
+  const union = await computeUnionCoverageForHubCandidates(hubTenant, candidates);
+  const { docCoverageIndex, bitsByStableKey } = await debugBuildCandidateCoverageBits(hubTenant, candidates);
+  const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(t);
+  const nodeId = await mobiusRepo.getDocumentNodeIdByVaultPath(path3) ?? null;
+  const coveringHubs = [];
+  if (nodeId) {
+    const ord = docCoverageIndex.ordinalByNodeId.get(nodeId);
+    if (ord !== void 0) {
+      for (const c of candidates) {
+        const bits = bitsByStableKey.get(c.stableKey);
+        if (bits && hasUint32Bit(bits, ord)) {
+          coveringHubs.push({
+            stableKey: c.stableKey,
+            path: c.path,
+            label: c.label,
+            sourceKind: c.sourceKind
+          });
+        }
+      }
+    }
+  }
+  return {
+    path: path3,
+    tenant: t,
+    nodeId,
+    coveredByUnion: nodeId ? union.coveredNodeIds.has(nodeId) : false,
+    coveringHubs,
+    lastRoundSummary: roundSummaries.length ? roundSummaries[roundSummaries.length - 1] : null
+  };
+}
+
+// src/service/agents/vault/phases/classify.ts
+var import_ai5 = require("ai");
+var import_v314 = require("zod/v3");
+var classifyOutputSchema = import_v314.z.object({
+  understanding: import_v314.z.string().describe("One-paragraph explanation of what the user is looking for"),
+  query_type: import_v314.z.enum(["factual", "exploratory", "comparative", "synthesis"]).describe("Type of query"),
+  candidate_areas: import_v314.z.array(import_v314.z.object({
+    path: import_v314.z.string(),
+    relevance_reason: import_v314.z.string()
+  })).describe("Top relevant folders or areas from the vault"),
+  exploration_notes: import_v314.z.string().describe("Notes on how to explore this query")
+});
+var CLASSIFY_FOLDER_LIMIT = 20;
+var CLASSIFY_SEARCH_TOP_K = 10;
+async function* runClassifyPhase(options) {
+  const { userQuery, aiServiceManager, stepId, conversationHistory } = options;
+  const [folderIntuitions, globalIntuitionJson, quickSearchResults] = await Promise.all([
+    loadFolderIntuitions(),
+    loadGlobalIntuitionMap(),
+    runQuickSearch(userQuery)
+  ]);
+  yield {
+    type: "pk-debug",
+    debugName: "Classify: context loaded",
+    extra: {
+      folderCount: folderIntuitions.length,
+      hasGlobalMap: !!globalIntuitionJson,
+      searchResultCount: quickSearchResults.length,
+      hasHistory: (conversationHistory?.length ?? 0) > 0
+    }
+  };
+  const folderContext = folderIntuitions.slice(0, CLASSIFY_FOLDER_LIMIT).map((f) => `- **${f.folderPath}** (${f.docCount} docs): ${f.oneLiner}
+  Tags: ${f.topTags.join(", ")}`).join("\n");
+  const searchContext = quickSearchResults.map((r) => `- [${r.title}](${r.path}) (score: ${r.score.toFixed(3)})`).join("\n");
+  const historyContext = (conversationHistory ?? []).length > 0 ? conversationHistory.map((fb) => `- [${fb.type}] ${fb.message ?? ""}`).join("\n") : "";
+  const { model } = aiServiceManager.getModelInstanceForPrompt("ai-analysis-query-classifier" /* AiAnalysisQueryClassifier */);
+  const result = (0, import_ai5.streamObject)({
+    model,
+    system: buildClassifySystem(),
+    prompt: buildClassifyPrompt({ userQuery, folderContext, searchContext, globalIntuitionJson, historyContext }),
+    schema: classifyOutputSchema
+  });
+  let output;
+  try {
+    output = await result.object;
+  } catch {
+    output = {
+      understanding: `Searching for: ${userQuery}`,
+      query_type: "exploratory",
+      candidate_areas: [],
+      exploration_notes: "Will explore the vault broadly."
+    };
+  }
+  yield {
+    type: "pk-debug",
+    debugName: "Classify: LLM complete",
+    extra: {
+      queryType: output.query_type,
+      candidateAreaCount: output.candidate_areas.length
+    }
+  };
+  const folderMap = new Map(folderIntuitions.map((f) => [f.folderPath, f]));
+  return {
+    understanding: output.understanding,
+    queryType: output.query_type,
+    candidateAreas: output.candidate_areas.map((a) => ({
+      path: a.path,
+      relevanceReason: a.relevance_reason
+    })),
+    initialLeads: quickSearchResults
+  };
+}
+async function loadFolderIntuitions() {
+  try {
+    if (!sqliteStoreManager.isInitialized()) return [];
+    const mobius = sqliteStoreManager.getMobiusNodeRepo("vault");
+    return await mobius.listTopFoldersForSearchOrient(30);
+  } catch {
+    return [];
+  }
+}
+async function loadGlobalIntuitionMap() {
+  try {
+    if (!sqliteStoreManager.isInitialized()) return void 0;
+    const stateRepo = sqliteStoreManager.getIndexStateRepo();
+    const value = await stateRepo.get("knowledge_intuition_json");
+    return value ?? void 0;
+  } catch {
+    return void 0;
+  }
+}
+async function runQuickSearch(query) {
+  try {
+    const ctx = AppContext.getInstance();
+    const searchClient = ctx.searchClient;
+    if (!searchClient) return [];
+    const res = await searchClient.search({
+      text: query,
+      scopeMode: "vault",
+      topK: CLASSIFY_SEARCH_TOP_K,
+      searchMode: "hybrid",
+      indexTenant: "vault"
+    });
+    return (res.items ?? []).map((item) => ({
+      path: item.path,
+      title: item.title ?? item.path.split("/").pop() ?? "",
+      score: item.score ?? 0
+    }));
+  } catch {
+    return [];
+  }
+}
+function buildClassifySystem() {
+  return `You are a knowledge vault navigator. Given a user query and precomputed vault context, classify the query and identify the best areas to explore.
+
+Your job:
+1. Understand what the user is looking for (one paragraph)
+2. Classify the query type: factual (specific answer), exploratory (discovery), comparative (compare things), synthesis (combine multiple sources)
+3. Identify the most relevant vault areas/folders
+4. Note key exploration strategies
+
+Be concise and action-oriented. Reference actual folder paths from the provided context.`;
+}
+function buildClassifyPrompt(options) {
+  const parts = [];
+  parts.push(`## User Query
+${options.userQuery}`);
+  if (options.historyContext) {
+    parts.push(`## Previous Interaction History
+${options.historyContext}`);
+  }
+  if (options.folderContext) {
+    parts.push(`## Folder Intuition (precomputed)
+${options.folderContext}`);
+  }
+  if (options.searchContext) {
+    parts.push(`## Quick Search Results
+${options.searchContext}`);
+  }
+  if (options.globalIntuitionJson) {
+    const truncated = options.globalIntuitionJson.length > 3e3 ? options.globalIntuitionJson.slice(0, 3e3) + "\n_(truncated)_" : options.globalIntuitionJson;
+    parts.push(`## Global Intuition Map
+${truncated}`);
+  }
+  return parts.join("\n\n");
+}
+
+// src/service/agents/vault/phases/decompose.ts
+var import_ai6 = require("ai");
+var import_v315 = require("zod/v3");
+var decomposeOutputSchema = import_v315.z.object({
+  tasks: import_v315.z.array(import_v315.z.object({
+    description: import_v315.z.string().describe("What to search for in this task"),
+    target_areas: import_v315.z.array(import_v315.z.string()).describe("Folder paths or concept areas to focus on"),
+    tool_hints: import_v315.z.array(import_v315.z.string()).describe("Suggested tools: local_search, explore_folder, graph_traversal, grep_file_tree"),
+    priority: import_v315.z.enum(["high", "medium", "low"])
+  })).max(5).describe("Physical search tasks (max 5, deduplicated)")
+});
+async function* runDecomposePhase(options) {
+  const { userQuery, classify, aiServiceManager } = options;
+  const { model } = aiServiceManager.getModelInstanceForPrompt("ai-analysis-search-architect" /* AiAnalysisSearchArchitect */);
+  const result = (0, import_ai6.streamObject)({
+    model,
+    system: buildDecomposeSystem(),
+    prompt: buildDecomposePrompt({ userQuery, classify }),
+    schema: decomposeOutputSchema
+  });
+  let output;
+  try {
+    output = await result.object;
+  } catch {
+    output = {
+      tasks: [{
+        description: userQuery,
+        target_areas: classify.candidateAreas.map((a) => a.path),
+        tool_hints: ["local_search", "explore_folder"],
+        priority: "high"
+      }]
+    };
+  }
+  yield {
+    type: "pk-debug",
+    debugName: "Decompose: tasks generated",
+    extra: { taskCount: output.tasks.length }
+  };
+  const tasks = output.tasks.map((t) => ({
+    id: generateUuidWithoutHyphens(),
+    description: t.description,
+    targetAreas: t.target_areas,
+    toolHints: t.tool_hints
+  }));
+  return { tasks };
+}
+function buildDecomposeSystem() {
+  return `You are a search strategy planner for a knowledge vault. Given a query and its classification, create a minimal set of physical search tasks.
+
+Rules:
+- Max 5 tasks; deduplicate overlapping areas
+- Each task should have a distinct focus (avoid redundancy)
+- High priority tasks cover the core query; medium/low cover context and edges
+- target_areas should be specific folder paths from the candidate areas when possible
+- tool_hints: use local_search for semantic queries, explore_folder for structural browsing, graph_traversal for linked notes, grep_file_tree for filename patterns`;
+}
+function buildDecomposePrompt(options) {
+  const { userQuery, classify } = options;
+  const parts = [];
+  parts.push(`## User Query
+${userQuery}`);
+  parts.push(`## Query Type
+${classify.queryType}`);
+  parts.push(`## Understanding
+${classify.understanding}`);
+  if (classify.candidateAreas.length > 0) {
+    const areas = classify.candidateAreas.map((a) => `- ${a.path}: ${a.relevanceReason}`).join("\n");
+    parts.push(`## Candidate Areas
+${areas}`);
+  }
+  if (classify.initialLeads.length > 0) {
+    const leads = classify.initialLeads.slice(0, 8).map((l) => `- ${l.path} (score: ${l.score.toFixed(3)})`).join("\n");
+    parts.push(`## Initial Search Leads
+${leads}`);
+  }
+  parts.push("\nCreate minimal, non-overlapping physical search tasks to cover this query.");
+  return parts.join("\n\n");
+}
+
+// src/service/agents/vault/phases/intuitionFeedback.ts
+async function* runIntuitionFeedbackPhase(options) {
+  const { classify } = options;
+  let intuitionJson;
+  try {
+    if (sqliteStoreManager.isInitialized()) {
+      const stateRepo = sqliteStoreManager.getIndexStateRepo();
+      intuitionJson = await stateRepo.get("knowledge_intuition_json") ?? void 0;
+    }
+  } catch {
+  }
+  const gaps = [];
+  const logLines = [`Intuition Feedback for query: "${classify.understanding}"`];
+  if (!intuitionJson) {
+    gaps.push('No global intuition map found \u2014 run "Analyze Vault" to generate one.');
+    logLines.push("  \u26A0 No intuition map available");
+  } else {
+    let intuitionData;
+    try {
+      intuitionData = JSON.parse(intuitionJson);
+    } catch {
+      gaps.push("Intuition map JSON is malformed.");
+      logLines.push("  \u26A0 Intuition map could not be parsed");
+    }
+    if (intuitionData) {
+      const entryPoints = (intuitionData.entryPoints ?? []).map(
+        (ep) => (ep.startPaths ?? []).join(", ")
+      );
+      const partitionPaths = (intuitionData.partitions ?? []).flatMap(
+        (p) => p.entryPaths ?? []
+      );
+      const coveredPaths = new Set([...entryPoints, ...partitionPaths].map((p) => p.toLowerCase()));
+      for (const area of classify.candidateAreas) {
+        const areaLower = area.path.toLowerCase();
+        const isCovered = Array.from(coveredPaths).some(
+          (p) => p.includes(areaLower) || areaLower.includes(p)
+        );
+        if (!isCovered) {
+          gaps.push(`Area not in intuition map: ${area.path} (${area.relevanceReason})`);
+          logLines.push(`  \u2717 Not covered: ${area.path}`);
+        } else {
+          logLines.push(`  \u2713 Covered: ${area.path}`);
+        }
+      }
+    }
+  }
+  if (gaps.length === 0) {
+    logLines.push("  \u2713 All candidate areas are represented in the intuition map.");
+  } else {
+    logLines.push(`
+  ${gaps.length} gap(s) identified. Consider re-running "Analyze Vault" after this search.`);
+  }
+  const logEntry = logLines.join("\n");
+  yield {
+    type: "pk-debug",
+    debugName: "IntuitionFeedback: complete",
+    extra: {
+      gapCount: gaps.length,
+      hasIntuitionMap: !!intuitionJson,
+      logEntry
+    }
+  };
+  return { gaps, logEntry };
+}
+
+// src/service/agents/vault/phases/recon.ts
+var import_ai8 = require("ai");
+var import_v316 = require("zod/v3");
+
+// src/service/agents/core/AgentLoop.ts
+var import_ai7 = require("ai");
+async function* runPeakAgentLoop(options) {
+  const { config, stepId, triggerName } = options;
+  const { stepLabel } = config;
+  let state = options.initialState;
+  const globalStopwatch = new Stopwatch("PeakAgent.total");
+  const iterStopwatch = new Stopwatch("PeakAgent.iter");
+  globalStopwatch.start("total");
+  let totalToolCalls = 0;
+  let stoppedReason = "max_iterations";
+  let totalUsage = emptyUsage();
+  const perIterationMs = [];
+  const toolCallTimings = [];
+  const messages = await config.buildInitialMessages(state);
+  for (let iter = 0; iter < config.maxIterations; iter++) {
+    const iterStartMs = Date.now();
+    yield {
+      type: "agent-step-progress",
+      stepLabel,
+      detail: `Planning (iter ${iter + 1}/${config.maxIterations})\u2026`,
+      triggerName: String(triggerName)
+    };
+    iterStopwatch.start(`plan-${iter}`);
+    const planSystem = await config.buildPlanSystemPrompt(state, iter);
+    const injection = config.buildPlanInjection?.(state, iter, messages) ?? [];
+    const planInputMessages = [...messages, ...injection];
+    yield buildPromptTraceDebugEvent(triggerName, planSystem, JSON.stringify(planInputMessages));
+    const planResult = (0, import_ai7.streamText)({
+      model: options.modelForPlan.model,
+      system: planSystem,
+      messages: planInputMessages,
+      tools: config.tools,
+      toolChoice: config.toolChoice ?? "auto"
+    });
+    yield* streamTransform(planResult.fullStream, triggerName, {
+      yieldUIStep: { uiType: "steps-display" /* STEPS_DISPLAY */, stepId }
+    });
+    const planStepMessages = [];
+    const planReasoning = (await planResult.reasoning).map((r) => r.text).join("\n");
+    if (!isBlankString(planReasoning)) {
+      planStepMessages.push({ role: "assistant", content: planReasoning });
+    }
+    const planText = await planResult.text;
+    if (!isBlankString(planText)) {
+      planStepMessages.push({ role: "assistant", content: planText });
+    }
+    const toolCalls = await planResult.toolCalls;
+    if (toolCalls.length > 0) {
+      planStepMessages.push({
+        role: "assistant",
+        content: toolCalls.map((tc) => ({
+          type: "tool-call",
+          toolCallId: tc.toolCallId,
+          toolName: tc.toolName,
+          input: tc.input
+        }))
+      });
+      totalToolCalls += toolCalls.length;
+    }
+    const planUsage = await planResult.usage;
+    if (planUsage) {
+      totalUsage = mergeTokenUsage(totalUsage, {
+        inputTokens: planUsage.promptTokens,
+        outputTokens: planUsage.completionTokens,
+        totalTokens: planUsage.totalTokens
+      });
+    }
+    iterStopwatch.stop();
+    if (toolCalls.length > 0) {
+      const toolNames = toolCalls.map((tc) => tc.toolName).join(", ");
+      yield {
+        type: "agent-step-progress",
+        stepLabel,
+        detail: `Running tools: ${toolNames}`,
+        triggerName: String(triggerName)
+      };
+    }
+    const toolExecStart = Date.now();
+    const { full: fullToolMessages, summary: summaryToolMessages } = await executeReconToolCalls(config.tools, planStepMessages);
+    if (toolCalls.length > 0) {
+      const perToolMs = Math.round((Date.now() - toolExecStart) / toolCalls.length);
+      for (const tc of toolCalls) {
+        toolCallTimings.push({ toolName: tc.toolName, durationMs: perToolMs });
+      }
+    }
+    let submit;
+    if (config.runSubmit) {
+      yield {
+        type: "agent-step-progress",
+        stepLabel,
+        detail: `Submitting results\u2026`,
+        triggerName: String(triggerName)
+      };
+      submit = await config.runSubmit(state, iter, planStepMessages, fullToolMessages);
+    }
+    if (submit != null && config.mergeSubmit) {
+      state = config.mergeSubmit(state, submit);
+    }
+    messages.push(...planStepMessages);
+    messages.push(...summaryToolMessages);
+    const iterMs = Date.now() - iterStartMs;
+    perIterationMs.push(iterMs);
+    yield {
+      type: "pk-debug",
+      debugName: `PeakAgent [${stepLabel}] iter ${iter + 1}`,
+      extra: {
+        iteration: iter + 1,
+        maxIterations: config.maxIterations,
+        toolCallCount: toolCalls.length,
+        hasSubmit: submit != null,
+        iterMs,
+        totalInputTokens: totalUsage.inputTokens,
+        totalOutputTokens: totalUsage.outputTokens
+      }
+    };
+    const callbackResult = config.onIterationComplete?.({
+      iteration: iter,
+      planMessages: planStepMessages,
+      toolResultsFull: fullToolMessages,
+      toolResultsSummary: summaryToolMessages,
+      submit,
+      shouldStop: false
+    });
+    if (callbackResult === false) {
+      stoppedReason = "callback_stop";
+      break;
+    }
+    if (config.shouldStop?.(state, submit, iter)) {
+      stoppedReason = "should_stop";
+      break;
+    }
+  }
+  globalStopwatch.stop();
+  const totalDurationMs = Date.now();
+  const peakStats = {
+    totalIterations: perIterationMs.length,
+    totalToolCalls,
+    stoppedReason,
+    totalInputTokens: totalUsage.inputTokens,
+    totalOutputTokens: totalUsage.outputTokens,
+    totalDurationMs: perIterationMs.reduce((a, b) => a + b, 0),
+    perIterationMs,
+    toolCallTimings
+  };
+  yield {
+    type: "agent-stats",
+    stats: peakStats,
+    triggerName: String(triggerName)
+  };
+  return {
+    finalState: state,
+    messages,
+    stats: peakStats
+  };
+}
+
+// src/service/agents/vault/phases/recon.ts
+var RECON_ITERATIONS_PER_TASK = 3;
+var reconSubmitSchema = import_v316.z.object({
+  discovered_evidence: import_v316.z.array(import_v316.z.object({
+    path: import_v316.z.string().describe("File path discovered"),
+    reason: import_v316.z.string().describe("Why this file is relevant to the task")
+  })).describe("Evidence found in this recon round"),
+  coverage_assessment: import_v316.z.string().describe("How well the task is covered"),
+  confidence: import_v316.z.enum(["high", "medium", "low"]),
+  should_stop: import_v316.z.boolean().describe("True if the task has sufficient evidence"),
+  tools_used: import_v316.z.array(import_v316.z.string())
+});
+function buildReconTools(aiServiceManager) {
+  const tm = aiServiceManager.getTemplateManager?.();
+  return {
+    inspect_note_context: inspectNoteContextToolMarkdownOnly(tm),
+    graph_traversal: graphTraversalToolMarkdownOnly(tm),
+    explore_folder: exploreFolderToolMarkdownOnly(tm),
+    grep_file_tree: grepFileTreeTool(),
+    local_search_whole_vault: localSearchWholeVaultTool(tm),
+    find_path: findPathTool(tm),
+    hub_local_graph: hubLocalGraphTool(tm)
+  };
+}
+async function* runTaskRecon(options) {
+  const { task, userQuery, classify, aiServiceManager, stepId } = options;
+  const tools = buildReconTools(aiServiceManager);
+  const loopResult = yield* runPeakAgentLoop({
+    config: {
+      stepLabel: `Recon: ${task.description.slice(0, 40)}`,
+      maxIterations: RECON_ITERATIONS_PER_TASK,
+      tools,
+      toolChoice: "required",
+      buildInitialMessages: async () => [{
+        role: "user",
+        content: buildReconUserPrompt({ userQuery, task, classify })
+      }],
+      buildPlanSystemPrompt: async () => buildReconSystemPrompt(task),
+      buildPlanInjection: (_state, iter) => {
+        if (iter === 0) return [];
+        return [{
+          role: "user",
+          content: `[Iter ${iter + 1}/${RECON_ITERATIONS_PER_TASK}] Continue exploring. Focus on areas not yet covered in the task.`
+        }];
+      },
+      runSubmit: async (state, iter, planMessages, toolResults) => {
+        try {
+          const { model } = aiServiceManager.getModelInstanceForPrompt(
+            "ai-analysis-recon-loop-path-submit-system" /* AiAnalysisReconLoopPathSubmitSystem */
+          );
+          const toolResultsMarkdown = toolResults.filter((m) => m.role === "tool").map((m) => JSON.stringify(m.content)).join("\n\n").slice(0, 6e3);
+          const submitResult = (0, import_ai8.streamObject)({
+            model,
+            system: buildReconSubmitSystem(),
+            prompt: buildReconSubmitPrompt(userQuery, task, toolResultsMarkdown),
+            schema: reconSubmitSchema
+          });
+          return await submitResult.object;
+        } catch {
+          return {
+            discovered_evidence: [],
+            coverage_assessment: "Recon round completed.",
+            confidence: "low",
+            should_stop: false,
+            tools_used: []
+          };
+        }
+      },
+      mergeSubmit: (state, submit) => {
+        const existingPaths = new Set(state.discoveredEvidence.map((e) => e.path));
+        const newEvidence = submit.discovered_evidence.filter((e) => !existingPaths.has(e.path)).map((e) => ({ path: e.path, reason: e.reason, taskId: task.id }));
+        return {
+          discoveredEvidence: [...state.discoveredEvidence, ...newEvidence],
+          shouldStop: submit.should_stop
+        };
+      },
+      shouldStop: (state) => state.shouldStop
+    },
+    initialState: { discoveredEvidence: [], shouldStop: false },
+    modelForPlan: aiServiceManager.getModelInstanceForPrompt("ai-analysis-recon-loop-plan-system" /* AiAnalysisReconLoopPlanSystem */),
+    stepId,
+    triggerName: "search-raw-agent-recon" /* SEARCH_RAW_AGENT_RECON */
+  });
+  return loopResult.finalState.discoveredEvidence;
+}
+async function* runReconPhase(options) {
+  const { userQuery, classify, decompose, aiServiceManager, stepId } = options;
+  yield {
+    type: "pk-debug",
+    debugName: "Recon: starting",
+    extra: { taskCount: decompose.tasks.length }
+  };
+  const allEvidence = [];
+  const seenPaths = /* @__PURE__ */ new Set();
+  for (const task of decompose.tasks) {
+    const taskEvidence = yield* runTaskRecon({
+      task,
+      userQuery,
+      classify,
+      aiServiceManager,
+      stepId
+    });
+    for (const ev of taskEvidence) {
+      if (!seenPaths.has(ev.path)) {
+        seenPaths.add(ev.path);
+        allEvidence.push(ev);
+      }
+    }
+    yield {
+      type: "pk-debug",
+      debugName: `Recon: task complete`,
+      extra: {
+        taskId: task.id,
+        taskDesc: task.description.slice(0, 50),
+        newEvidence: taskEvidence.length,
+        totalEvidence: allEvidence.length
+      }
+    };
+  }
+  return { evidence: allEvidence };
+}
+function buildReconSystemPrompt(task) {
+  const toolSuggestions = task.toolHints.length > 0 ? `
+Suggested tools for this task: ${task.toolHints.join(", ")}` : "";
+  return `You are a vault exploration agent. Your task is to find relevant documents.
+
+Use the available tools:
+- **local_search_whole_vault**: Full-text and semantic search
+- **explore_folder**: Browse folder structure
+- **grep_file_tree**: Find files by name patterns
+- **inspect_note_context**: Deep dive into a single note
+- **graph_traversal**: Explore related notes via link graph
+- **hub_local_graph**: Hub-centric local graph view
+- **find_path**: Find connection paths between two notes
+${toolSuggestions}
+
+Strategy:
+1. Start with the target areas and search leads
+2. Use search to find anchor documents
+3. Use graph tools to expand from anchors
+4. Be systematic \u2014 don't repeat searches`;
+}
+function buildReconUserPrompt(options) {
+  const { userQuery, task, classify } = options;
+  const parts = [];
+  parts.push(`## User Query
+${userQuery}`);
+  parts.push(`## This Task
+${task.description}`);
+  if (task.targetAreas.length > 0) {
+    parts.push(`## Target Areas
+${task.targetAreas.join("\n")}`);
+  }
+  if (classify.initialLeads.length > 0) {
+    const leads = classify.initialLeads.slice(0, 6).map((l) => `- ${l.path} (score: ${l.score.toFixed(3)})`).join("\n");
+    parts.push(`## Initial Search Leads
+${leads}`);
+  }
+  parts.push("\nExplore the vault using the tools. Find relevant documents for this task.");
+  return parts.join("\n\n");
+}
+function buildReconSubmitSystem() {
+  return `You are analyzing vault exploration results. Based on the tool results, extract discovered file paths with reasons.
+
+Be accurate \u2014 only include paths that actually appeared in tool results.
+Set should_stop=true when the task has sufficient evidence to answer the user's query for this dimension.`;
+}
+function buildReconSubmitPrompt(userQuery, task, toolResultsMarkdown) {
+  return `## User Query
+${userQuery}
+
+## Task
+${task.description}
+
+## Tool Results
+${toolResultsMarkdown}
+
+Analyze the results: extract discovered file paths with reasons, assess coverage, decide if enough evidence has been gathered.`;
+}
+
+// src/service/agents/vault/phases/presentPlan.ts
+var import_ai9 = require("ai");
+var import_v317 = require("zod/v3");
+var planOutputSchema = import_v317.z.object({
+  proposed_outline: import_v317.z.string().describe("One-paragraph description of the report plan"),
+  suggested_sections: import_v317.z.array(import_v317.z.string()).describe("McKinsey-style section titles (3-6 sections)"),
+  coverage_assessment: import_v317.z.string().describe("Assessment of evidence coverage"),
+  confidence: import_v317.z.enum(["high", "medium", "low"])
+});
+async function* runPresentPlanPhase(options) {
+  const { userQuery, classify, recon, aiServiceManager } = options;
+  yield {
+    type: "pk-debug",
+    debugName: "PresentPlan: generating outline",
+    extra: { evidenceCount: recon.evidence.length }
+  };
+  const { model } = aiServiceManager.getModelInstanceForPrompt("search-ai-summary" /* AiAnalysisSummary */);
+  let output;
+  try {
+    const result = (0, import_ai9.streamObject)({
+      model,
+      system: buildPlanSystem(),
+      prompt: buildPlanPrompt({ userQuery, classify, recon }),
+      schema: planOutputSchema
+    });
+    output = await result.object;
+  } catch {
+    output = {
+      proposed_outline: `Will synthesize ${recon.evidence.length} sources to answer: ${userQuery}`,
+      suggested_sections: ["Overview", "Key Findings", "Details", "Conclusions"],
+      coverage_assessment: "Partial coverage based on available evidence.",
+      confidence: "medium"
+    };
+  }
+  const snapshot = {
+    evidence: recon.evidence,
+    proposedOutline: output.proposed_outline,
+    suggestedSections: output.suggested_sections,
+    coverageAssessment: output.coverage_assessment,
+    confidence: output.confidence
+  };
+  yield {
+    type: "pk-debug",
+    debugName: "PresentPlan: yielding HITL pause",
+    extra: {
+      confidence: output.confidence,
+      sectionCount: output.suggested_sections.length,
+      evidenceCount: recon.evidence.length
+    }
+  };
+  yield {
+    type: "hitl-pause",
+    pauseId: generateUuidWithoutHyphens(),
+    phase: "present-plan",
+    snapshot,
+    triggerName: "VaultSearchAgent.PresentPlan"
+  };
+  return snapshot;
+}
+function buildPlanSystem() {
+  return `You are a research analyst. Given a user query, query understanding, and a list of evidence files collected, create a report plan.
+
+Your plan should:
+1. Describe how you will synthesize the evidence to answer the query (one paragraph)
+2. Suggest 3-6 McKinsey-style section titles that would structure the report
+3. Assess how well the collected evidence covers the query
+4. Rate your confidence in being able to answer the query with current evidence
+
+Be concise and actionable.`;
+}
+function buildPlanPrompt(options) {
+  const { userQuery, classify, recon } = options;
+  const parts = [];
+  parts.push(`## User Query
+${userQuery}`);
+  parts.push(`## Query Understanding
+${classify.understanding}
+Type: ${classify.queryType}`);
+  const evidenceList = recon.evidence.slice(0, 30).map((e) => `- **${e.path}**: ${e.reason}`).join("\n");
+  parts.push(`## Collected Evidence (${recon.evidence.length} files)
+${evidenceList}`);
+  if (recon.evidence.length > 30) {
+    parts.push(`_(${recon.evidence.length - 30} more files not shown)_`);
+  }
+  parts.push("\nCreate a concise report plan for answering this query using the evidence.");
+  return parts.join("\n\n");
+}
+
+// src/service/agents/vault/phases/report.ts
+var import_ai10 = require("ai");
+var import_v318 = require("zod/v3");
 
 // src/service/agents/search-agent-helper/helpers/weavePathsToContext.ts
 var TOP_FOLDERS = 3;
@@ -21571,2479 +25734,403 @@ async function weavePathsToContext(paths, templateManager) {
   }
 }
 
-// src/service/agents/search-agent-helper/RawSearchAgent.ts
-async function resolvePathSubmitToPaths(report, getFullVaultPaths) {
-  const paths = /* @__PURE__ */ new Set();
-  if (report.lead_strategy?.must_expand_prefixes?.length) {
-    const full = getFullVaultPaths();
-    const maxCap = report.lead_strategy.max_expand_results ?? 5e3;
-    let expanded = full.filter(
-      (p) => report.lead_strategy.must_expand_prefixes.some((prefix) => {
-        const norm = prefix.replace(/\/$/, "");
-        return norm === "" ? true : p === norm || p.startsWith(norm + "/");
-      })
-    );
-    const includeRegex = report.lead_strategy.include_path_regex;
-    if (includeRegex?.length) {
-      const compiled = includeRegex.map((r) => {
-        try {
-          return new RegExp(r, "i");
-        } catch {
-          return null;
-        }
-      }).filter(Boolean);
-      if (compiled.length) expanded = expanded.filter((p) => compiled.some((re) => re.test(p)));
-    }
-    const excludeRegex = report.lead_strategy.exclude_path_regex;
-    if (excludeRegex?.length) {
-      const compiled = excludeRegex.map((r) => {
-        try {
-          return new RegExp(r, "i");
-        } catch {
-          return null;
-        }
-      }).filter(Boolean);
-      if (compiled.length) expanded = expanded.filter((p) => !compiled.some((re) => re.test(p)));
-    }
-    expanded.slice(0, maxCap).forEach((p) => paths.add(p));
-  }
-  if (report.search_plan?.length) {
-    const client = AppContext.getInstance().searchClient;
-    for (const item of report.search_plan) {
-      try {
-        const res = await client.search({
-          text: item.query,
-          scopeMode: "inFolder",
-          scopeValue: { folderPath: item.scope_path },
-          topK: item.top_k ?? 80,
-          searchMode: item.search_mode ?? "fulltext",
-          indexTenant: "vault"
-        });
-        (res.items ?? []).forEach((i) => paths.add(i.path));
-      } catch {
-      }
-    }
-  }
-  if (report.discovered_leads?.length) {
-    const mdOnly = report.discovered_leads.filter((p) => /\.md$/i.test(p));
-    mdOnly.forEach((p) => paths.add(p));
-  }
-  return Array.from(paths).sort();
-}
-var RawSearchAgent = class {
-  constructor(aiServiceManager, context) {
-    this.aiServiceManager = aiServiceManager;
-    this.context = context;
-    this.reconAgent = new ReconAgent(this.aiServiceManager, this.context);
-  }
-  /**
-   * Recon-only path for physical tasks (Search Architect output). Uses physical-task recon prompt (unified_intent).
-   * onReconFinish receives (results, mergedPaths, weavedContext).
-   */
-  async *streamSearchReconOnlyForPhysicalTasks(options) {
-    const stopWatch = new Stopwatch("streamSearchReconOnlyForPhysicalTasks");
-    const { runStepId, physicalTasks, onReconFinish } = options;
-    let lastResults = [];
-    let lastMergedPaths = [];
-    let lastWeavedContext = "";
-    stopWatch.start("streamPhysicalTasksReconOnly");
-    yield* this.reconAgent.streamPhysicalTasksReconOnly({
-      runStepId,
-      physicalTasks,
-      stepId: runStepId ?? generateUuidWithoutHyphens(),
-      onReconFinish: (results, mergedPaths, weavedContext) => {
-        lastResults = results;
-        lastMergedPaths = mergedPaths;
-        lastWeavedContext = weavedContext ?? "";
-        onReconFinish(results, mergedPaths, weavedContext);
-      }
-    });
-    stopWatch.stop();
-    yield {
-      type: "pk-debug",
-      debugName: "streamSearchReconOnlyForPhysicalTasksResult",
-      triggerName: "search-raw-agent" /* SEARCH_RAW_AGENT */,
-      extra: {
-        physicalTasksCount: physicalTasks.length,
-        durationLabel: "streamSearchReconOnlyForPhysicalTasks",
-        totalDuration: stopWatch.getTotalElapsed(),
-        lastResults,
-        lastMergedPaths,
-        lastWeavedContext
-      }
-    };
-  }
-};
-var ReconAgent = class {
-  constructor(aiServiceManager, context) {
-    this.aiServiceManager = aiServiceManager;
-    this.context = context;
-  }
-  /**
-   * Runs parallel recon for physical tasks (Search Architect output). Uses physical-task recon prompt.
-   * Collects one result per run; merges all paths; weaves paths to context; onReconFinish(results, mergedPaths, weavedContext).
-   */
-  async *streamPhysicalTasksReconOnly(options) {
-    const { runStepId, physicalTasks, onReconFinish } = options;
-    const stepId = options.stepId ?? runStepId ?? generateUuidWithoutHyphens();
-    const reconMeta = runStepId ? { runStepId, stage: "recon", agent: "RawSearchAgent.Recon" } : null;
-    if (reconMeta) {
-      yield uiStepStart(reconMeta, {
-        title: "Parallel recon (physical tasks)\u2026",
-        description: `${physicalTasks.length} task(s)`,
-        triggerName: "search-raw-agent-recon" /* SEARCH_RAW_AGENT_RECON */
-      });
-    }
-    const stopWatch = new Stopwatch("streamPhysicalTasksReconOnly");
-    stopWatch.start("parallel_physical_tasks_recon");
-    const results = new Array(physicalTasks.length);
-    const reconStreams = physicalTasks.map((task, index) => {
-      const lane = { laneType: "physical-task", laneId: `physical-${index}`, index };
-      const taskStepId = reconMeta && runStepId ? makeStepId({ ...reconMeta, lane }) : `${index}-${generateUuidWithoutHyphens()}`;
-      return this.streamReconForPhysicalTask(task, taskStepId, (result) => {
-        results[index] = result;
-      });
-    });
-    for await (const ev of parallelStream(reconStreams)) {
-      yield ev;
-      if (ev.type === "parallel-stream-progress" && reconMeta) {
-        yield uiStageSignal(reconMeta, {
-          status: "progress",
-          payload: {
-            completed: ev.completed,
-            total: ev.total,
-            completedIndices: ev.completedIndices ?? []
-          },
-          triggerName: "search-raw-agent-recon" /* SEARCH_RAW_AGENT_RECON */
-        });
-      }
-    }
-    stopWatch.stop();
-    if (reconMeta) {
-      yield uiStageSignal(reconMeta, { status: "complete", payload: { physicalTasks: physicalTasks.length }, triggerName: "search-raw-agent-recon" /* SEARCH_RAW_AGENT_RECON */ });
-    }
-    const finishedResults = results.filter((r) => r != null);
-    const mergedPaths = [...new Set(finishedResults.flatMap((r) => r.paths))].sort();
-    const tm = this.aiServiceManager.getTemplateManager?.();
-    const weavedContext = await weavePathsToContext(mergedPaths, tm);
-    onReconFinish(finishedResults, mergedPaths, weavedContext ?? "");
-    yield {
-      type: "pk-debug",
-      debugName: "parallelPhysicalTasksReconResult",
-      triggerName: "search-raw-agent-task-consolidator" /* SEARCH_RAW_AGENT_TASK_CONSOLIDATOR */,
-      extra: {
-        physicalTasksCount: physicalTasks.length,
-        resultsCount: finishedResults.length,
-        mergedPathsCount: mergedPaths.length,
-        stepDuration: stopWatch.getLastDuration(),
-        physicalTaskResults: finishedResults,
-        mergedPaths
-      }
-    };
-  }
-  /**
-   * Recon for one physical task (unified_intent). Reuses dimension recon prompt with unified_intent + scope.
-   */
-  async *streamReconForPhysicalTask(physicalTask, stepId, onResult) {
-    const singleReconAgent = new SingleReconAgent(this.aiServiceManager, this.context);
-    yield* singleReconAgent.streamReconForPhysicalTask(physicalTask, stepId, onResult);
-  }
-};
-var RECON_MANUAL_LOOP_MAX_ITERATIONS_MANIFEST = 10;
-var RECON_MANUAL_LOOP_MAX_ITERATIONS_DEFAULT = 5;
-function buildTaskReminder(ctx) {
-  const parts = [
-    "[Task focus \u2014 stay aligned]",
-    "User query: " + (ctx.userQuery || "(none)")
-  ];
-  if (ctx.dimensionId) parts.push("Dimension: " + ctx.dimensionId);
-  if (ctx.intent_description) parts.push("Intent: " + ctx.intent_description);
-  if (ctx.unified_intent) parts.push("Unified intent: " + ctx.unified_intent);
-  return parts.join("\n");
-}
-var SingleReconAgent = class {
-  constructor(aiServiceManager, context) {
-    this.aiServiceManager = aiServiceManager;
-    this.context = context;
-    this.reconResultRef = null;
-    const tm = this.aiServiceManager.getTemplateManager?.();
-    this.explorationTools = {
-      inspect_note_context: inspectNoteContextToolMarkdownOnly(tm),
-      graph_traversal: graphTraversalToolMarkdownOnly(tm),
-      find_path: findPathTool(tm),
-      explore_folder: exploreFolderToolMarkdownOnly(tm),
-      grep_file_tree: grepFileTreeTool(),
-      local_search_whole_vault: localSearchWholeVaultTool(tm)
-    };
-  }
-  async *runPlanRecon(ops) {
-    const { iter, ctx, messages, stepId, onPlanFinish, stopwatch } = ops;
-    stopwatch.start("[iteration " + iter + "] plan step messages.");
-    yield {
-      type: "pk-debug",
-      debugName: "Recon Manual Loop - iteration " + iter + " plan step start.",
-      extra: { currentMessages: JSON.stringify(messages) }
-    };
-    const planStepMessages = [];
-    const system = await this.aiServiceManager.renderPrompt("ai-analysis-recon-loop-plan-system" /* AiAnalysisReconLoopPlanSystem */, ctx);
-    yield buildPromptTraceDebugEvent("search-raw-agent-recon-plan-step" /* SEARCH_RAW_AGENT_RECON_PLAN_STEP */, system, JSON.stringify(messages));
-    const stepResult = (0, import_ai2.streamText)({
-      model: this.aiServiceManager.getModelInstanceForPrompt("ai-analysis-recon-loop-plan-system" /* AiAnalysisReconLoopPlanSystem */).model,
-      system,
-      messages,
-      tools: this.explorationTools,
-      toolChoice: "required"
-    });
-    yield* streamTransform(stepResult.fullStream, "search-raw-agent-recon-plan-step" /* SEARCH_RAW_AGENT_RECON_PLAN_STEP */, {
-      yieldUIStep: { uiType: "steps-display" /* STEPS_DISPLAY */, stepId }
-    });
-    const responseReasoning = (await stepResult.reasoning).map((r) => r.text).join("\n");
-    if (!isBlankString(responseReasoning)) {
-      planStepMessages.push({ role: "assistant", content: responseReasoning });
-    }
-    const responseText = await stepResult.text;
-    if (!isBlankString(responseText)) {
-      planStepMessages.push({ role: "assistant", content: responseText });
-    }
-    const toolCalls = await stepResult.toolCalls;
-    if (toolCalls.length > 0) {
-      planStepMessages.push({
-        role: "assistant",
-        content: toolCalls.map((tc) => ({
-          type: "tool-call",
-          toolCallId: tc.toolCallId,
-          toolName: tc.toolName,
-          input: tc.input
-        }))
-      });
-    }
-    stopwatch.stop();
-    yield {
-      type: "pk-debug",
-      debugName: "Recon Manual Loop - iteration " + iter + " plan step finish.",
-      extra: {
-        currentStepCost: stopwatch.getLastDuration(),
-        responseMessages: JSON.stringify(planStepMessages)
-      }
-    };
-    onPlanFinish(planStepMessages);
-  }
-  async *runReconTool(ops) {
-    const { iter, planStepMessages, stopwatch, onToolCallFinish } = ops;
-    stopwatch.start("[iteration " + iter + "] process tool calls.");
-    const toolCalls = planStepMessages.flatMap(
-      (msg) => msg.role === "assistant" && Array.isArray(msg.content) ? msg.content.filter((part) => part.type === "tool-call") : []
-    );
-    const currentRoundToolMessagesFull = [];
-    const currentRoundToolMessagesSummary = [];
-    for (const tc of toolCalls) {
-      const exec = this.explorationTools[tc.toolName];
-      if (!exec || !exec.execute) continue;
-      let output;
-      try {
-        output = await exec.execute(tc.input);
-      } catch (err) {
-        console.error("[RawSearchAgent][runReconTool] Error executing tool", tc.toolName, tc.input, err);
-        output = { error: err instanceof Error ? err.message : String(err) };
-      }
-      const toolResultGetter = (outputValue) => ({
-        role: "tool",
-        content: [{
-          type: "tool-result",
-          toolCallId: tc.toolCallId,
-          toolName: tc.toolName,
-          output: typeof outputValue === "string" ? { type: "text", value: outputValue } : { type: "json", value: outputValue }
-        }]
-      });
-      currentRoundToolMessagesFull.push(toolResultGetter(output));
-      currentRoundToolMessagesSummary.push(toolResultGetter("[truncated for context]"));
-    }
-    stopwatch.stop();
-    yield {
-      type: "pk-debug",
-      debugName: "Recon Manual Loop - iteration " + iter + " process tool calls",
-      extra: { currentStepCost: stopwatch.getLastDuration() }
-    };
-    onToolCallFinish(currentRoundToolMessagesFull, currentRoundToolMessagesSummary, toolCalls.length > 0);
-  }
-  async *runSubmitReconPaths(ops) {
-    const { iter, ctx, planStepMessages, fullToolResultMessages, alreadyCollectedPaths, previousPathSubmitHistory, stepId, stopwatch, onSubmitFinish } = ops;
-    stopwatch.start("[iteration " + iter + "] path submit.");
-    const systemPathSubmit = await this.aiServiceManager.renderPrompt("ai-analysis-recon-loop-path-submit-system" /* AiAnalysisReconLoopPathSubmitSystem */, {});
-    const taskReminderMessage = [{ role: "user", content: buildTaskReminder(ctx) }];
-    const historyMessage = (previousPathSubmitHistory?.length ?? 0) > 0 ? [{ role: "user", content: "Previous rounds' path-submit strategies (do not duplicate must_expand_prefixes or search_plan):\n" + JSON.stringify(previousPathSubmitHistory) }] : [];
-    const currentPathsMessage = alreadyCollectedPaths.length > 0 ? [{ role: "user", content: "Current paths already collected (do not include in discovered_leads):\n" + compactPathsForPrompt(alreadyCollectedPaths) }] : [];
-    const messages = [...taskReminderMessage, ...historyMessage, ...currentPathsMessage, ...planStepMessages, ...fullToolResultMessages];
-    yield buildPromptTraceDebugEvent("search-raw-agent-recon-path-submit-step" /* SEARCH_RAW_AGENT_RECON_PATH_SUBMIT_STEP */, systemPathSubmit, JSON.stringify(messages));
-    const providerOptionsConfig = {
-      noReasoning: false,
-      reasoningEffort: "low"
-    };
-    const { model: modelPathSubmit, providerOptions } = this.aiServiceManager.getModelInstanceForPrompt("ai-analysis-recon-loop-path-submit-system" /* AiAnalysisReconLoopPathSubmitSystem */, providerOptionsConfig);
-    const pathResult = (0, import_ai2.streamObject)({
-      model: modelPathSubmit,
-      system: systemPathSubmit,
-      messages,
-      schema: pathSubmitOutputSchema,
-      providerOptions
-    });
-    yield* streamTransform(pathResult.fullStream, "search-raw-agent-recon-path-submit-step" /* SEARCH_RAW_AGENT_RECON_PATH_SUBMIT_STEP */, {
-      yieldUIStep: { uiType: "steps-display" /* STEPS_DISPLAY */, stepId }
-    });
-    let pathSubmitOutput;
-    let resolvedPaths = [];
-    try {
-      pathSubmitOutput = await pathResult.object;
-      resolvedPaths = await resolvePathSubmitToPaths(pathSubmitOutput, getFullVaultFilePathsForGrep);
-    } catch {
-      resolvedPaths = [];
-    }
-    stopwatch.stop();
-    yield {
-      type: "pk-debug",
-      debugName: "Recon Manual Loop - iteration " + iter + " path submit result",
-      extra: {
-        currentStepCost: stopwatch.getLastDuration(),
-        pathSubmitOutput,
-        resolvedPaths
-      }
-    };
-    onSubmitFinish(resolvedPaths, pathSubmitOutput);
-  }
-  async *runManualReconLoop(ctx, stepId, triggerName) {
-    const stopwatch = new Stopwatch("Recon Manual Loop");
-    const messages = [
-      { role: "user", content: await this.aiServiceManager.renderPrompt("ai-analysis-recon-loop-plan" /* AiAnalysisReconLoopPlan */, ctx) }
-    ];
-    const allPaths = /* @__PURE__ */ new Set();
-    const pathSubmitHistory = [];
-    for (let iter = 0; iter < ctx.maxIterations; iter++) {
-      const planStepMessages = [];
-      yield* this.runPlanRecon({
-        iter,
-        ctx,
-        stopwatch,
-        stepId,
-        messages: [
-          ...messages,
-          { role: "user", content: buildTaskReminder(ctx) },
-          {
-            role: "assistant",
-            content: allPaths.size === 0 ? "Current paths: (none yet)" : "Current paths (compact):\n" + compactPathsForPrompt(Array.from(allPaths))
-          }
-        ],
-        onPlanFinish: (messageCallback) => planStepMessages.push(...messageCallback)
-      });
-      let needToSubmitPaths = false;
-      let fullToolResultMessages = [];
-      let summaryToolResultMessages = [];
-      yield* this.runReconTool({
-        iter,
-        planStepMessages,
-        stopwatch,
-        onToolCallFinish: (fullMessages, summaryMessages, needSubmitPaths) => {
-          fullToolResultMessages = fullMessages;
-          summaryToolResultMessages = summaryMessages;
-          needToSubmitPaths = needSubmitPaths;
-        }
-      });
-      let lastPathSubmitOutput;
-      let discoveredLeadsCollection = [];
-      if (needToSubmitPaths) {
-        yield* this.runSubmitReconPaths({
-          iter,
-          ctx,
-          planStepMessages,
-          fullToolResultMessages,
-          alreadyCollectedPaths: Array.from(allPaths),
-          previousPathSubmitHistory: pathSubmitHistory,
-          stepId,
-          stopwatch,
-          onSubmitFinish: (discovered_leads_callback, pathSubmitOutput) => {
-            discoveredLeadsCollection = discovered_leads_callback;
-            lastPathSubmitOutput = pathSubmitOutput;
-          }
-        });
-      }
-      messages.push(...planStepMessages);
-      messages.push(...summaryToolResultMessages);
-      messages.push({
-        role: "assistant",
-        content: JSON.stringify({
-          tactical_summary: lastPathSubmitOutput?.tactical_summary ?? "",
-          battlefield_assessment: lastPathSubmitOutput?.battlefield_assessment ?? null,
-          lead_strategy: lastPathSubmitOutput?.lead_strategy,
-          search_plan: lastPathSubmitOutput?.search_plan,
-          resolved_count: discoveredLeadsCollection?.length ?? 0
-        })
-      });
-      discoveredLeadsCollection.forEach((p) => allPaths.add(p));
-      pathSubmitHistory.push({
-        lead_strategy: lastPathSubmitOutput?.lead_strategy,
-        search_plan: lastPathSubmitOutput?.search_plan,
-        resolved_count: discoveredLeadsCollection?.length ?? 0
-      });
-      if (lastPathSubmitOutput?.should_submit_report === true) break;
-    }
-    yield {
-      type: "pk-debug",
-      debugName: "Recon Manual Loop",
-      extra: {
-        stopwatch: stopwatch.toString(),
-        pathsCount: allPaths.size,
-        pathSubmitHistory
-      }
-    };
-    this.reconResultRef?.({
-      paths: Array.from(allPaths).sort(),
-      messages,
-      pathSubmitHistory
-    });
-    this.reconResultRef = null;
-  }
-  /**
-   * Recon for one physical task (unified_intent). Reuses dimension recon prompt with unified_intent + scope.
-   * Passes back paths, messages, pathSubmitHistory (no final report step).
-   */
-  async *streamReconForPhysicalTask(physicalTask, stepId, onResult) {
-    if (!stepId) stepId = generateUuidWithoutHyphens();
-    const scope = physicalTask.scope_constraint;
-    const persona = await getVaultPersona();
-    const isManifest = physicalTask.covered_dimension_ids.includes("inventory_mapping");
-    const maxIterations = isManifest ? RECON_MANUAL_LOOP_MAX_ITERATIONS_MANIFEST : RECON_MANUAL_LOOP_MAX_ITERATIONS_DEFAULT;
-    const ctx = {
-      userQuery: this.context.getInitialPrompt(),
-      unified_intent: physicalTask.unified_intent,
-      coveredDimensionIds: physicalTask.covered_dimension_ids.join(", "),
-      inventoryRequiresManifest: isManifest,
-      scopePath: scope?.path,
-      scopeAnchor: scope?.anchor_entity,
-      scopeTags: scope?.tags?.length ? scope.tags.join(", ") : void 0,
-      vaultDescription: persona.description,
-      vaultStructure: persona.structure,
-      vaultTopTags: persona.topTags,
-      vaultCapabilities: persona.capabilities,
-      maxIterations
-    };
-    this.reconResultRef = (loopResult) => {
-      onResult?.({
-        task: physicalTask,
-        paths: loopResult.paths,
-        messages: loopResult.messages,
-        pathSubmitHistory: loopResult.pathSubmitHistory
-      });
-    };
-    yield* this.runManualReconLoop(ctx, stepId, "search-raw-agent-recon" /* SEARCH_RAW_AGENT_RECON */);
-  }
-};
-
-// src/service/agents/search-agent-helper/SearchArchitectAgent.ts
-var import_ai3 = require("ai");
-function fallbackPhysicalTasks(dimensions) {
-  return dimensions.map((d, i) => ({
-    unified_intent: d.intent_description,
-    covered_dimension_ids: [d.id],
-    search_priority: i,
-    scope_constraint: d.scope_constraint
-  }));
-}
-async function* streamSearchArchitect(aiServiceManager, dimensions, userQuery, options) {
-  const { runStepId, onFinish } = options;
-  if (dimensions.length === 0) {
-    onFinish([]);
-    return;
-  }
-  const dimensionsPayload = dimensions.map((d) => ({
-    id: d.id,
-    intent_description: d.intent_description,
-    scope_constraint: d.scope_constraint
-  }));
-  const dimensionsJson = JSON.stringify(dimensionsPayload, null, 2);
-  const promptInfo = await aiServiceManager.getPromptInfo("ai-analysis-search-architect" /* AiAnalysisSearchArchitect */);
-  const system = await aiServiceManager.renderPrompt(promptInfo.systemPromptId, {});
-  const prompt = await aiServiceManager.renderPrompt("ai-analysis-search-architect" /* AiAnalysisSearchArchitect */, {
-    userQuery,
-    dimensionsJson
-  });
-  const { provider, modelId } = aiServiceManager.getModelForPrompt("ai-analysis-search-architect" /* AiAnalysisSearchArchitect */);
-  const model = aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId);
-  const result = (0, import_ai3.streamText)({
-    model,
-    system,
-    prompt,
-    experimental_output: import_ai3.Output.object({
-      schema: searchArchitectOutputSchema
-    })
-  });
-  const meta2 = runStepId ? { runStepId, stage: "classify", agent: "SlotRecallAgent", lane: { laneType: "dimension", laneId: "search-architect" } } : null;
-  const stepId = meta2 ? makeStepId(meta2) : void 0;
-  yield* streamTransform(result.fullStream, "search-slot-recall-agent" /* SEARCH_SLOT_RECALL_AGENT */, {
-    yieldUIStep: stepId ? { uiType: "steps-display" /* STEPS_DISPLAY */, stepId } : void 0
-  });
-  const text = await result.text;
-  let parsed;
+// src/service/agents/vault/phases/report.ts
+var reportOutputSchema = import_v318.z.object({
+  title: import_v318.z.string().describe("Short title for this analysis (5-15 words)"),
+  summary: import_v318.z.string().describe("Comprehensive summary directly answering the user query"),
+  topics: import_v318.z.array(import_v318.z.object({
+    label: import_v318.z.string(),
+    weight: import_v318.z.number().min(0).max(1)
+  })).describe("Key topics identified"),
+  dashboard_blocks: import_v318.z.array(import_v318.z.object({
+    id: import_v318.z.string(),
+    title: import_v318.z.string(),
+    weight: import_v318.z.number().min(0).max(10),
+    markdown: import_v318.z.string()
+  })).describe("Dashboard content blocks"),
+  source_assessments: import_v318.z.array(import_v318.z.object({
+    path: import_v318.z.string(),
+    reasoning: import_v318.z.string(),
+    badges: import_v318.z.array(import_v318.z.string()),
+    physical_score: import_v318.z.number().min(0).max(100),
+    semantic_score: import_v318.z.number().min(0).max(100)
+  })).describe("Assessment of each source document"),
+  follow_up_questions: import_v318.z.array(import_v318.z.string()).max(5).describe("Suggested follow-up questions")
+});
+async function* runReportPhase(options) {
+  const { userQuery, classify, recon, planSnapshot, aiServiceManager } = options;
+  const paths = [...new Set(recon.evidence.map((e) => e.path))].sort();
+  yield {
+    type: "pk-debug",
+    debugName: "Report: start",
+    extra: { pathCount: paths.length }
+  };
+  const tm = aiServiceManager.getTemplateManager?.();
+  const weavedContext = await weavePathsToContext(paths, tm);
+  yield {
+    type: "pk-debug",
+    debugName: "Report: context weaved",
+    extra: { contextLength: weavedContext.length }
+  };
+  const { model } = aiServiceManager.getModelInstanceForPrompt("search-ai-summary" /* AiAnalysisSummary */);
+  let output;
   try {
-    parsed = JSON.parse(text);
+    const result = (0, import_ai10.streamObject)({
+      model,
+      system: buildReportSystem(),
+      prompt: buildReportPrompt({ userQuery, classify, recon, planSnapshot, weavedContext }),
+      schema: reportOutputSchema
+    });
+    output = await result.object;
   } catch {
-    onFinish(fallbackPhysicalTasks(dimensions));
-    return;
-  }
-  const validated = searchArchitectOutputSchema.safeParse(parsed);
-  if (!validated.success || validated.data.physical_tasks.length === 0) {
-    onFinish(fallbackPhysicalTasks(dimensions));
-    return;
-  }
-  const tasks = validated.data.physical_tasks;
-  tasks.sort((a, b) => a.search_priority - b.search_priority);
-  onFinish(tasks);
-}
-
-// src/service/agents/search-agent-helper/SlotRecallAgent.ts
-function formatFunctionalTagsMapping(mapping) {
-  return Object.entries(mapping).map(([dim, tags]) => `${dim} \u2192 ${tags.join(", ")}`).join("\n");
-}
-var SlotRecallAgent = class {
-  constructor(aiServiceManager, context) {
-    this.aiServiceManager = aiServiceManager;
-    this.context = context;
-    this.rawSearchAgent = new RawSearchAgent(this.aiServiceManager, this.context);
-  }
-  /**
-   * Stream:
-   * 1) yield "Classifying...", run classifier (streamText + Output.object);
-   * 2) yield "Running parallel recall...", run pipeline.
-   */
-  async *stream(opts) {
-    const runStepId = opts?.runStepId ?? generateUuidWithoutHyphens();
-    const stopWatch = new Stopwatch();
-    stopWatch.start("classifyQuery");
-    yield uiStepStart(
-      { runStepId, stage: "classify", agent: "SlotRecallAgent" },
-      {
-        title: "Classifying query\u2026",
-        description: "",
-        triggerName: "search-slot-recall-agent" /* SEARCH_SLOT_RECALL_AGENT */
-      }
-    );
-    let queryClassify = defaultClassify;
-    try {
-      yield* this.classifyQuery({
-        runStepId,
-        stepId: void 0,
-        vaultSkeleton: opts?.vaultSkeleton,
-        onClassifyFinish: (p) => {
-          queryClassify = p;
-        }
-      });
-    } catch (error) {
-      yield {
-        type: "error",
-        error,
-        triggerName: "search-slot-recall-agent" /* SEARCH_SLOT_RECALL_AGENT */
-      };
-      queryClassify = defaultClassify;
-    }
-    if (queryClassify.semantic_dimensions.length > 10) {
-      const tail = queryClassify.semantic_dimensions.slice(10);
-      const mergedIntent = tail.map((d) => d.intent_description).join(" ");
-      const mergedDimension = {
-        id: tail[0].id,
-        intent_description: mergedIntent,
-        scope_constraint: null,
-        retrieval_orientation: null
-      };
-      queryClassify = {
-        ...queryClassify,
-        semantic_dimensions: [...queryClassify.semantic_dimensions.slice(0, SLICE_CAPS.agent.slotRecallDimensions), mergedDimension]
-      };
-    }
-    const raw = queryClassify.user_persona_config;
-    this.context.setUserPersonaConfig(
-      raw == null ? void 0 : {
-        appeal: raw.appeal ?? void 0,
-        detail_level: raw.detail_level ?? void 0
-      }
-    );
-    const dimensions = this.getDimensionsForRecall(queryClassify);
-    this.context.setRecallDimensions(dimensions);
-    yield uiStageSignal(
-      { runStepId, stage: "classify", agent: "SlotRecallAgent" },
-      { status: "complete", payload: { dimensions }, triggerName: "search-slot-recall-agent" /* SEARCH_SLOT_RECALL_AGENT */ }
-    );
-    stopWatch.stop();
-    yield {
-      type: "pk-debug",
-      debugName: "queryClassifyResult",
-      triggerName: "search-slot-recall-agent" /* SEARCH_SLOT_RECALL_AGENT */,
-      triggerTimestamp: Date.now(),
-      extra: {
-        queryClassify,
-        durationLabel: "queryClassifyResult",
-        stepDuration: stopWatch.getLastDuration(),
-        totalDuration: stopWatch.getTotalElapsed()
-      }
-    };
-    if (opts?.skipStreamSearchArchitect) {
-      return;
-    }
-    stopWatch.start("streamSearchArchitect");
-    let physicalTasks = [];
-    yield* streamSearchArchitect(this.aiServiceManager, dimensions, this.context.getInitialPrompt(), {
-      runStepId,
-      onFinish: (tasks) => {
-        physicalTasks = tasks;
-      }
-    });
-    if (physicalTasks.length === 0) {
-      physicalTasks = dimensions.map((d, i) => ({
-        unified_intent: d.intent_description,
-        covered_dimension_ids: [d.id],
-        search_priority: i,
-        scope_constraint: d.scope_constraint
-      }));
-    }
-    stopWatch.stop();
-    yield {
-      type: "pk-debug",
-      debugName: "searchArchitectResult",
-      triggerName: "search-slot-recall-agent" /* SEARCH_SLOT_RECALL_AGENT */,
-      triggerTimestamp: Date.now(),
-      extra: {
-        physicalTasks,
-        durationLabel: "searchArchitectResult",
-        stepDuration: stopWatch.getLastDuration(),
-        totalDuration: stopWatch.getTotalElapsed()
-      }
-    };
-    if (opts?.skipSearch) {
-      return;
-    }
-    stopWatch.start("streamSearchReconOnlyForPhysicalTasks");
-    yield uiStepStart(
-      { runStepId, stage: "recon", agent: "SlotRecallAgent" },
-      {
-        title: "Running parallel recall\u2026",
-        description: "",
-        triggerName: "search-slot-recall-agent" /* SEARCH_SLOT_RECALL_AGENT */
-      }
-    );
-    yield* this.rawSearchAgent.streamSearchReconOnlyForPhysicalTasks({
-      runStepId,
-      physicalTasks,
-      onReconFinish: (results, mergedPaths, weavedContext) => {
-        this.context.setReconReportsFromPhysicalTasks(
-          results.map((r) => r.task),
-          mergedPaths
-        );
-        this.context.setReconWeavedContext(weavedContext ?? "");
-      }
-    });
-    stopWatch.stop();
-    yield {
-      type: "pk-debug",
-      debugName: "searchResultAfterGroupEvidence",
-      triggerName: "search-slot-recall-agent" /* SEARCH_SLOT_RECALL_AGENT */,
-      triggerTimestamp: Date.now(),
-      extra: {
-        queryClassify,
-        dimensions,
-        evidencePacks: this.context.getRecallEvidencePacks(),
-        durationLabel: "searchResultAfterGroupEvidence",
-        stepDuration: stopWatch.getLastDuration(),
-        totalDuration: stopWatch.getTotalElapsed()
-      }
+    output = {
+      title: userQuery.slice(0, 50),
+      summary: "Analysis could not be completed. Please try again.",
+      topics: [],
+      dashboard_blocks: [],
+      source_assessments: [],
+      follow_up_questions: []
     };
   }
-  async *classifyQuery(options) {
-    const meta2 = options?.runStepId ? { runStepId: options.runStepId, stage: "classify", agent: "SlotRecallAgent" } : null;
-    const stepId = meta2 ? makeStepId(meta2) : options?.stepId ?? generateUuidWithoutHyphens();
-    const promptInfo = await this.aiServiceManager.getPromptInfo("ai-analysis-query-classifier" /* AiAnalysisQueryClassifier */);
-    const system = await this.aiServiceManager.renderPrompt(promptInfo.systemPromptId, {});
-    const vaultDescription = await getVaultDescription();
-    const functionalTagsMapping = formatFunctionalTagsMapping(SEMANTIC_DIMENSION_TO_FUNCTIONAL_TAGS);
-    const prompt = await this.aiServiceManager.renderPrompt("ai-analysis-query-classifier" /* AiAnalysisQueryClassifier */, {
-      userQuery: this.context.getInitialPrompt(),
-      vaultSkeleton: options?.vaultSkeleton,
-      vaultDescription: vaultDescription ?? void 0,
-      functionalTagsMapping
-    });
-    const { provider, modelId } = this.aiServiceManager.getModelForPrompt("ai-analysis-query-classifier" /* AiAnalysisQueryClassifier */);
-    const model = this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId);
-    const result = (0, import_ai4.streamText)({
-      model,
-      system,
-      prompt,
-      experimental_output: import_ai4.Output.object({
-        schema: queryClassifierOutputSchema
-      })
-    });
-    yield* streamTransform(result.fullStream, "search-slot-recall-agent" /* SEARCH_SLOT_RECALL_AGENT */, {
-      yieldUIStep: stepId ? { uiType: "steps-display" /* STEPS_DISPLAY */, stepId } : void 0
-    });
-    const text = await result.text;
-    const parsed = queryClassifierOutputSchema.safeParse(JSON.parse(text));
-    if (parsed.success) options?.onClassifyFinish?.(parsed.data);
-  }
-  getDimensionsForRecall(output) {
-    const { semantic_dimensions, topology_dimensions, temporal_dimensions } = output;
-    const semanticSource = semantic_dimensions && semantic_dimensions.length > 0 ? semantic_dimensions : defaultClassify.semantic_dimensions;
-    const semantic = semanticSource.map((d) => ({
-      id: d.id,
-      intent_description: d.intent_description,
-      scope_constraint: d.scope_constraint,
-      retrieval_orientation: d.retrieval_orientation,
-      output_format: null,
-      mustIncludeKeywords: null
-    }));
-    const topologySource = topology_dimensions && topology_dimensions.length > 0 ? topology_dimensions : defaultClassify.topology_dimensions;
-    const topology = topologySource.map((d) => ({
-      id: AXIS_TOPOLOGY_ID,
-      intent_description: d.intent_description,
-      scope_constraint: d.scope_constraint,
-      retrieval_orientation: null,
-      output_format: null,
-      mustIncludeKeywords: null
-    }));
-    const temporalSource = temporal_dimensions && temporal_dimensions.length > 0 ? temporal_dimensions : defaultClassify.temporal_dimensions;
-    const temporal = temporalSource.map((d) => ({
-      id: AXIS_TEMPORAL_ID,
-      intent_description: d.intent_description,
-      scope_constraint: d.scope_constraint,
-      retrieval_orientation: null,
-      output_format: null,
-      mustIncludeKeywords: null
-    }));
-    const finalDimensions = [];
-    finalDimensions.push(...semantic, ...topology, ...temporal);
-    return finalDimensions;
-  }
-};
-
-// src/service/agents/search-agent-helper/helpers/gravityGrouping.ts
-var AFFINITY_DIRECT_LINK = 5;
-var AFFINITY_SAME_PARENT_BASE = 5;
-var AFFINITY_COCITATION = 3;
-var AFFINITY_SHARED_TAGS = 2;
-var AFFINITY_SIMILARITY_PEAK = 10;
-var PARENT_IDF_C = 1e3;
-var EDGE_LIMIT = 100;
-var MIN_AFFINITY_THRESHOLD = 4;
-var AFFINITY_SATURATION_SCALE = 10;
-var CROSS_DIR_DECAY = 0.55;
-var LOUVAIN_GAMMA = 0.8;
-var DELTA_Q_THRESHOLD = 1e-6;
-var MIN_MOVE_RATIO = 0.01;
-var MAX_LOUVAIN_ITERATIONS = 10;
-var MAX_EVIDENCE_CONCURRENCY = 12;
-var TARGET_LOAD_PER_GROUP = 8;
-function taskLoadScore(t) {
-  const load = t.task_load ?? "medium";
-  return load === "high" ? 3 : load === "low" ? 1 : 2;
-}
-async function groupConsolidatedTasksGravity(tasks, opts = {}) {
-  const maxCapacity = opts.maxCapacity ?? 15;
-  if (tasks.length === 0) return [];
-  const N = tasks.length;
-  const paths = tasks.map((t) => t.path);
-  const parentSet = new Set(paths.map((p) => parentPathFromPath(p)));
-  const parentPathToFileCount = await getFileCountPerParentPath(parentSet);
-  const pathToLinksAndTags = await getLinksAndTagsForPaths(paths);
-  const similarityCache = await getPairwiseSimilarityScores(paths);
-  const A = buildAffinityMatrix(
-    N,
-    paths,
-    pathToLinksAndTags,
-    parentPathToFileCount,
-    (i, j) => i === j ? 0 : similarityCache[i]?.[j] ?? 0
-  );
-  const adj = buildAdjacencyFromMatrix(N, A, MIN_AFFINITY_THRESHOLD);
-  const communityByIndex = louvainFromAdjacency(N, adj, paths);
-  const indexByCommunity = /* @__PURE__ */ new Map();
-  for (let i = 0; i < N; i++) {
-    const c = communityByIndex.get(i) ?? i;
-    if (!indexByCommunity.has(c)) indexByCommunity.set(c, []);
-    indexByCommunity.get(c).push(i);
-  }
-  let groups = [];
-  for (const indices of indexByCommunity.values()) {
-    groups.push(indices.map((i) => tasks[i]));
-  }
-  const pathToIndex = new Map(paths.map((p, i) => [p, i]));
-  const capacityBalancedGroups = capacityBalance(groups, maxCapacity, pathToIndex, A);
-  const targetLoadPerGroup = opts.targetLoadPerGroup ?? TARGET_LOAD_PER_GROUP;
-  const maxEvidenceConcurrency = opts.maxEvidenceConcurrency ?? MAX_EVIDENCE_CONCURRENCY;
-  const activeDimensions = new Set(tasks.flatMap((t) => (t.relevant_dimension_ids ?? []).map((d) => d.id))).size;
-  const totalScore = tasks.reduce((s, t) => s + taskLoadScore(t), 0);
-  const maxGroups = Math.min(
-    activeDimensions * 2,
-    maxEvidenceConcurrency,
-    Math.max(1, Math.ceil(totalScore / targetLoadPerGroup))
-  );
-  console.debug("[groupConsolidatedTasksGravity] maxGroups:", {
-    maxGroups,
-    targetLoadPerGroup,
-    maxEvidenceConcurrency,
-    activeDimensions,
-    totalScore,
-    groups,
-    capacityBalancedGroups
-  });
-  const finalGroups = balancedGravitationalConsolidation(
-    capacityBalancedGroups,
-    maxGroups,
-    maxCapacity,
-    pathToIndex,
-    A
-  );
-  console.debug("[groupConsolidatedTasksGravity] final groups:", finalGroups);
-  return finalGroups;
-}
-function parentPathFromPath(path3) {
-  const p = path3.replace(/\\/g, "/");
-  const idx = p.lastIndexOf("/");
-  return idx >= 0 ? p.slice(0, idx) : "";
-}
-async function getFileCountPerParentPath(parentPaths) {
-  if (parentPaths.size === 0) return EMPTY_MAP;
-  const tenantToPaths = /* @__PURE__ */ new Map();
-  for (const p of parentPaths) {
-    const tenant = getIndexTenantForPath(p + "/dummy.md");
-    if (!tenantToPaths.has(tenant)) tenantToPaths.set(tenant, []);
-    tenantToPaths.get(tenant).push(p);
-  }
-  const out = /* @__PURE__ */ new Map();
-  await Promise.all(
-    [...tenantToPaths.entries()].map(async ([tenant, paths]) => {
-      const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
-      for (const p of paths) {
-        const count = await repo.countByFolderPath(p);
-        out.set(p, Math.max(1, count));
-      }
-    })
-  );
-  return out;
-}
-async function getLinksAndTagsForPaths(paths) {
-  const out = /* @__PURE__ */ new Map();
-  if (paths.length === 0) return out;
-  const empty = { outlinks: [], backlinks: [], tags: [] };
-  await Promise.all(
-    paths.map(async (path3) => {
-      try {
-        const tenant = getIndexTenantForPath(path3);
-        const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
-        const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
-        const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
-        const docMeta = await indexedDocumentRepo.getByPath(path3);
-        if (!docMeta?.id) {
-          out.set(path3, { ...empty, tags: parseTags(docMeta?.tags ?? null) });
-          return;
-        }
-        const edges = await mobiusEdgeRepo.getAllEdgesForNode(docMeta.id, EDGE_LIMIT);
-        const inIds = edges.filter((e) => e.to_node_id === docMeta.id).map((e) => e.from_node_id);
-        const outIds = edges.filter((e) => e.from_node_id === docMeta.id).map((e) => e.to_node_id);
-        const allIds = [.../* @__PURE__ */ new Set([...inIds, ...outIds])];
-        const nodesMap = await mobiusNodeRepo.getByIds(allIds);
-        const outlinks = [];
-        const backlinks = [];
-        for (const node of nodesMap.values()) {
-          if (isIndexedNoteNodeType(node.type) && node.label) {
-            const p = getPathFromNode(node);
-            if (p) {
-              if (outIds.includes(node.id)) outlinks.push(p);
-              if (inIds.includes(node.id)) backlinks.push(p);
-            }
-          }
-        }
-        out.set(path3, { outlinks, backlinks, tags: parseTags(docMeta.tags) });
-      } catch {
-        out.set(path3, empty);
-      }
-    })
-  );
-  return out;
-}
-async function getPairwiseSimilarityScores(paths) {
-  const N = paths.length;
-  const scoreCache = Array.from({ length: N }, () => new Array(N).fill(0));
-  if (N === 0) return scoreCache;
-  const pathToDocId = /* @__PURE__ */ new Map();
-  const pathToTenant = /* @__PURE__ */ new Map();
-  await Promise.all(
-    paths.map(async (p) => {
-      const tenant = getIndexTenantForPath(p);
-      pathToTenant.set(p, tenant);
-      try {
-        const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
-        const meta2 = await repo.getByPath(p);
-        if (meta2?.id) pathToDocId.set(p, meta2.id);
-      } catch {
-      }
-    })
-  );
-  const tenantToDocIds = /* @__PURE__ */ new Map();
-  for (const [path3, docId] of pathToDocId) {
-    const t = pathToTenant.get(path3);
-    if (!tenantToDocIds.has(t)) tenantToDocIds.set(t, []);
-    tenantToDocIds.get(t).push(docId);
-  }
-  const docIdToVec = /* @__PURE__ */ new Map();
-  await Promise.all(
-    [...tenantToDocIds.entries()].map(async ([tenant, docIds]) => {
-      const embRepo = sqliteStoreManager.getEmbeddingRepo(tenant);
-      for (const id of docIds) {
-        const vec = await embRepo.getEmbeddingForSemanticSearch(id);
-        if (vec && vec.length) docIdToVec.set(id, vec);
-      }
-    })
-  );
-  const pathToVec = /* @__PURE__ */ new Map();
-  for (const p of paths) {
-    const docId = pathToDocId.get(p);
-    if (docId) {
-      const vec = docIdToVec.get(docId);
-      if (vec) pathToVec.set(p, vec);
+  const assessedPaths = new Set(output.source_assessments.map((sa) => sa.path));
+  const sources = output.source_assessments.map((sa) => ({
+    id: `src:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: getFileNameFromPath(sa.path) ?? sa.path,
+    path: normalizeFilePath(sa.path) ?? sa.path,
+    reasoning: sa.reasoning,
+    badges: sa.badges,
+    score: {
+      physical: sa.physical_score,
+      semantic: sa.semantic_score,
+      average: (sa.physical_score + sa.semantic_score) / 2
     }
-  }
-  for (let i = 0; i < N; i++) {
-    const vi = pathToVec.get(paths[i]);
-    if (!vi) continue;
-    for (let j = i + 1; j < N; j++) {
-      const vj = pathToVec.get(paths[j]);
-      if (!vj) continue;
-      const sim = cosineSimilarity2(vi, vj);
-      const score = similaritySweetSpot(sim);
-      scoreCache[i][j] = score;
-      scoreCache[j][i] = score;
-    }
-  }
-  return scoreCache;
-}
-function cosineSimilarity2(a, b) {
-  if (a.length !== b.length || a.length === 0) return 0;
-  let dot = 0, na = 0, nb = 0;
-  for (let k = 0; k < a.length; k++) {
-    dot += a[k] * b[k];
-    na += a[k] * a[k];
-    nb += b[k] * b[k];
-  }
-  const norm = Math.sqrt(na) * Math.sqrt(nb);
-  return norm === 0 ? 0 : Math.max(0, Math.min(1, dot / norm));
-}
-function similaritySweetSpot(sim) {
-  if (sim < 0.6) return 0;
-  if (sim <= 0.85) return AFFINITY_SIMILARITY_PEAK * (sim - 0.6) / 0.25;
-  return AFFINITY_SIMILARITY_PEAK * (1 - sim) / 0.15;
-}
-function parseTags(tagsJson) {
-  const blob = decodeIndexedTagsBlob(tagsJson);
-  const topicFlat = blob.topicTagEntries?.length ? blob.topicTagEntries.flatMap((e) => [e.id, ...e.label ? [e.label] : []]) : blob.topicTags;
-  return [
-    .../* @__PURE__ */ new Set([
-      ...topicFlat,
-      ...blob.functionalTagEntries.flatMap((e) => [e.id, ...e.label ? [e.label] : []]),
-      ...blob.keywordTags,
-      ...blob.timeTags,
-      ...blob.geoTags,
-      ...blob.personTags
-    ])
-  ];
-}
-function toAffinitySets(d) {
-  return {
-    outlinksSet: new Set(d.outlinks),
-    backlinksSet: new Set(d.backlinks),
-    tagsSet: new Set(d.tags)
-  };
-}
-function buildAffinityMatrix(N, paths, pathToData, parentPathToFileCount, getSimilarity) {
-  const parentPathFromPath2 = (p) => {
-    const idx = p.replace(/\\/g, "/").lastIndexOf("/");
-    return idx >= 0 ? p.slice(0, idx) : "";
-  };
-  const emptySets = { outlinksSet: /* @__PURE__ */ new Set(), backlinksSet: /* @__PURE__ */ new Set(), tagsSet: /* @__PURE__ */ new Set() };
-  const pathToSets = /* @__PURE__ */ new Map();
-  for (const [path3, d] of pathToData) {
-    pathToSets.set(path3, toAffinitySets(d));
-  }
-  const A = Array.from({ length: N }, () => new Array(N).fill(0));
-  for (let i = 0; i < N; i++) {
-    for (let j = i + 1; j < N; j++) {
-      const pi = paths[i];
-      const pj = paths[j];
-      const di = pathToSets.get(pi) ?? emptySets;
-      const dj = pathToSets.get(pj) ?? emptySets;
-      let score = 0;
-      const direct = di.outlinksSet.has(pj) || di.backlinksSet.has(pj) || dj.outlinksSet.has(pi) || dj.backlinksSet.has(pi);
-      if (direct) score += AFFINITY_DIRECT_LINK;
-      const parentI = parentPathFromPath2(pi);
-      const parentJ = parentPathFromPath2(pj);
-      if (parentI && parentI === parentJ) {
-        const n = parentPathToFileCount.get(parentI) ?? 1;
-        score += AFFINITY_SAME_PARENT_BASE * Math.max(0, Math.log10(PARENT_IDF_C / (n + 1)));
-      }
-      const cociteOut = di.outlinksSet.size <= dj.outlinksSet.size ? [...di.outlinksSet].some((x) => dj.outlinksSet.has(x)) : [...dj.outlinksSet].some((x) => di.outlinksSet.has(x));
-      const cociteBack = di.backlinksSet.size <= dj.backlinksSet.size ? [...di.backlinksSet].some((x) => dj.backlinksSet.has(x)) : [...dj.backlinksSet].some((x) => di.backlinksSet.has(x));
-      if (cociteOut || cociteBack) score += AFFINITY_COCITATION;
-      const sharedTag = di.tagsSet.size <= dj.tagsSet.size ? [...di.tagsSet].some((t) => dj.tagsSet.has(t)) : [...dj.tagsSet].some((t) => di.tagsSet.has(t));
-      if (sharedTag) score += AFFINITY_SHARED_TAGS;
-      score += getSimilarity(i, j);
-      if (parentI !== parentJ) score *= CROSS_DIR_DECAY;
-      score = AFFINITY_SATURATION_SCALE * Math.tanh(score / AFFINITY_SATURATION_SCALE);
-      A[i][j] = score;
-      A[j][i] = score;
-    }
-  }
-  return A;
-}
-function buildAdjacencyFromMatrix(N, A, minScore) {
-  const edgesForEachMember = Array.from({ length: N }, () => []);
-  for (let i = 0; i < N; i++) {
-    for (let j = 0; j < N; j++) {
-      if (i !== j && A[i][j] >= minScore) {
-        edgesForEachMember[i].push({ to: j, weight: Math.round(A[i][j]) });
-      }
-    }
-  }
-  return edgesForEachMember;
-}
-function louvainFromAdjacency(N, edgesForEachMember, paths) {
-  const k = edgesForEachMember.map((edges) => edges.reduce((s, e) => s + e.weight, 0));
-  const twoM = k.reduce((a, b) => a + b, 0);
-  if (twoM <= 0) {
-    const out2 = /* @__PURE__ */ new Map();
-    for (let i = 0; i < N; i++) out2.set(i, i);
-    return out2;
-  }
-  const parentToComm = /* @__PURE__ */ new Map();
-  let commId = 0;
-  const community = paths.map((p) => {
-    const parent = parentPathFromPath(p);
-    if (!parentToComm.has(parent)) parentToComm.set(parent, commId++);
-    return parentToComm.get(parent);
-  });
-  const commMembers = /* @__PURE__ */ new Map();
-  const commSumTot = /* @__PURE__ */ new Map();
-  const commSumIn = /* @__PURE__ */ new Map();
-  for (let i = 0; i < N; i++) {
-    const c = community[i];
-    if (!commMembers.has(c)) commMembers.set(c, /* @__PURE__ */ new Set());
-    commMembers.get(c).add(i);
-  }
-  for (const [c, members] of commMembers) {
-    commSumTot.set(c, [...members].reduce((s, i) => s + k[i], 0));
-    let sumIn = 0;
-    for (const i of members) {
-      for (const e of edgesForEachMember[i]) {
-        if (members.has(e.to) && e.to > i) sumIn += e.weight;
-      }
-    }
-    commSumIn.set(c, sumIn);
-  }
-  const twoMSq = twoM * twoM;
-  const deltaQNumeratorThreshold = DELTA_Q_THRESHOLD * twoMSq;
-  let iter = 0;
-  while (iter < MAX_LOUVAIN_ITERATIONS) {
-    iter++;
-    let movedCount = 0;
-    const order = Array.from({ length: N }, (_, i) => i);
-    for (let t = order.length - 1; t > 0; t--) {
-      const r = Math.floor(Math.random() * (t + 1));
-      [order[t], order[r]] = [order[r], order[t]];
-    }
-    for (const i of order) {
-      const D = community[i];
-      const weightsToComms = /* @__PURE__ */ new Map();
-      for (const e of edgesForEachMember[i]) {
-        const commOfNeighbor = community[e.to];
-        weightsToComms.set(commOfNeighbor, (weightsToComms.get(commOfNeighbor) ?? 0) + e.weight);
-      }
-      const kIInD = weightsToComms.get(D) ?? 0;
-      let bestC = D;
-      let bestNumerator = 0;
-      let bestKIInC = 0;
-      const sumTotD = commSumTot.get(D);
-      for (const [C, kIInC] of weightsToComms) {
-        if (C === D) continue;
-        const sumTotC = commSumTot.get(C);
-        const numerator = (kIInC - kIInD) * twoM - LOUVAIN_GAMMA * k[i] * (sumTotC - sumTotD);
-        if (numerator > bestNumerator) {
-          bestNumerator = numerator;
-          bestC = C;
-          bestKIInC = kIInC;
-        }
-      }
-      if (bestNumerator > deltaQNumeratorThreshold && bestC !== D) {
-        commMembers.get(D).delete(i);
-        commMembers.get(bestC).add(i);
-        commSumTot.set(D, commSumTot.get(D) - k[i]);
-        commSumTot.set(bestC, commSumTot.get(bestC) + k[i]);
-        commSumIn.set(D, commSumIn.get(D) - kIInD);
-        commSumIn.set(bestC, commSumIn.get(bestC) + bestKIInC);
-        community[i] = bestC;
-        movedCount++;
-      }
-    }
-    if (movedCount === 0 || movedCount / N < MIN_MOVE_RATIO) break;
-  }
-  const canon = /* @__PURE__ */ new Map();
-  let id = 0;
-  for (let i = 0; i < N; i++) {
-    const c = community[i];
-    if (!canon.has(c)) canon.set(c, id++);
-  }
-  const out = /* @__PURE__ */ new Map();
-  for (let i = 0; i < N; i++) out.set(i, canon.get(community[i]));
-  return out;
-}
-function capacityBalance(groups, maxCapacity, pathToIndex, A) {
-  const result = [];
-  for (const g of groups) {
-    const totalLoad = g.reduce((s, t) => s + taskLoadScore(t), 0);
-    if (totalLoad <= maxCapacity) {
-      result.push(g);
-      continue;
-    }
-    const { left, right } = splitGroupByPathAndAffinity(g, maxCapacity, pathToIndex, A);
-    result.push(...capacityBalance([left, right], maxCapacity, pathToIndex, A));
-  }
-  return result;
-}
-function balancedGravitationalConsolidation(groups, maxGroups, maxCapacity, pathToIndex, A) {
-  if (groups.length <= 1) return groups;
-  const groupCount = groups.length;
-  const groupAffinity = Array.from({ length: groupCount }, () => new Float64Array(groupCount));
-  for (let i = 0; i < groupCount; i++) {
-    for (let j = i + 1; j < groupCount; j++) {
-      let sum = 0;
-      for (const tA of groups[i]) {
-        const idxA = pathToIndex.get(tA.path);
-        if (idxA === void 0) continue;
-        for (const tB of groups[j]) {
-          const idxB = pathToIndex.get(tB.path);
-          if (idxB !== void 0) sum += A[idxA][idxB];
-        }
-      }
-      groupAffinity[i][j] = groupAffinity[j][i] = sum;
-    }
-  }
-  let currentGroups = groups.map((g, i) => ({
-    id: i,
-    tasks: g,
-    load: g.reduce((s, t) => s + taskLoadScore(t), 0)
   }));
-  while (true) {
-    const totalScore = currentGroups.reduce((s, g) => s + g.load, 0);
-    const averageLoad = totalScore / maxGroups;
-    const floor = averageLoad * 0.7;
-    const gMin = currentGroups.reduce((a, b) => a.load <= b.load ? a : b);
-    const mustMerge = currentGroups.length > maxGroups;
-    const tooSmall = gMin.load < floor;
-    if (!mustMerge && !tooSmall) break;
-    if (currentGroups.length <= 1) break;
-    const candidates = currentGroups.filter(
-      (g) => g.id !== gMin.id && g.load + gMin.load <= maxCapacity
-    );
-    if (candidates.length === 0) break;
-    const bestReceiver = candidates.reduce((best, c) => {
-      const aff = groupAffinity[gMin.id][c.id];
-      const bestAff = groupAffinity[gMin.id][best.id];
-      if (aff > bestAff) return c;
-      if (aff < bestAff) return best;
-      return c.load < best.load ? c : best;
-    });
-    for (const other of currentGroups) {
-      if (other.id !== bestReceiver.id && other.id !== gMin.id) {
-        const updated = groupAffinity[bestReceiver.id][other.id] + groupAffinity[gMin.id][other.id];
-        groupAffinity[bestReceiver.id][other.id] = groupAffinity[other.id][bestReceiver.id] = updated;
-      }
+  for (const path3 of paths) {
+    if (!assessedPaths.has(path3)) {
+      const ev = recon.evidence.find((e) => e.path === path3);
+      sources.push({
+        id: `src:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        title: getFileNameFromPath(path3) ?? path3,
+        path: normalizeFilePath(path3) ?? path3,
+        reasoning: ev?.reason ?? "Discovered during exploration.",
+        badges: [],
+        score: { physical: 0, semantic: 0, average: 0 }
+      });
     }
-    bestReceiver.tasks = [...bestReceiver.tasks, ...gMin.tasks];
-    bestReceiver.load += gMin.load;
-    currentGroups = currentGroups.filter((g) => g.id !== gMin.id);
   }
-  return currentGroups.map((g) => g.tasks);
+  const topics = output.topics.map((t) => ({
+    label: t.label,
+    weight: t.weight
+  }));
+  const dashboardBlocks = output.dashboard_blocks.map((b) => ({
+    id: b.id,
+    title: b.title,
+    weight: b.weight,
+    renderEngine: "MARKDOWN",
+    markdown: b.markdown
+  }));
+  const agentResult = {
+    title: output.title,
+    summary: output.summary,
+    topics,
+    sources,
+    dashboardBlocks,
+    suggestedFollowUpQuestions: output.follow_up_questions
+  };
+  yield {
+    type: "pk-debug",
+    debugName: "Report: complete",
+    extra: {
+      titleLength: output.title.length,
+      summaryLength: output.summary.length,
+      topicCount: topics.length,
+      sourceCount: sources.length,
+      blockCount: dashboardBlocks.length,
+      followUpCount: output.follow_up_questions.length
+    }
+  };
+  return agentResult;
 }
-function splitGroupByPathAndAffinity(g, maxCapacity, pathToIndex, A) {
-  const sorted = [...g].sort((a, b) => a.path.localeCompare(b.path));
-  const orderedPaths = [];
-  for (const t of sorted) {
-    if (orderedPaths[orderedPaths.length - 1] !== t.path) orderedPaths.push(t.path);
+function buildReportSystem() {
+  return `You are a knowledge analyst. Given a user query, exploration context, and evidence from a vault, produce a comprehensive analysis report.
+
+Rules:
+- The summary should directly answer the user's question using evidence from the vault
+- Each dashboard_block should be a self-contained section with clear markdown content
+- source_assessments evaluate each source's relevance (physical: how directly it matches; semantic: how conceptually relevant)
+- badges on sources: 1-3 word labels like "primary source", "context", "tangential", "key reference"
+- Topics: main themes with weights summing to roughly 1.0
+- Use [[wikilink]] syntax when referencing vault documents
+- follow_up_questions: actionable questions the user might want to explore next
+- Be concise but thorough; prefer depth over breadth`;
+}
+function buildReportPrompt(options) {
+  const { userQuery, classify, recon, planSnapshot, weavedContext } = options;
+  const parts = [];
+  parts.push(`## User Query
+${userQuery}`);
+  parts.push(`## Understanding
+${classify.understanding}`);
+  parts.push(`## Report Plan
+${planSnapshot.proposedOutline}`);
+  if (planSnapshot.suggestedSections.length > 0) {
+    parts.push(`## Proposed Sections
+${planSnapshot.suggestedSections.map((s) => `- ${s}`).join("\n")}`);
   }
-  const n = orderedPaths.length;
-  if (n <= 1) {
-    const mid = Math.ceil(g.length / 2);
-    return { left: g.slice(0, mid), right: g.slice(mid) };
+  const evidenceList = recon.evidence.slice(0, 40).map((e) => `- **${e.path}**: ${e.reason}`).join("\n");
+  parts.push(`## Collected Evidence (${recon.evidence.length} files)
+${evidenceList}`);
+  if (weavedContext) {
+    const truncated = weavedContext.length > 1e4 ? weavedContext.slice(0, 1e4) + "\n\n_(context truncated)_" : weavedContext;
+    parts.push(`## Document Context
+${truncated}`);
   }
-  const pathLoad = /* @__PURE__ */ new Map();
-  for (const t of g) pathLoad.set(t.path, (pathLoad.get(t.path) ?? 0) + taskLoadScore(t));
-  const load = orderedPaths.map((p) => pathLoad.get(p) ?? 0);
-  let bestK = 1;
-  let bestScore = Infinity;
-  for (let k = 1; k < n; k++) {
-    const leftLoad = load.slice(0, k).reduce((a, b) => a + b, 0);
-    const rightLoad = load.slice(k).reduce((a, b) => a + b, 0);
-    if (leftLoad > maxCapacity || rightLoad > maxCapacity) continue;
-    let score;
-    if (A && pathToIndex) {
-      let cut = 0;
-      for (let i = 0; i < k; i++) {
-        const gi = pathToIndex.get(orderedPaths[i]);
-        if (gi === void 0) continue;
-        for (let j = k; j < n; j++) {
-          const gj = pathToIndex.get(orderedPaths[j]);
-          if (gj !== void 0) cut += A[gi][gj];
-        }
-      }
-      score = cut;
-    } else {
-      score = Math.abs(leftLoad - rightLoad);
-    }
-    if (score < bestScore) {
-      bestScore = score;
-      bestK = k;
-    }
-  }
-  const leftPaths = new Set(orderedPaths.slice(0, bestK));
-  const rightPaths = new Set(orderedPaths.slice(bestK));
-  const left = g.filter((t) => leftPaths.has(t.path));
-  const right = g.filter((t) => rightPaths.has(t.path));
-  return { left, right };
+  parts.push("\nProduce a comprehensive analysis: title, summary, topics, dashboard blocks, source assessments, and follow-up questions.");
+  return parts.join("\n\n");
 }
 
-// src/service/agents/search-agent-helper/GroupContextAgent.ts
-var import_ai5 = require("ai");
-var GroupContextAgent = class {
-  constructor(aiServiceManager, context) {
+// src/service/agents/vault/VaultSearchAgent.ts
+var VaultSearchAgent = class {
+  constructor(aiServiceManager, options) {
     this.aiServiceManager = aiServiceManager;
-    this.context = context;
+    this.options = options ?? {};
+    this.state = this.buildInitialState("");
   }
   /**
-   * Run one stream per group in parallel; assemble EvidenceGroup[] and call onRefinementFinish when all done.
+   * Start a new vault search session.
+   * Yields VaultSearchEvents. Pauses at HITL points (hitl-pause events).
+   * Call continueWithFeedback() to resume.
    */
-  async *streamAllGroupsContext(options) {
-    const { groups, dimensions, stepId, onRefinementFinish } = options;
-    if (groups.length === 0) {
-      onRefinementFinish?.([]);
-      return;
-    }
-    const results = new Array(groups.length);
-    for (let i = 0; i < groups.length; i++) results[i] = null;
-    console.debug("[streamAllGroupsContext] groups:", groups);
-    const groupStreams = groups.map(
-      (g, i) => this.streamGroupContext({
-        groupIndex: i,
-        tasks: g,
-        dimensions,
-        stepId: stepId ?? generateUuidWithoutHyphens(),
-        onFinish: (item) => {
-          results[i] = item;
-        }
-      })
-    );
-    yield* parallelStream(groupStreams);
-    const evidenceTaskGroups = groups.map((tasks, i) => ({
-      groupId: `group_${String(i).padStart(3, "0")}`,
-      topic_anchor: results[i]?.topic_anchor ?? "",
-      group_focus: results[i]?.group_focus ?? "",
-      tasks,
-      sharedContext: void 0,
-      clustering_reason: "Vector similarity & graph co-citation"
-    }));
-    onRefinementFinish?.(evidenceTaskGroups);
-  }
-  /**
-   * One group → one LLM call (streamObject) → topic_anchor + group_focus. Used as one branch in parallelStream.
-   */
-  async *streamGroupContext(options) {
-    const { groupIndex, tasks, dimensions, onFinish } = options;
-    if (tasks.length === 0) {
-      onFinish?.({ topic_anchor: "", group_focus: "" });
-      return;
-    }
-    const runStepId = options.stepId ?? generateUuidWithoutHyphens();
-    const laneId = `group_${String(groupIndex).padStart(3, "0")}`;
-    const meta2 = { runStepId, stage: "groupContext", lane: { laneType: "group", laneId, index: groupIndex }, agent: "GroupContextAgent" };
-    const stepId = makeStepId(meta2);
-    yield uiStepStart(meta2, {
-      title: `Group context: ${laneId}`,
-      description: `${tasks.length} file(s)`,
-      triggerName: "search-raw-agent-task-consolidator" /* SEARCH_RAW_AGENT_TASK_CONSOLIDATOR */
-    });
-    console.debug("[streamGroupContext] tasks:", tasks);
-    const files = tasks.map((t) => ({
-      path: t.path,
-      extraction_focus: t.extraction_focus,
-      priority: t.priority,
-      task_load: t.task_load,
-      relevant_dimension_ids: t.relevant_dimension_ids.map((d) => ({ id: d.id, intent: d.intent }))
-    }));
-    const userQuery = this.context.getInitialPrompt();
-    const system = await this.aiServiceManager.renderPrompt("ai-analysis-group-context-system" /* AiAnalysisGroupContextSystem */, {});
-    const prompt = await this.aiServiceManager.renderPrompt("ai-analysis-group-context-single" /* AiAnalysisGroupContextSingle */, {
+  async *startSession(userQuery) {
+    this.state = this.buildInitialState(userQuery);
+    const stepId = generateUuidWithoutHyphens();
+    yield this.makePhaseTransition("classify", "classify", stepId);
+    yield this.makeUIStep(stepId, "Classifying query\u2026", "Understanding your question and identifying relevant areas");
+    const classify = yield* runClassifyPhase({
       userQuery,
-      dimensions,
-      groupIndex,
-      files
+      aiServiceManager: this.aiServiceManager,
+      stepId,
+      conversationHistory: this.state.conversationHistory
     });
-    const providerOptionsConfig = {
-      noReasoning: false,
-      reasoningEffort: "low"
-    };
-    const { provider, modelId } = this.aiServiceManager.getModelForPrompt("ai-analysis-group-context-single" /* AiAnalysisGroupContextSingle */);
-    const model = this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId, providerOptionsConfig);
-    const providerOptions = this.aiServiceManager.getMultiChat().getProviderService(provider).getProviderOptions(providerOptionsConfig);
-    const result = (0, import_ai5.streamText)({
-      model,
-      system,
-      prompt,
-      providerOptions,
-      experimental_output: import_ai5.Output.object({
-        schema: groupContextItemSchema
-      })
+    this.state.classify = classify;
+    yield this.makePhaseTransition("classify", "decompose", stepId);
+    yield this.makeUIStep(stepId, "Decomposing into tasks\u2026", `Query type: ${classify.queryType}`);
+    const decompose = yield* runDecomposePhase({
+      userQuery,
+      classify,
+      aiServiceManager: this.aiServiceManager,
+      stepId
     });
-    yield buildPromptTraceDebugEvent("search-raw-agent-task-consolidator" /* SEARCH_RAW_AGENT_TASK_CONSOLIDATOR */, system, prompt);
-    yield* streamTransform(result.fullStream, "search-raw-agent-task-consolidator" /* SEARCH_RAW_AGENT_TASK_CONSOLIDATOR */, {
-      yieldUIStep: { uiType: "steps-display" /* STEPS_DISPLAY */, stepId }
+    this.state.decompose = decompose;
+    yield this.makePhaseTransition("decompose", "intuition-feedback", stepId);
+    yield this.makeUIStep(stepId, "Checking intuition map\u2026", "Identifying gaps in vault coverage");
+    const intuitionFeedback = yield* runIntuitionFeedbackPhase({
+      classify,
+      stepId
     });
-    const text = await result.text;
-    const parsed = groupContextItemSchema.safeParse(JSON.parse(text));
-    if (parsed.success) {
-      onFinish?.(parsed.data);
-    } else {
-      onFinish?.({ topic_anchor: "", group_focus: "" });
-    }
-  }
-};
-
-// src/app/context/test-tools.ts
-var GraphInspectorTestTools = class {
-  constructor() {
-    this.tools = {
-      inspect_note_context: inspectNoteContextTool(),
-      graph_traversal: graphTraversalTool(),
-      hub_local_graph: hubLocalGraphTool(),
-      find_path: findPathTool(),
-      find_key_nodes: findKeyNodesTool(),
-      find_orphans: findOrphansTool(),
-      search_by_dimensions: searchByDimensionsTool(),
-      explore_folder: exploreFolderTool(),
-      recent_changes_whole_vault: recentChangesWholeVaultTool(),
-      local_search_whole_vault: localSearchWholeVaultTool()
-    };
+    this.state.intuitionFeedback = intuitionFeedback;
+    yield this.makePhaseTransition("intuition-feedback", "recon", stepId);
+    yield this.makeUIStep(stepId, `Exploring vault\u2026`, `${decompose.tasks.length} tasks`);
+    const recon = yield* runReconPhase({
+      userQuery,
+      classify,
+      decompose,
+      aiServiceManager: this.aiServiceManager,
+      stepId
+    });
+    this.state.recon = recon;
+    yield this.makePhaseTransition("recon", "present-plan", stepId);
+    yield this.makeUIStep(stepId, "Preparing research plan\u2026", `${recon.evidence.length} sources found`);
+    yield* runPresentPlanPhase({
+      userQuery,
+      classify,
+      recon,
+      aiServiceManager: this.aiServiceManager,
+      stepId
+    });
   }
   /**
-   * Execute a specific tool
+   * Continue after an HITL pause with user feedback.
+   * - approve: proceed to report generation
+   * - redirect: re-run from classify with updated context
+   * - add_paths: add user-specified paths to evidence, then report
+   * - remove_paths: remove paths from evidence, then report
+   * - stop: abort
    */
-  async executeTool(name, params) {
-    try {
-      console.log(`\u{1F50D} Executing ${name} with params:`, params);
-      if (!this.tools[name]) {
-        throw new Error(`Tool ${name} not found`);
-      }
-      const result = await this.tools[name].execute(params);
-      console.log("\u2705 Tool execution result:", JSON.stringify(result));
-      return result;
-    } catch (error) {
-      console.error("\u274C Tool execution failed:", error);
-      throw error;
+  async *continueWithFeedback(feedback) {
+    const stepId = generateUuidWithoutHyphens();
+    this.state.conversationHistory.push(feedback);
+    if (feedback.type === "stop") {
+      yield { type: "complete", finishReason: "stop", usage: this.state.tokenUsage, triggerName: "search-ai-agent" /* SEARCH_AI_AGENT */ };
+      return;
     }
-  }
-  // Convenience methods for each tool
-  async inspectNote(notePath, includeSemantic = false, limit = 10, responseFormat = "hybrid") {
-    return this.executeTool("inspect_note_context", {
-      note_path: notePath,
-      limit,
-      include_semantic_paths: includeSemantic,
-      response_format: responseFormat
-    });
-  }
-  async graphTraversal(startPath, hops = 1, limit = 20, responseFormat = "hybrid", includeSemantic = false, filters = void 0, sorter = void 0) {
-    return this.executeTool("graph_traversal", {
-      start_note_path: startPath,
-      hops,
-      limit,
-      response_format: responseFormat,
-      include_semantic_paths: includeSemantic,
-      filters,
-      sorter
-    });
-  }
-  async findPath(startPath, endPath, responseFormat = "hybrid", limit = 10, includeSemantic = false) {
-    return this.executeTool("find_path", {
-      start_note_path: startPath,
-      end_note_path: endPath,
-      response_format: responseFormat,
-      limit,
-      include_semantic_paths: includeSemantic
-    });
-  }
-  async findKeyNodes(limit = 20, responseFormat = "hybrid") {
-    return this.executeTool("find_key_nodes", {
-      limit,
-      response_format: responseFormat
-    });
-  }
-  async findOrphans(limit = 20, responseFormat = "hybrid") {
-    return this.executeTool("find_orphans", {
-      limit,
-      response_format: responseFormat
-    });
-  }
-  async searchByDimensions(expression, limit = 20, responseFormat = "hybrid") {
-    return this.executeTool("search_by_dimensions", {
-      boolean_expression: expression,
-      limit,
-      response_format: responseFormat
-    });
-  }
-  async exploreFolder(folderPath = "/", recursive = true, maxDepth = 2, responseFormat = "hybrid") {
-    return this.executeTool("explore_folder", {
-      folderPath,
-      recursive,
-      max_depth: maxDepth,
-      response_format: responseFormat
-    });
-  }
-  async getRecentChanges(limit = 20, responseFormat = "hybrid") {
-    return this.executeTool("recent_changes_whole_vault", {
-      limit,
-      response_format: responseFormat
-    });
-  }
-  async localSearch(query, searchMode = "hybrid", limit = 20, responseFormat = "hybrid") {
-    return this.executeTool("local_search_whole_vault", {
-      query,
-      searchMode,
-      limit,
-      response_format: responseFormat
-      // Pass flattened params if needed, or let them be undefined
-    });
-  }
-  // Utility methods
-  async getAppInfo() {
-    const app = AppContext.getInstance().app;
-    return {
-      vaultName: app.vault.getName(),
-      vaultPath: app.vault.getRoot(),
-      fileCount: app.vault.getFiles().length,
-      plugin: AppContext.getInstance().plugin
-    };
-  }
-  async listAllFiles(limit = 100) {
-    const app = AppContext.getInstance().app;
-    const files = app.vault.getFiles();
-    return files.slice(0, limit).map((f) => ({
-      path: f.path,
-      name: f.name,
-      size: f.stat.size,
-      mtime: new Date(f.stat.mtime).toISOString()
-    }));
-  }
-};
-async function* streamWithStreamLog(stream) {
-  const allLog = [];
-  let totalTokenUsage = emptyUsage();
-  try {
-    for await (const ev of stream) {
-      if (!DELTA_EVENT_TYPES.has(ev.type)) {
-        allLog.push(ev);
-      }
-      console.debug("[stream-event]", ev.type, JSON.stringify(ev));
-      if (ev.type === "on-step-finish") {
-        totalTokenUsage = mergeTokenUsage(totalTokenUsage, ev.usage);
-      }
-      yield ev;
+    if (feedback.type === "redirect") {
+      this.state.phase = "classify";
+      yield* this.startSession(this.state.userQuery);
+      return;
     }
-  } finally {
-    allLog.push({ type: "total-token-usage", totalTokenUsage });
-    console.debug("[stream-all-log]", JSON.stringify(allLog));
-  }
-}
-var AISearchAgentTestTools = class {
-  /**
-   * Run streamReconForPhysicalTask once for a single physical task.
-   * Usage: pass a PhysicalSearchTask (e.g. from pk-debug physicalTaskResults, or build one). Optionally pass userQuery to set context; defaults to a short placeholder.
-   * Returns { result, duration, eventCount }.
-   */
-  async testStreamReconForPhysicalTask(physicalTask, userQuery = "List relevant notes for the given dimensions.") {
-    const start = Date.now();
-    const ctx = AppContext.getInstance();
-    const context = new AgentContextManager(ctx.manager);
-    context.resetAgentMemory(userQuery);
-    const agent = new ReconAgent(ctx.manager, context);
-    let result = null;
-    let eventCount = 0;
-    for await (const _ev of streamWithStreamLog(
-      agent.streamReconForPhysicalTask(physicalTask, generateUuidWithoutHyphens(), (r) => {
-        result = r;
-      })
-    )) {
-      eventCount++;
+    if (feedback.type === "add_paths" && feedback.paths?.length) {
+      this.addEvidencePaths(feedback.paths, "User-specified path");
     }
-    const duration = Date.now() - start;
-    console.debug("[testStreamReconForPhysicalTask] result:", result, "duration:", duration, "eventCount:", eventCount);
-    return { result, duration, eventCount };
-  }
-  /** Run SlotRecallAgent once with a user query; returns event count and slot coverage from context. */
-  async testSlotRecall(userQuery, skipStreamSearchArchitect = false, skipSearch = true) {
-    const start = Date.now();
-    const ctx = AppContext.getInstance();
-    const context = new AgentContextManager(ctx.manager);
-    context.resetAgentMemory(userQuery);
-    const agent = new SlotRecallAgent(ctx.manager, context);
-    let eventCount = 0;
-    for await (const _ev of streamWithStreamLog(agent.stream({ skipStreamSearchArchitect, skipSearch }))) {
-      eventCount++;
+    if (feedback.type === "remove_paths" && feedback.paths?.length) {
+      this.removeEvidencePaths(feedback.paths);
     }
-    const end = Date.now();
-    const duration = end - start;
-    return {
-      debugSnapshot: context.getDebugSnapshot(),
-      duration
-    };
+    yield* this.runReport(stepId, feedback.outline);
   }
   /**
-   * Test gravity-merge grouping with saved consolidator data (no full search run).
-   * Available as window.testGroupingTools when enableDevTools.
-   * Usage: paste consolidated_tasks from pk-debug "parallelSearchResultAfterTaskConsolidator", add taskId, then:
-   *   await window.testGroupingTools.testGrouping(tasksWithIds, { maxEvidenceConcurrency: 12 })
-   * Run gravity grouping on tasks (with optional graph affinity when DB is ready).
-   * Returns { groups, groupCount, totalTasks, opts } and logs to console.
+   * Force immediate report with current evidence.
    */
-  async testGroupConsolidatedTasksGravity(tasks, opts = {}) {
-    const withIds = tasks.map(
-      (t, i) => "taskId" in t && t.taskId ? t : { ...t, taskId: `task-${i}` }
-    );
-    const groups = await groupConsolidatedTasksGravity(withIds, opts);
-    const totalScore = withIds.reduce((s, t) => s + taskLoadScore(t), 0);
-    console.debug("[testGrouping] input tasks:", withIds.length, "totalScore:", totalScore, "opts:", opts);
-    console.debug("[testGrouping] output groups:", groups);
-    console.debug("[testGrouping] output groups stats:", groups.length, groups.map((g, i) => ({
-      groupIndex: i,
-      taskCount: g.length,
-      score: g.reduce((s, t) => s + taskLoadScore(t), 0),
-      paths: g.map((t) => t.path)
-    })));
-    return {
-      groups,
-      groupCount: groups.length,
-      totalTasks: withIds.length,
-      opts
-    };
+  async *forceReport() {
+    const stepId = generateUuidWithoutHyphens();
+    yield* this.runReport(stepId);
   }
-  async testGroupContextAgent(testData) {
-    const ctx = AppContext.getInstance();
-    const context = new AgentContextManager(ctx.manager);
-    const groupContextAgent = new GroupContextAgent(ctx.manager, context);
-    let evidenceGroups = [];
-    let eventCount = 0;
-    for await (const _ev of streamWithStreamLog(
-      groupContextAgent.streamAllGroupsContext({
-        groups: testData.groups,
-        dimensions: testData.dimensions,
-        stepId: generateUuidWithoutHyphens(),
-        onRefinementFinish: (eg) => {
-          evidenceGroups = eg;
-        }
-      })
-    )) {
-      eventCount++;
+  getState() {
+    return this.state;
+  }
+  getResult() {
+    return this.state.result;
+  }
+  // ---------------------------------------------------------------------------
+  // Internal
+  // ---------------------------------------------------------------------------
+  async *runReport(stepId, outlineOverride) {
+    const { userQuery, classify, recon, planSnapshot } = this.state;
+    if (!classify || !recon || !planSnapshot) {
+      yield {
+        type: "pk-debug",
+        debugName: "VaultSearchAgent: cannot report \u2014 missing classify/recon/plan state",
+        extra: { hasClassify: !!classify, hasRecon: !!recon, hasPlan: !!planSnapshot }
+      };
+      return;
     }
-    console.debug("[testGroupContextAgent] evidenceGroups:", evidenceGroups);
-    return {
-      eventCount,
-      evidenceGroups
+    yield this.makePhaseTransition("present-plan", "report", stepId);
+    yield this.makeUIStep(stepId, "Generating report\u2026", `Synthesizing ${recon.evidence.length} sources`);
+    const effectivePlanSnapshot = outlineOverride ? { ...planSnapshot, proposedOutline: outlineOverride } : planSnapshot;
+    const result = yield* runReportPhase({
+      userQuery,
+      classify,
+      recon,
+      planSnapshot: effectivePlanSnapshot,
+      aiServiceManager: this.aiServiceManager,
+      stepId
+    });
+    this.state.result = result;
+    this.state.phase = "complete";
+    yield this.makePhaseTransition("report", "complete", stepId);
+    yield {
+      type: "complete",
+      finishReason: "stop",
+      usage: this.state.tokenUsage,
+      result,
+      triggerName: "search-ai-agent" /* SEARCH_AI_AGENT */
     };
   }
-  async testGroupContextAgentWithSharedContext(testData) {
-    const { groups } = testData;
-    const ctx = AppContext.getInstance();
-    const tm = ctx.manager.getTemplateManager?.();
-    const sharedContexts = await Promise.all(
-      groups.map((tasks) => weavePathsToContext(tasks.map((t) => t.path), tm))
-    );
+  addEvidencePaths(paths, defaultReason) {
+    if (!this.state.recon) {
+      this.state.recon = { evidence: [] };
+    }
+    const existing = new Set(this.state.recon.evidence.map((e) => e.path));
+    for (const path3 of paths) {
+      if (!existing.has(path3)) {
+        this.state.recon.evidence.push({ path: path3, reason: defaultReason, taskId: "user" });
+      }
+    }
+  }
+  removeEvidencePaths(paths) {
+    if (!this.state.recon) return;
+    const removeSet = new Set(paths);
+    this.state.recon.evidence = this.state.recon.evidence.filter((e) => !removeSet.has(e.path));
+  }
+  buildInitialState(userQuery) {
     return {
-      sharedContexts
+      userQuery,
+      phase: "classify",
+      tokenUsage: emptyUsage(),
+      conversationHistory: []
+    };
+  }
+  makeUIStep(stepId, title, description) {
+    return {
+      type: "ui-step",
+      uiType: "steps-display" /* STEPS_DISPLAY */,
+      stepId,
+      title,
+      description,
+      triggerName: "search-ai-agent" /* SEARCH_AI_AGENT */
+    };
+  }
+  makePhaseTransition(from, to, _stepId) {
+    this.state.phase = to;
+    return {
+      type: "phase-transition",
+      from,
+      to,
+      triggerName: "search-ai-agent" /* SEARCH_AI_AGENT */
     };
   }
 };
 
-// src/app/context/graph-cleanup.ts
-var import_kysely4 = require("kysely");
-async function cleanupGraphTable() {
-  const kdb = sqliteStoreManager.getSearchContext();
-  const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
-  const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
-  const pathMap = await indexedDocumentRepo.getAllIndexedPaths();
-  const paths = Array.from(pathMap.keys());
-  const idRows = paths.length > 0 ? await indexedDocumentRepo.getIdsByPaths(paths) : [];
-  const validDocIds = new Set(idRows.map((r) => r.id));
-  const allNodeIdsToCheck = [];
-  for (const t of GRAPH_DOCUMENT_LIKE_NODE_TYPES) {
-    const nodes = await mobiusNodeRepo.getByType(t);
-    allNodeIdsToCheck.push(...nodes.map((n) => n.id));
-  }
-  const nodeIdsWithoutIndexedDocument = [...new Set(allNodeIdsToCheck)].filter((id) => !validDocIds.has(id));
-  let orphanEdgesDeleted = 0;
-  await kdb.transaction().execute(async (trx) => {
-    const orphanEdgeRows = await trx.selectFrom("mobius_edge").select("id").where(
-      import_kysely4.sql`from_node_id NOT IN (SELECT node_id FROM mobius_node) OR to_node_id NOT IN (SELECT node_id FROM mobius_node)`
-    ).execute();
-    const orphanEdgeIds = orphanEdgeRows.map((r) => r.id);
-    if (orphanEdgeIds.length > 0) {
-      const chunkSize = 500;
-      for (let i = 0; i < orphanEdgeIds.length; i += chunkSize) {
-        const chunk2 = orphanEdgeIds.slice(i, i + chunkSize);
-        await trx.deleteFrom("mobius_edge").where("id", "in", chunk2).execute();
-      }
-      orphanEdgesDeleted = orphanEdgeIds.length;
-    }
-    if (nodeIdsWithoutIndexedDocument.length > 0) {
-      await trx.deleteFrom("mobius_edge").where(
-        (eb) => eb.or([
-          eb("from_node_id", "in", nodeIdsWithoutIndexedDocument),
-          eb("to_node_id", "in", nodeIdsWithoutIndexedDocument)
-        ])
-      ).execute();
-      await trx.deleteFrom("mobius_node").where("node_id", "in", nodeIdsWithoutIndexedDocument).execute();
-    }
-  });
+// src/service/tools/system-info.ts
+function getVaultStatistics() {
+  const app = AppContext.getInstance().app;
+  const vaultName = app.vault.getName();
+  const allFiles = app.vault.getFiles();
+  const markdownFiles = allFiles.filter((f) => f.extension === "md");
+  const otherFiles = allFiles.filter((f) => f.extension !== "md");
   return {
-    orphanEdgesDeleted,
-    nodesWithoutIndexedDocumentDeleted: nodeIdsWithoutIndexedDocument.length
+    vaultName,
+    totalFiles: allFiles.length,
+    markdownFiles: markdownFiles.length,
+    otherFiles: otherFiles.length
   };
 }
-
-// src/app/context/index-debug-tools.ts
-var import_obsidian20 = __toESM(require_obsidian_stub());
-function requireDb() {
-  if (!sqliteStoreManager.isInitialized()) {
-    throw new Error("[index-debug] SQLite is not initialized. Open the vault and wait for the plugin to finish loading.");
-  }
-}
-var DEBUG_INDEX_MODE_TO_REASON = {
-  core_fast: "listener_fast",
-  vector_only: "vector_enrich_only",
-  llm_only: "llm_enrich_only",
-  manual_full: "manual_full"
-};
-async function debugRunHubDiscoverWithReport(options) {
-  const discovery = new HubCandidateDiscoveryService();
-  const roundSummaries = [];
-  const discoverResult = await discovery.discoverAllHubCandidates({
-    tenant: options?.tenant ?? "vault",
-    onRoundComplete: (s) => {
-      roundSummaries.push(s);
-      options?.onRoundComplete?.(s);
-    }
-  });
-  return {
-    candidates: discoverResult.candidates,
-    navigationHubGroups: discoverResult.navigationHubGroups,
-    navigationHubs: discoverResult.navigationHubs,
-    longTailHubs: discoverResult.longTailHubs,
-    partitionMetrics: discoverResult.partitionMetrics,
-    roundSummaries
-  };
-}
-async function debugMaterializeHubCandidate(candidate2, getSearchSettings, options) {
-  requireDb();
-  const searchSettings = getSearchSettings();
-  const hubPath = options?.hubPath ?? getAIHubSummaryFolder();
-  let hubNodeIdSet = options?.hubNodeIdSet;
-  if (!hubNodeIdSet) {
-    if (options?.hubCandidatesForHubSet?.length) {
-      hubNodeIdSet = new Set(
-        options.hubCandidatesForHubSet.filter((c) => c.sourceKind === "document" || c.sourceKind === "manual").map((c) => c.nodeId)
-      );
-    } else {
-      hubNodeIdSet = new Set(
-        candidate2.sourceKind === "document" || candidate2.sourceKind === "manual" ? [candidate2.nodeId] : []
-      );
-    }
-  }
-  return materializeHubDocFromCandidate(candidate2, {
-    hubPath,
-    hubNodeIdSet,
-    searchSettings,
-    indexService: IndexService.getInstance()
-  });
-}
-async function debugBuildCandidateCoverageBits(tenant, candidates) {
-  const docCoverageIndex = await buildHubDiscoverDocCoverageIndex(tenant);
-  const bitsByStableKey = /* @__PURE__ */ new Map();
-  for (const c of candidates) {
-    bitsByStableKey.set(c.stableKey, await estimateCandidateCoverageBits(tenant, c, docCoverageIndex));
-  }
-  return { docCoverageIndex, bitsByStableKey };
-}
-async function computeUnionCoverageForHubCandidates(tenant, candidates) {
-  const { docCoverageIndex, bitsByStableKey } = await debugBuildCandidateCoverageBits(tenant, candidates);
-  const union = createUint32Bitset(docCoverageIndex.docCount);
-  for (const bits of bitsByStableKey.values()) {
-    for (let wi = 0; wi < union.length; wi++) {
-      union[wi] |= bits[wi] ?? 0;
-    }
-  }
-  let coveredCount = 0;
-  const coveredNodeIds = /* @__PURE__ */ new Set();
-  for (let o = 0; o < docCoverageIndex.docCount; o++) {
-    if (hasUint32Bit(union, o)) {
-      coveredCount++;
-      coveredNodeIds.add(docCoverageIndex.nodeIdByOrdinal[o]);
-    }
-  }
-  const documentCount = docCoverageIndex.docCount;
-  const coverageRatio = documentCount > 0 ? coveredCount / documentCount : 0;
-  return { coveredNodeIds, documentCount, coveredCount, coverageRatio };
-}
-async function countChunksForDoc(tenant, docId) {
-  const kdb = sqliteStoreManager.getIndexContext(tenant);
-  const r = await kdb.selectFrom("doc_chunk").select((eb) => eb.fn.count("chunk_id").as("c")).where("doc_id", "=", docId).executeTakeFirst();
-  return Number(r?.c ?? 0);
-}
-async function countEmbeddingsForDoc(tenant, docId) {
-  const kdb = sqliteStoreManager.getIndexContext(tenant);
-  const r = await kdb.selectFrom("embedding").select((eb) => eb.fn.count("id").as("c")).where("doc_id", "=", docId).executeTakeFirst();
-  return Number(r?.c ?? 0);
-}
-async function countTaggedEdgesForDoc(tenant, docId) {
-  const kdb = sqliteStoreManager.getIndexContext(tenant);
-  const r = await kdb.selectFrom("mobius_edge").select((eb) => eb.fn.count("id").as("c")).where("type", "in", [...GRAPH_TAGGED_EDGE_TYPES]).where((eb) => eb.or([eb("from_node_id", "=", docId), eb("to_node_id", "=", docId)])).executeTakeFirst();
-  return Number(r?.c ?? 0);
-}
-async function countEdgesByTypeForDoc(tenant, docId) {
-  const kdb = sqliteStoreManager.getIndexContext(tenant);
-  const rows = await kdb.selectFrom("mobius_edge").select((eb) => [eb.fn.count("id").as("c"), "type"]).where((eb) => eb.or([eb("from_node_id", "=", docId), eb("to_node_id", "=", docId)])).groupBy("type").execute();
-  const out = {};
-  for (const r of rows) {
-    out[String(r.type)] = Number(r.c);
-  }
-  return out;
-}
-async function debugDocumentSnapshot(docPath, options) {
-  const path3 = (0, import_obsidian20.normalizePath)(docPath.trim());
-  const tenant = getIndexTenantForPath(path3);
-  const t0 = Date.now();
-  const warnings = [];
-  const chunkLimit = options?.chunkSampleLimit ?? 40;
-  const edgeLim = options?.edgeSampleLimit ?? 50;
-  const pv = (t, max = 400) => {
-    const s = String(t ?? "").replace(/\s+/g, " ").trim();
-    return !s ? "" : s.length > max ? `${s.slice(0, max)}\u2026` : s;
-  };
-  const parseJson = (raw) => {
-    if (raw == null || raw === "") return null;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return raw;
-    }
-  };
-  const outBase = {
-    path: path3,
-    tenant,
-    ok: false,
-    elapsedMs: 0,
-    warnings,
-    indexed: null,
-    summary: null,
-    tags: null,
-    docAttrs: null,
-    mobiusNodeType: null,
-    counts: {
-      chunk: 0,
-      embedding: 0,
-      taggedEdges: 0,
-      edgesByType: {}
-    },
-    graph: {
-      docIncomingCnt: null,
-      docOutgoingCnt: null,
-      otherIncomingCnt: null,
-      otherOutgoingCnt: null,
-      pagerank: null,
-      semanticPagerank: null,
-      wordCount: null,
-      charCount: null,
-      referenceEdgesIncidentSampled: 0,
-      semanticEdgesIncidentSampled: 0,
-      referenceEdgesSample: [],
-      semanticEdgesSample: [],
-      taggedEdgesSample: []
-    },
-    chunkSamples: null
-  };
+async function getVaultDescription() {
   try {
-    requireDb();
-  } catch (e) {
-    const err = e.message ?? String(e);
-    const res2 = {
-      ...outBase,
-      ok: false,
-      error: err,
-      elapsedMs: Date.now() - t0
-    };
-    console.info("[index-debug] debugDocumentSnapshot", res2);
-    return res2;
+    const descriptionPath = `${getAIPromptFolder()}/${VAULT_DESCRIPTION_FILENAME}`;
+    const content = await readFileAsText(descriptionPath);
+    return content?.trim() || void 0;
+  } catch (error) {
+    console.warn("[system-info] Error reading vault description:", error);
+    return void 0;
   }
-  const indexedRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
-  const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
-  const meta2 = await indexedRepo.getByPath(path3);
-  const row = await mobiusRepo.getByPath(path3);
-  const docId = meta2?.id ?? row?.node_id ?? null;
-  if (!docId) {
-    const res2 = {
-      ...outBase,
-      ok: false,
-      error: "No indexed document or mobius_node row for this path.",
-      elapsedMs: Date.now() - t0
-    };
-    warnings.push("Path not found in index (not indexed or wrong tenant).");
-    console.info("[index-debug] debugDocumentSnapshot", res2);
-    return res2;
+}
+async function getTagCloud() {
+  try {
+    const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+    const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo();
+    const topTagStats = await mobiusEdgeRepo.getTopTaggedNodes(GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT);
+    if (topTagStats.length === 0) {
+      return "";
+    }
+    const tagIds = topTagStats.map((stat) => stat.tagId);
+    const tagNodesMap = await mobiusNodeRepo.getByIds(tagIds);
+    return topTagStats.map((stat) => {
+      const tagNode = tagNodesMap.get(stat.tagId);
+      if (!tagNode) return null;
+      return `#${tagNode.label}(${stat.count})`;
+    }).filter((item) => item !== null).join(", ");
+  } catch (error) {
+    console.warn("[system-info] Error getting tag cloud:", error);
+    return "";
   }
-  if (meta2) {
-    outBase.indexed = {
-      id: meta2.id,
-      path: meta2.path,
-      title: meta2.title,
-      type: meta2.type,
-      content_hash: meta2.content_hash,
-      mtime: meta2.mtime,
-      last_processed_at: meta2.last_processed_at
-    };
-  } else {
-    warnings.push("IndexedDocumentRepo.getByPath returned null; using mobius_node only.");
-  }
-  const attrsParsed = parseJson(row?.attributes_json);
-  const fullSummary = typeof attrsParsed?.full_summary === "string" ? attrsParsed.full_summary : null;
-  const hubTier = typeof attrsParsed?.hub_tier === "string" ? attrsParsed.hub_tier : null;
-  const summaryGeneratedAt = typeof attrsParsed?.summary_generated_at === "number" ? attrsParsed.summary_generated_at : null;
-  const headingSkeleton = typeof attrsParsed?.heading_skeleton === "string" ? attrsParsed.heading_skeleton : null;
-  const semanticOverlay = typeof attrsParsed?.semantic_overlay_mermaid === "string" ? attrsParsed.semantic_overlay_mermaid : null;
-  const frontmatterJson = typeof attrsParsed?.frontmatter_json === "string" ? attrsParsed.frontmatter_json : null;
-  outBase.summary = {
-    short: row?.summary ?? null,
-    full: fullSummary,
-    hubTier,
-    summaryGeneratedAt,
-    headingSkeletonPreview: headingSkeleton ? pv(headingSkeleton, 600) : null
-  };
-  outBase.tags = row?.tags_json != null ? decodeIndexedTagsBlob(row.tags_json) : null;
-  outBase.mobiusNodeType = row?.type ?? null;
-  outBase.docAttrs = {
-    llmPending: attrsParsed?.llm_pending,
-    llmPendingReason: attrsParsed?.llm_pending_reason,
-    vectorPending: attrsParsed?.vector_pending,
-    vectorPendingReason: attrsParsed?.vector_pending_reason,
-    functionalTagsStatus: attrsParsed?.functional_tags_status,
-    llmTagsGeneratedAt: attrsParsed?.llm_tags_generated_at,
-    llmSummaryGeneratedAt: attrsParsed?.llm_summary_generated_at,
-    vectorGeneratedAt: attrsParsed?.vector_generated_at,
-    semanticOverlayPreview: semanticOverlay ? pv(semanticOverlay, 500) : null,
-    frontmatterPreview: frontmatterJson ? pv(frontmatterJson, 800) : null
-  };
-  const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
-  const [chunkCount, embeddingCount, taggedEdgeCount, edgesByType, refInc, semInc] = await Promise.all([
-    countChunksForDoc(tenant, docId),
-    countEmbeddingsForDoc(tenant, docId),
-    countTaggedEdgesForDoc(tenant, docId),
-    countEdgesByTypeForDoc(tenant, docId),
-    edgeRepo.listReferenceEdgesIncidentToNode(docId, Math.max(edgeLim, 5e3)),
-    edgeRepo.listSemanticRelatedEdgesIncidentToNode(docId, Math.max(edgeLim, 2e3))
+}
+async function getVaultPersona() {
+  const [vaultDescription, tagCloud] = await Promise.all([
+    getVaultDescription(),
+    getTagCloud()
   ]);
-  outBase.counts = {
-    chunk: chunkCount,
-    embedding: embeddingCount,
-    taggedEdges: taggedEdgeCount,
-    edgesByType
-  };
-  const kdbForSamples = sqliteStoreManager.getIndexContext(tenant);
-  const taggedRows = await kdbForSamples.selectFrom("mobius_edge").select(["id", "from_node_id", "to_node_id", "type", "weight", "attributes_json"]).where("type", "in", [...GRAPH_TAGGED_EDGE_TYPES]).where((eb) => eb.or([eb("from_node_id", "=", docId), eb("to_node_id", "=", docId)])).limit(edgeLim).execute();
-  const taggedSample = taggedRows.map((r) => ({
-    id: r.id,
-    from: r.from_node_id,
-    to: r.to_node_id,
-    type: r.type,
-    weight: r.weight,
-    attrs: parseJson(r.attributes_json)
-  }));
-  let chunkSamples = null;
-  if (chunkLimit > 0) {
-    const docChunkRows = await kdbForSamples.selectFrom("doc_chunk").select(["chunk_id", "chunk_index", "chunk_type", "title", "content_raw", "chunk_meta_json"]).where("doc_id", "=", docId).orderBy("chunk_index", "asc").limit(chunkLimit).execute();
-    chunkSamples = docChunkRows.map((r) => ({
-      chunkId: r.chunk_id,
-      chunkIndex: r.chunk_index ?? 0,
-      chunkType: r.chunk_type,
-      title: r.title,
-      len: r.content_raw?.length ?? 0,
-      preview: pv(r.content_raw, 400),
-      meta: parseJson(r.chunk_meta_json)
-    }));
-  }
-  outBase.graph = {
-    docIncomingCnt: row?.doc_incoming_cnt ?? null,
-    docOutgoingCnt: row?.doc_outgoing_cnt ?? null,
-    otherIncomingCnt: row?.other_incoming_cnt ?? null,
-    otherOutgoingCnt: row?.other_outgoing_cnt ?? null,
-    pagerank: typeof row?.pagerank === "number" ? row.pagerank : null,
-    semanticPagerank: typeof row?.semantic_pagerank === "number" ? row.semantic_pagerank : null,
-    wordCount: row?.word_count ?? null,
-    charCount: row?.char_count ?? null,
-    referenceEdgesIncidentSampled: refInc.length,
-    semanticEdgesIncidentSampled: semInc.length,
-    referenceEdgesSample: refInc.slice(0, edgeLim),
-    semanticEdgesSample: semInc.slice(0, edgeLim),
-    taggedEdgesSample: taggedSample
-  };
-  if (chunkCount === 0) {
-    warnings.push("chunk count is 0 \u2014 check loader / chunking / index.");
-  }
-  if (embeddingCount === 0) {
-    warnings.push("embedding count is 0 \u2014 vectors off or not embedded yet.");
-  }
-  let hubCoverage;
-  if (options?.includeHubCoverage) {
-    try {
-      hubCoverage = await debugExplainPathCoverage(path3);
-    } catch (e) {
-      warnings.push(`hub coverage failed: ${e.message ?? String(e)}`);
-    }
-  }
-  const res = {
-    ...outBase,
-    ok: true,
-    elapsedMs: Date.now() - t0,
-    ...hubCoverage !== void 0 ? { hubCoverage } : {},
-    chunkSamples
-  };
-  console.info("[index-debug] debugDocumentSnapshot", res);
-  return res;
-}
-function logDebugIndexDocument(path3, tenant, t0, phase, extra) {
-  console.info("[index-debug] debugIndexDocument", {
-    phase,
-    path: path3,
-    tenant,
-    elapsedMs: Date.now() - t0,
-    ...extra
-  });
-}
-async function debugIndexDocument(docPath, getSearchSettings, mode = "manual_full") {
-  const path3 = (0, import_obsidian20.normalizePath)(docPath.trim());
-  const tenant = getIndexTenantForPath(path3);
-  const t0 = Date.now();
-  const warnings = [];
-  const out = {
-    path: path3,
-    tenant,
-    mode,
-    ok: false,
-    elapsedMs: 0,
-    warnings
-  };
-  logDebugIndexDocument(path3, tenant, t0, "start");
-  try {
-    requireDb();
-  } catch (e) {
-    out.error = e.message ?? String(e);
-    out.elapsedMs = Date.now() - t0;
-    logDebugIndexDocument(path3, tenant, t0, "requireDb_failed", { error: out.error });
-    return out;
-  }
-  logDebugIndexDocument(path3, tenant, t0, "db_ready");
-  const settings = getSearchSettings();
-  const indexOptions = defaultIndexDocumentOptions(DEBUG_INDEX_MODE_TO_REASON[mode]);
-  const readOpts = {
-    includeLlmTags: indexOptions.includeLlmTags,
-    includeLlmSummary: indexOptions.includeLlmSummary
-  };
-  const loaderManager = DocumentLoaderManager.getInstance();
-  logDebugIndexDocument(path3, tenant, t0, "readByPath_start", {
-    hint: "Markdown: parallel LLM tag + summary inside loader; see [MarkdownDocumentLoader] logs"
-  });
-  const readDoc = await loaderManager.readByPath(path3, true, readOpts);
-  if (!readDoc) {
-    out.error = "readByPath returned null (unknown type or no loader)";
-    out.elapsedMs = Date.now() - t0;
-    warnings.push("Could not load document model; index step skipped.");
-    logDebugIndexDocument(path3, tenant, t0, "readByPath_null");
-    return out;
-  }
-  logDebugIndexDocument(path3, tenant, t0, "readByPath_ok", { docType: readDoc.type, docId: readDoc.id });
-  const pv = (t, max = 600) => {
-    const s = String(t ?? "").replace(/\s+/g, " ").trim();
-    return !s ? "" : s.length > max ? `${s.slice(0, max)}\u2026` : s;
-  };
-  const refTenant = (refs) => refs.map((r) => ({ ...r, tenant: getIndexTenantForPath(r.fullPath) }));
-  const outgoingRefs = refTenant(readDoc.references?.outgoing ?? []);
-  out.read = {
-    id: readDoc.id,
-    type: readDoc.type,
-    sourcePreview: pv(readDoc.sourceFileInfo.content, 800),
-    cachePreview: pv(readDoc.cacheFileInfo.content, 800),
-    metadata: readDoc.metadata,
-    references: {
-      outgoing: outgoingRefs,
-      incoming: refTenant(readDoc.references?.incoming ?? []),
-      crossTenantOutgoing: outgoingRefs.filter((r) => r.tenant !== tenant)
-    },
-    summary: readDoc.summary,
-    contentHash: readDoc.contentHash
-  };
-  const loader = loaderManager.getLoaderForDocumentType(readDoc.type);
-  if (loader) {
-    try {
-      logDebugIndexDocument(path3, tenant, t0, "chunkContent_start");
-      const chunks = await loader.chunkContent(readDoc, settings.chunking);
-      const byType = {};
-      for (const c of chunks) {
-        byType[c.chunkType] = (byType[c.chunkType] ?? 0) + 1;
-      }
-      out.chunks = {
-        count: chunks.length,
-        byType,
-        items: chunks.map((c) => ({
-          chunkId: c.chunkId,
-          chunkIndex: c.chunkIndex,
-          chunkType: c.chunkType,
-          title: c.title,
-          len: c.content?.length ?? 0,
-          preview: pv(c.content, 400),
-          meta: c.chunkMeta,
-          embLen: Array.isArray(c.embedding) ? c.embedding.length : 0
-        }))
-      };
-      logDebugIndexDocument(path3, tenant, t0, "chunkContent_ok", { chunkCount: chunks.length });
-    } catch (e) {
-      warnings.push(`chunkContent failed: ${e.message ?? String(e)}`);
-      logDebugIndexDocument(path3, tenant, t0, "chunkContent_failed", {
-        error: e.message ?? String(e)
-      });
-    }
-  } else {
-    warnings.push(`No loader for document type: ${readDoc.type}`);
-    logDebugIndexDocument(path3, tenant, t0, "chunkContent_skipped", { reason: "no_loader" });
-  }
-  out.indexOptions = indexOptions;
-  logDebugIndexDocument(path3, tenant, t0, "indexDocument_start", {
-    mode,
-    reason: indexOptions.reason,
-    includeCoreSearchIndex: indexOptions.includeCoreSearchIndex,
-    includeEmbeddings: indexOptions.includeEmbeddings,
-    includeLlmTags: indexOptions.includeLlmTags,
-    includeLlmSummary: indexOptions.includeLlmSummary
-  });
-  try {
-    await IndexService.getInstance().indexDocument(path3, settings, indexOptions, readDoc);
-    out.ok = true;
-    logDebugIndexDocument(path3, tenant, t0, "indexDocument_ok");
-  } catch (e) {
-    out.error = e.message ?? String(e);
-    out.elapsedMs = Date.now() - t0;
-    logDebugIndexDocument(path3, tenant, t0, "indexDocument_failed", { error: out.error });
-    return out;
-  }
-  const indexedRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
-  logDebugIndexDocument(path3, tenant, t0, "indexed_meta_lookup_start");
-  const meta2 = await indexedRepo.getByPath(path3);
-  if (!meta2) {
-    warnings.push("Document not found in indexed_document table after index (skipped or load failed).");
-    out.elapsedMs = Date.now() - t0;
-    logDebugIndexDocument(path3, tenant, t0, "indexed_meta_missing");
-    return out;
-  }
-  logDebugIndexDocument(path3, tenant, t0, "indexed_meta_ok", { docId: meta2.id });
-  const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
-  const row = await mobiusRepo.getByPath(path3);
-  const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
-  logDebugIndexDocument(path3, tenant, t0, "graph_edges_start", { nodeId: meta2.id });
-  const refInc = await edgeRepo.listReferenceEdgesIncidentToNode(meta2.id, 5e3);
-  logDebugIndexDocument(path3, tenant, t0, "graph_reference_edges_ok", { sampled: refInc.length });
-  const semInc = await edgeRepo.listSemanticRelatedEdgesIncidentToNode(meta2.id, 2e3);
-  logDebugIndexDocument(path3, tenant, t0, "graph_semantic_edges_ok", { sampled: semInc.length });
-  const parseJson = (raw) => {
-    if (raw == null || raw === "") return null;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return raw;
-    }
-  };
-  const kdb = sqliteStoreManager.getIndexContext(tenant);
-  logDebugIndexDocument(path3, tenant, t0, "doc_chunk_sample_start");
-  const docChunkRows = await kdb.selectFrom("doc_chunk").select(["chunk_id", "chunk_index", "chunk_type", "title", "content_raw", "chunk_meta_json"]).where("doc_id", "=", meta2.id).orderBy("chunk_index", "asc").limit(120).execute();
-  logDebugIndexDocument(path3, tenant, t0, "doc_chunk_sample_ok", { rows: docChunkRows.length });
-  const persistedItems = docChunkRows.map((r) => ({
-    chunkId: r.chunk_id,
-    chunkIndex: r.chunk_index ?? 0,
-    chunkType: r.chunk_type,
-    title: r.title,
-    len: r.content_raw?.length ?? 0,
-    preview: pv(r.content_raw, 400),
-    meta: parseJson(r.chunk_meta_json)
-  }));
-  logDebugIndexDocument(path3, tenant, t0, "tagged_edges_sample_start");
-  const taggedRows = await kdb.selectFrom("mobius_edge").select(["id", "from_node_id", "to_node_id", "type", "weight", "attributes_json"]).where("type", "in", [...GRAPH_TAGGED_EDGE_TYPES]).where((eb) => eb.or([eb("from_node_id", "=", meta2.id), eb("to_node_id", "=", meta2.id)])).limit(50).execute();
-  logDebugIndexDocument(path3, tenant, t0, "tagged_edges_sample_ok", { rows: taggedRows.length });
-  const taggedSample = taggedRows.map((r) => ({
-    id: r.id,
-    from: r.from_node_id,
-    to: r.to_node_id,
-    type: r.type,
-    weight: r.weight,
-    attrs: parseJson(r.attributes_json)
-  }));
-  logDebugIndexDocument(path3, tenant, t0, "chunk_embedding_counts_start");
-  const chunkCountTotal = await countChunksForDoc(tenant, meta2.id);
-  const embeddingRowCount = await countEmbeddingsForDoc(tenant, meta2.id);
-  logDebugIndexDocument(path3, tenant, t0, "chunk_embedding_counts_ok", {
-    chunkCount: chunkCountTotal,
-    embeddingRowCount
-  });
-  out.indexed = {
-    nodeId: meta2.id,
-    title: meta2.title,
-    type: meta2.type,
-    chunkCount: chunkCountTotal,
-    embeddingRowCount
-  };
-  if (row) {
-    const attrsParsed = parseJson(row.attributes_json);
-    out.mobiusNode = {
-      row: { ...row },
-      tagsDecoded: decodeIndexedTagsBlob(row.tags_json),
-      attrsParsed,
-      pendingState: {
-        llmPending: attrsParsed?.llm_pending ?? null,
-        llmPendingReason: attrsParsed?.llm_pending_reason ?? null,
-        vectorPending: attrsParsed?.vector_pending ?? null,
-        vectorPendingReason: attrsParsed?.vector_pending_reason ?? null,
-        functionalTagsStatus: attrsParsed?.functional_tags_status ?? null
-      }
-    };
-  }
-  out.persistedChunks = {
-    count: chunkCountTotal,
-    itemsSampled: persistedItems.length,
-    items: persistedItems
-  };
-  logDebugIndexDocument(path3, tenant, t0, "tagged_edge_count_start");
-  const taggedEdgeCount = await countTaggedEdgesForDoc(tenant, meta2.id);
-  logDebugIndexDocument(path3, tenant, t0, "tagged_edge_count_ok", { taggedEdgeCount });
-  out.graph = {
-    referenceEdgesIncidentSampled: refInc.length,
-    semanticEdgesIncidentSampled: semInc.length,
-    taggedEdgeCount,
-    docIncomingCnt: row?.doc_incoming_cnt ?? null,
-    docOutgoingCnt: row?.doc_outgoing_cnt ?? null,
-    pagerank: typeof row?.pagerank === "number" ? row.pagerank : null,
-    semanticPagerank: typeof row?.semantic_pagerank === "number" ? row.semantic_pagerank : null,
-    referenceEdgesSample: refInc.slice(0, 50),
-    semanticEdgesSample: semInc.slice(0, 50),
-    taggedEdgesSample: taggedSample
-  };
-  const indexedSnap = out.indexed;
-  if (indexedSnap?.chunkCount === 0) {
-    warnings.push("chunkCount is 0 \u2014 check loader / chunking settings.");
-  }
-  if (indexedSnap?.embeddingRowCount === 0) {
-    warnings.push("embeddingRowCount is 0 \u2014 vector extension off or embedding model not configured.");
-  }
-  logDebugIndexDocument(path3, tenant, t0, "localHubPreview_start");
-  try {
-    const local = await buildLocalHubGraphForPath({
-      tenant,
-      centerPath: path3,
-      hubNodeIdSet: /* @__PURE__ */ new Set(),
-      maxDepth: 3
-    });
-    if (local) {
-      out.localHubPreview = {
-        nodeCount: local.nodes.length,
-        edgeCount: local.edges.length,
-        stopReason: local.frontierSummary?.reason
-      };
-      logDebugIndexDocument(path3, tenant, t0, "localHubPreview_ok", {
-        nodeCount: local.nodes.length,
-        edgeCount: local.edges.length
-      });
-    } else {
-      logDebugIndexDocument(path3, tenant, t0, "localHubPreview_empty");
-    }
-  } catch (e) {
-    warnings.push(`local hub preview failed: ${e.message ?? e}`);
-    logDebugIndexDocument(path3, tenant, t0, "localHubPreview_failed", {
-      error: e.message ?? String(e)
-    });
-  }
-  out.elapsedMs = Date.now() - t0;
-  logDebugIndexDocument(path3, tenant, t0, "done", { ok: out.ok, warningCount: warnings.length });
-  return out;
-}
-async function debugBatchIndex(paths, getSearchSettings, mode = "manual_full") {
-  const t0 = Date.now();
-  const results = [];
-  for (const p of paths) {
-    results.push(await debugIndexDocument(p, getSearchSettings, mode));
-  }
-  const success = results.filter((r) => r.ok).length;
-  return {
-    total: results.length,
-    success,
-    failed: results.length - success,
-    elapsedMs: Date.now() - t0,
-    results
-  };
-}
-async function debugRunMaintenance(tenants = ["vault", "chat"]) {
-  const phaseEvents = [];
-  const t0 = Date.now();
-  try {
-    await IndexService.getInstance().runMobiusGlobalMaintenance(tenants, {
-      onProgress: (ev) => {
-        phaseEvents.push({
-          key: `${ev.tenant}:${ev.phase}`,
-          tenant: ev.tenant,
-          phase: ev.phase,
-          progressTextSuffix: ev.progressTextSuffix
-        });
-      }
-    });
-    return { ok: true, elapsedMs: Date.now() - t0, phaseEvents };
-  } catch (e) {
-    return {
-      ok: false,
-      elapsedMs: Date.now() - t0,
-      error: e.message ?? String(e),
-      phaseEvents
-    };
-  }
-}
-async function runHubDiscoverSingleLeg(options) {
-  const { tenant, leg } = options;
-  requireDb();
-  const docCoverageIndex = await buildHubDiscoverDocCoverageIndex(tenant);
-  const docCount = docCoverageIndex.docCount;
-  const budgets = computeHubDiscoverBudgets(docCount);
-  const discovery = new HubCandidateDiscoveryService();
-  const t0 = Date.now();
-  let candidates;
-  if (leg === "manual") {
-    candidates = await discovery.discoverManualHubCandidates({ tenant });
-  } else if (leg === "document") {
-    candidates = await discovery.discoverDocumentHubCandidates({
-      tenant,
-      limit: budgets.documentFetchLimit,
-      docCoverageIndex,
-      limitTotal: budgets.limitTotal
-    });
-  } else {
-    candidates = await discovery.discoverFolderHubCandidates({
-      tenant,
-      limit: budgets.folderFetchLimit
-    });
-  }
-  const res = {
-    tenant,
-    leg,
-    docCount,
-    budgets,
-    candidateCount: candidates.length,
-    elapsedMs: Date.now() - t0,
-    candidates
-  };
-  console.info("[index-debug] debugHubDiscoverSingleLeg", {
-    tenant: res.tenant,
-    leg: res.leg,
-    docCount: res.docCount,
-    budgets: res.budgets,
-    candidateCount: res.candidateCount,
-    elapsedMs: res.elapsedMs
-  });
-  return res;
-}
-async function debugHubDiscoverManualOnly(tenant = "vault") {
-  return runHubDiscoverSingleLeg({ tenant, leg: "manual" });
-}
-async function debugHubDiscoverDocumentOnly(tenant = "vault") {
-  return runHubDiscoverSingleLeg({ tenant, leg: "document" });
-}
-async function debugHubDiscoverFolderOnly(tenant = "vault") {
-  return runHubDiscoverSingleLeg({ tenant, leg: "folder" });
-}
-async function debugHubDiscoverClusterOnly(tenant = "vault") {
-  requireDb();
-  const docCoverageIndex = await buildHubDiscoverDocCoverageIndex(tenant);
-  const docCount = docCoverageIndex.docCount;
-  const budgets = computeHubDiscoverBudgets(docCount);
-  const discovery = new HubCandidateDiscoveryService();
-  const t0 = Date.now();
-  const docs = await discovery.discoverDocumentHubCandidates({
-    tenant,
-    limit: budgets.documentFetchLimit,
-    docCoverageIndex,
-    limitTotal: budgets.limitTotal
-  });
-  const topDocIds = new Set(
-    docs.slice(0, budgets.topDocExcludeLimit).map((d) => d.nodeId)
+  const stats = getVaultStatistics();
+  const tm = AppContext.getInstance().manager.getTemplateManager?.();
+  const exploreResult = await exploreFolder(
+    { folderPath: "/", recursive: true, max_depth: 2, limit: 100, response_format: "markdown" },
+    tm
   );
-  const { candidates, stats } = await discovery.discoverClusterHubCandidates({
-    tenant,
-    limit: budgets.clusterLimit,
-    seedFetchLimit: budgets.clusterSeedFetchLimit,
-    excludeNodeIds: topDocIds
-  });
-  const res = {
-    tenant,
-    docCount,
-    budgets,
-    candidateCount: candidates.length,
-    elapsedMs: Date.now() - t0,
-    candidates,
-    clusterDiscovery: stats
-  };
-  console.info("[index-debug] debugHubDiscoverClusterOnly", {
-    tenant: res.tenant,
-    docCount: res.docCount,
-    budgets: res.budgets,
-    candidateCount: res.candidateCount,
-    elapsedMs: res.elapsedMs,
-    clusterDiscovery: res.clusterDiscovery
-  });
-  return res;
-}
-async function debugHubDiscoverSnapshot(tenant = "vault") {
-  requireDb();
-  const { candidates, roundSummaries } = await debugRunHubDiscoverWithReport({ tenant });
-  const union = await computeUnionCoverageForHubCandidates(tenant, candidates);
   return {
-    candidates,
-    roundSummaries,
-    lastRoundSummary: roundSummaries.length ? roundSummaries[roundSummaries.length - 1] : null,
-    unionCoverage: {
-      documentCount: union.documentCount,
-      coveredCount: union.coveredCount,
-      coverageRatio: union.coverageRatio
-    }
-  };
-}
-async function debugValidateSubset(options) {
-  requireDb();
-  const tenant = options.tenant ?? "vault";
-  let candidates = options.candidates;
-  if (!candidates?.length) {
-    const r = await debugRunHubDiscoverWithReport({ tenant });
-    candidates = r.candidates;
-  }
-  const union = await computeUnionCoverageForHubCandidates(tenant, candidates);
-  const { docCoverageIndex, bitsByStableKey } = await debugBuildCandidateCoverageBits(tenant, candidates);
-  const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
-  const resolved = /* @__PURE__ */ new Set();
-  for (const p of options.paths ?? []) {
-    resolved.add((0, import_obsidian20.normalizePath)(p.trim()));
-  }
-  for (const raw of options.pathPrefixes ?? []) {
-    const prefix = (0, import_obsidian20.normalizePath)(raw.trim());
-    const sqlPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
-    const rows = await mobiusRepo.listDocumentNodeIdPathByPathPrefix(sqlPrefix, 8e3);
-    for (const r of rows) {
-      if (r.path) resolved.add(r.path);
-    }
-  }
-  const pathsResolved = [...resolved].sort();
-  const perPath = [];
-  let subsetCovered = 0;
-  for (const p of pathsResolved) {
-    const nodeId = await mobiusRepo.getDocumentNodeIdByVaultPath(p);
-    if (!nodeId) {
-      perPath.push({
-        path: p,
-        nodeId: null,
-        coveredByUnion: false,
-        coveringHubs: []
-      });
-      continue;
-    }
-    const ord = docCoverageIndex.ordinalByNodeId.get(nodeId);
-    const coveredByUnion = ord !== void 0 && union.coveredNodeIds.has(nodeId);
-    if (coveredByUnion) subsetCovered++;
-    const coveringHubs = [];
-    if (ord !== void 0) {
-      for (const c of candidates) {
-        const bits = bitsByStableKey.get(c.stableKey);
-        if (bits && hasUint32Bit(bits, ord)) {
-          coveringHubs.push({
-            stableKey: c.stableKey,
-            path: c.path,
-            label: c.label,
-            sourceKind: c.sourceKind
-          });
-        }
-      }
-    }
-    perPath.push({
-      path: p,
-      nodeId,
-      coveredByUnion,
-      coveringHubs
-    });
-  }
-  const n = pathsResolved.length;
-  return {
-    tenant,
-    pathsResolved,
-    unionCoverage: {
-      documentCount: union.documentCount,
-      coveredCount: union.coveredCount,
-      coverageRatio: union.coverageRatio
-    },
-    subset: {
-      documentCount: n,
-      coveredCount: subsetCovered,
-      coverageRatio: n > 0 ? subsetCovered / n : 0,
-      coveredPaths: perPath.filter((x) => x.coveredByUnion).map((x) => x.path),
-      uncoveredPaths: perPath.filter((x) => !x.coveredByUnion).map((x) => x.path)
-    },
-    perPath
-  };
-}
-async function debugExplainPathCoverage(docPath) {
-  const path3 = (0, import_obsidian20.normalizePath)(docPath.trim());
-  const t = getIndexTenantForPath(path3);
-  requireDb();
-  const hubTenant = "vault";
-  const { candidates, roundSummaries } = await debugRunHubDiscoverWithReport({ tenant: hubTenant });
-  const union = await computeUnionCoverageForHubCandidates(hubTenant, candidates);
-  const { docCoverageIndex, bitsByStableKey } = await debugBuildCandidateCoverageBits(hubTenant, candidates);
-  const mobiusRepo = sqliteStoreManager.getMobiusNodeRepo(t);
-  const nodeId = await mobiusRepo.getDocumentNodeIdByVaultPath(path3) ?? null;
-  const coveringHubs = [];
-  if (nodeId) {
-    const ord = docCoverageIndex.ordinalByNodeId.get(nodeId);
-    if (ord !== void 0) {
-      for (const c of candidates) {
-        const bits = bitsByStableKey.get(c.stableKey);
-        if (bits && hasUint32Bit(bits, ord)) {
-          coveringHubs.push({
-            stableKey: c.stableKey,
-            path: c.path,
-            label: c.label,
-            sourceKind: c.sourceKind
-          });
-        }
-      }
-    }
-  }
-  return {
-    path: path3,
-    tenant: t,
-    nodeId,
-    coveredByUnion: nodeId ? union.coveredNodeIds.has(nodeId) : false,
-    coveringHubs,
-    lastRoundSummary: roundSummaries.length ? roundSummaries[roundSummaries.length - 1] : null
+    description: vaultDescription,
+    domain: [],
+    structure: exploreResult,
+    topTags: tagCloud || "(none)",
+    capabilities: `${stats.markdownFiles} markdown, ${stats.otherFiles} other files` + (stats.totalFiles < 20 ? `small vault; consider external search if needed` : ``)
   };
 }
 
@@ -24100,6 +26187,10 @@ var AppContext = class _AppContext {
   static searchAgent(options) {
     return _AppContext.getInstance().searchAgentFactory(_AppContext.getInstance().manager, options);
   }
+  /** Create a VaultSearchAgent (new HITL-first pipeline: classify → decompose → recon → HITL → report). */
+  static vaultSearchAgent(options) {
+    return new VaultSearchAgent(_AppContext.getInstance().manager, options);
+  }
   /**
    * Handle dynamic changes to enableDevTools setting
    */
@@ -24147,6 +26238,14 @@ var AppContext = class _AppContext {
         console.debug('\u{1F4D6} Usage: await window.debugBatchIndex(["a.md","b.md"],"core_fast")');
         console.debug("\u{1F4D6} Usage: await window.debugRunMaintenance() \u2014 full Mobius maintenance");
         console.debug("\u{1F4D6} Usage: await window.debugRunHubDiscoverWithReport() \u2014 hub discovery (can be slow)");
+        window.testFolderHubDiscovery = (opts) => window.testAISearchTools.testFolderHubDiscovery(opts);
+        window.testBackboneMap = (opts) => window.testAISearchTools.testBackboneMap(opts);
+        window.testKnowledgeIntuition = (opts) => window.testAISearchTools.testKnowledgeIntuition(opts);
+        console.debug('\u{1F4D6} Usage: await window.testFolderHubDiscovery({ userGoal?: "..." }) \u2014 HubDiscoveryAgent (internal hub budgets)');
+        console.debug("\u{1F4D6} Usage: await window.testBackboneMap() \u2014 folder tree + backbone highways (deterministic, SQLite)");
+        console.debug(
+          '\u{1F4D6} Usage: await window.testKnowledgeIntuition({ userGoal?: "..." }) \u2014 KnowledgeIntuitionAgent (vault intuition skeleton)'
+        );
         console.debug(
           "\u{1F4D6} Usage: await window.debugMaterializeHubCandidate(candidate, { hubCandidatesForHubSet }) \u2014 one Hub-*.md from a candidate"
         );
@@ -24178,7 +26277,10 @@ var AppContext = class _AppContext {
           "debugValidateSubset",
           "debugExplainPathCoverage",
           "debugDocumentSnapshot",
-          "cleanupGraphTable"
+          "cleanupGraphTable",
+          "testFolderHubDiscovery",
+          "testBackboneMap",
+          "testKnowledgeIntuition"
         ]);
       }
     } else {
@@ -24203,6 +26305,9 @@ var AppContext = class _AppContext {
         if (window.debugExplainPathCoverage) delete window.debugExplainPathCoverage;
         if (window.debugDocumentSnapshot) delete window.debugDocumentSnapshot;
         if (window.cleanupGraphTable) delete window.cleanupGraphTable;
+        if (window.testFolderHubDiscovery) delete window.testFolderHubDiscovery;
+        if (window.testBackboneMap) delete window.testBackboneMap;
+        if (window.testKnowledgeIntuition) delete window.testKnowledgeIntuition;
         console.log("\u{1F527} Graph Inspector Test Tools disabled");
       }
     }
@@ -24289,7 +26394,7 @@ function computeFolderRank(hubGraphScore, topicPurity, containerPenalty) {
   if (topicPurity < FOLDER_HUB_TOPIC_PURITY_LOW_THRESHOLD) {
     rank *= FOLDER_HUB_TOPIC_PURITY_LOW_RANK_MULTIPLIER;
   }
-  return rank;
+  return Math.max(0, rank);
 }
 function isStrongTopicChildFolder(childTopicPurity) {
   return childTopicPurity >= FOLDER_HUB_STRONG_CHILD_TOPIC_PURITY_MIN;
@@ -24336,10 +26441,10 @@ function isValidGapPathPrefix(raw) {
   return true;
 }
 function documentHubStableKey(vaultPath) {
-  return `document:${(0, import_obsidian21.normalizePath)(vaultPath)}`;
+  return `document:${(0, import_obsidian24.normalizePath)(vaultPath)}`;
 }
 function clusterHubStableKey(seedVaultPath) {
-  return `cluster:${(0, import_obsidian21.normalizePath)(seedVaultPath)}`;
+  return `cluster:${(0, import_obsidian24.normalizePath)(seedVaultPath)}`;
 }
 function clusterGreedyConflictsWithSelected(candidate2, selected) {
   if (candidate2.sourceKind !== "cluster") return false;
@@ -25381,14 +27486,14 @@ async function buildHubDiscoverRoundSummary(options) {
 }
 function listMarkdownPathsUnderFolder(folderPath) {
   const app = AppContext.getApp();
-  const normalized = (0, import_obsidian21.normalizePath)(folderPath.trim());
+  const normalized = (0, import_obsidian24.normalizePath)(folderPath.trim());
   if (!normalized) return [];
   const abs = app.vault.getAbstractFileByPath(normalized);
-  if (!abs || !(abs instanceof import_obsidian21.TFolder)) return [];
+  if (!abs || !(abs instanceof import_obsidian24.TFolder)) return [];
   const out = [];
   const walk = (f) => {
-    if (f instanceof import_obsidian21.TFile && f.extension === "md") out.push(f.path);
-    else if (f instanceof import_obsidian21.TFolder) for (const ch of f.children) walk(ch);
+    if (f instanceof import_obsidian24.TFile && f.extension === "md") out.push(f.path);
+    else if (f instanceof import_obsidian24.TFolder) for (const ch of f.children) walk(ch);
   };
   walk(abs);
   return out.sort();
@@ -25532,8 +27637,12 @@ async function buildFolderHubEnrichmentMap(repo, rows) {
       part.map(async (path3) => {
         const tags = await repo.listDocumentTagsJsonUnderFolderPrefix(path3, FOLDER_HUB_TOPIC_STATS_MAX_DOCS);
         const { docCount, tagDocFreq } = aggregateTagDocFrequencies(tags);
-        const { topicPurity } = computeFolderTopicPurity(tagDocFreq, docCount);
-        topicPurityMap.set(path3, topicPurity);
+        const tp = computeFolderTopicPurity(tagDocFreq, docCount);
+        topicPurityMap.set(path3, {
+          topicPurity: tp.topicPurity,
+          dominantCoverage: tp.dominantCoverage,
+          normalizedHhi: tp.normalizedHhi
+        });
       })
     );
   }
@@ -25541,13 +27650,16 @@ async function buildFolderHubEnrichmentMap(repo, rows) {
   const enrich = /* @__PURE__ */ new Map();
   for (const p of rowPaths) {
     const parentD = Math.max(1, tagDocMap.get(p) ?? 0);
-    const pt = topicPurityMap.get(p) ?? 0;
+    const tpRow = topicPurityMap.get(p);
+    const pt = tpRow?.topicPurity ?? 0;
+    const dominantCoverage = tpRow?.dominantCoverage ?? 0;
+    const normalizedHhi = tpRow?.normalizedHhi ?? 0;
     const childPaths = childCache.get(p) ?? await repo.listDirectChildFolderPaths(p);
     let strongSum = 0;
     let strongCount = 0;
     for (const cp of childPaths) {
       const cn = normalizeVaultPath(cp);
-      const purity = topicPurityMap.get(cn) ?? 0;
+      const purity = topicPurityMap.get(cn)?.topicPurity ?? 0;
       const cd = tagDocMap.get(cn) ?? 0;
       if (isStrongTopicChildFolder(purity)) {
         strongCount++;
@@ -25566,6 +27678,8 @@ async function buildFolderHubEnrichmentMap(repo, rows) {
     const folderRank = computeFolderRank(hubGs, pt, containerPenalty);
     enrich.set(p, {
       topicPurity: pt,
+      dominantCoverage,
+      normalizedHhi,
       containerPenalty,
       folderRank,
       strongChildDocShare,
@@ -25643,6 +27757,129 @@ function selectFolderHubDiscoveryRowsWithTopRootQuota(rows, limit, enrich) {
     }
   }
   return picked;
+}
+function buildFolderHubDiscoveryDiagnostics(finalRows, enrichFinal, orderedCandidates) {
+  const byPath = new Map(
+    finalRows.map((r) => [normalizeVaultPath(String(r.path ?? "")), r])
+  );
+  const sequence = orderedCandidates?.length ? orderedCandidates.map((c) => byPath.get(normalizeVaultPath(String(c.path ?? "")))).filter((r) => r != null) : [...finalRows];
+  return sequence.map((r) => {
+    const np = normalizeVaultPath(String(r.path ?? ""));
+    const e = enrichFinal.get(np);
+    const broadPenalty = folderHubStructuralBroadnessPenalty(r);
+    const adjustedRank = folderHubDiscoveryAdjustedRank(r, enrichFinal);
+    const rankingBase = e ? Math.max(0, e.folderRank - FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE * broadPenalty) : Math.max(0, Number(r.hub_graph_score ?? 0) - broadPenalty);
+    return {
+      path: String(r.path ?? ""),
+      hub_graph_score: Number(r.hub_graph_score ?? 0),
+      topicPurity: e?.topicPurity ?? 0,
+      dominantCoverage: e?.dominantCoverage ?? 0,
+      normalizedHhi: e?.normalizedHhi ?? 0,
+      containerPenalty: e?.containerPenalty ?? 0,
+      strongChildDocShare: e?.strongChildDocShare ?? 0,
+      residualRatio: e?.residualRatio ?? 0,
+      strongChildCount: e?.strongChildCount ?? 0,
+      folderRank: e?.folderRank ?? 0,
+      broadPenalty,
+      adjustedRank,
+      rankingScore: computeHubRankingScore(rankingBase, 0)
+    };
+  });
+}
+async function runFolderHubDiscoveryPipeline(options) {
+  const tenant = options.tenant ?? "vault";
+  const limit = Math.max(1, options.limit ?? HUB_DISCOVER_FOLDER_MAX_CANDIDATES);
+  const hubFolder = getAIHubSummaryFolder();
+  const prefixes = sanitizeHubDiscoverPathPrefixes(
+    (options.targetPathPrefixes ?? []).map((p) => String(p).trim()).filter(Boolean)
+  );
+  const batchSize = Math.max(1, Math.ceil(limit * FOLDER_HUB_DISCOVER_FETCH_BATCH_MULTIPLIER));
+  const maxScan = Math.max(batchSize, limit * FOLDER_HUB_DISCOVER_MAX_SCAN_MULTIPLIER);
+  const poolTarget = Math.max(limit, Math.ceil(limit * FOLDER_HUB_DISCOVER_QUOTA_POOL_MULTIPLIER));
+  const prefixArg = prefixes.length ? prefixes : void 0;
+  const repo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+  const accumulated = [];
+  let sqlOffset = 0;
+  while (sqlOffset < maxScan) {
+    const pageLimit = Math.min(batchSize, maxScan - sqlOffset);
+    const chunk2 = await repo.listTopFolderNodesForHubDiscovery(
+      pageLimit,
+      hubFolder,
+      prefixArg,
+      sqlOffset
+    );
+    if (!chunk2.length) break;
+    accumulated.push(...chunk2);
+    sqlOffset += chunk2.length;
+    const compressed = compressNestedFolderHubDiscoveryRows(accumulated);
+    if (compressed.length >= poolTarget) break;
+    if (chunk2.length < pageLimit) break;
+  }
+  const compressedPass1 = compressNestedFolderHubDiscoveryRows(accumulated);
+  const enrichPass1 = await buildFolderHubEnrichmentMap(repo, compressedPass1);
+  const promotePathSet = /* @__PURE__ */ new Set();
+  for (const r of compressedPass1) {
+    const p = normalizeVaultPath(String(r.path ?? ""));
+    const e = enrichPass1.get(p);
+    if (e && e.containerPenalty > FOLDER_HUB_CHILD_PROMOTION_CONTAINER_THRESHOLD) {
+      for (const cp of await repo.listDirectChildFolderPaths(p)) {
+        promotePathSet.add(normalizeVaultPath(cp));
+      }
+    }
+  }
+  const promotedRows = promotePathSet.size > 0 ? await repo.listFolderHubDiscoveryRowsByPaths([...promotePathSet], hubFolder, { relaxMinDocs: true }) : [];
+  const byPathMerged = /* @__PURE__ */ new Map();
+  for (const r of compressedPass1) {
+    const np = normalizeVaultPath(String(r.path ?? ""));
+    if (np) byPathMerged.set(np, r);
+  }
+  for (const r of promotedRows) {
+    const np = normalizeVaultPath(String(r.path ?? ""));
+    if (np && !byPathMerged.has(np)) byPathMerged.set(np, r);
+  }
+  const mergedRows = [...byPathMerged.values()];
+  const enrichFinal = await buildFolderHubEnrichmentMap(repo, mergedRows);
+  const compressedFinal = compressNestedFolderHubDiscoveryRows(mergedRows, enrichFinal);
+  const rows = selectFolderHubDiscoveryRowsWithTopRootQuota(compressedFinal, limit, enrichFinal);
+  const candidates = [];
+  for (const r of rows) {
+    const folderPath = r.path;
+    const label = folderPath.includes("/") ? folderPath.slice(folderPath.lastIndexOf("/") + 1) : folderPath;
+    const gs = r.hub_graph_score;
+    const np = normalizeVaultPath(String(folderPath ?? ""));
+    const e = enrichFinal.get(np);
+    const broadPenalty = folderHubStructuralBroadnessPenalty(r);
+    const rankingBase = e ? Math.max(0, e.folderRank - FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE * broadPenalty) : Math.max(0, gs - broadPenalty);
+    candidates.push({
+      nodeId: r.node_id,
+      path: folderPath,
+      label,
+      role: "folder_anchor",
+      graphScore: gs,
+      candidateScore: {
+        physicalAuthorityScore: r.hub_physical_authority_score,
+        organizationalScore: r.hub_organizational_score,
+        semanticCentralityScore: r.hub_semantic_centrality_score,
+        manualBoost: 0,
+        cohesionScore: r.hub_cohesion_effective_score
+      },
+      stableKey: `folder:${(0, import_obsidian24.normalizePath)(folderPath)}`,
+      pagerank: typeof r.pagerank === "number" && Number.isFinite(r.pagerank) ? r.pagerank : 0,
+      semanticPagerank: typeof r.semantic_pagerank === "number" && Number.isFinite(r.semantic_pagerank) ? r.semantic_pagerank : 0,
+      docIncomingCnt: Math.max(0, Math.floor(Number(r.doc_incoming_cnt ?? 0))),
+      docOutgoingCnt: Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0))),
+      sourceKind: "folder",
+      sourceKinds: ["folder"],
+      sourceEvidence: [{ kind: "folder", graphScore: gs }],
+      sourceConsensusScore: 0,
+      rankingScore: computeHubRankingScore(rankingBase, 0)
+    });
+  }
+  candidates.sort((a, b) => b.rankingScore - a.rankingScore);
+  const sliced = candidates.slice(0, limit);
+  const pathSet = new Set(sliced.map((c) => normalizeVaultPath(String(c.path ?? ""))));
+  const finalRows = rows.filter((r) => pathSet.has(normalizeVaultPath(String(r.path ?? ""))));
+  return { candidates: sliced, enrichFinal, finalRows };
 }
 var HubCandidateDiscoveryService = class {
   inferRole(incoming, outgoing) {
@@ -25968,7 +28205,7 @@ var HubCandidateDiscoveryService = class {
       }
       let raw = "";
       const f = app.vault.getAbstractFileByPath(path3);
-      if (f instanceof import_obsidian21.TFile) {
+      if (f instanceof import_obsidian24.TFile) {
         try {
           raw = await app.vault.read(f);
         } catch {
@@ -25992,7 +28229,7 @@ var HubCandidateDiscoveryService = class {
           ...candidateScore,
           manualBoost: 1
         },
-        stableKey: `manual-hub:${(0, import_obsidian21.normalizePath)(row.path)}`,
+        stableKey: `manual-hub:${(0, import_obsidian24.normalizePath)(row.path)}`,
         pagerank: typeof row.pagerank === "number" && Number.isFinite(row.pagerank) ? row.pagerank : 0,
         semanticPagerank: typeof row.semantic_pagerank === "number" && Number.isFinite(row.semantic_pagerank) ? row.semantic_pagerank : 0,
         docIncomingCnt: inc,
@@ -26012,96 +28249,18 @@ var HubCandidateDiscoveryService = class {
    * May be called directly for partial discovery or DevTools single-leg runs.
    */
   async discoverFolderHubCandidates(options) {
-    const tenant = options.tenant ?? "vault";
-    const limit = Math.max(1, options.limit ?? HUB_DISCOVER_FOLDER_MAX_CANDIDATES);
-    const hubFolder = getAIHubSummaryFolder();
-    const prefixes = sanitizeHubDiscoverPathPrefixes(
-      (options.targetPathPrefixes ?? []).map((p) => String(p).trim()).filter(Boolean)
-    );
-    const batchSize = Math.max(1, Math.ceil(limit * FOLDER_HUB_DISCOVER_FETCH_BATCH_MULTIPLIER));
-    const maxScan = Math.max(batchSize, limit * FOLDER_HUB_DISCOVER_MAX_SCAN_MULTIPLIER);
-    const poolTarget = Math.max(limit, Math.ceil(limit * FOLDER_HUB_DISCOVER_QUOTA_POOL_MULTIPLIER));
-    const prefixArg = prefixes.length ? prefixes : void 0;
-    const repo = sqliteStoreManager.getMobiusNodeRepo(tenant);
-    const accumulated = [];
-    let sqlOffset = 0;
-    while (sqlOffset < maxScan) {
-      const pageLimit = Math.min(batchSize, maxScan - sqlOffset);
-      const chunk2 = await repo.listTopFolderNodesForHubDiscovery(
-        pageLimit,
-        hubFolder,
-        prefixArg,
-        sqlOffset
-      );
-      if (!chunk2.length) break;
-      accumulated.push(...chunk2);
-      sqlOffset += chunk2.length;
-      const compressed = compressNestedFolderHubDiscoveryRows(accumulated);
-      if (compressed.length >= poolTarget) break;
-      if (chunk2.length < pageLimit) break;
-    }
-    const compressedPass1 = compressNestedFolderHubDiscoveryRows(accumulated);
-    const enrichPass1 = await buildFolderHubEnrichmentMap(repo, compressedPass1);
-    const promotePathSet = /* @__PURE__ */ new Set();
-    for (const r of compressedPass1) {
-      const p = normalizeVaultPath(String(r.path ?? ""));
-      const e = enrichPass1.get(p);
-      if (e && e.containerPenalty > FOLDER_HUB_CHILD_PROMOTION_CONTAINER_THRESHOLD) {
-        for (const cp of await repo.listDirectChildFolderPaths(p)) {
-          promotePathSet.add(normalizeVaultPath(cp));
-        }
-      }
-    }
-    const promotedRows = promotePathSet.size > 0 ? await repo.listFolderHubDiscoveryRowsByPaths([...promotePathSet], hubFolder, { relaxMinDocs: true }) : [];
-    const byPathMerged = /* @__PURE__ */ new Map();
-    for (const r of compressedPass1) {
-      const np = normalizeVaultPath(String(r.path ?? ""));
-      if (np) byPathMerged.set(np, r);
-    }
-    for (const r of promotedRows) {
-      const np = normalizeVaultPath(String(r.path ?? ""));
-      if (np && !byPathMerged.has(np)) byPathMerged.set(np, r);
-    }
-    const mergedRows = [...byPathMerged.values()];
-    const enrichFinal = await buildFolderHubEnrichmentMap(repo, mergedRows);
-    const compressedFinal = compressNestedFolderHubDiscoveryRows(mergedRows, enrichFinal);
-    const rows = selectFolderHubDiscoveryRowsWithTopRootQuota(compressedFinal, limit, enrichFinal);
-    const candidates = [];
-    for (const r of rows) {
-      const folderPath = r.path;
-      const label = folderPath.includes("/") ? folderPath.slice(folderPath.lastIndexOf("/") + 1) : folderPath;
-      const gs = r.hub_graph_score;
-      const np = normalizeVaultPath(String(folderPath ?? ""));
-      const e = enrichFinal.get(np);
-      const broadPenalty = folderHubStructuralBroadnessPenalty(r);
-      const rankingBase = e ? Math.max(0, e.folderRank - FOLDER_HUB_BROAD_PENALTY_DISCOVERY_SCALE * broadPenalty) : Math.max(0, gs - broadPenalty);
-      candidates.push({
-        nodeId: r.node_id,
-        path: folderPath,
-        label,
-        role: "folder_anchor",
-        graphScore: gs,
-        candidateScore: {
-          physicalAuthorityScore: r.hub_physical_authority_score,
-          organizationalScore: r.hub_organizational_score,
-          semanticCentralityScore: r.hub_semantic_centrality_score,
-          manualBoost: 0,
-          cohesionScore: r.hub_cohesion_effective_score
-        },
-        stableKey: `folder:${(0, import_obsidian21.normalizePath)(folderPath)}`,
-        pagerank: typeof r.pagerank === "number" && Number.isFinite(r.pagerank) ? r.pagerank : 0,
-        semanticPagerank: typeof r.semantic_pagerank === "number" && Number.isFinite(r.semantic_pagerank) ? r.semantic_pagerank : 0,
-        docIncomingCnt: Math.max(0, Math.floor(Number(r.doc_incoming_cnt ?? 0))),
-        docOutgoingCnt: Math.max(0, Math.floor(Number(r.doc_outgoing_cnt ?? 0))),
-        sourceKind: "folder",
-        sourceKinds: ["folder"],
-        sourceEvidence: [{ kind: "folder", graphScore: gs }],
-        sourceConsensusScore: 0,
-        rankingScore: computeHubRankingScore(rankingBase, 0)
-      });
-    }
-    candidates.sort((a, b) => b.rankingScore - a.rankingScore);
-    return candidates.slice(0, limit);
+    const { candidates } = await runFolderHubDiscoveryPipeline(options);
+    return candidates;
+  }
+  /**
+   * Same as {@link discoverFolderHubCandidates} with per-row diagnostics for tuning (DevTools / JSON export).
+   */
+  async discoverFolderHubCandidatesWithDiagnostics(options) {
+    const { candidates, enrichFinal, finalRows } = await runFolderHubDiscoveryPipeline(options);
+    return {
+      candidates,
+      diagnostics: buildFolderHubDiscoveryDiagnostics(finalRows, enrichFinal, candidates)
+    };
   }
   /**
    * Cluster hubs: ranked seeds (quality, not only semantic_pagerank), semantic + reference recall,

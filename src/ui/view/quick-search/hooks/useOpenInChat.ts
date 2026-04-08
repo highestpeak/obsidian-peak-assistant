@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
 import { CHAT_VIEW_TYPE } from '@/app/view/types';
-import type { AISearchSource } from '@/service/agents/AISearchAgent';
+import type { AISearchSource } from '@/service/agents/shared-types';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 
 /** Minimal source shape for open-in-chat; AISearchSource is compatible (path, title, reasoning → content). */

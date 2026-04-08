@@ -18,7 +18,7 @@ import { AppContext } from "@/app/context/AppContext";
 import { useSharedStore } from "../store/sharedStore";
 import { buildAiAnalyzeMarkdown, ExportSource, saveAiAnalyzeResultToMarkdown, persistAnalysisDocToPath, type BuildAiAnalyzeMarkdownParams } from "../callbacks/save-ai-analyze-to-md";
 import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot, type BuildMarkdownOptions } from "@/core/storage/vault/search-docs/AiSearchAnalysisDoc";
-import { AISearchSource } from "@/service/agents/AISearchAgent";
+import { AISearchSource } from "@/service/agents/shared-types";
 import { AIAnalysisHistoryRecord } from "@/service/AIAnalysisHistoryService";
 import { generateDocIdFromPath } from "@/core/utils/id-utils";
 import { CHAT_VIEW_TYPE } from "../../ChatView";

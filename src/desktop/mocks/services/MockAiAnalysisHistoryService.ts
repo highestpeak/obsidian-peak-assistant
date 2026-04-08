@@ -1,5 +1,5 @@
 import { SLICE_CAPS } from '@/core/constant';
-import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock } from '@/service/agents/AISearchAgent';
+import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock } from '@/service/agents/shared-types';
 import type { AIAnalysisHistoryRecord } from '@/service/AIAnalysisHistoryService';
 import type { CompletedAnalysisSnapshot } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { buildMarkdown, fromCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
@@ -21,6 +21,7 @@ export interface MockAIAnalysisRecord {
 	graph_nodes_count: number | null;
 	graph_edges_count: number | null;
 	duration: number | null;
+	analysis_preset: string | null;
 }
 
 const sampleQueries = [
@@ -443,6 +444,7 @@ const MOCK_AI_ANALYSIS_RECORDS_INIT: MockAIAnalysisRecord[] = Array.from({ lengt
 		graph_nodes_count: nodes.length,
 		graph_edges_count: edges.length,
 		duration,
+		analysis_preset: 'vaultFull',
 		_markdownForReplay: markdown,
 	} as MockAIAnalysisRecord & { _markdownForReplay: string };
 });

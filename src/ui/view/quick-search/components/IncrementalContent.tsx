@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Tag, FileText, LayoutGrid } from 'lucide-react';
-import { DashboardBlock, AISearchTopic, AISearchSource } from '@/service/agents/AISearchAgent';
+import { DashboardBlock, AISearchTopic, AISearchSource } from '@/service/agents/shared-types';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 
 // Stagger animation variants for container

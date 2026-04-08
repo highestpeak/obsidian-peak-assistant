@@ -1,5 +1,5 @@
 import { GraphNodeType } from '@/core/po/graph.po';
-import { AISearchGraph } from "@/service/agents/AISearchAgent";
+import { AISearchGraph } from "@/service/agents/shared-types";
 import { UIPreviewGraph } from "@/ui/component/mine/graph-viz/GraphVisualization";
 
 export function convertGraphToGraphPreview(aiGraph: AISearchGraph | null): UIPreviewGraph | null {

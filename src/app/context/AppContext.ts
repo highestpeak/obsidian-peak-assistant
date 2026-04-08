@@ -25,8 +25,9 @@ import {
 } from '@/app/context/index-debug-tools';
 import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
-import { AISearchAgent, AISearchAgentOptions } from '@/service/agents/AISearchAgent';
-import { ConversationalSearchAgent, type ConversationalSearchOptions } from '@/service/agents/conversational';
+import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
+import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
+import type { VaultSearchOptions as VaultSearchOpts } from '@/service/agents/vault/types';
 import { getVaultPersona } from '@/service/tools/system-info';
 
 /**
@@ -76,7 +77,7 @@ export class AppContext {
 		public readonly plugin: MyPlugin,
 		public settings: MyPluginSettings,
 		public readonly aiAnalysisHistoryService: AIAnalysisHistoryService,
-		public readonly searchAgentFactory: (aiServiceManager: AIServiceManager, options: AISearchAgentOptions) => AISearchAgent,
+		public readonly searchAgentFactory: (aiServiceManager: AIServiceManager) => DocSimpleAgent,
 		/** When true, running in mock/dev environment (e.g. desktop dev). */
 		public readonly isMockEnv: boolean = false,
 	) {
@@ -98,13 +99,13 @@ export class AppContext {
 		});
 	}
 
-	public static searchAgent(options: AISearchAgentOptions) {
-		return AppContext.getInstance().searchAgentFactory(AppContext.getInstance().manager, options);
+	public static searchAgent(): DocSimpleAgent {
+		return AppContext.getInstance().searchAgentFactory(AppContext.getInstance().manager);
 	}
 
-	/** Create a conversational (HITL) search agent. */
-	public static conversationalSearchAgent(options?: ConversationalSearchOptions): ConversationalSearchAgent {
-		return new ConversationalSearchAgent(AppContext.getInstance().manager, options);
+	/** Create a VaultSearchAgent (new HITL-first pipeline: classify → decompose → recon → HITL → report). */
+	public static vaultSearchAgent(options?: VaultSearchOpts): VaultSearchAgent {
+		return new VaultSearchAgent(AppContext.getInstance().manager, options);
 	}
 
 	/**
@@ -173,13 +174,10 @@ export class AppContext {
 				console.debug('📖 Usage: await window.debugBatchIndex(["a.md","b.md"],"core_fast")');
 				console.debug('📖 Usage: await window.debugRunMaintenance() — full Mobius maintenance');
 				console.debug('📖 Usage: await window.debugRunHubDiscoverWithReport() — hub discovery (can be slow)');
-				(window as any).testFolderHubDiscovery = (opts?: Record<string, unknown>) =>
-					(window as any).testAISearchTools.testFolderHubDiscovery(opts);
 				(window as any).testBackboneMap = (opts?: Record<string, unknown>) =>
 					(window as any).testAISearchTools.testBackboneMap(opts);
 				(window as any).testKnowledgeIntuition = (opts?: Record<string, unknown>) =>
 					(window as any).testAISearchTools.testKnowledgeIntuition(opts);
-				console.debug('📖 Usage: await window.testFolderHubDiscovery({ userGoal?: "..." }) — HubDiscoveryAgent (internal hub budgets)');
 				console.debug('📖 Usage: await window.testBackboneMap() — folder tree + backbone highways (deterministic, SQLite)');
 				console.debug(
 					'📖 Usage: await window.testKnowledgeIntuition({ userGoal?: "..." }) — KnowledgeIntuitionAgent (vault intuition skeleton)',
@@ -216,7 +214,6 @@ export class AppContext {
 					'debugExplainPathCoverage',
 					'debugDocumentSnapshot',
 					'cleanupGraphTable',
-					'testFolderHubDiscovery',
 					'testBackboneMap',
 					'testKnowledgeIntuition',
 				]);
@@ -243,7 +240,6 @@ export class AppContext {
 				if ((window as any).debugExplainPathCoverage) delete (window as any).debugExplainPathCoverage;
 				if ((window as any).debugDocumentSnapshot) delete (window as any).debugDocumentSnapshot;
 				if ((window as any).cleanupGraphTable) delete (window as any).cleanupGraphTable;
-				if ((window as any).testFolderHubDiscovery) delete (window as any).testFolderHubDiscovery;
 				if ((window as any).testBackboneMap) delete (window as any).testBackboneMap;
 				if ((window as any).testKnowledgeIntuition) delete (window as any).testKnowledgeIntuition;
 				console.log('🔧 Graph Inspector Test Tools disabled');

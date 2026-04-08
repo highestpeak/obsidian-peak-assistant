@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { AnimatePresence, motion, LayoutGroup } from 'framer-motion';
 import { Copy, MessageCircle } from 'lucide-react';
 import { StreamdownIsolated } from '@/ui/component/mine';
-import type { DashboardBlock, DashboardBlockItem } from '@/service/agents/AISearchAgent';
+import type { DashboardBlock, DashboardBlockItem } from '@/service/agents/shared-types';
 import { getMermaidInner, wrapMermaidCode } from '@/core/utils/mermaid-utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/shared-ui/hover-card';

@@ -21,7 +21,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { EventBus } from '@/core/eventBus';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { registerTemplateEngineHelpers } from '@/core/template-engine-helper';
-import { AISearchAgent, AISearchAgentOptions } from '@/service/agents/AISearchAgent';
+import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { ProviderServiceFactory } from '@/core/providers/base/factory';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
@@ -142,7 +142,7 @@ export default class MyPlugin extends Plugin {
 			this,
 			this.settings,
 			aiAnalysisHistoryService,
-			(aiServiceManager: AIServiceManager, options: AISearchAgentOptions) => new AISearchAgent(aiServiceManager, options),
+			(aiServiceManager: AIServiceManager) => new DocSimpleAgent(aiServiceManager),
 		);
 
 		// Create ViewManager with AppContext

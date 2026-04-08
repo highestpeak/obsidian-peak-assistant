@@ -1,10 +1,12 @@
-export { runAgentLoop } from './AgentLoop';
 export type {
 	AgentLoopConfig,
-	AgentLoopStats,
-	AgentLoopEvent,
 	AgentLoopIterationResult,
 	OnIterationComplete,
 	UserFeedback,
 	HitlPausePoint,
+	PeakAgentStats,
+	PeakAgentEvent,
+	PeakAgentConfig,
+	PeakAgentLoopResult,
 } from './types';
+export { runAgentLoop } from './AgentLoop';

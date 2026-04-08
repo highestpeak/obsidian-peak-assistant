@@ -16,7 +16,7 @@ import { TopSourcesSection } from "../ai-analysis-sections/SourcesSection";
 import { InlineFollowupChat } from "../../../../component/mine/InlineFollowupChat";
 import { DashboardBlocksSection } from "../ai-analysis-sections/DashboardBlocksSection";
 import { FollowupQuestionsBlock } from "../ai-analysis-sections/FollowupQuestionsBlock";
-import type { DashboardBlock, DashboardBlockItem } from "@/service/agents/AISearchAgent";
+import type { DashboardBlock, DashboardBlockItem } from "@/service/agents/shared-types";
 import { createOpenSourceCallback } from "../../callbacks/open-source-file";
 import { useBlocksFollowupChatConfig, useRegenerateOverviewMermaid } from "../../hooks/useAIAnalysisPostAIInteractions";
 import React from "react";

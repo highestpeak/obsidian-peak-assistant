@@ -76,6 +76,17 @@ export class Stopwatch {
 	}
 
 	/**
+	 * Get all completed segments with their timing information.
+	 */
+	getSegments(): Array<{ label: string; durationMs: number; details?: Array<{ label: string; duration: number }> }> {
+		return this.segments.map((s) => ({
+			label: s.label,
+			durationMs: s.duration ?? 0,
+			details: s.details,
+		}));
+	}
+
+	/**
 	 * Get the current running segment label, if any.
 	 */
 	getCurrentSegmentLabel(): string | null {

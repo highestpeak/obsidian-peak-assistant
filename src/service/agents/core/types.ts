@@ -58,21 +58,49 @@ export interface AgentLoopConfig<TState, TSubmit> {
 	onIterationComplete?: OnIterationComplete<TSubmit>;
 }
 
-/** Accumulated stats from an agent loop run. */
-export interface AgentLoopStats {
+/** Agent loop execution statistics. */
+export interface PeakAgentStats {
 	totalIterations: number;
 	totalToolCalls: number;
 	stoppedReason: 'should_stop' | 'max_iterations' | 'callback_stop';
+	totalInputTokens: number;
+	totalOutputTokens: number;
+	totalDurationMs: number;
+	/** Wall-clock duration per iteration in milliseconds. */
+	perIterationMs: number[];
+	/** Per-tool-call timing with detailed label. */
+	toolCallTimings: Array<{ toolName: string; durationMs: number }>;
+	/** Per-iteration phase timings (plan, tool execution, submit). */
+	perIterationPhaseMs: Array<{ planMs: number; toolExecMs: number; submitMs: number }>;
+	/** Detailed Stopwatch segments for debugging (e.g., plan-0, tool-exec-0, submit-0). */
+	stopwatchSegments?: Array<{ label: string; durationMs: number }>;
 }
 
-/** Events yielded by the agent loop for UI / debug consumption. */
-export type AgentLoopEvent = LLMStreamEvent;
+/** Configuration for agent loop execution. */
+export interface PeakAgentConfig<TState, TSubmit> extends AgentLoopConfig<TState, TSubmit> {
+	/** Human-readable step label shown in UI progress messages (e.g. "Classify query"). */
+	stepLabel: string;
+}
+
+/** Result from running an agent loop. */
+export interface PeakAgentLoopResult<TState> {
+	finalState: TState;
+	messages: ModelMessage[];
+	stats: PeakAgentStats;
+}
+
+/** Events yielded by agent loops (same as LLMStreamEvent which now includes agent events). */
+export type PeakAgentEvent = LLMStreamEvent;
 
 /** A user message injected mid-loop (HITL). */
 export interface UserFeedback {
-	type: 'continue' | 'redirect' | 'focus_path' | 'stop';
+	type: 'approve' | 'redirect' | 'add_paths' | 'remove_paths' | 'adjust_outline' | 'continue' | 'focus_path' | 'add_constraint' | 'enough' | 'stop';
 	message?: string;
-	/** Path to focus on (for 'focus_path' type). */
+	/** Paths to add or remove (for 'add_paths' / 'remove_paths'). */
+	paths?: string[];
+	/** New outline text (for 'adjust_outline'). */
+	outline?: string;
+	/** Path to focus on (for 'focus_path'). */
 	focusPath?: string;
 }
 

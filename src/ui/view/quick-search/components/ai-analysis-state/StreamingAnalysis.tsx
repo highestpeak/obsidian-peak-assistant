@@ -6,6 +6,7 @@ import {
 	useAIAnalysisResultStore,
 } from "../../store/aiAnalysisStore";
 import { StreamingStepsDisplay } from "../ai-analysis-sections/StepsDisplay";
+import { HitlInlineInput } from "../ai-analysis-sections/HitlInlineInput";
 import React, { useMemo } from "react";
 import { MermaidMindFlowSection } from "@/ui/view/quick-search/components/ai-analysis-sections/MermaidMindFlowSection";
 import { TopicSection } from "../ai-analysis-sections/TopicSection";
@@ -48,6 +49,7 @@ export const StreamingAnalysis: React.FC<{
 	const overviewMermaidActiveIndex = useAIAnalysisResultStore((s) => s.overviewMermaidActiveIndex);
 	const mindflowMermaid = useAIAnalysisResultStore((s) => s.mindflowMermaid);
 
+	const hitlState = useAIAnalysisRuntimeStore((s) => s.hitlState);
 	const isSimpleMode = runAnalysisMode === 'docSimple' || runAnalysisMode === 'vaultSimple';
 	const showMindFlow = !isSimpleMode && (mindflowMermaid ?? '').trim().length > 0;
 	const displayOverview = (overviewMermaidVersions ?? [])[overviewMermaidActiveIndex ?? 0] ?? '';
@@ -99,6 +101,13 @@ export const StreamingAnalysis: React.FC<{
 							isRunning={isAnalyzing && !analysisCompleted}
 							finalDurationMs={analysisCompleted ? duration : null}
 						/>
+						{hitlState?.isPaused && (
+							<HitlInlineInput
+								pauseId={hitlState.pauseId}
+								phase={hitlState.phase}
+								snapshot={hitlState.snapshot}
+							/>
+						)}
 					</div>
 				</div>
 			</IntelligenceFrame>

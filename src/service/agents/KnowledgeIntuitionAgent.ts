@@ -18,7 +18,7 @@ import type {
 	KnowledgeIntuitionAgentOptions,
 	KnowledgeIntuitionAgentResult,
 } from '@/service/agents/intuition-helper/types';
-import type { ReconLoopDebugOptions } from '@/service/agents/hub-helper/hubDiscoveryDebug';
+import type { ReconLoopDebugOptions } from '@/service/agents/intuition-helper/intuition.recon';
 
 /**
  * Thrown when `stopAt: 'prep'` skips the LLM loop; {@link KnowledgeIntuitionAgent.streamRun} passes `partialResult` to `onFinish`.

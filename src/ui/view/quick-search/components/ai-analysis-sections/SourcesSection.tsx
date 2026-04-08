@@ -14,7 +14,7 @@ import { useAIAnalysisInteractionsStore } from '../../store/aiAnalysisStore';
 import { GraphVisualization, GraphVisualizationHandle } from '@/ui/component/mine/GraphVisualization';
 import { createObsidianGraphPreset } from '../../presets/obsidianGraphPreset';
 import { buildSourcesGraphWithDiscoveredEdges, getCachedSourcesGraph, type SourcesGraph } from '@/service/tools/search-graph-inspector/build-sources-graph';
-import type { EvidenceIndex } from '@/service/agents/AISearchAgent';
+import type { EvidenceIndex } from '@/service/agents/shared-types';
 
 /** When false, show only a single "Score" (AI-generated); Physical/Semantic/Average gauges are kept in code but not rendered. */
 const SHOW_SCORE_BREAKDOWN = false;

@@ -11,22 +11,9 @@ import {
     localSearchWholeVaultTool
 } from "../../service/tools/search-graph-inspector";
 import { AppContext } from "@/app/context/AppContext";
-import { AgentContextManager } from "@/service/agents/search-agent-helper/AgentContextManager";
-import { SlotRecallAgent } from "@/service/agents/search-agent-helper/SlotRecallAgent";
-import { groupConsolidatedTasksGravity, taskLoadScore, type GroupingOptions } from "@/service/agents/search-agent-helper/helpers/gravityGrouping";
-import type { ConsolidatedTaskWithId, DimensionChoice, EvidenceTaskGroup, PhysicalSearchTask, PhysicalTaskReconResult } from "@/core/schemas/agents/search-agent-schemas";
 import type { LLMStreamEvent } from "@/core/providers/types";
 import { emptyUsage, mergeTokenUsage } from "@/core/providers/types";
 import { DELTA_EVENT_TYPES, getDeltaEventDeltaText } from "@/core/providers/helpers/stream-helper";
-import { GroupContextAgent } from "@/service/agents/search-agent-helper/GroupContextAgent";
-import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
-import { weavePathsToContext } from "@/service/agents/search-agent-helper/helpers/weavePathsToContext";
-import { ReconAgent } from "@/service/agents/search-agent-helper/RawSearchAgent";
-import {
-	HubDiscoveryAgent,
-	type HubDiscoveryAgentLoopResult,
-	type HubDiscoveryAgentOptions,
-} from '@/service/agents/HubDiscoveryAgent';
 import {
 	KnowledgeIntuitionAgent,
 	type KnowledgeIntuitionAgentResult,
@@ -37,6 +24,7 @@ import {
 	type BackboneMapResult,
 	type BuildBackboneMapOptions,
 } from '@/service/search/index/helper/backbone';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 /**
  * Global test interface for search-graph-inspector tools
@@ -215,213 +203,13 @@ export async function* streamWithStreamLog(
 }
 
 /**
- * Dev-only test tools for AISearchAgent slot pipeline.
+ * Dev-only test tools for AI search agents (intuition, backbone).
  * Available as window.testAISearchTools when enableDevTools.
  */
 export class AISearchAgentTestTools {
     /**
-     * Run streamReconForPhysicalTask once for a single physical task.
-     * Usage: pass a PhysicalSearchTask (e.g. from pk-debug physicalTaskResults, or build one). Optionally pass userQuery to set context; defaults to a short placeholder.
-     * Returns { result, duration, eventCount }.
-     */
-    async testStreamReconForPhysicalTask(
-        physicalTask: PhysicalSearchTask,
-        userQuery: string = 'List relevant notes for the given dimensions.',
-    ): Promise<{ result: PhysicalTaskReconResult | null; duration: number; eventCount: number }> {
-        const start = Date.now();
-        const ctx = AppContext.getInstance();
-        const context = new AgentContextManager(ctx.manager);
-        context.resetAgentMemory(userQuery);
-        const agent = new ReconAgent(ctx.manager, context);
-        let result: PhysicalTaskReconResult | null = null;
-        let eventCount = 0;
-        for await (const _ev of streamWithStreamLog(
-            agent.streamReconForPhysicalTask(physicalTask, generateUuidWithoutHyphens(), (r) => { result = r; }),
-        )) {
-            eventCount++;
-        }
-        const duration = Date.now() - start;
-        console.debug('[testStreamReconForPhysicalTask] result:', result, 'duration:', duration, 'eventCount:', eventCount);
-        return { result, duration, eventCount };
-    }
-
-    /** Run SlotRecallAgent once with a user query; returns event count and slot coverage from context. */
-    async testSlotRecall(userQuery: string, skipStreamSearchArchitect = false, skipSearch = true): Promise<any> {
-        const start = Date.now();
-        const ctx = AppContext.getInstance();
-        const context = new AgentContextManager(ctx.manager);
-        context.resetAgentMemory(userQuery);
-        const agent = new SlotRecallAgent(ctx.manager, context);
-        let eventCount = 0;
-        for await (const _ev of streamWithStreamLog(agent.stream({ skipStreamSearchArchitect, skipSearch }))) {
-            eventCount++;
-        }
-        const end = Date.now();
-        const duration = end - start;
-        return {
-            debugSnapshot: context.getDebugSnapshot(),
-            duration,
-        };
-    }
-
-    /**
-     * Test gravity-merge grouping with saved consolidator data (no full search run).
-     * Available as window.testGroupingTools when enableDevTools.
-     * Usage: paste consolidated_tasks from pk-debug "parallelSearchResultAfterTaskConsolidator", add taskId, then:
-     *   await window.testGroupingTools.testGrouping(tasksWithIds, { maxEvidenceConcurrency: 12 })
-     * Run gravity grouping on tasks (with optional graph affinity when DB is ready).
-     * Returns { groups, groupCount, totalTasks, opts } and logs to console.
-     */
-    async testGroupConsolidatedTasksGravity(
-        tasks: ConsolidatedTaskWithId[],
-        opts: GroupingOptions = {},
-    ): Promise<{ groups: ConsolidatedTaskWithId[][]; groupCount: number; totalTasks: number; opts: GroupingOptions }> {
-        const withIds = tasks.map((t, i) =>
-            'taskId' in t && t.taskId ? t : { ...t, taskId: `task-${i}` }
-        ) as ConsolidatedTaskWithId[];
-        const groups = await groupConsolidatedTasksGravity(withIds, opts);
-        const totalScore = withIds.reduce((s, t) => s + taskLoadScore(t), 0);
-        console.debug('[testGrouping] input tasks:', withIds.length, 'totalScore:', totalScore, 'opts:', opts);
-        console.debug('[testGrouping] output groups:', groups);
-        console.debug('[testGrouping] output groups stats:', groups.length, groups.map((g, i) => ({
-            groupIndex: i,
-            taskCount: g.length,
-            score: g.reduce((s, t) => s + taskLoadScore(t), 0),
-            paths: g.map((t) => t.path),
-        })));
-        return {
-            groups,
-            groupCount: groups.length,
-            totalTasks: withIds.length,
-            opts,
-        };
-    }
-
-    async testGroupContextAgent(
-        testData: {
-            groups: ConsolidatedTaskWithId[][],
-            dimensions: DimensionChoice[],
-        }
-    ): Promise<{ eventCount: number; evidenceGroups: EvidenceTaskGroup[] }> {
-        const ctx = AppContext.getInstance();
-        const context = new AgentContextManager(ctx.manager);
-        const groupContextAgent = new GroupContextAgent(ctx.manager, context);
-        let evidenceGroups: EvidenceTaskGroup[] = [];
-        let eventCount = 0;
-        for await (const _ev of streamWithStreamLog(
-            groupContextAgent.streamAllGroupsContext({
-                groups: testData.groups,
-                dimensions: testData.dimensions,
-                stepId: generateUuidWithoutHyphens(),
-                onRefinementFinish: (eg) => { evidenceGroups = eg; },
-            })
-        )) {
-            eventCount++;
-        }
-        console.debug('[testGroupContextAgent] evidenceGroups:', evidenceGroups);
-        return {
-            eventCount,
-            evidenceGroups,
-        };
-    }
-
-    async testGroupContextAgentWithSharedContext(
-        testData: {
-            groups: ConsolidatedTaskWithId[][],
-        }
-    ): Promise<any> {
-        const { groups } = testData;
-        const ctx = AppContext.getInstance();
-        const tm = ctx.manager.getTemplateManager?.();
-        const sharedContexts = await Promise.all(
-            groups.map((tasks) => weavePathsToContext(tasks.map((t) => t.path), tm))
-        );
-        return {
-            sharedContexts,
-        };
-    }
-
-    /**
-     * Run {@link HubDiscoveryAgent}: world snapshot → folder-hub recon (plan/tools/submit loop) → document-hub recon → SQL shortlist.
-     * Requires indexed SQLite, TemplateManager, and models for hub-discovery prompts.
-     *
-     * @example Full run (DevTools console)
-     * ```ts
-     * await window.testAISearchTools.testFolderHubDiscovery({ userGoal: 'Find navigation anchors' });
-     * // or shortcut:
-     * await window.testFolderHubDiscovery({ userGoal: '…' });
-     * ```
-     *
-     * @example Debug: stop after prep (no LLM recon)
-     * ```ts
-     * await window.testFolderHubDiscovery({ stopAt: 'prep' });
-     * ```
-     *
-     * @example Debug: stop after folder recon only (skip document phase)
-     * ```ts
-     * await window.testFolderHubDiscovery({ stopAt: 'folder_hub' });
-     * // same: stopAt: 'after_folder_recon'
-     * ```
-     *
-     * @example Debug: stop after round N plan or after round N submit
-     * `iteration` is 1-based. `folder_plan` stops after the folder plan step and host tool execution (before structured submit); `document_plan` stops after the document plan+tool step. Ensure caps are high enough.
-     * ```ts
-     * await window.testFolderHubDiscovery({ stopAt: { hook: 'folder_plan', iteration: 1 } });
-     * await window.testFolderHubDiscovery({ stopAt: { hook: 'folder_submit', iteration: 1 } });
-     * await window.testFolderHubDiscovery({ stopAt: { hook: 'document_plan', iteration: 1 } });
-     * await window.testFolderHubDiscovery({ stopAt: { hook: 'document_submit', iteration: 2 } });
-     * ```
-     *
-     * @example Debug: cap iteration counts (1–6 each)
-     * ```ts
-     * await window.testFolderHubDiscovery({
-     *   folderReconMaxIterations: 1,
-     *   documentReconMaxIterations: 1,
-     * });
-     * ```
-     */
-    async testFolderHubDiscovery(
-        options?: HubDiscoveryAgentOptions,
-    ): Promise<{ result: HubDiscoveryAgentLoopResult | null; duration: number; eventCount: number }> {
-        const start = Date.now();
-        const ctx = AppContext.getInstance();
-        const agent = new HubDiscoveryAgent(ctx.manager);
-        let result: HubDiscoveryAgentLoopResult | null = null;
-        let eventCount = 0;
-        for await (const _ev of streamWithStreamLog(
-            agent.streamRun(
-                {
-                    ...options,
-                },
-                (r) => {
-                    result = r;
-                },
-            ),
-        )) {
-            eventCount++;
-        }
-        const duration = Date.now() - start;
-        // Omit huge `documentShortlist` from console only; full result is still returned.
-        // `onFinish` assigns `result`, but TS may not narrow `let` across the async loop; cast for the log payload only.
-        const snapshot = result as HubDiscoveryAgentLoopResult | null;
-        if (snapshot == null) {
-            console.debug('[testFolderHubDiscovery]', { result: null, duration, eventCount });
-        } else {
-            console.debug('[testFolderHubDiscovery]', {
-                duration,
-                eventCount,
-                result: {
-                    ...snapshot,
-                    documentShortlist: undefined,
-                    documentShortlistCount: snapshot.documentShortlist?.length ?? 0,
-                },
-            });
-        }
-        return { result, duration, eventCount };
-    }
-
-    /**
      * Run {@link KnowledgeIntuitionAgent}: backbone + folder digest prep → intuition recon (plan/tools/submit) → fixed markdown + JSON.
+     * Also persists the result to SQLite (`knowledge_intuition_json`) so classify/intuitionFeedback phases can use it.
      * Requires indexed SQLite, TemplateManager, and models for knowledge-intuition prompts.
      *
      * @example
@@ -446,14 +234,26 @@ export class AISearchAgentTestTools {
             eventCount++;
         }
         const duration = Date.now() - start;
-        if (result == null) {
+        // `onFinish` assigns `result`, but TS may not narrow `let` across the async loop; cast for safety.
+        const snapshot = result as KnowledgeIntuitionAgentResult | null;
+        // Persist after the stream completes.
+        if (snapshot != null && sqliteStoreManager.isInitialized()) {
+            try {
+                const stateRepo = sqliteStoreManager.getIndexStateRepo();
+                await stateRepo.set('knowledge_intuition_json', JSON.stringify(snapshot.json));
+                console.debug('[testKnowledgeIntuition] Persisted knowledge_intuition_json to SQLite.');
+            } catch (e) {
+                console.error('[testKnowledgeIntuition] Failed to persist intuition map:', e);
+            }
+        }
+        if (snapshot == null) {
             console.debug('[testKnowledgeIntuition]', { result: null, duration, eventCount });
         } else {
             console.debug('[testKnowledgeIntuition]', {
                 duration,
                 eventCount,
-                markdownPreview: result.markdown.slice(0, 2500),
-                json: result.json,
+                markdownPreview: snapshot.markdown.slice(0, 2500),
+                json: snapshot.json,
             });
         }
         return { result, duration, eventCount };

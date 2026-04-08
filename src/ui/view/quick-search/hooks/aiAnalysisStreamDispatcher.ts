@@ -6,8 +6,9 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName, UISignalChannel } from '@/core/providers/types';
 import { getDeltaEventDeltaText } from '@/core/providers/helpers/stream-helper';
 import type { UIStepRecord } from '../store/aiAnalysisStore';
-import type { SearchAgentResult, EvidenceIndex } from '@/service/agents/AISearchAgent';
+import type { SearchAgentResult, EvidenceIndex } from '@/service/agents/shared-types';
 import { useAIAnalysisSummaryStore } from '../store/aiAnalysisStore';
+import type { VaultHitlPauseEvent, VaultPhaseTransitionEvent } from '@/service/agents/vault/types';
 
 const SUMMARY_FLUSH_MS = 120;
 
@@ -33,6 +34,10 @@ export type AIAnalysisStreamDispatcherDeps = {
 	recordError: (error: string) => void;
 	startStreaming: () => void;
 	onFinalResult?: (event: LLMStreamEvent) => void;
+	/** Called when a vault HITL pause event is received. */
+	onHitlPause?: (event: VaultHitlPauseEvent) => void;
+	/** Called when a vault phase transition event is received. */
+	onPhaseTransition?: (event: VaultPhaseTransitionEvent) => void;
 };
 
 export function createAIAnalysisStreamDispatcher(deps: AIAnalysisStreamDispatcherDeps) {
@@ -162,6 +167,23 @@ export function createAIAnalysisStreamDispatcher(deps: AIAnalysisStreamDispatche
 			case 'error': {
 				const errMsg = (event as any).error?.message ?? String((event as any).error);
 				if (errMsg) deps.recordError(errMsg);
+				break;
+			}
+			case 'hitl-pause': {
+				deps.onHitlPause?.(event as unknown as VaultHitlPauseEvent);
+				break;
+			}
+			case 'phase-transition': {
+				deps.onPhaseTransition?.(event as unknown as VaultPhaseTransitionEvent);
+				deps.publish('phase-transition', event);
+				break;
+			}
+			case 'agent-step-progress': {
+				deps.publish('agent-step-progress', event);
+				break;
+			}
+			case 'agent-stats': {
+				deps.publish('agent-stats', event);
 				break;
 			}
 			default:

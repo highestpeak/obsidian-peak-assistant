@@ -2,7 +2,7 @@
  * Data-layer validation for AI analysis results: mermaid syntax and per-renderEngine block rules.
  * Used before UI render to catch and fix errors early.
  */
-import type { SearchAgentResult, DashboardBlock } from '@/service/agents/AISearchAgent';
+import type { SearchAgentResult, DashboardBlock } from '@/service/agents/shared-types';
 import { getMermaidInner, normalizeMermaidNodeStyleColons } from './mermaid-utils';
 
 export interface ValidationReport {

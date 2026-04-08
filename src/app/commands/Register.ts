@@ -22,6 +22,7 @@ import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifi
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { HubDocService, type HubDiscoverRoundSummary } from '@/service/search/index/helper/hub';
 import { formatLlmEnrichmentProgressLine } from '@/service/search/support/llm-progress-format';
+import { KnowledgeIntuitionAgent } from '@/service/agents/KnowledgeIntuitionAgent';
 
 /**
  * Persistent bottom notice with updatable message (Obsidian 1.5+ `setMessage` when available).
@@ -116,6 +117,7 @@ type SearchIndexCommandsDeps = {
 	searchClient: SearchClient | null;
 	indexInitializer: IndexInitializer;
 	searchSettings?: SearchSettings;
+	aiManager: AIServiceManager;
 };
 
 /**
@@ -123,7 +125,7 @@ type SearchIndexCommandsDeps = {
  * manual Hub stub generation (writes Hub-*.md and indexes), cancel/delete.
  */
 function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
-	const { viewManager, searchClient, indexInitializer, searchSettings } = deps;
+	const { viewManager, searchClient, indexInitializer, searchSettings, aiManager } = deps;
 
 	return [
 		{
@@ -314,6 +316,32 @@ function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 				} catch (e) {
 					console.error('[peak-search-staged-full-pipeline]', e);
 					new Notice(`Pipeline failed: ${(e as Error).message}`, 8000);
+				}
+			},
+		},
+		{
+			id: 'peak-analyze-vault-intuition',
+			name: 'Search: analyze vault knowledge intuition',
+			callback: async () => {
+				if (!sqliteStoreManager.isInitialized()) {
+					new Notice('Database not ready. Run index first or restart the plugin.', 5000);
+					return;
+				}
+				const ui = openProgressNotice('Search: analyzing vault knowledge intuition…');
+				try {
+					const agent = new KnowledgeIntuitionAgent(aiManager);
+					for await (const _ev of agent.streamRun({}, async (result) => {
+						const stateRepo = sqliteStoreManager.getIndexStateRepo();
+						await stateRepo.set('knowledge_intuition_json', JSON.stringify(result.json));
+					})) {
+						// consume stream
+					}
+					ui.hide();
+					new Notice('Vault intuition map updated.', 4000);
+				} catch (e) {
+					ui.hide();
+					console.error('[peak-analyze-vault-intuition]', e);
+					new Notice(`Vault intuition failed: ${(e as Error).message}`, 8000);
 				}
 			},
 		},
@@ -566,6 +594,7 @@ export function buildCoreCommands(
 			searchClient,
 			indexInitializer,
 			searchSettings,
+			aiManager,
 		}),
 		...buildSystemCommands({ settings, viewManager, aiManager }),
 	];
