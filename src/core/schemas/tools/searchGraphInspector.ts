@@ -38,8 +38,8 @@ const TIME_WITHIN_NORMALIZE: Record<string, (typeof TIME_WITHIN_VALUES)[number]>
 
 export function normalizeTimeWithin(
 	val: unknown
-): (typeof TIME_WITHIN_VALUES)[number] | undefined {
-	if (val == null) return undefined;
+): (typeof TIME_WITHIN_VALUES)[number] | null {
+	if (val == null) return null;
 	const s = String(val).trim().toLowerCase();
 	if (TIME_WITHIN_VALUES.includes(s as (typeof TIME_WITHIN_VALUES)[number]))
 		return s as (typeof TIME_WITHIN_VALUES)[number];
@@ -66,6 +66,12 @@ export const FilterOption = z.object({
 	modified_within: z.preprocess((val) => normalizeTimeWithin(val), TimeWithinEnum.nullable()),
 	created_within: z.preprocess((val) => normalizeTimeWithin(val), TimeWithinEnum.nullable()),
 });
+
+/** Coerce non-object values (e.g. empty string "" from LLM) to null before FilterOption validation. */
+export const NullableFilterOption = z.preprocess(
+	(v) => (v === null || v === undefined || (typeof v === 'object' && !Array.isArray(v)) ? v : null),
+	FilterOption.nullable()
+);
 
 export const SemanticFilter = z.object({
 	query: z
@@ -122,7 +128,7 @@ export const SemanticOptions = z.object({
 
 export const inspectNoteContextInputSchema = z
 	.object({
-		note_path: z.string(),
+		note_path: z.string().min(1, 'note_path must be a non-empty vault path — retry with a valid path'),
 	})
 	.merge(BaseLimit)
 	.extend({
@@ -138,7 +144,7 @@ export const inspectNoteContextInputSchema = z
 
 export const graphTraversalInputSchema = z
 	.object({
-		start_note_path: z.string(),
+		start_note_path: z.string().min(1, 'start_note_path must be a non-empty vault path — retry with a valid path'),
 		hops: z
 			.number()
 			.min(1)
@@ -156,7 +162,7 @@ export const graphTraversalInputSchema = z
 			.describe(
 				"Grep-like path filter. If set, traversal prunes document nodes whose vault path does NOT match this pattern (regex, case-insensitive; falls back to substring when regex is invalid). Start node is always kept."
 			),
-		filters: FilterOption.nullable().describe(
+		filters: NullableFilterOption.describe(
 			"Only filter document nodes in each level."
 		),
 		sorter: SorterOption.nullable().describe("Only sort document nodes in each level."),
@@ -191,12 +197,12 @@ export const hubLocalGraphInputSchema = z
 
 export const findPathInputSchema = z
 	.object({
-		start_note_path: z.string(),
+		start_note_path: z.string().min(1, 'start_note_path must be a non-empty vault path — retry with a valid path'),
 		end_note_path: z.string(),
 	})
 	.merge(BaseLimit)
 	.extend({
-		filters: FilterOption.nullable().describe(
+		filters: NullableFilterOption.describe(
 			"Filter nodes in the path. May cost much more time and resources. As the graph algorithm is time-consuming."
 		),
 		include_semantic_paths: SemanticOptions.shape.include_semantic_paths,
@@ -207,7 +213,7 @@ export const findKeyNodesInputSchema = z
 	.object({})
 	.merge(BaseLimit)
 	.extend({
-		filters: FilterOption.nullable(),
+		filters: NullableFilterOption,
 		sorter: SorterOption.nullable().default("backlinks_count_desc"),
 		semantic_filter: SemanticOptions.shape.semantic_filter.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("markdown"),
@@ -221,7 +227,7 @@ export const findOrphansInputSchema = z.object({}).extend({
 		.nullable()
 		.default(50)
 		.describe("Maximum number of results."),
-	filters: FilterOption.nullable(),
+	filters: NullableFilterOption,
 	sorter: SorterOption.nullable(),
 	response_format: ResponseFormat.shape.response_format.default("markdown"),
 });
@@ -274,7 +280,7 @@ export const exploreFolderInputSchema = z
 			.nullable()
 			.default(50)
 			.describe("Per-folder item cap; use ≥50 for inventory/full-list breadth."),
-		filters: FilterOption.nullable(),
+		filters: NullableFilterOption,
 		sorter: SorterOption.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("markdown"),
 	});
@@ -288,7 +294,7 @@ export const recentChangesWholeVaultInputSchema = z
 	.object({})
 	.merge(BaseLimit)
 	.extend({
-		filters: FilterOption.nullable(),
+		filters: NullableFilterOption,
 		sorter: SorterOption.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("markdown"),
 	});
@@ -339,7 +345,7 @@ export const localSearchWholeVaultInputSchema = z
 			),
 	})
 	.extend({
-		filters: FilterOption.nullable(),
+		filters: NullableFilterOption,
 		sorter: SorterOption.nullable(),
 		response_format: ResponseFormat.shape.response_format.default("structured"),
 	});

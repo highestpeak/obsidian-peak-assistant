@@ -228,7 +228,7 @@ const BlockContent: React.FC<{
 	if ((renderEngine === 'MARKDOWN' || renderEngine === 'MERMAID') && markdown?.trim()) {
 		return (
 			<StreamdownIsolated
-				className="pktw-select-text pktw-w-full pktw-text-left pktw-text-sm pktw-text-[#2e3338] pktw-prose pktw-prose-sm pktw-max-w-none"
+				className="pktw-select-text pktw-w-full pktw-text-left pktw-text-[15px] pktw-leading-[1.8] pktw-text-[#2e3338] pktw-prose pktw-max-w-none"
 				isAnimating={isStreaming}
 			>
 				{markdown}
@@ -294,16 +294,10 @@ export const DashboardBlocksSection: React.FC<{
 					ease: [0.22, 1, 0.36, 1],
 				}}
 				id={`block-${block.id}`}
-				className="dashboard-blocks-section-block pktw-select-text pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb] pktw-scroll-mt-4 pktw-flex pktw-flex-col pktw-min-h-0 pktw-overflow-visible pktw-group"
-				style={{
-					flexGrow: flexStyle.flexGrow,
-					flexBasis: flexStyle.flexBasis,
-					minWidth: flexStyle.minWidth,
-					maxWidth: flexStyle.maxWidth,
-				}}
+				className="dashboard-blocks-section-block pktw-select-text pktw-bg-[#f9fafb] pktw-rounded-xl pktw-p-5 pktw-border pktw-border-[#e5e7eb] pktw-scroll-mt-4 pktw-flex pktw-flex-col pktw-min-h-0 pktw-overflow-visible pktw-group pktw-w-full"
 			>
 				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-2">
-					<span className="pktw-text-xs pktw-font-semibold pktw-text-[#6b7280]">{label}</span>
+					<span className="pktw-text-sm pktw-font-semibold pktw-text-[#374151]">{label}</span>
 					<div className="pktw-ml-auto pktw-flex pktw-items-center pktw-gap-1">
 						{showCopy ? (
 							<Button
@@ -391,7 +385,7 @@ export const DashboardBlocksSection: React.FC<{
 		<div ref={blockRef} className="pktw-select-text pktw-scroll-mt-24 pktw-w-full">
 			<LayoutGroup>
 				<motion.div
-					className="pktw-flex pktw-flex-wrap pktw-gap-3 pktw-items-stretch pktw-w-full"
+					className="pktw-flex pktw-flex-col pktw-gap-4 pktw-w-full"
 					layout
 				>
 					{blocks.map((block, index) => renderBlock(block, index))}

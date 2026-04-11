@@ -52,6 +52,9 @@ interface SearchSessionState {
 	startedAt: number | null;
 	duration: number | null;
 	usage: LLMUsage | null;
+	phaseUsages: Array<{ phase: string; modelId: string; inputTokens: number; outputTokens: number }>;
+	/** Raw agent event log for debug export: tool calls, reasoning, plan messages */
+	agentDebugLog: Array<{ ts: number; type: string; taskIndex?: number; data: Record<string, unknown> }>;
 	title: string | null;
 	error: string | null;
 	analysisMode: AnalysisMode;
@@ -87,6 +90,8 @@ interface SearchSessionActions {
 	setTitle: (title: string | null) => void;
 	setUsage: (usage: LLMUsage) => void;
 	accumulateUsage: (usage: LLMUsage) => void;
+	addPhaseUsage: (usage: { phase: string; modelId: string; inputTokens: number; outputTokens: number }) => void;
+	appendAgentDebugLog: (entry: { type: string; taskIndex?: number; data: Record<string, unknown> }) => void;
 	setDuration: (duration: number) => void;
 	setHasAnalyzed: (v: boolean) => void;
 	setDashboardUpdatedLine: (line: string) => void;
@@ -158,6 +163,8 @@ const INITIAL_STATE: SearchSessionState = {
 	startedAt: null,
 	duration: null,
 	usage: null,
+	phaseUsages: [],
+	agentDebugLog: [],
 	title: null,
 	error: null,
 	analysisMode: 'vaultFull',
@@ -250,6 +257,13 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	setTitle: (title) => set({ title }),
 	setUsage: (usage) => set({ usage }),
 	accumulateUsage: (usage) => set((s) => ({ usage: mergeTokenUsage(s.usage, usage) })),
+	addPhaseUsage: (usage) => set((s) => ({ phaseUsages: [...s.phaseUsages, usage] })),
+	appendAgentDebugLog: (entry) => set((s) => {
+		const log = s.agentDebugLog;
+		// Cap at 2000 entries to avoid unbounded memory growth
+		const trimmed = log.length >= 2000 ? log.slice(log.length - 1999) : log;
+		return { agentDebugLog: [...trimmed, { ts: Date.now(), ...entry }] };
+	}),
 	setDuration: (duration) => set({ duration }),
 	setHasAnalyzed: (v) => set({ hasAnalyzed: v }),
 	setDashboardUpdatedLine: (line) => set({ dashboardUpdatedLine: line ?? '' }),
@@ -300,7 +314,26 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			if (stepType === 'decompose') {
 				const classifyStep = completedSteps.find((st) => st.type === 'classify');
 				if (classifyStep && classifyStep.type === 'classify') {
-					(newStep as any).dimensionCount = classifyStep.dimensions.length;
+					// Use deduplicated count (same logic as groupByAxis in ClassifyStep)
+					const uniqueIds = new Set(classifyStep.dimensions.map(d => d.id));
+					const axisCounts = { semantic: 0, topology: 0, temporal: 0 };
+					for (const d of classifyStep.dimensions) { axisCounts[(d.axis as keyof typeof axisCounts) ?? 'semantic']++; }
+					(newStep as any).dimensionCount = uniqueIds.size;
+				}
+			}
+			// Carry forward decompose task descriptions to recon step as labels
+			if (stepType === 'recon') {
+				const decomposeFound = findLastStepOfType(completedSteps, 'decompose');
+				const decomposeStep = decomposeFound?.step;
+				if (decomposeStep && decomposeStep.taskDescriptions.length > 0) {
+					(newStep as any).tasks = decomposeStep.taskDescriptions.map((td, i) => ({
+						index: i,
+						label: td.description,
+						completedFiles: 0,
+						totalFiles: 0,
+						done: false,
+					}));
+					(newStep as any).total = decomposeStep.taskDescriptions.length;
 				}
 			}
 			return { steps: [...completedSteps, newStep] };

@@ -723,7 +723,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 
 	lines.push(SECTION_SUMMARY);
 	lines.push('');
-	lines.push(docModel.summary || '(empty)');
+	lines.push(docModel.summary || '');
 	lines.push('');
 
 	lines.push(SECTION_QUERY);

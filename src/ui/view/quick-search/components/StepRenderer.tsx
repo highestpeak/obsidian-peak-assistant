@@ -36,7 +36,7 @@ export const StepRenderer: React.FC<StepRendererProps> = ({
 		case 'recon':
 			return <ReconStep step={step} />;
 		case 'plan':
-			return <PlanStep step={step} />;
+			return <PlanStep step={step} onOpenWikilink={onOpenWikilink} />;
 		case 'report':
 			return <ReportStep step={step} />;
 		case 'summary':

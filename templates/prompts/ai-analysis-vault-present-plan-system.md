@@ -7,3 +7,5 @@ Your plan should:
 4. Rate your confidence in being able to answer the query with current evidence
 
 Be concise and actionable.
+
+CRITICAL: Write the proposed outline, section titles, and ALL text in the SAME LANGUAGE as the user's query. Chinese query → Chinese output. English query → English output.

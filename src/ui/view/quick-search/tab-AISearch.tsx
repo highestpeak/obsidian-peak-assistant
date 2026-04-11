@@ -1,11 +1,10 @@
 import { SLICE_CAPS } from '@/core/constant';
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink } from 'lucide-react';
+import { Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink, ClipboardList } from 'lucide-react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { Button } from '@/ui/component/shared-ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
-import { formatDuration, formatTokenCount } from '@/core/utils/format-utils';
 import { useSharedStore, useGraphQueuePump } from './store';
 import {
 	useAIAnalysisSummaryStore,
@@ -27,10 +26,12 @@ import { RecentAIAnalysis } from './components/ai-analysis-sections/RecentAIAnal
 import { useAIAnalysisResult } from './hooks/useAIAnalysisResult';
 import { AppContext } from '@/app/context/AppContext';
 import { SearchResultView } from './components/SearchResultView';
+import { UsageBadge } from './components/ai-analysis-sections/UsageBadge';
 import { SectionExtraChatModal } from './components/ai-analysis-modal/SectionExtraChatModal';
 import { InlineFollowupChat } from '../../component/mine/InlineFollowupChat';
 import { useContinueAnalysisFollowupChatConfig } from './hooks/useAIAnalysisPostAIInteractions';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
+import { useUIEventStore } from '@/ui/store/uiEventStore';
 
 interface AISearchTabProps {
 	onClose?: () => void;
@@ -58,9 +59,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const sessionId = useSearchSessionStore((s) => s.id);
 	const hasStartedStreaming = useSearchSessionStore((s) => s.hasStartedStreaming);
 	const hasAnalyzed = useSearchSessionStore((s) => s.hasAnalyzed);
+	const newPipelineSteps = useSearchSessionStore((s) => s.steps);
 	const error = useSearchSessionStore((s) => s.error);
-	const usage = useSearchSessionStore((s) => s.usage);
-	const duration = useSearchSessionStore((s) => s.duration);
 	const restoredFromHistory = useSearchSessionStore((s) => s.restoredFromHistory);
 	const restoredFromVaultPath = useSearchSessionStore((s) => s.restoredFromVaultPath);
 	const autoSaveState = useSearchSessionStore((s) => s.autoSaveState);
@@ -103,6 +103,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [showContinueAnalysis, setShowContinueAnalysis] = useState(false);
+	const [continueAnalysisInitialText, setContinueAnalysisInitialText] = useState<string | undefined>(undefined);
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 	const continueAnalysisBlockRef = useRef<HTMLDivElement>(null);
 
@@ -124,6 +125,16 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
 		ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	};
+
+	// For the new step-based pipeline: scroll to the last step of a given type
+	const scrollToStep = (stepType: string) => {
+		const els = contentContainerRef.current?.querySelectorAll(`[data-step="${stepType}"]`);
+		if (els?.length) (els[els.length - 1] as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
+	};
+
+	const isNewPipeline = newPipelineSteps.length > 0;
+	const hasNewPipelineReport = newPipelineSteps.some((s) => s.type === 'report');
+	const hasNewPipelineSources = newPipelineSteps.some((s) => s.type === 'sources');
 
 	const scrollToBlock = (blockId: string) => {
 		document.getElementById(`block-${blockId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -172,6 +183,210 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		setRetryTrigger(prev => prev + 1);
 	};
 
+	// Serialize full session state to plain text for debugging/sharing
+	const [debugCopied, setDebugCopied] = useState(false);
+	const handleCopyDebugInfo = () => {
+		const s = useSearchSessionStore.getState();
+		const lines: string[] = [];
+
+		lines.push('=== AI Search Session Debug Export ===');
+		lines.push(`Query: ${s.query}`);
+		lines.push(`Status: ${s.status}  Duration: ${s.duration != null ? `${(s.duration / 1000).toFixed(1)}s` : '-'}`);
+		if (s.startedAt) lines.push(`Started: ${new Date(s.startedAt).toISOString()}`);
+		lines.push(`Analysis mode: ${s.runAnalysisMode ?? s.analysisMode}`);
+		lines.push('');
+
+		// ── Steps ──────────────────────────────────────────────────────────────
+		for (const step of s.steps) {
+			const dur = step.endedAt != null ? `${((step.endedAt - step.startedAt) / 1000).toFixed(1)}s` : 'running';
+			lines.push(`${'─'.repeat(60)}`);
+			lines.push(`[${step.type.toUpperCase()}]  status=${step.status}  duration=${dur}`);
+
+			if (step.type === 'classify') {
+				lines.push(`  Dimensions (${step.dimensions.length}):`);
+				for (const d of step.dimensions) {
+					lines.push(`  ┌ [${d.axis}] ${d.id.replace(/_/g, ' ')}`);
+					if (d.intent_description) lines.push(`  │  intent: ${d.intent_description}`);
+					if (d.scope_constraint) {
+						const sc = d.scope_constraint;
+						if (sc.path) lines.push(`  │  scope path: ${sc.path}`);
+						if (sc.tags?.length) lines.push(`  │  scope tags: ${sc.tags.join(', ')}`);
+						if (sc.anchor_entity) lines.push(`  │  anchor entity: ${sc.anchor_entity}`);
+					}
+					lines.push(`  └`);
+				}
+
+			} else if (step.type === 'decompose') {
+				lines.push(`  ${step.dimensionCount} dimensions → ${step.taskCount} tasks`);
+				for (const t of step.taskDescriptions) {
+					lines.push(`  ┌ Task [${t.id}] priority=${t.searchPriority}`);
+					lines.push(`  │  description: ${t.description}`);
+					if (t.targetAreas.length) lines.push(`  │  target areas: ${t.targetAreas.join(', ')}`);
+					if (t.toolHints.length) lines.push(`  │  tool hints: ${t.toolHints.join(', ')}`);
+					if (t.coveredDimensionIds.length) lines.push(`  │  covers dimensions: ${t.coveredDimensionIds.join(', ')}`);
+					lines.push(`  └`);
+				}
+
+			} else if (step.type === 'recon') {
+				const doneCnt = step.tasks.filter(t => t.done).length;
+				lines.push(`  Tasks: ${doneCnt}/${step.total}`);
+				for (const t of step.tasks) {
+					lines.push(`  ┌ T${t.index + 1} ${t.done ? '[done]' : '[running]'}  ${t.label ?? '?'}`);
+					const taskLog = step.progressLog.filter(e => e.taskIndex === t.index);
+					for (const entry of taskLog) {
+						const ts = new Date(entry.timestamp).toISOString().slice(11, 23);
+						lines.push(`  │  [${ts}] ${entry.label}: ${entry.detail}`);
+					}
+					lines.push(`  └`);
+				}
+
+			} else if (step.type === 'plan') {
+				const snap = step.snapshot;
+				if (snap) {
+					lines.push(`  Confidence: ${snap.confidence ?? '-'}`);
+					lines.push(`  Proposed outline:`);
+					for (const line of (snap.proposedOutline ?? '').split('\n')) {
+						lines.push(`    ${line}`);
+					}
+					if (snap.suggestedSections?.length) {
+						lines.push(`  Suggested sections: ${snap.suggestedSections.join(' | ')}`);
+					}
+					if (snap.discoveryGroups?.length) {
+						lines.push(`  Discovery Groups (${snap.discoveryGroups.length}):`);
+						for (const g of snap.discoveryGroups) {
+							lines.push(`  ┌ "${g.topic}" — ${g.noteCount} notes, coverage=${g.coverage}`);
+							const notes = (g as any).keyNotes as string[] | undefined;
+							if (notes?.length) {
+								for (const n of notes) lines.push(`  │  • ${n}`);
+							}
+							lines.push(`  └`);
+						}
+					}
+				}
+				if (step.userFeedback) {
+					lines.push(`  User feedback: action=${step.userFeedback.action}`);
+					if ((step.userFeedback as any).text) lines.push(`    text: ${(step.userFeedback as any).text}`);
+				}
+
+			} else if (step.type === 'report') {
+				lines.push(`  Blocks: ${step.blocks.length}`);
+				for (const b of step.blocks) {
+					lines.push(`  ┌ [${b.id}] ${b.title} (weight=${b.weight})`);
+					if (b.markdown) {
+						for (const line of b.markdown.split('\n').slice(0, 30)) {
+							lines.push(`  │  ${line}`);
+						}
+						if (b.markdown.split('\n').length > 30) lines.push(`  │  ... (truncated)`);
+					}
+					lines.push(`  └`);
+				}
+				const summary = step.summary ?? step.streamingText;
+				if (summary) {
+					lines.push(`  Executive Summary:`);
+					for (const line of summary.split('\n')) lines.push(`    ${line}`);
+				}
+
+			} else if (step.type === 'sources') {
+				lines.push(`  Sources (${step.sources.length}):`);
+				for (const src of step.sources) {
+					const avg = typeof src.score === 'object' ? src.score.average : src.score;
+					const phy = typeof src.score === 'object' ? src.score.physical : '-';
+					const sem = typeof src.score === 'object' ? src.score.semantic : '-';
+					lines.push(`  ┌ ${src.path}`);
+					lines.push(`  │  score: avg=${Number(avg).toFixed(2)}  physical=${Number(phy).toFixed(2)}  semantic=${Number(sem).toFixed(2)}`);
+					if (src.badges?.length) lines.push(`  │  badges: ${src.badges.join(', ')}`);
+					if (src.reasoning) lines.push(`  │  reasoning: ${src.reasoning}`);
+					lines.push(`  └`);
+				}
+			}
+			lines.push('');
+		}
+
+		// ── Agent raw event log ────────────────────────────────────────────────
+		if (s.agentDebugLog.length > 0) {
+			lines.push(`${'═'.repeat(60)}`);
+			lines.push(`AGENT EVENT LOG (${s.agentDebugLog.length} entries)`);
+			lines.push(`${'═'.repeat(60)}`);
+
+			// Group consecutive reasoning deltas into one block
+			let reasoningBuf = '';
+			let reasoningTaskIdx: number | undefined;
+			const flushReasoning = () => {
+				if (!reasoningBuf) return;
+				const tLabel = reasoningTaskIdx != null ? `T${reasoningTaskIdx + 1}` : 'global';
+				lines.push(`[${tLabel}] REASONING:`);
+				for (const line of reasoningBuf.split('\n')) lines.push(`  ${line}`);
+				reasoningBuf = '';
+				reasoningTaskIdx = undefined;
+			};
+
+			for (const entry of s.agentDebugLog) {
+				const ts = new Date(entry.ts).toISOString().slice(11, 23);
+				const tLabel = entry.taskIndex != null ? `T${entry.taskIndex + 1}` : 'global';
+
+				if (entry.type === 'reasoning') {
+					if (entry.taskIndex !== reasoningTaskIdx && reasoningBuf) flushReasoning();
+					reasoningTaskIdx = entry.taskIndex;
+					reasoningBuf += (entry.data.text as string) ?? '';
+				} else {
+					flushReasoning();
+					if (entry.type === 'tool-call') {
+						const d = entry.data as any;
+						lines.push(`[${ts}] [${tLabel}] TOOL CALL: ${d.tool}`);
+						try {
+							const argsStr = JSON.stringify(d.args, null, 2);
+							for (const line of argsStr.split('\n')) lines.push(`  args: ${line}`);
+						} catch { lines.push(`  args: ${String(d.args)}`); }
+					} else if (entry.type === 'tool-result') {
+						const d = entry.data as any;
+						lines.push(`[${ts}] [${tLabel}] TOOL RESULT: ${d.tool}`);
+						if (d.output != null) {
+							const outStr = typeof d.output === 'string' ? d.output : JSON.stringify(d.output, null, 2);
+							const outLines = outStr.split('\n');
+							for (const line of outLines.slice(0, 80)) lines.push(`  ${line}`);
+							if (outLines.length > 80) lines.push(`  ... (${outLines.length - 80} more lines)`);
+						}
+					}
+				}
+			}
+			flushReasoning();
+		}
+
+		// ── Token usage ───────────────────────────────────────────────────────
+		if (s.phaseUsages.length) {
+			lines.push(`${'═'.repeat(60)}`);
+			lines.push('TOKEN USAGE BY PHASE');
+			for (const pu of s.phaseUsages) {
+				lines.push(`  ${pu.phase} (${pu.modelId}): ${pu.inputTokens}in + ${pu.outputTokens}out = ${pu.inputTokens + pu.outputTokens} total`);
+			}
+			const totalIn = s.phaseUsages.reduce((a, p) => a + p.inputTokens, 0);
+			const totalOut = s.phaseUsages.reduce((a, p) => a + p.outputTokens, 0);
+			lines.push(`  TOTAL: ${totalIn}in + ${totalOut}out = ${totalIn + totalOut}`);
+		}
+
+		lines.push('');
+		lines.push('=== End of Debug Export ===');
+
+		navigator.clipboard.writeText(lines.join('\n')).then(() => {
+			setDebugCopied(true);
+			window.setTimeout(() => setDebugCopied(false), 1500);
+		});
+	};
+
+	// Listen for continue-analysis events from ContinueAnalysisInput
+	const lastUIEvent = useUIEventStore((s) => s.lastEvent);
+	useEffect(() => {
+		if (lastUIEvent?.type === 'continue-analysis') {
+			const text = (lastUIEvent.payload as any)?.text as string | undefined;
+			setContinueAnalysisInitialText(text);
+			setShowContinueAnalysis(true);
+			// Scroll to the continue analysis block after it renders
+			setTimeout(() => {
+				continueAnalysisBlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}, 100);
+		}
+	}, [lastUIEvent]);
+
 	// process analysis result ========================================================
 
 	const { handleOpenInChat, handleCopyAll, handleAutoSave } = useAIAnalysisResult();
@@ -188,8 +403,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		handleAutoSave();
 	}, [analysisCompleted, restoredFromHistory, error, sessionId, handleAutoSave]);
 
-	// Nav bar condition: show when steps have content OR is streaming
-	const showNavBar = getHasCompletedContent() || (hasStartedStreaming && !analysisCompleted);
+	// Nav bar condition: show when steps have content OR is streaming (supports both old and new pipeline)
+	const showNavBar = isNewPipeline || getHasCompletedContent() || (hasStartedStreaming && !analysisCompleted);
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
@@ -207,24 +422,40 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 						</div>
 						{/* Nav buttons on the right */}
 						<div className="pktw-flex pktw-flex-shrink-0 pktw-flex-wrap pktw-gap-2">
-							{getHasSummarySection() ? (
-								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(summaryRef)}>Summary</Button>
-							) : null}
-							{getActiveOverviewMermaid?.()?.trim() ? (
-								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(overviewRef)}>Overview</Button>
-							) : null}
-							{getHasTopicsSection() ? (
-								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(topicsRef)}>Topics</Button>
-							) : null}
-							{getHasGraphData() ? (
-								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(graphSectionRef)}>Graph</Button>
-							) : null}
-							{getHasSourcesSection() ? (
-								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(sourcesRef)}>Sources</Button>
-							) : null}
-							{settings.enableDevTools && ((steps?.length ?? 0) > 0 || (hasStartedStreaming && !analysisCompleted)) ? (
-								<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(stepsRef)}>Steps</Button>
-							) : null}
+							{isNewPipeline ? (
+								<>
+									{hasNewPipelineReport ? (
+										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToStep('report')}>Summary</Button>
+									) : null}
+									{hasNewPipelineSources ? (
+										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToStep('sources')}>Sources</Button>
+									) : null}
+									{settings.enableDevTools ? (
+										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToStep('classify')}>Steps</Button>
+									) : null}
+								</>
+							) : (
+								<>
+									{getHasSummarySection() ? (
+										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(summaryRef)}>Summary</Button>
+									) : null}
+									{getActiveOverviewMermaid?.()?.trim() ? (
+										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(overviewRef)}>Overview</Button>
+									) : null}
+									{getHasTopicsSection() ? (
+										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(topicsRef)}>Topics</Button>
+									) : null}
+									{getHasGraphData() ? (
+										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(graphSectionRef)}>Graph</Button>
+									) : null}
+									{getHasSourcesSection() ? (
+										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(sourcesRef)}>Sources</Button>
+									) : null}
+									{settings.enableDevTools && ((steps?.length ?? 0) > 0 || (hasStartedStreaming && !analysisCompleted)) ? (
+										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(stepsRef)}>Steps</Button>
+									) : null}
+								</>
+							)}
 							{getHasDashboardBlocksSection() ? (
 								(dashboardBlocks?.length ?? 0) > 1 ? (
 									<HoverCard openDelay={150} closeDelay={100}>
@@ -319,6 +550,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 					<div ref={continueAnalysisBlockRef} className="pktw-mt-6 pktw-scroll-mt-4">
 						<InlineFollowupChat
 							{...continueAnalysisConfig}
+							initialQuestion={continueAnalysisInitialText}
+							autoSubmit={!!continueAnalysisInitialText}
 							outputPlace="parent"
 							onStreamingReplace={(text, ctx) => setFollowUpStreaming(ctx?.question ? { question: ctx.question, content: text ?? '' } : null)}
 							onApply={(answer, mode, question) => {
@@ -333,24 +566,35 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 			{/* Footer */}
 			<div className="pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0">
 				{!hasAnalyzed && !isAnalyzing ? <AISearchFooterHints /> : null}
-				{hasAnalyzed ? <div className="pktw-flex pktw-items-center pktw-gap-3">
-					{duration !== null && (
-						<div className="pktw-text-xs pktw-text-[#999999]">
-							<strong className="pktw-text-[#2e3338]">Cost: {formatDuration(duration)}</strong>
-						</div>
-					)}
-					{usage && (
-						<div className="pktw-text-xs pktw-text-[#999999] pktw-flex pktw-items-center pktw-gap-1">
-							<Sparkles className="pktw-w-3 pktw-h-3" />
-							<strong className="pktw-text-[#2e3338]">~{formatTokenCount(usage.totalTokens ?? 0)} tokens</strong>
-						</div>
-					)}
-				</div> : null}
+				{hasAnalyzed ? <UsageBadge /> : null}
 				<div className="pktw-flex pktw-items-center pktw-gap-3">
+					{/* Debug copy: always show when new pipeline has data, even mid-stream */}
+					{isNewPipeline && isAnalyzing && (
+						<Button
+							onClick={handleCopyDebugInfo}
+							size="sm"
+							variant="ghost"
+							className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-[#6d28d9] pktw-border-0 pktw-shadow-none focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"
+							title={debugCopied ? 'Copied!' : 'Copy session debug info'}
+						>
+							{debugCopied ? <Check className="pktw-w-3.5 pktw-h-3.5" /> : <ClipboardList className="pktw-w-3.5 pktw-h-3.5" />}
+						</Button>
+					)}
 					{analysisCompleted && !isAnalyzing && (
 						<>
 							{/* Copy + Save: icon-only, no border; Copy shows Check for 1s after click then back to Copy */}
 							<div className="pktw-flex pktw-items-center pktw-gap-1">
+								{isNewPipeline && (
+									<Button
+										onClick={handleCopyDebugInfo}
+										size="sm"
+										variant="ghost"
+										className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-[#6d28d9] pktw-border-0 pktw-shadow-none focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"
+										title={debugCopied ? 'Copied!' : 'Copy session debug info'}
+									>
+										{debugCopied ? <Check className="pktw-w-3.5 pktw-h-3.5" /> : <ClipboardList className="pktw-w-3.5 pktw-h-3.5" />}
+									</Button>
+								)}
 								<Button
 									onClick={() => {
 										handleCopyAll();

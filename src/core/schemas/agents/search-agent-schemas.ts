@@ -183,6 +183,35 @@ export const dimensionChoiceSchema = z.object({
 });
 export type DimensionChoice = z.infer<typeof dimensionChoiceSchema>;
 
+// ----- Combined Classify + Decompose (single LLM call) -----
+
+/** Combined output: classify dimensions + physical search tasks in one shot. */
+export const queryUnderstandingOutputSchema = z.object({
+	semantic_dimensions: z
+		.array(semanticDimensionChoiceSchema)
+		.min(1)
+		.describe(
+			'Semantic axis. Select ALL applicable dimensions from the 15 semantic dimension ids. Most queries touch 3-6 dimensions. Same id may repeat with different intent_description. Each may have scope_constraint and retrieval_orientation. Be thorough — missing dimensions means missing search coverage.'
+		),
+	topology_dimensions: z
+		.array(topologyDimensionChoiceSchema)
+		.describe(
+			'Topology axis: physical inventory of entities under path/tag. List-first, no quality filter. Empty array only if query is strictly point-type (single entity), not surface-type (collection).'
+		),
+	temporal_dimensions: z
+		.array(temporalDimensionChoiceSchema)
+		.describe(
+			'Temporal axis. Zero or more temporal_mapping targets. Empty array if no change/trend/evolution intent.'
+		),
+	physical_tasks: z.array(z.object({
+		unified_intent: z.string().min(1).describe('Synthesized retrieval instruction merging covered dimensions into one imperative retrieval mission.'),
+		covered_dimension_ids: z.array(z.enum(ALL_DIMENSION_IDS)).min(1).describe('Logical dimension ids that this task will feed; results are mapped back to each.'),
+		search_priority: z.number().int().min(0).describe('Execution order; lower = higher priority.'),
+		scope_constraint: scopeConstraintSchema.describe('Merged path/tags/anchor for this task; use intersection or dominant scope of covered dimensions.'),
+	})).min(1).describe('Physical search tasks: minimal non-overlapping set covering ALL dimensions above. 1-5 tasks.'),
+});
+export type QueryUnderstandingOutput = z.infer<typeof queryUnderstandingOutputSchema>;
+
 // ----- Search Architect (Dimension-to-Task Collapse) -----
 
 /** One physical search task: merged scope + unified query, covers one or more logical dimensions. */

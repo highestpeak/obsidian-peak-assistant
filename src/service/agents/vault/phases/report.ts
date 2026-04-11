@@ -1,16 +1,17 @@
 /**
- * Report phase: synthesize evidence into a final report.
+ * Report phase: two-stage synthesis into a final report.
  *
- * Two steps:
- * 1. Weave evidence paths into structured context (reuse weavePathsToContext)
- * 2. Single LLM call → summary + topics + sources + dashboard blocks + follow-up questions
+ * Stage 1 — blocks: streamObject → title + topics + dashboard_blocks + source_assessments
+ *   Emits 'blocks-complete' signal so UI can render blocks immediately.
  *
- * Adapted from conversational/synthesize.ts with HITL plan context.
+ * Stage 2 — executive summary: streamText → ~1000 word answer-first executive summary.
+ *   Emits streaming 'progress' signals so summary appears word-by-word in the UI.
+ *   Generated AFTER blocks, so summary can reference block titles/content.
  */
 
-import { streamObject } from 'ai';
+import { streamObject, streamText } from 'ai';
 import { z } from 'zod/v3';
-import { StreamTriggerName, UIStepType, type LLMStreamEvent } from '@/core/providers/types';
+import { StreamTriggerName, UIStepType, UISignalChannel, UISignalKind, type LLMStreamEvent } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 import { weavePathsToContext } from '../../search-agent-helper/weavePathsToContext';
@@ -18,9 +19,12 @@ import type { AISearchSource, AISearchTopic, DashboardBlock, SearchAgentResult }
 import { getFileNameFromPath, normalizeFilePath } from '@/core/utils/file-utils';
 import type { ClassifyResult, PlanSnapshot, ReconResult } from '../types';
 
-const reportOutputSchema = z.object({
+// ---------------------------------------------------------------------------
+// Stage 1 schema — blocks only (no summary; that gets its own dedicated call)
+// ---------------------------------------------------------------------------
+
+const blocksOutputSchema = z.object({
 	title: z.string().describe('Short title for this analysis (5-15 words)'),
-	summary: z.string().describe('Comprehensive summary directly answering the user query'),
 	topics: z.array(z.object({
 		label: z.string(),
 		weight: z.number().min(0).max(1),
@@ -30,7 +34,7 @@ const reportOutputSchema = z.object({
 		title: z.string(),
 		weight: z.number().min(0).max(10),
 		markdown: z.string(),
-	})).describe('Dashboard content blocks'),
+	})).describe('Dashboard content blocks — detailed analysis sections'),
 	source_assessments: z.array(z.object({
 		path: z.string(),
 		reasoning: z.string(),
@@ -41,11 +45,12 @@ const reportOutputSchema = z.object({
 	follow_up_questions: z.array(z.string()).max(5).describe('Suggested follow-up questions'),
 });
 
-type ReportOutput = z.infer<typeof reportOutputSchema>;
+type BlocksOutput = z.infer<typeof blocksOutputSchema>;
 
-/**
- * Run the Report phase: weave context + one LLM call → SearchAgentResult.
- */
+// ---------------------------------------------------------------------------
+// Main phase
+// ---------------------------------------------------------------------------
+
 export async function* runReportPhase(options: {
 	userQuery: string;
 	classify: ClassifyResult;
@@ -63,7 +68,7 @@ export async function* runReportPhase(options: {
 		extra: { pathCount: paths.length },
 	};
 
-	// --- Weave paths into structured context ---
+	// Weave paths into structured context (shared by both stages)
 	const tm = aiServiceManager.getTemplateManager?.();
 	const weavedContext = await weavePathsToContext(paths, tm);
 
@@ -72,9 +77,6 @@ export async function* runReportPhase(options: {
 		debugName: 'Report: context weaved',
 		extra: { contextLength: weavedContext.length },
 	};
-
-	// --- Single LLM call for full report ---
-	const { model } = aiServiceManager.getModelInstanceForPrompt(PromptId.AiAnalysisVaultReportSystem);
 
 	const evidenceList = recon.evidence
 		.slice(0, 40)
@@ -87,9 +89,22 @@ export async function* runReportPhase(options: {
 		? weavedContext.slice(0, 10000) + '\n\n_(context truncated)_'
 		: weavedContext || undefined;
 
-	let output: ReportOutput;
+	// -------------------------------------------------------------------------
+	// Stage 1: Generate blocks
+	// -------------------------------------------------------------------------
+
+	yield {
+		type: 'ui-signal',
+		channel: UISignalChannel.SEARCH_STAGE,
+		kind: UISignalKind.PROGRESS,
+		entityId: options.stepId,
+		payload: { stage: 'report', status: 'blocks-generating' },
+		triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+	} as LLMStreamEvent;
+
+	let blocksOutput: BlocksOutput;
 	try {
-		const [systemPrompt, userPrompt] = await Promise.all([
+		const [blocksSystemPrompt, blocksUserPrompt] = await Promise.all([
 			aiServiceManager.renderPrompt(PromptId.AiAnalysisVaultReportSystem, {}),
 			aiServiceManager.renderPrompt(PromptId.AiAnalysisVaultReport, {
 				userQuery,
@@ -100,39 +115,26 @@ export async function* runReportPhase(options: {
 				weavedContext: weavedContextTruncated,
 			}),
 		]);
-		const result = streamObject({
+
+		const { model } = aiServiceManager.getModelInstanceForPrompt(PromptId.AiAnalysisVaultReportSystem);
+		const blocksResult = streamObject({
 			model,
-			system: systemPrompt,
-			prompt: userPrompt,
-			schema: reportOutputSchema,
+			system: blocksSystemPrompt,
+			prompt: blocksUserPrompt,
+			schema: blocksOutputSchema,
 		});
 
-		// Stream partial report to show generation progress
-		let lastProgress = '';
-		for await (const partial of result.partialObjectStream) {
-			const parts: string[] = [];
-			if (partial.title) parts.push('Title ready');
-			if (partial.summary && partial.summary.length > 50) parts.push(`Summary ${partial.summary.length} chars`);
-			if (partial.topics?.length) parts.push(`${partial.topics.length} topics`);
-			if (partial.dashboard_blocks?.length) parts.push(`${partial.dashboard_blocks.length} blocks`);
-			if (partial.source_assessments?.length) parts.push(`${partial.source_assessments.length} sources`);
-			const progress = parts.join(', ');
-			if (progress && progress !== lastProgress) {
-				lastProgress = progress;
-				yield {
-					type: 'ui-step-delta',
-					uiType: UIStepType.STEPS_DISPLAY,
-					stepId,
-					descriptionDelta: `\n${progress}`,
-					triggerName: StreamTriggerName.SEARCH_AI_AGENT,
-				} as LLMStreamEvent;
-			}
-		}
-		output = await result.object as ReportOutput;
+		// Consume stream (required by AI SDK — result.object hangs if stream not consumed)
+		for await (const _ of blocksResult.partialObjectStream) { /* drain */ }
+		blocksOutput = await blocksResult.object as BlocksOutput;
+		try {
+			const usage = await blocksResult.usage;
+			const { modelId } = aiServiceManager.getModelForPrompt(PromptId.AiAnalysisVaultReportSystem);
+			yield { type: 'pk-debug', debugName: 'phase-usage', extra: { phase: 'report-blocks', modelId, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
+		} catch { /* ignore */ }
 	} catch {
-		output = {
+		blocksOutput = {
 			title: userQuery.slice(0, 50),
-			summary: 'Analysis could not be completed. Please try again.',
 			topics: [],
 			dashboard_blocks: [],
 			source_assessments: [],
@@ -140,10 +142,10 @@ export async function* runReportPhase(options: {
 		};
 	}
 
-	// --- Build final result ---
-	const assessedPaths = new Set(output.source_assessments.map((sa) => sa.path));
+	// Build block + source objects
+	const assessedPaths = new Set(blocksOutput.source_assessments.map((sa) => sa.path));
 
-	const sources: AISearchSource[] = output.source_assessments.map((sa) => ({
+	const sources: AISearchSource[] = blocksOutput.source_assessments.map((sa) => ({
 		id: `src:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
 		title: getFileNameFromPath(sa.path) ?? sa.path,
 		path: normalizeFilePath(sa.path) ?? sa.path,
@@ -156,28 +158,20 @@ export async function* runReportPhase(options: {
 		},
 	}));
 
-	// Fill in sources for paths without explicit assessments
-	for (const path of paths) {
-		if (!assessedPaths.has(path)) {
-			// Find the reason from recon evidence
-			const ev = recon.evidence.find((e) => e.path === path);
-			sources.push({
-				id: `src:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-				title: getFileNameFromPath(path) ?? path,
-				path: normalizeFilePath(path) ?? path,
-				reasoning: ev?.reason ?? 'Discovered during exploration.',
-				badges: [],
-				score: { physical: 0, semantic: 0, average: 0 },
-			});
-		}
-	}
+	// Deduplicate by normalized path (same file may appear in multiple task evidence)
+	const seenPaths = new Set<string>();
+	const dedupedSources = sources.filter((s) => {
+		if (seenPaths.has(s.path)) return false;
+		seenPaths.add(s.path);
+		return true;
+	});
 
-	const topics: AISearchTopic[] = output.topics.map((t) => ({
+	const topics: AISearchTopic[] = blocksOutput.topics.map((t) => ({
 		label: t.label,
 		weight: t.weight,
 	}));
 
-	const dashboardBlocks: DashboardBlock[] = output.dashboard_blocks.map((b) => ({
+	const dashboardBlocks: DashboardBlock[] = blocksOutput.dashboard_blocks.map((b) => ({
 		id: b.id,
 		title: b.title,
 		weight: b.weight,
@@ -185,28 +179,103 @@ export async function* runReportPhase(options: {
 		markdown: b.markdown,
 	}));
 
-	const agentResult: SearchAgentResult = {
-		title: output.title,
-		summary: output.summary,
-		topics,
-		sources,
-		dashboardBlocks,
-		suggestedFollowUpQuestions: output.follow_up_questions,
+	// Emit blocks to UI so they render immediately while summary generates
+	yield {
+		type: 'ui-signal',
+		channel: UISignalChannel.SEARCH_STAGE,
+		kind: UISignalKind.PROGRESS,
+		entityId: options.stepId,
+		payload: {
+			stage: 'report',
+			status: 'blocks-complete',
+			blocks: dashboardBlocks,
+			blockOrder: dashboardBlocks.map((b) => b.id),
+		},
+		triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+	} as LLMStreamEvent;
+
+	yield {
+		type: 'pk-debug',
+		debugName: 'Report: blocks complete',
+		extra: { blockCount: dashboardBlocks.length },
 	};
+
+	// -------------------------------------------------------------------------
+	// Stage 2: Stream executive summary (~1000 words, answer-first)
+	// -------------------------------------------------------------------------
+
+	// Build a compact blocks summary for the summary prompt (titles + first 200 chars of content)
+	const blocksSummary = dashboardBlocks.length > 0
+		? dashboardBlocks
+			.map((b) => `### ${b.title}\n${b.markdown?.slice(0, 300) ?? ''}`)
+			.join('\n\n')
+		: '(no analysis sections generated)';
+
+	let executiveSummary = '';
+	try {
+		const [summarySystemPrompt, summaryUserPrompt] = await Promise.all([
+			aiServiceManager.renderPrompt(PromptId.AiAnalysisVaultReportSummarySystem, {}),
+			aiServiceManager.renderPrompt(PromptId.AiAnalysisVaultReportSummary, {
+				userQuery,
+				reportPlan: planSnapshot.proposedOutline,
+				blocksSummary,
+				evidenceList,
+			}),
+		]);
+
+		const { model: summaryModel } = aiServiceManager.getModelInstanceForPrompt(PromptId.AiAnalysisVaultReportSummarySystem);
+		const summaryStream = streamText({
+			model: summaryModel,
+			system: summarySystemPrompt,
+			prompt: summaryUserPrompt,
+		});
+
+		let accumulated = '';
+		let lastEmitLen = 0;
+		for await (const delta of summaryStream.textStream) {
+			accumulated += delta;
+			// Emit every ~50 chars for smooth streaming without flooding
+			if (accumulated.length - lastEmitLen >= 50) {
+				lastEmitLen = accumulated.length;
+				yield {
+					type: 'ui-signal',
+					channel: UISignalChannel.SEARCH_STAGE,
+					kind: UISignalKind.PROGRESS,
+					entityId: options.stepId,
+					payload: { stage: 'report', status: 'progress', streamingText: accumulated },
+					triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+				} as LLMStreamEvent;
+			}
+		}
+		executiveSummary = accumulated;
+		try {
+			const usage = await summaryStream.usage;
+			const { modelId } = aiServiceManager.getModelForPrompt(PromptId.AiAnalysisVaultReportSummarySystem);
+			yield { type: 'pk-debug', debugName: 'phase-usage', extra: { phase: 'report-summary', modelId, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
+		} catch { /* ignore */ }
+	} catch {
+		executiveSummary = '';
+	}
 
 	yield {
 		type: 'pk-debug',
 		debugName: 'Report: complete',
 		extra: {
-			titleLength: output.title.length,
-			summaryLength: output.summary.length,
+			titleLength: blocksOutput.title.length,
+			summaryLength: executiveSummary.length,
 			topicCount: topics.length,
-			sourceCount: sources.length,
+			sourceCount: dedupedSources.length,
 			blockCount: dashboardBlocks.length,
-			followUpCount: output.follow_up_questions.length,
+			followUpCount: blocksOutput.follow_up_questions.length,
 		},
 	};
 
-	return agentResult;
+	return {
+		title: blocksOutput.title,
+		summary: executiveSummary,
+		topics,
+		sources: dedupedSources,
+		dashboardBlocks,
+		suggestedFollowUpQuestions: blocksOutput.follow_up_questions,
+	};
 }
-

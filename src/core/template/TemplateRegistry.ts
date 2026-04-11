@@ -190,6 +190,8 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-save-filename': meta('prompts', 'ai-analysis-save-filename'),
 	'ai-analysis-save-folder': meta('prompts', 'ai-analysis-save-folder'),
 	// Vault pipeline prompts
+	'ai-analysis-vault-query-understanding-system': meta('prompts', 'ai-analysis-vault-query-understanding-system'),
+	'ai-analysis-vault-query-understanding': meta('prompts', 'ai-analysis-vault-query-understanding', { systemPromptId: 'ai-analysis-vault-query-understanding-system' as PromptId }),
 	'ai-analysis-vault-classify-system': meta('prompts', 'ai-analysis-vault-classify-system'),
 	'ai-analysis-vault-classify': meta('prompts', 'ai-analysis-vault-classify', { systemPromptId: 'ai-analysis-vault-classify-system' as PromptId }),
 	'ai-analysis-vault-decompose-system': meta('prompts', 'ai-analysis-vault-decompose-system'),
@@ -202,6 +204,8 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-vault-present-plan': meta('prompts', 'ai-analysis-vault-present-plan', { systemPromptId: 'ai-analysis-vault-present-plan-system' as PromptId }),
 	'ai-analysis-vault-report-system': meta('prompts', 'ai-analysis-vault-report-system'),
 	'ai-analysis-vault-report': meta('prompts', 'ai-analysis-vault-report', { systemPromptId: 'ai-analysis-vault-report-system' as PromptId }),
+	'ai-analysis-vault-report-summary-system': meta('prompts', 'ai-analysis-vault-report-summary-system'),
+	'ai-analysis-vault-report-summary': meta('prompts', 'ai-analysis-vault-report-summary', { systemPromptId: 'ai-analysis-vault-report-summary-system' as PromptId }),
 	'doc-tag-generate-json': meta('prompts', 'doc-tag-generate-json', {
 		expectsJson: true,
 		jsonConstraint:

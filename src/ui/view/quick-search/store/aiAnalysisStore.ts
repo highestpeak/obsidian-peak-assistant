@@ -3,6 +3,7 @@ import { AISearchGraph, AISearchSource, AISearchTopic, type AnalysisMode, Dashbo
 export type { AnalysisMode };
 import type { PlanSnapshot } from '@/service/agents/vault/types';
 import type { UserFeedback } from '@/service/agents/core/types';
+import { useSearchSessionStore } from './searchSessionStore';
 
 import { LLMUsage, mergeTokenUsage } from '@/core/providers/types';
 import type { SearchResultItem } from '@/service/search/types';
@@ -746,6 +747,97 @@ export function loadCompletedAnalysisSnapshot(snapshot: CompletedAnalysisSnapsho
 		sourcesFollowupHistory: snapshot.sourcesFollowups ?? [],
 		blockChatRecords: snapshot.blockChatRecords ?? {},
 		contextChatModal: null,
+	});
+
+	// Bridge to new unified searchSessionStore — rebuild SearchStep[] from snapshot data
+	bridgeSnapshotToSearchSessionStore(snapshot, sourceVaultPath);
+}
+
+/**
+ * Bridge: convert CompletedAnalysisSnapshot into SearchStep[] for the new unified store.
+ * This ensures restored history displays correctly in SearchResultView → StepList.
+ */
+function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot, sourceVaultPath?: string): void {
+	const { SearchStep: _, ...rest } = { SearchStep: null }; // avoid name clash
+	const steps: import('../types/search-steps').SearchStep[] = [];
+	const now = Date.now();
+	const startedAt = snapshot.analysisStartedAtMs ?? now;
+
+	// Report step: merge summary text + dashboard blocks into a single report step
+	// (do NOT create a separate 'summary' step — that uses IntelligenceFrame/purple-box rendering)
+	const summaryText = getSnapshotSummary(snapshot);
+	const hasSummary = !!(summaryText && summaryText !== '(empty)');
+	const hasBlocks = !!(snapshot.dashboardBlocks && snapshot.dashboardBlocks.length > 0);
+	if (hasSummary || hasBlocks) {
+		steps.push({
+			id: 'report-restored',
+			type: 'report',
+			status: 'completed',
+			startedAt,
+			endedAt: startedAt + (snapshot.duration ?? 0),
+			blocks: snapshot.dashboardBlocks ?? [],
+			blockOrder: (snapshot.dashboardBlocks ?? []).map((b: any) => b.id),
+			completedBlocks: (snapshot.dashboardBlocks ?? []).map((b: any) => b.id),
+			summary: hasSummary ? summaryText : undefined,
+		});
+	}
+
+	// Sources step
+	if (snapshot.sources && snapshot.sources.length > 0) {
+		steps.push({
+			id: 'sources-restored',
+			type: 'sources',
+			status: 'completed',
+			startedAt,
+			endedAt: startedAt + (snapshot.duration ?? 0),
+			sources: snapshot.sources,
+			evidenceIndex: snapshot.evidenceIndex ?? {},
+		});
+	}
+
+	// Graph step
+	const ovVers = snapshot.overviewMermaidVersions ?? [];
+	const mindflow = (snapshot.mindflowMermaid ?? '').trim();
+	if (mindflow || ovVers.length > 0) {
+		steps.push({
+			id: 'graph-restored',
+			type: 'graph',
+			status: 'completed',
+			startedAt,
+			endedAt: startedAt + (snapshot.duration ?? 0),
+			graphData: snapshot.graph ?? null,
+			mindflowMermaid: mindflow,
+			overviewMermaidVersions: ovVers,
+			overviewMermaidActiveIndex: typeof snapshot.overviewMermaidActiveIndex === 'number' ? snapshot.overviewMermaidActiveIndex : 0,
+		});
+	}
+
+	// Follow-up step
+	if (snapshot.suggestedFollowUpQuestions && snapshot.suggestedFollowUpQuestions.length > 0) {
+		steps.push({
+			id: 'followup-restored',
+			type: 'followup',
+			status: 'completed',
+			startedAt,
+			endedAt: startedAt + (snapshot.duration ?? 0),
+			questions: snapshot.suggestedFollowUpQuestions,
+		});
+	}
+
+	// Populate the new store
+	useSearchSessionStore.setState({
+		id: snapshot.analysisStartedAtMs ? `restored:${snapshot.analysisStartedAtMs}` : `restored:${now}`,
+		query: snapshot.query ?? '',
+		status: 'completed',
+		startedAt,
+		duration: snapshot.duration ?? null,
+		usage: snapshot.usage ?? null,
+		title: snapshot.title ?? null,
+		steps,
+		hasAnalyzed: true,
+		restoredFromHistory: true,
+		restoredFromVaultPath: sourceVaultPath ?? null,
+		analysisMode: snapshot.runAnalysisMode ?? 'vaultFull',
 	});
 }
 

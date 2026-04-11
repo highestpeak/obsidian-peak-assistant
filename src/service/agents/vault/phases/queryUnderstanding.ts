@@ -1,10 +1,8 @@
 /**
- * Classify phase: structured query understanding with vault context and full dimensionality.
+ * Query Understanding phase: combined classify + decompose in one LLM call.
  *
- * Loads precomputed intuition data (global map + folder intuitions), runs a
- * quick FTS search, then calls one LLM to classify the query into semantic/topology/temporal dimensions.
- *
- * Returns the complete 15-dimension + topology + temporal breakdown, not a simple query type.
+ * Replaces the separate classify → decompose flow to reduce latency and error propagation.
+ * Falls back to the original two-step approach if the combined call fails.
  */
 
 import { streamObject } from 'ai';
@@ -13,26 +11,35 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { type LLMStreamEvent, UIStepType, StreamTriggerName, UISignalChannel, UISignalKind } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
-import { queryClassifierOutputSchema, defaultClassify, type QueryClassifierOutput } from '@/core/schemas/agents/search-agent-schemas';
-import type { ClassifyResult } from '../types';
+import { queryUnderstandingOutputSchema, defaultClassify, type QueryUnderstandingOutput } from '@/core/schemas/agents/search-agent-schemas';
+import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
+import type { ClassifyResult, DecomposeResult, PhysicalTask } from '../types';
 import type { UserFeedback } from '../../core/types';
+import type { ProbeResult } from './probe';
 
-const CLASSIFY_FOLDER_LIMIT = 20;
-const CLASSIFY_SEARCH_TOP_K = 10;
+const FOLDER_LIMIT = 20;
+const SEARCH_TOP_K = 10;
+
+interface QueryUnderstandingResult {
+	classify: ClassifyResult;
+	decompose: DecomposeResult;
+	/** Raw physical tasks from LLM — needed by VaultSearchAgent to emit decompose ui-signal after step creation. */
+	physicalTasks: Array<{ unified_intent: string; covered_dimension_ids: string[]; search_priority: number; scope_constraint: any }>;
+}
 
 /**
- * Run the Classify phase: load vault context + one LLM call.
+ * Run the combined Query Understanding phase: one LLM call for both classify and decompose.
  */
-export async function* runClassifyPhase(options: {
+export async function* runQueryUnderstandingPhase(options: {
 	userQuery: string;
 	aiServiceManager: AIServiceManager;
 	stepId: string;
-	/** Previous conversation history for re-entry after HITL redirect. */
 	conversationHistory?: UserFeedback[];
-}): AsyncGenerator<LLMStreamEvent, ClassifyResult> {
-	const { userQuery, aiServiceManager, stepId, conversationHistory } = options;
+	probeResult?: ProbeResult;
+}): AsyncGenerator<LLMStreamEvent, QueryUnderstandingResult> {
+	const { userQuery, aiServiceManager, stepId, conversationHistory, probeResult } = options;
 
-	// Signal classify phase start to pipeline visualizer
+	// Signal start
 	yield {
 		type: 'ui-signal',
 		channel: UISignalChannel.SEARCH_STAGE,
@@ -42,28 +49,18 @@ export async function* runClassifyPhase(options: {
 		triggerName: StreamTriggerName.SEARCH_AI_AGENT,
 	} as LLMStreamEvent;
 
-	// --- Load precomputed context ---
+	// Load context (same as classify phase)
 	const [folderIntuitions, globalIntuitionJson, quickSearchResults] = await Promise.all([
 		loadFolderIntuitions(),
 		loadGlobalIntuitionMap(),
 		runQuickSearch(userQuery),
 	]);
 
-	yield {
-		type: 'pk-debug',
-		debugName: 'Classify: context loaded',
-		extra: {
-			folderCount: folderIntuitions.length,
-			hasGlobalMap: !!globalIntuitionJson,
-			searchResultCount: quickSearchResults.length,
-			hasHistory: (conversationHistory?.length ?? 0) > 0,
-		},
-	};
-
-	// Show context summary to user during classify wait
+	// Emit context loaded progress
 	const contextParts: string[] = [];
 	if (folderIntuitions.length > 0) contextParts.push(`${folderIntuitions.length} folders`);
 	if (quickSearchResults.length > 0) contextParts.push(`${quickSearchResults.length} initial leads`);
+	if (globalIntuitionJson) contextParts.push('vault intuition map');
 	if (contextParts.length > 0) {
 		yield {
 			type: 'ui-step-delta',
@@ -74,9 +71,9 @@ export async function* runClassifyPhase(options: {
 		} as LLMStreamEvent;
 	}
 
-	// --- Build context ---
+	// Build context strings
 	const folderContext = folderIntuitions
-		.slice(0, CLASSIFY_FOLDER_LIMIT)
+		.slice(0, FOLDER_LIMIT)
 		.map((f) => `- **${f.folderPath}** (${f.docCount} docs): ${f.oneLiner}\n  Tags: ${f.topTags.join(', ')}`)
 		.join('\n');
 
@@ -92,28 +89,29 @@ export async function* runClassifyPhase(options: {
 		? globalIntuitionJson.slice(0, 3000) + '\n_(truncated)_'
 		: globalIntuitionJson;
 
-	const { model } = aiServiceManager.getModelInstanceForPrompt(PromptId.AiAnalysisVaultClassifySystem);
+	const { model } = aiServiceManager.getModelInstanceForPrompt(PromptId.AiAnalysisVaultQueryUnderstandingSystem);
 	const [systemPrompt, userPrompt] = await Promise.all([
-		aiServiceManager.renderPrompt(PromptId.AiAnalysisVaultClassifySystem, {}),
-		aiServiceManager.renderPrompt(PromptId.AiAnalysisVaultClassify, {
+		aiServiceManager.renderPrompt(PromptId.AiAnalysisVaultQueryUnderstandingSystem, {}),
+		aiServiceManager.renderPrompt(PromptId.AiAnalysisVaultQueryUnderstanding, {
 			userQuery,
 			historyContext: historyContext || undefined,
 			folderContext: folderContext || undefined,
 			searchContext: searchContext || undefined,
 			globalIntuitionJson: globalIntuitionTruncated,
+			probeContext: probeResult?.formattedContext || undefined,
 		}),
 	]);
 
-	let output: QueryClassifierOutput;
+	let output: QueryUnderstandingOutput;
 	try {
 		const result = streamObject({
 			model,
 			system: systemPrompt,
 			prompt: userPrompt,
-			schema: queryClassifierOutputSchema,
+			schema: queryUnderstandingOutputSchema,
 		});
 
-		// Stream partial objects — emit dimension discoveries as ui-signal for Pipeline Strip pills
+		// Stream partial — emit dimension discoveries as they arrive
 		let lastDimCount = 0;
 		for await (const partial of result.partialObjectStream) {
 			const dims = [
@@ -133,22 +131,31 @@ export async function* runClassifyPhase(options: {
 				} as LLMStreamEvent;
 			}
 		}
-		// partialObjectStream consumed = response finished = object already resolved
-		output = await result.object as QueryClassifierOutput;
-		try {
-			const usage = await result.usage;
-			const modelId = aiServiceManager.getModelForPrompt(PromptId.AiAnalysisVaultClassifySystem).modelId;
-			yield { type: 'pk-debug', debugName: 'phase-usage', extra: { phase: 'classify', modelId, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
-		} catch { /* ignore usage tracking errors */ }
-	} catch {
-		output = defaultClassify;
+		output = await result.object as QueryUnderstandingOutput;
+	} catch (err) {
+		console.error('[runQueryUnderstandingPhase] LLM error, using defaults:', err);
+		// Fallback: return default classify with a single vault-wide task
+		return {
+			classify: {
+				...defaultClassify,
+				initialLeads: quickSearchResults,
+			},
+			decompose: {
+				tasks: [{
+					id: generateUuidWithoutHyphens(),
+					description: userQuery,
+					targetAreas: [],
+					toolHints: ['local_search_whole_vault', 'explore_folder'],
+				}],
+			},
+		};
 	}
 
-	// Signal classify complete with all dimensions for visualizer ring
+	// Emit classify complete
 	const allDimensions = [
 		...output.semantic_dimensions.map((d) => ({ id: d.id, intent_description: d.intent_description, axis: 'semantic' as const, scope_constraint: d.scope_constraint ?? null })),
-		...output.topology_dimensions.map((d) => ({ id: d.id, intent_description: d.intent_description, axis: 'topology' as const, scope_constraint: d.scope_constraint ?? null })),
-		...output.temporal_dimensions.map((d) => ({ id: d.id, intent_description: d.intent_description, axis: 'temporal' as const, scope_constraint: d.scope_constraint ?? null })),
+		...(output.topology_dimensions ?? []).map((d) => ({ id: 'inventory_mapping' as const, intent_description: d.intent_description, axis: 'topology' as const, scope_constraint: d.scope_constraint ?? null })),
+		...(output.temporal_dimensions ?? []).map((d) => ({ id: 'temporal_mapping' as const, intent_description: d.intent_description, axis: 'temporal' as const, scope_constraint: d.scope_constraint ?? null })),
 	];
 	yield {
 		type: 'ui-signal',
@@ -159,48 +166,58 @@ export async function* runClassifyPhase(options: {
 		triggerName: StreamTriggerName.SEARCH_AI_AGENT,
 	} as LLMStreamEvent;
 
-	yield {
-		type: 'pk-debug',
-		debugName: 'Classify: LLM complete',
-		extra: {
-			semanticDimensions: output.semantic_dimensions.map((d) => ({
-				id: d.id,
-				intent: d.intent_description,
-				scope: d.scope_constraint?.path,
-			})),
-			topologyDimensions: output.topology_dimensions.map((d) => ({
-				intent: d.intent_description,
-				scope: d.scope_constraint?.path,
-			})),
-			temporalDimensions: output.temporal_dimensions.map((d) => ({
-				intent: d.intent_description,
-				scope: d.scope_constraint?.path,
-			})),
-		},
-	};
+	// Build decompose tasks
+	const tasks: PhysicalTask[] = (output.physical_tasks ?? []).map((pt) => ({
+		id: generateUuidWithoutHyphens(),
+		description: pt.unified_intent,
+		targetAreas: pt.scope_constraint?.path ? [pt.scope_constraint.path] : [],
+		toolHints: inferToolHints(pt.covered_dimension_ids),
+	}));
+
+	// NOTE: decompose ui-signal is NOT emitted here — it must be emitted by VaultSearchAgent
+	// AFTER the decompose phase-transition creates the decompose step in the store.
 
 	return {
-		// Complete classifier output with all dimensions
-		semantic_dimensions: output.semantic_dimensions,
-		topology_dimensions: output.topology_dimensions,
-		temporal_dimensions: output.temporal_dimensions,
-		// Additional context for pipeline
-		initialLeads: quickSearchResults,
+		physicalTasks: output.physical_tasks ?? [],
+		classify: {
+			semantic_dimensions: output.semantic_dimensions,
+			topology_dimensions: output.topology_dimensions ?? [],
+			temporal_dimensions: output.temporal_dimensions ?? [],
+			initialLeads: quickSearchResults,
+		},
+		decompose: { tasks },
 	};
 }
 
-// ---------------------------------------------------------------------------
-// Private helpers
-// ---------------------------------------------------------------------------
+function inferToolHints(dimensionIds: string[]): string[] {
+	const hints = new Set<string>();
+	if (dimensionIds.includes('inventory_mapping')) {
+		hints.add('explore_folder');
+		hints.add('grep_file_tree');
+	}
+	if (dimensionIds.includes('temporal_mapping')) {
+		hints.add('local_search_whole_vault');
+	}
+	if (dimensionIds.some((d) => ['related_extension', 'next_action'].includes(d))) {
+		hints.add('graph_traversal');
+		hints.add('hub_local_graph');
+		hints.add('find_path');
+	}
+	if (hints.size === 0) {
+		hints.add('local_search_whole_vault');
+		hints.add('explore_folder');
+	}
+	return Array.from(hints);
+}
+
+// --- Shared helpers (same as classify.ts) ---
 
 async function loadFolderIntuitions() {
 	try {
 		if (!sqliteStoreManager.isInitialized()) return [];
 		const mobius = sqliteStoreManager.getMobiusNodeRepo('vault');
 		return await mobius.listTopFoldersForSearchOrient(30);
-	} catch {
-		return [];
-	}
+	} catch { return []; }
 }
 
 async function loadGlobalIntuitionMap(): Promise<string | undefined> {
@@ -209,9 +226,7 @@ async function loadGlobalIntuitionMap(): Promise<string | undefined> {
 		const stateRepo = sqliteStoreManager.getIndexStateRepo();
 		const value = await stateRepo.get('knowledge_intuition_json');
 		return value ?? undefined;
-	} catch {
-		return undefined;
-	}
+	} catch { return undefined; }
 }
 
 async function runQuickSearch(query: string): Promise<Array<{ path: string; title: string; score: number }>> {
@@ -222,7 +237,7 @@ async function runQuickSearch(query: string): Promise<Array<{ path: string; titl
 		const res = await searchClient.search({
 			text: query,
 			scopeMode: 'vault',
-			topK: CLASSIFY_SEARCH_TOP_K,
+			topK: SEARCH_TOP_K,
 			searchMode: 'hybrid',
 			indexTenant: 'vault',
 		});
@@ -231,8 +246,5 @@ async function runQuickSearch(query: string): Promise<Array<{ path: string; titl
 			title: item.title ?? item.path.split('/').pop() ?? '',
 			score: item.score ?? 0,
 		}));
-	} catch {
-		return [];
-	}
+	} catch { return []; }
 }
-

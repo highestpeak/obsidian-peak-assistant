@@ -49,6 +49,7 @@ Four-layer architecture: `app/` → `service/` → `core/` → `ui/`
 - Eliminate arrow code: use early returns/guard clauses, max nesting depth of 2
 - No redundant `else` after `return`/`throw`
 - Centralize constants in `src/core/constant.ts`
+- **Configurability rule**: Never hardcode i18n strings, regex patterns (especially multilingual ones), label maps, color maps, or style configs directly in logic files. Two-tier extraction: (1) **`templates/config/`** (preferred) — JSON config files loaded at runtime via TemplateManager, editable without code changes; (2) **`src/core/constant.ts`** (fallback) — compiled defaults when template loading is unavailable. This applies to: tool name→label mappings, query classification patterns, dimension color schemes, mermaid style definitions, and any data that a non-engineer might need to change.
 - Avoid passing objects like AppContext as function parameters when they can be accessed via a static getInstance() method; instead, directly use AppContext.getInstance() where needed.
 - Templates: register via `TemplateRegistry` / `TemplateId`, load with `TemplateManager`; prompts use `PromptId` + `PromptService`, not scattered prompt strings
 - Agents: follow `runAgentLoop` / `AgentLoop` (`service/agents/core`); reuse tool + schema patterns from existing agents; wire through `src/core/schemas/` for Zod

@@ -187,6 +187,10 @@ export enum PromptId {
 	AiAnalysisSaveFolder = 'ai-analysis-save-folder',
 
 	// Vault pipeline prompts (VaultSearchAgent phases)
+	/** Vault query understanding: system (combined classify + decompose). */
+	AiAnalysisVaultQueryUnderstandingSystem = 'ai-analysis-vault-query-understanding-system',
+	/** Vault query understanding: user prompt (combined classify + decompose). */
+	AiAnalysisVaultQueryUnderstanding = 'ai-analysis-vault-query-understanding',
 	/** Vault classify: system (static). */
 	AiAnalysisVaultClassifySystem = 'ai-analysis-vault-classify-system',
 	/** Vault classify: user prompt with query + vault context. */
@@ -211,6 +215,10 @@ export enum PromptId {
 	AiAnalysisVaultReportSystem = 'ai-analysis-vault-report-system',
 	/** Vault report: user prompt with plan + evidence + context. */
 	AiAnalysisVaultReport = 'ai-analysis-vault-report',
+	/** Vault report executive summary: system (static). */
+	AiAnalysisVaultReportSummarySystem = 'ai-analysis-vault-report-summary-system',
+	/** Vault report executive summary: user prompt with blocks + evidence. Generated after blocks complete. */
+	AiAnalysisVaultReportSummary = 'ai-analysis-vault-report-summary',
 
 	// Context building templates (internal use)
 	ContextMemory = 'context-memory',
@@ -249,6 +257,7 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisVaultReconSubmit,
 	PromptId.AiAnalysisVaultPresentPlan,
 	PromptId.AiAnalysisVaultReport,
+	PromptId.AiAnalysisVaultReportSummary,
 ] as const;
 
 /**
@@ -587,6 +596,15 @@ export interface PromptVariables {
 	};
 
 	// Vault pipeline
+	[PromptId.AiAnalysisVaultQueryUnderstandingSystem]: Record<string, never>;
+	[PromptId.AiAnalysisVaultQueryUnderstanding]: {
+		userQuery: string;
+		historyContext?: string;
+		folderContext?: string;
+		searchContext?: string;
+		globalIntuitionJson?: string;
+		probeContext?: string;
+	};
 	[PromptId.AiAnalysisVaultClassifySystem]: Record<string, never>;
 	[PromptId.AiAnalysisVaultClassify]: {
 		userQuery: string;
@@ -633,6 +651,13 @@ export interface PromptVariables {
 		evidenceCount: string;
 		evidenceList: string;
 		weavedContext?: string;
+	};
+	[PromptId.AiAnalysisVaultReportSummarySystem]: Record<string, never>;
+	[PromptId.AiAnalysisVaultReportSummary]: {
+		userQuery: string;
+		reportPlan: string;
+		blocksSummary: string;
+		evidenceList: string;
 	};
 }
 

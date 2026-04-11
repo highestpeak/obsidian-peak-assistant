@@ -183,11 +183,13 @@ export async function* runDecomposePhase(options: {
 			stage: 'decompose',
 			status: 'complete',
 			taskCount: tasks.length,
-			tasks: tasks.map((t) => ({
+			tasks: tasks.map((t, i) => ({
 				id: t.id,
 				description: t.description,
 				targetAreas: t.targetAreas,
 				toolHints: t.toolHints,
+				coveredDimensionIds: physicalTasks[i].covered_dimension_ids,
+				searchPriority: physicalTasks[i].search_priority,
 			})),
 		},
 		triggerName: StreamTriggerName.SEARCH_AI_AGENT,

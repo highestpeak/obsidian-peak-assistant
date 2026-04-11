@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -48,7 +48,9 @@ export const InlineFollowupChat: React.FC<{
 	onCancel?: () => void;
 	/** Use RawSearchAgent (search tools + analysis context) instead of plain LLM. */
 	useSearchAgent?: boolean;
-}> = ({ title, placeholder, promptId, getVariables, onApply, hideModeToggle, applyMode = 'append', initialQuestion, outputPlace = 'inline', onOpenModal, onStreamingReplace, onCancel, useSearchAgent }) => {
+	/** When true, automatically submit the initialQuestion on mount. */
+	autoSubmit?: boolean;
+}> = ({ title, placeholder, promptId, getVariables, onApply, hideModeToggle, applyMode = 'append', initialQuestion, outputPlace = 'inline', onOpenModal, onStreamingReplace, onCancel, useSearchAgent, autoSubmit }) => {
 	const { manager } = useServiceContext();
 	const [question, setQuestion] = useState(initialQuestion ?? '');
 	const [mode, setMode] = useState<ApplyMode>(applyMode);
@@ -62,6 +64,17 @@ export const InlineFollowupChat: React.FC<{
 	const [error, setError] = useState<string | null>(null);
 
 	const canSend = useMemo(() => !isStreaming && question.trim().length > 0, [isStreaming, question]);
+
+	// Auto-submit when initialQuestion is provided on mount
+	const autoSubmitFiredRef = useRef(false);
+	useEffect(() => {
+		if (autoSubmit && initialQuestion && !autoSubmitFiredRef.current) {
+			autoSubmitFiredRef.current = true;
+			// Small delay to allow layout to settle
+			setTimeout(() => void send(), 80);
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	const send = async () => {
 		const q = question.trim();

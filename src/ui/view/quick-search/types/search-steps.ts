@@ -41,9 +41,20 @@ export interface ReconTask {
 // Step types
 // ---------------------------------------------------------------------------
 
+export interface ClassifyDimension {
+	id: string;
+	intent_description?: string;
+	axis: 'semantic' | 'topology' | 'temporal';
+	scope_constraint?: {
+		path: string;
+		tags: string[];
+		anchor_entity: string;
+	} | null;
+}
+
 export interface ClassifyStep extends BaseStep {
 	type: 'classify';
-	dimensions: { id: string; intent_description?: string }[];
+	dimensions: ClassifyDimension[];
 }
 
 export interface DecomposeTaskInfo {
@@ -51,6 +62,8 @@ export interface DecomposeTaskInfo {
 	description: string;
 	targetAreas: string[];
 	toolHints: string[];
+	coveredDimensionIds: string[];
+	searchPriority: number;
 }
 
 export interface DecomposeStep extends BaseStep {
@@ -64,6 +77,7 @@ export interface ReconProgressEntry {
 	label: string;
 	detail: string;
 	timestamp: number;
+	taskIndex?: number;
 }
 
 export interface ReconStep extends BaseStep {
@@ -90,6 +104,8 @@ export interface ReportStep extends BaseStep {
 	blockOrder: string[];
 	completedBlocks: string[];
 	dashboardUpdatedLine?: string;
+	streamingText?: string;  // Partial summary text while report is generating
+	summary?: string;        // Full summary text after report completes
 }
 
 export interface SummaryStep extends BaseStep {
@@ -159,11 +175,8 @@ export const PHASE_TO_STEP_TYPE: Record<string, SearchStepType> = {
 // ---------------------------------------------------------------------------
 
 export const AUTO_COLLAPSE_TYPES = new Set<SearchStepType>([
-	'classify',
+	// Decompose collapses when Recon starts — tasks are shown again in Recon panels
 	'decompose',
-	'recon',
-	'plan',
-	'generic',
 ]);
 
 export const STAY_EXPANDED_TYPES = new Set<SearchStepType>([
@@ -191,9 +204,9 @@ export function createStep<T extends SearchStepType>(
 
 	switch (type) {
 		case 'classify':
-			return { ...base, type: 'classify', dimensions: [] } as Extract<SearchStep, { type: T }>;
+			return { ...base, type: 'classify', dimensions: [] as ClassifyDimension[] } as Extract<SearchStep, { type: T }>;
 		case 'decompose':
-			return { ...base, type: 'decompose', taskCount: 0, dimensionCount: 0, taskDescriptions: [] } as Extract<SearchStep, { type: T }>;
+			return { ...base, type: 'decompose', taskCount: 0, dimensionCount: 0, taskDescriptions: [] as DecomposeTaskInfo[] } as Extract<SearchStep, { type: T }>;
 		case 'recon':
 			return { ...base, type: 'recon', tasks: [], completedIndices: [], total: 0, groupProgress: {}, progressLog: [] } as Extract<SearchStep, { type: T }>;
 		case 'plan':

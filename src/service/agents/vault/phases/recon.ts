@@ -30,6 +30,9 @@ import type { UserFeedback } from '../../core/types';
 /** Max iterations per task in the recon loop. */
 const RECON_ITERATIONS_PER_TASK = 3;
 
+/** Wall-clock timeout per task (ms). Prevents a single stuck task from blocking the whole pipeline. */
+const RECON_TASK_TIMEOUT_MS = 90_000; // 90 seconds
+
 function buildReconTools(aiServiceManager: AIServiceManager): Record<string, AgentTool> {
 	const tm = aiServiceManager.getTemplateManager?.();
 	return {
@@ -48,12 +51,13 @@ function buildReconTools(aiServiceManager: AIServiceManager): Record<string, Age
  */
 async function* runTaskRecon(options: {
 	task: PhysicalTask;
+	taskIndex: number;
 	userQuery: string;
 	classify: ClassifyResult;
 	aiServiceManager: AIServiceManager;
 	stepId: string;
 }): AsyncGenerator<VaultSearchEvent, ReconEvidence[]> {
-	const { task, userQuery, classify, aiServiceManager, stepId } = options;
+	const { task, taskIndex, userQuery, classify, aiServiceManager, stepId } = options;
 	const tools = buildReconTools(aiServiceManager);
 
 	interface TaskState {
@@ -61,7 +65,13 @@ async function* runTaskRecon(options: {
 		shouldStop: boolean;
 	}
 
+	// Per-task wall-clock timeout — abort if stuck (AgentLoop catches AbortError internally)
+	const taskAbort = new AbortController();
+	const timeoutHandle = setTimeout(() => taskAbort.abort(), RECON_TASK_TIMEOUT_MS);
+
 	const loopResult = yield* runAgentLoop<TaskState, PathSubmitOutput>({
+		taskIndex,
+		signal: taskAbort.signal,
 		config: {
 			stepLabel: `Recon: ${task.description.slice(0, 40)}`,
 			maxIterations: RECON_ITERATIONS_PER_TASK,
@@ -74,7 +84,9 @@ async function* runTaskRecon(options: {
 				const content = await aiServiceManager.renderPrompt(PromptId.AiAnalysisVaultReconPlan, {
 					userQuery,
 					taskDescription: task.description,
-					targetAreas: task.targetAreas.length > 0 ? task.targetAreas.join('\n') : undefined,
+					targetAreas: task.targetAreas.filter((a) => a && a !== '/').length > 0
+						? task.targetAreas.filter((a) => a && a !== '/').join('\n')
+						: undefined,
 					initialLeads,
 				});
 				return [{ role: 'user', content }];
@@ -135,8 +147,11 @@ async function* runTaskRecon(options: {
 				const newPaths: ReconEvidence[] = [];
 
 				// Extract paths from discovered_leads
+				// LLM sometimes outputs "path/to/note.md: reason text" — strip to pure path
 				if (submit.discovered_leads) {
-					for (const path of submit.discovered_leads) {
+					for (const raw of submit.discovered_leads) {
+						const mdMatch = raw.match(/^(.+\.md)/);
+						const path = mdMatch ? mdMatch[1].trim() : raw.trim();
 						if (!existingPaths.has(path)) {
 							newPaths.push({ path, reason: submit.tactical_summary, taskId: task.id });
 							existingPaths.add(path);
@@ -150,6 +165,12 @@ async function* runTaskRecon(options: {
 				};
 			},
 			shouldStop: (state) => state.shouldStop,
+			summarizeSubmit: (submit: PathSubmitOutput) => {
+				const leads = submit.discovered_leads?.length ?? 0;
+				const summary = submit.tactical_summary?.slice(0, 100) ?? '';
+				if (leads === 0 && !summary) return null;
+				return leads > 0 ? `Found ${leads} note${leads !== 1 ? 's' : ''}. ${summary}` : summary;
+			},
 		},
 		initialState: { discoveredEvidence: [], shouldStop: false },
 		modelForPlan: aiServiceManager.getModelInstanceForPrompt(PromptId.AiAnalysisVaultReconPlanSystem),
@@ -157,6 +178,7 @@ async function* runTaskRecon(options: {
 		triggerName: StreamTriggerName.SEARCH_RAW_AGENT_RECON,
 	});
 
+	clearTimeout(timeoutHandle);
 	return loopResult.finalState.discoveredEvidence;
 }
 
@@ -199,28 +221,39 @@ export async function* runReconPhase(options: {
 	const seenPaths = new Set<string>();
 	const completedIndices: number[] = [];
 
-	// Start all tasks concurrently
+	// Start all tasks concurrently with a shared event queue
 	type TaskResult = { index: number; evidence: ReconEvidence[] };
 	const completionQueue: TaskResult[] = [];
-	let notifyCompletion: (() => void) | null = null;
+	const eventQueue: VaultSearchEvent[] = [];
+	let notifyQueue: (() => void) | null = null;
 
 	const taskPromises = decompose.tasks.map(async (task, i) => {
-		const gen = runTaskRecon({ task, userQuery, classify, aiServiceManager, stepId });
+		const gen = runTaskRecon({ task, taskIndex: i, userQuery, classify, aiServiceManager, stepId });
 		let r: IteratorResult<VaultSearchEvent, ReconEvidence[]>;
-		while (!(r = await gen.next()).done) { /* consume events */ }
+		while (!(r = await gen.next()).done) {
+			// Forward agent events to the shared queue for the main generator to yield
+			eventQueue.push(r.value);
+			notifyQueue?.();
+		}
 		completionQueue.push({ index: i, evidence: r.value });
-		notifyCompletion?.();
+		notifyQueue?.();
 	});
 
 	let tasksFinished = false;
 	Promise.all(taskPromises).then(() => {
 		tasksFinished = true;
-		notifyCompletion?.();
+		notifyQueue?.();
 	});
 
-	// Yield progress as each task completes
-	while (!tasksFinished || completionQueue.length > 0) {
-		if (completionQueue.length > 0) {
+	// Main loop: yield events and progress as tasks run in parallel
+	while (!tasksFinished || eventQueue.length > 0 || completionQueue.length > 0) {
+		// Drain all pending events
+		while (eventQueue.length > 0) {
+			yield eventQueue.shift()!;
+		}
+
+		// Process completed tasks
+		while (completionQueue.length > 0) {
 			const completed = completionQueue.shift()!;
 			completedIndices.push(completed.index);
 			yield {
@@ -237,8 +270,10 @@ export async function* runReconPhase(options: {
 					allEvidence.push(ev);
 				}
 			}
-		} else {
-			await new Promise<void>(resolve => { notifyCompletion = resolve; });
+		}
+
+		if (!tasksFinished) {
+			await new Promise<void>(resolve => { notifyQueue = resolve; });
 		}
 	}
 

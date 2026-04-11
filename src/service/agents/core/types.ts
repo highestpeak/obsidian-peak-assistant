@@ -78,6 +78,12 @@ export interface PeakAgentStats {
 export interface PeakAgentConfig<TState, TSubmit> extends AgentLoopConfig<TState, TSubmit> {
 	/** Human-readable step label shown in UI progress messages (e.g. "Classify query"). */
 	stepLabel: string;
+
+	/**
+	 * Optional: summarize the submit result into a human-readable discovery message.
+	 * If provided, emitted as a `📊 ...` agent-step-progress event after each submit.
+	 */
+	summarizeSubmit?: (submit: TSubmit) => string | null;
 }
 
 /** Result from running an agent loop. */

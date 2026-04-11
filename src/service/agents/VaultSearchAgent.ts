@@ -18,6 +18,8 @@ import type { UserFeedback } from './core/types';
 import { runClassifyPhase } from './vault/phases/classify';
 import { runDecomposePhase } from './vault/phases/decompose';
 import { runIntuitionFeedbackPhase } from './vault/phases/intuitionFeedback';
+import { runQueryUnderstandingPhase } from './vault/phases/queryUnderstanding';
+import { runProbePhase } from './vault/phases/probe';
 import { runReconPhase } from './vault/phases/recon';
 import { runPresentPlanPhase } from './vault/phases/presentPlan';
 import { runReportPhase } from './vault/phases/report';
@@ -28,6 +30,7 @@ import type {
 	VaultSearchPhase,
 	ReconEvidence,
 } from './vault/types';
+import { classifyQueryComplexity, type QueryComplexity } from './vault/phases/routeQuery';
 
 export class VaultSearchAgent {
 	private state: VaultSearchState;
@@ -50,44 +53,84 @@ export class VaultSearchAgent {
 		this.state = this.buildInitialState(userQuery);
 		const stepId = generateUuidWithoutHyphens();
 
+		// --- Adaptive Routing ---
+		const complexity = classifyQueryComplexity(userQuery);
+		yield {
+			type: 'pk-debug',
+			debugName: 'VaultSearchAgent: query routed',
+			extra: { query: userQuery, complexity },
+		};
+		// TODO: implement fast paths for 'simple' and 'medium' complexity
+		// For now all routes go through the full pipeline
+
 		yield this.makePhaseTransition('classify', 'classify', stepId);
 
-		// --- Phase 1: Classify ---
-		yield this.makeUIStep(stepId, 'Classifying query…', 'Understanding your question and identifying relevant areas');
+		// --- Phase 0: Probe (parallel quick searches before classify) ---
+		// Run targeted keyword searches to get real vault signals, so classify
+		// can anchor intent_descriptions to actual files instead of hallucinating.
+		const probe = await runProbePhase(userQuery);
+		this.state.probe = probe;
 
-		const classify = yield* runClassifyPhase({
+		// --- Phase 1+2: Query Understanding (combined classify + decompose) ---
+		yield this.makeUIStep(stepId, 'Understanding your question…', `${probe.hits.length > 0 ? probe.hits.length + ' signals · ' : ''}Identifying dimensions and planning search tasks`);
+
+		let { classify, decompose, physicalTasks } = yield* runQueryUnderstandingPhase({
 			userQuery,
 			aiServiceManager: this.aiServiceManager,
 			stepId,
 			conversationHistory: this.state.conversationHistory,
+			probeResult: probe,
 		});
+
+		// Fallback: if no tasks were produced, create one vault-wide task
+		if (decompose.tasks.length === 0) {
+			const fallbackTask = {
+				id: generateUuidWithoutHyphens(),
+				description: `Search vault for: ${userQuery.slice(0, 80)}`,
+				targetAreas: [] as string[],
+				toolHints: ['local_search_whole_vault', 'explore_folder'],
+			};
+			decompose = { tasks: [fallbackTask] };
+			physicalTasks = [{ unified_intent: fallbackTask.description, covered_dimension_ids: [], search_priority: 0, scope_constraint: null }];
+		}
+
 		this.state.classify = classify;
-
-		yield this.makePhaseTransition('classify', 'decompose', stepId);
-
-		// --- Phase 2: Decompose ---
-		yield this.makeUIStep(stepId, 'Decomposing into tasks…', 'Breaking down your query into searchable dimensions');
-
-		const decompose = yield* runDecomposePhase({
-			userQuery,
-			classify,
-			aiServiceManager: this.aiServiceManager,
-			stepId,
-		});
 		this.state.decompose = decompose;
 
-		yield this.makePhaseTransition('decompose', 'intuition-feedback', stepId);
+		// Emit decompose phase transition — this creates the decompose step in the store
+		yield this.makePhaseTransition('classify', 'decompose', stepId);
 
-		// --- Phase 2.5: Intuition Feedback ---
-		yield this.makeUIStep(stepId, 'Checking intuition map…', 'Identifying gaps in vault coverage');
+		// NOW emit the decompose complete signal (after the step exists)
+		yield {
+			type: 'ui-signal',
+			channel: 'search-stage',
+			kind: 'complete',
+			entityId: stepId,
+			payload: {
+				stage: 'decompose',
+				status: 'complete',
+				taskCount: decompose.tasks.length,
+				dimensionCount: classify.semantic_dimensions.length + (classify.topology_dimensions?.length ?? 0) + (classify.temporal_dimensions?.length ?? 0),
+				tasks: decompose.tasks.map((t, i) => ({
+					id: t.id,
+					description: t.description,
+					targetAreas: t.targetAreas,
+					toolHints: t.toolHints,
+					coveredDimensionIds: physicalTasks[i]?.covered_dimension_ids ?? [],
+					searchPriority: physicalTasks[i]?.search_priority ?? i,
+				})),
+			},
+			triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+		} as any;
 
+		// --- Phase 2.5: Intuition Feedback (silent — no UI step) ---
 		const intuitionFeedback = yield* runIntuitionFeedbackPhase({
 			classify,
 			stepId,
 		});
 		this.state.intuitionFeedback = intuitionFeedback;
 
-		yield this.makePhaseTransition('intuition-feedback', 'recon', stepId);
+		yield this.makePhaseTransition('decompose', 'recon', stepId);
 
 		// --- Phase 3: Recon ---
 		yield this.makeUIStep(stepId, `Exploring vault…`, `${decompose.tasks.length} tasks`);
@@ -99,12 +142,20 @@ export class VaultSearchAgent {
 			aiServiceManager: this.aiServiceManager,
 			stepId,
 		});
-		this.state.recon = recon;
+		// Merge new evidence with any accumulated evidence from previous rounds
+		const prevAcc = this.state.accumulatedEvidence ?? [];
+		if (prevAcc.length > 0) {
+			const newPaths = new Set(recon.evidence.map((e) => e.path));
+			const merged = [...prevAcc.filter((e) => !newPaths.has(e.path)), ...recon.evidence];
+			this.state.recon = { evidence: merged };
+		} else {
+			this.state.recon = recon;
+		}
 
 		yield this.makePhaseTransition('recon', 'present-plan', stepId);
 
 		// --- Phase 4: Present Plan (HITL) ---
-		yield this.makeUIStep(stepId, 'Preparing research plan…', `${recon.evidence.length} sources found`);
+		yield this.makeUIStep(stepId, 'Preparing research plan…', `${this.state.recon.evidence.length} sources found`);
 		const planSnapshot = yield* runPresentPlanPhase({
 			userQuery,
 			classify,
@@ -133,7 +184,12 @@ export class VaultSearchAgent {
 		}
 
 		if (feedback.type === 'redirect') {
-			// Re-run from classify with history context
+			// Save current round's evidence before re-running so round 2 doesn't discard round 1
+			const currentEvidence = this.state.recon?.evidence ?? [];
+			this.state.accumulatedEvidence = [
+				...(this.state.accumulatedEvidence ?? []),
+				...currentEvidence,
+			];
 			this.state.phase = 'classify';
 			yield* this.startSession(this.state.userQuery);
 			return;

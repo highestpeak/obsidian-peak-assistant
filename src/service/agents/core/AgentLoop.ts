@@ -31,6 +31,8 @@ export interface RunAgentLoopOptions<TState, TSubmit> {
 	triggerName: StreamTriggerName;
 	/** Optional abort signal — checked before each iteration and threaded into streamText. */
 	signal?: AbortSignal;
+	/** Optional task index — for parallel task identification in agent-step-progress events. */
+	taskIndex?: number;
 }
 
 /**
@@ -43,7 +45,7 @@ export interface RunAgentLoopOptions<TState, TSubmit> {
 export async function* runAgentLoop<TState, TSubmit>(
 	options: RunAgentLoopOptions<TState, TSubmit>,
 ): AsyncGenerator<PeakAgentEvent, PeakAgentLoopResult<TState>> {
-	const { config, stepId, triggerName, signal } = options;
+	const { config, stepId, triggerName, signal, taskIndex } = options;
 	const { stepLabel } = config;
 	let state = options.initialState;
 	const globalStopwatch = new Stopwatch('PeakAgent.total');
@@ -65,14 +67,6 @@ export async function* runAgentLoop<TState, TSubmit>(
 			break;
 		}
 
-		// --- Progress: plan start ---
-		yield {
-			type: 'agent-step-progress',
-			stepLabel,
-			detail: `Planning (iter ${iter + 1}/${config.maxIterations})…`,
-			triggerName,
-		};
-
 		// --- Plan step ---
 		iterStopwatch.start(`plan-${iter}`);
 		const planSystem = await config.buildPlanSystemPrompt(state, iter);
@@ -89,20 +83,63 @@ export async function* runAgentLoop<TState, TSubmit>(
 			toolChoice: config.toolChoice ?? 'auto',
 			abortSignal: signal,
 		});
-		yield* streamTransform(planResult.fullStream, triggerName, {
-			yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
-		});
-
 		const planStepMessages: ModelMessage[] = [];
-		const planReasoning = (await planResult.reasoning).map((r) => r.text).join('\n');
-		if (!isBlankString(planReasoning)) {
-			planStepMessages.push({ role: 'assistant', content: planReasoning });
+		let planText = '';
+		let toolCalls: Awaited<typeof planResult.toolCalls> = [];
+		try {
+			// Manual loop instead of yield* so we can intercept { type: 'error' } events
+			// (AI SDK emits tool validation errors as stream chunks, not thrown exceptions)
+			for await (const event of streamTransform(planResult.fullStream, triggerName, {
+				yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
+			})) {
+				if (event.type === 'error') {
+					throw (event as any).error ?? new Error('Stream error');
+				}
+				// Attach taskIndex to raw stream events so debug log can correlate by task
+				yield taskIndex != null ? { ...event, taskIndex } as typeof event : event;
+			}
+
+			const planReasoning = (await planResult.reasoning).map((r) => r.text).join('\n');
+			if (!isBlankString(planReasoning)) {
+				planStepMessages.push({ role: 'assistant', content: planReasoning });
+			}
+			planText = await planResult.text;
+			if (!isBlankString(planText)) {
+				planStepMessages.push({ role: 'assistant', content: planText });
+				// Emit plan reasoning to UI
+				yield {
+					type: 'agent-step-progress',
+					stepLabel,
+					detail: `📋 Plan: ${planText.slice(0, 150).replace(/\n/g, ' ')}`,
+					taskIndex,
+					triggerName,
+				};
+			}
+			toolCalls = await planResult.toolCalls;
+		} catch (streamErr) {
+			const errMsg = streamErr instanceof Error ? streamErr.message : String(streamErr);
+			yield {
+				type: 'agent-step-progress',
+				stepLabel,
+				detail: `⚠️ Tool error (skipping): ${errMsg.slice(0, 120)}`,
+				taskIndex,
+				triggerName,
+			};
+			// Recover: try to get any partial tool calls that completed before the error
+			try { toolCalls = await planResult.toolCalls; } catch { toolCalls = []; }
 		}
-		const planText = await planResult.text;
-		if (!isBlankString(planText)) {
-			planStepMessages.push({ role: 'assistant', content: planText });
+		// Synthesize plan from tool calls when LLM skips text (e.g. toolChoice: 'required')
+		if (isBlankString(planText) && toolCalls.length > 0) {
+			const actions = toolCalls.map(tc => summarizeToolInput(tc.toolName, tc.input));
+			const synthesizedPlan = `Will ${actions.join(', then ')}`;
+			yield {
+				type: 'agent-step-progress',
+				stepLabel,
+				detail: `📋 Plan: ${synthesizedPlan}`,
+				taskIndex,
+				triggerName,
+			};
 		}
-		const toolCalls = await planResult.toolCalls;
 		if (toolCalls.length > 0) {
 			planStepMessages.push({
 				role: 'assistant',
@@ -116,8 +153,8 @@ export async function* runAgentLoop<TState, TSubmit>(
 			totalToolCalls += toolCalls.length;
 		}
 
-		// Accumulate token usage
-		const planUsage = await planResult.usage;
+		// Accumulate token usage (may fail if stream errored; ignore gracefully)
+		const planUsage = await planResult.usage.catch(() => null);
 		if (planUsage) {
 			totalUsage = mergeTokenUsage(totalUsage, {
 				inputTokens: planUsage.inputTokens,
@@ -130,13 +167,17 @@ export async function* runAgentLoop<TState, TSubmit>(
 
 		// --- Progress: tool execution ---
 		if (toolCalls.length > 0) {
-			const toolNames = toolCalls.map((tc) => tc.toolName).join(', ');
-			yield {
-				type: 'agent-step-progress',
-				stepLabel,
-				detail: `Running tools: ${toolNames}`,
-				triggerName,
-			};
+			// Emit detailed tool call info for UI
+			for (const tc of toolCalls) {
+				const inputSummary = summarizeToolInput(tc.toolName, tc.input);
+				yield {
+					type: 'agent-step-progress',
+					stepLabel,
+					detail: `🔧 ${tc.toolName}: ${inputSummary}`,
+					taskIndex,
+					triggerName,
+				};
+			}
 		}
 
 		// --- Tool execution ---
@@ -146,6 +187,32 @@ export async function* runAgentLoop<TState, TSubmit>(
 		iterStopwatch.stop();
 		const toolExecDurationMs = iterStopwatch.getLastDuration();
 
+		// Emit tool results summary for UI — pair each tool call with its result
+		for (let tcIdx = 0; tcIdx < toolCalls.length; tcIdx++) {
+			const tc = toolCalls[tcIdx];
+			// Find the corresponding tool result
+			let resultSummary: string | null = null;
+			for (const msg of summaryToolMessages) {
+				if (msg.role !== 'tool') continue;
+				for (const part of (msg.content as any[])) {
+					if (part.type === 'tool-result' && typeof part.result === 'string') {
+						resultSummary = summarizeToolResult(tc.toolName, part.result);
+						break;
+					}
+				}
+				if (resultSummary !== null) break;
+			}
+			if (resultSummary) {
+				yield {
+					type: 'agent-step-progress',
+					stepLabel,
+					detail: `📄 ${resultSummary}`,
+					taskIndex,
+					triggerName,
+				};
+			}
+		}
+
 		// Track per-tool timings (real wall-clock time per tool from executeToolCalls)
 		toolCallTimings.push(...iterToolTimings);
 
@@ -153,16 +220,23 @@ export async function* runAgentLoop<TState, TSubmit>(
 		let submit: TSubmit | undefined;
 		let submitDurationMs = 0;
 		if (config.runSubmit) {
-			yield {
-				type: 'agent-step-progress',
-				stepLabel,
-				detail: `Submitting results…`,
-				triggerName,
-			};
 			iterStopwatch.start(`submit-${iter}`);
 			submit = await config.runSubmit(state, iter, planStepMessages, fullToolMessages);
 			iterStopwatch.stop();
 			submitDurationMs = iterStopwatch.getLastDuration();
+			// Emit discovery summary after submit
+			if (submit != null && config.summarizeSubmit) {
+				const submitSummary = config.summarizeSubmit(submit);
+				if (submitSummary) {
+					yield {
+						type: 'agent-step-progress',
+						stepLabel,
+						detail: `📊 ${submitSummary}`,
+						taskIndex,
+						triggerName,
+					};
+				}
+			}
 		}
 
 		// --- Merge into state ---
@@ -241,4 +315,54 @@ export async function* runAgentLoop<TState, TSubmit>(
 		messages,
 		stats: peakStats,
 	};
+}
+
+/**
+ * Extract a human-readable summary of a tool result.
+ * Parses common result shapes to show "Found N paths: a, b, c…" or a brief excerpt.
+ */
+function summarizeToolResult(toolName: string, result: string): string | null {
+	if (!result) return null;
+	// Try to detect markdown list of paths (lines starting with "- ")
+	const pathLines = result.split('\n').filter(l => l.trim().startsWith('- ')).map(l => l.trim().slice(2));
+	if (pathLines.length > 0) {
+		const shown = pathLines.slice(0, 3).map(p => p.split('/').pop()).join(', ');
+		const more = pathLines.length > 3 ? ` +${pathLines.length - 3} more` : '';
+		return `Found ${pathLines.length} path${pathLines.length !== 1 ? 's' : ''}: ${shown}${more}`;
+	}
+	// Generic: first 100 chars, strip newlines
+	const preview = result.slice(0, 100).replace(/\n/g, ' ').trim();
+	return preview || null;
+}
+
+/**
+ * Extract a human-readable summary of a tool call input.
+ * Tool input schemas are tightly coupled to tool definitions — this logic belongs near the agent loop.
+ * Tool display NAMES (for UI labels) are centralized in RECON_TOOL_LABELS (core/constant.ts).
+ */
+function summarizeToolInput(toolName: string, input: any): string {
+	if (!input || typeof input !== 'object') return '';
+	// Extract common path/query fields regardless of tool
+	const query = input.query ?? input.pattern ?? input.keyword ?? '';
+	const path = input.path ?? input.note_path ?? input.start_note_path ?? input.startPath ?? input.from ?? '';
+	const shortPath = typeof path === 'string' && path ? path.split('/').slice(-2).join('/') : '';
+
+	switch (toolName) {
+		case 'local_search_whole_vault':
+			return `search "${String(query).slice(0, 50)}"`;
+		case 'explore_folder':
+			return `explore ${shortPath || '/'}`;
+		case 'grep_file_tree':
+			return `grep "${String(query).slice(0, 40)}" in ${shortPath || 'vault'}`;
+		case 'graph_traversal':
+			return shortPath ? `traverse from "${shortPath}"` : 'graph traversal (no path)';
+		case 'hub_local_graph':
+			return shortPath ? `hub graph for "${shortPath}"` : 'hub graph (no path)';
+		case 'find_path':
+			return `find path ${String(input.from ?? '').split('/').pop()} → ${String(input.to ?? '').split('/').pop()}`;
+		case 'inspect_note_context':
+			return shortPath ? `inspect "${shortPath}"` : 'inspect (no path — will fail)';
+		default:
+			return query ? `"${String(query).slice(0, 40)}"` : JSON.stringify(input).slice(0, 60);
+	}
 }

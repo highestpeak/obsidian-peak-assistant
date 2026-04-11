@@ -14,6 +14,10 @@ Use the available tools:
 
 Strategy:
 1. Start with the target areas and search leads
-2. Use search to find anchor documents
-3. Use graph tools to expand from anchors
-4. Be systematic — don't repeat searches
+2. Use `local_search_whole_vault` to find anchor documents
+3. When a search result points to a note, use `explore_folder` to browse its parent directory — the best notes are often siblings of your initial hits
+4. For queries involving ideas, plans, brainstorming, or personal projects: actively use `explore_folder` on directories named with "ideas", "idea", "all-ideas", "A-All", or similar — these folders are rarely surfaced by semantic search alone
+5. Use graph tools (`graph_traversal`, `hub_local_graph`) to expand from anchors
+6. Be systematic — don't repeat searches
+
+CRITICAL: NEVER call `explore_folder` with path "/" or "" (vault root). It returns too many results and is not useful. If you don't know which folder to explore, use `local_search_whole_vault` or `grep_file_tree` instead to find specific directories first.

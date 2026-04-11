@@ -7,6 +7,7 @@ import type { LLMStreamEvent, LLMUsage } from '@/core/providers/types';
 import type { SearchAgentResult } from '../shared-types';
 import type { UserFeedback, PeakAgentEvent } from '../core/types';
 import type { QueryClassifierOutput } from '@/core/schemas/agents/search-agent-schemas';
+import type { ProbeResult } from './phases/probe';
 
 // ---------------------------------------------------------------------------
 // Pipeline phase outputs
@@ -58,6 +59,14 @@ export interface ReconResult {
 	evidence: ReconEvidence[];
 }
 
+/** A topic cluster discovered during recon with coverage assessment. */
+export interface DiscoveryGroup {
+	topic: string;
+	noteCount: number;
+	coverage: 'high' | 'medium' | 'low';
+	keyNotes: string[];
+}
+
 /** Snapshot shown to the user at the HITL plan-presentation pause. */
 export interface PlanSnapshot {
 	/** Evidence collected so far. */
@@ -70,6 +79,10 @@ export interface PlanSnapshot {
 	coverageAssessment: string;
 	/** Confidence in current evidence. */
 	confidence: 'high' | 'medium' | 'low';
+	/** Discovery groups — topic clusters with coverage indicators. */
+	discoveryGroups?: DiscoveryGroup[];
+	/** Areas where evidence is thin — candidates for "dig deeper". */
+	coverageGaps?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -89,10 +102,13 @@ export type VaultSearchPhase =
 export interface VaultSearchState {
 	userQuery: string;
 	phase: VaultSearchPhase;
+	probe?: ProbeResult;
 	classify?: ClassifyResult;
 	decompose?: DecomposeResult;
 	intuitionFeedback?: IntuitionFeedbackResult;
 	recon?: ReconResult;
+	/** Evidence carried over from previous rounds (accumulated across all redirect loops). */
+	accumulatedEvidence?: ReconEvidence[];
 	planSnapshot?: PlanSnapshot;
 	result?: SearchAgentResult;
 	tokenUsage: LLMUsage;

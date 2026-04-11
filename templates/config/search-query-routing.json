@@ -1,0 +1,18 @@
+{
+  "simplePatterns": [
+    "^(找|查|搜|search|find|look\\s+for)\\b",
+    "在哪",
+    "where\\s+is",
+    "^show\\s+me\\b"
+  ],
+  "complexPatterns": [
+    "综合|分析|compare|comparison|总结|summarize|synthesis|全面|comprehensive",
+    "relationship|关系|联系|区别|difference",
+    "所有|all\\s+(?:the|my)|every|整理",
+    "trend|趋势|evolution|变化|历史"
+  ],
+  "simpleMaxWords": 5,
+  "simpleMaxChars": 30,
+  "mediumMaxWords": 15,
+  "mediumMaxChars": 80
+}

@@ -987,3 +987,58 @@ export const SLICE_CAPS = {
 		esbuildLogInputs: 50,
 	},
 } as const;
+
+// ---------------------------------------------------------------------------
+// AI Search Pipeline Config
+// ---------------------------------------------------------------------------
+
+/** Query complexity routing patterns — used by routeQuery.ts to classify query depth. */
+export const SEARCH_QUERY_ROUTING = {
+	/** Patterns suggesting a simple lookup / known-item search. */
+	simplePatterns: [
+		/^(找|查|搜|search|find|look\s+for)\b/i,
+		/在哪/,
+		/where\s+is/i,
+		/^show\s+me\b/i,
+	],
+	/** Patterns suggesting a complex synthesis / analysis query. */
+	complexPatterns: [
+		/综合|分析|compare|comparison|总结|summarize|synthesis|全面|comprehensive/i,
+		/relationship|关系|联系|区别|difference/i,
+		/所有|all\s+(?:the|my)|every|整理/i,
+		/trend|趋势|evolution|变化|历史/i,
+	],
+	/** Word/char thresholds for simple queries. */
+	simpleMaxWords: 5,
+	simpleMaxChars: 30,
+	/** Word/char thresholds for medium queries (above this → complex). */
+	mediumMaxWords: 15,
+	mediumMaxChars: 80,
+} as const;
+
+/** Recon tool display labels — maps internal tool names to user-facing labels. */
+export const RECON_TOOL_LABELS: Record<string, string> = {
+	explore_folder: 'Explore folder',
+	local_search_whole_vault: 'Search vault',
+	graph_traversal: 'Graph walk',
+	grep_file_tree: 'Grep',
+	hub_local_graph: 'Hub graph',
+	find_path: 'Find path',
+	inspect_note_context: 'Inspect note',
+};
+
+/** Dimension axis visual config — colors for classify chip display. */
+export const DIMENSION_AXIS_COLORS = {
+	semantic: { bg: 'pktw-bg-purple-50', text: 'pktw-text-purple-700', border: 'pktw-border-purple-200' },
+	topology: { bg: 'pktw-bg-green-50', text: 'pktw-text-green-700', border: 'pktw-border-green-200' },
+	temporal: { bg: 'pktw-bg-amber-50', text: 'pktw-text-amber-700', border: 'pktw-border-amber-200' },
+} as const;
+
+/** Mermaid classDef styles for plan strategy map nodes. */
+export const MERMAID_PLAN_STYLES = {
+	semantic: 'fill:#f5f3ff,stroke:#7c3aed,color:#7c3aed',
+	topology: 'fill:#f0fdf4,stroke:#16a34a,color:#16a34a',
+	temporal: 'fill:#fffbeb,stroke:#d97706,color:#d97706',
+	taskNode: 'fill:#faf5ff,stroke:#7c3aed,color:#374151',
+	areaNode: 'fill:#f9fafb,stroke:#9ca3af,color:#6b7280',
+} as const;

@@ -206,8 +206,8 @@ export function useSearchSession() {
 			useAIAnalysisResultStore.getState().setEvidenceIndex(result.evidenceIndex ?? {});
 		}
 
-		// Dashboard blocks
-		if (result.dashboardBlocks) {
+		// Dashboard blocks + summary
+		if (result.dashboardBlocks || result.summary) {
 			// Ensure report step exists
 			if (!ss.steps.some((st) => st.type === 'report')) {
 				store.getState().pushStep(createStep('report'));
@@ -215,9 +215,12 @@ export function useSearchSession() {
 			store.getState().updateStep('report', (step) => ({
 				...step,
 				blocks: result.dashboardBlocks ?? step.blocks,
+				summary: result.summary ?? step.summary,
 			}));
 			// Bridge
-			useAIAnalysisResultStore.getState().setDashboardBlocks(result.dashboardBlocks);
+			if (result.dashboardBlocks) {
+				useAIAnalysisResultStore.getState().setDashboardBlocks(result.dashboardBlocks);
+			}
 		}
 
 		// Topics
@@ -280,6 +283,19 @@ export function useSearchSession() {
 
 		switch (event.type) {
 			// ---- Phase transitions (vault pipeline) ----
+			case 'pk-debug': {
+				const ev = event as any;
+				if (ev.debugName === 'phase-usage' && ev.extra) {
+					store.getState().addPhaseUsage({
+						phase: ev.extra.phase ?? '',
+						modelId: ev.extra.modelId ?? '',
+						inputTokens: ev.extra.inputTokens ?? 0,
+						outputTokens: ev.extra.outputTokens ?? 0,
+					});
+				}
+				break;
+			}
+
 			case 'phase-transition': {
 				const ev = event as unknown as VaultPhaseTransitionEvent;
 				store.getState().pushPhaseStep(ev.to);
@@ -331,8 +347,17 @@ export function useSearchSession() {
 
 			// ---- Tool results ----
 			case 'tool-result': {
-				const currentResult = (event as any).extra?.currentResult as SearchAgentResult | undefined;
+				const ev = event as any;
+				const currentResult = ev.extra?.currentResult as SearchAgentResult | undefined;
 				if (currentResult) applySearchResult(currentResult);
+				// Debug capture: log tool output (output field, not result)
+				if (ev.toolName) {
+					store.getState().appendAgentDebugLog({
+						type: 'tool-result',
+						taskIndex: ev.taskIndex,
+						data: { tool: ev.toolName, output: ev.output ?? null },
+					});
+				}
 				break;
 			}
 
@@ -423,13 +448,18 @@ export function useSearchSession() {
 
 					// Classify: populate dimensions
 					if (stage === 'classify' && Array.isArray(payload.dimensions)) {
-						if (ss.steps.some((st) => st.type === 'classify')) {
+							if (ss.steps.some((st) => st.type === 'classify')) {
 							store.getState().updateStep('classify', (step) => ({
 								...step,
 								dimensions: payload.dimensions.map((d: any) =>
 									typeof d === 'object' && d !== null
-										? { id: d.id ?? '', intent_description: d.intent_description }
-										: { id: String(d), intent_description: '' }
+										? {
+											id: d.id ?? '',
+											intent_description: d.intent_description,
+											axis: d.axis ?? 'semantic',
+											scope_constraint: d.scope_constraint ?? null,
+										}
+										: { id: String(d), intent_description: '', axis: 'semantic' as const, scope_constraint: null }
 								),
 							}));
 						}
@@ -442,8 +472,61 @@ export function useSearchSession() {
 								...step,
 								taskCount: payload.taskCount,
 								dimensionCount: payload.dimensionCount ?? step.dimensionCount,
-								taskDescriptions: Array.isArray(payload.tasks) ? payload.tasks : step.taskDescriptions,
+								taskDescriptions: Array.isArray(payload.tasks)
+									? payload.tasks.map((t: any) => ({
+										id: t.id ?? '',
+										description: t.description ?? '',
+										targetAreas: t.targetAreas ?? [],
+										toolHints: t.toolHints ?? [],
+										coveredDimensionIds: t.coveredDimensionIds ?? [],
+										searchPriority: t.searchPriority ?? 0,
+									}))
+									: step.taskDescriptions,
 							}));
+						}
+					}
+
+					// Report: blocks complete (stage 1 done, summary about to stream)
+				if (stage === 'report' && payload.status === 'blocks-complete') {
+					if (!ss.steps.some((st) => st.type === 'report')) {
+						store.getState().pushStep(createStep('report'));
+					}
+					store.getState().updateStep('report', (step) => ({
+						...step,
+						blocks: payload.blocks ?? step.blocks,
+						blockOrder: payload.blockOrder ?? step.blockOrder,
+					}));
+				}
+
+				// Report: stream executive summary text (stage 2)
+				if (stage === 'report' && payload.status === 'progress') {
+					if (!ss.steps.some((st) => st.type === 'report')) {
+						store.getState().pushStep(createStep('report'));
+					}
+					if (typeof payload.streamingText === 'string') {
+						store.getState().updateStep('report', (step) => ({
+							...step,
+							streamingText: payload.streamingText,
+						}));
+					}
+				}
+
+				// Plan: stream partial outline + sections while LLM is generating
+					if (stage === 'plan' && payload.status === 'progress') {
+						if (ss.steps.some((st) => st.type === 'plan')) {
+							store.getState().updateStep('plan', (step) => {
+								const prev = step.snapshot ?? { evidence: [], proposedOutline: '', suggestedSections: [], coverageAssessment: '', confidence: 'low' as const };
+								return {
+									...step,
+									snapshot: {
+										...prev,
+										proposedOutline: payload.outlineFull ?? prev.proposedOutline,
+										suggestedSections: payload.newSections
+											? [...(prev.suggestedSections ?? []), ...payload.newSections]
+											: prev.suggestedSections,
+									},
+								};
+							});
 						}
 					}
 
@@ -452,7 +535,14 @@ export function useSearchSession() {
 						if (ss.steps.some((st) => st.type === 'recon')) {
 							store.getState().updateStep('recon', (step) => {
 								const updated = { ...step };
-								if (Array.isArray(payload.completedIndices)) updated.completedIndices = payload.completedIndices;
+								if (Array.isArray(payload.completedIndices)) {
+									updated.completedIndices = payload.completedIndices;
+									// Mark individual tasks as done when their index appears in completedIndices
+									const doneSet = new Set<number>(payload.completedIndices);
+									updated.tasks = step.tasks.map((t) =>
+										doneSet.has(t.index) && !t.done ? { ...t, done: true } : t
+									);
+								}
 								if (typeof payload.total === 'number') updated.total = payload.total;
 								if (Array.isArray(payload.dimensions)) updated.dimensions = payload.dimensions;
 								// Per-group evidence progress
@@ -589,7 +679,7 @@ export function useSearchSession() {
 
 			// ---- Agent progress / stats ----
 			case 'agent-step-progress': {
-				// Capture in recon step for displaying plan/tool details
+				// Capture in recon step for displaying plan/tool details per task
 				const progEv = event as any;
 				const ss = store.getState();
 				if (ss.steps.some((st) => st.type === 'recon' && st.status === 'running')) {
@@ -599,6 +689,7 @@ export function useSearchSession() {
 							label: progEv.stepLabel ?? '',
 							detail: progEv.detail ?? '',
 							timestamp: Date.now(),
+							taskIndex: progEv.taskIndex,
 						}],
 					}));
 				}
@@ -610,10 +701,27 @@ export function useSearchSession() {
 				break;
 			}
 
-			// Ignored
-			case 'reasoning-delta':
-			case 'tool-call':
+			// Capture for debug export
+			case 'reasoning-delta': {
+				const ev = event as any;
+				store.getState().appendAgentDebugLog({
+					type: 'reasoning',
+					taskIndex: ev.taskIndex,
+					// reasoning-delta event uses 'text' field (not 'delta')
+					data: { text: ev.text ?? ev.delta ?? '' },
+				});
 				break;
+			}
+			case 'tool-call': {
+				const ev = event as any;
+				store.getState().appendAgentDebugLog({
+					type: 'tool-call',
+					taskIndex: ev.taskIndex,
+					// tool-call event uses 'input' field (not 'args')
+					data: { tool: ev.toolName ?? '', args: ev.input ?? ev.args ?? {} },
+				});
+				break;
+			}
 
 			default:
 				break;
@@ -695,6 +803,8 @@ export function useSearchSession() {
 					if (!agent) return;
 					store.getState().clearHitlPause();
 					useAIAnalysisRuntimeStore.getState().clearHitlPause();
+					// Clear hitlPauseId from plan step so HitlInlineInput hides immediately
+					store.getState().updateStep('plan', (step) => ({ ...step, hitlPauseId: undefined }));
 					await consumeStream(agent.continueWithFeedback(feedback));
 					if (!store.getState().hitlState) {
 						store.getState().markCompleted();
@@ -766,8 +876,8 @@ export function useSearchSession() {
 			timelineRef.current = [];
 			analysisStartTimeRef.current = 0;
 
-			// Guard: only mark completed if not already done
-			if (!store.getState().getIsCompleted()) {
+			// Guard: only mark completed if not already done AND not waiting for HITL
+			if (!store.getState().getIsCompleted() && !store.getState().hitlState) {
 				store.getState().markCompleted();
 				markAIAnalysisCompleted();
 			}

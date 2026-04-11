@@ -1,49 +1,100 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import type { ClassifyStep as ClassifyStepType } from '../../types/search-steps';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import type { ClassifyStep as ClassifyStepType, ClassifyDimension } from '../../types/search-steps';
+import { DimensionChip } from './classify/DimensionChip';
+import { getDimensionAxis } from './shared/dimensionColors';
 
-const DIMENSION_COLORS: Record<string, string> = {
-	inventory_mapping: 'pktw-bg-green-100 pktw-text-green-700 pktw-border-green-200',
-	temporal_mapping: 'pktw-bg-amber-100 pktw-text-amber-700 pktw-border-amber-200',
+type AxisKey = 'semantic' | 'topology' | 'temporal';
+
+const AXIS_LABELS: Record<AxisKey, string> = {
+	semantic: 'Semantic',
+	topology: 'Topology',
+	temporal: 'Temporal',
 };
 
-function getDimensionColor(id: string): string {
-	if (DIMENSION_COLORS[id]) return DIMENSION_COLORS[id];
-	// All semantic dimension IDs get blue
-	return 'pktw-bg-blue-50 pktw-text-blue-700 pktw-border-blue-200';
+function groupByAxis(dims: ClassifyDimension[]): Record<AxisKey, ClassifyDimension[]> {
+	const groups: Record<AxisKey, ClassifyDimension[]> = { semantic: [], topology: [], temporal: [] };
+	const seen = new Set<string>();
+	for (const dim of dims) {
+		if (seen.has(dim.id)) continue;
+		seen.add(dim.id);
+		const axis = dim.axis ?? getDimensionAxis(dim.id);
+		groups[axis].push(dim);
+	}
+	return groups;
 }
 
-function getDimensionLabel(dim: { id: string; intent_description?: string }): string {
-	if (dim.id && dim.id !== '') return dim.id.replace(/_/g, ' ');
-	if (dim.intent_description) return dim.intent_description.slice(0, 30);
-	return '?';
-}
+const AxisGroup: React.FC<{ axis: AxisKey; dims: ClassifyDimension[]; startIdx: number }> = ({ axis, dims, startIdx }) => {
+	const [showReasons, setShowReasons] = useState(false);
+	let idx = startIdx;
+
+	return (
+		<div className="pktw-flex pktw-flex-col pktw-gap-0.5">
+			<div className="pktw-flex pktw-items-start pktw-gap-1.5">
+				<span className="pktw-text-[9px] pktw-text-[#9ca3af] pktw-w-14 pktw-shrink-0 pktw-mt-1 pktw-font-medium">{AXIS_LABELS[axis]}</span>
+				<div className="pktw-flex pktw-flex-wrap pktw-gap-1 pktw-flex-1">
+					{dims.map((dim) => (
+						<motion.div
+							key={`${dim.id}-${idx++}`}
+							initial={{ opacity: 0, scale: 0.9 }}
+							animate={{ opacity: 1, scale: 1 }}
+							transition={{ duration: 0.15, delay: (idx - 1) * 0.04 }}
+						>
+							<DimensionChip dim={dim} />
+						</motion.div>
+					))}
+				</div>
+				{dims.some(d => d.intent_description) ? (
+					<span
+						className="pktw-cursor-pointer pktw-shrink-0 pktw-mt-1"
+						onClick={() => setShowReasons(v => !v)}
+					>
+						{showReasons
+							? <ChevronDown className="pktw-w-3 pktw-h-3 pktw-text-[#9ca3af]" />
+							: <ChevronRight className="pktw-w-3 pktw-h-3 pktw-text-[#9ca3af]" />
+						}
+					</span>
+				) : null}
+			</div>
+			{showReasons && (
+				<div className="pktw-flex pktw-flex-col pktw-gap-0.5 pktw-pl-16">
+					{dims.filter(d => d.intent_description).map((dim, i) => (
+						<span key={i} className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-leading-relaxed">
+							{dim.intent_description}
+						</span>
+					))}
+				</div>
+			)}
+		</div>
+	);
+};
 
 export const ClassifyStep: React.FC<{ step: ClassifyStepType }> = ({ step }) => {
 	if (!step.dimensions.length) {
 		return (
-			<span className="pktw-text-xs pktw-text-[#9ca3af]">Classifying query dimensions…</span>
+			<div className="pktw-flex pktw-flex-col pktw-gap-1">
+				<span className="pktw-text-xs pktw-text-[#9ca3af] pktw-animate-pulse">
+					Analyzing your question across 15 knowledge dimensions…
+				</span>
+				<span className="pktw-text-[10px] pktw-text-[#d1d5db]">
+					Loading vault context, folder structure, and initial search leads
+				</span>
+			</div>
 		);
 	}
 
+	const groups = groupByAxis(step.dimensions);
+	const axes = (['semantic', 'topology', 'temporal'] as AxisKey[]).filter(a => groups[a].length > 0);
+	let globalIdx = 0;
+
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-gap-1.5">
-			{step.dimensions.map((dim, idx) => (
-				<motion.div
-					key={`${dim.id}-${idx}`}
-					initial={{ opacity: 0, x: -4 }}
-					animate={{ opacity: 1, x: 0 }}
-					transition={{ duration: 0.15, delay: idx * 0.04 }}
-					className="pktw-flex pktw-items-start pktw-gap-2"
-				>
-					<span className={`pktw-inline-flex pktw-items-center pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-border pktw-text-[10px] pktw-font-medium pktw-shrink-0 ${getDimensionColor(dim.id)}`}>
-						{getDimensionLabel(dim)}
-					</span>
-					{dim.intent_description ? (
-						<span className="pktw-text-xs pktw-text-[#6b7280] pktw-leading-relaxed">{dim.intent_description}</span>
-					) : null}
-				</motion.div>
-			))}
+			{axes.map((axis) => {
+				const startIdx = globalIdx;
+				globalIdx += groups[axis].length;
+				return <AxisGroup key={axis} axis={axis} dims={groups[axis]} startIdx={startIdx} />;
+			})}
 		</div>
 	);
 };

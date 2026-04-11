@@ -443,7 +443,7 @@ export type RawUIStreamEvent =
 
 /** Agent loop stream events (plan progress, stats, debug). */
 export type AgentStreamEvent =
-	{ type: 'agent-step-progress'; stepLabel: string; detail: string; } |
+	{ type: 'agent-step-progress'; stepLabel: string; detail: string; taskIndex?: number; } |
 	{ type: 'agent-stats'; stats: any; };
 
 export type LLMStreamEvent =

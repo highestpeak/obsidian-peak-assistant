@@ -7,11 +7,11 @@
 
 import { streamObject } from 'ai';
 import { z } from 'zod/v3';
-import { type LLMStreamEvent } from '@/core/providers/types';
+import { type LLMStreamEvent, StreamTriggerName, UISignalChannel, UISignalKind } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
-import type { ClassifyResult, ReconResult, PlanSnapshot, VaultHitlPauseEvent, VaultSearchPhase } from '../types';
+import type { ClassifyResult, ReconResult, PlanSnapshot, DiscoveryGroup, VaultHitlPauseEvent, VaultSearchPhase, ReconEvidence } from '../types';
 
 const planOutputSchema = z.object({
 	proposed_outline: z.string().describe('One-paragraph description of the report plan'),
@@ -67,8 +67,34 @@ export async function* runPresentPlanPhase(options: {
 			prompt: userPrompt,
 			schema: planOutputSchema,
 		});
-		// Must consume partialObjectStream to drive the AI SDK internal pipeline.
-		for await (const _partial of result.partialObjectStream) { /* drive stream */ }
+		// Emit partial plan content as streaming signals while consuming the stream
+		let lastOutlineLength = 0;
+		let emittedSectionCount = 0;
+		for await (const partial of result.partialObjectStream) {
+			if (partial.proposed_outline && partial.proposed_outline.length > lastOutlineLength) {
+				yield {
+					type: 'ui-signal',
+					channel: UISignalChannel.SEARCH_STAGE,
+					kind: UISignalKind.PROGRESS,
+					entityId: options.stepId,
+					payload: { stage: 'plan', status: 'progress', outlineFull: partial.proposed_outline },
+					triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+				} as LLMStreamEvent;
+				lastOutlineLength = partial.proposed_outline.length;
+			}
+			if (partial.suggested_sections && partial.suggested_sections.length > emittedSectionCount) {
+				const newSections = (partial.suggested_sections as string[]).slice(emittedSectionCount);
+				yield {
+					type: 'ui-signal',
+					channel: UISignalChannel.SEARCH_STAGE,
+					kind: UISignalKind.PROGRESS,
+					entityId: options.stepId,
+					payload: { stage: 'plan', status: 'progress', newSections },
+					triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+				} as LLMStreamEvent;
+				emittedSectionCount = partial.suggested_sections.length;
+			}
+		}
 		output = await result.object as PlanOutput;
 	} catch {
 		output = {
@@ -79,12 +105,20 @@ export async function* runPresentPlanPhase(options: {
 		};
 	}
 
+	// Build discovery groups by grouping evidence by taskId
+	const discoveryGroups = buildDiscoveryGroups(recon.evidence, output.suggested_sections);
+	const coverageGaps = discoveryGroups
+		.filter((g) => g.coverage === 'low')
+		.map((g) => g.topic);
+
 	const snapshot: PlanSnapshot = {
 		evidence: recon.evidence,
 		proposedOutline: output.proposed_outline,
 		suggestedSections: output.suggested_sections,
 		coverageAssessment: output.coverage_assessment,
 		confidence: output.confidence,
+		discoveryGroups,
+		coverageGaps,
 	};
 
 	yield {
@@ -107,5 +141,37 @@ export async function* runPresentPlanPhase(options: {
 	};
 
 	return snapshot;
+}
+
+/**
+ * Group evidence into discovery clusters using suggested sections as topic labels.
+ * Simple heuristic: distribute evidence across sections roughly evenly by taskId,
+ * then assess coverage by note count.
+ */
+function buildDiscoveryGroups(evidence: ReconEvidence[], sections: string[]): DiscoveryGroup[] {
+	if (sections.length === 0 || evidence.length === 0) return [];
+
+	// Group evidence by taskId
+	const byTask = new Map<string, ReconEvidence[]>();
+	for (const e of evidence) {
+		const key = e.taskId || 'unknown';
+		if (!byTask.has(key)) byTask.set(key, []);
+		byTask.get(key)!.push(e);
+	}
+
+	// Map task groups to sections (1:1 if same count, otherwise distribute)
+	const taskGroups = Array.from(byTask.values());
+	const groups: DiscoveryGroup[] = sections.map((section, i) => {
+		const taskEvidence = taskGroups[i % taskGroups.length] ?? [];
+		const noteCount = taskEvidence.length;
+		return {
+			topic: section,
+			noteCount,
+			coverage: noteCount >= 8 ? 'high' : noteCount >= 3 ? 'medium' : 'low',
+			keyNotes: taskEvidence.map((e) => e.path),
+		};
+	});
+
+	return groups;
 }
 
