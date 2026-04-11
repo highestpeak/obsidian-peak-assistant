@@ -95,7 +95,7 @@ const MessageAttachmentsList: React.FC<{
 		}
 
 		// Handle file resources
-		await openFile(app, url);
+		await openFile(url, false, app);
 	}, [app]);
 
 	if (fileAttachments.length === 0) {
@@ -836,4 +836,3 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 		</div>
 	);
 };
-

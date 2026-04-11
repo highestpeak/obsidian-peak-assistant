@@ -14,6 +14,7 @@
  */
 
 import { SLICE_CAPS } from '@/core/constant';
+import { extractSection } from '@/core/storage/vault/framework/MarkdownDocEngine';
 import type { AISearchGraph, AISearchSource, AISearchTopic, DashboardBlock, EvidenceIndex } from '@/service/agents/shared-types';
 import { getMermaidInner } from '@/core/utils/mermaid-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
@@ -128,18 +129,6 @@ const EMPTY_DOC_MODEL: AiSearchAnalysisDocModel = {
 	overviewMermaidActiveIndex: 0,
 	overviewMermaidVersions: [],
 };
-
-function extractSection(raw: string, sectionTitle: string): string {
-	const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const pattern = new RegExp(`^#{1,3}\\s+${escapeRegExp(sectionTitle)}\\s*$`, 'm');
-	const m = pattern.exec(raw);
-	if (!m) return '';
-	const start = m.index + m[0].length;
-	const after = raw.slice(start);
-	const nextSectionStart = after.search(/\n#\s+\S/);
-	const end = nextSectionStart >= 0 ? nextSectionStart : after.length;
-	return after.slice(0, end).trim();
-}
 
 function parseFrontmatter(raw: string): {
 	created: string;

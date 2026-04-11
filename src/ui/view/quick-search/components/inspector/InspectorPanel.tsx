@@ -5,6 +5,7 @@ import { Brain, Maximize2 } from 'lucide-react';
 import { BrainOff } from '@/ui/component/icon';
 import { LinksTab } from './LinksSection';
 import { GraphSection } from './GraphSection';
+import { DocumentAnalysisAggregator, type DocumentAnalysisSummary } from '@/service/DocumentAnalysisAggregator';
 
 /** Semantic toggle (same pattern as Web Globe/GlobeOff): Brain when on, BrainOff with slash when off. */
 const SemanticButton: React.FC<{
@@ -25,6 +26,48 @@ const SemanticButton: React.FC<{
 		{on ? <Brain className="pktw-w-3.5 pktw-h-3.5" /> : <BrainOff className="pktw-w-3.5 pktw-h-3.5" />}
 	</Button>
 );
+
+const HistorySection: React.FC<{ currentPath: string | null; onHasContent?: (has: boolean) => void }> = ({ currentPath, onHasContent }) => {
+	const [analyses, setAnalyses] = useState<DocumentAnalysisSummary[]>([]);
+
+	useEffect(() => {
+		if (!currentPath) { setAnalyses([]); onHasContent?.(false); return; }
+		let cancelled = false;
+		const aggregator = new DocumentAnalysisAggregator();
+		aggregator.findForDocument(currentPath)
+			.then(data => {
+				if (!cancelled) {
+					setAnalyses(data);
+					onHasContent?.(data.length > 0);
+				}
+			})
+			.catch(() => {
+				if (!cancelled) {
+					setAnalyses([]);
+					onHasContent?.(false);
+				}
+			});
+		return () => { cancelled = true; };
+	}, [currentPath, onHasContent]);
+
+	if (!currentPath || analyses.length === 0) return null;
+
+	return (
+		<div className="pktw-flex pktw-flex-col pktw-gap-1">
+			{analyses.map(a => (
+				<div key={a.id} className="pktw-flex pktw-flex-col pktw-gap-0.5 pktw-py-1 pktw-border-b pktw-border-[#f3f4f6] last:pktw-border-0">
+					<span className="pktw-text-xs pktw-font-medium pktw-text-[#374151] pktw-truncate">
+						{a.title ?? a.query ?? '(untitled)'}
+					</span>
+					<span className="pktw-text-xs pktw-text-[#9ca3af]">
+						{new Date(a.createdAtTs).toLocaleDateString()}
+						{a.sourcesCount != null ? ` · ${a.sourcesCount} sources` : ''}
+					</span>
+				</div>
+			))}
+		</div>
+	);
+};
 
 const InspectorSection = React.forwardRef<HTMLDivElement, {
 	title: string;
@@ -54,9 +97,11 @@ export const InspectorPanel: React.FC<{
 	const [linksIncludeSemantic, setLinksIncludeSemantic] = useState(true);
 	const [graphIncludeSemantic, setGraphIncludeSemantic] = useState(true);
 	const [graphFullscreenOpen, setGraphFullscreenOpen] = useState(false);
+	const [hasHistory, setHasHistory] = useState(false);
 
 	const linksRef = useRef<HTMLDivElement>(null);
 	const graphRef = useRef<HTMLDivElement>(null);
+	const historyRef = useRef<HTMLDivElement>(null);
 
 	const allSemanticOn = linksIncludeSemantic && graphIncludeSemantic;
 	const setAllSemantic = (on: boolean) => {
@@ -98,6 +143,14 @@ export const InspectorPanel: React.FC<{
 						onClick={() => scrollTo(graphRef)}
 					>
 						Graph
+					</Button>
+					<Button
+						size="sm"
+						variant="ghost"
+						className="pktw-h-7 pktw-px-2 pktw-text-xs"
+						onClick={() => scrollTo(historyRef)}
+					>
+						History
 					</Button>
 				</div>
 			</div>
@@ -147,6 +200,17 @@ export const InspectorPanel: React.FC<{
 					/>
 				}
 			/>
+
+			{/* History: analyses related to the current document */}
+			{hasHistory && (
+				<InspectorSection
+					ref={historyRef}
+					title="History"
+					children={
+						<HistorySection currentPath={currentPath} onHasContent={setHasHistory} />
+					}
+				/>
+			)}
 		</div>
 	);
 };

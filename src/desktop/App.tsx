@@ -119,4 +119,3 @@ export const DesktopApp: React.FC = () => {
 		</ServiceProvider>
 	);
 };
-

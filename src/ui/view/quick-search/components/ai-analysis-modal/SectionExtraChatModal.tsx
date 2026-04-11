@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { X } from 'lucide-react';
-import { AppContext } from '@/app/context/AppContext';
 import { openFile } from '@/core/utils/obsidian-utils';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { IntelligenceFrame } from '../../../../component/mine/IntelligenceFrame';
@@ -125,7 +124,7 @@ const GraphItemSection: React.FC<{
 		() =>
 			createObsidianGraphPreset({
 				onOpenPath: createOpenSourceCallback(onClose),
-				openFile: (path) => openFile(AppContext.getInstance().app, path, true),
+				openFile: (path) => openFile(path, true),
 			}),
 		[onClose]
 	);

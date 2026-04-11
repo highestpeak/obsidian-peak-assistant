@@ -36,6 +36,7 @@ import { getVaultPersona } from '@/service/tools/system-info';
  */
 export class AppContext {
 	public viewManager: ViewManager;
+	public readonly eventBus: EventBus;
 
 	private static instance: AppContext | null = null;
 
@@ -55,6 +56,34 @@ export class AppContext {
 	/** Obsidian `App` from the initialized singleton. */
 	public static getApp(): App {
 		return AppContext.getInstance().app;
+	}
+
+	public static getManager(): AIServiceManager {
+		return AppContext.getInstance().manager;
+	}
+
+	public static getSearchClient(): SearchClient {
+		return AppContext.getInstance().searchClient;
+	}
+
+	public static getPlugin(): MyPlugin {
+		return AppContext.getInstance().plugin;
+	}
+
+	public static getSettings(): MyPluginSettings {
+		return AppContext.getInstance().settings;
+	}
+
+	public static getEventBus(): EventBus {
+		return AppContext.getInstance().eventBus;
+	}
+
+	public static getViewManager(): ViewManager {
+		return AppContext.getInstance().viewManager;
+	}
+
+	public static getAIAnalysisHistoryService(): AIAnalysisHistoryService {
+		return AppContext.getInstance().aiAnalysisHistoryService;
 	}
 
 	/**
@@ -83,11 +112,12 @@ export class AppContext {
 	) {
 		// viewManager will be set after ViewManager is created
 		this.viewManager = null as any;
+		this.eventBus = EventBus.getInstance(app);
 		AppContext.instance = this;
 
 		this.handleDevToolsSettingChange(this.settings.enableDevTools ?? false);
 
-		this.unsubscribeSettingsUpdated = EventBus.getInstance(app).on(ViewEventType.SETTINGS_UPDATED, (event) => {
+		this.unsubscribeSettingsUpdated = this.eventBus.on(ViewEventType.SETTINGS_UPDATED, (event) => {
 			const previousEnableDevTools = this.settings.enableDevTools ?? false;
 			this.settings = this.plugin!.settings!;
 
@@ -255,4 +285,3 @@ export class AppContext {
 		}
 	}
 }
-

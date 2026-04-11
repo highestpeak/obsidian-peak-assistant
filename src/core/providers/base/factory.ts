@@ -6,17 +6,11 @@ import { ClaudeChatService } from './claude';
 import { GeminiChatService } from './gemini';
 import { PerplexityChatService } from './perplexity';
 import { BusinessError, ErrorCode } from '@/core/errors';
+import { modelRegistry } from '../model-registry';
 
 const DEFAULT_TIMEOUT_MS = 60000;
 
 type ProviderFactory = (config: ProviderConfig) => LLMProviderService | null;
-
-// Create a temporary service instance to get metadata or models
-// Use fake API key and default baseUrl - these are only used for getting metadata/models, not for actual API calls
-const tempConfig: ProviderConfig = {
-	apiKey: 'fake-api-key-for-metadata-only',
-	baseUrl: 'http://localhost:11434',
-};
 
 /**
  * Provider factory registry (singleton)
@@ -178,24 +172,12 @@ export class ProviderServiceFactory {
 	 * Get metadata for all registered providers
 	 */
 	getAllProviderMetadata(): ProviderMetaData[] {
-		const metadata: ProviderMetaData[] = [];
-
-		for (const providerId of this.factories.keys()) {
-			try {
-				const factory = this.factories.get(providerId);
-				if (factory) {
-					const tempService = factory(tempConfig);
-					if (tempService) {
-						metadata.push(tempService.getProviderMetadata());
-					}
-				}
-			} catch (error) {
-				// Ignore errors when creating temp service for metadata
-				console.error(`[ProviderServiceFactory] Error getting metadata for provider ${providerId}:`, error);
-			}
+		const catalogMetadata = modelRegistry.getAllProviderMetadata();
+		if (catalogMetadata.length > 0) {
+			return catalogMetadata.filter((meta) => this.factories.has(meta.id));
 		}
 
-		return metadata;
+		return [];
 	}
 
 	/**
@@ -284,12 +266,16 @@ export class ProviderServiceFactory {
 			throw new BusinessError(ErrorCode.PROVIDER_NOT_FOUND, `Provider ${providerId} not found`);
 		}
 
-		// Use provided config if available, otherwise use fake config
-		// Fake config allows creating instance to get models without real API key
-		const serviceConfig = (config && config.apiKey) ? config : {
-			...tempConfig,
-			// For Ollama, use default baseUrl if not provided
+		const catalogModels = modelRegistry.getModelsForProvider(providerId);
+		if ((!config?.apiKey || config.apiKey.trim().length === 0) && catalogModels.length > 0) {
+			return this.mergeModelConfigs(catalogModels, config?.modelConfigs);
+		}
+
+		const serviceConfig: ProviderConfig = {
+			apiKey: config?.apiKey,
 			baseUrl: config?.baseUrl,
+			extra: config?.extra,
+			modelConfigs: config?.modelConfigs,
 		};
 
 		try {
@@ -305,8 +291,11 @@ export class ProviderServiceFactory {
 			throw error;
 		}
 
+		if (catalogModels.length > 0) {
+			return this.mergeModelConfigs(catalogModels, config?.modelConfigs);
+		}
+
 		throw new BusinessError(ErrorCode.MODEL_UNAVAILABLE, `Failed to create service for provider ${providerId}`);
 	}
 }
-
 

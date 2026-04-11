@@ -148,8 +148,10 @@ export const HUB_NAV_GROUP_TOP_LEVEL_DEEP_STRUCT = 0.22;
 export const HUB_MAINTENANCE_MATERIALIZE_DOCS = false;
 
 /**
- * Parallel document passes for deferred LLM index enrichment (`llm_pending`).
- * Caps concurrent `indexDocument` + LLM work; raise slowly to avoid provider 429s and SQLite contention.
+ * Starting hint for adaptive concurrency during deferred LLM index enrichment (`llm_pending`).
+ * Used as the `initial` level for `AdaptiveConcurrencyPool`; actual concurrency adjusts at runtime
+ * based on observed task latency and error rate (floor: 1, ceiling: this value * 2).
+ * Raise slowly to avoid provider 429s and SQLite contention.
  */
 export const LLM_PENDING_ENRICH_CONCURRENCY = 12;
 

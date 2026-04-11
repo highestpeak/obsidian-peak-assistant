@@ -54,6 +54,7 @@ import {
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { parseLooseTimestampToMs } from '@/core/utils/date-utils';
 import { mapWithConcurrency } from '@/core/utils/concurrent-utils';
+import { AdaptiveConcurrencyPool } from '@/core/utils/adaptive-concurrency';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import { getFileNameFromPath } from '@/core/utils/file-utils';
 import {
@@ -1970,7 +1971,10 @@ export class IndexService {
 	 */
 	static async runPendingLlmIndexEnrichment(
 		settings: SearchSettings,
-		options?: { onProgress?: (ev: PendingLlmEnrichmentProgress) => void },
+		options?: {
+			onProgress?: (ev: PendingLlmEnrichmentProgress) => void;
+			shouldContinue?: () => boolean;
+		},
 	): Promise<LlmIndexEnrichmentResult> {
 		if (!sqliteStoreManager.isInitialized()) {
 			return {
@@ -2061,92 +2065,111 @@ export class IndexService {
 			});
 		};
 
-		await mapWithConcurrency(pendingPaths, LLM_PENDING_ENRICH_CONCURRENCY, async (path) => {
-			const docType = loaderMgr.getTypeForPath(path);
-			let plan = tracker.emptyPlan();
-			if (docType === 'markdown') {
-				const chars = await readMarkdownContentChars(path);
-				plan = await tracker.planForMarkdownDoc(chars);
-			}
-
-			/** Per-path ref so concurrent workers do not share telemetry state. */
-			const llmTelemetry: { snapshot: { usage: LLMUsage; costUsd: number } | null } = {
-				snapshot: null,
-			};
-			const onLlmIndexingComplete = (ev: LlmIndexingCompleteEvent) => {
-				llmTelemetry.snapshot = { usage: ev.usage, costUsd: ev.costUsd };
-			};
-
-			const t0 = Date.now();
-			try {
-				await indexSvc.indexDocument(path, settings, {
-					...baseOpts,
-					onLlmIndexingComplete,
-				});
-				processed++;
-				done++;
-				const wallMs = Date.now() - t0;
-				const snap = llmTelemetry.snapshot;
-				const actual = {
-					durationMs: wallMs,
-					usage: snap?.usage ?? emptyUsage(),
-					costUsd: snap?.costUsd ?? 0,
-				};
-				tracker.recordDocComplete(plan, actual);
-				await logPendingLlmEnrichmentDocComplete({
-					path,
-					docType,
-					status: 'success',
-					wallMs,
-					usage: actual.usage,
-					costUsd: actual.costUsd,
-					done,
-					total,
-				});
-				options?.onProgress?.(
-					tracker.snapshot({
-						path,
-						processed: done,
-						total,
-						batchStartMs,
-						lastPlan: plan,
-						lastActual: actual,
-					}),
-				);
-			} catch (e) {
-				errors.push({ path, message: (e as Error).message ?? String(e) });
-				done++;
-				const wallMs = Date.now() - t0;
-				const snap = llmTelemetry.snapshot;
-				const actual = {
-					durationMs: wallMs,
-					usage: snap?.usage ?? emptyUsage(),
-					costUsd: snap?.costUsd ?? 0,
-				};
-				tracker.recordDocComplete(plan, actual);
-				await logPendingLlmEnrichmentDocComplete({
-					path,
-					docType,
-					status: 'error',
-					wallMs,
-					usage: actual.usage,
-					costUsd: actual.costUsd,
-					done,
-					total,
-					error: e,
-				});
-				options?.onProgress?.(
-					tracker.snapshot({
-						path,
-						processed: done,
-						total,
-						batchStartMs,
-						lastPlan: plan,
-						lastActual: actual,
-					}),
-				);
-			}
+		const adaptivePool = new AdaptiveConcurrencyPool({
+			initial: LLM_PENDING_ENRICH_CONCURRENCY,
+			min: 1,
+			max: LLM_PENDING_ENRICH_CONCURRENCY * 2,
+			targetLatencyMs: 8000, // 8s target per doc
 		});
+
+		await adaptivePool.mapWithAdaptiveConcurrency(
+			pendingPaths,
+			async (path) => {
+				if (options?.shouldContinue && !options.shouldContinue()) {
+					return;
+				}
+				const docType = loaderMgr.getTypeForPath(path);
+				let plan = tracker.emptyPlan();
+				if (docType === 'markdown') {
+					const chars = await readMarkdownContentChars(path);
+					plan = await tracker.planForMarkdownDoc(chars);
+				}
+
+				/** Per-path ref so concurrent workers do not share telemetry state. */
+				const llmTelemetry: { snapshot: { usage: LLMUsage; costUsd: number } | null } = {
+					snapshot: null,
+				};
+				const onLlmIndexingComplete = (ev: LlmIndexingCompleteEvent) => {
+					llmTelemetry.snapshot = { usage: ev.usage, costUsd: ev.costUsd };
+				};
+
+				const t0 = Date.now();
+				try {
+					await indexSvc.indexDocument(path, settings, {
+						...baseOpts,
+						onLlmIndexingComplete,
+					});
+					processed++;
+					done++;
+					const wallMs = Date.now() - t0;
+					const snap = llmTelemetry.snapshot;
+					const actual = {
+						durationMs: wallMs,
+						usage: snap?.usage ?? emptyUsage(),
+						costUsd: snap?.costUsd ?? 0,
+					};
+					tracker.recordDocComplete(plan, actual);
+					await logPendingLlmEnrichmentDocComplete({
+						path,
+						docType,
+						status: 'success',
+						wallMs,
+						usage: actual.usage,
+						costUsd: actual.costUsd,
+						done,
+						total,
+					});
+					options?.onProgress?.(
+						tracker.snapshot({
+							path,
+							processed: done,
+							total,
+							batchStartMs,
+							lastPlan: plan,
+							lastActual: actual,
+						}),
+					);
+				} catch (e) {
+					errors.push({ path, message: (e as Error).message ?? String(e) });
+					done++;
+					const wallMs = Date.now() - t0;
+					const snap = llmTelemetry.snapshot;
+					const actual = {
+						durationMs: wallMs,
+						usage: snap?.usage ?? emptyUsage(),
+						costUsd: snap?.costUsd ?? 0,
+					};
+					tracker.recordDocComplete(plan, actual);
+					await logPendingLlmEnrichmentDocComplete({
+						path,
+						docType,
+						status: 'error',
+						wallMs,
+						usage: actual.usage,
+						costUsd: actual.costUsd,
+						done,
+						total,
+						error: e,
+					});
+					options?.onProgress?.(
+						tracker.snapshot({
+							path,
+							processed: done,
+							total,
+							batchStartMs,
+							lastPlan: plan,
+							lastActual: actual,
+						}),
+					);
+					throw e;
+				}
+			},
+			{
+				onConcurrencyChange: (level) => {
+					console.debug('[IndexService] adaptive concurrency:', level);
+				},
+			},
+		);
 
 		return { processed, skippedWrongTenant, errors };
 	}
@@ -2201,5 +2224,32 @@ export class IndexService {
 		}
 
 		return { processed, skippedWrongTenant, errors };
+	}
+
+	/**
+	 * Clears `llm_pending` flags on all pending documents without calling LLM.
+	 * Use when the user explicitly skips LLM enrichment.
+	 */
+	static async clearPendingLlmFlags(): Promise<{ cleared: number }> {
+		if (!sqliteStoreManager.isInitialized()) return { cleared: 0 };
+
+		const tenants: IndexTenant[] = ['vault', 'chat'];
+		let cleared = 0;
+
+		for (const tenant of tenants) {
+			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+			const paths = await repo.listPathsWithPendingLlm();
+			const filtered = paths.filter((p) => getIndexTenantForPath(p) === tenant);
+			const idMap = await repo.getIdsByPaths(filtered);
+			for (const { id } of idMap) {
+				await repo.mergeDocumentLlmState(id, {
+					llm_pending: false,
+					llm_pending_reason: null,
+				});
+				cleared++;
+			}
+		}
+
+		return { cleared };
 	}
 }

@@ -18,6 +18,7 @@ import {
 	applyHubDocLlmPayloadToMarkdown,
 	hubDocMarkdownBodyForLlm,
 } from '@/core/storage/vault/hub-docs/HubDocLlmMarkdown';
+import { EventBuffer } from '@/core/utils/event-buffer';
 import { mapWithConcurrency } from '@/core/utils/concurrent-utils';
 import { hashString } from '@/core/utils/hash-utils';
 import { Stopwatch } from '@/core/utils/Stopwatch';
@@ -33,6 +34,7 @@ import type {
 	HubCandidate,
 	HubDocArtifactParams,
 	HubDocAssemblyContext,
+	HubDocDebugPreview,
 	HubMaintenanceProgress,
 } from './types';
 
@@ -62,15 +64,14 @@ export class HubDocService {
 		onProgress?: (ev: HubMaintenanceProgress) => void;
 	}): Promise<{ written: string[]; skippedUserOwned: number }> {
 		const sw = new Stopwatch('HubDocService.generateAndIndexHubDocsForMaintenance');
-		const app = AppContext.getApp();
 		const hubPath = getAIHubSummaryFolder();
 		const manualHubFolder = getAIManualHubFolder();
 		const searchSettings = this.getSearchSettings();
 		const indexService = IndexService.getInstance();
 
 		sw.start('ensureHubFolders');
-		await ensureFolder(app, hubPath);
-		await ensureFolder(app, manualHubFolder);
+		await ensureFolder(hubPath);
+		await ensureFolder(manualHubFolder);
 		sw.stop();
 
 		sw.start('indexManualHubDocs');
@@ -164,8 +165,10 @@ export class HubDocService {
 function buildHubDocBodyMetadataRecord(
 	candidate: HubCandidate,
 	assembly: HubDocAssemblyContext | undefined,
+	generatedAt: number,
 ): Record<string, unknown> {
 	const meta: Record<string, unknown> = {
+		generated_at: generatedAt,
 		hub_source_kinds: candidate.sourceKinds,
 		hub_source_consensus: Number(candidate.sourceConsensusScore.toFixed(4)),
 		hub_ranking_score: Number(candidate.rankingScore.toFixed(4)),
@@ -276,9 +279,7 @@ export class HubMarkdownService {
 			hub_role: candidate.role,
 			[HUB_FRONTMATTER_KEYS.autoHub]: true,
 			[HUB_FRONTMATTER_KEYS.userOwned]: false,
-			[HUB_FRONTMATTER_KEYS.hubTitle]: candidate.label,
 			[HUB_FRONTMATTER_KEYS.fillStatus]: 'pending',
-			generated_at: generatedAt,
 		};
 		const yamlLines = Object.entries(fm)
 			.filter(([, v]) => v !== undefined && v !== null)
@@ -296,7 +297,7 @@ export class HubMarkdownService {
 			})
 			.join('\n');
 
-		const bodyMeta = buildHubDocBodyMetadataRecord(candidate, assembly);
+		const bodyMeta = buildHubDocBodyMetadataRecord(candidate, assembly, generatedAt);
 
 		const routes = assembly?.childHubRoutes ?? candidate.childHubRoutes;
 		const topoLines =
@@ -373,9 +374,8 @@ export class HubMarkdownService {
 	}
 
 	private async buildHubVaultExcerpts(candidate: HubCandidate): Promise<string> {
-		const app = AppContext.getApp();
 		const chunks: string[] = [];
-		const primary = await readVaultTextSnippet(app, candidate.path, HUB_DOC_LLM_MAX_NOTE_CHARS);
+		const primary = await readVaultTextSnippet(candidate.path, HUB_DOC_LLM_MAX_NOTE_CHARS);
 		if (primary) {
 			chunks.push(`### Primary path: ${candidate.path}\n${primary}`);
 		}
@@ -383,11 +383,7 @@ export class HubMarkdownService {
 			let budget = HUB_DOC_LLM_MAX_CLUSTER_SNIPPET * 3;
 			for (const mp of candidate.clusterMemberPaths.slice(0, SLICE_CAPS.hub.llmClusterMemberSnippets)) {
 				if (budget <= 0) break;
-				const sn = await readVaultTextSnippet(
-					app,
-					mp,
-					Math.min(HUB_DOC_LLM_MAX_CLUSTER_SNIPPET, budget),
-				);
+				const sn = await readVaultTextSnippet(mp, Math.min(HUB_DOC_LLM_MAX_CLUSTER_SNIPPET, budget));
 				if (sn) {
 					chunks.push(`### Member: ${mp}\n${sn}`);
 					budget -= sn.length;
@@ -422,6 +418,8 @@ export async function materializeHubDocFromCandidate(
 		indexService: IndexService;
 		/** Reuse service instance from {@link HubDocService} to avoid duplicate template/LLM state. */
 		markdown?: HubMarkdownService;
+		/** Optional debug preview buffer; receives a preview event before each file write. */
+		debugPreview?: EventBuffer<HubDocDebugPreview>;
 	},
 ): Promise<MaterializeHubDocFromCandidateResult> {
 	const app = AppContext.getApp();
@@ -452,6 +450,15 @@ export async function materializeHubDocFromCandidate(
 	});
 	body = await markdown.fillHubDocWithLLMSummary(body, candidate);
 
+	if (options.debugPreview && !options.debugPreview.isClosed()) {
+		await options.debugPreview.push({
+			candidatePath: candidate.path,
+			candidateLabel: candidate.label,
+			sourceKind: candidate.sourceKind,
+			previewMarkdown: body.slice(0, 500),
+		});
+	}
+
 	const existing = app.vault.getAbstractFileByPath(fullPath);
 	if (existing instanceof TFile) {
 		const prev = await app.vault.read(existing);
@@ -464,4 +471,65 @@ export async function materializeHubDocFromCandidate(
 	}
 	await indexService.indexDocument(fullPath, searchSettings, defaultIndexDocumentOptions('hub_maintenance'));
 	return { writtenPath: fullPath, skippedUserOwned: 0 };
+}
+
+// --- User-guided hub discovery API ---
+
+const DEFAULT_DISCOVER_FROM_SEED_MAX = 10;
+const DEFAULT_EXTEND_HUB_MAX = 5;
+
+/**
+ * Discover hub candidates starting from a specific vault path as seed.
+ * Returns hub candidates centered near or related to the seed path.
+ *
+ * Note: runs the full hub discovery pipeline internally; suitable for background/batch use.
+ */
+export async function discoverFromSeed(
+	seedPath: string,
+	options?: { maxCandidates?: number },
+): Promise<HubCandidate[]> {
+	const discovery = new HubCandidateDiscoveryService();
+	const result = await discovery.discoverAllHubCandidates();
+	const { candidates } = result;
+	const folderPrefix = seedPath.replace(/[^/]+$/, '');
+	const max = options?.maxCandidates ?? DEFAULT_DISCOVER_FROM_SEED_MAX;
+	const related = candidates.filter((c) => {
+		const inFolder = folderPrefix !== '' && c.path.startsWith(folderPrefix);
+		const inCluster = c.clusterMemberPaths?.includes(seedPath) ?? false;
+		return inFolder || inCluster;
+	});
+	return related.slice(0, max);
+}
+
+/**
+ * Given an existing hub candidate, find additional related candidates to extend it.
+ * Returns candidates that are related to the hub but not yet selected.
+ *
+ * Note: runs the full hub discovery pipeline internally; suitable for background/batch use.
+ */
+export async function extendHub(
+	hubCandidate: HubCandidate,
+	existingCandidates: HubCandidate[],
+	options?: { maxAdditional?: number },
+): Promise<HubCandidate[]> {
+	const discovery = new HubCandidateDiscoveryService();
+	const result = await discovery.discoverAllHubCandidates();
+	const { candidates } = result;
+	const existingKeys = new Set(existingCandidates.map((c) => c.stableKey));
+	const hubFolderPrefix = hubCandidate.path.replace(/[^/]+$/, '');
+	const hubTopicTags = new Set(hubCandidate.assemblyHints?.anchorTopicTags ?? []);
+	const hubMemberPaths = new Set(hubCandidate.clusterMemberPaths ?? []);
+	const max = options?.maxAdditional ?? DEFAULT_EXTEND_HUB_MAX;
+	return candidates
+		.filter((c) => {
+			if (existingKeys.has(c.stableKey)) return false;
+			const inFolder = hubFolderPrefix !== '' && c.path.startsWith(hubFolderPrefix);
+			if (inFolder) return true;
+			const sharedMembers = (c.clusterMemberPaths ?? []).some((mp) => hubMemberPaths.has(mp));
+			if (sharedMembers) return true;
+			const sharedTags = (c.assemblyHints?.anchorTopicTags ?? []).some((t) => hubTopicTags.has(t));
+			if (sharedTags) return true;
+			return false;
+		})
+		.slice(0, max);
 }

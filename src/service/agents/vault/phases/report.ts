@@ -279,3 +279,100 @@ export async function* runReportPhase(options: {
 		suggestedFollowUpQuestions: blocksOutput.follow_up_questions,
 	};
 }
+
+// ---------------------------------------------------------------------------
+// Part B: Lazy report generation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * A planned section title + brief description, for lazy/on-demand generation.
+ */
+export type ReportSectionPlan = {
+	sectionId: string;
+	title: string;
+	description: string;
+};
+
+const sectionPlanSchema = z.object({
+	sections: z.array(z.object({
+		sectionId: z.string(),
+		title: z.string(),
+		description: z.string().describe('One sentence describing what this section will cover'),
+	})).min(2).max(6),
+});
+
+/**
+ * Generate a plan of report sections without generating content.
+ * Returns section titles and brief descriptions for lazy generation.
+ */
+export async function planReportSections(options: {
+	userQuery: string;
+	sourceCount: number;
+	aiServiceManager: AIServiceManager;
+}): Promise<ReportSectionPlan[]> {
+	const { userQuery, sourceCount, aiServiceManager } = options;
+	const { model } = aiServiceManager.getModelInstanceForPrompt(PromptId.AiAnalysisVaultReportSystem);
+
+	const result = streamObject({
+		model,
+		schema: sectionPlanSchema,
+		prompt: `Plan a report structure for the query: "${userQuery}"\nAvailable sources: ${sourceCount}\nReturn 3-5 section titles with brief descriptions.`,
+	});
+
+	// Consume the stream (required by AI SDK — result.object hangs if stream not consumed)
+	for await (const _ of result.partialObjectStream) { /* drain */ }
+	const object = await result.object;
+	return object.sections;
+}
+
+/**
+ * Generate content for a single report section as a streaming async generator.
+ * Yields LLMStreamEvents with accumulated text, and returns the full text string.
+ */
+export async function* generateReportSection(options: {
+	sectionId: string;
+	sectionTitle: string;
+	userQuery: string;
+	weavedContext: string;
+	aiServiceManager: AIServiceManager;
+}): AsyncGenerator<LLMStreamEvent, string> {
+	const { sectionTitle, userQuery, weavedContext, aiServiceManager } = options;
+	const { model } = aiServiceManager.getModelInstanceForPrompt(PromptId.AiAnalysisVaultReportSystem);
+
+	yield {
+		type: 'pk-debug',
+		debugName: `Section: ${sectionTitle} start`,
+		extra: { sectionId: options.sectionId },
+	};
+
+	const result = streamText({
+		model,
+		prompt: `Write the "${sectionTitle}" section for a report on: "${userQuery}"\n\nContext:\n${weavedContext.slice(0, 8000)}`,
+	});
+
+	let fullText = '';
+	let lastEmitLen = 0;
+	for await (const chunk of result.textStream) {
+		fullText += chunk;
+		// Emit every ~50 chars for smooth streaming without flooding
+		if (fullText.length - lastEmitLen >= 50) {
+			lastEmitLen = fullText.length;
+			yield {
+				type: 'ui-signal',
+				channel: UISignalChannel.SEARCH_STAGE,
+				kind: UISignalKind.PROGRESS,
+				entityId: options.sectionId,
+				payload: { stage: 'report', status: 'progress', streamingText: fullText },
+				triggerName: StreamTriggerName.SEARCH_AI_AGENT,
+			} as LLMStreamEvent;
+		}
+	}
+
+	yield {
+		type: 'pk-debug',
+		debugName: `Section: ${sectionTitle} complete`,
+		extra: { sectionId: options.sectionId, length: fullText.length },
+	};
+
+	return fullText;
+}

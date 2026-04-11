@@ -6,6 +6,27 @@ import matter from 'gray-matter';
 import { HUB_DOC_METADATA_SECTION_TITLE, HUB_FRONTMATTER_KEYS } from '@/core/constant';
 import type { HubDocSummaryLlm } from '@/core/schemas';
 import { parseFrontmatter } from '@/core/utils/markdown-utils';
+import { updateSection, updateFrontmatter } from '@/core/storage/vault/framework/MarkdownDocEngine';
+import type { MarkdownDocSchemaDef } from '@/core/storage/vault/framework/MarkdownDocSchema';
+
+/**
+ * Schema definition for Hub Doc markdown structure.
+ * Documents the ordered sections in an auto-generated hub note and serves as source of truth
+ * for the hub doc layout. Excludes optional sections like Topology Routes which may not be present.
+ */
+export const HUB_DOC_SCHEMA: MarkdownDocSchemaDef = {
+	sections: [
+		{ title: 'Short Summary' },
+		{ title: 'Full Summary' },
+		{ title: 'Core Facts' },
+		{ title: 'Tag / Topic Distribution' },
+		{ title: 'Time Dimension' },
+		{ title: 'Mermaid' },
+		{ title: 'Query Anchors' },
+		{ title: 'Source scope' },
+		{ title: HUB_DOC_METADATA_SECTION_TITLE },
+	],
+};
 
 /**
  * Body after YAML frontmatter, with `# Hub Metadata` JSON block removed for prompt size control.
@@ -19,18 +40,6 @@ export function hubDocMarkdownBodyForLlm(markdown: string): string {
 		body = body.slice(0, idx).trimEnd();
 	}
 	return body;
-}
-
-function replaceMarkdownH2Section(markdown: string, title: string, body: string, nextTitle: string): string {
-	const head = `# ${title}\n\n`;
-	const next = `\n# ${nextTitle}`;
-	const i = markdown.indexOf(head);
-	if (i < 0) return markdown;
-	const start = i + head.length;
-	const j = markdown.indexOf(next, start);
-	if (j < 0) return markdown;
-	const trimmed = body.trim();
-	return markdown.slice(0, start) + trimmed + markdown.slice(j);
 }
 
 function formatNumberedFacts(facts: string[]): string {
@@ -49,28 +58,34 @@ function formatBulletAnchors(phrases: string[]): string {
  * Merge validated LLM fields into the hub skeleton (updates fill status, optional title H1 + fm; keeps Mermaid, Source scope, Hub Metadata).
  */
 export function applyHubDocLlmPayloadToMarkdown(markdown: string, p: HubDocSummaryLlm): string {
-	const fm = matter(markdown);
-	const data = { ...fm.data, [HUB_FRONTMATTER_KEYS.fillStatus]: 'ok' } as Record<string, unknown>;
 	const title = p.title
 		?.trim()
 		.replace(/\r?\n/g, ' ')
 		.replace(/#/g, '')
 		.trim();
-	if (title) data[HUB_FRONTMATTER_KEYS.hubTitle] = title;
-	let body = fm.content as string;
+	const fmUpdates: Record<string, unknown> = { [HUB_FRONTMATTER_KEYS.fillStatus]: 'ok' };
+	if (title) fmUpdates[HUB_FRONTMATTER_KEYS.hubTitle] = title;
+
+	// Update frontmatter first; then patch title H1 in the body if needed
+	let out = updateFrontmatter(markdown, fmUpdates);
 	if (title) {
-		body = body.replace(/^# [^\n]+\r?\n\r?\n(?=# Short Summary\r?\n)/m, `# ${title}\n\n`);
+		const fm = matter(out);
+		const patchedBody = fm.content.replace(
+			/^# [^\n]+\r?\n\r?\n(?=# Short Summary\r?\n)/m,
+			`# ${title}\n\n`,
+		);
+		out = matter.stringify(patchedBody, fm.data);
 	}
-	let out = matter.stringify(body, data);
-	out = replaceMarkdownH2Section(out, 'Short Summary', p.shortSummary, 'Full Summary');
-	out = replaceMarkdownH2Section(out, 'Full Summary', p.fullSummary, 'Topology Routes');
+
+	out = updateSection(out, 'Short Summary', p.shortSummary, 'Full Summary');
+	out = updateSection(out, 'Full Summary', p.fullSummary, 'Topology Routes');
 	let coreBlock = formatNumberedFacts(p.coreFacts);
 	if (p.keyPatterns?.trim()) {
 		coreBlock += `\n\n**Key patterns**\n\n${p.keyPatterns.trim()}`;
 	}
-	out = replaceMarkdownH2Section(out, 'Core Facts', coreBlock, 'Tag / Topic Distribution');
-	out = replaceMarkdownH2Section(out, 'Tag / Topic Distribution', p.tagTopicDistribution, 'Time Dimension');
-	out = replaceMarkdownH2Section(out, 'Time Dimension', p.timeDimension, 'Mermaid');
-	out = replaceMarkdownH2Section(out, 'Query Anchors', formatBulletAnchors(p.queryAnchors), 'Source scope');
+	out = updateSection(out, 'Core Facts', coreBlock, 'Tag / Topic Distribution');
+	out = updateSection(out, 'Tag / Topic Distribution', p.tagTopicDistribution, 'Time Dimension');
+	out = updateSection(out, 'Time Dimension', p.timeDimension, 'Mermaid');
+	out = updateSection(out, 'Query Anchors', formatBulletAnchors(p.queryAnchors), 'Source scope');
 	return out;
 }

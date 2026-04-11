@@ -23,6 +23,9 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { HubDocService, type HubDiscoverRoundSummary } from '@/service/search/index/helper/hub';
 import { formatLlmEnrichmentProgressLine } from '@/service/search/support/llm-progress-format';
 import { KnowledgeIntuitionAgent } from '@/service/agents/KnowledgeIntuitionAgent';
+import { BulkOperationCostEstimator } from '@/service/search/support/cost-estimator';
+import { CostEstimationModal } from '@/ui/view/modals/CostEstimationModal';
+import { IndexingProgressModal } from '@/ui/view/modals/IndexingProgressModal';
 
 /**
  * Persistent bottom notice with updatable message (Obsidian 1.5+ `setMessage` when available).
@@ -192,31 +195,55 @@ function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 					new Notice('Search settings are not available. Please restart the plugin.', 5000);
 					return;
 				}
-				const ui = openProgressNotice('Search: preparing LLM enrichment…');
-				try {
-					const { processed, errors, skippedWrongTenant } =
-						await IndexService.runPendingLlmIndexEnrichment(searchSettings, {
-							onProgress: (ev) => {
-								const short = truncatePathForNotice(ev.path);
-								ui.setMessage(
-									`Search: LLM ${ev.processed}/${ev.total}\n${formatLlmEnrichmentProgressLine(ev)}\n${short}`,
-								);
-							},
-						});
-					ui.hide();
-					const errText = errors.length > 0 ? ` Errors: ${errors.length} (see console).` : '';
-					new Notice(
-						`LLM enrichment: processed ${processed} document(s).${skippedWrongTenant ? ` Skipped ${skippedWrongTenant} path(s) (tenant mismatch).` : ''}${errText}`,
-						errors.length ? 10000 : 6000,
-					);
-					if (errors.length) {
-						console.error('[peak-search-llm-enrich-pending]', errors);
+				const appContext = viewManager.appContext;
+				const estimator = new BulkOperationCostEstimator(searchSettings, aiManager);
+				const estimatePromise = estimator.estimatePendingLlmCost();
+
+				const costModal = new CostEstimationModal(appContext, async (choice) => {
+					if (choice === 'skip') {
+						try {
+							const { cleared } = await IndexService.clearPendingLlmFlags();
+							new Notice(`LLM enrichment skipped. Cleared ${cleared} pending flag(s).`, 5000);
+						} catch (e) {
+							console.error('[peak-search-llm-enrich-pending] skip failed', e);
+							new Notice(`Failed to clear pending flags: ${(e as Error).message}`, 8000);
+						}
+						return;
 					}
-				} catch (e) {
-					ui.hide();
-					console.error('[peak-search-llm-enrich-pending]', e);
-					new Notice(`LLM enrichment failed: ${(e as Error).message}`, 8000);
-				}
+
+					// choice === 'run'
+					let progressModal: IndexingProgressModal | null = null;
+					progressModal = new IndexingProgressModal(appContext, () => {
+						new Notice('LLM enrichment cancelled.', 4000);
+					});
+					progressModal.open();
+
+					try {
+						const { processed, errors, skippedWrongTenant } =
+							await IndexService.runPendingLlmIndexEnrichment(searchSettings, {
+								onProgress: (ev) => {
+									progressModal?.updateProgress(ev);
+								},
+								shouldContinue: () => !progressModal.isCancelled(),
+							});
+						progressModal.close();
+						if (!progressModal.isCancelled()) {
+							const errText = errors.length > 0 ? ` Errors: ${errors.length} (see console).` : '';
+							new Notice(
+								`LLM enrichment: processed ${processed} document(s).${skippedWrongTenant ? ` Skipped ${skippedWrongTenant} path(s) (tenant mismatch).` : ''}${errText}`,
+								errors.length ? 10000 : 6000,
+							);
+							if (errors.length) {
+								console.error('[peak-search-llm-enrich-pending]', errors);
+							}
+						}
+					} catch (e) {
+						progressModal.close();
+						console.error('[peak-search-llm-enrich-pending]', e);
+						new Notice(`LLM enrichment failed: ${(e as Error).message}`, 8000);
+					}
+				}, estimatePromise);
+				costModal.open();
 			},
 		},
 		{

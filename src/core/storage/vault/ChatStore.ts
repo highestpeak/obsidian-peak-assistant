@@ -31,7 +31,7 @@ export class ChatStorageService {
 	}
 
 	async init(): Promise<void> {
-		await ensureFolder(this.app, this.rootFolder);
+		await ensureFolder(this.rootFolder);
 	}
 
 	async saveProject(project: ChatProjectMeta, context?: ChatProjectContext): Promise<ChatProject> {
@@ -45,7 +45,7 @@ export class ChatStorageService {
 			shortSummary: context?.shortSummary ?? '',
 			fullSummary: context?.fullSummary ?? '',
 		});
-		await writeFile(this.app, initSummaryFile, summaryFilePath, summaryContent);
+		await writeFile(initSummaryFile, summaryFilePath, summaryContent);
 
 		// Save meta to sqlite
 		const projectRepo = sqliteStoreManager.getChatProjectRepo();
@@ -73,7 +73,7 @@ export class ChatStorageService {
 		messages?: ChatMessage[]
 	): Promise<ChatConversation> {
 		const folder = project ? await this.getProjectFolderPath(project) : this.rootFolder;
-		await ensureFolder(this.app, folder);
+		await ensureFolder(folder);
 
 		// Get or build conversation file path
 		const { file, path } = await this.getConvFile(conversation, folder);
@@ -539,7 +539,7 @@ export class ChatStorageService {
 			path = joinPath(folder, `${fileName}.md`);
 			file = this.app.vault.getAbstractFileByPath(path) as TFile | null;
 			if (!file) {
-				await ensureFolder(this.app, folder);
+				await ensureFolder(folder);
 				file = await this.app.vault.create(path, '');
 			}
 		}
@@ -557,9 +557,9 @@ export class ChatStorageService {
 	}
 
 	private async ensureProjectFolder(project: ChatProjectMeta): Promise<void> {
-		await ensureFolder(this.app, this.rootFolder);
+		await ensureFolder(this.rootFolder);
 		const projectFolder = await this.getProjectFolderPath(project);
-		await ensureFolder(this.app, projectFolder);
+		await ensureFolder(projectFolder);
 	}
 
 	/**
@@ -571,7 +571,7 @@ export class ChatStorageService {
 			? await this.readProjectMeta(conversation.meta.projectId)
 			: null;
 		const folder = projectMeta ? await this.getProjectFolderPath(projectMeta) : this.rootFolder;
-		await ensureFolder(this.app, folder);
+		await ensureFolder(folder);
 
 		// Build filename
 		const fileName = await ChatDocName.buildConvFileName(
@@ -594,7 +594,7 @@ export class ChatStorageService {
 					messages: [],
 				},
 			});
-			return await writeFile(this.app, null, path, emptyMarkdown);
+			return await writeFile(null, path, emptyMarkdown);
 		} else {
 			return existingFile as TFile;
 		}
@@ -916,4 +916,3 @@ export class ChatStorageService {
 		return messageRepo.countByConversation(conversationId);
 	}
 }
-

@@ -17,11 +17,11 @@ export function createOpenSourceCallback(onClose?: () => void, newTab: boolean =
 			// Handle SearchResultItem with location info
 			if (typeof resultOrPath === 'object' && resultOrPath.loc?.line) {
 				const lineNumber = resultOrPath.loc.line;
-				await openFileAtLine(app, resultOrPath.path, lineNumber - 1, newTab); // Convert to 0-based
+				await openFileAtLine(resultOrPath.path, lineNumber - 1, newTab, app); // Convert to 0-based
 			} else {
 				// Handle simple path string
 				const path = typeof resultOrPath === 'string' ? resultOrPath : resultOrPath.path;
-				await openFile(app, path, newTab);
+				await openFile(path, newTab, app);
 			}
 
 		} catch (e) {

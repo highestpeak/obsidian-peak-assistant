@@ -48,6 +48,21 @@ export class AIAnalysisRepo {
 	}
 
 	/**
+	 * Find analyses related to a document by checking if the query contains
+	 * the document filename or path fragment.
+	 */
+	async listByDocumentHint(docName: string, limit = 10): Promise<DbSchema['ai_analysis_record'][]> {
+		const safeLimit = Math.max(1, Math.min(50, limit));
+		return this.db
+			.selectFrom('ai_analysis_record')
+			.selectAll()
+			.where('query', 'like', `%${docName}%`)
+			.orderBy('created_at_ts', 'desc')
+			.limit(safeLimit)
+			.execute();
+	}
+
+	/**
 	 * Delete all records (metadata only).
 	 */
 	async deleteAll(): Promise<void> {

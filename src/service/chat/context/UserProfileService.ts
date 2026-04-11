@@ -36,7 +36,7 @@ export class UserProfileService {
 	async init(): Promise<void> {
 		const folderPath = this.contextFilePath.substring(0, this.contextFilePath.lastIndexOf('/'));
 		if (folderPath) {
-			await ensureFolder(this.app, folderPath);
+			await ensureFolder(folderPath);
 		}
 		const file = this.app.vault.getAbstractFileByPath(this.contextFilePath);
 		if (!(file instanceof TFile)) {

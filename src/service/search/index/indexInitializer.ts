@@ -189,7 +189,7 @@ export class IndexInitializer {
 			`[IndexInitializer] Staged pipeline: ${filesToIndex.length} files (counted in ${(performance.now() - countStartTime).toFixed(2)}ms)`,
 		);
 
-		const progressTracker = new IndexProgressTracker(this.app, filesToIndex.length);
+		const progressTracker = new IndexProgressTracker(filesToIndex.length);
 		let indexedCount = 0;
 		try {
 			progressTracker.showStart('Peak: Step 1/5 — Full-text (FTS), no embeddings…');
@@ -224,7 +224,7 @@ export class IndexInitializer {
 		const dbFilePath = this.storageFolder
 			? `${this.storageFolder.trim().replace(/^\/+/, '').replace(/\/+$/, '')}/${VAULT_DB_FILENAME}`
 			: VAULT_DB_FILENAME;
-		const storageSize = await getFileSize(this.app, dbFilePath);
+		const storageSize = await getFileSize(dbFilePath, this.app);
 
 		progressTracker.dismiss();
 		if (showNotification) {
@@ -481,7 +481,7 @@ export class IndexInitializer {
 			return;
 		}
 
-		const progressTracker = new IndexProgressTracker(this.app, filesToIndexPaths.length);
+		const progressTracker = new IndexProgressTracker(filesToIndexPaths.length);
 		progressTracker.showStart(progressStartLabel);
 
 		let indexedCount = 0;
@@ -508,7 +508,7 @@ export class IndexInitializer {
 		const dbFilePath = this.storageFolder
 			? `${this.storageFolder.trim().replace(/^\/+/, '').replace(/\/+$/, '')}/${VAULT_DB_FILENAME}`
 			: VAULT_DB_FILENAME;
-		const storageSize = await getFileSize(this.app, dbFilePath);
+		const storageSize = await getFileSize(dbFilePath, this.app);
 
 		progressTracker.showComplete({
 			totalIndexed: indexedCount,
@@ -649,4 +649,3 @@ export class IndexInitializer {
 
 
 }
-

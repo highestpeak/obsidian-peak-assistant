@@ -18,7 +18,7 @@ export abstract class VaultFileStore {
 		},
 	) {
 		// Use user-configured storage folder if provided, otherwise fallback to plugin directory
-		const baseDir = params.storageFolder?.trim() || getPluginDir(app, params.pluginId);
+		const baseDir = params.storageFolder?.trim() || getPluginDir(params.pluginId, app);
 		this.fullPath = `${baseDir}/${params.filename}`;
 	}
 
@@ -28,8 +28,7 @@ export abstract class VaultFileStore {
 	protected async ensureDirectory(): Promise<void> {
 		const dirPath = this.fullPath.substring(0, this.fullPath.lastIndexOf('/'));
 		if (dirPath) {
-			await ensureFolderRecursive(this.app, dirPath);
+			await ensureFolderRecursive(dirPath, this.app);
 		}
 	}
 }
-

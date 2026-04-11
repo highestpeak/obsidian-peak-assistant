@@ -10,7 +10,6 @@ import { convertGraphToGraphPreview } from "@/ui/view/shared/graph-utils";
 import { createObsidianGraphPreset, ObsidianGraphPresetResult } from "../../presets/obsidianGraphPreset";
 import { createOpenSourceCallback } from "../../callbacks/open-source-file";
 import { openFile } from "@/core/utils/obsidian-utils";
-import { AppContext } from "@/app/context/AppContext";
 import { copyText } from "@/ui/view/shared/common-utils";
 import { useGraphAnimationStore, useGraphQueuePump } from "@/ui/component/mine/graph-viz/graphAnimationStore";
 import { PATH_STRING_SEPARATOR } from "@/service/tools/search-graph-inspector/find-path";
@@ -110,7 +109,7 @@ export const GraphSection = React.forwardRef<HTMLDivElement, {
     const obsidianPreset = useMemo<ObsidianGraphPresetResult>(() => {
         return createObsidianGraphPreset({
             onOpenPath: onClose ? createOpenSourceCallback(onClose) : undefined,
-            openFile: (path) => openFile(AppContext.getInstance().app, path, true),
+            openFile: (path) => openFile(path, true),
             copyText,
         })
     }, [onClose]);

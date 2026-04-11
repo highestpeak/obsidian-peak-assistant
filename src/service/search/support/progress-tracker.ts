@@ -1,4 +1,4 @@
-import { App, Notice } from 'obsidian';
+import { Notice } from 'obsidian';
 
 /**
  * Progress tracker for indexing operations.
@@ -11,7 +11,6 @@ export class IndexProgressTracker {
 	private cancelled = false;
 
 	constructor(
-		private readonly app: App,
 		totalFiles?: number,
 	) {
 		this.totalFiles = totalFiles ?? null;
@@ -222,4 +221,3 @@ export class IndexProgressTracker {
 		return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
 	}
 }
-

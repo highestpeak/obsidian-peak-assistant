@@ -30,7 +30,7 @@ export class ResourceSummaryService {
 	 * Initialize resources folder
 	 */
 	async init(): Promise<void> {
-		await ensureFolder(this.app, this.resourcesFolder);
+		await ensureFolder(this.resourcesFolder);
 	}
 
 	/**
@@ -252,4 +252,3 @@ export class ResourceSummaryService {
 	}
 
 }
-

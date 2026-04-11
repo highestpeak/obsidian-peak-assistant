@@ -137,7 +137,7 @@ export class ConversationService {
 		const uploadFolder = getAIUploadFolder();
 
 		// Upload files to vault
-		const uploadedPaths = await uploadFilesToVault(this.app, files, uploadFolder);
+		const uploadedPaths = await uploadFilesToVault(files, uploadFolder);
 
 		// Create resource references for uploaded files
 		const resources: ChatResourceRef[] = [];

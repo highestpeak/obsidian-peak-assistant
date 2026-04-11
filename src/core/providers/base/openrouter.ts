@@ -14,9 +14,7 @@ import { modelMetadataCache } from '@/core/utils/ttl-cache';
 import { createOpenRouter, type OpenRouterProvider } from '@openrouter/ai-sdk-provider';
 import { type LanguageModel } from 'ai';
 import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
-import { getKnownOpenAIModelIds, getOpenAIAvatarType } from './openai';
-import { getKnownClaudeModelIds } from './claude';
-import { getKnownGeminiModelIds } from './gemini';
+import { modelRegistry } from '../model-registry';
 
 const DEFAULT_OPENROUTER_TIMEOUT_MS = 60000;
 const OPENROUTER_DEFAULT_BASE = 'https://openrouter.ai/api/v1';
@@ -368,7 +366,7 @@ export class OpenRouterChatService implements LLMProviderService {
 				let icon: string = 'openrouter'; // default icon
 
 				if (model.id.startsWith('openai/')) {
-					icon = getOpenAIAvatarType(model.id.replace('openai/', ''));
+					icon = modelRegistry.getModelIcon('openai', model.id.replace('openai/', '')) || 'openai';
 				} else if (model.id.startsWith('anthropic/')) {
 					icon = 'claude';
 				} else if (model.id.startsWith('google/')) {
@@ -407,48 +405,19 @@ export class OpenRouterChatService implements LLMProviderService {
 			});
 
 			// Remove pricing info from final result as it's not part of ModelMetaData
-			const models = modelsWithPricing.map(({ pricing, ...model }) => model);
+			const serverModels = modelsWithPricing.map(({ pricing, ...model }) => model);
+			const models = modelRegistry.mergeServerData('openrouter', serverModels);
 
 			// Cache the result
 			modelMetadataCache.set(cacheKey, models);
 
 			return models;
 		} catch (error) {
-			// Fallback to hardcoded models if API call fails
-			console.warn('Failed to fetch models from OpenRouter API, falling back to hardcoded models:', error);
-			const models: ModelMetaData[] = [];
-
-			// Add OpenAI models with openai/ prefix
-			for (const modelId of getKnownOpenAIModelIds()) {
-				models.push({
-					id: `openai/${modelId}`,
-					displayName: modelId,
-					icon: getOpenAIAvatarType(modelId),
-				});
-			}
-
-			// Add Claude models with anthropic/ prefix
-			for (const modelId of getKnownClaudeModelIds()) {
-				models.push({
-					id: `anthropic/${modelId}`,
-					displayName: modelId,
-					icon: 'claude',
-				});
-			}
-
-			// Add Gemini models with google/ prefix
-			for (const modelId of getKnownGeminiModelIds()) {
-				models.push({
-					id: `google/${modelId}`,
-					displayName: modelId,
-					icon: 'gemini',
-				});
-			}
-
-			// Sort fallback models alphabetically by display name
-			models.sort((a, b) => a.displayName.localeCompare(b.displayName));
-
-			return models;
+			// Fallback to static registry models if API call fails.
+			console.warn('Failed to fetch models from OpenRouter API, falling back to model catalog:', error);
+			const fallbackModels = modelRegistry.getModelsForProvider('openrouter');
+			fallbackModels.sort((a, b) => a.displayName.localeCompare(b.displayName));
+			return fallbackModels;
 		}
 	}
 
@@ -461,7 +430,7 @@ export class OpenRouterChatService implements LLMProviderService {
 		};
 	}
 
-	getProviderOptions(optionConfig: ProviderOptionsConfig): ProviderOptions | undefined {
+	getProviderOptions(_optionConfig: ProviderOptionsConfig): ProviderOptions | undefined {
 		return undefined;
 	}
 
@@ -551,4 +520,3 @@ export class OpenRouterChatService implements LLMProviderService {
 		return undefined;
 	}
 }
-

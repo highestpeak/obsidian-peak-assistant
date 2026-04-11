@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { TrendingUp, Copy, MessageCircle, Maximize2, X, Frame, Tag } from 'lucide-react';
-import { AppContext } from '@/app/context/AppContext';
 import { openFile } from '@/core/utils/obsidian-utils';
 import { GraphVisualization, GraphVisualizationHandle, GraphVizNodeHoverInfo, GraphVizNodeInfo, type UIPreviewGraph } from '@/ui/component/mine/GraphVisualization';
 import { useGraphAnimationStore } from '@/ui/view/quick-search/store';
@@ -250,7 +249,7 @@ export const KnowledgeGraphSection: React.FC<{
 	const obsidianPreset = useMemo<ObsidianGraphPresetResult>(() => {
 		return createObsidianGraphPreset({
 			onOpenPath: onClose ? createOpenSourceCallback(onClose) : undefined,
-			openFile: (path) => openFile(AppContext.getInstance().app, path, true),
+			openFile: (path) => openFile(path, true),
 			copyText,
 		})
 	}, [onClose]);

@@ -127,7 +127,7 @@ export class ChatArchiveService {
 		month: number
 	): Promise<void> {
 		const archivePath = this.getArchivePath(year, month);
-		await ensureFolder(this.app, archivePath);
+		await ensureFolder(archivePath);
 
 		const filePath = this.getAbsolutePath(fileRelPath);
 		const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -158,7 +158,7 @@ export class ChatArchiveService {
 		month: number
 	): Promise<void> {
 		const archivePath = this.getArchivePath(year, month);
-		await ensureFolder(this.app, archivePath);
+		await ensureFolder(archivePath);
 
 		const folderPath = this.getAbsolutePath(folderRelPath);
 		const folder = this.app.vault.getAbstractFileByPath(folderPath);

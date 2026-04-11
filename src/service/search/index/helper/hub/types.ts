@@ -507,6 +507,13 @@ export type HubDiscoverNextRoundHints = {
 	nextDirections: string[];
 };
 
+export type HubDocDebugPreview = {
+	candidatePath: string;
+	candidateLabel: string;
+	sourceKind: HubSourceKind;
+	previewMarkdown: string; // first 500 chars of the generated markdown
+};
+
 export const SOURCE_PRIORITY: Record<HubSourceKind, number> = {
 	manual: 4,
 	folder: 3,

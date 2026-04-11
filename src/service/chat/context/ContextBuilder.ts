@@ -254,7 +254,7 @@ export class ContextBuilder {
 			// Vision model + direct mode: convert image to data URL and add to message content
 			try {
 				const ext = resource.source.split('.').pop()?.toLowerCase() || '';
-				const base64 = await readFileAsBase64(app!, resource.source);
+				const base64 = await readFileAsBase64(resource.source, app!);
 				if (base64) {
 					const mimeType = getImageMimeType(ext);
 					const dataUrl = `data:${mimeType};base64,${base64}`;
@@ -267,14 +267,14 @@ export class ContextBuilder {
 			}
 		} else if (modelCapabilities?.pdfInput && resource.kind === 'pdf') {
 			try {
-				const base64 = await readFileAsBase64(app!, resource.source);
+				const base64 = await readFileAsBase64(resource.source, app!);
 				if (base64) {
 					return { type: 'file', data: base64, mediaType: 'application/pdf' };
 				}
 			} catch (error) {
 			}
 		} else {
-			const base64 = await readFileAsBase64(app!, resource.source);
+			const base64 = await readFileAsBase64(resource.source, app!);
 			if (base64) {
 				const ext = resource.source.split('.').pop()?.toLowerCase() || '';
 				const mediaType = getFileMimeType(ext);
@@ -284,4 +284,3 @@ export class ContextBuilder {
 		return null;
 	}
 }
-

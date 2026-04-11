@@ -6,6 +6,8 @@ export {
 	HubDocService,
 	HubMarkdownService,
 	materializeHubDocFromCandidate,
+	discoverFromSeed,
+	extendHub,
 } from './hubDocServices';
 export type { MaterializeHubDocFromCandidateResult } from './hubDocServices';
 export * from './types';

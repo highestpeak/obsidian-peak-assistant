@@ -131,7 +131,7 @@ export class SqliteStoreManager {
 
 		if (normalizedStorageFolder) {
 			// Ensure the vault folder exists before opening a file-backed database.
-			await ensureFolderRecursive(app, normalizedStorageFolder);
+			await ensureFolderRecursive(normalizedStorageFolder, app);
 		}
 
 		// Calculate the database path

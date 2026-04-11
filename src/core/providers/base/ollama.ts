@@ -16,6 +16,7 @@ import { createOllama, type OllamaProvider } from 'ollama-ai-provider-v2';
 import { embedMany, type LanguageModel } from 'ai';
 import { blockChat, streamChat } from '../adapter/ai-sdk-adapter';
 import { trimTrailingSlash } from '@/core/utils/format-utils';
+import { modelRegistry } from '../model-registry';
 
 const DEFAULT_OLLAMA_TIMEOUT_MS = 60000;
 export const OLLAMA_DEFAULT_BASE = 'http://localhost:11434';
@@ -212,7 +213,7 @@ async function fetchOllamaModels(
 		}
 
 		// Convert API response to ModelMetaData format
-		return data.models.map((model) => {
+		const serverModels = data.models.map((model) => {
 			const family = model.details?.family || '';
 			const icon = getModelIcon(family, model.name);
 
@@ -233,6 +234,9 @@ async function fetchOllamaModels(
 				capabilities,
 			};
 		});
+
+		// Merge server response with static registry metadata (pricing/capability/token fallback).
+		return modelRegistry.mergeServerData('ollama', serverModels);
 	} catch (error) {
 		console.error('[OllamaChatService] Error fetching models:', error);
 		return null;
@@ -296,7 +300,11 @@ export class OllamaChatService implements LLMProviderService {
 			return models;
 		}
 
-		return [];
+		const fallbackModels = modelRegistry.getModelsForProvider('ollama');
+		if (fallbackModels.length > 0) {
+			modelMetadataCache.set(cacheKey, fallbackModels);
+		}
+		return fallbackModels;
 	}
 
 	getProviderMetadata(): ProviderMetaData {
@@ -352,9 +360,13 @@ export class OllamaChatService implements LLMProviderService {
 			}
 		}
 
+		const registryTokenLimits = modelRegistry.getModelTokenLimits('ollama', model);
+		if (registryTokenLimits) {
+			return registryTokenLimits;
+		}
+
 		// Fall back to dynamic calculation
 		const contextLength = this.options.extra?.contextLength ?? 4096;
 		return getOllamaTokenLimits(model, contextLength);
 	}
 }
-

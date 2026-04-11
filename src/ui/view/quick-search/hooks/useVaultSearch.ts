@@ -180,7 +180,7 @@ async function performGoToLine(lineNumber: number, filePath: string): Promise<{ 
 		const app = AppContext.getInstance().app;
 
 		// Open file and scroll to line
-		openFileAtLine(app, filePath, zeroIndexedLine, false);
+		openFileAtLine(filePath, zeroIndexedLine, false, app);
 
 		return {
 			results: [result],

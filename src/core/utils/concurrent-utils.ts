@@ -3,6 +3,7 @@
  */
 
 import type { Stopwatch } from './Stopwatch';
+import { EventBuffer } from './event-buffer';
 
 type ConcurrentTrace = {
 	start(label: string): void;
@@ -12,7 +13,35 @@ type ConcurrentTrace = {
 type ConcurrentOptions<T, R> = {
 	limit: number;
 	stopwatch?: Stopwatch;
+	eventBuffer?: EventBuffer<MapWithConcurrencyEvent<T, R>>;
 };
+
+export type MapWithConcurrencyEvent<T, R> =
+	| {
+		type: 'task-start';
+		item: T;
+		index: number;
+		total: number;
+		running: number;
+	}
+	| {
+		type: 'task-complete';
+		item: T;
+		index: number;
+		total: number;
+		running: number;
+		durationMs: number;
+		result: R;
+	}
+	| {
+		type: 'task-error';
+		item: T;
+		index: number;
+		total: number;
+		running: number;
+		durationMs: number;
+		error: unknown;
+	};
 
 type TimedStep = {
 	label: string;
@@ -54,11 +83,16 @@ export async function mapWithConcurrency<T, R>(
 	limitOrOptions: number | ConcurrentOptions<T, R>,
 	fn: ((item: T, index: number) => Promise<R>) | ((item: T, index: number, trace: ConcurrentTrace) => Promise<R>),
 ): Promise<R[]> {
-	if (items.length === 0) return [];
-
 	const options: ConcurrentOptions<T, R> = typeof limitOrOptions === 'number'
 		? { limit: limitOrOptions }
 		: limitOrOptions;
+	if (items.length === 0) {
+		if (options.eventBuffer && !options.eventBuffer.isClosed()) {
+			options.eventBuffer.close();
+		}
+		return [];
+	}
+
 	const pool = Math.max(1, Math.min(options.limit, items.length));
 	const results: R[] = new Array(items.length);
 	const timedRows: TimedRow<T, R>[] = [];
@@ -68,19 +102,58 @@ export async function mapWithConcurrency<T, R>(
 		stop(): void { },
 	};
 	let nextIndex = 0;
+	let running = 0;
+
+	const emitEvent = async (event: MapWithConcurrencyEvent<T, R>): Promise<void> => {
+		if (!options.eventBuffer) return;
+		await options.eventBuffer.push(event);
+	};
 
 	async function worker(): Promise<void> {
 		for (;;) {
 			const i = nextIndex++;
 			if (i >= items.length) return;
 			const item = items[i]!;
+			const startedAt = Date.now();
+			running += 1;
+			await emitEvent({
+				type: 'task-start',
+				item,
+				index: i,
+				total: items.length,
+				running,
+			});
 
 			if (!enableTiming) {
-				results[i] = await (fn as (item: T, index: number, trace: ConcurrentTrace) => Promise<R>)(item, i, noopTrace);
+				try {
+					const result = await (fn as (item: T, index: number, trace: ConcurrentTrace) => Promise<R>)(item, i, noopTrace);
+					results[i] = result;
+					running -= 1;
+					await emitEvent({
+						type: 'task-complete',
+						item,
+						index: i,
+						total: items.length,
+						running,
+						durationMs: Date.now() - startedAt,
+						result,
+					});
+				} catch (error) {
+					running -= 1;
+					await emitEvent({
+						type: 'task-error',
+						item,
+						index: i,
+						total: items.length,
+						running,
+						durationMs: Date.now() - startedAt,
+						error,
+					});
+					throw error;
+				}
 				continue;
 			}
 
-			const startedAt = Date.now();
 			const steps: TimedStep[] = [];
 			let currentStep: { label: string; startedAt: number } | null = null;
 			const closeCurrentStep = (): void => {
@@ -105,6 +178,7 @@ export async function mapWithConcurrency<T, R>(
 				const result = await (fn as (item: T, index: number, trace: ConcurrentTrace) => Promise<R>)(item, i, trace);
 				closeCurrentStep();
 				results[i] = result;
+				running -= 1;
 				timedRows.push({
 					item,
 					index: i,
@@ -113,14 +187,43 @@ export async function mapWithConcurrency<T, R>(
 					totalMs: Date.now() - startedAt,
 					steps,
 				});
+				await emitEvent({
+					type: 'task-complete',
+					item,
+					index: i,
+					total: items.length,
+					running,
+					durationMs: Date.now() - startedAt,
+					result,
+				});
 			} catch (error) {
 				closeCurrentStep();
+				running -= 1;
+				await emitEvent({
+					type: 'task-error',
+					item,
+					index: i,
+					total: items.length,
+					running,
+					durationMs: Date.now() - startedAt,
+					error,
+				});
 				throw error;
 			}
 		}
 	}
 
-	await Promise.all(Array.from({ length: pool }, () => worker()));
+	try {
+		await Promise.all(Array.from({ length: pool }, () => worker()));
+	} catch (error) {
+		options.eventBuffer?.error(error);
+		throw error;
+	} finally {
+		if (options.eventBuffer && !options.eventBuffer.isClosed()) {
+			options.eventBuffer.close();
+		}
+	}
+
 	if (enableTiming) {
 		appendTimingToStopwatch(options.stopwatch!, timedRows, options);
 	}

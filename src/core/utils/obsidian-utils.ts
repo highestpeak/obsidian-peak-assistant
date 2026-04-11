@@ -5,11 +5,16 @@ import { normalizePath, TFile } from 'obsidian';
 
 const DEFAULT_PLUGIN_ID = 'obsidian-peak-assistant';
 
+function resolveApp(app?: App): App {
+	return app ?? AppContext.getApp();
+}
+
 /**
  * Resolve plugin directory path relative to vault root.
  */
-export function getPluginDir(app: App, pluginId: string = DEFAULT_PLUGIN_ID): string {
-	const plugin = (app as any)?.plugins?.getPlugin?.(pluginId);
+export function getPluginDir(pluginId: string = DEFAULT_PLUGIN_ID, app?: App): string {
+	const targetApp = resolveApp(app);
+	const plugin = (targetApp as any)?.plugins?.getPlugin?.(pluginId);
 	const pluginDir = plugin?.manifest?.dir as string | undefined;
 	if (!pluginDir) {
 		throw new Error(`Plugin directory cannot be resolved: plugin '${pluginId}' not found`);
@@ -21,12 +26,13 @@ export function getPluginDir(app: App, pluginId: string = DEFAULT_PLUGIN_ID): st
  * Resolve plugin directory as absolute path for Node fs (e.g. template file reads).
  * Uses vault adapter basePath so paths work regardless of process.cwd().
  */
-export function getPluginDirAbsolute(app: App, pluginId: string = DEFAULT_PLUGIN_ID): string {
-	const vaultBase = (app.vault.adapter as any)?.basePath as string | undefined;
+export function getPluginDirAbsolute(pluginId: string = DEFAULT_PLUGIN_ID, app?: App): string {
+	const targetApp = resolveApp(app);
+	const vaultBase = (targetApp.vault.adapter as any)?.basePath as string | undefined;
 	if (!vaultBase) {
 		throw new Error('Vault base path not available (e.g. non-filesystem vault)');
 	}
-	const pluginDir = getPluginDir(app, pluginId);
+	const pluginDir = getPluginDir(pluginId, targetApp);
 	return path.join(vaultBase, pluginDir);
 }
 
@@ -38,22 +44,23 @@ export function getPluginDirAbsolute(app: App, pluginId: string = DEFAULT_PLUGIN
  * @param filePath - Path to the file relative to vault root
  * @returns File size in bytes, or 0 if file doesn't exist
  */
-export async function getFileSize(app: App, filePath: string): Promise<number> {
+export async function getFileSize(filePath: string, app?: App): Promise<number> {
+	const targetApp = resolveApp(app);
 	try {
 		// Try to get file from vault
-		const file = app.vault.getAbstractFileByPath(filePath);
+		const file = targetApp.vault.getAbstractFileByPath(filePath);
 		if (file && 'stat' in file) {
 			return (file as any).stat.size || 0;
 		}
 
 		// Fallback: try to read file and get its size
 		try {
-			const content = await app.vault.adapter.read(filePath);
+			const content = await targetApp.vault.adapter.read(filePath);
 			return new Blob([content]).size;
 		} catch {
 			// File may be binary, try readBinary
 			try {
-				const binary = await (app.vault.adapter as any).readBinary(filePath);
+				const binary = await (targetApp.vault.adapter as any).readBinary(filePath);
 				return binary.byteLength || 0;
 			} catch {
 				// File doesn't exist
@@ -74,10 +81,11 @@ export async function getFileSize(app: App, filePath: string): Promise<number> {
  * @param newTab - Whether to open in a new tab (default: false)
  * @returns Promise that resolves when file is opened
  */
-export async function openFile(app: App, filePath: string, newTab: boolean = false): Promise<void> {
-	const file = app.vault.getAbstractFileByPath(filePath);
+export async function openFile(filePath: string, newTab: boolean = false, app?: App): Promise<void> {
+	const targetApp = resolveApp(app);
+	const file = targetApp.vault.getAbstractFileByPath(filePath);
 	if (file && 'path' in file) {
-		const leaf = app.workspace.getLeaf(newTab);
+		const leaf = targetApp.workspace.getLeaf(newTab);
 		await leaf.openFile(file as any);
 	}
 }
@@ -90,12 +98,13 @@ export async function openFile(app: App, filePath: string, newTab: boolean = fal
  * @param resourceSource - Resource source path (may start with '/')
  * @returns Base64 string of the file content, or null if failed
  */
-export async function readFileAsBase64(app: App, resourceSource: string): Promise<string | null> {
+export async function readFileAsBase64(resourceSource: string, app?: App): Promise<string | null> {
+	const targetApp = resolveApp(app);
 	try {
 		const normalizedPath = normalizePath(resourceSource.startsWith('/') ? resourceSource.slice(1) : resourceSource);
-		const file = app.vault.getAbstractFileByPath(normalizedPath);
+		const file = targetApp.vault.getAbstractFileByPath(normalizedPath);
 		if (file && file instanceof TFile) {
-			const arrayBuffer = await app.vault.readBinary(file as TFile);
+			const arrayBuffer = await targetApp.vault.readBinary(file as TFile);
 			return Buffer.from(arrayBuffer).toString('base64');
 		}
 	} catch (error) {
@@ -115,7 +124,7 @@ export function getActiveNoteDetail(appInstance?: App): {
 	activeFile: ActiveFile | null;
 	openFiles: Array<ActiveFile>;
 } {
-	const app = appInstance ?? AppContext.getInstance().app;
+	const app = resolveApp(appInstance);
 
 	// Get the active file using the recommended API
 	const activeFile = app.workspace.getActiveFile();
@@ -186,9 +195,10 @@ export function getActiveNoteDetail(appInstance?: App): {
  * @param app - Obsidian app instance
  * @returns Selected text string, or null if none selected
  */
-export function getSelectedTextFromActiveEditor(app: App): string | null {
+export function getSelectedTextFromActiveEditor(app?: App): string | null {
+	const targetApp = resolveApp(app);
 	try {
-		const anyApp = app as any;
+		const anyApp = targetApp as any;
 		// Get the MarkdownView constructor safely
 		const MarkdownView = anyApp.MarkdownView;
 		if (!MarkdownView) return null;
@@ -208,17 +218,18 @@ export function getSelectedTextFromActiveEditor(app: App): string | null {
 	}
 }
 
-export async function readFileContentByPath(app: App, filePath: string): Promise<ArrayBuffer | null> {
-	const file = app.vault.getAbstractFileByPath(filePath);
+export async function readFileContentByPath(filePath: string, app?: App): Promise<ArrayBuffer | null> {
+	const targetApp = resolveApp(app);
+	const file = targetApp.vault.getAbstractFileByPath(filePath);
 	if (file && file instanceof TFile) {
-		return await app.vault.readBinary(file);
+		return await targetApp.vault.readBinary(file);
 	}
 	return null;
 }
 
 export async function readFileAsText(filePath: string): Promise<string | null> {
 	try {
-		const app = AppContext.getInstance().app;
+		const app = AppContext.getApp();
 		const normalizedPath = normalizePath(filePath.startsWith('/') ? filePath.slice(1) : filePath);
 		const file = app.vault.getAbstractFileByPath(normalizedPath);
 		if (file && file instanceof TFile) {
@@ -232,7 +243,7 @@ export async function readFileAsText(filePath: string): Promise<string | null> {
 
 export function getFileTypeByPath(filePath: string): 'note' | 'file' | 'folder' | null {
 	// Use Obsidian API to properly determine file type
-	const app = AppContext.getInstance().app;
+	const app = AppContext.getApp();
 	const path = filePath;
 	const abstractFile = app.vault.getAbstractFileByPath(path);
 
@@ -260,14 +271,20 @@ export function getFileTypeByPath(filePath: string): 'note' | 'file' | 'folder' 
  * @param newTab - Whether to open in a new tab (default: false)
  * @returns Promise that resolves when file is opened and cursor is positioned
  */
-export async function openFileAtLine(app: App, filePath: string, lineNumber: number, newTab: boolean = false): Promise<void> {
+export async function openFileAtLine(
+	filePath: string,
+	lineNumber: number,
+	newTab: boolean = false,
+	app?: App,
+): Promise<void> {
+	const targetApp = resolveApp(app);
 	try {
-		const file = app.vault.getAbstractFileByPath(filePath);
+		const file = targetApp.vault.getAbstractFileByPath(filePath);
 		if (!file || !('path' in file)) {
 			throw new Error(`File not found: ${filePath}`);
 		}
 
-		const leaf = app.workspace.getLeaf(newTab);
+		const leaf = targetApp.workspace.getLeaf(newTab);
 		await leaf.openFile(file as any);
 
 		// Wait a bit for the file to be fully loaded

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppContext } from '@/app/context/AppContext';
 import { openFile } from '@/core/utils/obsidian-utils';
 import { findKeyNodesTool, graphTraversalTool } from '@/service/tools/search-graph-inspector';
 import { toolOutputToGraphPatch } from '../../../../component/mine/graph-viz/utils/graphPatches';
@@ -102,7 +101,7 @@ export const TopicGraphPopover: React.FC<TopicGraphPopoverProps> = ({ topic, anc
 		() =>
 			createObsidianGraphPreset({
 				onOpenPath: onClose ? createOpenSourceCallback(onClose) : undefined,
-				openFile: (path) => openFile(AppContext.getInstance().app, path, true),
+				openFile: (path) => openFile(path, true),
 			}),
 		[onClose]
 	);

@@ -97,7 +97,7 @@ export default class MyPlugin extends Plugin {
 
 		// Template manager loads prompts/templates from plugin dir on demand (absolute path for Node fs)
 		try {
-			const pluginDirAbsolute = getPluginDirAbsolute(this.app, this.manifest.id);
+			const pluginDirAbsolute = getPluginDirAbsolute(this.manifest.id, this.app);
 			this.templateManager = new TemplateManager(createPluginDirContentProvider(pluginDirAbsolute));
 		} catch (e) {
 			console.warn('[Peak Assistant] TemplateManager not available (plugin dir unresolved); prompts will use vault overrides only.', e);
@@ -347,4 +347,3 @@ export default class MyPlugin extends Plugin {
 	}
 
 }
-

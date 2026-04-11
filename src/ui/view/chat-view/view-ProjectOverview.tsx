@@ -260,7 +260,7 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources }) => {
 							'pktw-cursor-pointer pktw-transition-all',
 							'hover:pktw-shadow-md hover:pktw-border-border-hover hover:pktw-bg-accent/50'
 						)}
-						onClick={() => openAttachment(app, entry.resource)}
+						onClick={() => openAttachment(entry.resource)}
 					>
 						<div className="pktw-p-2 pktw-rounded-md pktw-bg-muted pktw-shrink-0">
 							<FileIcon className="pktw-w-5 pktw-h-5 pktw-text-muted-foreground" />
@@ -279,4 +279,3 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources }) => {
 		</div>
 	);
 };
-

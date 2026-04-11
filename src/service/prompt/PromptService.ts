@@ -44,7 +44,7 @@ export class PromptService {
 	 * Initialize prompt service and ensure the prompt folder exists.
 	 */
 	async init(): Promise<void> {
-		await ensureFolder(this.app, this.promptFolder);
+		await ensureFolder(this.promptFolder);
 	}
 
 	/**
