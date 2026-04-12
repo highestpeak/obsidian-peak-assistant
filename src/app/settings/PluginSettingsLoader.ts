@@ -286,6 +286,48 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	// Dev tools setting
 	settings.enableDevTools = getBoolean(raw?.enableDevTools, false);
 
+	// Vault Search V2 (Claude Agent SDK). Added 2026-04-12. Pass through the
+	// whole nested structure; downstream code (readProfileFromSettings) handles
+	// missing fields with defaults + fallback to llmProviderConfigs.
+	const rawVaultSearch = raw?.vaultSearch as {
+		useV2?: unknown;
+		sdkProfile?: {
+			kind?: unknown;
+			baseUrl?: unknown;
+			apiKey?: unknown;
+			authToken?: unknown;
+			primaryModel?: unknown;
+			fastModel?: unknown;
+		};
+	} | undefined;
+	if (rawVaultSearch && typeof rawVaultSearch === 'object') {
+		settings.vaultSearch = {
+			useV2: getBoolean(rawVaultSearch.useV2, false),
+			sdkProfile: rawVaultSearch.sdkProfile && typeof rawVaultSearch.sdkProfile === 'object'
+				? {
+					kind: typeof rawVaultSearch.sdkProfile.kind === 'string'
+						? rawVaultSearch.sdkProfile.kind as 'anthropic-direct' | 'openrouter' | 'litellm' | 'custom'
+						: undefined,
+					baseUrl: typeof rawVaultSearch.sdkProfile.baseUrl === 'string'
+						? rawVaultSearch.sdkProfile.baseUrl
+						: undefined,
+					apiKey: typeof rawVaultSearch.sdkProfile.apiKey === 'string'
+						? rawVaultSearch.sdkProfile.apiKey
+						: null,
+					authToken: typeof rawVaultSearch.sdkProfile.authToken === 'string'
+						? rawVaultSearch.sdkProfile.authToken
+						: null,
+					primaryModel: typeof rawVaultSearch.sdkProfile.primaryModel === 'string'
+						? rawVaultSearch.sdkProfile.primaryModel
+						: undefined,
+					fastModel: typeof rawVaultSearch.sdkProfile.fastModel === 'string'
+						? rawVaultSearch.sdkProfile.fastModel
+						: undefined,
+				}
+				: undefined,
+		};
+	}
+
 	return settings;
 }
 
