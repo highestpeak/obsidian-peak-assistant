@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
 
@@ -11,10 +12,15 @@ export const V2ReportSection: React.FC = () => {
 	if (!markdown) return null;
 
 	return (
-		<div className="pktw-mt-3">
+		<motion.div
+			className="pktw-mt-3"
+			initial={{ opacity: 0, y: 12 }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{ duration: 0.4, ease: 'easeOut' }}
+		>
 			<StreamdownIsolated isAnimating={!complete}>
 				{markdown}
 			</StreamdownIsolated>
-		</div>
+		</motion.div>
 	);
 };

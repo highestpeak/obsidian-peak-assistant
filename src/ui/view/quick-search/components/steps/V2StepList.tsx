@@ -1,4 +1,5 @@
 import React from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useSearchSessionStore } from '../../store/searchSessionStore';
 import { V2StepCard } from './V2StepCard';
 import type { V2ToolStep } from '../../types/search-steps';
@@ -74,11 +75,13 @@ export const V2StepList: React.FC = () => {
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-divide-y pktw-divide-gray-100">
-			{items.map((item, i) =>
-				item.kind === 'single'
-					? <V2StepCard key={item.step.id} step={item.step} />
-					: <BatchCard key={`batch-${i}`} steps={item.steps} />
-			)}
+			<AnimatePresence initial={false}>
+				{items.map((item, i) =>
+					item.kind === 'single'
+						? <V2StepCard key={item.step.id} step={item.step} />
+						: <BatchCard key={`batch-${i}`} steps={item.steps} />
+				)}
+			</AnimatePresence>
 		</div>
 	);
 };
