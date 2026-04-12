@@ -68,17 +68,50 @@ export function toAgentSdkEnv(profile: SdkProfile): Record<string, string> {
 }
 
 /**
- * Read the active profile from plugin settings. Falls back to DEFAULT_SDK_PROFILE
- * merged with any user-provided fields.
+ * Read the active profile from plugin settings.
  *
- * The settings path is hardcoded at `vaultSearch.sdkProfile` for now. Full
- * Profile Registry will replace this.
+ * Precedence (first non-empty wins for credentials):
+ *   1. `settings.vaultSearch.sdkProfile.apiKey / .authToken` (explicit opt-in)
+ *   2. `settings.ai.llmProviderConfigs.claude.apiKey` (existing chat-mode config)
+ *
+ * Non-credential fields (baseUrl, primaryModel, fastModel) also fall through
+ * from vaultSearch.sdkProfile → DEFAULT_SDK_PROFILE.
+ *
+ * This means a user who has already configured Claude for chat mode gets
+ * V2 vault search working automatically, with zero additional setup.
+ *
+ * Full Profile Registry (v2 spec) will replace this reader with a proper
+ * per-feature profile selector.
  */
 export function readProfileFromSettings(settings: unknown): SdkProfile {
-	const s = settings as { vaultSearch?: { sdkProfile?: Partial<SdkProfile> } } | undefined;
+	const s = settings as {
+		vaultSearch?: { sdkProfile?: Partial<SdkProfile> };
+		ai?: { llmProviderConfigs?: Record<string, { apiKey?: string; baseUrl?: string }> };
+	} | undefined;
+
 	const raw = s?.vaultSearch?.sdkProfile ?? {};
-	return {
+	const existingClaudeConfig = s?.ai?.llmProviderConfigs?.claude;
+
+	const merged: SdkProfile = {
 		...DEFAULT_SDK_PROFILE,
 		...raw,
 	};
+
+	// Credential fallback: if vaultSearch profile has no apiKey/authToken AND
+	// the user already has Claude configured for chat, reuse that key.
+	if (
+		!merged.apiKey &&
+		!merged.authToken &&
+		merged.kind === 'anthropic-direct' &&
+		existingClaudeConfig?.apiKey
+	) {
+		merged.apiKey = existingClaudeConfig.apiKey;
+		// Also adopt a non-default baseUrl if the existing config specifies one
+		// (some users point Claude at an enterprise proxy).
+		if (existingClaudeConfig.baseUrl && !raw.baseUrl) {
+			merged.baseUrl = existingClaudeConfig.baseUrl;
+		}
+	}
+
+	return merged;
 }
