@@ -1,6 +1,5 @@
 import { App, Notice } from 'obsidian';
 import { join } from 'path';
-import { pathToFileURL } from 'url';
 
 /**
  * Temporary spike command to verify @anthropic-ai/claude-agent-sdk runs inside
@@ -14,20 +13,31 @@ export async function runAgentSdkSpike(app: App, pluginId: string): Promise<void
     const sdkPath = join(pluginDir, 'sdk', 'sdk.mjs');
     const cliPath = join(pluginDir, 'sdk', 'cli.js');
 
-    // IMPORTANT: Obsidian's renderer resolves bare absolute paths via the
-    // app:// protocol, which does not hit the filesystem. Convert to a file://
-    // URL so dynamic import() goes through Node's ESM loader instead.
-    const sdkUrl = pathToFileURL(sdkPath).href;
+    new Notice(`[spike] loading SDK via Node require from ${sdkPath}`);
 
-    new Notice(`[spike] loading SDK from ${sdkUrl}`);
-
+    // IMPORTANT: Dynamic import() goes through Chromium's module loader which
+    // blocks file:// URLs by default (webSecurity policy). Use Node's CJS
+    // require instead — it bypasses Chromium entirely and reads directly from
+    // the filesystem. Node 22.12+ supports require(esm) for .mjs files, which
+    // covers current Electron/Obsidian versions.
+    //
+    // NOTE: Use globalThis.require (Node's runtime require) NOT esbuild's
+    // bundled require. The cast + indirection here prevents esbuild from
+    // trying to statically resolve the path at build time.
     let sdk: unknown;
     try {
-        sdk = await import(/* @vite-ignore */ sdkUrl);
+        const nodeRequire = (globalThis as unknown as { require: NodeJS.Require }).require;
+        sdk = nodeRequire(sdkPath);
         console.log('[spike] SDK loaded', sdk);
     } catch (err) {
-        new Notice(`[spike] SDK import failed: ${(err as Error).message}`);
-        console.error('[spike] import error', err);
+        new Notice(`[spike] SDK require failed: ${(err as Error).message}`, 10000);
+        console.error('[spike] require error', err);
+        console.log('[spike] diagnostic:', {
+            nodeVersion: (globalThis as unknown as { process?: { versions?: { node?: string } } })
+                .process?.versions?.node,
+            electronVersion: (globalThis as unknown as { process?: { versions?: { electron?: string } } })
+                .process?.versions?.electron,
+        });
         return;
     }
 
