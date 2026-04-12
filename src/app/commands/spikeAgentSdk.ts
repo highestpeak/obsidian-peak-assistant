@@ -1,5 +1,6 @@
 import { App, Notice } from 'obsidian';
 import { join } from 'path';
+import { pathToFileURL } from 'url';
 
 /**
  * Temporary spike command to verify @anthropic-ai/claude-agent-sdk runs inside
@@ -13,11 +14,16 @@ export async function runAgentSdkSpike(app: App, pluginId: string): Promise<void
     const sdkPath = join(pluginDir, 'sdk', 'sdk.mjs');
     const cliPath = join(pluginDir, 'sdk', 'cli.js');
 
-    new Notice(`[spike] loading SDK from ${sdkPath}`);
+    // IMPORTANT: Obsidian's renderer resolves bare absolute paths via the
+    // app:// protocol, which does not hit the filesystem. Convert to a file://
+    // URL so dynamic import() goes through Node's ESM loader instead.
+    const sdkUrl = pathToFileURL(sdkPath).href;
+
+    new Notice(`[spike] loading SDK from ${sdkUrl}`);
 
     let sdk: unknown;
     try {
-        sdk = await import(/* @vite-ignore */ sdkPath);
+        sdk = await import(/* @vite-ignore */ sdkUrl);
         console.log('[spike] SDK loaded', sdk);
     } catch (err) {
         new Notice(`[spike] SDK import failed: ${(err as Error).message}`);
