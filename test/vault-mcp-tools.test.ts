@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { listFoldersImpl, readFolderImpl, readNoteImpl } from '@/service/agents/vault-sdk/vaultMcpServer';
+import { listFoldersImpl, readFolderImpl, readNoteImpl, wikilinkExpandImpl, grepImpl } from '@/service/agents/vault-sdk/vaultMcpServer';
 
 // Minimal mock of Obsidian's Vault. Only implements getMarkdownFiles().
 function mockVaultWithFiles(paths: string[]) {
@@ -198,4 +198,82 @@ test('readNoteImpl: missing file returns error', async () => {
     assert.equal(result.error, 'not found');
     assert.equal(result.bodyPreview, '');
     assert.deepEqual(result.wikilinks, []);
+});
+
+test('wikilinkExpandImpl: one-hop expansion collects linked notes', async () => {
+    const metadataCache = {
+        getFileCache: (file: { path: string }) => {
+            if (file.path === 'a.md') {
+                return { links: [{ link: 'b' }, { link: 'c' }], frontmatter: {}, tags: [] };
+            }
+            return { links: [], frontmatter: {}, tags: [] };
+        },
+        getFirstLinkpathDest: (link: string, _source: string) => {
+            if (link === 'b') return { path: 'b.md' };
+            if (link === 'c') return { path: 'c.md' };
+            return null;
+        },
+    };
+    const vault = {
+        getAbstractFileByPath: (path: string) => ({ path }),
+    };
+
+    const result = await wikilinkExpandImpl(
+        vault as unknown as Parameters<typeof wikilinkExpandImpl>[0],
+        metadataCache as unknown as Parameters<typeof wikilinkExpandImpl>[1],
+        { startPath: 'a.md', maxSteps: 1 }
+    );
+    assert.deepEqual(result.visited.sort(), ['a.md', 'b.md', 'c.md']);
+});
+
+test('wikilinkExpandImpl: two-hop expansion follows chains but stops at depth', async () => {
+    const links: Record<string, string[]> = {
+        'a.md': ['b'],
+        'b.md': ['c'],
+        'c.md': ['d'],
+        'd.md': [],
+    };
+    const metadataCache = {
+        getFileCache: (file: { path: string }) => ({
+            links: (links[file.path] ?? []).map((l) => ({ link: l })),
+            frontmatter: {},
+            tags: [],
+        }),
+        getFirstLinkpathDest: (link: string) => {
+            const target = `${link}.md`;
+            return Object.keys(links).includes(target) ? { path: target } : null;
+        },
+    };
+    const vault = {
+        getAbstractFileByPath: (path: string) => ({ path }),
+    };
+
+    const result = await wikilinkExpandImpl(
+        vault as unknown as Parameters<typeof wikilinkExpandImpl>[0],
+        metadataCache as unknown as Parameters<typeof wikilinkExpandImpl>[1],
+        { startPath: 'a.md', maxSteps: 2 }
+    );
+    // a (depth 0) → b (depth 1) → c (depth 2). d (depth 3) NOT visited.
+    assert.deepEqual(result.visited.sort(), ['a.md', 'b.md', 'c.md']);
+});
+
+test('grepImpl: delegates to injected searchFn and passes through limit', async () => {
+    let capturedQuery = '';
+    let capturedLimit = 0;
+    const searchFn = async (query: string, limit: number) => {
+        capturedQuery = query;
+        capturedLimit = limit;
+        return [
+            { path: 'doc1.md', snippet: `... matches ${query} ...`, score: 0.9 },
+            { path: 'doc2.md', snippet: `another ${query}`, score: 0.7 },
+        ];
+    };
+
+    const result = await grepImpl(searchFn, { query: 'vault', limit: 10 });
+    assert.equal(capturedQuery, 'vault');
+    assert.equal(capturedLimit, 10);
+    assert.equal(result.query, 'vault');
+    assert.equal(result.hits.length, 2);
+    assert.equal(result.hits[0].path, 'doc1.md');
+    assert.ok(result.hits[0].snippet.includes('vault'));
 });

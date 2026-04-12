@@ -177,3 +177,91 @@ export async function readNoteImpl(
         tags,
     };
 }
+
+// ─── vault_wikilink_expand ───────────────────────────────────────────────────
+
+export interface WikilinkExpandParams {
+    startPath: string;
+    maxSteps?: number;
+}
+
+export interface WikilinkExpandResult {
+    startPath: string;
+    visited: string[];
+}
+
+/**
+ * BFS over the wikilink graph starting at `startPath`. Traverses `[[links]]`
+ * up to `maxSteps` hops deep (clamped 1-4). Uses metadata cache's
+ * `getFirstLinkpathDest` to resolve link references to actual note paths.
+ *
+ * Used by the agent to follow user-declared semantic edges — more reliable
+ * than vector similarity on personal vaults where user naming is inconsistent.
+ */
+export async function wikilinkExpandImpl(
+    vault: Vault,
+    metadataCache: MetadataCache,
+    params: WikilinkExpandParams
+): Promise<WikilinkExpandResult> {
+    const maxSteps = Math.max(1, Math.min(params.maxSteps ?? 2, 4));
+    const visited = new Set<string>();
+    const queue: { path: string; depth: number }[] = [{ path: params.startPath, depth: 0 }];
+
+    while (queue.length > 0) {
+        const { path, depth } = queue.shift()!;
+        if (visited.has(path)) continue;
+        visited.add(path);
+        if (depth >= maxSteps) continue;
+
+        const file = vault.getAbstractFileByPath(path) as TFile | null;
+        if (!file) continue;
+        const cache = metadataCache.getFileCache(file);
+        if (!cache?.links) continue;
+
+        for (const linkRef of cache.links) {
+            const dest = metadataCache.getFirstLinkpathDest(linkRef.link, path);
+            if (dest && !visited.has(dest.path)) {
+                queue.push({ path: dest.path, depth: depth + 1 });
+            }
+        }
+    }
+
+    return {
+        startPath: params.startPath,
+        visited: Array.from(visited),
+    };
+}
+
+// ─── vault_grep ──────────────────────────────────────────────────────────────
+
+export interface GrepParams {
+    query: string;
+    limit?: number;
+}
+
+export interface GrepHit {
+    path: string;
+    snippet: string;
+    score: number;
+}
+
+export interface GrepResult {
+    query: string;
+    hits: GrepHit[];
+}
+
+/**
+ * Generic grep impl. The caller supplies a searchFn that wraps the existing
+ * FTS/hybrid search client. This lets us test in isolation and lets the MCP
+ * tool wrapper inject the real search client at runtime (Task 8).
+ *
+ * Clamps limit to 1-50.
+ */
+export async function grepImpl(
+    searchFn: (query: string, limit: number) => Promise<GrepHit[]>,
+    params: GrepParams
+): Promise<GrepResult> {
+    const limit = Math.max(1, Math.min(params.limit ?? 20, 50));
+    const hits = await searchFn(params.query, limit);
+    return { query: params.query, hits };
+}
