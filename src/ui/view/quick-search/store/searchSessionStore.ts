@@ -10,7 +10,7 @@ import { mergeTokenUsage } from '@/core/providers/types';
 import type { AnalysisMode } from '@/service/agents/shared-types';
 import type { PlanSnapshot } from '@/service/agents/vault/types';
 import type { UserFeedback } from '@/service/agents/core/types';
-import type { SearchStep, SearchStepType } from '../types/search-steps';
+import type { SearchStep, SearchStepType, V2ToolStep } from '../types/search-steps';
 import { PHASE_TO_STEP_TYPE, createStep } from '../types/search-steps';
 
 // ---------------------------------------------------------------------------
@@ -72,6 +72,14 @@ interface SearchSessionState {
 	hitlState: HitlState | null;
 	hitlFeedbackCallback: ((feedback: UserFeedback) => void) | null;
 	autoSaveState: AutoSaveState;
+
+	// --- V2 (Agent SDK) state ---
+	v2Steps: V2ToolStep[];
+	v2ReportChunks: string[];
+	v2ReportComplete: boolean;
+	/** Map tool-call id → toolName so we can look up name on tool-result */
+	v2ToolCallIndex: Map<string, string>;
+
 	restoredFromHistory: boolean;
 	restoredFromVaultPath: string | null;
 	aiModalOpen: boolean;
@@ -107,6 +115,14 @@ interface SearchSessionActions {
 	pushPhaseStep: (phaseName: string) => void;
 	completeStep: (type: SearchStepType) => void;
 	markAllStepsCompleted: () => void;
+
+	// V2 step management
+	pushV2Step: (step: V2ToolStep) => void;
+	updateV2Step: (id: string, updater: (step: V2ToolStep) => V2ToolStep) => void;
+	appendV2ReportChunk: (chunk: string) => void;
+	markV2ReportComplete: () => void;
+	registerV2ToolCall: (id: string, toolName: string) => void;
+	resolveV2ToolName: (id: string) => string;
 
 	// HITL
 	setHitlPause: (state: { pauseId: string; phase: string; snapshot: PlanSnapshot }) => void;
@@ -176,6 +192,11 @@ const INITIAL_STATE: SearchSessionState = {
 
 	steps: [],
 
+	v2Steps: [],
+	v2ReportChunks: [],
+	v2ReportComplete: false,
+	v2ToolCallIndex: new Map(),
+
 	triggerAnalysis: 0,
 	hitlState: null,
 	hitlFeedbackCallback: null,
@@ -221,6 +242,10 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			hitlFeedbackCallback: null,
 			dashboardUpdatedLine: '',
 			steps: [],
+			v2Steps: [],
+			v2ReportChunks: [],
+			v2ReportComplete: false,
+			v2ToolCallIndex: new Map(),
 			// Preserve analysisMode and webEnabled (already in closure)
 			analysisMode,
 			webEnabled,
@@ -240,11 +265,16 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			}
 			return completed;
 		});
+		const completedV2Steps = s.v2Steps.map((step) => {
+			if (step.status !== 'running') return step;
+			return { ...step, status: 'done' as const, endedAt: now };
+		});
 		return {
 			status: 'completed',
 			isInputFrozen: false,
 			hasStartedStreaming: false,
 			steps: completedSteps,
+			v2Steps: completedV2Steps,
 		};
 	}),
 
@@ -349,6 +379,34 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	}),
 
 	markAllStepsCompleted: () => set((s) => ({ steps: completeRunningSteps(s.steps) })),
+
+	// -----------------------------------------------------------------------
+	// V2 step management
+	// -----------------------------------------------------------------------
+
+	pushV2Step: (step) => set((s) => ({ v2Steps: [...s.v2Steps, step] })),
+
+	updateV2Step: (id, updater) => set((s) => {
+		const idx = s.v2Steps.findIndex((st) => st.id === id);
+		if (idx === -1) return s;
+		const next = [...s.v2Steps];
+		next[idx] = updater({ ...next[idx] });
+		return { v2Steps: next };
+	}),
+
+	appendV2ReportChunk: (chunk) => set((s) => ({
+		v2ReportChunks: [...s.v2ReportChunks, chunk],
+	})),
+
+	markV2ReportComplete: () => set({ v2ReportComplete: true }),
+
+	registerV2ToolCall: (id, toolName) => set((s) => {
+		const next = new Map(s.v2ToolCallIndex);
+		next.set(id, toolName);
+		return { v2ToolCallIndex: next };
+	}),
+
+	resolveV2ToolName: (id) => get().v2ToolCallIndex.get(id) ?? 'unknown',
 
 	// -----------------------------------------------------------------------
 	// HITL
