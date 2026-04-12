@@ -441,6 +441,22 @@ export interface MyPluginSettings {
 		mstLeafOpacity?: number;
 		mstLeafWidthScale?: number;
 	};
+
+	/**
+	 * Vault Search V2 (Claude Agent SDK). Optional until feature flag is flipped.
+	 */
+	vaultSearch?: {
+		useV2?: boolean;
+		sdkProfile?: {
+			kind?: 'anthropic-direct' | 'openrouter' | 'litellm' | 'custom';
+			baseUrl?: string;
+			apiKey?: string | null;
+			authToken?: string | null;
+			primaryModel?: string;
+			fastModel?: string;
+			customHeaders?: Record<string, string>;
+		};
+	};
 }
 
 /**
@@ -469,5 +485,16 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 		skeletonMinBranchNodes: 3,
 		mstLeafOpacity: 0.25,
 		mstLeafWidthScale: 0.6,
+	},
+
+	vaultSearch: {
+		useV2: false,
+		sdkProfile: {
+			kind: 'anthropic-direct',
+			baseUrl: 'https://api.anthropic.com',
+			primaryModel: 'claude-opus-4-6',
+			fastModel: 'claude-haiku-4-5',
+			// apiKey / authToken are user-provided at runtime
+		},
 	},
 };
