@@ -28,10 +28,22 @@ const V2TokenStatsBanner: React.FC = () => {
 };
 
 export const V2SearchResultView: React.FC<V2SearchResultViewProps> = () => {
+	const hasReport = useSearchSessionStore((s) => s.v2ReportChunks.length > 0);
+
 	return (
-		<div>
-			<V2StepList />
-			<V2ReportSection />
+		<div className="pktw-flex pktw-flex-col pktw-gap-0">
+			{/* Step cards — compact exploration log */}
+			<div className="pktw-px-1 pktw-py-1 pktw-bg-[#fafafa] pktw-rounded pktw-border pktw-border-gray-100">
+				<V2StepList />
+			</div>
+
+			{/* Report — full-width markdown, visually separated */}
+			{hasReport && (
+				<div className="pktw-mt-4">
+					<V2ReportSection />
+				</div>
+			)}
+
 			<V2TokenStatsBanner />
 		</div>
 	);

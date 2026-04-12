@@ -97,7 +97,9 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		enabled: !!(titleFromStore?.trim()) && !restoredFromHistory,
 	});
 	const settings = AppContext.getInstance().settings;
-	const continueAnalysisSummary = summaryChunks?.length ? summaryChunks.join('') : '';
+	const v2ReportChunks = useSearchSessionStore((s) => s.v2ReportChunks);
+	const continueAnalysisSummary = summaryChunks?.length ? summaryChunks.join('')
+		: v2ReportChunks?.length ? v2ReportChunks.join('') : '';
 	const continueAnalysisConfig = useContinueAnalysisFollowupChatConfig({ summary: continueAnalysisSummary });
 
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
