@@ -21,6 +21,8 @@ import type { LLMStreamEvent, StreamTriggerName } from '@/core/providers/types';
 export interface TranslateOpts {
 	triggerName: StreamTriggerName;
 	taskIndex?: number;
+	/** When true, text/thinking from 'assistant' messages are skipped (already streamed via stream_event) */
+	hasPartialMessages?: boolean;
 }
 
 interface AnyContentBlock {
@@ -87,13 +89,13 @@ export function translateSdkMessage(
 		case 'assistant': {
 			const blocks = msg.message?.content ?? [];
 			for (const block of blocks) {
-				if (block.type === 'text' && typeof block.text === 'string') {
+				if (!opts.hasPartialMessages && block.type === 'text' && typeof block.text === 'string') {
 					out.push({
 						type: 'text-delta',
 						text: block.text,
 						triggerName,
 					} as LLMStreamEvent);
-				} else if (block.type === 'thinking' && typeof block.thinking === 'string') {
+				} else if (!opts.hasPartialMessages && block.type === 'thinking' && typeof block.thinking === 'string') {
 					out.push({
 						type: 'reasoning-delta',
 						text: block.thinking,
@@ -143,6 +145,31 @@ export function translateSdkMessage(
 				triggerName,
 			} as LLMStreamEvent);
 			break;
+
+		// Per-token streaming events (enabled by includePartialMessages: true)
+		case 'stream_event': {
+			const event = (msg as any).event;
+			if (!event) break;
+			if (event.type === 'content_block_delta') {
+				const delta = event.delta;
+				if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
+					out.push({
+						type: 'text-delta',
+						text: delta.text,
+						triggerName,
+					} as LLMStreamEvent);
+				} else if (delta?.type === 'thinking_delta' && typeof delta.thinking === 'string') {
+					out.push({
+						type: 'reasoning-delta',
+						text: delta.thinking,
+						triggerName,
+					} as LLMStreamEvent);
+				}
+				// input_json_delta for tool_use — ignored, we get full tool_use from 'assistant' message
+			}
+			// message_start, content_block_start/stop, message_delta, message_stop — ignored
+			break;
+		}
 
 		default:
 			out.push({

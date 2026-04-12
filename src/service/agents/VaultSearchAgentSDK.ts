@@ -219,6 +219,7 @@ export class VaultSearchAgentSDK {
                     mcpServers: { vault: vaultMcpServer },
                     settingSources: [],
                     env: subprocessEnv,
+                    includePartialMessages: true,
                 } as Parameters<typeof query>[0]['options'],
             });
 
@@ -242,7 +243,7 @@ export class VaultSearchAgentSDK {
                     }
                 }
 
-                const events = translateSdkMessage(raw, { triggerName });
+                const events = translateSdkMessage(raw, { triggerName, hasPartialMessages: true });
                 for (const ev of events) {
                     yield ev;
                 }

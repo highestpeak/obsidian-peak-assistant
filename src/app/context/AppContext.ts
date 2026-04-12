@@ -200,7 +200,35 @@ export class AppContext {
 				(window as any).getVaultPersona = () => getVaultPersona();
 				(window as any).cleanupGraphTable = () => cleanupGraphTable();
 
-				console.debug('🔧 Graph Inspector Test Tools initialized!');
+				// V2 search debug state dump
+					(window as any).dumpV2State = () => {
+						try {
+							// Dynamic import to avoid circular deps
+							const { useSearchSessionStore } = require('@/ui/view/quick-search/store/searchSessionStore');
+							const s = useSearchSessionStore.getState();
+							const dump = {
+								status: s.status,
+								query: s.query,
+								v2Steps: s.v2Steps.map((st: any) => ({
+									id: st.id, toolName: st.toolName, displayName: st.displayName,
+									status: st.status, summary: st.summary,
+									durationMs: st.endedAt && st.startedAt ? st.endedAt - st.startedAt : null,
+								})),
+								v2ReportLength: s.v2ReportChunks.join('').length,
+								v2ReportChunkCount: s.v2ReportChunks.length,
+								v2ReportComplete: s.v2ReportComplete,
+								v1Steps: s.steps.map((st: any) => ({ type: st.type, status: st.status })),
+								usage: s.usage,
+								duration: s.duration,
+								error: s.error,
+								debugLogCount: s.agentDebugLog.length,
+							};
+							console.log('[V2 State Dump]', JSON.stringify(dump, null, 2));
+							return dump;
+						} catch (e) { console.error('dumpV2State failed', e); }
+					};
+
+					console.debug('🔧 Graph Inspector Test Tools initialized!');
 				console.debug('📖 Usage: window.testGraphTools.inspectNote("path/to/note.md")');
 				console.debug('📖 Usage: await window.testAISearchTools.testSlotRecall("your question")');
 				console.debug('📖 Usage: window.indexDocument("path/to/note.md") — fast core index');

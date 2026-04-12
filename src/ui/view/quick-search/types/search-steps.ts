@@ -205,10 +205,31 @@ export function v2ToolDisplay(toolName: string, input: Record<string, unknown>):
 	}
 }
 
-/** Extract human-readable summary from tool result JSON */
+/**
+ * Unwrap SDK tool result content blocks to get the actual text.
+ * SDK tool_result.content can be:
+ *   - a string (direct text)
+ *   - an array of content blocks: [{type:'text', text:'...'}]
+ *   - null/undefined
+ */
+export function unwrapToolOutput(output: unknown): string {
+	if (typeof output === 'string') return output;
+	if (Array.isArray(output)) {
+		return output
+			.filter((b: any) => b?.type === 'text' && typeof b.text === 'string')
+			.map((b: any) => b.text)
+			.join('');
+	}
+	if (output && typeof output === 'object') return JSON.stringify(output);
+	return '';
+}
+
+/** Extract human-readable summary from tool result */
 export function extractV2Summary(toolName: string, result: unknown): string {
 	try {
-		const data = typeof result === 'string' ? JSON.parse(result) : result;
+		const raw = unwrapToolOutput(result);
+		if (!raw) return '';
+		const data = JSON.parse(raw);
 		const shortName = toolName.replace(/^mcp__vault__/, '');
 		switch (shortName) {
 			case 'vault_list_folders':

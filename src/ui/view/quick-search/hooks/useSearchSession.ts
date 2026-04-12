@@ -31,7 +31,7 @@ import type { SearchAgentResult } from '@/service/agents/shared-types';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName, UISignalChannel } from '@/core/providers/types';
 import { getDeltaEventDeltaText, DELTA_EVENT_TYPES } from '@/core/providers/helpers/stream-helper';
-import { createStep, v2ToolDisplay, extractV2Summary } from '../types/search-steps';
+import { createStep, v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '../types/search-steps';
 import type { V2ToolStep } from '../types/search-steps';
 
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
@@ -364,7 +364,7 @@ export function useSearchSession() {
 				if (resolvedToolName.startsWith('mcp__vault__')) {
 					const output = ev.output;
 					const summary = extractV2Summary(resolvedToolName, output);
-					const preview = typeof output === 'string' ? output : JSON.stringify(output, null, 2);
+					const preview = unwrapToolOutput(output);
 					store.getState().updateV2Step(toolCallId, (step) => ({
 						...step,
 						status: 'done',
