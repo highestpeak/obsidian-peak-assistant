@@ -10,14 +10,14 @@ import { mergeTokenUsage } from '@/core/providers/types';
 import type { AnalysisMode } from '@/service/agents/shared-types';
 import type { PlanSnapshot } from '@/service/agents/vault/types';
 import type { UserFeedback } from '@/service/agents/core/types';
-import type { SearchStep, SearchStepType, V2ToolStep } from '../types/search-steps';
+import type { SearchStep, SearchStepType, V2ToolStep, V2TimelineItem, V2Source } from '../types/search-steps';
 import { PHASE_TO_STEP_TYPE, createStep } from '../types/search-steps';
 
 // ---------------------------------------------------------------------------
 // Session status
 // ---------------------------------------------------------------------------
 
-export type SessionStatus = 'idle' | 'starting' | 'streaming' | 'completed' | 'error' | 'canceled';
+export type SessionStatus = 'idle' | 'starting' | 'streaming' | 'plan_ready' | 'completed' | 'error' | 'canceled';
 
 // ---------------------------------------------------------------------------
 // HITL state
@@ -38,6 +38,25 @@ export interface AutoSaveState {
 	lastRunId: string | null;
 	lastSavedSummaryHash: string | null;
 	lastSavedPath: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// V2 Section type
+// ---------------------------------------------------------------------------
+
+export interface V2Section {
+	id: string;
+	title: string;
+	contentType: string;
+	visualType: string;
+	evidencePaths: string[];
+	brief: string;
+	weight: number;
+	status: 'pending' | 'generating' | 'done' | 'error';
+	content: string;
+	streamingChunks: string[];
+	error?: string;
+	generations: Array<{ content: string; prompt?: string; timestamp: number }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,11 +93,29 @@ interface SearchSessionState {
 	autoSaveState: AutoSaveState;
 
 	// --- V2 (Agent SDK) state ---
+	v2Active: boolean;
+	/** Current V2 view: process | report | sources */
+	v2View: 'process' | 'report' | 'sources';
 	v2Steps: V2ToolStep[];
 	v2ReportChunks: string[];
 	v2ReportComplete: boolean;
 	/** Map tool-call id → toolName so we can look up name on tool-result */
 	v2ToolCallIndex: Map<string, string>;
+	/** Unified timeline: interleaved text + tool items */
+	v2Timeline: V2TimelineItem[];
+	/** Index in v2Timeline where the final report begins (after last tool call) */
+	v2FinalReportStartIndex: number;
+	/** Sources extracted from vault_read_note tool calls */
+	v2Sources: V2Source[];
+	/** Follow-up questions parsed from report tail */
+	v2FollowUpQuestions: string[];
+	/** The proposed_outline from vault_submit_plan — the real structured report */
+	v2ProposedOutline: string | null;
+	/** Report plan sections extracted from agent's thinking (for future HITL approval) */
+	v2PlanSections: V2Section[];
+	/** Executive summary markdown (generated after all sections complete) */
+	v2Summary: string;
+	v2SummaryStreaming: boolean;
 
 	restoredFromHistory: boolean;
 	restoredFromVaultPath: string | null;
@@ -117,12 +154,32 @@ interface SearchSessionActions {
 	markAllStepsCompleted: () => void;
 
 	// V2 step management
+	setV2Active: (active: boolean) => void;
+	setV2View: (view: 'process' | 'report' | 'sources') => void;
 	pushV2Step: (step: V2ToolStep) => void;
 	updateV2Step: (id: string, updater: (step: V2ToolStep) => V2ToolStep) => void;
 	appendV2ReportChunk: (chunk: string) => void;
 	markV2ReportComplete: () => void;
 	registerV2ToolCall: (id: string, toolName: string) => void;
 	resolveV2ToolName: (id: string) => string;
+	// V2 timeline management
+	pushV2TimelineText: (id: string, chunk: string) => void;
+	pushV2TimelineTool: (step: V2ToolStep) => void;
+	updateV2TimelineTool: (id: string, updater: (step: V2ToolStep) => V2ToolStep) => void;
+	completeV2TimelineText: (id: string) => void;
+	addV2Source: (source: V2Source) => void;
+
+	// Plan & section generation
+	setPlanSections: (sections: V2Section[]) => void;
+	updatePlanSection: (id: string, updater: (s: V2Section) => V2Section) => void;
+	reorderPlanSections: (ids: string[]) => void;
+	removePlanSection: (id: string) => void;
+	appendSectionChunk: (id: string, chunk: string) => void;
+	completeSectionContent: (id: string, content: string) => void;
+	failSection: (id: string, error: string) => void;
+	startSectionRegenerate: (id: string) => void;
+	setSummary: (text: string) => void;
+	setSummaryStreaming: (streaming: boolean) => void;
 
 	// HITL
 	setHitlPause: (state: { pauseId: string; phase: string; snapshot: PlanSnapshot }) => void;
@@ -192,10 +249,20 @@ const INITIAL_STATE: SearchSessionState = {
 
 	steps: [],
 
+	v2Active: false,
+	v2View: 'process' as const,
 	v2Steps: [],
 	v2ReportChunks: [],
 	v2ReportComplete: false,
 	v2ToolCallIndex: new Map(),
+	v2Timeline: [],
+	v2FinalReportStartIndex: -1,
+	v2Sources: [],
+	v2FollowUpQuestions: [],
+	v2ProposedOutline: null,
+	v2PlanSections: [],
+	v2Summary: '',
+	v2SummaryStreaming: false,
 
 	triggerAnalysis: 0,
 	hitlState: null,
@@ -242,10 +309,19 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			hitlFeedbackCallback: null,
 			dashboardUpdatedLine: '',
 			steps: [],
+			v2Active: false,
 			v2Steps: [],
 			v2ReportChunks: [],
 			v2ReportComplete: false,
 			v2ToolCallIndex: new Map(),
+			v2Timeline: [],
+			v2FinalReportStartIndex: -1,
+			v2Sources: [],
+			v2FollowUpQuestions: [],
+			v2ProposedOutline: null,
+			v2PlanSections: [],
+			v2Summary: '',
+			v2SummaryStreaming: false,
 			// Preserve analysisMode and webEnabled (already in closure)
 			analysisMode,
 			webEnabled,
@@ -269,12 +345,38 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			if (step.status !== 'running') return step;
 			return { ...step, status: 'done' as const, endedAt: now };
 		});
+		// Complete running tool steps in timeline
+		const completedTimeline = s.v2Timeline.map((item) => {
+			if (item.kind === 'tool' && item.step.status === 'running') {
+				return { ...item, step: { ...item.step, status: 'done' as const, endedAt: now } };
+			}
+			if (item.kind === 'text' && !item.complete) {
+				return { ...item, complete: true };
+			}
+			return item;
+		});
+		// Detect final report start index: last text item after last tool item
+		let finalIdx = -1;
+		for (let i = completedTimeline.length - 1; i >= 0; i--) {
+			if (completedTimeline[i].kind === 'tool') {
+				// Final report starts at the next text item after this tool
+				for (let j = i + 1; j < completedTimeline.length; j++) {
+					if (completedTimeline[j].kind === 'text') { finalIdx = j; break; }
+				}
+				break;
+			}
+		}
+		// Use follow-up questions already set by useSearchSession (from vault_submit_plan structured field)
+		// Only keep existing ones — no regex fallback needed since agent provides them structurally
 		return {
 			status: 'completed',
 			isInputFrozen: false,
 			hasStartedStreaming: false,
 			steps: completedSteps,
 			v2Steps: completedV2Steps,
+			v2Timeline: completedTimeline,
+			v2FinalReportStartIndex: finalIdx,
+			v2View: s.v2Active ? 'report' as const : s.v2View,
 		};
 	}),
 
@@ -384,6 +486,9 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	// V2 step management
 	// -----------------------------------------------------------------------
 
+	setV2Active: (active) => set({ v2Active: active }),
+	setV2View: (view) => set({ v2View: view }),
+
 	pushV2Step: (step) => set((s) => ({ v2Steps: [...s.v2Steps, step] })),
 
 	updateV2Step: (id, updater) => set((s) => {
@@ -407,6 +512,110 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	}),
 
 	resolveV2ToolName: (id) => get().v2ToolCallIndex.get(id) ?? 'unknown',
+
+	// V2 timeline management
+	pushV2TimelineText: (id, chunk) => set((s) => {
+		const timeline = [...s.v2Timeline];
+		const last = timeline[timeline.length - 1];
+		if (last && last.kind === 'text' && !last.complete) {
+			// Append to existing text item
+			timeline[timeline.length - 1] = { ...last, chunks: [...last.chunks, chunk] };
+		} else {
+			// Create new text item
+			timeline.push({ kind: 'text', id, chunks: [chunk], complete: false });
+		}
+		return { v2Timeline: timeline };
+	}),
+
+	pushV2TimelineTool: (step) => set((s) => {
+		const timeline = [...s.v2Timeline];
+		// Mark preceding text item as complete
+		const last = timeline[timeline.length - 1];
+		if (last && last.kind === 'text' && !last.complete) {
+			timeline[timeline.length - 1] = { ...last, complete: true };
+		}
+		timeline.push({ kind: 'tool', step });
+		return { v2Timeline: timeline };
+	}),
+
+	updateV2TimelineTool: (id, updater) => set((s) => {
+		const idx = s.v2Timeline.findIndex((item) => item.kind === 'tool' && item.step.id === id);
+		if (idx === -1) return s;
+		const timeline = [...s.v2Timeline];
+		const item = timeline[idx] as { kind: 'tool'; step: V2ToolStep };
+		timeline[idx] = { kind: 'tool', step: updater({ ...item.step }) };
+		return { v2Timeline: timeline };
+	}),
+
+	completeV2TimelineText: (id) => set((s) => {
+		const idx = s.v2Timeline.findIndex((item) => item.kind === 'text' && item.id === id);
+		if (idx === -1) return s;
+		const timeline = [...s.v2Timeline];
+		const item = timeline[idx] as { kind: 'text'; id: string; chunks: string[]; complete: boolean };
+		timeline[idx] = { ...item, complete: true };
+		return { v2Timeline: timeline };
+	}),
+
+	addV2Source: (source) => set((s) => {
+		// Deduplicate by path
+		if (s.v2Sources.some((src) => src.path === source.path)) return s;
+		return { v2Sources: [...s.v2Sources, source] };
+	}),
+
+	// -----------------------------------------------------------------------
+	// Plan & section generation
+	// -----------------------------------------------------------------------
+
+	setPlanSections: (sections) => set({ v2PlanSections: sections }),
+
+	updatePlanSection: (id, updater) => set((s) => ({
+		v2PlanSections: s.v2PlanSections.map((sec) => sec.id === id ? updater(sec) : sec),
+	})),
+
+	reorderPlanSections: (ids) => set((s) => {
+		const map = new Map(s.v2PlanSections.map((sec) => [sec.id, sec]));
+		return { v2PlanSections: ids.map((id) => map.get(id)!).filter(Boolean) };
+	}),
+
+	removePlanSection: (id) => set((s) => ({
+		v2PlanSections: s.v2PlanSections.filter((sec) => sec.id !== id),
+	})),
+
+	appendSectionChunk: (id, chunk) => set((s) => ({
+		v2PlanSections: s.v2PlanSections.map((sec) =>
+			sec.id === id ? { ...sec, streamingChunks: [...sec.streamingChunks, chunk] } : sec
+		),
+	})),
+
+	completeSectionContent: (id, content) => set((s) => ({
+		v2PlanSections: s.v2PlanSections.map((sec) =>
+			sec.id === id ? { ...sec, status: 'done' as const, content, streamingChunks: [] } : sec
+		),
+	})),
+
+	failSection: (id, error) => set((s) => ({
+		v2PlanSections: s.v2PlanSections.map((sec) =>
+			sec.id === id ? { ...sec, status: 'error' as const, error } : sec
+		),
+	})),
+
+	startSectionRegenerate: (id) => set((s) => ({
+		v2PlanSections: s.v2PlanSections.map((sec) => {
+			if (sec.id !== id) return sec;
+			const prev = sec.content ? { content: sec.content, timestamp: Date.now() } : null;
+			return {
+				...sec,
+				status: 'generating' as const,
+				content: '',
+				streamingChunks: [],
+				error: undefined,
+				generations: prev ? [...sec.generations, prev] : sec.generations,
+			};
+		}),
+	})),
+
+	setSummary: (text) => set({ v2Summary: text }),
+	setSummaryStreaming: (streaming) => set({ v2SummaryStreaming: streaming }),
 
 	// -----------------------------------------------------------------------
 	// HITL
