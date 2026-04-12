@@ -31,6 +31,8 @@ import type {
 	ReconEvidence,
 } from './vault/types';
 import { classifyQueryComplexity, type QueryComplexity } from './vault/phases/routeQuery';
+import { VaultSearchAgentSDK } from './VaultSearchAgentSDK';
+import { AppContext } from '@/app/context/AppContext';
 
 export class VaultSearchAgent {
 	private state: VaultSearchState;
@@ -52,6 +54,31 @@ export class VaultSearchAgent {
 	async *startSession(userQuery: string): AsyncGenerator<VaultSearchEvent> {
 		this.state = this.buildInitialState(userQuery);
 		const stepId = generateUuidWithoutHyphens();
+
+		// --- Feature flag: V2 Claude Agent SDK pipeline ---
+		// When settings.vaultSearch.useV2 is enabled, delegate to the SDK-backed
+		// agent instead of the legacy classify/decompose/recon pipeline. Everything
+		// upstream of this point (state setup, stepId) is shared; we just substitute
+		// the inner generator.
+		const ctx = AppContext.getInstance();
+		const pluginSettings = ctx.plugin?.settings;
+		if (pluginSettings?.vaultSearch?.useV2 === true) {
+			console.log('[VaultSearchAgent] routing to V2 (Claude Agent SDK)');
+			const v2 = new VaultSearchAgentSDK({
+				app: ctx.app,
+				pluginId: ctx.plugin.manifest.id,
+				searchClient: ctx.searchClient,
+				aiServiceManager: this.aiServiceManager,
+				settings: pluginSettings,
+			});
+			// Non-blocking warmup — errors are logged, not propagated
+			v2.warmup().catch(() => undefined);
+
+			for await (const ev of v2.startSession(userQuery)) {
+				yield ev as VaultSearchEvent;
+			}
+			return;
+		}
 
 		// --- Adaptive Routing ---
 		const complexity = classifyQueryComplexity(userQuery);

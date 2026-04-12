@@ -34,7 +34,7 @@ export interface NodeBinaryInfo {
  *
  * Priority:
  *   1. window.PEAK_NODE_PATH override (debug)
- *   2. ~/.nvm/versions/node/*/bin/node (newest version first)
+ *   2. ~/.nvm/versions/node/<version>/bin/node (newest version first)
  *   3. /opt/homebrew/bin/node
  *   4. /usr/local/bin/node
  *   5. /usr/bin/node
