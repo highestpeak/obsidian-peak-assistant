@@ -116,6 +116,7 @@ const shared = {
 		"electron",
 		"better-sqlite3", // Mark as external so it loads from node_modules (native module)
 		"pdfjs-dist", // Heavy lib: load at runtime to keep main.js small; worker loaded via GlobalWorkerOptions.workerSrc (CDN)
+		"@anthropic-ai/claude-agent-sdk", // Heavy lib: spawned as subprocess at runtime; loaded from sdk/ sidecar directory
 		"@codemirror/autocomplete",
 		"@codemirror/collab",
 		"@codemirror/commands",
