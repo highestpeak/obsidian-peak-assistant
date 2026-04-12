@@ -76,13 +76,26 @@ export async function runAgentSdkSpike(app: App, pluginId: string): Promise<void
         return;
     }
 
-    new Notice('[spike] starting query() — check console');
+    // Use Obsidian's own Electron binary as the Node runtime for cli.js.
+    // - Avoids relying on cli.js's shebang (`#!/usr/bin/env node`), which
+    //   requires cli.js to be executable and `node` to be in Obsidian's PATH.
+    //   Both fail in typical setups (cli.js is 644 after copy, and node is
+    //   often in ~/.nvm which Obsidian's renderer PATH doesn't include).
+    // - Electron supports ELECTRON_RUN_AS_NODE=1 to switch to pure Node mode,
+    //   so process.execPath (the Electron binary bundled with Obsidian) works
+    //   as a stand-in for node. This is the idiomatic way to spawn Node
+    //   subprocesses from Electron apps.
+    const nodeLikeExecutable = process.execPath;
+
+    new Notice(`[spike] starting query() via ${nodeLikeExecutable}`);
     const messages: unknown[] = [];
     try {
         for await (const msg of query({
             prompt: 'What files end with .md in the current directory? List at most 3.',
             options: {
                 pathToClaudeCodeExecutable: cliPath,
+                executable: nodeLikeExecutable as 'node',
+                executableArgs: [],
                 cwd: basePath,
                 allowedTools: ['Glob'],
                 settingSources: [],
@@ -91,6 +104,7 @@ export async function runAgentSdkSpike(app: App, pluginId: string): Promise<void
                 env: {
                     ANTHROPIC_API_KEY: apiKey,
                     ANTHROPIC_BASE_URL: 'https://api.anthropic.com',
+                    ELECTRON_RUN_AS_NODE: '1',
                     PATH: process.env.PATH ?? '',
                 },
             } as Parameters<typeof query>[0]['options'],
