@@ -206,6 +206,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-vault-report': meta('prompts', 'ai-analysis-vault-report', { systemPromptId: 'ai-analysis-vault-report-system' as PromptId }),
 	'ai-analysis-vault-report-summary-system': meta('prompts', 'ai-analysis-vault-report-summary-system'),
 	'ai-analysis-vault-report-summary': meta('prompts', 'ai-analysis-vault-report-summary', { systemPromptId: 'ai-analysis-vault-report-summary-system' as PromptId }),
+	'ai-analysis-vault-sdk-playbook': meta('prompts', 'ai-analysis-vault-sdk-playbook'),
 	'doc-tag-generate-json': meta('prompts', 'doc-tag-generate-json', {
 		expectsJson: true,
 		jsonConstraint:

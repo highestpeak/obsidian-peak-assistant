@@ -219,6 +219,8 @@ export enum PromptId {
 	AiAnalysisVaultReportSummarySystem = 'ai-analysis-vault-report-summary-system',
 	/** Vault report executive summary: user prompt with blocks + evidence. Generated after blocks complete. */
 	AiAnalysisVaultReportSummary = 'ai-analysis-vault-report-summary',
+	/** Vault SDK playbook: system prompt for SDK vault search agent (tool instruction + type classification). */
+	VaultSdkPlaybook = 'ai-analysis-vault-sdk-playbook',
 
 	// Context building templates (internal use)
 	ContextMemory = 'context-memory',
