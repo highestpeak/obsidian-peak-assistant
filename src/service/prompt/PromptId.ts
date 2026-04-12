@@ -219,6 +219,10 @@ export enum PromptId {
 	AiAnalysisVaultReportSummarySystem = 'ai-analysis-vault-report-summary-system',
 	/** Vault report executive summary: user prompt with blocks + evidence. Generated after blocks complete. */
 	AiAnalysisVaultReportSummary = 'ai-analysis-vault-report-summary',
+	/** Per-section report generation: system (static). */
+	AiAnalysisReportSectionSystem = 'ai-analysis-report-section-system',
+	/** Per-section report generation: user prompt with evidence + section spec. */
+	AiAnalysisReportSection = 'ai-analysis-report-section',
 	/** Vault SDK playbook: system prompt for SDK vault search agent (tool instruction + type classification). */
 	VaultSdkPlaybook = 'ai-analysis-vault-sdk-playbook',
 
@@ -260,6 +264,7 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisVaultPresentPlan,
 	PromptId.AiAnalysisVaultReport,
 	PromptId.AiAnalysisVaultReportSummary,
+	PromptId.AiAnalysisReportSection,
 ] as const;
 
 /**
@@ -660,6 +665,18 @@ export interface PromptVariables {
 		reportPlan: string;
 		blocksSummary: string;
 		evidenceList: string;
+	};
+	[PromptId.AiAnalysisReportSectionSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReportSection]: {
+		userQuery: string;
+		reportOverview: string;
+		sectionTitle: string;
+		contentType: string;
+		visualType: string;
+		sectionBrief: string;
+		otherSections: string;
+		evidenceContent: string;
+		userPrompt?: string;
 	};
 }
 
