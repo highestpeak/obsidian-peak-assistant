@@ -118,15 +118,31 @@ export default class MyPlugin extends Plugin {
 
 		// Create AIServiceManager (ConversationService and ProjectService will be initialized in init())
 		this.aiServiceManager = new AIServiceManager(this.app, this.settings.ai, this.templateManager ?? undefined);
+
+		// Create AppContext EARLY — before any service init runs, so obsidian-utils and
+		// vault-utils resolveApp() helpers can find the singleton during downstream init
+		// chains. searchClient is null-cast now; back-filled after initializeSearchService
+		// below. This replaces an earlier bug where AppContext was created too late.
+		const aiAnalysisHistoryService = new AIAnalysisHistoryService();
+		const appContext = new AppContext(
+			this.app,
+			this.aiServiceManager,
+			null as unknown as SearchClient,
+			this,
+			this.settings,
+			aiAnalysisHistoryService,
+			(aiServiceManager: AIServiceManager) => new DocSimpleAgent(aiServiceManager),
+		);
+
 		// Initialize global DocumentLoaderManager singleton
 		// Pass aiServiceManager for loaders that need AI capabilities (e.g., image description)
 		DocumentLoaderManager.init(this.app, this.settings.search, this.aiServiceManager);
 		await this.aiServiceManager.init();
 
 		// Initialize SQLite store
-		await sqliteStoreManager.init({ 
-			app: this.app, 
-			storageFolder: this.settings.dataStorageFolder, 
+		await sqliteStoreManager.init({
+			app: this.app,
+			storageFolder: this.settings.dataStorageFolder,
 			filename: VAULT_DB_FILENAME,
 			settings: { sqliteBackend: this.settings.sqliteBackend }
 		});
@@ -134,17 +150,8 @@ export default class MyPlugin extends Plugin {
 		// Initialize search service (singleton)
 		await this.initializeSearchService();
 
-		// Create AppContext with all dependencies (viewManager will be set after ViewManager creation)
-		const aiAnalysisHistoryService = new AIAnalysisHistoryService();
-		const appContext = new AppContext(
-			this.app,
-			this.aiServiceManager,
-			this.searchClient!,
-			this,
-			this.settings,
-			aiAnalysisHistoryService,
-			(aiServiceManager: AIServiceManager) => new DocSimpleAgent(aiServiceManager),
-		);
+		// Back-fill searchClient on AppContext now that it exists.
+		appContext.searchClient = this.searchClient!;
 
 		// Create ViewManager with AppContext
 		this.viewManager = new ViewManager(this, appContext);

@@ -102,7 +102,14 @@ export class AppContext {
 	constructor(
 		public readonly app: App,
 		public readonly manager: AIServiceManager,
-		public readonly searchClient: SearchClient,
+		/**
+		 * SearchClient is mutable because the AppContext must be constructed BEFORE
+		 * service initialization (so obsidian-utils / vault-utils resolveApp helpers
+		 * can find the singleton), but SearchClient itself is only created inside
+		 * Plugin.initializeSearchService() after sqlite is ready. main.ts sets this
+		 * after initializeSearchService() completes.
+		 */
+		public searchClient: SearchClient,
 		public readonly plugin: MyPlugin,
 		public settings: MyPluginSettings,
 		public readonly aiAnalysisHistoryService: AIAnalysisHistoryService,
