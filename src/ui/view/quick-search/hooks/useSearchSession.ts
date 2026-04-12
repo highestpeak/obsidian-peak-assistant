@@ -31,7 +31,8 @@ import type { SearchAgentResult } from '@/service/agents/shared-types';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName, UISignalChannel } from '@/core/providers/types';
 import { getDeltaEventDeltaText, DELTA_EVENT_TYPES } from '@/core/providers/helpers/stream-helper';
-import { createStep } from '../types/search-steps';
+import { createStep, v2ToolDisplay, extractV2Summary } from '../types/search-steps';
+import type { V2ToolStep } from '../types/search-steps';
 
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import type { VaultHitlPauseEvent, VaultPhaseTransitionEvent } from '@/service/agents/vault/types';
@@ -333,6 +334,13 @@ export function useSearchSession() {
 					const delta = getDeltaEventDeltaText(event);
 					bufferSummaryDelta(delta);
 				}
+				// V2: after submit_plan, text-delta is the final report
+				else if (store.getState().v2Steps.length > 0) {
+					const delta = getDeltaEventDeltaText(event);
+					if (delta) {
+						store.getState().appendV2ReportChunk(delta);
+					}
+				}
 				break;
 			}
 			case 'text-end': {
@@ -350,6 +358,21 @@ export function useSearchSession() {
 				const ev = event as any;
 				const currentResult = ev.extra?.currentResult as SearchAgentResult | undefined;
 				if (currentResult) applySearchResult(currentResult);
+				// V2: update step card with summary
+				const toolCallId = ev.id ?? '';
+				const resolvedToolName = store.getState().resolveV2ToolName(toolCallId);
+				if (resolvedToolName.startsWith('mcp__vault__')) {
+					const output = ev.output;
+					const summary = extractV2Summary(resolvedToolName, output);
+					const preview = typeof output === 'string' ? output : JSON.stringify(output, null, 2);
+					store.getState().updateV2Step(toolCallId, (step) => ({
+						...step,
+						status: 'done',
+						endedAt: Date.now(),
+						summary,
+						resultPreview: preview?.slice(0, 2000),
+					}));
+				}
 				// Debug capture: log tool output (output field, not result)
 				if (ev.toolName) {
 					store.getState().appendAgentDebugLog({
@@ -627,6 +650,10 @@ export function useSearchSession() {
 					}
 
 					store.getState().markCompleted();
+					// V2: mark report done
+					if (store.getState().v2Steps.length > 0) {
+						store.getState().markV2ReportComplete();
+					}
 					// Bridge
 					markAIAnalysisCompleted();
 				}
@@ -714,12 +741,29 @@ export function useSearchSession() {
 			}
 			case 'tool-call': {
 				const ev = event as any;
+				// Debug log (existing behavior)
 				store.getState().appendAgentDebugLog({
 					type: 'tool-call',
 					taskIndex: ev.taskIndex,
-					// tool-call event uses 'input' field (not 'args')
 					data: { tool: ev.toolName ?? '', args: ev.input ?? ev.args ?? {} },
 				});
+				// V2: create step card for vault tools
+				const toolName = ev.toolName ?? '';
+				if (toolName.startsWith('mcp__vault__')) {
+					const input = ev.input ?? {};
+					const { displayName, icon } = v2ToolDisplay(toolName, input);
+					const step: V2ToolStep = {
+						id: ev.id ?? `tc-${Date.now()}`,
+						toolName,
+						displayName,
+						icon,
+						input,
+						status: 'running',
+						startedAt: Date.now(),
+					};
+					store.getState().pushV2Step(step);
+					store.getState().registerV2ToolCall(step.id, toolName);
+				}
 				break;
 			}
 
