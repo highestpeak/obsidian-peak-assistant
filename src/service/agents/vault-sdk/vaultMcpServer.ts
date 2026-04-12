@@ -275,6 +275,16 @@ export interface SubmitPlanInput {
     rationale: string;
     proposed_outline: string;
     coverage_assessment: string;
+    follow_up_questions?: string[];
+    plan_sections?: Array<{
+        id: string;
+        title: string;
+        content_type: string;
+        visual_type: string;
+        evidence_paths: string[];
+        brief: string;
+        weight: number;
+    }>;
 }
 
 export interface SubmitPlanFeedback {
@@ -408,13 +418,23 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
     );
 
     const submitPlan = tool(
-        'submit_plan',
+        'vault_submit_plan',
         'Call this when you have gathered enough evidence to propose a plan for the final report. The user will review and either approve or request adjustments. selected_paths must contain all vault paths you want cited in the final report.',
         {
             selected_paths: z.array(z.string()),
             rationale: z.string(),
             proposed_outline: z.string(),
             coverage_assessment: z.string(),
+            follow_up_questions: z.array(z.string()).optional().describe('3-5 context-specific follow-up questions the user might ask next'),
+            plan_sections: z.array(z.object({
+                id: z.string(),
+                title: z.string().describe('Conclusion-as-heading for this section'),
+                content_type: z.enum(['enumeration', 'comparison', 'analysis', 'recommendation', 'timeline']),
+                visual_type: z.enum(['table', 'quadrantChart', 'flowchart', 'timeline', 'mindmap', 'none']),
+                evidence_paths: z.array(z.string()).describe('Vault paths relevant to this section'),
+                brief: z.string().describe('1-2 sentence description of section content'),
+                weight: z.number().min(0).max(10).describe('Display weight: 1-3=small, 4-6=medium, 7-10=full-width'),
+            })).optional().describe('Structured report plan: 3-6 sections with content types and visual prescriptions'),
         },
         async (input, _extra) => {
             const feedback = await onSubmitPlan({
@@ -422,6 +442,8 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
                 rationale: input.rationale,
                 proposed_outline: input.proposed_outline,
                 coverage_assessment: input.coverage_assessment,
+                follow_up_questions: input.follow_up_questions,
+                plan_sections: input.plan_sections,
             });
             return {
                 content: [{ type: 'text' as const, text: JSON.stringify(feedback, null, 2) }],
