@@ -7,10 +7,57 @@ import { join } from 'path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
 /**
+ * Monkey-patch Node's events.setMaxListeners to tolerate browser-context
+ * AbortSignal instances in Electron renderer. The SDK calls
+ * events.setMaxListeners(100, abortSignal) internally. In Electron renderer,
+ * globalThis.AbortController is Chromium's, and its signal is not an instance
+ * of Node's EventTarget class, so Node rejects it with a TypeError.
+ *
+ * Use runtime require() to get a mutable reference to the events module
+ * (esbuild disallows assignment to namespace imports). 'events' is a Node
+ * built-in listed in esbuild external so this resolves to Node's real module.
+ *
+ * Idempotent. Safe to call multiple times.
+ */
+let _setMaxListenersPatched = false;
+function patchEventsSetMaxListenersForRenderer(): void {
+    if (_setMaxListenersPatched) return;
+    _setMaxListenersPatched = true;
+    type EventsModule = {
+        setMaxListeners: (n: number, ...targets: unknown[]) => void;
+    };
+    const nodeRequire = (globalThis as unknown as { require: NodeJS.Require }).require;
+    const eventsModule = nodeRequire('events') as EventsModule;
+    const original = eventsModule.setMaxListeners.bind(eventsModule);
+    eventsModule.setMaxListeners = function patchedSetMaxListeners(
+        n: number,
+        ...targets: unknown[]
+    ): void {
+        try {
+            original(n, ...(targets as never[]));
+        } catch (err) {
+            if (
+                err instanceof TypeError &&
+                String(err.message).includes('must be an instance')
+            ) {
+                // Browser-world AbortSignal in renderer — drop targets, set default only
+                original(n);
+                return;
+            }
+            throw err;
+        }
+    };
+    console.debug('[spike] patched events.setMaxListeners for renderer dual-globals');
+}
+
+/**
  * Temporary spike command to verify @anthropic-ai/claude-agent-sdk runs inside
  * the Obsidian plugin. Delete this file after migration is verified in Task 16.
  */
 export async function runAgentSdkSpike(app: App, pluginId: string): Promise<void> {
+    // Apply the renderer compatibility patch before any SDK call.
+    patchEventsSetMaxListenersForRenderer();
+
     const adapter = app.vault.adapter as unknown as { getBasePath(): string };
     const basePath = adapter.getBasePath();
     const pluginDir = join(basePath, app.vault.configDir, 'plugins', pluginId);
