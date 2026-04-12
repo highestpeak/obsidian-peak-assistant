@@ -104,6 +104,23 @@ async function run(): Promise<void> {
 				assert.strictEqual((events[0] as any).debugName, 'sdk-unknown');
 			},
 		},
+		{
+			name: 'translateSdkMessage: assistant thinking block emits reasoning-delta',
+			fn: () => {
+				const sdkMsg = {
+					type: 'assistant',
+					message: {
+						content: [
+							{ type: 'thinking', thinking: 'Let me analyze this query first.' },
+						],
+					},
+				};
+				const events = translateSdkMessage(sdkMsg, { triggerName: StreamTriggerName.SEARCH_AI_AGENT });
+				const reasoning = events.filter((e) => e.type === 'reasoning-delta');
+				assert.strictEqual(reasoning.length, 1);
+				assert.strictEqual((reasoning[0] as any).text, 'Let me analyze this query first.');
+			},
+		},
 	];
 
 	let passed = 0;
