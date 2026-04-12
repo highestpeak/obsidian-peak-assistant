@@ -14,7 +14,9 @@
  *   Task 8:  submit_plan + buildVaultMcpServer wrapper
  */
 
-import type { Vault, MetadataCache, CachedMetadata, TFile } from 'obsidian';
+import type { Vault, MetadataCache, CachedMetadata, TFile, App } from 'obsidian';
+import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
+import { z } from 'zod';
 
 // ─── vault_list_folders ──────────────────────────────────────────────────────
 
@@ -264,4 +266,179 @@ export async function grepImpl(
     const limit = Math.max(1, Math.min(params.limit ?? 20, 50));
     const hits = await searchFn(params.query, limit);
     return { query: params.query, hits };
+}
+
+// ─── submit_plan (HITL trigger) ───────────────────────────────────────────────
+
+export interface SubmitPlanInput {
+    selected_paths: string[];
+    rationale: string;
+    proposed_outline: string;
+    coverage_assessment: string;
+}
+
+export interface SubmitPlanFeedback {
+    approved: boolean;
+    adjustedPaths?: string[];
+    adjustedOutline?: string;
+    message?: string;
+}
+
+// ─── buildVaultMcpServer ──────────────────────────────────────────────────────
+
+/**
+ * Minimal search function signature the MCP tool wrapper expects. The real
+ * implementation wraps the plugin's SearchClient in VaultSearchAgentSDK
+ * (Task 11) and passes it here.
+ */
+export type GrepSearchFn = (
+    query: string,
+    limit: number
+) => Promise<GrepHit[]>;
+
+export interface VaultMcpServerDeps {
+    app: App;
+    /** Injected search function (wraps existing FTS/hybrid search at the call site). */
+    searchFn: GrepSearchFn;
+    /** Invoked when the LLM calls submit_plan. Returns user feedback. */
+    onSubmitPlan: (plan: SubmitPlanInput) => Promise<SubmitPlanFeedback>;
+}
+
+/**
+ * Build the in-process MCP server exposing vault tools to Claude Agent SDK.
+ * Returns the server config object to pass to query({
+ *   options: { mcpServers: { vault: server } }
+ * }).
+ *
+ * All tools run in the plugin process (not in the SDK's subprocess). When
+ * the agent calls a tool, the SDK routes the call back to us via IPC and
+ * we execute the pure impl against `deps.app.vault` / `deps.app.metadataCache`.
+ */
+export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
+    const { app, searchFn, onSubmitPlan } = deps;
+
+    const listFolders = tool(
+        'vault_list_folders',
+        'List top-level folders in the vault with markdown file counts. CALL THIS FIRST for reflective queries like "my X" or "all Y". The result shows you the user\'s folder taxonomy so you can decide which folders to enumerate.',
+        {
+            maxDepth: z.number().min(1).max(5).default(2),
+        },
+        async (input, _extra) => {
+            const result = await listFoldersImpl(app.vault, {
+                maxDepth: input.maxDepth,
+            });
+            return {
+                content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+            };
+        }
+    );
+
+    const readFolder = tool(
+        'vault_read_folder',
+        'List all markdown files in a specific folder. Use after vault_list_folders has told you which folder to dive into. Recursive by default.',
+        {
+            folder: z.string(),
+            recursive: z.boolean().default(true),
+        },
+        async (input, _extra) => {
+            const result = await readFolderImpl(app.vault, {
+                folder: input.folder,
+                recursive: input.recursive,
+            });
+            return {
+                content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+            };
+        }
+    );
+
+    const readNote = tool(
+        'vault_read_note',
+        'Read a single note: frontmatter, wikilinks, tags, and body preview (first N chars). Use after vault_read_folder gives you candidate paths.',
+        {
+            path: z.string(),
+            maxChars: z.number().min(100).max(20000).default(3000),
+        },
+        async (input, _extra) => {
+            const result = await readNoteImpl(
+                app.vault,
+                app.metadataCache,
+                { path: input.path, maxChars: input.maxChars }
+            );
+            return {
+                content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+            };
+        }
+    );
+
+    const grep = tool(
+        'vault_grep',
+        'Full-text keyword search across the vault (FTS + vector hybrid). Use for specific-concept queries ("what did I write about X"). Do NOT use this as the first tool for reflective queries — it collapses on homogeneous folders.',
+        {
+            query: z.string(),
+            limit: z.number().min(1).max(50).default(20),
+        },
+        async (input, _extra) => {
+            const result = await grepImpl(searchFn, {
+                query: input.query,
+                limit: input.limit,
+            });
+            return {
+                content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+            };
+        }
+    );
+
+    const wikilinkExpand = tool(
+        'vault_wikilink_expand',
+        'Follow wikilinks N hops from a starting note. Use to find notes connected by the user\'s explicit semantic edges (more reliable than vector similarity on personal vaults).',
+        {
+            startPath: z.string(),
+            maxSteps: z.number().min(1).max(4).default(2),
+        },
+        async (input, _extra) => {
+            const result = await wikilinkExpandImpl(
+                app.vault,
+                app.metadataCache,
+                { startPath: input.startPath, maxSteps: input.maxSteps }
+            );
+            return {
+                content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+            };
+        }
+    );
+
+    const submitPlan = tool(
+        'submit_plan',
+        'Call this when you have gathered enough evidence to propose a plan for the final report. The user will review and either approve or request adjustments. selected_paths must contain all vault paths you want cited in the final report.',
+        {
+            selected_paths: z.array(z.string()),
+            rationale: z.string(),
+            proposed_outline: z.string(),
+            coverage_assessment: z.string(),
+        },
+        async (input, _extra) => {
+            const feedback = await onSubmitPlan({
+                selected_paths: input.selected_paths,
+                rationale: input.rationale,
+                proposed_outline: input.proposed_outline,
+                coverage_assessment: input.coverage_assessment,
+            });
+            return {
+                content: [{ type: 'text' as const, text: JSON.stringify(feedback, null, 2) }],
+            };
+        }
+    );
+
+    return createSdkMcpServer({
+        name: 'vault',
+        version: '1.0.0',
+        tools: [
+            listFolders,
+            readFolder,
+            readNote,
+            grep,
+            wikilinkExpand,
+            submitPlan,
+        ],
+    });
 }
