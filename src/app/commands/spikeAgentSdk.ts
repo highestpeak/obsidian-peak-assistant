@@ -1,5 +1,10 @@
 import { App, Notice } from 'obsidian';
 import { join } from 'path';
+// Static import: esbuild bundles sdk.mjs directly into main.js (ESM → CJS at
+// build time). This avoids runtime ESM loading, which Obsidian's current
+// Electron/Node (20.18 / 32.2) does not support via require(). cli.js stays a
+// sidecar file that the SDK spawns as a subprocess via pathToClaudeCodeExecutable.
+import { query } from '@anthropic-ai/claude-agent-sdk';
 
 /**
  * Temporary spike command to verify @anthropic-ai/claude-agent-sdk runs inside
@@ -10,42 +15,10 @@ export async function runAgentSdkSpike(app: App, pluginId: string): Promise<void
     const basePath = adapter.getBasePath();
     const pluginDir = join(basePath, app.vault.configDir, 'plugins', pluginId);
 
-    const sdkPath = join(pluginDir, 'sdk', 'sdk.mjs');
     const cliPath = join(pluginDir, 'sdk', 'cli.js');
 
-    new Notice(`[spike] loading SDK via Node require from ${sdkPath}`);
-
-    // IMPORTANT: Dynamic import() goes through Chromium's module loader which
-    // blocks file:// URLs by default (webSecurity policy). Use Node's CJS
-    // require instead — it bypasses Chromium entirely and reads directly from
-    // the filesystem. Node 22.12+ supports require(esm) for .mjs files, which
-    // covers current Electron/Obsidian versions.
-    //
-    // NOTE: Use globalThis.require (Node's runtime require) NOT esbuild's
-    // bundled require. The cast + indirection here prevents esbuild from
-    // trying to statically resolve the path at build time.
-    let sdk: unknown;
-    try {
-        const nodeRequire = (globalThis as unknown as { require: NodeJS.Require }).require;
-        sdk = nodeRequire(sdkPath);
-        console.log('[spike] SDK loaded', sdk);
-    } catch (err) {
-        new Notice(`[spike] SDK require failed: ${(err as Error).message}`, 10000);
-        console.error('[spike] require error', err);
-        console.log('[spike] diagnostic:', {
-            nodeVersion: (globalThis as unknown as { process?: { versions?: { node?: string } } })
-                .process?.versions?.node,
-            electronVersion: (globalThis as unknown as { process?: { versions?: { electron?: string } } })
-                .process?.versions?.electron,
-        });
-        return;
-    }
-
-    const query = (sdk as { query: (opts: unknown) => AsyncIterable<unknown> }).query;
-    if (typeof query !== 'function') {
-        new Notice('[spike] query() is not a function on the loaded module');
-        return;
-    }
+    new Notice(`[spike] SDK bundled; using cli.js at ${cliPath}`);
+    console.log('[spike] query fn:', typeof query);
 
     const apiKey = (window as unknown as { PEAK_SPIKE_ANTHROPIC_KEY?: string }).PEAK_SPIKE_ANTHROPIC_KEY;
     if (!apiKey) {
@@ -73,7 +46,7 @@ export async function runAgentSdkSpike(app: App, pluginId: string): Promise<void
                     ANTHROPIC_BASE_URL: 'https://api.anthropic.com',
                     PATH: process.env.PATH ?? '',
                 },
-            },
+            } as Parameters<typeof query>[0]['options'],
         })) {
             messages.push(msg);
             console.log('[spike] message', messages.length, msg);

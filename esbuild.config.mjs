@@ -116,7 +116,12 @@ const shared = {
 		"electron",
 		"better-sqlite3", // Mark as external so it loads from node_modules (native module)
 		"pdfjs-dist", // Heavy lib: load at runtime to keep main.js small; worker loaded via GlobalWorkerOptions.workerSrc (CDN)
-		"@anthropic-ai/claude-agent-sdk", // Heavy lib: spawned as subprocess at runtime; loaded from sdk/ sidecar directory
+		// NOTE: @anthropic-ai/claude-agent-sdk is INLINED into main.js (not external).
+		// Its sdk.mjs is ESM-only; Obsidian's Electron/Node cannot runtime-require it.
+		// The SDK's cli.js (Claude Code runtime) is kept as a sidecar in sdk/cli.js
+		// and spawned as a subprocess via explicit options.pathToClaudeCodeExecutable
+		// at every query() call, so the SDK's auto-resolve code path (which uses
+		// import.meta.url to find cli.js) is never executed at runtime.
 		"@codemirror/autocomplete",
 		"@codemirror/collab",
 		"@codemirror/commands",
