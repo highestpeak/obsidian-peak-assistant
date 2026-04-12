@@ -14,7 +14,7 @@
  *   Task 8:  submit_plan + buildVaultMcpServer wrapper
  */
 
-import type { Vault } from 'obsidian';
+import type { Vault, MetadataCache, CachedMetadata, TFile } from 'obsidian';
 
 // ─── vault_list_folders ──────────────────────────────────────────────────────
 
@@ -70,5 +70,110 @@ export async function listFoldersImpl(
     return {
         folders,
         totalMdFiles: files.length,
+    };
+}
+
+// ─── vault_read_folder ───────────────────────────────────────────────────────
+
+export interface ReadFolderParams {
+    folder: string;
+    recursive?: boolean;
+}
+
+export interface ReadFolderFileInfo {
+    path: string;
+    basename: string;
+}
+
+export interface ReadFolderResult {
+    folder: string;
+    files: ReadFolderFileInfo[];
+    totalCount: number;
+}
+
+/**
+ * List markdown files under a folder prefix. Recursive by default; when
+ * `recursive` is false, returns only immediate children of the folder.
+ */
+export async function readFolderImpl(
+    vault: Vault,
+    params: ReadFolderParams
+): Promise<ReadFolderResult> {
+    const folder = params.folder.replace(/\/+$/, ''); // strip trailing slash
+    const recursive = params.recursive ?? true;
+    const allFiles = vault.getMarkdownFiles();
+
+    const matches = allFiles.filter((f) => {
+        if (!f.path.startsWith(folder + '/') && f.path !== folder) return false;
+        if (recursive) return true;
+        // Non-recursive: only immediate children (no further slashes)
+        const rest = f.path.slice(folder.length + 1);
+        return !rest.includes('/');
+    });
+
+    return {
+        folder,
+        files: matches.map((f) => ({
+            path: f.path,
+            basename: (f as TFile).basename,
+        })),
+        totalCount: matches.length,
+    };
+}
+
+// ─── vault_read_note ─────────────────────────────────────────────────────────
+
+export interface ReadNoteParams {
+    path: string;
+    maxChars?: number;
+}
+
+export interface ReadNoteResult {
+    path: string;
+    frontmatter: Record<string, unknown>;
+    bodyPreview: string;
+    wikilinks: string[];
+    tags: string[];
+    error?: string;
+}
+
+/**
+ * Read a note's frontmatter, body preview, wikilinks, and tags. Returns an
+ * error field if the file can't be located. Body preview is truncated to
+ * `maxChars` (default 3000) and strips the frontmatter block.
+ */
+export async function readNoteImpl(
+    vault: Vault,
+    metadataCache: MetadataCache,
+    params: ReadNoteParams
+): Promise<ReadNoteResult> {
+    const maxChars = params.maxChars ?? 3000;
+    const file = vault.getAbstractFileByPath(params.path) as TFile | null;
+    if (!file || !('extension' in file)) {
+        return {
+            path: params.path,
+            frontmatter: {},
+            bodyPreview: '',
+            wikilinks: [],
+            tags: [],
+            error: 'not found',
+        };
+    }
+
+    const content = await vault.cachedRead(file);
+    const body = content.replace(/^---[\s\S]*?---\n?/, '').trim();
+    const bodyPreview = body.slice(0, maxChars);
+
+    const cache: CachedMetadata | null = metadataCache.getFileCache(file);
+    const frontmatter = (cache?.frontmatter ?? {}) as Record<string, unknown>;
+    const wikilinks = (cache?.links ?? []).map((l) => l.link);
+    const tags = (cache?.tags ?? []).map((t) => t.tag);
+
+    return {
+        path: params.path,
+        frontmatter,
+        bodyPreview,
+        wikilinks,
+        tags,
     };
 }

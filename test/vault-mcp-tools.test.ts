@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { listFoldersImpl } from '@/service/agents/vault-sdk/vaultMcpServer';
+import { listFoldersImpl, readFolderImpl, readNoteImpl } from '@/service/agents/vault-sdk/vaultMcpServer';
 
 // Minimal mock of Obsidian's Vault. Only implements getMarkdownFiles().
 function mockVaultWithFiles(paths: string[]) {
@@ -98,4 +98,104 @@ test('listFoldersImpl: results sorted by mdCount descending', async () => {
     assert.equal(result.folders[1].mdCount, 2);
     assert.equal(result.folders[2].path, 'small');
     assert.equal(result.folders[2].mdCount, 1);
+});
+
+test('readFolderImpl: recursive lists all files under a folder prefix', async () => {
+    const files = [
+        'kb2/A-sub/a.md',
+        'kb2/A-sub/b.md',
+        'kb2/B-sub/c.md',
+        'other/d.md',
+    ];
+    const vault = {
+        getMarkdownFiles: () =>
+            files.map((p) => ({
+                path: p,
+                basename: p.split('/').pop()?.replace('.md', '') ?? '',
+                extension: 'md',
+            })),
+    };
+
+    const result = await readFolderImpl(
+        vault as unknown as Parameters<typeof readFolderImpl>[0],
+        { folder: 'kb2/A-sub', recursive: true }
+    );
+    assert.equal(result.files.length, 2);
+    assert.deepEqual(
+        result.files.map((f) => f.path).sort(),
+        ['kb2/A-sub/a.md', 'kb2/A-sub/b.md']
+    );
+});
+
+test('readFolderImpl: non-recursive returns only immediate children', async () => {
+    const files = [
+        'kb2/a.md',
+        'kb2/A-sub/b.md',
+        'kb2/A-sub/deeper/c.md',
+    ];
+    const vault = {
+        getMarkdownFiles: () =>
+            files.map((p) => ({
+                path: p,
+                basename: p.split('/').pop()?.replace('.md', '') ?? '',
+                extension: 'md',
+            })),
+    };
+
+    const result = await readFolderImpl(
+        vault as unknown as Parameters<typeof readFolderImpl>[0],
+        { folder: 'kb2', recursive: false }
+    );
+    assert.equal(result.files.length, 1);
+    assert.equal(result.files[0].path, 'kb2/a.md');
+});
+
+test('readNoteImpl: returns frontmatter + body preview + wikilinks', async () => {
+    const fileObj = { path: 'test/note.md', basename: 'note', extension: 'md' };
+    const vault = {
+        getAbstractFileByPath: (path: string) => (path === 'test/note.md' ? fileObj : null),
+        cachedRead: async () => `---
+status: idea
+tags: [research]
+---
+
+# Note Title
+
+This is the body. It has [[internal-link]] and more text.`,
+    };
+    const metadataCache = {
+        getFileCache: () => ({
+            frontmatter: { status: 'idea', tags: ['research'] },
+            links: [{ link: 'internal-link', displayText: 'internal-link' }],
+            tags: [],
+        }),
+    };
+
+    const result = await readNoteImpl(
+        vault as unknown as Parameters<typeof readNoteImpl>[0],
+        metadataCache as unknown as Parameters<typeof readNoteImpl>[1],
+        { path: 'test/note.md', maxChars: 200 }
+    );
+    assert.equal(result.path, 'test/note.md');
+    assert.equal((result.frontmatter as { status: string }).status, 'idea');
+    assert.ok(result.bodyPreview.includes('This is the body'));
+    assert.deepEqual(result.wikilinks, ['internal-link']);
+    assert.equal(result.error, undefined);
+});
+
+test('readNoteImpl: missing file returns error', async () => {
+    const vault = {
+        getAbstractFileByPath: () => null,
+        cachedRead: async () => '',
+    };
+    const metadataCache = { getFileCache: () => null };
+
+    const result = await readNoteImpl(
+        vault as unknown as Parameters<typeof readNoteImpl>[0],
+        metadataCache as unknown as Parameters<typeof readNoteImpl>[1],
+        { path: 'not/exist.md' }
+    );
+    assert.equal(result.error, 'not found');
+    assert.equal(result.bodyPreview, '');
+    assert.deepEqual(result.wikilinks, []);
 });
