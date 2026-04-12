@@ -44,6 +44,7 @@ import { useProjectStore } from '@/ui/store/projectStore';
 import { useMessageStore } from '@/ui/view/chat-view/store/messageStore';
 import { useGraphAnimationStore } from '@/ui/component/mine/graph-viz/graphAnimationStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
+import { runAgentSdkSpike } from 'src/app/commands/spikeAgentSdk';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -165,6 +166,15 @@ export default class MyPlugin extends Plugin {
 			this.settings.search,
 			this.settings.dataStorageFolder,
 		).forEach((command) => this.addCommand(command));
+
+		// [Dev] Temporary spike command — delete after Task 16 migration is verified
+		this.addCommand({
+			id: 'spike-agent-sdk',
+			name: '[Dev] Spike Claude Agent SDK',
+			callback: async () => {
+				await runAgentSdkSpike(this.app, this.manifest.id);
+			},
+		});
 
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
