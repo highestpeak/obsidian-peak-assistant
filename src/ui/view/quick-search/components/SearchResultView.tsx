@@ -5,6 +5,7 @@ import { AIAnalysisPreStreamingState } from './ai-analysis-state/AIAnalysisPreSt
 import { AIAnalysisErrorState } from './ai-analysis-state/AIAnalysisErrorState';
 import { RecentAIAnalysis } from './ai-analysis-sections/RecentAIAnalysis';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
+import { V2SearchResultView } from './V2SearchResultView';
 
 // ---------------------------------------------------------------------------
 // Token stats banner — shown once analysis has phase usage data
@@ -61,6 +62,8 @@ export const SearchResultView: React.FC<SearchResultViewProps> = ({ onClose, onR
 	const startedAt = useSearchSessionStore((s) => s.startedAt);
 	const duration = useSearchSessionStore((s) => s.duration);
 
+	const v2StepCount = useSearchSessionStore((s) => s.v2Steps.length);
+
 	const handleOpenWikilink = createOpenSourceCallback(onClose);
 
 	// Error state
@@ -74,7 +77,7 @@ export const SearchResultView: React.FC<SearchResultViewProps> = ({ onClose, onR
 	}
 
 	// Idle state: no steps yet, no error
-	if (steps.length === 0) {
+	if (steps.length === 0 && v2StepCount === 0) {
 		return (
 			<>
 				<AIAnalysisPreStreamingState />
@@ -83,7 +86,12 @@ export const SearchResultView: React.FC<SearchResultViewProps> = ({ onClose, onR
 		);
 	}
 
-	// Steps available
+	// V2 mode
+	if (v2StepCount > 0) {
+		return <V2SearchResultView onClose={onClose} onRetry={onRetry} />;
+	}
+
+	// V1 steps available
 	return (
 		<div>
 			<StepList
