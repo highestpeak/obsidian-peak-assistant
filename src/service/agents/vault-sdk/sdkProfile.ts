@@ -70,47 +70,71 @@ export function toAgentSdkEnv(profile: SdkProfile): Record<string, string> {
 /**
  * Read the active profile from plugin settings.
  *
- * Precedence (first non-empty wins for credentials):
- *   1. `settings.vaultSearch.sdkProfile.apiKey / .authToken` (explicit opt-in)
- *   2. `settings.ai.llmProviderConfigs.claude.apiKey` (existing chat-mode config)
+ * Precedence:
+ *   1. `settings.vaultSearch.sdkProfile` (explicit opt-in, wins if fully specified)
+ *   2. `settings.ai.llmProviderConfigs.claude.apiKey` — construct anthropic-direct
+ *   3. `settings.ai.llmProviderConfigs.openrouter.apiKey` — construct openrouter
  *
- * Non-credential fields (baseUrl, primaryModel, fastModel) also fall through
- * from vaultSearch.sdkProfile → DEFAULT_SDK_PROFILE.
- *
- * This means a user who has already configured Claude for chat mode gets
- * V2 vault search working automatically, with zero additional setup.
- *
+ * This way a user who has already configured Claude OR OpenRouter for chat
+ * mode gets V2 vault search working automatically, zero additional setup.
  * Full Profile Registry (v2 spec) will replace this reader with a proper
  * per-feature profile selector.
+ *
+ * For the OpenRouter fallback we swap the default model slugs to OpenRouter's
+ * namespaced format (`anthropic/claude-*`) since the plain `claude-*` names
+ * only work against the first-party Anthropic API.
  */
 export function readProfileFromSettings(settings: unknown): SdkProfile {
 	const s = settings as {
 		vaultSearch?: { sdkProfile?: Partial<SdkProfile> };
-		ai?: { llmProviderConfigs?: Record<string, { apiKey?: string; baseUrl?: string }> };
+		ai?: {
+			llmProviderConfigs?: Record<
+				string,
+				{ apiKey?: string; baseUrl?: string }
+			>;
+		};
 	} | undefined;
 
 	const raw = s?.vaultSearch?.sdkProfile ?? {};
-	const existingClaudeConfig = s?.ai?.llmProviderConfigs?.claude;
+	const existingClaude = s?.ai?.llmProviderConfigs?.claude;
+	const existingOpenRouter = s?.ai?.llmProviderConfigs?.openrouter;
 
+	// Start from defaults + any user-specified vaultSearch overrides
 	const merged: SdkProfile = {
 		...DEFAULT_SDK_PROFILE,
 		...raw,
 	};
 
-	// Credential fallback: if vaultSearch profile has no apiKey/authToken AND
-	// the user already has Claude configured for chat, reuse that key.
-	if (
-		!merged.apiKey &&
-		!merged.authToken &&
-		merged.kind === 'anthropic-direct' &&
-		existingClaudeConfig?.apiKey
-	) {
-		merged.apiKey = existingClaudeConfig.apiKey;
-		// Also adopt a non-default baseUrl if the existing config specifies one
-		// (some users point Claude at an enterprise proxy).
-		if (existingClaudeConfig.baseUrl && !raw.baseUrl) {
-			merged.baseUrl = existingClaudeConfig.baseUrl;
+	// If user has explicit credentials in vaultSearch profile, use them as-is
+	if (merged.apiKey || merged.authToken) {
+		return merged;
+	}
+
+	// Fallback 1: existing Claude chat config → anthropic-direct
+	if (existingClaude?.apiKey) {
+		merged.kind = raw.kind ?? 'anthropic-direct';
+		merged.apiKey = existingClaude.apiKey;
+		if (existingClaude.baseUrl && !raw.baseUrl) {
+			merged.baseUrl = existingClaude.baseUrl;
 		}
+		return merged;
+	}
+
+	// Fallback 2: existing OpenRouter chat config → openrouter profile with
+	// Anthropic Skin. Model names must be OpenRouter slugs (anthropic/claude-*).
+	if (existingOpenRouter?.apiKey) {
+		merged.kind = 'openrouter';
+		merged.baseUrl = raw.baseUrl ?? 'https://openrouter.ai/api';
+		merged.authToken = existingOpenRouter.apiKey;
+		merged.apiKey = null;
+		// Only rewrite model slugs if the user hasn't overridden them explicitly.
+		if (!raw.primaryModel) {
+			merged.primaryModel = 'anthropic/claude-haiku-4-5';
+		}
+		if (!raw.fastModel) {
+			merged.fastModel = 'anthropic/claude-haiku-4-5';
+		}
+		return merged;
 	}
 
 	return merged;
