@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronUp, ChevronDown, Trash2, Sparkles } from 'lucide-react';
-import { Button } from '@/ui/component/shadcn/button';
+import { Button } from '@/ui/component/shared-ui/button';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 
 const CONTENT_TYPE_LABELS: Record<string, string> = {
