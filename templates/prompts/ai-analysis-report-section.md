@@ -9,12 +9,18 @@
 - **Content type**: {{{contentType}}}
 - **Required visualization**: {{{visualType}}}
 - **Brief**: {{{sectionBrief}}}
+- **Mission role**: {{{missionRole}}}
 
 ## Other Sections in This Report (for context, do not write these)
 {{{otherSections}}}
 
 ## Evidence for This Section
 {{{evidenceContent}}}
+{{#if userNotes}}
+
+## User Notes (incorporate into this section where relevant)
+{{{userNotes}}}
+{{/if}}
 {{#if userPrompt}}
 
 ## Additional Instructions

@@ -692,6 +692,8 @@ export interface PromptVariables {
 		otherSections: string;
 		evidenceContent: string;
 		userPrompt?: string;
+		missionRole: string;
+		userNotes?: string;
 	};
 }
 
