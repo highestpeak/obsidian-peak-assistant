@@ -661,17 +661,10 @@ export function useSearchSession() {
 						);
 					}
 
-					const hasPlan = store.getState().v2PlanSections.length > 0;
-					if (hasPlan) {
-						// Don't mark completed — show plan review first
-						store.setState({ status: 'plan_ready', isInputFrozen: false, hasStartedStreaming: false });
-						// Don't call markCompleted — we'll call it after report generation
-					} else {
-						store.getState().markCompleted();
-						// V2: mark report done
-						if (store.getState().v2Steps.length > 0) {
-							store.getState().markV2ReportComplete();
-						}
+					store.getState().markCompleted();
+					// V2: mark report done
+					if (store.getState().v2Steps.length > 0) {
+						store.getState().markV2ReportComplete();
 					}
 					// Bridge
 					markAIAnalysisCompleted();
@@ -841,6 +834,7 @@ export function useSearchSession() {
 								visualType: ps.visual_type ?? 'none',
 								evidencePaths: Array.isArray(ps.evidence_paths) ? ps.evidence_paths : [],
 								brief: ps.brief ?? '',
+								missionRole: ps.mission_role ?? 'synthesis',
 								weight: typeof ps.weight === 'number' ? ps.weight : 5,
 								status: 'pending' as const,
 								content: '',
@@ -1008,9 +1002,8 @@ export function useSearchSession() {
 			timelineRef.current = [];
 			analysisStartTimeRef.current = 0;
 
-			// Guard: only mark completed if not already done AND not waiting for HITL or plan review
-			const finalStatus = store.getState().status;
-			if (!store.getState().getIsCompleted() && !store.getState().hitlState && finalStatus !== 'plan_ready') {
+			// Guard: only mark completed if not already done AND not waiting for HITL
+			if (!store.getState().getIsCompleted() && !store.getState().hitlState) {
 				store.getState().markCompleted();
 				markAIAnalysisCompleted();
 			}
@@ -1034,14 +1027,15 @@ export function useSearchSession() {
 	// handleApprovePlan — start report generation from approved plan
 	// -----------------------------------------------------------------------
 
-	const reportOrchestrator = useMemo(() => new ReportOrchestrator(), []);
+	const reportOrchestrator = useMemo(() => new ReportOrchestrator(AppContext.getInstance().plugin.aiServiceManager), []);
 
 	const handleApprovePlan = useCallback(async () => {
 		const state = store.getState();
 		const sections = state.v2PlanSections;
 		if (sections.length === 0) return;
 
-		store.setState({ status: 'streaming' });
+		// Mark plan as approved — this is the user's explicit action
+		store.getState().approvePlan();
 
 		try {
 			await reportOrchestrator.generateReport(
@@ -1050,7 +1044,6 @@ export function useSearchSession() {
 				state.v2ProposedOutline ?? '',
 				state.query,
 			);
-			store.getState().markCompleted();
 		} catch (err: any) {
 			store.getState().recordError(err?.message ?? 'Report generation failed');
 		}

@@ -1,6 +1,7 @@
 import { streamText } from 'ai';
 import { AppContext } from '@/app/context/AppContext';
 import { PromptId } from '@/service/prompt/PromptId';
+import type { AIServiceManager } from '@/service/chat/service-manager';
 import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessionStore';
 import type { V2Section } from '@/ui/view/quick-search/store/searchSessionStore';
 
@@ -19,8 +20,10 @@ import type { V2Section } from '@/ui/view/quick-search/store/searchSessionStore'
  *   - Section Regeneration — re-run content agent with optional user prompt
  */
 export class ReportOrchestrator {
-    private get mgr() {
-        return AppContext.getInstance().aiServiceManager;
+    private readonly mgr: AIServiceManager;
+
+    constructor(aiServiceManager: AIServiceManager) {
+        this.mgr = aiServiceManager;
     }
 
     private get store() {
@@ -118,10 +121,12 @@ export class ReportOrchestrator {
                     otherSections,
                     evidenceContent,
                     userPrompt: userPrompt ?? '',
+                    missionRole: section.missionRole ?? 'synthesis',
+                    userNotes: this.store.getState().v2UserNotes || '',
                 }),
             ]);
 
-            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSectionSystem);
+            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
             const result = streamText({ model, system: systemPrompt, prompt: userMessage });
 
             let fullText = '';
@@ -156,7 +161,7 @@ export class ReportOrchestrator {
                 }),
             ]);
 
-            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportVisualSystem);
+            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportVisual);
             const result = streamText({ model, system: systemPrompt, prompt: userMessage });
 
             let mermaidBlock = '';
@@ -209,7 +214,7 @@ export class ReportOrchestrator {
                 }),
             ]);
 
-            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisVaultReportSummarySystem);
+            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisVaultReportSummary);
             const result = streamText({ model, system: systemPrompt, prompt: userMessage });
 
             let fullText = '';
@@ -238,7 +243,7 @@ export class ReportOrchestrator {
                 }),
             ]);
 
-            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisMermaidFixSystem);
+            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisMermaidFix);
             const result = streamText({ model, system: systemPrompt, prompt: userMessage });
 
             let fixed = '';
