@@ -37,7 +37,8 @@ const SectionCard: React.FC<{
 	total: number;
 	onMove: (id: string, dir: -1 | 1) => void;
 	onRemove: (id: string) => void;
-}> = ({ sec, index, total, onMove, onRemove }) => (
+	onUpdate: (id: string, updater: (s: V2Section) => V2Section) => void;
+}> = ({ sec, index, total, onMove, onRemove, onUpdate }) => (
 	<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-py-2 pktw-px-3 pktw-bg-white pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-group">
 		{/* Reorder */}
 		<div className="pktw-flex pktw-flex-col pktw-gap-0 pktw-shrink-0 pktw-pt-0.5">
@@ -56,7 +57,18 @@ const SectionCard: React.FC<{
 		</div>
 		{/* Content */}
 		<div className="pktw-flex-1 pktw-min-w-0">
-			<span className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-block pktw-mb-0.5">{sec.title}</span>
+			<span
+				className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-block pktw-mb-0.5 pktw-outline-none pktw-rounded pktw-px-0.5 pktw--mx-0.5 focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-white"
+				contentEditable
+				suppressContentEditableWarning
+				onBlur={(e) => {
+					const text = (e.target as HTMLSpanElement).textContent?.trim() || sec.title;
+					if (text !== sec.title) onUpdate(sec.id, (s) => ({ ...s, title: text }));
+				}}
+				onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur(); } }}
+			>
+				{sec.title}
+			</span>
 			<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mb-1">
 				{sec.visualType && sec.visualType !== 'none' && (
 					<span className="pktw-px-1.5 pktw-py-0.5 pktw-text-[9px] pktw-font-medium pktw-bg-gray-100 pktw-text-[#6b7280] pktw-rounded">
@@ -65,7 +77,18 @@ const SectionCard: React.FC<{
 				)}
 				<span className="pktw-text-[9px] pktw-text-[#9ca3af]">{sec.evidencePaths.length} sources</span>
 			</div>
-			<span className="pktw-text-xs pktw-text-[#6b7280] pktw-leading-relaxed">{sec.brief}</span>
+			<span
+				className="pktw-text-xs pktw-text-[#6b7280] pktw-leading-relaxed pktw-outline-none pktw-rounded pktw-px-0.5 pktw--mx-0.5 focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-white"
+				contentEditable
+				suppressContentEditableWarning
+				onBlur={(e) => {
+					const text = (e.target as HTMLSpanElement).textContent?.trim() || sec.brief;
+					if (text !== sec.brief) onUpdate(sec.id, (s) => ({ ...s, brief: text }));
+				}}
+				onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur(); } }}
+			>
+				{sec.brief}
+			</span>
 		</div>
 		{/* Delete */}
 		<div
@@ -82,6 +105,7 @@ export const V2PlanReview: React.FC<V2PlanReviewProps> = ({ onApprove }) => {
 	const overview = useSearchSessionStore((s) => s.v2ProposedOutline);
 	const removePlanSection = useSearchSessionStore((s) => s.removePlanSection);
 	const reorderPlanSections = useSearchSessionStore((s) => s.reorderPlanSections);
+	const updatePlanSection = useSearchSessionStore((s) => s.updatePlanSection);
 	const insights = useSearchSessionStore((s) => s.v2UserInsights);
 	const [insightInput, setInsightInput] = useState('');
 
@@ -169,6 +193,7 @@ export const V2PlanReview: React.FC<V2PlanReviewProps> = ({ onApprove }) => {
 											total={sections.length}
 											onMove={moveSection}
 											onRemove={removePlanSection}
+											onUpdate={updatePlanSection}
 										/>
 									))}
 								</div>
