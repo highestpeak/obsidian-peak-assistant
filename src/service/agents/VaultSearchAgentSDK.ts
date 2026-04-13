@@ -33,6 +33,7 @@ import {
     type SubmitPlanInput,
 } from './vault-sdk/vaultMcpServer';
 import { translateSdkMessage } from './vault-sdk/sdkMessageAdapter';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 export interface VaultSearchAgentSdkOptions {
     app: App;
@@ -74,6 +75,7 @@ export class VaultSearchAgentSDK {
     async *startSession(userQuery: string): AsyncGenerator<LLMStreamEvent> {
         const { app, pluginId, searchClient, aiServiceManager, settings } = this.options;
         const triggerName = StreamTriggerName.SEARCH_AI_AGENT;
+        const startTs = Date.now();
 
         // 1. Ensure warmup ran (idempotent); get real node binary
         if (!this.nodeInfo) {
@@ -115,12 +117,71 @@ export class VaultSearchAgentSDK {
         // 3. Resolve cli.js path
         const cliPath = getCliPath(app, pluginId);
 
-        // 4. Load system prompt playbook
+        // 4a. Load vault intuition + probe results (before renderPrompt so we can pass as context)
+        const [folderIntuitions, globalIntuitionJson, probeHits] = await Promise.all([
+            (async () => {
+                try {
+                    if (!sqliteStoreManager.isInitialized()) return [];
+                    return await sqliteStoreManager.getMobiusNodeRepo('vault').listTopFoldersForSearchOrient(30);
+                } catch { return []; }
+            })(),
+            (async () => {
+                try {
+                    if (!sqliteStoreManager.isInitialized()) return undefined;
+                    return (await sqliteStoreManager.getIndexStateRepo().get('knowledge_intuition_json')) ?? undefined;
+                } catch { return undefined; }
+            })(),
+            (async () => {
+                try {
+                    const res = await searchClient.search({
+                        text: userQuery,
+                        topK: 15,
+                        searchMode: 'hybrid',
+                        scopeMode: 'vault',
+                        indexTenant: 'vault',
+                    } as Parameters<typeof searchClient.search>[0]);
+                    return (res.items ?? []).map((i: any) => ({
+                        path: i.path as string,
+                        title: (i.title ?? i.path.split('/').pop() ?? '') as string,
+                        score: (i.score ?? 0) as number,
+                    }));
+                } catch { return []; }
+            })(),
+        ]);
+
+        // Build vault intuition section
+        let vaultIntuitionSection = '';
+        if (folderIntuitions.length > 0) {
+            const folderLines = folderIntuitions.slice(0, 20).map(
+                (f: any) => `- **${f.folderPath}** (${f.docCount} docs): ${f.oneLiner}${f.topTags?.length ? `\n  Tags: ${f.topTags.join(', ')}` : ''}`
+            ).join('\n');
+            vaultIntuitionSection += `### Vault Structure\n${folderLines}\n\n`;
+        }
+        if (globalIntuitionJson) {
+            const truncated = globalIntuitionJson.length > 3000
+                ? globalIntuitionJson.slice(0, 3000) + '\n_(truncated)_'
+                : globalIntuitionJson;
+            vaultIntuitionSection += `### Vault Understanding\n${truncated}\n`;
+        }
+
+        // Build probe results section
+        let probeResultsSection = '';
+        if (probeHits.length > 0) {
+            const hitLines = probeHits.map(
+                (h) => `- [[${h.title}]] (${h.path}) — score: ${h.score.toFixed(3)}`
+            ).join('\n');
+            probeResultsSection = `### Relevant Files Found (pre-search)\n${hitLines}\n`;
+        }
+
+        // 4b. Load system prompt playbook (pass vault context as Handlebars vars)
         let systemPrompt: string;
         try {
             systemPrompt = await aiServiceManager.renderPrompt(
                 PromptId.VaultSdkPlaybook,
-                null,
+                {
+                    vaultIntuition: vaultIntuitionSection,
+                    probeResults: probeResultsSection,
+                },
             );
         } catch (err) {
             console.error('[VaultSearchAgentSDK] failed to load playbook prompt', err);
@@ -203,7 +264,7 @@ export class VaultSearchAgentSDK {
                         'mcp__vault__vault_read_note',
                         'mcp__vault__vault_grep',
                         'mcp__vault__vault_wikilink_expand',
-                        'mcp__vault__submit_plan',
+                        'mcp__vault__vault_submit_plan',
                     ],
                     disallowedTools: [
                         'Read',
@@ -266,7 +327,16 @@ export class VaultSearchAgentSDK {
             }
         }
 
-        // 8. Finalization debug marker
+        // 8. Emit complete event (triggers plan_ready in routeEvent if plan_sections exist)
+        const totalDuration = Date.now() - startTs;
+        yield {
+            type: 'complete',
+            triggerName,
+            durationMs: totalDuration,
+            result: undefined,
+        } as LLMStreamEvent;
+
+        // Debug marker
         yield {
             type: 'pk-debug',
             debugName: 'vault-sdk-complete',

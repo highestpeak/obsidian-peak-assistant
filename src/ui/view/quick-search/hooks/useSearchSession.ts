@@ -948,8 +948,9 @@ export function useSearchSession() {
 
 				await consumeStream(vaultAgentRef.current.startSession(searchQuery));
 
-				// If pipeline paused at HITL, completion is deferred
-				if (!store.getState().hitlState) {
+				// If pipeline paused at HITL or plan_ready, completion is deferred
+				const postStreamStatus = store.getState().status;
+				if (!store.getState().hitlState && postStreamStatus !== 'plan_ready') {
 					store.getState().markCompleted();
 					markAIAnalysisCompleted();
 				}
@@ -1007,8 +1008,9 @@ export function useSearchSession() {
 			timelineRef.current = [];
 			analysisStartTimeRef.current = 0;
 
-			// Guard: only mark completed if not already done AND not waiting for HITL
-			if (!store.getState().getIsCompleted() && !store.getState().hitlState) {
+			// Guard: only mark completed if not already done AND not waiting for HITL or plan review
+			const finalStatus = store.getState().status;
+			if (!store.getState().getIsCompleted() && !store.getState().hitlState && finalStatus !== 'plan_ready') {
 				store.getState().markCompleted();
 				markAIAnalysisCompleted();
 			}
