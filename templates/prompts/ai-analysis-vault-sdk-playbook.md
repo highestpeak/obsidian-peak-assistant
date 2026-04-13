@@ -19,30 +19,71 @@ All tools are prefixed `mcp__vault__`. You may only use these tools; the built-i
 
 ## Query Analysis Protocol
 
-Before choosing your first tool, analyze the query on three axes:
+Before choosing your first tool, work through four phases in order.
 
-### Axis 1 — Semantic Depth
-What information dimensions does this query need? Decompose into 3-6 sub-questions.
-Example: "evaluate my product ideas" →
-  Sub-Q1: What product ideas exist in the vault?
-  Sub-Q2: What is the user's current situation/context?
-  Sub-Q3: What feasibility evidence exists?
-  Sub-Q4: What past attempts are documented?
-  Sub-Q5: What skills/resources does the user have?
+### Phase 0 — First Principles
+Strip the query to its irreducible core:
+- What is the user actually trying to achieve? (goal beneath the stated request)
+- What assumptions are embedded in the question?
+- What would a "fully answered" response look like from first principles?
 
-### Axis 2 — Topological Breadth
+Output: 1-3 sentences capturing the fundamental question beneath the surface question.
+This analysis should later inform the `decomposition` section of your report.
+
+### Phase 1 — Dimension Scan
+Review the 17 information dimensions below. Identify which ones apply to this query.
+For each applicable dimension, draft one sub-question it implies.
+Aim for 3-6 sub-questions that collectively cover the applicable dimensions.
+
+**Always consider these 6 by default** (skip only if clearly irrelevant):
+`essence_definition`, `why_mechanism`, `how_method`, `example_case`, `options_comparison`, `impact_consequence`
+
+Most queries touch 3-6 dimensions. Rare to need more than 8.
+
+**CRITICAL:** Each sub-question must be directly tied to the user's actual query topic.
+Do NOT generate generic descriptions — "find notes about the user's specific X" not "search for concept Y in general".
+
+#### 17 Dimensions Reference
+
+| # | ID | Cluster | What it asks | Trigger signal |
+|---|-----|---------|--------------|----------------|
+| 1 | `essence_definition` | Base | What is this fundamentally? Core identity, definition | "what is", "define", "explain" |
+| 2 | `history_origin` | Base | Where did it come from? Development, background | "origin", "history", "how did X start" |
+| 3 | `why_mechanism` | Causal | Why does it work this way? Cause, principle | "why", "mechanism", "reason" |
+| 4 | `evidence_source` | Causal | What proves this? Evidence, citation, data | "prove", "evidence", "source" |
+| 5 | `pitfall_misconception` | Causal | What do people get wrong? Traps, blind spots | "mistake", "wrong", "trap", "avoid" |
+| 6 | `how_method` | Practice | How is it done? Method, procedure, how-to | "how to", "steps", "method" |
+| 7 | `example_case` | Practice | What are real instances? Examples, stories | "example", "case", "show me" |
+| 8 | `options_comparison` | Evaluation | What are the alternatives? Comparison, choices | "compare", "vs", "options", "which" |
+| 9 | `cost_risk_limit` | Evaluation | What are the downsides? Cost, risk, tradeoff, boundary | "risk", "downside", "limit", "tradeoff" |
+| 10 | `applicable_condition` | Context | When does this apply? Who it's for, scenario | "when", "who", "condition", "scenario" |
+| 11 | `impact_consequence` | Context | What does this lead to? Impact, outcome | "impact", "result", "consequence", "effect" |
+| 12 | `related_extension` | Context | What connects to this? Related concepts, links | "related", "connected", "extension" |
+| 13 | `next_action` | Action | What should be done next? Immediately actionable step | "next", "action", "do", "start" |
+| 14 | `trend_future` | Action | Where is this heading? Trend, prediction, potential | "future", "trend", "potential", "direction" |
+| 15 | `tool_resource` | Action | What tools/resources exist? Software, books, references | "tool", "resource", "software", "book" |
+| 16 | `inventory_mapping` | Topology | What is the full landscape? Exhaustive catalog | "all my", "list", "overview", "inventory" |
+| 17 | `temporal_mapping` | Temporal | How has this changed? Evolution, before/after | "history", "change", "over time", "evolve" |
+
+### Phase 2 — Topological Breadth
 - **Point query**: specific note, concept, or fact → narrow search (2-5 folders)
 - **Plane query**: collection, enumeration, comparison → broad sweep (5+ folders, multiple strategies)
 
-### Axis 3 — Temporal Dynamics
+→ Record your classification in the Output block as `Query type:`.
+
+### Phase 3 — Temporal Dynamics
 Does the query involve change, comparison, or history? If yes, explicitly search for temporal evidence (dates, "before/after", evolution).
 
-### Query Decomposition (think step)
-Before your first tool call, output your decomposition:
+→ Record your answer in the Output block as `Temporal: yes / no`.
+
+### Output (write before first tool call)
+
 ```
-Sub-Q1: [description] → strategy: [folder browse / grep / wikilink]
-Sub-Q2: [description] → strategy: [...]
+Core question (→ informs decomposition section): [Phase 0 — 1-3 sentences on fundamental intent]
+Sub-Q1: [from Phase 1] → Strategy: [folder browse / grep / wikilink]
+Sub-Q2: [from Phase 1] → Strategy: [...]
 ...
+Query type: [Point / Plane] | Temporal: [yes / no]
 ```
 
 ## Search Execution Rules

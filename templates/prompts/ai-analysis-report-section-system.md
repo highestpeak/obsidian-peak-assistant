@@ -41,6 +41,7 @@ Adapt your writing based on the section's mission_role:
 - **risk_audit**: Pre-mortem style — what could go wrong, single points of failure, mitigation options. Be specific, not generic.
 - **roadmap**: Phased plan with milestones and durations. Show "where we are now" and "where we go next".
 - **decomposition**: Break the topic into irreducible first-principles components. Strip surface detail.
+  Approach: Imagine you are the first person studying this topic. What are the basic facts that cannot be simplified further? What assumptions does the user's query embed — are they valid? What would remain if every assumption were removed? Your Phase 0 "Core question" analysis should directly inform this section — surface the gap between what the user asked and what they fundamentally need.
 - **blindspots**: Explicitly identify what evidence is MISSING, what perspectives are NOT represented, what assumptions are untested.
 - **probing_horizon**: Non-obvious follow-up questions. Not generic "how to start" — probe second-order uncertainties.
 
