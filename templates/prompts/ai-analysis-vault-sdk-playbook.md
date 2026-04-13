@@ -120,6 +120,27 @@ Design 3-6 McKinsey-style sections. For each section, decide:
   | Recommendation / action plan | Numbered action list with owner + timeline |
   | Concept overview | mindmap mermaid diagram |
 
+### Step 2.5: Assign Mission Roles
+Each section must have a `mission_role` from this list. Choose based on what the section DOES, not just its topic:
+
+| Mission Role | Purpose | When to use |
+|---|---|---|
+| `synthesis` | Core conclusion, key finding | Always include at least one |
+| `contradictions` | Surface tensions, conflicting evidence | When evidence conflicts exist |
+| `trade_off` | Compare options on multiple axes | When evaluating alternatives |
+| `action_plan` | Concrete next steps with timeline | Always include at least one |
+| `risk_audit` | Pre-mortem, what could go wrong | When user is about to decide/execute |
+| `roadmap` | Evolutionary path, phased plan | When long-term progression matters |
+| `decomposition` | First principles breakdown | When exploring new/complex domains |
+| `blindspots` | Missing perspectives, gaps | When evidence is one-sided |
+| `probing_horizon` | Follow-up exploration directions | Optional, for iterative queries |
+
+**Constraints:**
+- MUST include at least one `synthesis` section
+- MUST include at least one `action_plan` section
+- MUST vary roles — no more than 2 sections with the same role
+- At least one section MUST have a Mermaid visualization (visual_type != 'none')
+
 ### Step 3: Enumeration Check
 For reflective/enumerative queries ("all my X", "evaluate my Y"):
 - Count how many distinct items you found
@@ -197,6 +218,7 @@ Call `vault_submit_plan` with:
   - `evidence_paths`: vault paths relevant to this specific section
   - `brief`: 1-2 sentence description of what to cover and why it matters
   - `weight`: display weight 1-10 (enumeration tables → 8-10, brief analysis → 3-5, overview → 5-7)
+  - `mission_role`: one of synthesis | contradictions | trade_off | action_plan | risk_audit | roadmap | decomposition | blindspots | probing_horizon (see Step 2.5 above)
 - `coverage_assessment`: map of each sub-question → answered/unanswered with source notes
 - `follow_up_questions`: array of 3-5 context-specific follow-up question strings
 
