@@ -284,6 +284,7 @@ export interface SubmitPlanInput {
         evidence_paths: string[];
         brief: string;
         weight: number;
+        mission_role: string;
     }>;
 }
 
@@ -434,6 +435,17 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
                 evidence_paths: z.array(z.string()).describe('Vault paths relevant to this section'),
                 brief: z.string().describe('1-2 sentence description of section content'),
                 weight: z.number().min(0).max(10).describe('Display weight: 1-3=small, 4-6=medium, 7-10=full-width'),
+                mission_role: z.enum([
+                    'synthesis',
+                    'contradictions',
+                    'trade_off',
+                    'action_plan',
+                    'risk_audit',
+                    'roadmap',
+                    'decomposition',
+                    'blindspots',
+                    'probing_horizon',
+                ]).describe('Block mission role from McKinsey report framework'),
             })).optional().describe('Structured report plan: 3-6 sections with content types and visual prescriptions'),
         },
         async (input, _extra) => {

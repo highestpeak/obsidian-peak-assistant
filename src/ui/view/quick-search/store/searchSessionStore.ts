@@ -17,7 +17,7 @@ import { PHASE_TO_STEP_TYPE, createStep } from '../types/search-steps';
 // Session status
 // ---------------------------------------------------------------------------
 
-export type SessionStatus = 'idle' | 'starting' | 'streaming' | 'plan_ready' | 'completed' | 'error' | 'canceled';
+export type SessionStatus = 'idle' | 'starting' | 'streaming' | 'completed' | 'error' | 'canceled';
 
 // ---------------------------------------------------------------------------
 // HITL state
@@ -52,6 +52,7 @@ export interface V2Section {
 	evidencePaths: string[];
 	brief: string;
 	weight: number;
+	missionRole: string;
 	status: 'pending' | 'generating' | 'done' | 'error';
 	content: string;
 	streamingChunks: string[];
@@ -113,6 +114,10 @@ interface SearchSessionState {
 	v2ProposedOutline: string | null;
 	/** Report plan sections extracted from agent's thinking (for future HITL approval) */
 	v2PlanSections: V2Section[];
+	/** Whether user has approved the plan and report generation has started */
+	v2PlanApproved: boolean;
+	/** User notes to guide report generation */
+	v2UserNotes: string;
 	/** Executive summary markdown (generated after all sections complete) */
 	v2Summary: string;
 	v2SummaryStreaming: boolean;
@@ -170,6 +175,8 @@ interface SearchSessionActions {
 	addV2Source: (source: V2Source) => void;
 
 	// Plan & section generation
+	approvePlan: () => void;
+	setUserNotes: (notes: string) => void;
 	setPlanSections: (sections: V2Section[]) => void;
 	updatePlanSection: (id: string, updater: (s: V2Section) => V2Section) => void;
 	reorderPlanSections: (ids: string[]) => void;
@@ -261,6 +268,8 @@ const INITIAL_STATE: SearchSessionState = {
 	v2FollowUpQuestions: [],
 	v2ProposedOutline: null,
 	v2PlanSections: [],
+	v2PlanApproved: false,
+	v2UserNotes: '',
 	v2Summary: '',
 	v2SummaryStreaming: false,
 
@@ -320,6 +329,8 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			v2FollowUpQuestions: [],
 			v2ProposedOutline: null,
 			v2PlanSections: [],
+			v2PlanApproved: false,
+			v2UserNotes: '',
 			v2Summary: '',
 			v2SummaryStreaming: false,
 			// Preserve analysisMode and webEnabled (already in closure)
@@ -565,6 +576,10 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	// -----------------------------------------------------------------------
 	// Plan & section generation
 	// -----------------------------------------------------------------------
+
+	approvePlan: () => set({ v2PlanApproved: true }),
+
+	setUserNotes: (notes) => set({ v2UserNotes: notes }),
 
 	setPlanSections: (sections) => set({ v2PlanSections: sections }),
 
