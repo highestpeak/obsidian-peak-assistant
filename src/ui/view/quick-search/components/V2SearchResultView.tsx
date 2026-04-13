@@ -1,50 +1,61 @@
-import React from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useSearchSessionStore } from '../store/searchSessionStore';
-import { V2StepList } from './steps/V2StepList';
-import { V2ReportSection } from './V2ReportSection';
+import { V2ProcessView } from './V2ProcessView';
+import { V2ReportView } from './V2ReportView';
+import { V2SourcesView } from './V2SourcesView';
+import { V2ScrollButtons } from './V2ScrollButtons';
+import { V2TableOfContents } from './V2TableOfContents';
 
 interface V2SearchResultViewProps {
-	onClose?: () => void;
-	onRetry?: () => void;
+    onClose?: () => void;
+    onRetry?: () => void;
+    onApprove?: () => void;
+    onRegenerateSection?: (id: string, prompt?: string) => void;
 }
 
-const V2TokenStatsBanner: React.FC = () => {
-	const usage = useSearchSessionStore((s) => s.usage);
-	const duration = useSearchSessionStore((s) => s.duration);
-	const status = useSearchSessionStore((s) => s.status);
-	if (status !== 'completed' || !usage) return null;
+/**
+ * V2 search result — no footer (footer is rendered by tab-AISearch).
+ * View state is driven by searchSessionStore.v2View.
+ */
+export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose, onApprove, onRegenerateSection }) => {
+    const isStreaming = useSearchSessionStore((s) => s.status === 'streaming');
+    const isCompleted = useSearchSessionStore((s) => s.status === 'completed');
+    const status = useSearchSessionStore((s) => s.status);
+    const v2View = useSearchSessionStore((s) => s.v2View);
+    const proposedOutline = useSearchSessionStore((s) => s.v2ProposedOutline);
+    const containerRef = useRef<HTMLDivElement>(null);
 
-	const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-	const durationStr = duration ? `${(duration / 1000).toFixed(0)}s` : '';
+    // During streaming, force process view
+    const activeView = isStreaming ? 'process' : v2View;
+    const showToc = isCompleted && activeView === 'report' && !!proposedOutline;
 
-	return (
-		<div className="pktw-mt-3 pktw-px-2 pktw-py-1.5 pktw-rounded pktw-bg-gray-50 pktw-border pktw-border-gray-100">
-			<span className="pktw-text-[10px] pktw-text-gray-400 pktw-flex pktw-items-center pktw-gap-2 pktw-flex-wrap">
-				{durationStr && <span>{durationStr}</span>}
-				<span>{fmt(usage.inputTokens + usage.outputTokens)} tokens</span>
-			</span>
-		</div>
-	);
-};
+    // Reset to process when streaming starts
+    useEffect(() => {
+        if (isStreaming) {
+            useSearchSessionStore.getState().setV2View('process');
+        }
+    }, [isStreaming]);
 
-export const V2SearchResultView: React.FC<V2SearchResultViewProps> = () => {
-	const hasReport = useSearchSessionStore((s) => s.v2ReportChunks.length > 0);
+    // Auto-switch to report view when plan is ready
+    useEffect(() => {
+        if (status === 'plan_ready') {
+            useSearchSessionStore.getState().setV2View('report');
+        }
+    }, [status]);
 
-	return (
-		<div className="pktw-flex pktw-flex-col pktw-gap-0">
-			{/* Step cards — compact exploration log */}
-			<div className="pktw-px-1 pktw-py-1 pktw-bg-[#fafafa] pktw-rounded pktw-border pktw-border-gray-100">
-				<V2StepList />
-			</div>
-
-			{/* Report — full-width markdown, visually separated */}
-			{hasReport && (
-				<div className="pktw-mt-4">
-					<V2ReportSection />
-				</div>
-			)}
-
-			<V2TokenStatsBanner />
-		</div>
-	);
+    return (
+        <div className="pktw-flex pktw-flex-col pktw-h-full pktw-relative">
+            <div ref={containerRef} className="pktw-flex-1 pktw-overflow-y-auto pktw-min-h-0">
+                <AnimatePresence mode="wait">
+                    {activeView === 'process' && <V2ProcessView key="process" />}
+                    {activeView === 'report' && <V2ReportView key="report" onClose={onClose} onApprove={onApprove} onRegenerateSection={onRegenerateSection} />}
+                    {activeView === 'sources' && <V2SourcesView key="sources" onClose={onClose} />}
+                </AnimatePresence>
+            </div>
+            <V2ScrollButtons containerRef={containerRef} />
+            {/* TOC rendered outside scroll container so it stays fixed on scroll */}
+            {showToc && <V2TableOfContents markdown={proposedOutline!} />}
+        </div>
+    );
 };

@@ -1,7 +1,8 @@
 import { SLICE_CAPS } from '@/core/constant';
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink, ClipboardList } from 'lucide-react';
+import { Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink, ClipboardList, Activity, Eye, FileText, MoreHorizontal } from 'lucide-react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
+import { V2ContinueAnalysisInput } from './components/V2ContinueAnalysisInput';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { Button } from '@/ui/component/shared-ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
@@ -50,6 +51,95 @@ const AISearchFooterHints: React.FC<{}> = ({ }) => (
 	</div>
 );
 
+/** V2 Footer — rendered by tab-AISearch at modal bottom when V2 is active */
+const V2Footer: React.FC<{
+	onContinue: () => void;
+	showContinueAnalysis: boolean;
+	onCopy: () => void;
+	copied: boolean;
+	onSave: () => void;
+	onOpenInChat: () => void;
+}> = ({ onContinue, showContinueAnalysis, onCopy, copied, onSave, onOpenInChat }) => {
+	const v2View = useSearchSessionStore((s) => s.v2View);
+	const usage = useSearchSessionStore((s) => s.usage);
+	const duration = useSearchSessionStore((s) => s.duration);
+	const setV2View = useSearchSessionStore((s) => s.setV2View);
+
+	const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+	const durationStr = duration ? `${(duration / 1000).toFixed(0)}s` : '';
+
+	const views = [
+		{ id: 'process' as const, icon: Activity, label: 'Process' },
+		{ id: 'report' as const, icon: Eye, label: 'Report' },
+		{ id: 'sources' as const, icon: FileText, label: 'Sources' },
+	];
+
+	return (
+		<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-bg-white pktw-px-3 pktw-py-2 pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0">
+			{/* Left: View tabs */}
+			<div className="pktw-flex pktw-items-center pktw-gap-1">
+				{views.map(({ id, icon: Icon, label }) => (
+					<div
+						key={id}
+						onClick={() => setV2View(id)}
+						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
+							v2View === id
+								? 'pktw-bg-[#7c3aed] pktw-text-white'
+								: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
+						}`}
+					>
+						<Icon className="pktw-w-3.5 pktw-h-3.5" />
+						{label}
+					</div>
+				))}
+			</div>
+
+			{/* Center: Stats */}
+			{usage && (
+				<span className="pktw-text-xs pktw-text-[#9ca3af] pktw-tabular-nums">
+					{durationStr && `${durationStr} · `}{fmt(usage.inputTokens + usage.outputTokens)} tokens
+				</span>
+			)}
+
+			{/* Right: Actions */}
+			<div className="pktw-flex pktw-items-center pktw-gap-1">
+				<div
+					onClick={onCopy}
+					className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+					title={copied ? 'Copied!' : 'Copy Report'}
+				>
+					{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
+				</div>
+				<div
+					onClick={onSave}
+					className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+					title="Save to Vault"
+				>
+					<Save className="pktw-w-3.5 pktw-h-3.5" />
+				</div>
+				<div
+					onClick={onContinue}
+					className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
+						showContinueAnalysis
+							? 'pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed]'
+							: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
+					}`}
+				>
+					<MessageSquare className="pktw-w-3.5 pktw-h-3.5" />
+					Continue
+				</div>
+				<div
+					onClick={onOpenInChat}
+					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-white pktw-bg-[#7c3aed] hover:pktw-bg-[#6d28d9] pktw-rounded-lg pktw-transition-colors pktw-cursor-pointer"
+				>
+					Open in Chat
+					<ExternalLink className="pktw-w-3.5 pktw-h-3.5" />
+				</div>
+			</div>
+		</div>
+	);
+};
+
 /**
  * AI search tab, showing analysis summary, sources, and insights.
  */
@@ -66,6 +156,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const autoSaveState = useSearchSessionStore((s) => s.autoSaveState);
 	const titleFromStore = useSearchSessionStore((s) => s.title);
 	const triggerAnalysis = useSearchSessionStore((s) => s.triggerAnalysis);
+	const isV2Active = useSearchSessionStore((s) => s.v2Active);
 
 	const isAnalyzing = sessionStatus === 'starting' || sessionStatus === 'streaming';
 	const analysisCompleted = sessionStatus === 'completed';
@@ -105,6 +196,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [showContinueAnalysis, setShowContinueAnalysis] = useState(false);
+	const [showV2ContinueInput, setShowV2ContinueInput] = useState(false);
 	const [continueAnalysisInitialText, setContinueAnalysisInitialText] = useState<string | undefined>(undefined);
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 	const continueAnalysisBlockRef = useRef<HTMLDivElement>(null);
@@ -152,7 +244,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	// hooks for AI analysis ========================================================
 
 	// Use custom hook for AI analysis (new unified hook)
-	const { performAnalysis, cancel } = useSearchSession();
+	const sessionHook = useSearchSession() as ReturnType<typeof useSearchSession> & { handleApprovePlan?: () => void; handleRegenerateSection?: (id: string, prompt?: string) => void };
+	const { performAnalysis, cancel, handleApprovePlan, handleRegenerateSection } = sessionHook;
 
 	// Only trigger analysis when triggerAnalysis changes AND analysis is not completed
 	// Do NOT trigger on searchQuery changes to avoid wasting resources
@@ -380,12 +473,19 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	useEffect(() => {
 		if (lastUIEvent?.type === 'continue-analysis') {
 			const text = (lastUIEvent.payload as any)?.text as string | undefined;
-			setContinueAnalysisInitialText(text);
-			setShowContinueAnalysis(true);
-			// Scroll to the continue analysis block after it renders
-			setTimeout(() => {
-				continueAnalysisBlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-			}, 100);
+			if (isV2Active && text?.trim()) {
+				// V2: trigger a new full vault analysis with the follow-up question
+				useSharedStore.getState().setSearchQuery(text.trim());
+				// performAnalysis reads from sharedStore.searchQuery
+				performAnalysis();
+			} else {
+				// V1: open InlineFollowupChat
+				setContinueAnalysisInitialText(text);
+				setShowContinueAnalysis(true);
+				setTimeout(() => {
+					continueAnalysisBlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}, 100);
+			}
 		}
 	}, [lastUIEvent]);
 
@@ -406,7 +506,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	}, [analysisCompleted, restoredFromHistory, error, sessionId, handleAutoSave]);
 
 	// Nav bar condition: show when steps have content OR is streaming (supports both old and new pipeline)
-	const showNavBar = isNewPipeline || getHasCompletedContent() || (hasStartedStreaming && !analysisCompleted);
+	const showNavBar = !isV2Active && (isNewPipeline || getHasCompletedContent() || (hasStartedStreaming && !analysisCompleted));
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
@@ -543,12 +643,28 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 				</div>
 			) : null}
 
+			{/* V2 title bar — shown when analysis is completed */}
+			{isV2Active && analysisCompleted && titleFromStore && (
+				<div className="pktw-px-4 pktw-py-2 pktw-flex-shrink-0">
+					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-p-2 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white">
+						<div className="pktw-min-w-0 pktw-flex-1">
+							<span className="pktw-text-sm pktw-font-semibold pktw-text-[#1a1c1e] pktw-truncate pktw-block" title={titleFromStore}>
+								{titleDisplay || titleFromStore}
+							</span>
+							<span className="pktw-text-xs pktw-text-[#9ca3af] pktw-truncate pktw-block">
+								{useSearchSessionStore.getState().query}
+							</span>
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* Main Content - extra top/side padding for IntelligenceFrame glow to avoid clipping */}
 			<div ref={contentContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-pt-6 pktw-px-4 pktw-pb-5">
-				<SearchResultView onClose={onClose} onRetry={handleRetry} />
+				<SearchResultView onClose={onClose} onRetry={handleRetry} onApprove={handleApprovePlan} onRegenerateSection={handleRegenerateSection} />
 
-				{/* Continue Analysis: inline at bottom of content area */}
-				{analysisCompleted && showContinueAnalysis ? (
+				{/* Continue Analysis: inline at bottom of content area (V1 only — V2 has its own input) */}
+				{!isV2Active && analysisCompleted && showContinueAnalysis ? (
 					<div ref={continueAnalysisBlockRef} className="pktw-mt-6 pktw-scroll-mt-4">
 						<InlineFollowupChat
 							{...continueAnalysisConfig}
@@ -565,8 +681,11 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 				) : null}
 			</div>
 
-			{/* Footer */}
-			<div className="pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0">
+			{/* Footer — V2 renders its own content, V1 renders original */}
+			{isV2Active && analysisCompleted ? (
+				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} />
+			) : null}
+			<div className={`pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0 ${isV2Active ? 'pktw-hidden' : ''}`}>
 				{!hasAnalyzed && !isAnalyzing ? <AISearchFooterHints /> : null}
 				{hasAnalyzed ? <UsageBadge /> : null}
 				<div className="pktw-flex pktw-items-center pktw-gap-3">
@@ -689,6 +808,11 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 					)}
 				</div>
 			</div>
+
+			{/* V2 floating continue analysis input */}
+			{showV2ContinueInput && (
+				<V2ContinueAnalysisInput onClose={() => setShowV2ContinueInput(false)} />
+			)}
 
 			{/* Save dialog */}
 			{showSaveDialog && (

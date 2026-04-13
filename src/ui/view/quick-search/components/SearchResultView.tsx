@@ -54,15 +54,18 @@ const TokenStatsBanner: React.FC = () => {
 export interface SearchResultViewProps {
 	onClose?: () => void;
 	onRetry?: () => void;
+	onApprove?: () => void;
+	onRegenerateSection?: (id: string, prompt?: string) => void;
 }
 
-export const SearchResultView: React.FC<SearchResultViewProps> = ({ onClose, onRetry }) => {
+export const SearchResultView: React.FC<SearchResultViewProps> = ({ onClose, onRetry, onApprove, onRegenerateSection }) => {
 	const error = useSearchSessionStore((s) => s.error);
 	const steps = useSearchSessionStore((s) => s.steps);
 	const startedAt = useSearchSessionStore((s) => s.startedAt);
 	const duration = useSearchSessionStore((s) => s.duration);
 
-	const v2StepCount = useSearchSessionStore((s) => s.v2Steps.length);
+	const isV2Active = useSearchSessionStore((s) => s.v2Active);
+	const isStreaming = useSearchSessionStore((s) => s.status === 'streaming');
 
 	const handleOpenWikilink = createOpenSourceCallback(onClose);
 
@@ -76,19 +79,19 @@ export const SearchResultView: React.FC<SearchResultViewProps> = ({ onClose, onR
 		);
 	}
 
+	// V2 mode — show result view even if no steps yet (agent is thinking)
+	if (isV2Active) {
+		return <V2SearchResultView onClose={onClose} onRetry={onRetry} onApprove={onApprove} onRegenerateSection={onRegenerateSection} />;
+	}
+
 	// Idle state: no steps yet, no error
-	if (steps.length === 0 && v2StepCount === 0) {
+	if (steps.length === 0) {
 		return (
 			<>
 				<AIAnalysisPreStreamingState />
-				<RecentAIAnalysis onClose={onClose} />
+				{!isStreaming && <RecentAIAnalysis onClose={onClose} />}
 			</>
 		);
-	}
-
-	// V2 mode
-	if (v2StepCount > 0) {
-		return <V2SearchResultView onClose={onClose} onRetry={onRetry} />;
 	}
 
 	// V1 steps available
