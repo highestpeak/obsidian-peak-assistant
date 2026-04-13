@@ -842,6 +842,16 @@ export function useSearchSession() {
 								generations: [],
 							}));
 							store.getState().setPlanSections(sections);
+							// Sync all evidence paths to v2Sources so Sources tab is complete
+							for (const sec of sections) {
+								for (const ep of sec.evidencePaths) {
+									store.getState().addV2Source({
+										path: ep,
+										title: ep.split('/').pop()?.replace(/\.md$/, '') || ep,
+										readAt: Date.now(),
+									});
+								}
+							}
 						}
 					}
 				}
