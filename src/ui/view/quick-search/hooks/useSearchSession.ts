@@ -33,6 +33,8 @@ import { StreamTriggerName, UISignalChannel } from '@/core/providers/types';
 import { getDeltaEventDeltaText, DELTA_EVENT_TYPES } from '@/core/providers/helpers/stream-helper';
 import { createStep, v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '../types/search-steps';
 import type { V2ToolStep } from '../types/search-steps';
+import type { V2Section } from '../store/searchSessionStore';
+import { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
 
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import type { VaultHitlPauseEvent, VaultPhaseTransitionEvent } from '@/service/agents/vault/types';
@@ -286,6 +288,9 @@ export function useSearchSession() {
 			// ---- Phase transitions (vault pipeline) ----
 			case 'pk-debug': {
 				const ev = event as any;
+				if (ev.debugName === 'vault-sdk-starting') {
+					store.getState().setV2Active(true);
+				}
 				if (ev.debugName === 'phase-usage' && ev.extra) {
 					store.getState().addPhaseUsage({
 						phase: ev.extra.phase ?? '',
@@ -334,11 +339,13 @@ export function useSearchSession() {
 					const delta = getDeltaEventDeltaText(event);
 					bufferSummaryDelta(delta);
 				}
-				// V2: after submit_plan, text-delta is the final report
-				else if (store.getState().v2Steps.length > 0) {
+				// V2: text-delta goes to timeline; suppress post-submit_plan garbage
+				else if (store.getState().v2Active) {
+					// If proposed_outline is already captured, ignore subsequent text (agent self-talk)
+					if (store.getState().v2ProposedOutline) break;
 					const delta = getDeltaEventDeltaText(event);
 					if (delta) {
-						store.getState().appendV2ReportChunk(delta);
+						store.getState().pushV2TimelineText(`text-${Date.now()}`, delta);
 					}
 				}
 				break;
@@ -365,13 +372,15 @@ export function useSearchSession() {
 					const output = ev.output;
 					const summary = extractV2Summary(resolvedToolName, output);
 					const preview = unwrapToolOutput(output);
-					store.getState().updateV2Step(toolCallId, (step) => ({
+					const stepUpdate = (step: V2ToolStep) => ({
 						...step,
-						status: 'done',
+						status: 'done' as const,
 						endedAt: Date.now(),
 						summary,
 						resultPreview: preview?.slice(0, 2000),
-					}));
+					});
+					store.getState().updateV2Step(toolCallId, stepUpdate);
+					store.getState().updateV2TimelineTool(toolCallId, stepUpdate);
 				}
 				// Debug capture: log tool output (output field, not result)
 				if (ev.toolName) {
@@ -625,10 +634,13 @@ export function useSearchSession() {
 						// Bridge
 						useAIAnalysisRuntimeStore.getState().setUsage(completeEvent.usage);
 					}
-					if (completeEvent.durationMs) {
-						store.getState().setDuration(completeEvent.durationMs);
-						// Bridge
-						useAIAnalysisRuntimeStore.getState().setDuration(completeEvent.durationMs);
+					{
+						const duration = completeEvent.durationMs || (store.getState().startedAt ? Date.now() - store.getState().startedAt! : 0);
+						if (duration) {
+							store.getState().setDuration(duration);
+							// Bridge
+							useAIAnalysisRuntimeStore.getState().setDuration(duration);
+						}
 					}
 
 					const finalResult = completeEvent.result as SearchAgentResult | undefined;
@@ -649,10 +661,17 @@ export function useSearchSession() {
 						);
 					}
 
-					store.getState().markCompleted();
-					// V2: mark report done
-					if (store.getState().v2Steps.length > 0) {
-						store.getState().markV2ReportComplete();
+					const hasPlan = store.getState().v2PlanSections.length > 0;
+					if (hasPlan) {
+						// Don't mark completed — show plan review first
+						store.setState({ status: 'plan_ready', isInputFrozen: false, hasStartedStreaming: false });
+						// Don't call markCompleted — we'll call it after report generation
+					} else {
+						store.getState().markCompleted();
+						// V2: mark report done
+						if (store.getState().v2Steps.length > 0) {
+							store.getState().markV2ReportComplete();
+						}
 					}
 					// Bridge
 					markAIAnalysisCompleted();
@@ -737,6 +756,7 @@ export function useSearchSession() {
 					// reasoning-delta event uses 'text' field (not 'delta')
 					data: { text: ev.text ?? ev.delta ?? '' },
 				});
+				// V2: reasoning is debug-only, not shown in timeline (low signal-to-noise for users)
 				break;
 			}
 			case 'tool-call': {
@@ -762,7 +782,74 @@ export function useSearchSession() {
 						startedAt: Date.now(),
 					};
 					store.getState().pushV2Step(step);
+					store.getState().pushV2TimelineTool(step);
 					store.getState().registerV2ToolCall(step.id, toolName);
+					const shortName = toolName.replace(/^mcp__vault__/, '');
+					// Source extraction for vault_read_note
+					if (shortName === 'vault_read_note') {
+						const path = String(input.path ?? '');
+						if (path) {
+							store.getState().addV2Source({
+								path,
+								title: path.split('/').pop()?.replace(/\.md$/, '') || path,
+								readAt: Date.now(),
+							});
+						}
+					}
+					// Extract proposed_outline from vault_submit_plan as the real report
+					// Don't push into timeline — report is shown in Report View only
+					if (shortName === 'vault_submit_plan') {
+						const outline = input.proposed_outline;
+						if (typeof outline === 'string' && outline.trim()) {
+							useSearchSessionStore.setState({ v2ProposedOutline: outline });
+						}
+						// Extract structured follow-up questions
+						const followUps = input.follow_up_questions;
+						if (Array.isArray(followUps) && followUps.length > 0) {
+							useSearchSessionStore.setState({ v2FollowUpQuestions: followUps.filter((q: unknown) => typeof q === 'string' && q.length > 5) });
+						}
+						// Enrich existing sources with rationale
+						const rationale = typeof input.rationale === 'string' ? input.rationale : '';
+						if (rationale) {
+							const lines = rationale.split('\n').filter((l: string) => l.trim());
+							const reasoningMap = new Map<string, string>();
+							for (const line of lines) {
+								// Parse "path: reasoning" or "- path: reasoning" patterns
+								const match = line.match(/^[-*]?\s*(.+?\.md)\s*[:：]\s*(.+)/);
+								if (match) {
+									const filename = match[1].split('/').pop()?.replace(/\.md$/, '') || '';
+									reasoningMap.set(filename.toLowerCase(), match[2].trim());
+								}
+							}
+							if (reasoningMap.size > 0) {
+								const currentSources = store.getState().v2Sources;
+								const enriched = currentSources.map((src) => {
+									const key = src.title.toLowerCase();
+									const r = reasoningMap.get(key);
+									return r ? { ...src, reasoning: r } : src;
+								});
+								useSearchSessionStore.setState({ v2Sources: enriched });
+							}
+						}
+						// Extract structured plan sections
+						const planSections = input.plan_sections;
+						if (Array.isArray(planSections) && planSections.length > 0) {
+							const sections: V2Section[] = planSections.map((ps: any) => ({
+								id: ps.id ?? `s${Math.random().toString(36).slice(2, 6)}`,
+								title: ps.title ?? '',
+								contentType: ps.content_type ?? 'analysis',
+								visualType: ps.visual_type ?? 'none',
+								evidencePaths: Array.isArray(ps.evidence_paths) ? ps.evidence_paths : [],
+								brief: ps.brief ?? '',
+								weight: typeof ps.weight === 'number' ? ps.weight : 5,
+								status: 'pending' as const,
+								content: '',
+								streamingChunks: [],
+								generations: [],
+							}));
+							store.getState().setPlanSections(sections);
+						}
+					}
 				}
 				break;
 			}
@@ -942,6 +1029,51 @@ export function useSearchSession() {
 	]);
 
 	// -----------------------------------------------------------------------
+	// handleApprovePlan — start report generation from approved plan
+	// -----------------------------------------------------------------------
+
+	const reportOrchestrator = useMemo(() => new ReportOrchestrator(), []);
+
+	const handleApprovePlan = useCallback(async () => {
+		const state = store.getState();
+		const sections = state.v2PlanSections;
+		if (sections.length === 0) return;
+
+		store.setState({ status: 'streaming' });
+
+		try {
+			await reportOrchestrator.generateReport(
+				sections,
+				state.v2Sources.map((s) => s.path),
+				state.v2ProposedOutline ?? '',
+				state.query,
+			);
+			store.getState().markCompleted();
+		} catch (err: any) {
+			store.getState().recordError(err?.message ?? 'Report generation failed');
+		}
+	}, []);
+
+	// -----------------------------------------------------------------------
+	// handleRegenerateSection — regenerate a single report section
+	// -----------------------------------------------------------------------
+
+	const handleRegenerateSection = useCallback(async (sectionId: string, userPrompt?: string) => {
+		const state = store.getState();
+		try {
+			await reportOrchestrator.regenerateSection(
+				sectionId,
+				state.v2PlanSections,
+				state.v2ProposedOutline ?? '',
+				state.query,
+				userPrompt,
+			);
+		} catch (err: any) {
+			store.getState().failSection(sectionId, err?.message ?? 'Regeneration failed');
+		}
+	}, []);
+
+	// -----------------------------------------------------------------------
 	// cancel
 	// -----------------------------------------------------------------------
 
@@ -954,5 +1086,5 @@ export function useSearchSession() {
 		}
 	}, []);
 
-	return { performAnalysis, cancel };
+	return { performAnalysis, cancel, handleApprovePlan, handleRegenerateSection };
 }
