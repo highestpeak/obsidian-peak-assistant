@@ -223,6 +223,10 @@ export enum PromptId {
 	AiAnalysisReportSectionSystem = 'ai-analysis-report-section-system',
 	/** Per-section report generation: user prompt with evidence + section spec. */
 	AiAnalysisReportSection = 'ai-analysis-report-section',
+	/** Per-section visual generation: system (static). */
+	AiAnalysisReportVisualSystem = 'ai-analysis-report-visual-system',
+	/** Per-section visual generation: user prompt with section content + visual type. */
+	AiAnalysisReportVisual = 'ai-analysis-report-visual',
 	/** Vault SDK playbook: system prompt for SDK vault search agent (tool instruction + type classification). */
 	VaultSdkPlaybook = 'ai-analysis-vault-sdk-playbook',
 
@@ -265,6 +269,8 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisVaultReport,
 	PromptId.AiAnalysisVaultReportSummary,
 	PromptId.AiAnalysisReportSection,
+	PromptId.AiAnalysisReportVisual,
+	PromptId.AiAnalysisMermaidFix,
 ] as const;
 
 /**
@@ -551,7 +557,16 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisDashboardUpdatePlanSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDashboardUpdatePlan]: Record<string, any>;
 	[PromptId.AiAnalysisMermaidFixSystem]: Record<string, never>;
-	[PromptId.AiAnalysisMermaidFix]: Record<string, any>;
+	[PromptId.AiAnalysisMermaidFix]: {
+		brokenMermaid: string;
+		errorMessage: string;
+	};
+	[PromptId.AiAnalysisReportVisualSystem]: Record<string, never>;
+	[PromptId.AiAnalysisReportVisual]: {
+		sectionTitle: string;
+		visualType: string;
+		sectionContent: string;
+	};
 
 	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSummarySystem]: Record<string, never>;
