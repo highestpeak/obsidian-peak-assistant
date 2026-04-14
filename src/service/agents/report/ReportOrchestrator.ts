@@ -75,8 +75,11 @@ export class ReportOrchestrator {
             this.store.getState().updatePlanSection(sec.id, (s) => ({ ...s, status: 'generating' }));
         }
 
-        // Pass 1: stream all section content in parallel
-        // Each section has its own independent consumer (like recon pattern) — no yield backpressure
+        // Pass 1: summary + all sections stream in parallel
+        // Summary starts immediately (uses plan overview + briefs, not section content)
+        // Each section has its own independent consumer (recon pattern — no yield backpressure)
+        const summaryPromise = this.runSummaryAgent(sections, allEvidencePaths, overview, userQuery);
+
         const sectionAccumulators = new Map<string, string>();
         const contentPromises = sections.map(async (sec) => {
             try {
@@ -98,15 +101,15 @@ export class ReportOrchestrator {
                 this.store.getState().failSection(sec.id, err?.message ?? 'Content generation failed');
             }
         });
-        await Promise.all(contentPromises);
 
-        // Pass 2: summary + all visuals in parallel (summary doesn't need visuals)
+        // Summary + all sections run simultaneously
+        await Promise.all([summaryPromise, ...contentPromises]);
+
+        // Pass 2: visuals run after all content is done
         const limit = pLimit(3);
-        const summaryPromise = this.runSummaryAgent(sections, allEvidencePaths, overview, userQuery);
-        const visualsPromise = Promise.all(sections.map((sec) => limit(async () => {
+        await Promise.all(sections.map((sec) => limit(async () => {
             await this.runVisualAgent(sec);
         })));
-        await Promise.all([summaryPromise, visualsPromise]);
     }
 
     async regenerateSection(
@@ -431,10 +434,10 @@ Output ONLY the JSON array, no other text.`;
         this.store.getState().setSummaryStreaming(true);
 
         try {
-            // Read completed section content from store (may have visual appended)
+            // Use section briefs (not content — summary runs alongside sections, content not yet available)
             const currentSections = this.store.getState().v2PlanSections;
             const blocksSummary = currentSections
-                .map((sec) => `### ${sec.title}\n${sec.content.slice(0, 300)}`)
+                .map((sec) => `### ${sec.title}\n${sec.brief}`)
                 .join('\n\n');
             const evidenceList = allEvidencePaths
                 .map((p) => `- [[${p.replace(/\.md$/, '')}]]`)
