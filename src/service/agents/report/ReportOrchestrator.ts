@@ -4,6 +4,8 @@ import { PromptId } from '@/service/prompt/PromptId';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessionStore';
 import type { V2Section } from '@/ui/view/quick-search/store/searchSessionStore';
+import { pLimit, streamWithRepetitionGuard } from './stream-utils';
+import { validateMermaidCode } from '@/core/utils/analysis-data-validator';
 
 /**
  * Multi-agent report orchestrator.
@@ -58,16 +60,25 @@ export class ReportOrchestrator {
         overview: string,
         userQuery: string,
     ): Promise<void> {
+        // Pass 0: assign user insights to sections (if any)
+        const insights = this.store.getState().v2UserInsights;
+        if (insights.length > 0) {
+            await this.assignInsightsToSections(insights, sections, userQuery);
+            // Re-read sections (may have new ones added)
+            sections = this.store.getState().v2PlanSections;
+        }
+
         // Mark all sections as generating
         for (const sec of sections) {
             this.store.getState().updatePlanSection(sec.id, (s) => ({ ...s, status: 'generating' }));
         }
 
-        // Pass 1+2: content + visual per section, all in parallel
-        await Promise.all(sections.map(async (sec) => {
+        // Pass 1+2: content + visual per section, concurrency-limited
+        const limit = pLimit(3);
+        await Promise.all(sections.map((sec) => limit(async () => {
             await this.runContentAgent(sec, sections, overview, userQuery);
             await this.runVisualAgent(sec);
-        }));
+        })));
 
         // Pass 3: executive summary (needs all sections completed first)
         await this.runSummaryAgent(sections, allEvidencePaths, overview, userQuery);
@@ -89,6 +100,94 @@ export class ReportOrchestrator {
 
     async fixMermaid(sectionId: string, brokenMermaid: string, errorMessage: string): Promise<string | null> {
         return this.runMermaidFixAgent(brokenMermaid, errorMessage);
+    }
+
+    // -----------------------------------------------------------------------
+    // Agent 0: Assign user insights to sections
+    // -----------------------------------------------------------------------
+
+    private async assignInsightsToSections(
+        insights: string[],
+        sections: V2Section[],
+        userQuery: string,
+    ): Promise<void> {
+        const sectionList = sections.map((s) => `- ${s.id}: ${s.title} (${s.missionRole})`).join('\n');
+        const insightList = insights.map((ins, i) => `${i + 1}. ${ins}`).join('\n');
+
+        const prompt = `You are assigning user insights to report sections.
+
+## Sections
+${sectionList}
+
+## User Insights
+${insightList}
+
+## Query
+${userQuery}
+
+For each insight, decide:
+1. Which section id it belongs to (append to that section's brief)
+2. Or if it needs a NEW section (output "NEW" with a title and mission_role)
+
+Output JSON array: [{ "insight_index": 0, "section_id": "s1" | "NEW", "new_title?": "...", "new_mission_role?": "synthesis" }]
+Output ONLY the JSON array, no other text.`;
+
+        try {
+            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
+            const result = streamText({ model, prompt, maxTokens: 1000 });
+
+            let text = '';
+            for await (const chunk of result.textStream) {
+                text += chunk;
+            }
+
+            // Parse JSON from response
+            const jsonMatch = text.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) return;
+
+            const assignments = JSON.parse(jsonMatch[0]) as Array<{
+                insight_index: number;
+                section_id: string;
+                new_title?: string;
+                new_mission_role?: string;
+            }>;
+
+            for (const a of assignments) {
+                const insightText = insights[a.insight_index];
+                if (!insightText) continue;
+
+                if (a.section_id === 'NEW' && a.new_title) {
+                    // Create new section
+                    const newId = `s_user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+                    const currentSections = this.store.getState().v2PlanSections;
+                    this.store.getState().setPlanSections([
+                        ...currentSections,
+                        {
+                            id: newId,
+                            title: a.new_title,
+                            contentType: 'analysis',
+                            visualType: 'none',
+                            evidencePaths: [],
+                            brief: insightText,
+                            weight: 5,
+                            missionRole: a.new_mission_role ?? 'synthesis',
+                            status: 'pending',
+                            content: '',
+                            streamingChunks: [],
+                            generations: [],
+                        },
+                    ]);
+                } else {
+                    // Append insight to existing section's brief
+                    this.store.getState().updatePlanSection(a.section_id, (s) => ({
+                        ...s,
+                        brief: s.brief + '\n\nUser insight: ' + insightText,
+                    }));
+                }
+            }
+        } catch {
+            // Insight assignment failure is non-fatal — insights are still passed via userNotes
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -122,18 +221,25 @@ export class ReportOrchestrator {
                     evidenceContent,
                     userPrompt: userPrompt ?? '',
                     missionRole: section.missionRole ?? 'synthesis',
-                    userNotes: this.store.getState().v2UserNotes || '',
+                    userNotes: this.store.getState().v2UserInsights.join('\n') || '',
                 }),
             ]);
 
             const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
-            const result = streamText({ model, system: systemPrompt, prompt: userMessage });
+            const controller = new AbortController();
+            const result = streamText({
+                model,
+                system: systemPrompt,
+                prompt: userMessage,
+                maxTokens: 4000,
+                abortSignal: controller.signal,
+            });
 
-            let fullText = '';
-            for await (const chunk of result.textStream) {
-                fullText += chunk;
-                this.store.getState().appendSectionChunk(section.id, chunk);
-            }
+            const { fullText } = await streamWithRepetitionGuard(
+                result.textStream,
+                controller,
+                (chunk) => this.store.getState().appendSectionChunk(section.id, chunk),
+            );
 
             this.store.getState().completeSectionContent(section.id, fullText);
         } catch (err: any) {
@@ -146,31 +252,25 @@ export class ReportOrchestrator {
     // -----------------------------------------------------------------------
 
     private async runVisualAgent(section: V2Section): Promise<void> {
-        // Skip if no visualization needed or content already has mermaid
         if (section.visualType === 'none') return;
         const currentContent = this.store.getState().v2PlanSections.find((s) => s.id === section.id)?.content ?? '';
-        if (currentContent.includes('```mermaid')) return;
 
         try {
-            const [systemPrompt, userMessage] = await Promise.all([
-                this.mgr.renderPrompt(PromptId.AiAnalysisReportVisualSystem, {}),
-                this.mgr.renderPrompt(PromptId.AiAnalysisReportVisual, {
-                    sectionTitle: section.title,
-                    visualType: section.visualType,
-                    sectionContent: currentContent.slice(0, 2000),
-                }),
-            ]);
+            let mermaidBlock = await this.generateMermaidBlock(section, currentContent);
+            if (!mermaidBlock || !mermaidBlock.includes('```mermaid')) return;
 
-            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportVisual);
-            const result = streamText({ model, system: systemPrompt, prompt: userMessage });
-
-            let mermaidBlock = '';
-            for await (const chunk of result.textStream) {
-                mermaidBlock += chunk;
+            // Validate → fix → retry loop (max 2 retries)
+            for (let attempt = 0; attempt < 2; attempt++) {
+                const inner = this.extractMermaidInner(mermaidBlock);
+                if (!inner) { mermaidBlock = ''; break; }
+                const validation = await validateMermaidCode(inner);
+                if (validation.valid) break;
+                const fixed = await this.runMermaidFixAgent(inner, validation.error);
+                if (!fixed || !fixed.includes('```mermaid')) { mermaidBlock = ''; break; }
+                mermaidBlock = fixed;
             }
 
-            // Append mermaid to section content
-            if (mermaidBlock.includes('```mermaid')) {
+            if (mermaidBlock && mermaidBlock.includes('```mermaid')) {
                 const updatedContent = currentContent + '\n\n' + mermaidBlock.trim();
                 this.store.getState().updatePlanSection(section.id, (s) => ({
                     ...s,
@@ -180,6 +280,40 @@ export class ReportOrchestrator {
         } catch {
             // Visual generation is optional — don't fail the section
         }
+    }
+
+    private async generateMermaidBlock(section: V2Section, sectionContent: string): Promise<string> {
+        const [systemPrompt, userMessage] = await Promise.all([
+            this.mgr.renderPrompt(PromptId.AiAnalysisReportVisualSystem, {}),
+            this.mgr.renderPrompt(PromptId.AiAnalysisReportVisual, {
+                sectionTitle: section.title,
+                visualType: section.visualType,
+                sectionContent: sectionContent.slice(0, 2000),
+            }),
+        ]);
+
+        const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportVisual);
+        const controller = new AbortController();
+        const result = streamText({
+            model,
+            system: systemPrompt,
+            prompt: userMessage,
+            maxTokens: 1000,
+            abortSignal: controller.signal,
+        });
+
+        const { fullText } = await streamWithRepetitionGuard(
+            result.textStream,
+            controller,
+            () => {},
+        );
+
+        return fullText;
+    }
+
+    private extractMermaidInner(block: string): string {
+        const match = block.match(/```mermaid\s*\n([\s\S]*?)```/);
+        return match ? match[1].trim() : '';
     }
 
     // -----------------------------------------------------------------------
@@ -215,13 +349,25 @@ export class ReportOrchestrator {
             ]);
 
             const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisVaultReportSummary);
-            const result = streamText({ model, system: systemPrompt, prompt: userMessage });
+            const controller = new AbortController();
+            const result = streamText({
+                model,
+                system: systemPrompt,
+                prompt: userMessage,
+                maxTokens: 4000,
+                abortSignal: controller.signal,
+            });
 
-            let fullText = '';
-            for await (const chunk of result.textStream) {
-                fullText += chunk;
-                this.store.getState().setSummary(fullText);
-            }
+            let accumulated = '';
+            const { fullText } = await streamWithRepetitionGuard(
+                result.textStream,
+                controller,
+                (chunk) => {
+                    accumulated += chunk;
+                    this.store.getState().setSummary(accumulated);
+                },
+            );
+            this.store.getState().setSummary(fullText);
         } catch {
             // Summary failure is non-fatal
         }
@@ -244,7 +390,7 @@ export class ReportOrchestrator {
             ]);
 
             const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisMermaidFix);
-            const result = streamText({ model, system: systemPrompt, prompt: userMessage });
+            const result = streamText({ model, system: systemPrompt, prompt: userMessage, maxTokens: 800 });
 
             let fixed = '';
             for await (const chunk of result.textStream) {
