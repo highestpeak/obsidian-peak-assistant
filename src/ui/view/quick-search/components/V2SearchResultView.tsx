@@ -6,6 +6,7 @@ import { V2ReportView } from './V2ReportView';
 import { V2SourcesView } from './V2SourcesView';
 import { V2ScrollButtons } from './V2ScrollButtons';
 import { V2TableOfContents } from './V2TableOfContents';
+import { V2SectionNav } from './V2SectionNav';
 
 interface V2SearchResultViewProps {
     onClose?: () => void;
@@ -21,9 +22,10 @@ interface V2SearchResultViewProps {
 export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose, onApprove, onRegenerateSection }) => {
     const isStreaming = useSearchSessionStore((s) => s.status === 'streaming');
     const isCompleted = useSearchSessionStore((s) => s.status === 'completed');
-    const status = useSearchSessionStore((s) => s.status);
     const v2View = useSearchSessionStore((s) => s.v2View);
     const proposedOutline = useSearchSessionStore((s) => s.v2ProposedOutline);
+    const hasPlanSections = useSearchSessionStore((s) => s.v2PlanSections.length > 0);
+    const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
     const containerRef = useRef<HTMLDivElement>(null);
 
     // During streaming, force process view
@@ -37,12 +39,12 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
         }
     }, [isStreaming]);
 
-    // Auto-switch to report view when plan is ready
+    // Auto-switch to report view when search completes and plan sections exist (awaiting approval)
     useEffect(() => {
-        if (status === 'plan_ready') {
+        if (isCompleted && hasPlanSections && !planApproved) {
             useSearchSessionStore.getState().setV2View('report');
         }
-    }, [status]);
+    }, [isCompleted, hasPlanSections, planApproved]);
 
     return (
         <div className="pktw-flex pktw-flex-col pktw-h-full pktw-relative">
@@ -53,6 +55,8 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
                     {activeView === 'sources' && <V2SourcesView key="sources" onClose={onClose} />}
                 </AnimatePresence>
             </div>
+            {/* Section navigation — always visible when report is generating/complete */}
+            {activeView === 'report' && <V2SectionNav containerRef={containerRef} />}
             <V2ScrollButtons containerRef={containerRef} />
             {/* TOC rendered outside scroll container so it stays fixed on scroll */}
             {showToc && <V2TableOfContents markdown={proposedOutline!} />}
