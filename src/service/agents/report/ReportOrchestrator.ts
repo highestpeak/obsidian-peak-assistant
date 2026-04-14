@@ -75,31 +75,30 @@ export class ReportOrchestrator {
             this.store.getState().updatePlanSection(sec.id, (s) => ({ ...s, status: 'generating' }));
         }
 
-        // Pass 1: stream all section content in parallel (limit 3 concurrent)
-        // Uses parallelStream for true interleaved streaming — user sees multiple sections filling simultaneously
+        // Pass 1: stream all section content in parallel
+        // Each section has its own independent consumer (like recon pattern) — no yield backpressure
         const sectionAccumulators = new Map<string, string>();
-        const factories = sections.map((sec) => () => this.streamSectionContent(sec, sections, overview, userQuery));
-
-        for await (const event of parallelStream(factories, { limit: 3 })) {
-            if (event.type === 'text-delta' && event.extra?.sectionId) {
-                const id = event.extra.sectionId as string;
-                const prev = sectionAccumulators.get(id) ?? '';
-                sectionAccumulators.set(id, prev + event.text);
-                this.store.getState().appendSectionChunk(id, event.text);
-            } else if (event.type === 'parallel-stream-progress') {
-                // Progress tracking is handled by the UI via section status
+        const contentPromises = sections.map(async (sec) => {
+            try {
+                for await (const event of this.streamSectionContent(sec, sections, overview, userQuery)) {
+                    if (event.type === 'text-delta' && event.extra?.sectionId) {
+                        const id = event.extra.sectionId as string;
+                        const prev = sectionAccumulators.get(id) ?? '';
+                        sectionAccumulators.set(id, prev + event.text);
+                        this.store.getState().appendSectionChunk(id, event.text);
+                    }
+                }
+                const text = sectionAccumulators.get(sec.id) ?? '';
+                if (text) {
+                    this.store.getState().completeSectionContent(sec.id, text);
+                } else {
+                    this.store.getState().failSection(sec.id, 'No content generated');
+                }
+            } catch (err: any) {
+                this.store.getState().failSection(sec.id, err?.message ?? 'Content generation failed');
             }
-        }
-
-        // Finalize all sections
-        for (const sec of sections) {
-            const text = sectionAccumulators.get(sec.id) ?? '';
-            if (text) {
-                this.store.getState().completeSectionContent(sec.id, text);
-            } else {
-                this.store.getState().failSection(sec.id, 'No content generated');
-            }
-        }
+        });
+        await Promise.all(contentPromises);
 
         // Pass 2: summary + all visuals in parallel (summary doesn't need visuals)
         const limit = pLimit(3);
@@ -226,8 +225,13 @@ Output ONLY the JSON array, no other text.`;
         overview: string,
         userQuery: string,
     ): AsyncGenerator<LLMStreamEvent> {
+        const t0 = Date.now();
+        const tag = `[Section:${section.id.slice(0, 8)}]`;
+        console.log(`${tag} generator started at +0ms`);
         try {
             const evidenceContent = await this.readEvidence(section.evidencePaths);
+            console.log(`${tag} evidence read at +${Date.now() - t0}ms`);
+
             const otherSections = allSections
                 .filter((s) => s.id !== section.id)
                 .map((s) => `- ${s.title} (${s.contentType})`)
@@ -249,8 +253,10 @@ Output ONLY the JSON array, no other text.`;
                     userNotes: this.store.getState().v2UserInsights.join('\n') || '',
                 }),
             ]);
+            console.log(`${tag} prompts rendered at +${Date.now() - t0}ms`);
 
             const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
+            console.log(`${tag} calling streamText at +${Date.now() - t0}ms`);
             const result = streamText({
                 model,
                 system: systemPrompt,
@@ -258,10 +264,17 @@ Output ONLY the JSON array, no other text.`;
                 maxTokens: 2000,
             });
 
+            let firstChunk = true;
             for await (const chunk of result.textStream) {
+                if (firstChunk) {
+                    console.log(`${tag} FIRST TOKEN at +${Date.now() - t0}ms`);
+                    firstChunk = false;
+                }
                 yield { type: 'text-delta', text: chunk, extra: { sectionId: section.id } } as LLMStreamEvent;
             }
+            console.log(`${tag} STREAM COMPLETE at +${Date.now() - t0}ms`);
         } catch (err: any) {
+            console.error(`${tag} ERROR at +${Date.now() - t0}ms:`, err?.message);
             this.store.getState().failSection(section.id, err?.message ?? 'Content generation failed');
         }
     }
