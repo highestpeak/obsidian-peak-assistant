@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, Copy, Check, Sparkles, Loader2 } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
@@ -54,7 +54,9 @@ const SectionBlock: React.FC<{
 				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#374151] pktw-flex-1">
 					{section.title}
 				</span>
-				<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity">
+				<div className={`pktw-flex pktw-items-center pktw-gap-1 pktw-transition-opacity ${
+					section.status === 'generating' ? 'pktw-opacity-100' : 'pktw-opacity-0 group-hover:pktw-opacity-100'
+				}`}>
 					{section.status === 'done' && (
 						<>
 							<div
@@ -108,8 +110,20 @@ const SectionBlock: React.FC<{
 				)}
 			</AnimatePresence>
 
-			{/* Content */}
-			{(content || section.status === 'generating') && (
+			{/* Skeleton when generating but no content yet */}
+			{section.status === 'generating' && !content && (
+				<div className="pktw-space-y-3 pktw-animate-pulse">
+					<div className="pktw-h-3 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-full" />
+					<div className="pktw-h-3 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-5/6" />
+					<div className="pktw-h-3 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-4/6" />
+					<div className="pktw-h-8 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-full pktw-mt-2" />
+					<div className="pktw-h-3 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-full" />
+					<div className="pktw-h-3 pktw-bg-[#e5e7eb] pktw-rounded pktw-w-3/4" />
+				</div>
+			)}
+
+			{/* Content — only show when we have text */}
+			{content && (
 				<StreamdownIsolated isAnimating={section.status === 'generating'} className="pktw-select-text pktw-break-words">
 					{content}
 				</StreamdownIsolated>
@@ -124,21 +138,53 @@ const SectionBlock: React.FC<{
 };
 
 export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, onRegenerateSection }) => {
-	const status = useSearchSessionStore((s) => s.status);
 	const sections = useSearchSessionStore((s) => s.v2PlanSections);
+	const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
 	const summary = useSearchSessionStore((s) => s.v2Summary);
 	const summaryStreaming = useSearchSessionStore((s) => s.v2SummaryStreaming);
 
-	// Plan review mode
-	if (status === 'plan_ready') {
+	const progress = useMemo(() => {
+		const doneCount = sections.filter((s) => s.status === 'done').length;
+		const total = sections.length + 1; // +1 for executive summary
+		const summaryDone = !summaryStreaming && !!summary;
+		const completed = doneCount + (summaryDone ? 1 : 0);
+		return { completed, total, pct: Math.round((completed / total) * 100) };
+	}, [sections, summary, summaryStreaming]);
+
+	const isGenerating = sections.some((s) => s.status === 'generating') || summaryStreaming;
+
+	// Plan review mode — show when sections exist but user hasn't approved yet
+	if (sections.length > 0 && !planApproved) {
 		return <V2PlanReview onApprove={onApprove ?? (() => {})} />;
 	}
 
-	// No sections yet — fallback (shouldn't happen in normal flow)
+	// No sections yet — fallback
 	if (sections.length === 0 && !summary) return null;
 
 	return (
 		<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pktw-px-1 pktw-py-2">
+			{/* Progress bar — show during generation */}
+			{isGenerating && (
+				<div className="pktw-mb-4">
+					<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-1.5">
+						<span className="pktw-text-xs pktw-text-[#6b7280]">
+							{progress.completed}/{progress.total} sections
+						</span>
+						<span className="pktw-text-xs pktw-font-medium pktw-text-[#7c3aed]">
+							{progress.pct}%
+						</span>
+					</div>
+					<div className="pktw-h-1.5 pktw-bg-[#e5e7eb] pktw-rounded-full pktw-overflow-hidden">
+						<motion.div
+							className="pktw-h-full pktw-bg-[#7c3aed] pktw-rounded-full"
+							initial={{ width: 0 }}
+							animate={{ width: `${progress.pct}%` }}
+							transition={{ duration: 0.5, ease: 'easeOut' }}
+						/>
+					</div>
+				</div>
+			)}
+
 			{/* Executive Summary */}
 			{(summary || summaryStreaming) && (
 				<div className="pktw-bg-[#f9fafb] pktw-rounded-xl pktw-p-5 pktw-border pktw-border-[#e5e7eb] pktw-mb-4">
