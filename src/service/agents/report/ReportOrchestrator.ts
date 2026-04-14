@@ -4,7 +4,7 @@ import { PromptId } from '@/service/prompt/PromptId';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessionStore';
 import type { V2Section } from '@/ui/view/quick-search/store/searchSessionStore';
-import { pLimit, streamWithRepetitionGuard } from './stream-utils';
+import { pLimit, streamWithRepetitionGuard, detectRepetition } from './stream-utils';
 import { validateMermaidCode } from '@/core/utils/analysis-data-validator';
 import { parallelStream } from '@/core/providers/helpers/stream-helper';
 import type { LLMStreamEvent } from '@/core/providers/types';
@@ -257,20 +257,33 @@ Output ONLY the JSON array, no other text.`;
 
             const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
             console.log(`${tag} calling streamText at +${Date.now() - t0}ms`);
+            const controller = new AbortController();
             const result = streamText({
                 model,
                 system: systemPrompt,
                 prompt: userMessage,
-                maxTokens: 2000,
+                maxTokens: 800,
+                abortSignal: controller.signal,
             });
 
+            let fullText = '';
+            let lastCheckLen = 0;
             let firstChunk = true;
             for await (const chunk of result.textStream) {
                 if (firstChunk) {
                     console.log(`${tag} FIRST TOKEN at +${Date.now() - t0}ms`);
                     firstChunk = false;
                 }
+                fullText += chunk;
                 yield { type: 'text-delta', text: chunk, extra: { sectionId: section.id } } as LLMStreamEvent;
+                if (fullText.length - lastCheckLen > 200) {
+                    lastCheckLen = fullText.length;
+                    const truncAt = detectRepetition(fullText);
+                    if (truncAt > 0) {
+                        controller.abort();
+                        break;
+                    }
+                }
             }
             console.log(`${tag} STREAM COMPLETE at +${Date.now() - t0}ms`);
         } catch (err: any) {
@@ -443,7 +456,7 @@ Output ONLY the JSON array, no other text.`;
                 model,
                 system: systemPrompt,
                 prompt: userMessage,
-                maxTokens: 1500,
+                maxTokens: 600,
                 abortSignal: controller.signal,
             });
 
