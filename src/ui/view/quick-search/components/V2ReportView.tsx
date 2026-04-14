@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Copy, Check, Sparkles, Loader2 } from 'lucide-react';
+import { RefreshCw, Copy, Check, Sparkles, Loader2, CheckCircle, Clock } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Section } from '../store/searchSessionStore';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
@@ -51,33 +51,30 @@ const SectionBlock: React.FC<{
 		>
 			{/* Header */}
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
-				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#374151] pktw-flex-1">
+				{/* Status indicator */}
+				{section.status === 'done' && <CheckCircle className="pktw-w-4 pktw-h-4 pktw-text-green-500 pktw-shrink-0" />}
+				{section.status === 'generating' && <Loader2 className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed] pktw-animate-spin pktw-shrink-0" />}
+				{section.status === 'pending' && <Clock className="pktw-w-4 pktw-h-4 pktw-text-[#d1d5db] pktw-shrink-0" />}
+				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#374151] pktw-flex-1 pktw-line-clamp-1" title={section.title}>
 					{section.title}
 				</span>
-				<div className={`pktw-flex pktw-items-center pktw-gap-1 pktw-transition-opacity ${
-					section.status === 'generating' ? 'pktw-opacity-100' : 'pktw-opacity-0 group-hover:pktw-opacity-100'
+				<div className={`pktw-flex pktw-items-center pktw-gap-1 pktw-shrink-0 pktw-transition-opacity ${
+					section.status === 'done' ? 'pktw-opacity-0 group-hover:pktw-opacity-100' : 'pktw-opacity-0'
 				}`}>
-					{section.status === 'done' && (
-						<>
-							<div
-								onClick={handleCopy}
-								className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-transition-colors"
-								title="Copy section"
-							>
-								{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#9ca3af]" />}
-							</div>
-							<div
-								onClick={handleRegenerate}
-								className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-transition-colors"
-								title="Regenerate section"
-							>
-								<RefreshCw className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#9ca3af]" />
-							</div>
-						</>
-					)}
-					{section.status === 'generating' && (
-						<Loader2 className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed] pktw-animate-spin" />
-					)}
+					<div
+						onClick={handleCopy}
+						className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-transition-colors"
+						title="Copy section"
+					>
+						{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#9ca3af]" />}
+					</div>
+					<div
+						onClick={handleRegenerate}
+						className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-transition-colors"
+						title="Regenerate section"
+					>
+						<RefreshCw className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#9ca3af]" />
+					</div>
 				</div>
 			</div>
 

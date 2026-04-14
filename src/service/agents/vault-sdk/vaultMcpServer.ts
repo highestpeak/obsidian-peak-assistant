@@ -429,7 +429,7 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
             follow_up_questions: z.array(z.string()).optional().describe('3-5 context-specific follow-up questions the user might ask next'),
             plan_sections: z.array(z.object({
                 id: z.string(),
-                title: z.string().describe('Conclusion-as-heading for this section'),
+                title: z.string().describe('Short section title, max 40 chars. A concise label, NOT a full sentence.'),
                 content_type: z.enum(['enumeration', 'comparison', 'analysis', 'recommendation', 'timeline']),
                 visual_type: z.enum(['table', 'quadrantChart', 'flowchart', 'timeline', 'mindmap', 'none']),
                 evidence_paths: z.array(z.string()).describe('Vault paths relevant to this section'),

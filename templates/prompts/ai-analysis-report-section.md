@@ -28,3 +28,7 @@
 {{/if}}
 
 Write the content for this section following the system rules. Do not include the section title as a heading — it is rendered separately.
+
+CRITICAL REMINDERS:
+- You MUST write in the SAME LANGUAGE as the User Query above. If the query is Chinese, your entire response must be Chinese — regardless of the evidence language.
+- Do NOT echo any part of this prompt (headings like "Evidence for This Section", wikilinks, template structure) in your response. Output ONLY the section content.
