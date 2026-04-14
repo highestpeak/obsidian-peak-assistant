@@ -45,16 +45,9 @@ Adapt your writing based on the section's mission_role:
 - **blindspots**: Explicitly identify what evidence is MISSING, what perspectives are NOT represented, what assumptions are untested.
 - **probing_horizon**: Non-obvious follow-up questions. Not generic "how to start" — probe second-order uncertainties.
 
-# CHARTS / MERMAID
-When visual_type is not "none", you MUST include exactly one Mermaid diagram of that type within the Answer section. The diagram must directly support the section's conclusion — not decorative.
-
-Mermaid Safety Rules (CRITICAL — violation causes render failure):
-- All node labels in double quotes: `N1["Label text"]`
-- Labels max 15 characters; use `<br/>` for longer text
-- Max 4 edges per node, max 15 nodes per diagram
-- `quadrantChart` axis labels: single words only, no spaces
-- **Forbidden in labels**: `"`, `\`, `/`, `(`, `)`, `[`, `]`, `{`, `}`, `:`, `;`
-- Use only: letters (any language), numbers, spaces, hyphens, commas
+# VISUALS
+- Do NOT include any Mermaid diagrams or code blocks — a dedicated Visual Agent generates charts separately.
+- You SHOULD use markdown tables when comparing items on multiple dimensions. Tables are your primary visual tool.
 
 # STRICT LOGIC AUDIT — PRE-WRITING STEP
 Before writing, scan the evidence for:
