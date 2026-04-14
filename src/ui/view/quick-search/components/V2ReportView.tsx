@@ -197,15 +197,16 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 				</div>
 			)}
 
-			{/* Section blocks */}
-			<div className="pktw-space-y-4">
+			{/* Section blocks — weight-based layout */}
+			<div className="pktw-grid pktw-grid-cols-2 pktw-gap-3">
 				{sections.map((sec, i) => (
-					<SectionBlock
-						key={sec.id}
-						section={sec}
-						index={i}
-						onRegenerate={onRegenerateSection}
-					/>
+					<div key={sec.id} className={sec.weight >= 7 ? 'pktw-col-span-2' : 'pktw-col-span-2 sm:pktw-col-span-1'}>
+						<SectionBlock
+							section={sec}
+							index={i}
+							onRegenerate={onRegenerateSection}
+						/>
+					</div>
 				))}
 			</div>
 		</motion.div>
