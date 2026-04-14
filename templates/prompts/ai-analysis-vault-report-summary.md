@@ -10,4 +10,4 @@
 ## Evidence Used (source files)
 {{{evidenceList}}}
 
-Write a comprehensive executive summary (~800-1200 words, flowing prose, answer-first) that synthesizes the full picture for the user. Reference the analysis sections and cite vault notes with [[wikilinks]].
+Write a concise executive summary (~200-400 words, flowing prose, answer-first) that synthesizes the key findings for the user. Do NOT include [[wikilinks]] or references — the Sources tab handles that. CRITICAL: Write in the SAME LANGUAGE as the User Query.

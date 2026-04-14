@@ -73,15 +73,18 @@ export class ReportOrchestrator {
             this.store.getState().updatePlanSection(sec.id, (s) => ({ ...s, status: 'generating' }));
         }
 
-        // Pass 1+2: content + visual per section, concurrency-limited
+        // Pass 1: all content, concurrency-limited (user sees text streaming in)
         const limit = pLimit(3);
         await Promise.all(sections.map((sec) => limit(async () => {
             await this.runContentAgent(sec, sections, overview, userQuery);
-            await this.runVisualAgent(sec);
         })));
 
-        // Pass 3: executive summary (needs all sections completed first)
-        await this.runSummaryAgent(sections, allEvidencePaths, overview, userQuery);
+        // Pass 2: summary + all visuals in parallel (summary doesn't need visuals)
+        const summaryPromise = this.runSummaryAgent(sections, allEvidencePaths, overview, userQuery);
+        const visualsPromise = Promise.all(sections.map((sec) => limit(async () => {
+            await this.runVisualAgent(sec);
+        })));
+        await Promise.all([summaryPromise, visualsPromise]);
     }
 
     async regenerateSection(
@@ -231,7 +234,7 @@ Output ONLY the JSON array, no other text.`;
                 model,
                 system: systemPrompt,
                 prompt: userMessage,
-                maxTokens: 4000,
+                maxTokens: 2000,
                 abortSignal: controller.signal,
             });
 
@@ -354,7 +357,7 @@ Output ONLY the JSON array, no other text.`;
                 model,
                 system: systemPrompt,
                 prompt: userMessage,
-                maxTokens: 4000,
+                maxTokens: 1500,
                 abortSignal: controller.signal,
             });
 
