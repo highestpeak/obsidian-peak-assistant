@@ -3,7 +3,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { BusinessError, ErrorCode } from '@/core/errors';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import type { DocumentType } from '@/core/document/types';
-import { PromptId, CONFIGURABLE_PROMPT_IDS, INDEXING_AND_HUB_PROMPT_IDS } from '@/service/prompt/PromptId';
+import { PromptId, CONFIGURABLE_PROMPT_IDS, INDEXING_AND_HUB_PROMPT_IDS, SEARCH_AI_ANALYSIS_PROMPT_IDS } from '@/service/prompt/PromptId';
 import {
 	DEFAULT_HUB_DISCOVER_SETTINGS,
 	type HubDiscoverSettings,
@@ -380,11 +380,16 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	profileEnabled: true,
 	promptRewriteEnabled: false,
 	// Programmatically initialize promptModelMap with defaultModel for general + Indexing & Hub prompts
+	// Search AI Analysis prompts use OpenRouter 4o-mini for reliable quality
 	promptModelMap: (() => {
 		const defaultModel = { provider: 'openai', modelId: 'gpt-4o-mini' };
+		const searchAnalysisModel = { provider: 'openrouter', modelId: 'openai/gpt-4o-mini' };
 		const map: Partial<Record<PromptId, { provider: string; modelId: string }>> = {};
 		for (const promptId of [...CONFIGURABLE_PROMPT_IDS, ...INDEXING_AND_HUB_PROMPT_IDS]) {
 			map[promptId] = { ...defaultModel };
+		}
+		for (const promptId of SEARCH_AI_ANALYSIS_PROMPT_IDS) {
+			map[promptId] = { ...searchAnalysisModel };
 		}
 		return map;
 	})(),
