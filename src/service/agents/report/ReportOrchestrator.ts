@@ -6,6 +6,8 @@ import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessio
 import type { V2Section } from '@/ui/view/quick-search/store/searchSessionStore';
 import { pLimit, streamWithRepetitionGuard } from './stream-utils';
 import { validateMermaidCode } from '@/core/utils/analysis-data-validator';
+import { parallelStream } from '@/core/providers/helpers/stream-helper';
+import type { LLMStreamEvent } from '@/core/providers/types';
 
 /**
  * Multi-agent report orchestrator.
@@ -73,13 +75,34 @@ export class ReportOrchestrator {
             this.store.getState().updatePlanSection(sec.id, (s) => ({ ...s, status: 'generating' }));
         }
 
-        // Pass 1: all content, concurrency-limited (user sees text streaming in)
-        const limit = pLimit(3);
-        await Promise.all(sections.map((sec) => limit(async () => {
-            await this.runContentAgent(sec, sections, overview, userQuery);
-        })));
+        // Pass 1: stream all section content in parallel (limit 3 concurrent)
+        // Uses parallelStream for true interleaved streaming — user sees multiple sections filling simultaneously
+        const sectionAccumulators = new Map<string, string>();
+        const factories = sections.map((sec) => () => this.streamSectionContent(sec, sections, overview, userQuery));
+
+        for await (const event of parallelStream(factories, { limit: 3 })) {
+            if (event.type === 'text-delta' && event.extra?.sectionId) {
+                const id = event.extra.sectionId as string;
+                const prev = sectionAccumulators.get(id) ?? '';
+                sectionAccumulators.set(id, prev + event.text);
+                this.store.getState().appendSectionChunk(id, event.text);
+            } else if (event.type === 'parallel-stream-progress') {
+                // Progress tracking is handled by the UI via section status
+            }
+        }
+
+        // Finalize all sections
+        for (const sec of sections) {
+            const text = sectionAccumulators.get(sec.id) ?? '';
+            if (text) {
+                this.store.getState().completeSectionContent(sec.id, text);
+            } else {
+                this.store.getState().failSection(sec.id, 'No content generated');
+            }
+        }
 
         // Pass 2: summary + all visuals in parallel (summary doesn't need visuals)
+        const limit = pLimit(3);
         const summaryPromise = this.runSummaryAgent(sections, allEvidencePaths, overview, userQuery);
         const visualsPromise = Promise.all(sections.map((sec) => limit(async () => {
             await this.runVisualAgent(sec);
@@ -194,7 +217,57 @@ Output ONLY the JSON array, no other text.`;
     }
 
     // -----------------------------------------------------------------------
-    // Agent 1: Content
+    // Agent 1: Content (streaming generator for parallelStream)
+    // -----------------------------------------------------------------------
+
+    private async *streamSectionContent(
+        section: V2Section,
+        allSections: V2Section[],
+        overview: string,
+        userQuery: string,
+    ): AsyncGenerator<LLMStreamEvent> {
+        try {
+            const evidenceContent = await this.readEvidence(section.evidencePaths);
+            const otherSections = allSections
+                .filter((s) => s.id !== section.id)
+                .map((s) => `- ${s.title} (${s.contentType})`)
+                .join('\n');
+
+            const [systemPrompt, userMessage] = await Promise.all([
+                this.mgr.renderPrompt(PromptId.AiAnalysisReportSectionSystem, {}),
+                this.mgr.renderPrompt(PromptId.AiAnalysisReportSection, {
+                    userQuery,
+                    reportOverview: overview,
+                    sectionTitle: section.title,
+                    contentType: section.contentType,
+                    visualType: section.visualType,
+                    sectionBrief: section.brief,
+                    otherSections,
+                    evidenceContent,
+                    userPrompt: '',
+                    missionRole: section.missionRole ?? 'synthesis',
+                    userNotes: this.store.getState().v2UserInsights.join('\n') || '',
+                }),
+            ]);
+
+            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
+            const result = streamText({
+                model,
+                system: systemPrompt,
+                prompt: userMessage,
+                maxTokens: 2000,
+            });
+
+            for await (const chunk of result.textStream) {
+                yield { type: 'text-delta', text: chunk, extra: { sectionId: section.id } } as LLMStreamEvent;
+            }
+        } catch (err: any) {
+            this.store.getState().failSection(section.id, err?.message ?? 'Content generation failed');
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Agent 1b: Content (single section, for regeneration)
     // -----------------------------------------------------------------------
 
     private async runContentAgent(
