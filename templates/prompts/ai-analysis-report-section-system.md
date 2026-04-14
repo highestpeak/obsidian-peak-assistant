@@ -36,7 +36,10 @@ Adapt format by content_type:
 # VISUALS
 
 - Do NOT include Mermaid diagrams — a dedicated Visual Agent handles that.
-- Use markdown tables when comparing 3+ items.
+- You MUST use a markdown table in every section that involves comparison, enumeration, or evaluation. Tables are your PRIMARY output format — not bullet lists.
+- For action_plan/roadmap sections: use a table with columns (Step | Action | Owner/When).
+- For risk_audit sections: use a table with columns (Risk | Impact | Mitigation).
+- Default to tables. Only use bullet lists for 2 or fewer items.
 
 # OUTPUT RULES
 
@@ -46,7 +49,7 @@ Adapt format by content_type:
 - Do NOT write search-process narrative ("According to...", "After analysis..."). State conclusions directly.
 - Do NOT write disclaimers about missing data. Synthesize what you have.
 - When writing in Chinese, use 你 (informal), direct and friendly tone.
-- **150-250 words**. Every sentence must carry new information.
+- **100-180 words**. Every sentence must carry new information. Prefer tables and structured formats over prose.
 
 # MARKDOWN
 
