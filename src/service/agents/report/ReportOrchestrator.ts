@@ -280,8 +280,8 @@ Output ONLY the JSON array, no other text.`;
                         console.log(`${tag} FIRST TOKEN at +${Date.now() - t0}ms`);
                         firstChunk = false;
                     }
-                    fullText += chunk.textDelta;
-                    yield { type: 'text-delta', text: chunk.textDelta, extra: { sectionId: section.id } } as LLMStreamEvent;
+                    fullText += chunk.text;
+                    yield { type: 'text-delta', text: chunk.text, extra: { sectionId: section.id } } as LLMStreamEvent;
                     if (fullText.length - lastCheckLen > 200) {
                         lastCheckLen = fullText.length;
                         const truncAt = detectRepetition(fullText);
