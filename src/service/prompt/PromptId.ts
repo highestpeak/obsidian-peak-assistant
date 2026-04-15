@@ -227,6 +227,10 @@ export enum PromptId {
 	AiAnalysisReportVisualSystem = 'ai-analysis-report-visual-system',
 	/** Per-section visual generation: user prompt with section content + visual type. */
 	AiAnalysisReportVisual = 'ai-analysis-report-visual',
+	/** Per-section JSON viz decision: system (static). */
+	AiAnalysisReportVizJsonSystem = 'ai-analysis-report-viz-json-system',
+	/** Per-section JSON viz decision: user prompt with section content + type. */
+	AiAnalysisReportVizJson = 'ai-analysis-report-viz-json',
 	/** Vault SDK playbook: system prompt for SDK vault search agent (tool instruction + type classification). */
 	VaultSdkPlaybook = 'ai-analysis-vault-sdk-playbook',
 
