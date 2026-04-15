@@ -118,8 +118,6 @@ export class ReportOrchestrator {
         });
 
         // Now consume all streams in parallel — each with its own independent consumer
-        const summaryPromise = this.runSummaryAgent(sections, allEvidencePaths, overview, userQuery);
-
         const contentPromises = streams.map(async ({ sec, result, controller }) => {
             try {
                 let fullText = '';
@@ -148,7 +146,10 @@ export class ReportOrchestrator {
             }
         });
 
-        await Promise.all([summaryPromise, ...contentPromises]);
+        await Promise.all(contentPromises);
+
+        // Now run summary with actual section content available
+        await this.runSummaryAgent(sections, allEvidencePaths, overview, userQuery);
 
         // Pass 2: visuals run after all content is done
         const limit = pLimit(3);
@@ -483,11 +484,7 @@ Output ONLY the JSON array, no other text.`;
         this.store.getState().setSummaryStreaming(true);
 
         try {
-            // Use section briefs (not content — summary runs alongside sections, content not yet available)
             const currentSections = this.store.getState().v2PlanSections;
-            const blocksSummary = currentSections
-                .map((sec) => `### ${sec.title}\n${sec.brief}`)
-                .join('\n\n');
             const evidenceList = allEvidencePaths
                 .map((p) => `- [[${p.replace(/\.md$/, '')}]]`)
                 .join('\n');
@@ -497,7 +494,7 @@ Output ONLY the JSON array, no other text.`;
                 this.mgr.renderPrompt(PromptId.AiAnalysisVaultReportSummary, {
                     userQuery,
                     reportPlan: overview,
-                    blocksSummary,
+                    sections: currentSections.map((s) => ({ title: s.title, content: s.content })),
                     evidenceList,
                 }),
             ]);
