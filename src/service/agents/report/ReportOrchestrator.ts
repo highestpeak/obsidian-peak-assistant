@@ -272,19 +272,23 @@ Output ONLY the JSON array, no other text.`;
             let fullText = '';
             let lastCheckLen = 0;
             let firstChunk = true;
-            for await (const chunk of result.textStream) {
-                if (firstChunk) {
-                    console.log(`${tag} FIRST TOKEN at +${Date.now() - t0}ms`);
-                    firstChunk = false;
-                }
-                fullText += chunk;
-                yield { type: 'text-delta', text: chunk, extra: { sectionId: section.id } } as LLMStreamEvent;
-                if (fullText.length - lastCheckLen > 200) {
-                    lastCheckLen = fullText.length;
-                    const truncAt = detectRepetition(fullText);
-                    if (truncAt > 0) {
-                        controller.abort();
-                        break;
+            // Use fullStream (not textStream) — fullStream is eager (HTTP fires immediately),
+            // textStream may be lazy and delay HTTP request start, causing serial behavior.
+            for await (const chunk of result.fullStream) {
+                if (chunk.type === 'text-delta') {
+                    if (firstChunk) {
+                        console.log(`${tag} FIRST TOKEN at +${Date.now() - t0}ms`);
+                        firstChunk = false;
+                    }
+                    fullText += chunk.textDelta;
+                    yield { type: 'text-delta', text: chunk.textDelta, extra: { sectionId: section.id } } as LLMStreamEvent;
+                    if (fullText.length - lastCheckLen > 200) {
+                        lastCheckLen = fullText.length;
+                        const truncAt = detectRepetition(fullText);
+                        if (truncAt > 0) {
+                            controller.abort();
+                            break;
+                        }
                     }
                 }
             }
