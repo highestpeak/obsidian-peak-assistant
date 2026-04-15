@@ -1,6 +1,8 @@
 import { buildSourcesGraphWithDiscoveredEdges } from '@/service/tools/search-graph-inspector/build-sources-graph';
 import type { SearchResultItem } from '@/service/search/types';
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
+import { enrichWithCrossDomain } from '@/service/agents/ai-graph/infer-cross-domain';
+import { AppContext } from '@/app/context/AppContext';
 
 /**
  * Convert SearchResultItems into LensGraphData by discovering physical + semantic edges
@@ -13,7 +15,7 @@ export async function buildLensGraphFromSources(sources: SearchResultItem[]): Pr
 		return { nodes: [], edges: [], availableLenses: [] };
 	}
 
-	const nodes = sg.nodes.map((n) => ({
+	const baseNodes = sg.nodes.map((n) => ({
 		label: n.label,
 		path: n.attributes?.path ?? n.id,
 		role: 'leaf' as const,
@@ -26,7 +28,24 @@ export async function buildLensGraphFromSources(sources: SearchResultItem[]): Pr
 		kind: (e.kind === 'semantic' ? 'semantic' : 'link') as 'semantic' | 'link',
 	}));
 
-	return { nodes, edges, availableLenses: ['topology'] };
+	const ctx = AppContext.getInstance();
+	const app = ctx.app;
+	const nodesWithTime = await Promise.all(baseNodes.map(async (n) => {
+		const file = app.vault.getAbstractFileByPath(n.path);
+		if (file && 'stat' in file) {
+			const stat = (file as any).stat;
+			return { ...n, createdAt: stat.ctime, modifiedAt: stat.mtime };
+		}
+		return n;
+	}));
+
+	const hasTimestamps = nodesWithTime.some((n) => n.createdAt !== undefined);
+	const availableLenses: LensGraphData['availableLenses'] = hasTimestamps
+		? ['topology', 'timeline']
+		: ['topology'];
+
+	const baseGraph: LensGraphData = { nodes: nodesWithTime, edges, availableLenses };
+	return enrichWithCrossDomain(baseGraph);
 }
 
 /**
