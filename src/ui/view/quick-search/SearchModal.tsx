@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { VaultSearchTab } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
-import { Search, Sparkles, Globe, X, RotateCcw, Brain, Hash, ListOrdered, FolderSearch, Blend } from 'lucide-react';
+import { Search, Sparkles, Globe, X, RotateCcw, Brain, Hash, ListOrdered, FolderSearch, Network } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { cn } from '@/ui/react/lib/utils';
@@ -62,8 +62,8 @@ interface AITabContentProps {
  * AI Analysis tab: input row (mode, web, Clear/Re-analyze/Cancel/Analyze) + AISearchTab content.
  */
 export const PRESET_LABELS: Record<AnalysisMode, { short: string; full: string }> = {
-	vaultFull: { short: 'Vault Full', full: 'Vault Full · Deep analysis whole vault.' },
-	aiGraph: { short: 'AI Graph', full: 'AI Graph · Multi-lens knowledge graph visualization.' },
+	vaultFull: { short: 'Vault Analysis', full: 'Vault Analysis · Deep analysis whole vault.' },
+	aiGraph: { short: 'AI Graph', full: 'AI Graph · Build interactive knowledge graphs.' },
 };
 
 const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActiveTab }) => {
@@ -141,7 +141,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 									className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10 !pktw-w-6 !pktw-h-6 pktw-rounded-full pktw-bg-white pktw-shadow-[0_2px_10px_rgba(124,58,237,0.22),0_0_0_1px_rgba(124,58,237,0.12)] pktw-text-[#5b21b6] pktw-transition-[box-shadow,color,background-color] hover:pktw-bg-[#f5f3ff] hover:pktw-shadow-[0_4px_14px_rgba(124,58,237,0.28),0_0_0_1px_rgba(124,58,237,0.2)] hover:pktw-text-[#7c3aed] focus-visible:pktw-ring-2 focus-visible:pktw-ring-[#7c3aed]/40"
 									title={PRESET_LABELS[analysisMode].full}
 								>
-									{analysisMode === 'aiGraph' ? <Blend className="pktw-w-4 pktw-h-4" /> : <Brain className="pktw-w-4 pktw-h-4" />}
+									{analysisMode === 'aiGraph' ? <Network className="pktw-w-4 pktw-h-4" /> : <Brain className="pktw-w-4 pktw-h-4" />}
 								</Button>
 							</HoverCardTrigger>
 							<HoverCardContent side="bottom" align="start" className="pktw-w-auto pktw-min-w-[200px] pktw-py-0.5 pktw-px-1 pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
@@ -157,7 +157,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 											analysisMode === p && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
 										)}
 									>
-										{p === 'aiGraph' ? <Blend className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" /> : <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" />}
+										{p === 'aiGraph' ? <Network className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" /> : <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" />}
 										<span className="pktw-font-medium">{PRESET_LABELS[p].short}</span>
 										<span className="pktw-text-[11px]">· {PRESET_LABELS[p].full.split(' · ')[1]}</span>
 									</Button>
@@ -373,7 +373,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 									title="Search mode (Option+↑/↓ to switch)"
 								>
 									{displayMode === 'inspector' ? (
-										<Blend className="pktw-w-4 pktw-h-4" />
+										<Network className="pktw-w-4 pktw-h-4" />
 									) : displayMode === 'goToLine' ? (
 										<ListOrdered className="pktw-w-4 pktw-h-4" />
 									) : displayMode === 'inFile' ? (
@@ -446,7 +446,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 										displayMode === 'inspector' && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
 									)}
 								>
-									<Blend className={cn('pktw-w-3.5 pktw-h-3.5 pktw-shrink-0', displayMode === 'inspector' && 'pktw-text-[#7c3aed]')} />
+									<Network className={cn('pktw-w-3.5 pktw-h-3.5 pktw-shrink-0', displayMode === 'inspector' && 'pktw-text-[#7c3aed]')} />
 									<span className="pktw-font-medium">Inspector</span>
 									<span className="pktw-text-[11px]">· inspect target note</span>
 								</Button>
