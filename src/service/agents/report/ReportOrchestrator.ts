@@ -75,25 +75,71 @@ export class ReportOrchestrator {
             this.store.getState().updatePlanSection(sec.id, (s) => ({ ...s, status: 'generating' }));
         }
 
-        // Pass 1: summary + all sections stream in parallel
-        // Summary starts immediately (uses plan overview + briefs, not section content)
-        // Each section has its own independent consumer (recon pattern — no yield backpressure)
+        // Pre-prepare ALL section params (evidence + prompts) BEFORE firing any streamText.
+        // This ensures all streamText() calls happen in the same microtask window → fetch fires simultaneously.
+        const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
+        const sectionParams = await Promise.all(sections.map(async (sec) => {
+            const evidenceContent = await this.readEvidence(sec.evidencePaths);
+            const otherSections = sections
+                .filter((s) => s.id !== sec.id)
+                .map((s) => `- ${s.title} (${s.contentType})`)
+                .join('\n');
+            const [systemPrompt, userMessage] = await Promise.all([
+                this.mgr.renderPrompt(PromptId.AiAnalysisReportSectionSystem, {}),
+                this.mgr.renderPrompt(PromptId.AiAnalysisReportSection, {
+                    userQuery,
+                    reportOverview: overview,
+                    sectionTitle: sec.title,
+                    contentType: sec.contentType,
+                    visualType: sec.visualType,
+                    sectionBrief: sec.brief,
+                    otherSections,
+                    evidenceContent,
+                    userPrompt: '',
+                    missionRole: sec.missionRole ?? 'synthesis',
+                    userNotes: this.store.getState().v2UserInsights.join('\n') || '',
+                }),
+            ]);
+            return { sec, systemPrompt, userMessage };
+        }));
+
+        // Fire ALL streamText calls at once — fetch starts immediately in constructor
+        const streams = sectionParams.map(({ sec, systemPrompt, userMessage }) => {
+            const controller = new AbortController();
+            const result = streamText({
+                model,
+                system: systemPrompt,
+                prompt: userMessage,
+                maxTokens: 800,
+                abortSignal: controller.signal,
+            });
+            console.log(`[Section:${sec.id.slice(0, 8)}] streamText fired`);
+            return { sec, result, controller };
+        });
+
+        // Now consume all streams in parallel — each with its own independent consumer
         const summaryPromise = this.runSummaryAgent(sections, allEvidencePaths, overview, userQuery);
 
-        const sectionAccumulators = new Map<string, string>();
-        const contentPromises = sections.map(async (sec) => {
+        const contentPromises = streams.map(async ({ sec, result, controller }) => {
             try {
-                for await (const event of this.streamSectionContent(sec, sections, overview, userQuery)) {
-                    if (event.type === 'text-delta' && event.extra?.sectionId) {
-                        const id = event.extra.sectionId as string;
-                        const prev = sectionAccumulators.get(id) ?? '';
-                        sectionAccumulators.set(id, prev + event.text);
-                        this.store.getState().appendSectionChunk(id, event.text);
+                let fullText = '';
+                let lastCheckLen = 0;
+                for await (const chunk of result.fullStream) {
+                    if (chunk.type === 'text-delta') {
+                        fullText += chunk.text;
+                        this.store.getState().appendSectionChunk(sec.id, chunk.text);
+                        if (fullText.length - lastCheckLen > 200) {
+                            lastCheckLen = fullText.length;
+                            const truncAt = detectRepetition(fullText);
+                            if (truncAt > 0) {
+                                controller.abort();
+                                break;
+                            }
+                        }
                     }
                 }
-                const text = sectionAccumulators.get(sec.id) ?? '';
-                if (text) {
-                    this.store.getState().completeSectionContent(sec.id, text);
+                if (fullText) {
+                    this.store.getState().completeSectionContent(sec.id, fullText);
                 } else {
                     this.store.getState().failSection(sec.id, 'No content generated');
                 }
@@ -102,7 +148,6 @@ export class ReportOrchestrator {
             }
         });
 
-        // Summary + all sections run simultaneously
         await Promise.all([summaryPromise, ...contentPromises]);
 
         // Pass 2: visuals run after all content is done
