@@ -29,6 +29,7 @@ import { StreamingStepsDisplay } from "../ai-analysis-sections/StepsDisplay";
 import { AppContext } from "@/app/context/AppContext";
 import { copyText } from "@/ui/view/shared/common-utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/ui/component/shared-ui/collapsible";
+import { AIGraphView } from "../ai-graph-view/AIGraphView";
 
 export const CompletedAIAnalysis: React.FC<{
     onClose?: () => void;
@@ -131,6 +132,19 @@ export const CompletedAIAnalysis: React.FC<{
         blocksChatContext,
         blocksChatItemContext,
     });
+
+    // AI Graph mode: render dedicated graph view instead of normal report
+    if (runAnalysisMode === 'aiGraph') {
+        return (
+            <div className="pktw-space-y-4 pktw-p-4">
+                <AIGraphView onOpenPath={(path) => {
+                    const app = AppContext.getInstance().app;
+                    const file = app.vault.getAbstractFileByPath(path);
+                    if (file) app.workspace.getLeaf().openFile(file as any);
+                }} />
+            </div>
+        );
+    }
 
     return (
         <div className="pktw-flex pktw-flex-col pktw-gap-4">

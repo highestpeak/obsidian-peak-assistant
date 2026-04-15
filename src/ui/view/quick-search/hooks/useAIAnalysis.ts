@@ -263,8 +263,11 @@ export function useAIAnalysis() {
 					markAIAnalysisCompleted();
 				}
 				return;
+			} else if (analysisMode === 'aiGraph') {
+				// aiGraph is handled in useSearchSession; this legacy path is a no-op
+				console.warn('[useAIAnalysis] aiGraph mode should be handled by useSearchSession');
+				return;
 			} else {
-				console.warn('[aiGraph] agent not yet wired, falling back to legacy agent');
 				const stream = aiSearchAgent.stream(searchQuery, scopeValue ? { scopeValue } : { scopeValue: undefined });
 				await consumeStream(stream);
 			}

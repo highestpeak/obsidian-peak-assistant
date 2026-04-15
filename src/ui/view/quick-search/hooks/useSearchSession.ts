@@ -961,8 +961,28 @@ export function useSearchSession() {
 				return;
 			}
 
-			// aiGraph mode — TODO: wire AI graph agent in Task 9
-			console.warn('[aiGraph] agent not yet wired, falling back to legacy agent');
+			// aiGraph mode — run AIGraphAgent and route events to aiGraphStore
+			if (analysisMode === 'aiGraph') {
+				const { useAIGraphStore } = await import('../store/aiGraphStore');
+				const { AIGraphAgent } = await import('@/service/agents/AIGraphAgent');
+
+				const agent = new AIGraphAgent(AppContext.getInstance().manager);
+				useAIGraphStore.getState().setLoading(true);
+				useAIGraphStore.getState().setQuery(searchQuery);
+
+				for await (const event of agent.startSession(searchQuery)) {
+					if (signal?.aborted) break;
+					if (event.type === 'ui-signal' && (event as any).channel === 'ai-graph-data') {
+						useAIGraphStore.getState().setGraphData((event as any).data.graphData);
+					}
+				}
+
+				useAIGraphStore.getState().setLoading(false);
+				store.getState().markCompleted();
+				markAIAnalysisCompleted();
+				return;
+			}
+
 			const stream = aiSearchAgent.stream(searchQuery, scopeValue ? { scopeValue } : { scopeValue: undefined });
 			await consumeStream(stream);
 		} catch (err) {
