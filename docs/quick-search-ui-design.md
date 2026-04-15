@@ -5,7 +5,7 @@ This directory implements a high-performance AI search analysis function, focusi
 ## 🏗️ Core Component Architecture
 
 - `useAIAnalysis.ts` - Core AI analysis logic, handling streaming data
-- `aiAnalysisStore.ts` - Zustand state management, optimizing state updates
+- `searchSessionStore.ts` - Zustand state management, optimizing state updates (formerly `aiAnalysisStore.ts`)
 - `tab-AISearch.tsx` - Main UI component, state-driven rendering
 - `StepsDisplay.tsx` - Incremental rendering component, achieving smooth text display
 
@@ -89,7 +89,7 @@ const performAnalysis = useCallback(async () => {
 const performAnalysis = useCallback(async () => {
     for await (const event of stream) {
         // 🔍 Get latest state value every time
-        if (!useAIAnalysisStore.getState().hasStartedStreaming) {
+        if (!useSearchSessionStore.getState().hasStartedStreaming) {
             console.debug('[useAIAnalysis] Starting streaming');
             startStreaming(); // Trigger state update
         }

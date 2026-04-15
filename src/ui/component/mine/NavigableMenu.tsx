@@ -112,7 +112,6 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 	}, []); // No dependencies to avoid loops
 
 	// Calculate floating description position and dimensions
-	// todo we need to get a better calculation algorithm for the menu position
 	const floatingDescription = React.useMemo(() => {
 		if (!selectedItemRect || !enabledItems[selectedIndex]?.description) {
 			return null;
@@ -178,25 +177,10 @@ export const NavigableMenu: React.FC<NavigableMenuProps> = ({
 		// 	left -= containerRect.left;
 		// }
 
-		console.debug("[NavigableMenu] popover position debug", {
-			selectedItemRect,
-			menuRect,
-			relativeItemLeft,
-			relativeItemRight,
-			spaceOnRight,
-			spaceOnLeft,
-			effectiveSpaceOnRight,
-			effectiveSpaceOnLeft,
-			showOnRight,
-			showOnLeft,
-			left,
-			top,
-			actualWidth,
-			positioning,
-			POPOVER_WIDTH,
-			POPOVER_HEIGHT,
-			MIN_WIDTH,
-		});
+		// Clamp top so popover stays within viewport
+		const viewportHeight = window.innerHeight;
+		top = Math.min(top, viewportHeight - POPOVER_HEIGHT - MARGIN);
+		top = Math.max(top, MARGIN);
 
 		return {
 			left,

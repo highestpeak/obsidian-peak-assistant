@@ -215,9 +215,10 @@ export class VaultSearchAgentSDK {
         };
 
         const pendingSubmits: SubmitPlanInput[] = [];
+        let planSubmitted = false;
         const onSubmitPlan = async (plan: SubmitPlanInput): Promise<SubmitPlanFeedback> => {
             pendingSubmits.push(plan);
-            // v1: auto-approve. A later task will wire this to the HITL modal.
+            planSubmitted = true;
             return {
                 approved: true,
                 adjustedPaths: plan.selected_paths,
@@ -308,6 +309,9 @@ export class VaultSearchAgentSDK {
                 for (const ev of events) {
                     yield ev;
                 }
+
+                // Stop processing after vault_submit_plan — plan is ready, no need for more agent output
+                if (planSubmitted) break;
             }
         } catch (err) {
             console.error('[VaultSearchAgentSDK] query error', err);

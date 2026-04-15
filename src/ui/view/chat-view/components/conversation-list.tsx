@@ -151,6 +151,10 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 						key={conversation.meta.id}
 						conversation={conversation}
 						onClick={() => loadConversation(conversation.meta.id)}
+						onDelete={async (c) => {
+							await manager.deleteConversation(c.meta.id);
+							setConversations((prev) => prev.filter((x) => x.meta.id !== c.meta.id));
+						}}
 						maxPreviewLength={maxPreviewLength}
 					/>
 				))}

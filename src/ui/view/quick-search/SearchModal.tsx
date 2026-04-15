@@ -306,10 +306,9 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 					: ('vault' as const);
 	const currentPath = getActiveNoteDetail(app).activeFile?.path ?? null;
 
-	const VAULT_DISPLAY_MODES = ['vault', 'inFile', 'goToLine', 'inspector'] as const;
+	const VAULT_DISPLAY_MODES = ['vault', 'inFolder', 'inFile', 'goToLine', 'inspector'] as const;
 	const cycleVaultMode = (dir: 1 | -1) => {
-		const modeForCycle = displayMode === 'inFolder' ? 'vault' : displayMode;
-		const idx = VAULT_DISPLAY_MODES.indexOf(modeForCycle);
+		const idx = VAULT_DISPLAY_MODES.indexOf(displayMode);
 		const safeIdx = idx >= 0 ? idx : 0;
 		const nextMode = VAULT_DISPLAY_MODES[(safeIdx + dir + VAULT_DISPLAY_MODES.length) % VAULT_DISPLAY_MODES.length];
 		if (nextMode === 'inspector') {
@@ -421,21 +420,19 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 									<span className="pktw-font-medium">In-file</span>
 									<span className="pktw-text-[11px]">· search current file</span>
 								</Button>
-								{/* In-folder (@) temporarily hidden
 								<Button
 									variant="ghost"
 									onClick={() => setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, 'inFolder'))}
 									style={{ cursor: 'pointer' }}
 									className={cn(
 										'pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1 pktw-text-left pktw-text-sm pktw-rounded',
-										quickSearchMode === 'inFolder' && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
+										displayMode === 'inFolder' && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
 									)}
 								>
-									<FolderSearch className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" />
+									<FolderSearch className={cn('pktw-w-3.5 pktw-h-3.5 pktw-shrink-0', displayMode === 'inFolder' && 'pktw-text-[#7c3aed]')} />
 									<span className="pktw-font-medium">In-folder</span>
 									<span className="pktw-text-[11px]">· @ prefix</span>
 								</Button>
-								*/}
 								<Button
 									variant="ghost"
 									onClick={() => setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, 'goToLine'))}

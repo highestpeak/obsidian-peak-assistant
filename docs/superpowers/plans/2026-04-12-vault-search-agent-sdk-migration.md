@@ -1,5 +1,7 @@
 # Vault Search Agent SDK Migration — 1-Day Implementation Plan
 
+> **COMPLETED** (2026-04-12) — 15/16 tasks done; task 16 (delete spikeAgentSdk.ts) completed in Phase 0 cleanup
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Migrate vault search agent from hand-rolled Vercel AI SDK pipeline to Claude Agent SDK `query()`, fixing the core recall problem (21% → ≥80%) on reflective queries, in a single working day. All other plugin features (chat, embeddings, doc agents, structured extraction) remain on Vercel AI SDK. A feature flag `vaultSearch.useV2` toggles between old and new vault search paths.

@@ -1,8 +1,9 @@
 import { keymap } from "@codemirror/view";
 import { Prec } from "@codemirror/state";
+import { cursorGroupLeft, cursorGroupRight, selectGroupLeft, selectGroupRight } from "@codemirror/commands";
 
 // Keyboard handling for CodeMirror
-export const keymapExtension = Prec.high(keymap.of([
+export const keymapExtension = Prec.highest(keymap.of([
 	{
 		key: "Enter",
 		run: (view) => {
@@ -43,4 +44,15 @@ export const keymapExtension = Prec.high(keymap.of([
 			return false;
 		}
 	},
+
+	// Word navigation — explicitly handle so Obsidian global shortcuts don't intercept
+	{ key: "Ctrl-ArrowLeft", run: cursorGroupLeft },
+	{ key: "Ctrl-ArrowRight", run: cursorGroupRight },
+	{ key: "Ctrl-Shift-ArrowLeft", run: selectGroupLeft },
+	{ key: "Ctrl-Shift-ArrowRight", run: selectGroupRight },
+	// Mac uses Alt for word navigation
+	{ key: "Alt-ArrowLeft", run: cursorGroupLeft },
+	{ key: "Alt-ArrowRight", run: cursorGroupRight },
+	{ key: "Alt-Shift-ArrowLeft", run: selectGroupLeft },
+	{ key: "Alt-Shift-ArrowRight", run: selectGroupRight },
 ]));

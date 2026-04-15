@@ -1,5 +1,7 @@
 # AI Analysis: Architecture and Prompt Engineering
 
+> **Note (2026-04-12):** The search pipeline has been migrated to the Claude Agent SDK. `AISearchAgent` now uses the Agent SDK's streaming query interface (`SDKMessage` stream) instead of the Vercel AI SDK adapters. The multi-agent ReAct loop described below reflects the V2 Agent SDK implementation. See `docs/superpowers/plans/2026-04-12-vault-search-agent-sdk-migration.md` for migration details.
+
 This document summarizes the **AI Analysis** feature: its architecture, data flow, design rationale, and all prompts involved. It is intended for developers and anyone tuning or extending prompts.
 
 ---

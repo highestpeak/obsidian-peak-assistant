@@ -1,101 +1,80 @@
-import React, { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Check, Loader2, FileText, Search, Brain } from 'lucide-react';
 import type { V2ToolStep } from '../../types/search-steps';
 
 interface V2StepCardProps {
     step: V2ToolStep;
 }
 
+function getToolIcon(toolName: string) {
+    const short = toolName.replace(/^mcp__vault__/, '');
+    if (short === 'vault_grep') return <Search className="pktw-w-3.5 pktw-h-3.5" />;
+    if (short === 'vault_submit_plan') return <Brain className="pktw-w-3.5 pktw-h-3.5" />;
+    return <FileText className="pktw-w-3.5 pktw-h-3.5" />;
+}
+
 export const V2StepCard: React.FC<V2StepCardProps> = ({ step }) => {
-    const [expanded, setExpanded] = useState(false);
     const isRunning = step.status === 'running';
+    const isSubmitPlan = step.toolName.endsWith('vault_submit_plan');
 
     return (
-        <motion.div
-            className="pktw-flex pktw-flex-col pktw-gap-1 pktw-py-1.5"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-        >
-            <div
-                className="pktw-flex pktw-items-center pktw-gap-2 pktw-cursor-pointer pktw-select-none"
-                onClick={() => !isRunning && step.resultPreview && setExpanded(!expanded)}
-            >
-                {/* Status indicator */}
-                <span className="pktw-text-sm pktw-shrink-0">
-                    {isRunning ? (
-                        <motion.span
-                            className="pktw-inline-block pktw-text-blue-500"
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                        >
-                            ⟳
-                        </motion.span>
-                    ) : (
-                        <motion.span
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                        >
-                            {step.icon}
-                        </motion.span>
-                    )}
-                </span>
-
-                {/* Title */}
-                <span className={`pktw-text-xs pktw-font-medium ${isRunning ? 'pktw-text-blue-600' : 'pktw-text-gray-700'}`}>
-                    {step.displayName}{isRunning ? '...' : ''}
-                </span>
-
-                {/* Summary — fade in when it appears */}
-                {step.summary && (
-                    <motion.span
-                        className="pktw-text-[10px] pktw-text-gray-400 pktw-ml-auto pktw-shrink-0"
-                        initial={{ opacity: 0, x: -4 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.2 }}
+        <div className="pktw-flex pktw-gap-3">
+            {/* Status indicator */}
+            <div className="pktw-flex-none pktw-mt-0.5">
+                {isRunning ? (
+                    <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                        className="pktw-w-5 pktw-h-5 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center"
                     >
-                        {step.summary}
-                    </motion.span>
-                )}
-
-                {/* Duration */}
-                {step.endedAt && step.startedAt && (
-                    <span className="pktw-text-[10px] pktw-text-gray-300 pktw-font-mono pktw-tabular-nums pktw-shrink-0">
-                        {((step.endedAt - step.startedAt) / 1000).toFixed(1)}s
-                    </span>
-                )}
-
-                {/* Expand indicator */}
-                {!isRunning && step.resultPreview && (
-                    <motion.span
-                        className="pktw-text-[10px] pktw-text-gray-300 pktw-shrink-0"
-                        animate={{ rotate: expanded ? 90 : 0 }}
-                        transition={{ duration: 0.15 }}
-                    >
-                        ▸
-                    </motion.span>
+                        <Loader2 className="pktw-w-3 pktw-h-3 pktw-text-[#7c3aed]" />
+                    </motion.div>
+                ) : (
+                    <div className="pktw-w-5 pktw-h-5 pktw-rounded-full pktw-bg-green-100 pktw-flex pktw-items-center pktw-justify-center">
+                        <Check className="pktw-w-3 pktw-h-3 pktw-text-green-600" />
+                    </div>
                 )}
             </div>
 
-            {/* Expanded result preview */}
-            <AnimatePresence>
-                {expanded && step.resultPreview && (
-                    <motion.div
-                        key="preview"
-                        className="pktw-ml-6 pktw-mt-1 pktw-p-2 pktw-rounded pktw-bg-gray-50 pktw-border pktw-border-gray-100 pktw-overflow-x-auto"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: 'easeInOut' }}
-                        style={{ overflow: 'hidden' }}
-                    >
-                        <pre className="pktw-text-[10px] pktw-text-gray-500 pktw-whitespace-pre-wrap pktw-break-words pktw-max-h-40 pktw-overflow-y-auto">
-                            {step.resultPreview}
-                        </pre>
-                    </motion.div>
+            {/* Content */}
+            <div className="pktw-flex-1">
+                <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-0.5">
+                    <div className="pktw-text-[#7c3aed]">
+                        {getToolIcon(step.toolName)}
+                    </div>
+                    <span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">
+                        {step.displayName}
+                    </span>
+                    {!isRunning && step.summary && (
+                        <span className="pktw-text-xs pktw-text-[#9ca3af] pktw-ml-auto pktw-shrink-0">
+                            {step.summary}
+                        </span>
+                    )}
+                    {!isRunning && step.endedAt && step.startedAt && (
+                        <span className="pktw-text-xs pktw-text-[#9ca3af] pktw-font-mono pktw-tabular-nums pktw-shrink-0">
+                            {((step.endedAt - step.startedAt) / 1000).toFixed(1)}s
+                        </span>
+                    )}
+                </div>
+
+                {/* submit_plan progress bar */}
+                {isRunning && isSubmitPlan && (
+                    <div className="pktw-mt-2">
+                        <div className="pktw-h-1 pktw-bg-gray-200 pktw-rounded-full pktw-overflow-hidden">
+                            <motion.div
+                                className="pktw-h-full pktw-bg-[#7c3aed]"
+                                initial={{ width: '0%' }}
+                                animate={{ width: '70%' }}
+                                transition={{ duration: 2, ease: 'easeInOut' }}
+                            />
+                        </div>
+                        <span className="pktw-text-xs pktw-text-[#9ca3af] pktw-mt-1.5 pktw-block">
+                            Analyzing evidence and structuring report...
+                        </span>
+                    </div>
                 )}
-            </AnimatePresence>
-        </motion.div>
+            </div>
+        </div>
     );
 };

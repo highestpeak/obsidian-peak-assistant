@@ -24,7 +24,18 @@ Press `Ctrl+Shift+I` (Windows/Linux) or `Cmd+Option+I` (Mac) in Obsidian to open
 
 ### Available Methods
 
-Once enabled, you can use the `window.testGraphTools` object in the console:
+Once enabled, you can use the `window.testGraphTools` object in the console, as well as these standalone DevTools helpers:
+
+```javascript
+// Index a single document (fast core index)
+window.indexDocument("path/to/note.md")
+
+// Index a single document (full index + LLM enrichment)
+window.indexDocumentFull("path/to/note.md")
+
+// Clean up orphaned rows in mobius_node/edge and doc nodes missing from index
+await window.cleanupGraphTable()
+```
 
 ```javascript
 // Check if tools are available

@@ -15,6 +15,7 @@ import {
 } from "../store/aiAnalysisStore";
 import type { GraphPreview } from "@/core/storage/graph/types";
 import { AppContext } from "@/app/context/AppContext";
+import { useSearchSessionStore } from "../store/searchSessionStore";
 import { useSharedStore } from "../store/sharedStore";
 import { buildAiAnalyzeMarkdown, ExportSource, saveAiAnalyzeResultToMarkdown, persistAnalysisDocToPath, type BuildAiAnalyzeMarkdownParams } from "../callbacks/save-ai-analyze-to-md";
 import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot, type BuildMarkdownOptions } from "@/core/storage/vault/search-docs/AiSearchAnalysisDoc";
@@ -254,6 +255,16 @@ export function useAIAnalysisResult() {
     ]);
 
     const handleCopyAll = useCallback(async () => {
+        // V2 path: prefer proposed_outline, fallback to timeline
+        const sessionState = useSearchSessionStore.getState();
+        if (sessionState.v2Active) {
+            const reportText = sessionState.v2ProposedOutline
+                ?? sessionState.v2ReportChunks.join('');
+            await navigator.clipboard.writeText(reportText);
+            return;
+        }
+
+        // V1 path
         const steps = useAIAnalysisStepsStore.getState().steps;
         const topicsState = useAIAnalysisTopicsStore.getState() as Record<string, unknown>;
         const topicAnalyze = (topicsState["topicAnalyzeResults"] as Record<string, SectionAnalyzeResult[]> | undefined) ?? {};
@@ -306,7 +317,25 @@ export function useAIAnalysisResult() {
             })()
             : folderPath;
 
-        const snapshot = buildCompletedAnalysisSnapshot();
+        // V2 path: build snapshot from timeline
+        const sessionState = useSearchSessionStore.getState();
+        let snapshot: CompletedAnalysisSnapshot;
+        if (sessionState.v2Active) {
+            snapshot = {
+                summary: sessionState.v2ProposedOutline ?? sessionState.v2ReportChunks.join(''),
+                topics: [],
+                sources: sessionState.v2Sources.map((s) => ({
+                    path: s.path,
+                    title: s.title,
+                })),
+                usage: sessionState.usage,
+                startedAtMs: sessionState.startedAt,
+                durationMs: sessionState.duration,
+            } as CompletedAnalysisSnapshot;
+        } else {
+            snapshot = buildCompletedAnalysisSnapshot();
+        }
+
         await saveAiAnalyzeResultToMarkdown({
             folderPath: normalizedFolder,
             fileName: fileName,

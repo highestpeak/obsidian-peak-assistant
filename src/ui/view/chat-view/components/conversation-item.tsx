@@ -2,11 +2,13 @@ import React from 'react';
 import { ChatConversation } from '@/service/chat/types';
 import { formatRelativeDate } from '@/ui/view/shared/date-utils';
 import { cn } from '@/ui/react/lib/utils';
-import { MessageSquare, Calendar } from 'lucide-react';
+import { MessageSquare, Calendar, Trash2 } from 'lucide-react';
+import { Button } from '@/ui/component/shared-ui/button';
 
 export interface ConversationItemProps {
 	conversation: ChatConversation;
 	onClick: (conversation: ChatConversation) => void;
+	onDelete?: (conversation: ChatConversation) => void;
 	showIcon?: boolean;
 	showDate?: boolean;
 	maxPreviewLength?: number;
@@ -20,6 +22,7 @@ export interface ConversationItemProps {
 export const ConversationItem: React.FC<ConversationItemProps> = ({
 	conversation,
 	onClick,
+	onDelete,
 	showIcon = true,
 	showDate = true,
 	maxPreviewLength = 150,
@@ -32,7 +35,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
 	return (
 		<div
 			className={cn(
-				'pktw-p-4 pktw-transition-all pktw-cursor-pointer pktw-border pktw-border-solid pktw-border-border-default pktw-rounded-lg pktw-shadow-sm pktw-bg-card',
+				'pktw-group pktw-p-4 pktw-transition-all pktw-cursor-pointer pktw-border pktw-border-solid pktw-border-border-default pktw-rounded-lg pktw-shadow-sm pktw-bg-card',
 				'hover:pktw-shadow-lg hover:pktw-border-border-hover',
 				className
 			)}
@@ -57,12 +60,24 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
 						)}
 					</div>
 				</div>
-				{showDate && conversation.meta.createdAtTimestamp && (
-					<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-text-xs pktw-text-muted-foreground">
-						<Calendar className="pktw-h-3 pktw-w-3" />
-						{formatRelativeDate(conversation.meta.createdAtTimestamp)}
-					</div>
-				)}
+				<div className="pktw-flex pktw-items-center pktw-gap-1">
+					{showDate && conversation.meta.createdAtTimestamp && (
+						<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-text-xs pktw-text-muted-foreground">
+							<Calendar className="pktw-h-3 pktw-w-3" />
+							{formatRelativeDate(conversation.meta.createdAtTimestamp)}
+						</div>
+					)}
+					{onDelete && (
+						<Button
+							variant="ghost"
+							size="icon"
+							className="pktw-h-6 pktw-w-6 pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity pktw-text-muted-foreground hover:pktw-text-destructive"
+							onClick={(e) => { e.stopPropagation(); onDelete(conversation); }}
+						>
+							<Trash2 className="pktw-h-3.5 pktw-w-3.5" />
+						</Button>
+					)}
+				</div>
 			</div>
 		</div>
 	);

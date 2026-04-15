@@ -116,8 +116,8 @@ interface SearchSessionState {
 	v2PlanSections: V2Section[];
 	/** Whether user has approved the plan and report generation has started */
 	v2PlanApproved: boolean;
-	/** User notes to guide report generation */
-	v2UserNotes: string;
+	/** User insights to incorporate into report — each assigned to a section before generation */
+	v2UserInsights: string[];
 	/** Executive summary markdown (generated after all sections complete) */
 	v2Summary: string;
 	v2SummaryStreaming: boolean;
@@ -176,7 +176,8 @@ interface SearchSessionActions {
 
 	// Plan & section generation
 	approvePlan: () => void;
-	setUserNotes: (notes: string) => void;
+	addUserInsight: (insight: string) => void;
+	removeUserInsight: (index: number) => void;
 	setPlanSections: (sections: V2Section[]) => void;
 	updatePlanSection: (id: string, updater: (s: V2Section) => V2Section) => void;
 	reorderPlanSections: (ids: string[]) => void;
@@ -269,7 +270,7 @@ const INITIAL_STATE: SearchSessionState = {
 	v2ProposedOutline: null,
 	v2PlanSections: [],
 	v2PlanApproved: false,
-	v2UserNotes: '',
+	v2UserInsights: [],
 	v2Summary: '',
 	v2SummaryStreaming: false,
 
@@ -330,7 +331,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			v2ProposedOutline: null,
 			v2PlanSections: [],
 			v2PlanApproved: false,
-			v2UserNotes: '',
+			v2UserInsights: [],
 			v2Summary: '',
 			v2SummaryStreaming: false,
 			// Preserve analysisMode and webEnabled (already in closure)
@@ -579,7 +580,8 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 
 	approvePlan: () => set({ v2PlanApproved: true }),
 
-	setUserNotes: (notes) => set({ v2UserNotes: notes }),
+	addUserInsight: (insight) => set((s) => ({ v2UserInsights: [...s.v2UserInsights, insight] })),
+	removeUserInsight: (index) => set((s) => ({ v2UserInsights: s.v2UserInsights.filter((_, i) => i !== index) })),
 
 	setPlanSections: (sections) => set({ v2PlanSections: sections }),
 

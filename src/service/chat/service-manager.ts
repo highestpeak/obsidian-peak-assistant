@@ -283,6 +283,13 @@ export class AIServiceManager {
 		return this.conversationService.countConversations(projectId ?? null);
 	}
 
+	async deleteConversation(conversationId: string): Promise<void> {
+		if (!this.conversationService) {
+			throw new Error('ConversationService not initialized. Call init() first.');
+		}
+		return this.conversationService.deleteConversation(conversationId);
+	}
+
 	/**
 	 * Create a new conversation with optional seed messages.
 	 */

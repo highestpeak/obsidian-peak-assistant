@@ -124,10 +124,11 @@ export const SearchResultRow: React.FC<{
 	itemRef: (el: HTMLDivElement | null) => void;
 	onClose?: () => void;
 	newTab?: boolean;
-}> = ({ currentQuery, result, index, isSelected, onSelect, itemRef, onClose, newTab = true }) => {
-	const handleClick = () => {
+}> = ({ currentQuery, result, index, isSelected, onSelect, itemRef, onClose, newTab }) => {
+	const handleClick = (e: React.MouseEvent) => {
 		onSelect(index);
-		createOpenSourceCallback(onClose, newTab)(result);
+		const openInNewTab = newTab ?? (e.metaKey || e.ctrlKey);
+		createOpenSourceCallback(onClose, openInNewTab)(result);
 	};
 
 	return (

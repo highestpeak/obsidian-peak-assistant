@@ -909,6 +909,20 @@ export class ChatStorageService {
 	}
 
 	/**
+	 * Delete a conversation: trash the vault file and remove DB records.
+	 */
+	async deleteConversation(conversationId: string): Promise<void> {
+		const conversation = await this.readConversation(conversationId, false);
+		if (conversation?.file) {
+			await this.app.vault.trash(conversation.file, true);
+		}
+		const convRepo = sqliteStoreManager.getChatConversationRepo();
+		const messageRepo = sqliteStoreManager.getChatMessageRepo();
+		await messageRepo.deleteByConversationIds([conversationId]);
+		await convRepo.deleteByConversationIds([conversationId]);
+	}
+
+	/**
 	 * Count messages for a conversation (lightweight operation).
 	 */
 	async countMessages(conversationId: string): Promise<number> {

@@ -49,7 +49,7 @@ Adapt format by content_type:
 - Do NOT write search-process narrative ("According to...", "After analysis..."). State conclusions directly.
 - Do NOT write disclaimers about missing data. Synthesize what you have.
 - When writing in Chinese, use 你 (informal), direct and friendly tone.
-- **100-180 words**. Every sentence must carry new information. Prefer tables and structured formats over prose.
+- Every sentence must carry new information. Let section complexity determine length — short sections are fine, deep analysis can be longer. Prefer tables and structured formats for comparisons and enumerations.
 
 # MARKDOWN
 

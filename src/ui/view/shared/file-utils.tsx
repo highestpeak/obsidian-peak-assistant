@@ -141,6 +141,14 @@ export function getFileTypeByName(fileName: string): string {
 }
 
 /**
+ * Unified FileIcon component — single entry point for all file type icons.
+ * Prefer this over calling getFileIcon() directly.
+ */
+export const FileIcon: React.FC<{ type: string; isSelected?: boolean; className?: string }> = ({
+	type, isSelected = false, className,
+}) => getFileIcon(type, isSelected, className);
+
+/**
  * Get file icon component based on file extension
  */
 export function getFileIconComponent(extension?: string): typeof File | typeof Image | typeof FileText {

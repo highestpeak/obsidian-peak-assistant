@@ -200,15 +200,13 @@ export class AppContext {
 				(window as any).getVaultPersona = () => getVaultPersona();
 				(window as any).cleanupGraphTable = () => cleanupGraphTable();
 
-				// V2 search debug state dump
+				// V2 search debug — screenshot + DOM + state, saved to /tmp
 					(window as any).dumpV2State = () => {
 						try {
-							// Dynamic import to avoid circular deps
 							const { useSearchSessionStore } = require('@/ui/view/quick-search/store/searchSessionStore');
 							const s = useSearchSessionStore.getState();
 							const dump = {
-								status: s.status,
-								query: s.query,
+								status: s.status, query: s.query,
 								v2Steps: s.v2Steps.map((st: any) => ({
 									id: st.id, toolName: st.toolName, displayName: st.displayName,
 									status: st.status, summary: st.summary,
@@ -218,14 +216,49 @@ export class AppContext {
 								v2ReportChunkCount: s.v2ReportChunks.length,
 								v2ReportComplete: s.v2ReportComplete,
 								v1Steps: s.steps.map((st: any) => ({ type: st.type, status: st.status })),
-								usage: s.usage,
-								duration: s.duration,
-								error: s.error,
+								usage: s.usage, duration: s.duration, error: s.error,
 								debugLogCount: s.agentDebugLog.length,
 							};
 							console.log('[V2 State Dump]', JSON.stringify(dump, null, 2));
 							return dump;
 						} catch (e) { console.error('dumpV2State failed', e); }
+					};
+					(window as any).captureV2Debug = async () => {
+						const fs = require('fs');
+						const path = require('path');
+						const outDir = '/tmp/peak-v2-debug';
+						try { fs.mkdirSync(outDir, { recursive: true }); } catch {}
+						const ts = Date.now();
+
+						// 1. State dump
+						const state = (window as any).dumpV2State?.();
+						if (state) {
+							fs.writeFileSync(path.join(outDir, `state-${ts}.json`), JSON.stringify(state, null, 2));
+						}
+
+						// 2. DOM snapshot of the search result area
+						const modalEl = document.querySelector('.modal-container');
+						if (modalEl) {
+							const html = modalEl.innerHTML;
+							fs.writeFileSync(path.join(outDir, `dom-${ts}.html`), html);
+						}
+
+						// 3. Screenshot via Electron
+						try {
+							const electron = require('electron');
+							const win = (electron.remote ?? electron).getCurrentWindow?.()
+								?? electron.BrowserWindow?.getFocusedWindow?.();
+							if (win) {
+								const image = await win.webContents.capturePage();
+								fs.writeFileSync(path.join(outDir, `screenshot-${ts}.png`), image.toPNG());
+								console.log(`[captureV2Debug] screenshot saved: ${outDir}/screenshot-${ts}.png`);
+							}
+						} catch (e) {
+							console.warn('[captureV2Debug] screenshot failed (expected in some Electron configs):', (e as Error).message);
+						}
+
+						console.log(`[captureV2Debug] saved to ${outDir}/ (state + dom + screenshot)`);
+						return outDir;
 					};
 
 					console.debug('🔧 Graph Inspector Test Tools initialized!');

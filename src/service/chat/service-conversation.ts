@@ -82,6 +82,10 @@ export class ConversationService {
 		return this.storage.countConversations(projectId);
 	}
 
+	async deleteConversation(conversationId: string): Promise<void> {
+		return this.storage.deleteConversation(conversationId);
+	}
+
 	/**
 	 * Create a new conversation with optional seed messages.
 	 */

@@ -158,8 +158,19 @@ export type SearchStep =
 export type SearchStepType = SearchStep['type'];
 
 // ---------------------------------------------------------------------------
-// V2 (Agent SDK) tool step
+// V2 (Agent SDK) types
 // ---------------------------------------------------------------------------
+
+export type V2TimelineItem =
+	| { kind: 'text'; id: string; chunks: string[]; complete: boolean }
+	| { kind: 'tool'; step: V2ToolStep };
+
+export interface V2Source {
+	path: string;
+	title: string;
+	readAt: number;
+	reasoning?: string;
+}
 
 export interface V2ToolStep {
 	id: string;                    // tool call id from SDK
@@ -198,7 +209,7 @@ export function v2ToolDisplay(toolName: string, input: Record<string, unknown>):
 			const basename = path.split('/').pop()?.replace(/\.md$/, '') || 'note';
 			return { displayName: `Following links from ${basename}`, icon: '🔗' };
 		}
-		case 'submit_plan':
+		case 'vault_submit_plan':
 			return { displayName: 'Evidence plan', icon: '📋' };
 		default:
 			return { displayName: shortName, icon: '🔧' };
@@ -242,7 +253,7 @@ export function extractV2Summary(toolName: string, result: unknown): string {
 				return `${data.hits?.length ?? 0} hits`;
 			case 'vault_wikilink_expand':
 				return `${data.visited?.length ?? 0} notes discovered`;
-			case 'submit_plan':
+			case 'vault_submit_plan':
 				return `${data.adjustedPaths?.length ?? data.selected_paths?.length ?? 0} sources selected`;
 			default:
 				return '';

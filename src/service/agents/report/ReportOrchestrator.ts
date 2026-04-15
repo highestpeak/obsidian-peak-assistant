@@ -110,7 +110,7 @@ export class ReportOrchestrator {
                 model,
                 system: systemPrompt,
                 prompt: userMessage,
-                maxTokens: 800,
+                maxTokens: 4096,
                 abortSignal: controller.signal,
             });
             console.log(`[Section:${sec.id.slice(0, 8)}] streamText fired`);
@@ -310,7 +310,7 @@ Output ONLY the JSON array, no other text.`;
                 model,
                 system: systemPrompt,
                 prompt: userMessage,
-                maxTokens: 800,
+                maxTokens: 4096,
                 abortSignal: controller.signal,
             });
 
@@ -508,7 +508,7 @@ Output ONLY the JSON array, no other text.`;
                 model,
                 system: systemPrompt,
                 prompt: userMessage,
-                maxTokens: 600,
+                maxTokens: 2048,
                 abortSignal: controller.signal,
             });
 

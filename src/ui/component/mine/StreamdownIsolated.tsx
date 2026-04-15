@@ -409,7 +409,7 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 				className={className}
 				data-streamdown-root
 				data-streamdown-mode="shadow"
-				style={{ display: 'block', minHeight: '1em' }}
+				style={{ display: 'block', minHeight: '1em', userSelect: 'text' }}
 			/>
 			{hoverState &&
 				createPortal(
