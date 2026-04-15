@@ -38,18 +38,81 @@ export class ReportOrchestrator {
     // Evidence reader
     // -----------------------------------------------------------------------
 
-    private async readEvidence(paths: string[]): Promise<string> {
+    private async readEvidence(paths: string[], sectionBrief?: string): Promise<string> {
         const vault = AppContext.getInstance().app.vault;
+        const PER_FILE_LIMIT = 6000;
         const chunks: string[] = [];
+
         for (const p of paths) {
             const file = vault.getAbstractFileByPath(p);
             if (!file || !('extension' in file)) continue;
             try {
                 const content = await vault.cachedRead(file as any);
-                chunks.push(`### [[${p.replace(/\.md$/, '')}]]\n${content.slice(0, 3000)}`);
+                const noteName = p.replace(/\.md$/, '');
+
+                if (content.length <= PER_FILE_LIMIT) {
+                    chunks.push(`### [[${noteName}]]\n${content}`);
+                    continue;
+                }
+
+                // For long files: try to find the most relevant section
+                if (sectionBrief) {
+                    const relevant = this.extractRelevantSection(content, sectionBrief, PER_FILE_LIMIT);
+                    if (relevant) {
+                        chunks.push(`### [[${noteName}]] (excerpt)\n${relevant}`);
+                        continue;
+                    }
+                }
+
+                // Fallback: first + last portion
+                const half = Math.floor(PER_FILE_LIMIT / 2);
+                const excerpt = content.slice(0, half) + '\n\n...(truncated)...\n\n' + content.slice(-half);
+                chunks.push(`### [[${noteName}]] (excerpt)\n${excerpt}`);
             } catch { /* skip unreadable */ }
         }
         return chunks.join('\n\n---\n\n');
+    }
+
+    private extractRelevantSection(content: string, brief: string, maxLen: number): string | null {
+        const keywords = brief
+            .toLowerCase()
+            .split(/[\s,;.!?，。；！？]+/)
+            .filter((w) => w.length > 1);
+        if (keywords.length === 0) return null;
+
+        const paragraphs = content.split(/\n{2,}/);
+        if (paragraphs.length <= 3) return null;
+
+        const scores = paragraphs.map((p) => {
+            const lower = p.toLowerCase();
+            return keywords.filter((kw) => lower.includes(kw)).length;
+        });
+
+        const maxScore = Math.max(...scores);
+        if (maxScore < 2) return null;
+
+        const bestIdx = scores.indexOf(maxScore);
+        let result = paragraphs[bestIdx];
+        let lo = bestIdx - 1;
+        let hi = bestIdx + 1;
+
+        while (result.length < maxLen) {
+            const addLo = lo >= 0 ? paragraphs[lo] : null;
+            const addHi = hi < paragraphs.length ? paragraphs[hi] : null;
+            if (!addLo && !addHi) break;
+
+            if (addLo && (!addHi || (scores[lo] >= scores[hi]))) {
+                if (result.length + addLo.length > maxLen) break;
+                result = addLo + '\n\n' + result;
+                lo--;
+            } else if (addHi) {
+                if (result.length + addHi.length > maxLen) break;
+                result = result + '\n\n' + addHi;
+                hi++;
+            }
+        }
+
+        return result;
     }
 
     // -----------------------------------------------------------------------
@@ -79,7 +142,7 @@ export class ReportOrchestrator {
         // This ensures all streamText() calls happen in the same microtask window → fetch fires simultaneously.
         const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
         const sectionParams = await Promise.all(sections.map(async (sec) => {
-            const evidenceContent = await this.readEvidence(sec.evidencePaths);
+            const evidenceContent = await this.readEvidence(sec.evidencePaths, sec.brief);
             const otherSections = sections
                 .filter((s) => s.id !== sec.id)
                 .map((s) => `- ${s.title} (${s.contentType})`)
@@ -278,7 +341,7 @@ Output ONLY the JSON array, no other text.`;
         const tag = `[Section:${section.id.slice(0, 8)}]`;
         console.log(`${tag} generator started at +0ms`);
         try {
-            const evidenceContent = await this.readEvidence(section.evidencePaths);
+            const evidenceContent = await this.readEvidence(section.evidencePaths, section.brief);
             console.log(`${tag} evidence read at +${Date.now() - t0}ms`);
 
             const otherSections = allSections
@@ -357,7 +420,7 @@ Output ONLY the JSON array, no other text.`;
         userPrompt?: string,
     ): Promise<void> {
         try {
-            const evidenceContent = await this.readEvidence(section.evidencePaths);
+            const evidenceContent = await this.readEvidence(section.evidencePaths, section.brief);
             const otherSections = allSections
                 .filter((s) => s.id !== section.id)
                 .map((s) => `- ${s.title} (${s.contentType})`)
