@@ -29,7 +29,7 @@ export const DataChart: React.FC<{ data: BarChartData; title: string }> = ({ dat
                         />
                         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }} />
                         <Bar dataKey="value" fill="#7c3aed" radius={[0, 4, 4, 0]} barSize={20} />
-                        {data.y2Label && <Bar dataKey="value2" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={20} />}
+                        {chartData.some(d => d.value2 !== undefined) && <Bar dataKey="value2" fill="#60a5fa" radius={[0, 4, 4, 0]} barSize={20} />}
                     </BarChart>
                 </ResponsiveContainer>
             </div>

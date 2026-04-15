@@ -5,8 +5,6 @@ import type { AIServiceManager } from '@/service/chat/service-manager';
 import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessionStore';
 import type { V2Section } from '@/ui/view/quick-search/store/searchSessionStore';
 import { pLimit, streamWithRepetitionGuard, detectRepetition } from './stream-utils';
-import { parallelStream } from '@/core/providers/helpers/stream-helper';
-import type { LLMStreamEvent } from '@/core/providers/types';
 
 /**
  * Multi-agent report orchestrator.
@@ -327,87 +325,6 @@ Output ONLY the JSON array, no other text.`;
     }
 
     // -----------------------------------------------------------------------
-    // Agent 1: Content (streaming generator for parallelStream)
-    // -----------------------------------------------------------------------
-
-    private async *streamSectionContent(
-        section: V2Section,
-        allSections: V2Section[],
-        overview: string,
-        userQuery: string,
-    ): AsyncGenerator<LLMStreamEvent> {
-        const t0 = Date.now();
-        const tag = `[Section:${section.id.slice(0, 8)}]`;
-        console.log(`${tag} generator started at +0ms`);
-        try {
-            const evidenceContent = await this.readEvidence(section.evidencePaths, section.brief);
-            console.log(`${tag} evidence read at +${Date.now() - t0}ms`);
-
-            const otherSections = allSections
-                .filter((s) => s.id !== section.id)
-                .map((s) => `- ${s.title} (${s.contentType})`)
-                .join('\n');
-
-            const [systemPrompt, userMessage] = await Promise.all([
-                this.mgr.renderPrompt(PromptId.AiAnalysisReportSectionSystem, {}),
-                this.mgr.renderPrompt(PromptId.AiAnalysisReportSection, {
-                    userQuery,
-                    reportOverview: overview,
-                    sectionTitle: section.title,
-                    contentType: section.contentType,
-                    visualType: section.visualType,
-                    sectionBrief: section.brief,
-                    otherSections,
-                    evidenceContent,
-                    userPrompt: '',
-                    missionRole: section.missionRole ?? 'synthesis',
-                    userNotes: this.store.getState().v2UserInsights.join('\n') || '',
-                }),
-            ]);
-            console.log(`${tag} prompts rendered at +${Date.now() - t0}ms`);
-
-            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
-            console.log(`${tag} calling streamText at +${Date.now() - t0}ms`);
-            const controller = new AbortController();
-            const result = streamText({
-                model,
-                system: systemPrompt,
-                prompt: userMessage,
-                maxTokens: 4096,
-                abortSignal: controller.signal,
-            });
-
-            let fullText = '';
-            let lastCheckLen = 0;
-            let firstChunk = true;
-            // Use fullStream (not textStream) — fullStream is eager (HTTP fires immediately),
-            // textStream may be lazy and delay HTTP request start, causing serial behavior.
-            for await (const chunk of result.fullStream) {
-                if (chunk.type === 'text-delta') {
-                    if (firstChunk) {
-                        console.log(`${tag} FIRST TOKEN at +${Date.now() - t0}ms`);
-                        firstChunk = false;
-                    }
-                    fullText += chunk.text;
-                    yield { type: 'text-delta', text: chunk.text, extra: { sectionId: section.id } } as LLMStreamEvent;
-                    if (fullText.length - lastCheckLen > 200) {
-                        lastCheckLen = fullText.length;
-                        const truncAt = detectRepetition(fullText);
-                        if (truncAt > 0) {
-                            controller.abort();
-                            break;
-                        }
-                    }
-                }
-            }
-            console.log(`${tag} STREAM COMPLETE at +${Date.now() - t0}ms`);
-        } catch (err: any) {
-            console.error(`${tag} ERROR at +${Date.now() - t0}ms:`, err?.message);
-            this.store.getState().failSection(section.id, err?.message ?? 'Content generation failed');
-        }
-    }
-
-    // -----------------------------------------------------------------------
     // Agent 1b: Content (single section, for regeneration)
     // -----------------------------------------------------------------------
 
@@ -448,7 +365,7 @@ Output ONLY the JSON array, no other text.`;
                 model,
                 system: systemPrompt,
                 prompt: userMessage,
-                maxTokens: 2000,
+                maxTokens: 4096,
                 abortSignal: controller.signal,
             });
 
