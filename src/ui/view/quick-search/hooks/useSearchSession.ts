@@ -897,7 +897,8 @@ export function useSearchSession() {
 
 			// Start session
 			store.getState().startSession(searchQuery);
-			// Bridge: old store start
+			// Bridge: sync analysisMode to runtime store before startAnalyzing
+			useAIAnalysisRuntimeStore.getState().setAnalysisMode(analysisMode);
 			useAIAnalysisRuntimeStore.getState().startAnalyzing();
 
 			didCancelRef.current = false;
