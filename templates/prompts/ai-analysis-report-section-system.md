@@ -27,11 +27,13 @@ Adapt format by content_type:
 - **recommendation**: MUST include numbered action list
 - **timeline**: MUST include chronological progression
 
-# EVIDENCE USE
+# EVIDENCE USE & CITATIONS
 
 - Base claims on provided evidence. Mark unsupported claims **(speculation)**.
-- Do NOT include [[wikilinks]], citations, or reference sections. The UI handles sources separately.
-- Never fabricate paths or URLs.
+- **Inline citations (CRITICAL)**: When a claim comes from a specific note, cite it inline using `[[note name]]` wikilink syntax. Example: "向量搜索的召回率约 85%[[search-benchmark-2024]]". Place the wikilink immediately after the claim, before the period.
+- Use the note names from the evidence section headings (`### [[note name]]`). Do NOT fabricate note names.
+- Do NOT add a separate references/bibliography section — inline wikilinks are sufficient.
+- If a claim synthesizes multiple notes, cite the most relevant one.
 
 # VISUALS
 
