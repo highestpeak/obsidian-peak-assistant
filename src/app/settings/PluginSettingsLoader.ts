@@ -46,9 +46,12 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 	settings.profileEnabled = getBoolean(rawAI.profileEnabled, settings.profileEnabled ?? true);
 	settings.promptRewriteEnabled = getBoolean(rawAI.promptRewriteEnabled, settings.promptRewriteEnabled ?? false);
 
-	// Prompt model map
+	// Prompt model map — merge saved entries ON TOP of defaults (so new PromptIds get default models)
 	if (rawAI.promptModelMap && typeof rawAI.promptModelMap === 'object') {
-		settings.promptModelMap = rawAI.promptModelMap as Partial<Record<string, { provider: string; modelId: string }>>;
+		settings.promptModelMap = {
+			...settings.promptModelMap,
+			...rawAI.promptModelMap as Partial<Record<string, { provider: string; modelId: string }>>,
+		};
 	}
 
 	// Default output control settings
