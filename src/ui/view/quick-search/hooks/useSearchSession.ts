@@ -962,6 +962,7 @@ export function useSearchSession() {
 			}
 
 			// aiGraph mode — TODO: wire AI graph agent in Task 9
+			console.warn('[aiGraph] agent not yet wired, falling back to legacy agent');
 			const stream = aiSearchAgent.stream(searchQuery, scopeValue ? { scopeValue } : { scopeValue: undefined });
 			await consumeStream(stream);
 		} catch (err) {

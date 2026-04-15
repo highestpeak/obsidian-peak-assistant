@@ -50,8 +50,7 @@ export const StreamingAnalysis: React.FC<{
 	const mindflowMermaid = useAIAnalysisResultStore((s) => s.mindflowMermaid);
 
 	const hitlState = useAIAnalysisRuntimeStore((s) => s.hitlState);
-	const isSimpleMode = false; // All remaining modes are full-featured
-	const showMindFlow = !isSimpleMode && (mindflowMermaid ?? '').trim().length > 0;
+	const showMindFlow = (mindflowMermaid ?? '').trim().length > 0;
 	const displayOverview = (overviewMermaidVersions ?? [])[overviewMermaidActiveIndex ?? 0] ?? '';
 
 	const dedupedTopics = useMemo(() => {
@@ -113,7 +112,7 @@ export const StreamingAnalysis: React.FC<{
 			</IntelligenceFrame>
 
 			{/* Overview (Mermaid) – streamed via ui-signal when submit_overview_mermaid tool result arrives */}
-			{!isSimpleMode && displayOverview?.trim() ? (
+			{displayOverview?.trim() ? (
 				<div ref={sectionRefs?.overviewRef} className="pktw-scroll-mt-4">
 					<div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border-0 pktw-flex pktw-flex-col pktw-gap-2">
 						<span className="pktw-text-xs pktw-font-semibold pktw-text-[#6b7280]">Overview</span>
@@ -138,14 +137,14 @@ export const StreamingAnalysis: React.FC<{
 			) : null}
 
 			{/* Dashboard Updated line (from DashboardUpdateAgent, latest only) */}
-			{!isSimpleMode && (dashboardUpdatedLine ?? '').trim() ? (
+			{(dashboardUpdatedLine ?? '').trim() ? (
 				<div className="pktw-text-xs pktw-text-[#6b7280] pktw-py-1">
 					{dashboardUpdatedLine}
 				</div>
 			) : null}
 
 			{/* Topics (same style as Completed) */}
-			{!isSimpleMode && dedupedTopics.length > 0 ? (
+			{dedupedTopics.length > 0 ? (
 				<div ref={sectionRefs?.topicsRef} className="pktw-scroll-mt-4">
 					<TopicSection topics={dedupedTopics} onClose={onClose} />
 				</div>

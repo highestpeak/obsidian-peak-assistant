@@ -75,8 +75,6 @@ export const CompletedAIAnalysis: React.FC<{
     const steps = useAIAnalysisStepsStore((s) => s.steps);
     const { regenerateOverview, isRegenerating } = useRegenerateOverviewMermaid();
     const settings = AppContext.getInstance().settings;
-    const isSimpleMode = false; // All remaining modes are full-featured
-
     const [showBlocksFollowup, setShowBlocksFollowup] = useState(false);
     const [blocksChatContext, setBlocksChatContext] = useState<DashboardBlock | null>(null);
     const [blocksChatItemContext, setBlocksChatItemContext] = useState<{ block: DashboardBlock; item: DashboardBlockItem } | null>(null);
@@ -137,7 +135,7 @@ export const CompletedAIAnalysis: React.FC<{
     return (
         <div className="pktw-flex pktw-flex-col pktw-gap-4">
             {/* MindFlow (collapsible, default collapsed, before Summary) */}
-            {!isSimpleMode && (mindflowMermaid ?? '').trim() ? (
+            {(mindflowMermaid ?? '').trim() ? (
                 <Collapsible open={mindflowOpen} onOpenChange={setMindflowOpen}>
                     <CollapsibleTrigger className="pktw-w-full pktw-group pktw-shadow-none">
                         <div className="pktw-w-full pktw-flex pktw-items-center pktw-justify-start pktw-gap-2 pktw-py-1.5 pktw-transition-colors hover:pktw-bg-muted/50 pktw-rounded-md pktw-px-1">
@@ -174,8 +172,8 @@ export const CompletedAIAnalysis: React.FC<{
                 </div>
             ) : null}
 
-            {/* Overview (Mermaid): full mode only; simple mode is chat-with-doc + raw search, no overview */}
-            {!isSimpleMode && (displayOverview?.trim() || isRegenerating) && (
+            {/* Overview (Mermaid) */}
+            {(displayOverview?.trim() || isRegenerating) && (
                 <div ref={overviewRef} className="pktw-scroll-mt-24">
                     <OverviewMermaidSection
                         overviewProp={displayOverview}
@@ -188,8 +186,8 @@ export const CompletedAIAnalysis: React.FC<{
                 </div>
             )}
 
-            {/* Topics: full mode only; simple mode has no key topics */}
-            {!isSimpleMode && dedupedTopics.length > 0 && (
+            {/* Topics */}
+            {dedupedTopics.length > 0 && (
                 <div ref={topicsRef} className="pktw-scroll-mt-24">
                     <TopicSection
                         topics={dedupedTopics}
@@ -198,8 +196,8 @@ export const CompletedAIAnalysis: React.FC<{
                 </div>
             )}
 
-            {/* Dashboard Blocks (consulting order: after Topics, before Sources; hidden in simple mode) */}
-            {!isSimpleMode && (dashboardBlocks?.length ?? 0) > 0 && (
+            {/* Dashboard Blocks (consulting order: after Topics, before Sources) */}
+            {(dashboardBlocks?.length ?? 0) > 0 && (
                 <DashboardBlocksSection
                     blocks={dashboardBlocks ?? []}
                     blockRef={dashboardBlocksRef}
@@ -349,9 +347,7 @@ export const CompletedAIAnalysis: React.FC<{
             ) : null}
 
             {/* Follow-up Questions: always last so new analysis appears above */}
-            {!isSimpleMode ? (
-                <FollowupQuestionsBlock summary={getSummary?.() ?? ''} onClose={onClose} />
-            ) : null}
+            <FollowupQuestionsBlock summary={getSummary?.() ?? ''} onClose={onClose} />
 
             {/* Only debug mode shows. And all steps including UISkipSteps */}
             {settings.enableDevTools && (steps?.length ?? 0) > 0 ? (

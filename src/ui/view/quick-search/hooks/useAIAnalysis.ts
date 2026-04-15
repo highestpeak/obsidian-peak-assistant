@@ -264,6 +264,7 @@ export function useAIAnalysis() {
 				}
 				return;
 			} else {
+				console.warn('[aiGraph] agent not yet wired, falling back to legacy agent');
 				const stream = aiSearchAgent.stream(searchQuery, scopeValue ? { scopeValue } : { scopeValue: undefined });
 				await consumeStream(stream);
 			}
