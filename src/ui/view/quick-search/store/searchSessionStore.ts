@@ -58,6 +58,7 @@ export interface V2Section {
 	streamingChunks: string[];
 	error?: string;
 	generations: Array<{ content: string; prompt?: string; timestamp: number }>;
+	vizData?: import('@/core/schemas/report-viz-schemas').VizSpec;
 }
 
 // ---------------------------------------------------------------------------

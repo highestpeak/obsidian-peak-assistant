@@ -37,7 +37,7 @@ Adapt format by content_type:
 
 # VISUALS
 
-- Do NOT include Mermaid diagrams — a dedicated Visual Agent handles that.
+- Do NOT include Mermaid diagrams or visualization code — a dedicated Visual Agent generates visualizations from your content after you finish.
 - You MUST use a markdown table in every section that involves comparison, enumeration, or evaluation. Tables are your PRIMARY output format — not bullet lists.
 - For action_plan/roadmap sections: use a table with columns (Step | Action | Owner/When).
 - For risk_audit sections: use a table with columns (Risk | Impact | Mitigation).

@@ -5,7 +5,6 @@ import type { AIServiceManager } from '@/service/chat/service-manager';
 import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessionStore';
 import type { V2Section } from '@/ui/view/quick-search/store/searchSessionStore';
 import { pLimit, streamWithRepetitionGuard, detectRepetition } from './stream-utils';
-import { validateMermaidCode } from '@/core/utils/analysis-data-validator';
 import { parallelStream } from '@/core/providers/helpers/stream-helper';
 import type { LLMStreamEvent } from '@/core/providers/types';
 
@@ -14,7 +13,7 @@ import type { LLMStreamEvent } from '@/core/providers/types';
  *
  * Per section (parallel):
  *   1. Content Agent — streamText → section markdown
- *   2. Visual Blueprint Agent — streamText → mermaid diagram (if visual_type != 'none' and content lacks mermaid)
+ *   2. Visual Blueprint Agent — streamText → JSON viz spec (validated by Zod, stored on section.vizData)
  *
  * After all sections:
  *   3. Summary Agent — streamText → executive summary
@@ -470,68 +469,57 @@ Output ONLY the JSON array, no other text.`;
     // -----------------------------------------------------------------------
 
     private async runVisualAgent(section: V2Section): Promise<void> {
-        if (section.visualType === 'none') return;
         const currentContent = this.store.getState().v2PlanSections.find((s) => s.id === section.id)?.content ?? '';
+        if (!currentContent) return;
 
         try {
-            let mermaidBlock = await this.generateMermaidBlock(section, currentContent);
-            if (!mermaidBlock || !mermaidBlock.includes('```mermaid')) return;
+            const [systemPrompt, userMessage] = await Promise.all([
+                this.mgr.renderPrompt(PromptId.AiAnalysisReportVizJsonSystem, {}),
+                this.mgr.renderPrompt(PromptId.AiAnalysisReportVizJson, {
+                    sectionTitle: section.title,
+                    sectionContent: currentContent.slice(0, 3000),
+                    contentType: section.contentType,
+                    missionRole: section.missionRole ?? 'synthesis',
+                }),
+            ]);
 
-            // Validate → fix → retry loop (max 2 retries)
-            for (let attempt = 0; attempt < 2; attempt++) {
-                const inner = this.extractMermaidInner(mermaidBlock);
-                if (!inner) { mermaidBlock = ''; break; }
-                const validation = await validateMermaidCode(inner);
-                if (validation.valid) break;
-                const fixed = await this.runMermaidFixAgent(inner, validation.error);
-                if (!fixed || !fixed.includes('```mermaid')) { mermaidBlock = ''; break; }
-                mermaidBlock = fixed;
+            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportVizJson);
+            const result = streamText({
+                model,
+                system: systemPrompt,
+                prompt: userMessage,
+                maxTokens: 1500,
+            });
+
+            let text = '';
+            for await (const chunk of result.textStream) {
+                text += chunk;
             }
 
-            if (mermaidBlock && mermaidBlock.includes('```mermaid')) {
-                const updatedContent = currentContent + '\n\n' + mermaidBlock.trim();
-                this.store.getState().updatePlanSection(section.id, (s) => ({
-                    ...s,
-                    content: updatedContent,
-                }));
+            // Extract JSON from response (LLM may wrap in code fence)
+            const jsonStr = text.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(jsonStr);
+
+            // Check for skip signal
+            if (parsed.skip) return;
+
+            // Validate with Zod
+            const { vizSpecSchema } = await import('@/core/schemas/report-viz-schemas');
+            const validation = vizSpecSchema.safeParse(parsed);
+            if (!validation.success) {
+                console.warn(`[Visual:${section.id.slice(0, 8)}] Schema validation failed:`, validation.error.message);
+                return;
             }
-        } catch {
-            // Visual generation is optional — don't fail the section
+
+            // Store validated viz data on the section
+            this.store.getState().updatePlanSection(section.id, (s) => ({
+                ...s,
+                vizData: validation.data,
+            }));
+        } catch (err) {
+            // Visual generation is optional — log and continue
+            console.warn(`[Visual:${section.id.slice(0, 8)}] Failed:`, err);
         }
-    }
-
-    private async generateMermaidBlock(section: V2Section, sectionContent: string): Promise<string> {
-        const [systemPrompt, userMessage] = await Promise.all([
-            this.mgr.renderPrompt(PromptId.AiAnalysisReportVisualSystem, {}),
-            this.mgr.renderPrompt(PromptId.AiAnalysisReportVisual, {
-                sectionTitle: section.title,
-                visualType: section.visualType,
-                sectionContent: sectionContent.slice(0, 2000),
-            }),
-        ]);
-
-        const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportVisual);
-        const controller = new AbortController();
-        const result = streamText({
-            model,
-            system: systemPrompt,
-            prompt: userMessage,
-            maxTokens: 1000,
-            abortSignal: controller.signal,
-        });
-
-        const { fullText } = await streamWithRepetitionGuard(
-            result.textStream,
-            controller,
-            () => {},
-        );
-
-        return fullText;
-    }
-
-    private extractMermaidInner(block: string): string {
-        const match = block.match(/```mermaid\s*\n([\s\S]*?)```/);
-        return match ? match[1].trim() : '';
     }
 
     // -----------------------------------------------------------------------
