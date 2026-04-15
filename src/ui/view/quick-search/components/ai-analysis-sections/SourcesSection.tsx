@@ -1,8 +1,7 @@
 import { SLICE_CAPS } from '@/core/constant';
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FileText, Info, MessageCircle, ChevronDown, ChevronRight, List, Network, Loader2, Maximize2, X, BookOpen } from 'lucide-react';
+import { FileText, Info, MessageCircle, ChevronDown, ChevronRight, List, Network, Loader2, BookOpen } from 'lucide-react';
 import { mixSearchResultsBySource } from '@/core/utils/source-mixer';
 import { getSourceIcon } from '@/ui/view/shared/file-utils';
 import type { SearchResultItem } from '@/service/search/types';
@@ -11,8 +10,8 @@ import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/sh
 import { InlineFollowupChat } from '@/ui/component/mine/InlineFollowupChat';
 import { useSourcesFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 import { useAIAnalysisInteractionsStore } from '../../store/aiAnalysisStore';
-import { GraphVisualization, GraphVisualizationHandle } from '@/ui/component/mine/GraphVisualization';
-import { createObsidianGraphPreset } from '../../presets/obsidianGraphPreset';
+import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
+import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
 import { buildSourcesGraphWithDiscoveredEdges, getCachedSourcesGraph, type SourcesGraph } from '@/service/tools/search-graph-inspector/build-sources-graph';
 import type { EvidenceIndex } from '@/service/agents/shared-types';
 
@@ -286,6 +285,24 @@ function useSourcesGraph(sources: SearchResultItem[]): { graph: SourcesGraph | n
 	return { graph, loading };
 }
 
+/** Convert SourcesGraph (from graph-inspector) to the LensGraphData format used by MultiLensGraph. */
+function sourcesGraphToLensData(graph: SourcesGraph): LensGraphData {
+	return {
+		nodes: graph.nodes.map((n) => ({
+			label: n.label,
+			path: n.attributes?.path ?? n.id,
+			role: n.type === 'hub' ? 'hub' as const : n.type === 'bridge' ? 'bridge' as const : 'leaf' as const,
+			group: (n.attributes?.path ?? n.id).split('/').slice(0, -1).join('/'),
+		})),
+		edges: graph.edges.map((e) => ({
+			source: e.from_node_id,
+			target: e.to_node_id,
+			kind: (e.kind === 'semantic' ? 'semantic' : 'link') as 'semantic' | 'link',
+		})),
+		availableLenses: ['topology'] as LensGraphData['availableLenses'],
+	};
+}
+
 /**
  * Top sources section component showing relevant files with reasoning, badges, and score breakdown.
  * Supports List and Graph views.
@@ -308,12 +325,6 @@ export const TopSourcesSection: React.FC<{
 	const [viewMode, setViewMode] = useState<'list' | 'graph' | 'evidence'>('list');
 	const evidencePaths = useMemo(() => Object.keys(evidenceIndex).filter((p) => (evidenceIndex[p]?.summaries?.length ?? 0) + (evidenceIndex[p]?.facts?.length ?? 0) > 0), [evidenceIndex]);
 	const hasEvidenceView = evidencePaths.length > 0;
-	const [fullscreenOpen, setFullscreenOpen] = useState(false);
-
-	const graphRef = useRef<GraphVisualizationHandle>(null);
-	// Store container elements in state to trigger re-render when mounted (fixes portal target being null on first paint)
-	const [inlineContainerEl, setInlineContainerEl] = useState<HTMLDivElement | null>(null);
-	const [fullscreenContainerEl, setFullscreenContainerEl] = useState<HTMLDivElement | null>(null);
 
 	const sourcesFollowupConfig = useSourcesFollowupChatConfig({ sources });
 
@@ -336,26 +347,6 @@ export const TopSourcesSection: React.FC<{
 	const [expandZeroScore, setExpandZeroScore] = useState(false);
 
 	const { graph: sourcesGraph, loading: sourcesGraphLoading } = useSourcesGraph(mixedSources);
-
-	// Fit to view when fullscreen opens; Esc to close
-	useEffect(() => {
-		if (fullscreenOpen) {
-			setTimeout(() => graphRef.current?.fitToView(true), 100);
-			const onKeyDown = (e: KeyboardEvent) => {
-				if (e.key === 'Escape') setFullscreenOpen(false);
-			};
-			document.addEventListener('keydown', onKeyDown);
-			return () => document.removeEventListener('keydown', onKeyDown);
-		}
-	}, [fullscreenOpen]);
-
-	const obsidianPreset = useMemo(() => createObsidianGraphPreset({
-		onOpenPath: onOpen ? (path: string) => onOpen(path) : undefined,
-		openFile: async (path: string) => {
-			if (typeof onOpen === 'function') onOpen(path);
-		},
-		copyText: async (t: string) => { await navigator.clipboard.writeText(t); },
-	}), [onOpen]);
 
 	// Animate scored sources one by one
 	const [visibleCount, setVisibleCount] = React.useState(0);
@@ -403,11 +394,6 @@ export const TopSourcesSection: React.FC<{
 								<BookOpen className="pktw-w-4 pktw-h-4" />
 							</Button>
 						)}
-						{viewMode === 'graph' && sourcesGraph ? (
-							<Button variant="ghost" size="sm" onClick={() => setFullscreenOpen(true)} title="Fullscreen (use tools)">
-								<Maximize2 className="pktw-w-4 pktw-h-4" />
-							</Button>
-						) : null}
 					</div>
 				) : null}
 				<HoverCard openDelay={100} closeDelay={150}>
@@ -479,67 +465,19 @@ export const TopSourcesSection: React.FC<{
 				) : null}
 			</AnimatePresence>
 			{viewMode === 'graph' ? (
-				<div className="pktw-h-[260px] pktw-w-full pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-white pktw-overflow-hidden pktw-relative">
+				<div className="pktw-h-[320px] pktw-w-full pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-white pktw-overflow-hidden">
 					{sourcesGraphLoading ? (
 						<div className="pktw-h-full pktw-w-full pktw-flex pktw-items-center pktw-justify-center pktw-text-[#6b7280] pktw-text-sm">
 							<Loader2 className="pktw-w-5 pktw-h-5 pktw-animate-spin pktw-mr-2" />
 							Discovering connections…
 						</div>
-					) : !sourcesGraph ? (
-						<div className="pktw-h-full pktw-w-full pktw-flex pktw-items-center pktw-justify-center pktw-text-[#6b7280] pktw-text-sm">
-							No graph data
-						</div>
 					) : (
-						<>
-							<div
-								ref={setInlineContainerEl}
-								className={fullscreenOpen ? 'pktw-hidden' : 'pktw-h-full pktw-w-full'}
-							/>
-							{/* Fullscreen overlay: always in DOM for stable portal ref */}
-							<div
-								className={
-									fullscreenOpen
-										? 'pktw-fixed pktw-inset-0 pktw-bg-black/30 pktw-z-[10000] pktw-flex pktw-items-center pktw-justify-center pktw-p-4'
-										: 'pktw-fixed pktw-inset-0 pktw-bg-black/30 pktw-z-[10000] pktw-flex pktw-items-center pktw-justify-center pktw-p-4 pktw-pointer-events-none pktw-invisible'
-								}
-								style={fullscreenOpen ? undefined : { visibility: 'hidden' }}
-								onClick={(e) => fullscreenOpen && e.target === e.currentTarget && setFullscreenOpen(false)}
-							>
-								<motion.div
-									initial={false}
-									animate={{ opacity: fullscreenOpen ? 1 : 0 }}
-									transition={{ duration: 0.2 }}
-									className="pktw-bg-white pktw-rounded-lg pktw-shadow-xl pktw-border pktw-border-[#e5e7eb] pktw-w-full pktw-h-full pktw-max-w-[95vw] pktw-max-h-[95vh] pktw-flex pktw-flex-col pktw-overflow-hidden"
-									onClick={(e) => e.stopPropagation()}
-									style={!fullscreenOpen ? { pointerEvents: 'none' as const } : undefined}
-								>
-									<div className="pktw-flex pktw-items-center pktw-justify-between pktw-p-2 pktw-border-b pktw-border-[#e5e7eb] pktw-shrink-0">
-										<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338] pktw-truncate">Sources Graph</span>
-										<Button variant="ghost" size="icon" className="pktw-rounded-md" title="Close" onClick={() => setFullscreenOpen(false)}>
-											<X className="pktw-w-5 pktw-h-5" />
-										</Button>
-									</div>
-									<div ref={setFullscreenContainerEl} className="pktw-flex-1 pktw-min-h-0 pktw-flex pktw-flex-col pktw-p-4 pktw-overflow-hidden" />
-								</motion.div>
-							</div>
-							{(() => {
-								const portalTarget = fullscreenOpen ? fullscreenContainerEl : inlineContainerEl;
-								return portalTarget
-									? createPortal(
-										<GraphVisualization
-											ref={graphRef}
-											{...obsidianPreset}
-											graph={sourcesGraph}
-											containerClassName={fullscreenOpen ? 'pktw-w-full pktw-h-full pktw-min-h-[400px]' : 'pktw-h-full pktw-w-full'}
-											showToolsPanel={fullscreenOpen}
-											showToolbar={fullscreenOpen}
-											hideTitle={fullscreenOpen}
-										/>,
-										portalTarget
-									)
-									: null;
-							})()}
-						</>
+						<MultiLensGraph
+							graphData={sourcesGraph ? sourcesGraphToLensData(sourcesGraph) : null}
+							defaultLens="topology"
+							onNodeClick={(path) => onOpen(path)}
+							className="pktw-h-full pktw-w-full"
+						/>
 					)}
 				</div>
 			) : viewMode === 'evidence' ? (
