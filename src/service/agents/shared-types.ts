@@ -89,8 +89,8 @@ export interface AISearchGraph {
 	edges: AISearchEdge[];
 }
 
-/** docSimple = current note only; vaultSimple = vault search then summarize; vaultFull = deep vault analysis. */
-export type AnalysisMode = 'docSimple' | 'vaultSimple' | 'vaultFull';
+/** vaultFull = deep vault analysis; aiGraph = multi-lens graph visualization. */
+export type AnalysisMode = 'vaultFull' | 'aiGraph';
 
 /** Evidence index by path: summaries and facts (claim + quote) for Evidence view in Sources. */
 export type EvidenceIndex = Record<string, {

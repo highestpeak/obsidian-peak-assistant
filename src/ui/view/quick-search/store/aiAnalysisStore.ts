@@ -98,7 +98,7 @@ export interface UIStepRecord {
 export type CompletedAnalysisSnapshot = {
 	/** Snapshot schema version. */
 	version: 1;
-	/** Mode used for this run: docSimple | vaultSimple | vaultFull. Omit = vaultFull. */
+	/** Mode used for this run: vaultFull | aiGraph. Omit = vaultFull. */
 	runAnalysisMode?: AnalysisMode;
 	analysisStartedAtMs?: number | null;
 	duration?: number | null;

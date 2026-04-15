@@ -98,7 +98,7 @@ export function useAIAnalysis() {
 	const didCancelRef = useRef<boolean>(false);
 	const noticeSentRef = useRef<boolean>(false);
 
-	// DocSimpleAgent for docSimple mode; vault modes use VaultSearchAgent via vaultAgentRef.
+	// Legacy AISearchAgent fallback; vault modes use VaultSearchAgent via vaultAgentRef.
 	const aiSearchAgent = useMemo(() => AppContext.searchAgent(), []);
 
 	// VaultSearchAgent ref — created per-session (not memoized, stateful).
@@ -240,8 +240,8 @@ export function useAIAnalysis() {
 				}
 			};
 
-			// Use VaultSearchAgent for vault modes; legacy AISearchAgent for docSimple
-			const isVaultMode = analysisMode === 'vaultFull' || analysisMode === 'vaultSimple';
+			// Use VaultSearchAgent for vault modes; legacy AISearchAgent for aiGraph fallback
+			const isVaultMode = analysisMode === 'vaultFull';
 
 			if (isVaultMode) {
 				vaultAgentRef.current = AppContext.vaultSearchAgent();

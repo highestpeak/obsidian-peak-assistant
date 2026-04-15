@@ -75,7 +75,7 @@ export const CompletedAIAnalysis: React.FC<{
     const steps = useAIAnalysisStepsStore((s) => s.steps);
     const { regenerateOverview, isRegenerating } = useRegenerateOverviewMermaid();
     const settings = AppContext.getInstance().settings;
-    const isSimpleMode = runAnalysisMode === 'docSimple' || runAnalysisMode === 'vaultSimple';
+    const isSimpleMode = false; // All remaining modes are full-featured
 
     const [showBlocksFollowup, setShowBlocksFollowup] = useState(false);
     const [blocksChatContext, setBlocksChatContext] = useState<DashboardBlock | null>(null);

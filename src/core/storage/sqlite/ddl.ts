@@ -206,7 +206,7 @@ export interface Database {
 		graph_nodes_count: number | null;
 		graph_edges_count: number | null;
 		duration: number | null;
-		/** Analysis preset for history icon and restore: docSimple | vaultSimple | vaultFull. */
+		/** Analysis preset for history icon and restore: vaultFull | aiGraph. */
 		analysis_preset: string | null;
 	};
 	/**

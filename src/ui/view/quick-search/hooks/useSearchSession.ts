@@ -927,7 +927,7 @@ export function useSearchSession() {
 			};
 
 			// Choose agent mode
-			const isVaultMode = analysisMode === 'vaultFull' || analysisMode === 'vaultSimple';
+			const isVaultMode = analysisMode === 'vaultFull';
 
 			if (isVaultMode) {
 				vaultAgentRef.current = AppContext.vaultSearchAgent();
@@ -961,7 +961,7 @@ export function useSearchSession() {
 				return;
 			}
 
-			// docSimple mode
+			// aiGraph mode — TODO: wire AI graph agent in Task 9
 			const stream = aiSearchAgent.stream(searchQuery, scopeValue ? { scopeValue } : { scopeValue: undefined });
 			await consumeStream(stream);
 		} catch (err) {

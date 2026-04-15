@@ -50,7 +50,7 @@ export const StreamingAnalysis: React.FC<{
 	const mindflowMermaid = useAIAnalysisResultStore((s) => s.mindflowMermaid);
 
 	const hitlState = useAIAnalysisRuntimeStore((s) => s.hitlState);
-	const isSimpleMode = runAnalysisMode === 'docSimple' || runAnalysisMode === 'vaultSimple';
+	const isSimpleMode = false; // All remaining modes are full-featured
 	const showMindFlow = !isSimpleMode && (mindflowMermaid ?? '').trim().length > 0;
 	const displayOverview = (overviewMermaidVersions ?? [])[overviewMermaidActiveIndex ?? 0] ?? '';
 
@@ -85,7 +85,7 @@ export const StreamingAnalysis: React.FC<{
 				className="pktw-mb-1"
 			>
 				<div className="pktw-flex pktw-flex-col pktw-gap-4">
-					{/* Show summary for: normal summary streaming OR docSimple (thought agent text streams into summary) */}
+					{/* Show summary for: normal summary streaming */}
 					{isSummaryStreaming ? (
 						<div ref={sectionRefs?.summaryRef} className="pktw-scroll-mt-4">
 							<SummaryContent

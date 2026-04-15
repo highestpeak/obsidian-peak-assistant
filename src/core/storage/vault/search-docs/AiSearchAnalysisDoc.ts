@@ -177,9 +177,12 @@ function parseFrontmatter(raw: string): {
 	const runMode = getStr('runAnalysisMode').toLowerCase();
 	const presetRaw = getStr('analysisPreset').toLowerCase();
 	const runAnalysisMode: AnalysisMode | undefined =
-		runMode === 'docsimple' ? 'docSimple' : runMode === 'vaultsimple' ? 'vaultSimple' : runMode === 'vaultfull' ? 'vaultFull'
-			: presetRaw === 'docsimple' ? 'docSimple' : presetRaw === 'vaultsimple' ? 'vaultSimple' : presetRaw === 'vaultfull' ? 'vaultFull'
-				: undefined;
+		runMode === 'vaultfull' ? 'vaultFull' : runMode === 'aigraph' ? 'aiGraph'
+			: presetRaw === 'vaultfull' ? 'vaultFull' : presetRaw === 'aigraph' ? 'aiGraph'
+				// Legacy mapping: treat removed presets as vaultFull
+				: (runMode === 'docsimple' || runMode === 'vaultsimple') ? 'vaultFull'
+					: (presetRaw === 'docsimple' || presetRaw === 'vaultsimple') ? 'vaultFull'
+						: undefined;
 	return {
 		created: getStr('created'),
 		title: getStr('title'),

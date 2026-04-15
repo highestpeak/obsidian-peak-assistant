@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { VaultSearchTab } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
-import { Search, Sparkles, Globe, X, RotateCcw, Zap, Brain, Hash, ListOrdered, FolderSearch, Blend, FileText } from 'lucide-react';
+import { Search, Sparkles, Globe, X, RotateCcw, Brain, Hash, ListOrdered, FolderSearch, Blend } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { cn } from '@/ui/react/lib/utils';
@@ -61,10 +61,9 @@ interface AITabContentProps {
 /**
  * AI Analysis tab: input row (mode, web, Clear/Re-analyze/Cancel/Analyze) + AISearchTab content.
  */
-export const PRESET_LABELS: Record<'docSimple' | 'vaultSimple' | 'vaultFull', { short: string; full: string }> = {
-	docSimple: { short: 'Doc', full: 'Doc Simple · Chat with current note.' },
-	vaultSimple: { short: 'Vault Simple', full: 'Vault Simple · Search whole vault then summarize.' },
+export const PRESET_LABELS: Record<AnalysisMode, { short: string; full: string }> = {
 	vaultFull: { short: 'Vault Full', full: 'Vault Full · Deep analysis whole vault.' },
+	aiGraph: { short: 'AI Graph', full: 'AI Graph · Multi-lens knowledge graph visualization.' },
 };
 
 const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActiveTab }) => {
@@ -83,16 +82,12 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	const isAnalyzing = sessionStatus === 'starting' || sessionStatus === 'streaming';
 	const analysisCompleted = sessionStatus === 'completed';
 	const hasResult = hasAnalyzed || analysisCompleted;
-	const activeFilePath = getActiveNoteDetail(app).activeFile?.path ?? null;
-	const isDocSimpleWithoutFile = analysisMode === 'docSimple' && !activeFilePath;
-
 	const handleAnalyze = () => {
 		if (!searchQuery.trim()) return;
-		if (isDocSimpleWithoutFile) setAnalysisMode('vaultSimple');
-		performAnalysis(undefined, analysisMode === 'docSimple' ? activeFilePath ?? undefined : undefined);
+		performAnalysis(undefined, undefined);
 	};
 
-	const PRESETS: AnalysisMode[] = ['docSimple', 'vaultSimple', 'vaultFull'];
+	const PRESETS: AnalysisMode[] = ['vaultFull', 'aiGraph'];
 	const cyclePreset = (dir: 1 | -1) => {
 		const idx = PRESETS.indexOf(analysisMode);
 		const next = PRESETS[(idx + dir + PRESETS.length) % PRESETS.length];
@@ -144,9 +139,9 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 									size="xs"
 									style={{ cursor: 'pointer' }}
 									className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10 !pktw-w-6 !pktw-h-6 pktw-rounded-full pktw-bg-white pktw-shadow-[0_2px_10px_rgba(124,58,237,0.22),0_0_0_1px_rgba(124,58,237,0.12)] pktw-text-[#5b21b6] pktw-transition-[box-shadow,color,background-color] hover:pktw-bg-[#f5f3ff] hover:pktw-shadow-[0_4px_14px_rgba(124,58,237,0.28),0_0_0_1px_rgba(124,58,237,0.2)] hover:pktw-text-[#7c3aed] focus-visible:pktw-ring-2 focus-visible:pktw-ring-[#7c3aed]/40"
-									title={PRESET_LABELS[analysisMode].full + (analysisMode === 'docSimple' && activeFilePath ? ` (${activeFilePath.split('/').pop()})` : '')}
+									title={PRESET_LABELS[analysisMode].full}
 								>
-									{analysisMode === 'docSimple' ? <FileText className="pktw-w-4 pktw-h-4" /> : analysisMode === 'vaultSimple' ? <Zap className="pktw-w-4 pktw-h-4" /> : <Brain className="pktw-w-4 pktw-h-4" />}
+									{analysisMode === 'aiGraph' ? <Blend className="pktw-w-4 pktw-h-4" /> : <Brain className="pktw-w-4 pktw-h-4" />}
 								</Button>
 							</HoverCardTrigger>
 							<HoverCardContent side="bottom" align="start" className="pktw-w-auto pktw-min-w-[200px] pktw-py-0.5 pktw-px-1 pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
@@ -162,13 +157,9 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 											analysisMode === p && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
 										)}
 									>
-										{p === 'docSimple' ? <FileText className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" /> : p === 'vaultSimple' ? <Zap className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" /> : <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" />}
+										{p === 'aiGraph' ? <Blend className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" /> : <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" />}
 										<span className="pktw-font-medium">{PRESET_LABELS[p].short}</span>
-										{p === 'docSimple' && activeFilePath ? (
-											<span className="pktw-text-[11px] pktw-truncate" title={activeFilePath}>{activeFilePath.split('/').pop()}</span>
-										) : (
-											<span className="pktw-text-[11px]">· {PRESET_LABELS[p].full.split(' · ')[1]}</span>
-										)}
+										<span className="pktw-text-[11px]">· {PRESET_LABELS[p].full.split(' · ')[1]}</span>
 									</Button>
 								))}
 							</HoverCardContent>

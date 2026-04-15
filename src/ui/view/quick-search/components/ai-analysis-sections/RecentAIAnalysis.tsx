@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { History, FileText, Zap, Brain } from 'lucide-react';
+import { History, Blend, Brain } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
 import { AppContext } from '@/app/context/AppContext';
@@ -14,8 +14,7 @@ import { cn } from '@/ui/react/lib/utils';
 
 /** Mode icon for history list; matches SearchModal preset icons. */
 function PresetIcon({ mode, className }: { mode: AnalysisMode | null | undefined, className?: string }) {
-    if (mode === 'docSimple') return <FileText className={cn("pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-[#7c3aed]", className)} />;
-    if (mode === 'vaultSimple') return <Zap className={cn("pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-[#7c3aed]", className)} />;
+    if (mode === 'aiGraph') return <Blend className={cn("pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-[#7c3aed]", className)} />;
     return <Brain className={cn("pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-[#7c3aed]", className)} />;
 }
 
