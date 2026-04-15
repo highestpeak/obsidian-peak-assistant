@@ -5,6 +5,7 @@ import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Section } from '../store/searchSessionStore';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
 import { V2PlanReview } from './V2PlanReview';
+import { VizRenderer } from './viz/VizRenderer';
 
 interface V2ReportViewProps {
 	onClose?: () => void;
@@ -125,6 +126,10 @@ const SectionBlock: React.FC<{
 				<StreamdownIsolated isAnimating={section.status === 'generating'} className="pktw-select-text pktw-break-words">
 					{content}
 				</StreamdownIsolated>
+			)}
+
+			{section.vizData && section.status === 'done' && (
+				<VizRenderer spec={section.vizData} />
 			)}
 
 			{/* Error */}
