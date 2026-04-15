@@ -48,6 +48,8 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
 
     return (
         <div className="pktw-flex pktw-flex-col pktw-h-full pktw-relative">
+            {/* Section navigation — top of report view */}
+            {activeView === 'report' && <V2SectionNav containerRef={containerRef} />}
             <div ref={containerRef} className="pktw-flex-1 pktw-overflow-y-auto pktw-min-h-0">
                 <AnimatePresence mode="wait">
                     {activeView === 'process' && <V2ProcessView key="process" />}
@@ -55,8 +57,6 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
                     {activeView === 'sources' && <V2SourcesView key="sources" onClose={onClose} />}
                 </AnimatePresence>
             </div>
-            {/* Section navigation — always visible when report is generating/complete */}
-            {activeView === 'report' && <V2SectionNav containerRef={containerRef} />}
             <V2ScrollButtons containerRef={containerRef} />
             {/* TOC rendered outside scroll container so it stays fixed on scroll */}
             {showToc && <V2TableOfContents markdown={proposedOutline!} />}
