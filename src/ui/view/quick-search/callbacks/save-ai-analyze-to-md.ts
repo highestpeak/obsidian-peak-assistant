@@ -9,6 +9,8 @@ import type { DashboardBlock } from '@/service/agents/shared-types';
 import type { SearchResultItem } from '@/service/search/types';
 import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot, type BuildMarkdownOptions } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 import type { CompletedAnalysisSnapshot } from '@/ui/view/quick-search/store/aiAnalysisStore';
+import { buildAiGraphMarkdown } from '@/core/storage/vault/search-docs/AiGraphDoc';
+import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
 
 /** Source shape for export/save; compatible with AISearchSource (path, title, score.average, reasoning). */
 export type ExportSource = { path: string; title: string; score?: number; content?: string };
@@ -114,6 +116,43 @@ export async function persistAnalysisDocToPath(path: string, content: string): P
 	if (file && file instanceof TFile) {
 		await app.vault.modify(file, content);
 	}
+}
+
+export async function saveAiGraphToMarkdown(params: {
+	folderPath: string;
+	fileName: string;
+	query: string;
+	summary: string;
+	graphData: LensGraphData;
+	lensHint?: string;
+}): Promise<{ path: string }> {
+	const ctx = AppContext.getInstance();
+	const app = ctx.app;
+	const folder = params.folderPath.replace(/^\/+/, '').replace(/\/+$/, '');
+	const fileName = sanitizeFileName(params.fileName || 'AI Graph');
+	const fullFolderPath = folder.length ? folder : '';
+	const filePath = fullFolderPath ? `${fullFolderPath}/${fileName}.md` : `${fileName}.md`;
+
+	if (fullFolderPath) {
+		await ensureFolder(fullFolderPath);
+	}
+
+	const content = buildAiGraphMarkdown({
+		query: params.query,
+		created: new Date().toISOString(),
+		summary: params.summary,
+		graphData: params.graphData,
+		lensHint: params.lensHint,
+	});
+
+	const existing = app.vault.getAbstractFileByPath(filePath);
+	let finalPath = filePath;
+	if (existing) {
+		const ts = new Date().toISOString().replace(/[:.]/g, '-');
+		finalPath = fullFolderPath ? `${fullFolderPath}/${fileName}-${ts}.md` : `${fileName}-${ts}.md`;
+	}
+	await app.vault.create(finalPath, content);
+	return { path: finalPath };
 }
 
 function sanitizeFileName(name: string): string {
