@@ -28,6 +28,7 @@ import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import type { VaultSearchOptions as VaultSearchOpts } from '@/service/agents/vault/types';
+import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import { getVaultPersona } from '@/service/tools/system-info';
 
 /**
@@ -143,6 +144,11 @@ export class AppContext {
 	/** Create a VaultSearchAgent (new HITL-first pipeline: classify → decompose → recon → HITL → report). */
 	public static vaultSearchAgent(options?: VaultSearchOpts): VaultSearchAgent {
 		return new VaultSearchAgent(AppContext.getInstance().manager, options);
+	}
+
+	/** Create an AIGraphAgent for building multi-lens knowledge graphs. */
+	public static aiGraphAgent(): AIGraphAgent {
+		return new AIGraphAgent(AppContext.getInstance().manager);
 	}
 
 	/**
