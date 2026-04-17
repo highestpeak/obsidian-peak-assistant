@@ -63,6 +63,27 @@ export class AIAnalysisRepo {
 	}
 
 	/**
+	 * Return the most frequently used queries, ranked by usage count then recency.
+	 */
+	async frequentQueries(limit = 5): Promise<Array<{ query: string; count: number }>> {
+		const safeLimit = Math.max(1, Math.min(50, limit));
+		const rows = await this.db
+			.selectFrom('ai_analysis_record')
+			.select((eb) => [
+				'query',
+				eb.fn.count<number>('query').as('cnt'),
+			])
+			.where('query', 'is not', null)
+			.where('query', '!=', '')
+			.groupBy('query')
+			.orderBy('cnt', 'desc')
+			.orderBy((eb) => eb.fn.max('created_at_ts'), 'desc')
+			.limit(safeLimit)
+			.execute();
+		return rows.map((r) => ({ query: r.query as string, count: Number((r as any).cnt) }));
+	}
+
+	/**
 	 * Delete all records (metadata only).
 	 */
 	async deleteAll(): Promise<void> {

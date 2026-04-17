@@ -128,6 +128,11 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 		if (inputRef.current) inputRef.current.focus();
 	}, []);
 
+	const [frequentQueries, setFrequentQueries] = useState<Array<{ query: string; count: number }>>([]);
+	useEffect(() => {
+		AppContext.getInstance().aiAnalysisHistoryService.frequentQueries(5).then(setFrequentQueries).catch(() => setFrequentQueries([]));
+	}, []);
+
 	const defaultQueries = useMemo<{ label: string; query: string }[]>(() => {
 		try {
 			const raw = AppContext.getInstance().templateManager.loadRaw?.('config/default-analysis-queries.json');
@@ -260,6 +265,33 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					</div>
 				</div>
 			</div>
+			{!searchQuery && sessionStatus === 'idle' && frequentQueries.length > 0 && (
+				<div className="pktw-flex-shrink-0 pktw-px-3 pktw-pt-2 pktw-pb-1 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
+					<span className="pktw-text-[10px] pktw-text-[--text-faint] pktw-uppercase pktw-tracking-wide">Recent</span>
+					<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-mt-1">
+						{frequentQueries.map((fq, i) => (
+							<Button
+								key={`freq-${i}`}
+								variant="ghost"
+								size="sm"
+								style={{ cursor: 'pointer' }}
+								className="pktw-shadow-none pktw-text-xs pktw-h-7 pktw-text-[--text-muted]"
+								onClick={() => {
+									useSharedStore.getState().setSearchQuery(fq.query);
+									useSearchSessionStore.getState().resetAll();
+									resetAIAnalysisAll();
+									useSearchSessionStore.getState().incrementTriggerAnalysis();
+								}}
+							>
+								{fq.query.length > 40 ? fq.query.slice(0, 40) + '...' : fq.query}
+								{fq.count > 1 && (
+									<span className="pktw-ml-1 pktw-text-[10px] pktw-text-[--text-faint]">x{fq.count}</span>
+								)}
+							</Button>
+						))}
+					</div>
+				</div>
+			)}
 			{!searchQuery && sessionStatus === 'idle' && defaultQueries.length > 0 && (
 				<div className="pktw-flex-shrink-0 pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-px-3 pktw-py-2 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
 					{defaultQueries.map((q, i) => (

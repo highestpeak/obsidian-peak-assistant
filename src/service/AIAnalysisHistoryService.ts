@@ -32,6 +32,11 @@ export class AIAnalysisHistoryService {
 		}
 	}
 
+	async frequentQueries(limit = 5): Promise<Array<{ query: string; count: number }>> {
+		const repo = sqliteStoreManager.getAIAnalysisRepo();
+		return repo.frequentQueries(limit);
+	}
+
 	async deleteAll(): Promise<void> {
 		const repo = sqliteStoreManager.getAIAnalysisRepo();
 		await repo.deleteAll();
