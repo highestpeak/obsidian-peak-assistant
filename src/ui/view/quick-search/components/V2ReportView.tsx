@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Copy, Check, Sparkles, Loader2, CheckCircle, Clock, ChevronRight } from 'lucide-react';
+import { RefreshCw, Copy, Check, Sparkles, Loader2, CheckCircle, Clock, ChevronRight, ArrowLeft } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Section } from '../store/searchSessionStore';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
@@ -310,6 +310,16 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 
 	return (
 		<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pktw-px-1 pktw-py-2">
+			{/* Back to Process button — visible when coming from a round's Report link */}
+			{rounds.length > 0 && (
+				<div
+					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2 pktw-py-1.5 pktw-mb-2 pktw-text-xs pktw-text-[#7c3aed] pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-w-fit pktw-transition-colors"
+					onClick={() => useSearchSessionStore.getState().setV2View('process')}
+				>
+					<ArrowLeft className="pktw-w-3.5 pktw-h-3.5" />
+					<span>Back to Process</span>
+				</div>
+			)}
 			{/* Previous completed rounds */}
 			{rounds.map((round, ri) => (
 				<React.Fragment key={`round-${ri}`}>

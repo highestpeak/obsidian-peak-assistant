@@ -386,6 +386,11 @@ Output ONLY the JSON array, no other text.`;
     // -----------------------------------------------------------------------
 
     private async runVisualAgent(section: V2Section): Promise<void> {
+        // Disabled: Streamdown's built-in tables/mermaid are sufficient.
+        // Custom viz adds extra API calls and often duplicates section content.
+        // Re-enable when interactive graph viz is properly implemented.
+        return;
+
         const currentContent = this.store.getState().v2PlanSections.find((s) => s.id === section.id)?.content ?? '';
         if (!currentContent) return;
 

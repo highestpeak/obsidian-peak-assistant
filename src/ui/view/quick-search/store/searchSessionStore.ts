@@ -440,7 +440,10 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			v2Steps: completedV2Steps,
 			v2Timeline: completedTimeline,
 			v2FinalReportStartIndex: finalIdx,
-			v2View: s.v2Active ? 'report' as const : s.v2View,
+			// Only auto-switch to report when sections are fully generated; otherwise stay on current view (process)
+			v2View: s.v2Active && s.v2PlanApproved && s.v2PlanSections.length > 0 && s.v2PlanSections.every(sec => sec.status === 'done')
+				? 'report' as const
+				: s.v2View,
 		};
 	}),
 

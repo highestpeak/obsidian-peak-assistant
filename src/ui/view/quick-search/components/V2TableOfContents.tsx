@@ -68,29 +68,29 @@ export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown }
     if (headings.length < 3) return null;
 
     return (
-        <div className="pktw-absolute pktw-right-2 pktw-top-2 pktw-z-10">
-            {/* Collapsed: small floating button */}
+        <div className="pktw-absolute pktw-right-3 pktw-bottom-3 pktw-z-10">
+            {/* Collapsed: floating TOC button */}
             {collapsed && (
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     onClick={() => setCollapsed(false)}
-                    className="pktw-w-8 pktw-h-8 pktw-rounded-lg pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-shadow-sm pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer pktw-text-[#9ca3af] hover:pktw-text-[#7c3aed] hover:pktw-border-[#7c3aed]/30 pktw-transition-all"
+                    className="pktw-w-9 pktw-h-9 pktw-rounded-full pktw-bg-[#7c3aed] pktw-shadow-lg pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer pktw-text-white hover:pktw-bg-[#6d28d9] pktw-transition-all"
                     title="Table of Contents"
                 >
                     <List className="pktw-w-4 pktw-h-4" />
                 </motion.div>
             )}
 
-            {/* Expanded: TOC panel */}
+            {/* Expanded: TOC panel — opens upward from bottom-right */}
             <AnimatePresence>
                 {!collapsed && (
                     <motion.div
-                        initial={{ opacity: 0, x: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        exit={{ opacity: 0, x: 10, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="pktw-w-56 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-xl pktw-shadow-lg pktw-overflow-hidden"
+                        className="pktw-w-64 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-xl pktw-shadow-lg pktw-overflow-hidden pktw-mb-2"
                     >
                         {/* Header */}
                         <div
