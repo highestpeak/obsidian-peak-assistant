@@ -237,6 +237,10 @@ export enum PromptId {
 	AiAnalysisContinueSystem = 'ai-analysis-continue-system',
 	/** Continue analysis: user prompt with previous round context. */
 	AiAnalysisContinue = 'ai-analysis-continue',
+	/** Synthesize all rounds: system prompt for merging rounds into unified report. */
+	AiAnalysisSynthesizeSystem = 'ai-analysis-synthesize-system',
+	/** Synthesize all rounds: user prompt with all round data. */
+	AiAnalysisSynthesize = 'ai-analysis-synthesize',
 
 	// Context building templates (internal use)
 	ContextMemory = 'context-memory',
@@ -281,6 +285,7 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisMermaidFix,
 	PromptId.AiAnalysisContinueSystem,
 	PromptId.AiAnalysisContinue,
+	PromptId.AiAnalysisSynthesize,
 ] as const;
 
 /**
@@ -703,6 +708,15 @@ export interface PromptVariables {
 		sources: Array<{ path: string; relevance?: string }>;
 		graphSummary?: { nodeCount: number; keyRelationships: string[] } | null;
 		followUpQuery: string;
+	};
+	[PromptId.AiAnalysisSynthesizeSystem]: Record<string, never>;
+	[PromptId.AiAnalysisSynthesize]: {
+		rounds: Array<{
+			query: string;
+			summary: string;
+			sections: Array<{ title: string; content: string }>;
+			annotations: Array<{ type: string; sectionTitle: string; comment: string }>;
+		}>;
 	};
 	[PromptId.AiAnalysisReportSectionSystem]: Record<string, never>;
 	[PromptId.AiAnalysisReportSection]: {

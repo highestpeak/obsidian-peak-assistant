@@ -230,6 +230,7 @@ interface SearchSessionActions {
 	freezeCurrentRound: () => void;
 	startContinueRound: (followUpQuery: string) => void;
 	addAnnotation: (annotation: Annotation) => void;
+	replaceSynthesized: (summary: string, sections: Array<{ title: string; content: string }>) => void;
 
 	// HITL
 	setHitlPause: (state: { pauseId: string; phase: string; snapshot: PlanSnapshot }) => void;
@@ -738,6 +739,41 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			};
 		}
 		return { rounds };
+	}),
+
+	replaceSynthesized: (summary, sections) => set((s) => {
+		const synthesizedRound: Round = {
+			index: 0,
+			query: s.rounds[0]?.query ?? s.query,
+			sections: sections.map((sec, i) => ({
+				id: `synth-${i}`,
+				title: sec.title,
+				contentType: 'narrative',
+				visualType: 'none',
+				evidencePaths: [],
+				brief: '',
+				weight: 5,
+				missionRole: 'synthesis',
+				status: 'done' as const,
+				content: sec.content,
+				streamingChunks: [],
+				generations: [{ content: sec.content, timestamp: Date.now() }],
+			})),
+			summary,
+			summaryStreaming: false,
+			sources: s.rounds.flatMap((r) => r.sources),
+			steps: [],
+			timeline: [],
+			followUpQuestions: [],
+			proposedOutline: null,
+			annotations: [],
+		};
+		return {
+			rounds: [synthesizedRound],
+			currentRoundIndex: 1,
+			v2PlanSections: [],
+			v2Summary: summary,
+		};
 	}),
 
 	// -----------------------------------------------------------------------

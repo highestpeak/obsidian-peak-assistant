@@ -209,6 +209,8 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'ai-analysis-vault-sdk-playbook': meta('prompts', 'ai-analysis-vault-sdk-playbook'),
 	'ai-analysis-continue-system': meta('prompts', 'ai-analysis-continue-system'),
 	'ai-analysis-continue': meta('prompts', 'ai-analysis-continue', { systemPromptId: 'ai-analysis-continue-system' as PromptId }),
+	'ai-analysis-synthesize-system': meta('prompts', 'ai-analysis-synthesize-system'),
+	'ai-analysis-synthesize': meta('prompts', 'ai-analysis-synthesize', { systemPromptId: 'ai-analysis-synthesize-system' as PromptId }),
 	'ai-analysis-report-section-system': meta('prompts', 'ai-analysis-report-section-system'),
 	'ai-analysis-report-section': meta('prompts', 'ai-analysis-report-section', { systemPromptId: 'ai-analysis-report-section-system' as PromptId }),
 	'ai-analysis-report-visual-system': meta('prompts', 'ai-analysis-report-visual-system'),

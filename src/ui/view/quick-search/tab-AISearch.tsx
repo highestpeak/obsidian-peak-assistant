@@ -1,5 +1,5 @@
 import { SLICE_CAPS } from '@/core/constant';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink, ClipboardList, Activity, Eye, FileText, MoreHorizontal, Sparkles } from 'lucide-react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
 import { V2ContinueAnalysisInput } from './components/V2ContinueAnalysisInput';
@@ -26,6 +26,7 @@ import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
 import { RecentAIAnalysis } from './components/ai-analysis-sections/RecentAIAnalysis';
 import { useAIAnalysisResult } from './hooks/useAIAnalysisResult';
 import { AppContext } from '@/app/context/AppContext';
+import { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
 import { SearchResultView } from './components/SearchResultView';
 import { UsageBadge } from './components/ai-analysis-sections/UsageBadge';
 import { SectionExtraChatModal } from './components/ai-analysis-modal/SectionExtraChatModal';
@@ -525,6 +526,27 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		handleAutoSave();
 	}, [analysisCompleted, restoredFromHistory, error, sessionId, handleAutoSave]);
 
+	const handleSynthesize = useCallback(async () => {
+		const store = useSearchSessionStore.getState();
+		if (store.rounds.length < 2) return;
+
+		// Freeze current round if sections exist
+		if (store.v2PlanSections.some((s) => s.status === 'done')) {
+			store.freezeCurrentRound();
+		}
+
+		useSearchSessionStore.setState({ status: 'starting' });
+		try {
+			const agent = new SynthesizeAgent();
+			const result = await agent.synthesize(useSearchSessionStore.getState().rounds);
+			useSearchSessionStore.getState().replaceSynthesized(result.summary, result.sections);
+			useSearchSessionStore.getState().markCompleted();
+		} catch (e) {
+			console.error('Synthesize failed:', e);
+			useSearchSessionStore.setState({ status: 'completed' });
+		}
+	}, []);
+
 	// Nav bar condition: show when steps have content OR is streaming (supports both old and new pipeline)
 	const showNavBar = !isV2Active && (isNewPipeline || getHasCompletedContent() || (hasStartedStreaming && !analysisCompleted));
 
@@ -703,7 +725,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 			{/* Footer — V2 renders its own content, V1 renders original */}
 			{isV2Active && analysisCompleted ? (
-				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={() => { console.log('Synthesize clicked'); }} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} />
+				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} />
 			) : null}
 			<div className={`pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0 ${isV2Active ? 'pktw-hidden' : ''}`}>
 				{!hasAnalyzed && !isAnalyzing ? <AISearchFooterHints /> : null}
