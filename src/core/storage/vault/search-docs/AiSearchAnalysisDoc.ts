@@ -313,7 +313,7 @@ function parseV2ReportSections(body: string): Array<{ title: string; content: st
 	let match: RegExpExecArray | null;
 	const hits: Array<{ idx: number; num: number; title: string }> = [];
 	while ((match = regex.exec(body)) !== null) {
-		hits.push({ idx: match.index, num: parseInt(match[1], 10), title: match[2].trim() });
+		hits.push({ idx: match.index, title: match[2].trim() });
 	}
 	for (let i = 0; i < hits.length; i++) {
 		const start = hits[i].idx + body.slice(hits[i].idx).indexOf('\n') + 1;
@@ -930,6 +930,7 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 
 	// V2 trailing callouts: Graph Data and Follow-up Questions (after Sources)
 	if (docModel.v2GraphJson) {
+		// assumes compact single-line JSON — multi-line JSON would break callout round-trip
 		lines.push('> [!tip]- Graph Data');
 		lines.push('> ```json');
 		for (const line of docModel.v2GraphJson.split('\n')) {

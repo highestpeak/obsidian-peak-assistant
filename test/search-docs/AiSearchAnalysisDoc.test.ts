@@ -52,7 +52,7 @@ function docModelsEqual(a: AiSearchAnalysisDocModel, b: AiSearchAnalysisDocModel
 	if (a.dashboardBlocks.length !== b.dashboardBlocks.length) return { ok: false, msg: 'dashboardBlocks.length' };
 	if (JSON.stringify(a.v2ProcessLog ?? []) !== JSON.stringify(b.v2ProcessLog ?? [])) return { ok: false, msg: 'v2ProcessLog' };
 	if ((a.v2PlanOutline ?? '') !== (b.v2PlanOutline ?? '')) return { ok: false, msg: 'v2PlanOutline' };
-	if ((a.v2ReportSections?.length ?? 0) !== (b.v2ReportSections?.length ?? 0)) return { ok: false, msg: 'v2ReportSections.length' };
+	if (JSON.stringify(a.v2ReportSections ?? []) !== JSON.stringify(b.v2ReportSections ?? [])) return { ok: false, msg: 'v2ReportSections' };
 	if ((a.v2GraphJson ?? '') !== (b.v2GraphJson ?? '')) return { ok: false, msg: 'v2GraphJson' };
 	if (JSON.stringify(a.v2FollowUpQuestions ?? []) !== JSON.stringify(b.v2FollowUpQuestions ?? [])) return { ok: false, msg: 'v2FollowUpQuestions' };
 	return { ok: true };
