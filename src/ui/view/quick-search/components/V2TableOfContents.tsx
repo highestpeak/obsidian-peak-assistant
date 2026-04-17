@@ -65,7 +65,6 @@ function scrollToHeading(headingText: string, level: number) {
 export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, className, initialCollapsed = true, onNavigate }) => {
     const headings = useMemo(() => parseHeadings(markdown), [markdown]);
     const [collapsed, setCollapsed] = useState(initialCollapsed);
-    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
     const handleClick = useCallback((heading: Heading) => {
         scrollToHeading(heading.text, heading.level);
@@ -116,29 +115,13 @@ export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, 
                             {headings.map((heading, i) => (
                                 <div
                                     key={i}
-                                    className={`pktw-relative pktw-text-xs pktw-py-1 pktw-px-2 pktw-rounded pktw-cursor-pointer pktw-truncate pktw-transition-colors ${
+                                    className={`pktw-text-xs pktw-py-1 pktw-px-2 pktw-rounded pktw-cursor-pointer pktw-truncate pktw-transition-colors ${
                                         heading.level === 3 ? 'pktw-pl-6' : 'pktw-font-medium'
                                     } pktw-text-[#6b7280] hover:pktw-text-[#7c3aed] hover:pktw-bg-[#f5f3ff]`}
                                     title={heading.text}
                                     onClick={() => handleClick(heading)}
-                                    onMouseEnter={() => setHoveredIndex(i)}
-                                    onMouseLeave={() => setHoveredIndex(null)}
                                 >
                                     {heading.text}
-
-                                    {/* Hover preview tooltip for long titles */}
-                                    <AnimatePresence>
-                                        {hoveredIndex === i && heading.text.length > 25 && (
-                                            <motion.div
-                                                initial={{ opacity: 0, x: -5 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                exit={{ opacity: 0 }}
-                                                className="pktw-absolute pktw-right-full pktw-top-0 pktw-mr-2 pktw-px-3 pktw-py-2 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-shadow-lg pktw-text-xs pktw-text-[#2e3338] pktw-whitespace-nowrap pktw-z-20 pktw-max-w-[250px]"
-                                            >
-                                                {heading.text}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
                                 </div>
                             ))}
                         </nav>
