@@ -37,6 +37,9 @@
   --radius: 0.5rem;
   /* rehype-katex errorColor expects full color value */
   --color-muted-foreground: hsl(var(--muted-foreground));
+  /* Obsidian theme accent colors (inherited from host page) */
+  --obsidian-text-accent: var(--text-accent, #2563eb);
+  --obsidian-text-accent-hover: var(--text-accent-hover, #1d4ed8);
 }
 
 .streamdown-wrapper {
@@ -137,27 +140,29 @@
   outline-offset: 2px;
 }
 
-a[href^="peak://wikilink/"]:hover,
-a[href^="#peak-wikilink="]:hover,
-a[href^="obsidian://open"]:hover,
-[data-streamdown="link"]:hover {
-  color: #982598 !important;
-  text-decoration: underline;
-  text-decoration-style: solid;
-}
-
 /* Wikilinks: classic blue underlined link, no box, pointer cursor (remarkWikilink plugin) */
 a[href^="peak://wikilink/"],
 a[href^="#peak-wikilink="],
 a[href^="obsidian://open"],
 [data-streamdown="link"] {
-  /* Classic blue underlined link, no box, pointer cursor */
-  color: #2563eb !important;
+  color: var(--obsidian-text-accent);
+  text-decoration: none;
   cursor: pointer;
-  border: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s, color 0.15s;
+  border-top: none;
+  border-left: none;
+  border-right: none;
   outline: none;
   background: transparent;
-  text-decoration-line: none;
+}
+
+a[href^="peak://wikilink/"]:hover,
+a[href^="#peak-wikilink="]:hover,
+a[href^="obsidian://open"]:hover,
+[data-streamdown="link"]:hover {
+  color: var(--obsidian-text-accent-hover);
+  border-bottom-color: currentColor;
 }
 
 /* Mermaid/table dropdown panels (SVG, PNG, MMD etc.) */
