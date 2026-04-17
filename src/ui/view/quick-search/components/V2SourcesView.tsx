@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { FileText, List, Network, ChevronRight, Folder } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
-import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
+import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
+import type { LensGraphData, LensNodeData } from '@/ui/component/mine/multi-lens-graph/types';
 import type { V2Source } from '../types/search-steps';
 
 type SourceViewMode = 'list' | 'graph';
@@ -12,29 +13,64 @@ interface V2SourcesViewProps {
     onClose?: () => void;
 }
 
-const SourcesGraph: React.FC<{ sources: Array<{ path: string; title: string }> }> = ({ sources }) => {
-    const mermaid = useMemo(() => {
-        const folders = new Map<string, string[]>();
-        for (const s of sources) {
-            const folder = s.path.split('/')[0] || 'root';
-            const list = folders.get(folder) ?? [];
-            list.push(s.title);
-            folders.set(folder, list);
-        }
-        let md = '```mermaid\nmindmap\n  root((Sources))\n';
-        for (const [folder, titles] of folders) {
-            md += `    ${folder}\n`;
-            for (const t of titles.slice(0, 5)) {
-                md += `      ${t.slice(0, 20)}\n`;
+const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => void }> = ({ sources, onOpen }) => {
+    const sections = useSearchSessionStore(s => s.v2PlanSections);
+
+    const graphData = useMemo((): LensGraphData | null => {
+        if (sources.length === 0) return null;
+
+        const prefixMap = new Map<string, string>();
+        let groupIdx = 0;
+
+        const nodes: LensNodeData[] = sources.map((src, i) => {
+            const parts = src.path.split('/');
+            const prefix = parts.length > 2 ? parts.slice(0, 2).join('/') : parts[0] ?? 'root';
+            if (!prefixMap.has(prefix)) prefixMap.set(prefix, String(groupIdx++));
+            return {
+                id: `src-${i}`,
+                label: src.title,
+                path: src.path,
+                role: 'leaf' as const,
+                group: prefixMap.get(prefix)!,
+                score: i,
+            };
+        });
+
+        const edgeSet = new Set<string>();
+        const edges: LensGraphData['edges'] = [];
+        for (const sec of sections) {
+            const paths = sec.evidencePaths ?? [];
+            for (let i = 0; i < paths.length; i++) {
+                for (let j = i + 1; j < paths.length; j++) {
+                    const srcI = nodes.find(n => n.path === paths[i]);
+                    const srcJ = nodes.find(n => n.path === paths[j]);
+                    if (srcI && srcJ) {
+                        const key = [srcI.id, srcJ.id].sort().join('--');
+                        if (!edgeSet.has(key)) {
+                            edgeSet.add(key);
+                            edges.push({ source: srcI.id, target: srcJ.id, kind: 'semantic' });
+                        }
+                    }
+                }
             }
-            if (titles.length > 5) {
-                md += `      +${titles.length - 5} more\n`;
-            }
         }
-        md += '```';
-        return md;
-    }, [sources]);
-    return <StreamdownIsolated>{mermaid}</StreamdownIsolated>;
+
+        return { nodes, edges, availableLenses: ['topology'] };
+    }, [sources, sections]);
+
+    if (!graphData) return null;
+
+    return (
+        <div className="pktw-h-[400px] pktw-w-full pktw-border pktw-border-[--background-modifier-border] pktw-rounded-lg pktw-overflow-hidden">
+            <MultiLensGraph
+                graphData={graphData}
+                defaultLens="topology"
+                showControls
+                onNodeClick={onOpen}
+                className="pktw-h-full"
+            />
+        </div>
+    );
 };
 
 function SourceItem({ source, onClick }: { source: V2Source; onClick: () => void }) {
@@ -162,9 +198,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
 
             {/* Graph view */}
             {viewMode === 'graph' && (
-                <div className="pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-xl pktw-p-4 pktw-min-h-[300px]">
-                    <SourcesGraph sources={sources} />
-                </div>
+                <SourcesGraph sources={sources} onOpen={handleOpen} />
             )}
         </motion.div>
     );
