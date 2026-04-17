@@ -37,3 +37,10 @@ Either:
 Or:
 
 {"vizType": "graph"|"bar"|"table"|"timeline", "title": "...", "data": { ... }}
+
+# TABLE EXAMPLE (CRITICAL — rows MUST be arrays, NOT objects)
+
+{"vizType":"table","title":"Feature Comparison","data":{"headers":["Feature","Option A","Option B"],"rows":[["Speed","Fast","Slow"],["Cost","$10/mo","$25/mo"],["Support","Email","24/7"]]}}
+
+WRONG (do NOT do this): "rows":[{"Feature":"Speed","Option A":"Fast","Option B":"Slow"}]
+CORRECT: "rows":[["Speed","Fast","Slow"]]

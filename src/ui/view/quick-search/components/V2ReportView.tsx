@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Copy, Check, Sparkles, Loader2, CheckCircle, Clock } from 'lucide-react';
+import { RefreshCw, Copy, Check, Sparkles, Loader2, CheckCircle, Clock, ChevronRight } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Section } from '../store/searchSessionStore';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
@@ -113,7 +113,7 @@ const SectionBlock: React.FC<{
 				{section.status === 'done' && <CheckCircle className="pktw-w-4 pktw-h-4 pktw-text-green-500 pktw-shrink-0" />}
 				{section.status === 'generating' && <Loader2 className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed] pktw-animate-spin pktw-shrink-0" />}
 				{section.status === 'pending' && <Clock className="pktw-w-4 pktw-h-4 pktw-text-[#d1d5db] pktw-shrink-0" />}
-				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#374151] pktw-flex-1 pktw-line-clamp-1" title={section.title}>
+				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#374151] pktw-flex-1 pktw-line-clamp-2" title={section.title}>
 					{section.title}
 				</span>
 				{annotations.length > 0 && (
@@ -250,6 +250,31 @@ const SectionBlock: React.FC<{
 	);
 };
 
+/** Collapsible Executive Summary */
+const CollapsibleSummary: React.FC<{ summary: string; summaryStreaming: boolean }> = ({ summary, summaryStreaming }) => {
+	const [expanded, setExpanded] = useState(true);
+	return (
+		<div className="pktw-bg-[#f9fafb] pktw-rounded-xl pktw-border pktw-border-[#e5e7eb] pktw-mb-4">
+			<div
+				className="pktw-flex pktw-items-center pktw-gap-2 pktw-p-4 pktw-pb-0 pktw-cursor-pointer"
+				onClick={() => !summaryStreaming && setExpanded(!expanded)}
+			>
+				<ChevronRight className={`pktw-w-3.5 pktw-h-3.5 pktw-text-[#9ca3af] pktw-transition-transform ${expanded ? 'pktw-rotate-90' : ''}`} />
+				<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
+				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Executive Summary</span>
+				{summaryStreaming && <Loader2 className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed] pktw-animate-spin" />}
+			</div>
+			{expanded && (
+				<div className="pktw-px-5 pktw-pb-5 pktw-pt-3">
+					<StreamdownIsolated isAnimating={summaryStreaming} className="pktw-select-text pktw-break-words">
+						{summary}
+					</StreamdownIsolated>
+				</div>
+			)}
+		</div>
+	);
+};
+
 export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, onRegenerateSection }) => {
 	const { rounds, v2PlanSections: sections, v2Summary: summary, v2SummaryStreaming: summaryStreaming } = useSearchSessionStore(
 		(s) => ({
@@ -352,18 +377,9 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 				</div>
 			)}
 
-			{/* Executive Summary */}
+			{/* Executive Summary — collapsible */}
 			{(summary || summaryStreaming) && (
-				<div className="pktw-bg-[#f9fafb] pktw-rounded-xl pktw-p-5 pktw-border pktw-border-[#e5e7eb] pktw-mb-4">
-					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
-						<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
-						<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Executive Summary</span>
-						{summaryStreaming && <Loader2 className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed] pktw-animate-spin" />}
-					</div>
-					<StreamdownIsolated isAnimating={summaryStreaming} className="pktw-select-text pktw-break-words">
-						{summary}
-					</StreamdownIsolated>
-				</div>
+				<CollapsibleSummary summary={summary} summaryStreaming={summaryStreaming} />
 			)}
 
 			{/* Section blocks */}

@@ -420,6 +420,18 @@ Output ONLY the JSON array, no other text.`;
             // Check for skip signal
             if (parsed.skip) return;
 
+            // Auto-fix: convert object-style rows to array-style rows
+            // LLMs often return rows as {col: val} objects instead of [val] arrays
+            if (parsed.data?.rows && parsed.data?.headers && Array.isArray(parsed.data.rows)) {
+                parsed.data.rows = parsed.data.rows.map((row: unknown) => {
+                    if (row && typeof row === 'object' && !Array.isArray(row)) {
+                        const headers = parsed.data.headers as string[];
+                        return headers.map((h: string) => String((row as Record<string, unknown>)[h] ?? ''));
+                    }
+                    return row;
+                });
+            }
+
             // Validate with Zod
             const { vizSpecSchema } = await import('@/core/schemas/report-viz-schemas');
             const validation = vizSpecSchema.safeParse(parsed);

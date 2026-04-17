@@ -23,16 +23,17 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
     const isStreaming = useSearchSessionStore((s) => s.status === 'streaming');
     const isCompleted = useSearchSessionStore((s) => s.status === 'completed');
     const v2View = useSearchSessionStore((s) => s.v2View);
-    const proposedOutline = useSearchSessionStore((s) => s.v2ProposedOutline);
-    const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
     const allSectionsDone = useSearchSessionStore((s) =>
         s.v2PlanApproved && s.v2PlanSections.length > 0 && s.v2PlanSections.every((sec) => sec.status === 'done')
+    );
+    const reportMarkdown = useSearchSessionStore((s) =>
+        s.v2PlanSections.filter((sec) => sec.content).map((sec) => `## ${sec.title}\n\n${sec.content}`).join('\n\n')
     );
     const containerRef = useRef<HTMLDivElement>(null);
 
     // During streaming, force process view
     const activeView = isStreaming ? 'process' : v2View;
-    const showToc = isCompleted && activeView === 'report' && !!proposedOutline;
+    const showToc = isCompleted && activeView === 'report' && reportMarkdown.length > 0;
 
     // Reset to process when streaming starts
     useEffect(() => {
@@ -61,7 +62,7 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
             </div>
             <V2ScrollButtons containerRef={containerRef} />
             {/* TOC rendered outside scroll container so it stays fixed on scroll */}
-            {showToc && <V2TableOfContents markdown={proposedOutline!} />}
+            {showToc && <V2TableOfContents markdown={reportMarkdown} />}
         </div>
     );
 };
