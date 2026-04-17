@@ -5,6 +5,7 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Section } from '../store/searchSessionStore';
 import { VISUAL_TYPE_LABELS, MISSION_ROLES } from '@/core/constant';
+import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
 
 /** A single section card nested under its role */
 const SectionCard: React.FC<{
@@ -156,7 +157,9 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 							{/* Overview */}
 							{overview && (
 								<div className="pktw-bg-white pktw-rounded-lg pktw-p-3 pktw-border pktw-border-[#e5e7eb] pktw-mb-3">
-									<span className="pktw-text-sm pktw-text-[#6b7280] pktw-leading-relaxed">{overview}</span>
+									<StreamdownIsolated isAnimating={false} className="pktw-text-sm pktw-text-[#6b7280]">
+										{overview}
+									</StreamdownIsolated>
 								</div>
 							)}
 
