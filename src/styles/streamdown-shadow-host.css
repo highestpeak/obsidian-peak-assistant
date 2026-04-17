@@ -64,18 +64,42 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
+/* ── Tables ── */
 [data-streamdown="table-wrapper"] {
-  border-radius: var(--radius);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--border));
+  margin: 0.75em 0;
+  width: 100%;
 }
 
 [data-streamdown="table"] {
-  border-radius: var(--radius);
-  overflow: hidden;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+[data-streamdown="table"] th,
+[data-streamdown="table"] td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+[data-streamdown="table"] th {
+  font-weight: 600;
+  background: hsl(var(--muted));
+}
+
+[data-streamdown="table"] tr:nth-child(even) td {
+  background: hsl(var(--muted) / 0.3);
 }
 
 [data-streamdown="table-header"] {
   background: linear-gradient(to bottom, hsl(var(--muted)), hsl(var(--border) / 0.5));
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 [data-streamdown="blockquote"] {
@@ -157,4 +181,24 @@ a[href^="obsidian://open"],
 [data-streamdown="mermaid-block"]:hover .absolute.z-10.flex.flex-col.rounded-md {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* ── Paragraphs ── */
+[data-streamdown-root] p {
+  margin-bottom: 0.75em;
+  line-height: 1.65;
+}
+
+/* ── Block-level width ── */
+[data-streamdown-root] table,
+[data-streamdown-root] pre,
+[data-streamdown-root] blockquote,
+[data-streamdown-root] .math-display {
+  max-width: 100%;
+}
+
+/* ── TOC filter ── */
+[data-streamdown-root] a[href="#toc"],
+[data-streamdown-root] a[href="#table-of-contents"] {
+  display: none;
 }
