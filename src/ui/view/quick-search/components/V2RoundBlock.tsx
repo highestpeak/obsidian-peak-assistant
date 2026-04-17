@@ -20,6 +20,8 @@ export interface V2RoundBlockProps {
 	proposedOutline: string | null;
 	isCurrent: boolean;
 	defaultExpanded: boolean;
+	usage?: { inputTokens: number; outputTokens: number } | null;
+	duration?: number | null;
 	children?: React.ReactNode;
 }
 
@@ -51,12 +53,15 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 	proposedOutline: _proposedOutline,
 	isCurrent,
 	defaultExpanded,
+	usage,
+	duration: roundDuration,
 	children,
 }) => {
 	const [expanded, setExpanded] = useState(defaultExpanded);
 	const setV2View = useSearchSessionStore((s) => s.setV2View);
 
-	const duration = formatDuration(steps);
+	const duration = roundDuration != null ? `${Math.round(roundDuration / 1000)}s` : formatDuration(steps);
+	const tokenStr = usage ? `${((usage.inputTokens + usage.outputTokens) / 1000).toFixed(1)}k` : null;
 	const hasSections = sections.length > 0;
 
 	const borderClass = isCurrent
@@ -107,6 +112,11 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 					{hasSections && (
 						<span className="pktw-text-[10px] pktw-text-[#9ca3af]">
 							{sections.length} sec
+						</span>
+					)}
+					{tokenStr && (
+						<span className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-font-mono">
+							{tokenStr}
 						</span>
 					)}
 				</div>

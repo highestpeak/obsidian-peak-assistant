@@ -15,6 +15,8 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
     const sources = useSearchSessionStore((s) => s.v2Sources);
     const proposedOutline = useSearchSessionStore((s) => s.v2ProposedOutline);
     const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
+    const usage = useSearchSessionStore((s) => s.usage);
+    const duration = useSearchSessionStore((s) => s.duration);
 
     const isStreaming = status === 'streaming';
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -50,6 +52,8 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                     sections={round.sections}
                     sources={{ length: round.sources.length }}
                     proposedOutline={round.proposedOutline}
+                    usage={round.usage}
+                    duration={round.duration}
                     isCurrent={false}
                     defaultExpanded={false}
                 />
@@ -64,6 +68,8 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                 sections={sections}
                 sources={{ length: sources.length }}
                 proposedOutline={proposedOutline}
+                usage={usage}
+                duration={duration}
                 isCurrent={true}
                 defaultExpanded={true}
             >

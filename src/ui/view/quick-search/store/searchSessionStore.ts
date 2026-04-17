@@ -67,6 +67,8 @@ export interface Round {
 	followUpQuestions: string[];
 	proposedOutline: string | null;
 	annotations: Annotation[];
+	usage: LLMUsage | null;
+	duration: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -727,6 +729,8 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			followUpQuestions: [...s.v2FollowUpQuestions],
 			proposedOutline: s.v2ProposedOutline,
 			annotations: [],
+			usage: s.usage,
+			duration: s.duration,
 		};
 		return {
 			rounds: [...s.rounds, round],
