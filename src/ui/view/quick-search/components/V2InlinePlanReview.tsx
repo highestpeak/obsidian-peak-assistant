@@ -252,8 +252,8 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 
 							{/* Divider before footer area */}
 							<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-mt-2 pktw-pt-3">
-								{/* Insight chips */}
-								{insights.length > 0 && (
+								{/* Insight chips (only editable before approval) */}
+								{!planApproved && insights.length > 0 && (
 									<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-mb-2">
 										{insights.map((insight, i) => (
 											<span

@@ -147,9 +147,12 @@ Scan all collected evidence for:
 - Causal claims without supporting evidence
 Document any conflicts — they MUST appear in the report.
 
+### Language Rule (CRITICAL)
+ALL text you produce — proposed_outline, section titles, briefs, coverage_assessment, follow_up_questions — MUST be in the SAME LANGUAGE as the user's query. Chinese query → Chinese output. English query → English output. Never mix languages.
+
 ### Step 2: Section Plan
 Design 3-6 McKinsey-style sections. For each section, decide:
-- **Section title**: a conclusion sentence (NOT a topic label)
+- **Section title**: a conclusion sentence in the user's query language (NOT a topic label)
 - **Content type**: enumeration | comparison | analysis | recommendation | timeline
 - **Mandated format**:
   | Content type | Required format |
@@ -264,3 +267,5 @@ Call `vault_submit_plan` with:
 - `follow_up_questions`: array of 3-5 context-specific follow-up question strings
 
 **IMPORTANT**: Do NOT write the full report in `proposed_outline`. The report is generated section-by-section after this plan is approved. Your job is to search thoroughly and plan the report structure.
+
+**LANGUAGE**: All user-facing text (proposed_outline, title, brief, follow_up_questions) MUST match the user's query language.

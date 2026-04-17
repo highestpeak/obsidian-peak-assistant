@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ExternalLink } from 'lucide-react';
 import { ToolRow, BatchRow, ThinkingRow, groupTimeline } from './timeline-helpers';
@@ -63,8 +63,8 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 		? 'pktw-border-[#7c3aed]/30 pktw-bg-white'
 		: 'pktw-border-[#e5e7eb] pktw-bg-[#fafafa]';
 
-	// Group timeline for rendering
-	const grouped = groupTimeline(timeline);
+	// Group timeline for rendering (memoized to avoid recomputing for frozen rounds)
+	const grouped = useMemo(() => groupTimeline(timeline), [timeline]);
 
 	return (
 		<div className={`pktw-border pktw-rounded-lg pktw-mb-2 pktw-overflow-hidden ${borderClass}`}>

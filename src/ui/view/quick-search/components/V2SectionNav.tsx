@@ -16,15 +16,30 @@ interface V2SectionNavProps {
 export const V2SectionNav: React.FC<V2SectionNavProps> = ({ containerRef }) => {
 	const sections = useSearchSessionStore((s) => s.v2PlanSections);
 	const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
+	const v2View = useSearchSessionStore((s) => s.v2View);
 
 	const scrollToSection = useCallback((index: number) => {
+		// Switch to report view if not already there
+		if (v2View !== 'report') {
+			useSearchSessionStore.getState().setV2View('report');
+			// Wait for report to render before scrolling
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					const container = containerRef.current;
+					if (!container) return;
+					const blocks = container.querySelectorAll('[data-section-id]');
+					const target = blocks[index] as HTMLElement | undefined;
+					target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				});
+			});
+			return;
+		}
 		const container = containerRef.current;
 		if (!container) return;
-		// Section blocks are rendered as direct children of a pktw-space-y-4 div
 		const blocks = container.querySelectorAll('[data-section-id]');
 		const target = blocks[index] as HTMLElement | undefined;
 		target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-	}, [containerRef]);
+	}, [containerRef, v2View]);
 
 	if (!planApproved || sections.length === 0) return null;
 

@@ -588,10 +588,20 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
-	 * Resolve model for a prompt: `promptModelMap[promptId]` if set, otherwise `defaultModel`.
+	 * Resolve model for a prompt:
+	 * 1. `promptModelMap[promptId]` — per-prompt override (most specific)
+	 * 2. `analysisModel` — for AiAnalysis* prompts when set
+	 * 3. `defaultModel` — global fallback
 	 */
 	getModelForPrompt(promptId: PromptId): { provider: string; modelId: string } {
-		const m = this.settings.promptModelMap?.[promptId] ?? this.settings.defaultModel;
+		const perPrompt = this.settings.promptModelMap?.[promptId];
+		if (perPrompt) return { provider: perPrompt.provider, modelId: perPrompt.modelId };
+
+		if (this.settings.analysisModel && promptId.startsWith('ai-analysis')) {
+			return { provider: this.settings.analysisModel.provider, modelId: this.settings.analysisModel.modelId };
+		}
+
+		const m = this.settings.defaultModel;
 		if (m) return { provider: m.provider, modelId: m.modelId };
 		throw new Error('No model configuration available. Please configure defaultModel in settings.');
 	}

@@ -253,7 +253,7 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 		};
 	}, [eventBus, loadModels]);
 
-	const { updateAISettings, updateDefaultModel, updateSearchModel, updateChunkingModel, updateAIAnalysisModel, updatePromptModel } = settingsUpdates;
+	const { updateAISettings, updateDefaultModel, updateAnalysisModel, updateSearchModel, updateChunkingModel, updateAIAnalysisModel, updatePromptModel } = settingsUpdates;
 
 	const modelConfigs: ModelConfigItem[] = [
 		{
@@ -262,6 +262,13 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 			description: 'Default model for chat conversations. Used when no specific model is selected.',
 			currentModel: settings.ai.defaultModel,
 			onChange: (provider, modelId) => updateDefaultModel(provider, modelId),
+		},
+		{
+			id: 'analysis',
+			label: 'Analysis Model',
+			description: 'Model for AI Analysis (search reports, sections). Use OpenRouter for parallel calls. Falls back to Default Model if not set.',
+			currentModel: settings.ai.analysisModel ?? settings.ai.defaultModel,
+			onChange: (provider, modelId) => updateAnalysisModel(provider, modelId),
 		},
 		// {
 		// 	id: 'searchSummary',
@@ -332,6 +339,7 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 							ai: {
 								...settings.ai,
 								defaultModel: { provider: model.provider, modelId: model.modelId },
+								analysisModel: { provider: model.provider, modelId: model.modelId },
 								promptModelMap: {
 									...settings.ai.promptModelMap,
 									...ALL_MODEL_CONFIG_PROMPT_IDS.reduce((acc, promptId) => ({

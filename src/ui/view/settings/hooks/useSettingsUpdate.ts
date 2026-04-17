@@ -184,6 +184,21 @@ export function useSettingsUpdate(
 	);
 
 	/**
+	 * Update analysisModel in AI settings (optional override for AI Analysis prompts)
+	 */
+	const updateAnalysisModel = useCallback(
+		(provider: string, modelId: string) => {
+			return updateSettings({
+				ai: {
+					...plugin.settings.ai,
+					analysisModel: provider ? { provider, modelId } : undefined,
+				},
+			});
+		},
+		[updateSettings]
+	);
+
+	/**
 	 * Update search.inspectorLinks settings
 	 */
 	const updateInspectorLinks = useCallback(
@@ -261,6 +276,7 @@ export function useSettingsUpdate(
 		updateDocumentType,
 		updateAISettings,
 		updateDefaultModel,
+		updateAnalysisModel,
 		updateSearchModel,
 		updateChunkingModel,
 		updateAIAnalysisModel,

@@ -339,6 +339,15 @@ export interface AIServiceSettings {
 		provider: string;
 		modelId: string;
 	};
+	/**
+	 * Optional model override for AI Analysis (search analysis, report generation).
+	 * When set, all AiAnalysis* prompts use this model instead of defaultModel.
+	 * Enables using providers like OpenRouter for parallel API calls.
+	 */
+	analysisModel?: {
+		provider: string;
+		modelId: string;
+	};
 	llmProviderConfigs: Record<string, ProviderConfig>;
 	/**
 	 * Enable profile mode (auto-update user profile)

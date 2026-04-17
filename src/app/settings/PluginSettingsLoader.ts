@@ -37,6 +37,16 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 		};
 	}
 
+	// Analysis model (optional override for AI Analysis prompts)
+	if (rawAI.analysisModel && typeof rawAI.analysisModel === 'object') {
+		const model = rawAI.analysisModel as { provider?: unknown; modelId?: unknown };
+		const provider = typeof model.provider === 'string' ? model.provider : undefined;
+		const modelId = typeof model.modelId === 'string' ? model.modelId : undefined;
+		if (provider && modelId) {
+			settings.analysisModel = { provider, modelId };
+		}
+	}
+
 	// Provider configs
 	if (rawAI.llmProviderConfigs && typeof rawAI.llmProviderConfigs === 'object') {
 		settings.llmProviderConfigs = rawAI.llmProviderConfigs as Record<string, ProviderConfig>;

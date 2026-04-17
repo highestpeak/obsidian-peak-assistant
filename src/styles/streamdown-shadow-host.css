@@ -54,6 +54,13 @@
   line-height: inherit;
 }
 
+/* ── Inline emphasis ── */
+[data-streamdown-root] strong,
+[data-streamdown-root] b {
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
 /* Modern block styling per official docs (code, table, mermaid) */
 [data-streamdown="code-block"] {
   border-radius: var(--radius);
@@ -71,35 +78,50 @@
 [data-streamdown="table-wrapper"] {
   overflow-x: auto;
   overflow-y: hidden;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid hsl(var(--border));
   margin: 0.75em 0;
   width: 100%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 [data-streamdown="table"] {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 [data-streamdown="table"] th,
 [data-streamdown="table"] td {
-  padding: 8px 12px;
+  padding: 10px 14px;
   text-align: left;
-  border-bottom: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
 }
 
 [data-streamdown="table"] th {
   font-weight: 600;
-  background: hsl(var(--muted));
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted) / 0.7);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+[data-streamdown="table"] tr:last-child td {
+  border-bottom: none;
 }
 
 [data-streamdown="table"] tr:nth-child(even) td {
-  background: hsl(var(--muted) / 0.3);
+  background: hsl(var(--muted) / 0.2);
+}
+
+[data-streamdown="table"] tr:hover td {
+  background: hsl(var(--muted) / 0.45);
 }
 
 [data-streamdown="table-header"] {
-  background: linear-gradient(to bottom, hsl(var(--muted)), hsl(var(--border) / 0.5));
+  background: hsl(var(--muted) / 0.5);
   padding: 4px 8px;
   font-size: 0.75rem;
   border-bottom: 1px solid hsl(var(--border));

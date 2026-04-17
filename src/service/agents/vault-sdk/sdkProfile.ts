@@ -96,8 +96,9 @@ export function readProfileFromSettings(settings: unknown): SdkProfile {
 	} | undefined;
 
 	const raw = s?.vaultSearch?.sdkProfile ?? {};
-	const existingClaude = s?.ai?.llmProviderConfigs?.claude;
-	const existingOpenRouter = s?.ai?.llmProviderConfigs?.openrouter;
+	const providerConfigs = s?.ai?.llmProviderConfigs;
+	const existingClaude = providerConfigs?.claude;
+	const existingOpenRouter = providerConfigs?.openrouter;
 
 	// Start from defaults + any user-specified vaultSearch overrides
 	const merged: SdkProfile = {
@@ -108,6 +109,30 @@ export function readProfileFromSettings(settings: unknown): SdkProfile {
 	// If user has explicit credentials in vaultSearch profile, use them as-is
 	if (merged.apiKey || merged.authToken) {
 		return merged;
+	}
+
+	// Fallback 0.5: analysisModel provider preference
+	const analysisModel = (s as any)?.ai?.analysisModel as { provider?: string; modelId?: string } | undefined;
+	if (analysisModel?.provider && providerConfigs) {
+		const providerKey = analysisModel.provider;
+		const providerCfg = providerConfigs[providerKey];
+		if (providerCfg?.apiKey) {
+			if (providerKey === 'openrouter' || providerKey.includes('openrouter')) {
+				merged.kind = 'openrouter';
+				merged.baseUrl = raw.baseUrl ?? providerCfg.baseUrl ?? 'https://openrouter.ai/api';
+				merged.authToken = providerCfg.apiKey;
+				merged.apiKey = null;
+				if (!raw.primaryModel) merged.primaryModel = 'anthropic/claude-haiku-4-5';
+				if (!raw.fastModel) merged.fastModel = 'anthropic/claude-haiku-4-5';
+				return merged;
+			}
+			if (providerKey === 'claude' || providerKey === 'anthropic') {
+				merged.kind = raw.kind ?? 'anthropic-direct';
+				merged.apiKey = providerCfg.apiKey;
+				if (providerCfg.baseUrl && !raw.baseUrl) merged.baseUrl = providerCfg.baseUrl;
+				return merged;
+			}
+		}
 	}
 
 	// Fallback 1: existing Claude chat config → anthropic-direct

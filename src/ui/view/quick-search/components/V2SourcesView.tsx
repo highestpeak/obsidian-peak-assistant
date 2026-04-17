@@ -27,7 +27,6 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
             const prefix = parts.length > 2 ? parts.slice(0, 2).join('/') : parts[0] ?? 'root';
             if (!prefixMap.has(prefix)) prefixMap.set(prefix, String(groupIdx++));
             return {
-                id: `src-${i}`,
                 label: src.title,
                 path: src.path,
                 role: 'leaf' as const,
@@ -45,10 +44,10 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
                     const srcI = nodes.find(n => n.path === paths[i]);
                     const srcJ = nodes.find(n => n.path === paths[j]);
                     if (srcI && srcJ) {
-                        const key = [srcI.id, srcJ.id].sort().join('--');
+                        const key = [srcI.path, srcJ.path].sort().join('--');
                         if (!edgeSet.has(key)) {
                             edgeSet.add(key);
-                            edges.push({ source: srcI.id, target: srcJ.id, kind: 'semantic' });
+                            edges.push({ source: srcI.path, target: srcJ.path, kind: 'semantic' });
                         }
                     }
                 }
@@ -79,8 +78,8 @@ function SourceItem({ source, onClick }: { source: V2Source; onClick: () => void
     );
 
     return (
-        <button
-            className="pktw-flex pktw-items-center pktw-gap-2 pktw-w-full pktw-text-left pktw-text-xs pktw-py-1 pktw-px-2 hover:pktw-bg-[--background-secondary] pktw-rounded pktw-group"
+        <div
+            className="pktw-flex pktw-items-center pktw-gap-2 pktw-w-full pktw-text-left pktw-text-xs pktw-py-1.5 pktw-px-2 hover:pktw-bg-[--background-secondary] pktw-rounded pktw-cursor-pointer pktw-group"
             onClick={onClick}
         >
             <FileText className="pktw-w-3 pktw-h-3 pktw-text-[--text-muted] pktw-shrink-0" />
@@ -95,7 +94,7 @@ function SourceItem({ source, onClick }: { source: V2Source; onClick: () => void
                     {source.reasoning}
                 </span>
             )}
-        </button>
+        </div>
     );
 }
 
@@ -175,15 +174,15 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
                 <div>
                     {grouped.map(({ prefix, sources: items }) => (
                         <div key={prefix} className="pktw-mb-2">
-                            <button
-                                className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-w-full pktw-text-left pktw-text-xs pktw-font-medium pktw-text-[--text-muted] pktw-py-1 pktw-px-2 hover:pktw-bg-[--background-secondary] pktw-rounded"
+                            <div
+                                className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-w-full pktw-text-left pktw-text-xs pktw-font-medium pktw-text-[--text-muted] pktw-py-1.5 pktw-px-2 hover:pktw-bg-[--background-secondary] pktw-rounded pktw-cursor-pointer"
                                 onClick={() => toggleGroup(prefix)}
                             >
                                 <ChevronRight className={`pktw-w-3 pktw-h-3 pktw-transition-transform ${!collapsedGroups.has(prefix) ? 'pktw-rotate-90' : ''}`} />
                                 <Folder className="pktw-w-3 pktw-h-3" />
                                 <span className="pktw-truncate">{prefix}</span>
                                 <span className="pktw-ml-auto pktw-text-[--text-faint]">{items.length}</span>
-                            </button>
+                            </div>
                             {!collapsedGroups.has(prefix) && (
                                 <div className="pktw-ml-5 pktw-space-y-0.5">
                                     {items.map(src => (
