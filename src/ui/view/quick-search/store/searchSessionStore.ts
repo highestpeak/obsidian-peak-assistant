@@ -42,6 +42,34 @@ export interface AutoSaveState {
 }
 
 // ---------------------------------------------------------------------------
+// Annotation & Round types (for Continue Append Mode)
+// ---------------------------------------------------------------------------
+
+export interface Annotation {
+	id: string;
+	roundIndex: number;
+	sectionIndex: number;
+	selectedText?: string;
+	comment: string;
+	type: 'question' | 'disagree' | 'expand' | 'note';
+	createdAt: number;
+}
+
+export interface Round {
+	index: number;
+	query: string;
+	sections: V2Section[];
+	summary: string;
+	summaryStreaming: boolean;
+	sources: V2Source[];
+	steps: V2ToolStep[];
+	timeline: V2TimelineItem[];
+	followUpQuestions: string[];
+	proposedOutline: string | null;
+	annotations: Annotation[];
+}
+
+// ---------------------------------------------------------------------------
 // V2 Section type
 // ---------------------------------------------------------------------------
 
@@ -124,6 +152,10 @@ interface SearchSessionState {
 	v2Summary: string;
 	v2SummaryStreaming: boolean;
 
+	// --- Round-based state (Continue Append Mode) ---
+	rounds: Round[];
+	currentRoundIndex: number;
+
 	restoredFromHistory: boolean;
 	restoredFromVaultPath: string | null;
 	aiModalOpen: boolean;
@@ -190,6 +222,11 @@ interface SearchSessionActions {
 	startSectionRegenerate: (id: string) => void;
 	setSummary: (text: string) => void;
 	setSummaryStreaming: (streaming: boolean) => void;
+
+	// Round management (Continue Append Mode)
+	freezeCurrentRound: () => void;
+	startContinueRound: (followUpQuery: string) => void;
+	addAnnotation: (annotation: Annotation) => void;
 
 	// HITL
 	setHitlPause: (state: { pauseId: string; phase: string; snapshot: PlanSnapshot }) => void;
@@ -275,6 +312,10 @@ const INITIAL_STATE: SearchSessionState = {
 	v2UserInsights: [],
 	v2Summary: '',
 	v2SummaryStreaming: false,
+
+	// Round-based state
+	rounds: [],
+	currentRoundIndex: 0,
 
 	triggerAnalysis: 0,
 	hitlState: null,
@@ -637,6 +678,60 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	setSummaryStreaming: (streaming) => set({ v2SummaryStreaming: streaming }),
 
 	// -----------------------------------------------------------------------
+	// Round management (Continue Append Mode)
+	// -----------------------------------------------------------------------
+
+	freezeCurrentRound: () => set((s) => {
+		if (!s.v2Active) return {};
+		const round: Round = {
+			index: s.currentRoundIndex,
+			query: s.query,
+			sections: [...s.v2PlanSections],
+			summary: s.v2Summary,
+			summaryStreaming: false,
+			sources: [...s.v2Sources],
+			steps: [...s.v2Steps],
+			timeline: [...s.v2Timeline],
+			followUpQuestions: [...s.v2FollowUpQuestions],
+			proposedOutline: s.v2ProposedOutline,
+			annotations: [],
+		};
+		return {
+			rounds: [...s.rounds, round],
+			currentRoundIndex: s.currentRoundIndex + 1,
+		};
+	}),
+
+	startContinueRound: (followUpQuery) => set(() => ({
+		query: followUpQuery,
+		status: 'starting' as const,
+		hasStartedStreaming: false,
+		v2Steps: [],
+		v2Timeline: [],
+		v2ReportChunks: [],
+		v2ReportComplete: false,
+		v2PlanSections: [],
+		v2PlanApproved: false,
+		v2ProposedOutline: null,
+		v2Summary: '',
+		v2SummaryStreaming: false,
+		v2FollowUpQuestions: [],
+		v2View: 'process' as const,
+		// Preserve: rounds, currentRoundIndex, v2Active, v2Sources (accumulate)
+	})),
+
+	addAnnotation: (annotation) => set((s) => {
+		const rounds = [...s.rounds];
+		if (annotation.roundIndex < rounds.length) {
+			rounds[annotation.roundIndex] = {
+				...rounds[annotation.roundIndex],
+				annotations: [...rounds[annotation.roundIndex].annotations, annotation],
+			};
+		}
+		return { rounds };
+	}),
+
+	// -----------------------------------------------------------------------
 	// HITL
 	// -----------------------------------------------------------------------
 
@@ -727,4 +822,29 @@ export function buildV2AnalysisSnapshot(): {
 		usage: s.usage,
 		duration: s.duration,
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Round utility functions (derived state helpers)
+// ---------------------------------------------------------------------------
+
+/** Get all sections flattened across all rounds + current */
+export function getAllSections(): V2Section[] {
+	const s = useSearchSessionStore.getState();
+	const fromRounds = s.rounds.flatMap(r => r.sections);
+	return [...fromRounds, ...s.v2PlanSections];
+}
+
+/** Get all sources deduplicated across all rounds + current */
+export function getAllSources(): V2Source[] {
+	const s = useSearchSessionStore.getState();
+	const seen = new Set<string>();
+	const result: V2Source[] = [];
+	for (const src of [...s.rounds.flatMap(r => r.sources), ...s.v2Sources]) {
+		if (!seen.has(src.path)) {
+			seen.add(src.path);
+			result.push(src);
+		}
+	}
+	return result;
 }
