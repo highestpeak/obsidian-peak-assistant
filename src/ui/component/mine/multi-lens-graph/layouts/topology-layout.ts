@@ -18,14 +18,14 @@ export function computeTopologyLayout(input: LayoutInput): LayoutResult {
 		.forceSimulation(simNodes)
 		.force(
 			'link',
-			d3.forceLink(simLinks).id((d: any) => d.id).distance(120)
+			d3.forceLink(simLinks).id((d: any) => d.id).distance(180)
 		)
-		.force('charge', d3.forceManyBody().strength(-300))
+		.force('charge', d3.forceManyBody().strength(-500))
 		.force('center', d3.forceCenter(200, 200))
-		.force('collide', d3.forceCollide(40))
+		.force('collide', d3.forceCollide(60))
 		.stop();
 
-	for (let i = 0; i < 200; i++) sim.tick();
+	for (let i = 0; i < 300; i++) sim.tick();
 
 	const positions = new Map<string, { x: number; y: number }>();
 	for (const n of simNodes) {
