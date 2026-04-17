@@ -182,7 +182,9 @@ const HOVER_CLOSE_DELAY_MS = 100;
 type HoverState = { path: string; rect: DOMRect; preview: PreviewResult | null; loading: boolean };
 
 export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => {
-	const { children, isAnimating = false, className, onClick } = props;
+	const { children: rawChildren, isAnimating = false, className, onClick } = props;
+	// Strip inline $...$ (not $$...$$) to prevent KaTeX from rendering product names as math
+	const children = rawChildren.replace(/(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/g, '$1');
 	const [useFallback, setUseFallback] = useState(false);
 	const [hoverState, setHoverState] = useState<HoverState | null>(null);
 	const hostRef = useRef<HTMLDivElement | null>(null);

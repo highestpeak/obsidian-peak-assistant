@@ -1,5 +1,5 @@
 import React from 'react';
-import { BaseEdge, getBezierPath, type EdgeProps } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react';
 import type { LensEdge } from '../types';
 
 const KIND_STYLES: Record<string, { stroke: string; strokeDasharray?: string }> = {
@@ -10,9 +10,17 @@ const KIND_STYLES: Record<string, { stroke: string; strokeDasharray?: string }> 
 	'cross-domain': { stroke: '#dc2626', strokeDasharray: '4 4' },
 };
 
+const KIND_LABELS: Record<string, string> = {
+	link: 'link',
+	semantic: 'semantic',
+	derives: 'derives',
+	temporal: 'temporal',
+	'cross-domain': 'cross',
+};
+
 export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 	const { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data } = props;
-	const [edgePath] = getBezierPath({
+	const [edgePath, labelX, labelY] = getBezierPath({
 		sourceX,
 		sourceY,
 		targetX,
@@ -21,11 +29,28 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 		targetPosition,
 	});
 	const style = KIND_STYLES[data?.kind ?? 'link'] ?? KIND_STYLES.link;
+	const label = data?.edgeLabel || KIND_LABELS[data?.kind ?? 'link'] || '';
 
 	return (
-		<BaseEdge
-			path={edgePath}
-			style={{ ...style, strokeWidth: Math.max(1.5, (data?.weight ?? 0.5) * 3) }}
-		/>
+		<>
+			<BaseEdge
+				path={edgePath}
+				style={{ ...style, strokeWidth: Math.max(1.5, (data?.weight ?? 0.5) * 3) }}
+			/>
+			{label && (
+				<EdgeLabelRenderer>
+					<div
+						style={{
+							position: 'absolute',
+							transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+							pointerEvents: 'none',
+						}}
+						className="pktw-text-[9px] pktw-text-[#9ca3af] pktw-bg-white/80 pktw-px-1 pktw-rounded"
+					>
+						{label}
+					</div>
+				</EdgeLabelRenderer>
+			)}
+		</>
 	);
 }

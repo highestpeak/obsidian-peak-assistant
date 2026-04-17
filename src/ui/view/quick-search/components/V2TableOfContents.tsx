@@ -34,25 +34,27 @@ function parseHeadings(md: string): Heading[] {
  * and scroll it into view.
  */
 function scrollToHeading(headingText: string, level: number) {
-    // Find the StreamdownIsolated host element
+    // For level-2 headings: search section card titles (rendered as spans in React, not in Shadow DOM)
+    if (level === 2) {
+        const sectionBlocks = document.querySelectorAll('[data-section-id]');
+        for (const block of sectionBlocks) {
+            const titleEl = block.querySelector('.pktw-font-semibold');
+            const text = (titleEl?.textContent ?? '').trim();
+            if (text === headingText || text.includes(headingText) || headingText.includes(text)) {
+                block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return;
+            }
+        }
+    }
+
+    // For level-3+ headings: search inside Shadow DOM
     const hosts = document.querySelectorAll('[data-streamdown-root][data-streamdown-mode="shadow"]');
     for (const host of hosts) {
         const shadow = host.shadowRoot;
         if (!shadow) continue;
 
-        const tag = level === 2 ? 'h2' : 'h3';
-        const headings = shadow.querySelectorAll(tag);
+        const headings = shadow.querySelectorAll('h1, h2, h3, h4');
         for (const el of headings) {
-            const text = (el.textContent ?? '').trim();
-            // Fuzzy match: heading text might have slight differences from markdown
-            if (text === headingText || text.includes(headingText) || headingText.includes(text)) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                return;
-            }
-        }
-        // Fallback: try all heading levels
-        const allHeadings = shadow.querySelectorAll('h1, h2, h3, h4');
-        for (const el of allHeadings) {
             const text = (el.textContent ?? '').trim();
             if (text === headingText || text.includes(headingText) || headingText.includes(text)) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'start' });

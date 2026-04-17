@@ -17,22 +17,20 @@ export const LensNodeComponent = memo(({ data }: NodeProps<LensNode>) => {
 
 	return (
 		<div
-			className={`pktw-rounded-lg pktw-border-2 pktw-bg-white pktw-shadow-sm pktw-cursor-pointer pktw-transition-shadow hover:pktw-shadow-md ${
+			className={`pktw-rounded-lg pktw-border-2 pktw-bg-white pktw-shadow-sm pktw-cursor-pointer pktw-transition-shadow hover:pktw-shadow-md pktw-whitespace-nowrap ${
 				isHub ? 'pktw-px-4 pktw-py-3' : 'pktw-px-3 pktw-py-2'
 			}`}
 			style={{
 				borderColor: color,
-				maxWidth: isHub ? 240 : 200,
 				borderStyle: isBridge ? 'dashed' : 'solid',
 			}}
 			title={data.path}
 		>
-			<span className={`pktw-font-medium pktw-text-[#2e3338] pktw-truncate pktw-block ${
+			<span className={`pktw-font-medium pktw-text-[#2e3338] ${
 				isHub ? 'pktw-text-sm' : 'pktw-text-xs'
 			}`}>
 				{data.label}
 			</span>
-			{/* Left/Right handles for LR dagre layout */}
 			<Handle
 				type="target"
 				position={Position.Left}
