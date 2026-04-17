@@ -141,10 +141,15 @@ const SectionBlock: React.FC<{
 };
 
 export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, onRegenerateSection }) => {
-	const sections = useSearchSessionStore((s) => s.v2PlanSections);
+	const { rounds, v2PlanSections: sections, v2Summary: summary, v2SummaryStreaming: summaryStreaming } = useSearchSessionStore(
+		(s) => ({
+			rounds: s.rounds,
+			v2PlanSections: s.v2PlanSections,
+			v2Summary: s.v2Summary,
+			v2SummaryStreaming: s.v2SummaryStreaming,
+		})
+	);
 	const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
-	const summary = useSearchSessionStore((s) => s.v2Summary);
-	const summaryStreaming = useSearchSessionStore((s) => s.v2SummaryStreaming);
 
 	const progress = useMemo(() => {
 		const doneCount = sections.filter((s) => s.status === 'done').length;
@@ -161,11 +166,57 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 		return <V2PlanReview onApprove={onApprove ?? (() => {})} />;
 	}
 
-	// No sections yet — fallback
-	if (sections.length === 0 && !summary) return null;
+	// No sections yet and no past rounds — fallback
+	if (sections.length === 0 && !summary && rounds.length === 0) return null;
 
 	return (
 		<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pktw-px-1 pktw-py-2">
+			{/* Previous completed rounds */}
+			{rounds.map((round, ri) => (
+				<React.Fragment key={`round-${ri}`}>
+					{ri > 0 && (
+						<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-3 pktw-px-4">
+							<div className="pktw-flex-1 pktw-h-px pktw-bg-[--background-modifier-border]" />
+							<span className="pktw-text-xs pktw-text-[--text-muted] pktw-whitespace-nowrap">
+								Round {ri + 1}: {round.query.length > 50 ? round.query.slice(0, 50) + '...' : round.query}
+							</span>
+							<div className="pktw-flex-1 pktw-h-px pktw-bg-[--background-modifier-border]" />
+						</div>
+					)}
+					{round.summary && (
+						<div className="pktw-rounded-lg pktw-border pktw-border-[--background-modifier-border] pktw-p-4 pktw-mb-3">
+							<span className="pktw-text-xs pktw-font-medium pktw-text-[--text-muted] pktw-mb-2 pktw-block">
+								Executive Summary
+							</span>
+							<StreamdownIsolated isAnimating={false}>
+								{round.summary}
+							</StreamdownIsolated>
+						</div>
+					)}
+					<div className="pktw-grid pktw-grid-cols-2 pktw-gap-3 pktw-mb-4">
+						{round.sections.map((sec, si) => (
+							<div key={sec.id} className={sec.weight >= 7 ? 'pktw-col-span-2' : 'pktw-col-span-2 sm:pktw-col-span-1'}>
+								<SectionBlock
+									section={sec}
+									index={si}
+								/>
+							</div>
+						))}
+					</div>
+				</React.Fragment>
+			))}
+
+			{/* Current round separator — only when there are past rounds AND current sections */}
+			{rounds.length > 0 && sections.length > 0 && (
+				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-3 pktw-px-4">
+					<div className="pktw-flex-1 pktw-h-px pktw-bg-[--background-modifier-border]" />
+					<span className="pktw-text-xs pktw-text-[--text-muted]">
+						Round {rounds.length + 1} (current)
+					</span>
+					<div className="pktw-flex-1 pktw-h-px pktw-bg-[--background-modifier-border]" />
+				</div>
+			)}
+
 			{/* Progress bar — show during generation */}
 			{isGenerating && (
 				<div className="pktw-mb-4">

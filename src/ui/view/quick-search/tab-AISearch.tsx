@@ -1,6 +1,6 @@
 import { SLICE_CAPS } from '@/core/constant';
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink, ClipboardList, Activity, Eye, FileText, MoreHorizontal } from 'lucide-react';
+import { Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink, ClipboardList, Activity, Eye, FileText, MoreHorizontal, Sparkles } from 'lucide-react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
 import { V2ContinueAnalysisInput } from './components/V2ContinueAnalysisInput';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
@@ -54,16 +54,18 @@ const AISearchFooterHints: React.FC<{}> = ({ }) => (
 /** V2 Footer — rendered by tab-AISearch at modal bottom when V2 is active */
 const V2Footer: React.FC<{
 	onContinue: () => void;
+	onSynthesize: () => void;
 	showContinueAnalysis: boolean;
 	onCopy: () => void;
 	copied: boolean;
 	onSave: () => void;
 	onOpenInChat: () => void;
-}> = ({ onContinue, showContinueAnalysis, onCopy, copied, onSave, onOpenInChat }) => {
+}> = ({ onContinue, onSynthesize, showContinueAnalysis, onCopy, copied, onSave, onOpenInChat }) => {
 	const v2View = useSearchSessionStore((s) => s.v2View);
 	const usage = useSearchSessionStore((s) => s.usage);
 	const duration = useSearchSessionStore((s) => s.duration);
 	const setV2View = useSearchSessionStore((s) => s.setV2View);
+	const rounds = useSearchSessionStore((s) => s.rounds);
 
 	const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 	const durationStr = duration ? `${(duration / 1000).toFixed(0)}s` : '';
@@ -117,6 +119,17 @@ const V2Footer: React.FC<{
 				>
 					<Save className="pktw-w-3.5 pktw-h-3.5" />
 				</div>
+				{rounds.length >= 2 && (
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onSynthesize}
+						className="pktw-text-xs"
+					>
+						<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1" />
+						Synthesize All
+					</Button>
+				)}
 				<div
 					onClick={onContinue}
 					className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
@@ -690,7 +703,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 			{/* Footer — V2 renders its own content, V1 renders original */}
 			{isV2Active && analysisCompleted ? (
-				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} />
+				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={() => { console.log('Synthesize clicked'); }} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} />
 			) : null}
 			<div className={`pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0 ${isV2Active ? 'pktw-hidden' : ''}`}>
 				{!hasAnalyzed && !isAnalyzing ? <AISearchFooterHints /> : null}
