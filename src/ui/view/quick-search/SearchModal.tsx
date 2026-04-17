@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { VaultSearchTab } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
 import { Search, Sparkles, Globe, X, RotateCcw, Brain, Hash, ListOrdered, FolderSearch, Network } from 'lucide-react';
@@ -14,6 +14,7 @@ import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { useSearchSession } from './hooks/useSearchSession';
+import { AppContext } from '@/app/context/AppContext';
 import { getActiveNoteDetail } from '@/core/utils/obsidian-utils';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { InspectorPanel } from './components/inspector/InspectorPanel';
@@ -125,6 +126,21 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 
 	useEffect(() => {
 		if (inputRef.current) inputRef.current.focus();
+	}, []);
+
+	const defaultQueries = useMemo<{ label: string; query: string }[]>(() => {
+		try {
+			const raw = AppContext.getInstance().templateManager.loadRaw?.('config/default-analysis-queries.json');
+			if (!raw) return [];
+			return (JSON.parse(raw) as { queries?: { label: string; query: string }[] }).queries ?? [];
+		} catch { return []; }
+	}, []);
+
+	const [lastQuery, setLastQuery] = useState<string | null>(null);
+	useEffect(() => {
+		AppContext.getInstance().aiAnalysisHistoryService.list({ limit: 1, offset: 0 }).then((records) => {
+			setLastQuery(records[0]?.query ?? null);
+		}).catch(() => setLastQuery(null));
 	}, []);
 
 	return (
@@ -244,6 +260,44 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					</div>
 				</div>
 			</div>
+			{!searchQuery && sessionStatus === 'idle' && defaultQueries.length > 0 && (
+				<div className="pktw-flex-shrink-0 pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-px-3 pktw-py-2 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
+					{defaultQueries.map((q, i) => (
+						<Button
+							key={i}
+							variant="outline"
+							size="sm"
+							style={{ cursor: 'pointer' }}
+							className="pktw-shadow-none pktw-text-xs pktw-h-7 pktw-border-[#e5e7eb] pktw-text-[#374151] hover:pktw-border-[#7c3aed]/40 hover:pktw-text-[#7c3aed]"
+							onClick={() => {
+								useSharedStore.getState().setSearchQuery(q.query);
+								useSearchSessionStore.getState().resetAll();
+								resetAIAnalysisAll();
+								useSearchSessionStore.getState().incrementTriggerAnalysis();
+							}}
+						>
+							{q.label}
+						</Button>
+					))}
+					{lastQuery && (
+						<Button
+							variant="ghost"
+							size="sm"
+							style={{ cursor: 'pointer' }}
+							className="pktw-shadow-none pktw-text-xs pktw-h-7 pktw-text-[--text-muted] hover:pktw-text-[#7c3aed]"
+							onClick={() => {
+								useSharedStore.getState().setSearchQuery(lastQuery);
+								useSearchSessionStore.getState().resetAll();
+								resetAIAnalysisAll();
+								useSearchSessionStore.getState().incrementTriggerAnalysis();
+							}}
+						>
+							<RotateCcw className="pktw-w-3 pktw-h-3 pktw-mr-1" />
+							Re-analyze: {lastQuery.length > 30 ? lastQuery.slice(0, 30) + '...' : lastQuery}
+						</Button>
+					)}
+				</div>
+			)}
 			<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-white pktw-overflow-visible pktw-flex pktw-flex-col">
 				<AISearchTab onClose={onClose} />
 			</div>
