@@ -91,16 +91,17 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 			</div>
 			<div className="pktw-flex-1 pktw-min-h-[200px]">
 				<ReactFlow
+					key={activeLens}
 					nodes={nodes}
 					edges={edges}
 					nodeTypes={nodeTypes}
 					edgeTypes={edgeTypes}
 					onNodeClick={handleNodeClick}
 					fitView
-					fitViewOptions={{ padding: 0.3, maxZoom: 1.2 }}
+					fitViewOptions={{ padding: 0.15 }}
 					proOptions={{ hideAttribution: true }}
-					minZoom={0.2}
-					maxZoom={2}
+					minZoom={0.3}
+					maxZoom={3}
 				>
 					<Background color="#f3f4f6" gap={20} />
 					{showControls && <Controls />}

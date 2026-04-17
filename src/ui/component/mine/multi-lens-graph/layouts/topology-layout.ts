@@ -1,4 +1,4 @@
-import * as d3 from 'd3-force';
+import dagre from '@dagrejs/dagre';
 import type { LensNodeData, LensEdgeData } from '../types';
 
 interface LayoutInput {
@@ -11,30 +11,24 @@ interface LayoutResult {
 }
 
 export function computeTopologyLayout(input: LayoutInput): LayoutResult {
-	const nodeCount = input.nodes.length;
-	// Scale layout area with node count for better spacing
-	const spread = Math.max(600, nodeCount * 80);
-	const center = spread / 2;
+	const g = new dagre.graphlib.Graph();
+	g.setDefaultEdgeLabel(() => ({}));
+	g.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 120, marginx: 20, marginy: 20 });
 
-	const simNodes = input.nodes.map((n) => ({ id: n.path, x: Math.random() * spread, y: Math.random() * spread }));
-	const simLinks = input.edges.map((e) => ({ source: e.source, target: e.target }));
+	for (const n of input.nodes) {
+		g.setNode(n.path, { width: 200, height: 50 });
+	}
 
-	const sim = d3
-		.forceSimulation(simNodes)
-		.force(
-			'link',
-			d3.forceLink(simLinks).id((d: any) => d.id).distance(220)
-		)
-		.force('charge', d3.forceManyBody().strength(-800))
-		.force('center', d3.forceCenter(center, center))
-		.force('collide', d3.forceCollide(80))
-		.stop();
+	for (const e of input.edges) {
+		g.setEdge(e.source, e.target);
+	}
 
-	for (let i = 0; i < 400; i++) sim.tick();
+	dagre.layout(g);
 
 	const positions = new Map<string, { x: number; y: number }>();
-	for (const n of simNodes) {
-		positions.set(n.id, { x: n.x, y: n.y });
+	for (const n of input.nodes) {
+		const pos = g.node(n.path);
+		if (pos) positions.set(n.path, { x: pos.x, y: pos.y });
 	}
 	return { positions };
 }

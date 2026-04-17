@@ -1,3 +1,4 @@
+import dagre from '@dagrejs/dagre';
 import type { LensNodeData } from '../types';
 
 interface LayoutInput {
@@ -10,28 +11,24 @@ interface LayoutResult {
 }
 
 export function computeBridgeLayout(input: LayoutInput): LayoutResult {
-	const groups = new Map<string, LensNodeData[]>();
+	const g = new dagre.graphlib.Graph();
+	g.setDefaultEdgeLabel(() => ({}));
+	g.setGraph({ rankdir: 'LR', nodesep: 40, ranksep: 150, marginx: 20, marginy: 20 });
+
 	for (const n of input.nodes) {
-		const folder = n.group || n.path.split('/').slice(0, -1).join('/') || '/';
-		if (!groups.has(folder)) groups.set(folder, []);
-		groups.get(folder)!.push(n);
+		g.setNode(n.path, { width: 200, height: 50 });
 	}
+
+	for (const e of input.edges) {
+		g.setEdge(e.source, e.target);
+	}
+
+	dagre.layout(g);
 
 	const positions = new Map<string, { x: number; y: number }>();
-	const colWidth = 300;
-	const rowHeight = 90;
-	const headerHeight = 30;
-	let colIndex = 0;
-
-	for (const [, nodes] of groups) {
-		for (let i = 0; i < nodes.length; i++) {
-			positions.set(nodes[i].path, {
-				x: colIndex * colWidth + 40,
-				y: headerHeight + i * rowHeight,
-			});
-		}
-		colIndex++;
+	for (const n of input.nodes) {
+		const pos = g.node(n.path);
+		if (pos) positions.set(n.path, { x: pos.x, y: pos.y });
 	}
-
 	return { positions };
 }
