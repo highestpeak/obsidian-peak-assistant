@@ -97,7 +97,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 					edgeTypes={edgeTypes}
 					onNodeClick={handleNodeClick}
 					fitView
-					fitViewOptions={{ padding: 0.2 }}
+					fitViewOptions={{ padding: 0.3, maxZoom: 1.2 }}
 					proOptions={{ hideAttribution: true }}
 					minZoom={0.2}
 					maxZoom={2}

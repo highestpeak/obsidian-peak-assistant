@@ -25,7 +25,7 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 	return (
 		<BaseEdge
 			path={edgePath}
-			style={{ ...style, strokeWidth: Math.max(1, (data?.weight ?? 0.5) * 3) }}
+			style={{ ...style, strokeWidth: Math.max(2, (data?.weight ?? 0.5) * 4) }}
 		/>
 	);
 }

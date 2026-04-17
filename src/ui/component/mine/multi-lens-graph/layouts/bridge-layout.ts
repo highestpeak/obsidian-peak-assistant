@@ -18,13 +18,17 @@ export function computeBridgeLayout(input: LayoutInput): LayoutResult {
 	}
 
 	const positions = new Map<string, { x: number; y: number }>();
-	const colWidth = 250;
-	const rowHeight = 70;
+	const colWidth = 300;
+	const rowHeight = 90;
+	const headerHeight = 30;
 	let colIndex = 0;
 
 	for (const [, nodes] of groups) {
 		for (let i = 0; i < nodes.length; i++) {
-			positions.set(nodes[i].path, { x: colIndex * colWidth, y: i * rowHeight });
+			positions.set(nodes[i].path, {
+				x: colIndex * colWidth + 40,
+				y: headerHeight + i * rowHeight,
+			});
 		}
 		colIndex++;
 	}
