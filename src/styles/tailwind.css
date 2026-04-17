@@ -8,6 +8,9 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+/* React Flow base styles (required for graph rendering) */
+@import "@xyflow/react/dist/base.css";
+
 /* CodeMirror styles */
 @import "./codemirror.css";
 
