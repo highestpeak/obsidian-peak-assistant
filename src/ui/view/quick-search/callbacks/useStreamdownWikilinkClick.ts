@@ -4,7 +4,7 @@ import { AppContext } from '@/app/context/AppContext';
 /**
  * Strip #heading or #^block-id from wikilink target so we open the file, not the anchor.
  */
-function stripWikilinkAnchor(target: string): string {
+export function stripWikilinkAnchor(target: string): string {
 	if (!target || typeof target !== 'string') return target;
 	const t = target.trim();
 	const hashIdx = t.indexOf('#');
@@ -15,7 +15,7 @@ function stripWikilinkAnchor(target: string): string {
 /**
  * True if the string looks like a vault-relative file path (has slash or .md).
  */
-function looksLikePath(s: string): boolean {
+export function looksLikePath(s: string): boolean {
 	if (!s || typeof s !== 'string') return false;
 	const t = s.trim();
 	return t.includes('/') || /\.(md|markdown)$/i.test(t);
@@ -25,7 +25,7 @@ function looksLikePath(s: string): boolean {
  * Resolve link text (e.g. "Note Title") to vault file path via metadataCache.
  * Returns resolved path or original if not found.
  */
-function resolveWikilinkToPath(linkText: string): string {
+export function resolveWikilinkToPath(linkText: string): string {
 	try {
 		const app = AppContext.getInstance().app;
 		const dest = app.metadataCache.getFirstLinkpathDest(linkText, '');
@@ -34,6 +34,51 @@ function resolveWikilinkToPath(linkText: string): string {
 		// ignore
 	}
 	return linkText;
+}
+
+/**
+ * Extract the vault path from a wikilink href (#peak-wikilink=, peak://wikilink/, obsidian://open).
+ * Returns null for non-wikilink hrefs or block anchors.
+ */
+export function extractWikilinkPath(href: string): string | null {
+	if (!href) return null;
+	const isBlockAnchor = /^#block-[a-zA-Z0-9_-]+$/.test(href.trim());
+	if (isBlockAnchor) return null;
+	const isHash = href.startsWith('#peak-wikilink=');
+	const isPeak = href.startsWith('peak://wikilink/');
+	const isObsidian = href.startsWith('obsidian://open');
+	if (!isHash && !isPeak && !isObsidian) return null;
+	let rawTarget = '';
+	if (isHash) {
+		const encoded = href.slice('#peak-wikilink='.length);
+		rawTarget = decodeURIComponent(encoded || '').trim();
+	} else if (isPeak) {
+		const encoded = href.slice('peak://wikilink/'.length);
+		rawTarget = decodeURIComponent(encoded || '').trim();
+	} else {
+		try {
+			const url = new URL(href);
+			const file = url.searchParams.get('file') || '';
+			rawTarget = decodeURIComponent(file).trim();
+		} catch {
+			rawTarget = '';
+		}
+	}
+	if (!rawTarget || rawTarget.startsWith('#')) return null;
+	const filePart = stripWikilinkAnchor(rawTarget);
+	if (!filePart) return null;
+	return looksLikePath(filePart) ? filePart : resolveWikilinkToPath(filePart);
+}
+
+/**
+ * Open a vault file path via Obsidian workspace.
+ */
+export function openWikilinkPath(path: string): void {
+	try {
+		AppContext.getInstance().app.workspace.openLinkText(path, '', true);
+	} catch {
+		// ignore
+	}
 }
 
 /**
@@ -64,44 +109,18 @@ export function useStreamdownWikilinkClick(
 				const match = text.match(/^\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
 				if (match) href = `#peak-wikilink=${encodeURIComponent(match[1].trim())}`;
 			}
-			const isBlockAnchor = /^#block-[a-zA-Z0-9_-]+$/.test(href.trim());
-			if (isBlockAnchor) {
+			// Block anchor: scroll to element
+			if (/^#block-[a-zA-Z0-9_-]+$/.test(href.trim())) {
 				evt.preventDefault();
 				evt.stopPropagation();
 				const id = href.trim().slice(1);
 				document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 				return;
 			}
-			const isHash = href.startsWith('#peak-wikilink=');
-			const isPeak = href.startsWith('peak://wikilink/');
-			const isObsidian = href.startsWith('obsidian://open');
-			if (!isHash && !isPeak && !isObsidian) return;
+			const pathToOpen = extractWikilinkPath(href);
+			if (!pathToOpen) return;
 			evt.preventDefault();
 			evt.stopPropagation();
-			let rawTarget = '';
-			if (isHash) {
-				const encoded = href.slice('#peak-wikilink='.length);
-				rawTarget = decodeURIComponent(encoded || '').trim();
-			} else if (isPeak) {
-				const encoded = href.slice('peak://wikilink/'.length);
-				rawTarget = decodeURIComponent(encoded || '').trim();
-			} else {
-				try {
-					const url = new URL(href);
-					const file = url.searchParams.get('file') || '';
-					rawTarget = decodeURIComponent(file).trim();
-				} catch {
-					rawTarget = '';
-				}
-			}
-			if (!rawTarget) return;
-			// Do not open tag-only links (e.g. [[#tag]] or link text that is just a tag).
-			if (rawTarget.startsWith('#')) return;
-			const filePart = stripWikilinkAnchor(rawTarget);
-			if (!filePart) return;
-			const pathToOpen = looksLikePath(filePart)
-				? filePart
-				: resolveWikilinkToPath(filePart);
 			await onOpenWikilink(pathToOpen);
 		},
 		[onOpenWikilink]

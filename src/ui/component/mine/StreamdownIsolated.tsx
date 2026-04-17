@@ -10,6 +10,7 @@ import type { PluggableList } from 'unified';
 import { AppContext } from '@/app/context/AppContext';
 import { STREAMDOWN_ISOLATED_CSS } from '@/styles/streamdown-isolated-css';
 import { remarkWikilink } from './streamdown';
+import { extractWikilinkPath, openWikilinkPath } from '@/ui/view/quick-search/callbacks/useStreamdownWikilinkClick';
 import {
 	loadWikilinkPreview,
 	parseWikilinkHrefToPath,
@@ -106,12 +107,39 @@ function FallbackStreamdown({
 	className,
 	onClick,
 }: StreamdownIsolatedProps) {
+	const handleClickCapture = React.useCallback(
+		(evt: React.MouseEvent<HTMLDivElement>) => {
+			// Built-in wikilink handling for fallback Light DOM mode.
+			const composedPath = evt.nativeEvent.composedPath?.() ?? [];
+			const linkEl = composedPath.find((n): n is HTMLElement => {
+				if (!(n instanceof HTMLElement)) return false;
+				return n.tagName === 'A' || n.getAttribute?.('data-streamdown') === 'link';
+			});
+			if (linkEl) {
+				let href = linkEl.getAttribute?.('href') ?? linkEl.getAttribute?.('data-href') ?? '';
+				if (!href && linkEl.getAttribute?.('data-streamdown') === 'link') {
+					const text = (linkEl.textContent ?? '').trim();
+					const match = text.match(/^\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
+					if (match) href = `#peak-wikilink=${encodeURIComponent(match[1].trim())}`;
+				}
+				const wikilinkPath = extractWikilinkPath(href);
+				if (wikilinkPath) {
+					evt.preventDefault();
+					evt.stopPropagation();
+					openWikilinkPath(wikilinkPath);
+					return;
+				}
+			}
+			onClick?.(evt);
+		},
+		[onClick]
+	);
 	return (
 		<div
 			className={className}
 			data-streamdown-root
 			data-streamdown-mode="fallback"
-			onClickCapture={onClick}
+			onClickCapture={handleClickCapture}
 		>
 			<Streamdown
 				isAnimating={isAnimating}
@@ -232,6 +260,28 @@ export const StreamdownIsolated: React.FC<StreamdownIsolatedProps> = (props) => 
 			};
 			// Capture-phase listener on shadow root so we see clicks before Streamdown's button handler.
 			const clickHandler = (e: MouseEvent) => {
+				// Built-in wikilink handling: find the clicked <a> or data-streamdown="link" element.
+				const composedPath = e.composedPath?.() ?? [];
+				const linkEl = composedPath.find((n): n is HTMLElement => {
+					if (!(n instanceof HTMLElement)) return false;
+					return n.tagName === 'A' || n.getAttribute?.('data-streamdown') === 'link';
+				});
+				if (linkEl) {
+					let href = linkEl.getAttribute?.('href') ?? linkEl.getAttribute?.('data-href') ?? '';
+					if (!href && linkEl.getAttribute?.('data-streamdown') === 'link') {
+						const text = (linkEl.textContent ?? '').trim();
+						const match = text.match(/^\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
+						if (match) href = `#peak-wikilink=${encodeURIComponent(match[1].trim())}`;
+					}
+					const wikilinkPath = extractWikilinkPath(href);
+					if (wikilinkPath) {
+						e.preventDefault();
+						e.stopPropagation();
+						openWikilinkPath(wikilinkPath);
+						return;
+					}
+				}
+				// Delegate to optional onClick prop passed by caller.
 				const cb = onClickRef.current;
 				if (!cb || !host) return;
 				const synthetic = {
