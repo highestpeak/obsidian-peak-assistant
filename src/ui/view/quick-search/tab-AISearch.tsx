@@ -470,14 +470,21 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 	// Listen for continue-analysis events from ContinueAnalysisInput
 	const lastUIEvent = useUIEventStore((s) => s.lastEvent);
+	const incrementTriggerAnalysis = useSearchSessionStore((s) => s.incrementTriggerAnalysis);
 	useEffect(() => {
 		if (lastUIEvent?.type === 'continue-analysis') {
 			const text = (lastUIEvent.payload as any)?.text as string | undefined;
 			if (isV2Active && text?.trim()) {
-				// V2: trigger a new full vault analysis with the follow-up question
+				// V2: freeze current round and start continue round (append mode)
+				const sessionStore = useSearchSessionStore.getState();
+				sessionStore.freezeCurrentRound();
+				sessionStore.startContinueRound(text.trim());
+				// Set the search query for display
 				useSharedStore.getState().setSearchQuery(text.trim());
-				// performAnalysis reads from sharedStore.searchQuery
-				performAnalysis();
+				// Set continue mode flag so performAnalysis skips reset
+				useSearchSessionStore.setState({ continueMode: true });
+				// Trigger analysis in continue mode
+				incrementTriggerAnalysis();
 			} else {
 				// V1: open InlineFollowupChat
 				setContinueAnalysisInitialText(text);

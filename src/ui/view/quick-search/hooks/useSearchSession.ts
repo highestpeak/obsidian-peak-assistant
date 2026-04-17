@@ -39,6 +39,8 @@ import { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import type { VaultHitlPauseEvent, VaultPhaseTransitionEvent } from '@/service/agents/vault/types';
 import type { UserFeedback } from '@/service/agents/core/types';
+import { ContinueAnalysisAgent } from '@/service/agents/ContinueAnalysisAgent';
+import type { ContinueContext } from '@/service/agents/ContinueAnalysisAgent';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -886,6 +888,80 @@ export function useSearchSession() {
 			if (!aiSearchAgent) {
 				store.getState().recordError('AI search agent is not ready yet. Please try again.');
 				useAIAnalysisRuntimeStore.getState().recordError('AI search agent is not ready yet. Please try again.');
+				return;
+			}
+
+			// ----- Continue mode: append a new round without resetting -----
+			const isContinue = store.getState().continueMode;
+			if (isContinue) {
+				// DON'T reset — we're appending to existing session
+				store.setState({ status: 'starting', hasStartedStreaming: false });
+
+				didCancelRef.current = false;
+				noticeSentRef.current = false;
+				timelineRef.current = [];
+				summaryBufferRef.current = [];
+				currentUiStepRef.current = null;
+				analysisStartTimeRef.current = Date.now();
+
+				const { rounds, v2Sources } = store.getState();
+				const ctx: ContinueContext = {
+					originalQuery: rounds[0]?.query ?? searchQuery,
+					rounds: rounds.map(r => ({
+						query: r.query,
+						summary: r.summary,
+						sections: r.sections.map(s => ({ title: s.title, content: s.content })),
+						annotations: r.annotations.map(a => ({
+							sectionTitle: r.sections[a.sectionIndex]?.title ?? '',
+							selectedText: a.selectedText,
+							comment: a.comment,
+							type: a.type,
+						})),
+					})),
+					sources: v2Sources.map(s => ({ path: s.path, relevance: s.reasoning ?? '' })),
+					graphSummary: null,  // TODO: wire from aiGraphStore
+					followUpQuery: searchQuery,
+				};
+
+				// Shared stream consumer (same as below but scoped to continue)
+				const consumeContinueStream = async (gen: AsyncIterable<any>) => {
+					for await (const event of gen) {
+						if (!store.getState().hasStartedStreaming) {
+							store.getState().startStreaming();
+							useAIAnalysisRuntimeStore.getState().startStreaming();
+							useStepDisplayReplayStore.getState().setStreamStarted(true);
+						}
+						if (signal?.aborted) break;
+						pushTimeline(event as LLMStreamEvent);
+						routeEvent(event as LLMStreamEvent);
+					}
+				};
+
+				try {
+					const appCtx = AppContext.getInstance();
+					const continueAgent = new ContinueAnalysisAgent({
+						app: appCtx.app,
+						pluginId: appCtx.plugin.manifest.id,
+						searchClient: appCtx.searchClient,
+						aiServiceManager: appCtx.manager,
+						settings: appCtx.plugin.settings!,
+					});
+					await consumeContinueStream(continueAgent.startSession(ctx));
+				} catch (err) {
+					const errorMessage = err instanceof Error ? err.message : 'Continue analysis failed.';
+					store.getState().recordError(errorMessage);
+					useAIAnalysisRuntimeStore.getState().recordError(errorMessage);
+				} finally {
+					flushSummaryBuffer();
+					if (!store.getState().getIsCompleted() && !store.getState().hitlState) {
+						store.getState().markCompleted();
+						markAIAnalysisCompleted();
+					}
+					useSearchSessionStore.setState({ continueMode: false });
+					if (controller) {
+						abortControllerRef.current = null;
+					}
+				}
 				return;
 			}
 

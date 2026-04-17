@@ -156,6 +156,9 @@ interface SearchSessionState {
 	rounds: Round[];
 	currentRoundIndex: number;
 
+	// --- Continue mode flag ---
+	continueMode: boolean;
+
 	restoredFromHistory: boolean;
 	restoredFromVaultPath: string | null;
 	aiModalOpen: boolean;
@@ -316,6 +319,9 @@ const INITIAL_STATE: SearchSessionState = {
 	// Round-based state
 	rounds: [],
 	currentRoundIndex: 0,
+
+	// Continue mode flag
+	continueMode: false,
 
 	triggerAnalysis: 0,
 	hitlState: null,
