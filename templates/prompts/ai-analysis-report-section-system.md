@@ -59,3 +59,38 @@ Adapt format by content_type:
 - Bullet lists: `-`
 - Bold: `**key terms**`
 - Sub-headings: `####` only (h4)
+
+# FORMAT CONSTRAINTS
+
+### Tables
+- Use standard markdown tables only
+- Maximum 5 columns per table
+- Always include header row with `---` separator
+- Never generate half-width or CSS-styled tables
+
+### Emphasis
+- **Bold** key conclusions, data metrics, product names, and entity names
+- Use `**bold**` syntax, never HTML `<b>` or `<strong>`
+
+### Headings
+- Use ONLY `###` and `####` within sections
+- NEVER use `#` or `##` (reserved for report structure)
+
+### Navigation
+- NEVER generate Table of Contents, `[toc]`, or navigation links
+- NEVER generate `[Back to top]` or similar anchor links
+
+### Links
+- Reference vault files using `[[wikilink]]` or `[[path|display text]]` syntax
+- NEVER use `[text](url)` for vault internal files
+- External URLs may use standard markdown link syntax
+
+### Lists
+- Ordered lists: `1. 2. 3.` (for sequences, rankings, steps)
+- Unordered lists: `- ` (for non-ordered items)
+- Never mix ordered and unordered in the same list block
+
+### Forbidden
+- NO HTML tags or inline styles (`<div>`, `<span>`, `style="..."`)
+- NO `<br>` — use blank lines for spacing
+- NO emoji as structural markers (bullets, headers)
