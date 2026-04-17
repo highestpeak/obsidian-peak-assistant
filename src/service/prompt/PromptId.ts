@@ -279,6 +279,8 @@ export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.AiAnalysisReportSection,
 	PromptId.AiAnalysisReportVisual,
 	PromptId.AiAnalysisMermaidFix,
+	PromptId.AiAnalysisContinueSystem,
+	PromptId.AiAnalysisContinue,
 ] as const;
 
 /**

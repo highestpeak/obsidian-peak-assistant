@@ -179,9 +179,13 @@ export class VaultSearchAgentSDK {
 
         // 4b. Load system prompt playbook (pass vault context as Handlebars vars)
         //     If systemPromptOverride is provided (e.g. ContinueAnalysisAgent), use it directly.
+        //     Even so, still append probe results so the continue agent has vault context.
         let systemPrompt: string;
         if (this.options.systemPromptOverride) {
-            systemPrompt = this.options.systemPromptOverride;
+            const probeContext = [vaultIntuitionSection, probeResultsSection].filter(Boolean).join('\n\n');
+            systemPrompt = probeContext
+                ? this.options.systemPromptOverride + '\n\n' + probeContext
+                : this.options.systemPromptOverride;
         } else {
             try {
                 systemPrompt = await aiServiceManager.renderPrompt(
