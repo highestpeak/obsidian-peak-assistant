@@ -808,6 +808,11 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 	if (docModel.runAnalysisMode) lines.push(`runAnalysisMode: ${docModel.runAnalysisMode}`);
 	if (docModel.duration != null) lines.push(`duration: ${docModel.duration}`);
 	if (docModel.usage?.totalTokens != null) lines.push(`estimatedTokens: ${docModel.usage.totalTokens}`);
+	if (docModel.usage) {
+		lines.push(`tokens_input: ${docModel.usage.inputTokens ?? 0}`);
+		lines.push(`tokens_output: ${docModel.usage.outputTokens ?? 0}`);
+		lines.push(`tokens_total: ${(docModel.usage.inputTokens ?? 0) + (docModel.usage.outputTokens ?? 0)}`);
+	}
 	if (docModel.analysisStartedAtMs != null) lines.push(`analysisStartedAt: ${docModel.analysisStartedAtMs}`);
 	lines.push('---');
 	lines.push('');

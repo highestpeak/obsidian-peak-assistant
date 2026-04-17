@@ -100,7 +100,7 @@ const V2Footer: React.FC<{
 			{/* Center: Stats */}
 			{usage && (
 				<span className="pktw-text-xs pktw-text-[#9ca3af] pktw-tabular-nums">
-					{durationStr && `${durationStr} · `}{fmt(usage.inputTokens + usage.outputTokens)} tokens
+					{fmt(usage.inputTokens ?? 0)} in / {fmt(usage.outputTokens ?? 0)} out{durationStr ? ` · ${durationStr}` : ''}
 				</span>
 			)}
 
