@@ -233,6 +233,10 @@ export enum PromptId {
 	AiAnalysisReportVizJson = 'ai-analysis-report-viz-json',
 	/** Vault SDK playbook: system prompt for SDK vault search agent (tool instruction + type classification). */
 	VaultSdkPlaybook = 'ai-analysis-vault-sdk-playbook',
+	/** Continue analysis: system prompt for follow-up rounds. */
+	AiAnalysisContinueSystem = 'ai-analysis-continue-system',
+	/** Continue analysis: user prompt with previous round context. */
+	AiAnalysisContinue = 'ai-analysis-continue',
 
 	// Context building templates (internal use)
 	ContextMemory = 'context-memory',
@@ -684,6 +688,19 @@ export interface PromptVariables {
 		reportPlan: string;
 		blocksSummary: string;
 		evidenceList: string;
+	};
+	[PromptId.AiAnalysisContinueSystem]: Record<string, never>;
+	[PromptId.AiAnalysisContinue]: {
+		originalQuery: string;
+		rounds: Array<{
+			query: string;
+			summary: string;
+			sections: Array<{ title: string; content: string }>;
+			annotations: Array<{ sectionTitle: string; selectedText?: string; comment: string; type: string }>;
+		}>;
+		sources: Array<{ path: string; relevance?: string }>;
+		graphSummary?: { nodeCount: number; keyRelationships: string[] } | null;
+		followUpQuery: string;
 	};
 	[PromptId.AiAnalysisReportSectionSystem]: Record<string, never>;
 	[PromptId.AiAnalysisReportSection]: {

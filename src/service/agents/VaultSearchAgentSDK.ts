@@ -41,6 +41,10 @@ export interface VaultSearchAgentSdkOptions {
     searchClient: SearchClient;
     aiServiceManager: AIServiceManager;
     settings: MyPluginSettings;
+    /** Override the default vault-sdk-playbook system prompt (used by ContinueAnalysisAgent). */
+    systemPromptOverride?: string;
+    /** Prefix prepended to the user query before sending to the SDK agent (e.g. previous round context). */
+    contextPrefix?: string;
 }
 
 /**
@@ -174,23 +178,28 @@ export class VaultSearchAgentSDK {
         }
 
         // 4b. Load system prompt playbook (pass vault context as Handlebars vars)
+        //     If systemPromptOverride is provided (e.g. ContinueAnalysisAgent), use it directly.
         let systemPrompt: string;
-        try {
-            systemPrompt = await aiServiceManager.renderPrompt(
-                PromptId.VaultSdkPlaybook,
-                {
-                    vaultIntuition: vaultIntuitionSection,
-                    probeResults: probeResultsSection,
-                },
-            );
-        } catch (err) {
-            console.error('[VaultSearchAgentSDK] failed to load playbook prompt', err);
-            yield {
-                type: 'error',
-                error: err as Error,
-                triggerName,
-            } as LLMStreamEvent;
-            return;
+        if (this.options.systemPromptOverride) {
+            systemPrompt = this.options.systemPromptOverride;
+        } else {
+            try {
+                systemPrompt = await aiServiceManager.renderPrompt(
+                    PromptId.VaultSdkPlaybook,
+                    {
+                        vaultIntuition: vaultIntuitionSection,
+                        probeResults: probeResultsSection,
+                    },
+                );
+            } catch (err) {
+                console.error('[VaultSearchAgentSDK] failed to load playbook prompt', err);
+                yield {
+                    type: 'error',
+                    error: err as Error,
+                    triggerName,
+                } as LLMStreamEvent;
+                return;
+            }
         }
 
         // 5. Build the in-process MCP server with vault tools
@@ -248,10 +257,15 @@ export class VaultSearchAgentSDK {
 
         // 7. Call query() and pipe results through adapter
         const basePath = (app.vault.adapter as unknown as { getBasePath(): string }).getBasePath();
+        // Prepend contextPrefix (previous round context) to user query if provided
+        const effectivePrompt = this.options.contextPrefix
+            ? `${this.options.contextPrefix}\n\n${userQuery}`
+            : userQuery;
+
         let roundIndex = 0;
         try {
             const messages = query({
-                prompt: userQuery,
+                prompt: effectivePrompt,
                 options: {
                     pathToClaudeCodeExecutable: cliPath,
                     executable: nodeInfo.path as 'node',
