@@ -28,6 +28,34 @@ import { SearchResultItem } from "@/service/search/types";
 import { findKeyNodesTool, findPathTool, graphTraversalTool, inspectNoteContextTool, localSearchWholeVaultTool } from "@/service/tools/search-graph-inspector";
 import { useUIEventStore } from "@/ui/store/uiEventStore";
 
+/**
+ * Merge V2 session data into a V1 CompletedAnalysisSnapshot.
+ * No-op if V2 is not active.
+ */
+function mergeV2IntoSnapshot(snapshot: CompletedAnalysisSnapshot): void {
+    const v2 = buildV2AnalysisSnapshot();
+    if (!v2) return;
+    snapshot.v2ProcessLog = v2.v2ProcessLog;
+    snapshot.v2PlanOutline = v2.v2PlanOutline;
+    snapshot.v2ReportSections = v2.v2ReportSections;
+    snapshot.v2FollowUpQuestions = v2.v2FollowUpQuestions;
+    snapshot.v2GraphJson = v2.v2GraphJson;
+    if (v2.v2Summary) {
+        snapshot.summaries = [v2.v2Summary];
+        snapshot.summaryVersion = 1;
+    }
+    if (v2.v2Sources?.length && !snapshot.sources?.length) {
+        snapshot.sources = v2.v2Sources.map((s, i) => ({
+            id: `v2-src-${i}`,
+            path: s.path,
+            title: s.title,
+            score: { average: 0, physical: 0, semantic: 0 },
+            reasoning: s.reasoning ?? '',
+            badges: [],
+        }));
+    }
+}
+
 // Convert AISearchSource[] to SearchResultItem[] with extended fields for TopSourcesSection
 export const convertSourcesToSearchResultItems = (aiSources: AISearchSource[]): SearchResultItem[] => {
     return aiSources.map(source => {
@@ -95,29 +123,7 @@ export function useAIAnalysisResult() {
 
         try {
             const replaySnapshot = buildCompletedAnalysisSnapshot();
-            // Merge V2 data if available
-            const v2Snap = buildV2AnalysisSnapshot();
-            if (v2Snap) {
-                replaySnapshot.v2ProcessLog = v2Snap.v2ProcessLog;
-                replaySnapshot.v2PlanOutline = v2Snap.v2PlanOutline;
-                replaySnapshot.v2ReportSections = v2Snap.v2ReportSections;
-                replaySnapshot.v2FollowUpQuestions = v2Snap.v2FollowUpQuestions;
-                replaySnapshot.v2GraphJson = v2Snap.v2GraphJson;
-                if (v2Snap.v2Summary) {
-                    replaySnapshot.summaries = [v2Snap.v2Summary];
-                    replaySnapshot.summaryVersion = 1;
-                }
-                if (v2Snap.v2Sources?.length && !replaySnapshot.sources?.length) {
-                    replaySnapshot.sources = v2Snap.v2Sources.map((s, i) => ({
-                        id: `v2-src-${i}`,
-                        path: s.path,
-                        title: s.title,
-                        score: { average: 0, physical: 0, semantic: 0 },
-                        reasoning: s.reasoning ?? '',
-                        badges: [],
-                    }));
-                }
-            }
+            mergeV2IntoSnapshot(replaySnapshot);
             const rt = useAIAnalysisRuntimeStore.getState();
             const ts = Date.now();
             const displayTitle = (rt.title?.trim() || searchQuery.slice(0, SLICE_CAPS.ui.analysisDisplayTitle) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, SLICE_CAPS.ui.analysisDisplayTitleTrim);
@@ -226,28 +232,7 @@ export function useAIAnalysisResult() {
                 const fileName = `${ts} - ${displayTitle}`;
                 try {
                     const ensureSnapshot = buildCompletedAnalysisSnapshot();
-                    const v2SnapEnsure = buildV2AnalysisSnapshot();
-                    if (v2SnapEnsure) {
-                        ensureSnapshot.v2ProcessLog = v2SnapEnsure.v2ProcessLog;
-                        ensureSnapshot.v2PlanOutline = v2SnapEnsure.v2PlanOutline;
-                        ensureSnapshot.v2ReportSections = v2SnapEnsure.v2ReportSections;
-                        ensureSnapshot.v2FollowUpQuestions = v2SnapEnsure.v2FollowUpQuestions;
-                        ensureSnapshot.v2GraphJson = v2SnapEnsure.v2GraphJson;
-                        if (v2SnapEnsure.v2Summary) {
-                            ensureSnapshot.summaries = [v2SnapEnsure.v2Summary];
-                            ensureSnapshot.summaryVersion = 1;
-                        }
-                        if (v2SnapEnsure.v2Sources?.length && !ensureSnapshot.sources?.length) {
-                            ensureSnapshot.sources = v2SnapEnsure.v2Sources.map((s, i) => ({
-                                id: `v2-src-${i}`,
-                                path: s.path,
-                                title: s.title,
-                                score: { average: 0, physical: 0, semantic: 0 },
-                                reasoning: s.reasoning ?? '',
-                                badges: [],
-                            }));
-                        }
-                    }
+                    mergeV2IntoSnapshot(ensureSnapshot);
                     const saved = await saveAiAnalyzeResultToMarkdown({
                         folderPath,
                         fileName,
@@ -268,29 +253,7 @@ export function useAIAnalysisResult() {
         const persist = async () => {
             try {
                 const snapshot = buildCompletedAnalysisSnapshot();
-                // Merge V2 data if available
-                const v2Snap = buildV2AnalysisSnapshot();
-                if (v2Snap) {
-                    snapshot.v2ProcessLog = v2Snap.v2ProcessLog;
-                    snapshot.v2PlanOutline = v2Snap.v2PlanOutline;
-                    snapshot.v2ReportSections = v2Snap.v2ReportSections;
-                    snapshot.v2FollowUpQuestions = v2Snap.v2FollowUpQuestions;
-                    snapshot.v2GraphJson = v2Snap.v2GraphJson;
-                    if (v2Snap.v2Summary) {
-                        snapshot.summaries = [v2Snap.v2Summary];
-                        snapshot.summaryVersion = 1;
-                    }
-                    if (v2Snap.v2Sources?.length && !snapshot.sources?.length) {
-                        snapshot.sources = v2Snap.v2Sources.map((s, i) => ({
-                            id: `v2-src-${i}`,
-                            path: s.path,
-                            title: s.title,
-                            score: { average: 0, physical: 0, semantic: 0 },
-                            reasoning: s.reasoning ?? '',
-                            badges: [],
-                        }));
-                    }
-                }
+                mergeV2IntoSnapshot(snapshot);
                 const docModel = fromCompletedAnalysisSnapshot(snapshot, searchQuery, webEnabled);
                 docModel.created = docModel.created || new Date().toISOString();
                 const buildOptions: BuildMarkdownOptions = {
@@ -386,24 +349,8 @@ export function useAIAnalysisResult() {
             })()
             : folderPath;
 
-        // V2 path: build snapshot from timeline
-        const sessionState = useSearchSessionStore.getState();
-        let snapshot: CompletedAnalysisSnapshot;
-        if (sessionState.v2Active) {
-            snapshot = {
-                summary: sessionState.v2ProposedOutline ?? sessionState.v2ReportChunks.join(''),
-                topics: [],
-                sources: sessionState.v2Sources.map((s) => ({
-                    path: s.path,
-                    title: s.title,
-                })),
-                usage: sessionState.usage,
-                startedAtMs: sessionState.startedAt,
-                durationMs: sessionState.duration,
-            } as CompletedAnalysisSnapshot;
-        } else {
-            snapshot = buildCompletedAnalysisSnapshot();
-        }
+        const snapshot = buildCompletedAnalysisSnapshot();
+        mergeV2IntoSnapshot(snapshot);
 
         await saveAiAnalyzeResultToMarkdown({
             folderPath: normalizedFolder,
