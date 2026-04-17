@@ -134,13 +134,9 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                                         <Check className="pktw-w-2.5 pktw-h-2.5 pktw-text-green-600" />
                                     </div>
                                 ) : sec.status === 'generating' ? (
-                                    <motion.div
-                                        animate={{ rotate: 360 }}
-                                        transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                                        className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"
-                                    >
-                                        <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed]" />
-                                    </motion.div>
+                                    <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
+                                        <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed] pktw-animate-spin" />
+                                    </div>
                                 ) : (
                                     <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-gray-100 pktw-shrink-0" />
                                 )}

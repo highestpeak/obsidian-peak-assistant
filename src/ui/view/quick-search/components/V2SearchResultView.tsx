@@ -24,6 +24,10 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
     const isCompleted = useSearchSessionStore((s) => s.status === 'completed');
     const v2View = useSearchSessionStore((s) => s.v2View);
     const proposedOutline = useSearchSessionStore((s) => s.v2ProposedOutline);
+    const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
+    const allSectionsDone = useSearchSessionStore((s) =>
+        s.v2PlanApproved && s.v2PlanSections.length > 0 && s.v2PlanSections.every((sec) => sec.status === 'done')
+    );
     const containerRef = useRef<HTMLDivElement>(null);
 
     // During streaming, force process view
@@ -37,10 +41,17 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
         }
     }, [isStreaming]);
 
+    // Auto-switch to report view when all sections are done generating
+    useEffect(() => {
+        if (isCompleted && allSectionsDone) {
+            useSearchSessionStore.getState().setV2View('report');
+        }
+    }, [isCompleted, allSectionsDone]);
+
     return (
         <div className="pktw-flex pktw-flex-col pktw-h-full pktw-relative">
-            {/* Section navigation — always visible when sections exist */}
-            <V2SectionNav containerRef={containerRef} />
+            {/* Section navigation — visible on process view for progress tracking */}
+            {activeView === 'process' && <V2SectionNav containerRef={containerRef} />}
             <div ref={containerRef} className="pktw-flex-1 pktw-overflow-y-auto pktw-min-h-0">
                 <AnimatePresence mode="wait">
                     {activeView === 'process' && <V2ProcessView key="process" onApprove={onApprove} />}
