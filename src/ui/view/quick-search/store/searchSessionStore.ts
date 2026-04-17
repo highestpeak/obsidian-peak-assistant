@@ -683,3 +683,47 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 
 	getHasContent: () => get().steps.length > 0,
 }));
+
+// ---------------------------------------------------------------------------
+// V2 snapshot builder (for auto-save pipeline)
+// ---------------------------------------------------------------------------
+
+export function buildV2AnalysisSnapshot(): {
+	v2ProcessLog: string[];
+	v2PlanOutline: string | null;
+	v2ReportSections: Array<{ title: string; content: string }>;
+	v2Sources: V2Source[];
+	v2FollowUpQuestions: string[];
+	v2Summary: string;
+	v2GraphJson: string | null;
+	usage: LLMUsage | null;
+	duration: number | null;
+} | null {
+	const s = useSearchSessionStore.getState();
+	if (!s.v2Active) return null;
+
+	const processLog = s.v2Steps
+		.filter(st => st.status === 'done')
+		.map(st => {
+			const dur = st.endedAt && st.startedAt
+				? `${((st.endedAt - st.startedAt) / 1000).toFixed(1)}s`
+				: '';
+			return `${st.icon} ${st.displayName}${st.summary ? ' — ' + st.summary : ''} ${dur ? '— ' + dur : ''}`.trim();
+		});
+
+	const sections = s.v2PlanSections
+		.filter(sec => sec.status === 'done' && sec.content)
+		.map(sec => ({ title: sec.title, content: sec.content }));
+
+	return {
+		v2ProcessLog: processLog,
+		v2PlanOutline: s.v2ProposedOutline,
+		v2ReportSections: sections,
+		v2Sources: s.v2Sources,
+		v2FollowUpQuestions: s.v2FollowUpQuestions,
+		v2Summary: s.v2Summary,
+		v2GraphJson: null, // will be filled by Task 6
+		usage: s.usage,
+		duration: s.duration,
+	};
+}

@@ -15,7 +15,7 @@ import {
 } from "../store/aiAnalysisStore";
 import type { GraphPreview } from "@/core/storage/graph/types";
 import { AppContext } from "@/app/context/AppContext";
-import { useSearchSessionStore } from "../store/searchSessionStore";
+import { useSearchSessionStore, buildV2AnalysisSnapshot } from "../store/searchSessionStore";
 import { useSharedStore } from "../store/sharedStore";
 import { buildAiAnalyzeMarkdown, ExportSource, saveAiAnalyzeResultToMarkdown, persistAnalysisDocToPath, type BuildAiAnalyzeMarkdownParams } from "../callbacks/save-ai-analyze-to-md";
 import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot, type BuildMarkdownOptions } from "@/core/storage/vault/search-docs/AiSearchAnalysisDoc";
@@ -95,6 +95,29 @@ export function useAIAnalysisResult() {
 
         try {
             const replaySnapshot = buildCompletedAnalysisSnapshot();
+            // Merge V2 data if available
+            const v2Snap = buildV2AnalysisSnapshot();
+            if (v2Snap) {
+                replaySnapshot.v2ProcessLog = v2Snap.v2ProcessLog;
+                replaySnapshot.v2PlanOutline = v2Snap.v2PlanOutline;
+                replaySnapshot.v2ReportSections = v2Snap.v2ReportSections;
+                replaySnapshot.v2FollowUpQuestions = v2Snap.v2FollowUpQuestions;
+                replaySnapshot.v2GraphJson = v2Snap.v2GraphJson;
+                if (v2Snap.v2Summary) {
+                    replaySnapshot.summaries = [v2Snap.v2Summary];
+                    replaySnapshot.summaryVersion = 1;
+                }
+                if (v2Snap.v2Sources?.length && !replaySnapshot.sources?.length) {
+                    replaySnapshot.sources = v2Snap.v2Sources.map((s, i) => ({
+                        id: `v2-src-${i}`,
+                        path: s.path,
+                        title: s.title,
+                        score: { average: 0, physical: 0, semantic: 0 },
+                        reasoning: s.reasoning ?? '',
+                        badges: [],
+                    }));
+                }
+            }
             const rt = useAIAnalysisRuntimeStore.getState();
             const ts = Date.now();
             const displayTitle = (rt.title?.trim() || searchQuery.slice(0, SLICE_CAPS.ui.analysisDisplayTitle) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, SLICE_CAPS.ui.analysisDisplayTitleTrim);
@@ -202,11 +225,34 @@ export function useAIAnalysisResult() {
                 const ts = Date.now();
                 const fileName = `${ts} - ${displayTitle}`;
                 try {
+                    const ensureSnapshot = buildCompletedAnalysisSnapshot();
+                    const v2SnapEnsure = buildV2AnalysisSnapshot();
+                    if (v2SnapEnsure) {
+                        ensureSnapshot.v2ProcessLog = v2SnapEnsure.v2ProcessLog;
+                        ensureSnapshot.v2PlanOutline = v2SnapEnsure.v2PlanOutline;
+                        ensureSnapshot.v2ReportSections = v2SnapEnsure.v2ReportSections;
+                        ensureSnapshot.v2FollowUpQuestions = v2SnapEnsure.v2FollowUpQuestions;
+                        ensureSnapshot.v2GraphJson = v2SnapEnsure.v2GraphJson;
+                        if (v2SnapEnsure.v2Summary) {
+                            ensureSnapshot.summaries = [v2SnapEnsure.v2Summary];
+                            ensureSnapshot.summaryVersion = 1;
+                        }
+                        if (v2SnapEnsure.v2Sources?.length && !ensureSnapshot.sources?.length) {
+                            ensureSnapshot.sources = v2SnapEnsure.v2Sources.map((s, i) => ({
+                                id: `v2-src-${i}`,
+                                path: s.path,
+                                title: s.title,
+                                score: { average: 0, physical: 0, semantic: 0 },
+                                reasoning: s.reasoning ?? '',
+                                badges: [],
+                            }));
+                        }
+                    }
                     const saved = await saveAiAnalyzeResultToMarkdown({
                         folderPath,
                         fileName,
                         query: searchQuery,
-                        snapshot: buildCompletedAnalysisSnapshot(),
+                        snapshot: ensureSnapshot,
                         webEnabled,
                     });
                     const summaryHash = hashText(`${summary}::t${topics.length}::s${sources.length}`);
@@ -222,6 +268,29 @@ export function useAIAnalysisResult() {
         const persist = async () => {
             try {
                 const snapshot = buildCompletedAnalysisSnapshot();
+                // Merge V2 data if available
+                const v2Snap = buildV2AnalysisSnapshot();
+                if (v2Snap) {
+                    snapshot.v2ProcessLog = v2Snap.v2ProcessLog;
+                    snapshot.v2PlanOutline = v2Snap.v2PlanOutline;
+                    snapshot.v2ReportSections = v2Snap.v2ReportSections;
+                    snapshot.v2FollowUpQuestions = v2Snap.v2FollowUpQuestions;
+                    snapshot.v2GraphJson = v2Snap.v2GraphJson;
+                    if (v2Snap.v2Summary) {
+                        snapshot.summaries = [v2Snap.v2Summary];
+                        snapshot.summaryVersion = 1;
+                    }
+                    if (v2Snap.v2Sources?.length && !snapshot.sources?.length) {
+                        snapshot.sources = v2Snap.v2Sources.map((s, i) => ({
+                            id: `v2-src-${i}`,
+                            path: s.path,
+                            title: s.title,
+                            score: { average: 0, physical: 0, semantic: 0 },
+                            reasoning: s.reasoning ?? '',
+                            badges: [],
+                        }));
+                    }
+                }
                 const docModel = fromCompletedAnalysisSnapshot(snapshot, searchQuery, webEnabled);
                 docModel.created = docModel.created || new Date().toISOString();
                 const buildOptions: BuildMarkdownOptions = {

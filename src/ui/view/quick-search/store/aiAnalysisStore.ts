@@ -154,6 +154,13 @@ export type CompletedAnalysisSnapshot = {
 
 	/** All completed UI steps (from ui-step events) for replay and dev copy. */
 	steps?: UIStepRecord[];
+
+	// V2 fields
+	v2ProcessLog?: string[];
+	v2PlanOutline?: string | null;
+	v2ReportSections?: Array<{ title: string; content: string }>;
+	v2FollowUpQuestions?: string[];
+	v2GraphJson?: string | null;
 };
 
 /** Current summary text from snapshot (selected by summaryVersion). */

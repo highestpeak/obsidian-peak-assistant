@@ -1139,5 +1139,11 @@ export function fromCompletedAnalysisSnapshot(
 		evidenceIndex: snapshot.evidenceIndex && Object.keys(snapshot.evidenceIndex).length > 0 ? snapshot.evidenceIndex : undefined,
 		steps: snapshot.steps,
 		mindflowMermaid: snapshot.mindflowMermaid?.trim() ? snapshot.mindflowMermaid : undefined,
+		// V2 fields
+		v2ProcessLog: snapshot.v2ProcessLog?.length ? snapshot.v2ProcessLog : undefined,
+		v2PlanOutline: snapshot.v2PlanOutline ?? undefined,
+		v2ReportSections: snapshot.v2ReportSections?.length ? snapshot.v2ReportSections : undefined,
+		v2GraphJson: snapshot.v2GraphJson ?? undefined,
+		v2FollowUpQuestions: snapshot.v2FollowUpQuestions?.length ? snapshot.v2FollowUpQuestions : undefined,
 	};
 }
