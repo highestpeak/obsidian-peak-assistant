@@ -12,6 +12,7 @@ import type { PlanSnapshot } from '@/service/agents/vault/types';
 import type { UserFeedback } from '@/service/agents/core/types';
 import type { SearchStep, SearchStepType, V2ToolStep, V2TimelineItem, V2Source } from '../types/search-steps';
 import { PHASE_TO_STEP_TYPE, createStep } from '../types/search-steps';
+import { exportGraphJson } from './aiGraphStore';
 
 // ---------------------------------------------------------------------------
 // Session status
@@ -722,7 +723,7 @@ export function buildV2AnalysisSnapshot(): {
 		v2Sources: s.v2Sources,
 		v2FollowUpQuestions: s.v2FollowUpQuestions,
 		v2Summary: s.v2Summary,
-		v2GraphJson: null, // will be filled by Task 6
+		v2GraphJson: exportGraphJson(),
 		usage: s.usage,
 		duration: s.duration,
 	};

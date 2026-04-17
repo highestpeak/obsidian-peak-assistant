@@ -18,6 +18,16 @@ interface AIGraphState {
 	reset: () => void;
 }
 
+export function exportGraphJson(): string | null {
+	const { graphData, activeLens } = useAIGraphStore.getState();
+	if (!graphData) return null;
+	// Compact single-line JSON — multi-line would break callout round-trip
+	return JSON.stringify({
+		lenses: { [activeLens]: graphData },
+		generatedAt: new Date().toISOString(),
+	});
+}
+
 export const useAIGraphStore = create<AIGraphState>((set) => ({
 	graphData: null,
 	activeLens: 'topology',
