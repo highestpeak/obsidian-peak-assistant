@@ -219,6 +219,7 @@ interface SearchSessionActions {
 	updatePlanSection: (id: string, updater: (s: V2Section) => V2Section) => void;
 	reorderPlanSections: (ids: string[]) => void;
 	removePlanSection: (id: string) => void;
+	addPlanSection: (missionRole: string) => void;
 	appendSectionChunk: (id: string, chunk: string) => void;
 	completeSectionContent: (id: string, content: string) => void;
 	failSection: (id: string, error: string) => void;
@@ -652,6 +653,25 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	removePlanSection: (id) => set((s) => ({
 		v2PlanSections: s.v2PlanSections.filter((sec) => sec.id !== id),
 	})),
+
+	addPlanSection: (missionRole) => set((s) => {
+		const newId = `user-${Date.now()}`;
+		const newSection: V2Section = {
+			id: newId,
+			title: 'New section',
+			contentType: 'analysis',
+			visualType: 'none',
+			evidencePaths: [],
+			brief: '',
+			weight: 5,
+			missionRole,
+			status: 'pending',
+			content: '',
+			streamingChunks: [],
+			generations: [],
+		};
+		return { v2PlanSections: [...s.v2PlanSections, newSection] };
+	}),
 
 	appendSectionChunk: (id, chunk) => set((s) => ({
 		v2PlanSections: s.v2PlanSections.map((sec) =>

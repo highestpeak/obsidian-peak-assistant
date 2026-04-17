@@ -5,8 +5,6 @@ import { V2ProcessView } from './V2ProcessView';
 import { V2ReportView } from './V2ReportView';
 import { V2SourcesView } from './V2SourcesView';
 import { V2ScrollButtons } from './V2ScrollButtons';
-import { V2TableOfContents } from './V2TableOfContents';
-import { V2SectionNav } from './V2SectionNav';
 
 interface V2SearchResultViewProps {
     onClose?: () => void;
@@ -26,14 +24,10 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
     const allSectionsDone = useSearchSessionStore((s) =>
         s.v2PlanApproved && s.v2PlanSections.length > 0 && s.v2PlanSections.every((sec) => sec.status === 'done')
     );
-    const reportMarkdown = useSearchSessionStore((s) =>
-        s.v2PlanSections.filter((sec) => sec.content).map((sec) => `## ${sec.title}\n\n${sec.content}`).join('\n\n')
-    );
     const containerRef = useRef<HTMLDivElement>(null);
 
     // During streaming, force process view
     const activeView = isStreaming ? 'process' : v2View;
-    const showToc = isCompleted && activeView === 'report' && reportMarkdown.length > 0;
 
     // Reset to process when streaming starts
     useEffect(() => {
@@ -51,8 +45,6 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
 
     return (
         <div className="pktw-flex pktw-flex-col pktw-h-full pktw-relative">
-            {/* Section navigation — visible on process view for progress tracking */}
-            {activeView === 'process' && <V2SectionNav containerRef={containerRef} />}
             <div ref={containerRef} className="pktw-flex-1 pktw-overflow-y-auto pktw-min-h-0">
                 <AnimatePresence mode="wait">
                     {activeView === 'process' && <V2ProcessView key="process" onApprove={onApprove} />}
@@ -61,8 +53,6 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
                 </AnimatePresence>
             </div>
             <V2ScrollButtons containerRef={containerRef} />
-            {/* TOC rendered outside scroll container so it stays fixed on scroll */}
-            {showToc && <V2TableOfContents markdown={reportMarkdown} />}
         </div>
     );
 };

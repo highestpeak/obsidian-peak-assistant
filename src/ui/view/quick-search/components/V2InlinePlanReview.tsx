@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronRight, ChevronUp, ChevronDown, Trash2, Sparkles, FileText, AlertTriangle, Check } from 'lucide-react';
+import { ChevronRight, ChevronUp, ChevronDown, Trash2, Sparkles, FileText, AlertTriangle, Check, Plus } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Section } from '../store/searchSessionStore';
@@ -35,7 +35,7 @@ const SectionCard: React.FC<{
 		{/* Content */}
 		<div className="pktw-flex-1 pktw-min-w-0">
 			<span
-				className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-block pktw-mb-0.5 pktw-outline-none pktw-rounded pktw-px-0.5 pktw--mx-0.5 focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-white"
+				className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-block pktw-mb-0.5 pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-[#e5e7eb] hover:pktw-bg-[#f9fafb] focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-white focus:pktw-border-[#7c3aed]/30 pktw-cursor-text pktw-transition-all"
 				contentEditable
 				suppressContentEditableWarning
 				onBlur={(e) => {
@@ -55,7 +55,7 @@ const SectionCard: React.FC<{
 				<span className="pktw-text-[9px] pktw-text-[#9ca3af]">{sec.evidencePaths.length} sources</span>
 			</div>
 			<span
-				className="pktw-text-xs pktw-text-[#6b7280] pktw-leading-relaxed pktw-outline-none pktw-rounded pktw-px-0.5 pktw--mx-0.5 focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-white"
+				className="pktw-text-xs pktw-text-[#6b7280] pktw-leading-relaxed pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-[#e5e7eb] hover:pktw-bg-[#f9fafb] focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-white focus:pktw-border-[#7c3aed]/30 pktw-cursor-text pktw-transition-all"
 				contentEditable
 				suppressContentEditableWarning
 				onBlur={(e) => {
@@ -64,7 +64,7 @@ const SectionCard: React.FC<{
 				}}
 				onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur(); } }}
 			>
-				{sec.brief}
+				{sec.brief || 'Click to add description...'}
 			</span>
 		</div>
 		{/* Delete */}
@@ -88,6 +88,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 	const removePlanSection = useSearchSessionStore((s) => s.removePlanSection);
 	const reorderPlanSections = useSearchSessionStore((s) => s.reorderPlanSections);
 	const updatePlanSection = useSearchSessionStore((s) => s.updatePlanSection);
+	const addPlanSection = useSearchSessionStore((s) => s.addPlanSection);
 	const insights = useSearchSessionStore((s) => s.v2UserInsights);
 	const [insightInput, setInsightInput] = useState('');
 	const [expanded, setExpanded] = useState(!planApproved);
@@ -206,6 +207,16 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 														onUpdate={updatePlanSection}
 													/>
 												))}
+												{/* Add section button */}
+												{!planApproved && (
+													<div
+														onClick={() => addPlanSection(role.key)}
+														className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1.5 pktw-px-3 pktw-text-[11px] pktw-text-[#9ca3af] hover:pktw-text-[#7c3aed] pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-transition-colors"
+													>
+														<Plus className="pktw-w-3 pktw-h-3" />
+														<span>Add section</span>
+													</div>
+												)}
 											</div>
 										</div>
 									</motion.div>
