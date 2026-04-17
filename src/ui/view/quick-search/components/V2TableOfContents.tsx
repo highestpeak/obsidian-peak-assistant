@@ -9,6 +9,10 @@ interface Heading {
 
 interface V2TableOfContentsProps {
     markdown: string;
+    /** Override root element className (default: absolute bottom-right floating button) */
+    className?: string;
+    /** Initial collapsed state (default: true) */
+    initialCollapsed?: boolean;
 }
 
 function parseHeadings(md: string): Heading[] {
@@ -56,9 +60,9 @@ function scrollToHeading(headingText: string, level: number) {
     }
 }
 
-export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown }) => {
+export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, className, initialCollapsed = true }) => {
     const headings = useMemo(() => parseHeadings(markdown), [markdown]);
-    const [collapsed, setCollapsed] = useState(true);
+    const [collapsed, setCollapsed] = useState(initialCollapsed);
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
     const handleClick = useCallback((heading: Heading) => {
@@ -68,7 +72,7 @@ export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown }
     if (headings.length < 3) return null;
 
     return (
-        <div className="pktw-absolute pktw-right-3 pktw-bottom-3 pktw-z-10">
+        <div className={className ?? 'pktw-absolute pktw-right-3 pktw-bottom-3 pktw-z-10'}>
             {/* Collapsed: floating TOC button */}
             {collapsed && (
                 <motion.div

@@ -1,8 +1,9 @@
 import { SLICE_CAPS } from '@/core/constant';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink, ClipboardList, Activity, Eye, FileText, MoreHorizontal, Sparkles } from 'lucide-react';
+import { Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink, ClipboardList, Activity, Eye, FileText, MoreHorizontal, Sparkles, List } from 'lucide-react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
 import { V2ContinueAnalysisInput } from './components/V2ContinueAnalysisInput';
+import { V2TableOfContents } from './components/V2TableOfContents';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { Button } from '@/ui/component/shared-ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
@@ -67,6 +68,13 @@ const V2Footer: React.FC<{
 	const duration = useSearchSessionStore((s) => s.duration);
 	const setV2View = useSearchSessionStore((s) => s.setV2View);
 	const rounds = useSearchSessionStore((s) => s.rounds);
+	const v2PlanSections = useSearchSessionStore((s) => s.v2PlanSections);
+	const [showToc, setShowToc] = useState(false);
+
+	const reportMarkdown = v2PlanSections
+		.filter((sec) => sec.content)
+		.map((sec) => '## ' + sec.title + '\n\n' + sec.content)
+		.join('\n\n');
 
 	const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 	const durationStr = duration ? `${(duration / 1000).toFixed(0)}s` : '';
@@ -78,10 +86,47 @@ const V2Footer: React.FC<{
 	];
 
 	return (
-		<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-bg-white pktw-px-3 pktw-py-2 pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0">
+		<div className="pktw-relative pktw-border-t pktw-border-[#e5e7eb] pktw-bg-white pktw-px-3 pktw-py-2 pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0">
+			{/* TOC popover — rendered above the footer, anchored bottom-left of this container */}
+			{showToc && reportMarkdown.length > 0 && (
+				<V2TableOfContents
+					markdown={reportMarkdown}
+					initialCollapsed={false}
+					className="pktw-absolute pktw-bottom-full pktw-left-3 pktw-mb-1 pktw-z-50"
+				/>
+			)}
 			{/* Left: View tabs */}
 			<div className="pktw-flex pktw-items-center pktw-gap-1">
-				{views.map(({ id, icon: Icon, label }) => (
+				{views.slice(0, 2).map(({ id, icon: Icon, label }) => (
+					<div
+						key={id}
+						onClick={() => setV2View(id)}
+						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
+							v2View === id
+								? 'pktw-bg-[#7c3aed] pktw-text-white'
+								: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
+						}`}
+					>
+						<Icon className="pktw-w-3.5 pktw-h-3.5" />
+						{label}
+					</div>
+				))}
+				{/* TOC toggle button — only shown when report has content */}
+				{reportMarkdown.length > 0 && (
+					<div
+						onClick={() => setShowToc((prev) => !prev)}
+						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
+							showToc
+								? 'pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed]'
+								: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
+						}`}
+						title="Table of Contents"
+					>
+						<List className="pktw-w-3.5 pktw-h-3.5" />
+						Outline
+					</div>
+				)}
+				{views.slice(2).map(({ id, icon: Icon, label }) => (
 					<div
 						key={id}
 						onClick={() => setV2View(id)}
