@@ -377,6 +377,8 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			v2UserInsights: [],
 			v2Summary: '',
 			v2SummaryStreaming: false,
+			rounds: [],
+			currentRoundIndex: 0,
 			// Preserve analysisMode and webEnabled (already in closure)
 			analysisMode,
 			webEnabled,
@@ -710,6 +712,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 		v2Timeline: [],
 		v2ReportChunks: [],
 		v2ReportComplete: false,
+		v2ToolCallIndex: new Map(),
 		v2PlanSections: [],
 		v2PlanApproved: false,
 		v2ProposedOutline: null,
