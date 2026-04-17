@@ -13,6 +13,8 @@ interface V2TableOfContentsProps {
     className?: string;
     /** Initial collapsed state (default: true) */
     initialCollapsed?: boolean;
+    /** Called after navigating to a heading — parent can use this to close the TOC */
+    onNavigate?: () => void;
 }
 
 function parseHeadings(md: string): Heading[] {
@@ -60,14 +62,15 @@ function scrollToHeading(headingText: string, level: number) {
     }
 }
 
-export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, className, initialCollapsed = true }) => {
+export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, className, initialCollapsed = true, onNavigate }) => {
     const headings = useMemo(() => parseHeadings(markdown), [markdown]);
     const [collapsed, setCollapsed] = useState(initialCollapsed);
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
     const handleClick = useCallback((heading: Heading) => {
         scrollToHeading(heading.text, heading.level);
-    }, []);
+        onNavigate?.();
+    }, [onNavigate]);
 
     if (headings.length < 3) return null;
 

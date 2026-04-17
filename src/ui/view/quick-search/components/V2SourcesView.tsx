@@ -106,20 +106,37 @@ function buildCoCitationFallback(sources: V2Source[], sections: Array<{ evidence
 
 /** Convert SourcesGraph to LensGraphData (same logic as SourcesSection). */
 function sourcesGraphToLensData(graph: SourcesGraph): LensGraphData {
-    return {
-        nodes: graph.nodes.map((n) => ({
+    // Build a set of known node paths for edge filtering
+    const nodePathSet = new Set<string>();
+    const nodes = graph.nodes.map((n) => {
+        const path = n.attributes?.path ?? n.id;
+        nodePathSet.add(path);
+        return {
             label: n.label,
-            path: n.attributes?.path ?? n.id,
+            path,
             role: n.type === 'hub' ? 'hub' as const : n.type === 'bridge' ? 'bridge' as const : 'leaf' as const,
-            group: (n.attributes?.path ?? n.id).split('/').slice(0, -1).join('/'),
-        })),
-        edges: graph.edges.map((e) => ({
-            source: e.from_node_id,
-            target: e.to_node_id,
-            kind: (e.kind === 'semantic' ? 'semantic' : 'link') as 'semantic' | 'link',
-        })),
-        availableLenses: ['topology'] as LensGraphData['availableLenses'],
+            group: path.split('/').slice(0, -1).join('/'),
+        };
+    });
+
+    // Resolve edge endpoints: from_node_id may have prefixes like "file:" that don't match node paths
+    const resolveId = (id: string): string => {
+        if (nodePathSet.has(id)) return id;
+        // Strip common prefixes
+        const stripped = id.replace(/^file:/, '');
+        if (nodePathSet.has(stripped)) return stripped;
+        return id;
     };
+
+    const edges = graph.edges
+        .map((e) => ({
+            source: resolveId(e.from_node_id),
+            target: resolveId(e.to_node_id),
+            kind: (e.kind === 'semantic' ? 'semantic' : 'link') as 'semantic' | 'link',
+        }))
+        .filter((e) => nodePathSet.has(e.source) && nodePathSet.has(e.target));
+
+    return { nodes, edges, availableLenses: ['topology'] as LensGraphData['availableLenses'] };
 }
 
 const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => void }> = ({ sources, onOpen }) => {

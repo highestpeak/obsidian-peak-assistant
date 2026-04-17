@@ -93,6 +93,7 @@ const V2Footer: React.FC<{
 					markdown={reportMarkdown}
 					initialCollapsed={false}
 					className="pktw-absolute pktw-bottom-full pktw-left-3 pktw-mb-1 pktw-z-50"
+					onNavigate={() => setShowToc(false)}
 				/>
 			)}
 			{/* Left: View tabs */}
@@ -101,7 +102,9 @@ const V2Footer: React.FC<{
 					<div
 						key={id}
 						onClick={() => setV2View(id)}
-						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
+						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-transition-all pktw-cursor-pointer ${
+							id === 'report' ? 'pktw-rounded-l-lg' : 'pktw-rounded-lg'
+						} ${
 							v2View === id
 								? 'pktw-bg-[#7c3aed] pktw-text-white'
 								: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
@@ -111,11 +114,11 @@ const V2Footer: React.FC<{
 						{label}
 					</div>
 				))}
-				{/* TOC toggle button — only shown when report has content */}
+				{/* TOC toggle — icon only, visually grouped with Report button */}
 				{reportMarkdown.length > 0 && (
 					<div
 						onClick={() => setShowToc((prev) => !prev)}
-						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
+						className={`pktw-flex pktw-items-center pktw-px-1.5 pktw-py-1.5 pktw-rounded-r-lg pktw-transition-all pktw-cursor-pointer pktw-border-l pktw-border-[#e5e7eb] ${
 							showToc
 								? 'pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed]'
 								: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
@@ -123,7 +126,6 @@ const V2Footer: React.FC<{
 						title="Table of Contents"
 					>
 						<List className="pktw-w-3.5 pktw-h-3.5" />
-						Outline
 					</div>
 				)}
 				{views.slice(2).map(({ id, icon: Icon, label }) => (
