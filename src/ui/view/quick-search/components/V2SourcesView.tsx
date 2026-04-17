@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, List, Network, Info } from 'lucide-react';
+import { FileText, List, Network, ChevronRight, Folder } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
+import type { V2Source } from '../types/search-steps';
 
 type SourceViewMode = 'list' | 'graph';
 
@@ -36,10 +37,45 @@ const SourcesGraph: React.FC<{ sources: Array<{ path: string; title: string }> }
     return <StreamdownIsolated>{mermaid}</StreamdownIsolated>;
 };
 
+function SourceItem({ source, onClick }: { source: V2Source; onClick: () => void }) {
+    const refCount = useSearchSessionStore(s =>
+        s.v2PlanSections.filter(sec => sec.evidencePaths?.includes(source.path)).length
+    );
+
+    return (
+        <button
+            className="pktw-flex pktw-items-center pktw-gap-2 pktw-w-full pktw-text-left pktw-text-xs pktw-py-1 pktw-px-2 hover:pktw-bg-[--background-secondary] pktw-rounded pktw-group"
+            onClick={onClick}
+        >
+            <FileText className="pktw-w-3 pktw-h-3 pktw-text-[--text-muted] pktw-shrink-0" />
+            <span className="pktw-truncate pktw-flex-1">{source.title}</span>
+            {refCount > 0 && (
+                <span className="pktw-text-[10px] pktw-px-1 pktw-rounded pktw-bg-[--interactive-accent] pktw-text-[--text-on-accent]">
+                    x{refCount}
+                </span>
+            )}
+            {source.reasoning && (
+                <span className="pktw-hidden group-hover:pktw-inline pktw-text-[10px] pktw-text-[--text-muted] pktw-max-w-[200px] pktw-truncate">
+                    {source.reasoning}
+                </span>
+            )}
+        </button>
+    );
+}
+
 export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
     const sources = useSearchSessionStore((s) => s.v2Sources);
     const [viewMode, setViewMode] = useState<SourceViewMode>('list');
+    const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
     const handleOpen = useMemo(() => createOpenSourceCallback(onClose), [onClose]);
+
+    const toggleGroup = (prefix: string) => {
+        setCollapsedGroups(prev => {
+            const next = new Set(prev);
+            next.has(prefix) ? next.delete(prefix) : next.add(prefix);
+            return next;
+        });
+    };
 
     const viewModes: Array<{ id: SourceViewMode; icon: typeof List; label: string }> = [
         { id: 'list', icon: List, label: 'List' },
@@ -47,14 +83,19 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
     ];
 
     const grouped = useMemo(() => {
-        const map = new Map<string, typeof sources>();
+        const groups = new Map<string, V2Source[]>();
         for (const src of sources) {
-            const folder = src.path.split('/').slice(0, -1).join('/') || '/';
-            const list = map.get(folder) ?? [];
-            list.push(src);
-            map.set(folder, list);
+            const parts = src.path.split('/');
+            const prefix = parts.length > 2 ? parts.slice(0, 2).join('/') : parts[0] ?? 'root';
+            if (!groups.has(prefix)) groups.set(prefix, []);
+            groups.get(prefix)!.push(src);
         }
-        return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+        return Array.from(groups.entries())
+            .sort((a, b) => b[1].length - a[1].length)
+            .map(([prefix, srcs]) => ({
+                prefix,
+                sources: srcs.sort((a, b) => b.readAt - a.readAt),
+            }));
     }, [sources]);
 
     return (
@@ -93,41 +134,27 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
                 </div>
             </div>
 
-            {/* List view — grouped by folder */}
+            {/* List view — grouped by folder prefix */}
             {viewMode === 'list' && (
                 <div>
-                    {grouped.map(([folder, items]) => (
-                        <div key={folder}>
-                            <div className="pktw-text-xs pktw-text-[#9ca3af] pktw-font-mono pktw-py-1 pktw-px-1 pktw-mt-2">
-                                {folder} ({items.length})
-                            </div>
-                            <div className="pktw-space-y-0 pktw-divide-y pktw-divide-[#e5e7eb]">
-                                {items.map((source, i) => (
-                                    <motion.div
-                                        key={source.path}
-                                        initial={{ opacity: 0, y: -8 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.3, delay: i * 0.05 }}
-                                        className="pktw-py-3 pktw-px-1 hover:pktw-bg-[#fafafa] pktw-cursor-pointer pktw-transition-all pktw-group"
-                                        onClick={() => handleOpen(source.path)}
-                                    >
-                                        <div className="pktw-flex pktw-items-center pktw-gap-2">
-                                            <FileText className="pktw-w-4 pktw-h-4 pktw-text-[#9ca3af] pktw-shrink-0" />
-                                            <span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338] group-hover:pktw-text-[#7c3aed] pktw-transition-colors">
-                                                {source.title}
-                                            </span>
-                                        </div>
-                                        {source.reasoning && (
-                                            <div className="pktw-ml-6 pktw-mt-1.5 pktw-flex pktw-items-start pktw-gap-1.5">
-                                                <Info className="pktw-w-3 pktw-h-3 pktw-text-[#999999] pktw-shrink-0 pktw-mt-0.5" />
-                                                <span className="pktw-text-xs pktw-text-[#6c757d] pktw-leading-relaxed pktw-line-clamp-2">
-                                                    {source.reasoning}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </motion.div>
-                                ))}
-                            </div>
+                    {grouped.map(({ prefix, sources: items }) => (
+                        <div key={prefix} className="pktw-mb-2">
+                            <button
+                                className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-w-full pktw-text-left pktw-text-xs pktw-font-medium pktw-text-[--text-muted] pktw-py-1 pktw-px-2 hover:pktw-bg-[--background-secondary] pktw-rounded"
+                                onClick={() => toggleGroup(prefix)}
+                            >
+                                <ChevronRight className={`pktw-w-3 pktw-h-3 pktw-transition-transform ${!collapsedGroups.has(prefix) ? 'pktw-rotate-90' : ''}`} />
+                                <Folder className="pktw-w-3 pktw-h-3" />
+                                <span className="pktw-truncate">{prefix}</span>
+                                <span className="pktw-ml-auto pktw-text-[--text-faint]">{items.length}</span>
+                            </button>
+                            {!collapsedGroups.has(prefix) && (
+                                <div className="pktw-ml-5 pktw-space-y-0.5">
+                                    {items.map(src => (
+                                        <SourceItem key={src.path} source={src} onClick={() => handleOpen(src.path)} />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
