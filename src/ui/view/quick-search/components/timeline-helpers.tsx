@@ -26,13 +26,9 @@ export const ToolRow: React.FC<{ step: V2ToolStep }> = ({ step }) => {
         <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1 pktw-px-1">
             {/* Status dot */}
             {isRunning ? (
-                <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                    className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"
-                >
-                    <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed]" />
-                </motion.div>
+                <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
+                    <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed] pktw-animate-spin" />
+                </div>
             ) : (
                 <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-green-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
                     <Check className="pktw-w-2.5 pktw-h-2.5 pktw-text-green-600" />

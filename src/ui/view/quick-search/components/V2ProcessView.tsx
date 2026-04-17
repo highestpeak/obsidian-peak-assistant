@@ -69,36 +69,20 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
             >
                 {/* Initial thinking indicator */}
                 {showInitialThinking && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1"
-                    >
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                            className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"
-                        >
-                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed]" />
-                        </motion.div>
+                    <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1">
+                        <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
+                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed] pktw-animate-spin" />
+                        </div>
                         <span className="pktw-text-xs pktw-text-[#9ca3af]">Analyzing query...</span>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Generating report indicator */}
                 {isGeneratingReport && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1 pktw-mt-1"
-                    >
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                            className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0"
-                        >
-                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed]" />
-                        </motion.div>
+                    <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1 pktw-mt-1">
+                        <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
+                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed] pktw-animate-spin" />
+                        </div>
                         <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed]" />
                         <span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">Generating report...</span>
                         <span className="pktw-flex-1" />
@@ -110,7 +94,7 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                                 transition={{ duration: 8, ease: 'easeInOut' }}
                             />
                         </div>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Inline plan review */}
