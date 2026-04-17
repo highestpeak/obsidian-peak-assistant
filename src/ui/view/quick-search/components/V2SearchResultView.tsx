@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { V2ProcessView } from './V2ProcessView';
@@ -24,8 +24,6 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
     const isCompleted = useSearchSessionStore((s) => s.status === 'completed');
     const v2View = useSearchSessionStore((s) => s.v2View);
     const proposedOutline = useSearchSessionStore((s) => s.v2ProposedOutline);
-    const hasPlanSections = useSearchSessionStore((s) => s.v2PlanSections.length > 0);
-    const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
     const containerRef = useRef<HTMLDivElement>(null);
 
     // During streaming, force process view
@@ -39,20 +37,13 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
         }
     }, [isStreaming]);
 
-    // Auto-switch to report view when search completes and plan sections exist (awaiting approval)
-    useEffect(() => {
-        if (isCompleted && hasPlanSections && !planApproved) {
-            useSearchSessionStore.getState().setV2View('report');
-        }
-    }, [isCompleted, hasPlanSections, planApproved]);
-
     return (
         <div className="pktw-flex pktw-flex-col pktw-h-full pktw-relative">
-            {/* Section navigation — top of report view */}
-            {activeView === 'report' && <V2SectionNav containerRef={containerRef} />}
+            {/* Section navigation — always visible when sections exist */}
+            <V2SectionNav containerRef={containerRef} />
             <div ref={containerRef} className="pktw-flex-1 pktw-overflow-y-auto pktw-min-h-0">
                 <AnimatePresence mode="wait">
-                    {activeView === 'process' && <V2ProcessView key="process" />}
+                    {activeView === 'process' && <V2ProcessView key="process" onApprove={onApprove} />}
                     {activeView === 'report' && <V2ReportView key="report" onClose={onClose} onApprove={onApprove} onRegenerateSection={onRegenerateSection} />}
                     {activeView === 'sources' && <V2SourcesView key="sources" onClose={onClose} />}
                 </AnimatePresence>

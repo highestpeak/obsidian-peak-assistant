@@ -4,7 +4,6 @@ import { RefreshCw, Copy, Check, Sparkles, Loader2, CheckCircle, Clock } from 'l
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Section } from '../store/searchSessionStore';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
-import { V2PlanReview } from './V2PlanReview';
 import { VizRenderer } from './viz/VizRenderer';
 import { Button } from '@/ui/component/shared-ui/button';
 
@@ -274,7 +273,11 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 
 	// Plan review mode — show when sections exist but user hasn't approved yet
 	if (sections.length > 0 && !planApproved) {
-		return <V2PlanReview onApprove={onApprove ?? (() => {})} />;
+		return (
+			<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-32 pktw-text-sm pktw-text-[#9ca3af]">
+				Report will appear here after plan approval in Process view.
+			</div>
+		);
 	}
 
 	// No sections yet and no past rounds — fallback
@@ -304,14 +307,13 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 							</StreamdownIsolated>
 						</div>
 					)}
-					<div className="pktw-grid pktw-grid-cols-2 pktw-gap-3 pktw-mb-4">
+					<div className="pktw-flex pktw-flex-col pktw-gap-3 pktw-mb-4">
 						{round.sections.map((sec, si) => (
-							<div key={sec.id} className={sec.weight >= 7 ? 'pktw-col-span-2' : 'pktw-col-span-2 sm:pktw-col-span-1'}>
-								<SectionBlock
-									section={sec}
-									index={si}
-								/>
-							</div>
+							<SectionBlock
+								key={sec.id}
+								section={sec}
+								index={si}
+							/>
 						))}
 					</div>
 				</React.Fragment>
@@ -364,16 +366,15 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 				</div>
 			)}
 
-			{/* Section blocks — weight-based layout */}
-			<div className="pktw-grid pktw-grid-cols-2 pktw-gap-3">
+			{/* Section blocks */}
+			<div className="pktw-flex pktw-flex-col pktw-gap-3">
 				{sections.map((sec, i) => (
-					<div key={sec.id} className={sec.weight >= 7 ? 'pktw-col-span-2' : 'pktw-col-span-2 sm:pktw-col-span-1'}>
-						<SectionBlock
-							section={sec}
-							index={i}
-							onRegenerate={onRegenerateSection}
-						/>
-					</div>
+					<SectionBlock
+						key={sec.id}
+						section={sec}
+						index={i}
+						onRegenerate={onRegenerateSection}
+					/>
 				))}
 			</div>
 		</motion.div>
