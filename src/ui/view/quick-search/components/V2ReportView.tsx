@@ -6,12 +6,20 @@ import type { V2Section } from '../store/searchSessionStore';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
 import { V2PlanReview } from './V2PlanReview';
 import { VizRenderer } from './viz/VizRenderer';
+import { Button } from '@/ui/component/shared-ui/button';
 
 interface V2ReportViewProps {
 	onClose?: () => void;
 	onApprove?: () => void;
 	onRegenerateSection?: (id: string, prompt?: string) => void;
 }
+
+const ANNOTATION_TYPE_SYMBOL: Record<string, string> = {
+	question: '?',
+	disagree: '!',
+	expand: '+',
+	note: '#',
+};
 
 /** Single section block card — matches V1's DashboardBlocksSection visual */
 const SectionBlock: React.FC<{
@@ -22,6 +30,23 @@ const SectionBlock: React.FC<{
 	const [showPrompt, setShowPrompt] = useState(false);
 	const [prompt, setPrompt] = useState('');
 	const [copied, setCopied] = useState(false);
+
+	// Annotation state
+	const [showAnnotationBar, setShowAnnotationBar] = useState(false);
+	const [selectedText, setSelectedText] = useState('');
+	const [annotationPos, setAnnotationPos] = useState({ x: 0, y: 0 });
+	const [annotationType, setAnnotationType] = useState<'question' | 'disagree' | 'expand' | 'note'>('question');
+	const [annotationComment, setAnnotationComment] = useState('');
+
+	const annotations = useSearchSessionStore((s) => {
+		for (const round of s.rounds) {
+			const matching = round.annotations.filter(
+				(a) => round.sections[a.sectionIndex]?.id === section.id
+			);
+			if (matching.length > 0) return matching;
+		}
+		return [];
+	});
 
 	const content = section.status === 'generating'
 		? section.streamingChunks.join('')
@@ -43,6 +68,38 @@ const SectionBlock: React.FC<{
 		}
 	}, [showPrompt, prompt, section.id, onRegenerate]);
 
+	const handleTextSelect = useCallback(() => {
+		const sel = window.getSelection();
+		if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+			setShowAnnotationBar(false);
+			return;
+		}
+		const range = sel.getRangeAt(0);
+		const rect = range.getBoundingClientRect();
+		setSelectedText(sel.toString().trim().slice(0, 200));
+		setAnnotationPos({ x: rect.left + rect.width / 2, y: rect.top - 8 });
+		setShowAnnotationBar(true);
+	}, []);
+
+	const handleSubmitAnnotation = useCallback(() => {
+		if (!annotationComment.trim()) return;
+		const store = useSearchSessionStore.getState();
+		const roundIdx = store.rounds.findIndex((r) => r.sections.some((s) => s.id === section.id));
+		const effectiveRoundIdx = roundIdx >= 0 ? roundIdx : Math.max(0, store.currentRoundIndex - 1);
+		store.addAnnotation({
+			id: `ann-${Date.now()}`,
+			roundIndex: effectiveRoundIdx,
+			sectionIndex: index,
+			selectedText: selectedText || undefined,
+			comment: annotationComment.trim(),
+			type: annotationType,
+			createdAt: Date.now(),
+		});
+		setShowAnnotationBar(false);
+		setAnnotationComment('');
+		setSelectedText('');
+	}, [section.id, index, selectedText, annotationComment, annotationType]);
+
 	return (
 		<motion.div
 			data-section-id={section.id}
@@ -60,6 +117,19 @@ const SectionBlock: React.FC<{
 				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#374151] pktw-flex-1 pktw-line-clamp-1" title={section.title}>
 					{section.title}
 				</span>
+				{annotations.length > 0 && (
+					<div className="pktw-flex pktw-gap-0.5 pktw-shrink-0">
+						{annotations.map((a) => (
+							<span
+								key={a.id}
+								className="pktw-text-[10px] pktw-px-1 pktw-py-0.5 pktw-rounded pktw-bg-[--interactive-accent] pktw-text-[--text-on-accent] pktw-cursor-default"
+								title={`[${a.type}] ${a.comment}`}
+							>
+								{ANNOTATION_TYPE_SYMBOL[a.type]}
+							</span>
+						))}
+					</div>
+				)}
 				<div className={`pktw-flex pktw-items-center pktw-gap-1 pktw-shrink-0 pktw-transition-opacity ${
 					section.status === 'done' ? 'pktw-opacity-0 group-hover:pktw-opacity-100' : 'pktw-opacity-0'
 				}`}>
@@ -122,11 +192,13 @@ const SectionBlock: React.FC<{
 			)}
 
 			{/* Content — only show when we have text */}
-			{content && (
-				<StreamdownIsolated isAnimating={section.status === 'generating'} className="pktw-select-text pktw-break-words">
-					{content}
-				</StreamdownIsolated>
-			)}
+			<div onMouseUp={handleTextSelect}>
+				{content && (
+					<StreamdownIsolated isAnimating={section.status === 'generating'} className="pktw-select-text pktw-break-words">
+						{content}
+					</StreamdownIsolated>
+				)}
+			</div>
 
 			{section.vizData && section.status === 'done' && (
 				<VizRenderer spec={section.vizData} />
@@ -135,6 +207,45 @@ const SectionBlock: React.FC<{
 			{/* Error */}
 			{section.status === 'error' && section.error && (
 				<div className="pktw-text-xs pktw-text-red-500 pktw-mt-2">{section.error}</div>
+			)}
+
+			{/* Annotation toolbar */}
+			{showAnnotationBar && (
+				<div
+					className="pktw-fixed pktw-z-50 pktw-bg-[--background-primary] pktw-border pktw-border-[--background-modifier-border] pktw-rounded-lg pktw-shadow-lg pktw-p-2 pktw-flex pktw-flex-col pktw-gap-1.5"
+					style={{ left: annotationPos.x, top: annotationPos.y, transform: 'translate(-50%, -100%)' }}
+				>
+					<div className="pktw-flex pktw-gap-1">
+						{(['question', 'disagree', 'expand', 'note'] as const).map((t) => (
+							<Button
+								key={t}
+								variant={annotationType === t ? 'default' : 'outline'}
+								size="sm"
+								className="pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-h-6"
+								onClick={() => setAnnotationType(t)}
+							>
+								{ANNOTATION_TYPE_SYMBOL[t]} {t}
+							</Button>
+						))}
+					</div>
+					<div className="pktw-flex pktw-gap-1">
+						<input
+							type="text"
+							className="pktw-flex-1 pktw-text-xs pktw-px-2 pktw-py-1 pktw-border pktw-border-[--background-modifier-border] pktw-rounded pktw-bg-transparent pktw-text-[--text-normal] pktw-outline-none"
+							placeholder="Your comment..."
+							value={annotationComment}
+							onChange={(e) => setAnnotationComment(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter') handleSubmitAnnotation();
+								if (e.key === 'Escape') setShowAnnotationBar(false);
+							}}
+							autoFocus
+						/>
+						<Button size="sm" className="pktw-text-xs pktw-h-7" onClick={handleSubmitAnnotation}>
+							Add
+						</Button>
+					</div>
+				</div>
 			)}
 		</motion.div>
 	);
