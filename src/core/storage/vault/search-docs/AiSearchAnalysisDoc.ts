@@ -109,6 +109,13 @@ export interface AiSearchAnalysisDocModel {
 	overviewMermaidVersions?: string[];
 	/** Slot coverage diagram (raw Mermaid code). Latest only. */
 	mindflowMermaid?: string;
+
+	// V2 fields (SDK pipeline)
+	v2ProcessLog?: string[];
+	v2PlanOutline?: string;
+	v2ReportSections?: Array<{ title: string; content: string }>;
+	v2GraphJson?: string;
+	v2FollowUpQuestions?: string[];
 }
 
 const EMPTY_DOC_MODEL: AiSearchAnalysisDocModel = {
@@ -255,6 +262,71 @@ function extractAllMermaidBlocks(text: string): string[] {
 	return blocks;
 }
 
+// ---------------------------------------------------------------------------
+// V2 callout parsing helpers
+// ---------------------------------------------------------------------------
+
+/** Extract the full text of an Obsidian callout block from the body.
+ *  Matches `> [!type]- title` (collapsed) or `> [!type] title` (open).
+ *  Returns lines stripped of the leading `> ` prefix, or empty string if not found.
+ */
+function extractCalloutBlock(body: string, type: string, title: string): string {
+	// Build regex that matches both collapsed (`-`) and non-collapsed variants
+	const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const pattern = new RegExp(`^> \\[!${type}\\]-?\\s+${escapedTitle}\\s*$`, 'm');
+	const m = pattern.exec(body);
+	if (!m) return '';
+	const start = m.index + m[0].length;
+	const rest = body.slice(start);
+	// Collect continuation lines (lines starting with `> ` or blank `>`)
+	const lines: string[] = [];
+	// Skip the first split element — it's the remainder of the header line (always empty)
+	const splitLines = rest.split('\n');
+	for (let i = 1; i < splitLines.length; i++) {
+		const line = splitLines[i];
+		if (line === '>') {
+			lines.push('');
+		} else if (line.startsWith('> ')) {
+			lines.push(line.slice(2));
+		} else {
+			break;
+		}
+	}
+	return lines.join('\n').trim();
+}
+
+/** Parse list items from callout content (lines starting with `- `). */
+function parseCalloutListItems(content: string): string[] {
+	return content
+		.split('\n')
+		.filter((l) => l.trimStart().startsWith('- '))
+		.map((l) => l.trimStart().slice(2).trim())
+		.filter(Boolean);
+}
+
+/** Parse V2 numbered report sections (`## 1. Title`, `## 2. Title`, ...) from the body.
+ *  Sections are between the Analysis Plan callout and the Sources heading.
+ */
+function parseV2ReportSections(body: string): Array<{ title: string; content: string }> {
+	const sections: Array<{ title: string; content: string }> = [];
+	const regex = /^## (\d+)\.\s+(.+)$/gm;
+	let match: RegExpExecArray | null;
+	const hits: Array<{ idx: number; num: number; title: string }> = [];
+	while ((match = regex.exec(body)) !== null) {
+		hits.push({ idx: match.index, num: parseInt(match[1], 10), title: match[2].trim() });
+	}
+	for (let i = 0; i < hits.length; i++) {
+		const start = hits[i].idx + body.slice(hits[i].idx).indexOf('\n') + 1;
+		const end = i + 1 < hits.length ? hits[i + 1].idx : body.length;
+		let content = body.slice(start, end).trim();
+		// Trim trailing callout blocks, H1 headings, or non-numbered H2 sections that may follow
+		const nextSection = content.search(/\n(?:# [^#]|## [^0-9]|> \[!)/);
+		if (nextSection >= 0) content = content.slice(0, nextSection).trim();
+		sections.push({ title: hits[i].title, content });
+	}
+	return sections;
+}
+
 /**
  * Parse markdown content into AiSearchAnalysisDocModel.
  */
@@ -265,7 +337,9 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 	const fm = parseFrontmatter(normalized);
 
 	const summary = extractSection(body, 'Summary');
-	const querySection = extractSection(body, 'Query');
+	const querySectionRaw = extractSection(body, 'Query');
+	// Strip V2 callout blocks and sub-headings from query section (they follow the query text)
+	const querySection = querySectionRaw.replace(/\n(?:> \[!|## )[\s\S]*$/, '').trim();
 	const query = querySection || fm.query;
 	const overviewSection = extractSection(body, 'Overview');
 	const overviewHistorySection = extractSection(body, 'Overview History');
@@ -568,6 +642,26 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 			? { inputTokens: 0, outputTokens: fm.estimatedTokens, totalTokens: fm.estimatedTokens }
 			: null;
 
+	// V2 callout parsing
+	const v2ProcessLogContent = extractCalloutBlock(body, 'abstract', 'Process Log');
+	const v2ProcessLog = v2ProcessLogContent ? parseCalloutListItems(v2ProcessLogContent) : undefined;
+
+	const v2PlanOutlineRaw = extractCalloutBlock(body, 'note', 'Analysis Plan');
+	const v2PlanOutline = v2PlanOutlineRaw || undefined;
+
+	const v2GraphDataContent = extractCalloutBlock(body, 'tip', 'Graph Data');
+	let v2GraphJson: string | undefined;
+	if (v2GraphDataContent) {
+		// Extract JSON from fenced code block inside callout
+		const jsonMatch = v2GraphDataContent.match(/```json\n([\s\S]*?)```/);
+		v2GraphJson = jsonMatch ? jsonMatch[1].trim() : undefined;
+	}
+
+	const v2FollowUpContent = extractCalloutBlock(body, 'question', 'Follow-up Questions');
+	const v2FollowUpQuestions = v2FollowUpContent ? parseCalloutListItems(v2FollowUpContent) : undefined;
+
+	const v2ReportSections = parseV2ReportSections(body);
+
 	return {
 		...EMPTY_DOC_MODEL,
 		created: fm.created || undefined,
@@ -597,6 +691,11 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		overviewMermaidVersions: overviewMermaidVersions.length ? overviewMermaidVersions : undefined,
 		overviewMermaidActiveIndex: overviewMermaidVersions.length ? overviewMermaidActiveIndex : undefined,
 		mindflowMermaid,
+		v2ProcessLog: v2ProcessLog?.length ? v2ProcessLog : undefined,
+		v2PlanOutline,
+		v2ReportSections: v2ReportSections.length ? v2ReportSections : undefined,
+		v2GraphJson,
+		v2FollowUpQuestions: v2FollowUpQuestions?.length ? v2FollowUpQuestions : undefined,
 	};
 }
 
@@ -723,6 +822,33 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 	lines.push(docModel.query);
 	lines.push('');
 
+	// V2 callouts: Process Log and Analysis Plan (after Query, before V1 full-only sections)
+	if (docModel.v2ProcessLog?.length) {
+		lines.push('> [!abstract]- Process Log');
+		for (const item of docModel.v2ProcessLog) {
+			lines.push(`> - ${item}`);
+		}
+		lines.push('');
+	}
+	if (docModel.v2PlanOutline) {
+		lines.push('> [!note]- Analysis Plan');
+		for (const line of docModel.v2PlanOutline.split('\n')) {
+			lines.push(line ? `> ${line}` : '>');
+		}
+		lines.push('');
+	}
+
+	// V2 numbered report sections (before Sources)
+	if (docModel.v2ReportSections?.length) {
+		for (let i = 0; i < docModel.v2ReportSections.length; i++) {
+			const sec = docModel.v2ReportSections[i];
+			lines.push(`## ${i + 1}. ${sec.title}`);
+			lines.push('');
+			lines.push(sec.content);
+			lines.push('');
+		}
+	}
+
 	if (fullOnly) {
 		const overviewVersions = docModel.overviewMermaidVersions ?? [];
 		const overviewActiveIndex = docModel.overviewMermaidActiveIndex ?? 0;
@@ -801,6 +927,24 @@ export function buildMarkdown(docModel: AiSearchAnalysisDocModel, options?: Buil
 		if (s.reasoning) lines.push(`  reasoning: |\n    ${s.reasoning.replace(/\n/g, '\n    ')}`);
 	}
 	lines.push('');
+
+	// V2 trailing callouts: Graph Data and Follow-up Questions (after Sources)
+	if (docModel.v2GraphJson) {
+		lines.push('> [!tip]- Graph Data');
+		lines.push('> ```json');
+		for (const line of docModel.v2GraphJson.split('\n')) {
+			lines.push(`> ${line}`);
+		}
+		lines.push('> ```');
+		lines.push('');
+	}
+	if (docModel.v2FollowUpQuestions?.length) {
+		lines.push('> [!question] Follow-up Questions');
+		for (const q of docModel.v2FollowUpQuestions) {
+			lines.push(`> - ${q}`);
+		}
+		lines.push('');
+	}
 
 	if (docModel.evidenceIndex && Object.keys(docModel.evidenceIndex).length > 0) {
 		lines.push(SECTION_EVIDENCE);

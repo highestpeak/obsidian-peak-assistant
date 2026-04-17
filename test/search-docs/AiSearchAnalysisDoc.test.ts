@@ -50,6 +50,11 @@ function docModelsEqual(a: AiSearchAnalysisDocModel, b: AiSearchAnalysisDocModel
 		}
 	}
 	if (a.dashboardBlocks.length !== b.dashboardBlocks.length) return { ok: false, msg: 'dashboardBlocks.length' };
+	if (JSON.stringify(a.v2ProcessLog ?? []) !== JSON.stringify(b.v2ProcessLog ?? [])) return { ok: false, msg: 'v2ProcessLog' };
+	if ((a.v2PlanOutline ?? '') !== (b.v2PlanOutline ?? '')) return { ok: false, msg: 'v2PlanOutline' };
+	if ((a.v2ReportSections?.length ?? 0) !== (b.v2ReportSections?.length ?? 0)) return { ok: false, msg: 'v2ReportSections.length' };
+	if ((a.v2GraphJson ?? '') !== (b.v2GraphJson ?? '')) return { ok: false, msg: 'v2GraphJson' };
+	if (JSON.stringify(a.v2FollowUpQuestions ?? []) !== JSON.stringify(b.v2FollowUpQuestions ?? [])) return { ok: false, msg: 'v2FollowUpQuestions' };
 	return { ok: true };
 }
 
@@ -97,6 +102,47 @@ function testBuildFromModel(name: string, docModel: AiSearchAnalysisDocModel): b
 	}
 }
 
+function testV2Roundtrip(): boolean {
+	console.log('\n=== Test: V2 format round-trip ===');
+	try {
+		const md = readTestFile('v2-roundtrip.md');
+		const parsed = parse(md);
+
+		// V2-specific fields
+		if (!parsed.v2ProcessLog) throw new Error('v2ProcessLog not parsed');
+		if (parsed.v2ProcessLog.length !== 3) throw new Error(`v2ProcessLog.length: ${parsed.v2ProcessLog.length}, expected 3`);
+		if (!parsed.v2PlanOutline) throw new Error('v2PlanOutline not parsed');
+		if (!parsed.v2ReportSections || parsed.v2ReportSections.length !== 2) throw new Error(`v2ReportSections count: ${parsed.v2ReportSections?.length}, expected 2`);
+		if (parsed.v2ReportSections[0].title !== '结构分析') throw new Error(`section title: ${parsed.v2ReportSections[0].title}`);
+		if (!parsed.v2ReportSections[0].content.includes('82 个笔记')) throw new Error('section content missing');
+		if (!parsed.v2GraphJson) throw new Error('v2GraphJson not parsed');
+		if (!parsed.v2FollowUpQuestions || parsed.v2FollowUpQuestions.length !== 2) throw new Error(`followup count: ${parsed.v2FollowUpQuestions?.length}`);
+
+		// Rebuild and verify structure preserved
+		const rebuilt = buildMarkdown(parsed, { runAnalysisMode: 'vaultFull' });
+		if (!rebuilt.includes('> [!abstract]- Process Log')) throw new Error('rebuilt missing Process Log');
+		if (!rebuilt.includes('> [!note]- Analysis Plan')) throw new Error('rebuilt missing Analysis Plan');
+		if (!rebuilt.includes('## 1. 结构分析')) throw new Error('rebuilt missing section heading');
+		if (!rebuilt.includes('> [!tip]- Graph Data')) throw new Error('rebuilt missing Graph Data');
+		if (!rebuilt.includes('> [!question] Follow-up Questions')) throw new Error('rebuilt missing Follow-up Questions');
+		if (!rebuilt.includes('82 个笔记')) throw new Error('rebuilt missing section content');
+
+		// Re-parse the rebuilt markdown to verify round-trip
+		const reparsed = parse(rebuilt);
+		if (reparsed.v2ProcessLog?.length !== 3) throw new Error('re-parsed processLog mismatch');
+		if (reparsed.v2ReportSections?.length !== 2) throw new Error('re-parsed sections mismatch');
+		if (reparsed.v2FollowUpQuestions?.length !== 2) throw new Error('re-parsed followup mismatch');
+		if (!reparsed.v2PlanOutline) throw new Error('re-parsed v2PlanOutline missing');
+		if (!reparsed.v2GraphJson) throw new Error('re-parsed v2GraphJson missing');
+
+		console.log('  ✅ V2 round-trip passed');
+		return true;
+	} catch (e) {
+		console.error(`  ❌ V2 round-trip FAILED: ${e}`);
+		return false;
+	}
+}
+
 console.log('Starting AiSearchAnalysisDoc tests...\n');
 console.log('='.repeat(60));
 
@@ -139,6 +185,13 @@ try {
 	allPassed = testRoundtrip('Case 5: CJK characters', md5) && allPassed;
 } catch (e) {
 	console.error(`Failed to read case5: ${e}`);
+	allPassed = false;
+}
+
+try {
+	allPassed = testV2Roundtrip() && allPassed;
+} catch (e) {
+	console.error(`V2 roundtrip failed: ${e}`);
 	allPassed = false;
 }
 
