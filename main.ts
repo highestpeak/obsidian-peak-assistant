@@ -26,6 +26,7 @@ import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
 import { ProviderServiceFactory } from '@/core/providers/base/factory';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
+import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { createPluginDirContentProvider } from '@/core/template/PluginDirContentProvider';
 import { createVaultContentProvider } from '@/core/template/VaultContentProvider';
@@ -303,6 +304,9 @@ export default class MyPlugin extends Plugin {
 
 		// Close global SQLite store (sync; already imported at top)
 		sqliteStoreManager.close();
+
+		// Abort all background analysis sessions
+		BackgroundSessionManager.clearInstance();
 
 		// Break singletons so old bundle can be GC'd
 		AppContext.clearForUnload();
