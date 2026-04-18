@@ -2,13 +2,15 @@ import React, { useCallback, useState } from 'react';
 import { ReactFlow, Background, MiniMap, Controls, type NodeMouseHandler } from '@xyflow/react';
 import type { LensType, LensGraphData, LensNode } from './types';
 import { LensNodeComponent } from './nodes/LensNodeComponent';
+import { SwimlaneNode } from './nodes/SwimlaneNode';
+import { TimelineAxisNode } from './nodes/TimelineAxisNode';
 import { LensEdgeComponent } from './edges/LensEdgeComponent';
 import { useLensLayout } from './hooks/useLensLayout';
 import { Button } from '@/ui/component/shared-ui/button';
 import { Network, GitBranch, Waypoints, Clock, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 
-const nodeTypes = { lensNode: LensNodeComponent };
+const nodeTypes = { lensNode: LensNodeComponent, swimlane: SwimlaneNode, timelineAxis: TimelineAxisNode };
 const edgeTypes = { lensEdge: LensEdgeComponent };
 
 const LENS_TOOLTIPS: Record<LensType, string> = {
