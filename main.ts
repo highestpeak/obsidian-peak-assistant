@@ -27,6 +27,7 @@ import { ProviderServiceFactory } from '@/core/providers/base/factory';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { createPluginDirContentProvider } from '@/core/template/PluginDirContentProvider';
+import { createVaultContentProvider } from '@/core/template/VaultContentProvider';
 import { clearTemplateEngineForUnload } from '@/core/template-engine-helper';
 import { clearFormatUtilsCaches } from '@/core/utils/format-utils';
 import { getPluginDirAbsolute } from '@/core/utils/obsidian-utils';
@@ -100,7 +101,8 @@ export default class MyPlugin extends Plugin {
 			const pluginDirAbsolute = getPluginDirAbsolute(this.manifest.id, this.app);
 			this.templateManager = new TemplateManager(createPluginDirContentProvider(pluginDirAbsolute));
 		} catch (e) {
-			console.warn('[Peak Assistant] TemplateManager not available (plugin dir unresolved); prompts will use vault overrides only.', e);
+			console.warn('[Peak Assistant] PluginDirContentProvider not available, using vault adapter fallback.', e);
+			this.templateManager = new TemplateManager(createVaultContentProvider(this.app, this.manifest.id));
 		}
 		if (this.templateManager) {
 			try {
