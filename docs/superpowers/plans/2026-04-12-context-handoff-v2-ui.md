@@ -1,4 +1,5 @@
 # Context Handoff: V2 Vault Search UI
+> **STATUS: SUPERSEDED**
 
 > **For the next session**: Read this file first. It contains everything you need to continue work.
 
