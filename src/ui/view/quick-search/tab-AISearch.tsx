@@ -562,8 +562,18 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const { handleOpenInChat, handleCopyAll, handleAutoSave } = useAIAnalysisResult();
 
 	// Auto-save when analysis completes (if enabled). Skip when state was restored from Recent (no duplicate save).
+	const v2FullyDone = useSearchSessionStore(s =>
+		!s.v2Active || (
+			s.v2ReportComplete &&
+			s.v2PlanSections.length > 0 &&
+			s.v2PlanSections.every(sec => sec.status === 'done') &&
+			!s.v2SummaryStreaming
+		)
+	);
+
 	useEffect(() => {
 		if (!analysisCompleted) return;
+		if (!v2FullyDone) return;          // wait for V2 sections + summary to finish
 		if (restoredFromHistory) return;
 		const autoSaveEnabled = AppContext.getInstance().settings.search.aiAnalysisAutoSaveEnabled ?? true;
 		if (!autoSaveEnabled) return;
@@ -571,7 +581,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		if (!sessionId) return;
 
 		handleAutoSave();
-	}, [analysisCompleted, restoredFromHistory, error, sessionId, handleAutoSave]);
+	}, [analysisCompleted, v2FullyDone, restoredFromHistory, error, sessionId, handleAutoSave]);
 
 	const handleSynthesize = useCallback(async () => {
 		const store = useSearchSessionStore.getState();
