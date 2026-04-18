@@ -495,6 +495,7 @@ export enum StreamTriggerName {
 	SEARCH_MERMAID_FIX = 'search-mermaid-fix',
 	DOC_SIMPLE_AGENT = 'doc-simple-agent',
 	FOLLOW_UP_QUESTION_AGENT = 'follow-up-question-agent',
+	MOBILE_VAULT_SEARCH_AGENT = 'mobile-vault-search-agent',
 }
 
 export enum ToolEvent {
