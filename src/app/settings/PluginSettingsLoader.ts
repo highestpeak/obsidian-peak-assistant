@@ -299,11 +299,10 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	// Dev tools setting
 	settings.enableDevTools = getBoolean(raw?.enableDevTools, false);
 
-	// Vault Search V2 (Claude Agent SDK). Added 2026-04-12. Pass through the
+	// Vault Search (Claude Agent SDK). Added 2026-04-12. Pass through the
 	// whole nested structure; downstream code (readProfileFromSettings) handles
 	// missing fields with defaults + fallback to llmProviderConfigs.
 	const rawVaultSearch = raw?.vaultSearch as {
-		useV2?: unknown;
 		sdkProfile?: {
 			kind?: unknown;
 			baseUrl?: unknown;
@@ -315,7 +314,6 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	} | undefined;
 	if (rawVaultSearch && typeof rawVaultSearch === 'object') {
 		settings.vaultSearch = {
-			useV2: getBoolean(rawVaultSearch.useV2, false),
 			sdkProfile: rawVaultSearch.sdkProfile && typeof rawVaultSearch.sdkProfile === 'object'
 				? {
 					kind: typeof rawVaultSearch.sdkProfile.kind === 'string'

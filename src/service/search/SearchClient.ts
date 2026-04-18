@@ -1,7 +1,5 @@
 import type { App } from 'obsidian';
 import type {
-	AiAnalyzeRequest,
-	AiAnalyzeResult,
 	SearchQuery,
 	SearchResponse,
 } from '@/service/search/types';
@@ -10,8 +8,6 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { QueryService } from './query/queryService';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { SearchSettings } from '@/app/settings/types';
-import { AISearchService } from './aiSearch/aiSearchService';
-import { StreamingCallbacks } from '../chat/types';
 
 /**
  * SearchClient (main thread, Desktop-only).
@@ -21,8 +17,6 @@ import { StreamingCallbacks } from '../chat/types';
  */
 export class SearchClient {
 	private queryService: QueryService | null = null;
-	private aiSearchService: AISearchService | null = null;
-
 	constructor(
 		private readonly app: App,
 		private readonly aiServiceManager: AIServiceManager,
@@ -35,7 +29,6 @@ export class SearchClient {
 	 */
 	async init(): Promise<void> {
 		this.queryService = new QueryService(this.aiServiceManager, this.searchSettings);
-		this.aiSearchService = new AISearchService(this.aiServiceManager, this.searchSettings);
 	}
 
 	async search(query: SearchQuery, enableLLMRerank: boolean = false): Promise<SearchResponse & { duration: number }> {
@@ -53,57 +46,6 @@ export class SearchClient {
 		}
 
 		return await this.queryService.vectorSearch(query);
-	}
-
-	/**
-	 * Execute AI analysis with optional streaming callbacks.
-	 * @param req - AI analysis request
-	 * @param callbacks - Optional streaming callbacks for progressive updates
-	 * @returns AI analysis result with duration
-	 * @deprecated use AISearchAgent instead.
-	 */
-	async aiAnalyze(
-		req: AiAnalyzeRequest,
-		callbacks?: StreamingCallbacks
-	): Promise<AiAnalyzeResult & { duration: number }> {
-		if (!this.aiSearchService) {
-			throw new Error('SearchClient not initialized. Call init() first.');
-		}
-
-		const q = req?.query ?? '';
-		const topK = Number(req?.topK ?? 8);
-		const webEnabled = req?.webEnabled ?? false;
-
-		try {
-			// 1. Execute search with LLM reranking enabled for AI analysis
-			const results = await this.search({ text: q, topK, searchMode: 'fulltext' } as any, true);
-			// Mark all results as 'local' source (web results would be added separately)
-			const sources = results.items.map(item => ({ ...item, source: 'local' as const }));
-			const searchDuration = results.duration;
-
-			// Notify sources are available immediately via callback
-			callbacks?.onComplete?.('other', '', { sources, duration: searchDuration });
-
-			// 2. Generate AI analysis (summary, graph, topics) - parallel execution where possible
-			// Supports optional streaming callbacks for progressive updates
-			const analysis = await this.aiSearchService.analyze({
-				query: q,
-				sources,
-				webEnabled,
-				callbacks,
-			});
-
-			const result = {
-				...analysis,
-				sources,
-				duration: searchDuration,
-			};
-
-			return result;
-		} catch (error) {
-			callbacks?.onError?.('other', error);
-			throw error;
-		}
 	}
 
 	async getRecent(topK?: number): Promise<SearchResponse['items']> {
@@ -142,7 +84,6 @@ export class SearchClient {
 	 */
 	dispose(): void {
 		this.queryService = null;
-		this.aiSearchService = null;
 	}
 }
 

@@ -12,7 +12,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | M. 移动端支持 | iCloud同步 + 去RAG + Claude长上下文 | 完成 (11 commits) |
 | B. UX 打磨 | degrades-UX 的问题 + ui-improvements 计划 | 完成 (16项) |
 | C. 技术债清理 | 死代码/桩代码/注释代码/空文件 | 完成 (9项) |
-| D. 代码拆分重构 | 大文件拆分 (>600行的20+文件) | 进行中 (useSearchSession已拆) |
+| D. 代码拆分重构 | 大文件拆分 (>600行的20+文件) | 大部分完成 (7个大文件已拆) |
 | E. Phase 0 清理 | 归档docs、标记已完成计划、更新过时文档 | 完成 |
 | F. Provider v2 | 删 Vercel AI SDK → Agent SDK query() | 未开始 |
 | G. Agent Trace | 可观测性 (阻塞于 F) | 未开始 |

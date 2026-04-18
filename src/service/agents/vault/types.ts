@@ -1,63 +1,14 @@
 /**
- * Types for the VaultSearchAgent pipeline.
- * HITL-first: classify → decompose → intuitionFeedback → recon → presentPlan → report
+ * Shared types for VaultSearchAgent / VaultSearchAgentSDK pipelines.
+ * UI components import plan-presentation and event types from here.
  */
 
-import type { LLMStreamEvent, LLMUsage } from '@/core/providers/types';
-import type { SearchAgentResult } from '../shared-types';
-import type { UserFeedback, PeakAgentEvent } from '../core/types';
-import type { QueryClassifierOutput } from '@/core/schemas/agents/search-agent-schemas';
-import type { ProbeResult } from './phases/probe';
+import type { LLMStreamEvent } from '@/core/providers/types';
+import type { PeakAgentEvent } from '../core/types';
 
 // ---------------------------------------------------------------------------
-// Pipeline phase outputs
+// Plan presentation types (used by HITL UI)
 // ---------------------------------------------------------------------------
-
-/** Output from the Classify phase. */
-export interface ClassifyResult extends QueryClassifierOutput {
-	/** Initial file leads from quick FTS/vector search. */
-	initialLeads: Array<{
-		path: string;
-		title: string;
-		score: number;
-	}>;
-}
-
-/** A single physical search task produced by the Decompose phase. */
-export interface PhysicalTask {
-	id: string;
-	description: string;
-	/** Target areas (folder paths or concepts) to search. */
-	targetAreas: string[];
-	/** Hints for which tools to use. */
-	toolHints: string[];
-}
-
-/** Output from the Decompose phase. */
-export interface DecomposeResult {
-	tasks: PhysicalTask[];
-}
-
-/** Output from the IntuitionFeedback phase. */
-export interface IntuitionFeedbackResult {
-	/** Areas where the intuition map lacks coverage for this query. */
-	gaps: string[];
-	/** Human-readable log entry for debugging. */
-	logEntry: string;
-}
-
-/** A single piece of evidence: a file path + the reason it was discovered. */
-export interface ReconEvidence {
-	path: string;
-	reason: string;
-	/** Which physical task discovered this. */
-	taskId: string;
-}
-
-/** Output from the Recon phase. */
-export interface ReconResult {
-	evidence: ReconEvidence[];
-}
 
 /** A topic cluster discovered during recon with coverage assessment. */
 export interface DiscoveryGroup {
@@ -70,7 +21,7 @@ export interface DiscoveryGroup {
 /** Snapshot shown to the user at the HITL plan-presentation pause. */
 export interface PlanSnapshot {
 	/** Evidence collected so far. */
-	evidence: ReconEvidence[];
+	evidence: Array<{ path: string; reason: string; taskId: string }>;
 	/** LLM-generated one-paragraph report plan. */
 	proposedOutline: string;
 	/** Suggested McKinsey-style section titles. */
@@ -86,7 +37,7 @@ export interface PlanSnapshot {
 }
 
 // ---------------------------------------------------------------------------
-// Session state
+// Phase & events
 // ---------------------------------------------------------------------------
 
 export type VaultSearchPhase =
@@ -97,28 +48,6 @@ export type VaultSearchPhase =
 	| 'present-plan'
 	| 'report'
 	| 'complete';
-
-/** Full session state for VaultSearchAgent. */
-export interface VaultSearchState {
-	userQuery: string;
-	phase: VaultSearchPhase;
-	probe?: ProbeResult;
-	classify?: ClassifyResult;
-	decompose?: DecomposeResult;
-	intuitionFeedback?: IntuitionFeedbackResult;
-	recon?: ReconResult;
-	/** Evidence carried over from previous rounds (accumulated across all redirect loops). */
-	accumulatedEvidence?: ReconEvidence[];
-	planSnapshot?: PlanSnapshot;
-	result?: SearchAgentResult;
-	tokenUsage: LLMUsage;
-	/** History of user feedback messages (for re-entry after HITL redirects). */
-	conversationHistory: UserFeedback[];
-}
-
-// ---------------------------------------------------------------------------
-// Events
-// ---------------------------------------------------------------------------
 
 /** HITL pause event yielded by the agent to request user input. */
 export interface VaultHitlPauseEvent {
@@ -145,15 +74,4 @@ export function isHitlPauseEvent(ev: VaultSearchEvent): ev is VaultHitlPauseEven
 
 export function isPhaseTransitionEvent(ev: VaultSearchEvent): ev is VaultPhaseTransitionEvent {
 	return ev.type === 'phase-transition';
-}
-
-// ---------------------------------------------------------------------------
-// Options
-// ---------------------------------------------------------------------------
-
-export interface VaultSearchOptions {
-	/** Max explore rounds before auto-report. */
-	maxReconRounds?: number;
-	/** Max wall-clock time in ms. */
-	maxWallClockMs?: number;
 }

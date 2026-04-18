@@ -1,7 +1,6 @@
 /**
  * VaultSearchAgentSDK — thin outer shell over Claude Agent SDK query() for
- * vault search. Replaces the old hand-rolled classify/decompose/recon
- * pipeline when settings.vaultSearch.useV2 is enabled.
+ * vault search. This is the sole desktop search path (V1 pipeline removed).
  *
  * Flow:
  *   1. warmup() installs renderer compat patches + probes node binary

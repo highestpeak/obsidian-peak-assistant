@@ -453,10 +453,9 @@ export interface MyPluginSettings {
 	};
 
 	/**
-	 * Vault Search V2 (Claude Agent SDK). Optional until feature flag is flipped.
+	 * Vault Search (Claude Agent SDK).
 	 */
 	vaultSearch?: {
-		useV2?: boolean;
 		sdkProfile?: {
 			kind?: 'anthropic-direct' | 'openrouter' | 'litellm' | 'custom';
 			baseUrl?: string;
@@ -498,7 +497,6 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	},
 
 	vaultSearch: {
-		useV2: false,
 		sdkProfile: {
 			kind: 'anthropic-direct',
 			baseUrl: 'https://api.anthropic.com',

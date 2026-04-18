@@ -91,7 +91,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 
 	if (loading) {
 		return (
-			<div className={cn('pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-h-full pktw-gap-4', className)}>
+			<div className={cn('pktw-flex pktw-flex-col pktw-items-center pktw-justify-start pktw-h-full pktw-gap-4 pktw-pt-4', className)}>
 				{loadingSteps && loadingSteps.length > 0 ? (
 					<div className="pktw-flex pktw-flex-col pktw-gap-2 pktw-w-full pktw-max-w-[360px]">
 						{loadingSteps.map((s) => (
