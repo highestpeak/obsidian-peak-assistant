@@ -1,5 +1,5 @@
 
-import { Notice } from 'obsidian';
+import { Notice, normalizePath } from 'obsidian';
 import type { ChatProjectMeta } from '@/service/chat/types';
 import { ViewManager } from '@/app/view/ViewManager';
 import { Command, Modal } from 'obsidian';
@@ -360,6 +360,21 @@ function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 					for await (const _ev of agent.streamRun({}, async (result) => {
 						const stateRepo = sqliteStoreManager.getIndexStateRepo();
 						await stateRepo.set('knowledge_intuition_json', JSON.stringify(result.json));
+						// Export to vault file for mobile iCloud sync
+						try {
+							const vaultApp = viewManager.getApp();
+							const pluginId = viewManager.appContext.plugin.manifest.id;
+							const exportPath = normalizePath(
+								`${vaultApp.vault.configDir}/plugins/${pluginId}/data/vault-intuition.json`
+							);
+							const exportDir = exportPath.substring(0, exportPath.lastIndexOf('/'));
+							if (!(await vaultApp.vault.adapter.exists(exportDir))) {
+								await vaultApp.vault.adapter.mkdir(exportDir);
+							}
+							await vaultApp.vault.adapter.write(exportPath, JSON.stringify(result.json, null, 2));
+						} catch (exportErr) {
+							console.warn('[peak-analyze-vault-intuition] Failed to export intuition map to vault file:', exportErr);
+						}
 					})) {
 						// consume stream
 					}
