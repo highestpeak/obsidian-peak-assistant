@@ -106,21 +106,21 @@ export const HomeViewComponent: React.FC = () => {
 					<h2 className="pktw-text-lg pktw-font-semibold pktw-text-foreground pktw-mb-4">
 						Quick Actions
 					</h2>
-					<div className="pktw-flex pktw-flex-row pktw-gap-6">
+					<div className="pktw-flex pktw-flex-row pktw-gap-3">
 						<Button
-							className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-6 pktw-py-4 pktw-bg-secondary pktw-text-secondary-foreground hover:pktw-bg-primary hover:pktw-text-primary-foreground pktw-rounded-lg pktw-transition-colors pktw-font-medium"
+							className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-4 pktw-py-2 pktw-bg-secondary pktw-text-secondary-foreground pktw-border-l-2 pktw-border-[#7c3aed] hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-transition-colors pktw-text-sm pktw-font-medium"
 							onClick={handleCreateConversation}
 							title="Start a new conversation"
 						>
-							<MessageSquare className="pktw-w-6 pktw-h-6" />
+							<MessageSquare className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
 							<span>New Conversation</span>
 						</Button>
 						<Button
-							className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-6 pktw-py-4 pktw-bg-secondary pktw-text-secondary-foreground hover:pktw-bg-primary hover:pktw-text-primary-foreground pktw-rounded-lg pktw-transition-colors pktw-font-medium"
+							className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-4 pktw-py-2 pktw-bg-secondary pktw-text-secondary-foreground pktw-border-l-2 pktw-border-[#7c3aed] hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-transition-colors pktw-text-sm pktw-font-medium"
 							onClick={handleCreateProject}
 							title="Create a new project"
 						>
-							<Folder className="pktw-w-6 pktw-h-6" />
+							<Folder className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
 							<span>New Project</span>
 						</Button>
 					</div>
