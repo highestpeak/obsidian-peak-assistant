@@ -895,7 +895,6 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 			duration: snapshot.duration ?? null,
 			usage: snapshot.usage ?? null,
 			title: snapshot.title ?? null,
-			steps: [],
 			hasAnalyzed: true,
 			restoredFromHistory: true,
 			restoredFromVaultPath: sourceVaultPath ?? null,
@@ -917,70 +916,7 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 		return;
 	}
 
-	// V1 fallback path
-	const steps: import('../types/search-steps').SearchStep[] = [];
-
-	// Report step: merge summary text + dashboard blocks into a single report step
-	const summaryText = getSnapshotSummary(snapshot);
-	const hasSummary = !!(summaryText && summaryText !== '(empty)');
-	const hasBlocks = !!(snapshot.dashboardBlocks && snapshot.dashboardBlocks.length > 0);
-	if (hasSummary || hasBlocks) {
-		steps.push({
-			id: 'report-restored',
-			type: 'report',
-			status: 'completed',
-			startedAt,
-			endedAt: startedAt + (snapshot.duration ?? 0),
-			blocks: snapshot.dashboardBlocks ?? [],
-			blockOrder: (snapshot.dashboardBlocks ?? []).map((b: any) => b.id),
-			completedBlocks: (snapshot.dashboardBlocks ?? []).map((b: any) => b.id),
-			summary: hasSummary ? summaryText : undefined,
-		});
-	}
-
-	// Sources step
-	if (snapshot.sources && snapshot.sources.length > 0) {
-		steps.push({
-			id: 'sources-restored',
-			type: 'sources',
-			status: 'completed',
-			startedAt,
-			endedAt: startedAt + (snapshot.duration ?? 0),
-			sources: snapshot.sources,
-			evidenceIndex: snapshot.evidenceIndex ?? {},
-		});
-	}
-
-	// Graph step
-	const ovVers = snapshot.overviewMermaidVersions ?? [];
-	const mindflow = (snapshot.mindflowMermaid ?? '').trim();
-	if (mindflow || ovVers.length > 0) {
-		steps.push({
-			id: 'graph-restored',
-			type: 'graph',
-			status: 'completed',
-			startedAt,
-			endedAt: startedAt + (snapshot.duration ?? 0),
-			graphData: snapshot.graph ?? null,
-			mindflowMermaid: mindflow,
-			overviewMermaidVersions: ovVers,
-			overviewMermaidActiveIndex: typeof snapshot.overviewMermaidActiveIndex === 'number' ? snapshot.overviewMermaidActiveIndex : 0,
-		});
-	}
-
-	// Follow-up step
-	if (snapshot.suggestedFollowUpQuestions && snapshot.suggestedFollowUpQuestions.length > 0) {
-		steps.push({
-			id: 'followup-restored',
-			type: 'followup',
-			status: 'completed',
-			startedAt,
-			endedAt: startedAt + (snapshot.duration ?? 0),
-			questions: snapshot.suggestedFollowUpQuestions,
-		});
-	}
-
-	// Populate the new store
+	// Non-V2 snapshots: restore minimal session state for display
 	useSearchSessionStore.setState({
 		id: snapshot.analysisStartedAtMs ? `restored:${snapshot.analysisStartedAtMs}` : `restored:${now}`,
 		query: snapshot.query ?? '',
@@ -989,7 +925,6 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 		duration: snapshot.duration ?? null,
 		usage: snapshot.usage ?? null,
 		title: snapshot.title ?? null,
-		steps,
 		hasAnalyzed: true,
 		restoredFromHistory: true,
 		restoredFromVaultPath: sourceVaultPath ?? null,

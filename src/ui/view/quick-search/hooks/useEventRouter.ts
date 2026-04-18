@@ -22,7 +22,7 @@ import type { SearchAgentResult } from '@/service/agents/shared-types';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName, UISignalChannel } from '@/core/providers/types';
 import { getDeltaEventDeltaText } from '@/core/providers/helpers/stream-helper';
-import { createStep, v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '../types/search-steps';
+import { v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '../types/search-steps';
 import type { V2ToolStep } from '../types/search-steps';
 import type { V2Section } from '../store/searchSessionStore';
 
@@ -59,16 +59,6 @@ export function useEventRouter() {
 		const joined = chunks.join('');
 		summaryBufferRef.current = [];
 
-		// New store: append to summary step
-		const s = store.getState();
-		const hasSummary = s.steps.some((st) => st.type === 'summary');
-		if (hasSummary) {
-			store.getState().updateStep('summary', (step) => ({
-				...step,
-				chunks: [...step.chunks, joined],
-			}));
-		}
-
 		// Bridge: old store
 		useAIAnalysisSummaryStore.getState().appendSummaryDelta(joined);
 	}, [store]);
@@ -88,29 +78,14 @@ export function useEventRouter() {
 	// -------------------------------------------------------------------
 
 	const applySearchResult = useCallback((result: SearchAgentResult) => {
-		const ss = store.getState();
-
-		// Summary: prefer streamed content
+		// Summary
 		if (result.summary) {
-			const summaryStep = ss.getStep('summary');
-			const streamed = (summaryStep?.chunks ?? []).join('').trim();
-			if (streamed.length === 0) {
-				// Old store bridge
-				useAIAnalysisSummaryStore.getState().setSummary(result.summary);
-			}
+			// Bridge: old store
+			useAIAnalysisSummaryStore.getState().setSummary(result.summary);
 		}
 
 		// Sources
 		if (result.sources) {
-			// Ensure sources step exists
-			if (!ss.steps.some((st) => st.type === 'sources')) {
-				store.getState().pushStep(createStep('sources'));
-			}
-			store.getState().updateStep('sources', (step) => ({
-				...step,
-				sources: result.sources,
-				evidenceIndex: result.evidenceIndex ?? step.evidenceIndex,
-			}));
 			// Bridge
 			useAIAnalysisResultStore.getState().setSources(result.sources);
 		}
@@ -118,46 +93,18 @@ export function useEventRouter() {
 			useAIAnalysisResultStore.getState().setEvidenceIndex(result.evidenceIndex ?? {});
 		}
 
-		// Dashboard blocks + summary
-		if (result.dashboardBlocks || result.summary) {
-			// Ensure report step exists
-			if (!ss.steps.some((st) => st.type === 'report')) {
-				store.getState().pushStep(createStep('report'));
-			}
-			store.getState().updateStep('report', (step) => ({
-				...step,
-				blocks: result.dashboardBlocks ?? step.blocks,
-				summary: result.summary ?? step.summary,
-			}));
-			// Bridge
-			if (result.dashboardBlocks) {
-				useAIAnalysisResultStore.getState().setDashboardBlocks(result.dashboardBlocks);
-			}
+		// Dashboard blocks
+		if (result.dashboardBlocks) {
+			useAIAnalysisResultStore.getState().setDashboardBlocks(result.dashboardBlocks);
 		}
 
 		// Topics
 		if (result.topics) {
-			// Bridge
 			useAIAnalysisResultStore.getState().setTopics(result.topics);
 		}
 
 		// Graph (overview mermaid)
 		if (result.evidenceMermaidOverviewAgent != null) {
-			if (!ss.steps.some((st) => st.type === 'graph')) {
-				store.getState().pushStep(createStep('graph'));
-			}
-			store.getState().updateStep('graph', (step) => {
-				const versions = [...step.overviewMermaidVersions];
-				const code = result.evidenceMermaidOverviewAgent!;
-				if (versions.length === 0 || versions[versions.length - 1] !== code) {
-					versions.push(code);
-				}
-				return {
-					...step,
-					overviewMermaidVersions: versions,
-					overviewMermaidActiveIndex: versions.length - 1,
-				};
-			});
 			// Bridge
 			useAIAnalysisResultStore.getState().pushOverviewMermaidVersion(
 				result.evidenceMermaidOverviewAgent,
@@ -212,8 +159,6 @@ export function useEventRouter() {
 			}
 
 			case 'phase-transition': {
-				const ev = event as unknown as VaultPhaseTransitionEvent;
-				store.getState().pushPhaseStep(ev.to);
 				publish('phase-transition', event);
 				break;
 			}
@@ -224,15 +169,6 @@ export function useEventRouter() {
 					event.triggerName === StreamTriggerName.SEARCH_SUMMARY ||
 					event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
 				) {
-					// Ensure summary step exists
-					const ss = store.getState();
-					if (!ss.steps.some((st) => st.type === 'summary')) {
-						store.getState().pushStep(createStep('summary'));
-					}
-					store.getState().updateStep('summary', (step) => ({
-						...step,
-						streaming: true,
-					}));
 					// Bridge
 					if (!useAIAnalysisSummaryStore.getState().isSummaryStreaming) {
 						useAIAnalysisSummaryStore.getState().startSummaryStreaming();
@@ -361,145 +297,18 @@ export function useEventRouter() {
 				// Overview mermaid
 				if (ev.channel === UISignalChannel.OVERVIEW_MERMAID && typeof ev.payload?.mermaid === 'string') {
 					const code = ev.payload.mermaid.trim();
-					// New store
-					const ss = store.getState();
-					if (!ss.steps.some((st) => st.type === 'graph')) {
-						store.getState().pushStep(createStep('graph'));
-					}
-					store.getState().updateStep('graph', (step) => {
-						const versions = [...step.overviewMermaidVersions];
-						if (versions.length === 0 || versions[versions.length - 1] !== code) {
-							versions.push(code);
-						}
-						return {
-							...step,
-							overviewMermaidVersions: versions,
-							overviewMermaidActiveIndex: versions.length - 1,
-						};
-					});
 					// Bridge
 					useAIAnalysisResultStore.getState().pushOverviewMermaidVersion(code, { makeActive: true, dedupe: true });
 				}
 
-				// Search stage signals — route to correct step type
+				// Search stage signals — bridge to old stores
 				if (ev.channel === UISignalChannel.SEARCH_STAGE && ev.payload) {
 					const payload = ev.payload as any;
 					const stage = payload.stage as string | undefined;
-					const ss = store.getState();
 
-					// Classify: populate dimensions
-					if (stage === 'classify' && Array.isArray(payload.dimensions)) {
-							if (ss.steps.some((st) => st.type === 'classify')) {
-							store.getState().updateStep('classify', (step) => ({
-								...step,
-								dimensions: payload.dimensions.map((d: any) =>
-									typeof d === 'object' && d !== null
-										? {
-											id: d.id ?? '',
-											intent_description: d.intent_description,
-											axis: d.axis ?? 'semantic',
-											scope_constraint: d.scope_constraint ?? null,
-										}
-										: { id: String(d), intent_description: '', axis: 'semantic' as const, scope_constraint: null }
-								),
-							}));
-						}
-					}
-
-					// Decompose: populate taskCount + task descriptions
-					if (stage === 'decompose' && typeof payload.taskCount === 'number') {
-						if (ss.steps.some((st) => st.type === 'decompose')) {
-							store.getState().updateStep('decompose', (step) => ({
-								...step,
-								taskCount: payload.taskCount,
-								dimensionCount: payload.dimensionCount ?? step.dimensionCount,
-								taskDescriptions: Array.isArray(payload.tasks)
-									? payload.tasks.map((t: any) => ({
-										id: t.id ?? '',
-										description: t.description ?? '',
-										targetAreas: t.targetAreas ?? [],
-										toolHints: t.toolHints ?? [],
-										coveredDimensionIds: t.coveredDimensionIds ?? [],
-										searchPriority: t.searchPriority ?? 0,
-									}))
-									: step.taskDescriptions,
-							}));
-						}
-					}
-
-					// Report: blocks complete (stage 1 done, summary about to stream)
-				if (stage === 'report' && payload.status === 'blocks-complete') {
-					if (!ss.steps.some((st) => st.type === 'report')) {
-						store.getState().pushStep(createStep('report'));
-					}
-					store.getState().updateStep('report', (step) => ({
-						...step,
-						blocks: payload.blocks ?? step.blocks,
-						blockOrder: payload.blockOrder ?? step.blockOrder,
-					}));
-				}
-
-				// Report: stream executive summary text (stage 2)
-				if (stage === 'report' && payload.status === 'progress') {
-					if (!ss.steps.some((st) => st.type === 'report')) {
-						store.getState().pushStep(createStep('report'));
-					}
-					if (typeof payload.streamingText === 'string') {
-						store.getState().updateStep('report', (step) => ({
-							...step,
-							streamingText: payload.streamingText,
-						}));
-					}
-				}
-
-				// Plan: stream partial outline + sections while LLM is generating
-					if (stage === 'plan' && payload.status === 'progress') {
-						if (ss.steps.some((st) => st.type === 'plan')) {
-							store.getState().updateStep('plan', (step) => {
-								const prev = step.snapshot ?? { evidence: [], proposedOutline: '', suggestedSections: [], coverageAssessment: '', confidence: 'low' as const };
-								return {
-									...step,
-									snapshot: {
-										...prev,
-										proposedOutline: payload.outlineFull ?? prev.proposedOutline,
-										suggestedSections: payload.newSections
-											? [...(prev.suggestedSections ?? []), ...payload.newSections]
-											: prev.suggestedSections,
-									},
-								};
-							});
-						}
-					}
-
-					// Recon: populate progress data
-					if (stage === 'recon' || (!stage && (payload.completedIndices || payload.total != null || payload.groupId != null))) {
-						if (ss.steps.some((st) => st.type === 'recon')) {
-							store.getState().updateStep('recon', (step) => {
-								const updated = { ...step };
-								if (Array.isArray(payload.completedIndices)) {
-									updated.completedIndices = payload.completedIndices;
-									// Mark individual tasks as done when their index appears in completedIndices
-									const doneSet = new Set<number>(payload.completedIndices);
-									updated.tasks = step.tasks.map((t) =>
-										doneSet.has(t.index) && !t.done ? { ...t, done: true } : t
-									);
-								}
-								if (typeof payload.total === 'number') updated.total = payload.total;
-								if (Array.isArray(payload.dimensions)) updated.dimensions = payload.dimensions;
-								// Per-group evidence progress
-								if (payload.groupId != null) {
-									updated.groupProgress = {
-										...updated.groupProgress,
-										[payload.groupId]: {
-											completedTasks: payload.completedTasks ?? updated.groupProgress[payload.groupId]?.completedTasks ?? 0,
-											totalTasks: payload.totalTasks ?? updated.groupProgress[payload.groupId]?.totalTasks ?? 0,
-											currentPath: payload.currentPath,
-										},
-									};
-								}
-								return updated;
-							});
-						}
+					// Report: blocks complete
+					if (stage === 'report' && payload.status === 'blocks-complete' && payload.blocks) {
+						useAIAnalysisResultStore.getState().setDashboardBlocks(payload.blocks);
 					}
 				}
 
@@ -509,15 +318,6 @@ export function useEventRouter() {
 
 			// ---- Parallel stream progress ----
 			case 'parallel-stream-progress': {
-				const ev = event as any;
-				const ss = store.getState();
-				if (ss.steps.some((st) => st.type === 'recon')) {
-					store.getState().updateStep('recon', (step) => ({
-						...step,
-						completedIndices: ev.completedIndices ?? step.completedIndices,
-						total: ev.total ?? step.total,
-					}));
-				}
 				publish('parallel-stream-progress', event);
 				break;
 			}
@@ -591,17 +391,6 @@ export function useEventRouter() {
 			case 'hitl-pause': {
 				const ev = event as unknown as VaultHitlPauseEvent;
 
-				// Update plan step
-				const ss = store.getState();
-				if (ss.steps.some((st) => st.type === 'plan')) {
-					store.getState().updateStep('plan', (step) => ({
-						...step,
-						snapshot: ev.snapshot,
-						hitlPauseId: ev.pauseId,
-						hitlPhase: ev.phase,
-					}));
-				}
-
 				store.getState().setHitlPause({
 					pauseId: ev.pauseId,
 					phase: ev.phase,
@@ -618,20 +407,6 @@ export function useEventRouter() {
 
 			// ---- Agent progress / stats ----
 			case 'agent-step-progress': {
-				// Capture in recon step for displaying plan/tool details per task
-				const progEv = event as any;
-				const ss = store.getState();
-				if (ss.steps.some((st) => st.type === 'recon' && st.status === 'running')) {
-					store.getState().updateStep('recon', (step) => ({
-						...step,
-						progressLog: [...step.progressLog, {
-							label: progEv.stepLabel ?? '',
-							detail: progEv.detail ?? '',
-							timestamp: Date.now(),
-							taskIndex: progEv.taskIndex,
-						}],
-					}));
-				}
 				publish('agent-step-progress', event);
 				break;
 			}

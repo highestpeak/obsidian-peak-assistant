@@ -24,7 +24,6 @@ import { useContinueAnalysisFollowupChatConfig } from './hooks/useAIAnalysisPost
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { buildDebugInfoText } from './callbacks/copyDebugInfo';
 import { V2Footer } from './components/V2Footer';
-import { V1Footer } from './components/V1Footer';
 import { AISearchNavBar } from './components/AISearchNavBar';
 
 interface AISearchTabProps {
@@ -42,7 +41,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const sessionId = useSearchSessionStore((s) => s.id);
 	const hasStartedStreaming = useSearchSessionStore((s) => s.hasStartedStreaming);
 	const hasAnalyzed = useSearchSessionStore((s) => s.hasAnalyzed);
-	const newPipelineSteps = useSearchSessionStore((s) => s.steps);
 	const error = useSearchSessionStore((s) => s.error);
 	const restoredFromHistory = useSearchSessionStore((s) => s.restoredFromHistory);
 	const restoredFromVaultPath = useSearchSessionStore((s) => s.restoredFromVaultPath);
@@ -118,10 +116,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		const els = contentContainerRef.current?.querySelectorAll(`[data-step="${stepType}"]`);
 		if (els?.length) (els[els.length - 1] as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
 	};
-
-	const isNewPipeline = newPipelineSteps.length > 0;
-	const hasNewPipelineReport = newPipelineSteps.some((s) => s.type === 'report');
-	const hasNewPipelineSources = newPipelineSteps.some((s) => s.type === 'sources');
 
 	const scrollToBlock = (blockId: string) => {
 		document.getElementById(`block-${blockId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -256,8 +250,8 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		}
 	}, []);
 
-	// Nav bar condition: show when steps have content OR is streaming (supports both old and new pipeline)
-	const showNavBar = !isV2Active && (isNewPipeline || getHasCompletedContent() || (hasStartedStreaming && !analysisCompleted));
+	// Nav bar condition: only shown for legacy old-pipeline content
+	const showNavBar = !isV2Active && (getHasCompletedContent() || (hasStartedStreaming && !analysisCompleted));
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
@@ -266,9 +260,9 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 				<AISearchNavBar
 					titleDisplay={titleDisplay}
 					titleFromStore={titleFromStore}
-					isNewPipeline={isNewPipeline}
-					hasNewPipelineReport={hasNewPipelineReport}
-					hasNewPipelineSources={hasNewPipelineSources}
+					isNewPipeline={false}
+					hasNewPipelineReport={false}
+					hasNewPipelineSources={false}
 					isAnalyzing={isAnalyzing}
 					analysisCompleted={analysisCompleted}
 					hasStartedStreaming={hasStartedStreaming}
@@ -334,26 +328,6 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 			{isV2Active && (isAnalyzing || analysisCompleted) ? (
 				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} />
 			) : null}
-			<V1Footer
-				isV2Active={isV2Active}
-				hasAnalyzed={hasAnalyzed}
-				isAnalyzing={isAnalyzing}
-				analysisCompleted={analysisCompleted}
-				isNewPipeline={isNewPipeline}
-				copied={copied}
-				setCopied={setCopied}
-				debugCopied={debugCopied}
-				showContinueAnalysis={showContinueAnalysis}
-				setShowContinueAnalysis={setShowContinueAnalysis}
-				fullAnalysisFollowUp={fullAnalysisFollowUp}
-				openAnalysisPath={openAnalysisPath}
-				onClose={onClose}
-				handleCopyAll={handleCopyAll}
-				handleCopyDebugInfo={handleCopyDebugInfo}
-				handleOpenInChat={handleOpenInChat}
-				setShowSaveDialog={setShowSaveDialog}
-				continueAnalysisBlockRef={continueAnalysisBlockRef}
-			/>
 
 			{/* V2 floating continue analysis input */}
 			{showV2ContinueInput && (

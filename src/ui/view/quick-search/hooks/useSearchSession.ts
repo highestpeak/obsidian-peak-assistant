@@ -163,8 +163,6 @@ export function useSearchSession() {
 					if (!agent) return;
 					store.getState().clearHitlPause();
 					useAIAnalysisRuntimeStore.getState().clearHitlPause();
-					// Clear hitlPauseId from plan step so HitlInlineInput hides immediately
-					store.getState().updateStep('plan', (step) => ({ ...step, hitlPauseId: undefined }));
 					await consumeStream(agent.continueWithFeedback(feedback));
 					if (!store.getState().hitlState) {
 						store.getState().markCompleted();

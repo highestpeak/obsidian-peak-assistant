@@ -13,8 +13,7 @@ import { mergeTokenUsage } from '@/core/providers/types';
 import type { AnalysisMode } from '@/service/agents/shared-types';
 import type { PlanSnapshot } from '@/service/agents/vault/types';
 import type { UserFeedback } from '@/service/agents/core/types';
-import type { SearchStep, SearchStepType, V2ToolStep, V2TimelineItem, V2Source } from '../types/search-steps';
-import { PHASE_TO_STEP_TYPE, createStep } from '../types/search-steps';
+import type { V2ToolStep, V2TimelineItem, V2Source } from '../types/search-steps';
 import { exportGraphJson } from './aiGraphStore';
 import { useGraphAgentStore } from './graphAgentStore';
 import {
@@ -79,9 +78,6 @@ interface SearchSessionState extends V2SessionState {
 	hasStartedStreaming: boolean;
 	hasAnalyzed: boolean;
 
-	// --- Steps ---
-	steps: SearchStep[];
-
 	// --- Control state ---
 	triggerAnalysis: number;
 	hitlState: HitlState | null;
@@ -118,13 +114,6 @@ interface SearchSessionActions {
 	toggleWeb: (currentQuery: string) => string;
 	updateWebFromQuery: (query: string) => void;
 	setAutoSaveState: (s: { lastRunId?: string | null; lastSavedSummaryHash?: string | null; lastSavedPath?: string | null }) => void;
-
-	// Step management
-	pushStep: (step: SearchStep) => void;
-	updateStep: <T extends SearchStepType>(type: T, updater: (step: Extract<SearchStep, { type: T }>) => Extract<SearchStep, { type: T }>) => void;
-	pushPhaseStep: (phaseName: string) => void;
-	completeStep: (type: SearchStepType) => void;
-	markAllStepsCompleted: () => void;
 
 	// V2 step management
 	setV2Active: (active: boolean) => void;
@@ -176,36 +165,9 @@ interface SearchSessionActions {
 	resetAll: () => void;
 
 	// Computed
-	getStep: <T extends SearchStepType>(type: T) => Extract<SearchStep, { type: T }> | undefined;
 	getIsAnalyzing: () => boolean;
 	getIsCompleted: () => boolean;
 	getHasContent: () => boolean;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Mark all currently running steps as completed. */
-function completeRunningSteps(steps: SearchStep[]): SearchStep[] {
-	const now = Date.now();
-	return steps.map((step) => {
-		if (step.status !== 'running') return step;
-		return { ...step, status: 'completed' as const, endedAt: now };
-	});
-}
-
-/** Find the last step of a given type. */
-function findLastStepOfType<T extends SearchStepType>(
-	steps: SearchStep[],
-	type: T,
-): { index: number; step: Extract<SearchStep, { type: T }> } | undefined {
-	for (let i = steps.length - 1; i >= 0; i--) {
-		if (steps[i].type === type) {
-			return { index: i, step: steps[i] as Extract<SearchStep, { type: T }> };
-		}
-	}
-	return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -229,8 +191,6 @@ const INITIAL_STATE: SearchSessionState = {
 	isInputFrozen: false,
 	hasStartedStreaming: false,
 	hasAnalyzed: false,
-
-	steps: [],
 
 	// V2 state from v2SessionTypes.ts
 	...V2_INITIAL_STATE,
@@ -279,7 +239,6 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			hitlState: null,
 			hitlFeedbackCallback: null,
 			dashboardUpdatedLine: '',
-			steps: [],
 			v2Active: false,
 			v2Steps: [],
 			v2ReportChunks: [],
@@ -307,15 +266,6 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 
 	markCompleted: () => set((s) => {
 		const now = Date.now();
-		const completedSteps = s.steps.map((step) => {
-			if (step.status !== 'running') return step;
-			const completed = { ...step, status: 'completed' as const, endedAt: now };
-			// For summary steps, also mark streaming as false
-			if (completed.type === 'summary') {
-				return { ...completed, streaming: false };
-			}
-			return completed;
-		});
 		const completedV2Steps = s.v2Steps.map((step) => {
 			if (step.status !== 'running') return step;
 			return { ...step, status: 'done' as const, endedAt: now };
@@ -347,7 +297,6 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			status: 'completed',
 			isInputFrozen: false,
 			hasStartedStreaming: false,
-			steps: completedSteps,
 			v2Steps: completedV2Steps,
 			v2Timeline: completedTimeline,
 			v2FinalReportStartIndex: finalIdx,
@@ -398,67 +347,6 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			lastSavedPath: s.lastSavedPath !== undefined ? s.lastSavedPath : prev.autoSaveState.lastSavedPath,
 		},
 	})),
-
-	// -----------------------------------------------------------------------
-	// Step management
-	// -----------------------------------------------------------------------
-
-	pushStep: (step) => set((s) => ({ steps: [...s.steps, step] })),
-
-	updateStep: (type, updater) => set((s) => {
-		const found = findLastStepOfType(s.steps, type);
-		if (!found) return s;
-		const updated = updater({ ...found.step } as any);
-		const nextSteps = [...s.steps];
-		nextSteps[found.index] = updated;
-		return { steps: nextSteps };
-	}),
-
-	pushPhaseStep: (phaseName) => {
-		const stepType = PHASE_TO_STEP_TYPE[phaseName];
-		if (!stepType) return;
-		set((s) => {
-			const completedSteps = completeRunningSteps(s.steps);
-			const newStep = createStep(stepType);
-			// Carry forward classify dimension count to decompose step
-			if (stepType === 'decompose') {
-				const classifyStep = completedSteps.find((st) => st.type === 'classify');
-				if (classifyStep && classifyStep.type === 'classify') {
-					// Use deduplicated count (same logic as groupByAxis in ClassifyStep)
-					const uniqueIds = new Set(classifyStep.dimensions.map(d => d.id));
-					const axisCounts = { semantic: 0, topology: 0, temporal: 0 };
-					for (const d of classifyStep.dimensions) { axisCounts[(d.axis as keyof typeof axisCounts) ?? 'semantic']++; }
-					(newStep as any).dimensionCount = uniqueIds.size;
-				}
-			}
-			// Carry forward decompose task descriptions to recon step as labels
-			if (stepType === 'recon') {
-				const decomposeFound = findLastStepOfType(completedSteps, 'decompose');
-				const decomposeStep = decomposeFound?.step;
-				if (decomposeStep && decomposeStep.taskDescriptions.length > 0) {
-					(newStep as any).tasks = decomposeStep.taskDescriptions.map((td, i) => ({
-						index: i,
-						label: td.description,
-						completedFiles: 0,
-						totalFiles: 0,
-						done: false,
-					}));
-					(newStep as any).total = decomposeStep.taskDescriptions.length;
-				}
-			}
-			return { steps: [...completedSteps, newStep] };
-		});
-	},
-
-	completeStep: (type) => set((s) => {
-		const found = findLastStepOfType(s.steps, type);
-		if (!found || found.step.status !== 'running') return s;
-		const nextSteps = [...s.steps];
-		nextSteps[found.index] = { ...found.step, status: 'completed', endedAt: Date.now() };
-		return { steps: nextSteps };
-	}),
-
-	markAllStepsCompleted: () => set((s) => ({ steps: completeRunningSteps(s.steps) })),
 
 	// -----------------------------------------------------------------------
 	// V2 step management
@@ -745,11 +633,6 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	// Computed
 	// -----------------------------------------------------------------------
 
-	getStep: (type) => {
-		const found = findLastStepOfType(get().steps, type);
-		return found?.step as any;
-	},
-
 	getIsAnalyzing: () => {
 		const { status } = get();
 		return status === 'starting' || status === 'streaming';
@@ -757,7 +640,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 
 	getIsCompleted: () => get().status === 'completed',
 
-	getHasContent: () => get().steps.length > 0,
+	getHasContent: () => get().v2Active && get().v2PlanSections.length > 0,
 }));
 
 // ---------------------------------------------------------------------------
