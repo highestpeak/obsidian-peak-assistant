@@ -27,7 +27,7 @@ export const LensNodeComponent = memo(({ data }: NodeProps<LensNode>) => {
 			title={data.path}
 		>
 			<span className={`pktw-font-medium pktw-text-[#2e3338] ${
-				isHub ? 'pktw-text-sm' : 'pktw-text-xs'
+				isHub ? 'pktw-text-sm' : 'pktw-text-[13px]'
 			}`}>
 				{data.label}
 			</span>

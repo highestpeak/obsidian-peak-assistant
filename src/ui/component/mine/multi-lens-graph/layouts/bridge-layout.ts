@@ -15,28 +15,36 @@ function estimateNodeWidth(label: string): number {
 	for (const ch of label) {
 		w += ch.charCodeAt(0) > 0x7f ? 14 : 8;
 	}
-	return Math.max(120, w + 32);
+	return Math.max(100, w + 32);
 }
 
 export function computeBridgeLayout(input: LayoutInput): LayoutResult {
-	const g = new dagre.graphlib.Graph();
-	g.setDefaultEdgeLabel(() => ({}));
-	g.setGraph({ rankdir: 'LR', nodesep: 40, ranksep: 120, marginx: 20, marginy: 20 });
-
-	for (const n of input.nodes) {
-		g.setNode(n.path, { width: estimateNodeWidth(n.label), height: 44 });
-	}
-
-	for (const e of input.edges) {
-		g.setEdge(e.source, e.target);
-	}
-
-	dagre.layout(g);
-
 	const positions = new Map<string, { x: number; y: number }>();
+	if (input.nodes.length === 0) return { positions };
+
+	// Group nodes by folder
+	const groups = new Map<string, LensNodeData[]>();
 	for (const n of input.nodes) {
-		const pos = g.node(n.path);
-		if (pos) positions.set(n.path, { x: pos.x, y: pos.y });
+		const folder = n.group || n.path.split('/').slice(0, -1).join('/') || '/';
+		if (!groups.has(folder)) groups.set(folder, []);
+		groups.get(folder)!.push(n);
 	}
+
+	// Lay out each group as a column
+	const colGap = 80;
+	let xOffset = 0;
+	const rowHeight = 60;
+
+	for (const [, nodes] of groups) {
+		const colWidth = Math.max(...nodes.map((n) => estimateNodeWidth(n.label)));
+		for (let i = 0; i < nodes.length; i++) {
+			positions.set(nodes[i].path, {
+				x: xOffset + colWidth / 2,
+				y: i * rowHeight,
+			});
+		}
+		xOffset += colWidth + colGap;
+	}
+
 	return { positions };
 }
