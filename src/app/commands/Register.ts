@@ -3,6 +3,7 @@ import { Notice, normalizePath } from 'obsidian';
 import type { ChatProjectMeta } from '@/service/chat/types';
 import { ViewManager } from '@/app/view/ViewManager';
 import { Command, Modal } from 'obsidian';
+import { isDesktop } from '@/core/platform';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
@@ -631,13 +632,15 @@ export function buildCoreCommands(
 	return [
 		...buildQuickSearchCommands(viewManager),
 		...buildChatCommands(viewManager, aiManager),
-		...buildSearchIndexCommands({
-			viewManager,
-			searchClient,
-			indexInitializer,
-			searchSettings,
-			aiManager,
-		}),
+		...(isDesktop()
+			? buildSearchIndexCommands({
+					viewManager,
+					searchClient,
+					indexInitializer,
+					searchSettings,
+					aiManager,
+			  })
+			: []),
 		...buildSystemCommands({ settings, viewManager, aiManager }),
 	];
 }
