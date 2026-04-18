@@ -1,4 +1,11 @@
-import { chromium, type Browser, type Page } from 'playwright';
+import type { Browser, Page } from 'playwright';
+
+let chromium: typeof import('playwright').chromium | null = null;
+try {
+    chromium = require('playwright').chromium;
+} catch {
+    // playwright unavailable (mobile or missing install)
+}
 import { localWebSearchInputSchema, perplexityWebSearchInputSchema } from '@/core/schemas/tools/searchWeb';
 import { AgentTool, safeAgentTool } from './types';
 import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
@@ -39,6 +46,9 @@ class GoogleSearchTool {
 	 * Initialize browser instance
 	 */
 	private async getBrowser(): Promise<Browser> {
+		if (!chromium) {
+			throw new BusinessError(ErrorCode.TOOL_EXECUTION_FAILED, 'Local web search requires desktop Obsidian (Playwright not available)');
+		}
 		if (!this.browser) {
 			this.browser = await chromium.launch({
 				headless: true,

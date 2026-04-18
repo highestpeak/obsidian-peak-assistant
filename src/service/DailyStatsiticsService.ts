@@ -1,6 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { simpleGit, SimpleGit, CleanOptions } from 'simple-git';
+import type { SimpleGit } from 'simple-git';
+
+let simpleGitFactory: typeof import('simple-git').simpleGit | null = null;
+try {
+    simpleGitFactory = require('simple-git').simpleGit;
+} catch {
+    // simple-git unavailable (mobile)
+}
 import moment from 'moment';
 import { isCloseAction, isFileAction, LogMetricType } from './LogMetricRegister';
 import { ActivityRecordAchieved, loadMetricEntries } from '@/service/ActivityService';
@@ -94,7 +101,10 @@ function appendToJsonFile(dayStr: string, filePath: string, newData: any) {
 }
 
 async function getCommitStats(repoPath: string, since: Date, until: Date, ignoreFunc?: (filePath: string) => boolean): Promise<GitAnalysisResult> {
-    const git: SimpleGit = simpleGit(repoPath);
+    if (!simpleGitFactory) {
+        throw new Error('Git statistics require desktop Obsidian (simple-git not available)');
+    }
+    const git: SimpleGit = simpleGitFactory(repoPath);
     const commits = await git.log({ since: since.toISOString(), until: until.toISOString() });
 
     let charsAdded = 0;
