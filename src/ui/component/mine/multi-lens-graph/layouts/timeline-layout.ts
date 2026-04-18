@@ -13,10 +13,10 @@ export interface TimelineLayoutResult {
 }
 
 const CANVAS_PADDING = 80;
-const CANVAS_WIDTH = 900;
 const AXIS_Y = 260;
-const CHAIN_OFFSET_Y = 80;
+const CHAIN_OFFSET_Y = 120;
 const SOLO_OFFSET_Y = 20;
+const MIN_X_GAP = 200;
 
 export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayoutResult {
 	const { nodes, evolutionChains = [] } = input;
@@ -26,6 +26,8 @@ export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayou
 	const timed = nodes
 		.filter(n => n.createdAt != null)
 		.sort((a, b) => a.createdAt! - b.createdAt!);
+
+	const canvasWidth = Math.max(900, timed.length * 200);
 
 	if (timed.length === 0) {
 		nodes.forEach((n, i) => {
@@ -39,7 +41,7 @@ export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayou
 	const timeRange = maxTime - minTime || 1;
 
 	function timeToX(t: number): number {
-		return CANVAS_PADDING + ((t - minTime) / timeRange) * (CANVAS_WIDTH - 2 * CANVAS_PADDING);
+		return CANVAS_PADDING + ((t - minTime) / timeRange) * (canvasWidth - 2 * CANVAS_PADDING);
 	}
 
 	const chainMembership = new Map<string, number>();
@@ -70,10 +72,21 @@ export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayou
 		positions.set(n.path, { x, y });
 	}
 
+	// Enforce minimum x gap between adjacent nodes to prevent overlap
+	const sortedPaths = timed.map(n => n.path);
+	for (let i = 1; i < sortedPaths.length; i++) {
+		const prev = positions.get(sortedPaths[i - 1])!;
+		const curr = positions.get(sortedPaths[i])!;
+		if (curr.x - prev.x < MIN_X_GAP) {
+			curr.x = prev.x + MIN_X_GAP;
+		}
+	}
+
 	const untimed = nodes.filter(n => n.createdAt == null);
+	const lastTimedX = sortedPaths.length > 0 ? positions.get(sortedPaths[sortedPaths.length - 1])!.x : canvasWidth - CANVAS_PADDING;
 	untimed.forEach((n, i) => {
 		positions.set(n.path, {
-			x: CANVAS_WIDTH - CANVAS_PADDING + 30 + i * 60,
+			x: lastTimedX + 30 + i * 60,
 			y: AXIS_Y,
 		});
 	});
