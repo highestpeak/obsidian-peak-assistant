@@ -156,8 +156,11 @@ export const SearchResultRow: React.FC<{
 							{highlightText(result.title, currentQuery.split(/\s+/))}
 						</span>
 						<ChevronRight className="pktw-w-3 pktw-h-3 pktw-text-[#d1d5db] pktw-flex-shrink-0" />
-						<span className="pktw-text-xs pktw-text-[#999999] pktw-truncate">
-							{highlightText(result.path, currentQuery.split(/\s+/))}
+						<span className="pktw-text-xs pktw-text-[#999999] pktw-truncate" title={result.path}>
+							{highlightText(
+								result.path.split('/').slice(-2).join('/'),
+								currentQuery.split(/\s+/),
+							)}
 						</span>
 					</div>
 
