@@ -2,6 +2,9 @@
  * Unified Zustand store for a single AI search session.
  * Replaces the four fragmented stores (Runtime, Summary, Result, Steps)
  * with a single step-based state model.
+ *
+ * V2-specific types (V2Section, Round, Annotation) live in ./v2SessionTypes.ts
+ * and are re-exported here for backward compatibility.
  */
 
 import { create } from 'zustand';
@@ -14,6 +17,16 @@ import type { SearchStep, SearchStepType, V2ToolStep, V2TimelineItem, V2Source }
 import { PHASE_TO_STEP_TYPE, createStep } from '../types/search-steps';
 import { exportGraphJson } from './aiGraphStore';
 import { useGraphAgentStore } from './graphAgentStore';
+import {
+	V2_INITIAL_STATE,
+	buildV2AnalysisSnapshot as buildV2AnalysisSnapshotImpl,
+	getAllSectionsFrom,
+	getAllSourcesFrom,
+} from './v2SessionTypes';
+import type { V2Section, Annotation, Round, V2SessionState } from './v2SessionTypes';
+
+// Re-export V2 types for backward compatibility
+export type { V2Section, Annotation, Round };
 
 // ---------------------------------------------------------------------------
 // Session status
@@ -43,61 +56,10 @@ export interface AutoSaveState {
 }
 
 // ---------------------------------------------------------------------------
-// Annotation & Round types (for Continue Append Mode)
-// ---------------------------------------------------------------------------
-
-export interface Annotation {
-	id: string;
-	roundIndex: number;
-	sectionIndex: number;
-	selectedText?: string;
-	comment: string;
-	type: 'question' | 'disagree' | 'expand' | 'note';
-	createdAt: number;
-}
-
-export interface Round {
-	index: number;
-	query: string;
-	sections: V2Section[];
-	summary: string;
-	summaryStreaming: boolean;
-	sources: V2Source[];
-	steps: V2ToolStep[];
-	timeline: V2TimelineItem[];
-	followUpQuestions: string[];
-	proposedOutline: string | null;
-	annotations: Annotation[];
-	usage: LLMUsage | null;
-	duration: number | null;
-}
-
-// ---------------------------------------------------------------------------
-// V2 Section type
-// ---------------------------------------------------------------------------
-
-export interface V2Section {
-	id: string;
-	title: string;
-	contentType: string;
-	visualType: string;
-	evidencePaths: string[];
-	brief: string;
-	weight: number;
-	missionRole: string;
-	status: 'pending' | 'generating' | 'done' | 'error';
-	content: string;
-	streamingChunks: string[];
-	error?: string;
-	generations: Array<{ content: string; prompt?: string; timestamp: number }>;
-	vizData?: import('@/core/schemas/report-viz-schemas').VizSpec;
-}
-
-// ---------------------------------------------------------------------------
 // Store shape
 // ---------------------------------------------------------------------------
 
-interface SearchSessionState {
+interface SearchSessionState extends V2SessionState {
 	// --- Session state ---
 	id: string | null;
 	query: string;
@@ -126,41 +88,7 @@ interface SearchSessionState {
 	hitlFeedbackCallback: ((feedback: UserFeedback) => void) | null;
 	autoSaveState: AutoSaveState;
 
-	// --- V2 (Agent SDK) state ---
-	v2Active: boolean;
-	/** Current V2 view: process | report | sources */
-	v2View: 'process' | 'report' | 'sources';
-	v2Steps: V2ToolStep[];
-	v2ReportChunks: string[];
-	v2ReportComplete: boolean;
-	/** Map tool-call id → toolName so we can look up name on tool-result */
-	v2ToolCallIndex: Map<string, string>;
-	/** Unified timeline: interleaved text + tool items */
-	v2Timeline: V2TimelineItem[];
-	/** Index in v2Timeline where the final report begins (after last tool call) */
-	v2FinalReportStartIndex: number;
-	/** Sources extracted from vault_read_note tool calls */
-	v2Sources: V2Source[];
-	/** Follow-up questions parsed from report tail */
-	v2FollowUpQuestions: string[];
-	/** The proposed_outline from vault_submit_plan — the real structured report */
-	v2ProposedOutline: string | null;
-	/** Report plan sections extracted from agent's thinking (for future HITL approval) */
-	v2PlanSections: V2Section[];
-	/** Whether user has approved the plan and report generation has started */
-	v2PlanApproved: boolean;
-	/** User insights to incorporate into report — each assigned to a section before generation */
-	v2UserInsights: string[];
-	/** Executive summary markdown (generated after all sections complete) */
-	v2Summary: string;
-	v2SummaryStreaming: boolean;
-
-	// --- Round-based state (Continue Append Mode) ---
-	rounds: Round[];
-	currentRoundIndex: number;
-
-	// --- Continue mode flag ---
-	continueMode: boolean;
+	// --- V2 (Agent SDK) state inherited from V2SessionState ---
 
 	restoredFromHistory: boolean;
 	restoredFromVaultPath: string | null;
@@ -304,29 +232,8 @@ const INITIAL_STATE: SearchSessionState = {
 
 	steps: [],
 
-	v2Active: false,
-	v2View: 'process' as const,
-	v2Steps: [],
-	v2ReportChunks: [],
-	v2ReportComplete: false,
-	v2ToolCallIndex: new Map(),
-	v2Timeline: [],
-	v2FinalReportStartIndex: -1,
-	v2Sources: [],
-	v2FollowUpQuestions: [],
-	v2ProposedOutline: null,
-	v2PlanSections: [],
-	v2PlanApproved: false,
-	v2UserInsights: [],
-	v2Summary: '',
-	v2SummaryStreaming: false,
-
-	// Round-based state
-	rounds: [],
-	currentRoundIndex: 0,
-
-	// Continue mode flag
-	continueMode: false,
+	// V2 state from v2SessionTypes.ts
+	...V2_INITIAL_STATE,
 
 	triggerAnalysis: 0,
 	hitlState: null,
@@ -857,41 +764,11 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 // V2 snapshot builder (for auto-save pipeline)
 // ---------------------------------------------------------------------------
 
-export function buildV2AnalysisSnapshot(): {
-	v2ProcessLog: string[];
-	v2PlanOutline: string | null;
-	v2ReportSections: Array<{ title: string; content: string }>;
-	v2Sources: V2Source[];
-	v2FollowUpQuestions: string[];
-	v2Summary: string;
-	v2GraphJson: string | null;
-	usage: LLMUsage | null;
-	duration: number | null;
-} | null {
-	const s = useSearchSessionStore.getState();
-	if (!s.v2Active) return null;
-
-	const processLog = s.v2Steps
-		.filter(st => st.status === 'done')
-		.map(st => {
-			const dur = st.endedAt && st.startedAt
-				? `${((st.endedAt - st.startedAt) / 1000).toFixed(1)}s`
-				: '';
-			return `${st.icon} ${st.displayName}${st.summary ? ' — ' + st.summary : ''} ${dur ? '— ' + dur : ''}`.trim();
-		});
-
-	const sections = s.v2PlanSections
-		.filter(sec => sec.status === 'done' && sec.content)
-		.map(sec => ({ title: sec.title, content: sec.content }));
-
-	return {
-		v2ProcessLog: processLog,
-		v2PlanOutline: s.v2ProposedOutline,
-		v2ReportSections: sections,
-		v2Sources: s.v2Sources,
-		v2FollowUpQuestions: s.v2FollowUpQuestions,
-		v2Summary: s.v2Summary,
-		v2GraphJson: exportGraphJson() ?? (() => {
+export function buildV2AnalysisSnapshot() {
+	return buildV2AnalysisSnapshotImpl(
+		() => useSearchSessionStore.getState(),
+		() => exportGraphJson() ?? null,
+		() => {
 			const gStore = useGraphAgentStore.getState();
 			if (!gStore.graphData) return null;
 			return JSON.stringify({
@@ -899,10 +776,8 @@ export function buildV2AnalysisSnapshot(): {
 				source: 'graphAgent',
 				generatedAt: new Date().toISOString(),
 			});
-		})(),
-		usage: s.usage,
-		duration: s.duration,
-	};
+		},
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -912,20 +787,11 @@ export function buildV2AnalysisSnapshot(): {
 /** Get all sections flattened across all rounds + current */
 export function getAllSections(): V2Section[] {
 	const s = useSearchSessionStore.getState();
-	const fromRounds = s.rounds.flatMap(r => r.sections);
-	return [...fromRounds, ...s.v2PlanSections];
+	return getAllSectionsFrom(s.rounds, s.v2PlanSections);
 }
 
 /** Get all sources deduplicated across all rounds + current */
 export function getAllSources(): V2Source[] {
 	const s = useSearchSessionStore.getState();
-	const seen = new Set<string>();
-	const result: V2Source[] = [];
-	for (const src of [...s.rounds.flatMap(r => r.sources), ...s.v2Sources]) {
-		if (!seen.has(src.path)) {
-			seen.add(src.path);
-			result.push(src);
-		}
-	}
-	return result;
+	return getAllSourcesFrom(s.rounds, s.v2Sources);
 }
