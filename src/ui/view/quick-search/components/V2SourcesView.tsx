@@ -19,7 +19,7 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
         () => sources.map(s => ({ path: s.path, title: s.title, score: sources.length - sources.indexOf(s) })),
         [sources],
     );
-    const { graphData, loading, step, start } = useGraphAgent(sourceItems, searchQuery);
+    const { graphData, loading, steps, start } = useGraphAgent(sourceItems, searchQuery);
 
     return (
         <div className="pktw-h-[500px] pktw-w-full pktw-border pktw-border-[--background-modifier-border] pktw-rounded-lg pktw-overflow-hidden">
@@ -30,7 +30,7 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
                 onNodeClick={onOpen}
                 className="pktw-h-full"
                 loading={loading}
-                loadingStep={step}
+                loadingSteps={steps}
                 onRequestGenerate={start}
             />
         </div>

@@ -1,5 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
+import { useGraphAgentStore, type GraphAgentStep } from '../store/graphAgentStore';
 
 interface SourceItem {
 	path: string;
@@ -10,7 +11,7 @@ interface SourceItem {
 export interface UseGraphAgentResult {
 	graphData: LensGraphData | null;
 	loading: boolean;
-	step: string | null;
+	steps: GraphAgentStep[];
 	error: string | null;
 	start: () => void;
 }
@@ -19,71 +20,100 @@ export function useGraphAgent(
 	sources: SourceItem[],
 	searchQuery: string,
 ): UseGraphAgentResult {
-	const [graphData, setGraphData] = useState<LensGraphData | null>(null);
-	const [loading, setLoading] = useState(false);
-	const [step, setStep] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const store = useGraphAgentStore();
 	const abortRef = useRef<AbortController | null>(null);
 
+	// Check if we already have cached data for these sources
+	const key = sources.map(s => s.path).sort().join('|');
+	const isCached = store.cacheKey === key && store.graphData != null;
+
 	const start = useCallback(() => {
-		if (sources.length === 0 || !searchQuery || loading) return;
+		if (sources.length === 0 || !searchQuery || store.loading) return;
 
 		abortRef.current?.abort();
 		const controller = new AbortController();
 		abortRef.current = controller;
 
-		setLoading(true);
-		setError(null);
-		setStep('正在初始化 Graph Agent...');
+		const st = useGraphAgentStore.getState();
+		st.setCacheKey(key);
+		st.setLoading(true);
+		st.setError(null);
+		st.clearSteps();
+		st.addStep({ id: 'init', label: '正在初始化 Graph Agent...', status: 'running' });
 
 		(async () => {
 			try {
-				setStep('正在读取源文件内容...');
 				const { GraphAgent } = await import('@/service/agents/ai-graph/GraphAgent');
 				const { AppContext } = await import('@/app/context/AppContext');
 				const ctx = AppContext.getInstance();
 
+				useGraphAgentStore.getState().updateStep('init', { status: 'done', label: 'Graph Agent 已就绪' });
+
 				const agent = new GraphAgent(ctx.app, ctx.plugin.manifest.id, ctx.settings);
 
-				setStep(`正在分析 ${sources.length} 篇文档的关系...`);
 				const result = await agent.generateGraph(
 					{ searchQuery, sources },
 					controller.signal,
+					(event) => {
+						const s = useGraphAgentStore.getState();
+						if (event.type === 'step-start') {
+							// Check if step already exists
+							const existing = s.steps.find(st => st.id === event.id);
+							if (existing) {
+								s.updateStep(event.id, { label: event.label, status: 'running', detail: event.detail });
+							} else {
+								s.addStep({ id: event.id, label: event.label, status: 'running', detail: event.detail });
+							}
+						} else if (event.type === 'step-done') {
+							s.updateStep(event.id, { status: 'done', label: event.label });
+						} else if (event.type === 'thinking') {
+							const existing = s.steps.find(st => st.id === event.id);
+							if (existing) {
+								s.updateStep(event.id, { detail: event.detail });
+							} else {
+								s.addStep({ id: event.id, label: event.label, status: 'running', detail: event.detail });
+							}
+						}
+					},
 				);
 
 				if (controller.signal.aborted) return;
 
 				if (result) {
-					setStep('正在构建图谱...');
+					useGraphAgentStore.getState().addStep({ id: 'done', label: '图谱生成完成', status: 'done' });
 					const { graphOutputToLensData } = await import('@/service/agents/ai-graph/graph-output-to-lens');
-					setGraphData(graphOutputToLensData(result));
+					useGraphAgentStore.getState().setGraphData(graphOutputToLensData(result));
 				} else {
 					console.warn('[useGraphAgent] agent returned null, falling back');
-					setStep('AI 分析未返回结果，使用物理链接数据...');
-					await fallbackToPhysicalGraph(sources, setGraphData);
+					useGraphAgentStore.getState().addStep({ id: 'fallback', label: 'AI 分析未返回结果，使用物理链接...', status: 'running' });
+					await fallbackToPhysicalGraph(sources);
+					useGraphAgentStore.getState().updateStep('fallback', { status: 'done' });
 				}
 			} catch (err) {
 				if (!controller.signal.aborted) {
 					console.error('[useGraphAgent] error, falling back', err);
-					setStep('AI 分析出错，使用物理链接数据...');
-					await fallbackToPhysicalGraph(sources, setGraphData);
+					useGraphAgentStore.getState().addStep({ id: 'fallback', label: '出错，使用物理链接数据...', status: 'running' });
+					await fallbackToPhysicalGraph(sources);
+					useGraphAgentStore.getState().updateStep('fallback', { status: 'done' });
 				}
 			} finally {
 				if (!controller.signal.aborted) {
-					setLoading(false);
-					setStep(null);
+					useGraphAgentStore.getState().setLoading(false);
 				}
 			}
 		})();
-	}, [sources, searchQuery, loading]);
+	}, [sources, searchQuery, key]);
 
-	return { graphData, loading, step, error, start };
+	return {
+		graphData: isCached ? store.graphData : store.cacheKey === key ? store.graphData : null,
+		loading: store.loading,
+		steps: store.steps,
+		error: store.error,
+		start,
+	};
 }
 
-async function fallbackToPhysicalGraph(
-	sources: SourceItem[],
-	setGraphData: (data: LensGraphData) => void,
-) {
+async function fallbackToPhysicalGraph(sources: SourceItem[]) {
 	try {
 		const { buildSourcesGraphWithDiscoveredEdges } = await import(
 			'@/service/tools/search-graph-inspector/build-sources-graph'
@@ -107,7 +137,7 @@ async function fallbackToPhysicalGraph(
 			}));
 			let data: LensGraphData = { nodes, edges, availableLenses: ['topology'] };
 			data = enrichWithCrossDomain(data);
-			setGraphData(data);
+			useGraphAgentStore.getState().setGraphData(data);
 		}
 	} catch (err) {
 		console.error('[useGraphAgent] fallback also failed', err);

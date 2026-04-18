@@ -299,7 +299,7 @@ export const TopSourcesSection: React.FC<{
 		() => mixedSources.map(s => ({ path: s.path, title: s.title, score: s.score })),
 		[mixedSources],
 	);
-	const { graphData: aiGraphData, loading: sourcesGraphLoading, step: graphStep, start: startGraph } = useGraphAgent(graphSourceItems, searchQuery);
+	const { graphData: aiGraphData, loading: sourcesGraphLoading, steps: graphSteps, start: startGraph } = useGraphAgent(graphSourceItems, searchQuery);
 
 	// Animate scored sources one by one
 	const [visibleCount, setVisibleCount] = React.useState(0);
@@ -425,7 +425,7 @@ export const TopSourcesSection: React.FC<{
 							onNodeClick={(path) => onOpen(path)}
 							className="pktw-h-full pktw-w-full"
 							loading={sourcesGraphLoading}
-							loadingStep={graphStep}
+							loadingSteps={graphSteps}
 							onRequestGenerate={startGraph}
 						/>
 				</div>

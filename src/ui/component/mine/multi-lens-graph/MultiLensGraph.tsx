@@ -5,7 +5,7 @@ import { LensNodeComponent } from './nodes/LensNodeComponent';
 import { LensEdgeComponent } from './edges/LensEdgeComponent';
 import { useLensLayout } from './hooks/useLensLayout';
 import { Button } from '@/ui/component/shared-ui/button';
-import { Network, GitBranch, Waypoints, Clock } from 'lucide-react';
+import { Network, GitBranch, Waypoints, Clock, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 
 const nodeTypes = { lensNode: LensNodeComponent };
@@ -46,8 +46,8 @@ interface MultiLensGraphProps {
 	showMiniMap?: boolean;
 	/** When true, show loading with step text */
 	loading?: boolean;
-	/** Current loading step description */
-	loadingStep?: string | null;
+	/** Current loading step descriptions */
+	loadingSteps?: Array<{ id: string; label: string; status: 'pending' | 'running' | 'done'; detail?: string }>;
 	/** Callback to trigger AI graph generation */
 	onRequestGenerate?: () => void;
 }
@@ -61,7 +61,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	showControls = true,
 	showMiniMap = false,
 	loading = false,
-	loadingStep = null,
+	loadingSteps,
 	onRequestGenerate,
 }) => {
 	const [activeLens, setActiveLens] = useState<LensType>(defaultLens);
@@ -86,9 +86,36 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 
 	if (loading) {
 		return (
-			<div className={cn('pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-h-full pktw-gap-3 pktw-text-muted-foreground', className)}>
-				<div className="pktw-animate-spin pktw-w-5 pktw-h-5 pktw-border-2 pktw-border-current pktw-border-t-transparent pktw-rounded-full" />
-				<div className="pktw-text-sm">{loadingStep ?? '正在分析文档关系...'}</div>
+			<div className={cn('pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-h-full pktw-gap-4', className)}>
+				{loadingSteps && loadingSteps.length > 0 ? (
+					<div className="pktw-flex pktw-flex-col pktw-gap-2 pktw-w-full pktw-max-w-[360px]">
+						{loadingSteps.map((s) => (
+							<div key={s.id} className="pktw-flex pktw-items-start pktw-gap-2 pktw-text-xs">
+								{s.status === 'done' ? (
+									<CheckCircle2 className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-500 pktw-mt-0.5 pktw-shrink-0" />
+								) : s.status === 'running' ? (
+									<Loader2 className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed] pktw-animate-spin pktw-mt-0.5 pktw-shrink-0" />
+								) : (
+									<div className="pktw-w-3.5 pktw-h-3.5 pktw-rounded-full pktw-border pktw-border-[#d1d5db] pktw-mt-0.5 pktw-shrink-0" />
+								)}
+								<div className="pktw-flex pktw-flex-col pktw-min-w-0">
+									<span className={s.status === 'done' ? 'pktw-text-[#6b7280]' : 'pktw-text-[#2e3338]'}>
+										{s.label}
+									</span>
+									{s.detail && (
+										<span className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-truncate pktw-max-w-[320px]">
+											{s.detail}
+										</span>
+									)}
+								</div>
+							</div>
+						))}
+					</div>
+				) : (
+					<div className="pktw-animate-pulse pktw-text-sm pktw-text-muted-foreground">
+						正在分析文档关系...
+					</div>
+				)}
 			</div>
 		);
 	}
