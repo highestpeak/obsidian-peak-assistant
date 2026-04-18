@@ -23,6 +23,8 @@ import {
 	getAllSourcesFrom,
 } from './v2SessionTypes';
 import type { V2Section, Annotation, Round, V2SessionState } from './v2SessionTypes';
+import type { V2SessionSnapshot } from './sessionSnapshot';
+import { snapshotFromState } from './sessionSnapshot';
 
 // Re-export V2 types for backward compatibility
 export type { V2Section, Annotation, Round };
@@ -90,6 +92,7 @@ interface SearchSessionState extends V2SessionState {
 	restoredFromVaultPath: string | null;
 	aiModalOpen: boolean;
 	dashboardUpdatedLine: string;
+	sourcesViewMode: 'list' | 'graph';
 }
 
 interface SearchSessionActions {
@@ -118,6 +121,7 @@ interface SearchSessionActions {
 	// V2 step management
 	setV2Active: (active: boolean) => void;
 	setV2View: (view: 'process' | 'report' | 'sources') => void;
+	setSourcesViewMode: (mode: 'list' | 'graph') => void;
 	pushV2Step: (step: V2ToolStep) => void;
 	updateV2Step: (id: string, updater: (step: V2ToolStep) => V2ToolStep) => void;
 	appendV2ReportChunk: (chunk: string) => void;
@@ -161,6 +165,10 @@ interface SearchSessionActions {
 	// History
 	setRestoredFromHistory: (restored: boolean, vaultPath?: string | null) => void;
 
+	// Snapshot / Restore
+	snapshotState: () => V2SessionSnapshot;
+	restoreFromSnapshot: (snapshot: V2SessionSnapshot) => void;
+
 	// Reset
 	resetAll: () => void;
 
@@ -203,6 +211,7 @@ const INITIAL_STATE: SearchSessionState = {
 	restoredFromVaultPath: null,
 	aiModalOpen: false,
 	dashboardUpdatedLine: '',
+	sourcesViewMode: 'list' as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -239,6 +248,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			hitlState: null,
 			hitlFeedbackCallback: null,
 			dashboardUpdatedLine: '',
+			sourcesViewMode: 'list' as const,
 			v2Active: false,
 			v2Steps: [],
 			v2ReportChunks: [],
@@ -354,6 +364,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 
 	setV2Active: (active) => set({ v2Active: active }),
 	setV2View: (view) => set({ v2View: view }),
+	setSourcesViewMode: (mode) => set({ sourcesViewMode: mode }),
 
 	pushV2Step: (step) => set((s) => ({ v2Steps: [...s.v2Steps, step] })),
 
@@ -614,6 +625,27 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	setRestoredFromHistory: (restored, vaultPath) => set({
 		restoredFromHistory: restored,
 		restoredFromVaultPath: vaultPath ?? null,
+	}),
+
+	// -----------------------------------------------------------------------
+	// Snapshot / Restore
+	// -----------------------------------------------------------------------
+
+	snapshotState: () => snapshotFromState(get()),
+
+	restoreFromSnapshot: (snapshot) => set({
+		// Write all snapshot fields into the store
+		...snapshot,
+		// Reset runtime-only fields
+		restoredFromHistory: false,
+		restoredFromVaultPath: null,
+		isInputFrozen: false,
+		// Clear function refs (not serializable)
+		hitlFeedbackCallback: null,
+		// Preserve UI-only fields at their defaults
+		aiModalOpen: false,
+		triggerAnalysis: 0,
+		sourcesViewMode: 'list' as const,
 	}),
 
 	// -----------------------------------------------------------------------
