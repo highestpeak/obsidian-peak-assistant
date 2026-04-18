@@ -919,7 +919,19 @@ export function useSearchSession() {
 						})),
 					})),
 					sources: v2Sources.map(s => ({ path: s.path, relevance: s.reasoning ?? '' })),
-					graphSummary: null,  // TODO: wire from aiGraphStore
+					graphSummary: await (async () => {
+						try {
+							const { useAIGraphStore } = await import('../store/aiGraphStore');
+							const graph = useAIGraphStore.getState().graphData;
+							if (!graph?.nodes?.length) return null;
+							return {
+								nodeCount: graph.nodes.length,
+								keyRelationships: graph.edges.slice(0, 10).map(
+									(e: any) => `${e.source} → ${e.target}`,
+								),
+							};
+						} catch { return null; }
+					})(),
 					followUpQuery: searchQuery,
 				};
 
