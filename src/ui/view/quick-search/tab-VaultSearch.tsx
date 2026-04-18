@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { SearchX } from 'lucide-react';
+import { SearchX, Database } from 'lucide-react';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
+import { EmptyState } from '../../component/mine/EmptyState';
 import { SearchResultRow } from './components/VaultSearchResult';
 import { formatDuration } from '@/core/utils/format-utils';
 import { cn } from '@/ui/react/lib/utils';
@@ -9,38 +10,22 @@ import { useVaultSearch, useSearchQuery } from './hooks/useVaultSearch';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { useHasSearchQuery } from './hooks/useVaultSearch';
 
-/**
- * Empty state when no search results found
- */
 const NoResultsState: React.FC<{ mode?: string }> = ({ mode }) => (
-	<div className="pktw-h-full pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-8">
-		<div className="pktw-w-20 pktw-h-20 pktw-rounded-full pktw-bg-gray-50 pktw-flex pktw-items-center pktw-justify-center pktw-mb-2">
-			<SearchX className="pktw-w-10 pktw-h-10 pktw-text-gray-400" />
-		</div>
-		<span className="pktw-font-semibold pktw-text-[#2e3338]  pktw-text-lg">
-			{mode === 'goToLine' ? 'Line number out of range' : 'No results found'}
-		</span>
-		<span className="pktw-text-sm pktw-text-[#6c757d] pktw-mb-4">
-			{mode === 'goToLine'
-				? 'Please enter a valid line number within the file range.'
-				: 'Try different keywords or check your spelling. Or report the case to the developer. Or try ask AI ↘︎ to help you. 🥰'
-			}
-		</span>
-	</div>
+	<EmptyState
+		icon={SearchX}
+		title={mode === 'goToLine' ? 'Line number out of range' : 'No results found'}
+		description={mode === 'goToLine'
+			? 'Please enter a valid line number within the file range.'
+			: 'Try different keywords or check your spelling, or try AI Analysis.'}
+	/>
 );
 
 const NoRecentlyAccessedState: React.FC = () => (
-	<div className="pktw-h-full pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-8">
-		<div className="pktw-w-20 pktw-h-20 pktw-rounded-full pktw-bg-gray-50 pktw-flex pktw-items-center pktw-justify-center pktw-mb-4">
-			<SearchX className="pktw-w-10 pktw-h-10 pktw-text-gray-400" />
-		</div>
-		<span className="pktw-font-semibold pktw-text-[#2e3338] pktw-mb-2 pktw-text-lg">
-			No recently accessed files
-		</span>
-		<span className="pktw-text-sm pktw-text-[#6c757d] pktw-max-w-md">
-			Start searching or open some files to see them here.
-		</span>
-	</div>
+	<EmptyState
+		icon={SearchX}
+		title="No recently accessed files"
+		description="Start searching or open some files to see them here. Run Search: reindex vault to enable full-text search."
+	/>
 );
 
 /**
