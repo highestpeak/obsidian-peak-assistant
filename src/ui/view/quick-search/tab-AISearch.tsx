@@ -62,7 +62,8 @@ const V2Footer: React.FC<{
 	copied: boolean;
 	onSave: () => void;
 	onOpenInChat: () => void;
-}> = ({ onContinue, onSynthesize, showContinueAnalysis, onCopy, copied, onSave, onOpenInChat }) => {
+	onOpenInFile?: () => void;
+}> = ({ onContinue, onSynthesize, showContinueAnalysis, onCopy, copied, onSave, onOpenInChat, onOpenInFile }) => {
 	const v2View = useSearchSessionStore((s) => s.v2View);
 	const usage = useSearchSessionStore((s) => s.usage);
 	const duration = useSearchSessionStore((s) => s.duration);
@@ -189,6 +190,15 @@ const V2Footer: React.FC<{
 					<MessageSquare className="pktw-w-3.5 pktw-h-3.5" />
 					Continue
 				</div>
+				{onOpenInFile && (
+					<div
+						onClick={onOpenInFile}
+						className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer pktw-text-[#6b7280] hover:pktw-bg-gray-100"
+					>
+						<FileText className="pktw-w-3.5 pktw-h-3.5" />
+						Open in File
+					</div>
+				)}
 				<div
 					onClick={onOpenInChat}
 					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-white pktw-bg-[#7c3aed] hover:pktw-bg-[#6d28d9] pktw-rounded-lg pktw-transition-colors pktw-cursor-pointer"
@@ -782,7 +792,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 			{/* Footer — V2 renders its own content, V1 renders original */}
 			{isV2Active && (isAnalyzing || analysisCompleted) ? (
-				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} />
+				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} onOpenInFile={openAnalysisPath ? () => void createOpenSourceCallback(onClose)(openAnalysisPath) : undefined} />
 			) : null}
 			<div className={`pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0 ${isV2Active ? 'pktw-hidden' : ''}`}>
 				{!hasAnalyzed && !isAnalyzing ? <AISearchFooterHints /> : null}

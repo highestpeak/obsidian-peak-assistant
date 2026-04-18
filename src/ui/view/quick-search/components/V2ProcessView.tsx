@@ -17,8 +17,10 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
     const planApproved = useSearchSessionStore((s) => s.v2PlanApproved);
     const usage = useSearchSessionStore((s) => s.usage);
     const duration = useSearchSessionStore((s) => s.duration);
+    const restoredFromHistory = useSearchSessionStore((s) => s.restoredFromHistory);
 
     const isStreaming = status === 'streaming';
+    const isRestoredEmpty = restoredFromHistory && v2Steps.length === 0 && timeline.length === 0 && rounds.length === 0;
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll to bottom when streaming
@@ -38,6 +40,14 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
     const isGeneratingReport = isStreaming && hasTools && noRunningTools && lastTimelineItem?.kind === 'text';
 
     const currentRoundIndex = rounds.length;
+
+    if (isRestoredEmpty) {
+        return (
+            <div className="pktw-flex pktw-items-center pktw-justify-center pktw-py-12 pktw-text-sm pktw-text-[#9ca3af]">
+                Process log not available for this analysis
+            </div>
+        );
+    }
 
     return (
         <div ref={scrollRef} className="pktw-py-2 pktw-px-1">
