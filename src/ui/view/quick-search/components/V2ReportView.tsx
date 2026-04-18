@@ -305,8 +305,15 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 		);
 	}
 
-	// No sections yet and no past rounds — fallback
-	if (sections.length === 0 && !summary && rounds.length === 0) return null;
+	// No content yet — show loading state instead of blank page
+	if (sections.length === 0 && !summary && rounds.length === 0) {
+		return (
+			<div className="pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-h-32 pktw-text-sm pktw-text-[#9ca3af] pktw-gap-2">
+				<Loader2 className="pktw-w-5 pktw-h-5 pktw-animate-spin" />
+				<span>Preparing report...</span>
+			</div>
+		);
+	}
 
 	return (
 		<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pktw-px-1 pktw-py-2">
