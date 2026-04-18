@@ -1,12 +1,6 @@
-import { SLICE_CAPS } from '@/core/constant';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Save, MessageCircle, Copy, MessageSquare, ChevronDown, Maximize2, Check, ExternalLink, ClipboardList, Activity, Eye, FileText, MoreHorizontal, Sparkles, List } from 'lucide-react';
 import { SaveDialog } from './components/ai-analysis-modal//ResultSaveDialog';
 import { V2ContinueAnalysisInput } from './components/V2ContinueAnalysisInput';
-import { V2TableOfContents } from './components/V2TableOfContents';
-import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
-import { Button } from '@/ui/component/shared-ui/button';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { useSharedStore, useGraphQueuePump } from './store';
 import {
 	useAIAnalysisSummaryStore,
@@ -14,202 +8,30 @@ import {
 	useAIAnalysisTopicsStore,
 	useAIAnalysisInteractionsStore,
 	useAIAnalysisStepsStore,
-	getHasGraphData,
 	getHasCompletedContent,
-	getHasSummarySection,
-	getHasTopicsSection,
-	getHasDashboardBlocksSection,
-	getHasSourcesSection,
+	getHasGraphData,
 } from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
 import { useSearchSession } from './hooks/useSearchSession';
 import { useTypewriterEffect } from '@/ui/component/mine/useTypewriterEffect';
-import { RecentAIAnalysis } from './components/ai-analysis-sections/RecentAIAnalysis';
 import { useAIAnalysisResult } from './hooks/useAIAnalysisResult';
 import { AppContext } from '@/app/context/AppContext';
 import { SynthesizeAgent } from '@/service/agents/SynthesizeAgent';
 import { SearchResultView } from './components/SearchResultView';
-import { UsageBadge } from './components/ai-analysis-sections/UsageBadge';
 import { SectionExtraChatModal } from './components/ai-analysis-modal/SectionExtraChatModal';
 import { InlineFollowupChat } from '../../component/mine/InlineFollowupChat';
 import { useContinueAnalysisFollowupChatConfig } from './hooks/useAIAnalysisPostAIInteractions';
-import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
+import { buildDebugInfoText } from './callbacks/copyDebugInfo';
+import { V2Footer } from './components/V2Footer';
+import { V1Footer } from './components/V1Footer';
+import { AISearchNavBar } from './components/AISearchNavBar';
 
 interface AISearchTabProps {
 	onClose?: () => void;
 	onCancel?: () => void;
 	isCancelling?: boolean;
 }
-
-/**
- * Footer hints section for AI search tab
- */
-const AISearchFooterHints: React.FC<{}> = ({ }) => (
-	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-[#999999]">
-		<KeyboardShortcut keys="Esc" description="to close" prefix="Press" />
-		<KeyboardShortcut keys="Enter" description="to analyze" prefix="Press" />
-		<KeyboardShortcut warning="• Will consume AI tokens" />
-	</div>
-);
-
-/** V2 Footer — rendered by tab-AISearch at modal bottom when V2 is active */
-const V2Footer: React.FC<{
-	onContinue: () => void;
-	onSynthesize: () => void;
-	showContinueAnalysis: boolean;
-	onCopy: () => void;
-	copied: boolean;
-	onSave: () => void;
-	onOpenInChat: () => void;
-	onOpenInFile?: () => void;
-}> = ({ onContinue, onSynthesize, showContinueAnalysis, onCopy, copied, onSave, onOpenInChat, onOpenInFile }) => {
-	const v2View = useSearchSessionStore((s) => s.v2View);
-	const usage = useSearchSessionStore((s) => s.usage);
-	const duration = useSearchSessionStore((s) => s.duration);
-	const setV2View = useSearchSessionStore((s) => s.setV2View);
-	const rounds = useSearchSessionStore((s) => s.rounds);
-	const v2PlanSections = useSearchSessionStore((s) => s.v2PlanSections);
-	const [showToc, setShowToc] = useState(false);
-
-	const reportMarkdown = v2PlanSections
-		.filter((sec) => sec.content)
-		.map((sec) => '## ' + sec.title + '\n\n' + sec.content)
-		.join('\n\n');
-
-	const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-	const durationStr = duration ? `${(duration / 1000).toFixed(0)}s` : '';
-
-	const views = [
-		{ id: 'process' as const, icon: Activity, label: 'Process' },
-		{ id: 'report' as const, icon: Eye, label: 'Report' },
-		{ id: 'sources' as const, icon: FileText, label: 'Sources' },
-	];
-
-	return (
-		<div className="pktw-relative pktw-border-t pktw-border-[#e5e7eb] pktw-bg-white pktw-px-3 pktw-py-2 pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0">
-			{/* TOC popover — rendered above the footer, anchored bottom-left of this container */}
-			{showToc && reportMarkdown.length > 0 && (
-				<V2TableOfContents
-					markdown={reportMarkdown}
-					initialCollapsed={false}
-					className="pktw-absolute pktw-bottom-full pktw-left-3 pktw-mb-1 pktw-z-50"
-					onNavigate={() => setShowToc(false)}
-				/>
-			)}
-			{/* Left: View tabs */}
-			<div className="pktw-flex pktw-items-center pktw-gap-1">
-				{views.slice(0, 2).map(({ id, icon: Icon, label }) => (
-					<div
-						key={id}
-						onClick={() => setV2View(id)}
-						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-transition-all pktw-cursor-pointer ${
-							id === 'report' ? 'pktw-rounded-l-lg' : 'pktw-rounded-lg'
-						} ${
-							v2View === id
-								? 'pktw-bg-[#7c3aed] pktw-text-white'
-								: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
-						}`}
-					>
-						<Icon className="pktw-w-3.5 pktw-h-3.5" />
-						{label}
-					</div>
-				))}
-				{/* TOC toggle — icon only, visually grouped with Report button */}
-				{reportMarkdown.length > 0 && (
-					<div
-						onClick={() => setShowToc((prev) => !prev)}
-						className={`pktw-flex pktw-items-center pktw-px-1.5 pktw-py-1.5 pktw-rounded-r-lg pktw-transition-all pktw-cursor-pointer pktw-border-l pktw-border-[#e5e7eb] ${
-							showToc
-								? 'pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed]'
-								: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
-						}`}
-						title="Table of Contents"
-					>
-						<List className="pktw-w-3.5 pktw-h-3.5" />
-					</div>
-				)}
-				{views.slice(2).map(({ id, icon: Icon, label }) => (
-					<div
-						key={id}
-						onClick={() => setV2View(id)}
-						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
-							v2View === id
-								? 'pktw-bg-[#7c3aed] pktw-text-white'
-								: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
-						}`}
-					>
-						<Icon className="pktw-w-3.5 pktw-h-3.5" />
-						{label}
-					</div>
-				))}
-			</div>
-
-			{/* Center: Stats */}
-			{usage && (
-				<span className="pktw-text-xs pktw-text-[#9ca3af] pktw-tabular-nums">
-					{fmt(usage.inputTokens ?? 0)} in / {fmt(usage.outputTokens ?? 0)} out{durationStr ? ` · ${durationStr}` : ''}
-				</span>
-			)}
-
-			{/* Right: Actions */}
-			<div className="pktw-flex pktw-items-center pktw-gap-1">
-				<div
-					onClick={onCopy}
-					className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
-					title={copied ? 'Copied!' : 'Copy Report'}
-				>
-					{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
-				</div>
-				<div
-					onClick={onSave}
-					className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
-					title="Save to Vault"
-				>
-					<Save className="pktw-w-3.5 pktw-h-3.5" />
-				</div>
-				{rounds.length >= 2 && (
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={onSynthesize}
-						className="pktw-text-xs"
-					>
-						<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1" />
-						Synthesize All
-					</Button>
-				)}
-				<div
-					onClick={onContinue}
-					className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
-						showContinueAnalysis
-							? 'pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed]'
-							: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
-					}`}
-				>
-					<MessageSquare className="pktw-w-3.5 pktw-h-3.5" />
-					Continue
-				</div>
-				{onOpenInFile && (
-					<div
-						onClick={onOpenInFile}
-						className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer pktw-text-[#6b7280] hover:pktw-bg-gray-100"
-					>
-						<FileText className="pktw-w-3.5 pktw-h-3.5" />
-						Open in File
-					</div>
-				)}
-				<div
-					onClick={onOpenInChat}
-					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-white pktw-bg-[#7c3aed] hover:pktw-bg-[#6d28d9] pktw-rounded-lg pktw-transition-colors pktw-cursor-pointer"
-				>
-					Open in Chat
-					<ExternalLink className="pktw-w-3.5 pktw-h-3.5" />
-				</div>
-			</div>
-		</div>
-	);
-};
 
 /**
  * AI search tab, showing analysis summary, sources, and insights.
@@ -349,191 +171,11 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		setRetryTrigger(prev => prev + 1);
 	};
 
-	// Serialize full session state to plain text for debugging/sharing
+	// Debug info copy handler
 	const [debugCopied, setDebugCopied] = useState(false);
 	const handleCopyDebugInfo = () => {
-		const s = useSearchSessionStore.getState();
-		const lines: string[] = [];
-
-		lines.push('=== AI Search Session Debug Export ===');
-		lines.push(`Query: ${s.query}`);
-		lines.push(`Status: ${s.status}  Duration: ${s.duration != null ? `${(s.duration / 1000).toFixed(1)}s` : '-'}`);
-		if (s.startedAt) lines.push(`Started: ${new Date(s.startedAt).toISOString()}`);
-		lines.push(`Analysis mode: ${s.runAnalysisMode ?? s.analysisMode}`);
-		lines.push('');
-
-		// ── Steps ──────────────────────────────────────────────────────────────
-		for (const step of s.steps) {
-			const dur = step.endedAt != null ? `${((step.endedAt - step.startedAt) / 1000).toFixed(1)}s` : 'running';
-			lines.push(`${'─'.repeat(60)}`);
-			lines.push(`[${step.type.toUpperCase()}]  status=${step.status}  duration=${dur}`);
-
-			if (step.type === 'classify') {
-				lines.push(`  Dimensions (${step.dimensions.length}):`);
-				for (const d of step.dimensions) {
-					lines.push(`  ┌ [${d.axis}] ${d.id.replace(/_/g, ' ')}`);
-					if (d.intent_description) lines.push(`  │  intent: ${d.intent_description}`);
-					if (d.scope_constraint) {
-						const sc = d.scope_constraint;
-						if (sc.path) lines.push(`  │  scope path: ${sc.path}`);
-						if (sc.tags?.length) lines.push(`  │  scope tags: ${sc.tags.join(', ')}`);
-						if (sc.anchor_entity) lines.push(`  │  anchor entity: ${sc.anchor_entity}`);
-					}
-					lines.push(`  └`);
-				}
-
-			} else if (step.type === 'decompose') {
-				lines.push(`  ${step.dimensionCount} dimensions → ${step.taskCount} tasks`);
-				for (const t of step.taskDescriptions) {
-					lines.push(`  ┌ Task [${t.id}] priority=${t.searchPriority}`);
-					lines.push(`  │  description: ${t.description}`);
-					if (t.targetAreas.length) lines.push(`  │  target areas: ${t.targetAreas.join(', ')}`);
-					if (t.toolHints.length) lines.push(`  │  tool hints: ${t.toolHints.join(', ')}`);
-					if (t.coveredDimensionIds.length) lines.push(`  │  covers dimensions: ${t.coveredDimensionIds.join(', ')}`);
-					lines.push(`  └`);
-				}
-
-			} else if (step.type === 'recon') {
-				const doneCnt = step.tasks.filter(t => t.done).length;
-				lines.push(`  Tasks: ${doneCnt}/${step.total}`);
-				for (const t of step.tasks) {
-					lines.push(`  ┌ T${t.index + 1} ${t.done ? '[done]' : '[running]'}  ${t.label ?? '?'}`);
-					const taskLog = step.progressLog.filter(e => e.taskIndex === t.index);
-					for (const entry of taskLog) {
-						const ts = new Date(entry.timestamp).toISOString().slice(11, 23);
-						lines.push(`  │  [${ts}] ${entry.label}: ${entry.detail}`);
-					}
-					lines.push(`  └`);
-				}
-
-			} else if (step.type === 'plan') {
-				const snap = step.snapshot;
-				if (snap) {
-					lines.push(`  Confidence: ${snap.confidence ?? '-'}`);
-					lines.push(`  Proposed outline:`);
-					for (const line of (snap.proposedOutline ?? '').split('\n')) {
-						lines.push(`    ${line}`);
-					}
-					if (snap.suggestedSections?.length) {
-						lines.push(`  Suggested sections: ${snap.suggestedSections.join(' | ')}`);
-					}
-					if (snap.discoveryGroups?.length) {
-						lines.push(`  Discovery Groups (${snap.discoveryGroups.length}):`);
-						for (const g of snap.discoveryGroups) {
-							lines.push(`  ┌ "${g.topic}" — ${g.noteCount} notes, coverage=${g.coverage}`);
-							const notes = (g as any).keyNotes as string[] | undefined;
-							if (notes?.length) {
-								for (const n of notes) lines.push(`  │  • ${n}`);
-							}
-							lines.push(`  └`);
-						}
-					}
-				}
-				if (step.userFeedback) {
-					lines.push(`  User feedback: action=${step.userFeedback.action}`);
-					if ((step.userFeedback as any).text) lines.push(`    text: ${(step.userFeedback as any).text}`);
-				}
-
-			} else if (step.type === 'report') {
-				lines.push(`  Blocks: ${step.blocks.length}`);
-				for (const b of step.blocks) {
-					lines.push(`  ┌ [${b.id}] ${b.title} (weight=${b.weight})`);
-					if (b.markdown) {
-						for (const line of b.markdown.split('\n').slice(0, 30)) {
-							lines.push(`  │  ${line}`);
-						}
-						if (b.markdown.split('\n').length > 30) lines.push(`  │  ... (truncated)`);
-					}
-					lines.push(`  └`);
-				}
-				const summary = step.summary ?? step.streamingText;
-				if (summary) {
-					lines.push(`  Executive Summary:`);
-					for (const line of summary.split('\n')) lines.push(`    ${line}`);
-				}
-
-			} else if (step.type === 'sources') {
-				lines.push(`  Sources (${step.sources.length}):`);
-				for (const src of step.sources) {
-					const avg = typeof src.score === 'object' ? src.score.average : src.score;
-					const phy = typeof src.score === 'object' ? src.score.physical : '-';
-					const sem = typeof src.score === 'object' ? src.score.semantic : '-';
-					lines.push(`  ┌ ${src.path}`);
-					lines.push(`  │  score: avg=${Number(avg).toFixed(2)}  physical=${Number(phy).toFixed(2)}  semantic=${Number(sem).toFixed(2)}`);
-					if (src.badges?.length) lines.push(`  │  badges: ${src.badges.join(', ')}`);
-					if (src.reasoning) lines.push(`  │  reasoning: ${src.reasoning}`);
-					lines.push(`  └`);
-				}
-			}
-			lines.push('');
-		}
-
-		// ── Agent raw event log ────────────────────────────────────────────────
-		if (s.agentDebugLog.length > 0) {
-			lines.push(`${'═'.repeat(60)}`);
-			lines.push(`AGENT EVENT LOG (${s.agentDebugLog.length} entries)`);
-			lines.push(`${'═'.repeat(60)}`);
-
-			// Group consecutive reasoning deltas into one block
-			let reasoningBuf = '';
-			let reasoningTaskIdx: number | undefined;
-			const flushReasoning = () => {
-				if (!reasoningBuf) return;
-				const tLabel = reasoningTaskIdx != null ? `T${reasoningTaskIdx + 1}` : 'global';
-				lines.push(`[${tLabel}] REASONING:`);
-				for (const line of reasoningBuf.split('\n')) lines.push(`  ${line}`);
-				reasoningBuf = '';
-				reasoningTaskIdx = undefined;
-			};
-
-			for (const entry of s.agentDebugLog) {
-				const ts = new Date(entry.ts).toISOString().slice(11, 23);
-				const tLabel = entry.taskIndex != null ? `T${entry.taskIndex + 1}` : 'global';
-
-				if (entry.type === 'reasoning') {
-					if (entry.taskIndex !== reasoningTaskIdx && reasoningBuf) flushReasoning();
-					reasoningTaskIdx = entry.taskIndex;
-					reasoningBuf += (entry.data.text as string) ?? '';
-				} else {
-					flushReasoning();
-					if (entry.type === 'tool-call') {
-						const d = entry.data as any;
-						lines.push(`[${ts}] [${tLabel}] TOOL CALL: ${d.tool}`);
-						try {
-							const argsStr = JSON.stringify(d.args, null, 2);
-							for (const line of argsStr.split('\n')) lines.push(`  args: ${line}`);
-						} catch { lines.push(`  args: ${String(d.args)}`); }
-					} else if (entry.type === 'tool-result') {
-						const d = entry.data as any;
-						lines.push(`[${ts}] [${tLabel}] TOOL RESULT: ${d.tool}`);
-						if (d.output != null) {
-							const outStr = typeof d.output === 'string' ? d.output : JSON.stringify(d.output, null, 2);
-							const outLines = outStr.split('\n');
-							for (const line of outLines.slice(0, 80)) lines.push(`  ${line}`);
-							if (outLines.length > 80) lines.push(`  ... (${outLines.length - 80} more lines)`);
-						}
-					}
-				}
-			}
-			flushReasoning();
-		}
-
-		// ── Token usage ───────────────────────────────────────────────────────
-		if (s.phaseUsages.length) {
-			lines.push(`${'═'.repeat(60)}`);
-			lines.push('TOKEN USAGE BY PHASE');
-			for (const pu of s.phaseUsages) {
-				lines.push(`  ${pu.phase} (${pu.modelId}): ${pu.inputTokens}in + ${pu.outputTokens}out = ${pu.inputTokens + pu.outputTokens} total`);
-			}
-			const totalIn = s.phaseUsages.reduce((a, p) => a + p.inputTokens, 0);
-			const totalOut = s.phaseUsages.reduce((a, p) => a + p.outputTokens, 0);
-			lines.push(`  TOTAL: ${totalIn}in + ${totalOut}out = ${totalIn + totalOut}`);
-		}
-
-		lines.push('');
-		lines.push('=== End of Debug Export ===');
-
-		navigator.clipboard.writeText(lines.join('\n')).then(() => {
+		const text = buildDebugInfoText();
+		navigator.clipboard.writeText(text).then(() => {
 			setDebugCopied(true);
 			window.setTimeout(() => setDebugCopied(false), 1500);
 		});
@@ -621,135 +263,33 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0">
 			{/* Sub navigation (below input, outside frames) */}
 			{showNavBar ? (
-				<div className="pktw-flex-shrink-0 pktw-px-4">
-					<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-3 pktw-p-2 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white">
-						{/* Title on the left (typewriter when just completed, plain when restored from history) */}
-						<div className="pktw-min-w-0 pktw-flex-1 pktw-pr-2">
-							{titleDisplay ? (
-								<span className="pktw-text-sm pktw-font-semibold pktw-text-[#1a1c1e] pktw-truncate pktw-block" title={titleFromStore ?? undefined}>
-									{titleDisplay}
-								</span>
-							) : null}
-						</div>
-						{/* Nav buttons on the right */}
-						<div className="pktw-flex pktw-flex-shrink-0 pktw-flex-wrap pktw-gap-2">
-							{isNewPipeline ? (
-								<>
-									{hasNewPipelineReport ? (
-										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToStep('report')}>Summary</Button>
-									) : null}
-									{hasNewPipelineSources ? (
-										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToStep('sources')}>Sources</Button>
-									) : null}
-									{settings.enableDevTools ? (
-										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToStep('classify')}>Steps</Button>
-									) : null}
-								</>
-							) : (
-								<>
-									{getHasSummarySection() ? (
-										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(summaryRef)}>Summary</Button>
-									) : null}
-									{getActiveOverviewMermaid?.()?.trim() ? (
-										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(overviewRef)}>Overview</Button>
-									) : null}
-									{getHasTopicsSection() ? (
-										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(topicsRef)}>Topics</Button>
-									) : null}
-									{getHasGraphData() ? (
-										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(graphSectionRef)}>Graph</Button>
-									) : null}
-									{getHasSourcesSection() ? (
-										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(sourcesRef)}>Sources</Button>
-									) : null}
-									{settings.enableDevTools && ((steps?.length ?? 0) > 0 || (hasStartedStreaming && !analysisCompleted)) ? (
-										<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(stepsRef)}>Steps</Button>
-									) : null}
-								</>
-							)}
-							{getHasDashboardBlocksSection() ? (
-								(dashboardBlocks?.length ?? 0) > 1 ? (
-									<HoverCard openDelay={150} closeDelay={100}>
-										<HoverCardTrigger asChild>
-											<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(dashboardBlocksRef)}>Blocks</Button>
-										</HoverCardTrigger>
-										<HoverCardContent side="bottom" align="start" className="pktw-w-auto pktw-min-w-[160px] pktw-py-1 pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
-											<div className="pktw-flex pktw-flex-col pktw-gap-0.5">
-												{(dashboardBlocks ?? []).map((b) => {
-													const raw = b.title || 'Block';
-													const label = raw.replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').trim() || 'Block';
-													return (
-														<Button
-															key={b.id}
-															variant="ghost"
-															style={{ cursor: 'pointer' }}
-															className="pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-rounded pktw-truncate pktw-flex pktw-justify-start"
-															onClick={() => scrollToBlock(b.id)}
-														>
-															{label}
-														</Button>
-													);
-												})}
-												{(fullAnalysisFollowUp?.length ?? 0) > 0 ? (
-													<>
-														<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-mt-1 pktw-pt-2" />
-														{(fullAnalysisFollowUp ?? []).map((s, i) => {
-															const raw = s.title || 'Continue';
-															const label = raw.replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
-															return (
-																<Button
-																	key={i}
-																	variant="ghost"
-																	style={{ cursor: 'pointer' }}
-																	className="pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-rounded pktw-truncate pktw-flex pktw-justify-start"
-																	onClick={() => scrollToContinueSection(i)}
-																>
-																	{label.slice(0, SLICE_CAPS.ui.tabSearchLabel)}{label.length > SLICE_CAPS.ui.tabSearchLabel ? '…' : ''}
-																</Button>
-															);
-														})}
-													</>
-												) : null}
-											</div>
-										</HoverCardContent>
-									</HoverCard>
-								) : (
-									<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(dashboardBlocksRef)}>Blocks</Button>
-								)
-							) : null}
-							{(fullAnalysisFollowUp?.length ?? 0) > 0 ? (
-								(fullAnalysisFollowUp?.length ?? 0) > 1 ? (
-									<HoverCard openDelay={150} closeDelay={100}>
-										<HoverCardTrigger asChild>
-											<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToSection(continueAnalysisRef)}>Continue</Button>
-										</HoverCardTrigger>
-										<HoverCardContent side="bottom" align="start" className="pktw-w-auto pktw-min-w-[180px] pktw-py-1 pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
-											<div className="pktw-flex pktw-flex-col pktw-gap-0.5">
-												{(fullAnalysisFollowUp ?? []).map((s, i) => {
-													const raw = s.title || 'Continue';
-													const label = raw.replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
-													return (
-														<Button
-															key={i}
-															variant="ghost"
-															style={{ cursor: 'pointer' }}
-															className="pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-rounded pktw-truncate pktw-flex pktw-justify-start"
-															onClick={() => scrollToContinueSection(i)}
-														>
-															{label.slice(0, SLICE_CAPS.ui.tabSearchLabel)}{label.length > SLICE_CAPS.ui.tabSearchLabel ? '…' : ''}
-														</Button>
-													);
-												})}
-											</div>
-										</HoverCardContent>
-									</HoverCard>
-								) : (
-									<Button size="sm" variant="ghost" className="pktw-h-7 pktw-px-2 pktw-text-xs" onClick={() => scrollToContinueSection(0)}>Continue</Button>
-								)
-							) : null}
-						</div>
-					</div>
-				</div>
+				<AISearchNavBar
+					titleDisplay={titleDisplay}
+					titleFromStore={titleFromStore}
+					isNewPipeline={isNewPipeline}
+					hasNewPipelineReport={hasNewPipelineReport}
+					hasNewPipelineSources={hasNewPipelineSources}
+					isAnalyzing={isAnalyzing}
+					analysisCompleted={analysisCompleted}
+					hasStartedStreaming={hasStartedStreaming}
+					enableDevTools={settings.enableDevTools}
+					steps={steps}
+					dashboardBlocks={dashboardBlocks}
+					fullAnalysisFollowUp={fullAnalysisFollowUp}
+					getActiveOverviewMermaid={getActiveOverviewMermaid}
+					scrollToSection={scrollToSection}
+					scrollToStep={scrollToStep}
+					scrollToBlock={scrollToBlock}
+					scrollToContinueSection={scrollToContinueSection}
+					summaryRef={summaryRef}
+					overviewRef={overviewRef}
+					topicsRef={topicsRef}
+					dashboardBlocksRef={dashboardBlocksRef}
+					graphSectionRef={graphSectionRef}
+					sourcesRef={sourcesRef}
+					stepsRef={stepsRef}
+					continueAnalysisRef={continueAnalysisRef}
+				/>
 			) : null}
 
 			{/* V2 title bar — shown when analysis is completed */}
@@ -792,120 +332,28 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 			{/* Footer — V2 renders its own content, V1 renders original */}
 			{isV2Active && (isAnalyzing || analysisCompleted) ? (
-				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} onOpenInFile={openAnalysisPath ? () => void createOpenSourceCallback(onClose)(openAnalysisPath) : undefined} />
+				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} />
 			) : null}
-			<div className={`pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0 ${isV2Active ? 'pktw-hidden' : ''}`}>
-				{!hasAnalyzed && !isAnalyzing ? <AISearchFooterHints /> : null}
-				{hasAnalyzed ? <UsageBadge /> : null}
-				<div className="pktw-flex pktw-items-center pktw-gap-3">
-					{/* Debug copy: always show when new pipeline has data, even mid-stream */}
-					{isNewPipeline && isAnalyzing && (
-						<Button
-							onClick={handleCopyDebugInfo}
-							size="sm"
-							variant="ghost"
-							className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-[#6d28d9] pktw-border-0 pktw-shadow-none focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"
-							title={debugCopied ? 'Copied!' : 'Copy session debug info'}
-						>
-							{debugCopied ? <Check className="pktw-w-3.5 pktw-h-3.5" /> : <ClipboardList className="pktw-w-3.5 pktw-h-3.5" />}
-						</Button>
-					)}
-					{analysisCompleted && !isAnalyzing && (
-						<>
-							{/* Copy + Save: icon-only, no border; Copy shows Check for 1s after click then back to Copy */}
-							<div className="pktw-flex pktw-items-center pktw-gap-1">
-								{isNewPipeline && (
-									<Button
-										onClick={handleCopyDebugInfo}
-										size="sm"
-										variant="ghost"
-										className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-[#6d28d9] pktw-border-0 pktw-shadow-none focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"
-										title={debugCopied ? 'Copied!' : 'Copy session debug info'}
-									>
-										{debugCopied ? <Check className="pktw-w-3.5 pktw-h-3.5" /> : <ClipboardList className="pktw-w-3.5 pktw-h-3.5" />}
-									</Button>
-								)}
-								<Button
-									onClick={() => {
-										handleCopyAll();
-										setCopied(true);
-										window.setTimeout(() => setCopied(false), 1000);
-									}}
-									size="sm"
-									variant="ghost"
-									className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-[#6d28d9] pktw-border-0 pktw-shadow-none focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"
-									title={copied ? 'Copied' : 'Copy All'}
-								>
-									{copied ? <Check className="pktw-w-3.5 pktw-h-3.5" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
-								</Button>
-								<Button
-									onClick={() => setShowSaveDialog(true)}
-									size="sm"
-									variant="ghost"
-									className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-[#6d28d9] pktw-border-0 pktw-shadow-none focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"
-									title="Save to File"
-								>
-									<Save className="pktw-w-3.5 pktw-h-3.5" />
-								</Button>
-								{openAnalysisPath ? (
-									<Button
-										onClick={() => void createOpenSourceCallback(onClose)(openAnalysisPath)}
-										size="sm"
-										variant="ghost"
-										className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-[#6d28d9] pktw-border-0 pktw-shadow-none focus-visible:pktw-ring-0 focus-visible:pktw-ring-offset-0"
-										title="Open saved analysis file in document"
-									>
-										<ExternalLink className="pktw-w-3.5 pktw-h-3.5" />
-									</Button>
-								) : null}
-							</div>
-							<Button
-								onClick={() => {
-									const next = !showContinueAnalysis;
-									setShowContinueAnalysis(next);
-									if (next) {
-										setTimeout(() => {
-											continueAnalysisBlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-										}, 100);
-									}
-								}}
-								size="sm"
-								variant="outline"
-								className={`pktw-px-4 pktw-py-1.5 pktw-gap-2 ${showContinueAnalysis ? 'pktw-bg-[#6d28d9]/10 pktw-border-[#6d28d9]/30' : 'pktw-border-[#e5e7eb] pktw-bg-white pktw-text-[#6c757d] hover:pktw-bg-[#6d28d9]'}`}
-								title={showContinueAnalysis ? 'Hide Continue Analysis' : 'Continue analysis with follow-up questions'}
-							>
-								<MessageSquare className="pktw-w-3.5 pktw-h-3.5" />
-								<span>Continue Analysis</span>
-							</Button>
-							<HoverCard openDelay={150} closeDelay={300}>
-								<HoverCardTrigger asChild>
-									<Button
-										size="sm"
-										className="pktw-px-4 pktw-py-1.5 pktw-bg-[#7c3aed] pktw-text-white hover:pktw-bg-[#6d28d9] pktw-gap-2"
-										title="Open in chat or full analysis view"
-									>
-										<MessageCircle className="pktw-w-3.5 pktw-h-3.5" />
-										<span>Open in Chat</span>
-										<ChevronDown className="pktw-w-3.5 pktw-h-3.5 pktw-opacity-80" />
-									</Button>
-								</HoverCardTrigger>
-								<HoverCardContent align="end" side="bottom" sideOffset={4} className="pktw-w-[200px] pktw-p-1 pktw-z-[10000]">
-									<Button
-										variant="ghost"
-										style={{ cursor: 'pointer' }}
-										className="pktw-shadow-none pktw-w-full pktw-flex pktw-items-center pktw-gap-2 pktw-rounded-sm pktw-px-2 pktw-py-1.5 pktw-text-sm pktw-text-left pktw-cursor-pointer"
-										onClick={() => handleOpenInChat(onClose)}
-									>
-										<MessageCircle className="pktw-w-3.5 pktw-h-3.5" />
-										<span>Open in Chat</span>
-									</Button>
-									{/* Full analysis view — removed pending dedicated full-screen implementation */}
-								</HoverCardContent>
-							</HoverCard>
-						</>
-					)}
-				</div>
-			</div>
+			<V1Footer
+				isV2Active={isV2Active}
+				hasAnalyzed={hasAnalyzed}
+				isAnalyzing={isAnalyzing}
+				analysisCompleted={analysisCompleted}
+				isNewPipeline={isNewPipeline}
+				copied={copied}
+				setCopied={setCopied}
+				debugCopied={debugCopied}
+				showContinueAnalysis={showContinueAnalysis}
+				setShowContinueAnalysis={setShowContinueAnalysis}
+				fullAnalysisFollowUp={fullAnalysisFollowUp}
+				openAnalysisPath={openAnalysisPath}
+				onClose={onClose}
+				handleCopyAll={handleCopyAll}
+				handleCopyDebugInfo={handleCopyDebugInfo}
+				handleOpenInChat={handleOpenInChat}
+				setShowSaveDialog={setShowSaveDialog}
+				continueAnalysisBlockRef={continueAnalysisBlockRef}
+			/>
 
 			{/* V2 floating continue analysis input */}
 			{showV2ContinueInput && (
