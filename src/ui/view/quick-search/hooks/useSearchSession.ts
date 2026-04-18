@@ -28,7 +28,9 @@ import type { UserFeedback } from '@/service/agents/core/types';
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
 
-import { pushTimelineEvent, reorganizeTimelineByAgent } from './search-session-types';
+import { reorganizeTimelineByAgent } from './search-session-types';
+import { consumeStream } from './streamConsumer';
+import type { StreamConsumerContext } from './streamConsumer';
 import { useEventRouter } from './useEventRouter';
 import { useContinueAnalysis } from './useContinueAnalysis';
 
@@ -132,23 +134,17 @@ export function useSearchSession() {
 			currentUiStepRef.current = null;
 			analysisStartTimeRef.current = Date.now();
 
-			// Shared stream consumer
-			const consumeStream = async (gen: AsyncIterable<any>) => {
-				for await (const event of gen) {
-					if (!store.getState().hasStartedStreaming) {
-						console.debug('[useSearchSession] Starting streaming');
-						store.getState().startStreaming();
-						// Bridge
-						useAIAnalysisRuntimeStore.getState().startStreaming();
-						useStepDisplayReplayStore.getState().setStreamStarted(true);
-					}
-					if (signal?.aborted) {
-						console.debug('[useSearchSession] Analysis cancelled by user');
-						break;
-					}
-					pushTimelineEvent(timelineRef.current, event as LLMStreamEvent);
-					routeEvent(event as LLMStreamEvent);
-				}
+			// Build stream consumer context
+			const streamCtx: StreamConsumerContext = {
+				hasStartedStreaming: () => store.getState().hasStartedStreaming,
+				onStreamStart: () => {
+					store.getState().startStreaming();
+					useAIAnalysisRuntimeStore.getState().startStreaming();
+					useStepDisplayReplayStore.getState().setStreamStarted(true);
+				},
+				signal,
+				routeEvent,
+				timeline: timelineRef.current,
 			};
 
 			// Choose agent mode
@@ -163,7 +159,7 @@ export function useSearchSession() {
 					if (!agent) return;
 					store.getState().clearHitlPause();
 					useAIAnalysisRuntimeStore.getState().clearHitlPause();
-					await consumeStream(agent.continueWithFeedback(feedback));
+					await consumeStream(agent.continueWithFeedback(feedback), streamCtx);
 					if (!store.getState().hitlState) {
 						store.getState().markCompleted();
 						markAIAnalysisCompleted();
@@ -173,7 +169,7 @@ export function useSearchSession() {
 				// Bridge
 				useAIAnalysisRuntimeStore.getState().setHitlFeedbackCallback(hitlCallback);
 
-				await consumeStream(vaultAgentRef.current.startSession(searchQuery));
+				await consumeStream(vaultAgentRef.current.startSession(searchQuery), streamCtx);
 
 				// If pipeline paused at HITL or plan_ready, completion is deferred
 				const postStreamStatus = store.getState().status;
@@ -207,7 +203,7 @@ export function useSearchSession() {
 			}
 
 			const stream = aiSearchAgent.stream(searchQuery, scopeValue ? { scopeValue } : { scopeValue: undefined });
-			await consumeStream(stream);
+			await consumeStream(stream, streamCtx);
 		} catch (err) {
 			const errorMessage = err instanceof Error
 				? err.message
