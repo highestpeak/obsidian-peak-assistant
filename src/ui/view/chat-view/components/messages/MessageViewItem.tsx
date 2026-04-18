@@ -191,7 +191,7 @@ const ToolCallsDisplay: React.FC<{
 	return (
 		<div className="pktw-w-full pktw-space-y-2">
 			{toolCalls.map((toolCall, index) => (
-				<Task key={index} defaultOpen={expanded}>
+				<Task key={index} defaultOpen={false}>
 					<TaskTrigger title={toolCall.toolName} />
 					<TaskContent>
 						<TaskItem>
