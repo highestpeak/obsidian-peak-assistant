@@ -1,15 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, List, Network, ChevronRight, Folder, Loader2 } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { createOpenSourceCallback } from '../callbacks/open-source-file';
 import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
-import type { LensGraphData, LensNodeData, LensType } from '@/ui/component/mine/multi-lens-graph/types';
 import type { V2Source } from '../types/search-steps';
-import { buildSourcesGraphWithDiscoveredEdges, getCachedSourcesGraph, type SourcesGraph } from '@/service/tools/search-graph-inspector/build-sources-graph';
-import { enrichWithCrossDomain } from '@/service/agents/ai-graph/infer-cross-domain';
-import { AppContext } from '@/app/context/AppContext';
-import type { SearchResultItem } from '@/service/search/types';
+import { useGraphAgent } from '../hooks/useGraphAgent';
 
 type SourceViewMode = 'list' | 'graph';
 
@@ -17,182 +13,13 @@ interface V2SourcesViewProps {
     onClose?: () => void;
 }
 
-/** Convert V2Source[] to minimal SearchResultItem[] for the graph builder. */
-function v2SourcesToSearchItems(sources: V2Source[]): SearchResultItem[] {
-    return sources.map((src, i) => ({
-        id: `file:${src.path}`.replace(/[_\s]+/g, '-'),
-        type: 'document' as any,
-        title: src.title,
-        path: src.path,
-        lastModified: src.readAt,
-        score: sources.length - i,
-    }));
-}
-
-/** Assign roles based on edge connectivity: hub (3+ edges), bridge (cross-folder), leaf. */
-function assignRoles(data: LensGraphData): LensGraphData {
-    const edgeCount = new Map<string, number>();
-    for (const e of data.edges) {
-        edgeCount.set(e.source, (edgeCount.get(e.source) ?? 0) + 1);
-        edgeCount.set(e.target, (edgeCount.get(e.target) ?? 0) + 1);
-    }
-
-    const nodes = data.nodes.map((n) => {
-        const count = edgeCount.get(n.path) ?? 0;
-        if (count >= 3) return { ...n, role: 'hub' as const };
-        return n;
-    });
-
-    return { ...data, nodes };
-}
-
-/** Enrich nodes with file timestamps for timeline lens. */
-async function enrichWithTimestamps(data: LensGraphData): Promise<LensGraphData> {
-    try {
-        const ctx = AppContext.getInstance();
-        const app = ctx.app;
-        const nodes = data.nodes.map((n) => {
-            const file = app.vault.getAbstractFileByPath(n.path);
-            if (file && 'stat' in file) {
-                const stat = (file as any).stat;
-                return { ...n, createdAt: stat.ctime, modifiedAt: stat.mtime };
-            }
-            return n;
-        });
-        const hasTimestamps = nodes.some((n) => n.createdAt !== undefined);
-        const lenses = new Set<LensType>(data.availableLenses);
-        if (hasTimestamps) lenses.add('timeline');
-        return { ...data, nodes, availableLenses: [...lenses] as LensGraphData['availableLenses'] };
-    } catch {
-        return data;
-    }
-}
-
-/** Build co-citation edges as fallback when SQLite is unavailable. */
-function buildCoCitationFallback(sources: V2Source[], sections: Array<{ evidencePaths?: string[] }>): LensGraphData {
-    const nodes: LensNodeData[] = sources.map((src, i) => {
-        const parts = src.path.split('/');
-        const group = parts.length > 1 ? parts[0] : 'root';
-        return {
-            label: src.title,
-            path: src.path,
-            role: 'leaf' as const,
-            group,
-            score: i,
-        };
-    });
-
-    const edgeSet = new Set<string>();
-    const edges: LensGraphData['edges'] = [];
-    for (const sec of sections) {
-        const paths = sec.evidencePaths ?? [];
-        for (let i = 0; i < paths.length; i++) {
-            for (let j = i + 1; j < paths.length; j++) {
-                const srcI = nodes.find(n => n.path === paths[i]);
-                const srcJ = nodes.find(n => n.path === paths[j]);
-                if (srcI && srcJ) {
-                    const key = [srcI.path, srcJ.path].sort().join('--');
-                    if (!edgeSet.has(key)) {
-                        edgeSet.add(key);
-                        edges.push({ source: srcI.path, target: srcJ.path, kind: 'semantic' });
-                    }
-                }
-            }
-        }
-    }
-
-    return { nodes, edges, availableLenses: ['topology'] };
-}
-
-/** Convert SourcesGraph to LensGraphData (same logic as SourcesSection). */
-function sourcesGraphToLensData(graph: SourcesGraph): LensGraphData {
-    // Build a set of known node paths for edge filtering
-    const nodePathSet = new Set<string>();
-    const nodes = graph.nodes.map((n) => {
-        const path = n.attributes?.path ?? n.id;
-        nodePathSet.add(path);
-        return {
-            label: n.label,
-            path,
-            role: n.type === 'hub' ? 'hub' as const : n.type === 'bridge' ? 'bridge' as const : 'leaf' as const,
-            group: path.split('/').slice(0, -1).join('/'),
-        };
-    });
-
-    // Resolve edge endpoints: from_node_id may have prefixes like "file:" that don't match node paths
-    const resolveId = (id: string): string => {
-        if (nodePathSet.has(id)) return id;
-        // Strip common prefixes
-        const stripped = id.replace(/^file:/, '');
-        if (nodePathSet.has(stripped)) return stripped;
-        return id;
-    };
-
-    const edges = graph.edges
-        .map((e) => ({
-            source: resolveId(e.from_node_id),
-            target: resolveId(e.to_node_id),
-            kind: (e.kind === 'semantic' ? 'semantic' : 'link') as 'semantic' | 'link',
-        }))
-        .filter((e) => nodePathSet.has(e.source) && nodePathSet.has(e.target));
-
-    return { nodes, edges, availableLenses: ['topology'] as LensGraphData['availableLenses'] };
-}
-
 const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => void }> = ({ sources, onOpen }) => {
-    const sections = useSearchSessionStore(s => s.v2PlanSections);
-    const [graphData, setGraphData] = useState<LensGraphData | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        if (sources.length === 0) {
-            setGraphData(null);
-            return;
-        }
-        let cancelled = false;
-        setLoading(true);
-
-        (async () => {
-            try {
-                // Try rich graph builder (SQLite-backed edge discovery)
-                const searchItems = v2SourcesToSearchItems(sources);
-                const cached = getCachedSourcesGraph(searchItems);
-                const sg = cached ?? await buildSourcesGraphWithDiscoveredEdges(searchItems);
-
-                if (cancelled) return;
-
-                let data: LensGraphData;
-                if (sg && sg.edges.length > 0) {
-                    data = sourcesGraphToLensData(sg);
-                } else {
-                    // Fall back to co-citation edges
-                    data = buildCoCitationFallback(sources, sections);
-                }
-
-                // Assign hub/bridge/leaf roles based on connectivity
-                data = assignRoles(data);
-                // Enrich with cross-domain bridge detection + bridge lens
-                data = enrichWithCrossDomain(data);
-                // Add timestamps for timeline lens
-                data = await enrichWithTimestamps(data);
-
-                if (!cancelled) setGraphData(data);
-            } catch (err) {
-                console.warn('[V2SourcesGraph] rich graph build failed, using fallback:', err);
-                if (!cancelled) {
-                    let data = buildCoCitationFallback(sources, sections);
-                    data = assignRoles(data);
-                    data = enrichWithCrossDomain(data);
-                    data = await enrichWithTimestamps(data);
-                    setGraphData(data);
-                }
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        })();
-
-        return () => { cancelled = true; };
-    }, [sources, sections]);
+    const searchQuery = useSearchSessionStore(s => s.query);
+    const sourceItems = useMemo(
+        () => sources.map(s => ({ path: s.path, title: s.title, score: sources.length - sources.indexOf(s) })),
+        [sources],
+    );
+    const { graphData, loading } = useGraphAgent(sourceItems, searchQuery);
 
     if (!graphData && !loading) return null;
 

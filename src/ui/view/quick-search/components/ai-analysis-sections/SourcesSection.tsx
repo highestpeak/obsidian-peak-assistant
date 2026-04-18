@@ -1,5 +1,5 @@
 import { SLICE_CAPS } from '@/core/constant';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FileText, Info, MessageCircle, ChevronDown, ChevronRight, List, Network, Loader2, BookOpen } from 'lucide-react';
 import { mixSearchResultsBySource } from '@/core/utils/source-mixer';
@@ -10,9 +10,9 @@ import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/ui/component/sh
 import { InlineFollowupChat } from '@/ui/component/mine/InlineFollowupChat';
 import { useSourcesFollowupChatConfig } from '../../hooks/useAIAnalysisPostAIInteractions';
 import { useAIAnalysisInteractionsStore } from '../../store/aiAnalysisStore';
+import { useSearchSessionStore } from '../../store/searchSessionStore';
 import { MultiLensGraph } from '@/ui/component/mine/multi-lens-graph/MultiLensGraph';
-import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
-import { buildSourcesGraphWithDiscoveredEdges, getCachedSourcesGraph, type SourcesGraph } from '@/service/tools/search-graph-inspector/build-sources-graph';
+import { useGraphAgent } from '../../hooks/useGraphAgent';
 import type { EvidenceIndex } from '@/service/agents/shared-types';
 
 /** When false, show only a single "Score" (AI-generated); Physical/Semantic/Average gauges are kept in code but not rendered. */
@@ -249,59 +249,7 @@ const EvidenceView: React.FC<{
 	);
 };
 
-/** Hook: build sources graph (cached); uses cache when same sources, skips rebuild. */
-function useSourcesGraph(sources: SearchResultItem[]): { graph: SourcesGraph | null; loading: boolean } {
-	const cached = useMemo(() => getCachedSourcesGraph(sources), [sources]);
-	const [graph, setGraph] = useState<SourcesGraph | null>(() => cached ?? null);
-	const [loading, setLoading] = useState(() => !cached);
-
-	useEffect(() => {
-		if (!sources.length) {
-			setGraph(null);
-			setLoading(false);
-			return;
-		}
-		const c = getCachedSourcesGraph(sources);
-		if (c) {
-			setGraph(c);
-			setLoading(false);
-			return;
-		}
-		let cancelled = false;
-		setLoading(true);
-		buildSourcesGraphWithDiscoveredEdges(sources)
-			.then((g) => {
-				if (!cancelled) setGraph(g);
-			})
-			.catch((err) => {
-				if (!cancelled) console.warn('[SourcesSection] buildSourcesGraph failed:', err);
-			})
-			.finally(() => {
-				if (!cancelled) setLoading(false);
-			});
-		return () => { cancelled = true; };
-	}, [sources]);
-
-	return { graph, loading };
-}
-
-/** Convert SourcesGraph (from graph-inspector) to the LensGraphData format used by MultiLensGraph. */
-function sourcesGraphToLensData(graph: SourcesGraph): LensGraphData {
-	return {
-		nodes: graph.nodes.map((n) => ({
-			label: n.label,
-			path: n.attributes?.path ?? n.id,
-			role: n.type === 'hub' ? 'hub' as const : n.type === 'bridge' ? 'bridge' as const : 'leaf' as const,
-			group: (n.attributes?.path ?? n.id).split('/').slice(0, -1).join('/'),
-		})),
-		edges: graph.edges.map((e) => ({
-			source: e.from_node_id,
-			target: e.to_node_id,
-			kind: (e.kind === 'semantic' ? 'semantic' : 'link') as 'semantic' | 'link',
-		})),
-		availableLenses: ['topology'] as LensGraphData['availableLenses'],
-	};
-}
+/** Hook removed: useSourcesGraph — replaced by useGraphAgent in the component below. */
 
 /**
  * Top sources section component showing relevant files with reasoning, badges, and score breakdown.
@@ -346,7 +294,12 @@ export const TopSourcesSection: React.FC<{
 
 	const [expandZeroScore, setExpandZeroScore] = useState(false);
 
-	const { graph: sourcesGraph, loading: sourcesGraphLoading } = useSourcesGraph(mixedSources);
+	const searchQuery = useSearchSessionStore(s => s.query);
+	const graphSourceItems = useMemo(
+		() => mixedSources.map(s => ({ path: s.path, title: s.title, score: s.score })),
+		[mixedSources],
+	);
+	const { graphData: aiGraphData, loading: sourcesGraphLoading } = useGraphAgent(graphSourceItems, searchQuery);
 
 	// Animate scored sources one by one
 	const [visibleCount, setVisibleCount] = React.useState(0);
@@ -473,7 +426,7 @@ export const TopSourcesSection: React.FC<{
 						</div>
 					) : (
 						<MultiLensGraph
-							graphData={sourcesGraph ? sourcesGraphToLensData(sourcesGraph) : null}
+							graphData={aiGraphData}
 							defaultLens="topology"
 							onNodeClick={(path) => onOpen(path)}
 							className="pktw-h-full pktw-w-full"
