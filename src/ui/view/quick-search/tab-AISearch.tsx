@@ -879,18 +879,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 										<MessageCircle className="pktw-w-3.5 pktw-h-3.5" />
 										<span>Open in Chat</span>
 									</Button>
-									<Button
-										variant="ghost"
-										style={{ cursor: 'pointer' }}
-										className="pktw-shadow-none pktw-w-full pktw-flex pktw-items-center pktw-gap-2 pktw-rounded-sm pktw-px-2 pktw-py-1.5 pktw-text-sm pktw-text-left pktw-cursor-pointer"
-										title="Open this analysis in the main view for a larger view"
-										onClick={() => {
-											// TODO: open this analysis in main view (full analysis view)
-										}}
-									>
-										<Maximize2 className="pktw-w-3.5 pktw-h-3.5" />
-										<span>Full analysis view</span>
-									</Button>
+									{/* Full analysis view — removed pending dedicated full-screen implementation */}
 								</HoverCardContent>
 							</HoverCard>
 						</>
