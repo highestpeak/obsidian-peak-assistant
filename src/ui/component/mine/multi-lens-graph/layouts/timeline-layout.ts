@@ -16,7 +16,7 @@ const CANVAS_PADDING = 80;
 const AXIS_Y = 260;
 const CHAIN_OFFSET_Y = 120;
 const SOLO_OFFSET_Y = 20;
-const MIN_X_GAP = 200;
+const MIN_X_GAP = 280;
 
 export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayoutResult {
 	const { nodes, evolutionChains = [] } = input;
@@ -86,7 +86,7 @@ export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayou
 	const lastTimedX = sortedPaths.length > 0 ? positions.get(sortedPaths[sortedPaths.length - 1])!.x : canvasWidth - CANVAS_PADDING;
 	untimed.forEach((n, i) => {
 		positions.set(n.path, {
-			x: lastTimedX + 30 + i * 60,
+			x: lastTimedX + 40 + i * 220,
 			y: AXIS_Y,
 		});
 	});

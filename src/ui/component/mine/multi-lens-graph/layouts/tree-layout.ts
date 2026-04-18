@@ -1,5 +1,6 @@
 import dagre from '@dagrejs/dagre';
 import type { LensNodeData, LensEdgeData } from '../types';
+import { estimateNodeWidth } from './topology-layout';
 
 interface LayoutInput {
 	nodes: LensNodeData[];
@@ -13,10 +14,10 @@ interface LayoutResult {
 export function computeTreeLayout(input: LayoutInput): LayoutResult {
 	const g = new dagre.graphlib.Graph();
 	g.setDefaultEdgeLabel(() => ({}));
-	g.setGraph({ rankdir: 'TB', nodesep: 60, ranksep: 100 });
+	g.setGraph({ rankdir: 'TB', nodesep: 120, ranksep: 180 });
 
 	for (const n of input.nodes) {
-		g.setNode(n.path, { width: 180, height: 50 });
+		g.setNode(n.path, { width: estimateNodeWidth(n.label), height: 60 });
 	}
 
 	const treeEdges = input.edges.filter((e) => e.kind === 'derives');

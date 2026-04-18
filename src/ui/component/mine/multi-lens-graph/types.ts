@@ -24,6 +24,8 @@ export interface LensEdgeData extends Record<string, unknown> {
 		| 'builds_on' | 'contrasts' | 'complements' | 'applies' | 'references';
 	weight?: number;
 	edgeLabel?: string;
+	/** True when edge count > 1.2x node count — suppresses labels unless hovered */
+	dense?: boolean;
 }
 
 export type LensEdge = Edge<LensEdgeData>;

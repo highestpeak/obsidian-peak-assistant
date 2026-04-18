@@ -13,9 +13,9 @@ export interface BridgeLayoutResult {
 	swimlanes?: Array<{ id: string; name: string; x: number; y: number; width: number; height: number }>;
 }
 
-const COL_WIDTH = 220;
-const COL_GAP = 200;
-const ROW_HEIGHT = 70;
+const COL_WIDTH = 280;
+const COL_GAP = 320;
+const ROW_HEIGHT = 100;
 const PADDING = 40;
 
 export function computeBridgeLayout(input: BridgeLayoutInput): BridgeLayoutResult {

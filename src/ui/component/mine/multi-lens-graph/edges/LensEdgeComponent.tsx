@@ -84,7 +84,7 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 					>
 						{fullLabel}
 					</div>
-				) : shortLabel ? (
+				) : (!data?.dense && shortLabel) ? (
 					<div
 						style={{
 							position: 'absolute',

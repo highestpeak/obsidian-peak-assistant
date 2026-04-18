@@ -7,6 +7,24 @@ import { computeTimelineLayout } from '../layouts/timeline-layout';
 
 type RawEdge = LensGraphData['edges'][number];
 
+/** Compute best handle direction based on relative position of source and target nodes. */
+function computeHandlePair(
+	srcPos: { x: number; y: number },
+	tgtPos: { x: number; y: number },
+): { sourceHandle: string; targetHandle: string } {
+	const dx = tgtPos.x - srcPos.x;
+	const dy = tgtPos.y - srcPos.y;
+	// Primarily horizontal → Left/Right; primarily vertical → Top/Bottom
+	if (Math.abs(dx) >= Math.abs(dy)) {
+		return dx >= 0
+			? { sourceHandle: 'source-right', targetHandle: 'target-left' }
+			: { sourceHandle: 'source-left', targetHandle: 'target-right' };
+	}
+	return dy >= 0
+		? { sourceHandle: 'source-bottom', targetHandle: 'target-top' }
+		: { sourceHandle: 'source-top', targetHandle: 'target-bottom' };
+}
+
 /** Filter and cap topology edges: keep weight >= 0.4, cap at 1.5x node count, highest weight first */
 function filterTopologyEdges(edges: RawEdge[], nodeCount: number): RawEdge[] {
 	const sorted = [...edges].sort((a, b) => (b.weight ?? 0.5) - (a.weight ?? 0.5));
@@ -65,13 +83,21 @@ export function useLensLayout(graphData: LensGraphData | null, lens: LensType) {
 			data: n,
 		}));
 
-		const edges: LensEdge[] = filteredEdges.map((e, i) => ({
-			id: `e-${i}-${e.source}-${e.target}`,
-			source: e.source,
-			target: e.target,
-			type: 'lensEdge',
-			data: { kind: e.kind, weight: e.weight },
-		}));
+		const edges: LensEdge[] = filteredEdges.map((e, i) => {
+			const srcPos = layoutResult.positions.get(e.source);
+			const tgtPos = layoutResult.positions.get(e.target);
+			const handles = srcPos && tgtPos ? computeHandlePair(srcPos, tgtPos) : { sourceHandle: 'source-right', targetHandle: 'target-left' };
+			const dense = filteredEdges.length > graphData.nodes.length * 1.2;
+			return {
+				id: `e-${i}-${e.source}-${e.target}`,
+				source: e.source,
+				target: e.target,
+				sourceHandle: handles.sourceHandle,
+				targetHandle: handles.targetHandle,
+				type: 'lensEdge',
+				data: { kind: e.kind, weight: e.weight, dense },
+			};
+		});
 
 		// Add swimlane background nodes for bridge layout
 		if (lens === 'bridge' && 'swimlanes' in layoutResult && Array.isArray(layoutResult.swimlanes)) {

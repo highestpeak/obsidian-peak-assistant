@@ -20,13 +20,23 @@ interface SimLink {
 	weight: number;
 }
 
-// Estimate node width for collision radius
-function estimateNodeWidth(label: string): number {
+// Estimate node width for collision radius (includes padding)
+export function estimateNodeWidth(label: string): number {
 	let w = 0;
 	for (const ch of label) {
 		w += ch.charCodeAt(0) > 127 ? 14 : 8;
 	}
-	return Math.min(Math.max(w + 24, 80), 280);
+	return Math.min(Math.max(w + 40, 100), 300); // +40 for px-4 padding on both sides
+}
+
+/** Deterministic hash → angle for initial node positions (no Math.random). */
+function hashToAngle(id: string, total: number, index: number): number {
+	let h = 0;
+	for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+	// Spread nodes around circle with hash-based jitter
+	const baseAngle = (2 * Math.PI * index) / Math.max(total, 1);
+	const jitter = ((h & 0xffff) / 0xffff - 0.5) * (Math.PI / total);
+	return baseAngle + jitter;
 }
 
 export function computeTopologyLayout(input: TopologyInput): { positions: Map<string, { x: number; y: number }> } {
@@ -45,13 +55,15 @@ export function computeTopologyLayout(input: TopologyInput): { positions: Map<st
 		});
 	});
 
-	// Initialize simulation nodes near their cluster center
-	const simNodes: SimNode[] = nodes.map((n) => {
+	// Initialize simulation nodes near their cluster center (deterministic positions)
+	const simNodes: SimNode[] = nodes.map((n, idx) => {
 		const center = clusterCenters.get(n.clusterId ?? 'default') ?? { x: 0, y: 0 };
+		const angle = hashToAngle(n.path, nodes.length, idx);
+		const spread = 60;
 		return {
 			id: n.path,
-			x: center.x + (Math.random() - 0.5) * 100,
-			y: center.y + (Math.random() - 0.5) * 100,
+			x: center.x + Math.cos(angle) * spread,
+			y: center.y + Math.sin(angle) * spread,
 			clusterId: n.clusterId,
 			importance: n.importance ?? 0.5,
 		};
@@ -68,13 +80,13 @@ export function computeTopologyLayout(input: TopologyInput): { positions: Map<st
 	const sim = forceSimulation(simNodes as any)
 		.force('link', forceLink(simLinks as any)
 			.id((d: any) => d.id)
-			.distance(150)
+			.distance(250)
 			.strength((d: any) => d.weight * 0.3))
-		.force('charge', forceManyBody().strength(-300))
+		.force('charge', forceManyBody().strength(-500))
 		.force('center', forceCenter(0, 0))
 		.force('collide', forceCollide().radius((d: any) => {
 			const node = nodes.find(n => n.path === d.id);
-			return estimateNodeWidth(node?.label ?? '') / 2 + 20;
+			return estimateNodeWidth(node?.label ?? '') / 2 + 40;
 		}))
 		// Cluster centering force: pull nodes toward their cluster center
 		.force('clusterX', forceX().x((d: any) => {

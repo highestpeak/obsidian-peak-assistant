@@ -53,16 +53,14 @@ export const LensNodeComponent = memo(({ data }: NodeProps<LensNode>) => {
 					{data.summary}
 				</span>
 			)}
-			<Handle
-				type="target"
-				position={Position.Left}
-				className="!pktw-bg-transparent !pktw-border-0 !pktw-w-0 !pktw-h-0"
-			/>
-			<Handle
-				type="source"
-				position={Position.Right}
-				className="!pktw-bg-transparent !pktw-border-0 !pktw-w-0 !pktw-h-0"
-			/>
+			<Handle type="target" position={Position.Left} id="target-left" className="!pktw-bg-transparent !pktw-border-0 !pktw-w-0 !pktw-h-0" />
+			<Handle type="target" position={Position.Top} id="target-top" className="!pktw-bg-transparent !pktw-border-0 !pktw-w-0 !pktw-h-0" />
+			<Handle type="target" position={Position.Right} id="target-right" className="!pktw-bg-transparent !pktw-border-0 !pktw-w-0 !pktw-h-0" />
+			<Handle type="target" position={Position.Bottom} id="target-bottom" className="!pktw-bg-transparent !pktw-border-0 !pktw-w-0 !pktw-h-0" />
+			<Handle type="source" position={Position.Left} id="source-left" className="!pktw-bg-transparent !pktw-border-0 !pktw-w-0 !pktw-h-0" />
+			<Handle type="source" position={Position.Top} id="source-top" className="!pktw-bg-transparent !pktw-border-0 !pktw-w-0 !pktw-h-0" />
+			<Handle type="source" position={Position.Right} id="source-right" className="!pktw-bg-transparent !pktw-border-0 !pktw-w-0 !pktw-h-0" />
+			<Handle type="source" position={Position.Bottom} id="source-bottom" className="!pktw-bg-transparent !pktw-border-0 !pktw-w-0 !pktw-h-0" />
 		</div>
 	);
 });
