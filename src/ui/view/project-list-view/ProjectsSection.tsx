@@ -119,7 +119,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		conversation: ChatConversation
 	) => {
 		setInputModalConfig({
-			message: 'Create Conversation',
+			message: 'Rename Conversation',
 			placeholderText: 'Conversation title',
 			initialValue: conversation.meta.title,
 			onSubmit: async (newTitle: string | null) => {
