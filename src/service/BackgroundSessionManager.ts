@@ -17,6 +17,7 @@ import type { V2Section } from '@/ui/view/quick-search/store/v2SessionTypes';
 import type { V2ToolStep, V2Source } from '@/ui/view/quick-search/types/search-steps';
 import { AppContext } from '@/app/context/AppContext';
 import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
+import { eventTargetRedirect } from '@/ui/view/quick-search/hooks/useEventRouter';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -169,6 +170,15 @@ export class BackgroundSessionManager {
 			this.queue.push(sessionId);
 		}
 
+		// Activate event redirect so the still-running performAnalysis closure
+		// writes to the background snapshot instead of the foreground Zustand store
+		if (session.status === 'streaming') {
+			eventTargetRedirect.target = this.buildSnapshotTarget(session);
+			eventTargetRedirect.summaryBuffer = { appendDelta: () => {}, flush: () => {} };
+			eventTargetRedirect.uiStepRef = { get: () => null, set: () => {} };
+			eventTargetRedirect.active = true;
+		}
+
 		// Reset the foreground store so the user gets a clean slate
 		store.resetAll();
 
@@ -190,6 +200,12 @@ export class BackgroundSessionManager {
 		if (!session) return null;
 
 		const snapshot = session.snapshot;
+
+		// Deactivate event redirect — foreground will handle events directly
+		eventTargetRedirect.active = false;
+		eventTargetRedirect.target = null;
+		eventTargetRedirect.summaryBuffer = null;
+		eventTargetRedirect.uiStepRef = null;
 
 		// Remove from map and queue
 		this.sessions.delete(sessionId);
@@ -220,6 +236,14 @@ export class BackgroundSessionManager {
 		const session = this.sessions.get(sessionId);
 		if (!session) return;
 
+		// Deactivate redirect if this was the redirected session
+		if (eventTargetRedirect.active && session.status === 'streaming') {
+			eventTargetRedirect.active = false;
+			eventTargetRedirect.target = null;
+			eventTargetRedirect.summaryBuffer = null;
+			eventTargetRedirect.uiStepRef = null;
+		}
+
 		if (session.abortController) {
 			try {
 				session.abortController.abort();
@@ -248,6 +272,12 @@ export class BackgroundSessionManager {
 		}
 		this.sessions.clear();
 		this.queue = [];
+
+		eventTargetRedirect.active = false;
+		eventTargetRedirect.target = null;
+		eventTargetRedirect.summaryBuffer = null;
+		eventTargetRedirect.uiStepRef = null;
+
 		this.notify();
 	}
 

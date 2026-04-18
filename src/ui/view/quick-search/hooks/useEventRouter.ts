@@ -36,6 +36,33 @@ import type {
 } from './eventDispatcher';
 
 // ---------------------------------------------------------------------------
+// Module-level redirect — allows BackgroundSessionManager to redirect event
+// routing after React unmount. Only one session can be redirected at a time.
+// ---------------------------------------------------------------------------
+
+const noopSummaryBuffer: SummaryBuffer = {
+	appendDelta: () => {},
+	flush: () => {},
+};
+
+const noopUiStepRef: UiStepAccumRef = {
+	get: () => null,
+	set: () => {},
+};
+
+export const eventTargetRedirect: {
+	active: boolean;
+	target: EventDispatchTarget | null;
+	summaryBuffer: SummaryBuffer | null;
+	uiStepRef: UiStepAccumRef | null;
+} = {
+	active: false,
+	target: null,
+	summaryBuffer: null,
+	uiStepRef: null,
+};
+
+// ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
@@ -164,6 +191,16 @@ export function useEventRouter() {
 	// -------------------------------------------------------------------
 
 	const routeEvent = useCallback((event: LLMStreamEvent) => {
+		if (eventTargetRedirect.active && eventTargetRedirect.target) {
+			dispatchEvent(
+				event,
+				eventTargetRedirect.target,
+				null,
+				eventTargetRedirect.summaryBuffer ?? noopSummaryBuffer,
+				eventTargetRedirect.uiStepRef ?? noopUiStepRef,
+			);
+			return;
+		}
 		console.debug('[useSearchSession] routeEvent:', event);
 		dispatchEvent(event, buildTarget(), buildLegacy(), buildSummaryBuffer(), buildUiStepRef());
 	}, [store, bufferSummaryDelta, flushSummaryBuffer]);
