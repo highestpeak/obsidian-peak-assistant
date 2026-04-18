@@ -17,21 +17,30 @@ const KIND_STYLES: Record<string, { stroke: string; strokeDasharray?: string }> 
 	'cross-domain': { stroke: '#dc2626', strokeDasharray: '4 4' },
 };
 
-const KIND_LABELS: Record<string, string> = {
-	builds_on: 'builds on',
-	complements: 'complements',
-	contrasts: 'contrasts',
-	applies: 'applies',
-	references: 'references',
-	link: 'link',
-	semantic: 'semantic',
-	derives: 'derives',
-	temporal: 'temporal',
-	'cross-domain': 'cross',
+const KIND_SHORT_LABELS: Record<string, string> = {
+	builds_on: '构建',
+	complements: '互补',
+	contrasts: '对比',
+	applies: '应用',
+	references: '引用',
+	link: '链接',
+	semantic: '语义',
+	derives: '推导',
+	temporal: '时序',
+	'cross-domain': '跨域',
 };
 
+/** Simple hash to get a consistent integer from a string. */
+function simpleHash(s: string): number {
+	let h = 0;
+	for (let i = 0; i < s.length; i++) {
+		h = (h * 31 + s.charCodeAt(i)) | 0;
+	}
+	return h;
+}
+
 export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
-	const { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data } = props;
+	const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data } = props;
 	const [hovered, setHovered] = useState(false);
 	const [edgePath, labelX, labelY] = getBezierPath({
 		sourceX,
@@ -42,7 +51,13 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 		targetPosition,
 	});
 	const style = KIND_STYLES[data?.kind ?? 'link'] ?? KIND_STYLES.link;
-	const label = data?.edgeLabel || KIND_LABELS[data?.kind ?? 'link'] || '';
+	const shortLabel = KIND_SHORT_LABELS[data?.kind ?? 'link'] || '';
+	const fullLabel = data?.edgeLabel || '';
+
+	// Offset label position based on edge id hash to spread labels apart
+	const hash = simpleHash(id);
+	const offsetY = (hash % 2 === 0 ? 1 : -1) * 12;
+	const offsetX = ((hash >> 1) % 3 - 1) * 8; // -8, 0, or +8
 
 	return (
 		<>
@@ -59,20 +74,33 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 				onMouseEnter={() => setHovered(true)}
 				onMouseLeave={() => setHovered(false)}
 			/>
-			{hovered && label && (
-				<EdgeLabelRenderer>
+			<EdgeLabelRenderer>
+				{hovered && fullLabel ? (
 					<div
 						style={{
 							position: 'absolute',
 							transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
 							pointerEvents: 'none',
+							zIndex: 10,
 						}}
-						className="pktw-text-[9px] pktw-text-[#9ca3af] pktw-bg-white/80 pktw-px-1 pktw-rounded"
+						className="pktw-text-[10px] pktw-text-[#374151] pktw-bg-white/95 pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-shadow-sm pktw-max-w-[180px] pktw-text-center pktw-leading-tight"
 					>
-						{label}
+						{fullLabel}
 					</div>
-				</EdgeLabelRenderer>
-			)}
+				) : shortLabel ? (
+					<div
+						style={{
+							position: 'absolute',
+							transform: `translate(-50%, -50%) translate(${labelX + offsetX}px,${labelY + offsetY}px)`,
+							pointerEvents: 'none',
+							color: style.stroke,
+						}}
+						className="pktw-text-[9px] pktw-bg-white/70 pktw-px-1 pktw-py-px pktw-rounded-full"
+					>
+						{shortLabel}
+					</div>
+				) : null}
+			</EdgeLabelRenderer>
 		</>
 	);
 }
