@@ -8,117 +8,105 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 | Phase | Content | Status |
 |-------|---------|--------|
-| A. 产品断点修复 | 用户旅程中 blocks-usage 的问题 | 完成 |
+| A. 产品断点修复 | 用户旅程中 blocks-usage 的问题 | 完成 (6/6) |
 | M. 移动端支持 | iCloud同步 + 去RAG + Claude长上下文 | 完成 (11 commits) |
-| B. UX 打磨 | degrades-UX 的问题 + ui-improvements 计划 | 完成 (16项) |
-| C. 技术债清理 | 死代码/桩代码/注释代码/空文件 | 完成 (9项) |
-| D. 代码拆分重构 | 大文件拆分 (>600行的20+文件) | 大部分完成 (7个大文件已拆) |
-| E. Phase 0 清理 | 归档docs、标记已完成计划、更新过时文档 | 完成 |
+| B. UX 打磨 | degrades-UX 的问题 + ui-improvements | 完成 (16项) |
+| C. 技术债清理 | 死代码/桩代码/注释代码/空文件 | 完成 (9项修复 + 50文件/9000行删除) |
+| D. 代码拆分重构 | 大文件拆分 | 完成 (7大文件→23小文件) |
+| E. 文档清理 | 归档docs、标记计划、更新过时文档 | 完成 |
+| V1 退役 | 删除 V1 search pipeline + step UI | 完成 (-9000行) |
 | F. Provider v2 | 删 Vercel AI SDK → Agent SDK query() | 未开始 |
 | G. Agent Trace | 可观测性 (阻塞于 F) | 未开始 |
 
 ## Next
 
-- [ ] A1: Onboarding — 首次使用无 API key 时 Chat/Search 显示友好引导，而非抛错
-- [ ] A2: 默认模型不依赖 OpenRouter — AI Analysis 默认模型改为用户已配置的 provider
-- [ ] A3: Vault 未索引时搜索显示"需要先索引"提示，而非空结果
-- [ ] A4: 侧栏 conversation 右键菜单加 delete 按钮 (#93)
-- [ ] A5: 实现 deleteProject 服务方法和 UI
-- [ ] B1-B10: ui-improvements-all-strategies 10个任务（含 P0 AI Analysis blank page）
+- [ ] 真机测试：iOS Obsidian 上测试移动端支持
+- [ ] Provider v2 设计已批准，待实施
+- [ ] 考虑替换 playwright+@langchain/community 为 fetch (减 50MB 依赖)
 
-## Backlog
+## Completed Work (2026-04-18)
 
-### A. 产品断点 (Blocks-Usage)
+### Phase M: 移动端支持 ✅
+- Platform gate + 动态导入守卫
+- VaultContentProvider + main.ts 启动守卫（跳过 SQLite）
+- MobileSearchService（路径/标签/内容三层搜索）
+- MobileVaultSearchAgent（搜索→读文件→Claude 1M 长上下文）
+- 直觉地图导出为 vault JSON 文件（iCloud 同步）
+- 隐藏桌面专属命令和 UI
 
-| ID | 问题 | 位置 | 说明 |
-|----|------|------|------|
-| A1 | 无 API key 无引导 | 全局 | 没有 onboarding flow，Chat 报错是 JS Error 不是友好 UI |
-| A2 | 默认模型指向 OpenRouter | `core/providers/types.ts:395` | 新用户只配了 OpenAI 时 AI Analysis 全部失败 |
-| A3 | Vault 未索引无提示 | `tab-VaultSearch.tsx` | autoIndex=false，搜索空结果只说"没有最近文件" |
-| A4 | 侧栏无法删除对话 | `ConversationsSection.tsx:184` | 菜单只有 Edit/Open，缺 Delete |
-| A5 | 无法删除 Project | 全局 | 整个代码库没有 deleteProject 方法 |
-| A6 | Provider 启用但无 key 不报错 | `ProviderSettings.tsx` | 可以 Enable 一个无 key 的 provider，调用时才报错 |
+### Phase A: 产品断点修复 ✅ (6/6)
+- A1: 友好错误信息引导到 Settings → Model Config
+- A2: 默认模型统一为 openai/gpt-4o-mini（不再依赖 OpenRouter）
+- A3: Vault 未索引时显示引导文案
+- A4: 侧栏对话右键菜单增加 Delete
+- A5: deleteProject 全栈实现（Repo → Store → Service → Manager → UI）
+- A6: Provider 启用无 key 时显示警告
 
-### B. UX 打磨 (Degrades-UX)
+### Phase B: UX 打磨 ✅ (16项)
+- B1: AI Analysis 空白页 P0 → 显示 loading 替代 null
+- B2: "0 days ago" → 日历日差 + "yesterday"
+- B3: 搜索结果路径截断为最后2段 + hover 全路径
+- B4: Chat tool call 默认折叠
+- B5: Chat placeholder 简化为单行
+- B6: Suggestion tags 首条消息前隐藏
+- B7: EmptyState 统一组件
+- B8: Hops segmented control（品牌紫色选中态）
+- B9: Quick Actions 紧凑化 + 品牌紫色左边框
+- B10: 报告表格 CSS fallback 样式
+- B17: 删除无操作的 "Full analysis view" 按钮
+- B18: graphSummary 从 aiGraphStore 接线
+- B20: 弹窗标题 "Create" → "Rename"
+- B21: Settings provider 默认选中第一个已启用
+- B22: Graph 空结果显示 "No connections" 反馈
+- Vault search 空状态改进 + 索引引导文案
 
-来源: ui-improvements-all-strategies + ai-analysis-ux-overhaul + report-ui-quality + 审计发现
+### Phase C: 技术债清理 ✅
+- 删除 DocumentCache.ts 空文件
+- 清理 aiSearchService deprecated 方法
+- 修复 TableDocumentLoader XLSX stub
+- FlashRank reranker 改为 throw 明确错误
+- 清理 searchPrompts stub
+- 清理 find-orphans TODO + MobiusEdgeRepo 空方法
+- 恢复 ModelConfigTab 3个模型选择器
+- 合并 date-utils 到 core/utils（6处导入更新）
 
-| ID | 问题 | 来源 |
-|----|------|------|
-| B1 | AI Analysis blank page (P0) | ui-improvements Task 3 |
-| B2 | humanReadableTime "0 days ago" | ui-improvements Task 1 |
-| B3 | 搜索结果路径截断 | ui-improvements Task 2 |
-| B4 | Chat tool call 默认折叠 | ui-improvements Task 4 |
-| B5 | Chat input placeholder 简化 | ui-improvements Task 5 |
-| B6 | 首条消息前隐藏 suggestion tags | ui-improvements Task 6 |
-| B7 | EmptyState 统一组件 | ui-improvements Task 7-8 |
-| B8 | Hops 选择器 → segmented control | ui-improvements Task 9 |
-| B9 | Quick Actions 紧凑化 + brand color | ui-improvements Task 10 |
-| B10 | ai-analysis-ux-overhaul Phase ① CSS 修复 | ai-analysis-ux-overhaul |
-| B11 | ai-analysis-ux-overhaul Phase ② V2 持久化 | ai-analysis-ux-overhaul |
-| B12 | ai-analysis-ux-overhaul Phase ⑥ Quick action chips | ai-analysis-ux-overhaul |
-| B13 | report-ui-quality: Sources 同步 | report-ui-quality |
-| B14 | report-ui-quality: 去内联引用 | report-ui-quality |
-| B15 | report-ui-quality: sticky footer | report-ui-quality |
-| B16 | report-ui-quality: 内联编辑 | report-ui-quality |
-| B17 | "Full analysis view" 按钮无操作 | `tab-AISearch.tsx:888` |
-| B18 | graphSummary 未接线 | `useSearchSession.ts:922` |
-| B19 | Suggestion tag actions 全是空壳 | `useChatSession.ts:151` |
-| B20 | 对话编辑弹窗标题写成"Create" | `ProjectsSection.tsx:122` |
-| B21 | Settings 默认选 openai 不跟随已启用 | `ProviderSettings.tsx:442` |
-| B22 | Graph 空结果无反馈 | `GraphSection.tsx` |
+### Phase D: 代码拆分 ✅
+| 文件 | 原大小 | 主文件新大小 | 提取文件数 |
+|------|--------|-------------|-----------|
+| useSearchSession.ts | 1193 | 342 | 3 |
+| searchSessionStore.ts | 922 | 797 | 1 |
+| MessageViewItem.tsx | 838 | 280 | 3 |
+| tab-AISearch.tsx | 947 | 370 | 4 |
+| search-agent-schemas.ts | 1407 | 1346 | 1 |
+| service-manager.ts | 972 | 809 | 2 |
+| AiSearchAnalysisDoc.ts | 1154 | 202 | 2 |
 
-### C. 技术债清理
+### Phase E: 文档清理 ✅
+- 标记 11 个已完成计划 + 3 个被取代计划
+- 更新 DEVTOOLS_GUIDE、quick-search-ui-design、AI_ANALYSIS_ARCHITECTURE 文档
 
-| ID | 问题 | 位置 | 严重度 |
-|----|------|------|--------|
-| C1 | DocumentCache.ts 空文件 | `core/document/DocumentCache.ts` | must-fix |
-| C2 | aiSearchService 两个方法返回 'deprecated' | `service/search/aiSearch/aiSearchService.ts:59,123` | must-fix |
-| C3 | TableDocumentLoader XLSX 解析注释掉 | `core/document/loader/TableDocumentLoader.ts:136` | should-fix |
-| C4 | FlashRank reranker 是空壳 | `core/providers/rerank/flashrank.ts` | should-fix |
-| C5 | searchPrompts 返回空数组 | `service/chat/service-manager.ts:766` | should-fix |
-| C6 | VaultSearchAgent 缺 fast path | `service/agents/VaultSearchAgent.ts:90` | should-fix |
-| C7 | find-orphans 软孤儿未实现 | `service/tools/search-graph-inspector/find-orphans.ts:28` | should-fix |
-| C8 | MobiusEdgeRepo 方法体缺失 | `core/storage/sqlite/repositories/MobiusEdgeRepo.ts:693` | should-fix |
-| C9 | ImageDocumentLoader hash/base64 禁用 | `core/document/loader/ImageDocumentLoader.ts:149` | should-fix |
-| C10 | context window overflow 未检查 | `service/chat/service-conversation.ts:260` | should-fix |
-| C11 | ModelConfigTab 3个模型选择器注释掉 | `ui/view/settings/ModelConfigTab.tsx:272` | should-fix |
-| C12 | 多个 getSummary() 空壳 | MarkdownDocumentLoader, FolderResourceLoader, TagResourceLoader | nice-to-have |
-| C13 | date-utils 位置错误 | `ui/view/shared/date-utils.ts` → 应在 `core/utils/` | nice-to-have |
-
-### D. 大文件拆分 (>600行, 优先级排序)
-
-**Service 层 (最大):**
-- `hubDiscover.ts` (3294行), `indexService.ts` (2255行), `find-path.ts` (2031行)
-- `service-manager.ts` (972行), `explore-folder.ts` (843行)
-
-**UI 层:**
-- `useSearchSession.ts` (1193行), `tab-AISearch.tsx` (947行)
-- `searchSessionStore.ts` (922行), `MessageViewItem.tsx` (838行)
-
-**Core 层:**
-- `MobiusNodeRepo.ts` (2046行), `search-agent-schemas.ts` (1407行)
-- `AiSearchAnalysisDoc.ts` (1154行), `MobiusEdgeRepo.ts` (1141行)
-
-### E. Phase 0 清理
-
-参见 TASKS.md § Phase 0:
-- 关闭 22 个已完成 issue + 6 个合并 + 1 个 won't-fix
-- 归档 4 个过时 docs → `docs/archive/`
-- 更新 3 个过时 docs
-- 标记 8 个已完成计划 + 2 个被取代计划
-
-### F-G. 架构重构
-
-- F: Provider v2 — 设计已批准 (`specs/2026-04-11-provider-system-v2-design.md`)，约 -5000/+1500 行
-- G: Agent Trace Observability — 阻塞于 F
+### V1 退役: 死代码删除 ✅ (~9200行, ~50文件)
+| 类别 | 删除 |
+|------|------|
+| V1 phase 文件 (classify/decompose/recon/report 等) | 9 文件 |
+| V1 Step UI 组件 (ClassifyStep/ReconStep 等) + 渲染管线 | 18 文件 |
+| 死 hooks (useAIAnalysis/aiAnalysisStreamDispatcher) | 3 文件 |
+| 死 stores (searchInteractionsStore) | 1 文件 |
+| 死 tools (search-web/call-agent-tool/field-update-tool) | 3 文件 |
+| 死 schemas (callAgentTool/searchWeb/updateResultOps) | 3 文件 |
+| 死组件 (CompletedAIAnalysis/StreamingAnalysis/UsageBadge 等) | 6 文件 |
+| 其他 (AgentLoop/type.ts/deprecated_chunking 等) | 7 文件 |
+| VaultSearchAgent 简化 | 346行 → 42行 |
+| SearchClient 清理 | 删除 aiAnalyze + aiSearchService |
+| searchSessionStore/types 清理 | 删除 V1 steps 字段和类型 |
+| useV2 feature flag 删除 | V2 Agent SDK 现为唯一路径 |
 
 ## 已完成计划
 
 | 计划 | 日期 | 状态 |
 |------|------|------|
 | ai-search-ui-step-based-refactor | 04-08 | COMPLETED |
-| vault-search-agent-sdk-migration | 04-12 | COMPLETED (15/16) |
+| vault-search-agent-sdk-migration | 04-12 | COMPLETED |
 | v2-search-ui | 04-12 | COMPLETED |
 | per-section-report-generation | 04-13 | COMPLETED |
 | mission-roles-plan-review | 04-14 | COMPLETED |
@@ -128,27 +116,23 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | ai-graph-multi-lens | 04-15 | COMPLETED |
 | continue-analysis-process-view | 04-17 | COMPLETED |
 | ai-graph-agent | 04-18 | COMPLETED |
-| per-section-report-v2 | 04-13 | SUPERSEDED by report-quality-overhaul |
-| v2-report-quality-and-ui-fixes | 04-13 | SUPERSEDED by report-quality-overhaul |
+| mobile-support | 04-18 | COMPLETED |
+| ui-improvements-all-strategies | 04-18 | COMPLETED |
+| per-section-report-v2 | 04-13 | SUPERSEDED |
+| v2-report-quality-and-ui-fixes | 04-13 | SUPERSEDED |
 | context-handoff-v2-ui | 04-12 | SUPERSEDED |
 
 ## Log
 
 ### 2026-04-18
-- Done: AI Graph Agent 全部实现（GraphAgent + MCP tools + bridge/timeline layouts + React Flow 集成）
-- Done: 创建 ui-improvements-all-strategies 计划（10个任务，4个策略方向）
-- Done: 全面用户旅程审计 + 技术债盘点 → 建立统一 progress.md
-- Done: 移动端可行性调研（native module盘点、启动流程分析、搜索链路分析）
-- Done: 移动端设计文档 (`specs/2026-04-18-mobile-support-design.md`)
-- Done: 移动端实施计划 (`plans/2026-04-18-mobile-support.md`) — 10个任务，~500行新代码
-- Done: **移动端支持全部实现** — 11 commits, 4 new files, 8 modified files
-  - Platform gate (`src/core/platform.ts`)
-  - Dynamic imports for playwright/simple-git
-  - VaultContentProvider (模板加载 vault API fallback)
-  - main.ts 启动守卫 (跳过 SQLite)
-  - MobileSearchService (路径/标签/内容三层搜索)
-  - 直觉地图导出为 vault 文件 (iCloud 同步)
-  - MobileVaultSearchAgent (搜索→读文件→Claude 长上下文)
-  - 移动端 agent 路由
-  - 隐藏桌面专属命令和 UI
-- Next: Phase A 产品断点修复 → Phase B UX 打磨 → 真机测试移动端
+- Done: AI Graph Agent 全部实现
+- Done: 移动端支持全部实现 (Phase M, 11 commits)
+- Done: 产品断点修复全部完成 (Phase A, 6/6)
+- Done: UX 打磨 16 项完成 (Phase B)
+- Done: 技术债清理 9 项 (Phase C)
+- Done: 7 个大文件拆分为 23 个聚焦文件 (Phase D)
+- Done: 文档清理完成 (Phase E)
+- Done: V1 search pipeline 完全退役 — 删除 ~50 文件 / ~9200 行死代码
+- Done: VaultSearchAgent 简化为 42 行纯路由器（mobile → MobileAgent, desktop → AgentSDK）
+- Done: useV2 feature flag 删除，V2 Agent SDK 为唯一搜索路径
+- Next: iOS 真机测试 → Provider v2 → Agent Trace
