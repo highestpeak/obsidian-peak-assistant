@@ -5,6 +5,7 @@ import type { PlanSnapshot } from '@/service/agents/vault/types';
 import type { UserFeedback } from '@/service/agents/core/types';
 import { useSearchSessionStore } from './searchSessionStore';
 import { useAIGraphStore } from './aiGraphStore';
+import { useGraphAgentStore } from './graphAgentStore';
 
 import { LLMUsage, mergeTokenUsage } from '@/core/providers/types';
 import type { SearchResultItem } from '@/service/search/types';
@@ -807,9 +808,17 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 				if (graphPayload.lenses) {
 					const lensKeys = Object.keys(graphPayload.lenses);
 					if (lensKeys.length > 0) {
+						const graphData = graphPayload.lenses[lensKeys[0]];
+
+						// Restore to graphAgentStore (used by SourcesGraph → useGraphAgent)
+						const sourcePaths = (snapshot.sources ?? []).map(s => s.path).sort().join('|');
+						useGraphAgentStore.getState().setCacheKey(sourcePaths);
+						useGraphAgentStore.getState().setGraphData(graphData);
+
+						// Also restore to aiGraphStore (used by standalone graph view)
 						useAIGraphStore.setState({
-							graphData: graphPayload.lenses[lensKeys[0]],
-							activeLens: lensKeys[0],
+							graphData,
+							activeLens: lensKeys[0] as any,
 						});
 					}
 				}
