@@ -9,6 +9,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | Phase | Content | Status |
 |-------|---------|--------|
 | A. 产品断点修复 | 用户旅程中 blocks-usage 的问题 | 进行中 |
+| M. 移动端支持 | iCloud同步 + 去RAG + Claude长上下文 | 完成 (11 commits) |
 | B. UX 打磨 | degrades-UX 的问题 + ui-improvements 计划 | 未开始 |
 | C. 技术债清理 | 死代码/桩代码/注释代码/空文件 | 未开始 |
 | D. 代码拆分重构 | 大文件拆分 (>600行的20+文件) | 未开始 |
@@ -137,4 +138,17 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - Done: AI Graph Agent 全部实现（GraphAgent + MCP tools + bridge/timeline layouts + React Flow 集成）
 - Done: 创建 ui-improvements-all-strategies 计划（10个任务，4个策略方向）
 - Done: 全面用户旅程审计 + 技术债盘点 → 建立统一 progress.md
-- Next: 从 Phase A 产品断点开始修复（A1-A6），然后进入 Phase B UX 打磨
+- Done: 移动端可行性调研（native module盘点、启动流程分析、搜索链路分析）
+- Done: 移动端设计文档 (`specs/2026-04-18-mobile-support-design.md`)
+- Done: 移动端实施计划 (`plans/2026-04-18-mobile-support.md`) — 10个任务，~500行新代码
+- Done: **移动端支持全部实现** — 11 commits, 4 new files, 8 modified files
+  - Platform gate (`src/core/platform.ts`)
+  - Dynamic imports for playwright/simple-git
+  - VaultContentProvider (模板加载 vault API fallback)
+  - main.ts 启动守卫 (跳过 SQLite)
+  - MobileSearchService (路径/标签/内容三层搜索)
+  - 直觉地图导出为 vault 文件 (iCloud 同步)
+  - MobileVaultSearchAgent (搜索→读文件→Claude 长上下文)
+  - 移动端 agent 路由
+  - 隐藏桌面专属命令和 UI
+- Next: Phase A 产品断点修复 → Phase B UX 打磨 → 真机测试移动端
