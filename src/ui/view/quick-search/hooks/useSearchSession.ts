@@ -35,6 +35,16 @@ import { useEventRouter } from './useEventRouter';
 import { useContinueAnalysis } from './useContinueAnalysis';
 
 // ---------------------------------------------------------------------------
+// Module-level ref holder — survives React unmount so QuickSearchModal.onClose
+// can snapshot the running agent/abort controller for background detach.
+// ---------------------------------------------------------------------------
+
+export const sessionRefs = {
+	agentRef: null as VaultSearchAgent | null,
+	abortController: null as AbortController | null,
+};
+
+// ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
@@ -91,6 +101,7 @@ export function useSearchSession() {
 		if (!abortSignal) {
 			controller = new AbortController();
 			abortControllerRef.current = controller;
+			sessionRefs.abortController = controller;
 		}
 		const signal = abortSignal || controller?.signal;
 
@@ -152,6 +163,7 @@ export function useSearchSession() {
 
 			if (isVaultMode) {
 				vaultAgentRef.current = AppContext.vaultSearchAgent();
+				sessionRefs.agentRef = vaultAgentRef.current;
 
 				// Register HITL feedback callback
 				const hitlCallback = async (feedback: UserFeedback) => {
@@ -262,6 +274,7 @@ export function useSearchSession() {
 			if (controller) {
 				abortControllerRef.current = null;
 			}
+			sessionRefs.abortController = null;
 		}
 	}, [
 		searchQuery,
@@ -329,6 +342,8 @@ export function useSearchSession() {
 			didCancelRef.current = true;
 			abortControllerRef.current.abort();
 			abortControllerRef.current = null;
+			sessionRefs.agentRef = null;
+			sessionRefs.abortController = null;
 		}
 	}, []);
 

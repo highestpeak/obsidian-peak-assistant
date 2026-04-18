@@ -4,6 +4,9 @@ import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { QuickSearchModalContent } from './quick-search/SearchModal';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
+import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
+import { sessionRefs } from './quick-search/hooks/useSearchSession';
+import { useSearchSessionStore } from './quick-search/store/searchSessionStore';
 
 /**
  * Obsidian modal wrapper for quick search React UI.
@@ -44,6 +47,18 @@ export class QuickSearchModal extends Modal {
 	}
 
 	onClose(): void {
+		// Detach active session to background before unmounting React
+		const store = useSearchSessionStore.getState();
+		const isActive = store.status === 'streaming' || store.status === 'starting';
+		const hasPlan = store.v2PlanSections.length > 0 && !store.v2PlanApproved;
+		if (isActive || hasPlan) {
+			BackgroundSessionManager.getInstance().detachForeground({
+				agentRef: sessionRefs.agentRef,
+				abortController: sessionRefs.abortController,
+			});
+		}
+
+		// Existing close logic unchanged
 		const r = this.reactRenderer;
 		this.reactRenderer = null;
 		if (r) {
