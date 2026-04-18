@@ -21,25 +21,8 @@ export class FlashRankProvider implements RerankProvider {
 		return 'flashrank';
 	}
 
-	async rerank(request: RerankRequest): Promise<RerankResponse> {
-		// TODO: Implement FlashRank integration
-		// Option 1: Call Python backend service via HTTP
-		// Option 2: Use Node.js binding if available
-		// Option 3: Use WebAssembly version if available
-		
-		// For now, return a simple fallback (original order with equal scores)
-		// In production, this should call the actual FlashRank service
-		console.warn(
-			`[FlashRankProvider] FlashRank not yet implemented. Using fallback ranking. Model: ${this.modelId}`,
-		);
-
-		// Fallback: return original order
-		return {
-			results: request.documents.map((_, index) => ({
-				index,
-				score: 1.0,
-			})),
-		};
+	async rerank(_request: RerankRequest): Promise<RerankResponse> {
+		throw new Error('FlashRank reranker is not yet implemented. Please select a different reranker in Settings.');
 	}
 }
 

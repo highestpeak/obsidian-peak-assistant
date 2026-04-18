@@ -689,17 +689,6 @@ export class MobiusEdgeRepo {
 	}
 
 	/**
-	 * Get nodes with low degree (1-2 total connections).
-	 * TODO: Implement using `mobius_node` doc_incoming_cnt / doc_outgoing_cnt (or aggregate from mobius_edge).
-	 *
-	 * @param maxConnections Maximum total connections (default: 2)
-	 * @param limit Maximum number of nodes to return
-	 */
-	async getNodesWithLowDegree(maxConnections: number = 2, limit?: number): Promise<Array<{ nodeId: string; totalConnections: number }>> {
-		return [];
-	}
-
-	/**
 	 * Get top nodes by degree metrics (in-degree, out-degree). Queries in and out separately.
 	 *
 	 * @param limit Max nodes per degree type. Omitted = return all.

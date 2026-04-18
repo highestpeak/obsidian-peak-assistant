@@ -24,14 +24,11 @@ export async function findOrphanNotes(params: any, templateManager?: TemplateMan
         filteredHardOrphans = applyFiltersAndSorters(hardOrphanNodes, filters, sorter, limit, itemFiledGetter);
     }
 
-    // Level 2: Soft Orphans (few connections, mostly to other orphans)
-    // TODO: Implement soft orphan detection after adding redundant in/out degree fields to graph_nodes table
-    // orphans.push(...edgeRepo.getNodesWithLowDegree)
-    // This will allow efficient querying without complex JOINs
-    // For now, only hard orphans are detected
+    // Note: only hard orphans (zero connections) are detected here.
+    // Soft orphan detection (few connections, mostly to other orphans) is not implemented.
 
     // Find semantic revival suggestions for each orphan
-    const cadidateAllOrphanNodes: OrphanNode[] = [...filteredHardOrphans, /*...filteredSoftOrphans*/];
+    const cadidateAllOrphanNodes: OrphanNode[] = [...filteredHardOrphans];
     // apply filters and sorting for all orphans
     const itemFiledGetter = await getDefaultItemFiledGetter<OrphanNode>(cadidateAllOrphanNodes.map(node => node.id), filters, sorter);
     const finalAllOrphanNodes = applyFiltersAndSorters(cadidateAllOrphanNodes, filters, sorter, limit, itemFiledGetter);
