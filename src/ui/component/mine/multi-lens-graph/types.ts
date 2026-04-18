@@ -13,12 +13,15 @@ export interface LensNodeData extends Record<string, unknown> {
 	parentId?: string;
 	summary?: string;
 	score?: number;
+	clusterId?: string;
+	importance?: number;
 }
 
 export type LensNode = Node<LensNodeData, 'lensNode'>;
 
 export interface LensEdgeData extends Record<string, unknown> {
-	kind: 'link' | 'semantic' | 'derives' | 'temporal' | 'cross-domain';
+	kind: 'link' | 'semantic' | 'derives' | 'temporal' | 'cross-domain'
+		| 'builds_on' | 'contrasts' | 'complements' | 'applies' | 'references';
 	weight?: number;
 	edgeLabel?: string;
 }
@@ -35,4 +38,7 @@ export interface LensGraphData {
 		label?: string;
 	}>;
 	availableLenses: LensType[];
+	clusters?: Array<{ id: string; name: string; description: string }>;
+	bridges?: Array<{ node_path: string; connects: [string, string]; explanation: string }>;
+	evolutionChains?: Array<{ chain: string[]; theme: string }>;
 }
