@@ -117,7 +117,7 @@ export class PromptService {
 				provider = this.settings.defaultModel.provider;
 				model = this.settings.defaultModel.modelId;
 			} else {
-				throw new Error('No model configuration available. Please configure defaultModel in settings.');
+				throw new Error('No AI model configured. Open Settings → Model Config to set a default model and enter your API key.');
 			}
 		}
 
@@ -177,7 +177,7 @@ export class PromptService {
 				provider = this.settings.defaultModel.provider;
 				model = this.settings.defaultModel.modelId;
 			} else {
-				throw new Error('No model configuration available. Please configure defaultModel in settings.');
+				throw new Error('No AI model configured. Open Settings → Model Config to set a default model and enter your API key.');
 			}
 		}
 

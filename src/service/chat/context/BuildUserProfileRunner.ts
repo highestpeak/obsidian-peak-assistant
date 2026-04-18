@@ -171,7 +171,7 @@ function resolveProfileFromVaultModel(settings: AIServiceSettings): { provider: 
 	if (promptModel) return { provider: promptModel.provider, model: promptModel.modelId };
 	const defaultModel = settings.defaultModel;
 	if (!defaultModel)
-		throw new Error('No model configuration available. Please configure defaultModel in settings.');
+		throw new Error('No AI model configured. Open Settings → Model Config to set a default model and enter your API key.');
 	return { provider: defaultModel.provider, model: defaultModel.modelId };
 }
 

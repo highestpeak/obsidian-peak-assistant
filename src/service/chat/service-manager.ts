@@ -603,7 +603,7 @@ ${sourcesList}${topicsList}
 
 		const m = this.settings.defaultModel;
 		if (m) return { provider: m.provider, modelId: m.modelId };
-		throw new Error('No model configuration available. Please configure defaultModel in settings.');
+		throw new Error('No AI model configured. Open Settings → Model Config to set a default model and enter your API key.');
 	}
 
 	getModelInstanceForPrompt(promptId: PromptId, providerOptionsConfig?: ProviderOptionsConfig): {
