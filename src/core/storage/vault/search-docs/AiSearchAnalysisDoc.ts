@@ -1088,6 +1088,12 @@ export function toCompletedAnalysisSnapshot(
 		overviewMermaidVersions: docModel.overviewMermaidVersions?.length ? docModel.overviewMermaidVersions : undefined,
 		overviewMermaidActiveIndex: docModel.overviewMermaidVersions?.length ? (docModel.overviewMermaidActiveIndex ?? 0) : undefined,
 		mindflowMermaid: docModel.mindflowMermaid?.trim() ? docModel.mindflowMermaid : undefined,
+		// V2 fields
+		v2ProcessLog: docModel.v2ProcessLog?.length ? docModel.v2ProcessLog : undefined,
+		v2PlanOutline: docModel.v2PlanOutline ?? undefined,
+		v2ReportSections: docModel.v2ReportSections?.length ? docModel.v2ReportSections : undefined,
+		v2GraphJson: docModel.v2GraphJson ?? undefined,
+		v2FollowUpQuestions: docModel.v2FollowUpQuestions?.length ? docModel.v2FollowUpQuestions : undefined,
 	};
 }
 

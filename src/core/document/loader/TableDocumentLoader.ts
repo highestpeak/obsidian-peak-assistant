@@ -132,17 +132,7 @@ export class TableDocumentLoader implements DocumentLoader {
 			if (ext === 'csv') {
 				content = await this.app.vault.cachedRead(file);
 			} else if (supportedExts.includes('xlsx') && ext === 'xlsx') {
-				// For XLSX, we need to parse the Excel file
-				// TODO: Parse XLSX using a library like xlsx or exceljs
-				// Each row should become a chunk, with truncation and overlap for long rows
-				// For now, return null to indicate we can't handle it yet
-				// Example implementation would be:
-				// const XLSX = require('xlsx');
-				// const arrayBuffer = await this.app.vault.readBinary(file);
-				// const workbook = XLSX.read(arrayBuffer, { type: 'buffer' });
-				// const sheet = workbook.Sheets[workbook.SheetNames[0]];
-				// const rows = XLSX.utils.sheet_to_csv(sheet).split('\n');
-				// content = rows.join('\n');
+				console.warn('XLSX parsing not supported: no xlsx library available');
 				return null;
 			}
 

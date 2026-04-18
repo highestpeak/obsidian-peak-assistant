@@ -8,9 +8,9 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 | Phase | Content | Status |
 |-------|---------|--------|
-| A. 产品断点修复 | 用户旅程中 blocks-usage 的问题 | 进行中 |
+| A. 产品断点修复 | 用户旅程中 blocks-usage 的问题 | 完成 |
 | M. 移动端支持 | iCloud同步 + 去RAG + Claude长上下文 | 完成 (11 commits) |
-| B. UX 打磨 | degrades-UX 的问题 + ui-improvements 计划 | 未开始 |
+| B. UX 打磨 | degrades-UX 的问题 + ui-improvements 计划 | 完成 (16项) |
 | C. 技术债清理 | 死代码/桩代码/注释代码/空文件 | 未开始 |
 | D. 代码拆分重构 | 大文件拆分 (>600行的20+文件) | 未开始 |
 | E. Phase 0 清理 | 关29个GitHub issue、归档docs、标记已完成计划 | 未开始 |

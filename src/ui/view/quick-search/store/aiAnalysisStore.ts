@@ -4,6 +4,7 @@ export type { AnalysisMode };
 import type { PlanSnapshot } from '@/service/agents/vault/types';
 import type { UserFeedback } from '@/service/agents/core/types';
 import { useSearchSessionStore } from './searchSessionStore';
+import { useAIGraphStore } from './aiGraphStore';
 
 import { LLMUsage, mergeTokenUsage } from '@/core/providers/types';
 import type { SearchResultItem } from '@/service/search/types';
@@ -765,13 +766,88 @@ export function loadCompletedAnalysisSnapshot(snapshot: CompletedAnalysisSnapsho
  * This ensures restored history displays correctly in SearchResultView → StepList.
  */
 function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot, sourceVaultPath?: string): void {
-	const { SearchStep: _, ...rest } = { SearchStep: null }; // avoid name clash
-	const steps: import('../types/search-steps').SearchStep[] = [];
 	const now = Date.now();
 	const startedAt = snapshot.analysisStartedAtMs ?? now;
+	const isV2 = !!(
+		(snapshot.v2ReportSections && snapshot.v2ReportSections.length > 0) ||
+		(snapshot.v2ProcessLog && snapshot.v2ProcessLog.length > 0) ||
+		snapshot.v2PlanOutline ||
+		snapshot.v2GraphJson
+	);
+
+	if (isV2) {
+		// Restore V2 state — reconstruct V2Section[] from persisted report sections
+		const v2PlanSections: import('./searchSessionStore').V2Section[] = (snapshot.v2ReportSections ?? []).map((sec, i) => ({
+			id: `restored-sec-${i}`,
+			title: sec.title,
+			contentType: '',
+			visualType: '',
+			evidencePaths: [],
+			brief: '',
+			weight: 1,
+			missionRole: '',
+			status: 'done' as const,
+			content: sec.content,
+			streamingChunks: [],
+			generations: [{ content: sec.content, timestamp: startedAt }],
+		}));
+
+		// Convert AISearchSource[] back to V2Source[] if sources were saved
+		const v2Sources: import('../types/search-steps').V2Source[] = (snapshot.sources ?? []).map(s => ({
+			path: s.path,
+			title: s.title,
+			readAt: startedAt,
+			reasoning: s.reasoning ?? undefined,
+		}));
+
+		// Restore graph data if present
+		if (snapshot.v2GraphJson) {
+			try {
+				const graphPayload = JSON.parse(snapshot.v2GraphJson);
+				if (graphPayload.lenses) {
+					const lensKeys = Object.keys(graphPayload.lenses);
+					if (lensKeys.length > 0) {
+						useAIGraphStore.setState({
+							graphData: graphPayload.lenses[lensKeys[0]],
+							activeLens: lensKeys[0],
+						});
+					}
+				}
+			} catch { /* ignore malformed graph JSON */ }
+		}
+
+		useSearchSessionStore.setState({
+			id: snapshot.analysisStartedAtMs ? `restored:${snapshot.analysisStartedAtMs}` : `restored:${now}`,
+			query: snapshot.query ?? '',
+			status: 'completed',
+			startedAt,
+			duration: snapshot.duration ?? null,
+			usage: snapshot.usage ?? null,
+			title: snapshot.title ?? null,
+			steps: [],
+			hasAnalyzed: true,
+			restoredFromHistory: true,
+			restoredFromVaultPath: sourceVaultPath ?? null,
+			analysisMode: snapshot.runAnalysisMode ?? 'vaultFull',
+			// V2 state
+			v2Active: true,
+			v2View: 'report',
+			v2PlanSections,
+			v2PlanApproved: true,
+			v2ReportComplete: true,
+			v2ProposedOutline: snapshot.v2PlanOutline ?? null,
+			v2Sources,
+			v2FollowUpQuestions: snapshot.v2FollowUpQuestions ?? [],
+			v2Summary: getSnapshotSummary(snapshot),
+			v2SummaryStreaming: false,
+		});
+		return;
+	}
+
+	// V1 fallback path
+	const steps: import('../types/search-steps').SearchStep[] = [];
 
 	// Report step: merge summary text + dashboard blocks into a single report step
-	// (do NOT create a separate 'summary' step — that uses IntelligenceFrame/purple-box rendering)
 	const summaryText = getSnapshotSummary(snapshot);
 	const hasSummary = !!(summaryText && summaryText !== '(empty)');
 	const hasBlocks = !!(snapshot.dashboardBlocks && snapshot.dashboardBlocks.length > 0);
