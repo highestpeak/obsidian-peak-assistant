@@ -117,10 +117,12 @@ export const MessagesViewComponent: React.FC = () => {
             {/* Footer Upper Area - positioned between body and footer, outside scroll area */}
             <div className="pktw-flex-shrink-0 pktw-flex pktw-justify-between pktw-items-center pktw-px-6 pktw-pt-6 pktw-border-b pktw-border-borde">
                 {/* Tags on the left */}
-                <SuggestionTags
-                    tags={suggestionTags}
-                    onTagClick={handleSuggestionTagClick}
-                />
+                {activeConversation && activeConversation.messages.length > 0 && (
+                    <SuggestionTags
+                        tags={suggestionTags}
+                        onTagClick={handleSuggestionTagClick}
+                    />
+                )}
 
                 {/* Scroll buttons on the right */}
                 <div className="pktw-flex pktw-items-center pktw-gap-1">
