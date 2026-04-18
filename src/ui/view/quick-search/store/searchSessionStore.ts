@@ -13,6 +13,7 @@ import type { UserFeedback } from '@/service/agents/core/types';
 import type { SearchStep, SearchStepType, V2ToolStep, V2TimelineItem, V2Source } from '../types/search-steps';
 import { PHASE_TO_STEP_TYPE, createStep } from '../types/search-steps';
 import { exportGraphJson } from './aiGraphStore';
+import { useGraphAgentStore } from './graphAgentStore';
 
 // ---------------------------------------------------------------------------
 // Session status
@@ -890,7 +891,15 @@ export function buildV2AnalysisSnapshot(): {
 		v2Sources: s.v2Sources,
 		v2FollowUpQuestions: s.v2FollowUpQuestions,
 		v2Summary: s.v2Summary,
-		v2GraphJson: exportGraphJson(),
+		v2GraphJson: exportGraphJson() ?? (() => {
+			const gStore = useGraphAgentStore.getState();
+			if (!gStore.graphData) return null;
+			return JSON.stringify({
+				lenses: { topology: gStore.graphData },
+				source: 'graphAgent',
+				generatedAt: new Date().toISOString(),
+			});
+		})(),
 		usage: s.usage,
 		duration: s.duration,
 	};
