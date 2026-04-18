@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/ui/react/lib/utils";
 import { Button } from "@/ui/component/shared-ui/button";
-import { X } from "lucide-react";
+import { X, GitBranch } from "lucide-react";
+import { EmptyState } from "@/ui/component/mine/EmptyState";
 import { runInspectorGraph, runInspectorPath } from "@/service/search/inspectorService";
 import { GraphVisualization, GraphVisualizationHandle, UIPreviewGraph } from "@/ui/component/mine/graph-viz/GraphVisualization";
 import { convertGraphToGraphPreview } from "@/ui/view/shared/graph-utils";
@@ -165,7 +166,13 @@ export const GraphSection = React.forwardRef<HTMLDivElement, {
     );
 
     /** Single GraphVisualization instance; portal moves it between inline and fullscreen without remount. */
-    const graphVizElement = (
+    const graphVizElement = !graphLoading && (!uiGraph || !uiGraph.nodes?.length) && !graphError ? (
+        <EmptyState
+            icon={GitBranch}
+            title="No connections found"
+            description="This note has no links or connections in the graph. Try increasing hops or enabling semantic edges."
+        />
+    ) : (
         <GraphVisualization
             ref={graphRef}
             {...obsidianPreset}
