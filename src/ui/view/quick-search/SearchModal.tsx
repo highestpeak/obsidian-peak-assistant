@@ -18,6 +18,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { getActiveNoteDetail } from '@/core/utils/obsidian-utils';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { InspectorPanel } from './components/inspector/InspectorPanel';
+import { isMobile } from '@/core/platform';
 
 type TabType = 'vault' | 'ai';
 
@@ -88,7 +89,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 		performAnalysis(undefined, undefined);
 	};
 
-	const PRESETS: AnalysisMode[] = ['vaultFull', 'aiGraph'];
+	const PRESETS: AnalysisMode[] = isMobile() ? ['vaultFull'] : ['vaultFull', 'aiGraph'];
 	const cyclePreset = (dir: 1 | -1) => {
 		const idx = PRESETS.indexOf(analysisMode);
 		const next = PRESETS[(idx + dir + PRESETS.length) % PRESETS.length];
@@ -199,19 +200,21 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 								containerClassName="pktw-w-full pktw-pl-11 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-muted-foreground pktw-rounded-full pktw-transition-all"
 								className="pktw-pr-12"
 							/>
-							<Button
-								variant="ghost"
-								onClick={() => {
-									const newQuery = toggleWeb(searchQuery);
-									setSearchQuery(newQuery);
-								}}
-								style={{ cursor: 'pointer' }}
-								className={`pktw-shadow-none pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors
-									${webEnabled ? 'pktw-text-[#3b82f6] pktw-border pktw-border-[#3b82f6]/30' : 'pktw-border-0 pktw-bg-transparent '}`}
-								title={webEnabled ? 'Web: ON' : 'Web: OFF'}
-							>
-								{webEnabled ? <Globe className="pktw-w-5 pktw-h-5" /> : <GlobeOff className="pktw-w-5 pktw-h-5" />}
-							</Button>
+							{!isMobile() && (
+								<Button
+									variant="ghost"
+									onClick={() => {
+										const newQuery = toggleWeb(searchQuery);
+										setSearchQuery(newQuery);
+									}}
+									style={{ cursor: 'pointer' }}
+									className={`pktw-shadow-none pktw-absolute pktw-right-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-p-1.5 pktw-rounded pktw-transition-colors
+										${webEnabled ? 'pktw-text-[#3b82f6] pktw-border pktw-border-[#3b82f6]/30' : 'pktw-border-0 pktw-bg-transparent '}`}
+									title={webEnabled ? 'Web: ON' : 'Web: OFF'}
+								>
+									{webEnabled ? <Globe className="pktw-w-5 pktw-h-5" /> : <GlobeOff className="pktw-w-5 pktw-h-5" />}
+								</Button>
+							)}
 						</div>
 					</div>
 					<div className="pktw-flex pktw-items-center pktw-gap-2">
@@ -384,10 +387,13 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const currentPath = getActiveNoteDetail(app).activeFile?.path ?? null;
 
 	const VAULT_DISPLAY_MODES = ['vault', 'inFolder', 'inFile', 'goToLine', 'inspector'] as const;
+	const VAULT_CYCLE_MODES = isMobile()
+		? (['vault', 'inFolder', 'inFile', 'goToLine'] as const)
+		: VAULT_DISPLAY_MODES;
 	const cycleVaultMode = (dir: 1 | -1) => {
-		const idx = VAULT_DISPLAY_MODES.indexOf(displayMode);
+		const idx = VAULT_CYCLE_MODES.indexOf(displayMode as typeof VAULT_CYCLE_MODES[number]);
 		const safeIdx = idx >= 0 ? idx : 0;
-		const nextMode = VAULT_DISPLAY_MODES[(safeIdx + dir + VAULT_DISPLAY_MODES.length) % VAULT_DISPLAY_MODES.length];
+		const nextMode = VAULT_CYCLE_MODES[(safeIdx + dir + VAULT_CYCLE_MODES.length) % VAULT_CYCLE_MODES.length];
 		if (nextMode === 'inspector') {
 			setVaultSearchQuery('[[');
 		} else {
@@ -523,19 +529,21 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 									<span className="pktw-font-medium">Go to line</span>
 									<span className="pktw-text-[11px]">· go to target line</span>
 								</Button>
-								<Button
-									variant="ghost"
-									onClick={() => setVaultSearchQuery('[[')}
-									style={{ cursor: 'pointer' }}
-									className={cn(
-										'pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1 pktw-text-left pktw-text-sm pktw-rounded',
-										displayMode === 'inspector' && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
-									)}
-								>
-									<Network className={cn('pktw-w-3.5 pktw-h-3.5 pktw-shrink-0', displayMode === 'inspector' && 'pktw-text-[#7c3aed]')} />
-									<span className="pktw-font-medium">Inspector</span>
-									<span className="pktw-text-[11px]">· inspect target note</span>
-								</Button>
+								{!isMobile() && (
+									<Button
+										variant="ghost"
+										onClick={() => setVaultSearchQuery('[[')}
+										style={{ cursor: 'pointer' }}
+										className={cn(
+											'pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1 pktw-text-left pktw-text-sm pktw-rounded',
+											displayMode === 'inspector' && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
+										)}
+									>
+										<Network className={cn('pktw-w-3.5 pktw-h-3.5 pktw-shrink-0', displayMode === 'inspector' && 'pktw-text-[#7c3aed]')} />
+										<span className="pktw-font-medium">Inspector</span>
+										<span className="pktw-text-[11px]">· inspect target note</span>
+									</Button>
+								)}
 							</HoverCardContent>
 						</HoverCard>
 						<div className="pktw-relative pktw-flex pktw-items-center pktw-min-w-0">
@@ -565,7 +573,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 					</div>
 				</div>
 			</div>
-			{inspectorOpen && (
+			{inspectorOpen && !isMobile() && (
 				<div className="pktw-flex-1 pktw-min-h-[320px] pktw-min-w-0 pktw-flex pktw-flex-col">
 					<InspectorPanel
 						currentPath={currentPath}
