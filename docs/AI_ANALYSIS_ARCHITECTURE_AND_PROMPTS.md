@@ -2,6 +2,10 @@
 
 > **Note (2026-04-12):** The search pipeline has been migrated to the Claude Agent SDK. `AISearchAgent` now uses the Agent SDK's streaming query interface (`SDKMessage` stream) instead of the Vercel AI SDK adapters. The multi-agent ReAct loop described below reflects the V2 Agent SDK implementation. See `docs/superpowers/plans/2026-04-12-vault-search-agent-sdk-migration.md` for migration details.
 
+> **Note (2026-04):** The architecture below describes the V1 pipeline. V2 uses Claude Agent SDK
+> with MCP tools (`VaultSearchAgentSDK.ts`) for agentic search. The V2 pipeline is the default
+> when `settings.vaultSearch.useV2` is enabled.
+
 This document summarizes the **AI Analysis** feature: its architecture, data flow, design rationale, and all prompts involved. It is intended for developers and anyone tuning or extending prompts.
 
 ---

@@ -1,5 +1,7 @@
 # Quick Search AI Analysis - Core Technical Optimization Details
 
+> **Note (2026-04):** `aiAnalysisStore` has been superseded by `searchSessionStore` for V2 session management.
+
 This directory implements a high-performance AI search analysis function, focusing on solving two core problems: memory explosion and rendering pressure.
 
 ## 🏗️ Core Component Architecture

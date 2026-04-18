@@ -26,6 +26,16 @@ Press `Ctrl+Shift+I` (Windows/Linux) or `Cmd+Option+I` (Mac) in Obsidian to open
 
 Once enabled, you can use the `window.testGraphTools` object in the console, as well as these standalone DevTools helpers:
 
+## Debug Console Commands
+
+The following global helpers are always available in the DevTools console (independent of the `testGraphTools` setting):
+
+| Command | Description |
+|---------|-------------|
+| `window.indexDocument(path)` | Manually index a single document (fast core index, no LLM enrichment) |
+| `window.indexDocumentFull(path)` | Manually index a single document with full LLM enrichment |
+| `window.cleanupGraphTable()` | Remove orphaned graph entries from `mobius_node`/`mobius_edge` tables (async, use `await`) |
+
 ```javascript
 // Index a single document (fast core index)
 window.indexDocument("path/to/note.md")
