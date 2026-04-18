@@ -33,14 +33,30 @@ export function computeTopologyLayout(input: LayoutInput): LayoutResult {
 	const connectedNodes = input.nodes.filter((n) => connectedPaths.has(n.path));
 	const isolatedNodes = input.nodes.filter((n) => !connectedPaths.has(n.path));
 
-	// Layout connected subgraph with dagre
+	// Layout connected subgraph with dagre (cluster-aware compound graph)
 	if (connectedNodes.length > 0) {
-		const g = new dagre.graphlib.Graph();
+		const g = new dagre.graphlib.Graph({ compound: true });
 		g.setDefaultEdgeLabel(() => ({}));
-		g.setGraph({ rankdir: 'TB', nodesep: 120, ranksep: 140, marginx: 20, marginy: 20 });
+		g.setGraph({ rankdir: 'TB', nodesep: 120, ranksep: 140, marginx: 40, marginy: 40 });
 
+		// Collect unique clusters
+		const clusters = new Set<string>();
 		for (const n of connectedNodes) {
-			g.setNode(n.path, { width: estimateNodeWidth(n.label), height: 44 });
+			if (n.clusterId) clusters.add(n.clusterId);
+		}
+
+		// Add cluster subgraph nodes
+		for (const cid of clusters) {
+			g.setNode(cid, { label: cid, clusterLabelPos: 'top' });
+		}
+
+		// Add nodes and assign to clusters
+		for (const n of connectedNodes) {
+			const height = n.role === 'hub' || n.role === 'bridge' ? 60 : 45;
+			g.setNode(n.path, { width: estimateNodeWidth(n.label), height, label: n.label });
+			if (n.clusterId && clusters.has(n.clusterId)) {
+				g.setParent(n.path, n.clusterId);
+			}
 		}
 		for (const e of input.edges) {
 			if (connectedPaths.has(e.source) && connectedPaths.has(e.target)) {
