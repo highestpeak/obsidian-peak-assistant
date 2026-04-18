@@ -109,6 +109,13 @@ export class ProjectService {
 	}
 
 	/**
+	 * Delete a project and all its conversations.
+	 */
+	async deleteProject(projectId: string): Promise<void> {
+		await this.storage.deleteProject(projectId);
+	}
+
+	/**
 	 * Rename a project by renaming its folder.
 	 */
 	async renameProject(projectId: string, newName: string): Promise<ChatProject> {

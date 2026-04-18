@@ -121,6 +121,16 @@ export class ChatProjectRepo {
 	}
 
 	/**
+	 * Delete project by project_id.
+	 */
+	async deleteByProjectId(projectId: string): Promise<void> {
+		await this.db
+			.deleteFrom('chat_project')
+			.where('project_id', '=', projectId)
+			.execute();
+	}
+
+	/**
 	 * Update folder path when project is moved/renamed.
 	 */
 	async updatePathsOnMove(

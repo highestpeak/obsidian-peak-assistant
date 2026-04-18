@@ -909,6 +909,33 @@ export class ChatStorageService {
 	}
 
 	/**
+	 * Delete a project: trash the vault folder and remove all related DB records
+	 * (project, conversations, messages, resources, stars).
+	 */
+	async deleteProject(projectId: string): Promise<void> {
+		// 1. Find and delete all conversations belonging to this project
+		const convRepo = sqliteStoreManager.getChatConversationRepo();
+		const convRows = await convRepo.listByProject(projectId, true); // include archived
+		const conversationIds = convRows.map(r => r.conversation_id);
+
+		if (conversationIds.length > 0) {
+			const messageRepo = sqliteStoreManager.getChatMessageRepo();
+			await messageRepo.deleteByConversationIds(conversationIds);
+			await convRepo.deleteByConversationIds(conversationIds);
+		}
+
+		// 2. Trash the project folder in the vault (moves to system trash)
+		const folder = await this.getProjectFolder(projectId);
+		if (folder) {
+			await this.app.vault.trash(folder, true);
+		}
+
+		// 3. Delete the project row from SQLite
+		const projectRepo = sqliteStoreManager.getChatProjectRepo();
+		await projectRepo.deleteByProjectId(projectId);
+	}
+
+	/**
 	 * Delete a conversation: trash the vault file and remove DB records.
 	 */
 	async deleteConversation(conversationId: string): Promise<void> {

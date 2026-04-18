@@ -159,8 +159,21 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 			icon: 'pencil',
 			onClick: () => handleEditProjectName(projectItem),
 		},
-		// Note: Projects don't have files, so this menu item is removed
-	], [app, handleEditProjectName]);
+		{
+			title: 'Delete project',
+			icon: 'trash',
+			onClick: async () => {
+				await manager.deleteProject(projectItem.meta.id);
+				// Remove from store
+				const { projects: currentProjects, setProjects: updateProjects, activeProject: currentActive, setActiveProject: setActive } = useProjectStore.getState();
+				const updated = Array.from(currentProjects.values()).filter(p => p.meta.id !== projectItem.meta.id);
+				updateProjects(updated);
+				if (currentActive?.meta.id === projectItem.meta.id) {
+					setActive(null);
+				}
+			},
+		},
+	], [app, manager, handleEditProjectName]);
 
 	const conversationMenuItems = useCallback((conversation: ChatConversation) => {
 		const projectItem = conversation.meta.projectId ? projects.get(conversation.meta.projectId) || null : null;
