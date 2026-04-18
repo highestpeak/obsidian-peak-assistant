@@ -16,7 +16,6 @@ import type { SearchAgentResult } from '@/service/agents/shared-types';
 import type { VaultHitlPauseEvent } from '@/service/agents/vault/types';
 import type { PlanSnapshot } from '@/service/agents/vault/types';
 
-import { AppContext } from '@/app/context/AppContext';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 
 import { flushUiStep } from './search-session-types';
@@ -27,6 +26,9 @@ import type { UiStepAccum } from './search-session-types';
 // ---------------------------------------------------------------------------
 
 export interface EventDispatchTarget {
+	// Config
+	enableDevTools(): boolean;
+
 	// Reads
 	getV2Active(): boolean;
 	getV2ProposedOutline(): string | null;
@@ -370,13 +372,9 @@ export function dispatchEvent(
 		// ---- Errors ----
 		case 'error': {
 			const errMsg = (event as any).error?.message ?? String((event as any).error);
-			if (errMsg) {
-				if (AppContext.getInstance().plugin.settings?.enableDevTools) {
-					target.recordError(errMsg);
-				}
-				if (AppContext.getInstance().plugin.settings?.enableDevTools) {
-					legacy?.recordError(errMsg);
-				}
+			if (errMsg && target.enableDevTools()) {
+				target.recordError(errMsg);
+				legacy?.recordError(errMsg);
 			}
 			break;
 		}

@@ -18,6 +18,7 @@ import {
 import type { UIStepRecord } from '../store/aiAnalysisStore';
 
 import type { SearchAgentResult } from '@/service/agents/shared-types';
+import { AppContext } from '@/app/context/AppContext';
 import type { LLMStreamEvent } from '@/core/providers/types';
 
 import { SUMMARY_FLUSH_MS } from './search-session-types';
@@ -81,6 +82,7 @@ export function useEventRouter() {
 	// -------------------------------------------------------------------
 
 	const buildTarget = (): EventDispatchTarget => ({
+			enableDevTools: () => AppContext.getInstance().plugin.settings?.enableDevTools === true,
 			getV2Active: () => store.getState().v2Active,
 			getV2ProposedOutline: () => store.getState().v2ProposedOutline,
 			getStartedAt: () => store.getState().startedAt,
