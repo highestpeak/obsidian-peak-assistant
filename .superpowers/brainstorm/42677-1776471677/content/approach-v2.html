@@ -1,0 +1,157 @@
+<h2>AI Graph Agent 设计方案 v2</h2>
+<p class="subtitle">搜索阶段即生成图，批量读取，Anthropic Agent SDK</p>
+
+<!-- Pipeline -->
+<div class="section">
+  <h3>搜索 Pipeline 集成</h3>
+  <div class="mockup">
+    <div class="mockup-header">时序流程</div>
+    <div class="mockup-body" style="padding:24px;font-family:monospace;font-size:12px;line-height:2.2;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="background:#dbeafe;padding:4px 10px;border-radius:4px;min-width:120px;text-align:center;">用户搜索</span>
+          <span style="color:#94a3b8;">→</span>
+          <span style="background:#dbeafe;padding:4px 10px;border-radius:4px;min-width:180px;text-align:center;">AI Search → Top Sources</span>
+          <span style="color:#94a3b8;">→</span>
+          <span style="background:#bbf7d0;padding:4px 10px;border-radius:4px;min-width:180px;text-align:center;font-weight:bold;">Graph Agent (并行/串行)</span>
+        </div>
+        <div style="margin-left:340px;color:#64748b;font-size:11px;">
+          ↑ 搜索结果一出来就启动 graph agent<br>
+          ↑ 不等用户点 Graph 按钮
+        </div>
+      </div>
+
+      <div style="margin-top:20px;padding:12px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;">
+        <div style="font-weight:bold;color:#16a34a;margin-bottom:8px;">结果：用户切到 Graph 视图时，数据已经准备好</div>
+        <div style="font-size:11px;color:#64748b;">
+          • 如果 agent 还在跑 → 显示 loading + 进度<br>
+          • 如果已完成 → 直接渲染图<br>
+          • 图数据缓存在搜索结果中，切换 List/Graph 不重新调用
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Agent Design -->
+<div class="section">
+  <h3>Agent 设计</h3>
+  <div class="mockup">
+    <div class="mockup-header">Graph Agent (Anthropic SDK tool-use loop)</div>
+    <div class="mockup-body" style="padding:20px;font-family:monospace;font-size:12px;line-height:1.8;">
+      <div style="margin-bottom:16px;">
+        <span style="color:#7c3aed;font-weight:bold;">初始 Context:</span><br>
+        • 搜索查询 (用户的问题)<br>
+        • source 文件列表 (path + 文件名 + 文件夹 + ctime/mtime)
+      </div>
+
+      <div style="font-weight:bold;color:#1e293b;margin-bottom:10px;">工具 (2个):</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="background:#f8fafc;padding:12px;border-radius:6px;border:1px solid #e2e8f0;">
+          <div style="font-weight:bold;color:#0ea5e9;">read_sources</div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;">
+            参数: paths: string[]<br>
+            返回: {path, content, outgoing_links[], incoming_links[]}[]<br>
+            <span style="color:#f59e0b;">一次读取所有源文件内容 + 双向 links</span>
+          </div>
+        </div>
+        <div style="background:#f8fafc;padding:12px;border-radius:6px;border:1px solid #e2e8f0;">
+          <div style="font-weight:bold;color:#0ea5e9;">submit_graph</div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;">
+            参数: GraphOutput JSON<br>
+            作用: 提交最终图结构，结束 agent loop<br>
+            <span style="color:#f59e0b;">前端收到后渲染三个 tab</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-weight:bold;color:#1e293b;margin-bottom:8px;">典型 Agent Loop (2轮):</div>
+      <div style="background:#fffbeb;padding:12px;border-radius:6px;border:1px solid #fde68a;font-size:11px;">
+        <div><span style="color:#7c3aed;">Turn 1:</span> Agent 调用 read_sources(所有路径) → 获得全部内容和 links</div>
+        <div style="margin-top:6px;"><span style="color:#7c3aed;">Turn 2:</span> Agent 分析关系、聚类、桥梁、演化链 → 调用 submit_graph(JSON)</div>
+        <div style="margin-top:8px;color:#92400e;">总计: 2次工具调用，1次 LLM 深度推理</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Output Schema -->
+<div class="section">
+  <h3>submit_graph 输出 Schema</h3>
+  <div class="mockup">
+    <div class="mockup-header">GraphOutput — 一份数据供三个 Tab</div>
+    <div class="mockup-body" style="padding:16px;font-family:monospace;font-size:11.5px;line-height:1.9;white-space:pre;overflow-x:auto;">{
+  <span style="color:#7c3aed;font-weight:bold;">nodes</span>: [{
+    path: "AI-IdeaStream-产品飞轮...",
+    label: "AI产品飞轮与自动化设计",
+    role: "hub" | "bridge" | "leaf",
+    cluster_id: "ai-product",
+    summary: "探讨AI产品的飞轮效应和自动化策略",
+    importance: 0.9    <span style="color:#94a3b8;">// → 节点大小</span>
+  }],
+
+  <span style="color:#0ea5e9;font-weight:bold;">edges</span>: [{
+    source: "path-A",
+    target: "path-B",
+    kind: "builds_on" | "contrasts" | "complements" | "applies" | "references",
+    label: "B 将 A 的理论落地为产品方案",
+    weight: 0.8        <span style="color:#94a3b8;">// → 边粗细</span>
+  }],
+
+  <span style="color:#16a34a;font-weight:bold;">clusters</span>: [{
+    id: "ai-product",
+    name: "AI产品设计",
+    description: "关于AI产品策略和飞轮设计的文档"
+  }],
+
+  <span style="color:#dc2626;font-weight:bold;">bridges</span>: [{
+    node_path: "AI-IdeaStream-how-to-know...",
+    connects: ["ai-product", "personal-growth"],
+    explanation: "将创业验证方法论与个人项目管理结合"
+  }],
+
+  <span style="color:#f59e0b;font-weight:bold;">evolution_chains</span>: [{
+    chain: ["path-early", "path-mid", "path-latest"],
+    theme: "AI产品想法从构思到验证的演化"
+  }]
+}</div>
+  </div>
+</div>
+
+<!-- Tab mapping -->
+<div class="section">
+  <h3>三个 Tab 如何消费这份数据</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+    <div style="background:#f8fafc;padding:14px;border-radius:8px;border:2px solid #7c3aed;">
+      <div style="font-weight:bold;color:#7c3aed;margin-bottom:6px;">Topology 关系图</div>
+      <div style="font-size:11px;color:#475569;line-height:1.6;">
+        <strong>数据:</strong> nodes + edges + clusters<br>
+        <strong>节点大小:</strong> importance<br>
+        <strong>节点颜色:</strong> cluster_id<br>
+        <strong>边样式:</strong> kind → 颜色/虚实<br>
+        <strong>布局:</strong> dagre, hub 居中<br>
+        <strong>Tooltip:</strong> "展示文档间的语义关系和知识结构"
+      </div>
+    </div>
+    <div style="background:#f8fafc;padding:14px;border-radius:8px;border:2px solid #dc2626;">
+      <div style="font-weight:bold;color:#dc2626;margin-bottom:6px;">Bridges 知识桥梁</div>
+      <div style="font-size:11px;color:#475569;line-height:1.6;">
+        <strong>数据:</strong> clusters + bridges<br>
+        <strong>布局:</strong> 泳道式，cluster 分组<br>
+        <strong>桥梁节点:</strong> 跨泳道连线 + 解释<br>
+        <strong>非桥梁:</strong> 收在所属 cluster 内<br>
+        <strong>Tooltip:</strong> "标识跨越知识领域的关键连接文档"
+      </div>
+    </div>
+    <div style="background:#f8fafc;padding:14px;border-radius:8px;border:2px solid #f59e0b;">
+      <div style="font-weight:bold;color:#f59e0b;margin-bottom:6px;">Timeline 演化时间线</div>
+      <div style="font-size:11px;color:#475569;line-height:1.6;">
+        <strong>数据:</strong> evolution_chains + ctime<br>
+        <strong>布局:</strong> 水平时间轴 + 日期刻度<br>
+        <strong>演化链:</strong> 按 chain 连线<br>
+        <strong>间距:</strong> 真实时间比例<br>
+        <strong>Tooltip:</strong> "展示知识积累和思想演化的时间脉络"
+      </div>
+    </div>
+  </div>
+</div>

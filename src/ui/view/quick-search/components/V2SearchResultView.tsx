@@ -40,6 +40,10 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
     useEffect(() => {
         if (isCompleted && allSectionsDone) {
             useSearchSessionStore.getState().setV2View('report');
+            // Scroll to top so user sees the report from the beginning
+            requestAnimationFrame(() => {
+                containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+            });
         }
     }, [isCompleted, allSectionsDone]);
 

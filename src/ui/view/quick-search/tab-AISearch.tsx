@@ -771,7 +771,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 			</div>
 
 			{/* Footer — V2 renders its own content, V1 renders original */}
-			{isV2Active && analysisCompleted ? (
+			{isV2Active && (isAnalyzing || analysisCompleted) ? (
 				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} />
 			) : null}
 			<div className={`pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0 ${isV2Active ? 'pktw-hidden' : ''}`}>

@@ -1,0 +1,86 @@
+<h2>AI Graph Agent 设计方案</h2>
+<p class="subtitle">一次 Anthropic Agent SDK tool-use loop，生成三个 tab 的全部图数据</p>
+
+<!-- Agent Architecture -->
+<div class="section">
+  <h3>Agent 架构</h3>
+  <div class="mockup">
+    <div class="mockup-header">数据流</div>
+    <div class="mockup-body" style="padding: 24px; font-family: monospace; font-size: 13px; line-height: 2;">
+      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <span style="background:#dbeafe;padding:6px 12px;border-radius:6px;">用户搜索 → Top Sources (13 files)</span>
+        <span style="color:#94a3b8;">→</span>
+        <span style="background:#fef3c7;padding:6px 12px;border-radius:6px;">点击 Graph 按钮</span>
+        <span style="color:#94a3b8;">→</span>
+        <span style="background:#dcfce7;padding:6px 12px;border-radius:6px;font-weight:bold;">Graph Agent Loop</span>
+        <span style="color:#94a3b8;">→</span>
+        <span style="background:#f3e8ff;padding:6px 12px;border-radius:6px;">结构化 JSON → 三个 Tab</span>
+      </div>
+
+      <div style="margin-top:24px; padding:16px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+        <div style="font-weight:bold; margin-bottom:12px; color:#1e293b;">Graph Agent (Anthropic SDK)</div>
+        <div style="margin-bottom:8px;"><span style="color:#7c3aed;">System Prompt:</span> 搜索查询 + source 文件列表 + 基础 metadata</div>
+        <div style="margin-bottom:16px;"><span style="color:#7c3aed;">任务:</span> 分析文档关系，输出图结构</div>
+
+        <div style="font-weight:bold; margin-bottom:8px; color:#64748b;">可用工具 (3个):</div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px;">
+          <div style="background:white;padding:10px;border-radius:6px;border:1px solid #e2e8f0;">
+            <div style="font-weight:bold;color:#0ea5e9;font-size:12px;">read_document</div>
+            <div style="font-size:11px;color:#64748b;">读取文件全文内容</div>
+          </div>
+          <div style="background:white;padding:10px;border-radius:6px;border:1px solid #e2e8f0;">
+            <div style="font-weight:bold;color:#0ea5e9;font-size:12px;">get_linked_documents</div>
+            <div style="font-size:11px;color:#64748b;">获取双向 wikilink 列表</div>
+          </div>
+          <div style="background:white;padding:10px;border-radius:6px;border:1px solid #e2e8f0;">
+            <div style="font-weight:bold;color:#0ea5e9;font-size:12px;">submit_graph</div>
+            <div style="font-size:11px;color:#64748b;">提交最终图结构 JSON</div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px; font-size:11px; color:#64748b;">
+          典型 loop: 读 3-5 个关键文件 → 查 links → 推理关系 → submit_graph (3-6 轮)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Output Schema -->
+<div class="section">
+  <h3>Agent 输出 Schema (submit_graph 参数)</h3>
+  <div class="mockup">
+    <div class="mockup-header">GraphOutput JSON</div>
+    <div class="mockup-body" style="padding:16px;font-family:monospace;font-size:12px;line-height:1.8;white-space:pre;overflow-x:auto;">
+{
+  <span style="color:#7c3aed;">nodes</span>: [{
+    path, label,
+    role: "hub" | "bridge" | "leaf",
+    cluster: "AI产品",         <span style="color:#94a3b8;">// AI推断的主题聚类</span>
+    summary: "一句话摘要",
+    importance: 0.9             <span style="color:#94a3b8;">// 映射节点大小</span>
+  }],
+  <span style="color:#0ea5e9;">edges</span>: [{
+    source, target,
+    kind: "builds_on" | "contrasts" | "complements"
+        | "applies" | "references",
+    label: "B 将 A 的理论落地为产品方案",
+    weight: 0.8
+  }],
+  <span style="color:#16a34a;">clusters</span>: [{
+    id: "ai-product",
+    name: "AI产品设计",
+    description: "关于AI产品策略和飞轮设计的文档"
+  }],
+  <span style="color:#dc2626;">bridges</span>: [{
+    path: "AI-IdeaStream-how-to-know...",
+    connects: ["AI产品设计", "个人成长"],
+    explanation: "将创业验证方法论与个人项目管理结合"
+  }],
+  <span style="color:#f59e0b;">evolution_chains</span>: [{
+    chain: [path1, path2, path3],  <span style="color:#94a3b8;">// 按思想演化排序</span>
+    theme: "AI产品想法从构思到验证的演化"
+  }]
+}</div>
+  </div>
+</div>

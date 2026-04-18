@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph Tabs Mockup</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#1e1e2e; color:#cdd6f4; padding:20px; }
+
+  .page-title { font-size:18px; font-weight:600; color:#cdd6f4; margin-bottom:20px; }
+  .page-subtitle { font-size:13px; color:#6c7086; margin-bottom:24px; }
+
+  /* Tab bar */
+  .tab-bar { display:flex; gap:0; margin-bottom:0; border-bottom:1px solid #313244; }
+  .tab { padding:10px 20px; font-size:13px; color:#6c7086; cursor:pointer; border-bottom:2px solid transparent; display:flex; align-items:center; gap:6px; position:relative; }
+  .tab:hover { color:#cdd6f4; background:#313244; }
+  .tab.active { color:#cdd6f4; border-bottom-color:#89b4fa; }
+  .tab .tab-icon { font-size:14px; }
+  .tab .tab-tooltip { display:none; position:absolute; top:100%; left:50%; transform:translateX(-50%); margin-top:8px; background:#45475a; color:#cdd6f4; padding:8px 12px; border-radius:6px; font-size:11px; white-space:nowrap; z-index:10; box-shadow:0 4px 12px rgba(0,0,0,0.3); }
+  .tab:hover .tab-tooltip { display:block; }
+
+  /* Canvas area */
+  .canvas { background:#181825; border:1px solid #313244; border-radius:0 0 8px 8px; min-height:500px; position:relative; overflow:hidden; }
+
+  /* Shared node styles */
+  .node { position:absolute; background:#1e1e2e; border:1.5px solid #45475a; border-radius:6px; padding:6px 10px; font-size:11px; color:#cdd6f4; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+  .node:hover { border-color:#89b4fa; box-shadow:0 0 12px rgba(137,180,250,0.2); z-index:5; }
+  .node.hub { border-color:#89b4fa; border-width:2px; background:#1e1e2e; }
+  .node.bridge-node { border-color:#f38ba8; border-width:2px; border-style:dashed; }
+  .node.leaf { border-color:#45475a; }
+  .node .node-label { font-weight:500; max-width:200px; overflow:hidden; text-overflow:ellipsis; }
+  .node .node-summary { font-size:9px; color:#6c7086; margin-top:2px; max-width:200px; overflow:hidden; text-overflow:ellipsis; }
+  .node .node-cluster-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px; vertical-align:middle; }
+
+  /* SVG edges */
+  svg.edges { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+  .edge-line { fill:none; stroke-width:1.5; }
+  .edge-label { font-size:9px; fill:#6c7086; }
+
+  /* Legend */
+  .legend { position:absolute; bottom:12px; right:12px; background:#1e1e2e; border:1px solid #313244; border-radius:6px; padding:10px 14px; font-size:10px; }
+  .legend-title { font-weight:600; margin-bottom:6px; color:#a6adc8; }
+  .legend-item { display:flex; align-items:center; gap:6px; margin-bottom:3px; color:#6c7086; }
+  .legend-line { width:20px; height:2px; border-radius:1px; }
+  .legend-dot { width:8px; height:8px; border-radius:50%; }
+
+  /* Section labels */
+  .section-label { position:absolute; font-size:10px; color:#45475a; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; }
+
+  /* ===== BRIDGES TAB ===== */
+  .swimlane { position:absolute; border:1px dashed #313244; border-radius:8px; }
+  .swimlane-label { position:absolute; top:8px; left:12px; font-size:10px; font-weight:600; color:#585b70; letter-spacing:0.5px; }
+  .bridge-explain { position:absolute; background:#1e1e2e; border:1px solid #f38ba8; border-radius:6px; padding:6px 10px; font-size:10px; color:#f38ba8; max-width:220px; }
+
+  /* ===== TIMELINE TAB ===== */
+  .timeline-axis { position:absolute; height:2px; background:#313244; }
+  .timeline-tick { position:absolute; width:1px; height:12px; background:#45475a; }
+  .timeline-date { position:absolute; font-size:9px; color:#585b70; }
+  .timeline-chain-label { position:absolute; font-size:9px; color:#f9e2af; background:#1e1e2e; padding:2px 6px; border-radius:3px; border:1px solid #f9e2af33; }
+
+  /* Tab content visibility */
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* Controls */
+  .controls { position:absolute; bottom:12px; left:12px; display:flex; flex-direction:column; gap:4px; }
+  .ctrl-btn { width:28px; height:28px; background:#1e1e2e; border:1px solid #313244; border-radius:4px; color:#6c7086; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; }
+</style>
+</head>
+<body>
+
+<div class="page-title">三个 Tab 可视化 Mockup</div>
+<div class="page-subtitle">点击 Tab 切换查看。Hover Tab 名称可看 tooltip 说明。</div>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('topology')">
+    <span class="tab-icon">🔗</span> Topology
+    <div class="tab-tooltip">展示文档间的语义关系和知识结构</div>
+  </div>
+  <div class="tab" onclick="switchTab('bridges')">
+    <span class="tab-icon">🌉</span> Bridges
+    <div class="tab-tooltip">标识跨越知识领域的关键连接文档</div>
+  </div>
+  <div class="tab" onclick="switchTab('timeline')">
+    <span class="tab-icon">⏳</span> Timeline
+    <div class="tab-tooltip">展示知识积累和思想演化的时间脉络</div>
+  </div>
+</div>
+
+<!-- ==================== TOPOLOGY TAB ==================== -->
+<div class="tab-content active" id="tab-topology">
+  <div class="canvas" style="height:520px;">
+    <!-- SVG Edges -->
+    <svg class="edges" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet">
+      <!-- hub → builds_on -->
+      <path class="edge-line" d="M450,140 C450,180 280,180 280,220" stroke="#89b4fa" />
+      <path class="edge-line" d="M450,140 C450,180 620,180 620,220" stroke="#89b4fa" />
+      <path class="edge-line" d="M450,140 C500,180 700,160 750,220" stroke="#89b4fa" />
+
+      <!-- complements (dashed green) -->
+      <path class="edge-line" d="M280,250 C280,290 620,290 620,250" stroke="#a6e3a1" stroke-dasharray="4 3" />
+
+      <!-- contrasts (dashed red) -->
+      <path class="edge-line" d="M620,250 C680,300 780,300 750,250" stroke="#f38ba8" stroke-dasharray="6 3" />
+
+      <!-- applies -->
+      <path class="edge-line" d="M280,250 C220,310 160,340 160,370" stroke="#f9e2af" />
+      <path class="edge-line" d="M750,250 C750,310 650,340 620,370" stroke="#f9e2af" />
+
+      <!-- references (thin grey) -->
+      <path class="edge-line" d="M160,400 C160,420 350,420 350,400" stroke="#585b70" stroke-width="1" />
+      <path class="edge-line" d="M620,400 C620,430 810,430 810,370" stroke="#585b70" stroke-width="1" />
+
+      <!-- cross-cluster bridge -->
+      <path class="edge-line" d="M450,140 C380,100 200,370 160,370" stroke="#cba6f7" stroke-dasharray="3 3" stroke-width="1" />
+
+      <!-- Edge labels -->
+      <text class="edge-label" x="340" y="175">构建于</text>
+      <text class="edge-label" x="540" y="175">构建于</text>
+      <text class="edge-label" x="440" y="300">互补</text>
+      <text class="edge-label" x="700" y="285">对比</text>
+      <text class="edge-label" x="190" y="320">应用</text>
+    </svg>
+
+    <!-- Nodes -->
+    <div class="node hub" style="left:370px;top:110px;font-size:13px;padding:8px 14px;">
+      <span class="node-cluster-dot" style="background:#89b4fa;"></span>
+      <span class="node-label">AI-IdeaStream-产品飞轮与自动化</span>
+      <div class="node-summary">探讨AI产品的飞轮效应和自动化策略</div>
+    </div>
+
+    <div class="node" style="left:180px;top:215px;">
+      <span class="node-cluster-dot" style="background:#89b4fa;"></span>
+      <span class="node-label">有方法论的 Idea Print Machine</span>
+    </div>
+
+    <div class="node" style="left:530px;top:215px;">
+      <span class="node-cluster-dot" style="background:#89b4fa;"></span>
+      <span class="node-label">AI-IdeaStream-how to know if idea is good</span>
+    </div>
+
+    <div class="node" style="left:680px;top:215px;">
+      <span class="node-cluster-dot" style="background:#a6e3a1;"></span>
+      <span class="node-label">AI-IdeaStream-深度分析</span>
+    </div>
+
+    <div class="node bridge-node" style="left:80px;top:360px;">
+      <span class="node-cluster-dot" style="background:#f38ba8;"></span>
+      <span class="node-label">职业生涯</span>
+      <div class="node-summary">跨 AI产品 ↔ 个人成长</div>
+    </div>
+
+    <div class="node" style="left:280px;top:370px;">
+      <span class="node-cluster-dot" style="background:#cba6f7;"></span>
+      <span class="node-label">Fire生活</span>
+    </div>
+
+    <div class="node" style="left:540px;top:360px;">
+      <span class="node-cluster-dot" style="background:#a6e3a1;"></span>
+      <span class="node-label">AI-Compare-找房助手</span>
+    </div>
+
+    <div class="node" style="left:730px;top:350px;">
+      <span class="node-cluster-dot" style="background:#f9e2af;"></span>
+      <span class="node-label">Z-综合产品评估-市场调研</span>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-title">边类型</div>
+      <div class="legend-item"><div class="legend-line" style="background:#89b4fa;"></div> 构建于 (builds_on)</div>
+      <div class="legend-item"><div class="legend-line" style="background:#a6e3a1;border-top:2px dashed #a6e3a1;height:0;"></div> 互补 (complements)</div>
+      <div class="legend-item"><div class="legend-line" style="background:#f38ba8;border-top:2px dashed #f38ba8;height:0;"></div> 对比 (contrasts)</div>
+      <div class="legend-item"><div class="legend-line" style="background:#f9e2af;"></div> 应用 (applies)</div>
+      <div class="legend-item"><div class="legend-line" style="background:#585b70;"></div> 引用 (references)</div>
+      <div style="margin-top:8px;" class="legend-title">聚类</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#89b4fa;"></div> AI产品设计</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a6e3a1;"></div> 深度分析</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#cba6f7;"></div> 个人成长</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f9e2af;"></div> 市场调研</div>
+      <div style="margin-top:8px;" class="legend-title">节点角色</div>
+      <div class="legend-item"><div style="width:14px;height:14px;border:2px solid #89b4fa;border-radius:3px;"></div> Hub (中心)</div>
+      <div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #f38ba8;border-radius:3px;"></div> Bridge (桥梁)</div>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl-btn">+</div>
+      <div class="ctrl-btn">−</div>
+      <div class="ctrl-btn">⛶</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== BRIDGES TAB ==================== -->
+<div class="tab-content" id="tab-bridges">
+  <div class="canvas" style="height:520px;">
+    <!-- Swimlanes -->
+    <div class="swimlane" style="left:30px;top:30px;width:240px;height:450px;border-color:#89b4fa44;">
+      <div class="swimlane-label" style="color:#89b4fa;">AI产品设计</div>
+    </div>
+    <div class="swimlane" style="left:340px;top:30px;width:220px;height:450px;border-color:#f38ba844;">
+      <div class="swimlane-label" style="color:#f38ba8;">🌉 桥梁节点</div>
+    </div>
+    <div class="swimlane" style="left:630px;top:30px;width:240px;height:450px;border-color:#a6e3a144;">
+      <div class="swimlane-label" style="color:#a6e3a1;">个人成长 / 生活</div>
+    </div>
+
+    <!-- SVG connections -->
+    <svg class="edges" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet">
+      <!-- Bridge 1: 职业生涯 -->
+      <path class="edge-line" d="M270,120 C310,120 340,120 380,120" stroke="#f38ba8" stroke-width="2" />
+      <path class="edge-line" d="M520,120 C560,120 590,120 630,120" stroke="#f38ba8" stroke-width="2" />
+
+      <!-- Bridge 2: IdeaStream-how to know -->
+      <path class="edge-line" d="M270,230 C310,230 340,230 370,230" stroke="#f38ba8" stroke-width="2" />
+      <path class="edge-line" d="M530,230 C570,230 600,230 630,230" stroke="#f38ba8" stroke-width="2" />
+
+      <!-- Bridge 3: B-All Monetize -->
+      <path class="edge-line" d="M270,340 C310,340 340,340 380,340" stroke="#f38ba8" stroke-width="2" />
+      <path class="edge-line" d="M520,340 C560,340 590,340 630,340" stroke="#f38ba8" stroke-width="2" />
+    </svg>
+
+    <!-- Left cluster nodes -->
+    <div class="node" style="left:50px;top:90px;border-color:#89b4fa;">
+      <span class="node-cluster-dot" style="background:#89b4fa;"></span>
+      <span class="node-label">AI-IdeaStream-产品飞轮</span>
+    </div>
+    <div class="node" style="left:50px;top:160px;border-color:#89b4fa;">
+      <span class="node-cluster-dot" style="background:#89b4fa;"></span>
+      <span class="node-label">有方法论的 Idea Print Machine</span>
+    </div>
+    <div class="node" style="left:50px;top:230px;border-color:#89b4fa;">
+      <span class="node-cluster-dot" style="background:#89b4fa;"></span>
+      <span class="node-label">AI-IdeaStream-深度分析</span>
+    </div>
+    <div class="node" style="left:50px;top:300px;border-color:#89b4fa;">
+      <span class="node-cluster-dot" style="background:#89b4fa;"></span>
+      <span class="node-label">Z-综合产品评估-市场调研</span>
+    </div>
+    <div class="node" style="left:50px;top:370px;border-color:#89b4fa;">
+      <span class="node-cluster-dot" style="background:#89b4fa;"></span>
+      <span class="node-label">AI-Compare-找房助手</span>
+    </div>
+
+    <!-- Bridge nodes (center) -->
+    <div class="node bridge-node" style="left:370px;top:85px;padding:8px 12px;">
+      <span class="node-label" style="color:#f38ba8;font-weight:600;">职业生涯</span>
+      <div class="node-summary" style="color:#f38ba8aa;">将创业策略与职业规划结合</div>
+    </div>
+    <div class="node bridge-node" style="left:360px;top:195px;padding:8px 12px;">
+      <span class="node-label" style="color:#f38ba8;font-weight:600;">AI-IdeaStream-how to know</span>
+      <div class="node-summary" style="color:#f38ba8aa;">连接验证方法论与个人项目管理</div>
+    </div>
+    <div class="node bridge-node" style="left:370px;top:305px;padding:8px 12px;">
+      <span class="node-label" style="color:#f38ba8;font-weight:600;">B-All Monetize Plan</span>
+      <div class="node-summary" style="color:#f38ba8aa;">产品商业化 ↔ FIRE 财务独立</div>
+    </div>
+
+    <!-- Right cluster nodes -->
+    <div class="node" style="left:650px;top:90px;border-color:#a6e3a1;">
+      <span class="node-cluster-dot" style="background:#a6e3a1;"></span>
+      <span class="node-label">Fire生活</span>
+    </div>
+    <div class="node" style="left:650px;top:160px;border-color:#a6e3a1;">
+      <span class="node-cluster-dot" style="background:#a6e3a1;"></span>
+      <span class="node-label">A-0-Index</span>
+    </div>
+    <div class="node" style="left:650px;top:230px;border-color:#a6e3a1;">
+      <span class="node-cluster-dot" style="background:#a6e3a1;"></span>
+      <span class="node-label">AI-peakAssistant-操作手册</span>
+    </div>
+    <div class="node" style="left:650px;top:300px;border-color:#a6e3a1;">
+      <span class="node-cluster-dot" style="background:#a6e3a1;"></span>
+      <span class="node-label">peakassistant-日志分析</span>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-title">Bridges 图例</div>
+      <div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #f38ba8;border-radius:3px;"></div> 桥梁节点</div>
+      <div class="legend-item"><div class="legend-line" style="background:#f38ba8;"></div> 跨域连接</div>
+      <div class="legend-item"><div style="width:14px;height:14px;border:1px dashed #89b4fa44;border-radius:3px;"></div> 知识域 (泳道)</div>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl-btn">+</div>
+      <div class="ctrl-btn">−</div>
+      <div class="ctrl-btn">⛶</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TIMELINE TAB ==================== -->
+<div class="tab-content" id="tab-timeline">
+  <div class="canvas" style="height:520px;">
+    <!-- Time axis -->
+    <div class="timeline-axis" style="left:60px;top:260px;width:800px;"></div>
+
+    <!-- Ticks and dates -->
+    <div class="timeline-tick" style="left:80px;top:254px;"></div>
+    <div class="timeline-date" style="left:62px;top:270px;">2025-11</div>
+
+    <div class="timeline-tick" style="left:200px;top:254px;"></div>
+    <div class="timeline-date" style="left:182px;top:270px;">2025-12</div>
+
+    <div class="timeline-tick" style="left:350px;top:254px;"></div>
+    <div class="timeline-date" style="left:332px;top:270px;">2026-01</div>
+
+    <div class="timeline-tick" style="left:500px;top:254px;"></div>
+    <div class="timeline-date" style="left:482px;top:270px;">2026-02</div>
+
+    <div class="timeline-tick" style="left:620px;top:254px;"></div>
+    <div class="timeline-date" style="left:602px;top:270px;">2026-03</div>
+
+    <div class="timeline-tick" style="left:770px;top:254px;"></div>
+    <div class="timeline-date" style="left:752px;top:270px;">2026-04</div>
+
+    <!-- SVG evolution chains -->
+    <svg class="edges" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet">
+      <!-- Chain 1: AI产品演化 (above axis) -->
+      <path class="edge-line" d="M120,190 C180,190 240,150 330,150" stroke="#89b4fa" stroke-width="2" marker-end="url(#arrow-blue)" />
+      <path class="edge-line" d="M420,150 C500,150 550,120 630,120" stroke="#89b4fa" stroke-width="2" marker-end="url(#arrow-blue)" />
+      <path class="edge-line" d="M790,120 C810,120 820,100 830,100" stroke="#89b4fa" stroke-width="2" />
+
+      <!-- Chain 2: 个人成长 (below axis) -->
+      <path class="edge-line" d="M120,340 C200,340 280,360 370,360" stroke="#a6e3a1" stroke-width="2" marker-end="url(#arrow-green)" />
+      <path class="edge-line" d="M470,360 C530,360 590,380 660,380" stroke="#a6e3a1" stroke-width="2" marker-end="url(#arrow-green)" />
+
+      <!-- Arrow markers -->
+      <defs>
+        <marker id="arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#89b4fa" />
+        </marker>
+        <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#a6e3a1" />
+        </marker>
+      </defs>
+    </svg>
+
+    <!-- Chain labels -->
+    <div class="timeline-chain-label" style="left:300px;top:80px;">
+      演化链: AI产品从构思到验证
+    </div>
+    <div class="timeline-chain-label" style="left:300px;top:395px;color:#a6e3a1;border-color:#a6e3a133;">
+      演化链: 个人成长与 FIRE 规划
+    </div>
+
+    <!-- Nodes above axis (Chain 1) -->
+    <div class="node" style="left:60px;top:170px;border-color:#89b4fa;">
+      <span class="node-label">有方法论的 Idea Print Machine</span>
+      <div class="node-summary">2025-11-15</div>
+    </div>
+
+    <div class="node" style="left:270px;top:130px;border-color:#89b4fa;">
+      <span class="node-label">AI-IdeaStream-how to know</span>
+      <div class="node-summary">2026-01-08</div>
+    </div>
+
+    <div class="node hub" style="left:570px;top:98px;border-color:#89b4fa;">
+      <span class="node-label">AI-IdeaStream-产品飞轮与自动化</span>
+      <div class="node-summary">2026-03-22</div>
+    </div>
+
+    <!-- Nodes below axis (Chain 2) -->
+    <div class="node" style="left:60px;top:315px;border-color:#a6e3a1;">
+      <span class="node-label">A-0-Index</span>
+      <div class="node-summary">2025-11-20</div>
+    </div>
+
+    <div class="node" style="left:310px;top:340px;border-color:#a6e3a1;">
+      <span class="node-label">职业生涯</span>
+      <div class="node-summary">2026-01-15</div>
+    </div>
+
+    <div class="node" style="left:600px;top:360px;border-color:#a6e3a1;">
+      <span class="node-label">Fire生活</span>
+      <div class="node-summary">2026-03-10</div>
+    </div>
+
+    <!-- Standalone nodes (no chain, near axis) -->
+    <div class="node leaf" style="left:440px;top:220px;opacity:0.7;">
+      <span class="node-label">peakassistant-日志分析</span>
+      <div class="node-summary">2026-02-05</div>
+    </div>
+
+    <div class="node leaf" style="left:700px;top:220px;opacity:0.7;">
+      <span class="node-label">Z-综合产品评估-市场调研</span>
+      <div class="node-summary">2026-04-01</div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-title">Timeline 图例</div>
+      <div class="legend-item"><div class="legend-line" style="background:#89b4fa;"></div> AI产品演化链</div>
+      <div class="legend-item"><div class="legend-line" style="background:#a6e3a1;"></div> 个人成长演化链</div>
+      <div class="legend-item"><div style="width:6px;height:6px;background:#45475a;border-radius:1px;"></div> 独立节点 (无演化关系)</div>
+      <div class="legend-item"><div class="legend-line" style="background:#313244;height:2px;"></div> 时间轴</div>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl-btn">+</div>
+      <div class="ctrl-btn">−</div>
+      <div class="ctrl-btn">⛶</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+</script>
+
+</body>
+</html>

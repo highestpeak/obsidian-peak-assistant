@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
 
 interface SourceItem {
@@ -7,10 +7,12 @@ interface SourceItem {
 	score?: number;
 }
 
-interface UseGraphAgentResult {
+export interface UseGraphAgentResult {
 	graphData: LensGraphData | null;
 	loading: boolean;
+	step: string | null;
 	error: string | null;
+	start: () => void;
 }
 
 export function useGraphAgent(
@@ -19,16 +21,12 @@ export function useGraphAgent(
 ): UseGraphAgentResult {
 	const [graphData, setGraphData] = useState<LensGraphData | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [step, setStep] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const abortRef = useRef<AbortController | null>(null);
-	const sourcesKeyRef = useRef<string>('');
 
-	useEffect(() => {
-		if (sources.length === 0 || !searchQuery) return;
-
-		const key = sources.map(s => s.path).sort().join('|');
-		if (key === sourcesKeyRef.current) return;
-		sourcesKeyRef.current = key;
+	const start = useCallback(() => {
+		if (sources.length === 0 || !searchQuery || loading) return;
 
 		abortRef.current?.abort();
 		const controller = new AbortController();
@@ -36,14 +34,18 @@ export function useGraphAgent(
 
 		setLoading(true);
 		setError(null);
+		setStep('正在初始化 Graph Agent...');
 
 		(async () => {
 			try {
+				setStep('正在读取源文件内容...');
 				const { GraphAgent } = await import('@/service/agents/ai-graph/GraphAgent');
 				const { AppContext } = await import('@/app/context/AppContext');
 				const ctx = AppContext.getInstance();
 
-				const agent = new GraphAgent(ctx.app, ctx.pluginId, ctx.settings);
+				const agent = new GraphAgent(ctx.app, ctx.plugin.manifest.id, ctx.settings);
+
+				setStep(`正在分析 ${sources.length} 篇文档的关系...`);
 				const result = await agent.generateGraph(
 					{ searchQuery, sources },
 					controller.signal,
@@ -52,28 +54,30 @@ export function useGraphAgent(
 				if (controller.signal.aborted) return;
 
 				if (result) {
+					setStep('正在构建图谱...');
 					const { graphOutputToLensData } = await import('@/service/agents/ai-graph/graph-output-to-lens');
 					setGraphData(graphOutputToLensData(result));
 				} else {
 					console.warn('[useGraphAgent] agent returned null, falling back');
+					setStep('AI 分析未返回结果，使用物理链接数据...');
 					await fallbackToPhysicalGraph(sources, setGraphData);
 				}
 			} catch (err) {
 				if (!controller.signal.aborted) {
 					console.error('[useGraphAgent] error, falling back', err);
+					setStep('AI 分析出错，使用物理链接数据...');
 					await fallbackToPhysicalGraph(sources, setGraphData);
 				}
 			} finally {
 				if (!controller.signal.aborted) {
 					setLoading(false);
+					setStep(null);
 				}
 			}
 		})();
+	}, [sources, searchQuery, loading]);
 
-		return () => { controller.abort(); };
-	}, [sources, searchQuery]);
-
-	return { graphData, loading, error };
+	return { graphData, loading, step, error, start };
 }
 
 async function fallbackToPhysicalGraph(

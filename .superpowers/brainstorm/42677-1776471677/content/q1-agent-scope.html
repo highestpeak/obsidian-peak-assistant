@@ -1,0 +1,62 @@
+<h2>AI Agent 应该生成什么层次的数据？</h2>
+<p class="subtitle">决定 Topology / Bridges / Timeline 三个 tab 的数据生成架构</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>一次 Agent 生成全部图数据 (推荐)</h3>
+      <p>一次 agent 调用输出完整的结构化 JSON：节点角色、边类型+语义标签、主题聚类、时间演化链。前端按 tab 过滤和布局。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>延迟最低 — 切换 tab 无需等待</li>
+          <li>数据一致性 — 三个视角共享同一份推理结果</li>
+          <li>Token 消耗最少 — 源文件内容只发送一次</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>单次调用输出较大的 JSON</li>
+          <li>如果用户只看某一个 tab，其余推理"浪费"了</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>每个 Tab 独立 Agent 调用</h3>
+      <p>Topology Agent 推断关系结构，Bridge Agent 做主题聚类+桥梁识别，Timeline Agent 做思想演化链。各 tab 独立调用、独立流式展示。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>按需调用 — 只在用户切换时触发</li>
+          <li>每个 agent prompt 更聚焦</li>
+          <li>可以并行调用</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>3x token 消耗（源文件重复发送）</li>
+          <li>数据可能不一致（不同 agent 对同一文件的理解不同）</li>
+          <li>切换 tab 有等待延迟</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>分层：基础 Agent + 按需二次推理</h3>
+      <p>一次基础调用生成通用图数据（节点关系、分组），切换到 Bridge tab 时再补一轮轻量推理（识别桥梁节点），切换到 Timeline 时再推理演化链。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>基础数据快速可用</li>
+          <li>深度分析按需触发</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>架构复杂 — 需要管理基础+增量两层状态</li>
+          <li>二次推理仍需等待</li>
+          <li>增量推理可能与基础数据矛盾</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+</div>

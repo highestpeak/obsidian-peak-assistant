@@ -42,6 +42,17 @@ function md5Sync(data: Uint8Array): string {
 /**
  * Create a hash object
  */
+/**
+ * Generate a random UUID v4
+ */
+export function randomUUID(): string {
+	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+		const r = (Math.random() * 16) | 0;
+		const v = c === 'x' ? r : (r & 0x3) | 0x8;
+		return v.toString(16);
+	});
+}
+
 export function createHash(algorithm: string) {
 	if (algorithm !== 'sha256' && algorithm !== 'md5') {
 		throw new Error(`Unsupported algorithm: ${algorithm}. Only sha256 and md5 are supported.`);

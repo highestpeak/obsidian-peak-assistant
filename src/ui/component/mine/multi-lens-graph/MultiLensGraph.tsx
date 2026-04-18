@@ -44,6 +44,12 @@ interface MultiLensGraphProps {
 	className?: string;
 	showControls?: boolean;
 	showMiniMap?: boolean;
+	/** When true, show loading with step text */
+	loading?: boolean;
+	/** Current loading step description */
+	loadingStep?: string | null;
+	/** Callback to trigger AI graph generation */
+	onRequestGenerate?: () => void;
 }
 
 export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
@@ -54,6 +60,9 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	className = '',
 	showControls = true,
 	showMiniMap = false,
+	loading = false,
+	loadingStep = null,
+	onRequestGenerate,
 }) => {
 	const [activeLens, setActiveLens] = useState<LensType>(defaultLens);
 	const { nodes, edges } = useLensLayout(graphData, activeLens);
@@ -75,12 +84,37 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 		[onNodeClick]
 	);
 
-	if (!graphData) {
+	if (loading) {
 		return (
-			<div className={cn('pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-text-muted-foreground', className)}>
-				<div className="pktw-animate-pulse pktw-text-sm">正在分析文档关系...</div>
+			<div className={cn('pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-h-full pktw-gap-3 pktw-text-muted-foreground', className)}>
+				<div className="pktw-animate-spin pktw-w-5 pktw-h-5 pktw-border-2 pktw-border-current pktw-border-t-transparent pktw-rounded-full" />
+				<div className="pktw-text-sm">{loadingStep ?? '正在分析文档关系...'}</div>
 			</div>
 		);
+	}
+
+	if (!graphData && onRequestGenerate) {
+		return (
+			<div className={cn('pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-h-full pktw-gap-3', className)}>
+				<div className="pktw-text-sm pktw-text-muted-foreground pktw-text-center pktw-max-w-[280px]">
+					AI 将分析源文件内容，识别语义关系、主题聚类和思想演化链
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={onRequestGenerate}
+					className="pktw-gap-1.5"
+					style={{ cursor: 'pointer' }}
+				>
+					<Network className="pktw-w-3.5 pktw-h-3.5" />
+					生成 AI 知识图谱
+				</Button>
+			</div>
+		);
+	}
+
+	if (!graphData) {
+		return null;
 	}
 
 	const tabBar = (

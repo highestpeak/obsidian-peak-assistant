@@ -52,6 +52,16 @@ export default defineConfig({
 			'crypto': path.resolve(__dirname, 'src/desktop/mocks/libs/crypto-mock.ts'), // Node.js crypto module, browser has different API
 			'mammoth': path.resolve(__dirname, 'src/desktop/mocks/libs/mammoth-mock.ts'), // Node.js library, depends on Buffer
 			'officeparser': path.resolve(__dirname, 'src/desktop/mocks/libs/officeparser-mock.ts'), // Node.js library, depends on Node.js APIs
+			'@anthropic-ai/claude-agent-sdk': path.resolve(__dirname, 'src/desktop/mocks/libs/claude-agent-sdk-mock.ts'), // Node.js SDK
+			'electron': path.resolve(__dirname, 'src/desktop/mocks/libs/electron-mock.ts'), // Electron APIs
+			'fs': path.resolve(__dirname, 'src/desktop/mocks/libs/fs-mock.ts'),
+			'fs/promises': path.resolve(__dirname, 'src/desktop/mocks/libs/fs-mock.ts'),
+			'node:fs': path.resolve(__dirname, 'src/desktop/mocks/libs/fs-mock.ts'),
+			'node:fs/promises': path.resolve(__dirname, 'src/desktop/mocks/libs/fs-mock.ts'),
+			'path': path.resolve(__dirname, 'src/desktop/mocks/libs/path-mock.ts'),
+			'node:path': path.resolve(__dirname, 'src/desktop/mocks/libs/path-mock.ts'),
+			'util': path.resolve(__dirname, 'src/desktop/mocks/libs/util-mock.ts'),
+			'node:util': path.resolve(__dirname, 'src/desktop/mocks/libs/util-mock.ts'),
 		},
 		extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
 	},
@@ -70,7 +80,6 @@ export default defineConfig({
 			'playwright-core',
 			'better-sqlite3',
 			'@langchain/community/document_loaders/web/playwright',
-			'es-toolkit',
 		],
 	},
 	ssr: {
@@ -80,12 +89,11 @@ export default defineConfig({
 			'playwright',
 			'playwright-core',
 			'better-sqlite3',
-			'es-toolkit',
 		],
 	},
 	define: {
-		// Prevent playwright from being bundled
 		'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+		'global': 'globalThis',
 	},
 });
 

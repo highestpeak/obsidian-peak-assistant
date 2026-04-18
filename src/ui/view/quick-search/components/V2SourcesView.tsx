@@ -19,26 +19,20 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
         () => sources.map(s => ({ path: s.path, title: s.title, score: sources.length - sources.indexOf(s) })),
         [sources],
     );
-    const { graphData, loading } = useGraphAgent(sourceItems, searchQuery);
-
-    if (!graphData && !loading) return null;
+    const { graphData, loading, step, start } = useGraphAgent(sourceItems, searchQuery);
 
     return (
         <div className="pktw-h-[500px] pktw-w-full pktw-border pktw-border-[--background-modifier-border] pktw-rounded-lg pktw-overflow-hidden">
-            {loading ? (
-                <div className="pktw-h-full pktw-w-full pktw-flex pktw-items-center pktw-justify-center pktw-text-[--text-muted] pktw-text-sm">
-                    <Loader2 className="pktw-w-5 pktw-h-5 pktw-animate-spin pktw-mr-2" />
-                    Discovering connections…
-                </div>
-            ) : (
-                <MultiLensGraph
-                    graphData={graphData}
-                    defaultLens="topology"
-                    showControls
-                    onNodeClick={onOpen}
-                    className="pktw-h-full"
-                />
-            )}
+            <MultiLensGraph
+                graphData={graphData}
+                defaultLens="topology"
+                showControls
+                onNodeClick={onOpen}
+                className="pktw-h-full"
+                loading={loading}
+                loadingStep={step}
+                onRequestGenerate={start}
+            />
         </div>
     );
 };
