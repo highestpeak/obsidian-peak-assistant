@@ -24,6 +24,7 @@ interface ProjectItemProps {
 	conversations: ChatConversation[];
 	typewriterEnabled: Map<string, boolean>;
 	onTypewriterComplete: (conversationId: string) => void;
+	onDeleteConversation?: (conversation: ChatConversation) => void;
 }
 
 const ProjectItem: React.FC<ProjectItemProps> = ({
@@ -32,6 +33,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 	conversations,
 	typewriterEnabled,
 	onTypewriterComplete,
+	onDeleteConversation,
 }) => {
 	const { app, manager } = useServiceContext();
 	// Directly access store in component
@@ -175,8 +177,23 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 					await openSourceFile(app, conversation.file);
 				},
 			},
+			{
+				title: 'Delete',
+				icon: 'trash',
+				onClick: async () => {
+					await manager.deleteConversation(conversation.meta.id);
+					const { conversations: current, setConversations: updateConversations, activeConversation: active, setActiveConversation: setActive } = useProjectStore.getState();
+					const updated = Array.from(current.values()).filter(c => c.meta.id !== conversation.meta.id);
+					updateConversations(updated);
+					if (active?.meta.id === conversation.meta.id) {
+						setActive(null);
+					}
+					// Refresh project conversations via callback
+					onDeleteConversation?.(conversation);
+				},
+			},
 		];
-	}, [app, projects, handleEditConversationTitle]);
+	}, [app, manager, projects, handleEditConversationTitle, onDeleteConversation]);
 
 	const handleContextMenu = (
 		e: React.MouseEvent,
@@ -416,6 +433,17 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 		});
 	}, []);
 
+	const handleDeleteConversation = useCallback((conversation: ChatConversation) => {
+		if (conversation.meta.projectId) {
+			setProjectConversations(prev => {
+				const next = new Map(prev);
+				const projConvs = next.get(conversation.meta.projectId!) || [];
+				next.set(conversation.meta.projectId!, projConvs.filter(c => c.meta.id !== conversation.meta.id));
+				return next;
+			});
+		}
+	}, []);
+
 	const handleCreateProject = () => {
 		setInputModalConfig({
 			message: 'Create Project',
@@ -486,6 +514,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 						conversations={projectConversations.get(project.meta.id) || []}
 						typewriterEnabled={typewriterEnabled}
 						onTypewriterComplete={handleTypewriterComplete}
+						onDeleteConversation={handleDeleteConversation}
 					/>
 				))}
 

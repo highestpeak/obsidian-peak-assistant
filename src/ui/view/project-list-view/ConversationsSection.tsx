@@ -194,7 +194,20 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 				await openSourceFile(app, conversation.file);
 			},
 		},
-	], [app, handleEditConversationTitle]);
+		{
+			title: 'Delete',
+			icon: 'trash',
+			onClick: async () => {
+				await manager.deleteConversation(conversation.meta.id);
+				const { conversations: current, setConversations: updateConversations, activeConversation: active, setActiveConversation: setActive } = useProjectStore.getState();
+				const updated = Array.from(current.values()).filter(c => c.meta.id !== conversation.meta.id);
+				updateConversations(updated);
+				if (active?.meta.id === conversation.meta.id) {
+					setActive(null);
+				}
+			},
+		},
+	], [app, manager, handleEditConversationTitle]);
 
 	const handleContextMenu = (e: React.MouseEvent, conversation: ChatConversation) => {
 		const menuItems = conversationMenuItems(conversation);
