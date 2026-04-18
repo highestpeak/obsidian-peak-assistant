@@ -11,7 +11,6 @@ import {
 	AI_SEARCH_GRAPH_FINAL_MAX_NODES,
 	SLICE_CAPS,
 } from '@/core/constant';
-import { PromptId } from '@/service/prompt/PromptId';
 
 /**
  * AI Search Service for generating summaries, graphs, and topics from search results.
@@ -54,23 +53,9 @@ export class AISearchService {
 				graphContext = nodeLabels;
 			}
 
-			// Use streaming chatWithPrompt
-			let estimatedTokens = 0;
-			// const summary = await this.aiServiceManager.chatWithPromptStream(
-			// 	PromptId.SearchAiSummary,
-			// 	{
-			// 		query,
-			// 		sources: sourcesArray,
-			// 		graphContext,
-			// 		webEnabled,
-			// 	},
-			// 	callbacks || {},
-			// 	'summary',
-			// );
-			const summary = 'deprecated';
-
-			// Fallback token estimation if not provided
-			estimatedTokens = Math.ceil((query.length + sourcesArray.reduce((sum, s) => sum + (s.snippet?.length || 0) + s.title.length, 0)) / 4);
+			// Summary generation via LLM is not yet implemented; return empty string.
+			const summary = '';
+			const estimatedTokens = Math.ceil((query.length + sourcesArray.reduce((sum, s) => sum + (s.snippet?.length || 0) + s.title.length, 0)) / 4);
 
 			return { summary, estimatedTokens };
 		} catch (error) {
@@ -119,19 +104,8 @@ export class AISearchService {
 			// Notify UI that topics extraction is starting
 			callbacks?.onStart?.('topics');
 
-			// Use streaming chatWithPrompt
-			// const content = await this.aiServiceManager.chatWithPromptStream(
-			// 	PromptId.SearchTopicExtractJson,
-			// 	{
-			// 		query,
-			// 		summary,
-			// 		sources: sourcesArray,
-			// 		graphContext,
-			// 	},
-			// 	callbacks || {},
-			// 	'topics',
-			// );
-			const content = 'deprecated';
+			// Topic extraction via LLM is not yet implemented; return empty array.
+			const content = '';
 
 			// Parse final topics from JSON
 			const topics = this.parseTopicsFromJson(content);
