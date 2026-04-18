@@ -29,7 +29,7 @@ import { ResourcePreviewHover, AnimatedSparkles } from '@/ui/component/mine';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import type { FileUIPart } from 'ai';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
-import { formatTimestampLocale } from '@/ui/view/shared/date-utils';
+import { formatTimestampLocale } from '@/core/utils/date-utils';
 import { isUrl, getExtensionFromSource, getImageMimeType } from '@/core/document/helper/FileTypeUtils';
 import { ChatResourceRef } from '@/service/chat/types';
 import { ResourceKind } from '@/core/document/types';

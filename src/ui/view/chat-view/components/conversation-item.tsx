@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChatConversation } from '@/service/chat/types';
-import { formatRelativeDate } from '@/ui/view/shared/date-utils';
+import { formatRelativeDate } from '@/core/utils/date-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { MessageSquare, Calendar, Trash2 } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';

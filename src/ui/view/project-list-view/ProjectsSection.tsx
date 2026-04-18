@@ -12,7 +12,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent } from '@/core/eventBus';
 import { DEFAULT_NEW_CONVERSATION_TITLE, MAX_CONVERSATIONS_DISPLAY, MAX_PROJECTS_DISPLAY, MAX_CONVERSATIONS_PER_PROJECT } from '@/core/constant';
-import { formatRelativeDate } from '@/ui/view/shared/date-utils';
+import { formatRelativeDate } from '@/core/utils/date-utils';
 import { ConversationList } from './ConversationsSection';
 
 interface ProjectsSectionProps {

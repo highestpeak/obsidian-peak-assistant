@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { ChatProject, ChatConversation } from '@/service/chat/types';
-import { formatRelativeDate } from '@/ui/view/shared/date-utils';
+import { formatRelativeDate } from '@/core/utils/date-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ConversationItem } from '@/ui/view/chat-view/components/conversation-item';

@@ -28,7 +28,7 @@ import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { generateContentPreview, generateAttachmentSummary } from '@/core/utils/message-preview-utils';
 import { getFileTypeFromPath } from '@/core/document/helper/FileTypeUtils';
 import { resolveModelCapabilities } from '@/core/providers/types';
-import { detectTimezone } from '@/ui/view/shared/date-utils';
+import { detectTimezone } from '@/core/utils/date-utils';
 import { uploadFilesToVault } from '@/core/utils/vault-utils';
 
 interface ChatPreparationResult {
