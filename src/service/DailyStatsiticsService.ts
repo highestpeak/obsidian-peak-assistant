@@ -1,6 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SimpleGit } from 'simple-git';
+import moment from 'moment';
+import { isCloseAction, isFileAction, LogMetricType } from './LogMetricRegister';
+import { ActivityRecordAchieved, loadMetricEntries } from '@/service/ActivityService';
 
 let simpleGitFactory: typeof import('simple-git').simpleGit | null = null;
 try {
@@ -8,9 +11,6 @@ try {
 } catch {
     // simple-git unavailable (mobile)
 }
-import moment from 'moment';
-import { isCloseAction, isFileAction, LogMetricType } from './LogMetricRegister';
-import { ActivityRecordAchieved, loadMetricEntries } from '@/service/ActivityService';
 
 // --------------------------------------------------------------------------------
 // date functions

@@ -1,4 +1,11 @@
 import type { Browser, Page } from 'playwright';
+import { localWebSearchInputSchema, perplexityWebSearchInputSchema } from '@/core/schemas/tools/searchWeb';
+import { AgentTool, safeAgentTool } from './types';
+import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
+import { PROVIDER_ID_PERPLEXITY } from '@/core/providers/base/perplexity';
+import { SLICE_CAPS } from '@/core/constant';
+import { AppContext } from '@/app/context/AppContext';
+import { BusinessError, ErrorCode } from '@/core/errors';
 
 let chromium: typeof import('playwright').chromium | null = null;
 try {
@@ -6,14 +13,6 @@ try {
 } catch {
     // playwright unavailable (mobile or missing install)
 }
-import { localWebSearchInputSchema, perplexityWebSearchInputSchema } from '@/core/schemas/tools/searchWeb';
-import { AgentTool, safeAgentTool } from './types';
-import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
-import { PROVIDER_ID_PERPLEXITY } from '@/core/providers/base/perplexity';
-import { SLICE_CAPS } from '@/core/constant';
-import { AppContext } from '@/app/context/AppContext';
-import { BusinessError } from '@/core/errors';
-import { ErrorCode } from '@/core/errors';
 
 /**
  * Google search result item
@@ -47,7 +46,7 @@ class GoogleSearchTool {
 	 */
 	private async getBrowser(): Promise<Browser> {
 		if (!chromium) {
-			throw new BusinessError(ErrorCode.TOOL_EXECUTION_FAILED, 'Local web search requires desktop Obsidian (Playwright not available)');
+			throw new BusinessError(ErrorCode.CONFIGURATION_MISSING, 'Local web search requires desktop Obsidian (Playwright not available)');
 		}
 		if (!this.browser) {
 			this.browser = await chromium.launch({
