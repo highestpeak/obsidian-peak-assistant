@@ -82,20 +82,6 @@ export default class MyPlugin extends Plugin {
 		const data = await this.loadData();
 		this.settings = normalizePluginSettings(data);
 
-		// first version code, temp ignore
-		// // event dispatcher
-		// this.eventHandler = new EventDispatcher(this.app, this);
-		// // add external script listener
-		// this.eventHandler.addScriptFolderListener(this.settings.scriptFolder)
-		// // add statistics listener
-		// this.eventHandler.addNewHandlers(
-		// 	buildLogMetricListener(this.settings.statisticsDataStoreFolder)
-		// )
-		// // register home view
-		// // registerHTMLViews(
-		// // 	this.settings.htmlViewConfigFile,
-		// // 	this
-		// // )
 
 		// Template manager loads prompts/templates from plugin dir on demand (absolute path for Node fs)
 		try {

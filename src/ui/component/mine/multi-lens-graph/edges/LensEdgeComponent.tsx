@@ -2,19 +2,19 @@ import React, { useState } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react';
 import type { LensEdge } from '../types';
 
-const KIND_STYLES: Record<string, { stroke: string; strokeDasharray?: string }> = {
+const KIND_STYLES: Record<string, { stroke: string; strokeDasharray?: string; labelColor: string }> = {
 	// New AI graph kinds:
-	builds_on:      { stroke: '#89b4fa' },
-	complements:    { stroke: '#a6e3a1', strokeDasharray: '4 3' },
-	contrasts:      { stroke: '#f38ba8', strokeDasharray: '6 3' },
-	applies:        { stroke: '#f9e2af' },
-	references:     { stroke: '#585b70' },
+	builds_on:      { stroke: '#5b8fd4', labelColor: '#3b6bb5' },
+	complements:    { stroke: '#6abf6a', strokeDasharray: '4 3', labelColor: '#3d8c3d' },
+	contrasts:      { stroke: '#e06080', strokeDasharray: '6 3', labelColor: '#c0405a' },
+	applies:        { stroke: '#d4a84a', labelColor: '#9a7520' },
+	references:     { stroke: '#585b70', labelColor: '#3e4050' },
 	// Legacy kinds (keep for backward compat):
-	link:           { stroke: '#7c3aed' },
-	semantic:       { stroke: '#94a3b8', strokeDasharray: '6 4' },
-	derives:        { stroke: '#0ea5e9' },
-	temporal:       { stroke: '#f59e0b', strokeDasharray: '8 4' },
-	'cross-domain': { stroke: '#dc2626', strokeDasharray: '4 4' },
+	link:           { stroke: '#7c3aed', labelColor: '#5b2cb0' },
+	semantic:       { stroke: '#7a8a98', strokeDasharray: '6 4', labelColor: '#5a6a78' },
+	derives:        { stroke: '#0ea5e9', labelColor: '#0880b5' },
+	temporal:       { stroke: '#d48a0b', strokeDasharray: '8 4', labelColor: '#a06800' },
+	'cross-domain': { stroke: '#dc2626', strokeDasharray: '4 4', labelColor: '#b01e1e' },
 };
 
 /** Truncate edge label to a short display form (first ~6 chars or first word) */
@@ -90,9 +90,9 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 							position: 'absolute',
 							transform: `translate(-50%, -50%) translate(${labelX + offsetX}px,${labelY + offsetY}px)`,
 							pointerEvents: 'none',
-							color: style.stroke,
+							color: style.labelColor,
 						}}
-						className="pktw-text-[9px] pktw-bg-white/70 pktw-px-1 pktw-py-px pktw-rounded-full"
+						className="pktw-text-[10px] pktw-font-medium pktw-bg-white/90 pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-shadow-[0_0_2px_rgba(0,0,0,0.08)]"
 					>
 						{shortLabel}
 					</div>

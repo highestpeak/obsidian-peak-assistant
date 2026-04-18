@@ -280,9 +280,6 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	// Build settings object explicitly, only extracting needed fields
 	const settings: MyPluginSettings = {
 		// General folder settings
-		scriptFolder: getString(raw?.scriptFolder, DEFAULT_SETTINGS.scriptFolder),
-		htmlViewConfigFile: getString(raw?.htmlViewConfigFile, DEFAULT_SETTINGS.htmlViewConfigFile),
-		statisticsDataStoreFolder: getString(raw?.statisticsDataStoreFolder, DEFAULT_SETTINGS.statisticsDataStoreFolder),
 		dataStorageFolder: getString(raw?.dataStorageFolder, DEFAULT_SETTINGS.dataStorageFolder),
 
 		// Core settings (normalized)

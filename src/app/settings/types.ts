@@ -417,9 +417,6 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
  */
 export interface MyPluginSettings {
 	// general folder settings
-	scriptFolder: string;
-	htmlViewConfigFile: string;
-	statisticsDataStoreFolder: string;
 	dataStorageFolder: string;
 
 	// core settings
@@ -472,9 +469,6 @@ export interface MyPluginSettings {
  * Baseline settings applied when no persisted data exists.
  */
 export const DEFAULT_SETTINGS: MyPluginSettings = {
-	scriptFolder: 'A-control/PeakAssistant/Scripts',
-	htmlViewConfigFile: 'A-control/PeakAssistant/HtmlViewConfig.json',
-	statisticsDataStoreFolder: 'A-control/PeakAssistant/Statistics',
 	dataStorageFolder: 'A-control/PeakAssistant/DataStore',
 
 	ai: DEFAULT_AI_SERVICE_SETTINGS,

@@ -229,6 +229,21 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		handleAutoSave();
 	}, [analysisCompleted, v2FullyDone, restoredFromHistory, error, sessionId, handleAutoSave]);
 
+	// Early-save: persist analysis doc as soon as plan sections appear (before approval/completion),
+	// so the file exists for "Open in File" and incremental persistence kicks in.
+	const v2HasPlan = useSearchSessionStore(s => s.v2PlanSections.length > 0);
+	useEffect(() => {
+		if (!v2HasPlan) return;
+		if (restoredFromHistory) return;
+		if (autoSaveState?.lastSavedPath) return;    // already saved
+		const autoSaveEnabled = AppContext.getInstance().settings.search.aiAnalysisAutoSaveEnabled ?? true;
+		if (!autoSaveEnabled) return;
+		if (error) return;
+		if (!sessionId) return;
+
+		handleAutoSave();
+	}, [v2HasPlan, restoredFromHistory, autoSaveState?.lastSavedPath, error, sessionId, handleAutoSave]);
+
 	const handleSynthesize = useCallback(async () => {
 		const store = useSearchSessionStore.getState();
 		if (store.rounds.length < 2) return;

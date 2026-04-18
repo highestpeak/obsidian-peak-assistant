@@ -46,31 +46,6 @@ export function GeneralTab({ settings, settingsUpdates }: GeneralTabProps) {
 			placeholder: 'Enter chat root folder',
 			onChange: (value) => updateAI('rootFolder', value),
 		},
-		// other support tools
-		{
-			id: 'scriptFolder',
-			label: 'Event Script Folder',
-			description: 'Script in this folder will be register to listen to target events.',
-			value: settings.scriptFolder,
-			placeholder: 'Enter your Folder',
-			onChange: (value) => update('scriptFolder', value),
-		},
-		{
-			id: 'htmlViewConfigFile',
-			label: 'HTML View Config File',
-			description: 'Path to HTML view configuration file.',
-			value: settings.htmlViewConfigFile,
-			placeholder: 'Enter config file path',
-			onChange: (value) => update('htmlViewConfigFile', value),
-		},
-		{
-			id: 'statisticsDataStoreFolder',
-			label: 'Statistics Data Store Folder',
-			description: 'Folder for storing repository statistics data.',
-			value: settings.statisticsDataStoreFolder,
-			placeholder: 'Enter statistics folder',
-			onChange: (value) => update('statisticsDataStoreFolder', value),
-		},
 	];
 
 

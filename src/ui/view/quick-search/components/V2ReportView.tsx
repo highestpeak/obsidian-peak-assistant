@@ -6,6 +6,7 @@ import type { V2Section } from '../store/searchSessionStore';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
 import { VizRenderer } from './viz/VizRenderer';
 import { Button } from '@/ui/component/shared-ui/button';
+import { V2InlinePlanReview } from './V2InlinePlanReview';
 
 interface V2ReportViewProps {
 	onClose?: () => void;
@@ -296,11 +297,11 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 
 	const isGenerating = sections.some((s) => s.status === 'generating') || summaryStreaming;
 
-	// Plan review mode — show when sections exist but user hasn't approved yet
+	// Plan review mode — show inline plan when sections exist but user hasn't approved yet
 	if (sections.length > 0 && !planApproved) {
 		return (
-			<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-32 pktw-text-sm pktw-text-[#9ca3af]">
-				Report will appear here after plan approval in Process view.
+			<div className="pktw-px-1 pktw-py-2">
+				<V2InlinePlanReview onApprove={onApprove ?? (() => {})} />
 			</div>
 		);
 	}
