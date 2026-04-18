@@ -52,5 +52,9 @@ ${sourcesTable}
 - cluster_id: use short kebab-case identifiers (e.g. "ai-product", "personal-growth")
 - Only create edges where there is a genuine semantic relationship
 - evolution_chains: ordered by conceptual evolution, include created_at timestamps from file metadata
-- bridges: only mark a node as bridge if it genuinely connects ideas from different clusters`;
+- bridges: only mark a node as bridge if it genuinely connects ideas from different clusters
+- insights: provide a 1-2 sentence summary for each view:
+  - topology: describe the overall structure (how many clusters, what's the hub, key relationships)
+  - bridges: describe which documents bridge which domains and why
+  - timeline: describe the evolution pattern (when ideas emerged, how they evolved)`;
 }

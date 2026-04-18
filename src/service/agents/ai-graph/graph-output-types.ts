@@ -35,12 +35,19 @@ export const EvolutionChainSchema = z.object({
 	theme: z.string(),
 });
 
+export const GraphInsightsSchema = z.object({
+	topology: z.string(),
+	bridges: z.string(),
+	timeline: z.string(),
+});
+
 export const GraphOutputSchema = z.object({
 	nodes: z.array(GraphNodeSchema),
 	edges: z.array(GraphEdgeSchema),
 	clusters: z.array(GraphClusterSchema),
 	bridges: z.array(GraphBridgeSchema),
 	evolution_chains: z.array(EvolutionChainSchema),
+	insights: GraphInsightsSchema.optional(),
 });
 
 export type GraphOutput = z.infer<typeof GraphOutputSchema>;

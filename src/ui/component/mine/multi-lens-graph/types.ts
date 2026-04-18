@@ -41,4 +41,9 @@ export interface LensGraphData {
 	clusters?: Array<{ id: string; name: string; description: string }>;
 	bridges?: Array<{ node_path: string; connects: [string, string]; explanation: string }>;
 	evolutionChains?: Array<{ chain: string[]; theme: string }>;
+	insights?: {
+		topology?: string;
+		bridges?: string;
+		timeline?: string;
+	};
 }

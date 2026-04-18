@@ -58,6 +58,7 @@ export function buildGraphMcpServer(options: GraphMcpServerOptions) {
             clusters: GraphOutputSchema.shape.clusters,
             bridges: GraphOutputSchema.shape.bridges,
             evolution_chains: GraphOutputSchema.shape.evolution_chains,
+            insights: GraphOutputSchema.shape.insights,
         },
         async (input, _extra) => {
             const parsed = GraphOutputSchema.parse(input);

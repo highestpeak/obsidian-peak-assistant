@@ -200,6 +200,11 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 					{showMiniMap && <MiniMap />}
 				</ReactFlow>
 			</div>
+			{graphData?.insights?.[activeLens === 'bridge' ? 'bridges' : activeLens as 'topology' | 'timeline'] && (
+				<div className="pktw-px-3 pktw-py-2 pktw-text-xs pktw-text-[#6b7280] pktw-border-t pktw-border-[#e5e7eb] pktw-bg-[#f9fafb]">
+					{graphData.insights[activeLens === 'bridge' ? 'bridges' : activeLens as 'topology' | 'timeline']}
+				</div>
+			)}
 		</div>
 	);
 };

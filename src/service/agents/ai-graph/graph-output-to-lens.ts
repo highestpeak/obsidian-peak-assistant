@@ -34,5 +34,6 @@ export function graphOutputToLensData(output: GraphOutput): LensGraphData {
 		clusters: output.clusters,
 		bridges: output.bridges,
 		evolutionChains: output.evolution_chains,
+		insights: output.insights,
 	};
 }
