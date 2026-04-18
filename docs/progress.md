@@ -11,7 +11,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | A. 产品断点修复 | 用户旅程中 blocks-usage 的问题 | 完成 (6/6) |
 | M. 移动端支持 | iCloud同步 + 去RAG + Claude长上下文 | 完成 (11 commits) |
 | B. UX 打磨 | degrades-UX 的问题 + ui-improvements | 完成 (16项) |
-| C. 技术债清理 | 死代码/桩代码/注释代码/空文件 | 完成 (9项修复 + 50文件/9000行删除) |
+| C. 技术债清理 | 死代码/桩代码/注释代码/空文件 | 完成 (9项修复 + 56文件/10800行删除) |
 | D. 代码拆分重构 | 大文件拆分 | 完成 (7大文件→23小文件) |
 | E. 文档清理 | 归档docs、标记计划、更新过时文档 | 完成 |
 | V1 退役 | 删除 V1 search pipeline + step UI | 完成 (-9000行) |
@@ -85,21 +85,26 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - 标记 11 个已完成计划 + 3 个被取代计划
 - 更新 DEVTOOLS_GUIDE、quick-search-ui-design、AI_ANALYSIS_ARCHITECTURE 文档
 
-### V1 退役: 死代码删除 ✅ (~9200行, ~50文件)
+### V1 退役 + 死代码全面清理 ✅ (~10,800行, ~56文件)
 | 类别 | 删除 |
 |------|------|
 | V1 phase 文件 (classify/decompose/recon/report 等) | 9 文件 |
 | V1 Step UI 组件 (ClassifyStep/ReconStep 等) + 渲染管线 | 18 文件 |
-| 死 hooks (useAIAnalysis/aiAnalysisStreamDispatcher) | 3 文件 |
+| 死 hooks (useAIAnalysis/aiAnalysisStreamDispatcher/useOpenInChat) | 3 文件 |
 | 死 stores (searchInteractionsStore) | 1 文件 |
 | 死 tools (search-web/call-agent-tool/field-update-tool) | 3 文件 |
 | 死 schemas (callAgentTool/searchWeb/updateResultOps) | 3 文件 |
-| 死组件 (CompletedAIAnalysis/StreamingAnalysis/UsageBadge 等) | 6 文件 |
-| 其他 (AgentLoop/type.ts/deprecated_chunking 等) | 7 文件 |
+| 死组件 (CompletedAIAnalysis/StreamingAnalysis/UsageBadge/V2SectionNav) | 7 文件 |
+| 死 agent 基础设施 (AgentLoop/type.ts) | 2 文件 |
+| 遗留服务 (DailyStatsiticsService/LogMetricRegister/ActivityService/ScriptLoader/HtmlView) | 5 文件 |
+| 死 CSS (streamdown-backup.css) + 死 chunk (deprecated_chunking.ts) | 2 文件 |
 | VaultSearchAgent 简化 | 346行 → 42行 |
 | SearchClient 清理 | 删除 aiAnalyze + aiSearchService |
-| searchSessionStore/types 清理 | 删除 V1 steps 字段和类型 |
+| searchSessionStore/types 清理 | 删除 V1 steps 字段/类型/getAllSections/getAllSources |
 | useV2 feature flag 删除 | V2 Agent SDK 现为唯一路径 |
+| 死设置字段清理 | scriptFolder/htmlViewConfigFile/statisticsDataStoreFolder 从类型+UI+loader 移除 |
+| 依赖清理 | simple-git 从 package.json 移除 |
+| core/types.ts 瘦身 | 删除 AgentLoop 专用类型，仅保留 UserFeedback/HitlPausePoint |
 
 ## 已完成计划
 
@@ -132,7 +137,11 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - Done: 技术债清理 9 项 (Phase C)
 - Done: 7 个大文件拆分为 23 个聚焦文件 (Phase D)
 - Done: 文档清理完成 (Phase E)
-- Done: V1 search pipeline 完全退役 — 删除 ~50 文件 / ~9200 行死代码
+- Done: V1 search pipeline 完全退役 + 全面死代码清理 — 删除 56 文件 / ~10,800 行
 - Done: VaultSearchAgent 简化为 42 行纯路由器（mobile → MobileAgent, desktop → AgentSDK）
+- Done: 删除遗留服务集群（DailyStatsiticsService/LogMetricRegister/ActivityService/ScriptLoader/HtmlView）
+- Done: 清理死设置字段（scriptFolder/htmlViewConfigFile/statisticsDataStoreFolder）+ UI
+- Done: 移除 simple-git 依赖
 - Done: useV2 feature flag 删除，V2 Agent SDK 为唯一搜索路径
+- Done: 5 轮死代码审计全部清零，代码库无残留死代码
 - Next: iOS 真机测试 → Provider v2 → Agent Trace
