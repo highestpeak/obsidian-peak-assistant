@@ -37,7 +37,7 @@ export function computeTopologyLayout(input: LayoutInput): LayoutResult {
 	if (connectedNodes.length > 0) {
 		const g = new dagre.graphlib.Graph();
 		g.setDefaultEdgeLabel(() => ({}));
-		g.setGraph({ rankdir: 'TB', nodesep: 60, ranksep: 80, marginx: 20, marginy: 20 });
+		g.setGraph({ rankdir: 'TB', nodesep: 120, ranksep: 140, marginx: 20, marginy: 20 });
 
 		for (const n of connectedNodes) {
 			g.setNode(n.path, { width: estimateNodeWidth(n.label), height: 44 });

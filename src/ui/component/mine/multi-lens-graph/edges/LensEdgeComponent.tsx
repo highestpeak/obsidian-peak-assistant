@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react';
 import type { LensEdge } from '../types';
 
@@ -32,6 +32,7 @@ const KIND_LABELS: Record<string, string> = {
 
 export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 	const { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data } = props;
+	const [hovered, setHovered] = useState(false);
 	const [edgePath, labelX, labelY] = getBezierPath({
 		sourceX,
 		sourceY,
@@ -49,7 +50,16 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 				path={edgePath}
 				style={{ ...style, strokeWidth: Math.max(1.5, (data?.weight ?? 0.5) * 3) }}
 			/>
-			{label && (
+			{/* Invisible wider hit area for hover detection */}
+			<path
+				d={edgePath}
+				fill="none"
+				stroke="transparent"
+				strokeWidth={12}
+				onMouseEnter={() => setHovered(true)}
+				onMouseLeave={() => setHovered(false)}
+			/>
+			{hovered && label && (
 				<EdgeLabelRenderer>
 					<div
 						style={{
