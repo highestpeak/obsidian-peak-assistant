@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, List, Network, ChevronRight, Folder, Loader2 } from 'lucide-react';
 import { useSearchSessionStore } from '../store/searchSessionStore';
@@ -21,6 +21,15 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
     );
     const { graphData, loading, steps, start } = useGraphAgent(sourceItems, searchQuery);
 
+    const handleExpand = useCallback(async () => {
+        const { AppContext } = await import('@/app/context/AppContext');
+        const { GRAPH_FULLSCREEN_VIEW_TYPE } = await import('@/ui/view/graph-fullscreen/GraphFullscreenView');
+        const app = AppContext.getInstance().app;
+        const leaf = app.workspace.getLeaf('split');
+        await leaf.setViewState({ type: GRAPH_FULLSCREEN_VIEW_TYPE, active: true });
+        app.workspace.revealLeaf(leaf);
+    }, []);
+
     return (
         <div className="pktw-h-[500px] pktw-w-full pktw-border pktw-border-[--background-modifier-border] pktw-rounded-lg pktw-overflow-hidden">
             <MultiLensGraph
@@ -32,6 +41,7 @@ const SourcesGraph: React.FC<{ sources: V2Source[]; onOpen: (path: string) => vo
                 loading={loading}
                 loadingSteps={steps}
                 onRequestGenerate={start}
+                onExpand={handleExpand}
             />
         </div>
     );

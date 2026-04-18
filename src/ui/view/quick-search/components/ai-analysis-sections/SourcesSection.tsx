@@ -1,5 +1,5 @@
 import { SLICE_CAPS } from '@/core/constant';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FileText, Info, MessageCircle, ChevronDown, ChevronRight, List, Network, Loader2, BookOpen } from 'lucide-react';
 import { mixSearchResultsBySource } from '@/core/utils/source-mixer';
@@ -301,6 +301,15 @@ export const TopSourcesSection: React.FC<{
 	);
 	const { graphData: aiGraphData, loading: sourcesGraphLoading, steps: graphSteps, start: startGraph } = useGraphAgent(graphSourceItems, searchQuery);
 
+	const handleExpand = useCallback(async () => {
+		const { AppContext } = await import('@/app/context/AppContext');
+		const { GRAPH_FULLSCREEN_VIEW_TYPE } = await import('@/ui/view/graph-fullscreen/GraphFullscreenView');
+		const app = AppContext.getInstance().app;
+		const leaf = app.workspace.getLeaf('split');
+		await leaf.setViewState({ type: GRAPH_FULLSCREEN_VIEW_TYPE, active: true });
+		app.workspace.revealLeaf(leaf);
+	}, []);
+
 	// Animate scored sources one by one
 	const [visibleCount, setVisibleCount] = React.useState(0);
 	React.useEffect(() => {
@@ -427,6 +436,7 @@ export const TopSourcesSection: React.FC<{
 							loading={sourcesGraphLoading}
 							loadingSteps={graphSteps}
 							onRequestGenerate={startGraph}
+							onExpand={handleExpand}
 						/>
 				</div>
 			) : viewMode === 'evidence' ? (

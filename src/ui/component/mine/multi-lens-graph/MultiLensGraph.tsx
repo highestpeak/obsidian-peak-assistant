@@ -7,7 +7,7 @@ import { TimelineAxisNode } from './nodes/TimelineAxisNode';
 import { LensEdgeComponent } from './edges/LensEdgeComponent';
 import { useLensLayout } from './hooks/useLensLayout';
 import { Button } from '@/ui/component/shared-ui/button';
-import { Network, GitBranch, Waypoints, Clock, CheckCircle2, Loader2 } from 'lucide-react';
+import { Network, GitBranch, Waypoints, Clock, CheckCircle2, Loader2, Maximize2 } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 
 const nodeTypes = { lensNode: LensNodeComponent, swimlane: SwimlaneNode, timelineAxis: TimelineAxisNode };
@@ -52,6 +52,8 @@ interface MultiLensGraphProps {
 	loadingSteps?: Array<{ id: string; label: string; status: 'pending' | 'running' | 'done'; detail?: string }>;
 	/** Callback to trigger AI graph generation */
 	onRequestGenerate?: () => void;
+	/** Callback to open graph in fullscreen pane */
+	onExpand?: () => void;
 }
 
 export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
@@ -65,6 +67,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	loading = false,
 	loadingSteps,
 	onRequestGenerate,
+	onExpand,
 }) => {
 	const [activeLens, setActiveLens] = useState<LensType>(defaultLens);
 	const { nodes, edges } = useLensLayout(graphData, activeLens);
@@ -147,7 +150,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	}
 
 	const tabBar = (
-		<div className="pktw-flex pktw-gap-1 pktw-p-1 pktw-border-b pktw-border-[#e5e7eb] pktw-bg-[#f9fafb] pktw-rounded-t-lg">
+		<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-p-1 pktw-border-b pktw-border-[#e5e7eb] pktw-bg-[#f9fafb] pktw-rounded-t-lg">
 			{LENS_CONFIG.filter((l) => availableLenses.includes(l.type)).map(
 				(l) => (
 					<Button
@@ -163,6 +166,14 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 						{l.label}
 					</Button>
 				)
+			)}
+			{onExpand && (
+				<>
+					<div className="pktw-flex-1" />
+					<Button variant="ghost" size="sm" onClick={onExpand} title="在新窗口中全屏查看" style={{ cursor: 'pointer' }}>
+						<Maximize2 className="pktw-w-3.5 pktw-h-3.5" />
+					</Button>
+				</>
 			)}
 		</div>
 	);
