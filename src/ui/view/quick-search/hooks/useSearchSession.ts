@@ -135,6 +135,7 @@ export function useSearchSession() {
 
 			// Start session
 			store.getState().startSession(searchQuery);
+			const mySessionId = store.getState().id;
 			// Bridge: sync analysisMode to runtime store before startAnalyzing
 			useAIAnalysisRuntimeStore.getState().setAnalysisMode(analysisMode);
 			useAIAnalysisRuntimeStore.getState().startAnalyzing();
@@ -234,48 +235,54 @@ export function useSearchSession() {
 				);
 			}
 		} finally {
-			// Flush pending summary deltas
-			flushSummaryBuffer();
+			// If this session was detached to background, skip all foreground cleanup
+			const isStillForeground = store.getState().id === mySessionId;
+			if (!isStillForeground) {
+				console.debug('[useSearchSession] Session was detached to background, skipping foreground cleanup');
+			} else {
+				// Flush pending summary deltas
+				flushSummaryBuffer();
 
-			// Debug dump
-			const ss = store.getState();
-			const sum = useAIAnalysisSummaryStore.getState();
-			const res = useAIAnalysisResultStore.getState();
-			const debugDump = {
-				meta: {
-					query: searchQuery,
-					webEnabled,
-					totalDurationMs: Date.now() - analysisStartTimeRef.current,
-					usage: ss.usage,
-					hasError: !!ss.error,
-					error: ss.error,
-					sourcesCount: (res.sources ?? []).length,
-					topicsCount: (res.topics ?? []).length,
-					dashboardBlocksCount: (res.dashboardBlocks ?? []).length,
-					graphNodesCount: (res.graph?.nodes ?? []).length,
-					graphEdgesCount: (res.graph?.edges ?? []).length,
-				},
-				timeline: reorganizeTimelineByAgent(timelineRef.current),
-				summary: (sum.summaryChunks ?? []).join(''),
-				summaryLen: (sum.summaryChunks ?? []).join('').length,
-			};
-			console.debug('[useSearchSession] debugDumpJson', JSON.stringify(debugDump));
+				// Debug dump
+				const ss = store.getState();
+				const sum = useAIAnalysisSummaryStore.getState();
+				const res = useAIAnalysisResultStore.getState();
+				const debugDump = {
+					meta: {
+						query: searchQuery,
+						webEnabled,
+						totalDurationMs: Date.now() - analysisStartTimeRef.current,
+						usage: ss.usage,
+						hasError: !!ss.error,
+						error: ss.error,
+						sourcesCount: (res.sources ?? []).length,
+						topicsCount: (res.topics ?? []).length,
+						dashboardBlocksCount: (res.dashboardBlocks ?? []).length,
+						graphNodesCount: (res.graph?.nodes ?? []).length,
+						graphEdgesCount: (res.graph?.edges ?? []).length,
+					},
+					timeline: reorganizeTimelineByAgent(timelineRef.current),
+					summary: (sum.summaryChunks ?? []).join(''),
+					summaryLen: (sum.summaryChunks ?? []).join('').length,
+				};
+				console.debug('[useSearchSession] debugDumpJson', JSON.stringify(debugDump));
 
-			setLastAnalysisHistorySearch(null);
-			timelineRef.current = [];
-			analysisStartTimeRef.current = 0;
+				setLastAnalysisHistorySearch(null);
+				timelineRef.current = [];
+				analysisStartTimeRef.current = 0;
 
-			// Guard: only mark completed if not already done AND not waiting for HITL
-			if (!store.getState().getIsCompleted() && !store.getState().hitlState) {
-				store.getState().markCompleted();
-				markAIAnalysisCompleted();
+				// Guard: only mark completed if not already done AND not waiting for HITL
+				if (!store.getState().getIsCompleted() && !store.getState().hitlState) {
+					store.getState().markCompleted();
+					markAIAnalysisCompleted();
+				}
+
+				// Clear abort controller
+				if (controller) {
+					abortControllerRef.current = null;
+				}
+				sessionRefs.abortController = null;
 			}
-
-			// Clear abort controller
-			if (controller) {
-				abortControllerRef.current = null;
-			}
-			sessionRefs.abortController = null;
 		}
 	}, [
 		searchQuery,

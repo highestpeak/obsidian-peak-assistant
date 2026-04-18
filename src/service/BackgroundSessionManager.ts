@@ -71,6 +71,7 @@ export class BackgroundSessionManager {
 	private queue: string[] = []; // IDs of queued sessions
 	private readonly MAX_CONCURRENT = 3;
 	private listeners: Set<() => void> = new Set();
+	private cachedSessions: BackgroundSession[] = [];
 
 	private constructor() {
 		// singleton
@@ -88,6 +89,7 @@ export class BackgroundSessionManager {
 	}
 
 	private notify(): void {
+		this.cachedSessions = Array.from(this.sessions.values());
 		for (const listener of this.listeners) {
 			listener();
 		}
@@ -98,7 +100,7 @@ export class BackgroundSessionManager {
 	// -----------------------------------------------------------------------
 
 	getSessions(): BackgroundSession[] {
-		return Array.from(this.sessions.values());
+		return this.cachedSessions;
 	}
 
 	getSession(id: string): BackgroundSession | null {
@@ -157,7 +159,7 @@ export class BackgroundSessionManager {
 			title: snapshot.title,
 			createdAt: Date.now(),
 			status,
-			savedPath: null,
+			savedPath: snapshot.autoSaveState?.lastSavedPath ?? null,
 			agentRef: refs.agentRef,
 			abortController: refs.abortController,
 			snapshot,
@@ -297,7 +299,7 @@ export class BackgroundSessionManager {
 
 		return {
 			enableDevTools(): boolean {
-				return false; // background sessions don't have DevTools
+				return true; // background sessions must always record errors
 			},
 
 			// Reads
