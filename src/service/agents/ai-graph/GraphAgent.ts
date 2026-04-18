@@ -163,8 +163,10 @@ export class GraphAgent {
                         if (block.type === 'tool_use' && block.name) {
                             const toolName = block.name.replace('mcp__graph__', '');
                             if (toolName === 'read_sources') {
-                                onStep?.({ type: 'step-start', id: 'read', label: `正在读取 ${input.sources.length} 篇源文件内容...` });
+                                onStep?.({ type: 'step-start', id: 'read', label: `正在读取 ${input.sources.length} 篇源文件...` });
+                                onStep?.({ type: 'step-start', id: 'analyze', label: '正在分析文档关系、聚类和演化链...' });
                             } else if (toolName === 'submit_graph') {
+                                onStep?.({ type: 'step-done', id: 'read', label: '源文件读取完成' });
                                 onStep?.({ type: 'step-done', id: 'analyze', label: '文档关系分析完成' });
                                 onStep?.({ type: 'step-start', id: 'submit', label: '正在构建图谱结构...' });
                             }
@@ -176,15 +178,6 @@ export class GraphAgent {
                     }
                 }
 
-                if (msg.type === 'user' && msg.message?.content) {
-                    for (const block of msg.message.content) {
-                        if ((block as any).type === 'tool_result') {
-                            onStep?.({ type: 'step-done', id: 'read', label: '源文件读取完成' });
-                            // Immediately show "analyzing" step so user sees a spinner
-                            onStep?.({ type: 'step-start', id: 'analyze', label: '正在分析文档关系、聚类和演化链...' });
-                        }
-                    }
-                }
             }
         } catch (err) {
             console.error('[GraphAgent] query error', err);

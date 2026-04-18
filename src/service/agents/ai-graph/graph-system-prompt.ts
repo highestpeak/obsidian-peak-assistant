@@ -47,6 +47,7 @@ ${sourcesTable}
 - leaf: Peripheral document with few connections
 
 ## Rules
+- Language: respond in the SAME language as the search query. If the query is in Chinese, ALL output must be in Chinese (node labels, summaries, edge labels, insights, cluster names). If in English, use English.
 - Every source file must appear as a node
 - importance: 0-1 scale based on centrality to the search query and connectivity
 - cluster_id: use short kebab-case identifiers (e.g. "ai-product", "personal-growth")
