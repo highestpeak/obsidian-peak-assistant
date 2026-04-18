@@ -330,8 +330,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	}, []);
 
 	const hasMessages = activeConversation && activeConversation.messages.length > 0;
-	const placeholder = (hasMessages ? '' : 'Type your message here...\n')
-		+ '@ or [[]] for context. / for prompts. ⌘ ↩︎ for a line break.';
+	const placeholder = hasMessages ? 'Ask anything...' : 'Ask anything... (@ for context, / for prompts)';
 
 	// Check if streaming is active
 	const isStreaming = useMessageStore((state) => state.streamingMessageId !== null);
