@@ -17,18 +17,15 @@ const KIND_STYLES: Record<string, { stroke: string; strokeDasharray?: string }> 
 	'cross-domain': { stroke: '#dc2626', strokeDasharray: '4 4' },
 };
 
-const KIND_SHORT_LABELS: Record<string, string> = {
-	builds_on: '构建',
-	complements: '互补',
-	contrasts: '对比',
-	applies: '应用',
-	references: '引用',
-	link: '链接',
-	semantic: '语义',
-	derives: '推导',
-	temporal: '时序',
-	'cross-domain': '跨域',
-};
+/** Truncate edge label to a short display form (first ~6 chars or first word) */
+function shortLabelOf(edgeLabel?: string, kind?: string): string {
+	if (edgeLabel) {
+		// Use first word or first 8 chars, whichever is shorter
+		const firstWord = edgeLabel.split(/[\s,，、]/)[0] ?? '';
+		return firstWord.length <= 8 ? firstWord : firstWord.slice(0, 6) + '…';
+	}
+	return kind ?? '';
+}
 
 /** Simple hash to get a consistent integer from a string. */
 function simpleHash(s: string): number {
@@ -51,8 +48,8 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 		targetPosition,
 	});
 	const style = KIND_STYLES[data?.kind ?? 'link'] ?? KIND_STYLES.link;
-	const shortLabel = KIND_SHORT_LABELS[data?.kind ?? 'link'] || '';
 	const fullLabel = data?.edgeLabel || '';
+	const shortLabel = shortLabelOf(fullLabel, data?.kind);
 
 	// Offset label position based on edge id hash to spread labels apart
 	const hash = simpleHash(id);
