@@ -230,6 +230,24 @@ a[href^="obsidian://open"]:hover,
   max-width: 100%;
 }
 
+/* ── Bare table fallback (tables without data-streamdown="table" wrapper) ── */
+[data-streamdown-root] table:not([data-streamdown] table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin: 0.75rem 0;
+}
+[data-streamdown-root] table:not([data-streamdown] table) th,
+[data-streamdown-root] table:not([data-streamdown] table) td {
+  border: 1px solid #e5e7eb;
+  padding: 0.375rem 0.625rem;
+  text-align: left;
+}
+[data-streamdown-root] table:not([data-streamdown] table) th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
 /* ── TOC filter ── */
 [data-streamdown-root] a[href="#toc"],
 [data-streamdown-root] a[href="#table-of-contents"] {
