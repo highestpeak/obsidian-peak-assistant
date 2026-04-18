@@ -24,7 +24,7 @@ export function useLensLayout(graphData: LensGraphData | null, lens: LensType) {
 				positions = computeBridgeLayout({ nodes: graphData.nodes, edges: graphData.edges }).positions;
 				break;
 			case 'timeline':
-				positions = computeTimelineLayout({ nodes: graphData.nodes }).positions;
+				positions = computeTimelineLayout({ nodes: graphData.nodes, evolutionChains: graphData.evolutionChains }).positions;
 				break;
 			case 'topology':
 			default:

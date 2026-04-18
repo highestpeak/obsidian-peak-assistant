@@ -1,50 +1,119 @@
-import dagre from '@dagrejs/dagre';
 import type { LensNodeData } from '../types';
 
-interface LayoutInput {
+export interface TimelineLayoutInput {
 	nodes: LensNodeData[];
+	evolutionChains?: Array<{ chain: string[]; theme: string }>;
 }
 
-interface LayoutResult {
+export interface TimelineLayoutResult {
 	positions: Map<string, { x: number; y: number }>;
+	axisY: number;
+	chainEdges?: Array<{ source: string; target: string; kind: string; chainIndex: number }>;
+	timeTicks?: Array<{ x: number; label: string; timestamp: number }>;
 }
 
-function estimateNodeWidth(label: string): number {
-	let w = 0;
-	for (const ch of label) {
-		w += ch.charCodeAt(0) > 0x7f ? 14 : 8;
+const CANVAS_PADDING = 80;
+const CANVAS_WIDTH = 900;
+const AXIS_Y = 260;
+const CHAIN_OFFSET_Y = 80;
+const SOLO_OFFSET_Y = 20;
+
+export function computeTimelineLayout(input: TimelineLayoutInput): TimelineLayoutResult {
+	const { nodes, evolutionChains = [] } = input;
+	const positions = new Map<string, { x: number; y: number }>();
+	const chainEdges: TimelineLayoutResult['chainEdges'] = [];
+
+	const timed = nodes
+		.filter(n => n.createdAt != null)
+		.sort((a, b) => a.createdAt! - b.createdAt!);
+
+	if (timed.length === 0) {
+		nodes.forEach((n, i) => {
+			positions.set(n.path, { x: CANVAS_PADDING + i * 100, y: AXIS_Y });
+		});
+		return { positions, axisY: AXIS_Y };
 	}
-	return Math.max(120, w + 32);
-}
 
-export function computeTimelineLayout(input: LayoutInput): LayoutResult {
-	if (input.nodes.length === 0) return { positions: new Map() };
+	const minTime = timed[0].createdAt!;
+	const maxTime = timed[timed.length - 1].createdAt!;
+	const timeRange = maxTime - minTime || 1;
 
-	const sorted = [...input.nodes].sort((a, b) => {
-		const ta = a.createdAt ?? 0;
-		const tb = b.createdAt ?? 0;
-		if (ta !== tb) return ta - tb;
-		return a.path.localeCompare(b.path);
+	function timeToX(t: number): number {
+		return CANVAS_PADDING + ((t - minTime) / timeRange) * (CANVAS_WIDTH - 2 * CANVAS_PADDING);
+	}
+
+	const chainMembership = new Map<string, number>();
+	for (let ci = 0; ci < evolutionChains.length; ci++) {
+		for (const p of evolutionChains[ci].chain) {
+			chainMembership.set(p, ci);
+		}
+	}
+
+	const aboveCount = new Map<number, number>();
+	const belowCount = new Map<number, number>();
+
+	for (const n of timed) {
+		const x = timeToX(n.createdAt!);
+		let y: number;
+		if (chainMembership.has(n.path)) {
+			const ci = chainMembership.get(n.path)!;
+			if (ci % 2 === 0) {
+				y = AXIS_Y - CHAIN_OFFSET_Y - (aboveCount.get(ci) ?? 0) * 15;
+				aboveCount.set(ci, (aboveCount.get(ci) ?? 0) + 1);
+			} else {
+				y = AXIS_Y + CHAIN_OFFSET_Y + (belowCount.get(ci) ?? 0) * 15;
+				belowCount.set(ci, (belowCount.get(ci) ?? 0) + 1);
+			}
+		} else {
+			y = AXIS_Y - SOLO_OFFSET_Y;
+		}
+		positions.set(n.path, { x, y });
+	}
+
+	const untimed = nodes.filter(n => n.createdAt == null);
+	untimed.forEach((n, i) => {
+		positions.set(n.path, {
+			x: CANVAS_WIDTH - CANVAS_PADDING + 30 + i * 60,
+			y: AXIS_Y,
+		});
 	});
 
-	const g = new dagre.graphlib.Graph();
-	g.setDefaultEdgeLabel(() => ({}));
-	g.setGraph({ rankdir: 'LR', nodesep: 40, ranksep: 80, marginx: 20, marginy: 20 });
-
-	for (const n of sorted) {
-		g.setNode(n.path, { width: estimateNodeWidth(n.label), height: 44 });
+	for (let ci = 0; ci < evolutionChains.length; ci++) {
+		const chain = evolutionChains[ci].chain;
+		for (let i = 0; i < chain.length - 1; i++) {
+			chainEdges.push({
+				source: chain[i], target: chain[i + 1],
+				kind: 'temporal', chainIndex: ci,
+			});
+		}
 	}
 
-	for (let i = 0; i < sorted.length - 1; i++) {
-		g.setEdge(sorted[i].path, sorted[i + 1].path);
-	}
+	const timeTicks = generateTimeTicks(minTime, maxTime, timeToX);
+	return { positions, axisY: AXIS_Y, chainEdges, timeTicks };
+}
 
-	dagre.layout(g);
-
-	const positions = new Map<string, { x: number; y: number }>();
-	for (const n of sorted) {
-		const pos = g.node(n.path);
-		if (pos) positions.set(n.path, { x: pos.x, y: pos.y });
+function generateTimeTicks(
+	minTime: number, maxTime: number,
+	timeToX: (t: number) => number,
+): TimelineLayoutResult['timeTicks'] {
+	const rangeMs = maxTime - minTime;
+	const DAY = 86400000;
+	let intervalMs: number;
+	let formatFn: (d: Date) => string;
+	if (rangeMs < 14 * DAY) {
+		intervalMs = DAY;
+		formatFn = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+	} else if (rangeMs < 90 * DAY) {
+		intervalMs = 7 * DAY;
+		formatFn = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+	} else {
+		intervalMs = 30 * DAY;
+		formatFn = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 	}
-	return { positions };
+	const ticks: NonNullable<TimelineLayoutResult['timeTicks']> = [];
+	const startTick = Math.ceil(minTime / intervalMs) * intervalMs;
+	for (let t = startTick; t <= maxTime; t += intervalMs) {
+		ticks.push({ x: timeToX(t), label: formatFn(new Date(t)), timestamp: t });
+	}
+	return ticks;
 }
