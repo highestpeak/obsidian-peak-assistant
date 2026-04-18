@@ -388,17 +388,13 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	llmProviderConfigs: {},
 	profileEnabled: true,
 	promptRewriteEnabled: false,
-	// Programmatically initialize promptModelMap with defaultModel for general + Indexing & Hub prompts
-	// Search AI Analysis prompts use OpenRouter 4o-mini for reliable quality
+	// Programmatically initialize promptModelMap with defaultModel for all prompts
+	// (Previously AI Analysis prompts used OpenRouter, but that breaks for users without OpenRouter configured)
 	promptModelMap: (() => {
 		const defaultModel = { provider: 'openai', modelId: 'gpt-4o-mini' };
-		const searchAnalysisModel = { provider: 'openrouter', modelId: 'openai/gpt-4o-mini' };
 		const map: Partial<Record<PromptId, { provider: string; modelId: string }>> = {};
-		for (const promptId of [...CONFIGURABLE_PROMPT_IDS, ...INDEXING_AND_HUB_PROMPT_IDS]) {
+		for (const promptId of [...CONFIGURABLE_PROMPT_IDS, ...INDEXING_AND_HUB_PROMPT_IDS, ...SEARCH_AI_ANALYSIS_PROMPT_IDS]) {
 			map[promptId] = { ...defaultModel };
-		}
-		for (const promptId of SEARCH_AI_ANALYSIS_PROMPT_IDS) {
-			map[promptId] = { ...searchAnalysisModel };
 		}
 		return map;
 	})(),
