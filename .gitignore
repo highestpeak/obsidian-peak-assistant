@@ -45,4 +45,4 @@ data.json
 dist-desktop/
 opencode.json
 
-tmp_code_ref_for_cursor
+tmp_code_ref_for_cursor.claude/worktrees/
