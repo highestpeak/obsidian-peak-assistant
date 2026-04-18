@@ -6,9 +6,24 @@ import { LensEdgeComponent } from './edges/LensEdgeComponent';
 import { useLensLayout } from './hooks/useLensLayout';
 import { Button } from '@/ui/component/shared-ui/button';
 import { Network, GitBranch, Waypoints, Clock } from 'lucide-react';
+import { cn } from '@/ui/react/lib/utils';
 
 const nodeTypes = { lensNode: LensNodeComponent };
 const edgeTypes = { lensEdge: LensEdgeComponent };
+
+const LENS_TOOLTIPS: Record<LensType, string> = {
+	topology: '展示文档间的语义关系和知识结构',
+	bridge: '标识跨越知识领域的关键连接文档',
+	timeline: '展示知识积累和思想演化的时间脉络',
+	'thinking-tree': '展示文档间的思想推导和层级关系',
+};
+
+const LENS_EMPTY_MESSAGES: Record<LensType, string> = {
+	topology: '当前源文件之间未发现结构关系',
+	bridge: '当前源文件之间未发现跨领域桥梁连接',
+	timeline: '当前源文件缺少时间信息或演化关系',
+	'thinking-tree': '需要点击生成来推断思维树',
+};
 
 const LENS_CONFIG: Array<{
 	type: LensType;
@@ -60,35 +75,49 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 		[onNodeClick]
 	);
 
-	if (!graphData || nodes.length === 0) {
+	if (!graphData) {
 		return (
-			<div
-				className={`pktw-flex pktw-items-center pktw-justify-center pktw-text-[#6b7280] pktw-text-sm ${className}`}
-			>
-				<span className="pktw-text-sm">No graph data</span>
+			<div className={cn('pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-text-muted-foreground', className)}>
+				<div className="pktw-animate-pulse pktw-text-sm">正在分析文档关系...</div>
+			</div>
+		);
+	}
+
+	const tabBar = (
+		<div className="pktw-flex pktw-gap-1 pktw-p-1 pktw-border-b pktw-border-[#e5e7eb] pktw-bg-[#f9fafb] pktw-rounded-t-lg">
+			{LENS_CONFIG.filter((l) => availableLenses.includes(l.type)).map(
+				(l) => (
+					<Button
+						key={l.type}
+						variant={activeLens === l.type ? 'secondary' : 'ghost'}
+						size="sm"
+						onClick={() => handleLensSwitch(l.type)}
+						className="pktw-gap-1 pktw-text-xs"
+						style={{ cursor: 'pointer' }}
+						title={LENS_TOOLTIPS[l.type]}
+					>
+						<l.icon className="pktw-w-3.5 pktw-h-3.5" />
+						{l.label}
+					</Button>
+				)
+			)}
+		</div>
+	);
+
+	if (nodes.length === 0) {
+		return (
+			<div className={cn('pktw-flex pktw-flex-col', className)}>
+				{tabBar}
+				<div className="pktw-flex pktw-items-center pktw-justify-center pktw-flex-1 pktw-min-h-[200px] pktw-text-muted-foreground">
+					<span className="pktw-text-sm">{LENS_EMPTY_MESSAGES[activeLens]}</span>
+				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className={`pktw-flex pktw-flex-col ${className}`}>
-			<div className="pktw-flex pktw-gap-1 pktw-p-1 pktw-border-b pktw-border-[#e5e7eb] pktw-bg-[#f9fafb] pktw-rounded-t-lg">
-				{LENS_CONFIG.filter((l) => availableLenses.includes(l.type)).map(
-					(l) => (
-						<Button
-							key={l.type}
-							variant={activeLens === l.type ? 'secondary' : 'ghost'}
-							size="sm"
-							onClick={() => handleLensSwitch(l.type)}
-							className="pktw-gap-1 pktw-text-xs"
-							style={{ cursor: 'pointer' }}
-						>
-							<l.icon className="pktw-w-3.5 pktw-h-3.5" />
-							{l.label}
-						</Button>
-					)
-				)}
-			</div>
+		<div className={cn('pktw-flex pktw-flex-col', className)}>
+			{tabBar}
 			<div className="pktw-flex-1 pktw-min-h-[200px]">
 				<ReactFlow
 					key={activeLens}
