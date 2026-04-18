@@ -32,7 +32,9 @@ import type {
 } from './vault/types';
 import { classifyQueryComplexity, type QueryComplexity } from './vault/phases/routeQuery';
 import { VaultSearchAgentSDK } from './VaultSearchAgentSDK';
+import { MobileVaultSearchAgent } from './MobileVaultSearchAgent';
 import { AppContext } from '@/app/context/AppContext';
+import { isMobile } from '@/core/platform';
 
 export class VaultSearchAgent {
 	private state: VaultSearchState;
@@ -55,12 +57,22 @@ export class VaultSearchAgent {
 		this.state = this.buildInitialState(userQuery);
 		const stepId = generateUuidWithoutHyphens();
 
+		// --- Mobile: simplified no-RAG agent ---
+		const ctx = AppContext.getInstance();
+		if (isMobile()) {
+			console.log('[VaultSearchAgent] routing to mobile agent (no-RAG long context)');
+			const mobileAgent = new MobileVaultSearchAgent(ctx.app, this.aiServiceManager);
+			for await (const ev of mobileAgent.startSession(userQuery)) {
+				yield ev as VaultSearchEvent;
+			}
+			return;
+		}
+
 		// --- Feature flag: V2 Claude Agent SDK pipeline ---
 		// When settings.vaultSearch.useV2 is enabled, delegate to the SDK-backed
 		// agent instead of the legacy classify/decompose/recon pipeline. Everything
 		// upstream of this point (state setup, stepId) is shared; we just substitute
 		// the inner generator.
-		const ctx = AppContext.getInstance();
 		const pluginSettings = ctx.plugin?.settings;
 		if (pluginSettings?.vaultSearch?.useV2 === true) {
 			console.log('[VaultSearchAgent] routing to V2 (Claude Agent SDK)');
