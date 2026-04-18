@@ -10,6 +10,7 @@ import { TFile } from 'obsidian';
 import { humanReadableTime } from '@/core/utils/date-utils';
 import { parse as parseAiSearchAnalysisDoc, toCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 import { useSharedStore } from '../../store/sharedStore';
+import { useSearchSessionStore } from '../../store/searchSessionStore';
 import { cn } from '@/ui/react/lib/utils';
 
 /** Mode icon for history list; matches SearchModal preset icons. */
@@ -78,6 +79,8 @@ export const RecentAIAnalysis: React.FC<{
             loadCompletedAnalysisSnapshot(snapshot, path);
             if (loaded.query != null && loaded.query !== '') {
                 useSharedStore.getState().setSearchQuery(loaded.query);
+                // Also set on searchSessionStore so SourcesGraph/useGraphAgent can access it
+                useSearchSessionStore.setState({ query: loaded.query });
             }
             return;
         }
