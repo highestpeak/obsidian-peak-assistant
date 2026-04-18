@@ -1,4 +1,5 @@
 import { Plugin } from 'obsidian';
+import { isDesktop } from '@/core/platform';
 import { AIServiceManager } from 'src/service/chat/service-manager';
 import { MySettings } from 'src/app/settings/MySetting';
 import { normalizePluginSettings } from 'src/app/settings/PluginSettingsLoader';
@@ -140,19 +141,19 @@ export default class MyPlugin extends Plugin {
 		DocumentLoaderManager.init(this.app, this.settings.search, this.aiServiceManager);
 		await this.aiServiceManager.init();
 
-		// Initialize SQLite store
-		await sqliteStoreManager.init({
-			app: this.app,
-			storageFolder: this.settings.dataStorageFolder,
-			filename: VAULT_DB_FILENAME,
-			settings: { sqliteBackend: this.settings.sqliteBackend }
-		});
-
-		// Initialize search service (singleton)
-		await this.initializeSearchService();
-
-		// Back-fill searchClient on AppContext now that it exists.
-		appContext.searchClient = this.searchClient!;
+		// Initialize SQLite store and search service (desktop only — native modules unavailable on mobile)
+		if (isDesktop()) {
+			await sqliteStoreManager.init({
+				app: this.app,
+				storageFolder: this.settings.dataStorageFolder,
+				filename: VAULT_DB_FILENAME,
+				settings: { sqliteBackend: this.settings.sqliteBackend }
+			});
+			await this.initializeSearchService();
+			appContext.searchClient = this.searchClient!;
+		} else {
+			console.log('[Peak Assistant] Mobile mode: SQLite and indexing skipped');
+		}
 
 		// Create ViewManager with AppContext
 		this.viewManager = new ViewManager(this, appContext);
