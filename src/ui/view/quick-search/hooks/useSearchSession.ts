@@ -31,8 +31,9 @@ import { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
 import { reorganizeTimelineByAgent } from './search-session-types';
 import { consumeStream } from './streamConsumer';
 import type { StreamConsumerContext } from './streamConsumer';
-import { useEventRouter } from './useEventRouter';
+import { useEventRouter, eventTargetRedirect } from './useEventRouter';
 import { useContinueAnalysis } from './useContinueAnalysis';
+import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 
 // ---------------------------------------------------------------------------
 // Module-level ref holder — survives React unmount so QuickSearchModal.onClose
@@ -347,5 +348,74 @@ export function useSearchSession() {
 		}
 	}, []);
 
-	return { performAnalysis, cancel, handleApprovePlan, handleRegenerateSection };
+	// -----------------------------------------------------------------------
+	// restoreFromBackground — restore a background session to the foreground
+	// -----------------------------------------------------------------------
+
+	const restoreFromBackground = useCallback((sessionId: string) => {
+		const manager = BackgroundSessionManager.getInstance();
+
+		// If current foreground is active, detach it first
+		const currentStore = store.getState();
+		const isActive = currentStore.status === 'streaming' || currentStore.status === 'starting';
+		const hasPlan = currentStore.v2PlanSections.length > 0 && !currentStore.v2PlanApproved;
+		if (isActive || hasPlan) {
+			manager.detachForeground({
+				agentRef: sessionRefs.agentRef,
+				abortController: sessionRefs.abortController,
+			});
+		}
+
+		// Get agent refs before restoring (removes session from manager)
+		const refs = manager.getAgentRefs(sessionId);
+		const snapshot = manager.restoreToForeground(sessionId);
+		if (!snapshot) return;
+
+		// Restore snapshot to foreground store
+		store.getState().restoreFromSnapshot(snapshot);
+
+		// Re-bind agent refs
+		if (refs) {
+			vaultAgentRef.current = refs.agentRef;
+			abortControllerRef.current = refs.abortController;
+			sessionRefs.agentRef = refs.agentRef;
+			sessionRefs.abortController = refs.abortController;
+		}
+
+		// Deactivate event redirect (events now go back to foreground store)
+		eventTargetRedirect.active = false;
+		eventTargetRedirect.target = null;
+		eventTargetRedirect.summaryBuffer = null;
+		eventTargetRedirect.uiStepRef = null;
+
+		// Re-register HITL callback if plan-ready (so user can approve and continue)
+		if (snapshot.v2PlanSections.length > 0 && !snapshot.v2PlanApproved && refs?.agentRef) {
+			const hitlCallback = async (feedback: UserFeedback) => {
+				const agent = vaultAgentRef.current;
+				if (!agent) return;
+				store.getState().clearHitlPause();
+				useAIAnalysisRuntimeStore.getState().clearHitlPause();
+
+				const streamCtx: StreamConsumerContext = {
+					hasStartedStreaming: () => store.getState().hasStartedStreaming,
+					onStreamStart: () => {
+						store.getState().startStreaming();
+						useAIAnalysisRuntimeStore.getState().startStreaming();
+					},
+					signal: abortControllerRef.current?.signal,
+					routeEvent,
+					timeline: timelineRef.current,
+				};
+				await consumeStream(agent.continueWithFeedback(feedback), streamCtx);
+				if (!store.getState().hitlState) {
+					store.getState().markCompleted();
+					markAIAnalysisCompleted();
+				}
+			};
+			store.getState().setHitlFeedbackCallback(hitlCallback);
+			useAIAnalysisRuntimeStore.getState().setHitlFeedbackCallback(hitlCallback);
+		}
+	}, [routeEvent]);
+
+	return { performAnalysis, cancel, handleApprovePlan, handleRegenerateSection, restoreFromBackground };
 }

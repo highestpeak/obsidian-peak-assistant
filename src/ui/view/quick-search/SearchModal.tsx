@@ -14,6 +14,7 @@ import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { useSearchSession } from './hooks/useSearchSession';
+import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { AppContext } from '@/app/context/AppContext';
 import { getActiveNoteDetail } from '@/core/utils/obsidian-utils';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
@@ -80,7 +81,17 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	const setAiModalOpen = useSearchSessionStore((s) => s.setAiModalOpen);
 	const analysisMode = useSearchSessionStore((s) => s.analysisMode);
 	const setAnalysisMode = useSearchSessionStore((s) => s.setAnalysisMode);
-	const { performAnalysis, cancel } = useSearchSession();
+	const { performAnalysis, cancel, restoreFromBackground } = useSearchSession();
+
+	// Check for pending background session restore on mount
+	useEffect(() => {
+		const pendingId = BackgroundSessionManager.pendingRestore;
+		if (pendingId) {
+			BackgroundSessionManager.pendingRestore = null;
+			restoreFromBackground(pendingId);
+		}
+	}, [restoreFromBackground]);
+
 	const isAnalyzing = sessionStatus === 'starting' || sessionStatus === 'streaming';
 	const analysisCompleted = sessionStatus === 'completed';
 	const hasResult = hasAnalyzed || analysisCompleted;
