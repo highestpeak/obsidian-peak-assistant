@@ -766,6 +766,62 @@ export function loadCompletedAnalysisSnapshot(snapshot: CompletedAnalysisSnapsho
  * Bridge: convert CompletedAnalysisSnapshot into SearchStep[] for the new unified store.
  * This ensures restored history displays correctly in SearchResultView → StepList.
  */
+/**
+ * Reconstruct V2ToolStep[] + V2TimelineItem[] from saved process log strings.
+ * Format: "ICON DISPLAY_NAME — SUMMARY — DURs" or "ICON DISPLAY_NAME — DURs" or "ICON DISPLAY_NAME"
+ */
+function reconstructProcessTimeline(
+	processLog: string[],
+	startedAt: number,
+): { steps: import('../types/search-steps').V2ToolStep[]; timeline: import('../types/search-steps').V2TimelineItem[] } {
+	const steps: import('../types/search-steps').V2ToolStep[] = [];
+	const timeline: import('../types/search-steps').V2TimelineItem[] = [];
+
+	for (let i = 0; i < processLog.length; i++) {
+		const line = processLog[i];
+		const parts = line.split(' — ').map(p => p.trim());
+		const firstSpace = parts[0].indexOf(' ');
+		const icon = firstSpace > 0 ? parts[0].slice(0, firstSpace) : '🔧';
+		const displayName = firstSpace > 0 ? parts[0].slice(firstSpace + 1) : parts[0];
+
+		let summary = '';
+		let durationSec = 0;
+		if (parts.length >= 3) {
+			const durMatch = parts[parts.length - 1].match(/^(\d+\.?\d*)s$/);
+			if (durMatch) {
+				durationSec = parseFloat(durMatch[1]);
+				summary = parts.slice(1, -1).join(' — ');
+			} else {
+				summary = parts.slice(1).join(' — ');
+			}
+		} else if (parts.length === 2) {
+			const durMatch = parts[1].match(/^(\d+\.?\d*)s$/);
+			if (durMatch) {
+				durationSec = parseFloat(durMatch[1]);
+			} else {
+				summary = parts[1];
+			}
+		}
+
+		const stepStartedAt = startedAt + i * 100;
+		const step: import('../types/search-steps').V2ToolStep = {
+			id: `restored-step-${i}`,
+			toolName: 'restored',
+			displayName,
+			icon,
+			input: {},
+			status: 'done',
+			startedAt: stepStartedAt,
+			endedAt: stepStartedAt + durationSec * 1000,
+			summary: summary || undefined,
+		};
+		steps.push(step);
+		timeline.push({ kind: 'tool', step });
+	}
+
+	return { steps, timeline };
+}
+
 function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot, sourceVaultPath?: string): void {
 	const now = Date.now();
 	const startedAt = snapshot.analysisStartedAtMs ?? now;
@@ -800,6 +856,12 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 			readAt: startedAt,
 			reasoning: s.reasoning ?? undefined,
 		}));
+
+		// Reconstruct process timeline from saved log
+		const { steps: restoredSteps, timeline: restoredTimeline } =
+			(snapshot.v2ProcessLog?.length)
+				? reconstructProcessTimeline(snapshot.v2ProcessLog, startedAt)
+				: { steps: [], timeline: [] };
 
 		// Restore graph data if present
 		if (snapshot.v2GraphJson) {
@@ -849,6 +911,8 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 			v2FollowUpQuestions: snapshot.v2FollowUpQuestions ?? [],
 			v2Summary: getSnapshotSummary(snapshot),
 			v2SummaryStreaming: false,
+			v2Steps: restoredSteps,
+			v2Timeline: restoredTimeline,
 		});
 		return;
 	}
