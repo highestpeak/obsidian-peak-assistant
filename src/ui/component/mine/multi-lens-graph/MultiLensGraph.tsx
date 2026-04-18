@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import { ReactFlow, Background, MiniMap, Controls, type NodeMouseHandler } from '@xyflow/react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ReactFlow, Background, MiniMap, Controls, type NodeMouseHandler, type ReactFlowInstance } from '@xyflow/react';
 import type { LensType, LensGraphData, LensNode } from './types';
 import { LensNodeComponent } from './nodes/LensNodeComponent';
 import { SwimlaneNode } from './nodes/SwimlaneNode';
@@ -72,6 +72,12 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	const [activeLens, setActiveLens] = useState<LensType>(defaultLens);
 	const { nodes, edges } = useLensLayout(graphData, activeLens);
 	const availableLenses = graphData?.availableLenses ?? ['topology'];
+	const rfInstance = useRef<ReactFlowInstance | null>(null);
+
+	useEffect(() => {
+		const id = setTimeout(() => rfInstance.current?.fitView({ padding: 0.15 }), 50);
+		return () => clearTimeout(id);
+	}, [activeLens]);
 
 	const handleLensSwitch = useCallback(
 		(lens: LensType) => {
@@ -91,34 +97,33 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 
 	if (loading) {
 		return (
-			<div className={cn('pktw-flex pktw-flex-col pktw-items-center pktw-justify-start pktw-h-full pktw-gap-4 pktw-pt-4', className)}>
+			<div className={cn('pktw-flex pktw-flex-col pktw-h-full pktw-py-2 pktw-px-1', className)}>
 				{loadingSteps && loadingSteps.length > 0 ? (
-					<div className="pktw-flex pktw-flex-col pktw-gap-2 pktw-w-full pktw-max-w-[360px]">
+					<div className="pktw-flex pktw-flex-col pktw-gap-1">
 						{loadingSteps.map((s) => (
-							<div key={s.id} className="pktw-flex pktw-items-start pktw-gap-2 pktw-text-xs">
+							<div key={s.id} className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1 pktw-px-1">
 								{s.status === 'done' ? (
-									<CheckCircle2 className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-500 pktw-mt-0.5 pktw-shrink-0" />
+									<CheckCircle2 className="pktw-w-4 pktw-h-4 pktw-text-green-500 pktw-shrink-0" />
 								) : s.status === 'running' ? (
-									<Loader2 className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed] pktw-animate-spin pktw-mt-0.5 pktw-shrink-0" />
+									<Loader2 className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed] pktw-animate-spin pktw-shrink-0" />
 								) : (
-									<div className="pktw-w-3.5 pktw-h-3.5 pktw-rounded-full pktw-border pktw-border-[#d1d5db] pktw-mt-0.5 pktw-shrink-0" />
+									<div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-border pktw-border-[#d1d5db] pktw-shrink-0" />
 								)}
-								<div className="pktw-flex pktw-flex-col pktw-min-w-0">
-									<span className={s.status === 'done' ? 'pktw-text-[#6b7280]' : 'pktw-text-[#2e3338]'}>
-										{s.label}
+								<span className={cn('pktw-text-xs', s.status === 'done' ? 'pktw-text-[#6b7280]' : 'pktw-text-[#2e3338]')}>
+									{s.label}
+								</span>
+								{s.detail && (
+									<span className="pktw-text-[11px] pktw-text-[#9ca3af] pktw-truncate pktw-flex-1 pktw-min-w-0">
+										{s.detail}
 									</span>
-									{s.detail && (
-										<span className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-truncate pktw-max-w-[320px]">
-											{s.detail}
-										</span>
-									)}
-								</div>
+								)}
 							</div>
 						))}
 					</div>
 				) : (
-					<div className="pktw-animate-pulse pktw-text-sm pktw-text-muted-foreground">
-						正在分析文档关系...
+					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1">
+						<Loader2 className="pktw-w-4 pktw-h-4 pktw-animate-spin pktw-text-[#7c3aed]" />
+						<span className="pktw-text-xs pktw-text-muted-foreground">正在分析文档关系...</span>
 					</div>
 				)}
 			</div>
@@ -194,12 +199,12 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 			{tabBar}
 			<div className="pktw-flex-1 pktw-min-h-[200px]">
 				<ReactFlow
-					key={activeLens}
 					nodes={nodes}
 					edges={edges}
 					nodeTypes={nodeTypes}
 					edgeTypes={edgeTypes}
 					onNodeClick={handleNodeClick}
+					onInit={(instance) => { rfInstance.current = instance; }}
 					fitView
 					fitViewOptions={{ padding: 0.15 }}
 					proOptions={{ hideAttribution: true }}

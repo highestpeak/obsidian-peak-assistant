@@ -667,14 +667,3 @@ export function buildV2AnalysisSnapshot() {
 // Round utility functions (derived state helpers)
 // ---------------------------------------------------------------------------
 
-/** Get all sections flattened across all rounds + current */
-export function getAllSections(): V2Section[] {
-	const s = useSearchSessionStore.getState();
-	return getAllSectionsFrom(s.rounds, s.v2PlanSections);
-}
-
-/** Get all sources deduplicated across all rounds + current */
-export function getAllSources(): V2Source[] {
-	const s = useSearchSessionStore.getState();
-	return getAllSourcesFrom(s.rounds, s.v2Sources);
-}
