@@ -1,7 +1,8 @@
 /**
  * useEventRouter — routes LLM stream events to the appropriate stores.
  *
- * Extracted from useSearchSession to isolate event-dispatch logic.
+ * Delegates to the pure `dispatchEvent` function from eventDispatcher.ts,
+ * building foreground EventDispatchTarget / LegacyBridgeTarget from Zustand stores.
  */
 
 import { useCallback, useRef } from 'react';
@@ -15,21 +16,23 @@ import {
 	markAIAnalysisCompleted,
 } from '../store/aiAnalysisStore';
 import type { UIStepRecord } from '../store/aiAnalysisStore';
-import { useUIEventStore } from '@/ui/store/uiEventStore';
 
-import { AppContext } from '@/app/context/AppContext';
 import type { SearchAgentResult } from '@/service/agents/shared-types';
 import type { LLMStreamEvent } from '@/core/providers/types';
-import { StreamTriggerName, UISignalChannel } from '@/core/providers/types';
-import { getDeltaEventDeltaText } from '@/core/providers/helpers/stream-helper';
-import { v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '../types/search-steps';
-import type { V2ToolStep } from '../types/search-steps';
-import type { V2Section } from '../store/searchSessionStore';
 
-import type { VaultHitlPauseEvent, VaultPhaseTransitionEvent } from '@/service/agents/vault/types';
-
-import { SUMMARY_FLUSH_MS, flushUiStep } from './search-session-types';
+import { SUMMARY_FLUSH_MS } from './search-session-types';
 import type { UiStepAccum } from './search-session-types';
+
+import {
+	dispatchEvent,
+	applySearchResult as applySearchResultImpl,
+} from './eventDispatcher';
+import type {
+	EventDispatchTarget,
+	LegacyBridgeTarget,
+	SummaryBuffer,
+	UiStepAccumRef,
+} from './eventDispatcher';
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -74,469 +77,94 @@ export function useEventRouter() {
 	}, [flushSummaryBuffer]);
 
 	// -------------------------------------------------------------------
+	// Build foreground targets
+	// -------------------------------------------------------------------
+
+	const buildTarget = (): EventDispatchTarget => ({
+			getV2Active: () => store.getState().v2Active,
+			getV2ProposedOutline: () => store.getState().v2ProposedOutline,
+			getStartedAt: () => store.getState().startedAt,
+			getV2StepsLength: () => store.getState().v2Steps.length,
+			getV2Sources: () => store.getState().v2Sources,
+
+			setV2Active: (active) => store.getState().setV2Active(active),
+			addPhaseUsage: (usage) => store.getState().addPhaseUsage(usage),
+			pushV2TimelineText: (id, chunk) => store.getState().pushV2TimelineText(id, chunk),
+			resolveV2ToolName: (id) => store.getState().resolveV2ToolName(id),
+			updateV2Step: (id, updater) => store.getState().updateV2Step(id, updater),
+			updateV2TimelineTool: (id, updater) => store.getState().updateV2TimelineTool(id, updater),
+			appendAgentDebugLog: (entry) => store.getState().appendAgentDebugLog(entry),
+			setDashboardUpdatedLine: (line) => store.getState().setDashboardUpdatedLine(line),
+			setTitle: (title) => store.getState().setTitle(title),
+			setHasAnalyzed: (v) => store.getState().setHasAnalyzed(v),
+			setUsage: (usage) => store.getState().setUsage(usage),
+			setDuration: (duration) => store.getState().setDuration(duration),
+			markCompleted: () => store.getState().markCompleted(),
+			markV2ReportComplete: () => store.getState().markV2ReportComplete(),
+			recordError: (error) => store.getState().recordError(error),
+			setHitlPause: (state) => store.getState().setHitlPause(state),
+			pushV2Step: (step) => store.getState().pushV2Step(step),
+			pushV2TimelineTool: (step) => store.getState().pushV2TimelineTool(step),
+			registerV2ToolCall: (id, toolName) => store.getState().registerV2ToolCall(id, toolName),
+			addV2Source: (source) => store.getState().addV2Source(source),
+			setPlanSections: (sections) => store.getState().setPlanSections(sections),
+			setProposedOutline: (outline) => useSearchSessionStore.setState({ v2ProposedOutline: outline }),
+			setFollowUpQuestions: (questions) => useSearchSessionStore.setState({ v2FollowUpQuestions: questions }),
+			setV2Sources: (sources) => useSearchSessionStore.setState({ v2Sources: sources }),
+	});
+
+	const buildLegacy = (): LegacyBridgeTarget => ({
+		isSummaryStreaming: () => useAIAnalysisSummaryStore.getState().isSummaryStreaming,
+		startSummaryStreaming: () => useAIAnalysisSummaryStore.getState().startSummaryStreaming(),
+		setSummary: (summary) => useAIAnalysisSummaryStore.getState().setSummary(summary),
+
+		setSources: (sources) => useAIAnalysisResultStore.getState().setSources(sources),
+		setEvidenceIndex: (index) => useAIAnalysisResultStore.getState().setEvidenceIndex(index),
+		setDashboardBlocks: (blocks) => useAIAnalysisResultStore.getState().setDashboardBlocks(blocks),
+		setTopics: (topics) => useAIAnalysisResultStore.getState().setTopics(topics),
+		pushOverviewMermaidVersion: (code, opts) => useAIAnalysisResultStore.getState().pushOverviewMermaidVersion(code, opts),
+
+		setTitle: (title) => useAIAnalysisRuntimeStore.getState().setTitle(title),
+		setHasAnalyzed: (v) => useAIAnalysisRuntimeStore.getState().setHasAnalyzed(v),
+		setDashboardUpdatedLine: (line) => useAIAnalysisRuntimeStore.getState().setDashboardUpdatedLine(line),
+		setUsage: (usage) => useAIAnalysisRuntimeStore.getState().setUsage(usage),
+		setDuration: (duration) => useAIAnalysisRuntimeStore.getState().setDuration(duration),
+		recordError: (error) => useAIAnalysisRuntimeStore.getState().recordError(error),
+		setHitlPause: (state) => useAIAnalysisRuntimeStore.getState().setHitlPause(state),
+
+		setSuggestedFollowUpQuestions: (questions) => useAIAnalysisInteractionsStore.getState().setSuggestedFollowUpQuestions(questions),
+
+		appendCompletedUiStep: (step) => useAIAnalysisStepsStore.getState().appendCompletedUiStep(step),
+
+		markCompleted: () => markAIAnalysisCompleted(),
+	});
+
+	const buildSummaryBuffer = (): SummaryBuffer => ({
+		appendDelta: bufferSummaryDelta,
+		flush: flushSummaryBuffer,
+	});
+
+	const buildUiStepRef = (): UiStepAccumRef => ({
+		get: () => currentUiStepRef.current,
+		set: (val) => { currentUiStepRef.current = val; },
+	});
+
+	// -------------------------------------------------------------------
 	// applySearchResult — bridge to old stores + update new steps
 	// -------------------------------------------------------------------
 
 	const applySearchResult = useCallback((result: SearchAgentResult) => {
-		// Summary
-		if (result.summary) {
-			// Bridge: old store
-			useAIAnalysisSummaryStore.getState().setSummary(result.summary);
-		}
-
-		// Sources
-		if (result.sources) {
-			// Bridge
-			useAIAnalysisResultStore.getState().setSources(result.sources);
-		}
-		if (result.evidenceIndex !== undefined) {
-			useAIAnalysisResultStore.getState().setEvidenceIndex(result.evidenceIndex ?? {});
-		}
-
-		// Dashboard blocks
-		if (result.dashboardBlocks) {
-			useAIAnalysisResultStore.getState().setDashboardBlocks(result.dashboardBlocks);
-		}
-
-		// Topics
-		if (result.topics) {
-			useAIAnalysisResultStore.getState().setTopics(result.topics);
-		}
-
-		// Graph (overview mermaid)
-		if (result.evidenceMermaidOverviewAgent != null) {
-			// Bridge
-			useAIAnalysisResultStore.getState().pushOverviewMermaidVersion(
-				result.evidenceMermaidOverviewAgent,
-				{ makeActive: true, dedupe: true },
-			);
-		}
-
-		// Title
-		if (result.title !== undefined) {
-			store.getState().setTitle(result.title ?? null);
-			// Bridge
-			useAIAnalysisRuntimeStore.getState().setTitle(result.title ?? null);
-		}
-
-		// Follow-up questions
-		if (result.suggestedFollowUpQuestions !== undefined) {
-			useAIAnalysisInteractionsStore.getState().setSuggestedFollowUpQuestions(
-				result.suggestedFollowUpQuestions ?? [],
-			);
-		}
-
-		// HasAnalyzed
-		store.getState().setHasAnalyzed(true);
-		// Bridge
-		useAIAnalysisRuntimeStore.getState().setHasAnalyzed(true);
+		applySearchResultImpl(result, buildTarget(), buildLegacy());
 	}, [store]);
 
 	// -------------------------------------------------------------------
-	// routeEvent (inlined dispatcher)
+	// routeEvent
 	// -------------------------------------------------------------------
 
 	const routeEvent = useCallback((event: LLMStreamEvent) => {
 		console.debug('[useSearchSession] routeEvent:', event);
-		const publish = (type: string, payload: any) => useUIEventStore.getState().publish(type, payload);
-
-		switch (event.type) {
-			// ---- Phase transitions (vault pipeline) ----
-			case 'pk-debug': {
-				const ev = event as any;
-				if (ev.debugName === 'vault-sdk-starting') {
-					store.getState().setV2Active(true);
-				}
-				if (ev.debugName === 'phase-usage' && ev.extra) {
-					store.getState().addPhaseUsage({
-						phase: ev.extra.phase ?? '',
-						modelId: ev.extra.modelId ?? '',
-						inputTokens: ev.extra.inputTokens ?? 0,
-						outputTokens: ev.extra.outputTokens ?? 0,
-					});
-				}
-				break;
-			}
-
-			case 'phase-transition': {
-				publish('phase-transition', event);
-				break;
-			}
-
-			// ---- Summary streaming ----
-			case 'text-start': {
-				if (
-					event.triggerName === StreamTriggerName.SEARCH_SUMMARY ||
-					event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
-				) {
-					// Bridge
-					if (!useAIAnalysisSummaryStore.getState().isSummaryStreaming) {
-						useAIAnalysisSummaryStore.getState().startSummaryStreaming();
-					}
-				}
-				break;
-			}
-			case 'text-delta': {
-				if (
-					event.triggerName === StreamTriggerName.SEARCH_SUMMARY ||
-					event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
-				) {
-					const delta = getDeltaEventDeltaText(event);
-					bufferSummaryDelta(delta);
-				}
-				// V2: text-delta goes to timeline; suppress post-submit_plan garbage
-				else if (store.getState().v2Active) {
-					// If proposed_outline is already captured, ignore subsequent text (agent self-talk)
-					if (store.getState().v2ProposedOutline) break;
-					const delta = getDeltaEventDeltaText(event);
-					if (delta) {
-						store.getState().pushV2TimelineText(`text-${Date.now()}`, delta);
-					}
-				}
-				break;
-			}
-			case 'text-end': {
-				if (
-					event.triggerName === StreamTriggerName.SEARCH_SUMMARY ||
-					event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
-				) {
-					flushSummaryBuffer();
-				}
-				break;
-			}
-
-			// ---- Tool results ----
-			case 'tool-result': {
-				const ev = event as any;
-				const currentResult = ev.extra?.currentResult as SearchAgentResult | undefined;
-				if (currentResult) applySearchResult(currentResult);
-				// V2: update step card with summary
-				const toolCallId = ev.id ?? '';
-				const resolvedToolName = store.getState().resolveV2ToolName(toolCallId);
-				if (resolvedToolName.startsWith('mcp__vault__')) {
-					const output = ev.output;
-					const summary = extractV2Summary(resolvedToolName, output);
-					const preview = unwrapToolOutput(output);
-					const stepUpdate = (step: V2ToolStep) => ({
-						...step,
-						status: 'done' as const,
-						endedAt: Date.now(),
-						summary,
-						resultPreview: preview?.slice(0, 2000),
-					});
-					store.getState().updateV2Step(toolCallId, stepUpdate);
-					store.getState().updateV2TimelineTool(toolCallId, stepUpdate);
-				}
-				// Debug capture: log tool output (output field, not result)
-				if (ev.toolName) {
-					store.getState().appendAgentDebugLog({
-						type: 'tool-result',
-						taskIndex: ev.taskIndex,
-						data: { tool: ev.toolName, output: ev.output ?? null },
-					});
-				}
-				break;
-			}
-
-			// ---- UI steps (timeline narration) ----
-			case 'ui-step': {
-				publish(event.type, event);
-				const stepId = (event as any).stepId as string | undefined;
-				const title = typeof (event as any).title === 'string' ? (event as any).title : '';
-				const description = typeof (event as any).description === 'string' ? (event as any).description : '';
-
-				// Dashboard Updated detection
-				if (
-					event.triggerName === StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT &&
-					title === 'Dashboard Updated' &&
-					description
-				) {
-					store.getState().setDashboardUpdatedLine(description);
-					// Bridge
-					useAIAnalysisRuntimeStore.getState().setDashboardUpdatedLine(description);
-				}
-
-				if (stepId) {
-					const prev = currentUiStepRef.current;
-					if (prev && prev.stepId !== stepId) {
-						// Bridge: old steps store
-						useAIAnalysisStepsStore.getState().appendCompletedUiStep(flushUiStep(prev));
-					}
-					if (!prev || prev.stepId !== stepId) {
-						currentUiStepRef.current = {
-							stepId,
-							titleChunks: title ? [title] : [],
-							descChunks: description ? [description] : [],
-							startedAtMs: Date.now(),
-						};
-					} else if ('titleChunks' in prev) {
-						prev.titleChunks = title ? [title] : prev.titleChunks;
-						prev.descChunks = description !== '' ? [description] : prev.descChunks;
-					}
-				}
-				break;
-			}
-			case 'ui-step-delta': {
-				publish(event.type, event);
-				const descDelta = typeof (event as any).descriptionDelta === 'string' ? (event as any).descriptionDelta : '';
-				const titleDelta = typeof (event as any).titleDelta === 'string' ? (event as any).titleDelta : '';
-				if (descDelta || titleDelta) {
-					const cur = currentUiStepRef.current;
-					if (cur && 'descChunks' in cur) {
-						if (descDelta) cur.descChunks.push(descDelta);
-						if (titleDelta) cur.titleChunks.push(titleDelta);
-					}
-				}
-				break;
-			}
-
-			// ---- UI signals ----
-			case 'ui-signal': {
-				const ev = event as { channel?: string; payload?: { mermaid?: string; dimensions?: any; completedIndices?: any; tasks?: any; groupProgress?: any } };
-
-				// Overview mermaid
-				if (ev.channel === UISignalChannel.OVERVIEW_MERMAID && typeof ev.payload?.mermaid === 'string') {
-					const code = ev.payload.mermaid.trim();
-					// Bridge
-					useAIAnalysisResultStore.getState().pushOverviewMermaidVersion(code, { makeActive: true, dedupe: true });
-				}
-
-				// Search stage signals — bridge to old stores
-				if (ev.channel === UISignalChannel.SEARCH_STAGE && ev.payload) {
-					const payload = ev.payload as any;
-					const stage = payload.stage as string | undefined;
-
-					// Report: blocks complete
-					if (stage === 'report' && payload.status === 'blocks-complete' && payload.blocks) {
-						useAIAnalysisResultStore.getState().setDashboardBlocks(payload.blocks);
-					}
-				}
-
-				publish(event.type, event);
-				break;
-			}
-
-			// ---- Parallel stream progress ----
-			case 'parallel-stream-progress': {
-				publish('parallel-stream-progress', event);
-				break;
-			}
-
-			// ---- Completion ----
-			case 'complete': {
-				// Flush last UI step
-				const lastStep = currentUiStepRef.current;
-				if (lastStep) {
-					useAIAnalysisStepsStore.getState().appendCompletedUiStep(flushUiStep(lastStep));
-					currentUiStepRef.current = null;
-				}
-				publish('complete', event);
-
-				if (
-					event.triggerName === StreamTriggerName.SEARCH_AI_AGENT ||
-					event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
-				) {
-					// Set usage and duration
-					const completeEvent = event as any;
-					if (completeEvent.usage) {
-						store.getState().setUsage(completeEvent.usage);
-						// Bridge
-						useAIAnalysisRuntimeStore.getState().setUsage(completeEvent.usage);
-					}
-					{
-						const duration = completeEvent.durationMs || (store.getState().startedAt ? Date.now() - store.getState().startedAt! : 0);
-						if (duration) {
-							store.getState().setDuration(duration);
-							// Bridge
-							useAIAnalysisRuntimeStore.getState().setDuration(duration);
-						}
-					}
-
-					const finalResult = completeEvent.result as SearchAgentResult | undefined;
-					if (finalResult) {
-						applySearchResult(finalResult);
-					}
-
-					// Notice (success): only when modal is closed and not canceled
-					// Note: didCancelRef and noticeSentRef are managed by the caller
-					// We emit a custom flag via return value instead
-
-					store.getState().markCompleted();
-					// V2: mark report done
-					if (store.getState().v2Steps.length > 0) {
-						store.getState().markV2ReportComplete();
-					}
-					// Bridge
-					markAIAnalysisCompleted();
-				}
-				break;
-			}
-
-			// ---- Errors ----
-			case 'error': {
-				const errMsg = (event as any).error?.message ?? String((event as any).error);
-				if (errMsg) {
-					if (AppContext.getInstance().plugin.settings?.enableDevTools) {
-						store.getState().recordError(errMsg);
-					}
-					// Bridge
-					if (AppContext.getInstance().plugin.settings?.enableDevTools) {
-						useAIAnalysisRuntimeStore.getState().recordError(errMsg);
-					}
-				}
-				break;
-			}
-
-			// ---- HITL pause ----
-			case 'hitl-pause': {
-				const ev = event as unknown as VaultHitlPauseEvent;
-
-				store.getState().setHitlPause({
-					pauseId: ev.pauseId,
-					phase: ev.phase,
-					snapshot: ev.snapshot,
-				});
-				// Bridge
-				useAIAnalysisRuntimeStore.getState().setHitlPause({
-					pauseId: ev.pauseId,
-					phase: ev.phase,
-					snapshot: ev.snapshot,
-				});
-				break;
-			}
-
-			// ---- Agent progress / stats ----
-			case 'agent-step-progress': {
-				publish('agent-step-progress', event);
-				break;
-			}
-			case 'agent-stats': {
-				publish('agent-stats', event);
-				break;
-			}
-
-			// Capture for debug export
-			case 'reasoning-delta': {
-				const ev = event as any;
-				store.getState().appendAgentDebugLog({
-					type: 'reasoning',
-					taskIndex: ev.taskIndex,
-					// reasoning-delta event uses 'text' field (not 'delta')
-					data: { text: ev.text ?? ev.delta ?? '' },
-				});
-				// V2: reasoning is debug-only, not shown in timeline (low signal-to-noise for users)
-				break;
-			}
-			case 'tool-call': {
-				const ev = event as any;
-				// Debug log (existing behavior)
-				store.getState().appendAgentDebugLog({
-					type: 'tool-call',
-					taskIndex: ev.taskIndex,
-					data: { tool: ev.toolName ?? '', args: ev.input ?? ev.args ?? {} },
-				});
-				// V2: create step card for vault tools
-				const toolName = ev.toolName ?? '';
-				if (toolName.startsWith('mcp__vault__')) {
-					const input = ev.input ?? {};
-					const { displayName, icon } = v2ToolDisplay(toolName, input);
-					const step: V2ToolStep = {
-						id: ev.id ?? `tc-${Date.now()}`,
-						toolName,
-						displayName,
-						icon,
-						input,
-						status: 'running',
-						startedAt: Date.now(),
-					};
-					store.getState().pushV2Step(step);
-					store.getState().pushV2TimelineTool(step);
-					store.getState().registerV2ToolCall(step.id, toolName);
-					const shortName = toolName.replace(/^mcp__vault__/, '');
-					// Source extraction for vault_read_note
-					if (shortName === 'vault_read_note') {
-						const path = String(input.path ?? '');
-						if (path) {
-							store.getState().addV2Source({
-								path,
-								title: path.split('/').pop()?.replace(/\.md$/, '') || path,
-								readAt: Date.now(),
-							});
-						}
-					}
-					// Extract proposed_outline from vault_submit_plan as the real report
-					// Don't push into timeline — report is shown in Report View only
-					if (shortName === 'vault_submit_plan') {
-						const outline = input.proposed_outline;
-						if (typeof outline === 'string' && outline.trim()) {
-							useSearchSessionStore.setState({ v2ProposedOutline: outline });
-						}
-						// Extract structured follow-up questions
-						const followUps = input.follow_up_questions;
-						if (Array.isArray(followUps) && followUps.length > 0) {
-							useSearchSessionStore.setState({ v2FollowUpQuestions: followUps.filter((q: unknown) => typeof q === 'string' && q.length > 5) });
-						}
-						// Enrich existing sources with rationale
-						const rationale = typeof input.rationale === 'string' ? input.rationale : '';
-						if (rationale) {
-							const lines = rationale.split('\n').filter((l: string) => l.trim());
-							const reasoningMap = new Map<string, string>();
-							for (const line of lines) {
-								// Parse "path: reasoning" or "- path: reasoning" patterns
-								const match = line.match(/^[-*]?\s*(.+?\.md)\s*[:：]\s*(.+)/);
-								if (match) {
-									const filename = match[1].split('/').pop()?.replace(/\.md$/, '') || '';
-									reasoningMap.set(filename.toLowerCase(), match[2].trim());
-								}
-							}
-							if (reasoningMap.size > 0) {
-								const currentSources = store.getState().v2Sources;
-								const enriched = currentSources.map((src) => {
-									const key = src.title.toLowerCase();
-									const r = reasoningMap.get(key);
-									return r ? { ...src, reasoning: r } : src;
-								});
-								useSearchSessionStore.setState({ v2Sources: enriched });
-							}
-						}
-						// Extract structured plan sections
-						const planSections = input.plan_sections;
-						if (Array.isArray(planSections) && planSections.length > 0) {
-							const sections: V2Section[] = planSections.map((ps: any) => ({
-								id: ps.id ?? `s${Math.random().toString(36).slice(2, 6)}`,
-								title: ps.title ?? '',
-								contentType: ps.content_type ?? 'analysis',
-								visualType: ps.visual_type ?? 'none',
-								evidencePaths: Array.isArray(ps.evidence_paths) ? ps.evidence_paths : [],
-								brief: ps.brief ?? '',
-								missionRole: ps.mission_role ?? 'synthesis',
-								weight: typeof ps.weight === 'number' ? ps.weight : 5,
-								status: 'pending' as const,
-								content: '',
-								streamingChunks: [],
-								generations: [],
-							}));
-							store.getState().setPlanSections(sections);
-							// Sync all evidence paths to v2Sources so Sources tab is complete
-							for (const sec of sections) {
-								for (const ep of sec.evidencePaths) {
-									store.getState().addV2Source({
-										path: ep,
-										title: ep.split('/').pop()?.replace(/\.md$/, '') || ep,
-										readAt: Date.now(),
-									});
-								}
-							}
-						}
-					}
-				}
-				break;
-			}
-
-			default:
-				break;
-		}
-	}, [store, applySearchResult, bufferSummaryDelta, flushSummaryBuffer]);
+		dispatchEvent(event, buildTarget(), buildLegacy(), buildSummaryBuffer(), buildUiStepRef());
+	}, [store, bufferSummaryDelta, flushSummaryBuffer]);
 
 	return { routeEvent, flushSummaryBuffer, applySearchResult, currentUiStepRef, summaryBufferRef };
 }
