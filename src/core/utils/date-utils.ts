@@ -23,18 +23,16 @@ export function humanReadableTime(timestamp: number): string {
 	const isBeforeToday = timestamp < today.getTime();
 
 	if (isBeforeToday) {
-		// Use day/week/month/year for dates before today
-		const diffMs = now - timestamp;
-		const diffSeconds = Math.floor(diffMs / 1000);
-		const diffMinutes = Math.floor(diffSeconds / 60);
-		const diffHours = Math.floor(diffMinutes / 60);
-		const diffDays = Math.floor(diffHours / 24);
+		// Use calendar day diff (midnight-to-midnight) to avoid "0 days ago" for late-yesterday timestamps
+		const tsMidnight = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()).getTime();
+		const diffDays = Math.round((today.getTime() - tsMidnight) / (1000 * 60 * 60 * 24));
 		const diffWeeks = Math.floor(diffDays / 7);
 		const diffMonths = Math.floor(diffDays / 30);
-		const diffYears = Math.floor(diffDays / 365);
 
-		if (diffDays < 7) {
-			return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+		if (diffDays === 1) {
+			return 'yesterday';
+		} else if (diffDays < 7) {
+			return `${diffDays} days ago`;
 		} else if (diffWeeks < 4) {
 			return `${diffWeeks} ${diffWeeks === 1 ? 'week' : 'weeks'} ago`;
 		} else if (diffMonths < 12) {
