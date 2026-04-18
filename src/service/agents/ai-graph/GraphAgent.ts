@@ -165,12 +165,13 @@ export class GraphAgent {
                             if (toolName === 'read_sources') {
                                 onStep?.({ type: 'step-start', id: 'read', label: `正在读取 ${input.sources.length} 篇源文件内容...` });
                             } else if (toolName === 'submit_graph') {
+                                onStep?.({ type: 'step-done', id: 'analyze', label: '文档关系分析完成' });
                                 onStep?.({ type: 'step-start', id: 'submit', label: '正在构建图谱结构...' });
                             }
                         }
                         if (block.type === 'text' && block.text && turnIndex > 1) {
-                            const snippet = block.text.length > 80 ? block.text.slice(0, 80) + '...' : block.text;
-                            onStep?.({ type: 'thinking', id: 'analyze', label: '正在分析文档关系...', detail: snippet });
+                            const snippet = block.text.length > 100 ? block.text.slice(0, 100) + '...' : block.text;
+                            onStep?.({ type: 'thinking', id: 'analyze', label: '正在分析文档关系、聚类和演化链...', detail: snippet });
                         }
                     }
                 }
@@ -178,10 +179,9 @@ export class GraphAgent {
                 if (msg.type === 'user' && msg.message?.content) {
                     for (const block of msg.message.content) {
                         if ((block as any).type === 'tool_result') {
-                            const toolId = (block as any).tool_use_id ?? '';
-                            if (toolId) {
-                                onStep?.({ type: 'step-done', id: 'read', label: '源文件读取完成' });
-                            }
+                            onStep?.({ type: 'step-done', id: 'read', label: '源文件读取完成' });
+                            // Immediately show "analyzing" step so user sees a spinner
+                            onStep?.({ type: 'step-start', id: 'analyze', label: '正在分析文档关系、聚类和演化链...' });
                         }
                     }
                 }
