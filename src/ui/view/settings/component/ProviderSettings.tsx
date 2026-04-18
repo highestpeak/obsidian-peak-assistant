@@ -171,6 +171,11 @@ function ProviderConfigForm({ selectedProvider: provider, settings, onConfigChan
 						value={selectedConfig.apiKey || ''}
 						onConfirm={(value) => onConfigChange(provider, 'apiKey', value)}
 					/>
+					{isSelectedEnabled && !selectedConfig.apiKey && (
+						<div className="pktw-mt-2 pktw-text-xs pktw-text-[#e57a00]">
+							⚠ API key is required when provider is enabled. Calls to this provider will fail without a key.
+						</div>
+					)}
 				</div>
 			</div>
 
@@ -438,8 +443,13 @@ export function ProviderSettingsComponent({ settings, aiServiceManager, onUpdate
 		await onUpdate({ llmProviderConfigs: updatedConfigs });
 	}, [settings, onUpdate]);
 
-	// todo select enable first or disable fist
-	const [selectedProvider, setSelectedProvider] = useState<string>('openai');
+	// Auto-select the first enabled provider, falling back to 'openai'
+	const [selectedProvider, setSelectedProvider] = useState<string>(() => {
+		const firstEnabled = allProviderMetadata.find(
+			(p) => settings.llmProviderConfigs[p.id]?.enabled,
+		);
+		return firstEnabled?.id ?? 'openai';
+	});
 
 	return (
 		<div className="pktw-flex pktw-gap-0 pktw-border pktw-border-border pktw-rounded-lg pktw-overflow-hidden pktw-min-h-[500px]">
