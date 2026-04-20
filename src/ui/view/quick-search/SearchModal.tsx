@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { VaultSearchTab } from './tab-VaultSearch';
+import { VaultSearchTab, VaultSearchFooterHints } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
 import { Search, Sparkles, Globe, X, RotateCcw, Brain, Network } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -15,9 +15,8 @@ import type { QuickSearchMode } from './store/vaultSearchStore';
 import { useSearchSession } from './hooks/useSearchSession';
 import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { AppContext } from '@/app/context/AppContext';
-import { getActiveNoteDetail } from '@/core/utils/obsidian-utils';
-import { createOpenSourceCallback } from './callbacks/open-source-file';
-import { InspectorPanel } from './components/inspector/InspectorPanel';
+import { formatDuration } from '@/core/utils/format-utils';
+import { InspectorSidePanel } from './components/inspector/InspectorSidePanel';
 import { isMobile } from '@/core/platform';
 import { ContextProvider } from '@/service/context/ContextProvider';
 import { matchPatterns, type MatchedSuggestion } from '@/service/context/PatternMatcher';
@@ -377,8 +376,11 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
 	const { app } = useServiceContext();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
-	const { updateParsedQuery, isSearching, quickSearchMode, inspectorOpen } = useVaultSearchStore();
+	const { updateParsedQuery, isSearching, quickSearchMode, inspectorOpen, lastSearchDuration, lastSearchResults } = useVaultSearchStore();
 	const incrementTriggerAnalysis = useSearchSessionStore((s) => s.incrementTriggerAnalysis);
+	const hasSearchQuery = !!vaultSearchQuery.trim();
+	const [inspectorPath, setInspectorPath] = useState<string | null>(null);
+
 	/**
 	 * Display mode is derived from the raw input prefix, not from store mode.
 	 * Store mode may fallback to 'vault' when there is no file context (desktop/mock),
@@ -391,7 +393,6 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 			: vaultSearchQuery.trimStart().startsWith('@')
 				? ('inFolder' as const)
 				: ('vault' as const);
-	const currentPath = getActiveNoteDetail(app).activeFile?.path ?? null;
 
 	const VAULT_CYCLE_MODES = ['vault', 'inFolder', 'inFile', 'goToLine'] as const;
 	const cycleVaultMode = (dir: 1 | -1) => {
@@ -425,6 +426,16 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 			e.preventDefault();
 			return;
 		}
+		if (e.key === 'ArrowRight' && !vaultSearchQuery) {
+			e.preventDefault();
+			useVaultSearchStore.getState().setInspectorOpen(true);
+			return;
+		}
+		if (e.key === 'ArrowLeft' && useVaultSearchStore.getState().inspectorOpen) {
+			e.preventDefault();
+			useVaultSearchStore.getState().setInspectorOpen(false);
+			return;
+		}
 		if ((e.key === 'a' || e.key === 'A') && (e.metaKey || e.ctrlKey) && inputRef.current) {
 			e.preventDefault();
 			e.stopPropagation();
@@ -452,6 +463,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 
 	return (
 		<>
+			{/* Input row */}
 			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
 				<div className="pktw-flex pktw-gap-3 pktw-items-center">
 					<div className="pktw-relative pktw-flex-1 pktw-min-w-0">
@@ -494,19 +506,54 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 					</Button>
 				</div>
 			</div>
-			{inspectorOpen && !isMobile() && (
-				<div className="pktw-flex-1 pktw-min-h-[320px] pktw-min-w-0 pktw-flex pktw-flex-col">
-					<InspectorPanel
-						currentPath={currentPath}
+
+			{/* Content area — side-by-side results + inspector */}
+			<div className="pktw-flex-1 pktw-min-h-0 pktw-flex">
+				{/* Results panel — always visible */}
+				<div className={cn(
+					'pktw-min-w-0 pktw-overflow-hidden',
+					inspectorOpen ? 'pktw-flex-1' : 'pktw-w-full',
+				)}>
+					<VaultSearchTab
 						onClose={onClose}
+						onSelectForInspector={(path) => setInspectorPath(path)}
 					/>
 				</div>
-			)}
-			<div className={cn(
-				'pktw-min-w-0 pktw-bg-white pktw-overflow-visible pktw-flex pktw-flex-col',
-				inspectorOpen ? 'pktw-flex-shrink-0' : 'pktw-flex-1 pktw-min-h-0'
-			)}>
-				<VaultSearchTab onClose={onClose} inspectorOpen={inspectorOpen} />
+
+				{/* Inspector side panel — 340px, conditional */}
+				{inspectorOpen && !isMobile() && (
+					<div className="pktw-w-[340px] pktw-flex-shrink-0 pktw-border-l pktw-border-[#e5e7eb] pktw-overflow-hidden">
+						<InspectorSidePanel
+							currentPath={inspectorPath}
+							searchQuery={vaultSearchQuery}
+							onClose={() => useVaultSearchStore.getState().setInspectorOpen(false)}
+							onNavigate={(path) => setInspectorPath(path)}
+						/>
+					</div>
+				)}
+			</div>
+
+			{/* Footer — modal level, always visible */}
+			<div className="pktw-flex-shrink-0 pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between">
+				<VaultSearchFooterHints />
+				<div className="pktw-flex pktw-items-center pktw-gap-3">
+					{hasSearchQuery && (
+						isSearching ? (
+							<span className="pktw-text-xs pktw-text-[#999999]">Searching...</span>
+						) : (
+							<>
+								<span className="pktw-text-xs pktw-text-[#999999]">
+									{lastSearchResults.length} result{lastSearchResults.length !== 1 ? 's' : ''}
+								</span>
+								{lastSearchDuration !== null && (
+									<span className="pktw-text-xs pktw-text-[#999999]">
+										• <strong className="pktw-text-[#2e3338]">{formatDuration(lastSearchDuration)}</strong>
+									</span>
+								)}
+							</>
+						)
+					)}
+				</div>
 			</div>
 		</>
 	);

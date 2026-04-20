@@ -1,9 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { SearchX, Database } from 'lucide-react';
+import { SearchX } from 'lucide-react';
 import { KeyboardShortcut } from '../../component/mine/KeyboardShortcut';
 import { EmptyState } from '../../component/mine/EmptyState';
 import { SearchResultRow } from './components/VaultSearchResult';
-import { formatDuration } from '@/core/utils/format-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { useVaultSearchStore } from './store';
 import { useSharedStore } from './store';
@@ -30,11 +29,8 @@ const NoRecentlyAccessedState: React.FC = () => (
 	/>
 );
 
-/**
- * Footer hints section for vault search tab
- */
-/** Footer hints for vault search tab. */
-const VaultSearchFooterHints: React.FC = () => (
+/** Footer hints for vault search tab. Exported for use in SearchModal footer. */
+export const VaultSearchFooterHints: React.FC = () => (
 	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-[#999999]">
 		<KeyboardShortcut keys="↑↓" description="navigate" />
 		<KeyboardShortcut keys="Enter" description="open" />
@@ -46,15 +42,16 @@ const VaultSearchFooterHints: React.FC = () => (
 
 interface VaultSearchTabProps {
 	onClose?: () => void;
-	/** When true, hide search results and show note-context hint. */
-	inspectorOpen?: boolean;
+	/** Callback when a result is selected while inspector is open. */
+	onSelectForInspector?: (path: string) => void;
 }
 
 /**
  * Quick search tab for regular vault search results.
  */
-export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, inspectorOpen }) => {
-	const { quickSearchMode, lastSearchDuration, isSearching, lastSearchResults: displayedResults } = useVaultSearchStore();
+export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelectForInspector }) => {
+	const { quickSearchMode, isSearching, lastSearchResults: displayedResults } = useVaultSearchStore();
+	const inspectorOpen = useVaultSearchStore((s) => s.inspectorOpen);
 	const hasSearchQuery = useHasSearchQuery();
 	const searchQuery = useSearchQuery();
 	const [selectedIndex, setSelectedIndex] = React.useState(-1);
@@ -64,12 +61,24 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, inspect
 	// Use vault search hook for data fetching
 	useVaultSearch();
 
+	// Debounced selection tracking for inspector panel
+	useEffect(() => {
+		if (!inspectorOpen || selectedIndex < 0) return;
+		const result = displayedResults[selectedIndex];
+		if (!result?.path) return;
+		const t = setTimeout(() => {
+			onSelectForInspector?.(result.path);
+		}, 150);
+		return () => clearTimeout(t);
+	}, [selectedIndex, inspectorOpen]);
+
 	// Handle keyboard navigation
 	useEffect(() => {
 		const handleKeyDown = async (e: KeyboardEvent) => {
 			// Navigation keys (ArrowUp, ArrowDown, Enter) should work even when focus is in input
 			// Other keys should be ignored if focus is in input/textarea
-			const isNavigationKey = e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter';
+			const isNavigationKey = e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter'
+				|| e.key === 'ArrowRight' || e.key === 'ArrowLeft';
 			if (
 				(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) &&
 				!isNavigationKey
@@ -79,18 +88,30 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, inspect
 
 			const currentMode = useVaultSearchStore.getState().quickSearchMode;
 			const maxIndex = currentMode === 'help' ? MODE_COUNT - 1 : displayedResults.length - 1;
-			if (maxIndex < 0) return;
 
 			switch (e.key) {
+				case 'ArrowRight':
+					e.preventDefault();
+					useVaultSearchStore.getState().setInspectorOpen(true);
+					break;
+				case 'ArrowLeft':
+					if (useVaultSearchStore.getState().inspectorOpen) {
+						e.preventDefault();
+						useVaultSearchStore.getState().setInspectorOpen(false);
+					}
+					break;
 				case 'ArrowUp':
+					if (maxIndex < 0) return;
 					e.preventDefault();
 					setSelectedIndex((prev) => (prev > 0 ? prev - 1 : maxIndex));
 					break;
 				case 'ArrowDown':
+					if (maxIndex < 0) return;
 					e.preventDefault();
 					setSelectedIndex((prev) => (prev < maxIndex ? prev + 1 : 0));
 					break;
 				case 'Enter': {
+					if (maxIndex < 0) return;
 					e.preventDefault();
 					if (currentMode === 'help') {
 						const prefixes = ['', '#', '@', ':', '?'];
@@ -137,11 +158,9 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, inspect
 
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-min-h-0 pktw-overflow-hidden">
-			{/* Results List - hidden when Inspector is open so user sees note context only */}
+			{/* Results List — always visible (inspector is rendered side-by-side in parent) */}
 			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto" style={{ flexBasis: 0, minHeight: 0 }}>
-				{inspectorOpen ? (
-					<></>
-				) : quickSearchMode === 'help' ? (
+				{quickSearchMode === 'help' ? (
 					<ModeHelpList
 						onSelectMode={(prefix) => {
 							useSharedStore.getState().setVaultSearchQuery(prefix);
@@ -186,29 +205,6 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, inspect
 						)}
 					</>
 				)}
-			</div>
-
-			{/* Footer */}
-			<div className="pktw-flex-shrink-0 pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between">
-				<VaultSearchFooterHints />
-				<div className="pktw-flex pktw-items-center pktw-gap-3">
-					{hasSearchQuery && (
-						isSearching ? (
-							<span className="pktw-text-xs pktw-text-[#999999]">Searching...</span>
-						) : (
-							<>
-								<span className="pktw-text-xs pktw-text-[#999999]">
-									{displayedResults.length} result{displayedResults.length !== 1 ? 's' : ''}
-								</span>
-								{lastSearchDuration !== null && (
-									<span className="pktw-text-xs pktw-text-[#999999]">
-										• <strong className="pktw-text-[#2e3338]">{formatDuration(lastSearchDuration)}</strong>
-									</span>
-								)}
-							</>
-						)
-					)}
-				</div>
 			</div>
 		</div>
 	);
