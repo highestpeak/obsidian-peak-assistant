@@ -380,6 +380,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const incrementTriggerAnalysis = useSearchSessionStore((s) => s.incrementTriggerAnalysis);
 	const hasSearchQuery = !!vaultSearchQuery.trim();
 	const [inspectorPath, setInspectorPath] = useState<string | null>(null);
+	const [navigateToPath, setNavigateToPath] = useState<string | null>(null);
 
 	/**
 	 * Display mode is derived from the raw input prefix, not from store mode.
@@ -517,6 +518,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 					<VaultSearchTab
 						onClose={onClose}
 						onSelectForInspector={(path) => setInspectorPath(path)}
+						navigateToPath={navigateToPath}
 					/>
 				</div>
 
@@ -527,7 +529,10 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 							currentPath={inspectorPath}
 							searchQuery={vaultSearchQuery}
 							onClose={() => useVaultSearchStore.getState().setInspectorOpen(false)}
-							onNavigate={(path) => setInspectorPath(path)}
+							onNavigate={(path) => {
+						setInspectorPath(path);
+						setNavigateToPath(path);
+					}}
 						/>
 					</div>
 				)}

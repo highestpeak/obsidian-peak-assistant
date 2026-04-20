@@ -44,12 +44,14 @@ interface VaultSearchTabProps {
 	onClose?: () => void;
 	/** Callback when a result is selected while inspector is open. */
 	onSelectForInspector?: (path: string) => void;
+	/** When set, selects the result matching this path (from inspector navigation). */
+	navigateToPath?: string | null;
 }
 
 /**
  * Quick search tab for regular vault search results.
  */
-export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelectForInspector }) => {
+export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelectForInspector, navigateToPath }) => {
 	const { quickSearchMode, isSearching, lastSearchResults: displayedResults } = useVaultSearchStore();
 	const inspectorOpen = useVaultSearchStore((s) => s.inspectorOpen);
 	const hasSearchQuery = useHasSearchQuery();
@@ -71,6 +73,22 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 		}, 150);
 		return () => clearTimeout(t);
 	}, [selectedIndex, inspectorOpen]);
+
+	// Task 12: Navigate to a path from inspector (select matching result)
+	useEffect(() => {
+		if (!navigateToPath) return;
+		const idx = displayedResults.findIndex((r) => r.path === navigateToPath);
+		if (idx >= 0) {
+			setSelectedIndex(idx);
+		}
+	}, [navigateToPath]);
+
+	// Task 13: Pre-select first result on open when no query
+	useEffect(() => {
+		if (!hasSearchQuery && displayedResults.length > 0 && selectedIndex === -1) {
+			setSelectedIndex(0);
+		}
+	}, [displayedResults.length, hasSearchQuery]);
 
 	// Handle keyboard navigation
 	useEffect(() => {
@@ -183,7 +201,7 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 							<>
 								{!hasSearchQuery && (
 									<div className="pktw-px-4 pktw-pb-2">
-										<span className="pktw-text-xs pktw-text-[#999999]">Recently accessed</span>
+										<span className="pktw-text-xs pktw-text-[#999999]">Recently opened</span>
 									</div>
 								)}
 								{displayedResults.map((result, index) => (

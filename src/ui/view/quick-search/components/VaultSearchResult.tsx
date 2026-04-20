@@ -174,6 +174,13 @@ export const SearchResultRow: React.FC<{
 					)}
 				</div>
 
+				{/* Relevance score badge — shown when score exists */}
+				{result.score != null && result.score > 0 && (
+					<span className="pktw-flex-shrink-0 pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]">
+						{Math.round(result.score * 100)}%
+					</span>
+				)}
+
 				{/* Last Modified Time */}
 				<div className="pktw-flex-shrink-0 pktw-ml-4 pktw-text-xs pktw-text-[#999999] pktw-whitespace-nowrap">
 					{humanReadableTime(result.lastModified)}
