@@ -209,6 +209,18 @@ export interface Database {
 		/** Analysis preset for history icon and restore: vaultFull | aiGraph. */
 		analysis_preset: string | null;
 	};
+	query_pattern: {
+		id: string;
+		template: string;
+		variables: string;       // JSON string array
+		conditions: string;      // JSON MatchCondition
+		source: string;          // "default" | "discovered"
+		confidence: number;
+		usage_count: number;
+		discovered_at: number;
+		last_used_at: number | null;
+		deprecated: number;      // 0 = active, 1 = deprecated
+	};
 	/**
 	 * Unified graph + doc meta node store (no FKs). Tag stats live on type=tag rows.
 	 * Tag-specific extras (e.g. quality flags) use `attributes_json`, not dedicated columns.
@@ -520,6 +532,23 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	tryExec(`ALTER TABLE ai_analysis_record DROP COLUMN meta_json`);
 	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN title TEXT`);
 	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN analysis_preset TEXT`);
+
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS query_pattern (
+			id              TEXT PRIMARY KEY,
+			template        TEXT NOT NULL,
+			variables       TEXT NOT NULL,
+			conditions      TEXT NOT NULL,
+			source          TEXT NOT NULL,
+			confidence      REAL DEFAULT 1.0,
+			usage_count     INTEGER DEFAULT 0,
+			discovered_at   INTEGER NOT NULL,
+			last_used_at    INTEGER,
+			deprecated      INTEGER DEFAULT 0
+		);
+		CREATE INDEX IF NOT EXISTS idx_query_pattern_deprecated ON query_pattern(deprecated);
+		CREATE INDEX IF NOT EXISTS idx_query_pattern_source ON query_pattern(source);
+	`);
 
 	// Mobius layer: merged nodes + edges without FKs; operations log.
 	// No DROP INDEX here: assume greenfield; indexes are defined once below.
