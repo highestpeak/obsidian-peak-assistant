@@ -268,6 +268,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 			'Return only one JSON object: findingsSummary, optional theme, partitions (max 6, entryPaths max 2 each), coreEntities (max 8, whyItMatters each), topology (max 8), evolution, entryPoints (max 24; count N from Vault scale in user prompt; intent, startPaths max 2, rich whatYouWillFind), optional openQuestions (max 6), should_stop.',
 		systemPromptId: 'knowledge-intuition-submit-system' as PromptId,
 	}),
+	'pattern-discovery': meta('prompts', 'pattern-discovery', { expectsJson: true, jsonConstraint: 'Return only the JSON object with newPatterns and deprecateIds, no markdown or explanation.' }),
 	'context-memory': meta('prompts', 'context-memory'),
 	'user-profile-context': meta('prompts', 'user-profile-context'),
 	'profile-from-vault-json': meta('prompts', 'profile-from-vault-json', { expectsJson: true, jsonConstraint: 'Return only the JSON array, nothing else.' }),

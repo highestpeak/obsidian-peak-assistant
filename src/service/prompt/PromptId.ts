@@ -81,6 +81,9 @@ export enum PromptId {
 	/** User: assembled context for document submit. */
 	HubDiscoveryDocumentReconSubmit = 'hub-discovery-document-recon-submit',
 
+	/** Pattern discovery agent: analyze query history → new query templates. */
+	PatternDiscovery = 'pattern-discovery',
+
 	/** System: Knowledge intuition — plan step (tools optional). */
 	KnowledgeIntuitionPlanSystem = 'knowledge-intuition-plan-system',
 	/** User: backbone + folder digest + document shortlist for intuition planning. */
@@ -731,6 +734,15 @@ export interface PromptVariables {
 		userPrompt?: string;
 		missionRole: string;
 		userNotes?: string;
+	};
+
+	// Pattern discovery
+	[PromptId.PatternDiscovery]: {
+		availableVariables: string;
+		availableConditions: string;
+		queriesJson: string;
+		existingPatternsJson: string;
+		vaultStructureJson: string;
 	};
 }
 
