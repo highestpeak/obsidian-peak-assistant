@@ -361,9 +361,8 @@ interface VaultTabContentProps {
 /** Returns search query string for the given mode (prefix # / @ / : or none). */
 function transformQueryForMode(raw: string, toMode: QuickSearchMode): string {
 	const trimmed = raw.trimStart();
-	// Strip existing mode prefix, including Inspector prefix `[[`.
-	// This ensures we can switch away from Inspector mode via the menu.
-	const withoutPrefix = trimmed.replace(/^\s*(\[\[|[#@:])\s*/, '') || '';
+	// Strip existing mode prefix (#, @, :, ?).
+	const withoutPrefix = trimmed.replace(/^\s*[#@:?]\s*/, '') || '';
 	if (toMode === 'vault') return withoutPrefix;
 	if (toMode === 'inFolder') return trimmed.startsWith('@') ? raw : `@ ${withoutPrefix}`;
 	if (toMode === 'inFile') return trimmed.startsWith('#') ? raw : `# ${withoutPrefix}`;
@@ -379,38 +378,28 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	const inputRef = useRef<{ focus: () => void; select: () => void } | null>(null);
 	const { app } = useServiceContext();
 	const { vaultSearchQuery, setVaultSearchQuery, setSearchQuery } = useSharedStore();
-	const { updateParsedQuery, isSearching, quickSearchMode } = useVaultSearchStore();
+	const { updateParsedQuery, isSearching, quickSearchMode, inspectorOpen } = useVaultSearchStore();
 	const incrementTriggerAnalysis = useSearchSessionStore((s) => s.incrementTriggerAnalysis);
-	const inspectorOpen = vaultSearchQuery.includes('[[');
 	/**
 	 * Display mode is derived from the raw input prefix, not from store mode.
 	 * Store mode may fallback to 'vault' when there is no file context (desktop/mock),
-	 * but UI should still highlight what the user is trying to use (# / : / [[).
+	 * but UI should still highlight what the user is trying to use (# / : / @).
 	 */
-	const displayMode = inspectorOpen
-		? ('inspector' as const)
-		: vaultSearchQuery.trimStart().startsWith('#')
-			? ('inFile' as const)
-			: vaultSearchQuery.trimStart().startsWith(':')
-				? ('goToLine' as const)
-				: vaultSearchQuery.trimStart().startsWith('@')
-					? ('inFolder' as const)
-					: ('vault' as const);
+	const displayMode = vaultSearchQuery.trimStart().startsWith('#')
+		? ('inFile' as const)
+		: vaultSearchQuery.trimStart().startsWith(':')
+			? ('goToLine' as const)
+			: vaultSearchQuery.trimStart().startsWith('@')
+				? ('inFolder' as const)
+				: ('vault' as const);
 	const currentPath = getActiveNoteDetail(app).activeFile?.path ?? null;
 
-	const VAULT_DISPLAY_MODES = ['vault', 'inFolder', 'inFile', 'goToLine', 'inspector'] as const;
-	const VAULT_CYCLE_MODES = isMobile()
-		? (['vault', 'inFolder', 'inFile', 'goToLine'] as const)
-		: VAULT_DISPLAY_MODES;
+	const VAULT_CYCLE_MODES = ['vault', 'inFolder', 'inFile', 'goToLine'] as const;
 	const cycleVaultMode = (dir: 1 | -1) => {
 		const idx = VAULT_CYCLE_MODES.indexOf(displayMode as typeof VAULT_CYCLE_MODES[number]);
 		const safeIdx = idx >= 0 ? idx : 0;
 		const nextMode = VAULT_CYCLE_MODES[(safeIdx + dir + VAULT_CYCLE_MODES.length) % VAULT_CYCLE_MODES.length];
-		if (nextMode === 'inspector') {
-			setVaultSearchQuery('[[');
-		} else {
-			setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, nextMode));
-		}
+		setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, nextMode));
 	};
 
 	const handleAskAI = () => {
@@ -476,9 +465,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 									className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10 !pktw-w-6 !pktw-h-6 pktw-rounded-full pktw-bg-white pktw-shadow-[0_2px_10px_rgba(124,58,237,0.22),0_0_0_1px_rgba(124,58,237,0.12)] pktw-text-[#5b21b6] pktw-transition-[box-shadow,color,background-color] hover:pktw-bg-[#f5f3ff] hover:pktw-shadow-[0_4px_14px_rgba(124,58,237,0.28),0_0_0_1px_rgba(124,58,237,0.2)] hover:pktw-text-[#7c3aed] focus-visible:pktw-ring-2 focus-visible:pktw-ring-[#7c3aed]/40"
 									title="Search mode (Option+↑/↓ to switch)"
 								>
-									{displayMode === 'inspector' ? (
-										<Network className="pktw-w-4 pktw-h-4" />
-									) : displayMode === 'goToLine' ? (
+									{displayMode === 'goToLine' ? (
 										<ListOrdered className="pktw-w-4 pktw-h-4" />
 									) : displayMode === 'inFile' ? (
 										<Hash className="pktw-w-4 pktw-h-4" />
@@ -541,21 +528,6 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 									<span className="pktw-font-medium">Go to line</span>
 									<span className="pktw-text-[11px]">· go to target line</span>
 								</Button>
-								{!isMobile() && (
-									<Button
-										variant="ghost"
-										onClick={() => setVaultSearchQuery('[[')}
-										style={{ cursor: 'pointer' }}
-										className={cn(
-											'pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1 pktw-text-left pktw-text-sm pktw-rounded',
-											displayMode === 'inspector' && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
-										)}
-									>
-										<Network className={cn('pktw-w-3.5 pktw-h-3.5 pktw-shrink-0', displayMode === 'inspector' && 'pktw-text-[#7c3aed]')} />
-										<span className="pktw-font-medium">Inspector</span>
-										<span className="pktw-text-[11px]">· inspect target note</span>
-									</Button>
-								)}
 							</HoverCardContent>
 						</HoverCard>
 						<div className="pktw-relative pktw-flex pktw-items-center pktw-min-w-0">
@@ -564,7 +536,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 								value={vaultSearchQuery}
 								onChange={setVaultSearchQuery}
 								onKeyDown={handleInputKeyDown}
-								placeholder="Search in vault... (# in-file, : go to line, [[ inspector)"
+								placeholder="Search in vault... (# in-file, @ folder, : go to line, ? help)"
 								enableSearchTags={false}
 								singleLine={true}
 								containerClassName="pktw-flex-1 pktw-min-w-0 pktw-pl-11 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-muted-foreground pktw-rounded-full pktw-transition-all pktw-z-0"

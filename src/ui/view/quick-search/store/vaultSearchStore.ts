@@ -17,7 +17,7 @@ export interface GoToLine {
 	text: string;
 }
 
-export type QuickSearchMode = 'vault' | 'inFile' | 'inFolder' | 'goToLine';
+export type QuickSearchMode = 'vault' | 'inFile' | 'inFolder' | 'goToLine' | 'help';
 
 interface VaultSearchStore {
 	// State
@@ -28,6 +28,9 @@ interface VaultSearchStore {
 	lastSearchDuration: number | null;
 	isSearching: boolean;
 	lastSearchResults: SearchResultItem[];
+	inspectorOpen: boolean;
+	setInspectorOpen: (open: boolean) => void;
+	toggleInspector: () => void;
 
 	// Actions
 	updateParsedQuery: (app: App, searchQuery: string) => void;
@@ -47,6 +50,9 @@ export const useVaultSearchStore = create<VaultSearchStore>((set) => ({
 	lastSearchDuration: null,
 	isSearching: false,
 	lastSearchResults: [],
+	inspectorOpen: false,
+	setInspectorOpen: (open) => set({ inspectorOpen: open }),
+	toggleInspector: () => set((s) => ({ inspectorOpen: !s.inspectorOpen })),
 
 	// Actions
 	updateParsedQuery: (app, searchQuery) => {
@@ -106,7 +112,10 @@ function parseQuickSearchInput(params: {
 	let mode: QuickSearchMode = 'vault';
 	let text = input;
 
-	if (trimmed.startsWith('#')) {
+	if (trimmed.startsWith('?')) {
+		mode = 'help';
+		text = trimmed.slice(1).trimStart();
+	} else if (trimmed.startsWith('#')) {
 		mode = 'inFile';
 		text = trimmed.slice(1).trimStart();
 	} else if (trimmed.startsWith('@')) {
