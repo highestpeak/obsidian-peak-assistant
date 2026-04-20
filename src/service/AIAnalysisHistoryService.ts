@@ -43,4 +43,22 @@ export class AIAnalysisHistoryService {
 		const repo = sqliteStoreManager.getAIAnalysisRepo();
 		await repo.deleteAll();
 	}
+
+	/**
+	 * Finds the most relevant AI Graph analysis for the given query.
+	 * Filters to aiGraph preset, scores by keyword overlap, returns best match.
+	 */
+	async findRelatedAIGraph(query: string): Promise<AIAnalysisHistoryRecord | null> {
+		if (!query.trim()) return null;
+		const repo = sqliteStoreManager.getAIAnalysisRepo();
+		const rows = await repo.list({ limit: 20, offset: 0 }) as AIAnalysisHistoryRecord[];
+		const graphRows = rows.filter((r) => r.analysis_preset === 'aiGraph');
+		if (graphRows.length === 0) return null;
+		const keywords = query.toLowerCase().split(/\s+/).filter(Boolean);
+		for (const row of graphRows) {
+			const rq = (row.query ?? '').toLowerCase();
+			if (keywords.some((kw) => rq.includes(kw))) return row;
+		}
+		return graphRows[0] ?? null;
+	}
 }

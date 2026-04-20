@@ -528,6 +528,80 @@ export function filterLinksByQuery(links: ConnectedLink[], query: string): Conne
 	return scored.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
 }
 
+// ─── DiscoveredConnections ───────────────────────────────────────────────────
+
+import { getCoCitations } from './coCitationService';
+import { getUnlinkedMentions } from './unlinkedMentionService';
+
+export interface DiscoveredConnection {
+	path: string;
+	label: string;
+	type: 'SEM' | 'CO-CITE' | 'UNLINKED';
+	score: number;
+	whyText: string;
+}
+
+/**
+ * Returns discovered (non-explicit) connections for a note:
+ * semantic similarity, co-citation, and unlinked mentions.
+ * Results are merged, deduped by path (highest score wins), sorted by score DESC.
+ */
+export async function getDiscoveredConnections(
+	currentPath: string,
+	limit = 15,
+): Promise<DiscoveredConnection[]> {
+	const tenant: IndexTenant = getIndexTenantForPath(currentPath);
+	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+
+	const docMeta = await indexedDocumentRepo.getByPath(currentPath);
+
+	const [semItems, coCiteItems, unlinkedItems] = await Promise.all([
+		docMeta
+			? SemanticRelatedEdgesReadService.loadGraphSemanticLinkItems(docMeta.id, tenant, SEMANTIC_LIMIT)
+			: Promise.resolve([]),
+		getCoCitations(currentPath, 10),
+		getUnlinkedMentions(currentPath, 10),
+	]);
+
+	const discovered: DiscoveredConnection[] = [
+		...semItems.map((g): DiscoveredConnection => ({
+			path: g.path,
+			label: g.label,
+			type: 'SEM',
+			score: parseFloat(String(g.similarity ?? '0').replace(/%/, '')) / 100,
+			whyText: 'Content similarity',
+		})),
+		...coCiteItems.map((c): DiscoveredConnection => ({
+			path: c.path,
+			label: c.label,
+			type: 'CO-CITE',
+			score: c.score,
+			whyText: `Both cited by: ${c.citingNotes.slice(0, 3).join(', ')}`,
+		})),
+		...unlinkedItems.map((u): DiscoveredConnection => ({
+			path: u.path,
+			label: u.label,
+			type: 'UNLINKED',
+			score: u.score,
+			whyText: u.contextSnippet,
+		})),
+	];
+
+	// Deduplicate by path, keep highest score
+	const byPath = new Map<string, DiscoveredConnection>();
+	for (const item of discovered) {
+		if (!item.path) continue;
+		const cur = byPath.get(item.path);
+		if (!cur || item.score > cur.score) {
+			byPath.set(item.path, item);
+		}
+	}
+
+	return [...byPath.values()]
+		.sort((a, b) => b.score - a.score)
+		.slice(0, limit);
+}
+
 /**
  * Run inspect_note_context for a note; returns markdown summary.
  */

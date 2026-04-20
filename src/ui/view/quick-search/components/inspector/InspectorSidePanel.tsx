@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { FileText, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { cn } from '@/ui/react/lib/utils';
+import { ConnectedSection } from './ConnectedSection';
+import { DiscoveredSection } from './DiscoveredSection';
+import { AIGraphSection } from './AIGraphSection';
 
 /** Collapsible section wrapper used by InspectorSidePanel. */
 const CollapsibleSection: React.FC<{
@@ -77,13 +80,13 @@ export const InspectorSidePanel: React.FC<InspectorSidePanelProps> = ({
 			{/* Scrollable content with collapsible sections */}
 			<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto">
 				<CollapsibleSection title="Connected">
-					<span className="pktw-text-xs pktw-text-[#9ca3af]">Loading connections...</span>
+					<ConnectedSection currentPath={currentPath} searchQuery={searchQuery} onNavigate={onNavigate} />
 				</CollapsibleSection>
 				<CollapsibleSection title="Discovered">
-					<span className="pktw-text-xs pktw-text-[#9ca3af]">Loading discoveries...</span>
+					<DiscoveredSection currentPath={currentPath} searchQuery={searchQuery} onNavigate={onNavigate} />
 				</CollapsibleSection>
 				<CollapsibleSection title="AI Graph" defaultOpen={false}>
-					<span className="pktw-text-xs pktw-text-[#9ca3af]">No AI Graph data</span>
+					<AIGraphSection currentPath={currentPath} searchQuery={searchQuery} />
 				</CollapsibleSection>
 			</div>
 		</div>
