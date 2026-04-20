@@ -423,6 +423,111 @@ export async function runInspectorPath(
 	}
 }
 
+// ─── ConnectedLinks ──────────────────────────────────────────────────────────
+
+export interface ConnectedLink {
+	path: string;
+	label: string;
+	/** 'out' = outgoing link, 'in' = backlink */
+	direction: 'out' | 'in';
+	/** Text surrounding the [[link]] mention; null if not stored in edge attributes */
+	contextSnippet: string | null;
+	/** Incoming-link count for this note (convergence signal) */
+	convergenceCount: number;
+	/** Query relevance score (0-1); null when no query provided */
+	relevanceScore: number | null;
+}
+
+/**
+ * Returns a flat merged list of connected notes (outgoing + incoming) with direction badges.
+ * Follows the same repo/tenant pattern as getInspectorLinks().
+ */
+export async function getConnectedLinks(currentPath: string): Promise<ConnectedLink[]> {
+	const tenant: IndexTenant = getIndexTenantForPath(currentPath);
+	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
+	const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+	const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+
+	const docMeta = await indexedDocumentRepo.getByPath(currentPath);
+	if (!docMeta) return [];
+
+	const edges = await mobiusEdgeRepo.getAllEdgesForNode(docMeta.id, LINKS_LIMIT);
+
+	// Separate with context stored in edge attributes
+	const outEdges = edges.filter((e) => e.from_node_id === docMeta.id);
+	const inEdges = edges.filter((e) => e.to_node_id === docMeta.id);
+
+	const outIds = outEdges.map((e) => e.to_node_id);
+	const inIds = inEdges.map((e) => e.from_node_id);
+	const allIds = [...new Set([...outIds, ...inIds])];
+	const nodesMap = await mobiusNodeRepo.getByIds(allIds);
+
+	// Build context snippet lookup: nodeId -> snippet from edge attributes
+	const contextByNodeId = new Map<string, string | null>();
+	for (const e of [...outEdges, ...inEdges]) {
+		const neighborId = e.from_node_id === docMeta.id ? e.to_node_id : e.from_node_id;
+		if (contextByNodeId.has(neighborId)) continue;
+		let snippet: string | null = null;
+		try {
+			const attrs = JSON.parse(e.attributes || '{}') as { context?: string };
+			snippet = attrs.context ?? null;
+		} catch {
+			snippet = null;
+		}
+		contextByNodeId.set(neighborId, snippet);
+	}
+
+	const result: ConnectedLink[] = [];
+	const outIdSet = new Set(outIds);
+	const inIdSet = new Set(inIds);
+
+	for (const node of nodesMap.values()) {
+		if (!isIndexedNoteNodeType(node.type) || !node.label) continue;
+		const path = getPathFromNode(node);
+		if (!path) continue;
+		const contextSnippet = contextByNodeId.get(node.id) ?? null;
+		const convergenceCount = (node as { doc_incoming_cnt?: number | null }).doc_incoming_cnt ?? 0;
+
+		if (outIdSet.has(node.id)) {
+			result.push({ path, label: node.label, direction: 'out', contextSnippet, convergenceCount, relevanceScore: null });
+		}
+		if (inIdSet.has(node.id)) {
+			result.push({ path, label: node.label, direction: 'in', contextSnippet, convergenceCount, relevanceScore: null });
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Fast keyword-based scoring of ConnectedLink list — no DB calls.
+ * If query is empty, returns links as-is with relevanceScore = null.
+ * Otherwise scores each link by keyword occurrence (title 2pt, context 1pt),
+ * normalizes to 0-1, and sorts descending.
+ */
+export function filterLinksByQuery(links: ConnectedLink[], query: string): ConnectedLink[] {
+	const trimmed = query.trim();
+	if (!trimmed) return links;
+
+	const keywords = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
+	if (!keywords.length) return links;
+
+	const scored = links.map((link) => {
+		let raw = 0;
+		const titleLower = link.label.toLowerCase();
+		const contextLower = (link.contextSnippet ?? '').toLowerCase();
+		for (const kw of keywords) {
+			if (titleLower.includes(kw)) raw += 2;
+			if (contextLower.includes(kw)) raw += 1;
+		}
+		const maxPossible = keywords.length * 3;
+		const relevanceScore = maxPossible > 0 ? raw / maxPossible : 0;
+		return { ...link, relevanceScore };
+	});
+
+	return scored.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
+}
+
 /**
  * Run inspect_note_context for a note; returns markdown summary.
  */
