@@ -1,5 +1,6 @@
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { onAnalysisComplete } from '@/service/context/PatternDiscoveryTrigger';
 
 /** Record shape for AI analysis history list (matches ai_analysis_record). */
 export type AIAnalysisHistoryRecord = DbSchema['ai_analysis_record'];
@@ -19,6 +20,7 @@ export class AIAnalysisHistoryService {
 	async insertOrIgnore(record: AIAnalysisHistoryRecord): Promise<void> {
 		const repo = sqliteStoreManager.getAIAnalysisRepo();
 		await repo.insertOrIgnore(record as any);
+		onAnalysisComplete();
 		try {
 			await sqliteStoreManager.getMobiusOperationRepo().insertAiAnalysisOperation({
 				recordId: record.id,

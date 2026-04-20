@@ -28,6 +28,7 @@ import { ProviderServiceFactory } from '@/core/providers/base/factory';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
 import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { TemplateManager } from '@/core/template/TemplateManager';
+import { initPatternSystem } from '@/service/context/PatternDiscoveryTrigger';
 import { createPluginDirContentProvider } from '@/core/template/PluginDirContentProvider';
 import { createVaultContentProvider } from '@/core/template/VaultContentProvider';
 import { clearTemplateEngineForUnload } from '@/core/template-engine-helper';
@@ -138,6 +139,7 @@ export default class MyPlugin extends Plugin {
 			});
 			await this.initializeSearchService();
 			appContext.searchClient = this.searchClient!;
+			initPatternSystem().catch((e) => console.error('[PatternDiscovery] Init failed:', e));
 		} else {
 			console.log('[Peak Assistant] Mobile mode: SQLite and indexing skipped');
 		}
