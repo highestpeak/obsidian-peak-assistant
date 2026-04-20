@@ -287,18 +287,130 @@ const SEED_PATTERNS: SeedPattern[] = [
 - Deprecated records are retained (not deleted) for agent reference
 - No manual user management required — fully automatic
 
+## UI Redesign: AI Analysis Landing State
+
+The entire AI Analysis tab idle state is redesigned from "empty state + recent dump" to a command-palette-style dense, actionable landing page.
+
+### Layout Structure
+
+The modal uses a flex-column layout with three fixed zones and one scrollable zone:
+
+```
+SearchModal (flex col, max-height: calc(100vh - 160px))
+├── Tab bar — flex-shrink: 0 (Vault Search | AI Analysis)
+├── Input row — flex-shrink: 0
+│     ├── Search input (with mode icon)
+│     └── Mode pills: [🧠 Vault] [🔗 Graph]  (replaces hidden hover-card preset switcher)
+├── Scrollable content — flex: 1, min-height: 0, overflow-y: auto
+│     ├── SUGGESTED FOR YOU — 2-column card grid
+│     │     └── Each card: icon + 2-line filled template + context tags
+│     ├── ACTIVE (conditional) — session cards with spinner/badge
+│     │     └── Only rendered when background sessions exist
+│     └── RECENT — compact single-column list rows
+│           └── Each row: icon + title + metadata (mode, sources, topics) + time
+│           └── "View all N analyses →" link at bottom
+└── Footer — flex-shrink: 0 (pinned to modal, NOT inside scroll)
+      └── Keyboard hints: ↑↓ Navigate, ↵ Run, ⌥↑⌥↓ Switch mode | N analyses
+```
+
+### Suggestion Cards (2-column grid)
+
+Each suggestion card contains:
+- **Icon** (28x28, purple background) — indicates context source type (📄 active doc, 🔗 outlinks, 📁 folder, 🏷️ tags, ↩ backlinks, 🕐 recent)
+- **Title** (2-line clamp) — the filled query template, ready to use
+- **Context tags** — small pills explaining WHY this suggestion appeared ("Active doc", "3 outlinks", "Current folder", "product", "competitor")
+
+Clicking a card fills the search input and triggers analysis immediately. The grid shows up to 6 cards (3 rows of 2).
+
+### Active Session Cards
+
+Borrowed from Option C dashboard design. Each card shows:
+- Animated spinner (streaming) or static icon (plan-ready)
+- Session title (query text, truncated)
+- Status line: elapsed time + round info
+- Status badge: "Streaming" (purple) or "Plan ready" (blue)
+- Cancel button (visible on hover)
+
+Clicking a card restores the session to foreground (existing `BackgroundSessionManager.restoreToForeground()` behavior).
+
+The entire "Active" section (label + cards) is conditionally rendered — no empty label when there are no background sessions.
+
+### Mode Switching
+
+The hidden hover-card preset switcher (currently an icon button at `SearchModal.tsx:170-199`) is replaced with visible **mode pills** next to the search input:
+
+```
+[🧠 Vault] [🔗 Graph]
+```
+
+- Active pill: solid purple background
+- Inactive pill: outlined, gray text
+- `⌥↑`/`⌥↓` keyboard shortcut still works for cycling
+- Pills are `flex-shrink: 0` so they don't wrap
+
+### Footer (Modal-level)
+
+The keyboard hints footer is a direct child of the modal flex container, NOT inside the scrollable content:
+- Lives in `SearchModal.tsx`, rendered when `activeTab === 'ai'`
+- Shows: `↑↓ Navigate`, `↵ Run`, `⌥↑⌥↓ Switch mode` on the left
+- Shows: total analysis count on the right (purple text)
+- `flex-shrink: 0` ensures it never scrolls away
+
+### Cold Start State
+
+When there is no history and only seed patterns:
+- Suggestion grid shows 1-2 cards (only patterns matching current context)
+- No "Active" section
+- Empty state text: "No analyses yet. Type a question above or click a suggestion to get started."
+- Footer shows "0 analyses"
+
+### Removed Elements
+
+- **"Ready to Analyze with AI" empty state** (`AIAnalysisPreStreamingState.tsx` in idle mode) — eliminated entirely
+- **RECENT chips** (`SearchModal.tsx:282-308`) — replaced by suggestion cards
+- **Default query buttons** (`SearchModal.tsx:309-346` + `default-analysis-queries.json`) — replaced by seed patterns in suggestion cards
+- **`frequentQueries()`** in `AIAnalysisRepo` — no longer needed
+
+### Component Architecture
+
+| Component | Location | Responsibility |
+|---|---|---|
+| `SearchModal` | `SearchModal.tsx` | Modal shell: tabs, input row, mode pills, footer |
+| `SuggestionGrid` | New component | 2-col card grid, consumes `PatternMatcher` output |
+| `ActiveSessionsList` | Extracted from `RecentAIAnalysis.tsx` | Background session cards |
+| `RecentAnalysisList` | Slimmed `RecentAIAnalysis.tsx` | Flat history list + "View all" |
+| `ContextProvider` | New service | Collects `VaultContext` from Obsidian API |
+| `PatternMatcher` | New service | Filters patterns by conditions, fills variables, sorts |
+
+### Visual Hierarchy
+
+Three tiers of visual weight matching user intent priority:
+
+1. **Suggestions** (highest) — Cards with borders, icons, tags. Purple-toned. Action: start new analysis.
+2. **Active sessions** (medium) — Purple-tinted background cards. Animated spinner. Action: resume in-progress.
+3. **Recent history** (lowest) — Plain rows, no borders, gray icons. Scannable metadata. Action: review past.
+
 ## Files Affected
 
 | File | Change |
 |---|---|
+| **Data layer** | |
 | `src/core/storage/sqlite/ddl.ts` | Add `query_pattern` table DDL |
-| `src/core/storage/sqlite/repositories/` | New `QueryPatternRepo.ts` |
+| `src/core/storage/sqlite/repositories/QueryPatternRepo.ts` | New repository |
+| `src/core/schemas/` | Zod schema for `PatternDiscoveryOutput` |
+| **Services** | |
 | `src/service/agents/PatternDiscoveryAgent.ts` | New agent |
 | `src/service/PatternMergeService.ts` | New merge logic |
 | `src/service/ContextProvider.ts` | New context collector |
 | `src/service/PatternMatcher.ts` | New matcher + filler |
-| `src/ui/view/quick-search/SearchModal.tsx:282-308` | Replace RECENT with SUGGESTED |
-| `src/core/schemas/` | Zod schema for `PatternDiscoveryOutput` |
 | `templates/prompts/` | Prompt template for PatternDiscoveryAgent |
+| **UI — Modal shell** | |
+| `src/ui/view/quick-search/SearchModal.tsx` | Remove RECENT chips (282-308), default query buttons (309-346), hover-card preset switcher (170-199). Add mode pills next to input, add footer (modal-level). |
+| **UI — New components** | |
+| `src/ui/view/quick-search/components/SuggestionGrid.tsx` | New: 2-col pattern card grid |
+| `src/ui/view/quick-search/components/ActiveSessionsList.tsx` | Extract from `RecentAIAnalysis.tsx`: background session cards |
+| `src/ui/view/quick-search/components/RecentAnalysisList.tsx` | Slim version of `RecentAIAnalysis.tsx`: flat history list + "View all" |
+| **UI — Removed** | |
+| `src/ui/view/quick-search/components/ai-analysis-state/AIAnalysisPreStreamingState.tsx` | Remove idle empty state rendering (sparkle + "Ready to Analyze") |
 | `templates/config/default-analysis-queries.json` | Delete (replaced by seed patterns) |
 | `src/core/storage/sqlite/repositories/AIAnalysisRepo.ts` | `frequentQueries()` can be removed after migration |
