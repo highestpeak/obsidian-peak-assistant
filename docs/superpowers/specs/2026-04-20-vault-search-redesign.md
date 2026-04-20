@@ -25,10 +25,8 @@ SearchModal (flex col)
 │     │     └── SearchResultRow items (icon + title + path + snippet + score/time)
 │     └── Inspector panel — width: 340px, flex-shrink: 0, overflow-y: auto
 │           ├── Header (file icon + title + close button)
-│           ├── Outgoing links (query-filtered)
-│           ├── Backlinks (query-filtered)
-│           ├── Similar notes (with similarity %)
-│           ├── Scoped graph (mini, 1-hop, query-filtered)
+│           ├── Connected (▾ collapsible) — merged outgoing + backlinks with context snippets
+│           ├── Discovered (▾ collapsible) — semantic + co-citation + unlinked mentions
 │           └── AI Graph section (past results + generate button)
 └── Footer — flex-shrink: 0 (keyboard hints + result count + search duration)
 ```
@@ -79,17 +77,48 @@ Footer shows: vault note count (e.g., "1,247 notes in vault").
 
 **Header** — sticky, shows file icon + note title + close (✕) button.
 
-**Outgoing links** — wikilinks found in the note. When a search query is active, each link shows a relevance score. Links above a threshold are highlighted (✓ + score), links below are dimmed with lower opacity. Sorted by relevance (query active) or alphabetically (no query).
+#### 1. Connected (▾ collapsible)
 
-**Backlinks** — notes that link to the selected note. Same query-aware filtering as outgoing links.
+Merges outgoing links (→) and backlinks (←) into one unified list.
 
-**Similar notes** — top 4 semantically similar notes from vector search (existing `SemanticRelatedEdgesReadService`). Shows similarity percentage. When query is active, results are intersected with query relevance — only notes similar to BOTH the selected note AND the query are shown.
+Each item shows:
+- **Direction badge** — `→` (outgoing) or `←` (backlink)
+- **Note name** (bold, clickable for topic navigation)
+- **Context snippet** — the sentence containing the `[[link]]`, explaining WHY they're connected (inspired by Strange New Worlds plugin)
+- **Convergence badge** — if the target note has many incoming links, show count (e.g., "14 refs")
 
-**Scoped graph** — compact 1-hop graph preview. When query is active, only query-relevant nodes are shown (non-relevant nodes hidden). Click to expand to fullscreen graph overlay (existing fullscreen graph portal).
+Query-scoped behavior:
+- Relevant links (score > threshold): shown normally with green ✓ + relevance score %
+- Irrelevant links (score ≤ threshold): shown at 35% opacity, no badge
+- Sorted by relevance descending
 
-**AI Graph section** — two sub-elements:
-1. **Past AI Graph results** — queries `ai_analysis_record` for `analysis_preset = 'aiGraph'` with query similar to the current search term (fuzzy match or vector similarity). If found, shows: query text, node/edge count, generation time, "Open ↗" link to view the cached result. Multiple matches: show the most recent.
-2. **Generate new AI Graph** — button labeled "Generate AI Graph" with subtitle "Uses AI credits". User-triggered only. Sends current search query + selected note as context to `AIGraphAgent`.
+Progressive display:
+- Default: show top 3 relevant items
+- "See N more ↓" expands remaining items (including dimmed irrelevant ones)
+
+#### 2. Discovered (▾ collapsible)
+
+Hidden connections the user doesn't know about, from three sources merged into one ranked list:
+
+- **SEM** (semantic similarity) — content-related notes with NO explicit link in either direction. Source: sqlite-vec KNN on note embeddings. WHY line: "Shares: [shared keywords/concepts]"
+- **CO-CITE** (co-citation) — notes frequently cited alongside the selected note by the same third-party notes. Source: SQL join on edges table. WHY line: "Both cited by: [list of citing notes]"
+- **UNLINKED** (unlinked mentions) — notes whose title text appears in other notes without `[[]]` wikilink syntax. Source: FTS5 title search. WHY line: shows the raw text context where the title appears without link markup
+
+Each item shows:
+- **Note name** (bold, clickable)
+- **Score** (relevance %)
+- **WHY line** — type badge (SEM/CO-CITE/UNLINKED) + explanation text, on the second line below the note name. Badges are color-coded: SEM = purple, CO-CITE = blue, UNLINKED = amber.
+
+Progressive display:
+- Default: show top 3 items
+- "See N more ↓" expands remaining
+
+Query-scoped behavior: all three sources are filtered by query relevance in addition to note similarity.
+
+#### 3. AI Graph
+
+- **Past AI Graph results** — queries `ai_analysis_record` for `analysis_preset = 'aiGraph'` with query similar to current search term. If found: shows query text, node/edge count, generation time, "New window ↗" button (opens in a new Obsidian window). Shows the most recent match.
+- **Generate new AI Graph** — button labeled "Generate AI Graph" with subtitle "Uses AI credits". User-triggered only.
 
 ### Query-Aware Filtering
 
@@ -157,6 +186,23 @@ Each result shows:
 | `Esc` | Close modal |
 | `⌫` on empty prefix | Return to vault mode |
 
+## Performance Architecture
+
+Key advantage over Smart Connections: we have sqlite-vec (vector index, KNN not O(n) scan) and FTS5 (not naive string search).
+
+| Operation | Target latency | Implementation |
+|---|---|---|
+| Vault search (tri-hybrid) | ~20ms | FTS5 + sqlite-vec + meta, parallel RRF merge |
+| Connected (links + backlinks) | ~5ms | Obsidian API synchronous + cache |
+| Discovered SEM | ~5-20ms | sqlite-vec KNN (indexed) |
+| Discovered CO-CITE | ~10ms | SQL join on `mobius_edge` table |
+| Discovered UNLINKED | ~1-5ms | FTS5 title search |
+| Context snippets | async | Lazy-loaded after initial list render |
+| Selection change debounce | 150ms | Prevents per-keystroke fetches during ↑↓ navigation |
+| LRU cache | 0ms (hit) | Per note path, back-navigation is instant |
+
+Co-citation data can be precomputed during indexing and stored in a dedicated table for O(1) lookup.
+
 ## Files Affected
 
 | File | Change |
@@ -164,19 +210,23 @@ Each result shows:
 | **Modal shell** | |
 | `SearchModal.tsx` | Remove hover-card mode switcher (lines 469-558), add mode badge in input, move footer to modal level |
 | **Results** | |
-| `tab-VaultSearch.tsx` | Refactor: results-panel as flex child, add inspector toggle state |
+| `tab-VaultSearch.tsx` | Refactor: results-panel as flex child, add inspector toggle state, debounced selection |
 | `VaultSearchResult.tsx` | Add relevance score badge |
 | **Inspector** | |
-| `components/inspector/InspectorPanel.tsx` | Refactor → `InspectorSidePanel.tsx`: 340px side panel layout |
-| `components/inspector/LinksSection.tsx` | Add query-aware filtering + relevance scoring |
-| `components/inspector/GraphSection.tsx` | Add query-scoped node filtering, compact mini-graph mode |
-| New: `components/inspector/AIGraphSection.tsx` | Past AI Graph lookup + generate button |
+| `components/inspector/InspectorPanel.tsx` | Refactor → `InspectorSidePanel.tsx`: 340px side panel, collapsible sections |
+| New: `components/inspector/ConnectedSection.tsx` | Merged outgoing + backlinks with context snippets, query-aware filtering, "See more" |
+| New: `components/inspector/DiscoveredSection.tsx` | SEM + CO-CITE + UNLINKED sources, WHY explanations, "See more" |
+| New: `components/inspector/AIGraphSection.tsx` | Past AI Graph lookup + generate button, "New window" open |
 | **Modes** | |
 | `store/vaultSearchStore.ts` | Remove `[[` inspector mode, add `?` help mode |
 | New: `components/ModeHelpList.tsx` | Renders mode help when `?` typed |
 | **Services** | |
-| `service/search/inspectorService.ts` | Add `filterLinksByQuery()` method |
+| `service/search/inspectorService.ts` | Refactor: `getConnectedLinks()` (merged outgoing+backlinks with context), `getDiscoveredConnections()` (SEM+CO-CITE+UNLINKED), `filterByQuery()` |
+| New: `service/search/coCitationService.ts` | Co-citation computation via SQL join on edges table |
+| New: `service/search/unlinkedMentionService.ts` | FTS5 title search for unlinked mentions |
 | `AIAnalysisHistoryService.ts` | Add `findRelatedAIGraph(query)` method |
 | **Removed** | |
-| Inspector sub-tabs (Links/Graph/History nav bar) | Replaced by vertical sections in side panel |
+| `components/inspector/LinksSection.tsx` | Replaced by `ConnectedSection.tsx` |
+| `components/inspector/GraphSection.tsx` | Local graph removed; graph only via AI Graph section |
+| Inspector sub-tabs (Links/Graph/History nav bar) | Replaced by collapsible sections in side panel |
 | `[[` prefix mode handling | Inspector is a view toggle, not a search mode |
