@@ -5,7 +5,7 @@ import type { Database as DbSchema } from '../ddl';
 type QueryPatternRow = DbSchema['query_pattern'];
 
 /**
- * Repository for query_pattern table (vault.sqlite).
+ * Repository for query_pattern table (chat.sqlite, alongside ai_analysis_record).
  *
  * Stores reusable query templates discovered from user behaviour or shipped
  * as defaults.  Active patterns (deprecated=0) are ranked by usage frequency
