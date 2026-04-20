@@ -15,6 +15,9 @@ export const AIAnalysisPreStreamingState: React.FC = () => {
         return isAnalyzing && !analysisCompleted;
     }, [isAnalyzing, analysisCompleted]);
 
+    // Idle state is now handled by the landing page in AITabContent
+    if (!checkIfAnalyzing() && !isSummaryStreaming) return null;
+
     return (
         <div className="pktw-h-full pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-text-center pktw-px-8">
             <div className="pktw-w-16 pktw-h-16 pktw-rounded-full pktw-flex pktw-items-center pktw-justify-center pktw-mb-4">

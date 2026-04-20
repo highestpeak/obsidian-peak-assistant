@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { VaultSearchTab } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
 import { Search, Sparkles, Globe, X, RotateCcw, Brain, Hash, ListOrdered, FolderSearch, Network } from 'lucide-react';
@@ -8,7 +8,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { GlobeOff } from '@/ui/component/icon';
 import { useSharedStore, useVaultSearchStore } from './store';
-import { useAIAnalysisRuntimeStore, resetAIAnalysisAll } from './store/aiAnalysisStore';
+import { resetAIAnalysisAll } from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
@@ -20,6 +20,12 @@ import { getActiveNoteDetail } from '@/core/utils/obsidian-utils';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { InspectorPanel } from './components/inspector/InspectorPanel';
 import { isMobile } from '@/core/platform';
+import { ContextProvider } from '@/service/context/ContextProvider';
+import { matchPatterns, type MatchedSuggestion } from '@/service/context/PatternMatcher';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { SuggestionGrid } from './components/SuggestionGrid';
+import { ActiveSessionsList } from './components/ActiveSessionsList';
+import { RecentAnalysisList } from './components/RecentAnalysisList';
 
 type TabType = 'vault' | 'ai';
 
@@ -140,24 +146,37 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 		if (inputRef.current) inputRef.current.focus();
 	}, []);
 
-	const [frequentQueries, setFrequentQueries] = useState<Array<{ query: string; count: number }>>([]);
-	useEffect(() => {
-		AppContext.getInstance().aiAnalysisHistoryService.frequentQueries(5).then(setFrequentQueries).catch(() => setFrequentQueries([]));
-	}, []);
+	const [suggestions, setSuggestions] = useState<MatchedSuggestion[]>([]);
+	const [totalAnalysisCount, setTotalAnalysisCount] = useState(0);
 
-	const defaultQueries = useMemo<{ label: string; query: string }[]>(() => {
-		try {
-			const raw = AppContext.getInstance().templateManager.loadRaw?.('config/default-analysis-queries.json');
-			if (!raw) return [];
-			return (JSON.parse(raw) as { queries?: { label: string; query: string }[] }).queries ?? [];
-		} catch { return []; }
-	}, []);
-
-	const [lastQuery, setLastQuery] = useState<string | null>(null);
 	useEffect(() => {
-		AppContext.getInstance().aiAnalysisHistoryService.list({ limit: 1, offset: 0 }).then((records) => {
-			setLastQuery(records[0]?.query ?? null);
-		}).catch(() => setLastQuery(null));
+		(async () => {
+			try {
+				// Try the proper accessor first, fallback to inline construction
+				let repo: any = (sqliteStoreManager as any).getQueryPatternRepo?.();
+				if (!repo) {
+					const { QueryPatternRepo } = await import('@/core/storage/sqlite/repositories/QueryPatternRepo');
+					const metaStore = sqliteStoreManager.getMetaStore();
+					if (metaStore) repo = new QueryPatternRepo(metaStore.kysely());
+				}
+				if (!repo) { setSuggestions([]); return; }
+
+				const rows = await repo.listActive();
+				// Convert DB rows (JSON strings) → StoredPattern (parsed objects)
+				const patterns = rows.map((r: any) => ({
+					...r,
+					variables: typeof r.variables === 'string' ? JSON.parse(r.variables) : r.variables,
+					conditions: typeof r.conditions === 'string' ? JSON.parse(r.conditions) : r.conditions,
+					discovered_at: typeof r.discovered_at === 'number' ? new Date(r.discovered_at).toISOString() : r.discovered_at,
+				}));
+				const ctxProvider = new ContextProvider(AppContext.getInstance().app);
+				const ctx = ctxProvider.collect();
+				setSuggestions(matchPatterns(patterns, ctx, 6));
+			} catch { setSuggestions([]); }
+		})();
+
+		AppContext.getInstance().aiAnalysisHistoryService.count()
+			.then(setTotalAnalysisCount).catch(() => {});
 	}, []);
 
 	return (
@@ -165,38 +184,30 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
 				<div className="pktw-flex pktw-gap-2 pktw-items-center">
 					<div className="pktw-relative pktw-flex-1">
-						<HoverCard openDelay={200} closeDelay={100}>
-							<HoverCardTrigger asChild>
-								<Button
-									variant="ghost"
-									size="xs"
-									style={{ cursor: 'pointer' }}
-									className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10 !pktw-w-6 !pktw-h-6 pktw-rounded-full pktw-bg-white pktw-shadow-[0_2px_10px_rgba(124,58,237,0.22),0_0_0_1px_rgba(124,58,237,0.12)] pktw-text-[#5b21b6] pktw-transition-[box-shadow,color,background-color] hover:pktw-bg-[#f5f3ff] hover:pktw-shadow-[0_4px_14px_rgba(124,58,237,0.28),0_0_0_1px_rgba(124,58,237,0.2)] hover:pktw-text-[#7c3aed] focus-visible:pktw-ring-2 focus-visible:pktw-ring-[#7c3aed]/40"
-									title={PRESET_LABELS[analysisMode].full}
-								>
-									{analysisMode === 'aiGraph' ? <Network className="pktw-w-4 pktw-h-4" /> : <Brain className="pktw-w-4 pktw-h-4" />}
-								</Button>
-							</HoverCardTrigger>
-							<HoverCardContent side="bottom" align="start" className="pktw-w-auto pktw-min-w-[200px] pktw-py-0.5 pktw-px-1 pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
-								<div className="pktw-text-[11px] pktw-font-medium pktw-text-[#6b7280] pktw-px-2 pktw-pt-1 pktw-pb-0.5">Analysis preset (Option+↑/↓)</div>
-								{PRESETS.map((p) => (
+						{/* Mode pills — visible inline, replacing hidden HoverCard */}
+						<div className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10 pktw-flex pktw-gap-1">
+							{PRESETS.map((p) => {
+								const Icon = p === 'aiGraph' ? Network : Brain;
+								return (
 									<Button
 										key={p}
 										variant="ghost"
-										onClick={() => setAnalysisMode(p)}
+										size="xs"
 										style={{ cursor: 'pointer' }}
+										onClick={() => setAnalysisMode(p)}
 										className={cn(
-											'pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1 pktw-text-left pktw-text-sm pktw-rounded',
-											analysisMode === p && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
+											'pktw-shadow-none !pktw-h-6 pktw-px-2 pktw-rounded-full pktw-text-[11px] pktw-font-medium pktw-transition-all',
+											analysisMode === p
+												? 'pktw-bg-[#7c3aed] pktw-text-white'
+												: 'pktw-bg-white pktw-text-[#6b7280] pktw-border pktw-border-[#e5e7eb] hover:pktw-border-[#7c3aed]/40 hover:pktw-text-[#7c3aed]'
 										)}
 									>
-										{p === 'aiGraph' ? <Network className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" /> : <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0" />}
-										<span className="pktw-font-medium">{PRESET_LABELS[p].short}</span>
-										<span className="pktw-text-[11px]">· {PRESET_LABELS[p].full.split(' · ')[1]}</span>
+										<Icon className="pktw-w-3 pktw-h-3 pktw-mr-1" />
+										{PRESET_LABELS[p].short}
 									</Button>
-								))}
-							</HoverCardContent>
-						</HoverCard>
+								);
+							})}
+						</div>
 						<div className="pktw-relative pktw-flex pktw-items-center">
 							<CodeMirrorInput
 								ref={inputRef}
@@ -279,74 +290,64 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					</div>
 				</div>
 			</div>
-			{!searchQuery && sessionStatus === 'idle' && frequentQueries.length > 0 && (
-				<div className="pktw-flex-shrink-0 pktw-px-3 pktw-pt-2 pktw-pb-1 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
-					<span className="pktw-text-[10px] pktw-text-[--text-faint] pktw-uppercase pktw-tracking-wide">Recent</span>
-					<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-mt-1">
-						{frequentQueries.map((fq, i) => (
-							<Button
-								key={`freq-${i}`}
-								variant="ghost"
-								size="sm"
-								style={{ cursor: 'pointer' }}
-								className="pktw-shadow-none pktw-text-xs pktw-h-7 pktw-text-[--text-muted]"
-								onClick={() => {
-									useSharedStore.getState().setSearchQuery(fq.query);
-									useSearchSessionStore.getState().resetAll();
-									resetAIAnalysisAll();
-									useSearchSessionStore.getState().incrementTriggerAnalysis();
-								}}
-							>
-								{fq.query.length > 40 ? fq.query.slice(0, 40) + '...' : fq.query}
-								{fq.count > 1 && (
-									<span className="pktw-ml-1 pktw-text-[10px] pktw-text-[--text-faint]">x{fq.count}</span>
-								)}
-							</Button>
-						))}
-					</div>
-				</div>
-			)}
-			{!searchQuery && sessionStatus === 'idle' && defaultQueries.length > 0 && (
-				<div className="pktw-flex-shrink-0 pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-px-3 pktw-py-2 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
-					{defaultQueries.map((q, i) => (
-						<Button
-							key={i}
-							variant="outline"
-							size="sm"
-							style={{ cursor: 'pointer' }}
-							className="pktw-shadow-none pktw-text-xs pktw-h-7 pktw-border-[#e5e7eb] pktw-text-[#374151] hover:pktw-border-[#7c3aed]/40 hover:pktw-text-[#7c3aed]"
-							onClick={() => {
-								useSharedStore.getState().setSearchQuery(q.query);
-								useSearchSessionStore.getState().resetAll();
-								resetAIAnalysisAll();
-								useSearchSessionStore.getState().incrementTriggerAnalysis();
-							}}
-						>
-							{q.label}
-						</Button>
-					))}
-					{lastQuery && (
-						<Button
-							variant="ghost"
-							size="sm"
-							style={{ cursor: 'pointer' }}
-							className="pktw-shadow-none pktw-text-xs pktw-h-7 pktw-text-[--text-muted] hover:pktw-text-[#7c3aed]"
-							onClick={() => {
-								useSharedStore.getState().setSearchQuery(lastQuery);
-								useSearchSessionStore.getState().resetAll();
-								resetAIAnalysisAll();
-								useSearchSessionStore.getState().incrementTriggerAnalysis();
-							}}
-						>
-							<RotateCcw className="pktw-w-3 pktw-h-3 pktw-mr-1" />
-							Re-analyze: {lastQuery.length > 30 ? lastQuery.slice(0, 30) + '...' : lastQuery}
-						</Button>
+			{!searchQuery && sessionStatus === 'idle' && (
+				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto">
+					<SuggestionGrid
+						suggestions={suggestions}
+						onSelect={(s) => {
+							useSharedStore.getState().setSearchQuery(s.filledTemplate);
+							useSearchSessionStore.getState().resetAll();
+							resetAIAnalysisAll();
+							useSearchSessionStore.getState().incrementTriggerAnalysis();
+							// Increment usage count in background
+							(async () => {
+								try {
+									let repo: any = (sqliteStoreManager as any).getQueryPatternRepo?.();
+									if (!repo) {
+										const { QueryPatternRepo } = await import('@/core/storage/sqlite/repositories/QueryPatternRepo');
+										const metaStore = sqliteStoreManager.getMetaStore();
+										if (metaStore) repo = new QueryPatternRepo(metaStore.kysely());
+									}
+									if (repo) await repo.incrementUsage(s.patternId);
+								} catch {}
+							})();
+						}}
+					/>
+					<ActiveSessionsList
+						onRestore={(sessionId) => {
+							BackgroundSessionManager.pendingRestore = sessionId;
+						}}
+					/>
+					<RecentAnalysisList
+						onSelectQuery={(query) => {
+							useSharedStore.getState().setSearchQuery(query);
+							useSearchSessionStore.getState().resetAll();
+							resetAIAnalysisAll();
+							useSearchSessionStore.getState().incrementTriggerAnalysis();
+						}}
+					/>
+					{suggestions.length === 0 && totalAnalysisCount === 0 && (
+						<div className="pktw-px-4 pktw-py-8 pktw-text-center pktw-text-sm pktw-text-[#9ca3af]">
+							No analyses yet. Type a question above or click a suggestion to get started.
+						</div>
 					)}
 				</div>
 			)}
 			<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-white pktw-overflow-visible pktw-flex pktw-flex-col">
 				<AISearchTab onClose={onClose} />
 			</div>
+			{sessionStatus === 'idle' && (
+				<div className="pktw-flex-shrink-0 pktw-px-4 pktw-py-2 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between">
+					<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-[#999999]">
+						<span>↑↓ Navigate</span>
+						<span>↵ Run</span>
+						<span>⌥↑⌥↓ Switch mode</span>
+					</div>
+					<span className="pktw-text-xs pktw-text-[#7c3aed]">
+						{totalAnalysisCount} analyses
+					</span>
+				</div>
+			)}
 		</>
 	);
 };
