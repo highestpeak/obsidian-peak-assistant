@@ -6,9 +6,11 @@ import { SearchResultRow } from './components/VaultSearchResult';
 import { formatDuration } from '@/core/utils/format-utils';
 import { cn } from '@/ui/react/lib/utils';
 import { useVaultSearchStore } from './store';
+import { useSharedStore } from './store';
 import { useVaultSearch, useSearchQuery } from './hooks/useVaultSearch';
 import { createOpenSourceCallback } from './callbacks/open-source-file';
 import { useHasSearchQuery } from './hooks/useVaultSearch';
+import { ModeHelpList, MODE_COUNT } from './components/ModeHelpList';
 
 const NoResultsState: React.FC<{ mode?: string }> = ({ mode }) => (
 	<EmptyState
@@ -31,14 +33,14 @@ const NoRecentlyAccessedState: React.FC = () => (
 /**
  * Footer hints section for vault search tab
  */
-/** Footer hints: [[ Inspector, left icon = mode, then navigate/open/mode keys. */
+/** Footer hints for vault search tab. */
 const VaultSearchFooterHints: React.FC = () => (
 	<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-[#999999]">
 		<KeyboardShortcut keys="↑↓" description="navigate" />
 		<KeyboardShortcut keys="Enter" description="open" />
+		<KeyboardShortcut keys="→" description="inspector" />
 		<KeyboardShortcut keys="#" description="in-file" />
-		<KeyboardShortcut keys=":" description="to line" />
-		<KeyboardShortcut keys="[[ " description="Inspector" />
+		<KeyboardShortcut keys="?" description="modes" />
 	</div>
 );
 
@@ -75,7 +77,8 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, inspect
 				return;
 			}
 
-			const maxIndex = displayedResults.length - 1;
+			const currentMode = useVaultSearchStore.getState().quickSearchMode;
+			const maxIndex = currentMode === 'help' ? MODE_COUNT - 1 : displayedResults.length - 1;
 			if (maxIndex < 0) return;
 
 			switch (e.key) {
@@ -89,10 +92,16 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, inspect
 					break;
 				case 'Enter': {
 					e.preventDefault();
+					if (currentMode === 'help') {
+						const prefixes = ['', '#', '@', ':', '?'];
+						const prefix = prefixes[selectedIndex] ?? '';
+						useSharedStore.getState().setVaultSearchQuery(prefix);
+						break;
+					}
 					// Open selected result
 					const selectedResult = displayedResults[selectedIndex];
 					if (selectedResult) {
-						await createOpenSourceCallback(onClose, quickSearchMode !== 'goToLine' && quickSearchMode !== 'inFile')(selectedResult);
+						await createOpenSourceCallback(onClose, currentMode !== 'goToLine' && currentMode !== 'inFile')(selectedResult);
 					}
 					break;
 				}
@@ -132,6 +141,14 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, inspect
 			<div ref={scrollContainerRef} className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto" style={{ flexBasis: 0, minHeight: 0 }}>
 				{inspectorOpen ? (
 					<></>
+				) : quickSearchMode === 'help' ? (
+					<ModeHelpList
+						onSelectMode={(prefix) => {
+							useSharedStore.getState().setVaultSearchQuery(prefix);
+						}}
+						selectedIndex={selectedIndex}
+						onSelectIndex={setSelectedIndex}
+					/>
 				) : (
 					<>
 						<div className={cn(

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { VaultSearchTab } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
-import { Search, Sparkles, Globe, X, RotateCcw, Brain, Hash, ListOrdered, FolderSearch, Network } from 'lucide-react';
+import { Search, Sparkles, Globe, X, RotateCcw, Brain, Network } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { cn } from '@/ui/react/lib/utils';
@@ -12,7 +12,6 @@ import { resetAIAnalysisAll } from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { useSearchSession } from './hooks/useSearchSession';
 import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { AppContext } from '@/app/context/AppContext';
@@ -456,80 +455,6 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
 				<div className="pktw-flex pktw-gap-3 pktw-items-center">
 					<div className="pktw-relative pktw-flex-1 pktw-min-w-0">
-						<HoverCard openDelay={200} closeDelay={100}>
-							<HoverCardTrigger asChild>
-								<Button
-									variant="ghost"
-									size="xs"
-									style={{ cursor: 'pointer' }}
-									className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10 !pktw-w-6 !pktw-h-6 pktw-rounded-full pktw-bg-white pktw-shadow-[0_2px_10px_rgba(124,58,237,0.22),0_0_0_1px_rgba(124,58,237,0.12)] pktw-text-[#5b21b6] pktw-transition-[box-shadow,color,background-color] hover:pktw-bg-[#f5f3ff] hover:pktw-shadow-[0_4px_14px_rgba(124,58,237,0.28),0_0_0_1px_rgba(124,58,237,0.2)] hover:pktw-text-[#7c3aed] focus-visible:pktw-ring-2 focus-visible:pktw-ring-[#7c3aed]/40"
-									title="Search mode (Option+↑/↓ to switch)"
-								>
-									{displayMode === 'goToLine' ? (
-										<ListOrdered className="pktw-w-4 pktw-h-4" />
-									) : displayMode === 'inFile' ? (
-										<Hash className="pktw-w-4 pktw-h-4" />
-									) : (
-										<Search className="pktw-w-4 pktw-h-4" />
-									)}
-								</Button>
-							</HoverCardTrigger>
-							<HoverCardContent side="bottom" align="start" className="pktw-w-auto pktw-min-w-[160px] pktw-py-0.5 pktw-px-1 pktw-max-h-[min(60vh,420px)] pktw-overflow-y-auto">
-								<div className="pktw-text-[11px] pktw-font-medium pktw-text-[#6b7280] pktw-px-2 pktw-pt-1 pktw-pb-0.5">Search mode (Option+↑/↓)</div>
-								<Button
-									variant="ghost"
-									onClick={() => setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, 'vault'))}
-									style={{ cursor: 'pointer' }}
-									className={cn(
-										'pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1 pktw-text-left pktw-text-sm pktw-rounded',
-										displayMode === 'vault' && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
-									)}
-								>
-									<Search className={cn('pktw-w-3.5 pktw-h-3.5 pktw-shrink-0', displayMode === 'vault' && 'pktw-text-[#7c3aed]')} />
-									<span className="pktw-font-medium">Vault</span>
-									<span className="pktw-text-[11px]">· search entire vault</span>
-								</Button>
-								<Button
-									variant="ghost"
-									onClick={() => setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, 'inFile'))}
-									style={{ cursor: 'pointer' }}
-									className={cn(
-										'pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1 pktw-text-left pktw-text-sm pktw-rounded',
-										displayMode === 'inFile' && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
-									)}
-								>
-									<Hash className={cn('pktw-w-3.5 pktw-h-3.5 pktw-shrink-0', displayMode === 'inFile' && 'pktw-text-[#7c3aed]')} />
-									<span className="pktw-font-medium">In-file</span>
-									<span className="pktw-text-[11px]">· search current file</span>
-								</Button>
-								<Button
-									variant="ghost"
-									onClick={() => setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, 'inFolder'))}
-									style={{ cursor: 'pointer' }}
-									className={cn(
-										'pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1 pktw-text-left pktw-text-sm pktw-rounded',
-										displayMode === 'inFolder' && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
-									)}
-								>
-									<FolderSearch className={cn('pktw-w-3.5 pktw-h-3.5 pktw-shrink-0', displayMode === 'inFolder' && 'pktw-text-[#7c3aed]')} />
-									<span className="pktw-font-medium">In-folder</span>
-									<span className="pktw-text-[11px]">· @ prefix</span>
-								</Button>
-								<Button
-									variant="ghost"
-									onClick={() => setVaultSearchQuery(transformQueryForMode(vaultSearchQuery, 'goToLine'))}
-									style={{ cursor: 'pointer' }}
-									className={cn(
-										'pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-items-center pktw-gap-2 pktw-px-2 pktw-py-1 pktw-text-left pktw-text-sm pktw-rounded',
-										displayMode === 'goToLine' && 'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]'
-									)}
-								>
-									<ListOrdered className={cn('pktw-w-3.5 pktw-h-3.5 pktw-shrink-0', displayMode === 'goToLine' && 'pktw-text-[#7c3aed]')} />
-									<span className="pktw-font-medium">Go to line</span>
-									<span className="pktw-text-[11px]">· go to target line</span>
-								</Button>
-							</HoverCardContent>
-						</HoverCard>
 						<div className="pktw-relative pktw-flex pktw-items-center pktw-min-w-0">
 							<CodeMirrorInput
 								ref={inputRef}
@@ -539,22 +464,34 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 								placeholder="Search in vault... (# in-file, @ folder, : go to line, ? help)"
 								enableSearchTags={false}
 								singleLine={true}
-								containerClassName="pktw-flex-1 pktw-min-w-0 pktw-pl-11 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-muted-foreground pktw-rounded-full pktw-transition-all pktw-z-0"
+								containerClassName="pktw-flex-1 pktw-min-w-0 pktw-pl-4 pktw-pr-16 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-muted-foreground pktw-rounded-full pktw-transition-all pktw-z-0"
 								className="pktw-pr-4"
 							/>
+							{/* Mode badge — right edge inside input */}
+							<span className={cn(
+								'pktw-absolute pktw-right-3 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10',
+								'pktw-text-[10px] pktw-font-medium pktw-px-2 pktw-py-0.5 pktw-rounded-full',
+								'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed] pktw-border pktw-border-[#7c3aed]/20',
+							)}>
+								{quickSearchMode === 'vault' ? 'vault' :
+								 quickSearchMode === 'inFile' ? 'in-file' :
+								 quickSearchMode === 'inFolder' ? 'folder' :
+								 quickSearchMode === 'goToLine' ? 'line' :
+								 quickSearchMode === 'help' ? 'help' : 'vault'}
+							</span>
 						</div>
 					</div>
-					<div className="pktw-flex pktw-shrink-0 pktw-items-center pktw-gap-2 pktw-relative pktw-z-10">
-						<Button
-							onClick={handleAskAI}
-							style={{ cursor: 'pointer' }}
-							className="pktw-shadow-none pktw-px-5 pktw-py-2.5 pktw-h-10 pktw-whitespace-nowrap !pktw-rounded-md pktw-bg-[#7c3aed] pktw-text-white hover:pktw-bg-[#6d28d9] pktw-relative pktw-z-10"
-							title="Switch to AI Analysis"
-						>
-							<Sparkles className="pktw-w-4 pktw-h-4" />
-							<span className="pktw-ml-2">Ask AI</span>
-						</Button>
-					</div>
+					<Button
+						variant="ghost"
+						size="sm"
+						style={{ cursor: 'pointer' }}
+						className="pktw-shadow-none pktw-flex-shrink-0 pktw-text-xs pktw-text-[#7c3aed] pktw-h-8 pktw-px-2"
+						onClick={() => setActiveTab('ai')}
+						title="Switch to AI Analysis"
+					>
+						<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-mr-1" />
+						AI
+					</Button>
 				</div>
 			</div>
 			{inspectorOpen && !isMobile() && (
