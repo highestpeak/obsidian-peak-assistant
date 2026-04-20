@@ -19,6 +19,7 @@ import { ChatMessageRepo } from './repositories/ChatMessageRepo';
 import { ChatMessageResourceRepo } from './repositories/ChatMessageResourceRepo';
 import { ChatStarRepo } from './repositories/ChatStarRepo';
 import { AIAnalysisRepo } from './repositories/AIAnalysisRepo';
+import { QueryPatternRepo } from './repositories/QueryPatternRepo';
 import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcessedHashRepo';
 import { VAULT_DB_FILENAME, CHAT_DB_FILENAME } from '@/core/constant';
 
@@ -84,6 +85,7 @@ export class SqliteStoreManager {
 	private chatMessageResourceRepo: ChatMessageResourceRepo | null = null;
 	private chatStarRepo: ChatStarRepo | null = null;
 	private aiAnalysisRepo: AIAnalysisRepo | null = null;
+	private queryPatternRepo: QueryPatternRepo | null = null;
 
 
 	/**
@@ -200,6 +202,7 @@ export class SqliteStoreManager {
 		this.chatMessageResourceRepo = new ChatMessageResourceRepo(metaKdb);
 		this.chatStarRepo = new ChatStarRepo(metaKdb);
 		this.aiAnalysisRepo = new AIAnalysisRepo(metaKdb);
+		this.queryPatternRepo = new QueryPatternRepo(metaKdb);
 
 		// Chat index tenant (same schema as search, on meta.sqlite)
 		this.indexedDocumentRepoChat = new IndexedDocumentRepo(metaKdb);
@@ -412,6 +415,16 @@ export class SqliteStoreManager {
 	}
 
 	/**
+	 * Get QueryPatternRepo instance (meta.sqlite).
+	 */
+	getQueryPatternRepo(): QueryPatternRepo {
+		if (this.closing || !this.queryPatternRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
+		}
+		return this.queryPatternRepo;
+	}
+
+	/**
 	 * No-op for compatibility. better-sqlite3 persists to file automatically.
 	 */
 	save(): void {}
@@ -452,6 +465,7 @@ export class SqliteStoreManager {
 		this.chatMessageResourceRepo = null;
 		this.chatStarRepo = null;
 		this.aiAnalysisRepo = null;
+		this.queryPatternRepo = null;
 		this.userProfileProcessedHashRepo = null;
 	}
 }
