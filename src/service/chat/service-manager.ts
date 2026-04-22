@@ -24,7 +24,7 @@ import { EventBus } from '@/core/eventBus';
 import { createChatMessage } from './utils/chat-message-builder';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { AgentTemplateId, getTemplateMetadata } from '@/core/template/TemplateRegistry';
-import { generateObject, LanguageModel } from 'ai';
+import { LanguageModel } from 'ai';
 import type { z } from 'zod/v3';
 import { resolveModelForPrompt, resolveModelInstance, filterAvailableModels } from './model-resolution';
 import { estimateTokens as estimateTokensFn } from './token-estimation';
@@ -639,65 +639,51 @@ ${sourcesList}${topicsList}
 		return this.promptService.render(promptId, variables);
 	}
 
-	/**
-	 * Chat with a prompt template.
-	 * Renders the prompt and calls the LLM with the rendered text.
-	 */
+	// ═══════════════════════════════════════════════════════════════════════════
+	// Legacy methods — delegate to queryText / queryStream / queryStructured
+	// Provider/model params are ignored; the active Profile determines the model.
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/** @deprecated Use {@link queryText} directly. */
 	async chatWithPrompt<T extends PromptId>(
 		promptId: T,
 		variables: PromptVariables[T] | null,
-		provider?: string,
-		model?: string,
-		extraParts?: MessagePart[]
+		_provider?: string,
+		_model?: string,
+		_extraParts?: MessagePart[],
 	): Promise<string> {
-		return this.promptService.chatWithPrompt(promptId, variables, provider, model, extraParts);
+		return this.queryText(promptId, variables as any);
 	}
 
-	/**
-	 * Same as {@link chatWithPrompt} plus usage and resolved provider/model for cost display.
-	 */
+	/** @deprecated Use {@link queryText} directly. Usage tracking via SDK TBD. */
 	async chatWithPromptWithUsage<T extends PromptId>(
 		promptId: T,
 		variables: PromptVariables[T] | null,
-		provider?: string,
-		model?: string,
-		extraParts?: MessagePart[],
+		_provider?: string,
+		_model?: string,
+		_extraParts?: MessagePart[],
 	): Promise<{ text: string; usage: LLMUsage; costUsd: number; provider: string; modelId: string }> {
-		const { text, usage, provider: p, model: m } = await this.promptService.chatWithPromptWithUsage(
-			promptId,
-			variables,
-			provider,
-			model,
-			extraParts,
-		);
-		const modelInfo = await this.getModelInfo(m, p);
-		const costUsd = computeUsdFromUsage(usage, modelInfo);
-		return { text, usage, costUsd, provider: p, modelId: m };
+		const text = await this.queryText(promptId, variables as any);
+		return { text, usage: emptyUsage(), costUsd: 0, provider: 'agent-sdk', modelId: 'profile-active' };
 	}
 
-	/**
-	 * Renders a prompt template then runs AI SDK `generateObject` (non-streaming structured output).
-	 * Uses `noReasoning` on the model client so OpenRouter/Gemini does not stream long reasoning before JSON,
-	 * which previously could leave `streamObject().object` unresolved despite HTTP completing.
-	 */
+	/** @deprecated Use {@link queryStructured} directly. */
 	async streamObjectWithPrompt<T extends PromptId, S extends z.ZodTypeAny>(
 		promptId: T,
 		variables: PromptVariables[T] | null,
 		schema: S,
-		opts?: { provider?: string; modelId?: string; noReasoning?: boolean },
+		_opts?: { provider?: string; modelId?: string; noReasoning?: boolean },
 	): Promise<z.infer<S>> {
-		const { object } = await this.streamObjectWithPromptWithUsage(promptId, variables, schema, opts);
-		return object;
+		const { zodToJsonSchema } = await import('zod-to-json-schema');
+		return this.queryStructured<z.infer<S>>(promptId, variables as any, zodToJsonSchema(schema));
 	}
 
-	/**
-	 * Same as {@link streamObjectWithPrompt} plus usage and USD estimate for indexing telemetry.
-	 */
+	/** @deprecated Use {@link queryStructured} directly. Usage tracking via SDK TBD. */
 	async streamObjectWithPromptWithUsage<T extends PromptId, S extends z.ZodTypeAny>(
 		promptId: T,
 		variables: PromptVariables[T] | null,
 		schema: S,
-		opts?: { provider?: string; modelId?: string; noReasoning?: boolean },
+		_opts?: { provider?: string; modelId?: string; noReasoning?: boolean },
 	): Promise<{
 		object: z.infer<S>;
 		usage: LLMUsage;
@@ -705,62 +691,19 @@ ${sourcesList}${topicsList}
 		provider: string;
 		modelId: string;
 	}> {
-		const meta = getTemplateMetadata(promptId);
-		const tm = this.templateManager;
-		const systemPrompt =
-			meta.systemPromptId && tm ? await tm.getTemplate(meta.systemPromptId) : undefined;
-		const promptText = await this.renderPrompt(promptId, variables);
-		/** Default true: avoids long reasoning before JSON. Set false for endpoints that require reasoning (e.g. some OpenRouter Gemini routes). */
-		const structuredOpts: ProviderOptionsConfig = { noReasoning: opts?.noReasoning !== false };
-		let model: LanguageModel;
-		let providerOptions: ProviderOptions | undefined;
-		let provider: string;
-		let modelId: string;
-		if (opts?.provider && opts?.modelId) {
-			provider = opts.provider;
-			modelId = opts.modelId;
-			const ps = this.getMultiChat().getProviderService(opts.provider);
-			model = ps.modelClient(opts.modelId, structuredOpts);
-			providerOptions = ps.getProviderOptions(structuredOpts);
-		} else {
-			const m = this.getModelInstanceForPrompt(promptId, structuredOpts);
-			const resolved = this.getModelForPrompt(promptId);
-			provider = resolved.provider;
-			modelId = resolved.modelId;
-			model = m.model;
-			providerOptions = m.providerOptions;
-		}
-		const result = await generateObject({
-			model,
-			...(systemPrompt ? { system: systemPrompt } : {}),
-			prompt: promptText,
-			schema,
-			...(providerOptions ? { providerOptions } : {}),
-		});
-		const usage = (result.usage ?? emptyUsage()) as LLMUsage;
-		const modelInfo = await this.getModelInfo(modelId, provider);
-		const costUsd = computeUsdFromUsage(usage, modelInfo);
-		return { object: result.object as z.infer<S>, usage, costUsd, provider, modelId };
+		const { zodToJsonSchema } = await import('zod-to-json-schema');
+		const object = await this.queryStructured<z.infer<S>>(promptId, variables as any, zodToJsonSchema(schema));
+		return { object, usage: emptyUsage(), costUsd: 0, provider: 'agent-sdk', modelId: 'profile-active' };
 	}
 
-	/**
-	 * Stream chat with prompt using streaming callbacks.
-	 * @param promptId - The prompt identifier
-	 * @param variables - Variables for the prompt template
-	 * @param callbacks - Streaming callbacks for handling progress
-	 * @param provider - LLM provider name
-	 * @param model - Model identifier
-	 * @returns The complete LLM response content
-	 */
+	/** @deprecated Use {@link queryStream} directly. */
 	async *chatWithPromptStream<T extends PromptId>(
 		promptId: T,
 		variables: PromptVariables[T] | null,
-		provider?: string,
-		model?: string
+		_provider?: string,
+		_model?: string,
 	): AsyncGenerator<LLMStreamEvent> {
-		// IMPORTANT: Must use `yield*` to delegate to another generator!
-		// Using `return` in async generator does NOT forward the generator values!
-		yield* this.promptService.chatWithPromptStream(promptId, variables, provider, model);
+		yield* this.queryStream(promptId, variables as any);
 	}
 
 	/**
