@@ -1,8 +1,8 @@
 import { useCallback, useRef } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatViewStore } from '../store/chatViewStore';
-import { useProjectStore } from '@/ui/store/projectStore';
-import { useMessageStore } from '../store/messageStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { useStreamChat } from './useStreamChat';
 import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types';
@@ -21,7 +21,7 @@ export interface ChatSubmitOptions {
 export function useChatSubmit() {
 	const { app, manager } = useServiceContext();
 	const { streamChat, updateConv } = useStreamChat();
-	const { addMessage: addMessageToStore } = useMessageStore();
+	const { addMessage: addMessageToStore } = useChatDataStore();
 
 	// AbortController for canceling streaming
 	const abortControllerRef = useRef<AbortController | null>(null);
@@ -57,7 +57,7 @@ export function useChatSubmit() {
 	 * Use primitive values as dependencies to avoid object reference issues.
 	 * Get values directly from store (no subscription) since we use getState() inside callbacks.
 	 */
-	const activeConversationId = useProjectStore.getState().activeConversation?.meta.id;
+	const activeConversationId = useChatDataStore.getState().activeConversation?.meta.id;
 	const pendingConversationTitle = useChatViewStore.getState().pendingConversation?.title;
 	const pendingProjectId = useChatViewStore.getState().pendingConversation?.project?.meta?.id;
 	const initialModelId = useChatViewStore.getState().initialSelectedModel?.modelId;
@@ -65,7 +65,7 @@ export function useChatSubmit() {
 	
 	const ensureConversation = useCallback(async (): Promise<ChatConversation | null> => {
 		// Get latest values from store to avoid stale closure
-		const latestActiveConversation = useProjectStore.getState().activeConversation;
+		const latestActiveConversation = useChatDataStore.getState().activeConversation;
 		const latestPendingConversation = useChatViewStore.getState().pendingConversation;
 		const latestInitialSelectedModel = useChatViewStore.getState().initialSelectedModel;
 		

@@ -1,15 +1,15 @@
 import { useCallback } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { useMessageStore } from '@/ui/view/chat-view/store/messageStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '../store/chatViewStore';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
 import { createChatErrorMessage } from '@/service/chat/utils/chat-message-builder';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types';
 import type { LLMUsage, LLMStreamEvent } from '@/core/providers/types';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import type { MessageStore } from '@/ui/view/chat-view/store/messageStore';
+import type { ChatDataStore } from '@/ui/store/chatDataStore';
 
 export interface StreamChatOptions {
 	conversation: ChatConversation;
@@ -35,7 +35,7 @@ function handleAbortedStream(
 	conversation: ChatConversation,
 	manager: AIServiceManager,
 	assistantMessageId: string,
-	messageStore: MessageStore,
+	messageStore: ChatDataStore,
 	finalMessage: ChatMessage | null,
 	finalUsage: LLMUsage | undefined,
 	onlyIfNoMessage: boolean = false
@@ -69,9 +69,9 @@ function createFinalAssistantMessage(
 	const modelId = conversation.meta.activeModel || manager.getSettings().defaultModel.modelId;
 	const provider = conversation.meta.activeProvider || manager.getSettings().defaultModel.provider;
 	const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-	const streamingContent = useMessageStore.getState().streamingContent;
-	const reasoningContent = useMessageStore.getState().reasoningContent;
-	const currentToolCalls = useMessageStore.getState().currentToolCalls;
+	const streamingContent = useChatDataStore.getState().streamingContent;
+	const reasoningContent = useChatDataStore.getState().reasoningContent;
+	const currentToolCalls = useChatDataStore.getState().currentToolCalls;
 
 	// Merge streaming content with error message if error occurred
 	let finalContent = streamingContent;
@@ -130,15 +130,15 @@ function isReasoningEvent(eventType: LLMStreamEvent['type']): boolean {
  */
 export function useStreamChat() {
 	const { manager, eventBus } = useServiceContext();
-	const messageStore = useMessageStore();
+	const messageStore = useChatDataStore();
 
 	/**
 	 * Update all stores with conversation.
 	 */
 	const updateConv = useCallback((conversation: ChatConversation) => {
 		useChatViewStore.getState().setConversation(conversation);
-		useProjectStore.getState().updateConversation(conversation);
-		useProjectStore.getState().setActiveConversation(conversation);
+		useChatDataStore.getState().updateConversation(conversation);
+		useChatDataStore.getState().setActiveConversation(conversation);
 		eventBus.dispatch(new ConversationUpdatedEvent({ conversation }));
 	}, [eventBus]);
 
@@ -193,14 +193,14 @@ export function useStreamChat() {
 
 				// Check if we need to end tool sequence (when receiving non-tool event while tool sequence is active)
 				// This includes reasoning-delta, text-delta, and other non-tool events
-				if (useMessageStore.getState().isToolSequenceActive && !isToolEvent(event.type)) {
+				if (useChatDataStore.getState().isToolSequenceActive && !isToolEvent(event.type)) {
 					console.debug('[useStreamChat] Ending tool sequence due to non-tool event:', event.type);
 					messageStore.endToolSequence();
 				}
 
 				// Check if we need to end reasoning (when receiving non-reasoning event while reasoning is active)
 				// This includes tool events, text-delta, and other non-reasoning events
-				if (useMessageStore.getState().isReasoningActive && !isReasoningEvent(event.type)) {
+				if (useChatDataStore.getState().isReasoningActive && !isReasoningEvent(event.type)) {
 					console.debug('[useStreamChat] Ending reasoning due to non-reasoning event:', event.type);
 					messageStore.completeReasoning();
 				}
@@ -214,7 +214,7 @@ export function useStreamChat() {
 
 					case 'reasoning-delta':
 						// Start reasoning if not already active
-						if (!useMessageStore.getState().isReasoningActive) {
+						if (!useChatDataStore.getState().isReasoningActive) {
 							messageStore.startReasoning();
 						}
 						messageStore.appendReasoningDelta(event.text);
@@ -229,7 +229,7 @@ export function useStreamChat() {
 						break;
 
 					case 'tool-input-delta':
-						const currentToolName = useMessageStore.getState().currentToolName;
+						const currentToolName = useChatDataStore.getState().currentToolName;
 						if (currentToolName) {
 							messageStore.updateToolCall(currentToolName, event.delta);
 						}
@@ -241,12 +241,12 @@ export function useStreamChat() {
 
 					case 'complete':
 						// End tool sequence if active
-						if (useMessageStore.getState().isToolSequenceActive) {
+						if (useChatDataStore.getState().isToolSequenceActive) {
 							messageStore.endToolSequence();
 						}
 
 						// Complete reasoning if active
-						if (useMessageStore.getState().isReasoningActive) {
+						if (useChatDataStore.getState().isReasoningActive) {
 							messageStore.completeReasoning();
 						}
 

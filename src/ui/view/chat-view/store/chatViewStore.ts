@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { ChatProject, PendingConversation, ChatConversation } from '@/service/chat/types';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { VIEW_CLASS_NAME } from '@antv/g2';
 
 /**
@@ -53,8 +53,8 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 
 	// Actions
 	setHome: () => {
-		useProjectStore.getState().setActiveProject(null);
-		useProjectStore.getState().setActiveConversation(null);
+		useChatDataStore.getState().setActiveProject(null);
+		useChatDataStore.getState().setActiveConversation(null);
 		set({
 			viewMode: ViewMode.HOME,
 			projectForOverview: null,
@@ -62,8 +62,8 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 		});
 	},
 	setProjectOverview: (project: ChatProject) => {
-		useProjectStore.getState().setActiveProject(null);
-		useProjectStore.getState().setActiveConversation(null);
+		useChatDataStore.getState().setActiveProject(null);
+		useChatDataStore.getState().setActiveConversation(null);
 		set({
 			viewMode: ViewMode.PROJECT_OVERVIEW,
 			projectForOverview: project,
@@ -71,8 +71,8 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 		});
 	},
 	setProjectConversationsList: (project: ChatProject) => {
-		useProjectStore.getState().setActiveProject(null);
-		useProjectStore.getState().setActiveConversation(null);
+		useChatDataStore.getState().setActiveProject(null);
+		useChatDataStore.getState().setActiveConversation(null);
 		set({
 			viewMode: ViewMode.PROJECT_CONVERSATIONS_LIST,
 			projectForOverview: project,
@@ -80,8 +80,8 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 		});
 	},
 	setAllProjects: () => {
-		useProjectStore.getState().setActiveProject(null);
-		useProjectStore.getState().setActiveConversation(null);
+		useChatDataStore.getState().setActiveProject(null);
+		useChatDataStore.getState().setActiveConversation(null);
 		set({
 			viewMode: ViewMode.ALL_PROJECTS,
 			projectForOverview: null,
@@ -89,8 +89,8 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 		});
 	},
 	setAllConversations: () => {
-		useProjectStore.getState().setActiveProject(null);
-		useProjectStore.getState().setActiveConversation(null);
+		useChatDataStore.getState().setActiveProject(null);
+		useChatDataStore.getState().setActiveConversation(null);
 		set({
 			viewMode: ViewMode.ALL_CONVERSATIONS,
 			projectForOverview: null,
@@ -98,12 +98,12 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 		});
 	},
 	setConversation: (conversation: ChatConversation) => {
-		useProjectStore.getState().setActiveConversation(conversation);
+		useChatDataStore.getState().setActiveConversation(conversation);
 		// Get project from projectStore based on conversation.meta.projectId
 		const project = conversation.meta.projectId
-			? useProjectStore.getState().projects.get(conversation.meta.projectId) ?? null
+			? useChatDataStore.getState().projects.get(conversation.meta.projectId) ?? null
 			: null;
-		useProjectStore.getState().setActiveProject(project);
+		useChatDataStore.getState().setActiveProject(project);
 		set({
 			viewMode: conversation.meta.projectId
 				? ViewMode.CONVERSATION_IN_PROJECT
@@ -115,11 +115,11 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 	},
 	setPendingConversation: (pending: PendingConversation | null) => {
 		if (pending) {
-			useProjectStore.getState().setActiveConversation(null);
-			useProjectStore.getState().setActiveProject(pending.project ?? null);
+			useChatDataStore.getState().setActiveConversation(null);
+			useChatDataStore.getState().setActiveProject(pending.project ?? null);
 		} else {
-			useProjectStore.getState().setActiveConversation(null);
-			useProjectStore.getState().setActiveProject(null);
+			useChatDataStore.getState().setActiveConversation(null);
+			useChatDataStore.getState().setActiveProject(null);
 		}
 		set({
 			pendingConversation: pending,
@@ -136,8 +136,8 @@ export const useChatViewStore = create<ChatViewStore>((set) => ({
 		set({ initialSelectedModel: model });
 	},
 	reset: () => {
-		useProjectStore.getState().setActiveProject(null);
-		useProjectStore.getState().setActiveConversation(null);
+		useChatDataStore.getState().setActiveProject(null);
+		useChatDataStore.getState().setActiveConversation(null);
 		set({
 			viewMode: null,
 			projectForOverview: null,

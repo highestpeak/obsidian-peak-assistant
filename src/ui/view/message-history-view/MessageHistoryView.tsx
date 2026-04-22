@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState, useMemo, useEffect } from 'react';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { ScrollToMessageEvent, ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
 import { cn } from '@/ui/react/lib/utils';
 import { Star, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
@@ -264,7 +264,7 @@ const TopicGroupComponent: React.FC<TopicGroupComponentProps> = ({
  */
 export const MessageHistoryViewComponent: React.FC = () => {
 	const { eventBus, app } = useServiceContext();
-	const activeConversation = useProjectStore((state) => state.activeConversation);
+	const activeConversation = useChatDataStore((state) => state.activeConversation);
 	const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
 
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -336,8 +336,8 @@ export const MessageHistoryViewComponent: React.FC = () => {
 				messages: updatedMessages,
 			};
 			
-			useProjectStore.getState().updateConversation(updatedConv);
-			useProjectStore.getState().setActiveConversation(updatedConv);
+			useChatDataStore.getState().updateConversation(updatedConv);
+			useChatDataStore.getState().setActiveConversation(updatedConv);
 			
 			// Dispatch event to notify other components
 			eventBus.dispatch(new ConversationUpdatedEvent({ conversation: updatedConv }));

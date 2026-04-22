@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { Folder, RefreshCw } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -20,8 +20,8 @@ interface MessageHeaderProps {
 export const MessageHeader: React.FC<MessageHeaderProps> = ({
 }) => {
 	const { app, eventBus, manager } = useServiceContext();
-	const activeConversation = useProjectStore((state) => state.activeConversation);
-	const activeProject = useProjectStore((state) => state.activeProject);
+	const activeConversation = useChatDataStore((state) => state.activeConversation);
+	const activeProject = useChatDataStore((state) => state.activeProject);
 	const [displayTitle, setDisplayTitle] = useState(activeConversation?.meta.title || '');
 	const [enableTypewriter, setEnableTypewriter] = useState(false);
 	const [isRegeneratingTitle, setIsRegeneratingTitle] = useState(false);
@@ -118,7 +118,7 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 			return;
 		}
 
-		const conversation = useProjectStore.getState().activeConversation;
+		const conversation = useChatDataStore.getState().activeConversation;
 		if (!conversation) {
 			return;
 		}

@@ -7,7 +7,7 @@ import { ConversationItem } from '@/ui/view/chat-view/components/conversation-it
 import { Folder, Plus, MessageSquare } from 'lucide-react';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { useChatViewStore } from './store/chatViewStore';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import { hydrateProjects } from '@/ui/view/project-list-view/utils';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -21,7 +21,7 @@ const RECENT_PROJECTS_LIMIT = 5;
 export const HomeViewComponent: React.FC = () => {
 	const { app, manager } = useServiceContext();
 	const chatViewStore = useChatViewStore();
-	const { projects, conversations } = useProjectStore();
+	const { projects, conversations } = useChatDataStore();
 	const { setPendingConversation } = chatViewStore;
 
 	// State for input modal

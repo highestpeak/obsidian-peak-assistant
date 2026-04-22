@@ -8,7 +8,7 @@ import { MessagesViewComponent } from '@/ui/view/chat-view/view-Messages';
 import { HomeViewComponent } from '@/ui/view/chat-view/view-Home';
 import { QuickSearchModalContent } from '@/ui/view/quick-search/SearchModal';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { MockPlugin } from './mocks/services/MockPlugin';
 import { ConfirmDialog } from '@/ui/view/modals/ConfirmDialog';
@@ -32,7 +32,7 @@ export const DesktopRouter: React.FC<{
 	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 	const { eventBus } = useServiceContext();
 	const mockPlugin = new MockPlugin();
-	const activeConversation = useProjectStore((state) => state.activeConversation);
+	const activeConversation = useChatDataStore((state) => state.activeConversation);
 	const chatViewStore = useChatViewStore();
 	const viewMode = chatViewStore.viewMode || ViewMode.ALL_PROJECTS;
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useChatViewStore } from './store/chatViewStore';
-import { useProjectStore } from '@/ui/store/projectStore';
-import { useMessageStore } from '@/ui/view/chat-view/store/messageStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { OpenLinkEvent, ViewEventType } from '@/core/eventBus';
 import { MessageHeader } from './components/messages/MessageViewHeader';
 import { MessageListRenderer } from './components/messages/MessageListRenderer';
@@ -23,7 +23,7 @@ import { useChatSession } from './hooks';
 export const MessagesViewComponent: React.FC = () => {
     const { app, eventBus } = useServiceContext();
     const pendingConversation = useChatViewStore().pendingConversation;
-    const activeConversation = useProjectStore((state) => state.activeConversation);
+    const activeConversation = useChatDataStore((state) => state.activeConversation);
 
     // Get computed session data from hook
     const {
@@ -33,7 +33,7 @@ export const MessagesViewComponent: React.FC = () => {
     const { handleSuggestionTagClick } = useChatSession();
 
     // Sync messages from activeConversation to messageStore
-    const { setMessages, clearMessages } = useMessageStore();
+    const { setMessages, clearMessages } = useChatDataStore();
     useEffect(() => {
         if (activeConversation?.messages) {
             setMessages(activeConversation.messages);

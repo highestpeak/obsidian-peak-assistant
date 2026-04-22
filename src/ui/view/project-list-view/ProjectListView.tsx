@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback } from 'react';
 import { ProjectsSection } from './ProjectsSection';
 import { ConversationsSection } from './ConversationsSection';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { ViewEventType, SelectionChangedEvent, ConversationUpdatedEvent } from '@/core/eventBus';
 import { notifySelectionChange, hydrateProjects } from './utils';
@@ -26,13 +26,13 @@ export const ProjectListViewComponent: React.FC = () => {
 		setActiveProject,
 		setActiveConversation,
 		clearExpandedProjects,
-	} = useProjectStore();
+	} = useChatDataStore();
 
 	// Hydrate data
 	const hydrateData = useCallback(async () => {
 		// Load projects
 		await hydrateProjects(manager);
-		const projectsMap = useProjectStore.getState().projects;
+		const projectsMap = useChatDataStore.getState().projects;
 		const projectsList = Array.from(projectsMap.values());
 
 		// Validate and update activeProject
@@ -53,7 +53,7 @@ export const ProjectListViewComponent: React.FC = () => {
 			return timeB - timeA;
 		});
 		setConversations(conversationsList);
-		const conversationsMap = useProjectStore.getState().conversations;
+		const conversationsMap = useChatDataStore.getState().conversations;
 
 		// Validate and update activeConversation
 		if (activeConversation) {
@@ -119,7 +119,7 @@ export const ProjectListViewComponent: React.FC = () => {
 		const unsubscribeSelection = eventBus.on<SelectionChangedEvent>(
 			ViewEventType.SELECTION_CHANGED,
 			async (event) => {
-				const { setActiveProject, setActiveConversation, toggleProjectExpanded, expandedProjects, projects, conversations } = useProjectStore.getState();
+				const { setActiveProject, setActiveConversation, toggleProjectExpanded, expandedProjects, projects, conversations } = useChatDataStore.getState();
 
 				// Set active selection by ID
 				// Only update if IDs are different to avoid unnecessary updates
@@ -155,7 +155,7 @@ export const ProjectListViewComponent: React.FC = () => {
 		const unsubscribeConversationUpdated = eventBus.on<ConversationUpdatedEvent>(
 			ViewEventType.CONVERSATION_UPDATED,
 			async (event) => {
-				const { updateConversation, expandedProjects, projects } = useProjectStore.getState();
+				const { updateConversation, expandedProjects, projects } = useChatDataStore.getState();
 				const conversation = event.conversation;
 
 				// Update conversation in store

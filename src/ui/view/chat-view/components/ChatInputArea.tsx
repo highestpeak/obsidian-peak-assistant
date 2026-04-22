@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useProjectStore } from '@/ui/store/projectStore';
-import { useMessageStore } from '@/ui/view/chat-view/store/messageStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import {
 	PromptInput,
 	PromptInputBody,
@@ -84,8 +84,8 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 
 	// Use the models hook for managing model data
 	const { models, isModelsLoading } = useModels();
-	const activeConversation = useProjectStore((state) => state.activeConversation);
-	const activeProject = useProjectStore((state) => state.activeProject);
+	const activeConversation = useChatDataStore((state) => state.activeConversation);
+	const activeProject = useChatDataStore((state) => state.activeProject);
 	const [isSending, setIsSending] = useState(false);
 	const [menuContextItems, setMenuContextItems] = useState<NavigableMenuItem[]>([]);
 	const { searchClient, manager } = useServiceContext();
@@ -333,7 +333,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	const placeholder = hasMessages ? 'Ask anything...' : 'Ask anything... (@ for context, / for prompts)';
 
 	// Check if streaming is active
-	const isStreaming = useMessageStore((state) => state.streamingMessageId !== null);
+	const isStreaming = useChatDataStore((state) => state.streamingMessageId !== null);
 
 	// Handle cancel stream
 	const handleCancelStream = useCallback(async () => {

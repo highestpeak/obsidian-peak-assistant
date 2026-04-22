@@ -1,5 +1,5 @@
 import React from 'react';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { Brain } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Brain } from 'lucide-react';
  * Popover component for displaying conversation summary
  */
 export const SummaryPopover: React.FC = () => {
-	const conversation = useProjectStore((state) => state.activeConversation);
+	const conversation = useChatDataStore((state) => state.activeConversation);
 
 	const summary = conversation?.context?.shortSummary || conversation?.context?.fullSummary;
 

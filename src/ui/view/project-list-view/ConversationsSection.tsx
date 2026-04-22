@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChatConversation } from '@/service/chat/types';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '../chat-view/store/chatViewStore';
 import { notifySelectionChange, showContextMenu } from './utils';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
@@ -128,7 +128,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 		setActiveConversation,
 		toggleConversationsCollapsed,
 		updateConversation,
-	} = useProjectStore();
+	} = useChatDataStore();
 	const { setPendingConversation, setAllConversations } = useChatViewStore();
 
 	const [inputModalOpen, setInputModalOpen] = useState(false);
@@ -199,7 +199,7 @@ export const ConversationsSection: React.FC<ConversationsSectionProps> = () => {
 			icon: 'trash',
 			onClick: async () => {
 				await manager.deleteConversation(conversation.meta.id);
-				const { conversations: current, setConversations: updateConversations, activeConversation: active, setActiveConversation: setActive } = useProjectStore.getState();
+				const { conversations: current, setConversations: updateConversations, activeConversation: active, setActiveConversation: setActive } = useChatDataStore.getState();
 				const updated = Array.from(current.values()).filter(c => c.meta.id !== conversation.meta.id);
 				updateConversations(updated);
 				if (active?.meta.id === conversation.meta.id) {

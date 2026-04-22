@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ChatRole } from '@/core/providers/types';
 import { MessageItem, MessageItemProps } from './MessageViewItem';
-import { useMessageStore } from '../../store/messageStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 
 /**
@@ -24,7 +24,7 @@ export const MessageListRenderer: React.FC<MessageListRendererProps> = ({
 		isReasoningActive,
 		currentToolCalls,
 		isToolSequenceActive,
-	} = useMessageStore();
+	} = useChatDataStore();
 
 	// Prepare saved messages for rendering (exclude streaming message if it's being streamed)
 	const savedMessagesToRender: Array<MessageItemProps> = useMemo(() => {

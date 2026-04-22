@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChatConversation, ChatProject } from '@/service/chat/types';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '../chat-view/store/chatViewStore';
 import { notifySelectionChange, hydrateProjects as hydrateProjectsFromManager, showContextMenu } from './utils';
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
@@ -46,7 +46,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 		toggleProjectExpanded,
 		updateProject,
 		updateConversation,
-	} = useProjectStore();
+	} = useChatDataStore();
 	const { setProjectOverview, setProjectConversationsList, setPendingConversation } = useChatViewStore();
 
 	const conversationsToShow = conversations.slice(0, MAX_CONVERSATIONS_PER_PROJECT);
@@ -165,7 +165,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 			onClick: async () => {
 				await manager.deleteProject(projectItem.meta.id);
 				// Remove from store
-				const { projects: currentProjects, setProjects: updateProjects, activeProject: currentActive, setActiveProject: setActive } = useProjectStore.getState();
+				const { projects: currentProjects, setProjects: updateProjects, activeProject: currentActive, setActiveProject: setActive } = useChatDataStore.getState();
 				const updated = Array.from(currentProjects.values()).filter(p => p.meta.id !== projectItem.meta.id);
 				updateProjects(updated);
 				if (currentActive?.meta.id === projectItem.meta.id) {
@@ -195,7 +195,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				icon: 'trash',
 				onClick: async () => {
 					await manager.deleteConversation(conversation.meta.id);
-					const { conversations: current, setConversations: updateConversations, activeConversation: active, setActiveConversation: setActive } = useProjectStore.getState();
+					const { conversations: current, setConversations: updateConversations, activeConversation: active, setActiveConversation: setActive } = useChatDataStore.getState();
 					const updated = Array.from(current.values()).filter(c => c.meta.id !== conversation.meta.id);
 					updateConversations(updated);
 					if (active?.meta.id === conversation.meta.id) {
@@ -333,7 +333,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 		expandedProjects,
 		isProjectsCollapsed,
 		toggleProjectsCollapsed,
-	} = useProjectStore();
+	} = useChatDataStore();
 	const { setAllProjects } = useChatViewStore();
 
 	const [projectConversations, setProjectConversations] = useState<
@@ -366,7 +366,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 			});
 			// Sync conversations to store so they can be found by ID
 			// Use getState() to get latest conversations without causing dependency loop
-			const { conversations: currentConversations, setConversations: updateConversations } = useProjectStore.getState();
+			const { conversations: currentConversations, setConversations: updateConversations } = useChatDataStore.getState();
 			const allConversations = new Map(currentConversations);
 			conversations.forEach(conv => {
 				allConversations.set(conv.meta.id, conv);

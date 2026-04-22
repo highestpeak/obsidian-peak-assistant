@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useChatSessionStore } from '../store/chatSessionStore';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
@@ -22,7 +22,7 @@ export const useChatSession = () => {
     } = useChatSessionStore();
 
     const { manager } = useServiceContext();
-    const activeConversation = useProjectStore((state) => state.activeConversation);
+    const activeConversation = useChatDataStore((state) => state.activeConversation);
 
     // Initialize attachment handling mode from active conversation
     useEffect(() => {
@@ -107,8 +107,8 @@ export const useChatSession = () => {
                 // Reload conversation to get updated meta
                 const updatedConv = await manager.readConversation(convId, false);
                 if (updatedConv) {
-                    useProjectStore.getState().setActiveConversation(updatedConv);
-                    useProjectStore.getState().updateConversation(updatedConv);
+                    useChatDataStore.getState().setActiveConversation(updatedConv);
+                    useChatDataStore.getState().updateConversation(updatedConv);
                     useChatViewStore.getState().setConversation(updatedConv);
                 }
             }
@@ -136,8 +136,8 @@ export const useChatSession = () => {
                 // Reload conversation
                 const updatedConv = await manager.readConversation(activeConversation.meta.id, false);
                 if (updatedConv) {
-                    useProjectStore.getState().setActiveConversation(updatedConv);
-                    useProjectStore.getState().updateConversation(updatedConv);
+                    useChatDataStore.getState().setActiveConversation(updatedConv);
+                    useChatDataStore.getState().updateConversation(updatedConv);
                     useChatViewStore.getState().setConversation(updatedConv);
                 }
             }

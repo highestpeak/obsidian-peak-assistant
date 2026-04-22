@@ -3,7 +3,7 @@ import { Menu } from 'obsidian';
 import { ChatMessage, ChatConversation } from '@/service/chat/types';
 import { useChatViewStore } from '../../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useStreamChat } from '../../hooks/useStreamChat';
 import { cn } from '@/ui/react/lib/utils';
 import { COLLAPSED_USER_MESSAGE_CHAR_LIMIT } from '@/core/constant';
@@ -60,8 +60,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 }) => {
 	const { manager, app, eventBus } = useServiceContext();
 
-	const activeConversation = useProjectStore((state) => state.activeConversation);
-	const activeProject = useProjectStore((state) => state.activeProject);
+	const activeConversation = useChatDataStore((state) => state.activeConversation);
+	const activeProject = useChatDataStore((state) => state.activeProject);
 
 	const handleToggleStar = useCallback(async (messageId: string, starred: boolean) => {
 		console.debug('[MessageItem] Toggling star for message:', { messageId, starred });
@@ -80,8 +80,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 			messages: updatedMessages,
 		};
 		useChatViewStore.getState().setConversation(updatedConv);
-		useProjectStore.getState().updateConversation(updatedConv);
-		useProjectStore.getState().setActiveConversation(updatedConv);
+		useChatDataStore.getState().updateConversation(updatedConv);
+		useChatDataStore.getState().setActiveConversation(updatedConv);
 		// Dispatch event to notify other components
 		eventBus.dispatch(new ConversationUpdatedEvent({ conversation: updatedConv }));
 	}, [activeConversation, manager, eventBus]);

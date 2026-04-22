@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { useMessageStore } from '../store/messageStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { scrollToBottom } from '../../shared/scroll-utils';
 
 /**
@@ -109,13 +109,13 @@ export function useAutoScroll(options: UseAutoScrollOptions) {
 		if (!enabled) return;
 
 		let previousState = {
-			streamingContent: useMessageStore.getState().streamingContent,
-			reasoningContent: useMessageStore.getState().reasoningContent,
-			currentToolCalls: useMessageStore.getState().currentToolCalls.length,
-			isStreaming: !!useMessageStore.getState().streamingMessageId,
+			streamingContent: useChatDataStore.getState().streamingContent,
+			reasoningContent: useChatDataStore.getState().reasoningContent,
+			currentToolCalls: useChatDataStore.getState().currentToolCalls.length,
+			isStreaming: !!useChatDataStore.getState().streamingMessageId,
 		};
 
-		const unsubscribe = useMessageStore.subscribe((currentState) => {
+		const unsubscribe = useChatDataStore.subscribe((currentState) => {
 			const current = {
 				streamingContent: currentState.streamingContent,
 				reasoningContent: currentState.reasoningContent,

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/ui/component/shared-ui/hover-card';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -15,7 +15,7 @@ import { detectPreviewFileType, getFileTypeFromResourceKind } from '@/core/docum
  * Popover component for displaying conversation resources as a list
  */
 export const ResourcesPopover: React.FC = () => {
-	const conversation = useProjectStore((state) => state.activeConversation);
+	const conversation = useChatDataStore((state) => state.activeConversation);
 	const app = (window as any).app as App;
 	const eventBus = EventBus.getInstance(app);
 
@@ -26,7 +26,7 @@ export const ResourcesPopover: React.FC = () => {
 
 	const resources = useMemo(() => {
 		// Get latest values from store to avoid stale closure
-		const latestConversation = useProjectStore.getState().activeConversation;
+		const latestConversation = useChatDataStore.getState().activeConversation;
 		if (!latestConversation) return [];
 
 		const resourceMap = new Map<string, { type: FileType; kind?: string; summaryNotePath?: string }>();

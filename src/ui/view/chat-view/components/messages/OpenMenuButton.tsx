@@ -1,5 +1,5 @@
 import React from 'react';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useHoverMenu } from '@/ui/component/mine';
 import { OpenIn } from '@/ui/component/ai-elements';
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/component/shared-ui/popover';
@@ -53,7 +53,7 @@ const OpenMenuItem: React.FC<{
  */
 export const OpenMenuButton: React.FC = () => {
 	const { app } = useServiceContext();
-	const activeConversation = useProjectStore((state) => state.activeConversation);
+	const activeConversation = useChatDataStore((state) => state.activeConversation);
 
 	// Use the unified hover menu manager
 	const hoverMenu = useHoverMenu({

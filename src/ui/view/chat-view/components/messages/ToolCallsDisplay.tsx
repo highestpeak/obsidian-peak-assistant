@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { type ToolCallInfo } from '@/ui/view/chat-view/store/messageStore';
+import { type ToolCallInfo } from '@/ui/store/chatDataStore';
 import {
 	Task,
 	TaskItem,

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ChatConversation, ChatProject, ChatMessage } from '@/service/chat/types';
 import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 
 export interface StarredEntry {
@@ -22,7 +22,7 @@ export interface ResourceAttachmentEntry {
  */
 export function useProjectLoad(projectId: string | null) {
 	const { manager, eventBus } = useServiceContext();
-	const project = useProjectStore((state) => projectId ? state.projects.get(projectId) || null : null);
+	const project = useChatDataStore((state) => projectId ? state.projects.get(projectId) || null : null);
 
 	// Conversations state
 	const [conversations, setConversations] = useState<ChatConversation[]>([]);

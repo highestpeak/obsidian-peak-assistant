@@ -1,7 +1,7 @@
 import { App, Menu } from 'obsidian';
 import { ChatConversation, ChatProject } from '@/service/chat/types';
 import { AIServiceManager } from '@/service/chat/service-manager';
-import { useProjectStore } from '@/ui/store/projectStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { EventBus, SelectionChangedEvent } from '@/core/eventBus';
 import React from 'react';
 
@@ -18,7 +18,7 @@ export async function notifySelectionChange(
 	app: App,
 	conversation?: ChatConversation | null
 ): Promise<void> {
-	const { setActiveConversation, setActiveProject, projects } = useProjectStore.getState();
+	const { setActiveConversation, setActiveProject, projects } = useChatDataStore.getState();
 
 	// Update activeConversation if provided
 	if (conversation !== undefined) {
@@ -26,7 +26,7 @@ export async function notifySelectionChange(
 	}
 
 	// Get current state after update
-	const currentConv = conversation !== undefined ? conversation : useProjectStore.getState().activeConversation;
+	const currentConv = conversation !== undefined ? conversation : useChatDataStore.getState().activeConversation;
 
 	// Set activeProject based on conversation's projectId
 	// Only set if projectId exists and project is in store
@@ -44,7 +44,7 @@ export async function notifySelectionChange(
 	}
 
 	// Get final state for event
-	const { activeProject, activeConversation } = useProjectStore.getState();
+	const { activeProject, activeConversation } = useChatDataStore.getState();
 
 	// Dispatch selection changed event
 	const eventBus = EventBus.getInstance(app);
@@ -64,7 +64,7 @@ export async function hydrateProjects(manager: AIServiceManager): Promise<void> 
 		const timeB = b.meta.createdAtTimestamp || 0;
 		return timeB - timeA;
 	});
-	const { setProjects } = useProjectStore.getState();
+	const { setProjects } = useChatDataStore.getState();
 	setProjects(projectsList);
 }
 
