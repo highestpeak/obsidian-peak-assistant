@@ -4,7 +4,7 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { getFileIconComponent } from '@/ui/view/shared/file-utils';
-import { useChatSessionStore } from '../../store/chatSessionStore';
+import { useChatViewStore } from '../../store/chatViewStore';
 
 
 /**
@@ -86,7 +86,7 @@ export const FileChangesList: React.FC = () => {
 		discardAllFileChanges,
 		acceptFileChange,
 		discardFileChange
-	} = useChatSessionStore();
+	} = useChatViewStore();
 
 	const [isExpanded, setIsExpanded] = useState(true);
 

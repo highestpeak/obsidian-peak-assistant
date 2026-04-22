@@ -13,7 +13,6 @@ import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../share
 import { useAutoScroll } from './hooks/useAutoScroll';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
 import { ArrowUp, ArrowDown } from 'lucide-react';
-import { useChatSessionStore } from './store/chatSessionStore';
 import { useChatSession } from './hooks';
 
 
@@ -28,7 +27,7 @@ export const MessagesViewComponent: React.FC = () => {
     // Get computed session data from hook
     const {
         suggestionTags
-    } = useChatSessionStore();
+    } = useChatViewStore();
 
     const { handleSuggestionTagClick } = useChatSession();
 

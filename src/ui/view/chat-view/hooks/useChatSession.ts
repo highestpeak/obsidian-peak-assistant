@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from 'react';
-import { useChatSessionStore } from '../store/chatSessionStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
@@ -19,7 +18,7 @@ export const useChatSession = () => {
         setAttachmentHandlingMode,
         setLlmOutputControlSettings,
         setSelectedModel
-    } = useChatSessionStore();
+    } = useChatViewStore();
 
     const { manager } = useServiceContext();
     const activeConversation = useChatDataStore((state) => state.activeConversation);
@@ -52,7 +51,7 @@ export const useChatSession = () => {
 
     // Listen to attachmentHandlingMode changes in the store and update manager/backend when changed
     useEffect(() => {
-        const unsubscribe = useChatSessionStore.subscribe(
+        const unsubscribe = useChatViewStore.subscribe(
             async (state, prevState) => {
                 if (state.attachmentHandlingMode === prevState.attachmentHandlingMode) {
                     return;
@@ -71,7 +70,7 @@ export const useChatSession = () => {
 
     // Listen to llmOutputControlSettings changes in the store and update manager/backend when changed
     useEffect(() => {
-        const unsubscribe = useChatSessionStore.subscribe(
+        const unsubscribe = useChatViewStore.subscribe(
             async (state, prevState) => {
                 if (state.llmOutputControlSettings === prevState.llmOutputControlSettings) {
                     return;
@@ -117,7 +116,7 @@ export const useChatSession = () => {
     }, [manager, activeConversation]);
 
     useEffect(() => {
-        const unsubscribe = useChatSessionStore.subscribe(
+        const unsubscribe = useChatViewStore.subscribe(
             async (state, prevState) => {
                 if (state.selectedModel === prevState.selectedModel) {
                     return;

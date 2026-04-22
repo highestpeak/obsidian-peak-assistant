@@ -17,7 +17,7 @@ import { ToolButton } from '@/ui/component/prompt-input';
 import { ModeSelector } from '../../../component/prompt-input/ModeSelector';
 import { cn } from '@/ui/react/lib/utils';
 import { useChatSubmit } from '../hooks/useChatSubmit';
-import { ChatTag, useChatSessionStore } from '../store/chatSessionStore';
+import { ChatTag, useChatViewStore } from '../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
 import { getFileIcon } from '@/ui/view/shared/file-utils';
@@ -80,7 +80,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 		setIsCodeInterpreterEnabled,
 		setChatMode,
 		setSelectedModel
-	} = useChatSessionStore();
+	} = useChatViewStore();
 
 	// Use the models hook for managing model data
 	const { models, isModelsLoading } = useModels();
@@ -94,7 +94,7 @@ export const ChatInputAreaComponent: React.FC<ChatInputAreaComponentProps> = ({
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	const { submitMessage, cancelStream } = useChatSubmit();
-	const { setCurrentInputTags } = useChatSessionStore();
+	const { setCurrentInputTags } = useChatViewStore();
 
 	// Handle text changes with pre-parsed tags
 	const handleTextChange = useCallback((text: string, tags: ChatTag[]) => {
