@@ -1,0 +1,52 @@
+/* @settings
+name: Peak Assistant
+id: peak-assistant
+settings:
+  -
+    id: pk-colors-heading
+    title: Colors
+    type: heading
+    level: 1
+  -
+    id: pk-accent
+    title: Brand accent
+    type: variable-themed-color
+    format: hex
+    default-light: '#7c3aed'
+    default-dark: '#a78bfa'
+  -
+    id: pk-accent-hover
+    title: Brand accent (hover)
+    type: variable-themed-color
+    format: hex
+    default-light: '#6d28d9'
+    default-dark: '#8b5cf6'
+  -
+    id: pk-success
+    title: Success
+    type: variable-themed-color
+    format: hex
+    default-light: '#22c55e'
+    default-dark: '#4ade80'
+  -
+    id: pk-warning
+    title: Warning
+    type: variable-themed-color
+    format: hex
+    default-light: '#f59e0b'
+    default-dark: '#fbbf24'
+  -
+    id: pk-error
+    title: Error
+    type: variable-themed-color
+    format: hex
+    default-light: '#ef4444'
+    default-dark: '#f87171'
+  -
+    id: pk-info
+    title: Info
+    type: variable-themed-color
+    format: hex
+    default-light: '#3b82f6'
+    default-dark: '#60a5fa'
+*/

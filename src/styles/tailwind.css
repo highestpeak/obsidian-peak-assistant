@@ -4,12 +4,12 @@
   todo we should define our own themes to revert obsidian's default themes.
 */
 
+@import "./peak-variables.css";
+@import "./peak-style-settings.css";
+
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
-
-/* React Flow base styles (required for graph rendering) */
-@import "@xyflow/react/dist/base.css";
 
 /* CodeMirror styles */
 @import "./codemirror.css";

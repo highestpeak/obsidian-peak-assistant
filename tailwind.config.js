@@ -47,6 +47,29 @@ module.exports = {
 				'border-hover': '#3b82f6',
 				input: 'rgba(128, 128, 128, 0.2)',
 				ring: '#3b82f6',
+
+				// ── Peak CSS variable colors (Obsidian-aware + dark-mode-safe) ──
+				// Structural (Obsidian-aware)
+				'pk-background': 'var(--pk-bg)',
+				'pk-background-secondary': 'var(--pk-bg-secondary)',
+				'pk-foreground': 'var(--pk-fg)',
+				'pk-foreground-muted': 'var(--pk-fg-muted)',
+				'pk-foreground-faint': 'var(--pk-fg-faint)',
+				'pk-border': 'var(--pk-border)',
+
+				// Brand
+				'pk-accent': {
+					DEFAULT: 'var(--pk-accent)',
+					hover: 'var(--pk-accent-hover)',
+					muted: 'var(--pk-accent-muted)',
+					fg: 'var(--pk-accent-fg)',
+				},
+
+				// Semantic
+				'pk-success': { DEFAULT: 'var(--pk-success)', muted: 'var(--pk-success-muted)' },
+				'pk-warning': { DEFAULT: 'var(--pk-warning)', muted: 'var(--pk-warning-muted)' },
+				'pk-error': { DEFAULT: 'var(--pk-error)', muted: 'var(--pk-error-muted)' },
+				'pk-info': { DEFAULT: 'var(--pk-info)', muted: 'var(--pk-info-muted)' },
 			},
 			borderRadius: {
 				lg: '0.5rem', // 8px
