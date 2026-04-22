@@ -1,8 +1,8 @@
 import { SLICE_CAPS } from '@/core/constant';
 import { App } from 'obsidian';
-import { ModelInfoForSwitch, LLMUsage, emptyUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart, LLMRequestMessage, ModelTokenLimits, ProviderOptionsConfig, ProviderOptions } from '@/core/providers/types';
+import { ModelInfoForSwitch, LLMUsage, emptyUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart, LLMRequestMessage, ModelTokenLimits, ModelMetaData } from '@/core/providers/types';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
-import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
+import { modelRegistry } from '@/core/providers/model-registry';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef } from './types';
 import { PromptService } from '@/service/prompt/PromptService';
@@ -24,9 +24,7 @@ import { EventBus } from '@/core/eventBus';
 import { createChatMessage } from './utils/chat-message-builder';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { AgentTemplateId, getTemplateMetadata } from '@/core/template/TemplateRegistry';
-import { LanguageModel } from 'ai';
 import type { z } from 'zod/v3';
-import { resolveModelForPrompt, resolveModelInstance, filterAvailableModels } from './model-resolution';
 import { estimateTokens as estimateTokensFn } from './token-estimation';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
@@ -41,7 +39,6 @@ import { AppContext } from '@/app/context/AppContext';
  */
 export class AIServiceManager {
 	private storage: ChatStorageService;
-	private multiChat: MultiProviderChatService;
 	private promptService: PromptService;
 	private projectService?: ProjectService;
 	private conversationService?: ConversationService;
@@ -72,19 +69,13 @@ export class AIServiceManager {
 		);
 
 		// === Service construction ===
-		const providerConfigs = this.settings.llmProviderConfigs ?? {};
-		this.multiChat = new MultiProviderChatService({
-			providerConfigs,
-			defaultOutputControl: this.settings.defaultOutputControl,
-		});
-		this.promptService = new PromptService(this.app, this.settings, this.multiChat, this.templateManager);
+		this.promptService = new PromptService(this.app, this.settings, undefined, this.templateManager);
 
 		// Initialize context service if profile is enabled
 		if (this.settings.profileEnabled) {
 			this.profileService = new UserProfileService(
 				this.app,
 				this.promptService,
-				this.multiChat,
 				getAIProfileFilePath(this.settings.rootFolder),
 			);
 		}
@@ -115,12 +106,10 @@ export class AIServiceManager {
 			this.storage,
 			this.settings.rootFolder,
 			this.promptService,
-			this.multiChat
 		);
 		this.conversationService = new ConversationService(
 			this.app,
 			this.storage,
-			this.multiChat,
 			this.promptService,
 			this.settings.defaultModel,
 			this.resourceSummaryService,
@@ -162,13 +151,6 @@ export class AIServiceManager {
 	}
 
 	/**
-	 * Get MultiProviderChatService instance for embedding generation.
-	 */
-	getMultiChat(): MultiProviderChatService {
-		return this.multiChat;
-	}
-
-	/**
 	 * Get UserProfileService when profile is enabled; otherwise undefined.
 	 */
 	getProfileService(): UserProfileService | undefined {
@@ -189,26 +171,18 @@ export class AIServiceManager {
 	}
 
 	refreshDefaultServices(): void {
-		const providerConfigs = this.settings.llmProviderConfigs ?? {};
-
-		// Refresh provider services with new configurations
-		// This clears existing services and recreates them with updated configs
-		this.multiChat.refresh(providerConfigs, this.settings.defaultOutputControl ?? DEFAULT_AI_SERVICE_SETTINGS.defaultOutputControl!);
-		this.promptService.setChatService(this.multiChat);
-
 		// Reinitialize context service if profile is enabled
 		if (this.settings.profileEnabled) {
 			this.profileService = new UserProfileService(
 				this.app,
 				this.promptService,
-				this.multiChat,
 				getAIProfileFilePath(this.settings.rootFolder),
 			);
 		}
 
 		this.projectService = new ProjectService(
 			this.app,
-			this.storage, this.settings.rootFolder, this.promptService, this.multiChat
+			this.storage, this.settings.rootFolder, this.promptService,
 		);
 		this.resourceSummaryService = new ResourceSummaryService(
 			this.app,
@@ -218,7 +192,6 @@ export class AIServiceManager {
 		this.conversationService = new ConversationService(
 			this.app,
 			this.storage,
-			this.multiChat,
 			this.promptService,
 			this.settings.defaultModel,
 			this.resourceSummaryService,
@@ -606,23 +579,6 @@ ${sourcesList}${topicsList}
 		return this.promptService.getPromptInfo(promptId);
 	}
 
-	/**
-	 * Resolve model for a prompt:
-	 * 1. `promptModelMap[promptId]` — per-prompt override (most specific)
-	 * 2. `analysisModel` — for AiAnalysis* prompts when set
-	 * 3. `defaultModel` — global fallback
-	 */
-	getModelForPrompt(promptId: PromptId): { provider: string; modelId: string } {
-		return resolveModelForPrompt(this.settings, promptId);
-	}
-
-	getModelInstanceForPrompt(promptId: PromptId, providerOptionsConfig?: ProviderOptionsConfig): {
-		model: LanguageModel,
-		providerOptions?: ProviderOptions
-	} {
-		return resolveModelInstance(this.settings, this.multiChat, promptId, providerOptionsConfig);
-	}
-
 	async renderTemplate<T extends AgentTemplateId>(
 		templateId: T,
 		variables: Record<string, unknown>
@@ -716,12 +672,33 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
-	 * Get all available models from all configured providers
-	 * Only returns models from enabled providers and enabled models
+	 * Get all available models from all configured providers.
+	 * Uses the static model catalog (no runtime API calls).
+	 * Only returns models from enabled providers and enabled models.
 	 */
 	async getAllAvailableModels(): Promise<ModelInfoForSwitch[]> {
-		const allModels = await this.multiChat.getAllAvailableModels();
-		return filterAvailableModels(allModels, this.settings);
+		const providerConfigs = this.settings.llmProviderConfigs ?? {};
+		const result: ModelInfoForSwitch[] = [];
+
+		for (const [providerId, config] of Object.entries(providerConfigs)) {
+			if (config?.enabled !== true) continue;
+			const models = modelRegistry.getModelsForProvider(providerId);
+			for (const model of models) {
+				const modelConfigs = config.modelConfigs;
+				if (!modelConfigs) {
+					// No modelConfigs → all models default to enabled
+					result.push({ ...model, provider: providerId });
+					continue;
+				}
+				const modelConfig = modelConfigs[model.id];
+				if (modelConfig?.enabled === true) {
+					result.push({ ...model, provider: providerId });
+				}
+				// If modelConfig is missing or not enabled → skip
+			}
+		}
+
+		return result;
 	}
 
 	async getModelInfo(modelId: string, provider: string): Promise<ModelInfoForSwitch | undefined> {
@@ -739,20 +716,10 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
-	 * Get token limits for a specific model
-	 * @param model - Model ID
-	 * @param provider - Provider ID
-	 * @returns Token limits for the model, or undefined if not available
+	 * Get token limits for a specific model from the static model catalog.
 	 */
 	async getModelTokenLimits(model: string, provider: string): Promise<ModelTokenLimits | undefined> {
-		try {
-			console.debug('[AIServiceManager] getModelTokenLimits: model:', model, 'provider:', provider);
-			const providerService = this.multiChat.getProviderService(provider);
-			return providerService.getModelTokenLimits(model);
-		} catch (error) {
-			console.warn('[AIServiceManager] Failed to get model token limits:', error);
-			return undefined;
-		}
+		return modelRegistry.getModelTokenLimits(provider, model);
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════

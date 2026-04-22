@@ -11,7 +11,7 @@ interface LLMRerankOptions {
 /**
  * LLM-based rerank provider (RankGPT/RankLLM style).
  * Uses existing LLM to rerank documents via prompt.
- * Uses MultiProviderChatService to call the LLM, so no need for baseUrl/apiKey.
+ * Uses AIServiceManager.queryText to call the LLM, so no need for baseUrl/apiKey.
  */
 export class LLMRerankProvider implements RerankProvider {
 	private readonly modelId: string;

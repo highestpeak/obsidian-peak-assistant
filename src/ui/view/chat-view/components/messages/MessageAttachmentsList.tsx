@@ -8,8 +8,10 @@ import {
 } from '@/ui/component/ai-elements';
 import { TooltipProvider } from '@/ui/component/shared-ui/tooltip';
 import { ResourcePreviewHover } from '@/ui/component/mine';
-import type { FileUIPart } from 'ai';
 import { isUrl, getExtensionFromSource, getImageMimeType } from '@/core/document/helper/FileTypeUtils';
+
+/** File attachment UI part (standalone definition, formerly from 'ai' package). */
+interface FileUIPart { type: 'file'; filename?: string; mediaType: string; url: string; }
 import { ChatResourceRef } from '@/service/chat/types';
 import { ResourceKind } from '@/core/document/types';
 import { openFile } from '@/core/utils/obsidian-utils';

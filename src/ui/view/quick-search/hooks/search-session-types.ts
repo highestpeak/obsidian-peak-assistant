@@ -34,7 +34,7 @@ export function flushUiStep(accum: UiStepAccum | UIStepRecord): UIStepRecord {
 // Timeline helpers
 // ---------------------------------------------------------------------------
 
-import { DELTA_EVENT_TYPES } from '@/core/providers/helpers/stream-helper';
+import { DELTA_EVENT_TYPES } from '@/core/providers/types';
 
 export function pushTimelineEvent(timeline: LLMStreamEvent[], event: LLMStreamEvent): void {
 	try {

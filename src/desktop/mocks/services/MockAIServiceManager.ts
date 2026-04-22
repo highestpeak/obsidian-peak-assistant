@@ -4,7 +4,6 @@ import { LLMStreamEvent, ModelInfoForSwitch } from '@/core/providers/types';
 import { TFile } from 'obsidian';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { MOCK_RESPONSE_CONTENT } from './MockResponseContent';
-import { TextStreamPart } from 'ai';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
 import { TEST_PROJECTS, TEST_CONVERSATIONS } from '@/desktop/mocks/test-data';
 

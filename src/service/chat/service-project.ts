@@ -5,7 +5,6 @@ import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { DEFAULT_SUMMARY } from '@/core/constant';
 import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/service/prompt/PromptId';
-import type { LLMProviderService } from '@/core/providers/types';
 
 /**
  * Service for managing chat projects.
@@ -16,7 +15,6 @@ export class ProjectService {
 		private readonly storage: ChatStorageService,
 		private readonly rootFolder: string,
 		private readonly promptService?: PromptService,
-		private readonly chat?: LLMProviderService,
 	) {}
 
 	/**
@@ -53,11 +51,6 @@ export class ProjectService {
 	 * Summarize a project by aggregating summaries from all conversations in the project.
 	 */
 	async summarizeProject(project: ChatProject): Promise<string> {
-		if (!this.chat) {
-			console.warn('[ProjectService] No LLM service available for project summary');
-			return DEFAULT_SUMMARY;
-		}
-
 		try {
 			// Get all conversations in this project
 			const conversations = await this.storage.listConversations(project.meta.id);

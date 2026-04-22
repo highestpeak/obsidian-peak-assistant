@@ -1,6 +1,6 @@
 import { App } from 'obsidian';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
-import { LLMProviderService, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, ToolEvent } from '@/core/providers/types';
+import { LLMUsage, LLMOutputControlSettings, LLMStreamEvent, ToolEvent } from '@/core/providers/types';
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, getAIUploadFolder } from '@/app/settings/types';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
 import { DEFAULT_SUMMARY } from '@/core/constant';
@@ -50,7 +50,6 @@ export class ConversationService {
 	constructor(
 		private readonly app: App,
 		private readonly storage: ChatStorageService,
-		private readonly chat: LLMProviderService,
 		private readonly promptService: PromptService,
 		private readonly defaultModel: { provider: string; modelId: string },
 		private readonly resourceSummaryService: ResourceSummaryService,

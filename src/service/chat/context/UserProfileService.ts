@@ -1,7 +1,6 @@
 import { App, TFile } from 'obsidian';
 import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/service/prompt/PromptId';
-import type { LLMProviderService } from '@/core/providers/types';
 import { ensureFolder } from '@/core/utils/vault-utils';
 import { USER_PROFILE_MIN_CONFIDENCE_THRESHOLD } from '@/core/constant';
 
@@ -26,7 +25,6 @@ export class UserProfileService {
 	constructor(
 		private readonly app: App,
 		private readonly promptService: PromptService,
-		private readonly chat: LLMProviderService,
 		private readonly contextFilePath: string,
 	) {}
 

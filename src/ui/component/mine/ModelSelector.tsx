@@ -3,7 +3,7 @@ import { ModelInfoForSwitch, ModelCapabilities } from '@/core/providers/types';
 import { ChevronDown, Check, Search } from 'lucide-react';
 import { SafeModelIcon, SafeProviderIcon } from '@/ui/component/mine/SafeIconWrapper';
 import { cn } from '@/ui/react/lib/utils';
-import { ProviderServiceFactory } from '@/core/providers/base/factory';
+import { modelRegistry } from '@/core/providers/model-registry';
 import { HoverButton } from '@/ui/component/mine/HoverButton';
 import { ModelCapabilitiesIcons } from './ModelCapabilitiesIcons';
 
@@ -135,7 +135,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
 	// Get provider metadata map for fallback icons and names
 	const providerMetadataMap = useMemo(() => {
-		const allProviderMetadata = ProviderServiceFactory.getInstance().getAllProviderMetadata();
+		const allProviderMetadata = modelRegistry.getAllProviderMetadata();
 		const map = new Map<string, { icon?: string; name: string }>();
 		allProviderMetadata.forEach((meta) => {
 			map.set(meta.id, { icon: meta.icon, name: meta.name });

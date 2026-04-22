@@ -13,7 +13,7 @@ import {
 import { AppContext } from "@/app/context/AppContext";
 import type { LLMStreamEvent } from "@/core/providers/types";
 import { emptyUsage, mergeTokenUsage } from "@/core/providers/types";
-import { DELTA_EVENT_TYPES, getDeltaEventDeltaText } from "@/core/providers/helpers/stream-helper";
+import { DELTA_EVENT_TYPES, getDeltaEventDeltaText } from "@/core/providers/types";
 import {
 	KnowledgeIntuitionAgent,
 	type KnowledgeIntuitionAgentResult,

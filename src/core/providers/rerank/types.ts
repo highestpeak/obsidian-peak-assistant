@@ -11,7 +11,7 @@ export interface RerankProviderConfig {
 	 * Provider type identifier.
 	 * - 'cohere': Cohere Rerank API
 	 * - 'jina': Jina Rerank API
-	 * - 'llm': LLM-based reranking (uses MultiProviderChatService)
+	 * - 'llm': LLM-based reranking (uses AIServiceManager.queryText)
 	 * - 'flashrank': FlashRank local reranking
 	 */
 	type: string;

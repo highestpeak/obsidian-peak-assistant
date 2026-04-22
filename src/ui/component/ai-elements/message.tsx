@@ -12,7 +12,10 @@ import {
   TooltipTrigger,
 } from "@/ui/component/shared-ui/tooltip";
 import { cn } from "@/ui/react/lib/utils";
-import type { FileUIPart, UIMessage } from "ai";
+/** File attachment UI part (standalone definition, formerly from 'ai' package). */
+type FileUIPart = { type: 'file'; filename?: string; mediaType: string; url: string; };
+/** Chat message role union (standalone definition, formerly from 'ai' package). */
+type UIMessageRole = 'user' | 'assistant' | 'system' | 'data';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -24,7 +27,7 @@ import { createContext, memo, useContext, useEffect, useState } from "react";
 import { StreamdownIsolated } from "@/ui/component/mine";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
-  from: UIMessage["role"];
+  from: UIMessageRole;
 };
 
 export const Message = ({ className, from, ...props }: MessageProps) => (
@@ -218,7 +221,7 @@ export const MessageBranchContent = ({
 };
 
 export type MessageBranchSelectorProps = HTMLAttributes<HTMLDivElement> & {
-  from: UIMessage["role"];
+  from: UIMessageRole;
 };
 
 export const MessageBranchSelector = ({

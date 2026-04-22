@@ -1,5 +1,3 @@
-import type { LanguageModelUsage } from 'ai';
-
 /**
  * File attachment with preview
  */

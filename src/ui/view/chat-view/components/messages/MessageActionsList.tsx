@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/c
 import { Button } from '@/ui/component/shared-ui/button';
 import { formatTimestampLocale } from '@/core/utils/date-utils';
 import { SafeModelIcon, SafeProviderIcon } from '@/ui/component/mine/SafeIconWrapper';
-import { ProviderServiceFactory } from '@/core/providers/base/factory';
+import { modelRegistry } from '@/core/providers/model-registry';
 
 /**
  * Component for displaying model/provider icon with tooltip
@@ -40,7 +40,7 @@ const ModelIconButton: React.FC<{
 		const loadIcons = async () => {
 			try {
 				// Get provider metadata
-				const providerMetadata = ProviderServiceFactory.getInstance().getAllProviderMetadata();
+				const providerMetadata = modelRegistry.getAllProviderMetadata();
 				const providerMeta = providerMetadata.find(m => m.id === message.provider);
 				if (providerMeta?.icon) {
 					setProviderIcon(providerMeta.icon);

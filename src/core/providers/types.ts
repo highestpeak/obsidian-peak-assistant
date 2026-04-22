@@ -1,4 +1,23 @@
-import { LanguageModelUsage, FinishReason, CallWarning, LanguageModelRequestMetadata, LanguageModelResponseMetadata, ProviderMetadata, StepResult, GeneratedFile, ContentPart, ReasoningOutput, LanguageModel, JSONValue } from 'ai';
+// ── Standalone type definitions (formerly re-exported from 'ai') ──────────────
+
+/** JSON-safe value type. */
+export type JSONValue = null | string | number | boolean | JSONValue[] | { [key: string]: JSONValue };
+
+/** Reason the generation finished. */
+export type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other' | 'unknown';
+
+/**
+ * Token usage counters.
+ * Field semantics match the Vercel AI SDK LanguageModelUsage so downstream
+ * code that already handles these fields continues to work unchanged.
+ */
+export interface LanguageModelUsage {
+	inputTokens?: number;
+	outputTokens?: number;
+	totalTokens?: number;
+	reasoningTokens?: number;
+	cachedInputTokens?: number;
+}
 
 export interface ProviderConfig {
 	enabled?: boolean;
@@ -235,48 +254,6 @@ export interface ProviderOptionsConfig {
 }
 
 export type ProviderOptions = Record<string, Record<string, JSONValue>>;
-
-export interface LLMProviderService {
-	blockChat(request: LLMRequest<any>): Promise<LLMResponse>;
-	streamChat(request: LLMRequest<any>): AsyncGenerator<LLMStreamEvent>;
-	/**
-	 * Get provider ID
-	 */
-	getProviderId(): string;
-	/**
-	 * Get model client for this provider
-	 * openrouter can only set option when the model is created.
-	 */
-	modelClient(model: string, optionConfig?: ProviderOptionsConfig): LanguageModel;
-	/**
-	 * Get list of available models for this provider
-	 * Returns empty array if models cannot be fetched or provider doesn't support listing
-	 */
-	getAvailableModels(): Promise<ModelMetaData[]>;
-	/**
-	 * Get provider metadata (name and default baseUrl)
-	 */
-	getProviderMetadata(): ProviderMetaData;
-	/**
-	 * different providers may have different options.
-	 * we have so many places to get no reasoning options.
-	 * see ai-sdk type ProviderOptions = SharedV2ProviderOptions;
-	 */
-	getProviderOptions(optionConfig: ProviderOptionsConfig): ProviderOptions | undefined;
-	/**
-	 * Generate embeddings for texts.
-	 * @param texts - Array of texts to generate embeddings for
-	 * @param model - Model identifier for embedding generation
-	 * @returns Promise resolving to array of embedding vectors (each is an array of numbers)
-	 */
-	generateEmbeddings(texts: string[], model: string): Promise<number[][]>;
-	/**
-	 * Get token limits for a specific model
-	 * @param model - Model identifier
-	 * @returns Token limits for the model, or undefined if not available
-	 */
-	getModelTokenLimits(model: string): ModelTokenLimits | undefined;
-}
 
 export type LLMRequest<TOOLS extends any = any> = {
 	provider: string;
@@ -546,96 +523,6 @@ export enum UISignalKind {
 
  */
 
-/**
- * Copy from AI SDK's GenerateTextResult & StreamTextResult
- */
-export type LLMResponse = {
-	/**
-	 * The content that was generated in the last step.
-	 */
-	content: Array<ContentPart<any>>;
-	/**
-	 * The text that was generated in the last step.
-	 */
-	text: string;
-	/**
-	 * The full reasoning that the model has generated in the last step.
-	 */
-	reasoning: Array<ReasoningOutput>;
-	/**
-	 * The reasoning text that the model has generated in the last step. Can be undefined if the model
-	 * has only generated text.
-	 */
-	reasoningText: string | undefined;
-	/**
-	 * The files that were generated in the last step.
-	 * Empty array if no files were generated.
-	 */
-	files: Array<GeneratedFile>;
-	/**
-	 * Sources that have been used as references in the last step.
-	 */
-	sources: Array<LLMResponseSource>;
-	/**
-	 * The tool calls that were made in the last step.
-	 */
-	toolCalls: Array<any>;
-	/**
-	 * The results of the tool calls from the last step.
-	 */
-	toolResults: Array<any>;
-	/**
-	 * The reason why the generation finished.
-	 */
-	finishReason: FinishReason;
-	/**
-	 * The token usage of the last step.
-	 */
-	usage: LanguageModelUsage;
-	/**
-	 * The total token usage of all steps.
-	 * When there are multiple steps, the usage is the sum of all step usages.
-	 */
-	totalUsage: LanguageModelUsage;
-	/**
-	 * Warnings from the model provider (e.g. unsupported settings)
-	 */
-	warnings: CallWarning[] | undefined;
-	/**
-	 * Additional request information.
-	 */
-	request: LanguageModelRequestMetadata;
-	/**
-	 * Additional response information.
-	 */
-	response: LanguageModelResponseMetadata & {
-		/**
-		 * The response messages that were generated during the call. It consists of an assistant message,
-		 * potentially containing tool calls.
-		 *
-		 * When there are tool results, there is an additional tool message with the tool results that are available.
-		 * If there are tools that do not have execute functions, they are not included in the tool results and
-		 * need to be added separately.
-		 */
-		messages: Array<any>;
-		/**
-		 * Response body (available only for providers that use HTTP requests).
-		 */
-		body?: unknown;
-	};
-	/**
-	 * Additional provider-specific metadata. They are passed through
-	 * from the provider to the AI SDK and enable provider-specific
-	 * results that can be fully encapsulated in the provider.
-	 */
-	providerMetadata: ProviderMetadata | undefined;
-	/**
-	 * Details for all steps.
-	 * You can use this to get information about intermediate steps,
-	 * such as the tool calls or the response headers.
-	 */
-	steps: Array<StepResult<any>>;
-};
 
 /**
  * LLM output control settings.
@@ -779,3 +666,46 @@ export type LLMResponseSource = {
 	 */
 	providerMetadata?: Record<string, any>;
 };
+
+// ── Utilities moved from helpers/stream-helper.ts ──────────────────────────
+
+/** Max chars per prompt for pk-debug (avoids huge console dumps). */
+export const PK_DEBUG_PROMPT_TRUNCATE_CHARS = 2000;
+
+/** Build a pk-debug event for prompt trace (system + user truncated). */
+export function buildPromptTraceDebugEvent(
+	triggerName: StreamTriggerName,
+	system?: string,
+	prompt?: string,
+): LLMStreamEvent {
+	return {
+		type: 'pk-debug',
+		debugName: 'prompt-trace',
+		triggerName,
+		extra: {
+			prompt: prompt ?? 'undefined',
+			systemLen: system?.length ?? 'undefined',
+			promptLen: prompt?.length ?? 'undefined',
+		},
+	};
+}
+
+/** Event types that carry incremental text deltas (not meaningful to log individually). */
+export const DELTA_EVENT_TYPES = new Set(['text-delta', 'reasoning-delta', 'prompt-stream-delta', 'tool-input-delta', 'ui-step-delta']);
+
+/** Extract the delta text from any delta-type event. */
+export function getDeltaEventDeltaText(event: LLMStreamEvent): string {
+	switch (event.type) {
+		case 'text-delta':
+			return event.text;
+		case 'reasoning-delta':
+			return event.text;
+		case 'prompt-stream-delta':
+			return event.delta ?? '';
+		case 'tool-input-delta':
+			return event.delta;
+		case 'ui-step-delta':
+			return (event.titleDelta ?? '') + (event.descriptionDelta ?? '');
+	}
+	return '';
+}

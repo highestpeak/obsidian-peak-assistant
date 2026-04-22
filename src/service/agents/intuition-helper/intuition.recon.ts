@@ -7,8 +7,7 @@
  */
 
 import { knowledgeIntuitionSubmitSchema } from '@/core/schemas';
-import { buildPromptTraceDebugEvent } from '@/core/providers/helpers/stream-helper';
-import { StreamTriggerName, type LLMStreamEvent } from '@/core/providers/types';
+import { buildPromptTraceDebugEvent, StreamTriggerName, type LLMStreamEvent } from '@/core/providers/types';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';

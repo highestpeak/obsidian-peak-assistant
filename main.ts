@@ -23,8 +23,6 @@ import { EventBus } from '@/core/eventBus';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
 import { registerTemplateEngineHelpers } from '@/core/template-engine-helper';
 import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
-import { MultiProviderChatService } from '@/core/providers/MultiProviderChatService';
-import { ProviderServiceFactory } from '@/core/providers/base/factory';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
 import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { warmupPool, shutdownPool } from '@/service/agents/core/sdkAgentPool';
@@ -323,8 +321,6 @@ export default class MyPlugin extends Plugin {
 		IgnoreService.clearInstance();
 		SqliteStoreManager.clearInstance();
 		BetterSqliteStore.clearInstance();
-		MultiProviderChatService.clearInstance();
-		ProviderServiceFactory.clearInstance();
 		RerankProviderManager.clearInstance();
 
 		this.uninstallHoverMenuGlobals?.();

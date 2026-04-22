@@ -7,7 +7,7 @@
 
 import type { LLMStreamEvent, LLMUsage } from '@/core/providers/types';
 import { StreamTriggerName, UISignalChannel } from '@/core/providers/types';
-import { getDeltaEventDeltaText } from '@/core/providers/helpers/stream-helper';
+import { getDeltaEventDeltaText } from '@/core/providers/types';
 import { v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '../types/search-steps';
 import type { V2ToolStep, V2Source } from '../types/search-steps';
 import type { V2Section } from '../store/searchSessionStore';

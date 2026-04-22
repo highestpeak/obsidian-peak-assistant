@@ -8,7 +8,7 @@ import { HoverButton } from '@/ui/component/mine/HoverButton';
 import { Check } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { DOCUMENT_TYPES } from '@/core/document/types';
-import { getKnownPerplexityModelIds } from '@/core/providers/base/perplexity';
+import { modelRegistry } from '@/core/providers/model-registry';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
 import { DEFAULT_HUB_DISCOVER_SETTINGS, type HubDiscoverSettings } from '@/service/search/index/helper/hub/types';
 
@@ -58,7 +58,7 @@ export function SearchSettingsTab({ settings, settingsUpdates }: SearchSettingsT
 
 	// Get available perplexity models
 	const perplexityModels = useMemo(() => {
-		return getKnownPerplexityModelIds();
+		return modelRegistry.getModelIdsForProvider('perplexity');
 	}, []);
 
 	return (

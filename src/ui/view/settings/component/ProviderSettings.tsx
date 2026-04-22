@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { AIServiceManager } from '@/service/chat/service-manager';
 import { AIServiceSettings } from '@/app/settings/types';
-import { ProviderServiceFactory } from '@/core/providers/base/factory';
+import { modelRegistry } from '@/core/providers/model-registry';
 import { SafeProviderIcon, SafeModelIcon } from '@/ui/component/mine/SafeIconWrapper';
 import { ModelMetaData, ProviderMetaData } from '@/core/providers/types';
 import { cn } from '@/ui/react/lib/utils';
@@ -123,7 +123,7 @@ function ProviderListSection({ title, providerIds, allProviderMetadata, selected
  */
 function ProviderConfigForm({ selectedProvider: provider, settings, onConfigChange }: ProviderConfigFormProps) {
 	const selectedProviderInfo = useMemo(() => {
-		const allProviderMetadata = ProviderServiceFactory.getInstance().getAllProviderMetadata();
+		const allProviderMetadata = modelRegistry.getAllProviderMetadata();
 		return allProviderMetadata.find(p => p.id === provider);
 	}, [provider]);
 
@@ -215,7 +215,7 @@ function ModelList({ selectedProvider: provider, settings, availableModels, isLo
 
 	// Get provider metadata for fallback icon
 	const providerMetadata = useMemo(() => {
-		const allProviderMetadata = ProviderServiceFactory.getInstance().getAllProviderMetadata();
+		const allProviderMetadata = modelRegistry.getAllProviderMetadata();
 		return allProviderMetadata.find(p => p.id === provider);
 	}, [provider]);
 
@@ -338,7 +338,7 @@ function ModelList({ selectedProvider: provider, settings, availableModels, isLo
  */
 export function ProviderSettingsComponent({ settings, aiServiceManager, onUpdate }: ProviderSettingsComponentProps) {
 	// for display provider list
-	const allProviderMetadata = useMemo(() => ProviderServiceFactory.getInstance().getAllProviderMetadata(), []);
+	const allProviderMetadata = useMemo(() => modelRegistry.getAllProviderMetadata(), []);
 	// const providerConfigs = settings.llmProviderConfigs || {};
 
 	// Model data cache for all providers to avoid reloading on provider switch
@@ -355,9 +355,7 @@ export function ProviderSettingsComponent({ settings, aiServiceManager, onUpdate
 
 			setLoadingStates(prev => ({ ...prev, [providerId]: true }));
 			try {
-				const factory = ProviderServiceFactory.getInstance();
-				const providerConfig = settings.llmProviderConfigs[providerId] || {};
-				const models = await factory.getProviderSupportModels(providerId, providerConfig);
+				const models = modelRegistry.getModelsForProvider(providerId);
 				setModelsCache(prev => ({ ...prev, [providerId]: models }));
 			} catch (error) {
 				console.error(`[ProviderSettings] Error preloading models for ${providerId}:`, error);
@@ -402,20 +400,10 @@ export function ProviderSettingsComponent({ settings, aiServiceManager, onUpdate
 		};
 		await onUpdate({ llmProviderConfigs: updatedConfigs });
 
-		// Reload models if API key or base URL changed
+		// Reload models if API key or base URL changed (static catalog, instant)
 		if (field === 'apiKey' || field === 'baseUrl') {
-			setLoadingStates(prev => ({ ...prev, [provider]: true }));
-			try {
-				const factory = ProviderServiceFactory.getInstance();
-				const providerConfig = updatedConfigs[provider] || {};
-				const models = await factory.getProviderSupportModels(provider, providerConfig);
-				setModelsCache(prev => ({ ...prev, [provider]: models }));
-			} catch (error) {
-				console.error(`[ProviderSettings] Error reloading models for ${provider}:`, error);
-				setModelsCache(prev => ({ ...prev, [provider]: [] }));
-			} finally {
-				setLoadingStates(prev => ({ ...prev, [provider]: false }));
-			}
+			const models = modelRegistry.getModelsForProvider(provider);
+			setModelsCache(prev => ({ ...prev, [provider]: models }));
 		}
 	}, [settings, onUpdate]);
 

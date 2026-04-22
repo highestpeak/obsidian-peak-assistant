@@ -45,33 +45,11 @@ export async function inferThinkingTree(input: TreeInferenceInput): Promise<Tree
 
 	const prompt = USER_PROMPT_TEMPLATE.replace('{{FILES}}', filesText);
 
-	const ctx = AppContext.getInstance();
-	const manager = ctx.manager;
-	const settings = manager.getSettings();
-	const defaultModel = settings.defaultModel;
-	if (!defaultModel) throw new Error('No default model configured');
+	const manager = AppContext.getInstance().manager;
 
-	const multiChat = manager.getMultiChat();
-	const response = await multiChat.blockChat({
-		provider: defaultModel.provider,
-		model: defaultModel.modelId,
-		system: SYSTEM_PROMPT,
-		messages: [
-			{
-				role: 'user',
-				content: [{ type: 'text', text: prompt }],
-			},
-		],
-		outputControl: {
-			maxOutputTokens: 2000,
-			temperature: 0.3,
-		},
+	const text = await manager.queryText(prompt, undefined, {
+		systemPrompt: SYSTEM_PROMPT,
 	});
-
-	const text = response.content
-		.map((part) => (part.type === 'text' ? part.text : ''))
-		.join('')
-		.trim();
 
 	const jsonMatch = text.match(/\{[\s\S]*\}/);
 	if (!jsonMatch) return { nodes: [] };
