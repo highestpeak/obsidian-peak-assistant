@@ -28,7 +28,7 @@ import {
     type SubmitPlanFeedback,
     type SubmitPlanInput,
 } from './vault-sdk/vaultMcpServer';
-import { translateSdkMessage } from './vault-sdk/sdkMessageAdapter';
+import { translateSdkMessage } from './core/sdkMessageAdapter';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 export interface VaultSearchAgentSdkOptions {
