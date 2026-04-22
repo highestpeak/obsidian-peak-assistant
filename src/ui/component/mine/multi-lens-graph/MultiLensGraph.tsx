@@ -115,15 +115,15 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 								{s.status === 'done' ? (
 									<CheckCircle2 className="pktw-w-4 pktw-h-4 pktw-text-green-500 pktw-shrink-0" />
 								) : s.status === 'running' ? (
-									<Loader2 className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed] pktw-animate-spin pktw-shrink-0" />
+									<Loader2 className="pktw-w-4 pktw-h-4 pktw-text-pk-accent pktw-animate-spin pktw-shrink-0" />
 								) : (
-									<div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-border pktw-border-[#d1d5db] pktw-shrink-0" />
+									<div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-border pktw-border-pk-border pktw-shrink-0" />
 								)}
-								<span className={cn('pktw-text-xs', s.status === 'done' ? 'pktw-text-[#6b7280]' : 'pktw-text-[#2e3338]')}>
+								<span className={cn('pktw-text-xs', s.status === 'done' ? 'pktw-text-pk-foreground-muted' : 'pktw-text-[#2e3338]')}>
 									{s.label}
 								</span>
 								{s.detail && (
-									<span className="pktw-text-[11px] pktw-text-[#9ca3af] pktw-truncate pktw-flex-1 pktw-min-w-0">
+									<span className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-truncate pktw-flex-1 pktw-min-w-0">
 										{s.detail}
 									</span>
 								)}
@@ -132,7 +132,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 					</div>
 				) : (
 					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1">
-						<Loader2 className="pktw-w-4 pktw-h-4 pktw-animate-spin pktw-text-[#7c3aed]" />
+						<Loader2 className="pktw-w-4 pktw-h-4 pktw-animate-spin pktw-text-pk-accent" />
 						<span className="pktw-text-xs pktw-text-muted-foreground">Analyzing document relations...</span>
 					</div>
 				)}
@@ -143,14 +143,14 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	if (!graphData && onRequestGenerate) {
 		return (
 			<div className={cn('pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-h-full pktw-gap-4', className)}>
-				<div className="pktw-text-sm pktw-text-[#9ca3af] pktw-text-center pktw-max-w-[280px] pktw-leading-relaxed">
+				<div className="pktw-text-sm pktw-text-pk-foreground-muted pktw-text-center pktw-max-w-[280px] pktw-leading-relaxed">
 					AI analyzes source content to identify semantic relations, topic clusters, and idea evolution chains
 				</div>
 				<Button
 					variant="ghost"
 					size="sm"
 					onClick={onRequestGenerate}
-					className="pktw-gap-1.5 pktw-border pktw-border-[#7c3aed]/30 pktw-bg-transparent pktw-text-[#7c3aed] hover:pktw-bg-[#7c3aed]/10 hover:pktw-border-[#7c3aed]/50 hover:pktw-text-[#7c3aed]"
+					className="pktw-gap-1.5 pktw-border pktw-border-[#7c3aed]/30 pktw-bg-transparent pktw-text-pk-accent hover:pktw-bg-[#7c3aed]/10 hover:pktw-border-[#7c3aed]/50 hover:pktw-text-pk-accent"
 					style={{ cursor: 'pointer' }}
 				>
 					<Network className="pktw-w-3.5 pktw-h-3.5" />
@@ -165,7 +165,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	}
 
 	const tabBar = (
-		<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-p-1 pktw-border-b pktw-border-[#e5e7eb] pktw-bg-[#f9fafb] pktw-rounded-t-lg">
+		<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-p-1 pktw-border-b pktw-border-pk-border pktw-bg-pk-background pktw-rounded-t-lg">
 			{LENS_CONFIG.filter((l) => availableLenses.includes(l.type)).map(
 				(l) => (
 					<Button
@@ -228,7 +228,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 				</ReactFlow>
 			</div>
 			{graphData?.insights?.[activeLens === 'bridge' ? 'bridges' : activeLens as 'topology' | 'timeline'] && (
-				<div className="pktw-px-4 pktw-py-3 pktw-mb-2 pktw-mx-3 pktw-text-[13px] pktw-leading-relaxed pktw-text-[#4b5563] pktw-border pktw-border-[#e5e7eb] pktw-bg-[#f9fafb] pktw-rounded-lg">
+				<div className="pktw-px-4 pktw-py-3 pktw-mb-2 pktw-mx-3 pktw-text-[13px] pktw-leading-relaxed pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-rounded-lg">
 					{graphData.insights[activeLens === 'bridge' ? 'bridges' : activeLens as 'topology' | 'timeline']}
 				</div>
 			)}

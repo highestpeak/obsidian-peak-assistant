@@ -157,7 +157,7 @@ export const WikilinkHoverCard: React.FC<WikilinkHoverCardProps> = ({ path, prev
 		<div
 			ref={ref}
 			role="tooltip"
-			className="pktw-fixed pktw-z-[10000] pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-[#fff] pktw-shadow-lg pktw-overflow-hidden pktw-pointer-events-auto"
+			className="pktw-fixed pktw-z-[10000] pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-shadow-lg pktw-overflow-hidden pktw-pointer-events-auto"
 			style={{
 				left: Math.min(left, window.innerWidth - maxW - 16),
 				top: Math.min(top, window.innerHeight - maxH - 16),
@@ -167,13 +167,13 @@ export const WikilinkHoverCard: React.FC<WikilinkHoverCardProps> = ({ path, prev
 			onMouseLeave={onClose}
 			onMouseEnter={onEnterCard}
 		>
-			<div className="pktw-p-2 pktw-border-b pktw-border-[#e5e7eb] pktw-text-xs pktw-font-medium pktw-text-[#6b7280] pktw-truncate" title={path}>
+			<div className="pktw-p-2 pktw-border-b pktw-border-pk-border pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted pktw-truncate" title={path}>
 				{path}
 			</div>
 			<div className="pktw-p-2 pktw-overflow-auto" style={{ maxHeight: maxH - 40 }}>
-				{loading && !preview && <span className="pktw-text-xs pktw-text-[#9ca3af]">Loading…</span>}
+				{loading && !preview && <span className="pktw-text-xs pktw-text-pk-foreground-muted">Loading…</span>}
 				{preview?.type === 'text' && (
-					<pre className="pktw-text-xs pktw-whitespace-pre-wrap pktw-font-mono pktw-text-[#374151] pktw-m-0">
+					<pre className="pktw-text-xs pktw-whitespace-pre-wrap pktw-font-mono pktw-text-pk-foreground pktw-m-0">
 						{preview.content}
 					</pre>
 				)}

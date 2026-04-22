@@ -79,7 +79,7 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
 	return (
 		<div
 			data-graph-node-context-menu
-			className="pktw-fixed pktw-z-[100] pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-shadow-lg pktw-overflow-hidden pktw-min-w-[190px] pktw-transition-opacity pktw-duration-150 pktw-ease-out"
+			className="pktw-fixed pktw-z-[100] pktw-bg-white pktw-border pktw-border-pk-border pktw-rounded-md pktw-shadow-lg pktw-overflow-hidden pktw-min-w-[190px] pktw-transition-opacity pktw-duration-150 pktw-ease-out"
 			style={{ left: clientX, top: clientY }}
 			onMouseEnter={() => {
 				if (menuLeaveTimerRef.current) {
@@ -98,7 +98,7 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
 				<div className="pktw-text-xs pktw-font-semibold pktw-text-[#2e3338] pktw-truncate">
 					{node.label || node.id}
 				</div>
-				<div className="pktw-text-[11px] pktw-text-[#9ca3af] pktw-truncate">
+				<div className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-truncate">
 					{node.path ? node.path : node.type}
 				</div>
 			</div>

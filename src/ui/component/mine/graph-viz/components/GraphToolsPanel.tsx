@@ -12,8 +12,8 @@ import type { GraphConfig } from '../config';
 import type { ToolbarFindPathConfig, FindPathResult, ToolbarHopsConfig, ToolbarHopsValue } from '../types';
 
 const sectionTitleClass =
-	'pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wide pktw-text-[#9ca3af] pktw-mb-2';
-const sectionClass = 'pktw-pt-3 pktw-first:pt-0 pktw-border-t pktw-border-[#e5e7eb] pktw-first:border-t-0 pktw-first:pt-0';
+	'pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wide pktw-text-pk-foreground-muted pktw-mb-2';
+const sectionClass = 'pktw-pt-3 pktw-first:pt-0 pktw-border-t pktw-border-pk-border pktw-first:border-t-0 pktw-first:pt-0';
 const rowClass = 'pktw-flex pktw-flex-wrap pktw-items-center pktw-gap-x-4 pktw-gap-y-2';
 
 function Section({
@@ -103,7 +103,7 @@ export const GraphToolsPanel: React.FC<GraphToolsPanelProps> = ({
 		<Section title="Path">
 			<div className="pktw-space-y-3">
 				<div className={rowClass}>
-					<div className="pktw-text-[11px] pktw-text-[#6b7280]">
+					<div className="pktw-text-[11px] pktw-text-pk-foreground-muted">
 						{findPath ? 'Enter target below to find path from start (or use Select path in toolbar).' : 'Use Select path in toolbar to pick two nodes.'}
 					</div>
 				</div>
@@ -112,13 +112,13 @@ export const GraphToolsPanel: React.FC<GraphToolsPanelProps> = ({
 				{findPath ? (
 					<div className="pktw-border-t pktw-border-[#f3f4f6]">
 						<div className="pktw-flex pktw-flex-wrap pktw-items-center pktw-gap-2 pktw-mb-2" title="Enter a target note to find and display the path from start.">
-							<span className="pktw-text-[11px] pktw-text-[#6b7280] pktw-flex pktw-items-center pktw-gap-1">
+							<span className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-flex pktw-items-center pktw-gap-1">
 								<Route className="pktw-w-3.5 pktw-h-3.5" />
 								Discover path
 							</span>
 							<input
 								type="text"
-								className="pktw-h-7 pktw-w-[160px] pktw-text-xs pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-white pktw-px-2 focus:pktw-outline-none focus:pktw-ring-1 focus:pktw-ring-[#e5e7eb]"
+								className="pktw-h-7 pktw-w-[160px] pktw-text-xs pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-white pktw-px-2 focus:pktw-outline-none focus:pktw-ring-1 focus:pktw-ring-[#e5e7eb]"
 								value={pathTarget ?? ''}
 								onChange={(e) => setPathTarget(e.target.value.trim() || null)}
 								placeholder="Target note"
@@ -146,7 +146,7 @@ export const GraphToolsPanel: React.FC<GraphToolsPanelProps> = ({
 			</div>
 
 			{findPath && (pathResult || pathError) ? (
-				<div className="pktw-mt-2 pktw-max-h-[100px] pktw-overflow-y-auto pktw-rounded pktw-bg-[#f9fafb] pktw-p-2 pktw-text-xs pktw-text-[#6b7280]">
+				<div className="pktw-mt-2 pktw-max-h-[100px] pktw-overflow-y-auto pktw-rounded pktw-bg-pk-background pktw-p-2 pktw-text-xs pktw-text-pk-foreground-muted">
 					{pathError ? <div className="pktw-text-red-600">{pathError}</div> : null}
 					{pathResult?.paths?.length ? (
 						<div className="pktw-whitespace-pre-wrap">{pathResult.paths.join('\n')}</div>
@@ -163,9 +163,9 @@ export const GraphToolsPanel: React.FC<GraphToolsPanelProps> = ({
 			{hops ? (
 				<div className="pktw-space-y-0 pktw-min-w-0">
 					<Section className="pktw-flex pktw-items-center pktw-gap-2">
-						<Focus className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#6b7280]" />
-						<span className="pktw-text-[11px] pktw-text-[#6b7280]">Hops</span>
-						<span className="pktw-inline-flex pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-overflow-hidden">
+						<Focus className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
+						<span className="pktw-text-[11px] pktw-text-pk-foreground-muted">Hops</span>
+						<span className="pktw-inline-flex pktw-rounded-md pktw-border pktw-border-pk-border pktw-overflow-hidden">
 							{([1, 2, 3] as const).map((h) => (
 								<Button
 									key={h}
@@ -174,8 +174,8 @@ export const GraphToolsPanel: React.FC<GraphToolsPanelProps> = ({
 									className={cn(
 										'pktw-h-6 pktw-w-7 pktw-px-0 pktw-text-xs pktw-rounded-none pktw-border-0',
 										hops.value === h
-											? 'pktw-bg-[#7c3aed] pktw-text-white hover:pktw-bg-[#6d28d9]'
-											: 'pktw-text-[#6b7280] hover:pktw-bg-[#f5f3ff]',
+											? 'pktw-bg-pk-accent pktw-text-white hover:pktw-bg-pk-accent-hover'
+											: 'pktw-text-pk-foreground-muted hover:pktw-bg-[#f5f3ff]',
 									)}
 									onClick={() => hops.onChange(h as ToolbarHopsValue)}
 								>
@@ -197,7 +197,7 @@ export const GraphToolsPanel: React.FC<GraphToolsPanelProps> = ({
 	);
 
 	const panelClassName =
-		'pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-shadow-lg pktw-p-4 pktw-min-w-[220px] pktw-z-10';
+		'pktw-bg-white pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-p-4 pktw-min-w-[220px] pktw-z-10';
 	const belowGraphClassName =
 		'pktw-w-full pktw-p-0 pktw-border-0 pktw-shadow-none pktw-bg-transparent pktw-min-w-0';
 	const style =

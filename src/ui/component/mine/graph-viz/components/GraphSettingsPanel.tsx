@@ -81,7 +81,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 
 	return createPortal(
 		<div
-			className="pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-shadow-lg pktw-p-4 pktw-min-w-[240px]"
+			className="pktw-bg-white pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-p-4 pktw-min-w-[240px]"
 			style={panelStyle}
 		>
 			<CollapsibleSection title="Display" open={displayOpen} onToggle={() => setDisplayOpen((o) => !o)}>
@@ -229,7 +229,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 				<div className="pktw-space-y-2 pktw-mb-3">
 					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[#6c757d]" title="Line style for semantic (AI-inferred) edges.">
 						<span className="pktw-w-24">Semantic</span>
-						<div className="pktw-flex pktw-rounded pktw-border pktw-border-[#e5e7eb] pktw-overflow-hidden">
+						<div className="pktw-flex pktw-rounded pktw-border pktw-border-pk-border pktw-overflow-hidden">
 							{(['solid', 'dashed', 'dotted'] as const).map((style) => (
 								<Button
 									key={style}
@@ -238,7 +238,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 									size="sm"
 									onClick={() => onConfigChange({ ...config, semanticEdgeStyle: style })}
 									className={`pktw-px-2 pktw-py-1 pktw-text-xs pktw-capitalize pktw-rounded-none ${config.semanticEdgeStyle === style
-											? 'pktw-bg-[#e5e7eb] pktw-text-[#374151]'
+											? 'pktw-bg-[#e5e7eb] pktw-text-pk-foreground'
 											: 'pktw-bg-white pktw-text-[#6c757d] hover:pktw-bg-[#f3f4f6]'
 										}`}
 								>
@@ -249,7 +249,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 					</div>
 					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[#6c757d]" title="Line style for physical (file-based) edges.">
 						<span className="pktw-w-24">Physical</span>
-						<div className="pktw-flex pktw-rounded pktw-border pktw-border-[#e5e7eb] pktw-overflow-hidden">
+						<div className="pktw-flex pktw-rounded pktw-border pktw-border-pk-border pktw-overflow-hidden">
 							{(['solid', 'dashed', 'dotted'] as const).map((style) => (
 								<Button
 									key={style}
@@ -258,7 +258,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 									size="sm"
 									onClick={() => onConfigChange({ ...config, physicalEdgeStyle: style })}
 									className={`pktw-px-2 pktw-py-1 pktw-text-xs pktw-capitalize pktw-rounded-none ${config.physicalEdgeStyle === style
-										? 'pktw-bg-[#e5e7eb] pktw-text-[#374151]'
+										? 'pktw-bg-[#e5e7eb] pktw-text-pk-foreground'
 										: 'pktw-bg-white pktw-text-[#6c757d] hover:pktw-bg-[#f3f4f6]'
 									}`}
 								>
@@ -329,7 +329,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 							type="color"
 							value={config.tagNodeFill}
 							onChange={(e) => onConfigChange({ ...config, tagNodeFill: e.target.value })}
-							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-[#e5e7eb]"
+							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-pk-border"
 						/>
 					</label>
 					{hasConceptNodes && (
@@ -339,7 +339,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 								type="color"
 								value={config.conceptNodeFill}
 								onChange={(e) => onConfigChange({ ...config, conceptNodeFill: e.target.value })}
-								className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-[#e5e7eb]"
+								className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-pk-border"
 							/>
 						</label>
 					)}
@@ -349,7 +349,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 							type="color"
 							value={config.semanticLinkStroke}
 							onChange={(e) => onConfigChange({ ...config, semanticLinkStroke: e.target.value })}
-							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-[#e5e7eb]"
+							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-pk-border"
 						/>
 					</label>
 					<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[#6c757d]" title="Stroke color for physical edges.">
@@ -358,7 +358,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 							type="color"
 							value={config.physicalLinkStroke}
 							onChange={(e) => onConfigChange({ ...config, physicalLinkStroke: e.target.value })}
-							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-[#e5e7eb]"
+							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-pk-border"
 						/>
 					</label>
 					<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[#6c757d]" title="Fill color for nodes with semantic edges.">
@@ -367,7 +367,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 							type="color"
 							value={config.semanticNodeFill}
 							onChange={(e) => onConfigChange({ ...config, semanticNodeFill: e.target.value })}
-							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-[#e5e7eb]"
+							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-pk-border"
 						/>
 					</label>
 					<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[#6c757d]" title="Fill color for nodes with only physical edges.">
@@ -376,7 +376,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 							type="color"
 							value={config.physicalNodeFill}
 							onChange={(e) => onConfigChange({ ...config, physicalNodeFill: e.target.value })}
-							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-[#e5e7eb]"
+							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-pk-border"
 						/>
 					</label>
 				</div>
@@ -385,12 +385,12 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 				<div className="pktw-space-y-2 pktw-mb-3">
 					<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[#6c757d]" title="Number of highest-degree nodes to highlight as hubs.">
 						<span className="pktw-w-24">Top N</span>
-						<div className="pktw-flex pktw-items-center pktw-rounded pktw-border pktw-border-[#e5e7eb] pktw-overflow-hidden pktw-bg-white">
+						<div className="pktw-flex pktw-items-center pktw-rounded pktw-border pktw-border-pk-border pktw-overflow-hidden pktw-bg-white">
 							<Button
 								type="button"
 								variant="ghost"
 								size="sm"
-								className="pktw-h-6 pktw-w-6 pktw-p-0 pktw-rounded-none pktw-border-r pktw-border-[#e5e7eb] hover:pktw-bg-[#f3f4f6]"
+								className="pktw-h-6 pktw-w-6 pktw-p-0 pktw-rounded-none pktw-border-r pktw-border-pk-border hover:pktw-bg-[#f3f4f6]"
 								onClick={() =>
 									onConfigChange({
 										...config,
@@ -419,7 +419,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 								type="button"
 								variant="ghost"
 								size="sm"
-								className="pktw-h-6 pktw-w-6 pktw-p-0 pktw-rounded-none pktw-border-l pktw-border-[#e5e7eb] hover:pktw-bg-[#f3f4f6]"
+								className="pktw-h-6 pktw-w-6 pktw-p-0 pktw-rounded-none pktw-border-l pktw-border-pk-border hover:pktw-bg-[#f3f4f6]"
 								onClick={() =>
 									onConfigChange({
 										...config,
@@ -439,7 +439,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 							type="color"
 							value={config.hubColor}
 							onChange={(e) => onConfigChange({ ...config, hubColor: e.target.value })}
-							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-[#e5e7eb]"
+							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-pk-border"
 						/>
 					</label>
 				</div>
@@ -452,12 +452,12 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 							type="color"
 							value={config.mstColor}
 							onChange={(e) => onConfigChange({ ...config, mstColor: e.target.value })}
-							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-[#e5e7eb]"
+							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-pk-border"
 						/>
 					</label>
 					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-text-xs pktw-text-[#6c757d]" title="Line style for MST edges.">
 						<span className="pktw-w-24">Style</span>
-						<div className="pktw-flex pktw-rounded pktw-border pktw-border-[#e5e7eb] pktw-overflow-hidden">
+						<div className="pktw-flex pktw-rounded pktw-border pktw-border-pk-border pktw-overflow-hidden">
 							{(['solid', 'dashed', 'dotted'] as const).map((style) => (
 								<Button
 									key={style}
@@ -466,7 +466,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 									size="sm"
 									onClick={() => onConfigChange({ ...config, mstEdgeStyle: style })}
 									className={`pktw-px-2 pktw-py-1 pktw-text-xs pktw-capitalize pktw-rounded-none ${config.mstEdgeStyle === style
-										? 'pktw-bg-[#e5e7eb] pktw-text-[#374151]'
+										? 'pktw-bg-[#e5e7eb] pktw-text-pk-foreground'
 										: 'pktw-bg-white pktw-text-[#6c757d] hover:pktw-bg-[#f3f4f6]'
 									}`}
 								>
@@ -525,7 +525,7 @@ export const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 							type="color"
 							value={config.pathColor}
 							onChange={(e) => onConfigChange({ ...config, pathColor: e.target.value })}
-							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-[#e5e7eb]"
+							className="pktw-h-6 pktw-w-10 pktw-cursor-pointer pktw-rounded pktw-border pktw-border-pk-border"
 						/>
 					</label>
 				</div>

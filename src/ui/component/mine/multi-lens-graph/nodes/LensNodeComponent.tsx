@@ -49,7 +49,7 @@ export const LensNodeComponent = memo(({ data }: NodeProps<LensNode>) => {
 				{data.label}
 			</span>
 			{showSummary && (
-				<span className="pktw-block pktw-text-[10px] pktw-text-[#9ca3af] pktw-mt-0.5 pktw-max-w-[200px] pktw-truncate">
+				<span className="pktw-block pktw-text-[10px] pktw-text-pk-foreground-muted pktw-mt-0.5 pktw-max-w-[200px] pktw-truncate">
 					{data.summary}
 				</span>
 			)}

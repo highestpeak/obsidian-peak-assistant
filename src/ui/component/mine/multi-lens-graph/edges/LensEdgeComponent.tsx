@@ -80,7 +80,7 @@ export function LensEdgeComponent(props: EdgeProps<LensEdge>) {
 							pointerEvents: 'none',
 							zIndex: 10,
 						}}
-						className="pktw-text-[10px] pktw-text-[#374151] pktw-bg-white/95 pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-shadow-sm pktw-max-w-[180px] pktw-text-center pktw-leading-tight"
+						className="pktw-text-[10px] pktw-text-pk-foreground pktw-bg-white/95 pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-shadow-sm pktw-max-w-[180px] pktw-text-center pktw-leading-tight"
 					>
 						{fullLabel}
 					</div>

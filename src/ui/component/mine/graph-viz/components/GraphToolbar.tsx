@@ -84,7 +84,7 @@ export const GraphToolbar: React.FC<GraphToolbarProps> = ({
 					<ChevronDown className="pktw-absolute -pktw-right-1 -pktw-bottom-1 pktw-p-0 pktw-w-4 pktw-h-4 pktw-text-[#6c757d] group-hover:pktw-text-white" />
 				</Button>
 				{copyMenuOpen ? (
-					<div className="pktw-absolute pktw-top-9 pktw-right-0 pktw-z-30 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-shadow-lg pktw-overflow-hidden">
+					<div className="pktw-absolute pktw-top-9 pktw-right-0 pktw-z-30 pktw-bg-white pktw-border pktw-border-pk-border pktw-rounded-md pktw-shadow-lg pktw-overflow-hidden">
 						{(['markdown', 'json', 'mermaid'] as const).map((fmt) => (
 							<Button
 								key={fmt}
@@ -124,11 +124,11 @@ export const GraphToolbar: React.FC<GraphToolbarProps> = ({
 					<ChevronDown className="pktw-absolute -pktw-right-1 -pktw-bottom-1 pktw-p-0 pktw-w-4 pktw-h-4 pktw-text-[#6c757d] group-hover:pktw-text-white" />
 				</Button>
 				{analysisMenuOpen ? (
-					<div className="pktw-absolute pktw-top-9 pktw-right-0 pktw-z-30 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-shadow-lg pktw-overflow-hidden pktw-min-w-[140px]">
-						<div className="pktw-px-2 pktw-py-1.5 pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wide pktw-text-[#9ca3af]">
+					<div className="pktw-absolute pktw-top-9 pktw-right-0 pktw-z-30 pktw-bg-white pktw-border pktw-border-pk-border pktw-rounded-md pktw-shadow-lg pktw-overflow-hidden pktw-min-w-[140px]">
+						<div className="pktw-px-2 pktw-py-1.5 pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wide pktw-text-pk-foreground-muted">
 							Analysis
 						</div>
-						<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-xs pktw-text-[#2e3338] hover:pktw-bg-[#f9fafb]">
+						<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-xs pktw-text-[#2e3338] hover:pktw-bg-pk-background">
 							<Switch
 								size="sm"
 								checked={config.highlightHubs}
@@ -136,7 +136,7 @@ export const GraphToolbar: React.FC<GraphToolbarProps> = ({
 							/>
 							<span>Hubs</span>
 						</label>
-						<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-xs pktw-text-[#2e3338] hover:pktw-bg-[#f9fafb]">
+						<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-xs pktw-text-[#2e3338] hover:pktw-bg-pk-background">
 							<Switch
 								size="sm"
 								checked={config.skeletonMode}
@@ -144,7 +144,7 @@ export const GraphToolbar: React.FC<GraphToolbarProps> = ({
 							/>
 							<span>MST</span>
 						</label>
-						<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-xs pktw-text-[#2e3338] hover:pktw-bg-[#f9fafb]">
+						<label className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2 pktw-text-xs pktw-text-[#2e3338] hover:pktw-bg-pk-background">
 							<Switch
 								size="sm"
 								checked={config.communityMode}

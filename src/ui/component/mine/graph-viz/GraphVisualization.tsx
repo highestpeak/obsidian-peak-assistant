@@ -210,14 +210,14 @@ export const GraphVisualization = forwardRef<GraphVisualizationHandle, GraphVisu
 	}), []);
 
 	const baseContainerClass = containerClassName
-		? 'pktw-w-full pktw-bg-[#fafafa] pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-relative pktw-overflow-hidden pktw-flex pktw-flex-col'
-		: 'pktw-w-full pktw-aspect-square pktw-bg-[#fafafa] pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-relative pktw-overflow-hidden pktw-flex pktw-flex-col';
+		? 'pktw-w-full pktw-bg-[#fafafa] pktw-rounded-md pktw-border pktw-border-pk-border pktw-relative pktw-overflow-hidden pktw-flex pktw-flex-col'
+		: 'pktw-w-full pktw-aspect-square pktw-bg-[#fafafa] pktw-rounded-md pktw-border pktw-border-pk-border pktw-relative pktw-overflow-hidden pktw-flex pktw-flex-col';
 
 	return (
 		<>
 			<div ref={containerRef} className={`${baseContainerClass}${containerClassName ? ` ${containerClassName}` : ''}`}>
 				{title && !hideTitle ? (
-					<div className="pktw-flex-shrink-0 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-[#6b7280] pktw-border-b pktw-border-[#e5e7eb] pktw-truncate" title={title}>
+					<div className="pktw-flex-shrink-0 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted pktw-border-b pktw-border-pk-border pktw-truncate" title={title}>
 						{title}
 					</div>
 				) : null}
@@ -266,7 +266,7 @@ export const GraphVisualization = forwardRef<GraphVisualizationHandle, GraphVisu
 						hasConceptNodes={engine.hasConceptNodes}
 					/>
 
-					<div className="pktw-absolute pktw-bottom-2 pktw-right-2 pktw-z-10 pktw-bg-white/80 pktw-backdrop-blur-sm pktw-px-2 pktw-py-1 pktw-rounded pktw-text-xs pktw-text-[#6c757d] pktw-border pktw-border-[#e5e7eb]">
+					<div className="pktw-absolute pktw-bottom-2 pktw-right-2 pktw-z-10 pktw-bg-white/80 pktw-backdrop-blur-sm pktw-px-2 pktw-py-1 pktw-rounded pktw-text-xs pktw-text-[#6c757d] pktw-border pktw-border-pk-border">
 						{Math.round(engine.zoomLevel * 100)}%
 					</div>
 
@@ -318,7 +318,7 @@ export const GraphVisualization = forwardRef<GraphVisualizationHandle, GraphVisu
 				</div>
 
 				{showToolsPanel ? (
-					<div className="pktw-flex-shrink-0 pktw-border-t pktw-border-[#e5e7eb] pktw-bg-[#fafafa] pktw-px-2 pktw-py-2 pktw-flex pktw-flex-col pktw-gap-2">
+					<div className="pktw-flex-shrink-0 pktw-border-t pktw-border-pk-border pktw-bg-[#fafafa] pktw-px-2 pktw-py-2 pktw-flex pktw-flex-col pktw-gap-2">
 						<GraphToolsPanel
 							config={config}
 							onConfigChange={setConfig}

@@ -61,7 +61,7 @@ export function getSourceIcon(source?: SearchResultSource): React.ReactElement {
 			return <Database className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#8b5cf6]" />;
 		case 'local':
 		default:
-			return <FileText className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed]" />;
+			return <FileText className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />;
 	}
 }
 
@@ -91,7 +91,7 @@ export function getFileIcon(type: string, isSelected: boolean = false, className
 
 	switch (type) {
 		case 'markdown':
-			return <FileText className={cn(iconClass, isSelected ? "" : "pktw-text-[#7c3aed]")} />;
+			return <FileText className={cn(iconClass, isSelected ? "" : "pktw-text-pk-accent")} />;
 		case 'pdf':
 			return <FileTypeIcon className={cn(iconClass, isSelected ? "" : "pktw-text-red-500")} />;
 		case 'image':
