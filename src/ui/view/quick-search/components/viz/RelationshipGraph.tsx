@@ -71,8 +71,8 @@ export const RelationshipGraph: React.FC<{ data: GraphVizData; title: string }> 
 
     return (
         <div className="pktw-my-3">
-            <span className="pktw-text-xs pktw-font-medium pktw-text-[#6b7280] pktw-mb-2 pktw-block">{title}</span>
-            <div className="pktw-w-full pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-overflow-hidden" style={{ height }}>
+            <span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted pktw-mb-2 pktw-block">{title}</span>
+            <div className="pktw-w-full pktw-rounded-lg pktw-border pktw-border-pk-border pktw-overflow-hidden" style={{ height }}>
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}

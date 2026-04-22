@@ -47,8 +47,8 @@ const SessionCard: React.FC<{
             onClick={() => onRestore(session.id)}
             className={cn(
                 'pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2.5',
-                'pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-white',
-                'hover:pktw-bg-[#f9fafb] pktw-cursor-pointer pktw-transition-colors pktw-group',
+                'pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background',
+                'hover:pktw-bg-pk-background pktw-cursor-pointer pktw-transition-colors pktw-group',
             )}
         >
             <Icon
@@ -59,7 +59,7 @@ const SessionCard: React.FC<{
                 <span className="pktw-text-sm pktw-font-medium pktw-text-[#1f2937] pktw-truncate pktw-block">
                     {session.title ?? session.query.slice(0, 60)}
                 </span>
-                <span className="pktw-text-xs pktw-text-[#9ca3af]">
+                <span className="pktw-text-xs pktw-text-pk-foreground-muted">
                     {elapsedStr} · {cfg.label}
                 </span>
             </div>
@@ -69,7 +69,7 @@ const SessionCard: React.FC<{
                 onClick={(e) => { e.stopPropagation(); onCancel(session.id); }}
                 className={cn(
                     'pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity',
-                    'pktw-text-[#9ca3af] hover:pktw-text-[#ef4444]',
+                    'pktw-text-pk-foreground-muted hover:pktw-text-[#ef4444]',
                     '!pktw-h-6 !pktw-w-6 pktw-p-0 pktw-shrink-0',
                 )}
                 title="Cancel"
@@ -104,7 +104,7 @@ export const ActiveSessionsList: React.FC<ActiveSessionsListProps> = ({ onRestor
 
     return (
         <div>
-            <span className="pktw-block pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-[#9ca3af] pktw-mb-2">
+            <span className="pktw-block pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted pktw-mb-2">
                 Active
             </span>
             <div className="pktw-flex pktw-flex-col pktw-gap-1.5">

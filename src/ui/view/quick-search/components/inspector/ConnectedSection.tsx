@@ -45,11 +45,11 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 	}, [currentPath, searchQuery]);
 
 	if (loading) {
-		return <span className="pktw-text-xs pktw-text-[#9ca3af]">Loading...</span>;
+		return <span className="pktw-text-xs pktw-text-pk-foreground-muted">Loading...</span>;
 	}
 
 	if (links.length === 0) {
-		return <span className="pktw-text-xs pktw-text-[#9ca3af]">No connections found.</span>;
+		return <span className="pktw-text-xs pktw-text-pk-foreground-muted">No connections found.</span>;
 	}
 
 	const visible = expanded ? links : links.slice(0, INITIAL_VISIBLE);
@@ -74,11 +74,11 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 					>
 						<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-min-w-0">
 							{link.direction === 'out'
-								? <ArrowRight className="pktw-w-3 pktw-h-3 pktw-text-[#9ca3af] pktw-shrink-0" />
-								: <ArrowLeft className="pktw-w-3 pktw-h-3 pktw-text-[#9ca3af] pktw-shrink-0" />}
+								? <ArrowRight className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted pktw-shrink-0" />
+								: <ArrowLeft className="pktw-w-3 pktw-h-3 pktw-text-pk-foreground-muted pktw-shrink-0" />}
 
 							<span
-								className="pktw-text-xs pktw-font-medium pktw-text-[#374151] pktw-truncate pktw-cursor-pointer hover:pktw-text-[#7c3aed]"
+								className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground pktw-truncate pktw-cursor-pointer hover:pktw-text-pk-accent"
 								onClick={() => onNavigate(link.path)}
 								title={link.path}
 							>
@@ -93,14 +93,14 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 							)}
 
 							{link.convergenceCount > 3 && (
-								<span className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-bg-[#f3f4f6] pktw-px-1 pktw-rounded pktw-shrink-0">
+								<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-bg-[#f3f4f6] pktw-px-1 pktw-rounded pktw-shrink-0">
 									{link.convergenceCount} refs
 								</span>
 							)}
 						</div>
 
 						{link.contextSnippet && (
-							<span className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-pl-5 pktw-leading-tight pktw-line-clamp-1">
+							<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-pl-5 pktw-leading-tight pktw-line-clamp-1">
 								{link.contextSnippet}
 							</span>
 						)}
@@ -112,7 +112,7 @@ export const ConnectedSection: React.FC<ConnectedSectionProps> = ({
 				<Button
 					variant="ghost"
 					size="xs"
-					className="pktw-shadow-none pktw-h-5 pktw-px-0 pktw-text-[10px] pktw-text-[#9ca3af] hover:pktw-text-[#6b7280] pktw-self-start"
+					className="pktw-shadow-none pktw-h-5 pktw-px-0 pktw-text-[10px] pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted pktw-self-start"
 					onClick={() => setExpanded(true)}
 				>
 					See {remaining} more ↓

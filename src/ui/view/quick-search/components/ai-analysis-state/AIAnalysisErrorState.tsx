@@ -31,7 +31,7 @@ export const AIAnalysisErrorState: React.FC<{ error: string; onRetry: () => void
     return (
         <div className="pktw-w-full pktw-bg-red-50 pktw-border pktw-border-red-200 pktw-rounded-lg pktw-p-3 pktw-mb-2">
             <div className="pktw-flex pktw-items-start pktw-gap-2">
-                <div className="pktw-mt-0.5 pktw-flex pktw-items-center pktw-justify-center pktw-w-7 pktw-h-7 pktw-rounded pktw-bg-white/70 pktw-border pktw-border-red-200">
+                <div className="pktw-mt-0.5 pktw-flex pktw-items-center pktw-justify-center pktw-w-7 pktw-h-7 pktw-rounded pktw-bg-pk-background/70 pktw-border pktw-border-red-200">
                     <AlertTriangle className="pktw-w-4 pktw-h-4 pktw-text-red-500" />
                 </div>
                 <div className="pktw-flex-1 pktw-min-w-0">
@@ -62,7 +62,7 @@ export const AIAnalysisErrorState: React.FC<{ error: string; onRetry: () => void
                         <Button
                             style={{ cursor: 'pointer' }}
                             onClick={onRetry}
-                            className="pktw-shadow-none pktw-h-7 pktw-px-3 pktw-bg-[#7c3aed] pktw-text-white hover:pktw-bg-[#6d28d9] !pktw-rounded-md pktw-text-xs"
+                            className="pktw-shadow-none pktw-h-7 pktw-px-3 pktw-bg-pk-accent pktw-text-white hover:pktw-bg-[#6d28d9] !pktw-rounded-md pktw-text-xs"
                         >
                             Try Again
                         </Button>
@@ -71,7 +71,7 @@ export const AIAnalysisErrorState: React.FC<{ error: string; onRetry: () => void
                         {friendlyMessage}
                     </div>
                     {expanded ? (
-                        <pre className="pktw-mt-2 pktw-text-[11px] pktw-leading-relaxed pktw-bg-white/70 pktw-border pktw-border-red-200 pktw-rounded pktw-p-2 pktw-max-h-40 pktw-overflow-auto pktw-whitespace-pre-wrap pktw-break-words">
+                        <pre className="pktw-mt-2 pktw-text-[11px] pktw-leading-relaxed pktw-bg-pk-background/70 pktw-border pktw-border-red-200 pktw-rounded pktw-p-2 pktw-max-h-40 pktw-overflow-auto pktw-whitespace-pre-wrap pktw-break-words">
                             {error}
                         </pre>
                     ) : null}

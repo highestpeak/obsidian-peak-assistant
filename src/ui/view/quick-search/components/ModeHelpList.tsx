@@ -43,27 +43,27 @@ export const ModeHelpList: React.FC<ModeHelpListProps> = ({ onSelectMode, select
 					>
 						{/* Selected accent bar */}
 						{isSelected && (
-							<div className="pktw-absolute pktw-left-0 pktw-top-0 pktw-bottom-0 pktw-w-0.5 pktw-bg-[#7c3aed]" />
+							<div className="pktw-absolute pktw-left-0 pktw-top-0 pktw-bottom-0 pktw-w-0.5 pktw-bg-pk-accent" />
 						)}
 						{/* Icon */}
 						<div className={cn(
 							'pktw-flex pktw-items-center pktw-justify-center pktw-w-7 pktw-h-7 pktw-rounded-md pktw-flex-shrink-0',
-							isSelected ? 'pktw-bg-[#7c3aed]' : 'pktw-bg-[#f0f0f0]'
+							isSelected ? 'pktw-bg-pk-accent' : 'pktw-bg-[#f0f0f0]'
 						)}>
 							<Icon className={cn(
 								'pktw-w-3.5 pktw-h-3.5',
-								isSelected ? 'pktw-text-white' : 'pktw-text-[#6b7280]'
+								isSelected ? 'pktw-text-white' : 'pktw-text-pk-foreground-muted'
 							)} />
 						</div>
 						{/* Text */}
 						<div className="pktw-flex pktw-flex-col pktw-flex-1 pktw-min-w-0">
 							<span className={cn(
 								'pktw-text-sm pktw-font-medium pktw-leading-tight',
-								isSelected ? 'pktw-text-[#7c3aed]' : 'pktw-text-[#1f2937]'
+								isSelected ? 'pktw-text-pk-accent' : 'pktw-text-[#1f2937]'
 							)}>
 								{mode.name}
 							</span>
-							<span className="pktw-text-[11px] pktw-text-[#9ca3af] pktw-leading-tight pktw-mt-0.5">
+							<span className="pktw-text-[11px] pktw-text-pk-foreground-muted pktw-leading-tight pktw-mt-0.5">
 								{mode.description}
 							</span>
 						</div>
@@ -72,8 +72,8 @@ export const ModeHelpList: React.FC<ModeHelpListProps> = ({ onSelectMode, select
 							<span className={cn(
 								'pktw-flex-shrink-0 pktw-text-[11px] pktw-font-mono pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-border',
 								isSelected
-									? 'pktw-bg-[#ede9fe] pktw-text-[#7c3aed] pktw-border-[#7c3aed]/30'
-									: 'pktw-bg-[#f9f9f9] pktw-text-[#6b7280] pktw-border-[#e5e7eb]'
+									? 'pktw-bg-[#ede9fe] pktw-text-pk-accent pktw-border-[#7c3aed]/30'
+									: 'pktw-bg-[#f9f9f9] pktw-text-pk-foreground-muted pktw-border-pk-border'
 							)}>
 								{mode.prefix}
 							</span>

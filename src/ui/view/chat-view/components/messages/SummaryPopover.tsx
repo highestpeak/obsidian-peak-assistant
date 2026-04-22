@@ -28,7 +28,7 @@ export const SummaryPopover: React.FC = () => {
 				</IconButton>
 			</HoverCardTrigger>
 			<HoverCardContent
-				className="pktw-w-[400px] pktw-max-w-[90vw] pktw-p-4 pktw-bg-white pktw-shadow-lg"
+				className="pktw-w-[400px] pktw-max-w-[90vw] pktw-p-4 pktw-bg-pk-background pktw-shadow-lg"
 				align="end"
 				side="bottom"
 				sideOffset={8}

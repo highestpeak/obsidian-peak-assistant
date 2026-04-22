@@ -176,7 +176,7 @@ export const SearchResultRow: React.FC<{
 
 				{/* Relevance score badge — shown when score exists */}
 				{result.score != null && result.score > 0 && (
-					<span className="pktw-flex-shrink-0 pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-[#f5f3ff] pktw-text-[#7c3aed]">
+					<span className="pktw-flex-shrink-0 pktw-text-[10px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-[#f5f3ff] pktw-text-pk-accent">
 						{Math.round(result.score * 100)}%
 					</span>
 				)}

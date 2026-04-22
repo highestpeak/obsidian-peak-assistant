@@ -46,14 +46,14 @@ const TabButton: React.FC<TabButtonProps> = ({ tab, label, activeTab, onClick, c
 			className={cn(
 				'pktw-shadow-none pktw-rounded-none pktw-inline-flex pktw-items-center pktw-justify-center pktw-whitespace-nowrap pktw-font-medium focus-visible:pktw-outline-none focus-visible:pktw-ring-2 focus-visible:pktw-ring-offset-2 disabled:pktw-pointer-events-none disabled:pktw-opacity-50 pktw-flex-1 pktw-relative',
 				isActive
-					? 'pktw-text-[#7c3aed] pktw-bg-white hover:pktw-bg-white hover:pktw-text-[#7c3aed]'
+					? 'pktw-text-pk-accent pktw-bg-pk-background hover:pktw-bg-pk-background hover:pktw-text-pk-accent'
 					: 'pktw-text-black hover:pktw-text-white pktw-bg-[#f0f0f0]',
 				className
 			)}
 		>
 			<span className="pktw-font-medium">{label}</span>
 			{isActive && (
-				<div className="pktw-absolute pktw-bottom-0 pktw-left-0 pktw-right-0 pktw-h-0.5 pktw-bg-[#7c3aed]" />
+				<div className="pktw-absolute pktw-bottom-0 pktw-left-0 pktw-right-0 pktw-h-0.5 pktw-bg-pk-accent" />
 			)}
 		</Button>
 	);
@@ -179,7 +179,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 
 	return (
 		<>
-			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
+			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border">
 				<div className="pktw-flex pktw-gap-2 pktw-items-center">
 					<div className="pktw-relative pktw-flex-1">
 						{/* Mode pills — visible inline, replacing hidden HoverCard */}
@@ -196,8 +196,8 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 										className={cn(
 											'pktw-shadow-none !pktw-h-6 pktw-px-2 pktw-rounded-full pktw-text-[11px] pktw-font-medium pktw-transition-all',
 											analysisMode === p
-												? 'pktw-bg-[#7c3aed] pktw-text-white'
-												: 'pktw-bg-white pktw-text-[#6b7280] pktw-border pktw-border-[#e5e7eb] hover:pktw-border-[#7c3aed]/40 hover:pktw-text-[#7c3aed]'
+												? 'pktw-bg-pk-accent pktw-text-white'
+												: 'pktw-bg-pk-background pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border hover:pktw-border-[#7c3aed]/40 hover:pktw-text-pk-accent'
 										)}
 									>
 										<Icon className="pktw-w-3 pktw-h-3 pktw-mr-1" />
@@ -243,7 +243,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 								onClick={() => { useSearchSessionStore.getState().resetAll(); resetAIAnalysisAll(); }}
 								style={{ cursor: 'pointer' }}
 								variant="outline"
-								className="pktw-shadow-none pktw-px-4 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-border-[#e5e7eb] pktw-bg-white pktw-text-[#6c757d]"
+								className="pktw-shadow-none pktw-px-4 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-border-pk-border pktw-bg-pk-background pktw-text-[#6c757d]"
 								title="Clear current AI analysis result (in-memory)"
 							>
 								Clear
@@ -255,7 +255,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 								disabled={!searchQuery.trim()}
 								style={{ cursor: 'pointer' }}
 								variant="outline"
-								className="pktw-shadow-none pktw-px-3 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-border-[#7c3aed]/25 pktw-bg-white pktw-text-[#7c3aed]"
+								className="pktw-shadow-none pktw-px-3 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-border-[#7c3aed]/25 pktw-bg-pk-background pktw-text-pk-accent"
 								title="Re-run AI analysis"
 							>
 								<RotateCcw className="pktw-w-4 pktw-h-4" />
@@ -266,7 +266,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 							<Button
 								onClick={cancel}
 								style={{ cursor: 'pointer' }}
-								className="pktw-shadow-none pktw-px-5 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-bg-white pktw-text-[#7c3aed] pktw-border pktw-border-[#7c3aed]/30 hover:pktw-bg-[#f5f3ff]"
+								className="pktw-shadow-none pktw-px-5 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-bg-pk-background pktw-text-pk-accent pktw-border pktw-border-[#7c3aed]/30 hover:pktw-bg-[#f5f3ff]"
 								title="Cancel analysis"
 							>
 								<X className="pktw-w-4 pktw-h-4" />
@@ -278,7 +278,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 								onClick={handleAnalyze}
 								disabled={!searchQuery.trim()}
 								style={{ cursor: 'pointer' }}
-								className="pktw-shadow-none pktw-px-5 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-bg-[#7c3aed] pktw-text-white hover:pktw-bg-[#6d28d9]"
+								className="pktw-shadow-none pktw-px-5 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-bg-pk-accent pktw-text-white hover:pktw-bg-[#6d28d9]"
 								title="Start AI analysis"
 							>
 								<Sparkles className="pktw-w-4 pktw-h-4" />
@@ -325,23 +325,23 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 						}}
 					/>
 					{suggestions.length === 0 && totalAnalysisCount === 0 && (
-						<div className="pktw-px-4 pktw-py-8 pktw-text-center pktw-text-sm pktw-text-[#9ca3af]">
+						<div className="pktw-px-4 pktw-py-8 pktw-text-center pktw-text-sm pktw-text-pk-foreground-muted">
 							No analyses yet. Type a question above or click a suggestion to get started.
 						</div>
 					)}
 				</div>
 			)}
-			<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-white pktw-overflow-visible pktw-flex pktw-flex-col">
+			<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-overflow-visible pktw-flex pktw-flex-col">
 				<AISearchTab onClose={onClose} />
 			</div>
 			{sessionStatus === 'idle' && (
-				<div className="pktw-flex-shrink-0 pktw-px-4 pktw-py-2 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between">
+				<div className="pktw-flex-shrink-0 pktw-px-4 pktw-py-2 pktw-bg-[#fafafa] pktw-border-t pktw-border-pk-border pktw-flex pktw-items-center pktw-justify-between">
 					<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-[#999999]">
 						<span>↑↓ Navigate</span>
 						<span>↵ Run</span>
 						<span>⌥↑⌥↓ Switch mode</span>
 					</div>
-					<span className="pktw-text-xs pktw-text-[#7c3aed]">
+					<span className="pktw-text-xs pktw-text-pk-accent">
 						{totalAnalysisCount} analyses
 					</span>
 				</div>
@@ -465,7 +465,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 	return (
 		<>
 			{/* Input row */}
-			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-white pktw-border-b pktw-border-[#e5e7eb]">
+			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border">
 				<div className="pktw-flex pktw-gap-3 pktw-items-center">
 					<div className="pktw-relative pktw-flex-1 pktw-min-w-0">
 						<div className="pktw-relative pktw-flex pktw-items-center pktw-min-w-0">
@@ -484,7 +484,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 							<span className={cn(
 								'pktw-absolute pktw-right-3 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10',
 								'pktw-text-[10px] pktw-font-medium pktw-px-2 pktw-py-0.5 pktw-rounded-full',
-								'pktw-bg-[#f5f3ff] pktw-text-[#7c3aed] pktw-border pktw-border-[#7c3aed]/20',
+								'pktw-bg-[#f5f3ff] pktw-text-pk-accent pktw-border pktw-border-[#7c3aed]/20',
 							)}>
 								{quickSearchMode === 'vault' ? 'vault' :
 								 quickSearchMode === 'inFile' ? 'in-file' :
@@ -498,7 +498,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 						variant="ghost"
 						size="sm"
 						style={{ cursor: 'pointer' }}
-						className="pktw-shadow-none pktw-flex-shrink-0 pktw-text-xs pktw-text-[#7c3aed] pktw-h-8 pktw-px-2"
+						className="pktw-shadow-none pktw-flex-shrink-0 pktw-text-xs pktw-text-pk-accent pktw-h-8 pktw-px-2"
 						onClick={() => setActiveTab('ai')}
 						title="Switch to AI Analysis"
 					>
@@ -524,7 +524,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 
 				{/* Inspector side panel — 340px, conditional */}
 				{inspectorOpen && !isMobile() && (
-					<div className="pktw-w-[340px] pktw-flex-shrink-0 pktw-border-l pktw-border-[#e5e7eb] pktw-overflow-hidden">
+					<div className="pktw-w-[340px] pktw-flex-shrink-0 pktw-border-l pktw-border-pk-border pktw-overflow-hidden">
 						<InspectorSidePanel
 							currentPath={inspectorPath}
 							searchQuery={vaultSearchQuery}
@@ -539,7 +539,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 			</div>
 
 			{/* Footer — modal level, always visible */}
-			<div className="pktw-flex-shrink-0 pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-[#e5e7eb] pktw-flex pktw-items-center pktw-justify-between">
+			<div className="pktw-flex-shrink-0 pktw-px-4 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-t pktw-border-pk-border pktw-flex pktw-items-center pktw-justify-between">
 				<VaultSearchFooterHints />
 				<div className="pktw-flex pktw-items-center pktw-gap-3">
 					{hasSearchQuery && (
@@ -579,12 +579,12 @@ export const QuickSearchModalContent: React.FC<{ onClose?: () => void }> = ({ on
 
 	return (
 		<div
-			className="pktw-w-full pktw-flex-1 pktw-min-h-0 pktw-bg-white pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-overflow-hidden"
+			className="pktw-w-full pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-rounded-lg pktw-shadow-lg pktw-flex pktw-flex-col pktw-overflow-hidden"
 			onKeyDown={handleContainerKeyDown}
 			tabIndex={-1}
 			style={{ maxHeight: 'calc(100vh - 160px)', minHeight: '400px' }}
 		>
-			<div className="pktw-flex-shrink-0 pktw-flex pktw-border-b pktw-border-[#e5e7eb] pktw-bg-[#fafafa]">
+			<div className="pktw-flex-shrink-0 pktw-flex pktw-border-b pktw-border-pk-border pktw-bg-[#fafafa]">
 				<TabButton
 					tab="vault"
 					label="Vault Search"

@@ -112,7 +112,7 @@ export const HomeViewComponent: React.FC = () => {
 							onClick={handleCreateConversation}
 							title="Start a new conversation"
 						>
-							<MessageSquare className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
+							<MessageSquare className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
 							<span>New Conversation</span>
 						</Button>
 						<Button
@@ -120,7 +120,7 @@ export const HomeViewComponent: React.FC = () => {
 							onClick={handleCreateProject}
 							title="Create a new project"
 						>
-							<Folder className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
+							<Folder className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
 							<span>New Project</span>
 						</Button>
 					</div>

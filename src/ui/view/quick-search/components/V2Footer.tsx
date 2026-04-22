@@ -125,7 +125,7 @@ export const V2Footer: React.FC<{
 	const copyLabel = defaultCopyTarget === 'process' ? 'Copy Process' : defaultCopyTarget === 'graph' ? 'Copy Graph' : 'Copy Report';
 
 	return (
-		<div className="pktw-relative pktw-border-t pktw-border-[#e5e7eb] pktw-bg-white pktw-px-3 pktw-py-2 pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0">
+		<div className="pktw-relative pktw-border-t pktw-border-pk-border pktw-bg-pk-background pktw-px-3 pktw-py-2 pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0">
 			{/* TOC popover — rendered above the footer, anchored bottom-left of this container */}
 			{showToc && reportMarkdown.length > 0 && (
 				<V2TableOfContents
@@ -145,8 +145,8 @@ export const V2Footer: React.FC<{
 							id === 'report' ? 'pktw-rounded-l-lg' : 'pktw-rounded-lg'
 						} ${
 							v2View === id
-								? 'pktw-bg-[#7c3aed] pktw-text-white'
-								: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
+								? 'pktw-bg-pk-accent pktw-text-white'
+								: 'pktw-text-pk-foreground-muted hover:pktw-bg-gray-100'
 						}`}
 					>
 						<Icon className="pktw-w-3.5 pktw-h-3.5" />
@@ -157,10 +157,10 @@ export const V2Footer: React.FC<{
 				{reportMarkdown.length > 0 && (
 					<div
 						onClick={() => setShowToc((prev) => !prev)}
-						className={`pktw-flex pktw-items-center pktw-px-1.5 pktw-py-1.5 pktw-rounded-r-lg pktw-transition-all pktw-cursor-pointer pktw-border-l pktw-border-[#e5e7eb] ${
+						className={`pktw-flex pktw-items-center pktw-px-1.5 pktw-py-1.5 pktw-rounded-r-lg pktw-transition-all pktw-cursor-pointer pktw-border-l pktw-border-pk-border ${
 							showToc
-								? 'pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed]'
-								: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
+								? 'pktw-bg-pk-accent/10 pktw-text-pk-accent'
+								: 'pktw-text-pk-foreground-muted hover:pktw-bg-gray-100'
 						}`}
 						title="Table of Contents"
 					>
@@ -173,8 +173,8 @@ export const V2Footer: React.FC<{
 						onClick={() => setV2View(id)}
 						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
 							v2View === id
-								? 'pktw-bg-[#7c3aed] pktw-text-white'
-								: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
+								? 'pktw-bg-pk-accent pktw-text-white'
+								: 'pktw-text-pk-foreground-muted hover:pktw-bg-gray-100'
 						}`}
 					>
 						<Icon className="pktw-w-3.5 pktw-h-3.5" />
@@ -185,7 +185,7 @@ export const V2Footer: React.FC<{
 
 			{/* Center: Stats */}
 			{usage && (
-				<span className="pktw-text-xs pktw-text-[#9ca3af] pktw-tabular-nums">
+				<span className="pktw-text-xs pktw-text-pk-foreground-muted pktw-tabular-nums">
 					{fmt(usage.inputTokens ?? 0)} in / {fmt(usage.outputTokens ?? 0)} out{durationStr ? ` · ${durationStr}` : ''}
 				</span>
 			)}
@@ -209,7 +209,7 @@ export const V2Footer: React.FC<{
 							ref={copyMenuRef}
 							onMouseEnter={cancelHideTimer}
 							onMouseLeave={startHideTimer}
-							className="pktw-absolute pktw-bottom-full pktw-right-0 pktw-mb-1 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[140px]"
+							className="pktw-absolute pktw-bottom-full pktw-right-0 pktw-mb-1 pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[140px]"
 						>
 							{COPY_TARGETS.map(({ id, icon: Icon, label }) => (
 								<div
@@ -217,8 +217,8 @@ export const V2Footer: React.FC<{
 									onClick={() => { void doCopy(id); setShowCopyMenu(false); }}
 									className={`pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-cursor-pointer pktw-transition-colors ${
 										id === defaultCopyTarget
-											? 'pktw-text-[#7c3aed] pktw-font-medium pktw-bg-[#7c3aed]/5'
-											: 'pktw-text-[#374151] hover:pktw-bg-gray-50'
+											? 'pktw-text-pk-accent pktw-font-medium pktw-bg-pk-accent/5'
+											: 'pktw-text-pk-foreground hover:pktw-bg-gray-50'
 									}`}
 								>
 									<Icon className="pktw-w-3.5 pktw-h-3.5" />
@@ -265,8 +265,8 @@ export const V2Footer: React.FC<{
 					onClick={onContinue}
 					className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
 						showContinueAnalysis
-							? 'pktw-bg-[#7c3aed]/10 pktw-text-[#7c3aed]'
-							: 'pktw-text-[#6b7280] hover:pktw-bg-gray-100'
+							? 'pktw-bg-pk-accent/10 pktw-text-pk-accent'
+							: 'pktw-text-pk-foreground-muted hover:pktw-bg-gray-100'
 					}`}
 				>
 					<MessageSquare className="pktw-w-3.5 pktw-h-3.5" />
@@ -274,7 +274,7 @@ export const V2Footer: React.FC<{
 				</div>
 				<div
 					onClick={onOpenInChat}
-					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-white pktw-bg-[#7c3aed] hover:pktw-bg-[#6d28d9] pktw-rounded-lg pktw-transition-colors pktw-cursor-pointer"
+					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-white pktw-bg-pk-accent hover:pktw-bg-[#6d28d9] pktw-rounded-lg pktw-transition-colors pktw-cursor-pointer"
 				>
 					Open in Chat
 					<ExternalLink className="pktw-w-3.5 pktw-h-3.5" />

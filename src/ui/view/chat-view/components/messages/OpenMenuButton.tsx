@@ -116,7 +116,7 @@ export const OpenMenuButton: React.FC = () => {
 						</div>
 					</PopoverTrigger>
 					<PopoverContent
-						className="pktw-w-[200px] pktw-p-1 pktw-bg-white pktw-shadow-lg pktw-border pktw-z-50"
+						className="pktw-w-[200px] pktw-p-1 pktw-bg-pk-background pktw-shadow-lg pktw-border pktw-z-50"
 						align="start"
 						side="bottom"
 						sideOffset={8}

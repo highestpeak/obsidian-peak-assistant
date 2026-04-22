@@ -34,7 +34,7 @@ export const V2ScrollButtons: React.FC<V2ScrollButtonsProps> = ({ containerRef }
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         onClick={() => containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-                        className="pktw-w-10 pktw-h-10 pktw-rounded-full pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-shadow-lg pktw-flex pktw-items-center pktw-justify-center pktw-text-[#6b7280] hover:pktw-text-[#7c3aed] hover:pktw-border-[#7c3aed]/30 pktw-transition-colors pktw-cursor-pointer"
+                        className="pktw-w-10 pktw-h-10 pktw-rounded-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-shadow-lg pktw-flex pktw-items-center pktw-justify-center pktw-text-pk-foreground-muted hover:pktw-text-pk-accent hover:pktw-border-[#7c3aed]/30 pktw-transition-colors pktw-cursor-pointer"
                         title="Scroll to top"
                     >
                         <ChevronUp className="pktw-w-5 pktw-h-5" />
@@ -48,7 +48,7 @@ export const V2ScrollButtons: React.FC<V2ScrollButtonsProps> = ({ containerRef }
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         onClick={() => containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })}
-                        className="pktw-w-10 pktw-h-10 pktw-rounded-full pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-shadow-lg pktw-flex pktw-items-center pktw-justify-center pktw-text-[#6b7280] hover:pktw-text-[#7c3aed] hover:pktw-border-[#7c3aed]/30 pktw-transition-colors pktw-cursor-pointer"
+                        className="pktw-w-10 pktw-h-10 pktw-rounded-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-shadow-lg pktw-flex pktw-items-center pktw-justify-center pktw-text-pk-foreground-muted hover:pktw-text-pk-accent hover:pktw-border-[#7c3aed]/30 pktw-transition-colors pktw-cursor-pointer"
                         title="Scroll to bottom"
                     >
                         <ChevronDown className="pktw-w-5 pktw-h-5" />

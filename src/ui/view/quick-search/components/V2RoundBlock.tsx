@@ -65,8 +65,8 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 	const hasSections = sections.length > 0;
 
 	const borderClass = isCurrent
-		? 'pktw-border-[#7c3aed]/30 pktw-bg-white'
-		: 'pktw-border-[#e5e7eb] pktw-bg-[#fafafa]';
+		? 'pktw-border-[#7c3aed]/30 pktw-bg-pk-background'
+		: 'pktw-border-pk-border pktw-bg-[#fafafa]';
 
 	// Group timeline for rendering (memoized to avoid recomputing for frozen rounds)
 	const grouped = useMemo(() => groupTimeline(timeline), [timeline]);
@@ -84,11 +84,11 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 					transition={{ duration: 0.15 }}
 					className="pktw-shrink-0"
 				>
-					<ChevronRight className="pktw-w-4 pktw-h-4 pktw-text-[#9ca3af]" />
+					<ChevronRight className="pktw-w-4 pktw-h-4 pktw-text-pk-foreground-muted" />
 				</motion.div>
 
 				{/* Round number */}
-				<span className="pktw-text-xs pktw-font-semibold pktw-text-[#7c3aed] pktw-shrink-0">
+				<span className="pktw-text-xs pktw-font-semibold pktw-text-pk-accent pktw-shrink-0">
 					#{roundIndex + 1}
 				</span>
 
@@ -100,22 +100,22 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 				{/* Stats */}
 				<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-shrink-0">
 					{duration && (
-						<span className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-font-mono pktw-tabular-nums">
+						<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-font-mono pktw-tabular-nums">
 							{duration}
 						</span>
 					)}
 					{sources.length > 0 && (
-						<span className="pktw-text-[10px] pktw-text-[#9ca3af]">
+						<span className="pktw-text-[10px] pktw-text-pk-foreground-muted">
 							{sources.length} src
 						</span>
 					)}
 					{hasSections && (
-						<span className="pktw-text-[10px] pktw-text-[#9ca3af]">
+						<span className="pktw-text-[10px] pktw-text-pk-foreground-muted">
 							{sections.length} sec
 						</span>
 					)}
 					{tokenStr && (
-						<span className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-font-mono">
+						<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-font-mono">
 							{tokenStr}
 						</span>
 					)}
@@ -124,7 +124,7 @@ export const V2RoundBlock: React.FC<V2RoundBlockProps> = ({
 				{/* Report link for frozen rounds with sections */}
 				{!isCurrent && hasSections && (
 					<span
-						className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-text-[10px] pktw-text-[#7c3aed] pktw-font-medium pktw-cursor-pointer hover:pktw-underline pktw-shrink-0"
+						className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-text-[10px] pktw-text-pk-accent pktw-font-medium pktw-cursor-pointer hover:pktw-underline pktw-shrink-0"
 						onClick={(e) => {
 							e.stopPropagation();
 							setV2View('report');

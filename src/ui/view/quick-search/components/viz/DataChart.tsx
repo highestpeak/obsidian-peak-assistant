@@ -11,7 +11,7 @@ export const DataChart: React.FC<{ data: BarChartData; title: string }> = ({ dat
 
     return (
         <div className="pktw-my-3">
-            <span className="pktw-text-xs pktw-font-medium pktw-text-[#6b7280] pktw-mb-2 pktw-block">{title}</span>
+            <span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted pktw-mb-2 pktw-block">{title}</span>
             <div className="pktw-w-full" style={{ height: Math.min(300, 40 + chartData.length * 36) }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>

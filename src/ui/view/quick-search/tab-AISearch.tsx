@@ -285,12 +285,12 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 			{/* V2 title bar — shown when analysis is completed */}
 			{isV2Active && analysisCompleted && titleFromStore && (
 				<div className="pktw-px-4 pktw-py-2 pktw-flex-shrink-0">
-					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-p-2 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white">
+					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-p-2 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background">
 						<div className="pktw-min-w-0 pktw-flex-1">
 							<span className="pktw-text-sm pktw-font-semibold pktw-text-[#1a1c1e] pktw-truncate pktw-block" title={titleFromStore}>
 								{titleDisplay || titleFromStore}
 							</span>
-							<span className="pktw-text-xs pktw-text-[#9ca3af] pktw-truncate pktw-block">
+							<span className="pktw-text-xs pktw-text-pk-foreground-muted pktw-truncate pktw-block">
 								{useSearchSessionStore.getState().query}
 							</span>
 						</div>

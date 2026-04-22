@@ -154,7 +154,7 @@ export const SaveDialog: React.FC<ResultSaveDialogProps> = ({ onClose }) => {
 
 	return (
 		<div className="pktw-fixed pktw-inset-0 pktw-bg-black/20 pktw-flex pktw-items-center pktw-justify-center pktw-z-50 pktw-p-4">
-			<div className="pktw-bg-white pktw-rounded-lg pktw-shadow-2xl pktw-border pktw-border-border pktw-w-full pktw-max-w-lg">
+			<div className="pktw-bg-pk-background pktw-rounded-lg pktw-shadow-2xl pktw-border pktw-border-border pktw-w-full pktw-max-w-lg">
 				{/* Header */}
 				<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-py-4 pktw-border-b pktw-border-border">
 					<div className="pktw-flex pktw-items-center pktw-gap-2">

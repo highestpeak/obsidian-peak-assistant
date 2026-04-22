@@ -27,7 +27,7 @@ export const ToolRow: React.FC<{ step: V2ToolStep }> = ({ step }) => {
             {/* Status dot */}
             {isRunning ? (
                 <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
-                    <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed] pktw-animate-spin" />
+                    <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-pk-accent pktw-animate-spin" />
                 </div>
             ) : (
                 <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-green-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
@@ -36,7 +36,7 @@ export const ToolRow: React.FC<{ step: V2ToolStep }> = ({ step }) => {
             )}
 
             {/* Tool icon + name */}
-            <div className="pktw-text-[#7c3aed] pktw-shrink-0"><ToolIcon toolName={step.toolName} /></div>
+            <div className="pktw-text-pk-accent pktw-shrink-0"><ToolIcon toolName={step.toolName} /></div>
             <span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338] pktw-truncate">
                 {step.displayName}
             </span>
@@ -44,16 +44,16 @@ export const ToolRow: React.FC<{ step: V2ToolStep }> = ({ step }) => {
             {/* Summary + duration right-aligned */}
             <span className="pktw-flex-1" />
             {step.summary && (
-                <span className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-shrink-0 pktw-truncate pktw-max-w-[200px]" title={step.summary}>
+                <span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-shrink-0 pktw-truncate pktw-max-w-[200px]" title={step.summary}>
                     {step.summary}
                 </span>
             )}
             {!isRunning && step.endedAt && step.startedAt ? (
-                <span className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-font-mono pktw-tabular-nums pktw-shrink-0 pktw-ml-1">
+                <span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-font-mono pktw-tabular-nums pktw-shrink-0 pktw-ml-1">
                     {(step.endedAt - step.startedAt) < 100 ? '<0.1s' : `${((step.endedAt - step.startedAt) / 1000).toFixed(1)}s`}
                 </span>
             ) : isRunning && !isSubmitPlan ? (
-                <span className="pktw-text-[10px] pktw-text-[#7c3aed] pktw-font-mono pktw-shrink-0 pktw-ml-1">...</span>
+                <span className="pktw-text-[10px] pktw-text-pk-accent pktw-font-mono pktw-shrink-0 pktw-ml-1">...</span>
             ) : null}
         </div>
     );
@@ -97,11 +97,11 @@ export const ThinkingRow: React.FC<{ text: string }> = ({ text }) => {
 
     return (
         <div
-            className="pktw-py-0.5 pktw-px-1 pktw-ml-6 pktw-text-[11px] pktw-text-[#9ca3af] pktw-cursor-pointer hover:pktw-text-[#6b7280] pktw-transition-colors pktw-leading-relaxed"
+            className="pktw-py-0.5 pktw-px-1 pktw-ml-6 pktw-text-[11px] pktw-text-pk-foreground-muted pktw-cursor-pointer hover:pktw-text-pk-foreground-muted pktw-transition-colors pktw-leading-relaxed"
             onClick={() => hasMore && setExpanded(!expanded)}
         >
             {expanded ? (
-                <span className="pktw-whitespace-pre-wrap pktw-break-words pktw-text-[#6b7280]">{trimmed}</span>
+                <span className="pktw-whitespace-pre-wrap pktw-break-words pktw-text-pk-foreground-muted">{trimmed}</span>
             ) : (
                 <span className="pktw-truncate pktw-block">{lastLine}{hasMore ? ' ▸' : ''}</span>
             )}

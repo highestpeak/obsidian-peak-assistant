@@ -83,7 +83,7 @@ export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, 
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     onClick={() => setCollapsed(false)}
-                    className="pktw-w-9 pktw-h-9 pktw-rounded-full pktw-bg-[#7c3aed] pktw-shadow-lg pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer pktw-text-white hover:pktw-bg-[#6d28d9] pktw-transition-all"
+                    className="pktw-w-9 pktw-h-9 pktw-rounded-full pktw-bg-pk-accent pktw-shadow-lg pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer pktw-text-white hover:pktw-bg-[#6d28d9] pktw-transition-all"
                     title="Table of Contents"
                 >
                     <List className="pktw-w-4 pktw-h-4" />
@@ -98,18 +98,18 @@ export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, 
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="pktw-w-64 pktw-max-h-[60vh] pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-xl pktw-shadow-xl pktw-overflow-hidden pktw-mb-2"
+                        className="pktw-w-64 pktw-max-h-[60vh] pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-xl pktw-shadow-xl pktw-overflow-hidden pktw-mb-2"
                     >
                         {/* Header */}
                         <div
-                            className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2.5 pktw-border-b pktw-border-[#e5e7eb] pktw-cursor-pointer hover:pktw-bg-[#f9fafb] pktw-transition-colors"
+                            className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-2.5 pktw-border-b pktw-border-pk-border pktw-cursor-pointer hover:pktw-bg-pk-background pktw-transition-colors"
                             onClick={() => setCollapsed(true)}
                         >
-                            <List className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#6b7280]" />
+                            <List className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
                             <span className="pktw-text-xs pktw-font-semibold pktw-text-[#2e3338] pktw-flex-1">
                                 Table of Contents
                             </span>
-                            <ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#9ca3af]" />
+                            <ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
                         </div>
 
                         {/* Headings */}
@@ -119,7 +119,7 @@ export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, 
                                     key={i}
                                     className={`pktw-text-xs pktw-py-1 pktw-px-2 pktw-rounded pktw-cursor-pointer pktw-truncate pktw-transition-colors ${
                                         heading.level === 3 ? 'pktw-pl-6' : 'pktw-font-medium'
-                                    } pktw-text-[#6b7280] hover:pktw-text-[#7c3aed] hover:pktw-bg-[#f5f3ff]`}
+                                    } pktw-text-pk-foreground-muted hover:pktw-text-pk-accent hover:pktw-bg-[#f5f3ff]`}
                                     title={heading.text}
                                     onClick={() => handleClick(heading)}
                                 >

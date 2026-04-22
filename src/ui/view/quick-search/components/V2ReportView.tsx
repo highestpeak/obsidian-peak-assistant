@@ -106,15 +106,15 @@ const SectionBlock: React.FC<{
 			initial={{ opacity: 0, y: 16 }}
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.3, delay: index * 0.06, ease: [0.22, 1, 0.36, 1] }}
-			className="pktw-bg-[#f9fafb] pktw-rounded-xl pktw-p-5 pktw-border pktw-border-[#e5e7eb] pktw-flex pktw-flex-col pktw-group pktw-w-full"
+			className="pktw-bg-pk-background pktw-rounded-xl pktw-p-5 pktw-border pktw-border-pk-border pktw-flex pktw-flex-col pktw-group pktw-w-full"
 		>
 			{/* Header */}
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
 				{/* Status indicator */}
 				{section.status === 'done' && <CheckCircle className="pktw-w-4 pktw-h-4 pktw-text-green-500 pktw-shrink-0" />}
-				{section.status === 'generating' && <Loader2 className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed] pktw-animate-spin pktw-shrink-0" />}
+				{section.status === 'generating' && <Loader2 className="pktw-w-4 pktw-h-4 pktw-text-pk-accent pktw-animate-spin pktw-shrink-0" />}
 				{section.status === 'pending' && <Clock className="pktw-w-4 pktw-h-4 pktw-text-[#d1d5db] pktw-shrink-0" />}
-				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#374151] pktw-flex-1 pktw-line-clamp-2" title={section.title}>
+				<span className="pktw-text-sm pktw-font-semibold pktw-text-pk-foreground pktw-flex-1 pktw-line-clamp-2" title={section.title}>
 					{section.title}
 				</span>
 				{annotations.length > 0 && (
@@ -135,17 +135,17 @@ const SectionBlock: React.FC<{
 				}`}>
 					<div
 						onClick={handleCopy}
-						className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-transition-colors"
+						className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-transition-colors"
 						title="Copy section"
 					>
-						{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#9ca3af]" />}
+						{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />}
 					</div>
 					<div
 						onClick={handleRegenerate}
-						className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-transition-colors"
+						className="pktw-w-7 pktw-h-7 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-flex pktw-items-center pktw-justify-center pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-transition-colors"
 						title="Regenerate section"
 					>
-						<RefreshCw className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#9ca3af]" />
+						<RefreshCw className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
 					</div>
 				</div>
 			</div>
@@ -165,12 +165,12 @@ const SectionBlock: React.FC<{
 								onChange={(e) => setPrompt(e.target.value)}
 								onKeyDown={(e) => { if (e.key === 'Enter') handleRegenerate(); }}
 								placeholder="Describe what to change..."
-								className="pktw-flex-1 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-[#7c3aed]/50"
+								className="pktw-flex-1 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-border pktw-border-pk-border pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-[#7c3aed]/50"
 								autoFocus
 							/>
 							<div
 								onClick={() => { onRegenerate?.(section.id, prompt.trim() || undefined); setPrompt(''); setShowPrompt(false); }}
-								className="pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-white pktw-bg-[#7c3aed] pktw-rounded-lg pktw-cursor-pointer hover:pktw-bg-[#6d28d9]"
+								className="pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-white pktw-bg-pk-accent pktw-rounded-lg pktw-cursor-pointer hover:pktw-bg-[#6d28d9]"
 							>
 								Regenerate
 							</div>
@@ -255,15 +255,15 @@ const SectionBlock: React.FC<{
 const CollapsibleSummary: React.FC<{ summary: string; summaryStreaming: boolean }> = ({ summary, summaryStreaming }) => {
 	const [expanded, setExpanded] = useState(true);
 	return (
-		<div className="pktw-bg-[#f9fafb] pktw-rounded-xl pktw-border pktw-border-[#e5e7eb] pktw-mb-4">
+		<div className="pktw-bg-pk-background pktw-rounded-xl pktw-border pktw-border-pk-border pktw-mb-4">
 			<div
 				className="pktw-flex pktw-items-center pktw-gap-2 pktw-p-4 pktw-pb-0 pktw-cursor-pointer"
 				onClick={() => !summaryStreaming && setExpanded(!expanded)}
 			>
-				<ChevronRight className={`pktw-w-3.5 pktw-h-3.5 pktw-text-[#9ca3af] pktw-transition-transform ${expanded ? 'pktw-rotate-90' : ''}`} />
-				<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
+				<ChevronRight className={`pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted pktw-transition-transform ${expanded ? 'pktw-rotate-90' : ''}`} />
+				<Sparkles className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
 				<span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">Executive Summary</span>
-				{summaryStreaming && <Loader2 className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed] pktw-animate-spin" />}
+				{summaryStreaming && <Loader2 className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent pktw-animate-spin" />}
 			</div>
 			{expanded && (
 				<div className="pktw-px-5 pktw-pb-5 pktw-pt-3">
@@ -309,7 +309,7 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 	// No content yet — show loading state instead of blank page
 	if (sections.length === 0 && !summary && rounds.length === 0) {
 		return (
-			<div className="pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-h-32 pktw-text-sm pktw-text-[#9ca3af] pktw-gap-2">
+			<div className="pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-h-32 pktw-text-sm pktw-text-pk-foreground-muted pktw-gap-2">
 				<Loader2 className="pktw-w-5 pktw-h-5 pktw-animate-spin" />
 				<span>Preparing report...</span>
 			</div>
@@ -321,7 +321,7 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 			{/* Back to Process button — visible when coming from a round's Report link */}
 			{rounds.length > 0 && (
 				<div
-					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2 pktw-py-1.5 pktw-mb-2 pktw-text-xs pktw-text-[#7c3aed] pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-w-fit pktw-transition-colors"
+					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2 pktw-py-1.5 pktw-mb-2 pktw-text-xs pktw-text-pk-accent pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-w-fit pktw-transition-colors"
 					onClick={() => useSearchSessionStore.getState().setV2View('process')}
 				>
 					<ArrowLeft className="pktw-w-3.5 pktw-h-3.5" />
@@ -377,16 +377,16 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 			{isGenerating && (
 				<div className="pktw-mb-4">
 					<div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-1.5">
-						<span className="pktw-text-xs pktw-text-[#6b7280]">
+						<span className="pktw-text-xs pktw-text-pk-foreground-muted">
 							{progress.completed}/{progress.total} sections
 						</span>
-						<span className="pktw-text-xs pktw-font-medium pktw-text-[#7c3aed]">
+						<span className="pktw-text-xs pktw-font-medium pktw-text-pk-accent">
 							{progress.pct}%
 						</span>
 					</div>
 					<div className="pktw-h-1.5 pktw-bg-[#e5e7eb] pktw-rounded-full pktw-overflow-hidden">
 						<motion.div
-							className="pktw-h-full pktw-bg-[#7c3aed] pktw-rounded-full"
+							className="pktw-h-full pktw-bg-pk-accent pktw-rounded-full"
 							initial={{ width: 0 }}
 							animate={{ width: `${progress.pct}%` }}
 							transition={{ duration: 0.5, ease: 'easeOut' }}

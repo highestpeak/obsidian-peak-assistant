@@ -41,12 +41,12 @@ const AnalyzeItemSection: React.FC<{
 	const title = `AI analysis - ${titleForQuestion(item.question)}`;
 
 	return (
-		<div className="pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-overflow-hidden">
+		<div className="pktw-border pktw-border-pk-border pktw-rounded-md pktw-overflow-hidden">
 			<Button
 				variant="ghost"
 				size="sm"
 				style={{ cursor: 'pointer' }}
-				className="pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-gap-2 pktw-bg-[#f9fafb]"
+				className="pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-gap-2 pktw-bg-pk-background"
 				onClick={(e) => { e.stopPropagation(); onToggle(); }}
 			>
 				{collapsed
@@ -58,7 +58,7 @@ const AnalyzeItemSection: React.FC<{
 				{item.isStreaming && <span className="pktw-text-[10px] pktw-text-violet-500 pktw-flex-shrink-0">streaming…</span>}
 			</Button>
 			{!collapsed && (
-				<div className="pktw-p-3 pktw-bg-white pktw-border-t pktw-border-[#e5e7eb]">
+				<div className="pktw-p-3 pktw-bg-pk-background pktw-border-t pktw-border-pk-border">
 					<StreamdownIsolated
 						className="pktw-text-sm pktw-text-[#2e3338] pktw-leading-relaxed pktw-prose pktw-prose-sm pktw-max-w-none pktw-prose-headings:pktw-font-semibold pktw-prose-headings:pktw-mt-3 pktw-prose-headings:pktw-mb-1 pktw-prose-p:pktw-my-2 pktw-prose-ul:pktw-my-2 pktw-prose-li:pktw-my-0.5"
 						isAnimating={item.isStreaming}
@@ -80,12 +80,12 @@ const InspectItem: React.FC<{
 	onClose: () => void;
 }> = ({ inspectItems, isInspectLoading, collapsed, onToggle, onClose }) => {
 	return (
-		<div className="pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-overflow-hidden">
+		<div className="pktw-border pktw-border-pk-border pktw-rounded-md pktw-overflow-hidden">
 			<Button
 				variant="ghost"
 				size="sm"
 				style={{ cursor: 'pointer' }}
-				className="pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-gap-2 pktw-bg-[#f9fafb]"
+				className="pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-gap-2 pktw-bg-pk-background"
 				onClick={(e) => { e.stopPropagation(); onToggle(); }}
 			>
 				{collapsed
@@ -101,7 +101,7 @@ const InspectItem: React.FC<{
 					<Button
 						variant="ghost"
 						style={{ cursor: 'pointer' }}
-						className="pktw-text-left pktw-text-xs pktw-text-[#7c3aed] hover:pktw-text-violet-700 hover:pktw-underline pktw-truncate pktw-block pktw-w-full pktw-cursor-pointer"
+						className="pktw-text-left pktw-text-xs pktw-text-pk-accent hover:pktw-text-violet-700 hover:pktw-underline pktw-truncate pktw-block pktw-w-full pktw-cursor-pointer"
 						onClick={() => createOpenSourceCallback(onClose)(item)}
 						title={item.path}
 					>
@@ -130,12 +130,12 @@ const GraphItemSection: React.FC<{
 	);
 
 	return (
-		<div className="pktw-border pktw-border-[#e5e7eb] pktw-rounded-md pktw-overflow-hidden">
+		<div className="pktw-border pktw-border-pk-border pktw-rounded-md pktw-overflow-hidden">
 			<Button
 				variant="ghost"
 				size="sm"
 				style={{ cursor: 'pointer' }}
-				className="pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-gap-2 pktw-bg-[#f9fafb]"
+				className="pktw-shadow-none pktw-w-full pktw-flex pktw-justify-start pktw-gap-2 pktw-bg-pk-background"
 				onClick={(e) => { e.stopPropagation(); onToggle(); }}
 			>
 				{collapsed
@@ -148,7 +148,7 @@ const GraphItemSection: React.FC<{
 			</Button>
 			{!collapsed ? (
 				graph.nodes?.length > 0 ? (
-					<div className="pktw-h-[280px] pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-overflow-hidden">
+					<div className="pktw-h-[280px] pktw-rounded-md pktw-border pktw-border-pk-border pktw-overflow-hidden">
 						<GraphVisualization
 							{...obsidianPreset}
 							graph={graph}
@@ -156,7 +156,7 @@ const GraphItemSection: React.FC<{
 						/>
 					</div>
 				) : (
-					<div className="pktw-h-[120px] pktw-flex pktw-items-center pktw-justify-center pktw-bg-[#f9fafb] pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-text-xs pktw-text-[#9ca3af]">
+					<div className="pktw-h-[120px] pktw-flex pktw-items-center pktw-justify-center pktw-bg-pk-background pktw-rounded-md pktw-border pktw-border-pk-border pktw-text-xs pktw-text-pk-foreground-muted">
 						No graph data for this topic
 					</div>
 				)
@@ -304,7 +304,7 @@ const SectionExtraChatCard: React.FC<SectionExtraChatCardProps> = ({
 	if (!hasAnalyze && !hasInspect && !hasGraph) return null;
 
 	return (
-		<div className="pktw-bg-white pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-overflow-hidden">
+		<div className="pktw-bg-pk-background pktw-rounded-lg pktw-border pktw-border-pk-border pktw-overflow-hidden">
 			<div className="pktw-p-3 pktw-flex pktw-flex-col pktw-gap-3">
 				{/* Each AI analysis Q&A as its own section */}
 				{hasAnalyze && analyzeItems
@@ -421,8 +421,8 @@ export const SectionExtraChatModal: React.FC<SectionExtraChatModalProps> = ({
 					className="pktw-flex-1 pktw-flex pktw-flex-col pktw-min-h-0 pktw-overflow-hidden"
 					innerClassName="pktw-flex-1 pktw-flex pktw-flex-col pktw-min-h-0 pktw-overflow-hidden"
 				>
-					<div className="pktw-flex pktw-flex-col pktw-flex-1 pktw-min-h-0 pktw-overflow-hidden pktw-bg-white/95 pktw-rounded-[11px]">
-						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-pt-4 pktw-border-b pktw-border-[#e5e7eb] pktw-flex-shrink-0">
+					<div className="pktw-flex pktw-flex-col pktw-flex-1 pktw-min-h-0 pktw-overflow-hidden pktw-bg-pk-background/95 pktw-rounded-[11px]">
+						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-pt-4 pktw-border-b pktw-border-pk-border pktw-flex-shrink-0">
 							<span className="pktw-font-semibold pktw-text-[#2e3338]">{headerTitle}</span>
 							<div className="pktw-flex pktw-items-center pktw-gap-1">
 								<IconButton onClick={scrollToTop} size="sm" title="Scroll to top" aria-label="Scroll to top">

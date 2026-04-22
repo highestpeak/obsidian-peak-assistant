@@ -45,7 +45,7 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
 
     if (isRestoredEmpty) {
         return (
-            <div className="pktw-flex pktw-items-center pktw-justify-center pktw-py-12 pktw-text-sm pktw-text-[#9ca3af]">
+            <div className="pktw-flex pktw-items-center pktw-justify-center pktw-py-12 pktw-text-sm pktw-text-pk-foreground-muted">
                 Process log not available for this analysis
             </div>
         );
@@ -89,9 +89,9 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                 {showInitialThinking && (
                     <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1">
                         <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
-                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed] pktw-animate-spin" />
+                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-pk-accent pktw-animate-spin" />
                         </div>
-                        <span className="pktw-text-xs pktw-text-[#9ca3af]">Analyzing query...</span>
+                        <span className="pktw-text-xs pktw-text-pk-foreground-muted">Analyzing query...</span>
                     </div>
                 )}
 
@@ -99,9 +99,9 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                 {isWaitingForPlan && (
                     <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1 pktw-mt-1">
                         <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
-                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed] pktw-animate-spin" />
+                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-pk-accent pktw-animate-spin" />
                         </div>
-                        <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed]" />
+                        <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
                         <span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">Preparing analysis plan...</span>
                     </div>
                 )}
@@ -110,14 +110,14 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                 {isGeneratingReport && (
                     <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1 pktw-mt-1">
                         <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
-                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed] pktw-animate-spin" />
+                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-pk-accent pktw-animate-spin" />
                         </div>
-                        <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed]" />
+                        <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
                         <span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">Generating report...</span>
                         <span className="pktw-flex-1" />
                         <div className="pktw-w-24 pktw-h-1 pktw-bg-gray-200 pktw-rounded-full pktw-overflow-hidden">
                             <motion.div
-                                className="pktw-h-full pktw-bg-[#7c3aed]"
+                                className="pktw-h-full pktw-bg-pk-accent"
                                 initial={{ width: '0%' }}
                                 animate={{ width: '85%' }}
                                 transition={{ duration: 8, ease: 'easeInOut' }}
@@ -135,7 +135,7 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                 {sections.length > 0 && status !== 'plan_ready' && planApproved && (
                     <div className="pktw-mt-3 pktw-space-y-1">
                         <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-px-1 pktw-mb-2">
-                            <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed]" />
+                            <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
                             <span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">
                                 Generating sections ({sections.filter((s) => s.status === 'done').length}/{sections.length})
                             </span>
@@ -148,12 +148,12 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                                     </div>
                                 ) : sec.status === 'generating' ? (
                                     <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
-                                        <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed] pktw-animate-spin" />
+                                        <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-pk-accent pktw-animate-spin" />
                                     </div>
                                 ) : (
                                     <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-gray-100 pktw-shrink-0" />
                                 )}
-                                <span className="pktw-text-xs pktw-text-[#6b7280] pktw-truncate">{sec.title}</span>
+                                <span className="pktw-text-xs pktw-text-pk-foreground-muted pktw-truncate">{sec.title}</span>
                             </div>
                         ))}
                     </div>

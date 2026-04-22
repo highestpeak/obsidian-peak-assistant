@@ -120,7 +120,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
             {/* Header */}
             <div className="pktw-flex pktw-items-center pktw-justify-between pktw-mb-4 pktw-px-1">
                 <div className="pktw-flex pktw-items-center pktw-gap-2">
-                    <FileText className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
+                    <FileText className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
                     <span className="pktw-text-sm pktw-font-semibold pktw-text-[#2e3338]">
                         Top Sources
                     </span>
@@ -128,7 +128,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
                         ({sources.length} files)
                     </span>
                 </div>
-                <div className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-p-0.5">
+                <div className="pktw-flex pktw-items-center pktw-gap-0.5 pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-lg pktw-p-0.5">
                     {viewModes.map(({ id, icon: Icon, label }) => (
                         <div
                             key={id}
@@ -136,7 +136,7 @@ export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
                             className={`pktw-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-1 pktw-text-xs pktw-font-medium pktw-rounded pktw-cursor-pointer pktw-transition-colors ${
                                 viewMode === id
                                     ? 'pktw-bg-gray-100 pktw-text-[#2e3338]'
-                                    : 'pktw-text-[#6b7280] hover:pktw-bg-[#f9fafb]'
+                                    : 'pktw-text-pk-foreground-muted hover:pktw-bg-pk-background'
                             }`}
                         >
                             <Icon className="pktw-w-3.5 pktw-h-3.5" />

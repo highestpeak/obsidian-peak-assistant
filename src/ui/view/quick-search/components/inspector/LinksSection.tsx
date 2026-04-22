@@ -313,7 +313,7 @@ export const LinksTab: React.FC<{
 
 	if (loading) {
 		return (
-			<div className={cn('pktw-text-sm pktw-text-[#6b7280]', className)}>
+			<div className={cn('pktw-text-sm pktw-text-pk-foreground-muted', className)}>
 				Loading links…
 			</div>
 		);
@@ -325,7 +325,7 @@ export const LinksTab: React.FC<{
 	}
 	if (mergedItems.length === 0) {
 		return (
-			<div className={cn('pktw-text-sm pktw-text-[#6b7280]', className)}>
+			<div className={cn('pktw-text-sm pktw-text-pk-foreground-muted', className)}>
 				No links for this note. Open a note and try again.
 			</div>
 		);
@@ -333,7 +333,7 @@ export const LinksTab: React.FC<{
 
 	const chipActive =
 		'pktw-font-semibold pktw-text-[#1e3a8a] pktw-bg-blue-100 pktw-border pktw-border-blue-300 pktw-rounded-md pktw-shadow-sm';
-	const chipInactive = 'pktw-text-[#6b7280] pktw-bg-transparent';
+	const chipInactive = 'pktw-text-pk-foreground-muted pktw-bg-transparent';
 
 	const showTier3 = mode === 'keywords' || mode === 'tags';
 	const tier3Tokens = mode === 'keywords' ? topKeywords : topTags;
@@ -342,7 +342,7 @@ export const LinksTab: React.FC<{
 		<div className={cn('pktw-flex pktw-flex-col pktw-gap-3', className)}>
 			{/* Header: total count + Copy */}
 			<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2">
-				<div className="pktw-text-xs pktw-font-medium pktw-text-[#6b7280]">
+				<div className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted">
 					All ({mergedItems.length})
 				</div>
 				<Button
@@ -350,7 +350,7 @@ export const LinksTab: React.FC<{
 					variant="ghost"
 					className={cn(
 						'pktw-h-6 pktw-px-2 pktw-text-xs pktw-min-w-[4.5rem]',
-						justCopied ? 'pktw-text-emerald-600' : 'pktw-text-[#6b7280]'
+						justCopied ? 'pktw-text-emerald-600' : 'pktw-text-pk-foreground-muted'
 					)}
 					title={justCopied ? 'Copied' : 'Copy links as JSON'}
 					onClick={() => void handleCopyAsJson()}
@@ -370,7 +370,7 @@ export const LinksTab: React.FC<{
 			</div>
 
 			{/* 3-tier cascading filter card */}
-			<div className="pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-[#f9fafb] pktw-p-2.5 pktw-flex pktw-flex-col pktw-gap-2.5">
+			<div className="pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-p-2.5 pktw-flex pktw-flex-col pktw-gap-2.5">
 				{/* Step 1: All | Keywords | Tags */}
 				<div className="pktw-flex pktw-flex-wrap pktw-gap-2 pktw-items-center">
 					{(['all', 'keywords', 'tags'] as const).map((m) => (
@@ -394,7 +394,7 @@ export const LinksTab: React.FC<{
 
 				{/* Step 2: Semantic | Physical | Flat | By Path */}
 				<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-items-center">
-					<span className="pktw-text-xs pktw-text-[#9ca3af] pktw-mr-0.5">Filter:</span>
+					<span className="pktw-text-xs pktw-text-pk-foreground-muted pktw-mr-0.5">Filter:</span>
 					<Button
 						size="sm"
 						variant="ghost"
@@ -443,7 +443,7 @@ export const LinksTab: React.FC<{
 
 				{/* Step 3: Sub-items (only when Keywords/Tags active) */}
 				{showTier3 && tier3Tokens.length > 0 && (
-					<div className="pktw-rounded pktw-border pktw-border-[#e5e7eb] pktw-p-2 pktw-flex pktw-flex-col pktw-gap-2">
+					<div className="pktw-rounded pktw-border pktw-border-pk-border pktw-p-2 pktw-flex pktw-flex-col pktw-gap-2">
 						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-2 pktw-flex-wrap">
 							<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-items-center pktw-min-w-0">
 								{tier3Tokens.map((token) => {
@@ -468,7 +468,7 @@ export const LinksTab: React.FC<{
 									<Button
 										size="sm"
 										variant="ghost"
-										className="pktw-h-6 pktw-px-2 pktw-text-xs pktw-text-[#6b7280]"
+										className="pktw-h-6 pktw-px-2 pktw-text-xs pktw-text-pk-foreground-muted"
 										onClick={clearAllTokens}
 									>
 										Clear All
@@ -480,7 +480,7 @@ export const LinksTab: React.FC<{
 				)}
 
 				<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-flex-wrap">
-					<span className="pktw-text-xs pktw-text-[#9ca3af]">Sort:</span>
+					<span className="pktw-text-xs pktw-text-pk-foreground-muted">Sort:</span>
 					{(['name', 'time', 'backlinks', 'similarity'] as const).map((s) => (
 						<Button
 							key={s}
@@ -500,7 +500,7 @@ export const LinksTab: React.FC<{
 			{/* Results + Sort */}
 			<div className="pktw-flex pktw-flex-col pktw-gap-1">
 				<div className="pktw-flex pktw-items-center pktw-justify-start pktw-gap-2 pktw-flex-wrap">
-					<div className="pktw-text-[#9ca3af]">
+					<div className="pktw-text-pk-foreground-muted">
 						Results ({sortedItems.length})
 					</div>
 				</div>
@@ -569,21 +569,21 @@ export const LinkItemRow: React.FC<{
 					</span>
 				)}
 				{isRelated && (
-					<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-[#7c3aed] group-hover:pktw-text-white" aria-hidden />
+					<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-pk-accent group-hover:pktw-text-white" aria-hidden />
 				)}
 				{parseSimilarity(item.similarity) > 0 && (
-					<span className="pktw-tabular-nums pktw-text-xs pktw-text-[#7c3aed] pktw-font-medium group-hover:pktw-text-white">
+					<span className="pktw-tabular-nums pktw-text-xs pktw-text-pk-accent pktw-font-medium group-hover:pktw-text-white">
 						{item.similarity}
 					</span>
 				)}
 				<span className="pktw-truncate pktw-font-medium group-hover:pktw-underline">{item.label || item.path}</span>
 				{item.mtime != null && (
-					<span className="pktw-shrink-0 pktw-text-[10px] pktw-text-[#9ca3af] group-hover:pktw-text-white">
+					<span className="pktw-shrink-0 pktw-text-[10px] pktw-text-pk-foreground-muted group-hover:pktw-text-white">
 						{humanReadableTime(item.mtime)}
 					</span>
 				)}
 				{(item.backlinks ?? 0) > 0 && (
-					<span className="pktw-shrink-0 pktw-flex pktw-items-center pktw-gap-0.5 pktw-text-[10px] pktw-text-[#7c3aed] group-hover:pktw-text-white">
+					<span className="pktw-shrink-0 pktw-flex pktw-items-center pktw-gap-0.5 pktw-text-[10px] pktw-text-pk-accent group-hover:pktw-text-white">
 						<Link2 className="pktw-w-3 pktw-h-3" />
 						{item.backlinks}
 					</span>

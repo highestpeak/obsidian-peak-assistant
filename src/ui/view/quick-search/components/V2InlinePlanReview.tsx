@@ -16,18 +16,18 @@ const SectionCard: React.FC<{
 	onRemove: (id: string) => void;
 	onUpdate: (id: string, updater: (s: V2Section) => V2Section) => void;
 }> = ({ sec, index, total, onMove, onRemove, onUpdate }) => (
-	<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-py-2 pktw-px-3 pktw-bg-white pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-group">
+	<div className="pktw-flex pktw-items-start pktw-gap-2 pktw-py-2 pktw-px-3 pktw-bg-pk-background pktw-rounded-lg pktw-border pktw-border-pk-border pktw-group">
 		{/* Reorder */}
 		<div className="pktw-flex pktw-flex-col pktw-gap-0 pktw-shrink-0 pktw-pt-0.5">
 			<div
 				onClick={() => onMove(sec.id, -1)}
-				className={`pktw-p-0.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors ${index === 0 ? 'pktw-text-[#e5e7eb]' : 'pktw-text-[#9ca3af] hover:pktw-text-[#6b7280]'}`}
+				className={`pktw-p-0.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors ${index === 0 ? 'pktw-text-[#e5e7eb]' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted'}`}
 			>
 				<ChevronUp className="pktw-w-3 pktw-h-3" />
 			</div>
 			<div
 				onClick={() => onMove(sec.id, 1)}
-				className={`pktw-p-0.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors ${index === total - 1 ? 'pktw-text-[#e5e7eb]' : 'pktw-text-[#9ca3af] hover:pktw-text-[#6b7280]'}`}
+				className={`pktw-p-0.5 pktw-rounded pktw-cursor-pointer pktw-transition-colors ${index === total - 1 ? 'pktw-text-[#e5e7eb]' : 'pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted'}`}
 			>
 				<ChevronDown className="pktw-w-3 pktw-h-3" />
 			</div>
@@ -35,7 +35,7 @@ const SectionCard: React.FC<{
 		{/* Content */}
 		<div className="pktw-flex-1 pktw-min-w-0">
 			<span
-				className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-block pktw-mb-0.5 pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-[#e5e7eb] hover:pktw-bg-[#f9fafb] focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-white focus:pktw-border-[#7c3aed]/30 pktw-cursor-text pktw-transition-all"
+				className="pktw-text-sm pktw-font-medium pktw-text-[#2e3338] pktw-block pktw-mb-0.5 pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-pk-border hover:pktw-bg-pk-background focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-pk-background focus:pktw-border-[#7c3aed]/30 pktw-cursor-text pktw-transition-all"
 				contentEditable
 				suppressContentEditableWarning
 				onBlur={(e) => {
@@ -48,14 +48,14 @@ const SectionCard: React.FC<{
 			</span>
 			<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mb-1">
 				{sec.visualType && sec.visualType !== 'none' && (
-					<span className="pktw-px-1.5 pktw-py-0.5 pktw-text-[9px] pktw-font-medium pktw-bg-gray-100 pktw-text-[#6b7280] pktw-rounded">
+					<span className="pktw-px-1.5 pktw-py-0.5 pktw-text-[9px] pktw-font-medium pktw-bg-gray-100 pktw-text-pk-foreground-muted pktw-rounded">
 						{VISUAL_TYPE_LABELS[sec.visualType] ?? sec.visualType}
 					</span>
 				)}
-				<span className="pktw-text-[9px] pktw-text-[#9ca3af]">{sec.evidencePaths.length} sources</span>
+				<span className="pktw-text-[9px] pktw-text-pk-foreground-muted">{sec.evidencePaths.length} sources</span>
 			</div>
 			<span
-				className="pktw-text-xs pktw-text-[#6b7280] pktw-leading-relaxed pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-[#e5e7eb] hover:pktw-bg-[#f9fafb] focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-white focus:pktw-border-[#7c3aed]/30 pktw-cursor-text pktw-transition-all"
+				className="pktw-text-xs pktw-text-pk-foreground-muted pktw-leading-relaxed pktw-outline-none pktw-rounded pktw-px-1.5 pktw-py-0.5 pktw--mx-1.5 pktw-border pktw-border-transparent hover:pktw-border-pk-border hover:pktw-bg-pk-background focus:pktw-ring-1 focus:pktw-ring-[#7c3aed]/40 focus:pktw-bg-pk-background focus:pktw-border-[#7c3aed]/30 pktw-cursor-text pktw-transition-all"
 				contentEditable
 				suppressContentEditableWarning
 				onBlur={(e) => {
@@ -70,7 +70,7 @@ const SectionCard: React.FC<{
 		{/* Delete */}
 		<div
 			onClick={() => onRemove(sec.id)}
-			className="pktw-p-1 pktw-rounded pktw-text-[#e5e7eb] group-hover:pktw-text-[#9ca3af] hover:!pktw-text-red-500 pktw-cursor-pointer pktw-transition-colors pktw-shrink-0"
+			className="pktw-p-1 pktw-rounded pktw-text-[#e5e7eb] group-hover:pktw-text-pk-foreground-muted hover:!pktw-text-red-500 pktw-cursor-pointer pktw-transition-colors pktw-shrink-0"
 		>
 			<Trash2 className="pktw-w-3 pktw-h-3" />
 		</div>
@@ -120,7 +120,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 	const missingRequired = MISSION_ROLES.filter((r) => r.required && !coveredRoles.has(r.key));
 
 	return (
-		<div className="pktw-mt-2 pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-[#f9fafb]">
+		<div className="pktw-mt-2 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background">
 			{/* Collapsible Header */}
 			<div
 				onClick={() => setExpanded((prev) => !prev)}
@@ -130,11 +130,11 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 					animate={{ rotate: expanded ? 90 : 0 }}
 					transition={{ duration: 0.15 }}
 				>
-					<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#9ca3af]" />
+					<ChevronRight className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-foreground-muted" />
 				</motion.div>
-				<FileText className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
+				<FileText className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
 				<span className="pktw-text-xs pktw-font-semibold pktw-text-[#2e3338]">Report Outline</span>
-				<span className="pktw-text-[10px] pktw-text-[#9ca3af]">{sections.length} sections</span>
+				<span className="pktw-text-[10px] pktw-text-pk-foreground-muted">{sections.length} sections</span>
 				<div className="pktw-flex-1" />
 				{planApproved && (
 					<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-text-[10px] pktw-font-medium pktw-text-emerald-700 pktw-bg-emerald-50 pktw-border pktw-border-emerald-200 pktw-rounded-full">
@@ -157,8 +157,8 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 						<div className="pktw-px-3 pktw-pb-3">
 							{/* Overview */}
 							{overview && (
-								<div className="pktw-bg-white pktw-rounded-lg pktw-p-3 pktw-border pktw-border-[#e5e7eb] pktw-mb-3">
-									<StreamdownIsolated isAnimating={false} className="pktw-text-sm pktw-text-[#6b7280]">
+								<div className="pktw-bg-pk-background pktw-rounded-lg pktw-p-3 pktw-border pktw-border-pk-border pktw-mb-3">
+									<StreamdownIsolated isAnimating={false} className="pktw-text-sm pktw-text-pk-foreground-muted">
 										{overview}
 									</StreamdownIsolated>
 								</div>
@@ -167,9 +167,9 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 							{/* Executive Summary marker */}
 							<div className="pktw-mb-2 pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-[#7c3aed]/30">
 								<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5">
-									<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed]" />
-									<span className="pktw-text-xs pktw-font-semibold pktw-text-[#7c3aed]">Executive Summary</span>
-									<span className="pktw-text-[9px] pktw-text-[#9ca3af] pktw-italic">auto-generated</span>
+									<Sparkles className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
+									<span className="pktw-text-xs pktw-font-semibold pktw-text-pk-accent">Executive Summary</span>
+									<span className="pktw-text-[9px] pktw-text-pk-foreground-muted pktw-italic">auto-generated</span>
 								</div>
 							</div>
 
@@ -191,7 +191,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 												<span className="pktw-text-sm">{role.icon}</span>
 												<span className={`pktw-text-xs pktw-font-semibold ${role.color}`}>{role.label}</span>
 												{role.required && (
-													<span className="pktw-text-[8px] pktw-text-[#9ca3af] pktw-uppercase">required</span>
+													<span className="pktw-text-[8px] pktw-text-pk-foreground-muted pktw-uppercase">required</span>
 												)}
 											</div>
 											{/* Nested section cards */}
@@ -211,7 +211,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 												{!planApproved && (
 													<div
 														onClick={() => addPlanSection(role.key)}
-														className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1.5 pktw-px-3 pktw-text-[11px] pktw-text-[#9ca3af] hover:pktw-text-[#7c3aed] pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-transition-colors"
+														className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1.5 pktw-px-3 pktw-text-[11px] pktw-text-pk-foreground-muted hover:pktw-text-pk-accent pktw-cursor-pointer hover:pktw-bg-[#f5f3ff] pktw-rounded-lg pktw-transition-colors"
 													>
 														<Plus className="pktw-w-3 pktw-h-3" />
 														<span>Add section</span>
@@ -238,26 +238,26 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 							{/* Uncovered optional roles hint */}
 							{MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).length > 0 && (
 								<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-gray-100 pktw-py-1.5">
-									<span className="pktw-text-[9px] pktw-text-[#9ca3af]">
+									<span className="pktw-text-[9px] pktw-text-pk-foreground-muted">
 										Not covered: {MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).map((r) => `${r.icon} ${r.label}`).join('  ')}
 									</span>
 								</div>
 							)}
 
 							{/* Divider before footer area */}
-							<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-mt-2 pktw-pt-3">
+							<div className="pktw-border-t pktw-border-pk-border pktw-mt-2 pktw-pt-3">
 								{/* Insight chips (only editable before approval) */}
 								{!planApproved && insights.length > 0 && (
 									<div className="pktw-flex pktw-flex-wrap pktw-gap-1.5 pktw-mb-2">
 										{insights.map((insight, i) => (
 											<span
 												key={i}
-												className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2.5 pktw-py-1 pktw-text-xs pktw-bg-[#f5f3ff] pktw-text-[#7c3aed] pktw-rounded-full pktw-border pktw-border-[#7c3aed]/20"
+												className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2.5 pktw-py-1 pktw-text-xs pktw-bg-[#f5f3ff] pktw-text-pk-accent pktw-rounded-full pktw-border pktw-border-[#7c3aed]/20"
 											>
 												{insight}
 												<span
 													onClick={() => useSearchSessionStore.getState().removeUserInsight(i)}
-													className="pktw-cursor-pointer pktw-text-[#7c3aed]/50 hover:pktw-text-[#7c3aed] pktw-ml-0.5"
+													className="pktw-cursor-pointer pktw-text-pk-accent/50 hover:pktw-text-pk-accent pktw-ml-0.5"
 												>
 													&times;
 												</span>
@@ -278,14 +278,14 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 											}
 										}}
 										placeholder="Add insight (Enter to add)..."
-										className="pktw-w-full pktw-px-3 pktw-py-2 pktw-text-sm pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-[#7c3aed]/50 pktw-mb-2"
+										className="pktw-w-full pktw-px-3 pktw-py-2 pktw-text-sm pktw-border pktw-border-pk-border pktw-rounded-lg pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-[#7c3aed]/50 pktw-mb-2"
 									/>
 								)}
 								{/* Generate button — only before approval */}
 								{!planApproved && (
 									<Button
 										onClick={onApprove}
-										className="pktw-w-full pktw-bg-[#7c3aed] hover:pktw-bg-[#6d28d9] pktw-text-white pktw-font-medium"
+										className="pktw-w-full pktw-bg-pk-accent hover:pktw-bg-[#6d28d9] pktw-text-white pktw-font-medium"
 									>
 										<Sparkles className="pktw-w-4 pktw-h-4 pktw-mr-2" />
 										Generate Report ({sections.length} sections)
@@ -306,7 +306,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 							return (
 								<span
 									key={sec.id}
-									className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-text-[10px] pktw-text-[#6b7280] pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded"
+									className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-text-[10px] pktw-text-pk-foreground-muted pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded"
 								>
 									{role && <span className="pktw-text-xs">{role.icon}</span>}
 									{sec.title}

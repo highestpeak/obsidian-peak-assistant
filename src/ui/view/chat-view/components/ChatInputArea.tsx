@@ -142,7 +142,7 @@ export const ChatInputAreaComponent: React.FC = () => {
 						<HoverButton
 							icon={Settings2}
 							menuId="output-control-settings"
-							menuClassName="pktw-w-[560px] pktw-p-1 pktw-bg-white pktw-border pktw-z-50"
+							menuClassName="pktw-w-[560px] pktw-p-1 pktw-bg-pk-background pktw-border pktw-z-50"
 							hoverMenuContent={
 								<OutputControlSettingsList
 									settings={store.llmOutputControlSettings}

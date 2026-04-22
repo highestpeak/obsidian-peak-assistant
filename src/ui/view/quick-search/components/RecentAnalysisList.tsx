@@ -27,12 +27,12 @@ const AnalysisRow: React.FC<{
                 'pktw-cursor-pointer pktw-transition-colors pktw-group',
             )}
         >
-            <Icon className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-[#7c3aed]" />
+            <Icon className="pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-pk-accent" />
             <div className="pktw-flex-1 pktw-min-w-0">
-                <span className="pktw-text-sm pktw-text-[#1f2937] pktw-truncate pktw-block group-hover:pktw-text-[#7c3aed]">
+                <span className="pktw-text-sm pktw-text-[#1f2937] pktw-truncate pktw-block group-hover:pktw-text-pk-accent">
                     {title}
                 </span>
-                <span className="pktw-text-[11px] pktw-text-[#9ca3af]">
+                <span className="pktw-text-[11px] pktw-text-pk-foreground-muted">
                     {record.sources_count != null ? `${record.sources_count} sources · ` : ''}
                     {humanReadableTime(record.created_at_ts)}
                 </span>
@@ -73,7 +73,7 @@ export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 
     return (
         <div>
-            <span className="pktw-block pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-[#9ca3af] pktw-mb-1">
+            <span className="pktw-block pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted pktw-mb-1">
                 Recent
             </span>
             <div className="pktw-flex pktw-flex-col">
@@ -85,7 +85,7 @@ export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
                 <Button
                     variant="link"
                     size="sm"
-                    className="pktw-mt-1 pktw-h-auto pktw-p-0 pktw-text-xs pktw-text-[#7c3aed]"
+                    className="pktw-mt-1 pktw-h-auto pktw-p-0 pktw-text-xs pktw-text-pk-accent"
                     onClick={() => {/* no-op — caller decides navigation */}}
                 >
                     View all {totalCount} analyses →

@@ -79,7 +79,7 @@ export const ResourcesPopover: React.FC = () => {
 				</IconButton>
 			</HoverCardTrigger>
 			<HoverCardContent
-				className="pktw-w-[320px] pktw-p-0 pktw-bg-white pktw-shadow-lg"
+				className="pktw-w-[320px] pktw-p-0 pktw-bg-pk-background pktw-shadow-lg"
 				align="end"
 				side="bottom"
 				sideOffset={8}

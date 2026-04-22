@@ -56,7 +56,7 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 	};
 
 	if (loading) {
-		return <span className="pktw-text-xs pktw-text-[#9ca3af]">Loading...</span>;
+		return <span className="pktw-text-xs pktw-text-pk-foreground-muted">Loading...</span>;
 	}
 
 	return (
@@ -65,17 +65,17 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 				<div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-p-2 pktw-rounded pktw-bg-[#faf5ff] pktw-border pktw-border-[#e9d5ff]">
 					<div className="pktw-flex pktw-items-start pktw-justify-between pktw-gap-2">
 						<div className="pktw-flex pktw-flex-col pktw-gap-0.5 pktw-min-w-0">
-							<span className="pktw-text-xs pktw-font-medium pktw-text-[#374151] pktw-truncate" title={pastResult.query ?? ''}>
+							<span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground pktw-truncate" title={pastResult.query ?? ''}>
 								{pastResult.query ?? '(untitled)'}
 							</span>
-							<span className="pktw-text-[10px] pktw-text-[#9ca3af]">
+							<span className="pktw-text-[10px] pktw-text-pk-foreground-muted">
 								{pastResult.graph_nodes_count ?? 0} nodes · {pastResult.graph_edges_count ?? 0} edges · {humanReadableTime(pastResult.created_at_ts)}
 							</span>
 						</div>
 						<Button
 							variant="ghost"
 							size="xs"
-							className="pktw-shadow-none pktw-h-6 pktw-px-1.5 pktw-text-[10px] pktw-text-[#7c3aed] hover:pktw-bg-[#f5f3ff] pktw-shrink-0"
+							className="pktw-shadow-none pktw-h-6 pktw-px-1.5 pktw-text-[10px] pktw-text-pk-accent hover:pktw-bg-[#f5f3ff] pktw-shrink-0"
 							onClick={handleOpenPastResult}
 							title="Open in new window"
 						>
@@ -92,14 +92,14 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 					size="sm"
 					className={cn(
 						'pktw-shadow-none pktw-w-full pktw-justify-start pktw-gap-1.5',
-						'pktw-text-xs pktw-text-[#374151] hover:pktw-text-[#7c3aed] hover:pktw-border-[#c4b5fd]',
+						'pktw-text-xs pktw-text-pk-foreground hover:pktw-text-pk-accent hover:pktw-border-[#c4b5fd]',
 					)}
 					onClick={handleGenerate}
 				>
-					<Network className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed]" />
+					<Network className="pktw-w-3.5 pktw-h-3.5 pktw-text-pk-accent" />
 					Generate AI Graph
 				</Button>
-				<span className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-pl-1">Uses AI credits</span>
+				<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-pl-1">Uses AI credits</span>
 			</div>
 		</div>
 	);

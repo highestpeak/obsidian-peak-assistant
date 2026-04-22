@@ -27,7 +27,7 @@ export const AIAnalysisPreStreamingState: React.FC = () => {
                 {checkIfAnalyzing() || isSummaryStreaming ? 'Analyzing...' : 'Ready to Analyze with AI'}
             </span>
             {!(checkIfAnalyzing() || isSummaryStreaming) && analysisMode ? (
-                <span className="pktw-text-[#9ca3af] pktw-font-semibold pktw-mb-1">
+                <span className="pktw-text-pk-foreground-muted pktw-font-semibold pktw-mb-1">
                     {PRESET_LABELS[analysisMode].full}
                 </span>
             ) : null}

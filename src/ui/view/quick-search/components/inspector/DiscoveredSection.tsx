@@ -49,11 +49,11 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 	}, [currentPath]);
 
 	if (loading) {
-		return <span className="pktw-text-xs pktw-text-[#9ca3af]">Loading...</span>;
+		return <span className="pktw-text-xs pktw-text-pk-foreground-muted">Loading...</span>;
 	}
 
 	if (items.length === 0) {
-		return <span className="pktw-text-xs pktw-text-[#9ca3af]">No discovered connections.</span>;
+		return <span className="pktw-text-xs pktw-text-pk-foreground-muted">No discovered connections.</span>;
 	}
 
 	const visible = expanded ? items : items.slice(0, INITIAL_VISIBLE);
@@ -70,14 +70,14 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 					<div key={`${item.path}-${i}`} className="pktw-flex pktw-flex-col pktw-gap-0.5">
 						<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-min-w-0">
 							<span
-								className="pktw-text-xs pktw-font-medium pktw-text-[#374151] pktw-truncate pktw-cursor-pointer hover:pktw-text-[#7c3aed]"
+								className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground pktw-truncate pktw-cursor-pointer hover:pktw-text-pk-accent"
 								onClick={() => onNavigate(item.path)}
 								title={item.path}
 							>
 								{item.label}
 							</span>
 
-							<span className="pktw-text-[10px] pktw-text-[#7c3aed] pktw-shrink-0">
+							<span className="pktw-text-[10px] pktw-text-pk-accent pktw-shrink-0">
 								{scorePercent}%
 							</span>
 
@@ -90,7 +90,7 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 						</div>
 
 						{item.whyText && (
-							<span className="pktw-text-[10px] pktw-text-[#9ca3af] pktw-leading-tight pktw-line-clamp-1">
+							<span className="pktw-text-[10px] pktw-text-pk-foreground-muted pktw-leading-tight pktw-line-clamp-1">
 								{item.whyText}
 							</span>
 						)}
@@ -102,7 +102,7 @@ export const DiscoveredSection: React.FC<DiscoveredSectionProps> = ({
 				<Button
 					variant="ghost"
 					size="xs"
-					className="pktw-shadow-none pktw-h-5 pktw-px-0 pktw-text-[10px] pktw-text-[#9ca3af] hover:pktw-text-[#6b7280] pktw-self-start"
+					className="pktw-shadow-none pktw-h-5 pktw-px-0 pktw-text-[10px] pktw-text-pk-foreground-muted hover:pktw-text-pk-foreground-muted pktw-self-start"
 					onClick={() => setExpanded(true)}
 				>
 					See {remaining} more ↓

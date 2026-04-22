@@ -66,7 +66,7 @@ export const AISearchNavBar: React.FC<AISearchNavBarProps> = ({
 	continueAnalysisRef,
 }) => (
 	<div className="pktw-flex-shrink-0 pktw-px-4">
-		<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-3 pktw-p-2 pktw-rounded-md pktw-border pktw-border-[#e5e7eb] pktw-bg-white">
+		<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-3 pktw-p-2 pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background">
 			{/* Title on the left (typewriter when just completed, plain when restored from history) */}
 			<div className="pktw-min-w-0 pktw-flex-1 pktw-pr-2">
 				{titleDisplay ? (
@@ -136,7 +136,7 @@ export const AISearchNavBar: React.FC<AISearchNavBarProps> = ({
 									})}
 									{(fullAnalysisFollowUp?.length ?? 0) > 0 ? (
 										<>
-											<div className="pktw-border-t pktw-border-[#e5e7eb] pktw-mt-1 pktw-pt-2" />
+											<div className="pktw-border-t pktw-border-pk-border pktw-mt-1 pktw-pt-2" />
 											{(fullAnalysisFollowUp ?? []).map((s, i) => {
 												const raw = s.title || 'Continue';
 												const label = raw.replace(/^#+\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim();

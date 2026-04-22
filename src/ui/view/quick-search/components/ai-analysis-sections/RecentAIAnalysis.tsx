@@ -17,8 +17,8 @@ import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
 
 /** Mode icon for history list; matches SearchModal preset icons. */
 function PresetIcon({ mode, className }: { mode: AnalysisMode | null | undefined, className?: string }) {
-    if (mode === 'aiGraph') return <Blend className={cn("pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-[#7c3aed]", className)} />;
-    return <Brain className={cn("pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-[#7c3aed]", className)} />;
+    if (mode === 'aiGraph') return <Blend className={cn("pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-pk-accent", className)} />;
+    return <Brain className={cn("pktw-w-3.5 pktw-h-3.5 pktw-shrink-0 pktw-text-pk-accent", className)} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ const ActiveSessionCard: React.FC<{
     return (
         <div
             onClick={() => onRestore(session.id)}
-            className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2.5 pktw-rounded-lg pktw-border pktw-border-[#e5e7eb] pktw-bg-white hover:pktw-bg-[#f9fafb] pktw-cursor-pointer pktw-transition-colors pktw-group"
+            className="pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2.5 pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background hover:pktw-bg-pk-background pktw-cursor-pointer pktw-transition-colors pktw-group"
         >
             <Icon
                 className={`pktw-w-3.5 pktw-h-3.5 pktw-flex-shrink-0 ${config.spinning ? 'pktw-animate-spin' : ''}`}
@@ -56,7 +56,7 @@ const ActiveSessionCard: React.FC<{
                 <span className="pktw-text-sm pktw-font-medium pktw-text-[#1f2937] pktw-truncate pktw-block">
                     {session.title || session.query.slice(0, 60)}
                 </span>
-                <span className="pktw-text-xs pktw-text-[#9ca3af]">{elapsedStr}</span>
+                <span className="pktw-text-xs pktw-text-pk-foreground-muted">{elapsedStr}</span>
             </div>
             <span
                 className="pktw-text-xs pktw-font-medium pktw-px-2 pktw-py-0.5 pktw-rounded-full"
@@ -66,7 +66,7 @@ const ActiveSessionCard: React.FC<{
             </span>
             <span
                 onClick={(e) => { e.stopPropagation(); onCancel(session.id); }}
-                className="pktw-p-1 pktw-text-[#9ca3af] hover:pktw-text-[#ef4444] pktw-rounded pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity pktw-cursor-pointer"
+                className="pktw-p-1 pktw-text-pk-foreground-muted hover:pktw-text-[#ef4444] pktw-rounded pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity pktw-cursor-pointer"
                 title="Cancel"
             >
                 <X className="pktw-w-3.5 pktw-h-3.5" />
@@ -254,9 +254,9 @@ export const RecentAIAnalysis: React.FC<{
     const saveFolder = AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder?.trim() || 'ChatFolder/AI-Analysis';
 
     return (
-        <div className="pktw-bg-[#f9fafb] pktw-rounded-lg pktw-p-4 pktw-border pktw-border-[#e5e7eb]">
+        <div className="pktw-bg-pk-background pktw-rounded-lg pktw-p-4 pktw-border pktw-border-pk-border">
             <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-3">
-                <History className="pktw-w-4 pktw-h-4 pktw-text-[#7c3aed]" />
+                <History className="pktw-w-4 pktw-h-4 pktw-text-pk-accent" />
                 <span className="pktw-text-sm pktw-font-semibold">Recent AI Analysis</span>
                 <span className="pktw-text-xs pktw-text-[#999999]">({recentTotal ?? recentRecords.length})</span>
                 <div className="pktw-flex-1" />
@@ -273,7 +273,7 @@ export const RecentAIAnalysis: React.FC<{
             </div>
             {bgSessions.length > 0 && (
                 <div className="pktw-px-1 pktw-pt-1 pktw-pb-2">
-                    <span className="pktw-text-xs pktw-font-medium pktw-text-[#6b7280] pktw-uppercase pktw-tracking-wide">
+                    <span className="pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted pktw-uppercase pktw-tracking-wide">
                         Active Sessions
                     </span>
                     <div className="pktw-mt-1.5 pktw-flex pktw-flex-col pktw-gap-1.5">
@@ -293,9 +293,9 @@ export const RecentAIAnalysis: React.FC<{
                 className="pktw-space-y-2 pktw-max-h-72 pktw-overflow-y-auto pktw-pr-1"
             >
                 {recentRecords.length === 0 && autoSaveEnabled ? (
-                    <div className="pktw-py-4 pktw-px-2 pktw-text-center pktw-text-xs pktw-text-[#6b7280]">
+                    <div className="pktw-py-4 pktw-px-2 pktw-text-center pktw-text-xs pktw-text-pk-foreground-muted">
                         <p className="pktw-mb-1">Auto-save is on. No saved analyses yet.</p>
-                        <p className="pktw-text-[11px] pktw-opacity-90">Completed analyses will be saved to <code className="pktw-bg-white pktw-px-1 pktw-rounded">{saveFolder}</code></p>
+                        <p className="pktw-text-[11px] pktw-opacity-90">Completed analyses will be saved to <code className="pktw-bg-pk-background pktw-px-1 pktw-rounded">{saveFolder}</code></p>
                     </div>
                 ) : null}
                 {recentRecords.map((item) => (
@@ -305,10 +305,10 @@ export const RecentAIAnalysis: React.FC<{
                         title={item.vault_rel_path}
                         className={`
                             pktw-rounded-lg
-                            pktw-bg-white 
+                            pktw-bg-pk-background 
                             pktw-transition-all
                             hover:pktw-border-[#7c3aed] hover:pktw-shadow-md
-                            hover:pktw-bg-[#7c3aed]
+                            hover:pktw-bg-pk-accent
                             pktw-group
                         `}
                         style={{ cursor: 'pointer' }}
@@ -332,7 +332,7 @@ export const RecentAIAnalysis: React.FC<{
                                 </div>
                                 <span
                                     className="
-                                        pktw-text-[10px] pktw-text-[#9ca3af] pktw-mt-0.5
+                                        pktw-text-[10px] pktw-text-pk-foreground-muted pktw-mt-0.5
                                         pktw-whitespace-nowrap pktw-tabular-nums
                                         group-hover:pktw-text-[#ede9fe] 
                                     "
@@ -342,7 +342,7 @@ export const RecentAIAnalysis: React.FC<{
                             </div>
                             <div
                                 className="
-                                    pktw-text-[11px] pktw-text-[#6b7280] pktw-truncate pktw-opacity-80
+                                    pktw-text-[11px] pktw-text-pk-foreground-muted pktw-truncate pktw-opacity-80
                                     group-hover:pktw-text-[#ddd6fe]
                                 "
                             >
@@ -354,7 +354,7 @@ export const RecentAIAnalysis: React.FC<{
                 <div ref={recentSentinelRef} className="pktw-h-1" />
             </div>
             {!autoSaveEnabled ? (
-                <div className="pktw-mt-3 pktw-text-xs pktw-text-[#9ca3af]">
+                <div className="pktw-mt-3 pktw-text-xs pktw-text-pk-foreground-muted">
                     Auto-save is disabled. Turn it on in Settings, or use “Save to File” after analysis.
                 </div>
             ) : null}
