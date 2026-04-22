@@ -105,16 +105,30 @@ export class SearchUpdateListener {
 	}
 
 	/**
-	 * Auto hub notes under Hub-Summaries are indexed by hub maintenance with `hub_maintenance`;
-	 * skipping here avoids racing duplicate upserts (e.g. mobius_node.path UNIQUE errors).
+	 * Check if a path is under an auto-generated folder that should be excluded from
+	 * listener-triggered indexing to avoid redundant work or racing upserts.
+	 *
+	 * Excluded folders:
+	 * - Hub-Summaries (auto hub notes) — indexed by hub maintenance with `hub_maintenance`
+	 *   (manual hub notes under Hub-Summaries/Manual are NOT excluded)
+	 * - AI-Analysis auto-save folder — written repeatedly during report generation,
+	 *   each vault.modify fires a listener index; these are wasteful since the file
+	 *   content is ephemeral until analysis completes
 	 */
-	private shouldDeferListenerIndexingForAutoHubDoc(path: string): boolean {
+	private shouldSkipListenerIndexing(path: string): boolean {
 		try {
+			// Hub-Summaries (excluding Manual subfolder)
 			const hubRoot = getAIHubSummaryFolder();
 			const manualRoot = getAIManualHubFolder();
-			if (!isVaultPathUnderPrefix(path, hubRoot)) return false;
-			if (isVaultPathUnderPrefix(path, manualRoot)) return false;
-			return true;
+			if (isVaultPathUnderPrefix(path, hubRoot) && !isVaultPathUnderPrefix(path, manualRoot)) {
+				return true;
+			}
+			// AI-Analysis auto-save folder
+			const aiAnalysisFolder = this.settings.aiAnalysisAutoSaveFolder?.trim() || 'ChatFolder/AI-Analysis';
+			if (aiAnalysisFolder && isVaultPathUnderPrefix(path, aiAnalysisFolder)) {
+				return true;
+			}
+			return false;
 		} catch {
 			return false;
 		}
@@ -124,7 +138,7 @@ export class SearchUpdateListener {
 		if (!(file instanceof TFile)) return;
 		// Check if we have a loader for this file type
 		if (!this.loaderManager.getLoaderForFile(file)) return;
-		if (this.shouldDeferListenerIndexingForAutoHubDoc(file.path)) return;
+		if (this.shouldSkipListenerIndexing(file.path)) return;
 		this.upsertPaths.add(file.path);
 		this.schedule();
 	}
@@ -243,7 +257,7 @@ export class SearchUpdateListener {
 	 */
 	private async indexDocuments(paths: string[]): Promise<void> {
 		for (const p of paths) {
-			if (this.shouldDeferListenerIndexingForAutoHubDoc(p)) continue;
+			if (this.shouldSkipListenerIndexing(p)) continue;
 			await IndexService.getInstance().indexDocument(p, this.settings, defaultIndexDocumentOptions('listener_fast'));
 		}
 	}

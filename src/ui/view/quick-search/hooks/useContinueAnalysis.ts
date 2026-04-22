@@ -132,6 +132,8 @@ export function useContinueAnalysis(deps: ContinueAnalysisDeps) {
 			if (!store.getState().getIsCompleted() && !store.getState().hitlState) {
 				store.getState().markCompleted();
 				markAIAnalysisCompleted();
+				// NOTE: No persist here — report not yet generated.
+				// Save happens after handleApprovePlan() → generateReport() completes.
 			}
 			useSearchSessionStore.setState({ continueMode: false });
 			if (controller) {

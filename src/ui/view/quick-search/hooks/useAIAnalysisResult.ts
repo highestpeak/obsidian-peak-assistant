@@ -1,13 +1,9 @@
-import { SLICE_CAPS } from '@/core/constant';
-import { hashText } from "@/core/utils/hash-utils";
-import { useCallback, useEffect } from "react";
-import { Notice } from "obsidian";
+import { useCallback } from "react";
 import {
-	CompletedAnalysisSnapshot,
+	type CompletedAnalysisSnapshot,
 	useAIAnalysisRuntimeStore,
 	useAIAnalysisResultStore,
 	useAIAnalysisTopicsStore,
-	useAIAnalysisInteractionsStore,
 	useAIAnalysisSummaryStore,
 	useAIAnalysisStepsStore,
 	buildCompletedAnalysisSnapshot,
@@ -17,16 +13,11 @@ import type { GraphPreview } from "@/core/storage/graph/types";
 import { AppContext } from "@/app/context/AppContext";
 import { useSearchSessionStore, buildV2AnalysisSnapshot } from "../store/searchSessionStore";
 import { useSharedStore } from "../store/sharedStore";
-import { buildAiAnalyzeMarkdown, ExportSource, saveAiAnalyzeResultToMarkdown, persistAnalysisDocToPath, type BuildAiAnalyzeMarkdownParams } from "../callbacks/save-ai-analyze-to-md";
-import { buildMarkdown as buildAiSearchAnalysisMarkdown, fromCompletedAnalysisSnapshot, type BuildMarkdownOptions } from "@/core/storage/vault/search-docs/AiSearchAnalysisDoc";
-import { AISearchSource } from "@/service/agents/shared-types";
-import { AIAnalysisHistoryRecord } from "@/service/AIAnalysisHistoryService";
-import { generateDocIdFromPath } from "@/core/utils/id-utils";
+import { buildAiAnalyzeMarkdown, saveAiAnalyzeResultToMarkdown, type BuildAiAnalyzeMarkdownParams } from "../callbacks/save-ai-analyze-to-md";
+import type { AISearchSource } from "@/service/agents/shared-types";
 import { CHAT_VIEW_TYPE } from "../../ChatView";
 import { EventBus, SelectionChangedEvent } from "@/core/eventBus";
-import { SearchResultItem } from "@/service/search/types";
-import { findKeyNodesTool, findPathTool, graphTraversalTool, inspectNoteContextTool, localSearchWholeVaultTool } from "@/service/tools/search-graph-inspector";
-import { useUIEventStore } from "@/ui/store/uiEventStore";
+import type { SearchResultItem } from "@/service/search/types";
 
 /**
  * Merge V2 session data into a V1 CompletedAnalysisSnapshot.
@@ -90,20 +81,12 @@ export function useAIAnalysisResult() {
     const autoSaveState = useAIAnalysisRuntimeStore((s) => s.autoSaveState);
     const setAutoSaveState = useAIAnalysisRuntimeStore((s) => s.setAutoSaveState);
     const recordError = useAIAnalysisRuntimeStore((s) => s.recordError);
-    const analysisCompleted = useAIAnalysisRuntimeStore((s) => s.analysisCompleted);
-    const restoredFromVaultPath = useAIAnalysisRuntimeStore((s) => s.restoredFromVaultPath);
 
     const graph = useAIAnalysisResultStore((s) => s.graph);
     const topics = useAIAnalysisResultStore((s) => s.topics);
     const sources = useAIAnalysisResultStore((s) => s.sources);
-    const getHasGraphData = useAIAnalysisResultStore((s) => s.getHasGraphData);
 
     const topicInspectResults = useAIAnalysisTopicsStore((s) => s.topicInspectResults);
-
-    const fullAnalysisFollowUp = useAIAnalysisInteractionsStore((s) => s.fullAnalysisFollowUp);
-    const graphFollowupHistory = useAIAnalysisInteractionsStore((s) => s.graphFollowupHistory);
-    const blocksFollowupHistoryByBlockId = useAIAnalysisInteractionsStore((s) => s.blocksFollowupHistoryByBlockId);
-    const sourcesFollowupHistory = useAIAnalysisInteractionsStore((s) => s.sourcesFollowupHistory);
 
     const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
     const summary = useAIAnalysisSummaryStore((s) => {
@@ -114,177 +97,29 @@ export function useAIAnalysisResult() {
         return list[idx] ?? list[0] ?? '';
     });
 
+    // Early-save: called from tab-AISearch when plan sections first appear.
+    // Creates the file so "Open in File" works before completion.
+    // The service-layer persistence (persistSessionToVault) handles the
+    // milestone-based final save at completion time — see useSearchSession.ts.
     const handleAutoSave = useCallback(async () => {
-        const summaryHash = hashText(`${summary}::t${topics.length}::s${sources.length}`);
-        const alreadySavedSameRunSameSummary =
-            autoSaveState.lastRunId === analysisRunId
-            && autoSaveState.lastSavedSummaryHash === summaryHash;
-        if (alreadySavedSameRunSameSummary) return;
+        // Guard: check both stores to avoid double-save race
+        if (autoSaveState?.lastSavedPath) return;
+        if (useSearchSessionStore.getState().autoSaveState.lastSavedPath) return;
 
-        try {
-            const replaySnapshot = buildCompletedAnalysisSnapshot();
-            mergeV2IntoSnapshot(replaySnapshot);
-            const rt = useAIAnalysisRuntimeStore.getState();
-            const ts = Date.now();
-            const displayTitle = (rt.title?.trim() || searchQuery.slice(0, SLICE_CAPS.ui.analysisDisplayTitle) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, SLICE_CAPS.ui.analysisDisplayTitleTrim);
-            const fileName = `${ts} - ${displayTitle}`;
-            const exportSources: ExportSource[] = sources.map(s => ({
-                path: s.path,
-                title: s.title,
-                score: s.score?.average,
-                content: s.reasoning,
-            }));
-
-            const settings = AppContext.getInstance().settings.search;
-            const defaultFolder = 'ChatFolder/AI-Analysis';
-            let folderPath = (settings.aiAnalysisAutoSaveFolder?.trim()) || defaultFolder;
-
-            let saved: { path: string };
-            try {
-                saved = await saveAiAnalyzeResultToMarkdown({
-                    folderPath,
-                    fileName,
-                    query: searchQuery,
-                    snapshot: replaySnapshot,
-                    webEnabled,
-                });
-            } catch (firstErr) {
-                const msg = firstErr instanceof Error ? firstErr.message : String(firstErr);
-                const isPathRelated = /folder|path|directory|create|write/i.test(msg);
-                if (isPathRelated && folderPath !== '') {
-                    folderPath = '';
-                    try {
-                        saved = await saveAiAnalyzeResultToMarkdown({
-                            folderPath,
-                            fileName,
-                            query: searchQuery,
-                            snapshot: replaySnapshot,
-                            webEnabled,
-                        });
-                        new Notice('Auto-save: saved to vault root (configured folder failed).', 5000);
-                    } catch (fallbackErr) {
-                        const fallbackMessage = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
-                        console.warn('[AISearchTab] auto-save failed (including vault root fallback):', fallbackErr);
-                        new Notice(`Auto-save failed: ${fallbackMessage}`, 8000);
-                        return;
-                    }
-                } else {
-                    console.warn('[AISearchTab] auto-save failed:', firstErr);
-                    new Notice(`Auto-save failed: ${msg}`, 8000);
-                    return;
-                }
-            }
-
-            const record: AIAnalysisHistoryRecord = {
-                id: generateDocIdFromPath(saved.path),
-                vault_rel_path: saved.path,
-                query: searchQuery || null,
-                title: rt.title?.trim() || null,
-                created_at_ts: ts,
-                web_enabled: webEnabled ? 1 : 0,
-                estimated_tokens: usage?.totalTokens ?? null,
-                sources_count: sources.length,
-                topics_count: topics.length,
-                graph_nodes_count: getHasGraphData() ? (graph?.nodes?.length ?? 0) : 0,
-                graph_edges_count: getHasGraphData() ? (graph?.edges?.length ?? 0) : 0,
-                duration: duration ?? null,
-                analysis_preset: rt.analysisMode ?? null,
-            };
-            await AppContext.getInstance().aiAnalysisHistoryService.insertOrIgnore(record as any);
-
-            // Mark as saved and store path for "Open in document" button.
-            setAutoSaveState({ lastRunId: analysisRunId, lastSavedSummaryHash: summaryHash, lastSavedPath: saved.path });
-        } catch (e) {
-            const message = e instanceof Error ? e.message : String(e);
-            console.warn('[AISearchTab] auto-save failed:', e);
-            new Notice(`Auto-save failed: ${message}`, 8000);
+        const store = useSearchSessionStore.getState();
+        const { snapshotFromState } = await import('../store/sessionSnapshot');
+        const { persistSessionToVault } = await import('@/service/search/analysisDocPersistence');
+        const snapshot = snapshotFromState(store);
+        const result = await persistSessionToVault(snapshot);
+        if (result) {
+            setAutoSaveState({ lastRunId: analysisRunId, lastSavedPath: result.path });
+            useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });
         }
-    }, [
-        searchQuery,
-        summary,
-        topics,
-        sources,
-        autoSaveState,
-        analysisRunId,
-        analysisStartedAtMs,
-        duration,
-        usage,
-        graph,
-        webEnabled,
-        topicInspectResults,
-        getHasGraphData,
-        setAutoSaveState,
-    ]);
+    }, [searchQuery, autoSaveState, analysisRunId, setAutoSaveState]);
 
-    // Persist current analysis (follow-up content + merged usage) to the saved doc whenever they change.
-    const pathForPersist = restoredFromVaultPath ?? autoSaveState?.lastSavedPath ?? null;
-    useEffect(() => {
-        if (!analysisCompleted) return;
-
-        if (!pathForPersist) {
-            const ensureAnalysisDocExists = async () => {
-                const rt = useAIAnalysisRuntimeStore.getState();
-                const settings = AppContext.getInstance().settings.search;
-                const defaultFolder = 'ChatFolder/AI-Analysis';
-                const folderPath = (settings.aiAnalysisAutoSaveFolder?.trim()) || defaultFolder;
-                const displayTitle = (rt.title?.trim() || searchQuery.slice(0, SLICE_CAPS.ui.analysisDisplayTitle) || 'Query').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, SLICE_CAPS.ui.analysisDisplayTitleTrim);
-                const ts = Date.now();
-                const fileName = `${ts} - ${displayTitle}`;
-                try {
-                    const ensureSnapshot = buildCompletedAnalysisSnapshot();
-                    mergeV2IntoSnapshot(ensureSnapshot);
-                    const saved = await saveAiAnalyzeResultToMarkdown({
-                        folderPath,
-                        fileName,
-                        query: searchQuery,
-                        snapshot: ensureSnapshot,
-                        webEnabled,
-                    });
-                    const summaryHash = hashText(`${summary}::t${topics.length}::s${sources.length}`);
-                    setAutoSaveState({ lastRunId: analysisRunId, lastSavedSummaryHash: summaryHash, lastSavedPath: saved.path });
-                } catch (e) {
-                    console.warn('[useAIAnalysisResult] ensureAnalysisDocExists failed:', e);
-                }
-            };
-            void ensureAnalysisDocExists();
-            return;
-        }
-
-        const persist = async () => {
-            try {
-                const snapshot = buildCompletedAnalysisSnapshot();
-                mergeV2IntoSnapshot(snapshot);
-                const docModel = fromCompletedAnalysisSnapshot(snapshot, searchQuery, webEnabled);
-                docModel.created = docModel.created || new Date().toISOString();
-                const buildOptions: BuildMarkdownOptions = {
-                    runAnalysisMode: snapshot.runAnalysisMode,
-                    includeSteps: AppContext.getInstance().settings?.enableDevTools === true,
-                };
-                const content = buildAiSearchAnalysisMarkdown(docModel, buildOptions);
-                await persistAnalysisDocToPath(pathForPersist, content);
-            } catch (e) {
-                console.warn('[useAIAnalysisResult] persist to doc failed:', e);
-            }
-        };
-        void persist();
-    }, [
-        analysisCompleted,
-        pathForPersist,
-        fullAnalysisFollowUp,
-        usage,
-        graphFollowupHistory,
-        blocksFollowupHistoryByBlockId,
-        sourcesFollowupHistory,
-        summary,
-        topics,
-        sources,
-        analysisStartedAtMs,
-        duration,
-        analysisRunId,
-        searchQuery,
-        webEnabled,
-        setAutoSaveState,
-    ]);
+    // NOTE: Incremental persist effect removed. Persistence is now handled at
+    // completion milestones in useSearchSession.ts and BackgroundSessionManager.ts.
+    // This avoids frequent vault writes during streaming that trigger re-indexing.
 
     const handleCopyAll = useCallback(async () => {
         // V2 path: prefer proposed_outline, fallback to timeline

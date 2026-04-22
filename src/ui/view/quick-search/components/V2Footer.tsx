@@ -1,8 +1,43 @@
-import React, { useState } from 'react';
-import { Save, Copy, MessageSquare, Check, ExternalLink, Sparkles, Activity, Eye, FileText, List } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Save, Copy, MessageSquare, Check, ExternalLink, Sparkles, Activity, Eye, FileText, List, FileSearch, Network } from 'lucide-react';
 import { V2TableOfContents } from './V2TableOfContents';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useSearchSessionStore } from '../store/searchSessionStore';
+import { useAIAnalysisRuntimeStore } from '../store/aiAnalysisStore';
+import { exportGraphJson } from '../store/aiGraphStore';
+
+type CopyTarget = 'process' | 'report' | 'graph';
+
+function buildProcessText(): string {
+	const s = useSearchSessionStore.getState();
+	const lines: string[] = [];
+	for (const step of s.v2Steps) {
+		if (step.status !== 'done') continue;
+		const dur = step.endedAt && step.startedAt
+			? `${((step.endedAt - step.startedAt) / 1000).toFixed(1)}s`
+			: '';
+		lines.push(`${step.icon} ${step.displayName}${step.summary ? ' — ' + step.summary : ''} ${dur ? '— ' + dur : ''}`.trim());
+	}
+	return lines.join('\n');
+}
+
+function buildReportText(): string {
+	const s = useSearchSessionStore.getState();
+	return s.v2PlanSections
+		.filter((sec) => sec.content)
+		.map((sec) => '## ' + sec.title + '\n\n' + sec.content)
+		.join('\n\n');
+}
+
+function buildGraphText(): string {
+	return exportGraphJson() ?? '';
+}
+
+const COPY_TARGETS: Array<{ id: CopyTarget; icon: React.ElementType; label: string }> = [
+	{ id: 'process', icon: Activity, label: 'Process' },
+	{ id: 'report', icon: Eye, label: 'Report' },
+	{ id: 'graph', icon: Network, label: 'Graph' },
+];
 
 /** V2 Footer — rendered by tab-AISearch at modal bottom when V2 is active */
 export const V2Footer: React.FC<{
@@ -13,14 +48,21 @@ export const V2Footer: React.FC<{
 	copied: boolean;
 	onSave: () => void;
 	onOpenInChat: () => void;
-}> = ({ onContinue, onSynthesize, showContinueAnalysis, onCopy, copied, onSave, onOpenInChat }) => {
+}> = ({ onContinue, onSynthesize, showContinueAnalysis, onCopy: _legacyOnCopy, copied: _legacyCopied, onSave, onOpenInChat }) => {
 	const v2View = useSearchSessionStore((s) => s.v2View);
 	const usage = useSearchSessionStore((s) => s.usage);
 	const duration = useSearchSessionStore((s) => s.duration);
 	const setV2View = useSearchSessionStore((s) => s.setV2View);
 	const rounds = useSearchSessionStore((s) => s.rounds);
 	const v2PlanSections = useSearchSessionStore((s) => s.v2PlanSections);
+	// Read from the same store that handleAutoSave writes to (useAIAnalysisRuntimeStore)
+	const lastSavedPath = useAIAnalysisRuntimeStore((s) => s.autoSaveState.lastSavedPath);
 	const [showToc, setShowToc] = useState(false);
+	const [showCopyMenu, setShowCopyMenu] = useState(false);
+	const [copied, setCopied] = useState<CopyTarget | 'default' | null>(null);
+	const copyMenuRef = useRef<HTMLDivElement>(null);
+	const copyBtnRef = useRef<HTMLDivElement>(null);
+	const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const reportMarkdown = v2PlanSections
 		.filter((sec) => sec.content)
@@ -35,6 +77,52 @@ export const V2Footer: React.FC<{
 		{ id: 'report' as const, icon: Eye, label: 'Report' },
 		{ id: 'sources' as const, icon: FileText, label: 'Sources' },
 	];
+
+	// Map active view to default copy target
+	const defaultCopyTarget: CopyTarget = v2View === 'process' ? 'process' : v2View === 'sources' ? 'graph' : 'report';
+
+	const doCopy = useCallback(async (target: CopyTarget) => {
+		const text = target === 'process' ? buildProcessText()
+			: target === 'report' ? buildReportText()
+			: buildGraphText();
+		if (!text) return;
+		await navigator.clipboard.writeText(text);
+		setCopied(target);
+		setTimeout(() => setCopied(null), 1200);
+	}, []);
+
+	const handleDefaultCopy = useCallback(() => {
+		void doCopy(defaultCopyTarget);
+	}, [doCopy, defaultCopyTarget]);
+
+	// Close menu when clicking outside
+	useEffect(() => {
+		if (!showCopyMenu) return;
+		const handler = (e: MouseEvent) => {
+			if (copyMenuRef.current?.contains(e.target as Node)) return;
+			if (copyBtnRef.current?.contains(e.target as Node)) return;
+			setShowCopyMenu(false);
+		};
+		document.addEventListener('mousedown', handler);
+		return () => document.removeEventListener('mousedown', handler);
+	}, [showCopyMenu]);
+
+	const startHoverTimer = () => {
+		if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+		hideTimerRef.current = setTimeout(() => setShowCopyMenu(true), 400);
+	};
+	const cancelHoverTimer = () => {
+		if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+	};
+	const startHideTimer = () => {
+		cancelHoverTimer();
+		hideTimerRef.current = setTimeout(() => setShowCopyMenu(false), 200);
+	};
+	const cancelHideTimer = () => {
+		if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+	};
+
+	const copyLabel = defaultCopyTarget === 'process' ? 'Copy Process' : defaultCopyTarget === 'graph' ? 'Copy Graph' : 'Copy Report';
 
 	return (
 		<div className="pktw-relative pktw-border-t pktw-border-[#e5e7eb] pktw-bg-white pktw-px-3 pktw-py-2 pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0">
@@ -104,12 +192,42 @@ export const V2Footer: React.FC<{
 
 			{/* Right: Actions */}
 			<div className="pktw-flex pktw-items-center pktw-gap-1">
-				<div
-					onClick={onCopy}
-					className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
-					title={copied ? 'Copied!' : 'Copy Report'}
-				>
-					{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
+				{/* Copy button with hover menu */}
+				<div className="pktw-relative">
+					<div
+						ref={copyBtnRef}
+						onClick={handleDefaultCopy}
+						onMouseEnter={startHoverTimer}
+						onMouseLeave={startHideTimer}
+						className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						title={copied ? 'Copied!' : copyLabel}
+					>
+						{copied ? <Check className="pktw-w-3.5 pktw-h-3.5 pktw-text-green-600" /> : <Copy className="pktw-w-3.5 pktw-h-3.5" />}
+					</div>
+					{showCopyMenu && (
+						<div
+							ref={copyMenuRef}
+							onMouseEnter={cancelHideTimer}
+							onMouseLeave={startHideTimer}
+							className="pktw-absolute pktw-bottom-full pktw-right-0 pktw-mb-1 pktw-bg-white pktw-border pktw-border-[#e5e7eb] pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[140px]"
+						>
+							{COPY_TARGETS.map(({ id, icon: Icon, label }) => (
+								<div
+									key={id}
+									onClick={() => { void doCopy(id); setShowCopyMenu(false); }}
+									className={`pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-cursor-pointer pktw-transition-colors ${
+										id === defaultCopyTarget
+											? 'pktw-text-[#7c3aed] pktw-font-medium pktw-bg-[#7c3aed]/5'
+											: 'pktw-text-[#374151] hover:pktw-bg-gray-50'
+									}`}
+								>
+									<Icon className="pktw-w-3.5 pktw-h-3.5" />
+									<span>{label}</span>
+									{copied === id && <Check className="pktw-w-3 pktw-h-3 pktw-text-green-600 pktw-ml-auto" />}
+								</div>
+							))}
+						</div>
+					)}
 				</div>
 				<div
 					onClick={onSave}
@@ -118,6 +236,20 @@ export const V2Footer: React.FC<{
 				>
 					<Save className="pktw-w-3.5 pktw-h-3.5" />
 				</div>
+				{lastSavedPath && (
+					<div
+						onClick={async () => {
+							const { AppContext } = await import('@/app/context/AppContext');
+							const { openFile } = await import('@/core/utils/obsidian-utils');
+							const app = AppContext.getInstance().app;
+							await openFile(lastSavedPath, false, app);
+						}}
+						className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						title="Open saved analysis note"
+					>
+						<FileSearch className="pktw-w-3.5 pktw-h-3.5" />
+					</div>
+				)}
 				{rounds.length >= 2 && (
 					<Button
 						variant="outline"

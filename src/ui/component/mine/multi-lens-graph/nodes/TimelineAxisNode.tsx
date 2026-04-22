@@ -1,20 +1,28 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 
-export const TimelineAxisNode: React.FC<{ data: { ticks: Array<{ x: number; label: string }>; width: number } }> = ({ data }) => (
-	<div style={{ width: data.width, height: 40, position: 'relative', pointerEvents: 'none' }}>
-		{/* Axis line */}
-		<div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 2, background: '#d1d5db' }} />
+export const TimelineAxisNode: React.FC<{ data: { ticks: Array<{ y: number; label: string }>; height: number } }> = ({ data }) => (
+	<div style={{ width: 60, height: data.height, position: 'relative', pointerEvents: 'none' }}>
+		{/* Vertical axis line */}
+		<div style={{ position: 'absolute', left: 30, top: 0, width: 2, height: '100%', background: '#d1d5db' }} />
 		{/* Ticks */}
 		{data.ticks.map((t, i) => (
-			<div key={i} style={{ position: 'absolute', left: t.x, top: -4 }}>
-				<div style={{ width: 1, height: 10, background: '#9ca3af' }} />
-				<span style={{ fontSize: 9, color: '#9ca3af', whiteSpace: 'nowrap', position: 'absolute', top: 12, left: -15 }}>
+			<div key={i} style={{ position: 'absolute', top: t.y, left: 20 }}>
+				<div style={{ width: 20, height: 1, background: '#9ca3af' }} />
+				<span style={{
+					fontSize: 10,
+					color: '#6b7280',
+					fontWeight: 500,
+					whiteSpace: 'nowrap',
+					position: 'absolute',
+					top: -8,
+					right: 24,
+				}}>
 					{t.label}
 				</span>
 			</div>
 		))}
-		<Handle type="target" position={Position.Left} style={{ display: 'none' }} />
-		<Handle type="source" position={Position.Right} style={{ display: 'none' }} />
+		<Handle type="target" position={Position.Top} style={{ display: 'none' }} />
+		<Handle type="source" position={Position.Bottom} style={{ display: 'none' }} />
 	</div>
 );

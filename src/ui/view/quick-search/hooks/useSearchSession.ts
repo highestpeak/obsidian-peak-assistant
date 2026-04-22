@@ -34,6 +34,8 @@ import type { StreamConsumerContext } from './streamConsumer';
 import { useEventRouter, eventTargetRedirect } from './useEventRouter';
 import { useContinueAnalysis } from './useContinueAnalysis';
 import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
+import { persistSessionToVault } from '@/service/search/analysisDocPersistence';
+import { snapshotFromState } from '../store/sessionSnapshot';
 
 // ---------------------------------------------------------------------------
 // Module-level ref holder — survives React unmount so QuickSearchModal.onClose
@@ -44,6 +46,41 @@ export const sessionRefs = {
 	agentRef: null as VaultSearchAgent | null,
 	abortController: null as AbortController | null,
 };
+
+/**
+ * Persist the current foreground session to vault.
+ * Called at completion milestones (plan ready / fully complete).
+ * Updates the store's autoSaveState with the saved path.
+ */
+function persistForegroundSession(existingPath?: string | null): void {
+	const store = useSearchSessionStore.getState();
+	const snapshot = snapshotFromState(store);
+
+	// Capture graph JSON from foreground-only stores (not in V2SessionSnapshot)
+	let graphJson: string | null = null;
+	try {
+		// Dynamic import to avoid circular deps — these are UI stores
+		const { exportGraphJson } = require('../store/aiGraphStore');
+		const { useGraphAgentStore } = require('../store/graphAgentStore');
+		graphJson = exportGraphJson() ?? null;
+		if (!graphJson) {
+			const gStore = useGraphAgentStore.getState();
+			if (gStore.graphData) {
+				graphJson = JSON.stringify({
+					lenses: { topology: gStore.graphData },
+					source: 'graphAgent',
+					generatedAt: new Date().toISOString(),
+				});
+			}
+		}
+	} catch { /* graph stores not available */ }
+
+	void persistSessionToVault(snapshot, { existingPath, graphJson }).then((result) => {
+		if (result) {
+			useSearchSessionStore.getState().setAutoSaveState({ lastSavedPath: result.path });
+		}
+	});
+}
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -190,6 +227,8 @@ export function useSearchSession() {
 				if (!store.getState().hitlState && postStreamStatus !== 'plan_ready') {
 					store.getState().markCompleted();
 					markAIAnalysisCompleted();
+					// NOTE: No persist here — report hasn't been generated yet.
+					// Save happens after handleApprovePlan() → generateReport() completes.
 				}
 				return;
 			}
@@ -316,6 +355,8 @@ export function useSearchSession() {
 				state.v2ProposedOutline ?? '',
 				state.query,
 			);
+			// Milestone: report fully generated — persist to vault
+			persistForegroundSession(store.getState().autoSaveState.lastSavedPath);
 		} catch (err: any) {
 			store.getState().recordError(err?.message ?? 'Report generation failed');
 		}
@@ -335,6 +376,8 @@ export function useSearchSession() {
 				state.query,
 				userPrompt,
 			);
+			// Persist updated section to vault
+			persistForegroundSession(store.getState().autoSaveState.lastSavedPath);
 		} catch (err: any) {
 			store.getState().failSection(sectionId, err?.message ?? 'Regeneration failed');
 		}

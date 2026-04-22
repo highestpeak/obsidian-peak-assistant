@@ -48,6 +48,8 @@ export function useGraphAgent(
 				const ctx = AppContext.getInstance();
 
 				useGraphAgentStore.getState().updateStep('init', { status: 'done', label: 'Graph Agent 已就绪' });
+				useGraphAgentStore.getState().addStep({ id: 'analyze', label: '正在分析文档关系、聚类和演化链...', status: 'running' });
+				useGraphAgentStore.getState().addStep({ id: 'read-sources', label: `正在读取 ${sources.length} 篇源文件...`, status: 'running' });
 
 				const agent = new GraphAgent(ctx.app, ctx.plugin.manifest.id, ctx.settings);
 
@@ -82,7 +84,8 @@ export function useGraphAgent(
 				if (result) {
 					useGraphAgentStore.getState().addStep({ id: 'done', label: '图谱生成完成', status: 'done' });
 					const { graphOutputToLensData } = await import('@/service/agents/ai-graph/graph-output-to-lens');
-					useGraphAgentStore.getState().setGraphData(graphOutputToLensData(result));
+					const sourcePaths = sources.map(s => s.path);
+					useGraphAgentStore.getState().setGraphData(graphOutputToLensData(result, sourcePaths));
 				} else {
 					console.warn('[useGraphAgent] agent returned null, falling back');
 					useGraphAgentStore.getState().addStep({ id: 'fallback', label: 'AI 分析未返回结果，使用物理链接...', status: 'running' });

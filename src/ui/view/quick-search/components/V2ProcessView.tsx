@@ -38,6 +38,8 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
     // Generating report: tools exist, none running, last grouped item is text
     const lastTimelineItem = timeline.length > 0 ? timeline[timeline.length - 1] : null;
     const isGeneratingReport = isStreaming && hasTools && noRunningTools && lastTimelineItem?.kind === 'text';
+    // Waiting for plan/report: all tools done but text output hasn't started yet
+    const isWaitingForPlan = isStreaming && hasTools && noRunningTools && !isGeneratingReport;
 
     const currentRoundIndex = rounds.length;
 
@@ -90,6 +92,17 @@ export const V2ProcessView: React.FC<{ onApprove?: () => void }> = ({ onApprove 
                             <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed] pktw-animate-spin" />
                         </div>
                         <span className="pktw-text-xs pktw-text-[#9ca3af]">Analyzing query...</span>
+                    </div>
+                )}
+
+                {/* Waiting for plan/report (tools done, text not started yet) */}
+                {isWaitingForPlan && (
+                    <div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1 pktw-mt-1">
+                        <div className="pktw-w-4 pktw-h-4 pktw-rounded-full pktw-bg-purple-100 pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0">
+                            <Loader2 className="pktw-w-2.5 pktw-h-2.5 pktw-text-[#7c3aed] pktw-animate-spin" />
+                        </div>
+                        <Brain className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#7c3aed]" />
+                        <span className="pktw-text-xs pktw-font-medium pktw-text-[#2e3338]">Preparing analysis plan...</span>
                     </div>
                 )}
 

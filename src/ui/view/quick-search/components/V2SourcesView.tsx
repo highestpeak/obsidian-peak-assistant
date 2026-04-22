@@ -74,7 +74,10 @@ function SourceItem({ source, onClick }: { source: V2Source; onClick: () => void
 
 export const V2SourcesView: React.FC<V2SourcesViewProps> = ({ onClose }) => {
     const sources = useSearchSessionStore((s) => s.v2Sources);
-    const [viewMode, setViewMode] = useState<SourceViewMode>('list');
+    const storeViewMode = useSearchSessionStore((s) => s.sourcesViewMode);
+    const setStoreViewMode = useSearchSessionStore((s) => s.setSourcesViewMode);
+    const viewMode = storeViewMode as SourceViewMode;
+    const setViewMode = useCallback((m: SourceViewMode) => { if (m === 'list' || m === 'graph') setStoreViewMode(m); }, [setStoreViewMode]);
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
     const handleOpen = useMemo(() => createOpenSourceCallback(onClose), [onClose]);
 

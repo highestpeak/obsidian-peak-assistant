@@ -207,30 +207,11 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 	const { handleOpenInChat, handleCopyAll, handleAutoSave } = useAIAnalysisResult();
 
-	// Auto-save when analysis completes (if enabled). Skip when state was restored from Recent (no duplicate save).
-	const v2FullyDone = useSearchSessionStore(s =>
-		!s.v2Active || (
-			s.v2ReportComplete &&
-			s.v2PlanSections.length > 0 &&
-			s.v2PlanSections.every(sec => sec.status === 'done') &&
-			!s.v2SummaryStreaming
-		)
-	);
-
-	useEffect(() => {
-		if (!analysisCompleted) return;
-		if (!v2FullyDone) return;          // wait for V2 sections + summary to finish
-		if (restoredFromHistory) return;
-		const autoSaveEnabled = AppContext.getInstance().settings.search.aiAnalysisAutoSaveEnabled ?? true;
-		if (!autoSaveEnabled) return;
-		if (error) return;
-		if (!sessionId) return;
-
-		handleAutoSave();
-	}, [analysisCompleted, v2FullyDone, restoredFromHistory, error, sessionId, handleAutoSave]);
+	// NOTE: Full-save at completion is handled by useSearchSession.ts (milestone-based persistence).
+	// No React effect needed — persistence fires directly after markCompleted().
 
 	// Early-save: persist analysis doc as soon as plan sections appear (before approval/completion),
-	// so the file exists for "Open in File" and incremental persistence kicks in.
+	// so the file exists for "Open in File" button.
 	const v2HasPlan = useSearchSessionStore(s => s.v2PlanSections.length > 0);
 	useEffect(() => {
 		if (!v2HasPlan) return;

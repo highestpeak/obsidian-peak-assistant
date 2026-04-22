@@ -1,11 +1,67 @@
 import { useMemo } from 'react';
 import type { LensType, LensGraphData, LensNode, LensEdge, LensEdgeData } from '../types';
-import { computeTopologyLayout } from '../layouts/topology-layout';
+import { computeTopologyLayout, estimateNodeWidth } from '../layouts/topology-layout';
 import { computeTreeLayout } from '../layouts/tree-layout';
 import { computeBridgeLayout } from '../layouts/bridge-layout';
 import { computeTimelineLayout } from '../layouts/timeline-layout';
 
 type RawEdge = LensGraphData['edges'][number];
+
+const DEFAULT_NODE_HEIGHT = 60;
+const OVERLAP_PAD_X = 20;
+const OVERLAP_PAD_Y = 15;
+const MAX_ITERATIONS = 50;
+
+/**
+ * Post-layout pass: detect and resolve overlapping nodes by iteratively pushing them apart.
+ * Only moves `lensNode` type nodes; swimlanes / axis nodes are left untouched.
+ */
+function resolveOverlaps(nodes: LensNode[]): void {
+	const movable = nodes.filter((n) => n.type === 'lensNode');
+	if (movable.length <= 1) return;
+
+	// Pre-compute bounding box widths per node
+	const widths = new Map<string, number>();
+	for (const n of movable) {
+		widths.set(n.id, estimateNodeWidth(n.data.label));
+	}
+
+	for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
+		let hadOverlap = false;
+		for (let i = 0; i < movable.length; i++) {
+			for (let j = i + 1; j < movable.length; j++) {
+				const a = movable[i];
+				const b = movable[j];
+				const aw = widths.get(a.id)! + OVERLAP_PAD_X;
+				const bw = widths.get(b.id)! + OVERLAP_PAD_X;
+				const ah = DEFAULT_NODE_HEIGHT + OVERLAP_PAD_Y;
+				const bh = DEFAULT_NODE_HEIGHT + OVERLAP_PAD_Y;
+
+				const dx = b.position.x - a.position.x;
+				const dy = b.position.y - a.position.y;
+				const overlapX = (aw + bw) / 2 - Math.abs(dx);
+				const overlapY = (ah + bh) / 2 - Math.abs(dy);
+
+				if (overlapX > 0 && overlapY > 0) {
+					hadOverlap = true;
+					// Push apart along the axis with less overlap (minimum displacement)
+					if (overlapX < overlapY) {
+						const push = (overlapX / 2) + 5;
+						const signX = dx >= 0 ? 1 : -1;
+						a.position = { ...a.position, x: a.position.x - push * signX };
+						b.position = { ...b.position, x: b.position.x + push * signX };
+					} else {
+						const push = (overlapY / 2) + 5;
+						const signY = dy >= 0 ? 1 : -1;
+						a.position = { ...a.position, y: a.position.y - push * signY };
+						b.position = { ...b.position, y: b.position.y + push * signY };
+					}
+				}
+			}
+		}
+		if (!hadOverlap) break;
+	}
+}
 
 /** Compute best handle direction based on relative position of source and target nodes. */
 function computeHandlePair(
@@ -83,9 +139,16 @@ export function useLensLayout(graphData: LensGraphData | null, lens: LensType) {
 			data: n,
 		}));
 
+		// Post-layout: resolve any overlapping nodes
+		resolveOverlaps(nodes);
+
+		// Build resolved position map for edge handle computation
+		const resolvedPositions = new Map<string, { x: number; y: number }>();
+		for (const n of nodes) resolvedPositions.set(n.id, n.position);
+
 		const edges: LensEdge[] = filteredEdges.map((e, i) => {
-			const srcPos = layoutResult.positions.get(e.source);
-			const tgtPos = layoutResult.positions.get(e.target);
+			const srcPos = resolvedPositions.get(e.source);
+			const tgtPos = resolvedPositions.get(e.target);
 			const handles = srcPos && tgtPos ? computeHandlePair(srcPos, tgtPos) : { sourceHandle: 'source-right', targetHandle: 'target-left' };
 			const dense = filteredEdges.length > graphData.nodes.length * 1.2;
 			return {
@@ -115,19 +178,19 @@ export function useLensLayout(graphData: LensGraphData | null, lens: LensType) {
 			}
 		}
 
-		// Add timeline axis node
+		// Add vertical timeline axis node
 		if (lens === 'timeline' && 'timeTicks' in layoutResult && Array.isArray(layoutResult.timeTicks) && (layoutResult.timeTicks as any[]).length > 0) {
-			const ticks = layoutResult.timeTicks as Array<{ x: number; label: string; timestamp: number }>;
-			const axisY = (layoutResult as any).axisY as number;
-			const minX = Math.min(...ticks.map(t => t.x));
-			const maxX = Math.max(...ticks.map(t => t.x));
-			const width = maxX - minX + 60; // padding
-			const relativeTicks = ticks.map(t => ({ x: t.x - minX, label: t.label }));
+			const ticks = layoutResult.timeTicks as Array<{ y: number; label: string; timestamp: number }>;
+			const axisX = (layoutResult as any).axisX as number;
+			const minY = Math.min(...ticks.map(t => t.y));
+			const maxY = Math.max(...ticks.map(t => t.y));
+			const height = maxY - minY + 40;
+			const relativeTicks = ticks.map(t => ({ y: t.y - minY, label: t.label }));
 			nodes.push({
 				id: 'timeline-axis',
 				type: 'timelineAxis' as any,
-				position: { x: minX, y: axisY },
-				data: { ticks: relativeTicks, width } as any,
+				position: { x: axisX, y: minY },
+				data: { ticks: relativeTicks, height } as any,
 				style: { zIndex: -1 },
 				zIndex: -1,
 				selectable: false,

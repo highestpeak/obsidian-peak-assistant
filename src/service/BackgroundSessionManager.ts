@@ -18,6 +18,7 @@ import type { V2ToolStep, V2Source } from '@/ui/view/quick-search/types/search-s
 import { AppContext } from '@/app/context/AppContext';
 import { QuickSearchModal } from '@/ui/view/QuickSearchModal';
 import { eventTargetRedirect } from '@/ui/view/quick-search/hooks/useEventRouter';
+import { persistSessionToVault } from '@/service/search/analysisDocPersistence';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -387,6 +388,12 @@ export class BackgroundSessionManager {
 			markCompleted(): void {
 				snap.status = 'completed';
 				session.status = 'completed';
+				// Update the early-saved file with final process log (all steps now done).
+				// Report sections are still pending — full save happens after user
+				// restores to foreground and approves the plan.
+				if (session.savedPath) {
+					void persistSessionToVault(snap, { existingPath: session.savedPath });
+				}
 				mgr.notifyCompleted(session);
 				mgr.tryStartNext();
 				mgr.notify();
@@ -437,6 +444,14 @@ export class BackgroundSessionManager {
 				// Detect plan arrival: transition from streaming to plan-ready
 				if (sections.length > 0 && session.status === 'streaming') {
 					session.status = 'plan-ready';
+					// Persist early save (milestone: plan ready)
+					if (!session.savedPath) {
+						void persistSessionToVault(snap).then((result) => {
+							if (result) {
+								session.savedPath = result.path;
+							}
+						});
+					}
 					mgr.notifyPlanReady(session);
 					mgr.notify();
 				}

@@ -777,8 +777,17 @@ function reconstructProcessTimeline(
 	const steps: import('../types/search-steps').V2ToolStep[] = [];
 	const timeline: import('../types/search-steps').V2TimelineItem[] = [];
 
+	let stepIdx = 0;
 	for (let i = 0; i < processLog.length; i++) {
 		const line = processLog[i];
+
+		// Thinking text: lines prefixed with 💭
+		if (line.startsWith('\u{1F4AD} ') || line.startsWith('💭 ')) {
+			const text = line.slice(line.indexOf(' ') + 1);
+			timeline.push({ kind: 'text', id: `restored-text-${i}`, chunks: [text], complete: true });
+			continue;
+		}
+
 		const parts = line.split(' — ').map(p => p.trim());
 		const firstSpace = parts[0].indexOf(' ');
 		const icon = firstSpace > 0 ? parts[0].slice(0, firstSpace) : '🔧';
@@ -803,9 +812,9 @@ function reconstructProcessTimeline(
 			}
 		}
 
-		const stepStartedAt = startedAt + i * 100;
+		const stepStartedAt = startedAt + stepIdx * 100;
 		const step: import('../types/search-steps').V2ToolStep = {
-			id: `restored-step-${i}`,
+			id: `restored-step-${stepIdx}`,
 			toolName: 'restored',
 			displayName,
 			icon,
@@ -817,6 +826,7 @@ function reconstructProcessTimeline(
 		};
 		steps.push(step);
 		timeline.push({ kind: 'tool', step });
+		stepIdx++;
 	}
 
 	return { steps, timeline };

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ReactFlow, Background, MiniMap, Controls, type NodeMouseHandler, type ReactFlowInstance } from '@xyflow/react';
+import { ReactFlow, Background, MiniMap, Controls, applyNodeChanges, type NodeMouseHandler, type ReactFlowInstance, type NodeChange } from '@xyflow/react';
 import type { LensType, LensGraphData, LensNode } from './types';
 import { LensNodeComponent } from './nodes/LensNodeComponent';
 import { SwimlaneNode } from './nodes/SwimlaneNode';
@@ -14,17 +14,17 @@ const nodeTypes = { lensNode: LensNodeComponent, swimlane: SwimlaneNode, timelin
 const edgeTypes = { lensEdge: LensEdgeComponent };
 
 const LENS_TOOLTIPS: Record<LensType, string> = {
-	topology: '展示文档间的语义关系和知识结构',
-	bridge: '标识跨越知识领域的关键连接文档',
-	timeline: '展示知识积累和思想演化的时间脉络',
-	'thinking-tree': '展示文档间的思想推导和层级关系',
+	topology: 'Semantic relations and knowledge structure between documents',
+	bridge: 'Key documents bridging across knowledge domains',
+	timeline: 'Knowledge accumulation and idea evolution over time',
+	'thinking-tree': 'Thought derivation and hierarchical relations between documents',
 };
 
 const LENS_EMPTY_MESSAGES: Record<LensType, string> = {
-	topology: '当前源文件之间未发现结构关系',
-	bridge: '当前源文件之间未发现跨领域桥梁连接',
-	timeline: '当前源文件缺少时间信息或演化关系',
-	'thinking-tree': '需要点击生成来推断思维树',
+	topology: 'No structural relations found among current sources',
+	bridge: 'No cross-domain bridge connections found among current sources',
+	timeline: 'Current sources lack temporal or evolutionary relations',
+	'thinking-tree': 'Click generate to infer the thinking tree',
 };
 
 const LENS_CONFIG: Array<{
@@ -70,9 +70,19 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 	onExpand,
 }) => {
 	const [activeLens, setActiveLens] = useState<LensType>(defaultLens);
-	const { nodes, edges } = useLensLayout(graphData, activeLens);
+	const { nodes: layoutNodes, edges } = useLensLayout(graphData, activeLens);
+	const [nodes, setNodes] = useState(layoutNodes);
 	const availableLenses = graphData?.availableLenses ?? ['topology'];
 	const rfInstance = useRef<ReactFlowInstance | null>(null);
+
+	// Sync layout-computed nodes into state when layout changes (lens switch, data change)
+	useEffect(() => {
+		setNodes(layoutNodes);
+	}, [layoutNodes]);
+
+	const onNodesChange = useCallback((changes: NodeChange[]) => {
+		setNodes((nds) => applyNodeChanges(changes, nds) as typeof nds);
+	}, []);
 
 	useEffect(() => {
 		const id = setTimeout(() => rfInstance.current?.fitView({ padding: 0.15 }), 50);
@@ -123,7 +133,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 				) : (
 					<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-py-1.5 pktw-px-1">
 						<Loader2 className="pktw-w-4 pktw-h-4 pktw-animate-spin pktw-text-[#7c3aed]" />
-						<span className="pktw-text-xs pktw-text-muted-foreground">正在分析文档关系...</span>
+						<span className="pktw-text-xs pktw-text-muted-foreground">Analyzing document relations...</span>
 					</div>
 				)}
 			</div>
@@ -132,19 +142,19 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 
 	if (!graphData && onRequestGenerate) {
 		return (
-			<div className={cn('pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-h-full pktw-gap-3', className)}>
-				<div className="pktw-text-sm pktw-text-muted-foreground pktw-text-center pktw-max-w-[280px]">
-					AI 将分析源文件内容，识别语义关系、主题聚类和思想演化链
+			<div className={cn('pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-h-full pktw-gap-4', className)}>
+				<div className="pktw-text-sm pktw-text-[#9ca3af] pktw-text-center pktw-max-w-[280px] pktw-leading-relaxed">
+					AI analyzes source content to identify semantic relations, topic clusters, and idea evolution chains
 				</div>
 				<Button
-					variant="outline"
+					variant="ghost"
 					size="sm"
 					onClick={onRequestGenerate}
-					className="pktw-gap-1.5"
+					className="pktw-gap-1.5 pktw-border pktw-border-[#7c3aed]/30 pktw-bg-transparent pktw-text-[#7c3aed] hover:pktw-bg-[#7c3aed]/10 hover:pktw-border-[#7c3aed]/50 hover:pktw-text-[#7c3aed]"
 					style={{ cursor: 'pointer' }}
 				>
 					<Network className="pktw-w-3.5 pktw-h-3.5" />
-					生成 AI 知识图谱
+					Generate Knowledge Graph
 				</Button>
 			</div>
 		);
@@ -175,7 +185,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 			{onExpand && (
 				<>
 					<div className="pktw-flex-1" />
-					<Button variant="ghost" size="sm" onClick={onExpand} title="在新窗口中全屏查看" style={{ cursor: 'pointer' }}>
+					<Button variant="ghost" size="sm" onClick={onExpand} title="View fullscreen in new window" style={{ cursor: 'pointer' }}>
 						<Maximize2 className="pktw-w-3.5 pktw-h-3.5" />
 					</Button>
 				</>
@@ -201,6 +211,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 				<ReactFlow
 					nodes={nodes}
 					edges={edges}
+					onNodesChange={onNodesChange}
 					nodeTypes={nodeTypes}
 					edgeTypes={edgeTypes}
 					onNodeClick={handleNodeClick}
@@ -217,7 +228,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 				</ReactFlow>
 			</div>
 			{graphData?.insights?.[activeLens === 'bridge' ? 'bridges' : activeLens as 'topology' | 'timeline'] && (
-				<div className="pktw-px-3 pktw-py-2 pktw-text-xs pktw-text-[#6b7280] pktw-border-t pktw-border-[#e5e7eb] pktw-bg-[#f9fafb]">
+				<div className="pktw-px-4 pktw-py-3 pktw-mb-2 pktw-mx-3 pktw-text-[13px] pktw-leading-relaxed pktw-text-[#4b5563] pktw-border pktw-border-[#e5e7eb] pktw-bg-[#f9fafb] pktw-rounded-lg">
 					{graphData.insights[activeLens === 'bridge' ? 'bridges' : activeLens as 'topology' | 'timeline']}
 				</div>
 			)}

@@ -25,22 +25,24 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
         s.v2PlanApproved && s.v2PlanSections.length > 0 && s.v2PlanSections.every((sec) => sec.status === 'done')
     );
     const containerRef = useRef<HTMLDivElement>(null);
+    const hasAutoSwitchedRef = useRef(false);
 
-    // During streaming, force process view
-    const activeView = isStreaming ? 'process' : v2View;
+    // Allow manual tab switching at any time; auto-jump is handled by useEffects below
+    const activeView = v2View;
 
     // Reset to process when streaming starts
     useEffect(() => {
         if (isStreaming) {
+            hasAutoSwitchedRef.current = false;
             useSearchSessionStore.getState().setV2View('process');
         }
     }, [isStreaming]);
 
-    // Auto-switch to report view when all sections are done generating
+    // Auto-switch to report view when all sections are done generating (once only)
     useEffect(() => {
-        if (isCompleted && allSectionsDone) {
+        if (isCompleted && allSectionsDone && !hasAutoSwitchedRef.current) {
+            hasAutoSwitchedRef.current = true;
             useSearchSessionStore.getState().setV2View('report');
-            // Scroll to top so user sees the report from the beginning
             requestAnimationFrame(() => {
                 containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
             });
