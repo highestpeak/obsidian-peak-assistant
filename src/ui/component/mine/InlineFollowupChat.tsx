@@ -97,7 +97,7 @@ export const InlineFollowupChat: React.FC<{
 			const variables = getVariables(q);
 			const stream = useSearchAgent
 				? streamSearchFollowup(manager, promptId, variables as Record<string, unknown>)
-				: manager.chatWithPromptStream(promptId, variables as any);
+				: manager.queryStream(promptId, variables as any);
 			const acc = await consumeFollowupStream(stream, {
 				onDelta: (answerSoFar) => {
 					setAnswer(answerSoFar);

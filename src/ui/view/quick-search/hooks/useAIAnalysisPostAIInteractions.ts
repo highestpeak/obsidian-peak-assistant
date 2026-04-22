@@ -67,7 +67,7 @@ export async function* streamSearchFollowup(
 ): AsyncGenerator<LLMStreamEvent> {
     try {
         if (AppContext.getInstance().isMockEnv) {
-            yield* manager.chatWithPromptStream(promptId, variables as any);
+            yield* manager.queryStream(promptId, variables as any);
             return;
         }
         const historySearchFn = getLastAnalysisHistorySearch();
@@ -81,7 +81,7 @@ export async function* streamSearchFollowup(
             yield evt;
         }
     } catch {
-        yield* manager.chatWithPromptStream(promptId, variables as any);
+        yield* manager.queryStream(promptId, variables as any);
         return;
     }
 }
@@ -103,12 +103,20 @@ export async function consumeFollowupStream(
 ): Promise<string> {
     let acc = '';
     for await (const event of stream) {
+        // Legacy PromptService events
         if (event.type === 'prompt-stream-delta' && typeof (event as any).delta === 'string') {
             acc += (event as any).delta;
             handlers?.onDelta?.(acc);
         } else if (event.type === 'prompt-stream-result') {
             const ev = event as { output?: unknown; usage?: LLMUsage };
             if (ev.output != null) acc = typeof ev.output === 'string' ? ev.output : acc;
+            if (ev.usage) handlers?.onUsage?.(ev.usage);
+        // Provider v2: Agent SDK events (from queryStream / translateSdkMessages)
+        } else if (event.type === 'text-delta' && typeof (event as any).text === 'string') {
+            acc += (event as any).text;
+            handlers?.onDelta?.(acc);
+        } else if (event.type === 'complete') {
+            const ev = event as { usage?: LLMUsage };
             if (ev.usage) handlers?.onUsage?.(ev.usage);
         } else if (event.type === 'error') {
             throw (event as any).error;
@@ -174,7 +182,7 @@ export function useGenerateResultSaveField() {
         setTypewriterTarget: (target: string) => void,
         setTypewriterEnabled: (enabled: boolean) => void
     ) => {
-        const result = await manager.chatWithPrompt(promptId, {
+        const result = await manager.queryText(promptId, {
             query: searchQuery,
             summary: summary ? summary.slice(0, SLICE_CAPS.ui.analysisSummary) : undefined,
         });
@@ -206,7 +214,7 @@ export function useGenerateResultSaveField() {
             ? candidateFolders.map((f) => `- ${f}`).join('\n')
             : undefined;
         const defaultSaveFolder = AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder?.trim() || undefined;
-        const result = await manager.chatWithPrompt(PromptId.AiAnalysisSaveFolder, {
+        const result = await manager.queryText(PromptId.AiAnalysisSaveFolder, {
             query: searchQuery,
             summary: summary ? summary.slice(0, SLICE_CAPS.ui.analysisSummary) : undefined,
             candidateFoldersFromSearch,
@@ -317,7 +325,7 @@ export function useRegenerateOverviewMermaid() {
                 originalQuery: searchQuery ?? '',
                 currentResultSnapshot,
             };
-            const stream = manager.chatWithPromptStream(PromptId.AiAnalysisOverviewRegenerate, variables);
+            const stream = manager.queryStream(PromptId.AiAnalysisOverviewRegenerate, variables);
             const raw = (await consumeFollowupStream(stream)).trim();
             const inner = getMermaidInner(raw);
             const code = inner.trim() ? wrapMermaidCode(inner) : '';

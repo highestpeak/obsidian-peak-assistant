@@ -154,17 +154,27 @@ export class DocSimpleAgent {
 
 		// Generate title
 		let title: string | undefined = undefined;
-		const stream = this.aiServiceManager.chatWithPromptStream(
+		const stream = this.aiServiceManager.queryStream(
 			PromptId.AiAnalysisTitle,
 			{
 				query: userPrompt,
 				summary: finalAnswerText,
 			},
 		);
+		let titleAcc = '';
 		for await (const chunk of stream) {
+			// Provider v2: Agent SDK emits text-delta + complete
+			if (chunk.type === 'text-delta' && typeof (chunk as any).text === 'string') {
+				titleAcc += (chunk as any).text;
+			} else if (chunk.type === 'complete') {
+				if (titleAcc) title = titleAcc.trim() || undefined;
+				const ev = chunk as { usage?: any };
+				if (ev.usage) totalUsage = mergeTokenUsage(totalUsage, ev.usage);
+			}
+			// Legacy PromptService events (fallback compat)
 			if (chunk.type === 'prompt-stream-result') {
-				title = String(chunk.output ?? '').trim() || undefined;
-				totalUsage = mergeTokenUsage(totalUsage, chunk.usage);
+				title = String((chunk as any).output ?? '').trim() || undefined;
+				totalUsage = mergeTokenUsage(totalUsage, (chunk as any).usage);
 			}
 			yield { ...chunk, triggerName: StreamTriggerName.DOC_SIMPLE_AGENT };
 		}

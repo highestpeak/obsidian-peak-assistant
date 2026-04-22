@@ -207,14 +207,24 @@ export class MobileVaultSearchAgent {
 		// Generate title via prompt
 		let title: string | undefined;
 		try {
-			const titleStream = this.aiServiceManager.chatWithPromptStream(
+			const titleStream = this.aiServiceManager.queryStream(
 				PromptId.AiAnalysisTitle,
 				{ query: userQuery, summary: finalAnswer },
 			);
+			let titleAcc = '';
 			for await (const chunk of titleStream) {
+				// Provider v2: Agent SDK emits text-delta + complete
+				if (chunk.type === 'text-delta' && typeof (chunk as any).text === 'string') {
+					titleAcc += (chunk as any).text;
+				} else if (chunk.type === 'complete') {
+					if (titleAcc) title = titleAcc.trim() || undefined;
+					const ev = chunk as { usage?: any };
+					if (ev.usage) totalUsage = mergeTokenUsage(totalUsage, ev.usage);
+				}
+				// Legacy PromptService events (fallback compat)
 				if (chunk.type === 'prompt-stream-result') {
-					title = String(chunk.output ?? '').trim() || undefined;
-					totalUsage = mergeTokenUsage(totalUsage, chunk.usage);
+					title = String((chunk as any).output ?? '').trim() || undefined;
+					totalUsage = mergeTokenUsage(totalUsage, (chunk as any).usage);
 				}
 				yield { ...chunk, triggerName: StreamTriggerName.MOBILE_VAULT_SEARCH_AGENT };
 			}

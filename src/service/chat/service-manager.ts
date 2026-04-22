@@ -28,6 +28,13 @@ import { generateObject, LanguageModel } from 'ai';
 import type { z } from 'zod/v3';
 import { resolveModelForPrompt, resolveModelInstance, filterAvailableModels } from './model-resolution';
 import { estimateTokens as estimateTokensFn } from './token-estimation';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
+import { collectText, collectJson, translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
+// NOTE: AppContext is imported in service/ files already (see VaultSearchAgent, IndexService etc).
+// The circular reference (AppContext → AIServiceManager → AppContext) is safe because
+// the actual getInstance() call happens inside method bodies, not at module evaluation time.
+import { AppContext } from '@/app/context/AppContext';
 
 /**
  * Manage AI conversations, storage, and model interactions.
@@ -803,6 +810,160 @@ ${sourcesList}${topicsList}
 			console.warn('[AIServiceManager] Failed to get model token limits:', error);
 			return undefined;
 		}
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
+	// Provider v2 — Agent SDK query methods (Pattern B / C)
+	//
+	// These methods route through the shared sdkAgentPool → Claude Agent SDK,
+	// using the active agent Profile for credentials. They are the target for
+	// migrating chatWithPrompt / chatWithPromptStream / streamObjectWithPrompt
+	// callers (Sub-Wave B/C).
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/** Resolve pluginId lazily from AppContext singleton. */
+	private getPluginId(): string {
+		return AppContext.getInstance().plugin.manifest.id;
+	}
+
+	/**
+	 * Resolve the active agent profile or throw a user-friendly error.
+	 */
+	private requireActiveProfile() {
+		const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
+		if (!profile) {
+			throw new Error('No active AI profile configured. Please set up a profile in Settings → Profiles.');
+		}
+		return profile;
+	}
+
+	/**
+	 * Render prompt + system prompt from a PromptId, returning the pair.
+	 * When `promptOrText` is not a known PromptId (or rendering fails),
+	 * treats it as a raw user prompt string.
+	 */
+	private async resolvePromptPair(
+		promptOrText: string,
+		variables?: Record<string, unknown>,
+		systemPromptOverride?: string,
+	): Promise<{ userPrompt: string; systemPrompt: string }> {
+		let systemPrompt = systemPromptOverride ?? '';
+		let userPrompt = promptOrText;
+
+		// Attempt to treat promptOrText as a PromptId and render it
+		if (this.promptService) {
+			try {
+				const meta = getTemplateMetadata(promptOrText as PromptId);
+				// Load associated system prompt from template registry
+				if (!systemPromptOverride && meta.systemPromptId && this.templateManager) {
+					const sp = await this.templateManager.getTemplate(meta.systemPromptId);
+					if (sp) systemPrompt = sp;
+				}
+				// Render the prompt template with variables
+				const rendered = await this.promptService.render(promptOrText as PromptId, variables as any);
+				userPrompt = rendered;
+			} catch {
+				// Not a valid PromptId or render failed — use raw text
+			}
+		}
+
+		return { userPrompt, systemPrompt };
+	}
+
+	/**
+	 * Pattern B: Single-turn LLM call via Agent SDK. Returns plain text.
+	 *
+	 * Accepts either a PromptId (with variables) or a raw prompt string.
+	 * Routes through the active agent Profile → sdkAgentPool → Claude Agent SDK.
+	 *
+	 * @param promptOrText - A PromptId or raw user prompt string
+	 * @param variables - Template variables (only used when promptOrText is a PromptId)
+	 * @param opts - Optional system prompt override and abort signal
+	 */
+	async queryText(
+		promptOrText: string,
+		variables?: Record<string, unknown>,
+		opts?: { systemPrompt?: string; signal?: AbortSignal },
+	): Promise<string> {
+		const profile = this.requireActiveProfile();
+		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
+			promptOrText,
+			variables,
+			opts?.systemPrompt,
+		);
+
+		const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
+			prompt: userPrompt,
+			systemPrompt,
+			maxTurns: 1,
+			signal: opts?.signal,
+		});
+		return collectText(messages);
+	}
+
+	/**
+	 * Pattern B (streaming): Single-turn LLM call via Agent SDK.
+	 * Yields LLMStreamEvents for progressive UI updates.
+	 *
+	 * @param promptOrText - A PromptId or raw user prompt string
+	 * @param variables - Template variables (only used when promptOrText is a PromptId)
+	 * @param opts - Optional system prompt override, trigger name, and abort signal
+	 */
+	async *queryStream(
+		promptOrText: string,
+		variables?: Record<string, unknown>,
+		opts?: { systemPrompt?: string; triggerName?: string; signal?: AbortSignal },
+	): AsyncGenerator<LLMStreamEvent> {
+		const profile = this.requireActiveProfile();
+		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
+			promptOrText,
+			variables,
+			opts?.systemPrompt,
+		);
+
+		yield* translateSdkMessages(
+			queryWithProfile(this.app, this.getPluginId(), profile, {
+				prompt: userPrompt,
+				systemPrompt,
+				maxTurns: 1,
+				signal: opts?.signal,
+			}),
+			{ triggerName: opts?.triggerName as any },
+		);
+	}
+
+	/**
+	 * Pattern C: Structured output via Agent SDK. Returns parsed JSON.
+	 *
+	 * The caller provides a JSON schema (not Zod) for the SDK to enforce.
+	 * Use `zodToJsonSchema()` to convert Zod schemas before calling.
+	 *
+	 * @param promptOrText - A PromptId or raw user prompt string
+	 * @param variables - Template variables (only used when promptOrText is a PromptId)
+	 * @param schema - JSON Schema object for structured output
+	 * @param opts - Optional system prompt override and abort signal
+	 */
+	async queryStructured<T>(
+		promptOrText: string,
+		variables?: Record<string, unknown>,
+		schema?: unknown,
+		opts?: { systemPrompt?: string; signal?: AbortSignal },
+	): Promise<T> {
+		const profile = this.requireActiveProfile();
+		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
+			promptOrText,
+			variables,
+			opts?.systemPrompt,
+		);
+
+		const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
+			prompt: userPrompt,
+			systemPrompt,
+			maxTurns: 1,
+			jsonSchema: schema,
+			signal: opts?.signal,
+		});
+		return collectJson<T>(messages);
 	}
 
 }

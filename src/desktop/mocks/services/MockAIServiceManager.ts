@@ -588,5 +588,26 @@ This plugin is designed to help you manage conversations and projects with AI as
 		// For mock purposes, return empty array as placeholder
 		return [];
 	}
+
+	// ── Provider v2: Agent SDK query methods (mock) ────────────────────
+
+	async queryText(promptOrText: string, variables?: Record<string, unknown>): Promise<string> {
+		return this.chatWithPrompt(promptOrText, variables);
+	}
+
+	async *queryStream(
+		promptOrText: string,
+		variables?: Record<string, unknown>,
+	): AsyncGenerator<LLMStreamEvent> {
+		yield* this.chatWithPromptStream(promptOrText, variables);
+	}
+
+	async queryStructured<T>(
+		promptOrText: string,
+		_variables?: Record<string, unknown>,
+		_schema?: unknown,
+	): Promise<T> {
+		return JSON.parse(await this.chatWithPrompt(promptOrText, _variables)) as T;
+	}
 }
 
