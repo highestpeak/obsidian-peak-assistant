@@ -16,20 +16,41 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | E. 文档清理 | 归档docs、标记计划、更新过时文档 | 完成 |
 | V1 退役 | 删除 V1 search pipeline + step UI | 完成 (-9000行) |
 | H. 后台多 Session | 关闭 modal 继续分析 + 多 session 并发 + Active Sessions UI | 完成 (11 commits) |
-| F. Provider v2 | 删 Vercel AI SDK → Agent SDK query() | Plan 就绪 (12 tasks, 3 sub-waves) |
-| G. Agent Trace | 可观测性 (阻塞于 F) | 未开始 |
+| F. Provider v2 | 删 Vercel AI SDK → Agent SDK query() | 完成 (12 files deleted, 7 packages removed, ~3700 lines) |
+| G. Agent Trace | 可观测性 (阻塞于 F → 已解除) | 未开始 |
+| K. Chat System Polish | Store 重构 + Input 拆分 + 会话管理 | 进行中 (chatDataStore created) |
 | I. Query Pattern Discovery | LLM 驱动查询模式发现 + 上下文建议 | 完成 (12 commits) |
 | J. Vault Search Redesign | VS Code 风格 inspector side panel | 完成 (6 commits) |
 
 ## Next
 
-- [ ] 真机测试：Query Pattern Discovery 全流程（seed patterns → 建议卡片 → usage count → discovery trigger）
-- [ ] 真机测试：Vault Search Redesign 全流程（inspector side panel → 模式切换 → topic 导航 → query-aware 过滤）
-- [ ] Provider v2: 启动 Wave 1 Foundation（plan at `docs/superpowers/plans/2026-04-20-provider-system-v2.md`）
-- [ ] GitHub triage: 关闭 29 个已完成/重复/过时 issue
-- [ ] 考虑替换 playwright+@langchain/community 为 fetch (减 50MB 依赖)
+- [ ] Chat System Polish: 迁移 ~20 consumer 到 chatDataStore（Task 3-5），删除 projectStore + messageStore
+- [ ] Chat System Polish: ChatInputArea 拆分（Task 6-10），delete/modes/shortcuts（Task 11-12）
+- [ ] Settings UI: ProfileSettingsTab 替换 ProviderSettings（Provider v2 Task 11）
+- [ ] UI Theme: 64 个 TSX 文件的 inline hex → CSS var token 批量替换
+- [ ] Agent Trace Observability: TraceSink + CLI harness + scenarios（Wave 3A, 11 tasks）
+- [ ] Chat UI Redesign: 全新消息列表/工具调用/首页/会话列表（Wave 3C, 15 tasks, 阻塞于 3B）
 
 ## Log
+
+### 2026-04-22
+- Done: Provider v2 完成 — 删除整个 Vercel AI SDK 栈
+  - PromptService: chatWithPrompt/chatWithPromptStream → delegate to AIServiceManager.queryText/queryStream via AppContext
+  - AIServiceManager: chatWithPrompt/streamObjectWithPrompt → delegate to queryText/queryStructured + zodToJsonSchema
+  - infer-thinking-tree: multiChat.blockChat() → manager.queryText()
+  - stream-helper.ts: 640行 → 60行 (only 3 self-contained utilities kept)
+  - types.ts: 'ai' re-exports → standalone type definitions
+  - 删除 12 文件: adapters, base providers, MultiProviderChatService, model-resolution, tool-executor (~3500行)
+  - UI: ModelSelector/MessageActionsList/SearchSettingsTab → modelRegistry (static catalog)
+  - 卸载 7 npm packages: ai, @ai-sdk/{anthropic,openai,google,perplexity}, @openrouter/ai-sdk-provider, ollama-ai-provider-v2
+  - manifest.json: isDesktopOnly = true
+  - Zero `from 'ai'` imports remain in src/ (only comments)
+- Done: Working tree 清理 — 3 commits committed (dead code cleanup, features, docs)
+  - 39 dead files deleted (-5333 lines)
+  - Milestone persistence + graph improvements + search UI polish
+  - Execution roadmap + 6 plans + 4 specs + mockups
+- Done: All prior work merged to master (131 commits fast-forward)
+- Started: Chat System Polish (Wave 3B Task 1) — chatDataStore created
 
 ### 2026-04-20 (Session 2)
 - Done: Query Pattern Discovery 全量实现 (Phase I, 12 commits)
