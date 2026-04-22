@@ -579,6 +579,23 @@ ${sourcesList}${topicsList}
 		return this.promptService.getPromptInfo(promptId);
 	}
 
+	/**
+	 * Resolve model for a prompt:
+	 * 1. `promptModelMap[promptId]` — per-prompt override (most specific)
+	 * 2. `analysisModel` — for AiAnalysis* prompts when set
+	 * 3. `defaultModel` — global fallback
+	 */
+	getModelForPrompt(promptId: PromptId): { provider: string; modelId: string } {
+		const perPrompt = this.settings.promptModelMap?.[promptId];
+		if (perPrompt) return { provider: perPrompt.provider, modelId: perPrompt.modelId };
+		if (this.settings.analysisModel && promptId.startsWith('ai-analysis')) {
+			return { provider: this.settings.analysisModel.provider, modelId: this.settings.analysisModel.modelId };
+		}
+		const m = this.settings.defaultModel;
+		if (m) return { provider: m.provider, modelId: m.modelId };
+		throw new Error('No AI model configured. Open Settings → Model Config to set a default model and enter your API key.');
+	}
+
 	async renderTemplate<T extends AgentTemplateId>(
 		templateId: T,
 		variables: Record<string, unknown>

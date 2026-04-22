@@ -177,7 +177,7 @@ export class GraphInspectorTestTools {
  * Consumes an LLM stream and re-yields the same events. While consuming:
  * - Consecutive delta events (text-delta, reasoning-delta, etc.) are concatenated and logged as one line when a non-delta arrives or stream ends.
  * - Other events are logged one-by-one in stream order.
- * Uses DELTA_EVENT_TYPES and getDeltaEventDeltaText from stream-helper.
+ * Uses DELTA_EVENT_TYPES and getDeltaEventDeltaText from types.
  */
 export async function* streamWithStreamLog(
     stream: AsyncGenerator<LLMStreamEvent>,

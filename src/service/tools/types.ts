@@ -16,7 +16,6 @@ export { clearBuildResponseCompileCache } from '@/core/template-engine-helper';
 
 /**
  * Don't use ToolSet from ai sdk directly; it slows TS and may crash IDE.
- * from import { Tool } from 'ai';
  */
 export interface AgentTool {
     description: string;
