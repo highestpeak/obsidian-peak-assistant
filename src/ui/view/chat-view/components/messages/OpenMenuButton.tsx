@@ -4,9 +4,11 @@ import { useHoverMenu } from '@/ui/component/mine';
 import { OpenIn } from '@/ui/component/ai-elements';
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/component/shared-ui/popover';
 import { cn } from '@/ui/react/lib/utils';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Trash2 } from 'lucide-react';
 import { openSourceFile } from '@/ui/view/shared/view-utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
+import { useChatViewStore } from '../../store/chatViewStore';
+import { AppContext } from '@/app/context/AppContext';
 import { Button } from '@/ui/component/shared-ui/button';
 
 /**
@@ -140,6 +142,32 @@ export const OpenMenuButton: React.FC = () => {
 									onClick={hoverMenu.closeMenu}
 								/>
 							))}
+							{/* Delete conversation */}
+							<div className="pktw-h-px pktw-bg-border pktw-my-1" />
+							<Button
+								type="button"
+								variant="ghost"
+								onClick={async () => {
+									hoverMenu.closeMenu();
+									const convId = useChatDataStore.getState().activeConversation?.meta?.id;
+									if (!convId) return;
+									const confirmed = window.confirm('Delete this conversation? This cannot be undone.');
+									if (!confirmed) return;
+									try {
+										await AppContext.getInstance().manager.deleteConversation(convId);
+										useChatDataStore.getState().deleteConversation(convId);
+										useChatViewStore.getState().setHome();
+									} catch (e) {
+										console.error('[OpenMenuButton] Delete failed:', e);
+									}
+								}}
+								className="pktw-flex pktw-items-center pktw-justify-between pktw-w-full pktw-px-3 pktw-py-2 pktw-text-sm pktw-text-left pktw-rounded-md hover:pktw-bg-red-50 pktw-text-red-600 pktw-transition-colors"
+							>
+								<span className="pktw-flex pktw-items-center pktw-gap-2">
+									<Trash2 className="pktw-size-3.5" />
+									Delete Conversation
+								</span>
+							</Button>
 						</div>
 					</PopoverContent>
 				</Popover>

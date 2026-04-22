@@ -30,6 +30,10 @@ import { getFileTypeFromPath } from '@/core/document/helper/FileTypeUtils';
 import { resolveModelCapabilities } from '@/core/providers/types';
 import { detectTimezone } from '@/core/utils/date-utils';
 import { uploadFilesToVault } from '@/core/utils/vault-utils';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
+import { translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
+import { AppContext } from '@/app/context/AppContext';
 
 interface ChatPreparationResult {
 	modelId: string;
@@ -183,13 +187,30 @@ export class ConversationService {
 			// Get the final return value
 			prepared = result.value;
 
-			const stream = self.chat.streamChat({
-				provider: prepared.provider,
-				model: prepared.modelId,
-				messages: prepared.prompt,
-				outputControl: prepared.outputControl,
+			// Route through Agent SDK instead of deleted MultiProviderChatService
+			const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
+			if (!profile) throw new Error('No active AI profile configured');
+
+			// Extract system prompt and format conversation as text prompt
+			const systemMessages = prepared.prompt.filter(m => m.role === 'system');
+			const systemPrompt = systemMessages.map(m =>
+				Array.isArray(m.content) ? m.content.map((p: any) => p.text ?? '').join('') : String(m.content)
+			).join('\n');
+			const nonSystemMessages = prepared.prompt.filter(m => m.role !== 'system');
+			const userPrompt = nonSystemMessages.map(m => {
+				const text = Array.isArray(m.content)
+					? m.content.map((p: any) => p.text ?? '').join('')
+					: String(m.content);
+				return `${m.role === 'user' ? 'Human' : 'Assistant'}: ${text}`;
+			}).join('\n\n');
+
+			const ctx = AppContext.getInstance();
+			const sdkStream = queryWithProfile(ctx.app, ctx.pluginId, profile, {
+				prompt: userPrompt,
+				systemPrompt,
+				maxTurns: 1,
 			});
-			yield* stream;
+			yield* translateSdkMessages(sdkStream);
 		})();
 	}
 
