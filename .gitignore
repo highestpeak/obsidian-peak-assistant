@@ -1,6 +1,9 @@
 # local MCP config (machine-specific paths)
 .mcp.json
 
+# Agent trace output (generated at runtime)
+data/traces/
+
 # vscode
 .vscode 
 

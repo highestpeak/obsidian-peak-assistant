@@ -19,6 +19,8 @@
 		"build": "npm run build:css && node esbuild.config.mjs production && npm run check:bundle && npm run copy-sdk",
 		"build:desktop": "vite build",
 		"test": "node run-test.js",
+		"trace": "node run-test.js scripts/run-agent.ts",
+		"trace:latest": "node run-test.js scripts/trace-latest.ts",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"install-safe": "npm install --legacy-peer-deps",
 		"postinstall": "echo 'Dependencies installed successfully. Run \"npm run build\" to build the project.'"
@@ -109,6 +111,7 @@
 		"use-stick-to-bottom": "^1.1.1",
 		"uuid": "^9.0.1",
 		"word-extractor": "^1.0.4",
+		"yaml": "^2.8.3",
 		"zustand": "^4.4.7"
 	},
 	"devDependencies": {
