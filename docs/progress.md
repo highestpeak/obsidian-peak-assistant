@@ -26,7 +26,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 - [ ] Chat System Polish: 迁移 ~20 consumer 到 chatDataStore（Task 3-5），删除 projectStore + messageStore
 - [ ] Chat System Polish: ChatInputArea 拆分（Task 6-10），delete/modes/shortcuts（Task 11-12）
-- [ ] Settings UI: ProfileSettingsTab 替换 ProviderSettings（Provider v2 Task 11）
+- [x] Settings UI: ProfileSettingsTab 替换 ProviderSettings（Provider v2 Task 11）✅ 已完成
 - [ ] UI Theme: 64 个 TSX 文件的 inline hex → CSS var token 批量替换
 - [ ] Agent Trace Observability: TraceSink + CLI harness + scenarios（Wave 3A, 11 tasks）
 - [ ] Chat UI Redesign: 全新消息列表/工具调用/首页/会话列表（Wave 3C, 15 tasks, 阻塞于 3B）
@@ -50,6 +50,8 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
   - Milestone persistence + graph improvements + search UI polish
   - Execution roadmap + 6 plans + 4 specs + mockups
 - Done: All prior work merged to master (131 commits fast-forward)
+- Done: ProfileSettingsTab — Profile CRUD UI 替换 ProviderSettings (335 lines)
+- Done: UI/Theme CSS Foundation — peak-variables.css + peak-style-settings.css + Tailwind --pk-* tokens + Shadow DOM pass-through
 - Started: Chat System Polish (Wave 3B Task 1) — chatDataStore created
 
 ### 2026-04-20 (Session 2)

@@ -43,8 +43,7 @@ import { resetAIAnalysisAll } from '@/ui/view/quick-search/store/aiAnalysisStore
 import { useVaultSearchStore } from '@/ui/view/quick-search/store/vaultSearchStore';
 import { useSharedStore } from '@/ui/view/quick-search/store/sharedStore';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
-import { useProjectStore } from '@/ui/store/projectStore';
-import { useMessageStore } from '@/ui/view/chat-view/store/messageStore';
+import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useGraphAnimationStore } from '@/ui/component/mine/graph-viz/graphAnimationStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 
@@ -289,8 +288,7 @@ export default class MyPlugin extends Plugin {
 			useVaultSearchStore.getState().reset();
 			useSharedStore.getState().reset();
 			useUIEventStore.getState().reset();
-			useProjectStore.getState().reset();
-			useMessageStore.getState().reset();
+			useChatDataStore.getState().reset();
 			useGraphAnimationStore.getState().reset();
 			useChatViewStore.getState().reset();
 			resetAIAnalysisAll();
