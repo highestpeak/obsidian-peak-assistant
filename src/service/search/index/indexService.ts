@@ -52,6 +52,7 @@ import {
 	stableMobiusFolderNodeId,
 } from '@/core/utils/id-utils';
 import { AIServiceManager } from '@/service/chat/service-manager';
+import { embedTexts } from '@/core/embeddings/embedClient';
 import { parseLooseTimestampToMs } from '@/core/utils/date-utils';
 import { mapWithConcurrency } from '@/core/utils/concurrent-utils';
 import { AdaptiveConcurrencyPool } from '@/core/utils/adaptive-concurrency';
@@ -483,7 +484,7 @@ class IndexSingleService {
 			let vectorCompleted = false;
 			if (canGenerateEmbeddings) {
 				sw.start('Generate embeddings');
-				await this.generateAndFillEmbeddings(chunks, embeddingModel);
+				await this.generateAndFillEmbeddings(chunks);
 				sw.stop();
 				vectorCompleted = true;
 			} else if (!opts.includeEmbeddings) {
@@ -722,24 +723,14 @@ class IndexSingleService {
 
 	/**
 	 * Generate embeddings for chunks and fill them into chunk objects.
-	 * 
+	 *
 	 * @param chunks - Chunks to generate embeddings for
-	 * @param embeddingModel - Embedding model configuration (provider and modelId)
 	 */
-	private async generateAndFillEmbeddings(
-		chunks: Chunk[],
-		embeddingModel: { provider: string; modelId: string },
-	): Promise<void> {
+	private async generateAndFillEmbeddings(chunks: Chunk[]): Promise<void> {
 		if (!chunks.length) return;
 
 		try {
-			// Generate embeddings using MultiProviderChatService from AIServiceManager
-			const multiProviderChatService = this.aiServiceManager.getMultiChat();
-			const embeddings = await multiProviderChatService.generateEmbeddings(
-				chunks.map(chunk => chunk.content),
-				embeddingModel.modelId,
-				embeddingModel.provider,
-			);
+			const embeddings = await embedTexts(chunks.map(chunk => chunk.content));
 
 			// Fill embeddings into chunk.embedding fields
 			for (let i = 0; i < chunks.length && i < embeddings.length; i++) {

@@ -6,6 +6,7 @@ import { Reranker } from './reranker';
 import { DEFAULT_SEARCH_MODE, DEFAULT_SEARCH_TOP_K } from '@/core/constant';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { SearchSettings } from '@/app/settings/types';
+import { embedText } from '@/core/embeddings/embedClient';
 import {
 	RRF_K,
 	RRF_CONTENT_WEIGHT,
@@ -67,13 +68,7 @@ export class QueryService {
 		if (embeddingModel && vectorSearchAvailable) {
 			sw.start('embedding_generation');
 			try {
-				const multiProviderChatService = this.aiServiceManager.getMultiChat();
-				const embeddings = await multiProviderChatService.generateEmbeddings(
-					[termRaw],
-					embeddingModel.modelId,
-					embeddingModel.provider,
-				);
-				embedding = embeddings[0];
+				embedding = await embedText(termRaw);
 			} catch (error) {
 				console.error(`[QueryService] Failed to generate embedding for search:`, error);
 				// Continue with fulltext search only if embedding generation fails
@@ -195,13 +190,7 @@ export class QueryService {
 
 		let embedding: number[] | undefined;
 		try {
-			const multiProviderChatService = this.aiServiceManager.getMultiChat();
-			const embeddings = await multiProviderChatService.generateEmbeddings(
-				[queryText],
-				embeddingModel.modelId,
-				embeddingModel.provider,
-			);
-			embedding = embeddings[0];
+			embedding = await embedText(queryText);
 		} catch (error) {
 			console.error(`[QueryService.vectorSearch] Failed to generate embedding:`, error);
 			return { query, items: [], duration: sw.getTotalElapsed() };
