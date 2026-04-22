@@ -1,23 +1,25 @@
-import { streamText } from 'ai';
 import { AppContext } from '@/app/context/AppContext';
 import { PromptId } from '@/service/prompt/PromptId';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessionStore';
 import type { V2Section } from '@/ui/view/quick-search/store/searchSessionStore';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { queryWithProfile, type SDKMessage } from '@/service/agents/core/sdkAgentPool';
+import { collectText } from '@/service/agents/core/sdkMessageAdapter';
 import { pLimit, streamWithRepetitionGuard, detectRepetition } from './stream-utils';
 
 /**
  * Multi-agent report orchestrator.
  *
  * Per section (parallel):
- *   1. Content Agent — streamText → section markdown
- *   2. Visual Blueprint Agent — streamText → JSON viz spec (validated by Zod, stored on section.vizData)
+ *   1. Content Agent — queryWithProfile → section markdown
+ *   2. Visual Blueprint Agent — queryWithProfile → JSON viz spec (validated by Zod, stored on section.vizData)
  *
  * After all sections:
- *   3. Summary Agent — streamText → executive summary
+ *   3. Summary Agent — queryWithProfile → executive summary
  *
  * On demand:
- *   - Mermaid Fix Agent — streamText → fix broken mermaid syntax
+ *   - Mermaid Fix Agent — queryWithProfile → fix broken mermaid syntax
  *   - Section Regeneration — re-run content agent with optional user prompt
  */
 export class ReportOrchestrator {
@@ -29,6 +31,62 @@ export class ReportOrchestrator {
 
     private get store() {
         return useSearchSessionStore;
+    }
+
+    // -----------------------------------------------------------------------
+    // SDK helpers
+    // -----------------------------------------------------------------------
+
+    /** Resolve app + pluginId from AppContext singleton. */
+    private get appCtx() {
+        const ctx = AppContext.getInstance();
+        return { app: ctx.app, pluginId: ctx.plugin.manifest.id };
+    }
+
+    /** Resolve the active agent profile or throw. */
+    private requireProfile() {
+        const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
+        if (!profile) throw new Error('No active AI profile configured');
+        return profile;
+    }
+
+    /**
+     * Extract text deltas from an SDK message stream as an async iterable of
+     * string chunks. Suitable for feeding into `streamWithRepetitionGuard` or
+     * manual chunk-by-chunk consumption.
+     *
+     * Handles both streaming events (content_block_delta) and final assistant
+     * messages.
+     */
+    private async *sdkTextStream(
+        messages: AsyncIterable<SDKMessage>,
+    ): AsyncGenerator<string> {
+        for await (const raw of messages) {
+            const msg = raw as {
+                type?: string;
+                message?: { content?: Array<{ type: string; text?: string }> };
+                event?: { type?: string; delta?: { type?: string; text?: string } };
+            };
+
+            if (msg.type === 'stream_event') {
+                const event = msg.event;
+                if (
+                    event?.type === 'content_block_delta' &&
+                    event?.delta?.type === 'text_delta' &&
+                    typeof event?.delta?.text === 'string'
+                ) {
+                    yield event.delta.text;
+                }
+            } else if (msg.type === 'assistant') {
+                // Fallback: if no streaming events were seen, yield from final message blocks
+                const blocks = msg.message?.content ?? [];
+                for (const block of blocks) {
+                    if (block.type === 'text' && typeof block.text === 'string') {
+                        yield block.text;
+                    }
+                }
+            }
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -135,9 +193,9 @@ export class ReportOrchestrator {
             this.store.getState().updatePlanSection(sec.id, (s) => ({ ...s, status: 'generating' }));
         }
 
-        // Pre-prepare ALL section params (evidence + prompts) BEFORE firing any streamText.
-        // This ensures all streamText() calls happen in the same microtask window → fetch fires simultaneously.
-        const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
+        // Pre-prepare ALL section params (evidence + prompts) BEFORE firing any queries.
+        const { app, pluginId } = this.appCtx;
+        const profile = this.requireProfile();
         const sectionParams = await Promise.all(sections.map(async (sec) => {
             const evidenceContent = await this.readEvidence(sec.evidencePaths, sec.brief);
             const otherSections = sections
@@ -163,36 +221,29 @@ export class ReportOrchestrator {
             return { sec, systemPrompt, userMessage };
         }));
 
-        // Fire ALL streamText calls at once — fetch starts immediately in constructor
-        const streams = sectionParams.map(({ sec, systemPrompt, userMessage }) => {
+        // Fire ALL queries at once and consume streams in parallel
+        const contentPromises = sectionParams.map(async ({ sec, systemPrompt, userMessage }) => {
             const controller = new AbortController();
-            const result = streamText({
-                model,
-                system: systemPrompt,
-                prompt: userMessage,
-                maxTokens: 4096,
-                abortSignal: controller.signal,
-            });
-            console.log(`[Section:${sec.id.slice(0, 8)}] streamText fired`);
-            return { sec, result, controller };
-        });
-
-        // Now consume all streams in parallel — each with its own independent consumer
-        const contentPromises = streams.map(async ({ sec, result, controller }) => {
+            console.log(`[Section:${sec.id.slice(0, 8)}] queryWithProfile fired`);
             try {
+                const messages = queryWithProfile(app, pluginId, profile, {
+                    prompt: userMessage,
+                    systemPrompt,
+                    maxTurns: 1,
+                    signal: controller.signal,
+                });
+
                 let fullText = '';
                 let lastCheckLen = 0;
-                for await (const chunk of result.fullStream) {
-                    if (chunk.type === 'text-delta') {
-                        fullText += chunk.text;
-                        this.store.getState().appendSectionChunk(sec.id, chunk.text);
-                        if (fullText.length - lastCheckLen > 200) {
-                            lastCheckLen = fullText.length;
-                            const truncAt = detectRepetition(fullText);
-                            if (truncAt > 0) {
-                                controller.abort();
-                                break;
-                            }
+                for await (const chunk of this.sdkTextStream(messages)) {
+                    fullText += chunk;
+                    this.store.getState().appendSectionChunk(sec.id, chunk);
+                    if (fullText.length - lastCheckLen > 200) {
+                        lastCheckLen = fullText.length;
+                        const truncAt = detectRepetition(fullText);
+                        if (truncAt > 0) {
+                            controller.abort();
+                            break;
                         }
                     }
                 }
@@ -267,13 +318,15 @@ Output JSON array: [{ "insight_index": 0, "section_id": "s1" | "NEW", "new_title
 Output ONLY the JSON array, no other text.`;
 
         try {
-            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
-            const result = streamText({ model, prompt, maxTokens: 1000 });
+            const { app, pluginId } = this.appCtx;
+            const profile = this.requireProfile();
+            const messages = queryWithProfile(app, pluginId, profile, {
+                prompt,
+                systemPrompt: '',
+                maxTurns: 1,
+            });
 
-            let text = '';
-            for await (const chunk of result.textStream) {
-                text += chunk;
-            }
+            const text = await collectText(messages);
 
             // Parse JSON from response
             const jsonMatch = text.match(/\[[\s\S]*\]/);
@@ -359,18 +412,18 @@ Output ONLY the JSON array, no other text.`;
                 }),
             ]);
 
-            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportSection);
+            const { app, pluginId } = this.appCtx;
+            const profile = this.requireProfile();
             const controller = new AbortController();
-            const result = streamText({
-                model,
-                system: systemPrompt,
+            const messages = queryWithProfile(app, pluginId, profile, {
                 prompt: userMessage,
-                maxTokens: 4096,
-                abortSignal: controller.signal,
+                systemPrompt,
+                maxTurns: 1,
+                signal: controller.signal,
             });
 
             const { fullText } = await streamWithRepetitionGuard(
-                result.textStream,
+                this.sdkTextStream(messages),
                 controller,
                 (chunk) => this.store.getState().appendSectionChunk(section.id, chunk),
             );
@@ -405,18 +458,15 @@ Output ONLY the JSON array, no other text.`;
                 }),
             ]);
 
-            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisReportVizJson);
-            const result = streamText({
-                model,
-                system: systemPrompt,
+            const { app, pluginId } = this.appCtx;
+            const profile = this.requireProfile();
+            const messages = queryWithProfile(app, pluginId, profile, {
                 prompt: userMessage,
-                maxTokens: 1500,
+                systemPrompt,
+                maxTurns: 1,
             });
 
-            let text = '';
-            for await (const chunk of result.textStream) {
-                text += chunk;
-            }
+            const text = await collectText(messages);
 
             // Extract JSON from response (LLM may wrap in code fence)
             const jsonStr = text.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
@@ -484,19 +534,19 @@ Output ONLY the JSON array, no other text.`;
                 }),
             ]);
 
-            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisVaultReportSummary);
+            const { app, pluginId } = this.appCtx;
+            const profile = this.requireProfile();
             const controller = new AbortController();
-            const result = streamText({
-                model,
-                system: systemPrompt,
+            const messages = queryWithProfile(app, pluginId, profile, {
                 prompt: userMessage,
-                maxTokens: 2048,
-                abortSignal: controller.signal,
+                systemPrompt,
+                maxTurns: 1,
+                signal: controller.signal,
             });
 
             let accumulated = '';
             const { fullText } = await streamWithRepetitionGuard(
-                result.textStream,
+                this.sdkTextStream(messages),
                 controller,
                 (chunk) => {
                     accumulated += chunk;
@@ -525,13 +575,15 @@ Output ONLY the JSON array, no other text.`;
                 }),
             ]);
 
-            const { model } = this.mgr.getModelInstanceForPrompt(PromptId.AiAnalysisMermaidFix);
-            const result = streamText({ model, system: systemPrompt, prompt: userMessage, maxTokens: 800 });
+            const { app, pluginId } = this.appCtx;
+            const profile = this.requireProfile();
+            const messages = queryWithProfile(app, pluginId, profile, {
+                prompt: userMessage,
+                systemPrompt,
+                maxTurns: 1,
+            });
 
-            let fixed = '';
-            for await (const chunk of result.textStream) {
-                fixed += chunk;
-            }
+            const fixed = await collectText(messages);
             return fixed.includes('```mermaid') ? fixed.trim() : null;
         } catch {
             return null;
