@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tool Call Display — Redesign Options</title>
+<style>
+:root {
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --accent: #7c3aed; --accent-muted: rgba(109,40,217,0.08); --accent-fg: #6d28d9;
+  --bg: #fff; --bg2: #f8f9fb; --bg3: #f1f3f5; --fg: #1a1c1e; --muted: #6b7280; --faint: #9ca3af;
+  --border: #e5e7eb; --hover: #f3f4f6;
+  --success: #22c55e; --success-muted: rgba(34,197,94,0.08);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--font); background:#f5f5f7; color:var(--fg); padding:24px; display:flex; flex-direction:column; align-items:center; gap:32px; }
+
+h1 { font-size:20px; font-weight:700; }
+.sub { font-size:13px; color:var(--muted); margin-bottom:8px; max-width:700px; text-align:center; }
+h2 { font-size:15px; font-weight:600; color:var(--accent-fg); margin-bottom:8px; width:100%; max-width:700px; }
+.note { padding:10px 14px; background:var(--bg2); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; font-size:12px; color:var(--muted); line-height:1.6; max-width:700px; width:100%; }
+.note strong { color:var(--accent-fg); }
+
+.msg-frame { background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 20px; max-width:700px; width:100%; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+
+/* AI message shell */
+.ai-msg { display:flex; gap:8px; }
+.ai-avatar { width:22px; height:22px; border-radius:6px; background:var(--accent-muted); color:var(--accent-fg); display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; margin-top:2px; }
+.ai-body { flex:1; min-width:0; }
+.ai-role { font-size:10px; font-weight:600; color:var(--faint); text-transform:uppercase; letter-spacing:.3px; margin-bottom:4px; }
+.ai-content { font-size:13px; line-height:1.6; padding:10px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; }
+.ai-content strong { font-weight:600; }
+
+/* ── Option A: Collapsed summary ── */
+.tc-summary { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:6px; background:var(--bg2); border:1px solid var(--border); font-size:11px; color:var(--muted); cursor:pointer; margin-bottom:8px; transition:all .15s; }
+.tc-summary:hover { background:var(--hover); border-color:#d0d0d0; }
+.tc-summary-icon { font-size:12px; color:var(--accent-fg); }
+.tc-summary-count { font-weight:600; color:var(--fg); }
+.tc-summary-chevron { font-size:9px; color:var(--faint); transition:transform .2s; }
+.tc-summary.open .tc-summary-chevron { transform:rotate(180deg); }
+.tc-detail { display:none; margin-bottom:8px; padding:6px 0; }
+.tc-detail.show { display:block; }
+.tc-detail-item { display:flex; align-items:center; gap:6px; padding:3px 0; font-size:11px; color:var(--muted); }
+.tc-detail-icon { width:14px; text-align:center; font-size:10px; }
+.tc-detail-name { font-weight:500; color:var(--fg); }
+.tc-detail-arg { color:var(--faint); }
+.tc-detail-result { margin-left:auto; font-size:10px; color:var(--success); }
+
+/* ── Option B: Inline pills ── */
+.tc-pills { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px; }
+.tc-pill { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:5px; font-size:10px; background:var(--bg2); border:1px solid var(--border); color:var(--muted); cursor:pointer; transition:all .12s; }
+.tc-pill:hover { background:var(--hover); border-color:#d0d0d0; }
+.tc-pill-icon { font-size:11px; }
+.tc-pill-name { font-weight:500; color:var(--fg); }
+.tc-pill-check { color:var(--success); font-size:9px; }
+
+/* ── Option C: Left-rail timeline ── */
+.tc-timeline { border-left:2px solid var(--border); margin:0 0 8px 6px; padding-left:14px; }
+.tc-tl-item { position:relative; padding:3px 0; font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+.tc-tl-item::before { content:''; position:absolute; left:-19px; top:50%; width:8px; height:8px; border-radius:50%; background:var(--success); transform:translateY(-50%); border:2px solid #fff; }
+.tc-tl-item.running::before { background:var(--accent); animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { box-shadow:0 0 0 0 rgba(124,58,237,0.3); } 50% { box-shadow:0 0 0 4px rgba(124,58,237,0); } }
+.tc-tl-name { font-weight:500; color:var(--fg); }
+.tc-tl-arg { color:var(--faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px; }
+.tc-tl-result { margin-left:auto; font-size:10px; color:var(--success); white-space:nowrap; }
+
+/* ── Option D: Minimal single line ── */
+.tc-minimal { font-size:11px; color:var(--faint); margin-bottom:8px; padding:2px 0; cursor:pointer; }
+.tc-minimal:hover { color:var(--muted); }
+.tc-minimal-icons { display:inline-flex; gap:2px; margin-right:4px; }
+.tc-minimal-dot { width:6px; height:6px; border-radius:50%; background:var(--success); display:inline-block; }
+</style>
+</head>
+<body>
+
+<h1>Tool Call Display — 4 Options</h1>
+<p class="sub">The current design uses 3 separate bordered cards. Each option below shows the same 3 tool calls with different visual weight.</p>
+
+<!-- ═══════════════════════════════════ -->
+<!-- CURRENT (for reference) -->
+<!-- ═══════════════════════════════════ -->
+<h2>Current (too heavy)</h2>
+<div class="msg-frame">
+  <div class="ai-msg">
+    <div class="ai-avatar">&#10024;</div>
+    <div class="ai-body">
+      <div class="ai-role">Peak</div>
+      <div style="margin-bottom:8px;">
+        <div style="padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; font-size:12px; display:flex; align-items:center; gap:6px;">
+          <span style="width:18px; height:18px; border-radius:4px; background:var(--bg3); display:inline-flex; align-items:center; justify-content:center; font-size:10px;">&#128218;</span>
+          <span style="font-weight:500;">vault_search</span>
+          <span style="color:var(--faint); font-size:11px;">"AI ethics alignment"</span>
+          <span style="margin-left:auto; font-size:10px; color:var(--success);">&#10003; 12 results</span>
+        </div>
+        <div style="padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; font-size:12px; display:flex; align-items:center; gap:6px;">
+          <span style="width:18px; height:18px; border-radius:4px; background:var(--bg3); display:inline-flex; align-items:center; justify-content:center; font-size:10px;">&#128196;</span>
+          <span style="font-weight:500;">read_note</span>
+          <span style="color:var(--faint); font-size:11px;">Ethics/RLHF-Survey.md</span>
+          <span style="margin-left:auto; font-size:10px; color:var(--success);">&#10003; 2.1s</span>
+        </div>
+        <div style="padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; font-size:12px; display:flex; align-items:center; gap:6px;">
+          <span style="width:18px; height:18px; border-radius:4px; background:var(--bg3); display:inline-flex; align-items:center; justify-content:center; font-size:10px;">&#128340;</span>
+          <span style="font-weight:500;">graph_traversal</span>
+          <span style="color:var(--faint); font-size:11px;">2-hop from RLHF-Survey</span>
+          <span style="margin-left:auto; font-size:10px; color:var(--success);">&#10003; 8 nodes</span>
+        </div>
+      </div>
+      <div class="ai-content">I found <strong>3 connection paths</strong> between your AI ethics notes and the alignment papers...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- A: Collapsed Summary (recommended) -->
+<!-- ═══════════════════════════════════ -->
+<h2>A: Collapsed Summary <span style="font-size:11px; background:var(--accent-muted); color:var(--accent-fg); padding:2px 6px; border-radius:4px; font-weight:500;">Recommended</span></h2>
+<div class="msg-frame">
+  <div class="ai-msg">
+    <div class="ai-avatar">&#10024;</div>
+    <div class="ai-body">
+      <div class="ai-role">Peak</div>
+
+      <div class="tc-summary" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
+        <span class="tc-summary-icon">&#9881;</span>
+        Used <span class="tc-summary-count">3 tools</span>
+        <span style="color:var(--faint);">&#183; vault_search, read_note, graph_traversal</span>
+        <span class="tc-summary-chevron">&#9662;</span>
+      </div>
+      <div class="tc-detail">
+        <div class="tc-detail-item">
+          <span class="tc-detail-icon">&#128218;</span>
+          <span class="tc-detail-name">vault_search</span>
+          <span class="tc-detail-arg">"AI ethics alignment"</span>
+          <span class="tc-detail-result">&#10003; 12 results</span>
+        </div>
+        <div class="tc-detail-item">
+          <span class="tc-detail-icon">&#128196;</span>
+          <span class="tc-detail-name">read_note</span>
+          <span class="tc-detail-arg">Ethics/RLHF-Survey.md</span>
+          <span class="tc-detail-result">&#10003; 2.1s</span>
+        </div>
+        <div class="tc-detail-item">
+          <span class="tc-detail-icon">&#128340;</span>
+          <span class="tc-detail-name">graph_traversal</span>
+          <span class="tc-detail-arg">2-hop from RLHF-Survey</span>
+          <span class="tc-detail-result">&#10003; 8 nodes</span>
+        </div>
+      </div>
+
+      <div class="ai-content">I found <strong>3 connection paths</strong> between your AI ethics notes and the alignment papers:<br><br><strong>1. RLHF &#8594; Value Alignment &#8594; Constitutional AI</strong><br>Your "RLHF Survey" note shares 4 key concepts...</div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <strong>Default collapsed</strong> — single line: "Used 3 tools · vault_search, read_note, graph_traversal"<br>
+  <strong>Click to expand</strong> — compact detail rows with icon + name + arg + result, no borders/cards<br>
+  <strong>Visual weight:</strong> ~30px collapsed (vs ~150px current). Content is the hero, not the tools.
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- B: Inline pills -->
+<!-- ═══════════════════════════════════ -->
+<h2>B: Inline Pills</h2>
+<div class="msg-frame">
+  <div class="ai-msg">
+    <div class="ai-avatar">&#10024;</div>
+    <div class="ai-body">
+      <div class="ai-role">Peak</div>
+
+      <div class="tc-pills">
+        <div class="tc-pill"><span class="tc-pill-icon">&#128218;</span> <span class="tc-pill-name">vault_search</span> <span class="tc-pill-check">&#10003;</span></div>
+        <div class="tc-pill"><span class="tc-pill-icon">&#128196;</span> <span class="tc-pill-name">read_note</span> <span class="tc-pill-check">&#10003;</span></div>
+        <div class="tc-pill"><span class="tc-pill-icon">&#128340;</span> <span class="tc-pill-name">graph_traversal</span> <span class="tc-pill-check">&#10003;</span></div>
+      </div>
+
+      <div class="ai-content">I found <strong>3 connection paths</strong> between your AI ethics notes and the alignment papers:<br><br><strong>1. RLHF &#8594; Value Alignment &#8594; Constitutional AI</strong><br>Your "RLHF Survey" note shares 4 key concepts...</div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <strong>Horizontal pill flow</strong> — each tool is a small tag. Click to expand detail. Wraps naturally.<br>
+  <strong>Pro:</strong> Very compact, each tool individually clickable.<br>
+  <strong>Con:</strong> With 5+ tools, the pill row gets long. No arg/result visible without clicking.
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- C: Left-rail timeline -->
+<!-- ═══════════════════════════════════ -->
+<h2>C: Left-Rail Timeline</h2>
+<div class="msg-frame">
+  <div class="ai-msg">
+    <div class="ai-avatar">&#10024;</div>
+    <div class="ai-body">
+      <div class="ai-role">Peak</div>
+
+      <div class="tc-timeline">
+        <div class="tc-tl-item">
+          <span class="tc-tl-name">vault_search</span>
+          <span class="tc-tl-arg">"AI ethics alignment"</span>
+          <span class="tc-tl-result">12 results</span>
+        </div>
+        <div class="tc-tl-item">
+          <span class="tc-tl-name">read_note</span>
+          <span class="tc-tl-arg">Ethics/RLHF-Survey.md</span>
+          <span class="tc-tl-result">2.1s</span>
+        </div>
+        <div class="tc-tl-item">
+          <span class="tc-tl-name">graph_traversal</span>
+          <span class="tc-tl-arg">2-hop from RLHF-Survey</span>
+          <span class="tc-tl-result">8 nodes</span>
+        </div>
+      </div>
+
+      <div class="ai-content">I found <strong>3 connection paths</strong> between your AI ethics notes and the alignment papers:<br><br><strong>1. RLHF &#8594; Value Alignment &#8594; Constitutional AI</strong><br>Your "RLHF Survey" note shares 4 key concepts...</div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <strong>Vertical timeline with dots</strong> — shows execution order. Green dots = completed, purple pulsing dot = running.<br>
+  <strong>Pro:</strong> Shows sequence clearly, good for agent mode with many steps. Running state is beautiful.<br>
+  <strong>Con:</strong> Still takes vertical space (less than current, but more than A/B).
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- D: Ultra-minimal -->
+<!-- ═══════════════════════════════════ -->
+<h2>D: Ultra-Minimal</h2>
+<div class="msg-frame">
+  <div class="ai-msg">
+    <div class="ai-avatar">&#10024;</div>
+    <div class="ai-body">
+      <div class="ai-role">Peak</div>
+
+      <div class="tc-minimal" onclick="this.nextElementSibling.classList.toggle('show'); this.style.display='none';">
+        <span class="tc-minimal-icons">
+          <span class="tc-minimal-dot"></span>
+          <span class="tc-minimal-dot"></span>
+          <span class="tc-minimal-dot"></span>
+        </span>
+        Searched vault, read 1 note, traversed graph
+      </div>
+      <div class="tc-detail">
+        <div class="tc-detail-item">
+          <span class="tc-detail-icon">&#128218;</span>
+          <span class="tc-detail-name">vault_search</span>
+          <span class="tc-detail-arg">"AI ethics alignment"</span>
+          <span class="tc-detail-result">&#10003; 12 results</span>
+        </div>
+        <div class="tc-detail-item">
+          <span class="tc-detail-icon">&#128196;</span>
+          <span class="tc-detail-name">read_note</span>
+          <span class="tc-detail-arg">Ethics/RLHF-Survey.md</span>
+          <span class="tc-detail-result">&#10003; 2.1s</span>
+        </div>
+        <div class="tc-detail-item">
+          <span class="tc-detail-icon">&#128340;</span>
+          <span class="tc-detail-name">graph_traversal</span>
+          <span class="tc-detail-arg">2-hop from RLHF-Survey</span>
+          <span class="tc-detail-result">&#10003; 8 nodes</span>
+        </div>
+      </div>
+
+      <div class="ai-content">I found <strong>3 connection paths</strong> between your AI ethics notes and the alignment papers:<br><br><strong>1. RLHF &#8594; Value Alignment &#8594; Constitutional AI</strong><br>Your "RLHF Survey" note shares 4 key concepts...</div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <strong>Natural language summary</strong> — "Searched vault, read 1 note, traversed graph" as faint text with green dots.<br>
+  <strong>Pro:</strong> Maximum focus on content. Tool calls are a footnote.<br>
+  <strong>Con:</strong> Loses individual tool identity. Power users may want more detail visible.
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- STREAMING STATE -->
+<!-- ═══════════════════════════════════ -->
+<h2>Streaming State (all options)</h2>
+<div class="msg-frame">
+  <div class="ai-msg">
+    <div class="ai-avatar">&#10024;</div>
+    <div class="ai-body">
+      <div class="ai-role">Peak</div>
+
+      <!-- Option A streaming -->
+      <div class="tc-summary" style="border-color:var(--accent); background:var(--accent-muted);">
+        <span class="tc-summary-icon" style="animation:pulse 1.5s infinite;">&#9881;</span>
+        Running <span class="tc-summary-count">graph_traversal</span>
+        <span style="color:var(--faint);">&#183; 2 completed</span>
+      </div>
+
+      <div style="height:12px;"></div>
+
+      <!-- Option C streaming -->
+      <div class="tc-timeline">
+        <div class="tc-tl-item">
+          <span class="tc-tl-name">vault_search</span>
+          <span class="tc-tl-arg">"AI ethics alignment"</span>
+          <span class="tc-tl-result">12 results</span>
+        </div>
+        <div class="tc-tl-item">
+          <span class="tc-tl-name">read_note</span>
+          <span class="tc-tl-arg">Ethics/RLHF-Survey.md</span>
+          <span class="tc-tl-result">2.1s</span>
+        </div>
+        <div class="tc-tl-item running">
+          <span class="tc-tl-name">graph_traversal</span>
+          <span class="tc-tl-arg">2-hop from RLHF-Survey</span>
+          <span class="tc-tl-result" style="color:var(--accent);">running...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <strong>A streaming:</strong> Summary line updates in real-time: "Running graph_traversal · 2 completed". Accent border + pulsing icon.<br>
+  <strong>C streaming:</strong> Timeline grows with each tool call. Running item has pulsing purple dot. Already-completed items show green dots.<br><br>
+  Both work well. <strong>A is better for chat mode</strong> (minimal). <strong>C is better for agent mode</strong> (user wants to see the research process).
+</div>
+
+<div style="height:32px;"></div>
+
+</body>
+</html>

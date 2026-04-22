@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat UI Redesign — Part 1: Messages & Input</title>
+<style>
+:root {
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'SF Mono', 'Fira Code', monospace;
+  --accent: #7c3aed; --accent-hover: #6d28d9; --accent-muted: rgba(109,40,217,0.10); --accent-fg: #6d28d9;
+  --bg: #fff; --bg2: #f8f9fb; --bg3: #f1f3f5; --fg: #1a1c1e; --muted: #6b7280; --faint: #9ca3af; --faint2: #d1d5db;
+  --border: #e5e7eb; --hover: #f3f4f6;
+  --success: #22c55e; --warning: #f59e0b; --error: #ef4444; --info: #3b82f6;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05); --shadow-md: 0 4px 12px rgba(0,0,0,0.08); --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --radius: 10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:#f5f5f7;color:var(--fg)}
+
+/* Nav */
+.nav{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:5px;flex-wrap:wrap;box-shadow:var(--shadow-sm)}
+.nb{padding:6px 12px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--muted);cursor:pointer;font-size:11px;transition:all .2s;font-family:var(--font)}
+.nb:hover{background:var(--hover);color:var(--fg)}
+.nb.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.sec{display:none;padding:24px 20px;max-width:800px;margin:0 auto}
+.sec.on{display:block}
+h1{font-size:20px;font-weight:700;margin-bottom:4px}
+h2{font-size:15px;font-weight:600;margin:24px 0 10px;color:var(--accent)}
+h3{font-size:13px;font-weight:600;margin:16px 0 8px;color:var(--muted)}
+.sub{color:var(--muted);font-size:12px;margin-bottom:20px;line-height:1.5}
+.note{padding:10px 12px;background:var(--bg2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-size:11px;color:var(--muted);line-height:1.6;margin:12px 0}
+.note b{color:var(--accent-fg)}
+
+/* Chat frame */
+.frame{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md)}
+
+/* Header */
+.hdr{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.hdr-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+.hdr-actions{display:flex;gap:3px}
+.hdr-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px}
+.hdr-btn:hover{background:var(--hover);color:var(--fg)}
+
+/* Message area */
+.msgs{padding:16px;min-height:200px}
+
+/* Date separator */
+.dsep{display:flex;align-items:center;gap:10px;margin:16px 0 12px}
+.dsep-line{flex:1;height:1px;background:var(--border)}
+.dsep-text{font-size:9px;color:var(--faint);font-weight:600;text-transform:uppercase;letter-spacing:.8px}
+
+/* Message */
+.msg{display:flex;gap:8px;margin-bottom:14px;position:relative;max-width:88%}
+.msg.u{margin-left:auto;flex-direction:row-reverse}
+.msg-av{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:2px}
+.msg-av.ai{background:var(--accent-muted);color:var(--accent-fg)}
+.msg-av.u{background:var(--bg3);color:var(--muted)}
+.msg-body{min-width:0;flex:1}
+.msg-role{font-size:9px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.msg.u .msg-role{text-align:right}
+.msg-bub{padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.6}
+.msg.u .msg-bub{background:var(--accent-muted);color:var(--fg);border:1px solid rgba(124,58,237,0.08)}
+.msg.ai .msg-bub{background:var(--bg2);color:var(--fg);border:1px solid var(--border)}
+
+/* Inline actions (below bubble, fade in on hover) */
+.msg-acts{display:flex;gap:1px;opacity:0;transition:opacity .15s ease;padding:2px 0;margin-top:2px}
+.msg:hover .msg-acts{opacity:1}
+.ma{width:22px;height:22px;border:none;background:transparent;border-radius:4px;color:var(--faint);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .12s}
+.ma:hover{background:var(--hover);color:var(--fg)}
+.ma-div{width:1px;height:12px;background:var(--border);margin:0 1px;align-self:center}
+
+/* Style switch buttons (per-message) */
+.style-row{display:flex;gap:3px;margin-top:6px;flex-wrap:wrap}
+.style-btn{padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--muted);font-size:10px;cursor:pointer;transition:all .12s;font-family:var(--font)}
+.style-btn:hover{border-color:var(--accent);color:var(--accent-fg);background:var(--accent-muted)}
+
+/* Model/time metadata */
+.msg-meta{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:10px;color:var(--faint)}
+.msg-meta-badge{padding:1px 5px;background:var(--bg3);border-radius:3px;font-family:var(--mono);font-size:9px}
+
+/* Tool call: Option A collapsed */
+.tc{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);font-size:11px;color:var(--muted);cursor:pointer;margin-bottom:6px;transition:all .15s;max-width:100%}
+.tc:hover{background:var(--hover);border-color:var(--faint2)}
+.tc-icon{font-size:11px;color:var(--accent-fg)}
+.tc-count{font-weight:600;color:var(--fg)}
+.tc-names{color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-chev{font-size:8px;color:var(--faint);transition:transform .2s;margin-left:2px}
+.tc.open .tc-chev{transform:rotate(180deg)}
+
+/* Tool call detail */
+.tc-detail{display:none;margin-bottom:8px;padding:4px 0}
+.tc-detail.show{display:block}
+.tcd{display:flex;align-items:center;gap:5px;padding:3px 0;font-size:11px;color:var(--muted)}
+.tcd-icon{width:14px;text-align:center;font-size:10px}
+.tcd-name{font-weight:500;color:var(--fg)}
+.tcd-desc{color:var(--faint);font-style:italic}
+.tcd-result{margin-left:auto;font-size:10px;color:var(--success);white-space:nowrap}
+
+/* Tool call streaming state */
+.tc-streaming{border-color:rgba(124,58,237,0.25);background:var(--accent-muted)}
+.tc-streaming .tc-icon{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Thinking/loading */
+.thinking{display:flex;align-items:center;gap:8px;padding:8px 12px;color:var(--muted);font-size:12px;margin-bottom:8px}
+.thinking-dots{display:flex;gap:3px}
+.thinking-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.35;animation:gentle-pulse 1.2s ease-in-out infinite}
+.thinking-dot:nth-child(2){animation-delay:.2s}
+.thinking-dot:nth-child(3){animation-delay:.4s}
+@keyframes gentle-pulse{0%,100%{opacity:.25;transform:scale(.9)}50%{opacity:.7;transform:scale(1)}}
+.thinking-text{font-style:italic;color:var(--faint)}
+
+/* Reasoning collapsible */
+.reasoning{margin-bottom:6px;border-radius:8px;border:1px solid var(--border);overflow:hidden}
+.reasoning-trigger{display:flex;align-items:center;gap:6px;padding:6px 10px;cursor:pointer;font-size:11px;color:var(--muted);background:var(--bg2);transition:background .12s}
+.reasoning-trigger:hover{background:var(--hover)}
+.reasoning-icon{font-size:12px}
+.reasoning-shimmer{background:linear-gradient(90deg,var(--muted) 25%,var(--faint) 50%,var(--muted) 75%);background-size:200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 2s infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.reasoning-content{padding:8px 10px;font-size:12px;color:var(--muted);line-height:1.5;border-top:1px solid var(--border);background:#fff}
+.reasoning-chev{font-size:8px;margin-left:auto;transition:transform .2s}
+
+/* Input area */
+.input-area{border-top:1px solid var(--border);padding:10px 12px 6px}
+.ta{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--fg);font-size:13px;resize:none;outline:none;min-height:40px;font-family:var(--font)}
+.ta:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,58,237,0.08)}
+.ta::placeholder{color:var(--faint)}
+
+/* Toolbar */
+.tb{display:flex;align-items:center;gap:3px;padding:4px 0 0}
+.ib{width:26px;height:26px;border-radius:5px;border:none;background:transparent;color:var(--faint);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:13px;transition:all .12s}
+.ib:hover{background:var(--hover);color:var(--muted)}
+.ib.on{background:var(--accent-muted);color:var(--accent-fg)}
+.tb-div{width:1px;height:16px;background:var(--border);margin:0 2px}
+.tb-r{display:flex;align-items:center;gap:4px;margin-left:auto}
+.mode-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:#fff;color:var(--muted);font-size:10px;cursor:pointer;font-family:var(--font)}
+.mode-pill:hover{border-color:var(--faint)}
+.model-b{font-size:9px;font-family:var(--mono);color:var(--faint);padding:2px 6px;background:var(--bg2);border-radius:4px}
+.token-b{font-size:9px;color:var(--success);font-weight:600;padding:2px 5px;background:rgba(34,197,94,0.08);border-radius:4px}
+
+/* @ / Menu mockup */
+.menu-overlay{position:relative;margin:12px 0}
+.menu-float{background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);min-width:320px;max-height:340px;overflow:hidden}
+.menu-search{padding:8px;border-bottom:1px solid var(--border)}
+.menu-search input{width:100%;padding:6px 10px 6px 28px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;font-family:var(--font);background:var(--bg2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 8px center no-repeat}
+.menu-search input:focus{border-color:var(--accent)}
+.menu-group{padding:4px 0}
+.menu-group-title{padding:4px 12px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--faint)}
+.menu-item{display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:12px;color:var(--fg);transition:background .1s}
+.menu-item:hover{background:var(--hover)}
+.menu-item.sel{background:var(--accent-muted);color:var(--accent-fg)}
+.menu-item-icon{width:22px;height:22px;border-radius:5px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.menu-item.sel .menu-item-icon{background:rgba(124,58,237,0.15)}
+.menu-item-body{flex:1;min-width:0}
+.menu-item-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu-item-desc{font-size:10px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.menu-item-meta{font-size:10px;color:var(--faint);white-space:nowrap;flex-shrink:0}
+.menu-item-arrow{color:var(--faint);font-size:10px}
+.menu-breadcrumb{display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)}
+.menu-breadcrumb span{cursor:pointer}
+.menu-breadcrumb span:hover{color:var(--accent-fg)}
+.menu-breadcrumb .sep{color:var(--faint)}
+
+/* Side-by-side */
+.side{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.side{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="nb on" onclick="go('full')">Full Conversation View</button>
+  <button class="nb" onclick="go('actions')">Message Actions Detail</button>
+  <button class="nb" onclick="go('tools')">Tool Calls + Thinking</button>
+  <button class="nb" onclick="go('at-menu')">@ Context Menu</button>
+  <button class="nb" onclick="go('slash-menu')">/ Prompt Menu</button>
+  <button class="nb" onclick="go('toolbar')">InputToolbar + Token</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- FULL CONVERSATION VIEW -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="full" class="sec on">
+<h1>Full Conversation View</h1>
+<p class="sub">Complete message list with all redesigned components working together.</p>
+
+<div class="frame">
+  <div class="hdr">
+    <div class="hdr-title"><span style="font-size:13px">&#128193;</span> Research / AI Ethics Analysis</div>
+    <div class="hdr-actions">
+      <button class="hdr-btn" title="Resources">&#128196;</button>
+      <button class="hdr-btn" title="Summary">&#129504;</button>
+      <button class="hdr-btn" title="Outline">&#9776;</button>
+      <button class="hdr-btn" title="More">&#8943;</button>
+    </div>
+  </div>
+
+  <div class="msgs">
+    <div class="dsep"><div class="dsep-line"></div><div class="dsep-text">Apr 20</div><div class="dsep-line"></div></div>
+
+    <!-- User msg 1 -->
+    <div class="msg u">
+      <div class="msg-av u">&#128100;</div>
+      <div class="msg-body">
+        <div class="msg-role">You</div>
+        <div class="msg-bub">Find connections between my AI ethics notes and the recent alignment papers I saved last week.</div>
+        <div class="msg-acts">
+          <button class="ma" title="Copy">&#128203;</button>
+          <button class="ma" title="Edit">&#9998;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI msg 1 with tool calls + reasoning -->
+    <div class="msg ai">
+      <div class="msg-av ai">&#10024;</div>
+      <div class="msg-body">
+        <div class="msg-role">Peak</div>
+
+        <!-- Reasoning -->
+        <div class="reasoning">
+          <div class="reasoning-trigger" onclick="this.parentElement.classList.toggle('open');this.querySelector('.reasoning-chev').style.transform=this.parentElement.classList.contains('open')?'rotate(180deg)':''">
+            <span class="reasoning-icon">&#129504;</span>
+            Thought for 4.2s
+            <span class="reasoning-chev" style="font-size:8px;margin-left:auto;">&#9662;</span>
+          </div>
+        </div>
+
+        <!-- Tool calls (Option A collapsed) -->
+        <div class="tc" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('show')">
+          <span class="tc-icon">&#9881;</span>
+          Searched vault, read notes, explored graph
+          <span style="color:var(--faint)">&#183;</span>
+          <span class="tc-count">3 steps</span>
+          <span class="tc-chev">&#9662;</span>
+        </div>
+        <div class="tc-detail">
+          <div class="tcd">
+            <span class="tcd-icon">&#128269;</span>
+            <span class="tcd-name">Searched vault</span>
+            <span class="tcd-desc">for "AI ethics alignment"</span>
+            <span class="tcd-result">12 found</span>
+          </div>
+          <div class="tcd">
+            <span class="tcd-icon">&#128196;</span>
+            <span class="tcd-name">Read note</span>
+            <span class="tcd-desc">Ethics/RLHF-Survey.md</span>
+            <span class="tcd-result">2.1s</span>
+          </div>
+          <div class="tcd">
+            <span class="tcd-icon">&#128340;</span>
+            <span class="tcd-name">Explored graph</span>
+            <span class="tcd-desc">2-hop from RLHF-Survey</span>
+            <span class="tcd-result">8 nodes</span>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="msg-bub">
+          I found <strong>3 connection paths</strong> between your AI ethics notes and the alignment papers:<br><br>
+          <strong>1. RLHF &#8594; Value Alignment &#8594; Constitutional AI</strong><br>
+          Your "RLHF Survey" note shares 4 key concepts with the Constitutional AI paper. Both discuss reward modeling pitfalls and the value specification problem.<br><br>
+          <strong>2. Interpretability &#8594; Mechanistic Analysis</strong><br>
+          The "Interpretability Notes" folder has direct backlinks to 3 of the alignment papers through the concept of "circuit-level analysis"...
+        </div>
+
+        <!-- Metadata + inline actions (same row) -->
+        <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">
+          <div class="msg-meta" style="margin:0">
+            <span class="msg-meta-badge">claude-opus-4-6</span>
+            <span>2,048 tokens</span>
+            <span>&#183;</span>
+            <span>4:23 PM</span>
+          </div>
+          <div class="msg-acts" style="margin:0;padding:0">
+            <button class="ma" title="Copy">&#128203;</button>
+            <button class="ma" title="Regenerate">&#8634;</button>
+            <button class="ma" title="Star">&#9734;</button>
+            <div class="ma-div"></div>
+            <button class="ma" title="More">&#8943;</button>
+          </div>
+        </div>
+
+        <!-- Style switch buttons -->
+        <div class="style-row">
+          <button class="style-btn">&#128203; Shorter</button>
+          <button class="style-btn">&#128218; More sources</button>
+          <button class="style-btn">&#127793; Simpler language</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dsep"><div class="dsep-line"></div><div class="dsep-text">Today</div><div class="dsep-line"></div></div>
+
+    <!-- User msg 2 -->
+    <div class="msg u">
+      <div class="msg-av u">&#128100;</div>
+      <div class="msg-body">
+        <div class="msg-role">You</div>
+        <div class="msg-bub">Go deeper on the first path. What specific concepts overlap?</div>
+        <div class="msg-acts">
+          <button class="ma" title="Copy">&#128203;</button>
+          <button class="ma" title="Edit">&#9998;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI streaming state -->
+    <div class="msg ai">
+      <div class="msg-av ai">&#10024;</div>
+      <div class="msg-body">
+        <div class="msg-role">Peak</div>
+        <div class="tc tc-streaming">
+          <span class="tc-icon">&#9881;</span>
+          Reading <strong>RLHF-Survey.md</strong>...
+          <span style="color:var(--faint)">&#183;</span>
+          1 completed
+        </div>
+        <div class="thinking">
+          <div class="thinking-dots">
+            <div class="thinking-dot"></div>
+            <div class="thinking-dot"></div>
+            <div class="thinking-dot"></div>
+          </div>
+          <span class="thinking-text">Analyzing concept overlap...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <textarea class="ta" placeholder="Message Peak...  @ context  / prompts" rows="2"></textarea>
+    <div class="tb">
+      <button class="ib" title="Attach">&#43;</button>
+      <button class="ib on" title="Sources">&#128269;</button>
+      <button class="ib" title="Settings">&#9881;</button>
+      <div class="tb-div"></div>
+      <div class="tb-r">
+        <div class="mode-pill">&#129302; Agent &#9662;</div>
+        <span class="model-b">claude-opus-4-6</span>
+        <span class="token-b">2.1k</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>All components visible:</b> date separators, role avatars, collapsed tool calls (click to expand), reasoning collapsible, style switch buttons below AI response, model/token metadata, hover actions (hover any message), streaming state with thinking dots, InputToolbar with token badge.
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- MESSAGE ACTIONS DETAIL -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="actions" class="sec">
+<h1>Message Actions Detail</h1>
+<p class="sub">Hover-reveal action bars for user and AI messages. Style switch buttons on AI messages.</p>
+
+<div class="side">
+  <div>
+    <h3>User Message Actions</h3>
+    <div class="frame" style="padding:16px">
+      <div class="msg u" style="max-width:100%">
+        <div class="msg-av u">&#128100;</div>
+        <div class="msg-body">
+          <div class="msg-role">You</div>
+          <div class="msg-bub">How should I organize my research notes?</div>
+          <div class="msg-acts" style="opacity:1">
+            <button class="ma" title="Copy">&#128203;</button>
+            <button class="ma" title="Edit">&#9998;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="note"><b>User actions:</b> Copy + Edit. Shown on hover only. Edit replaces message content inline for re-submission.</div>
+  </div>
+
+  <div>
+    <h3>AI Message Actions</h3>
+    <div class="frame" style="padding:16px">
+      <div class="msg ai" style="max-width:100%">
+        <div class="msg-av ai">&#10024;</div>
+        <div class="msg-body">
+          <div class="msg-role">Peak</div>
+          <div class="msg-bub">I'd recommend a hybrid Zettelkasten + MOC approach...</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">
+            <div class="msg-meta" style="margin:0">
+              <span class="msg-meta-badge">claude-opus-4-6</span>
+              <span>1,024 tokens</span>
+              <span>&#183;</span>
+              <span>5:12 PM</span>
+            </div>
+            <div class="msg-acts" style="opacity:1;margin:0;padding:0">
+              <button class="ma" title="Copy">&#128203;</button>
+              <button class="ma" title="Regenerate">&#8634;</button>
+              <button class="ma" title="Star">&#9734;</button>
+              <div class="ma-div"></div>
+              <button class="ma" title="More">&#8943;</button>
+            </div>
+          </div>
+          <div class="style-row">
+            <button class="style-btn">&#128203; Shorter</button>
+            <button class="style-btn">&#128218; More detail</button>
+            <button class="style-btn">&#127793; Simpler</button>
+            <button class="style-btn">&#127981; More formal</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="note">
+      <b>AI actions:</b> Copy + Regenerate + Star + More — inline below content, same row as metadata. Fade in on hover, never float above.<br>
+      <b>Style buttons:</b> Always visible below actions row. Clicking sends a style-adjusted regeneration prompt.<br>
+      <b>Metadata:</b> model badge + token count + time. Same row as actions, always visible (low visual weight).<br>
+      <b>Starred state:</b> Star icon fills gold &#9733; when starred.
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- TOOL CALLS + THINKING -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="tools" class="sec">
+<h1>Tool Calls + Thinking State</h1>
+<p class="sub">Option A collapsed summary with human-readable descriptions + thinking/loading animation.</p>
+
+<h2>Completed (collapsed)</h2>
+<div class="frame" style="padding:16px">
+  <div class="tc" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('show')" style="cursor:pointer">
+    <span class="tc-icon">&#9881;</span>
+    Searched vault, read notes, explored graph
+    <span style="color:var(--faint)">&#183;</span>
+    <span class="tc-count">3 steps</span>
+    <span class="tc-chev">&#9662;</span>
+  </div>
+  <div class="tc-detail">
+    <div class="tcd"><span class="tcd-icon">&#128269;</span><span class="tcd-name">Searched vault</span><span class="tcd-desc">for "AI ethics alignment"</span><span class="tcd-result">12 found</span></div>
+    <div class="tcd"><span class="tcd-icon">&#128196;</span><span class="tcd-name">Read note</span><span class="tcd-desc">Ethics/RLHF-Survey.md</span><span class="tcd-result">2.1s</span></div>
+    <div class="tcd"><span class="tcd-icon">&#128340;</span><span class="tcd-name">Explored graph</span><span class="tcd-desc">2-hop from RLHF-Survey</span><span class="tcd-result">8 nodes</span></div>
+  </div>
+</div>
+<div class="note">
+  <b>Key:</b> Human-readable descriptions instead of raw tool names. "Searched vault" not "vault_search". "for 'AI ethics alignment'" not raw JSON input. "12 found" not "&#10003; 12 results".<br>
+  <b>Click to expand</b> shows individual steps. No borders on detail rows — just text with subtle icons.
+</div>
+
+<h2>Streaming (active)</h2>
+<div class="frame" style="padding:16px">
+  <div class="tc tc-streaming">
+    <span class="tc-icon">&#9881;</span>
+    Reading <strong style="color:var(--fg)">RLHF-Survey.md</strong>...
+    <span style="color:var(--faint)">&#183;</span>
+    1 completed
+  </div>
+  <div style="height:8px"></div>
+  <div class="thinking">
+    <div class="thinking-dots"><div class="thinking-dot"></div><div class="thinking-dot"></div><div class="thinking-dot"></div></div>
+    <span class="thinking-text">Analyzing concept overlap...</span>
+  </div>
+</div>
+<div class="note"><b>Streaming:</b> accent-tinted background + pulsing icon. Shows current step name + completed count. Below: bouncing dots + human-readable status text.</div>
+
+<h2>Waiting for First Token</h2>
+<div class="frame" style="padding:16px">
+  <div class="msg ai" style="max-width:100%">
+    <div class="msg-av ai">&#10024;</div>
+    <div class="msg-body">
+      <div class="msg-role">Peak</div>
+      <div class="thinking">
+        <div class="thinking-dots"><div class="thinking-dot"></div><div class="thinking-dot"></div><div class="thinking-dot"></div></div>
+        <span class="thinking-text">Thinking...</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note"><b>First-token wait state:</b> replaces the current 50%-scaled AnimatedSparkles hack. Clean bouncing dots + "Thinking..." text. Matches the streaming thinking state for visual consistency.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- @ CONTEXT MENU -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="at-menu" class="sec">
+<h1>@ Context Menu</h1>
+<p class="sub">Custom React component replacing CodeMirror native tooltip. Type icons, grouping, folder navigation with breadcrumb.</p>
+
+<h2>Default State (no query)</h2>
+<div class="menu-float">
+  <div class="menu-search"><input placeholder="Search files..." value="@"></div>
+  <div class="menu-group">
+    <div class="menu-group-title">Recent</div>
+    <div class="menu-item sel">
+      <div class="menu-item-icon">&#128196;</div>
+      <div class="menu-item-body"><div class="menu-item-name">RLHF-Survey.md</div><div class="menu-item-desc">Ethics/Papers/</div></div>
+      <span class="menu-item-meta">2h ago</span>
+    </div>
+    <div class="menu-item">
+      <div class="menu-item-icon">&#128196;</div>
+      <div class="menu-item-body"><div class="menu-item-name">Weekly Review 04-20.md</div><div class="menu-item-desc">Journal/</div></div>
+      <span class="menu-item-meta">Today</span>
+    </div>
+    <div class="menu-item">
+      <div class="menu-item-icon">&#128248;</div>
+      <div class="menu-item-body"><div class="menu-item-name">architecture-diagram.png</div><div class="menu-item-desc">Projects/Peak/</div></div>
+      <span class="menu-item-meta">Yesterday</span>
+    </div>
+  </div>
+  <div class="menu-group">
+    <div class="menu-group-title">Folders</div>
+    <div class="menu-item">
+      <div class="menu-item-icon">&#128193;</div>
+      <div class="menu-item-body"><div class="menu-item-name">Ethics</div><div class="menu-item-desc">12 notes</div></div>
+      <span class="menu-item-arrow">&#8250;</span>
+    </div>
+    <div class="menu-item">
+      <div class="menu-item-icon">&#128193;</div>
+      <div class="menu-item-body"><div class="menu-item-name">Projects</div><div class="menu-item-desc">8 notes</div></div>
+      <span class="menu-item-arrow">&#8250;</span>
+    </div>
+  </div>
+</div>
+<div class="note"><b>Grouped:</b> Recent (last 3 accessed files) + Folders (for navigation). Type icons: &#128196; markdown, &#128248; image, &#128193; folder. Folder items show arrow &#8250; for drill-down. Keyboard: Arrow up/down to navigate, Enter to select, Escape to close.</div>
+
+<h2>Folder Navigation (breadcrumb)</h2>
+<div class="menu-float">
+  <div class="menu-breadcrumb">
+    <span>&#127968; Vault</span> <span class="sep">/</span> <span>Ethics</span> <span class="sep">/</span> <span style="color:var(--fg);font-weight:500">Papers</span>
+  </div>
+  <div class="menu-search"><input placeholder="Search in Papers..." value="@Ethics/Papers/"></div>
+  <div class="menu-group">
+    <div class="menu-item sel">
+      <div class="menu-item-icon">&#128196;</div>
+      <div class="menu-item-body"><div class="menu-item-name">RLHF-Survey.md</div></div>
+      <span class="menu-item-meta">2.4k words</span>
+    </div>
+    <div class="menu-item">
+      <div class="menu-item-icon">&#128196;</div>
+      <div class="menu-item-body"><div class="menu-item-name">Constitutional-AI.md</div></div>
+      <span class="menu-item-meta">1.8k words</span>
+    </div>
+    <div class="menu-item">
+      <div class="menu-item-icon">&#128220;</div>
+      <div class="menu-item-body"><div class="menu-item-name">alignment-taxonomy.pdf</div></div>
+      <span class="menu-item-meta">24 pages</span>
+    </div>
+  </div>
+</div>
+<div class="note"><b>Breadcrumb:</b> clickable path segments. Click "Vault" to go back to root. Click "Ethics" to go up one level. Search scoped to current folder. File metadata: word count for md, page count for pdf.</div>
+
+<h2>Search Results</h2>
+<div class="menu-float">
+  <div class="menu-search"><input placeholder="Search files..." value="@alignment"></div>
+  <div class="menu-group">
+    <div class="menu-group-title">Results</div>
+    <div class="menu-item sel">
+      <div class="menu-item-icon">&#128196;</div>
+      <div class="menu-item-body"><div class="menu-item-name"><strong>Alignment</strong> Taxonomy</div><div class="menu-item-desc">Ethics/ &#183; ...defines three levels of <strong>alignment</strong>: behavioral, intent, and...</div></div>
+    </div>
+    <div class="menu-item">
+      <div class="menu-item-icon">&#128196;</div>
+      <div class="menu-item-body"><div class="menu-item-name">Value <strong>Alignment</strong> Research</div><div class="menu-item-desc">Ethics/Papers/ &#183; ...the challenge of <strong>alignment</strong> extends beyond...</div></div>
+    </div>
+    <div class="menu-item">
+      <div class="menu-item-icon">&#128196;</div>
+      <div class="menu-item-body"><div class="menu-item-name">RLHF and <strong>Alignment</strong></div><div class="menu-item-desc">Projects/AI/ &#183; ...RLHF as an <strong>alignment</strong> technique has limitations...</div></div>
+    </div>
+  </div>
+</div>
+<div class="note"><b>Search:</b> query term bolded in title and content preview. Path shown as breadcrumb. Content snippet shows match context.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- / PROMPT MENU -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="slash-menu" class="sec">
+<h1>/ Prompt & Template Menu</h1>
+<p class="sub">Connected to real PromptService + template system. Grouped: built-in / user-created. Description preview.</p>
+
+<div class="side">
+  <div>
+    <h3>Default (no query)</h3>
+    <div class="menu-float">
+      <div class="menu-search"><input placeholder="Search prompts..." value="/"></div>
+      <div class="menu-group">
+        <div class="menu-group-title">Quick Actions</div>
+        <div class="menu-item sel">
+          <div class="menu-item-icon" style="background:var(--accent-muted);color:var(--accent-fg)">&#128172;</div>
+          <div class="menu-item-body"><div class="menu-item-name">Summarize</div><div class="menu-item-desc">Generate a concise summary of the conversation</div></div>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-icon" style="background:rgba(59,130,246,0.1);color:#3b82f6">&#128203;</div>
+          <div class="menu-item-body"><div class="menu-item-name">Create Plan</div><div class="menu-item-desc">Break down a task into structured steps</div></div>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-icon" style="background:rgba(34,197,94,0.1);color:#22c55e">&#9998;</div>
+          <div class="menu-item-body"><div class="menu-item-name">Polish Writing</div><div class="menu-item-desc">Improve grammar, clarity, and flow</div></div>
+        </div>
+      </div>
+      <div class="menu-group">
+        <div class="menu-group-title">My Templates</div>
+        <div class="menu-item">
+          <div class="menu-item-icon" style="background:rgba(245,158,11,0.1);color:#f59e0b">&#128203;</div>
+          <div class="menu-item-body"><div class="menu-item-name">Weekly Review</div><div class="menu-item-desc">Structured weekly reflection with prompts</div></div>
+          <span class="menu-item-meta" style="font-size:9px;background:var(--bg3);padding:1px 5px;border-radius:3px;">Template</span>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-icon" style="background:rgba(239,68,68,0.1);color:#ef4444">&#128270;</div>
+          <div class="menu-item-body"><div class="menu-item-name">Code Review</div><div class="menu-item-desc">Analyze code for bugs, security, and quality</div></div>
+          <span class="menu-item-meta" style="font-size:9px;background:var(--bg3);padding:1px 5px;border-radius:3px;">Template</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h3>With Search Query</h3>
+    <div class="menu-float">
+      <div class="menu-search"><input placeholder="Search prompts..." value="/review"></div>
+      <div class="menu-group">
+        <div class="menu-group-title">Matches</div>
+        <div class="menu-item sel">
+          <div class="menu-item-icon" style="background:rgba(239,68,68,0.1);color:#ef4444">&#128270;</div>
+          <div class="menu-item-body"><div class="menu-item-name">Code <strong>Review</strong></div><div class="menu-item-desc">Analyze code for bugs, security, and quality</div></div>
+          <span class="menu-item-meta" style="font-size:9px;background:var(--bg3);padding:1px 5px;border-radius:3px">Template</span>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-icon" style="background:rgba(245,158,11,0.1);color:#f59e0b">&#128203;</div>
+          <div class="menu-item-body"><div class="menu-item-name">Weekly <strong>Review</strong></div><div class="menu-item-desc">Structured weekly reflection with prompts</div></div>
+          <span class="menu-item-meta" style="font-size:9px;background:var(--bg3);padding:1px 5px;border-radius:3px">Template</span>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-icon" style="background:rgba(34,197,94,0.1);color:#22c55e">&#9998;</div>
+          <div class="menu-item-body"><div class="menu-item-name">Article <strong>Review</strong>er</div><div class="menu-item-desc">Check content for accuracy and readability</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Grouped:</b> Quick Actions (built-in) + My Templates (user-created). Each item has colored icon + name + description.<br>
+  <b>Template badge:</b> "Template" tag on user-created items distinguishes from built-in prompts.<br>
+  <b>Search:</b> query term bolded, matches across name + description.<br>
+  <b>Future:</b> directory-scoped prompts appear as a third group when the current file is in a folder with .peak-rules.
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- INPUT TOOLBAR + TOKEN -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="toolbar" class="sec">
+<h1>InputToolbar + Token Usage</h1>
+<p class="sub">Final dock layout with token badge. Hover token badge for detailed breakdown.</p>
+
+<div class="frame">
+  <div class="input-area">
+    <textarea class="ta" placeholder="Message Peak...  @ context  / prompts" rows="2"></textarea>
+    <div class="tb">
+      <button class="ib" title="Attach">&#43;</button>
+      <button class="ib on" title="Sources">&#128269;</button>
+      <button class="ib" title="Settings">&#9881;</button>
+      <div class="tb-div"></div>
+      <div class="tb-r">
+        <div class="mode-pill">&#129302; Agent &#9662;</div>
+        <span class="model-b">claude-opus-4-6</span>
+        <span class="token-b" title="Click for breakdown">2,148</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>Token Usage Breakdown (hover/click on badge)</h2>
+<div class="frame" style="padding:12px;max-width:280px">
+  <div style="font-size:11px;font-weight:600;margin-bottom:8px;color:var(--fg)">Token Usage</div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;color:var(--muted)">
+    <span>Input tokens</span><span style="color:var(--fg);font-family:var(--mono)">1,024</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;color:var(--muted)">
+    <span>Output tokens</span><span style="color:var(--fg);font-family:var(--mono)">1,124</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;color:var(--muted)">
+    <span>Cached tokens</span><span style="color:var(--fg);font-family:var(--mono)">512</span>
+  </div>
+  <div style="height:1px;background:var(--border);margin:6px 0"></div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0">
+    <span style="font-weight:600;color:var(--fg)">Total</span>
+    <span style="font-weight:600;color:var(--success);font-family:var(--mono)">2,148</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;color:var(--muted)">
+    <span>Provider</span><span style="font-family:var(--mono)">claude-opus-4-6</span>
+  </div>
+</div>
+
+<div class="note">
+  <b>Token badge:</b> green compact badge showing total count. Click/hover shows breakdown popover with input/output/cached/total + provider info.<br>
+  <b>Badge color semantics:</b> green = normal, yellow = approaching limit, red = near limit.
+</div>
+</div>
+
+<script>
+function go(id){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  event.target.classList.add('on');
+}
+</script>
+</body>
+</html>

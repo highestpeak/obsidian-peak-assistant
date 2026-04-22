@@ -15,14 +15,89 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | D. 代码拆分重构 | 大文件拆分 | 完成 (7大文件→23小文件) |
 | E. 文档清理 | 归档docs、标记计划、更新过时文档 | 完成 |
 | V1 退役 | 删除 V1 search pipeline + step UI | 完成 (-9000行) |
-| F. Provider v2 | 删 Vercel AI SDK → Agent SDK query() | 未开始 |
+| H. 后台多 Session | 关闭 modal 继续分析 + 多 session 并发 + Active Sessions UI | 完成 (11 commits) |
+| F. Provider v2 | 删 Vercel AI SDK → Agent SDK query() | Plan 就绪 (12 tasks, 3 sub-waves) |
 | G. Agent Trace | 可观测性 (阻塞于 F) | 未开始 |
+| I. Query Pattern Discovery | LLM 驱动查询模式发现 + 上下文建议 | 完成 (12 commits) |
+| J. Vault Search Redesign | VS Code 风格 inspector side panel | 完成 (6 commits) |
 
 ## Next
 
-- [ ] 真机测试：iOS Obsidian 上测试移动端支持
-- [ ] Provider v2 设计已批准，待实施
+- [ ] 真机测试：Query Pattern Discovery 全流程（seed patterns → 建议卡片 → usage count → discovery trigger）
+- [ ] 真机测试：Vault Search Redesign 全流程（inspector side panel → 模式切换 → topic 导航 → query-aware 过滤）
+- [ ] Provider v2: 启动 Wave 1 Foundation（plan at `docs/superpowers/plans/2026-04-20-provider-system-v2.md`）
+- [ ] GitHub triage: 关闭 29 个已完成/重复/过时 issue
 - [ ] 考虑替换 playwright+@langchain/community 为 fetch (减 50MB 依赖)
+
+## Log
+
+### 2026-04-20 (Session 2)
+- Done: Query Pattern Discovery 全量实现 (Phase I, 12 commits)
+  - `query_pattern` SQLite table + QueryPatternRepo (CRUD, incrementUsage, deprecateStale)
+  - Zod schemas: MatchConditionSchema, DiscoveredPatternSchema, PatternDiscoveryOutputSchema
+  - ContextProvider: 同步收集 15 个 VaultContext 变量（文档基础/内容特征/关系网络/时间历史）
+  - PatternMatcher: 8 种条件评估 + 变量填充 + 排序
+  - 7 个 seed patterns（deterministic IDs, idempotent insertion）
+  - PatternDiscoveryAgent: LLM 分析查询历史 → 发现新模式（singleton guard, fire-and-forget）
+  - PatternMergeService: 模板去重 + 30 天自动过期
+  - Trigger: plugin load seed + 每 20 次分析触发 discovery
+  - AI Analysis landing page 全面改造：SuggestionGrid(2列卡片) + ActiveSessionsList + RecentAnalysisList
+  - HoverCard preset switcher → inline mode pills（紫色活跃态）
+  - Modal-level footer（键盘提示 + 分析计数）
+  - 删除 default-analysis-queries.json + AIAnalysisPreStreamingState idle 状态
+
+- Done: Vault Search Redesign 全量实现 (Phase J, 6 commits)
+  - vaultSearchStore: 新增 `help` mode + persistent `inspectorOpen` toggle + 移除 `[[` prefix 模式
+  - 模式系统：`?` help prefix → ModeHelpList（5 种模式可导航列表）
+  - HoverCard mode switcher → inline mode badge（右侧 pill 显示当前模式）
+  - Side-by-side 布局：results panel (flex-1) + 340px inspector side panel（→/← 键切换）
+  - InspectorSidePanel: 3 个可折叠 section（Connected/Discovered/AI Graph）
+  - ConnectedSection: 合并 outgoing+backlinks, 上下文片段, query-aware 过滤（相关性>0.3 绿色✓, ≤0.3 半透明）
+  - DiscoveredSection: SEM(紫) + CO-CITE(蓝) + UNLINKED(琥珀) 三源融合, WHY 标签, 渐进展示
+  - AIGraphSection: 历史 AI Graph 查找 + "New window ↗" + "Generate AI Graph" 按钮
+  - coCitationService: SQL join 共引分析（HAVING ≥ 2 共引者）
+  - unlinkedMentionService: FTS5 标题搜索发现未链接提及
+  - SearchResultRow: 紫色相关性分数 badge
+  - Topic navigation: 点击 inspector 链接 → 更新选中 + inspector, 保持查询
+  - Before-typing: 预选活跃文档, "Recently opened" 标签
+  - 清理: 删除 GraphSection.tsx + InspectorPanel.tsx
+
+### 2026-04-20 (Session 1)
+- Done: Execution Roadmap 创建 (`docs/execution-roadmap.md`)
+  - 全任务冲突矩阵分析（文件级并行可行性判定）
+  - 4 Wave 排期：Wave 0 cleanup → Wave 1 search → Wave 2 provider v2 + theme → Wave 3 trace + chat
+  - Milestone Persistence 确认已实现（working tree 中，待 commit）
+  - Phase 0 文档清理确认已完成（4 归档 + 3 更新 + 3 标记 + spikeAgentSdk 删除）
+- Done: Provider v2 Implementation Plan (`docs/superpowers/plans/2026-04-20-provider-system-v2.md`)
+  - 12 tasks, 3 sub-waves (Foundation → Migration → Cleanup)
+  - 全量代码锚点：探索了 provider stack、chat system、agent files、settings、build config
+  - 精确迁移清单：6 streamText + 2 generateText + 1 generateObject + 2 embedMany + 2 Experimental_Agent + ~16 chatWithPrompt 间接调用
+  - 估算 delta: 删 ~3500 行, 加 ~1800 行
+- Done: UI/Theme Foundation spec + plan
+  - Spec: `docs/superpowers/specs/2026-04-20-ui-theme-foundation-design.md`
+  - Plan: `docs/superpowers/plans/2026-04-20-ui-theme-foundation.md` (11 tasks)
+  - CSS var bridge (--pk-*) 映射 Obsidian 原生 var，自动适配 Minimal theme 分区配色
+  - Style Settings 全面开放：结构色 + 品牌色 + 语义色
+  - 559 处内联 hex 分 4 批清理
+- Done: Chat System Polish spec + plan
+  - Spec: `docs/superpowers/specs/2026-04-20-chat-system-polish-design.md`
+  - Plan: `docs/superpowers/plans/2026-04-20-chat-system-polish.md` (12 tasks)
+  - 4 store → 2 store 重构 (chatDataStore + chatViewStore)
+  - ChatInputArea 453 → ~150 行 (提取 4 hooks/components)
+  - #93 delete conversation + #73 mode backend (prompt 分支) + #81 Ctrl+Arrow history
+  - 记录：mode Level B/C 升级推迟到 Provider v2 后
+- Done: 修复 4 个 AI Search 核心 bug
+  - Spinner 空白：Evidence plan 完成后到 plan 出现前无 loading 指示 → 加 `isWaitingForPlan` 第三状态
+  - Open in File 按钮不显示：V2Footer 从 `searchSessionStore` 读 `lastSavedPath`，但写入端在 `aiAnalysisRuntimeStore` → 统一读写到同一 store
+  - Graph 数据未持久化到 markdown：persist useEffect 缺少 graph 依赖 → 加 `hasGraphData`/`hasGraphAgentData` deps
+  - 疯狂刷 IndexService 日志：`ChatFolder/AI-Analysis` 未被排除于 listener indexing → 统一 `shouldSkipListenerIndexing()` 排除 Hub-Summaries + AI-Analysis
+- Done: persist useEffect 加 2s debounce，合并快速连续 vault.modify 调用
+- Done: Copy 按钮改为 view-aware — 单击复制当前 tab 内容（Process/Report/Graph），hover 弹出菜单选择
+- Done: MultiLensGraph 全部中文文案改为英文（tooltip、empty message、loading、按钮）
+- Done: Generate Knowledge Graph 按钮样式改为品牌紫色
+- Done: Graph 节点支持拖拽（ReactFlow `onNodesChange` + `applyNodeChanges`）
+- Done: 自动重叠解消 — post-layout `resolveOverlaps()` pass，基于 `estimateNodeWidth` 检测 AABB 碰撞并推开重叠节点
+- Next: 真机测试上述修复 + 后台多 Session 已知限制修复
 
 ## Completed Work (2026-04-18)
 
@@ -123,11 +198,30 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | ai-graph-agent | 04-18 | COMPLETED |
 | mobile-support | 04-18 | COMPLETED |
 | ui-improvements-all-strategies | 04-18 | COMPLETED |
+| background-multi-session | 04-19 | COMPLETED |
+| query-pattern-discovery | 04-20 | COMPLETED |
+| vault-search-redesign | 04-20 | COMPLETED |
 | per-section-report-v2 | 04-13 | SUPERSEDED |
 | v2-report-quality-and-ui-fixes | 04-13 | SUPERSEDED |
 | context-handoff-v2-ui | 04-12 | SUPERSEDED |
 
 ## Log
+
+### 2026-04-19
+- Done: Report tab 无内容时展示 Plan（替代占位文字），用户可直接在 Report tab 审阅+批准 plan
+- Done: Plan 出现即持久化 — v2PlanSections 出现时立即触发 auto-save，Open in File 在 plan 阶段即可用
+- Done: 后台多 Session 系统 (Phase H, 11 commits)
+  - 提取 eventDispatcher 纯函数 + streamConsumer 独立函数（脱离 React 依赖）
+  - BackgroundSessionManager 单例：detach/restore/cancel/queue 全生命周期
+  - 事件重定向机制：前台闭包继续跑，事件自动写入后台 snapshot
+  - Modal 关闭 → 活跃 session 自动 detach 到后台
+  - Modal 打开 → 从 Notice 或 Active Sessions 恢复后台 session 到前台
+  - Active Sessions UI：Recent Analysis 顶部展示进行中/plan-ready/排队中的后台 session
+  - 并发控制：最多 3 个 streaming，超过排队；plan-ready 不占并发位
+  - Notice 通知：plan ready / completed 可点击恢复，error 通知
+  - Plugin unload 清理所有后台 session
+- Known limitations: 多 session 事件重定向单例（同时>1 streaming 只有最后一个接收事件）、后台无增量持久化、restore flicker
+- Next: 真机测试 + 已知限制修复
 
 ### 2026-04-18
 - Done: AI Graph Agent 全部实现

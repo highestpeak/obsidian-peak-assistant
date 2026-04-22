@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InputToolbar Redesign — Competitive Analysis + 3 Options</title>
+<style>
+  :root { --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; --accent: #7c3aed; --accent-dark: #a78bfa; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font); background: #0a0a12; color: #e2e8f0; }
+
+  .nav { position: sticky; top: 0; z-index: 100; background: #12121e; border-bottom: 1px solid #1e1e30; padding: 10px 20px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .nav-btn { padding: 7px 14px; border: 1px solid #2a2a40; border-radius: 7px; background: transparent; color: #8888a0; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+  .nav-btn:hover { background: #1e1e30; color: #c0c0d0; }
+  .nav-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .section { display: none; padding: 28px 24px; max-width: 900px; margin: 0 auto; }
+  .section.active { display: block; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  h2 { font-size: 17px; font-weight: 600; margin: 28px 0 14px; padding-bottom: 6px; border-bottom: 1px solid #1e1e30; }
+  h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: var(--accent-dark); }
+  .subtitle { color: #8888a0; margin-bottom: 24px; font-size: 13px; line-height: 1.5; }
+  .note { padding: 10px 14px; background: #12121e; border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; font-size: 12px; color: #8888a0; line-height: 1.6; margin: 12px 0; }
+  .note strong { color: var(--accent-dark); }
+
+  /* Chat frame */
+  .chat-frame { background: #16162a; border-radius: 12px; border: 1px solid #22223a; overflow: hidden; }
+  .chat-messages { padding: 16px; min-height: 100px; }
+  .chat-msg { margin-bottom: 10px; padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; max-width: 80%; }
+  .chat-msg-user { background: rgba(124,58,237,0.12); color: #e2e8f0; margin-left: auto; border: 1px solid rgba(124,58,237,0.25); }
+  .chat-msg-ai { background: #12121e; color: #e2e8f0; border: 1px solid #22223a; }
+
+  .chat-input-area { border-top: 1px solid #22223a; padding: 12px 12px 8px; }
+  .chat-textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2a2a40; background: #12121e; color: #e2e8f0; font-size: 13px; resize: none; outline: none; min-height: 44px; font-family: var(--font); }
+  .chat-textarea:focus { border-color: var(--accent); }
+  .chat-textarea::placeholder { color: #555566; }
+
+  /* Icon button */
+  .icon-btn { width: 30px; height: 30px; border-radius: 7px; border: none; background: transparent; color: #6b6b80; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; transition: all 0.15s; flex-shrink: 0; }
+  .icon-btn:hover { background: #22223a; color: #b0b0c0; }
+  .icon-btn.active { background: rgba(124,58,237,0.15); color: var(--accent-dark); }
+
+  /* Pill button */
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; border: 1px solid #2a2a40; background: transparent; color: #8888a0; font-size: 11px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .pill:hover { background: #22223a; color: #c0c0d0; }
+  .pill.active { background: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.3); color: var(--accent-dark); }
+  .pill .pill-icon { font-size: 12px; }
+  .pill .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
+
+  /* Toolbar row */
+  .toolbar { display: flex; align-items: center; gap: 4px; padding: 6px 2px 2px; }
+  .toolbar-left { display: flex; align-items: center; gap: 3px; }
+  .toolbar-center { display: flex; align-items: center; gap: 4px; margin: 0 auto; }
+  .toolbar-right { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .toolbar-divider { width: 1px; height: 18px; background: #22223a; margin: 0 4px; flex-shrink: 0; }
+
+  /* Segmented control */
+  .segmented { display: inline-flex; border-radius: 7px; border: 1px solid #2a2a40; overflow: hidden; background: #12121e; }
+  .seg-option { padding: 4px 10px; font-size: 11px; cursor: pointer; background: transparent; border: none; color: #6b6b80; transition: all 0.15s; display: flex; align-items: center; gap: 4px; }
+  .seg-option:hover { color: #b0b0c0; }
+  .seg-option.active { background: var(--accent); color: #fff; }
+
+  /* Popover mock */
+  .popover { background: #1a1a2e; border: 1px solid #2a2a40; border-radius: 10px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); min-width: 220px; margin-top: 8px; }
+  .pop-title { padding: 8px 10px 4px; font-size: 11px; color: #6b6b80; text-transform: uppercase; letter-spacing: 0.5px; }
+  .pop-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px; font-size: 13px; cursor: pointer; color: #c0c0d0; }
+  .pop-item:hover { background: #22223a; }
+  .pop-item.selected { background: rgba(124,58,237,0.12); color: var(--accent-dark); }
+  .pop-item-icon { width: 20px; text-align: center; font-size: 14px; }
+  .pop-item-text { flex: 1; }
+  .pop-item-desc { font-size: 11px; color: #6b6b80; margin-top: 1px; }
+  .pop-item-check { color: var(--accent-dark); font-size: 14px; }
+  .pop-divider { height: 1px; background: #22223a; margin: 4px 0; }
+
+  /* Toggle switch */
+  .toggle-track { width: 34px; height: 18px; border-radius: 9px; background: #2a2a40; cursor: pointer; position: relative; flex-shrink: 0; transition: background 0.2s; }
+  .toggle-track.on { background: var(--accent); }
+  .toggle-thumb { width: 14px; height: 14px; border-radius: 7px; background: #fff; position: absolute; top: 2px; left: 2px; transition: left 0.2s; }
+  .toggle-track.on .toggle-thumb { left: 18px; }
+
+  /* Model badge */
+  .model-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 5px; background: #12121e; border: 1px solid #2a2a40; font-size: 10px; font-family: 'SF Mono', 'Fira Code', monospace; color: #8888a0; cursor: pointer; }
+  .model-badge:hover { border-color: #3a3a50; color: #b0b0c0; }
+
+  /* Token count */
+  .token-count { font-size: 10px; color: #555566; white-space: nowrap; }
+
+  /* Comparison grid */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare-card { background: #12121e; border: 1px solid #22223a; border-radius: 10px; padding: 14px; }
+  .compare-card h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .compare-card .detail { font-size: 11px; color: #8888a0; line-height: 1.5; }
+  .compare-card .layout-sketch { font-family: monospace; font-size: 10px; color: #6b6b80; background: #0a0a12; padding: 8px; border-radius: 6px; margin-top: 8px; white-space: pre; line-height: 1.4; overflow-x: auto; }
+
+  /* Tag for option comparison */
+  .tag { display: inline-flex; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500; }
+  .tag-pro { background: rgba(74,222,128,0.12); color: #4ade80; }
+  .tag-con { background: rgba(248,113,113,0.12); color: #f87171; }
+  .tag-rec { background: rgba(124,58,237,0.15); color: var(--accent-dark); }
+
+  /* Fix section */
+  .fix-before-after { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .fix-card { border-radius: 10px; padding: 14px; border: 1px solid #22223a; }
+  .fix-card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b6b80; margin-bottom: 8px; }
+
+  @media (max-width: 700px) { .compare-grid { grid-template-columns: 1fr; } .fix-before-after { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="show('research')">Competitive Research</button>
+  <button class="nav-btn" onclick="show('option-a')">Option A: Dock</button>
+  <button class="nav-btn" onclick="show('option-b')">Option B: Contextual</button>
+  <button class="nav-btn" onclick="show('option-c')">Option C: Floating</button>
+  <button class="nav-btn" onclick="show('accent-fix')">Accent Muted Fix</button>
+</nav>
+
+<!-- ============================================================ -->
+<!-- Competitive Research -->
+<!-- ============================================================ -->
+<div id="research" class="section active">
+  <h1>Competitive Research</h1>
+  <p class="subtitle">Input toolbar patterns from 6 major chatbot products (2025-2026).</p>
+
+  <div class="compare-grid">
+    <div class="compare-card">
+      <h4>ChatGPT (2026)</h4>
+      <div class="detail">Tools dropdown (Agent, Research, Image, Study, Search). Model modes: Auto / Fast / Thinking as a single dropdown. Attach inside textarea left edge.</div>
+      <div class="layout-sketch">[📎 textarea          🔊 ⬆️]
+[🔧 Tools ▼] [Auto ▼]</div>
+    </div>
+    <div class="compare-card">
+      <h4>Claude.ai</h4>
+      <div class="detail">Ultra-minimal. Model dropdown + extended thinking toggle + artifacts toggle. Attach button inside textarea. No visible toolbar until needed.</div>
+      <div class="layout-sketch">[📎 textarea             ⬆️]
+[Opus 4.6 ▼] [🧠] [📦]</div>
+    </div>
+    <div class="compare-card">
+      <h4>Gemini</h4>
+      <div class="detail">Extremely minimal. Just textarea + image + mic + send. Model shown in header, not input. "Deep Research" as separate entry point.</div>
+      <div class="layout-sketch">[📎 textarea       🎙️ ⬆️]
+(model in page header)</div>
+    </div>
+    <div class="compare-card">
+      <h4>TypingMind</h4>
+      <div class="detail">"/" for prompts/agents. Model dropdown prominent. Params button opens draggable settings panel. Character count. Per-model parameters.</div>
+      <div class="layout-sketch">[📎 textarea  / prompts 🎙️ ⬆️]
+[Model ▼] [⚙️ Params]</div>
+    </div>
+    <div class="compare-card">
+      <h4>Cursor (IDE)</h4>
+      <div class="detail">Mode tabs (Chat / Composer / Agent) above input, not below. Model dropdown in header. Context references inline in text.</div>
+      <div class="layout-sketch">[Chat | Composer | Agent]
+[textarea  @file  #symbol ⬆️]
+[Model ▼] [🔍 codebase]</div>
+    </div>
+    <div class="compare-card">
+      <h4>Peak (Current)</h4>
+      <div class="detail">4 icon buttons left, 4 items right. Each icon opens rich popover (search, settings, tools, upload). Mode/model/usage on right.</div>
+      <div class="layout-sketch">[textarea                   ]
+[+ 🔍 ⚙️ 🧭]...[Chat][model][0][🎙️]</div>
+    </div>
+  </div>
+
+  <h2>Key Insights</h2>
+  <div class="note">
+    <strong>Pattern 1: 2-3 items max in toolbar.</strong> ChatGPT/Claude/Gemini all have 2-3 visible controls. Complexity lives in popovers.<br><br>
+    <strong>Pattern 2: Mode is prominent.</strong> ChatGPT "Tools" dropdown, Cursor tabs — mode fundamentally changes behavior so it deserves visual weight.<br><br>
+    <strong>Pattern 3: Model is text, not icon.</strong> Every product shows the model name as readable text, not hidden behind an icon.<br><br>
+    <strong>Pattern 4: Settings are rare-use.</strong> Output control (temperature, etc.) is a power-user feature. ChatGPT/Claude hide it entirely from the input area. TypingMind puts it behind a single gear icon.<br><br>
+    <strong>Your current design has 8 items.</strong> The industry standard is 2-4. The redesign should consolidate.
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Option A: Dock -->
+<!-- ============================================================ -->
+<div id="option-a" class="section">
+  <h1>Option A: Dock Bar</h1>
+  <p class="subtitle">Consolidate 8 items to 4. Left: actions as icon buttons with popovers. Right: model + mode as readable text.</p>
+
+  <div class="chat-frame">
+    <div class="chat-messages">
+      <div class="chat-msg chat-msg-user">How should I organize my research notes?</div>
+      <div class="chat-msg chat-msg-ai">Based on your vault structure, I'd suggest a hybrid approach combining Zettelkasten atomic notes with MOCs...</div>
+    </div>
+    <div class="chat-input-area">
+      <textarea class="chat-textarea" placeholder="Message Peak... (@ for context, / for prompts)" rows="2"></textarea>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="icon-btn" title="Attach files">&#43;</button>
+          <button class="icon-btn active" title="Sources: Vault + Web">&#127760;</button>
+          <button class="icon-btn" title="Output settings">&#9881;</button>
+        </div>
+        <div class="toolbar-right">
+          <div class="segmented">
+            <button class="seg-option active">&#128172; Chat</button>
+            <button class="seg-option">&#128203; Plan</button>
+            <button class="seg-option">&#129302; Agent</button>
+          </div>
+          <div class="toolbar-divider"></div>
+          <span class="model-badge">claude-opus-4-6</span>
+          <span class="token-count">1.2k</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Popover: Sources (replaces separate Search + Tools)</h3>
+  <div style="display:flex; gap:16px; flex-wrap:wrap;">
+    <div class="popover">
+      <div class="pop-title">Search Sources</div>
+      <div class="pop-item selected">
+        <span class="pop-item-icon">&#128218;</span>
+        <div class="pop-item-text">Vault Search<div class="pop-item-desc">Search your local notes</div></div>
+        <div class="toggle-track on"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="pop-item">
+        <span class="pop-item-icon">&#127760;</span>
+        <div class="pop-item-text">Web Search<div class="pop-item-desc">Search the internet</div></div>
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="pop-divider"></div>
+      <div class="pop-title">Tools</div>
+      <div class="pop-item">
+        <span class="pop-item-icon">&lt;/&gt;</span>
+        <div class="pop-item-text">Code Interpreter<div class="pop-item-desc">Run code in sandbox</div></div>
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </div>
+    </div>
+
+    <div class="popover" style="min-width: 200px;">
+      <div class="pop-title">Output Control</div>
+      <div style="padding:8px 10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span style="font-size:12px; color:#c0c0d0;">Creativity</span>
+          <span style="font-size:11px; color:#6b6b80;">1.0</span>
+        </div>
+        <div style="height:4px; background:#2a2a40; border-radius:2px; position:relative; margin-bottom:14px;">
+          <div style="width:50%; height:100%; background:var(--accent); border-radius:2px;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span style="font-size:12px; color:#c0c0d0;">Reasoning</span>
+          <span style="font-size:11px; color:#6b6b80;">Medium</span>
+        </div>
+        <div style="height:4px; background:#2a2a40; border-radius:2px; position:relative; margin-bottom:14px;">
+          <div style="width:66%; height:100%; background:var(--accent); border-radius:2px;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span style="font-size:12px; color:#c0c0d0;">Detail Level</span>
+          <span style="font-size:11px; color:#6b6b80;">Medium</span>
+        </div>
+        <div style="height:4px; background:#2a2a40; border-radius:2px; position:relative;">
+          <div style="width:50%; height:100%; background:var(--accent); border-radius:2px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:16px;">
+    <strong>3 icon buttons + segmented mode + model badge = 5 visual items</strong> (down from 8).<br>
+    Sources icon merges "search" and "tools" into one popover. Settings icon keeps output control. Mode is always visible as segmented control. Model shown as text.<br><br>
+    <span class="tag tag-pro">Pro</span> Minimal, clean, mode always visible<br>
+    <span class="tag tag-con">Con</span> Segmented control takes horizontal space, may not fit narrow sidebars
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Option B: Contextual -->
+<!-- ============================================================ -->
+<div id="option-b" class="section">
+  <h1>Option B: Contextual Dock</h1>
+  <p class="subtitle">Mode selector is a single pill that opens a popover (like ChatGPT's Tools dropdown). Active capabilities shown as small indicator dots. Most compact.</p>
+
+  <div class="chat-frame">
+    <div class="chat-messages">
+      <div class="chat-msg chat-msg-user">Create a weekly review template for my projects</div>
+      <div class="chat-msg chat-msg-ai">Here's a structured weekly review template with checkboxes and reflection prompts...</div>
+    </div>
+    <div class="chat-input-area">
+      <textarea class="chat-textarea" placeholder="Message Peak... (@ for context, / for prompts)" rows="2"></textarea>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="icon-btn" title="Attach files">&#43;</button>
+          <div class="pill active">
+            <span class="pill-icon">&#128203;</span> Plan
+            <span class="pill-dot" style="background:#a78bfa;"></span>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <button class="icon-btn active" title="Vault search on">&#128218;</button>
+          <button class="icon-btn" title="Output settings">&#9881;</button>
+          <div class="toolbar-divider"></div>
+          <span class="model-badge">claude-opus-4-6</span>
+          <span class="token-count">1.2k</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Mode Popover (click the mode pill)</h3>
+  <div class="popover" style="max-width:280px;">
+    <div class="pop-item">
+      <span class="pop-item-icon">&#128172;</span>
+      <div class="pop-item-text"><strong>Chat</strong><div class="pop-item-desc">Free conversation</div></div>
+    </div>
+    <div class="pop-item selected">
+      <span class="pop-item-icon">&#128203;</span>
+      <div class="pop-item-text"><strong>Plan</strong><div class="pop-item-desc">Structured plans & checklists</div></div>
+      <span class="pop-item-check">&#10003;</span>
+    </div>
+    <div class="pop-item">
+      <span class="pop-item-icon">&#129302;</span>
+      <div class="pop-item-text"><strong>Agent</strong><div class="pop-item-desc">Proactive vault research</div></div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:16px;">
+    <strong>Mode as a pill that shows current selection</strong> — like your existing design (Image 3) but more compact. Active state shown inline. Click opens the full popover with descriptions.<br><br>
+    <strong>4 visible items total:</strong> attach + mode pill + source icon + settings icon. Model and tokens on the right.<br><br>
+    <span class="tag tag-pro">Pro</span> Closest to your existing design language (icon + popover pattern). Fits narrow sidebars.<br>
+    <span class="tag tag-pro">Pro</span> Mode pill with icon+label is very readable<br>
+    <span class="tag tag-con">Con</span> Mode change requires two clicks (pill → popover → select)<br>
+    <span class="tag tag-rec">Recommended</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Option C: Floating -->
+<!-- ============================================================ -->
+<div id="option-c" class="section">
+  <h1>Option C: Floating Actions</h1>
+  <p class="subtitle">Actions float INSIDE the textarea area. Toolbar below only shows context info (mode, model, tokens). Claude.ai inspired.</p>
+
+  <div class="chat-frame">
+    <div class="chat-messages">
+      <div class="chat-msg chat-msg-user">Find connections between my AI ethics notes and recent papers</div>
+      <div class="chat-msg chat-msg-ai">I found 3 key connection paths in your vault. Let me trace them...</div>
+    </div>
+    <div class="chat-input-area">
+      <div style="position:relative;">
+        <textarea class="chat-textarea" placeholder="Message Peak..." rows="2" style="padding-left:40px; padding-right:40px;"></textarea>
+        <button class="icon-btn" style="position:absolute; left:6px; bottom:8px;" title="Attach">&#43;</button>
+        <button class="icon-btn" style="position:absolute; right:6px; bottom:8px; background:var(--accent); color:#fff; border-radius:6px;" title="Send">&#8593;</button>
+      </div>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="pill active"><span class="pill-icon">&#129302;</span> Agent</div>
+          <div class="pill active"><span class="pill-icon">&#128218;</span> Vault</div>
+          <div class="pill"><span class="pill-icon">&#127760;</span> Web</div>
+        </div>
+        <div class="toolbar-right">
+          <button class="icon-btn" title="Output settings">&#9881;</button>
+          <span class="model-badge">claude-opus-4-6</span>
+          <span class="token-count">1.2k</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Attach + Send inside textarea</strong> (like Claude.ai / ChatGPT). Toolbar becomes purely informational + toggle pills.<br><br>
+    <strong>Mode + sources as toggle pills:</strong> Click to cycle or open popover. Active state clearly shown.<br><br>
+    <span class="tag tag-pro">Pro</span> Most modern look (matches Claude.ai/ChatGPT)<br>
+    <span class="tag tag-pro">Pro</span> Textarea area feels integrated<br>
+    <span class="tag tag-con">Con</span> Biggest departure from current design — more migration work<br>
+    <span class="tag tag-con">Con</span> Attach inside textarea can feel cramped on narrow sidebars
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Accent Muted Fix -->
+<!-- ============================================================ -->
+<div id="accent-fix" class="section">
+  <h1>Accent Muted Fix</h1>
+  <p class="subtitle">Improving --pk-accent-muted contrast in both light and dark modes.</p>
+
+  <h3>Light Mode</h3>
+  <div class="fix-before-after">
+    <div class="fix-card" style="background:#ffffff;">
+      <div class="fix-card-label" style="color:#999;">Before (0.15 opacity)</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <span style="background:rgba(124,58,237,0.15); color:#7c3aed; padding:4px 10px; border-radius:6px; font-size:12px;">Badge text</span>
+        <span style="background:rgba(124,58,237,0.15); color:#7c3aed; padding:4px 10px; border-radius:6px; font-size:12px;">0.92 score</span>
+        <span style="background:rgba(124,58,237,0.15); color:#7c3aed; padding:4px 10px; border-radius:6px; font-size:12px;">Active tag</span>
+      </div>
+      <div style="margin-top:8px; font-size:11px; color:#999;">Contrast ratio ~2.8:1 (fails WCAG AA)</div>
+    </div>
+    <div class="fix-card" style="background:#ffffff;">
+      <div class="fix-card-label" style="color:#999;">After (0.12 bg + darker text)</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <span style="background:rgba(109,40,217,0.10); color:#6d28d9; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500;">Badge text</span>
+        <span style="background:rgba(109,40,217,0.10); color:#6d28d9; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500;">0.92 score</span>
+        <span style="background:rgba(109,40,217,0.10); color:#6d28d9; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500;">Active tag</span>
+      </div>
+      <div style="margin-top:8px; font-size:11px; color:#999;">Contrast ratio ~5.2:1 (passes WCAG AA). Strategy: lower bg opacity + darker text (#6d28d9 instead of #7c3aed)</div>
+    </div>
+  </div>
+
+  <h3>Dark Mode</h3>
+  <div class="fix-before-after">
+    <div class="fix-card" style="background:#1e1e2e;">
+      <div class="fix-card-label">Before (0.15 opacity)</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <span style="background:rgba(167,139,250,0.15); color:#a78bfa; padding:4px 10px; border-radius:6px; font-size:12px;">Badge text</span>
+        <span style="background:rgba(167,139,250,0.15); color:#a78bfa; padding:4px 10px; border-radius:6px; font-size:12px;">0.92 score</span>
+        <span style="background:rgba(167,139,250,0.15); color:#a78bfa; padding:4px 10px; border-radius:6px; font-size:12px;">Active tag</span>
+      </div>
+      <div style="margin-top:8px; font-size:11px; color:#6b6b80;">Contrast OK on dark bg (~5.5:1) but background barely visible</div>
+    </div>
+    <div class="fix-card" style="background:#1e1e2e;">
+      <div class="fix-card-label">After (0.18 bg + brighter text)</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <span style="background:rgba(167,139,250,0.18); color:#c4b5fd; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500; border:1px solid rgba(167,139,250,0.15);">Badge text</span>
+        <span style="background:rgba(167,139,250,0.18); color:#c4b5fd; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500; border:1px solid rgba(167,139,250,0.15);">0.92 score</span>
+        <span style="background:rgba(167,139,250,0.18); color:#c4b5fd; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500; border:1px solid rgba(167,139,250,0.15);">Active tag</span>
+      </div>
+      <div style="margin-top:8px; font-size:11px; color:#6b6b80;">Higher opacity + brighter text (#c4b5fd) + subtle border for definition. Contrast ~7.2:1</div>
+    </div>
+  </div>
+
+  <h3>Updated CSS Variables</h3>
+  <div style="background:#12121e; border:1px solid #22223a; border-radius:8px; padding:14px; font-family:monospace; font-size:12px; line-height:1.6; color:#c0c0d0;">
+    <div style="color:#6b6b80;">/* Light mode */</div>
+    <div>--pk-accent-muted: <span style="color:#a78bfa;">rgba(109, 40, 217, 0.10)</span>;</div>
+    <div>--pk-accent-muted-fg: <span style="color:#a78bfa;">#6d28d9</span>;</div>
+    <div style="margin-top:8px; color:#6b6b80;">/* Dark mode */</div>
+    <div>--pk-accent-muted: <span style="color:#a78bfa;">rgba(167, 139, 250, 0.18)</span>;</div>
+    <div>--pk-accent-muted-fg: <span style="color:#a78bfa;">#c4b5fd</span>;</div>
+  </div>
+  <div class="note">
+    Added <strong>--pk-accent-muted-fg</strong> as a dedicated foreground color for muted accent backgrounds. This separates the background opacity from the text color, giving fine control over contrast.
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

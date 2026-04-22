@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat UI Redesign — Part 2: Pages & Panels</title>
+<style>
+:root{
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:'SF Mono','Fira Code',monospace;
+  --accent:#7c3aed;--accent-hover:#6d28d9;--accent-muted:rgba(109,40,217,.10);--accent-fg:#6d28d9;
+  --bg:#fff;--bg2:#f8f9fb;--bg3:#f1f3f5;--fg:#1a1c1e;--muted:#6b7280;--faint:#9ca3af;--faint2:#d1d5db;
+  --border:#e5e7eb;--hover:#f3f4f6;
+  --success:#22c55e;--warning:#f59e0b;--error:#ef4444;--info:#3b82f6;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.05);--shadow-md:0 4px 12px rgba(0,0,0,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:#f5f5f7;color:var(--fg)}
+.nav{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:5px;flex-wrap:wrap;box-shadow:var(--shadow-sm)}
+.nb{padding:6px 12px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--muted);cursor:pointer;font-size:11px;transition:all .2s;font-family:var(--font)}
+.nb:hover{background:var(--hover);color:var(--fg)}
+.nb.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.sec{display:none;padding:24px 20px;max-width:960px;margin:0 auto}
+.sec.on{display:block}
+h1{font-size:20px;font-weight:700;margin-bottom:4px}
+h2{font-size:15px;font-weight:600;margin:24px 0 10px;color:var(--accent)}
+h3{font-size:13px;font-weight:600;margin:16px 0 8px;color:var(--muted)}
+.sub{color:var(--muted);font-size:12px;margin-bottom:20px;line-height:1.5}
+.note{padding:10px 12px;background:var(--bg2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-size:11px;color:var(--muted);line-height:1.6;margin:12px 0}
+.note b{color:var(--accent-fg)}
+.side{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.side{grid-template-columns:1fr}}
+
+/* ── Obsidian Frame ── */
+.obs{display:flex;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md)}
+.obs-sb{width:240px;background:var(--bg2);border-right:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;overflow-y:auto;max-height:600px}
+.obs-main{flex:1;display:flex;flex-direction:column;min-width:0;overflow-y:auto;max-height:600px}
+
+/* ── Sidebar ── */
+.sb-hdr{padding:8px 10px;display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--border)}
+.sb-icon{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);cursor:pointer}
+.sb-icon:hover{background:var(--hover)}
+.sb-search{padding:6px 8px}
+.sb-search input{width:100%;padding:5px 8px 5px 26px;border:1px solid var(--border);border-radius:5px;font-size:11px;outline:none;font-family:var(--font);background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 7px center no-repeat}
+.sb-search input:focus{border-color:var(--accent)}
+.sb-group{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--faint);padding:10px 10px 3px}
+.sb-item{display:flex;flex-direction:column;gap:2px;padding:6px 10px;cursor:pointer;font-size:12px;color:var(--fg);border-radius:5px;margin:1px 4px;transition:background .1s}
+.sb-item:hover{background:var(--hover)}
+.sb-item.on{background:var(--accent-muted);color:var(--accent-fg);font-weight:500}
+.sb-item-row1{display:flex;align-items:center;gap:7px}
+.sb-item-icon{font-size:13px;width:16px;text-align:center;flex-shrink:0}
+.sb-item-text{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-item-meta{font-size:9px;color:var(--faint);white-space:nowrap}
+.sb-item-row2{padding-left:23px}
+.sb-item-badge{display:inline-flex;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:600}
+.sb-add{display:flex;align-items:center;gap:5px;padding:6px 10px;margin:1px 4px;border-radius:5px;font-size:11px;color:var(--faint);cursor:pointer}
+.sb-add:hover{background:var(--hover);color:var(--muted)}
+
+/* ── Home ── */
+.home-pad{padding:20px}
+.home-greet{font-size:17px;font-weight:600;margin-bottom:3px}
+.home-sub{font-size:12px;color:var(--muted);margin-bottom:16px}
+.sug-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:20px}
+.sug-card{padding:9px 11px;border:1px solid var(--border);border-radius:7px;cursor:pointer;transition:all .12s;font-size:11px;color:var(--muted);line-height:1.4;background:#fff}
+.sug-card:hover{border-color:var(--accent);background:var(--accent-muted);color:var(--accent-fg)}
+.sug-card-t{font-weight:500;color:var(--fg);margin-bottom:1px;font-size:12px}
+.sec-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sec-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--faint)}
+.sec-link{font-size:10px;color:var(--accent);cursor:pointer}
+.conv-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;transition:background .1s}
+.conv-row:hover{background:var(--hover)}
+.conv-row-icon{width:24px;height:24px;border-radius:5px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.conv-row-body{flex:1;min-width:0}
+.conv-row-title{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-row-preview{font-size:10px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.conv-row-meta{font-size:9px;color:var(--faint);white-space:nowrap}
+
+/* ── Project Overview ── */
+.proj-hdr{padding:16px 20px;border-bottom:1px solid var(--border)}
+.proj-name{font-size:17px;font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.proj-desc{font-size:12px;color:var(--faint);font-style:italic;cursor:pointer;padding:4px 0}
+.proj-desc:hover{color:var(--muted)}
+.proj-stats{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted)}
+.proj-stats strong{color:var(--fg);font-weight:600}
+.proj-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 20px}
+.proj-tab{padding:8px 14px;font-size:11px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
+.proj-tab:hover{color:var(--fg)}
+.proj-tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+.proj-content{padding:16px 20px;flex:1}
+
+/* ── Empty state ── */
+.empty{text-align:center;padding:36px 20px}
+.empty-icon{font-size:28px;margin-bottom:6px;opacity:.35}
+.empty-text{font-size:12px;color:var(--faint);margin-bottom:10px;line-height:1.5}
+.empty-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:6px;background:var(--accent);color:#fff;border:none;font-size:11px;cursor:pointer;font-family:var(--font)}
+.empty-btn:hover{background:var(--accent-hover)}
+
+/* ── File Changes ── */
+.fc{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:0 16px 12px}
+.fc-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:12px}
+.fc-hdr-left{display:flex;align-items:center;gap:6px;font-weight:500}
+.fc-hdr-actions{display:flex;gap:8px;font-size:11px;color:var(--muted)}
+.fc-hdr-actions span{cursor:pointer}
+.fc-hdr-actions span:hover{color:var(--fg)}
+.fc-item{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:12px;transition:background .1s}
+.fc-item:hover{background:var(--hover)}
+.fc-item-icon{font-size:12px;color:var(--muted)}
+.fc-item-name{flex:1;min-width:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc-item-add{color:var(--success);font-size:11px;font-weight:500}
+.fc-item-del{color:var(--error);font-size:11px;font-weight:500}
+.fc-item-acts{display:flex;gap:2px;opacity:0;transition:opacity .12s}
+.fc-item:hover .fc-item-acts{opacity:1}
+.fc-act{width:22px;height:22px;border:none;border-radius:4px;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px}
+.fc-act:hover{background:var(--hover);color:var(--fg)}
+
+/* ── Outline Panel ── */
+.outline{width:240px;border-left:1px solid var(--border);background:var(--bg2);flex-shrink:0;display:flex;flex-direction:column;overflow-y:auto}
+.outline-hdr{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.outline-hdr-close{width:20px;height:20px;border:none;background:transparent;color:var(--muted);cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.outline-hdr-close:hover{background:var(--hover)}
+.outline-item{display:flex;align-items:flex-start;gap:6px;padding:8px 12px;cursor:pointer;font-size:11px;line-height:1.4;border-left:2px solid transparent;transition:all .1s}
+.outline-item:hover{background:var(--hover)}
+.outline-item.on{border-left-color:var(--accent);background:var(--accent-muted)}
+.outline-role{font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;flex-shrink:0;margin-top:1px;text-transform:uppercase;letter-spacing:.3px}
+.outline-role.u{background:rgba(59,130,246,.1);color:var(--info)}
+.outline-role.ai{background:var(--accent-muted);color:var(--accent-fg)}
+.outline-text{color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* ── Suggestion Actions ── */
+.sug-acts{display:flex;gap:5px;flex-wrap:wrap;padding:6px 0}
+.sug-act{padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:#fff;color:var(--muted);font-size:10px;cursor:pointer;transition:all .12s;font-family:var(--font)}
+.sug-act:hover{border-color:var(--accent);color:var(--accent-fg);background:var(--accent-muted)}
+.sug-act-icon{margin-right:3px}
+
+/* ── Scroll nav ── */
+.scroll-nav{display:flex;gap:2px}
+.scroll-btn{width:24px;height:24px;border:1px solid var(--border);border-radius:5px;background:#fff;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px}
+.scroll-btn:hover{background:var(--hover);color:var(--fg)}
+
+/* ── New Conversation Type Picker ── */
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.type-card{padding:14px;border:1px solid var(--border);border-radius:9px;cursor:pointer;transition:all .12s;background:#fff}
+.type-card:hover{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.type-card.sel{border-color:var(--accent);background:var(--accent-muted)}
+.type-card-icon{font-size:18px;margin-bottom:4px}
+.type-card-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.type-card-desc{font-size:10px;color:var(--muted);line-height:1.4}
+.type-card-tag{display:inline-flex;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:500;margin-top:5px}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="nb on" onclick="go('home')">1. Home</button>
+  <button class="nb" onclick="go('newconv')">2. New Conversation</button>
+  <button class="nb" onclick="go('convlist')">3. Conversation List</button>
+  <button class="nb" onclick="go('project')">4. Project Overview</button>
+  <button class="nb" onclick="go('filechanges')">5. File Changes</button>
+  <button class="nb" onclick="go('outline')">6. Outline + Suggestions</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 1. HOME -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="home" class="sec on">
+<h1>Home Page</h1>
+<p class="sub">Contextual suggestion cards + compact recent list + sidebar with search + date groups.</p>
+
+<div class="obs" style="min-height:480px">
+  <!-- Sidebar -->
+  <div class="obs-sb">
+    <div class="sb-hdr">
+      <div class="sb-icon">&#127968;</div>
+      <div class="sb-icon">&#8635;</div>
+      <div class="sb-icon" style="margin-left:auto">&#9881;</div>
+    </div>
+    <div class="sb-search"><input placeholder="Search..."></div>
+    <div style="padding:2px 0">
+      <div class="sb-group">Projects</div>
+      <div class="sb-item">
+        <span class="sb-item-icon">&#128193;</span>
+        <span class="sb-item-text">AI Ethics Research</span>
+      </div>
+      <div class="sb-add">&#43; New project</div>
+    </div>
+    <div style="padding:2px 0">
+      <div class="sb-group">Today</div>
+      <div class="sb-item on">
+        <div class="sb-item-row1"><span class="sb-item-icon">&#129302;</span><span class="sb-item-text">AI Ethics Analysis</span><span class="sb-item-meta">Now</span></div>
+        <div class="sb-item-row2"><span class="sb-item-badge" style="background:var(--accent-muted);color:var(--accent-fg)">Agent</span></div>
+      </div>
+      <div class="sb-item">
+        <div class="sb-item-row1"><span class="sb-item-icon">&#128172;</span><span class="sb-item-text">Quick chat about plugins</span><span class="sb-item-meta">2h</span></div>
+      </div>
+      <div class="sb-group">This Week</div>
+      <div class="sb-item">
+        <div class="sb-item-row1"><span class="sb-item-icon">&#128203;</span><span class="sb-item-text">Weekly review plan</span><span class="sb-item-meta">Apr 18</span></div>
+        <div class="sb-item-row2"><span class="sb-item-badge" style="background:rgba(245,158,11,.1);color:var(--warning)">Weekly Review</span></div>
+      </div>
+      <div class="sb-item">
+        <div class="sb-item-row1"><span class="sb-item-icon">&#128172;</span><span class="sb-item-text">Indie product idea evaluation</span><span class="sb-item-meta">Apr 17</span></div>
+      </div>
+      <div class="sb-group">Older</div>
+      <div class="sb-item">
+        <div class="sb-item-row1"><span class="sb-item-icon">&#128172;</span><span class="sb-item-text">Database schema design</span><span class="sb-item-meta">Mar 28</span></div>
+      </div>
+      <div class="sb-add">&#43; New conversation</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="obs-main">
+    <div class="home-pad">
+      <div class="home-greet">Good evening &#128075;</div>
+      <div class="home-sub">Pick up where you left off, or start something new.</div>
+
+      <div class="sug-grid">
+        <div class="sug-card">
+          <div class="sug-card-t">&#128172; Continue last chat</div>
+          AI Ethics Analysis...
+        </div>
+        <div class="sug-card">
+          <div class="sug-card-t">&#128218; Summarize recent notes</div>
+          3 notes modified today
+        </div>
+        <div class="sug-card">
+          <div class="sug-card-t">&#129302; Research a topic</div>
+          Agent mode with vault search
+        </div>
+        <div class="sug-card">
+          <div class="sug-card-t">&#128203; Plan a project</div>
+          Structured breakdown
+        </div>
+      </div>
+
+      <div class="sec-hdr"><span class="sec-title">Recent Conversations</span><span class="sec-link">View all</span></div>
+      <div class="conv-row">
+        <div class="conv-row-icon" style="background:var(--accent-muted);color:var(--accent-fg)">&#129302;</div>
+        <div class="conv-row-body">
+          <div class="conv-row-title">AI Ethics Analysis</div>
+          <div class="conv-row-preview">Found 3 connection paths between your AI ethics notes...</div>
+        </div>
+        <div class="conv-row-meta">Today</div>
+      </div>
+      <div class="conv-row">
+        <div class="conv-row-icon">&#128172;</div>
+        <div class="conv-row-body">
+          <div class="conv-row-title">Quick chat about Obsidian plugins</div>
+          <div class="conv-row-preview">I'd recommend using the community plugins API for...</div>
+        </div>
+        <div class="conv-row-meta">2h ago</div>
+      </div>
+      <div class="conv-row">
+        <div class="conv-row-icon">&#128203;</div>
+        <div class="conv-row-body">
+          <div class="conv-row-title">Weekly review plan</div>
+          <div class="conv-row-preview">Here's a structured weekly review template with...</div>
+        </div>
+        <div class="conv-row-meta">Apr 18</div>
+      </div>
+
+      <div class="sec-hdr" style="margin-top:16px"><span class="sec-title">Projects</span><span class="sec-link">View all</span></div>
+      <div class="conv-row">
+        <div class="conv-row-icon">&#128193;</div>
+        <div class="conv-row-body">
+          <div class="conv-row-title">AI Ethics Research</div>
+          <div class="conv-row-preview">3 conversations &#183; 24 messages</div>
+        </div>
+        <div class="conv-row-meta">Today</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Sidebar:</b> search bar + date-grouped conversations (Today/This Week/Older) + type icons + type badge on active item + project section.<br>
+  <b>Main:</b> greeting + 4 suggestion cards (contextual) + recent conversations as compact rows (icon + title + preview + date) + projects with conversation count instead of "No summary available".
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 2. NEW CONVERSATION -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="newconv" class="sec">
+<h1>New Conversation: Type Picker</h1>
+<p class="sub">Type stored on ConversationMeta. Supports built-in + user templates + custom.</p>
+
+<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;max-width:480px;box-shadow:var(--shadow-md)">
+  <div style="font-size:14px;font-weight:500;margin-bottom:3px">What would you like to do?</div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Choose a type. You can change this later.</div>
+
+  <div class="type-grid">
+    <div class="type-card sel">
+      <div class="type-card-icon">&#128172;</div>
+      <div class="type-card-name">Chat</div>
+      <div class="type-card-desc">Free conversation. Ask questions, brainstorm, discuss.</div>
+    </div>
+    <div class="type-card">
+      <div class="type-card-icon">&#129302;</div>
+      <div class="type-card-name">Agent</div>
+      <div class="type-card-desc">AI researches your vault with tools. Deep analysis, connections.</div>
+      <div class="type-card-tag" style="background:var(--accent-muted);color:var(--accent-fg)">Uses vault tools</div>
+    </div>
+    <div class="type-card">
+      <div class="type-card-icon">&#128203;</div>
+      <div class="type-card-name">Plan</div>
+      <div class="type-card-desc">Structured plans, checklists, step-by-step breakdowns.</div>
+    </div>
+    <div class="type-card">
+      <div class="type-card-icon">&#127912;</div>
+      <div class="type-card-name">Canvas</div>
+      <div class="type-card-desc">Chat + live artifact side-by-side. Generate documents, code, diagrams.</div>
+      <div class="type-card-tag" style="background:rgba(59,130,246,.1);color:var(--info)">Coming soon</div>
+    </div>
+  </div>
+
+  <h3>My Templates</h3>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;cursor:pointer;transition:all .12s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+      <span style="font-size:15px">&#128203;</span>
+      <div style="flex:1"><div style="font-size:12px;font-weight:500">Weekly Review</div><div style="font-size:10px;color:var(--muted)">Structured reflection with prompts</div></div>
+      <span style="font-size:9px;background:var(--bg3);padding:1px 5px;border-radius:3px;color:var(--faint)">Template</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;cursor:pointer;transition:all .12s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+      <span style="font-size:15px">&#128270;</span>
+      <div style="flex:1"><div style="font-size:12px;font-weight:500">Code Review</div><div style="font-size:10px;color:var(--muted)">Analyze code for bugs and quality</div></div>
+      <span style="font-size:9px;background:var(--bg3);padding:1px 5px;border-radius:3px;color:var(--faint)">Template</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px dashed var(--faint2);border-radius:7px;cursor:pointer;color:var(--faint);font-size:11px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent-fg)'" onmouseout="this.style.borderColor='var(--faint2)';this.style.color='var(--faint)'">
+      &#43; Create template
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>ConversationType union:</b><br>
+  <code>{ kind: 'chat' } | { kind: 'agent' } | { kind: 'plan' } | { kind: 'canvas' } | { kind: 'template', templateId, templateName } | { kind: 'custom', label }</code><br><br>
+  <b>Template section:</b> shows user-created templates as compact rows. "Create template" opens a template editor. Template badge shown in conversation list.
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 3. CONVERSATION LIST -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="convlist" class="sec">
+<h1>Conversation List (Sidebar)</h1>
+<p class="sub">Search, date grouping, type icons + badges, template names.</p>
+
+<div class="side">
+  <div>
+    <h3>Standard View</h3>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;width:250px;padding:6px;box-shadow:var(--shadow-sm)">
+      <div class="sb-search"><input placeholder="Search conversations..."></div>
+      <div class="sb-group">Today</div>
+      <div class="sb-item on">
+        <div class="sb-item-row1"><span class="sb-item-icon">&#129302;</span><span class="sb-item-text">AI Ethics Analysis</span><span class="sb-item-meta">Now</span></div>
+        <div class="sb-item-row2"><span class="sb-item-badge" style="background:var(--accent-muted);color:var(--accent-fg)">Agent</span></div>
+      </div>
+      <div class="sb-item">
+        <div class="sb-item-row1"><span class="sb-item-icon">&#128172;</span><span class="sb-item-text">Quick chat about plugins</span><span class="sb-item-meta">2h</span></div>
+      </div>
+      <div class="sb-group">This Week</div>
+      <div class="sb-item">
+        <span class="sb-item-icon">&#128203;</span>
+        <span class="sb-item-text">Weekly review plan</span>
+        <span class="sb-item-badge" style="background:rgba(245,158,11,.1);color:var(--warning);font-size:8px">Weekly Review</span>
+      </div>
+      <div class="sb-item">
+        <span class="sb-item-icon">&#128172;</span>
+        <span class="sb-item-text">Indie product idea evaluation</span>
+        <span class="sb-item-meta">Apr 17</span>
+      </div>
+      <div class="sb-item">
+        <span class="sb-item-icon">&#128270;</span>
+        <span class="sb-item-text">React performance review</span>
+        <span class="sb-item-badge" style="background:rgba(239,68,68,.08);color:var(--error);font-size:8px">Code Review</span>
+      </div>
+      <div class="sb-group">Older</div>
+      <div class="sb-item">
+        <div class="sb-item-row1"><span class="sb-item-icon">&#128172;</span><span class="sb-item-text">Database schema design</span><span class="sb-item-meta">Mar 28</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h3>Badge Logic</h3>
+    <div class="note" style="margin-top:0">
+      <b>Built-in types:</b><br>
+      &#128172; Chat — no badge (default)<br>
+      &#129302; Agent — <span style="background:var(--accent-muted);color:var(--accent-fg);padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600">Agent</span><br>
+      &#128203; Plan — <span style="background:rgba(59,130,246,.1);color:var(--info);padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600">Plan</span><br>
+      &#127912; Canvas — <span style="background:rgba(34,197,94,.1);color:var(--success);padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600">Canvas</span><br><br>
+      <b>User templates:</b> badge shows <b>template name</b><br>
+      &#128203; Weekly Review — <span style="background:rgba(245,158,11,.1);color:var(--warning);padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600">Weekly Review</span><br>
+      &#128270; Code Review — <span style="background:rgba(239,68,68,.08);color:var(--error);padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600">Code Review</span><br><br>
+      <b>Chat (default) has no badge</b> — keeps the most common type clean and quiet.
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 4. PROJECT OVERVIEW -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="project" class="sec">
+<h1>Project Overview</h1>
+<p class="sub">Inline stats, editable description, CTA empty states, accent-colored tabs.</p>
+
+<div class="side">
+  <div>
+    <h3>With Conversations</h3>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow-sm)">
+      <div class="proj-hdr">
+        <div class="proj-name">&#128193; AI Ethics Research</div>
+        <div class="proj-desc">Exploring alignment, interpretability, and value learning across my vault notes and recent papers.</div>
+        <div class="proj-stats">
+          <span><strong>3</strong> conversations</span>
+          <span><strong>24</strong> messages</span>
+          <span><strong>2</strong> starred</span>
+        </div>
+      </div>
+      <div class="proj-tabs">
+        <div class="proj-tab on">Conversations</div>
+        <div class="proj-tab">Starred</div>
+        <div class="proj-tab">Resources</div>
+      </div>
+      <div class="proj-content">
+        <div class="conv-row">
+          <div class="conv-row-icon" style="background:var(--accent-muted);color:var(--accent-fg)">&#129302;</div>
+          <div class="conv-row-body">
+            <div class="conv-row-title">AI Ethics Analysis</div>
+            <div class="conv-row-preview">Found 3 connection paths...</div>
+          </div>
+          <div class="conv-row-meta">Today</div>
+        </div>
+        <div class="conv-row">
+          <div class="conv-row-icon">&#128172;</div>
+          <div class="conv-row-body">
+            <div class="conv-row-title">RLHF Survey Discussion</div>
+            <div class="conv-row-preview">The key insight from the paper is...</div>
+          </div>
+          <div class="conv-row-meta">Apr 18</div>
+        </div>
+        <div class="conv-row">
+          <div class="conv-row-icon">&#128203;</div>
+          <div class="conv-row-body">
+            <div class="conv-row-title">Research plan for Q2</div>
+            <div class="conv-row-preview">Phase 1: Literature review...</div>
+          </div>
+          <div class="conv-row-meta">Apr 15</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h3>Empty Project</h3>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow-sm)">
+      <div class="proj-hdr">
+        <div class="proj-name">&#128193; sadsad</div>
+        <div class="proj-desc">Click to add a description...</div>
+        <div class="proj-stats">
+          <span><strong>0</strong> conversations</span>
+          <span><strong>0</strong> messages</span>
+        </div>
+      </div>
+      <div class="proj-tabs">
+        <div class="proj-tab on">Conversations</div>
+        <div class="proj-tab">Starred</div>
+        <div class="proj-tab">Resources</div>
+      </div>
+      <div class="proj-content">
+        <div class="empty">
+          <div class="empty-icon">&#128172;</div>
+          <div class="empty-text">No conversations yet.<br>Start one to build this project's knowledge base.</div>
+          <button class="empty-btn">&#43; New Conversation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 5. FILE CHANGES -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="filechanges" class="sec">
+<h1>File Changes Panel</h1>
+<p class="sub">Agent-modified files with diff stats. Theme-aware colors (no hardcoded blue/black).</p>
+
+<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;max-width:600px;box-shadow:var(--shadow-sm)">
+  <div class="fc">
+    <div class="fc-hdr">
+      <div class="fc-hdr-left">
+        <span style="cursor:pointer;font-size:10px">&#9660;</span>
+        <span>3 Files Changed</span>
+      </div>
+      <div class="fc-hdr-actions">
+        <span>Undo all</span>
+        <span style="font-weight:500;color:var(--fg)">Keep all</span>
+      </div>
+    </div>
+    <div class="fc-item">
+      <span class="fc-item-icon">&#128196;</span>
+      <span class="fc-item-name">Button.tsx</span>
+      <span class="fc-item-add">+21</span>
+      <span class="fc-item-del">-33</span>
+      <div class="fc-item-acts">
+        <button class="fc-act" title="Accept">&#10003;</button>
+        <button class="fc-act" title="Discard">&#10005;</button>
+      </div>
+    </div>
+    <div class="fc-item">
+      <span class="fc-item-icon">&#128196;</span>
+      <span class="fc-item-name">helpers.ts</span>
+      <span class="fc-item-add">+5</span>
+      <span class="fc-item-del">-2</span>
+      <div class="fc-item-acts">
+        <button class="fc-act" title="Accept">&#10003;</button>
+        <button class="fc-act" title="Discard">&#10005;</button>
+      </div>
+    </div>
+    <div class="fc-item">
+      <span class="fc-item-icon" style="color:var(--success)">&#43;</span>
+      <span class="fc-item-name">types.ts</span>
+      <span class="fc-item-add">+48</span>
+      <span style="font-size:9px;color:var(--success);background:rgba(34,197,94,.08);padding:1px 4px;border-radius:3px;font-weight:500">NEW</span>
+      <div class="fc-item-acts">
+        <button class="fc-act" title="Accept">&#10003;</button>
+        <button class="fc-act" title="Discard">&#10005;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Changes from current:</b><br>
+  1. <b>No hardcoded blue tint</b> — uses var(--bg2) for header, var(--hover) for item hover<br>
+  2. <b>No hardcoded text-black</b> — uses var(--fg) / var(--muted)<br>
+  3. <b>NEW badge</b> for newly created files (green accent)<br>
+  4. <b>Per-file Accept/Discard</b> buttons appear on hover (opacity fade in, consistent with message actions pattern)<br>
+  5. <b>Collapse toggle</b> in header (chevron)
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 6. OUTLINE + SUGGESTIONS -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="outline" class="sec">
+<h1>Conversation Outline + Suggestion Actions</h1>
+<p class="sub">Right panel for message navigation. Context-aware action chips above input.</p>
+
+<h2>Conversation Outline (right panel)</h2>
+<div class="obs" style="min-height:400px">
+  <div class="obs-main" style="border-right:1px solid var(--border)">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px">
+      <span style="font-size:13px">&#128193;</span> Research / AI Ethics
+      <div style="margin-left:auto;display:flex;gap:3px">
+        <div class="sb-icon">&#128196;</div>
+        <div class="sb-icon">&#129504;</div>
+        <div class="sb-icon" style="background:var(--accent);color:#fff;border-radius:5px">&#9776;</div>
+        <div class="sb-icon">&#8943;</div>
+      </div>
+    </div>
+    <div style="flex:1;padding:16px;font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:center">
+      (message list here)
+    </div>
+
+    <!-- Suggestion actions + scroll nav -->
+    <div style="border-top:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
+      <div class="sug-acts">
+        <button class="sug-act"><span class="sug-act-icon">&#128193;</span> Transfer to Project</button>
+        <button class="sug-act"><span class="sug-act-icon">&#128196;</span> Update Articles</button>
+        <button class="sug-act"><span class="sug-act-icon">&#128270;</span> Code Review</button>
+      </div>
+      <div class="scroll-nav">
+        <button class="scroll-btn">&#8593;</button>
+        <button class="scroll-btn">&#8595;</button>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding:10px 12px">
+      <div style="font-size:11px;color:var(--faint);padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2)">Message Peak... @ context / prompts</div>
+    </div>
+  </div>
+
+  <!-- Outline panel (topic tree) -->
+  <div class="outline">
+    <div class="outline-hdr">
+      <span>Conversation Outline</span>
+      <button class="outline-hdr-close">&#10005;</button>
+    </div>
+
+    <!-- Topic 1: expanded -->
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:5px;padding:8px 12px;cursor:pointer;font-size:11px;font-weight:600;color:var(--fg)" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.tv-chev').textContent=this.nextElementSibling.style.display==='none'?'&#9654;':'&#9660;'">
+        <span class="tv-chev" style="font-size:8px;color:var(--faint);width:10px">&#9660;</span>
+        <span style="color:var(--accent-fg)">&#128340;</span>
+        Connection Paths
+        <span style="font-size:9px;color:var(--faint);font-weight:400;margin-left:auto">3 msgs</span>
+      </div>
+      <div>
+        <div class="outline-item">
+          <span class="outline-role u">You</span>
+          <span class="outline-text">Find connections between my AI ethics notes...</span>
+        </div>
+        <div class="outline-item on">
+          <span class="outline-role ai">Peak</span>
+          <span class="outline-text">Found 3 connection paths: RLHF -> Value Alignment...</span>
+        </div>
+        <div class="outline-item">
+          <span class="outline-role u">You</span>
+          <span class="outline-text">Go deeper on the first path...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Topic 2: expanded -->
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:5px;padding:8px 12px;cursor:pointer;font-size:11px;font-weight:600;color:var(--fg)" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.tv-chev').textContent=this.nextElementSibling.style.display==='none'?'&#9654;':'&#9660;'">
+        <span class="tv-chev" style="font-size:8px;color:var(--faint);width:10px">&#9660;</span>
+        <span style="color:var(--accent-fg)">&#128218;</span>
+        Concept Overlap
+        <span style="font-size:9px;color:var(--faint);font-weight:400;margin-left:auto">2 msgs</span>
+      </div>
+      <div>
+        <div class="outline-item">
+          <span class="outline-role ai">Peak</span>
+          <span class="outline-text">The overlap centers on 4 key concepts: reward hacking, Goodhart's Law...</span>
+        </div>
+        <div class="outline-item">
+          <span class="outline-role u">You</span>
+          <span class="outline-text">Create a summary note linking these concepts</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Topic 3: collapsed -->
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:5px;padding:8px 12px;cursor:pointer;font-size:11px;font-weight:600;color:var(--fg)" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.tv-chev').textContent=this.nextElementSibling.style.display==='none'?'&#9654;':'&#9660;'">
+        <span class="tv-chev" style="font-size:8px;color:var(--faint);width:10px">&#9654;</span>
+        <span style="color:var(--success)">&#128196;</span>
+        Note Creation
+        <span style="font-size:9px;color:var(--faint);font-weight:400;margin-left:auto">1 msg</span>
+      </div>
+      <div style="display:none">
+        <div class="outline-item">
+          <span class="outline-role ai">Peak</span>
+          <span class="outline-text">Created "AI Alignment Concept Map.md" with bidirectional links...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Outline panel:</b> toggleable via the &#9776; button in header. <b>Topic tree structure</b> — messages grouped by topic (from <code>ChatMessage.topic</code>). Each topic is a collapsible section with icon + name + message count. Click a topic to expand/collapse. Click a message to scroll to it. Active message highlighted with accent left border. Topics come from <code>ChatContextWindow.topics</code>.<br><br>
+  <b>Suggestion actions:</b> context-aware chips above input area. "Transfer to Project" / "Update Articles" / "Code Review" etc. These are generated based on conversation content and available actions. Styled as subtle bordered pills (consistent with style-switch buttons).<br><br>
+  <b>Scroll nav:</b> compact up/down buttons at the right end of the suggestion row. Uses var(--border) and var(--muted) — no hardcoded gray-200/text-black.
+</div>
+</div>
+
+<script>
+function go(id){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  event.target.classList.add('on');
+}
+</script>
+</body>
+</html>

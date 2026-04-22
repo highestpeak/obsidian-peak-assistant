@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InputToolbar — Final Design</title>
+<style>
+  :root { --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; --accent: #7c3aed; --accent-dark: #a78bfa; --bg: #16162a; --bg-deep: #12121e; --border: #22223a; --border-light: #2a2a40; --text: #e2e8f0; --text-muted: #8888a0; --text-faint: #555566; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font); background: #0a0a12; color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 32px 16px; }
+
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; text-align: center; }
+  .subtitle { color: var(--text-muted); margin-bottom: 32px; font-size: 13px; text-align: center; max-width: 600px; line-height: 1.5; }
+  h2 { font-size: 16px; font-weight: 600; margin: 36px 0 14px; color: var(--accent-dark); width: 100%; max-width: 680px; }
+  .note { padding: 10px 14px; background: var(--bg-deep); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; font-size: 12px; color: var(--text-muted); line-height: 1.6; margin: 12px 0; max-width: 680px; width: 100%; }
+  .note strong { color: var(--accent-dark); }
+
+  /* ── Chat Frame ── */
+  .chat-frame { background: var(--bg); border-radius: 14px; border: 1px solid var(--border); overflow: hidden; width: 100%; max-width: 680px; }
+  .chat-frame.narrow { max-width: 380px; }
+  .chat-messages { padding: 16px; }
+  .chat-msg { margin-bottom: 10px; padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; max-width: 80%; }
+  .chat-msg-user { background: rgba(124,58,237,0.10); color: var(--text); margin-left: auto; border: 1px solid rgba(124,58,237,0.2); }
+  .chat-msg-ai { background: var(--bg-deep); color: var(--text); border: 1px solid var(--border); }
+
+  .input-area { border-top: 1px solid var(--border); padding: 12px 12px 8px; }
+  .textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-deep); color: var(--text); font-size: 13px; resize: none; outline: none; min-height: 44px; font-family: var(--font); }
+  .textarea:focus { border-color: var(--accent); }
+  .textarea::placeholder { color: var(--text-faint); }
+
+  /* ── Toolbar ── */
+  .toolbar { display: flex; align-items: center; gap: 3px; padding: 5px 0 1px; }
+  .toolbar-right { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .toolbar-divider { width: 1px; height: 18px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
+
+  /* ── Icon Button ── */
+  .ib { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; color: #6b6b80; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; transition: all 0.15s; flex-shrink: 0; }
+  .ib:hover { background: var(--border); color: #b0b0c0; }
+  .ib.active { background: rgba(124,58,237,0.12); color: var(--accent-dark); }
+  .ib svg { width: 15px; height: 15px; }
+
+  /* ── Mode Pill ── */
+  .mode-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 4px 8px; border-radius: 7px; border: 1px solid var(--border-light); background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; transition: all 0.15s; white-space: nowrap; font-family: var(--font); }
+  .mode-pill:hover { background: var(--border); color: var(--text); border-color: #3a3a50; }
+  .mode-pill .mode-icon { font-size: 13px; line-height: 1; }
+  .mode-pill .mode-chevron { font-size: 9px; color: #555566; margin-left: 1px; }
+
+  /* ── Model Badge ── */
+  .model-badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 5px; background: var(--bg-deep); border: 1px solid var(--border-light); font-size: 10px; font-family: 'SF Mono', 'Fira Code', monospace; color: var(--text-muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .model-badge:hover { border-color: #3a3a50; color: #b0b0c0; }
+
+  /* ── Token Count ── */
+  .token-ct { font-size: 10px; color: var(--text-faint); white-space: nowrap; }
+
+  /* ── Popover ── */
+  .popover-anchor { position: relative; display: inline-flex; }
+  .popover { display: none; position: absolute; bottom: calc(100% + 8px); left: 0; background: #1a1a2e; border: 1px solid var(--border-light); border-radius: 10px; padding: 5px; box-shadow: 0 8px 28px rgba(0,0,0,0.45); min-width: 240px; z-index: 10; }
+  .popover.right { left: auto; right: 0; }
+  .popover.show { display: block; }
+  .pop-title { padding: 7px 10px 3px; font-size: 10px; color: #6b6b80; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; }
+  .pop-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 7px; font-size: 13px; cursor: pointer; color: #c0c0d0; transition: background 0.12s; }
+  .pop-item:hover { background: var(--border); }
+  .pop-item.selected { background: rgba(124,58,237,0.10); color: var(--accent-dark); }
+  .pop-item-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 15px; background: var(--border); flex-shrink: 0; }
+  .pop-item.selected .pop-item-icon { background: rgba(124,58,237,0.18); }
+  .pop-item-body { flex: 1; min-width: 0; }
+  .pop-item-name { font-size: 13px; font-weight: 500; }
+  .pop-item-desc { font-size: 11px; color: #6b6b80; margin-top: 1px; }
+  .pop-item-check { color: var(--accent-dark); font-size: 15px; flex-shrink: 0; }
+  .pop-divider { height: 1px; background: var(--border); margin: 3px 0; }
+
+  /* ── Toggle ── */
+  .toggle { width: 32px; height: 17px; border-radius: 9px; background: var(--border-light); cursor: pointer; position: relative; flex-shrink: 0; transition: background 0.2s; }
+  .toggle.on { background: var(--accent); }
+  .toggle::after { content: ''; width: 13px; height: 13px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: left 0.2s; }
+  .toggle.on::after { left: 17px; }
+
+  /* ── Slider row ── */
+  .slider-row { padding: 6px 10px; }
+  .slider-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .slider-label span:first-child { font-size: 12px; color: #c0c0d0; }
+  .slider-label span:last-child { font-size: 10px; color: #6b6b80; font-family: monospace; }
+  .slider-track { height: 3px; background: var(--border-light); border-radius: 2px; position: relative; }
+  .slider-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+  .slider-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--accent-dark); border: 2px solid var(--bg-deep); position: absolute; top: -4px; transform: translateX(-50%); }
+
+  /* ── Layout helpers ── */
+  .side-by-side { display: flex; gap: 24px; width: 100%; max-width: 680px; align-items: flex-start; flex-wrap: wrap; }
+  .side-by-side > * { flex: 1; min-width: 280px; }
+
+  .label-tag { display: inline-flex; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 500; margin-left: 6px; }
+  .label-tag.wide { background: rgba(59,130,246,0.12); color: #60a5fa; }
+  .label-tag.narrow { background: rgba(251,191,36,0.12); color: #fbbf24; }
+</style>
+</head>
+<body>
+
+<h1>InputToolbar — Final Design (A + Mode Popover)</h1>
+<p class="subtitle">Option A layout (dock bar, 3 icon buttons left, context right) with mode as a pill+popover instead of segmented control. Click any icon/pill to toggle its popover.</p>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- WIDE SIDEBAR / MODAL -->
+<!-- ═══════════════════════════════════════════════ -->
+<h2>Wide Layout (modal / wide sidebar) <span class="label-tag wide">&ge; 500px</span></h2>
+
+<div class="chat-frame">
+  <div class="chat-messages">
+    <div class="chat-msg chat-msg-user">Find connections between my AI ethics notes and recent papers</div>
+    <div class="chat-msg chat-msg-ai">I found 3 connection paths in your vault. The strongest link is through your "Alignment Taxonomy" note which shares 4 concepts with the RLHF survey paper...</div>
+  </div>
+  <div class="input-area">
+    <textarea class="textarea" placeholder="Message Peak...  @ context  / prompts" rows="2"></textarea>
+    <div class="toolbar">
+      <!-- Left: action icons -->
+      <div class="popover-anchor">
+        <button class="ib" onclick="togglePop('pop-attach')" title="Attach files">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div id="pop-attach" class="popover">
+          <div class="pop-item selected">
+            <span class="pop-item-icon">&#8593;</span>
+            <div class="pop-item-body"><div class="pop-item-name">Direct Upload</div><div class="pop-item-desc">Upload files as-is</div></div>
+            <span class="pop-item-check">&#10003;</span>
+          </div>
+          <div class="pop-item">
+            <span class="pop-item-icon">&#128196;</span>
+            <div class="pop-item-body"><div class="pop-item-name">Summarize First</div><div class="pop-item-desc">Extract text, then send</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="popover-anchor">
+        <button class="ib active" onclick="togglePop('pop-sources')" title="Sources">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <div id="pop-sources" class="popover">
+          <div class="pop-title">Search Sources</div>
+          <div class="pop-item" style="justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="pop-item-icon">&#128218;</span>
+              <div class="pop-item-body"><div class="pop-item-name">Vault Search</div></div>
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pop-item" style="justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="pop-item-icon">&#127760;</span>
+              <div class="pop-item-body"><div class="pop-item-name">Web Search</div></div>
+            </div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pop-divider"></div>
+          <div class="pop-title">Tools</div>
+          <div class="pop-item" style="justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="pop-item-icon">&lt;/&gt;</span>
+              <div class="pop-item-body"><div class="pop-item-name">Code Interpreter</div></div>
+            </div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="popover-anchor">
+        <button class="ib" onclick="togglePop('pop-settings')" title="Output settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+        <div id="pop-settings" class="popover" style="min-width:220px;">
+          <div class="pop-title">Output Control</div>
+          <div class="slider-row">
+            <div class="slider-label"><span>Creativity</span><span>1.0</span></div>
+            <div class="slider-track"><div class="slider-fill" style="width:50%;"></div><div class="slider-thumb" style="left:50%;"></div></div>
+          </div>
+          <div class="slider-row">
+            <div class="slider-label"><span>Reasoning</span><span>Medium</span></div>
+            <div class="slider-track"><div class="slider-fill" style="width:66%;"></div><div class="slider-thumb" style="left:66%;"></div></div>
+          </div>
+          <div class="slider-row">
+            <div class="slider-label"><span>Detail Level</span><span>Medium</span></div>
+            <div class="slider-track"><div class="slider-fill" style="width:50%;"></div><div class="slider-thumb" style="left:50%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Right: mode pill + model + tokens -->
+      <div class="toolbar-right">
+        <div class="popover-anchor">
+          <button class="mode-pill" onclick="togglePop('pop-mode')">
+            <span class="mode-icon">&#129302;</span>
+            Agent
+            <span class="mode-chevron">&#9662;</span>
+          </button>
+          <div id="pop-mode" class="popover right" style="min-width:260px;">
+            <div class="pop-item">
+              <span class="pop-item-icon">&#128172;</span>
+              <div class="pop-item-body"><div class="pop-item-name">Chat</div><div class="pop-item-desc">Free conversation</div></div>
+            </div>
+            <div class="pop-item">
+              <span class="pop-item-icon">&#128203;</span>
+              <div class="pop-item-body"><div class="pop-item-name">Plan</div><div class="pop-item-desc">Structured plans & checklists</div></div>
+            </div>
+            <div class="pop-item selected">
+              <span class="pop-item-icon">&#129302;</span>
+              <div class="pop-item-body"><div class="pop-item-name">Agent</div><div class="pop-item-desc">Proactive vault research</div></div>
+              <span class="pop-item-check">&#10003;</span>
+            </div>
+          </div>
+        </div>
+
+        <span class="model-badge">claude-opus-4-6</span>
+        <span class="token-ct">1.2k</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- NARROW SIDEBAR -->
+<!-- ═══════════════════════════════════════════════ -->
+<h2>Narrow Layout (sidebar &le; 400px) <span class="label-tag narrow">&le; 400px</span></h2>
+
+<div class="chat-frame narrow">
+  <div class="chat-messages">
+    <div class="chat-msg chat-msg-user" style="max-width:90%;">Summarize my project notes</div>
+    <div class="chat-msg chat-msg-ai" style="max-width:90%;">Your project has 3 main threads...</div>
+  </div>
+  <div class="input-area">
+    <textarea class="textarea" placeholder="Message Peak..." rows="2"></textarea>
+    <div class="toolbar" style="flex-wrap: wrap; gap: 2px;">
+      <div class="popover-anchor">
+        <button class="ib" title="Attach">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+      <button class="ib active" title="Sources">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="ib" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <div class="toolbar-divider"></div>
+      <div class="toolbar-right">
+        <button class="mode-pill" style="padding:4px 7px 4px 6px;">
+          <span class="mode-icon" style="font-size:12px;">&#128172;</span>
+          Chat
+          <span class="mode-chevron">&#9662;</span>
+        </button>
+        <span class="model-badge" style="font-size:9px;">opus-4-6</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Narrow sidebar</strong> drops token count, truncates model name. All 4 functional items remain: 3 icons + mode pill. Popovers still open upward and work at any width.
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- POPOVERS DETAIL -->
+<!-- ═══════════════════════════════════════════════ -->
+<h2>All Popovers</h2>
+
+<div class="side-by-side">
+  <!-- Mode -->
+  <div>
+    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px; font-weight:600;">Mode Selector</div>
+    <div class="popover show" style="position:static; min-width:240px;">
+      <div class="pop-item">
+        <span class="pop-item-icon">&#128172;</span>
+        <div class="pop-item-body"><div class="pop-item-name">Chat</div><div class="pop-item-desc">Free conversation</div></div>
+      </div>
+      <div class="pop-item selected">
+        <span class="pop-item-icon">&#128203;</span>
+        <div class="pop-item-body"><div class="pop-item-name">Plan</div><div class="pop-item-desc">Structured plans & checklists</div></div>
+        <span class="pop-item-check">&#10003;</span>
+      </div>
+      <div class="pop-item">
+        <span class="pop-item-icon">&#129302;</span>
+        <div class="pop-item-body"><div class="pop-item-name">Agent</div><div class="pop-item-desc">Proactive vault research</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sources + Tools -->
+  <div>
+    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px; font-weight:600;">Sources & Tools</div>
+    <div class="popover show" style="position:static; min-width:240px;">
+      <div class="pop-title">Search Sources</div>
+      <div class="pop-item" style="justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="pop-item-icon">&#128218;</span>
+          <div class="pop-item-body"><div class="pop-item-name">Vault Search</div></div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+      <div class="pop-item" style="justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="pop-item-icon">&#127760;</span>
+          <div class="pop-item-body"><div class="pop-item-name">Web Search</div></div>
+        </div>
+        <div class="toggle"></div>
+      </div>
+      <div class="pop-divider"></div>
+      <div class="pop-title">Tools</div>
+      <div class="pop-item" style="justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="pop-item-icon">&lt;/&gt;</span>
+          <div class="pop-item-body"><div class="pop-item-name">Code Interpreter</div></div>
+        </div>
+        <div class="toggle"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:16px;"></div>
+
+<div class="side-by-side">
+  <!-- Attach -->
+  <div>
+    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px; font-weight:600;">Upload Mode</div>
+    <div class="popover show" style="position:static; min-width:220px;">
+      <div class="pop-item selected">
+        <span class="pop-item-icon">&#8593;</span>
+        <div class="pop-item-body"><div class="pop-item-name">Direct Upload</div><div class="pop-item-desc">Upload files as-is</div></div>
+        <span class="pop-item-check">&#10003;</span>
+      </div>
+      <div class="pop-item">
+        <span class="pop-item-icon">&#128196;</span>
+        <div class="pop-item-body"><div class="pop-item-name">Summarize First</div><div class="pop-item-desc">Extract text, then send</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Output Control -->
+  <div>
+    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px; font-weight:600;">Output Control</div>
+    <div class="popover show" style="position:static; min-width:220px;">
+      <div class="pop-title">Parameters</div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Creativity</span><span>1.0</span></div>
+        <div class="slider-track"><div class="slider-fill" style="width:50%;"></div><div class="slider-thumb" style="left:50%;"></div></div>
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Reasoning</span><span>Medium</span></div>
+        <div class="slider-track"><div class="slider-fill" style="width:66%;"></div><div class="slider-thumb" style="left:66%;"></div></div>
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Detail Level</span><span>Medium</span></div>
+        <div class="slider-track"><div class="slider-fill" style="width:50%;"></div><div class="slider-thumb" style="left:50%;"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DESIGN RATIONALE -->
+<!-- ═══════════════════════════════════════════════ -->
+<h2>Design Summary</h2>
+
+<div class="note">
+  <strong>Layout:</strong> A dock 的 3 icon 左置 + 右侧 context info，mode 从 segmented 改为 pill+popover。<br><br>
+  <strong>4 功能分区（每个一个 popover）：</strong><br>
+  &nbsp;&nbsp;[+] Attach — upload mode 选择<br>
+  &nbsp;&nbsp;[&#128269;] Sources — vault/web toggle + code interpreter toggle（合并了原来的 search + tools 两个按钮）<br>
+  &nbsp;&nbsp;[&#9881;] Settings — output control 滑块（creativity / reasoning / detail）<br>
+  &nbsp;&nbsp;[Mode &#9662;] — chat/plan/agent popover（icon + 标题 + 描述，和你 Image 3 的设计一致）<br><br>
+  <strong>右侧信息：</strong> mode pill + model badge (monospace 文字) + token count (仅宽屏)<br><br>
+  <strong>窄侧栏适配：</strong> 隐藏 token count，截断 model name，所有功能保留
+</div>
+
+<div style="height:48px;"></div>
+
+<script>
+function togglePop(id) {
+  const el = document.getElementById(id);
+  const wasOpen = el.classList.contains('show');
+  // Close all
+  document.querySelectorAll('.popover').forEach(p => {
+    if (!p.style.position || p.style.position !== 'static') p.classList.remove('show');
+  });
+  if (!wasOpen) el.classList.add('show');
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.popover-anchor')) {
+    document.querySelectorAll('.popover').forEach(p => {
+      if (!p.style.position || p.style.position !== 'static') p.classList.remove('show');
+    });
+  }
+});
+</script>
+</body>
+</html>

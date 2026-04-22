@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peak Assistant — UI/Theme + Chat Polish Review</title>
+<style>
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font); background: #0f0f0f; color: #e2e8f0; min-height: 100vh; }
+
+  /* Navigation */
+  .nav { position: sticky; top: 0; z-index: 100; background: #1a1a2e; border-bottom: 1px solid #2d2d44; padding: 12px 24px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .nav-btn { padding: 8px 16px; border: 1px solid #3d3d5c; border-radius: 8px; background: transparent; color: #a0a0b8; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+  .nav-btn:hover { background: #2d2d44; color: #e2e8f0; }
+  .nav-btn.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+
+  /* Sections */
+  .section { display: none; padding: 32px 24px; max-width: 1200px; margin: 0 auto; }
+  .section.active { display: block; }
+  .section h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+  .section .subtitle { color: #9ca3af; margin-bottom: 32px; font-size: 14px; }
+
+  /* Theme Preview */
+  .theme-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+  .theme-card { border-radius: 12px; overflow: hidden; border: 1px solid #2d2d44; }
+  .theme-card-header { padding: 12px 16px; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* Light theme card */
+  .light-card { background: #ffffff; color: #1a1c1e; }
+  .light-card .theme-card-header { background: #f3f4f6; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
+  .light-card .demo-bg { background: #ffffff; }
+  .light-card .demo-bg-secondary { background: #f3f4f6; }
+  .light-card .demo-border { border-color: #e5e7eb; }
+  .light-card .demo-text { color: #1a1c1e; }
+  .light-card .demo-text-muted { color: #6b7280; }
+  .light-card .demo-text-faint { color: #9ca3af; }
+
+  /* Dark theme card */
+  .dark-card { background: #1e1e2e; color: #e2e8f0; }
+  .dark-card .theme-card-header { background: #16162a; color: #9ca3af; border-bottom: 1px solid #2d2d44; }
+  .dark-card .demo-bg { background: #1e1e2e; }
+  .dark-card .demo-bg-secondary { background: #16162a; }
+  .dark-card .demo-border { border-color: #2d2d44; }
+  .dark-card .demo-text { color: #e2e8f0; }
+  .dark-card .demo-text-muted { color: #9ca3af; }
+  .dark-card .demo-text-faint { color: #6b7280; }
+
+  /* Accent colors */
+  .accent-light { background: #7c3aed; color: #fff; }
+  .accent-dark { background: #a78bfa; color: #1a1a2e; }
+  .accent-muted-light { background: rgba(124, 58, 237, 0.15); color: #7c3aed; }
+  .accent-muted-dark { background: rgba(167, 139, 250, 0.15); color: #a78bfa; }
+
+  /* Demo components inside cards */
+  .demo-content { padding: 16px; }
+  .demo-component { margin-bottom: 16px; }
+  .demo-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; opacity: 0.6; }
+
+  .demo-button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; border: none; cursor: pointer; }
+  .demo-button-outline { background: transparent; border: 1px solid; padding: 5px 13px; }
+
+  .demo-input { width: 100%; padding: 8px 12px; border-radius: 6px; font-size: 13px; border: 1px solid; background: transparent; outline: none; }
+
+  .demo-badge { display: inline-flex; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+
+  .demo-source-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; font-size: 13px; border: 1px solid transparent; }
+  .demo-source-item:hover { border-color: currentColor; opacity: 0.8; }
+
+  /* Semantic colors row */
+  .semantic-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .semantic-chip { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+
+  /* Color palette grid */
+  .palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 12px; }
+  .palette-swatch { border-radius: 8px; padding: 12px; font-size: 11px; min-height: 60px; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
+  .palette-swatch .name { font-weight: 600; }
+  .palette-swatch .value { opacity: 0.7; font-family: monospace; font-size: 10px; }
+
+  /* Style Settings mockup */
+  .ss-panel { background: #1e1e2e; border-radius: 12px; border: 1px solid #2d2d44; overflow: hidden; max-width: 500px; }
+  .ss-header { padding: 12px 16px; background: #16162a; border-bottom: 1px solid #2d2d44; font-size: 14px; font-weight: 600; }
+  .ss-group { padding: 12px 16px; border-bottom: 1px solid #2d2d44; }
+  .ss-group-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: #a78bfa; }
+  .ss-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+  .ss-item-label { font-size: 13px; color: #ccc; }
+  .ss-item-value { width: 32px; height: 24px; border-radius: 4px; border: 1px solid #3d3d5c; cursor: pointer; }
+  .ss-item-empty { width: 32px; height: 24px; border-radius: 4px; border: 2px dashed #3d3d5c; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #6b7280; }
+
+  /* Chat mockup */
+  .chat-frame { background: #1e1e2e; border-radius: 12px; border: 1px solid #2d2d44; overflow: hidden; max-width: 700px; }
+  .chat-header { padding: 10px 16px; background: #16162a; border-bottom: 1px solid #2d2d44; display: flex; justify-content: space-between; align-items: center; }
+  .chat-header-title { font-size: 14px; font-weight: 600; }
+  .chat-header-actions { display: flex; gap: 6px; }
+  .chat-action-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #3d3d5c; background: transparent; color: #9ca3af; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .chat-action-btn:hover { background: #2d2d44; color: #e2e8f0; }
+  .chat-action-btn.destructive:hover { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: #f87171; }
+
+  .chat-messages { padding: 16px; min-height: 200px; }
+  .chat-msg { margin-bottom: 12px; padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; max-width: 85%; }
+  .chat-msg-user { background: #7c3aed22; color: #e2e8f0; margin-left: auto; border: 1px solid #7c3aed44; }
+  .chat-msg-ai { background: #16162a; color: #e2e8f0; border: 1px solid #2d2d44; }
+
+  .chat-input-area { border-top: 1px solid #2d2d44; padding: 12px; }
+  .chat-textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #3d3d5c; background: #16162a; color: #e2e8f0; font-size: 13px; resize: none; outline: none; min-height: 44px; font-family: var(--font); }
+  .chat-textarea:focus { border-color: #7c3aed; }
+  .chat-textarea::placeholder { color: #6b7280; }
+
+  /* Input Toolbar */
+  .input-toolbar { display: flex; align-items: center; gap: 4px; padding: 6px 4px 0; flex-wrap: wrap; }
+  .toolbar-btn { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; border: 1px solid transparent; background: transparent; color: #6b7280; font-size: 11px; cursor: pointer; transition: all 0.15s; }
+  .toolbar-btn:hover { background: #2d2d44; color: #9ca3af; }
+  .toolbar-btn.active { background: #7c3aed22; color: #a78bfa; border-color: #7c3aed44; }
+  .toolbar-divider { width: 1px; height: 16px; background: #2d2d44; margin: 0 4px; }
+
+  /* Mode selector */
+  .mode-selector { display: inline-flex; border-radius: 6px; border: 1px solid #3d3d5c; overflow: hidden; }
+  .mode-option { padding: 3px 10px; font-size: 11px; cursor: pointer; background: transparent; border: none; color: #6b7280; transition: all 0.15s; }
+  .mode-option:hover { color: #9ca3af; }
+  .mode-option.active { background: #7c3aed; color: #fff; }
+
+  /* Delete menu mockup */
+  .menu-popup { background: #1e1e2e; border: 1px solid #2d2d44; border-radius: 8px; padding: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); min-width: 200px; }
+  .menu-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; color: #e2e8f0; }
+  .menu-item:hover { background: #2d2d44; }
+  .menu-item.destructive { color: #f87171; }
+  .menu-item.destructive:hover { background: rgba(239, 68, 68, 0.1); }
+  .menu-item-icon { width: 16px; text-align: center; opacity: 0.7; }
+  .menu-divider { height: 1px; background: #2d2d44; margin: 4px 0; }
+
+  /* Keyboard shortcut hints */
+  .kbd { display: inline-flex; align-items: center; padding: 1px 5px; border-radius: 3px; background: #2d2d44; font-size: 10px; font-family: monospace; color: #9ca3af; border: 1px solid #3d3d5c; }
+
+  /* Side-by-side layout */
+  .side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .side-by-side, .theme-row { grid-template-columns: 1fr; } }
+
+  .annotation { margin-top: 8px; padding: 10px 14px; background: #1a1a2e; border-left: 3px solid #7c3aed; border-radius: 0 8px 8px 0; font-size: 12px; color: #9ca3af; line-height: 1.5; }
+  .annotation strong { color: #a78bfa; }
+
+  h2 { font-size: 18px; font-weight: 600; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 1px solid #2d2d44; }
+  h3 { font-size: 15px; font-weight: 600; margin: 24px 0 12px; color: #a78bfa; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showSection('theme-palette')">1. Color Palette</button>
+  <button class="nav-btn" onclick="showSection('theme-preview')">2. Light vs Dark</button>
+  <button class="nav-btn" onclick="showSection('style-settings')">3. Style Settings</button>
+  <button class="nav-btn" onclick="showSection('chat-delete')">4. Delete Conversation</button>
+  <button class="nav-btn" onclick="showSection('chat-toolbar')">5. Input Toolbar</button>
+  <button class="nav-btn" onclick="showSection('chat-modes')">6. Conversation Modes</button>
+  <button class="nav-btn" onclick="showSection('chat-history')">7. Input History</button>
+</nav>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: Color Palette -->
+<!-- ============================================================ -->
+<div id="theme-palette" class="section active">
+  <h1>Color Palette</h1>
+  <p class="subtitle">--pk-* CSS custom properties. Structural colors follow Obsidian theme, brand/semantic have light/dark variants.</p>
+
+  <h3>Structural (follows Obsidian theme)</h3>
+  <div class="palette-grid">
+    <div class="palette-swatch" style="background:#ffffff; color:#1a1c1e; border:1px solid #e5e7eb;">
+      <span class="name">--pk-bg</span><span class="value">var(--background-primary)</span>
+    </div>
+    <div class="palette-swatch" style="background:#f3f4f6; color:#1a1c1e; border:1px solid #e5e7eb;">
+      <span class="name">--pk-bg-secondary</span><span class="value">var(--background-secondary)</span>
+    </div>
+    <div class="palette-swatch" style="background:#1a1c1e; color:#fff;">
+      <span class="name">--pk-fg</span><span class="value">var(--text-normal)</span>
+    </div>
+    <div class="palette-swatch" style="background:#6b7280; color:#fff;">
+      <span class="name">--pk-fg-muted</span><span class="value">var(--text-muted)</span>
+    </div>
+    <div class="palette-swatch" style="background:#9ca3af; color:#fff;">
+      <span class="name">--pk-fg-faint</span><span class="value">var(--text-faint)</span>
+    </div>
+    <div class="palette-swatch" style="background:#e5e7eb; color:#1a1c1e;">
+      <span class="name">--pk-border</span><span class="value">var(--bg-modifier-border)</span>
+    </div>
+  </div>
+  <div class="annotation">These values come from Obsidian's native CSS vars. In Minimal theme with dark sidebar, the sidebar view automatically gets dark values. No JS detection needed.</div>
+
+  <h3>Brand (light / dark)</h3>
+  <div class="theme-row">
+    <div>
+      <div class="demo-label">Light Mode</div>
+      <div class="palette-grid">
+        <div class="palette-swatch" style="background:#7c3aed; color:#fff;"><span class="name">--pk-accent</span><span class="value">#7c3aed</span></div>
+        <div class="palette-swatch" style="background:#6d28d9; color:#fff;"><span class="name">--pk-accent-hover</span><span class="value">#6d28d9</span></div>
+        <div class="palette-swatch" style="background:rgba(124,58,237,0.15); color:#7c3aed; border:1px solid rgba(124,58,237,0.3);"><span class="name">--pk-accent-muted</span><span class="value">rgba(124,58,237,0.15)</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="demo-label">Dark Mode</div>
+      <div class="palette-grid">
+        <div class="palette-swatch" style="background:#a78bfa; color:#1a1a2e;"><span class="name">--pk-accent</span><span class="value">#a78bfa</span></div>
+        <div class="palette-swatch" style="background:#8b5cf6; color:#fff;"><span class="name">--pk-accent-hover</span><span class="value">#8b5cf6</span></div>
+        <div class="palette-swatch" style="background:rgba(167,139,250,0.15); color:#a78bfa; border:1px solid rgba(167,139,250,0.3);"><span class="name">--pk-accent-muted</span><span class="value">rgba(167,139,250,0.15)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Semantic (light / dark)</h3>
+  <div class="theme-row">
+    <div>
+      <div class="demo-label">Light Mode</div>
+      <div class="semantic-row">
+        <span class="semantic-chip" style="background:rgba(34,197,94,0.12); color:#22c55e;">Success #22c55e</span>
+        <span class="semantic-chip" style="background:rgba(245,158,11,0.12); color:#f59e0b;">Warning #f59e0b</span>
+        <span class="semantic-chip" style="background:rgba(239,68,68,0.12); color:#ef4444;">Error #ef4444</span>
+        <span class="semantic-chip" style="background:rgba(59,130,246,0.12); color:#3b82f6;">Info #3b82f6</span>
+      </div>
+    </div>
+    <div>
+      <div class="demo-label">Dark Mode</div>
+      <div class="semantic-row">
+        <span class="semantic-chip" style="background:rgba(74,222,128,0.12); color:#4ade80;">Success #4ade80</span>
+        <span class="semantic-chip" style="background:rgba(251,191,36,0.12); color:#fbbf24;">Warning #fbbf24</span>
+        <span class="semantic-chip" style="background:rgba(248,113,113,0.12); color:#f87171;">Error #f87171</span>
+        <span class="semantic-chip" style="background:rgba(96,165,250,0.12); color:#60a5fa;">Info #60a5fa</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: Light vs Dark Preview -->
+<!-- ============================================================ -->
+<div id="theme-preview" class="section">
+  <h1>Light vs Dark Preview</h1>
+  <p class="subtitle">Side-by-side comparison of plugin components in both themes.</p>
+
+  <h3>Search Result Item</h3>
+  <div class="theme-row">
+    <div class="theme-card light-card">
+      <div class="theme-card-header">Light</div>
+      <div class="demo-content">
+        <div class="demo-source-item" style="background:#f3f4f6; border:1px solid #e5e7eb;">
+          <span style="color:#7c3aed;">&#128196;</span>
+          <div>
+            <div style="font-weight:500; color:#1a1c1e;">Meeting Notes 2026</div>
+            <div style="font-size:11px; color:#6b7280;">Projects/Work/meeting-notes.md</div>
+          </div>
+          <span class="demo-badge" style="background:rgba(124,58,237,0.12); color:#7c3aed; margin-left:auto;">0.92</span>
+        </div>
+        <div class="demo-source-item" style="background:#f3f4f6; border:1px solid #e5e7eb;">
+          <span style="color:#7c3aed;">&#128196;</span>
+          <div>
+            <div style="font-weight:500; color:#1a1c1e;">Project Roadmap</div>
+            <div style="font-size:11px; color:#6b7280;">Projects/Work/roadmap.md</div>
+          </div>
+          <span class="demo-badge" style="background:rgba(124,58,237,0.12); color:#7c3aed; margin-left:auto;">0.87</span>
+        </div>
+      </div>
+    </div>
+    <div class="theme-card dark-card">
+      <div class="theme-card-header">Dark</div>
+      <div class="demo-content">
+        <div class="demo-source-item" style="background:#16162a; border:1px solid #2d2d44;">
+          <span style="color:#a78bfa;">&#128196;</span>
+          <div>
+            <div style="font-weight:500; color:#e2e8f0;">Meeting Notes 2026</div>
+            <div style="font-size:11px; color:#9ca3af;">Projects/Work/meeting-notes.md</div>
+          </div>
+          <span class="demo-badge" style="background:rgba(167,139,250,0.15); color:#a78bfa; margin-left:auto;">0.92</span>
+        </div>
+        <div class="demo-source-item" style="background:#16162a; border:1px solid #2d2d44;">
+          <span style="color:#a78bfa;">&#128196;</span>
+          <div>
+            <div style="font-weight:500; color:#e2e8f0;">Project Roadmap</div>
+            <div style="font-size:11px; color:#9ca3af;">Projects/Work/roadmap.md</div>
+          </div>
+          <span class="demo-badge" style="background:rgba(167,139,250,0.15); color:#a78bfa; margin-left:auto;">0.87</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Buttons & Input</h3>
+  <div class="theme-row">
+    <div class="theme-card light-card">
+      <div class="theme-card-header">Light</div>
+      <div class="demo-content">
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <button class="demo-button" style="background:#7c3aed; color:#fff;">Approve Plan</button>
+          <button class="demo-button demo-button-outline" style="border-color:#e5e7eb; color:#1a1c1e;">Cancel</button>
+          <button class="demo-button" style="background:rgba(239,68,68,0.1); color:#ef4444;">Delete</button>
+        </div>
+        <input class="demo-input" style="border-color:#e5e7eb; color:#1a1c1e; background:#f3f4f6;" placeholder="Search your vault..." />
+      </div>
+    </div>
+    <div class="theme-card dark-card">
+      <div class="theme-card-header">Dark</div>
+      <div class="demo-content">
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <button class="demo-button" style="background:#a78bfa; color:#1a1a2e;">Approve Plan</button>
+          <button class="demo-button demo-button-outline" style="border-color:#2d2d44; color:#e2e8f0;">Cancel</button>
+          <button class="demo-button" style="background:rgba(248,113,113,0.1); color:#f87171;">Delete</button>
+        </div>
+        <input class="demo-input" style="border-color:#2d2d44; color:#e2e8f0; background:#16162a;" placeholder="Search your vault..." />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: Style Settings -->
+<!-- ============================================================ -->
+<div id="style-settings" class="section">
+  <h1>Style Settings Panel</h1>
+  <p class="subtitle">What users see in Obsidian Settings > Style Settings > Peak Assistant.</p>
+
+  <div class="side-by-side">
+    <div class="ss-panel">
+      <div class="ss-header">Peak Assistant</div>
+      <div class="ss-group">
+        <div class="ss-group-title">Structural Colors</div>
+        <div style="font-size:11px; color:#6b7280; margin-bottom:10px;">Leave empty to follow your Obsidian theme</div>
+        <div class="ss-item"><span class="ss-item-label">Background</span><div class="ss-item-empty">--</div></div>
+        <div class="ss-item"><span class="ss-item-label">Secondary Background</span><div class="ss-item-empty">--</div></div>
+        <div class="ss-item"><span class="ss-item-label">Text Color</span><div class="ss-item-empty">--</div></div>
+        <div class="ss-item"><span class="ss-item-label">Muted Text</span><div class="ss-item-empty">--</div></div>
+        <div class="ss-item"><span class="ss-item-label">Border Color</span><div class="ss-item-empty">--</div></div>
+      </div>
+      <div class="ss-group">
+        <div class="ss-group-title">Brand Colors</div>
+        <div class="ss-item"><span class="ss-item-label">Accent Color</span><div class="ss-item-value" style="background:#7c3aed;"></div></div>
+        <div class="ss-item"><span class="ss-item-label">Accent Hover</span><div class="ss-item-value" style="background:#6d28d9;"></div></div>
+      </div>
+      <div class="ss-group">
+        <div class="ss-group-title">Semantic Colors</div>
+        <div class="ss-item"><span class="ss-item-label">Success</span><div class="ss-item-value" style="background:#22c55e;"></div></div>
+        <div class="ss-item"><span class="ss-item-label">Warning</span><div class="ss-item-value" style="background:#f59e0b;"></div></div>
+        <div class="ss-item"><span class="ss-item-label">Error</span><div class="ss-item-value" style="background:#ef4444;"></div></div>
+        <div class="ss-item"><span class="ss-item-label">Info</span><div class="ss-item-value" style="background:#3b82f6;"></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="annotation" style="margin-top:0;">
+        <strong>Structural colors (dashed border)</strong> = "follow Obsidian theme" by default. When user picks a color, it overrides the Obsidian var. This lets users on Minimal/Catppuccin/etc. customize just the plugin without touching their theme.<br><br>
+        <strong>Brand colors (filled)</strong> = purple accent with sensible defaults. Users can change Peak's identity color to match their vault aesthetic.<br><br>
+        <strong>Semantic colors</strong> = success/warning/error/info with standard defaults. Rarely changed, but available for accessibility or preference reasons.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: Delete Conversation -->
+<!-- ============================================================ -->
+<div id="chat-delete" class="section">
+  <h1>Delete from Active Conversation (#93)</h1>
+  <p class="subtitle">Adding delete action to the conversation header menu.</p>
+
+  <div class="side-by-side">
+    <div>
+      <h3>Header Menu (current + new)</h3>
+      <div class="chat-frame" style="max-width:400px;">
+        <div class="chat-header">
+          <span class="chat-header-title">Meeting Notes Analysis</span>
+          <div class="chat-header-actions">
+            <button class="chat-action-btn" title="More actions">&#8943;</button>
+          </div>
+        </div>
+        <div style="padding:8px;">
+          <div class="menu-popup">
+            <div class="menu-item"><span class="menu-item-icon">&#8634;</span> Regenerate Title</div>
+            <div class="menu-item"><span class="menu-item-icon">&#128196;</span> View Resources</div>
+            <div class="menu-item"><span class="menu-item-icon">&#128220;</span> View Summary</div>
+            <div class="menu-divider"></div>
+            <div class="menu-item destructive"><span class="menu-item-icon">&#128465;</span> Delete Conversation</div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation">
+        <strong>New:</strong> "Delete Conversation" added at bottom of existing menu with a divider separator. Red/destructive styling. Click triggers a confirmation dialog, then navigates to HOME.
+      </div>
+    </div>
+    <div>
+      <h3>Confirmation Dialog</h3>
+      <div style="background:#16162a; border:1px solid #2d2d44; border-radius:12px; padding:24px; max-width:350px;">
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">Delete Conversation?</div>
+        <div style="font-size:13px; color:#9ca3af; margin-bottom:20px;">This will permanently delete "Meeting Notes Analysis" and all its messages. This cannot be undone.</div>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button class="demo-button demo-button-outline" style="border-color:#3d3d5c; color:#e2e8f0;">Cancel</button>
+          <button class="demo-button" style="background:#ef4444; color:#fff;">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 5: Input Toolbar -->
+<!-- ============================================================ -->
+<div id="chat-toolbar" class="section">
+  <h1>Extracted Input Toolbar (#72)</h1>
+  <p class="subtitle">The 8 toolbar buttons extracted from ChatInputArea into a standalone component.</p>
+
+  <div class="chat-frame">
+    <div class="chat-messages">
+      <div class="chat-msg chat-msg-user">How should I structure my research notes?</div>
+      <div class="chat-msg chat-msg-ai">I'd recommend using a Zettelkasten-inspired approach with atomic notes linked by topic...</div>
+    </div>
+    <div class="chat-input-area">
+      <textarea class="chat-textarea" placeholder="Send a message... (Ctrl+Arrow for history)" rows="2"></textarea>
+      <div class="input-toolbar">
+        <button class="toolbar-btn active" title="Vault Search">&#128269; Vault</button>
+        <button class="toolbar-btn" title="Web Search">&#127760; Web</button>
+        <button class="toolbar-btn" title="Attachments">&#128206;</button>
+        <button class="toolbar-btn" title="Code Interpreter">&#128187;</button>
+        <div class="toolbar-divider"></div>
+        <div class="mode-selector">
+          <button class="mode-option active">Chat</button>
+          <button class="mode-option">Plan</button>
+          <button class="mode-option">Agent</button>
+        </div>
+        <div class="toolbar-divider"></div>
+        <button class="toolbar-btn" style="font-family:monospace; font-size:10px;">claude-opus-4-6</button>
+        <span style="margin-left:auto; font-size:11px; color:#6b7280;">1.2k tokens</span>
+      </div>
+    </div>
+  </div>
+  <div class="annotation">
+    <strong>InputToolbar component</strong> — all 8 buttons in a compact row. Toggle states shown with accent background. Mode selector is a segmented control. Model name shows current selection. Token count at the right edge.<br><br>
+    Before refactor: this was 60+ lines of JSX mixed into the 453-line ChatInputArea. After: standalone &lt;InputToolbar&gt; component with props.
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 6: Conversation Modes -->
+<!-- ============================================================ -->
+<div id="chat-modes" class="section">
+  <h1>Conversation Modes (#73)</h1>
+  <p class="subtitle">System prompt varies by mode. Visual indicator in toolbar.</p>
+
+  <h3>Mode Behavior</h3>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:24px;">
+    <div style="background:#16162a; border:1px solid #2d2d44; border-radius:10px; padding:16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="font-size:18px;">&#128172;</span>
+        <span style="font-weight:600;">Chat</span>
+      </div>
+      <div style="font-size:12px; color:#9ca3af; line-height:1.5;">Default conversational mode. No special system prompt modification. Standard chat behavior.</div>
+    </div>
+    <div style="background:#16162a; border:1px solid #7c3aed44; border-radius:10px; padding:16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="font-size:18px;">&#128203;</span>
+        <span style="font-weight:600; color:#a78bfa;">Plan</span>
+      </div>
+      <div style="font-size:12px; color:#9ca3af; line-height:1.5;">Structured output. System prompt appends: "Respond with structured plans, checklists, and actionable steps."</div>
+    </div>
+    <div style="background:#16162a; border:1px solid #2d2d44; border-radius:10px; padding:16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="font-size:18px;">&#129302;</span>
+        <span style="font-weight:600;">Agent</span>
+      </div>
+      <div style="font-size:12px; color:#9ca3af; line-height:1.5;">Proactive tool use. System prompt appends: "Use tools proactively to research and verify."</div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>Current scope: prompt-only branching (Level A).</strong><br>
+    Post Provider v2 upgrade path:<br>
+    - <strong>Level B:</strong> mode controls <code>allowedTools</code> in <code>query()</code> — chat=no tools, plan=outline tools, agent=full vault tools<br>
+    - <strong>Level C:</strong> each mode runs a distinct agent pipeline with different <code>maxTurns</code>, <code>mcpServers</code>, and <code>systemPrompt</code><br><br>
+    Building Level C now on the old Vercel AI SDK would mean creating new pipelines that Provider v2 will replace entirely.
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 7: Input History -->
+<!-- ============================================================ -->
+<div id="chat-history" class="section">
+  <h1>Input History Navigation (#81)</h1>
+  <p class="subtitle">Ctrl+Arrow Up/Down to navigate through previously sent messages.</p>
+
+  <div class="side-by-side">
+    <div>
+      <h3>Interaction Flow</h3>
+      <div style="background:#16162a; border:1px solid #2d2d44; border-radius:10px; padding:16px; font-size:13px; line-height:2;">
+        <div>1. User types "How to link notes?" and sends</div>
+        <div>2. User types "What is PARA method?" and sends</div>
+        <div>3. User types "Compare Zettelkasten vs PARA" and sends</div>
+        <div style="margin-top:8px; padding-top:8px; border-top:1px solid #2d2d44;">
+        4. User presses <span class="kbd">Ctrl</span>+<span class="kbd">&uarr;</span> &rarr; textarea fills with "Compare Zettelkasten vs PARA"<br>
+        5. User presses <span class="kbd">Ctrl</span>+<span class="kbd">&uarr;</span> again &rarr; "What is PARA method?"<br>
+        6. User presses <span class="kbd">Ctrl</span>+<span class="kbd">&darr;</span> &rarr; back to "Compare Zettelkasten vs PARA"<br>
+        7. User presses <span class="kbd">Ctrl</span>+<span class="kbd">&darr;</span> again &rarr; restores original draft (empty or whatever was typed)
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3>Implementation Details</h3>
+      <div class="annotation" style="margin-top:0;">
+        <strong>State:</strong> <code>inputHistory: string[]</code> (max 50), <code>historyIndex: number</code> (-1 = not navigating), <code>draftInput: string</code> (stashed current text)<br><br>
+        <strong>Session-scoped:</strong> History clears on page reload. Not persisted to vault.<br><br>
+        <strong>Exit:</strong> Any typing (not arrow) resets historyIndex to -1, exiting history navigation mode.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

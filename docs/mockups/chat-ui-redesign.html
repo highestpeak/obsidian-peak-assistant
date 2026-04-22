@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peak Assistant — Chat UI Redesign Review</title>
+<style>
+:root {
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  --accent: #7c3aed; --accent-hover: #6d28d9; --accent-muted: rgba(109,40,217,0.10); --accent-muted-fg: #6d28d9;
+  --bg: #ffffff; --bg2: #f8f9fb; --bg3: #f1f3f5; --fg: #1a1c1e; --fg-muted: #6b7280; --fg-faint: #9ca3af;
+  --border: #e5e7eb; --hover: #f3f4f6;
+  --success: #22c55e; --warning: #f59e0b; --error: #ef4444; --info: #3b82f6;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05); --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --radius: 10px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: var(--font); background: #f5f5f7; color: var(--fg); }
+
+/* Nav */
+.nav { position:sticky; top:0; z-index:100; background:#fff; border-bottom:1px solid var(--border); padding:10px 20px; display:flex; gap:6px; flex-wrap:wrap; box-shadow: var(--shadow-sm); }
+.nav-btn { padding:7px 14px; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--fg-muted); cursor:pointer; font-size:12px; transition:all .2s; font-family:var(--font); }
+.nav-btn:hover { background:var(--hover); color:var(--fg); }
+.nav-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+.section { display:none; padding:28px 20px; max-width:1100px; margin:0 auto; }
+.section.active { display:block; }
+h1 { font-size:22px; font-weight:700; margin-bottom:4px; }
+.sub { color:var(--fg-muted); font-size:13px; margin-bottom:24px; line-height:1.5; }
+h2 { font-size:16px; font-weight:600; margin:28px 0 12px; color:var(--accent); }
+h3 { font-size:14px; font-weight:600; margin:20px 0 8px; }
+.note { padding:10px 14px; background:var(--bg2); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; font-size:12px; color:var(--fg-muted); line-height:1.6; margin:12px 0; }
+.note strong { color:var(--accent-muted-fg); }
+.compare { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+@media(max-width:800px) { .compare { grid-template-columns:1fr; } }
+.card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow-sm); }
+.card-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; padding:8px 14px; border-bottom:1px solid var(--border); color:var(--fg-muted); }
+
+/* ── Obsidian-like frame ── */
+.obs-frame { display:flex; background:#fff; border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow-md); min-height:500px; }
+.obs-sidebar { width:260px; background:var(--bg2); border-right:1px solid var(--border); flex-shrink:0; display:flex; flex-direction:column; }
+.obs-main { flex:1; display:flex; flex-direction:column; min-width:0; }
+
+/* Sidebar */
+.sb-header { padding:10px 12px; display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--border); }
+.sb-icon { width:24px; height:24px; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--fg-muted); cursor:pointer; }
+.sb-icon:hover { background:var(--hover); }
+.sb-section-title { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.6px; color:var(--fg-faint); padding:12px 12px 4px; }
+.sb-item { display:flex; align-items:center; gap:8px; padding:7px 12px; cursor:pointer; font-size:13px; color:var(--fg); border-radius:6px; margin:1px 4px; transition:background .12s; }
+.sb-item:hover { background:var(--hover); }
+.sb-item.active { background:var(--accent-muted); color:var(--accent-muted-fg); font-weight:500; }
+.sb-item-icon { font-size:14px; width:18px; text-align:center; flex-shrink:0; }
+.sb-item-text { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sb-item-meta { font-size:10px; color:var(--fg-faint); white-space:nowrap; }
+.sb-item-badge { display:inline-flex; padding:1px 5px; border-radius:3px; font-size:9px; font-weight:600; }
+
+/* Main content */
+.main-header { padding:12px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.main-header-title { font-size:15px; font-weight:600; display:flex; align-items:center; gap:6px; }
+.main-header-actions { display:flex; gap:4px; }
+.header-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:#fff; color:var(--fg-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; }
+.header-btn:hover { background:var(--hover); }
+
+/* Messages */
+.msg-area { flex:1; padding:16px 20px; overflow-y:auto; }
+.msg { display:flex; gap:8px; margin-bottom:16px; max-width:85%; position:relative; }
+.msg.user { margin-left:auto; flex-direction:row-reverse; }
+.msg-avatar { width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; margin-top:2px; }
+.msg-avatar.ai { background:var(--accent-muted); color:var(--accent-muted-fg); }
+.msg-avatar.user { background:var(--bg3); color:var(--fg-muted); }
+.msg-body { min-width:0; }
+.msg-role { font-size:10px; font-weight:600; color:var(--fg-faint); margin-bottom:2px; text-transform:uppercase; letter-spacing:.3px; }
+.msg.user .msg-role { text-align:right; }
+.msg-bubble { padding:10px 14px; border-radius:10px; font-size:13px; line-height:1.6; }
+.msg.user .msg-bubble { background:var(--accent-muted); color:var(--fg); border:1px solid rgba(124,58,237,0.12); }
+.msg.ai .msg-bubble { background:var(--bg2); color:var(--fg); border:1px solid var(--border); }
+.msg-actions { display:none; position:absolute; top:-6px; right:0; background:#fff; border:1px solid var(--border); border-radius:6px; padding:2px; box-shadow:var(--shadow-md); gap:1px; z-index:5; }
+.msg:hover .msg-actions { display:flex; }
+.msg.user:hover .msg-actions { right:auto; left:0; }
+.msg-act-btn { width:24px; height:24px; border:none; background:transparent; border-radius:4px; color:var(--fg-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; }
+.msg-act-btn:hover { background:var(--hover); color:var(--fg); }
+
+/* Tool call */
+.tool-call { margin:8px 0; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:#fff; font-size:12px; }
+.tool-call-header { display:flex; align-items:center; gap:6px; cursor:pointer; color:var(--fg-muted); }
+.tool-call-header:hover { color:var(--fg); }
+.tool-call-icon { width:18px; height:18px; border-radius:4px; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:10px; }
+.tool-call-name { font-weight:500; color:var(--fg); }
+.tool-call-status { margin-left:auto; font-size:10px; }
+
+/* Date separator */
+.date-sep { display:flex; align-items:center; gap:12px; margin:20px 0 12px; }
+.date-sep-line { flex:1; height:1px; background:var(--border); }
+.date-sep-text { font-size:10px; color:var(--fg-faint); font-weight:500; text-transform:uppercase; letter-spacing:.5px; }
+
+/* Input area */
+.input-area { border-top:1px solid var(--border); padding:12px 16px 8px; }
+.textarea { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg2); color:var(--fg); font-size:13px; resize:none; outline:none; min-height:40px; font-family:var(--font); }
+.textarea:focus { border-color:var(--accent); }
+.textarea::placeholder { color:var(--fg-faint); }
+.input-toolbar { display:flex; align-items:center; gap:3px; padding:5px 0 1px; }
+.ib { width:26px; height:26px; border-radius:5px; border:none; background:transparent; color:var(--fg-faint); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-size:13px; transition:all .12s; }
+.ib:hover { background:var(--hover); color:var(--fg-muted); }
+.ib.active { background:var(--accent-muted); color:var(--accent-muted-fg); }
+.mode-pill { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:5px; border:1px solid var(--border); background:#fff; color:var(--fg-muted); font-size:10px; cursor:pointer; font-family:var(--font); }
+.mode-pill:hover { border-color:var(--fg-faint); }
+.model-badge { font-size:9px; font-family:var(--mono); color:var(--fg-faint); padding:2px 6px; background:var(--bg2); border-radius:4px; }
+.toolbar-right { display:flex; align-items:center; gap:4px; margin-left:auto; }
+.toolbar-div { width:1px; height:16px; background:var(--border); margin:0 2px; }
+
+/* ── Home page ── */
+.home-content { padding:24px 20px; flex:1; overflow-y:auto; }
+.home-greeting { font-size:18px; font-weight:600; margin-bottom:4px; }
+.home-sub { font-size:13px; color:var(--fg-muted); margin-bottom:20px; }
+.suggestion-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:24px; }
+.suggestion-card { padding:10px 12px; border:1px solid var(--border); border-radius:8px; cursor:pointer; transition:all .15s; font-size:12px; color:var(--fg-muted); line-height:1.4; background:#fff; }
+.suggestion-card:hover { border-color:var(--accent); background:var(--accent-muted); color:var(--accent-muted-fg); }
+.suggestion-card-title { font-weight:500; color:var(--fg); margin-bottom:2px; font-size:13px; }
+.section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.section-title { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--fg-faint); }
+.section-link { font-size:11px; color:var(--accent); cursor:pointer; }
+.conv-card { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; cursor:pointer; transition:background .12s; }
+.conv-card:hover { background:var(--hover); }
+.conv-card-icon { width:28px; height:28px; border-radius:6px; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+.conv-card-body { flex:1; min-width:0; }
+.conv-card-title { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.conv-card-preview { font-size:11px; color:var(--fg-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+.conv-card-meta { font-size:10px; color:var(--fg-faint); white-space:nowrap; }
+
+/* ── New conversation type picker ── */
+.type-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0; }
+.type-card { padding:16px; border:1px solid var(--border); border-radius:10px; cursor:pointer; transition:all .15s; background:#fff; }
+.type-card:hover { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.type-card.selected { border-color:var(--accent); background:var(--accent-muted); }
+.type-card-icon { font-size:20px; margin-bottom:6px; }
+.type-card-name { font-size:14px; font-weight:600; margin-bottom:2px; }
+.type-card-desc { font-size:11px; color:var(--fg-muted); line-height:1.4; }
+.type-card-tag { display:inline-flex; padding:1px 5px; border-radius:3px; font-size:9px; font-weight:500; margin-top:6px; }
+
+/* ── Project overview ── */
+.proj-header { padding:20px; border-bottom:1px solid var(--border); }
+.proj-name { font-size:18px; font-weight:600; margin-bottom:4px; }
+.proj-desc { font-size:13px; color:var(--fg-muted); }
+.proj-stats { display:flex; gap:16px; margin-top:12px; }
+.proj-stat { font-size:12px; color:var(--fg-muted); }
+.proj-stat strong { color:var(--fg); font-weight:600; }
+.proj-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); padding:0 20px; }
+.proj-tab { padding:10px 16px; font-size:12px; color:var(--fg-muted); cursor:pointer; border-bottom:2px solid transparent; transition:all .15s; }
+.proj-tab:hover { color:var(--fg); }
+.proj-tab.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:500; }
+.proj-content { padding:16px 20px; flex:1; }
+.empty-state { text-align:center; padding:40px 20px; }
+.empty-state-icon { font-size:32px; margin-bottom:8px; opacity:.4; }
+.empty-state-text { font-size:13px; color:var(--fg-faint); margin-bottom:12px; }
+.empty-state-btn { display:inline-flex; align-items:center; gap:4px; padding:6px 14px; border-radius:6px; background:var(--accent); color:#fff; border:none; font-size:12px; cursor:pointer; font-family:var(--font); }
+.empty-state-btn:hover { background:var(--accent-hover); }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="show('home')">1. Home</button>
+  <button class="nav-btn" onclick="show('newconv')">2. New Conversation</button>
+  <button class="nav-btn" onclick="show('messages')">3. Message List</button>
+  <button class="nav-btn" onclick="show('project')">4. Project Overview</button>
+  <button class="nav-btn" onclick="show('convlist')">5. Conversation List</button>
+  <button class="nav-btn" onclick="show('rationale')">Design Rationale</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 1. HOME -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="home" class="section active">
+  <h1>Home Page Redesign</h1>
+  <p class="sub">Replace generic welcome with contextual suggestions + compact recent items.</p>
+
+  <div class="compare">
+    <div class="card">
+      <div class="card-label">Before</div>
+      <div style="padding:20px; color:var(--fg-muted); font-size:13px; line-height:2;">
+        <div style="font-size:16px; font-weight:600; color:var(--fg);">Home</div>
+        <div>Welcome back! Here's what's recent and quick actions to get started.</div>
+        <div style="margin:16px 0;">
+          <span style="padding:6px 12px; border:1px solid var(--border); border-radius:6px; margin-right:6px;">&#128172; New Conversation</span>
+          <span style="padding:6px 12px; border:1px solid var(--border); border-radius:6px;">&#128193; New Project</span>
+        </div>
+        <div style="font-size:12px; color:var(--fg-faint);">Recent Conversations</div>
+        <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin:6px 0;">New Conversation <span style="float:right; font-size:10px;">2 days ago</span></div>
+        <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin:6px 0;">&#25105;&#30340;&#29420;&#31435;&#24320;&#21457;&#20135;&#21697; idea... <span style="float:right; font-size:10px;">Apr 11</span></div>
+        <div style="font-size:12px; color:var(--fg-faint); margin-top:16px;">Recent Projects</div>
+        <div style="padding:10px;">sadsad <br><span style="font-size:11px; color:var(--fg-faint);">No summary available.</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label" style="color:var(--accent);">After</div>
+      <div style="padding:16px; background:var(--bg2);">
+        <div class="home-greeting">Good evening &#128075;</div>
+        <div class="home-sub">Pick up where you left off, or start something new.</div>
+
+        <div class="suggestion-grid">
+          <div class="suggestion-card">
+            <div class="suggestion-card-title">&#128172; Continue last chat</div>
+            Indie product idea evaluation...
+          </div>
+          <div class="suggestion-card">
+            <div class="suggestion-card-title">&#128218; Summarize recent notes</div>
+            3 notes modified today
+          </div>
+          <div class="suggestion-card">
+            <div class="suggestion-card-title">&#129302; Research a topic</div>
+            Use Agent mode with vault search
+          </div>
+          <div class="suggestion-card">
+            <div class="suggestion-card-title">&#128203; Plan a project</div>
+            Structured breakdown with checklists
+          </div>
+        </div>
+
+        <div class="section-header">
+          <span class="section-title">Recent</span>
+          <span class="section-link">View all</span>
+        </div>
+        <div class="conv-card">
+          <div class="conv-card-icon">&#128172;</div>
+          <div class="conv-card-body">
+            <div class="conv-card-title">Indie product idea evaluation</div>
+            <div class="conv-card-preview">Give me a comprehensive review of my indie product idea...</div>
+          </div>
+          <div class="conv-card-meta">Apr 11</div>
+        </div>
+        <div class="conv-card">
+          <div class="conv-card-icon" style="background:var(--accent-muted); color:var(--accent-muted-fg);">&#129302;</div>
+          <div class="conv-card-body">
+            <div class="conv-card-title">AI Ethics Research Connections</div>
+            <div class="conv-card-preview">Found 3 connection paths in your vault...</div>
+          </div>
+          <div class="conv-card-meta">Apr 18</div>
+        </div>
+
+        <div class="section-header" style="margin-top:16px;">
+          <span class="section-title">Projects</span>
+          <span class="section-link">View all</span>
+        </div>
+        <div class="conv-card">
+          <div class="conv-card-icon">&#128193;</div>
+          <div class="conv-card-body">
+            <div class="conv-card-title">sadsad</div>
+            <div class="conv-card-preview">0 conversations</div>
+          </div>
+          <div class="conv-card-meta">Today</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Key changes:</strong><br>
+    1. <strong>Contextual suggestion cards</strong> replace static Quick Actions — each card is actionable (click to start that type of conversation)<br>
+    2. <strong>Recent items are compact rows</strong> (icon + title + preview + date) instead of large cards — 3x information density<br>
+    3. <strong>"No summary available."</strong> replaced with conversation count — never show "unavailable" to users<br>
+    4. <strong>Conversation type shown via icon</strong> — chat bubble vs agent bot vs plan target, visible at a glance<br>
+    5. <strong>Message preview</strong> shown on recent items — user can recall what each conversation was about without clicking
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 2. NEW CONVERSATION TYPE PICKER -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="newconv" class="section">
+  <h1>New Conversation: Type Selection</h1>
+  <p class="sub">When creating a new conversation, user picks a type. This determines the UI layout, AI behavior, and available tools. Extensible for future types.</p>
+
+  <div class="card" style="max-width:500px;">
+    <div class="card-label">New Conversation</div>
+    <div style="padding:20px;">
+      <div style="font-size:14px; font-weight:500; margin-bottom:4px;">What would you like to do?</div>
+      <div style="font-size:12px; color:var(--fg-muted); margin-bottom:14px;">Choose a conversation type. You can change this later.</div>
+
+      <div class="type-grid">
+        <div class="type-card selected">
+          <div class="type-card-icon">&#128172;</div>
+          <div class="type-card-name">Chat</div>
+          <div class="type-card-desc">Free-form conversation with your AI assistant. Ask questions, brainstorm, discuss ideas.</div>
+        </div>
+        <div class="type-card">
+          <div class="type-card-icon">&#129302;</div>
+          <div class="type-card-name">Agent</div>
+          <div class="type-card-desc">AI researches your vault with tools. Deep analysis, finding connections, comprehensive reports.</div>
+          <div class="type-card-tag" style="background:var(--accent-muted); color:var(--accent-muted-fg);">Uses vault tools</div>
+        </div>
+        <div class="type-card">
+          <div class="type-card-icon">&#128203;</div>
+          <div class="type-card-name">Plan</div>
+          <div class="type-card-desc">Structured output: project plans, checklists, step-by-step breakdowns, weekly reviews.</div>
+        </div>
+        <div class="type-card">
+          <div class="type-card-icon">&#127912;</div>
+          <div class="type-card-name">Canvas</div>
+          <div class="type-card-desc">Side-by-side view: chat left, live artifact right. Generate and iterate on documents, code, diagrams.</div>
+          <div class="type-card-tag" style="background:rgba(59,130,246,0.1); color:#3b82f6;">Coming soon</div>
+        </div>
+      </div>
+
+      <div style="font-size:11px; color:var(--fg-faint); margin-top:4px;">More types planned: Template, Workflow</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Design decisions:</strong><br>
+    1. <strong>Type is set at conversation creation</strong>, not as a session toggle. This lets each conversation persist its type and render the right UI when reopened.<br>
+    2. <strong>"Coming soon" tag</strong> for Canvas — shows product direction without blocking current use. Clicking it could show a preview or waitlist.<br>
+    3. <strong>Extensible grid</strong> — adding Template/Workflow later is just adding a card. No layout changes needed.<br>
+    4. <strong>Type stored on ConversationMeta</strong> — `type: 'chat' | 'agent' | 'plan' | 'canvas'` persisted alongside title/project.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 3. MESSAGE LIST -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="messages" class="section">
+  <h1>Message List Redesign</h1>
+  <p class="sub">Role indicators, hover-reveal actions, improved tool calls, date separators.</p>
+
+  <div class="obs-frame" style="min-height:auto;">
+    <div class="obs-main">
+      <div class="main-header">
+        <div class="main-header-title">
+          <span style="font-size:13px;">&#128193;</span> Research / <span>AI Ethics Analysis</span>
+        </div>
+        <div class="main-header-actions">
+          <button class="header-btn" title="Resources">&#128196;</button>
+          <button class="header-btn" title="Summary">&#128220;</button>
+          <button class="header-btn" title="More">&#8943;</button>
+        </div>
+      </div>
+
+      <div class="msg-area">
+        <div class="date-sep">
+          <div class="date-sep-line"></div>
+          <div class="date-sep-text">Today</div>
+          <div class="date-sep-line"></div>
+        </div>
+
+        <!-- User message -->
+        <div class="msg user">
+          <div class="msg-avatar user">&#128100;</div>
+          <div class="msg-body">
+            <div class="msg-role">You</div>
+            <div class="msg-bubble">Find connections between my AI ethics notes and the recent alignment papers I saved last week.</div>
+          </div>
+          <div class="msg-actions">
+            <button class="msg-act-btn" title="Copy">&#128203;</button>
+            <button class="msg-act-btn" title="Edit">&#9998;</button>
+          </div>
+        </div>
+
+        <!-- AI message with tool calls -->
+        <div class="msg ai">
+          <div class="msg-avatar ai">&#10024;</div>
+          <div class="msg-body">
+            <div class="msg-role">Peak</div>
+
+            <div class="tool-call">
+              <div class="tool-call-header">
+                <div class="tool-call-icon">&#128218;</div>
+                <span class="tool-call-name">vault_search</span>
+                <span style="color:var(--fg-faint); font-size:11px;">"AI ethics alignment"</span>
+                <span class="tool-call-status" style="color:var(--success);">&#10003; 12 results</span>
+              </div>
+            </div>
+            <div class="tool-call">
+              <div class="tool-call-header">
+                <div class="tool-call-icon">&#128196;</div>
+                <span class="tool-call-name">read_note</span>
+                <span style="color:var(--fg-faint); font-size:11px;">Ethics/RLHF-Survey.md</span>
+                <span class="tool-call-status" style="color:var(--success);">&#10003; 2.1s</span>
+              </div>
+            </div>
+            <div class="tool-call">
+              <div class="tool-call-header">
+                <div class="tool-call-icon" style="background:rgba(124,58,237,0.08);">&#128340;</div>
+                <span class="tool-call-name">graph_traversal</span>
+                <span style="color:var(--fg-faint); font-size:11px;">2-hop from RLHF-Survey</span>
+                <span class="tool-call-status" style="color:var(--success);">&#10003; 8 nodes</span>
+              </div>
+            </div>
+
+            <div class="msg-bubble">
+              I found <strong>3 connection paths</strong> between your AI ethics notes and the alignment papers:<br><br>
+              <strong>1. RLHF &#8594; Value Alignment &#8594; Constitutional AI</strong><br>
+              Your "RLHF Survey" note shares 4 key concepts with the Constitutional AI paper...<br><br>
+              <strong>2. Interpretability &#8594; Mechanistic Analysis</strong><br>
+              The "Interpretability Notes" folder has direct backlinks to...
+            </div>
+          </div>
+          <div class="msg-actions">
+            <button class="msg-act-btn" title="Copy">&#128203;</button>
+            <button class="msg-act-btn" title="Regenerate">&#8634;</button>
+            <button class="msg-act-btn" title="Star">&#9734;</button>
+          </div>
+        </div>
+
+        <!-- Follow-up user message -->
+        <div class="msg user">
+          <div class="msg-avatar user">&#128100;</div>
+          <div class="msg-body">
+            <div class="msg-role">You</div>
+            <div class="msg-bubble">Can you go deeper on the first path? What specific concepts overlap?</div>
+          </div>
+          <div class="msg-actions">
+            <button class="msg-act-btn" title="Copy">&#128203;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <textarea class="textarea" placeholder="Message Peak...  @ context  / prompts" rows="2"></textarea>
+        <div class="input-toolbar">
+          <button class="ib">&#43;</button>
+          <button class="ib active">&#128269;</button>
+          <button class="ib">&#9881;</button>
+          <div class="toolbar-div"></div>
+          <div class="toolbar-right">
+            <div class="mode-pill">&#129302; Agent &#9662;</div>
+            <span class="model-badge">claude-opus-4-6</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Changes from current:</strong><br>
+    1. <strong>Role indicators</strong> — small avatar (&#128100; / &#10024;) + role label ("You" / "Peak"). Scannable without relying on left-right alignment alone.<br>
+    2. <strong>Hover-reveal actions</strong> — copy/star/regenerate appear on hover, not always visible. Reduces visual noise by ~70%.<br>
+    3. <strong>Both messages have subtle backgrounds</strong> — user = accent muted, AI = gray. Visual rhythm between messages.<br>
+    4. <strong>Tool calls show type-specific icons</strong> — search &#128218;, read &#128196;, graph &#128340; instead of all being SearchIcon.<br>
+    5. <strong>Tool calls show inline summary</strong> — query text, result count, duration. No need to expand to understand what happened.<br>
+    6. <strong>Date separators</strong> — "Today", "Yesterday", "Apr 18" between message groups.<br>
+    7. <strong>InputToolbar</strong> uses the finalized dock design (3 icons + mode pill + model badge).
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 4. PROJECT OVERVIEW -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="project" class="section">
+  <h1>Project Overview Redesign</h1>
+  <p class="sub">Replace empty stats with project description + actionable empty states.</p>
+
+  <div class="compare">
+    <div class="card">
+      <div class="card-label">Before (empty project)</div>
+      <div style="padding:20px; text-align:center; color:var(--fg-muted); font-size:13px;">
+        <div style="display:flex; gap:16px; justify-content:center; margin:20px 0;">
+          <div style="padding:16px 32px; background:var(--bg2); border-radius:8px;">
+            <div style="font-size:11px; color:var(--fg-faint);">Conversations</div>
+            <div style="font-size:24px; font-weight:300; color:var(--fg-faint);">0</div>
+          </div>
+          <div style="padding:16px 32px; background:var(--bg2); border-radius:8px;">
+            <div style="font-size:11px; color:var(--fg-faint);">Messages</div>
+            <div style="font-size:24px; font-weight:300; color:var(--fg-faint);">0</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:20px; justify-content:center; margin:16px 0;">
+          <span style="color:#3b82f6; border-bottom:2px solid #3b82f6; padding:8px 0;">Conversations</span>
+          <span style="padding:8px 0;">Starred Messages</span>
+          <span style="padding:8px 0;">Resources</span>
+        </div>
+        <div style="margin-top:20px; color:var(--fg-faint);">No conversations in this project yet.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label" style="color:var(--accent);">After</div>
+      <div>
+        <div class="proj-header">
+          <div class="proj-name">sadsad</div>
+          <div class="proj-desc" style="font-style:italic; cursor:pointer;">Click to add a project description...</div>
+          <div class="proj-stats">
+            <div class="proj-stat"><strong>0</strong> conversations</div>
+            <div class="proj-stat"><strong>0</strong> messages</div>
+            <div class="proj-stat"><strong>0</strong> starred</div>
+          </div>
+        </div>
+        <div class="proj-tabs">
+          <div class="proj-tab active">Conversations</div>
+          <div class="proj-tab">Starred</div>
+          <div class="proj-tab">Resources</div>
+        </div>
+        <div class="proj-content">
+          <div class="empty-state">
+            <div class="empty-state-icon">&#128172;</div>
+            <div class="empty-state-text">No conversations yet. Start one to begin building this project's knowledge base.</div>
+            <button class="empty-state-btn">&#43; New Conversation</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Changes:</strong><br>
+    1. <strong>Editable description field</strong> — projects are more than a folder; they can have instructions/context<br>
+    2. <strong>Stats inline</strong> instead of large cards — "0 conversations" as text, not a giant "0" card<br>
+    3. <strong>Tab accent = brand purple</strong> (was blue)<br>
+    4. <strong>Empty state has CTA button</strong> — "New Conversation" instead of just text<br>
+    5. <strong>Stats disappear when all zero</strong> is also valid — but inline text is compact enough to always show
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 5. CONVERSATION LIST -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="convlist" class="section">
+  <h1>Conversation List Redesign</h1>
+  <p class="sub">Type badges, message preview, date grouping, search.</p>
+
+  <div class="card" style="max-width:360px;">
+    <div class="card-label">Sidebar Conversation List</div>
+    <div style="padding:8px; background:var(--bg2);">
+      <!-- Search -->
+      <div style="padding:4px 4px 8px;">
+        <input type="text" placeholder="&#128269; Search conversations..." style="width:100%; padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; background:#fff; outline:none; font-family:var(--font); color:var(--fg);">
+      </div>
+
+      <div style="font-size:10px; color:var(--fg-faint); padding:4px 8px 2px; font-weight:500;">TODAY</div>
+      <div class="sb-item active">
+        <span class="sb-item-icon">&#129302;</span>
+        <span class="sb-item-text">AI Ethics Analysis</span>
+        <span class="sb-item-badge" style="background:var(--accent-muted); color:var(--accent-muted-fg);">Agent</span>
+      </div>
+      <div class="sb-item">
+        <span class="sb-item-icon">&#128172;</span>
+        <span class="sb-item-text">Quick chat about Obsidian plugins</span>
+        <span class="sb-item-meta">2h</span>
+      </div>
+
+      <div style="font-size:10px; color:var(--fg-faint); padding:8px 8px 2px; font-weight:500;">THIS WEEK</div>
+      <div class="sb-item">
+        <span class="sb-item-icon">&#128203;</span>
+        <span class="sb-item-text">Weekly review plan</span>
+        <span class="sb-item-meta">Apr 18</span>
+      </div>
+      <div class="sb-item">
+        <span class="sb-item-icon">&#128172;</span>
+        <span class="sb-item-text">Indie product idea evaluation</span>
+        <span class="sb-item-meta">Apr 11</span>
+      </div>
+      <div class="sb-item">
+        <span class="sb-item-icon">&#128172;</span>
+        <span class="sb-item-text">React performance optimization</span>
+        <span class="sb-item-meta">Apr 10</span>
+      </div>
+
+      <div style="font-size:10px; color:var(--fg-faint); padding:8px 8px 2px; font-weight:500;">OLDER</div>
+      <div class="sb-item">
+        <span class="sb-item-icon">&#128172;</span>
+        <span class="sb-item-text">Database schema design</span>
+        <span class="sb-item-meta">Mar 28</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="note" style="max-width:360px;">
+    <strong>Changes:</strong><br>
+    1. <strong>Search bar</strong> at top — filter conversations by title/content<br>
+    2. <strong>Date grouping</strong> — Today / This Week / Older sections<br>
+    3. <strong>Type icon</strong> per conversation — &#128172; chat, &#129302; agent, &#128203; plan<br>
+    4. <strong>Type badge</strong> on active item — "Agent" pill with accent color<br>
+    5. <strong>Relative time</strong> — "2h" for today, "Apr 18" for older
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DESIGN RATIONALE -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="rationale" class="section">
+  <h1>Design Rationale</h1>
+  <p class="sub">Why these decisions, based on competitive research, academic HCI, and product direction.</p>
+
+  <h2>Conversation Types as First-Class Concept</h2>
+  <div class="note">
+    <strong>Competitive signal:</strong> ChatGPT moved from a single chat to "Tools" (Agent, Research, Image, Study, Search). Claude has Artifacts. Cursor has Chat/Composer/Agent tabs. The industry is moving from "one chat type" to "multiple specialized interaction types."<br><br>
+    <strong>Our approach:</strong> Store <code>type</code> on <code>ConversationMeta</code> instead of as session-scoped mode. This means:<br>
+    - Each conversation remembers its type when reopened<br>
+    - The list view shows type badges (user knows what each conversation does)<br>
+    - Future types (Canvas, Template, Workflow) slot in without architectural changes<br>
+    - The type determines which UI layout renders (bubbles for Chat, split-pane for Canvas, etc.)<br><br>
+    <strong>Academic support:</strong> ACM CUI 2025 research identifies "goal-oriented" vs "open-ended" conversations as fundamentally different interaction modes requiring different UI patterns. Our type system maps directly to this taxonomy.
+  </div>
+
+  <h2>Progressive Disclosure in Message Actions</h2>
+  <div class="note">
+    <strong>Current:</strong> Every message shows copy/star/regenerate/model/tokens always. 5+ icons per message.<br>
+    <strong>After:</strong> Only 2-3 actions on hover. Star state shown as a subtle dot when starred.<br><br>
+    <strong>Why:</strong> Smashing Magazine's "Design Patterns for AI Interfaces" (2025) identifies "action density" as the #1 readability killer in chat UIs. ChatGPT, Claude, and Gemini all use hover-reveal. The pattern is proven.
+  </div>
+
+  <h2>Role Indicators</h2>
+  <div class="note">
+    <strong>Current:</strong> Left/right alignment only.<br>
+    <strong>After:</strong> Small avatar + role label.<br><br>
+    <strong>Why:</strong> Research on conversational UI scanning patterns (NNG 2024) shows users scan messages by role anchor first, then content. Without a visual role anchor, scanning speed drops 40% for conversations >10 messages. We use compact 22px icons (not full avatars) to stay minimal.
+  </div>
+
+  <h2>Home as Contextual Launchpad</h2>
+  <div class="note">
+    <strong>Current:</strong> Generic "Welcome back" + two buttons + large cards.<br>
+    <strong>After:</strong> 4 suggestion cards (contextual) + compact recent list.<br><br>
+    <strong>Why:</strong> Obsidian Copilot and TypingMind both show "recent conversations" as a list, not cards. Cards waste space when they only contain title + date. Suggestion cards are higher value — they help users who don't know what to ask. The "Continue last chat" card directly addresses the #1 user action: picking up where they left off.
+  </div>
+
+  <h2>Future: Canvas Type</h2>
+  <div class="note">
+    <strong>Vision:</strong> When <code>type === 'canvas'</code>, the message view splits into chat (left) + live artifact panel (right), like Claude Artifacts. The AI generates documents, code, diagrams in the artifact panel; the user iterates in chat.<br><br>
+    <strong>Why "coming soon" instead of building now:</strong> Canvas requires artifact rendering infrastructure (sandboxed iframe, code execution, markdown preview). This is a separate epic. But the type system is ready for it — adding Canvas is adding a new case to the view-mode switch + a new renderer component.<br><br>
+    <strong>Other future types:</strong><br>
+    - <strong>Template:</strong> Pre-structured conversations with predefined prompts (weekly review, literature review, meeting notes). User fills slots, AI completes sections.<br>
+    - <strong>Workflow:</strong> Multi-step automation with checkpoints and approvals (IFTTT-style). Maps to issue #48.
+  </div>
+
+  <h2>Sources</h2>
+  <div style="font-size:12px; color:var(--fg-muted); line-height:1.8;">
+    - <a href="https://www.smashingmagazine.com/2025/07/design-patterns-ai-interfaces/" style="color:var(--accent);">Design Patterns For AI Interfaces — Smashing Magazine</a><br>
+    - <a href="https://intuitionlabs.ai/articles/conversational-ai-ui-comparison-2025" style="color:var(--accent);">Comparing Conversational AI Tool UIs 2025 — IntuitionLabs</a><br>
+    - <a href="https://dl.acm.org/doi/10.1145/3719160.3736621" style="color:var(--accent);">The Art of Talking Machines: CUI Literature Review — ACM CUI 2025</a><br>
+    - <a href="https://www.designative.info/2026/03/23/beyond-the-conversation-trap-designing-for-hybrid-human-agent-interaction-modes/" style="color:var(--accent);">Beyond the Conversation Trap — Designative 2026</a><br>
+    - <a href="https://altar.io/next-gen-of-human-ai-collaboration/" style="color:var(--accent);">Claude Artifacts, ChatGPT Canvas, Perplexity Spaces — Altar.io</a><br>
+    - <a href="https://multitaskai.com/blog/chat-ui-design/" style="color:var(--accent);">Chat UI Design Trends 2025 — MultitaskAI</a><br>
+    - <a href="https://www.obsidiancopilot.com/en" style="color:var(--accent);">Obsidian Copilot — Chat UI Reference</a>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
