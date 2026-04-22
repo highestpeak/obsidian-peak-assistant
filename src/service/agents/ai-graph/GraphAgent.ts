@@ -4,24 +4,23 @@
  * VaultSearchAgentSDK.
  *
  * Flow:
- *   1. warmup() installs renderer compat patches + probes node binary
- *   2. generateGraph() reads profile, builds graph MCP server, calls query()
+ *   1. warmupPool() installs renderer compat patches + probes node binary
+ *   2. generateGraph() resolves profile, builds graph MCP server, calls queryWithProfile()
  *   3. When LLM calls submit_graph, the callback captures the GraphOutput
  *   4. Returns the parsed GraphOutput or null on failure
+ *
+ * Provider v2 Task 2: now delegates warmup + env materialization to shared sdkAgentPool.
  */
 
 import type { App } from 'obsidian';
-import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { MyPluginSettings } from '@/app/settings/types';
+import type { Profile } from '@/core/profiles/types';
 import type { GraphOutput } from './graph-output-types';
 import { buildGraphMcpServer } from './graphMcpServer';
 import { buildGraphSystemPrompt } from './graph-system-prompt';
-import { readProfileFromSettings, toAgentSdkEnv } from '../vault-sdk/sdkProfile';
-import {
-    warmupSdkAgentPool,
-    getCliPath,
-    type NodeBinaryInfo,
-} from '../vault-sdk/sdkAgentPool';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { readProfileFromSettings } from '../vault-sdk/sdkProfile';
+import { warmupPool, queryWithProfile } from '../core/sdkAgentPool';
 
 export interface GraphAgentInput {
     searchQuery: string;
@@ -36,7 +35,6 @@ export type GraphAgentStepCallback = (event: {
 }) => void;
 
 export class GraphAgent {
-    private nodeInfo: NodeBinaryInfo | null = null;
 
     constructor(
         private readonly app: App,
@@ -45,39 +43,43 @@ export class GraphAgent {
     ) {}
 
     async warmup(): Promise<void> {
-        if (!this.nodeInfo) {
-            this.nodeInfo = await warmupSdkAgentPool(this.app, this.pluginId);
-        }
+        await warmupPool();
     }
 
     async generateGraph(input: GraphAgentInput, signal?: AbortSignal, onStep?: GraphAgentStepCallback): Promise<GraphOutput | null> {
-        // 1. Ensure warmup ran
-        if (!this.nodeInfo) {
-            try {
-                this.nodeInfo = await warmupSdkAgentPool(this.app, this.pluginId);
-            } catch (err) {
-                console.error('[GraphAgent] warmup failed', err);
-                return null;
-            }
-        }
-        const nodeInfo = this.nodeInfo;
-
-        // 2. Build env from Profile
-        const profile = readProfileFromSettings(this.settings);
-        let profileEnv: Record<string, string>;
+        // 1. Ensure pool is warmed up (idempotent)
         try {
-            profileEnv = toAgentSdkEnv(profile);
+            await warmupPool();
         } catch (err) {
-            console.error('[GraphAgent] profile env error', err);
+            console.error('[GraphAgent] warmup failed', err);
             return null;
         }
 
-        const subprocessEnv: Record<string, string> = {
-            ...profileEnv,
-            PATH: process.env.PATH ?? '',
-        };
-        if (nodeInfo.isElectron) {
-            subprocessEnv.ELECTRON_RUN_AS_NODE = '1';
+        // 2. Resolve profile: prefer ProfileRegistry, fall back to legacy settings reader
+        let profile: Profile;
+        const registryProfile = ProfileRegistry.getInstance().getActiveAgentProfile();
+        if (registryProfile) {
+            profile = registryProfile;
+        } else {
+            const legacyProfile = readProfileFromSettings(this.settings);
+            profile = {
+                id: '__legacy__',
+                name: 'Legacy Settings',
+                kind: legacyProfile.kind,
+                enabled: true,
+                createdAt: 0,
+                baseUrl: legacyProfile.baseUrl,
+                apiKey: legacyProfile.apiKey,
+                authToken: legacyProfile.authToken,
+                primaryModel: legacyProfile.primaryModel,
+                fastModel: legacyProfile.fastModel,
+                customHeaders: legacyProfile.customHeaders ?? {},
+                embeddingEndpoint: null,
+                embeddingApiKey: null,
+                embeddingModel: null,
+                icon: null,
+                description: null,
+            };
         }
 
         // 3. Build source metadata for system prompt
@@ -96,8 +98,6 @@ export class GraphAgent {
         });
 
         const systemPrompt = buildGraphSystemPrompt(input.searchQuery, sourcesMeta);
-        const cliPath = getCliPath(this.app, this.pluginId);
-        const basePath = (this.app.vault.adapter as unknown as { getBasePath(): string }).getBasePath();
 
         // 4. Build MCP server with graph tools
         let graphResult: GraphOutput | null = null;
@@ -111,43 +111,21 @@ export class GraphAgent {
             },
         });
 
-        // 5. Wire abort signal
-        const abortController = new AbortController();
-        if (signal) {
-            signal.addEventListener('abort', () => abortController.abort());
-        }
-
-        // 6. Call query() and consume messages until graph is submitted
+        // 5. Call queryWithProfile() and consume messages until graph is submitted
         try {
-            const messages = query({
+            const messages = queryWithProfile(this.app, this.pluginId, profile, {
                 prompt: `Analyze these ${input.sources.length} source documents for the search query: "${input.searchQuery}". Read all sources, then submit the graph.`,
-                options: {
-                    pathToClaudeCodeExecutable: cliPath,
-                    executable: nodeInfo.path as 'node',
-                    executableArgs: [],
-                    cwd: basePath,
-                    maxTurns: 10,
-                    systemPrompt,
-                    allowedTools: [
-                        'mcp__graph__read_sources',
-                        'mcp__graph__submit_graph',
-                    ],
-                    disallowedTools: [
-                        'Read',
-                        'Write',
-                        'Edit',
-                        'Bash',
-                        'Glob',
-                        'Grep',
-                        'WebSearch',
-                        'WebFetch',
-                        'AskUserQuestion',
-                    ],
-                    mcpServers: { graph: graphMcpServer },
-                    settingSources: [],
-                    env: subprocessEnv,
-                    abortController,
-                } as Parameters<typeof query>[0]['options'],
+                systemPrompt,
+                maxTurns: 10,
+                allowedTools: [
+                    'mcp__graph__read_sources',
+                    'mcp__graph__submit_graph',
+                ],
+                disallowedTools: [
+                    'AskUserQuestion',
+                ],
+                mcpServers: { graph: graphMcpServer },
+                signal,
             });
 
             let turnIndex = 0;

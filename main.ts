@@ -27,6 +27,7 @@ import { MultiProviderChatService } from '@/core/providers/MultiProviderChatServ
 import { ProviderServiceFactory } from '@/core/providers/base/factory';
 import { RerankProviderManager } from '@/core/providers/rerank/factory';
 import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
+import { warmupPool, shutdownPool } from '@/service/agents/core/sdkAgentPool';
 import { TemplateManager } from '@/core/template/TemplateManager';
 import { initPatternSystem } from '@/service/context/PatternDiscoveryTrigger';
 import { createPluginDirContentProvider } from '@/core/template/PluginDirContentProvider';
@@ -140,6 +141,7 @@ export default class MyPlugin extends Plugin {
 			await this.initializeSearchService();
 			appContext.searchClient = this.searchClient!;
 			initPatternSystem().catch((e) => console.error('[PatternDiscovery] Init failed:', e));
+			warmupPool().catch((e) => console.warn('[sdkAgentPool] warmup failed:', e));
 		} else {
 			console.log('[Peak Assistant] Mobile mode: SQLite and indexing skipped');
 		}
@@ -309,6 +311,9 @@ export default class MyPlugin extends Plugin {
 
 		// Abort all background analysis sessions
 		BackgroundSessionManager.clearInstance();
+
+		// Shutdown SDK agent pool (clear cached node info so reload re-probes)
+		shutdownPool();
 
 		// Break singletons so old bundle can be GC'd
 		AppContext.clearForUnload();

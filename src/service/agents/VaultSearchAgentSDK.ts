@@ -3,28 +3,25 @@
  * vault search. This is the sole desktop search path (V1 pipeline removed).
  *
  * Flow:
- *   1. warmup() installs renderer compat patches + probes node binary
- *   2. startSession() reads Profile, builds vault MCP server, calls query()
+ *   1. warmupPool() installs renderer compat patches + probes node binary
+ *   2. startSession() resolves Profile, builds vault MCP server, calls queryWithProfile()
  *   3. SDK messages → translated via sdkMessageAdapter → yielded as events
  *   4. When LLM calls submit_plan, HITL callback fires (auto-approve in v1)
  *
- * Task 11 of 2026-04-12-vault-search-agent-sdk-migration plan.
+ * Provider v2 Task 2: now delegates warmup + env materialization to shared sdkAgentPool.
  */
 
 import type { App } from 'obsidian';
-import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { MyPluginSettings } from '@/app/settings/types';
+import type { Profile } from '@/core/profiles/types';
 import { PromptId } from '@/service/prompt/PromptId';
-import { readProfileFromSettings, toAgentSdkEnv } from './vault-sdk/sdkProfile';
-import {
-    warmupSdkAgentPool,
-    getCliPath,
-    type NodeBinaryInfo,
-} from './vault-sdk/sdkAgentPool';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { readProfileFromSettings } from './vault-sdk/sdkProfile';
+import { warmupPool, queryWithProfile } from './core/sdkAgentPool';
 import {
     buildVaultMcpServer,
     type GrepHit,
@@ -50,18 +47,16 @@ export interface VaultSearchAgentSdkOptions {
  * Main shell. Constructed by VaultSearchAgent when the feature flag is on.
  */
 export class VaultSearchAgentSDK {
-    private nodeInfo: NodeBinaryInfo | null = null;
 
     constructor(private readonly options: VaultSearchAgentSdkOptions) {}
 
     /**
      * One-time setup: install renderer compat patches and probe for node
-     * binary. Non-blocking on failure — the error is logged and startSession
-     * will retry the warmup lazily.
+     * binary. Non-blocking on failure — startSession retries lazily.
      */
     async warmup(): Promise<void> {
         try {
-            this.nodeInfo = await warmupSdkAgentPool(this.options.app, this.options.pluginId);
+            await warmupPool();
         } catch (err) {
             console.error('[VaultSearchAgentSDK] warmup failed', err);
         }
@@ -80,26 +75,9 @@ export class VaultSearchAgentSDK {
         const triggerName = StreamTriggerName.SEARCH_AI_AGENT;
         const startTs = Date.now();
 
-        // 1. Ensure warmup ran (idempotent); get real node binary
-        if (!this.nodeInfo) {
-            try {
-                this.nodeInfo = await warmupSdkAgentPool(app, pluginId);
-            } catch (err) {
-                yield {
-                    type: 'error',
-                    error: err as Error,
-                    triggerName,
-                } as LLMStreamEvent;
-                return;
-            }
-        }
-        const nodeInfo = this.nodeInfo;
-
-        // 2. Build env from Profile + merge runtime-required vars
-        const profile = readProfileFromSettings(settings);
-        let profileEnv: Record<string, string>;
+        // 1. Ensure pool is warmed up (idempotent)
         try {
-            profileEnv = toAgentSdkEnv(profile);
+            await warmupPool();
         } catch (err) {
             yield {
                 type: 'error',
@@ -109,18 +87,35 @@ export class VaultSearchAgentSDK {
             return;
         }
 
-        const subprocessEnv: Record<string, string> = {
-            ...profileEnv,
-            PATH: process.env.PATH ?? '',
-        };
-        if (nodeInfo.isElectron) {
-            subprocessEnv.ELECTRON_RUN_AS_NODE = '1';
+        // 2. Resolve profile: prefer ProfileRegistry active profile, fall back to settings reader
+        let profile: Profile;
+        const registryProfile = ProfileRegistry.getInstance().getActiveAgentProfile();
+        if (registryProfile) {
+            profile = registryProfile;
+        } else {
+            // Legacy fallback: read from raw settings (until profiles are fully migrated)
+            const legacyProfile = readProfileFromSettings(settings);
+            profile = {
+                id: '__legacy__',
+                name: 'Legacy Settings',
+                kind: legacyProfile.kind,
+                enabled: true,
+                createdAt: 0,
+                baseUrl: legacyProfile.baseUrl,
+                apiKey: legacyProfile.apiKey,
+                authToken: legacyProfile.authToken,
+                primaryModel: legacyProfile.primaryModel,
+                fastModel: legacyProfile.fastModel,
+                customHeaders: legacyProfile.customHeaders ?? {},
+                embeddingEndpoint: null,
+                embeddingApiKey: null,
+                embeddingModel: null,
+                icon: null,
+                description: null,
+            };
         }
 
-        // 3. Resolve cli.js path
-        const cliPath = getCliPath(app, pluginId);
-
-        // 4a. Load vault intuition + probe results (before renderPrompt so we can pass as context)
+        // 3a. Load vault intuition + probe results (before renderPrompt so we can pass as context)
         const [folderIntuitions, globalIntuitionJson, probeHits] = await Promise.all([
             (async () => {
                 try {
@@ -176,9 +171,7 @@ export class VaultSearchAgentSDK {
             probeResultsSection = `### Relevant Files Found (pre-search)\n${hitLines}\n`;
         }
 
-        // 4b. Load system prompt playbook (pass vault context as Handlebars vars)
-        //     If systemPromptOverride is provided (e.g. ContinueAnalysisAgent), use it directly.
-        //     Even so, still append probe results so the continue agent has vault context.
+        // 3b. Load system prompt playbook
         let systemPrompt: string;
         if (this.options.systemPromptOverride) {
             const probeContext = [vaultIntuitionSection, probeResultsSection].filter(Boolean).join('\n\n');
@@ -205,7 +198,7 @@ export class VaultSearchAgentSDK {
             }
         }
 
-        // 5. Build the in-process MCP server with vault tools
+        // 4. Build the in-process MCP server with vault tools
         const searchFn = async (q: string, limit: number): Promise<GrepHit[]> => {
             const res = await searchClient.search({
                 text: q,
@@ -228,6 +221,7 @@ export class VaultSearchAgentSDK {
 
         const pendingSubmits: SubmitPlanInput[] = [];
         let planSubmitted = false;
+        let sdkUsage: { inputTokens: number; outputTokens: number; totalTokens: number } | null = null;
         const onSubmitPlan = async (plan: SubmitPlanInput): Promise<SubmitPlanFeedback> => {
             pendingSubmits.push(plan);
             planSubmitted = true;
@@ -244,7 +238,7 @@ export class VaultSearchAgentSDK {
             onSubmitPlan,
         });
 
-        // 6. Announce start to UI
+        // 5. Announce start to UI
         yield {
             type: 'pk-debug',
             debugName: 'vault-sdk-starting',
@@ -253,53 +247,32 @@ export class VaultSearchAgentSDK {
                 query: userQuery,
                 profile: profile.kind,
                 model: profile.primaryModel,
-                nodeBinary: nodeInfo.path,
-                isElectron: nodeInfo.isElectron,
             },
         } as LLMStreamEvent;
 
-        // 7. Call query() and pipe results through adapter
-        const basePath = (app.vault.adapter as unknown as { getBasePath(): string }).getBasePath();
-        // Prepend contextPrefix (previous round context) to user query if provided
+        // 6. Call queryWithProfile() and pipe results through adapter
         const effectivePrompt = this.options.contextPrefix
             ? `${this.options.contextPrefix}\n\n${userQuery}`
             : userQuery;
 
         let roundIndex = 0;
         try {
-            const messages = query({
+            const messages = queryWithProfile(app, pluginId, profile, {
                 prompt: effectivePrompt,
-                options: {
-                    pathToClaudeCodeExecutable: cliPath,
-                    executable: nodeInfo.path as 'node',
-                    executableArgs: [],
-                    cwd: basePath,
-                    maxTurns: 20,
-                    systemPrompt,
-                    allowedTools: [
-                        'mcp__vault__vault_list_folders',
-                        'mcp__vault__vault_read_folder',
-                        'mcp__vault__vault_read_note',
-                        'mcp__vault__vault_grep',
-                        'mcp__vault__vault_wikilink_expand',
-                        'mcp__vault__vault_submit_plan',
-                    ],
-                    disallowedTools: [
-                        'Read',
-                        'Write',
-                        'Edit',
-                        'Bash',
-                        'Glob',
-                        'Grep',
-                        'WebSearch',
-                        'WebFetch',
-                        'AskUserQuestion',
-                    ],
-                    mcpServers: { vault: vaultMcpServer },
-                    settingSources: [],
-                    env: subprocessEnv,
-                    includePartialMessages: true,
-                } as Parameters<typeof query>[0]['options'],
+                systemPrompt,
+                maxTurns: 20,
+                allowedTools: [
+                    'mcp__vault__vault_list_folders',
+                    'mcp__vault__vault_read_folder',
+                    'mcp__vault__vault_read_note',
+                    'mcp__vault__vault_grep',
+                    'mcp__vault__vault_wikilink_expand',
+                    'mcp__vault__vault_submit_plan',
+                ],
+                disallowedTools: [
+                    'AskUserQuestion',
+                ],
+                mcpServers: { vault: vaultMcpServer },
             });
 
             for await (const raw of messages) {
@@ -327,8 +300,21 @@ export class VaultSearchAgentSDK {
                     yield ev;
                 }
 
-                // Stop processing after vault_submit_plan — plan is ready, no need for more agent output
-                if (planSubmitted) break;
+                // After plan is submitted, drain remaining messages to capture usage from result
+                if (planSubmitted) {
+                    if (msg.type === 'result') {
+                        const resultMsg = raw as any;
+                        if (resultMsg.usage) {
+                            sdkUsage = {
+                                inputTokens: resultMsg.usage.input_tokens ?? 0,
+                                outputTokens: resultMsg.usage.output_tokens ?? 0,
+                                totalTokens: (resultMsg.usage.input_tokens ?? 0) + (resultMsg.usage.output_tokens ?? 0),
+                            };
+                        }
+                        break;
+                    }
+                    continue;
+                }
             }
         } catch (err) {
             console.error('[VaultSearchAgentSDK] query error', err);
@@ -348,12 +334,13 @@ export class VaultSearchAgentSDK {
             }
         }
 
-        // 8. Emit complete event (triggers plan_ready in routeEvent if plan_sections exist)
+        // 7. Emit complete event (triggers plan_ready in routeEvent if plan_sections exist)
         const totalDuration = Date.now() - startTs;
         yield {
             type: 'complete',
             triggerName,
             durationMs: totalDuration,
+            usage: sdkUsage ?? undefined,
             result: undefined,
         } as LLMStreamEvent;
 
