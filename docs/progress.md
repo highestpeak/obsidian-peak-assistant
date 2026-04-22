@@ -18,22 +18,31 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | H. 后台多 Session | 关闭 modal 继续分析 + 多 session 并发 + Active Sessions UI | 完成 (11 commits) |
 | F. Provider v2 | 删 Vercel AI SDK → Agent SDK query() | 完成 (12 files deleted, 7 packages removed, ~3700 lines) |
 | G. Agent Trace | 可观测性 (阻塞于 F → 已解除) | 未开始 |
-| K. Chat System Polish | Store 重构 + Input 拆分 + 会话管理 | 进行中 (chatDataStore created) |
+| K. Chat System Polish | Store 重构 + Input 拆分 + 会话管理 | 完成 (4→2 stores, 453→176 ChatInputArea, #93 delete) |
 | I. Query Pattern Discovery | LLM 驱动查询模式发现 + 上下文建议 | 完成 (12 commits) |
 | J. Vault Search Redesign | VS Code 风格 inspector side panel | 完成 (6 commits) |
 
 ## Next
 
-- [ ] Chat System Polish: 迁移 ~20 consumer 到 chatDataStore（Task 3-5），删除 projectStore + messageStore
-- [ ] Chat System Polish: ChatInputArea 拆分（Task 6-10），delete/modes/shortcuts（Task 11-12）
-- [x] Settings UI: ProfileSettingsTab 替换 ProviderSettings（Provider v2 Task 11）✅ 已完成
-- [ ] UI Theme: 64 个 TSX 文件的 inline hex → CSS var token 批量替换
+- [ ] UI Theme: 64 个 TSX 文件的 inline hex → CSS var token 批量替换（进行中）
 - [ ] Agent Trace Observability: TraceSink + CLI harness + scenarios（Wave 3A, 11 tasks）
-- [ ] Chat UI Redesign: 全新消息列表/工具调用/首页/会话列表（Wave 3C, 15 tasks, 阻塞于 3B）
+- [ ] Chat UI Redesign: 全新消息列表/工具调用/首页/会话列表（Wave 3C, 15 tasks, 3B 已完成）
+- [ ] 真机测试：Chat 全流程（新 store 结构 + delete + streamChat via Agent SDK）
+- [ ] 真机测试：Provider v2 全流程（Profile 配置 + vault search + tag/title gen + embeddings）
 
 ## Log
 
-### 2026-04-22
+### 2026-04-22 (Session 2)
+- Done: Chat System Polish 完成 (Wave 3B, 12 tasks)
+  - 4→2 Zustand stores: chatDataStore (entity+message+streaming) + chatViewStore (nav+session+history)
+  - 删除 projectStore.ts (107行) + messageStore.ts (190行) + chatSessionStore.ts (289行) = -586行
+  - 22 consumer files 迁移到新 store
+  - ChatInputArea 453→176行 (提取 useContextSearch + useInputKeyboard + useTokenUsage)
+  - Ctrl+Arrow input history navigation (#81)
+  - Delete Conversation menu action (#93)
+  - ConversationService.streamChat 修复 → Agent SDK queryWithProfile (修复 MultiProviderChatService 删除导致的 chat 断裂)
+
+### 2026-04-22 (Session 1)
 - Done: Provider v2 完成 — 删除整个 Vercel AI SDK 栈
   - PromptService: chatWithPrompt/chatWithPromptStream → delegate to AIServiceManager.queryText/queryStream via AppContext
   - AIServiceManager: chatWithPrompt/streamObjectWithPrompt → delegate to queryText/queryStructured + zodToJsonSchema
