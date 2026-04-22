@@ -1,7 +1,5 @@
 import { SLICE_CAPS } from '@/core/constant';
 import { AIServiceManager } from "@/service/chat/service-manager";
-import { Experimental_Agent as Agent, hasToolCall } from "ai";
-import { AgentTool } from "@/service/tools/types";
 import { contentReaderTool } from "@/service/tools/content-reader";
 import {
 	inspectNoteContextTool,
@@ -18,24 +16,14 @@ import { LLMStreamEvent, StreamTriggerName, UIStepType } from "@/core/providers/
 import { PromptId } from "@/service/prompt/PromptId";
 import { generateUuidWithoutHyphens } from "@/core/utils/id-utils";
 import { DocumentLoaderManager } from "@/core/document/loader/helper/DocumentLoaderManager";
-import { buildToolCallUIEvent } from "./search-agent-helper/tool-call-ui";
 import { submitFinalAnswerTool } from "@/service/tools/submit-final-answer";
-import { streamTransform } from "@/core/providers/helpers/stream-helper";
 import { emptyUsage, LLMUsage, mergeTokenUsage } from "@/core/providers/types";
-
-type DocSimpleToolSet = {
-	content_reader: AgentTool;
-	submit_final_answer: AgentTool;
-	inspect_note_context: AgentTool;
-	graph_traversal: AgentTool;
-	find_path: AgentTool;
-	find_key_nodes: AgentTool;
-	find_orphans: AgentTool;
-	search_by_dimensions: AgentTool;
-	explore_folder: AgentTool;
-	recent_changes_whole_vault: AgentTool;
-	local_search_whole_vault: AgentTool;
-};
+import { AppContext } from "@/app/context/AppContext";
+import { ProfileRegistry } from "@/core/profiles/ProfileRegistry";
+import { queryWithProfile } from "./core/sdkAgentPool";
+import { translateSdkMessages } from "./core/sdkMessageAdapter";
+import { agentToolsToMcpServer, mcpToolNames } from "./core/agentToolMcpAdapter";
+import type { AgentTool } from "@/service/tools/types";
 
 /** Max chars for doc-simple inline file content; beyond this we truncate. */
 const DOC_SIMPLE_FILE_CONTENT_MAX_CHARS = 120_000;
@@ -52,59 +40,49 @@ async function loadDocSimpleFileContent(filePath: string): Promise<string> {
 	);
 }
 
+const MCP_SERVER_NAME = 'doc';
+
 /**
  * DocSimpleAgent: single-file quick Q&A. Same tools as RawSearchAgent, different prompt.
- * Rewrites text-delta/reasoning-delta to prompt-stream-* with AiAnalysisSummary so useAIAnalysis displays in summary.
+ * Uses Agent SDK query() via MCP server for tool dispatch.
  */
 export class DocSimpleAgent {
-	private searchAgent: Agent<DocSimpleToolSet>;
+	private readonly tools: Record<string, AgentTool>;
 
 	constructor(private readonly aiServiceManager: AIServiceManager) {
-		const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisDocSimpleSystem);
-		const outputControl = this.aiServiceManager.getSettings?.()?.defaultOutputControl;
-		const temperature = outputControl?.temperature ?? 0.3;
-
-		this.searchAgent = new Agent<DocSimpleToolSet>({
-			model: this.aiServiceManager.getMultiChat().getProviderService(provider).modelClient(modelId),
-			tools: {
-				content_reader: contentReaderTool(),
-				submit_final_answer: submitFinalAnswerTool(),
-				inspect_note_context: inspectNoteContextTool(this.aiServiceManager.getTemplateManager?.()),
-				graph_traversal: graphTraversalTool(this.aiServiceManager.getTemplateManager?.()),
-				find_path: findPathTool(this.aiServiceManager.getTemplateManager?.()),
-				find_key_nodes: findKeyNodesTool(this.aiServiceManager.getTemplateManager?.()),
-				find_orphans: findOrphansTool(this.aiServiceManager.getTemplateManager?.()),
-				search_by_dimensions: searchByDimensionsTool(this.aiServiceManager.getTemplateManager?.()),
-				explore_folder: exploreFolderTool(this.aiServiceManager.getTemplateManager?.()),
-				recent_changes_whole_vault: recentChangesWholeVaultTool(this.aiServiceManager.getTemplateManager?.()),
-				local_search_whole_vault: localSearchWholeVaultTool(this.aiServiceManager.getTemplateManager?.()),
-			},
-			stopWhen: [
-				hasToolCall('submit_final_answer'),
-			],
-			temperature,
-		});
+		const tm = this.aiServiceManager.getTemplateManager?.();
+		this.tools = {
+			content_reader: contentReaderTool(),
+			submit_final_answer: submitFinalAnswerTool(),
+			inspect_note_context: inspectNoteContextTool(tm),
+			graph_traversal: graphTraversalTool(tm),
+			find_path: findPathTool(tm),
+			find_key_nodes: findKeyNodesTool(tm),
+			find_orphans: findOrphansTool(tm),
+			search_by_dimensions: searchByDimensionsTool(tm),
+			explore_folder: exploreFolderTool(tm),
+			recent_changes_whole_vault: recentChangesWholeVaultTool(tm),
+			local_search_whole_vault: localSearchWholeVaultTool(tm),
+		};
 	}
 
 	async *stream(userPrompt: string, opts: { scopeValue?: string }): AsyncGenerator<LLMStreamEvent> {
 		const scopeValue = opts?.scopeValue;
 		if (!scopeValue || !scopeValue.trim()) {
-			return (async function* (): AsyncGenerator<LLMStreamEvent> {
-				yield {
-					type: "error",
-					error: new Error("DocSimpleAgent requires scopeValue (current file path)."),
-					triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-				};
-			})();
+			yield {
+				type: "error",
+				error: new Error("DocSimpleAgent requires scopeValue (current file path)."),
+				triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
+			};
+			return;
 		}
 		if (!userPrompt || !userPrompt.trim()) {
-			return (async function* (): AsyncGenerator<LLMStreamEvent> {
-				yield {
-					type: "error",
-					error: new Error("DocSimpleAgent requires a non-empty userPrompt."),
-					triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
-				};
-			})();
+			yield {
+				type: "error",
+				error: new Error("DocSimpleAgent requires a non-empty userPrompt."),
+				triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
+			};
+			return;
 		}
 
 		const fileContent = await loadDocSimpleFileContent(scopeValue);
@@ -115,7 +93,6 @@ export class DocSimpleAgent {
 		});
 		const system = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisDocSimpleSystem, {});
 
-		const result = this.searchAgent.stream({ system, prompt });
 		const startedAt = Date.now();
 
 		yield {
@@ -126,35 +103,44 @@ export class DocSimpleAgent {
 			description: "DocSimpleAgent is generating an answer.",
 			triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
 		};
+
+		// Build MCP server from tools and call Agent SDK
+		const ctx = AppContext.getInstance();
+		const profile = ProfileRegistry.getInstance().getActiveAgentProfile()!;
+		const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, this.tools);
+		const allowedTools = mcpToolNames(MCP_SERVER_NAME, this.tools);
+
+		const messages = queryWithProfile(ctx.app, ctx.pluginId, profile, {
+			prompt,
+			systemPrompt: system,
+			maxTurns: 15,
+			mcpServers: { [MCP_SERVER_NAME]: mcpServer },
+			allowedTools,
+		});
+
 		let answerText: string[] = [];
 		let totalUsage: LLMUsage = emptyUsage();
-		yield* streamTransform(result.fullStream, StreamTriggerName.DOC_SIMPLE_AGENT, {
-			yieldUIStep: {
-				uiType: UIStepType.STEPS_DISPLAY,
-				stepId: generateUuidWithoutHyphens(),
-				uiEventGenerator: (chunk: any) => {
-					if (chunk.type === 'tool-call') {
-						return buildToolCallUIEvent(chunk, generateUuidWithoutHyphens());
-					}
-				},
-			},
-			chunkEventInterceptor: (chunk: any) => {
-				if (chunk.type === "text-delta") {
-					answerText.push(chunk.delta);
-				}
-			},
-			yieldEventPostProcessor: (chunk: any) => {
-				if (chunk.type === 'finish') {
-					totalUsage = mergeTokenUsage(totalUsage, chunk.usage);
-				}
-				return {};
-			},
-		});
+
+		for await (const ev of translateSdkMessages(messages, {
+			triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
+			hasPartialMessages: true,
+		})) {
+			// Collect text from text-delta events
+			if (ev.type === 'text-delta' && typeof (ev as any).text === 'string') {
+				answerText.push((ev as any).text);
+			}
+			// Collect usage from complete events
+			if (ev.type === 'complete' && (ev as any).usage) {
+				totalUsage = mergeTokenUsage(totalUsage, (ev as any).usage);
+			}
+			yield ev;
+		}
+
 		const finalAnswerText = answerText.join('').trim() || "(No answer generated.)";
 
 		// Generate title
 		let title: string | undefined = undefined;
-		const stream = this.aiServiceManager.queryStream(
+		const titleStream = this.aiServiceManager.queryStream(
 			PromptId.AiAnalysisTitle,
 			{
 				query: userPrompt,
@@ -162,7 +148,7 @@ export class DocSimpleAgent {
 			},
 		);
 		let titleAcc = '';
-		for await (const chunk of stream) {
+		for await (const chunk of titleStream) {
 			// Provider v2: Agent SDK emits text-delta + complete
 			if (chunk.type === 'text-delta' && typeof (chunk as any).text === 'string') {
 				titleAcc += (chunk as any).text;

@@ -3,9 +3,19 @@
  * Framework-agnostic utility for executing tool calls and collecting results.
  */
 
-import type { JSONValue } from 'ai';
-import type { ModelMessage, ToolModelMessage } from 'ai';
 import type { AgentTool } from '@/service/tools/types';
+
+// Inline types replacing Vercel AI SDK ModelMessage/ToolModelMessage/JSONValue.
+// This file is unused after intuition.recon.ts migration but kept for reference.
+type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };
+type ToolModelMessage = {
+	role: 'tool';
+	content: Array<{ type: 'tool-result'; toolCallId: string; toolName: string; output: unknown }>;
+};
+type ModelMessage = {
+	role: 'user' | 'assistant' | 'tool';
+	content: string | Array<{ type: string; [key: string]: unknown }>;
+};
 
 export const TOOL_OUTPUT_MAX_CHARS = 14_000;
 

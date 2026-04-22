@@ -1,4 +1,3 @@
-import { generateText } from 'ai';
 import { AppContext } from '@/app/context/AppContext';
 import { PromptId } from '@/service/prompt/PromptId';
 import {
@@ -35,25 +34,19 @@ export async function runPatternDiscovery(input: PatternDiscoveryInput): Promise
 		const ctx = AppContext.getInstance();
 		const mgr = ctx.aiServiceManager;
 
-		// 1. Render prompt
-		const prompt = await mgr.renderPrompt(PromptId.PatternDiscovery, {
-			availableVariables: CONTEXT_VARIABLE_NAMES.join(', '),
-			availableConditions: CONDITION_NAMES.join(', '),
-			queriesJson: JSON.stringify(input.newQueries, null, 2),
-			existingPatternsJson: JSON.stringify(input.existingPatterns, null, 2),
-			vaultStructureJson: JSON.stringify(input.vaultStructure, null, 2),
-		});
+		// 1. Call LLM via Agent SDK (Pattern B: single-turn, no tools)
+		const text = await mgr.queryText(
+			PromptId.PatternDiscovery,
+			{
+				availableVariables: CONTEXT_VARIABLE_NAMES.join(', '),
+				availableConditions: CONDITION_NAMES.join(', '),
+				queriesJson: JSON.stringify(input.newQueries, null, 2),
+				existingPatternsJson: JSON.stringify(input.existingPatterns, null, 2),
+				vaultStructureJson: JSON.stringify(input.vaultStructure, null, 2),
+			},
+		);
 
-		// 2. Call LLM
-		const { model } = mgr.getModelInstanceForPrompt(PromptId.PatternDiscovery);
-		const result = await generateText({
-			model,
-			prompt,
-			maxTokens: 2000,
-		});
-
-		// 3. Extract JSON from response
-		const text = result.text;
+		// 2. Extract JSON from response
 		const jsonMatch = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/);
 		if (!jsonMatch) {
 			console.error('[PatternDiscovery] No JSON found in response');

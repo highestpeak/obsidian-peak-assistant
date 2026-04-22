@@ -1,4 +1,3 @@
-import { streamText } from 'ai';
 import { AppContext } from '@/app/context/AppContext';
 import { PromptId } from '@/service/prompt/PromptId';
 import type { Round } from '@/ui/view/quick-search/store/searchSessionStore';
@@ -19,9 +18,9 @@ export class SynthesizeAgent {
 		const ctx = AppContext.getInstance();
 		const mgr = ctx.aiServiceManager;
 
-		const [systemPrompt, userPrompt] = await Promise.all([
-			mgr.renderPrompt(PromptId.AiAnalysisSynthesizeSystem, {}),
-			mgr.renderPrompt(PromptId.AiAnalysisSynthesize, {
+		const fullText = await mgr.queryText(
+			PromptId.AiAnalysisSynthesize,
+			{
 				rounds: rounds.map((r) => ({
 					query: r.query,
 					summary: r.summary,
@@ -32,21 +31,11 @@ export class SynthesizeAgent {
 						comment: a.comment,
 					})),
 				})),
-			}),
-		]);
-
-		const { model } = mgr.getModelInstanceForPrompt(PromptId.AiAnalysisSynthesizeSystem);
-		const result = streamText({
-			model,
-			system: systemPrompt,
-			prompt: userPrompt,
-			maxTokens: 8192,
-		});
-
-		let fullText = '';
-		for await (const chunk of result.textStream) {
-			fullText += chunk;
-		}
+			},
+			{
+				systemPrompt: await mgr.renderPrompt(PromptId.AiAnalysisSynthesizeSystem, {}),
+			},
+		);
 
 		// Parse JSON from response — handle markdown code fences
 		const jsonMatch = fullText.match(/```json\s*([\s\S]*?)```/) || fullText.match(/(\{[\s\S]*\})/);

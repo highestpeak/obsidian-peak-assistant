@@ -1,5 +1,4 @@
 import { AIServiceManager } from '@/service/chat/service-manager';
-import { Experimental_Agent as Agent } from 'ai';
 import type { AgentTool } from '@/service/tools/types';
 import {
     inspectNoteContextTool,
@@ -17,35 +16,27 @@ import { submitFinalAnswerTool } from '@/service/tools/submit-final-answer';
 import { searchMemoryStoreTool } from '@/service/tools/search-memory-store';
 import { PromptId, type PromptVariables } from '@/service/prompt/PromptId';
 import { mergeTokenUsage, type LLMStreamEvent, type LLMUsage } from '@/core/providers/types';
+import { AppContext } from '@/app/context/AppContext';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { queryWithProfile } from './core/sdkAgentPool';
+import { translateSdkMessages } from './core/sdkMessageAdapter';
+import { agentToolsToMcpServer, mcpToolNames } from './core/agentToolMcpAdapter';
 
 export type HistorySearchFn = (query: string, options?: { maxChars?: number }) => string;
-
-type FollowupToolSet = {
-    search_chat_history: AgentTool;
-    search_current_result: AgentTool;
-    content_reader: AgentTool;
-    inspect_note_context?: AgentTool;
-    graph_traversal?: AgentTool;
-    find_path?: AgentTool;
-    find_key_nodes?: AgentTool;
-    find_orphans?: AgentTool;
-    search_by_dimensions?: AgentTool;
-    explore_folder?: AgentTool;
-    recent_changes_whole_vault?: AgentTool;
-    local_search_whole_vault?: AgentTool;
-    submit_final_answer: AgentTool;
-};
 
 export interface FollowupChatAgentOptions {
     enableLocalSearch?: boolean;
 }
 
+const MCP_SERVER_NAME = 'followup';
+
 /**
  * Agent for all follow-up chats (Topic, Continue Analysis, Graph/Blocks/Sources).
  * Provides search_chat_history and search_current_result plus vault search tools.
+ * Uses Agent SDK query() via MCP server for tool dispatch.
  */
 export class FollowupChatAgent {
-    private readonly agent: Agent<FollowupToolSet>;
+    private readonly tools: Record<string, AgentTool>;
 
     constructor(
         private readonly aiServiceManager: AIServiceManager,
@@ -53,7 +44,7 @@ export class FollowupChatAgent {
         private readonly historySearchFn: HistorySearchFn,
         private readonly resultSearchFn: HistorySearchFn
     ) {
-        const tools: FollowupToolSet = {
+        const tools: Record<string, AgentTool> = {
             search_chat_history: searchMemoryStoreTool(historySearchFn, {
                 description: 'Search the analysis session chat history (reasoning, tool calls, evidence). Use when you need to cite how the analysis was done or what was discovered during the run.',
             }),
@@ -75,13 +66,7 @@ export class FollowupChatAgent {
             tools.recent_changes_whole_vault = recentChangesWholeVaultTool(tm);
             tools.local_search_whole_vault = localSearchWholeVaultTool(tm);
         }
-        const { provider, modelId } = this.aiServiceManager.getModelForPrompt(PromptId.AiAnalysisFollowup);
-        this.agent = new Agent<FollowupToolSet>({
-            model: this.aiServiceManager.getMultiChat()
-                .getProviderService(provider)
-                .modelClient(modelId),
-            tools,
-        });
+        this.tools = tools;
     }
 
     /**
@@ -93,41 +78,46 @@ export class FollowupChatAgent {
     ): AsyncGenerator<LLMStreamEvent> {
         const system = await this.aiServiceManager.renderPrompt(PromptId.AiAnalysisFollowupSystem, {});
         const prompt = await this.aiServiceManager.renderPrompt(promptId, variables as PromptVariables[PromptId]);
-        const result = this.agent.stream({ system, prompt });
+
+        const ctx = AppContext.getInstance();
+        const profile = ProfileRegistry.getInstance().getActiveAgentProfile()!;
+        const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, this.tools);
+        const allowedTools = mcpToolNames(MCP_SERVER_NAME, this.tools);
+
+        const messages = queryWithProfile(ctx.app, ctx.pluginId, profile, {
+            prompt,
+            systemPrompt: system,
+            maxTurns: 5,
+            mcpServers: { [MCP_SERVER_NAME]: mcpServer },
+            allowedTools,
+        });
+
         let acc = '';
         let accumulatedUsage: LLMUsage | null = null;
-        const toUsage = (u: unknown): LLMUsage | null => {
-            if (!u || typeof u !== 'object') return null;
-            const o = u as Record<string, unknown>;
-            const inT = typeof o.inputTokens === 'number' ? o.inputTokens : 0;
-            const outT = typeof o.outputTokens === 'number' ? o.outputTokens : 0;
-            const totalT = typeof o.totalTokens === 'number' ? o.totalTokens : inT + outT || 0;
-            return { inputTokens: inT, outputTokens: outT, totalTokens: totalT };
-        };
-        for await (const chunk of result.fullStream) {
-            switch (chunk.type) {
-                case 'text-delta':
-                    if (typeof (chunk as any).text === 'string') {
-                        acc += (chunk as any).text;
-                        yield { type: 'prompt-stream-delta', id: 'followup', promptId, delta: (chunk as any).text } as any;
-                    }
-                    break;
-                case 'finish-step': {
-                    const stepUsage = toUsage((chunk as { usage?: unknown }).usage);
-                    if (stepUsage) accumulatedUsage = mergeTokenUsage(accumulatedUsage, stepUsage);
-                    break;
-                }
-                case 'finish': {
-                    const total = toUsage((chunk as { totalUsage?: unknown }).totalUsage) ?? accumulatedUsage;
-                    yield { type: 'prompt-stream-result', id: 'followup', promptId, output: acc.trim(), usage: total ?? undefined } as any;
-                    break;
-                }
-                case 'error':
-                    yield { type: 'error', error: (chunk as any).error } as any;
-                    break;
-                default:
-                    break;
+        let resultEmitted = false;
+
+        for await (const ev of translateSdkMessages(messages, { hasPartialMessages: true })) {
+            // Translate SDK events into the PromptService-compatible shape
+            // that existing callers expect (prompt-stream-delta / prompt-stream-result).
+            if (ev.type === 'text-delta' && typeof (ev as any).text === 'string') {
+                acc += (ev as any).text;
+                yield { type: 'prompt-stream-delta', id: 'followup', promptId, delta: (ev as any).text } as any;
+            } else if (ev.type === 'complete') {
+                const usage = (ev as any).usage ?? null;
+                if (usage) accumulatedUsage = mergeTokenUsage(accumulatedUsage, usage);
+            } else if (ev.type === 'error') {
+                yield ev;
             }
+        }
+
+        // Emit final result after stream completes
+        if (acc) {
+            yield { type: 'prompt-stream-result', id: 'followup', promptId, output: acc.trim(), usage: accumulatedUsage ?? undefined } as any;
+            resultEmitted = true;
+        }
+
+        if (!resultEmitted) {
+            yield { type: 'prompt-stream-result', id: 'followup', promptId, output: '', usage: accumulatedUsage ?? undefined } as any;
         }
     }
 }

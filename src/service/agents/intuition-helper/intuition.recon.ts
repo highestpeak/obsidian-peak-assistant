@@ -1,13 +1,14 @@
 /**
  * Knowledge intuition recon: plan (tools) → structured submit loop.
+ *
+ * Provider v2: migrated from Vercel AI SDK streamText to Agent SDK queryWithProfile.
+ * The plan step uses an MCP server for vault tools. Tool execution happens inside
+ * the SDK subprocess via IPC callbacks. The submit step uses queryText + Zod parse.
  */
 
-import { streamText } from 'ai';
-import type { ModelMessage } from 'ai';
 import { knowledgeIntuitionSubmitSchema } from '@/core/schemas';
-import { isBlankString } from '@/core/utils/common-utils';
-import { buildPromptTraceDebugEvent, streamTransform } from '@/core/providers/helpers/stream-helper';
-import { StreamTriggerName, UIStepType, type LLMStreamEvent } from '@/core/providers/types';
+import { buildPromptTraceDebugEvent } from '@/core/providers/helpers/stream-helper';
+import { StreamTriggerName, type LLMStreamEvent } from '@/core/providers/types';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import { PromptId } from '@/service/prompt/PromptId';
@@ -28,11 +29,40 @@ function effectiveReconMaxIterations(budgetDerived: number, debug?: ReconLoopDeb
 	return base;
 }
 import { mergeIntuitionSubmitIntoMemory, buildInitialIntuitionMemory } from './intuition.memory';
-import { executeToolCalls } from '@/service/agents/core/tool-executor';
 import type { IntuitionMemory, IntuitionPrepContext } from './types';
 import { exploreFolderToolMarkdownOnly, findPathTool, graphTraversalToolMarkdownOnly, grepFileTreeTool, hubLocalGraphTool, inspectNoteContextToolMarkdownOnly, localSearchWholeVaultTool } from '@/service/tools/search-graph-inspector';
+import { AppContext } from '@/app/context/AppContext';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
+import { translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
+import { agentToolsToMcpServer, mcpToolNames } from '@/service/agents/core/agentToolMcpAdapter';
 
 export type IntuitionReconCompleteCallback = (memory: IntuitionMemory) => void;
+
+// ─── History entry for manual conversation tracking ─────────────────────────
+
+interface HistoryEntry {
+	role: 'user' | 'assistant' | 'tool-results';
+	content: string;
+}
+
+/** Serialize conversation history into a prompt-friendly text block. */
+function serializeHistory(history: HistoryEntry[]): string {
+	return history
+		.map((entry) => {
+			switch (entry.role) {
+				case 'user':
+					return `<user>\n${entry.content}\n</user>`;
+				case 'assistant':
+					return `<assistant>\n${entry.content}\n</assistant>`;
+				case 'tool-results':
+					return `<tool-results>\n${entry.content}\n</tool-results>`;
+			}
+		})
+		.join('\n\n');
+}
+
+const MCP_SERVER_NAME = 'recon';
 
 /**
  * Runs the intuition manual loop until should_stop or max iterations.
@@ -59,82 +89,93 @@ export async function* runKnowledgeIntuitionLoop(options: {
 	const maxIter = effectiveReconMaxIterations(budgetDerived, debug);
 
 	let memory = buildInitialIntuitionMemory();
-	const messages: ModelMessage[] = [
-		{
-			role: 'user',
-			content: await aiServiceManager.renderPrompt(PromptId.KnowledgeIntuitionPlan, {
-				userGoal: ctx.userGoal,
-				vaultName: ctx.vaultName,
-				currentDateLabel: ctx.currentDateLabel,
-				vaultSummaryMarkdown: ctx.vaultSummaryMarkdown,
-				baselineExcludedMarkdown: ctx.baselineExcludedMarkdown,
-				backboneMarkdownExcerpt: ctx.backboneMarkdownExcerpt,
-				backboneEdgesMarkdown: ctx.backboneEdgesMarkdown,
-				folderSignalsMarkdown: ctx.folderSignalsMarkdown,
-				documentShortlistMarkdown: ctx.documentShortlistMarkdown,
-				folderTreeMarkdown: ctx.folderTreeMarkdown,
-			}),
-		},
+
+	const initialUserPrompt = await aiServiceManager.renderPrompt(PromptId.KnowledgeIntuitionPlan, {
+		userGoal: ctx.userGoal,
+		vaultName: ctx.vaultName,
+		currentDateLabel: ctx.currentDateLabel,
+		vaultSummaryMarkdown: ctx.vaultSummaryMarkdown,
+		baselineExcludedMarkdown: ctx.baselineExcludedMarkdown,
+		backboneMarkdownExcerpt: ctx.backboneMarkdownExcerpt,
+		backboneEdgesMarkdown: ctx.backboneEdgesMarkdown,
+		folderSignalsMarkdown: ctx.folderSignalsMarkdown,
+		documentShortlistMarkdown: ctx.documentShortlistMarkdown,
+		folderTreeMarkdown: ctx.folderTreeMarkdown,
+	});
+
+	// Conversation history for multi-iteration context
+	const history: HistoryEntry[] = [
+		{ role: 'user', content: initialUserPrompt },
 	];
+
+	// Build MCP server and tool names once (tools don't change across iterations)
+	const mcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, tools);
+	const allowedTools = mcpToolNames(MCP_SERVER_NAME, tools);
+
+	// Get app + profile for SDK calls
+	const appCtx = AppContext.getInstance();
+	const profile = ProfileRegistry.getInstance().getActiveAgentProfile()!;
 
 	for (let iter = 0; iter < maxIter; iter++) {
 		const planSystem = await aiServiceManager.renderPrompt(PromptId.KnowledgeIntuitionPlanSystem, {});
-		const planMessages: ModelMessage[] = [
-			...messages,
-			...(iter > 0
-				? [
-						{
-							role: 'user' as const,
-							content:
-								`[Iteration ${iter + 1}/${maxIter}] Intuition memory (JSON):\n` + JSON.stringify(memory),
-						},
-				  ]
-				: []),
-		];
+
+		// Build the prompt: serialized history + iteration context
+		let iterPrompt = serializeHistory(history);
+		if (iter > 0) {
+			iterPrompt += `\n\n[Iteration ${iter + 1}/${maxIter}] Intuition memory (JSON):\n${JSON.stringify(memory)}`;
+		}
+
 		yield buildPromptTraceDebugEvent(
 			StreamTriggerName.KNOWLEDGE_INTUITION_PLAN,
 			planSystem,
-			JSON.stringify(planMessages),
+			iterPrompt,
 		);
 		stopwatch.start(`knowledge intuition plan iter ${iter}`);
-		const planResult = streamText({
-			model: aiServiceManager.getModelInstanceForPrompt(PromptId.KnowledgeIntuitionPlan).model,
-			system: planSystem,
-			messages: planMessages,
-			tools,
-			toolChoice: 'auto',
+
+		// Capture tool call results from MCP server execution
+		const capturedToolResults: string[] = [];
+		const capturedToolCalls: Array<{ toolName: string; input: unknown }> = [];
+
+		// Build a capturing MCP server that records tool results
+		const capturingMcpServer = agentToolsToMcpServer(MCP_SERVER_NAME, Object.fromEntries(
+			Object.entries(tools).map(([name, agentTool]) => [name, {
+				...agentTool,
+				execute: async (input: any) => {
+					capturedToolCalls.push({ toolName: name, input });
+					const result = await agentTool.execute(input);
+					const str = typeof result === 'string' ? result : JSON.stringify(result);
+					capturedToolResults.push(`[${name}] ${str.slice(0, 2000)}${str.length > 2000 ? '…' : ''}`);
+					return result;
+				},
+			}]),
+		));
+
+		// Call Agent SDK for the plan step
+		const planMessages = queryWithProfile(appCtx.app, appCtx.pluginId, profile, {
+			prompt: iterPrompt,
+			systemPrompt: planSystem,
+			maxTurns: 2, // one LLM turn with tool calls + one final response
+			mcpServers: { [MCP_SERVER_NAME]: capturingMcpServer },
+			allowedTools,
 		});
-		yield* streamTransform(planResult.fullStream, StreamTriggerName.KNOWLEDGE_INTUITION_PLAN, {
-			yieldUIStep: { uiType: UIStepType.STEPS_DISPLAY, stepId },
-		});
-		const planStepMessages: ModelMessage[] = [];
-		const planReasoning = (await planResult.reasoning).map((r) => r.text).join('\n');
-		if (!isBlankString(planReasoning)) {
-			planStepMessages.push({ role: 'assistant', content: planReasoning });
+
+		// Stream and collect plan text
+		let planText = '';
+		for await (const ev of translateSdkMessages(planMessages, {
+			triggerName: StreamTriggerName.KNOWLEDGE_INTUITION_PLAN,
+			hasPartialMessages: true,
+		})) {
+			if (ev.type === 'text-delta' && typeof (ev as any).text === 'string') {
+				planText += (ev as any).text;
+			}
+			yield ev;
 		}
-		const planText = await planResult.text;
-		if (!isBlankString(planText)) {
-			planStepMessages.push({ role: 'assistant', content: planText });
-		}
-		const toolCalls = await planResult.toolCalls;
-		if (toolCalls.length > 0) {
-			planStepMessages.push({
-				role: 'assistant',
-				content: toolCalls.map((tc) => ({
-					type: 'tool-call' as const,
-					toolCallId: tc.toolCallId,
-					toolName: tc.toolName,
-					input: tc.input,
-				})),
-			});
-		}
+
 		stopwatch.stop();
 
-		const { full: fullToolMessages, summary: summaryToolMessages } = await executeToolCalls(tools, planStepMessages);
-		const toolResultsMarkdown =
-			fullToolMessages.length > 0
-				? fullToolMessages.map((m) => JSON.stringify(m.content)).join('\n\n')
-				: '(no tool calls executed)';
+		const toolResultsMarkdown = capturedToolResults.length > 0
+			? capturedToolResults.join('\n\n')
+			: '(no tool calls executed)';
 
 		const iterOneBased = iter + 1;
 		yield {
@@ -143,13 +184,8 @@ export async function* runKnowledgeIntuitionLoop(options: {
 			extra: {
 				iteration: iterOneBased,
 				maxIter,
-				planReasoning: planReasoning || undefined,
 				planText: planText || undefined,
-				toolCalls: toolCalls.map((tc) => ({
-					toolCallId: tc.toolCallId,
-					toolName: tc.toolName,
-					input: tc.input,
-				})),
+				toolCalls: capturedToolCalls,
 				toolResultsPreview: toolResultsMarkdown.slice(0, 400) + (toolResultsMarkdown.length > 400 ? '…' : ''),
 			},
 		};
@@ -164,7 +200,8 @@ export async function* runKnowledgeIntuitionLoop(options: {
 			return;
 		}
 
-		const submit = await aiServiceManager.streamObjectWithPrompt(
+		// Submit step: structured output via queryText + Zod parse
+		const submitRaw = await aiServiceManager.queryText(
 			PromptId.KnowledgeIntuitionSubmit,
 			{
 				userGoal: ctx.userGoal,
@@ -175,8 +212,14 @@ export async function* runKnowledgeIntuitionLoop(options: {
 				backboneEdgesJson: ctx.backboneEdgesJson,
 				toolResultsMarkdown,
 			},
-			knowledgeIntuitionSubmitSchema,
 		);
+		const submitJsonMatch = submitRaw.match(/```json\s*([\s\S]*?)```/) || submitRaw.match(/(\{[\s\S]*\})/);
+		if (!submitJsonMatch) {
+			console.error('[IntuitionRecon] No JSON in submit response, stopping loop');
+			break;
+		}
+		const submit = knowledgeIntuitionSubmitSchema.parse(JSON.parse(submitJsonMatch[1] || submitJsonMatch[0]));
+
 		yield {
 			type: 'pk-debug',
 			debugName: 'knowledge-intuition-submit',
@@ -190,9 +233,15 @@ export async function* runKnowledgeIntuitionLoop(options: {
 		};
 
 		memory = mergeIntuitionSubmitIntoMemory(memory, submit);
-		messages.push(...planStepMessages);
-		messages.push(...summaryToolMessages);
-		messages.push({
+
+		// Update conversation history for next iteration
+		if (planText) {
+			history.push({ role: 'assistant', content: planText });
+		}
+		if (capturedToolResults.length > 0) {
+			history.push({ role: 'tool-results', content: toolResultsMarkdown });
+		}
+		history.push({
 			role: 'assistant',
 			content: JSON.stringify({
 				findingsSummary: submit.findingsSummary,
