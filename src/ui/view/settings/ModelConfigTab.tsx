@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MyPluginSettings } from '@/app/settings/types';
 import { AIServiceManager } from '@/service/chat/service-manager';
-import { ProviderSettingsComponent } from '@/ui/view/settings/component/ProviderSettings';
+import { ProfileSettingsTab } from '@/ui/view/settings/ProfileSettingsTab';
 import { ModelSelector } from '@/ui/component/mine/ModelSelector';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 import { CollapsibleSettingsSection } from '@/ui/component/shared-ui/CollapsibleSettingsSection';
@@ -309,13 +309,9 @@ export function ModelConfigTab({ settings, aiServiceManager, settingsUpdates, ev
 
 	return (
 		<div className="peak-settings-card">
-			{/* Provider Settings Section */}
-			<CollapsibleSettingsSection title="Provider Settings" defaultOpen={false}>
-				<ProviderSettingsComponent
-					settings={settings.ai}
-					aiServiceManager={aiServiceManager}
-					onUpdate={updateAISettings}
-				/>
+			{/* Profile Settings Section */}
+			<CollapsibleSettingsSection title="Profile Settings" defaultOpen={false}>
+				<ProfileSettingsTab />
 			</CollapsibleSettingsSection>
 
 			{/* Model Usage Section */}
