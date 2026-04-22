@@ -4,6 +4,7 @@ import { BusinessError, ErrorCode } from '@/core/errors';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import type { DocumentType } from '@/core/document/types';
 import { PromptId, CONFIGURABLE_PROMPT_IDS, INDEXING_AND_HUB_PROMPT_IDS, SEARCH_AI_ANALYSIS_PROMPT_IDS } from '@/service/prompt/PromptId';
+import type { ProfileSettings } from '@/core/profiles/types';
 import {
 	DEFAULT_HUB_DISCOVER_SETTINGS,
 	type HubDiscoverSettings,
@@ -448,6 +449,12 @@ export interface MyPluginSettings {
 		mstLeafOpacity?: number;
 		mstLeafWidthScale?: number;
 	};
+
+	/**
+	 * Provider v2 profile system. Replaces per-provider config with a unified
+	 * profile model. Populated by migration on first load if absent.
+	 */
+	profileSettings?: ProfileSettings;
 
 	/**
 	 * Vault Search (Claude Agent SDK).

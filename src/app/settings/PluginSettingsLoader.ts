@@ -1,6 +1,8 @@
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings, SearchSettings } from '@/app/settings/types';
 import { DEFAULT_HUB_DISCOVER_SETTINGS, type HubDiscoverSettings } from '@/service/search/index/helper/hub/types';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
+import { migrateFromV1 } from '@/core/profiles/migrate-v1';
+import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
 /**
  * Get string value from source or return default.
  */
@@ -333,6 +335,21 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 						: undefined,
 				}
 				: undefined,
+		};
+	}
+
+	// Profile v2 migration: if profileSettings is missing, attempt to migrate
+	// from v1 structures (vaultSearch.sdkProfile, ai.llmProviderConfigs).
+	const rawProfileSettings = raw?.profileSettings;
+	if (rawProfileSettings && typeof rawProfileSettings === 'object') {
+		settings.profileSettings = rawProfileSettings as any;
+	} else {
+		const migratedProfiles = migrateFromV1(raw);
+		settings.profileSettings = {
+			profiles: migratedProfiles ?? [],
+			activeAgentProfileId: migratedProfiles?.[0]?.id ?? null,
+			activeEmbeddingProfileId: null,
+			sdkSettings: { ...DEFAULT_SDK_SETTINGS },
 		};
 	}
 
