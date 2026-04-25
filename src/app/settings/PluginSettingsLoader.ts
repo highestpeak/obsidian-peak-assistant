@@ -361,6 +361,19 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		};
 	}
 
+	// Remove deprecated fields from persisted data
+	if (settings.search) {
+		delete (settings.search as any).searchSummaryModel;
+		delete (settings.search as any).maxMultiAgentIterations;
+		if (settings.search.hubDiscover) {
+			delete (settings.search.hubDiscover as any).maxJudgeCalls;
+		}
+		if (settings.search.chunking) {
+			delete (settings.search.chunking as any).rerankModel;
+		}
+	}
+	delete (settings as any).vaultSearch;
+
 	return settings;
 }
 

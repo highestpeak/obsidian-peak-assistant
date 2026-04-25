@@ -4,7 +4,6 @@ import type { MyPluginSettings, InspectorLinksSettings } from '@/app/settings/ty
 import { DEFAULT_INSPECTOR_LINKS_SETTINGS } from '@/app/settings/types';
 import { EventBus, SettingsUpdatedEvent } from '@/core/eventBus';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
-import { PromptId } from '@/service/prompt/PromptId';
 
 /**
  * Generic hook for creating update functions for nested settings.
@@ -132,73 +131,6 @@ export function useSettingsUpdate(
 	);
 
 	/**
-	 * Update model configuration in search settings (searchSummaryModel)
-	 */
-	const updateSearchModel = useCallback(
-		(key: 'searchSummaryModel', provider: string, modelId: string) => {
-			return updateSettings({
-				search: {
-					...plugin.settings.search,
-					[key]: { provider, modelId },
-				},
-			});
-		},
-		[updateSettings] // Remove settings.search dependency to avoid stale closure
-	);
-
-	/**
-	 * Update model configuration in search.chunking settings (embeddingModel, rerankModel)
-	 */
-	const updateChunkingModel = useCallback(
-		(key: 'embeddingModel' | 'rerankModel', provider: string, modelId: string) => {
-			if (!plugin.settings.search.chunking) return Promise.resolve();
-			return updateSettings({
-				search: {
-					...plugin.settings.search,
-					chunking: {
-						...plugin.settings.search.chunking,
-						[key]: { provider, modelId },
-					},
-				},
-			});
-		},
-		[updateSettings] // Remove settings.search dependency to avoid stale closure
-	);
-
-	/**
-	 * Update model configuration in search.aiAnalysisModel settings (thoughtAgentModel, searchAgentModel)
-	 */
-	const updateAIAnalysisModel = useCallback(
-		(key: 'thoughtAgentModel' | 'searchAgentModel', provider: string, modelId: string) => {
-			return updateSettings({
-				search: {
-					...plugin.settings.search,
-					aiAnalysisModel: {
-						...plugin.settings.search.aiAnalysisModel,
-						[key]: { provider, modelId },
-					},
-				},
-			});
-		},
-		[updateSettings] // Remove settings.search dependency to avoid stale closure
-	);
-
-	/**
-	 * Update analysisModel in AI settings (optional override for AI Analysis prompts)
-	 */
-	const updateAnalysisModel = useCallback(
-		(provider: string, modelId: string) => {
-			return updateSettings({
-				ai: {
-					...plugin.settings.ai,
-					analysisModel: provider ? { provider, modelId } : undefined,
-				},
-			});
-		},
-		[updateSettings]
-	);
-
-	/**
 	 * Update search.inspectorLinks settings
 	 */
 	const updateInspectorLinks = useCallback(
@@ -247,26 +179,6 @@ export function useSettingsUpdate(
 		[updateSettings] // Remove settings.ai dependency to avoid stale closure
 	);
 
-	/**
-	 * Update prompt model configuration
-	 */
-	const updatePromptModel = useCallback(
-		(promptId: string, provider: string, modelId: string) => {
-			// Only update configurable prompt IDs
-			const existingMap = plugin.settings.ai.promptModelMap || {};
-			return updateSettings({
-				ai: {
-					...plugin.settings.ai,
-					promptModelMap: {
-						...existingMap,
-						[promptId]: { provider, modelId },
-					},
-				},
-			});
-		},
-		[updateSettings] // Remove settings.ai dependency to avoid stale closure
-	);
-
 	return {
 		update,
 		updateAI,
@@ -276,11 +188,6 @@ export function useSettingsUpdate(
 		updateDocumentType,
 		updateAISettings,
 		updateDefaultModel,
-		updateAnalysisModel,
-		updateSearchModel,
-		updateChunkingModel,
-		updateAIAnalysisModel,
-		updatePromptModel,
 		updateSettings,
 	};
 }
