@@ -1,72 +1,46 @@
 import React from 'react';
-import {
-    FileText,
-    Link,
-    FolderOpen,
-    Tag,
-    ArrowLeft,
-    Clock,
-    Sparkles,
-} from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import type { MatchedSuggestion } from '@/service/context/PatternMatcher';
-
-// ---------------------------------------------------------------------------
-// Context icon map
-// ---------------------------------------------------------------------------
-
-const CONTEXT_ICON: Record<MatchedSuggestion['contextType'], React.ElementType> = {
-    activeDoc: FileText,
-    outlinks: Link,
-    folder: FolderOpen,
-    tags: Tag,
-    backlinks: ArrowLeft,
-    recent: Clock,
-    general: Sparkles,
-};
 
 // ---------------------------------------------------------------------------
 // SuggestionCard
 // ---------------------------------------------------------------------------
 
 const SuggestionCard: React.FC<{
-    suggestion: MatchedSuggestion;
-    onSelect: (suggestion: MatchedSuggestion) => void;
+	suggestion: MatchedSuggestion;
+	onSelect: (suggestion: MatchedSuggestion) => void;
 }> = ({ suggestion, onSelect }) => {
-    const Icon = CONTEXT_ICON[suggestion.contextType] ?? Sparkles;
+	const { actionLabel, filledTemplate, contextTags } = suggestion;
+	// Context = everything after the action prefix
+	const context = filledTemplate.startsWith(actionLabel)
+		? filledTemplate.slice(actionLabel.length).trim()
+		: filledTemplate;
+	const scopeTag = contextTags[0] ?? null;
 
-    return (
-        <div
-            onClick={() => onSelect(suggestion)}
-            className={cn(
-                'pktw-flex pktw-flex-col pktw-gap-2 pktw-p-3',
-                'pktw-border pktw-border-pk-border pktw-rounded-lg pktw-bg-pk-background',
-                'hover:pktw-border-[#7c3aed] hover:pktw-bg-[#f5f3ff]',
-                'pktw-cursor-pointer pktw-transition-colors',
-            )}
-        >
-            <div className="pktw-flex pktw-items-start pktw-gap-2">
-                <span className="pktw-flex pktw-items-center pktw-justify-center pktw-w-7 pktw-h-7 pktw-rounded-md pktw-bg-pk-accent pktw-shrink-0">
-                    <Icon className="pktw-w-3.5 pktw-h-3.5 pktw-text-white" />
-                </span>
-                <span className="pktw-text-sm pktw-font-medium pktw-text-[#1f2937] pktw-line-clamp-2 pktw-leading-snug">
-                    {suggestion.filledTemplate}
-                </span>
-            </div>
-            {suggestion.contextTags.length > 0 && (
-                <div className="pktw-flex pktw-flex-wrap pktw-gap-1">
-                    {suggestion.contextTags.map((tag) => (
-                        <span
-                            key={tag}
-                            className="pktw-text-[10px] pktw-px-1.5 pktw-py-0.5 pktw-rounded-full pktw-bg-[#f3f4f6] pktw-text-pk-foreground-muted"
-                        >
-                            {tag}
-                        </span>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
+	return (
+		<div
+			onClick={() => onSelect(suggestion)}
+			className={cn(
+				'pktw-flex pktw-flex-col pktw-gap-2 pktw-p-3.5 pktw-border pktw-border-pk-border pktw-rounded-lg',
+				'pktw-bg-pk-background hover:pktw-border-[#7c3aed]/40 hover:pktw-bg-[#f5f3ff]',
+				'pktw-cursor-pointer pktw-transition-all pktw-group',
+			)}
+		>
+			<span className="pktw-text-[13px] pktw-font-semibold pktw-text-pk-foreground pktw-leading-snug group-hover:pktw-text-pk-accent pktw-transition-colors">
+				{actionLabel}
+			</span>
+			{context && (
+				<span className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-leading-relaxed pktw-line-clamp-2">
+					{context}
+				</span>
+			)}
+			{scopeTag && (
+				<span className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-text-[10px] pktw-font-mono pktw-text-pk-accent pktw-bg-[#ede9fe] pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-w-fit">
+					{scopeTag}
+				</span>
+			)}
+		</div>
+	);
 };
 
 // ---------------------------------------------------------------------------
