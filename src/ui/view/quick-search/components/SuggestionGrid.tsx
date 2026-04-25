@@ -56,7 +56,7 @@ export const SuggestionGrid: React.FC<SuggestionGridProps> = ({ suggestions, onS
     if (suggestions.length === 0) return null;
 
     return (
-        <div>
+        <div className="pktw-px-4">
             <span className="pktw-block pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted pktw-mb-2">
                 Suggested for you
             </span>

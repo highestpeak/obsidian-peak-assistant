@@ -103,7 +103,7 @@ export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 	if (records.length === 0 && !loading) return null;
 
 	return (
-		<div className="pktw-border-t pktw-border-pk-border/50 pktw-mt-2">
+		<div className="pktw-border-t pktw-border-pk-border/50 pktw-mt-2 pktw-px-4">
 			<span className="pktw-block pktw-text-[10px] pktw-font-medium pktw-uppercase pktw-tracking-widest pktw-text-pk-foreground-muted pktw-pt-4 pktw-pb-2">
 				Recent
 			</span>

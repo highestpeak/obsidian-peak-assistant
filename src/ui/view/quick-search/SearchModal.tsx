@@ -327,7 +327,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 				</div>
 			</div>
 			{!searchQuery && sessionStatus === 'idle' && (
-				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-px-4 pktw-py-3">
+				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-py-3">
 					<SuggestionGrid
 						suggestions={suggestions}
 						onSelect={(s) => {
