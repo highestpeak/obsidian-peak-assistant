@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { VaultSearchTab, VaultSearchFooterHints } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
-import { Search, Sparkles, Globe, X, RotateCcw, Brain, Network } from 'lucide-react';
+import { Search, Sparkles, Globe, X, RotateCcw, Brain, Network, ChevronDown } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { cn } from '@/ui/react/lib/utils';
@@ -68,9 +68,9 @@ interface AITabContentProps {
 /**
  * AI Analysis tab: input row (mode, web, Clear/Re-analyze/Cancel/Analyze) + AISearchTab content.
  */
-export const PRESET_LABELS: Record<AnalysisMode, { short: string; full: string }> = {
-	vaultFull: { short: 'Vault Analysis', full: 'Vault Analysis · Deep analysis whole vault.' },
-	aiGraph: { short: 'AI Graph', full: 'AI Graph · Build interactive knowledge graphs.' },
+export const PRESET_LABELS: Record<AnalysisMode, { short: string; full: string; placeholder: string }> = {
+	vaultFull: { short: 'Vault Analysis', full: 'Vault Analysis · Deep analysis whole vault.', placeholder: 'Ask AI anything about your vault...' },
+	aiGraph: { short: 'AI Graph', full: 'AI Graph · Build interactive knowledge graphs.', placeholder: 'Describe the knowledge graph you want to build...' },
 };
 
 const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActiveTab }) => {
@@ -146,6 +146,19 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 
 	const [suggestions, setSuggestions] = useState<MatchedSuggestion[]>([]);
 	const [totalAnalysisCount, setTotalAnalysisCount] = useState(0);
+	const [showModeMenu, setShowModeMenu] = useState(false);
+	const modeBadgeRef = useRef<HTMLDivElement>(null);
+
+	// Close dropdown on click outside
+	useEffect(() => {
+		if (!showModeMenu) return;
+		const handler = (e: MouseEvent) => {
+			if (modeBadgeRef.current?.contains(e.target as Node)) return;
+			setShowModeMenu(false);
+		};
+		document.addEventListener('mousedown', handler);
+		return () => document.removeEventListener('mousedown', handler);
+	}, [showModeMenu]);
 
 	useEffect(() => {
 		(async () => {
@@ -181,45 +194,70 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 		<>
 			<div className="pktw-flex-shrink-0 pktw-p-2 pktw-bg-pk-background pktw-border-b pktw-border-pk-border">
 				<div className="pktw-flex pktw-gap-2 pktw-items-center">
-					<div className="pktw-relative pktw-flex-1">
-						{/* Mode pills — visible inline, replacing hidden HoverCard */}
-						<div className="pktw-absolute pktw-left-4 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10 pktw-flex pktw-gap-1">
-							{PRESETS.map((p) => {
-								const Icon = p === 'aiGraph' ? Network : Brain;
-								return (
-									<Button
-										key={p}
-										variant="ghost"
-										size="xs"
-										style={{ cursor: 'pointer' }}
-										onClick={() => setAnalysisMode(p)}
-										className={cn(
-											'pktw-shadow-none !pktw-h-6 pktw-px-2 pktw-rounded-full pktw-text-[11px] pktw-font-medium pktw-transition-all',
-											analysisMode === p
-												? 'pktw-bg-pk-accent pktw-text-white'
-												: 'pktw-bg-pk-background pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border hover:pktw-border-[#7c3aed]/40 hover:pktw-text-pk-accent'
-										)}
-									>
-										<Icon className="pktw-w-3 pktw-h-3 pktw-mr-1" />
-										{PRESET_LABELS[p].short}
-									</Button>
-								);
-							})}
-						</div>
-						<div className="pktw-relative pktw-flex pktw-items-center">
+					<div className="pktw-relative pktw-flex-1 pktw-min-w-0">
+						<div className="pktw-relative pktw-flex pktw-items-center pktw-min-w-0">
 							<CodeMirrorInput
 								ref={inputRef}
 								value={searchQuery}
 								onChange={setSearchQuery}
 								onKeyDown={handleInputKeyDown}
 								onEnterSubmit={handleAnalyze}
-								placeholder="Ask AI anything about your vault..."
+								placeholder={PRESET_LABELS[analysisMode].placeholder}
 								enableSearchTags={true}
 								singleLine={true}
 								disabled={isInputFrozen}
-								containerClassName="pktw-w-full pktw-pl-11 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-muted-foreground pktw-rounded-full pktw-transition-all"
-								className="pktw-pr-12"
+								containerClassName={`pktw-flex-1 pktw-min-w-0 ${analysisMode === 'aiGraph' ? 'pktw-pl-[105px]' : 'pktw-pl-[140px]'} pktw-pr-16 pktw-py-2.5 pktw-bg-[#fafafa] pktw-border-muted-foreground pktw-rounded-full pktw-transition-all pktw-z-0`}
+								className="pktw-pr-4"
 							/>
+							{/* Mode dropdown */}
+							<div ref={modeBadgeRef} className="pktw-absolute pktw-left-2 pktw-top-1/2 -pktw-translate-y-1/2 pktw-z-10">
+								<div
+									style={{ cursor: 'pointer' }}
+									onClick={() => setShowModeMenu((v) => !v)}
+									className={cn(
+										'pktw-flex pktw-items-center pktw-h-6 pktw-px-2 pktw-rounded-full pktw-text-[10px] pktw-font-medium pktw-select-none pktw-transition-all',
+										'pktw-bg-[#f5f3ff] pktw-text-pk-accent pktw-border pktw-border-[#7c3aed]/20 hover:pktw-bg-[#ede9fe]'
+									)}
+									title={`${PRESET_LABELS[analysisMode].full} (⌥↑/⌥↓ to switch)`}
+								>
+									{analysisMode === 'aiGraph' ? <Network className="pktw-w-3 pktw-h-3 pktw-mr-1" /> : <Brain className="pktw-w-3 pktw-h-3 pktw-mr-1" />}
+									{PRESET_LABELS[analysisMode].short}
+									<ChevronDown className={cn('pktw-w-2.5 pktw-h-2.5 pktw-ml-0.5 pktw-opacity-60 pktw-transition-transform', showModeMenu && 'pktw-rotate-180')} />
+								</div>
+								{showModeMenu && (
+									<div className="pktw-absolute pktw-top-full pktw-left-0 pktw-mt-1 pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[200px]">
+										{PRESETS.map((p) => {
+											const Icon = p === 'aiGraph' ? Network : Brain;
+											return (
+												<div
+													key={p}
+													onClick={() => { setAnalysisMode(p); setShowModeMenu(false); }}
+													className={cn(
+														'pktw-flex pktw-items-center pktw-gap-2.5 pktw-px-3 pktw-py-2 pktw-text-xs pktw-cursor-pointer pktw-transition-colors',
+														analysisMode === p
+															? 'pktw-text-pk-accent pktw-font-medium pktw-bg-pk-accent/5'
+															: 'pktw-text-pk-foreground hover:pktw-bg-gray-50'
+													)}
+												>
+													<div className={cn(
+														'pktw-w-7 pktw-h-7 pktw-rounded-md pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0',
+														analysisMode === p ? 'pktw-bg-pk-accent pktw-text-white' : 'pktw-bg-[#f3f4f6] pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border'
+													)}>
+														<Icon className="pktw-w-3.5 pktw-h-3.5" />
+													</div>
+													<div className="pktw-flex-1">
+														<span className="pktw-block pktw-font-medium">{PRESET_LABELS[p].short}</span>
+														<span className="pktw-block pktw-text-[10px] pktw-text-pk-foreground-muted pktw-font-normal">{PRESET_LABELS[p].full.split('·')[1]?.trim()}</span>
+													</div>
+												</div>
+											);
+										})}
+										<div className="pktw-border-t pktw-border-pk-border pktw-mt-1 pktw-pt-1 pktw-px-3 pktw-pb-1">
+											<span className="pktw-text-[10px] pktw-text-pk-foreground-muted">⌥↑ ⌥↓ to switch</span>
+										</div>
+									</div>
+								)}
+							</div>
 							{!isMobile() && (
 								<Button
 									variant="ghost"
@@ -289,7 +327,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 				</div>
 			</div>
 			{!searchQuery && sessionStatus === 'idle' && (
-				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto">
+				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-px-4 pktw-py-3">
 					<SuggestionGrid
 						suggestions={suggestions}
 						onSelect={(s) => {
@@ -331,9 +369,12 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					)}
 				</div>
 			)}
-			<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-overflow-visible pktw-flex pktw-flex-col">
-				<AISearchTab onClose={onClose} />
-			</div>
+			{/* Only render AISearchTab when NOT showing the idle landing — avoids competing scroll zones */}
+			{(searchQuery || sessionStatus !== 'idle') && (
+				<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-overflow-visible pktw-flex pktw-flex-col">
+					<AISearchTab onClose={onClose} />
+				</div>
+			)}
 			{sessionStatus === 'idle' && (
 				<div className="pktw-flex-shrink-0 pktw-px-4 pktw-py-2 pktw-bg-[#fafafa] pktw-border-t pktw-border-pk-border pktw-flex pktw-items-center pktw-justify-between">
 					<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-text-xs pktw-text-[#999999]">
