@@ -5,6 +5,7 @@ import { MySettings } from 'src/app/settings/MySetting';
 import { normalizePluginSettings } from 'src/app/settings/PluginSettingsLoader';
 import { ViewManager } from 'src/app/view/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
+import { registerRunTraceScenarioCommand } from 'src/app/commands/run-trace-scenario';
 import { registerCoreEvents, removeAllChatViewButtons, clearPendingConversationTimeouts } from 'src/app/events/Register';
 import { MyPluginSettings } from '@/app/settings/types';
 import { SearchClient } from '@/service/search/SearchClient';
@@ -16,6 +17,7 @@ import { IndexService } from '@/service/search/index/indexService';
 import { IgnoreService } from '@/service/search/IgnoreService';
 import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { BetterSqliteStore } from '@/core/storage/sqlite/better-sqlite3-adapter/BetterSqliteStore';
+import { NativeModuleManager } from '@/core/storage/sqlite/NativeModuleManager';
 import { VAULT_DB_FILENAME } from '@/core/constant';
 import { clearCurrentAnalysisContext } from '@/core/analysis-context-holder';
 import { AppContext } from '@/app/context/AppContext';
@@ -39,8 +41,11 @@ import {
 } from '@/core/utils/markdown-utils';
 import { hydrateTextStopwordsFromTemplateManager } from '@/core/utils/stopword-utils';
 import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
+import { loadPeakConfig } from '@/core/profiles/peak-config';
 import { resetAIAnalysisAll } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { useVaultSearchStore } from '@/ui/view/quick-search/store/vaultSearchStore';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
 import { useSharedStore } from '@/ui/view/quick-search/store/sharedStore';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
@@ -68,6 +73,12 @@ export default class MyPlugin extends Plugin {
 	searchUpdateQueue: SearchUpdateListener | null = null;
 	indexInitializer: IndexInitializer | null = null;
 
+	/** Tracks whether SQLite has been lazily initialized (or is in progress). */
+	private sqliteInitPromise: Promise<void> | null = null;
+
+	/** Cached AppContext reference for use in initSqlite(). */
+	private appContext: AppContext | null = null;
+
 	/** Cleanup function for hover menu globals. */
 	private uninstallHoverMenuGlobals?: () => void;
 
@@ -81,7 +92,19 @@ export default class MyPlugin extends Plugin {
 
 		const data = await this.loadData();
 		this.settings = normalizePluginSettings(data);
+		await loadPeakConfig(this.app);
 
+		// Initialize ProfileRegistry from persisted settings (must precede AIServiceManager)
+		const ps = this.settings.profileSettings ?? {
+			profiles: [],
+			activeAgentProfileId: null,
+			activeEmbeddingProfileId: null,
+			sdkSettings: { ...DEFAULT_SDK_SETTINGS },
+		};
+		ProfileRegistry.getInstance().load(ps, (updated) => {
+			this.settings.profileSettings = updated;
+			void this.saveSettings();
+		});
 
 		// Template manager loads prompts/templates from plugin dir on demand (absolute path for Node fs)
 		try {
@@ -128,17 +151,21 @@ export default class MyPlugin extends Plugin {
 		await this.aiServiceManager.init();
 
 		// Initialize SQLite store and search service (desktop only — native modules unavailable on mobile)
+		this.appContext = appContext;
 		if (isDesktop()) {
-			await sqliteStoreManager.init({
-				app: this.app,
-				storageFolder: this.settings.dataStorageFolder,
-				filename: VAULT_DB_FILENAME,
-				settings: { sqliteBackend: this.settings.sqliteBackend }
-			});
-			await this.initializeSearchService();
-			appContext.searchClient = this.searchClient!;
-			initPatternSystem().catch((e) => console.error('[PatternDiscovery] Init failed:', e));
-			warmupPool().catch((e) => console.warn('[sdkAgentPool] warmup failed:', e));
+			// Set up NativeModuleManager so it can auto-download the correct
+			// better-sqlite3 binary if the current one is missing or ABI-incompatible.
+			NativeModuleManager.getInstance().setPluginDir(getPluginDirAbsolute());
+
+			// Attempt eager init — if native module is already compatible, this is
+			// transparent to the user. If it fails (e.g. first install, ABI mismatch
+			// after Obsidian update), the plugin still loads and the user can trigger
+			// setup via the onboarding wizard command.
+			try {
+				await this.initSqlite();
+			} catch (e) {
+				console.warn('[Peak Assistant] SQLite deferred — native module not ready yet:', e);
+			}
 		} else {
 			console.log('[Peak Assistant] Mobile mode: SQLite and indexing skipped');
 		}
@@ -163,9 +190,61 @@ export default class MyPlugin extends Plugin {
 			this.settings.search,
 			this.settings.dataStorageFolder,
 		).forEach((command) => this.addCommand(command));
+		registerRunTraceScenarioCommand(this);
 
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
+
+		// Auto-open onboarding wizard on first run (no profiles configured)
+		const profiles = ProfileRegistry.getInstance().getAllProfiles();
+		if (profiles.length === 0) {
+			// Slight delay so the workspace is fully rendered before opening the modal
+			setTimeout(() => {
+				const { OnboardingModal } = require('@/ui/view/modals/OnboardingModal');
+				new OnboardingModal(appContext).open();
+			}, 500);
+		}
+	}
+
+	/**
+	 * Initialize SQLite and all dependent services (search, indexing, pattern discovery).
+	 * Safe to call multiple times — second call returns the same promise.
+	 * Called eagerly in onload() if native module is ready, or lazily from the
+	 * onboarding wizard after native module download completes.
+	 */
+	async initSqlite(): Promise<void> {
+		if (this.sqliteInitPromise) return this.sqliteInitPromise;
+
+		this.sqliteInitPromise = (async () => {
+			try {
+				await sqliteStoreManager.init({
+					app: this.app,
+					storageFolder: this.settings.dataStorageFolder,
+					filename: VAULT_DB_FILENAME,
+					settings: { sqliteBackend: this.settings.sqliteBackend },
+				});
+				await this.initializeSearchService();
+				if (this.appContext) {
+					this.appContext.searchClient = this.searchClient!;
+				}
+				// Only start background AI services if an active profile is configured
+				// (invalid/missing API key causes unrecoverable subprocess crashes)
+				const hasActiveProfile = !!ProfileRegistry.getInstance().getActiveAgentProfile();
+				if (hasActiveProfile) {
+					initPatternSystem().catch((e) => console.error('[PatternDiscovery] Init failed:', e));
+					warmupPool().catch((e) => console.warn('[sdkAgentPool] warmup failed:', e));
+				} else {
+					console.log('[Peak Assistant] No active profile — skipping PatternDiscovery and agent pool warmup');
+				}
+				console.log('[Peak Assistant] SQLite and search services initialized');
+			} catch (e) {
+				// Clear so next call retries instead of returning a rejected promise
+				this.sqliteInitPromise = null;
+				throw e;
+			}
+		})();
+
+		return this.sqliteInitPromise;
 	}
 
 	/**
@@ -319,6 +398,7 @@ export default class MyPlugin extends Plugin {
 		IgnoreService.clearInstance();
 		SqliteStoreManager.clearInstance();
 		BetterSqliteStore.clearInstance();
+		NativeModuleManager.clearInstance();
 		RerankProviderManager.clearInstance();
 
 		this.uninstallHoverMenuGlobals?.();
