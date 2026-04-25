@@ -461,7 +461,7 @@ export interface MyPluginSettings {
 	 */
 	vaultSearch?: {
 		sdkProfile?: {
-			kind?: 'anthropic-direct' | 'openrouter' | 'litellm' | 'custom';
+			kind?: 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom';
 			baseUrl?: string;
 			apiKey?: string | null;
 			authToken?: string | null;
@@ -499,7 +499,7 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 
 	vaultSearch: {
 		sdkProfile: {
-			kind: 'anthropic-direct',
+			kind: 'anthropic',
 			baseUrl: 'https://api.anthropic.com',
 			primaryModel: 'claude-opus-4-6',
 			fastModel: 'claude-haiku-4-5',

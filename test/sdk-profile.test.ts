@@ -7,7 +7,7 @@ async function run(): Promise<void> {
 			name: 'toAgentSdkEnv: anthropic direct with api key',
 			fn: () => {
 				const profile: SdkProfile = {
-					kind: 'anthropic-direct',
+					kind: 'anthropic',
 					baseUrl: 'https://api.anthropic.com',
 					apiKey: 'sk-ant-test',
 					authToken: null,
@@ -42,7 +42,7 @@ async function run(): Promise<void> {
 			},
 		},
 		{
-			name: 'toAgentSdkEnv: default profile has sane anthropic-direct values',
+			name: 'toAgentSdkEnv: default profile has sane anthropic values',
 			fn: () => {
 				const profile: SdkProfile = { ...DEFAULT_SDK_PROFILE, apiKey: 'sk-ant-test' };
 				const env = toAgentSdkEnv(profile);
@@ -54,7 +54,7 @@ async function run(): Promise<void> {
 			name: 'toAgentSdkEnv: throws on missing credentials',
 			fn: () => {
 				const broken: SdkProfile = {
-					kind: 'anthropic-direct',
+					kind: 'anthropic',
 					baseUrl: 'https://api.anthropic.com',
 					apiKey: null,
 					authToken: null,
@@ -89,7 +89,7 @@ async function run(): Promise<void> {
 			name: 'readProfileFromSettings: undefined settings returns default profile',
 			fn: () => {
 				const profile = readProfileFromSettings(undefined);
-				assert.strictEqual(profile.kind, 'anthropic-direct');
+				assert.strictEqual(profile.kind, 'anthropic');
 				assert.strictEqual(profile.baseUrl, 'https://api.anthropic.com');
 			},
 		},

@@ -10,10 +10,10 @@ async function run(): Promise<void> {
   const tests: Array<{ name: string; fn: () => void | Promise<void> }> = [
     // ───────── Preset factories ─────────
     {
-      name: 'createPresetProfile: anthropic-direct has correct defaults',
+      name: 'createPresetProfile: anthropic has correct defaults',
       fn: () => {
-        const p = createPresetProfile('anthropic-direct');
-        assert.strictEqual(p.kind, 'anthropic-direct');
+        const p = createPresetProfile('anthropic');
+        assert.strictEqual(p.kind, 'anthropic');
         assert.strictEqual(p.baseUrl, 'https://api.anthropic.com');
         assert.strictEqual(p.primaryModel, 'claude-opus-4-6');
         assert.strictEqual(p.fastModel, 'claude-haiku-4-5');
@@ -51,7 +51,7 @@ async function run(): Promise<void> {
     {
       name: 'createPresetProfile: overrides are applied',
       fn: () => {
-        const p = createPresetProfile('anthropic-direct', {
+        const p = createPresetProfile('anthropic', {
           name: 'My Custom',
           apiKey: 'sk-test',
           primaryModel: 'claude-sonnet-4-20250514',
@@ -59,15 +59,15 @@ async function run(): Promise<void> {
         assert.strictEqual(p.name, 'My Custom');
         assert.strictEqual(p.apiKey, 'sk-test');
         assert.strictEqual(p.primaryModel, 'claude-sonnet-4-20250514');
-        assert.strictEqual(p.kind, 'anthropic-direct'); // kind stays from preset
+        assert.strictEqual(p.kind, 'anthropic'); // kind stays from preset
       },
     },
 
     // ───────── toAgentSdkEnv ─────────
     {
-      name: 'toAgentSdkEnv: anthropic-direct with apiKey',
+      name: 'toAgentSdkEnv: anthropic with apiKey',
       fn: () => {
-        const p = createPresetProfile('anthropic-direct', { apiKey: 'sk-ant-test' });
+        const p = createPresetProfile('anthropic', { apiKey: 'sk-ant-test' });
         const env = toAgentSdkEnv(p);
         assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://api.anthropic.com');
         assert.strictEqual(env.ANTHROPIC_API_KEY, 'sk-ant-test');
@@ -90,14 +90,14 @@ async function run(): Promise<void> {
     {
       name: 'toAgentSdkEnv: throws on missing credentials',
       fn: () => {
-        const p = createPresetProfile('anthropic-direct');
+        const p = createPresetProfile('anthropic');
         assert.throws(() => toAgentSdkEnv(p), /credentials/i);
       },
     },
     {
       name: 'toAgentSdkEnv: custom headers serialized',
       fn: () => {
-        const p = createPresetProfile('anthropic-direct', {
+        const p = createPresetProfile('anthropic', {
           apiKey: 'sk-test',
           customHeaders: { 'X-Org': 'test-org' },
         });
@@ -108,7 +108,7 @@ async function run(): Promise<void> {
     {
       name: 'toAgentSdkEnv: empty customHeaders not included',
       fn: () => {
-        const p = createPresetProfile('anthropic-direct', { apiKey: 'sk-test' });
+        const p = createPresetProfile('anthropic', { apiKey: 'sk-test' });
         const env = toAgentSdkEnv(p);
         assert.strictEqual(env.ANTHROPIC_CUSTOM_HEADERS, undefined);
       },
@@ -118,7 +118,7 @@ async function run(): Promise<void> {
     {
       name: 'toEmbeddingConfig: returns null when no embedding fields',
       fn: () => {
-        const p = createPresetProfile('anthropic-direct', { apiKey: 'sk-test' });
+        const p = createPresetProfile('anthropic', { apiKey: 'sk-test' });
         const cfg = toEmbeddingConfig(p);
         assert.strictEqual(cfg, null);
       },
@@ -126,7 +126,7 @@ async function run(): Promise<void> {
     {
       name: 'toEmbeddingConfig: returns config when fields set',
       fn: () => {
-        const p = createPresetProfile('anthropic-direct', {
+        const p = createPresetProfile('anthropic', {
           apiKey: 'sk-test',
           embeddingEndpoint: 'https://embed.example.com',
           embeddingModel: 'text-embedding-3-small',
@@ -142,7 +142,7 @@ async function run(): Promise<void> {
     {
       name: 'toEmbeddingConfig: falls back to profile apiKey when embeddingApiKey is null',
       fn: () => {
-        const p = createPresetProfile('anthropic-direct', {
+        const p = createPresetProfile('anthropic', {
           apiKey: 'sk-test',
           embeddingEndpoint: 'https://embed.example.com',
           embeddingModel: 'text-embedding-3-small',
@@ -156,7 +156,7 @@ async function run(): Promise<void> {
     {
       name: 'toEmbeddingConfig: returns null if only endpoint (no model)',
       fn: () => {
-        const p = createPresetProfile('anthropic-direct', {
+        const p = createPresetProfile('anthropic', {
           apiKey: 'sk-test',
           embeddingEndpoint: 'https://embed.example.com',
         });
@@ -180,7 +180,7 @@ async function run(): Promise<void> {
         const settings = {
           vaultSearch: {
             sdkProfile: {
-              kind: 'anthropic-direct',
+              kind: 'anthropic',
               baseUrl: 'https://api.anthropic.com',
               apiKey: 'sk-ant-v1',
               primaryModel: 'claude-opus-4-6',
@@ -191,7 +191,7 @@ async function run(): Promise<void> {
         const profiles = migrateFromV1(settings)!;
         assert.ok(profiles);
         assert.strictEqual(profiles.length, 1);
-        assert.strictEqual(profiles[0].kind, 'anthropic-direct');
+        assert.strictEqual(profiles[0].kind, 'anthropic');
         assert.strictEqual(profiles[0].apiKey, 'sk-ant-v1');
         assert.ok(profiles[0].description?.includes('sdkProfile'));
       },
@@ -209,7 +209,7 @@ async function run(): Promise<void> {
         const profiles = migrateFromV1(settings)!;
         assert.ok(profiles);
         assert.strictEqual(profiles.length, 1);
-        assert.strictEqual(profiles[0].kind, 'anthropic-direct');
+        assert.strictEqual(profiles[0].kind, 'anthropic');
         assert.strictEqual(profiles[0].apiKey, 'sk-claude-v1');
         assert.strictEqual(profiles[0].baseUrl, 'https://custom.api.com');
       },
@@ -239,7 +239,7 @@ async function run(): Promise<void> {
         const settings = {
           vaultSearch: {
             sdkProfile: {
-              kind: 'anthropic-direct',
+              kind: 'anthropic',
               apiKey: 'sk-same-key',
             },
           },
@@ -265,7 +265,7 @@ async function run(): Promise<void> {
         const settings = {
           vaultSearch: {
             sdkProfile: {
-              kind: 'anthropic-direct',
+              kind: 'anthropic',
               baseUrl: 'https://api.anthropic.com',
               // no apiKey, no authToken
             },
@@ -288,7 +288,7 @@ async function run(): Promise<void> {
           (s) => { persisted.push(s); },
         );
 
-        const p = createPresetProfile('anthropic-direct', { apiKey: 'sk-test' });
+        const p = createPresetProfile('anthropic', { apiKey: 'sk-test' });
         registry.addProfile(p);
 
         assert.strictEqual(registry.getAllProfiles().length, 1);
@@ -306,7 +306,7 @@ async function run(): Promise<void> {
           () => {},
         );
 
-        const p = createPresetProfile('anthropic-direct', { apiKey: 'sk-test' });
+        const p = createPresetProfile('anthropic', { apiKey: 'sk-test' });
         registry.addProfile(p);
         assert.throws(() => registry.addProfile(p), /already exists/);
       },
@@ -321,7 +321,7 @@ async function run(): Promise<void> {
           () => {},
         );
 
-        const p = createPresetProfile('anthropic-direct', { apiKey: 'sk-old' });
+        const p = createPresetProfile('anthropic', { apiKey: 'sk-old' });
         registry.addProfile(p);
         registry.updateProfile(p.id, { apiKey: 'sk-new', name: 'Updated' });
 
@@ -353,7 +353,7 @@ async function run(): Promise<void> {
           () => {},
         );
 
-        const p = createPresetProfile('anthropic-direct', { apiKey: 'sk-test' });
+        const p = createPresetProfile('anthropic', { apiKey: 'sk-test' });
         registry.addProfile(p);
         registry.setActiveAgentProfile(p.id);
         assert.ok(registry.getActiveAgentProfile());
@@ -385,7 +385,7 @@ async function run(): Promise<void> {
           () => {},
         );
 
-        const p1 = createPresetProfile('anthropic-direct', { apiKey: 'sk-1' });
+        const p1 = createPresetProfile('anthropic', { apiKey: 'sk-1' });
         const p2 = createPresetProfile('openrouter', { authToken: 'sk-2' });
         registry.addProfile(p1);
         registry.addProfile(p2);
@@ -422,7 +422,7 @@ async function run(): Promise<void> {
           () => {},
         );
 
-        const p = createPresetProfile('anthropic-direct', {
+        const p = createPresetProfile('anthropic', {
           apiKey: 'sk-test',
           embeddingEndpoint: 'https://embed.example.com',
           embeddingModel: 'text-embedding-3-small',
@@ -458,7 +458,7 @@ async function run(): Promise<void> {
       fn: () => {
         ProfileRegistry.resetInstance();
         const registry = ProfileRegistry.getInstance();
-        const existing = createPresetProfile('anthropic-direct', { apiKey: 'sk-existing' });
+        const existing = createPresetProfile('anthropic', { apiKey: 'sk-existing' });
 
         registry.load(
           {
@@ -485,7 +485,7 @@ async function run(): Promise<void> {
           () => { callCount++; },
         );
 
-        const p = createPresetProfile('anthropic-direct', { apiKey: 'sk-test' });
+        const p = createPresetProfile('anthropic', { apiKey: 'sk-test' });
         registry.addProfile(p);               // 1
         registry.updateProfile(p.id, { name: 'x' }); // 2
         registry.setActiveAgentProfile(p.id);  // 3

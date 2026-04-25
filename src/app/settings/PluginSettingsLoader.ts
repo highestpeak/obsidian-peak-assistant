@@ -316,7 +316,7 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 			sdkProfile: rawVaultSearch.sdkProfile && typeof rawVaultSearch.sdkProfile === 'object'
 				? {
 					kind: typeof rawVaultSearch.sdkProfile.kind === 'string'
-						? rawVaultSearch.sdkProfile.kind as 'anthropic-direct' | 'openrouter' | 'litellm' | 'custom'
+						? rawVaultSearch.sdkProfile.kind as 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom'
 						: undefined,
 					baseUrl: typeof rawVaultSearch.sdkProfile.baseUrl === 'string'
 						? rawVaultSearch.sdkProfile.baseUrl
@@ -343,6 +343,14 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	const rawProfileSettings = raw?.profileSettings;
 	if (rawProfileSettings && typeof rawProfileSettings === 'object') {
 		settings.profileSettings = rawProfileSettings as any;
+		// Migrate legacy 'anthropic-direct' → 'anthropic'
+		if (settings.profileSettings?.profiles) {
+			for (const p of settings.profileSettings.profiles) {
+				if ((p as any).kind === 'anthropic-direct') {
+					(p as any).kind = 'anthropic';
+				}
+			}
+		}
 	} else {
 		const migratedProfiles = migrateFromV1(raw);
 		settings.profileSettings = {

@@ -6,7 +6,7 @@
  * and optional embedding config into one portable unit.
  */
 
-export type ProfileKind = 'anthropic-direct' | 'openrouter' | 'litellm' | 'custom';
+export type ProfileKind = 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom';
 
 export interface Profile {
   id: string;

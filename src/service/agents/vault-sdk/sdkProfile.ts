@@ -9,7 +9,7 @@
  * will be built in a later phase per 2026-04-11-provider-system-v2-design.md.
  */
 
-export type SdkProfileKind = 'anthropic-direct' | 'openrouter' | 'litellm' | 'custom';
+export type SdkProfileKind = 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom';
 
 export interface SdkProfile {
 	kind: SdkProfileKind;
@@ -22,7 +22,7 @@ export interface SdkProfile {
 }
 
 export const DEFAULT_SDK_PROFILE: SdkProfile = {
-	kind: 'anthropic-direct',
+	kind: 'anthropic',
 	baseUrl: 'https://api.anthropic.com',
 	apiKey: null, // must be filled from settings at runtime
 	authToken: null,
@@ -72,7 +72,7 @@ export function toAgentSdkEnv(profile: SdkProfile): Record<string, string> {
  *
  * Precedence:
  *   1. `settings.vaultSearch.sdkProfile` (explicit opt-in, wins if fully specified)
- *   2. `settings.ai.llmProviderConfigs.claude.apiKey` — construct anthropic-direct
+ *   2. `settings.ai.llmProviderConfigs.claude.apiKey` — construct anthropic profile
  *   3. `settings.ai.llmProviderConfigs.openrouter.apiKey` — construct openrouter
  *
  * This way a user who has already configured Claude OR OpenRouter for chat
@@ -127,7 +127,7 @@ export function readProfileFromSettings(settings: unknown): SdkProfile {
 				return merged;
 			}
 			if (providerKey === 'claude' || providerKey === 'anthropic') {
-				merged.kind = raw.kind ?? 'anthropic-direct';
+				merged.kind = raw.kind ?? 'anthropic';
 				merged.apiKey = providerCfg.apiKey;
 				if (providerCfg.baseUrl && !raw.baseUrl) merged.baseUrl = providerCfg.baseUrl;
 				return merged;
@@ -135,9 +135,9 @@ export function readProfileFromSettings(settings: unknown): SdkProfile {
 		}
 	}
 
-	// Fallback 1: existing Claude chat config → anthropic-direct
+	// Fallback 1: existing Claude chat config → anthropic profile
 	if (existingClaude?.apiKey) {
-		merged.kind = raw.kind ?? 'anthropic-direct';
+		merged.kind = raw.kind ?? 'anthropic';
 		merged.apiKey = existingClaude.apiKey;
 		if (existingClaude.baseUrl && !raw.baseUrl) {
 			merged.baseUrl = existingClaude.baseUrl;

@@ -25,7 +25,7 @@ export function migrateFromV1(settings: any): Profile[] | null {
   // Source 1: vaultSearch.sdkProfile
   const sdkProfile = settings.vaultSearch?.sdkProfile;
   if (sdkProfile && typeof sdkProfile === 'object') {
-    const kind: ProfileKind = validKind(sdkProfile.kind) ?? 'anthropic-direct';
+    const kind: ProfileKind = validKind(sdkProfile.kind) ?? 'anthropic';
     const profile = createPresetProfile(kind, {
       name: `Migrated ${kindLabel(kind)}`,
       baseUrl: typeof sdkProfile.baseUrl === 'string' ? sdkProfile.baseUrl : undefined,
@@ -62,7 +62,7 @@ export function migrateFromV1(settings: any): Profile[] | null {
       let presetOverrides: Partial<Profile>;
 
       if (providerKey === 'claude' || providerKey === 'anthropic') {
-        kind = 'anthropic-direct';
+        kind = 'anthropic';
         presetOverrides = {
           name: 'Migrated Anthropic',
           apiKey: cfg.apiKey,
@@ -98,15 +98,22 @@ export function migrateFromV1(settings: any): Profile[] | null {
 
 // --------------- Helpers ---------------
 
-const VALID_KINDS = new Set<string>(['anthropic-direct', 'openrouter', 'litellm', 'custom']);
+const VALID_KINDS = new Set<string>(['anthropic', 'anthropic-direct', 'openai', 'google', 'perplexity', 'ollama', 'openrouter', 'litellm', 'custom']);
 
 function validKind(raw: unknown): ProfileKind | null {
-  return typeof raw === 'string' && VALID_KINDS.has(raw) ? (raw as ProfileKind) : null;
+  if (typeof raw !== 'string' || !VALID_KINDS.has(raw)) return null;
+  // Migrate legacy name
+  if (raw === 'anthropic-direct') return 'anthropic';
+  return raw as ProfileKind;
 }
 
 function kindLabel(kind: ProfileKind): string {
   switch (kind) {
-    case 'anthropic-direct': return 'Anthropic Direct';
+    case 'anthropic': return 'Anthropic';
+    case 'openai': return 'OpenAI';
+    case 'google': return 'Google AI';
+    case 'perplexity': return 'Perplexity';
+    case 'ollama': return 'Ollama';
     case 'openrouter': return 'OpenRouter';
     case 'litellm': return 'LiteLLM';
     case 'custom': return 'Custom';

@@ -10,7 +10,11 @@ import { Trash2, Plus, ChevronDown, ChevronRight, Shield, Zap, Globe, Settings2 
 // ─── Kind badge ─────────────────────────────────────────────────────────
 
 const KIND_META: Record<ProfileKind, { label: string; color: string; Icon: React.FC<{ className?: string; size?: number }> }> = {
-	'anthropic-direct': { label: 'Anthropic', color: 'pktw-bg-amber-100 pktw-text-amber-800', Icon: Shield },
+	anthropic: { label: 'Anthropic', color: 'pktw-bg-amber-100 pktw-text-amber-800', Icon: Shield },
+	openai: { label: 'OpenAI', color: 'pktw-bg-green-100 pktw-text-green-800', Icon: Zap },
+	google: { label: 'Google AI', color: 'pktw-bg-blue-100 pktw-text-blue-800', Icon: Globe },
+	perplexity: { label: 'Perplexity', color: 'pktw-bg-cyan-100 pktw-text-cyan-800', Icon: Globe },
+	ollama: { label: 'Ollama', color: 'pktw-bg-orange-100 pktw-text-orange-800', Icon: Settings2 },
 	openrouter: { label: 'OpenRouter', color: 'pktw-bg-purple-100 pktw-text-purple-800', Icon: Globe },
 	litellm: { label: 'LiteLLM', color: 'pktw-bg-blue-100 pktw-text-blue-800', Icon: Zap },
 	custom: { label: 'Custom', color: 'pktw-bg-gray-100 pktw-text-gray-800', Icon: Settings2 },
@@ -202,7 +206,11 @@ function EditorField({ label, description, children }: { label: string; descript
 // ─── Preset picker ──────────────────────────────────────────────────────
 
 const PRESET_OPTIONS: { kind: ProfileKind; label: string }[] = [
-	{ kind: 'anthropic-direct', label: 'Anthropic Direct' },
+	{ kind: 'anthropic', label: 'Anthropic' },
+	{ kind: 'openai', label: 'OpenAI' },
+	{ kind: 'google', label: 'Google AI' },
+	{ kind: 'perplexity', label: 'Perplexity' },
+	{ kind: 'ollama', label: 'Ollama' },
 	{ kind: 'openrouter', label: 'OpenRouter' },
 	{ kind: 'litellm', label: 'LiteLLM' },
 	{ kind: 'custom', label: 'Custom' },
