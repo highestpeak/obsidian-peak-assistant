@@ -1,7 +1,6 @@
 import React, { useSyncExternalStore } from 'react';
 import { Loader2, CheckCircle, Clock, AlertCircle, X } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
-import { Button } from '@/ui/component/shared-ui/button';
 import {
     BackgroundSessionManager,
     type BackgroundSession,
@@ -33,51 +32,74 @@ const STATUS_CONFIG: Record<BackgroundSessionStatus, StatusConfig> = {
 // ---------------------------------------------------------------------------
 
 const SessionCard: React.FC<{
-    session: BackgroundSession;
-    onRestore: (id: string) => void;
-    onCancel: (id: string) => void;
+	session: BackgroundSession;
+	onRestore: (id: string) => void;
+	onCancel: (id: string) => void;
 }> = ({ session, onRestore, onCancel }) => {
-    const cfg = STATUS_CONFIG[session.status] ?? STATUS_CONFIG.streaming;
-    const { Icon } = cfg;
-    const elapsed = Date.now() - session.createdAt;
-    const elapsedStr = formatDuration(elapsed);
+	const cfg = STATUS_CONFIG[session.status] ?? STATUS_CONFIG.streaming;
+	const { Icon } = cfg;
+	const elapsed = Date.now() - session.createdAt;
+	const elapsedStr = formatDuration(elapsed);
+	const isPlanReady = session.status === 'plan-ready';
 
-    return (
-        <div
-            onClick={() => onRestore(session.id)}
-            className={cn(
-                'pktw-flex pktw-items-center pktw-gap-3 pktw-px-3 pktw-py-2.5',
-                'pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background',
-                'hover:pktw-bg-pk-background pktw-cursor-pointer pktw-transition-colors pktw-group',
-            )}
-        >
-            <Icon
-                className={cn('pktw-w-3.5 pktw-h-3.5 pktw-shrink-0', cfg.spin && 'pktw-animate-spin')}
-                style={{ color: cfg.color }}
-            />
-            <div className="pktw-flex-1 pktw-min-w-0">
-                <span className="pktw-text-sm pktw-font-medium pktw-text-[#1f2937] pktw-truncate pktw-block">
-                    {session.title ?? session.query.slice(0, 60)}
-                </span>
-                <span className="pktw-text-xs pktw-text-pk-foreground-muted">
-                    {elapsedStr} · {cfg.label}
-                </span>
-            </div>
-            <Button
-                size="xs"
-                variant="ghost"
-                onClick={(e) => { e.stopPropagation(); onCancel(session.id); }}
-                className={cn(
-                    'pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity',
-                    'pktw-text-pk-foreground-muted hover:pktw-text-[#ef4444]',
-                    '!pktw-h-6 !pktw-w-6 pktw-p-0 pktw-shrink-0',
-                )}
-                title="Cancel"
-            >
-                <X className="pktw-w-3.5 pktw-h-3.5" />
-            </Button>
-        </div>
-    );
+	return (
+		<div
+			onClick={() => onRestore(session.id)}
+			className={cn(
+				'pktw-flex pktw-items-center pktw-gap-3 pktw-px-3.5 pktw-py-2.5',
+				'pktw-rounded-lg pktw-border pktw-cursor-pointer pktw-transition-all pktw-group',
+				isPlanReady
+					? 'pktw-border-[#93c5fd] pktw-bg-[#eff6ff] hover:pktw-border-[#60a5fa] hover:pktw-bg-[#dbeafe]'
+					: 'pktw-border-pk-border pktw-bg-pk-background hover:pktw-border-[#7c3aed]/25 hover:pktw-bg-[#faf8ff]'
+			)}
+		>
+			<div className={cn(
+				'pktw-w-7 pktw-h-7 pktw-rounded-md pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0',
+				isPlanReady ? 'pktw-bg-[#dbeafe] pktw-text-[#2563eb]' :
+				session.status === 'streaming' ? 'pktw-bg-[#ede9fe] pktw-text-pk-accent' :
+				'pktw-bg-[#f3f4f6] pktw-text-pk-foreground-muted'
+			)}>
+				<Icon
+					className={cn('pktw-w-3.5 pktw-h-3.5', cfg.spin && 'pktw-animate-spin')}
+				/>
+			</div>
+			<div className="pktw-flex-1 pktw-min-w-0">
+				<span className="pktw-text-sm pktw-font-medium pktw-text-pk-foreground pktw-truncate pktw-block">
+					{session.title ?? session.query.slice(0, 60)}
+				</span>
+				<span className="pktw-text-xs pktw-text-pk-foreground-muted">
+					<span className="pktw-font-semibold" style={{ color: cfg.color }}>{cfg.label}</span>
+					{' · '}{elapsedStr}
+				</span>
+			</div>
+			{session.status === 'streaming' && (
+				<div className="pktw-w-14 pktw-shrink-0">
+					<div className="pktw-h-1 pktw-bg-pk-border pktw-rounded-full pktw-overflow-hidden">
+						<div className="pktw-h-full pktw-bg-pk-accent pktw-rounded-full pktw-animate-pulse" style={{ width: '65%' }} />
+					</div>
+				</div>
+			)}
+			{isPlanReady && (
+				<span
+					onClick={(e) => { e.stopPropagation(); onRestore(session.id); }}
+					className="pktw-text-[11px] pktw-font-semibold pktw-text-[#2563eb] pktw-bg-[#dbeafe] pktw-border pktw-border-[#93c5fd] pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-shrink-0 pktw-cursor-pointer hover:pktw-bg-[#bfdbfe] pktw-transition-colors"
+				>
+					Review Plan →
+				</span>
+			)}
+			<div
+				onClick={(e) => { e.stopPropagation(); onCancel(session.id); }}
+				className={cn(
+					'pktw-w-6 pktw-h-6 pktw-rounded-md pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0',
+					'pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-all',
+					'pktw-text-pk-foreground-muted hover:pktw-bg-[#fee2e2] hover:pktw-text-[#dc2626] pktw-cursor-pointer',
+				)}
+				title="Cancel"
+			>
+				<X className="pktw-w-3.5 pktw-h-3.5" />
+			</div>
+		</div>
+	);
 };
 
 // ---------------------------------------------------------------------------
