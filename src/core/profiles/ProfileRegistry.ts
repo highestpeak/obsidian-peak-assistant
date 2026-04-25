@@ -101,6 +101,17 @@ export class ProfileRegistry {
     this.persist();
   }
 
+  toggleEnabled(id: string): void {
+    const idx = this.profiles.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error(`Profile with id "${id}" not found`);
+    this.profiles[idx] = { ...this.profiles[idx], enabled: !this.profiles[idx].enabled };
+    if (!this.profiles[idx].enabled) {
+      if (this.activeAgentProfileId === id) this.activeAgentProfileId = null;
+      if (this.activeEmbeddingProfileId === id) this.activeEmbeddingProfileId = null;
+    }
+    this.persist();
+  }
+
   setActiveAgentProfile(id: string | null): void {
     if (id !== null && !this.profiles.some((p) => p.id === id)) {
       throw new Error(`Profile with id "${id}" not found`);

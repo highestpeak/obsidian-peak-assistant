@@ -204,6 +204,10 @@ export class ModelRegistry {
 		});
 	}
 
+	public getAllProviderIds(): string[] {
+		return [...this.providers.keys()];
+	}
+
 	private findModel(providerId: string, modelId: string): InternalModelEntry | undefined {
 		const provider = this.providers.get(normalizeProviderId(providerId));
 		if (!provider) return undefined;
