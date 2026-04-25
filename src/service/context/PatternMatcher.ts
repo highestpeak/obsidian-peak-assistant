@@ -21,6 +21,8 @@ export interface StoredPattern {
 export interface MatchedSuggestion {
 	patternId: string;
 	filledTemplate: string;
+	/** The static action portion of the template (before the first variable). */
+	actionLabel: string;
 	variables: string[];
 	source: string;
 	confidence: number;
@@ -221,12 +223,18 @@ export function matchPatterns(
 		const filled = fillTemplate(pattern.template, pattern.variables, ctx);
 		if (filled === null) continue; // unresolvable variable
 
+		const firstVarIdx = pattern.template.search(/\{[^}]+\}/);
+		const actionLabel = firstVarIdx > 0
+			? pattern.template.slice(0, firstVarIdx).trim()
+			: pattern.template;
+
 		const contextType = inferContextType(pattern.variables);
 		const contextTags = buildContextTags(pattern.variables, ctx);
 
 		results.push({
 			patternId: pattern.id,
 			filledTemplate: filled,
+			actionLabel,
 			variables: pattern.variables,
 			source: pattern.source,
 			confidence: pattern.confidence,
