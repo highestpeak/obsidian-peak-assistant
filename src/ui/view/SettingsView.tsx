@@ -1,19 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ViewEventType } from '@/core/eventBus';
+import { ProfilesTab } from './settings/ProfilesTab';
+import { SearchTab } from './settings/SearchTab';
 import { GeneralTab } from './settings/GeneralTab';
-import { ModelConfigTab } from './settings/ModelConfigTab';
-import { SearchSettingsTab } from './settings/SearchSettingsTab';
 import { useSettingsUpdate } from './settings/hooks/useSettingsUpdate';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import type { MyPluginSettings } from '@/app/settings/types';
 
-type TabId = 'general' | 'ai-models' | 'search';
+type TabId = 'profiles' | 'search' | 'general';
 
 /**
  * Root component for plugin settings with tab navigation.
  */
 export function SettingsRoot() {
-	const { manager, eventBus, plugin } = useServiceContext();
+	const { eventBus, plugin } = useServiceContext();
 	const [activeTab, setActiveTab] = useState<TabId>('general');
 
 	// Keep a React state copy so controlled inputs rerender immediately when settings change
@@ -30,20 +29,10 @@ export function SettingsRoot() {
 	// Get update functions from hook (handles all side effects internally)
 	const settingsUpdates = useSettingsUpdate(plugin, eventBus, settings);
 
-	// Wrapper that syncs React state for controlled components
-	const updateSettingsAndSync = useCallback(
-		async (updates: Partial<MyPluginSettings>) => {
-			await settingsUpdates.updateSettings(updates);
-			// Force rerender for controlled components (checkbox/input) by updating state
-			setSettings({ ...plugin.settings });
-		},
-		[settingsUpdates, plugin]
-	);
-
 	const tabs: Array<{ id: TabId; label: string }> = [
+		{ id: 'profiles', label: 'Profiles' },
+		{ id: 'search', label: 'Search & Indexing' },
 		{ id: 'general', label: 'General' },
-		{ id: 'ai-models', label: 'Model Config' },
-		{ id: 'search', label: 'Doc & Search' },
 	];
 
 	return (
@@ -63,20 +52,9 @@ export function SettingsRoot() {
 
 			{/* Tab Content */}
 			<div className="peak-settings-content">
-				{activeTab === 'general' && (
-					<GeneralTab settings={settings} settingsUpdates={settingsUpdates} />
-				)}
-				{activeTab === 'ai-models' && (
-					<ModelConfigTab
-						settings={settings}
-						aiServiceManager={manager}
-						settingsUpdates={settingsUpdates}
-						eventBus={eventBus}
-					/>
-				)}
-				{activeTab === 'search' && (
-					<SearchSettingsTab settings={settings} settingsUpdates={settingsUpdates} />
-				)}
+				{activeTab === 'profiles' && <ProfilesTab settings={settings} settingsUpdates={settingsUpdates} />}
+				{activeTab === 'search' && <SearchTab settings={settings} settingsUpdates={settingsUpdates} />}
+				{activeTab === 'general' && <GeneralTab settings={settings} settingsUpdates={settingsUpdates} />}
 			</div>
 		</div>
 	);
