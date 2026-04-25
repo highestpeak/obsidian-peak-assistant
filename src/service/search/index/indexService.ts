@@ -1,4 +1,5 @@
 import { normalizePath, TFile } from 'obsidian';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { emptyUsage, type LLMUsage } from '@/core/providers/types';
 import {
 	LlmEnrichmentProgressTracker,
@@ -478,9 +479,11 @@ class IndexSingleService {
 			}
 
 			const vectorSearchAvailable = sqliteStoreManager.isVectorSearchEnabled();
-			const embeddingModel = settings.chunking.embeddingModel;
-			const embeddingModelName = embeddingModel ? `${embeddingModel.provider}:${embeddingModel.modelId}` : undefined;
-			const canGenerateEmbeddings = opts.includeEmbeddings && embeddingModel != null && vectorSearchAvailable;
+			const registry = ProfileRegistry.getInstance();
+			const embProfile = registry.getActiveEmbeddingProfile() ?? registry.getActiveAgentProfile();
+			const hasEmbedding = !!(embProfile?.embeddingEndpoint && embProfile?.embeddingModel);
+			const embeddingModelName = hasEmbedding ? embProfile!.embeddingModel! : undefined;
+			const canGenerateEmbeddings = opts.includeEmbeddings && hasEmbedding && vectorSearchAvailable;
 			let vectorCompleted = false;
 			if (canGenerateEmbeddings) {
 				sw.start('Generate embeddings');

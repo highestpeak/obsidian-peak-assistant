@@ -7,6 +7,7 @@ import { DEFAULT_SEARCH_MODE, DEFAULT_SEARCH_TOP_K } from '@/core/constant';
 import type { AIServiceManager } from '@/service/chat/service-manager';
 import type { SearchSettings } from '@/app/settings/types';
 import { embedText } from '@/core/embeddings/embedClient';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import {
 	RRF_K,
 	RRF_CONTENT_WEIGHT,
@@ -62,10 +63,12 @@ export class QueryService {
 		const vectorSearchAvailable = sqliteStoreManager.isVectorSearchEnabled();
 
 		// Generate embedding first (if configured and vector search is available)
-		const embeddingModel = this.searchSettings.chunking.embeddingModel;
+		const registry = ProfileRegistry.getInstance();
+		const embProfile = registry.getActiveEmbeddingProfile() ?? registry.getActiveAgentProfile();
+		const hasEmbedding = !!(embProfile?.embeddingEndpoint && embProfile?.embeddingModel);
 		let embedding: number[] | undefined;
 
-		if (embeddingModel && vectorSearchAvailable) {
+		if (hasEmbedding && vectorSearchAvailable) {
 			sw.start('embedding_generation');
 			try {
 				embedding = await embedText(termRaw);
@@ -182,9 +185,11 @@ export class QueryService {
 		}
 
 		// Generate embedding for the query text
-		const embeddingModel = this.searchSettings.chunking.embeddingModel;
-		if (!embeddingModel) {
-			console.warn('[QueryService.vectorSearch] No embedding model configured');
+		const registry = ProfileRegistry.getInstance();
+		const embProfile = registry.getActiveEmbeddingProfile() ?? registry.getActiveAgentProfile();
+		const hasEmbedding = !!(embProfile?.embeddingEndpoint && embProfile?.embeddingModel);
+		if (!hasEmbedding) {
+			console.warn('[QueryService.vectorSearch] No embedding profile configured');
 			return { query, items: [], duration: sw.getTotalElapsed() };
 		}
 
