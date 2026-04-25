@@ -18,6 +18,10 @@ import {
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
 import { ConfirmModal } from '@/ui/view/ConfirmModal';
 import { BuildUserProfileProgressModal } from '@/ui/view/BuildUserProfileProgressModal';
+import { OnboardingModal } from '@/ui/view/modals/OnboardingModal';
+import { AppContext } from '@/app/context/AppContext';
+import { buildCopilotCommands } from './copilot-commands';
+import { SettingsModal } from '@/ui/view/SettingsModal';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
@@ -617,6 +621,36 @@ function buildSystemCommands(deps: SystemCommandsDeps): Command[] {
 }
 
 /**
+ * Setup wizard command — opens the onboarding modal for first-time configuration.
+ */
+function buildOnboardingCommands(): Command[] {
+	return [
+		{
+			id: 'peak-setup-wizard',
+			name: 'Setup Wizard',
+			callback: () => {
+				new OnboardingModal(AppContext.getInstance()).open();
+			},
+		},
+	];
+}
+
+/**
+ * Settings modal command — opens the plugin settings in a standalone modal.
+ */
+function buildSettingsCommands(appContext: AppContext): Command[] {
+	return [
+		{
+			id: 'peak-open-settings',
+			name: 'Peak: Open Settings',
+			callback: () => {
+				new SettingsModal(appContext).open();
+			},
+		},
+	];
+}
+
+/**
  * Registers core commands exposed via Obsidian command palette.
  */
 export function buildCoreCommands(
@@ -629,6 +663,7 @@ export function buildCoreCommands(
 	storageFolder?: string,
 ): Command[] {
 	void storageFolder;
+	const appContext = viewManager.appContext;
 	return [
 		...buildQuickSearchCommands(viewManager),
 		...buildChatCommands(viewManager, aiManager),
@@ -642,5 +677,8 @@ export function buildCoreCommands(
 			  })
 			: []),
 		...buildSystemCommands({ settings, viewManager, aiManager }),
+		...buildCopilotCommands(viewManager, aiManager),
+		...buildOnboardingCommands(),
+		...buildSettingsCommands(appContext),
 	];
 }
