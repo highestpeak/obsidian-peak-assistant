@@ -33,10 +33,10 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 ### 0. 已知 Bug
 
 - [x] ~~**P0 稳定性：AI 分析流式传输 renderer 崩溃**~~ — 已修复（Phase R）
-- [ ] **P0**：`mySessionId is not defined` — AI Analysis footer 按钮消失。ReferenceError，变量未声明
-- [ ] **P1**：Onboarding 按钮颜色偏暗（tailwind.config.js `background: '#282828'` 硬编码→ CSS 变量）
-- [ ] **P1**：AI Analysis mode dropdown "Vault Analysis" 图标缺失
-- [ ] **P2**：PatternDiscovery 无有效 profile 时仍可能启动（`onAnalysisComplete()` 缺 profile 检查）
+- [x] ~~**P0**：`mySessionId is not defined`~~ — 已修复（7389135: `let` 移到 `try` 外）
+- [x] ~~**P1**：Onboarding 按钮颜色偏暗~~ — 已修复（`background` 已改为 `var(--background-primary)`）
+- [x] ~~**P1**：AI Analysis mode dropdown "Vault Analysis" 图标缺失~~ — 已修复（Brain → Library）
+- [x] ~~**P2**：PatternDiscovery 无有效 profile 时仍可能启动~~ — 已修复（`onAnalysisComplete()` 已有 profile 检查）
 
 ### 1. 真机验证
 
@@ -129,7 +129,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 |------|------|------|------|
 | `provider-mcp-skills-design` | MCP Client（MCPClientManager, stdio/HTTP）+ Skill 系统（markdown 定义 + 在线商店）+ Usage Dashboard + Model Registry 同步 | 大 | `specs/2026-04-10` |
 | `search-inspector-tools-overhaul` | 11 个 Inspector 工具重构：消除 MarkdownOnly → `forceFormat`、find-path 拆分策略模式、类型化 `params: any`、bug 修复 | 大 | `specs/2026-04-10` |
-| `graph-layout-fix` | 5 个图布局修复：动态 handle 方向、edge label 密度、确定性 force 初始化、CJK 宽度估算 | 中 | `plans/2026-04-18` |
+| ~~`graph-layout-fix`~~ | ~~5 个图布局修复~~ | ~~中~~ | COMPLETED |
 | `v2-persistence-fix` | 5 个 V2 持久化 bug：v2FullyDone 守卫、graph store 错配、restore 数据丢失 | 中 | `plans/2026-04-18` |
 | `report-ui-quality` Task 3-4 | 粘性 V2PlanReview footer + 内联 plan 编辑（onUpdate） | 小 | `plans/2026-04-14` |
 | `ai-analysis-ux-overhaul` Phase ③ | SynthesizeAgent + 多轮 round 分离 UI | 中 | `plans/2026-04-17` |
@@ -205,6 +205,20 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-01 (Session 7)
+- Done: Bug 清理 — 确认 4 个已知 bug 已修复，补 1 个图标修复
+  - P0 mySessionId ReferenceError: 已在 7389135 修复（`let` 移到 `try` 外）
+  - P1 Onboarding 按钮颜色: `background` 已改为 `var(--background-primary)`
+  - P1 Vault Analysis icon: Brain → Library（lucide-react）
+  - P2 PatternDiscovery: `onAnalysisComplete()` 已有 profile 检查
+- Done: **graph-layout-fix plan 完成**
+  - Task 1 (dynamic handles): 已在 `useLensLayout.ts:67-82` 实现
+  - Task 2 (spacing): topology nodesep 80→100/ranksep 200→220, tree nodesep 120→140/ranksep 180→200, timeline COLUMN_GAP 60→80
+  - Task 3 (edge label density): 已实现（dense flag + hover）
+  - Task 4 (deterministic d3-force): `Math.random()` → `seededRandom(nodeId)` 哈希函数
+  - Task 5 (CJK width): 已在 `estimateNodeWidth` 实现（14px/CJK char）
+- Files changed: SearchModal.tsx, topology-layout.ts (multi-lens), tree-layout.ts, timeline-layout.ts, topologyLayout.ts (graph-viz)
 
 ### 2026-04-25 (Session 6)
 - Done: **P0 Streaming 内存崩溃根治** — 6 条流式路径全部修复，17 个文件
@@ -496,6 +510,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | ai-analysis-landing-redesign | 04-25 | COMPLETED |
 | settings-redesign | 04-25 | COMPLETED |
 | agent-trace-observability | 04-22 | COMPLETED |
+| graph-layout-fix | 05-01 | COMPLETED |
 | milestone-based-persistence | 04-20 | MOSTLY DONE (核心函数存在，4 触发点待验证) |
 | per-section-report-v2 | 04-13 | SUPERSEDED |
 | v2-report-quality-and-ui-fixes | 04-13 | SUPERSEDED |
