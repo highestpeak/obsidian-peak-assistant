@@ -323,6 +323,20 @@ export interface Database {
 		status: string;
 		computed_at: number;
 	};
+	/** Ambient push log: records proactive note suggestions and user responses. */
+	ambient_push_log: {
+		id: number | undefined; // AUTOINCREMENT — omit on insert
+		timestamp: number;
+		trigger_type: string;
+		source_file_path: string;
+		context_paragraph: string | null;
+		pushed_file_path: string;
+		pushed_score: number;
+		explanation_type: string;
+		explanation_text: string;
+		user_action: string | null;
+		user_action_ts: number | null;
+	};
 	/** Cascade update debt tracking: pending side-effect work after document index changes. */
 	cascade_debt: {
 		id: number | undefined; // AUTOINCREMENT — omit on insert
@@ -334,6 +348,46 @@ export interface Database {
 		change_magnitude: number | null;
 		created_at: number;
 		processed_at: number | null;
+	};
+	/** Vault lint scan results (vault DB). */
+	vault_lint_scan: {
+		id: string;
+		scan_type: string;
+		started_at: number;
+		completed_at: number | null;
+		duration_ms: number | null;
+		total_notes: number;
+		health_score: number | null;
+		dim_structural: number | null;
+		dim_content: number | null;
+		dim_temporal: number | null;
+		dim_semantic: number | null;
+		dim_tags: number | null;
+		signal_counts: string;
+		config_hash: string | null;
+	};
+	/** Individual lint findings per scan (vault DB). */
+	vault_lint_finding: {
+		id: string;
+		scan_id: string;
+		signal_id: string;
+		severity: string;
+		file_path: string | null;
+		title: string;
+		description: string | null;
+		fix_actions: string;
+		metadata: string;
+		status: string;
+		dismissed_at: number | null;
+		fixed_at: number | null;
+	};
+	/** User dismissals of lint signals (vault DB). */
+	vault_lint_dismissal: {
+		signal_id: string;
+		file_path: string;
+		dismissed_at: number;
+		reason: string | null;
+		snooze_until: number | null;
 	};
 }
 
@@ -744,6 +798,25 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	// Legacy: folder intuition lived in a separate table; SSOT is now `mobius_node.attributes_json` on folder rows.
 	tryExec(`DROP TABLE IF EXISTS folder_intuition`);
 
+	// ── Ambient push log ──
+	tryExec(`
+		CREATE TABLE IF NOT EXISTS ambient_push_log (
+			id               INTEGER PRIMARY KEY AUTOINCREMENT,
+			timestamp        INTEGER NOT NULL,
+			trigger_type     TEXT NOT NULL,
+			source_file_path TEXT NOT NULL,
+			context_paragraph TEXT,
+			pushed_file_path TEXT NOT NULL,
+			pushed_score     REAL NOT NULL,
+			explanation_type TEXT NOT NULL,
+			explanation_text TEXT NOT NULL,
+			user_action      TEXT,
+			user_action_ts   INTEGER
+		);
+		CREATE INDEX IF NOT EXISTS idx_ambient_push_source ON ambient_push_log(source_file_path, timestamp);
+		CREATE INDEX IF NOT EXISTS idx_ambient_push_pushed ON ambient_push_log(pushed_file_path, timestamp);
+	`);
+
 	// ── Cascade debt tracking ──
 	tryExec(`CREATE TABLE IF NOT EXISTS cascade_debt (
 		id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -758,6 +831,56 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	)`);
 	tryExec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_cascade_debt_dedup ON cascade_debt(tenant, target_id, debt_type) WHERE processed_at IS NULL`);
 	tryExec(`CREATE INDEX IF NOT EXISTS idx_cascade_debt_pending ON cascade_debt(tenant, processed_at, priority)`);
+
+	// ── Vault lint / health-check tables ──
+	tryExec(`
+		CREATE TABLE IF NOT EXISTS vault_lint_scan (
+			id             TEXT PRIMARY KEY,
+			scan_type      TEXT NOT NULL,
+			started_at     INTEGER NOT NULL,
+			completed_at   INTEGER,
+			duration_ms    INTEGER,
+			total_notes    INTEGER NOT NULL,
+			health_score   INTEGER,
+			dim_structural INTEGER,
+			dim_content    INTEGER,
+			dim_temporal   INTEGER,
+			dim_semantic   INTEGER,
+			dim_tags       INTEGER,
+			signal_counts  TEXT NOT NULL DEFAULT '{}',
+			config_hash    TEXT
+		);
+	`);
+	tryExec(`
+		CREATE TABLE IF NOT EXISTS vault_lint_finding (
+			id           TEXT PRIMARY KEY,
+			scan_id      TEXT NOT NULL REFERENCES vault_lint_scan(id),
+			signal_id    TEXT NOT NULL,
+			severity     TEXT NOT NULL,
+			file_path    TEXT,
+			title        TEXT NOT NULL,
+			description  TEXT,
+			fix_actions  TEXT NOT NULL DEFAULT '[]',
+			metadata     TEXT NOT NULL DEFAULT '{}',
+			status       TEXT NOT NULL DEFAULT 'open',
+			dismissed_at INTEGER,
+			fixed_at     INTEGER
+		);
+		CREATE INDEX IF NOT EXISTS idx_lint_finding_scan ON vault_lint_finding(scan_id);
+		CREATE INDEX IF NOT EXISTS idx_lint_finding_signal ON vault_lint_finding(signal_id);
+		CREATE INDEX IF NOT EXISTS idx_lint_finding_status ON vault_lint_finding(status);
+		CREATE INDEX IF NOT EXISTS idx_lint_finding_path ON vault_lint_finding(file_path);
+	`);
+	tryExec(`
+		CREATE TABLE IF NOT EXISTS vault_lint_dismissal (
+			signal_id    TEXT NOT NULL,
+			file_path    TEXT NOT NULL,
+			dismissed_at INTEGER NOT NULL,
+			reason       TEXT,
+			snooze_until INTEGER,
+			PRIMARY KEY (signal_id, file_path)
+		);
+	`);
 }
 
 

@@ -3,6 +3,7 @@ import { DEFAULT_HUB_DISCOVER_SETTINGS, type HubDiscoverSettings } from '@/servi
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
 import { migrateFromV1 } from '@/core/profiles/migrate-v1';
 import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
+import { DEFAULT_AMBIENT_PUSH_SETTINGS, type AmbientPushSettings } from '@/service/ambient/types';
 /**
  * Get string value from source or return default.
  */
@@ -297,6 +298,35 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 
 	// Dev tools setting
 	settings.enableDevTools = getBoolean(raw?.enableDevTools, false);
+
+	// Ambient Push settings
+	const rawAmbient = raw?.ambientPush as Partial<AmbientPushSettings> | undefined;
+	if (rawAmbient && typeof rawAmbient === 'object') {
+		settings.ambientPush = {
+			enabled: getBoolean(rawAmbient.enabled, DEFAULT_AMBIENT_PUSH_SETTINGS.enabled),
+			triggerCooldownMs:
+				typeof rawAmbient.triggerCooldownMs === 'number'
+					? Math.max(1000, rawAmbient.triggerCooldownMs)
+					: DEFAULT_AMBIENT_PUSH_SETTINGS.triggerCooldownMs,
+			docSwitchCooldownMs:
+				typeof rawAmbient.docSwitchCooldownMs === 'number'
+					? Math.max(1000, rawAmbient.docSwitchCooldownMs)
+					: DEFAULT_AMBIENT_PUSH_SETTINGS.docSwitchCooldownMs,
+			writingPauseMs:
+				typeof rawAmbient.writingPauseMs === 'number'
+					? Math.max(1000, rawAmbient.writingPauseMs)
+					: DEFAULT_AMBIENT_PUSH_SETTINGS.writingPauseMs,
+			minCharDelta:
+				typeof rawAmbient.minCharDelta === 'number'
+					? Math.max(1, rawAmbient.minCharDelta)
+					: DEFAULT_AMBIENT_PUSH_SETTINGS.minCharDelta,
+			maxPushItems:
+				typeof rawAmbient.maxPushItems === 'number'
+					? Math.max(1, Math.min(20, rawAmbient.maxPushItems))
+					: DEFAULT_AMBIENT_PUSH_SETTINGS.maxPushItems,
+			showStatusBar: getBoolean(rawAmbient.showStatusBar, DEFAULT_AMBIENT_PUSH_SETTINGS.showStatusBar),
+		};
+	}
 
 	// Vault Search (Claude Agent SDK). Added 2026-04-12. Pass through the
 	// whole nested structure; downstream code (readProfileFromSettings) handles

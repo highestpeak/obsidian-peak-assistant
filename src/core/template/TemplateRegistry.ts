@@ -3,7 +3,7 @@ import type { PromptId } from '@/service/prompt/PromptId';
 /**
  * Category of template. Determines base path under plugin directory.
  */
-export type TemplateCategory = 'prompts' | 'tools' | 'agents' | 'ui' | 'indexing' | 'stopwords';
+export type TemplateCategory = 'prompts' | 'tools' | 'agents' | 'ui' | 'indexing' | 'stopwords' | 'config';
 
 /**
  * Tool result / handler template IDs (search graph inspector, etc.).
@@ -18,6 +18,7 @@ export const ToolTemplateId = {
 	OrphanNotes: 'orphan-notes',
 	FindKeyNodes: 'find-key-nodes',
 	GraphTraversal: 'graph-traversal',
+	StructuralHoles: 'structural-holes',
 } as const;
 
 export type ToolTemplateId = (typeof ToolTemplateId)[keyof typeof ToolTemplateId];
@@ -78,7 +79,7 @@ export type StopwordTemplateId = (typeof StopwordTemplateId)[keyof typeof Stopwo
 /**
  * Union of all template identifiers.
  */
-export type TemplateId = PromptId | ToolTemplateId | AgentTemplateId | IndexingTemplateId | StopwordTemplateId;
+export type TemplateId = PromptId | ToolTemplateId | AgentTemplateId | IndexingTemplateId | StopwordTemplateId | ConfigTemplateId;
 
 /**
  * Metadata for a single template (path, options). No content.
@@ -95,6 +96,15 @@ export interface TemplateMetadata {
 	systemPromptId?: PromptId;
 }
 
+/**
+ * Config template IDs (runtime-editable JSON configs under templates/config/).
+ */
+export const ConfigTemplateId = {
+	VaultLintConfig: 'config-vault-lint',
+} as const;
+
+export type ConfigTemplateId = (typeof ConfigTemplateId)[keyof typeof ConfigTemplateId];
+
 /** Path prefix per category (under plugin dir). All under templates/. */
 const CATEGORY_PREFIX: Record<TemplateCategory, string> = {
 	prompts: 'templates/prompts',
@@ -103,6 +113,7 @@ const CATEGORY_PREFIX: Record<TemplateCategory, string> = {
 	ui: 'templates/ui',
 	indexing: 'templates/indexing',
 	stopwords: 'templates/stopwords',
+	config: 'templates/config',
 };
 
 function meta(
@@ -110,7 +121,7 @@ function meta(
 	fileStem: string,
 	opts?: Partial<Pick<TemplateMetadata, 'expectsJson' | 'jsonConstraint' | 'systemPromptId'>>
 ): TemplateMetadata {
-	const ext = 'md';
+	const ext = category === 'config' ? 'json' : 'md';
 	return {
 		category,
 		path: `${CATEGORY_PREFIX[category]}/${fileStem}.${ext}`,
@@ -284,6 +295,8 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'doc-suggest-links-system': meta('prompts', 'doc-suggest-links-system'),
 	'doc-split-suggestion': meta('prompts', 'doc-split-suggestion', { expectsJson: true, systemPromptId: 'doc-split-suggestion-system' as PromptId }),
 	'doc-split-suggestion-system': meta('prompts', 'doc-split-suggestion-system'),
+	'doc-suggest-tags': meta('prompts', 'doc-suggest-tags', { expectsJson: true, systemPromptId: 'doc-suggest-tags-system' as PromptId }),
+	'doc-suggest-tags-system': meta('prompts', 'doc-suggest-tags-system'),
 
 	// --- Tools ---
 	[ToolTemplateId.LocalSearch]: meta('tools', 'local-search'),
@@ -295,6 +308,7 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[ToolTemplateId.OrphanNotes]: meta('tools', 'orphan-notes'),
 	[ToolTemplateId.FindKeyNodes]: meta('tools', 'find-key-nodes'),
 	[ToolTemplateId.GraphTraversal]: meta('tools', 'graph-traversal'),
+	[ToolTemplateId.StructuralHoles]: meta('tools', 'structural-holes'),
 
 	// --- Agents ---
 	[AgentTemplateId.ResultSnapshot]: meta('agents', 'result-snapshot'),
@@ -317,6 +331,9 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	[StopwordTemplateId.Common]: meta('stopwords', 'common'),
 	[StopwordTemplateId.English]: meta('stopwords', 'en'),
 	[StopwordTemplateId.Chinese]: meta('stopwords', 'zh'),
+
+	// --- Config (runtime-editable JSON) ---
+	[ConfigTemplateId.VaultLintConfig]: meta('config', 'vault-lint-config'),
 };
 
 export function getTemplateMetadata(id: TemplateId): TemplateMetadata {

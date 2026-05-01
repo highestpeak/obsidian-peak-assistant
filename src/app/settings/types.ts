@@ -9,6 +9,7 @@ import {
 	DEFAULT_HUB_DISCOVER_SETTINGS,
 	type HubDiscoverSettings,
 } from '@/service/search/index/helper/hub/types';
+import type { AmbientPushSettings } from '@/service/ambient/types';
 /**
  * Document chunking configuration.
  */
@@ -457,6 +458,11 @@ export interface MyPluginSettings {
 	profileSettings?: ProfileSettings;
 
 	/**
+	 * Ambient Push settings (proactive related-note suggestions while writing).
+	 */
+	ambientPush?: AmbientPushSettings;
+
+	/**
 	 * Vault Search (Claude Agent SDK).
 	 */
 	vaultSearch?: {
@@ -484,6 +490,8 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	sqliteBackend: 'auto',
 
 	enableDevTools: false, // Disabled by default for security
+
+	ambientPush: undefined,
 
 	graphViz: {
 		clusterForceStrength: 0.02,
