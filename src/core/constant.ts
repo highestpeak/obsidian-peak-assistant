@@ -58,6 +58,18 @@ export const MOBIUS_MAINTENANCE_DEBT_RENAME = 1;
 /** When cumulative debt reaches this, `needed` is set so UI can suggest full maintenance. */
 export const MOBIUS_MAINTENANCE_DIRTY_THRESHOLD = 30;
 
+// ── Cascade update constants ──
+export const CASCADE_IDLE_DELAY_MS = 5000;
+export const CASCADE_MAX_ITEMS_PER_WINDOW = 20;
+export const CASCADE_ITEM_TIMEOUT_MS = 500;
+export const CASCADE_CHANGE_THRESHOLD_MINOR = 0.05;
+export const CASCADE_CHANGE_THRESHOLD_MODERATE = 0.15;
+export const CASCADE_DEBT_SEMANTIC_EDGE_PRIORITY = 1;
+export const CASCADE_DEBT_DEGREE_REFRESH_PRIORITY = 2;
+export const CASCADE_DEBT_HUB_INVALIDATE_PRIORITY = 3;
+export const CASCADE_DEBT_MERMAID_OVERLAY_PRIORITY = 4;
+export const CASCADE_DEBT_FOLDER_STATS_PRIORITY = 5;
+
 /**
  * YAML frontmatter keys used when resolving document timestamps during indexing.
  * Prefer these constants over string literals so renames stay consistent.
