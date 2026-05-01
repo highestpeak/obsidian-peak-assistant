@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { VaultSearchTab, VaultSearchFooterHints } from './tab-VaultSearch';
 import { AISearchTab } from './tab-AISearch';
-import { Search, Sparkles, Globe, X, RotateCcw, Brain, Network, ChevronDown } from 'lucide-react';
+import { Search, Sparkles, Globe, X, RotateCcw, Library, Network, ChevronDown } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { CodeMirrorInput } from '@/ui/component/mine/codemirror-input';
 import { cn } from '@/ui/react/lib/utils';
@@ -223,14 +223,14 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 									)}
 									title={`${PRESET_LABELS[analysisMode].full} (⌥↑/⌥↓ to switch)`}
 								>
-									{analysisMode === 'aiGraph' ? <Network className="pktw-w-3 pktw-h-3 pktw-mr-1" /> : <Brain className="pktw-w-3 pktw-h-3 pktw-mr-1" />}
+									{analysisMode === 'aiGraph' ? <Network className="pktw-w-3 pktw-h-3 pktw-mr-1" /> : <Library className="pktw-w-3 pktw-h-3 pktw-mr-1" />}
 									{PRESET_LABELS[analysisMode].short}
 									<ChevronDown className={cn('pktw-w-2.5 pktw-h-2.5 pktw-ml-0.5 pktw-opacity-60 pktw-transition-transform', showModeMenu && 'pktw-rotate-180')} />
 								</div>
 								{showModeMenu && (
 									<div className="pktw-absolute pktw-top-full pktw-left-0 pktw-mt-1 pktw-bg-white pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[200px]">
 										{PRESETS.map((p) => {
-											const Icon = p === 'aiGraph' ? Network : Brain;
+											const Icon = p === 'aiGraph' ? Network : Library;
 											return (
 												<div
 													key={p}
