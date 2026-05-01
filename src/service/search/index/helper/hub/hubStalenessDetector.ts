@@ -33,9 +33,14 @@ export class HubStalenessDetector {
 					.where('hub_stale_since' as any, 'is', null)
 					.execute();
 
-				// Enqueue for regeneration with priority based on trigger count
-				const priority = Math.min(upsertedPaths.length, 20);
-				await constituentRepo.enqueue(hub.hub_node_id, hub.hub_path, upsertedPaths, priority);
+				// Per-hub trigger filtering: intersect upserted paths with this hub's members
+				const members = await constituentRepo.getMembersForHub(hub.hub_node_id);
+				const memberPaths = new Set(members.map((m) => m.member_path));
+				const perHubTriggerPaths = upsertedPaths.filter((p) => memberPaths.has(p));
+
+				// Priority based on per-hub trigger count, not total upserted count
+				const priority = Math.min(perHubTriggerPaths.length, 20);
+				await constituentRepo.enqueue(hub.hub_node_id, hub.hub_path, perHubTriggerPaths, priority);
 			}
 
 			console.log(

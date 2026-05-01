@@ -503,10 +503,8 @@ export async function materializeHubDocFromCandidate(
 			for (const p of assembly.memberPathsSample) addRow(p, null, 'folder_child');
 		}
 
-		if (memberRows.length > 0) {
-			const repo = sqliteStoreManager.getHubConstituentRepo();
-			await repo.replaceForHub(candidate.nodeId, memberRows);
-		}
+		const repo = sqliteStoreManager.getHubConstituentRepo();
+		await repo.replaceForHub(candidate.nodeId, memberRows);
 	} catch (err) {
 		console.warn('[HubDoc] Failed to persist constituent paths for hub', candidate.nodeId, err);
 	}

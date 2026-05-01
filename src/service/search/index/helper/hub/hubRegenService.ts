@@ -36,9 +36,11 @@ export class HubRegenService {
 	/**
 	 * Debounced trigger — schedules a regeneration sweep after {@link HUB_REGEN_DEBOUNCE_MS}.
 	 * Called after staleness detection to batch multiple rapid changes into one sweep.
+	 * Uses "fire once, ignore subsequent" pattern: once scheduled, additional calls
+	 * coalesce into the pending sweep instead of resetting the timer.
 	 */
 	scheduleRegenSweep(): void {
-		if (this.debounceTimer) clearTimeout(this.debounceTimer);
+		if (this.debounceTimer) return; // already scheduled, coalesce
 		this.debounceTimer = setTimeout(() => {
 			this.debounceTimer = null;
 			void this.processQueue();
@@ -46,22 +48,22 @@ export class HubRegenService {
 	}
 
 	/** Immediate processing — used at startup or via explicit command. */
-	async processQueueNow(): Promise<void> {
+	async processQueueNow(): Promise<{ processed: number; failed: number }> {
 		// Cancel any pending debounced sweep since we're processing now
 		if (this.debounceTimer) {
 			clearTimeout(this.debounceTimer);
 			this.debounceTimer = null;
 		}
-		await this.processQueue();
+		return this.processQueue();
 	}
 
 	/**
 	 * Dequeue up to {@link HUB_REGEN_BATCH_SIZE} items and regenerate each.
 	 * Guarded against concurrent execution.
 	 */
-	private async processQueue(): Promise<void> {
-		if (this.processing) return;
-		if (!sqliteStoreManager.isInitialized()) return;
+	private async processQueue(): Promise<{ processed: number; failed: number }> {
+		if (this.processing) return { processed: 0, failed: 0 };
+		if (!sqliteStoreManager.isInitialized()) return { processed: 0, failed: 0 };
 
 		this.processing = true;
 		try {
@@ -71,7 +73,8 @@ export class HubRegenService {
 			await repo.resetRetryableFailures(HUB_REGEN_MAX_RETRIES);
 
 			let processed = 0;
-			while (processed < HUB_REGEN_BATCH_SIZE) {
+			let failed = 0;
+			while (processed + failed < HUB_REGEN_BATCH_SIZE) {
 				const item = await repo.dequeuePending();
 				if (!item) break;
 
@@ -88,18 +91,19 @@ export class HubRegenService {
 						.execute();
 
 					console.log(`[HubRegenService] Regenerated hub ${item.hub_node_id} (${item.hub_path})`);
+					processed++;
 				} catch (e) {
 					const msg = e instanceof Error ? e.message : String(e);
 					console.warn(`[HubRegenService] Failed to regenerate hub ${item.hub_node_id}: ${msg}`);
 					await repo.markFailed(item.hub_node_id, msg);
+					failed++;
 				}
-
-				processed++;
 			}
 
-			if (processed > 0) {
-				console.log(`[HubRegenService] Processed ${processed} hub(s) from regen queue`);
+			if (processed > 0 || failed > 0) {
+				console.log(`[HubRegenService] Processed ${processed} hub(s), ${failed} failed from regen queue`);
 			}
+			return { processed, failed };
 		} finally {
 			this.processing = false;
 		}
