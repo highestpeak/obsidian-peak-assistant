@@ -23,6 +23,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { buildCopilotCommands } from './copilot-commands';
 import { SettingsModal } from '@/ui/view/SettingsModal';
+import { VAULT_XRAY_VIEW_TYPE } from '@/ui/view/vault-xray/VaultXRayView';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
@@ -666,6 +667,34 @@ function buildAmbientPushCommands(viewManager: ViewManager): Command[] {
 }
 
 /**
+ * Vault X-Ray commands — open dashboard and run health check.
+ */
+function buildVaultXRayCommands(viewManager: ViewManager): Command[] {
+	return [
+		{
+			id: 'peak-open-vault-xray',
+			name: 'Peak: Vault X-Ray',
+			callback: async () => {
+				const app = viewManager.getApp();
+				const leaf = app.workspace.getLeaf('tab');
+				await leaf.setViewState({ type: VAULT_XRAY_VIEW_TYPE, active: true });
+				app.workspace.revealLeaf(leaf);
+			},
+		},
+		{
+			id: 'peak-run-vault-health-check',
+			name: 'Peak: Run Vault Health Check',
+			callback: async () => {
+				const { VaultLintService } = await import('@/service/lint/VaultLintService');
+				const service = new VaultLintService();
+				const result = await service.runFullScan();
+				new Notice(`Vault Health: ${result.healthScore}/100 (${result.findings.length} issues found)`);
+			},
+		},
+	];
+}
+
+/**
  * Settings modal command — opens the plugin settings in a standalone modal.
  */
 function buildSettingsCommands(appContext: AppContext): Command[] {
@@ -709,6 +738,7 @@ export function buildCoreCommands(
 		...buildSystemCommands({ settings, viewManager, aiManager }),
 		...buildCopilotCommands(viewManager, aiManager),
 		...buildAmbientPushCommands(viewManager),
+		...buildVaultXRayCommands(viewManager),
 		...buildOnboardingCommands(),
 		...buildSettingsCommands(appContext),
 	];
