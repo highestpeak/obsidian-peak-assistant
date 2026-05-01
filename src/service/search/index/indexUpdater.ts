@@ -7,6 +7,7 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { defaultIndexDocumentOptions, IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { EventBus } from '@/core/eventBus';
+import { HubStalenessDetector } from './helper/hub/hubStalenessDetector';
 import type MyPlugin from 'main';
 
 /**
@@ -19,6 +20,7 @@ import type MyPlugin from 'main';
  */
 export class SearchUpdateListener {
 	private readonly loaderManager: DocumentLoaderManager;
+	private readonly stalenessDetector = new HubStalenessDetector();
 	private readonly upsertPaths = new Set<string>();
 	private readonly deletePaths = new Set<string>();
 	/** Pending vault renames: process before deletes/upserts so stable doc id is preserved. */
@@ -238,6 +240,12 @@ export class SearchUpdateListener {
 					console.log(
 						`[SearchUpdateListener] Flush completed: renamed ${renameBatch.length}, deleted ${deletePaths.length} files, indexed ${upsertPaths.length} files`,
 					);
+					// Detect stale hub docs from constituent changes
+					if (upsertPaths.length > 0) {
+						this.stalenessDetector.detectAndMarkStale(upsertPaths).catch((e) => {
+							console.warn('[SearchUpdateListener] Hub staleness detection failed:', e);
+						});
+					}
 				})
 				.catch((e) => {
 					console.error('Search update operations failed:', e);
