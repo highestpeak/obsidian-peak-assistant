@@ -11,6 +11,9 @@
   --pk-hover: var(--background-modifier-hover);
   --pk-active: var(--background-modifier-active);
 
+  /* ── Elevated surface: guaranteed opaque for floating elements ── */
+  --pk-popover: #ffffff;
+
   /* ── Brand: purple accent ── */
   --pk-accent: #7c3aed;
   --pk-accent-hover: #6d28d9;
@@ -30,6 +33,7 @@
 
 /* ── Dark mode overrides ── */
 .theme-dark .pktw-root {
+  --pk-popover: #1e1e2e;
   --pk-accent: #a78bfa;
   --pk-accent-hover: #8b5cf6;
   --pk-accent-muted: rgba(167, 139, 250, 0.18);

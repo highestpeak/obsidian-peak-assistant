@@ -72,10 +72,17 @@ export function extractWikilinkPath(href: string): string | null {
 
 /**
  * Open a vault file path via Obsidian workspace.
+ * Closes the Quick Search modal so the opened file is visible.
  */
 export function openWikilinkPath(path: string): void {
 	try {
-		AppContext.getInstance().app.workspace.openLinkText(path, '', true);
+		const app = AppContext.getInstance().app;
+		// Close the Quick Search modal first so the opened file is visible
+		const modalEl = document.querySelector('.peak-quick-search-modal')?.closest('.modal-container');
+		if (modalEl) {
+			(modalEl.querySelector('.modal-close-button') as HTMLElement)?.click();
+		}
+		app.workspace.openLinkText(path, '', false);
 	} catch {
 		// ignore
 	}

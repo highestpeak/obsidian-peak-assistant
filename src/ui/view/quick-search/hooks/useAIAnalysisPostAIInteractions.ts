@@ -169,8 +169,7 @@ export function useGenerateResultSaveField() {
     const title = useAIAnalysisRuntimeStore((s) => s.title ?? '');
     const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
     const summary = useAIAnalysisSummaryStore((s) => {
-        const chunks = s.summaryChunks ?? [];
-        if (s.isSummaryStreaming || (isAnalyzing && chunks.length > 0)) return chunks.join('');
+        if (s.isSummaryStreaming || (isAnalyzing && s.summaryText)) return s.summaryText;
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
@@ -237,11 +236,11 @@ export function useGenerateResultSaveField() {
 }
 
 export function useAnalyzeTopic() {
-    const summaryChunks = useAIAnalysisSummaryStore((s) => s.summaryChunks);
+    const summaryText = useAIAnalysisSummaryStore((s) => s.summaryText);
     const setTopicAnalyzeStreaming = useAIAnalysisTopicsStore((s) => s.setTopicAnalyzeStreaming);
     const setTopicAnalyzeStreamingAppend = useAIAnalysisTopicsStore((s) => s.setTopicAnalyzeStreamingAppend);
     const setTopicModalOpen = useAIAnalysisTopicsStore((s) => s.setTopicModalOpen);
-    const summary = (summaryChunks ?? []).join('');
+    const summary = summaryText ?? '';
     const { manager } = useServiceContext();
     const topicConfig = useTopicFollowupChatConfig({ summary, topicLabel: null });
 
@@ -249,7 +248,7 @@ export function useAnalyzeTopic() {
 
     const handleStartAnalyze = useCallback(async (topic: string, question: string) => {
         setTopicModalOpen(topic);
-        setTopicAnalyzeStreaming({ topic, question, chunks: [] });
+        setTopicAnalyzeStreaming({ topic, question, text: '' });
         lastLengthRef.current = 0;
 
         const onDelta = (answerSoFar: string) => {
@@ -289,8 +288,7 @@ export function useRegenerateOverviewMermaid() {
     const { searchQuery } = useSharedStore();
     const isAnalyzing2 = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
     const currentSummary = useAIAnalysisSummaryStore((s) => {
-        const chunks = s.summaryChunks ?? [];
-        if (s.isSummaryStreaming || (isAnalyzing2 && chunks.length > 0)) return chunks.join('');
+        if (s.isSummaryStreaming || (isAnalyzing2 && s.summaryText)) return s.summaryText;
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
@@ -359,8 +357,7 @@ export function useGraphFollowupChatConfig(params: {
     const { searchQuery } = useSharedStore();
     const isAnalyzing3 = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
     const mainSummary = useAIAnalysisSummaryStore((s) => {
-        const chunks = s.summaryChunks ?? [];
-        if (s.isSummaryStreaming || (isAnalyzing3 && chunks.length > 0)) return chunks.join('');
+        if (s.isSummaryStreaming || (isAnalyzing3 && s.summaryText)) return s.summaryText;
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
@@ -435,8 +432,7 @@ export function useBlocksFollowupChatConfig(params: {
     const { searchQuery } = useSharedStore();
     const isAnalyzing3 = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
     const mainSummary = useAIAnalysisSummaryStore((s) => {
-        const chunks = s.summaryChunks ?? [];
-        if (s.isSummaryStreaming || (isAnalyzing3 && chunks.length > 0)) return chunks.join('');
+        if (s.isSummaryStreaming || (isAnalyzing3 && s.summaryText)) return s.summaryText;
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
@@ -475,8 +471,7 @@ export function useSourcesFollowupChatConfig(params: {
     const { searchQuery } = useSharedStore();
     const isAnalyzing3 = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
     const mainSummary = useAIAnalysisSummaryStore((s) => {
-        const chunks = s.summaryChunks ?? [];
-        if (s.isSummaryStreaming || (isAnalyzing3 && chunks.length > 0)) return chunks.join('');
+        if (s.isSummaryStreaming || (isAnalyzing3 && s.summaryText)) return s.summaryText;
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';

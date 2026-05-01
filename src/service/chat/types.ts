@@ -2,6 +2,7 @@ import type { ResourceKind } from '@/core/document/types';
 
 import { LLMUsage, LLMOutputControlSettings, ChatRole } from '@/core/providers/types';
 import type { TFile } from 'obsidian';
+import type { ConversationType } from './conversation-types';
 
 /**
  * Base chat message structure (persisted to markdown).
@@ -95,6 +96,11 @@ export interface ChatConversationMeta {
 	 * 'degrade_to_text': Convert attachments to text summaries via OCR/parsing
 	 */
 	attachmentHandlingOverride?: 'direct' | 'degrade_to_text';
+	/**
+	 * The type/mode of this conversation (chat, agent, plan, canvas, template, custom).
+	 * Optional for backward compatibility — existing conversations without this field default to { kind: 'chat' }.
+	 */
+	conversationType?: ConversationType;
 }
 
 export interface ChatProjectMeta {
@@ -215,6 +221,7 @@ export interface ChatProject {
 export interface PendingConversation {
 	title: string;
 	project: ChatProject | null;
+	conversationType?: ConversationType;
 }
 
 /**

@@ -201,7 +201,7 @@ export function useEventRouter() {
 			);
 			return;
 		}
-		console.debug('[useSearchSession] routeEvent:', event);
+		// console.debug removed: flooding DevTools IPC causes renderer crash under high event rate
 		dispatchEvent(event, buildTarget(), buildLegacy(), buildSummaryBuffer(), buildUiStepRef());
 	}, [store, bufferSummaryDelta, flushSummaryBuffer]);
 

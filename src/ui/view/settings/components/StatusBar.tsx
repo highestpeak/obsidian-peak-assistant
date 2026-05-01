@@ -6,6 +6,7 @@ export function StatusBar() {
     const registry = ProfileRegistry.getInstance();
     const agentProfile = registry.getActiveAgentProfile();
     const embeddingProfile = registry.getActiveEmbeddingProfile() ?? agentProfile;
+    const webSearchProfile = registry.getActiveWebSearchProfile();
     const sqliteReady = sqliteStoreManager.isInitialized();
     const hasEmbedding = !!(embeddingProfile?.embeddingEndpoint && embeddingProfile?.embeddingModel);
 
@@ -15,6 +16,8 @@ export function StatusBar() {
                   label={agentProfile ? `Agent: ${agentProfile.primaryModel}` : 'Agent: Not configured'} />
             <Chip ok={hasEmbedding}
                   label={hasEmbedding ? `Embedding: ${embeddingProfile!.embeddingModel}` : 'Embedding: Not configured'} />
+            <Chip ok={!!webSearchProfile}
+                  label={webSearchProfile ? `Web Search: ${webSearchProfile.name}` : 'Web Search: Not configured'} />
             <Chip ok={sqliteReady}
                   label={sqliteReady ? 'SQLite: ready' : 'SQLite: unavailable'} />
         </div>

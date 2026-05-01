@@ -1057,13 +1057,13 @@ export const VISUAL_TYPE_LABELS: Record<string, string> = {
 
 /** Mission role definitions for plan review section grouping. */
 export const MISSION_ROLES: Array<{ key: string; label: string; icon: string; color: string; bgColor: string; required: boolean }> = [
-	{ key: 'synthesis', label: 'Synthesis', icon: '🔬', color: 'pktw-text-emerald-700', bgColor: 'pktw-bg-emerald-50 pktw-border-emerald-200', required: true },
-	{ key: 'contradictions', label: 'Contradictions', icon: '⚡', color: 'pktw-text-red-700', bgColor: 'pktw-bg-red-50 pktw-border-red-200', required: false },
-	{ key: 'trade_off', label: 'Trade-off', icon: '⚖️', color: 'pktw-text-amber-700', bgColor: 'pktw-bg-amber-50 pktw-border-amber-200', required: false },
-	{ key: 'action_plan', label: 'Action Plan', icon: '🎯', color: 'pktw-text-blue-700', bgColor: 'pktw-bg-blue-50 pktw-border-blue-200', required: true },
-	{ key: 'risk_audit', label: 'Risk Audit', icon: '🛡️', color: 'pktw-text-orange-700', bgColor: 'pktw-bg-orange-50 pktw-border-orange-200', required: false },
-	{ key: 'roadmap', label: 'Roadmap', icon: '🗺️', color: 'pktw-text-indigo-700', bgColor: 'pktw-bg-indigo-50 pktw-border-indigo-200', required: false },
-	{ key: 'decomposition', label: 'Decomposition', icon: '🧩', color: 'pktw-text-violet-700', bgColor: 'pktw-bg-violet-50 pktw-border-violet-200', required: false },
-	{ key: 'blindspots', label: 'Blindspots', icon: '👁️', color: 'pktw-text-pink-700', bgColor: 'pktw-bg-pink-50 pktw-border-pink-200', required: false },
-	{ key: 'probing_horizon', label: 'Probing Horizon', icon: '🔭', color: 'pktw-text-cyan-700', bgColor: 'pktw-bg-cyan-50 pktw-border-cyan-200', required: false },
+	{ key: 'synthesis', label: 'Synthesis', icon: 'Microscope', color: 'pktw-text-emerald-700', bgColor: 'pktw-bg-emerald-50 pktw-border-emerald-200', required: true },
+	{ key: 'contradictions', label: 'Contradictions', icon: 'Zap', color: 'pktw-text-red-700', bgColor: 'pktw-bg-red-50 pktw-border-red-200', required: false },
+	{ key: 'trade_off', label: 'Trade-off', icon: 'Scale', color: 'pktw-text-amber-700', bgColor: 'pktw-bg-amber-50 pktw-border-amber-200', required: false },
+	{ key: 'action_plan', label: 'Action Plan', icon: 'Target', color: 'pktw-text-blue-700', bgColor: 'pktw-bg-blue-50 pktw-border-blue-200', required: true },
+	{ key: 'risk_audit', label: 'Risk Audit', icon: 'ShieldAlert', color: 'pktw-text-orange-700', bgColor: 'pktw-bg-orange-50 pktw-border-orange-200', required: false },
+	{ key: 'roadmap', label: 'Roadmap', icon: 'Map', color: 'pktw-text-indigo-700', bgColor: 'pktw-bg-indigo-50 pktw-border-indigo-200', required: false },
+	{ key: 'decomposition', label: 'Decomposition', icon: 'Layers', color: 'pktw-text-violet-700', bgColor: 'pktw-bg-violet-50 pktw-border-violet-200', required: false },
+	{ key: 'blindspots', label: 'Blindspots', icon: 'Eye', color: 'pktw-text-pink-700', bgColor: 'pktw-bg-pink-50 pktw-border-pink-200', required: false },
+	{ key: 'probing_horizon', label: 'Probing Horizon', icon: 'Telescope', color: 'pktw-text-cyan-700', bgColor: 'pktw-bg-cyan-50 pktw-border-cyan-200', required: false },
 ];

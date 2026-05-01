@@ -290,7 +290,7 @@ export const RecentAIAnalysis: React.FC<{
             )}
             <div
                 ref={recentListRef}
-                className="pktw-space-y-2 pktw-max-h-72 pktw-overflow-y-auto pktw-pr-1"
+                className="pktw-space-y-2 pktw-pr-1"
             >
                 {recentRecords.length === 0 && autoSaveEnabled ? (
                     <div className="pktw-py-4 pktw-px-2 pktw-text-center pktw-text-xs pktw-text-pk-foreground-muted">

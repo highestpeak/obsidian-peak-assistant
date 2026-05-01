@@ -1,0 +1,14 @@
+{{#if instruction}}
+Apply this specific fix to the document:
+{{instruction}}
+{{else}}
+Polish the following {{scope}} for clarity, grammar, and conciseness.
+{{/if}}
+
+{{#if title}}Document: {{title}}{{/if}}
+
+---
+{{{content}}}
+---
+
+Return ONLY the polished text. No explanations, no commentary.

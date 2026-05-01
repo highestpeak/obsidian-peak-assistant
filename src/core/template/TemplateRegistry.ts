@@ -275,6 +275,16 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'user-profile-organize-markdown': meta('prompts', 'user-profile-organize-markdown'),
 	'message-resources': meta('prompts', 'message-resources'),
 
+	// Copilot Document Intelligence
+	'doc-polish': meta('prompts', 'doc-polish', { systemPromptId: 'doc-polish-system' as PromptId }),
+	'doc-polish-system': meta('prompts', 'doc-polish-system'),
+	'doc-review': meta('prompts', 'doc-review', { expectsJson: true, systemPromptId: 'doc-review-system' as PromptId }),
+	'doc-review-system': meta('prompts', 'doc-review-system'),
+	'doc-suggest-links': meta('prompts', 'doc-suggest-links', { expectsJson: true, systemPromptId: 'doc-suggest-links-system' as PromptId }),
+	'doc-suggest-links-system': meta('prompts', 'doc-suggest-links-system'),
+	'doc-split-suggestion': meta('prompts', 'doc-split-suggestion', { expectsJson: true, systemPromptId: 'doc-split-suggestion-system' as PromptId }),
+	'doc-split-suggestion-system': meta('prompts', 'doc-split-suggestion-system'),
+
 	// --- Tools ---
 	[ToolTemplateId.LocalSearch]: meta('tools', 'local-search'),
 	[ToolTemplateId.SearchByDimensions]: meta('tools', 'search-by-dimensions'),

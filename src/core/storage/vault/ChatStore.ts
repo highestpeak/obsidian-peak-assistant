@@ -30,6 +30,11 @@ export class ChatStorageService {
 		this.rootFolder = normalizePath(paths.rootFolder);
 	}
 
+	/** True when SQLite is ready and repo getters will not throw. */
+	private get dbReady(): boolean {
+		return sqliteStoreManager.isInitialized();
+	}
+
 	async init(): Promise<void> {
 		await ensureFolder(this.rootFolder);
 	}
@@ -47,7 +52,11 @@ export class ChatStorageService {
 		});
 		await writeFile(initSummaryFile, summaryFilePath, summaryContent);
 
-		// Save meta to sqlite
+		// Save meta to sqlite (skip if DB not ready — file is still saved above)
+		if (!this.dbReady) {
+			console.warn('[ChatStore] SQLite not ready, skipping project DB write');
+			return { meta: project, context };
+		}
 		const projectRepo = sqliteStoreManager.getChatProjectRepo();
 		await projectRepo.upsertProject({
 			projectId: project.id,
@@ -149,23 +158,25 @@ export class ChatStorageService {
 		}
 
 		// Update in sqlite
-		await sqliteStoreManager
-			.getChatConversationRepo()
-			.upsertConversation({
-				conversationId: updatedMeta.id,
-				projectId: updatedMeta.projectId ?? null,
-				title: updatedMeta.title,
-				fileRelPath: updatedMeta.fileRelPath ?? '',
-				createdAtTs: updatedMeta.createdAtTimestamp,
-				updatedAtTs: updatedMeta.updatedAtTimestamp,
-				activeModel: updatedMeta.activeModel,
-				activeProvider: updatedMeta.activeProvider,
-				tokenUsageTotal: updatedMeta.tokenUsageTotal ?? null,
-				titleManuallyEdited: updatedMeta.titleManuallyEdited ?? false,
-				titleAutoUpdated: updatedMeta.titleAutoUpdated ?? false,
-				contextLastUpdatedTimestamp: updatedMeta.contextLastUpdatedTimestamp ?? null,
-				contextLastMessageIndex: updatedMeta.contextLastMessageIndex ?? null,
-			});
+		if (this.dbReady) {
+			await sqliteStoreManager
+				.getChatConversationRepo()
+				.upsertConversation({
+					conversationId: updatedMeta.id,
+					projectId: updatedMeta.projectId ?? null,
+					title: updatedMeta.title,
+					fileRelPath: updatedMeta.fileRelPath ?? '',
+					createdAtTs: updatedMeta.createdAtTimestamp,
+					updatedAtTs: updatedMeta.updatedAtTimestamp,
+					activeModel: updatedMeta.activeModel,
+					activeProvider: updatedMeta.activeProvider,
+					tokenUsageTotal: updatedMeta.tokenUsageTotal ?? null,
+					titleManuallyEdited: updatedMeta.titleManuallyEdited ?? false,
+					titleAutoUpdated: updatedMeta.titleAutoUpdated ?? false,
+					contextLastUpdatedTimestamp: updatedMeta.contextLastUpdatedTimestamp ?? null,
+					contextLastMessageIndex: updatedMeta.contextLastMessageIndex ?? null,
+				});
+		}
 
 		return updatedMeta;
 	}
@@ -199,19 +210,20 @@ export class ChatStorageService {
 			return;
 		}
 
-		// Save messages to sqlite
-		await sqliteStoreManager
-			.getChatMessageRepo()
-			.upsertMessages(
-				conversationId,
-				[...conversation.messages, ...newMessages]
-			);
+		// Save messages and resources to sqlite (skip if DB not ready — markdown save below still works)
+		if (this.dbReady) {
+			await sqliteStoreManager
+				.getChatMessageRepo()
+				.upsertMessages(
+					conversationId,
+					[...conversation.messages, ...newMessages]
+				);
 
-		// Save message resources for each new message
-		const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
-		for (const message of newMessages) {
-			if (message.resources && message.resources.length > 0) {
-				await resourceRepo.replaceForMessage(message.id, message.resources);
+			const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
+			for (const message of newMessages) {
+				if (message.resources && message.resources.length > 0) {
+					await resourceRepo.replaceForMessage(message.id, message.resources);
+				}
 			}
 		}
 
@@ -269,6 +281,7 @@ export class ChatStorageService {
 	 * Read conversation meta from sqlite.
 	 */
 	async readConversationMeta(conversationId: string): Promise<ChatConversationMeta | null> {
+		if (!this.dbReady) return null;
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
 		const convRow = await convRepo.getById(conversationId);
 		if (!convRow) {
@@ -313,6 +326,7 @@ export class ChatStorageService {
 	 * Get project meta by id (helper method).
 	 */
 	async readProjectMeta(projectId: string): Promise<ChatProjectMeta | null> {
+		if (!this.dbReady) return null;
 		try {
 			const projectRepo = sqliteStoreManager.getChatProjectRepo();
 			const projectRow = await projectRepo.getById(projectId);
@@ -362,6 +376,7 @@ export class ChatStorageService {
 	}
 
 	async listProjects(): Promise<ChatProject[]> {
+		if (!this.dbReady) return [];
 		const projectRepo = sqliteStoreManager.getChatProjectRepo();
 		const projects = await projectRepo.listProjects(false); // Exclude archived
 
@@ -380,6 +395,7 @@ export class ChatStorageService {
 	}
 
 	async listConversations(projectId: string | null, limit?: number, offset?: number): Promise<ChatConversation[]> {
+		if (!this.dbReady) return [];
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
 		const conversations = await convRepo.listByProject(projectId, false, limit, offset); // Exclude archived
 
@@ -402,6 +418,7 @@ export class ChatStorageService {
 	 * Count conversations, optionally filtered by project.
 	 */
 	async countConversations(projectId: string | null): Promise<number> {
+		if (!this.dbReady) return 0;
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
 		return convRepo.countByProject(projectId, false); // Exclude archived
 	}
@@ -419,6 +436,7 @@ export class ChatStorageService {
 		contentPreview?: string | null,
 		attachmentSummary?: string | null
 	): Promise<void> {
+		if (!this.dbReady) return;
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		await messageRepo.updateStarred(messageId, starred, contentPreview, attachmentSummary);
 	}
@@ -432,6 +450,7 @@ export class ChatStorageService {
 		messages: ChatMessage[];
 		messageToConversationId: Map<string, string>;
 	}> {
+		if (!this.dbReady) return { messages: [], messageToConversationId: new Map() };
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		const messageRows = await messageRepo.listStarredByProject(projectId);
 		const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
@@ -482,6 +501,7 @@ export class ChatStorageService {
 	 * @deprecated This method is deprecated. Starred status is now stored directly in chat_message table.
 	 */
 	async listStarred(): Promise<StarredMessageRecord[]> {
+		if (!this.dbReady) return [];
 		const starRepo = sqliteStoreManager.getChatStarRepo();
 		const rows = await starRepo.listActive();
 		return rows.map((row) => ({
@@ -635,6 +655,7 @@ export class ChatStorageService {
 		}
 
 		// Load messages from sqlite
+		if (!this.dbReady) return [];
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		const messageRows = await messageRepo.listByConversation(conversationId);
 		const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
@@ -913,6 +934,7 @@ export class ChatStorageService {
 	 * (project, conversations, messages, resources, stars).
 	 */
 	async deleteProject(projectId: string): Promise<void> {
+		if (!this.dbReady) return;
 		// 1. Find and delete all conversations belonging to this project
 		const convRepo = sqliteStoreManager.getChatConversationRepo();
 		const convRows = await convRepo.listByProject(projectId, true); // include archived
@@ -939,6 +961,7 @@ export class ChatStorageService {
 	 * Delete a conversation: trash the vault file and remove DB records.
 	 */
 	async deleteConversation(conversationId: string): Promise<void> {
+		if (!this.dbReady) return;
 		const conversation = await this.readConversation(conversationId, false);
 		if (conversation?.file) {
 			await this.app.vault.trash(conversation.file, true);
@@ -953,6 +976,7 @@ export class ChatStorageService {
 	 * Count messages for a conversation (lightweight operation).
 	 */
 	async countMessages(conversationId: string): Promise<number> {
+		if (!this.dbReady) return 0;
 		const messageRepo = sqliteStoreManager.getChatMessageRepo();
 		return messageRepo.countByConversation(conversationId);
 	}

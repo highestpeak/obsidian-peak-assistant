@@ -357,6 +357,7 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 			profiles: migratedProfiles ?? [],
 			activeAgentProfileId: migratedProfiles?.[0]?.id ?? null,
 			activeEmbeddingProfileId: null,
+			activeWebSearchProfileId: null,
 			sdkSettings: { ...DEFAULT_SDK_SETTINGS },
 		};
 	}

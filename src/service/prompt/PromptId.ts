@@ -253,6 +253,16 @@ export enum PromptId {
 	/** Organize current user profile into clean markdown */
 	UserProfileOrganizeMarkdown = 'user-profile-organize-markdown',
 	MessageResources = 'message-resources',
+
+	// Copilot Document Intelligence
+	DocPolish = 'doc-polish',
+	DocPolishSystem = 'doc-polish-system',
+	DocReview = 'doc-review',
+	DocReviewSystem = 'doc-review-system',
+	DocSuggestLinks = 'doc-suggest-links',
+	DocSuggestLinksSystem = 'doc-suggest-links-system',
+	DocSplitSuggestion = 'doc-split-suggestion',
+	DocSplitSuggestionSystem = 'doc-split-suggestion-system',
 }
 
 /**
@@ -744,6 +754,31 @@ export interface PromptVariables {
 		existingPatternsJson: string;
 		vaultStructureJson: string;
 	};
+	[PromptId.DocPolish]: {
+		content: string;
+		title?: string;
+		scope: 'full' | 'selection';
+		instruction?: string;
+	};
+	[PromptId.DocPolishSystem]: Record<string, never>;
+	[PromptId.DocReview]: {
+		content: string;
+		title?: string;
+		scope: 'full' | 'selection';
+	};
+	[PromptId.DocReviewSystem]: Record<string, never>;
+	[PromptId.DocSuggestLinks]: {
+		content: string;
+		title?: string;
+		existingLinks: string;
+	};
+	[PromptId.DocSuggestLinksSystem]: Record<string, never>;
+	[PromptId.DocSplitSuggestion]: {
+		content: string;
+		title?: string;
+		wordCount: number;
+	};
+	[PromptId.DocSplitSuggestionSystem]: Record<string, never>;
 }
 
 export type PromptInfo = PromptTemplate & { systemPromptId?: PromptId };

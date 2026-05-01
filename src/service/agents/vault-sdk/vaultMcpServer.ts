@@ -275,7 +275,7 @@ export interface SubmitPlanInput {
     rationale: string;
     proposed_outline: string;
     coverage_assessment: string;
-    follow_up_questions?: string[];
+    follow_up_questions: string[];
     plan_sections?: Array<{
         id: string;
         title: string;
@@ -426,7 +426,7 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
             rationale: z.string(),
             proposed_outline: z.string(),
             coverage_assessment: z.string(),
-            follow_up_questions: z.array(z.string()).optional().describe('3-5 context-specific follow-up questions the user might ask next'),
+            follow_up_questions: z.array(z.string()).min(3).max(5).describe('REQUIRED: 3-5 context-specific follow-up questions the user might ask next. Always generate these.'),
             plan_sections: z.array(z.object({
                 id: z.string(),
                 title: z.string().describe('Conclusion-as-heading: a short finding sentence, max 50 chars. E.g. "3 projects viable, PeakAssistant fastest to revenue"'),

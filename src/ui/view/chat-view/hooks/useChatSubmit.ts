@@ -77,6 +77,7 @@ export function useChatSubmit() {
 				project: latestPendingConversation.project?.meta ?? null,
 				modelId: latestInitialSelectedModel?.modelId,
 				provider: latestInitialSelectedModel?.provider,
+				conversationType: latestPendingConversation.conversationType,
 			});
 			useChatViewStore.getState().setInitialSelectedModel(null);
 			updateConv(conversation);

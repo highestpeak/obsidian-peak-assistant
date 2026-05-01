@@ -1,0 +1,21 @@
+This document has {{wordCount}} words. Suggest how to split it into focused notes.
+
+{{#if title}}Document: {{title}}{{/if}}
+
+---
+{{{content}}}
+---
+
+Return JSON matching this schema:
+{
+  "reason": "why splitting is beneficial",
+  "splits": [
+    {
+      "newTitle": "suggested title for the new note",
+      "headings": ["## Heading 1", "## Heading 2"],
+      "lineRange": [startLine, endLine],
+      "summary": "what this section covers",
+      "excerpt": "first ~100 chars of content"
+    }
+  ]
+}

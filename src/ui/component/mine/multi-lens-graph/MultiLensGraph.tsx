@@ -224,7 +224,7 @@ export const MultiLensGraph: React.FC<MultiLensGraphProps> = ({
 				>
 					<Background color="#f3f4f6" gap={20} />
 					{showControls && <Controls />}
-					{showMiniMap && <MiniMap />}
+					{showMiniMap && <MiniMap nodeColor="#e9d5ff" maskColor="rgba(255,255,255,0.7)" style={{ backgroundColor: '#fafafa' }} />}
 				</ReactFlow>
 			</div>
 			{graphData?.insights?.[activeLens === 'bridge' ? 'bridges' : activeLens as 'topology' | 'timeline'] && (

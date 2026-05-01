@@ -332,9 +332,9 @@ export class BackgroundSessionManager {
 			pushV2TimelineText(id: string, chunk: string): void {
 				const last = snap.v2Timeline[snap.v2Timeline.length - 1];
 				if (last && last.kind === 'text' && !last.complete) {
-					last.chunks.push(chunk);
+					last.text += chunk;
 				} else {
-					snap.v2Timeline.push({ kind: 'text', id, chunks: [chunk], complete: false });
+					snap.v2Timeline.push({ kind: 'text', id, text: chunk, complete: false });
 				}
 			},
 

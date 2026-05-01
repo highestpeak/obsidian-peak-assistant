@@ -4,6 +4,8 @@ import type { AIServiceManager } from '@/service/chat/service-manager';
 import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessionStore';
 import type { V2Section } from '@/ui/view/quick-search/store/searchSessionStore';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import type { Profile } from '@/core/profiles/types';
+import { readProfileFromSettings } from '@/service/agents/vault-sdk/sdkProfile';
 import { queryWithProfile, type SDKMessage } from '@/service/agents/core/sdkAgentPool';
 import { collectText } from '@/service/agents/core/sdkMessageAdapter';
 import { pLimit, streamWithRepetitionGuard, detectRepetition } from './stream-utils';
@@ -43,11 +45,29 @@ export class ReportOrchestrator {
         return { app: ctx.app, pluginId: ctx.plugin.manifest.id };
     }
 
-    /** Resolve the active agent profile or throw. */
-    private requireProfile() {
+    /** Resolve the active agent profile, with legacy fallback. */
+    private requireProfile(): Profile {
         const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
-        if (!profile) throw new Error('No active AI profile configured');
-        return profile;
+        if (profile) return profile;
+        // Legacy fallback: read from raw settings (same as VaultSearchAgentSDK)
+        const settings = AppContext.getInstance().settings;
+        const legacy = readProfileFromSettings(settings);
+        return {
+            id: '__legacy__',
+            name: 'Legacy Settings',
+            kind: legacy.kind,
+            enabled: true,
+            createdAt: 0,
+            baseUrl: legacy.baseUrl,
+            apiKey: legacy.apiKey,
+            authToken: legacy.authToken,
+            primaryModel: legacy.primaryModel,
+            fastModel: legacy.fastModel,
+            customHeaders: legacy.customHeaders ?? {},
+            embeddingEndpoint: null,
+            embeddingApiKey: null,
+            embeddingModel: null,
+        };
     }
 
     /**
@@ -360,7 +380,7 @@ Output ONLY the JSON array, no other text.`;
                             missionRole: a.new_mission_role ?? 'synthesis',
                             status: 'pending',
                             content: '',
-                            streamingChunks: [],
+                            streamingText: '',
                             generations: [],
                         },
                     ]);
@@ -545,14 +565,22 @@ Output ONLY the JSON array, no other text.`;
             });
 
             let accumulated = '';
+            let summaryRaf: number | null = null;
+            const storeRef = this.store;
             const { fullText } = await streamWithRepetitionGuard(
                 this.sdkTextStream(messages),
                 controller,
                 (chunk) => {
                     accumulated += chunk;
-                    this.store.getState().setSummary(accumulated);
+                    if (summaryRaf === null) {
+                        summaryRaf = requestAnimationFrame(() => {
+                            summaryRaf = null;
+                            storeRef.getState().setSummary(accumulated);
+                        });
+                    }
                 },
             );
+            if (summaryRaf !== null) cancelAnimationFrame(summaryRaf);
             this.store.getState().setSummary(fullText);
         } catch {
             // Summary failure is non-fatal

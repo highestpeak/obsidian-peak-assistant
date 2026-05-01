@@ -7,17 +7,24 @@ export type AIAnalysisHistoryRecord = DbSchema['ai_analysis_record'];
 
 /** Sqlite-backed AI analysis history service. Instance is provided via AppContext. */
 export class AIAnalysisHistoryService {
+	private get dbReady(): boolean {
+		return sqliteStoreManager.isInitialized();
+	}
+
 	async list(params: { limit: number; offset: number }): Promise<AIAnalysisHistoryRecord[]> {
+		if (!this.dbReady) return [];
 		const repo = sqliteStoreManager.getAIAnalysisRepo();
 		return repo.list(params) as Promise<AIAnalysisHistoryRecord[]>;
 	}
 
 	async count(): Promise<number> {
+		if (!this.dbReady) return 0;
 		const repo = sqliteStoreManager.getAIAnalysisRepo();
 		return repo.count();
 	}
 
 	async insertOrIgnore(record: AIAnalysisHistoryRecord): Promise<void> {
+		if (!this.dbReady) return;
 		const repo = sqliteStoreManager.getAIAnalysisRepo();
 		await repo.insertOrIgnore(record as any);
 		onAnalysisComplete();
@@ -35,11 +42,13 @@ export class AIAnalysisHistoryService {
 	}
 
 	async frequentQueries(limit = 5): Promise<Array<{ query: string; count: number }>> {
+		if (!this.dbReady) return [];
 		const repo = sqliteStoreManager.getAIAnalysisRepo();
 		return repo.frequentQueries(limit);
 	}
 
 	async deleteAll(): Promise<void> {
+		if (!this.dbReady) return;
 		const repo = sqliteStoreManager.getAIAnalysisRepo();
 		await repo.deleteAll();
 	}
@@ -49,7 +58,7 @@ export class AIAnalysisHistoryService {
 	 * Filters to aiGraph preset, scores by keyword overlap, returns best match.
 	 */
 	async findRelatedAIGraph(query: string): Promise<AIAnalysisHistoryRecord | null> {
-		if (!query.trim()) return null;
+		if (!query.trim() || !this.dbReady) return null;
 		const repo = sqliteStoreManager.getAIAnalysisRepo();
 		const rows = await repo.list({ limit: 20, offset: 0 }) as AIAnalysisHistoryRecord[];
 		const graphRows = rows.filter((r) => r.analysis_preset === 'aiGraph');

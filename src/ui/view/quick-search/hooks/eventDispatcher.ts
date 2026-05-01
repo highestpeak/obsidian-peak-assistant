@@ -492,7 +492,7 @@ export function dispatchEvent(
 							weight: typeof ps.weight === 'number' ? ps.weight : 5,
 							status: 'pending' as const,
 							content: '',
-							streamingChunks: [],
+							streamingText: '',
 							generations: [],
 						}));
 						target.setPlanSections(sections);

@@ -15,10 +15,12 @@ export interface ProfileCardProps {
     profile: Profile;
     isActiveAgent: boolean;
     isActiveEmbedding: boolean;
+    isActiveWebSearch: boolean;
     onUpdate: (id: string, updates: Partial<Profile>) => void;
     onDelete: (id: string) => void;
     onToggleAgent: (id: string) => void;
     onToggleEmbedding: (id: string) => void;
+    onToggleWebSearch: (id: string) => void;
     onToggleEnabled: (id: string) => void;
 }
 
@@ -93,7 +95,7 @@ function MoreMenu({ profile, onToggleEnabled, onDelete }: {
                 <MoreHorizontal size={14} />
             </Button>
             {open && (
-                <div className="pktw-absolute pktw-right-0 pktw-top-full pktw-mt-1 pktw-z-50 pktw-min-w-[130px] pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-shadow-lg pktw-py-1">
+                <div className="pktw-absolute pktw-right-0 pktw-top-full pktw-mt-1 pktw-z-50 pktw-min-w-[130px] pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-popover pktw-shadow-lg pktw-py-1">
                     <button
                         type="button"
                         className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs hover:pktw-bg-pk-accent/10 pktw-transition-colors"
@@ -122,16 +124,18 @@ export function ProfileCard({
     profile,
     isActiveAgent,
     isActiveEmbedding,
+    isActiveWebSearch,
     onUpdate,
     onDelete,
     onToggleAgent,
     onToggleEmbedding,
+    onToggleWebSearch,
     onToggleEnabled,
 }: ProfileCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [testing, setTesting] = useState(false);
 
-    const isActive = isActiveAgent || isActiveEmbedding;
+    const isActive = isActiveAgent || isActiveEmbedding || isActiveWebSearch;
     const allowFreeText = profile.kind === 'custom' || profile.kind === 'litellm';
     const subtitle = `${PROVIDER_LABELS[profile.kind].label} · ${profile.primaryModel || '—'} · ${profile.apiKey ? 'API key set' : 'no key'}`;
 
@@ -162,6 +166,7 @@ export function ProfileCard({
                         <span className="pktw-text-sm pktw-font-bold pktw-truncate">{profile.name}</span>
                         <RoleBadge label="Agent" active={isActiveAgent} />
                         <RoleBadge label="Embedding" active={isActiveEmbedding} />
+                        <RoleBadge label="Web Search" active={isActiveWebSearch} />
                     </div>
                     <span className="pktw-text-[11px] pktw-text-pk-muted-foreground pktw-truncate pktw-block">{subtitle}</span>
                 </div>
@@ -283,6 +288,11 @@ export function ProfileCard({
                             label="Use as Embedding"
                             active={isActiveEmbedding}
                             onClick={() => onToggleEmbedding(profile.id)}
+                        />
+                        <RoleToggle
+                            label="Use as Web Search"
+                            active={isActiveWebSearch}
+                            onClick={() => onToggleWebSearch(profile.id)}
                         />
                     </div>
                 </div>

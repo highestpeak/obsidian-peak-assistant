@@ -20,8 +20,10 @@ import { AnimatedSparkles } from '@/ui/component/mine';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import { ConversationUpdatedEvent } from '@/core/eventBus';
 import { MessageAttachmentsList } from './MessageAttachmentsList';
-import { ToolCallsDisplay } from './ToolCallsDisplay';
+import { ToolCallSummary } from '../ToolCallSummary';
 import { MessageActionsList } from './MessageActionsList';
+import { MessageRoleAvatar } from '../MessageRoleAvatar';
+import { MessageStyleButtons } from '../MessageStyleButtons';
 
 interface StreamingState {
 	isStreaming: boolean;
@@ -237,14 +239,18 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 	return (
 		<div
 			className={cn(
-				"pktw-mb-4 pktw-px-4 pktw-flex pktw-w-full",
+				"pktw-group pktw-mb-4 pktw-px-4 pktw-flex pktw-w-full",
 				isUser ? "pktw-justify-end" : "pktw-justify-start"
 			)}
 			data-message-id={message.id}
 			data-message-role={message.role}
 			onContextMenu={handleContextMenu}
 		>
-			<Message from={message.role} className="pktw-max-w-[85%]">
+			<div className="pktw-flex pktw-gap-2.5 pktw-max-w-[85%]">
+				<MessageRoleAvatar role={isUser ? 'user' : 'assistant'} />
+				<Message from={message.role} className="pktw-flex-1 pktw-min-w-0">
+				<span className="pktw-text-[9px] pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-mb-0.5">{isUser ? 'You' : 'Peak'}</span>
+
 				{/* Render attachments if any - images should appear above text bubble */}
 				{message.resources && message.resources.length > 0 && (
 					<div className="pktw-mb-2 pktw-w-full pktw-max-w-full pktw-min-w-0 pktw-overflow-hidden">
@@ -278,12 +284,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
 					{/* Render tool calls for assistant messages */}
 					{!isUser && streamingState.currentToolCalls.length > 0 && (
-						<ToolCallsDisplay expanded={streamingState.isToolSequenceActive} toolCalls={streamingState.currentToolCalls.map(call => ({
-							toolName: call.toolName,
-							input: call.input,
-							output: call.output,
-							isActive: call.isActive ?? false,
-						}))} />
+						<ToolCallSummary
+							toolCalls={streamingState.currentToolCalls.map(call => ({
+								toolName: call.toolName,
+								input: call.input,
+								output: call.output,
+								isActive: call.isActive ?? false,
+							}))}
+							isStreaming={streamingState.isStreaming}
+						/>
 					)}
 
 					{/* Render message content */}
@@ -344,7 +353,16 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 					onCopy={handleCopy}
 					onRegenerate={handleRegenerate}
 				/>
+
+				{/* Style switch buttons — only for completed assistant messages */}
+				{message.role === 'assistant' && !streamingState.isStreaming && (
+					<MessageStyleButtons onStyleSelect={(prompt) => {
+						// Placeholder — style prompt wiring will be added when chat input supports it.
+						console.log('Style selected:', prompt);
+					}} />
+				)}
 			</Message>
+			</div>
 		</div>
 	);
 };

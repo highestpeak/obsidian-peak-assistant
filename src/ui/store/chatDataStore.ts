@@ -6,6 +6,23 @@ import { create } from 'zustand';
 import { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types';
 
 // ---------------------------------------------------------------------------
+// Streaming buffers — accumulate deltas outside Zustand, flush via RAF.
+// Prevents O(n²) string copies and limits re-renders to ~60fps.
+// ---------------------------------------------------------------------------
+
+const _chatStreamBuf = { text: '', raf: null as number | null };
+const _reasoningBuf = { text: '', raf: null as number | null };
+
+function _resetChatStreamBuf() {
+	if (_chatStreamBuf.raf !== null) { cancelAnimationFrame(_chatStreamBuf.raf); _chatStreamBuf.raf = null; }
+	_chatStreamBuf.text = '';
+}
+function _resetReasoningBuf() {
+	if (_reasoningBuf.raf !== null) { cancelAnimationFrame(_reasoningBuf.raf); _reasoningBuf.raf = null; }
+	_reasoningBuf.text = '';
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -195,40 +212,76 @@ export const useChatDataStore = create<ChatDataStore>((set, get) => ({
 
 	// ── Streaming actions ──
 
-	startStreaming: (messageId: string, role: ChatMessage['role']) =>
+	startStreaming: (messageId: string, role: ChatMessage['role']) => {
+		_resetChatStreamBuf();
 		set({
 			streamingMessageId: messageId,
 			streamingContent: '',
 			streamingRole: role,
 			isStreaming: true,
-		}),
+		});
+	},
 
-	appendStreamingDelta: (delta: string) =>
-		set((s) => ({ streamingContent: s.streamingContent + delta })),
+	appendStreamingDelta: (delta: string) => {
+		_chatStreamBuf.text += delta;
+		if (_chatStreamBuf.raf === null) {
+			_chatStreamBuf.raf = requestAnimationFrame(() => {
+				_chatStreamBuf.raf = null;
+				set({ streamingContent: _chatStreamBuf.text });
+			});
+		}
+	},
 
-	completeStreaming: (_message: ChatMessage) =>
+	completeStreaming: (_message: ChatMessage) => {
+		// Flush final content
+		if (_chatStreamBuf.text) {
+			set({ streamingContent: _chatStreamBuf.text });
+		}
+		_resetChatStreamBuf();
 		set({
 			streamingMessageId: null,
 			streamingContent: '',
 			streamingRole: null,
 			isStreaming: false,
-		}),
+		});
+	},
 
-	clearStreaming: () =>
+	clearStreaming: () => {
+		_resetChatStreamBuf();
 		set({
 			streamingMessageId: null,
 			streamingContent: '',
 			streamingRole: null,
 			isStreaming: false,
-		}),
+		});
+	},
 
 	// ── Reasoning actions ──
 
-	startReasoning: () => set({ reasoningContent: '', isReasoningActive: true }),
-	appendReasoningDelta: (delta: string) =>
-		set((s) => ({ reasoningContent: s.reasoningContent + delta })),
-	completeReasoning: () => set({ isReasoningActive: false }),
-	clearReasoning: () => set({ reasoningContent: '', isReasoningActive: false }),
+	startReasoning: () => {
+		_resetReasoningBuf();
+		set({ reasoningContent: '', isReasoningActive: true });
+	},
+	appendReasoningDelta: (delta: string) => {
+		_reasoningBuf.text += delta;
+		if (_reasoningBuf.raf === null) {
+			_reasoningBuf.raf = requestAnimationFrame(() => {
+				_reasoningBuf.raf = null;
+				set({ reasoningContent: _reasoningBuf.text });
+			});
+		}
+	},
+	completeReasoning: () => {
+		if (_reasoningBuf.text) {
+			set({ reasoningContent: _reasoningBuf.text });
+		}
+		_resetReasoningBuf();
+		set({ isReasoningActive: false });
+	},
+	clearReasoning: () => {
+		_resetReasoningBuf();
+		set({ reasoningContent: '', isReasoningActive: false });
+	},
 
 	// ── Tool actions ──
 

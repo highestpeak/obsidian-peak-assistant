@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Save, Copy, MessageSquare, Check, ExternalLink, Sparkles, Activity, Eye, FileText, List, FileSearch, Network } from 'lucide-react';
+import { Save, Copy, MessageSquare, Check, ExternalLink, Sparkles, Activity, Eye, FileText, List, FileSearch, Network, Download } from 'lucide-react';
 import { V2TableOfContents } from './V2TableOfContents';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import { useAIAnalysisRuntimeStore } from '../store/aiAnalysisStore';
-import { exportGraphJson } from '../store/aiGraphStore';
+import { exportGraphJson, useAIGraphStore } from '../store/aiGraphStore';
 
 type CopyTarget = 'process' | 'report' | 'graph';
 
@@ -47,8 +47,9 @@ export const V2Footer: React.FC<{
 	onCopy: () => void;
 	copied: boolean;
 	onSave: () => void;
+	onSaveGraph?: () => void;
 	onOpenInChat: () => void;
-}> = ({ onContinue, onSynthesize, showContinueAnalysis, onCopy: _legacyOnCopy, copied: _legacyCopied, onSave, onOpenInChat }) => {
+}> = ({ onContinue, onSynthesize, showContinueAnalysis, onCopy: _legacyOnCopy, copied: _legacyCopied, onSave, onSaveGraph, onOpenInChat }) => {
 	const v2View = useSearchSessionStore((s) => s.v2View);
 	const usage = useSearchSessionStore((s) => s.usage);
 	const duration = useSearchSessionStore((s) => s.duration);
@@ -57,6 +58,7 @@ export const V2Footer: React.FC<{
 	const v2PlanSections = useSearchSessionStore((s) => s.v2PlanSections);
 	// Read from the same store that handleAutoSave writes to (useAIAnalysisRuntimeStore)
 	const lastSavedPath = useAIAnalysisRuntimeStore((s) => s.autoSaveState.lastSavedPath);
+	const hasGraphData = useAIGraphStore((s) => s.graphData !== null);
 	const [showToc, setShowToc] = useState(false);
 	const [showCopyMenu, setShowCopyMenu] = useState(false);
 	const [copied, setCopied] = useState<CopyTarget | 'default' | null>(null);
@@ -125,7 +127,7 @@ export const V2Footer: React.FC<{
 	const copyLabel = defaultCopyTarget === 'process' ? 'Copy Process' : defaultCopyTarget === 'graph' ? 'Copy Graph' : 'Copy Report';
 
 	return (
-		<div className="pktw-relative pktw-border-t pktw-border-pk-border pktw-bg-pk-background pktw-px-3 pktw-py-2 pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0">
+		<div className="pktw-relative pktw-border-t pktw-border-pk-border pktw-bg-pk-background pktw-px-3 pktw-py-2 pktw-flex pktw-items-center pktw-justify-between pktw-flex-shrink-0 pktw-min-w-0 pktw-gap-2 pktw-flex-wrap">
 			{/* TOC popover — rendered above the footer, anchored bottom-left of this container */}
 			{showToc && reportMarkdown.length > 0 && (
 				<V2TableOfContents
@@ -136,7 +138,7 @@ export const V2Footer: React.FC<{
 				/>
 			)}
 			{/* Left: View tabs */}
-			<div className="pktw-flex pktw-items-center pktw-gap-1">
+			<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-flex-shrink-0">
 				{views.slice(0, 2).map(({ id, icon: Icon, label }) => (
 					<div
 						key={id}
@@ -145,7 +147,7 @@ export const V2Footer: React.FC<{
 							id === 'report' ? 'pktw-rounded-l-lg' : 'pktw-rounded-lg'
 						} ${
 							v2View === id
-								? 'pktw-bg-pk-accent pktw-text-white'
+								? 'pktw-bg-pk-accent pktw-text-pk-accent-fg'
 								: 'pktw-text-pk-foreground-muted hover:pktw-bg-gray-100'
 						}`}
 					>
@@ -173,7 +175,7 @@ export const V2Footer: React.FC<{
 						onClick={() => setV2View(id)}
 						className={`pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-rounded-lg pktw-transition-all pktw-cursor-pointer ${
 							v2View === id
-								? 'pktw-bg-pk-accent pktw-text-white'
+								? 'pktw-bg-pk-accent pktw-text-pk-accent-fg'
 								: 'pktw-text-pk-foreground-muted hover:pktw-bg-gray-100'
 						}`}
 					>
@@ -191,7 +193,7 @@ export const V2Footer: React.FC<{
 			)}
 
 			{/* Right: Actions */}
-			<div className="pktw-flex pktw-items-center pktw-gap-1">
+			<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-flex-shrink-0">
 				{/* Copy button with hover menu */}
 				<div className="pktw-relative">
 					<div
@@ -209,7 +211,7 @@ export const V2Footer: React.FC<{
 							ref={copyMenuRef}
 							onMouseEnter={cancelHideTimer}
 							onMouseLeave={startHideTimer}
-							className="pktw-absolute pktw-bottom-full pktw-right-0 pktw-mb-1 pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[140px]"
+							className="pktw-absolute pktw-bottom-full pktw-right-0 pktw-mb-1 pktw-bg-popover pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[140px]"
 						>
 							{COPY_TARGETS.map(({ id, icon: Icon, label }) => (
 								<div
@@ -236,6 +238,15 @@ export const V2Footer: React.FC<{
 				>
 					<Save className="pktw-w-3.5 pktw-h-3.5" />
 				</div>
+				{hasGraphData && onSaveGraph && (
+					<div
+						onClick={onSaveGraph}
+						className="pktw-p-1.5 pktw-text-[#6c757d] hover:pktw-bg-gray-100 pktw-rounded-md pktw-cursor-pointer pktw-transition-colors"
+						title="Save Graph to Vault"
+					>
+						<Download className="pktw-w-3.5 pktw-h-3.5" />
+					</div>
+				)}
 				{lastSavedPath && (
 					<div
 						onClick={async () => {
@@ -274,7 +285,7 @@ export const V2Footer: React.FC<{
 				</div>
 				<div
 					onClick={onOpenInChat}
-					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-white pktw-bg-pk-accent hover:pktw-bg-[#6d28d9] pktw-rounded-lg pktw-transition-colors pktw-cursor-pointer"
+					className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-font-medium pktw-text-pk-accent-fg pktw-bg-pk-accent hover:pktw-bg-pk-accent-hover pktw-rounded-lg pktw-transition-colors pktw-cursor-pointer"
 				>
 					Open in Chat
 					<ExternalLink className="pktw-w-3.5 pktw-h-3.5" />

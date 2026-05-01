@@ -30,7 +30,7 @@ function getResultIndexStateCore() {
         runId: rt.analysisRunId ?? '',
         summaryVersion: sum.summaryVersion ?? 0,
         summariesLen: sum.summaries?.length ?? 0,
-        summaryChunksLen: sum.summaryChunks?.length ?? 0,
+        summaryTextLen: sum.summaryText?.length ?? 0,
         topicsLen: res.topics?.length ?? 0,
         sourcesLen: res.sources?.length ?? 0,
         blocksLen: res.dashboardBlocks?.length ?? 0,
@@ -50,7 +50,7 @@ function coreStateChanged(
         last.runId !== cur.runId ||
         last.summaryVersion !== cur.summaryVersion ||
         last.summariesLen !== cur.summariesLen ||
-        last.summaryChunksLen !== cur.summaryChunksLen ||
+        last.summaryTextLen !== cur.summaryTextLen ||
         last.topicsLen !== cur.topicsLen ||
         last.sourcesLen !== cur.sourcesLen ||
         last.blocksLen !== cur.blocksLen ||
@@ -131,7 +131,7 @@ function buildResultIndexCore(): string {
     const summary =
         sum.summaries?.length && sum.summaryVersion != null
             ? sum.summaries[(sum.summaryVersion ?? 1) - 1] ?? sum.summaries[0] ?? ''
-            : sum.summaryChunks?.join('') ?? '';
+            : sum.summaryText ?? '';
     lines.push('');
     lines.push('[Summary]');
     lines.push(summary);

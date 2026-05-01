@@ -32,7 +32,7 @@ export async function runPatternDiscovery(input: PatternDiscoveryInput): Promise
 
 	try {
 		const ctx = AppContext.getInstance();
-		const mgr = ctx.aiServiceManager;
+		const mgr = ctx.manager;
 
 		// 1. Call LLM via Agent SDK (Pattern B: single-turn, no tools)
 		const text = await mgr.queryText(

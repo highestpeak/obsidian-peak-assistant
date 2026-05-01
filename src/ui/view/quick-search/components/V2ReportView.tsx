@@ -49,7 +49,7 @@ const SectionBlock: React.FC<{
 	});
 
 	const content = section.status === 'generating'
-		? section.streamingChunks.join('')
+		? section.streamingText
 		: section.content;
 
 	const handleCopy = useCallback(() => {
@@ -395,22 +395,33 @@ export const V2ReportView: React.FC<V2ReportViewProps> = ({ onClose, onApprove, 
 				</div>
 			)}
 
-			{/* Executive Summary — collapsible */}
-			{(summary || summaryStreaming) && (
-				<CollapsibleSummary summary={summary} summaryStreaming={summaryStreaming} />
+			{/* When no sections: show summary as the full report content */}
+			{sections.length === 0 && summary && (
+				<div className="pktw-px-1 pktw-pb-4">
+					<StreamdownIsolated isAnimating={summaryStreaming} className="pktw-select-text pktw-break-words">
+						{summary}
+					</StreamdownIsolated>
+				</div>
 			)}
 
-			{/* Section blocks */}
-			<div className="pktw-flex pktw-flex-col pktw-gap-3">
-				{sections.map((sec, i) => (
-					<SectionBlock
-						key={sec.id}
-						section={sec}
-						index={i}
-						onRegenerate={onRegenerateSection}
-					/>
-				))}
-			</div>
+			{/* When sections exist: show executive summary + sections */}
+			{sections.length > 0 && (
+				<>
+					{(summary || summaryStreaming) && (
+						<CollapsibleSummary summary={summary} summaryStreaming={summaryStreaming} />
+					)}
+					<div className="pktw-flex pktw-flex-col pktw-gap-3">
+						{sections.map((sec, i) => (
+							<SectionBlock
+								key={sec.id}
+								section={sec}
+								index={i}
+								onRegenerate={onRegenerateSection}
+							/>
+						))}
+					</div>
+				</>
+			)}
 		</motion.div>
 	);
 };

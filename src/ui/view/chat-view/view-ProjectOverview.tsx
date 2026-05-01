@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { ChatConversation, ChatProject } from '@/service/chat/types';
+import React, { useState } from 'react';
+import { ChatProject } from '@/service/chat/types';
 import { cn } from '@/ui/react/lib/utils';
-import { Folder, MessageCircle, MessageSquare, Calendar, Star, FileText, Image, File } from 'lucide-react';
+import { MessageSquare, Star, FileText } from 'lucide-react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
-import { ConversationItem } from '@/ui/view/chat-view/components/conversation-item';
 import { Button } from '@/ui/component/shared-ui/button';
-import { getFileIconByName, getFileTypeByName } from '@/ui/view/shared/file-utils';
+import { FileIcon, getFileTypeByName } from '@/ui/view/shared/file-utils';
 import { ResourceAttachmentEntry, useProjectLoad, useConversationLoad, StarredEntry } from './hooks';
 import { openAttachment } from '@/core/utils/vault-utils';
 import { useChatViewStore } from './store/chatViewStore';
@@ -16,32 +15,6 @@ interface ProjectOverviewViewProps {
 }
 
 type TabType = 'conversations' | 'starred' | 'resources';
-
-interface ProjectStatsCardProps {
-	icon: React.ReactNode;
-	label: string;
-	value: number;
-	color: string;
-}
-
-/**
- * Component for displaying a single project statistics card
- */
-const ProjectStatsCard: React.FC<ProjectStatsCardProps> = ({ icon, label, value, color }) => {
-	return (
-		<div className="pktw-flex pktw-items-center pktw-gap-4 pktw-p-6 pktw-rounded-xl pktw-border pktw-border-border pktw-bg-card pktw-shadow-md pktw-min-w-[200px]">
-			<div className={`pktw-p-3 pktw-rounded-lg pktw-bg-${color}-500/10`}>
-				<div className={`pktw-text-${color}-600 dark:pktw-text-${color}-400`}>
-					{icon}
-				</div>
-			</div>
-			<div className="pktw-flex pktw-flex-col">
-				<span className="pktw-text-sm pktw-font-medium pktw-text-muted-foreground">{label}</span>
-				<span className="pktw-text-3xl pktw-font-bold pktw-text-foreground">{value}</span>
-			</div>
-		</div>
-	);
-};
 
 /**
  * Project overview view component
@@ -59,6 +32,7 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 	}
 
 	const [activeTab, setActiveTab] = useState<TabType>('conversations');
+	const [isEditingDesc, setIsEditingDesc] = useState(false);
 
 	// Use unified project load hook for state management
 	const {
@@ -70,6 +44,9 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 		summaryText,
 	} = useProjectLoad(projectId);
 
+	const [description, setDescription] = useState(project?.context?.shortSummary ?? '');
+	const [descBeforeEdit, setDescBeforeEdit] = useState('');
+
 	if (!project) {
 		return (
 			<div className="pktw-flex pktw-items-center pktw-justify-center pktw-h-full pktw-text-muted-foreground">
@@ -78,23 +55,53 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 		);
 	}
 
+	const handleStartEditing = () => {
+		setDescBeforeEdit(description);
+		setIsEditingDesc(true);
+	};
+
+	const handleSaveDesc = () => {
+		setIsEditingDesc(false);
+		// Description saved locally; persistence would go through storage layer
+	};
+
+	const handleCancelDesc = () => {
+		setDescription(descBeforeEdit);
+		setIsEditingDesc(false);
+	};
+
 	return (
 		<div className="pktw-flex pktw-flex-col pktw-h-full pktw-overflow-hidde">
 			<div className="pktw-flex-1 pktw-overflow-y-auto pktw-pt-10 pktw-w-4/6 pktw-mx-auto">
-				{/* Stats */}
-				<div className="pktw-flex pktw-justify-center pktw-gap-6 pktw-mb-8">
-					<ProjectStatsCard
-						icon={<MessageCircle className="pktw-w-6 pktw-h-6" />}
-						label="Conversations"
-						value={conversations.length}
-						color="blue"
-					/>
-					<ProjectStatsCard
-						icon={<MessageSquare className="pktw-w-6 pktw-h-6" />}
-						label="Messages"
-						value={totalMessages}
-						color="green"
-					/>
+				{/* Inline Stats */}
+				<div className="pktw-flex pktw-justify-center pktw-mb-4">
+					<span className="pktw-text-sm pktw-text-muted-foreground">
+						{conversations.length} conversations · {totalMessages} messages · {starredEntries.length} starred
+					</span>
+				</div>
+
+				{/* Editable Description */}
+				<div className="pktw-flex pktw-justify-center pktw-mb-8">
+					{isEditingDesc ? (
+						<input
+							autoFocus
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+							onBlur={handleSaveDesc}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter') handleSaveDesc();
+								if (e.key === 'Escape') handleCancelDesc();
+							}}
+							className="pktw-w-full pktw-text-sm pktw-bg-transparent pktw-border-b pktw-border-border pktw-outline-none pktw-py-1"
+						/>
+					) : (
+						<span
+							onClick={handleStartEditing}
+							className="pktw-text-sm pktw-text-muted-foreground pktw-cursor-pointer hover:pktw-text-foreground pktw-transition-colors"
+						>
+							{description || 'Click to add a description...'}
+						</span>
+					)}
 				</div>
 
 				{/* Tab Navigation */}
@@ -107,7 +114,7 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 								'pktw-px-4 pktw-py-2.5 pktw-text-xl pktw-font-medium pktw-transition-all pktw-relative',
 								'pktw-border-b-2 pktw-border-transparent',
 								activeTab === tab
-									? 'pktw-text-primary pktw-border-primary'
+									? 'pktw-text-[var(--pk-accent,#6d28d9)] pktw-border-[var(--pk-accent,#6d28d9)]'
 									: 'pktw-text-muted-foreground'
 							)}
 							onClick={() => setActiveTab(tab)}
@@ -124,7 +131,9 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 					{activeTab === 'conversations' && (
 						<ConversationsTab
 							projectId={projectId}
+							project={project}
 							summaryText={summaryText}
+							conversationCount={conversations.length}
 						/>
 					)}
 					{activeTab === 'starred' && (
@@ -146,17 +155,38 @@ export const ProjectOverviewViewComponent: React.FC<ProjectOverviewViewProps> = 
 
 interface ConversationsTabProps {
 	projectId: string;
+	project: ChatProject;
 	summaryText?: string;
+	conversationCount: number;
 }
 
 const ConversationsTab: React.FC<ConversationsTabProps> = ({
 	projectId,
+	project,
 	summaryText,
+	conversationCount,
 }) => {
 
 	const { loadConversation } = useConversationLoad();
 
 	const [summaryExpanded, setSummaryExpanded] = useState<boolean>(summaryText ? true : false);
+
+	const handleNewConversation = () => {
+		useChatViewStore.getState().setPendingConversation({
+			title: 'New Conversation',
+			project,
+		});
+	};
+
+	if (conversationCount === 0) {
+		return (
+			<div className="pktw-flex pktw-flex-col pktw-items-center pktw-justify-center pktw-py-12 pktw-gap-3">
+				<MessageSquare className="pktw-w-10 pktw-h-10 pktw-text-muted-foreground/30" />
+				<span className="pktw-text-sm pktw-text-muted-foreground">No conversations yet</span>
+				<Button variant="default" onClick={handleNewConversation}>New Conversation</Button>
+			</div>
+		);
+	}
 
 	return (
 		<div className="pktw-space-y-3">
@@ -190,7 +220,7 @@ const StarredTab: React.FC<StarredTabProps> = ({ entries }) => {
 		return (
 			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-12">
 				<Star className="pktw-w-12 pktw-h-12 pktw-mx-auto pktw-mb-3 pktw-opacity-50" />
-				<p className="pktw-text-sm">No starred messages yet.</p>
+				<span className="pktw-text-sm">No starred messages yet.</span>
 			</div>
 		);
 	}
@@ -213,7 +243,7 @@ const StarredTab: React.FC<StarredTabProps> = ({ entries }) => {
 						onClick={() => openConvAndScroll2Msg(entry.conversation.meta.id, entry.message.id)}
 					>
 						<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-mb-2">
-							<Star className="pktw-w-4 pktw-h-4 pktw-fill-yellow-400 pktw-text-yellow-400 pktw-shrink-0" />
+							<Star className="pktw-w-4 pktw-h-4 pktw-fill-[var(--pk-warning,#f59e0b)] pktw-text-[var(--pk-warning,#f59e0b)] pktw-shrink-0" />
 							<div className="pktw-text-xs pktw-font-medium pktw-text-muted-foreground pktw-truncate">
 								{entry.conversation.meta.title}
 							</div>
@@ -242,7 +272,7 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources }) => {
 		return (
 			<div className="pktw-text-center pktw-text-muted-foreground pktw-py-12">
 				<FileText className="pktw-w-12 pktw-h-12 pktw-mx-auto pktw-mb-3 pktw-opacity-50" />
-				<p className="pktw-text-sm">No resources attached yet.</p>
+				<span className="pktw-text-sm">No resources attached yet.</span>
 			</div>
 		);
 	}
@@ -250,7 +280,6 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources }) => {
 	return (
 		<div className="pktw-space-y-3">
 			{resources.map((entry, index) => {
-				const FileIcon = getFileIconByName(entry.resourceLabel);
 				const fileType = getFileTypeByName(entry.resourceLabel);
 				return (
 					<div
@@ -263,7 +292,7 @@ const ResourcesTab: React.FC<ResourcesTabProps> = ({ resources }) => {
 						onClick={() => openAttachment(entry.resource)}
 					>
 						<div className="pktw-p-2 pktw-rounded-md pktw-bg-muted pktw-shrink-0">
-							<FileIcon className="pktw-w-5 pktw-h-5 pktw-text-muted-foreground" />
+							<FileIcon type={fileType} className="pktw-text-muted-foreground" size={20} />
 						</div>
 						<div className="pktw-flex-1 pktw-min-w-0">
 							<div className="pktw-text-sm pktw-font-medium pktw-text-foreground pktw-truncate pktw-mb-1">

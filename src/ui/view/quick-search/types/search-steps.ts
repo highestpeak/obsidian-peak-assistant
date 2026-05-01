@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 export type V2TimelineItem =
-	| { kind: 'text'; id: string; chunks: string[]; complete: boolean }
+	| { kind: 'text'; id: string; text: string; complete: boolean }
 	| { kind: 'tool'; step: V2ToolStep };
 
 export interface V2Source {

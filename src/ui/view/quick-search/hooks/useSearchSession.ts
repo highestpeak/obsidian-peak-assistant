@@ -142,6 +142,7 @@ export function useSearchSession() {
 			sessionRefs.abortController = controller;
 		}
 		const signal = abortSignal || controller?.signal;
+		let mySessionId: string | undefined;
 
 		try {
 			// Validate query
@@ -172,7 +173,7 @@ export function useSearchSession() {
 
 			// Start session
 			store.getState().startSession(searchQuery);
-			const mySessionId = store.getState().id;
+			mySessionId = store.getState().id;
 			// Bridge: sync analysisMode to runtime store before startAnalyzing
 			useAIAnalysisRuntimeStore.getState().setAnalysisMode(analysisMode);
 			useAIAnalysisRuntimeStore.getState().startAnalyzing();
@@ -220,7 +221,7 @@ export function useSearchSession() {
 				// Bridge
 				useAIAnalysisRuntimeStore.getState().setHitlFeedbackCallback(hitlCallback);
 
-				await consumeStream(vaultAgentRef.current.startSession(searchQuery), streamCtx);
+				await consumeStream(vaultAgentRef.current.startSession(searchQuery, { webEnabled, signal }), streamCtx);
 
 				// If pipeline paused at HITL or plan_ready, completion is deferred
 				const postStreamStatus = store.getState().status;
@@ -301,8 +302,8 @@ export function useSearchSession() {
 						graphEdgesCount: (res.graph?.edges ?? []).length,
 					},
 					timeline: reorganizeTimelineByAgent(timelineRef.current),
-					summary: (sum.summaryChunks ?? []).join(''),
-					summaryLen: (sum.summaryChunks ?? []).join('').length,
+					summary: sum.summaryText ?? '',
+					summaryLen: (sum.summaryText ?? '').length,
 				};
 				console.debug('[useSearchSession] debugDumpJson', JSON.stringify(debugDump));
 

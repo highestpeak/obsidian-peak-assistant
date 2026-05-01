@@ -36,7 +36,7 @@ export const V2ContinueAnalysisInput: React.FC<V2ContinueAnalysisInputProps> = (
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="pktw-fixed pktw-inset-0 pktw-bg-black/20 pktw-backdrop-blur-sm pktw-z-[9998]"
+                className="pktw-fixed pktw-inset-0 pktw-bg-black/40 pktw-backdrop-blur-sm pktw-z-[9998]"
                 onClick={onClose}
             />
 
@@ -48,7 +48,7 @@ export const V2ContinueAnalysisInput: React.FC<V2ContinueAnalysisInputProps> = (
                 transition={{ ease: [0.22, 1, 0.36, 1] }}
                 className="pktw-fixed pktw-bottom-16 pktw-left-1/2 pktw--translate-x-1/2 pktw-w-full pktw-max-w-2xl pktw-px-6 pktw-z-[9999]"
             >
-                <div className="pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-xl pktw-shadow-lg pktw-overflow-hidden">
+                <div className="pktw-bg-popover pktw-border pktw-border-pk-border pktw-rounded-xl pktw-shadow-2xl pktw-overflow-hidden">
                     {/* Header */}
                     <div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-4 pktw-py-3 pktw-border-b pktw-border-pk-border">
                         <span className="pktw-text-xs pktw-font-semibold pktw-text-[#2e3338]">

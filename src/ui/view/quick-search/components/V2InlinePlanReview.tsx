@@ -1,11 +1,23 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronRight, ChevronUp, ChevronDown, Trash2, Sparkles, FileText, AlertTriangle, Check, Plus } from 'lucide-react';
+import { ChevronRight, ChevronUp, ChevronDown, Trash2, Sparkles, FileText, AlertTriangle, Check, Plus, Microscope, Zap, Scale, Target, ShieldAlert, Map as MapIcon, Layers, Eye, Telescope, type LucideIcon } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Section } from '../store/searchSessionStore';
 import { VISUAL_TYPE_LABELS, MISSION_ROLES } from '@/core/constant';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
+
+const ROLE_ICON_MAP: Record<string, LucideIcon> = {
+	synthesis: Microscope,
+	contradictions: Zap,
+	trade_off: Scale,
+	action_plan: Target,
+	risk_audit: ShieldAlert,
+	roadmap: MapIcon,
+	decomposition: Layers,
+	blindspots: Eye,
+	probing_horizon: Telescope,
+};
 
 /** A single section card nested under its role */
 const SectionCard: React.FC<{
@@ -188,7 +200,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 										{/* Role header */}
 										<div className={`pktw-pl-3 pktw-border-l-2 ${role.bgColor.split(' ')[1] ?? 'pktw-border-gray-200'}`}>
 											<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-py-1">
-												<span className="pktw-text-sm">{role.icon}</span>
+												{(() => { const RIcon = ROLE_ICON_MAP[role.key]; return RIcon ? <RIcon className={`pktw-w-3.5 pktw-h-3.5 ${role.color}`} /> : null; })()}
 												<span className={`pktw-text-xs pktw-font-semibold ${role.color}`}>{role.label}</span>
 												{role.required && (
 													<span className="pktw-text-[8px] pktw-text-pk-foreground-muted pktw-uppercase">required</span>
@@ -239,7 +251,15 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 							{MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).length > 0 && (
 								<div className="pktw-ml-1 pktw-pl-3 pktw-border-l-2 pktw-border-gray-100 pktw-py-1.5">
 									<span className="pktw-text-[9px] pktw-text-pk-foreground-muted">
-										Not covered: {MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).map((r) => `${r.icon} ${r.label}`).join('  ')}
+										Not covered: {MISSION_ROLES.filter((r) => !r.required && !coveredRoles.has(r.key)).map((r) => {
+								const RIcon = ROLE_ICON_MAP[r.key];
+								return (
+									<span key={r.key} className="pktw-inline-flex pktw-items-center pktw-gap-0.5 pktw-mr-1.5">
+										{RIcon && <RIcon className="pktw-w-2.5 pktw-h-2.5" />}
+										{r.label}
+									</span>
+								);
+							})}
 									</span>
 								</div>
 							)}
@@ -285,7 +305,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 								{!planApproved && (
 									<Button
 										onClick={onApprove}
-										className="pktw-w-full pktw-bg-pk-accent hover:pktw-bg-[#6d28d9] pktw-text-white pktw-font-medium"
+										className="pktw-w-full pktw-bg-pk-accent pktw-text-pk-accent-fg pktw-font-medium pktw-transition-all hover:pktw-opacity-90 hover:pktw-shadow-md active:pktw-scale-[0.98]"
 									>
 										<Sparkles className="pktw-w-4 pktw-h-4 pktw-mr-2" />
 										Generate Report ({sections.length} sections)
@@ -308,7 +328,7 @@ export const V2InlinePlanReview: React.FC<V2InlinePlanReviewProps> = ({ onApprov
 									key={sec.id}
 									className="pktw-inline-flex pktw-items-center pktw-gap-1 pktw-px-2 pktw-py-0.5 pktw-text-[10px] pktw-text-pk-foreground-muted pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded"
 								>
-									{role && <span className="pktw-text-xs">{role.icon}</span>}
+									{role && (() => { const RIcon = ROLE_ICON_MAP[role.key]; return RIcon ? <RIcon className={`pktw-w-3 pktw-h-3 ${role.color}`} /> : null; })()}
 									{sec.title}
 								</span>
 							);

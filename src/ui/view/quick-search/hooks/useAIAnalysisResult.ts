@@ -90,8 +90,7 @@ export function useAIAnalysisResult() {
 
     const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
     const summary = useAIAnalysisSummaryStore((s) => {
-        const chunks = s.summaryChunks ?? [];
-        if (s.isSummaryStreaming || (isAnalyzing && chunks.length > 0)) return chunks.join('');
+        if (s.isSummaryStreaming || (isAnalyzing && s.summaryText)) return s.summaryText;
         const list = s.summaries;
         const idx = (s.summaryVersion ?? 1) - 1;
         return list[idx] ?? list[0] ?? '';
@@ -300,13 +299,13 @@ export function useAIAnalysisResult() {
 }
 
 export function useAnalyzeTopicResults() {
-    const summaryChunks = useAIAnalysisSummaryStore((s) => s.summaryChunks);
+    const summaryText = useAIAnalysisSummaryStore((s) => s.summaryText);
     const sources = useAIAnalysisResultStore((s) => s.sources);
     const topicInspectResults = useAIAnalysisTopicsStore((s) => s.topicInspectResults);
     const setTopicInspectResults = useAIAnalysisTopicsStore((s) => s.setTopicInspectResults);
     const setTopicInspectLoading = useAIAnalysisTopicsStore((s) => s.setTopicInspectLoading);
 
-    const summary = (summaryChunks ?? []).join('');
+    const summary = summaryText ?? '';
 
     const handleCopyTopicInfo = useCallback(async (topic: string) => {
         const inspectList = topicInspectResults[topic] ?? [];

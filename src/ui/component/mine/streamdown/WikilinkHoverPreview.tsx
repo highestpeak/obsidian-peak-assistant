@@ -157,23 +157,25 @@ export const WikilinkHoverCard: React.FC<WikilinkHoverCardProps> = ({ path, prev
 		<div
 			ref={ref}
 			role="tooltip"
-			className="pktw-fixed pktw-z-[10000] pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-background pktw-shadow-lg pktw-overflow-hidden pktw-pointer-events-auto"
+			className="pktw-fixed pktw-z-[10000] pktw-rounded-lg pktw-border pktw-shadow-lg pktw-overflow-hidden pktw-pointer-events-auto"
 			style={{
 				left: Math.min(left, window.innerWidth - maxW - 16),
 				top: Math.min(top, window.innerHeight - maxH - 16),
 				maxWidth: maxW,
 				maxHeight: maxH,
+				backgroundColor: 'var(--background-primary)',
+				borderColor: 'var(--background-modifier-border)',
 			}}
 			onMouseLeave={onClose}
 			onMouseEnter={onEnterCard}
 		>
-			<div className="pktw-p-2 pktw-border-b pktw-border-pk-border pktw-text-xs pktw-font-medium pktw-text-pk-foreground-muted pktw-truncate" title={path}>
+			<div className="pktw-p-2 pktw-border-b pktw-text-xs pktw-font-medium pktw-truncate" style={{ borderColor: 'var(--background-modifier-border)', color: 'var(--text-muted)' }} title={path}>
 				{path}
 			</div>
 			<div className="pktw-p-2 pktw-overflow-auto" style={{ maxHeight: maxH - 40 }}>
-				{loading && !preview && <span className="pktw-text-xs pktw-text-pk-foreground-muted">Loading…</span>}
+				{loading && !preview && <span className="pktw-text-xs" style={{ color: 'var(--text-muted)' }}>Loading…</span>}
 				{preview?.type === 'text' && (
-					<pre className="pktw-text-xs pktw-whitespace-pre-wrap pktw-font-mono pktw-text-pk-foreground pktw-m-0">
+					<pre className="pktw-text-xs pktw-whitespace-pre-wrap pktw-font-mono pktw-m-0" style={{ color: 'var(--text-normal)' }}>
 						{preview.content}
 					</pre>
 				)}

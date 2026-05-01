@@ -1,0 +1,22 @@
+Suggest wiki-links for this document.
+
+{{#if title}}Document: {{title}}{{/if}}
+
+Existing links (do NOT re-suggest these):
+{{existingLinks}}
+
+---
+{{{content}}}
+---
+
+Return JSON matching this schema:
+{
+  "links": [
+    {
+      "target": "note title to link to",
+      "context": "the sentence where [[target]] should be inserted",
+      "reason": "why this link is valuable",
+      "type": "outgoing" | "incoming"
+    }
+  ]
+}

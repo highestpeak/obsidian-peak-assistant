@@ -1,51 +1,42 @@
-# local MCP config (machine-specific paths)
-.mcp.json
 
 # Agent trace output (generated at runtime)
-data/traces/
-
-# vscode
-.vscode 
-
-# Intellij
-*.iml
-.idea
-
-# npm
-node_modules
-
-# bun - no use anymore
-bun.lock
-
 # Don't include the compiled main.js file in the repo.
-# They should be uploaded to GitHub releases instead.
-main.js
-main.css
-styles.css
-streamdown-styles.css
-styles.tailwind.css
-styles.streamdown.css
-sdk/
-src/styles/streamdown-isolated-css.ts
-search-worker.js
-*.wasm
-
-# Exclude sourcemaps
-*.map
-
-# KaTeX fonts (copied from node_modules during build)
-fonts/
-
-# obsidian
-data.json
-
 # Exclude macOS Finder (System Explorer) View States
+# Exclude sourcemaps
+# Intellij
+# KaTeX fonts (copied from node_modules during build)
+# Managed native module binaries (downloaded at runtime by NativeModuleManager)
+# They should be uploaded to GitHub releases instead.
+# bun - no use anymore
+# local MCP config (machine-specific paths)
+# npm
+# obsidian
+# vscode
+*.iml
+*.map
+*.wasm
 .DS_Store
-
-.cursor/plans/
 .cursor/debug.log
-
+.cursor/plans/
+.idea
+.mcp.json
+.superpowers/
+.vscode 
+bun.lock
+data.json
+data/traces/
 dist-desktop/
+fonts/
+main.css
+main.js
+native/
+node_modules
 opencode.json
-
+sdk/
+search-worker.js
+src/styles/streamdown-isolated-css.ts
+streamdown-styles.css
+styles.css
+styles.streamdown.css
+styles.tailwind.css
 tmp_code_ref_for_cursor.claude/worktrees/

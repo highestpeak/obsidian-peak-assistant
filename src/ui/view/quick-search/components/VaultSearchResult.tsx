@@ -1,5 +1,6 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ExternalLink } from 'lucide-react';
+import { Button } from '@/ui/component/shared-ui/button';
 import { getFileIcon } from '@/ui/view/shared/file-utils';
 import { humanReadableTime } from '@/core/utils/date-utils';
 import type { SearchResultItem } from '@/service/search/types';
@@ -134,7 +135,7 @@ export const SearchResultRow: React.FC<{
 	return (
 		<div
 			ref={itemRef}
-			className={`pktw-relative pktw-px-4 pktw-py-2 pktw-cursor-pointer pktw-transition-colors pktw-mb-2 ${isSelected ? 'pktw-bg-[#eef2ff]' : 'hover:pktw-bg-[#fafafa]'
+			className={`pktw-group pktw-relative pktw-px-4 pktw-py-2 pktw-cursor-pointer pktw-transition-colors pktw-mb-2 ${isSelected ? 'pktw-bg-[#eef2ff]' : 'hover:pktw-bg-[#fafafa]'
 				}`}
 			onClick={handleClick}
 		>
@@ -180,6 +181,20 @@ export const SearchResultRow: React.FC<{
 						{Math.round(result.score * 100)}%
 					</span>
 				)}
+
+				{/* Open in new tab button — visible on row hover only */}
+				<Button
+					variant="ghost"
+					size="icon"
+					title="Open in new tab"
+					className="pktw-flex-shrink-0 pktw-h-6 pktw-w-6 pktw-rounded pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity"
+					onClick={(e) => {
+						e.stopPropagation();
+						createOpenSourceCallback(onClose, true)(result);
+					}}
+				>
+					<ExternalLink className="pktw-w-3.5 pktw-h-3.5 pktw-text-[#999999]" />
+				</Button>
 
 				{/* Last Modified Time */}
 				<div className="pktw-flex-shrink-0 pktw-ml-4 pktw-text-xs pktw-text-[#999999] pktw-whitespace-nowrap">

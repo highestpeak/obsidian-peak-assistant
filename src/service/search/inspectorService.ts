@@ -451,7 +451,11 @@ export async function getConnectedLinks(currentPath: string): Promise<ConnectedL
 	const docMeta = await indexedDocumentRepo.getByPath(currentPath);
 	if (!docMeta) return [];
 
-	const edges = await mobiusEdgeRepo.getAllEdgesForNode(docMeta.id, LINKS_LIMIT);
+	const allEdges = await mobiusEdgeRepo.getAllEdgesForNode(docMeta.id, LINKS_LIMIT);
+
+	// Only keep wiki-link edges (references / references_resource) for CONNECTED section
+	const LINK_TYPES: ReadonlySet<string> = new Set([GraphEdgeType.References, GraphEdgeType.ReferencesResource]);
+	const edges = allEdges.filter((e) => LINK_TYPES.has(e.type));
 
 	// Separate with context stored in edge attributes
 	const outEdges = edges.filter((e) => e.from_node_id === docMeta.id);
@@ -482,7 +486,8 @@ export async function getConnectedLinks(currentPath: string): Promise<ConnectedL
 	const inIdSet = new Set(inIds);
 
 	for (const node of nodesMap.values()) {
-		if (!isIndexedNoteNodeType(node.type) || !node.label) continue;
+		// Only show real user documents — exclude hub_doc, tags, folders, etc.
+		if (node.type !== GraphNodeType.Document || !node.label) continue;
 		const path = getPathFromNode(node);
 		if (!path) continue;
 		const contextSnippet = contextByNodeId.get(node.id) ?? null;
@@ -563,41 +568,90 @@ export async function getDiscoveredConnections(
 		getUnlinkedMentions(currentPath, 10),
 	]);
 
-	const discovered: DiscoveredConnection[] = [
-		...semItems.map((g): DiscoveredConnection => ({
-			path: g.path,
-			label: g.label,
-			type: 'SEM',
-			score: parseFloat(String(g.similarity ?? '0').replace(/%/, '')) / 100,
-			whyText: 'Content similarity',
-		})),
-		...coCiteItems.map((c): DiscoveredConnection => ({
-			path: c.path,
-			label: c.label,
-			type: 'CO-CITE',
-			score: c.score,
-			whyText: `Both cited by: ${c.citingNotes.slice(0, 3).join(', ')}`,
-		})),
-		...unlinkedItems.map((u): DiscoveredConnection => ({
-			path: u.path,
-			label: u.label,
-			type: 'UNLINKED',
-			score: u.score,
-			whyText: u.contextSnippet,
-		})),
+	// ── Per-source raw items ──────────────────────────────────────────────
+	const semRaw = semItems.map((g) => ({
+		path: g.path,
+		label: g.label,
+		type: 'SEM' as const,
+		rawScore: parseFloat(String(g.similarity ?? '0').replace(/%/, '')) / 100,
+		whyText: 'Content similarity',
+	}));
+	const coCiteRaw = coCiteItems.map((c) => ({
+		path: c.path,
+		label: c.label,
+		type: 'CO-CITE' as const,
+		rawScore: c.score, // already normalized within source (weighted_score / max)
+		whyText: `Both cited by: ${c.citingNotes.slice(0, 3).join(', ')}`,
+	}));
+	const unlinkedRaw = unlinkedItems.map((u) => ({
+		path: u.path,
+		label: u.label,
+		type: 'UNLINKED' as const,
+		rawScore: u.score,
+		whyText: u.contextSnippet,
+	}));
+
+	// ── Min-max normalize each source to [0,1] ──────────────────────────
+	function normalizeScores<T extends { rawScore: number }>(items: T[]): (T & { normScore: number })[] {
+		if (!items.length) return [];
+		const min = Math.min(...items.map((i) => i.rawScore));
+		const max = Math.max(...items.map((i) => i.rawScore));
+		const range = max - min || 1;
+		return items.map((i) => ({ ...i, normScore: (i.rawScore - min) / range }));
+	}
+
+	const allNormalized = [
+		...normalizeScores(semRaw),
+		...normalizeScores(coCiteRaw),
+		...normalizeScores(unlinkedRaw),
 	];
 
-	// Deduplicate by path, keep highest score
-	const byPath = new Map<string, DiscoveredConnection>();
-	for (const item of discovered) {
+	// ── Multi-source fusion: combine scores when same path appears in multiple sources ──
+	const byPath = new Map<string, {
+		label: string;
+		types: Set<string>;
+		totalScore: number;
+		bestType: DiscoveredConnection['type'];
+		bestWhyText: string;
+		bestNorm: number;
+	}>();
+
+	for (const item of allNormalized) {
 		if (!item.path) continue;
+		if (item.path.includes('Hub-Summaries/')) continue;
 		const cur = byPath.get(item.path);
-		if (!cur || item.score > cur.score) {
-			byPath.set(item.path, item);
+		if (!cur) {
+			byPath.set(item.path, {
+				label: item.label,
+				types: new Set([item.type]),
+				totalScore: item.normScore,
+				bestType: item.type,
+				bestWhyText: item.whyText,
+				bestNorm: item.normScore,
+			});
+		} else {
+			cur.types.add(item.type);
+			// Multi-source bonus: add 0.7× of the secondary source score
+			cur.totalScore += item.normScore * 0.7;
+			if (item.normScore > cur.bestNorm) {
+				cur.bestNorm = item.normScore;
+				cur.bestType = item.type;
+				cur.bestWhyText = item.whyText;
+				cur.label = item.label;
+			}
 		}
 	}
 
 	return [...byPath.values()]
+		.map((v): DiscoveredConnection => ({
+			path: [...byPath.entries()].find(([, val]) => val === v)![0],
+			label: v.label,
+			type: v.bestType,
+			score: Math.min(1, v.totalScore),
+			whyText: v.types.size > 1
+				? `${v.bestWhyText} (+${[...v.types].filter((t) => t !== v.bestType).join(', ')})`
+				: v.bestWhyText,
+		}))
 		.sort((a, b) => b.score - a.score)
 		.slice(0, limit);
 }

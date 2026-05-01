@@ -61,6 +61,9 @@ interface ChatViewState {
 	// ── File changes (copilot feature — kept from chatSessionStore) ──
 	fileChanges: FileChange[];
 	promptsSuggest: NavigableMenuItem[];
+
+	// ── Outline panel ──
+	showOutline: boolean;
 }
 
 interface ChatViewActions {
@@ -100,6 +103,10 @@ interface ChatViewActions {
 	discardFileChange: (id: string) => void;
 	setExternalPrompts: (prompts: NavigableMenuItem[]) => void;
 
+	// ── Outline panel actions ──
+	toggleOutline: () => void;
+	setShowOutline: (show: boolean) => void;
+
 	// ── Lifecycle ──
 	reset: () => void;
 	resetSession: () => void;
@@ -114,7 +121,7 @@ type ChatViewStore = ChatViewState & ChatViewActions;
 const INITIAL_SESSION: Pick<ChatViewState,
 	'chatMode' | 'selectedModel' | 'isSearchActive' | 'searchProvider' | 'enableWebSearch' |
 	'enableVaultSearch' | 'attachmentHandlingMode' | 'llmOutputControlSettings' |
-	'isCodeInterpreterEnabled' | 'suggestionTags' | 'currentInputTags' | 'fileChanges' | 'promptsSuggest'
+	'isCodeInterpreterEnabled' | 'suggestionTags' | 'currentInputTags' | 'fileChanges' | 'promptsSuggest' | 'showOutline'
 > = {
 	chatMode: 'chat',
 	selectedModel: undefined,
@@ -129,6 +136,7 @@ const INITIAL_SESSION: Pick<ChatViewState,
 	currentInputTags: [],
 	fileChanges: [],
 	promptsSuggest: [],
+	showOutline: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -289,6 +297,13 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 	discardFileChange: (id) =>
 		set((s) => ({ fileChanges: s.fileChanges.map(c => c.id === id ? { ...c, accepted: false } : c) })),
 	setExternalPrompts: (prompts) => set({ promptsSuggest: prompts }),
+
+	// ═══════════════════════════════════════════════════════════════════════
+	// Outline panel
+	// ═══════════════════════════════════════════════════════════════════════
+
+	toggleOutline: () => set((s) => ({ showOutline: !s.showOutline })),
+	setShowOutline: (show) => set({ showOutline: show }),
 
 	// ═══════════════════════════════════════════════════════════════════════
 	// Lifecycle

@@ -28,8 +28,10 @@ import {
     type SubmitPlanFeedback,
     type SubmitPlanInput,
 } from './vault-sdk/vaultMcpServer';
+import { buildWebSearchMcpServer } from './vault-sdk/webSearchTool';
 import { translateSdkMessage } from './core/sdkMessageAdapter';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import type { TraceSink } from '@/core/telemetry/traceSink';
 
 export interface VaultSearchAgentSdkOptions {
     app: App;
@@ -41,6 +43,7 @@ export interface VaultSearchAgentSdkOptions {
     systemPromptOverride?: string;
     /** Prefix prepended to the user query before sending to the SDK agent (e.g. previous round context). */
     contextPrefix?: string;
+    traceSink?: TraceSink;
 }
 
 /**
@@ -70,7 +73,7 @@ export class VaultSearchAgentSDK {
      * HITL (v1): the submit_plan tool callback auto-approves. A later task
      * will wire this to the existing HITL modal.
      */
-    async *startSession(userQuery: string): AsyncGenerator<LLMStreamEvent> {
+    async *startSession(userQuery: string, options?: { webEnabled?: boolean; signal?: AbortSignal }): AsyncGenerator<LLMStreamEvent> {
         const { app, pluginId, searchClient, aiServiceManager, settings } = this.options;
         const triggerName = StreamTriggerName.SEARCH_AI_AGENT;
         const startTs = Date.now();
@@ -185,6 +188,7 @@ export class VaultSearchAgentSDK {
                     {
                         vaultIntuition: vaultIntuitionSection,
                         probeResults: probeResultsSection,
+                        webEnabled: options?.webEnabled ? 'true' : '',
                     },
                 );
             } catch (err) {
@@ -238,6 +242,12 @@ export class VaultSearchAgentSDK {
             onSubmitPlan,
         });
 
+        // 4b. Conditionally build web search MCP server
+        const webEnabled = options?.webEnabled && ProfileRegistry.getInstance().getActiveWebSearchProfile() !== null;
+        const webMcpServer = webEnabled
+            ? buildWebSearchMcpServer({ app, pluginId })
+            : null;
+
         // 5. Announce start to UI
         yield {
             type: 'pk-debug',
@@ -257,27 +267,36 @@ export class VaultSearchAgentSDK {
 
         let roundIndex = 0;
         try {
+            const allowedTools = [
+                'mcp__vault__vault_list_folders',
+                'mcp__vault__vault_read_folder',
+                'mcp__vault__vault_read_note',
+                'mcp__vault__vault_grep',
+                'mcp__vault__vault_wikilink_expand',
+                'mcp__vault__vault_submit_plan',
+            ];
+            const mcpServers: Record<string, unknown> = { vault: vaultMcpServer };
+            if (webMcpServer) {
+                allowedTools.push('mcp__web__web_search');
+                mcpServers.web = webMcpServer;
+            }
+
             const messages = queryWithProfile(app, pluginId, profile, {
                 prompt: effectivePrompt,
                 systemPrompt,
                 maxTurns: 20,
-                allowedTools: [
-                    'mcp__vault__vault_list_folders',
-                    'mcp__vault__vault_read_folder',
-                    'mcp__vault__vault_read_note',
-                    'mcp__vault__vault_grep',
-                    'mcp__vault__vault_wikilink_expand',
-                    'mcp__vault__vault_submit_plan',
-                ],
+                allowedTools,
                 disallowedTools: [
                     'AskUserQuestion',
                 ],
-                mcpServers: { vault: vaultMcpServer },
+                mcpServers,
+                signal: options?.signal,
             });
 
             for await (const raw of messages) {
                 const msg = raw as { type?: string };
-                // Round markers help debugging in DevTools Console
+                this.options.traceSink?.consume(raw as any);
+                // Round markers: only log assistant/user boundaries, not every stream event
                 if (msg.type === 'assistant') {
                     roundIndex += 1;
                     try {
@@ -286,7 +305,6 @@ export class VaultSearchAgentSDK {
                         /* console.group may not exist in all environments */
                     }
                 }
-                console.log('[VaultSearchAgentSDK] message', raw);
                 if (msg.type === 'user') {
                     try {
                         console.groupEnd();

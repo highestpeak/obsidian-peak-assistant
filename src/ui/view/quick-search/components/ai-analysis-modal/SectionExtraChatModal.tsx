@@ -409,7 +409,7 @@ export const SectionExtraChatModal: React.FC<SectionExtraChatModalProps> = ({
 
 	return (
 		<div
-			className="pktw-fixed pktw-inset-0 pktw-bg-black/20 pktw-flex pktw-items-center pktw-justify-center pktw-z-50 pktw-p-4"
+			className="pktw-fixed pktw-inset-0 pktw-bg-black/40 pktw-flex pktw-items-center pktw-justify-center pktw-z-50 pktw-p-4"
 			onClick={(e) => e.target === e.currentTarget && onClose()}
 		>
 			<div
@@ -421,7 +421,7 @@ export const SectionExtraChatModal: React.FC<SectionExtraChatModalProps> = ({
 					className="pktw-flex-1 pktw-flex pktw-flex-col pktw-min-h-0 pktw-overflow-hidden"
 					innerClassName="pktw-flex-1 pktw-flex pktw-flex-col pktw-min-h-0 pktw-overflow-hidden"
 				>
-					<div className="pktw-flex pktw-flex-col pktw-flex-1 pktw-min-h-0 pktw-overflow-hidden pktw-bg-pk-background/95 pktw-rounded-[11px]">
+					<div className="pktw-flex pktw-flex-col pktw-flex-1 pktw-min-h-0 pktw-overflow-hidden pktw-rounded-[11px]">
 						<div className="pktw-flex pktw-items-center pktw-justify-between pktw-px-5 pktw-pt-4 pktw-border-b pktw-border-pk-border pktw-flex-shrink-0">
 							<span className="pktw-font-semibold pktw-text-[#2e3338]">{headerTitle}</span>
 							<div className="pktw-flex pktw-items-center pktw-gap-1">

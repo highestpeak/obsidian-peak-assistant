@@ -39,7 +39,7 @@ export function useGraphAgent(
 		st.setLoading(true);
 		st.setError(null);
 		st.clearSteps();
-		st.addStep({ id: 'init', label: '正在初始化 Graph Agent...', status: 'running' });
+		st.addStep({ id: 'init', label: 'Initializing Graph Agent...', status: 'running' });
 
 		(async () => {
 			try {
@@ -47,9 +47,9 @@ export function useGraphAgent(
 				const { AppContext } = await import('@/app/context/AppContext');
 				const ctx = AppContext.getInstance();
 
-				useGraphAgentStore.getState().updateStep('init', { status: 'done', label: 'Graph Agent 已就绪' });
-				useGraphAgentStore.getState().addStep({ id: 'analyze', label: '正在分析文档关系、聚类和演化链...', status: 'running' });
-				useGraphAgentStore.getState().addStep({ id: 'read-sources', label: `正在读取 ${sources.length} 篇源文件...`, status: 'running' });
+				useGraphAgentStore.getState().updateStep('init', { status: 'done', label: 'Graph Agent ready' });
+				useGraphAgentStore.getState().addStep({ id: 'analyze', label: 'Analyzing document relations, clusters, and evolution chains...', status: 'running' });
+				useGraphAgentStore.getState().addStep({ id: 'read-sources', label: `Reading ${sources.length} source files...`, status: 'running' });
 
 				const agent = new GraphAgent(ctx.app, ctx.plugin.manifest.id, ctx.settings);
 
@@ -82,20 +82,20 @@ export function useGraphAgent(
 				if (controller.signal.aborted) return;
 
 				if (result) {
-					useGraphAgentStore.getState().addStep({ id: 'done', label: '图谱生成完成', status: 'done' });
+					useGraphAgentStore.getState().addStep({ id: 'done', label: 'Graph generation complete', status: 'done' });
 					const { graphOutputToLensData } = await import('@/service/agents/ai-graph/graph-output-to-lens');
 					const sourcePaths = sources.map(s => s.path);
 					useGraphAgentStore.getState().setGraphData(graphOutputToLensData(result, sourcePaths));
 				} else {
 					console.warn('[useGraphAgent] agent returned null, falling back');
-					useGraphAgentStore.getState().addStep({ id: 'fallback', label: 'AI 分析未返回结果，使用物理链接...', status: 'running' });
+					useGraphAgentStore.getState().addStep({ id: 'fallback', label: 'AI analysis returned no result, using physical links...', status: 'running' });
 					await fallbackToPhysicalGraph(sources);
 					useGraphAgentStore.getState().updateStep('fallback', { status: 'done' });
 				}
 			} catch (err) {
 				if (!controller.signal.aborted) {
 					console.error('[useGraphAgent] error, falling back', err);
-					useGraphAgentStore.getState().addStep({ id: 'fallback', label: '出错，使用物理链接数据...', status: 'running' });
+					useGraphAgentStore.getState().addStep({ id: 'fallback', label: 'Error occurred, using physical link data...', status: 'running' });
 					await fallbackToPhysicalGraph(sources);
 					useGraphAgentStore.getState().updateStep('fallback', { status: 'done' });
 				}

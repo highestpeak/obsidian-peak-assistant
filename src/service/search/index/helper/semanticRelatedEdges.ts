@@ -3,7 +3,7 @@
  * Local Mermaid overlay on document nodes is derived from stored edges (not SSOT).
  */
 
-import { GraphEdgeType, isIndexedNoteNodeType } from '@/core/po/graph.po';
+import { GraphEdgeType, GraphNodeType, isIndexedNoteNodeType } from '@/core/po/graph.po';
 import type { EmbeddingRepo } from '@/core/storage/sqlite/repositories/EmbeddingRepo';
 import { MobiusEdgeRepo } from '@/core/storage/sqlite/repositories/MobiusEdgeRepo';
 import type { MobiusNodeRepo } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
@@ -41,7 +41,7 @@ export const SEMANTIC_VECTOR_TOP_K_PER_DOC = 12;
 /** KNN pool size per doc query (distinct docs may be fewer after aggregation). */
 export const SEMANTIC_VECTOR_KNN_LIMIT = 150;
 /** Minimum raw similarity (1/(1+distance)) to keep a candidate before weighting. */
-export const SEMANTIC_VECTOR_MIN_SIMILARITY = 0.38;
+export const SEMANTIC_VECTOR_MIN_SIMILARITY = 0.50;
 
 export type RebuildSemanticEdgesBatchResult = {
 	tenant: IndexTenant;
@@ -162,7 +162,7 @@ export class SemanticRelatedEdgesReadService {
 		const out: GraphSemanticLinkItem[] = [];
 		for (const e of sem) {
 			const n = nodes.get(e.to_node_id);
-			if (!n || !isIndexedNoteNodeType(n.type)) continue;
+			if (!n || n.type !== GraphNodeType.Document) continue;
 			const path = getPathFromNode(n);
 			if (!path) continue;
 			const fromAttrs = this.formatSimilarityFromAttributes(e.attributes ?? '{}');

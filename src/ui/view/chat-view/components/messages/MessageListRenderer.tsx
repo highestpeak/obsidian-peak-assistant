@@ -3,6 +3,14 @@ import { ChatRole } from '@/core/providers/types';
 import { MessageItem, MessageItemProps } from './MessageViewItem';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
+import { DateSeparator } from '../DateSeparator';
+
+/** Get date-only string for comparison */
+function getDateOnly(ts: number | undefined): string {
+	if (!ts) return '';
+	const d = new Date(ts);
+	return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
 
 /**
  * Props for MessageListRenderer component
@@ -97,11 +105,19 @@ export const MessageListRenderer: React.FC<MessageListRendererProps> = ({
 		<div className="pktw-flex pktw-flex-col pktw-w-full pktw-max-w-none pktw-m-0 pktw-px-4 pktw-py-6 pktw-gap-0 pktw-box-border">
 			{/* Render saved messages */}
 			{savedMessagesToRender.map((item, index) => {
+				const prevItem = index > 0 ? savedMessagesToRender[index - 1] : null;
+				const currentDate = getDateOnly(item.message.createdAtTimestamp);
+				const prevDate = prevItem ? getDateOnly(prevItem.message.createdAtTimestamp) : '';
+				const showDateSeparator = currentDate !== prevDate && !!item.message.createdAtTimestamp;
 				return (
-					<MessageItem
-						key={index}
-						{...item}
-					/>
+					<React.Fragment key={item.message.id ?? index}>
+						{showDateSeparator && (
+							<DateSeparator date={new Date(item.message.createdAtTimestamp)} />
+						)}
+						<MessageItem
+							{...item}
+						/>
+					</React.Fragment>
 				);
 			})}
 			{/* Render streaming message */}

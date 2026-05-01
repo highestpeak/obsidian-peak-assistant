@@ -17,6 +17,7 @@ import type { App } from 'obsidian';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SqliteDatabase, SqliteStoreType } from '../types';
+import { NativeModuleManager } from '../NativeModuleManager';
 
 /**
  * Custom SQLite driver that intercepts all execute operations
@@ -153,6 +154,7 @@ export class BetterSqliteStore implements SqliteDatabase {
 	 */
 	public static clearInstance(): void {
 		BetterSqliteStore.cachedBetterSqlite3 = null;
+		BetterSqliteStore.nativeModuleChecked = false;
 	}
 
 	private constructor(db: BetterSqlite3Database) {
@@ -173,8 +175,22 @@ export class BetterSqliteStore implements SqliteDatabase {
 	 * @param app - Obsidian app instance (optional, used for vault path resolution)
 	 * @returns Promise resolving to true if better-sqlite3 is available and working
 	 */
+	/** Tracks whether ensureCompatible() has already run this session (avoid duplicate downloads). */
+	private static nativeModuleChecked = false;
+
 	static async checkAvailable(app?: App): Promise<boolean> {
 		try {
+			// Pre-flight: ensure the managed native binary matches the current Electron ABI.
+			// Run once per session — subsequent calls skip the (potentially slow) download check.
+			if (!BetterSqliteStore.nativeModuleChecked) {
+				BetterSqliteStore.nativeModuleChecked = true;
+				try {
+					await NativeModuleManager.getInstance().ensureCompatible();
+				} catch (e) {
+					console.warn('[BetterSqliteStore] NativeModuleManager.ensureCompatible() failed:', e);
+				}
+			}
+
 			let betterSqlite3;
 
 			// Strategy 1: Try normal require (works if node_modules is in require path)
@@ -236,10 +252,10 @@ export class BetterSqliteStore implements SqliteDatabase {
 			} catch (error) {
 				console.warn(
 					'[BetterSqliteStore] better-sqlite3 module found but native binding failed. ' +
-					'This is usually because the native module is missing or incompatible with Electron\'s Node.js version. ' +
-					'To fix: Rebuild better-sqlite3 for Electron using electron-rebuild. ' +
-					'See src/core/storage/README.md for detailed instructions. ' +
-					'better-sqlite3 is required for this plugin.',
+					'This is usually because the native module (.node file) is incompatible with ' +
+					`Electron's Node.js version (ABI ${process.versions.modules}). ` +
+					'NativeModuleManager should have handled this automatically. ' +
+					'If the problem persists, try restarting Obsidian or reinstalling the plugin.',
 					error
 				);
 				return false;
@@ -256,6 +272,12 @@ export class BetterSqliteStore implements SqliteDatabase {
 	 */
 	private static getPossiblePaths(app?: App): string[] {
 		const paths: string[] = [];
+
+		// Strategy 0: Managed native binary (downloaded by NativeModuleManager)
+		const managedPath = NativeModuleManager.getInstance().getManagedModulePath();
+		if (managedPath) {
+			paths.push(managedPath);
+		}
 
 		// Strategy 1: Try relative to vault base path (most reliable in Obsidian)
 		if (app) {

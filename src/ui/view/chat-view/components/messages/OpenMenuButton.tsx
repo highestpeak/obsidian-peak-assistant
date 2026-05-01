@@ -71,18 +71,14 @@ export const OpenMenuButton: React.FC = () => {
 		}
 	};
 
-	// Build query from all user messages in the conversation
-	// todo summary text or the latest n. not all messages.
 	const conversationQuery = React.useMemo(() => {
-		if (!activeConversation || !activeConversation.messages || activeConversation.messages.length === 0) {
-			return '';
-		}
-		// Get all user messages and join them
+		if (!activeConversation?.messages?.length) return '';
 		const userMessages = activeConversation.messages
 			.filter(msg => msg.role === 'user')
-			.map(msg => msg.content)
+			.slice(-3)
+			.map(msg => typeof msg.content === 'string' ? msg.content : '')
 			.join('\n\n');
-		return userMessages;
+		return userMessages.length > 500 ? userMessages.slice(0, 500) : userMessages;
 	}, [activeConversation]);
 
 	// Platform configurations
@@ -116,7 +112,7 @@ export const OpenMenuButton: React.FC = () => {
 						</div>
 					</PopoverTrigger>
 					<PopoverContent
-						className="pktw-w-[200px] pktw-p-1 pktw-bg-pk-background pktw-shadow-lg pktw-border pktw-z-50"
+						className="pktw-w-[200px] pktw-p-1 pktw-bg-popover pktw-shadow-lg pktw-border pktw-z-50"
 						align="start"
 						side="bottom"
 						sideOffset={8}

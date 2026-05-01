@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { Folder, RefreshCw } from 'lucide-react';
+import { Folder, RefreshCw, List } from 'lucide-react';
+import { useChatViewStore } from '../../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { cn } from '@/ui/react/lib/utils';
 import { ConversationUpdatedEvent, ViewEventType } from '@/core/eventBus';
@@ -185,6 +186,16 @@ export const MessageHeader: React.FC<MessageHeaderProps> = ({
 
 							{/* Open menu button (merged open source document and open in chat) */}
 							<OpenMenuButton />
+
+							{/* Outline toggle */}
+							<IconButton
+								size="md"
+								onClick={() => useChatViewStore.getState().toggleOutline()}
+								title="Toggle conversation outline"
+								className="hover:pktw-bg-gray-200"
+							>
+								<List className="pktw-text-muted-foreground group-hover:pktw-text-black" />
+							</IconButton>
 						</div>
 					</>
 				)}

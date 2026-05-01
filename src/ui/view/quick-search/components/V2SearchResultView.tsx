@@ -22,7 +22,8 @@ export const V2SearchResultView: React.FC<V2SearchResultViewProps> = ({ onClose,
     const isCompleted = useSearchSessionStore((s) => s.status === 'completed');
     const v2View = useSearchSessionStore((s) => s.v2View);
     const allSectionsDone = useSearchSessionStore((s) =>
-        s.v2PlanApproved && s.v2PlanSections.length > 0 && s.v2PlanSections.every((sec) => sec.status === 'done')
+        (s.v2PlanApproved && s.v2PlanSections.length > 0 && s.v2PlanSections.every((sec) => sec.status === 'done')) ||
+        (s.v2PlanSections.length === 0 && !!s.v2Summary)
     );
     const containerRef = useRef<HTMLDivElement>(null);
     const hasAutoSwitchedRef = useRef(false);

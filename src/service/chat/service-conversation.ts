@@ -16,6 +16,7 @@ import {
 	StarredMessageRecord,
 	ChatResourceRef,
 } from './types';
+import type { ConversationType } from './conversation-types';
 import { PromptService } from '@/service/prompt/PromptService';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
 import { PromptId } from '@/service/prompt/PromptId';
@@ -98,6 +99,7 @@ export class ConversationService {
 		initialMessages?: ChatMessage[];
 		modelId?: string;
 		provider?: string;
+		conversationType?: ConversationType;
 	}): Promise<ChatConversation> {
 		const timestamp = Date.now();
 		const meta: ChatConversationMeta = {
@@ -109,6 +111,7 @@ export class ConversationService {
 			activeModel: params.modelId || this.defaultModel.modelId,
 			activeProvider: params.provider || this.defaultModel.provider,
 			tokenUsageTotal: 0,
+			conversationType: params.conversationType,
 		};
 
 		const messages = params.initialMessages ?? [];

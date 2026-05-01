@@ -1,4 +1,5 @@
 import type { App } from 'obsidian';
+import { Notice } from 'obsidian';
 import path from 'path';
 import { BetterSqliteStore } from './better-sqlite3-adapter/BetterSqliteStore';
 import type { Kysely } from 'kysely';
@@ -107,9 +108,16 @@ export class SqliteStoreManager {
 	private async selectBackend(userSetting?: 'auto' | 'better-sqlite3'): Promise<void> {
 		const available = await BetterSqliteStore.checkAvailable(this.app ?? undefined);
 		if (!available) {
+			new Notice(
+				'Peak Assistant: SQLite component failed to load. ' +
+				'Search and indexing features are unavailable. ' +
+				'Please restart Obsidian or reinstall the plugin.',
+				15000,
+			);
 			throw new Error(
 				'better-sqlite3 is required but not available. ' +
-				'Install it in the plugin directory (e.g. npm install better-sqlite3) and rebuild for Electron.'
+				`Runtime ABI: ${process.versions.modules}, platform: ${process.platform}-${process.arch}. ` +
+				'NativeModuleManager auto-download may have failed — check the console for details.'
 			);
 		}
 		if (userSetting === 'better-sqlite3') {

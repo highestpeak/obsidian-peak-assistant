@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ModelInfoForSwitch, ModelCapabilities } from '@/core/providers/types';
 import { ChevronDown, Check, Search } from 'lucide-react';
-import { SafeModelIcon, SafeProviderIcon } from '@/ui/component/mine/SafeIconWrapper';
+import { ProviderBrandIcon } from '@/ui/component/mine/provider-brand-icons';
 import { cn } from '@/ui/react/lib/utils';
 import { modelRegistry } from '@/core/providers/model-registry';
 import { HoverButton } from '@/ui/component/mine/HoverButton';
@@ -41,29 +41,9 @@ const ModelItem: React.FC<ModelItemProps> = ({
 			onClick={() => handleModelSelect(model.provider, model.id)}
 		>
 			<div className="pktw-flex pktw-items-center pktw-gap-2 pktw-flex-1 pktw-min-w-0">
-				{model.icon && (() => {
-					const providerIcon = providerMetadataMap.get(model.provider)?.icon;
-					return (
-						<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
-							<SafeModelIcon
-								model={model.icon}
-								size={16}
-								className="pktw-flex-shrink-0"
-								fallback={
-									providerIcon ? (
-										<SafeProviderIcon
-											provider={providerIcon}
-											size={16}
-											fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
-										/>
-									) : (
-										<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />
-									)
-								}
-							/>
-						</div>
-					);
-				})()}
+				<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
+					<ProviderBrandIcon provider={model.provider} size={16} />
+				</div>
 				<span className="pktw-text-[14px] pktw-font-medium pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
 					{model.displayName}
 				</span>
@@ -214,45 +194,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
 	// Create button icon component
 	const ModelIcon = useMemo(() => {
-		if (!currentModelIcon && !providerIcon) return undefined;
-
-		// Create a simple component that HoverButton can use
-		const IconComponent = ({ className }: { className?: string }) => {
-			if (currentModelInfo && currentModelIcon) {
-				return (
-					<SafeModelIcon
-						model={currentModelIcon}
-						size={16}
-						className={cn("pktw-flex-shrink-0", className)}
-						fallback={
-							providerIcon ? (
-								<SafeProviderIcon
-									provider={providerIcon}
-									size={16}
-									fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
-								/>
-							) : (
-								<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />
-							)
-						}
-					/>
-				);
-			}
-			if (providerIcon) {
-				return (
-					<SafeProviderIcon
-						provider={providerIcon}
-						size={16}
-						className={cn("pktw-flex-shrink-0", className)}
-						fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
-					/>
-				);
-			}
-			return null;
-		};
-
-		return IconComponent;
-	}, [currentModelInfo, currentModelIcon, providerIcon]);
+		if (!currentProvider) return undefined;
+		const provider = currentProvider;
+		return ({ className }: { className?: string }) => (
+			<ProviderBrandIcon provider={provider} size={16} className={className} />
+		);
+	}, [currentProvider]);
 
 
 	// Create menu content
@@ -281,17 +228,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 							<div className="pktw-border-b pktw-border-border">
 								<div className="pktw-px-6 pktw-py-2.5">
 									<div className="pktw-flex pktw-items-center pktw-gap-2">
-										{providerIcon ? (
-											<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
-												<SafeProviderIcon
-													provider={providerIcon}
-													size={16}
-													fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
-												/>
-											</div>
-										) : (
-											<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-rounded pktw-bg-muted" />
-										)}
+										<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
+											<ProviderBrandIcon provider={currentModel.provider} size={16} />
+										</div>
 										<span className="pktw-text-[14px] pktw-font-medium pktw-text-foreground pktw-whitespace-nowrap pktw-overflow-hidden pktw-text-ellipsis">
 											{currentModel.modelId} (Unavailable)
 										</span>
@@ -314,15 +253,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 									{/* Provider header */}
 									<div className="pktw-top-0 pktw-px-6 pktw-py-2.5 pktw-border-b-2 pktw-border-border pktw-z-10">
 										<div className="pktw-flex pktw-items-center pktw-gap-2">
-											{providerMeta?.icon && (
-												<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
-													<SafeProviderIcon
-														provider={providerMeta.icon}
-														size={16}
-														fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-muted" />}
-													/>
-												</div>
-											)}
+											<div className="pktw-w-4 pktw-h-4 pktw-flex-shrink-0 pktw-flex pktw-items-center pktw-justify-center">
+												<ProviderBrandIcon provider={providerId} size={16} />
+											</div>
 											<span className="pktw-text-xs pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-tracking-wide">
 												{providerName}
 											</span>

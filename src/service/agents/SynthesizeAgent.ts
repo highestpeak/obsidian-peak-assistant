@@ -16,7 +16,7 @@ export interface SynthesizeResult {
 export class SynthesizeAgent {
 	async synthesize(rounds: Round[]): Promise<SynthesizeResult> {
 		const ctx = AppContext.getInstance();
-		const mgr = ctx.aiServiceManager;
+		const mgr = ctx.manager;
 
 		const fullText = await mgr.queryText(
 			PromptId.AiAnalysisSynthesize,

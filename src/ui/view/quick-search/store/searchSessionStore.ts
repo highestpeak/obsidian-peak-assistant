@@ -30,6 +30,71 @@ import { snapshotFromState } from './sessionSnapshot';
 export type { V2Section, Annotation, Round };
 
 // ---------------------------------------------------------------------------
+// Streaming buffers — accumulate text outside Zustand to avoid O(n²) copies.
+// Flushed to the store at most once per animation frame (~60fps).
+// ---------------------------------------------------------------------------
+
+/** Timeline text buffer (single active text item at a time). */
+const _tlBuf = { text: '', id: '', raf: null as number | null };
+
+function _flushTimelineBuffer(set: (fn: (s: any) => any) => void) {
+	if (_tlBuf.raf !== null) {
+		cancelAnimationFrame(_tlBuf.raf);
+		_tlBuf.raf = null;
+	}
+	if (!_tlBuf.text) return;
+	const text = _tlBuf.text;
+	const id = _tlBuf.id;
+	set((s: any) => {
+		const timeline = [...s.v2Timeline];
+		const last = timeline[timeline.length - 1];
+		if (last && last.kind === 'text' && !last.complete) {
+			timeline[timeline.length - 1] = { ...last, text };
+		} else {
+			timeline.push({ kind: 'text', id, text, complete: false });
+		}
+		return { v2Timeline: timeline };
+	});
+}
+
+function _resetTimelineBuffer() {
+	if (_tlBuf.raf !== null) {
+		cancelAnimationFrame(_tlBuf.raf);
+		_tlBuf.raf = null;
+	}
+	_tlBuf.text = '';
+	_tlBuf.id = '';
+}
+
+/** Per-section streaming buffers (multiple sections can generate in parallel). */
+const _secBufs = new Map<string, string>();
+let _secRaf: number | null = null;
+
+function _flushSectionBuffers(set: (fn: (s: any) => any) => void) {
+	if (_secRaf !== null) {
+		cancelAnimationFrame(_secRaf);
+		_secRaf = null;
+	}
+	if (_secBufs.size === 0) return;
+	// Snapshot current buffers and apply to store
+	const snapshot = new Map(_secBufs);
+	set((s: any) => ({
+		v2PlanSections: s.v2PlanSections.map((sec: V2Section) => {
+			const buffered = snapshot.get(sec.id);
+			return buffered !== undefined ? { ...sec, streamingText: buffered } : sec;
+		}),
+	}));
+}
+
+function _resetSectionBuffers() {
+	if (_secRaf !== null) {
+		cancelAnimationFrame(_secRaf);
+		_secRaf = null;
+	}
+	_secBufs.clear();
+}
+
+// ---------------------------------------------------------------------------
 // Session status
 // ---------------------------------------------------------------------------
 
@@ -228,6 +293,9 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	incrementTriggerAnalysis: () => set((s) => ({ triggerAnalysis: s.triggerAnalysis + 1 })),
 
 	startSession: (query) => {
+		// Reset streaming buffers from previous session
+		_resetTimelineBuffer();
+		_resetSectionBuffers();
 		const ts = Date.now();
 		const { analysisMode, webEnabled } = get();
 		set({
@@ -274,7 +342,13 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 
 	startStreaming: () => set({ status: 'streaming', hasStartedStreaming: true }),
 
-	markCompleted: () => set((s) => {
+	markCompleted: () => {
+		// Flush all streaming buffers before finalizing
+		_flushTimelineBuffer(set);
+		_resetTimelineBuffer();
+		_flushSectionBuffers(set);
+		_resetSectionBuffers();
+		return set((s) => {
 		const now = Date.now();
 		const completedV2Steps = s.v2Steps.map((step) => {
 			if (step.status !== 'running') return step;
@@ -301,8 +375,24 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 				break;
 			}
 		}
-		// Use follow-up questions already set by useSearchSession (from vault_submit_plan structured field)
-		// Only keep existing ones — no regex fallback needed since agent provides them structurally
+		// When no plan sections, extract final timeline text as the report summary.
+		// If tools exist, take text after the last tool; otherwise take all text.
+		let extractedSummary = s.v2Summary;
+		if (s.v2PlanSections.length === 0) {
+			const startIdx = finalIdx >= 0 ? finalIdx : 0;
+			const reportText = completedTimeline
+				.slice(startIdx)
+				.filter((item): item is Extract<typeof item, { kind: 'text' }> => item.kind === 'text')
+				.map((item) => item.text)
+				.join('');
+			if (reportText.trim()) {
+				extractedSummary = reportText;
+			}
+		}
+
+		// Auto-switch to report when: (a) plan sections all done, OR (b) no plan but has report text
+		const hasSections = s.v2PlanApproved && s.v2PlanSections.length > 0 && s.v2PlanSections.every(sec => sec.status === 'done');
+		const hasDirectReport = s.v2PlanSections.length === 0 && !!extractedSummary;
 		return {
 			status: 'completed',
 			isInputFrozen: false,
@@ -310,12 +400,13 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			v2Steps: completedV2Steps,
 			v2Timeline: completedTimeline,
 			v2FinalReportStartIndex: finalIdx,
-			// Only auto-switch to report when sections are fully generated; otherwise stay on current view (process)
-			v2View: s.v2Active && s.v2PlanApproved && s.v2PlanSections.length > 0 && s.v2PlanSections.every(sec => sec.status === 'done')
+			v2Summary: extractedSummary,
+			v2View: s.v2Active && (hasSections || hasDirectReport)
 				? 'report' as const
 				: s.v2View,
 		};
-	}),
+	});
+	},
 
 	recordError: (error) => set({ status: 'error', error, isInputFrozen: false }),
 
@@ -327,12 +418,20 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 	setUsage: (usage) => set({ usage }),
 	accumulateUsage: (usage) => set((s) => ({ usage: mergeTokenUsage(s.usage, usage) })),
 	addPhaseUsage: (usage) => set((s) => ({ phaseUsages: [...s.phaseUsages, usage] })),
-	appendAgentDebugLog: (entry) => set((s) => {
-		const log = s.agentDebugLog;
-		// Cap at 2000 entries to avoid unbounded memory growth
-		const trimmed = log.length >= 2000 ? log.slice(log.length - 1999) : log;
-		return { agentDebugLog: [...trimmed, { ts: Date.now(), ...entry }] };
-	}),
+	appendAgentDebugLog: (entry) => {
+		// Throttle: skip reasoning entries when last append was <50ms ago
+		const now = Date.now();
+		if (entry.type === 'reasoning') {
+			const log = get().agentDebugLog;
+			const last = log.length > 0 ? log[log.length - 1] : null;
+			if (last && now - last.ts < 50) return;
+		}
+		set((s) => {
+			const log = s.agentDebugLog;
+			const trimmed = log.length >= 2000 ? log.slice(log.length - 1999) : log;
+			return { agentDebugLog: [...trimmed, { ts: now, ...entry }] };
+		});
+	},
 	setDuration: (duration) => set({ duration }),
 	setHasAnalyzed: (v) => set({ hasAnalyzed: v }),
 	setDashboardUpdatedLine: (line) => set({ dashboardUpdatedLine: line ?? '' }),
@@ -390,30 +489,34 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 
 	resolveV2ToolName: (id) => get().v2ToolCallIndex.get(id) ?? 'unknown',
 
-	// V2 timeline management
-	pushV2TimelineText: (id, chunk) => set((s) => {
-		const timeline = [...s.v2Timeline];
-		const last = timeline[timeline.length - 1];
-		if (last && last.kind === 'text' && !last.complete) {
-			// Append to existing text item
-			timeline[timeline.length - 1] = { ...last, chunks: [...last.chunks, chunk] };
-		} else {
-			// Create new text item
-			timeline.push({ kind: 'text', id, chunks: [chunk], complete: false });
+	// V2 timeline management — RAF-throttled to prevent O(n²) copies and excessive re-renders
+	pushV2TimelineText: (id, chunk) => {
+		_tlBuf.text += chunk;
+		_tlBuf.id = id;
+		if (_tlBuf.raf === null) {
+			_tlBuf.raf = requestAnimationFrame(() => {
+				_tlBuf.raf = null;
+				_flushTimelineBuffer(set);
+			});
 		}
-		return { v2Timeline: timeline };
-	}),
+	},
 
-	pushV2TimelineTool: (step) => set((s) => {
-		const timeline = [...s.v2Timeline];
-		// Mark preceding text item as complete
-		const last = timeline[timeline.length - 1];
-		if (last && last.kind === 'text' && !last.complete) {
-			timeline[timeline.length - 1] = { ...last, complete: true };
-		}
-		timeline.push({ kind: 'tool', step });
-		return { v2Timeline: timeline };
-	}),
+	pushV2TimelineTool: (step) => {
+		// Flush any pending text buffer before adding tool
+		_flushTimelineBuffer(set);
+		const bufferedText = _tlBuf.text;
+		_tlBuf.text = '';
+		set((s) => {
+			const timeline = [...s.v2Timeline];
+			// Mark preceding text item as complete (with any remaining buffered text)
+			const last = timeline[timeline.length - 1];
+			if (last && last.kind === 'text' && !last.complete) {
+				timeline[timeline.length - 1] = { ...last, text: bufferedText || last.text, complete: true };
+			}
+			timeline.push({ kind: 'tool', step });
+			return { v2Timeline: timeline };
+		});
+	},
 
 	updateV2TimelineTool: (id, updater) => set((s) => {
 		const idx = s.v2Timeline.findIndex((item) => item.kind === 'tool' && item.step.id === id);
@@ -424,14 +527,20 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 		return { v2Timeline: timeline };
 	}),
 
-	completeV2TimelineText: (id) => set((s) => {
-		const idx = s.v2Timeline.findIndex((item) => item.kind === 'text' && item.id === id);
-		if (idx === -1) return s;
-		const timeline = [...s.v2Timeline];
-		const item = timeline[idx] as { kind: 'text'; id: string; chunks: string[]; complete: boolean };
-		timeline[idx] = { ...item, complete: true };
-		return { v2Timeline: timeline };
-	}),
+	completeV2TimelineText: (id) => {
+		// Flush pending buffer
+		_flushTimelineBuffer(set);
+		const bufferedText = _tlBuf.text;
+		_tlBuf.text = '';
+		set((s) => {
+			const idx = s.v2Timeline.findIndex((item) => item.kind === 'text' && item.id === id);
+			if (idx === -1) return s;
+			const timeline = [...s.v2Timeline];
+			const item = timeline[idx] as { kind: 'text'; id: string; text: string; complete: boolean };
+			timeline[idx] = { ...item, text: bufferedText || item.text, complete: true };
+			return { v2Timeline: timeline };
+		});
+	},
 
 	addV2Source: (source) => set((s) => {
 		// Deduplicate by path
@@ -476,23 +585,31 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 			missionRole,
 			status: 'pending',
 			content: '',
-			streamingChunks: [],
+			streamingText: '',
 			generations: [],
 		};
 		return { v2PlanSections: [...s.v2PlanSections, newSection] };
 	}),
 
-	appendSectionChunk: (id, chunk) => set((s) => ({
-		v2PlanSections: s.v2PlanSections.map((sec) =>
-			sec.id === id ? { ...sec, streamingChunks: [...sec.streamingChunks, chunk] } : sec
-		),
-	})),
+	appendSectionChunk: (id, chunk) => {
+		const prev = _secBufs.get(id) ?? '';
+		_secBufs.set(id, prev + chunk);
+		if (_secRaf === null) {
+			_secRaf = requestAnimationFrame(() => {
+				_secRaf = null;
+				_flushSectionBuffers(set);
+			});
+		}
+	},
 
-	completeSectionContent: (id, content) => set((s) => ({
-		v2PlanSections: s.v2PlanSections.map((sec) =>
-			sec.id === id ? { ...sec, status: 'done' as const, content, streamingChunks: [] } : sec
-		),
-	})),
+	completeSectionContent: (id, content) => {
+		_secBufs.delete(id);
+		set((s) => ({
+			v2PlanSections: s.v2PlanSections.map((sec) =>
+				sec.id === id ? { ...sec, status: 'done' as const, content, streamingText: '' } : sec
+			),
+		}));
+	},
 
 	failSection: (id, error) => set((s) => ({
 		v2PlanSections: s.v2PlanSections.map((sec) =>
@@ -508,7 +625,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 				...sec,
 				status: 'generating' as const,
 				content: '',
-				streamingChunks: [],
+				streamingText: '',
 				error: undefined,
 				generations: prev ? [...sec.generations, prev] : sec.generations,
 			};
@@ -590,7 +707,7 @@ export const useSearchSessionStore = create<SearchSessionState & SearchSessionAc
 				missionRole: 'synthesis',
 				status: 'done' as const,
 				content: sec.content,
-				streamingChunks: [],
+				streamingText: '',
 				generations: [{ content: sec.content, timestamp: Date.now() }],
 			})),
 			summary,

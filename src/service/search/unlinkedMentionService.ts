@@ -34,10 +34,27 @@ export async function getUnlinkedMentions(
 
 	const docMeta = await indexedDocumentRepo.getByPath(currentPath);
 
-	// Fetch FTS hits for the title (ask for more than limit so we can filter)
-	// Wrap title in quotes for exact phrase match in FTS5
-	const ftsTerm = `"${title.replace(/"/g, '""')}"`;
-	const ftsResults = docChunkRepo.searchFts(ftsTerm, limit * 3);
+	// Split title into words; use OR for broader matching, but require at least
+	// half the words to match (via multiple queries: exact phrase first, then OR).
+	const words = title.split(/[\s\-_]+/).filter((w) => w.length >= 2);
+	// Try exact phrase first, then fall back to OR of individual words
+	const exactTerm = `"${title.replace(/"/g, '""')}"`;
+	const orTerm = words.length >= 2
+		? words.map((w) => `"${w.replace(/"/g, '""')}"`).join(' OR ')
+		: exactTerm;
+
+	let ftsResults = docChunkRepo.searchFts(exactTerm, limit * 3);
+	// If exact phrase yields too few results, supplement with OR query
+	if (ftsResults.length < limit && orTerm !== exactTerm) {
+		const orResults = docChunkRepo.searchFts(orTerm, limit * 3);
+		const seenPaths = new Set(ftsResults.map((r) => r.path));
+		for (const r of orResults) {
+			if (!seenPaths.has(r.path)) {
+				ftsResults.push(r);
+				seenPaths.add(r.path);
+			}
+		}
+	}
 
 	if (!ftsResults.length) return [];
 
@@ -65,6 +82,8 @@ export async function getUnlinkedMentions(
 
 	for (const hit of ftsResults) {
 		if (!hit.path || hit.path === currentPath) continue;
+		// Skip hub docs (system-generated, not user content)
+		if (hit.path.includes('Hub-Summaries/')) continue;
 		if (alreadyLinkedPaths.has(hit.path)) continue;
 		if (seen.has(hit.path)) continue;
 		seen.add(hit.path);
@@ -74,9 +93,11 @@ export async function getUnlinkedMentions(
 		// bm25 is negative for matches; clamp to [-10, 0] and invert
 		const score = Math.min(1, Math.max(0, -bm25 / 10));
 
+		// Derive display label from the matched note's path (not the source note)
+		const matchedFileName = hit.path.split('/').pop()?.replace(/\.md$/i, '') ?? hit.path;
 		results.push({
 			path: hit.path,
-			label: hit.title ?? fileName,
+			label: hit.title ?? matchedFileName,
 			contextSnippet: hit.content ?? '',
 			score,
 		});

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Image, FileType as FileTypeIcon, Folder, Heading, File, Globe, Database } from 'lucide-react';
+import { FileText, Image, FileType as FileTypeIcon, Folder, Heading, File, Globe, Database, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import type { SearchResultSource } from '@/service/search/types';
 
@@ -66,16 +66,18 @@ export function getSourceIcon(source?: SearchResultSource): React.ReactElement {
 }
 
 /**
- * Map path to type string for getFileIcon (markdown, pdf, image, or default).
+ * Map path to type string for getFileIcon.
  */
 export function pathToFileIconType(path: string | null): string {
 	if (!path?.trim()) return 'markdown';
 	const ext = path.split('.').pop()?.toLowerCase() || '';
 	if (ext === 'md' || ext === 'markdown') return 'markdown';
+	if (ext === 'pdf') return 'pdf';
+	if (['xlsx', 'xls'].includes(ext)) return 'excel';
+	if (['docx', 'doc'].includes(ext)) return 'word';
 	const ft = getFileTypeFromPath(path);
-	if (ft === 'pdf') return 'pdf';
 	if (ft === 'image') return 'image';
-	return 'markdown';
+	return 'file';
 }
 
 /**
@@ -84,40 +86,34 @@ export function pathToFileIconType(path: string | null): string {
  * Places that use it also include messageItem convResourcesModal which don't use this yet, all should use this for unification
  * TODO: Better to use ResourceLoader's type resourceKind etc. for unification
  */
-export function getFileIcon(type: string, isSelected: boolean = false, className?: string): React.ReactElement {
-	const iconClass = cn(className, isSelected
-		? "pktw-w-4 pktw-h-4 pktw-text-white"
-		: "pktw-w-4 pktw-h-4");
+export function getFileIcon(type: string, isSelected: boolean = false, className?: string, size: number = 16): React.ReactElement {
+	const sizeStyle = { width: size, height: size };
+	const iconClass = cn(className, isSelected ? "pktw-text-white" : "");
 
 	switch (type) {
 		case 'markdown':
-			return <FileText className={cn(iconClass, isSelected ? "" : "pktw-text-pk-accent")} />;
+			return <FileText style={sizeStyle} className={cn(iconClass, isSelected ? "" : "pktw-text-pk-accent")} />;
 		case 'pdf':
-			return <FileTypeIcon className={cn(iconClass, isSelected ? "" : "pktw-text-red-500")} />;
+			return <FileTypeIcon style={sizeStyle} className={cn(iconClass, isSelected ? "" : "pktw-text-red-500")} />;
 		case 'image':
-			return <Image className={cn(iconClass, isSelected ? "" : "pktw-text-emerald-500")} />;
+			return <Image style={sizeStyle} className={cn(iconClass, isSelected ? "" : "pktw-text-emerald-500")} />;
 		case 'folder':
-			return <Folder className={cn(iconClass, isSelected ? "" : "pktw-text-amber-500")} />;
+			return <Folder style={sizeStyle} className={cn(iconClass, isSelected ? "" : "pktw-text-amber-500")} />;
 		case 'heading':
-			return <Heading className={cn(iconClass, isSelected ? "" : "pktw-text-blue-500")} />;
+			return <Heading style={sizeStyle} className={cn(iconClass, isSelected ? "" : "pktw-text-blue-500")} />;
 		case 'tag':
-			return <FileText className={cn(iconClass, isSelected ? "" : "pktw-text-blue-500")} />;
+			return <FileText style={sizeStyle} className={cn(iconClass, isSelected ? "" : "pktw-text-blue-500")} />;
 		case 'category':
-			return <FileText className={cn(iconClass, isSelected ? "" : "pktw-text-purple-500")} />;
+			return <FileText style={sizeStyle} className={cn(iconClass, isSelected ? "" : "pktw-text-purple-500")} />;
+		case 'excel':
+			return <FileSpreadsheet style={sizeStyle} className={cn(iconClass, isSelected ? "" : "pktw-text-green-600")} />;
+		case 'word':
+			return <FileText style={sizeStyle} className={cn(iconClass, isSelected ? "" : "pktw-text-blue-600")} />;
+		case 'file':
+			return <FileText style={sizeStyle} className={cn(iconClass, isSelected ? "" : "pktw-text-[#6c757d]")} />;
 		default:
-			return <FileText className={cn(iconClass, isSelected ? "" : "pktw-text-[#6c757d]")} />;
+			return <FileText style={sizeStyle} className={cn(iconClass, isSelected ? "" : "pktw-text-[#6c757d]")} />;
 	}
-}
-
-/**
- * Get file icon component based on file name extension
- */
-export function getFileIconByName(fileName: string): typeof Image | typeof FileText {
-	const ext = fileName.split('.').pop()?.toLowerCase();
-	if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext || '')) {
-		return Image;
-	}
-	return FileText;
 }
 
 /**
@@ -140,27 +136,18 @@ export function getFileTypeByName(fileName: string): string {
 	return ext || 'file';
 }
 
+export interface FileIconProps {
+	type: string;
+	isSelected?: boolean;
+	className?: string;
+	size?: number;
+}
+
 /**
  * Unified FileIcon component — single entry point for all file type icons.
  * Prefer this over calling getFileIcon() directly.
  */
-export const FileIcon: React.FC<{ type: string; isSelected?: boolean; className?: string }> = ({
-	type, isSelected = false, className,
-}) => getFileIcon(type, isSelected, className);
-
-/**
- * Get file icon component based on file extension
- */
-export function getFileIconComponent(extension?: string): typeof File | typeof Image | typeof FileText {
-	if (!extension) return File;
-
-	const lowerExt = extension.toLowerCase();
-	if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(lowerExt)) {
-		return Image;
-	}
-	if (['md', 'txt', 'json', 'js', 'ts', 'py', 'java', 'cpp', 'c', 'css', 'html', 'xml', 'yaml', 'yml'].includes(lowerExt)) {
-		return FileText;
-	}
-	return File;
-}
+export const FileIcon: React.FC<FileIconProps> = ({
+	type, isSelected = false, className, size,
+}) => getFileIcon(type, isSelected, className, size);
 

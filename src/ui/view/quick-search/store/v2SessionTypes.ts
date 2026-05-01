@@ -51,7 +51,7 @@ export interface V2Section {
 	missionRole: string;
 	status: 'pending' | 'generating' | 'done' | 'error';
 	content: string;
-	streamingChunks: string[];
+	streamingText: string;
 	error?: string;
 	generations: Array<{ content: string; prompt?: string; timestamp: number }>;
 	vizData?: import('@/core/schemas/report-viz-schemas').VizSpec;
@@ -282,8 +282,8 @@ function serializeTimeline(timeline: V2TimelineItem[], steps: V2ToolStep[]): str
 				? `${((st.endedAt - st.startedAt) / 1000).toFixed(1)}s`
 				: '';
 			processLog.push(`${st.icon} ${st.displayName}${st.summary ? ' \u2014 ' + st.summary : ''} ${dur ? '\u2014 ' + dur : ''}`.trim());
-		} else if (item.kind === 'text' && item.chunks.length > 0) {
-			const text = item.chunks.join('').trim();
+		} else if (item.kind === 'text' && item.text) {
+			const text = item.text.trim();
 			if (text) processLog.push(`\u{1F4AD} ${text}`);
 		}
 	}

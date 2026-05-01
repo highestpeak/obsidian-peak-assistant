@@ -11,9 +11,9 @@ module.exports = {
 		extend: {
 			colors: {
 				// Background colors
-				background: '#282828',
+				background: 'var(--background-primary)',
 				card: '#ffffff',
-				popover: '#ffffff',
+				popover: 'var(--pk-popover, #ffffff)',
 				// Text colors
 				foreground: '#8C8C8C',
 				// Primary colors

@@ -8,13 +8,15 @@ import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { GlobeOff } from '@/ui/component/icon';
 import { useSharedStore, useVaultSearchStore } from './store';
-import { resetAIAnalysisAll } from './store/aiAnalysisStore';
+import { resetAIAnalysisAll, loadCompletedAnalysisSnapshot } from './store/aiAnalysisStore';
 import { useSearchSessionStore } from './store/searchSessionStore';
 import type { AnalysisMode } from './store/aiAnalysisStore';
 import type { QuickSearchMode } from './store/vaultSearchStore';
 import { useSearchSession } from './hooks/useSearchSession';
+import { Notice } from 'obsidian';
 import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { AppContext } from '@/app/context/AppContext';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { formatDuration } from '@/core/utils/format-utils';
 import { InspectorSidePanel } from './components/inspector/InspectorSidePanel';
 import { isMobile } from '@/core/platform';
@@ -23,6 +25,7 @@ import { matchPatterns, type MatchedSuggestion } from '@/service/context/Pattern
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { SuggestionGrid } from './components/SuggestionGrid';
 import { ActiveSessionsList } from './components/ActiveSessionsList';
+import { parse as parseAiSearchAnalysisDoc, toCompletedAnalysisSnapshot } from '@/core/storage/vault/search-docs/AiSearchAnalysisDoc';
 import { RecentAnalysisList } from './components/RecentAnalysisList';
 
 type TabType = 'vault' | 'ai';
@@ -225,7 +228,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 									<ChevronDown className={cn('pktw-w-2.5 pktw-h-2.5 pktw-ml-0.5 pktw-opacity-60 pktw-transition-transform', showModeMenu && 'pktw-rotate-180')} />
 								</div>
 								{showModeMenu && (
-									<div className="pktw-absolute pktw-top-full pktw-left-0 pktw-mt-1 pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[200px]">
+									<div className="pktw-absolute pktw-top-full pktw-left-0 pktw-mt-1 pktw-bg-white pktw-border pktw-border-pk-border pktw-rounded-lg pktw-shadow-lg pktw-py-1 pktw-z-50 pktw-min-w-[200px]">
 										{PRESETS.map((p) => {
 											const Icon = p === 'aiGraph' ? Network : Brain;
 											return (
@@ -262,6 +265,11 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 								<Button
 									variant="ghost"
 									onClick={() => {
+										// Check if web search profile is configured before enabling
+										if (!webEnabled && !ProfileRegistry.getInstance().getActiveWebSearchProfile()) {
+											new Notice('No Web Search profile configured. Go to Settings → Profiles and assign a profile as "Web Search".', 5000);
+											return;
+										}
 										const newQuery = toggleWeb(searchQuery);
 										setSearchQuery(newQuery);
 									}}
@@ -278,7 +286,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					<div className="pktw-flex pktw-items-center pktw-gap-2">
 						{!isAnalyzing && hasResult && (
 							<Button
-								onClick={() => { useSearchSessionStore.getState().resetAll(); resetAIAnalysisAll(); }}
+								onClick={() => { useSearchSessionStore.getState().resetAll(); resetAIAnalysisAll(); useSharedStore.getState().setSearchQuery(''); }}
 								style={{ cursor: 'pointer' }}
 								variant="outline"
 								className="pktw-shadow-none pktw-px-4 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-border-pk-border pktw-bg-pk-background pktw-text-[#6c757d]"
@@ -311,10 +319,9 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 								<span className="pktw-ml-2">Cancel</span>
 							</Button>
 						)}
-						{!isAnalyzing && !hasResult && (
+						{!isAnalyzing && !hasResult && searchQuery.trim() && (
 							<Button
 								onClick={handleAnalyze}
-								disabled={!searchQuery.trim()}
 								style={{ cursor: 'pointer' }}
 								className="pktw-shadow-none pktw-px-5 pktw-py-2.5 pktw-whitespace-nowrap !pktw-rounded-md pktw-bg-pk-accent pktw-text-white hover:pktw-bg-[#6d28d9]"
 								title="Start AI analysis"
@@ -360,6 +367,31 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 							useSearchSessionStore.getState().resetAll();
 							resetAIAnalysisAll();
 							useSearchSessionStore.getState().incrementTriggerAnalysis();
+						}}
+						onSelectRecord={async (record) => {
+							const path = String(record.vault_rel_path ?? '').trim();
+							if (!path) return;
+							try {
+								const svc = AppContext.getInstance().aiAnalysisHistoryService;
+								const md = await svc.getMarkdownForReplay(path);
+								if (!md) return;
+								const docModel = parseAiSearchAnalysisDoc(md);
+								const snapshot = toCompletedAnalysisSnapshot(docModel, Number.isFinite(record.created_at_ts) ? record.created_at_ts : undefined);
+								loadCompletedAnalysisSnapshot(snapshot, path);
+								const query = docModel.query ?? record.query ?? '';
+								if (query) {
+									useSharedStore.getState().setSearchQuery(query);
+									useSearchSessionStore.setState({ query });
+								}
+							} catch (e) {
+								console.warn('[SearchModal] Failed to load snapshot, falling back to re-analysis:', e);
+								if (record.query) {
+									useSharedStore.getState().setSearchQuery(record.query);
+									useSearchSessionStore.getState().resetAll();
+									resetAIAnalysisAll();
+									useSearchSessionStore.getState().incrementTriggerAnalysis();
+								}
+							}
 						}}
 					/>
 					{suggestions.length === 0 && totalAnalysisCount === 0 && (

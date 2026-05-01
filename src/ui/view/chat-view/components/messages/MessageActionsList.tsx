@@ -1,143 +1,34 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { ChatMessage } from '@/service/chat/types';
-import { useServiceContext } from '@/ui/context/ServiceContext';
 import { cn } from '@/ui/react/lib/utils';
 import { Copy, RefreshCw, Star, Check } from 'lucide-react';
-import {
-	MessageActions,
-	MessageAction,
-} from '@/ui/component/ai-elements';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/component/shared-ui/tooltip';
-import { Button } from '@/ui/component/shared-ui/button';
+import { MessageAction } from '@/ui/component/ai-elements';
 import { formatTimestampLocale } from '@/core/utils/date-utils';
-import { SafeModelIcon, SafeProviderIcon } from '@/ui/component/mine/SafeIconWrapper';
-import { modelRegistry } from '@/core/providers/model-registry';
+
+// ── Metadata helpers (assistant messages only) ────────────────────────
 
 /**
- * Component for displaying model/provider icon with tooltip
+ * Inline model badge: "provider/model" in mono text on muted background.
  */
-const ModelIconButton: React.FC<{
-	message: ChatMessage;
-}> = ({ message }) => {
-	const { manager } = useServiceContext();
-	const [copied, setCopied] = useState(false);
-	const [modelIcon, setModelIcon] = useState<string | null>(null);
-	const [providerIcon, setProviderIcon] = useState<string | null>(null);
-
+const ModelBadge: React.FC<{ message: ChatMessage }> = ({ message }) => {
 	const modelInfo = useMemo(() => {
 		if (!message.model) return null;
 		return `${message.provider || ''}/${message.model}`.replace(/^\//, '');
 	}, [message.model, message.provider]);
 
-	// Get provider and model icons
-	useEffect(() => {
-		if (!message.provider || !message.model || !manager) {
-			setModelIcon(null);
-			setProviderIcon(null);
-			return;
-		}
-
-		const loadIcons = async () => {
-			try {
-				// Get provider metadata
-				const providerMetadata = modelRegistry.getAllProviderMetadata();
-				const providerMeta = providerMetadata.find(m => m.id === message.provider);
-				if (providerMeta?.icon) {
-					setProviderIcon(providerMeta.icon);
-				}
-
-				// Get model metadata
-				const allModels = await manager.getAllAvailableModels();
-				const modelInfo = allModels.find(
-					m => m.id === message.model && m.provider === message.provider
-				);
-				if (modelInfo?.icon) {
-					setModelIcon(modelInfo.icon);
-				}
-			} catch (err) {
-				console.error('Failed to load model/provider icons:', err);
-			}
-		};
-
-		loadIcons();
-	}, [message.provider, message.model, manager]);
-
 	if (!modelInfo) return null;
 
-	const handleCopy = useCallback(async (e: React.MouseEvent) => {
-		e.stopPropagation();
-		try {
-			await navigator.clipboard.writeText(modelInfo);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		} catch (err) {
-			console.error('Failed to copy model info:', err);
-		}
-	}, [modelInfo]);
-
 	return (
-		<TooltipProvider>
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<Button
-						variant="ghost"
-						size="icon"
-						type="button"
-						className="pktw-h-6 pktw-w-6 pktw-p-0 pktw-cursor-pointer"
-						onClick={handleCopy}
-					>
-						{modelIcon ? (
-							<SafeModelIcon
-								model={modelIcon}
-								size={16}
-								className="pktw-flex-shrink-0"
-								fallback={
-									providerIcon ? (
-										<SafeProviderIcon
-											provider={providerIcon}
-											size={16}
-											className="pktw-flex-shrink-0"
-											fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-blue-200" title="No icon available" />}
-										/>
-									) : (
-										<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-blue-200" title="No icon available" />
-									)
-								}
-							/>
-						) : providerIcon ? (
-							<SafeProviderIcon
-								provider={providerIcon}
-								size={16}
-								className="pktw-flex-shrink-0"
-								fallback={<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-blue-200" title="No icon available" />}
-							/>
-						) : (
-							<div className="pktw-w-4 pktw-h-4 pktw-rounded pktw-bg-blue-200" title="No icon available" />
-						)}
-						<span className="pktw-sr-only">Model: {modelInfo}</span>
-					</Button>
-				</TooltipTrigger>
-				<TooltipContent
-					className="pktw-select-text"
-					side="top"
-					align="start"
-					sideOffset={4}
-					onPointerDown={(e) => e.stopPropagation()}
-				>
-					<p className="pktw-select-text">{copied ? 'Copied!' : modelInfo}</p>
-				</TooltipContent>
-			</Tooltip>
-		</TooltipProvider>
+		<span className="pktw-text-[9px] pktw-font-mono pktw-text-muted-foreground pktw-bg-muted pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-select-text">
+			{modelInfo}
+		</span>
 	);
 };
 
 /**
- * Component for displaying token count
+ * Inline token count.
  */
-const TokenCountButton: React.FC<{
-	message: ChatMessage;
-}> = ({ message }) => {
-	const [copied, setCopied] = useState(false);
+const TokenBadge: React.FC<{ message: ChatMessage }> = ({ message }) => {
 	const tokenCount = useMemo(() => {
 		if (!message.tokenUsage) return null;
 		const usage = message.tokenUsage as any;
@@ -147,80 +38,44 @@ const TokenCountButton: React.FC<{
 
 	if (tokenCount === null) return null;
 
-	const handleCopy = useCallback(async (e: React.MouseEvent) => {
-		e.stopPropagation();
-		try {
-			await navigator.clipboard.writeText(`${tokenCount} tokens`);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		} catch (err) {
-			console.error('Failed to copy token count:', err);
-		}
-	}, [tokenCount]);
-
 	return (
-		<Button
-			variant="ghost"
-			size="icon"
-			type="button"
-			className="pktw-h-auto pktw-w-auto pktw-px-1.5 pktw-cursor-pointer"
-			onClick={handleCopy}
-		>
-			<span className="pktw-text-xs">
-				{tokenCount} tokens{copied ? ' copied!' : ''}
-			</span>
-			<span className="pktw-sr-only">Token count: {tokenCount}</span>
-		</Button>
+		<span className="pktw-text-[9px] pktw-font-mono pktw-text-muted-foreground pktw-select-text">
+			{tokenCount} tok
+		</span>
 	);
 };
 
 /**
- * Component for displaying time (shown on hover of MessageActions)
+ * Inline timestamp — short format (time only for today, date+time otherwise).
  */
-const TimeDisplay: React.FC<{
-	message: ChatMessage;
-}> = ({ message }) => {
-	const [copied, setCopied] = useState(false);
-	const timeInfo = useMemo(() => {
+const TimestampBadge: React.FC<{ message: ChatMessage }> = ({ message }) => {
+	const timeStr = useMemo(() => {
 		if (!message.createdAtTimestamp) return null;
-		// Use user's local timezone instead of message's timezone
 		const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-		const date = formatTimestampLocale(message.createdAtTimestamp, userTimezone);
-		return date ? `${date} (${userTimezone})` : null;
+		return formatTimestampLocale(message.createdAtTimestamp, userTimezone);
 	}, [message.createdAtTimestamp]);
 
-	if (!timeInfo) return null;
-
-	const handleCopy = useCallback(async (e: React.MouseEvent) => {
-		e.stopPropagation();
-		try {
-			await navigator.clipboard.writeText(timeInfo);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		} catch (err) {
-			console.error('Failed to copy time info:', err);
-		}
-	}, [timeInfo]);
+	if (!timeStr) return null;
 
 	return (
-		<Button
-			variant="ghost"
-			size="icon"
-			type="button"
-			className="pktw-h-auto pktw-w-auto pktw-px-1.5 pktw-cursor-pointer"
-			onClick={handleCopy}
-		>
-			<span className="pktw-text-xs">
-				{copied ? `${timeInfo} copied!` : timeInfo}
-			</span>
-			<span className="pktw-sr-only">Time: {timeInfo}</span>
-		</Button>
+		<span className="pktw-text-[9px] pktw-font-mono pktw-text-muted-foreground pktw-select-text">
+			{timeStr}
+		</span>
 	);
 };
 
-/**
- * Component for rendering message action buttons
- */
+/** Small separator dot between metadata items. */
+const Dot: React.FC = () => (
+	<span className="pktw-text-[8px] pktw-text-muted-foreground pktw-select-none">·</span>
+);
+
+/** Thin vertical separator between metadata and actions. */
+const Separator: React.FC<{ className?: string }> = ({ className }) => (
+	<span className={cn("pktw-w-px pktw-h-3 pktw-bg-border pktw-mx-0.5", className)} />
+);
+
+// ── Main component ────────────────────────────────────────────────────
+
 export const MessageActionsList: React.FC<{
 	message: ChatMessage;
 	isLastMessage: boolean;
@@ -230,75 +85,112 @@ export const MessageActionsList: React.FC<{
 	onCopy: () => void;
 	onRegenerate: (messageId: string) => void;
 }> = ({ message, isLastMessage, isStreaming, copied, onToggleStar, onCopy, onRegenerate }) => {
-	const [isHovered, setIsHovered] = useState(false);
+	if (isStreaming) return null;
 
-	if (isStreaming) {
-		return null;
-	}
+	const isAssistant = message.role === 'assistant';
 
-	const showTime = message.role === 'assistant' && isHovered;
+	// Shared hover-fade classes for action buttons
+	const hoverFade = "pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity";
 
-	return (
-		<div
-			onMouseEnter={() => setIsHovered(true)}
-			onMouseLeave={() => setIsHovered(false)}
-			className="pktw-flex pktw-items-center pktw-gap-1"
-		>
-			<MessageActions>
-				<MessageAction
-					tooltip={message.starred ? 'Unstar message' : 'Star message'}
-					label={message.starred ? 'Unstar message' : 'Star message'}
-					onClick={(e) => {
-						e.stopPropagation();
-						onToggleStar(message.id, !message.starred);
-					}}
-				>
-					<Star
-						size={12}
-						strokeWidth={2}
-						className={cn(
-							message.starred && 'pktw-fill-red-500 pktw-text-red-500'
-						)}
-					/>
-				</MessageAction>
+	// ── Assistant messages: metadata (always visible) + actions (hover-fade) ──
+	if (isAssistant) {
+		return (
+			<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mt-1 pktw-flex-wrap">
+				{/* Always-visible metadata */}
+				<ModelBadge message={message} />
+				<TokenBadge message={message} />
+				{(message.tokenUsage || message.model) && message.createdAtTimestamp && <Dot />}
+				<TimestampBadge message={message} />
 
-				<MessageAction
-					tooltip={copied ? 'Copied!' : 'Copy message'}
-					label="Copy message"
-					onClick={(e) => {
-						e.stopPropagation();
-						onCopy();
-					}}
-				>
-					{copied ? (
-						<Check size={12} strokeWidth={copied ? 3 : 2} />
-					) : (
-						<Copy size={12} strokeWidth={2} />
-					)}
-				</MessageAction>
+				{/* Separator between metadata and actions */}
+				<Separator className={hoverFade} />
 
-				{message.role === 'assistant' && isLastMessage && (
+				{/* Hover-fade action buttons */}
+				<div className={cn("pktw-flex pktw-items-center pktw-gap-0.5", hoverFade)}>
 					<MessageAction
-						tooltip="Regenerate response"
-						label="Regenerate response"
-						onClick={async (e) => {
+						tooltip={copied ? 'Copied!' : 'Copy message'}
+						label="Copy message"
+						className="pktw-h-6 pktw-w-6 pktw-rounded"
+						onClick={(e) => {
 							e.stopPropagation();
-							onRegenerate(message.id);
+							onCopy();
 						}}
 					>
-						<RefreshCw size={12} strokeWidth={2} />
+						{copied ? (
+							<Check size={16} strokeWidth={copied ? 3 : 2} />
+						) : (
+							<Copy size={16} strokeWidth={2} />
+						)}
 					</MessageAction>
-				)}
 
-				{message.role === 'assistant' && (
-					<>
-						<ModelIconButton message={message} />
-						<TokenCountButton message={message} />
-					</>
-				)}
+					{isLastMessage && (
+						<MessageAction
+							tooltip="Regenerate response"
+							label="Regenerate response"
+							className="pktw-h-6 pktw-w-6 pktw-rounded"
+							onClick={async (e) => {
+								e.stopPropagation();
+								onRegenerate(message.id);
+							}}
+						>
+							<RefreshCw size={16} strokeWidth={2} />
+						</MessageAction>
+					)}
 
-			</MessageActions>
-			{showTime && <TimeDisplay message={message} />}
+					<MessageAction
+						tooltip={message.starred ? 'Unstar message' : 'Star message'}
+						label={message.starred ? 'Unstar message' : 'Star message'}
+						className="pktw-h-6 pktw-w-6 pktw-rounded"
+						onClick={(e) => {
+							e.stopPropagation();
+							onToggleStar(message.id, !message.starred);
+						}}
+					>
+						<Star
+							size={16}
+							strokeWidth={2}
+							className={cn(message.starred && 'pktw-fill-red-500 pktw-text-red-500')}
+						/>
+					</MessageAction>
+				</div>
+			</div>
+		);
+	}
+
+	// ── User messages: copy + edit, hover-fade only ──
+	return (
+		<div className={cn("pktw-flex pktw-items-center pktw-gap-0.5 pktw-mt-1", hoverFade)}>
+			<MessageAction
+				tooltip={copied ? 'Copied!' : 'Copy message'}
+				label="Copy message"
+				className="pktw-h-6 pktw-w-6 pktw-rounded"
+				onClick={(e) => {
+					e.stopPropagation();
+					onCopy();
+				}}
+			>
+				{copied ? (
+					<Check size={16} strokeWidth={copied ? 3 : 2} />
+				) : (
+					<Copy size={16} strokeWidth={2} />
+				)}
+			</MessageAction>
+
+			<MessageAction
+				tooltip={message.starred ? 'Unstar message' : 'Star message'}
+				label={message.starred ? 'Unstar message' : 'Star message'}
+				className="pktw-h-6 pktw-w-6 pktw-rounded"
+				onClick={(e) => {
+					e.stopPropagation();
+					onToggleStar(message.id, !message.starred);
+				}}
+			>
+				<Star
+					size={16}
+					strokeWidth={2}
+					className={cn(message.starred && 'pktw-fill-red-500 pktw-text-red-500')}
+				/>
+			</MessageAction>
 		</div>
 	);
 };

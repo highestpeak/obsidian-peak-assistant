@@ -98,7 +98,8 @@ export const V2TableOfContents: React.FC<V2TableOfContentsProps> = ({ markdown, 
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="pktw-w-64 pktw-max-h-[60vh] pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-xl pktw-shadow-xl pktw-overflow-hidden pktw-mb-2"
+                        className="pktw-w-64 pktw-max-h-[60vh] pktw-border pktw-border-pk-border pktw-rounded-xl pktw-shadow-xl pktw-overflow-hidden pktw-mb-2"
+                    style={{ backgroundColor: 'var(--background-primary)' }}
                     >
                         {/* Header */}
                         <div

@@ -14,8 +14,8 @@ import { SnapshotChatMessage } from '@/core/storage/vault/search-docs/AiSearchAn
 
 /** Per-topic completed Q&A from Analyze. */
 export type SectionAnalyzeResult = { question: string; answer: string };
-/** Currently streaming Analyze (single in-flight). Chunks are appended; UI joins for display. */
-export type SectionAnalyzeStreaming = { topic: string; question: string; chunks: string[] };
+/** Currently streaming Analyze (single in-flight). Text is accumulated; UI reads directly. */
+export type SectionAnalyzeStreaming = { topic: string; question: string; text: string };
 
 /** Context chat modal state (Graph/Blocks/Sources follow-up). null = closed. */
 export type ContextChatModalState = {
@@ -348,11 +348,16 @@ export const useAIAnalysisStepsStore = create<{
 	resetSteps: () => set({ steps: [] }),
 }));
 
-/** Summary streaming and versions. */
-const CONSOLIDATE_THRESHOLD = 50;
+/** Summary streaming and versions — uses mutable buffer + RAF to avoid O(n²) copies. */
+const _summaryBuf = { text: '', raf: null as number | null };
+function _resetSummaryBuf() {
+	if (_summaryBuf.raf !== null) { cancelAnimationFrame(_summaryBuf.raf); _summaryBuf.raf = null; }
+	_summaryBuf.text = '';
+}
+
 export const useAIAnalysisSummaryStore = create<{
 	isSummaryStreaming: boolean;
-	summaryChunks: string[];
+	summaryText: string;
 	summaries: string[];
 	summaryVersion: number;
 	startSummaryStreaming: () => void;
@@ -364,22 +369,28 @@ export const useAIAnalysisSummaryStore = create<{
 	resetSummary: () => void;
 }>((set, get) => ({
 	isSummaryStreaming: false,
-	summaryChunks: [],
+	summaryText: '',
 	summaries: [],
 	summaryVersion: 1,
-	startSummaryStreaming: () => set({ isSummaryStreaming: true }),
+	startSummaryStreaming: () => {
+		_resetSummaryBuf();
+		set({ isSummaryStreaming: true });
+	},
 	appendSummaryDelta: (delta) => {
 		if (!delta) return;
-		set((s) => {
-			const prev = s.summaryChunks ?? [];
-			const next = prev.length >= CONSOLIDATE_THRESHOLD ? [prev.join('') + delta] : [...prev, delta];
-			return { summaryChunks: next };
-		});
+		_summaryBuf.text += delta;
+		if (_summaryBuf.raf === null) {
+			_summaryBuf.raf = requestAnimationFrame(() => {
+				_summaryBuf.raf = null;
+				set({ summaryText: _summaryBuf.text });
+			});
+		}
 	},
 	setSummary: (summary) => set((s) => {
+		_summaryBuf.text = summary;
 		const nextSummaries = summary ? [...s.summaries, summary] : s.summaries;
 		return {
-			summaryChunks: [summary],
+			summaryText: summary,
 			summaries: nextSummaries,
 			summaryVersion: nextSummaries.length || s.summaryVersion,
 		};
@@ -389,30 +400,42 @@ export const useAIAnalysisSummaryStore = create<{
 	})),
 	getSummary: () => {
 		const s = get();
-		const chunks = s.summaryChunks ?? [];
-		if (s.isSummaryStreaming || chunks.length > 0) {
-			return chunks.join('');
+		if (s.isSummaryStreaming || s.summaryText) {
+			return s.summaryText;
 		}
 		const list = s.summaries;
 		const idx = (s.summaryVersion ?? 1) - 1;
 		return list[idx] ?? list[0] ?? '';
 	},
-	markCompletedFlush: () => set((s) => {
-		const full = (s.summaryChunks ?? []).join('');
-		const nextSummaries = full ? [...s.summaries, full] : s.summaries;
-		return {
+	markCompletedFlush: () => {
+		_resetSummaryBuf();
+		set((s) => {
+			const full = s.summaryText;
+			const nextSummaries = full ? [...s.summaries, full] : s.summaries;
+			return {
+				isSummaryStreaming: false,
+				summaries: nextSummaries,
+				summaryVersion: nextSummaries.length || s.summaryVersion,
+			};
+		});
+	},
+	resetSummary: () => {
+		_resetSummaryBuf();
+		set({
 			isSummaryStreaming: false,
-			summaries: nextSummaries,
-			summaryVersion: nextSummaries.length || s.summaryVersion,
-		};
-	}),
-	resetSummary: () => set({
-		isSummaryStreaming: false,
-		summaryChunks: [],
-		summaries: [],
-		summaryVersion: 1,
-	}),
+			summaryText: '',
+			summaries: [],
+			summaryVersion: 1,
+		});
+	},
 }));
+
+/** Topic streaming buffer — RAF-throttled to avoid O(n²) chunk array copies. */
+const _topicBuf = { text: '', raf: null as number | null };
+function _resetTopicBuf() {
+	if (_topicBuf.raf !== null) { cancelAnimationFrame(_topicBuf.raf); _topicBuf.raf = null; }
+	_topicBuf.text = '';
+}
 
 /** Topic inspect/analyze/graph and streaming state. */
 export const useAIAnalysisTopicsStore = create<{
@@ -448,14 +471,24 @@ export const useAIAnalysisTopicsStore = create<{
 		topicAnalyzeResults: { ...s.topicAnalyzeResults, [topic]: [{ question, answer }, ...(s.topicAnalyzeResults[topic] ?? [])] },
 		topicAnalyzeStreaming: null,
 	})),
-	setTopicAnalyzeStreaming: (p) => set({ topicAnalyzeStreaming: p }),
+	setTopicAnalyzeStreaming: (p) => {
+		_resetTopicBuf();
+		if (p) _topicBuf.text = p.text;
+		set({ topicAnalyzeStreaming: p });
+	},
 	setTopicAnalyzeStreamingAppend: (chunk) => {
 		if (!chunk) return;
-		set((s) =>
-			s.topicAnalyzeStreaming
-				? { topicAnalyzeStreaming: { ...s.topicAnalyzeStreaming, chunks: [...s.topicAnalyzeStreaming.chunks, chunk] } }
-				: s
-		);
+		_topicBuf.text += chunk;
+		if (_topicBuf.raf === null) {
+			_topicBuf.raf = requestAnimationFrame(() => {
+				_topicBuf.raf = null;
+				set((s) =>
+					s.topicAnalyzeStreaming
+						? { topicAnalyzeStreaming: { ...s.topicAnalyzeStreaming, text: _topicBuf.text } }
+						: s
+				);
+			});
+		}
 	},
 	setTopicGraphResult: (topic, graph) => set((s) => ({
 		topicGraphResults: { ...s.topicGraphResults, [topic]: graph },
@@ -463,7 +496,7 @@ export const useAIAnalysisTopicsStore = create<{
 	})),
 	setTopicGraphLoading: (t) => set({ topicGraphLoading: t }),
 	setTopicInspectLoading: (t) => set({ topicInspectLoading: t }),
-	resetTopics: () => set({
+	resetTopics: () => { _resetTopicBuf(); set({
 		topicInspectResults: {},
 		topicAnalyzeResults: {},
 		topicAnalyzeStreaming: null,
@@ -471,7 +504,7 @@ export const useAIAnalysisTopicsStore = create<{
 		topicModalOpen: null,
 		topicGraphLoading: null,
 		topicInspectLoading: null,
-	}),
+	}); },
 }));
 
 /** Follow-ups, context chat, block chat records. */
@@ -635,7 +668,7 @@ export const useAIAnalysisResultStore = create<{
 	}),
 }));
 
-/** Orchestration: mark analysis completed (flush summary chunks into summaries). */
+/** Orchestration: mark analysis completed (flush summary text into summaries). */
 export function markAIAnalysisCompleted(): void {
 	useAIAnalysisSummaryStore.getState().markCompletedFlush();
 	useAIAnalysisRuntimeStore.getState().markCompleted();
@@ -719,7 +752,7 @@ export function loadCompletedAnalysisSnapshot(snapshot: CompletedAnalysisSnapsho
 
 	useAIAnalysisSummaryStore.setState({
 		isSummaryStreaming: false,
-		summaryChunks: [currentSummary],
+		summaryText: currentSummary,
 		summaries,
 		summaryVersion,
 	});
@@ -784,7 +817,7 @@ function reconstructProcessTimeline(
 		// Thinking text: lines prefixed with 💭
 		if (line.startsWith('\u{1F4AD} ') || line.startsWith('💭 ')) {
 			const text = line.slice(line.indexOf(' ') + 1);
-			timeline.push({ kind: 'text', id: `restored-text-${i}`, chunks: [text], complete: true });
+			timeline.push({ kind: 'text', id: `restored-text-${i}`, text, complete: true });
 			continue;
 		}
 
@@ -855,7 +888,7 @@ function bridgeSnapshotToSearchSessionStore(snapshot: CompletedAnalysisSnapshot,
 			missionRole: '',
 			status: 'done' as const,
 			content: sec.content,
-			streamingChunks: [],
+			streamingText: '',
 			generations: [{ content: sec.content, timestamp: startedAt }],
 		}));
 
@@ -951,7 +984,7 @@ export function getHasGraphData(): boolean {
 export function getHasSummarySection(): boolean {
 	const rt = useAIAnalysisRuntimeStore.getState();
 	const sum = useAIAnalysisSummaryStore.getState();
-	return rt.analysisCompleted && ((sum.summaries?.length ?? 0) > 0 || (sum.summaryChunks ?? []).join('').trim().length > 0);
+	return rt.analysisCompleted && ((sum.summaries?.length ?? 0) > 0 || (sum.summaryText ?? '').trim().length > 0);
 }
 export function getHasTopicsSection(): boolean {
 	const rt = useAIAnalysisRuntimeStore.getState();

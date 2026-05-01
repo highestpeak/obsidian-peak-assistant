@@ -121,7 +121,7 @@ export function groupTimeline(timeline: V2TimelineItem[]): GroupedItem[] {
     while (i < timeline.length) {
         const item = timeline[i];
         if (item.kind === 'text') {
-            result.push({ kind: 'text', text: item.chunks.join('') });
+            result.push({ kind: 'text', text: item.text });
         } else if (item.kind === 'tool' && item.step.toolName.endsWith('vault_read_note')) {
             const batch: V2ToolStep[] = [item.step];
             while (i + 1 < timeline.length) {

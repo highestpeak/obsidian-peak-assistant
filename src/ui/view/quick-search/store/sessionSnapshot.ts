@@ -77,7 +77,7 @@ function cloneStep(step: V2ToolStep): V2ToolStep {
 /** Deep-copy a V2TimelineItem */
 function cloneTimelineItem(item: V2TimelineItem): V2TimelineItem {
 	if (item.kind === 'text') {
-		return { kind: 'text', id: item.id, chunks: [...item.chunks], complete: item.complete };
+		return { kind: 'text', id: item.id, text: item.text, complete: item.complete };
 	}
 	return { kind: 'tool', step: cloneStep(item.step) };
 }
@@ -87,7 +87,7 @@ function cloneSection(sec: V2Section): V2Section {
 	return {
 		...sec,
 		evidencePaths: [...sec.evidencePaths],
-		streamingChunks: [...sec.streamingChunks],
+		streamingText: sec.streamingText,
 		generations: sec.generations.map((g) => ({ ...g })),
 		vizData: sec.vizData ? { ...sec.vizData } : undefined,
 	};

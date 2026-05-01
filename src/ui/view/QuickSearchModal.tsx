@@ -24,6 +24,7 @@ export class QuickSearchModal extends Modal {
 		const { contentEl, modalEl } = this;
 		contentEl.empty();
 		contentEl.addClass('peak-quick-search-modal');
+		contentEl.addClass('pktw-root');
 		// Remove default modal padding so React content sticks to edges
 		contentEl.style.padding = '0';
 

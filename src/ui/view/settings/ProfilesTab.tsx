@@ -54,6 +54,7 @@ export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
     const profiles = registry.getAllProfiles();
     const activeAgentId = registry.getActiveAgentProfile()?.id ?? null;
     const activeEmbeddingId = registry.getActiveEmbeddingProfile()?.id ?? null;
+    const activeWebSearchId = registry.getActiveWebSearchProfile()?.id ?? null;
 
     // --- Handlers ---
 
@@ -74,6 +75,11 @@ export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
 
     const handleToggleEmbedding = (id: string) => {
         registry.setActiveEmbeddingProfile(activeEmbeddingId === id ? null : id);
+        bump();
+    };
+
+    const handleToggleWebSearch = (id: string) => {
+        registry.setActiveWebSearchProfile(activeWebSearchId === id ? null : id);
         bump();
     };
 
@@ -129,10 +135,12 @@ export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
                         profile={p}
                         isActiveAgent={p.id === activeAgentId}
                         isActiveEmbedding={p.id === activeEmbeddingId}
+                        isActiveWebSearch={p.id === activeWebSearchId}
                         onUpdate={handleUpdate}
                         onDelete={handleDelete}
                         onToggleAgent={handleToggleAgent}
                         onToggleEmbedding={handleToggleEmbedding}
+                        onToggleWebSearch={handleToggleWebSearch}
                         onToggleEnabled={handleToggleEnabled}
                     />
                 ))}

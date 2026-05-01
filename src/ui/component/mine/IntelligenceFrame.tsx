@@ -22,7 +22,7 @@ export const IntelligenceFrame: React.FC<{
 			}}
 		>
 			{/* Inner content with frosted glass */}
-			<div className={`pktw-relative pktw-rounded-[11px] pktw-bg-white/92 dark:pktw-bg-gray-900/90 pktw-backdrop-blur-xl ${innerClassName}`.trim()}>
+			<div className={`pktw-relative pktw-rounded-[11px] pktw-bg-white dark:pktw-bg-gray-900 ${innerClassName}`.trim()}>
 				{children}
 			</div>
 		</div>

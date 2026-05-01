@@ -11,15 +11,15 @@ import { humanReadableTime } from '@/core/utils/date-utils';
 
 const AnalysisRow: React.FC<{
 	record: AIAnalysisHistoryRecord;
-	onSelectQuery: (query: string) => void;
-}> = ({ record, onSelectQuery }) => {
+	onSelect: (record: AIAnalysisHistoryRecord) => void;
+}> = ({ record, onSelect }) => {
 	const isGraph = record.analysis_preset === 'aiGraph';
 	const Icon = isGraph ? Network : Brain;
 	const title = record.title ?? record.query ?? 'Untitled analysis';
 
 	return (
 		<div
-			onClick={() => record.query && onSelectQuery(record.query)}
+			onClick={() => onSelect(record)}
 			className={cn(
 				'pktw-flex pktw-items-center pktw-gap-3 pktw-px-1 pktw-py-2.5',
 				'pktw-border-b pktw-border-pk-border/50 last:pktw-border-b-0',
@@ -51,11 +51,13 @@ const AnalysisRow: React.FC<{
 
 export interface RecentAnalysisListProps {
 	onSelectQuery: (query: string) => void;
+	onSelectRecord?: (record: AIAnalysisHistoryRecord) => void;
 	limit?: number;
 }
 
 export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 	onSelectQuery,
+	onSelectRecord,
 	limit = 15,
 }) => {
 	const [records, setRecords] = useState<AIAnalysisHistoryRecord[]>([]);
@@ -109,7 +111,13 @@ export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 			</span>
 			<div className="pktw-flex pktw-flex-col">
 				{records.map((r) => (
-					<AnalysisRow key={r.id ?? r.vault_rel_path} record={r} onSelectQuery={onSelectQuery} />
+					<AnalysisRow key={r.id ?? r.vault_rel_path} record={r} onSelect={(rec) => {
+						if (onSelectRecord && rec.vault_rel_path) {
+							onSelectRecord(rec);
+						} else if (rec.query) {
+							onSelectQuery(rec.query);
+						}
+					}} />
 				))}
 			</div>
 			<div ref={sentinelRef}>

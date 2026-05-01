@@ -68,8 +68,8 @@ const PROVIDER_OPTIONS: {
 }[] = [
 	{ kind: 'anthropic', label: 'Anthropic', desc: 'Direct API access', Icon: Shield, keyUrl: 'https://console.anthropic.com/settings/keys', keyUrlLabel: 'Get API Key' },
 	{ kind: 'openai', label: 'OpenAI', desc: 'GPT models', Icon: Zap, keyUrl: 'https://platform.openai.com/api-keys', keyUrlLabel: 'Get API Key' },
-	{ kind: 'google', label: 'Google AI', desc: 'Gemini models', Icon: Globe, keyUrl: 'https://aistudio.google.com/apikey', keyUrlLabel: 'Get API Key' },
-	{ kind: 'openrouter', label: 'OpenRouter', desc: 'Multi-provider gateway', Icon: Globe, keyUrl: 'https://openrouter.ai/keys', keyUrlLabel: 'Get API Key' },
+	{ kind: 'google', label: 'Google AI', desc: 'Gemini + web grounding', Icon: Globe, keyUrl: 'https://aistudio.google.com/apikey', keyUrlLabel: 'Get API Key' },
+	{ kind: 'openrouter', label: 'OpenRouter', desc: 'Multi-provider + web search', Icon: Globe, keyUrl: 'https://openrouter.ai/keys', keyUrlLabel: 'Get API Key' },
 	{ kind: 'ollama', label: 'Ollama', desc: 'Local models', Icon: Settings2, keyUrl: 'https://ollama.com/', keyUrlLabel: 'Documentation' },
 	{ kind: 'perplexity', label: 'Perplexity', desc: 'Search-augmented AI', Icon: Globe, keyUrl: 'https://www.perplexity.ai/settings/api', keyUrlLabel: 'Get API Key' },
 	{ kind: 'litellm', label: 'LiteLLM', desc: 'Self-hosted proxy', Icon: Zap, keyUrl: 'https://docs.litellm.ai/docs/', keyUrlLabel: 'Documentation' },
@@ -181,6 +181,10 @@ function AddProviderForm({ onAdded }: { onAdded: () => void }) {
 		// Set as active agent profile if it's the first one
 		if (!registry.getActiveAgentProfile()) {
 			registry.setActiveAgentProfile(profile.id);
+		}
+		// Auto-assign web search role for search-capable providers
+		if (!registry.getActiveWebSearchProfile() && (selectedKind === 'perplexity' || selectedKind === 'openrouter' || selectedKind === 'google')) {
+			registry.setActiveWebSearchProfile(profile.id);
 		}
 		new Notice(`Profile "${profile.name}" added`);
 		setApiKey('');

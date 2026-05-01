@@ -245,14 +245,14 @@ export function ModelCombobox({ value, onChange, providerKind, allowFreeText, pl
 						className={cn(
 							'pktw-absolute pktw-z-50 pktw-left-0 pktw-right-0 pktw-mt-1',
 							'pktw-max-h-[280px] pktw-overflow-y-auto',
-							'pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-pk-background',
+							'pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-popover',
 							'pktw-shadow-lg',
 						)}
 					>
 						{groups.map((group) => (
 							<div key={group.label ?? '__flat'}>
 								{group.label && (
-									<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-sticky pktw-top-0 pktw-bg-pk-background/95 pktw-backdrop-blur-sm">
+									<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-px-3 pktw-py-1.5 pktw-sticky pktw-top-0 pktw-bg-popover">
 										<span className="pktw-w-1.5 pktw-h-1.5 pktw-rounded-full pktw-bg-pk-accent" />
 										<span className="pktw-text-[10px] pktw-font-semibold pktw-uppercase pktw-tracking-wider pktw-text-pk-muted-foreground">
 											{group.label}

@@ -17,6 +17,7 @@ export class ProfileRegistry {
   private profiles: Profile[] = [];
   private activeAgentProfileId: string | null = null;
   private activeEmbeddingProfileId: string | null = null;
+  private activeWebSearchProfileId: string | null = null;
   private sdkSettings: SdkSettings = { ...DEFAULT_SDK_SETTINGS };
   private persistFn: PersistFn | null = null;
 
@@ -42,6 +43,7 @@ export class ProfileRegistry {
     this.profiles = [...settings.profiles];
     this.activeAgentProfileId = settings.activeAgentProfileId;
     this.activeEmbeddingProfileId = settings.activeEmbeddingProfileId;
+    this.activeWebSearchProfileId = settings.activeWebSearchProfileId ?? null;
     this.sdkSettings = { ...DEFAULT_SDK_SETTINGS, ...settings.sdkSettings };
     this.persistFn = persistFn;
   }
@@ -60,6 +62,11 @@ export class ProfileRegistry {
   getActiveEmbeddingProfile(): Profile | null {
     if (!this.activeEmbeddingProfileId) return null;
     return this.profiles.find((p) => p.id === this.activeEmbeddingProfileId) ?? null;
+  }
+
+  getActiveWebSearchProfile(): Profile | null {
+    if (!this.activeWebSearchProfileId) return null;
+    return this.profiles.find((p) => p.id === this.activeWebSearchProfileId) ?? null;
   }
 
   getSdkSettings(): SdkSettings {
@@ -98,6 +105,7 @@ export class ProfileRegistry {
     // Clear active references if they point to the deleted profile
     if (this.activeAgentProfileId === id) this.activeAgentProfileId = null;
     if (this.activeEmbeddingProfileId === id) this.activeEmbeddingProfileId = null;
+    if (this.activeWebSearchProfileId === id) this.activeWebSearchProfileId = null;
     this.persist();
   }
 
@@ -108,6 +116,7 @@ export class ProfileRegistry {
     if (!this.profiles[idx].enabled) {
       if (this.activeAgentProfileId === id) this.activeAgentProfileId = null;
       if (this.activeEmbeddingProfileId === id) this.activeEmbeddingProfileId = null;
+      if (this.activeWebSearchProfileId === id) this.activeWebSearchProfileId = null;
     }
     this.persist();
   }
@@ -128,6 +137,14 @@ export class ProfileRegistry {
     this.persist();
   }
 
+  setActiveWebSearchProfile(id: string | null): void {
+    if (id !== null && !this.profiles.some((p) => p.id === id)) {
+      throw new Error(`Profile with id "${id}" not found`);
+    }
+    this.activeWebSearchProfileId = id;
+    this.persist();
+  }
+
   // --------------- Internal ---------------
 
   private persist(): void {
@@ -136,6 +153,7 @@ export class ProfileRegistry {
       profiles: this.profiles.map((p) => ({ ...p })),
       activeAgentProfileId: this.activeAgentProfileId,
       activeEmbeddingProfileId: this.activeEmbeddingProfileId,
+      activeWebSearchProfileId: this.activeWebSearchProfileId,
       sdkSettings: { ...this.sdkSettings },
     };
     void this.persistFn(snapshot);

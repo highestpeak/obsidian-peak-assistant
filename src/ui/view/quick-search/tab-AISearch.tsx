@@ -25,6 +25,10 @@ import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { buildDebugInfoText } from './callbacks/copyDebugInfo';
 import { V2Footer } from './components/V2Footer';
 import { AISearchNavBar } from './components/AISearchNavBar';
+import { useAIGraphStore } from './store/aiGraphStore';
+import { buildAiGraphMarkdown } from '@/core/storage/vault/search-docs/AiGraphDoc';
+import { ensureFolder } from '@/core/utils/vault-utils';
+import { Notice } from 'obsidian';
 
 interface AISearchTabProps {
 	onClose?: () => void;
@@ -53,7 +57,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	const analysisCompleted = sessionStatus === 'completed';
 
 	// --- Old stores still needed (bridge keeps them populated) ---
-	const summaryChunks = useAIAnalysisSummaryStore((s) => s.summaryChunks);
+	const summaryText = useAIAnalysisSummaryStore((s) => s.summaryText);
 
 	const dashboardBlocks = useAIAnalysisResultStore((s) => s.dashboardBlocks);
 	const getActiveOverviewMermaid = useAIAnalysisResultStore((s) => s.getActiveOverviewMermaid);
@@ -80,8 +84,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 	});
 	const settings = AppContext.getInstance().settings;
 	const v2ReportChunks = useSearchSessionStore((s) => s.v2ReportChunks);
-	const continueAnalysisSummary = summaryChunks?.length ? summaryChunks.join('')
-		: v2ReportChunks?.length ? v2ReportChunks.join('') : '';
+	const continueAnalysisSummary = summaryText || (v2ReportChunks?.length ? v2ReportChunks.join('') : '');
 	const continueAnalysisConfig = useContinueAnalysisFollowupChatConfig({ summary: continueAnalysisSummary });
 
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -225,6 +228,38 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 		handleAutoSave();
 	}, [v2HasPlan, restoredFromHistory, autoSaveState?.lastSavedPath, error, sessionId, handleAutoSave]);
 
+	const handleSaveGraph = useCallback(async () => {
+		const { graphData, activeLens, query: graphQuery } = useAIGraphStore.getState();
+		if (!graphData) {
+			new Notice('No graph data to save');
+			return;
+		}
+		const ctx = AppContext.getInstance();
+		const app = ctx.app;
+		const saveFolder = ctx.settings.search.aiAnalysisAutoSaveFolder?.trim() || 'AI-Analysis';
+		const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+		const querySlug = (searchQuery || graphQuery || 'graph').replace(/[/\\:*?"<>|]/g, '').trim().slice(0, 40);
+		const fileName = `Graph-${querySlug}-${timestamp}`;
+		const filePath = `${saveFolder}/${fileName}.md`;
+
+		const summary = graphData.nodes.length + ' nodes, ' + graphData.edges.length + ' edges';
+		const content = buildAiGraphMarkdown({
+			query: searchQuery || graphQuery || '',
+			created: new Date().toISOString(),
+			summary,
+			graphData,
+			lensHint: activeLens,
+		});
+
+		try {
+			await ensureFolder(saveFolder);
+			await app.vault.create(filePath, content);
+			new Notice(`Graph saved: ${fileName}.md`);
+		} catch (e) {
+			new Notice(`Failed to save graph: ${e instanceof Error ? e.message : String(e)}`);
+		}
+	}, [searchQuery]);
+
 	const handleSynthesize = useCallback(async () => {
 		const store = useSearchSessionStore.getState();
 		if (store.rounds.length < 2) return;
@@ -322,7 +357,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 
 			{/* Footer — V2 renders its own content, V1 renders original */}
 			{isV2Active && (isAnalyzing || analysisCompleted) ? (
-				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onOpenInChat={() => handleOpenInChat(onClose)} />
+				<V2Footer onContinue={() => setShowV2ContinueInput(!showV2ContinueInput)} onSynthesize={handleSynthesize} showContinueAnalysis={showV2ContinueInput} onCopy={() => { handleCopyAll(); setCopied(true); window.setTimeout(() => setCopied(false), 1000); }} copied={copied} onSave={() => setShowSaveDialog(true)} onSaveGraph={handleSaveGraph} onOpenInChat={() => handleOpenInChat(onClose)} />
 			) : null}
 
 			{/* V2 floating continue analysis input */}
@@ -358,7 +393,7 @@ export const AISearchTab: React.FC<AISearchTabProps> = ({ onClose, onCancel }) =
 					title={`Topic: ${topicModalOpen}`}
 					streaming={
 						topicAnalyzeStreaming?.topic === topicModalOpen
-							? { question: topicAnalyzeStreaming.question, answerSoFar: topicAnalyzeStreaming.chunks.join('') }
+							? { question: topicAnalyzeStreaming.question, answerSoFar: topicAnalyzeStreaming.text }
 							: null
 					}
 					analyzeResults={topicAnalyzeResults?.[topicModalOpen] ?? []}

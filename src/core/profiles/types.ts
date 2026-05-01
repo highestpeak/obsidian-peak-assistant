@@ -31,6 +31,7 @@ export interface ProfileSettings {
   profiles: Profile[];
   activeAgentProfileId: string | null;
   activeEmbeddingProfileId: string | null;
+  activeWebSearchProfileId: string | null;
   sdkSettings: SdkSettings;
 }
 

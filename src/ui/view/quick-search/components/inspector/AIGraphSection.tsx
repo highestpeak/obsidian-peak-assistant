@@ -91,7 +91,7 @@ export const AIGraphSection: React.FC<AIGraphSectionProps> = ({
 					variant="outline"
 					size="sm"
 					className={cn(
-						'pktw-shadow-none pktw-w-full pktw-justify-start pktw-gap-1.5',
+						'pktw-shadow-none pktw-w-full pktw-justify-start pktw-gap-1.5 pktw-bg-pk-background',
 						'pktw-text-xs pktw-text-pk-foreground hover:pktw-text-pk-accent hover:pktw-border-[#c4b5fd]',
 					)}
 					onClick={handleGenerate}

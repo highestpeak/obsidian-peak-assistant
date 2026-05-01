@@ -176,7 +176,7 @@ export function useStreamChat() {
 
 			// Process stream events
 			for await (const event of stream) {
-				console.debug('[useStreamChat] Event:', event.type, event);
+				// Per-event logging removed: floods DevTools IPC and crashes renderer
 				// Check if aborted before processing event
 				if (abortSignal?.aborted) {
 					console.debug('[useStreamChat] Stream aborted by user');

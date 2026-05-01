@@ -1,5 +1,6 @@
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { QueryPatternRepo } from '@/core/storage/sqlite/repositories/QueryPatternRepo';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { buildSeedRecords } from '@/service/context/seed-patterns';
 import { runPatternDiscovery } from '@/service/agents/PatternDiscoveryAgent';
 import { mergeDiscoveredPatterns } from '@/service/PatternMergeService';
@@ -28,6 +29,7 @@ function getQueryPatternRepo(): QueryPatternRepo | null {
 
 async function triggerDiscovery(): Promise<void> {
 	if (!sqliteStoreManager.isInitialized()) return;
+	if (!ProfileRegistry.getInstance().getActiveAgentProfile()) return;
 
 	try {
 		const patternRepo = getQueryPatternRepo();
@@ -131,6 +133,8 @@ export async function initPatternSystem(): Promise<void> {
  * Increments the counter and fires discovery when the threshold is reached.
  */
 export function onAnalysisComplete(): void {
+	if (!sqliteStoreManager.isInitialized()) return;
+	if (!ProfileRegistry.getInstance().getActiveAgentProfile()) return;
 	queryCounter++;
 	if (queryCounter >= DISCOVERY_THRESHOLD) {
 		queryCounter = 0;

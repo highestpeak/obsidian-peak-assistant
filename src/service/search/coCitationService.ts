@@ -24,17 +24,29 @@ export function buildCoCitationQuery(
 	sourceNodeId: string,
 	limit: number,
 ): { sql: string; params: unknown[] } {
+	// IDF-weighted co-citation: citers with many outgoing links (>20) are
+	// likely "index" or "MOC" notes — their co-citations are less meaningful.
+	// Weight each citer by 1/log2(out_degree+1) so high-connectivity citers
+	// contribute less to the score.
 	const sql = `
+WITH citer_degrees AS (
+  SELECT from_node_id, COUNT(*) AS out_degree
+  FROM mobius_edge
+  WHERE type = 'references'
+  GROUP BY from_node_id
+)
 SELECT
   e2.to_node_id AS co_cited_id,
   n.label,
   n.path,
   COUNT(DISTINCT e1.from_node_id) AS shared_citer_count,
+  SUM(1.0 / (1 + log2(COALESCE(cd.out_degree, 1)))) AS weighted_score,
   GROUP_CONCAT(DISTINCT n2.label) AS citing_labels
 FROM mobius_edge e1
 JOIN mobius_edge e2 ON e1.from_node_id = e2.from_node_id
 JOIN mobius_node n ON n.node_id = e2.to_node_id
 JOIN mobius_node n2 ON n2.node_id = e1.from_node_id
+LEFT JOIN citer_degrees cd ON cd.from_node_id = e1.from_node_id
 WHERE e1.to_node_id = ?
   AND e2.to_node_id != ?
   AND e1.type = 'references'
@@ -42,7 +54,7 @@ WHERE e1.to_node_id = ?
   AND n.type = 'document'
 GROUP BY e2.to_node_id
 HAVING shared_citer_count >= 2
-ORDER BY shared_citer_count DESC
+ORDER BY weighted_score DESC
 LIMIT ?
 `.trim();
 
@@ -75,6 +87,7 @@ export async function getCoCitations(
 		label: string | null;
 		path: string | null;
 		shared_citer_count: number;
+		weighted_score: number;
 		citing_labels: string | null;
 	};
 
@@ -86,11 +99,14 @@ export async function getCoCitations(
 		return [];
 	}
 
+	// Normalize weighted_score to [0,1] — max observed becomes 1.0
+	const maxWeighted = rows.reduce((m, r) => Math.max(m, r.weighted_score ?? 0), 0) || 1;
+
 	return rows.map((row) => ({
 		nodeId: row.co_cited_id,
 		path: row.path ?? '',
 		label: row.label ?? '',
 		citingNotes: row.citing_labels ? row.citing_labels.split(',').filter(Boolean) : [],
-		score: Math.min(1, (row.shared_citer_count ?? 0) / 10),
+		score: Math.min(1, (row.weighted_score ?? 0) / maxWeighted),
 	}));
 }
