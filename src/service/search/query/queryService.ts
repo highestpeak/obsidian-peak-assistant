@@ -813,23 +813,31 @@ export class QueryService {
 		}
 
 		// 5. Expansion: PPR-discovered docs not in original results.
-		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
-		let expansionCount = 0;
+		// Collect candidates, batch-fetch paths via Promise.all (max 20 lookups).
+		const candidateNodeIds: string[] = [];
+		for (const [nodeId] of pprEntries) {
+			if (candidateNodeIds.length >= PPR_MAX_EXPANSION_RESULTS) break;
+			if (!existingDocIds.has(nodeId)) candidateNodeIds.push(nodeId);
+		}
 
-		for (const [nodeId, _pprScore] of pprEntries) {
-			if (expansionCount >= PPR_MAX_EXPANSION_RESULTS) break;
-			if (existingDocIds.has(nodeId)) continue;
+		if (candidateNodeIds.length > 0) {
+			const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+			const nodes = await Promise.all(
+				candidateNodeIds.map((id) => mobiusNodeRepo.getByNodeId(id)),
+			);
+			let expansionCount = 0;
 
-			const node = await mobiusNodeRepo.getByNodeId(nodeId);
-			if (!node?.path) continue;
-			if (existingPaths.has(node.path)) continue;
+			for (const node of nodes) {
+				if (expansionCount >= PPR_MAX_EXPANSION_RESULTS) break;
+				if (!node?.path || existingPaths.has(node.path)) continue;
 
-			const pprRank = pprRankByNodeId.get(nodeId)!;
-			const pprRrf = PPR_RRF_WEIGHT / (RRF_K + pprRank);
+				const pprRank = pprRankByNodeId.get(node.node_id)!;
+				const pprRrf = PPR_RRF_WEIGHT / (RRF_K + pprRank);
 
-			fused.push({ path: node.path, score: pprRrf, docId: nodeId });
-			existingPaths.add(node.path);
-			expansionCount++;
+				fused.push({ path: node.path, score: pprRrf, docId: node.node_id });
+				existingPaths.add(node.path);
+				expansionCount++;
+			}
 		}
 
 		// 6. Sort by fused score descending.

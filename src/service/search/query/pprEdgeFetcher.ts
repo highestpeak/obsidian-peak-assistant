@@ -10,7 +10,7 @@
  * 3. **Tag co-occurrence** — 2-hop expansion through shared tags (1/sqrt(tagDocCount), normalized)
  */
 
-import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
 import type { GraphEdge } from '@/core/storage/sqlite/repositories/MobiusEdgeRepo';
 import {
@@ -94,7 +94,7 @@ export function createPPREdgeFetcher(
 		const cached = cache.get(nodeId);
 		if (cached !== undefined) return cached;
 
-		const edgeRepo = SqliteStoreManager.getInstance().getMobiusEdgeRepo(tenant);
+		const edgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
 
 		// 1. Fetch all outgoing edges in one query.
 		const allEdges: GraphEdge[] = await edgeRepo.getByFromNode(nodeId);
