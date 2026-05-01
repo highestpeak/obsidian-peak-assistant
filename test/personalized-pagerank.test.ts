@@ -21,13 +21,13 @@ function makeEdgeFetcher(adj: Record<string, MultiLayerEdge[]>): (nodeId: string
 // Test 1: Chain graph  A → B → C, seed = [A]
 // ---------------------------------------------------------------------------
 
-function testChainGraph() {
+async function testChainGraph() {
 	const edges: Record<string, MultiLayerEdge[]> = {
 		A: [{ to: 'B', weight: 1 }],
 		B: [{ to: 'C', weight: 1 }],
 	};
 	const seeds: PPRSeed[] = [{ nodeId: 'A', weight: 1 }];
-	const result = computePPR(seeds, makeEdgeFetcher(edges), {});
+	const result = await computePPR(seeds, makeEdgeFetcher(edges), {});
 
 	const sA = result.scores.get('A') ?? 0;
 	const sB = result.scores.get('B') ?? 0;
@@ -43,14 +43,14 @@ function testChainGraph() {
 // Test 2: Diamond graph  A→B, A→C, B→D, C→D, seed = [A]
 // ---------------------------------------------------------------------------
 
-function testDiamondGraph() {
+async function testDiamondGraph() {
 	const edges: Record<string, MultiLayerEdge[]> = {
 		A: [{ to: 'B', weight: 1 }, { to: 'C', weight: 1 }],
 		B: [{ to: 'D', weight: 1 }],
 		C: [{ to: 'D', weight: 1 }],
 	};
 	const seeds: PPRSeed[] = [{ nodeId: 'A', weight: 1 }];
-	const result = computePPR(seeds, makeEdgeFetcher(edges), {});
+	const result = await computePPR(seeds, makeEdgeFetcher(edges), {});
 
 	const sA = result.scores.get('A') ?? 0;
 	const sB = result.scores.get('B') ?? 0;
@@ -69,12 +69,12 @@ function testDiamondGraph() {
 // Test 3: Weighted edges  A→B (0.9), A→C (0.1), seed = [A]
 // ---------------------------------------------------------------------------
 
-function testWeightedEdges() {
+async function testWeightedEdges() {
 	const edges: Record<string, MultiLayerEdge[]> = {
 		A: [{ to: 'B', weight: 0.9 }, { to: 'C', weight: 0.1 }],
 	};
 	const seeds: PPRSeed[] = [{ nodeId: 'A', weight: 1 }];
-	const result = computePPR(seeds, makeEdgeFetcher(edges), {});
+	const result = await computePPR(seeds, makeEdgeFetcher(edges), {});
 
 	const sB = result.scores.get('B') ?? 0;
 	const sC = result.scores.get('C') ?? 0;
@@ -89,7 +89,7 @@ function testWeightedEdges() {
 // Test 4: Multiple seeds  diamond graph, seeds = [B:0.7, C:0.3]
 // ---------------------------------------------------------------------------
 
-function testMultipleSeeds() {
+async function testMultipleSeeds() {
 	const edges: Record<string, MultiLayerEdge[]> = {
 		A: [{ to: 'B', weight: 1 }, { to: 'C', weight: 1 }],
 		B: [{ to: 'D', weight: 1 }],
@@ -99,7 +99,7 @@ function testMultipleSeeds() {
 		{ nodeId: 'B', weight: 0.7 },
 		{ nodeId: 'C', weight: 0.3 },
 	];
-	const result = computePPR(seeds, makeEdgeFetcher(edges), {});
+	const result = await computePPR(seeds, makeEdgeFetcher(edges), {});
 
 	const sB = result.scores.get('B') ?? 0;
 	const sC = result.scores.get('C') ?? 0;
@@ -112,7 +112,7 @@ function testMultipleSeeds() {
 // Test 5: Safety cap  100-node cycle, maxPushOps = 50
 // ---------------------------------------------------------------------------
 
-function testSafetyCap() {
+async function testSafetyCap() {
 	const N = 100;
 	const edges: Record<string, MultiLayerEdge[]> = {};
 	for (let i = 0; i < N; i++) {
@@ -122,7 +122,7 @@ function testSafetyCap() {
 	}
 	const seeds: PPRSeed[] = [{ nodeId: 'node_0', weight: 1 }];
 	const config: PPRConfig = { maxPushOps: 50 };
-	const result = computePPR(seeds, makeEdgeFetcher(edges), config);
+	const result = await computePPR(seeds, makeEdgeFetcher(edges), config);
 
 	assert(result.truncated === true, `safety cap: expected truncated=true, got ${result.truncated}`);
 	assert(result.pushOps <= 50, `safety cap: expected pushOps <= 50, got ${result.pushOps}`);
@@ -134,12 +134,12 @@ function testSafetyCap() {
 // Test 6: Empty seeds
 // ---------------------------------------------------------------------------
 
-function testEmptySeeds() {
+async function testEmptySeeds() {
 	const edges: Record<string, MultiLayerEdge[]> = {
 		A: [{ to: 'B', weight: 1 }],
 	};
 	const seeds: PPRSeed[] = [];
-	const result = computePPR(seeds, makeEdgeFetcher(edges), {});
+	const result = await computePPR(seeds, makeEdgeFetcher(edges), {});
 
 	assert(result.scores.size === 0, `empty seeds: expected 0 scores, got ${result.scores.size}`);
 	assert(result.pushOps === 0, `empty seeds: expected 0 pushOps, got ${result.pushOps}`);
@@ -150,10 +150,10 @@ function testEmptySeeds() {
 // Test 7: Isolated node  no edges, seed = [X]
 // ---------------------------------------------------------------------------
 
-function testIsolatedNode() {
+async function testIsolatedNode() {
 	const edges: Record<string, MultiLayerEdge[]> = {};
 	const seeds: PPRSeed[] = [{ nodeId: 'X', weight: 1 }];
-	const result = computePPR(seeds, makeEdgeFetcher(edges), {});
+	const result = await computePPR(seeds, makeEdgeFetcher(edges), {});
 
 	const sX = result.scores.get('X') ?? 0;
 
@@ -167,12 +167,15 @@ function testIsolatedNode() {
 // Run all tests
 // ---------------------------------------------------------------------------
 
-console.log('personalized-pagerank.test.ts:');
-testChainGraph();
-testDiamondGraph();
-testWeightedEdges();
-testMultipleSeeds();
-testSafetyCap();
-testEmptySeeds();
-testIsolatedNode();
-console.log('personalized-pagerank.test.ts: all passed');
+async function runAll() {
+	console.log('personalized-pagerank.test.ts:');
+	await testChainGraph();
+	await testDiamondGraph();
+	await testWeightedEdges();
+	await testMultipleSeeds();
+	await testSafetyCap();
+	await testEmptySeeds();
+	await testIsolatedNode();
+	console.log('personalized-pagerank.test.ts: all passed');
+}
+runAll();
