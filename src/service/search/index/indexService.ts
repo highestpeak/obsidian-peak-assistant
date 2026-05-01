@@ -44,6 +44,10 @@ import {
 	computeSemanticPageRankStreaming,
 	computeVaultPageRankStreaming,
 } from '@/service/search/index/helper/documentPageRank';
+import { computeBrandesBetweenness, computeBurtConstraint } from '@/service/search/index/helper/backbone/structuralMetrics';
+import { detectCommunities, computeModularity } from '@/service/search/index/helper/backbone/communityDetection';
+import { detectStructuralHoles } from '@/service/search/index/helper/backbone/gapDetection';
+import type { StructuralMetric, CommunityData } from '@/service/search/index/helper/backbone/structuralTypes';
 import { enforceChunkLengthWithOverlap } from '@/service/search/index/helper/safeChunking';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import {
@@ -95,6 +99,14 @@ import {
 	type FolderCohesionDocRef,
 } from '@/service/search/index/helper/hub/folderCohesion';
 import { emptyMap } from '@/core/utils/collection-utils';
+import { detectChanges } from './cascade/CascadeChangeDetector';
+import type { PreIndexSnapshot, CascadeChangeInfo } from './cascade/types';
+import {
+	CASCADE_DEBT_SEMANTIC_EDGE_PRIORITY,
+	CASCADE_DEBT_DEGREE_REFRESH_PRIORITY,
+	CASCADE_DEBT_HUB_INVALIDATE_PRIORITY,
+	CASCADE_DEBT_MERMAID_OVERLAY_PRIORITY,
+} from '@/core/constant';
 export type StorageType = 'sqlite' | 'graph';
 
 export type { IndexDocumentOptions, IndexDocumentReason } from './types';
@@ -137,7 +149,12 @@ export type MobiusGlobalMaintenanceBatchPhase =
 	| 'semantic_pagerank_edges'
 	| 'semantic_pagerank_persist'
 	| 'semantic_related'
-	| 'folder_hub_stats';
+	| 'folder_hub_stats'
+	| 'structural_betweenness'
+	| 'structural_constraint'
+	| 'structural_communities'
+	| 'structural_gaps'
+	| 'structural_persist';
 
 /** All maintenance progress phases (batch-style or `semantic_related`). */
 export type MobiusGlobalMaintenancePhase = MobiusGlobalMaintenanceBatchPhase | 'semantic_related';
@@ -499,6 +516,29 @@ class IndexSingleService {
 				);
 			}
 
+			// Capture pre-index snapshot for cascade change detection (vault only)
+			let preSnapshot: PreIndexSnapshot | null = null;
+			if (tenant === 'vault') {
+				try {
+					const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+					const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+					const existingNode = await mobiusNodeRepo.getByPath(docPath);
+					if (existingNode) {
+						const existingOutgoing = await mobiusEdgeRepo.getByFromNodesAndTypes(
+							[existingNode.id],
+							[GraphEdgeType.References],
+						);
+						preSnapshot = {
+							contentHash: existingNode.content_hash ?? null,
+							outgoingTargetIds: existingOutgoing.map((e) => e.to_node_id),
+							embeddingVector: null,
+						};
+					}
+				} catch {
+					// Non-critical: failure means we treat it as a new doc (no cascade debt)
+				}
+			}
+
 			sw.start('Persist index (transaction: mobius + FTS + graph + aggregates + index_state)');
 			console.debug(`[IndexService] Persist index for: ${docPath} (tenant: ${tenant})`);
 			const shouldRefreshGraph = opts.includeCoreSearchIndex || opts.includeLlmTags || opts.includeLlmSummary;
@@ -566,6 +606,35 @@ class IndexSingleService {
 				}
 			});
 			await this.crud.addMaintenanceDebt(tenant, MOBIUS_MAINTENANCE_DEBT_INDEX_DOC);
+
+			// Compare pre/post state and write cascade debt if changes detected
+			if (tenant === 'vault' && preSnapshot !== null) {
+				try {
+					const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+					const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo(tenant);
+					const postNode = await mobiusNodeRepo.getByPath(docPath);
+					if (postNode) {
+						const postOutgoing = await mobiusEdgeRepo.getByFromNodesAndTypes(
+							[postNode.id],
+							[GraphEdgeType.References],
+						);
+						const changeInfo = detectChanges(
+							docPath,
+							postNode.id,
+							preSnapshot,
+							postNode.content_hash ?? '',
+							postOutgoing.map((e) => e.to_node_id),
+							null,
+						);
+						if (changeInfo) {
+							await this.writeCascadeDebt(tenant, changeInfo);
+						}
+					}
+				} catch {
+					// Non-critical: cascade debt is best-effort
+				}
+			}
+
 			sw.stop();
 		} catch (error) {
 			console.error(`[IndexService] Error indexing document:`, {
@@ -1288,6 +1357,58 @@ class IndexSingleService {
 			await mobiusNodeRepo.refreshTagDocCountsForTagNodeIds(tagNodeIds, now);
 		}
 	}
+
+	private async writeCascadeDebt(tenant: IndexTenant, change: CascadeChangeInfo): Promise<void> {
+		const cascadeRepo = sqliteStoreManager.getCascadeDebtRepo(tenant);
+		const now = Date.now();
+
+		if (change.embeddingChanged || change.contentHashChanged) {
+			await cascadeRepo.insertOrUpdatePriority({
+				tenant,
+				sourcePath: change.docPath,
+				targetId: change.docNodeId,
+				debtType: 'semantic_edge',
+				priority: CASCADE_DEBT_SEMANTIC_EDGE_PRIORITY,
+				changeMagnitude: change.changeMagnitude,
+				createdAt: now,
+			});
+
+			await cascadeRepo.insertOrUpdatePriority({
+				tenant,
+				sourcePath: change.docPath,
+				targetId: change.docNodeId,
+				debtType: 'mermaid_overlay',
+				priority: CASCADE_DEBT_MERMAID_OVERLAY_PRIORITY,
+				changeMagnitude: change.changeMagnitude,
+				createdAt: now,
+			});
+		}
+
+		if (change.outgoingLinksChanged) {
+			const allAffectedIds = new Set([...change.oldOutgoingTargetIds, ...change.newOutgoingTargetIds]);
+			for (const targetId of allAffectedIds) {
+				await cascadeRepo.insertOrUpdatePriority({
+					tenant,
+					sourcePath: change.docPath,
+					targetId,
+					debtType: 'degree_refresh',
+					priority: CASCADE_DEBT_DEGREE_REFRESH_PRIORITY,
+					changeMagnitude: null,
+					createdAt: now,
+				});
+			}
+		}
+
+		await cascadeRepo.insertOrUpdatePriority({
+			tenant,
+			sourcePath: change.docPath,
+			targetId: change.docNodeId,
+			debtType: 'hub_invalidate',
+			priority: CASCADE_DEBT_HUB_INVALIDATE_PRIORITY,
+			changeMagnitude: change.changeMagnitude,
+			createdAt: now,
+		});
+	}
 }
 
 /** Folder path prefixes for a directory string, e.g. `a/b` → `['a','a/b']`. */
@@ -1397,6 +1518,10 @@ class GlobalMaintenanceService {
 		if (tenants.includes('vault')) {
 			sw.start('folder_hub_stats');
 			await this.rebuildFolderHubStatsForVaultInternal(onProgress);
+			sw.stop();
+
+			sw.start('structural_analysis');
+			await this.computeAndPersistStructuralMetricsInternal(onProgress);
 			sw.stop();
 		}
 
@@ -1803,6 +1928,97 @@ class GlobalMaintenanceService {
 				await yieldForLargePass();
 			}
 		}
+	}
+
+	/**
+	 * Compute betweenness centrality, Burt constraint, Louvain communities, and structural holes.
+	 * Runs on vault tenant only (structural analysis is vault-level).
+	 */
+	private async computeAndPersistStructuralMetricsInternal(
+		onProgress: ((ev: MobiusGlobalMaintenanceProgress) => void) | undefined,
+	): Promise<void> {
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo('vault');
+		const mobiusEdgeRepo = sqliteStoreManager.getMobiusEdgeRepo('vault');
+		const structuralRepo = sqliteStoreManager.getStructuralMetricsRepo();
+
+		// Get all document-like node IDs
+		const vertices = await mobiusNodeRepo.listDocLikePageRankVertices();
+		const nodeIds = vertices.map(v => v.node_id);
+		if (nodeIds.length < 3) return; // need at least 3 nodes for meaningful analysis
+
+		onProgress?.({ tenant: 'vault', phase: 'structural_betweenness', progressTextSuffix: `${nodeIds.length} nodes` });
+
+		// Edge scanner: streams reference + semantic edges (union graph)
+		const scanEdges = async (visit: (from: string, to: string, weight: number) => void) => {
+			for await (const batch of mobiusEdgeRepo.iterateReferenceEdgeBatches(PAGERANK_EDGE_BATCH_SIZE)) {
+				for (const e of batch) visit(e.from_node_id, e.to_node_id, 1.0);
+			}
+			for await (const batch of mobiusEdgeRepo.iterateSemanticRelatedEdgeBatches(PAGERANK_EDGE_BATCH_SIZE)) {
+				for (const e of batch) visit(e.from_node_id, e.to_node_id, e.weight ?? 0.5);
+			}
+		};
+
+		// 1. Betweenness centrality (approximate for large vaults)
+		const betweenness = await computeBrandesBetweenness(
+			nodeIds, scanEdges,
+			{ approximate: nodeIds.length > 20000, kSources: Math.ceil(Math.sqrt(nodeIds.length)) },
+		);
+
+		onProgress?.({ tenant: 'vault', phase: 'structural_constraint', progressTextSuffix: 'computing' });
+
+		// 2. Burt constraint
+		const constraint = await computeBurtConstraint(nodeIds, scanEdges);
+
+		onProgress?.({ tenant: 'vault', phase: 'structural_communities', progressTextSuffix: 'detecting' });
+
+		// 3. Louvain community detection
+		const communityMap = await detectCommunities(nodeIds, scanEdges);
+
+		// 4. Build combined metrics
+		const metrics: StructuralMetric[] = nodeIds.map(id => ({
+			nodeId: id,
+			betweenness: betweenness.get(id) ?? 0,
+			burtConstraint: constraint.get(id) ?? 1,
+			communityId: communityMap.get(id) ?? 0,
+		}));
+
+		// 5. Build community metadata
+		const communityMembers = new Map<number, string[]>();
+		for (const [nodeId, comId] of communityMap) {
+			let members = communityMembers.get(comId);
+			if (!members) { members = []; communityMembers.set(comId, members); }
+			members.push(nodeId);
+		}
+
+		const communities: CommunityData[] = [];
+		for (const [comId, members] of communityMembers) {
+			let avgBetw = 0;
+			for (const id of members) avgBetw += betweenness.get(id) ?? 0;
+			avgBetw /= members.length;
+
+			communities.push({
+				communityId: comId,
+				label: null, // label generation can be added later (LLM or top-tags)
+				memberCount: members.length,
+				avgBetweenness: avgBetw,
+				centroidEmbedding: null, // skip embedding centroid for now to avoid heavy reads
+			});
+		}
+
+		onProgress?.({ tenant: 'vault', phase: 'structural_gaps', progressTextSuffix: 'detecting' });
+
+		// 6. Gap detection — collect edges for gap analysis
+		const edges: Array<{ from: string; to: string; weight: number }> = [];
+		await scanEdges((from, to, weight) => edges.push({ from, to, weight }));
+		const gaps = detectStructuralHoles(communityMap, edges, () => null); // skip embedding-based similarity for now
+
+		onProgress?.({ tenant: 'vault', phase: 'structural_persist', progressTextSuffix: `${metrics.length} metrics, ${communities.length} communities, ${gaps.length} gaps` });
+
+		// 7. Persist
+		await structuralRepo.clearAll();
+		await structuralRepo.upsertMetricsBatch(metrics);
+		await structuralRepo.upsertCommunities(communities);
+		await structuralRepo.upsertStructuralHoles(gaps);
 	}
 }
 
