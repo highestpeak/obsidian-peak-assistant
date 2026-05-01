@@ -22,7 +22,7 @@ function formatSignal(signal: AmbientSignal): string {
 		case 'hub_member':
 			return `Both in "${signal.hubName}" cluster`;
 		case 'text_overlap':
-			return signal.terms.map((t) => `"${t}"`).join(', ');
+			return `Similar discussion of ${signal.terms.map((t) => `"${t}"`).join(', ')}`;
 		case 'recency':
 			return `Edited ${signal.editedDaysAgo} days ago in a related session`;
 	}

@@ -70,6 +70,7 @@ export default class MyPlugin extends Plugin {
 
 	/** On-demand template loader; cleared on unload to free memory. */
 	private templateManager: TemplateManager | null = null;
+	private ambientStoreUnsub: (() => void) | null = null;
 
 	// search
 	searchClient: SearchClient | null = null;
@@ -212,7 +213,7 @@ export default class MyPlugin extends Plugin {
 				statusBarEl.setText('\u26A1 \u2013');
 				statusBarEl.onClickEvent(() => void this.viewManager?.activateAmbientPushView());
 
-				useAmbientPushStore.subscribe((state) => {
+				this.ambientStoreUnsub = useAmbientPushStore.subscribe((state) => {
 					const count = state.items.length;
 					statusBarEl.setText(count > 0 ? `\u26A1 ${count} related` : '\u26A1 \u2013');
 				});
@@ -342,6 +343,11 @@ export default class MyPlugin extends Plugin {
 				delete g.__zod_globalRegistry;
 			}
 		} catch (_) { /* ignore */ }
+
+		// Clean up Ambient Push
+		this.ambientStoreUnsub?.();
+		this.ambientStoreUnsub = null;
+		AmbientPushService.getInstance().dispose();
 
 		clearPendingConversationTimeouts();
 		this.viewManager?.unload();

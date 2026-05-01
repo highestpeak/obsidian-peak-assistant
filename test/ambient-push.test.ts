@@ -174,7 +174,7 @@ import type { AmbientSignal } from '@/service/ambient/types';
 	// text_overlap
 	assert.equal(
 		generateExplanation([{ type: 'text_overlap', terms: ['neural', 'network'] }]),
-		'"neural", "network"'
+		'Similar discussion of "neural", "network"'
 	);
 
 	// recency

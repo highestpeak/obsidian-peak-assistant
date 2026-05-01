@@ -3,7 +3,6 @@ import { Zap, RefreshCw } from 'lucide-react';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
-import { AppContext } from '@/app/context/AppContext';
 import { PushCard } from './PushCard';
 
 function formatElapsed(ts: number): string {
@@ -15,6 +14,7 @@ function formatElapsed(ts: number): string {
 
 export const AmbientPushPanel: React.FC = () => {
 	const items = useAmbientPushStore((s) => s.items);
+	const sourceFilePath = useAmbientPushStore((s) => s.sourceFilePath);
 	const lastUpdateTs = useAmbientPushStore((s) => s.lastUpdateTs);
 
 	// Re-render elapsed time periodically
@@ -28,9 +28,6 @@ export const AmbientPushPanel: React.FC = () => {
 	function handleRefresh() {
 		AmbientPushService.getInstance().triggerManual();
 	}
-
-	// Derive sourceFilePath from active file
-	const sourceFilePath = AppContext.getApp().workspace.getActiveFile()?.path ?? '';
 
 	return (
 		<div className="pktw-flex pktw-h-full pktw-flex-col">

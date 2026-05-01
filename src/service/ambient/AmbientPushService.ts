@@ -96,7 +96,7 @@ export class AmbientPushService {
 			return;
 		}
 
-		store.setItems(items);
+		store.setItems(items, context.filePath);
 
 		const now = Date.now();
 		for (const item of items) {

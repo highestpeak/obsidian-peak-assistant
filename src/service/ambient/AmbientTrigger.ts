@@ -32,6 +32,7 @@ export class AmbientTrigger {
 			if (this.disposed) return;
 
 			const settings = this.getSettings();
+			if (!settings.enabled) return;
 			this.charAccumulator++;
 
 			// Reset pause timer on every keystroke
@@ -61,6 +62,7 @@ export class AmbientTrigger {
 		const fileOpenRef = this.app.workspace.on('file-open', (file: TFile | null) => {
 			if (this.disposed) return;
 			if (!file) return;
+			if (!this.getSettings().enabled) return;
 
 			const path = file.path;
 

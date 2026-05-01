@@ -4,10 +4,11 @@ import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 
 interface AmbientPushStoreState {
 	items: AmbientPushItem[];
+	sourceFilePath: string;
 	pushHistory: Map<string, number>;
 	lastUpdateTs: number;
 
-	setItems: (items: AmbientPushItem[]) => void;
+	setItems: (items: AmbientPushItem[], sourceFilePath: string) => void;
 	clearItems: () => void;
 	dismissItem: (filePath: string) => void;
 	recordPush: (filePath: string, timestamp: number) => void;
@@ -16,11 +17,12 @@ interface AmbientPushStoreState {
 
 export const useAmbientPushStore = create<AmbientPushStoreState>((set, get) => ({
 	items: [],
+	sourceFilePath: '',
 	pushHistory: new Map(),
 	lastUpdateTs: 0,
 
-	setItems: (items: AmbientPushItem[]) =>
-		set({ items, lastUpdateTs: Date.now() }),
+	setItems: (items: AmbientPushItem[], sourceFilePath: string) =>
+		set({ items, sourceFilePath, lastUpdateTs: Date.now() }),
 
 	clearItems: () =>
 		set({ items: [], lastUpdateTs: Date.now() }),
