@@ -9,6 +9,15 @@ import { computeMstEdgeKeys, normalizeEdgeWeight } from './mst';
 import { linkKey } from './link-key';
 import { computeDegreeMap, computeHubNodeIds } from '../core/degreeRadius';
 
+/** Deterministic pseudo-random [0, 1) from a string seed (replaces Math.random for reproducible layouts). */
+function seededRandom(seed: string): number {
+	let h = 0;
+	for (let i = 0; i < seed.length; i++) {
+		h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
+	}
+	return (h >>> 0) / 0x100000000;
+}
+
 export type TopologyResult = {
 	communityMap: Map<string, number>;
 	degreeMap: Map<string, number>;
@@ -87,14 +96,14 @@ export function assignInitialPositionsByGroup(
 		for (const n of groupNodes) {
 			// Treat (0,0) or near-origin as unset so we don't keep a cluster at top-left
 			if (n.x != null && n.y != null && (Math.abs(n.x) > 20 || Math.abs(n.y) > 20)) continue;
-			n.x = gx + (Math.random() - 0.5) * 2 * jitterX;
-			n.y = gy + (Math.random() - 0.5) * 2 * jitterY;
+			n.x = gx + (seededRandom(n.id + 'x') - 0.5) * 2 * jitterX;
+			n.y = gy + (seededRandom(n.id + 'y') - 0.5) * 2 * jitterY;
 		}
 	}
 
 	for (const n of nodes) {
 		if (n.x != null && n.y != null && (Math.abs(n.x) > 20 || Math.abs(n.y) > 20)) continue;
-		n.x = padding + Math.random() * spanX;
-		n.y = padding + Math.random() * spanY;
+		n.x = padding + seededRandom(n.id + 'fx') * spanX;
+		n.y = padding + seededRandom(n.id + 'fy') * spanY;
 	}
 }

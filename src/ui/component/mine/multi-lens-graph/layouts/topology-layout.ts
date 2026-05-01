@@ -21,7 +21,7 @@ export function computeTopologyLayout(input: TopologyInput): { positions: Map<st
 
 	const g = new dagre.graphlib.Graph();
 	g.setDefaultEdgeLabel(() => ({}));
-	g.setGraph({ rankdir: 'LR', nodesep: 80, ranksep: 200 });
+	g.setGraph({ rankdir: 'LR', nodesep: 100, ranksep: 220 });
 
 	const nodeSet = new Set(nodes.map(n => n.path));
 

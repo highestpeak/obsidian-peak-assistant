@@ -16,7 +16,7 @@ export interface TimelineLayoutResult {
 const CANVAS_PADDING = 40;
 const AXIS_X = 0;
 const COLUMN_WIDTH = 240;
-const COLUMN_GAP = 60;
+const COLUMN_GAP = 80;
 const FIRST_COLUMN_LEFT = 120;
 const ROW_HEIGHT = 100;
 

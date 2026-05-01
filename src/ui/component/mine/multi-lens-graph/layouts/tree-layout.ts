@@ -14,7 +14,7 @@ interface LayoutResult {
 export function computeTreeLayout(input: LayoutInput): LayoutResult {
 	const g = new dagre.graphlib.Graph();
 	g.setDefaultEdgeLabel(() => ({}));
-	g.setGraph({ rankdir: 'TB', nodesep: 120, ranksep: 180 });
+	g.setGraph({ rankdir: 'TB', nodesep: 140, ranksep: 200 });
 
 	for (const n of input.nodes) {
 		g.setNode(n.path, { width: estimateNodeWidth(n.label), height: 60 });
