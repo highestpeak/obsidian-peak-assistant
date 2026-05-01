@@ -654,6 +654,23 @@ export const RRF_CONTENT_WEIGHT = 0.6; // Combined weight for content hits (text
 export const RRF_CONTENT_VS_META_WEIGHT = 0.5; // Weight for content hits vs meta hits
 
 /**
+ * PPR (Personalized PageRank) Search configuration constants.
+ * Parameters for the Forward Push PPR algorithm used in semantic graph-based search.
+ */
+export const PPR_ALPHA = 0.15;
+export const PPR_EPSILON = 1e-6;
+export const PPR_MAX_PUSH_OPS = 50_000;
+export const PPR_MAX_MS = 200;
+export const PPR_SEED_K = 10;
+export const PPR_LAYER_WEIGHT_REFERENCE = 0.4;
+export const PPR_LAYER_WEIGHT_SEMANTIC = 0.5;
+export const PPR_LAYER_WEIGHT_TAG = 0.1;
+export const PPR_RRF_WEIGHT = 0.3;
+export const PPR_CM_RRF_WEIGHT = 0.7;
+export const PPR_GLOBAL_PR_DAMPENING = 0.3;
+export const PPR_MAX_EXPANSION_RESULTS = 20;
+
+/**
  * Search scoring constants for keyword matching.
  * Used to boost search results based on keyword diversity and density.
  */
