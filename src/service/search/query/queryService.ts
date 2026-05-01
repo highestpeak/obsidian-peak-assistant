@@ -17,10 +17,17 @@ import {
 	SEARCH_SCORING_MAX_OCCURRENCES_CONTENT,
 	SEARCH_SCORING_DIVERSITY_BOOST_META,
 	SEARCH_SCORING_DENSITY_BOOST_META,
-	SEARCH_SCORING_MAX_OCCURRENCES_META
+	SEARCH_SCORING_MAX_OCCURRENCES_META,
+	PPR_SEED_K,
+	PPR_RRF_WEIGHT,
+	PPR_CM_RRF_WEIGHT,
+	PPR_MAX_EXPANSION_RESULTS,
 } from '@/core/constant';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import type { ChunkType } from '@/service/search/index/chunkTypes';
+import type { IndexTenant } from '@/core/storage/sqlite/types';
+import { computePPR } from './personalizedPageRank';
+import { createPPREdgeFetcher } from './pprEdgeFetcher';
 
 /**
  * Query service for search operations.
@@ -141,10 +148,24 @@ export class QueryService {
 		);
 		sw.stop();
 
+		// PPR graph-based reranking
+		const tenant = query?.indexTenant ?? 'vault';
+		let pprEnriched = resultItems;
+		const enablePPR = query.enablePPR !== false;
+		if (enablePPR && resultItems.length > 0) {
+			sw.start('ppr_computation');
+			try {
+				pprEnriched = await this.applyPPR(resultItems, tenant);
+			} catch (error) {
+				console.error('[QueryService] PPR failed, using original results:', error);
+			}
+			sw.stop();
+		}
+
 		// Apply ranking boosts and optional LLM rerank
 		sw.start('reranking');
-		const tenant = query?.indexTenant ?? 'vault';
-		const ranked = await this.reranker.rerank(resultItems, termRaw, scopeValue, enableLLMRerank, tenant);
+		const pprActive = enablePPR && pprEnriched !== resultItems;
+		const ranked = await this.reranker.rerank(pprEnriched, termRaw, scopeValue, enableLLMRerank, tenant, pprActive);
 		sw.stop();
 
 		// Log timing information
@@ -736,6 +757,84 @@ export class QueryService {
 			.sort((a, b) => b.score - a.score)
 			.slice(0, limit)
 			.map((x) => ({ ...x.hit, score: x.score }));
+	}
+
+	/**
+	 * Apply Personalized PageRank to rerank and expand search results.
+	 *
+	 * 1. Select top-K items with docId as PPR seeds (weights from RRF scores).
+	 * 2. Run Forward Push PPR over the multi-layer graph.
+	 * 3. Fuse original CM ranks with PPR ranks via weighted RRF.
+	 * 4. Expand with PPR-discovered docs not in the original result set.
+	 */
+	private async applyPPR(
+		items: Array<{ path: string; score: number; docId?: string }>,
+		tenant: IndexTenant,
+	): Promise<Array<{ path: string; score: number; docId?: string }>> {
+		// 1. Select seeds: top PPR_SEED_K items that have a docId.
+		const seedCandidates = items.filter((i) => i.docId);
+		const seeds = seedCandidates.slice(0, PPR_SEED_K);
+		if (seeds.length === 0) return items;
+
+		// Normalize seed weights from RRF scores.
+		const totalSeedScore = seeds.reduce((s, i) => s + i.score, 0);
+		const pprSeeds = totalSeedScore > 0
+			? seeds.map((i) => ({ nodeId: i.docId!, weight: i.score / totalSeedScore }))
+			: seeds.map((i) => ({ nodeId: i.docId!, weight: 1 / seeds.length }));
+
+		// 2. Compute PPR.
+		const getOutEdges = createPPREdgeFetcher(tenant);
+		const pprResult = await computePPR(pprSeeds, getOutEdges, {});
+
+		if (pprResult.scores.size === 0) return items;
+
+		// 3. Build PPR rank map (sorted by PPR score descending).
+		const pprEntries = [...pprResult.scores.entries()].sort((a, b) => b[1] - a[1]);
+		const pprRankByNodeId = new Map<string, number>();
+		for (let i = 0; i < pprEntries.length; i++) {
+			pprRankByNodeId.set(pprEntries[i]![0], i + 1);
+		}
+
+		// 4. RRF fusion for existing items.
+		const existingDocIds = new Set<string>();
+		const existingPaths = new Set<string>();
+		const fused: Array<{ path: string; score: number; docId?: string }> = [];
+
+		for (let cmRank = 0; cmRank < items.length; cmRank++) {
+			const item = items[cmRank]!;
+			if (item.docId) existingDocIds.add(item.docId);
+			existingPaths.add(item.path);
+
+			const cmRrf = PPR_CM_RRF_WEIGHT / (RRF_K + cmRank + 1);
+			const pprRank = item.docId ? pprRankByNodeId.get(item.docId) : undefined;
+			const pprRrf = pprRank !== undefined ? PPR_RRF_WEIGHT / (RRF_K + pprRank) : 0;
+
+			fused.push({ ...item, score: cmRrf + pprRrf });
+		}
+
+		// 5. Expansion: PPR-discovered docs not in original results.
+		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
+		let expansionCount = 0;
+
+		for (const [nodeId, _pprScore] of pprEntries) {
+			if (expansionCount >= PPR_MAX_EXPANSION_RESULTS) break;
+			if (existingDocIds.has(nodeId)) continue;
+
+			const node = await mobiusNodeRepo.getByNodeId(nodeId);
+			if (!node?.path) continue;
+			if (existingPaths.has(node.path)) continue;
+
+			const pprRank = pprRankByNodeId.get(nodeId)!;
+			const pprRrf = PPR_RRF_WEIGHT / (RRF_K + pprRank);
+
+			fused.push({ path: node.path, score: pprRrf, docId: nodeId });
+			existingPaths.add(node.path);
+			expansionCount++;
+		}
+
+		// 6. Sort by fused score descending.
+		fused.sort((a, b) => b.score - a.score);
+		return fused;
 	}
 
 }

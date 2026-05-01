@@ -9,6 +9,7 @@ import {
 	INDEX_HUB_TIER_THRESHOLDS,
 	INDEX_SEARCH_HUB_INCOMING_BOOST,
 	INDEX_SEARCH_SECONDARY_INCOMING_BOOST,
+	PPR_GLOBAL_PR_DAMPENING,
 } from '@/core/constant';
 import type { DocRankingSignal } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 
@@ -49,6 +50,7 @@ export class Reranker {
 		scopeValue?: SearchScopeValue,
 		enableLLMRerank: boolean = false,
 		indexTenant: IndexTenant = 'vault',
+		pprActive: boolean = false,
 	): Promise<SearchResultItem[]> {
 		if (!query || items.length === 0) {
 			return items.map((i) => ({ ...i, score: i.score ?? 0 })) as SearchResultItem[];
@@ -70,6 +72,7 @@ export class Reranker {
 			items: itemsWithScore,
 			signals,
 			relatedPaths: related,
+			pprActive,
 		});
 
 		// Optional LLM reranking (expensive, only for high-quality requirements)
@@ -308,6 +311,7 @@ export class Reranker {
 		signals: RankingSignals;
 		relatedPaths: Set<string>;
 		nowTs?: number;
+		pprActive?: boolean;
 	}): SearchResultItem[] {
 		const now = params.nowTs ?? Date.now();
 		const items = params.items.map((i) => ({ ...i }));
@@ -353,6 +357,12 @@ export class Reranker {
 				} else if (inc >= th.secondaryIncomingMin) {
 					anchorBoost = secBoostAmt;
 				}
+			}
+
+			// When PPR is active, dampen global PR boost to avoid double-counting
+			// graph structure signals (PPR already captures personalized graph importance).
+			if (params.pprActive) {
+				anchorBoost *= PPR_GLOBAL_PR_DAMPENING;
 			}
 
 			item.finalScore = base + freqBoost + recencyBoost + graphBoost + anchorBoost;

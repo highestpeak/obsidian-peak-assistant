@@ -63,6 +63,8 @@ export interface SearchQuery {
 	 * Index tenant: 'vault' = search.sqlite (default), 'chat' = meta.sqlite (ChatFolder index).
 	 */
 	indexTenant?: 'vault' | 'chat';
+	/** Enable Personalized PageRank graph-based reranking (default: true when available). */
+	enablePPR?: boolean;
 }
 
 /**
