@@ -22,6 +22,9 @@ import { ChatStarRepo } from './repositories/ChatStarRepo';
 import { AIAnalysisRepo } from './repositories/AIAnalysisRepo';
 import { QueryPatternRepo } from './repositories/QueryPatternRepo';
 import { UserProfileProcessedHashRepo } from './repositories/UserProfileProcessedHashRepo';
+import { HubConstituentRepo } from './repositories/HubConstituentRepo';
+import { StructuralMetricsRepo } from './repositories/StructuralMetricsRepo';
+import { CascadeDebtRepo } from './repositories/CascadeDebtRepo';
 import { VAULT_DB_FILENAME, CHAT_DB_FILENAME } from '@/core/constant';
 
 /**
@@ -65,6 +68,7 @@ export class SqliteStoreManager {
 	private indexStateRepo: IndexStateRepo | null = null;
 	private graphRepo: GraphRepo | null = null;
 	private userProfileProcessedHashRepo: UserProfileProcessedHashRepo | null = null;
+	private hubConstituentRepo: HubConstituentRepo | null = null;
 
 	// Meta database index repositories (meta.sqlite) — chat index tenant (ChatFolder)
 	private indexedDocumentRepoChat: IndexedDocumentRepo | null = null;
@@ -87,6 +91,12 @@ export class SqliteStoreManager {
 	private chatStarRepo: ChatStarRepo | null = null;
 	private aiAnalysisRepo: AIAnalysisRepo | null = null;
 	private queryPatternRepo: QueryPatternRepo | null = null;
+	/** Structural analysis (betweenness, communities, gaps); vault DB only. */
+	private structuralMetricsRepo: StructuralMetricsRepo | null = null;
+	/** Cascade debt tracking (vault DB). */
+	private cascadeDebtRepo: CascadeDebtRepo | null = null;
+	/** Cascade debt tracking (chat/meta DB). */
+	private cascadeDebtRepoChat: CascadeDebtRepo | null = null;
 
 
 	/**
@@ -201,6 +211,9 @@ export class SqliteStoreManager {
 		this.mobiusEdgeRepo = new MobiusEdgeRepo(searchKdb);
 		this.graphRepo = new GraphRepo(this.mobiusNodeRepo, this.mobiusEdgeRepo);
 		this.userProfileProcessedHashRepo = new UserProfileProcessedHashRepo(searchKdb);
+		this.structuralMetricsRepo = new StructuralMetricsRepo(searchKdb);
+		this.hubConstituentRepo = new HubConstituentRepo(searchKdb);
+		this.cascadeDebtRepo = new CascadeDebtRepo(searchKdb);
 
 		// Initialize meta database repositories (chat/ai tables)
 		const metaKdb = this.metaStore.kysely<DbSchema>();
@@ -222,6 +235,7 @@ export class SqliteStoreManager {
 		this.mobiusEdgeRepoChat = new MobiusEdgeRepo(metaKdb);
 		this.graphRepoChat = new GraphRepo(this.mobiusNodeRepoChat, this.mobiusEdgeRepoChat);
 		this.mobiusOperationRepo = new MobiusOperationRepo(metaKdb);
+		this.cascadeDebtRepoChat = new CascadeDebtRepo(metaKdb);
 	}
 
 	/**
@@ -363,6 +377,36 @@ export class SqliteStoreManager {
 	}
 
 	/**
+	 * Structural analysis repo (betweenness, communities, gaps). Vault DB only.
+	 */
+	getStructuralMetricsRepo(): StructuralMetricsRepo {
+		if (this.closing || !this.structuralMetricsRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
+		}
+		return this.structuralMetricsRepo;
+	}
+
+	/**
+	 * Hub constituent + regen queue repo. Vault DB only.
+	 */
+	getHubConstituentRepo(): HubConstituentRepo {
+		if (this.closing || !this.hubConstituentRepo) {
+			throw new Error('SqliteStoreManager not initialized or is closing.');
+		}
+		return this.hubConstituentRepo;
+	}
+
+	/**
+	 * Cascade debt tracking repo for the given index tenant (vault = search.sqlite, chat = meta.sqlite).
+	 */
+	getCascadeDebtRepo(tenant: IndexTenant = 'vault'): CascadeDebtRepo {
+		if (this.closing) throw new Error('SqliteStoreManager not initialized or is closing.');
+		const repo = tenant === 'chat' ? this.cascadeDebtRepoChat : this.cascadeDebtRepo;
+		if (!repo) throw new Error('SqliteStoreManager not initialized or is closing.');
+		return repo;
+	}
+
+	/**
 	 * Get ChatProjectRepo instance.
 	 */
 	getChatProjectRepo(): ChatProjectRepo {
@@ -475,6 +519,8 @@ export class SqliteStoreManager {
 		this.aiAnalysisRepo = null;
 		this.queryPatternRepo = null;
 		this.userProfileProcessedHashRepo = null;
+		this.cascadeDebtRepo = null;
+		this.cascadeDebtRepoChat = null;
 	}
 }
 

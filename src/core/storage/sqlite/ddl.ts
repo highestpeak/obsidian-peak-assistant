@@ -264,6 +264,10 @@ export interface Database {
 		 * Populated by {@link IndexService} folder hub stats rebuild; null for non-folder rows.
 		 */
 		folder_cohesion_score: number | null;
+		/** Timestamp when hub was last marked stale (ms since epoch); null = not stale. */
+		hub_stale_since: number | null;
+		/** Monotonic counter incremented each time semantic edges are rebuilt for this node. */
+		semantic_edges_version: number;
 		attributes_json: string;
 	};
 	/** Graph edges without foreign keys (parallel to graph_edges). */
@@ -289,6 +293,47 @@ export interface Database {
 		important_level: number | null;
 		continuous_group_id: string | null;
 		meta_json: string | null;
+	};
+	/** Betweenness centrality + Burt constraint per graph node (vault DB). */
+	structural_metrics: {
+		node_id: string;
+		betweenness: number;
+		burt_constraint: number;
+		community_id: number;
+		computed_at: number;
+	};
+	/** Community metadata from Louvain/Leiden detection (vault DB). */
+	communities: {
+		community_id: number;
+		label: string | null;
+		member_count: number;
+		avg_betweenness: number;
+		centroid_embedding: Buffer | null;
+		computed_at: number;
+	};
+	/** Detected structural holes between communities (vault DB). */
+	structural_holes: {
+		id: number | undefined; // AUTOINCREMENT — omit on insert
+		community_a: number;
+		community_b: number;
+		gap_score: number;
+		semantic_sim: number;
+		inter_density: number;
+		bridge_candidates: string | null;
+		status: string;
+		computed_at: number;
+	};
+	/** Cascade update debt tracking: pending side-effect work after document index changes. */
+	cascade_debt: {
+		id: number | undefined; // AUTOINCREMENT — omit on insert
+		tenant: string;
+		source_path: string;
+		target_id: string;
+		debt_type: string;
+		priority: number;
+		change_magnitude: number | null;
+		created_at: number;
+		processed_at: number | null;
 	};
 }
 
@@ -621,11 +666,98 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_type_created_at ON mobius_operation(operation_type, created_at);
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_group ON mobius_operation(continuous_group_id);
 	`);
+
+	// ── Structural analysis tables (S4: betweenness centrality + community detection + gap analysis) ──
+	tryExec(`
+		CREATE TABLE IF NOT EXISTS structural_metrics (
+			node_id      TEXT PRIMARY KEY,
+			betweenness  REAL NOT NULL DEFAULT 0,
+			burt_constraint REAL NOT NULL DEFAULT 1,
+			community_id INTEGER NOT NULL DEFAULT 0,
+			computed_at  INTEGER NOT NULL DEFAULT 0
+		);
+		CREATE INDEX IF NOT EXISTS idx_structural_metrics_community ON structural_metrics(community_id);
+		CREATE INDEX IF NOT EXISTS idx_structural_metrics_betweenness ON structural_metrics(betweenness DESC);
+	`);
+	tryExec(`
+		CREATE TABLE IF NOT EXISTS communities (
+			community_id      INTEGER PRIMARY KEY,
+			label             TEXT,
+			member_count      INTEGER NOT NULL DEFAULT 0,
+			avg_betweenness   REAL NOT NULL DEFAULT 0,
+			centroid_embedding BLOB,
+			computed_at       INTEGER NOT NULL DEFAULT 0
+		);
+	`);
+	tryExec(`
+		CREATE TABLE IF NOT EXISTS structural_holes (
+			id               INTEGER PRIMARY KEY AUTOINCREMENT,
+			community_a      INTEGER NOT NULL,
+			community_b      INTEGER NOT NULL,
+			gap_score        REAL NOT NULL,
+			semantic_sim     REAL NOT NULL,
+			inter_density    REAL NOT NULL,
+			bridge_candidates TEXT,
+			status           TEXT DEFAULT 'open',
+			computed_at      INTEGER NOT NULL DEFAULT 0,
+			UNIQUE(community_a, community_b)
+		);
+		CREATE INDEX IF NOT EXISTS idx_structural_holes_score ON structural_holes(gap_score DESC);
+	`);
+
+	// ── Precompiled knowledge layer: hub constituent tracking + regeneration queue ──
+	tryExec(`
+		CREATE TABLE IF NOT EXISTS hub_constituent (
+			hub_node_id    TEXT NOT NULL,
+			hub_path       TEXT NOT NULL,
+			member_path    TEXT NOT NULL,
+			member_node_id TEXT,
+			source_kind    TEXT NOT NULL,
+			added_at       INTEGER NOT NULL,
+			PRIMARY KEY (hub_node_id, member_path)
+		);
+		CREATE INDEX IF NOT EXISTS idx_hub_constituent_member ON hub_constituent(member_path);
+		CREATE INDEX IF NOT EXISTS idx_hub_constituent_hub ON hub_constituent(hub_node_id);
+	`);
+	tryExec(`
+		CREATE TABLE IF NOT EXISTS hub_regen_queue (
+			hub_node_id    TEXT PRIMARY KEY,
+			hub_path       TEXT NOT NULL,
+			queued_at      INTEGER NOT NULL,
+			trigger_paths  TEXT NOT NULL,
+			priority       INTEGER NOT NULL DEFAULT 0,
+			status         TEXT NOT NULL DEFAULT 'pending',
+			last_attempt   INTEGER,
+			fail_count     INTEGER NOT NULL DEFAULT 0,
+			error_message  TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_hub_regen_queue_status ON hub_regen_queue(status, priority DESC);
+	`);
+
 	// Existing DBs: add folder cohesion on folder nodes (materialized during folder hub stats).
 	tryExec(`ALTER TABLE mobius_node ADD COLUMN folder_cohesion_score REAL`);
+	tryExec(`ALTER TABLE mobius_node ADD COLUMN hub_stale_since INTEGER`);
+
+	// ── Hub staleness + semantic edge versioning on mobius_node ──
+	tryExec(`ALTER TABLE mobius_node ADD COLUMN semantic_edges_version INTEGER DEFAULT 0`);
 
 	// Legacy: folder intuition lived in a separate table; SSOT is now `mobius_node.attributes_json` on folder rows.
 	tryExec(`DROP TABLE IF EXISTS folder_intuition`);
+
+	// ── Cascade debt tracking ──
+	tryExec(`CREATE TABLE IF NOT EXISTS cascade_debt (
+		id              INTEGER PRIMARY KEY AUTOINCREMENT,
+		tenant          TEXT    NOT NULL DEFAULT 'vault',
+		source_path     TEXT    NOT NULL,
+		target_id       TEXT    NOT NULL,
+		debt_type       TEXT    NOT NULL,
+		priority        INTEGER NOT NULL DEFAULT 5,
+		change_magnitude REAL,
+		created_at      INTEGER NOT NULL,
+		processed_at    INTEGER
+	)`);
+	tryExec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_cascade_debt_dedup ON cascade_debt(tenant, target_id, debt_type) WHERE processed_at IS NULL`);
+	tryExec(`CREATE INDEX IF NOT EXISTS idx_cascade_debt_pending ON cascade_debt(tenant, processed_at, priority)`);
 }
 
 
