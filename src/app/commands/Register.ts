@@ -20,6 +20,7 @@ import { ConfirmModal } from '@/ui/view/ConfirmModal';
 import { BuildUserProfileProgressModal } from '@/ui/view/BuildUserProfileProgressModal';
 import { OnboardingModal } from '@/ui/view/modals/OnboardingModal';
 import { AppContext } from '@/app/context/AppContext';
+import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { buildCopilotCommands } from './copilot-commands';
 import { SettingsModal } from '@/ui/view/SettingsModal';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
@@ -647,6 +648,24 @@ function buildOnboardingCommands(): Command[] {
 }
 
 /**
+ * Ambient Push commands — toggle panel and force-refresh.
+ */
+function buildAmbientPushCommands(viewManager: ViewManager): Command[] {
+	return [
+		{
+			id: 'peak-ambient-push-toggle',
+			name: 'Peak: Toggle Related Notes Panel',
+			callback: () => void viewManager.activateAmbientPushView(),
+		},
+		{
+			id: 'peak-ambient-push-refresh',
+			name: 'Peak: Refresh Related Notes',
+			callback: () => AmbientPushService.getInstance().triggerManual(),
+		},
+	];
+}
+
+/**
  * Settings modal command — opens the plugin settings in a standalone modal.
  */
 function buildSettingsCommands(appContext: AppContext): Command[] {
@@ -689,6 +708,7 @@ export function buildCoreCommands(
 			: []),
 		...buildSystemCommands({ settings, viewManager, aiManager }),
 		...buildCopilotCommands(viewManager, aiManager),
+		...buildAmbientPushCommands(viewManager),
 		...buildOnboardingCommands(),
 		...buildSettingsCommands(appContext),
 	];

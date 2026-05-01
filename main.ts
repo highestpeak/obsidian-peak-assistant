@@ -51,6 +51,8 @@ import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { useGraphAnimationStore } from '@/ui/component/mine/graph-viz/graphAnimationStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
+import { AmbientPushService } from '@/service/ambient/AmbientPushService';
+import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -194,6 +196,26 @@ export default class MyPlugin extends Plugin {
 
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
+
+		// Ambient Push — proactive related-note suggestions
+		const ambientPushSettings = this.settings.ambientPush;
+		if (!ambientPushSettings || ambientPushSettings.enabled !== false) {
+			const ambientService = AmbientPushService.getInstance();
+			ambientService.start(this.app);
+
+			// Status bar indicator
+			if (!ambientPushSettings || ambientPushSettings.showStatusBar !== false) {
+				const statusBarEl = this.addStatusBarItem();
+				statusBarEl.addClass('peak-ambient-status');
+				statusBarEl.setText('\u26A1 \u2013');
+				statusBarEl.onClickEvent(() => void this.viewManager?.activateAmbientPushView());
+
+				useAmbientPushStore.subscribe((state) => {
+					const count = state.items.length;
+					statusBarEl.setText(count > 0 ? `\u26A1 ${count} related` : '\u26A1 \u2013');
+				});
+			}
+		}
 
 		// Auto-open onboarding wizard on first run (no profiles configured)
 		const profiles = ProfileRegistry.getInstance().getAllProfiles();
@@ -386,6 +408,9 @@ export default class MyPlugin extends Plugin {
 
 		// Abort all background analysis sessions
 		BackgroundSessionManager.clearInstance();
+
+		// Dispose ambient push service
+		AmbientPushService.getInstance().dispose();
 
 		// Shutdown SDK agent pool (clear cached node info so reload re-probes)
 		shutdownPool();

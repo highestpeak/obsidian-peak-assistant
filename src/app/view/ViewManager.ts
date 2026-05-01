@@ -4,6 +4,7 @@ import { CHAT_VIEW_TYPE, ChatView } from '@/ui/view/ChatView';
 import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from '@/ui/view/ProjectListView';
 import { MESSAGE_HISTORY_VIEW_TYPE, MessageHistoryView } from '@/ui/view/MessageHistoryView';
 import { GRAPH_FULLSCREEN_VIEW_TYPE, GraphFullscreenView } from '@/ui/view/graph-fullscreen/GraphFullscreenView';
+import { AmbientPushView, AMBIENT_PUSH_VIEW_TYPE } from '@/ui/view/AmbientPushView';
 import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
 import { InputModal } from '@/ui/component/InputModal';
 import { App, ViewCreator } from 'obsidian';
@@ -34,6 +35,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(GRAPH_FULLSCREEN_VIEW_TYPE, (leaf) => {
 			return new GraphFullscreenView(leaf);
+		});
+		this.viewCreators.set(AMBIENT_PUSH_VIEW_TYPE, (leaf) => {
+			return new AmbientPushView(leaf, appContext);
 		});
 	}
 
@@ -82,6 +86,22 @@ export class ViewManager {
 	}
 
 	// Commands and events are intentionally kept outside this manager per design.
+
+	/**
+	 * Open or reveal the Ambient Push (Related Notes) side panel.
+	 */
+	async activateAmbientPushView(): Promise<void> {
+		const { workspace } = this.plugin.app;
+		let leaf = workspace.getLeavesOfType(AMBIENT_PUSH_VIEW_TYPE)[0];
+		if (!leaf) {
+			const rightLeaf = workspace.getRightLeaf(false);
+			if (rightLeaf) {
+				await rightLeaf.setViewState({ type: AMBIENT_PUSH_VIEW_TYPE, active: true });
+				leaf = rightLeaf;
+			}
+		}
+		if (leaf) workspace.revealLeaf(leaf);
+	}
 
 	/**
 	 * Show a modal prompt and resolve with user input.
