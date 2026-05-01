@@ -544,6 +544,9 @@ export const INDEX_LONG_RANGE_LCA_MAX_DEPTH = 1;
 /** Hybrid rerank: boost for hub-tier incoming reference counts. */
 export const INDEX_SEARCH_HUB_INCOMING_BOOST = 0.08;
 
+/** Additive score boost for hub_doc type results (compiled knowledge summaries). */
+export const INDEX_SEARCH_HUB_DOC_TYPE_BOOST = 0.12;
+
 /** Hybrid rerank: boost when incoming is secondary band (below hub, above none). */
 export const INDEX_SEARCH_SECONDARY_INCOMING_BOOST = 0.04;
 

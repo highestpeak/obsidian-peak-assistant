@@ -292,6 +292,17 @@ function buildSearchIndexCommands(deps: SearchIndexCommandsDeps): Command[] {
 			},
 		},
 		{
+			id: 'peak-refresh-hub-summaries',
+			name: 'Peak: Refresh Hub Summaries',
+			callback: async () => {
+				const { HubRegenService } = await import('@/service/search/index/helper/hub/hubRegenService');
+				const service = HubRegenService.getInstance();
+				new Notice('Hub summary refresh started...');
+				const result = await service.processQueueNow();
+				new Notice(`Hub refresh: ${result.processed} regenerated, ${result.failed} failed`);
+			},
+		},
+		{
 			id: 'peak-search-global-maintenance',
 			name: 'Search: run global maintenance',
 			callback: async () => {
