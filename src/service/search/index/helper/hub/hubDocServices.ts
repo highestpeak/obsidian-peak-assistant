@@ -27,6 +27,8 @@ import { mergeYamlFrontmatter, parseFrontmatter } from '@/core/utils/markdown-ut
 import { escapeMermaidQuotedLabel } from '@/core/utils/mermaid-utils';
 import { ensureFolder, readVaultTextSnippet } from '@/core/utils/vault-utils';
 import { PromptId } from '@/service/prompt/PromptId';
+import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import type { HubConstituentRow } from '@/core/storage/sqlite/repositories/HubConstituentRepo';
 import { defaultIndexDocumentOptions, IndexService } from '@/service/search/index/indexService';
 import { HubCandidateDiscoveryService, listMarkdownPathsUnderFolder } from './hubDiscover';
 import { resolveHubDocAssembly } from './localGraphAssembler';
@@ -470,6 +472,45 @@ export async function materializeHubDocFromCandidate(
 		await app.vault.create(fullPath, body);
 	}
 	await indexService.indexDocument(fullPath, searchSettings, defaultIndexDocumentOptions('hub_maintenance'));
+
+	// Persist constituent member paths (non-critical — wrapped in try/catch)
+	try {
+		const now = Date.now();
+		const seen = new Set<string>();
+		const memberRows: HubConstituentRow[] = [];
+
+		const addRow = (memberPath: string, memberNodeId: string | null, sourceKind: string) => {
+			if (seen.has(memberPath)) return;
+			seen.add(memberPath);
+			memberRows.push({ hub_node_id: candidate.nodeId, hub_path: fullPath, member_path: memberPath, member_node_id: memberNodeId, source_kind: sourceKind, added_at: now });
+		};
+
+		// 1. Cluster members
+		const clusterPaths = assembly?.clusterMemberPaths ?? candidate.clusterMemberPaths;
+		if (clusterPaths) {
+			for (const p of clusterPaths) addRow(p, null, 'cluster_member');
+		}
+
+		// 2. Local graph document nodes
+		if (assembly?.localHubGraph?.nodes) {
+			for (const node of assembly.localHubGraph.nodes) {
+				if (node.type === 'document') addRow(node.path, node.nodeId, 'local_graph');
+			}
+		}
+
+		// 3. Folder children (memberPathsSample)
+		if (assembly?.memberPathsSample) {
+			for (const p of assembly.memberPathsSample) addRow(p, null, 'folder_child');
+		}
+
+		if (memberRows.length > 0) {
+			const repo = sqliteStoreManager.getHubConstituentRepo();
+			await repo.replaceForHub(candidate.nodeId, memberRows);
+		}
+	} catch (err) {
+		console.warn('[HubDoc] Failed to persist constituent paths for hub', candidate.nodeId, err);
+	}
+
 	return { writtenPath: fullPath, skippedUserOwned: 0 };
 }
 

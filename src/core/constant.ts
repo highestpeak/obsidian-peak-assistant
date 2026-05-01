@@ -157,7 +157,7 @@ export const HUB_NAV_GROUP_TOP_LEVEL_DEEP_STRUCT = 0.22;
 /**
  * When false, hub maintenance skips writing HubDoc files (discovery + navigation/long-tail partition still run).
  */
-export const HUB_MAINTENANCE_MATERIALIZE_DOCS = false;
+export const HUB_MAINTENANCE_MATERIALIZE_DOCS = true;
 
 /**
  * Starting hint for adaptive concurrency during deferred LLM index enrichment (`llm_pending`).
