@@ -1,0 +1,9 @@
+agent: vault-search
+fixture: small
+query: "What is the core motivation for the provider v2 refactor, and what spokes support that argument?"
+intent: |
+  The fixture contains a hub note (refactor/provider-v2-overview.md) that links
+  to five spokes. Verify the agent can discover the hub, follow its forward
+  links, and summarize the core motivation as "reduce cognitive burden." The
+  agent should NOT chase every spoke file individually before answering.
+profile: claude-opus-4-6

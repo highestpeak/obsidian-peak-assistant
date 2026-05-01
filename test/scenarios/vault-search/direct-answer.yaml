@@ -1,0 +1,8 @@
+agent: vault-search
+fixture: small
+query: "Why is embedding handled outside the single-runtime rule?"
+intent: |
+  The answer lives in exactly one file (concepts/embedding-split.md). Verify
+  the agent finds it in 1-2 tool calls and does not over-explore. A scenario
+  that rewards early stopping.
+profile: claude-opus-4-6

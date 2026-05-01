@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Analysis Landing — Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pk-accent: #7c3aed;
+    --pk-accent-light: #ede9fe;
+    --pk-accent-hover: #6d28d9;
+    --pk-bg: #ffffff;
+    --pk-bg-secondary: #fafafa;
+    --pk-fg: #1a1c1e;
+    --pk-fg-muted: #6b7280;
+    --pk-fg-subtle: #9ca3af;
+    --pk-border: #e5e7eb;
+    --pk-border-light: #f3f4f6;
+    --pk-highlight: #fef3c7;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    background: #e8e8e8;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px;
+    min-height: 100vh;
+    color: var(--pk-fg);
+  }
+
+  /* ─── Modal Shell ─────────────────────────────────────────── */
+  .modal {
+    width: 780px;
+    max-height: 88vh;
+    background: var(--pk-bg);
+    border-radius: 14px;
+    box-shadow:
+      0 25px 60px rgba(0,0,0,0.12),
+      0 4px 16px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ─── Tab Bar ─────────────────────────────────────────────── */
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--pk-border);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 13px 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--pk-fg-muted);
+    cursor: pointer;
+    transition: color 0.15s;
+    position: relative;
+  }
+  .tab.active {
+    color: var(--pk-fg);
+  }
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: var(--pk-accent);
+    border-radius: 1px;
+  }
+
+  /* ─── Search Header ───────────────────────────────────────── */
+  .search-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--pk-border);
+    flex-shrink: 0;
+  }
+  .search-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .mode-pills {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .pill.active {
+    background: var(--pk-accent);
+    color: white;
+  }
+  .pill:not(.active) {
+    color: var(--pk-fg-muted);
+    border: 1px solid var(--pk-border);
+  }
+  .pill:not(.active):hover {
+    border-color: rgba(124,58,237,0.35);
+    color: var(--pk-accent);
+  }
+  .pill svg { width: 12px; height: 12px; }
+
+  .search-input-wrap {
+    flex: 1;
+    position: relative;
+  }
+  .search-input {
+    width: 100%;
+    height: 38px;
+    padding: 0 40px 0 14px;
+    border: 1px solid var(--pk-border);
+    border-radius: 20px;
+    background: var(--pk-bg-secondary);
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--pk-fg);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-input::placeholder { color: var(--pk-fg-subtle); }
+  .search-input:focus { border-color: var(--pk-accent); }
+  .search-input-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--pk-fg-subtle);
+  }
+
+  .btn-analyze {
+    height: 38px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 8px;
+    background: var(--pk-accent);
+    color: white;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .btn-analyze:hover { background: var(--pk-accent-hover); }
+
+  /* ─── Scrollable Content ──────────────────────────────────── */
+  .content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--pk-border) transparent;
+  }
+  .content::-webkit-scrollbar { width: 5px; }
+  .content::-webkit-scrollbar-thumb {
+    background: var(--pk-border);
+    border-radius: 3px;
+  }
+
+  /* ─── Section Titles ──────────────────────────────────────── */
+  .section-title {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--pk-fg-subtle);
+    padding: 20px 20px 10px;
+  }
+
+  /* ─── Suggestion Grid ─────────────────────────────────────── */
+  .suggestion-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 0 20px 6px;
+  }
+  .suggestion-card {
+    border: 1px solid var(--pk-border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .suggestion-card:hover {
+    border-color: rgba(124,58,237,0.35);
+    background: var(--pk-accent-light);
+  }
+  .suggestion-card:hover .suggestion-action {
+    color: var(--pk-accent);
+  }
+
+  /* The key design: separate action (template) from context (variables) */
+  .suggestion-action {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pk-fg);
+    line-height: 1.35;
+    transition: color 0.15s;
+  }
+  .suggestion-context {
+    font-size: 11.5px;
+    color: var(--pk-fg-muted);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .suggestion-context .ctx-highlight {
+    background: linear-gradient(to bottom, transparent 40%, var(--pk-highlight) 40%);
+    padding: 0 2px;
+    font-weight: 500;
+    color: var(--pk-fg);
+  }
+  .suggestion-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--pk-accent);
+    background: var(--pk-accent-light);
+    padding: 2px 7px;
+    border-radius: 4px;
+    width: fit-content;
+  }
+
+  /* ─── Full-width Recent Section ───────────────────────────── */
+  .recent-section {
+    border-top: 1px solid var(--pk-border-light);
+    margin-top: 8px;
+  }
+
+  .recent-list {
+    padding: 0;
+  }
+  .recent-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-bottom: 1px solid var(--pk-border-light);
+  }
+  .recent-item:last-child { border-bottom: none; }
+  .recent-item:hover {
+    background: var(--pk-accent-light);
+  }
+  .recent-item:hover .recent-title {
+    color: var(--pk-accent);
+  }
+
+  .recent-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--pk-accent);
+    background: var(--pk-accent-light);
+  }
+  .recent-icon svg { width: 14px; height: 14px; }
+
+  .recent-body { flex: 1; min-width: 0; }
+  .recent-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--pk-fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.1s;
+  }
+  .recent-meta {
+    font-size: 11px;
+    color: var(--pk-fg-subtle);
+    margin-top: 1px;
+  }
+  .recent-meta .sources {
+    color: var(--pk-fg-muted);
+    font-weight: 500;
+  }
+
+  .recent-time {
+    font-size: 11px;
+    color: var(--pk-fg-subtle);
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* Load more sentinel */
+  .load-more {
+    padding: 14px 20px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--pk-fg-subtle);
+  }
+  .load-more .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--pk-border);
+    border-top-color: var(--pk-accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── Footer ──────────────────────────────────────────────── */
+  .footer {
+    flex-shrink: 0;
+    border-top: 1px solid var(--pk-border);
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--pk-bg-secondary);
+  }
+  .footer-shortcuts {
+    display: flex;
+    gap: 16px;
+    font-size: 11px;
+    color: var(--pk-fg-subtle);
+  }
+  .footer-shortcuts kbd {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    background: var(--pk-bg);
+    border: 1px solid var(--pk-border);
+    border-radius: 3px;
+    padding: 1px 4px;
+    margin-right: 3px;
+  }
+  .footer-count {
+    font-size: 11px;
+    color: var(--pk-accent);
+    font-weight: 500;
+  }
+
+  /* ─── Annotations ─────────────────────────────────────────── */
+  .annotation {
+    position: absolute;
+    font-size: 11px;
+    font-weight: 600;
+    color: #e11d48;
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    padding: 4px 10px;
+    border-radius: 6px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 10;
+  }
+  .annotation::before {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #fff1f2;
+    border-left: 1px solid #fecdd3;
+    border-bottom: 1px solid #fecdd3;
+    transform: rotate(-45deg);
+  }
+
+  .design-note {
+    max-width: 780px;
+    margin: 24px auto 0;
+    padding: 16px 20px;
+    background: #fefce8;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #713f12;
+  }
+  .design-note h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #92400e;
+  }
+  .design-note ul {
+    padding-left: 18px;
+    margin: 4px 0;
+  }
+  .design-note code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    background: rgba(0,0,0,0.06);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<div>
+<div class="modal">
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <div class="tab">Vault Search</div>
+    <div class="tab active">AI Analysis</div>
+  </div>
+
+  <!-- Search header -->
+  <div class="search-header">
+    <div class="search-row">
+      <div class="mode-pills">
+        <div class="pill active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4m-3.5-6.5-2.8 2.8m-5.4 5.4-2.8 2.8m0-11L6.3 9.5m5.4 5.4 2.8 2.8"/></svg>
+          Vault Analysis
+        </div>
+        <div class="pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="18" cy="15" r="3"/><path d="M18 12v-1M18 19v1m-3-5h-1m7 0h1"/></svg>
+          AI Graph
+        </div>
+      </div>
+      <div class="search-input-wrap">
+        <input class="search-input" placeholder="Ask AI anything about your vault..." />
+        <div class="search-input-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+      </div>
+      <button class="btn-analyze">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.7H20l-4.9 3.6 1.9 5.7L12 14.4 7.1 18l1.9-5.7L4 8.7h6.1z"/></svg>
+        Analyze
+      </button>
+    </div>
+  </div>
+
+  <!-- Scrollable content — single scroll zone -->
+  <div class="content">
+
+    <!-- SUGGESTED FOR YOU -->
+    <span class="section-title">Suggested for you</span>
+    <div class="suggestion-grid">
+
+      <!-- Card 1: Action clearly separated from context -->
+      <div class="suggestion-card">
+        <span class="suggestion-action">Summarize core insights</span>
+        <span class="suggestion-context">
+          about <span class="ctx-highlight">AI-Compare-找房助手-深度分析</span>,
+          AI Compare / 找房助手 — 深度产品分析, 核心结论, 竞品全景…
+        </span>
+        <span class="suggestion-tag">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+          folder:kb2-learn-prd
+        </span>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="suggestion-card">
+        <span class="suggestion-action">What connections exist between</span>
+        <span class="suggestion-context">
+          <span class="ctx-highlight">AI-Compare-PRD-产品设计文档</span>,
+          <span class="ctx-highlight">kb2-learn-prd/B-2-创意和想法管理</span>,
+          and related design specs?
+        </span>
+        <span class="suggestion-tag">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+          doc:AI-Compare-PRD
+        </span>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="suggestion-card">
+        <span class="suggestion-action">Overview and knowledge structure</span>
+        <span class="suggestion-context">
+          of the <span class="ctx-highlight">B-All Requirements</span> folder — map key documents, themes, and gaps
+        </span>
+        <span class="suggestion-tag">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+          folder:B-All Requirements
+        </span>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="suggestion-card">
+        <span class="suggestion-action">Deep analysis with improvement suggestions</span>
+        <span class="suggestion-context">
+          for <span class="ctx-highlight">AI-peakAssistant-竞品分析与学术验证</span> — strengths, gaps, recommendations
+        </span>
+        <span class="suggestion-tag">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+          doc:竞品分析与学术验证
+        </span>
+      </div>
+
+      <!-- Card 5: wide span -->
+      <div class="suggestion-card" style="grid-column: 1 / -1;">
+        <span class="suggestion-action">Which notes reference this document? What themes do they share?</span>
+        <span class="suggestion-context">
+          Trace all backlinks to <span class="ctx-highlight">AI-Compare-找房助手-深度分析-2026-04</span> and cluster by topic
+        </span>
+        <span class="suggestion-tag">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+          doc:AI-Compare-找房助手
+        </span>
+      </div>
+    </div>
+
+    <!-- RECENT — full width, no nested scroll -->
+    <div class="recent-section">
+      <span class="section-title">Recent</span>
+      <div class="recent-list" id="recentList">
+        <!-- Items rendered by JS below -->
+      </div>
+      <div class="load-more" id="loadMore">
+        <span class="spinner"></span> Loading more…
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-shortcuts">
+      <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+      <span><kbd>↵</kbd> Run</span>
+      <span><kbd>⌥↑</kbd><kbd>⌥↓</kbd> Switch mode</span>
+    </div>
+    <span class="footer-count" id="footerCount">860 analyses</span>
+  </div>
+</div>
+
+<!-- Design notes -->
+<div class="design-note">
+  <h3>Design Changes (Mockup vs Current)</h3>
+  <ul>
+    <li><strong>Suggestion cards — action/context split:</strong> The template action ("Summarize core insights") is bold and prominent. The variable context (document/folder names) uses <code>ctx-highlight</code> underline highlight. The scope tag (<code>folder:xxx</code> / <code>doc:xxx</code>) is a small monospace badge.</li>
+    <li><strong>Recent — full width:</strong> Items span the entire modal width with hover background. No nested scroll container — items flow naturally in the single parent scroll zone.</li>
+    <li><strong>Recent — infinite scroll:</strong> <code>IntersectionObserver</code> on a sentinel div at bottom. Loads 15 items at a time. Shows spinner while loading. Footer count updates.</li>
+    <li><strong>Single scroll zone:</strong> Suggestions + Recent all in one <code>overflow-y: auto</code> container. No competing scrollbars.</li>
+    <li><strong>Icon badges:</strong> Each recent item has a colored icon (Brain for analysis, Network for graph) in a rounded square, replacing the raw icon-only layout.</li>
+  </ul>
+</div>
+</div>
+
+<script>
+// Simulate recent analysis data
+const TOTAL = 860;
+const BATCH = 15;
+let loaded = 0;
+
+const titles = [
+  '我的独立开发产品 idea 的综合评价 给我快速致富路 给我符合我的现状的方案',
+  'AI-Compare-找房助手-深度分析-2026-04 竞品全景与核心差异',
+  'WHOAMI UI/UX Design Specification — 完整设计系统审阅',
+  'kb5-automation-cowork 文件夹结构与知识密度分析',
+  'job-search-toolkit-plan — 求职策略与时间线规划',
+  'AI-peakAssistant 竞品分析与学术验证 — 技术路线评估',
+  '0717-a good lesson I learned these years — 经验萃取',
+  'B-1-副业-承接项目-独立开发 — 商业模式可行性分析',
+  '关于"孝" — 主题网络与引用关系图谱',
+  '第一性原理 — 在 vault 中的应用痕迹追踪',
+  'AI-a-story-of-your-life — 叙事结构与主题分析',
+  'Z-mess-资料 — 未分类资料整理建议',
+  '性能分析思路 — 方法论与工具链梳理',
+  'Kstack-彻底理解JS事件循环 — 技术深度验证',
+  '人物分析-biyu — 性格画像与行为模式',
+];
+
+const timeLabels = ['just now', '2 min ago', '5 min ago', 'yesterday', 'yesterday', '2 days ago', '3 days ago', '5 days ago', '5 days ago', '5 days ago'];
+
+function createItem(index) {
+  const title = titles[index % titles.length];
+  const sources = Math.floor(Math.random() * 30);
+  const time = timeLabels[Math.min(index, timeLabels.length - 1)];
+  const isGraph = Math.random() > 0.8;
+
+  const div = document.createElement('div');
+  div.className = 'recent-item';
+  div.innerHTML = `
+    <div class="recent-icon">
+      ${isGraph
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="18" cy="15" r="3"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>'
+      }
+    </div>
+    <div class="recent-body">
+      <div class="recent-title">${title}</div>
+      <div class="recent-meta"><span class="sources">${sources} sources</span> · ${time}</div>
+    </div>
+    <span class="recent-time">${time}</span>
+  `;
+  return div;
+}
+
+function loadBatch() {
+  const list = document.getElementById('recentList');
+  const end = Math.min(loaded + BATCH, TOTAL);
+  for (let i = loaded; i < end; i++) {
+    list.appendChild(createItem(i));
+  }
+  loaded = end;
+  document.getElementById('footerCount').textContent = `${loaded} / ${TOTAL} analyses`;
+
+  if (loaded >= TOTAL) {
+    document.getElementById('loadMore').style.display = 'none';
+  }
+}
+
+// Initial load
+loadBatch();
+
+// Infinite scroll via IntersectionObserver
+const observer = new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting && loaded < TOTAL) {
+    // Simulate async load
+    setTimeout(loadBatch, 300);
+  }
+}, { rootMargin: '200px' });
+
+observer.observe(document.getElementById('loadMore'));
+</script>
+
+</body>
+</html>

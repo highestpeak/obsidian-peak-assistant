@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copilot Document Intelligence — UI Mockup</title>
+<style>
+  :root {
+    --bg: #1e1e2e;
+    --bg-surface: #252536;
+    --bg-card: #2a2a3d;
+    --bg-hover: #32324a;
+    --border: #3a3a52;
+    --text: #cdd6f4;
+    --text-muted: #6c7086;
+    --text-dim: #585b70;
+    --accent: #8b5cf6;
+    --accent-muted: rgba(139, 92, 246, 0.12);
+    --accent-hover: rgba(139, 92, 246, 0.2);
+    --success: #22c55e;
+    --success-muted: rgba(34, 197, 94, 0.12);
+    --warning: #f59e0b;
+    --warning-muted: rgba(245, 158, 11, 0.12);
+    --error: #ef4444;
+    --error-muted: rgba(239, 68, 68, 0.12);
+    --info: #3b82f6;
+    --info-muted: rgba(59, 130, 246, 0.12);
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    background: #181825;
+    color: var(--text);
+    padding: 40px;
+    line-height: 1.5;
+  }
+
+  .page-title {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .page-title h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+  .page-title p { font-size: 13px; color: var(--text-muted); }
+
+  .mockup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .mockup-full-width {
+    grid-column: 1 / -1;
+  }
+
+  .mockup-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .mockup-label {
+    padding: 12px 20px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mockup-label .badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--accent-muted);
+    color: var(--accent);
+  }
+  .mockup-label span { font-size: 13px; font-weight: 600; }
+
+  /* ── Modal Shell ── */
+  .modal {
+    background: var(--bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-header .title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .modal-header .title .icon { font-size: 16px; }
+  .modal-header .scope-badge {
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--accent-muted);
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .modal-header .close {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+  }
+  .modal-header .close:hover { background: var(--bg-hover); color: var(--text); }
+
+  .modal-body {
+    padding: 16px 20px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-surface);
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { filter: brightness(1.15); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--text); }
+  .btn-success {
+    background: var(--success);
+    color: white;
+  }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+
+  /* ═══════════════════════════════════════════
+     Panel 1: Doc Polish — side-by-side diff
+     ═══════════════════════════════════════════ */
+  .diff-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .diff-pane {
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .diff-pane.original {
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+  }
+  .diff-pane.polished {
+    background: var(--bg);
+  }
+  .diff-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .diff-label .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+  .diff-label .dot.red { background: var(--error); opacity: 0.6; }
+  .diff-label .dot.green { background: var(--success); opacity: 0.6; }
+  .diff-text { color: var(--text); }
+  .diff-del {
+    background: var(--error-muted);
+    color: #fca5a5;
+    text-decoration: line-through;
+    padding: 1px 2px;
+    border-radius: 2px;
+  }
+  .diff-add {
+    background: var(--success-muted);
+    color: #86efac;
+    padding: 1px 2px;
+    border-radius: 2px;
+  }
+  .diff-stats {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .diff-stats .stat { display: flex; align-items: center; gap: 4px; }
+  .diff-stats .stat .num { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .diff-stats .stat.added .num { color: var(--success); }
+  .diff-stats .stat.removed .num { color: var(--error); }
+
+  /* ═══════════════════════════════════════════
+     Panel 2: Article Review — feedback list
+     ═══════════════════════════════════════════ */
+  .review-overall {
+    padding: 12px 16px;
+    background: var(--bg-surface);
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    border-left: 3px solid var(--accent);
+  }
+  .review-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .review-item:last-child { border-bottom: none; }
+
+  .severity-icon {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .severity-icon.error { background: var(--error-muted); color: var(--error); }
+  .severity-icon.warning { background: var(--warning-muted); color: var(--warning); }
+  .severity-icon.info { background: var(--info-muted); color: var(--info); }
+
+  .review-content { flex: 1; min-width: 0; }
+  .review-title {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .review-title .severity-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .severity-label.error { background: var(--error-muted); color: var(--error); }
+  .severity-label.warning { background: var(--warning-muted); color: var(--warning); }
+  .severity-label.info { background: var(--info-muted); color: var(--info); }
+
+  .review-feedback { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.5; }
+  .review-suggestion {
+    font-size: 11px;
+    color: var(--text);
+    background: var(--bg-surface);
+    padding: 8px 10px;
+    border-radius: 6px;
+    border-left: 2px solid var(--accent);
+    line-height: 1.5;
+  }
+  .review-suggestion::before {
+    content: '💡 ';
+  }
+  .review-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .btn-fix {
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--accent);
+    background: var(--accent-muted);
+    color: var(--accent);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .btn-fix:hover { background: var(--accent); color: white; }
+  .btn-fix.applied {
+    border-color: var(--success);
+    background: var(--success-muted);
+    color: var(--success);
+    cursor: default;
+  }
+
+  .review-diff {
+    margin-top: 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .review-diff-pane {
+    padding: 10px 12px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .review-diff-pane.before {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .review-diff-pane.after {
+    background: var(--bg);
+  }
+  .review-diff-label {
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .review-diff-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+  }
+
+  /* ═══════════════════════════════════════════
+     Panel 3: Link Suggestions
+     ═══════════════════════════════════════════ */
+  .link-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .link-item:hover { background: var(--bg-hover); }
+
+  .link-checkbox {
+    width: 16px; height: 16px;
+    border-radius: 4px;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: all 0.15s;
+  }
+  .link-checkbox.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    font-size: 10px;
+  }
+
+  .link-content { flex: 1; min-width: 0; }
+  .link-target {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .link-target .type-badge {
+    font-size: 8px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .type-badge.outgoing { background: var(--accent-muted); color: var(--accent); }
+  .type-badge.incoming { background: var(--success-muted); color: var(--success); }
+
+  .link-reason { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .link-context {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    font-style: italic;
+    padding-left: 10px;
+    border-left: 2px solid var(--border);
+  }
+  .link-context .highlight {
+    background: var(--accent-muted);
+    color: var(--accent);
+    padding: 0 2px;
+    border-radius: 2px;
+    font-style: normal;
+  }
+
+  .link-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg-surface);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .link-summary .count { font-weight: 700; color: var(--accent); font-size: 18px; }
+
+  /* ═══════════════════════════════════════════
+     Panel 4: Split Suggestion
+     ═══════════════════════════════════════════ */
+  .split-reason {
+    padding: 12px 16px;
+    background: var(--bg-surface);
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    border-left: 3px solid var(--warning);
+  }
+  .split-reason::before { content: '📐 '; }
+
+  .split-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .split-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .split-number {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--accent-muted);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .split-title { font-size: 13px; font-weight: 600; flex: 1; }
+  .split-word-count {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .split-body { padding: 10px 14px; }
+  .split-headings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .split-heading-chip {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .split-summary { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+  .split-excerpt {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    max-height: 80px;
+    overflow: hidden;
+    position: relative;
+  }
+  .split-excerpt::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 24px;
+    background: linear-gradient(transparent, var(--bg));
+  }
+  .split-excerpt .excerpt-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    display: block;
+  }
+  .split-excerpt .excerpt-range {
+    font-size: 9px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-left: 6px;
+  }
+
+  .split-visual {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 14px;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .split-bar { border-radius: 2px; }
+  .split-bar:nth-child(1) { background: var(--accent); flex: 3; }
+  .split-bar:nth-child(2) { background: var(--info); flex: 2; }
+  .split-bar:nth-child(3) { background: var(--success); flex: 4; }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .mockup-grid { grid-template-columns: 1fr; }
+    .diff-container { grid-template-columns: 1fr; }
+    .diff-pane.original { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  /* ── Annotation ── */
+  .annotation {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(139, 92, 246, 0.06);
+    border: 1px dashed rgba(139, 92, 246, 0.2);
+    border-radius: 6px;
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .annotation strong { color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="page-title">
+  <h1>Copilot Document Intelligence</h1>
+  <p>4 commands sharing a unified Modal shell — each renders a specialized panel</p>
+</div>
+
+<div class="mockup-grid">
+
+  <!-- ════════════════════════════════════════════════
+       Panel 1: Document Polish
+       ════════════════════════════════════════════════ -->
+  <div class="mockup-card">
+    <div class="mockup-label">
+      <span class="badge">#42</span>
+      <span>Copilot: Polish Document</span>
+    </div>
+    <div class="modal">
+      <div class="modal-header">
+        <div class="title">
+          <span class="icon">✨</span>
+          <span>Document Polish</span>
+          <span class="scope-badge">Full Document</span>
+        </div>
+        <button class="close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="diff-container">
+          <div class="diff-pane original">
+            <div class="diff-label"><div class="dot red"></div>Original</div>
+            <div class="diff-text">
+              The plugin <span class="diff-del">basically helps</span> users by <span class="diff-del">doing analysis of</span> their vault documents using AI. It can <span class="diff-del">do stuff like</span> searching, generating tags, and creating knowledge graphs.
+            </div>
+          </div>
+          <div class="diff-pane polished">
+            <div class="diff-label"><div class="dot green"></div>Polished</div>
+            <div class="diff-text">
+              The plugin <span class="diff-add">assists</span> users by <span class="diff-add">analyzing</span> their vault documents using AI. It <span class="diff-add">supports</span> searching, generating tags, and creating knowledge graphs.
+            </div>
+          </div>
+        </div>
+        <div class="diff-stats">
+          <div class="stat added"><span class="num">3</span> improved</div>
+          <div class="stat removed"><span class="num">3</span> replaced</div>
+          <div class="stat"><span class="num">~12%</span> shorter</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost">Dismiss</button>
+        <button class="btn btn-primary">Apply Changes</button>
+      </div>
+    </div>
+    <div class="annotation">
+      <strong>Interaction:</strong> User clicks Apply → document is updated in-place via <code>vault.modify()</code>. For selection scope, only the selected range is replaced via <code>editor.replaceSelection()</code>.
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       Panel 2: Article Reviewer
+       ════════════════════════════════════════════════ -->
+  <div class="mockup-card">
+    <div class="mockup-label">
+      <span class="badge">#33</span>
+      <span>Copilot: Review Article</span>
+    </div>
+    <div class="modal">
+      <div class="modal-header">
+        <div class="title">
+          <span class="icon">📝</span>
+          <span>Article Review</span>
+          <span class="scope-badge">Selection</span>
+        </div>
+        <button class="close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="review-overall">
+          Overall well-structured, but the introduction lacks a clear thesis statement and section 3 has inconsistent terminology. Three issues found.
+        </div>
+
+        <div class="review-item">
+          <div class="severity-icon error">!</div>
+          <div class="review-content">
+            <div class="review-title">
+              Missing thesis statement
+              <span class="severity-label error">Error</span>
+            </div>
+            <div class="review-feedback">
+              The introduction jumps directly into details without stating the document's purpose. Readers need to know upfront what problem this solves.
+            </div>
+            <div class="review-suggestion">
+              Add a one-sentence thesis after the opening paragraph: "This document describes the architecture for..."
+            </div>
+            <div class="review-actions">
+              <button class="btn-fix">🔧 Fix</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="review-item">
+          <div class="severity-icon warning">⚠</div>
+          <div class="review-content">
+            <div class="review-title">
+              Inconsistent terminology
+              <span class="severity-label warning">Warning</span>
+            </div>
+            <div class="review-feedback">
+              "Provider" and "adapter" are used interchangeably in sections 2–4. Pick one term and use it consistently.
+            </div>
+            <div class="review-suggestion">
+              Standardize on "provider" throughout. Add a glossary if both terms are needed.
+            </div>
+            <div class="review-actions">
+              <button class="btn-fix">🔧 Fix</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 3: Already fixed -->
+        <div class="review-item" style="opacity:0.7;">
+          <div class="severity-icon info">ℹ</div>
+          <div class="review-content">
+            <div class="review-title">
+              Code example could be shorter
+              <span class="severity-label info">Info</span>
+            </div>
+            <div class="review-feedback">
+              The code block in section 5 shows 40 lines but only 8 are relevant to the point being made.
+            </div>
+            <div class="review-suggestion">
+              Trim to the essential lines and add a comment "// ... rest of setup omitted".
+            </div>
+            <div class="review-actions">
+              <button class="btn-fix applied">✓ Fixed</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span style="font-size:11px;color:var(--text-muted);margin-right:auto;">1 of 3 fixed</span>
+        <button class="btn btn-ghost">Copy Feedback</button>
+        <button class="btn btn-ghost">Dismiss</button>
+      </div>
+    </div>
+    <div class="annotation">
+      <strong>Interaction:</strong> Each item has a 🔧 <strong>Fix</strong> button → click transitions to the <strong>Polish diff view</strong> (see below) for that specific issue → user reviews Before/After → <strong>Accept</strong> applies + returns to review list, <strong>Skip</strong> returns without applying. Already-fixed items show ✓ Fixed.
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       Panel 2B: Review → Fix flow (Polish diff view)
+       ════════════════════════════════════════════════ -->
+  <div class="mockup-card mockup-full-width">
+    <div class="mockup-label">
+      <span class="badge">Flow</span>
+      <span>After clicking "🔧 Fix" → transitions to Polish diff view</span>
+    </div>
+    <div class="modal">
+      <div class="modal-header">
+        <div class="title">
+          <span class="icon">📝</span>
+          <span style="color:var(--text-muted);cursor:pointer;">Article Review</span>
+          <span style="color:var(--text-dim);margin:0 4px;">›</span>
+          <span>Fix: Missing thesis statement</span>
+          <span class="scope-badge" style="background:var(--error-muted);color:var(--error);">Error</span>
+        </div>
+        <button class="close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;padding:8px 12px;background:var(--bg-surface);border-radius:6px;border-left:3px solid var(--accent);">
+          💡 Add a one-sentence thesis after the opening paragraph: "This document describes the architecture for..."
+        </div>
+        <div class="diff-container">
+          <div class="diff-pane original">
+            <div class="diff-label"><div class="dot red"></div>Before</div>
+            <div class="diff-text">
+              The plugin provides a comprehensive set of tools for vault analysis. It supports full-text search, semantic search, and knowledge graph generation.<br><br>
+              The search system uses a multi-stage pipeline with query classification, chunked retrieval, and reranking...
+            </div>
+          </div>
+          <div class="diff-pane polished">
+            <div class="diff-label"><div class="dot green"></div>After</div>
+            <div class="diff-text">
+              The plugin provides a comprehensive set of tools for vault analysis. <span class="diff-add">This document describes the architecture and usage patterns for these AI-powered features.</span><br><br>
+              It supports full-text search, semantic search, and knowledge graph generation.<br><br>
+              The search system uses a multi-stage pipeline with query classification, chunked retrieval, and reranking...
+            </div>
+          </div>
+        </div>
+        <div class="diff-stats">
+          <div class="stat added"><span class="num">1</span> sentence added</div>
+          <div class="stat"><span class="num">+14</span> words</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span style="font-size:11px;color:var(--text-muted);margin-right:auto;cursor:pointer;">← Back to review</span>
+        <button class="btn btn-ghost">Skip</button>
+        <button class="btn btn-primary">Accept Fix</button>
+      </div>
+    </div>
+    <div class="annotation">
+      <strong>Flow:</strong> Review list → click Fix → <strong>LLM generates the fix</strong> (shows loading) → this Polish diff view appears → user reviews the full Before/After → <strong>Accept Fix</strong> writes change + returns to review list (item shows ✓ Fixed) · <strong>Skip</strong> returns without applying · <strong>← Back</strong> also returns without applying. The breadcrumb "Article Review › Fix: ..." shows context.
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       Panel 3: Suggest Links
+       ════════════════════════════════════════════════ -->
+  <div class="mockup-card">
+    <div class="mockup-label">
+      <span class="badge">#38</span>
+      <span>Copilot: Suggest Links</span>
+    </div>
+    <div class="modal">
+      <div class="modal-header">
+        <div class="title">
+          <span class="icon">🔗</span>
+          <span>Link Suggestions</span>
+          <span class="scope-badge">Full Document</span>
+        </div>
+        <button class="close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="link-summary">
+          <div class="count">5</div>
+          <div>potential links found · <strong style="color:var(--accent)">3</strong> outgoing · <strong style="color:var(--success)">2</strong> incoming</div>
+        </div>
+
+        <div class="link-item">
+          <div class="link-checkbox checked">✓</div>
+          <div class="link-content">
+            <div class="link-target">
+              [[Profile Registry]]
+              <span class="type-badge outgoing">→ Out</span>
+            </div>
+            <div class="link-reason">Mentions "unified configuration surface" which is the core topic of Profile Registry</div>
+            <div class="link-context">
+              ...all provider choices are stored in a <span class="highlight">unified configuration surface</span> rather than...
+            </div>
+          </div>
+        </div>
+
+        <div class="link-item">
+          <div class="link-checkbox checked">✓</div>
+          <div class="link-content">
+            <div class="link-target">
+              [[Agent SDK Migration]]
+              <span class="type-badge outgoing">→ Out</span>
+            </div>
+            <div class="link-reason">References "Agent SDK query()" — a central concept in the migration note</div>
+            <div class="link-context">
+              ...every LLM call now goes through <span class="highlight">Agent SDK query()</span> instead of...
+            </div>
+          </div>
+        </div>
+
+        <div class="link-item">
+          <div class="link-checkbox"></div>
+          <div class="link-content">
+            <div class="link-target">
+              [[Embedding Split]]
+              <span class="type-badge outgoing">→ Out</span>
+            </div>
+            <div class="link-reason">Discusses embedding as an exception — detailed in the Embedding Split note</div>
+            <div class="link-context">
+              ...the only exception is <span class="highlight">embeddings</span>, which use a separate HTTP utility...
+            </div>
+          </div>
+        </div>
+
+        <div class="link-item">
+          <div class="link-checkbox checked">✓</div>
+          <div class="link-content">
+            <div class="link-target">
+              [[2026-04-20 Dev Log]]
+              <span class="type-badge incoming">← In</span>
+            </div>
+            <div class="link-reason">The dev log from April 20 references this document's topic extensively</div>
+          </div>
+        </div>
+
+        <div class="link-item">
+          <div class="link-checkbox"></div>
+          <div class="link-content">
+            <div class="link-target">
+              [[MCP Unification]]
+              <span class="type-badge incoming">← In</span>
+            </div>
+            <div class="link-reason">MCP Unification discusses the same runtime consolidation from the MCP angle</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span style="font-size:11px;color:var(--text-muted);margin-right:auto;">3 of 5 selected</span>
+        <button class="btn btn-ghost">Dismiss</button>
+        <button class="btn btn-primary">Insert 3 Links</button>
+      </div>
+    </div>
+    <div class="annotation">
+      <strong>Interaction:</strong> User toggles checkboxes → "Insert N Links" inserts <code>[[target]]</code> at the context position for outgoing links. Incoming links are informational only (the target file would need to add the link). Badge colors distinguish direction.
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       Panel 4: Split Suggestion
+       ════════════════════════════════════════════════ -->
+  <div class="mockup-card">
+    <div class="mockup-label">
+      <span class="badge">#36</span>
+      <span>Copilot: Suggest Split</span>
+    </div>
+    <div class="modal">
+      <div class="modal-header">
+        <div class="title">
+          <span class="icon">✂️</span>
+          <span>Split Suggestion</span>
+          <span class="scope-badge">3,200 words</span>
+        </div>
+        <button class="close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="split-reason">
+          This document covers 3 distinct topics across 3,200 words. Splitting along semantic boundaries would improve discoverability and reduce cognitive load per note.
+        </div>
+
+        <div class="split-visual">
+          <div class="split-bar"></div>
+          <div class="split-bar"></div>
+          <div class="split-bar"></div>
+        </div>
+
+        <div class="split-item">
+          <div class="split-header">
+            <div class="split-number">1</div>
+            <div class="split-title">Provider V2 — Motivation</div>
+            <div class="split-word-count">~980 words</div>
+          </div>
+          <div class="split-body">
+            <div class="split-headings">
+              <span class="split-heading-chip">## Why Provider V2</span>
+              <span class="split-heading-chip">## Cognitive Burden</span>
+              <span class="split-heading-chip">## Design Principles</span>
+            </div>
+            <div class="split-summary">Covers the rationale and guiding principles behind the refactor. Self-contained introduction suitable as a standalone overview note.</div>
+            <div class="split-excerpt">
+              <span class="excerpt-label">Original content <span class="excerpt-range">Lines 1–42</span></span>
+              The core motivation for provider v2 is to reduce cognitive burden by collapsing all LLM calls onto a single runtime. Previously, features had to decide between three different calling conventions...
+            </div>
+          </div>
+        </div>
+
+        <div class="split-item">
+          <div class="split-header">
+            <div class="split-number">2</div>
+            <div class="split-title">Provider V2 — Migration Steps</div>
+            <div class="split-word-count">~1,450 words</div>
+          </div>
+          <div class="split-body">
+            <div class="split-headings">
+              <span class="split-heading-chip">## Chat Migration</span>
+              <span class="split-heading-chip">## Skill Migration</span>
+              <span class="split-heading-chip">## Embedding Utility</span>
+              <span class="split-heading-chip">## Cleanup Checklist</span>
+            </div>
+            <div class="split-summary">Step-by-step migration instructions. Dense with code references and deletion lists — best kept as a reference document.</div>
+            <div class="split-excerpt">
+              <span class="excerpt-label">Original content <span class="excerpt-range">Lines 43–108</span></span>
+              Chat migration: replace all streamText/generateText calls with query(). Each call site maps 1:1. The prompt string becomes the prompt parameter, model selection comes from the active Profile...
+            </div>
+          </div>
+        </div>
+
+        <div class="split-item">
+          <div class="split-header">
+            <div class="split-number">3</div>
+            <div class="split-title">Provider V2 — Testing & Validation</div>
+            <div class="split-word-count">~770 words</div>
+          </div>
+          <div class="split-body">
+            <div class="split-headings">
+              <span class="split-heading-chip">## Test Plan</span>
+              <span class="split-heading-chip">## Known Risks</span>
+            </div>
+            <div class="split-summary">Verification checklist and risk assessment. Naturally separates from the procedural migration content.</div>
+            <div class="split-excerpt">
+              <span class="excerpt-label">Original content <span class="excerpt-range">Lines 109–142</span></span>
+              Test plan: 1. Build passes with zero errors. 2. All existing telemetry tests still pass. 3. Manual smoke test in Obsidian: create conversation, send message, verify streaming works...
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost">Dismiss</button>
+        <button class="btn btn-success">Split into 3 Notes</button>
+      </div>
+    </div>
+    <div class="annotation">
+      <strong>Interaction:</strong> User reviews the plan → clicks "Split into 3 Notes" → creates 3 new files via <code>vault.create()</code>, replaces extracted sections in the original with <code>[[new-note-title]]</code> links. The color bar visualizes relative sizes.
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

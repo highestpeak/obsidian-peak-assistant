@@ -1,0 +1,8 @@
+agent: vault-search
+fixture: small
+query: "How do I configure OAuth2 for the Stripe webhook endpoint?"
+intent: |
+  The fixture vault contains nothing about OAuth2, Stripe, or webhooks. Verify
+  the agent reports "not found" gracefully after a bounded number of tool calls
+  rather than hallucinating content or looping until max iterations.
+profile: claude-opus-4-6

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Analysis Landing V2 — Mode Dropdown Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pk-accent: #7c3aed; --pk-accent-light: #ede9fe; --pk-accent-hover: #6d28d9;
+    --pk-bg: #fff; --pk-bg-sec: #fafafa; --pk-fg: #1a1c1e; --pk-fg-muted: #6b7280;
+    --pk-fg-subtle: #9ca3af; --pk-border: #e5e7eb; --pk-border-light: #f3f4f6;
+    --pk-highlight: #fef3c7;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'IBM Plex Sans',-apple-system,sans-serif; background:#e8e8e8; display:flex; justify-content:center; padding:40px 20px; min-height:100vh; color:var(--pk-fg); }
+
+  .modal { width:780px; max-height:88vh; background:var(--pk-bg); border-radius:14px; box-shadow:0 25px 60px rgba(0,0,0,.12),0 4px 16px rgba(0,0,0,.06); display:flex; flex-direction:column; overflow:hidden; }
+
+  .tab-bar { display:flex; border-bottom:1px solid var(--pk-border); flex-shrink:0; }
+  .tab { flex:1; text-align:center; padding:13px 0; font-size:13px; font-weight:500; color:var(--pk-fg-muted); cursor:pointer; position:relative; }
+  .tab.active { color:var(--pk-fg); }
+  .tab.active::after { content:''; position:absolute; bottom:-1px; left:20%; right:20%; height:2px; background:var(--pk-accent); border-radius:1px; }
+
+  /* ─── Search Row ──────────────────────────────── */
+  .search-header { padding:10px 16px; border-bottom:1px solid var(--pk-border); flex-shrink:0; }
+  .search-row { display:flex; align-items:center; gap:10px; }
+
+  .input-wrap { flex:1; position:relative; display:flex; align-items:center; }
+  .search-input { width:100%; height:38px; padding:0 40px 0 14px; border:1px solid var(--pk-border); border-radius:20px; background:var(--pk-bg-sec); font-family:inherit; font-size:13px; color:var(--pk-fg); outline:none; transition:border-color .15s; }
+  .search-input::placeholder { color:var(--pk-fg-subtle); }
+  .search-input:focus { border-color:var(--pk-accent); }
+
+  /* Mode badge — inside input left */
+  .mode-badge { position:absolute; left:8px; display:flex; align-items:center; gap:4px; height:24px; padding:0 8px 0 6px; border-radius:12px; font-size:10px; font-weight:600; cursor:pointer; user-select:none; transition:all .15s; background:var(--pk-accent-light); color:var(--pk-accent); border:1px solid rgba(124,58,237,.15); z-index:2; }
+  .mode-badge:hover { background:#ddd6fe; border-color:rgba(124,58,237,.3); }
+  .mode-badge svg { width:12px; height:12px; }
+  .mode-badge .chevron { width:10px; height:10px; opacity:.6; margin-left:1px; transition:transform .15s; }
+  .mode-badge.open .chevron { transform:rotate(180deg); }
+
+  /* adjust input padding to not overlap badge */
+  /* padding dynamically set by JS based on badge width */
+
+  /* Dropdown */
+  .mode-dropdown { position:absolute; top:calc(50% + 18px); left:8px; background:var(--pk-bg); border:1px solid var(--pk-border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.1); padding:4px 0; z-index:50; min-width:200px; display:none; }
+  .mode-dropdown.open { display:block; animation:dropIn .12s ease-out; }
+  @keyframes dropIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+
+  .mode-option { display:flex; align-items:center; gap:10px; padding:8px 12px; cursor:pointer; transition:background .1s; }
+  .mode-option:hover { background:var(--pk-bg-sec); }
+  .mode-option.active { background:rgba(124,58,237,.05); }
+  .mode-option .opt-icon { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .mode-option.active .opt-icon { background:var(--pk-accent); color:white; }
+  .mode-option:not(.active) .opt-icon { background:var(--pk-bg-sec); color:var(--pk-fg-muted); border:1px solid var(--pk-border); }
+  .mode-option .opt-icon svg { width:14px; height:14px; }
+  .mode-option .opt-text { flex:1; }
+  .mode-option .opt-name { font-size:12px; font-weight:600; color:var(--pk-fg); }
+  .mode-option.active .opt-name { color:var(--pk-accent); }
+  .mode-option .opt-desc { font-size:10px; color:var(--pk-fg-muted); margin-top:1px; }
+  .mode-option .opt-check { width:16px; color:var(--pk-accent); flex-shrink:0; }
+
+  .mode-dropdown .shortcut-hint { padding:6px 12px; border-top:1px solid var(--pk-border-light); margin-top:2px; }
+  .mode-dropdown .shortcut-hint span { font-size:10px; color:var(--pk-fg-subtle); }
+  .mode-dropdown .shortcut-hint kbd { font-family:'IBM Plex Mono',monospace; font-size:9px; background:var(--pk-bg-sec); border:1px solid var(--pk-border); border-radius:3px; padding:1px 4px; margin:0 1px; }
+
+  .web-toggle { position:absolute; right:8px; width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--pk-fg-subtle); transition:all .15s; border:none; background:transparent; z-index:2; }
+  .web-toggle:hover { background:var(--pk-bg-sec); }
+  .web-toggle svg { width:16px; height:16px; }
+
+  .btn-analyze { height:38px; padding:0 18px; border:none; border-radius:8px; background:var(--pk-accent); color:white; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap; transition:background .15s; flex-shrink:0; }
+  .btn-analyze:hover { background:var(--pk-accent-hover); }
+
+  /* ─── Content ─────────────────────────────────── */
+  .content { flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--pk-border) transparent; }
+  .content::-webkit-scrollbar { width:5px; }
+  .content::-webkit-scrollbar-thumb { background:var(--pk-border); border-radius:3px; }
+
+  .section-title { display:block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--pk-fg-subtle); padding:20px 20px 10px; }
+
+  /* Suggestion Grid */
+  .suggestion-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 20px 6px; }
+  .suggestion-card { border:1px solid var(--pk-border); border-radius:10px; padding:14px 16px; cursor:pointer; transition:all .15s; display:flex; flex-direction:column; gap:8px; }
+  .suggestion-card:hover { border-color:rgba(124,58,237,.35); background:var(--pk-accent-light); }
+  .suggestion-card:hover .suggestion-action { color:var(--pk-accent); }
+  .suggestion-action { font-size:13px; font-weight:600; color:var(--pk-fg); line-height:1.35; transition:color .15s; }
+  .suggestion-context { font-size:11.5px; color:var(--pk-fg-muted); line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .suggestion-context .ctx-highlight { background:linear-gradient(to bottom,transparent 40%,var(--pk-highlight) 40%); padding:0 2px; font-weight:500; color:var(--pk-fg); }
+  .suggestion-tag { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-family:'IBM Plex Mono',monospace; color:var(--pk-accent); background:var(--pk-accent-light); padding:2px 7px; border-radius:4px; width:fit-content; }
+
+  /* ─── Active Sessions ──────────────────────────── */
+  .active-sessions { padding:0 20px; }
+  .session-list { display:flex; flex-direction:column; gap:6px; }
+
+  .session-card {
+    display:flex; align-items:center; gap:12px;
+    padding:10px 14px; border-radius:10px;
+    border:1px solid var(--pk-border); background:var(--pk-bg);
+    cursor:pointer; transition:all .15s; position:relative;
+  }
+  .session-card:hover { border-color:rgba(124,58,237,.25); background:#faf8ff; }
+  .session-card.plan-ready { border-color:#93c5fd; background:#eff6ff; }
+  .session-card.plan-ready:hover { border-color:#60a5fa; background:#dbeafe; }
+
+  .session-status {
+    width:28px; height:28px; border-radius:7px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .session-status svg { width:14px; height:14px; }
+  .session-status.streaming { background:var(--pk-accent-light); color:var(--pk-accent); }
+  .session-status.ready { background:#dbeafe; color:#2563eb; }
+  .session-status.queued { background:var(--pk-border-light); color:var(--pk-fg-muted); }
+
+  .spin { animation:spin .8s linear infinite; }
+
+  .session-body { flex:1; min-width:0; }
+  .session-title { font-size:13px; font-weight:500; color:var(--pk-fg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .session-meta { font-size:11px; color:var(--pk-fg-subtle); margin-top:1px; display:flex; gap:4px; }
+  .session-status-label { font-weight:600; }
+
+  .session-progress { width:60px; flex-shrink:0; }
+  .progress-bar { height:4px; background:var(--pk-border); border-radius:2px; overflow:hidden; }
+  .progress-fill { height:100%; background:var(--pk-accent); border-radius:2px; transition:width .3s; }
+
+  .session-action-btn {
+    font-family:inherit; font-size:11px; font-weight:600;
+    color:#2563eb; background:#dbeafe; border:1px solid #93c5fd;
+    padding:4px 10px; border-radius:6px; cursor:pointer;
+    white-space:nowrap; flex-shrink:0; transition:all .15s;
+  }
+  .session-action-btn:hover { background:#bfdbfe; }
+
+  .session-cancel {
+    width:22px; height:22px; border-radius:5px; border:none;
+    background:transparent; color:var(--pk-fg-subtle); cursor:pointer;
+    font-size:12px; display:flex; align-items:center; justify-content:center;
+    opacity:0; transition:all .15s; flex-shrink:0;
+  }
+  .session-card:hover .session-cancel { opacity:1; }
+  .session-cancel:hover { background:#fee2e2; color:#dc2626; }
+
+  /* Recent */
+  .recent-section { border-top:1px solid var(--pk-border-light); margin-top:8px; }
+  .recent-item { display:flex; align-items:center; gap:12px; padding:10px 20px; cursor:pointer; transition:background .1s; border-bottom:1px solid var(--pk-border-light); }
+  .recent-item:last-child { border-bottom:none; }
+  .recent-item:hover { background:var(--pk-accent-light); }
+  .recent-item:hover .recent-title { color:var(--pk-accent); }
+  .recent-icon { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--pk-accent); background:var(--pk-accent-light); }
+  .recent-icon svg { width:14px; height:14px; }
+  .recent-body { flex:1; min-width:0; }
+  .recent-title { font-size:13px; font-weight:500; color:var(--pk-fg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .1s; }
+  .recent-meta { font-size:11px; color:var(--pk-fg-subtle); margin-top:1px; }
+  .recent-meta .sources { color:var(--pk-fg-muted); font-weight:500; }
+  .recent-time { font-size:11px; color:var(--pk-fg-subtle); flex-shrink:0; }
+
+  .load-more { padding:14px 20px; text-align:center; font-size:12px; color:var(--pk-fg-subtle); }
+  .load-more .spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--pk-border); border-top-color:var(--pk-accent); border-radius:50%; animation:spin .6s linear infinite; vertical-align:middle; margin-right:6px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  .footer { flex-shrink:0; border-top:1px solid var(--pk-border); padding:8px 20px; display:flex; align-items:center; justify-content:space-between; background:var(--pk-bg-sec); }
+  .footer-shortcuts { display:flex; gap:16px; font-size:11px; color:var(--pk-fg-subtle); }
+  .footer-shortcuts kbd { font-family:'IBM Plex Mono',monospace; font-size:10px; background:var(--pk-bg); border:1px solid var(--pk-border); border-radius:3px; padding:1px 4px; margin-right:3px; }
+  .footer-count { font-size:11px; color:var(--pk-accent); font-weight:500; }
+
+  .design-note { max-width:780px; margin:24px auto 0; padding:16px 20px; background:#fefce8; border:1px solid #fde68a; border-radius:10px; font-size:12px; line-height:1.7; color:#713f12; }
+  .design-note h3 { font-size:13px; font-weight:600; margin-bottom:6px; color:#92400e; }
+  .design-note ul { padding-left:18px; margin:4px 0; }
+  .design-note code { font-family:'IBM Plex Mono',monospace; font-size:11px; background:rgba(0,0,0,.06); padding:1px 5px; border-radius:3px; }
+</style>
+</head>
+<body>
+<div>
+<div class="modal">
+  <div class="tab-bar">
+    <div class="tab">Vault Search</div>
+    <div class="tab active">AI Analysis</div>
+  </div>
+
+  <div class="search-header">
+    <div class="search-row">
+      <div class="input-wrap has-badge">
+        <!-- Active mode badge -->
+        <div class="mode-badge" id="modeBadge" onclick="toggleMenu()">
+          <svg id="badgeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4m-3.5-6.5-2.8 2.8m-5.4 5.4-2.8 2.8m0-11L6.3 9.5m5.4 5.4 2.8 2.8"/></svg>
+          <span id="badgeLabel">Vault Analysis</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+
+        <!-- Dropdown menu -->
+        <div class="mode-dropdown" id="modeDropdown">
+          <div class="mode-option active" id="opt-vault" onclick="selectMode('vault')">
+            <div class="opt-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>
+            </div>
+            <div class="opt-text">
+              <div class="opt-name">Vault Analysis</div>
+              <div class="opt-desc">Deep analysis across your whole vault</div>
+            </div>
+            <svg class="opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <div class="mode-option" id="opt-graph" onclick="selectMode('graph')">
+            <div class="opt-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7.5L11 16M16 7.5L13 16M8.5 6H15.5"/></svg>
+            </div>
+            <div class="opt-text">
+              <div class="opt-name">AI Graph</div>
+              <div class="opt-desc">Build interactive knowledge graphs</div>
+            </div>
+            <svg class="opt-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="visibility:hidden"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <div class="shortcut-hint">
+            <span><kbd>⌥</kbd><kbd>↑</kbd> <kbd>⌥</kbd><kbd>↓</kbd> to switch</span>
+          </div>
+        </div>
+
+        <input class="search-input" id="searchInput" placeholder="Ask AI anything about your vault..." />
+        <button class="web-toggle" title="Web: OFF">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z"/></svg>
+        </button>
+      </div>
+      <button class="btn-analyze">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.7H20l-4.9 3.6 1.9 5.7L12 14.4 7.1 18l1.9-5.7L4 8.7h6.1z"/></svg>
+        Analyze
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+    <span class="section-title">Suggested for you</span>
+    <div class="suggestion-grid">
+      <div class="suggestion-card">
+        <span class="suggestion-action">Summarize core insights</span>
+        <span class="suggestion-context">about <span class="ctx-highlight">AI-Compare-找房助手-深度分析</span>, 深度产品分析, 核心结论, 竞品全景…</span>
+        <span class="suggestion-tag">📁 folder:kb2-learn-prd</span>
+      </div>
+      <div class="suggestion-card">
+        <span class="suggestion-action">What connections exist between</span>
+        <span class="suggestion-context"><span class="ctx-highlight">AI-Compare-PRD-产品设计文档</span>, <span class="ctx-highlight">B-2-创意和想法管理</span>, and design specs?</span>
+        <span class="suggestion-tag">📄 doc:AI-Compare-PRD</span>
+      </div>
+      <div class="suggestion-card">
+        <span class="suggestion-action">Overview and knowledge structure</span>
+        <span class="suggestion-context">of the <span class="ctx-highlight">B-All Requirements</span> folder — map key documents, themes, and gaps</span>
+        <span class="suggestion-tag">📁 folder:B-All Requirements</span>
+      </div>
+      <div class="suggestion-card">
+        <span class="suggestion-action">Deep analysis with improvement suggestions</span>
+        <span class="suggestion-context">for <span class="ctx-highlight">AI-peakAssistant-竞品分析</span> — strengths, gaps, recommendations</span>
+        <span class="suggestion-tag">📄 doc:竞品分析与学术验证</span>
+      </div>
+    </div>
+
+    <!-- ACTIVE SESSIONS — between suggested and recent -->
+    <div class="active-sessions">
+      <span class="section-title">Active</span>
+      <div class="session-list">
+        <!-- Streaming -->
+        <div class="session-card" onclick="alert('Restore this session')">
+          <div class="session-status streaming">
+            <svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 11-6.2-8.6"/></svg>
+          </div>
+          <div class="session-body">
+            <div class="session-title">我的独立开发产品 idea 的综合评价 给我快速致富路</div>
+            <div class="session-meta">
+              <span class="session-status-label" style="color:#7c3aed">Analyzing...</span>
+              <span>· 45s</span>
+            </div>
+          </div>
+          <div class="session-progress">
+            <div class="progress-bar"><div class="progress-fill" style="width:65%"></div></div>
+          </div>
+          <button class="session-cancel" title="Cancel">✕</button>
+        </div>
+
+        <!-- Plan Ready -->
+        <div class="session-card plan-ready" onclick="alert('Restore — plan ready for review')">
+          <div class="session-status ready">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <div class="session-body">
+            <div class="session-title">AI-Compare-找房助手 竞品全景与核心差异深度分析</div>
+            <div class="session-meta">
+              <span class="session-status-label" style="color:#2563eb">Plan Ready</span>
+              <span>· 2m 12s</span>
+            </div>
+          </div>
+          <button class="session-action-btn">Review Plan →</button>
+          <button class="session-cancel" title="Cancel">✕</button>
+        </div>
+
+        <!-- Queued -->
+        <div class="session-card" onclick="alert('Restore queued session')">
+          <div class="session-status queued">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div class="session-body">
+            <div class="session-title">job-search-toolkit 求职策略与时间线规划</div>
+            <div class="session-meta">
+              <span class="session-status-label" style="color:#6b7280">Queued</span>
+              <span>· waiting</span>
+            </div>
+          </div>
+          <button class="session-cancel" title="Cancel">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="recent-section">
+      <span class="section-title">Recent</span>
+      <div id="recentList"></div>
+      <div class="load-more" id="loadMore"><span class="spinner"></span> Loading more…</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-shortcuts">
+      <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+      <span><kbd>↵</kbd> Run</span>
+      <span><kbd>⌥↑</kbd><kbd>⌥↓</kbd> Switch mode</span>
+    </div>
+    <span class="footer-count" id="footerCount">860 analyses</span>
+  </div>
+</div>
+
+<div class="design-note">
+  <h3>V2 Changes: Mode Dropdown</h3>
+  <ul>
+    <li><strong>Single compact badge</strong> inside the input showing active mode. Click opens dropdown, <kbd>⌥↑/⌥↓</kbd> cycles.</li>
+    <li><strong>Dropdown</strong> shows icon + name + description + checkmark for active. Shortcut hint at bottom.</li>
+    <li><strong>Input padding</strong> adjusts dynamically (badge width ~120px) — no wasted space when badge is short.</li>
+    <li><strong>Suggestion cards</strong>: action (bold) → context (muted + yellow highlight on variables) → scope tag.</li>
+    <li><strong>Recent</strong>: full-width + infinite scroll (IntersectionObserver).</li>
+  </ul>
+</div>
+</div>
+
+<script>
+let currentMode = 'vault';
+function syncBadgePadding() {
+  const badge = document.getElementById('modeBadge');
+  const input = document.getElementById('searchInput');
+  if (badge && input) input.style.paddingLeft = (badge.offsetWidth + 16) + 'px';
+}
+function toggleMenu() {
+  const dd = document.getElementById('modeDropdown');
+  const badge = document.getElementById('modeBadge');
+  const open = dd.classList.toggle('open');
+  badge.classList.toggle('open', open);
+  if (open) setTimeout(() => document.addEventListener('click', closeOnOutside, { once: true }), 0);
+}
+function closeOnOutside(e) {
+  if (!document.getElementById('modeDropdown').contains(e.target) && !document.getElementById('modeBadge').contains(e.target)) {
+    document.getElementById('modeDropdown').classList.remove('open');
+    document.getElementById('modeBadge').classList.remove('open');
+  }
+}
+function selectMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeDropdown').classList.remove('open');
+  document.getElementById('modeBadge').classList.remove('open');
+  document.getElementById('opt-vault').classList.toggle('active', mode === 'vault');
+  document.getElementById('opt-graph').classList.toggle('active', mode === 'graph');
+  document.querySelectorAll('.opt-check').forEach((c, i) => c.style.visibility = (i === 0 && mode === 'vault') || (i === 1 && mode === 'graph') ? 'visible' : 'hidden');
+  document.getElementById('badgeLabel').textContent = mode === 'vault' ? 'Vault Analysis' : 'AI Graph';
+  requestAnimationFrame(syncBadgePadding);
+  document.getElementById('searchInput').placeholder = mode === 'vault'
+    ? 'Ask AI anything about your vault...'
+    : 'Describe the knowledge graph you want to build...';
+  document.getElementById('badgeIcon').innerHTML = mode === 'vault'
+    ? '<circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>'
+    : '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7.5L11 16M16 7.5L13 16M8.5 6H15.5"/>';
+}
+
+// Infinite scroll
+const TOTAL=860, BATCH=15; let loaded=0;
+const titles=['我的独立开发产品 idea 的综合评价 给我快速致富路 给我符合我的现状的方案','AI-Compare-找房助手-深度分析-2026-04 竞品全景与核心差异','WHOAMI UI/UX Design Specification — 完整设计系统审阅','kb5-automation-cowork 文件夹结构与知识密度分析','job-search-toolkit-plan — 求职策略与时间线规划','AI-peakAssistant 竞品分析与学术验证 — 技术路线评估','0717-a good lesson I learned these years — 经验萃取','B-1-副业-承接项目-独立开发 — 商业模式可行性分析'];
+const times=['yesterday','yesterday','2 days ago','5 days ago','5 days ago','5 days ago'];
+function loadBatch(){
+  const list=document.getElementById('recentList'), end=Math.min(loaded+BATCH,TOTAL);
+  for(let i=loaded;i<end;i++){
+    const d=document.createElement('div'); d.className='recent-item';
+    const isG=Math.random()>.8, t=titles[i%titles.length], s=Math.floor(Math.random()*30), tm=times[Math.min(i,times.length-1)];
+    d.innerHTML=`<div class="recent-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${isG?'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7.5L11 16M16 7.5L13 16M8.5 6H15.5"/>':'<circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>'}</svg></div><div class="recent-body"><div class="recent-title">${t}</div><div class="recent-meta"><span class="sources">${s} sources</span> · ${tm}</div></div><span class="recent-time">${tm}</span>`;
+    list.appendChild(d);
+  }
+  loaded=end; document.getElementById('footerCount').textContent=`${loaded} / ${TOTAL} analyses`;
+  if(loaded>=TOTAL) document.getElementById('loadMore').style.display='none';
+}
+loadBatch();
+syncBadgePadding();
+new IntersectionObserver(e=>{if(e[0].isIntersecting&&loaded<TOTAL)setTimeout(loadBatch,200);},{rootMargin:'200px'}).observe(document.getElementById('loadMore'));
+
+document.addEventListener('keydown',e=>{if(e.altKey&&(e.key==='ArrowUp'||e.key==='ArrowDown')){e.preventDefault();selectMode(currentMode==='vault'?'graph':'vault');}});
+</script>
+</body>
+</html>

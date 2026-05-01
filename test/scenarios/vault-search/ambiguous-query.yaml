@@ -1,0 +1,9 @@
+agent: vault-search
+fixture: small
+query: "What does MCP mean in this vault?"
+intent: |
+  MCP appears in both the real (mcp/mcp-unification.md, zh-mcp-introduction.md)
+  and decoy files (decoys/mcp-microphone-checklist.md). Verify the agent
+  distinguishes Model Context Protocol from microphone-check-points based on
+  surrounding context, and does not cite the decoy as an authoritative answer.
+profile: claude-opus-4-6

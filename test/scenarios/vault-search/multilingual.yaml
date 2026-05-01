@@ -1,0 +1,9 @@
+agent: vault-search
+fixture: small
+query: "重构为什么要降低认知负担?"
+intent: |
+  A Chinese-language query expecting the agent to surface both the Chinese hub
+  (multilingual/zh-provider-refactor.md) and its English counterpart
+  (refactor/provider-v2-overview.md). Verify tokenizer / chunker handles CJK
+  end-to-end and that the agent returns results from both language subdirectories.
+profile: claude-opus-4-6
