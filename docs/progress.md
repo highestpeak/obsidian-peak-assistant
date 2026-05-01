@@ -17,20 +17,274 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | V1 退役 | 删除 V1 search pipeline + step UI | 完成 (-9000行) |
 | H. 后台多 Session | 关闭 modal 继续分析 + 多 session 并发 + Active Sessions UI | 完成 (11 commits) |
 | F. Provider v2 | 删 Vercel AI SDK → Agent SDK query() | 完成 (12 files deleted, 7 packages removed, ~3700 lines) |
-| G. Agent Trace | 可观测性 (阻塞于 F → 已解除) | 未开始 |
+| G. Agent Trace | 可观测性: TraceSink + fixture vault + MCP server + CLI harness + scenarios | 完成 (15 tasks, 100+ test assertions) |
 | K. Chat System Polish | Store 重构 + Input 拆分 + 会话管理 | 完成 (4→2 stores, 453→176 ChatInputArea, #93 delete) |
 | I. Query Pattern Discovery | LLM 驱动查询模式发现 + 上下文建议 | 完成 (12 commits) |
 | J. Vault Search Redesign | VS Code 风格 inspector side panel | 完成 (6 commits) |
+| L. Chat UI Redesign | 消息列表/工具调用/首页/会话列表/输入菜单/大纲 | 完成 (15 tasks, 11 new components) |
+| N. FileIcon 统一 | 扩展类型 + 删冗余函数 + 迁移调用点 | 完成 |
+| O. Search Polish | #90 open-in-new-tab, #79 query summarization, #76 save graph | 完成 (3 tasks) |
+| P. Copilot Doc Intelligence | #42 polish, #33 review, #38 links, #36 split | 完成 (9 tasks, 4 commands, 4 panels, 8 prompts) |
+| Q. Onboarding & Native Module | NativeModuleManager + Setup Wizard + SQLite 懒加载 | 完成 |
+| R. Streaming 内存修复 | 6 条流式路径 RAF 节流 + O(n²)→O(n) 内存优化 | 完成 (17 files) |
 
 ## Next
 
-- [ ] UI Theme: 64 个 TSX 文件的 inline hex → CSS var token 批量替换（进行中）
-- [ ] Agent Trace Observability: TraceSink + CLI harness + scenarios（Wave 3A, 11 tasks）
-- [ ] Chat UI Redesign: 全新消息列表/工具调用/首页/会话列表（Wave 3C, 15 tasks, 3B 已完成）
-- [ ] 真机测试：Chat 全流程（新 store 结构 + delete + streamChat via Agent SDK）
-- [ ] 真机测试：Provider v2 全流程（Profile 配置 + vault search + tag/title gen + embeddings）
+### 0. 已知 Bug
+
+- [x] ~~**P0 稳定性：AI 分析流式传输 renderer 崩溃**~~ — 已修复（Phase R）
+- [ ] **P0**：`mySessionId is not defined` — AI Analysis footer 按钮消失。ReferenceError，变量未声明
+- [ ] **P1**：Onboarding 按钮颜色偏暗（tailwind.config.js `background: '#282828'` 硬编码→ CSS 变量）
+- [ ] **P1**：AI Analysis mode dropdown "Vault Analysis" 图标缺失
+- [ ] **P2**：PatternDiscovery 无有效 profile 时仍可能启动（`onAnalysisComplete()` 缺 profile 检查）
+
+### 1. 真机验证
+
+- [ ] Chat 全流程：Onboarding → 配置 Profile → 新建会话 → 发消息 → 收到回复 → 切换模型
+- [ ] Provider v2 全流程：Profile CRUD → Set Active → Chat/Search/Agent 全部走 Agent SDK
+- [ ] AI Analysis 全流程：查询 → Plan → Report → Graph → 后台 Session → Restore
+- [ ] Onboarding Wizard：首次无 profile 自动弹出 → 配置 → 测试连接 → SQLite 初始化
+
+### 2. 竞品差异化功能（核心产品方向）
+
+> 目标定位："Obsidian-native ambient knowledge graph intelligence"
+> 三根支柱：Ambient Push + Vault Lint + 级联更新 — 目前 0% 进度
+> 研究来源：`kb2-learn-prd/.../AI-peakAssistant-竞品分析与学术验证.md` + `AI-peakAssistant-差异化定位与护城河分析-2026-04.md`
+
+#### S1. Ambient Push — 写作时主动推送相关内容 + 解释原因 ★★★★★
+
+- 优先级：最高（与 Smart Connections 的关键差异点）
+- 学术支撑：Koskela 2018 (ACM TiiS) 主动信息检索 + Brain Cache (CHI 2025) 三层认知外骨骼
+- 现有基础：vault event listener + maintenance debt 系统（但从不触发主动推送）
+- 需要产出：
+  - [ ] **Spec**：事件触发模型 + 上下文提取 + 相关内容检索 + 推送 UI + 解释生成
+  - [ ] **Plan**：实现任务拆分
+  - [ ] **Mockup**：推送面板 / sidebar 设计
+  - [ ] **实现**
+
+#### S2. Vault Lint / Health Check — 知识库健康体检 ★★★★★
+
+- 优先级：最高（Karpathy 验证的 Lint 操作，竞品完全空白）
+- 设计概念：差异化分析 §9.3 有 "Vault X-Ray" 设计（健康分数、hub 列表、orphan 岛、bridge notes、potential links、community map、decaying notes）
+- 现有基础：`find_orphans` 工具 + `HubDiscoverCoverageGap`
+- 需要产出：
+  - [ ] **Spec**：多信号健康报告模型（断链 + orphans + 低内聚 + stale hubs + 矛盾检测 + topic 盲区）
+  - [ ] **Plan**：实现任务拆分
+  - [ ] **Mockup**：Health Dashboard UI（参考 §9.3 Vault X-Ray）
+  - [ ] **实现**
+
+#### S3. 级联关系更新 — 笔记修改时联动更新知识图谱 ★★★★★
+
+- 优先级：最高（Karpathy Ingest 多页联动，当前只做孤立 re-embed）
+- 现有基础：`indexDocument()` 只更新单文档；neighbor 完全不感知变化；hub summary 不失效
+- 需要产出：
+  - [ ] **Spec**：增量语义边更新 + hub summary 失效/重生成 + neighbor re-scoring + 触发策略（即时 vs 延迟 vs 批量）
+  - [ ] **Plan**：实现任务拆分
+  - [ ] **实现**
+
+#### S4. Structural Hole / Hub 检测可视化 — InfraNodus 级 gap analysis ★★★★
+
+- 优先级：高（有后端基础，缺 UI）
+- 学术支撑：Burt (2004 AJS) "Structural Holes and Good Ideas"
+- 现有代码：hub bridge/authority 角色分类 + coverage gap + `find-path.ts` betweenness（但是启发式，非算法）
+- 需要产出：
+  - [ ] **Spec**：全 vault betweenness centrality + Burt constraint + gap analysis UI
+  - [ ] **Plan**
+  - [ ] **Mockup**：Gap Analysis 面板设计
+  - [ ] **实现**：算法 + UI
+
+#### S5. KG + PPR 搜索 — Personalized PageRank 替代纯向量 ★★★★
+
+- 优先级：高（有后端基础，缺 PPR 核心）
+- 学术支撑：HippoRAG (NeurIPS 2024)，比 SOTA RAG 高 20%
+- 现有代码：global PageRank + semantic PageRank **已完整实现**（`documentPageRank.ts`），`reranker.ts` 用作静态 boost
+- 需要产出：
+  - [ ] **Spec**：PPR 算法设计（seed nodes → biased random walk → 加入 reranker 管道）
+  - [ ] **Plan**
+  - [ ] **实现**：PPR 算法 + reranker 集成
+
+#### S6. 预编译知识层 — Karpathy 式预处理摘要/摘要 ★★★★
+
+- 优先级：高（最成熟的部分，60-70% 基础设施已有）
+- 现有代码：Hub Doc pipeline（`hubDocServices.ts` + `hubDiscover.ts`）生成 LLM 摘要存为 vault Markdown
+- 缺失：hub docs 不是预嵌入向量；constituent notes 变化时不触发失效/重生成
+- 需要产出：
+  - [ ] **Spec**：增量触发机制（note change → hub invalidation → 后台重生成）+ 预嵌入策略
+  - [ ] **Plan**
+  - [ ] **实现**
+
+#### S7. Auto-tag 建议（建议模式，非静默）★★★
+
+- 优先级：中（竞品空白 vs Mem.ai）
+- 设计红线：必须是建议模式（Generation Effect），不能静默执行
+- 现有基础：`indexDocument` 有 `includeLlmTags`，但只在 manual_full 时触发
+- 需要产出：
+  - [ ] **Spec**：触发时机 + 用户确认 UI + 批量/单文档模式
+  - [ ] **Plan**
+  - [ ] **实现**
+
+### 3. 未实现的 Spec/Plan（已有文档但未执行）
+
+| 文档 | 内容 | 规模 | Spec |
+|------|------|------|------|
+| `provider-mcp-skills-design` | MCP Client（MCPClientManager, stdio/HTTP）+ Skill 系统（markdown 定义 + 在线商店）+ Usage Dashboard + Model Registry 同步 | 大 | `specs/2026-04-10` |
+| `search-inspector-tools-overhaul` | 11 个 Inspector 工具重构：消除 MarkdownOnly → `forceFormat`、find-path 拆分策略模式、类型化 `params: any`、bug 修复 | 大 | `specs/2026-04-10` |
+| `graph-layout-fix` | 5 个图布局修复：动态 handle 方向、edge label 密度、确定性 force 初始化、CJK 宽度估算 | 中 | `plans/2026-04-18` |
+| `v2-persistence-fix` | 5 个 V2 持久化 bug：v2FullyDone 守卫、graph store 错配、restore 数据丢失 | 中 | `plans/2026-04-18` |
+| `report-ui-quality` Task 3-4 | 粘性 V2PlanReview footer + 内联 plan 编辑（onUpdate） | 小 | `plans/2026-04-14` |
+| `ai-analysis-ux-overhaul` Phase ③ | SynthesizeAgent + 多轮 round 分离 UI | 中 | `plans/2026-04-17` |
+
+### 3. TASKS.md 按阶段待做
+
+#### Phase 4 — Search & Analysis Polish
+- [ ] #60 Search UI bugs（含 highlight 回归）
+- [ ] #91 Quick Search modes（folder/heading/@context）— 部分
+- [ ] #89 Smart connection via graph inspector
+- [ ] #67 Recent search 内存缓存 — 部分
+
+#### Phase 5 — Chat 高级功能
+- [ ] #73 Conversation modes Level B/C（mode 控制 allowedTools + 独立 agent pipeline）
+- [ ] #57 Work focus mode + project templates
+- [ ] #14 Message branching（从任意消息点 fork）
+- [ ] #83 Per-conversation system prompt / topic — 部分
+- [ ] #21 Suggest conversation → project
+- [ ] #2 Message lifecycle statuses（queued/cancelled/timeout）— 部分
+
+#### Phase 6 — Infrastructure
+- [ ] #58 Expand desktop mock env — 部分
+- [ ] #79 Menu popover position 算法 — 部分
+- [ ] #55 Docker image for PDF/code interpreter
+
+#### Phase 7 — Copilot 文档智能（剩余）
+- [ ] #39 Correct content errors
+- [ ] #32 Find files & write article
+- [ ] #34 Auto detect text → add to docs
+
+#### Phase 8 — 任务 & 工作流
+- [ ] #48 IFTTT workflow agent mode
+- [ ] #47 Daily/weekly/monthly summarize — 部分
+- [ ] #46 Writing plan for tasks
+- [ ] #44 Find vault tasks & solve — 部分
+- [ ] #43 Task list check & apply
+- [ ] #31 Extract todos from vault — 部分
+- [ ] #63 Alfred integration
+
+#### Phase 9 — Quick Capture & Prompt
+- [ ] #45 Fast note / inbox
+- [ ] #40 User DIY prompts per doc
+- [ ] #12 Prompt auto rewrite trigger in chat — 部分
+- [ ] #29 Prompt quality audit pass — 部分
+
+#### Phase 10 — Integrations & Advanced
+- [ ] #24 Document type loader tests — 部分
+- [ ] #13 Test all supported models
+- [ ] #53 Sync flomo / Apple Notes / Calendar
+- [ ] #23 Sync ChatGPT/Gemini/Claude history
+- [ ] #80 Integrate OpenCode
+- [ ] 其余：#54, #52, #66, #51, #50, #49, #22, #1
+
+#### Phase 11 — Documentation
+- [ ] #88 Graph inspector / AI analysis tutorial
+- [ ] #26 Model selection best practice doc
+
+### 4. 基础设施
+- [ ] GitHub triage：关闭 22 done + 6 merge + 1 won't-fix = 29 issues
+- [ ] 依赖瘦身：替换 playwright + @langchain/community → fetch（-50MB）
+- [ ] master 上 73 文件未提交修改需 commit（Settings 重构续 + Chat UI + ConversationType + 搜索 store + Inspector 增强）
+- [ ] 清理 11 个 Cursor 遗留 worktree（2025-12，已过时）
+
+### 5. 远期 Backlog（无 spec/plan，仅想法）
+- Canvas conversation type（split-pane chat + artifact rendering）
+- Template conversation type + marketplace
+- AI response cards with UI components
+- Message persistence queue（AI 自动存有价值信息到 vault）
+- Conversation multi-topic detection + auto-split
+- n8n integration / multi-agent parallel mode / agent marketplace
+- Graph 高级可视化（nebula background, healing ray, source/sink）
+- Real-time LLM context inspector panel
+- RAG within single conversation
 
 ## Log
+
+### 2026-04-25 (Session 6)
+- Done: **P0 Streaming 内存崩溃根治** — 6 条流式路径全部修复，17 个文件
+  - 根因：Zustand `set()` 每个 streaming token 调用一次 → O(n²) 数组/字符串复制 + 30+/s React re-render（每次触发 Streamdown markdown 重解析 + Shadow DOM render）
+  - 修复：Mutable Buffer + `requestAnimationFrame` 节流（~60fps 上限）
+  - Timeline text: `chunks: string[]` → `text: string` + RAF buffer（searchSessionStore）
+  - Section report: `streamingChunks: string[]` → `streamingText: string` + per-section RAF buffer（searchSessionStore）
+  - Executive summary: `setSummary(accumulated)` per-chunk → RAF throttled（ReportOrchestrator）
+  - Chat streaming: `appendStreamingDelta` / `appendReasoningDelta` → RAF buffer（chatDataStore）
+  - Legacy summary: `summaryChunks: string[]` → `summaryText: string` + RAF buffer（aiAnalysisStore）
+  - Topic analyze: `chunks: string[]` → `text: string` + RAF buffer（aiAnalysisStore）
+  - 性能：内存 O(n²)→O(n)，re-render ~30/s→~60fps cap，不再需要 `.join('')`
+- Files changed: search-steps.ts, v2SessionTypes.ts, searchSessionStore.ts, sessionSnapshot.ts, aiAnalysisStore.ts, chatDataStore.ts, ReportOrchestrator.ts, BackgroundSessionManager.ts, eventDispatcher.ts, timeline-helpers.tsx, V2ReportView.tsx, tab-AISearch.tsx, followupContextRuntime.ts, useAIAnalysisResult.ts, useSearchSession.ts, useAIAnalysisPostAIInteractions.ts
+- Known issues: (1) mySessionId ReferenceError (2) 按钮颜色 (3) mode icon 缺失
+
+### 2026-04-25 (Session 5)
+- Done: NativeModuleManager — ABI 检测 → electron prebuilt 下载 → node-gyp 编译 fallback → binary 验证后才写 metadata
+- Done: Setup Wizard Modal — 3 步向导，多 Provider 配置 + 平台跳转链接 + 可编辑/删除已有 profile + Set Active
+- Done: SQLite 懒加载 — `initSqlite()` 公开方法，失败不阻塞；ChatStore 20 处守卫、AIAnalysisHistoryService 6 处守卫
+- Done: 修复 CORS（fetch→requestUrl）、ABI 下载策略（node→electron runtime）、删除 adjacent ABI fallback
+- Done: 无 active profile 时跳过 PatternDiscovery + warmupPool（防无效 key 导致子进程崩溃→renderer crash）
+- Done: checkAvailable() ensureCompatible 单次执行（nativeModuleChecked 标记）
+- Files changed: NativeModuleManager.ts (new), OnboardingModal.tsx (new), main.ts, BetterSqliteStore.ts, SqliteStoreManager.ts, ChatStore.ts, AIAnalysisHistoryService.ts, Register.ts, .gitignore
+- Known issues: (1) 流式 reasoning-delta 密集时 renderer 崩溃 (2) mySessionId ReferenceError (3) 按钮颜色 (4) mode icon 缺失
+
+### 2026-04-24 (Session 4)
+- Done: Wave 4 Search Polish (3 tasks)
+  - #90: open-in-new-tab icon button in VaultSearchResult.tsx (hover-reveal ExternalLink)
+  - #79: OpenMenuButton query builder — last 3 messages + 500 char cap (was: all messages, no limit)
+  - #76: Save graph to vault — Download button in V2Footer + handleSaveGraph in tab-AISearch.tsx (uses buildAiGraphMarkdown + vault.create)
+- Done: Wave 2B FileIcon 统一 (#74)
+  - getFileIcon() +excel/word/file 类型, +size 参数
+  - pathToFileIconType() +xlsx/xls/docx/doc 映射
+  - 删除 getFileIconByName + getFileIconComponent, 迁移 FileChangesList + ProjectOverview
+- Done: Wave 5 Copilot Document Intelligence (9 tasks, #42 #33 #38 #36)
+  - copilot-schemas.ts: Zod schemas (ReviewResult, LinkSuggestions, SplitPlan)
+  - PromptId.ts: +8 entries (4 prompts + 4 system prompts) + PromptVariables
+  - TemplateRegistry.ts: +8 template metadata + 8 .hbs prompt files
+  - CopilotResultModal.tsx: Modal shell + lazy panel router
+  - PolishPanel.tsx: side-by-side diff + Apply (reused by Review Fix flow)
+  - ReviewPanel.tsx: severity feedback list + 🔧 Fix → PolishPanel transition
+  - LinkSuggestPanel.tsx: checkbox link list + batch insert outgoing links
+  - SplitPanel.tsx: preview cards + excerpt + proportional bar + execute split
+  - copilot-commands.ts: 4 commands (polish/review/suggest-links/split) + Register.ts wiring
+- Stats: 38 tasks, 66 files changed, build green
+
+### 2026-04-22 (Session 3)
+- Done: Wave 3A Agent Trace Tasks 6-15 完成 (10 tasks)
+  - 22 fixture vault md files (hub/spokes/multilingual/decoys/orphans)
+  - fs-vault-reader.ts: listFiles, readFile, grep, readFrontmatter (8 tests)
+  - link-resolver.ts: extractWikiLinks, buildLinkIndex, resolveLink, listBacklinks (6 tests)
+  - fs-vault-mcp/server.ts: 6 MCP tools wrapping reader + resolver
+  - scenario-loader.ts: YAML parse + forbidden-field validation (11 tests)
+  - 5 scenario YAML files: hub-discovery, direct-answer, ambiguous-query, multilingual, not-found
+  - scripts/run-agent.ts: CLI harness (scenario → MCP → query → TraceSink)
+  - scripts/trace-latest.ts: newest trace finder (4 tests)
+  - VaultSearchAgentSDK.ts: optional traceSink?.consume(raw) hook
+  - run-trace-scenario.ts: Obsidian command (Peak: Run Trace Scenario) + main.ts registration
+- Done: Wave 3C Chat UI Redesign 全部 15 tasks 完成
+  - T1: ConversationType union + meta field + creation pipeline wiring
+  - T2: ThinkingIndicator (gentle-pulse dots) + IME Enter fix (view.composing guard)
+  - T3: MessageRoleAvatar (👤/✨) + DateSeparator (Today/Yesterday/date) + message list integration
+  - T4: MessageActionsList inline redesign — metadata always visible, actions hover-fade via group-hover
+  - T5: MessageStyleButtons (Shorter/More detail/Simpler/More formal) below AI responses
+  - T6: ToolCallSummary collapsed chip (replaces ToolCallsDisplay) — active tool animation + expand/collapse
+  - T7: ContextMenu.tsx — custom @ menu replacing CodeMirror autocomplete, keyboard nav, click-outside
+  - T8: PromptMenu.tsx — custom / menu replacing CodeMirror autocomplete, grouped items
+  - T9: Conversation list — two-row layout + type badge + search bar + date grouping (Today/This Week/Older)
+  - T10: Home page — time-aware greeting + 2×2 suggestion cards + compact recent lists
+  - T11: NewConversationTypePicker — 4-card grid (Chat/Agent/Plan/Canvas) + full creation pipeline
+  - T12: Project Overview — inline stats + editable description + tab accent vars + CTA empty state
+  - T13: FileChanges — theme-aware colors + NEW badge + group-hover actions
+  - T14: ConversationOutline — topic tree right panel + header toggle + store state
+  - T15: SuggestionActions + scroll nav color fix (hover:bg-gray-200 → hover:bg-muted)
+- Done: Wave 2B FileIcon 统一 (#74)
+  - getFileIcon() 扩展: +excel(FileSpreadsheet) +word +file 类型, +size 参数
+  - pathToFileIconType() 扩展: xlsx/xls→excel, docx/doc→word
+  - 删除 getFileIconByName + getFileIconComponent (冗余)
+  - FileChangesList + ProjectOverview 迁移到 <FileIcon>
+- Stats: 42 files changed, 11 new UI components, 100+ test assertions, build green
 
 ### 2026-04-22 (Session 2)
 - Done: Chat System Polish 完成 (Wave 3B, 12 tasks)
@@ -227,12 +481,22 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | report-quality-overhaul | 04-15 | COMPLETED |
 | ai-graph-multi-lens | 04-15 | COMPLETED |
 | continue-analysis-process-view | 04-17 | COMPLETED |
+| ai-analysis-ux-overhaul | 04-17 | PARTIAL (Phase ①② done, Phase ③ SynthesizeAgent 缺失) |
 | ai-graph-agent | 04-18 | COMPLETED |
 | mobile-support | 04-18 | COMPLETED |
 | ui-improvements-all-strategies | 04-18 | COMPLETED |
 | background-multi-session | 04-19 | COMPLETED |
+| provider-system-v2 | 04-20 | COMPLETED |
+| ui-theme-foundation | 04-20 | COMPLETED |
+| chat-system-polish | 04-20 | COMPLETED |
 | query-pattern-discovery | 04-20 | COMPLETED |
 | vault-search-redesign | 04-20 | COMPLETED |
+| chat-ui-redesign | 04-22 | COMPLETED |
+| copilot-document-intelligence | 04-24 | COMPLETED |
+| ai-analysis-landing-redesign | 04-25 | COMPLETED |
+| settings-redesign | 04-25 | COMPLETED |
+| agent-trace-observability | 04-22 | COMPLETED |
+| milestone-based-persistence | 04-20 | MOSTLY DONE (核心函数存在，4 触发点待验证) |
 | per-section-report-v2 | 04-13 | SUPERSEDED |
 | v2-report-quality-and-ui-fixes | 04-13 | SUPERSEDED |
 | context-handoff-v2-ui | 04-12 | SUPERSEDED |
