@@ -1,4 +1,5 @@
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
+import { HubRegenService } from './hubRegenService';
 
 /**
  * Detects which hub docs are stale after constituent notes change.
@@ -40,6 +41,10 @@ export class HubStalenessDetector {
 			console.log(
 				`[HubStalenessDetector] Marked ${affectedHubs.length} hub(s) stale from ${upsertedPaths.length} changed path(s)`,
 			);
+
+			// Schedule background regeneration sweep
+			HubRegenService.getInstance().scheduleRegenSweep();
+
 			return { staleHubCount: affectedHubs.length };
 		} catch (e) {
 			console.warn('[HubStalenessDetector] Failed to detect staleness:', e);

@@ -14,6 +14,7 @@ import { INDEX_CHECK_BATCH_SIZE, VAULT_DB_FILENAME } from '@/core/constant';
 import { formatLlmEnrichmentProgressLine } from '@/service/search/support/llm-progress-format';
 import { getFileSize } from '@/core/utils/obsidian-utils';
 import { HubDocService } from '@/service/search/index/helper/hub/hubDocServices';
+import { HubRegenService } from './helper/hub/hubRegenService';
 
 /**
  * Utility functions for index initialization.
@@ -276,6 +277,20 @@ export class IndexInitializer {
 					pipelineUi.setMessage(`Peak: Step 5/5 — ${ev.phase} · ${ev.progressTextSuffix ?? ''}`);
 				},
 			});
+
+			// Initialize hub regen service for background regeneration
+			HubRegenService.getInstance().init(() => this.settings);
+			try {
+				const constituentRepo = sqliteStoreManager.getHubConstituentRepo();
+				const pendingCount = await constituentRepo.pendingCount();
+				if (pendingCount > 0) {
+					console.log(`[IndexInitializer] ${pendingCount} stale hub(s) pending regeneration, processing...`);
+					void HubRegenService.getInstance().processQueueNow();
+				}
+			} catch (e) {
+				console.warn('[IndexInitializer] Failed to check hub regen queue:', e);
+			}
+
 			pipelineUi.hide();
 			if (showNotification) {
 				new Notice(
