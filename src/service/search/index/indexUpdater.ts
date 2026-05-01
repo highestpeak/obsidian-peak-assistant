@@ -8,6 +8,7 @@ import { defaultIndexDocumentOptions, IndexService, getIndexTenantForPath } from
 import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { EventBus } from '@/core/eventBus';
 import { HubStalenessDetector } from './helper/hub/hubStalenessDetector';
+import { CascadeWorker } from './cascade/CascadeWorker';
 import type MyPlugin from 'main';
 
 /**
@@ -246,6 +247,8 @@ export class SearchUpdateListener {
 							console.warn('[SearchUpdateListener] Hub staleness detection failed:', e);
 						});
 					}
+					// Notify cascade worker that indexing is done; it will drain debt on next idle
+					CascadeWorker.getInstance()?.notifyFlushCompleted();
 				})
 				.catch((e) => {
 					console.error('Search update operations failed:', e);

@@ -14,6 +14,7 @@ export enum ViewEventType {
 	SETTINGS_UPDATED = 'peak:settings-updated',
 	MESSAGE_SENT = 'peak:message-sent',
 	CONVERSATION_CREATED = 'peak:conversation-created',
+	CASCADE_COMPLETED = 'peak:cascade-completed',
 }
 
 /**

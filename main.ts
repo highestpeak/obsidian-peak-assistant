@@ -53,6 +53,7 @@ import { useGraphAnimationStore } from '@/ui/component/mine/graph-viz/graphAnima
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
+import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -74,6 +75,7 @@ export default class MyPlugin extends Plugin {
 	searchClient: SearchClient | null = null;
 	searchUpdateQueue: SearchUpdateListener | null = null;
 	indexInitializer: IndexInitializer | null = null;
+	private cascadeWorker: CascadeWorker | null = null;
 
 	/** Tracks whether SQLite has been lazily initialized (or is in progress). */
 	private sqliteInitPromise: Promise<void> | null = null;
@@ -283,6 +285,9 @@ export default class MyPlugin extends Plugin {
 		this.searchUpdateQueue = new SearchUpdateListener(this.app, this, this.settings.search, this.settings.search.indexRefreshInterval);
 		this.searchUpdateQueue.start();
 
+		this.cascadeWorker = new CascadeWorker(this.app);
+		this.cascadeWorker.start();
+
 		// Check index status and perform incremental indexing if needed
 		// This handles cases where files were modified outside Obsidian (e.g., git sync, external editors)
 		this.indexInitializer = new IndexInitializer(
@@ -373,6 +378,10 @@ export default class MyPlugin extends Plugin {
 				}
 			}
 		} catch (_) { /* ignore */ }
+
+		// Dispose cascade worker before closing DB
+		this.cascadeWorker?.dispose();
+		this.cascadeWorker = null;
 
 		// Wait for in-flight index flush to settle so we close DB after and avoid OperationalError/Bluebird retaining bundle
 		if (this.searchUpdateQueue) {
