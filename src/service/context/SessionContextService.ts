@@ -10,6 +10,7 @@ import type {
 	WorkingContext,
 	WorkingTheme,
 } from './types';
+import { WorkingThemeInferrer } from './WorkingThemeInferrer';
 
 /** Activities older than this are excluded from the working context. */
 const DECAY_WINDOW_MS = 30 * 60 * 1000;
@@ -78,6 +79,7 @@ export class SessionContextService {
 
 	private readonly app: App;
 	private readonly eventBus: EventBus;
+	private readonly themeInferrer = new WorkingThemeInferrer();
 
 	private context: WorkingContext;
 	private unsubscribers: Array<() => void> = [];
@@ -129,6 +131,7 @@ export class SessionContextService {
 	}
 
 	destroy(): void {
+		this.themeInferrer.destroy();
 		for (const unsub of this.unsubscribers) {
 			try { unsub(); } catch { /* swallow */ }
 		}
@@ -421,6 +424,7 @@ export class SessionContextService {
 			this.context.recentActivities,
 		);
 		this.context.updatedAt = Date.now();
+		this.themeInferrer.onActivity();
 	}
 }
 
