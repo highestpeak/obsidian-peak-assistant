@@ -1,5 +1,7 @@
 import type { LensGraphData } from '@/ui/component/mine/multi-lens-graph/types';
 import { aiGraphDocSchema, type AiGraphDocData } from '@/core/schemas/ai-graph-schemas';
+import { extractJsonBlock } from '@/core/storage/vault/framework/MarkdownDocEngine';
+import { MarkdownDocBuilder } from '@/core/storage/vault/framework/MarkdownDocBuilder';
 
 interface AiGraphDocModel {
 	query: string;
@@ -9,24 +11,25 @@ interface AiGraphDocModel {
 	lensHint?: string;
 }
 
+function escapeYamlStr(s: string): string {
+	return `"${s.replace(/"/g, '\\"')}"`;
+}
+
 export function buildAiGraphMarkdown(model: AiGraphDocModel): string {
-	const lines: string[] = [
-		'---',
-		`type: ai-graph`,
-		`query: "${model.query.replace(/"/g, '\\"')}"`,
-		`created: ${model.created}`,
-		`lens: ${model.lensHint ?? 'topology'}`,
-		`sources: ${model.graphData.nodes.length}`,
-		'---',
-		'',
-		`## AI Graph: ${model.query}`,
-		'',
-		'### Summary',
-		model.summary,
-		'',
-		'### Graph Data',
-		'```json',
-		JSON.stringify(
+	return new MarkdownDocBuilder()
+		.frontmatterRaw([
+			['type', 'ai-graph'],
+			['query', escapeYamlStr(model.query)],
+			['created', model.created],
+			['lens', model.lensHint ?? 'topology'],
+			['sources', model.graphData.nodes.length],
+		])
+		.blankLine()
+		.heading(2, `AI Graph: ${model.query}`)
+		.blankLine()
+		.section(3, 'Summary', model.summary)
+		.heading(3, 'Graph Data')
+		.json(
 			{
 				nodes: model.graphData.nodes.map((n) => ({
 					id: n.path,
@@ -47,23 +50,19 @@ export function buildAiGraphMarkdown(model: AiGraphDocModel): string {
 				})),
 				lensHint: model.lensHint ?? 'topology',
 			},
-			null,
 			2
-		),
-		'```',
-		'',
-		'### Sources',
-		...model.graphData.nodes.map((n) => `- [[${n.path}]] — ${n.summary ?? n.label}`),
-		'',
-	];
-	return lines.join('\n');
+		)
+		.blankLine()
+		.heading(3, 'Sources')
+		.list(model.graphData.nodes.map((n) => `[[${n.path}]] — ${n.summary ?? n.label}`))
+		.blankLine()
+		.build();
 }
 
 export function parseAiGraphMarkdown(content: string): AiGraphDocData | null {
-	const jsonMatch = content.match(/```json\n([\s\S]*?)```/);
-	if (!jsonMatch) return null;
+	const parsed = extractJsonBlock(content);
+	if (!parsed) return null;
 	try {
-		const parsed = JSON.parse(jsonMatch[1]);
 		return aiGraphDocSchema.parse(parsed);
 	} catch {
 		return null;
