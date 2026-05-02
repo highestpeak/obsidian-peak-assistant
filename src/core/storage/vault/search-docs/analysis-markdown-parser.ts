@@ -5,7 +5,14 @@
  * Extracted from AiSearchAnalysisDoc.ts — pure refactoring, no behavior changes.
  */
 
-import { extractSection } from '@/core/storage/vault/framework/MarkdownDocEngine';
+import {
+	extractSection,
+	normalizeLine,
+	parseFrontmatter,
+	extractCodeBlocks,
+	extractCalloutBlock,
+	parseCalloutListItems,
+} from '@/core/storage/vault/framework/MarkdownDocEngine';
 import type { AISearchGraph, AISearchTopic, AISearchSource, DashboardBlock, EvidenceIndex } from '@/service/agents/shared-types';
 import { getMermaidInner } from '@/core/utils/mermaid-utils';
 import type { GraphPreview } from '@/core/storage/graph/types';
@@ -14,10 +21,6 @@ import type { LLMUsage } from '@/core/providers/types';
 import type { AnalysisMode, UIStepRecord, SectionAnalyzeResult } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { GraphNodeType } from '@/core/po/graph.po';
 import type { AiSearchAnalysisDocModel, SnapshotChatMessage } from './AiSearchAnalysisDoc';
-
-const REGEX_FRONTMATTER = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
-const REGEX_YAML_KEY = (key: string) => new RegExp(`^${key}:\\s*(.+)$`, 'm');
-const REGEX_CRLF = /\r\n/g;
 
 const EMPTY_DOC_MODEL: AiSearchAnalysisDocModel = {
 	version: 1,
@@ -37,71 +40,6 @@ const EMPTY_DOC_MODEL: AiSearchAnalysisDocModel = {
 	overviewMermaidActiveIndex: 0,
 	overviewMermaidVersions: [],
 };
-
-function parseFrontmatter(raw: string): {
-	created: string;
-	title: string;
-	query: string;
-	webEnabled: boolean;
-	duration: number | null;
-	estimatedTokens: number | null;
-	analysisStartedAt: number | null;
-	runAnalysisMode: AnalysisMode | undefined;
-} {
-	const fmMatch = raw.match(REGEX_FRONTMATTER);
-	if (!fmMatch) {
-		return {
-			created: '',
-			title: '',
-			query: '',
-			webEnabled: false,
-			duration: null,
-			estimatedTokens: null,
-			analysisStartedAt: null,
-			runAnalysisMode: undefined,
-		};
-	}
-	const fm = fmMatch[1];
-	const getStr = (key: string): string => {
-		const re = REGEX_YAML_KEY(key);
-		const m = fm.match(re);
-		if (!m) return '';
-		let v = m[1].trim();
-		if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-			v = v.slice(1, -1).replace(/\\"/g, '"');
-		}
-		return v;
-	};
-	const getNum = (key: string): number | null => {
-		const s = getStr(key);
-		if (!s) return null;
-		const n = Number(s);
-		return Number.isFinite(n) ? n : null;
-	};
-	const getBool = (key: string): boolean => {
-		const s = getStr(key).toLowerCase();
-		return s === 'true' || s === '1';
-	};
-	const runMode = getStr('runAnalysisMode').toLowerCase();
-	const presetRaw = getStr('analysisPreset').toLowerCase();
-	const runAnalysisMode: AnalysisMode | undefined =
-		runMode === 'vaultfull' ? 'vaultFull' : runMode === 'aigraph' ? 'aiGraph'
-			: presetRaw === 'vaultfull' ? 'vaultFull' : presetRaw === 'aigraph' ? 'aiGraph'
-				// Legacy mapping: treat removed presets as vaultFull
-				: (runMode === 'docsimple' || runMode === 'vaultsimple') ? 'vaultFull'
-					: (presetRaw === 'docsimple' || presetRaw === 'vaultsimple') ? 'vaultFull'
-						: undefined;
-	return {
-		created: getStr('created'),
-		title: getStr('title'),
-		query: getStr('query'),
-		webEnabled: getBool('webEnabled'),
-		duration: getNum('duration'),
-		estimatedTokens: getNum('estimatedTokens'),
-		analysisStartedAt: getNum('analysisStartedAt'),
-		runAnalysisMode,
-	};
-}
 
 /** Node types allowed when reconstructing a preview from mermaid (no type in syntax). */
 const MERMAID_PREVIEW_NODE_TYPES: readonly GraphNodeType[] = [
@@ -138,71 +76,17 @@ function parseMermaidToPreview(body: string): GraphPreview | null {
 	};
 }
 
+// ---------------------------------------------------------------------------
+// Mermaid extraction helpers (delegated to Engine's extractCodeBlocks)
+// ---------------------------------------------------------------------------
+
 function extractMermaidBlock(text: string): string {
-	const start = text.indexOf('```mermaid');
-	if (start === -1) return '';
-	const rest = text.slice(start + '```mermaid'.length);
-	const end = rest.indexOf('```');
-	if (end === -1) return '';
-	return rest.slice(0, end).trim();
+	const blocks = extractCodeBlocks(text, 'mermaid');
+	return blocks.length > 0 ? blocks[0].content.trim() : '';
 }
 
-/** Extract all mermaid blocks from section text in order. */
 function extractAllMermaidBlocks(text: string): string[] {
-	const blocks: string[] = [];
-	let remaining = text;
-	while (remaining.length > 0) {
-		const start = remaining.indexOf('```mermaid');
-		if (start === -1) break;
-		const rest = remaining.slice(start + '```mermaid'.length);
-		const end = rest.indexOf('```');
-		if (end === -1) break;
-		blocks.push(rest.slice(0, end).trim());
-		remaining = rest.slice(end + 3);
-	}
-	return blocks;
-}
-
-// ---------------------------------------------------------------------------
-// V2 callout parsing helpers
-// ---------------------------------------------------------------------------
-
-/** Extract the full text of an Obsidian callout block from the body.
- *  Matches `> [!type]- title` (collapsed) or `> [!type] title` (open).
- *  Returns lines stripped of the leading `> ` prefix, or empty string if not found.
- */
-function extractCalloutBlock(body: string, type: string, title: string): string {
-	// Build regex that matches both collapsed (`-`) and non-collapsed variants
-	const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const pattern = new RegExp(`^> \\[!${type}\\]-?\\s+${escapedTitle}\\s*$`, 'm');
-	const m = pattern.exec(body);
-	if (!m) return '';
-	const start = m.index + m[0].length;
-	const rest = body.slice(start);
-	// Collect continuation lines (lines starting with `> ` or blank `>`)
-	const lines: string[] = [];
-	// Skip the first split element — it's the remainder of the header line (always empty)
-	const splitLines = rest.split('\n');
-	for (let i = 1; i < splitLines.length; i++) {
-		const line = splitLines[i];
-		if (line === '>') {
-			lines.push('');
-		} else if (line.startsWith('> ')) {
-			lines.push(line.slice(2));
-		} else {
-			break;
-		}
-	}
-	return lines.join('\n').trim();
-}
-
-/** Parse list items from callout content (lines starting with `- `). */
-function parseCalloutListItems(content: string): string[] {
-	return content
-		.split('\n')
-		.filter((l) => l.trimStart().startsWith('- '))
-		.map((l) => l.trimStart().slice(2).trim())
-		.filter(Boolean);
+	return extractCodeBlocks(text, 'mermaid').map((b) => b.content.trim());
 }
 
 /** Parse V2 numbered report sections (`## 1. Title`, `## 2. Title`, ...) from the body.
@@ -232,16 +116,35 @@ function parseV2ReportSections(body: string): Array<{ title: string; content: st
  * Parse markdown content into AiSearchAnalysisDocModel.
  */
 export function parse(raw: string): AiSearchAnalysisDocModel {
-	const normalized = raw.replace(REGEX_CRLF, '\n');
-	const fmMatch = normalized.match(REGEX_FRONTMATTER);
-	const body = fmMatch ? fmMatch[2] : normalized;
-	const fm = parseFrontmatter(normalized);
+	const normalized = normalizeLine(raw);
+	const fmResult = parseFrontmatter<Record<string, unknown>>(normalized);
+	const body = fmResult ? fmResult.body : normalized;
+	const fmData = fmResult?.data ?? {};
+
+	const coerceStr = (v: unknown): string => (v == null ? '' : String(v));
+	const coerceNum = (v: unknown): number | null => {
+		if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+		if (typeof v === 'string') { const n = Number(v); return Number.isFinite(n) ? n : null; }
+		return null;
+	};
+
+	const fmCreated = coerceStr(fmData.created);
+	const fmTitle = coerceStr(fmData.title);
+	// gray-matter strips outer quotes from YAML values, so no need to manually remove them
+	const fmQuery = coerceStr(fmData.query);
+	const fmWebEnabled = fmData.webEnabled === true || String(fmData.webEnabled ?? '').toLowerCase() === 'true';
+	const fmDuration = coerceNum(fmData.duration);
+	const fmEstimatedTokens = coerceNum(fmData.estimatedTokens);
+	const fmAnalysisStartedAt = coerceNum(fmData.analysisStartedAt);
+	const runModeRaw = coerceStr(fmData.runAnalysisMode ?? fmData.analysisPreset ?? '').toLowerCase();
+	const fmRunAnalysisMode: AnalysisMode | undefined =
+		runModeRaw === 'vaultfull' ? 'vaultFull' : runModeRaw === 'aigraph' ? 'aiGraph' : undefined;
 
 	const summary = extractSection(body, 'Summary');
 	const querySectionRaw = extractSection(body, 'Query');
 	// Strip V2 callout blocks and sub-headings from query section (they follow the query text)
 	const querySection = querySectionRaw.replace(/\n(?:> \[!|## )[\s\S]*$/, '').trim();
-	const query = querySection || fm.query;
+	const query = querySection || fmQuery;
 	const overviewSection = extractSection(body, 'Overview');
 	const overviewHistorySection = extractSection(body, 'Overview History');
 	const mindflowSection = extractSection(body, 'Slot coverage') || extractSection(body, 'MindFlow');
@@ -291,7 +194,6 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 	const blockChatRecordsText = extractSection(body, 'Block Chat Records');
 	const continueAnalysisText = extractSection(body, 'Continue Analysis');
 	const graphFollowupsText = extractSection(body, 'Graph Follow-ups');
-	const blocksFollowupsText = extractSection(body, 'Blocks Follow-ups');
 	const blocksFollowupsByBlockIdText = extractSection(body, 'Blocks Follow-ups By Block');
 	const sourcesFollowupsText = extractSection(body, 'Sources Follow-ups');
 	const stepsText = extractSection(body, 'Steps');
@@ -483,7 +385,6 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		return list;
 	};
 	const graphFollowups = parseFollowupHistory(graphFollowupsText);
-	const blocksFollowups = parseFollowupHistory(blocksFollowupsText);
 	let blocksFollowupsByBlockId: Record<string, SectionAnalyzeResult[]> | undefined;
 	try {
 		const raw = blocksFollowupsByBlockIdText.trim();
@@ -539,8 +440,8 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 	}
 
 	const usage: LLMUsage | null =
-		fm.estimatedTokens != null
-			? { inputTokens: 0, outputTokens: fm.estimatedTokens, totalTokens: fm.estimatedTokens }
+		fmEstimatedTokens != null
+			? { inputTokens: 0, outputTokens: fmEstimatedTokens, totalTokens: fmEstimatedTokens }
 			: null;
 
 	// V2 callout parsing
@@ -565,13 +466,13 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 
 	return {
 		...EMPTY_DOC_MODEL,
-		created: fm.created || undefined,
-		title: fm.title?.trim() || undefined,
+		created: fmCreated || undefined,
+		title: fmTitle?.trim() || undefined,
 		query,
-		webEnabled: fm.webEnabled,
-		analysisStartedAtMs: fm.analysisStartedAt,
-		duration: fm.duration,
-		runAnalysisMode: fm.runAnalysisMode,
+		webEnabled: fmWebEnabled,
+		analysisStartedAtMs: fmAnalysisStartedAt,
+		duration: fmDuration,
+		runAnalysisMode: fmRunAnalysisMode,
 		usage,
 		summary: summary || '',
 		topics,
@@ -584,7 +485,6 @@ export function parse(raw: string): AiSearchAnalysisDocModel {
 		blockChatRecords,
 		fullAnalysisFollowUp: fullAnalysisFollowUp.length ? fullAnalysisFollowUp : undefined,
 		graphFollowups: graphFollowups.length ? graphFollowups : undefined,
-		blocksFollowups: blocksFollowups.length ? blocksFollowups : undefined,
 		blocksFollowupsByBlockId,
 		sourcesFollowups: sourcesFollowups.length ? sourcesFollowups : undefined,
 		evidenceIndex,
