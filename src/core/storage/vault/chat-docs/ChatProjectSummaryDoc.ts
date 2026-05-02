@@ -1,6 +1,10 @@
 /**
  * Document model for project summary markdown (plain text, no meta).
  */
+
+import { normalizeLine, splitSections } from '@/core/storage/vault/framework/MarkdownDocEngine';
+import { MarkdownDocBuilder } from '@/core/storage/vault/framework/MarkdownDocBuilder';
+
 export interface ChatProjectSummaryModel {
 	shortSummary: string;
 	fullSummary: string;
@@ -14,25 +18,12 @@ export class ChatProjectSummaryDoc {
 		shortSummary?: string;
 		fullSummary?: string;
 	}): string {
-		const model: ChatProjectSummaryModel = {
-			shortSummary: (params.shortSummary ?? '').trim(),
-			fullSummary: (params.fullSummary ?? '').trim(),
-		};
-		return ChatProjectSummaryDoc.render(model);
-	}
-
-	/**
-	 * Render project summary markdown.
-	 */
-	private static render(model: ChatProjectSummaryModel): string {
-		const parts: string[] = [];
-		if (model.shortSummary) {
-			parts.push('## Short Summary', model.shortSummary, '');
-		}
-		if (model.fullSummary) {
-			parts.push('## Full Summary', model.fullSummary, '');
-		}
-		return parts.join('\n').trim() + '\n';
+		const b = new MarkdownDocBuilder();
+		const short = (params.shortSummary ?? '').trim();
+		const full = (params.fullSummary ?? '').trim();
+		if (short) b.section(2, 'Short Summary', short);
+		if (full) b.section(2, 'Full Summary', full);
+		return b.build();
 	}
 
 	/**
@@ -43,36 +34,25 @@ export class ChatProjectSummaryDoc {
 	 * - Legacy/plain text: first paragraph => shortSummary, remainder => fullSummary
 	 */
 	static parse(raw: string): ChatProjectSummaryModel {
-		const text = raw.replace(/\r\n/g, '\n').trim();
-		if (!text) {
-			return { shortSummary: '', fullSummary: '' };
-		}
+		const text = normalizeLine(raw).trim();
+		if (!text) return { shortSummary: '', fullSummary: '' };
 
-		const hasSectionHeadings =
-			/^##\s+Short Summary\s*$/m.test(text) ||
-			/^##\s+Full Summary\s*$/m.test(text);
-
-		if (!hasSectionHeadings) {
-			// Heuristic: first paragraph is short, rest is full.
+		const sections = splitSections(text, 2);
+		if (sections.length === 0) {
+			// Legacy format: first paragraph is short, rest is full.
 			const blocks = text.split(/\n{2,}/);
-			const shortSummary = (blocks[0] ?? '').trim();
-			const fullSummary = blocks.slice(1).join('\n\n').trim();
-			return { shortSummary, fullSummary };
+			return {
+				shortSummary: (blocks[0] ?? '').trim(),
+				fullSummary: blocks.slice(1).join('\n\n').trim(),
+			};
 		}
 
-		const pickSection = (heading: string): string => {
-			const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-			const re = new RegExp(
-				`^##\\s+${escaped}\\s*$\\n([\\s\\S]*?)(?=^##\\s+|\\n?$)`,
-				'm'
-			);
-			const m = text.match(re);
-			return (m?.[1] ?? '').trim();
-		};
+		const findSection = (title: string) =>
+			sections.find((s) => s.title === title)?.body.trim() ?? '';
 
 		return {
-			shortSummary: pickSection('Short Summary'),
-			fullSummary: pickSection('Full Summary'),
+			shortSummary: findSection('Short Summary'),
+			fullSummary: findSection('Full Summary'),
 		};
 	}
 }
