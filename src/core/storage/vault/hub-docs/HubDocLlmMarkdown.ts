@@ -7,14 +7,14 @@ import { HUB_DOC_METADATA_SECTION_TITLE, HUB_FRONTMATTER_KEYS } from '@/core/con
 import type { HubDocSummaryLlm } from '@/core/schemas';
 import { parseFrontmatter } from '@/core/utils/markdown-utils';
 import { updateSection, updateFrontmatter } from '@/core/storage/vault/framework/MarkdownDocEngine';
-import type { MarkdownDocSchemaDef } from '@/core/storage/vault/framework/MarkdownDocSchema';
+type SectionDef = { title: string; optional?: boolean };
 
 /**
  * Schema definition for Hub Doc markdown structure.
  * Documents the ordered sections in an auto-generated hub note and serves as source of truth
  * for the hub doc layout. Excludes optional sections like Topology Routes which may not be present.
  */
-export const HUB_DOC_SCHEMA: MarkdownDocSchemaDef = {
+export const HUB_DOC_SCHEMA: { sections: SectionDef[] } = {
 	sections: [
 		{ title: 'Short Summary' },
 		{ title: 'Full Summary' },
