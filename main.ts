@@ -19,7 +19,6 @@ import { SqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { BetterSqliteStore } from '@/core/storage/sqlite/better-sqlite3-adapter/BetterSqliteStore';
 import { NativeModuleManager } from '@/core/storage/sqlite/NativeModuleManager';
 import { VAULT_DB_FILENAME } from '@/core/constant';
-import { clearCurrentAnalysisContext } from '@/core/analysis-context-holder';
 import { AppContext } from '@/app/context/AppContext';
 import { EventBus } from '@/core/eventBus';
 import { AIAnalysisHistoryService } from '@/service/AIAnalysisHistoryService';
@@ -54,6 +53,7 @@ import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
+import { SessionContextService } from '@/service/context/SessionContextService';
 
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
@@ -252,6 +252,8 @@ export default class MyPlugin extends Plugin {
 				if (this.appContext) {
 					this.appContext.searchClient = this.searchClient!;
 				}
+				const sessionContext = SessionContextService.getInstance(this.app, EventBus.getInstance(this.app));
+				await sessionContext.init();
 				// Only start background AI services if an active profile is configured
 				// (invalid/missing API key causes unrecoverable subprocess crashes)
 				const hasActiveProfile = !!ProfileRegistry.getInstance().getActiveAgentProfile();
@@ -327,11 +329,6 @@ export default class MyPlugin extends Plugin {
 		try {
 			const g = typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : undefined);
 			if (g && (g as any).lc_block_translators_registry) (g as any).lc_block_translators_registry.clear();
-		} catch (_) { /* ignore */ }
-
-		// Clear analysis context holder so update-result tools and agents can be GC'd
-		try {
-			clearCurrentAnalysisContext();
 		} catch (_) { /* ignore */ }
 
 		// Clear Zod global registry and remove global ref so registry/schemas can be GC'd (zod closure may still hold ref until bundle is unloaded)
@@ -432,6 +429,7 @@ export default class MyPlugin extends Plugin {
 
 		// Break singletons so old bundle can be GC'd
 		AppContext.clearForUnload();
+		SessionContextService.destroyInstance();
 		EventBus.destroyInstance();
 		IndexService.clearInstance();
 		DocumentLoaderManager.clearInstance();

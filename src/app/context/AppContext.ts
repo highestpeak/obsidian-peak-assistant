@@ -29,6 +29,7 @@ import { DocSimpleAgent } from '@/service/agents/DocSimpleAgent';
 import { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { AIGraphAgent } from '@/service/agents/AIGraphAgent';
 import { getVaultPersona } from '@/service/tools/system-info';
+import { SessionContextService } from '@/service/context/SessionContextService';
 
 /**
  * Application context containing all global dependencies.
@@ -84,6 +85,10 @@ export class AppContext {
 
 	public static getAIAnalysisHistoryService(): AIAnalysisHistoryService {
 		return AppContext.getInstance().aiAnalysisHistoryService;
+	}
+
+	public static getSessionContext(): SessionContextService {
+		return SessionContextService.getInstance();
 	}
 
 	/**
