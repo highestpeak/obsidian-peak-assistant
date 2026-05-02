@@ -15,6 +15,10 @@ export enum ViewEventType {
 	MESSAGE_SENT = 'peak:message-sent',
 	CONVERSATION_CREATED = 'peak:conversation-created',
 	CASCADE_COMPLETED = 'peak:cascade-completed',
+	COPILOT_ACTION = 'copilot-action',
+	SEARCH_QUERY = 'search-query',
+	RESOURCE_ATTACHED = 'resource-attached',
+	AI_ANALYSIS_COMPLETE = 'ai-analysis-complete',
 }
 
 /**
