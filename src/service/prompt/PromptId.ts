@@ -119,64 +119,6 @@ export enum PromptId {
 	/** Search Architect: collapse dimensions into physical tasks (dimension-to-task collapse). */
 	AiAnalysisSearchArchitectSystem = 'ai-analysis-search-architect-system',
 	AiAnalysisSearchArchitect = 'ai-analysis-search-architect',
-	/** Dimension recon: system. */
-	AiAnalysisDimensionReconSystem = 'ai-analysis-dimension-recon-system',
-	/** Dimension recon: user prompt. */
-	AiAnalysisDimensionRecon = 'ai-analysis-dimension-recon',
-	/** Dimension evidence: system. */
-	AiAnalysisDimensionEvidenceSystem = 'ai-analysis-dimension-evidence-system',
-	/** Dimension evidence: user prompt. */
-	AiAnalysisDimensionEvidence = 'ai-analysis-dimension-evidence',
-	/** Dimension evidence batch: user prompt. */
-	AiAnalysisDimensionEvidenceBatch = 'ai-analysis-dimension-evidence-batch',
-	/** Task consolidator: system. */
-	AiAnalysisTaskConsolidatorSystem = 'ai-analysis-task-consolidator-system',
-	/** Task consolidator: user prompt. */
-	AiAnalysisTaskConsolidator = 'ai-analysis-task-consolidator',
-	/** Group context: system. */
-	AiAnalysisGroupContextSystem = 'ai-analysis-group-context-system',
-	/** Group context single: user prompt. */
-	AiAnalysisGroupContextSingle = 'ai-analysis-group-context-single',
-	/** Overview logic model: system. */
-	AiAnalysisOverviewLogicModelSystem = 'ai-analysis-overview-logic-model-system',
-	/** Overview logic model: user prompt. */
-	AiAnalysisOverviewLogicModel = 'ai-analysis-overview-logic-model',
-	/** Overview logic model from recon: system. */
-	AiAnalysisOverviewLogicModelFromReconSystem = 'ai-analysis-overview-logic-model-from-recon-system',
-	/** Overview logic model from recon: user prompt. */
-	AiAnalysisOverviewLogicModelFromRecon = 'ai-analysis-overview-logic-model-from-recon',
-	/** Dashboard update topics: system. */
-	AiAnalysisDashboardUpdateTopicsSystem = 'ai-analysis-dashboard-update-topics-system',
-	/** Dashboard update topics: user prompt. */
-	AiAnalysisDashboardUpdateTopics = 'ai-analysis-dashboard-update-topics',
-	/** Dashboard update blocks: system. */
-	AiAnalysisDashboardUpdateBlocksSystem = 'ai-analysis-dashboard-update-blocks-system',
-	/** Dashboard update blocks: user prompt. */
-	AiAnalysisDashboardUpdateBlocks = 'ai-analysis-dashboard-update-blocks',
-	/** Report plan: system. */
-	AiAnalysisReportPlanSystem = 'ai-analysis-report-plan-system',
-	/** Report plan: user prompt. */
-	AiAnalysisReportPlan = 'ai-analysis-report-plan',
-	/** Visual blueprint: system. */
-	AiAnalysisVisualBlueprintSystem = 'ai-analysis-visual-blueprint-system',
-	/** Visual blueprint: user prompt. */
-	AiAnalysisVisualBlueprint = 'ai-analysis-visual-blueprint',
-	/** Report body blocks: system. */
-	AiAnalysisReportBodyBlocksSystem = 'ai-analysis-report-body-blocks-system',
-	/** Report body blocks: user prompt. */
-	AiAnalysisReportBodyBlocks = 'ai-analysis-report-body-blocks',
-	/** Report appendices blocks: system. */
-	AiAnalysisReportAppendicesBlocksSystem = 'ai-analysis-report-appendices-blocks-system',
-	/** Report appendices blocks: user prompt. */
-	AiAnalysisReportAppendicesBlocks = 'ai-analysis-report-appendices-blocks',
-	/** Review blocks: system. */
-	AiAnalysisReviewBlocksSystem = 'ai-analysis-review-blocks-system',
-	/** Review blocks: user prompt. */
-	AiAnalysisReviewBlocks = 'ai-analysis-review-blocks',
-	/** Dashboard update plan: system. */
-	AiAnalysisDashboardUpdatePlanSystem = 'ai-analysis-dashboard-update-plan-system',
-	/** Dashboard update plan: user prompt. */
-	AiAnalysisDashboardUpdatePlan = 'ai-analysis-dashboard-update-plan',
 	/** Mermaid fix: system. */
 	AiAnalysisMermaidFixSystem = 'ai-analysis-mermaid-fix-system',
 	/** Mermaid fix: user prompt. */
@@ -263,6 +205,12 @@ export enum PromptId {
 	DocSuggestLinksSystem = 'doc-suggest-links-system',
 	DocSplitSuggestion = 'doc-split-suggestion',
 	DocSplitSuggestionSystem = 'doc-split-suggestion-system',
+
+	// Ambient context / session intelligence
+	WorkingThemeInference = 'working-theme-inference',
+	WorkingContextRender = 'working-context-render',
+	ActivityIndexRender = 'activity-index-render',
+	MessageChunkSummarize = 'message-chunk-summarize',
 }
 
 /**
@@ -555,35 +503,6 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisSearchArchitectSystem]: Record<string, never>;
 	[PromptId.AiAnalysisSearchArchitect]: { userQuery: string; dimensionsJson: string };
 
-	[PromptId.AiAnalysisDimensionReconSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDimensionRecon]: Record<string, any>;
-	[PromptId.AiAnalysisDimensionEvidenceSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDimensionEvidence]: Record<string, any>;
-	[PromptId.AiAnalysisDimensionEvidenceBatch]: Record<string, any>;
-	[PromptId.AiAnalysisTaskConsolidatorSystem]: Record<string, never>;
-	[PromptId.AiAnalysisTaskConsolidator]: Record<string, any>;
-	[PromptId.AiAnalysisGroupContextSystem]: Record<string, never>;
-	[PromptId.AiAnalysisGroupContextSingle]: Record<string, any>;
-	[PromptId.AiAnalysisOverviewLogicModelSystem]: Record<string, never>;
-	[PromptId.AiAnalysisOverviewLogicModel]: Record<string, any>;
-	[PromptId.AiAnalysisOverviewLogicModelFromReconSystem]: Record<string, never>;
-	[PromptId.AiAnalysisOverviewLogicModelFromRecon]: Record<string, any>;
-	[PromptId.AiAnalysisDashboardUpdateTopicsSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateTopics]: Record<string, any>;
-	[PromptId.AiAnalysisDashboardUpdateBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdateBlocks]: Record<string, any>;
-	[PromptId.AiAnalysisReportPlanSystem]: Record<string, never>;
-	[PromptId.AiAnalysisReportPlan]: Record<string, any>;
-	[PromptId.AiAnalysisVisualBlueprintSystem]: Record<string, never>;
-	[PromptId.AiAnalysisVisualBlueprint]: Record<string, any>;
-	[PromptId.AiAnalysisReportBodyBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisReportBodyBlocks]: Record<string, any>;
-	[PromptId.AiAnalysisReportAppendicesBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisReportAppendicesBlocks]: Record<string, any>;
-	[PromptId.AiAnalysisReviewBlocksSystem]: Record<string, never>;
-	[PromptId.AiAnalysisReviewBlocks]: Record<string, any>;
-	[PromptId.AiAnalysisDashboardUpdatePlanSystem]: Record<string, never>;
-	[PromptId.AiAnalysisDashboardUpdatePlan]: Record<string, any>;
 	[PromptId.AiAnalysisMermaidFixSystem]: Record<string, never>;
 	[PromptId.AiAnalysisMermaidFix]: {
 		brokenMermaid: string;
@@ -779,6 +698,23 @@ export interface PromptVariables {
 		wordCount: number;
 	};
 	[PromptId.DocSplitSuggestionSystem]: Record<string, never>;
+
+	// Ambient context / session intelligence
+	[PromptId.WorkingThemeInference]: {
+		activities: Array<{ type: string; summary: string; timestamp: number }>;
+	};
+	[PromptId.WorkingContextRender]: {
+		theme: string;
+		recentActivities: Array<{ summary: string; timeAgo: string }>;
+		activeFile: { path: string; title: string } | null;
+	};
+	[PromptId.ActivityIndexRender]: {
+		activities: Array<{ id: string; timeAgo: string; summary: string }>;
+		counts: Record<string, number>;
+	};
+	[PromptId.MessageChunkSummarize]: {
+		messages: Array<{ role: string; content: string }>;
+	};
 }
 
 export type PromptInfo = PromptTemplate & { systemPromptId?: PromptId };
