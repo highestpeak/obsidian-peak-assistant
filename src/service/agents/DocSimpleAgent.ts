@@ -20,6 +20,9 @@ import { submitFinalAnswerTool } from "@/service/tools/submit-final-answer";
 import { emptyUsage, LLMUsage, mergeTokenUsage } from "@/core/providers/types";
 import { AppContext } from "@/app/context/AppContext";
 import { ProfileRegistry } from "@/core/profiles/ProfileRegistry";
+import { getActivityDetailTool } from '@/service/context/context-tools/getActivityDetailTool';
+import { getRecentAnalysisResultTool } from '@/service/context/context-tools/getRecentAnalysisResultTool';
+import { getWorkingThemeTool } from '@/service/context/context-tools/getWorkingThemeTool';
 import { queryWithProfile } from "./core/sdkAgentPool";
 import { translateSdkMessages } from "./core/sdkMessageAdapter";
 import { agentToolsToMcpServer, mcpToolNames } from "./core/agentToolMcpAdapter";
@@ -63,6 +66,9 @@ export class DocSimpleAgent {
 			explore_folder: exploreFolderTool(tm),
 			recent_changes_whole_vault: recentChangesWholeVaultTool(tm),
 			local_search_whole_vault: localSearchWholeVaultTool(tm),
+			get_activity_detail: getActivityDetailTool(),
+			get_recent_analysis: getRecentAnalysisResultTool(),
+			get_working_theme: getWorkingThemeTool(),
 		};
 	}
 
@@ -149,18 +155,12 @@ export class DocSimpleAgent {
 		);
 		let titleAcc = '';
 		for await (const chunk of titleStream) {
-			// Provider v2: Agent SDK emits text-delta + complete
 			if (chunk.type === 'text-delta' && typeof (chunk as any).text === 'string') {
 				titleAcc += (chunk as any).text;
 			} else if (chunk.type === 'complete') {
 				if (titleAcc) title = titleAcc.trim() || undefined;
 				const ev = chunk as { usage?: any };
 				if (ev.usage) totalUsage = mergeTokenUsage(totalUsage, ev.usage);
-			}
-			// Legacy PromptService events (fallback compat)
-			if (chunk.type === 'prompt-stream-result') {
-				title = String((chunk as any).output ?? '').trim() || undefined;
-				totalUsage = mergeTokenUsage(totalUsage, (chunk as any).usage);
 			}
 			yield { ...chunk, triggerName: StreamTriggerName.DOC_SIMPLE_AGENT };
 		}
@@ -178,7 +178,6 @@ export class DocSimpleAgent {
 				sources: [],
 				graph: { nodes: [], edges: [] },
 				dashboardBlocks: [],
-				suggestedFollowUpQuestions: [],
 			},
 			triggerName: StreamTriggerName.DOC_SIMPLE_AGENT,
 		};

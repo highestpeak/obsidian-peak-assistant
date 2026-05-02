@@ -17,6 +17,10 @@
 import type { Vault, MetadataCache, CachedMetadata, TFile, App } from 'obsidian';
 import { tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
+import type { ZodObject, ZodRawShape } from 'zod/v3';
+import { getActivityDetailTool } from '@/service/context/context-tools/getActivityDetailTool';
+import { getRecentAnalysisResultTool } from '@/service/context/context-tools/getRecentAnalysisResultTool';
+import { getWorkingThemeTool } from '@/service/context/context-tools/getWorkingThemeTool';
 
 // ─── vault_list_folders ──────────────────────────────────────────────────────
 
@@ -463,6 +467,27 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
         }
     );
 
+    // ─── dynamic discovery tools ─────────────────────────────────────────────
+
+    function wrapAgentTool(agentToolFactory: () => import('@/service/tools/types').AgentTool, name: string) {
+        const at = agentToolFactory();
+        const shape = (at.inputSchema as ZodObject<ZodRawShape>).shape ?? {};
+        return tool(
+            name,
+            at.description,
+            shape,
+            async (input, _extra) => {
+                const result = await at.execute(input);
+                const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+                return { content: [{ type: 'text' as const, text }] };
+            },
+        );
+    }
+
+    const getActivityDetail = wrapAgentTool(getActivityDetailTool, 'get_activity_detail');
+    const getRecentAnalysis = wrapAgentTool(getRecentAnalysisResultTool, 'get_recent_analysis');
+    const getWorkingTheme = wrapAgentTool(getWorkingThemeTool, 'get_working_theme');
+
     return createSdkMcpServer({
         name: 'vault',
         version: '1.0.0',
@@ -473,6 +498,9 @@ export function buildVaultMcpServer(deps: VaultMcpServerDeps) {
             grep,
             wikilinkExpand,
             submitPlan,
+            getActivityDetail,
+            getRecentAnalysis,
+            getWorkingTheme,
         ],
     });
 }

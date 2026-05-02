@@ -16,11 +16,9 @@ import type { LLMStreamEvent } from '@/core/providers/types';
 import { StreamTriggerName } from '@/core/providers/types';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import type { MyPluginSettings } from '@/app/settings/types';
 import type { Profile } from '@/core/profiles/types';
 import { PromptId } from '@/service/prompt/PromptId';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { readProfileFromSettings } from './vault-sdk/sdkProfile';
 import { warmupPool, queryWithProfile } from './core/sdkAgentPool';
 import {
     buildVaultMcpServer,
@@ -38,7 +36,6 @@ export interface VaultSearchAgentSdkOptions {
     pluginId: string;
     searchClient: SearchClient;
     aiServiceManager: AIServiceManager;
-    settings: MyPluginSettings;
     /** Override the default vault-sdk-playbook system prompt (used by ContinueAnalysisAgent). */
     systemPromptOverride?: string;
     /** Prefix prepended to the user query before sending to the SDK agent (e.g. previous round context). */
@@ -74,7 +71,7 @@ export class VaultSearchAgentSDK {
      * will wire this to the existing HITL modal.
      */
     async *startSession(userQuery: string, options?: { webEnabled?: boolean; signal?: AbortSignal }): AsyncGenerator<LLMStreamEvent> {
-        const { app, pluginId, searchClient, aiServiceManager, settings } = this.options;
+        const { app, pluginId, searchClient, aiServiceManager } = this.options;
         const triggerName = StreamTriggerName.SEARCH_AI_AGENT;
         const startTs = Date.now();
 
@@ -90,32 +87,10 @@ export class VaultSearchAgentSDK {
             return;
         }
 
-        // 2. Resolve profile: prefer ProfileRegistry active profile, fall back to settings reader
-        let profile: Profile;
-        const registryProfile = ProfileRegistry.getInstance().getActiveAgentProfile();
-        if (registryProfile) {
-            profile = registryProfile;
-        } else {
-            // Legacy fallback: read from raw settings (until profiles are fully migrated)
-            const legacyProfile = readProfileFromSettings(settings);
-            profile = {
-                id: '__legacy__',
-                name: 'Legacy Settings',
-                kind: legacyProfile.kind,
-                enabled: true,
-                createdAt: 0,
-                baseUrl: legacyProfile.baseUrl,
-                apiKey: legacyProfile.apiKey,
-                authToken: legacyProfile.authToken,
-                primaryModel: legacyProfile.primaryModel,
-                fastModel: legacyProfile.fastModel,
-                customHeaders: legacyProfile.customHeaders ?? {},
-                embeddingEndpoint: null,
-                embeddingApiKey: null,
-                embeddingModel: null,
-                icon: null,
-                description: null,
-            };
+        // 2. Resolve profile from ProfileRegistry
+        const profile: Profile | null = ProfileRegistry.getInstance().getActiveAgentProfile();
+        if (!profile) {
+            throw new Error('No active profile configured. Please set up a profile in Settings → Profiles.');
         }
 
         // 3a. Load vault intuition + probe results (before renderPrompt so we can pass as context)
@@ -274,6 +249,9 @@ export class VaultSearchAgentSDK {
                 'mcp__vault__vault_grep',
                 'mcp__vault__vault_wikilink_expand',
                 'mcp__vault__vault_submit_plan',
+                'mcp__vault__get_activity_detail',
+                'mcp__vault__get_recent_analysis',
+                'mcp__vault__get_working_theme',
             ];
             const mcpServers: Record<string, unknown> = { vault: vaultMcpServer };
             if (webMcpServer) {
