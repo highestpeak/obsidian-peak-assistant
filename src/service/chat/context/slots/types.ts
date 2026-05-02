@@ -43,6 +43,15 @@ export interface ContextProfile {
   slots: SlotConfig[];
 }
 
+/** Helper: format a millisecond duration as human-readable "Xmin ago" / "Xh ago" */
+export function formatTimeAgo(ms: number): string {
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}min ago`;
+  const hours = Math.floor(mins / 60);
+  return `${hours}h ago`;
+}
+
 /** Helper: estimate tokens from text (fast heuristic) */
 export function estimateTokensFromText(text: string): number {
   // CJK characters are ~1 token each, Latin ~0.25 tokens per char

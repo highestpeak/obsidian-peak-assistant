@@ -3,11 +3,13 @@ import { estimateTokensFromText } from './types';
 import type { LLMRequestMessage, MessagePart } from '@/core/providers/types';
 import type { PromptService } from '@/service/prompt/PromptService';
 import type { ResourceSummaryService } from '../ResourceSummaryService';
-import { PromptId } from '@/service/prompt/PromptId';
-import { getImageMimeType, getFileMimeType } from '@/core/document/helper/FileTypeUtils';
-import { readFileAsBase64 } from '@/core/utils/obsidian-utils';
 
 const DEFAULT_MAX_RECENT = 10;
+
+interface RecentMessagesData {
+  messages: any[];
+  attachmentHandlingMode?: string;
+}
 
 export class RecentMessagesSlot implements ContextSlot {
   id = 'recent-messages';
@@ -28,14 +30,14 @@ export class RecentMessagesSlot implements ContextSlot {
     }
 
     return {
-      data: { messages: recent, ctx },
+      data: { messages: recent, attachmentHandlingMode: ctx.attachmentHandlingMode as string | undefined },
       tokens: totalTokens,
       compressionLevel: 0,
     };
   }
 
   async compress(content: SlotContent, level: 1 | 2 | 3): Promise<SlotContent> {
-    const { messages, ctx } = content.data as { messages: any[]; ctx: SlotBuildContext };
+    const { messages, attachmentHandlingMode } = content.data as RecentMessagesData;
 
     if (level === 1) {
       const reduced = messages.slice(-Math.ceil(messages.length / 2));
@@ -43,7 +45,7 @@ export class RecentMessagesSlot implements ContextSlot {
       for (const msg of reduced) {
         if (msg.content) tokens += estimateTokensFromText(msg.content);
       }
-      return { data: { messages: reduced, ctx }, tokens, compressionLevel: 1 };
+      return { data: { messages: reduced, attachmentHandlingMode }, tokens, compressionLevel: 1 };
     }
 
     if (level === 2) {
@@ -59,10 +61,9 @@ export class RecentMessagesSlot implements ContextSlot {
       for (const msg of all) {
         if (msg.content) tokens += estimateTokensFromText(msg.content);
       }
-      return { data: { messages: all, ctx }, tokens, compressionLevel: 2 };
+      return { data: { messages: all, attachmentHandlingMode }, tokens, compressionLevel: 2 };
     }
 
-    // L3: LLM summarize would be handled by BudgetGovernor externally
     return content;
   }
 
@@ -71,7 +72,7 @@ export class RecentMessagesSlot implements ContextSlot {
   }
 
   render(content: SlotContent): LLMRequestMessage[] {
-    const { messages, ctx } = content.data as { messages: any[]; ctx: SlotBuildContext };
+    const { messages, attachmentHandlingMode } = content.data as RecentMessagesData;
     const result: LLMRequestMessage[] = [];
 
     for (let i = 0; i < messages.length; i++) {
@@ -84,7 +85,7 @@ export class RecentMessagesSlot implements ContextSlot {
 
       if (msg.resources && msg.resources.length > 0) {
         const isLatest = i === messages.length - 1;
-        if (isLatest && ctx.attachmentHandlingMode === 'direct') {
+        if (isLatest && attachmentHandlingMode === 'direct') {
           // Direct resource content would be built here
           // (delegated to the existing buildDirectResourceContent logic)
         } else {

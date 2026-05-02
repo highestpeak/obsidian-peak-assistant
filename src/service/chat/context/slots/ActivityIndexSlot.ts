@@ -1,5 +1,5 @@
 import type { ContextSlot, SlotBuildContext, SlotContent } from './types';
-import { estimateTokensFromText } from './types';
+import { estimateTokensFromText, formatTimeAgo } from './types';
 import type { LLMRequestMessage } from '@/core/providers/types';
 import type { PromptService } from '@/service/prompt/PromptService';
 import { PromptId } from '@/service/prompt/PromptId';
@@ -57,12 +57,4 @@ export class ActivityIndexSlot implements ContextSlot {
     if (!text) return [];
     return [{ role: 'system', content: [{ type: 'text', text }] }];
   }
-}
-
-function formatTimeAgo(ms: number): string {
-  const mins = Math.floor(ms / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}min ago`;
-  const hours = Math.floor(mins / 60);
-  return `${hours}h ago`;
 }

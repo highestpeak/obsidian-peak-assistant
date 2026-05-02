@@ -77,8 +77,7 @@ export class ContextPipeline {
 
     // ModelCapabilities.maxCtx is the context window size
     const contextWindow = modelCapabilities?.maxCtx ?? 200000;
-    // Reserve a fixed output budget; maxOutputTokens is not on ModelCapabilities
-    const outputReserve = Math.min(8192, 16384);
+    const outputReserve = 8192;
     const safetyMargin = 0.05 * contextWindow;
 
     return contextWindow - outputReserve - safetyMargin;

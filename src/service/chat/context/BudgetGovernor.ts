@@ -13,6 +13,18 @@ export class BudgetGovernor {
    * then drop if still over budget. Required slots are never dropped.
    */
   async fit(items: GovernedSlot[], totalBudget: number): Promise<GovernedSlot[]> {
+    // Phase 0: Enforce per-slot maxTokens — compress slots that exceed their individual cap
+    for (const item of items) {
+      const cap = item.config.maxTokens;
+      if (cap === 'rest' || item.content.tokens <= cap) continue;
+      for (const level of [1, 2, 3] as const) {
+        if (item.content.tokens <= cap) break;
+        if (level > item.config.maxCompressionLevel) break;
+        if (item.content.compressionLevel >= level) continue;
+        item.content = await item.slot.compress(item.content, level);
+      }
+    }
+
     let totalTokens = items.reduce((s, item) => s + item.content.tokens, 0);
 
     if (totalTokens <= totalBudget) return items;
@@ -21,11 +33,12 @@ export class BudgetGovernor {
       .filter(item => !item.config.required)
       .sort((a, b) => a.config.priority - b.config.priority);
 
-    // Phase 1: Try compression levels L1 → L2 → L3
-    for (const level of [1, 2, 3] as const) {
+    // Phase 1: Per-slot cascade — compress lowest-priority slot through all
+    // its levels before touching the next slot
+    for (const item of compressible) {
       if (totalTokens <= totalBudget) break;
 
-      for (const item of compressible) {
+      for (const level of [1, 2, 3] as const) {
         if (totalTokens <= totalBudget) break;
         if (level > item.config.maxCompressionLevel) continue;
         if (item.content.compressionLevel >= level) continue;

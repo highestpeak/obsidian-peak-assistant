@@ -130,6 +130,11 @@ export class SessionContextService {
 		return this.context;
 	}
 
+	setLlmInferredTheme(theme: WorkingTheme['llmInferred']): void {
+		this.context.workingTheme.llmInferred = theme;
+		this.context.updatedAt = Date.now();
+	}
+
 	destroy(): void {
 		this.themeInferrer.destroy();
 		for (const unsub of this.unsubscribers) {
@@ -403,15 +408,15 @@ export class SessionContextService {
 
 	private assignContinuousGroup(opType: string, now: number): string | null {
 		const prev = this.lastOpByType.get(opType);
-		let groupId: string;
+		let groupId: string | null = null;
 
 		if (prev && (now - prev.ts) <= CONTINUOUS_GROUP_THRESHOLD_MS) {
+			// Within threshold: reuse the previous group (or the provisional one)
 			groupId = prev.groupId;
-		} else {
-			groupId = generateUuidWithoutHyphens();
 		}
 
-		this.lastOpByType.set(opType, { ts: now, groupId });
+		// Store a provisional groupId so the *next* rapid event can join this one
+		this.lastOpByType.set(opType, { ts: now, groupId: groupId ?? generateUuidWithoutHyphens() });
 		return groupId;
 	}
 

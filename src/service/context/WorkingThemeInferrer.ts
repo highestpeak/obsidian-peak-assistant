@@ -48,12 +48,11 @@ export class WorkingThemeInferrer {
 
 			const parsed = JSON.parse(response.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
 
-			const wc = AppContext.getSessionContext().getWorkingContext();
-			wc.workingTheme.llmInferred = {
+			AppContext.getSessionContext().setLlmInferredTheme({
 				summary: parsed.summary ?? '',
 				relatedFiles: parsed.relatedFiles ?? [],
 				updatedAt: Date.now(),
-			};
+			});
 
 			this.activitiesSinceLastInference = 0;
 		} catch (err) {
