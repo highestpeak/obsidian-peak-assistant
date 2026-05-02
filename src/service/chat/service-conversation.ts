@@ -22,6 +22,9 @@ import { UserProfileService } from '@/service/chat/context/UserProfileService';
 import { PromptId } from '@/service/prompt/PromptId';
 import { ResourceSummaryService } from './context/ResourceSummaryService';
 import { ContextBuilder } from './context/ContextBuilder';
+import { ContextPipeline } from './context/ContextPipeline';
+import { ChatProfile } from './context/profiles/ChatProfile';
+import { SessionContextService } from '@/service/context/SessionContextService';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
 import { ResourceLoaderManager } from '@/core/document/resource/helper/ResourceLoaderManager';
 import type { AIServiceManager } from './service-manager';
@@ -50,6 +53,7 @@ interface ChatPreparationResult {
  */
 export class ConversationService {
 	private readonly contextBuilder: ContextBuilder;
+	private contextPipeline: ContextPipeline | null = null;
 	private readonly resourceLoaderManager: ResourceLoaderManager;
 
 	constructor(
@@ -69,6 +73,10 @@ export class ConversationService {
 			this.resourceSummaryService,
 			this.profileService,
 		);
+	}
+
+	setContextPipeline(pipeline: ContextPipeline): void {
+		this.contextPipeline = pipeline;
 	}
 
 	/**
@@ -262,14 +270,28 @@ export class ConversationService {
 
 		// Build prompt from context and user input
 		const historyMessage = [...conversation.messages, originalUserMessage];
-		const contextGenerator = this.contextBuilder.buildContextMessages({
-			conversation,
-			project,
-			messages: historyMessage,
-			modelCapabilities,
-			attachmentHandlingMode,
-			app: this.app,
-		});
+		let contextGenerator: AsyncGenerator<LLMStreamEvent, LLMRequestMessage[], void>;
+		if (this.contextPipeline) {
+			const buildCtx = {
+				sessionContext: SessionContextService.getInstance(),
+				conversation,
+				project: project ?? undefined,
+				messages: historyMessage,
+				app: this.app,
+				modelCapabilities,
+				attachmentHandlingMode,
+			};
+			contextGenerator = this.contextPipeline.assemble(ChatProfile, buildCtx, modelCapabilities);
+		} else {
+			contextGenerator = this.contextBuilder.buildContextMessages({
+				conversation,
+				project,
+				messages: historyMessage,
+				modelCapabilities,
+				attachmentHandlingMode,
+				app: this.app,
+			});
+		}
 		// Consume progress events
 		let result: IteratorResult<LLMStreamEvent, LLMRequestMessage[]>;
 		while (!(result = await contextGenerator.next()).done) {

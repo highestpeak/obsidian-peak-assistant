@@ -1,6 +1,6 @@
 import { SLICE_CAPS } from '@/core/constant';
 import { App } from 'obsidian';
-import { ModelInfoForSwitch, LLMUsage, emptyUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart, LLMRequestMessage, ModelTokenLimits, ModelMetaData } from '@/core/providers/types';
+import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart, LLMRequestMessage, ModelTokenLimits, ModelMetaData } from '@/core/providers/types';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
 import { modelRegistry } from '@/core/providers/model-registry';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
@@ -21,11 +21,21 @@ import { ResourceSummaryService } from './context/ResourceSummaryService';
 import { IndexService } from '@/service/search/index/indexService';
 import { UserProfileService } from '@/service/chat/context/UserProfileService';
 import { ContextUpdateService } from './context/ContextUpdateService';
+import { ContextPipeline } from './context/ContextPipeline';
+import { SystemPromptSlot } from './context/slots/SystemPromptSlot';
+import { UserProfileSlot } from './context/slots/UserProfileSlot';
+import { ConvSummarySlot } from './context/slots/ConvSummarySlot';
+import { RecentMessagesSlot } from './context/slots/RecentMessagesSlot';
+import { WorkingContextSlot } from './context/slots/WorkingContextSlot';
+import { ActivityIndexSlot } from './context/slots/ActivityIndexSlot';
+import { PrevAnalysisSlot } from './context/slots/PrevAnalysisSlot';
+import { ResourceIndexSlot } from './context/slots/ResourceIndexSlot';
+import { VaultIntuitionSlot } from './context/slots/VaultIntuitionSlot';
+import { CurrentFileSlot } from './context/slots/CurrentFileSlot';
 import { EventBus } from '@/core/eventBus';
 import { createChatMessage } from './utils/chat-message-builder';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { AgentTemplateId, getTemplateMetadata } from '@/core/template/TemplateRegistry';
-import type { z } from 'zod/v3';
 import { estimateTokens as estimateTokensFn } from './token-estimation';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
@@ -119,6 +129,21 @@ export class AIServiceManager {
 			this.profileService,
 		);
 
+		// Wire ContextPipeline into ConversationService
+		const contextPipeline = new ContextPipeline([
+			new SystemPromptSlot(this.promptService),
+			new UserProfileSlot(this.promptService, this.profileService),
+			new ConvSummarySlot(this.promptService),
+			new RecentMessagesSlot(this.promptService, this.resourceSummaryService),
+			new WorkingContextSlot(this.promptService),
+			new ActivityIndexSlot(this.promptService),
+			new PrevAnalysisSlot(),
+			new ResourceIndexSlot(),
+			new VaultIntuitionSlot(),
+			new CurrentFileSlot(),
+		]);
+		this.conversationService.setContextPipeline(contextPipeline);
+
 		// Initialize summary update service
 		const eventBus = EventBus.getInstance(this.app);
 		this.contextUpdateService = new ContextUpdateService(
@@ -200,6 +225,21 @@ export class AIServiceManager {
 			this.settings,
 			this.profileService,
 		);
+
+		// Wire ContextPipeline into refreshed ConversationService
+		const refreshedPipeline = new ContextPipeline([
+			new SystemPromptSlot(this.promptService),
+			new UserProfileSlot(this.promptService, this.profileService),
+			new ConvSummarySlot(this.promptService),
+			new RecentMessagesSlot(this.promptService, this.resourceSummaryService),
+			new WorkingContextSlot(this.promptService),
+			new ActivityIndexSlot(this.promptService),
+			new PrevAnalysisSlot(),
+			new ResourceIndexSlot(),
+			new VaultIntuitionSlot(),
+			new CurrentFileSlot(),
+		]);
+		this.conversationService.setContextPipeline(refreshedPipeline);
 
 		// Reinitialize summary update service
 		const eventBus = EventBus.getInstance(this.app);
@@ -613,72 +653,7 @@ ${sourcesList}${topicsList}
 		return this.promptService.render(promptId, variables);
 	}
 
-	// ═══════════════════════════════════════════════════════════════════════════
-	// Legacy methods — delegate to queryText / queryStream / queryStructured
-	// Provider/model params are ignored; the active Profile determines the model.
-	// ═══════════════════════════════════════════════════════════════════════════
 
-	/** @deprecated Use {@link queryText} directly. */
-	async chatWithPrompt<T extends PromptId>(
-		promptId: T,
-		variables: PromptVariables[T] | null,
-		_provider?: string,
-		_model?: string,
-		_extraParts?: MessagePart[],
-	): Promise<string> {
-		return this.queryText(promptId, variables as any);
-	}
-
-	/** @deprecated Use {@link queryText} directly. Usage tracking via SDK TBD. */
-	async chatWithPromptWithUsage<T extends PromptId>(
-		promptId: T,
-		variables: PromptVariables[T] | null,
-		_provider?: string,
-		_model?: string,
-		_extraParts?: MessagePart[],
-	): Promise<{ text: string; usage: LLMUsage; costUsd: number; provider: string; modelId: string }> {
-		const text = await this.queryText(promptId, variables as any);
-		return { text, usage: emptyUsage(), costUsd: 0, provider: 'agent-sdk', modelId: 'profile-active' };
-	}
-
-	/** @deprecated Use {@link queryStructured} directly. */
-	async streamObjectWithPrompt<T extends PromptId, S extends z.ZodTypeAny>(
-		promptId: T,
-		variables: PromptVariables[T] | null,
-		schema: S,
-		_opts?: { provider?: string; modelId?: string; noReasoning?: boolean },
-	): Promise<z.infer<S>> {
-		const { zodToJsonSchema } = await import('zod-to-json-schema');
-		return this.queryStructured<z.infer<S>>(promptId, variables as any, zodToJsonSchema(schema));
-	}
-
-	/** @deprecated Use {@link queryStructured} directly. Usage tracking via SDK TBD. */
-	async streamObjectWithPromptWithUsage<T extends PromptId, S extends z.ZodTypeAny>(
-		promptId: T,
-		variables: PromptVariables[T] | null,
-		schema: S,
-		_opts?: { provider?: string; modelId?: string; noReasoning?: boolean },
-	): Promise<{
-		object: z.infer<S>;
-		usage: LLMUsage;
-		costUsd: number;
-		provider: string;
-		modelId: string;
-	}> {
-		const { zodToJsonSchema } = await import('zod-to-json-schema');
-		const object = await this.queryStructured<z.infer<S>>(promptId, variables as any, zodToJsonSchema(schema));
-		return { object, usage: emptyUsage(), costUsd: 0, provider: 'agent-sdk', modelId: 'profile-active' };
-	}
-
-	/** @deprecated Use {@link queryStream} directly. */
-	async *chatWithPromptStream<T extends PromptId>(
-		promptId: T,
-		variables: PromptVariables[T] | null,
-		_provider?: string,
-		_model?: string,
-	): AsyncGenerator<LLMStreamEvent> {
-		yield* this.queryStream(promptId, variables as any);
-	}
 
 	/**
 	 * Search for external prompts by query string.
@@ -744,9 +719,7 @@ ${sourcesList}${topicsList}
 	// Provider v2 — Agent SDK query methods (Pattern B / C)
 	//
 	// These methods route through the shared sdkAgentPool → Claude Agent SDK,
-	// using the active agent Profile for credentials. They are the target for
-	// migrating chatWithPrompt / chatWithPromptStream / streamObjectWithPrompt
-	// callers (Sub-Wave B/C).
+	// using the active agent Profile for credentials.
 	// ═══════════════════════════════════════════════════════════════════════════
 
 	/** Resolve pluginId lazily from AppContext singleton. */
