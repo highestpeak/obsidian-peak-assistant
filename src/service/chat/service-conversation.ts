@@ -270,20 +270,18 @@ export class ConversationService {
 
 		// Build prompt from context and user input
 		const historyMessage = [...conversation.messages, originalUserMessage];
-		let contextGenerator: AsyncGenerator<LLMStreamEvent, LLMRequestMessage[], void>;
-		if (this.contextPipeline) {
-			const buildCtx = {
-				sessionContext: SessionContextService.getInstance(),
-				conversation,
-				project: project ?? undefined,
-				messages: historyMessage,
-				app: this.app,
-				modelCapabilities,
-				attachmentHandlingMode,
-			};
-			contextGenerator = this.contextPipeline.assemble(ChatProfile, buildCtx, modelCapabilities);
-		} else {
-			contextGenerator = this.contextBuilder.buildContextMessages({
+		const buildCtx = {
+			sessionContext: SessionContextService.getInstance(),
+			conversation,
+			project: project ?? undefined,
+			messages: historyMessage,
+			app: this.app,
+			modelCapabilities,
+			attachmentHandlingMode,
+		};
+		const contextGenerator = this.contextPipeline
+			? this.contextPipeline.assemble(ChatProfile, buildCtx, modelCapabilities)
+			: this.contextBuilder.buildContextMessages({
 				conversation,
 				project,
 				messages: historyMessage,
@@ -291,7 +289,6 @@ export class ConversationService {
 				attachmentHandlingMode,
 				app: this.app,
 			});
-		}
 		// Consume progress events
 		let result: IteratorResult<LLMStreamEvent, LLMRequestMessage[]>;
 		while (!(result = await contextGenerator.next()).done) {

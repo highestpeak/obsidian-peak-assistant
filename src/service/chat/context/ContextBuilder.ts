@@ -31,8 +31,8 @@ const DEFAULT_MAX_RECENT_MESSAGES = 10;
 const DEFAULT_TOKEN_BUDGET = 16000;
 
 /**
- * Builds the final messages array to send to LLM, including context memory.
- * Combines system prompts, project/conv summaries, recent messages, and resource summaries.
+ * @deprecated Use ContextPipeline instead. This class is kept for migration compatibility.
+ * Will be removed after all call sites are migrated to ContextPipeline.
  */
 export class ContextBuilder {
 	constructor(
