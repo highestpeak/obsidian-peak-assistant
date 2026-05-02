@@ -10,6 +10,7 @@
 import { Notice } from 'obsidian';
 import { SLICE_CAPS } from '@/core/constant';
 import { AppContext } from '@/app/context/AppContext';
+import { AIAnalysisCompleteEvent } from '@/core/eventBus';
 import { generateDocIdFromPath } from '@/core/utils/id-utils';
 import {
 	buildMarkdown as buildAiSearchAnalysisMarkdown,
@@ -145,6 +146,15 @@ export async function persistSessionToVault(
 	} catch (e) {
 		console.warn('[analysisDocPersistence] history record insert failed:', e);
 	}
+
+	// Emit AI_ANALYSIS_COMPLETE for SessionContextService tracking
+	try {
+		AppContext.getEventBus().dispatch(new AIAnalysisCompleteEvent({
+			query: query || null,
+			title: snapshot.title?.trim() || null,
+			sourcesCount: snapshot.v2Sources.length,
+		}));
+	} catch { /* EventBus may not be initialized in tests */ }
 
 	return { path: saved.path };
 }

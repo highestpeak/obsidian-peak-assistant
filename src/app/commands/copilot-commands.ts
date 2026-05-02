@@ -8,6 +8,8 @@ import { CopilotResultModal } from '@/ui/view/copilot/CopilotResultModal';
 import { getSelectedTextFromActiveEditor } from '@/core/utils/obsidian-utils';
 import { isDesktop } from '@/core/platform';
 import { reviewResultSchema, linkSuggestionsSchema, splitPlanSchema } from '@/service/copilot/copilot-schemas';
+import { AppContext } from '@/app/context/AppContext';
+import { CopilotActionEvent } from '@/core/eventBus';
 
 function openProgressNotice(initial: string): { setMessage: (text: string) => void; hide: () => void } {
 	const notice = new Notice(initial, 0);
@@ -53,6 +55,7 @@ export function buildCopilotCommands(viewManager: ViewManager, aiManager: AIServ
 						type: 'polish', result, file: ctx.file, scope: ctx.scope,
 						originalContent: ctx.input, selectedText: ctx.selected,
 					}).open();
+					AppContext.getEventBus().dispatch(new CopilotActionEvent({ action: 'polish', targetFile: ctx.file.path, resultSummary: `Polished document: ${ctx.file.basename}` }));
 				} catch (e) {
 					ui.hide();
 					new Notice(`Polish failed: ${(e as Error).message}`);
@@ -77,6 +80,7 @@ export function buildCopilotCommands(viewManager: ViewManager, aiManager: AIServ
 						type: 'review', result, file: ctx.file, scope: ctx.scope,
 						originalContent: ctx.input, selectedText: ctx.selected,
 					}).open();
+					AppContext.getEventBus().dispatch(new CopilotActionEvent({ action: 'review', targetFile: ctx.file.path, resultSummary: `Reviewed article: ${ctx.file.basename}` }));
 				} catch (e) {
 					ui.hide();
 					new Notice(`Review failed: ${(e as Error).message}`);
@@ -104,6 +108,7 @@ export function buildCopilotCommands(viewManager: ViewManager, aiManager: AIServ
 						type: 'suggest-links', result, file: ctx.file, scope: ctx.scope,
 						originalContent: ctx.content,
 					}).open();
+					AppContext.getEventBus().dispatch(new CopilotActionEvent({ action: 'suggest-links', targetFile: ctx.file.path, resultSummary: `Suggested links for: ${ctx.file.basename}` }));
 				} catch (e) {
 					ui.hide();
 					new Notice(`Link suggestion failed: ${(e as Error).message}`);
@@ -133,6 +138,7 @@ export function buildCopilotCommands(viewManager: ViewManager, aiManager: AIServ
 						type: 'split', result, file: ctx.file, scope: 'full',
 						originalContent: ctx.content,
 					}).open();
+					AppContext.getEventBus().dispatch(new CopilotActionEvent({ action: 'split', targetFile: ctx.file.path, resultSummary: `Suggested split for: ${ctx.file.basename}` }));
 				} catch (e) {
 					ui.hide();
 					new Notice(`Split analysis failed: ${(e as Error).message}`);

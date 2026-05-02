@@ -165,6 +165,48 @@ export class ShowToastEvent extends ViewEvent {
 	}
 }
 
+/**
+ * Copilot action event (polish / review / suggest-links / split)
+ */
+export class CopilotActionEvent extends ViewEvent {
+	action: string;
+	path: string;
+	summary: string;
+
+	constructor(data: { action: string; targetFile: string; resultSummary: string }) {
+		super(ViewEventType.COPILOT_ACTION);
+		this.action = data.action;
+		this.path = data.targetFile;
+		this.summary = data.resultSummary;
+	}
+}
+
+/**
+ * Search query submitted event
+ */
+export class SearchQueryEvent extends ViewEvent {
+	query: string;
+
+	constructor(data: { query: string }) {
+		super(ViewEventType.SEARCH_QUERY);
+		this.query = data.query;
+	}
+}
+
+/**
+ * AI analysis persisted to vault event
+ */
+export class AIAnalysisCompleteEvent extends ViewEvent {
+	query: string | null;
+	summary: string;
+
+	constructor(data: { query: string | null; title: string | null; sourcesCount: number }) {
+		super(ViewEventType.AI_ANALYSIS_COMPLETE);
+		this.query = data.query;
+		this.summary = `AI analysis complete: ${data.title ?? data.query ?? 'Unknown'} (${data.sourcesCount} sources)`;
+	}
+}
+
 type EventListener<T extends ViewEvent = ViewEvent> = (event: T) => void;
 
 /**

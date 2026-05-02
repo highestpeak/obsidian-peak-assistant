@@ -16,6 +16,7 @@ import { useSearchSession } from './hooks/useSearchSession';
 import { Notice } from 'obsidian';
 import { BackgroundSessionManager } from '@/service/BackgroundSessionManager';
 import { AppContext } from '@/app/context/AppContext';
+import { SearchQueryEvent } from '@/core/eventBus';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { formatDuration } from '@/core/utils/format-utils';
 import { InspectorSidePanel } from './components/inspector/InspectorSidePanel';
@@ -104,6 +105,9 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 	const hasResult = hasAnalyzed || analysisCompleted;
 	const handleAnalyze = () => {
 		if (!searchQuery.trim()) return;
+		try {
+			AppContext.getEventBus().dispatch(new SearchQueryEvent({ query: searchQuery.trim() }));
+		} catch { /* EventBus may not be initialized */ }
 		performAnalysis(undefined, undefined);
 	};
 
