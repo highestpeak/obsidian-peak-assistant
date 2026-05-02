@@ -14,7 +14,6 @@ import {
 import { ensureFolder, joinPath, writeFile, getAbsolutePath, getRelativePath } from '@/core/utils/vault-utils';
 import { ChatDocName } from './chat-docs/ChatDocName';
 import { ChatConversationDoc, ChatConversationDocModel } from './chat-docs/ChatConversationDoc';
-import { hashMD5 } from '@/core/utils/hash-utils';
 import { ChatProjectSummaryDoc } from './chat-docs/ChatProjectSummaryDoc';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { Database as DbSchema } from '@/core/storage/sqlite/ddl';
@@ -474,7 +473,7 @@ export class ChatStorageService {
 			if (row.is_error === 1) msg.isErrorMessage = true;
 			if (row.is_visible === 0) msg.isVisible = false;
 			if (row.gen_time_ms !== null) msg.genTimeMs = row.gen_time_ms;
-			if (row.thinking) msg.thinking = row.thinking;
+			if (row.thinking) msg.reasoning = { content: row.thinking };
 			if (row.token_usage_json) {
 				try {
 					msg.tokenUsage = JSON.parse(row.token_usage_json);
@@ -699,7 +698,7 @@ export class ChatStorageService {
 			if (row.is_error === 1) msg.isErrorMessage = true;
 			if (row.is_visible === 0) msg.isVisible = false;
 			if (row.gen_time_ms !== null) msg.genTimeMs = row.gen_time_ms;
-			if (row.thinking) msg.thinking = row.thinking;
+			if (row.thinking) msg.reasoning = { content: row.thinking };
 			if (row.token_usage_json) {
 				try {
 					msg.tokenUsage = JSON.parse(row.token_usage_json);
@@ -780,7 +779,7 @@ export class ChatStorageService {
 		}>();
 
 		for (const docMsg of allMarkdownMessages) {
-			const key = ChatStorageService.createMessageKey(docMsg.role, docMsg.content, docMsg.title);
+			const key = ChatConversationDoc.createMessageKey(docMsg.role, docMsg.content, docMsg.title);
 			messageKeyToDocData.set(key, docMsg);
 		}
 
@@ -800,7 +799,7 @@ export class ChatStorageService {
 			if (!msg.content) {
 				continue; // Skip if no content (shouldn't happen after above loop, but be safe)
 			}
-			const msgKey = ChatStorageService.createMessageKey(msg.role, msg.content, msg.title);
+			const msgKey = ChatConversationDoc.createMessageKey(msg.role, msg.content, msg.title);
 			const docData = messageKeyToDocData.get(msgKey);
 			if (docData) {
 				// Update topic if it doesn't match (content/role/title should already match)
@@ -811,13 +810,6 @@ export class ChatStorageService {
 		}
 	}
 
-	/**
-	 * Create message key for matching (same as ChatConversationDoc.createMessageKey).
-	 */
-	private static createMessageKey(role: string, content: string, title?: string): string {
-		const contentHash = hashMD5(content);
-		return `${role}|${contentHash}|${title || ''}`;
-	}
 
 	// Project folder operations =================================================
 
