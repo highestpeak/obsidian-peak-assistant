@@ -28,6 +28,7 @@ import {
 } from './vault-sdk/vaultMcpServer';
 import { buildWebSearchMcpServer } from './vault-sdk/webSearchTool';
 import { translateSdkMessage } from './core/sdkMessageAdapter';
+import { MaxTurnsError } from '@/core/errors/llm-errors';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { TraceSink } from '@/core/telemetry/traceSink';
 
@@ -313,6 +314,15 @@ export class VaultSearchAgentSDK {
                 }
             }
         } catch (err) {
+            if (err instanceof MaxTurnsError) {
+                console.warn('[VaultSearchAgentSDK] max turns reached, emitting partial results');
+                yield {
+                    type: 'complete',
+                    finishReason: 'stop',
+                    triggerName,
+                } as LLMStreamEvent;
+                return;
+            }
             console.error('[VaultSearchAgentSDK] query error', err);
             yield {
                 type: 'error',
