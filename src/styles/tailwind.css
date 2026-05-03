@@ -111,7 +111,6 @@
 .peak-settings-tab-item.is-active {
 	color: var(--text-normal);
 	border-bottom-color: var(--interactive-accent);
-	background-color: var(--background-secondary);
 }
 
 .peak-settings-content {

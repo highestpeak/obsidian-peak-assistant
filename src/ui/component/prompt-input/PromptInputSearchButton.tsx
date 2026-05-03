@@ -7,13 +7,13 @@ import { HoverButton } from '@/ui/component/mine';
 
 export interface PromptInputSearchButtonProps {
 	active?: boolean;
-	searchProvider?: 'local' | 'perplexity' | 'model-builtin';
+	searchProvider?: 'perplexity' | 'model-builtin';
 	enableWebSearch?: boolean;
 	enableVaultSearch?: boolean;
 	enableTwitterSearch?: boolean;
 	enableRedditSearch?: boolean;
 	onToggleActive?: () => void;
-	onChangeProvider?: (provider: 'local' | 'perplexity' | 'model-builtin') => void;
+	onChangeProvider?: (provider: 'perplexity' | 'model-builtin') => void;
 	onToggleWebSearch?: (enabled: boolean) => void;
 	onToggleVaultSearch?: (enabled: boolean) => void;
 	onToggleTwitterSearch?: (enabled: boolean) => void;
@@ -50,19 +50,6 @@ export const PromptInputSearchButton: React.FC<PromptInputSearchButtonProps> = (
 				<div className="pktw-text-xs pktw-font-medium pktw-text-muted-foreground pktw-mb-1">
 					Search Provider
 				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					className={cn(
-						'pktw-justify-start pktw-h-7 pktw-px-2 pktw-text-xs pktw-font-normal',
-						searchProvider === 'local' && 'pktw-bg-accent pktw-text-accent-foreground'
-					)}
-					onClick={() => onChangeProvider?.('local')}
-				>
-					{searchProvider === 'local' && <Check className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
-					{searchProvider !== 'local' && <div className="pktw-w-3 pktw-h-3 pktw-mr-2" />}
-					Host Engine
-				</Button>
 				<Button
 					variant="ghost"
 					size="sm"

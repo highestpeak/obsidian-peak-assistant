@@ -23,7 +23,7 @@ export interface CodeMirrorInputProps extends Omit<React.InputHTMLAttributes<HTM
   onEnterSubmit?: () => void;
 }
 
-const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void }, CodeMirrorInputProps>(
+const CodeMirrorInputComponent = React.forwardRef<{ focus: () => void; select: () => void }, CodeMirrorInputProps>(
   ({
     value,
     onChange,

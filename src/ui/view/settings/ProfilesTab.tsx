@@ -280,13 +280,6 @@ export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
                 )}
             </div>
 
-            {/* Bottom callout */}
-            <div className="pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-pk-accent/5 pktw-px-4 pktw-py-3">
-                <span className="pktw-text-xs pktw-text-pk-muted-foreground pktw-leading-relaxed">
-                    Power-user settings live in <span className="pktw-font-mono pktw-text-pk-foreground-faint">peak-config.json</span> (vault root):
-                    Per-prompt model mapping &middot; Inspector link params &middot; Graph viz tuning &middot; Hub discover params
-                </span>
-            </div>
         </div>
     );
 }

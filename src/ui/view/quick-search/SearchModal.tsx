@@ -137,7 +137,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 		if ((e.key === 'a' || e.key === 'A') && (e.metaKey || e.ctrlKey) && inputRef.current) {
 			e.preventDefault();
 			e.stopPropagation();
-			inputRef.current.select();
+			inputRef.current?.select?.();
 			return;
 		}
 	};
@@ -518,7 +518,7 @@ const VaultTabContent: React.FC<VaultTabContentProps> = ({ onClose, activeTab, s
 		if ((e.key === 'a' || e.key === 'A') && (e.metaKey || e.ctrlKey) && inputRef.current) {
 			e.preventDefault();
 			e.stopPropagation();
-			inputRef.current.select();
+			inputRef.current?.select?.();
 			return;
 		}
 	};
