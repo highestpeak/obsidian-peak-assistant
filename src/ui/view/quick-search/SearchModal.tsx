@@ -337,7 +337,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 					</div>
 				</div>
 			</div>
-			{!searchQuery && sessionStatus === 'idle' && (
+			{sessionStatus === 'idle' && (
 				<div className="pktw-flex-1 pktw-min-h-0 pktw-overflow-y-auto pktw-py-3">
 					<SuggestionGrid
 						suggestions={suggestions}
@@ -366,6 +366,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 						}}
 					/>
 					<RecentAnalysisList
+						filterQuery={searchQuery}
 						onSelectQuery={(query) => {
 							useSharedStore.getState().setSearchQuery(query);
 							useSearchSessionStore.getState().resetAll();
@@ -406,7 +407,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 				</div>
 			)}
 			{/* Only render AISearchTab when NOT showing the idle landing — avoids competing scroll zones */}
-			{(searchQuery || sessionStatus !== 'idle') && (
+			{sessionStatus !== 'idle' && (
 				<div className="pktw-flex-1 pktw-min-h-0 pktw-bg-pk-background pktw-overflow-visible pktw-flex pktw-flex-col">
 					<AISearchTab onClose={onClose} />
 				</div>

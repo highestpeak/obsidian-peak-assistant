@@ -36,6 +36,36 @@ export class AIAnalysisRepo {
 			.execute();
 	}
 
+	async search(query: string, params: { limit: number; offset: number }): Promise<DbSchema['ai_analysis_record'][]> {
+		const limit = Math.max(1, Math.min(200, params.limit || 20));
+		const offset = Math.max(0, params.offset || 0);
+		const pattern = `%${query}%`;
+		return this.db
+			.selectFrom('ai_analysis_record')
+			.selectAll()
+			.where((eb) => eb.or([
+				eb('query', 'like', pattern),
+				eb('title', 'like', pattern),
+			]))
+			.orderBy('created_at_ts', 'desc')
+			.limit(limit)
+			.offset(offset)
+			.execute();
+	}
+
+	async searchCount(query: string): Promise<number> {
+		const pattern = `%${query}%`;
+		const row = await this.db
+			.selectFrom('ai_analysis_record')
+			.select((eb) => eb.fn.countAll<number>().as('cnt'))
+			.where((eb) => eb.or([
+				eb('query', 'like', pattern),
+				eb('title', 'like', pattern),
+			]))
+			.executeTakeFirstOrThrow();
+		return Number((row as any).cnt);
+	}
+
 	/**
 	 * Count records.
 	 */

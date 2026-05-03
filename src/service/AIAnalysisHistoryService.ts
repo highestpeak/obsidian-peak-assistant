@@ -23,6 +23,18 @@ export class AIAnalysisHistoryService {
 		return repo.count();
 	}
 
+	async search(query: string, params: { limit: number; offset: number }): Promise<AIAnalysisHistoryRecord[]> {
+		if (!this.dbReady) return [];
+		const repo = sqliteStoreManager.getAIAnalysisRepo();
+		return repo.search(query, params) as Promise<AIAnalysisHistoryRecord[]>;
+	}
+
+	async searchCount(query: string): Promise<number> {
+		if (!this.dbReady) return 0;
+		const repo = sqliteStoreManager.getAIAnalysisRepo();
+		return repo.searchCount(query);
+	}
+
 	async insertOrIgnore(record: AIAnalysisHistoryRecord): Promise<void> {
 		if (!this.dbReady) return;
 		const repo = sqliteStoreManager.getAIAnalysisRepo();

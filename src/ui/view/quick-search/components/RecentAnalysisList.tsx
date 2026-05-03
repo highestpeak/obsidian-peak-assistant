@@ -53,12 +53,14 @@ export interface RecentAnalysisListProps {
 	onSelectQuery: (query: string) => void;
 	onSelectRecord?: (record: AIAnalysisHistoryRecord) => void;
 	limit?: number;
+	filterQuery?: string;
 }
 
 export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 	onSelectQuery,
 	onSelectRecord,
-	limit = 15,
+	limit = 20,
+	filterQuery,
 }) => {
 	const [records, setRecords] = useState<AIAnalysisHistoryRecord[]>([]);
 	const [totalCount, setTotalCount] = useState(0);
@@ -72,20 +74,34 @@ export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 		setLoading(true);
 		try {
 			const svc = AppContext.getInstance().aiAnalysisHistoryService;
+			const hasFilter = !!filterQuery?.trim();
 			const [rows, count] = await Promise.all([
-				svc.list({ limit, offset: offsetRef.current }),
-				offsetRef.current === 0 ? svc.count() : Promise.resolve(totalCount),
+				hasFilter
+					? svc.search(filterQuery!.trim(), { limit, offset: offsetRef.current })
+					: svc.list({ limit, offset: offsetRef.current }),
+				offsetRef.current === 0
+					? (hasFilter ? svc.searchCount(filterQuery!.trim()) : svc.count())
+					: Promise.resolve(totalCount),
 			]);
 			if (offsetRef.current === 0) setTotalCount(count);
 			if (rows.length < limit) doneRef.current = true;
 			offsetRef.current += rows.length;
-			setRecords((prev) => [...prev, ...rows]);
+			const validRows = rows.filter(r => r.query || r.title);
+			setRecords((prev) => [...prev, ...validRows]);
 		} catch (e) {
 			console.warn('[RecentAnalysisList] load failed:', e);
 		} finally {
 			setLoading(false);
 		}
-	}, [limit, totalCount, loading]);
+	}, [limit, totalCount, loading, filterQuery]);
+
+	// Reset and reload when filterQuery changes
+	useEffect(() => {
+		setRecords([]);
+		offsetRef.current = 0;
+		doneRef.current = false;
+		void loadMore();
+	}, [filterQuery]);
 
 	// Initial load
 	useEffect(() => { void loadMore(); }, []);
@@ -110,14 +126,16 @@ export const RecentAnalysisList: React.FC<RecentAnalysisListProps> = ({
 				Recent
 			</span>
 			<div className="pktw-flex pktw-flex-col">
-				{records.map((r) => (
-					<AnalysisRow key={r.id ?? r.vault_rel_path} record={r} onSelect={(rec) => {
-						if (onSelectRecord && rec.vault_rel_path) {
-							onSelectRecord(rec);
-						} else if (rec.query) {
-							onSelectQuery(rec.query);
-						}
-					}} />
+				{records.map((r, idx) => (
+					<div key={r.id ?? idx} style={{ contentVisibility: 'auto', containIntrinsicSize: '0 48px' }}>
+						<AnalysisRow record={r} onSelect={(rec) => {
+							if (onSelectRecord && rec.vault_rel_path) {
+								onSelectRecord(rec);
+							} else if (rec.query) {
+								onSelectQuery(rec.query);
+							}
+						}} />
+					</div>
 				))}
 			</div>
 			<div ref={sentinelRef}>
