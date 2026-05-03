@@ -804,6 +804,56 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
+	 * Pattern A′ (text streaming): Single-turn LLM call that yields raw text deltas.
+	 * Simpler than queryStream (Pattern B) — yields plain `{ type: 'delta', text }` chunks
+	 * plus a final `{ type: 'done', fullText }`. Ideal for progressive UI like the copilot modal.
+	 */
+	async *queryTextStream(
+		promptOrText: string,
+		variables?: Record<string, unknown>,
+		opts?: { systemPrompt?: string; signal?: AbortSignal },
+	): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; fullText: string }> {
+		const profile = this.requireActiveProfile();
+		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
+			promptOrText,
+			variables,
+			opts?.systemPrompt,
+		);
+
+		const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
+			prompt: userPrompt,
+			systemPrompt,
+			maxTurns: 1,
+			signal: opts?.signal,
+		});
+
+		let fullText = '';
+		for await (const raw of messages) {
+			const msg = raw as any;
+			if (msg.type === 'result' && msg.is_error) {
+				const { throwTypedError } = await import('@/core/errors/llm-errors');
+				throwTypedError(typeof msg.result === 'string' ? msg.result : JSON.stringify(msg.result), fullText || undefined);
+			}
+			if (msg.type === 'stream_event') {
+				const event = msg.event;
+				if (event?.type === 'content_block_delta' && event?.delta?.type === 'text_delta' && typeof event?.delta?.text === 'string') {
+					fullText += event.delta.text;
+					yield { type: 'delta', text: event.delta.text };
+				}
+			} else if (msg.type === 'assistant') {
+				const blocks = msg.message?.content ?? [];
+				for (const block of blocks) {
+					if (block.type === 'text' && typeof block.text === 'string' && fullText.length === 0) {
+						fullText += block.text;
+						yield { type: 'delta', text: block.text };
+					}
+				}
+			}
+		}
+		yield { type: 'done', fullText };
+	}
+
+	/**
 	 * Pattern B (streaming): Single-turn LLM call via Agent SDK.
 	 * Yields LLMStreamEvents for progressive UI updates.
 	 *

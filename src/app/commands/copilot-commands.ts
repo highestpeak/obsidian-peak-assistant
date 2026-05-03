@@ -7,17 +7,9 @@ import { PromptId } from '@/service/prompt/PromptId';
 import { CopilotResultModal } from '@/ui/view/copilot/CopilotResultModal';
 import { getSelectedTextFromActiveEditor } from '@/core/utils/obsidian-utils';
 import { isDesktop } from '@/core/platform';
-import { reviewResultSchema, linkSuggestionsSchema, splitPlanSchema } from '@/service/copilot/copilot-schemas';
+import { reviewResultSchema, linkSuggestionsSchema, splitPlanSchema, tagSuggestionsSchema } from '@/service/copilot/copilot-schemas';
 import { AppContext } from '@/app/context/AppContext';
 import { CopilotActionEvent } from '@/core/eventBus';
-
-function openProgressNotice(initial: string): { setMessage: (text: string) => void; hide: () => void } {
-	const notice = new Notice(initial, 0);
-	return {
-		setMessage: (text: string) => { notice.noticeEl.textContent = text; },
-		hide: () => notice.hide(),
-	};
-}
 
 export function buildCopilotCommands(viewManager: ViewManager, aiManager: AIServiceManager): Command[] {
 	if (!isDesktop()) return [];
@@ -45,20 +37,25 @@ export function buildCopilotCommands(viewManager: ViewManager, aiManager: AIServ
 			callback: async () => {
 				const ctx = await getContext();
 				if (!ctx) return;
-				const ui = openProgressNotice('Polishing document...');
+				const modal = new CopilotResultModal(ctx.app, {
+					type: 'polish', file: ctx.file, scope: ctx.scope,
+					originalContent: ctx.input, selectedText: ctx.selected,
+				});
+				modal.open();
 				try {
-					const result = await aiManager.queryText(PromptId.DocPolish, {
+					let fullText = '';
+					for await (const chunk of aiManager.queryTextStream(PromptId.DocPolish, {
 						content: ctx.input, title: ctx.file.basename, scope: ctx.scope,
-					});
-					ui.hide();
-					new CopilotResultModal(ctx.app, {
-						type: 'polish', result, file: ctx.file, scope: ctx.scope,
-						originalContent: ctx.input, selectedText: ctx.selected,
-					}).open();
-					AppContext.getEventBus().dispatch(new CopilotActionEvent({ action: 'polish', targetFile: ctx.file.path, resultSummary: `Polished document: ${ctx.file.basename}` }));
+					})) {
+						if (chunk.type === 'delta') {
+							fullText += chunk.text;
+							modal.updateProgress(fullText);
+						}
+					}
+					modal.setResult(fullText);
+					AppContext.getEventBus().dispatch(new CopilotActionEvent({ action: 'polish', targetFile: ctx.file.path, resultSummary: `Polished: ${ctx.file.basename}` }));
 				} catch (e) {
-					ui.hide();
-					new Notice(`Polish failed: ${(e as Error).message}`);
+					modal.setError(e as Error);
 				}
 			},
 		},
@@ -68,22 +65,21 @@ export function buildCopilotCommands(viewManager: ViewManager, aiManager: AIServ
 			callback: async () => {
 				const ctx = await getContext();
 				if (!ctx) return;
-				const ui = openProgressNotice('Reviewing article...');
+				const modal = new CopilotResultModal(ctx.app, {
+					type: 'review', file: ctx.file, scope: ctx.scope,
+					originalContent: ctx.input, selectedText: ctx.selected,
+				});
+				modal.open();
 				try {
 					const result = await aiManager.queryStructured(
 						PromptId.DocReview,
 						{ content: ctx.input, title: ctx.file.basename, scope: ctx.scope },
 						await toJsonSchema(reviewResultSchema),
 					);
-					ui.hide();
-					new CopilotResultModal(ctx.app, {
-						type: 'review', result, file: ctx.file, scope: ctx.scope,
-						originalContent: ctx.input, selectedText: ctx.selected,
-					}).open();
-					AppContext.getEventBus().dispatch(new CopilotActionEvent({ action: 'review', targetFile: ctx.file.path, resultSummary: `Reviewed article: ${ctx.file.basename}` }));
+					modal.setResult(result);
+					AppContext.getEventBus().dispatch(new CopilotActionEvent({ action: 'review', targetFile: ctx.file.path, resultSummary: `Reviewed: ${ctx.file.basename}` }));
 				} catch (e) {
-					ui.hide();
-					new Notice(`Review failed: ${(e as Error).message}`);
+					modal.setError(e as Error);
 				}
 			},
 		},
@@ -93,25 +89,23 @@ export function buildCopilotCommands(viewManager: ViewManager, aiManager: AIServ
 			callback: async () => {
 				const ctx = await getContext();
 				if (!ctx) return;
-				// Extract existing links from metadata cache
 				const cache = ctx.app.metadataCache.getFileCache(ctx.file);
 				const existingLinks = (cache?.links ?? []).map(l => l.link).join(', ');
-				const ui = openProgressNotice('Analyzing links...');
+				const modal = new CopilotResultModal(ctx.app, {
+					type: 'suggest-links', file: ctx.file, scope: ctx.scope,
+					originalContent: ctx.content,
+				});
+				modal.open();
 				try {
 					const result = await aiManager.queryStructured(
 						PromptId.DocSuggestLinks,
 						{ content: ctx.input, title: ctx.file.basename, existingLinks },
 						await toJsonSchema(linkSuggestionsSchema),
 					);
-					ui.hide();
-					new CopilotResultModal(ctx.app, {
-						type: 'suggest-links', result, file: ctx.file, scope: ctx.scope,
-						originalContent: ctx.content,
-					}).open();
+					modal.setResult(result);
 					AppContext.getEventBus().dispatch(new CopilotActionEvent({ action: 'suggest-links', targetFile: ctx.file.path, resultSummary: `Suggested links for: ${ctx.file.basename}` }));
 				} catch (e) {
-					ui.hide();
-					new Notice(`Link suggestion failed: ${(e as Error).message}`);
+					modal.setError(e as Error);
 				}
 			},
 		},
@@ -126,22 +120,45 @@ export function buildCopilotCommands(viewManager: ViewManager, aiManager: AIServ
 					new Notice('Document is too short to split (< 500 words).');
 					return;
 				}
-				const ui = openProgressNotice('Analyzing structure...');
+				const modal = new CopilotResultModal(ctx.app, {
+					type: 'split', file: ctx.file, scope: 'full',
+					originalContent: ctx.content,
+				});
+				modal.open();
 				try {
 					const result = await aiManager.queryStructured(
 						PromptId.DocSplitSuggestion,
 						{ content: ctx.content, title: ctx.file.basename, wordCount },
 						await toJsonSchema(splitPlanSchema),
 					);
-					ui.hide();
-					new CopilotResultModal(ctx.app, {
-						type: 'split', result, file: ctx.file, scope: 'full',
-						originalContent: ctx.content,
-					}).open();
+					modal.setResult(result);
 					AppContext.getEventBus().dispatch(new CopilotActionEvent({ action: 'split', targetFile: ctx.file.path, resultSummary: `Suggested split for: ${ctx.file.basename}` }));
 				} catch (e) {
-					ui.hide();
-					new Notice(`Split analysis failed: ${(e as Error).message}`);
+					modal.setError(e as Error);
+				}
+			},
+		},
+		{
+			id: 'peak-copilot-suggest-tags',
+			name: 'Copilot: Suggest Tags',
+			callback: async () => {
+				const ctx = await getContext();
+				if (!ctx) return;
+				const modal = new CopilotResultModal(ctx.app, {
+					type: 'suggest-tags', file: ctx.file, scope: ctx.scope,
+					originalContent: ctx.input,
+				});
+				modal.open();
+				try {
+					const result = await aiManager.queryStructured(
+						PromptId.DocSuggestTags,
+						{ content: ctx.input, title: ctx.file.basename },
+						await toJsonSchema(tagSuggestionsSchema),
+					);
+					modal.setResult(result);
+					AppContext.getEventBus().dispatch(new CopilotActionEvent({ action: 'suggest-tags', targetFile: ctx.file.path, resultSummary: `Suggested tags for: ${ctx.file.basename}` }));
+				} catch (e) {
+					modal.setError(e as Error);
 				}
 			},
 		},

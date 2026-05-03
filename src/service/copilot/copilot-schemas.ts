@@ -35,3 +35,15 @@ export const splitPlanSchema = z.object({
 });
 
 export type SplitPlan = z.infer<typeof splitPlanSchema>;
+
+export const tagSuggestionsSchema = z.object({
+    suggestions: z.array(z.object({
+        tag: z.string(),
+        confidence: z.number(),
+        reason: z.string(),
+        source: z.enum(['content', 'graph', 'history']),
+    })),
+    summary: z.string(),
+});
+
+export type TagSuggestions = z.infer<typeof tagSuggestionsSchema>;
