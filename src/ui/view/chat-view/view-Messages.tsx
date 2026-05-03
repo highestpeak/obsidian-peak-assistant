@@ -148,10 +148,14 @@ export const MessagesViewComponent: React.FC = () => {
             <div className="pktw-flex-shrink-0 pktw-flex pktw-justify-between pktw-items-center pktw-px-6 pktw-pt-6 pktw-border-b pktw-border-borde">
                 {/* Suggestion actions on the left */}
                 {activeConversation && activeConversation.messages.length > 0 && (() => {
+                    const submitAction = useChatViewStore.getState().submitAction;
                     const suggestionActions: SuggestionAction[] = [
-                        { icon: <ClipboardList className="pktw-w-3 pktw-h-3" />, label: 'Summarize', action: () => { /* placeholder */ } },
-                        { icon: <Search className="pktw-w-3 pktw-h-3" />, label: 'Search vault', action: () => { /* placeholder */ } },
-                        { icon: <Lightbulb className="pktw-w-3 pktw-h-3" />, label: 'Explain further', action: () => { /* placeholder */ } },
+                        { icon: <ClipboardList className="pktw-w-3 pktw-h-3" />, label: 'Summarize',
+                          action: () => submitAction?.('Summarize this conversation concisely.') },
+                        { icon: <Search className="pktw-w-3 pktw-h-3" />, label: 'Search vault',
+                          action: () => submitAction?.('Search the vault for information related to this conversation.') },
+                        { icon: <Lightbulb className="pktw-w-3 pktw-h-3" />, label: 'Explain further',
+                          action: () => submitAction?.('Explain the last response in more detail.') },
                     ];
                     return <SuggestionActions actions={suggestionActions} />;
                 })()}

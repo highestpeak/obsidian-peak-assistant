@@ -2,6 +2,19 @@ import React, { useState } from 'react';
 import { cn } from '@/ui/react/lib/utils';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 
+function stripMarkdown(text: string): string {
+    return text
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/\[\[(.*?)\]\]/g, '$1')
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/^>\s+/gm, '')
+        .replace(/^[-*+]\s+/gm, '')
+        .trim();
+}
+
 interface OutlineMessage {
 	id: string;
 	role: 'user' | 'assistant';
@@ -84,7 +97,7 @@ const TopicGroup: React.FC<{
 					<span className="pktw-text-[9px] pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-flex-shrink-0 pktw-mt-px">
 						{msg.role === 'user' ? 'You' : 'AI'}
 					</span>
-					<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-line-clamp-2">{msg.content.slice(0, 100)}</span>
+					<span className="pktw-text-[11px] pktw-text-muted-foreground pktw-line-clamp-2">{stripMarkdown(msg.content).slice(0, 100)}</span>
 				</div>
 			))}
 		</div>
