@@ -18,6 +18,7 @@
 
 import type { LLMStreamEvent } from '@/core/providers/types';
 import type { SDKMessage } from './sdkAgentPool';
+import { throwTypedError, LLMResponseError } from '@/core/errors/llm-errors';
 import {
     translateSdkMessage,
     type TranslateOpts,
@@ -72,9 +73,15 @@ export async function collectText(
     messages: AsyncIterable<SDKMessage>,
 ): Promise<string> {
     let text = '';
+    let errorResult: string | null = null;
 
     for await (const raw of messages) {
-        const msg = raw as { type?: string; message?: { content?: Array<{ type: string; text?: string }> }; event?: any };
+        const msg = raw as { type?: string; is_error?: boolean; result?: string; message?: { content?: Array<{ type: string; text?: string }> }; event?: any };
+
+        if (msg.type === 'result' && msg.is_error) {
+            errorResult = typeof msg.result === 'string' ? msg.result : JSON.stringify(msg.result);
+            continue;
+        }
 
         if (msg.type === 'stream_event') {
             const event = msg.event;
@@ -86,18 +93,19 @@ export async function collectText(
                 text += event.delta.text;
             }
         } else if (msg.type === 'assistant') {
-            // Only collect text blocks if no streaming events were seen
             const blocks = msg.message?.content ?? [];
             for (const block of blocks) {
                 if (block.type === 'text' && typeof block.text === 'string') {
-                    // stream_event accumulation takes precedence; skip duplicates
-                    // by only using this path if we haven't accumulated any text yet
                     if (text.length === 0) {
                         text += block.text;
                     }
                 }
             }
         }
+    }
+
+    if (errorResult) {
+        throwTypedError(errorResult, text || undefined);
     }
 
     return text;
@@ -116,11 +124,28 @@ export async function collectJson<T>(
 ): Promise<T> {
     const raw = await collectText(messages);
 
-    // Strip optional markdown code fences
     const stripped = raw
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/\s*```\s*$/, '')
         .trim();
 
-    return JSON.parse(stripped) as T;
+    if (!stripped) {
+        throw new LLMResponseError('Model returned empty response where JSON was expected.');
+    }
+
+    try {
+        return JSON.parse(stripped) as T;
+    } catch (parseError) {
+        const firstChar = stripped[0];
+        if (firstChar !== '{' && firstChar !== '[' && /^[A-Za-z"']/.test(stripped)) {
+            throw new LLMResponseError(
+                `Model returned text instead of JSON: "${stripped.slice(0, 120)}..."`,
+                stripped,
+            );
+        }
+        throw new LLMResponseError(
+            `Failed to parse model response as JSON: ${(parseError as Error).message}`,
+            stripped,
+        );
+    }
 }
