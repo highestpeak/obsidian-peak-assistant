@@ -6,6 +6,31 @@ import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { getLLMOutputControlSettingKeys } from '@/core/providers/types';
 
 /**
+ * Reload conversation meta only (no messages), preserving existing messages.
+ * Returns early if the active conversation has changed since the call started (staleness guard).
+ */
+async function reloadConversationMetaOnly(
+    manager: ReturnType<typeof useServiceContext>['manager'],
+    expectedConvId: string,
+) {
+    const currentActive = useChatDataStore.getState().activeConversation;
+    if (currentActive?.meta.id !== expectedConvId) return; // stale — conversation switched
+
+    const updatedConv = await manager.readConversation(expectedConvId, false);
+    if (!updatedConv) return;
+
+    // Re-check after await — conversation may have switched during the async gap
+    const stillActive = useChatDataStore.getState().activeConversation;
+    if (stillActive?.meta.id !== expectedConvId) return;
+
+    // Preserve existing messages (readConversation(id, false) returns messages: [])
+    updatedConv.messages = stillActive.messages;
+
+    useChatDataStore.getState().setActiveConversation(updatedConv);
+    useChatDataStore.getState().updateConversation(updatedConv);
+}
+
+/**
  * Every Chat Conversation is considered as a Chat Session.
  * Provides access to chat session data from the store.
  */
@@ -103,13 +128,8 @@ export const useChatSession = () => {
                     outputControlOverride: Object.keys(override).length > 0 ? override : undefined,
                 });
 
-                // Reload conversation to get updated meta
-                const updatedConv = await manager.readConversation(convId, false);
-                if (updatedConv) {
-                    useChatDataStore.getState().setActiveConversation(updatedConv);
-                    useChatDataStore.getState().updateConversation(updatedConv);
-                    useChatViewStore.getState().setConversation(updatedConv);
-                }
+                // Reload meta only, preserving messages + staleness guard
+                await reloadConversationMetaOnly(manager, convId);
             }
         );
         return () => unsubscribe();
@@ -132,13 +152,8 @@ export const useChatSession = () => {
                     provider: state.selectedModel?.provider!,
                 });
 
-                // Reload conversation
-                const updatedConv = await manager.readConversation(activeConversation.meta.id, false);
-                if (updatedConv) {
-                    useChatDataStore.getState().setActiveConversation(updatedConv);
-                    useChatDataStore.getState().updateConversation(updatedConv);
-                    useChatViewStore.getState().setConversation(updatedConv);
-                }
+                // Reload meta only, preserving messages + staleness guard
+                await reloadConversationMetaOnly(manager, activeConversation.meta.id);
             }
         );
         return () => unsubscribe();

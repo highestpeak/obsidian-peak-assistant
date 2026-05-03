@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useChatViewStore } from './store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { OpenLinkEvent, ViewEventType } from '@/core/eventBus';
 import { MessageHeader } from './components/messages/MessageViewHeader';
 import { MessageListRenderer } from './components/messages/MessageListRenderer';
@@ -32,13 +31,15 @@ export const MessagesViewComponent: React.FC = () => {
 
     // Sync messages from activeConversation to messageStore
     const { setMessages, clearMessages } = useChatDataStore();
+    const activeMessages = activeConversation?.messages;
     useEffect(() => {
-        if (activeConversation?.messages) {
-            setMessages(activeConversation.messages);
-        } else {
+        if (activeMessages && activeMessages.length > 0) {
+            setMessages(activeMessages);
+        } else if (!activeConversation) {
             clearMessages();
         }
-    }, [activeConversation?.meta.id, setMessages, clearMessages]);
+        // Re-sync whenever messages array reference changes (not just conversation id)
+    }, [activeConversation, activeMessages, setMessages, clearMessages]);
 
 
     // Scroll management
