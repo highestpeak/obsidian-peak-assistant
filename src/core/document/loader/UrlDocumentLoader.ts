@@ -1,7 +1,7 @@
 import type { App } from 'obsidian';
 import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
-import { generateContentHash } from '@/core/utils/hash-utils';
+import { hashString } from '@/core/utils/hash-utils';
 import { PlaywrightWebBaseLoader } from '@langchain/community/document_loaders/web/playwright';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
@@ -132,7 +132,7 @@ export class UrlDocumentLoader implements DocumentLoader {
 
 		try {
 			let content = '';
-			const contentHash = generateContentHash(url);
+			const contentHash = hashString(url, 8);
 			let title = '';
 			if (genCacheContent) {
 				const loader = new PlaywrightWebBaseLoader(url, this.playwrightConfig);

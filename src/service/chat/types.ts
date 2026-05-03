@@ -41,11 +41,6 @@ export interface ChatMessage {
 	 */
 	isVisible?: boolean;
 	/**
-	 * Assistant-only: thinking process (if available from provider)
-	 * @deprecated use reasoning instead
-	 */
-	thinking?: string;
-	/**
 	 * Assistant-only: structured reasoning content (parsed from markdown)
 	 */
 	reasoning?: {
@@ -224,43 +219,6 @@ export interface PendingConversation {
 	conversationType?: ConversationType;
 }
 
-/**
- * Stream type identifiers for different streaming operations.
- * Used to distinguish between different types of streams in unified callbacks.
- * @deprecated
- */
-export type StreamType = 'summary' | 'topics' | 'graph' | 'content' | 'other';
-
-/**
- * Generic streaming callbacks for any streaming operation.
- * Provides unified interface for handling streaming progress across different features.
- * @deprecated use LLMStreamEvent instead.
- */
-export interface StreamingCallbacks {
-	/**
-	 * Called when a stream starts for a specific stream type.
-	 */
-	onStart?: (streamType: StreamType) => void;
-	/**
-	 * Called when new content delta arrives for a specific stream type.
-	 * @param streamType - The type of stream
-	 * @param delta - The new content delta (text content)
-	 */
-	onDelta?: (streamType: StreamType, delta: string) => void;
-	/**
-	 * Called when a stream completes for a specific stream type.
-	 * @param streamType - The type of stream
-	 * @param content - The complete content
-	 * @param metadata - Optional metadata (e.g., token usage, estimated tokens)
-	 */
-	onComplete?: (streamType: StreamType, content: string, metadata?: Record<string, any>) => void;
-	/**
-	 * Called when an error occurs during streaming.
-	 * @param streamType - The type of stream that encountered the error
-	 * @param error - The error that occurred
-	 */
-	onError?: (streamType: StreamType, error: unknown) => void;
-}
 
 /**
  * Represents a file change in the workspace

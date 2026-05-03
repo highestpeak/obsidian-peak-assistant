@@ -247,7 +247,3 @@ export const ResourcePreviewHover: React.FC<ResourcePreviewHoverProps> = ({
 	);
 };
 
-// Export FilePreviewHover as an alias for backward compatibility
-export const FilePreviewHover: React.FC<Omit<ResourcePreviewHoverProps, 'resource'> & { filePath: string }> = (props) => {
-	return <ResourcePreviewHover {...props} />;
-};

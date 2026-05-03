@@ -41,26 +41,6 @@ export function hashString(str: string, minLength: number = 8): string {
 	return Math.abs(hash).toString(16).padStart(minLength, '0');
 }
 
-/**
- * Generate a hash from a string and return it as a base36 string.
- * 
- * @param str String to hash
- * @returns Base36 string representation of the hash
- */
-export function hashStringBase36(str: string): string {
-	const hash = computeHash(str);
-	return Math.abs(hash).toString(36);
-}
-
-/**
- * Generate a hash from content (alias for hashString for backward compatibility).
- * 
- * @param content Content string to hash
- * @returns Hex string representation of the hash
- */
-export function generateContentHash(content: string): string {
-	return hashString(content, 8);
-}
 
 export function binaryContentHash(data: Buffer | Uint8Array | ArrayBuffer): string {
 	let buffer: Buffer;
@@ -125,11 +105,4 @@ export async function calculateFileHash(file: File): Promise<string> {
 		// Fallback to simple hash
 		return hashString(file.name + file.size + file.lastModified, 8);
 	}
-}
-
-export function hashText(text: string): string {
-	// Lightweight deterministic hash (djb2-ish) to avoid importing crypto.
-	let h = 5381;
-	for (let i = 0; i < text.length; i++) h = ((h << 5) + h) ^ text.charCodeAt(i);
-	return `h${(h >>> 0).toString(16)}`;
 }

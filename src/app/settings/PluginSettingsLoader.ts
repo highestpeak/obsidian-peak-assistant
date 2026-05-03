@@ -1,9 +1,9 @@
 import { AIServiceSettings, DEFAULT_AI_SERVICE_SETTINGS, DEFAULT_SEARCH_SETTINGS, DEFAULT_SETTINGS, MyPluginSettings, SearchSettings } from '@/app/settings/types';
 import { DEFAULT_HUB_DISCOVER_SETTINGS, type HubDiscoverSettings } from '@/service/search/index/helper/hub/types';
 import { ProviderConfig, LLMOutputControlSettings } from '@/core/providers/types';
-import { migrateFromV1 } from '@/core/profiles/migrate-v1';
-import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
 import { DEFAULT_AMBIENT_PUSH_SETTINGS, type AmbientPushSettings } from '@/service/ambient/types';
+import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
+
 /**
  * Get string value from source or return default.
  */
@@ -57,7 +57,6 @@ function normalizeAIServiceSettings(raw: Record<string, unknown>): AIServiceSett
 
 	// Profile settings
 	settings.profileEnabled = getBoolean(rawAI.profileEnabled, settings.profileEnabled ?? true);
-	settings.promptRewriteEnabled = getBoolean(rawAI.promptRewriteEnabled, settings.promptRewriteEnabled ?? false);
 
 	// Prompt model map — merge saved entries ON TOP of defaults (so new PromptIds get default models)
 	if (rawAI.promptModelMap && typeof rawAI.promptModelMap === 'object') {
@@ -133,26 +132,6 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 				settings.chunking.embeddingModel = { provider, modelId };
 			}
 		}
-
-		// Rerank model
-		if (rawChunking.rerankModel && typeof rawChunking.rerankModel === 'object') {
-			const model = rawChunking.rerankModel as { provider?: unknown; modelId?: unknown };
-			const provider = getString(model.provider, '');
-			const modelId = getString(model.modelId, '');
-			if (provider && modelId) {
-				settings.chunking.rerankModel = { provider, modelId };
-			}
-		}
-	}
-
-	// Search summary model
-	if (rawSearch.searchSummaryModel && typeof rawSearch.searchSummaryModel === 'object') {
-		const model = rawSearch.searchSummaryModel as { provider?: unknown; modelId?: unknown };
-		const provider = getString(model.provider, '');
-		const modelId = getString(model.modelId, '');
-		if (provider && modelId) {
-			settings.searchSummaryModel = { provider, modelId };
-		}
 	}
 
 	// AI analysis model
@@ -195,27 +174,12 @@ function normalizeSearchSettings(raw: Record<string, unknown>): SearchSettings {
 		settings.indexRefreshInterval = rawSearch.indexRefreshInterval;
 	}
 
-	// AI analysis web search implementation
-	const validImplementations = ['perplexity', 'local_chromium'] as const;
-	if (rawSearch.aiAnalysisWebSearchImplement && validImplementations.includes(rawSearch.aiAnalysisWebSearchImplement as any)) {
-		settings.aiAnalysisWebSearchImplement = rawSearch.aiAnalysisWebSearchImplement as 'perplexity' | 'local_chromium';
-	}
-
-	// Perplexity search model
-	const validPerplexityModel = getString(rawSearch.perplexitySearchModel, '');
-	settings.perplexitySearchModel = validPerplexityModel === '' ? undefined : validPerplexityModel;
-
 	// Summary lengths
 	if (typeof rawSearch.shortSummaryLength === 'number') {
 		settings.shortSummaryLength = Math.max(50, Math.min(500, rawSearch.shortSummaryLength));
 	}
 	if (typeof rawSearch.fullSummaryLength === 'number') {
 		settings.fullSummaryLength = Math.max(500, Math.min(10000, rawSearch.fullSummaryLength));
-	}
-
-	// Max multi-agent iterations
-	if (typeof rawSearch.maxMultiAgentIterations === 'number') {
-		settings.maxMultiAgentIterations = Math.max(1, Math.min(50, rawSearch.maxMultiAgentIterations));
 	}
 
 	// AI analysis session summary word count
@@ -328,82 +292,19 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		};
 	}
 
-	// Vault Search (Claude Agent SDK). Added 2026-04-12. Pass through the
-	// whole nested structure; downstream code (readProfileFromSettings) handles
-	// missing fields with defaults + fallback to llmProviderConfigs.
-	const rawVaultSearch = raw?.vaultSearch as {
-		sdkProfile?: {
-			kind?: unknown;
-			baseUrl?: unknown;
-			apiKey?: unknown;
-			authToken?: unknown;
-			primaryModel?: unknown;
-			fastModel?: unknown;
-		};
-	} | undefined;
-	if (rawVaultSearch && typeof rawVaultSearch === 'object') {
-		settings.vaultSearch = {
-			sdkProfile: rawVaultSearch.sdkProfile && typeof rawVaultSearch.sdkProfile === 'object'
-				? {
-					kind: typeof rawVaultSearch.sdkProfile.kind === 'string'
-						? rawVaultSearch.sdkProfile.kind as 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom'
-						: undefined,
-					baseUrl: typeof rawVaultSearch.sdkProfile.baseUrl === 'string'
-						? rawVaultSearch.sdkProfile.baseUrl
-						: undefined,
-					apiKey: typeof rawVaultSearch.sdkProfile.apiKey === 'string'
-						? rawVaultSearch.sdkProfile.apiKey
-						: null,
-					authToken: typeof rawVaultSearch.sdkProfile.authToken === 'string'
-						? rawVaultSearch.sdkProfile.authToken
-						: null,
-					primaryModel: typeof rawVaultSearch.sdkProfile.primaryModel === 'string'
-						? rawVaultSearch.sdkProfile.primaryModel
-						: undefined,
-					fastModel: typeof rawVaultSearch.sdkProfile.fastModel === 'string'
-						? rawVaultSearch.sdkProfile.fastModel
-						: undefined,
-				}
-				: undefined,
-		};
-	}
-
-	// Profile v2 migration: if profileSettings is missing, attempt to migrate
-	// from v1 structures (vaultSearch.sdkProfile, ai.llmProviderConfigs).
+	// Profile v2: load existing profileSettings or initialize empty.
 	const rawProfileSettings = raw?.profileSettings;
 	if (rawProfileSettings && typeof rawProfileSettings === 'object') {
 		settings.profileSettings = rawProfileSettings as any;
-		// Migrate legacy 'anthropic-direct' → 'anthropic'
-		if (settings.profileSettings?.profiles) {
-			for (const p of settings.profileSettings.profiles) {
-				if ((p as any).kind === 'anthropic-direct') {
-					(p as any).kind = 'anthropic';
-				}
-			}
-		}
 	} else {
-		const migratedProfiles = migrateFromV1(raw);
 		settings.profileSettings = {
-			profiles: migratedProfiles ?? [],
-			activeAgentProfileId: migratedProfiles?.[0]?.id ?? null,
+			profiles: [],
+			activeAgentProfileId: null,
 			activeEmbeddingProfileId: null,
 			activeWebSearchProfileId: null,
-			sdkSettings: { ...DEFAULT_SDK_SETTINGS },
+			sdkSettings: DEFAULT_SDK_SETTINGS,
 		};
 	}
-
-	// Remove deprecated fields from persisted data
-	if (settings.search) {
-		delete (settings.search as any).searchSummaryModel;
-		delete (settings.search as any).maxMultiAgentIterations;
-		if (settings.search.hubDiscover) {
-			delete (settings.search.hubDiscover as any).maxJudgeCalls;
-		}
-		if (settings.search.chunking) {
-			delete (settings.search.chunking as any).rerankModel;
-		}
-	}
-	delete (settings as any).vaultSearch;
 
 	return settings;
 }

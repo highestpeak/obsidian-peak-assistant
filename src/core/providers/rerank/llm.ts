@@ -37,14 +37,12 @@ export class LLMRerankProvider implements RerankProvider {
 		}));
 
 		// Render prompt and call LLM via AIServiceManager
-		const content = await this.aiServiceManager.chatWithPrompt(
+		const content = await this.aiServiceManager.queryText(
 			PromptId.SearchRerankRankGpt,
 			{
 				query: request.query,
 				documents: documentsArray,
-			},
-			this.provider,
-			this.modelId
+			} as any,
 		);
 
 		// Parse LLM response to extract rankings

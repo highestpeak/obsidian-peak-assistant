@@ -221,11 +221,6 @@ export function GeneralTab({ settings, settingsUpdates }: GeneralTabProps) {
 				</div>
 			</CollapsibleSettingsSection>
 
-			{/* Moved to config callout */}
-			<div className="pktw-rounded-md pktw-border pktw-border-border pktw-bg-muted/40 pktw-px-4 pktw-py-3 pktw-text-xs pktw-text-muted-foreground">
-				<span className="pktw-font-medium">Moved to peak-config.json: </span>
-				MST prune depth · Skeleton backbone only · MST leaf opacity / width scale · Prompt rewrite toggle
-			</div>
 		</div>
 	);
 }

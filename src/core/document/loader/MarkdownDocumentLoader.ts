@@ -3,7 +3,7 @@ import { TFile } from 'obsidian';
 import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
 import { parseMarkdownWithRemark } from '@/core/utils/markdown-utils';
-import { generateContentHash } from '@/core/utils/hash-utils';
+import { hashString } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
@@ -153,7 +153,7 @@ export class MarkdownDocumentLoader implements DocumentLoader {
 		const tRead = Date.now();
 		try {
 			const content = await this.app.vault.cachedRead(file);
-			const contentHash = generateContentHash(content);
+			const contentHash = hashString(content, 8);
 
 			// Parse markdown using remark; resolve wiki link targets to full vault paths
 			const parseResult = await parseMarkdownWithRemark(content, {

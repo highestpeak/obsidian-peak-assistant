@@ -12,7 +12,6 @@ import {
 	useAIAnalysisStepsStore,
 	useAIAnalysisSummaryStore,
 	useAIAnalysisResultStore,
-	useAIAnalysisInteractionsStore,
 	markAIAnalysisCompleted,
 } from '../store/aiAnalysisStore';
 import type { UIStepRecord } from '../store/aiAnalysisStore';
@@ -160,8 +159,6 @@ export function useEventRouter() {
 		setDuration: (duration) => useAIAnalysisRuntimeStore.getState().setDuration(duration),
 		recordError: (error) => useAIAnalysisRuntimeStore.getState().recordError(error),
 		setHitlPause: (state) => useAIAnalysisRuntimeStore.getState().setHitlPause(state),
-
-		setSuggestedFollowUpQuestions: (questions) => useAIAnalysisInteractionsStore.getState().setSuggestedFollowUpQuestions(questions),
 
 		appendCompletedUiStep: (step) => useAIAnalysisStepsStore.getState().appendCompletedUiStep(step),
 

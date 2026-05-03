@@ -168,16 +168,6 @@ export interface SearchResponse {
 	runtimeHub?: RuntimeHubHint;
 }
 
-/**
- * A source document used for AI RAG.
- * @deprecated Use SearchResultItem instead.
- */
-export interface RagSource {
-	path: string;
-	title: string;
-	snippet: string;
-	score?: number;
-}
 
 /**
  * AI analysis request parameters.

@@ -247,15 +247,6 @@ export class SqliteStoreManager {
 	}
 
 	/**
-	 * Get the Kysely instance for database queries.
-	 * Returns the search database connection for backward compatibility.
-	 * Throws error if not initialized.
-	 */
-	getSearchContext(): Kysely<DbSchema> {
-		return this.getIndexContext('vault');
-	}
-
-	/**
 	 * Get Kysely for the given index tenant (vault = search.sqlite, chat = meta.sqlite).
 	 */
 	getIndexContext(tenant: IndexTenant = 'vault'): Kysely<DbSchema> {

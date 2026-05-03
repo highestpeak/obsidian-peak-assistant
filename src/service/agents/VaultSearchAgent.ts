@@ -21,14 +21,12 @@ export class VaultSearchAgent {
 	 */
 	async *startSession(userQuery: string): AsyncGenerator<VaultSearchEvent> {
 		const ctx = AppContext.getInstance();
-		const pluginSettings = ctx.plugin?.settings;
 
 		const v2 = new VaultSearchAgentSDK({
 			app: ctx.app,
 			pluginId: ctx.plugin.manifest.id,
 			searchClient: ctx.searchClient,
 			aiServiceManager: this.aiServiceManager,
-			settings: pluginSettings,
 		});
 		// Non-blocking warmup — errors are logged, not propagated
 		v2.warmup().catch(() => undefined);

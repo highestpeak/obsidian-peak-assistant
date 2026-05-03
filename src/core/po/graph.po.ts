@@ -47,8 +47,6 @@ export const GRAPH_TAGGED_EDGE_TYPES: readonly GraphEdgeType[] = [
 	GraphEdgeType.TaggedContext,
 ];
 
-/** @deprecated Use {@link GRAPH_TAGGED_EDGE_TYPES}. */
-export const GRAPH_TAG_CATEGORY_EDGE_TYPES = GRAPH_TAGGED_EDGE_TYPES;
 
 /** Obsidian wiki links from notes (doc↔doc and doc↔attachment); excludes semantic/tags/contains. */
 export const GRAPH_WIKI_REFERENCE_EDGE_TYPES: readonly GraphEdgeType[] = [

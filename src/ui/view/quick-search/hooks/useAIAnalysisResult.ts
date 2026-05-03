@@ -1,51 +1,18 @@
 import { useCallback } from "react";
 import {
-	type CompletedAnalysisSnapshot,
 	useAIAnalysisRuntimeStore,
 	useAIAnalysisResultStore,
 	useAIAnalysisTopicsStore,
 	useAIAnalysisSummaryStore,
-	useAIAnalysisStepsStore,
-	buildCompletedAnalysisSnapshot,
-	type SectionAnalyzeResult,
 } from "../store/aiAnalysisStore";
-import type { GraphPreview } from "@/core/storage/graph/types";
 import { AppContext } from "@/app/context/AppContext";
-import { useSearchSessionStore, buildV2AnalysisSnapshot } from "../store/searchSessionStore";
+import { useSearchSessionStore } from "../store/searchSessionStore";
 import { useSharedStore } from "../store/sharedStore";
-import { buildAiAnalyzeMarkdown, saveAiAnalyzeResultToMarkdown, type BuildAiAnalyzeMarkdownParams } from "../callbacks/save-ai-analyze-to-md";
+import { saveAiAnalyzeResultToMarkdown } from "../callbacks/save-ai-analyze-to-md";
 import type { AISearchSource } from "@/service/agents/shared-types";
 import { CHAT_VIEW_TYPE } from "../../ChatView";
 import { EventBus, SelectionChangedEvent } from "@/core/eventBus";
 import type { SearchResultItem } from "@/service/search/types";
-
-/**
- * Merge V2 session data into a V1 CompletedAnalysisSnapshot.
- * No-op if V2 is not active.
- */
-function mergeV2IntoSnapshot(snapshot: CompletedAnalysisSnapshot): void {
-    const v2 = buildV2AnalysisSnapshot();
-    if (!v2) return;
-    snapshot.v2ProcessLog = v2.v2ProcessLog;
-    snapshot.v2PlanOutline = v2.v2PlanOutline;
-    snapshot.v2ReportSections = v2.v2ReportSections;
-    snapshot.v2FollowUpQuestions = v2.v2FollowUpQuestions;
-    snapshot.v2GraphJson = v2.v2GraphJson;
-    if (v2.v2Summary) {
-        snapshot.summaries = [v2.v2Summary];
-        snapshot.summaryVersion = 1;
-    }
-    if (v2.v2Sources?.length && !snapshot.sources?.length) {
-        snapshot.sources = v2.v2Sources.map((s, i) => ({
-            id: `v2-src-${i}`,
-            path: s.path,
-            title: s.title,
-            score: { average: 0, physical: 0, semantic: 0 },
-            reasoning: s.reasoning ?? '',
-            badges: [],
-        }));
-    }
-}
 
 // Convert AISearchSource[] to SearchResultItem[] with extended fields for TopSourcesSection
 export const convertSourcesToSearchResultItems = (aiSources: AISearchSource[]): SearchResultItem[] => {
@@ -74,19 +41,13 @@ export function useAIAnalysisResult() {
     const { searchQuery } = useSharedStore();
 
     const webEnabled = useAIAnalysisRuntimeStore((s) => s.webEnabled);
-    const analysisStartedAtMs = useAIAnalysisRuntimeStore((s) => s.analysisStartedAtMs);
-    const usage = useAIAnalysisRuntimeStore((s) => s.usage);
-    const duration = useAIAnalysisRuntimeStore((s) => s.duration);
     const analysisRunId = useAIAnalysisRuntimeStore((s) => s.analysisRunId);
     const autoSaveState = useAIAnalysisRuntimeStore((s) => s.autoSaveState);
     const setAutoSaveState = useAIAnalysisRuntimeStore((s) => s.setAutoSaveState);
     const recordError = useAIAnalysisRuntimeStore((s) => s.recordError);
 
-    const graph = useAIAnalysisResultStore((s) => s.graph);
     const topics = useAIAnalysisResultStore((s) => s.topics);
     const sources = useAIAnalysisResultStore((s) => s.sources);
-
-    const topicInspectResults = useAIAnalysisTopicsStore((s) => s.topicInspectResults);
 
     const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
     const summary = useAIAnalysisSummaryStore((s) => {
@@ -121,55 +82,11 @@ export function useAIAnalysisResult() {
     // This avoids frequent vault writes during streaming that trigger re-indexing.
 
     const handleCopyAll = useCallback(async () => {
-        // V2 path: prefer proposed_outline, fallback to timeline
         const sessionState = useSearchSessionStore.getState();
-        if (sessionState.v2Active) {
-            const reportText = sessionState.v2ProposedOutline
-                ?? sessionState.v2ReportChunks.join('');
-            await navigator.clipboard.writeText(reportText);
-            return;
-        }
-
-        // V1 path
-        const steps = useAIAnalysisStepsStore.getState().steps;
-        const topicsState = useAIAnalysisTopicsStore.getState() as Record<string, unknown>;
-        const topicAnalyze = (topicsState["topicAnalyzeResults"] as Record<string, SectionAnalyzeResult[]> | undefined) ?? {};
-        const topicGraph = (topicsState["topicGraphResults"] as Record<string, GraphPreview | null> | undefined) ?? {};
-        const markdown = buildAiAnalyzeMarkdown(
-            {
-                query: searchQuery,
-                webEnabled,
-                summary,
-                topics,
-                sources: sources.map(s => ({
-                    path: s.path,
-                    title: s.title,
-                    score: s.score?.average,
-                    content: s.reasoning,
-                })),
-                topicInspectResults: topicInspectResults ?? {},
-                topicAnalyzeResults: topicAnalyze,
-                // @ts-ignore - BuildAiAnalyzeMarkdownParams has topicGraphResults; TS can infer result store type in this scope
-                topicGraphResults: topicGraph,
-                estimatedTokens: usage?.totalTokens ?? 0,
-            } as BuildAiAnalyzeMarkdownParams,
-            graph ?? undefined
-        );
-
-        const enableDevTools = AppContext.getInstance().plugin?.settings?.enableDevTools ?? false;
-        let textToCopy = markdown;
-        if (enableDevTools && (steps?.length ?? 0) > 0) {
-            const stepsSection = steps!
-                .map((step, i) => {
-                    const title = `### Step ${i + 1}: ${step.title}`;
-                    const body = (step.description ?? '').trim();
-                    return body ? `${title}\n\n${body}` : title;
-                })
-                .join('\n\n');
-            textToCopy = `${markdown}\n\n---\n\n## Steps (Dev)\n\n${stepsSection}`;
-        }
-        await navigator.clipboard.writeText(textToCopy);
-    }, [searchQuery, webEnabled, summary, topics, sources, graph, topicInspectResults, usage]);
+        const reportText = sessionState.v2ProposedOutline
+            ?? sessionState.v2ReportChunks.join('');
+        await navigator.clipboard.writeText(reportText);
+    }, []);
 
     const handleSaveToFile = useCallback(async (folderPath: string, fileName: string) => {
         const root = AppContext.getInstance().settings.search.aiAnalysisAutoSaveFolder?.trim() || '';
@@ -183,17 +100,19 @@ export function useAIAnalysisResult() {
             })()
             : folderPath;
 
-        const snapshot = buildCompletedAnalysisSnapshot();
-        mergeV2IntoSnapshot(snapshot);
-
+        const { snapshotFromState } = await import('../store/sessionSnapshot');
+        const { persistSessionToVault } = await import('@/service/search/analysisDocPersistence');
+        const store = useSearchSessionStore.getState();
+        const snapshot = snapshotFromState(store);
+        // Override the auto-save folder path for manual save-to-file
         await saveAiAnalyzeResultToMarkdown({
             folderPath: normalizedFolder,
             fileName: fileName,
             query: searchQuery,
-            snapshot,
+            snapshot: snapshot as any,
             webEnabled,
         });
-    }, [searchQuery, webEnabled, summary, analysisStartedAtMs, duration, usage]);
+    }, [searchQuery, webEnabled]);
 
     // Use custom hook for opening in chat (raw sources; hook maps to manager format)
     const handleOpenInChat = useCallback(async (

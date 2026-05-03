@@ -89,7 +89,6 @@ function cloneSection(sec: V2Section): V2Section {
 		evidencePaths: [...sec.evidencePaths],
 		streamingText: sec.streamingText,
 		generations: sec.generations.map((g) => ({ ...g })),
-		vizData: sec.vizData ? { ...sec.vizData } : undefined,
 	};
 }
 

@@ -13,7 +13,6 @@ import type { V2ToolStep, V2Source } from '../types/search-steps';
 import type { V2Section } from '../store/searchSessionStore';
 import type { UIStepRecord } from '../store/aiAnalysisStore';
 import type { SearchAgentResult } from '@/service/agents/shared-types';
-import type { VaultHitlPauseEvent } from '@/service/agents/vault/types';
 import type { PlanSnapshot } from '@/service/agents/vault/types';
 
 import { useUIEventStore } from '@/ui/store/uiEventStore';
@@ -85,9 +84,6 @@ export interface LegacyBridgeTarget {
 	recordError(error: string): void;
 	setHitlPause(state: { pauseId: string; phase: string; snapshot: PlanSnapshot }): void;
 
-	// Interactions
-	setSuggestedFollowUpQuestions(questions: string[]): void;
-
 	// Steps
 	appendCompletedUiStep(step: UIStepRecord): void;
 
@@ -139,9 +135,6 @@ export function applySearchResult(
 		target.setTitle(result.title ?? null);
 		legacy?.setTitle(result.title ?? null);
 	}
-	if (result.suggestedFollowUpQuestions !== undefined) {
-		legacy?.setSuggestedFollowUpQuestions(result.suggestedFollowUpQuestions ?? []);
-	}
 	target.setHasAnalyzed(true);
 	legacy?.setHasAnalyzed(true);
 }
@@ -185,7 +178,6 @@ export function dispatchEvent(
 		// ---- Summary streaming ----
 		case 'text-start': {
 			if (
-				event.triggerName === StreamTriggerName.SEARCH_SUMMARY ||
 				event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
 			) {
 				if (!legacy?.isSummaryStreaming()) {
@@ -196,7 +188,6 @@ export function dispatchEvent(
 		}
 		case 'text-delta': {
 			if (
-				event.triggerName === StreamTriggerName.SEARCH_SUMMARY ||
 				event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
 			) {
 				const delta = getDeltaEventDeltaText(event);
@@ -214,7 +205,6 @@ export function dispatchEvent(
 		}
 		case 'text-end': {
 			if (
-				event.triggerName === StreamTriggerName.SEARCH_SUMMARY ||
 				event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
 			) {
 				summaryBuffer.flush();
@@ -259,15 +249,6 @@ export function dispatchEvent(
 			const stepId = (event as any).stepId as string | undefined;
 			const title = typeof (event as any).title === 'string' ? (event as any).title : '';
 			const description = typeof (event as any).description === 'string' ? (event as any).description : '';
-
-			if (
-				event.triggerName === StreamTriggerName.SEARCH_DASHBOARD_UPDATE_AGENT &&
-				title === 'Dashboard Updated' &&
-				description
-			) {
-				target.setDashboardUpdatedLine(description);
-				legacy?.setDashboardUpdatedLine(description);
-			}
 
 			if (stepId) {
 				const prev = uiStepRef.get();
@@ -376,22 +357,6 @@ export function dispatchEvent(
 				target.recordError(errMsg);
 				legacy?.recordError(errMsg);
 			}
-			break;
-		}
-
-		// ---- HITL pause ----
-		case 'hitl-pause': {
-			const ev = event as unknown as VaultHitlPauseEvent;
-			target.setHitlPause({
-				pauseId: ev.pauseId,
-				phase: ev.phase,
-				snapshot: ev.snapshot,
-			});
-			legacy?.setHitlPause({
-				pauseId: ev.pauseId,
-				phase: ev.phase,
-				snapshot: ev.snapshot,
-			});
 			break;
 		}
 

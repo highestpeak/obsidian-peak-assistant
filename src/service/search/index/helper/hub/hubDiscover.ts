@@ -3244,13 +3244,13 @@ export class HubCandidateDiscoveryService {
 			}
 			sw.start('round1.semanticMergeLlm');
 			try {
-				const mergePlan = await AppContext.getInstance().manager.streamObjectWithPrompt(
+				const { zodToJsonSchema } = await import('zod-to-json-schema');
+				const mergePlan = await AppContext.getInstance().manager.queryStructured<HubSemanticMergeLlm>(
 					PromptId.HubSemanticMerge,
 					{
 						hubCardsJson: JSON.stringify(cards),
 					},
-					hubSemanticMergeLlmSchema,
-					{ noReasoning: false },
+					zodToJsonSchema(hubSemanticMergeLlmSchema),
 				);
 				finalSelectedForAssembly = applySemanticMergePlanToFinalSelected(withHints, mergePlan);
 			} catch (e) {

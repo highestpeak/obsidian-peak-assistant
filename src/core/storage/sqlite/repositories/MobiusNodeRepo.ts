@@ -389,6 +389,8 @@ export class MobiusNodeRepo {
 			semantic_pagerank_updated_at: null,
 			semantic_pagerank_version: null,
 			folder_cohesion_score: null,
+			hub_stale_since: null,
+			semantic_edges_version: 0,
 			attributes_json: node.attributes || '{}',
 		};
 	}

@@ -13,7 +13,6 @@ import type { App } from 'obsidian';
 import type { LLMStreamEvent } from '@/core/providers/types';
 import type { SearchClient } from '@/service/search/SearchClient';
 import type { AIServiceManager } from '@/service/chat/service-manager';
-import type { MyPluginSettings } from '@/app/settings/types';
 import { PromptId } from '@/service/prompt/PromptId';
 import { VaultSearchAgentSDK } from './VaultSearchAgentSDK';
 
@@ -42,7 +41,6 @@ export interface ContinueAnalysisAgentOptions {
     pluginId: string;
     searchClient: SearchClient;
     aiServiceManager: AIServiceManager;
-    settings: MyPluginSettings;
 }
 
 export class ContinueAnalysisAgent {
@@ -54,7 +52,7 @@ export class ContinueAnalysisAgent {
      * output identically.
      */
     async *startSession(context: ContinueContext): AsyncGenerator<LLMStreamEvent> {
-        const { app, pluginId, searchClient, aiServiceManager, settings } = this.options;
+        const { app, pluginId, searchClient, aiServiceManager } = this.options;
 
         // 1. Render the continue-specific system prompt
         let systemPrompt: string;
@@ -102,7 +100,6 @@ export class ContinueAnalysisAgent {
             pluginId,
             searchClient,
             aiServiceManager,
-            settings,
             systemPromptOverride: systemPrompt,
             contextPrefix,
         });

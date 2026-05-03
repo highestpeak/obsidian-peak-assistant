@@ -83,7 +83,7 @@ export class HubRegenService {
 					await repo.markCompleted(item.hub_node_id);
 
 					// Clear hub_stale_since on mobius_node
-					const db = sqliteStoreManager.getSearchContext();
+					const db = sqliteStoreManager.getIndexContext('vault');
 					await db
 						.updateTable('mobius_node')
 						.set({ hub_stale_since: null } as any)

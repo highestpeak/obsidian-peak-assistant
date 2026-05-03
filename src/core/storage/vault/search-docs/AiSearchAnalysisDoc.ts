@@ -71,8 +71,6 @@ export interface AiSearchAnalysisDocModel {
 	fullAnalysisFollowUp?: Array<{ title: string; content: string }>;
 	/** Graph section follow-up history. */
 	graphFollowups?: SectionAnalyzeResult[];
-	/** Blocks section follow-up history (legacy flat list). */
-	blocksFollowups?: SectionAnalyzeResult[];
 	/** Per-block follow-up history (key = block id). */
 	blocksFollowupsByBlockId?: Record<string, SectionAnalyzeResult[]>;
 	/** Sources section follow-up history. */
@@ -122,7 +120,6 @@ export function toCompletedAnalysisSnapshot(
 		topicGraphResults: docModel.topicGraphResults,
 		fullAnalysisFollowUp: docModel.fullAnalysisFollowUp,
 		graphFollowups: docModel.graphFollowups,
-		blocksFollowups: docModel.blocksFollowups,
 		blocksFollowupsByBlockId: docModel.blocksFollowupsByBlockId,
 		sourcesFollowups: docModel.sourcesFollowups,
 		evidenceIndex: docModel.evidenceIndex && Object.keys(docModel.evidenceIndex).length > 0 ? docModel.evidenceIndex : undefined,
@@ -186,7 +183,6 @@ export function fromCompletedAnalysisSnapshot(
 		topicGraphResults: snapshot.topicGraphResults ?? {},
 		fullAnalysisFollowUp: snapshot.fullAnalysisFollowUp,
 		graphFollowups: snapshot.graphFollowups,
-		blocksFollowups: snapshot.blocksFollowups,
 		blocksFollowupsByBlockId: snapshot.blocksFollowupsByBlockId,
 		sourcesFollowups: snapshot.sourcesFollowups,
 		evidenceIndex: snapshot.evidenceIndex && Object.keys(snapshot.evidenceIndex).length > 0 ? snapshot.evidenceIndex : undefined,

@@ -54,7 +54,6 @@ export interface V2Section {
 	streamingText: string;
 	error?: string;
 	generations: Array<{ content: string; prompt?: string; timestamp: number }>;
-	vizData?: import('@/core/schemas/report-viz-schemas').VizSpec;
 }
 
 // ---------------------------------------------------------------------------

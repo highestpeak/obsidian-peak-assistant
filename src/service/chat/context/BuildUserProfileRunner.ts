@@ -129,11 +129,9 @@ export async function runBuildUserProfile(params: BuildUserProfileRunParams): Pr
 
 		try {
 			// Extract only from vault content; merge/dedupe is done in updateProfile (UserProfileOrganizeMarkdown).
-			const content = await aiServiceManager.chatWithPrompt(
+			const content = await aiServiceManager.queryText(
 				PromptId.ProfileFromVaultJson,
-				{ vaultContent: trimmedVault },
-				provider,
-				model,
+				{ vaultContent: trimmedVault } as any,
 			);
 
 			console.debug('[BuildUserProfileRunner] extracted:', { content, vaultContent: trimmedVault });

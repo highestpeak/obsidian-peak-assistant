@@ -2,7 +2,7 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { DocumentLoader, DocumentLoaderReadOptions } from './types';
 import type { DocumentType, Document, ResourceSummary } from '@/core/document/types';
-import { generateContentHash } from '@/core/utils/hash-utils';
+import { hashString } from '@/core/utils/hash-utils';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { Chunk } from '@/service/search/index/types';
 import type { ChunkingSettings } from '@/app/settings/types';
@@ -158,7 +158,7 @@ export class ExcalidrawDocumentLoader implements DocumentLoader {
 			}
 			// For .excalidraw files, read as plain text (already done above)
 
-			const contentHash = generateContentHash(content);
+			const contentHash = hashString(content, 8);
 
 			return {
 				id: generateDocIdFromPath(file.path),

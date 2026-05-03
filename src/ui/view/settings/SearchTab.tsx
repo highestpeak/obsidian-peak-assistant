@@ -127,17 +127,6 @@ export function SearchTab({ settings, settingsUpdates }: SearchTabProps) {
             <section>
                 <SectionHeading icon={Sparkles} title="AI Analysis" />
 
-                <SettingRow label="Web search method" description="Engine for AI analysis web search">
-                    <select
-                        value={settings.search.aiAnalysisWebSearchImplement ?? 'local_chromium'}
-                        onChange={(e) => updateSearch('aiAnalysisWebSearchImplement', e.target.value as 'local_chromium' | 'perplexity')}
-                        className="pktw-h-8 pktw-px-2 pktw-text-sm pktw-border pktw-border-border pktw-rounded-md pktw-bg-transparent focus:pktw-outline-none focus:pktw-ring-2 focus:pktw-ring-ring"
-                    >
-                        <option value="local_chromium">Local Chromium</option>
-                        <option value="perplexity">Perplexity</option>
-                    </select>
-                </SettingRow>
-
                 <SettingRow label="Auto-save results" description="Save completed analysis to vault">
                     <Switch
                         checked={settings.search.aiAnalysisAutoSaveEnabled ?? true}

@@ -510,7 +510,6 @@ export const useAIAnalysisTopicsStore = create<{
 /** Follow-ups, context chat, block chat records. */
 export const useAIAnalysisInteractionsStore = create<{
 	fullAnalysisFollowUp: Array<{ title: string; content: string }>;
-	suggestedFollowUpQuestions: string[];
 	followUpStreaming: { question: string; content: string } | null;
 	contextChatModal: ContextChatModalState;
 	graphFollowupHistory: SectionAnalyzeResult[];
@@ -522,14 +521,12 @@ export const useAIAnalysisInteractionsStore = create<{
 	appendBlocksFollowup: (blockId: string, question: string, answer: string) => void;
 	appendSourcesFollowup: (question: string, answer: string) => void;
 	setFullAnalysisFollowUp: (question: string, answer: string, mode: 'append' | 'replace') => void;
-	setSuggestedFollowUpQuestions: (questions: string[]) => void;
 	setFollowUpStreaming: (p: { question: string; content: string } | null) => void;
 	setBlockChatRecords: (blockId: string, messages: SnapshotChatMessage[]) => void;
 	pruneBlockChatRecords: (blockIds: Set<string>) => void;
 	resetInteractions: () => void;
 }>((set) => ({
 	fullAnalysisFollowUp: [],
-	suggestedFollowUpQuestions: [],
 	followUpStreaming: null,
 	contextChatModal: null,
 	graphFollowupHistory: [],
@@ -556,7 +553,6 @@ export const useAIAnalysisInteractionsStore = create<{
 		if (mode === 'replace') return { fullAnalysisFollowUp: [entry] };
 		return { fullAnalysisFollowUp: [...(s.fullAnalysisFollowUp ?? []), entry] };
 	}),
-	setSuggestedFollowUpQuestions: (qs) => set({ suggestedFollowUpQuestions: qs ?? [] }),
 	setFollowUpStreaming: (p) => set({ followUpStreaming: p }),
 	setBlockChatRecords: (blockId, messages) => set((s) => ({
 		blockChatRecords: { ...s.blockChatRecords, [blockId]: messages },
@@ -570,7 +566,6 @@ export const useAIAnalysisInteractionsStore = create<{
 	}),
 	resetInteractions: () => set({
 		fullAnalysisFollowUp: [],
-		suggestedFollowUpQuestions: [],
 		followUpStreaming: null,
 		contextChatModal: null,
 		graphFollowupHistory: [],
@@ -785,7 +780,7 @@ export function loadCompletedAnalysisSnapshot(snapshot: CompletedAnalysisSnapsho
 	useAIAnalysisInteractionsStore.setState({
 		fullAnalysisFollowUp: snapshot.fullAnalysisFollowUp ?? [],
 		graphFollowupHistory: snapshot.graphFollowups ?? [],
-		blocksFollowupHistoryByBlockId: snapshot.blocksFollowupsByBlockId ?? (snapshot.blocksFollowups?.length ? { __legacy__: snapshot.blocksFollowups } : {}),
+		blocksFollowupHistoryByBlockId: snapshot.blocksFollowupsByBlockId ?? {},
 		sourcesFollowupHistory: snapshot.sourcesFollowups ?? [],
 		blockChatRecords: snapshot.blockChatRecords ?? {},
 		contextChatModal: null,

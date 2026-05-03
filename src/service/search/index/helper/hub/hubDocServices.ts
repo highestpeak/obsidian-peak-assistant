@@ -13,7 +13,7 @@ import {
 	HUB_MATERIALIZE_CONCURRENCY,
 	SLICE_CAPS,
 } from '@/core/constant';
-import { hubDocSummaryLlmSchema } from '@/core/schemas';
+import { hubDocSummaryLlmSchema, type HubDocSummaryLlm } from '@/core/schemas';
 import {
 	applyHubDocLlmPayloadToMarkdown,
 	hubDocMarkdownBodyForLlm,
@@ -358,15 +358,15 @@ export class HubMarkdownService {
 				clusterMemberPaths: candidate.clusterMemberPaths?.slice(0, SLICE_CAPS.hub.llmMetadataRoutes) ?? [],
 				assemblyHints: candidate.assemblyHints ?? null,
 			});
-			const parsed = await ctx.manager.streamObjectWithPrompt(
+			const { zodToJsonSchema } = await import('zod-to-json-schema');
+			const parsed = await ctx.manager.queryStructured<HubDocSummaryLlm>(
 				PromptId.HubDocSummary,
 				{
 					hubMetadataJson,
 					draftMarkdownBody: bodyPreview,
 					vaultExcerpts: excerpts || '_No excerpts available._',
 				},
-				hubDocSummaryLlmSchema,
-				{ noReasoning: false },
+				zodToJsonSchema(hubDocSummaryLlmSchema),
 			);
 			return applyHubDocLlmPayloadToMarkdown(markdown, parsed);
 		} catch (e) {

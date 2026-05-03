@@ -127,11 +127,9 @@ export class ImageDocumentLoader implements DocumentLoader {
 		const title = doc.metadata.title || doc.sourceFileInfo.name;
 		const path = doc.sourceFileInfo.path;
 
-		const shortSummary = await this.aiServiceManager.chatWithPrompt(
+		const shortSummary = await this.aiServiceManager.queryText(
 			PromptId.ImageSummary,
-			{ content, title, path },
-			provider,
-			modelId
+			{ content, title, path } as any,
 		);
 
 		return { shortSummary, fullSummary: shortSummary };
@@ -197,25 +195,10 @@ export class ImageDocumentLoader implements DocumentLoader {
 		}
 
 		try {
-			// Read image as base64
-			const arrayBuffer = await this.app.vault.readBinary(file);
-			// const base64 = Buffer.from(arrayBuffer).toString('base64');
-			const mimeType = this.getMimeType(file.extension);
-			// const dataUrl = `data:${mimeType};base64,${base64}`;
-			// console.debug('[ImageDocumentLoader] dataUrl:', dataUrl);
-
-			const response = await this.aiServiceManager.chatWithPrompt(
+			// TODO: queryText does not support multimodal parts yet; image data is not sent.
+			const response = await this.aiServiceManager.queryText(
 				PromptId.ImageDescription,
-				null, // No variables needed for image description
-				undefined,
-				undefined,
-				[
-					{
-						type: 'image',
-						data: arrayBuffer,
-						mediaType: mimeType,
-					},
-				]
+				null as any,
 			);
 			console.debug('[ImageDocumentLoader] response:', response);
 			return response || `[Image: ${file.basename}]`;

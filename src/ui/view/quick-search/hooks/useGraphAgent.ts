@@ -51,7 +51,7 @@ export function useGraphAgent(
 				useGraphAgentStore.getState().addStep({ id: 'analyze', label: 'Analyzing document relations, clusters, and evolution chains...', status: 'running' });
 				useGraphAgentStore.getState().addStep({ id: 'read-sources', label: `Reading ${sources.length} source files...`, status: 'running' });
 
-				const agent = new GraphAgent(ctx.app, ctx.plugin.manifest.id, ctx.settings);
+				const agent = new GraphAgent(ctx.app, ctx.plugin.manifest.id);
 
 				const result = await agent.generateGraph(
 					{ searchQuery, sources },

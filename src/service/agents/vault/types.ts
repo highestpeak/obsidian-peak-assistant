@@ -43,7 +43,6 @@ export interface PlanSnapshot {
 export type VaultSearchPhase =
 	| 'classify'
 	| 'decompose'
-	| 'intuition-feedback'
 	| 'recon'
 	| 'present-plan'
 	| 'report'

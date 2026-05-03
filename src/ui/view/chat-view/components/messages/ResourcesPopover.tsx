@@ -8,7 +8,7 @@ import { cn } from '@/ui/react/lib/utils';
 import { EventBus, OpenLinkEvent } from '@/core/eventBus';
 import { App } from 'obsidian';
 import { FileType, getFileIcon } from '@/ui/view/shared/file-utils';
-import { FilePreviewHover } from '@/ui/component/mine/resource-preview-hover';
+import { ResourcePreviewHover } from '@/ui/component/mine/resource-preview-hover';
 import { detectPreviewFileType, getFileTypeFromResourceKind } from '@/core/document/helper/FileTypeUtils';
 
 /**
@@ -189,16 +189,16 @@ const ResourceItem: React.FC<ResourceItemProps> = ({ path, type, kind, summaryNo
 		</div>
 	);
 
-	// Wrap with FilePreviewHover if preview is supported
+	// Wrap with ResourcePreviewHover if preview is supported
 	if (previewFileType) {
 		return (
-			<FilePreviewHover
+			<ResourcePreviewHover
 				filePath={normalizedPath}
 				fileType={previewFileType}
 				app={app}
 			>
 				{itemContent}
-			</FilePreviewHover>
+			</ResourcePreviewHover>
 		);
 	}
 

@@ -490,17 +490,12 @@ export async function extractTopicAndFunctionalTags(
 		contentChars: text.length,
 	});
 	try {
-		const tagResult = await ai.streamObjectWithPromptWithUsage(
+		const { zodToJsonSchema } = await import('zod-to-json-schema');
+		normalized = await ai.queryStructured<z.infer<typeof docTagResponseSchema>>(
 			PromptId.DocTagGenerateJson,
-			variables,
-			docTagResponseSchema,
-			options?.provider && options?.modelId
-				? { provider: options.provider, modelId: options.modelId }
-				: undefined,
+			variables as any,
+			zodToJsonSchema(docTagResponseSchema),
 		);
-		normalized = tagResult.object;
-		tagUsage = tagResult.usage;
-		tagCostUsd = tagResult.costUsd;
 		console.info('[MarkdownDocumentLoader] DocTagGenerateJson LLM done', {
 			title: options?.title ?? '',
 			elapsedMs: Date.now() - tTag,

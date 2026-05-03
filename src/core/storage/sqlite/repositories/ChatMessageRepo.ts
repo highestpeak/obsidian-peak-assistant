@@ -79,7 +79,7 @@ export class ChatMessageRepo {
 				is_visible: msg.isVisible !== false ? 1 : 0,
 				gen_time_ms: msg.genTimeMs ?? null,
 				token_usage_json: msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null,
-				thinking: msg.thinking ?? null,
+				thinking: msg.reasoning?.content ?? null,
 			};
 
 			const exists = await this.existsByMessageId(msg.id);
@@ -99,7 +99,7 @@ export class ChatMessageRepo {
 					is_visible: msg.isVisible !== false ? 1 : 0,
 					gen_time_ms: msg.genTimeMs ?? null,
 					token_usage_json: msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null,
-					thinking: msg.thinking ?? null,
+					thinking: msg.reasoning?.content ?? null,
 				});
 			} else {
 				// Insert new message

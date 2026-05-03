@@ -4,7 +4,6 @@ import { RefreshCw, Copy, Check, Sparkles, Loader2, CheckCircle, Clock, ChevronR
 import { useSearchSessionStore } from '../store/searchSessionStore';
 import type { V2Section } from '../store/searchSessionStore';
 import { StreamdownIsolated } from '@/ui/component/mine/StreamdownIsolated';
-import { VizRenderer } from './viz/VizRenderer';
 import { Button } from '@/ui/component/shared-ui/button';
 import { V2InlinePlanReview } from './V2InlinePlanReview';
 
@@ -200,11 +199,7 @@ const SectionBlock: React.FC<{
 				)}
 			</div>
 
-			{section.vizData && section.status === 'done' && (
-				<VizRenderer spec={section.vizData} />
-			)}
-
-			{/* Error */}
+{/* Error */}
 			{section.status === 'error' && section.error && (
 				<div className="pktw-text-xs pktw-text-red-500 pktw-mt-2">{section.error}</div>
 			)}

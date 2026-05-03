@@ -13,13 +13,11 @@
  */
 
 import type { App } from 'obsidian';
-import type { MyPluginSettings } from '@/app/settings/types';
 import type { Profile } from '@/core/profiles/types';
 import type { GraphOutput } from './graph-output-types';
 import { buildGraphMcpServer } from './graphMcpServer';
 import { buildGraphSystemPrompt } from './graph-system-prompt';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { readProfileFromSettings } from '../vault-sdk/sdkProfile';
 import { warmupPool, queryWithProfile } from '../core/sdkAgentPool';
 
 export interface GraphAgentInput {
@@ -39,7 +37,6 @@ export class GraphAgent {
     constructor(
         private readonly app: App,
         private readonly pluginId: string,
-        private readonly settings: MyPluginSettings,
     ) {}
 
     async warmup(): Promise<void> {
@@ -55,31 +52,10 @@ export class GraphAgent {
             return null;
         }
 
-        // 2. Resolve profile: prefer ProfileRegistry, fall back to legacy settings reader
-        let profile: Profile;
-        const registryProfile = ProfileRegistry.getInstance().getActiveAgentProfile();
-        if (registryProfile) {
-            profile = registryProfile;
-        } else {
-            const legacyProfile = readProfileFromSettings(this.settings);
-            profile = {
-                id: '__legacy__',
-                name: 'Legacy Settings',
-                kind: legacyProfile.kind,
-                enabled: true,
-                createdAt: 0,
-                baseUrl: legacyProfile.baseUrl,
-                apiKey: legacyProfile.apiKey,
-                authToken: legacyProfile.authToken,
-                primaryModel: legacyProfile.primaryModel,
-                fastModel: legacyProfile.fastModel,
-                customHeaders: legacyProfile.customHeaders ?? {},
-                embeddingEndpoint: null,
-                embeddingApiKey: null,
-                embeddingModel: null,
-                icon: null,
-                description: null,
-            };
+        // 2. Resolve profile from ProfileRegistry
+        const profile: Profile | null = ProfileRegistry.getInstance().getActiveAgentProfile();
+        if (!profile) {
+            throw new Error('No active profile configured. Please set up a profile in Settings → Profiles.');
         }
 
         // 3. Build source metadata for system prompt

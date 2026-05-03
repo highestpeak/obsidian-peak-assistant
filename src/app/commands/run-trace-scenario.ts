@@ -101,7 +101,6 @@ export function registerRunTraceScenarioCommand(plugin: Plugin): void {
                         pluginId: plugin.manifest.id,
                         searchClient: ctx.searchClient,
                         aiServiceManager: ctx.manager,
-                        settings: ctx.settings,
                         traceSink: sink,
                     });
 

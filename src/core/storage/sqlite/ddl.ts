@@ -27,9 +27,61 @@ export interface IndexedDocumentRecord {
 }
 
 /**
+ * Logical graph node DTO shape; rows live in `mobius_node`.
+ * Not a physical table — provided as a type alias for repos that project graph-node fields.
+ */
+export interface GraphNodeRow {
+	/**
+	 * Node ID - normalized path (for document nodes) or prefixed identifier (for tags, categories, etc.).
+	 */
+	id: string;
+	type: string;
+	label: string;
+	attributes: string;
+	created_at: number;
+	updated_at: number;
+}
+
+/**
+ * Logical graph edge DTO shape; rows live in `mobius_edge`.
+ * Not a physical table — provided as a type alias for repos that project graph-edge fields.
+ */
+export interface GraphEdgeRow {
+	id: string;
+	from_node_id: string;
+	to_node_id: string;
+	type: string;
+	weight: number;
+	attributes: string;
+	created_at: number;
+	updated_at: number;
+}
+
+/**
+ * Logical document statistics shape; columns stored on `mobius_node` for document rows.
+ * Not a physical table — provided as a type alias for repos that project doc statistics fields.
+ */
+export interface DocStatisticsRow {
+	doc_id: string;
+	word_count: number | null;
+	char_count: number | null;
+	language: string | null;
+	richness_score: number | null;
+	last_open_ts: number | null;
+	open_count: number | null;
+	updated_at: number;
+}
+
+/**
  * Database schema definition for type safety.
  */
 export interface Database {
+	/** @deprecated Use {@link GraphNodeRow} instead. Legacy alias kept for backward-compat with repo code. */
+	graph_nodes: GraphNodeRow;
+	/** @deprecated Use {@link GraphEdgeRow} instead. Legacy alias kept for backward-compat with repo code. */
+	graph_edges: GraphEdgeRow;
+	/** @deprecated Use {@link DocStatisticsRow} instead. Legacy alias kept for backward-compat with repo code. */
+	doc_statistics: DocStatisticsRow;
 	index_state: {
 		key: string;
 		value: string | null;
@@ -47,43 +99,6 @@ export interface Database {
 		embedding: Buffer; // BLOB: binary format for efficient storage
 		embedding_model: string;
 		embedding_len: number;
-	};
-	/** Logical row shape for stats APIs; values live on `mobius_node` for document nodes. */
-	doc_statistics: {
-		doc_id: string;
-		word_count: number | null;
-		char_count: number | null;
-		language: string | null;
-		// todo wait for implementation
-		richness_score: number | null;
-		last_open_ts: number | null;
-		open_count: number | null;
-		updated_at: number;
-	};
-	/** Logical graph node row for repos; stored in `mobius_node`. */
-	graph_nodes: {
-		/**
-		 * Node ID - normalized path (for document nodes) or prefixed identifier (for tags, categories, etc.).
-		 * For document nodes, this should be the normalized file path relative to vault root. 
-		 *     Because we can not ensure the document id during indexing as the target node may not be created yet.
-		 */
-		id: string;
-		type: string;
-		label: string;
-		attributes: string;
-		created_at: number;
-		updated_at: number;
-	};
-	/** Logical graph edge row for repos; stored in `mobius_edge`. */
-	graph_edges: {
-		id: string;
-		from_node_id: string;
-		to_node_id: string;
-		type: string;
-		weight: number;
-		attributes: string;
-		created_at: number;
-		updated_at: number;
 	};
 	doc_chunk: {
 		chunk_id: string;
@@ -393,41 +408,17 @@ export interface Database {
 
 
 /**
- * Database interface for schema migration (exec).
+ * Database interface for schema creation (exec).
  */
-interface SqliteDatabaseLike {
+export interface SqliteDatabaseLike {
 	exec(sql: string): void;
 }
 
 /**
- * Apply schema migrations. Idempotent. Works with better-sqlite3 adapter.
+ * Create all tables and indexes. Idempotent (uses IF NOT EXISTS throughout).
  * Uses raw SQL for full SQLite feature support (FTS5, etc.).
  */
 export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
-	const tryExec = (sql: string) => {
-		try {
-			db.exec(sql);
-		} catch (error) {
-			// Ignore migration errors for idempotency (e.g., "duplicate column name").
-			// For vec_embeddings, if creation fails, we log a warning but don't throw
-			// The SqliteStoreManager tracks whether vector search is available via a flag
-			if (sql.includes('vec_embeddings')) {
-				const errorMsg = error instanceof Error ? error.message : String(error);
-				console.warn(
-					'[DDL] Failed to create vec_embeddings virtual table. ' +
-					'Vector similarity search will not be available. ' +
-					'This requires sqlite-vec extension to be loaded. ' +
-					`Error: ${errorMsg}`
-				);
-				// Don't throw - allow database to continue without vector search
-				return;
-			}
-			// For other errors, ignore for idempotency
-		}
-	};
-
-	// Indexed document metadata and graph topology live in mobius_node / mobius_edge (see below). Legacy
-	// physical tables doc_meta / graph_* / doc_statistics are not created for new databases.
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS index_state (
 			key TEXT PRIMARY KEY,
@@ -476,7 +467,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	// FTS5 virtual table for document content (stores normalized text).
 	// Note: tokenize options may vary by SQLite build; keep it simple for compatibility.
 	// Kysely doesn't support virtual tables, so we use raw SQL.
-	tryExec(`
+	db.exec(`
 		CREATE VIRTUAL TABLE IF NOT EXISTS doc_fts USING fts5(
 			chunk_id UNINDEXED,
 			doc_id UNINDEXED,
@@ -486,7 +477,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 
 	// FTS5 virtual table for document metadata (title/path).
 	// Separate from content FTS to avoid redundant storage and enable weighted search.
-	tryExec(`
+	db.exec(`
 		CREATE VIRTUAL TABLE IF NOT EXISTS doc_meta_fts USING fts5(
 			doc_id UNINDEXED,
 			path,
@@ -621,16 +612,12 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			topics_count INTEGER,
 			graph_nodes_count INTEGER,
 			graph_edges_count INTEGER,
-			duration INTEGER
+			duration INTEGER,
+			analysis_preset TEXT
 		);
 		CREATE INDEX IF NOT EXISTS idx_ai_analysis_record_created_at ON ai_analysis_record(created_at_ts);
 		CREATE INDEX IF NOT EXISTS idx_ai_analysis_record_vault_path ON ai_analysis_record(vault_rel_path);
 	`);
-	// Migration: add duration, drop meta_json (SQLite 3.35+ for DROP COLUMN)
-	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN duration INTEGER`);
-	tryExec(`ALTER TABLE ai_analysis_record DROP COLUMN meta_json`);
-	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN title TEXT`);
-	tryExec(`ALTER TABLE ai_analysis_record ADD COLUMN analysis_preset TEXT`);
 
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS query_pattern (
@@ -685,6 +672,8 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			semantic_pagerank_updated_at INTEGER,
 			semantic_pagerank_version INTEGER,
 			folder_cohesion_score REAL,
+			hub_stale_since INTEGER,
+			semantic_edges_version INTEGER DEFAULT 0,
 			attributes_json TEXT NOT NULL DEFAULT '{}'
 		);
 		CREATE INDEX IF NOT EXISTS idx_mobius_node_type_node_id ON mobius_node(type, node_id);
@@ -722,7 +711,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	`);
 
 	// ── Structural analysis tables (S4: betweenness centrality + community detection + gap analysis) ──
-	tryExec(`
+	db.exec(`
 		CREATE TABLE IF NOT EXISTS structural_metrics (
 			node_id      TEXT PRIMARY KEY,
 			betweenness  REAL NOT NULL DEFAULT 0,
@@ -733,7 +722,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_structural_metrics_community ON structural_metrics(community_id);
 		CREATE INDEX IF NOT EXISTS idx_structural_metrics_betweenness ON structural_metrics(betweenness DESC);
 	`);
-	tryExec(`
+	db.exec(`
 		CREATE TABLE IF NOT EXISTS communities (
 			community_id      INTEGER PRIMARY KEY,
 			label             TEXT,
@@ -743,7 +732,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			computed_at       INTEGER NOT NULL DEFAULT 0
 		);
 	`);
-	tryExec(`
+	db.exec(`
 		CREATE TABLE IF NOT EXISTS structural_holes (
 			id               INTEGER PRIMARY KEY AUTOINCREMENT,
 			community_a      INTEGER NOT NULL,
@@ -760,7 +749,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	`);
 
 	// ── Precompiled knowledge layer: hub constituent tracking + regeneration queue ──
-	tryExec(`
+	db.exec(`
 		CREATE TABLE IF NOT EXISTS hub_constituent (
 			hub_node_id    TEXT NOT NULL,
 			hub_path       TEXT NOT NULL,
@@ -773,7 +762,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_hub_constituent_member ON hub_constituent(member_path);
 		CREATE INDEX IF NOT EXISTS idx_hub_constituent_hub ON hub_constituent(hub_node_id);
 	`);
-	tryExec(`
+	db.exec(`
 		CREATE TABLE IF NOT EXISTS hub_regen_queue (
 			hub_node_id    TEXT PRIMARY KEY,
 			hub_path       TEXT NOT NULL,
@@ -788,18 +777,8 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_hub_regen_queue_status ON hub_regen_queue(status, priority DESC);
 	`);
 
-	// Existing DBs: add folder cohesion on folder nodes (materialized during folder hub stats).
-	tryExec(`ALTER TABLE mobius_node ADD COLUMN folder_cohesion_score REAL`);
-	tryExec(`ALTER TABLE mobius_node ADD COLUMN hub_stale_since INTEGER`);
-
-	// ── Hub staleness + semantic edge versioning on mobius_node ──
-	tryExec(`ALTER TABLE mobius_node ADD COLUMN semantic_edges_version INTEGER DEFAULT 0`);
-
-	// Legacy: folder intuition lived in a separate table; SSOT is now `mobius_node.attributes_json` on folder rows.
-	tryExec(`DROP TABLE IF EXISTS folder_intuition`);
-
 	// ── Ambient push log ──
-	tryExec(`
+	db.exec(`
 		CREATE TABLE IF NOT EXISTS ambient_push_log (
 			id               INTEGER PRIMARY KEY AUTOINCREMENT,
 			timestamp        INTEGER NOT NULL,
@@ -818,22 +797,24 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 	`);
 
 	// ── Cascade debt tracking ──
-	tryExec(`CREATE TABLE IF NOT EXISTS cascade_debt (
-		id              INTEGER PRIMARY KEY AUTOINCREMENT,
-		tenant          TEXT    NOT NULL DEFAULT 'vault',
-		source_path     TEXT    NOT NULL,
-		target_id       TEXT    NOT NULL,
-		debt_type       TEXT    NOT NULL,
-		priority        INTEGER NOT NULL DEFAULT 5,
-		change_magnitude REAL,
-		created_at      INTEGER NOT NULL,
-		processed_at    INTEGER
-	)`);
-	tryExec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_cascade_debt_dedup ON cascade_debt(tenant, target_id, debt_type) WHERE processed_at IS NULL`);
-	tryExec(`CREATE INDEX IF NOT EXISTS idx_cascade_debt_pending ON cascade_debt(tenant, processed_at, priority)`);
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS cascade_debt (
+			id              INTEGER PRIMARY KEY AUTOINCREMENT,
+			tenant          TEXT    NOT NULL DEFAULT 'vault',
+			source_path     TEXT    NOT NULL,
+			target_id       TEXT    NOT NULL,
+			debt_type       TEXT    NOT NULL,
+			priority        INTEGER NOT NULL DEFAULT 5,
+			change_magnitude REAL,
+			created_at      INTEGER NOT NULL,
+			processed_at    INTEGER
+		);
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_cascade_debt_dedup ON cascade_debt(tenant, target_id, debt_type) WHERE processed_at IS NULL;
+		CREATE INDEX IF NOT EXISTS idx_cascade_debt_pending ON cascade_debt(tenant, processed_at, priority);
+	`);
 
 	// ── Vault lint / health-check tables ──
-	tryExec(`
+	db.exec(`
 		CREATE TABLE IF NOT EXISTS vault_lint_scan (
 			id             TEXT PRIMARY KEY,
 			scan_type      TEXT NOT NULL,
@@ -851,7 +832,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			config_hash    TEXT
 		);
 	`);
-	tryExec(`
+	db.exec(`
 		CREATE TABLE IF NOT EXISTS vault_lint_finding (
 			id           TEXT PRIMARY KEY,
 			scan_id      TEXT NOT NULL REFERENCES vault_lint_scan(id),
@@ -871,7 +852,7 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_lint_finding_status ON vault_lint_finding(status);
 		CREATE INDEX IF NOT EXISTS idx_lint_finding_path ON vault_lint_finding(file_path);
 	`);
-	tryExec(`
+	db.exec(`
 		CREATE TABLE IF NOT EXISTS vault_lint_dismissal (
 			signal_id    TEXT NOT NULL,
 			file_path    TEXT NOT NULL,

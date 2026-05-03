@@ -120,7 +120,6 @@ export function useContinueAnalysis(deps: ContinueAnalysisDeps) {
 				pluginId: appCtx.plugin.manifest.id,
 				searchClient: appCtx.searchClient,
 				aiServiceManager: appCtx.manager,
-				settings: appCtx.plugin.settings!,
 			});
 			await consumeContinueStream(continueAgent.startSession(ctx));
 		} catch (err) {

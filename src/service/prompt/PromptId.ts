@@ -1,19 +1,3 @@
-export interface UserPersonaConfig {
-	appeal?: string;
-	detail_level?: string;
-}
-export interface FollowUpQuestionVariables {
-	initialPrompt: string;
-	dashboardBlocks?: string;
-	confirmedFacts?: string;
-	topics?: string;
-}
-export interface AiSummaryVariables {
-	originalQuery: string;
-	userQuery: string;
-	mermaidOverview?: string;
-	dashboardBlockPlan?: string;
-}
 /**
  * Prompt template definition.
  */
@@ -46,40 +30,22 @@ export enum PromptId {
 	// Memory/Profile prompts
 	MemoryExtractCandidatesJson = 'memory-extract-candidates-json',
 
-	// Prompt rewrite prompts
-	PromptQualityEvalJson = 'prompt-quality-eval-json',
-	PromptRewriteWithLibrary = 'prompt-rewrite-with-library',
-
 	/** One-sentence short summary (preferred for indexing). */
 	DocSummaryShort = 'doc-summary-short',
 	/** Long-form summary; may use short summary + TextRank anchors. */
 	DocSummaryFull = 'doc-summary-full',
 	ImageDescription = 'image-description',
 	ImageSummary = 'image-summary',
-	FolderProjectSummary = 'folder-project-summary',
 	/** Topic + functional + context tags and optional vault document-type classification (same JSON). */
 	DocTagGenerateJson = 'doc-tag-generate-json',
 	/** System: Hub navigation note JSON fill (maintenance). Paired with {@link HubDocSummary}. */
 	HubDocSummarySystem = 'hub-doc-summary-system',
 	/** User: Hub metadata + draft markdown + vault excerpts → JSON for hub_doc sections. */
 	HubDocSummary = 'hub-doc-summary',
-	/** System: Whole-round hub discovery review (coverage + next directions). */
-	HubDiscoverRoundReviewSystem = 'hub-discover-round-review-system',
-	/** User: Round summary JSON → structured review. */
-	HubDiscoverRoundReview = 'hub-discover-round-review',
 	/** System: Hub semantic merge (duplicate / same-topic folds). */
 	HubSemanticMergeSystem = 'hub-semantic-merge-system',
 	/** User: Hub card JSON → merge groups (does not invent stableKeys). */
 	HubSemanticMerge = 'hub-semantic-merge',
-	/** System: Folder hub recon — structured submit after host ran plan tools. */
-	HubDiscoveryFolderReconSubmitSystem = 'hub-discovery-folder-recon-submit-system',
-	/** User: memory + tree + plan text + tool results for folder submit. */
-	HubDiscoveryFolderReconSubmit = 'hub-discovery-folder-recon-submit',
-
-	/** System: Document hub recon — structured submit after tools. */
-	HubDiscoveryDocumentReconSubmitSystem = 'hub-discovery-document-recon-submit-system',
-	/** User: assembled context for document submit. */
-	HubDiscoveryDocumentReconSubmit = 'hub-discovery-document-recon-submit',
 
 	/** Pattern discovery agent: analyze query history → new query templates. */
 	PatternDiscovery = 'pattern-discovery',
@@ -88,37 +54,18 @@ export enum PromptId {
 	KnowledgeIntuitionPlanSystem = 'knowledge-intuition-plan-system',
 	/** User: backbone + folder digest + document shortlist for intuition planning. */
 	KnowledgeIntuitionPlan = 'knowledge-intuition-plan',
-	/** System: Knowledge intuition — structured submit after tools. */
-	KnowledgeIntuitionSubmitSystem = 'knowledge-intuition-submit-system',
 	/** User: memory + tool results for intuition submit. */
 	KnowledgeIntuitionSubmit = 'knowledge-intuition-submit',
 
 	// Search prompts
-	/** Session history compression; preserves user background, pains, evidence paths. */
-	AiAnalysisSessionSummary = 'ai-analysis-session-summary',
-	// AI analysis dashboard update agent (update overviewMermaid/sources/topics/graph/blocks from memory evidence)
-	AiAnalysisSummarySystem = 'ai-analysis-summary-system',
-	AiAnalysisSummary = 'search-ai-summary',
 	/** Regenerate overview from current result snapshot (UI only; not used by pipeline). */
 	AiAnalysisOverviewRegenerate = 'ai-analysis-overview-regenerate',
-	/** Phase 2: render logic model → flowchart Mermaid. */
-	AiAnalysisOverviewMermaidRenderSystem = 'ai-analysis-overview-mermaid-render-system',
-	AiAnalysisOverviewMermaidRender = 'ai-analysis-overview-mermaid-render',
 	// AI analysis title (generated at end of analysis; used for save/recent/folder suggestion)
 	AiAnalysisTitle = 'ai-analysis-title',
 	/** Doc Simple mode: scope prefix (current file only + full coverage). */
 	AiAnalysisDocSimpleScope = 'ai-analysis-doc-simple-scope',
 	/** Doc Simple mode: system prompt for single-file Q&A agent. */
 	AiAnalysisDocSimpleSystem = 'ai-analysis-doc-simple-system',
-	AiAnalysisSuggestFollowUpQuestionsSystem = 'ai-analysis-suggest-follow-up-questions-system',
-	/** Suggest follow-up questions from full session context (not from topics). */
-	AiAnalysisSuggestFollowUpQuestions = 'ai-analysis-suggest-follow-up-questions',
-	/** Slot-routing: lightweight query classification (queryType, hints). JSON output. */
-	AiAnalysisQueryClassifierSystem = 'ai-analysis-query-classifier-system',
-	AiAnalysisQueryClassifier = 'ai-analysis-query-classifier',
-	/** Search Architect: collapse dimensions into physical tasks (dimension-to-task collapse). */
-	AiAnalysisSearchArchitectSystem = 'ai-analysis-search-architect-system',
-	AiAnalysisSearchArchitect = 'ai-analysis-search-architect',
 	/** Mermaid fix: system. */
 	AiAnalysisMermaidFixSystem = 'ai-analysis-mermaid-fix-system',
 	/** Mermaid fix: user prompt. */
@@ -132,34 +79,6 @@ export enum PromptId {
 	AiAnalysisSaveFolder = 'ai-analysis-save-folder',
 
 	// Vault pipeline prompts (VaultSearchAgent phases)
-	/** Vault query understanding: system (combined classify + decompose). */
-	AiAnalysisVaultQueryUnderstandingSystem = 'ai-analysis-vault-query-understanding-system',
-	/** Vault query understanding: user prompt (combined classify + decompose). */
-	AiAnalysisVaultQueryUnderstanding = 'ai-analysis-vault-query-understanding',
-	/** Vault classify: system (static). */
-	AiAnalysisVaultClassifySystem = 'ai-analysis-vault-classify-system',
-	/** Vault classify: user prompt with query + vault context. */
-	AiAnalysisVaultClassify = 'ai-analysis-vault-classify',
-	/** Vault decompose: system (static). */
-	AiAnalysisVaultDecomposeSystem = 'ai-analysis-vault-decompose-system',
-	/** Vault decompose: user prompt with classify result. */
-	AiAnalysisVaultDecompose = 'ai-analysis-vault-decompose',
-	/** Vault recon plan: system with tool list (task-specific tool hints). */
-	AiAnalysisVaultReconPlanSystem = 'ai-analysis-vault-recon-plan-system',
-	/** Vault recon plan: user message with task + search leads. */
-	AiAnalysisVaultReconPlan = 'ai-analysis-vault-recon-plan',
-	/** Vault recon submit: system (static). */
-	AiAnalysisVaultReconSubmitSystem = 'ai-analysis-vault-recon-submit-system',
-	/** Vault recon submit: user message with tool results. */
-	AiAnalysisVaultReconSubmit = 'ai-analysis-vault-recon-submit',
-	/** Vault present-plan: system (static). */
-	AiAnalysisVaultPresentPlanSystem = 'ai-analysis-vault-present-plan-system',
-	/** Vault present-plan: user prompt with evidence list. */
-	AiAnalysisVaultPresentPlan = 'ai-analysis-vault-present-plan',
-	/** Vault report: system (static). */
-	AiAnalysisVaultReportSystem = 'ai-analysis-vault-report-system',
-	/** Vault report: user prompt with plan + evidence + context. */
-	AiAnalysisVaultReport = 'ai-analysis-vault-report',
 	/** Vault report executive summary: system (static). */
 	AiAnalysisVaultReportSummarySystem = 'ai-analysis-vault-report-summary-system',
 	/** Vault report executive summary: user prompt with blocks + evidence. Generated after blocks complete. */
@@ -168,14 +87,6 @@ export enum PromptId {
 	AiAnalysisReportSectionSystem = 'ai-analysis-report-section-system',
 	/** Per-section report generation: user prompt with evidence + section spec. */
 	AiAnalysisReportSection = 'ai-analysis-report-section',
-	/** Per-section visual generation: system (static). */
-	AiAnalysisReportVisualSystem = 'ai-analysis-report-visual-system',
-	/** Per-section visual generation: user prompt with section content + visual type. */
-	AiAnalysisReportVisual = 'ai-analysis-report-visual',
-	/** Per-section JSON viz decision: system (static). */
-	AiAnalysisReportVizJsonSystem = 'ai-analysis-report-viz-json-system',
-	/** Per-section JSON viz decision: user prompt with section content + type. */
-	AiAnalysisReportVizJson = 'ai-analysis-report-viz-json',
 	/** Vault SDK playbook: system prompt for SDK vault search agent (tool instruction + type classification). */
 	VaultSdkPlaybook = 'ai-analysis-vault-sdk-playbook',
 	/** Continue analysis: system prompt for follow-up rounds. */
@@ -205,6 +116,8 @@ export enum PromptId {
 	DocSuggestLinksSystem = 'doc-suggest-links-system',
 	DocSplitSuggestion = 'doc-split-suggestion',
 	DocSplitSuggestionSystem = 'doc-split-suggestion-system',
+	DocSuggestTags = 'doc-suggest-tags',
+	DocSuggestTagsSystem = 'doc-suggest-tags-system',
 
 	// Ambient context / session intelligence
 	WorkingThemeInference = 'working-theme-inference',
@@ -218,31 +131,18 @@ export enum PromptId {
  * Shown in a dedicated "Search AI Analysis" section with a "Set All" control.
  */
 export const SEARCH_AI_ANALYSIS_PROMPT_IDS: readonly PromptId[] = [
-	PromptId.AiAnalysisSessionSummary,
-	PromptId.AiAnalysisSummary,
-	PromptId.AiAnalysisOverviewMermaidRender,
 	PromptId.AiAnalysisOverviewRegenerate,
 	PromptId.AiAnalysisTitle,
 	PromptId.AiAnalysisDocSimpleScope,
 	PromptId.AiAnalysisDocSimpleSystem,
-	PromptId.AiAnalysisSuggestFollowUpQuestions,
-	PromptId.AiAnalysisQueryClassifier,
-	PromptId.AiAnalysisSearchArchitect,
 	PromptId.AiAnalysisFollowup,
 	PromptId.AiAnalysisFollowupSystem,
 	PromptId.AiAnalysisSaveFileName,
 	PromptId.AiAnalysisSaveFolder,
 
 	// Vault pipeline
-	PromptId.AiAnalysisVaultClassify,
-	PromptId.AiAnalysisVaultDecompose,
-	PromptId.AiAnalysisVaultReconPlan,
-	PromptId.AiAnalysisVaultReconSubmit,
-	PromptId.AiAnalysisVaultPresentPlan,
-	PromptId.AiAnalysisVaultReport,
 	PromptId.AiAnalysisVaultReportSummary,
 	PromptId.AiAnalysisReportSection,
-	PromptId.AiAnalysisReportVisual,
 	PromptId.AiAnalysisMermaidFix,
 	PromptId.AiAnalysisContinueSystem,
 	PromptId.AiAnalysisContinue,
@@ -258,12 +158,9 @@ export const INDEXING_AND_HUB_PROMPT_IDS: readonly PromptId[] = [
 	PromptId.DocSummaryFull,
 	PromptId.ImageDescription,
 	PromptId.ImageSummary,
-	PromptId.FolderProjectSummary,
 	PromptId.DocTagGenerateJson,
 	PromptId.HubDocSummary,
 	PromptId.HubSemanticMerge,
-	PromptId.HubDiscoveryFolderReconSubmit,
-	PromptId.HubDiscoveryDocumentReconSubmit,
 	PromptId.KnowledgeIntuitionPlan,
 	PromptId.KnowledgeIntuitionSubmit,
 ] as const;
@@ -293,10 +190,6 @@ export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
 
 	// Memory/Profile prompts
 	PromptId.MemoryExtractCandidatesJson,
-
-	// Prompt rewrite prompts
-	PromptId.PromptQualityEvalJson,
-	PromptId.PromptRewriteWithLibrary,
 
 ] as const;
 
@@ -366,14 +259,6 @@ export interface PromptVariables {
 		assistantReply: string;
 		context?: Record<string, string>;
 	};
-	[PromptId.PromptQualityEvalJson]: {
-		prompt: string;
-		taskHint?: string;
-	};
-	[PromptId.PromptRewriteWithLibrary]: {
-		originalPrompt: string;
-		qualityIssues: string[];
-	};
 	[PromptId.DocSummaryShort]: {
 		content: string;
 		title?: string;
@@ -394,19 +279,11 @@ export interface PromptVariables {
 		textrankKeywords?: string;
 		textrankSentences?: string;
 	};
-	[PromptId.AiAnalysisSessionSummary]: {
-		content: string;
-		userQuery: string;
-		wordCount: string;
-	};
 	[PromptId.ImageDescription]: Record<string, never>;
 	[PromptId.ImageSummary]: {
 		content: string;
 		title?: string;
 		path?: string;
-	};
-	[PromptId.FolderProjectSummary]: {
-		documents: Array<{ title: string; summary?: string; path: string }>;
 	};
 	[PromptId.HubDocSummarySystem]: Record<string, never>;
 	[PromptId.HubDocSummary]: {
@@ -417,33 +294,10 @@ export interface PromptVariables {
 		/** Truncated vault excerpts or placeholder when empty. */
 		vaultExcerpts: string;
 	};
-	[PromptId.HubDiscoverRoundReviewSystem]: Record<string, never>;
-	[PromptId.HubDiscoverRoundReview]: {
-		/** JSON string of HubDiscoverRoundSummary (metrics + hub cards + gaps). */
-		roundSummaryJson: string;
-	};
 	[PromptId.HubSemanticMergeSystem]: Record<string, never>;
 	[PromptId.HubSemanticMerge]: {
 		/** JSON array of hub cards for merge (stableKey, path, labels, signals). */
 		hubCardsJson: string;
-	};
-	[PromptId.HubDiscoveryFolderReconSubmitSystem]: Record<string, never>;
-	[PromptId.HubDiscoveryFolderReconSubmit]: {
-		userGoal: string;
-		iteration: number;
-		agentPipelineBudgetJson: string;
-		memoryJson: string;
-		folderTreeMarkdown: string;
-		actionPlanMarkdown: string;
-		actionOutputMarkdown: string;
-		toolResultsMarkdown: string;
-	};
-	[PromptId.HubDiscoveryDocumentReconSubmitSystem]: Record<string, never>;
-	[PromptId.HubDiscoveryDocumentReconSubmit]: {
-		userGoal: string;
-		iteration: number;
-		memoryJson: string;
-		toolResultsMarkdown: string;
 	};
 	[PromptId.KnowledgeIntuitionPlanSystem]: Record<string, never>;
 	[PromptId.KnowledgeIntuitionPlan]: {
@@ -458,7 +312,6 @@ export interface PromptVariables {
 		documentShortlistMarkdown: string;
 		folderTreeMarkdown: string;
 	};
-	[PromptId.KnowledgeIntuitionSubmitSystem]: Record<string, never>;
 	[PromptId.KnowledgeIntuitionSubmit]: {
 		userGoal: string;
 		iteration: number;
@@ -491,40 +344,15 @@ export interface PromptVariables {
 	[PromptId.AiAnalysisFollowupSystem]: Record<string, never>;
 	[PromptId.AiAnalysisDocSimpleScope]: { scopeValue: string; userPrompt: string; fileContent: string };
 	[PromptId.AiAnalysisDocSimpleSystem]: Record<string, never>;
-	[PromptId.AiAnalysisSuggestFollowUpQuestionsSystem]: Record<string, never>;
-	[PromptId.AiAnalysisSuggestFollowUpQuestions]: FollowUpQuestionVariables;
-	[PromptId.AiAnalysisQueryClassifierSystem]: Record<string, never>;
-	[PromptId.AiAnalysisQueryClassifier]: {
-		userQuery: string;
-		vaultSkeleton?: string;
-		vaultDescription?: string;
-		functionalTagsMapping?: string;
-	};
-	[PromptId.AiAnalysisSearchArchitectSystem]: Record<string, never>;
-	[PromptId.AiAnalysisSearchArchitect]: { userQuery: string; dimensionsJson: string };
 
 	[PromptId.AiAnalysisMermaidFixSystem]: Record<string, never>;
 	[PromptId.AiAnalysisMermaidFix]: {
 		brokenMermaid: string;
 		errorMessage: string;
 	};
-	[PromptId.AiAnalysisReportVisualSystem]: Record<string, never>;
-	[PromptId.AiAnalysisReportVisual]: {
-		sectionTitle: string;
-		visualType: string;
-		sectionContent: string;
-	};
 
 	[PromptId.AiAnalysisTitle]: { query: string; summary?: string };
-	[PromptId.AiAnalysisSummarySystem]: Record<string, never>;
-	[PromptId.AiAnalysisSummary]: AiSummaryVariables & {
-		verifiedFactSheet?: string;
-		dashboardBlockIds?: string;
-		userPersonaConfig?: UserPersonaConfig;
-	};
 	[PromptId.AiAnalysisOverviewRegenerate]: { originalQuery: string; currentResultSnapshot: string };
-	[PromptId.AiAnalysisOverviewMermaidRenderSystem]: Record<string, never>;
-	[PromptId.AiAnalysisOverviewMermaidRender]: { userQuery: string; logicModelJson: string };
 
 	[PromptId.AiAnalysisSaveFileName]: { query: string; summary?: string };
 	[PromptId.AiAnalysisSaveFolder]: { query: string; summary?: string; candidateFoldersFromSearch?: string; defaultSaveFolder?: string };
@@ -565,62 +393,6 @@ export interface PromptVariables {
 	};
 
 	// Vault pipeline
-	[PromptId.AiAnalysisVaultQueryUnderstandingSystem]: Record<string, never>;
-	[PromptId.AiAnalysisVaultQueryUnderstanding]: {
-		userQuery: string;
-		historyContext?: string;
-		folderContext?: string;
-		searchContext?: string;
-		globalIntuitionJson?: string;
-		probeContext?: string;
-	};
-	[PromptId.AiAnalysisVaultClassifySystem]: Record<string, never>;
-	[PromptId.AiAnalysisVaultClassify]: {
-		userQuery: string;
-		historyContext?: string;
-		folderContext?: string;
-		searchContext?: string;
-		globalIntuitionJson?: string;
-	};
-	[PromptId.AiAnalysisVaultDecomposeSystem]: Record<string, never>;
-	[PromptId.AiAnalysisVaultDecompose]: {
-		userQuery: string;
-		queryType: string;
-		understanding: string;
-		candidateAreas?: string;
-		initialLeads?: string;
-	};
-	[PromptId.AiAnalysisVaultReconPlanSystem]: {
-		toolSuggestions?: string;
-	};
-	[PromptId.AiAnalysisVaultReconPlan]: {
-		userQuery: string;
-		taskDescription: string;
-		targetAreas?: string;
-		initialLeads?: string;
-	};
-	[PromptId.AiAnalysisVaultReconSubmitSystem]: Record<string, never>;
-	[PromptId.AiAnalysisVaultReconSubmit]: {
-		userQuery: string;
-		taskDescription: string;
-		toolResultsMarkdown: string;
-	};
-	[PromptId.AiAnalysisVaultPresentPlanSystem]: Record<string, never>;
-	[PromptId.AiAnalysisVaultPresentPlan]: {
-		userQuery: string;
-		evidenceCount: string;
-		evidenceList: string;
-		moreCount?: string;
-	};
-	[PromptId.AiAnalysisVaultReportSystem]: Record<string, never>;
-	[PromptId.AiAnalysisVaultReport]: {
-		userQuery: string;
-		reportPlan: string;
-		proposedSections?: string;
-		evidenceCount: string;
-		evidenceList: string;
-		weavedContext?: string;
-	};
 	[PromptId.AiAnalysisVaultReportSummarySystem]: Record<string, never>;
 	[PromptId.AiAnalysisVaultReportSummary]: {
 		userQuery: string;

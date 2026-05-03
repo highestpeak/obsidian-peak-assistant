@@ -5,20 +5,18 @@ import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessio
 import type { V2Section } from '@/ui/view/quick-search/store/searchSessionStore';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { Profile } from '@/core/profiles/types';
-import { readProfileFromSettings } from '@/service/agents/vault-sdk/sdkProfile';
 import { queryWithProfile, type SDKMessage } from '@/service/agents/core/sdkAgentPool';
 import { collectText } from '@/service/agents/core/sdkMessageAdapter';
-import { pLimit, streamWithRepetitionGuard, detectRepetition } from './stream-utils';
+import { streamWithRepetitionGuard, detectRepetition } from './stream-utils';
 
 /**
  * Multi-agent report orchestrator.
  *
  * Per section (parallel):
  *   1. Content Agent — queryWithProfile → section markdown
- *   2. Visual Blueprint Agent — queryWithProfile → JSON viz spec (validated by Zod, stored on section.vizData)
  *
  * After all sections:
- *   3. Summary Agent — queryWithProfile → executive summary
+ *   2. Summary Agent — queryWithProfile → executive summary
  *
  * On demand:
  *   - Mermaid Fix Agent — queryWithProfile → fix broken mermaid syntax
@@ -45,29 +43,13 @@ export class ReportOrchestrator {
         return { app: ctx.app, pluginId: ctx.plugin.manifest.id };
     }
 
-    /** Resolve the active agent profile, with legacy fallback. */
+    /** Resolve the active agent profile. Throws if none configured. */
     private requireProfile(): Profile {
         const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
-        if (profile) return profile;
-        // Legacy fallback: read from raw settings (same as VaultSearchAgentSDK)
-        const settings = AppContext.getInstance().settings;
-        const legacy = readProfileFromSettings(settings);
-        return {
-            id: '__legacy__',
-            name: 'Legacy Settings',
-            kind: legacy.kind,
-            enabled: true,
-            createdAt: 0,
-            baseUrl: legacy.baseUrl,
-            apiKey: legacy.apiKey,
-            authToken: legacy.authToken,
-            primaryModel: legacy.primaryModel,
-            fastModel: legacy.fastModel,
-            customHeaders: legacy.customHeaders ?? {},
-            embeddingEndpoint: null,
-            embeddingApiKey: null,
-            embeddingModel: null,
-        };
+        if (!profile) {
+            throw new Error('No active profile configured. Please set up a profile in Settings → Profiles.');
+        }
+        return profile;
     }
 
     /**
@@ -281,12 +263,6 @@ export class ReportOrchestrator {
 
         // Now run summary with actual section content available
         await this.runSummaryAgent(sections, allEvidencePaths, overview, userQuery);
-
-        // Pass 2: visuals run after all content is done
-        const limit = pLimit(3);
-        await Promise.all(sections.map((sec) => limit(async () => {
-            await this.runVisualAgent(sec);
-        })));
     }
 
     async regenerateSection(
@@ -300,7 +276,6 @@ export class ReportOrchestrator {
         const section = this.store.getState().v2PlanSections.find((s) => s.id === sectionId);
         if (!section) return;
         await this.runContentAgent(section, allSections, overview, userQuery, userPrompt);
-        await this.runVisualAgent(section);
     }
 
     async fixMermaid(sectionId: string, brokenMermaid: string, errorMessage: string): Promise<string | null> {
@@ -455,79 +430,7 @@ Output ONLY the JSON array, no other text.`;
     }
 
     // -----------------------------------------------------------------------
-    // Agent 2: Visual Blueprint
-    // -----------------------------------------------------------------------
-
-    private async runVisualAgent(section: V2Section): Promise<void> {
-        // Disabled: Streamdown's built-in tables/mermaid are sufficient.
-        // Custom viz adds extra API calls and often duplicates section content.
-        // Re-enable when interactive graph viz is properly implemented.
-        return;
-
-        const currentContent = this.store.getState().v2PlanSections.find((s) => s.id === section.id)?.content ?? '';
-        if (!currentContent) return;
-
-        try {
-            const [systemPrompt, userMessage] = await Promise.all([
-                this.mgr.renderPrompt(PromptId.AiAnalysisReportVizJsonSystem, {}),
-                this.mgr.renderPrompt(PromptId.AiAnalysisReportVizJson, {
-                    sectionTitle: section.title,
-                    sectionContent: currentContent.slice(0, 3000),
-                    contentType: section.contentType,
-                    missionRole: section.missionRole ?? 'synthesis',
-                }),
-            ]);
-
-            const { app, pluginId } = this.appCtx;
-            const profile = this.requireProfile();
-            const messages = queryWithProfile(app, pluginId, profile, {
-                prompt: userMessage,
-                systemPrompt,
-                maxTurns: 1,
-            });
-
-            const text = await collectText(messages);
-
-            // Extract JSON from response (LLM may wrap in code fence)
-            const jsonStr = text.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
-            const parsed = JSON.parse(jsonStr);
-
-            // Check for skip signal
-            if (parsed.skip) return;
-
-            // Auto-fix: convert object-style rows to array-style rows
-            // LLMs often return rows as {col: val} objects instead of [val] arrays
-            if (parsed.data?.rows && parsed.data?.headers && Array.isArray(parsed.data.rows)) {
-                parsed.data.rows = parsed.data.rows.map((row: unknown) => {
-                    if (row && typeof row === 'object' && !Array.isArray(row)) {
-                        const headers = parsed.data.headers as string[];
-                        return headers.map((h: string) => String((row as Record<string, unknown>)[h] ?? ''));
-                    }
-                    return row;
-                });
-            }
-
-            // Validate with Zod
-            const { vizSpecSchema } = await import('@/core/schemas/report-viz-schemas');
-            const validation = vizSpecSchema.safeParse(parsed);
-            if (!validation.success) {
-                console.warn(`[Visual:${section.id.slice(0, 8)}] Schema validation failed:`, validation.error.message);
-                return;
-            }
-
-            // Store validated viz data on the section
-            this.store.getState().updatePlanSection(section.id, (s) => ({
-                ...s,
-                vizData: validation.data,
-            }));
-        } catch (err) {
-            // Visual generation is optional — log and continue
-            console.warn(`[Visual:${section.id.slice(0, 8)}] Failed:`, err);
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Agent 3: Summary
+    // Agent 2: Summary
     // -----------------------------------------------------------------------
 
     private async runSummaryAgent(

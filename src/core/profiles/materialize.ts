@@ -1,9 +1,6 @@
 /**
  * Materialize a Profile into environment variable bundles consumed by
  * Claude Agent SDK or embedding endpoints.
- *
- * Extracted from the ad-hoc `toAgentSdkEnv` in vault-sdk/sdkProfile.ts
- * and generalized for all profile kinds.
  */
 
 import type { Profile } from './types';

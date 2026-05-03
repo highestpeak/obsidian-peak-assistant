@@ -14,7 +14,6 @@ import { MockAIAnalysisHistoryService } from './mocks/services/MockAiAnalysisHis
 
 // Override EventBus.getInstance to return mock event bus
 import { EventBus } from '@/core/eventBus';
-import { MockAISearchAgent } from './mocks/services/MockAISearchAgent';
 const originalGetInstance = EventBus.getInstance;
 (EventBus as any).getInstance = (app: any) => {
 	return new MockEventBus() as any;
@@ -70,7 +69,7 @@ export const DesktopApp: React.FC = () => {
 			plugin,
 			plugin.settings,
 			new MockAIAnalysisHistoryService(),
-			((_ai: AIServiceManager) => new MockAISearchAgent()) as any,
+			(() => null) as any,
 			true,
 		);
 		ctx.viewManager = viewManager;

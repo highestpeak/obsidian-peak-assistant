@@ -218,15 +218,6 @@ export function getSelectedTextFromActiveEditor(app?: App): string | null {
 	}
 }
 
-export async function readFileContentByPath(filePath: string, app?: App): Promise<ArrayBuffer | null> {
-	const targetApp = resolveApp(app);
-	const file = targetApp.vault.getAbstractFileByPath(filePath);
-	if (file && file instanceof TFile) {
-		return await targetApp.vault.readBinary(file);
-	}
-	return null;
-}
-
 export async function readFileAsText(filePath: string): Promise<string | null> {
 	try {
 		const app = AppContext.getApp();

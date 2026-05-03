@@ -437,42 +437,16 @@ export type LLMStreamEvent =
 
 export enum StreamTriggerName {
 	SEARCH_AI_AGENT = 'search-ai-agent',
-	SEARCH_RAW_AGENT = 'search-raw-agent',
-	SEARCH_RAW_AGENT_RECON = 'search-raw-agent-recon',
-	SEARCH_RAW_AGENT_RECON_PLAN_STEP = 'search-raw-agent-recon-plan-step',
-	SEARCH_RAW_AGENT_RECON_PATH_SUBMIT_STEP = 'search-raw-agent-recon-path-submit-step',
 	/** Hub discovery: structured folder intuition round (generateObject). */
 	HUB_DISCOVERY_FOLDER_ROUND_STRUCTURE = 'hub-discovery-folder-round-structure',
 	/** Hub discovery: structured folder deepen after explore_folder. */
 	HUB_DISCOVERY_FOLDER_DEEPEN_STRUCTURE = 'hub-discovery-folder-deepen-structure',
-	/** Hub discovery: folder recon manual loop — plan step (streamText + tools). */
-	HUB_DISCOVERY_FOLDER_RECON_PLAN = 'hub-discovery-folder-recon-plan',
-	/** Hub discovery: folder recon — structured submit after plan + tools. */
-	HUB_DISCOVERY_FOLDER_RECON_SUBMIT = 'hub-discovery-folder-recon-submit',
-	/** Hub discovery: document recon manual loop — plan step. */
-	HUB_DISCOVERY_DOCUMENT_RECON_PLAN = 'hub-discovery-document-recon-plan',
-	/** Hub discovery: document recon — structured submit. */
-	HUB_DISCOVERY_DOCUMENT_RECON_SUBMIT = 'hub-discovery-document-recon-submit',
 	/** Knowledge intuition: plan step (streamText + tools). */
 	KNOWLEDGE_INTUITION_PLAN = 'knowledge-intuition-plan',
 	/** Knowledge intuition: structured submit. */
 	KNOWLEDGE_INTUITION_SUBMIT = 'knowledge-intuition-submit',
-	SEARCH_RAW_AGENT_TASK_CONSOLIDATOR = 'search-raw-agent-task-consolidator',
-	SEARCH_RAW_AGENT_EVIDENCE = 'search-raw-agent-evidence',
-	SEARCH_SLOT_RECALL_AGENT = 'search-slot-recall-agent',
-	SEARCH_SOURCES_FROM_VERIFIED_PATHS = 'search-sources-from-verified-paths',
-	SEARCH_DASHBOARD_UPDATE_AGENT = 'search-dashboard-update-agent',
-	SEARCH_TOPICS_AGENT = 'search-topics-agent',
-	SEARCH_FINAL_REFINE_AGENT = 'search-final-refine-agent',
-	SEARCH_SUMMARY = 'search-summary',
-	SEARCH_TITLE = 'search-title',
-	SEARCH_OVERVIEW_MERMAID = 'search-overview-mermaid',
-	SEARCH_REPORT_PLAN_AGENT = 'search-report-plan-agent',
-	SEARCH_VISUAL_BLUEPRINT_AGENT = 'search-visual-blueprint-agent',
 	SEARCH_MERMAID_FIX = 'search-mermaid-fix',
 	DOC_SIMPLE_AGENT = 'doc-simple-agent',
-	FOLLOW_UP_QUESTION_AGENT = 'follow-up-question-agent',
-	MOBILE_VAULT_SEARCH_AGENT = 'mobile-vault-search-agent',
 }
 
 export enum ToolEvent {

@@ -10,11 +10,8 @@
  * 3. The subprocess spawn must use a real node binary (not Electron Node mode,
  *    which causes SIGTRAP on macOS 32.2.5 / Node 20.18)
  *
- * Task 11's VaultSearchAgentSDK calls `warmupSdkAgentPool(app, pluginId)`
- * once on plugin load (or first use). After that it can call query() with
- * `findNodeBinary().path` as options.executable.
- *
- * All functions in this module are idempotent.
+ * Callers use `findNodeBinary().path` as options.executable and call the
+ * patch functions before first query(). All functions are idempotent.
  */
 
 import type { App } from 'obsidian';
@@ -225,41 +222,3 @@ export function getCliPath(app: App, pluginId: string): string {
     return join(adapter.getBasePath(), app.vault.configDir, 'plugins', pluginId, 'sdk', 'cli.js');
 }
 
-// ─── Warmup ───────────────────────────────────────────────────────────────────
-
-let _warmupComplete = false;
-let _cachedNodeInfo: NodeBinaryInfo | null = null;
-
-/**
- * Idempotent warmup: installs both renderer compat patches and probes for
- * a node binary. Call this once on plugin load (non-blocking) or lazily on
- * first vault search. Safe to call multiple times.
- */
-export async function warmupSdkAgentPool(
-    _app: App,
-    _pluginId: string,
-): Promise<NodeBinaryInfo> {
-    if (_warmupComplete && _cachedNodeInfo) {
-        return _cachedNodeInfo;
-    }
-
-    patchEventsSetMaxListenersForRenderer();
-    installRendererTimerShim();
-
-    _cachedNodeInfo = findNodeBinary();
-    _warmupComplete = true;
-
-    console.debug('[sdkAgentPool] warmup complete', {
-        nodeBinary: _cachedNodeInfo,
-    });
-
-    return _cachedNodeInfo;
-}
-
-/** For tests only: reset cached state so patches re-apply. */
-export function _resetPoolForTests(): void {
-    _setMaxListenersPatched = false;
-    _timerShimInstalled = false;
-    _warmupComplete = false;
-    _cachedNodeInfo = null;
-}

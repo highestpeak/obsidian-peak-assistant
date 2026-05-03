@@ -94,15 +94,6 @@ export interface SearchSettings {
 	 * Files matching these patterns will not be indexed.
 	 */
 	ignorePatterns: string[];
-	/**
-	 * Model configuration for AI search summary generation.
-	 * If not provided, will fallback to defaultModel from AI settings.
-	 * @deprecated
-	 */
-	searchSummaryModel?: {
-		provider: string;
-		modelId: string;
-	};
 	aiAnalysisModel?: {
 		thoughtAgentModel?: {
 			provider: string;
@@ -119,23 +110,8 @@ export interface SearchSettings {
 	 */
 	indexRefreshInterval: number;
 
-	/**
-	 * which implementation to use for ai analysis if web search is enabled.
-	 */
-	aiAnalysisWebSearchImplement?: 'perplexity' | 'local_chromium';
-	/**
-	 * which model to use for ai analysis if perplexity is selected.
-	 */
-	perplexitySearchModel?: string;
-
 	shortSummaryLength: number;
 	fullSummaryLength: number;
-
-	/**
-	 * Maximum iterations for multi-agent ReAct loop.
-	 * Default: 10
-	 */
-	maxMultiAgentIterations: number;
 
 	/**
 	 * Word limit hint for AI analysis session summarization.
@@ -240,10 +216,6 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 		'.DS_Store',
 		'Thumbs.db',
 	],
-	searchSummaryModel: {
-		provider: 'openai',
-		modelId: 'gpt-4o-mini',
-	},
 	aiAnalysisModel: {
 		thoughtAgentModel: {
 			provider: 'openai',
@@ -256,12 +228,8 @@ export const DEFAULT_SEARCH_SETTINGS: SearchSettings = {
 	},
 	indexRefreshInterval: 5000, // 5 seconds
 
-	aiAnalysisWebSearchImplement: 'local_chromium',
-
 	shortSummaryLength: 150,
 	fullSummaryLength: 2000,
-
-	maxMultiAgentIterations: 10,
 
 	aiAnalysisSessionSummaryWordCount: 3000,
 
@@ -356,10 +324,6 @@ export interface AIServiceSettings {
 	 */
 	profileEnabled?: boolean;
 	/**
-	 * Enable prompt rewrite (auto-improve user prompts)
-	 */
-	promptRewriteEnabled?: boolean;
-	/**
 	 * Default LLM output control settings for all models.
 	 * Can be overridden per conversation in chat interface.
 	 */
@@ -389,7 +353,6 @@ export const DEFAULT_AI_SERVICE_SETTINGS: AIServiceSettings = {
 	},
 	llmProviderConfigs: {},
 	profileEnabled: true,
-	promptRewriteEnabled: false,
 	// Programmatically initialize promptModelMap with defaultModel for all prompts
 	// (Previously AI Analysis prompts used OpenRouter, but that breaks for users without OpenRouter configured)
 	promptModelMap: (() => {

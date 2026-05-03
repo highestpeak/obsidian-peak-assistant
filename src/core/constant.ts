@@ -139,13 +139,6 @@ export const HUB_NAVIGATION_TOP_LEVEL_FOLDER_PENALTY = 0.11;
 export const HUB_NAVIGATION_LOW_COHESION_FOLDER_PENALTY = 0.08;
 export const HUB_NAVIGATION_MANUAL_BONUS = 0.12;
 
-/**
- * Legacy DSU merge thresholds (unused after seed-based grouping; kept for docs / tuning reference).
- * @deprecated
- */
-export const HUB_NAV_GROUP_AFFINITY_THRESHOLD = 0.52;
-/** @deprecated */
-export const HUB_NAV_GROUP_COVERAGE_STRONG_OVERLAP = 0.45;
 
 /** Seed absorb: minimum blended score (struct / semantic / coverage) for non-top-level seeds. */
 export const HUB_NAV_GROUP_SEED_ABSORB_COMBINED_MIN = 0.46;

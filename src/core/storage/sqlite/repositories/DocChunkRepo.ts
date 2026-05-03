@@ -239,7 +239,7 @@ export class DocChunkRepo {
 	}
 
 	/**
-	 * Chunk rows for resolving vector hits. Prefers `doc_chunk` (SSOT); falls back to `doc_fts` for legacy rows.
+	 * Chunk rows for resolving vector hits.
 	 */
 	async getByChunkIds(chunkIds: string[]): Promise<
 		Array<{
@@ -266,30 +266,6 @@ export class DocChunkRepo {
 				},
 			]),
 		);
-		const missing = chunkIds.filter((id) => !map.has(id));
-		if (missing.length) {
-			const placeholders = missing.map(() => '?').join(',');
-			const stmt = this.rawDb.prepare(`
-				SELECT chunk_id, doc_id, content AS content_raw
-				FROM doc_fts
-				WHERE chunk_id IN (${placeholders})
-			`);
-			const ftsRows = stmt.all(...missing) as Array<{
-				chunk_id: string;
-				doc_id: string;
-				content_raw: string;
-			}>;
-			for (const fr of ftsRows) {
-				map.set(fr.chunk_id, {
-					chunk_id: fr.chunk_id,
-					doc_id: fr.doc_id,
-					chunk_type: 'body_raw',
-					title: null,
-					content_raw: fr.content_raw,
-					mtime: null,
-				});
-			}
-		}
 		return chunkIds
 			.map((id) => map.get(id))
 			.filter((x): x is NonNullable<typeof x> => x != null);

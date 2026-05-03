@@ -17,7 +17,7 @@ export interface GraphCleanupResult {
  * Call from DevTools: window.cleanupGraphTable()
  */
 export async function cleanupGraphTable(): Promise<GraphCleanupResult> {
-	const kdb = sqliteStoreManager.getSearchContext();
+	const kdb = sqliteStoreManager.getIndexContext('vault');
 	const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
 	const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 

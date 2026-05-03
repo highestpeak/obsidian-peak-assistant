@@ -101,7 +101,7 @@ export class CascadeWorker {
                 const sourceIds = incomingEdges.map(e => e.from_node_id);
                 // MobiusNodeRepo.getByIds returns GraphNode (graph_nodes schema) which has no path field.
                 // Query mobius_node directly to get the path column (a real column on mobius_node).
-                const db = storeManager.getSearchContext();
+                const db = storeManager.getIndexContext('vault');
                 const rows = await db
                     .selectFrom('mobius_node' as any)
                     .select(['node_id', 'path', 'hub_stale_since'] as any)

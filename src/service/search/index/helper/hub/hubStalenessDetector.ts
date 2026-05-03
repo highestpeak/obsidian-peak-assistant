@@ -20,7 +20,7 @@ export class HubStalenessDetector {
 			if (!affectedHubs.length) return { staleHubCount: 0 };
 
 			const now = Date.now();
-			const db = sqliteStoreManager.getSearchContext();
+			const db = sqliteStoreManager.getIndexContext('vault');
 
 			for (const hub of affectedHubs) {
 				// Mark hub_stale_since on mobius_node (only set if not already stale).

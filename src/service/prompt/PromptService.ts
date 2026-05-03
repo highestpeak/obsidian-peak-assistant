@@ -14,9 +14,8 @@ import { AppContext } from '@/app/context/AppContext';
 /**
  * Unified prompt service: templates loaded on demand via TemplateManager, with optional vault overrides.
  *
- * Chat methods (chatWithPrompt, chatWithPromptStream) delegate to AIServiceManager's
- * Agent SDK-based queryText/queryStream. The provider/model params are ignored — the
- * active Profile determines the model.
+ * Chat methods delegate to AIServiceManager's Agent SDK-based queryText/queryStream.
+ * The active Profile determines the model.
  */
 export class PromptService {
 	private promptFolder: string;
@@ -43,8 +42,6 @@ export class PromptService {
 		this.overrideCache.clear();
 	}
 
-	/** @deprecated No longer needed — delegates to AIServiceManager via AppContext. */
-	setChatService(_chat: unknown): void { /* no-op */ }
 
 	setSettings(settings: AIServiceSettings): void {
 		this.settings = settings;

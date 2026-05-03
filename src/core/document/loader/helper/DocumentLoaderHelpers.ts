@@ -150,25 +150,15 @@ export async function getDefaultDocumentSummary(
 	let fullSummary: string | undefined;
 
 	if (needFull) {
-		const [shortRes, fullRes] = await Promise.all([
-			aiServiceManager.chatWithPromptWithUsage(PromptId.DocSummaryShort, shortVars, provider, modelId),
-			aiServiceManager.chatWithPromptWithUsage(PromptId.DocSummaryFull, fullVarsBase, provider, modelId),
+		const [shortText, fullText] = await Promise.all([
+			aiServiceManager.queryText(PromptId.DocSummaryShort, shortVars as any),
+			aiServiceManager.queryText(PromptId.DocSummaryFull, fullVarsBase as any),
 		]);
-		shortSummary = shortRes.text;
-		fullSummary = fullRes.text;
-		llmUsage = mergeTokenUsage(shortRes.usage, fullRes.usage);
-		llmCostUsd = shortRes.costUsd + fullRes.costUsd;
+		shortSummary = shortText;
+		fullSummary = fullText;
 	} else {
-		const shortRes = await aiServiceManager.chatWithPromptWithUsage(
-			PromptId.DocSummaryShort,
-			shortVars,
-			provider,
-			modelId,
-		);
-		shortSummary = shortRes.text;
+		shortSummary = await aiServiceManager.queryText(PromptId.DocSummaryShort, shortVars as any);
 		fullSummary = undefined;
-		llmUsage = shortRes.usage;
-		llmCostUsd = shortRes.costUsd;
 	}
 
 	console.info('[MarkdownDocumentLoader] document summary LLM done', {
