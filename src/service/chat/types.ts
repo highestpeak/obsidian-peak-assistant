@@ -36,6 +36,8 @@ export interface ChatMessage {
 	 * Whether this message represents an error
 	 */
 	isErrorMessage?: boolean;
+	/** When true, render this user message with markdown (e.g. AI Analysis imports) */
+	isMarkdownContent?: boolean;
 	/**
 	 * Whether this message should be visible in UI
 	 */

@@ -380,6 +380,7 @@ ${sourcesList}${topicsList}
 			defaultModel.provider,
 			timezone
 		);
+		initialMessage.isMarkdownContent = true;
 
 		console.debug('[AIServiceManager] Creating conversation with initial message', {
 			messageId: initialMessage.id,

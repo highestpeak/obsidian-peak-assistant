@@ -4,6 +4,7 @@ import { ChatMessage, ChatConversation } from '@/service/chat/types';
 import { useChatViewStore } from '../../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
+import { AppContext } from '@/app/context/AppContext';
 import { useStreamChat } from '../../hooks/useStreamChat';
 import { cn } from '@/ui/react/lib/utils';
 import { COLLAPSED_USER_MESSAGE_CHAR_LIMIT } from '@/core/constant';
@@ -300,7 +301,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 						/* Has content (either streaming or complete) - render content */
 						<div className="pktw-relative">
 							{
-								isUser ? (
+								isUser && !message.isMarkdownContent ? (
 									<div className="pktw-select-text">
 										{displayText}
 									</div>
@@ -354,12 +355,25 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 					onRegenerate={handleRegenerate}
 				/>
 
-				{/* Style switch buttons — only for completed assistant messages */}
-				{message.role === 'assistant' && !streamingState.isStreaming && (
+				{/* Style switch buttons — only for completed non-error assistant messages */}
+				{message.role === 'assistant' && !streamingState.isStreaming && !message.isErrorMessage && (
 					<MessageStyleButtons onStyleSelect={(prompt) => {
-						// Placeholder — style prompt wiring will be added when chat input supports it.
-						console.log('Style selected:', prompt);
+						const submitAction = useChatViewStore.getState().submitAction;
+						if (submitAction) submitAction(prompt);
 					}} />
+				)}
+				{/* Error messages: show "Open Settings" when profile-related */}
+				{message.role === 'assistant' && message.isErrorMessage &&
+				 (message.content.includes('profile') || message.content.includes('configured') || message.content.includes('credentials')) && (
+					<span
+						className="pktw-text-xs pktw-text-accent pktw-cursor-pointer hover:pktw-underline pktw-mt-1"
+						onClick={() => {
+							const { SettingsModal } = require('@/ui/view/SettingsModal');
+							new SettingsModal(AppContext.getInstance()).open();
+						}}
+					>
+						Open Settings
+					</span>
 				)}
 			</Message>
 			</div>

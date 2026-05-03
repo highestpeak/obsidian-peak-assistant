@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import {
 	PromptInput,
@@ -57,6 +57,19 @@ export const ChatInputAreaComponent: React.FC = () => {
 	const inputFocusRef = useRef<{ focus: () => void } | null>(null);
 
 	const { submitMessage, cancelStream } = useChatSubmit();
+
+	useEffect(() => {
+		const action = (text: string) => {
+			const conv = useChatDataStore.getState().activeConversation;
+			const project = useChatDataStore.getState().activeProject;
+			if (conv) {
+				void submitMessage({ text, files: [], conversation: conv, project });
+			}
+		};
+		useChatViewStore.getState().setSubmitAction(action);
+		return () => useChatViewStore.getState().setSubmitAction(null);
+	}, [submitMessage]);
+
 	const { menuContextItems, handleSearchContext, handleSearchPrompts, handleMenuSelect } = useContextSearch();
 	useInputKeyboard(textareaRef, activeConversation?.meta?.id ?? null);
 	const tokenUsage = useTokenUsage(activeConversation);

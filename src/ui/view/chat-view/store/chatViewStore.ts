@@ -64,6 +64,9 @@ interface ChatViewState {
 
 	// ── Outline panel ──
 	showOutline: boolean;
+
+	// ── Submit action (for StyleButtons / Quick Actions) ──
+	submitAction: ((text: string) => void) | null;
 }
 
 interface ChatViewActions {
@@ -106,6 +109,9 @@ interface ChatViewActions {
 	// ── Outline panel actions ──
 	toggleOutline: () => void;
 	setShowOutline: (show: boolean) => void;
+
+	// ── Submit action ──
+	setSubmitAction: (fn: ((text: string) => void) | null) => void;
 
 	// ── Lifecycle ──
 	reset: () => void;
@@ -157,6 +163,9 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 
 	// ── Session settings ──
 	...INITIAL_SESSION,
+
+	// ── Submit action ──
+	submitAction: null,
 
 	// ═══════════════════════════════════════════════════════════════════════
 	// Navigation actions
@@ -304,6 +313,12 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 
 	toggleOutline: () => set((s) => ({ showOutline: !s.showOutline })),
 	setShowOutline: (show) => set({ showOutline: show }),
+
+	// ═══════════════════════════════════════════════════════════════════════
+	// Submit action
+	// ═══════════════════════════════════════════════════════════════════════
+
+	setSubmitAction: (fn) => set({ submitAction: fn }),
 
 	// ═══════════════════════════════════════════════════════════════════════
 	// Lifecycle
