@@ -4,6 +4,7 @@ import { ChevronRight, MoreHorizontal, Zap } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { Profile, ProfileKind } from '@/core/profiles/types';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { ProviderIcon, PROVIDER_LABELS } from './ProviderIcon';
 import { ModelCombobox } from './ModelCombobox';
 
@@ -277,22 +278,31 @@ export function ProfileCard({
                         </FieldRow>
                     </div>
 
-                    {/* Role toggles */}
-                    <div className="pktw-flex pktw-gap-3 pktw-mt-4 pktw-pt-3 pktw-border-t pktw-border-pk-border">
-                        <RoleToggle
+                    {/* Role selectors */}
+                    <div className="pktw-flex pktw-flex-wrap pktw-gap-3 pktw-mt-4 pktw-pt-3 pktw-border-t pktw-border-pk-border">
+                        <RoleSelector
                             label="Use as Agent"
                             active={isActiveAgent}
-                            onClick={() => onToggleAgent(profile.id)}
+                            selectedModel={ProfileRegistry.getInstance().getActiveAgentConfig()?.modelId}
+                            availableModels={[profile.primaryModel, profile.fastModel].filter(Boolean)}
+                            onToggle={() => onToggleAgent(profile.id)}
+                            onModelChange={(modelId) => ProfileRegistry.getInstance().setActiveAgentConfig({ profileId: profile.id, modelId })}
                         />
-                        <RoleToggle
+                        <RoleSelector
                             label="Use as Embedding"
                             active={isActiveEmbedding}
-                            onClick={() => onToggleEmbedding(profile.id)}
+                            selectedModel={ProfileRegistry.getInstance().getActiveEmbeddingConfig()?.modelId}
+                            availableModels={[profile.embeddingModel, profile.primaryModel].filter((m): m is string => !!m)}
+                            onToggle={() => onToggleEmbedding(profile.id)}
+                            onModelChange={(modelId) => ProfileRegistry.getInstance().setActiveEmbeddingConfig({ profileId: profile.id, modelId })}
                         />
-                        <RoleToggle
+                        <RoleSelector
                             label="Use as Web Search"
                             active={isActiveWebSearch}
-                            onClick={() => onToggleWebSearch(profile.id)}
+                            selectedModel={ProfileRegistry.getInstance().getActiveWebSearchConfig()?.modelId}
+                            availableModels={[profile.primaryModel, profile.fastModel].filter(Boolean)}
+                            onToggle={() => onToggleWebSearch(profile.id)}
+                            onModelChange={(modelId) => ProfileRegistry.getInstance().setActiveWebSearchConfig({ profileId: profile.id, modelId })}
                         />
                     </div>
                 </div>
@@ -302,33 +312,48 @@ export function ProfileCard({
 }
 
 // ---------------------------------------------------------------------------
-// Role toggle pill
+// Role selector (toggle + model dropdown)
 // ---------------------------------------------------------------------------
 
-function RoleToggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function RoleSelector({ label, active, selectedModel, availableModels, onToggle, onModelChange }: {
+    label: string; active: boolean; selectedModel?: string;
+    availableModels: string[]; onToggle: () => void; onModelChange: (modelId: string) => void;
+}) {
     return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cn(
-                'pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5 pktw-rounded-md pktw-text-xs pktw-font-medium pktw-transition-all pktw-cursor-pointer',
-                'pktw-border',
-                active
-                    ? 'pktw-border-purple-500/60 pktw-bg-purple-500/10 pktw-text-purple-600 dark:pktw-text-purple-400'
-                    : 'pktw-border-pk-border pktw-text-pk-muted-foreground hover:pktw-border-pk-accent/40',
-            )}
-        >
-            <span className={cn(
-                'pktw-w-3.5 pktw-h-3.5 pktw-rounded pktw-border pktw-flex pktw-items-center pktw-justify-center pktw-transition-colors',
-                active ? 'pktw-border-purple-500 pktw-bg-purple-500' : 'pktw-border-pk-border',
-            )}>
-                {active && (
-                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                        <path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+        <div className="pktw-flex pktw-items-center pktw-gap-2">
+            <button
+                type="button"
+                onClick={onToggle}
+                className={cn(
+                    'pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5 pktw-rounded-md pktw-text-xs pktw-font-medium pktw-transition-all pktw-cursor-pointer pktw-border',
+                    active
+                        ? 'pktw-border-purple-500/60 pktw-bg-purple-500/10 pktw-text-purple-600 dark:pktw-text-purple-400'
+                        : 'pktw-border-pk-border pktw-text-pk-muted-foreground hover:pktw-border-pk-accent/40',
                 )}
-            </span>
-            {label}
-        </button>
+            >
+                <span className={cn(
+                    'pktw-w-3.5 pktw-h-3.5 pktw-rounded pktw-border pktw-flex pktw-items-center pktw-justify-center pktw-transition-colors',
+                    active ? 'pktw-border-purple-500 pktw-bg-purple-500' : 'pktw-border-pk-border',
+                )}>
+                    {active && (
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                            <path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    )}
+                </span>
+                {label}
+            </button>
+            {active && availableModels.length > 0 && (
+                <select
+                    value={selectedModel ?? ''}
+                    onChange={(e) => onModelChange(e.target.value)}
+                    className="pktw-text-xs pktw-bg-transparent pktw-border pktw-border-pk-border pktw-rounded pktw-px-2 pktw-py-1 pktw-text-pk-foreground"
+                >
+                    {availableModels.map(m => (
+                        <option key={m} value={m}>{m}</option>
+                    ))}
+                </select>
+            )}
+        </div>
     );
 }

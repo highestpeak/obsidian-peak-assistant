@@ -299,9 +299,9 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 	} else {
 		settings.profileSettings = {
 			profiles: [],
-			activeAgentProfileId: null,
-			activeEmbeddingProfileId: null,
-			activeWebSearchProfileId: null,
+			activeAgentConfig: null,
+			activeEmbeddingConfig: null,
+			activeWebSearchConfig: null,
 			sdkSettings: DEFAULT_SDK_SETTINGS,
 		};
 	}

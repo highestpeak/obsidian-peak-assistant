@@ -6,7 +6,7 @@
  * the provided callback.
  */
 
-import type { Profile, ProfileSettings, SdkSettings } from './types';
+import type { Profile, ProfileSettings, RoleConfig, SdkSettings } from './types';
 import { DEFAULT_SDK_SETTINGS } from './types';
 
 export type PersistFn = (settings: ProfileSettings) => void | Promise<void>;
@@ -15,9 +15,9 @@ export class ProfileRegistry {
   private static instance: ProfileRegistry | null = null;
 
   private profiles: Profile[] = [];
-  private activeAgentProfileId: string | null = null;
-  private activeEmbeddingProfileId: string | null = null;
-  private activeWebSearchProfileId: string | null = null;
+  private activeAgentConfig: RoleConfig | null = null;
+  private activeEmbeddingConfig: RoleConfig | null = null;
+  private activeWebSearchConfig: RoleConfig | null = null;
   private sdkSettings: SdkSettings = { ...DEFAULT_SDK_SETTINGS };
   private persistFn: PersistFn | null = null;
 
@@ -38,14 +38,31 @@ export class ProfileRegistry {
   /**
    * Initialize the registry from persisted settings.
    * Must be called once during plugin bootstrap.
+   *
+   * Accepts both the new format (activeAgentConfig) and the legacy format
+   * (activeAgentProfileId) for backward compatibility with existing settings files.
    */
-  load(settings: ProfileSettings, persistFn: PersistFn): void {
+  load(
+    settings: ProfileSettings & {
+      activeAgentProfileId?: string | null;
+      activeEmbeddingProfileId?: string | null;
+      activeWebSearchProfileId?: string | null;
+    },
+    persistFn: PersistFn,
+  ): void {
     this.profiles = [...settings.profiles];
-    this.activeAgentProfileId = settings.activeAgentProfileId;
-    this.activeEmbeddingProfileId = settings.activeEmbeddingProfileId;
-    this.activeWebSearchProfileId = settings.activeWebSearchProfileId ?? null;
+    this.activeAgentConfig = settings.activeAgentConfig ?? this.migrateOldId(settings.activeAgentProfileId);
+    this.activeEmbeddingConfig = settings.activeEmbeddingConfig ?? this.migrateOldId(settings.activeEmbeddingProfileId);
+    this.activeWebSearchConfig = settings.activeWebSearchConfig ?? this.migrateOldId(settings.activeWebSearchProfileId);
     this.sdkSettings = { ...DEFAULT_SDK_SETTINGS, ...settings.sdkSettings };
     this.persistFn = persistFn;
+  }
+
+  private migrateOldId(id: string | null | undefined): RoleConfig | null {
+    if (!id) return null;
+    const profile = this.profiles.find(p => p.id === id);
+    if (!profile) return null;
+    return { profileId: id, modelId: profile.primaryModel };
   }
 
   // --------------- Selectors ---------------
@@ -55,18 +72,39 @@ export class ProfileRegistry {
   }
 
   getActiveAgentProfile(): Profile | null {
-    if (!this.activeAgentProfileId) return null;
-    return this.profiles.find((p) => p.id === this.activeAgentProfileId) ?? null;
+    if (!this.activeAgentConfig) return null;
+    return this.profiles.find((p) => p.id === this.activeAgentConfig!.profileId) ?? null;
+  }
+
+  getActiveAgentConfig(): { profile: Profile; modelId: string } | null {
+    if (!this.activeAgentConfig) return null;
+    const profile = this.profiles.find((p) => p.id === this.activeAgentConfig!.profileId);
+    if (!profile) return null;
+    return { profile, modelId: this.activeAgentConfig.modelId };
   }
 
   getActiveEmbeddingProfile(): Profile | null {
-    if (!this.activeEmbeddingProfileId) return null;
-    return this.profiles.find((p) => p.id === this.activeEmbeddingProfileId) ?? null;
+    if (!this.activeEmbeddingConfig) return null;
+    return this.profiles.find((p) => p.id === this.activeEmbeddingConfig!.profileId) ?? null;
+  }
+
+  getActiveEmbeddingConfig(): { profile: Profile; modelId: string } | null {
+    if (!this.activeEmbeddingConfig) return null;
+    const profile = this.profiles.find((p) => p.id === this.activeEmbeddingConfig!.profileId);
+    if (!profile) return null;
+    return { profile, modelId: this.activeEmbeddingConfig.modelId };
   }
 
   getActiveWebSearchProfile(): Profile | null {
-    if (!this.activeWebSearchProfileId) return null;
-    return this.profiles.find((p) => p.id === this.activeWebSearchProfileId) ?? null;
+    if (!this.activeWebSearchConfig) return null;
+    return this.profiles.find((p) => p.id === this.activeWebSearchConfig!.profileId) ?? null;
+  }
+
+  getActiveWebSearchConfig(): { profile: Profile; modelId: string } | null {
+    if (!this.activeWebSearchConfig) return null;
+    const profile = this.profiles.find((p) => p.id === this.activeWebSearchConfig!.profileId);
+    if (!profile) return null;
+    return { profile, modelId: this.activeWebSearchConfig.modelId };
   }
 
   getSdkSettings(): SdkSettings {
@@ -103,9 +141,9 @@ export class ProfileRegistry {
     }
     this.profiles.splice(idx, 1);
     // Clear active references if they point to the deleted profile
-    if (this.activeAgentProfileId === id) this.activeAgentProfileId = null;
-    if (this.activeEmbeddingProfileId === id) this.activeEmbeddingProfileId = null;
-    if (this.activeWebSearchProfileId === id) this.activeWebSearchProfileId = null;
+    if (this.activeAgentConfig?.profileId === id) this.activeAgentConfig = null;
+    if (this.activeEmbeddingConfig?.profileId === id) this.activeEmbeddingConfig = null;
+    if (this.activeWebSearchConfig?.profileId === id) this.activeWebSearchConfig = null;
     this.persist();
   }
 
@@ -114,34 +152,58 @@ export class ProfileRegistry {
     if (idx === -1) throw new Error(`Profile with id "${id}" not found`);
     this.profiles[idx] = { ...this.profiles[idx], enabled: !this.profiles[idx].enabled };
     if (!this.profiles[idx].enabled) {
-      if (this.activeAgentProfileId === id) this.activeAgentProfileId = null;
-      if (this.activeEmbeddingProfileId === id) this.activeEmbeddingProfileId = null;
-      if (this.activeWebSearchProfileId === id) this.activeWebSearchProfileId = null;
+      if (this.activeAgentConfig?.profileId === id) this.activeAgentConfig = null;
+      if (this.activeEmbeddingConfig?.profileId === id) this.activeEmbeddingConfig = null;
+      if (this.activeWebSearchConfig?.profileId === id) this.activeWebSearchConfig = null;
     }
     this.persist();
   }
 
   setActiveAgentProfile(id: string | null): void {
-    if (id !== null && !this.profiles.some((p) => p.id === id)) {
-      throw new Error(`Profile with id "${id}" not found`);
+    if (id === null) { this.activeAgentConfig = null; this.persist(); return; }
+    const profile = this.profiles.find((p) => p.id === id);
+    if (!profile) throw new Error(`Profile with id "${id}" not found`);
+    this.activeAgentConfig = { profileId: id, modelId: profile.primaryModel };
+    this.persist();
+  }
+
+  setActiveAgentConfig(config: RoleConfig | null): void {
+    if (config && !this.profiles.some((p) => p.id === config.profileId)) {
+      throw new Error(`Profile with id "${config.profileId}" not found`);
     }
-    this.activeAgentProfileId = id;
+    this.activeAgentConfig = config;
     this.persist();
   }
 
   setActiveEmbeddingProfile(id: string | null): void {
-    if (id !== null && !this.profiles.some((p) => p.id === id)) {
-      throw new Error(`Profile with id "${id}" not found`);
+    if (id === null) { this.activeEmbeddingConfig = null; this.persist(); return; }
+    const profile = this.profiles.find((p) => p.id === id);
+    if (!profile) throw new Error(`Profile with id "${id}" not found`);
+    this.activeEmbeddingConfig = { profileId: id, modelId: profile.embeddingModel ?? profile.primaryModel };
+    this.persist();
+  }
+
+  setActiveEmbeddingConfig(config: RoleConfig | null): void {
+    if (config && !this.profiles.some((p) => p.id === config.profileId)) {
+      throw new Error(`Profile with id "${config.profileId}" not found`);
     }
-    this.activeEmbeddingProfileId = id;
+    this.activeEmbeddingConfig = config;
     this.persist();
   }
 
   setActiveWebSearchProfile(id: string | null): void {
-    if (id !== null && !this.profiles.some((p) => p.id === id)) {
-      throw new Error(`Profile with id "${id}" not found`);
+    if (id === null) { this.activeWebSearchConfig = null; this.persist(); return; }
+    const profile = this.profiles.find((p) => p.id === id);
+    if (!profile) throw new Error(`Profile with id "${id}" not found`);
+    this.activeWebSearchConfig = { profileId: id, modelId: profile.primaryModel };
+    this.persist();
+  }
+
+  setActiveWebSearchConfig(config: RoleConfig | null): void {
+    if (config && !this.profiles.some((p) => p.id === config.profileId)) {
+      throw new Error(`Profile with id "${config.profileId}" not found`);
     }
-    this.activeWebSearchProfileId = id;
+    this.activeWebSearchConfig = config;
     this.persist();
   }
 
@@ -151,9 +213,9 @@ export class ProfileRegistry {
     if (!this.persistFn) return;
     const snapshot: ProfileSettings = {
       profiles: this.profiles.map((p) => ({ ...p })),
-      activeAgentProfileId: this.activeAgentProfileId,
-      activeEmbeddingProfileId: this.activeEmbeddingProfileId,
-      activeWebSearchProfileId: this.activeWebSearchProfileId,
+      activeAgentConfig: this.activeAgentConfig,
+      activeEmbeddingConfig: this.activeEmbeddingConfig,
+      activeWebSearchConfig: this.activeWebSearchConfig,
       sdkSettings: { ...this.sdkSettings },
     };
     void this.persistFn(snapshot);

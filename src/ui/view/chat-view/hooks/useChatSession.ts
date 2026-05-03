@@ -4,6 +4,7 @@ import { useChatViewStore } from '../store/chatViewStore';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { getLLMOutputControlSettingKeys } from '@/core/providers/types';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 
 /**
  * Reload conversation meta only (no messages), preserving existing messages.
@@ -71,6 +72,11 @@ export const useChatSession = () => {
             setSelectedModel(overrideModel.provider, overrideModel.modelId);
         } else if (globalDefaultModel) {
             setSelectedModel(globalDefaultModel.provider, globalDefaultModel.modelId);
+        } else {
+            const agentConfig = ProfileRegistry.getInstance().getActiveAgentConfig();
+            if (agentConfig) {
+                setSelectedModel(agentConfig.profile.kind, agentConfig.modelId);
+            }
         }
     }, [activeConversation, manager, setAttachmentHandlingMode, setLlmOutputControlSettings, setSelectedModel]);
 

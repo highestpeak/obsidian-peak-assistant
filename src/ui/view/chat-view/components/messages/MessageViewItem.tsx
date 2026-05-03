@@ -248,7 +248,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 			onContextMenu={handleContextMenu}
 		>
 			<div className="pktw-flex pktw-gap-2.5 pktw-max-w-[85%]">
-				<MessageRoleAvatar role={isUser ? 'user' : 'assistant'} />
+				<MessageRoleAvatar role={isUser ? 'user' : 'assistant'} provider={message.provider} model={message.model} />
 				<Message from={message.role} className="pktw-flex-1 pktw-min-w-0">
 				<span className="pktw-text-[9px] pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-mb-0.5">{isUser ? 'You' : 'Peak'}</span>
 

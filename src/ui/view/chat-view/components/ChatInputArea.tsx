@@ -20,6 +20,7 @@ import { ModelSelector } from '@/ui/component/mine/ModelSelector';
 import { HoverButton, OutputControlSettingsList } from '@/ui/component/mine';
 import { Settings2 } from 'lucide-react';
 import { useModels } from '@/ui/hooks/useModels';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { useContextSearch } from '../hooks/useContextSearch';
 import { useInputKeyboard } from '../hooks/useInputKeyboard';
 import { useTokenUsage } from '../hooks/useTokenUsage';
@@ -177,7 +178,10 @@ export const ChatInputAreaComponent: React.FC = () => {
 							isLoading={isModelsLoading}
 							currentModel={store.selectedModel}
 							onChange={async (p: string, m: string) => store.setSelectedModel(p, m)}
-							placeholder="No model selected"
+							placeholder={(() => {
+								const config = ProfileRegistry.getInstance().getActiveAgentConfig();
+								return config ? `Auto (${config.modelId})` : 'No profile configured';
+							})()}
 						/>
 						<TokenUsage usage={tokenUsage} conversation={activeConversation} />
 						<PromptInputSubmit status={status} onCancel={isStreaming ? handleCancelStream : undefined} />

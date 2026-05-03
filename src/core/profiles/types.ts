@@ -27,11 +27,16 @@ export interface Profile {
   description: string | null;
 }
 
+export interface RoleConfig {
+  profileId: string;
+  modelId: string;
+}
+
 export interface ProfileSettings {
   profiles: Profile[];
-  activeAgentProfileId: string | null;
-  activeEmbeddingProfileId: string | null;
-  activeWebSearchProfileId: string | null;
+  activeAgentConfig: RoleConfig | null;
+  activeEmbeddingConfig: RoleConfig | null;
+  activeWebSearchConfig: RoleConfig | null;
   sdkSettings: SdkSettings;
 }
 

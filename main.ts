@@ -102,8 +102,9 @@ export default class MyPlugin extends Plugin {
 		// Initialize ProfileRegistry from persisted settings (must precede AIServiceManager)
 		const ps = this.settings.profileSettings ?? {
 			profiles: [],
-			activeAgentProfileId: null,
-			activeEmbeddingProfileId: null,
+			activeAgentConfig: null,
+			activeEmbeddingConfig: null,
+			activeWebSearchConfig: null,
 			sdkSettings: { ...DEFAULT_SDK_SETTINGS },
 		};
 		ProfileRegistry.getInstance().load(ps, (updated) => {
