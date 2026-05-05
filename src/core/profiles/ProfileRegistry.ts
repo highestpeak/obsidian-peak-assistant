@@ -72,7 +72,9 @@ export class ProfileRegistry {
   }
 
   getActiveAgentProfile(): Profile | null {
-    if (!this.activeAgentConfig) return null;
+    if (!this.activeAgentConfig) {
+      return this.profiles.length > 0 ? this.profiles[0] : null;
+    }
     return this.profiles.find((p) => p.id === this.activeAgentConfig!.profileId) ?? null;
   }
 

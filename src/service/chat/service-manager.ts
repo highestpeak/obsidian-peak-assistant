@@ -764,8 +764,8 @@ ${sourcesList}${topicsList}
 				// Render the prompt template with variables
 				const rendered = await this.promptService.render(promptOrText as PromptId, variables as any);
 				userPrompt = rendered;
-			} catch {
-				// Not a valid PromptId or render failed — use raw text
+			} catch (err) {
+				console.warn('[AIServiceManager] resolvePromptPair: failed to render prompt', promptOrText, err);
 			}
 		}
 
@@ -798,6 +798,7 @@ ${sourcesList}${topicsList}
 			prompt: userPrompt,
 			systemPrompt,
 			maxTurns: 1,
+			allowedTools: [],
 			signal: opts?.signal,
 		});
 		return collectText(messages);
@@ -824,6 +825,7 @@ ${sourcesList}${topicsList}
 			prompt: userPrompt,
 			systemPrompt,
 			maxTurns: 1,
+			allowedTools: [],
 			signal: opts?.signal,
 		});
 
@@ -878,6 +880,7 @@ ${sourcesList}${topicsList}
 				prompt: userPrompt,
 				systemPrompt,
 				maxTurns: 1,
+				allowedTools: [],
 				signal: opts?.signal,
 			}),
 			{ triggerName: opts?.triggerName as any },
@@ -912,6 +915,7 @@ ${sourcesList}${topicsList}
 			prompt: userPrompt,
 			systemPrompt,
 			maxTurns: 1,
+			allowedTools: [],
 			jsonSchema: schema,
 			signal: opts?.signal,
 		});

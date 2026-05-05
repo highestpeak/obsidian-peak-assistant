@@ -216,10 +216,11 @@ export class ConversationService {
 			}).join('\n\n');
 
 			const ctx = AppContext.getInstance();
-			const sdkStream = queryWithProfile(ctx.app, ctx.pluginId, profile, {
+			const sdkStream = queryWithProfile(ctx.app, ctx.plugin.manifest.id, profile, {
 				prompt: userPrompt,
 				systemPrompt,
 				maxTurns: 1,
+				allowedTools: [],
 			});
 			yield* translateSdkMessages(sdkStream);
 		})();
