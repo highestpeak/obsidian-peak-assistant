@@ -24,7 +24,7 @@ function getModelsForProfile(profile: Profile): string[] {
     return [profile.primaryModel, profile.fastModel].filter(Boolean);
 }
 
-type RoleKind = 'agent' | 'embedding' | 'webSearch';
+type RoleKind = 'agent' | 'chat' | 'embedding' | 'webSearch';
 
 interface RoleSelectorChipProps {
     role: RoleKind;
@@ -150,6 +150,7 @@ export function StatusBar() {
     const profiles = registry.getAllProfiles();
 
     const agentConfig = registry.getActiveAgentConfig();
+    const chatConfig = registry.getActiveChatConfig();
     const embeddingConfig = registry.getActiveEmbeddingConfig();
     const webSearchConfig = registry.getActiveWebSearchConfig();
 
@@ -164,6 +165,14 @@ export function StatusBar() {
                 profiles={profiles}
                 onSelect={(config) => { registry.setActiveAgentConfig(config); bump(); }}
                 onClear={() => { registry.setActiveAgentConfig(null); bump(); }}
+            />
+            <RoleSelectorChip
+                role="chat"
+                label="Chat"
+                activeConfig={chatConfig}
+                profiles={profiles}
+                onSelect={(config) => { registry.setActiveChatConfig(config); bump(); }}
+                onClear={() => { registry.setActiveChatConfig(null); bump(); }}
             />
             <RoleSelectorChip
                 role="embedding"

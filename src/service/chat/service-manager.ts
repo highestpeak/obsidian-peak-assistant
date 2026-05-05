@@ -38,6 +38,7 @@ import type { TemplateManager } from '@/core/template/TemplateManager';
 import { AgentTemplateId, getTemplateMetadata } from '@/core/template/TemplateRegistry';
 import { estimateTokens as estimateTokensFn } from './token-estimation';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+import type { Profile } from '@/core/profiles/types';
 import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
 import { collectText, collectJson, translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
 // NOTE: AppContext is imported in service/ files already (see VaultSearchAgent, IndexService etc).
@@ -728,6 +729,10 @@ ${sourcesList}${topicsList}
 		return AppContext.getInstance().plugin.manifest.id;
 	}
 
+	private isAgentSdkProfile(profile: Profile): boolean {
+		return profile.kind === 'anthropic' || profile.kind === 'openrouter';
+	}
+
 	/**
 	 * Resolve the active agent profile or throw a user-friendly error.
 	 */
@@ -794,14 +799,23 @@ ${sourcesList}${topicsList}
 			opts?.systemPrompt,
 		);
 
-		const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
-			prompt: userPrompt,
-			systemPrompt,
-			maxTurns: 1,
-			allowedTools: [],
-			signal: opts?.signal,
-		});
-		return collectText(messages);
+		if (this.isAgentSdkProfile(profile)) {
+			const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
+				prompt: userPrompt,
+				systemPrompt,
+				maxTurns: 1,
+				allowedTools: [],
+				signal: opts?.signal,
+			});
+			return collectText(messages);
+		} else {
+			const { vercelGenerateText } = await import('@/core/providers/vercel');
+			const llmMessages: LLMRequestMessage[] = [
+				{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
+				{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
+			];
+			return vercelGenerateText(profile, profile.primaryModel, llmMessages);
+		}
 	}
 
 	/**
@@ -821,38 +835,54 @@ ${sourcesList}${topicsList}
 			opts?.systemPrompt,
 		);
 
-		const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
-			prompt: userPrompt,
-			systemPrompt,
-			maxTurns: 1,
-			allowedTools: [],
-			signal: opts?.signal,
-		});
+		if (this.isAgentSdkProfile(profile)) {
+			const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
+				prompt: userPrompt,
+				systemPrompt,
+				maxTurns: 1,
+				allowedTools: [],
+				signal: opts?.signal,
+			});
 
-		let fullText = '';
-		for await (const raw of messages) {
-			const msg = raw as any;
-			if (msg.type === 'result' && msg.is_error) {
-				const { throwTypedError } = await import('@/core/errors/llm-errors');
-				throwTypedError(typeof msg.result === 'string' ? msg.result : JSON.stringify(msg.result), fullText || undefined);
-			}
-			if (msg.type === 'stream_event') {
-				const event = msg.event;
-				if (event?.type === 'content_block_delta' && event?.delta?.type === 'text_delta' && typeof event?.delta?.text === 'string') {
-					fullText += event.delta.text;
-					yield { type: 'delta', text: event.delta.text };
+			let fullText = '';
+			for await (const raw of messages) {
+				const msg = raw as any;
+				if (msg.type === 'result' && msg.is_error) {
+					const { throwTypedError } = await import('@/core/errors/llm-errors');
+					throwTypedError(typeof msg.result === 'string' ? msg.result : JSON.stringify(msg.result), fullText || undefined);
 				}
-			} else if (msg.type === 'assistant') {
-				const blocks = msg.message?.content ?? [];
-				for (const block of blocks) {
-					if (block.type === 'text' && typeof block.text === 'string' && fullText.length === 0) {
-						fullText += block.text;
-						yield { type: 'delta', text: block.text };
+				if (msg.type === 'stream_event') {
+					const event = msg.event;
+					if (event?.type === 'content_block_delta' && event?.delta?.type === 'text_delta' && typeof event?.delta?.text === 'string') {
+						fullText += event.delta.text;
+						yield { type: 'delta', text: event.delta.text };
+					}
+				} else if (msg.type === 'assistant') {
+					const blocks = msg.message?.content ?? [];
+					for (const block of blocks) {
+						if (block.type === 'text' && typeof block.text === 'string' && fullText.length === 0) {
+							fullText += block.text;
+							yield { type: 'delta', text: block.text };
+						}
 					}
 				}
 			}
+			yield { type: 'done', fullText };
+		} else {
+			const { vercelStreamChat } = await import('@/core/providers/vercel');
+			const llmMessages: LLMRequestMessage[] = [
+				{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
+				{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
+			];
+			let fullText = '';
+			for await (const event of vercelStreamChat(profile, profile.primaryModel, { messages: llmMessages, abortSignal: opts?.signal })) {
+				if (event.type === 'text-delta') {
+					fullText += event.text;
+					yield { type: 'delta', text: event.text };
+				}
+			}
+			yield { type: 'done', fullText };
 		}
-		yield { type: 'done', fullText };
 	}
 
 	/**
@@ -875,16 +905,30 @@ ${sourcesList}${topicsList}
 			opts?.systemPrompt,
 		);
 
-		yield* translateSdkMessages(
-			queryWithProfile(this.app, this.getPluginId(), profile, {
-				prompt: userPrompt,
-				systemPrompt,
-				maxTurns: 1,
-				allowedTools: [],
-				signal: opts?.signal,
-			}),
-			{ triggerName: opts?.triggerName as any },
-		);
+		if (this.isAgentSdkProfile(profile)) {
+			yield* translateSdkMessages(
+				queryWithProfile(this.app, this.getPluginId(), profile, {
+					prompt: userPrompt,
+					systemPrompt,
+					maxTurns: 1,
+					allowedTools: [],
+					signal: opts?.signal,
+				}),
+				{ triggerName: opts?.triggerName as any },
+			);
+		} else {
+			const { vercelStreamChat } = await import('@/core/providers/vercel');
+			const llmMessages: LLMRequestMessage[] = [
+				{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
+				{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
+			];
+			for await (const event of vercelStreamChat(profile, profile.primaryModel, { messages: llmMessages, abortSignal: opts?.signal })) {
+				if (opts?.triggerName) {
+					(event as any).triggerName = opts.triggerName;
+				}
+				yield event;
+			}
+		}
 	}
 
 	/**
@@ -911,15 +955,31 @@ ${sourcesList}${topicsList}
 			opts?.systemPrompt,
 		);
 
-		const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
-			prompt: userPrompt,
-			systemPrompt,
-			maxTurns: 1,
-			allowedTools: [],
-			jsonSchema: schema,
-			signal: opts?.signal,
-		});
-		return collectJson<T>(messages);
+		if (this.isAgentSdkProfile(profile)) {
+			const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
+				prompt: userPrompt,
+				systemPrompt,
+				maxTurns: 1,
+				allowedTools: [],
+				jsonSchema: schema,
+				signal: opts?.signal,
+			});
+			return collectJson<T>(messages);
+		} else {
+			// Vercel path: generate text with JSON instruction, then parse
+			const { vercelGenerateText } = await import('@/core/providers/vercel');
+			const jsonInstruction = schema
+				? `\n\nRespond with valid JSON matching this schema:\n${JSON.stringify(schema, null, 2)}`
+				: '\n\nRespond with valid JSON.';
+			const llmMessages: LLMRequestMessage[] = [
+				{ role: 'system', content: [{ type: 'text', text: systemPrompt + jsonInstruction }] },
+				{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
+			];
+			const text = await vercelGenerateText(profile, profile.primaryModel, llmMessages);
+			// Extract JSON from potential markdown code fences
+			const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
+			return JSON.parse(jsonMatch[1]!.trim()) as T;
+		}
 	}
 
 }

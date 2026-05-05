@@ -16,6 +16,7 @@ export class ProfileRegistry {
 
   private profiles: Profile[] = [];
   private activeAgentConfig: RoleConfig | null = null;
+  private activeChatConfig: RoleConfig | null = null;
   private activeEmbeddingConfig: RoleConfig | null = null;
   private activeWebSearchConfig: RoleConfig | null = null;
   private sdkSettings: SdkSettings = { ...DEFAULT_SDK_SETTINGS };
@@ -52,6 +53,7 @@ export class ProfileRegistry {
   ): void {
     this.profiles = [...settings.profiles];
     this.activeAgentConfig = settings.activeAgentConfig ?? this.migrateOldId(settings.activeAgentProfileId);
+    this.activeChatConfig = (settings as any).activeChatConfig ?? null;
     this.activeEmbeddingConfig = settings.activeEmbeddingConfig ?? this.migrateOldId(settings.activeEmbeddingProfileId);
     this.activeWebSearchConfig = settings.activeWebSearchConfig ?? this.migrateOldId(settings.activeWebSearchProfileId);
     this.sdkSettings = { ...DEFAULT_SDK_SETTINGS, ...settings.sdkSettings };
@@ -83,6 +85,23 @@ export class ProfileRegistry {
     const profile = this.profiles.find((p) => p.id === this.activeAgentConfig!.profileId);
     if (!profile) return null;
     return { profile, modelId: this.activeAgentConfig.modelId };
+  }
+
+  getActiveChatProfile(): Profile | null {
+    if (this.activeChatConfig) {
+      return this.profiles.find((p) => p.id === this.activeChatConfig!.profileId) ?? null;
+    }
+    // Fallback: use agent profile
+    return this.getActiveAgentProfile();
+  }
+
+  getActiveChatConfig(): { profile: Profile; modelId: string } | null {
+    if (this.activeChatConfig) {
+      const profile = this.profiles.find((p) => p.id === this.activeChatConfig!.profileId);
+      if (profile) return { profile, modelId: this.activeChatConfig.modelId };
+    }
+    // Fallback: use agent config
+    return this.getActiveAgentConfig();
   }
 
   getActiveEmbeddingProfile(): Profile | null {
@@ -144,6 +163,7 @@ export class ProfileRegistry {
     this.profiles.splice(idx, 1);
     // Clear active references if they point to the deleted profile
     if (this.activeAgentConfig?.profileId === id) this.activeAgentConfig = null;
+    if (this.activeChatConfig?.profileId === id) this.activeChatConfig = null;
     if (this.activeEmbeddingConfig?.profileId === id) this.activeEmbeddingConfig = null;
     if (this.activeWebSearchConfig?.profileId === id) this.activeWebSearchConfig = null;
     this.persist();
@@ -155,6 +175,7 @@ export class ProfileRegistry {
     this.profiles[idx] = { ...this.profiles[idx], enabled: !this.profiles[idx].enabled };
     if (!this.profiles[idx].enabled) {
       if (this.activeAgentConfig?.profileId === id) this.activeAgentConfig = null;
+      if (this.activeChatConfig?.profileId === id) this.activeChatConfig = null;
       if (this.activeEmbeddingConfig?.profileId === id) this.activeEmbeddingConfig = null;
       if (this.activeWebSearchConfig?.profileId === id) this.activeWebSearchConfig = null;
     }
@@ -174,6 +195,22 @@ export class ProfileRegistry {
       throw new Error(`Profile with id "${config.profileId}" not found`);
     }
     this.activeAgentConfig = config;
+    this.persist();
+  }
+
+  setActiveChatProfile(id: string | null): void {
+    if (id === null) { this.activeChatConfig = null; this.persist(); return; }
+    const profile = this.profiles.find((p) => p.id === id);
+    if (!profile) throw new Error(`Profile with id "${id}" not found`);
+    this.activeChatConfig = { profileId: id, modelId: profile.primaryModel };
+    this.persist();
+  }
+
+  setActiveChatConfig(config: RoleConfig | null): void {
+    if (config && !this.profiles.some((p) => p.id === config.profileId)) {
+      throw new Error(`Profile with id "${config.profileId}" not found`);
+    }
+    this.activeChatConfig = config;
     this.persist();
   }
 
@@ -216,6 +253,7 @@ export class ProfileRegistry {
     const snapshot: ProfileSettings = {
       profiles: this.profiles.map((p) => ({ ...p })),
       activeAgentConfig: this.activeAgentConfig,
+      activeChatConfig: this.activeChatConfig,
       activeEmbeddingConfig: this.activeEmbeddingConfig,
       activeWebSearchConfig: this.activeWebSearchConfig,
       sdkSettings: { ...this.sdkSettings },

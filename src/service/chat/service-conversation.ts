@@ -198,31 +198,44 @@ export class ConversationService {
 			// Get the final return value
 			prepared = result.value;
 
-			// Route through Agent SDK instead of deleted MultiProviderChatService
-			const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
-			if (!profile) throw new Error('No active AI profile configured');
+			// Dual dispatch: Vercel AI SDK for non-Claude, Agent SDK for Anthropic
+			const registry = ProfileRegistry.getInstance();
+			const chatConfig = registry.getActiveChatConfig();
+			if (!chatConfig) throw new Error('No active AI profile configured. Please set up a profile in Settings → Profiles.');
 
-			// Extract system prompt and format conversation as text prompt
-			const systemMessages = prepared.prompt.filter(m => m.role === 'system');
-			const systemPrompt = systemMessages.map(m =>
-				Array.isArray(m.content) ? m.content.map((p: any) => p.text ?? '').join('') : String(m.content)
-			).join('\n');
-			const nonSystemMessages = prepared.prompt.filter(m => m.role !== 'system');
-			const userPrompt = nonSystemMessages.map(m => {
-				const text = Array.isArray(m.content)
-					? m.content.map((p: any) => p.text ?? '').join('')
-					: String(m.content);
-				return `${m.role === 'user' ? 'Human' : 'Assistant'}: ${text}`;
-			}).join('\n\n');
+			const { profile, modelId } = chatConfig;
+			const isAgentSdkProfile = profile.kind === 'anthropic' || profile.kind === 'openrouter';
 
-			const ctx = AppContext.getInstance();
-			const sdkStream = queryWithProfile(ctx.app, ctx.plugin.manifest.id, profile, {
-				prompt: userPrompt,
-				systemPrompt,
-				maxTurns: 1,
-				allowedTools: [],
-			});
-			yield* translateSdkMessages(sdkStream);
+			if (isAgentSdkProfile) {
+				// Agent SDK path — for Anthropic-compatible providers
+				const systemMessages = prepared.prompt.filter(m => m.role === 'system');
+				const systemPrompt = systemMessages.map(m =>
+					Array.isArray(m.content) ? m.content.map((p: any) => p.text ?? '').join('') : String(m.content)
+				).join('\n');
+				const nonSystemMessages = prepared.prompt.filter(m => m.role !== 'system');
+				const userPrompt = nonSystemMessages.map(m => {
+					const text = Array.isArray(m.content)
+						? m.content.map((p: any) => p.text ?? '').join('')
+						: String(m.content);
+					return `${m.role === 'user' ? 'Human' : 'Assistant'}: ${text}`;
+				}).join('\n\n');
+
+				const ctx = AppContext.getInstance();
+				const sdkStream = queryWithProfile(ctx.app, ctx.plugin.manifest.id, profile, {
+					prompt: userPrompt,
+					systemPrompt,
+					maxTurns: 1,
+					allowedTools: [],
+				});
+				yield* translateSdkMessages(sdkStream);
+			} else {
+				// Vercel AI SDK path — for all other providers
+				const { vercelStreamChat } = await import('@/core/providers/vercel');
+				yield* vercelStreamChat(profile, modelId, {
+					messages: prepared.prompt,
+					outputControl: prepared.outputControl,
+				});
+			}
 		})();
 	}
 
