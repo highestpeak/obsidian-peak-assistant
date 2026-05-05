@@ -76,7 +76,17 @@ function groupMessagesIntoTopics(messages: ChatMessage[]): {
 function getMessageSummary(message: ChatMessage): string {
 	if (message.title) return message.title;
 	const content = message.content || '';
-	return content.slice(0, MESSAGE_SUMMARY_MAX_LENGTH) + (content.length > MESSAGE_SUMMARY_MAX_LENGTH ? '...' : '');
+	const stripped = content
+		.replace(/^#+\s*/gm, '')
+		.replace(/\*\*|__/g, '')
+		.replace(/\*|_/g, '')
+		.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+		.replace(/\[\[([^\]]*)\]\]/g, '$1')
+		.replace(/```[\s\S]*?```/g, '')
+		.replace(/`([^`]*)`/g, '$1')
+		.replace(/\n+/g, ' ')
+		.trim();
+	return stripped.slice(0, MESSAGE_SUMMARY_MAX_LENGTH) || '(empty)';
 }
 
 /**

@@ -185,20 +185,34 @@ export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
                             </span>
                             <div className="pktw-space-y-2.5 pktw-mt-2.5">
                                 <FieldRow label="Temperature">
-                                    <input
-                                        type="number" step="0.1" min="0" max="2"
-                                        className={INPUT_CLS}
-                                        value={outputControl.temperature ?? ''}
-                                        onChange={(e) => updateOutputControl('temperature', parseFloat(e.target.value) || 0)}
-                                    />
+                                    <div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-w-full">
+                                        <div className="pktw-flex pktw-items-center pktw-gap-2">
+                                            <input type="range" step="0.1" min="0" max="2"
+                                                className="pktw-flex-1 pktw-h-1.5 pktw-accent-[var(--interactive-accent)]"
+                                                value={outputControl.temperature ?? 1}
+                                                onChange={(e) => updateOutputControl('temperature', parseFloat(e.target.value))}
+                                            />
+                                            <span className="pktw-text-xs pktw-text-pk-foreground-muted pktw-w-8 pktw-text-right pktw-font-mono">
+                                                {(outputControl.temperature ?? 1).toFixed(1)}
+                                            </span>
+                                        </div>
+                                        <span className="pktw-text-[10px] pktw-text-pk-foreground-faint">Lower = more focused, higher = more creative</span>
+                                    </div>
                                 </FieldRow>
                                 <FieldRow label="Top P">
-                                    <input
-                                        type="number" step="0.05" min="0" max="1"
-                                        className={INPUT_CLS}
-                                        value={outputControl.topP ?? ''}
-                                        onChange={(e) => updateOutputControl('topP', parseFloat(e.target.value) || 0)}
-                                    />
+                                    <div className="pktw-flex pktw-flex-col pktw-gap-1 pktw-w-full">
+                                        <div className="pktw-flex pktw-items-center pktw-gap-2">
+                                            <input type="range" step="0.05" min="0" max="1"
+                                                className="pktw-flex-1 pktw-h-1.5 pktw-accent-[var(--interactive-accent)]"
+                                                value={outputControl.topP ?? 0.9}
+                                                onChange={(e) => updateOutputControl('topP', parseFloat(e.target.value))}
+                                            />
+                                            <span className="pktw-text-xs pktw-text-pk-foreground-muted pktw-w-8 pktw-text-right pktw-font-mono">
+                                                {(outputControl.topP ?? 0.9).toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <span className="pktw-text-[10px] pktw-text-pk-foreground-faint">Nucleus sampling threshold</span>
+                                    </div>
                                 </FieldRow>
                                 <FieldRow label="Reasoning Effort">
                                     <select

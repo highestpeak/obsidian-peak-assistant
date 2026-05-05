@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Scissors, Sparkles, FileText, Info } from 'lucide-react';
+import { Database, Scissors, Sparkles, FileText } from 'lucide-react';
 import type { MyPluginSettings } from '@/app/settings/types';
 import type { SettingsUpdates } from './hooks/useSettingsUpdate';
 import { Switch } from '@/ui/component/shared-ui/switch';
@@ -157,13 +157,6 @@ export function SearchTab({ settings, settingsUpdates }: SearchTabProps) {
                 </SettingRow>
             </section>
 
-            {/* ── Callout ── */}
-            <div className="pktw-flex pktw-items-start pktw-gap-2 pktw-px-3 pktw-py-2.5 pktw-rounded-md pktw-bg-pk-accent-muted/40 pktw-text-xs pktw-text-pk-foreground-muted">
-                <Info className="pktw-w-3.5 pktw-h-3.5 pktw-mt-0.5 pktw-flex-shrink-0" />
-                <span>
-                    Moved to <span className="pktw-font-mono">peak-config.json</span>: Summary lengths &middot; Session summary word count &middot; Hub discover params &middot; Index refresh interval
-                </span>
-            </div>
         </div>
     );
 }
