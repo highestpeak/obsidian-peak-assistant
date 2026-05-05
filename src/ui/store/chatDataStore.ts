@@ -10,12 +10,18 @@ import { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types
 // Prevents O(n²) string copies and limits re-renders to ~60fps.
 // ---------------------------------------------------------------------------
 
-const _chatStreamBuf = { text: '', raf: null as number | null };
+// Typewriter buffer — characters arrive in chunks but are emitted smoothly.
+// Dynamic rate: min 3 chars/frame, scales up when buffer grows to avoid falling behind.
+const _chatStreamBuf = { text: '', displayed: 0, raf: null as number | null };
 const _reasoningBuf = { text: '', raf: null as number | null };
+
+const MIN_CHARS_PER_FRAME = 3;   // ~180 chars/sec at 60fps — smooth baseline
+const CATCHUP_DIVISOR = 8;       // When buffered, emit 1/8th of remaining per frame
 
 function _resetChatStreamBuf() {
 	if (_chatStreamBuf.raf !== null) { cancelAnimationFrame(_chatStreamBuf.raf); _chatStreamBuf.raf = null; }
 	_chatStreamBuf.text = '';
+	_chatStreamBuf.displayed = 0;
 }
 function _resetReasoningBuf() {
 	if (_reasoningBuf.raf !== null) { cancelAnimationFrame(_reasoningBuf.raf); _reasoningBuf.raf = null; }
@@ -226,16 +232,24 @@ export const useChatDataStore = create<ChatDataStore>((set, get) => ({
 	appendStreamingDelta: (delta: string) => {
 		_chatStreamBuf.text += delta;
 		if (_chatStreamBuf.raf === null) {
-			_chatStreamBuf.raf = requestAnimationFrame(() => {
-				_chatStreamBuf.raf = null;
-				set({ streamingContent: _chatStreamBuf.text });
-			});
+			const tick = () => {
+				const remaining = _chatStreamBuf.text.length - _chatStreamBuf.displayed;
+				if (remaining <= 0) {
+					_chatStreamBuf.raf = null;
+					return;
+				}
+				// Dynamic rate: emit more when buffer is large to avoid falling behind
+				const advance = Math.max(MIN_CHARS_PER_FRAME, Math.ceil(remaining / CATCHUP_DIVISOR));
+				_chatStreamBuf.displayed = Math.min(_chatStreamBuf.displayed + advance, _chatStreamBuf.text.length);
+				set({ streamingContent: _chatStreamBuf.text.substring(0, _chatStreamBuf.displayed) });
+				_chatStreamBuf.raf = requestAnimationFrame(tick);
+			};
+			_chatStreamBuf.raf = requestAnimationFrame(tick);
 		}
 	},
 
 	completeStreaming: (_message: ChatMessage) => {
-		// Flush final content but keep streamingMessageId alive
-		// so the streaming bubble stays visible until commitStreamingMessage replaces it
+		// Flush ALL remaining content immediately (no more typewriter)
 		if (_chatStreamBuf.text) {
 			set({ streamingContent: _chatStreamBuf.text });
 		}
