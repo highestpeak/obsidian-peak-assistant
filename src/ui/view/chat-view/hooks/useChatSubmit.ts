@@ -2,9 +2,9 @@ import { useCallback, useRef } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useChatViewStore } from '../store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { useStreamChat } from './useStreamChat';
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types';
 
 export interface ChatSubmitOptions {
@@ -69,9 +69,11 @@ export function useChatSubmit() {
 		const latestActiveConversation = useChatDataStore.getState().activeConversation;
 		const latestPendingConversation = useChatViewStore.getState().pendingConversation;
 		const latestInitialSelectedModel = useChatViewStore.getState().initialSelectedModel;
-		// Fallback: use current UI model selection if initialSelectedModel was never set
+		// Fallback chain: initialSelectedModel → UI selectedModel → active chat profile
 		const latestSelectedModel = useChatViewStore.getState().selectedModel;
-		const modelForNewConversation = latestInitialSelectedModel ?? latestSelectedModel;
+		const chatConfig = ProfileRegistry.getInstance().getActiveChatConfig();
+		const profileFallback = chatConfig ? { provider: chatConfig.profile.kind, modelId: chatConfig.modelId } : null;
+		const modelForNewConversation = latestInitialSelectedModel ?? latestSelectedModel ?? profileFallback;
 
 		let conversation = latestActiveConversation || null;
 		if (!conversation && latestPendingConversation) {
