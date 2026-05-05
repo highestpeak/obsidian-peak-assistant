@@ -8,10 +8,9 @@ import { AppContext } from '@/app/context/AppContext';
 import { useStreamChat } from '../../hooks/useStreamChat';
 import { cn } from '@/ui/react/lib/utils';
 import { COLLAPSED_USER_MESSAGE_CHAR_LIMIT } from '@/core/constant';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Copy, Star } from 'lucide-react';
 import {
-	Message,
-	MessageContent,
+	MessageAction,
 	Reasoning,
 	ReasoningContent,
 	ReasoningTrigger,
@@ -25,6 +24,8 @@ import { ToolCallSummary } from '../ToolCallSummary';
 import { MessageActionsList } from './MessageActionsList';
 import { MessageRoleAvatar } from '../MessageRoleAvatar';
 import { MessageStyleButtons } from '../MessageStyleButtons';
+import { SuggestedFollowups } from '../SuggestedFollowups';
+import { ModelInfoForSwitch } from '@/core/providers/types';
 
 interface StreamingState {
 	isStreaming: boolean;
@@ -44,6 +45,7 @@ export interface MessageItemProps {
 	message: ChatMessage;
 	streamingState?: StreamingState;
 	isLastMessage?: boolean;
+	models?: ModelInfoForSwitch[];
 }
 
 /**
@@ -60,6 +62,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 		isToolSequenceActive: false,
 	},
 	isLastMessage = false,
+	models = [],
 }) => {
 	const { manager, app, eventBus } = useServiceContext();
 
@@ -89,11 +92,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 		eventBus.dispatch(new ConversationUpdatedEvent({ conversation: updatedConv }));
 	}, [activeConversation, manager, eventBus]);
 
-	const { streamChat, updateConv } = useStreamChat();
+	const { streamChat } = useStreamChat();
 
-	const handleRegenerate = useCallback(async (messageId: string) => {
+	const handleRegenerate = useCallback(async (messageId: string, modelOverride?: { provider: string; modelId: string }) => {
 		if (!activeConversation) return;
-		if (!isLastMessage) return; // Only allow regenerating the last message
 
 		// Find the assistant message
 		const messageIndex = activeConversation.messages.findIndex(m => m.id === messageId);
@@ -114,30 +116,28 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
 		try {
 			// Create a conversation context up to the user message (for LLM request)
+			// If modelOverride provided, override the conversation meta
 			const conversationContext: ChatConversation = {
 				...activeConversation,
 				messages: activeConversation.messages.slice(0, userMessageIndex + 1),
+				meta: modelOverride ? {
+					...activeConversation.meta,
+					activeModel: modelOverride.modelId,
+					activeProvider: modelOverride.provider,
+				} : activeConversation.meta,
 			};
 
-			// Stream chat to generate new assistant message
+			// Stream chat to generate new assistant message (appends at end)
 			const streamResult = await streamChat({
 				conversation: conversationContext,
 				project: activeProject,
 				userContent: userMessage.content,
 			});
 
-			// Replace the assistant message with the new one
+			// Append the new message at the end of the conversation
 			if (streamResult.finalMessage) {
-				// Remove old message and add new one
-				// First, create a conversation with messages up to and including the user message
-				const conversationWithoutOldMessage: ChatConversation = {
-					...activeConversation,
-					messages: activeConversation.messages.slice(0, messageIndex),
-				};
-
-				// Add the new message using addMessage (this will update storage properly)
 				await manager.addMessage({
-					conversationId: conversationWithoutOldMessage.meta.id,
+					conversationId: activeConversation.meta.id,
 					message: streamResult.finalMessage,
 					model: streamResult.finalMessage.model,
 					provider: streamResult.finalMessage.provider,
@@ -146,9 +146,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 			}
 		} catch (error) {
 			console.error('Failed to regenerate message:', error);
-			// Error handling is done inside streamChat hook
 		}
-	}, [activeConversation, activeProject, isLastMessage, streamChat, manager, updateConv]);
+	}, [activeConversation, activeProject, streamChat, manager]);
 
 	const [copied, setCopied] = useState(false);
 	const [isExpanded, setIsExpanded] = useState(false);
@@ -212,8 +211,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 			});
 		});
 
-		// Regenerate (only for last assistant message)
-		if (message.role === 'assistant' && isLastMessage) {
+		// Regenerate
+		if (message.role === 'assistant') {
 			menu.addItem((item) => {
 				item.setTitle('Regenerate response');
 				item.setIcon('refresh-cw');
@@ -225,7 +224,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
 		// Show menu at cursor position
 		menu.showAtPosition({ x: e.clientX, y: e.clientY });
-	}, [message, handleCopy, handleToggleStar, handleRegenerate, isLastMessage]);
+	}, [message, handleCopy, handleToggleStar, handleRegenerate]);
 
 	// Character limit for collapsed user messages (only for user messages, not streaming)
 	const contentLength = String(displayContent || '').length;
@@ -247,128 +246,185 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 			data-message-role={message.role}
 			onContextMenu={handleContextMenu}
 		>
-			<div className="pktw-flex pktw-gap-2.5 pktw-max-w-[85%]">
-				<MessageRoleAvatar role={isUser ? 'user' : 'assistant'} provider={message.provider} model={message.model} />
-				<Message from={message.role} className="pktw-flex-1 pktw-min-w-0">
-				<span className="pktw-text-[9px] pktw-font-semibold pktw-text-muted-foreground pktw-uppercase pktw-mb-0.5">{isUser ? 'You' : 'Peak'}</span>
-
-				{/* Render attachments if any - images should appear above text bubble */}
-				{message.resources && message.resources.length > 0 && (
-					<div className="pktw-mb-2 pktw-w-full pktw-max-w-full pktw-min-w-0 pktw-overflow-hidden">
-						<MessageAttachmentsList message={message} app={app} />
-					</div>
-				)}
-
-				<MessageContent
-					className={cn(
-						isUser && "pktw-rounded-lg pktw-bg-secondary pktw-px-4 pktw-py-4 pktw-w-full"
-					)}
-				>
-					{/* Streaming started but no content yet - show loading spinner */}
-					{shouldShowLoader ? (
-						<div className="pktw-flex pktw-items-center pktw-justify-start pktw-py-2">
-							<div className="pktw-scale-50 pktw-origin-left">
-								<AnimatedSparkles isAnimating={true} />
-							</div>
+			{isUser ? (
+				/* User: right-aligned bubble, no avatar */
+				<div className="pktw-flex pktw-flex-col pktw-items-end pktw-max-w-[85%]">
+					{/* Attachments above the bubble */}
+					{message.resources && message.resources.length > 0 && (
+						<div className="pktw-mb-2 pktw-w-full pktw-max-w-full pktw-min-w-0 pktw-overflow-hidden">
+							<MessageAttachmentsList message={message} app={app} />
 						</div>
-					) : null}
-
-					{/* Render reasoning content for assistant messages */}
-					{!isUser && streamingState.reasoningContent && (
-						<Reasoning isStreaming={streamingState.isReasoningActive} className="pktw-w-full pktw-mb-0">
-							<ReasoningTrigger/>
-							<ReasoningContent>
-								{streamingState.reasoningContent}
-							</ReasoningContent>
-						</Reasoning>
 					)}
 
-					{/* Render tool calls for assistant messages */}
-					{!isUser && streamingState.currentToolCalls.length > 0 && (
-						<ToolCallSummary
-							toolCalls={streamingState.currentToolCalls.map(call => ({
-								toolName: call.toolName,
-								input: call.input,
-								output: call.output,
-								isActive: call.isActive ?? false,
-							}))}
-							isStreaming={streamingState.isStreaming}
-						/>
-					)}
-
-					{/* Render message content */}
-					{(!shouldShowLoader && displayContent) ? (
-						/* Has content (either streaming or complete) - render content */
-						<div className="pktw-relative">
-							<StreamdownIsolated
-								className="pktw-select-text"
-								isAnimating={streamingState.isStreaming}
-							>
-								{displayText}
-							</StreamdownIsolated>
-							{/* Show expand/collapse button for long user messages (not streaming, not AI) */}
-							{shouldShowExpand && (
-								<Button
-									type="button"
-									onClick={(e) => {
-										e.stopPropagation();
-										setIsExpanded(!isExpanded);
-									}}
-									className={cn(
-										"pktw-mt-2 pktw-flex pktw-items-center pktw-gap-1 pktw-text-xs",
-										"pktw-transition-colors pktw-cursor-pointer"
-									)}
+					{/* User message bubble */}
+					<div className="pktw-rounded-lg pktw-bg-secondary pktw-px-4 pktw-py-3 pktw-w-fit pktw-max-w-full">
+						{displayContent ? (
+							<div className="pktw-relative">
+								<StreamdownIsolated
+									className="pktw-select-text"
+									isAnimating={streamingState.isStreaming}
 								>
-									{isExpanded ? (
-										<>
-											<ChevronUp className="pktw-w-3 pktw-h-3" />
-											<span>Show less</span>
-										</>
-									) : (
-										<>
-											<ChevronDown className="pktw-w-3 pktw-h-3" />
-											<span>Expand</span>
-										</>
-									)}
-								</Button>
+									{displayText}
+								</StreamdownIsolated>
+								{shouldShowExpand && (
+									<Button
+										type="button"
+										onClick={(e) => {
+											e.stopPropagation();
+											setIsExpanded(!isExpanded);
+										}}
+										className={cn(
+											"pktw-mt-2 pktw-flex pktw-items-center pktw-gap-1 pktw-text-xs",
+											"pktw-transition-colors pktw-cursor-pointer"
+										)}
+									>
+										{isExpanded ? (
+											<>
+												<ChevronUp className="pktw-w-3 pktw-h-3" />
+												<span>Show less</span>
+											</>
+										) : (
+											<>
+												<ChevronDown className="pktw-w-3 pktw-h-3" />
+												<span>Expand</span>
+											</>
+										)}
+									</Button>
+								)}
+							</div>
+						) : null}
+					</div>
+
+					{/* Hover-only actions (copy + star) */}
+					<div className="pktw-flex pktw-items-center pktw-gap-1 pktw-mt-1 pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity">
+						<MessageAction tooltip="Copy" onClick={handleCopy}>
+							{copied ? <Check className="pktw-w-3 pktw-h-3" /> : <Copy className="pktw-w-3 pktw-h-3" />}
+						</MessageAction>
+						<MessageAction
+							tooltip={message.starred ? 'Unstar' : 'Star'}
+							onClick={() => handleToggleStar(message.id, !message.starred)}
+						>
+							<Star className={cn("pktw-w-3 pktw-h-3", message.starred && "pktw-fill-current")} />
+						</MessageAction>
+					</div>
+				</div>
+			) : (
+				/* Assistant: provider icon inline left of content column */
+				<div className="pktw-flex pktw-gap-2.5 pktw-max-w-[85%] pktw-items-start">
+					<MessageRoleAvatar role="assistant" provider={message.provider} model={message.model} />
+					<div className="pktw-flex-1 pktw-min-w-0">
+						{/* Reasoning — collapsed by default for saved messages */}
+						{streamingState.reasoningContent && (
+							<Reasoning
+								isStreaming={streamingState.isReasoningActive}
+								defaultOpen={streamingState.isStreaming}
+								className="pktw-w-full pktw-mb-0"
+							>
+								<ReasoningTrigger/>
+								<ReasoningContent>
+									{streamingState.reasoningContent}
+								</ReasoningContent>
+							</Reasoning>
+						)}
+
+						{/* Tool calls */}
+						{streamingState.currentToolCalls.length > 0 && (
+							<ToolCallSummary
+								toolCalls={streamingState.currentToolCalls.map(call => ({
+									toolName: call.toolName,
+									input: call.input,
+									output: call.output,
+									isActive: call.isActive ?? false,
+								}))}
+								isStreaming={streamingState.isStreaming}
+							/>
+						)}
+
+						{/* Loading spinner */}
+						{shouldShowLoader ? (
+							<div className="pktw-flex pktw-items-center pktw-justify-start pktw-py-2">
+								<div className="pktw-scale-50 pktw-origin-left">
+									<AnimatedSparkles isAnimating={true} />
+								</div>
+							</div>
+						) : null}
+
+						{/* Message content */}
+						{(!shouldShowLoader && displayContent) ? (
+							<div className="pktw-relative">
+								<StreamdownIsolated
+									className="pktw-select-text"
+									isAnimating={streamingState.isStreaming}
+								>
+									{displayText}
+								</StreamdownIsolated>
+							</div>
+						) : null}
+
+						{/* Footer: visible on last message, hover-reveal on others */}
+						<div className={cn(
+							isLastMessage
+								? "pktw-visible"
+								: "pktw-invisible group-hover:pktw-visible"
+						)}>
+							<MessageActionsList
+								message={message}
+								isStreaming={streamingState.isStreaming}
+								copied={copied}
+								models={models}
+								onToggleStar={handleToggleStar}
+								onCopy={handleCopy}
+								onRegenerate={handleRegenerate}
+							/>
+
+							{/* Style chips — extra hover animation even when footer is visible */}
+							{!streamingState.isStreaming && !message.isErrorMessage && (
+								<div className="pktw-opacity-0 group-hover:pktw-opacity-100 pktw-transition-opacity">
+									<MessageStyleButtons onStyleSelect={(prompt) => {
+										const submitAction = useChatViewStore.getState().submitAction;
+										if (submitAction) submitAction(prompt);
+									}} />
+								</div>
+							)}
+
+							{/* Suggested follow-ups — shown on ALL assistant messages */}
+							{!streamingState.isStreaming && !message.isErrorMessage && (
+								<SuggestedFollowups
+									messageId={message.id}
+									userContent={(() => {
+										const msgs = activeConversation?.messages;
+										if (!msgs) return '';
+										const idx = msgs.findIndex(m => m.id === message.id);
+										for (let i = idx - 1; i >= 0; i--) {
+											if (msgs[i].role === 'user') return String(msgs[i].content || '');
+										}
+										return '';
+									})()}
+									assistantContent={String(message.content || '')}
+									onSelect={(q) => {
+										const submitAction = useChatViewStore.getState().submitAction;
+										if (submitAction) submitAction(q);
+									}}
+								/>
 							)}
 						</div>
-					) : null}
-				</MessageContent>
 
-				{/* Render actions */}
-				<MessageActionsList
-					message={message}
-					isLastMessage={isLastMessage}
-					isStreaming={streamingState.isStreaming}
-					copied={copied}
-					onToggleStar={handleToggleStar}
-					onCopy={handleCopy}
-					onRegenerate={handleRegenerate}
-				/>
-
-				{/* Style switch buttons — only for completed non-error assistant messages */}
-				{message.role === 'assistant' && !streamingState.isStreaming && !message.isErrorMessage && (
-					<MessageStyleButtons onStyleSelect={(prompt) => {
-						const submitAction = useChatViewStore.getState().submitAction;
-						if (submitAction) submitAction(prompt);
-					}} />
-				)}
-				{/* Error messages: show "Open Settings" when profile-related */}
-				{message.role === 'assistant' && message.isErrorMessage &&
-				 (message.content.includes('profile') || message.content.includes('configured') || message.content.includes('credentials')) && (
-					<span
-						className="pktw-text-xs pktw-text-accent pktw-cursor-pointer hover:pktw-underline pktw-mt-1"
-						onClick={() => {
-							const { SettingsModal } = require('@/ui/view/SettingsModal');
-							new SettingsModal(AppContext.getInstance()).open();
-						}}
-					>
-						Open Settings
-					</span>
-				)}
-			</Message>
-			</div>
+						{/* Error messages: show "Open Settings" when profile-related */}
+						{message.isErrorMessage &&
+						 (message.content.includes('profile') || message.content.includes('configured') || message.content.includes('credentials')) && (
+							<span
+								className="pktw-text-xs pktw-text-accent pktw-cursor-pointer hover:pktw-underline pktw-mt-1"
+								onClick={() => {
+									const { SettingsModal } = require('@/ui/view/SettingsModal');
+									new SettingsModal(AppContext.getInstance()).open();
+								}}
+							>
+								Open Settings
+							</span>
+						)}
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };
