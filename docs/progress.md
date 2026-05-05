@@ -28,6 +28,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | Q. Onboarding & Native Module | NativeModuleManager + Setup Wizard + SQLite 懒加载 | 完成 |
 | R. Streaming 内存修复 | 6 条流式路径 RAF 节流 + O(n²)→O(n) 内存优化 | 完成 (17 files) |
 | S. UI 稳定性批量修复 | 15 个 RC 全量修复：错误处理/Chat UI/AI 列表/Copilot/Settings/Profile-Model/Quick Actions | 完成 (7 waves, 9 commits) |
+| T. Vercel AI SDK 恢复 | 双轨 dispatch + Chat role + 模型路由修复 + 白闪修复 + typewriter 流式 | 完成 (12 commits) |
 
 ## Next
 
@@ -52,6 +53,12 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] ~~**P2**：CodeMirrorInput .select() TypeError~~ — 已修复（Phase S Wave E: forwardRef 类型补全 + ?.）
 - [x] ~~**P2**：Profile-Role-Model 绑定过简（toggle-only）~~ — 已修复（Phase S Wave F: RoleConfig + per-role model dropdown）
 - [x] ~~**P2**：Local Chromium 功能 0% 但 UI 存在~~ — 已修复（Phase S Wave E: 移除选项）
+
+### 0.5 待修 Bug / UI 调整
+
+- [ ] **Chat Outline**: 去掉消息区域内的 OUTLINE 面板（无用的消息列表），保留侧边栏 Conversation Outline（自动聚合 topic）
+- [ ] **换模型重新输出**: 每条 AI 消息可选择不同模型重新生成，新回复出现在下方（非替换）
+- [ ] **Settings hover 效果验证**: pktw-root 修复后需验证所有 pk-* 颜色在 Settings 页生效
 
 ### 1. 真机验证
 
@@ -221,6 +228,23 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-05 (Session 9)
+- Done: **Phase T — Vercel AI SDK 恢复 + Chat 修复** (12 commits)
+  - Vercel AI SDK 恢复：3 新文件 (provider-factory, vercel-adapter, index) + 恢复 npm deps (ai, @ai-sdk/*)
+  - 双轨 dispatch：Anthropic → Agent SDK, 其他 provider → Vercel AI SDK, 无有效 key 时 fallback 到 Agent SDK
+  - Chat role：ProfileRegistry 新增 activeChatConfig + StatusBar 第 4 个 selector chip
+  - Settings pktw-root 修复：PluginSettingTab 缺少 pktw-root class → 所有 pk-* CSS 变量在 Settings 页不可用
+  - CSS 变量 opacity 修复：Tailwind v3 的 `/10` opacity modifier 对 CSS 变量 hex 颜色无效 → 改用预计算 muted 色
+  - 模型路由修复：新会话的 selectedModel/initialSelectedModel 断连 → 加 fallback chain (store → chat profile → default)
+  - 每条消息独立模型元数据：从当前 UI 选择解析，支持中途换模型
+  - 白闪修复：completeStreaming → addMessage 时序间隙 → 新增 commitStreamingMessage 原子操作
+  - 内容重复修复：Agent SDK 发 stream_event + assistant 两种消息 → hasPartialMessages:true 跳过 assistant 文本
+  - Reasoning 样式：去重 Obsidian button 边框 + 斜体左竖线 + 左对齐
+  - ToolCallSummary：pk-* CSS 变量 + context-pipeline 工具名标签
+  - Typewriter streaming：chunk 到达后逐字符匀速释放，动态速率（3~remaining/8 chars/frame）
+- Plan: `docs/superpowers/plans/2026-05-05-restore-vercel-ai-sdk.md`
+- Next: 去掉消息区 OUTLINE 面板 + 换模型重新输出功能 + Settings hover 验证
 
 ### 2026-05-03 (Session 8)
 - Done: **Phase S — UI 稳定性批量修复** (15 RC, 7 waves, 9 commits)
