@@ -21,7 +21,7 @@ export interface ChatSubmitOptions {
 export function useChatSubmit() {
 	const { app, manager } = useServiceContext();
 	const { streamChat, updateConv } = useStreamChat();
-	const { addMessage: addMessageToStore } = useChatDataStore();
+	const { addMessage: addMessageToStore, commitStreamingMessage } = useChatDataStore();
 
 	// AbortController for canceling streaming
 	const abortControllerRef = useRef<AbortController | null>(null);
@@ -49,8 +49,9 @@ export function useChatSubmit() {
 			},
 		});
 
-		addMessageToStore(message);
-	}, [manager, addMessageToStore]);
+		// Use commitStreamingMessage for atomic streaming→saved transition (no flash)
+		commitStreamingMessage(message);
+	}, [manager, commitStreamingMessage]);
 
 	/**
 	 * Ensure conversation exists, create if needed.
@@ -201,7 +202,6 @@ export function useChatSubmit() {
 			);
 
 			// Update UI immediately with assistant message (don't reload from file to avoid timing issues)
-			// The file will be written in the background, and will be loaded correctly when conversation is opened next time
 			const conversationWithAssistantMessage: ChatConversation = {
 				...conversationWithUserMessage,
 				messages: [...(conversationWithUserMessage.messages || []), streamResult.finalMessage],
@@ -210,8 +210,10 @@ export function useChatSubmit() {
 					updatedAtTimestamp: Date.now(),
 				},
 			};
-			console.debug('[useChatSubmit] Updating conversation with assistant message:', conversationWithAssistantMessage.messages.length, 'messages');
 			updateConv(conversationWithAssistantMessage);
+		} else {
+			// No final message — clear streaming state as fallback
+			useChatDataStore.getState().clearStreaming();
 		}
 		// Note: manager and updateConv are intentionally omitted from dependencies
 		// manager is a stable reference from context, updateConv is from useStreamChat hook

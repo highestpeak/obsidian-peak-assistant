@@ -82,6 +82,7 @@ interface ChatDataActions {
 	startStreaming: (messageId: string, role: ChatMessage['role']) => void;
 	appendStreamingDelta: (delta: string) => void;
 	completeStreaming: (message: ChatMessage) => void;
+	commitStreamingMessage: (message: ChatMessage) => void;
 	clearStreaming: () => void;
 
 	// ── Reasoning actions ──
@@ -233,17 +234,25 @@ export const useChatDataStore = create<ChatDataStore>((set, get) => ({
 	},
 
 	completeStreaming: (_message: ChatMessage) => {
-		// Flush final content
+		// Flush final content but keep streamingMessageId alive
+		// so the streaming bubble stays visible until commitStreamingMessage replaces it
 		if (_chatStreamBuf.text) {
 			set({ streamingContent: _chatStreamBuf.text });
 		}
 		_resetChatStreamBuf();
-		set({
+		set({ isStreaming: false });
+	},
+
+	/** Atomically transition from streaming bubble → saved message. No flash. */
+	commitStreamingMessage: (message: ChatMessage) => {
+		_resetChatStreamBuf();
+		set((s) => ({
+			messages: [...s.messages, message],
 			streamingMessageId: null,
 			streamingContent: '',
 			streamingRole: null,
 			isStreaming: false,
-		});
+		}));
 	},
 
 	clearStreaming: () => {

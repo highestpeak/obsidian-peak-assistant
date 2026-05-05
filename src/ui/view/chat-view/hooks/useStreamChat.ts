@@ -296,9 +296,8 @@ export function useStreamChat() {
 				streamError
 			);
 		} finally {
-			// Ensure all streaming states are cleared regardless of how the function exits
-			// This handles cases where the stream ends unexpectedly without proper cleanup
-			messageStore.clearStreaming();
+			// Clear reasoning and tool calls; streaming state is kept alive
+			// until commitStreamingMessage() atomically swaps it for the saved message
 			messageStore.clearReasoning();
 			messageStore.clearToolCalls();
 		}
