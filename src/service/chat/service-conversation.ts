@@ -198,12 +198,19 @@ export class ConversationService {
 			// Get the final return value
 			prepared = result.value;
 
-			// Dual dispatch: Vercel AI SDK for non-Claude, Agent SDK for Anthropic
+			// Dual dispatch: resolve profile from per-conversation provider, then route
 			const registry = ProfileRegistry.getInstance();
-			const chatConfig = registry.getActiveChatConfig();
-			if (!chatConfig) throw new Error('No active AI profile configured. Please set up a profile in Settings → Profiles.');
+			const convProvider = prepared.provider;  // e.g. 'openrouter', 'anthropic', 'ollama'
+			const convModelId = prepared.modelId;    // e.g. 'gpt-5-mini', 'claude-opus-4-6'
 
-			const { profile, modelId } = chatConfig;
+			// Find a profile matching the conversation's provider kind
+			const allProfiles = registry.getAllProfiles();
+			const matchingProfile = allProfiles.find(p => p.kind === convProvider && p.enabled !== false);
+			const chatConfig = registry.getActiveChatConfig();
+			const profile = matchingProfile ?? chatConfig?.profile;
+			if (!profile) throw new Error('No active AI profile configured. Please set up a profile in Settings → Profiles.');
+			const modelId = convModelId || chatConfig?.modelId || profile.primaryModel;
+
 			const isAgentSdkProfile = profile.kind === 'anthropic' || profile.kind === 'openrouter';
 
 			if (isAgentSdkProfile) {
