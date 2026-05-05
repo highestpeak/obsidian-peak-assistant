@@ -133,6 +133,7 @@ export const ReasoningTrigger = memo(
       <CollapsibleTrigger
         className={cn(
           "pktw-flex pktw-w-full pktw-items-center pktw-gap-2 pktw-text-muted-foreground pktw-text-sm pktw-transition-colors hover:pktw-text-foreground",
+          "pktw-bg-transparent pktw-shadow-none pktw-border-0 pktw-p-0 pktw-cursor-pointer",
           className
         )}
         {...props}
@@ -164,8 +165,8 @@ export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => (
     <CollapsibleContent
       className={cn(
-        "pktw-mt-4 pktw-text-sm",
-        "data-[state=closed]:pktw-fade-out-0 data-[state=closed]:pktw-slide-out-to-top-2 data-[state=open]:pktw-slide-in-from-top-2 pktw-text-muted-foreground pktw-outline-none data-[state=closed]:pktw-animate-out data-[state=open]:pktw-animate-in",
+        "pktw-mt-2 pktw-text-sm pktw-italic pktw-border-l-2 pktw-border-pk-border pktw-pl-3",
+        "data-[state=closed]:pktw-fade-out-0 data-[state=closed]:pktw-slide-out-to-top-2 data-[state=open]:pktw-slide-in-from-top-2 pktw-text-pk-foreground-faint pktw-outline-none data-[state=closed]:pktw-animate-out data-[state=open]:pktw-animate-in",
         className
       )}
       {...props}

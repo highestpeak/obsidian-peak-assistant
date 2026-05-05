@@ -13,6 +13,9 @@ const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
 	explore_folder: { label: 'Explored folder', icon: '\uD83D\uDCC1' },
 	submit_plan: { label: 'Submitted plan', icon: '\uD83D\uDCCB' },
 	submit_final_answer: { label: 'Finished', icon: '\u2705' },
+	'context-pipeline:assemble': { label: 'Building context', icon: '\uD83D\uDCE6' },
+	'context-pipeline:build-slots': { label: 'Preparing slots', icon: '\uD83E\uDDE9' },
+	'context-pipeline:budget-govern': { label: 'Budget check', icon: '\uD83D\uDCCA' },
 };
 
 function getToolDisplay(toolName: string) {
@@ -46,7 +49,7 @@ export const ToolCallSummary: React.FC<Props> = ({ toolCalls, isStreaming }) => 
 		const inputPreview = typeof active.input === 'string' ? active.input
 			: active.input?.query ?? active.input?.note_path ?? active.input?.start_note_path ?? '';
 		return (
-			<div className="pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-bg-accent/10 pktw-border pktw-border-accent/25 pktw-text-[11px] pktw-text-muted-foreground pktw-mb-1.5">
+			<div className="pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-bg-pk-accent-muted pktw-border pktw-border-pk-border pktw-text-[11px] pktw-text-muted-foreground pktw-mb-1.5">
 				<span className="pktw-animate-pulse">{display.icon}</span>
 				<span>{display.label}</span>
 				{inputPreview && <span className="pktw-font-medium pktw-text-foreground">{String(inputPreview).slice(0, 40)}</span>}
@@ -60,7 +63,7 @@ export const ToolCallSummary: React.FC<Props> = ({ toolCalls, isStreaming }) => 
 	return (
 		<div className="pktw-mb-1.5">
 			<div
-				className="pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-bg-secondary pktw-border pktw-border-border pktw-text-[11px] pktw-text-muted-foreground pktw-cursor-pointer hover:pktw-bg-muted pktw-transition-colors"
+				className="pktw-inline-flex pktw-items-center pktw-gap-1.5 pktw-px-2.5 pktw-py-1 pktw-rounded-md pktw-bg-pk-background-secondary pktw-border pktw-border-pk-border pktw-text-[11px] pktw-text-muted-foreground pktw-cursor-pointer hover:pktw-bg-pk-hover pktw-transition-colors"
 				onClick={() => setExpanded(!expanded)}
 			>
 				<span>{'\u2699\uFE0F'}</span>
