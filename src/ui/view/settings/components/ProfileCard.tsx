@@ -99,14 +99,14 @@ function MoreMenu({ profile, onToggleEnabled, onDelete }: {
                 <div className="pktw-absolute pktw-right-0 pktw-top-full pktw-mt-1 pktw-z-50 pktw-min-w-[130px] pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-popover pktw-shadow-lg pktw-py-1">
                     <button
                         type="button"
-                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs hover:pktw-bg-pk-accent/10 pktw-transition-colors"
+                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none hover:pktw-bg-pk-accent/10 pktw-transition-colors"
                         onClick={(e) => { e.stopPropagation(); onToggleEnabled(profile.id); setOpen(false); }}
                     >
                         {profile.enabled ? 'Disable' : 'Enable'}
                     </button>
                     <button
                         type="button"
-                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-red-500 hover:pktw-bg-red-500/10 pktw-transition-colors"
+                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-red-500 pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none hover:pktw-bg-red-500/10 pktw-transition-colors"
                         onClick={(e) => { e.stopPropagation(); onDelete(profile.id); setOpen(false); }}
                     >
                         Delete
@@ -151,7 +151,7 @@ export function ProfileCard({
 
     return (
         <div className={cn(
-            'pktw-border pktw-rounded-lg pktw-overflow-hidden pktw-transition-all',
+            'pktw-border pktw-rounded-lg pktw-transition-all',
             isActive ? 'pktw-border-pk-accent' : 'pktw-border-pk-border',
             !profile.enabled && 'pktw-opacity-45',
         )}>
@@ -284,7 +284,7 @@ export function ProfileCard({
                             label="Use as Agent"
                             active={isActiveAgent}
                             selectedModel={ProfileRegistry.getInstance().getActiveAgentConfig()?.modelId}
-                            availableModels={[profile.primaryModel, profile.fastModel].filter(Boolean)}
+                            providerKind={profile.kind}
                             onToggle={() => onToggleAgent(profile.id)}
                             onModelChange={(modelId) => ProfileRegistry.getInstance().setActiveAgentConfig({ profileId: profile.id, modelId })}
                         />
@@ -292,7 +292,7 @@ export function ProfileCard({
                             label="Use as Embedding"
                             active={isActiveEmbedding}
                             selectedModel={ProfileRegistry.getInstance().getActiveEmbeddingConfig()?.modelId}
-                            availableModels={[profile.embeddingModel, profile.primaryModel].filter((m): m is string => !!m)}
+                            providerKind={profile.kind}
                             onToggle={() => onToggleEmbedding(profile.id)}
                             onModelChange={(modelId) => ProfileRegistry.getInstance().setActiveEmbeddingConfig({ profileId: profile.id, modelId })}
                         />
@@ -300,7 +300,7 @@ export function ProfileCard({
                             label="Use as Web Search"
                             active={isActiveWebSearch}
                             selectedModel={ProfileRegistry.getInstance().getActiveWebSearchConfig()?.modelId}
-                            availableModels={[profile.primaryModel, profile.fastModel].filter(Boolean)}
+                            providerKind={profile.kind}
                             onToggle={() => onToggleWebSearch(profile.id)}
                             onModelChange={(modelId) => ProfileRegistry.getInstance().setActiveWebSearchConfig({ profileId: profile.id, modelId })}
                         />
@@ -315,9 +315,9 @@ export function ProfileCard({
 // Role selector (toggle + model dropdown)
 // ---------------------------------------------------------------------------
 
-function RoleSelector({ label, active, selectedModel, availableModels, onToggle, onModelChange }: {
+function RoleSelector({ label, active, selectedModel, providerKind, onToggle, onModelChange }: {
     label: string; active: boolean; selectedModel?: string;
-    availableModels: string[]; onToggle: () => void; onModelChange: (modelId: string) => void;
+    providerKind: ProfileKind; onToggle: () => void; onModelChange: (modelId: string) => void;
 }) {
     return (
         <div className="pktw-flex pktw-items-center pktw-gap-2">
@@ -343,16 +343,14 @@ function RoleSelector({ label, active, selectedModel, availableModels, onToggle,
                 </span>
                 {label}
             </button>
-            {active && availableModels.length > 0 && (
-                <select
+            {active && (
+                <ModelCombobox
                     value={selectedModel ?? ''}
-                    onChange={(e) => onModelChange(e.target.value)}
-                    className="pktw-text-xs pktw-bg-transparent pktw-border pktw-border-pk-border pktw-rounded pktw-px-2 pktw-py-1 pktw-text-pk-foreground"
-                >
-                    {availableModels.map(m => (
-                        <option key={m} value={m}>{m}</option>
-                    ))}
-                </select>
+                    onChange={onModelChange}
+                    providerKind={providerKind}
+                    allowFreeText
+                    placeholder="Select model..."
+                />
             )}
         </div>
     );

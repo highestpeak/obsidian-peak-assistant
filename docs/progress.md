@@ -27,6 +27,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | P. Copilot Doc Intelligence | #42 polish, #33 review, #38 links, #36 split | 完成 (9 tasks, 4 commands, 4 panels, 8 prompts) |
 | Q. Onboarding & Native Module | NativeModuleManager + Setup Wizard + SQLite 懒加载 | 完成 |
 | R. Streaming 内存修复 | 6 条流式路径 RAF 节流 + O(n²)→O(n) 内存优化 | 完成 (17 files) |
+| S. UI 稳定性批量修复 | 15 个 RC 全量修复：错误处理/Chat UI/AI 列表/Copilot/Settings/Profile-Model/Quick Actions | 完成 (7 waves, 9 commits) |
 
 ## Next
 
@@ -37,9 +38,24 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - [x] ~~**P1**：Onboarding 按钮颜色偏暗~~ — 已修复（`background` 已改为 `var(--background-primary)`）
 - [x] ~~**P1**：AI Analysis mode dropdown "Vault Analysis" 图标缺失~~ — 已修复（Brain → Library）
 - [x] ~~**P2**：PatternDiscovery 无有效 profile 时仍可能启动~~ — 已修复（`onAnalysisComplete()` 已有 profile 检查）
+- [x] ~~**P0**：collectJson 无错误检测 → 401 auth 错误显示为 "Unexpected token 'I'"~~ — 已修复（Phase S Wave A: typed error classes + collectText/Json 加固）
+- [x] ~~**P0**：AI Analysis 865 条全量加载 → 白屏崩溃~~ — 已修复（Phase S Wave C: 搜索过滤 + 懒加载 + content-visibility）
+- [x] ~~**P1**：VaultSearchAgent max turns → "Oops!" 错误~~ — 已修复（Phase S Wave A: MaxTurnsError graceful degradation）
+- [x] ~~**P1**：MessageStyleButtons 是 console.log 占位符~~ — 已修复（Phase S Wave B: 接线到 submitAction）
+- [x] ~~**P1**：错误消息显示 Regenerate + Style 按钮~~ — 已修复（Phase S Wave B: isErrorMessage 守卫）
+- [x] ~~**P1**：Chat 中 AI Analysis 不渲染 Markdown~~ — 已修复（Phase S Wave B: isMarkdownContent + StreamdownIsolated）
+- [x] ~~**P1**：Tag Suggestion 幽灵命令（schema 断线）~~ — 已修固（Phase S Wave D: schema + command + modal route）
+- [x] ~~**P1**：Copilot 缺专属入口 Modal~~ — 已修复（Phase S Wave D: CopilotPickerModal）
+- [x] ~~**P1**：Model 选择无 Auto 默认~~ — 已修复（Phase S Wave F: auto-select from active profile）
+- [x] ~~**P1**：Recent AI Analysis 无搜索过滤~~ — 已修复（Phase S Wave C: typing filters, Enter analyzes）
+- [x] ~~**P1**：Quick action 按钮是空占位符~~ — 已修复（Phase S Wave G: 接线到 submitAction）
+- [x] ~~**P2**：CodeMirrorInput .select() TypeError~~ — 已修复（Phase S Wave E: forwardRef 类型补全 + ?.）
+- [x] ~~**P2**：Profile-Role-Model 绑定过简（toggle-only）~~ — 已修复（Phase S Wave F: RoleConfig + per-role model dropdown）
+- [x] ~~**P2**：Local Chromium 功能 0% 但 UI 存在~~ — 已修复（Phase S Wave E: 移除选项）
 
 ### 1. 真机验证
 
+- [ ] Phase S 验证：15 个 RC 全量测试（错误处理、Chat UI、AI 列表过滤、Copilot Picker、Profile Model 选择、Quick Actions）
 - [ ] Chat 全流程：Onboarding → 配置 Profile → 新建会话 → 发消息 → 收到回复 → 切换模型
 - [ ] Provider v2 全流程：Profile CRUD → Set Active → Chat/Search/Agent 全部走 Agent SDK
 - [ ] AI Analysis 全流程：查询 → Plan → Report → Graph → 后台 Session → Restore
@@ -205,6 +221,19 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-03 (Session 8)
+- Done: **Phase S — UI 稳定性批量修复** (15 RC, 7 waves, 9 commits)
+  - Wave A: typed LLM error classes (AuthenticationError/LLMResponseError/MaxTurnsError) + collectText/Json 加固 + VaultSearchAgent MaxTurns graceful degradation
+  - Wave B: isMarkdownContent 字段 + AI Analysis 导入 Markdown 渲染 + MessageStyleButtons 接线到 submitAction + 错误消息 suppress Regenerate/Style + "Open Settings" 链接
+  - Wave C: AIAnalysisRepo search/searchCount + RecentAnalysisList 搜索过滤 + content-visibility 虚拟化 + SearchModal 输入过滤历史/Enter 启动分析
+  - Wave D: tagSuggestionsSchema + suggest-tags 命令 + CopilotResultModal 三阶段(loading/result/error) + queryTextStream 流式 + Polish 流式渲染 + CopilotPickerModal 统一入口
+  - Wave E: tab 背景统一 + provider hover 效果 + CodeMirrorInput select 类型修复 + 移除 Local Chromium + 删除冗余 power-user banner
+  - Wave F: RoleConfig 类型 + ProfileRegistry 迁移(向后兼容) + RoleSelector per-role model dropdown + auto-select model from active profile + ProviderIcon avatar
+  - Wave G: Quick action 按钮接线 + ConversationOutline stripMarkdown
+- Spec: `docs/superpowers/specs/2026-05-03-ui-stability-batch-fix-design.md`
+- Plan: `docs/superpowers/plans/2026-05-03-ui-stability-batch-fix.md`
+- Next: 真机验证全部 15 个修复
 
 ### 2026-05-01 (Session 7)
 - Done: Bug 清理 — 确认 4 个已知 bug 已修复，补 1 个图标修复
@@ -511,6 +540,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | settings-redesign | 04-25 | COMPLETED |
 | agent-trace-observability | 04-22 | COMPLETED |
 | graph-layout-fix | 05-01 | COMPLETED |
+| ui-stability-batch-fix | 05-03 | COMPLETED |
 | milestone-based-persistence | 04-20 | MOSTLY DONE (核心函数存在，4 触发点待验证) |
 | per-section-report-v2 | 04-13 | SUPERSEDED |
 | v2-report-quality-and-ui-fixes | 04-13 | SUPERSEDED |

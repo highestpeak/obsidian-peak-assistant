@@ -28,7 +28,7 @@ import {
 } from './vault-sdk/vaultMcpServer';
 import { buildWebSearchMcpServer } from './vault-sdk/webSearchTool';
 import { translateSdkMessage } from './core/sdkMessageAdapter';
-import { MaxTurnsError } from '@/core/errors/llm-errors';
+
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { TraceSink } from '@/core/telemetry/traceSink';
 
@@ -250,9 +250,6 @@ export class VaultSearchAgentSDK {
                 'mcp__vault__vault_grep',
                 'mcp__vault__vault_wikilink_expand',
                 'mcp__vault__vault_submit_plan',
-                'mcp__vault__get_activity_detail',
-                'mcp__vault__get_recent_analysis',
-                'mcp__vault__get_working_theme',
             ];
             const mcpServers: Record<string, unknown> = { vault: vaultMcpServer };
             if (webMcpServer) {
@@ -314,7 +311,8 @@ export class VaultSearchAgentSDK {
                 }
             }
         } catch (err) {
-            if (err instanceof MaxTurnsError) {
+            const errMsg = (err as Error)?.message ?? '';
+            if (errMsg.toLowerCase().includes('maximum number of turns')) {
                 console.warn('[VaultSearchAgentSDK] max turns reached, emitting partial results');
                 yield {
                     type: 'complete',
