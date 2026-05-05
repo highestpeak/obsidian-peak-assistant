@@ -157,7 +157,7 @@ export function StatusBar() {
     const sqliteReady = sqliteStoreManager.isInitialized();
 
     return (
-        <div className="pktw-flex pktw-gap-2.5 pktw-mb-5 pktw-flex-wrap">
+        <div className="pktw-flex pktw-gap-2.5 pktw-mt-4 pktw-mb-5 pktw-flex-wrap">
             <RoleSelectorChip
                 role="agent"
                 label="Agent"
