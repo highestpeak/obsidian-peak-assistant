@@ -31,6 +31,7 @@ export class MySettings extends PluginSettingTab {
 
 		// Empty container after unmounting
 		containerEl.empty();
+		containerEl.addClass('pktw-root');
 
 		// Render the complete settings UI using SettingsRoot component with service context
 		this.settingsRenderer = new ReactRenderer(containerEl);
