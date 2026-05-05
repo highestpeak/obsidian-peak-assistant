@@ -198,23 +198,29 @@ export class ConversationService {
 			// Get the final return value
 			prepared = result.value;
 
-			// Dual dispatch: resolve profile from per-conversation provider, then route
+			// Dual dispatch: Agent SDK for pure Anthropic, Vercel AI SDK for everything else
 			const registry = ProfileRegistry.getInstance();
-			const convProvider = prepared.provider;  // e.g. 'openrouter', 'anthropic', 'ollama'
-			const convModelId = prepared.modelId;    // e.g. 'gpt-5-mini', 'claude-opus-4-6'
+			const convProvider = prepared.provider;
+			const convModelId = prepared.modelId;
 
-			// Find a profile matching the conversation's provider kind
+			// Try to find a Vercel-compatible profile with a valid API key
 			const allProfiles = registry.getAllProfiles();
-			const matchingProfile = allProfiles.find(p => p.kind === convProvider && p.enabled !== false);
-			const chatConfig = registry.getActiveChatConfig();
-			const profile = matchingProfile ?? chatConfig?.profile;
-			if (!profile) throw new Error('No active AI profile configured. Please set up a profile in Settings → Profiles.');
-			const modelId = convModelId || chatConfig?.modelId || profile.primaryModel;
+			const vercelProfile = convProvider !== 'anthropic'
+				? allProfiles.find(p => p.kind === convProvider && p.enabled !== false && p.apiKey)
+				: null;
 
-			const isAgentSdkProfile = profile.kind === 'anthropic' || profile.kind === 'openrouter';
+			if (vercelProfile) {
+				// Vercel AI SDK path — provider has a configured profile with API key
+				const { vercelStreamChat } = await import('@/core/providers/vercel');
+				yield* vercelStreamChat(vercelProfile, convModelId || vercelProfile.primaryModel, {
+					messages: prepared.prompt,
+					outputControl: prepared.outputControl,
+				});
+			} else {
+				// Agent SDK fallback — use the active Agent profile (Anthropic)
+				const agentProfile = registry.getActiveAgentProfile();
+				if (!agentProfile) throw new Error('No active AI profile configured. Please set up a profile in Settings → Profiles.');
 
-			if (isAgentSdkProfile) {
-				// Agent SDK path — for Anthropic-compatible providers
 				const systemMessages = prepared.prompt.filter(m => m.role === 'system');
 				const systemPrompt = systemMessages.map(m =>
 					Array.isArray(m.content) ? m.content.map((p: any) => p.text ?? '').join('') : String(m.content)
@@ -228,20 +234,13 @@ export class ConversationService {
 				}).join('\n\n');
 
 				const ctx = AppContext.getInstance();
-				const sdkStream = queryWithProfile(ctx.app, ctx.plugin.manifest.id, profile, {
+				const sdkStream = queryWithProfile(ctx.app, ctx.plugin.manifest.id, agentProfile, {
 					prompt: userPrompt,
 					systemPrompt,
 					maxTurns: 1,
 					allowedTools: [],
 				});
 				yield* translateSdkMessages(sdkStream);
-			} else {
-				// Vercel AI SDK path — for all other providers
-				const { vercelStreamChat } = await import('@/core/providers/vercel');
-				yield* vercelStreamChat(profile, modelId, {
-					messages: prepared.prompt,
-					outputControl: prepared.outputControl,
-				});
 			}
 		})();
 	}
