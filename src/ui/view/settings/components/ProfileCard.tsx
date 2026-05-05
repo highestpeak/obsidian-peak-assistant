@@ -99,14 +99,14 @@ function MoreMenu({ profile, onToggleEnabled, onDelete }: {
                 <div className="pktw-absolute pktw-right-0 pktw-top-full pktw-mt-1 pktw-z-50 pktw-min-w-[130px] pktw-rounded-md pktw-border pktw-border-pk-border pktw-bg-popover pktw-shadow-lg pktw-py-1">
                     <button
                         type="button"
-                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-cursor-pointer pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors hover:!pktw-bg-pk-accent/10"
+                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-cursor-pointer pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors hover:pktw-bg-pk-accent-muted"
                         onClick={(e) => { e.stopPropagation(); onToggleEnabled(profile.id); setOpen(false); }}
                     >
                         {profile.enabled ? 'Disable' : 'Enable'}
                     </button>
                     <button
                         type="button"
-                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-red-500 pktw-cursor-pointer pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors hover:!pktw-bg-red-500/10"
+                        className="pktw-w-full pktw-text-left pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-red-500 pktw-cursor-pointer pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors hover:pktw-bg-pk-error-muted"
                         onClick={(e) => { e.stopPropagation(); onDelete(profile.id); setOpen(false); }}
                     >
                         Delete

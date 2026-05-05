@@ -94,7 +94,7 @@ function RoleSelectorChip({ role, label, activeConfig, profiles, onSelect, onCle
                                             className={cn(
                                                 'pktw-w-full pktw-text-left pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1 pktw-text-xs pktw-border-0 pktw-bg-transparent pktw-shadow-none pktw-rounded-none pktw-transition-colors',
                                                 isSelected
-                                                    ? 'pktw-bg-pk-accent/10 pktw-text-pk-accent pktw-font-medium'
+                                                    ? 'pktw-bg-pk-accent-muted pktw-text-pk-accent pktw-font-medium'
                                                     : 'pktw-text-pk-foreground hover:pktw-bg-gray-50 dark:hover:pktw-bg-white/5',
                                             )}
                                             onClick={() => {
