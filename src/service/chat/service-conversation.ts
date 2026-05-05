@@ -240,7 +240,7 @@ export class ConversationService {
 					maxTurns: 1,
 					allowedTools: [],
 				});
-				yield* translateSdkMessages(sdkStream);
+				yield* translateSdkMessages(sdkStream, { hasPartialMessages: true });
 			}
 		})();
 	}
