@@ -248,7 +248,7 @@ const AITabContent: React.FC<AITabContentProps> = ({ onClose, activeTab, setActi
 												>
 													<div className={cn(
 														'pktw-w-7 pktw-h-7 pktw-rounded-md pktw-flex pktw-items-center pktw-justify-center pktw-shrink-0',
-														analysisMode === p ? 'pktw-bg-pk-accent pktw-text-white' : 'pktw-bg-[#f3f4f6] pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border'
+														analysisMode === p ? 'pktw-bg-[#7c3aed] pktw-text-white' : 'pktw-bg-[#f3f4f6] pktw-text-pk-foreground-muted pktw-border pktw-border-pk-border'
 													)}>
 														<Icon className="pktw-w-3.5 pktw-h-3.5" />
 													</div>

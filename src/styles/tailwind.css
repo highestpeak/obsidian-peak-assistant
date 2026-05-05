@@ -91,6 +91,7 @@
 	border-bottom: 1px solid var(--background-modifier-border);
 	margin-bottom: 0;
 	padding: 0;
+	background-color: var(--background-primary);
 }
 
 .peak-settings-tab-item {

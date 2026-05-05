@@ -300,20 +300,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 					{(!shouldShowLoader && displayContent) ? (
 						/* Has content (either streaming or complete) - render content */
 						<div className="pktw-relative">
-							{
-								isUser && !message.isMarkdownContent ? (
-									<div className="pktw-select-text">
-										{displayText}
-									</div>
-								) : (
-									<StreamdownIsolated
-										className="pktw-select-text"
-										isAnimating={streamingState.isStreaming}
-									>
-										{displayText}
-									</StreamdownIsolated>
-								)
-							}
+							<StreamdownIsolated
+								className="pktw-select-text"
+								isAnimating={streamingState.isStreaming}
+							>
+								{displayText}
+							</StreamdownIsolated>
 							{/* Show expand/collapse button for long user messages (not streaming, not AI) */}
 							{shouldShowExpand && (
 								<Button

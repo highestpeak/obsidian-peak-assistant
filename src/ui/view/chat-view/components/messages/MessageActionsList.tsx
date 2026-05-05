@@ -123,7 +123,7 @@ export const MessageActionsList: React.FC<{
 						)}
 					</MessageAction>
 
-					{isLastMessage && !message.isErrorMessage && (
+					{isLastMessage && (
 						<MessageAction
 							tooltip="Regenerate response"
 							label="Regenerate response"
