@@ -68,15 +68,18 @@ export function useChatSubmit() {
 		const latestActiveConversation = useChatDataStore.getState().activeConversation;
 		const latestPendingConversation = useChatViewStore.getState().pendingConversation;
 		const latestInitialSelectedModel = useChatViewStore.getState().initialSelectedModel;
-		
+		// Fallback: use current UI model selection if initialSelectedModel was never set
+		const latestSelectedModel = useChatViewStore.getState().selectedModel;
+		const modelForNewConversation = latestInitialSelectedModel ?? latestSelectedModel;
+
 		let conversation = latestActiveConversation || null;
 		if (!conversation && latestPendingConversation) {
-			console.log('[useChatSubmit] creating conversation', latestPendingConversation, latestInitialSelectedModel);
+			console.log('[useChatSubmit] creating conversation', latestPendingConversation, modelForNewConversation);
 			conversation = await manager.createConversation({
 				title: latestPendingConversation.title,
 				project: latestPendingConversation.project?.meta ?? null,
-				modelId: latestInitialSelectedModel?.modelId,
-				provider: latestInitialSelectedModel?.provider,
+				modelId: modelForNewConversation?.modelId,
+				provider: modelForNewConversation?.provider,
 				conversationType: latestPendingConversation.conversationType,
 			});
 			useChatViewStore.getState().setInitialSelectedModel(null);
