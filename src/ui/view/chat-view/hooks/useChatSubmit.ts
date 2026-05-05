@@ -160,12 +160,20 @@ export function useChatSubmit() {
 		// Show user message immediately in UI using tempConversation
 		// We already have the userMessage object and know it's been saved, so we can construct
 		// the conversation directly without reloading from storage (faster for better UX)
+		// Resolve actual model for this message: store selection → chat profile → conversation meta
+		const currentSelectedModel = useChatViewStore.getState().selectedModel;
+		const currentChatConfig = ProfileRegistry.getInstance().getActiveChatConfig();
+		const actualModel = currentSelectedModel?.modelId ?? currentChatConfig?.modelId ?? conversation.meta.activeModel;
+		const actualProvider = currentSelectedModel?.provider ?? (currentChatConfig ? currentChatConfig.profile.kind : null) ?? conversation.meta.activeProvider;
+
 		const conversationWithUserMessage: ChatConversation = {
 			...conversation,
 			messages: [...(conversation.messages || []), userMessage],
 			meta: {
 				...conversation.meta,
-				updatedAtTimestamp: Date.now(), // Update timestamp since we just added a message
+				activeModel: actualModel,
+				activeProvider: actualProvider,
+				updatedAtTimestamp: Date.now(),
 			},
 		};
 		console.debug('[useChatSubmit] Updating conversation with user message:', conversationWithUserMessage.messages.length, 'messages');
