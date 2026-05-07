@@ -23,6 +23,7 @@ import { AppContext } from '@/app/context/AppContext';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { buildCopilotCommands } from './copilot-commands';
 import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
+import { registerAllCopilotActions } from '@/service/copilot/actions';
 import { SettingsModal } from '@/ui/view/SettingsModal';
 import { VAULT_XRAY_VIEW_TYPE } from '@/ui/view/vault-xray/VaultXRayView';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
@@ -737,7 +738,7 @@ export function buildCoreCommands(
 			  })
 			: []),
 		...buildSystemCommands({ settings, viewManager, aiManager }),
-		...buildCopilotCommands(viewManager, aiManager),
+		...(registerAllCopilotActions(), buildCopilotCommands()),
 		{
 			id: 'peak-copilot-open',
 			name: 'Open Copilot Panel',
