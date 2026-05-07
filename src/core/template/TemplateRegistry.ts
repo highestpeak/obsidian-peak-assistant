@@ -212,6 +212,38 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 	'doc-split-suggestion-system': meta('prompts', 'doc-split-suggestion-system'),
 	'doc-suggest-tags': meta('prompts', 'doc-suggest-tags', { expectsJson: true, systemPromptId: 'doc-suggest-tags-system' as PromptId }),
 	'doc-suggest-tags-system': meta('prompts', 'doc-suggest-tags-system'),
+	'doc-summarize': meta('prompts', 'doc-summarize', { systemPromptId: 'doc-summarize-system' as PromptId }),
+	'doc-summarize-system': meta('prompts', 'doc-summarize-system'),
+	'doc-extract-concepts': meta('prompts', 'doc-extract-concepts', { expectsJson: true, systemPromptId: 'doc-extract-concepts-system' as PromptId }),
+	'doc-extract-concepts-system': meta('prompts', 'doc-extract-concepts-system'),
+	'doc-translate': meta('prompts', 'doc-translate', { systemPromptId: 'doc-translate-system' as PromptId }),
+	'doc-translate-system': meta('prompts', 'doc-translate-system'),
+
+	// Copilot Vault Intelligence
+	'vault-knowledge-gaps': meta('prompts', 'vault-knowledge-gaps', { expectsJson: true, systemPromptId: 'vault-knowledge-gaps-system' as PromptId }),
+	'vault-knowledge-gaps-system': meta('prompts', 'vault-knowledge-gaps-system'),
+	'vault-synthesize': meta('prompts', 'vault-synthesize', { systemPromptId: 'vault-synthesize-system' as PromptId }),
+	'vault-synthesize-system': meta('prompts', 'vault-synthesize-system'),
+	'vault-health': meta('prompts', 'vault-health', { expectsJson: true, systemPromptId: 'vault-health-system' as PromptId }),
+	'vault-health-system': meta('prompts', 'vault-health-system'),
+
+	// Copilot Writing Assistance
+	'writing-continue': meta('prompts', 'writing-continue', { systemPromptId: 'writing-continue-system' as PromptId }),
+	'writing-continue-system': meta('prompts', 'writing-continue-system'),
+	'writing-rewrite': meta('prompts', 'writing-rewrite', { systemPromptId: 'writing-rewrite-system' as PromptId }),
+	'writing-rewrite-system': meta('prompts', 'writing-rewrite-system'),
+	'writing-add-evidence': meta('prompts', 'writing-add-evidence', { expectsJson: true, systemPromptId: 'writing-add-evidence-system' as PromptId }),
+	'writing-add-evidence-system': meta('prompts', 'writing-add-evidence-system'),
+
+	// Chat intelligence
+	'chat-topic-aggregation': meta('prompts', 'chat-topic-aggregation', {
+		expectsJson: true,
+		jsonConstraint: 'Return only the JSON array of topic groups, nothing else.',
+	}),
+	'chat-suggest-followups': meta('prompts', 'chat-suggest-followups', {
+		expectsJson: true,
+		jsonConstraint: 'Return only the JSON array of suggestion strings, nothing else.',
+	}),
 
 	// Ambient context / session intelligence
 	'working-theme-inference': meta('prompts', 'working-theme-inference', { expectsJson: true, jsonConstraint: 'Return only the JSON object with summary and relatedFiles, nothing else.' }),
