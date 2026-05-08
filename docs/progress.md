@@ -31,6 +31,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | T. Vercel AI SDK 恢复 | 双轨 dispatch + Chat role + 模型路由修复 + 白闪修复 + typewriter 流式 | 完成 (12 commits) |
 | U. Chat UI v9 + 智能功能 | Message UI 重构 + 换模型重新输出 + Topic 聚合 + Suggested Follow-ups + Outline 修复 + bug fixes | 完成 |
 | W. Copilot 扩展 | 5→15 actions，注册表架构，分组 UI + 上下文推荐，Document/Vault/Writing 三类 | 进行中 |
+| X. Model Selection 统一 | Provider 卡片简化 + Agent Fast pill + Ollama 动态模型 + baseUrl 修复 | 完成 |
 
 ## Next
 
@@ -284,6 +285,20 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-08 (Session 12)
+- Done: **Phase X — Model Selection 统一** (10 commits)
+  - **Provider 卡片简化**：删除 Primary/Fast Model 选择器 + "Use as Agent/Embedding/Web Search" 角色切换按钮 + RoleBadge，Provider 卡片只保留 Connection + Embedding 配置
+  - **Agent Fast pill**：新增第 5 个 StatusBar pill，对应 `ANTHROPIC_DEFAULT_HAIKU_MODEL` 环境变量（Agent SDK 轻量任务模型）
+  - **`toAgentSdkEnv` 重构**：从读 `profile.primaryModel/fastModel` 改为接受显式 `agentModelId + agentFastModelId`，由 `ProfileRegistry` RoleConfig 解析
+  - **Agent/Agent Fast pill 模型过滤**：只展示 `anthropic` 和 `openrouter`（`anthropic/` 前缀）的 profile 和模型，因 Agent SDK 只支持 Claude
+  - **Ollama 动态模型获取**：`fetchOllamaModels(baseUrl)` 调用 `GET /api/tags`，3s 超时，silent fail；`ModelRegistry.mergeRuntimeModels()` 合并到 catalog；Settings 页加载时自动触发
+  - **Ollama 自由输入**：ModelCombobox 对 Ollama profile 允许输入任意模型名（如 `nomic-embed-text`）
+  - **Ollama baseUrl 修复**：`provider-factory.ts` 的 `ollama()` 调用传入 `profile.baseUrl`
+  - **清理**：ProfileCard props 精简（删 6 个 prop）、ProfilesTab handlers 精简（删 3 个 handler）、131 行代码删除
+- Spec: `docs/superpowers/specs/2026-05-08-model-selection-unification-design.md`
+- Plan: `docs/superpowers/plans/2026-05-08-model-selection-unification.md`
+- Next: 真机验证 Settings 页模型选择 + Ollama 动态模型获取
 
 ### 2026-05-07 (Session 11)
 - Done: **Phase W — Copilot Panel Expansion** (20 tasks, 4 commits)
@@ -647,6 +662,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | chat-ui-redesign | 04-22 | COMPLETED |
 | copilot-document-intelligence | 04-24 | COMPLETED |
 | copilot-expansion | 05-07 | IN PROGRESS (code done, needs smoke test) |
+| model-selection-unification | 05-08 | COMPLETED |
 | ai-analysis-landing-redesign | 04-25 | COMPLETED |
 | settings-redesign | 04-25 | COMPLETED |
 | agent-trace-observability | 04-22 | COMPLETED |
