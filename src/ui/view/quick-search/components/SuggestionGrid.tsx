@@ -3,6 +3,28 @@ import { cn } from '@/ui/react/lib/utils';
 import type { MatchedSuggestion } from '@/service/context/PatternMatcher';
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Wrap quoted segments (「…」, "…", '…') in highlighted spans. */
+function highlightVariables(text: string): React.ReactNode[] {
+    const parts = text.split(/(「[^」]+」|"[^"]+"|'[^']+')/g);
+    return parts.map((part, i) => {
+        if (/^[「"']/.test(part)) {
+            return (
+                <span
+                    key={i}
+                    className="pktw-bg-[var(--pk-warning-muted)] pktw-text-[var(--pk-warning)] pktw-px-0.5 pktw-rounded-sm"
+                >
+                    {part}
+                </span>
+            );
+        }
+        return <React.Fragment key={i}>{part}</React.Fragment>;
+    });
+}
+
+// ---------------------------------------------------------------------------
 // SuggestionCard
 // ---------------------------------------------------------------------------
 
@@ -31,7 +53,7 @@ const SuggestionCard: React.FC<{
 			</span>
 			{context && (
 				<span className="pktw-text-[11.5px] pktw-text-pk-foreground-muted pktw-leading-relaxed pktw-line-clamp-2">
-					{context}
+					{highlightVariables(context)}
 				</span>
 			)}
 			{scopeTag && (
