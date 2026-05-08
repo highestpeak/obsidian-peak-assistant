@@ -13,6 +13,10 @@ export interface NavigableMenuItem {
 	showArrow?: boolean; // Whether to show a right arrow
 	value: string; // The value to insert when selected
 	disabled?: boolean;
+	/** Group label for sectioned menus (e.g. "Recent", "My Templates") */
+	group?: string;
+	/** Display metadata shown as a right-aligned badge (e.g. "1.2k words") */
+	meta?: string;
 }
 
 /**
