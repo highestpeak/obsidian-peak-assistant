@@ -52,7 +52,7 @@ export function toAgentSdkEnv(profile: SdkProfile): Record<string, string> {
 	const env: Record<string, string> = {
 		ANTHROPIC_BASE_URL: profile.baseUrl,
 		ANTHROPIC_DEFAULT_OPUS_MODEL: agentConfig?.modelId ?? profile.primaryModel,
-		ANTHROPIC_DEFAULT_HAIKU_MODEL: agentFastConfig?.modelId ?? profile.primaryModel,
+		ANTHROPIC_DEFAULT_HAIKU_MODEL: agentFastConfig?.modelId ?? profile.fastModel,
 		ANTHROPIC_DEFAULT_SONNET_MODEL: agentConfig?.modelId ?? profile.primaryModel,
 	};
 

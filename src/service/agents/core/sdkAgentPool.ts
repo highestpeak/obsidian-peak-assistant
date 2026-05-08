@@ -142,7 +142,7 @@ export async function* queryWithProfile(
     const agentConfig = registry.getActiveAgentConfig();
     const agentFastConfig = registry.getActiveAgentFastConfig();
     const agentModelId = agentConfig?.modelId ?? profile.primaryModel;
-    const agentFastModelId = agentFastConfig?.modelId ?? profile.primaryModel;
+    const agentFastModelId = agentFastConfig?.modelId ?? profile.fastModel;
     const profileEnv = toAgentSdkEnv(profile, agentModelId, agentFastModelId);
     const subprocessEnv: Record<string, string> = {
         ...profileEnv,
