@@ -19,6 +19,7 @@ export enum ViewEventType {
 	SEARCH_QUERY = 'search-query',
 	RESOURCE_ATTACHED = 'resource-attached',
 	AI_ANALYSIS_COMPLETE = 'ai-analysis-complete',
+	USAGE_RECORDED = 'peak:usage-recorded',
 }
 
 /**
@@ -190,6 +191,15 @@ export class SearchQueryEvent extends ViewEvent {
 	constructor(data: { query: string }) {
 		super(ViewEventType.SEARCH_QUERY);
 		this.query = data.query;
+	}
+}
+
+/**
+ * Usage recorded event — emitted after each AI call is persisted
+ */
+export class UsageRecordedViewEvent extends ViewEvent {
+	constructor(public readonly payload: import('@/service/usage/types').UsageRecordPayload) {
+		super(ViewEventType.USAGE_RECORDED);
 	}
 }
 
