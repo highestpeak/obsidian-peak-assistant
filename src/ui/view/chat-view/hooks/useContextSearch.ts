@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { getFileIcon } from '@/ui/view/shared/file-utils';
 import type { NavigableMenuItem } from '@/ui/component/mine/NavigableMenu';
 import type { SearchResultItem } from '@/service/search/types';
+import { CopilotActionRegistry } from '@/service/copilot/CopilotActionRegistry';
+import { cn } from '@/ui/react/lib/utils';
 import { useChatViewStore } from '../store/chatViewStore';
 
 const RECENT_FILES_COUNT = 3;
@@ -83,21 +85,46 @@ export function useContextSearch() {
 	}, [handleSearchContext]);
 
 	const handleSearchPrompts = useCallback(async (query: string): Promise<NavigableMenuItem[]> => {
-		const results: NavigableMenuItem[] = [];
-		if (!query.trim()) {
-			results.push(...promptsSuggest);
-		} else {
+		// Build copilot action items as built-in quick actions
+		const copilotItems: NavigableMenuItem[] = CopilotActionRegistry.getInstance().getAll().map((action) => ({
+			id: action.id,
+			label: action.label,
+			description: action.description,
+			value: action.label,
+			group: 'Quick Actions',
+			icon: (isSelected: boolean) => {
+				return React.createElement(action.icon, {
+					className: cn('pktw-w-4 pktw-h-4', isSelected ? 'pktw-text-inherit' : 'pktw-text-[var(--text-muted)]'),
+				});
+			},
+		}));
+
+		// User templates from promptsSuggest
+		const templateItems: NavigableMenuItem[] = promptsSuggest.map((p) => ({
+			...p,
+			group: p.group ?? 'My Templates',
+		}));
+
+		// Combine both lists
+		let results: NavigableMenuItem[] = [...copilotItems, ...templateItems];
+
+		// Filter by query
+		if (query.trim()) {
 			const lq = query.toLowerCase();
-			results.push(...promptsSuggest.filter((p) =>
+			results = results.filter((p) =>
 				p.label.toLowerCase().includes(lq) || p.description?.toLowerCase().includes(lq) || p.value.toLowerCase().includes(lq),
-			));
+			);
 		}
+
+		// Also search external prompts when query is present
 		if (query.trim()) {
 			try {
 				const ext = await manager.searchPrompts(query);
 				results.push(...ext);
 			} catch { /* ignore */ }
 		}
+
+		// Deduplicate by value
 		const seen = new Set<string>();
 		return results.filter((item) => {
 			if (seen.has(item.value)) return false;

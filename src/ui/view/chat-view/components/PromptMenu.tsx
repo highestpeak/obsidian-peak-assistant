@@ -125,7 +125,7 @@ export const PromptMenu: React.FC<PromptMenuProps> = ({
 	// ----- Group items -----
 	const groups = new Map<string, { item: NavigableMenuItem; globalIdx: number }[]>();
 	items.forEach((item, i) => {
-		const g = 'Quick Actions'; // All prompts in one group for now; extend with item.group if needed
+		const g = item.group ?? 'Quick Actions';
 		if (!groups.has(g)) groups.set(g, []);
 		groups.get(g)!.push({ item, globalIdx: i });
 	});
@@ -180,6 +180,18 @@ export const PromptMenu: React.FC<PromptMenuProps> = ({
 											</span>
 										)}
 									</div>
+
+									{/* Template badge for non-Quick-Actions groups */}
+									{item.group && item.group !== 'Quick Actions' && (
+										<span className={cn(
+											'pktw-ml-auto pktw-text-[8px] pktw-font-medium pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-flex-shrink-0',
+											isSelected
+												? 'pktw-bg-white/20 pktw-text-white'
+												: 'pktw-bg-[var(--pk-accent-muted,rgba(124,58,237,0.15))] pktw-text-[var(--pk-accent,#7c3aed)]',
+										)}>
+											Template
+										</span>
+									)}
 								</div>
 							</Button>
 						);
