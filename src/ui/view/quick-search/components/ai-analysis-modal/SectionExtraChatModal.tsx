@@ -8,10 +8,9 @@ import type { GraphPreview } from '@/core/storage/graph/types';
 import type { SectionAnalyzeResult } from '../../store/aiAnalysisStore';
 import { StreamdownIsolated } from '@/ui/component/mine';
 import { ChevronDown, ChevronRight, ChevronUp, FileText, MessageSquare, Network } from 'lucide-react';
-import { GraphVisualization } from '@/ui/component/mine/GraphVisualization';
+import { SearchGraph } from '@/ui/component/mine/search-graph/SearchGraph';
 import { Button } from '@/ui/component/shared-ui/button';
 import { createOpenSourceCallback } from '../../callbacks/open-source-file';
-import { createObsidianGraphPreset } from '../../presets/obsidianGraphPreset';
 import { useStreamdownWikilinkClick } from '../../callbacks/useStreamdownWikilinkClick';
 
 enum SectionType {
@@ -120,13 +119,9 @@ const GraphItemSection: React.FC<{
 	onToggle: () => void;
 	onClose: () => void;
 }> = ({ graph, isGraphLoading, collapsed, onToggle, onClose }) => {
-	const obsidianPreset = useMemo(
-		() =>
-			createObsidianGraphPreset({
-				onOpenPath: createOpenSourceCallback(onClose),
-				openFile: (path) => openFile(path, true),
-			}),
-		[onClose]
+	const handleNodeClick = useCallback(
+		(path: string) => { openFile(path, true); onClose(); },
+		[onClose],
 	);
 
 	return (
@@ -149,10 +144,9 @@ const GraphItemSection: React.FC<{
 			{!collapsed ? (
 				graph.nodes?.length > 0 ? (
 					<div className="pktw-h-[280px] pktw-rounded-md pktw-border pktw-border-pk-border pktw-overflow-hidden">
-						<GraphVisualization
-							{...obsidianPreset}
+						<SearchGraph
 							graph={graph}
-							containerClassName="pktw-w-full pktw-h-full"
+							onNodeClick={handleNodeClick}
 						/>
 					</div>
 				) : (

@@ -48,7 +48,7 @@ import { DEFAULT_SDK_SETTINGS } from '@/core/profiles/types';
 import { useSharedStore } from '@/ui/view/quick-search/store/sharedStore';
 import { useUIEventStore } from '@/ui/store/uiEventStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
-import { useGraphAnimationStore } from '@/ui/component/mine/graph-viz/graphAnimationStore';
+import { useGraphAnimationStore } from '@/ui/store/graphAnimationStore';
 import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
