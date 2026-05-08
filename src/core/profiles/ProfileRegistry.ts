@@ -16,6 +16,7 @@ export class ProfileRegistry {
 
   private profiles: Profile[] = [];
   private activeAgentConfig: RoleConfig | null = null;
+  private activeAgentFastConfig: RoleConfig | null = null;
   private activeChatConfig: RoleConfig | null = null;
   private activeEmbeddingConfig: RoleConfig | null = null;
   private activeWebSearchConfig: RoleConfig | null = null;
@@ -53,6 +54,7 @@ export class ProfileRegistry {
   ): void {
     this.profiles = [...settings.profiles];
     this.activeAgentConfig = settings.activeAgentConfig ?? this.migrateOldId(settings.activeAgentProfileId);
+    this.activeAgentFastConfig = (settings as any).activeAgentFastConfig ?? null;
     this.activeChatConfig = (settings as any).activeChatConfig ?? null;
     this.activeEmbeddingConfig = settings.activeEmbeddingConfig ?? this.migrateOldId(settings.activeEmbeddingProfileId);
     this.activeWebSearchConfig = settings.activeWebSearchConfig ?? this.migrateOldId(settings.activeWebSearchProfileId);
@@ -85,6 +87,13 @@ export class ProfileRegistry {
     const profile = this.profiles.find((p) => p.id === this.activeAgentConfig!.profileId);
     if (!profile) return null;
     return { profile, modelId: this.activeAgentConfig.modelId };
+  }
+
+  getActiveAgentFastConfig(): { profile: Profile; modelId: string } | null {
+    if (!this.activeAgentFastConfig) return null;
+    const profile = this.profiles.find((p) => p.id === this.activeAgentFastConfig!.profileId);
+    if (!profile) return null;
+    return { profile, modelId: this.activeAgentFastConfig.modelId };
   }
 
   getActiveChatProfile(): Profile | null {
@@ -163,6 +172,7 @@ export class ProfileRegistry {
     this.profiles.splice(idx, 1);
     // Clear active references if they point to the deleted profile
     if (this.activeAgentConfig?.profileId === id) this.activeAgentConfig = null;
+    if (this.activeAgentFastConfig?.profileId === id) this.activeAgentFastConfig = null;
     if (this.activeChatConfig?.profileId === id) this.activeChatConfig = null;
     if (this.activeEmbeddingConfig?.profileId === id) this.activeEmbeddingConfig = null;
     if (this.activeWebSearchConfig?.profileId === id) this.activeWebSearchConfig = null;
@@ -175,6 +185,7 @@ export class ProfileRegistry {
     this.profiles[idx] = { ...this.profiles[idx], enabled: !this.profiles[idx].enabled };
     if (!this.profiles[idx].enabled) {
       if (this.activeAgentConfig?.profileId === id) this.activeAgentConfig = null;
+      if (this.activeAgentFastConfig?.profileId === id) this.activeAgentFastConfig = null;
       if (this.activeChatConfig?.profileId === id) this.activeChatConfig = null;
       if (this.activeEmbeddingConfig?.profileId === id) this.activeEmbeddingConfig = null;
       if (this.activeWebSearchConfig?.profileId === id) this.activeWebSearchConfig = null;
@@ -195,6 +206,14 @@ export class ProfileRegistry {
       throw new Error(`Profile with id "${config.profileId}" not found`);
     }
     this.activeAgentConfig = config;
+    this.persist();
+  }
+
+  setActiveAgentFastConfig(config: RoleConfig | null): void {
+    if (config && !this.profiles.some((p) => p.id === config.profileId)) {
+      throw new Error(`Profile with id "${config.profileId}" not found`);
+    }
+    this.activeAgentFastConfig = config;
     this.persist();
   }
 
@@ -253,6 +272,7 @@ export class ProfileRegistry {
     const snapshot: ProfileSettings = {
       profiles: this.profiles.map((p) => ({ ...p })),
       activeAgentConfig: this.activeAgentConfig,
+      activeAgentFastConfig: this.activeAgentFastConfig,
       activeChatConfig: this.activeChatConfig,
       activeEmbeddingConfig: this.activeEmbeddingConfig,
       activeWebSearchConfig: this.activeWebSearchConfig,

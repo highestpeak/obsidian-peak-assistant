@@ -413,6 +413,59 @@ async function run(): Promise<void> {
       },
     },
     {
+      name: 'ProfileRegistry: Agent Fast config CRUD',
+      fn: () => {
+        ProfileRegistry.resetInstance();
+        const registry = ProfileRegistry.getInstance();
+        const persisted: ProfileSettings[] = [];
+        registry.load(
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          (s) => { persisted.push(s); },
+        );
+
+        const p = createPresetProfile('anthropic', { apiKey: 'sk-test' });
+        registry.addProfile(p);
+
+        // Initially null
+        assert.strictEqual(registry.getActiveAgentFastConfig(), null);
+
+        // Set via config
+        registry.setActiveAgentFastConfig({ profileId: p.id, modelId: 'claude-haiku-4-5' });
+        const cfg = registry.getActiveAgentFastConfig();
+        assert.ok(cfg);
+        assert.strictEqual(cfg!.profile.id, p.id);
+        assert.strictEqual(cfg!.modelId, 'claude-haiku-4-5');
+
+        // Persisted snapshot includes it
+        const last = persisted[persisted.length - 1];
+        assert.ok(last.activeAgentFastConfig);
+        assert.strictEqual(last.activeAgentFastConfig!.modelId, 'claude-haiku-4-5');
+
+        // Clear
+        registry.setActiveAgentFastConfig(null);
+        assert.strictEqual(registry.getActiveAgentFastConfig(), null);
+      },
+    },
+    {
+      name: 'ProfileRegistry: delete profile clears Agent Fast config',
+      fn: () => {
+        ProfileRegistry.resetInstance();
+        const registry = ProfileRegistry.getInstance();
+        registry.load(
+          { profiles: [], activeAgentProfileId: null, activeEmbeddingProfileId: null, sdkSettings: DEFAULT_SDK_SETTINGS },
+          () => {},
+        );
+
+        const p = createPresetProfile('anthropic', { apiKey: 'sk-test' });
+        registry.addProfile(p);
+        registry.setActiveAgentFastConfig({ profileId: p.id, modelId: 'claude-haiku-4-5' });
+        assert.ok(registry.getActiveAgentFastConfig());
+
+        registry.deleteProfile(p.id);
+        assert.strictEqual(registry.getActiveAgentFastConfig(), null);
+      },
+    },
+    {
       name: 'ProfileRegistry: setActiveEmbeddingProfile',
       fn: () => {
         ProfileRegistry.resetInstance();
