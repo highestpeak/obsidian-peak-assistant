@@ -466,6 +466,97 @@ npm run trace -- vault-search --fixture small "my custom query"
 
 ---
 
+## 14. Copilot Panel Expansion (05-07)
+
+### 14.1 Picker Panel — Layout & Navigation
+
+- [ ] Cmd+P → "Open Copilot Panel" → panel opens
+- [ ] Three category sections visible: **Document** (blue icon), **Vault** (purple icon), **Writing** (green icon)
+- [ ] All 15 action tiles displayed with icon + label + description
+- [ ] Icon colors match category (blue/purple/green)
+- [ ] Keyboard navigation ↑↓←→ works across sections
+- [ ] Enter triggers selected action
+- [ ] Mouse hover highlights tile + updates selection
+- [ ] No file open → "Open a document first" message
+- [ ] Footer shows: `↑↓←→ navigate ↵ select ★ recommended`
+
+### 14.2 Context-Aware Recommendations (★ Star Badges)
+
+- [ ] Open a document with **no tags** → `Suggest Tags` has gold ★ badge + border highlight
+- [ ] Open a document with **>2000 words** → `Suggest Split` has ★
+- [ ] Open an **orphan document** (no backlinks) → `Find Related` has ★
+- [ ] Open a document with **>1500 words** → `Summarize` has ★
+- [ ] **Select text** → reopen Copilot → `Rewrite Selection` has ★, `Polish` has ★
+- [ ] Open a well-linked, well-tagged doc → no ★ on tags/links actions (low relevance)
+
+### 14.3 Existing Actions Regression (via Registry)
+
+- [ ] **Suggest Tags** → results show (verify TagSuggestionEngine multi-signal: should see "content analysis, graph neighbors, and folder history" in summary)
+- [ ] **Suggest Links** → link suggestions with checkbox + Insert
+- [ ] **Suggest Split** → split cards + execute (needs >500 word doc)
+- [ ] **Suggest Split** guard: <500 word doc → Notice "Document is too short to split"
+- [ ] **Review Article** → severity feedback list + Fix sub-flow → PolishPanel
+- [ ] **Polish Document** → streaming output + Apply Changes
+
+### 14.4 New Document Actions
+
+- [ ] **Summarize** → streaming text output in result modal
+- [ ] Summarize → "Copy" button copies to clipboard
+- [ ] Summarize → "Insert at Top" inserts as `> [!summary]` callout after frontmatter
+- [ ] Summarize guard: <100 word doc → Notice
+- [ ] **Extract Concepts** → concept cards with term (bold) + definition + optional category badge
+- [ ] Extract Concepts → check/uncheck concepts with checkbox
+- [ ] Extract Concepts → "Create N Notes" creates `.md` files in same folder (verify: content = definition + `Extracted from: [[source]]`)
+- [ ] Extract Concepts guard: <100 word doc → Notice
+- [ ] **Translate** → streaming output + before/after side-by-side comparison
+- [ ] Translate → auto-detect: CJK content → translates to English; Latin content → translates to 中文
+- [ ] Translate → "Apply Translation" replaces selection or full document
+- [ ] Translate on selected text → scope = selection
+
+### 14.5 New Vault Actions
+
+- [ ] **Find Related** → list of similar notes with similarity % badge + excerpt
+- [ ] Find Related → responds quickly (no LLM, pure vector search)
+- [ ] Find Related → click a note → opens in Obsidian
+- [ ] Find Related → excludes current document from results
+- [ ] **Knowledge Gaps** → gap cards with priority icons (AlertTriangle red / AlertCircle amber / Info blue)
+- [ ] Knowledge Gaps → each card shows topic + description + suggested title
+- [ ] Knowledge Gaps → "Create" button creates new note with suggested title + description
+- [ ] **Synthesize Topic** → progress: "Searching vault..." → "Found N notes. Synthesizing..."
+- [ ] Synthesize Topic → streaming synthesis article displays
+- [ ] Synthesize Topic → collapsible "Sources" section at bottom with clickable note links
+- [ ] Synthesize Topic → "Create as New Note" saves synthesis as new `.md`
+- [ ] Synthesize Topic guard: <50 word doc → Notice
+- [ ] **Vault Health** → progress: "Scanning vault metadata..." → "Analyzing N notes..."
+- [ ] Vault Health → 4 tabs: Orphans / Duplicates / Stale / Tags
+- [ ] Vault Health → tab bar shows count per category
+- [ ] Vault Health → click an item → opens note in Obsidian
+- [ ] Vault Health → works regardless of current document (global action)
+
+### 14.6 New Writing Actions
+
+- [ ] **Continue Writing** → streaming continuation text with left border accent
+- [ ] Continue Writing → "Insert at End" appends to document
+- [ ] Continue Writing → "Discard" closes without changing document
+- [ ] Continue Writing guard: empty doc → Notice "Document is empty — write something first"
+- [ ] **Rewrite Selection** → requires selected text
+- [ ] Rewrite Selection guard: no selection → Notice "Select text to rewrite"
+- [ ] Rewrite Selection → before/after side-by-side (original vs rewritten)
+- [ ] Rewrite Selection → "Apply" replaces selected text in editor
+- [ ] **Add Evidence** → progress: "Searching vault..." → "Found N sources. Selecting..."
+- [ ] Add Evidence → evidence cards with source title (clickable) + italic quote + relevance %
+- [ ] Add Evidence → check/uncheck evidence items
+- [ ] Add Evidence → "Insert N Items" inserts at cursor position
+- [ ] Add Evidence guard: <50 word doc → Notice
+
+### 14.7 Error Handling
+
+- [ ] No valid API key configured → error view with "Something went wrong" + "Open Settings" button
+- [ ] Network timeout during any action → error view displays, no crash
+- [ ] Cancel/close result modal during streaming → no lingering processes or errors in console
+
+---
+
 ## Notes
 
 _Record any issues, unexpected behavior, or suggestions here:_
