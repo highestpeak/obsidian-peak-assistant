@@ -20,6 +20,10 @@ import {
     getCliPath as getCliPathFromVaultSdk,
     type NodeBinaryInfo,
 } from '../vault-sdk/sdkAgentPool';
+import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
+import type { UsageFeature } from '@/service/usage/types';
+import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
+import { modelRegistry } from '@/core/providers/model-registry';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -37,6 +41,10 @@ export interface QueryOptions {
     canUseTool?: (toolName: string) => boolean;
     /** AbortSignal for cancellation. */
     signal?: AbortSignal;
+    /** Usage tracking fields — emitted as UsageRecordedViewEvent after the query. */
+    usageFeature?: UsageFeature;
+    usageAction?: string;
+    usageSessionId?: string;
 }
 
 /** Messages yielded by `queryWithProfile`. Transparent pass-through from SDK. */
@@ -192,9 +200,52 @@ export async function* queryWithProfile(
         } as Parameters<typeof query>[0]['options'],
     });
 
-    // 8. Yield messages, checking for abort
+    // 8. Yield messages, checking for abort; track usage from result message
+    const startMs = Date.now();
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let cachedTokens = 0;
+
     for await (const msg of messages) {
         if (options.signal?.aborted) return;
+        // Extract usage from SDK result message
+        if (msg?.type === 'result' && msg?.usage) {
+            inputTokens = msg.usage.input_tokens ?? 0;
+            outputTokens = msg.usage.output_tokens ?? 0;
+            cachedTokens = msg.usage.cache_read_input_tokens ?? 0;
+        }
         yield msg;
+    }
+
+    // 9. Emit usage event (fire-and-forget)
+    if (options.usageFeature && (inputTokens > 0 || outputTokens > 0)) {
+        try {
+            const durationMs = Date.now() - startMs;
+            const modelId = agentModelId ?? profile.primaryModel;
+            const modelInfo = modelId
+                ? modelRegistry.getModelsForProvider(profile.kind).find(m => m.id === modelId)
+                : undefined;
+            const costUsd = computeUsdFromUsage(
+                { inputTokens, outputTokens, cachedInputTokens: cachedTokens, reasoningTokens: 0, totalTokens: inputTokens + outputTokens },
+                modelInfo,
+            );
+            const eventBus = EventBus.getInstance(app);
+            eventBus.dispatch(new UsageRecordedViewEvent({
+                sessionId: options.usageSessionId ?? crypto.randomUUID(),
+                feature: options.usageFeature,
+                action: options.usageAction ?? 'agent_query',
+                provider: profile.kind,
+                model: modelId ?? 'unknown',
+                inputTokens,
+                outputTokens,
+                cachedTokens,
+                reasoningTokens: 0,
+                costUsd,
+                durationMs,
+                isStreaming: false,
+            }));
+        } catch (e) {
+            console.warn('[sdkAgentPool] Failed to emit usage event', e);
+        }
     }
 }
