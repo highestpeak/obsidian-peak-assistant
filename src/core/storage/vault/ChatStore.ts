@@ -270,9 +270,7 @@ export class ChatStorageService {
 		}
 
 		// Load messages from sqlite and merge with markdown
-		console.debug('[ChatStore] readConversation loading messages', conversationId, docModel);
 		const messages = await this.loadConversationMessages(conversationId, docModel);
-		console.debug('[ChatStore] readConversation loaded messages', conversationId, messages);
 		return { meta, context, messages, content: raw, file };
 	}
 
@@ -629,9 +627,7 @@ export class ChatStorageService {
 			return null;
 		}
 		const raw = await this.app.vault.read(file);
-		console.debug('[ChatStore] getConvDoc raw', fileRelPath, 'raw', { raw: raw });
 		const docModel = ChatConversationDoc.parse(raw);
-		console.debug('[ChatStore] getConvDoc docModel', fileRelPath, 'docModel', docModel);
 		return { file, docModel, raw };
 	}
 
@@ -660,9 +656,6 @@ export class ChatStorageService {
 		const resourceRepo = sqliteStoreManager.getChatMessageResourceRepo();
 		const messageIds = messageRows.map((m) => m.message_id);
 		const resourcesMap = messageIds.length > 0 ? await resourceRepo.getByMessageIds(messageIds) : new Map();
-		console.debug('[ChatStore][loadConversationMessages] conversationId:', conversationId, 'messageIds:', messageIds,
-			'messageRows:', messageRows, 'docModel:', docModel, 'resourcesMap:', resourcesMap);
-
 		const messages = this.convertSqliteRowsToMessages(messageRows, resourcesMap);
 		const allMarkdownMessages = ChatStorageService.collectAllMarkdownMessages(docModel);
 		this.mergeMarkdownContentIntoMessages(messages, allMarkdownMessages);

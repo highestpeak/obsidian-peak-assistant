@@ -335,15 +335,8 @@ export class AIServiceManager {
 		sources: Array<{ path: string; title: string; content?: string }>;
 		topics?: Array<{ label: string; weight: number }>;
 	}): Promise<ChatConversation> {
-		console.debug('[AIServiceManager] createConvFromSearchAIAnalysis called', {
-			query: params.query,
-			sourcesCount: params.sources.length,
-			topicsCount: params.topics?.length ?? 0,
-		});
-
 		// Build title from query
 		const title = params.query.trim() || 'AI Search Analysis';
-		console.debug('[AIServiceManager] Conversation title:', title);
 
 		// Build content with sources as markdown links for context
 		const sourcesList = params.sources.slice(0, SLICE_CAPS.chat.sourcesList).map((s, i) => {
@@ -368,8 +361,6 @@ ${sourcesList}${topicsList}
 ---
 *This conversation was created from an AI Search analysis. You can reference the sources above to continue the discussion.*`;
 
-		console.debug('[AIServiceManager] Initial message content length:', content.length);
-
 		// Get default model and timezone
 		const defaultModel = this.settings.defaultModel;
 		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -384,21 +375,10 @@ ${sourcesList}${topicsList}
 		);
 		initialMessage.isMarkdownContent = true;
 
-		console.debug('[AIServiceManager] Creating conversation with initial message', {
-			messageId: initialMessage.id,
-			model: defaultModel.modelId,
-			provider: defaultModel.provider,
-		});
-
 		// Create conversation with initial message containing all search context
 		const conversation = await this.createConversation({
 			title,
 			initialMessages: [initialMessage],
-		});
-
-		console.debug('[AIServiceManager] Conversation created successfully', {
-			conversationId: conversation.meta.id,
-			projectId: conversation.meta.projectId ?? null,
 		});
 
 		return conversation;
@@ -648,7 +628,6 @@ ${sourcesList}${topicsList}
 	 * Stub: always returns an empty array. AI-powered prompt search is not yet implemented.
 	 */
 	async searchPrompts(query: string): Promise<Array<{ id: string; label: string; description: string; value: string; icon: string; showArrow: boolean }>> {
-		console.debug('[AIServiceManager] searchPrompts called with query:', query);
 		return [];
 	}
 

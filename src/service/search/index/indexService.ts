@@ -425,7 +425,6 @@ class IndexSingleService {
 		const opts = indexOptions ?? defaultIndexDocumentOptions('manual_full');
 		const sw = new Stopwatch(`[IndexService] Indexing: ${docPath}`);
 
-		console.debug(`[IndexService] Index document: ${docPath}`, opts.reason);
 		try {
 			const loaderManager = DocumentLoaderManager.getInstance();
 
@@ -473,7 +472,6 @@ class IndexSingleService {
 			rawDoc.id = await this.resolveDocumentNodeId(rawDoc.sourceFileInfo.path, tenant);
 
 			if (IndexService.isCancelled()) {
-				console.log(`[IndexService] Indexing cancelled for ${rawDoc.sourceFileInfo.path}`);
 				return;
 			}
 
@@ -511,13 +509,6 @@ class IndexSingleService {
 				await this.generateAndFillEmbeddings(chunks);
 				sw.stop();
 				vectorCompleted = true;
-			} else if (!opts.includeEmbeddings) {
-				console.debug(`[IndexService] Skipping embeddings by index options for ${doc.sourceFileInfo.path}`);
-			} else {
-				console.debug(
-					`[IndexService] Skipping embedding generation for ${doc.sourceFileInfo.path}. ` +
-					'Vector search may not be available (sqlite-vec extension not loaded). ',
-				);
 			}
 
 			// Capture pre-index snapshot for cascade change detection (vault only)
@@ -544,16 +535,10 @@ class IndexSingleService {
 			}
 
 			sw.start('Persist index (transaction: mobius + FTS + graph + aggregates + index_state)');
-			console.debug(`[IndexService] Persist index for: ${docPath} (tenant: ${tenant})`);
 			const shouldRefreshGraph = opts.includeCoreSearchIndex || opts.includeLlmTags || opts.includeLlmSummary;
 			const sameTenantOutgoing = shouldRefreshGraph
 				? this.filterOutgoingRefsForTenant(doc.references.outgoing, tenant)
 				: [];
-			if (shouldRefreshGraph && sameTenantOutgoing.length < doc.references.outgoing.length) {
-				console.debug(
-					`[IndexService] Same-tenant outgoing refs: ${sameTenantOutgoing.length}/${doc.references.outgoing.length} (skipped cross-tenant) for ${docPath}`,
-				);
-			}
 			const pathToIndexedDocInfo = shouldRefreshGraph
 				? await this.loadPathToIndexedDocInfoMap(tenant, sameTenantOutgoing)
 				: emptyMap<string, PathIndexedDocInfo>();
@@ -2253,30 +2238,6 @@ export class IndexService {
 			const repo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 			const indexed = await repo.getByPath(params.path);
 			const tok = normalizeUsageTokens(params.usage);
-			console.debug('[IndexService] pending LLM enrichment doc complete', {
-				path: params.path,
-				docType: params.docType,
-				tenant,
-				status: params.status,
-				done: params.done,
-				total: params.total,
-				wallMs: params.wallMs,
-				inputTokens: tok.input,
-				outputTokens: tok.output,
-				totalTokens: tok.total,
-				costUsd: params.costUsd,
-				summary: indexed?.summary ?? null,
-				fullSummary: indexed?.full_summary ?? null,
-				tagsJson: JSON.parse(indexed?.tags ?? '{}') ?? null,
-				inferCreatedAt: indexed?.infer_created_at ?? null,
-				lastProcessedAt: indexed?.last_processed_at ?? null,
-				error:
-					params.error instanceof Error
-						? params.error.message
-						: params.error != null
-							? String(params.error)
-							: undefined,
-			});
 		};
 
 		const adaptivePool = new AdaptiveConcurrencyPool({
@@ -2378,11 +2339,7 @@ export class IndexService {
 					throw e;
 				}
 			},
-			{
-				onConcurrencyChange: (level) => {
-					console.debug('[IndexService] adaptive concurrency:', level);
-				},
-			},
+			{},
 		);
 
 		return { processed, skippedWrongTenant, errors };

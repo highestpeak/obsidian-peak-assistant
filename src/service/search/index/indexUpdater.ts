@@ -5,7 +5,6 @@ import { getAIHubSummaryFolder, getAIManualHubFolder, type SearchSettings } from
 import { isVaultPathUnderPrefix } from '@/core/utils/hub-path-utils';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { defaultIndexDocumentOptions, IndexService, getIndexTenantForPath } from '@/service/search/index/indexService';
-import { generateUuidWithoutHyphens } from '@/core/utils/id-utils';
 import { EventBus } from '@/core/eventBus';
 import { HubStalenessDetector } from './helper/hub/hubStalenessDetector';
 import { CascadeWorker } from './cascade/CascadeWorker';
@@ -70,7 +69,6 @@ export class SearchUpdateListener {
 		const eventBus = EventBus.getInstance(this.app);
 		this.settingsUnsubscribe = eventBus.on('peak:settings-updated', () => {
 			if (this.debounceMs !== this.plugin.settings.search.indexRefreshInterval) {
-				console.log('Index refresh interval changed, restarting search update listener');
 				this.restartWithNewInterval();
 			}
 		});
@@ -215,11 +213,7 @@ export class SearchUpdateListener {
 		this.deletePaths.clear();
 		this.upsertPaths.clear();
 
-		const uuid = generateUuidWithoutHyphens();
-		const startTime = Date.now();
 		try {
-			console.log('flush start processing. flush id: ', uuid);
-
 			const work = (async () => {
 				for (const { oldPath, newPath } of renameBatch) {
 					try {
@@ -238,9 +232,6 @@ export class SearchUpdateListener {
 				]);
 			})()
 				.then(() => {
-					console.log(
-						`[SearchUpdateListener] Flush completed: renamed ${renameBatch.length}, deleted ${deletePaths.length} files, indexed ${upsertPaths.length} files`,
-					);
 					// Detect stale hub docs from constituent changes
 					if (upsertPaths.length > 0) {
 						this.stalenessDetector.detectAndMarkStale(upsertPaths).catch((e) => {
@@ -255,7 +246,6 @@ export class SearchUpdateListener {
 				})
 				.finally(() => {
 					this.lastFlushPromise = null;
-					console.log('flush end processing. flush id: ', uuid, 'duration: ', Date.now() - startTime, 'ms');
 				});
 			this.lastFlushPromise = work;
 		} catch (e) {

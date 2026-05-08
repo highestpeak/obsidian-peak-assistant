@@ -155,8 +155,6 @@ export class EmbeddingRepo {
 		// Update cache
 		this.vecEmbeddingsTableExists = true;
 		this.vecEmbeddingsTableDimension = dimension;
-
-		console.log(`[EmbeddingRepo] Recreated vec_embeddings table with dimension ${dimension}`);
 	}
 
 	/**
@@ -179,7 +177,6 @@ export class EmbeddingRepo {
 					embedding float[${dimension}]
 				)
 			`);
-			console.log(`[EmbeddingRepo] Created vec_embeddings table with dimension ${dimension}`);
 			// Update cache
 			this.vecEmbeddingsTableExists = true;
 			this.vecEmbeddingsTableDimension = dimension;
@@ -270,7 +267,6 @@ export class EmbeddingRepo {
 			);
 			this.recreateVecEmbeddingsTable(embeddingDimension);
 			this.syncToVecEmbeddings(embeddingRowid, embeddingBuffer, 'retry after dimension mismatch');
-			console.log(`[EmbeddingRepo] Successfully inserted embedding after recreating table`);
 			return;
 		}
 
@@ -838,7 +834,6 @@ export class EmbeddingRepo {
 			const tableExists = checkStmt.get() !== undefined;
 
 			if (!tableExists) {
-				console.log('[EmbeddingRepo] vec_embeddings table does not exist, nothing to clean up');
 				return { found: 0, deleted: 0 };
 			}
 
@@ -854,11 +849,8 @@ export class EmbeddingRepo {
 			found = orphanedRecords.length;
 
 			if (found === 0) {
-				console.log('[EmbeddingRepo] No orphaned vec_embeddings records found');
 				return { found: 0, deleted: 0 };
 			}
-
-			console.log(`[EmbeddingRepo] Found ${found} orphaned vec_embeddings records`);
 
 			// Delete orphaned records
 			const rowids = orphanedRecords.map(r => r.rowid);
@@ -869,8 +861,6 @@ export class EmbeddingRepo {
 
 			deleteStmt.run(...rowids);
 			deleted = rowids.length;
-
-			console.log(`[EmbeddingRepo] Successfully deleted ${deleted} orphaned vec_embeddings records`);
 
 		} catch (error) {
 			console.error('[EmbeddingRepo] Error during cleanup:', error);

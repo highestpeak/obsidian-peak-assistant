@@ -93,47 +93,27 @@ export function useAIAnalysisResult() {
         onClose?: () => void
     ) => {
         try {
-            console.debug('[AISearchTab] handleOpenInChat called', {
-                query: searchQuery,
-                sourcesCount: sources.length,
-                topicsCount: topics.length,
-            });
-
             const mappedSources = sources.map(s => ({
                 path: s.path,
                 title: s.title,
                 content: 'reasoning' in s ? (s as AISearchSource).reasoning : (s as { content?: string }).content,
             }));
 
-            // Step 1: Create conversation from search analysis
-            console.debug('[AISearchTab] Step 1: Creating conversation from search analysis...');
             const conversation = await AppContext.getInstance().manager.createConvFromSearchAIAnalysis({
                 query: searchQuery,
                 summary: summary,
                 sources: mappedSources,
                 topics: topics.length > 0 ? topics : undefined,
             });
-            console.debug('[AISearchTab] Conversation created', {
-                conversationId: conversation.meta.id,
-                projectId: conversation.meta.projectId ?? null,
-            });
-
-            // Step 2: Wait for conversation to be fully persisted
-            console.debug('[AISearchTab] Step 2: Waiting for conversation persistence...');
             await new Promise<void>((resolve) => {
                 requestAnimationFrame(() => {
                     setTimeout(() => resolve(), 50);
                 });
             });
-            console.debug('[AISearchTab] Conversation persistence wait completed');
-
-            // Step 3: Activate chat view
-            console.debug('[AISearchTab] Step 3: Activating chat view...');
             if (AppContext.getInstance().viewManager) {
                 const handler = AppContext.getInstance().viewManager.getViewSwitchConsistentHandler();
                 if (handler) {
                     await handler.activateChatView();
-                    console.debug('[AISearchTab] Chat view activated');
                 } else {
                     console.warn('[AISearchTab] ViewSwitchConsistentHandler not available');
                 }
@@ -141,14 +121,11 @@ export function useAIAnalysisResult() {
                 console.warn('[AISearchTab] ViewManager not available');
             }
 
-            // Step 4: Wait for chat view to be ready
-            console.debug('[AISearchTab] Step 4: Waiting for chat view to be ready...');
             let retries = 0;
             let chatViewReady = false;
             while (retries < 20) { // Increased retries for more reliable loading
                 const chatLeaves = AppContext.getInstance().app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
                 if (chatLeaves.length > 0 && chatLeaves[0]?.view) {
-                    console.debug('[AISearchTab] Chat view is ready', { retries });
                     chatViewReady = true;
                     break;
                 }
@@ -159,23 +136,15 @@ export function useAIAnalysisResult() {
                 console.warn('[AISearchTab] Chat view not ready after 20 retries');
             }
 
-            // Step 5: Wait a bit more to ensure view is fully initialized
             await new Promise(resolve => setTimeout(resolve, 200));
 
-            // Step 6: Dispatch selection change event
-            console.debug('[AISearchTab] Step 6: Dispatching SelectionChangedEvent...');
             const eventBus = EventBus.getInstance(AppContext.getInstance().app);
             eventBus.dispatch(new SelectionChangedEvent({
                 conversationId: conversation.meta.id,
                 projectId: conversation.meta.projectId ?? null,
             }));
-            console.debug('[AISearchTab] SelectionChangedEvent dispatched successfully');
-
-            // Step 7: Wait a bit more to ensure event is processed
             await new Promise(resolve => setTimeout(resolve, 100));
 
-            // Step 8: Close the search modal
-            console.debug('[AISearchTab] Step 8: Closing search modal...');
             onClose?.();
         } catch (e) {
             console.error('[AISearchTab] Open in chat failed:', e);

@@ -330,40 +330,28 @@ async function executeMultiStrategySearch(
     const allPaths: ScoredPath[] = [];
 
     // Phase 1: Reliable Strategy - Pure physical paths (guaranteed first)
-    console.debug('[findPath] Phase 1: Reliable Strategy');
     const reliablePaths = await reliableStrategy(context);
-    console.debug('[findPath] reliablePaths found:', reliablePaths.length);
     allPaths.push(...reliablePaths);
 
     // Phase 2: FastTrack Strategy - A* with semantic guidance (if semantic enabled)
     if (context.includeSemantic && context.startVector && context.endVector) {
-        console.debug('[findPath] Phase 2: FastTrack Strategy');
         const fastTrackPaths = await fastTrackStrategy(context);
-        console.debug('[findPath] fastTrackPaths found:', fastTrackPaths.length);
         allPaths.push(...fastTrackPaths);
     }
 
     // Phase 3: Brainstorm Strategy - Cross-domain discovery (if semantic enabled)
     if (context.includeSemantic) {
-        console.debug('[findPath] Phase 3: Brainstorm Strategy');
         const brainstormPaths = await brainstormStrategy(context);
-        console.debug('[findPath] brainstormPaths found:', brainstormPaths.length);
         allPaths.push(...brainstormPaths);
     }
 
     // Phase 4: Temporal Strategy - Time-ordered paths
-    console.debug('[findPath] Phase 4: Temporal Strategy');
-    const temporalStartTime = Date.now();
     const temporalPaths = await temporalStrategy(context);
-    const temporalDuration = Date.now() - temporalStartTime;
-    console.debug('[findPath] temporalPaths found:', temporalPaths.length, 'in', temporalDuration, 'ms');
     allPaths.push(...temporalPaths);
 
     // Fallback Strategy: If no paths found, try a more permissive search
     if (allPaths.length === 0) {
-        console.debug('[findPath] No paths found, attempting fallback strategy');
         const fallbackPaths = await fallbackStrategy(context);
-        console.debug('[findPath] fallbackPaths found:', fallbackPaths.length);
         allPaths.push(...fallbackPaths);
     }
 
@@ -1735,19 +1723,6 @@ async function analyzeContextIntersection(startId: string, endId: string): Promi
     } else if (commonParents.length > 0) {
         primaryContext = commonParents[0].label; // Most connected parent
     }
-
-    // Debug logging
-    console.debug('[ContextAnalysis]', {
-        startPath: startMeta.path,
-        endPath: endMeta.path,
-        startTags: startMeta.tags,
-        endTags: endMeta.tags,
-        commonTags: commonTags.length,
-        commonParents: commonParents.length,
-        physicalDepth: physicalAncestor.depth,
-        isDistant,
-        primaryContext
-    });
 
     return {
         physicalAncestor,

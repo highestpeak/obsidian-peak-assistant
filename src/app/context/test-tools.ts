@@ -53,12 +53,10 @@ export class GraphInspectorTestTools {
      */
     async executeTool(name: string, params: any) {
         try {
-            console.log(`🔍 Executing ${name} with params:`, params);
             if (!this.tools[name]) {
                 throw new Error(`Tool ${name} not found`);
             }
             const result = await this.tools[name].execute(params);
-            console.log('✅ Tool execution result:', JSON.stringify(result));
             return result;
         } catch (error) {
             console.error('❌ Tool execution failed:', error);
@@ -190,7 +188,6 @@ export async function* streamWithStreamLog(
             if (!DELTA_EVENT_TYPES.has(ev.type)) {
                 allLog.push(ev);
             }
-            console.debug('[stream-event]', ev.type, JSON.stringify(ev));
             if (ev.type === 'on-step-finish') {
                 totalTokenUsage = mergeTokenUsage(totalTokenUsage, ev.usage);
             }
@@ -198,7 +195,6 @@ export async function* streamWithStreamLog(
         }
     } finally {
         allLog.push({ type: 'total-token-usage', totalTokenUsage });
-        console.debug('[stream-all-log]', JSON.stringify(allLog));
     }
 }
 
@@ -241,20 +237,9 @@ export class AISearchAgentTestTools {
             try {
                 const stateRepo = sqliteStoreManager.getIndexStateRepo();
                 await stateRepo.set('knowledge_intuition_json', JSON.stringify(snapshot.json));
-                console.debug('[testKnowledgeIntuition] Persisted knowledge_intuition_json to SQLite.');
             } catch (e) {
                 console.error('[testKnowledgeIntuition] Failed to persist intuition map:', e);
             }
-        }
-        if (snapshot == null) {
-            console.debug('[testKnowledgeIntuition]', { result: null, duration, eventCount });
-        } else {
-            console.debug('[testKnowledgeIntuition]', {
-                duration,
-                eventCount,
-                markdownPreview: snapshot.markdown.slice(0, 2500),
-                json: snapshot.json,
-            });
         }
         return { result, duration, eventCount };
     }
@@ -272,14 +257,9 @@ export class AISearchAgentTestTools {
     async testBackboneMap(options?: BuildBackboneMapOptions): Promise<BackboneMapResult | null> {
         const ctx = AppContext.getInstance();
         if (ctx.isMockEnv) {
-            console.debug('[testBackboneMap] skipped (mock env)');
             return null;
         }
-        const start = Date.now();
         const result = await buildBackboneMap(options);
-        const duration = Date.now() - start;
-        console.debug('[testBackboneMap]', { duration, metrics: result.metrics, debug: result.debug });
-        console.debug('[testBackboneMap] markdown (first 2500 chars):\n', result.markdown.slice(0, 2500));
         return result;
     }
 

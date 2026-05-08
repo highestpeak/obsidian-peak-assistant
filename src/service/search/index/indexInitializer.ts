@@ -181,14 +181,9 @@ export class IndexInitializer {
 			return;
 		}
 
-		console.log('[IndexInitializer] Starting staged full pipeline (FTS → vector → LLM → maintenance → hub)');
 		IndexService.resetCancellation();
 
-		const countStartTime = performance.now();
 		const filesToIndex = await this.collectAllIndexableFilePaths();
-		console.log(
-			`[IndexInitializer] Staged pipeline: ${filesToIndex.length} files (counted in ${(performance.now() - countStartTime).toFixed(2)}ms)`,
-		);
 
 		const progressTracker = new IndexProgressTracker(filesToIndex.length);
 		let indexedCount = 0;
@@ -200,7 +195,6 @@ export class IndexInitializer {
 
 			for (const path of filesToIndex) {
 				if (IndexService.isCancelled() || progressTracker.isCancelled()) {
-					console.log(`[IndexInitializer] Staged pipeline cancelled at ${path}`);
 					progressTracker.dismiss();
 					return;
 				}
@@ -309,17 +303,10 @@ export class IndexInitializer {
 	 * Perform full indexing of all documents with progress tracking.
 	 */
 	async performFullIndexing(showNotification: boolean): Promise<void> {
-		console.log('[IndexInitializer] Starting full indexing');
-
 		// Reset cancellation flag
 		IndexService.resetCancellation();
 
-		const countStartTime = performance.now();
-		console.log('[IndexInitializer] Counting total files...');
 		const filesToIndex = await this.collectAllIndexableFilePaths();
-		console.log(
-			`[IndexInitializer] Total files to index: ${filesToIndex.length} (counted in ${(performance.now() - countStartTime).toFixed(2)}ms)`,
-		);
 
 		await this.indexNewAndModifiedFiles(filesToIndex);
 		await IndexService.getInstance().runMobiusGlobalMaintenance(['vault', 'chat']);
@@ -354,7 +341,6 @@ export class IndexInitializer {
 				this.checkAndDeleteRemovedFiles(),
 				this.indexNewAndModifiedFiles(pathsToIndex),
 			]);
-			console.log(`[IndexInitializer] Incremental indexing completed: ${pathsToIndex.length} files processed`);
 			await this.runMobiusMaintenanceIfDue();
 		} catch (e) {
 			console.error('Incremental indexing failed:', e);
@@ -370,13 +356,8 @@ export class IndexInitializer {
 			new Notice('Search index is not ready. Open the vault and wait for the plugin to load.', 6000);
 			return;
 		}
-		console.log('[IndexInitializer] Starting fast core (FTS) full indexing');
 		IndexService.resetCancellation();
-		const countStartTime = performance.now();
 		const filesToIndex = await this.collectAllIndexableFilePaths();
-		console.log(
-			`[IndexInitializer] Fast core full: ${filesToIndex.length} files (counted in ${(performance.now() - countStartTime).toFixed(2)}ms)`,
-		);
 		await this.indexDocumentPaths(filesToIndex, 'Peak: Fast index (FTS)…', 'listener_fast');
 	}
 
@@ -397,8 +378,7 @@ export class IndexInitializer {
 				this.checkAndDeleteRemovedFiles(),
 				this.indexDocumentPaths(pathsToIndex, 'Peak: Fast index (FTS)…', 'listener_fast'),
 			]);
-			console.log(`[IndexInitializer] Fast core incremental completed: ${pathsToIndex.length} files processed`);
-		} catch (e) {
+			} catch (e) {
 			console.error('Fast core incremental indexing failed:', e);
 		}
 	}
@@ -423,7 +403,6 @@ export class IndexInitializer {
 	 * which internally scans the vault file tree.
 	 */
 	private async checkAndDeleteRemovedFiles(): Promise<void> {
-		console.debug('[IndexInitializer] Checking and deleting removed files');
 		const loaderManager = DocumentLoaderManager.getInstance();
 		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo();
 
@@ -437,7 +416,6 @@ export class IndexInitializer {
 		// - ~10,000 files: ~200ms-1s
 		// - ~100,000 files: ~1-5s
 		const vaultFiles = new Set<string>();
-		const collectionStartTime = performance.now();
 
 		for await (const docBatch of loaderManager.scanDocuments({ batchSize: INDEX_CHECK_BATCH_SIZE })) {
 			for (const docItem of docBatch) {
@@ -449,12 +427,6 @@ export class IndexInitializer {
 					vaultFiles.add(docItem.path);
 				}
 			}
-		}
-
-		const collectionTime = performance.now() - collectionStartTime;
-		if (collectionTime > 100) {
-			// Log if collection takes more than 100ms
-			console.log(`[IndexInitializer] Vault file collection: ${vaultFiles.size} files in ${collectionTime.toFixed(2)}ms (${(collectionTime / vaultFiles.size).toFixed(3)}ms per file)`);
 		}
 
 		// Batch check indexed paths against vault files
@@ -481,7 +453,6 @@ export class IndexInitializer {
 		if (deletedPaths.length > 0) {
 			await IndexService.getInstance().deleteDocuments(deletedPaths);
 		}
-		console.log(`[IndexInitializer] Deleted ${deletedPaths.length} files from index`);
 	}
 
 	/**
@@ -504,10 +475,8 @@ export class IndexInitializer {
 		const PROGRESS_INTERVAL_MS = 2000;
 		const opts = defaultIndexDocumentOptions(reason);
 
-		console.debug(`[IndexInitializer] Indexing started: ${filesToIndexPaths.length} files (${reason})`);
 		for (const path of filesToIndexPaths) {
 			if (IndexService.isCancelled() || progressTracker?.isCancelled()) {
-				console.log(`[IndexInitializer] Indexing cancelled at ${path}`);
 				break;
 			}
 
@@ -554,7 +523,6 @@ export class IndexInitializer {
 	private async scanForIndexChanges(): Promise<{
 		filesToIndex: string[];
 	}> {
-		console.debug('[IndexInitializer] Scanning for index changes');
 		const loaderManager = DocumentLoaderManager.getInstance();
 		const filesToIndex: string[] = [];
 
@@ -572,7 +540,6 @@ export class IndexInitializer {
 			filesToIndex.push(...batchFilesToIndex);
 		}
 
-		console.debug('[IndexInitializer] Scanning for index changes completed. files to index:', filesToIndex.length);
 		return { filesToIndex };
 	}
 

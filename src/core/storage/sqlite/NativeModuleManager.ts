@@ -168,13 +168,11 @@ export class NativeModuleManager {
 
 		// Fast path: managed copy exists and matches current ABI
 		if (this.isCompatible()) {
-			console.debug('[NativeModuleManager] Managed binary is compatible, skipping download');
 			return;
 		}
 
 		// Check if the node_modules copy already works (e.g. developer just ran npm rebuild)
 		if (this.isNodeModulesBinaryWorking()) {
-			console.debug('[NativeModuleManager] node_modules binary is working, skipping download');
 			return;
 		}
 
@@ -229,14 +227,10 @@ export class NativeModuleManager {
 		const versionChanged = existingMeta?.betterSqlite3?.version !== version;
 
 		if (!jsReady || versionChanged) {
-			console.log(`[NativeModuleManager] Downloading better-sqlite3@${version} from npm...`);
 			await this.downloadAndExtractNpmPackage(version);
 		}
 
 		// Step 2: Download prebuilt binary from GitHub Releases
-		console.log(
-			`[NativeModuleManager] Downloading prebuilt binary for ABI=${runtime.abi} ${runtime.platform}-${runtime.arch}...`,
-		);
 		await this.downloadAndExtractPrebuilt(version, runtime);
 
 		// Step 3: Verify the binary actually works before writing metadata
@@ -262,7 +256,6 @@ export class NativeModuleManager {
 			},
 		});
 
-		console.log('[NativeModuleManager] better-sqlite3 setup complete');
 	}
 
 	/**
@@ -321,7 +314,6 @@ export class NativeModuleManager {
 		for (const rt of ['electron', 'node']) {
 			const url = BS3_PREBUILT_URL(version, rt, runtime.abi, runtime.platform, runtime.arch);
 			try {
-				console.log(`[NativeModuleManager] Trying ${rt} prebuilt: ${url}`);
 				const data = await this.downloadBuffer(url);
 				const decompressed = zlib.gunzipSync(Buffer.from(data));
 				const entries = parseTar(decompressed);
@@ -330,7 +322,6 @@ export class NativeModuleManager {
 				);
 				if (nodeEntry) {
 					fs.writeFileSync(targetPath, nodeEntry.data);
-					console.log(`[NativeModuleManager] Installed ${rt} prebuilt for ABI=${runtime.abi}`);
 					return;
 				}
 			} catch (e) {
@@ -339,7 +330,7 @@ export class NativeModuleManager {
 		}
 
 		// Download failed — try compiling from source if node_modules/better-sqlite3 exists
-		console.log('[NativeModuleManager] No prebuilt available, attempting source compilation...');
+		// No prebuilt available, attempt source compilation
 		if (await this.tryCompileFromSource(runtime)) {
 			return;
 		}
@@ -386,7 +377,6 @@ export class NativeModuleManager {
 				} catch { /* try next */ }
 			}
 
-			console.log(`[NativeModuleManager] Compiling better-sqlite3 for Electron ${electronVersion} (ABI=${runtime.abi})...`);
 			execSync(
 				`"${nodeGypBin}" rebuild --release ` +
 				`--target=${electronVersion} ` +
@@ -407,7 +397,6 @@ export class NativeModuleManager {
 				const targetDir = path.join(this.bs3Dir, 'build', 'Release');
 				this.ensureDir(targetDir);
 				fs.copyFileSync(compiledPath, path.join(targetDir, 'better_sqlite3.node'));
-				console.log('[NativeModuleManager] Source compilation succeeded');
 				return true;
 			}
 		} catch (e) {
@@ -449,7 +438,6 @@ export class NativeModuleManager {
 			if (typeof Database !== 'function') return false;
 			const testDb = new Database(':memory:');
 			testDb.close();
-			console.log('[NativeModuleManager] Binary verification passed');
 			return true;
 		} catch (e) {
 			console.warn('[NativeModuleManager] Binary verification failed:', e instanceof Error ? e.message : e);

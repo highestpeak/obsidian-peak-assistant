@@ -179,7 +179,6 @@ export function useStreamChat() {
 				// Per-event logging removed: floods DevTools IPC and crashes renderer
 				// Check if aborted before processing event
 				if (abortSignal?.aborted) {
-					console.debug('[useStreamChat] Stream aborted by user');
 					return handleAbortedStream(
 						conversation,
 						manager,
@@ -194,14 +193,12 @@ export function useStreamChat() {
 				// Check if we need to end tool sequence (when receiving non-tool event while tool sequence is active)
 				// This includes reasoning-delta, text-delta, and other non-tool events
 				if (useChatDataStore.getState().isToolSequenceActive && !isToolEvent(event.type)) {
-					console.debug('[useStreamChat] Ending tool sequence due to non-tool event:', event.type);
 					messageStore.endToolSequence();
 				}
 
 				// Check if we need to end reasoning (when receiving non-reasoning event while reasoning is active)
 				// This includes tool events, text-delta, and other non-reasoning events
 				if (useChatDataStore.getState().isReasoningActive && !isReasoningEvent(event.type)) {
-					console.debug('[useStreamChat] Ending reasoning due to non-reasoning event:', event.type);
 					messageStore.completeReasoning();
 				}
 
@@ -268,14 +265,12 @@ export function useStreamChat() {
 					case 'error':
 					case 'unSupported':
 					default:
-						console.debug('[useStreamChat] Unsupported chunk:');
 						break;
 				}
 			}
 
 			// Check if aborted after stream completes (in case abort happened during final processing)
 			if (abortSignal?.aborted) {
-				console.debug('[useStreamChat] Stream aborted after completion');
 				return handleAbortedStream(
 					conversation,
 					manager,

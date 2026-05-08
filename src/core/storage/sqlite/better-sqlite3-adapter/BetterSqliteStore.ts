@@ -244,7 +244,6 @@ export class BetterSqliteStore implements SqliteDatabase {
 			try {
 				const testDb = new Database(':memory:');
 				testDb.close();
-				console.debug('[BetterSqliteStore] better-sqlite3 native module is working');
 
 				// Cache the module only after successful verification
 				BetterSqliteStore.cachedBetterSqlite3 = betterSqlite3;
@@ -344,7 +343,6 @@ export class BetterSqliteStore implements SqliteDatabase {
 	private static loadBetterSqlite3(app?: App): typeof import('better-sqlite3') {
 		// Strategy 1: Use cached module
 		if (BetterSqliteStore.cachedBetterSqlite3) {
-			console.debug('[BetterSqliteStore] Using cached better-sqlite3');
 			return BetterSqliteStore.cachedBetterSqlite3;
 		}
 
@@ -371,7 +369,6 @@ export class BetterSqliteStore implements SqliteDatabase {
 							if (Database && typeof Database === 'function') {
 								const module = { default: Database, Database: Database } as any;
 								BetterSqliteStore.cachedBetterSqlite3 = module;
-								console.debug(`[BetterSqliteStore] Using better-sqlite3 from require.cache: ${modulePath}`);
 								return module;
 							}
 						}
@@ -387,7 +384,6 @@ export class BetterSqliteStore implements SqliteDatabase {
 					const betterSqlite3 = BetterSqliteStore.loadFromPath(modulePath);
 					if (betterSqlite3) {
 						BetterSqliteStore.cachedBetterSqlite3 = betterSqlite3;
-						console.debug(`[BetterSqliteStore] Loaded better-sqlite3 from: ${modulePath}`);
 						return betterSqlite3;
 					}
 				}
@@ -426,7 +422,6 @@ export class BetterSqliteStore implements SqliteDatabase {
 			try {
 				// Force a WAL checkpoint to clear any pending transactions
 				db.pragma('wal_checkpoint(TRUNCATE)');
-				console.debug('[BetterSqliteStore] Initial WAL checkpoint completed');
 			} catch (checkpointError) {
 				console.warn('[BetterSqliteStore] Initial WAL checkpoint failed:', checkpointError);
 			}
@@ -455,8 +450,7 @@ export class BetterSqliteStore implements SqliteDatabase {
 		// Attempt to recover from potential lock issues
 		try {
 			// Check if database is in a locked state and try to recover
-			const walCheckpoint = db.pragma('wal_checkpoint(TRUNCATE)');
-			console.debug('[BetterSqliteStore] WAL checkpoint result:', walCheckpoint);
+			db.pragma('wal_checkpoint(TRUNCATE)');
 		} catch (error) {
 			console.warn('[BetterSqliteStore] WAL checkpoint failed (may be normal):', error);
 		}
@@ -480,11 +474,10 @@ export class BetterSqliteStore implements SqliteDatabase {
 			try {
 				const extensionPath = sqliteVec.getLoadablePath();
 				if (fs.existsSync(extensionPath)) {
-					console.debug(`[BetterSqliteStore] getLoadablePath() returned: ${extensionPath}`);
 					return extensionPath;
 				}
 			} catch (pathError: any) {
-				console.debug(`[BetterSqliteStore] getLoadablePath() failed: ${pathError instanceof Error ? pathError.message : String(pathError)}`);
+				// getLoadablePath() failed, try manual resolution
 			}
 		}
 
@@ -529,10 +522,8 @@ export class BetterSqliteStore implements SqliteDatabase {
 			// process.cwd() may fail in some environments
 		}
 
-		console.debug(`[BetterSqliteStore] Trying alternative paths: ${possiblePaths.join(', ')}`);
 		for (const altPath of possiblePaths) {
 			if (fs.existsSync(altPath)) {
-				console.debug(`[BetterSqliteStore] Found extension at: ${altPath}`);
 				return altPath;
 			}
 		}
@@ -559,13 +550,11 @@ export class BetterSqliteStore implements SqliteDatabase {
 				return false;
 			}
 
-			console.debug(`[BetterSqliteStore] Loading extension manually from: ${extensionPath}`);
 			db.loadExtension(extensionPath);
 
 			// Verify extension is loaded
 			const versionResult = db.prepare('SELECT vec_version() as version').get() as { version: string } | undefined;
 			if (versionResult) {
-				console.debug(`[BetterSqliteStore] sqlite-vec extension loaded manually (version: ${versionResult.version})`);
 				return true;
 			}
 
@@ -607,7 +596,6 @@ export class BetterSqliteStore implements SqliteDatabase {
 				// Verify extension is loaded by checking vec_version()
 				const versionResult = db.prepare('SELECT vec_version() as version').get() as { version: string } | undefined;
 				if (versionResult) {
-					console.debug(`[BetterSqliteStore] sqlite-vec extension loaded successfully (version: ${versionResult.version})`);
 					return true;
 				}
 				// If vec_version() failed, extension may not be fully loaded
