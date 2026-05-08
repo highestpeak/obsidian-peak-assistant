@@ -26,6 +26,7 @@ import { CopilotPickerModal } from '@/ui/view/copilot/CopilotPickerModal';
 import { registerAllCopilotActions } from '@/service/copilot/actions';
 import { SettingsModal } from '@/ui/view/SettingsModal';
 import { VAULT_XRAY_VIEW_TYPE } from '@/ui/view/vault-xray/VaultXRayView';
+import { USAGE_DASHBOARD_VIEW_TYPE } from '@/ui/view/usage-dashboard/UsageDashboardView';
 import { runBuildUserProfile } from '@/service/chat/context/BuildUserProfileRunner';
 import { verifyDatabaseHealth } from '@/core/storage/sqlite/DatabaseHealthVerifier';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
@@ -697,6 +698,23 @@ function buildVaultXRayCommands(viewManager: ViewManager): Command[] {
 }
 
 /**
+ * Usage Dashboard command — opens the usage analytics view.
+ */
+function buildUsageDashboardCommands(viewManager: ViewManager): Command[] {
+	return [
+		{
+			id: 'open-usage-dashboard',
+			name: 'Open Usage Dashboard',
+			callback: () => {
+				const app = viewManager.getApp();
+				const leaf = app.workspace.getLeaf('tab');
+				void leaf.setViewState({ type: USAGE_DASHBOARD_VIEW_TYPE, active: true });
+			},
+		},
+	];
+}
+
+/**
  * Settings modal command — opens the plugin settings in a standalone modal.
  */
 function buildSettingsCommands(appContext: AppContext): Command[] {
@@ -748,6 +766,7 @@ export function buildCoreCommands(
 		},
 		...buildAmbientPushCommands(viewManager),
 		...buildVaultXRayCommands(viewManager),
+		...buildUsageDashboardCommands(viewManager),
 		...buildOnboardingCommands(),
 		...buildSettingsCommands(appContext),
 	];
