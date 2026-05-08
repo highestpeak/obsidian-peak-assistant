@@ -72,6 +72,41 @@ export interface DocStatisticsRow {
 	updated_at: number;
 }
 
+export interface UsageLogRow {
+    id: number;
+    session_id: string;
+    feature: string;
+    action: string;
+    provider: string;
+    model: string;
+    input_tokens: number;
+    output_tokens: number;
+    cached_tokens: number;
+    reasoning_tokens: number;
+    cost_usd: number;
+    duration_ms: number;
+    is_streaming: number;
+    created_at: number;
+    metadata_json: string | null;
+}
+
+export interface UsageDailyRow {
+    id: number;
+    date: string;
+    feature: string;
+    action: string;
+    provider: string;
+    model: string;
+    call_count: number;
+    total_input_tokens: number;
+    total_output_tokens: number;
+    total_cached_tokens: number;
+    total_reasoning_tokens: number;
+    total_cost_usd: number;
+    avg_duration_ms: number;
+    max_duration_ms: number;
+}
+
 /**
  * Database schema definition for type safety.
  */
@@ -169,6 +204,7 @@ export interface Database {
 		thinking: string | null;
 		content_preview: string | null;
 		attachment_summary: string | null;
+		topic: string | null;
 	};
 	chat_message_resource: {
 		id: string;
@@ -404,6 +440,8 @@ export interface Database {
 		reason: string | null;
 		snooze_until: number | null;
 	};
+	usage_log: UsageLogRow;
+	usage_daily: UsageDailyRow;
 }
 
 
@@ -862,6 +900,52 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 			PRIMARY KEY (signal_id, file_path)
 		);
 	`);
+
+	// ── Token usage tracking tables ──
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS usage_log (
+			id              INTEGER PRIMARY KEY AUTOINCREMENT,
+			session_id      TEXT NOT NULL,
+			feature         TEXT NOT NULL,
+			action          TEXT NOT NULL,
+			provider        TEXT NOT NULL,
+			model           TEXT NOT NULL,
+			input_tokens    INTEGER NOT NULL DEFAULT 0,
+			output_tokens   INTEGER NOT NULL DEFAULT 0,
+			cached_tokens   INTEGER DEFAULT 0,
+			reasoning_tokens INTEGER DEFAULT 0,
+			cost_usd        REAL NOT NULL DEFAULT 0,
+			duration_ms     INTEGER NOT NULL DEFAULT 0,
+			is_streaming    INTEGER NOT NULL DEFAULT 0,
+			created_at      INTEGER NOT NULL,
+			metadata_json   TEXT
+		);
+		CREATE INDEX IF NOT EXISTS idx_usage_log_created_at ON usage_log(created_at);
+		CREATE INDEX IF NOT EXISTS idx_usage_log_feature ON usage_log(feature);
+		CREATE INDEX IF NOT EXISTS idx_usage_log_session ON usage_log(session_id);
+
+		CREATE TABLE IF NOT EXISTS usage_daily (
+			id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+			date                   TEXT NOT NULL,
+			feature                TEXT NOT NULL,
+			action                 TEXT NOT NULL,
+			provider               TEXT NOT NULL,
+			model                  TEXT NOT NULL,
+			call_count             INTEGER NOT NULL DEFAULT 0,
+			total_input_tokens     INTEGER NOT NULL DEFAULT 0,
+			total_output_tokens    INTEGER NOT NULL DEFAULT 0,
+			total_cached_tokens    INTEGER NOT NULL DEFAULT 0,
+			total_reasoning_tokens INTEGER NOT NULL DEFAULT 0,
+			total_cost_usd         REAL NOT NULL DEFAULT 0,
+			avg_duration_ms        REAL NOT NULL DEFAULT 0,
+			max_duration_ms        INTEGER NOT NULL DEFAULT 0,
+			UNIQUE(date, feature, action, provider, model)
+		);
+		CREATE INDEX IF NOT EXISTS idx_usage_daily_date ON usage_daily(date);
+	`);
+
+	// ── Schema evolution: add columns (idempotent) ──
+	try { db.exec('ALTER TABLE chat_message ADD COLUMN topic TEXT'); } catch { /* column already exists */ }
 }
 
 
