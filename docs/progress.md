@@ -29,6 +29,8 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | R. Streaming 内存修复 | 6 条流式路径 RAF 节流 + O(n²)→O(n) 内存优化 | 完成 (17 files) |
 | S. UI 稳定性批量修复 | 15 个 RC 全量修复：错误处理/Chat UI/AI 列表/Copilot/Settings/Profile-Model/Quick Actions | 完成 (7 waves, 9 commits) |
 | T. Vercel AI SDK 恢复 | 双轨 dispatch + Chat role + 模型路由修复 + 白闪修复 + typewriter 流式 | 完成 (12 commits) |
+| U. Chat UI v9 + 智能功能 | Message UI 重构 + 换模型重新输出 + Topic 聚合 + Suggested Follow-ups + Outline 修复 + bug fixes | 完成 |
+| W. Copilot 扩展 | 5→15 actions，注册表架构，分组 UI + 上下文推荐，Document/Vault/Writing 三类 | 进行中 |
 
 ## Next
 
@@ -56,13 +58,67 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ### 0.5 待修 Bug / UI 调整
 
-- [ ] **Chat Outline**: 去掉消息区域内的 OUTLINE 面板（无用的消息列表），保留侧边栏 Conversation Outline（自动聚合 topic）
-- [ ] **换模型重新输出**: 每条 AI 消息可选择不同模型重新生成，新回复出现在下方（非替换）
-- [ ] **Settings hover 效果验证**: pktw-root 修复后需验证所有 pk-* 颜色在 Settings 页生效
+- [x] ~~**Chat Outline**: 去掉消息区域内的 OUTLINE 面板~~ — 已删除（ConversationOutline.tsx + toggle button + store state）
+- [x] ~~**换模型重新输出**: 每条 AI 消息可选择不同模型重新生成~~ — 已实现（split button: regenerate + chevron model picker, 新回复 append 至会话末尾）
+- [x] ~~**Settings hover 效果验证**~~ — 基础设施已确认正确（pktw-root + CSS vars + Tailwind 3.4 color-mix），需真机视觉验证
+- [x] ~~**Message UI v9 Redesign**~~ — 去掉 PEAK/You 标签 + 用户头像，provider icon 与内容同行，非最后消息 footer(metadata+actions+followups) 隐藏 hover 显示，reasoning 默认折叠，SuggestedFollowups 所有消息可见
+- [x] ~~**Conversation Outline padding**~~ — 右侧/底部溢出修复
+- [x] ~~**Topic 自动聚合**~~ — LLM 驱动话题分组（TopicAggregationService + SQLite topic 列 + prompt 模板），6条未分组消息触发
+- [x] ~~**Suggested Follow-ups**~~ — 每条 AI 消息下方 LLM 生成后续问题建议
+- [x] ~~**Home Recent Conv 空白**~~ — handleConversationClick 未触发 readConversation，加 notifySelectionChange
+- [x] ~~**Model picker 被裁切**~~ — popover 从 absolute 改 fixed 定位，z-9999 逃逸 overflow-hidden
+- [x] ~~**Reasoning 文字过深**~~ — text-xs + opacity-60 + text-muted-foreground
+- [x] ~~**最后消息 action 按钮隐藏**~~ — isLastMessage 时跳过 hoverFade
 
 ### 1. 真机验证
 
-- [ ] Phase S 验证：15 个 RC 全量测试（错误处理、Chat UI、AI 列表过滤、Copilot Picker、Profile Model 选择、Quick Actions）
+#### Phase W Copilot Smoke Test
+
+**Picker 面板基础**
+- [ ] Cmd+Shift+P → "Open Copilot Panel" → 面板弹出
+- [ ] 验证 3 个分组标题显示（Document 蓝 / Vault 紫 / Writing 绿）
+- [ ] 验证 15 个 action 全部显示，图标 + 标签 + 描述
+- [ ] 键盘导航（↑↓←→）跨分组正常
+- [ ] Enter 触发选中 action
+- [ ] 无文件打开时显示 "Open a document first"
+
+**上下文推荐 (★ 标记)**
+- [ ] 打开一个无 tag 的文档 → Suggest Tags 应有 ★
+- [ ] 打开一个 >2000 词的文档 → Suggest Split 应有 ★
+- [ ] 打开一个 orphan 文档（无 backlink）→ Find Related 应有 ★
+- [ ] 选中文本后打开 Copilot → Rewrite Selection 应有 ★
+
+**现有 5 功能回归**
+- [ ] Suggest Tags → 结果面板正常（验证 TagSuggestionEngine 多信号融合是否工作）
+- [ ] Suggest Links → 链接建议列表 + 勾选 + 插入
+- [ ] Suggest Split → 拆分预览 + 执行（需 >500 词文档）
+- [ ] Review Article → 分级反馈 + Fix 子流程
+- [ ] Polish Document → 流式输出 + Apply
+
+**新 Document 功能**
+- [ ] Summarize → 流式输出 + Copy + Insert at Top（检查 callout 格式）
+- [ ] Extract Concepts → 概念卡片 + 勾选 + Create Notes（检查新建文件内容）
+- [ ] Translate → 流式输出 + 前后对比 + Apply（检查自动语言检测方向）
+
+**新 Vault 功能**
+- [ ] Find Related → 相似笔记列表 + 相似度 % + 点击跳转（无 LLM 调用，应很快）
+- [ ] Knowledge Gaps → 知识空白列表 + 优先级 + Create 按钮
+- [ ] Synthesize Topic → "Searching..." 进度 → 流式综合文章 + 源文件列表 + Create
+- [ ] Vault Health → 扫描进度 → 4 tab（Orphans/Duplicates/Stale/Tags）+ 点击跳转
+
+**新 Writing 功能**
+- [ ] Continue Writing → 流式续写 + Insert at End + Discard
+- [ ] Rewrite Selection → 选中文本必须，前后对比 + Apply（检查替换是否正确）
+- [ ] Add Evidence → "Searching..." → 证据卡片 + 来源链接 + Insert
+
+**边界情况**
+- [ ] guard 拦截：空文档 → Summarize/Continue 应弹 Notice
+- [ ] guard 拦截：未选中文本 → Rewrite Selection 应弹 Notice
+- [ ] guard 拦截：<500 词文档 → Suggest Split 应弹 Notice
+- [ ] 错误处理：无有效 API key → 错误面板 + Open Settings 按钮
+
+#### 历史验证（仍需）
+- [ ] Phase S 验证：15 个 RC 全量测试
 - [ ] Chat 全流程：Onboarding → 配置 Profile → 新建会话 → 发消息 → 收到回复 → 切换模型
 - [ ] Provider v2 全流程：Profile CRUD → Set Active → Chat/Search/Agent 全部走 Agent SDK
 - [ ] AI Analysis 全流程：查询 → Plan → Report → Graph → 后台 Session → Restore
@@ -228,6 +284,36 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-07 (Session 11)
+- Done: **Phase W — Copilot Panel Expansion** (20 tasks, 4 commits)
+  - **架构重构**：CopilotActionRegistry 注册表模式替代硬编码 action 数组
+  - **DocumentContextBuilder**：从活跃文件 + metadataCache 构建 DocumentContext（wordCount/tags/links/backlinks/headingCount/isOrphan）
+  - **CopilotPickerModal 重写**：按 Document(蓝)/Vault(紫)/Writing(绿) 三组展示，高相关性 action 显示 ★ 推荐标记
+  - **CopilotResultModal 重写**：通用 `action.ResultPanel` 渲染，消除 switch/case
+  - **copilot-commands.ts 精简**：从 165 行 5 个独立命令 → 55 行注册表 dispatcher
+  - **TagSuggestionEngine 接入**：suggest-tags 现在使用多信号融合（LLM + 图邻居 + 文件夹历史）
+  - **10 个新功能**：
+    - Document: Summarize (流式), Extract Concepts (结构化), Translate (流式+自动语言检测)
+    - Vault: Find Related (纯向量搜索无 LLM), Knowledge Gaps (结构化), Synthesize Topic (搜索+流式), Vault Health (元数据扫描+结构化)
+    - Writing: Continue Writing (流式), Rewrite Selection (流式), Add Evidence (搜索+结构化)
+  - **18 个 prompt 模板** + **4 个 Zod schema** + 语言配置
+  - Build passes，待真机验证
+- Spec: `docs/superpowers/specs/2026-05-07-copilot-expansion-design.md`
+- Plan: `docs/superpowers/plans/2026-05-07-copilot-expansion.md`
+- Next: 真机 smoke test（见下方清单）
+
+### 2026-05-05 ~ 2026-05-07 (Session 10)
+- Done: **Phase U — Chat UI v9 + 智能功能**
+  - Message UI v9 重构：去掉 PEAK/You 标签 + 用户头像，provider icon 与内容同行
+  - 非最后消息 footer(metadata+actions+followups+styles) 隐藏、hover 显示；最后消息始终展示
+  - Reasoning 默认折叠（saved messages defaultOpen=false），展开文字更浅（xs + opacity-60）
+  - 换模型重新输出：split button (regenerate + model picker popover)，任意 AI 消息可用
+  - Suggested Follow-ups：LLM 生成后续问题建议，所有 AI 消息可见
+  - Topic 自动聚合：TopicAggregationService + SQLite topic 列 + prompt 模板，6条未分组消息触发
+  - 删除内联 OUTLINE 面板，保留侧边栏 Conversation Outline + padding/overflow 修复
+  - Bug fixes：Home Recent Conv 空白（缺 notifySelectionChange）、Model picker 裁切（fixed 定位）、最后消息 action 按钮隐藏
+- Next: 真机验证全流程
 
 ### 2026-05-05 (Session 9)
 - Done: **Phase T — Vercel AI SDK 恢复 + Chat 修复** (12 commits)
@@ -560,6 +646,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | vault-search-redesign | 04-20 | COMPLETED |
 | chat-ui-redesign | 04-22 | COMPLETED |
 | copilot-document-intelligence | 04-24 | COMPLETED |
+| copilot-expansion | 05-07 | IN PROGRESS (code done, needs smoke test) |
 | ai-analysis-landing-redesign | 04-25 | COMPLETED |
 | settings-redesign | 04-25 | COMPLETED |
 | agent-trace-observability | 04-22 | COMPLETED |
