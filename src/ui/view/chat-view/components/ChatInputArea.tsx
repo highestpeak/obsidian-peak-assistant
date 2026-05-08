@@ -90,6 +90,22 @@ export const ChatInputAreaComponent: React.FC = () => {
 	useInputKeyboard(textareaRef, activeConversation?.meta?.id ?? null);
 	const tokenUsage = useTokenUsage(activeConversation);
 
+	// Responsive toolbar: measure width and hide elements at narrow sizes
+	const toolbarRef = useRef<HTMLDivElement>(null);
+	const [toolbarWidth, setToolbarWidth] = useState(600);
+	useEffect(() => {
+		const el = toolbarRef.current;
+		if (!el) return;
+		const ro = new ResizeObserver(entries => {
+			const w = entries[0]?.contentRect.width ?? 600;
+			setToolbarWidth(w);
+		});
+		ro.observe(el);
+		return () => ro.disconnect();
+	}, []);
+	const isNarrow = toolbarWidth < 400;
+	const isVeryNarrow = toolbarWidth < 300;
+
 	const handleTextChange = useCallback((_text: string, tags: ChatTag[]) => {
 		store.setCurrentInputTags(tags);
 	}, [store.setCurrentInputTags]);
@@ -151,7 +167,7 @@ export const ChatInputAreaComponent: React.FC = () => {
 				<PromptInputBody ref={textareaRef} inputRef={inputFocusRef} placeholder={placeholder} />
 
 				{/* Footer: tools + submit */}
-				<div className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-1.5 pktw-px-3 pktw-py-2">
+				<div ref={toolbarRef} className="pktw-flex pktw-items-center pktw-justify-between pktw-gap-1.5 pktw-px-3 pktw-py-2">
 					<div className="pktw-flex pktw-items-center pktw-gap-0.5">
 						<PromptInputFileButton
 							attachmentHandlingMode={store.attachmentHandlingMode}
@@ -189,19 +205,20 @@ export const ChatInputAreaComponent: React.FC = () => {
 							onCodeInterpreterEnabledChange={store.setIsCodeInterpreterEnabled}
 						/>
 					</div>
-					<div className="pktw-flex pktw-items-center pktw-gap-1.5">
-						<ModeSelector selectedMode={store.chatMode} onModeChange={store.setChatMode} />
+					<div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-min-w-0">
+						{!isVeryNarrow && <ModeSelector selectedMode={store.chatMode} onModeChange={store.setChatMode} />}
 						<ModelSelector
 							models={models}
 							isLoading={isModelsLoading}
 							currentModel={store.selectedModel}
 							onChange={async (p: string, m: string) => store.setSelectedModel(p, m)}
+							truncate={isNarrow}
 							placeholder={(() => {
 								const config = ProfileRegistry.getInstance().getConfigForMode(store.chatMode);
 								return config ? `Auto (${config.modelId})` : 'No profile configured';
 							})()}
 						/>
-						<TokenUsage usage={tokenUsage} conversation={activeConversation} />
+						{!isNarrow && <TokenUsage usage={tokenUsage} conversation={activeConversation} />}
 						<PromptInputSubmit status={status} onCancel={isStreaming ? handleCancelStream : undefined} />
 					</div>
 				</div>

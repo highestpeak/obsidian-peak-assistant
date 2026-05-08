@@ -86,6 +86,8 @@ export interface ModelSelectorProps {
 	onMenuOpen?: () => void;
 	/** Required capabilities to filter models */
 	requiredCapabilities?: Partial<ModelCapabilities>;
+	/** Truncate model name for narrow layouts */
+	truncate?: boolean;
 }
 
 /**
@@ -101,6 +103,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 	placeholder = 'Select model',
 	onMenuOpen,
 	requiredCapabilities,
+	truncate = false,
 }) => {
 
 	// Filter models based on required capabilities
@@ -159,15 +162,23 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
 	// Get current model display name and icon
 	const currentModelName = useMemo(() => {
+		let name: string;
 		if (!currentModelInfo) {
 			if (currentModel && !isCurrentModelAvailable) {
-				// Show unavailable indicator
-				return `${currentModel.modelId} (Unavailable)`;
+				name = `${currentModel.modelId} (Unavailable)`;
+			} else {
+				name = currentModel?.modelId || placeholder;
 			}
-			return currentModel?.modelId || placeholder;
+		} else {
+			name = currentModelInfo.displayName;
 		}
-		return currentModelInfo.displayName;
-	}, [currentModelInfo, currentModel, placeholder, isCurrentModelAvailable]);
+		if (truncate) {
+			// Strip provider prefix and "claude-" for narrow layouts
+			const short = name.split('/').pop() ?? name;
+			return short.replace(/^claude-/, '');
+		}
+		return name;
+	}, [currentModelInfo, currentModel, placeholder, isCurrentModelAvailable, truncate]);
 
 	// Get current model icon (only from model info, not provider)
 	const currentModelIcon = useMemo(() => {
