@@ -5,7 +5,6 @@ import { MySettings } from 'src/app/settings/MySetting';
 import { normalizePluginSettings } from 'src/app/settings/PluginSettingsLoader';
 import { ViewManager } from 'src/app/view/ViewManager';
 import { buildCoreCommands } from 'src/app/commands/Register';
-import { registerRunTraceScenarioCommand } from 'src/app/commands/run-trace-scenario';
 import { registerCoreEvents, removeAllChatViewButtons, clearPendingConversationTimeouts } from 'src/app/events/Register';
 import { MyPluginSettings } from '@/app/settings/types';
 import { SearchClient } from '@/service/search/SearchClient';
@@ -54,8 +53,6 @@ import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
-import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
-
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
  */
@@ -197,8 +194,6 @@ export default class MyPlugin extends Plugin {
 			this.settings.search,
 			this.settings.dataStorageFolder,
 		).forEach((command) => this.addCommand(command));
-		registerRunTraceScenarioCommand(this);
-
 		// add setting ui
 		this.addSettingTab(new MySettings(this.app, this, appContext));
 
@@ -254,14 +249,6 @@ export default class MyPlugin extends Plugin {
 				if (this.appContext) {
 					this.appContext.searchClient = this.searchClient!;
 				}
-				UsageTrackingService.getInstance().init(
-					sqliteStoreManager.getIndexContext('chat'),
-					this.app,
-					{
-						usageTrackingEnabled: this.settings.usageTrackingEnabled,
-						usageDetailRetentionDays: this.settings.usageDetailRetentionDays,
-					},
-				);
 				const sessionContext = SessionContextService.getInstance(this.app, EventBus.getInstance(this.app));
 				await sessionContext.init();
 				// Only start background AI services if an active profile is configured
@@ -424,9 +411,6 @@ export default class MyPlugin extends Plugin {
 
 		// Release AI service timers and subscriptions before closing DB so no async touches DB after close
 		this.aiServiceManager?.cleanup();
-
-		// Tear down usage tracking before closing DB so the timer and subscription are cleared
-		UsageTrackingService.getInstance().destroy();
 
 		// Close global SQLite store (sync; already imported at top)
 		sqliteStoreManager.close();
