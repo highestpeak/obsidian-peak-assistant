@@ -5,6 +5,7 @@ import { Notice } from 'obsidian';
 import { Button } from '@/ui/component/shared-ui/button';
 import { AppContext } from '@/app/context/AppContext';
 import { Sparkles, Lightbulb } from 'lucide-react';
+import { DiffView } from '@/ui/component/diff/DiffView';
 
 interface PolishPanelProps {
   result: string;
@@ -81,21 +82,18 @@ export const PolishPanel: React.FC<PolishPanelProps> = ({
             <span>{breadcrumb}</span>
           </div>
         )}
-        <div className="pktw-grid pktw-grid-cols-2 pktw-border pktw-border-border pktw-rounded-lg pktw-overflow-hidden">
-          <div className="pktw-p-4 pktw-bg-secondary pktw-border-r pktw-border-border">
-            <div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mb-2.5">
-              <div className="pktw-w-1.5 pktw-h-1.5 pktw-rounded-full pktw-bg-[var(--pk-error,#ef4444)] pktw-opacity-60" />
-              <span className="pktw-text-[9px] pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">Before</span>
-            </div>
-            <div className="pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap">{original}</div>
+        <div className="pktw-space-y-3">
+          <div className="pktw-flex pktw-items-center pktw-gap-3 pktw-text-xs pktw-text-[var(--text-muted)]">
+            <span className="pktw-inline-flex pktw-items-center pktw-gap-1">
+              <span className="pktw-w-2 pktw-h-2 pktw-rounded-full pktw-bg-[var(--pk-error,#ef4444)]" />
+              Removed
+            </span>
+            <span className="pktw-inline-flex pktw-items-center pktw-gap-1">
+              <span className="pktw-w-2 pktw-h-2 pktw-rounded-full pktw-bg-[var(--pk-success,#22c55e)]" />
+              Added
+            </span>
           </div>
-          <div className="pktw-p-4">
-            <div className="pktw-flex pktw-items-center pktw-gap-1.5 pktw-mb-2.5">
-              <div className="pktw-w-1.5 pktw-h-1.5 pktw-rounded-full pktw-bg-[var(--pk-success,#22c55e)] pktw-opacity-60" />
-              <span className="pktw-text-[9px] pktw-font-bold pktw-uppercase pktw-tracking-wider pktw-text-muted-foreground">After</span>
-            </div>
-            <div className="pktw-text-[13px] pktw-leading-relaxed pktw-whitespace-pre-wrap">{polished}</div>
-          </div>
+          <DiffView original={original} modified={polished} />
         </div>
         <div className="pktw-flex pktw-gap-3 pktw-mt-3 pktw-text-[10px] pktw-text-muted-foreground">
           <span>{originalWords.length} → {polishedWords.length} words</span>
