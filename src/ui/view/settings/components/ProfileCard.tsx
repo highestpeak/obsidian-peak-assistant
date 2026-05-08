@@ -137,8 +137,8 @@ export function ProfileCard({
     const [testing, setTesting] = useState(false);
 
     const isActive = isActiveAgent || isActiveEmbedding || isActiveWebSearch;
-    const allowFreeText = profile.kind === 'custom' || profile.kind === 'litellm';
-    const subtitle = `${PROVIDER_LABELS[profile.kind].label} · ${profile.primaryModel || '—'} · ${profile.apiKey ? 'API key set' : 'no key'}`;
+    const allowFreeText = profile.kind === 'custom' || profile.kind === 'litellm' || profile.kind === 'ollama';
+    const subtitle = `${PROVIDER_LABELS[profile.kind].label} · ${profile.apiKey ? 'API key set' : 'no key'}`;
 
     const handleTest = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -227,25 +227,6 @@ export function ProfileCard({
                                 onBlur={(e) => update({ apiKey: e.target.value || null })}
                             />
                         </FieldRow>
-                    </div>
-
-                    {/* Models */}
-                    <SectionTitle label="Models" />
-                    <div className="pktw-grid pktw-grid-cols-2 pktw-gap-3">
-                        <ModelCombobox
-                            label="Primary Model"
-                            value={profile.primaryModel}
-                            onChange={(id) => update({ primaryModel: id })}
-                            providerKind={profile.kind}
-                            allowFreeText={allowFreeText}
-                        />
-                        <ModelCombobox
-                            label="Fast Model"
-                            value={profile.fastModel}
-                            onChange={(id) => update({ fastModel: id })}
-                            providerKind={profile.kind}
-                            allowFreeText={allowFreeText}
-                        />
                     </div>
 
                     {/* Embedding */}
