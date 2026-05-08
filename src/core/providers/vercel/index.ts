@@ -1,5 +1,5 @@
 import type { Profile } from '@/core/profiles/types';
-import type { LLMRequestMessage, LLMStreamEvent, LLMOutputControlSettings } from '@/core/providers/types';
+import type { LLMRequestMessage, LLMStreamEvent, LLMOutputControlSettings, LLMUsage } from '@/core/providers/types';
 import { createLanguageModel } from './provider-factory';
 import { streamChat as adapterStreamChat } from './vercel-adapter';
 
@@ -33,10 +33,12 @@ export async function vercelGenerateText(
     modelId: string,
     messages: LLMRequestMessage[],
     outputControl?: LLMOutputControlSettings,
-): Promise<string> {
+): Promise<{ text: string; usage?: LLMUsage }> {
     let text = '';
+    let usage: LLMUsage | undefined;
     for await (const event of vercelStreamChat(profile, modelId, { messages, outputControl })) {
         if (event.type === 'text-delta') text += event.text;
+        else if (event.type === 'complete') usage = event.usage;
     }
-    return text;
+    return { text, usage };
 }

@@ -140,6 +140,7 @@ export function translateSdkMessage(
 					outputTokens: msg.usage?.output_tokens ?? 0,
 					totalTokens:
 						(msg.usage?.input_tokens ?? 0) + (msg.usage?.output_tokens ?? 0),
+					cachedInputTokens: msg.usage?.cache_read_input_tokens ?? 0,
 				},
 				result: msg.result,
 				triggerName,
