@@ -50,7 +50,7 @@ export function createLanguageModel(profile: Profile, modelId: string): Language
             return provider(modelId);
         }
         case 'ollama': {
-            return ollama(modelId);
+            return ollama(modelId, { baseURL: baseUrl || undefined });
         }
         case 'litellm':
         case 'custom': {
