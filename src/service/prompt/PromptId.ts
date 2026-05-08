@@ -144,6 +144,7 @@ export enum PromptId {
 	// Chat intelligence
 	ChatTopicAggregation = 'chat-topic-aggregation',
 	ChatSuggestFollowups = 'chat-suggest-followups',
+	ChatSuggestActions = 'chat-suggest-actions',
 
 	// Ambient context / session intelligence
 	WorkingThemeInference = 'working-theme-inference',
@@ -560,6 +561,9 @@ export interface PromptVariables {
 	[PromptId.ChatSuggestFollowups]: {
 		assistantMessage: string;
 		userMessage: string;
+	};
+	[PromptId.ChatSuggestActions]: {
+		messages: string;
 	};
 
 	// Ambient context / session intelligence

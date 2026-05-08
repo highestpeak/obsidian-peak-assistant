@@ -6,14 +6,13 @@ import { MessageHeader } from './components/messages/MessageViewHeader';
 import { MessageListRenderer } from './components/messages/MessageListRenderer';
 import { ChatInputAreaComponent } from './components/ChatInputArea';
 import { FileChangesList } from './components/messages/FileChangesList';
-import { SuggestionActions, SuggestionAction } from './components/SuggestionActions';
+import { SuggestionActions } from './components/SuggestionActions';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { useScrollManager, scrollToBottom as scrollToBottomUtil } from '../shared/scroll-utils';
 import { useAutoScroll } from './hooks/useAutoScroll';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { ArrowUp, ArrowDown, ClipboardList, Search, Lightbulb } from 'lucide-react';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import { NewConversationTypePicker } from './components/NewConversationTypePicker';
-import { ConversationOutline } from './components/ConversationOutline';
 
 
 /**
@@ -24,10 +23,6 @@ export const MessagesViewComponent: React.FC = () => {
     const pendingConversation = useChatViewStore().pendingConversation;
     const activeConversation = useChatDataStore((state) => state.activeConversation);
 
-    // Get computed session data from hook
-    const {
-        showOutline,
-    } = useChatViewStore();
 
     // Sync messages from activeConversation to messageStore
     const { setMessages, clearMessages } = useChatDataStore();
@@ -113,52 +108,28 @@ export const MessagesViewComponent: React.FC = () => {
                 <MessageHeader />
             </div>
 
-            {/* Body - Messages List + Outline Panel */}
-            <div className="pktw-flex pktw-flex-1 pktw-min-h-0">
-                <div
-                    className="pktw-flex-1 pktw-overflow-y-auto pktw-overflow-x-hidden pktw-relative pktw-min-h-0 pktw-w-full"
-                    ref={bodyScrollRef}
-                    style={{ scrollBehavior: 'smooth' }}
-                >
-                    <MessageListRenderer />
+            {/* Body - Messages List */}
+            <div
+                className="pktw-flex-1 pktw-overflow-y-auto pktw-overflow-x-hidden pktw-relative pktw-min-h-0 pktw-w-full"
+                ref={bodyScrollRef}
+                style={{ scrollBehavior: 'smooth' }}
+            >
+                <MessageListRenderer />
 
-                    {/* File Changes List - positioned after messages, before footer */}
-                    <FileChangesList />
-                </div>
-                {showOutline && activeConversation && (
-                    <ConversationOutline
-                        messages={activeConversation.messages
-                            .filter(m => m.role === 'user' || m.role === 'assistant')
-                            .map(m => ({
-                                id: m.id,
-                                role: m.role as 'user' | 'assistant',
-                                content: typeof m.content === 'string' ? m.content : '',
-                                topic: m.topic,
-                            }))}
-                        activeMessageId={null}
-                        onMessageClick={(id) => {
-                            document.querySelector(`[data-message-id="${id}"]`)?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                        onClose={() => useChatViewStore.getState().setShowOutline(false)}
-                    />
-                )}
+                {/* File Changes List - positioned after messages, before footer */}
+                <FileChangesList />
             </div>
 
             {/* Footer Upper Area - positioned between body and footer, outside scroll area */}
             <div className="pktw-flex-shrink-0 pktw-flex pktw-justify-between pktw-items-center pktw-px-6 pktw-pt-6 pktw-border-b pktw-border-borde">
                 {/* Suggestion actions on the left */}
-                {activeConversation && activeConversation.messages.length > 0 && (() => {
-                    const submitAction = useChatViewStore.getState().submitAction;
-                    const suggestionActions: SuggestionAction[] = [
-                        { icon: <ClipboardList className="pktw-w-3 pktw-h-3" />, label: 'Summarize',
-                          action: () => submitAction?.('Summarize this conversation concisely.') },
-                        { icon: <Search className="pktw-w-3 pktw-h-3" />, label: 'Search vault',
-                          action: () => submitAction?.('Search the vault for information related to this conversation.') },
-                        { icon: <Lightbulb className="pktw-w-3 pktw-h-3" />, label: 'Explain further',
-                          action: () => submitAction?.('Explain the last response in more detail.') },
-                    ];
-                    return <SuggestionActions actions={suggestionActions} />;
-                })()}
+                {activeConversation && activeConversation.messages.length > 0 && (
+                    <SuggestionActions
+                        conversationId={activeConversation.meta?.id ?? ''}
+                        messages={activeConversation.messages.map(m => ({ role: m.role, content: m.content }))}
+                        onSelect={(prompt) => useChatViewStore.getState().submitAction?.(prompt)}
+                    />
+                )}
 
                 {/* Scroll buttons on the right */}
                 <div className="pktw-flex pktw-items-center pktw-gap-1">

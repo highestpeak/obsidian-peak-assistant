@@ -244,6 +244,10 @@ export const TEMPLATE_METADATA: Record<TemplateId, TemplateMetadata> = {
 		expectsJson: true,
 		jsonConstraint: 'Return only the JSON array of suggestion strings, nothing else.',
 	}),
+	'chat-suggest-actions': meta('prompts', 'chat-suggest-actions', {
+		expectsJson: true,
+		jsonConstraint: 'Return only the JSON array of action objects, nothing else.',
+	}),
 
 	// Ambient context / session intelligence
 	'working-theme-inference': meta('prompts', 'working-theme-inference', { expectsJson: true, jsonConstraint: 'Return only the JSON object with summary and relatedFiles, nothing else.' }),
