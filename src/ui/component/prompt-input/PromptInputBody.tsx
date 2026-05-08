@@ -169,6 +169,8 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 		onLoadContextItems,
 		onLoadPromptItems,
 		onMenuItemSelect,
+		folderStack,
+		onFolderUp,
 	} = autocompletionData;
 	const codeMirrorRef = useRef<any>(null);
 
@@ -497,6 +499,8 @@ export const PromptInputBody = forwardRef<any, PromptInputBodyProps>(({
 					onSelect={handleMenuSelect}
 					onClose={handleMenuClose}
 					onSelectedIndexChange={handleSelectedIndexChange}
+					folderStack={folderStack}
+					onFolderUp={onFolderUp}
 				/>,
 				document.body,
 			)}

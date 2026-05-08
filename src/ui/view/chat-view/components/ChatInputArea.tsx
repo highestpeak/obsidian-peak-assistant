@@ -42,6 +42,21 @@ const InputClearHandler: React.FC<{ isSending: boolean }> = ({ isSending }) => {
 	return null;
 };
 
+const InsertToInputHandler: React.FC = () => {
+	const { textInput, focusInput } = usePromptInputContext();
+	React.useEffect(() => {
+		const fn = (text: string) => {
+			const current = textInput.value;
+			const prefix = current && !current.endsWith('\n') ? '\n' : '';
+			textInput.setInput(current + prefix + text);
+			focusInput();
+		};
+		useChatViewStore.getState().setInsertToInput(fn);
+		return () => useChatViewStore.getState().setInsertToInput(null);
+	}, [textInput, focusInput]);
+	return null;
+};
+
 // ---------------------------------------------------------------------------
 // ChatInputAreaComponent
 // ---------------------------------------------------------------------------
@@ -71,7 +86,7 @@ export const ChatInputAreaComponent: React.FC = () => {
 		return () => useChatViewStore.getState().setSubmitAction(null);
 	}, [submitMessage]);
 
-	const { menuContextItems, handleSearchContext, handleSearchPrompts, handleMenuSelect } = useContextSearch();
+	const { menuContextItems, folderStack, handleSearchContext, handleSearchPrompts, handleMenuSelect, handleFolderUp } = useContextSearch();
 	useInputKeyboard(textareaRef, activeConversation?.meta?.id ?? null);
 	const tokenUsage = useTokenUsage(activeConversation);
 
@@ -126,9 +141,12 @@ export const ChatInputAreaComponent: React.FC = () => {
 				onLoadContextItems={handleSearchContext}
 				onLoadPromptItems={handleSearchPrompts}
 				onMenuItemSelect={handleMenuSelect}
+				folderStack={folderStack}
+				onFolderUp={handleFolderUp}
 				onTextChange={handleTextChange}
 			>
 				<InputClearHandler isSending={isSending} />
+				<InsertToInputHandler />
 				<PromptInputAttachments />
 				<PromptInputBody ref={textareaRef} inputRef={inputFocusRef} placeholder={placeholder} />
 
@@ -179,7 +197,7 @@ export const ChatInputAreaComponent: React.FC = () => {
 							currentModel={store.selectedModel}
 							onChange={async (p: string, m: string) => store.setSelectedModel(p, m)}
 							placeholder={(() => {
-								const config = ProfileRegistry.getInstance().getActiveAgentConfig();
+								const config = ProfileRegistry.getInstance().getConfigForMode(store.chatMode);
 								return config ? `Auto (${config.modelId})` : 'No profile configured';
 							})()}
 						/>

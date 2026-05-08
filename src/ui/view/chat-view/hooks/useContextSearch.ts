@@ -8,15 +8,43 @@ import { useChatViewStore } from '../store/chatViewStore';
 const RECENT_FILES_COUNT = 3;
 const SEARCH_RESULTS_TOP_K = 20;
 
+/** Approximate word count from content length (avg ~5 chars/word). */
+function formatWordCount(content: string | undefined): string | undefined {
+	if (!content) return undefined;
+	const words = Math.round(content.length / 5);
+	if (words < 1000) return `${words}w`;
+	return `${(words / 1000).toFixed(1)}kw`;
+}
+
+/** Derive a short metadata badge from a search result. */
+function deriveMetaBadge(item: SearchResultItem): string | undefined {
+	switch (item.type) {
+		case 'pdf': return 'PDF';
+		case 'image': return 'Image';
+		case 'docx': return 'DOCX';
+		case 'xlsx': return 'XLSX';
+		case 'pptx': return 'PPTX';
+		case 'canvas': return 'Canvas';
+		case 'excalidraw': return 'Draw';
+		case 'folder': return undefined;
+		default:
+			return formatWordCount(item.content);
+	}
+}
+
 export function useContextSearch() {
 	const { searchClient, manager } = useServiceContext();
 	const promptsSuggest = useChatViewStore((s) => s.promptsSuggest);
 	const [menuContextItems, setMenuContextItems] = useState<NavigableMenuItem[]>([]);
+	const [folderStack, setFolderStack] = useState<string[]>([]);
 
 	const handleSearchContext = useCallback(async (query: string, currentFolder?: string): Promise<NavigableMenuItem[]> => {
 		if (!searchClient) return [];
 		try {
+			const isInitial = !query.trim() && !currentFolder;
 			let results: SearchResultItem[] = await searchClient.getRecent(RECENT_FILES_COUNT);
+			const recentCount = results.length;
+
 			if (query.trim() || currentFolder) {
 				const searchResults = await searchClient.search({
 					text: query.trim() || '',
@@ -34,13 +62,15 @@ export function useContextSearch() {
 				seen.add(key);
 				return true;
 			});
-			return unique.map((item) => ({
+			return unique.map((item, idx) => ({
 				id: item.path || item.id,
 				label: item.title || item.path || item.id,
 				description: item.path || item.id,
 				value: item.path || item.id,
 				icon: (isSelected: boolean) => getFileIcon(item.type, isSelected),
 				showArrow: item.type === 'folder',
+				group: isInitial && idx < recentCount ? 'Recent' : undefined,
+				meta: deriveMetaBadge(item),
 			}));
 		} catch (error) {
 			console.error('Error searching files:', error);
@@ -79,8 +109,10 @@ export function useContextSearch() {
 	const handleMenuSelect = useCallback(async (triggerChar: string, selectedItem?: any) => {
 		const isContextTrigger = triggerChar === '@' || triggerChar === '[[';
 		if (isContextTrigger && selectedItem?.showArrow) {
+			const folderPath = selectedItem.value as string;
+			setFolderStack((prev) => [...prev, folderPath]);
 			try {
-				const folderContents = await handleSearchContext('', selectedItem.value);
+				const folderContents = await handleSearchContext('', folderPath);
 				setMenuContextItems(folderContents);
 			} catch {
 				setMenuContextItems([]);
@@ -88,5 +120,14 @@ export function useContextSearch() {
 		}
 	}, [handleSearchContext]);
 
-	return { menuContextItems, handleSearchContext, handleSearchPrompts, handleMenuSelect };
+	const handleFolderUp = useCallback(async () => {
+		setFolderStack((prev) => {
+			const next = prev.slice(0, -1);
+			const parentFolder = next.length > 0 ? next[next.length - 1] : undefined;
+			handleSearchContext('', parentFolder).then(setMenuContextItems).catch(() => setMenuContextItems([]));
+			return next;
+		});
+	}, [handleSearchContext]);
+
+	return { menuContextItems, folderStack, handleSearchContext, handleSearchPrompts, handleMenuSelect, handleFolderUp };
 }

@@ -30,6 +30,8 @@ interface PromptInputContextValue {
 		onLoadContextItems?: (query: string, currentFolder?: string) => Promise<any[]>;
 		onLoadPromptItems?: (query: string) => Promise<any[]>;
 		onMenuItemSelect?: (triggerChar: string, selectedItem: any) => void;
+		folderStack?: string[];
+		onFolderUp?: () => void;
 	};
 }
 
@@ -59,6 +61,8 @@ export interface PromptInputProps extends Omit<HTMLAttributes<HTMLFormElement>, 
 	onLoadContextItems?: (query: string, currentFolder?: string) => Promise<any[]>;
 	onLoadPromptItems?: (query: string) => Promise<any[]>;
 	onMenuItemSelect?: (triggerChar: string, selectedItem: any) => void;
+	folderStack?: string[];
+	onFolderUp?: () => void;
 	onTextChange?: (text: string, tags: Array<{ type: 'context' | 'prompt'; text: string; start: number; end: number; }>) => void;
 }
 
@@ -79,6 +83,8 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 	onLoadContextItems,
 	onLoadPromptItems,
 	onMenuItemSelect,
+	folderStack,
+	onFolderUp,
 	onTextChange,
 	children,
 	...props
@@ -243,9 +249,11 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 				onLoadContextItems,
 				onLoadPromptItems,
 				onMenuItemSelect,
+				folderStack,
+				onFolderUp,
 			},
 		}),
-		[textInput, setInput, clearInput, focusInput, attachments, addFiles, removeFile, clearFiles, openFileDialog, registerFileInput, contextItems, promptItems, onLoadContextItems, onLoadPromptItems, onMenuItemSelect]
+		[textInput, setInput, clearInput, focusInput, attachments, addFiles, removeFile, clearFiles, openFileDialog, registerFileInput, contextItems, promptItems, onLoadContextItems, onLoadPromptItems, onMenuItemSelect, folderStack, onFolderUp]
 	);
 
 	// Register file input
