@@ -425,6 +425,12 @@ export interface MyPluginSettings {
 	 */
 	ambientPush?: AmbientPushSettings;
 
+	/** Whether to record AI call usage metrics (tokens, cost, latency). */
+	usageTrackingEnabled: boolean;
+
+	/** How many days to retain per-call detail rows before compaction. */
+	usageDetailRetentionDays: number;
+
 	/**
 	 * Vault Search (Claude Agent SDK).
 	 */
@@ -467,6 +473,9 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 		mstLeafOpacity: 0.25,
 		mstLeafWidthScale: 0.6,
 	},
+
+	usageTrackingEnabled: true,
+	usageDetailRetentionDays: 30,
 
 	vaultSearch: {
 		sdkProfile: {
