@@ -9,6 +9,8 @@
  * will be built in a later phase per 2026-04-11-provider-system-v2-design.md.
  */
 
+import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
+
 export type SdkProfileKind = 'anthropic' | 'openai' | 'google' | 'perplexity' | 'ollama' | 'openrouter' | 'litellm' | 'custom';
 
 export interface SdkProfile {
@@ -44,11 +46,14 @@ export function toAgentSdkEnv(profile: SdkProfile): Record<string, string> {
 		);
 	}
 
+	const registry = ProfileRegistry.getInstance();
+	const agentConfig = registry.getActiveAgentConfig();
+	const agentFastConfig = registry.getActiveAgentFastConfig();
 	const env: Record<string, string> = {
 		ANTHROPIC_BASE_URL: profile.baseUrl,
-		ANTHROPIC_DEFAULT_OPUS_MODEL: profile.primaryModel,
-		ANTHROPIC_DEFAULT_HAIKU_MODEL: profile.fastModel,
-		ANTHROPIC_DEFAULT_SONNET_MODEL: profile.primaryModel,
+		ANTHROPIC_DEFAULT_OPUS_MODEL: agentConfig?.modelId ?? profile.primaryModel,
+		ANTHROPIC_DEFAULT_HAIKU_MODEL: agentFastConfig?.modelId ?? profile.primaryModel,
+		ANTHROPIC_DEFAULT_SONNET_MODEL: agentConfig?.modelId ?? profile.primaryModel,
 	};
 
 	if (profile.kind === 'openrouter') {

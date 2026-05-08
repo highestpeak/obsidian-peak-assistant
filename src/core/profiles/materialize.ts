@@ -11,7 +11,11 @@ import type { Profile } from './types';
  *
  * Throws if credentials are missing (caller must surface this to the user).
  */
-export function toAgentSdkEnv(profile: Profile): Record<string, string> {
+export function toAgentSdkEnv(
+  profile: Profile,
+  agentModelId: string,
+  agentFastModelId: string,
+): Record<string, string> {
   const hasAuth = Boolean(profile.apiKey || profile.authToken);
   if (!hasAuth) {
     throw new Error(
@@ -21,9 +25,9 @@ export function toAgentSdkEnv(profile: Profile): Record<string, string> {
 
   const env: Record<string, string> = {
     ANTHROPIC_BASE_URL: profile.baseUrl,
-    ANTHROPIC_DEFAULT_OPUS_MODEL: profile.primaryModel,
-    ANTHROPIC_DEFAULT_HAIKU_MODEL: profile.fastModel,
-    ANTHROPIC_DEFAULT_SONNET_MODEL: profile.primaryModel,
+    ANTHROPIC_DEFAULT_OPUS_MODEL: agentModelId,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: agentFastModelId,
+    ANTHROPIC_DEFAULT_SONNET_MODEL: agentModelId,
   };
 
   if (profile.kind === 'openrouter') {

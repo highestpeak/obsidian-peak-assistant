@@ -68,7 +68,7 @@ async function run(): Promise<void> {
       name: 'toAgentSdkEnv: anthropic with apiKey',
       fn: () => {
         const p = createPresetProfile('anthropic', { apiKey: 'sk-ant-test' });
-        const env = toAgentSdkEnv(p);
+        const env = toAgentSdkEnv(p, 'claude-opus-4-6', 'claude-haiku-4-5');
         assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://api.anthropic.com');
         assert.strictEqual(env.ANTHROPIC_API_KEY, 'sk-ant-test');
         assert.strictEqual(env.ANTHROPIC_DEFAULT_OPUS_MODEL, 'claude-opus-4-6');
@@ -81,7 +81,7 @@ async function run(): Promise<void> {
       name: 'toAgentSdkEnv: openrouter with bearer token',
       fn: () => {
         const p = createPresetProfile('openrouter', { authToken: 'sk-or-test' });
-        const env = toAgentSdkEnv(p);
+        const env = toAgentSdkEnv(p, 'anthropic/claude-opus-4-6', 'anthropic/claude-haiku-4-5');
         assert.strictEqual(env.ANTHROPIC_API_KEY, '');
         assert.strictEqual(env.ANTHROPIC_AUTH_TOKEN, 'sk-or-test');
         assert.strictEqual(env.ANTHROPIC_BASE_URL, 'https://openrouter.ai/api');
@@ -91,7 +91,7 @@ async function run(): Promise<void> {
       name: 'toAgentSdkEnv: throws on missing credentials',
       fn: () => {
         const p = createPresetProfile('anthropic');
-        assert.throws(() => toAgentSdkEnv(p), /credentials/i);
+        assert.throws(() => toAgentSdkEnv(p, 'model', 'fast'), /credentials/i);
       },
     },
     {
@@ -101,7 +101,7 @@ async function run(): Promise<void> {
           apiKey: 'sk-test',
           customHeaders: { 'X-Org': 'test-org' },
         });
-        const env = toAgentSdkEnv(p);
+        const env = toAgentSdkEnv(p, 'claude-opus-4-6', 'claude-haiku-4-5');
         assert.strictEqual(env.ANTHROPIC_CUSTOM_HEADERS, JSON.stringify({ 'X-Org': 'test-org' }));
       },
     },
@@ -109,7 +109,7 @@ async function run(): Promise<void> {
       name: 'toAgentSdkEnv: empty customHeaders not included',
       fn: () => {
         const p = createPresetProfile('anthropic', { apiKey: 'sk-test' });
-        const env = toAgentSdkEnv(p);
+        const env = toAgentSdkEnv(p, 'claude-opus-4-6', 'claude-haiku-4-5');
         assert.strictEqual(env.ANTHROPIC_CUSTOM_HEADERS, undefined);
       },
     },

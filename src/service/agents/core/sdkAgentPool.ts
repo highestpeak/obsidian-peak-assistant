@@ -138,7 +138,12 @@ export async function* queryWithProfile(
     const nodeInfo = await ensureNodeInfo();
 
     // 2. Materialize profile → env vars
-    const profileEnv = toAgentSdkEnv(profile);
+    const registry = ProfileRegistry.getInstance();
+    const agentConfig = registry.getActiveAgentConfig();
+    const agentFastConfig = registry.getActiveAgentFastConfig();
+    const agentModelId = agentConfig?.modelId ?? profile.primaryModel;
+    const agentFastModelId = agentFastConfig?.modelId ?? profile.primaryModel;
+    const profileEnv = toAgentSdkEnv(profile, agentModelId, agentFastModelId);
     const subprocessEnv: Record<string, string> = {
         ...profileEnv,
         PATH: process.env.PATH ?? '',
