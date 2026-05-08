@@ -20,8 +20,8 @@ function getModelsForProfile(profile: Profile): string[] {
         const models = modelRegistry.getModelsForProvider(catalogId);
         if (models.length > 0) return models.map(m => m.id);
     }
-    // Fallback: use configured models
-    return [profile.primaryModel, profile.fastModel].filter(Boolean);
+    // Fallback: catalog or runtime models will provide the list
+    return [];
 }
 
 type RoleKind = 'agent' | 'chat' | 'embedding' | 'webSearch';
