@@ -33,9 +33,10 @@ interface RoleSelectorChipProps {
     profiles: Profile[];
     onSelect: (config: RoleConfig) => void;
     onClear: () => void;
+    modelFilter?: (modelId: string) => boolean;
 }
 
-function RoleSelectorChip({ role, label, activeConfig, profiles, onSelect, onClear }: RoleSelectorChipProps) {
+function RoleSelectorChip({ role, label, activeConfig, profiles, onSelect, onClear, modelFilter }: RoleSelectorChipProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -72,7 +73,8 @@ function RoleSelectorChip({ role, label, activeConfig, profiles, onSelect, onCle
             {open && (
                 <div className="pktw-absolute pktw-left-0 pktw-top-full pktw-mt-1 pktw-z-50 pktw-min-w-[260px] pktw-max-h-[320px] pktw-overflow-y-auto pktw-rounded-lg pktw-border pktw-border-pk-border pktw-bg-popover pktw-shadow-lg pktw-py-1">
                     {profiles.filter(p => p.enabled !== false).map(profile => {
-                        const models = getModelsForProfile(profile);
+                        const allModels = getModelsForProfile(profile);
+                        const models = modelFilter ? allModels.filter(modelFilter) : allModels;
                         const isActiveProfile = activeConfig?.profile.id === profile.id;
 
                         return (
@@ -157,8 +159,9 @@ export function StatusBar() {
 
     const sqliteReady = sqliteStoreManager.isInitialized();
 
-    // Agent SDK only works with Anthropic-compatible providers
+    // Agent SDK only works with Anthropic-compatible providers and Claude models
     const agentProfiles = profiles.filter(p => p.kind === 'anthropic' || p.kind === 'openrouter');
+    const agentModelFilter = (modelId: string) => !modelId.includes('/') || modelId.startsWith('anthropic/');
 
     return (
         <div className="pktw-flex pktw-gap-2.5 pktw-mt-4 pktw-mb-5 pktw-flex-wrap">
@@ -169,6 +172,7 @@ export function StatusBar() {
                 profiles={agentProfiles}
                 onSelect={(config) => { registry.setActiveAgentConfig(config); bump(); }}
                 onClear={() => { registry.setActiveAgentConfig(null); bump(); }}
+                modelFilter={agentModelFilter}
             />
             <RoleSelectorChip
                 role="agent"
@@ -177,6 +181,7 @@ export function StatusBar() {
                 profiles={agentProfiles}
                 onSelect={(config) => { registry.setActiveAgentFastConfig(config); bump(); }}
                 onClear={() => { registry.setActiveAgentFastConfig(null); bump(); }}
+                modelFilter={agentModelFilter}
             />
             <RoleSelectorChip
                 role="chat"

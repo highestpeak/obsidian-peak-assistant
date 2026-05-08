@@ -4,7 +4,6 @@ import { ChevronRight, MoreHorizontal, Zap } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { Profile, ProfileKind } from '@/core/profiles/types';
-import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { ProviderIcon, PROVIDER_LABELS } from './ProviderIcon';
 import { ModelCombobox } from './ModelCombobox';
 
@@ -14,14 +13,8 @@ import { ModelCombobox } from './ModelCombobox';
 
 export interface ProfileCardProps {
     profile: Profile;
-    isActiveAgent: boolean;
-    isActiveEmbedding: boolean;
-    isActiveWebSearch: boolean;
     onUpdate: (id: string, updates: Partial<Profile>) => void;
     onDelete: (id: string) => void;
-    onToggleAgent: (id: string) => void;
-    onToggleEmbedding: (id: string) => void;
-    onToggleWebSearch: (id: string) => void;
     onToggleEnabled: (id: string) => void;
 }
 
@@ -51,17 +44,6 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
     );
 }
 
-function RoleBadge({ label, active }: { label: string; active: boolean }) {
-    if (!active) return null;
-    const color = label === 'Agent'
-        ? 'pktw-bg-purple-500/15 pktw-text-purple-600 dark:pktw-text-purple-400'
-        : 'pktw-bg-blue-500/15 pktw-text-blue-600 dark:pktw-text-blue-400';
-    return (
-        <span className={cn('pktw-px-1.5 pktw-py-0.5 pktw-rounded pktw-text-[10px] pktw-font-medium pktw-leading-none', color)}>
-            {label}
-        </span>
-    );
-}
 
 const INPUT_CLS = 'pktw-w-full pktw-bg-pk-background pktw-border pktw-border-pk-border pktw-rounded-md pktw-px-2.5 pktw-py-1.5 pktw-text-sm pktw-outline-none focus:pktw-border-pk-accent/60 pktw-transition-colors';
 
@@ -123,20 +105,12 @@ function MoreMenu({ profile, onToggleEnabled, onDelete }: {
 
 export function ProfileCard({
     profile,
-    isActiveAgent,
-    isActiveEmbedding,
-    isActiveWebSearch,
     onUpdate,
     onDelete,
-    onToggleAgent,
-    onToggleEmbedding,
-    onToggleWebSearch,
     onToggleEnabled,
 }: ProfileCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [testing, setTesting] = useState(false);
-
-    const isActive = isActiveAgent || isActiveEmbedding || isActiveWebSearch;
     const allowFreeText = profile.kind === 'custom' || profile.kind === 'litellm' || profile.kind === 'ollama';
     const subtitle = `${PROVIDER_LABELS[profile.kind].label} · ${profile.apiKey ? 'API key set' : 'no key'}`;
 
@@ -151,8 +125,7 @@ export function ProfileCard({
 
     return (
         <div className={cn(
-            'pktw-border pktw-rounded-lg pktw-transition-all',
-            isActive ? 'pktw-border-pk-accent' : 'pktw-border-pk-border',
+            'pktw-border pktw-rounded-lg pktw-transition-all pktw-border-pk-border',
             !profile.enabled && 'pktw-opacity-45',
         )}>
             {/* ── Header ──────────────────────────────────────────────── */}
@@ -165,9 +138,6 @@ export function ProfileCard({
                 <div className="pktw-flex-1 pktw-min-w-0">
                     <div className="pktw-flex pktw-items-center pktw-gap-2">
                         <span className="pktw-text-sm pktw-font-bold pktw-truncate">{profile.name}</span>
-                        <RoleBadge label="Agent" active={isActiveAgent} />
-                        <RoleBadge label="Embedding" active={isActiveEmbedding} />
-                        <RoleBadge label="Web Search" active={isActiveWebSearch} />
                     </div>
                     <span className="pktw-text-[11px] pktw-text-pk-muted-foreground pktw-truncate pktw-block">{subtitle}</span>
                 </div>
@@ -259,79 +229,7 @@ export function ProfileCard({
                         </FieldRow>
                     </div>
 
-                    {/* Role selectors */}
-                    <div className="pktw-flex pktw-flex-wrap pktw-gap-3 pktw-mt-4 pktw-pt-3 pktw-border-t pktw-border-pk-border">
-                        <RoleSelector
-                            label="Use as Agent"
-                            active={isActiveAgent}
-                            selectedModel={ProfileRegistry.getInstance().getActiveAgentConfig()?.modelId}
-                            providerKind={profile.kind}
-                            onToggle={() => onToggleAgent(profile.id)}
-                            onModelChange={(modelId) => ProfileRegistry.getInstance().setActiveAgentConfig({ profileId: profile.id, modelId })}
-                        />
-                        <RoleSelector
-                            label="Use as Embedding"
-                            active={isActiveEmbedding}
-                            selectedModel={ProfileRegistry.getInstance().getActiveEmbeddingConfig()?.modelId}
-                            providerKind={profile.kind}
-                            onToggle={() => onToggleEmbedding(profile.id)}
-                            onModelChange={(modelId) => ProfileRegistry.getInstance().setActiveEmbeddingConfig({ profileId: profile.id, modelId })}
-                        />
-                        <RoleSelector
-                            label="Use as Web Search"
-                            active={isActiveWebSearch}
-                            selectedModel={ProfileRegistry.getInstance().getActiveWebSearchConfig()?.modelId}
-                            providerKind={profile.kind}
-                            onToggle={() => onToggleWebSearch(profile.id)}
-                            onModelChange={(modelId) => ProfileRegistry.getInstance().setActiveWebSearchConfig({ profileId: profile.id, modelId })}
-                        />
-                    </div>
                 </div>
-            )}
-        </div>
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Role selector (toggle + model dropdown)
-// ---------------------------------------------------------------------------
-
-function RoleSelector({ label, active, selectedModel, providerKind, onToggle, onModelChange }: {
-    label: string; active: boolean; selectedModel?: string;
-    providerKind: ProfileKind; onToggle: () => void; onModelChange: (modelId: string) => void;
-}) {
-    return (
-        <div className="pktw-flex pktw-items-center pktw-gap-2">
-            <button
-                type="button"
-                onClick={onToggle}
-                className={cn(
-                    'pktw-flex pktw-items-center pktw-gap-2 pktw-px-3 pktw-py-1.5 pktw-rounded-md pktw-text-xs pktw-font-medium pktw-transition-all pktw-cursor-pointer pktw-border',
-                    active
-                        ? 'pktw-border-purple-500/60 pktw-bg-purple-500/10 pktw-text-purple-600 dark:pktw-text-purple-400'
-                        : 'pktw-border-pk-border pktw-text-pk-muted-foreground hover:pktw-border-pk-accent/40',
-                )}
-            >
-                <span className={cn(
-                    'pktw-w-3.5 pktw-h-3.5 pktw-rounded pktw-border pktw-flex pktw-items-center pktw-justify-center pktw-transition-colors',
-                    active ? 'pktw-border-purple-500 pktw-bg-purple-500' : 'pktw-border-pk-border',
-                )}>
-                    {active && (
-                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                            <path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                    )}
-                </span>
-                {label}
-            </button>
-            {active && (
-                <ModelCombobox
-                    value={selectedModel ?? ''}
-                    onChange={onModelChange}
-                    providerKind={providerKind}
-                    allowFreeText
-                    placeholder="Select model..."
-                />
             )}
         </div>
     );
