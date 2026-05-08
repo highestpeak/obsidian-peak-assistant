@@ -571,5 +571,3 @@ export async function extractTopicAndFunctionalTags(
 	};
 }
 
-/** @deprecated Use {@link DocLlmTagResult}. */
-export type TopicFunctionalTagResult = DocLlmTagResult;

@@ -405,21 +405,6 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
-	 * Send a message and wait for the full model response (blocking).
-	 * Returns the assistant message and usage without persisting. Call addMessage to persist.
-	 *
-	 * @experimental This method is temporarily not supported. Use streamChat instead.
-	 */
-	async blockChat(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
-		userContent: string;
-		attachments?: string[];
-	}): Promise<{ message: ChatMessage; usage?: LLMUsage }> {
-		throw new Error('Unsupported operation. Use streamChat instead.');
-	}
-
-	/**
 	 * Send a message and stream incremental model output.
 	 */
 	streamChat(params: {

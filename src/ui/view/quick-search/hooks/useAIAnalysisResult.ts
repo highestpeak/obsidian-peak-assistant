@@ -2,40 +2,14 @@ import { useCallback } from "react";
 import {
 	useAIAnalysisRuntimeStore,
 	useAIAnalysisResultStore,
-	useAIAnalysisTopicsStore,
 	useAIAnalysisSummaryStore,
 } from "../store/aiAnalysisStore";
 import { AppContext } from "@/app/context/AppContext";
 import { useSearchSessionStore } from "../store/searchSessionStore";
 import { useSharedStore } from "../store/sharedStore";
 import { saveAiAnalyzeResultToMarkdown } from "../callbacks/save-ai-analyze-to-md";
-import type { AISearchSource } from "@/service/agents/shared-types";
 import { CHAT_VIEW_TYPE } from "../../ChatView";
 import { EventBus, SelectionChangedEvent } from "@/core/eventBus";
-import type { SearchResultItem } from "@/service/search/types";
-
-// Convert AISearchSource[] to SearchResultItem[] with extended fields for TopSourcesSection
-export const convertSourcesToSearchResultItems = (aiSources: AISearchSource[]): SearchResultItem[] => {
-    return aiSources.map(source => {
-        const score = source.score ?? { average: 0, physical: 0, semantic: 0 };
-        return {
-            id: source.id,
-            type: 'markdown' as const,
-            title: source.title,
-            path: source.path,
-            lastModified: Date.now(),
-            content: source.reasoning, // Used for reasoning display
-            score: score.average ?? 0,
-            source: 'local' as const,
-            badges: source.badges,
-            scoreDetail: {
-                physical: score.physical ?? 0,
-                semantic: score.semantic ?? 0,
-                average: score.average ?? 0
-            }
-        };
-    });
-};
 
 export function useAIAnalysisResult() {
     const { searchQuery } = useSharedStore();
@@ -217,140 +191,3 @@ export function useAIAnalysisResult() {
     }
 }
 
-export function useAnalyzeTopicResults() {
-    const summaryText = useAIAnalysisSummaryStore((s) => s.summaryText);
-    const sources = useAIAnalysisResultStore((s) => s.sources);
-    const topicInspectResults = useAIAnalysisTopicsStore((s) => s.topicInspectResults);
-    const setTopicInspectResults = useAIAnalysisTopicsStore((s) => s.setTopicInspectResults);
-    const setTopicInspectLoading = useAIAnalysisTopicsStore((s) => s.setTopicInspectLoading);
-
-    const summary = summaryText ?? '';
-
-    const handleCopyTopicInfo = useCallback(async (topic: string) => {
-        const inspectList = topicInspectResults[topic] ?? [];
-        const lines: string[] = [
-            `# Topic: ${topic}`,
-            '',
-            '## Summary',
-            summary || '(empty)',
-            '',
-            '## Sources',
-            ...sources.map((s) => `- [[${s.path}|${s.title}]]`),
-            '',
-        ];
-        if (inspectList.length > 0) {
-            lines.push('## Inspect results');
-            inspectList.forEach((item) => lines.push(`- [[${item.path}|${item.title}]]`));
-            lines.push('');
-        }
-        try {
-            await navigator.clipboard.writeText(lines.join('\n'));
-        } catch (e) {
-            console.warn('Copy topic info failed:', e);
-        }
-    }, [summary, sources, topicInspectResults]);
-
-    // todo we need to use simple search agent to inspect the topic
-    const handleInspectTopic = useCallback(async (topic: string) => {
-        setTopicInspectLoading(topic);
-        try {
-            const tm = AppContext.getInstance().manager.getTemplateManager?.();
-            const tool = localSearchWholeVaultTool(tm);
-            const out = await tool.execute({
-                query: topic,
-                searchMode: 'hybrid',
-                scopeMode: 'vault',
-                limit: 10,
-                response_format: 'structured',
-            });
-            const raw = (out as any)?.result ?? out;
-            const results = Array.isArray(raw?.results) ? raw.results : [];
-            const items: SearchResultItem[] = results.map((r: any) => ({
-                id: r.id ?? r.path ?? `inspect:${r.path}`,
-                type: (r.type as SearchResultItem['type']) ?? 'markdown',
-                title: r.title ?? r.path ?? '',
-                path: r.path ?? '',
-                lastModified: r.lastModified ?? Date.now(),
-                score: r.score ?? r.finalScore,
-                source: 'local',
-                scoreDetail: r.scoreDetail,
-            }));
-            setTopicInspectResults(topic, items);
-        } catch (e) {
-            console.warn('[TagCloudSection] Inspect topic failed:', e);
-            setTopicInspectResults(topic, []);
-        } finally {
-            setTopicInspectLoading(null);
-        }
-    }, [setTopicInspectResults, setTopicInspectLoading]);
-
-    return {
-        handleCopyTopicInfo,
-        handleInspectTopic,
-    };
-}
-
-export function useAnalyzeGraphResults() {
-
-    const publishToolCall = (toolName: string, toolCallId: string, input: any) => {
-        useUIEventStore.getState().publish('ui:tool-call', {
-            triggerName: 'graph-ui',
-            toolName,
-            toolCallId,
-            input,
-        });
-    };
-
-    const publishToolResult = (toolName: string, toolCallId: string, output: any) => {
-        useUIEventStore.getState().publish('ui:tool-result', {
-            triggerName: 'graph-ui',
-            toolName,
-            toolCallId,
-            output,
-        });
-    };
-
-    const runGraphTool = async <TOutput,>(toolName: 'inspect_note_context' | 'graph_traversal' | 'find_path' | 'find_key_nodes', input: any) => {
-        const toolCallId = `graph-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        publishToolCall(toolName, toolCallId, input);
-        try {
-            let output: any = null;
-            if (toolName === 'inspect_note_context') {
-                output = await inspectNoteContextTool().execute({
-                    note_path: input.note_path,
-                    limit: 15,
-                    include_semantic_paths: true,
-                    response_format: 'structured',
-                });
-            } else if (toolName === 'graph_traversal') {
-                output = await graphTraversalTool().execute({
-                    start_note_path: input.start_note_path,
-                    hops: input.hops ?? 1,
-                    limit: input.limit ?? 15,
-                    include_semantic_paths: input.include_semantic_paths !== false,
-                    response_format: 'structured',
-                });
-            } else if (toolName === 'find_path') {
-                output = await findPathTool().execute({
-                    start_note_path: input.start_note_path,
-                    end_note_path: input.end_note_path,
-                    limit: 15,
-                    include_semantic_paths: true,
-                    response_format: 'structured',
-                });
-            } else if (toolName === 'find_key_nodes') {
-                output = await findKeyNodesTool().execute(input);
-            }
-            publishToolResult(toolName, toolCallId, output);
-            return output as TOutput;
-        } catch (e) {
-            console.warn('[KnowledgeGraphSection] graph tool failed:', toolName, e);
-            publishToolResult(toolName, toolCallId, { error: e instanceof Error ? e.message : String(e) });
-            throw e;
-        }
-    };
-
-    return {
-        runGraphTool
-    };
-}

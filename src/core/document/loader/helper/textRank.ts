@@ -330,10 +330,3 @@ export function computeKeywordTagBundles(userTags: string[], topTerms: TextRankT
 	return { userKeywordTags, textrankKeywordTerms, mergedKeywordTags };
 }
 
-/**
- * Merges user frontmatter tags with TextRank terms (dedupe case-insensitive, cap total and TR slice).
- * @deprecated Prefer {@link computeKeywordTagBundles} when you need the split.
- */
-export function mergeUserAndTextRankKeywords(userTags: string[], topTerms: TextRankTerm[]): string[] {
-	return computeKeywordTagBundles(userTags, topTerms).mergedKeywordTags;
-}
