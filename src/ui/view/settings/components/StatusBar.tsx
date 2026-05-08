@@ -150,6 +150,7 @@ export function StatusBar() {
     const profiles = registry.getAllProfiles();
 
     const agentConfig = registry.getActiveAgentConfig();
+    const agentFastConfig = registry.getActiveAgentFastConfig();
     const chatConfig = registry.getActiveChatConfig();
     const embeddingConfig = registry.getActiveEmbeddingConfig();
     const webSearchConfig = registry.getActiveWebSearchConfig();
@@ -165,6 +166,14 @@ export function StatusBar() {
                 profiles={profiles}
                 onSelect={(config) => { registry.setActiveAgentConfig(config); bump(); }}
                 onClear={() => { registry.setActiveAgentConfig(null); bump(); }}
+            />
+            <RoleSelectorChip
+                role="agent"
+                label="Agent Fast"
+                activeConfig={agentFastConfig}
+                profiles={profiles}
+                onSelect={(config) => { registry.setActiveAgentFastConfig(config); bump(); }}
+                onClear={() => { registry.setActiveAgentFastConfig(null); bump(); }}
             />
             <RoleSelectorChip
                 role="chat"
