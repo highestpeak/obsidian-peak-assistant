@@ -157,13 +157,16 @@ export function StatusBar() {
 
     const sqliteReady = sqliteStoreManager.isInitialized();
 
+    // Agent SDK only works with Anthropic-compatible providers
+    const agentProfiles = profiles.filter(p => p.kind === 'anthropic' || p.kind === 'openrouter');
+
     return (
         <div className="pktw-flex pktw-gap-2.5 pktw-mt-4 pktw-mb-5 pktw-flex-wrap">
             <RoleSelectorChip
                 role="agent"
                 label="Agent"
                 activeConfig={agentConfig}
-                profiles={profiles}
+                profiles={agentProfiles}
                 onSelect={(config) => { registry.setActiveAgentConfig(config); bump(); }}
                 onClear={() => { registry.setActiveAgentConfig(null); bump(); }}
             />
@@ -171,7 +174,7 @@ export function StatusBar() {
                 role="agent"
                 label="Agent Fast"
                 activeConfig={agentFastConfig}
-                profiles={profiles}
+                profiles={agentProfiles}
                 onSelect={(config) => { registry.setActiveAgentFastConfig(config); bump(); }}
                 onClear={() => { registry.setActiveAgentFastConfig(null); bump(); }}
             />
