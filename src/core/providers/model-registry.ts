@@ -208,6 +208,41 @@ export class ModelRegistry {
 		return [...this.providers.keys()];
 	}
 
+	/**
+	 * Merge runtime-discovered models (e.g. from Ollama API) into a provider's
+	 * model list. Deduplicates against existing catalog entries.
+	 */
+	public mergeRuntimeModels(providerId: string, modelIds: string[]): void {
+		const key = normalizeProviderId(providerId);
+		let provider = this.providers.get(key);
+		if (!provider) {
+			provider = {
+				id: providerId,
+				name: providerId,
+				defaultBaseUrl: '',
+				icon: undefined,
+				models: [],
+				modelById: new Map(),
+				modelByApiModelId: new Map(),
+			};
+			this.providers.set(key, provider);
+		}
+
+		for (const id of modelIds) {
+			const normalized = normalizeModelKey(id);
+			if (provider.modelById.has(normalized)) continue;
+
+			const entry: InternalModelEntry = {
+				id,
+				displayName: id,
+				modelType: DEFAULT_MODEL_TYPE,
+				normalizedId: normalized,
+			};
+			provider.models.push(entry);
+			provider.modelById.set(normalized, entry);
+		}
+	}
+
 	private findModel(providerId: string, modelId: string): InternalModelEntry | undefined {
 		const provider = this.providers.get(normalizeProviderId(providerId));
 		if (!provider) return undefined;

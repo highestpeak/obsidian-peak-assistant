@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchOllamaModels } from '@/core/providers/ollama/fetchOllamaModels';
+import { modelRegistry } from '@/core/providers/model-registry';
 import { Plus, ChevronRight } from 'lucide-react';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createPresetProfile } from '@/core/profiles/presets';
@@ -52,6 +54,18 @@ export function ProfilesTab({ settings, settingsUpdates }: ProfilesTabProps) {
     // Derived from registry (tick forces re-read)
     void tick;
     const profiles = registry.getAllProfiles();
+
+    useEffect(() => {
+        const ollamaProfiles = profiles.filter((p) => p.kind === 'ollama' && p.enabled);
+        for (const p of ollamaProfiles) {
+            fetchOllamaModels(p.baseUrl).then((models) => {
+                if (models.length > 0) {
+                    modelRegistry.mergeRuntimeModels('ollama', models);
+                    bump();
+                }
+            });
+        }
+    }, []);
     const activeAgentId = registry.getActiveAgentProfile()?.id ?? null;
     const activeEmbeddingId = registry.getActiveEmbeddingProfile()?.id ?? null;
     const activeWebSearchId = registry.getActiveWebSearchProfile()?.id ?? null;
