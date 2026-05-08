@@ -28,6 +28,4 @@ export {
 	nestFolderHubRelationLegacy,
 	thinDocumentHubCandidatesRepresentative,
 } from './hubDiscover';
-export type { FolderHubDiscoveryDiagnosticsRow } from './hubDiscover';
-export type { FolderHubEnrichment } from './folderHubTopicPurity';
-export { buildNavigationHubGroups, partitionNavigationGroupsAndLongTail } from './navigationHubGroups';
+export type { FolderHubDiscoveryDiagnosticsRow, FolderHubEnrichment } from './hubDiscover';

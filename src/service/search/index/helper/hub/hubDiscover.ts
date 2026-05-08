@@ -94,20 +94,31 @@ import {
 	HUB_SOURCE_CONSENSUS_PER_EXTRA,
 	SLICE_CAPS,
 	MANUAL_HUB_FRONTMATTER_KEYS,
+	FOLDER_HUB_CONTAINER_PENALTY_MAX,
+	FOLDER_HUB_CONTAINER_PENALTY_RAW_REF_MAX,
+	FOLDER_HUB_FOLDER_RANK_PURITY_WEIGHT,
+	FOLDER_HUB_STRONG_CHILD_TOPIC_PURITY_MIN,
+	FOLDER_HUB_TOPIC_PURITY_DOMINANT_WEIGHT,
+	FOLDER_HUB_TOPIC_PURITY_HHI_WEIGHT,
+	FOLDER_HUB_TOPIC_PURITY_LOW_RANK_MULTIPLIER,
+	FOLDER_HUB_TOPIC_PURITY_LOW_THRESHOLD,
+	HUB_CLUSTER_V11_MEMBER_WEIGHTS,
+	HUB_CLUSTER_V11_SEMANTIC_WEIGHT_CAP,
+	HUB_NAV_GROUP_SEED_ABSORB_COMBINED_MIN,
+	HUB_NAV_GROUP_SEED_SEMANTIC_STRONG,
+	HUB_NAV_GROUP_TOP_LEVEL_DEEP_STRUCT,
+	HUB_NAVIGATION_LOW_COHESION_FOLDER_PENALTY,
+	HUB_NAVIGATION_MANUAL_BONUS,
+	HUB_NAVIGATION_PARTITION_MAX,
+	HUB_NAVIGATION_PARTITION_MIN,
+	HUB_NAVIGATION_SCORE_WEIGHTS,
+	HUB_NAVIGATION_TOP_LEVEL_FOLDER_PENALTY,
 } from '@/core/constant';
 import { GRAPH_WIKI_REFERENCE_EDGE_TYPES } from '@/core/po/graph.po';
 import { hubSemanticMergeLlmSchema, type HubSemanticMergeLlm } from '@/core/schemas';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import type { MobiusNodeFolderHubDiscoveryRow, MobiusNodeRepo } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 import type { IndexTenant } from '@/core/storage/sqlite/types';
-import {
-	aggregateTagDocFrequencies,
-	computeFolderContainerPenalty,
-	computeFolderRank,
-	computeFolderTopicPurity,
-	type FolderHubEnrichment,
-	isStrongTopicChildFolder,
-} from '@/service/search/index/helper/hub/folderHubTopicPurity';
 import {
 	countBitsNewSince,
 	countBitsUint32,
@@ -119,9 +130,10 @@ import {
 	setUint32Bit,
 } from '@/core/utils/bit-util';
 import { decodeIndexedTagsBlob, graphKeywordTagsForMobius } from '@/core/document/helper/TagService';
+import type { IndexedTagsBlob } from '@/core/document/helper/TagService';
 import { folderPrefixOfPath } from '@/core/utils/file-utils';
 import { hashSHA256 } from '@/core/utils/hash-utils';
-import { parseFrontmatter } from '@/core/utils/markdown-utils';
+import { getClusterHubWeakTitleTokens, parseFrontmatter } from '@/core/utils/markdown-utils';
 import {
 	isVaultPathUnderPrefix,
 	pathMatchesAnyPrefix,
@@ -131,17 +143,6 @@ import { stableHubClusterNodeId } from '@/core/utils/id-utils';
 import { Stopwatch } from '@/core/utils/Stopwatch';
 import { normalizeVaultPath, parentDirPath, pathSegments } from '@/core/utils/vault-path-utils';
 import { PromptId } from '@/service/prompt/PromptId';
-import {
-	buildClusterAnchorSetsFromBlob,
-	computeClusterCohesionFromMembers,
-	computeClusterSeedQualityScore,
-	computeIntraClusterSemanticDensity,
-	computeMemberAffinity,
-	extractMeaningfulTitleTokens,
-	mergeTitleTokensIntoAnchorKeywords,
-	pickClusterHubLabel,
-	semanticSupportFromEdgeWeight,
-} from './clusterHubSignals';
 import type {
 	HubAssemblyHints,
 	HubAssemblyTopology,
@@ -160,15 +161,1122 @@ import type {
 	HubDiscoverSettings,
 	HubDiscoverStopDecision,
 	HubClusterDiscoveryStats,
+	HubPartitionMetrics,
 	HubRole,
 	HubSourceKind,
 	MobiusNodeRow,
+	NavigationHubGroup,
 } from './types';
-import {
-	buildNavigationHubGroups,
-	partitionNavigationGroupsAndLongTail,
-} from './navigationHubGroups';
 import { DEFAULT_HUB_DISCOVER_SETTINGS, SOURCE_PRIORITY } from './types';
+
+// ---------------------------------------------------------------------------
+// Inlined from folderHubTopicPurity.ts
+// ---------------------------------------------------------------------------
+
+/** Per-folder enrichment used for ranking and parent/child compression. */
+export type FolderHubEnrichment = {
+	topicPurity: number;
+	/** From {@link computeFolderTopicPurity}; for diagnostics. */
+	dominantCoverage: number;
+	/** From {@link computeFolderTopicPurity}; for diagnostics. */
+	normalizedHhi: number;
+	containerPenalty: number;
+	folderRank: number;
+	strongChildDocShare: number;
+	residualRatio: number;
+	strongChildCount: number;
+};
+
+/**
+ * Collects normalized tag/keyword tokens from an indexed tags blob (one row per document).
+ */
+function collectTagTokensFromBlob(blob: IndexedTagsBlob): string[] {
+	const s = new Set<string>();
+	for (const t of blob.topicTags) {
+		if (t) s.add(t.toLowerCase());
+	}
+	for (const e of blob.topicTagEntries ?? []) {
+		if (e.id) s.add(e.id.toLowerCase());
+	}
+	for (const k of blob.keywordTags ?? []) {
+		if (k) s.add(k.toLowerCase());
+	}
+	for (const k of blob.userKeywordTags ?? []) {
+		if (k) s.add(k.toLowerCase());
+	}
+	for (const k of blob.textrankKeywordTerms ?? []) {
+		if (k) s.add(k.toLowerCase());
+	}
+	return [...s];
+}
+
+function collectTagTokensFromTagsJson(raw: string | null | undefined): string[] {
+	return collectTagTokensFromBlob(decodeIndexedTagsBlob(raw ?? null));
+}
+
+/**
+ * Aggregates per-tag document frequencies from sampled docs (each doc contributes at most once per tag).
+ */
+function aggregateTagDocFrequencies(tagsJsonRows: (string | null | undefined)[]): {
+	docCount: number;
+	tagDocFreq: Map<string, number>;
+} {
+	const tagDocFreq = new Map<string, number>();
+	let docCount = 0;
+	for (const raw of tagsJsonRows) {
+		docCount++;
+		const tokens = collectTagTokensFromTagsJson(raw ?? null);
+		const seen = new Set(tokens);
+		for (const t of seen) {
+			tagDocFreq.set(t, (tagDocFreq.get(t) ?? 0) + 1);
+		}
+	}
+	return { docCount, tagDocFreq };
+}
+
+/**
+ * Dominant coverage, HHI, normalized HHI, and topic purity in [0,1].
+ */
+function computeFolderTopicPurity(tagDocFreq: Map<string, number>, docCount: number): {
+	topicPurity: number;
+	dominantCoverage: number;
+	normalizedHhi: number;
+} {
+	if (docCount <= 0 || tagDocFreq.size === 0) {
+		return { topicPurity: 0, dominantCoverage: 0, normalizedHhi: 0 };
+	}
+	let maxFt = 0;
+	let totalInst = 0;
+	for (const ft of tagDocFreq.values()) {
+		maxFt = Math.max(maxFt, ft);
+		totalInst += ft;
+	}
+	const dominantCoverage = Math.min(1, maxFt / docCount);
+	const tf = tagDocFreq.size;
+	let hhi = 0;
+	if (totalInst > 0) {
+		for (const f of tagDocFreq.values()) {
+			const p = f / totalInst;
+			hhi += p * p;
+		}
+	}
+	let normalizedHhi = 1;
+	if (tf <= 1) {
+		normalizedHhi = 1;
+	} else {
+		const minHhi = 1 / tf;
+		const denom = 1 - minHhi;
+		normalizedHhi = denom > 1e-9 ? Math.max(0, Math.min(1, (hhi - minHhi) / denom)) : 1;
+	}
+	const topicPurity = Math.min(
+		1,
+		FOLDER_HUB_TOPIC_PURITY_DOMINANT_WEIGHT * dominantCoverage +
+			FOLDER_HUB_TOPIC_PURITY_HHI_WEIGHT * normalizedHhi,
+	);
+	return { topicPurity, dominantCoverage, normalizedHhi };
+}
+
+/**
+ * Container penalty from strong-child coverage, parent purity, and residual mass after removing strong children.
+ */
+function computeFolderContainerPenalty(input: {
+	parentTopicPurity: number;
+	strongChildDocShare: number;
+	residualRatio: number;
+}): number {
+	const { parentTopicPurity, strongChildDocShare, residualRatio } = input;
+	const raw =
+		0.08 * strongChildDocShare +
+		0.05 * (1 - parentTopicPurity) +
+		0.04 * Math.max(0, 0.5 - residualRatio);
+	const scaled =
+		FOLDER_HUB_CONTAINER_PENALTY_RAW_REF_MAX > 1e-9
+			? raw * (FOLDER_HUB_CONTAINER_PENALTY_MAX / FOLDER_HUB_CONTAINER_PENALTY_RAW_REF_MAX)
+			: raw;
+	return Math.min(FOLDER_HUB_CONTAINER_PENALTY_MAX, scaled);
+}
+
+/**
+ * Final folder ranking score for discovery (before broadness penalty scaling).
+ */
+function computeFolderRank(hubGraphScore: number, topicPurity: number, containerPenalty: number): number {
+	let rank = hubGraphScore + FOLDER_HUB_FOLDER_RANK_PURITY_WEIGHT * topicPurity - containerPenalty;
+	if (topicPurity < FOLDER_HUB_TOPIC_PURITY_LOW_THRESHOLD) {
+		rank *= FOLDER_HUB_TOPIC_PURITY_LOW_RANK_MULTIPLIER;
+	}
+	return Math.max(0, rank);
+}
+
+/** Whether a direct child counts as "strong" for container statistics. */
+function isStrongTopicChildFolder(childTopicPurity: number): boolean {
+	return childTopicPurity >= FOLDER_HUB_STRONG_CHILD_TOPIC_PURITY_MIN;
+}
+
+// ---------------------------------------------------------------------------
+// Inlined from clusterHubSignals.ts
+// ---------------------------------------------------------------------------
+
+/** Topic / functional / keyword sets derived from the seed document (cluster anchor). */
+type ClusterAnchorSets = {
+	topics: Set<string>;
+	functionals: Set<string>;
+	keywords: Set<string>;
+};
+
+/**
+ * Jaccard similarity for two string sets (0..1).
+ * Empty vs empty is 0: no evidence of overlap (cluster scoring must not treat missing tags as a perfect match).
+ */
+function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
+	if (a.size === 0 && b.size === 0) return 0;
+	if (a.size === 0 || b.size === 0) return 0;
+	let inter = 0;
+	for (const x of a) {
+		if (b.has(x)) inter++;
+	}
+	const union = a.size + b.size - inter;
+	return union > 0 ? inter / union : 0;
+}
+
+/**
+ * Basename and optional label → lowercase tokens (ASCII-focused; drops very short / noisy tokens).
+ */
+function extractMeaningfulTitleTokens(path: string, label?: string): string[] {
+	const base = path.includes('/') ? path.slice(path.lastIndexOf('/') + 1) : path;
+	const stripExt = base.replace(/\.(md|markdown|txt)$/i, '');
+	const parts = `${stripExt} ${label ?? ''}`
+		.toLowerCase()
+		.split(/[^a-z0-9\u4e00-\u9fff]+/g)
+		.map((s) => s.trim())
+		.filter(Boolean);
+
+	const out: string[] = [];
+	const seen = new Set<string>();
+	for (const p of parts) {
+		if (p.length < 2) continue;
+		if (/^\d+$/.test(p)) continue;
+		if (getClusterHubWeakTitleTokens().has(p)) continue;
+		if (seen.has(p)) continue;
+		seen.add(p);
+		out.push(p);
+		if (out.length >= 24) break;
+	}
+	return out;
+}
+
+/**
+ * Builds anchor keyword/topic sets from the seed blob (same idea as hub-local `anchorSetsFromBlob`).
+ */
+function buildClusterAnchorSetsFromBlob(blob: IndexedTagsBlob): ClusterAnchorSets {
+	const topics = new Set<string>(blob.topicTags ?? []);
+	for (const e of blob.topicTagEntries ?? []) topics.add(e.id);
+	const functionals = new Set(blob.functionalTagEntries.map((e) => e.id));
+	const kwUser = graphKeywordTagsForMobius(blob);
+	const kwTr = blob.textrankKeywordTerms ?? [];
+	const keywords = new Set<string>([...kwUser, ...kwTr]);
+	return { topics, functionals, keywords };
+}
+
+/**
+ * Merges meaningful title tokens into anchor keywords (lowercased) for Jaccard overlap with members.
+ */
+function mergeTitleTokensIntoAnchorKeywords(anchor: ClusterAnchorSets, titleTokens: string[]): void {
+	for (const t of titleTokens) {
+		const k = t.toLowerCase();
+		if (k.length >= 2) anchor.keywords.add(k);
+	}
+}
+
+/**
+ * Composite seed ranking: semantic centrality + link authority + tag/title richness (not popularity alone).
+ */
+function computeClusterSeedQualityScore(input: {
+	semanticPagerank: number;
+	pagerank: number;
+	docIncoming: number;
+	docOutgoing: number;
+	tagsJson: string | null;
+	seedPath: string;
+	seedLabel?: string;
+}): number {
+	const spr =
+		typeof input.semanticPagerank === 'number' && Number.isFinite(input.semanticPagerank)
+			? input.semanticPagerank
+			: 0;
+	const pr = typeof input.pagerank === 'number' && Number.isFinite(input.pagerank) ? input.pagerank : 0;
+	const inc = typeof input.docIncoming === 'number' && Number.isFinite(input.docIncoming) ? input.docIncoming : 0;
+	const out = typeof input.docOutgoing === 'number' && Number.isFinite(input.docOutgoing) ? input.docOutgoing : 0;
+
+	const semanticCentrality = Math.min(1, spr * 1.2);
+	const structuralAuthority = Math.min(1, pr * 2 + inc * 0.035 + out * 0.055);
+
+	const blob = decodeIndexedTagsBlob(input.tagsJson ?? null);
+	const anchor = buildClusterAnchorSetsFromBlob(blob);
+	const topicRichness = Math.min(1, (anchor.topics.size + anchor.functionals.size) / 14);
+	const keywordRichness = Math.min(1, anchor.keywords.size / 18);
+	const titleTokens = extractMeaningfulTitleTokens(input.seedPath, input.seedLabel);
+	const titleRichness = Math.min(1, titleTokens.length / 8);
+
+	return Math.min(
+		1,
+		0.35 * semanticCentrality +
+			0.2 * structuralAuthority +
+			0.2 * topicRichness +
+			0.15 * keywordRichness +
+			0.1 * titleRichness,
+	);
+}
+
+/**
+ * Topic / functional Jaccard vs anchor.
+ */
+function computeTopicOverlap(anchor: ClusterAnchorSets, blob: IndexedTagsBlob): number {
+	const nodeTopics = new Set<string>(blob.topicTags ?? []);
+	for (const e of blob.topicTagEntries ?? []) nodeTopics.add(e.id);
+	return jaccardSimilarity(anchor.topics, nodeTopics);
+}
+
+function computeFunctionalOverlap(anchor: ClusterAnchorSets, blob: IndexedTagsBlob): number {
+	const nodeF = new Set(blob.functionalTagEntries.map((e) => e.id));
+	return jaccardSimilarity(anchor.functionals, nodeF);
+}
+
+/**
+ * Keyword overlap: user + textrank + optional title/file-name tokens vs anchor keywords (case-normalized).
+ */
+function computeKeywordOverlap(
+	anchor: ClusterAnchorSets,
+	blob: IndexedTagsBlob,
+	memberTitleTokens?: string[],
+): number {
+	const anchorKw = new Set([...anchor.keywords].map((k) => k.toLowerCase()));
+	const memberKw = new Set<string>([
+		...graphKeywordTagsForMobius(blob).map((k) => k.toLowerCase()),
+		...(blob.textrankKeywordTerms ?? []).map((k) => k.toLowerCase()),
+	]);
+	if (memberTitleTokens) {
+		for (const t of memberTitleTokens) {
+			const k = t.toLowerCase();
+			if (k.length >= 2) memberKw.add(k);
+		}
+	}
+	return jaccardSimilarity(anchorKw, memberKw);
+}
+
+/**
+ * Title token overlap between seed and member (Jaccard on token sets).
+ */
+function computeTitleLexicalAffinity(seedTokens: string[], memberTokens: string[]): number {
+	return jaccardSimilarity(new Set(seedTokens), new Set(memberTokens));
+}
+
+/**
+ * Shared path prefix depth ratio (0..1) for light structural agreement.
+ */
+function computeStructuralSupport(seedPath: string, memberPath: string): number {
+	const a = seedPath.split('/').filter(Boolean);
+	const b = memberPath.split('/').filter(Boolean);
+	if (a.length === 0 || b.length === 0) return 0;
+	let i = 0;
+	while (i < a.length && i < b.length && a[i] === b[i]) i++;
+	const maxLen = Math.max(a.length, b.length);
+	return maxLen > 0 ? i / maxLen : 0;
+}
+
+/**
+ * Maps semantic edge weight to 0..1 support for the neighbor.
+ */
+function semanticSupportFromEdgeWeight(weight: number): number {
+	const w = typeof weight === 'number' && Number.isFinite(weight) ? weight : 1;
+	const c = HUB_CLUSTER_V11_SEMANTIC_WEIGHT_CAP;
+	return Math.min(1, Math.max(0, w / c));
+}
+
+type MemberAffinityBreakdown = {
+	semanticSupport: number;
+	topicOverlap: number;
+	functionalOverlap: number;
+	keywordOverlap: number;
+	titleLexical: number;
+	structural: number;
+	affinity: number;
+};
+
+const CLUSTER_MEMBER_WEIGHTS = HUB_CLUSTER_V11_MEMBER_WEIGHTS;
+
+/**
+ * Combined member affinity vs seed anchor (0..1). For the seed node, pass `isSeed: true` and semanticSupport 1.
+ */
+function computeMemberAffinity(input: {
+	anchor: ClusterAnchorSets;
+	seedPath: string;
+	seedTitleTokens: string[];
+	memberBlob: IndexedTagsBlob;
+	memberPath: string;
+	memberLabel?: string;
+	semanticSupport: number;
+	isSeed: boolean;
+}): MemberAffinityBreakdown {
+	const { anchor, seedTitleTokens, memberBlob, memberPath, memberLabel, semanticSupport, isSeed } = input;
+	const memberTokens = extractMeaningfulTitleTokens(memberPath, memberLabel);
+
+	const topicOverlap = isSeed ? 1 : computeTopicOverlap(anchor, memberBlob);
+	const functionalOverlap = isSeed ? 1 : computeFunctionalOverlap(anchor, memberBlob);
+	const keywordOverlap = isSeed ? 1 : computeKeywordOverlap(anchor, memberBlob, memberTokens);
+	const titleLexical = isSeed ? 1 : computeTitleLexicalAffinity(seedTitleTokens, memberTokens);
+	const structural = isSeed ? 1 : computeStructuralSupport(input.seedPath, memberPath);
+
+	const affinity =
+		CLUSTER_MEMBER_WEIGHTS.semantic * semanticSupport +
+		CLUSTER_MEMBER_WEIGHTS.topic * topicOverlap +
+		CLUSTER_MEMBER_WEIGHTS.functional * functionalOverlap +
+		CLUSTER_MEMBER_WEIGHTS.keyword * keywordOverlap +
+		CLUSTER_MEMBER_WEIGHTS.titleLexical * titleLexical +
+		CLUSTER_MEMBER_WEIGHTS.structural * structural;
+
+	return {
+		semanticSupport,
+		topicOverlap,
+		functionalOverlap,
+		keywordOverlap,
+		titleLexical,
+		structural,
+		affinity: Math.min(1, Math.max(0, affinity)),
+	};
+}
+
+type ClusterCohesionMetrics = {
+	avgAffinity: number;
+	topicConsistency: number;
+	keywordConsistency: number;
+	titleConsensus: number;
+	intraClusterSemanticDensity: number;
+	cohesionScore: number;
+};
+
+/**
+ * Cohesion using full member paths/labels plus optional intra-cluster semantic edge density.
+ */
+function computeClusterCohesionFromMembers(input: {
+	anchor: ClusterAnchorSets;
+	seedTitleTokens: string[];
+	intraClusterSemanticDensity: number;
+	members: Array<{ blob: IndexedTagsBlob; path: string; label?: string; affinity: number }>;
+}): ClusterCohesionMetrics {
+	const { anchor, seedTitleTokens, intraClusterSemanticDensity, members } = input;
+	const affinities = members.map((m) => m.affinity);
+	const n = affinities.length;
+	const avgAffinity = n > 0 ? affinities.reduce((a, b) => a + b, 0) / n : 0;
+
+	let topicSum = 0;
+	let kwSum = 0;
+	const seedSet = new Set(seedTitleTokens);
+	let titleShare = 0;
+
+	for (const m of members) {
+		topicSum += computeTopicOverlap(anchor, m.blob);
+		const mt = extractMeaningfulTitleTokens(m.path, m.label);
+		kwSum += computeKeywordOverlap(anchor, m.blob, mt);
+		if (mt.some((t) => seedSet.has(t))) titleShare++;
+	}
+
+	const mlen = members.length || 1;
+	const topicConsistency = topicSum / mlen;
+	const keywordConsistency = kwSum / mlen;
+	const titleConsensus = members.length > 0 ? titleShare / members.length : 0;
+
+	const density = Math.min(1, Math.max(0, intraClusterSemanticDensity));
+	const cohesionScore =
+		0.3 * avgAffinity +
+		0.22 * topicConsistency +
+		0.18 * keywordConsistency +
+		0.1 * titleConsensus +
+		0.2 * density;
+
+	return {
+		avgAffinity,
+		topicConsistency,
+		keywordConsistency,
+		titleConsensus,
+		intraClusterSemanticDensity: density,
+		cohesionScore: Math.min(1, Math.max(0, cohesionScore)),
+	};
+}
+
+/**
+ * Maps intra-cluster semantic edges to mean support per unordered member pair (0..1).
+ */
+function computeIntraClusterSemanticDensity(
+	nodeIds: string[],
+	edges: Array<{ from_node_id: string; to_node_id: string; weight: number }>,
+): number {
+	const ids = [...new Set(nodeIds.filter(Boolean))];
+	const n = ids.length;
+	if (n < 2) return 0;
+	const set = new Set(ids);
+	const maxPairs = (n * (n - 1)) / 2;
+	const seen = new Set<string>();
+	let sum = 0;
+	for (const e of edges) {
+		if (!set.has(e.from_node_id) || !set.has(e.to_node_id)) continue;
+		const a = e.from_node_id < e.to_node_id ? e.from_node_id : e.to_node_id;
+		const b = e.from_node_id < e.to_node_id ? e.to_node_id : e.from_node_id;
+		const key = `${a}\0${b}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		sum += semanticSupportFromEdgeWeight(e.weight);
+	}
+	return maxPairs > 0 ? Math.min(1, sum / maxPairs) : 0;
+}
+
+/**
+ * Pick a short human label: shared topic id, else top shared keyword, else seed label snippet.
+ */
+function pickClusterHubLabel(input: {
+	anchor: ClusterAnchorSets;
+	seedLabel: string;
+	memberBlobs: IndexedTagsBlob[];
+}): string {
+	const { anchor, seedLabel, memberBlobs } = input;
+	const topicCounts = new Map<string, number>();
+	for (const blob of memberBlobs) {
+		for (const t of blob.topicTags ?? []) {
+			topicCounts.set(t, (topicCounts.get(t) ?? 0) + 1);
+		}
+		for (const e of blob.topicTagEntries ?? []) {
+			topicCounts.set(e.id, (topicCounts.get(e.id) ?? 0) + 1);
+		}
+	}
+	const thresh = Math.max(2, Math.floor(memberBlobs.length * 0.45));
+	let bestTopic = '';
+	let bestTc = 0;
+	for (const [id, c] of topicCounts) {
+		if (c >= thresh && c > bestTc && anchor.topics.has(id)) {
+			bestTc = c;
+			bestTopic = id;
+		}
+	}
+	if (bestTopic) {
+		const short = bestTopic.length > 48 ? `${bestTopic.slice(0, 45)}...` : bestTopic;
+		return `Cluster: ${short}`;
+	}
+
+	const anchorKwLower = new Set([...anchor.keywords].map((k) => k.toLowerCase()));
+	const kwCounts = new Map<string, number>();
+	for (const blob of memberBlobs) {
+		for (const k of [...graphKeywordTagsForMobius(blob), ...(blob.textrankKeywordTerms ?? [])]) {
+			const kk = k.toLowerCase();
+			if (anchorKwLower.has(kk)) {
+				kwCounts.set(kk, (kwCounts.get(kk) ?? 0) + 1);
+			}
+		}
+	}
+	let bestKw = '';
+	let bestK = 0;
+	for (const [k, c] of kwCounts) {
+		if (c >= thresh && c > bestK) {
+			bestK = c;
+			bestKw = k;
+		}
+	}
+	if (bestKw) return `Cluster: ${bestKw}`;
+
+	const fallback = seedLabel.trim() || 'Cluster';
+	const fs = fallback.length > 56 ? `${fallback.slice(0, 53)}...` : fallback;
+	return `Cluster (${memberBlobs.length}) ${fs}`;
+}
+
+// ---------------------------------------------------------------------------
+// Inlined from navigationHubGroups.ts
+// ---------------------------------------------------------------------------
+
+function navTokenizeLabel(s: string): Set<string> {
+	const t = s
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase();
+	const out = new Set<string>();
+	for (const m of t.matchAll(/[\p{L}\p{N}]+/gu)) {
+		const w = m[0];
+		if (w.length >= 2) out.add(w);
+	}
+	return out;
+}
+
+function navJaccard(a: Set<string>, b: Set<string>): number {
+	if (a.size === 0 && b.size === 0) return 0;
+	let inter = 0;
+	for (const x of a) {
+		if (b.has(x)) inter++;
+	}
+	const u = a.size + b.size - inter;
+	return u > 0 ? inter / u : 0;
+}
+
+function anchorKeywords(c: HubCandidate): Set<string> {
+	const k = c.assemblyHints?.anchorKeywords ?? [];
+	return new Set(k.map((x) => x.toLowerCase().trim()).filter(Boolean));
+}
+
+function anchorTopicTags(c: HubCandidate): Set<string> {
+	const t = c.assemblyHints?.anchorTopicTags ?? [];
+	return new Set(t.map((x) => String(x).trim()).filter(Boolean));
+}
+
+/** Vault path depth (segments); empty path => 0. */
+function vaultPathDepth(p: string): number {
+	return pathSegments(normalizeVaultPath(p)).length;
+}
+
+/**
+ * True when `child` is exactly one segment under `parent` (folder or file under that folder).
+ */
+function isDirectChildPath(parent: string, child: string): boolean {
+	const pa = normalizeVaultPath(parent);
+	const pb = normalizeVaultPath(child);
+	if (!pa || !pb) return false;
+	if (pb === pa) return true;
+	if (!pb.startsWith(`${pa}/`)) return false;
+	const rest = pb.slice(pa.length + 1);
+	return !rest.includes('/');
+}
+
+/**
+ * Semantic similarity from labels, anchor keywords, and topic tags only (no path, no coverage).
+ */
+function navSemanticAffinity(a: HubCandidate, b: HubCandidate): number {
+	const kw = navJaccard(anchorKeywords(a), anchorKeywords(b));
+	const tag = navJaccard(anchorTopicTags(a), anchorTopicTags(b));
+	const lab = navJaccard(navTokenizeLabel(a.label), navTokenizeLabel(b.label));
+	return 0.4 * kw + 0.35 * tag + 0.25 * lab;
+}
+
+/**
+ * Path / topology structural score for "seed absorbs member" (0..1). Top-level folder seeds do not
+ * get a high score for the entire subtree—only direct children (or strong cluster linkage).
+ */
+function pathStructuralAbsorbScore(seed: HubCandidate, c: HubCandidate): number {
+	const pa = normalizeVaultPath(seed.path ?? '');
+	const pb = normalizeVaultPath(c.path ?? '');
+	if (!pa || !pb) return 0;
+	if (pa === pb) return 1;
+
+	const seedFolderTop = seed.sourceKind === 'folder' && vaultPathDepth(pa) === 1;
+
+	// Cluster member paths vs folder/document paths
+	if (seed.sourceKind === 'cluster') {
+		for (const mp of seed.clusterMemberPaths ?? []) {
+			const m = normalizeVaultPath(mp);
+			if (!m) continue;
+			if (pb === m || pb.startsWith(`${m}/`) || pa === m || m.startsWith(`${pa}/`)) return 0.78;
+		}
+	}
+	if (c.sourceKind === 'cluster') {
+		for (const mp of c.clusterMemberPaths ?? []) {
+			const m = normalizeVaultPath(mp);
+			if (m && (isVaultPathUnderPrefix(m, pa) || isVaultPathUnderPrefix(pa, m))) return 0.74;
+		}
+	}
+
+	if (vaultFolderPathsNest(pa, pb) || vaultFolderPathsNest(pb, pa)) {
+		if (seedFolderTop) {
+			const rel = vaultPathDepth(pb) - vaultPathDepth(pa);
+			if (rel === 1 && isDirectChildPath(pa, pb)) return 0.76;
+			if (rel >= 2 && isVaultPathUnderPrefix(pb, pa)) return HUB_NAV_GROUP_TOP_LEVEL_DEEP_STRUCT;
+			if (rel >= 2 && isVaultPathUnderPrefix(pa, pb)) return HUB_NAV_GROUP_TOP_LEVEL_DEEP_STRUCT;
+			return HUB_NAV_GROUP_TOP_LEVEL_DEEP_STRUCT;
+		}
+		return 0.86;
+	}
+
+	const da = parentDirPath(pa);
+	const db = parentDirPath(pb);
+	if (da && db && da === db) return 0.52;
+
+	const sa = pathSegments(pa);
+	const sb = pathSegments(pb);
+	if (sa[0] && sb[0] && sa[0] === sb[0]) return 0.1;
+
+	return 0;
+}
+
+function navPairwiseAffinity(
+	a: HubCandidate,
+	b: HubCandidate,
+	bitsA: Uint32Array,
+	bitsB: Uint32Array,
+): number {
+	const cov = overlapRatioMinUint32(bitsA, bitsB);
+	const pathP = pathStructuralAbsorbScore(a, b);
+	const kw = navJaccard(anchorKeywords(a), anchorKeywords(b));
+	const tag = navJaccard(anchorTopicTags(a), anchorTopicTags(b));
+	const lab = navJaccard(navTokenizeLabel(a.label), navTokenizeLabel(b.label));
+	return 0.28 * cov + 0.24 * pathP + 0.18 * kw + 0.16 * tag + 0.14 * lab;
+}
+
+/**
+ * Whether `c` may join the group led by `seed` (single-step, no transitivity).
+ */
+function shouldAbsorbIntoSeed(
+	seed: HubCandidate,
+	c: HubCandidate,
+	bitsSeed: Uint32Array,
+	bitsC: Uint32Array,
+): boolean {
+	const struct = pathStructuralAbsorbScore(seed, c);
+	const sem = navSemanticAffinity(seed, c);
+	const cov = overlapRatioMinUint32(bitsSeed, bitsC);
+	const seedTopFolder = seed.sourceKind === 'folder' && vaultPathDepth(normalizeVaultPath(seed.path ?? '')) === 1;
+
+	const combined = 0.32 * struct + 0.38 * sem + 0.3 * cov;
+
+	if (struct >= 0.82) return true;
+	if (sem >= HUB_NAV_GROUP_SEED_SEMANTIC_STRONG) return true;
+	if (cov >= 0.62 && sem >= 0.24) return true;
+
+	if (seedTopFolder) {
+		if (struct >= 0.7) return true;
+		if (combined >= 0.5 && (sem >= 0.28 || cov >= 0.45)) return true;
+		return combined >= 0.52;
+	}
+
+	if (struct >= 0.45 && sem >= 0.28) return true;
+	return combined >= HUB_NAV_GROUP_SEED_ABSORB_COMBINED_MIN;
+}
+
+/** Prefer deepest non-top folder hub, else highest source priority + ranking. */
+function pickRepresentative(members: HubCandidate[]): HubCandidate {
+	const folders = members.filter((m) => m.sourceKind === 'folder');
+	const nonTop = folders.filter((m) => vaultPathDepth(m.path ?? '') >= 2);
+	if (nonTop.length) {
+		return [...nonTop].sort((a, b) => {
+			const d = vaultPathDepth(b.path ?? '') - vaultPathDepth(a.path ?? '');
+			if (d !== 0) return d;
+			const pa = SOURCE_PRIORITY[b.sourceKind] - SOURCE_PRIORITY[a.sourceKind];
+			if (pa !== 0) return pa;
+			return b.rankingScore - a.rankingScore;
+		})[0]!;
+	}
+	const sorted = [...members].sort((a, b) => {
+		const pa = SOURCE_PRIORITY[b.sourceKind] - SOURCE_PRIORITY[a.sourceKind];
+		if (pa !== 0) return pa;
+		const r = b.rankingScore - a.rankingScore;
+		if (r !== 0) return r;
+		return a.stableKey.localeCompare(b.stableKey);
+	});
+	return sorted[0]!;
+}
+
+function orBitsTogether(
+	members: HubCandidate[],
+	bitsByStableKey: Map<string, Uint32Array>,
+	docCount: number,
+): Uint32Array {
+	const u = createUint32Bitset(docCount);
+	for (const m of members) {
+		const b = bitsByStableKey.get(m.stableKey);
+		if (!b) continue;
+		const n = Math.min(u.length, b.length);
+		for (let i = 0; i < n; i++) u[i] |= b[i] ?? 0;
+	}
+	return u;
+}
+
+function navMeanInternalAffinity(
+	indices: number[],
+	candidates: HubCandidate[],
+	bitsByStableKey: Map<string, Uint32Array>,
+): number {
+	if (indices.length < 2) return 1;
+	let sum = 0;
+	let cnt = 0;
+	for (let i = 0; i < indices.length; i++) {
+		for (let j = i + 1; j < indices.length; j++) {
+			const a = candidates[indices[i]!]!;
+			const b = candidates[indices[j]!]!;
+			const ba = bitsByStableKey.get(a.stableKey)!;
+			const bb = bitsByStableKey.get(b.stableKey)!;
+			sum += navPairwiseAffinity(a, b, ba, bb);
+			cnt++;
+		}
+	}
+	return cnt > 0 ? sum / cnt : 1;
+}
+
+function isTopLevelVaultFolderHub(c: HubCandidate): boolean {
+	if (c.sourceKind !== 'folder') return false;
+	const p = normalizeVaultPath(c.path ?? '');
+	return pathSegments(p).length === 1;
+}
+
+function navigationFolderCohesionPenalty(c: HubCandidate): number {
+	if (c.sourceKind !== 'folder') return 0;
+	const coh = c.candidateScore?.cohesionScore;
+	if (typeof coh !== 'number' || !Number.isFinite(coh)) return 0;
+	return coh < 0.14 ? HUB_NAVIGATION_LOW_COHESION_FOLDER_PENALTY : 0;
+}
+
+function mergeHubPartitionUnionBits(union: Uint32Array, add: Uint32Array): void {
+	const n = Math.min(union.length, add.length);
+	for (let i = 0; i < n; i++) union[i] |= add[i] ?? 0;
+}
+
+/**
+ * Sort key for picking the next seed: prefers deeper folders, cohesion, coverage, ranking.
+ */
+function navSeedQualityScore(c: HubCandidate, bits: Uint32Array | undefined, docTotal: number): number {
+	let q = c.rankingScore * 0.52 + c.graphScore * 0.18 + c.sourceConsensusScore * 0.14;
+	const coh = c.candidateScore?.cohesionScore;
+	if (typeof coh === 'number' && c.sourceKind === 'folder') q += Math.min(0.22, coh * 0.22);
+	if (bits && docTotal > 0) {
+		q += (countBitsUint32(bits) / docTotal) * 0.1;
+	}
+	const depth = vaultPathDepth(c.path ?? '');
+	if (c.sourceKind === 'folder' && depth >= 3) q += 0.06;
+	if (c.sourceKind === 'folder' && depth === 1) q -= 0.38;
+	return q;
+}
+
+/**
+ * Top-level vault folder hubs are poor seeds (they swallow the library); they become singletons unless absorbed.
+ */
+function isEligibleSeed(c: HubCandidate): boolean {
+	if (c.sourceKind === 'manual') return true;
+	if (c.sourceKind === 'folder' && vaultPathDepth(c.path ?? '') <= 1) return false;
+	return true;
+}
+
+/**
+ * Clusters candidates by iterative seed expansion: each unassigned hub becomes a seed in quality order
+ * and pulls only candidates that pass {@link shouldAbsorbIntoSeed} against that seed.
+ */
+function buildNavigationHubGroups(
+	candidates: HubCandidate[],
+	bitsByStableKey: Map<string, Uint32Array>,
+	documentCount: number,
+): NavigationHubGroup[] {
+	const n = candidates.length;
+	if (n === 0) return [];
+
+	const docTotal = Math.max(0, documentCount);
+	const sortedIdx = candidates
+		.map((_, i) => i)
+		.sort((ia, ib) => {
+			const a = candidates[ia]!;
+			const b = candidates[ib]!;
+			const ba = bitsByStableKey.get(a.stableKey);
+			const bb = bitsByStableKey.get(b.stableKey);
+			const sa = navSeedQualityScore(a, ba, docTotal);
+			const sb = navSeedQualityScore(b, bb, docTotal);
+			if (sb !== sa) return sb - sa;
+			return b.rankingScore - a.rankingScore;
+		});
+
+	const assigned = new Set<number>();
+	const out: NavigationHubGroup[] = [];
+
+	for (const seedIdx of sortedIdx) {
+		if (assigned.has(seedIdx)) continue;
+		const seed = candidates[seedIdx]!;
+		const bitsSeed = bitsByStableKey.get(seed.stableKey);
+		if (!bitsSeed) {
+			assigned.add(seedIdx);
+			out.push(
+				buildOneNavGroup([seedIdx], candidates, bitsByStableKey, documentCount, docTotal),
+			);
+			continue;
+		}
+
+		if (!isEligibleSeed(seed)) {
+			assigned.add(seedIdx);
+			out.push(
+				buildOneNavGroup([seedIdx], candidates, bitsByStableKey, documentCount, docTotal),
+			);
+			continue;
+		}
+
+		const memberIdx: number[] = [seedIdx];
+		assigned.add(seedIdx);
+
+		for (let j = 0; j < n; j++) {
+			if (assigned.has(j) || j === seedIdx) continue;
+			const c = candidates[j]!;
+			const bitsC = bitsByStableKey.get(c.stableKey);
+			if (!bitsC) continue;
+			if (shouldAbsorbIntoSeed(seed, c, bitsSeed, bitsC)) {
+				memberIdx.push(j);
+				assigned.add(j);
+			}
+		}
+
+		out.push(buildOneNavGroup(memberIdx, candidates, bitsByStableKey, documentCount, docTotal));
+	}
+
+	out.sort((a, b) => b.groupScore - a.groupScore);
+	return out;
+}
+
+function buildOneNavGroup(
+	memberIdx: number[],
+	candidates: HubCandidate[],
+	bitsByStableKey: Map<string, Uint32Array>,
+	documentCount: number,
+	docTotal: number,
+): NavigationHubGroup {
+	const members = memberIdx.map((idx) => candidates[idx]!).sort((a, b) => b.rankingScore - a.rankingScore);
+	const memberStableKeys = members.map((m) => m.stableKey);
+	const sortedKeys = [...memberStableKeys].sort();
+	const groupKey = `navgrp:${hashSHA256(sortedKeys.join('|')).slice(0, 24)}`;
+	const rep = pickRepresentative(members);
+	const unionBits = orBitsTogether(members, bitsByStableKey, documentCount);
+	const unionCoverageSize = countBitsUint32(unionBits);
+	const internalAffinityMean = navMeanInternalAffinity(memberIdx, candidates, bitsByStableKey);
+	const maxR = Math.max(...members.map((m) => m.rankingScore));
+	const meanR = members.reduce((s, m) => s + m.rankingScore, 0) / members.length;
+	const sizeScore = docTotal > 0 ? unionCoverageSize / docTotal : 0;
+	const cohesionBoost = Math.max(0, internalAffinityMean);
+	const groupScore =
+		0.22 * sizeScore + 0.22 * maxR + 0.18 * meanR + 0.38 * cohesionBoost;
+
+	return {
+		groupKey,
+		title: rep.label,
+		representativeStableKey: rep.stableKey,
+		representativePath: rep.path,
+		representativeLabel: rep.label,
+		members,
+		memberStableKeys,
+		unionCoverageSize,
+		internalAffinityMean,
+		groupScore,
+	};
+}
+
+type PartitionNavigationGroupsResult = {
+	navigationHubGroups: NavigationHubGroup[];
+	navigationHubs: HubCandidate[];
+	longTailHubs: HubCandidate[];
+	metrics: HubPartitionMetrics;
+};
+
+/**
+ * Greedy-selects navigation groups (union coverage, overlap penalty), then assigns non-navigation candidates to long-tail.
+ */
+function partitionNavigationGroupsAndLongTail(options: {
+	groups: NavigationHubGroup[];
+	candidates: HubCandidate[];
+	bitsByStableKey: Map<string, Uint32Array>;
+	docCoverageIndex: { docCount: number };
+}): PartitionNavigationGroupsResult {
+	const { groups, candidates, bitsByStableKey, docCoverageIndex } = options;
+	const docTotal = Math.max(0, docCoverageIndex.docCount);
+	const w = HUB_NAVIGATION_SCORE_WEIGHTS;
+
+	const groupUnionCache = new Map<string, Uint32Array>();
+	for (const g of groups) {
+		groupUnionCache.set(g.groupKey, orBitsTogether(g.members, bitsByStableKey, docTotal));
+	}
+
+	const sorted = [...groups].sort((a, b) => b.groupScore - a.groupScore);
+	const union = createUint32Bitset(docTotal);
+	const navigationHubGroups: NavigationHubGroup[] = [];
+	const selectedGroupKeys = new Set<string>();
+	let stoppedReason = 'init';
+
+	while (navigationHubGroups.length < HUB_NAVIGATION_PARTITION_MAX) {
+		let best: NavigationHubGroup | null = null;
+		let bestScore = -Infinity;
+		for (const g of sorted) {
+			if (selectedGroupKeys.has(g.groupKey)) continue;
+			const bits = groupUnionCache.get(g.groupKey)!;
+			const newCount = countBitsNewSince(bits, union);
+			let maxOv = 0;
+			for (const ng of navigationHubGroups) {
+				const nb = groupUnionCache.get(ng.groupKey)!;
+				maxOv = Math.max(maxOv, overlapRatioMinUint32(bits, nb));
+			}
+			const marginal = fractionOfBitsNewSince(bits, union);
+			const newRatio = docTotal > 0 ? newCount / docTotal : 0;
+			const rep = g.members.find((m) => m.stableKey === g.representativeStableKey) ?? g.members[0]!;
+			const quality =
+				0.5 * rep.rankingScore + 0.28 * rep.graphScore + 0.22 * Math.min(1, rep.sourceConsensusScore + 0.001);
+			let penalty = 0;
+			if (isTopLevelVaultFolderHub(rep)) penalty += HUB_NAVIGATION_TOP_LEVEL_FOLDER_PENALTY;
+			penalty += navigationFolderCohesionPenalty(rep);
+			const bonus = rep.sourceKind === 'manual' ? HUB_NAVIGATION_MANUAL_BONUS : 0;
+			let score =
+				w.newCoverageRatio * newRatio +
+				w.marginalFraction * marginal +
+				w.rankingQuality * quality +
+				0.12 * g.internalAffinityMean -
+				w.overlapPenalty * maxOv -
+				penalty +
+				bonus;
+			if (newCount === 0 && navigationHubGroups.length >= HUB_NAVIGATION_PARTITION_MIN) {
+				continue;
+			}
+			if (newCount === 0 && navigationHubGroups.length < HUB_NAVIGATION_PARTITION_MIN) {
+				score = quality * 0.65 - maxOv * 0.25 - penalty + bonus + 0.08 * g.internalAffinityMean;
+			}
+			if (score > bestScore) {
+				bestScore = score;
+				best = g;
+			}
+		}
+		if (!best) {
+			stoppedReason = 'no_eligible_group';
+			break;
+		}
+		if (bestScore < 0 && navigationHubGroups.length >= HUB_NAVIGATION_PARTITION_MIN) {
+			stoppedReason = 'low_score';
+			break;
+		}
+		navigationHubGroups.push(best);
+		selectedGroupKeys.add(best.groupKey);
+		mergeHubPartitionUnionBits(union, groupUnionCache.get(best.groupKey)!);
+		stoppedReason =
+			navigationHubGroups.length >= HUB_NAVIGATION_PARTITION_MAX ? 'max_cap' : 'greedy_step';
+	}
+
+	let guard = 0;
+	while (
+		navigationHubGroups.length < HUB_NAVIGATION_PARTITION_MIN &&
+		navigationHubGroups.length < groups.length &&
+		guard < groups.length
+	) {
+		guard++;
+		let added = false;
+		for (const g of sorted) {
+			if (selectedGroupKeys.has(g.groupKey)) continue;
+			navigationHubGroups.push(g);
+			selectedGroupKeys.add(g.groupKey);
+			mergeHubPartitionUnionBits(union, groupUnionCache.get(g.groupKey)!);
+			added = true;
+			stoppedReason = 'fill_min_ranking';
+			break;
+		}
+		if (!added) break;
+	}
+
+	const navMemberKeys = new Set<string>();
+	for (const g of navigationHubGroups) {
+		for (const k of g.memberStableKeys) navMemberKeys.add(k);
+	}
+	const longTailHubs = candidates.filter((c) => !navMemberKeys.has(c.stableKey));
+	const navigationHubs = navigationHubGroups.map((g) =>
+		g.members.find((m) => m.stableKey === g.representativeStableKey) ?? g.members[0]!,
+	);
+
+	const coveredCount = countBitsUint32(union);
+	const navRatio = docTotal > 0 ? coveredCount / docTotal : 0;
+	const navigationMemberCount = [...navMemberKeys].length;
+
+	return {
+		navigationHubGroups,
+		navigationHubs,
+		longTailHubs,
+		metrics: {
+			documentCount: docTotal,
+			navigationCount: navigationHubGroups.length,
+			navigationMemberCount,
+			longTailCount: longTailHubs.length,
+			navigationAbsoluteCoverageRatio: navRatio,
+			stoppedReason,
+			totalGroupCount: groups.length,
+		},
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Inlined from folderCohesion.ts
+// ---------------------------------------------------------------------------
+
+/** One document under a folder subtree (maintenance scan). */
+export type FolderCohesionDocRef = {
+	node_id: string;
+	path: string;
+	label: string | null;
+	tags_json: string | null;
+	semantic_pagerank: number | null;
+};
+
+/**
+ * Computes folder cohesion from a capped list of documents under the same folder prefix.
+ * Returns null when fewer than two documents (undefined pairwise semantics).
+ */
+export function computeFolderCohesionScore(
+	docs: FolderCohesionDocRef[],
+	intraEdges: Array<{ from_node_id: string; to_node_id: string; weight: number }>,
+): number | null {
+	if (docs.length < 2) return null;
+
+	let seed = docs[0]!;
+	for (const d of docs) {
+		const spr =
+			typeof d.semantic_pagerank === 'number' && Number.isFinite(d.semantic_pagerank)
+				? d.semantic_pagerank
+				: 0;
+		const seedSpr =
+			typeof seed.semantic_pagerank === 'number' && Number.isFinite(seed.semantic_pagerank)
+				? seed.semantic_pagerank
+				: 0;
+		if (spr > seedSpr) seed = d;
+		else if (spr === seedSpr && d.path < seed.path) seed = d;
+	}
+
+	const seedBlob = decodeIndexedTagsBlob(seed.tags_json ?? null);
+	const anchor = buildClusterAnchorSetsFromBlob(seedBlob);
+	const seedTitleTokens = extractMeaningfulTitleTokens(seed.path, seed.label ?? undefined);
+	mergeTitleTokensIntoAnchorKeywords(anchor, seedTitleTokens);
+
+	const seedId = seed.node_id;
+	const supportByMember = new Map<string, number>();
+	supportByMember.set(seedId, 1);
+	for (const e of intraEdges) {
+		const w = semanticSupportFromEdgeWeight(e.weight);
+		if (e.from_node_id === seedId && e.to_node_id !== seedId) {
+			const prev = supportByMember.get(e.to_node_id) ?? 0;
+			if (w > prev) supportByMember.set(e.to_node_id, w);
+		}
+		if (e.to_node_id === seedId && e.from_node_id !== seedId) {
+			const prev = supportByMember.get(e.from_node_id) ?? 0;
+			if (w > prev) supportByMember.set(e.from_node_id, w);
+		}
+	}
+
+	const members: Array<{ blob: IndexedTagsBlob; path: string; label?: string; affinity: number }> = [];
+	for (const d of docs) {
+		const blob = decodeIndexedTagsBlob(d.tags_json ?? null);
+		const isSeed = d.node_id === seedId;
+		const semanticSupport = isSeed ? 1 : supportByMember.get(d.node_id) ?? 0;
+		const aff = computeMemberAffinity({
+			anchor,
+			seedPath: seed.path,
+			seedTitleTokens,
+			memberBlob: blob,
+			memberPath: d.path,
+			memberLabel: d.label ?? undefined,
+			semanticSupport,
+			isSeed,
+		});
+		members.push({ blob, path: d.path, label: d.label ?? undefined, affinity: aff.affinity });
+	}
+
+	const ids = docs.map((d) => d.node_id);
+	const intraDensity = computeIntraClusterSemanticDensity(ids, intraEdges);
+
+	const metrics = computeClusterCohesionFromMembers({
+		anchor,
+		seedTitleTokens,
+		intraClusterSemanticDensity: intraDensity,
+		members,
+	});
+	return metrics.cohesionScore;
+}
+
+// ---------------------------------------------------------------------------
+// End of inlined sections
+// ---------------------------------------------------------------------------
 
 /**
  * Drops heading/block refs and noise so callers do not pass unusable prefixes to discovery.

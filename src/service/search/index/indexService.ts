@@ -44,9 +44,13 @@ import {
 	computeSemanticPageRankStreaming,
 	computeVaultPageRankStreaming,
 } from '@/service/search/index/helper/documentPageRank';
-import { computeBrandesBetweenness, computeBurtConstraint } from '@/service/search/index/helper/backbone/structuralMetrics';
-import { detectCommunities, computeModularity } from '@/service/search/index/helper/backbone/communityDetection';
-import { detectStructuralHoles } from '@/service/search/index/helper/backbone/gapDetection';
+import {
+	computeBrandesBetweenness,
+	computeBurtConstraint,
+	detectCommunities,
+	computeModularity,
+	detectStructuralHoles,
+} from '@/service/search/index/helper/backbone/structuralAnalysis';
 import type { StructuralMetric, CommunityData } from '@/service/search/index/helper/backbone/structuralTypes';
 import { enforceChunkLengthWithOverlap } from '@/service/search/index/helper/safeChunking';
 import { DocumentLoaderManager } from '@/core/document/loader/helper/DocumentLoaderManager';
@@ -97,7 +101,7 @@ import {
 import {
 	computeFolderCohesionScore,
 	type FolderCohesionDocRef,
-} from '@/service/search/index/helper/hub/folderCohesion';
+} from '@/service/search/index/helper/hub/hubDiscover';
 import { emptyMap } from '@/core/utils/collection-utils';
 import { detectChanges } from './cascade/CascadeChangeDetector';
 import type { PreIndexSnapshot, CascadeChangeInfo } from './cascade/types';

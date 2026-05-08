@@ -16,7 +16,7 @@ import { buildFolderHubEnrichmentMap } from '@/service/search/index/helper/hub/h
 import type { MobiusNodeFolderHubDiscoveryRow } from '@/core/storage/sqlite/repositories/MobiusNodeRepo';
 import { IgnoreService } from '@/service/search/IgnoreService';
 import { buildBackboneMap } from '@/service/search/index/helper/backbone';
-import { topTokensFromBasenames } from '@/service/search/index/helper/backbone/digestLoader';
+import { topTokensFromBasenames } from '@/service/search/index/helper/backbone/buildBackboneMap';
 import type { BackboneMapResult } from '@/service/search/index/helper/backbone';
 import type {
 	DocumentHubShortlistRow,
