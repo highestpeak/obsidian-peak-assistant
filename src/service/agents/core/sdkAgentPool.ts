@@ -155,6 +155,9 @@ export async function* queryWithProfile(
     const subprocessEnv: Record<string, string> = {
         ...profileEnv,
         PATH: process.env.PATH ?? '',
+        // Prevent CLI from reading macOS Keychain OAuth tokens;
+        // forces it to use ANTHROPIC_API_KEY from env directly.
+        CLAUDE_CODE_SIMPLE: '1',
     };
     if (nodeInfo.isElectron) {
         subprocessEnv.ELECTRON_RUN_AS_NODE = '1';

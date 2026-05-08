@@ -24,7 +24,7 @@ function getModelsForProfile(profile: Profile): string[] {
     return [];
 }
 
-type RoleKind = 'agent' | 'chat' | 'embedding' | 'webSearch';
+type RoleKind = 'agent' | 'chat' | 'copilot' | 'embedding' | 'webSearch';
 
 interface RoleSelectorChipProps {
     role: RoleKind;
@@ -154,6 +154,7 @@ export function StatusBar() {
     const agentConfig = registry.getActiveAgentConfig();
     const agentFastConfig = registry.getActiveAgentFastConfig();
     const chatConfig = registry.getActiveChatConfig();
+    const copilotConfig = registry.getActiveCopilotConfig();
     const embeddingConfig = registry.getActiveEmbeddingConfig();
     const webSearchConfig = registry.getActiveWebSearchConfig();
 
@@ -190,6 +191,14 @@ export function StatusBar() {
                 profiles={profiles}
                 onSelect={(config) => { registry.setActiveChatConfig(config); bump(); }}
                 onClear={() => { registry.setActiveChatConfig(null); bump(); }}
+            />
+            <RoleSelectorChip
+                role="copilot"
+                label="Copilot"
+                activeConfig={copilotConfig}
+                profiles={profiles}
+                onSelect={(config) => { registry.setActiveCopilotConfig(config); bump(); }}
+                onClear={() => { registry.setActiveCopilotConfig(null); bump(); }}
             />
             <RoleSelectorChip
                 role="embedding"

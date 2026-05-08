@@ -22,7 +22,7 @@ export const vaultHealthAction: CopilotAction = {
 	},
 
 	async execute(ctx: DocumentContext): Promise<ActionResult> {
-		const aiManager = AppContext.getInstance().aiServiceManager;
+		const aiManager = AppContext.getInstance().manager;
 		const app = AppContext.getInstance().app;
 
 		// Scan vault metadata via metadataCache (NO file content reading)

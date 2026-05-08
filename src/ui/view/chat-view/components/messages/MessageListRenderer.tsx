@@ -4,6 +4,7 @@ import { MessageItem, MessageItemProps } from './MessageViewItem';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { DEFAULT_AI_SERVICE_SETTINGS } from '@/app/settings/types';
 import { DateSeparator } from '../DateSeparator';
+import { useModels } from '@/ui/hooks/useModels';
 
 /** Get date-only string for comparison */
 function getDateOnly(ts: number | undefined): string {
@@ -33,6 +34,7 @@ export const MessageListRenderer: React.FC<MessageListRendererProps> = ({
 		currentToolCalls,
 		isToolSequenceActive,
 	} = useChatDataStore();
+	const { models } = useModels();
 
 	// Prepare saved messages for rendering (exclude streaming message if it's being streamed)
 	const savedMessagesToRender: Array<MessageItemProps> = useMemo(() => {
@@ -116,6 +118,7 @@ export const MessageListRenderer: React.FC<MessageListRendererProps> = ({
 						)}
 						<MessageItem
 							{...item}
+							models={models}
 						/>
 					</React.Fragment>
 				);
@@ -124,6 +127,7 @@ export const MessageListRenderer: React.FC<MessageListRendererProps> = ({
 			{streamingMessageToRender && (
 				<MessageItem
 					{...streamingMessageToRender}
+					models={models}
 				/>
 			)}
 		</div>

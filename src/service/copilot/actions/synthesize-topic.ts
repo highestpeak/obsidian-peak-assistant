@@ -29,7 +29,7 @@ export const synthesizeTopicAction: CopilotAction = {
 	},
 
 	async execute(ctx: DocumentContext, progress: ProgressCallback): Promise<ActionResult> {
-		const aiManager = AppContext.getInstance().aiServiceManager;
+		const aiManager = AppContext.getInstance().manager;
 		const searchClient = AppContext.getInstance().searchClient;
 
 		// Phase 1: vector search for related sources

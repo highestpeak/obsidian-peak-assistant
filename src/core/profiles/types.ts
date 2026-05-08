@@ -37,6 +37,7 @@ export interface ProfileSettings {
   activeAgentConfig: RoleConfig | null;
   activeAgentFastConfig: RoleConfig | null;
   activeChatConfig: RoleConfig | null;
+  activeCopilotConfig: RoleConfig | null;
   activeEmbeddingConfig: RoleConfig | null;
   activeWebSearchConfig: RoleConfig | null;
   sdkSettings: SdkSettings;

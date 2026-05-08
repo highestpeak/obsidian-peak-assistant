@@ -23,7 +23,7 @@ export const summarizeAction: CopilotAction = {
 	},
 
 	async execute(ctx: DocumentContext, progress: ProgressCallback): Promise<ActionResult> {
-		const aiManager = AppContext.getInstance().aiServiceManager;
+		const aiManager = AppContext.getInstance().manager;
 		const vars = {
 			content: ctx.scope === 'selection' ? ctx.selection! : ctx.content,
 			title: ctx.title,

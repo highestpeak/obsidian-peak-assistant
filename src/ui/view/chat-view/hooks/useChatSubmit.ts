@@ -6,6 +6,7 @@ import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { useStreamChat } from './useStreamChat';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import type { ChatConversation, ChatMessage, ChatProject } from '@/service/chat/types';
+import { TopicAggregationService } from '@/service/chat/TopicAggregationService';
 
 export interface ChatSubmitOptions {
 	text: string;
@@ -25,6 +26,7 @@ export function useChatSubmit() {
 
 	// AbortController for canceling streaming
 	const abortControllerRef = useRef<AbortController | null>(null);
+	const topicServiceRef = useRef<TopicAggregationService | null>(null);
 
 	/**
 	 * Add message to both manager (backend) and messageStore (frontend state)
@@ -69,10 +71,11 @@ export function useChatSubmit() {
 		const latestActiveConversation = useChatDataStore.getState().activeConversation;
 		const latestPendingConversation = useChatViewStore.getState().pendingConversation;
 		const latestInitialSelectedModel = useChatViewStore.getState().initialSelectedModel;
-		// Fallback chain: initialSelectedModel → UI selectedModel → active chat profile
+		// Fallback chain: initialSelectedModel → UI selectedModel → mode-aware profile
 		const latestSelectedModel = useChatViewStore.getState().selectedModel;
-		const chatConfig = ProfileRegistry.getInstance().getActiveChatConfig();
-		const profileFallback = chatConfig ? { provider: chatConfig.profile.kind, modelId: chatConfig.modelId } : null;
+		const currentMode = useChatViewStore.getState().chatMode;
+		const modeConfig = ProfileRegistry.getInstance().getConfigForMode(currentMode);
+		const profileFallback = modeConfig ? { provider: modeConfig.profile.kind, modelId: modeConfig.modelId } : null;
 		const modelForNewConversation = latestInitialSelectedModel ?? latestSelectedModel ?? profileFallback;
 
 		let conversation = latestActiveConversation || null;
@@ -221,6 +224,14 @@ export function useChatSubmit() {
 				},
 			};
 			updateConv(conversationWithAssistantMessage);
+
+			// Background: auto-aggregate topics if enough ungrouped messages
+			if (!topicServiceRef.current) {
+				topicServiceRef.current = new TopicAggregationService(manager);
+			}
+			topicServiceRef.current.maybeAggregate(conversationWithAssistantMessage).then(updated => {
+				if (updated) updateConv(updated);
+			});
 		} else {
 			// No final message — clear streaming state as fallback
 			useChatDataStore.getState().clearStreaming();

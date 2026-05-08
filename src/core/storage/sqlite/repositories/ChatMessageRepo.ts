@@ -188,6 +188,19 @@ export class ChatMessageRepo {
 	}
 
 	/**
+	 * Batch-update topic field for multiple messages.
+	 */
+	async updateTopics(assignments: Array<{ messageId: string; topic: string }>): Promise<void> {
+		for (const { messageId, topic } of assignments) {
+			await this.db
+				.updateTable('chat_message')
+				.set({ topic })
+				.where('message_id', '=', messageId)
+				.execute();
+		}
+	}
+
+	/**
 	 * Delete all messages for the given conversation IDs.
 	 */
 	async deleteByConversationIds(conversationIds: string[]): Promise<void> {

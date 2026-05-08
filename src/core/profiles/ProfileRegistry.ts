@@ -18,6 +18,7 @@ export class ProfileRegistry {
   private activeAgentConfig: RoleConfig | null = null;
   private activeAgentFastConfig: RoleConfig | null = null;
   private activeChatConfig: RoleConfig | null = null;
+  private activeCopilotConfig: RoleConfig | null = null;
   private activeEmbeddingConfig: RoleConfig | null = null;
   private activeWebSearchConfig: RoleConfig | null = null;
   private sdkSettings: SdkSettings = { ...DEFAULT_SDK_SETTINGS };
@@ -56,6 +57,7 @@ export class ProfileRegistry {
     this.activeAgentConfig = settings.activeAgentConfig ?? this.migrateOldId(settings.activeAgentProfileId);
     this.activeAgentFastConfig = (settings as any).activeAgentFastConfig ?? null;
     this.activeChatConfig = (settings as any).activeChatConfig ?? null;
+    this.activeCopilotConfig = (settings as any).activeCopilotConfig ?? null;
     this.activeEmbeddingConfig = settings.activeEmbeddingConfig ?? this.migrateOldId(settings.activeEmbeddingProfileId);
     this.activeWebSearchConfig = settings.activeWebSearchConfig ?? this.migrateOldId(settings.activeWebSearchProfileId);
     this.sdkSettings = { ...DEFAULT_SDK_SETTINGS, ...settings.sdkSettings };
@@ -111,6 +113,22 @@ export class ProfileRegistry {
     }
     // Fallback: use agent config
     return this.getActiveAgentConfig();
+  }
+
+  /**
+   * Returns the appropriate config for a given conversation mode.
+   * 'agent' and 'plan' use the Agent config; all others use the Chat config.
+   */
+  getConfigForMode(mode: string): { profile: Profile; modelId: string } | null {
+    if (mode === 'agent' || mode === 'plan') return this.getActiveAgentConfig();
+    return this.getActiveChatConfig();
+  }
+
+  getActiveCopilotConfig(): { profile: Profile; modelId: string } | null {
+    if (!this.activeCopilotConfig) return null;
+    const profile = this.profiles.find((p) => p.id === this.activeCopilotConfig!.profileId);
+    if (!profile) return null;
+    return { profile, modelId: this.activeCopilotConfig.modelId };
   }
 
   getActiveEmbeddingProfile(): Profile | null {
@@ -174,6 +192,7 @@ export class ProfileRegistry {
     if (this.activeAgentConfig?.profileId === id) this.activeAgentConfig = null;
     if (this.activeAgentFastConfig?.profileId === id) this.activeAgentFastConfig = null;
     if (this.activeChatConfig?.profileId === id) this.activeChatConfig = null;
+    if (this.activeCopilotConfig?.profileId === id) this.activeCopilotConfig = null;
     if (this.activeEmbeddingConfig?.profileId === id) this.activeEmbeddingConfig = null;
     if (this.activeWebSearchConfig?.profileId === id) this.activeWebSearchConfig = null;
     this.persist();
@@ -187,6 +206,7 @@ export class ProfileRegistry {
       if (this.activeAgentConfig?.profileId === id) this.activeAgentConfig = null;
       if (this.activeAgentFastConfig?.profileId === id) this.activeAgentFastConfig = null;
       if (this.activeChatConfig?.profileId === id) this.activeChatConfig = null;
+      if (this.activeCopilotConfig?.profileId === id) this.activeCopilotConfig = null;
       if (this.activeEmbeddingConfig?.profileId === id) this.activeEmbeddingConfig = null;
       if (this.activeWebSearchConfig?.profileId === id) this.activeWebSearchConfig = null;
     }
@@ -233,6 +253,14 @@ export class ProfileRegistry {
     this.persist();
   }
 
+  setActiveCopilotConfig(config: RoleConfig | null): void {
+    if (config && !this.profiles.some((p) => p.id === config.profileId)) {
+      throw new Error(`Profile with id "${config.profileId}" not found`);
+    }
+    this.activeCopilotConfig = config;
+    this.persist();
+  }
+
   setActiveEmbeddingProfile(id: string | null): void {
     if (id === null) { this.activeEmbeddingConfig = null; this.persist(); return; }
     const profile = this.profiles.find((p) => p.id === id);
@@ -274,6 +302,7 @@ export class ProfileRegistry {
       activeAgentConfig: this.activeAgentConfig,
       activeAgentFastConfig: this.activeAgentFastConfig,
       activeChatConfig: this.activeChatConfig,
+      activeCopilotConfig: this.activeCopilotConfig,
       activeEmbeddingConfig: this.activeEmbeddingConfig,
       activeWebSearchConfig: this.activeWebSearchConfig,
       sdkSettings: { ...this.sdkSettings },

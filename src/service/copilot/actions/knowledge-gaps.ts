@@ -24,7 +24,7 @@ export const knowledgeGapsAction: CopilotAction = {
 	},
 
 	async execute(ctx: DocumentContext): Promise<ActionResult> {
-		const aiManager = AppContext.getInstance().aiServiceManager;
+		const aiManager = AppContext.getInstance().manager;
 		const app = AppContext.getInstance().app;
 
 		// Gather related note titles via metadataCache link resolution

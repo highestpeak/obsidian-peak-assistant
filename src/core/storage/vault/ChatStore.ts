@@ -695,6 +695,7 @@ export class ChatStorageService {
 				model: row.model ?? '',
 				provider: row.provider ?? 'other',
 			};
+			if (row.topic) msg.topic = row.topic;
 			if (row.is_error === 1) msg.isErrorMessage = true;
 			if (row.is_visible === 0) msg.isVisible = false;
 			if (row.gen_time_ms !== null) msg.genTimeMs = row.gen_time_ms;
@@ -785,27 +786,28 @@ export class ChatStorageService {
 
 		// Merge message content/title/role/topic from markdown into sqlite messages
 		// Strategy: Use index-based matching (assuming chronological order), then verify/correct by message key
+		// Topic priority: markdown topic > sqlite topic (already on msg.topic from convertSqliteRowsToMessages)
 		const minLength = Math.min(messages.length, allMarkdownMessages.length);
 		for (let i = 0; i < minLength; i++) {
 			const docData = allMarkdownMessages[i];
 			messages[i].content = docData.content;
 			messages[i].title = docData.title;
 			messages[i].role = docData.role; // Use role from markdown as source of truth
-			messages[i].topic = docData.topic; // Assign topic (undefined for NoTopic messages)
+			// Only overwrite topic from markdown if markdown has one; preserve sqlite topic otherwise
+			if (docData.topic) {
+				messages[i].topic = docData.topic;
+			}
 		}
 
 		// Verify and correct matches using message key (handles cases where order might differ)
 		for (const msg of messages) {
 			if (!msg.content) {
-				continue; // Skip if no content (shouldn't happen after above loop, but be safe)
+				continue;
 			}
 			const msgKey = ChatConversationDoc.createMessageKey(msg.role, msg.content, msg.title);
 			const docData = messageKeyToDocData.get(msgKey);
-			if (docData) {
-				// Update topic if it doesn't match (content/role/title should already match)
-				if (msg.topic !== docData.topic) {
-					msg.topic = docData.topic;
-				}
+			if (docData && docData.topic) {
+				msg.topic = docData.topic;
 			}
 		}
 	}

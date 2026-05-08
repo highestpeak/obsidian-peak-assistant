@@ -24,7 +24,7 @@ export const suggestLinksAction: CopilotAction = {
 	},
 
 	async execute(ctx: DocumentContext): Promise<ActionResult> {
-		const aiManager = AppContext.getInstance().aiServiceManager;
+		const aiManager = AppContext.getInstance().manager;
 		const app = AppContext.getInstance().app;
 		const cache = app.metadataCache.getFileCache(ctx.file);
 		const existingLinks = (cache?.links ?? []).map(l => l.link).join(', ');

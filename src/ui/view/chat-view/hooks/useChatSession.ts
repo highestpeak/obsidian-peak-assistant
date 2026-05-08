@@ -73,9 +73,10 @@ export const useChatSession = () => {
         } else if (globalDefaultModel) {
             setSelectedModel(globalDefaultModel.provider, globalDefaultModel.modelId);
         } else {
-            const agentConfig = ProfileRegistry.getInstance().getActiveAgentConfig();
-            if (agentConfig) {
-                setSelectedModel(agentConfig.profile.kind, agentConfig.modelId);
+            const convMode = activeConversation?.meta.conversationType?.kind ?? 'chat';
+            const modeConfig = ProfileRegistry.getInstance().getConfigForMode(convMode);
+            if (modeConfig) {
+                setSelectedModel(modeConfig.profile.kind, modeConfig.modelId);
             }
         }
     }, [activeConversation, manager, setAttachmentHandlingMode, setLlmOutputControlSettings, setSelectedModel]);

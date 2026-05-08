@@ -18,7 +18,7 @@ export const suggestTagsAction: CopilotAction = {
 	},
 
 	async execute(ctx: DocumentContext): Promise<ActionResult> {
-		const aiManager = AppContext.getInstance().aiServiceManager;
+		const aiManager = AppContext.getInstance().manager;
 		const engine = new TagSuggestionEngine(aiManager);
 		const ranked = await engine.suggestTags(ctx.file.path, ctx.content, ctx.title);
 		const result = {

@@ -141,7 +141,7 @@ export class CopilotPickerModal extends Modal {
 		this.contentEl.empty();
 		this.modalEl.addClass('peak-copilot-picker-modal');
 		this.contentEl.addClass('pktw-root');
-		this.modalEl.style.width = '520px';
+		this.modalEl.style.width = '680px';
 		this.modalEl.style.maxWidth = '90vw';
 
 		const app = this.appContext.app;

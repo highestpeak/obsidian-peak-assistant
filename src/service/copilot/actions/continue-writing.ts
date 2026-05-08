@@ -23,7 +23,7 @@ export const continueWritingAction: CopilotAction = {
 	},
 
 	async execute(ctx: DocumentContext, progress: ProgressCallback): Promise<ActionResult> {
-		const aiManager = AppContext.getInstance().aiServiceManager;
+		const aiManager = AppContext.getInstance().manager;
 		const vars = { content: ctx.content, title: ctx.title };
 		let fullText = '';
 		for await (const chunk of aiManager.queryTextStream(PromptId.WritingContinue, vars)) {

@@ -7,7 +7,7 @@ import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { useChatViewStore } from './store/chatViewStore';
 import { useChatDataStore } from '@/ui/store/chatDataStore';
 import { DEFAULT_NEW_CONVERSATION_TITLE } from '@/core/constant';
-import { hydrateProjects } from '@/ui/view/project-list-view/utils';
+import { hydrateProjects, notifySelectionChange } from '@/ui/view/project-list-view/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import {
 	DEFAULT_CONVERSATION_TYPE,
@@ -71,9 +71,10 @@ export const HomeViewComponent: React.FC = () => {
 
 	// ── Handlers ──
 
-	const handleConversationClick = useCallback((conversation: ChatConversation) => {
+	const handleConversationClick = useCallback(async (conversation: ChatConversation) => {
 		chatViewStore.setConversation(conversation);
-	}, [chatViewStore]);
+		await notifySelectionChange(app, conversation);
+	}, [chatViewStore, app]);
 
 	const handleProjectClick = useCallback((project: ChatProject) => {
 		chatViewStore.setProjectOverview(project);

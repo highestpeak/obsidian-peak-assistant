@@ -29,7 +29,7 @@ export const addEvidenceAction: CopilotAction = {
 
 	async execute(ctx: DocumentContext): Promise<ActionResult> {
 		const searchClient = AppContext.getInstance().searchClient;
-		const aiManager = AppContext.getInstance().aiServiceManager;
+		const aiManager = AppContext.getInstance().manager;
 
 		// Phase 1: Vector search for related content
 		const queryText = ctx.selection ?? ctx.content.slice(0, 500);

@@ -192,6 +192,14 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 					}
 				});
 			});
+			menu.addItem((item) => {
+				item.setTitle('Quote to input');
+				item.setIcon('quote');
+				item.onClick(() => {
+					const quoted = selectedText.split('\n').map(line => `> ${line}`).join('\n');
+					useChatViewStore.getState().insertToInput?.(quoted + '\n\n');
+				});
+			});
 			menu.addSeparator();
 		}
 
@@ -363,13 +371,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
 						{/* Footer: visible on last message, hover-reveal on others */}
 						<div className={cn(
+							"pktw-overflow-hidden pktw-transition-all pktw-duration-200",
 							isLastMessage
-								? "pktw-visible"
-								: "pktw-invisible group-hover:pktw-visible"
+								? "pktw-max-h-[200px] pktw-opacity-100"
+								: "pktw-max-h-0 pktw-opacity-0 group-hover:pktw-max-h-[200px] group-hover:pktw-opacity-100"
 						)}>
 							<MessageActionsList
 								message={message}
 								isStreaming={streamingState.isStreaming}
+								isLastMessage={isLastMessage}
 								copied={copied}
 								models={models}
 								onToggleStar={handleToggleStar}

@@ -24,7 +24,7 @@ export const reviewArticleAction: CopilotAction = {
 	},
 
 	async execute(ctx: DocumentContext): Promise<ActionResult> {
-		const aiManager = AppContext.getInstance().aiServiceManager;
+		const aiManager = AppContext.getInstance().manager;
 		const input = ctx.scope === 'selection' ? ctx.selection! : ctx.content;
 		const result = await aiManager.queryStructured(
 			PromptId.DocReview,

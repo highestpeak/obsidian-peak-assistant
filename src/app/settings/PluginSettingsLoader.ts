@@ -300,6 +300,7 @@ export function normalizePluginSettings(data: unknown): MyPluginSettings {
 		settings.profileSettings = {
 			profiles: [],
 			activeAgentConfig: null,
+			activeCopilotConfig: null,
 			activeEmbeddingConfig: null,
 			activeWebSearchConfig: null,
 			sdkSettings: DEFAULT_SDK_SETTINGS,

@@ -1,11 +1,12 @@
 import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
-import { ChevronRight, MoreHorizontal, Zap } from 'lucide-react';
+import { ChevronRight, MoreHorizontal, Zap, Check, X } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { Button } from '@/ui/component/shared-ui/button';
 import type { Profile, ProfileKind } from '@/core/profiles/types';
 import { ProviderIcon, PROVIDER_LABELS } from './ProviderIcon';
 import { ModelCombobox } from './ModelCombobox';
+import { testProviderConnection } from '@/core/providers/testProviderConnection';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -111,14 +112,17 @@ export function ProfileCard({
 }: ProfileCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [testing, setTesting] = useState(false);
+    const [testResult, setTestResult] = useState<'success' | 'fail' | null>(null);
     const allowFreeText = profile.kind === 'custom' || profile.kind === 'litellm' || profile.kind === 'ollama';
     const subtitle = `${PROVIDER_LABELS[profile.kind].label} · ${profile.apiKey ? 'API key set' : 'no key'}`;
 
     const handleTest = async (e: React.MouseEvent) => {
         e.stopPropagation();
         setTesting(true);
-        // TODO: wire to real connectivity test
-        setTimeout(() => setTesting(false), 1500);
+        setTestResult(null);
+        const ok = await testProviderConnection(profile);
+        setTestResult(ok ? 'success' : 'fail');
+        setTesting(false);
     };
 
     const update = (updates: Partial<Profile>) => onUpdate(profile.id, updates);
@@ -144,12 +148,23 @@ export function ProfileCard({
 
                 <Button
                     variant="ghost" size="sm"
-                    className="pktw-text-xs pktw-gap-1 pktw-text-pk-muted-foreground pktw-shrink-0"
+                    className={cn(
+                        'pktw-text-xs pktw-gap-1 pktw-shrink-0',
+                        testResult === 'success' && 'pktw-text-green-500',
+                        testResult === 'fail' && 'pktw-text-red-500',
+                        !testResult && 'pktw-text-pk-muted-foreground',
+                    )}
                     onClick={handleTest}
                     disabled={testing}
                 >
-                    <Zap size={12} />
-                    {testing ? 'Testing…' : 'Test'}
+                    {testing ? <Zap size={12} className="pktw-animate-pulse" /> :
+                     testResult === 'success' ? <Check size={12} /> :
+                     testResult === 'fail' ? <X size={12} /> :
+                     <Zap size={12} />}
+                    {testing ? 'Testing…' :
+                     testResult === 'success' ? 'Connected' :
+                     testResult === 'fail' ? 'Failed' :
+                     'Test'}
                 </Button>
 
                 <MoreMenu profile={profile} onToggleEnabled={onToggleEnabled} onDelete={onDelete} />

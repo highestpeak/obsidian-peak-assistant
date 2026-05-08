@@ -31,7 +31,7 @@ export const translateAction: CopilotAction = {
 	},
 
 	async execute(ctx: DocumentContext, progress: ProgressCallback): Promise<ActionResult> {
-		const aiManager = AppContext.getInstance().aiServiceManager;
+		const aiManager = AppContext.getInstance().manager;
 		const content = ctx.scope === 'selection' ? ctx.selection! : ctx.content;
 		const targetLanguage = detectTargetLanguage(content);
 		const vars = {

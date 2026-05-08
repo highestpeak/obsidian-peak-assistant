@@ -62,11 +62,10 @@ interface ChatViewState {
 	fileChanges: FileChange[];
 	promptsSuggest: NavigableMenuItem[];
 
-	// ── Outline panel ──
-	showOutline: boolean;
-
 	// ── Submit action (for StyleButtons / Quick Actions) ──
 	submitAction: ((text: string) => void) | null;
+	// ── Insert-to-input action (for Quote selection) ──
+	insertToInput: ((text: string) => void) | null;
 }
 
 interface ChatViewActions {
@@ -106,12 +105,9 @@ interface ChatViewActions {
 	discardFileChange: (id: string) => void;
 	setExternalPrompts: (prompts: NavigableMenuItem[]) => void;
 
-	// ── Outline panel actions ──
-	toggleOutline: () => void;
-	setShowOutline: (show: boolean) => void;
-
-	// ── Submit action ──
+	// ── Submit / Insert actions ──
 	setSubmitAction: (fn: ((text: string) => void) | null) => void;
+	setInsertToInput: (fn: ((text: string) => void) | null) => void;
 
 	// ── Lifecycle ──
 	reset: () => void;
@@ -142,7 +138,6 @@ const INITIAL_SESSION: Pick<ChatViewState,
 	currentInputTags: [],
 	fileChanges: [],
 	promptsSuggest: [],
-	showOutline: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -164,8 +159,9 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 	// ── Session settings ──
 	...INITIAL_SESSION,
 
-	// ── Submit action ──
+	// ── Submit / Insert actions ──
 	submitAction: null,
+	insertToInput: null,
 
 	// ═══════════════════════════════════════════════════════════════════════
 	// Navigation actions
@@ -308,17 +304,11 @@ export const useChatViewStore = create<ChatViewStore>((set, get) => ({
 	setExternalPrompts: (prompts) => set({ promptsSuggest: prompts }),
 
 	// ═══════════════════════════════════════════════════════════════════════
-	// Outline panel
-	// ═══════════════════════════════════════════════════════════════════════
-
-	toggleOutline: () => set((s) => ({ showOutline: !s.showOutline })),
-	setShowOutline: (show) => set({ showOutline: show }),
-
-	// ═══════════════════════════════════════════════════════════════════════
 	// Submit action
 	// ═══════════════════════════════════════════════════════════════════════
 
 	setSubmitAction: (fn) => set({ submitAction: fn }),
+	setInsertToInput: (fn) => set({ insertToInput: fn }),
 
 	// ═══════════════════════════════════════════════════════════════════════
 	// Lifecycle

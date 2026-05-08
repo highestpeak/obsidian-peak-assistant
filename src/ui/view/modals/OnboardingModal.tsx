@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { Modal, Notice, requestUrl } from 'obsidian';
+import { Modal, Notice } from 'obsidian';
 import { ReactRenderer } from '@/ui/react/ReactRenderer';
 import { createReactElementWithServices } from '@/ui/react/ReactElementFactory';
 import { AppContext } from '@/app/context/AppContext';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
 import { createPresetProfile } from '@/core/profiles/presets';
 import type { ProfileKind } from '@/core/profiles/types';
+import { testProviderConnection } from '@/core/providers/testProviderConnection';
 import { NativeModuleManager } from '@/core/storage/sqlite/NativeModuleManager';
 import { sqliteStoreManager } from '@/core/storage/sqlite/SqliteStoreManager';
 import { Button } from '@/ui/component/shared-ui/button';
@@ -118,42 +119,6 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 
 // ─── Step 2: AI Provider ──────────────────────────────────────────────
 
-/** Test connectivity for a given provider kind + API key. */
-async function testProviderConnection(kind: ProfileKind, apiKey: string): Promise<boolean> {
-	try {
-		const profile = createPresetProfile(kind, { apiKey });
-		const baseUrl = profile.baseUrl;
-		const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-
-		if (kind === 'anthropic') {
-			headers['x-api-key'] = apiKey;
-			headers['anthropic-version'] = '2023-06-01';
-			const res = await requestUrl({
-				url: 'https://api.anthropic.com/v1/messages',
-				method: 'POST',
-				headers,
-				body: JSON.stringify({
-					model: 'claude-haiku-4-5-20251001',
-					max_tokens: 1,
-					messages: [{ role: 'user', content: 'hi' }],
-				}),
-				throw: false,
-			});
-			return res.status < 500;
-		} else {
-			headers['Authorization'] = `Bearer ${apiKey}`;
-			const res = await requestUrl({
-				url: `${baseUrl}/v1/models`,
-				method: 'GET',
-				headers,
-				throw: false,
-			});
-			return res.status < 500;
-		}
-	} catch {
-		return false;
-	}
-}
 
 /** Inline form for adding a single provider profile. */
 function AddProviderForm({ onAdded }: { onAdded: () => void }) {

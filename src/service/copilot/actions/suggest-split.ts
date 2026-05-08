@@ -29,7 +29,7 @@ export const suggestSplitAction: CopilotAction = {
 	},
 
 	async execute(ctx: DocumentContext): Promise<ActionResult> {
-		const aiManager = AppContext.getInstance().aiServiceManager;
+		const aiManager = AppContext.getInstance().manager;
 		const result = await aiManager.queryStructured(
 			PromptId.DocSplitSuggestion,
 			{ content: ctx.content, title: ctx.title, wordCount: ctx.wordCount },

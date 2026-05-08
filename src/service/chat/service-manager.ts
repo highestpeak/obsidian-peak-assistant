@@ -746,6 +746,26 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
+	 * Resolve the active agent profile AND model ID from the Agent config slot.
+	 * Uses the slot's configured modelId (not profile.primaryModel).
+	 */
+	private resolveAgentProfileAndModel(): { profile: Profile; modelId: string } {
+		const config = ProfileRegistry.getInstance().getActiveAgentConfig();
+		if (config) return config;
+		const profile = this.requireActiveProfile();
+		return { profile, modelId: profile.primaryModel };
+	}
+
+	/**
+	 * Resolve the Copilot slot's profile and model. Falls back to Agent slot.
+	 */
+	private resolveCopilotProfileAndModel(): { profile: Profile; modelId: string } {
+		const config = ProfileRegistry.getInstance().getActiveCopilotConfig();
+		if (config) return config;
+		return this.resolveAgentProfileAndModel();
+	}
+
+	/**
 	 * Render prompt + system prompt from a PromptId, returning the pair.
 	 * When `promptOrText` is not a known PromptId (or rendering fails),
 	 * treats it as a raw user prompt string.
@@ -908,7 +928,7 @@ ${sourcesList}${topicsList}
 		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
 	): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; fullText: string }> {
 		const startMs = Date.now();
-		const profile = this.requireActiveProfile();
+		const { profile, modelId } = this.resolveCopilotProfileAndModel();
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,
@@ -917,64 +937,23 @@ ${sourcesList}${topicsList}
 
 		let capturedUsage: LLMUsage | undefined;
 
-		if (this.isAgentSdkProfile(profile)) {
-			const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
-				prompt: userPrompt,
-				systemPrompt,
-				maxTurns: 1,
-				allowedTools: [],
-				signal: opts?.signal,
-			});
-
-			let fullText = '';
-			for await (const raw of messages) {
-				const msg = raw as any;
-				if (msg.type === 'result' && msg.is_error) {
-					const { throwTypedError } = await import('@/core/errors/llm-errors');
-					throwTypedError(typeof msg.result === 'string' ? msg.result : JSON.stringify(msg.result), fullText || undefined);
-				}
-				if (msg.type === 'result' && msg.usage) {
-					capturedUsage = {
-						inputTokens: msg.usage.input_tokens ?? 0,
-						outputTokens: msg.usage.output_tokens ?? 0,
-						totalTokens: (msg.usage.input_tokens ?? 0) + (msg.usage.output_tokens ?? 0),
-						cachedInputTokens: msg.usage.cache_read_input_tokens ?? 0,
-					};
-				}
-				if (msg.type === 'stream_event') {
-					const event = msg.event;
-					if (event?.type === 'content_block_delta' && event?.delta?.type === 'text_delta' && typeof event?.delta?.text === 'string') {
-						fullText += event.delta.text;
-						yield { type: 'delta', text: event.delta.text };
-					}
-				} else if (msg.type === 'assistant') {
-					const blocks = msg.message?.content ?? [];
-					for (const block of blocks) {
-						if (block.type === 'text' && typeof block.text === 'string' && fullText.length === 0) {
-							fullText += block.text;
-							yield { type: 'delta', text: block.text };
-						}
-					}
-				}
+		// Always use Vercel streaming — copilot actions are single-turn and
+		// don't need Agent SDK's tool-use capabilities.
+		const { vercelStreamChat } = await import('@/core/providers/vercel');
+		const llmMessages: LLMRequestMessage[] = [
+			{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
+			{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
+		];
+		let fullText = '';
+		for await (const event of vercelStreamChat(profile, modelId, { messages: llmMessages, abortSignal: opts?.signal })) {
+			if (event.type === 'text-delta') {
+				fullText += event.text;
+				yield { type: 'delta', text: event.text };
+			} else if (event.type === 'complete') {
+				capturedUsage = event.usage;
 			}
-			yield { type: 'done', fullText };
-		} else {
-			const { vercelStreamChat } = await import('@/core/providers/vercel');
-			const llmMessages: LLMRequestMessage[] = [
-				{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
-				{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
-			];
-			let fullText = '';
-			for await (const event of vercelStreamChat(profile, profile.primaryModel, { messages: llmMessages, abortSignal: opts?.signal })) {
-				if (event.type === 'text-delta') {
-					fullText += event.text;
-					yield { type: 'delta', text: event.text };
-				} else if (event.type === 'complete') {
-					capturedUsage = event.usage;
-				}
-			}
-			yield { type: 'done', fullText };
 		}
+		yield { type: 'done', fullText };
 
 		this.emitUsage(capturedUsage, startMs, true, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
 	}
@@ -1056,43 +1035,28 @@ ${sourcesList}${topicsList}
 		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
 	): Promise<T> {
 		const startMs = Date.now();
-		const profile = this.requireActiveProfile();
+		const { profile, modelId } = this.resolveCopilotProfileAndModel();
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,
 			opts?.systemPrompt,
 		);
 
-		if (this.isAgentSdkProfile(profile)) {
-			let capturedUsage: LLMUsage | undefined;
-			const rawMessages = queryWithProfile(this.app, this.getPluginId(), profile, {
-				prompt: userPrompt,
-				systemPrompt,
-				maxTurns: 1,
-				allowedTools: [],
-				jsonSchema: schema,
-				signal: opts?.signal,
-			});
-			const teed = this.teeUsageFromSdkStream(rawMessages, u => { capturedUsage = u; });
-			const result = await collectJson<T>(teed);
-			this.emitUsage(capturedUsage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
-			return result;
-		} else {
-			// Vercel path: generate text with JSON instruction, then parse
-			const { vercelGenerateText } = await import('@/core/providers/vercel');
-			const jsonInstruction = schema
-				? `\n\nRespond with valid JSON matching this schema:\n${JSON.stringify(schema, null, 2)}`
-				: '\n\nRespond with valid JSON.';
-			const llmMessages: LLMRequestMessage[] = [
-				{ role: 'system', content: [{ type: 'text', text: systemPrompt + jsonInstruction }] },
-				{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
-			];
-			const { text, usage } = await vercelGenerateText(profile, profile.primaryModel, llmMessages);
-			this.emitUsage(usage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
-			// Extract JSON from potential markdown code fences
-			const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
-			return JSON.parse(jsonMatch[1]!.trim()) as T;
-		}
+		// Always use Vercel path for structured output — single-turn calls
+		// don't need Agent SDK, and Vercel avoids CLI auth complexity.
+		const { vercelGenerateText } = await import('@/core/providers/vercel');
+		const jsonInstruction = schema
+			? `\n\nRespond with valid JSON matching this schema:\n${JSON.stringify(schema, null, 2)}`
+			: '\n\nRespond with valid JSON.';
+		const llmMessages: LLMRequestMessage[] = [
+			{ role: 'system', content: [{ type: 'text', text: systemPrompt + jsonInstruction }] },
+			{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
+		];
+		const { text, usage } = await vercelGenerateText(profile, modelId, llmMessages);
+		this.emitUsage(usage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
+		// Extract JSON from potential markdown code fences
+		const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
+		return JSON.parse(jsonMatch[1]!.trim()) as T;
 	}
 
 }

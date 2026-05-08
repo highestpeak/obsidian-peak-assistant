@@ -132,29 +132,29 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isActive, onClick, o
 	};
 
 	return (
-		<div className="">
+		<div className="pktw-overflow-hidden">
 			<Button
 				variant="ghost"
 				data-message-id={message.id}
 				data-message-role={message.role}
 				onClick={onClick}
 				className={cn(
-					'pktw-w-full pktw-justify-start pktw-items-start pktw-text-left pktw-whitespace-normal pktw-h-auto pktw-min-h-[3rem] pktw-py-2 pktw-group',
+					'pktw-w-full pktw-justify-start pktw-items-start pktw-text-left pktw-whitespace-normal pktw-h-auto pktw-min-h-[3rem] pktw-py-2 pktw-group pktw-overflow-hidden',
 					'focus-visible:!pktw-ring-0 focus-visible:!pktw-ring-offset-0 pktw-shadow-none focus-visible:pktw-shadow-none',
 					isActive && 'pktw-bg-accent/70'
 				)}
 			>
-				<div className="pktw-flex-1 pktw-min-w-0 pktw-line-clamp-2 pktw-text-sm pktw-leading-relaxed">
-					<span className={cn(getRoleBadgeClass(message.role), 'pktw-inline-flex pktw-items-center pktw-mr-2 pktw-mb-0')}>
+				<div className="pktw-flex-1 pktw-min-w-0 pktw-line-clamp-2 pktw-text-sm pktw-leading-relaxed pktw-overflow-hidden">
+					<span className={cn(getRoleBadgeClass(message.role), 'pktw-inline-flex pktw-items-center pktw-mr-2 pktw-mb-0 pktw-flex-shrink-0')}>
 						{message.role.toUpperCase()}
 						{message.starred && (
-							<Star 
+							<Star
 								className="pktw-inline-block pktw-w-3 pktw-h-3 pktw-ml-1.5 pktw-fill-red-500 pktw-text-red-500 pktw-cursor-pointer"
 								onClick={handleStarClick}
 							/>
 						)}
 					</span>
-					<span className="pktw-break-words">{getMessageSummary(message)}</span>
+					<span className="pktw-break-all">{getMessageSummary(message)}</span>
 				</div>
 			</Button>
 		</div>
@@ -395,7 +395,7 @@ export const MessageHistoryViewComponent: React.FC = () => {
 				</div>
 			) : (
 				<ScrollArea className="pktw-flex-1" ref={scrollAreaRef}>
-					<div ref={messageListContainerRef}>
+					<div ref={messageListContainerRef} className="pktw-px-1 pktw-pr-3 pktw-pb-6 pktw-overflow-hidden">
 						{/* Render topics */}
 					{topicGroups.map((topic, index) => (
 						<TopicGroupComponent

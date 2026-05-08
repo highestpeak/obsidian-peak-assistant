@@ -32,6 +32,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | U. Chat UI v9 + 智能功能 | Message UI 重构 + 换模型重新输出 + Topic 聚合 + Suggested Follow-ups + Outline 修复 + bug fixes | 完成 |
 | W. Copilot 扩展 | 5→15 actions，注册表架构，分组 UI + 上下文推荐，Document/Vault/Writing 三类 | 进行中 |
 | X. Model Selection 统一 | Provider 卡片简化 + Agent Fast pill + Ollama 动态模型 + baseUrl 修复 | 完成 |
+| Y. Token Usage Dashboard | 全站 AI 调用追踪 + SQLite 持久化 + 统计面板（KPI/趋势/分布/明细） | 完成 |
 
 ## Next
 
@@ -285,6 +286,51 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - RAG within single conversation
 
 ## Log
+
+### 2026-05-08 (Session 15)
+- Done: **Bug fix — Auto 模型选择不感知 chatMode**
+  - 根因：`chatMode`（Chat/Agent/Plan）从未参与模型选择逻辑，三处硬编码 `getActiveAgentConfig()`
+  - `ProfileRegistry.ts` 新增 `getConfigForMode(mode)` — agent/plan → Agent config，其余 → Chat config
+  - `ChatInputArea.tsx` Auto 占位符改用 `getConfigForMode(store.chatMode)`
+  - `useChatSession.ts` 已有对话 fallback 改用 `getConfigForMode(conversationType.kind)`
+  - `useChatSubmit.ts` 新对话 fallback 改用 `getConfigForMode(chatMode)`
+- Done: **Feature — Quote to input（右键引用选中文字到输入框）**
+  - `chatViewStore.ts` 新增 `insertToInput` 回调 + `setInsertToInput` action
+  - `ChatInputArea.tsx` 新增 `InsertToInputHandler` 组件（PromptInput 内注册追加文本+聚焦回调）
+  - `MessageViewItem.tsx` 右键菜单新增 "Quote to input"，选中文字按行加 `> ` 前缀插入输入框
+- Next: 真机验证 Auto 模型切换 + Quote to input 功能
+
+### 2026-05-08 (Session 14)
+- Done: **Phase Y — Token Usage Dashboard** (11 commits)
+  - **数据层**：`usage_log` + `usage_daily` 表 schema（DDL），`UsageLogRepo` 12 个聚合查询方法，`UsageTrackingService` 事件订阅 + 压缩 + 查询 API
+  - **事件总线**：`USAGE_RECORDED` 事件类型 + `UsageRecordedViewEvent`，pub-sub 架构
+  - **自动追踪（6 个拦截点）**：
+    - `AIServiceManager` 4 个 query 方法（queryText/queryTextStream/queryStream/queryStructured）自动 emit
+    - `sdkAgentPool.queryWithProfile` 拦截 result 消息 emit
+    - `embedClient.embedTexts` 解析 API response 中 `usage.prompt_tokens` emit
+  - **数据修复**：`vercelGenerateText` 返回 usage（原来丢弃）、`sdkMessageAdapter` 映射 `cachedInputTokens`
+  - **Dashboard View**：独立 ItemView（`peak-usage-dashboard`），recharts 图表库
+    - KPI 卡片 4 个（总 token / 费用 / 调用数 / 延迟）+ 环比变化
+    - Token 趋势折线图 + Cost 趋势折线图（按 provider 分色）
+    - 3 个饼图（By Feature / By Provider & Model / Cost Breakdown）
+    - Daily Breakdown 堆叠柱状图（按功能分色）
+    - Recent Calls 明细表（feature 筛选 + 彩色 badge）
+  - **保留策略**：可配置 `usageDetailRetentionDays`（默认 30 天），过期明细自动按天压缩到 `usage_daily`
+  - **设置**：`usageTrackingEnabled` + `usageDetailRetentionDays`，main.ts 生命周期集成
+  - **命令**：`Open Usage Dashboard` 命令注册
+- Spec: `docs/superpowers/specs/2026-05-08-token-usage-dashboard-design.md`
+- Plan: `docs/superpowers/plans/2026-05-08-token-usage-dashboard.md`
+- Mockup: `.superpowers/brainstorm/85527-1778205143/content/panel-mockup-v4.html`
+- Next: 真机验证 Dashboard 面板渲染 + 数据流
+
+### 2026-05-08 (Session 13)
+- Done: **Settings Test 按钮接线**
+  - 根因：`ProfileCard.tsx:handleTest` 是空壳（`// TODO: wire to real connectivity test`），只假装 1.5s testing 无实际 API 调用
+  - 提取 `src/core/providers/testProviderConnection.ts` 共享函数（从 `OnboardingModal.tsx` 去重），支持 `Profile` 对象和 `(kind, apiKey)` 两种调用方式
+  - 分 provider 测试：Anthropic → POST messages (max_tokens:1)，Ollama → GET /api/tags，其他 → GET /v1/models
+  - ProfileCard 按钮显示真实结果：Connected(绿✓) / Failed(红✗) + 动画
+  - OnboardingModal 改为导入共享函数，删除本地重复实现
+- Next: 真机验证 Test 按钮 + Phase W smoke test
 
 ### 2026-05-08 (Session 12)
 - Done: **Phase X — Model Selection 统一** (10 commits)
@@ -663,6 +709,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | copilot-document-intelligence | 04-24 | COMPLETED |
 | copilot-expansion | 05-07 | IN PROGRESS (code done, needs smoke test) |
 | model-selection-unification | 05-08 | COMPLETED |
+| token-usage-dashboard | 05-08 | COMPLETED |
 | ai-analysis-landing-redesign | 04-25 | COMPLETED |
 | settings-redesign | 04-25 | COMPLETED |
 | agent-trace-observability | 04-22 | COMPLETED |
