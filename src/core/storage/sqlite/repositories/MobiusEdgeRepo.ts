@@ -406,30 +406,6 @@ export class MobiusEdgeRepo {
 		return rows.map((row) => this.graphEdgeFromMobius(row));
 	}
 
-	/**
-	 * Get edges between two nodes.
-	 */
-	async getBetweenNodes(fromNodeId: string, toNodeId: string): Promise<GraphEdge[]> {
-		const rows = await this.db
-			.selectFrom('mobius_edge')
-			.selectAll()
-			.where('from_node_id', '=', fromNodeId)
-			.where('to_node_id', '=', toNodeId)
-			.execute();
-		return rows.map((row) => this.graphEdgeFromMobius(row));
-	}
-
-	/**
-	 * Get edges by type.
-	 */
-	async getByType(type: string): Promise<GraphEdge[]> {
-		const rows = await this.db
-			.selectFrom('mobius_edge')
-			.selectAll()
-			.where('type', '=', type)
-			.execute();
-		return rows.map((row) => this.graphEdgeFromMobius(row));
-	}
 
 	/**
 	 * Streams all edges with endpoint `mobius_node` type/path resolved in memory (no SQL JOIN: edge page + `IN` lookup).
@@ -572,23 +548,6 @@ export class MobiusEdgeRepo {
 	}
 
 	/**
-	 * Get edges by custom WHERE clause (table is `mobius_edge`; column is `attributes_json`).
-	 */
-	async getByCustomWhere(whereClause: string): Promise<GraphEdge[]> {
-		if (!whereClause.trim()) return [];
-		// Create a simple compiled query object for raw SQL
-		const compiledQuery = {
-			sql: `SELECT * FROM mobius_edge WHERE ${whereClause}`,
-			parameters: [],
-			query: {} // Add required query property
-		} as any;
-		console.log('[MobiusEdgeRepo.getByCustomWhere] compiledQuery', compiledQuery);
-		const result = await this.db.executeQuery(compiledQuery);
-		const rows = result.rows as DbSchema['mobius_edge'][];
-		return rows.map((row) => this.graphEdgeFromMobius(row));
-	}
-
-	/**
 	 * Get source node IDs that are connected to ALL specified target node IDs.
 	 * Uses GROUP BY and HAVING to find nodes that have edges to all required targets.
 	 * Since target node IDs are unique (tags and categories have different IDs),
@@ -607,43 +566,6 @@ export class MobiusEdgeRepo {
 			.execute();
 
 		return result.map(row => row.from_node_id);
-	}
-
-	/**
-	 * Nodes with no outgoing edges. Document rows use `doc_outgoing_cnt` + `other_outgoing_cnt`;
-	 * other node types use `NOT EXISTS` on `mobius_edge` (no cached out-degree on tags/categories).
-	 */
-	async getNodesWithZeroOutDegree(limit?: number): Promise<string[]> {
-		const cap = limit ?? 10_000_000;
-		const d = GraphNodeType.Document;
-		const h = GraphNodeType.HubDoc;
-		const result = await sql<{ node_id: string }>`
-			SELECT n.node_id AS node_id FROM mobius_node n
-			WHERE (
-				(n.type IN (${d}, ${h}) AND IFNULL(n.doc_outgoing_cnt,0) + IFNULL(n.other_outgoing_cnt,0) = 0)
-				OR (n.type NOT IN (${d}, ${h}) AND NOT EXISTS (SELECT 1 FROM mobius_edge e WHERE e.from_node_id = n.node_id))
-			)
-			LIMIT ${cap}
-		`.execute(this.db);
-		return result.rows.map((r) => r.node_id);
-	}
-
-	/**
-	 * Nodes with no incoming edges; same caching rules as {@link getNodesWithZeroOutDegree}.
-	 */
-	async getNodesWithZeroInDegree(limit?: number): Promise<string[]> {
-		const cap = limit ?? 10_000_000;
-		const d = GraphNodeType.Document;
-		const h = GraphNodeType.HubDoc;
-		const result = await sql<{ node_id: string }>`
-			SELECT n.node_id AS node_id FROM mobius_node n
-			WHERE (
-				(n.type IN (${d}, ${h}) AND IFNULL(n.doc_incoming_cnt,0) + IFNULL(n.other_incoming_cnt,0) = 0)
-				OR (n.type NOT IN (${d}, ${h}) AND NOT EXISTS (SELECT 1 FROM mobius_edge e WHERE e.to_node_id = n.node_id))
-			)
-			LIMIT ${cap}
-		`.execute(this.db);
-		return result.rows.map((r) => r.node_id);
 	}
 
 	/**
@@ -780,37 +702,10 @@ export class MobiusEdgeRepo {
 	}
 
 	/**
-	 * Document ids linked to a topic tag node (excluding one doc), for semantic peer discovery.
-	 */
-	async listDocIdsFromTaggedTopicExcluding(
-		tagNodeId: string,
-		excludeDocId: string,
-		limit: number,
-	): Promise<string[]> {
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_edge')
-			.select('from_node_id')
-			.where('to_node_id', '=', tagNodeId)
-			.where('type', '=', GraphEdgeType.TaggedTopic)
-			.where('from_node_id', '!=', excludeDocId)
-			.limit(lim)
-			.execute();
-		return [...new Set(rows.map((r) => String(r.from_node_id)))];
-	}
-
-	/**
 	 * Delete edges by to_node_id.
 	 */
 	async deleteByToNode(toNodeId: string): Promise<void> {
 		await this.db.deleteFrom('mobius_edge').where('to_node_id', '=', toNodeId).execute();
-	}
-
-	/**
-	 * Delete edges between two nodes.
-	 */
-	async deleteBetweenNodes(fromNodeId: string, toNodeId: string): Promise<void> {
-		await this.db.deleteFrom('mobius_edge').where('from_node_id', '=', fromNodeId).where('to_node_id', '=', toNodeId).execute();
 	}
 
 	/**
@@ -919,122 +814,6 @@ export class MobiusEdgeRepo {
 			.limit(limit)
 			.execute();
 		return rows.map((r) => ({ tagId: r.node_id, count: Number(r.tag_doc_count) }));
-	}
-
-	/**
-	 * count in-degree and out-degree for target node ids.
-	 * Chunks nodeIds to avoid SQL variable limit; merges in memory.
-	 */
-	async getDegreeMapsByNodeIdsChunked(
-		nodeIds: string[],
-		edgeType: string | readonly string[] = GRAPH_WIKI_REFERENCE_EDGE_TYPES,
-	): Promise<{ inMap: Map<string, number>; outMap: Map<string, number> }> {
-		const inMap = new Map<string, number>();
-		const outMap = new Map<string, number>();
-		const CHUNK = 400;
-		for (let i = 0; i < nodeIds.length; i += CHUNK) {
-			const c = nodeIds.slice(i, i + CHUNK);
-			const [inChunk, outChunk] = await Promise.all([
-				this.countInComingEdges(c, edgeType),
-				this.countOutgoingEdges(c, edgeType),
-			]);
-			for (const [nid, count] of inChunk) inMap.set(nid, (inMap.get(nid) ?? 0) + count);
-			for (const [nid, count] of outChunk) outMap.set(nid, (outMap.get(nid) ?? 0) + count);
-		}
-		return { inMap, outMap };
-	}
-
-	/**
-	 * Returns all edges that have *both* endpoints in the given node set ("intra" = within the set).
-	 * Used when drawing a subgraph (e.g. top-N nodes): we need every link between those nodes.
-	 *
-	 * Why two queries?
-	 * - getByFromNodesAndTypes(nodeIds): edges whose *source* is in nodeIds. That gives us A→B when A is in the set
-	 *   (B may be outside). We then keep only edges where B is also in nodeIds.
-	 * - getByToNodesAndTypes(nodeIds): edges whose *target* is in nodeIds. That gives us C→D when D is in the set.
-	 *   We then keep only edges where C is also in nodeIds. So we get edges that would be missed if we only queried by from.
-	 * The same edge can appear in both result sets, so we dedupe by (from_node_id, to_node_id) before returning.
-	 *
-	 * @param nodeIds - Node IDs that define the subgraph (e.g. top 20 by degree).
-	 * @param edgeType - Edge type to filter (default 'references').
-	 * @returns List of edges { from_node_id, to_node_id } with both ends in nodeIds, no duplicates.
-	 */
-	async getIntraEdges(
-		nodeIds: string[],
-		edgeType: string | readonly string[] = GRAPH_WIKI_REFERENCE_EDGE_TYPES,
-	): Promise<Array<{ from_node_id: string; to_node_id: string }>> {
-		if (!nodeIds.length) return [];
-		const types = typeof edgeType === 'string' ? [edgeType] : [...edgeType];
-		const [fromEdges, toEdges] = await Promise.all([
-			this.getByFromNodesAndTypes(nodeIds, types),
-			this.getByToNodesAndTypes(nodeIds, types),
-		]);
-		const nodeSet = new Set(nodeIds);
-		const seen = new Set<string>();
-		const result: Array<{ from_node_id: string; to_node_id: string }> = [];
-		for (const e of fromEdges) {
-			if (!nodeSet.has(e.to_node_id)) continue;
-			const key = `${e.from_node_id}\t${e.to_node_id}`;
-			if (seen.has(key)) continue;
-			seen.add(key);
-			result.push(e);
-		}
-		for (const e of toEdges) {
-			if (!nodeSet.has(e.from_node_id)) continue;
-			const key = `${e.from_node_id}\t${e.to_node_id}`;
-			if (seen.has(key)) continue;
-			seen.add(key);
-			result.push(e);
-		}
-		return result;
-	}
-
-	/**
-	 * For a set of "internal" nodes (e.g. docs in the group's folders), returns the top external nodes
-	 * that are most connected to this set—both directions. Used to draw "Group → external" and
-	 * "external → Group" links in the shared-context Mermaid graph.
-	 *
-	 * - extOut: nodes that internal nodes link *to* (outgoing). Sorted by number of edges from internal to that node; top limitK.
-	 * - extIn: nodes that link *into* internal nodes (incoming). Sorted by number of edges from that node to internal; top limitK.
-	 *
-	 * Why chunk? internalIds can be large (all docs under several folders). We avoid a single huge IN (...)
-	 * by splitting into chunks of 400, querying edges for each chunk, and aggregating counts in memory.
-	 * No SQL JOIN with indexed document table; internal set is passed in by the caller (from IndexedDocumentRepo).
-	 *
-	 * @param internalIds - Document/node IDs considered "inside" the group (e.g. from getIdsByPathPrefixes).
-	 * @param edgeType - Edge type (default 'references').
-	 * @param limitK - Max number of external nodes to return per direction.
-	 * @returns { extOut: [{ to_node_id, count }], extIn: [{ from_node_id, count }] } sorted by count descending.
-	 */
-	async getExternalEdgeCountsChunked(
-		internalIds: string[],
-		edgeType: string | readonly string[] = GRAPH_WIKI_REFERENCE_EDGE_TYPES,
-		limitK: number,
-	): Promise<{
-		extOut: Array<{ to_node_id: string; count: number }>;
-		extIn: Array<{ from_node_id: string; count: number }>;
-	}> {
-		const internalSet = new Set(internalIds);
-		const outByTo = new Map<string, number>();
-		const inByFrom = new Map<string, number>();
-		const CHUNK = 400;
-		const types = typeof edgeType === 'string' ? [edgeType] : [...edgeType];
-		for (let i = 0; i < internalIds.length; i += CHUNK) {
-			const c = internalIds.slice(i, i + CHUNK);
-			const [outEdges, inEdges] = await Promise.all([
-				this.getByFromNodesAndTypes(c, types),
-				this.getByToNodesAndTypes(c, types),
-			]);
-			for (const e of outEdges) {
-				if (!internalSet.has(e.to_node_id)) outByTo.set(e.to_node_id, (outByTo.get(e.to_node_id) ?? 0) + 1);
-			}
-			for (const e of inEdges) {
-				if (!internalSet.has(e.from_node_id)) inByFrom.set(e.from_node_id, (inByFrom.get(e.from_node_id) ?? 0) + 1);
-			}
-		}
-		const extOut = [...outByTo.entries()].sort((a, b) => b[1] - a[1]).slice(0, limitK).map(([to_node_id, count]) => ({ to_node_id, count }));
-		const extIn = [...inByFrom.entries()].sort((a, b) => b[1] - a[1]).slice(0, limitK).map(([from_node_id, count]) => ({ from_node_id, count }));
-		return { extOut, extIn };
 	}
 
 	/**

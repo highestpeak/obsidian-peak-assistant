@@ -40,30 +40,12 @@ export class StructuralMetricsRepo {
 		}
 	}
 
-	async getByNodeIds(nodeIds: string[]): Promise<Map<string, DbSchema['structural_metrics']>> {
-		if (nodeIds.length === 0) return new Map();
-		const rows = await this.db
-			.selectFrom('structural_metrics')
-			.selectAll()
-			.where('node_id', 'in', nodeIds)
-			.execute();
-		return new Map(rows.map(r => [r.node_id, r]));
-	}
-
 	async getTopByBetweenness(limit: number): Promise<DbSchema['structural_metrics'][]> {
 		return await this.db
 			.selectFrom('structural_metrics')
 			.selectAll()
 			.orderBy('betweenness', 'desc')
 			.limit(limit)
-			.execute();
-	}
-
-	async getByCommunity(communityId: number): Promise<DbSchema['structural_metrics'][]> {
-		return await this.db
-			.selectFrom('structural_metrics')
-			.selectAll()
-			.where('community_id', '=', communityId)
 			.execute();
 	}
 

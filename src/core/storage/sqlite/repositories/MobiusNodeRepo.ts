@@ -619,83 +619,6 @@ export class MobiusNodeRepo {
 		await this.deleteByNodeIds(ids);
 	}
 
-	async deleteByType(type: string): Promise<void> {
-		await this.db.deleteFrom('mobius_node').where('type', '=', type).execute();
-	}
-
-	/**
-	 * Upsert a mobius node (insert or full replace of scalar fields).
-	 */
-	async upsertMobiusRow(row: MobiusNodeRow): Promise<void> {
-		const exists = await this.existsByNodeId(row.node_id);
-		if (exists) {
-			await this.db
-				.updateTable('mobius_node')
-				.set({
-					type: row.type,
-					label: row.label,
-					infer_created_at: row.infer_created_at,
-					updated_at: row.updated_at,
-					last_open_ts: row.last_open_ts,
-					open_count: row.open_count,
-					path: row.path,
-					title: row.title,
-					size: row.size,
-					mtime: row.mtime,
-					ctime: row.ctime,
-					content_hash: row.content_hash,
-					summary: row.summary,
-					tags_json: row.tags_json,
-					word_count: row.word_count,
-					char_count: row.char_count,
-					language: row.language,
-					richness_score: row.richness_score,
-					doc_incoming_cnt: row.doc_incoming_cnt,
-					doc_outgoing_cnt: row.doc_outgoing_cnt,
-					other_incoming_cnt: row.other_incoming_cnt,
-					other_outgoing_cnt: row.other_outgoing_cnt,
-					tag_doc_count: row.tag_doc_count,
-					pagerank: row.pagerank,
-					pagerank_updated_at: row.pagerank_updated_at,
-					pagerank_version: row.pagerank_version,
-					semantic_pagerank: row.semantic_pagerank,
-					semantic_pagerank_updated_at: row.semantic_pagerank_updated_at,
-					semantic_pagerank_version: row.semantic_pagerank_version,
-					folder_cohesion_score: row.folder_cohesion_score,
-					attributes_json: row.attributes_json,
-				})
-				.where('node_id', '=', row.node_id)
-				.execute();
-		} else {
-			await this.db.insertInto('mobius_node').values(row).execute();
-		}
-	}
-
-	async updatePathAndDocumentFields(
-		nodeId: string,
-		updates: {
-			path: string;
-			label: string;
-			title: string | null;
-			mtime: number | null;
-			attributes_json: string;
-			updated_at: number;
-		},
-	): Promise<void> {
-		await this.db
-			.updateTable('mobius_node')
-			.set({
-				path: updates.path,
-				label: updates.label,
-				title: updates.title,
-				mtime: updates.mtime,
-				attributes_json: updates.attributes_json,
-				updated_at: updates.updated_at,
-			})
-			.where('node_id', '=', nodeId)
-			.execute();
-	}
-
 	/**
 	 * Increment open_count and set last_open_ts for indexed note rows (`document` / `hub_doc`).
 	 */
@@ -727,30 +650,6 @@ export class MobiusNodeRepo {
 		return this.db.selectFrom('mobius_node').where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES]);
 	}
 
-	async existsByDocId(docId: string): Promise<boolean> {
-		const row = await this.docStatisticsRowQuery().select('node_id').where('node_id', '=', docId).executeTakeFirst();
-		return row !== undefined;
-	}
-
-	async insertDocumentStatistics(stats: {
-		doc_id: string;
-		word_count: number | null;
-		char_count: number | null;
-		language: string | null;
-		richness_score: number | null;
-		last_open_ts: number | null;
-		updated_at: number;
-	}): Promise<void> {
-		await this.updateDocumentStatisticsByDocId(stats.doc_id, {
-			word_count: stats.word_count,
-			char_count: stats.char_count,
-			language: stats.language,
-			richness_score: stats.richness_score,
-			last_open_ts: stats.last_open_ts,
-			updated_at: stats.updated_at,
-		});
-	}
-
 	async updateDocumentStatisticsByDocId(
 		docId: string,
 		updates: Partial<
@@ -774,28 +673,6 @@ export class MobiusNodeRepo {
 			.where('node_id', '=', docId)
 			.where('type', 'in', [...GRAPH_INDEXED_NOTE_NODE_TYPES])
 			.execute();
-	}
-
-	async upsertDocumentStatistics(stats: {
-		doc_id: string;
-		word_count?: number | null;
-		char_count?: number | null;
-		language?: string | null;
-		richness_score?: number | null;
-		last_open_ts?: number | null;
-		updated_at: number;
-	}): Promise<void> {
-		const exists = await this.existsByDocId(stats.doc_id);
-		if (exists) {
-			await this.updateDocumentStatisticsByDocId(stats.doc_id, {
-				word_count: stats.word_count ?? null,
-				char_count: stats.char_count ?? null,
-				language: stats.language ?? null,
-				richness_score: stats.richness_score ?? null,
-				last_open_ts: stats.last_open_ts ?? null,
-				updated_at: stats.updated_at,
-			});
-		}
 	}
 
 	async getRecent(topK: number): Promise<Array<{ docId: string; lastOpenTs: number; openCount: number }>> {
@@ -943,15 +820,6 @@ export class MobiusNodeRepo {
 
 	async cleanupOrphanStats(): Promise<number> {
 		return 0;
-	}
-
-	async getTopByRichness(limit: number): Promise<DocStatistics[]> {
-		const rows = await this.docStatisticsRowQuery()
-			.selectAll()
-			.orderBy('richness_score', 'desc')
-			.limit(limit)
-			.execute();
-		return rows.map((r) => this.docStatisticsFromMobius(r)).filter((s): s is DocStatistics => s != null);
 	}
 
 	async countAllDocumentStatisticsRows(): Promise<number> {
