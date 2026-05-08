@@ -562,14 +562,3 @@ export function preprocessMarkdownForChunking(
 	return replaceFencedCodeBlocks(content, maxKeep, fallbackPlaceholder, useRichOmit);
 }
 
-/**
- * Collects markdown heading lines for compact navigation / evidence hints.
- */
-export function extractHeadingSkeleton(content: string, maxChars = 8000): string {
-	const lines = content.split(/\r?\n/).filter((l) => /^#{1,6}\s+/.test(l));
-	let out = lines.join('\n');
-	if (out.length > maxChars) {
-		out = out.slice(0, maxChars);
-	}
-	return out;
-}

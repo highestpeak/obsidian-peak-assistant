@@ -640,12 +640,6 @@ export const PAGERANK_EDGE_BATCH_SIZE = 5000;
 export const DEFAULT_SEARCH_TOP_K = 50;
 
 /**
- * As we may filter some results, we need to multiply the top K value by this factor. And get more results.
- * Also, we want to get more results to improve the quality of the search.
- */
-export const DEFAULT_SEARCH_TOP_K_MULTI_FACTOR = 2;
-
-/**
  * Default search mode.
  * Used when query.mode is not specified.
  */
@@ -754,13 +748,6 @@ export const GRAPH_INSPECT_STEP_TIME_LIMIT = 10000; // 10 seconds
 export const RRF_RANKING_POOL_SIZE = 500;
 
 /**
- * AI Search graph generation constants.
- */
-export const AI_SEARCH_GRAPH_MAX_NODES_PER_SOURCE = 50; // Max nodes per source when building graph
-export const AI_SEARCH_GRAPH_MAX_HOPS = 2; // Max hops from each source
-export const AI_SEARCH_GRAPH_FINAL_MAX_NODES = 30; // Final max nodes in merged graph
-
-/**
  * Minimum confidence threshold for user profile candidate items.
  */
 export const USER_PROFILE_MIN_CONFIDENCE_THRESHOLD = 0.7;
@@ -784,20 +771,6 @@ export const PROJECT_SUMMARY_UPDATE_THRESHOLD = 5;
  * Debounce delay in milliseconds before triggering summary update.
  */
 export const SUMMARY_UPDATE_DEBOUNCE_MS = 5000;
-
-/**
- * Default suggestions for chat input when no conversation context is available.
- */
-export const DEFAULT_CHAT_SUGGESTIONS = [
-	'What are the latest trends in AI?',
-	'How does machine learning work?',
-	'Explain quantum computing',
-	'Best practices for React development',
-	'How to optimize database queries?',
-	'What is the difference between REST and GraphQL?',
-	'Explain the concept of clean code',
-	'What are design patterns?',
-] as const;
 
 /**
  * Typing speed for typewriter effect in milliseconds per character.
@@ -856,8 +829,6 @@ export const GLOBAL_TAG_CLOUD_TOP_TAGS_COUNT = 50;
  * Default recent search results count.
  */
 export const DEFAULT_RECENT_SEARCH_RESULTS_COUNT = 30;
-
-export const DEFAULT_TOOL_ERROR_RETRY_TIMES = 3;
 
 /**
  * Central caps for `.slice(0, n)` and similar truncation (arrays, strings, previews).
@@ -1018,57 +989,6 @@ export const SLICE_CAPS = {
 // ---------------------------------------------------------------------------
 // AI Search Pipeline Config
 // ---------------------------------------------------------------------------
-
-/** Query complexity routing patterns — used by routeQuery.ts to classify query depth. */
-export const SEARCH_QUERY_ROUTING = {
-	/** Patterns suggesting a simple lookup / known-item search. */
-	simplePatterns: [
-		/^(找|查|搜|search|find|look\s+for)\b/i,
-		/在哪/,
-		/where\s+is/i,
-		/^show\s+me\b/i,
-	],
-	/** Patterns suggesting a complex synthesis / analysis query. */
-	complexPatterns: [
-		/综合|分析|compare|comparison|总结|summarize|synthesis|全面|comprehensive/i,
-		/relationship|关系|联系|区别|difference/i,
-		/所有|all\s+(?:the|my)|every|整理/i,
-		/trend|趋势|evolution|变化|历史/i,
-	],
-	/** Word/char thresholds for simple queries. */
-	simpleMaxWords: 5,
-	simpleMaxChars: 30,
-	/** Word/char thresholds for medium queries (above this → complex). */
-	mediumMaxWords: 15,
-	mediumMaxChars: 80,
-} as const;
-
-/** Recon tool display labels — maps internal tool names to user-facing labels. */
-export const RECON_TOOL_LABELS: Record<string, string> = {
-	explore_folder: 'Explore folder',
-	local_search_whole_vault: 'Search vault',
-	graph_traversal: 'Graph walk',
-	grep_file_tree: 'Grep',
-	hub_local_graph: 'Hub graph',
-	find_path: 'Find path',
-	inspect_note_context: 'Inspect note',
-};
-
-/** Dimension axis visual config — colors for classify chip display. */
-export const DIMENSION_AXIS_COLORS = {
-	semantic: { bg: 'pktw-bg-purple-50', text: 'pktw-text-purple-700', border: 'pktw-border-purple-200' },
-	topology: { bg: 'pktw-bg-green-50', text: 'pktw-text-green-700', border: 'pktw-border-green-200' },
-	temporal: { bg: 'pktw-bg-amber-50', text: 'pktw-text-amber-700', border: 'pktw-border-amber-200' },
-} as const;
-
-/** Mermaid classDef styles for plan strategy map nodes. */
-export const MERMAID_PLAN_STYLES = {
-	semantic: 'fill:#f5f3ff,stroke:#7c3aed,color:#7c3aed',
-	topology: 'fill:#f0fdf4,stroke:#16a34a,color:#16a34a',
-	temporal: 'fill:#fffbeb,stroke:#d97706,color:#d97706',
-	taskNode: 'fill:#faf5ff,stroke:#7c3aed,color:#374151',
-	areaNode: 'fill:#f9fafb,stroke:#9ca3af,color:#6b7280',
-} as const;
 
 /** Visual type labels for plan review section cards. */
 export const VISUAL_TYPE_LABELS: Record<string, string> = {

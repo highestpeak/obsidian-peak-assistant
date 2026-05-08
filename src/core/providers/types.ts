@@ -643,9 +643,6 @@ export type LLMResponseSource = {
 
 // ── Utilities moved from helpers/stream-helper.ts ──────────────────────────
 
-/** Max chars per prompt for pk-debug (avoids huge console dumps). */
-export const PK_DEBUG_PROMPT_TRUNCATE_CHARS = 2000;
-
 /** Build a pk-debug event for prompt trace (system + user truncated). */
 export function buildPromptTraceDebugEvent(
 	triggerName: StreamTriggerName,

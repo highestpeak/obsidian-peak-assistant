@@ -221,34 +221,6 @@ export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
 ] as const;
 
 /**
- * All prompt IDs exposed in Model Configuration UI (general + Search AI Analysis + Indexing & Hub).
- * Used for bulk reset and counts; arrays are disjoint.
- */
-export const ALL_MODEL_CONFIG_PROMPT_IDS: readonly PromptId[] = [
-	...CONFIGURABLE_PROMPT_IDS,
-	...SEARCH_AI_ANALYSIS_PROMPT_IDS,
-	...INDEXING_AND_HUB_PROMPT_IDS,
-] as const;
-
-/**
- * Check if a prompt ID allows model configuration (general, Search AI Analysis, or Indexing & Hub sections).
- */
-export function isPromptModelConfigurable(promptId: PromptId): boolean {
-	return (
-		CONFIGURABLE_PROMPT_IDS.includes(promptId) ||
-		SEARCH_AI_ANALYSIS_PROMPT_IDS.includes(promptId) ||
-		INDEXING_AND_HUB_PROMPT_IDS.includes(promptId)
-	);
-}
-
-export interface ErrorRetryInfo {
-	/** The number of times the error has been retried. */
-	attemptTimes?: number;
-	/** The error messages from the last attempt. */
-	lastAttemptErrorMessages?: string;
-}
-
-/**
  * Variable schemas for each prompt type.
  * Used for type-safe rendering.
  * // todo some prompts may have expected output format, we should add it to the interface. maybe turn into an agent
