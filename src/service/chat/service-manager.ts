@@ -32,8 +32,9 @@ import { PrevAnalysisSlot } from './context/slots/PrevAnalysisSlot';
 import { ResourceIndexSlot } from './context/slots/ResourceIndexSlot';
 import { VaultIntuitionSlot } from './context/slots/VaultIntuitionSlot';
 import { CurrentFileSlot } from './context/slots/CurrentFileSlot';
-import { EventBus } from '@/core/eventBus';
+import { EventBus, UsageRecordedViewEvent } from '@/core/eventBus';
 import { createChatMessage } from './utils/chat-message-builder';
+import type { UsageFeature } from '@/service/usage/types';
 import type { TemplateManager } from '@/core/template/TemplateManager';
 import { AgentTemplateId, getTemplateMetadata } from '@/core/template/TemplateRegistry';
 import { estimateTokens as estimateTokensFn } from './token-estimation';
@@ -778,6 +779,77 @@ ${sourcesList}${topicsList}
 	}
 
 	/**
+	 * Emit a usage tracking event. Fire-and-forget — failures are logged but never propagate.
+	 */
+	private emitUsage(
+		usage: LLMUsage | undefined,
+		startMs: number,
+		isStreaming: boolean,
+		feature: UsageFeature = 'internal',
+		action: string = 'unknown',
+		sessionId?: string,
+	): void {
+		try {
+			if (!usage) return;
+			const profile = ProfileRegistry.getInstance().getActiveAgentProfile();
+			if (!profile) return;
+			void this.getModelInfo(profile.primaryModel, profile.kind).then(modelInfo => {
+				const costUsd = computeUsdFromUsage(usage, modelInfo);
+				EventBus.getInstance(this.app).dispatch(new UsageRecordedViewEvent({
+					sessionId: sessionId ?? crypto.randomUUID(),
+					feature,
+					action,
+					provider: profile.kind,
+					model: profile.primaryModel,
+					inputTokens: usage.inputTokens ?? 0,
+					outputTokens: usage.outputTokens ?? 0,
+					cachedTokens: usage.cachedInputTokens ?? 0,
+					reasoningTokens: usage.reasoningTokens ?? 0,
+					costUsd,
+					durationMs: Date.now() - startMs,
+					isStreaming,
+				}));
+			}).catch(err => {
+				console.warn('[AIServiceManager] emitUsage: failed to compute cost', err);
+			});
+		} catch (err) {
+			console.warn('[AIServiceManager] emitUsage: unexpected error', err);
+		}
+	}
+
+	/**
+	 * Wrap an async iterable to capture usage from SDK `result` messages.
+	 * Passes all messages through unchanged while extracting usage side-band.
+	 */
+	private teeUsageFromSdkStream(
+		messages: AsyncIterable<any>,
+		onUsage: (usage: LLMUsage) => void,
+	): AsyncIterable<any> {
+		return {
+			[Symbol.asyncIterator]() {
+				const iter = (messages as any)[Symbol.asyncIterator]();
+				return {
+					async next() {
+						const result = await iter.next();
+						if (!result.done) {
+							const msg = result.value;
+							if (msg?.type === 'result' && msg.usage) {
+								onUsage({
+									inputTokens: msg.usage.input_tokens ?? 0,
+									outputTokens: msg.usage.output_tokens ?? 0,
+									totalTokens: (msg.usage.input_tokens ?? 0) + (msg.usage.output_tokens ?? 0),
+									cachedInputTokens: msg.usage.cache_read_input_tokens ?? 0,
+								});
+							}
+						}
+						return result;
+					},
+				};
+			},
+		};
+	}
+
+	/**
 	 * Pattern B: Single-turn LLM call via Agent SDK. Returns plain text.
 	 *
 	 * Accepts either a PromptId (with variables) or a raw prompt string.
@@ -790,8 +862,9 @@ ${sourcesList}${topicsList}
 	async queryText(
 		promptOrText: string,
 		variables?: Record<string, unknown>,
-		opts?: { systemPrompt?: string; signal?: AbortSignal },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
 	): Promise<string> {
+		const startMs = Date.now();
 		const profile = this.requireActiveProfile();
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
@@ -800,21 +873,27 @@ ${sourcesList}${topicsList}
 		);
 
 		if (this.isAgentSdkProfile(profile)) {
-			const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
+			let capturedUsage: LLMUsage | undefined;
+			const rawMessages = queryWithProfile(this.app, this.getPluginId(), profile, {
 				prompt: userPrompt,
 				systemPrompt,
 				maxTurns: 1,
 				allowedTools: [],
 				signal: opts?.signal,
 			});
-			return collectText(messages);
+			const teed = this.teeUsageFromSdkStream(rawMessages, u => { capturedUsage = u; });
+			const text = await collectText(teed);
+			this.emitUsage(capturedUsage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
+			return text;
 		} else {
 			const { vercelGenerateText } = await import('@/core/providers/vercel');
 			const llmMessages: LLMRequestMessage[] = [
 				{ role: 'system', content: [{ type: 'text', text: systemPrompt }] },
 				{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
 			];
-			return vercelGenerateText(profile, profile.primaryModel, llmMessages);
+			const { text, usage } = await vercelGenerateText(profile, profile.primaryModel, llmMessages);
+			this.emitUsage(usage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
+			return text;
 		}
 	}
 
@@ -826,14 +905,17 @@ ${sourcesList}${topicsList}
 	async *queryTextStream(
 		promptOrText: string,
 		variables?: Record<string, unknown>,
-		opts?: { systemPrompt?: string; signal?: AbortSignal },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
 	): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; fullText: string }> {
+		const startMs = Date.now();
 		const profile = this.requireActiveProfile();
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
 			variables,
 			opts?.systemPrompt,
 		);
+
+		let capturedUsage: LLMUsage | undefined;
 
 		if (this.isAgentSdkProfile(profile)) {
 			const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
@@ -850,6 +932,14 @@ ${sourcesList}${topicsList}
 				if (msg.type === 'result' && msg.is_error) {
 					const { throwTypedError } = await import('@/core/errors/llm-errors');
 					throwTypedError(typeof msg.result === 'string' ? msg.result : JSON.stringify(msg.result), fullText || undefined);
+				}
+				if (msg.type === 'result' && msg.usage) {
+					capturedUsage = {
+						inputTokens: msg.usage.input_tokens ?? 0,
+						outputTokens: msg.usage.output_tokens ?? 0,
+						totalTokens: (msg.usage.input_tokens ?? 0) + (msg.usage.output_tokens ?? 0),
+						cachedInputTokens: msg.usage.cache_read_input_tokens ?? 0,
+					};
 				}
 				if (msg.type === 'stream_event') {
 					const event = msg.event;
@@ -879,10 +969,14 @@ ${sourcesList}${topicsList}
 				if (event.type === 'text-delta') {
 					fullText += event.text;
 					yield { type: 'delta', text: event.text };
+				} else if (event.type === 'complete') {
+					capturedUsage = event.usage;
 				}
 			}
 			yield { type: 'done', fullText };
 		}
+
+		this.emitUsage(capturedUsage, startMs, true, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
 	}
 
 	/**
@@ -896,8 +990,9 @@ ${sourcesList}${topicsList}
 	async *queryStream(
 		promptOrText: string,
 		variables?: Record<string, unknown>,
-		opts?: { systemPrompt?: string; triggerName?: string; signal?: AbortSignal },
+		opts?: { systemPrompt?: string; triggerName?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
 	): AsyncGenerator<LLMStreamEvent> {
+		const startMs = Date.now();
 		const profile = this.requireActiveProfile();
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
@@ -905,8 +1000,10 @@ ${sourcesList}${topicsList}
 			opts?.systemPrompt,
 		);
 
+		let capturedUsage: LLMUsage | undefined;
+
 		if (this.isAgentSdkProfile(profile)) {
-			yield* translateSdkMessages(
+			for await (const event of translateSdkMessages(
 				queryWithProfile(this.app, this.getPluginId(), profile, {
 					prompt: userPrompt,
 					systemPrompt,
@@ -915,7 +1012,12 @@ ${sourcesList}${topicsList}
 					signal: opts?.signal,
 				}),
 				{ triggerName: opts?.triggerName as any },
-			);
+			)) {
+				if (event.type === 'complete') {
+					capturedUsage = event.usage;
+				}
+				yield event;
+			}
 		} else {
 			const { vercelStreamChat } = await import('@/core/providers/vercel');
 			const llmMessages: LLMRequestMessage[] = [
@@ -926,9 +1028,14 @@ ${sourcesList}${topicsList}
 				if (opts?.triggerName) {
 					(event as any).triggerName = opts.triggerName;
 				}
+				if (event.type === 'complete') {
+					capturedUsage = event.usage;
+				}
 				yield event;
 			}
 		}
+
+		this.emitUsage(capturedUsage, startMs, true, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
 	}
 
 	/**
@@ -946,8 +1053,9 @@ ${sourcesList}${topicsList}
 		promptOrText: string,
 		variables?: Record<string, unknown>,
 		schema?: unknown,
-		opts?: { systemPrompt?: string; signal?: AbortSignal },
+		opts?: { systemPrompt?: string; signal?: AbortSignal; usageFeature?: UsageFeature; usageAction?: string; usageSessionId?: string },
 	): Promise<T> {
+		const startMs = Date.now();
 		const profile = this.requireActiveProfile();
 		const { userPrompt, systemPrompt } = await this.resolvePromptPair(
 			promptOrText,
@@ -956,7 +1064,8 @@ ${sourcesList}${topicsList}
 		);
 
 		if (this.isAgentSdkProfile(profile)) {
-			const messages = queryWithProfile(this.app, this.getPluginId(), profile, {
+			let capturedUsage: LLMUsage | undefined;
+			const rawMessages = queryWithProfile(this.app, this.getPluginId(), profile, {
 				prompt: userPrompt,
 				systemPrompt,
 				maxTurns: 1,
@@ -964,7 +1073,10 @@ ${sourcesList}${topicsList}
 				jsonSchema: schema,
 				signal: opts?.signal,
 			});
-			return collectJson<T>(messages);
+			const teed = this.teeUsageFromSdkStream(rawMessages, u => { capturedUsage = u; });
+			const result = await collectJson<T>(teed);
+			this.emitUsage(capturedUsage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
+			return result;
 		} else {
 			// Vercel path: generate text with JSON instruction, then parse
 			const { vercelGenerateText } = await import('@/core/providers/vercel');
@@ -975,7 +1087,8 @@ ${sourcesList}${topicsList}
 				{ role: 'system', content: [{ type: 'text', text: systemPrompt + jsonInstruction }] },
 				{ role: 'user', content: [{ type: 'text', text: userPrompt }] },
 			];
-			const text = await vercelGenerateText(profile, profile.primaryModel, llmMessages);
+			const { text, usage } = await vercelGenerateText(profile, profile.primaryModel, llmMessages);
+			this.emitUsage(usage, startMs, false, opts?.usageFeature, opts?.usageAction, opts?.usageSessionId);
 			// Extract JSON from potential markdown code fences
 			const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
 			return JSON.parse(jsonMatch[1]!.trim()) as T;
