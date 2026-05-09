@@ -54,7 +54,7 @@ interface VaultSearchTabProps {
  * Quick search tab for regular vault search results.
  */
 export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelectForInspector, navigateToPath }) => {
-	const { quickSearchMode, isSearching, lastSearchResults: displayedResults } = useVaultSearchStore();
+	const { quickSearchMode, isSearching, lastSearchResults: displayedResults, fuzzyCorrection, parsedQuery } = useVaultSearchStore();
 	const inspectorOpen = useVaultSearchStore((s) => s.inspectorOpen);
 	const hasSearchQuery = useHasSearchQuery();
 	const searchQuery = useSearchQuery();
@@ -203,6 +203,12 @@ export const VaultSearchTab: React.FC<VaultSearchTabProps> = ({ onClose, onSelec
 							'pktw-bottom-0 pktw-left-0 pktw-right-0 pktw-h-0.5 pktw-z-20',
 							isSearching ? 'line-progress-loader' : 'pktw-bg-transparent'
 						)} />
+						{fuzzyCorrection && (
+							<div className="pktw-px-3 pktw-py-1.5 pktw-text-xs pktw-text-muted-foreground pktw-bg-muted/30">
+								Showing results for "<span className="pktw-font-medium">{fuzzyCorrection}</span>"
+								{' '}(similar to "{parsedQuery?.text || searchQuery.text}")
+							</div>
+						)}
 						{/* Empty State - No Results */}
 						{hasSearchQuery && !isSearching && displayedResults.length === 0 ? (
 							<NoResultsState mode={quickSearchMode} />
