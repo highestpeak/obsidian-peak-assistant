@@ -38,7 +38,6 @@ import {
 } from '@/core/utils/markdown-utils';
 import { hydrateTextStopwordsFromTemplateManager } from '@/core/utils/stopword-utils';
 import { installHoverMenuGlobals } from '@/ui/component/mine/hover-menu-manager';
-import { loadPeakConfig } from '@/core/profiles/peak-config';
 import { resetAIAnalysisAll } from '@/ui/view/quick-search/store/aiAnalysisStore';
 import { useVaultSearchStore } from '@/ui/view/quick-search/store/vaultSearchStore';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
@@ -94,8 +93,6 @@ export default class MyPlugin extends Plugin {
 
 		const data = await this.loadData();
 		this.settings = normalizePluginSettings(data);
-		await loadPeakConfig(this.app);
-
 		// Initialize ProfileRegistry from persisted settings (must precede AIServiceManager)
 		const ps = this.settings.profileSettings ?? {
 			profiles: [],

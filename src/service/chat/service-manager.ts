@@ -53,11 +53,21 @@ import { AppContext } from '@/app/context/AppContext';
 export class AIServiceManager {
 	private storage: ChatStorageService;
 	private promptService: PromptService;
-	private projectService?: ProjectService;
-	private conversationService?: ConversationService;
+	private _projectService?: ProjectService;
+	private _conversationService?: ConversationService;
 	private resourceSummaryService: ResourceSummaryService;
 	private profileService?: UserProfileService;
 	private contextUpdateService?: ContextUpdateService;
+
+	private get projectService(): ProjectService {
+		if (!this._projectService) throw new Error('ProjectService not initialized. Call init() first.');
+		return this._projectService;
+	}
+
+	private get conversationService(): ConversationService {
+		if (!this._conversationService) throw new Error('ConversationService not initialized. Call init() first.');
+		return this._conversationService;
+	}
 
 	constructor(
 		private readonly app: App,
@@ -114,13 +124,13 @@ export class AIServiceManager {
 		}
 
 		// Initialize Project- and conversation-level services after DocumentLoaderManager is ready
-		this.projectService = new ProjectService(
+		this._projectService = new ProjectService(
 			this.app,
 			this.storage,
 			this.settings.rootFolder,
 			this.promptService,
 		);
-		this.conversationService = new ConversationService(
+		this._conversationService = new ConversationService(
 			this.app,
 			this.storage,
 			this.promptService,
@@ -208,7 +218,7 @@ export class AIServiceManager {
 			);
 		}
 
-		this.projectService = new ProjectService(
+		this._projectService = new ProjectService(
 			this.app,
 			this.storage, this.settings.rootFolder, this.promptService,
 		);
@@ -217,7 +227,7 @@ export class AIServiceManager {
 			this.settings.rootFolder,
 			getAIResourcesSummaryFolder(this.settings.rootFolder),
 		);
-		this.conversationService = new ConversationService(
+		this._conversationService = new ConversationService(
 			this.app,
 			this.storage,
 			this.promptService,
@@ -267,9 +277,6 @@ export class AIServiceManager {
 	 * Create a new project on disk.
 	 */
 	async createProject(input: Omit<ChatProjectMeta, 'id' | 'createdAtTimestamp' | 'updatedAtTimestamp'>): Promise<ChatProject> {
-		if (!this.projectService) {
-			throw new Error('ProjectService not initialized. Call init() first.');
-		}
 		return this.projectService.createProject(input);
 	}
 
@@ -277,9 +284,6 @@ export class AIServiceManager {
 	 * List projects managed by the service.
 	 */
 	async listProjects(): Promise<ChatProject[]> {
-		if (!this.projectService) {
-			throw new Error('ProjectService not initialized. Call init() first.');
-		}
 		return this.projectService.listProjects();
 	}
 
@@ -292,9 +296,6 @@ export class AIServiceManager {
 		limit?: number,
 		offset?: number
 	): Promise<ChatConversation[]> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		return this.conversationService.listConversations(projectId ?? null, limit, offset);
 	}
 
@@ -302,16 +303,10 @@ export class AIServiceManager {
 	 * Count conversations, optionally filtered by project.
 	 */
 	async countConversations(projectId: string | null | undefined): Promise<number> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		return this.conversationService.countConversations(projectId ?? null);
 	}
 
 	async deleteConversation(conversationId: string): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		return this.conversationService.deleteConversation(conversationId);
 	}
 
@@ -319,9 +314,6 @@ export class AIServiceManager {
 	 * Create a new conversation with optional seed messages.
 	 */
 	async createConversation(params: { title: string; project?: ChatProjectMeta | null; initialMessages?: ChatMessage[]; modelId?: string; provider?: string; conversationType?: ConversationType }): Promise<ChatConversation> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		return this.conversationService.createConversation(params);
 	}
 
@@ -393,9 +385,6 @@ ${sourcesList}${topicsList}
 		userContent: string;
 		attachments?: string[];
 	}): AsyncGenerator<LLMStreamEvent> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		return this.conversationService.streamChat(params);
 	}
 
@@ -407,9 +396,6 @@ ${sourcesList}${topicsList}
 		modelId: string;
 		provider: string;
 	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		await this.conversationService.updateConversationModel(params);
 	}
 
@@ -420,9 +406,6 @@ ${sourcesList}${topicsList}
 		conversationId: string;
 		title: string;
 	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		await this.conversationService.updateConversationTitle(params);
 	}
 
@@ -433,9 +416,6 @@ ${sourcesList}${topicsList}
 		conversationId: string;
 		attachmentHandlingOverride?: 'direct' | 'degrade_to_text';
 	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		await this.conversationService.updateConversationAttachmentHandling(params);
 	}
 
@@ -443,9 +423,6 @@ ${sourcesList}${topicsList}
 	 * Regenerate conversation title based on current messages and context.
 	 */
 	async regenerateConversationTitle(conversationId: string): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 
 		// Load conversation with messages
 		const conversation = await this.readConversation(conversationId, true);
@@ -485,9 +462,6 @@ ${sourcesList}${topicsList}
 		conversationId: string;
 		outputControlOverride?: LLMOutputControlSettings;
 	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		await this.conversationService.updateConversationOutputControl(params);
 	}
 
@@ -496,9 +470,6 @@ ${sourcesList}${topicsList}
 	 * Uploads files to vault and creates resourceRef for each file.
 	 */
 	async uploadFilesAndCreateResources(files: File[]): Promise<ChatResourceRef[]> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		return this.conversationService.uploadFilesAndCreateResources(files);
 	}
 
@@ -512,9 +483,6 @@ ${sourcesList}${topicsList}
 		provider: string;
 		usage: LLMUsage;
 	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		this.conversationService.addMessage({
 			conversationId: params.conversationId,
 			message: params.message,
@@ -533,9 +501,6 @@ ${sourcesList}${topicsList}
 		conversationId: string;
 		starred: boolean;
 	}): Promise<void> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		return this.conversationService.toggleStar(params);
 	}
 
@@ -543,9 +508,6 @@ ${sourcesList}${topicsList}
 	 * Load starred message records.
 	 */
 	async loadStarred(): Promise<StarredMessageRecord[]> {
-		if (!this.conversationService) {
-			throw new Error('ConversationService not initialized. Call init() first.');
-		}
 		return this.conversationService.loadStarred();
 	}
 
@@ -566,9 +528,6 @@ ${sourcesList}${topicsList}
 	 * Delete a project and all its conversations.
 	 */
 	async deleteProject(projectId: string): Promise<void> {
-		if (!this.projectService) {
-			throw new Error('ProjectService not initialized. Call init() first.');
-		}
 		return this.projectService.deleteProject(projectId);
 	}
 
@@ -576,9 +535,6 @@ ${sourcesList}${topicsList}
 	 * Rename a project by renaming its folder.
 	 */
 	async renameProject(projectId: string, newName: string): Promise<ChatProject> {
-		if (!this.projectService) {
-			throw new Error('ProjectService not initialized. Call init() first.');
-		}
 		return this.projectService.renameProject(projectId, newName);
 	}
 
