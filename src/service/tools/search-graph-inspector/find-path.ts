@@ -398,144 +398,102 @@ async function fastTrackStrategy(context: SearchContext): Promise<ScoredPath[]> 
     return paths;
 }
 
+/** Min-heap for A* open set. */
+class MinHeap<T> {
+    private h: T[] = [];
+    constructor(private key: (t: T) => number) {}
+    get length() { return this.h.length; }
+    push(v: T) { this.h.push(v); this.bubbleUp(this.h.length - 1); }
+    pop(): T | undefined {
+        if (!this.h.length) return undefined;
+        const top = this.h[0]; const last = this.h.pop()!;
+        if (this.h.length) { this.h[0] = last; this.sinkDown(0); }
+        return top;
+    }
+    private bubbleUp(i: number) {
+        while (i > 0) { const p = (i - 1) >> 1; if (this.key(this.h[p]) <= this.key(this.h[i])) break; [this.h[p], this.h[i]] = [this.h[i], this.h[p]]; i = p; }
+    }
+    private sinkDown(i: number) {
+        const n = this.h.length;
+        while (true) { let s = i; const l = 2 * i + 1, r = 2 * i + 2; if (l < n && this.key(this.h[l]) < this.key(this.h[s])) s = l; if (r < n && this.key(this.h[r]) < this.key(this.h[s])) s = r; if (s === i) break; [this.h[s], this.h[i]] = [this.h[i], this.h[s]]; i = s; }
+    }
+}
+
 /** A* search implementation. */
 async function aStarSearch(context: SearchContext): Promise<PathSegment[] | null> {
     const { startId, endId, startVector, endVector, maxHops, filters } = context;
-
     if (!startVector || !endVector) return null;
 
-    // Priority queue (min-heap based on fCost)
-    const openSet: AStarNode[] = [];
+    const openSet = new MinHeap<AStarNode>(n => n.fCost);
     const closedSet = new Set<string>();
     const nodeMap = new Map<string, AStarNode>();
 
-    // Initialize start node
-    const startNode: AStarNode = {
-        nodeId: startId,
-        gCost: 0,
-        hCost: await calculateHeuristic(startId, endVector, 0, maxHops),
-        fCost: 0,
-        parent: null,
-        connectionType: 'physical_neighbors',
-    };
-    startNode.fCost = startNode.gCost + startNode.hCost;
-
+    const hCost = await calculateHeuristic(startId, endVector);
+    const startNode: AStarNode = { nodeId: startId, gCost: 0, hCost, fCost: hCost, parent: null, connectionType: 'physical_neighbors' };
     openSet.push(startNode);
     nodeMap.set(startId, startNode);
 
-    let step = 0;
-    let consecutiveSemanticCount = 0;
+    let step = 0, consecutiveSemanticCount = 0;
 
     while (openSet.length > 0 && step < maxHops * 50) {
         step++;
+        const current = openSet.pop()!;
 
-        // Get node with lowest fCost
-        openSet.sort((a, b) => a.fCost - b.fCost);
-        const current = openSet.shift()!;
-
-        // Goal reached
-        if (current.nodeId === endId) {
-            return reconstructAStarPath(current);
-        }
-
+        if (current.nodeId === endId) return reconstructAStarPath(current);
         closedSet.add(current.nodeId);
 
-        // Track consecutive semantic edges
-        if (current.connectionType === 'semantic_neighbors') {
-            consecutiveSemanticCount++;
-        } else {
-            consecutiveSemanticCount = 0;
-        }
+        consecutiveSemanticCount = current.connectionType === 'semantic_neighbors' ? consecutiveSemanticCount + 1 : 0;
 
-        const neighbors = await getNeighbors(
-            current.nodeId, 20,
-            consecutiveSemanticCount >= 4 ? 'none' : 'sparse-only',
-            context.excludedDocIds
-        );
-
-        // Apply filters if provided
-        let filteredNeighbors = neighbors;
+        let neighbors = await getNeighbors(current.nodeId, 20, consecutiveSemanticCount >= 4 ? 'none' : 'sparse-only', context.excludedDocIds);
         if (filters) {
-            const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(
-                neighbors.map(n => n.id),
-                filters
-            );
-            filteredNeighbors = applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
+            const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(neighbors.map(n => n.id), filters);
+            neighbors = applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
         }
 
-        for (const neighbor of filteredNeighbors) {
+        for (const neighbor of neighbors) {
             if (closedSet.has(neighbor.id)) continue;
 
-            // Calculate edge weight
             const edgeWeight = neighbor.foundBy === 'physical_neighbors'
                 ? EDGE_WEIGHTS.physical
                 : (consecutiveSemanticCount >= 1 ? EDGE_WEIGHTS.consecutiveSemantic : EDGE_WEIGHTS.semantic);
 
-            // Skip low-similarity semantic edges
             if (neighbor.foundBy === 'semantic_neighbors' && neighbor.similarity) {
-                const sim = parseFloat(neighbor.similarity) / 100;
-                if (sim < SIMILARITY_THRESHOLD) continue;
+                if (parseFloat(neighbor.similarity) / 100 < SIMILARITY_THRESHOLD) continue;
             }
 
             const tentativeGCost = current.gCost + edgeWeight;
-
-            let existingNode = nodeMap.get(neighbor.id);
+            const existingNode = nodeMap.get(neighbor.id);
 
             if (!existingNode) {
-                // Calculate heuristic with dynamic gravity field
-                const progress = step / (maxHops * 2);
-                const hCost = await calculateHeuristic(neighbor.id, endVector, progress, maxHops);
-
-                const newNode: AStarNode = {
-                    nodeId: neighbor.id,
-                    gCost: tentativeGCost,
-                    hCost,
-                    fCost: tentativeGCost + hCost,
-                    parent: current,
-                    connectionType: neighbor.foundBy,
-                    similarity: neighbor.similarity,
-                };
-
+                const h = await calculateHeuristic(neighbor.id, endVector);
+                const newNode: AStarNode = { nodeId: neighbor.id, gCost: tentativeGCost, hCost: h, fCost: tentativeGCost + h, parent: current, connectionType: neighbor.foundBy, similarity: neighbor.similarity };
                 openSet.push(newNode);
                 nodeMap.set(neighbor.id, newNode);
             } else if (tentativeGCost < existingNode.gCost) {
-                // Found better path
                 existingNode.gCost = tentativeGCost;
                 existingNode.fCost = tentativeGCost + existingNode.hCost;
                 existingNode.parent = current;
                 existingNode.connectionType = neighbor.foundBy;
                 existingNode.similarity = neighbor.similarity;
+                openSet.push(existingNode); // re-insert; stale copies ignored via closedSet
             }
         }
     }
-
     return null;
 }
 
 /** A* heuristic: cosine distance to end vector (admissible). */
-async function calculateHeuristic(
-    nodeId: string, endVector: number[], _progress: number, _maxHops: number
-): Promise<number> {
-    const nodeVector = await sqliteStoreManager.getEmbeddingRepo().getEmbeddingForSemanticSearch(nodeId);
-    if (!nodeVector) return 2.0;
-    return Math.max(0, 1 - cosineSimilarity(nodeVector, endVector));
+async function calculateHeuristic(nodeId: string, endVector: number[]): Promise<number> {
+    const v = await sqliteStoreManager.getEmbeddingRepo().getEmbeddingForSemanticSearch(nodeId);
+    if (!v) return 2.0;
+    return Math.max(0, 1 - cosineSimilarity(v, endVector));
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {
     if (a.length !== b.length) return 0;
-
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
-
-    for (let i = 0; i < a.length; i++) {
-        dotProduct += a[i] * b[i];
-        normA += a[i] * a[i];
-        normB += b[i] * b[i];
-    }
-
-    if (normA === 0 || normB === 0) return 0;
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+    return na === 0 || nb === 0 ? 0 : dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
 /** Reconstruct path from A* node chain. */
@@ -715,112 +673,77 @@ async function temporalStrategy(context: SearchContext): Promise<ScoredPath[]> {
     return paths;
 }
 
+/** Apply filters to neighbors if provided. */
+async function applyNeighborFilters(neighbors: NeighborNode[], filters?: any): Promise<NeighborNode[]> {
+    if (!filters) return neighbors;
+    const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(neighbors.map(n => n.id), filters);
+    return applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
+}
+
 /** BFS with temporal ordering constraint and heuristic pruning. */
 async function temporalBFS(
-    startId: string,
-    endId: string,
-    maxHops: number,
-    isForward: boolean,
-    filters?: any,
-    excludedDocIds?: Set<string>
+    startId: string, endId: string, maxHops: number, isForward: boolean, filters?: any, excludedDocIds?: Set<string>
 ): Promise<PathSegment[] | null> {
-    const visited = new Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; timestamp: number }>();
+    type VisitInfo = { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; timestamp: number };
+    const visited = new Map<string, VisitInfo>();
 
-    const [startMeta, endMeta] = await Promise.all([
-        getIndexedDocumentById(startId), getIndexedDocumentById(endId)
-    ]);
+    const [startMeta, endMeta] = await Promise.all([getIndexedDocumentById(startId), getIndexedDocumentById(endId)]);
     if (!startMeta || !endMeta) return null;
 
     const startTimestamp = startMeta.mtime ?? startMeta.ctime ?? Date.now();
     const endTimestamp = endMeta.mtime ?? endMeta.ctime ?? Date.now();
     visited.set(startId, { parentId: null, type: 'physical_neighbors', timestamp: startTimestamp });
 
-    let queue: { id: string; timestamp: number; heuristicScore: number }[] = [
-        { id: startId, timestamp: startTimestamp, heuristicScore: 0 }
-    ];
-    let hops = 0;
-    const TIME_WINDOW_HOURS = 24 * 7;
-    const startTime = Date.now();
-    const TIMEOUT_MS = 3000;
+    let queue: { id: string; timestamp: number; heuristicScore: number }[] = [{ id: startId, timestamp: startTimestamp, heuristicScore: 0 }];
+    const TIME_WINDOW_HOURS = 24 * 7, TIMEOUT_MS = 3000, startTime = Date.now();
 
-    while (queue.length > 0 && hops < maxHops) {
+    for (let hops = 0; queue.length > 0 && hops < maxHops; hops++) {
         if (Date.now() - startTime > TIMEOUT_MS) break;
-
         queue.sort((a, b) => a.heuristicScore - b.heuristicScore);
-        const nextQueue: { id: string; timestamp: number; heuristicScore: number }[] = [];
-        const currentLevelNodes = queue.slice(0, SLICE_CAPS.inspector.pathFindQueueLevel);
+        const currentLevel = queue.slice(0, SLICE_CAPS.inspector.pathFindQueueLevel);
         queue = queue.slice(5);
+        const nextQueue: typeof queue = [];
 
-        for (const current of currentLevelNodes) {
-            let neighbors = await getNeighbors(current.id, 10, 'sparse-only', excludedDocIds);
-            let filteredNeighbors = neighbors;
-            if (filters) {
-                const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(
-                    neighbors.map(n => n.id),
-                    filters
-                );
-                filteredNeighbors = applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
-            }
+        for (const current of currentLevel) {
+            const neighbors = await applyNeighborFilters(await getNeighbors(current.id, 10, 'sparse-only', excludedDocIds), filters);
+            const metasMap = await getIndexedDocumentsByIds(neighbors.map(n => n.id));
 
-            const neighborMetasMap = await getIndexedDocumentsByIds(filteredNeighbors.map(n => n.id));
-
-            const scoredNeighbors = filteredNeighbors
-                .filter(neighbor => {
-                    if (visited.has(neighbor.id)) return false;
-                    const meta = neighborMetasMap.get(neighbor.id);
-                    if (!meta) return false;
-                    const timeDiffHours = ((meta.mtime ?? meta.ctime ?? Date.now()) - current.timestamp) / (1000 * 60 * 60);
-                    return isForward ? timeDiffHours >= -TIME_WINDOW_HOURS : timeDiffHours <= TIME_WINDOW_HOURS;
+            const scored = neighbors
+                .filter(n => {
+                    if (visited.has(n.id)) return false;
+                    const m = metasMap.get(n.id); if (!m) return false;
+                    const diff = ((m.mtime ?? m.ctime ?? Date.now()) - current.timestamp) / 3600000;
+                    return isForward ? diff >= -TIME_WINDOW_HOURS : diff <= TIME_WINDOW_HOURS;
                 })
-                .map(neighbor => {
-                    const meta = neighborMetasMap.get(neighbor.id)!;
-                    const neighborTime = meta.mtime ?? meta.ctime ?? Date.now();
-                    return { neighbor, neighborTime, heuristicScore: Math.abs(neighborTime - endTimestamp) / (1000 * 60 * 60) };
+                .map(n => {
+                    const t = (metasMap.get(n.id)!.mtime ?? metasMap.get(n.id)!.ctime ?? Date.now());
+                    return { neighbor: n, neighborTime: t, heuristicScore: Math.abs(t - endTimestamp) / 3600000 };
                 })
                 .sort((a, b) => a.heuristicScore - b.heuristicScore)
                 .slice(0, SLICE_CAPS.inspector.pathFindQueueLevel);
 
-            for (const { neighbor, neighborTime, heuristicScore } of scoredNeighbors) {
-                visited.set(neighbor.id, {
-                    parentId: current.id,
-                    type: neighbor.foundBy,
-                    timestamp: neighborTime,
-                });
-
-                if (neighbor.id === endId) return reconstructTemporalPath(endId, visited);
-
+            for (const { neighbor, neighborTime, heuristicScore } of scored) {
+                visited.set(neighbor.id, { parentId: current.id, type: neighbor.foundBy, timestamp: neighborTime });
+                if (neighbor.id === endId) return reconstructVisitedPath(endId, visited);
                 nextQueue.push({ id: neighbor.id, timestamp: neighborTime, heuristicScore });
             }
         }
-
         queue = nextQueue;
-        hops++;
     }
-
     return null;
 }
 
-/** Reconstruct path from temporal search. */
-function reconstructTemporalPath(
-    endId: string,
-    visited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; timestamp: number }>
+/** Reconstruct path from visited map (used by temporal and bidirectional). */
+function reconstructVisitedPath<T extends { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors' }>(
+    endId: string, visited: Map<string, T>
 ): PathSegment[] {
     const path: PathSegment[] = [];
     let currentId: string | null = endId;
-
     while (currentId) {
-        const info = visited.get(currentId);
-        if (!info) break;
-
-        path.unshift({
-            nodeId: currentId,
-            type: info.type,
-            timestamp: info.timestamp,
-        });
-
+        const info = visited.get(currentId); if (!info) break;
+        path.unshift({ nodeId: currentId, type: info.type, timestamp: (info as any).timestamp, similarity: (info as any).similarity });
         currentId = info.parentId;
     }
-
     return path;
 }
 
@@ -873,53 +796,28 @@ async function expandFrontier(
     queue: string[],
     myVisited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>,
     otherVisited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>,
-    forbiddenEdges: Set<string>,
-    includeSemantic: boolean,
-    filters?: any,
-    avoidFolder?: string | null,
-    excludedDocIds?: Set<string>
+    forbiddenEdges: Set<string>, includeSemantic: boolean, filters?: any, avoidFolder?: string | null, excludedDocIds?: Set<string>
 ): Promise<{ found: boolean; intersectId?: string }> {
     const nextQueue: string[] = [];
 
     for (const currentId of queue) {
         let neighbors = await getNeighbors(currentId, 20, includeSemantic ? 'always' : 'none', excludedDocIds);
 
-        // Sort neighbors to prefer those in different folders (domain-crossing preference)
         if (avoidFolder) {
             const metasMap = await getIndexedDocumentsByIds(neighbors.map(n => n.id));
-            const neighborsWithMeta = neighbors.map(n => {
-                const meta = metasMap.get(n.id);
-                return { ...n, folder: meta ? getParentFolder(meta.path) : '' };
-            });
-            neighborsWithMeta.sort((a, b) =>
-                (a.folder === avoidFolder ? 1 : 0) - (b.folder === avoidFolder ? 1 : 0)
-            );
-            neighbors = neighborsWithMeta;
+            neighbors = neighbors
+                .map(n => ({ ...n, folder: metasMap.get(n.id) ? getParentFolder(metasMap.get(n.id)!.path) : '' }))
+                .sort((a, b) => (a.folder === avoidFolder ? 1 : 0) - (b.folder === avoidFolder ? 1 : 0));
         }
 
-        if (filters) {
-            const itemFieldGetter = await getDefaultItemFiledGetter<NeighborNode>(
-                neighbors.map(n => n.id),
-                filters
-            );
-            neighbors = applyFiltersAndSorters(neighbors, filters, undefined, undefined, itemFieldGetter);
-        }
+        neighbors = await applyNeighborFilters(neighbors, filters);
 
         for (const neighbor of neighbors) {
-            const edgeKey = `${currentId}->${neighbor.id}`;
-            if (forbiddenEdges.has(edgeKey)) continue;
-
+            if (forbiddenEdges.has(`${currentId}->${neighbor.id}`)) continue;
             if (!myVisited.has(neighbor.id)) {
-                myVisited.set(neighbor.id, {
-                    parentId: currentId,
-                    type: neighbor.foundBy,
-                    similarity: neighbor.similarity,
-                });
+                myVisited.set(neighbor.id, { parentId: currentId, type: neighbor.foundBy, similarity: neighbor.similarity });
                 nextQueue.push(neighbor.id);
-
-                if (otherVisited.has(neighbor.id)) {
-                    return { found: true, intersectId: neighbor.id };
-                }
+                if (otherVisited.has(neighbor.id)) return { found: true, intersectId: neighbor.id };
             }
         }
     }
@@ -989,49 +887,16 @@ function reconstructPath(
     startVisited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>,
     endVisited: Map<string, { parentId: string | null; type: 'physical_neighbors' | 'semantic_neighbors'; similarity?: string }>
 ): PathSegment[] {
-    const path: PathSegment[] = [];
-
-    // Build path from start to intersection
-    let currentId: string | null = intersectId;
-    const startPath: PathSegment[] = [];
-
-    while (currentId) {
-        const info = startVisited.get(currentId);
-        if (!info) break;
-
-        startPath.unshift({
-            nodeId: currentId,
-            type: info.type,
-            similarity: info.similarity,
-        });
-
-        currentId = info.parentId;
-    }
-
-    // Build path from intersection to end
-    currentId = intersectId;
+    const startPath = reconstructVisitedPath(intersectId, startVisited);
+    // End path: walk from intersection toward end, then append (skip intersection to avoid duplicate)
     const endPath: PathSegment[] = [];
-
+    let currentId: string | null = intersectId;
     while (currentId) {
-        const info = endVisited.get(currentId);
-        if (!info) break;
-
-        endPath.push({
-            nodeId: currentId,
-            type: info.type,
-            similarity: info.similarity,
-        });
-
+        const info = endVisited.get(currentId); if (!info) break;
+        endPath.push({ nodeId: currentId, type: info.type, similarity: info.similarity });
         currentId = info.parentId;
     }
-
-    // Combine paths (avoid duplicating intersection)
-    path.push(...startPath);
-    if (endPath.length > 1) {
-        path.push(...endPath.slice(1));
-    }
-
-    return path;
+    return endPath.length > 1 ? [...startPath, ...endPath.slice(1)] : startPath;
 }
 
 // --- Path Quality Evaluation ---
@@ -1052,147 +917,74 @@ function createEmptyScore(): PathScore {
 /** Score all paths based on quality dimensions. */
 async function scorePaths(paths: ScoredPath[], allPaths: ScoredPath[]): Promise<ScoredPath[]> {
     const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo();
+    const now = Date.now(), oneMonthMs = 30 * 24 * 60 * 60 * 1000;
 
     for (const path of paths) {
-        const segments = path.segments;
+        const { segments } = path;
         const length = segments.length - 1;
-
-        // Physical ratio
         const physicalCount = segments.filter(s => s.type === 'physical_neighbors').length;
         const physicalRatio = length > 0 ? (physicalCount - 1) / length : 1;
-
-        // Average similarity for semantic connections
-        const semanticSegments = segments.filter(s => s.type === 'semantic_neighbors' && s.similarity);
-        const avgSimilarity = semanticSegments.length > 0
-            ? semanticSegments.reduce((sum, s) => sum + (parseFloat(s.similarity!) / 100), 0) / semanticSegments.length
-            : 0;
-
-        // Uniqueness (compared to other paths)
+        const semSegs = segments.filter(s => s.type === 'semantic_neighbors' && s.similarity);
+        const avgSimilarity = semSegs.length > 0 ? semSegs.reduce((sum, s) => sum + parseFloat(s.similarity!) / 100, 0) / semSegs.length : 0;
         const uniqueness = calculateUniqueness(segments, allPaths);
 
-        // Freshness (based on last access time)
-        let freshnessSum = 0;
         const nodeIds = segments.map(s => s.nodeId);
         const statsMap = await mobiusNodeRepo.getByDocIds(nodeIds);
-        const now = Date.now();
-        const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
-
-        for (const nodeId of nodeIds) {
-            const stats = statsMap.get(nodeId);
-            if (stats?.last_open_ts) {
-                const age = now - stats.last_open_ts;
-                freshnessSum += Math.max(0, 1 - age / oneMonthMs);
-            } else {
-                freshnessSum += 0.5; // Default freshness for untracked nodes
-            }
+        let freshnessSum = 0;
+        for (const id of nodeIds) {
+            const s = statsMap.get(id);
+            freshnessSum += s?.last_open_ts ? Math.max(0, 1 - (now - s.last_open_ts) / oneMonthMs) : 0.5;
         }
         const freshness = nodeIds.length > 0 ? freshnessSum / nodeIds.length : 0;
-
-        // Domain jumps
         const domainJumps = await countDomainJumps(segments);
 
-        // Calculate total score
-        const totalScore =
-            physicalRatio * SCORE_WEIGHTS.physicalRatio * 100 +
-            freshness * SCORE_WEIGHTS.freshness * 100 +
-            Math.min(domainJumps, 3) / 3 * SCORE_WEIGHTS.domainJumps * 100 +
-            uniqueness * SCORE_WEIGHTS.uniqueness * 100 -
-            length * SCORE_WEIGHTS.lengthPenalty * 10;
+        const totalScore = physicalRatio * SCORE_WEIGHTS.physicalRatio * 100 + freshness * SCORE_WEIGHTS.freshness * 100
+            + Math.min(domainJumps, 3) / 3 * SCORE_WEIGHTS.domainJumps * 100 + uniqueness * SCORE_WEIGHTS.uniqueness * 100
+            - length * SCORE_WEIGHTS.lengthPenalty * 10;
 
-        path.score = {
-            totalScore,
-            physicalRatio,
-            avgSimilarity,
-            uniqueness,
-            freshness,
-            domainJumps,
-            length,
-        };
+        path.score = { totalScore, physicalRatio, avgSimilarity, uniqueness, freshness, domainJumps, length };
     }
-
     return paths;
 }
 
 /** Generate reasoning for path selection. */
 function generatePathReasoning(path: ScoredPath): string {
-    const score = path.score;
-    const reasons: string[] = [];
-
-    // Physical reliability
-    if (score.physicalRatio > 0.8) {
-        reasons.push('High physical connectivity ensures reliability');
-    } else if (score.physicalRatio > 0.5) {
-        reasons.push('Balanced physical and semantic connections');
-    } else {
-        reasons.push('Creative semantic bridging for discovery');
-    }
-
-    // Freshness
-    if (score.freshness > 0.7) {
-        reasons.push('Includes recently accessed knowledge');
-    }
-
-    // Domain diversity
-    if (score.domainJumps > 0) {
-        reasons.push(`Crosses ${score.domainJumps} knowledge domains`);
-    }
-
-    // Uniqueness
-    if (score.uniqueness > 0.8) {
-        reasons.push('Unique path not overlapping with others');
-    }
-
-    // Length consideration
-    if (score.length <= 3) {
-        reasons.push('Direct and concise connection');
-    }
-
-    return reasons.length > 0 ? reasons.join('. ') + '.' : 'Selected for balanced quality metrics.';
+    const { physicalRatio, freshness, domainJumps, uniqueness, length } = path.score;
+    const r: string[] = [];
+    if (physicalRatio > 0.8) r.push('High physical connectivity ensures reliability');
+    else if (physicalRatio > 0.5) r.push('Balanced physical and semantic connections');
+    else r.push('Creative semantic bridging for discovery');
+    if (freshness > 0.7) r.push('Includes recently accessed knowledge');
+    if (domainJumps > 0) r.push(`Crosses ${domainJumps} knowledge domains`);
+    if (uniqueness > 0.8) r.push('Unique path not overlapping with others');
+    if (length <= 3) r.push('Direct and concise connection');
+    return r.length > 0 ? r.join('. ') + '.' : 'Selected for balanced quality metrics.';
 }
 
 /** Calculate path uniqueness compared to other paths. */
 function calculateUniqueness(segments: PathSegment[], allPaths: ScoredPath[]): number {
     const myNodes = new Set(segments.map(s => s.nodeId));
     let maxOverlap = 0;
-
     for (const other of allPaths) {
         if (other.segments === segments) continue;
-
         const otherNodes = new Set(other.segments.map(s => s.nodeId));
         let overlap = 0;
-
-        for (const node of myNodes) {
-            if (otherNodes.has(node)) overlap++;
-        }
-
-        const overlapRatio = overlap / Math.max(myNodes.size, otherNodes.size);
-        maxOverlap = Math.max(maxOverlap, overlapRatio);
+        for (const node of myNodes) if (otherNodes.has(node)) overlap++;
+        maxOverlap = Math.max(maxOverlap, overlap / Math.max(myNodes.size, otherNodes.size));
     }
-
     return 1 - maxOverlap;
 }
 
 /** Count folder transitions in path. */
 async function countDomainJumps(segments: PathSegment[]): Promise<number> {
-    const nodeIds = segments.map(s => s.nodeId);
-    const metasMap = await getIndexedDocumentsByIds(nodeIds);
-
-    let jumps = 0;
-    let prevFolder: string | null = null;
-
-    for (const segment of segments) {
-        const meta = metasMap.get(segment.nodeId);
-        if (!meta) continue;
-
+    const metasMap = await getIndexedDocumentsByIds(segments.map(s => s.nodeId));
+    let jumps = 0, prevFolder: string | null = null;
+    for (const seg of segments) {
+        const meta = metasMap.get(seg.nodeId); if (!meta) continue;
         const folder = getParentFolder(meta.path);
-
-        if (prevFolder !== null && folder !== prevFolder) {
-            jumps++;
-        }
-
+        if (prevFolder !== null && folder !== prevFolder) jumps++;
         prevFolder = folder;
     }
-
     return jumps;
 }
 
@@ -1201,87 +993,37 @@ async function countDomainJumps(segments: PathSegment[]): Promise<number> {
 /** Identify key edge for diversity blocking. */
 function identifyKeyEdge(path: PathSegment[]): string {
     if (path.length < 2) return '';
-
-    const parseSimilarity = (similarity?: string): number => {
-        if (!similarity) return 0;
-        const parsed = parseFloat(similarity.replace('%', ''));
-        return isNaN(parsed) ? 0 : parsed;
-    };
-
-    let bestEdge = '';
-    let bestScore = -1;
-
+    const parseSim = (s?: string) => { if (!s) return 0; const v = parseFloat(s.replace('%', '')); return isNaN(v) ? 0 : v; };
+    let bestEdge = '', bestScore = -1;
     for (let i = 0; i < path.length - 1; i++) {
-        const current = path[i];
-        const next = path[i + 1];
-
-        // Calculate edge importance score
-        let score = 0;
-        if (current.type === 'physical_neighbors' && next.type === 'physical_neighbors') {
-            score = 100 + Math.max(parseSimilarity(current.similarity), parseSimilarity(next.similarity));
-        } else if (current.type === 'semantic_neighbors' && next.type === 'semantic_neighbors') {
-            score = Math.max(parseSimilarity(current.similarity), parseSimilarity(next.similarity));
-        } else {
-            score = 50 + Math.max(parseSimilarity(current.similarity), parseSimilarity(next.similarity)) * 0.5;
-        }
-
-        if (score > bestScore) {
-            bestScore = score;
-            bestEdge = `${current.nodeId}->${next.nodeId}`;
-        }
+        const c = path[i], n = path[i + 1];
+        const maxSim = Math.max(parseSim(c.similarity), parseSim(n.similarity));
+        const bothPhysical = c.type === 'physical_neighbors' && n.type === 'physical_neighbors';
+        const bothSemantic = c.type === 'semantic_neighbors' && n.type === 'semantic_neighbors';
+        const score = bothPhysical ? 100 + maxSim : bothSemantic ? maxSim : 50 + maxSim * 0.5;
+        if (score > bestScore) { bestScore = score; bestEdge = `${c.nodeId}->${n.nodeId}`; }
     }
-
     return bestEdge;
 }
 
 /** Deduplicate paths based on node sequence. */
 function deduplicatePaths(paths: ScoredPath[]): ScoredPath[] {
     const seen = new Set<string>();
-    const unique: ScoredPath[] = [];
-
-    for (const path of paths) {
-        const key = path.segments.map(s => s.nodeId).join('->');
-        if (!seen.has(key)) {
-            seen.add(key);
-            unique.push(path);
-        }
-    }
-
-    return unique;
+    return paths.filter(p => { const k = p.segments.map(s => s.nodeId).join('->'); return seen.has(k) ? false : (seen.add(k), true); });
 }
 
 /** Ensure at least one path from each strategy type is included. */
 function ensureStrategyDiversity(paths: ScoredPath[], maxResults: number): ScoredPath[] {
-    const byStrategy: Record<StrategyType, ScoredPath[]> = {
-        reliable: [],
-        fastTrack: [],
-        brainstorm: [],
-        temporal: [],
-    };
-
-    for (const path of paths) {
-        byStrategy[path.strategy].push(path);
-    }
+    const byStrategy = new Map<StrategyType, ScoredPath[]>();
+    for (const p of paths) (byStrategy.get(p.strategy) ?? (byStrategy.set(p.strategy, []), byStrategy.get(p.strategy)!)).push(p);
 
     const result: ScoredPath[] = [];
-    const strategies: StrategyType[] = ['reliable', 'fastTrack', 'brainstorm', 'temporal'];
-
-    // First pass: one from each strategy
-    for (const strategy of strategies) {
-        if (byStrategy[strategy].length > 0 && result.length < maxResults) {
-            result.push(byStrategy[strategy].shift()!);
-        }
+    for (const s of ['reliable', 'fastTrack', 'brainstorm', 'temporal'] as StrategyType[]) {
+        const arr = byStrategy.get(s);
+        if (arr?.length && result.length < maxResults) result.push(arr.shift()!);
     }
-
-    // Second pass: fill remaining slots by score
-    const remaining = paths.filter(p => !result.includes(p));
-    remaining.sort((a, b) => b.score.totalScore - a.score.totalScore);
-
-    for (const path of remaining) {
-        if (result.length >= maxResults) break;
-        result.push(path);
-    }
-
+    const remaining = paths.filter(p => !result.includes(p)).sort((a, b) => b.score.totalScore - a.score.totalScore);
+    for (const p of remaining) { if (result.length >= maxResults) break; result.push(p); }
     return result;
 }
 
@@ -1290,102 +1032,42 @@ function ensureStrategyDiversity(paths: ScoredPath[], maxResults: number): Score
 /** Analyze hub nodes that appear in multiple paths. */
 function analyzeHubs(paths: ScoredPath[]): HubAnalysis[] {
     const nodeCount = new Map<string, number>();
-
-    for (const path of paths) {
-        // Skip first and last (start/end nodes)
-        for (let i = 1; i < path.segments.length - 1; i++) {
-            const nodeId = path.segments[i].nodeId;
-            nodeCount.set(nodeId, (nodeCount.get(nodeId) || 0) + 1);
-        }
+    for (const p of paths) for (let i = 1; i < p.segments.length - 1; i++) {
+        const id = p.segments[i].nodeId; nodeCount.set(id, (nodeCount.get(id) || 0) + 1);
     }
-
-    // Filter nodes appearing in multiple paths
-    const hubs: HubAnalysis[] = [];
-
-    for (const [nodeId, count] of nodeCount) {
-        if (count >= 2) {
-            hubs.push({
-                nodeId,
-                label: nodeId, // Will be replaced with actual label in formatting
-                occurrenceCount: count,
-                betweennessCentrality: count / paths.length,
-            });
-        }
-    }
-
-    return hubs.sort((a, b) => b.occurrenceCount - a.occurrenceCount);
+    return Array.from(nodeCount.entries())
+        .filter(([, c]) => c >= 2)
+        .map(([nodeId, count]) => ({ nodeId, label: nodeId, occurrenceCount: count, betweennessCentrality: count / paths.length }))
+        .sort((a, b) => b.occurrenceCount - a.occurrenceCount);
 }
 
 /** Analyze context intersection between two notes (paths, tags, graph structure). */
 async function analyzeContextIntersection(startId: string, endId: string): Promise<ContextIntersectionAnalysis | null> {
-    const [startMeta, endMeta] = await Promise.all([
-        getIndexedDocumentById(startId),
-        getIndexedDocumentById(endId)
-    ]);
-
+    const [startMeta, endMeta] = await Promise.all([getIndexedDocumentById(startId), getIndexedDocumentById(endId)]);
     if (!startMeta || !endMeta) return null;
 
-    // 1. Physical path analysis
     const physicalAncestor = analyzePhysicalAncestor(startMeta.path, endMeta.path);
-
-    // 2. Tag-based semantic intersection
     const commonTags = analyzeTagIntersection(startMeta.tags, endMeta.tags);
-
-    // 3. Graph-based structural intersection
     const commonParents = await analyzeCommonParents(startId, endId);
-
-    // 4. Overall assessment
     const isDistant = physicalAncestor.depth <= 1 && (commonTags.length > 0 || commonParents.length > 0);
-    let primaryContext: string | undefined;
+    const primaryContext = commonTags[0] ?? commonParents[0]?.label;
 
-    if (commonTags.length > 0) {
-        primaryContext = commonTags[0]; // Most relevant tag
-    } else if (commonParents.length > 0) {
-        primaryContext = commonParents[0].label; // Most connected parent
-    }
-
-    return {
-        physicalAncestor,
-        commonTags,
-        commonParents,
-        isDistant,
-        primaryContext,
-    };
+    return { physicalAncestor, commonTags, commonParents, isDistant, primaryContext };
 }
 
 /** Analyze physical path ancestor. */
 function analyzePhysicalAncestor(startPath: string, endPath: string) {
-    const startParts = startPath.split('/');
-    const endParts = endPath.split('/');
-
-    let commonParts: string[] = [];
-    for (let i = 0; i < Math.min(startParts.length, endParts.length); i++) {
-        if (startParts[i] === endParts[i]) {
-            commonParts.push(startParts[i]);
-        } else {
-            break;
-        }
-    }
-
-    const ancestorPath = commonParts.length > 0 ? commonParts.join('/') : '/';
-
-    return {
-        ancestorPath,
-        startPath,
-        endPath,
-        depth: commonParts.length,
-    };
+    const sp = startPath.split('/'), ep = endPath.split('/');
+    const commonParts: string[] = [];
+    for (let i = 0; i < Math.min(sp.length, ep.length) && sp[i] === ep[i]; i++) commonParts.push(sp[i]);
+    return { ancestorPath: commonParts.length > 0 ? commonParts.join('/') : '/', startPath, endPath, depth: commonParts.length };
 }
 
 /** Analyze tag intersection between two documents. */
 function analyzeTagIntersection(startTags: string | null, endTags: string | null): string[] {
     if (!startTags || !endTags) return [];
-    const parseTags = (raw: string): string[] => {
-        try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; }
-        catch { return raw.split(',').map(t => t.trim()).filter(t => t.length > 0); }
-    };
-    const startArr = parseTags(startTags), endArr = parseTags(endTags);
-    return startArr.filter(tag => endArr.includes(tag));
+    const parse = (raw: string): string[] => { try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch { return raw.split(',').map(t => t.trim()).filter(t => t.length > 0); } };
+    return parse(startTags).filter(tag => parse(endTags).includes(tag));
 }
 
 /** Find common parent nodes that reference both start and end nodes. */
@@ -1473,42 +1155,21 @@ function buildAnalysisSection(hubs: HubAnalysis[], contextIntersection: ContextI
 // --- Output Formatting ---
 
 /** Format paths for user-friendly output. */
-async function formatPathsForOutput(
-    paths: ScoredPath[],
-    mobiusNodeRepo: any
-): Promise<Array<{
-    path: string[];
-    connectionDetails: string;
-    strategy: string;
-    insightLabel: string;
-    score: number;
-}>> {
-    // Batch fetch all nodes
+async function formatPathsForOutput(paths: ScoredPath[], mobiusNodeRepo: any) {
     const allNodeIds = new Set<string>();
-    for (const scoredPath of paths) {
-        for (const segment of scoredPath.segments) {
-            allNodeIds.add(segment.nodeId);
-        }
-    }
-
+    for (const p of paths) for (const s of p.segments) allNodeIds.add(s.nodeId);
     const nodesMap = await mobiusNodeRepo.getByIds(Array.from(allNodeIds));
 
-    return paths.map(scoredPath => {
-        const nodeLabels = scoredPath.segments.map(s => getNodeLabel(nodesMap.get(s.nodeId), s.nodeId));
-
-        const connectionDetails = scoredPath.segments.slice(0, -1).map((seg, i) => {
-            const next = scoredPath.segments[i + 1];
+    return paths.map(sp => ({
+        path: sp.segments.map(s => getNodeLabel(nodesMap.get(s.nodeId), s.nodeId)),
+        connectionDetails: sp.segments.slice(0, -1).map((seg, i) => {
+            const next = sp.segments[i + 1];
             const type = seg.type === 'physical_neighbors' && next.type === 'physical_neighbors' ? 'physical' : 'semantic';
             const sim = seg.similarity || next.similarity;
             return sim ? `${type} (${sim})` : type;
-        }).join(' → ');
-
-        return {
-            path: nodeLabels,
-            connectionDetails,
-            strategy: STRATEGY_NAMES[scoredPath.strategy],
-            insightLabel: scoredPath.insightLabel,
-            score: scoredPath.score.totalScore,
-        };
-    });
+        }).join(' → '),
+        strategy: STRATEGY_NAMES[sp.strategy],
+        insightLabel: sp.insightLabel,
+        score: sp.score.totalScore,
+    }));
 }
