@@ -4,7 +4,7 @@ import { Button } from '@/ui/component/shared-ui/button';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import type { PromptId } from '@/service/prompt/PromptId';
 import { streamSearchFollowup, consumeFollowupStream } from '@/ui/view/quick-search/hooks/useAIAnalysisPostAIInteractions';
-import { useAIAnalysisRuntimeStore } from '@/ui/view/quick-search/store/aiAnalysisStore';
+import { useSearchSessionStore } from '@/ui/view/quick-search/store/searchSessionStore';
 
 type ApplyMode = 'append' | 'replace';
 
@@ -103,7 +103,7 @@ export const InlineFollowupChat: React.FC<{
 					setAnswer(answerSoFar);
 					onStreamingReplace?.(answerSoFar, { question: q });
 				},
-				onUsage: (usage) => useAIAnalysisRuntimeStore.getState().accumulateUsage(usage),
+				onUsage: (usage) => useSearchSessionStore.getState().accumulateUsage(usage),
 			});
 
 			setQuestion('');

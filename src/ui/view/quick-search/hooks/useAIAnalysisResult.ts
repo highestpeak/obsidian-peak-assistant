@@ -1,9 +1,4 @@
 import { useCallback } from "react";
-import {
-	useAIAnalysisRuntimeStore,
-	useAIAnalysisResultStore,
-	useAIAnalysisSummaryStore,
-} from "../store/aiAnalysisStore";
 import { AppContext } from "@/app/context/AppContext";
 import { useSearchSessionStore } from "../store/searchSessionStore";
 import { useSharedStore } from "../store/sharedStore";
@@ -14,22 +9,14 @@ import { EventBus, SelectionChangedEvent } from "@/core/eventBus";
 export function useAIAnalysisResult() {
     const { searchQuery } = useSharedStore();
 
-    const webEnabled = useAIAnalysisRuntimeStore((s) => s.webEnabled);
-    const analysisRunId = useAIAnalysisRuntimeStore((s) => s.analysisRunId);
-    const autoSaveState = useAIAnalysisRuntimeStore((s) => s.autoSaveState);
-    const setAutoSaveState = useAIAnalysisRuntimeStore((s) => s.setAutoSaveState);
-    const recordError = useAIAnalysisRuntimeStore((s) => s.recordError);
+    const webEnabled = useSearchSessionStore((s) => s.webEnabled);
+    const analysisRunId = useSearchSessionStore((s) => s.id);
+    const autoSaveState = useSearchSessionStore((s) => s.autoSaveState);
+    const setAutoSaveState = useSearchSessionStore((s) => s.setAutoSaveState);
+    const recordError = useSearchSessionStore((s) => s.recordError);
 
-    const topics = useAIAnalysisResultStore((s) => s.topics);
-    const sources = useAIAnalysisResultStore((s) => s.sources);
-
-    const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
-    const summary = useAIAnalysisSummaryStore((s) => {
-        if (s.isSummaryStreaming || (isAnalyzing && s.summaryText)) return s.summaryText;
-        const list = s.summaries;
-        const idx = (s.summaryVersion ?? 1) - 1;
-        return list[idx] ?? list[0] ?? '';
-    });
+    const sources = useSearchSessionStore((s) => s.v2Sources);
+    const summary = useSearchSessionStore((s) => s.v2Summary);
 
     // Early-save: called from tab-AISearch when plan sections first appear.
     // Creates the file so "Open in File" works before completion.
@@ -96,14 +83,13 @@ export function useAIAnalysisResult() {
             const mappedSources = sources.map(s => ({
                 path: s.path,
                 title: s.title,
-                content: 'reasoning' in s ? (s as AISearchSource).reasoning : (s as { content?: string }).content,
+                content: s.reasoning,
             }));
 
             const conversation = await AppContext.getInstance().manager.createConvFromSearchAIAnalysis({
                 query: searchQuery,
                 summary: summary,
                 sources: mappedSources,
-                topics: topics.length > 0 ? topics : undefined,
             });
             await new Promise<void>((resolve) => {
                 requestAnimationFrame(() => {
@@ -150,7 +136,7 @@ export function useAIAnalysisResult() {
             console.error('[AISearchTab] Open in chat failed:', e);
             recordError(e instanceof Error ? e.message : 'Failed to open in chat');
         }
-    }, [searchQuery, summary, sources, topics]);
+    }, [searchQuery, summary, sources]);
 
     return {
         handleAutoSave,

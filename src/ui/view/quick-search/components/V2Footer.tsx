@@ -3,7 +3,6 @@ import { Save, Copy, MessageSquare, Check, ExternalLink, Sparkles, Activity, Eye
 import { V2TableOfContents } from './V2TableOfContents';
 import { Button } from '@/ui/component/shared-ui/button';
 import { useSearchSessionStore } from '../store/searchSessionStore';
-import { useAIAnalysisRuntimeStore } from '../store/aiAnalysisStore';
 import { exportGraphJson, useAIGraphStore } from '../store/aiGraphStore';
 
 type CopyTarget = 'process' | 'report' | 'graph';
@@ -56,8 +55,7 @@ export const V2Footer: React.FC<{
 	const setV2View = useSearchSessionStore((s) => s.setV2View);
 	const rounds = useSearchSessionStore((s) => s.rounds);
 	const v2PlanSections = useSearchSessionStore((s) => s.v2PlanSections);
-	// Read from the same store that handleAutoSave writes to (useAIAnalysisRuntimeStore)
-	const lastSavedPath = useAIAnalysisRuntimeStore((s) => s.autoSaveState.lastSavedPath);
+	const lastSavedPath = useSearchSessionStore((s) => s.autoSaveState.lastSavedPath);
 	const hasGraphData = useAIGraphStore((s) => s.graphData !== null);
 	const [showToc, setShowToc] = useState(false);
 	const [showCopyMenu, setShowCopyMenu] = useState(false);

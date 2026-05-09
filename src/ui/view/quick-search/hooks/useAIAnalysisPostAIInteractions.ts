@@ -6,10 +6,7 @@ import { SLICE_CAPS } from '@/core/constant';
 import { useCallback } from 'react';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { PromptId } from '@/service/prompt/PromptId';
-import {
-    useAIAnalysisRuntimeStore,
-    useAIAnalysisSummaryStore,
-} from '../store/aiAnalysisStore';
+import { useSearchSessionStore } from '../store/searchSessionStore';
 import { useSharedStore } from '../store/sharedStore';
 import { getLastAnalysisHistorySearch, searchCurrentResult } from '../followupContextRuntime';
 import { AppContext } from '@/app/context/AppContext';
@@ -161,14 +158,8 @@ async function getCandidateFoldersFromSearch(
 export function useGenerateResultSaveField() {
     const { manager, searchClient } = useServiceContext();
     const { searchQuery } = useSharedStore();
-    const title = useAIAnalysisRuntimeStore((s) => s.title ?? '');
-    const isAnalyzing = useAIAnalysisRuntimeStore((s) => s.isAnalyzing);
-    const summary = useAIAnalysisSummaryStore((s) => {
-        if (s.isSummaryStreaming || (isAnalyzing && s.summaryText)) return s.summaryText;
-        const list = s.summaries;
-        const idx = (s.summaryVersion ?? 1) - 1;
-        return list[idx] ?? list[0] ?? '';
-    });
+    const title = useSearchSessionStore((s) => s.title ?? '');
+    const summary = useSearchSessionStore((s) => s.v2Summary);
 
     const generateResultSaveField = useCallback(async (
         promptId: PromptId,
