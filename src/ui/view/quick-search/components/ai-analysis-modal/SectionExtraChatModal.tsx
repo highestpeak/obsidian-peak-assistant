@@ -257,10 +257,6 @@ const SectionExtraChatCard: React.FC<SectionExtraChatCardProps> = ({
 
 	const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
-	// useEffect(() => {
-	// 	setCollapsedSections(initialCollapsedSections());
-	// }, [initialCollapsedSections]);
-
 	// Sync collapsed state when list grows (e.g. new round completed) in defaultCollapsed mode
 	React.useEffect(() => {
 		setCollapsedSections(

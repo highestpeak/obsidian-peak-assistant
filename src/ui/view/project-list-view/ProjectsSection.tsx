@@ -7,16 +7,12 @@ import { notifySelectionChange, hydrateProjects as hydrateProjectsFromManager, s
 import { InputModal } from '@/ui/component/shared-ui/InputModal';
 import { Button } from '@/ui/component/shared-ui/button';
 import { IconButton } from '@/ui/component/shared-ui/icon-button';
-import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, MoreHorizontal, Calendar } from 'lucide-react';
+import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/ui/react/lib/utils';
 import { useServiceContext } from '@/ui/context/ServiceContext';
 import { ViewEventType, ConversationUpdatedEvent, ConversationCreatedEvent } from '@/core/eventBus';
 import { DEFAULT_NEW_CONVERSATION_TITLE, MAX_CONVERSATIONS_DISPLAY, MAX_PROJECTS_DISPLAY, MAX_CONVERSATIONS_PER_PROJECT } from '@/core/constant';
-import { formatRelativeDate } from '@/core/utils/date-utils';
 import { ConversationList } from './ConversationsSection';
-
-interface ProjectsSectionProps {
-}
 
 interface ProjectItemProps {
 	project: ChatProject;
@@ -326,7 +322,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 /**
  * Projects section component
  */
-export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
+export const ProjectsSection: React.FC = () => {
 	const { manager, eventBus } = useServiceContext();
 	const {
 		projects,
@@ -394,12 +390,6 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 			ViewEventType.CONVERSATION_UPDATED,
 			async (event) => {
 				const conversation = event.conversation;
-				console.log('[ProjectsSection] CONVERSATION_UPDATED event:', {
-					conversationId: conversation.meta.id,
-					projectId: conversation.meta.projectId,
-					title: conversation.meta.title,
-					timestamp: Date.now()
-				});
 				// Enable typewriter effect for this conversation
 				setTypewriterEnabled(prev => {
 					const next = new Map(prev);
@@ -419,10 +409,6 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = () => {
 		const unsubscribeCreated = eventBus.on<ConversationCreatedEvent>(
 			ViewEventType.CONVERSATION_CREATED,
 			(event) => {
-				console.log('[ProjectsSection] CONVERSATION_CREATED event:', {
-					conversationId: event.conversationId,
-					timestamp: Date.now()
-				});
 				// Enable typewriter effect for new conversation
 				setTypewriterEnabled(prev => {
 					const next = new Map(prev);

@@ -24,7 +24,6 @@ import type { UserFeedback } from '@/service/agents/core/types';
 import type { VaultSearchAgent } from '@/service/agents/VaultSearchAgent';
 import { ReportOrchestrator } from '@/service/agents/report/ReportOrchestrator';
 
-import { reorganizeTimelineByAgent } from './search-session-types';
 import { consumeStream } from './streamConsumer';
 import type { StreamConsumerContext } from './streamConsumer';
 import { useEventRouter, eventTargetRedirect } from './useEventRouter';
@@ -262,26 +261,6 @@ export function useSearchSession() {
 			} else {
 				// Flush pending summary deltas
 				flushSummaryBuffer();
-
-				// Debug dump
-				const ss = store.getState();
-				const debugDump = {
-					meta: {
-						query: searchQuery,
-						webEnabled,
-						totalDurationMs: Date.now() - analysisStartTimeRef.current,
-						usage: ss.usage,
-						hasError: !!ss.error,
-						error: ss.error,
-						sourcesCount: ss.v2Sources.length,
-						sectionsCount: ss.v2PlanSections.length,
-						stepsCount: ss.v2Steps.length,
-					},
-					timeline: reorganizeTimelineByAgent(timelineRef.current),
-					summary: ss.v2Summary ?? '',
-					summaryLen: (ss.v2Summary ?? '').length,
-				};
-				console.debug('[useSearchSession] debugDumpJson', JSON.stringify(debugDump));
 
 				setLastAnalysisHistorySearch(null);
 				timelineRef.current = [];

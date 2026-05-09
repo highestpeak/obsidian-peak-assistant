@@ -535,7 +535,7 @@ export class EmbeddingRepo {
 	 * @param scopeValue Optional scope value for filtering
 	 * @returns Array of results with embedding_id (from embedding table) and distance
 	 */
-	async searchSimilar(
+	private async searchSimilar(
 		queryEmbedding: number[] | Buffer,
 		limit: number,
 		scopeMode?: SearchScopeMode,

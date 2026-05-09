@@ -1,17 +1,17 @@
 // ── Standalone type definitions (formerly re-exported from 'ai') ──────────────
 
 /** JSON-safe value type. */
-export type JSONValue = null | string | number | boolean | JSONValue[] | { [key: string]: JSONValue };
+type JSONValue = null | string | number | boolean | JSONValue[] | { [key: string]: JSONValue };
 
 /** Reason the generation finished. */
-export type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other' | 'unknown';
+type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other' | 'unknown';
 
 /**
  * Token usage counters.
  * Field semantics match the Vercel AI SDK LanguageModelUsage so downstream
  * code that already handles these fields continues to work unchanged.
  */
-export interface LanguageModelUsage {
+interface LanguageModelUsage {
 	inputTokens?: number;
 	outputTokens?: number;
 	totalTokens?: number;
@@ -36,7 +36,7 @@ export interface ProviderConfig {
 	extra?: Record<string, any>;
 }
 
-export interface ModelConfig {
+interface ModelConfig {
 	id: string;
 	enabled?: boolean;
 	/**
@@ -126,14 +126,6 @@ export interface ModelMetaData {
  */
 export type ModelInfoForSwitch = ModelMetaData & {
 	provider: string;
-};
-
-/**
- * Model metadata with enabled status for settings.
- * Used in provider settings to display models with their enabled/disabled state.
- */
-export type ModelInfoForSettings = ModelMetaData & {
-	enabled: boolean;
 };
 
 /**
@@ -247,33 +239,6 @@ export function resolveModelCapabilities(model?: { capabilities?: ModelCapabilit
 		maxCtx: undefined,
 	};
 }
-
-export interface ProviderOptionsConfig {
-	noReasoning?: boolean;
-	reasoningEffort?: 'low' | 'medium' | 'high';
-}
-
-export type ProviderOptions = Record<string, Record<string, JSONValue>>;
-
-export type LLMRequest<TOOLS extends any = any> = {
-	provider: string;
-	model: string;
-	system?: string;
-	messages: LLMRequestMessage[];
-	/**
-	 * LLM output control settings.
-	 * If not provided, uses model defaults or model config settings.
-	 */
-	outputControl?: LLMOutputControlSettings;
-	abortSignal?: AbortSignal;
-	toolChoice?: 'auto' | 'none' | 'required' | {
-		type: 'tool';
-		toolName: string;
-	};
-	tools?: {
-		[key: string]: TOOLS;
-	};
-};
 
 export type ChatRole = 'user' | 'assistant' | 'system';
 

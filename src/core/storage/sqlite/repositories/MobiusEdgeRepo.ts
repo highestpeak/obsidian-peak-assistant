@@ -165,19 +165,6 @@ export class MobiusEdgeRepo {
 	}
 
 	/**
-	 * Get edges by from_node_id (batch).
-	 */
-	async getByFromNodes(fromNodeIds: string[]): Promise<GraphEdge[]> {
-		if (!fromNodeIds.length) return [];
-		const rows = await this.db
-			.selectFrom('mobius_edge')
-			.selectAll()
-			.where('from_node_id', 'in', fromNodeIds)
-			.execute();
-		return rows.map((row) => this.graphEdgeFromMobius(row));
-	}
-
-	/**
 	 * Get edges by from_node_ids and types (batch).
 	 * todo we may need pagination for large result.
 	 */
@@ -393,19 +380,6 @@ export class MobiusEdgeRepo {
 		}
 		return out;
 	}
-
-	/**
-	 * Get edges by to_node_id.
-	 */
-	async getByToNode(toNodeId: string): Promise<GraphEdge[]> {
-		const rows = await this.db
-			.selectFrom('mobius_edge')
-			.selectAll()
-			.where('to_node_id', '=', toNodeId)
-			.execute();
-		return rows.map((row) => this.graphEdgeFromMobius(row));
-	}
-
 
 	/**
 	 * Streams all edges with endpoint `mobius_node` type/path resolved in memory (no SQL JOIN: edge page + `IN` lookup).
@@ -677,20 +651,6 @@ export class MobiusEdgeRepo {
 	}
 
 	/**
-	 * Delete edge by ID.
-	 */
-	async deleteById(id: string): Promise<void> {
-		await this.db.deleteFrom('mobius_edge').where('id', '=', id).execute();
-	}
-
-	/**
-	 * Delete edges by from_node_id.
-	 */
-	async deleteByFromNode(fromNodeId: string): Promise<void> {
-		await this.db.deleteFrom('mobius_edge').where('from_node_id', '=', fromNodeId).execute();
-	}
-
-	/**
 	 * Delete outgoing edges of a given type (e.g. re-materialize `semantic_related` on reindex).
 	 */
 	async deleteByFromNodeAndType(fromNodeId: string, type: string): Promise<void> {
@@ -699,13 +659,6 @@ export class MobiusEdgeRepo {
 			.where('from_node_id', '=', fromNodeId)
 			.where('type', '=', type)
 			.execute();
-	}
-
-	/**
-	 * Delete edges by to_node_id.
-	 */
-	async deleteByToNode(toNodeId: string): Promise<void> {
-		await this.db.deleteFrom('mobius_edge').where('to_node_id', '=', toNodeId).execute();
 	}
 
 	/**
@@ -823,87 +776,5 @@ export class MobiusEdgeRepo {
 		await this.db.deleteFrom('mobius_edge').execute();
 	}
 
-	// --- Hub discovery & local hub graph (read-only) ---
-
-	/** Reference edges touching a node (hub coverage estimate). */
-	async listReferenceEdgesIncidentToNode(nodeId: string, limit: number): Promise<
-		Array<{ from_node_id: string; to_node_id: string }>
-	> {
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_edge')
-			.select(['from_node_id', 'to_node_id'])
-			.where('type', 'in', [GraphEdgeType.References, GraphEdgeType.ReferencesResource])
-			.where((eb) => eb.or([eb('from_node_id', '=', nodeId), eb('to_node_id', '=', nodeId)]))
-			.limit(lim)
-			.execute();
-		return rows as Array<{ from_node_id: string; to_node_id: string }>;
-	}
-
-	/** Semantic-related edges touching a node (cluster hub neighbors), strongest first. */
-	async listSemanticRelatedEdgesIncidentToNode(nodeId: string, limit: number): Promise<
-		Array<{ from_node_id: string; to_node_id: string; weight: number }>
-	> {
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_edge')
-			.select(['from_node_id', 'to_node_id', 'weight'])
-			.where('type', '=', GraphEdgeType.SemanticRelated)
-			.where((eb) => eb.or([eb('from_node_id', '=', nodeId), eb('to_node_id', '=', nodeId)]))
-			.orderBy('weight desc')
-			.limit(lim)
-			.execute();
-		return rows.map((r) => ({
-			from_node_id: r.from_node_id,
-			to_node_id: r.to_node_id,
-			weight: typeof r.weight === 'number' && Number.isFinite(r.weight) ? r.weight : 1,
-		}));
-	}
-
-	/**
-	 * Semantic-related edges with both endpoints in `nodeIds` (cluster intra-density).
-	 */
-	async listSemanticRelatedEdgesWithinNodeSet(
-		nodeIds: string[],
-		limit: number,
-	): Promise<Array<{ from_node_id: string; to_node_id: string; weight: number }>> {
-		const ids = [...new Set(nodeIds.filter(Boolean))];
-		if (ids.length < 2) return [];
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_edge')
-			.select(['from_node_id', 'to_node_id', 'weight'])
-			.where('type', '=', GraphEdgeType.SemanticRelated)
-			.where('from_node_id', 'in', ids)
-			.where('to_node_id', 'in', ids)
-			.where((eb) => eb('from_node_id', '!=', eb.ref('to_node_id')))
-			.limit(lim)
-			.execute();
-		return rows.map((r) => ({
-			from_node_id: r.from_node_id,
-			to_node_id: r.to_node_id,
-			weight: typeof r.weight === 'number' && Number.isFinite(r.weight) ? r.weight : 1,
-		}));
-	}
-
-	/**
-	 * Edges of given types where at least one endpoint is in `nodeIds` (local hub BFS frontier).
-	 */
-	async listEdgesByTypesIncidentToAnyNode(
-		nodeIds: string[],
-		edgeTypes: string[],
-		limit: number,
-	): Promise<Array<{ from_node_id: string; to_node_id: string; type: string; weight: number | null }>> {
-		if (!nodeIds.length || !edgeTypes.length) return [];
-		const lim = Math.max(1, limit);
-		const rows = await this.db
-			.selectFrom('mobius_edge')
-			.select(['from_node_id', 'to_node_id', 'type', 'weight'])
-			.where('type', 'in', edgeTypes)
-			.where((eb) => eb.or([eb('from_node_id', 'in', nodeIds), eb('to_node_id', 'in', nodeIds)]))
-			.limit(lim)
-			.execute();
-		return rows as Array<{ from_node_id: string; to_node_id: string; type: string; weight: number | null }>;
-	}
 }
 

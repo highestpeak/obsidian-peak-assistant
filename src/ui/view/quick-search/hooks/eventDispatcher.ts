@@ -6,7 +6,7 @@
  */
 
 import type { LLMStreamEvent, LLMUsage } from '@/core/providers/types';
-import { StreamTriggerName, UISignalChannel } from '@/core/providers/types';
+import { StreamTriggerName } from '@/core/providers/types';
 import { getDeltaEventDeltaText } from '@/core/providers/types';
 import { v2ToolDisplay, extractV2Summary, unwrapToolOutput } from '../types/search-steps';
 import type { V2ToolStep, V2Source } from '../types/search-steps';
@@ -122,10 +122,6 @@ export function dispatchEvent(
 		}
 
 		// ---- Summary streaming ----
-		case 'text-start': {
-			// Legacy summary streaming removed — V2 uses timeline text
-			break;
-		}
 		case 'text-delta': {
 			if (
 				event.triggerName === StreamTriggerName.DOC_SIMPLE_AGENT
