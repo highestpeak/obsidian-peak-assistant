@@ -20,7 +20,7 @@ export async function testProviderConnection(
 				: kindOrProfile;
 
 		const { kind, baseUrl } = profile;
-		const key = profile.apiKey ?? '';
+		const key = profile.authToken ?? profile.apiKey ?? '';
 		const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
 		if (kind === 'anthropic') {
