@@ -665,5 +665,10 @@ export function buildCoreCommands(
 		...buildAmbientPushCommands(viewManager),
 		...buildOnboardingCommands(),
 		...buildSettingsCommands(appContext),
+		{
+			id: 'peak-usage-dashboard',
+			name: 'Open Usage Dashboard',
+			callback: () => void viewManager.activateUsageDashboardView(),
+		},
 	];
 }

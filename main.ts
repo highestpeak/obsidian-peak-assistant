@@ -51,6 +51,7 @@ import { AmbientPushService } from '@/service/ambient/AmbientPushService';
 import { useAmbientPushStore } from '@/ui/store/ambientPushStore';
 import { CascadeWorker } from '@/service/search/index/cascade/CascadeWorker';
 import { SessionContextService } from '@/service/context/SessionContextService';
+import { UsageTrackingService } from '@/service/usage/UsageTrackingService';
 /**
  * Primary Peak Assistant plugin entry that wires services and views.
  */
@@ -252,6 +253,14 @@ export default class MyPlugin extends Plugin {
 					filename: VAULT_DB_FILENAME,
 					settings: { sqliteBackend: this.settings.sqliteBackend },
 				});
+				UsageTrackingService.getInstance().init(
+					sqliteStoreManager.getIndexContext('chat'),
+					this.app,
+					{
+						usageTrackingEnabled: this.settings.usageTrackingEnabled,
+						usageDetailRetentionDays: this.settings.usageDetailRetentionDays,
+					},
+				);
 				await this.initializeSearchService();
 				if (this.appContext) {
 					this.appContext.searchClient = this.searchClient!;
@@ -432,6 +441,7 @@ export default class MyPlugin extends Plugin {
 		shutdownPool();
 
 		// Break singletons so old bundle can be GC'd
+		UsageTrackingService.getInstance().destroy();
 		AppContext.clearForUnload();
 		SessionContextService.destroyInstance();
 		EventBus.destroyInstance();

@@ -5,6 +5,7 @@ import { PROJECT_LIST_VIEW_TYPE, ProjectListView } from '@/ui/view/ProjectListVi
 import { MESSAGE_HISTORY_VIEW_TYPE, MessageHistoryView } from '@/ui/view/MessageHistoryView';
 import { GRAPH_FULLSCREEN_VIEW_TYPE, GraphFullscreenView } from '@/ui/view/graph-fullscreen/GraphFullscreenView';
 import { AmbientPushView, AMBIENT_PUSH_VIEW_TYPE } from '@/ui/view/AmbientPushView';
+import { UsageDashboardView, USAGE_DASHBOARD_VIEW_TYPE } from '@/ui/view/usage-dashboard/UsageDashboardView';
 import { ViewSwitchConsistentHandler } from '@/app/view/ViewSwitchConsistentHandler';
 import { InputModal } from '@/ui/component/InputModal';
 import { App, ViewCreator } from 'obsidian';
@@ -38,6 +39,9 @@ export class ViewManager {
 		});
 		this.viewCreators.set(AMBIENT_PUSH_VIEW_TYPE, (leaf) => {
 			return new AmbientPushView(leaf, appContext);
+		});
+		this.viewCreators.set(USAGE_DASHBOARD_VIEW_TYPE, (leaf) => {
+			return new UsageDashboardView(leaf, appContext);
 		});
 	}
 
@@ -101,6 +105,15 @@ export class ViewManager {
 			}
 		}
 		if (leaf) workspace.revealLeaf(leaf);
+	}
+
+	/**
+	 * Open the Usage Dashboard in a new tab.
+	 */
+	async activateUsageDashboardView(): Promise<void> {
+		const leaf = this.plugin.app.workspace.getLeaf('tab');
+		await leaf.setViewState({ type: USAGE_DASHBOARD_VIEW_TYPE, active: true });
+		this.plugin.app.workspace.revealLeaf(leaf);
 	}
 
 	/**

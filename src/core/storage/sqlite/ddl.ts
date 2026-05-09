@@ -403,6 +403,8 @@ export interface Database {
 	};
 }
 
+export type UsageLogRow = Database['usage_log'];
+export type UsageDailyRow = Database['usage_daily'];
 
 /**
  * Database interface for schema creation (exec + optional prepare for migrations).
