@@ -86,12 +86,6 @@ export type MobiusNodeHubDiscoveryScoredRow = MobiusNodeHubDiscoveryRow & {
 };
 
 /**
- * Gap path prefix (first two segments). Must stay aligned with `pathPrefixForGap` in hubDiscover.ts.
- * References `mobius_node.path`; only use in queries against `mobius_node`.
- */
-const MOBIUS_PATH_GAP_PREFIX_SQL = sql<string>`CASE WHEN instr(mobius_node.path, '/') = 0 THEN mobius_node.path ELSE substr(mobius_node.path, 1, instr(mobius_node.path, '/') - 1) || '/' || substr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), 1, CASE WHEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') > 0 THEN instr(substr(mobius_node.path, instr(mobius_node.path, '/') + 1), '/') - 1 ELSE length(substr(mobius_node.path, instr(mobius_node.path, '/') + 1)) END) END`;
-
-/**
  * Folder hub candidate row with scores matching in-app folder hub scoring (materialized columns on `type=folder`).
  */
 export type MobiusNodeFolderHubDiscoveryRow = {

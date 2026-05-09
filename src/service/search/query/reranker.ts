@@ -7,7 +7,6 @@ import { RerankProviderManager } from '@/core/providers/rerank/factory';
 import type { RerankDocument } from '@/core/providers/rerank/types';
 import {
 	INDEX_HUB_TIER_THRESHOLDS,
-	INDEX_SEARCH_HUB_DOC_TYPE_BOOST,
 	INDEX_SEARCH_HUB_INCOMING_BOOST,
 	INDEX_SEARCH_SECONDARY_INCOMING_BOOST,
 	PPR_GLOBAL_PR_DAMPENING,
@@ -366,10 +365,7 @@ export class Reranker {
 				anchorBoost *= PPR_GLOBAL_PR_DAMPENING;
 			}
 
-			// Hub doc type boost: prefer compiled knowledge summaries
-			const hubDocBoost = s.mobiusNodeType === 'hub_doc' ? INDEX_SEARCH_HUB_DOC_TYPE_BOOST : 0;
-
-			item.finalScore = base + freqBoost + recencyBoost + graphBoost + anchorBoost + hubDocBoost;
+			item.finalScore = base + freqBoost + recencyBoost + graphBoost + anchorBoost;
 		}
 
 		// Sort by final score (descending)

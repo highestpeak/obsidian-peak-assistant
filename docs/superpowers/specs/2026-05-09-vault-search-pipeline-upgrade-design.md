@@ -225,11 +225,19 @@ FtsStemRetriever uses the same logic but with `term.stem` instead of `term.text`
 
 ## 4. Merger — Adaptive RRF Fusion
 
-### 4.1 Per-Document Chunk Cap
+### 4.1 Per-Document Chunk Decay
 
-A single document may produce many chunks. In the current system, all matching chunks from the same document accumulate RRF scores under the same `path` key — giving long documents an unfair advantage.
+A single document may produce many chunks. In the current system, all matching chunks from the same document accumulate RRF scores linearly under the same `path` key — giving long documents an unfair advantage (10 chunks = 10x score).
 
-Fix: each Retriever deduplicates by `path` internally, keeping only the **top 3 chunks** per document (sorted by retriever-local score). This caps the maximum RRF contribution from a single document per retriever, preventing a 50-chunk document from dominating over a short but highly relevant note.
+Fix: **diminishing returns** via exponential decay. Within each Retriever, chunks from the same document are sorted by retriever-local score (best first), and each subsequent chunk's RRF contribution is multiplied by a decay factor:
+
+```ts
+const CHUNK_DECAY = 0.5;
+// Chunk 1: 1.0x RRF,  Chunk 2: 0.5x RRF,  Chunk 3: 0.25x RRF, ...
+rrfContribution = baseRrf * Math.pow(CHUNK_DECAY, chunkIndex);
+```
+
+Effect: a document with 10 matching chunks scores ~2x a single-chunk document (geometric sum converges to `1 / (1 - 0.5) = 2x`), not 10x. The signal "many parts match" is preserved with diminishing returns.
 
 ### 4.2 Single-Stage RRF
 

@@ -2,16 +2,103 @@ import React, { useCallback, useMemo } from 'react';
 import { App } from 'obsidian';
 import { ChatMessage } from '@/service/chat/types';
 import { cn } from '@/ui/react/lib/utils';
-import { FileText } from 'lucide-react';
+import { FileText, PaperclipIcon, XIcon } from 'lucide-react';
+import { Button } from '@/ui/component/shared-ui/button';
 import {
-	MessageAttachment,
-} from '@/ui/component/ai-elements';
-import { TooltipProvider } from '@/ui/component/shared-ui/tooltip';
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '@/ui/component/shared-ui/tooltip';
 import { ResourcePreviewHover } from '@/ui/component/mine';
 import { isUrl, getExtensionFromSource, getImageMimeType } from '@/core/document/helper/FileTypeUtils';
 
 /** File attachment UI part (standalone definition, formerly from 'ai' package). */
 interface FileUIPart { type: 'file'; filename?: string; mediaType: string; url: string; }
+
+type MessageAttachmentProps = React.HTMLAttributes<HTMLDivElement> & {
+	data: FileUIPart;
+	className?: string;
+	onRemove?: () => void;
+};
+
+function MessageAttachment({
+	data,
+	className,
+	onRemove,
+	...props
+}: MessageAttachmentProps) {
+	const filename = data.filename || '';
+	const mediaType =
+		data.mediaType?.startsWith('image/') && data.url ? 'image' : 'file';
+	const isImage = mediaType === 'image';
+	const attachmentLabel = filename || (isImage ? 'Image' : 'Attachment');
+
+	return (
+		<div
+			className={cn(
+				'group pktw-relative pktw-size-24 pktw-overflow-hidden pktw-rounded-lg',
+				className,
+			)}
+			{...props}
+		>
+			{isImage ? (
+				<>
+					<img
+						alt={filename || 'attachment'}
+						className="pktw-size-full pktw-object-cover"
+						height={100}
+						src={data.url}
+						width={100}
+					/>
+					{onRemove && (
+						<Button
+							aria-label="Remove attachment"
+							className="pktw-absolute pktw-top-2 pktw-right-2 pktw-size-6 pktw-rounded-full pktw-bg-background/80 pktw-p-0 pktw-opacity-0 pktw-backdrop-blur-sm pktw-transition-opacity pktw-hover:bg-background pktw-group-hover:opacity-100 pktw-[&>svg]:size-3"
+							onClick={(e) => {
+								e.stopPropagation();
+								onRemove();
+							}}
+							type="button"
+							variant="ghost"
+						>
+							<XIcon />
+							<span className="pktw-sr-only">Remove</span>
+						</Button>
+					)}
+				</>
+			) : (
+				<>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<div className="pktw-flex pktw-size-full pktw-shrink-0 pktw-items-center pktw-justify-center pktw-rounded-lg pktw-bg-muted pktw-text-muted-foreground">
+								<PaperclipIcon className="pktw-size-4" />
+							</div>
+						</TooltipTrigger>
+						<TooltipContent>
+							<p>{attachmentLabel}</p>
+						</TooltipContent>
+					</Tooltip>
+					{onRemove && (
+						<Button
+							aria-label="Remove attachment"
+							className="pktw-size-6 pktw-shrink-0 pktw-rounded-full pktw-p-0 pktw-opacity-0 pktw-transition-opacity pktw-hover:bg-accent pktw-group-hover:opacity-100 pktw-[&>svg]:size-3"
+							onClick={(e) => {
+								e.stopPropagation();
+								onRemove();
+							}}
+							type="button"
+							variant="ghost"
+						>
+							<XIcon />
+							<span className="pktw-sr-only">Remove</span>
+						</Button>
+					)}
+				</>
+			)}
+		</div>
+	);
+}
 import { ChatResourceRef } from '@/service/chat/types';
 import { ResourceKind } from '@/core/document/types';
 import { openFile } from '@/core/utils/obsidian-utils';
