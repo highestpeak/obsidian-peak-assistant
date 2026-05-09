@@ -104,7 +104,7 @@ export class Reranker {
 	/**
 	 * Get ranking signals for given paths.
 	 */
-	private async getSignalsForPaths(paths: string[], tenant: IndexTenant = 'vault'): Promise<RankingSignals> {
+	async getSignalsForPaths(paths: string[], tenant: IndexTenant = 'vault'): Promise<RankingSignals> {
 		if (!paths.length) return new Map();
 		const indexedDocumentRepo = sqliteStoreManager.getIndexedDocumentRepo(tenant);
 		const mobiusNodeRepo = sqliteStoreManager.getMobiusNodeRepo(tenant);
@@ -129,7 +129,7 @@ export class Reranker {
 	/**
 	 * Get related document paths within N hops using GraphRepo.
 	 */
-	private async getRelatedPathsWithinHops(params: { startPath: string; maxHops: number }, tenant: IndexTenant = 'vault'): Promise<Set<string>> {
+	async getRelatedPathsWithinHops(params: { startPath: string; maxHops: number }, tenant: IndexTenant = 'vault'): Promise<Set<string>> {
 		const maxHops = Math.max(1, Number(params.maxHops ?? 2));
 		const graphRepo = sqliteStoreManager.getGraphRepo(tenant);
 		return await graphRepo.getRelatedFilePaths({
