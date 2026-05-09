@@ -29,13 +29,13 @@ import { ResourceLoaderManager } from '@/core/document/resource/helper/ResourceL
 import type { AIServiceManager } from './service-manager';
 import { createChatMessage } from '@/service/chat/utils/chat-message-builder';
 import { generateContentPreview, generateAttachmentSummary } from '@/core/utils/message-preview-utils';
-import { resolveModelCapabilities } from '@/core/providers/types';
+import { resolveModelCapabilities, type ModelCapabilities } from '@/core/providers/types';
 import { detectTimezone } from '@/core/utils/date-utils';
 import { uploadFilesToVault } from '@/core/utils/vault-utils';
 import { ProfileRegistry } from '@/core/profiles/ProfileRegistry';
-import { queryWithProfile } from '@/service/agents/core/sdkAgentPool';
-import { translateSdkMessages } from '@/service/agents/core/sdkMessageAdapter';
 import { AppContext } from '@/app/context/AppContext';
+import { buildChatTools } from '@/service/chat/tools/chatToolBuilder';
+import { useChatViewStore } from '@/ui/view/chat-view/store/chatViewStore';
 
 interface ChatPreparationResult {
 	modelId: string;
@@ -43,6 +43,7 @@ interface ChatPreparationResult {
 	timezone: string;
 	prompt: LLMRequestMessage[];
 	outputControl?: LLMOutputControlSettings;
+	modelCapabilities: ModelCapabilities;
 }
 
 /**
@@ -161,50 +162,32 @@ export class ConversationService {
 			// Get the final return value
 			prepared = result.value;
 
-			// Dual dispatch: Agent SDK for pure Anthropic, Vercel AI SDK for everything else
+			// Find profile for the conversation's provider
 			const registry = ProfileRegistry.getInstance();
 			const convProvider = prepared.provider;
 			const convModelId = prepared.modelId;
-
-			// Try to find a Vercel-compatible profile with a valid API key
 			const allProfiles = registry.getAllProfiles();
-			const vercelProfile = convProvider !== 'anthropic'
-				? allProfiles.find(p => p.kind === convProvider && p.enabled !== false && p.apiKey)
-				: null;
+			const profile = allProfiles.find(p => p.kind === convProvider && p.enabled !== false && p.apiKey);
 
-			if (vercelProfile) {
-				// Vercel AI SDK path — provider has a configured profile with API key
-				const { vercelStreamChat } = await import('@/core/providers/vercel');
-				yield* vercelStreamChat(vercelProfile, convModelId || vercelProfile.primaryModel, {
-					messages: prepared.prompt,
-					outputControl: prepared.outputControl,
-				});
-			} else {
-				// Agent SDK fallback — use the active Agent profile (Anthropic)
-				const agentProfile = registry.getActiveAgentProfile();
-				if (!agentProfile) throw new Error('No active AI profile configured. Please set up a profile in Settings → Profiles.');
-
-				const systemMessages = prepared.prompt.filter(m => m.role === 'system');
-				const systemPrompt = systemMessages.map(m =>
-					Array.isArray(m.content) ? m.content.map((p: any) => p.text ?? '').join('') : String(m.content)
-				).join('\n');
-				const nonSystemMessages = prepared.prompt.filter(m => m.role !== 'system');
-				const userPrompt = nonSystemMessages.map(m => {
-					const text = Array.isArray(m.content)
-						? m.content.map((p: any) => p.text ?? '').join('')
-						: String(m.content);
-					return `${m.role === 'user' ? 'Human' : 'Assistant'}: ${text}`;
-				}).join('\n\n');
-
-				const ctx = AppContext.getInstance();
-				const sdkStream = queryWithProfile(ctx.app, ctx.plugin.manifest.id, agentProfile, {
-					prompt: userPrompt,
-					systemPrompt,
-					maxTurns: 1,
-					allowedTools: [],
-				});
-				yield* translateSdkMessages(sdkStream, { hasPartialMessages: true });
+			if (!profile) {
+				throw new Error(`No active profile found for provider "${convProvider}". Please configure it in Settings → Profiles.`);
 			}
+
+			// Build tools based on UI toggles + model capabilities
+			const { enableWebSearch } = useChatViewStore.getState();
+			const ctx = AppContext.getInstance();
+			const { tools, maxSteps } = buildChatTools(
+				{ app: ctx.app, pluginId: ctx.plugin.manifest.id, enableWebSearch },
+				prepared.modelCapabilities,
+			);
+
+			const { vercelStreamChat } = await import('@/core/providers/vercel');
+			yield* vercelStreamChat(profile, convModelId || profile.primaryModel, {
+				messages: prepared.prompt,
+				outputControl: prepared.outputControl,
+				tools: Object.keys(tools).length > 0 ? tools : undefined,
+				maxSteps,
+			});
 		})();
 	}
 
@@ -289,6 +272,7 @@ export class ConversationService {
 			timezone,
 			prompt: prompt,
 			outputControl,
+			modelCapabilities,
 		};
 	}
 
