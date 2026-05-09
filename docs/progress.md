@@ -298,6 +298,17 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 - 死 UI 组件 (-830), console strip (-234), dead exports/files/stubs (-315)
 - Next: UI 组件精简, MobiusNodeRepo 瘦身, service/chat 合并 (target 50k)
 
+### 2026-05-09 (Session 21) — Codebase Deep Refactor Phase 2
+- Done: **71,227 → 66,742 code lines (-4,485 = -6.3%)**, 25 commits on `refactor/codebase-50k-target`
+- 死代码删除 (-800): hub SQL/NativeModule tryCompile/BetterSqlite require.cache/dead files/dead props/PromptId/MobiusEdgeRepo 9 methods
+- 算法简化 (-1,200): find-path.ts A*→min-heap+BFS合并(1514→986), buildBackboneMap tag-ranking折叠+DFS合并(1519→1208)
+- 架构重构 (-1,000): 14 copilot actions→factory(787→377), service-manager 18 wrappers→getter, IndexService 3 classes→1
+- 冗余压缩 (-750): tools 8文件简化(-710), search infra 去重(indexInitializer/semanticEdges/SqliteStoreManager/highlight-builder/progress-tracker, -1099)
+- 注释/类型精简 (-700): document/types.ts(325→109), settings/types.ts(468→242), analysis-markdown parser+builder
+- V1退役: SectionExtraChatModal(-450), V1 topic/interaction stores, followupContextRuntime V1 paths
+- 代码量评估: 66.7k 对功能体量(Chat+RAG搜索+Agent工具链+向量索引+Graph分析+多Provider+Copilot)合理，各模块量级均衡
+- 可继续方向: quick-search store/hooks层(偏复杂), sqlite repo层(偏冗余), 但不急
+
 ### 2026-05-09 (Session 19) — Provider Settings Polish
 - Done: **Phase X2 — Provider Settings Polish** (7 commits)
   - **Pill 搜索面板**：`RoleModelPicker` 组件，Command Palette 风格浮动面板，实时搜索 + 键盘导航 + CapTags（reason/vision/search/上下文窗口）+ 按 profile 分组
