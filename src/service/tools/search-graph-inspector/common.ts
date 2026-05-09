@@ -34,29 +34,6 @@ export function matchVaultPathByGrepPattern(path: string, pattern: string): bool
 	}
 }
 
-export function shouldIncludeNodeByGrepPattern(
-	node: { type?: unknown; attributes?: unknown } | null | undefined,
-	grepPattern: string | null | undefined,
-): boolean {
-	const raw = String(grepPattern ?? '').trim();
-	if (!raw) return true;
-	if (!node) return false;
-	// Only prune document nodes by path; keep non-document structural nodes.
-	if (node.type !== GraphNodeType.Document) return true;
-	let path = '';
-	try {
-		const attrs =
-			typeof node.attributes === 'string'
-				? JSON.parse(node.attributes || '{}')
-				: (node.attributes as Record<string, unknown> | null | undefined);
-		path = typeof attrs?.path === 'string' ? attrs.path : '';
-	} catch {
-		path = '';
-	}
-	if (!path) return true;
-	return matchVaultPathByGrepPattern(path, raw);
-}
-
 /** Doc-level semantic neighbors; query vector comes only from {@link EmbeddingRepo.getEmbeddingForSemanticSearch}. */
 export async function getSemanticNeighbors(
     docId: string,
@@ -164,102 +141,43 @@ export async function distillClusterNodesData(nodes: GraphNode[], limit: number,
 function calculateDocumentRRF(
     nodes: GraphNode[],
     densityMap: Map<string, number>,
-    docStatisticsMap: Map<string, DocStatistics>
+    docStatisticsMap: Map<string, DocStatistics>,
 ): (GraphNode & { rrfScore: number })[] {
-    // Pre-compute rank maps for all sorting criteria
-    // Each rank map: node.id -> rank (1-based, lower is better)
-    const densityRankMap = new Map(
-        [...nodes]
-            .sort((a, b) => (densityMap.get(b.id) || 0) - (densityMap.get(a.id) || 0))
-            .map((node, index) => [node.id, index + 1])
-    );
+    /** Build a rank map (node.id → 1-based rank, lower = better) sorted desc by `valueFn`. */
+    const rankBy = (items: GraphNode[], valueFn: (n: GraphNode) => number) =>
+        new Map([...items].sort((a, b) => valueFn(b) - valueFn(a)).map((n, i) => [n.id, i + 1]));
 
-    const updateTimeRankMap = new Map(
-        [...nodes]
-            .sort((a, b) => b.updated_at - a.updated_at)
-            .map((node, index) => [node.id, index + 1])
-    );
+    const stat = (id: string) => docStatisticsMap.get(id);
 
-    const richnessRankMap = new Map(
-        [...nodes]
-            .sort((a, b) => {
-                const aRich = docStatisticsMap.get(a.id)?.richness_score || 0;
-                const bRich = docStatisticsMap.get(b.id)?.richness_score || 0;
-                return bRich - aRich;
-            })
-            .map((node, index) => [node.id, index + 1])
-    );
+    const densityRanks   = rankBy(nodes, n => densityMap.get(n.id) || 0);
+    const updateRanks    = rankBy(nodes, n => n.updated_at);
+    const richnessRanks  = rankBy(nodes, n => stat(n.id)?.richness_score || 0);
+    const openCountRanks = rankBy(nodes, n => stat(n.id)?.open_count || 0);
+    const lastOpenRanks  = rankBy(nodes, n => stat(n.id)?.last_open_ts || 0);
 
-    const openCountRankMap = new Map(
-        [...nodes]
-            .sort((a, b) => {
-                const aOpens = docStatisticsMap.get(a.id)?.open_count || 0;
-                const bOpens = docStatisticsMap.get(b.id)?.open_count || 0;
-                return bOpens - aOpens;
-            })
-            .map((node, index) => [node.id, index + 1])
-    );
-
-    const lastOpenRankMap = new Map(
-        [...nodes]
-            .sort((a, b) => {
-                const aLast = docStatisticsMap.get(a.id)?.last_open_ts || 0;
-                const bLast = docStatisticsMap.get(b.id)?.last_open_ts || 0;
-                return bLast - aLast;
-            })
-            .map((node, index) => [node.id, index + 1])
-    );
-
-    // Similarity rank map for semantic neighbors
     const semanticNodes = nodes.filter(n => (n as any).foundBy === 'semantic_neighbors');
-    const similarityRankMap = semanticNodes.length > 0 ? new Map(
-        [...semanticNodes]
-            .sort((a, b) => {
-                const aSim = parseFloat((a as any).similarity) || 0;
-                const bSim = parseFloat((b as any).similarity) || 0;
-                return bSim - aSim;
-            })
-            .map((node, index) => [node.id, index + 1])
-    ) : null;
+    const similarityRanks = semanticNodes.length > 0
+        ? rankBy(semanticNodes, n => parseFloat((n as any).similarity) || 0)
+        : null;
+
+    /** RRF score for one dimension: weight * 1/(k + 0-based-rank). Returns 0 when `gateValue` is falsy. */
+    const rrfTerm = (weight: number, rankMap: Map<string, number>, id: string, fallbackLen: number, gateValue: number = 1) =>
+        gateValue > 0 ? weight * (1 / (RRF_K + (rankMap.get(id) || fallbackLen) - 1)) : 0;
 
     return nodes.map(node => {
-        const stats = docStatisticsMap.get(node.id);
-        const extendedNode = node as any; // Access extended properties
+        const ext = node as any;
+        const s = stat(node.id);
 
-        // Get pre-computed ranks (1-based, convert to 0-based for RRF formula)
-        const densityRank = (densityRankMap.get(node.id) || nodes.length) - 1;
-        const updateTimeRank = (updateTimeRankMap.get(node.id) || nodes.length) - 1;
-        const richnessRank = (richnessRankMap.get(node.id) || nodes.length) - 1;
-        const openCountRank = (openCountRankMap.get(node.id) || nodes.length) - 1;
-        const lastOpenRank = (lastOpenRankMap.get(node.id) || nodes.length) - 1;
-
-        // Get actual values for conditional scoring
-        const richnessScore = stats?.richness_score || 0;
-        const openCount = stats?.open_count || 0;
-        const lastOpenTs = stats?.last_open_ts || 0;
-
-        // Calculate weighted RRF scores for each dimension
-        const densityScore = GRAPH_RRF_WEIGHTS.density * (1 / (RRF_K + densityRank));
-        const updateTimeScore = GRAPH_RRF_WEIGHTS.updateTime * (1 / (RRF_K + updateTimeRank));
-        const richnessScore_rrf = richnessScore > 0 ? GRAPH_RRF_WEIGHTS.richness * (1 / (RRF_K + richnessRank)) : 0;
-        const openCountScore = openCount > 0 ? GRAPH_RRF_WEIGHTS.openCount * (1 / (RRF_K + openCountRank)) : 0;
-        const lastOpenScore = lastOpenTs > 0 ? GRAPH_RRF_WEIGHTS.lastOpen * (1 / (RRF_K + lastOpenRank)) : 0;
-
-        // Calculate similarity score for semantic neighbors
-        let similarityScore_rrf = 0;
-        if (extendedNode.foundBy === 'semantic_neighbors' && extendedNode.similarity) {
-            const similarityScore = parseFloat(extendedNode.similarity) || 0;
-            if (similarityScore > 0) {
-                const similarityRank = (similarityRankMap?.get(node.id) || semanticNodes.length) - 1;
-                similarityScore_rrf = GRAPH_RRF_WEIGHTS.similarity * (1 / (RRF_K + similarityRank));
-            }
-        }
-
-        // Calculate physical connection bonus
-        const physicalBonus = extendedNode.foundBy === 'physical_neighbors' ? PHYSICAL_CONNECTION_BONUS : 0;
-
-        // Combine all RRF components
-        const rrfScore = densityScore + updateTimeScore + richnessScore_rrf + openCountScore + lastOpenScore + similarityScore_rrf + physicalBonus;
+        const rrfScore =
+            rrfTerm(GRAPH_RRF_WEIGHTS.density,   densityRanks,   node.id, nodes.length) +
+            rrfTerm(GRAPH_RRF_WEIGHTS.updateTime, updateRanks,    node.id, nodes.length) +
+            rrfTerm(GRAPH_RRF_WEIGHTS.richness,   richnessRanks,  node.id, nodes.length, s?.richness_score || 0) +
+            rrfTerm(GRAPH_RRF_WEIGHTS.openCount,  openCountRanks, node.id, nodes.length, s?.open_count || 0) +
+            rrfTerm(GRAPH_RRF_WEIGHTS.lastOpen,   lastOpenRanks,  node.id, nodes.length, s?.last_open_ts || 0) +
+            (ext.foundBy === 'semantic_neighbors' && similarityRanks && parseFloat(ext.similarity) > 0
+                ? rrfTerm(GRAPH_RRF_WEIGHTS.similarity, similarityRanks, node.id, semanticNodes.length)
+                : 0) +
+            (ext.foundBy === 'physical_neighbors' ? PHYSICAL_CONNECTION_BONUS : 0);
 
         return { ...node, rrfScore };
     });

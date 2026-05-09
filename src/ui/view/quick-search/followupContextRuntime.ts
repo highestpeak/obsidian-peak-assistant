@@ -1,13 +1,10 @@
 import { SLICE_CAPS } from '@/core/constant';
 import { refreshableMemoizeSupplier } from '@/core/utils/functions';
 import {
-	useAIAnalysisRuntimeStore,
-	useAIAnalysisSummaryStore,
-	useAIAnalysisResultStore,
 	useAIAnalysisTopicsStore,
 	useAIAnalysisInteractionsStore,
-	useAIAnalysisStepsStore,
 } from './store/aiAnalysisStore';
+import { useSearchSessionStore } from './store/searchSessionStore';
 
 const DEFAULT_MAX_CHARS = 4000;
 const CONTEXT_LINES = 2;
@@ -19,24 +16,16 @@ let lastHistorySearch: { fn: HistorySearchFn; runId: string | null } | null = nu
 /** Bump to invalidate both core and followups caches (e.g. when starting a new analysis). */
 let resultIndexInvalidateSeed = 0;
 
-/** State for core index (Title, Summary, Topics, Sources, Blocks, Graph, Steps). */
+/** State for core index (Title, Summary, Sources, Sections, Steps). */
 function getResultIndexStateCore() {
-    const rt = useAIAnalysisRuntimeStore.getState();
-    const sum = useAIAnalysisSummaryStore.getState();
-    const res = useAIAnalysisResultStore.getState();
-    const steps = useAIAnalysisStepsStore.getState();
+    const ss = useSearchSessionStore.getState();
     return {
         seed: resultIndexInvalidateSeed,
-        runId: rt.analysisRunId ?? '',
-        summaryVersion: sum.summaryVersion ?? 0,
-        summariesLen: sum.summaries?.length ?? 0,
-        summaryTextLen: sum.summaryText?.length ?? 0,
-        topicsLen: res.topics?.length ?? 0,
-        sourcesLen: res.sources?.length ?? 0,
-        blocksLen: res.dashboardBlocks?.length ?? 0,
-        graphNodes: res.graph?.nodes?.length ?? 0,
-        graphEdges: res.graph?.edges?.length ?? 0,
-        stepsLen: steps.steps?.length ?? 0,
+        runId: ss.id ?? '',
+        summaryLen: ss.v2Summary?.length ?? 0,
+        sourcesLen: ss.v2Sources?.length ?? 0,
+        sectionsLen: ss.v2PlanSections?.length ?? 0,
+        stepsLen: ss.v2Steps?.length ?? 0,
     };
 }
 
@@ -48,14 +37,9 @@ function coreStateChanged(
     return (
         last.seed !== cur.seed ||
         last.runId !== cur.runId ||
-        last.summaryVersion !== cur.summaryVersion ||
-        last.summariesLen !== cur.summariesLen ||
-        last.summaryTextLen !== cur.summaryTextLen ||
-        last.topicsLen !== cur.topicsLen ||
+        last.summaryLen !== cur.summaryLen ||
         last.sourcesLen !== cur.sourcesLen ||
-        last.blocksLen !== cur.blocksLen ||
-        last.graphNodes !== cur.graphNodes ||
-        last.graphEdges !== cur.graphEdges ||
+        last.sectionsLen !== cur.sectionsLen ||
         last.stepsLen !== cur.stepsLen
     );
 }
@@ -117,69 +101,39 @@ export function invalidateFollowupContextCache(): void {
     resultIndexInvalidateSeed += 1;
 }
 
-/** Build core index (Title, Summary, Topics, Sources, Blocks, Graph, Steps). */
+/** Build core index (Title, Summary, Sources, Sections, Steps). */
 function buildResultIndexCore(): string {
-    const rt = useAIAnalysisRuntimeStore.getState();
-    const sum = useAIAnalysisSummaryStore.getState();
-    const res = useAIAnalysisResultStore.getState();
-    const stepsStore = useAIAnalysisStepsStore.getState();
+    const ss = useSearchSessionStore.getState();
     const lines: string[] = [];
 
     lines.push('[Title]');
-    lines.push(rt.title ?? '');
+    lines.push(ss.title ?? '');
 
-    const summary =
-        sum.summaries?.length && sum.summaryVersion != null
-            ? sum.summaries[(sum.summaryVersion ?? 1) - 1] ?? sum.summaries[0] ?? ''
-            : sum.summaryText ?? '';
     lines.push('');
     lines.push('[Summary]');
-    lines.push(summary);
-
-    lines.push('');
-    lines.push('[Topics]');
-    for (const t of res.topics ?? []) {
-        lines.push(`- ${t.label}`);
-        if (t.suggestQuestions?.length) {
-            t.suggestQuestions.forEach((q) => lines.push(`  ? ${q}`));
-        }
-    }
+    lines.push(ss.v2Summary ?? '');
 
     lines.push('');
     lines.push('[Sources]');
-    for (const src of res.sources ?? []) {
+    for (const src of ss.v2Sources ?? []) {
         lines.push(`- ${src.title ?? ''} | ${src.path ?? ''}`);
         if (src.reasoning) lines.push(`  ${src.reasoning}`);
-        if (src.badges?.length) lines.push(`  badges: ${src.badges.join(', ')}`);
     }
 
     lines.push('');
-    lines.push('[Blocks]');
-    for (const b of res.dashboardBlocks ?? []) {
-        const label = b.title ?? b.id ?? 'Block';
-        lines.push(`- ${label} (${b.renderEngine ?? ''})`);
-        const md = (b.markdown ?? b.mermaidCode ?? '').slice(0, SLICE_CAPS.ui.followupMarkdown);
-        if (md) lines.push(`  ${md}`);
-    }
-
-    lines.push('');
-    lines.push('[Graph]');
-    const g = res.graph;
-    if (g) {
-        lines.push(`nodes: ${g.nodes?.length ?? 0}, edges: ${g.edges?.length ?? 0}`);
-        const nodes = (g.nodes ?? []).slice(0, SLICE_CAPS.ui.analysisNodeLabels);
-        for (const n of nodes) {
-            lines.push(`- ${n.title ?? n.id ?? ''} | ${n.type ?? ''} | ${n.path ?? ''}`);
-        }
-    } else {
-        lines.push('(empty)');
+    lines.push('[Sections]');
+    for (const sec of ss.v2PlanSections ?? []) {
+        const label = sec.title ?? sec.id ?? 'Section';
+        lines.push(`- ${label}`);
+        const content = (sec.content ?? '').slice(0, SLICE_CAPS.ui.followupMarkdown);
+        if (content) lines.push(`  ${content}`);
     }
 
     lines.push('');
     lines.push('[Steps]');
-    for (const step of stepsStore.steps ?? []) {
-        const text = step.description?.slice(0, SLICE_CAPS.ui.followupAnswer) ?? '';
-        lines.push(`- ${step.title}: ${text}`);
+    for (const step of ss.v2Steps ?? []) {
+        const text = step.summary?.slice(0, SLICE_CAPS.ui.followupAnswer) ?? '';
+        lines.push(`- ${step.displayName}: ${text}`);
     }
 
     return lines.join('\n');

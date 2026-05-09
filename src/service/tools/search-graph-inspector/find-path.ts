@@ -148,6 +148,20 @@ const SCORE_WEIGHTS = {
 
 export const PATH_STRING_SEPARATOR = ' -> ';
 
+const STRATEGY_NAMES: Record<StrategyType, string> = {
+    reliable: '🔗 Reliable', fastTrack: '🚀 Fast Track',
+    brainstorm: '💡 Brainstorm', temporal: '⏳ Temporal',
+};
+
+/** Resolve a graph node to a display label. */
+function getNodeLabel(node: { type: string; label: string; attributes: string } | undefined, fallback: string): string {
+    if (!node) return fallback;
+    if (isIndexedNoteNodeType(node.type)) {
+        try { return JSON.parse(node.attributes).path || fallback; } catch { return fallback; }
+    }
+    return node.type + node.label;
+}
+
 // --- Main Entry Point ---
 
 /** Find diverse paths between two notes using multiple strategies. */
@@ -222,16 +236,7 @@ export async function findPath(params: any, templateManager?: TemplateManager) {
         const hubNodesMap = await mobiusNodeRepo.getByIds(hubNodeIds);
 
         for (const hub of hubAnalysis) {
-            const node = hubNodesMap.get(hub.nodeId);
-            if (node && isIndexedNoteNodeType(node.type)) {
-                try {
-                    hub.label = JSON.parse(node.attributes).path || hub.nodeId;
-                } catch {
-                    hub.label = hub.nodeId;
-                }
-            } else {
-                hub.label = node ? (node.type + node.label) : hub.nodeId;
-            }
+            hub.label = getNodeLabel(hubNodesMap.get(hub.nodeId), hub.nodeId);
         }
     }
 
@@ -1415,11 +1420,7 @@ async function analyzeCommonParents(startId: string, endId: string): Promise<Arr
         const connectionCount =
             startEdges.filter(e => e.from_node_id === parentId && e.to_node_id === startId).length +
             endEdges.filter(e => e.from_node_id === parentId && e.to_node_id === endId).length;
-        let label = node.label;
-        if (isIndexedNoteNodeType(node.type)) {
-            try { label = JSON.parse(node.attributes).path || label; } catch { /* keep */ }
-        }
-        return { nodeId: parentId, label, type: node.type, connectionCount };
+        return { nodeId: parentId, label: getNodeLabel(node, node.label), type: node.type, connectionCount };
     }).filter(Boolean).sort((a, b) => (b?.connectionCount || 0) - (a?.connectionCount || 0));
 
     return result as Array<{
@@ -1443,48 +1444,26 @@ function buildAnalysisSection(hubs: HubAnalysis[], contextIntersection: ContextI
         }
     }
 
-    // Enhanced Context Analysis section - only show if there's valuable content
     if (contextIntersection) {
-        const hasValuableContent = contextIntersection.commonTags.length > 0 ||
-                                  contextIntersection.commonParents.length > 0 ||
-                                  contextIntersection.physicalAncestor.depth > 1 ||
-                                  contextIntersection.isDistant;
-
-        if (hasValuableContent) {
+        const ci = contextIntersection;
+        const hasContent = ci.commonTags.length > 0 || ci.commonParents.length > 0 ||
+                          ci.physicalAncestor.depth > 1 || ci.isDistant;
+        if (hasContent) {
             section += '\n\n## Shared Context Analysis\n\n';
-
-            const physical = contextIntersection.physicalAncestor;
-
-            // Common tags
-            if (contextIntersection.commonTags.length > 0) {
-                section += `**Common Tags:** ${contextIntersection.commonTags.map(tag => `\`${tag}\``).join(', ')}\n\n`;
-            }
-
-            // Common parents (structural relationships)
-            if (contextIntersection.commonParents.length > 0) {
+            if (ci.commonTags.length > 0)
+                section += `**Common Tags:** ${ci.commonTags.map(tag => `\`${tag}\``).join(', ')}\n\n`;
+            if (ci.commonParents.length > 0) {
                 section += '**Common Reference Points:**\n';
-                for (const parent of contextIntersection.commonParents.slice(0, SLICE_CAPS.inspector.pathFindCommonParents)) {
-                    const nodeLink = isIndexedNoteNodeType(parent.type) ? `[[${parent.label}]]` : `**${parent.label}**`;
-                    section += `- ${nodeLink} (${parent.connectionCount} connections)\n`;
+                for (const p of ci.commonParents.slice(0, SLICE_CAPS.inspector.pathFindCommonParents)) {
+                    const link = isIndexedNoteNodeType(p.type) ? `[[${p.label}]]` : `**${p.label}**`;
+                    section += `- ${link} (${p.connectionCount} connections)\n`;
                 }
                 section += '\n';
             }
-
-            // Physical context information (only show if meaningful)
-            if (physical.depth > 1) {
-                section += `**Shared Location:** Both notes are in \`${physical.ancestorPath}\`\n\n`;
-            }
-
-            // Cross-domain insight
-            if (contextIntersection.isDistant) {
-                section += '**Cross-Domain Insight:** Despite different locations, these notes share ';
-                if (contextIntersection.primaryContext) {
-                    section += `**${contextIntersection.primaryContext}**`;
-                } else {
-                    section += 'semantic connections';
-                }
-                section += '.\n\n';
-            }
+            if (ci.physicalAncestor.depth > 1)
+                section += `**Shared Location:** Both notes are in \`${ci.physicalAncestor.ancestorPath}\`\n\n`;
+            if (ci.isDistant)
+                section += `**Cross-Domain Insight:** Despite different locations, these notes share ${ci.primaryContext ? `**${ci.primaryContext}**` : 'semantic connections'}.\n\n`;
         }
     }
 
@@ -1515,45 +1494,19 @@ async function formatPathsForOutput(
     const nodesMap = await mobiusNodeRepo.getByIds(Array.from(allNodeIds));
 
     return paths.map(scoredPath => {
-        const nodeLabels: string[] = [];
+        const nodeLabels = scoredPath.segments.map(s => getNodeLabel(nodesMap.get(s.nodeId), s.nodeId));
 
-        for (const segment of scoredPath.segments) {
-            try {
-                const node = nodesMap.get(segment.nodeId);
-                if (!node) {
-                    nodeLabels.push(segment.nodeId);
-                } else if (isIndexedNoteNodeType(node.type)) {
-                    nodeLabels.push(JSON.parse(node.attributes).path || segment.nodeId);
-                } else {
-                    nodeLabels.push(node.type + node.label);
-                }
-            } catch {
-                nodeLabels.push(segment.nodeId);
-            }
-        }
-
-        // Build connection details
-        const connectionDetails = scoredPath.segments.slice(0, -1).map((segment, i) => {
-            const nextSegment = scoredPath.segments[i + 1];
-            const type = segment.type === 'physical_neighbors' && nextSegment.type === 'physical_neighbors'
-                ? 'physical'
-                : 'semantic';
-            const similarity = segment.similarity || nextSegment.similarity;
-            return similarity ? `${type} (${similarity})` : type;
+        const connectionDetails = scoredPath.segments.slice(0, -1).map((seg, i) => {
+            const next = scoredPath.segments[i + 1];
+            const type = seg.type === 'physical_neighbors' && next.type === 'physical_neighbors' ? 'physical' : 'semantic';
+            const sim = seg.similarity || next.similarity;
+            return sim ? `${type} (${sim})` : type;
         }).join(' → ');
-
-        // Strategy display names
-        const strategyNames: Record<StrategyType, string> = {
-            reliable: '🔗 Reliable',
-            fastTrack: '🚀 Fast Track',
-            brainstorm: '💡 Brainstorm',
-            temporal: '⏳ Temporal',
-        };
 
         return {
             path: nodeLabels,
             connectionDetails,
-            strategy: strategyNames[scoredPath.strategy],
+            strategy: STRATEGY_NAMES[scoredPath.strategy],
             insightLabel: scoredPath.insightLabel,
             score: scoredPath.score.totalScore,
         };

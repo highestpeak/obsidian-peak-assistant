@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { create } from 'zustand';
-import { useAIAnalysisResultStore } from '@/ui/view/quick-search/store/aiAnalysisStore';
-import type { AISearchGraph, AISearchNode, AISearchEdge } from '@/service/agents/shared-types';
 import { useSubscribeUIEvent } from '@/ui/store/uiEventStore';
 import type { GraphPatch } from '@/core/providers/ui-events/graph';
 import { UISignalChannel } from '@/core/providers/types';
-import { GraphNodeType } from '@/core/po/graph.po';
 
 /** Queue item driven by ui-signal(channel='graph'). */
 export type GraphSignalKind = 'stage' | 'patch' | 'effect';
@@ -146,44 +143,14 @@ export const useGraphAnimationStore = create<GraphAnimationStore>((set, get) => 
 	}),
 }));
 
-/** Persist graph patch to store. Patch is incremental (only new/changed nodes/edges); setGraph merges via mergeAISearchGraphs. */
-export function persistPatchToStore(patch: any): void {
-	try {
-		const nodes: AISearchNode[] = (patch?.upsertNodes ?? []).map((n: any) => {
-			const id = String(n.id);
-			const title = String(n.label ?? id);
-			// Prefer explicit path, then attributes.path, then derive from file: id (for opening files and display)
-			let path: string | undefined;
-			if (typeof n.path === 'string' && n.path.trim()) path = n.path.trim().replace(/^\/+/, '');
-			else if (n.attributes && typeof n.attributes === 'object' && typeof n.attributes.path === 'string' && n.attributes.path.trim()) path = String(n.attributes.path).trim().replace(/^\/+/, '');
-			else if (id.startsWith('file:')) path = id.slice('file:'.length).replace(/^\/+/, '');
-			return {
-				id,
-				type: String(n.type ?? GraphNodeType.Document),
-				title,
-				...(path ? { path } : {}),
-				attributes: (n.attributes && typeof n.attributes === 'object') ? n.attributes : {},
-			};
-		});
-		const edges: AISearchEdge[] = (patch?.upsertEdges ?? []).map((e: any) => {
-			const source = String(e.from_node_id);
-			const target = String(e.to_node_id);
-			const type = String(e.kind ?? 'unknown');
-			const attrs = (e.attributes && typeof e.attributes === 'object') ? e.attributes as Record<string, unknown> : {};
-			const weightAttrs = typeof e.weight === 'number' ? { weight: e.weight } : {};
-			return {
-				id: `e:${source}|${type}|${target}`,
-				source,
-				type,
-				target,
-				attributes: { ...attrs, ...weightAttrs },
-			};
-		});
-		const g: AISearchGraph = { nodes, edges };
-		useAIAnalysisResultStore.getState().setGraph(g);
-	} catch (e) {
-		console.warn('[graphAnimationStore] persistPatchToStore failed:', e);
-	}
+/**
+ * Persist graph patch to store. Previously wrote to legacy useAIAnalysisResultStore.graph;
+ * now a no-op since graph rendering is handled by aiGraphStore/graphAgentStore directly.
+ * The function is kept for API compatibility with the queue pump.
+ */
+export function persistPatchToStore(_patch: any): void {
+	// Graph patch is applied via graphApplyPatchRef.applyPatch() in the queue pump.
+	// No additional store persistence needed after legacy store removal.
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
