@@ -178,23 +178,6 @@ export const graphTraversalInputSchema = z
 			),
 	});
 
-export const hubLocalGraphInputSchema = z
-	.object({
-		center_note_path: z.string().describe("Vault-relative note path used as hub center."),
-		max_depth: z
-			.number()
-			.min(1)
-			.max(6)
-			.nullable()
-			.default(4)
-			.describe(
-				"Maximum local expansion depth for the hub neighborhood. Start with 2-4 and only increase when the graph is too sparse."
-			),
-	})
-	.extend({
-		response_format: ResponseFormat.shape.response_format.default("structured"),
-	});
-
 export const findPathInputSchema = z
 	.object({
 		start_note_path: z.string().min(1, 'start_note_path must be a non-empty vault path — retry with a valid path'),

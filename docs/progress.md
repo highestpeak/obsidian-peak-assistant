@@ -289,6 +289,31 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 
 ## Log
 
+### 2026-05-09 (Session 19) — Provider Settings Polish
+- Done: **Phase X2 — Provider Settings Polish** (7 commits)
+  - **Pill 搜索面板**：`RoleModelPicker` 组件，Command Palette 风格浮动面板，实时搜索 + 键盘导航 + CapTags（reason/vision/search/上下文窗口）+ 按 profile 分组
+  - **共享 utils 提取**：`model-display-utils.tsx` 提取 `CapTags`/`highlightMatch`/`formatCtx`，`ModelCombobox` 和 `RoleModelPicker` 共用
+  - **StatusBar 重写**：`RoleSelectorChip` 从平铺下拉改为 `RoleModelPicker` 弹出面板，删除冗余的 `PROVIDER_CATALOG`/`getModelsForProfile`
+  - **AddProfileGrid 去重**：已配置的 provider 默认隐藏，底部 "Add another instance of existing provider" 链接可展示全部
+  - **凭证状态修复**：`ProfileCard` subtitle 区分显示 — Ollama "no key needed"、有 authToken "auth token set"、有 apiKey "API key set"
+  - **连接测试修复**：`testProviderConnection.ts` Bearer token 优先使用 `authToken`，修复 OpenRouter 认证
+- Spec: `docs/superpowers/specs/2026-05-09-provider-settings-polish-design.md`
+- Plan: `docs/superpowers/plans/2026-05-09-provider-settings-polish.md`
+- Next: 真机验证 pill 搜索 + AddProfileGrid 去重效果
+
+### 2026-05-09 (Session 18) — Settings UI Redesign
+- Done: **Settings General & Search Tab UI Redesign**
+  - **设计决策**：现代卡片式 + General 不分组 + Search 轻量 section header + pill chips
+  - **新建 3 个共享组件**：`SettingCard`（统一卡片）、`SectionHeader`（轻量标题）、`DocTypePills`（flex-wrap 药丸标签替代 4 列 grid）
+  - **GeneralTab 重写**：去掉 3 个 CollapsibleSettingsSection，4 项设置平铺为卡片，DevTools 加 "Developer" badge，删除 Graph Visualization Tuning（5 个死滑块）
+  - **SearchTab 重写**：统一卡片样式，SectionHeading→SectionHeader（11px uppercase + icon），DocTypeGrid→DocTypePills
+  - **清理**：types.ts 删除 5 个死 graphViz 设置项（clusterForceStrength/nodeBaseRadiusPhysical/nodeBaseRadiusSemantic/nodeDegreeBoost/skeletonMinBranchNodes），删除 DocTypeGrid.tsx + CollapsibleSettingsSection.tsx
+  - Build 通过
+- Spec: `docs/superpowers/specs/2026-05-09-settings-general-search-ui-redesign.md`
+- Plan: `docs/superpowers/plans/2026-05-09-settings-general-search-ui-redesign.md`
+- Mockups: `.superpowers/brainstorm/21332-1778293900/content/`
+- Next: 真机验证两个 tab 的视觉效果 + 功能回归
+
 ### 2026-05-08~09 (Session 17) — Codebase Deep Refactor
 - Done: **100,002 → 81,632 code lines (cloc TypeScript, -18,370 = -18.4%)**, 21 commits on `refactor/codebase-50k-target`
 - Wave 0 (dead code purge, -5,448): tmp_code_ref_for_cursor, src/desktop, index-debug-tools, dead hooks/utils/exports, 44 dead repo methods, dead templates
@@ -741,6 +766,7 @@ Obsidian AI assistant plugin. 当前目标：**产品完备** — 从 onboarding
 | agent-trace-observability | 04-22 | COMPLETED |
 | graph-layout-fix | 05-01 | COMPLETED |
 | ui-stability-batch-fix | 05-03 | COMPLETED |
+| provider-settings-polish | 05-09 | COMPLETED |
 | milestone-based-persistence | 04-20 | MOSTLY DONE (核心函数存在，4 触发点待验证) |
 | per-section-report-v2 | 04-13 | SUPERSEDED |
 | v2-report-quality-and-ui-fixes | 04-13 | SUPERSEDED |

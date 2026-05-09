@@ -1479,8 +1479,7 @@ class GlobalMaintenanceService {
 			sw.start('folder_hub_stats');
 			await this.rebuildFolderHubStatsForVaultInternal(onProgress);
 			sw.stop();
-
-}
+		}
 
 		sw.print();
 		await this.resetMaintenanceDebtAfterFullMaintenance(tenants);

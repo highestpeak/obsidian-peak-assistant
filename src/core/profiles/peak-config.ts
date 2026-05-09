@@ -15,12 +15,6 @@ export interface PeakConfig {
         mstLeafOpacity?: number;
         mstLeafWidthScale?: number;
     };
-    hubDiscover?: {
-        enableLlmSemanticMerge?: boolean;
-        maxRounds?: number;
-        maxJudgeCalls?: number;
-        minCoverageGain?: number;
-    };
     summaryLengths?: {
         short?: number;
         full?: number;
@@ -32,7 +26,6 @@ export interface PeakConfig {
 const DEFAULTS: PeakConfig = {
     inspectorLinks: { keywordTopN: 10, tagTopN: 5, folderGroupingEnabled: true, folderGroupMinCount: 3, folderGroupMaxDepth: 2 },
     graphViz: { mstPruneDepth: 2, skeletonBackboneOnly: false, mstLeafOpacity: 0.25, mstLeafWidthScale: 0.6 },
-    hubDiscover: { enableLlmSemanticMerge: false, maxRounds: 5, maxJudgeCalls: 20, minCoverageGain: 0.02 },
     summaryLengths: { short: 150, full: 2000, sessionWordCount: 1200 },
     indexRefreshInterval: 5000,
 };

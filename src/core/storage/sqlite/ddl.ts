@@ -345,35 +345,6 @@ export interface Database {
 		continuous_group_id: string | null;
 		meta_json: string | null;
 	};
-	/** Betweenness centrality + Burt constraint per graph node (vault DB). */
-	structural_metrics: {
-		node_id: string;
-		betweenness: number;
-		burt_constraint: number;
-		community_id: number;
-		computed_at: number;
-	};
-	/** Community metadata from Louvain/Leiden detection (vault DB). */
-	communities: {
-		community_id: number;
-		label: string | null;
-		member_count: number;
-		avg_betweenness: number;
-		centroid_embedding: Buffer | null;
-		computed_at: number;
-	};
-	/** Detected structural holes between communities (vault DB). */
-	structural_holes: {
-		id: number | undefined; // AUTOINCREMENT — omit on insert
-		community_a: number;
-		community_b: number;
-		gap_score: number;
-		semantic_sim: number;
-		inter_density: number;
-		bridge_candidates: string | null;
-		status: string;
-		computed_at: number;
-	};
 	/** Ambient push log: records proactive note suggestions and user responses. */
 	ambient_push_log: {
 		id: number | undefined; // AUTOINCREMENT — omit on insert
@@ -746,44 +717,6 @@ export function migrateSqliteSchema(db: SqliteDatabaseLike): void {
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_created_at ON mobius_operation(created_at);
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_type_created_at ON mobius_operation(operation_type, created_at);
 		CREATE INDEX IF NOT EXISTS idx_mobius_operation_group ON mobius_operation(continuous_group_id);
-	`);
-
-	// ── Structural analysis tables (S4: betweenness centrality + community detection + gap analysis) ──
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS structural_metrics (
-			node_id      TEXT PRIMARY KEY,
-			betweenness  REAL NOT NULL DEFAULT 0,
-			burt_constraint REAL NOT NULL DEFAULT 1,
-			community_id INTEGER NOT NULL DEFAULT 0,
-			computed_at  INTEGER NOT NULL DEFAULT 0
-		);
-		CREATE INDEX IF NOT EXISTS idx_structural_metrics_community ON structural_metrics(community_id);
-		CREATE INDEX IF NOT EXISTS idx_structural_metrics_betweenness ON structural_metrics(betweenness DESC);
-	`);
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS communities (
-			community_id      INTEGER PRIMARY KEY,
-			label             TEXT,
-			member_count      INTEGER NOT NULL DEFAULT 0,
-			avg_betweenness   REAL NOT NULL DEFAULT 0,
-			centroid_embedding BLOB,
-			computed_at       INTEGER NOT NULL DEFAULT 0
-		);
-	`);
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS structural_holes (
-			id               INTEGER PRIMARY KEY AUTOINCREMENT,
-			community_a      INTEGER NOT NULL,
-			community_b      INTEGER NOT NULL,
-			gap_score        REAL NOT NULL,
-			semantic_sim     REAL NOT NULL,
-			inter_density    REAL NOT NULL,
-			bridge_candidates TEXT,
-			status           TEXT DEFAULT 'open',
-			computed_at      INTEGER NOT NULL DEFAULT 0,
-			UNIQUE(community_a, community_b)
-		);
-		CREATE INDEX IF NOT EXISTS idx_structural_holes_score ON structural_holes(gap_score DESC);
 	`);
 
 	// ── Precompiled knowledge layer: hub constituent tracking + regeneration queue ──
