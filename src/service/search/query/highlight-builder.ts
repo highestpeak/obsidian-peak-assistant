@@ -110,155 +110,53 @@ function createSnippetWindow(
 	windowBefore: number = 80,
 	windowAfter: number = 140
 ): SearchSnippet {
-	if (originalMatches.length === 0) {
-		return { text: content.slice(0, SLICE_CAPS.highlight.fallbackShort), highlights: [] };
-	}
+	if (originalMatches.length === 0) return { text: content.slice(0, SLICE_CAPS.highlight.fallbackShort), highlights: [] };
 
-	// Find the best window that contains the most keyword matches
-	const bestWindow = findBestSnippetWindow(content, originalMatches, keywords, windowBefore, windowAfter);
-	const snippetText = content.slice(bestWindow.start, bestWindow.end);
-
-	// Filter matches that are within the window and adjust positions
-	// Only include matches that are completely within the window boundaries
-	const highlights = originalMatches
-		.filter(match => match.start >= bestWindow.start && match.end <= bestWindow.end)
-		.map(match => ({
-			// Convert absolute positions to relative positions within the snippet
-			start: match.start - bestWindow.start,
-			end: match.end - bestWindow.start,
-		}));
-
+	const w = findBestSnippetWindow(content, originalMatches, keywords, windowBefore, windowAfter);
 	return {
-		text: snippetText,
-		highlights
+		text: content.slice(w.start, w.end),
+		highlights: originalMatches
+			.filter(m => m.start >= w.start && m.end <= w.end)
+			.map(m => ({ start: m.start - w.start, end: m.end - w.start })),
 	};
 }
 
 /**
- * Build a snippet window around query matches with highlights for all matched keywords.
- * 
- * Overview:
- * ========
- * This function finds the best snippet to display from search results, prioritizing
- * snippets that contain the most matched keywords. It handles tokenized content
- * (where words may have spaces inserted) by normalizing before matching.
- * 
- * Process Flow:
- * =============
- * 
- * 1. Normalization:
- *    - Remove spaces from content to handle tokenization (e.g., "plu gin" -> "plugin")
- *    - Create position mapping to map normalized indices back to original positions
- *    - Normalize query by removing spaces
- * 
- * 2. Match Finding:
- *    a) Try to find full query match first (e.g., "topic command rebase" as a phrase)
- *    b) Find all individual keyword matches (e.g., all occurrences of "topic", "command", "rebase")
- *    c) Remove duplicates (if full query match overlaps with keyword matches)
- * 
- * 3. Window Selection:
- *    - For each match position, create a window (80 chars before + 140 chars after)
- *    - Count unique keywords matched within each window
- *    - Select window with most keywords matched
- *    - If tie, prefer shorter window (more focused)
- * 
- * 4. Highlight Generation:
- *    - Extract snippet text from selected window
- *    - Filter matches that are within the window
- *    - Adjust highlight positions to be relative to snippet start
- * 
- * Example:
- * =======
- * Query: "topic command rebase"
- * Content: "...some topic-related content...command execution...rebase operation...complete guide for topic command rebase..."
- * 
- * Matches found:
- *   - Position 50: "topic"
- *   - Position 100: "command"
- *   - Position 150: "rebase"
- *   - Position 200: "topic command rebase" (full query match)
- * 
- * Window selection:
- *   - Window centered at position 200 contains all 3 keywords → Selected
- *   - Snippet: "...rebase operation...complete guide for topic command rebase..."
- *   - Highlights: All 4 matches within the snippet
- * 
- * @param content - The full content text (may be tokenized with spaces)
- * @param query - The search query (may contain multiple keywords separated by spaces)
- * @returns Search snippet with text and highlight positions, or null if no matches
+ * Build a snippet window around query matches with highlights.
+ * Normalizes spaces (handles tokenized content), finds full-phrase + keyword matches,
+ * picks the window with most unique keywords, returns snippet with relative highlights.
  */
 export function buildHighlightSnippet(content: string, query: string): SearchSnippet | null {
 	const q = query.trim();
 	if (!content) return null;
-	if (!q) {
-		return { text: content.slice(0, SLICE_CAPS.highlight.fallbackShort), highlights: [] };
-	}
+	if (!q) return { text: content.slice(0, SLICE_CAPS.highlight.fallbackShort), highlights: [] };
 
-	// Normalize content and query
-	// This handles tokenized content where words are separated by spaces
 	const normalized = normalizeContent(content);
 	const normalizedQuery = normalizeQuery(q);
+	if (normalized.text.length === 0) return { text: content.slice(0, SLICE_CAPS.highlight.fallbackShort), highlights: [] };
 
-	if (normalized.text.length === 0) {
-		return { text: content.slice(0, SLICE_CAPS.highlight.fallbackShort), highlights: [] };
-	}
-
-	// Split query into keywords for multi-keyword matching
 	const keywords = q.split(/\s+/).filter(k => k.length > 0);
-	if (keywords.length === 0) {
-		return { text: content.slice(0, SLICE_CAPS.highlight.fallbackLong), highlights: [] };
+	if (keywords.length === 0) return { text: content.slice(0, SLICE_CAPS.highlight.fallbackLong), highlights: [] };
+
+	const allMatches: Array<{ start: number; end: number; keyword?: string }> = [];
+
+	// Full-phrase match
+	const fullIdx = findFullQueryMatch(normalized.text, normalizedQuery);
+	if (fullIdx >= 0) {
+		allMatches.push({ ...mapNormalizedToOriginal(fullIdx, fullIdx + normalizedQuery.length, normalized.positionMap), keyword: normalizedQuery });
 	}
 
-	// Try to find full query match first (e.g., "topic command rebase" as a phrase)
-	const fullMatchIdx = findFullQueryMatch(normalized.text, normalizedQuery);
-
-	// Track all matches with keyword information for scoring
-	let allMatches: Array<{ start: number; end: number; keyword?: string }> = [];
-
-	if (fullMatchIdx >= 0) {
-		// Found full query match - include it as a highlight
-		// Full query match counts as matching all keywords
-		const fullMatchPos = mapNormalizedToOriginal(
-			fullMatchIdx,
-			fullMatchIdx + normalizedQuery.length,
-			normalized.positionMap
-		);
-		allMatches.push({
-			...fullMatchPos,
-			keyword: normalizedQuery, // Mark as full query match
-		});
-	}
-
-	// Also find all individual keyword matches
-	const keywordMatches = findAllKeywordMatches(normalized.text, keywords);
-	for (const match of keywordMatches) {
-		const originalPos = mapNormalizedToOriginal(
-			match.start,
-			match.end,
-			normalized.positionMap
-		);
-
-		// Avoid duplicates (if full query match overlaps with keyword matches)
-		const isDuplicate = allMatches.some(existing =>
-			originalPos.start >= existing.start && originalPos.end <= existing.end
-		);
-
-		if (!isDuplicate) {
-			allMatches.push({
-				...originalPos,
-				keyword: match.keyword, // Store keyword for scoring
-			});
+	// Individual keyword matches (deduplicated against full match)
+	for (const m of findAllKeywordMatches(normalized.text, keywords)) {
+		const pos = mapNormalizedToOriginal(m.start, m.end, normalized.positionMap);
+		if (!allMatches.some(e => pos.start >= e.start && pos.end <= e.end)) {
+			allMatches.push({ ...pos, keyword: m.keyword });
 		}
 	}
 
-	// Sort matches by position for consistent processing
 	allMatches.sort((a, b) => a.start - b.start);
+	if (allMatches.length === 0) return { text: content.slice(0, SLICE_CAPS.highlight.fallbackLong), highlights: [] };
 
-	if (allMatches.length === 0) {
-		return { text: content.slice(0, SLICE_CAPS.highlight.fallbackLong), highlights: [] };
-	}
-
-	// Create snippet window around the best match (most keywords matched)
 	return createSnippetWindow(content, allMatches, keywords);
 }
 

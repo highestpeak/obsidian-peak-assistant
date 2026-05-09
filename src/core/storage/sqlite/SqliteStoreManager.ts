@@ -251,49 +251,23 @@ export class SqliteStoreManager {
 	close(): void {
 		this.closing = true;
 		try {
-			if (this.searchStore) {
-				this.searchStore.close();
-				this.searchStore = null;
-			}
-			if (this.metaStore) {
-				this.metaStore.close();
-				this.metaStore = null;
-			}
+			this.searchStore?.close();
+			this.metaStore?.close();
 		} catch (e) {
 			console.warn('[SqliteStoreManager] Error during close (ignored):', e);
 		}
+		// Null out all references
+		this.searchStore = this.metaStore = null;
 		this.app = null;
-		this.indexedDocumentRepo = null;
-		this.docChunkRepo = null;
-		this.embeddingRepo = null;
-		this.indexStateRepo = null;
-		this.graphRepo = null;
-		this.indexedDocumentRepoChat = null;
-		this.docChunkRepoChat = null;
-		this.embeddingRepoChat = null;
-		this.indexStateRepoChat = null;
-		this.graphRepoChat = null;
-		this.mobiusNodeRepo = null;
-		this.mobiusEdgeRepo = null;
-		this.mobiusNodeRepoChat = null;
-		this.mobiusEdgeRepoChat = null;
-		this.mobiusOperationRepo = null;
-		this.chatProjectRepo = null;
-		this.chatConversationRepo = null;
-		this.chatMessageRepo = null;
-		this.chatMessageResourceRepo = null;
-		this.chatStarRepo = null;
-		this.aiAnalysisRepo = null;
-		this.queryPatternRepo = null;
+		this.indexedDocumentRepo = this.docChunkRepo = this.embeddingRepo = this.indexStateRepo = this.graphRepo = null;
+		this.mobiusNodeRepo = this.mobiusEdgeRepo = this.cascadeDebtRepo = this.ambientPushRepo = null;
 		this.userProfileProcessedHashRepo = null;
-		this.cascadeDebtRepo = null;
-		this.cascadeDebtRepoChat = null;
-		this.ambientPushRepo = null;
+		this.indexedDocumentRepoChat = this.docChunkRepoChat = this.embeddingRepoChat = this.indexStateRepoChat = this.graphRepoChat = null;
+		this.mobiusNodeRepoChat = this.mobiusEdgeRepoChat = this.mobiusOperationRepo = this.cascadeDebtRepoChat = null;
+		this.chatProjectRepo = this.chatConversationRepo = this.chatMessageRepo = null;
+		this.chatMessageResourceRepo = this.chatStarRepo = this.aiAnalysisRepo = this.queryPatternRepo = null;
 	}
 }
 
-/**
- * Global singleton instance.
- */
 // todo change to another way to build instance of SqliteStoreManager like AppContext.getInstance()
 export const sqliteStoreManager = SqliteStoreManager.getInstance();

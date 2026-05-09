@@ -6,7 +6,6 @@ import { computeUsdFromUsage, normalizeUsageTokens } from '@/service/search/supp
 
 export type { LlmIndexingCompleteEvent } from '@/service/search/index/types';
 
-/** Planned LLM cost shape for one pending markdown document. */
 export type LlmEnrichmentDocPlan = {
 	contentChars: number;
 	needsSummaryFull: boolean;
@@ -17,25 +16,13 @@ export type LlmEnrichmentDocPlan = {
 	plannedDurationMs: number;
 };
 
-const CHARS_PER_TOKEN = 4;
-const TAG_PROMPT_OVERHEAD_TOKENS = 900;
-const SHORT_PROMPT_OVERHEAD_TOKENS = 500;
-const FULL_PROMPT_OVERHEAD_TOKENS = 700;
-const TAG_OUTPUT_AVG_TOKENS = 220;
-const BASE_LATENCY_MS = 2500;
-const TOKENS_PER_SECOND = 100;
+const CHARS_PER_TOKEN = 4, TAG_OVERHEAD = 900, SHORT_OVERHEAD = 500, FULL_OVERHEAD = 700;
+const TAG_OUTPUT_AVG = 220, BASE_LATENCY_MS = 2500, TOKENS_PER_SEC = 100;
 
-function wordsToApproxOutputTokens(words: number): number {
-	return Math.max(1, Math.ceil(words / 0.75));
-}
+const wordsToTokens = (w: number) => Math.max(1, Math.ceil(w / 0.75));
+const phaseMs = (inTok: number, outTok: number) => BASE_LATENCY_MS + ((inTok + outTok) / TOKENS_PER_SEC) * 1000;
 
-function phaseMs(inputTokens: number, outputTokens: number): number {
-	return BASE_LATENCY_MS + ((inputTokens + outputTokens) / TOKENS_PER_SECOND) * 1000;
-}
-
-/**
- * Rolling estimator for deferred LLM index enrichment: planned vs actual ratios adjust remaining ETA and token/cost.
- */
+/** Rolling estimator: planned vs actual ratios adjust remaining ETA and cost. */
 export class LlmEnrichmentProgressTracker {
 	private completed = 0;
 	private sumObservedDurationMs = 0;
@@ -51,79 +38,34 @@ export class LlmEnrichmentProgressTracker {
 		private readonly ai: AIServiceManager,
 	) {}
 
-	/**
-	 * Builds a per-document plan from content size and current search settings.
-	 */
 	async planForMarkdownDoc(contentChars: number): Promise<LlmEnrichmentDocPlan> {
 		const contentTokens = Math.ceil(contentChars / CHARS_PER_TOKEN);
 		const needsSummaryFull = contentChars > this.settings.fullSummaryLength;
 
-		const tagIn = contentTokens + TAG_PROMPT_OVERHEAD_TOKENS;
-		const shortIn = contentTokens + SHORT_PROMPT_OVERHEAD_TOKENS;
-		const fullIn = contentTokens + FULL_PROMPT_OVERHEAD_TOKENS;
+		const tagIn = contentTokens + TAG_OVERHEAD, shortIn = contentTokens + SHORT_OVERHEAD, fullIn = contentTokens + FULL_OVERHEAD;
+		const shortOut = wordsToTokens(this.settings.shortSummaryLength), fullOut = wordsToTokens(this.settings.fullSummaryLength), tagOut = TAG_OUTPUT_AVG;
 
-		const shortOut = wordsToApproxOutputTokens(this.settings.shortSummaryLength);
-		const fullOut = wordsToApproxOutputTokens(this.settings.fullSummaryLength);
-		const tagOut = TAG_OUTPUT_AVG_TOKENS;
+		const costFor = async (promptId: PromptId, inT: number, outT: number) => {
+			const m = this.ai.getModelForPrompt(promptId);
+			const info = await this.ai.getModelInfo(m.modelId, m.provider);
+			return computeUsdFromUsage({ inputTokens: inT, outputTokens: outT, totalTokens: inT + outT }, info);
+		};
 
-		const tagModel = this.ai.getModelForPrompt(PromptId.DocTagGenerateJson);
-		const shortModel = this.ai.getModelForPrompt(PromptId.DocSummaryShort);
-		const tagInfo = await this.ai.getModelInfo(tagModel.modelId, tagModel.provider);
-		const shortInfo = await this.ai.getModelInfo(shortModel.modelId, shortModel.provider);
-
-		let plannedInputTokens = tagIn + shortIn;
-		let plannedOutputTokens = tagOut + shortOut;
-		let plannedCostUsd =
-			computeUsdFromUsage(
-				{ inputTokens: tagIn, outputTokens: tagOut, totalTokens: tagIn + tagOut },
-				tagInfo,
-			) +
-			computeUsdFromUsage(
-				{ inputTokens: shortIn, outputTokens: shortOut, totalTokens: shortIn + shortOut },
-				shortInfo,
-			);
-
-		let tagMs = phaseMs(tagIn, tagOut);
-		let shortMs = phaseMs(shortIn, shortOut);
-		let fullMs = 0;
+		let plannedIn = tagIn + shortIn, plannedOut = tagOut + shortOut;
+		let plannedCost = await costFor(PromptId.DocTagGenerateJson, tagIn, tagOut) + await costFor(PromptId.DocSummaryShort, shortIn, shortOut);
+		let maxPhaseMs = Math.max(phaseMs(tagIn, tagOut), phaseMs(shortIn, shortOut));
 
 		if (needsSummaryFull) {
-			const fullModel = this.ai.getModelForPrompt(PromptId.DocSummaryFull);
-			const fullInfo = await this.ai.getModelInfo(fullModel.modelId, fullModel.provider);
-			plannedInputTokens += fullIn;
-			plannedOutputTokens += fullOut;
-			plannedCostUsd += computeUsdFromUsage(
-				{ inputTokens: fullIn, outputTokens: fullOut, totalTokens: fullIn + fullOut },
-				fullInfo,
-			);
-			fullMs = phaseMs(fullIn, fullOut);
+			plannedIn += fullIn; plannedOut += fullOut;
+			plannedCost += await costFor(PromptId.DocSummaryFull, fullIn, fullOut);
+			maxPhaseMs = Math.max(maxPhaseMs, phaseMs(fullIn, fullOut));
 		}
 
-		const plannedDurationMs = Math.max(tagMs, shortMs, fullMs);
-		const plannedTotalTokens = plannedInputTokens + plannedOutputTokens;
-
-		return {
-			contentChars,
-			needsSummaryFull,
-			plannedInputTokens,
-			plannedOutputTokens,
-			plannedTotalTokens,
-			plannedCostUsd,
-			plannedDurationMs,
-		};
+		return { contentChars, needsSummaryFull, plannedInputTokens: plannedIn, plannedOutputTokens: plannedOut, plannedTotalTokens: plannedIn + plannedOut, plannedCostUsd: plannedCost, plannedDurationMs: maxPhaseMs };
 	}
 
-	/** Zero plan for paths that skip markdown LLM (no estimator). */
 	emptyPlan(): LlmEnrichmentDocPlan {
-		return {
-			contentChars: 0,
-			needsSummaryFull: false,
-			plannedInputTokens: 0,
-			plannedOutputTokens: 0,
-			plannedTotalTokens: 0,
-			plannedCostUsd: 0,
-			plannedDurationMs: 0,
-		};
+		return { contentChars: 0, needsSummaryFull: false, plannedInputTokens: 0, plannedOutputTokens: 0, plannedTotalTokens: 0, plannedCostUsd: 0, plannedDurationMs: 0 };
 	}
 
 	recordDocComplete(plan: LlmEnrichmentDocPlan, actual: { durationMs: number; usage: LLMUsage; costUsd: number }): void {
@@ -138,9 +80,6 @@ export class LlmEnrichmentProgressTracker {
 		this.sumPlannedCostUsd += plan.plannedCostUsd;
 	}
 
-	/**
-	 * Snapshot after the document at `path` has completed (`processed` is count finished).
-	 */
 	snapshot(params: {
 		path: string;
 		processed: number;
@@ -203,29 +142,11 @@ export class LlmEnrichmentProgressTracker {
 	}
 }
 
-/** Rich progress for LLM deferred enrichment command UI. */
 export type PendingLlmEnrichmentProgress = {
-	processed: number;
-	total: number;
-	path: string;
-
-	elapsedMs: number;
-	estimatedRemainingMs: number;
-	estimatedTotalMs: number;
-
-	lastDocInputTokens: number;
-	lastDocOutputTokens: number;
-	lastDocTotalTokens: number;
-	lastDocCostUsd: number;
-
-	sumInputTokens: number;
-	sumOutputTokens: number;
-	sumTotalTokens: number;
-	sumCostUsd: number;
-
-	estimatedRemainingTotalTokens: number;
-	estimatedRemainingCostUsd: number;
-
-	estimatedFinalTotalTokens: number;
-	estimatedFinalCostUsd: number;
+	processed: number; total: number; path: string;
+	elapsedMs: number; estimatedRemainingMs: number; estimatedTotalMs: number;
+	lastDocInputTokens: number; lastDocOutputTokens: number; lastDocTotalTokens: number; lastDocCostUsd: number;
+	sumInputTokens: number; sumOutputTokens: number; sumTotalTokens: number; sumCostUsd: number;
+	estimatedRemainingTotalTokens: number; estimatedRemainingCostUsd: number;
+	estimatedFinalTotalTokens: number; estimatedFinalCostUsd: number;
 };

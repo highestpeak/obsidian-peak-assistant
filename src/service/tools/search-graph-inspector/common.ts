@@ -15,13 +15,7 @@ import type { FunctionalTagId } from '@/core/schemas/agents/search-agent-schemas
 
 export type SemanticNeighborNode = GraphNode & { similarity: string }
 
-/**
- * Grep-like matcher for vault paths.
- *
- * Semantics are aligned with `grep_file_tree`:
- * - Treat `pattern` as a case-insensitive RegExp when valid
- * - If RegExp construction fails, fall back to case-insensitive substring match
- */
+/** Grep-like matcher: try regex, fallback to case-insensitive substring. */
 export function matchVaultPathByGrepPattern(path: string, pattern: string): boolean {
 	const p = String(path ?? '');
 	const raw = String(pattern ?? '').trim();
@@ -34,7 +28,6 @@ export function matchVaultPathByGrepPattern(path: string, pattern: string): bool
 	}
 }
 
-/** Doc-level semantic neighbors; query vector comes only from {@link EmbeddingRepo.getEmbeddingForSemanticSearch}. */
 export async function getSemanticNeighbors(
     docId: string,
     limit: number,
@@ -59,22 +52,7 @@ export async function getSemanticNeighbors(
         .slice(0, limit);
 }
 
-type ClusterNodesDescription = {
-    documentNodes?: GraphNode[],
-    tagDesc?: string,
-    categoryDesc?: string,
-    omittedDocNodeCnt?: number
-}
-
-/**
- * limit the number of nodes in each cluster. to avoid token explosion.
- *
- * WARNING: how we distill the nodes data determined by the node types. {@link GraphNodeType}
- * when node type change. redesign this function.
- * 
- * @param nodes - do not change the original nodes item. as it may extend GraphNode type. many hide fields.
- */
-export async function distillClusterNodesData(nodes: GraphNode[], limit: number, ignoreDocumentNodes: boolean = false): Promise<ClusterNodesDescription> {
+export async function distillClusterNodesData(nodes: GraphNode[], limit: number, ignoreDocumentNodes = false): Promise<{ documentNodes?: GraphNode[]; tagDesc?: string; categoryDesc?: string; omittedDocNodeCnt?: number }> {
     const byType = new Map<GraphNodeType, GraphNode[]>();
     for (const node of nodes) {
         const type = node.type as GraphNodeType;
@@ -106,83 +84,48 @@ export async function distillClusterNodesData(nodes: GraphNode[], limit: number,
     };
 }
 
-/**
- * Calculate RRF (Reciprocal Rank Fusion) scores for document nodes.
- * Combines multiple ranking criteria: connection density, update time, and document statistics.
- */
-function calculateDocumentRRF(
-    nodes: GraphNode[],
-    densityMap: Map<string, number>,
-    docStatisticsMap: Map<string, DocStatistics>,
-): (GraphNode & { rrfScore: number })[] {
-    /** Build a rank map (node.id → 1-based rank, lower = better) sorted desc by `valueFn`. */
-    const rankBy = (items: GraphNode[], valueFn: (n: GraphNode) => number) =>
-        new Map([...items].sort((a, b) => valueFn(b) - valueFn(a)).map((n, i) => [n.id, i + 1]));
-
+/** RRF scoring for document nodes: density, recency, richness, open stats, semantic similarity. */
+function calculateDocumentRRF(nodes: GraphNode[], densityMap: Map<string, number>, docStatisticsMap: Map<string, DocStatistics>): (GraphNode & { rrfScore: number })[] {
+    const rankBy = (items: GraphNode[], fn: (n: GraphNode) => number) =>
+        new Map([...items].sort((a, b) => fn(b) - fn(a)).map((n, i) => [n.id, i + 1]));
     const stat = (id: string) => docStatisticsMap.get(id);
-
-    const densityRanks   = rankBy(nodes, n => densityMap.get(n.id) || 0);
-    const updateRanks    = rankBy(nodes, n => n.updated_at);
-    const richnessRanks  = rankBy(nodes, n => stat(n.id)?.richness_score || 0);
+    const densityRanks = rankBy(nodes, n => densityMap.get(n.id) || 0);
+    const updateRanks = rankBy(nodes, n => n.updated_at);
+    const richnessRanks = rankBy(nodes, n => stat(n.id)?.richness_score || 0);
     const openCountRanks = rankBy(nodes, n => stat(n.id)?.open_count || 0);
-    const lastOpenRanks  = rankBy(nodes, n => stat(n.id)?.last_open_ts || 0);
-
-    const semanticNodes = nodes.filter(n => (n as any).foundBy === 'semantic_neighbors');
-    const similarityRanks = semanticNodes.length > 0
-        ? rankBy(semanticNodes, n => parseFloat((n as any).similarity) || 0)
-        : null;
-
-    /** RRF score for one dimension: weight * 1/(k + 0-based-rank). Returns 0 when `gateValue` is falsy. */
-    const rrfTerm = (weight: number, rankMap: Map<string, number>, id: string, fallbackLen: number, gateValue: number = 1) =>
-        gateValue > 0 ? weight * (1 / (RRF_K + (rankMap.get(id) || fallbackLen) - 1)) : 0;
+    const lastOpenRanks = rankBy(nodes, n => stat(n.id)?.last_open_ts || 0);
+    const semNodes = nodes.filter(n => (n as any).foundBy === 'semantic_neighbors');
+    const simRanks = semNodes.length ? rankBy(semNodes, n => parseFloat((n as any).similarity) || 0) : null;
+    const term = (w: number, rm: Map<string, number>, id: string, fb: number, gate = 1) =>
+        gate > 0 ? w * (1 / (RRF_K + (rm.get(id) || fb) - 1)) : 0;
 
     return nodes.map(node => {
-        const ext = node as any;
-        const s = stat(node.id);
-
-        const rrfScore =
-            rrfTerm(GRAPH_RRF_WEIGHTS.density,   densityRanks,   node.id, nodes.length) +
-            rrfTerm(GRAPH_RRF_WEIGHTS.updateTime, updateRanks,    node.id, nodes.length) +
-            rrfTerm(GRAPH_RRF_WEIGHTS.richness,   richnessRanks,  node.id, nodes.length, s?.richness_score || 0) +
-            rrfTerm(GRAPH_RRF_WEIGHTS.openCount,  openCountRanks, node.id, nodes.length, s?.open_count || 0) +
-            rrfTerm(GRAPH_RRF_WEIGHTS.lastOpen,   lastOpenRanks,  node.id, nodes.length, s?.last_open_ts || 0) +
-            (ext.foundBy === 'semantic_neighbors' && similarityRanks && parseFloat(ext.similarity) > 0
-                ? rrfTerm(GRAPH_RRF_WEIGHTS.similarity, similarityRanks, node.id, semanticNodes.length)
-                : 0) +
-            (ext.foundBy === 'physical_neighbors' ? PHYSICAL_CONNECTION_BONUS : 0);
-
-        return { ...node, rrfScore };
+        const ext = node as any, s = stat(node.id);
+        return { ...node, rrfScore:
+            term(GRAPH_RRF_WEIGHTS.density, densityRanks, node.id, nodes.length) +
+            term(GRAPH_RRF_WEIGHTS.updateTime, updateRanks, node.id, nodes.length) +
+            term(GRAPH_RRF_WEIGHTS.richness, richnessRanks, node.id, nodes.length, s?.richness_score || 0) +
+            term(GRAPH_RRF_WEIGHTS.openCount, openCountRanks, node.id, nodes.length, s?.open_count || 0) +
+            term(GRAPH_RRF_WEIGHTS.lastOpen, lastOpenRanks, node.id, nodes.length, s?.last_open_ts || 0) +
+            (ext.foundBy === 'semantic_neighbors' && simRanks && parseFloat(ext.similarity) > 0
+                ? term(GRAPH_RRF_WEIGHTS.similarity, simRanks, node.id, semNodes.length) : 0) +
+            (ext.foundBy === 'physical_neighbors' ? PHYSICAL_CONNECTION_BONUS : 0),
+        };
     });
 }
 
-/** Get semantic search results with document IDs for RRF fusion. */
 export async function getSemanticSearchResults(
-    semanticFilter?: { query: string; topK: number },
-    scopeMode: SearchScopeMode = 'vault',
-    scopeValue?: SearchScopeValue,
+    semanticFilter?: { query: string; topK: number }, scopeMode: SearchScopeMode = 'vault', scopeValue?: SearchScopeValue,
 ): Promise<Array<{ nodeId: string; score: number }>> {
-    if (!semanticFilter) {
-        return [];
-    }
-    const { query, topK } = semanticFilter;
-
+    if (!semanticFilter) return [];
     try {
-        const vectorResults = await AppContext.getInstance().searchClient.vectorSearch({
-            text: query, topK: Math.min(topK, 100), scopeMode, scopeValue,
+        const { items } = await AppContext.getInstance().searchClient.vectorSearch({
+            text: semanticFilter.query, topK: Math.min(semanticFilter.topK, 100), scopeMode, scopeValue,
         });
-        const pathToDocMap = await sqliteStoreManager.getIndexedDocumentRepo()
-            .getByPaths(vectorResults.items.map(r => r.path));
-
-        return vectorResults.items
-            .map(r => {
-                const docId = pathToDocMap.get(r.path)?.id;
-                return docId ? { nodeId: docId, score: r.finalScore || r.score || 0 } : null;
-            })
+        const pathToDocMap = await sqliteStoreManager.getIndexedDocumentRepo().getByPaths(items.map(r => r.path));
+        return items.map(r => { const id = pathToDocMap.get(r.path)?.id; return id ? { nodeId: id, score: r.finalScore || r.score || 0 } : null; })
             .filter((r): r is { nodeId: string; score: number } => r !== null);
-    } catch (error) {
-        console.warn('[getSemanticSearchResults] Semantic search failed:', error);
-        return [];
-    }
+    } catch (e) { console.warn('[getSemanticSearchResults]', e); return []; }
 }
 
 export type ItemFiledGetter<T> = (item: T) => {

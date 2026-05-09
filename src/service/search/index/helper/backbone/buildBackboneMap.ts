@@ -217,16 +217,15 @@ function pickCounts(full: Map<string, number>, names: readonly string[]): Map<st
 // § vaultFolderScan — Vault folder DFS scan (same exclusions as hub snapshot)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type FolderScanRow = { path: string; depth: number; childFolderCount: number };
+export type FolderScanRow = { path: string; depth: number; childFolderCount: number };
 
-function normalizeVaultFolderPath(folderPath: unknown): string {
+export function normalizeVaultFolderPath(folderPath: unknown): string {
 	const raw = folderPath == null ? '' : String(folderPath).trim();
 	if (raw === '' || raw === '/') return '';
 	return raw.replace(/^\/+|\/+$/g, '');
 }
 
-/** Settings-driven prefixes excluded from explore (e.g. autosave). */
-function getBackboneExcludedPrefixes(): string[] {
+export function getBackboneExcludedPrefixes(): string[] {
 	const settings = AppContext.getInstance().settings;
 	const enabled = settings.search.aiAnalysisExcludeAutoSaveFolderFromSearch ?? true;
 	if (!enabled) return [];
@@ -235,7 +234,7 @@ function getBackboneExcludedPrefixes(): string[] {
 	return [...new Set([rootFolder, autoSaveFolder].filter(Boolean))];
 }
 
-function isPathExcludedByPrefixes(path: string, excludedPathPrefixes: string[]): boolean {
+export function isPathExcludedByPrefixes(path: string, excludedPathPrefixes: string[]): boolean {
 	if (!excludedPathPrefixes.length) return false;
 	const p = normalizeVaultFolderPath(path);
 	if (p === '') return false;
@@ -250,7 +249,7 @@ function isPathExcludedByPrefixes(path: string, excludedPathPrefixes: string[]):
 	return false;
 }
 
-function shouldIgnoreFolderForBackbone(path: string): boolean {
+export function shouldIgnoreFolderForBackbone(path: string): boolean {
 	const p = normalizeVaultFolderPath(path);
 	const hub = normalizeVaultFolderPath(getAIHubSummaryFolder());
 	if (hub && (p === hub || p.startsWith(`${hub}/`))) return false;
@@ -266,7 +265,7 @@ function shouldIgnoreFolderForBackbone(path: string): boolean {
 	}
 }
 
-function visibleChildFolders(folder: TFolder, excludedPathPrefixes: string[]): TFolder[] {
+export function visibleChildFolders(folder: TFolder, excludedPathPrefixes: string[]): TFolder[] {
 	const subs = folder.children
 		.filter((c): c is TFolder => c instanceof TFolder)
 		.sort((a, b) => a.path.localeCompare(b.path));
@@ -285,7 +284,7 @@ type FolderScanResult = {
  * Single DFS pass: collects folder rows (respecting maxDepth/maxFolders) AND computes subtree depth stats.
  * Subtree stats are computed for all reachable folders (no depth/count cap).
  */
-function scanFolderTree(
+export function scanFolderTree(
 	root: TFolder,
 	maxDepth: number,
 	maxFolders: number,

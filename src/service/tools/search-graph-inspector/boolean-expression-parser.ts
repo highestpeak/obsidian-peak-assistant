@@ -157,39 +157,17 @@ export class BooleanExpressionParser {
 	}
 
 	private parseTerm(): BooleanExpression {
-		if (this.tokens[this.pos] === 'NOT') {
-			this.pos++;
-			return {
-				type: 'not',
-				left: this.parseTerm(),
-			};
-		}
-
-		if (this.tokens[this.pos] === '(') {
+		const token = this.tokens[this.pos];
+		if (token === 'NOT') { this.pos++; return { type: 'not', left: this.parseTerm() }; }
+		if (token === '(') {
 			this.pos++;
 			const expr = this.parseExpression();
-			if (this.tokens[this.pos] !== ')') {
-				throw new Error('Expected closing parenthesis');
-			}
+			if (this.tokens[this.pos] !== ')') throw new Error('Expected closing parenthesis');
 			this.pos++;
 			return expr;
 		}
-
-		if (this.tokens[this.pos].startsWith('tag:')) {
-			const value = this.tokens[this.pos++].substring(4);
-			return { type: 'tag', value };
-		}
-
-		if (this.tokens[this.pos].startsWith('functional:')) {
-			const value = this.tokens[this.pos++].substring(11);
-			return { type: 'functional', value };
-		}
-
-		if (this.tokens[this.pos].startsWith('keyword:')) {
-			const value = this.tokens[this.pos++].substring(8);
-			return { type: 'keyword', value };
-		}
-
-		throw new Error(`Unexpected token: ${this.tokens[this.pos]}`);
+		const prefix = BooleanExpressionParser.PREFIXES.find(p => token.startsWith(p.key));
+		if (prefix) { this.pos++; return { type: prefix.label as BooleanExpression['type'], value: token.substring(prefix.key.length) }; }
+		throw new Error(`Unexpected token: ${token}`);
 	}
 }

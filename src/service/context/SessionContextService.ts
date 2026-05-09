@@ -12,16 +12,10 @@ import type {
 } from './types';
 import { WorkingThemeInferrer } from './WorkingThemeInferrer';
 
-/** Activities older than this are excluded from the working context. */
 const DECAY_WINDOW_MS = 30 * 60 * 1000;
-
-/** Two operations of the same type within this window share a continuous_group_id. */
 const CONTINUOUS_GROUP_THRESHOLD_MS = 3000;
-
-/** Maximum activities kept in-memory (prevents unbounded growth during long sessions). */
 const MAX_ACTIVITIES = 200;
 
-/** Map EventBus event types → OperationType values. */
 const EVENT_TO_OP: Partial<Record<ViewEventType, OperationType>> = {
 	[ViewEventType.MESSAGE_SENT]: 'chat_message',
 	[ViewEventType.COPILOT_ACTION]: 'copilot_action',
@@ -30,7 +24,6 @@ const EVENT_TO_OP: Partial<Record<ViewEventType, OperationType>> = {
 	[ViewEventType.RESOURCE_ATTACHED]: 'resource_attach',
 };
 
-/** Map DB operation_type strings → OperationType. */
 const ROW_TYPE_TO_OP: Record<string, OperationType> = {
 	chat_message: 'chat_message',
 	ai_analysis_complete: 'ai_analysis_complete',
@@ -40,8 +33,6 @@ const ROW_TYPE_TO_OP: Record<string, OperationType> = {
 	resource_attach: 'resource_attach',
 	search_query: 'search_query',
 };
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function parentFolder(filePath: string): string {
 	const idx = filePath.lastIndexOf('/');
@@ -72,8 +63,6 @@ function extractRelatedPaths(row: MobiusOperationRow): string[] {
 	return paths;
 }
 
-// ─── SessionContextService ───────────────────────────────────────────────────
-
 export class SessionContextService {
 	private static instance: SessionContextService | null = null;
 
@@ -85,7 +74,6 @@ export class SessionContextService {
 	private unsubscribers: Array<() => void> = [];
 	private fileOpenRef: EventRef | null = null;
 
-	/** Track last operation per type for continuous group assignment. */
 	private lastOpByType: Map<string, { ts: number; groupId: string }> = new Map();
 
 	private constructor(app: App, eventBus: EventBus) {
@@ -119,8 +107,6 @@ export class SessionContextService {
 		}
 	}
 
-	// ── Lifecycle ────────────────────────────────────────────────────────────
-
 	async init(): Promise<void> {
 		await this.rebuildFromSqlite();
 		this.subscribeEvents();
@@ -147,8 +133,6 @@ export class SessionContextService {
 		}
 	}
 
-	// ── Public write API ────────────────────────────────────────────────────
-
 	async recordActivity(params: {
 		type: OperationType;
 		summary: string;
@@ -172,7 +156,6 @@ export class SessionContextService {
 			metadata: params.metadata,
 		};
 
-		// Persist to SQLite (best-effort; don't block callers on failure)
 		try {
 			const repo = SqliteStoreManager.getInstance().getMobiusOperationRepo();
 			await repo.insertRow({
@@ -193,14 +176,8 @@ export class SessionContextService {
 		this.appendActivity(entry);
 	}
 
-	// ── Static pure functions (testable) ─────────────────────────────────────
-
-	/**
-	 * Convert raw DB rows (newest-first) into a WorkingContext.
-	 * Rows in the same continuous_group are collapsed into a single ActivityEntry.
-	 */
+	/** Convert raw DB rows into a WorkingContext, collapsing continuous groups. */
 	static buildWorkingContextFromRows(rows: MobiusOperationRow[]): WorkingContext {
-		// Group by continuous_group_id (null = standalone)
 		const groups = new Map<string, MobiusOperationRow[]>();
 		const standalone: MobiusOperationRow[] = [];
 
@@ -219,8 +196,7 @@ export class SessionContextService {
 
 		const activities: ActivityEntry[] = [];
 
-		// Collapse grouped rows
-		for (const [, groupRows] of groups) {
+			for (const [, groupRows] of groups) {
 			const sorted = groupRows.sort((a, b) => a.created_at - b.created_at);
 			const first = sorted[0];
 			const allPaths = sorted.flatMap(extractRelatedPaths);
@@ -249,7 +225,6 @@ export class SessionContextService {
 			});
 		}
 
-		// Standalone rows
 		for (const row of standalone) {
 			activities.push({
 				id: row.id,
@@ -262,7 +237,6 @@ export class SessionContextService {
 			});
 		}
 
-		// Sort newest-first
 		activities.sort((a, b) => b.timestamp - a.timestamp);
 
 		const theme = SessionContextService.computeRuleBasedTheme(activities);
@@ -275,16 +249,12 @@ export class SessionContextService {
 		};
 	}
 
-	/**
-	 * Pure rule-based theme computation from a list of activities.
-	 */
 	static computeRuleBasedTheme(activities: ActivityEntry[]): WorkingTheme['ruleBased'] {
 		const folderCounts = new Map<string, number>();
 		const keywordCounts = new Map<string, number>();
 		const tagCounts = new Map<string, number>();
 
 		for (const act of activities) {
-			// Folders from relatedPaths
 			for (const p of act.relatedPaths) {
 				const folder = parentFolder(p);
 				folderCounts.set(folder, (folderCounts.get(folder) ?? 0) + 1);
@@ -292,13 +262,11 @@ export class SessionContextService {
 
 			if (!act.metadata) continue;
 
-			// Keywords from search_query metadata
 			if (act.type === 'search_query' && typeof act.metadata.query === 'string') {
 				const kw = act.metadata.query.trim();
 				if (kw) keywordCounts.set(kw, (keywordCounts.get(kw) ?? 0) + 1);
 			}
 
-			// Tags from file metadata
 			if (Array.isArray(act.metadata.tags)) {
 				for (const t of act.metadata.tags) {
 					if (typeof t === 'string') {
@@ -325,8 +293,6 @@ export class SessionContextService {
 		};
 	}
 
-	// ── Private ──────────────────────────────────────────────────────────────
-
 	private async rebuildFromSqlite(): Promise<void> {
 		try {
 			const repo = SqliteStoreManager.getInstance().getMobiusOperationRepo();
@@ -339,7 +305,6 @@ export class SessionContextService {
 	}
 
 	private subscribeEvents(): void {
-		// EventBus events
 		for (const [eventType, opType] of Object.entries(EVENT_TO_OP)) {
 			const unsub = this.eventBus.on(eventType as ViewEventType, (event: any) => {
 				this.handleBusEvent(opType!, event);
@@ -347,7 +312,6 @@ export class SessionContextService {
 			this.unsubscribers.push(unsub);
 		}
 
-		// Obsidian workspace file-open
 		this.fileOpenRef = this.app.workspace.on('file-open', (file: TFile | null) => {
 			this.handleFileOpen(file);
 		});
@@ -380,16 +344,9 @@ export class SessionContextService {
 
 	private handleFileOpen(file: TFile | null): void {
 		if (!file) return;
-
-		const now = Date.now();
-		this.context.activeFile = {
-			path: file.path,
-			title: file.basename ?? file.path,
-			openedAt: now,
-		};
+		this.context.activeFile = { path: file.path, title: file.basename ?? file.path, openedAt: Date.now() };
 
 		const meta: Record<string, unknown> = { path: file.path };
-		// Try to get tags from metadata cache
 		const cache = this.app.metadataCache?.getFileCache(file);
 		if (cache?.frontmatter?.tags) {
 			meta.tags = Array.isArray(cache.frontmatter.tags)
@@ -432,8 +389,6 @@ export class SessionContextService {
 		this.themeInferrer.onActivity();
 	}
 }
-
-// ─── Module-level helpers ────────────────────────────────────────────────────
 
 function topN(counts: Map<string, number>, n: number): string[] {
 	return [...counts.entries()]

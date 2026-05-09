@@ -477,28 +477,16 @@ export class QueryService {
 	): Array<T & { score: number }> {
 		const finalScores = new Map<string, { score: number; hit: T & { score: number } }>();
 
-		// Stage 1: Add content hits with their pre-calculated content scores
 		for (let rank = 1; rank <= contentHits.length; rank++) {
 			const hit = contentHits[rank - 1]!;
-			const id = hit.path;
-			// Content hits already have their RRF scores from mergeContentSources
-			// Now apply equal weighting between content and meta in final ranking
-			const rrf = RRF_CONTENT_VS_META_WEIGHT / (RRF_K + rank);
-			finalScores.set(id, { score: rrf, hit });
+			finalScores.set(hit.path, { score: RRF_CONTENT_VS_META_WEIGHT / (RRF_K + rank), hit });
 		}
-
-		// Stage 2: Add meta hits with equal weight to content hits
 		for (let rank = 1; rank <= metaHits.length; rank++) {
 			const hit = metaHits[rank - 1]!;
-			const id = hit.path;
 			const rrf = RRF_CONTENT_VS_META_WEIGHT / (RRF_K + rank);
-			const existing = finalScores.get(id);
-			if (existing) {
-				// If item appears in both content and meta, combine scores
-				existing.score += rrf;
-			} else {
-				finalScores.set(id, { score: rrf, hit });
-			}
+			const existing = finalScores.get(hit.path);
+			if (existing) { existing.score += rrf; }
+			else { finalScores.set(hit.path, { score: rrf, hit }); }
 		}
 
 		return Array.from(finalScores.values())
@@ -511,31 +499,21 @@ export class QueryService {
 		items: Array<{ path: string; score: number; docId?: string }>,
 		tenant: IndexTenant,
 	): Promise<Array<{ path: string; score: number; docId?: string }>> {
-		// 1. Select seeds: top PPR_SEED_K items that have a docId.
-		const seedCandidates = items.filter((i) => i.docId);
-		const seeds = seedCandidates.slice(0, PPR_SEED_K);
+		const seeds = items.filter((i) => i.docId).slice(0, PPR_SEED_K);
 		if (seeds.length === 0) return items;
 
-		// Normalize seed weights from RRF scores.
 		const totalSeedScore = seeds.reduce((s, i) => s + i.score, 0);
 		const pprSeeds = totalSeedScore > 0
 			? seeds.map((i) => ({ nodeId: i.docId!, weight: i.score / totalSeedScore }))
 			: seeds.map((i) => ({ nodeId: i.docId!, weight: 1 / seeds.length }));
 
-		// 2. Compute PPR.
-		const getOutEdges = createPPREdgeFetcher(tenant);
-		const pprResult = await computePPR(pprSeeds, getOutEdges, {});
-
+		const pprResult = await computePPR(pprSeeds, createPPREdgeFetcher(tenant), {});
 		if (pprResult.scores.size === 0) return items;
 
-		// 3. Build PPR rank map (sorted by PPR score descending).
 		const pprEntries = [...pprResult.scores.entries()].sort((a, b) => b[1] - a[1]);
 		const pprRankByNodeId = new Map<string, number>();
-		for (let i = 0; i < pprEntries.length; i++) {
-			pprRankByNodeId.set(pprEntries[i]![0], i + 1);
-		}
+		for (let i = 0; i < pprEntries.length; i++) pprRankByNodeId.set(pprEntries[i]![0], i + 1);
 
-		// 4. RRF fusion for existing items.
 		const existingDocIds = new Set<string>();
 		const existingPaths = new Set<string>();
 		const fused: Array<{ path: string; score: number; docId?: string }> = [];
@@ -552,8 +530,6 @@ export class QueryService {
 			fused.push({ ...item, score: cmRrf + pprRrf });
 		}
 
-		// 5. Expansion: PPR-discovered docs not in original results.
-		// Collect candidates, batch-fetch paths via Promise.all (max 20 lookups).
 		const candidateNodeIds: string[] = [];
 		for (const [nodeId] of pprEntries) {
 			if (candidateNodeIds.length >= PPR_MAX_EXPANSION_RESULTS) break;
@@ -580,7 +556,6 @@ export class QueryService {
 			}
 		}
 
-		// 6. Sort by fused score descending.
 		fused.sort((a, b) => b.score - a.score);
 		return fused;
 	}
