@@ -27,96 +27,40 @@ export interface IndexedDocumentRecord {
 }
 
 /**
- * Logical graph node DTO shape; rows live in `mobius_node`.
- * Not a physical table — provided as a type alias for repos that project graph-node fields.
- */
-export interface GraphNodeRow {
-	/**
-	 * Node ID - normalized path (for document nodes) or prefixed identifier (for tags, categories, etc.).
-	 */
-	id: string;
-	type: string;
-	label: string;
-	attributes: string;
-	created_at: number;
-	updated_at: number;
-}
-
-/**
- * Logical graph edge DTO shape; rows live in `mobius_edge`.
- * Not a physical table — provided as a type alias for repos that project graph-edge fields.
- */
-export interface GraphEdgeRow {
-	id: string;
-	from_node_id: string;
-	to_node_id: string;
-	type: string;
-	weight: number;
-	attributes: string;
-	created_at: number;
-	updated_at: number;
-}
-
-/**
- * Logical document statistics shape; columns stored on `mobius_node` for document rows.
- * Not a physical table — provided as a type alias for repos that project doc statistics fields.
- */
-export interface DocStatisticsRow {
-	doc_id: string;
-	word_count: number | null;
-	char_count: number | null;
-	language: string | null;
-	richness_score: number | null;
-	last_open_ts: number | null;
-	open_count: number | null;
-	updated_at: number;
-}
-
-export interface UsageLogRow {
-    id: number;
-    session_id: string;
-    feature: string;
-    action: string;
-    provider: string;
-    model: string;
-    input_tokens: number;
-    output_tokens: number;
-    cached_tokens: number;
-    reasoning_tokens: number;
-    cost_usd: number;
-    duration_ms: number;
-    is_streaming: number;
-    created_at: number;
-    metadata_json: string | null;
-}
-
-export interface UsageDailyRow {
-    id: number;
-    date: string;
-    feature: string;
-    action: string;
-    provider: string;
-    model: string;
-    call_count: number;
-    total_input_tokens: number;
-    total_output_tokens: number;
-    total_cached_tokens: number;
-    total_reasoning_tokens: number;
-    total_cost_usd: number;
-    avg_duration_ms: number;
-    max_duration_ms: number;
-}
-
-/**
  * Database schema definition for type safety.
  */
 export interface Database {
-	/** @deprecated Use {@link GraphNodeRow} instead. Legacy alias kept for backward-compat with repo code. */
-	graph_nodes: GraphNodeRow;
-	/** @deprecated Use {@link GraphEdgeRow} instead. Legacy alias kept for backward-compat with repo code. */
-	graph_edges: GraphEdgeRow;
-	/** @deprecated Use {@link DocStatisticsRow} instead. Legacy alias kept for backward-compat with repo code. */
-	doc_statistics: DocStatisticsRow;
+	/** Logical graph node DTO (rows live in `mobius_node`). */
+	graph_nodes: {
+		id: string;
+		type: string;
+		label: string;
+		attributes: string;
+		created_at: number;
+		updated_at: number;
+	};
+	/** Logical graph edge DTO (rows live in `mobius_edge`). */
+	graph_edges: {
+		id: string;
+		from_node_id: string;
+		to_node_id: string;
+		type: string;
+		weight: number;
+		attributes: string;
+		created_at: number;
+		updated_at: number;
+	};
+	/** Logical doc statistics DTO (columns on `mobius_node` for document rows). */
+	doc_statistics: {
+		doc_id: string;
+		word_count: number | null;
+		char_count: number | null;
+		language: string | null;
+		richness_score: number | null;
+		last_open_ts: number | null;
+		open_count: number | null;
+		updated_at: number;
+	};
 	index_state: {
 		key: string;
 		value: string | null;
@@ -411,15 +355,46 @@ export interface Database {
 		reason: string | null;
 		snooze_until: number | null;
 	};
-	usage_log: UsageLogRow;
-	usage_daily: UsageDailyRow;
+	usage_log: {
+		id: number;
+		session_id: string;
+		feature: string;
+		action: string;
+		provider: string;
+		model: string;
+		input_tokens: number;
+		output_tokens: number;
+		cached_tokens: number;
+		reasoning_tokens: number;
+		cost_usd: number;
+		duration_ms: number;
+		is_streaming: number;
+		created_at: number;
+		metadata_json: string | null;
+	};
+	usage_daily: {
+		id: number;
+		date: string;
+		feature: string;
+		action: string;
+		provider: string;
+		model: string;
+		call_count: number;
+		total_input_tokens: number;
+		total_output_tokens: number;
+		total_cached_tokens: number;
+		total_reasoning_tokens: number;
+		total_cost_usd: number;
+		avg_duration_ms: number;
+		max_duration_ms: number;
+	};
 }
 
 
 /**
  * Database interface for schema creation (exec).
  */
-export interface SqliteDatabaseLike {
+interface SqliteDatabaseLike {
 	exec(sql: string): void;
 }
 
