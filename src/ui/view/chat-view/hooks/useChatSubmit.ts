@@ -39,7 +39,7 @@ export function useChatSubmit() {
 		usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
 	) => {
 		// Add to backend manager
-		await manager.addMessage({
+		await manager.conv.addMessage({
 			conversationId,
 			message,
 			model,
@@ -81,7 +81,7 @@ export function useChatSubmit() {
 		let conversation = latestActiveConversation || null;
 		if (!conversation && latestPendingConversation) {
 			console.log('[useChatSubmit] creating conversation', latestPendingConversation, modelForNewConversation);
-			conversation = await manager.createConversation({
+			conversation = await manager.conv.createConversation({
 				title: latestPendingConversation.title,
 				project: latestPendingConversation.project?.meta ?? null,
 				modelId: modelForNewConversation?.modelId,
@@ -140,7 +140,7 @@ export function useChatSubmit() {
 		const userMessage = createUserMessage(conversation, text);
 		// Upload files and create resource references if any. no summary will be generated until start streaming.
 		const resources = files.length > 0
-			? await manager.uploadFilesAndCreateResources(files)
+			? await manager.conv.uploadFilesAndCreateResources(files)
 			: [];
 		// Add resources to user message if any
 		if (resources.length > 0) {

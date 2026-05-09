@@ -1,11 +1,10 @@
 import { SLICE_CAPS } from '@/core/constant';
 import { App } from 'obsidian';
-import { ModelInfoForSwitch, LLMUsage, LLMOutputControlSettings, LLMStreamEvent, MessagePart, LLMRequestMessage, ModelTokenLimits, ModelMetaData } from '@/core/providers/types';
+import { ModelInfoForSwitch, LLMUsage, LLMStreamEvent, LLMRequestMessage, ModelTokenLimits } from '@/core/providers/types';
 import { computeUsdFromUsage } from '@/service/search/support/llm-cost-utils';
 import { modelRegistry } from '@/core/providers/model-registry';
 import { ChatStorageService } from '@/core/storage/vault/ChatStore';
-import { ChatConversation, ChatMessage, ChatProject, ChatProjectMeta, StarredMessageRecord, ChatResourceRef } from './types';
-import type { ConversationType } from './conversation-types';
+import { ChatConversation } from './types';
 import { PromptService } from '@/service/prompt/PromptService';
 import { PromptId, PromptInfo, PromptVariables } from '@/service/prompt/PromptId';
 import { ProjectService } from './service-project';
@@ -59,12 +58,12 @@ export class AIServiceManager {
 	private profileService?: UserProfileService;
 	private contextUpdateService?: ContextUpdateService;
 
-	private get projectService(): ProjectService {
+	get proj(): ProjectService {
 		if (!this._projectService) throw new Error('ProjectService not initialized. Call init() first.');
 		return this._projectService;
 	}
 
-	private get conversationService(): ConversationService {
+	get conv(): ConversationService {
 		if (!this._conversationService) throw new Error('ConversationService not initialized. Call init() first.');
 		return this._conversationService;
 	}
@@ -154,15 +153,15 @@ export class AIServiceManager {
 			new VaultIntuitionSlot(),
 			new CurrentFileSlot(),
 		]);
-		this.conversationService.setContextPipeline(contextPipeline);
+		this.conv.setContextPipeline(contextPipeline);
 
 		// Initialize summary update service
 		const eventBus = EventBus.getInstance(this.app);
 		this.contextUpdateService = new ContextUpdateService(
 			eventBus,
 			this.storage,
-			this.conversationService,
-			this.projectService,
+			this.conv,
+			this.proj,
 		);
 	}
 
@@ -251,7 +250,7 @@ export class AIServiceManager {
 			new VaultIntuitionSlot(),
 			new CurrentFileSlot(),
 		]);
-		this.conversationService.setContextPipeline(refreshedPipeline);
+		this.conv.setContextPipeline(refreshedPipeline);
 
 		// Reinitialize summary update service
 		const eventBus = EventBus.getInstance(this.app);
@@ -261,8 +260,8 @@ export class AIServiceManager {
 		this.contextUpdateService = new ContextUpdateService(
 			eventBus,
 			this.storage,
-			this.conversationService,
-			this.projectService,
+			this.conv,
+			this.proj,
 		);
 
 		// Update IndexService with updated AIServiceManager instance
@@ -271,50 +270,6 @@ export class AIServiceManager {
 
 	setPromptFolder(folder: string): void {
 		this.promptService.setPromptFolder(folder);
-	}
-
-	/**
-	 * Create a new project on disk.
-	 */
-	async createProject(input: Omit<ChatProjectMeta, 'id' | 'createdAtTimestamp' | 'updatedAtTimestamp'>): Promise<ChatProject> {
-		return this.projectService.createProject(input);
-	}
-
-	/**
-	 * List projects managed by the service.
-	 */
-	async listProjects(): Promise<ChatProject[]> {
-		return this.projectService.listProjects();
-	}
-
-	/**
-	 * List conversations, optionally filtered by project.
-	 * Supports pagination with limit and offset parameters.
-	 */
-	async listConversations(
-		projectId: string | null | undefined,
-		limit?: number,
-		offset?: number
-	): Promise<ChatConversation[]> {
-		return this.conversationService.listConversations(projectId ?? null, limit, offset);
-	}
-
-	/**
-	 * Count conversations, optionally filtered by project.
-	 */
-	async countConversations(projectId: string | null | undefined): Promise<number> {
-		return this.conversationService.countConversations(projectId ?? null);
-	}
-
-	async deleteConversation(conversationId: string): Promise<void> {
-		return this.conversationService.deleteConversation(conversationId);
-	}
-
-	/**
-	 * Create a new conversation with optional seed messages.
-	 */
-	async createConversation(params: { title: string; project?: ChatProjectMeta | null; initialMessages?: ChatMessage[]; modelId?: string; provider?: string; conversationType?: ConversationType }): Promise<ChatConversation> {
-		return this.conversationService.createConversation(params);
 	}
 
 	/**
@@ -368,55 +323,12 @@ ${sourcesList}${topicsList}
 		initialMessage.isMarkdownContent = true;
 
 		// Create conversation with initial message containing all search context
-		const conversation = await this.createConversation({
+		const conversation = await this.conv.createConversation({
 			title,
 			initialMessages: [initialMessage],
 		});
 
 		return conversation;
-	}
-
-	/**
-	 * Send a message and stream incremental model output.
-	 */
-	streamChat(params: {
-		conversation: ChatConversation;
-		project?: ChatProject | null;
-		userContent: string;
-		attachments?: string[];
-	}): AsyncGenerator<LLMStreamEvent> {
-		return this.conversationService.streamChat(params);
-	}
-
-	/**
-	 * Update conversation's active model.
-	 */
-	async updateConversationModel(params: {
-		conversationId: string;
-		modelId: string;
-		provider: string;
-	}): Promise<void> {
-		await this.conversationService.updateConversationModel(params);
-	}
-
-	/**
-	 * Update conversation title and mark it as manually edited.
-	 */
-	async updateConversationTitle(params: {
-		conversationId: string;
-		title: string;
-	}): Promise<void> {
-		await this.conversationService.updateConversationTitle(params);
-	}
-
-	/**
-	 * Update conversation's attachment handling mode override.
-	 */
-	async updateConversationAttachmentHandling(params: {
-		conversationId: string;
-		attachmentHandlingOverride?: 'direct' | 'degrade_to_text';
-	}): Promise<void> {
-		await this.conversationService.updateConversationAttachmentHandling(params);
 	}
 
 	/**
@@ -431,111 +343,28 @@ ${sourcesList}${topicsList}
 		}
 
 		// Get project if exists
-		const projects = await this.listProjects();
+		const projects = await this.proj.listProjects();
 		const project = conversation.meta.projectId
 			? projects.find(p => p.meta.id === conversation.meta.projectId) || null
 			: null;
 
 		// Build context window for title generation
-		const context = await this.conversationService.buildContextWindow(conversation.messages, project);
+		const context = await this.conv.buildContextWindow(conversation.messages, project);
 
 		// Generate new title based on messages and context
-		const newTitle = await this.conversationService.generateConversationTitle(conversation.messages, context);
+		const newTitle = await this.conv.generateConversationTitle(conversation.messages, context);
 
 		if (!newTitle || newTitle.trim().length === 0) {
 			return;
 		}
 
 		// Update title - preserve titleManuallyEdited status, but mark as auto-updated
-		await this.conversationService.updateConversationTitle({
+		await this.conv.updateConversationTitle({
 			conversationId: conversation.meta.id,
 			title: newTitle.trim(),
 			titleManuallyEdited: conversation.meta.titleManuallyEdited ?? false,
 			titleAutoUpdated: true,
 		});
-	}
-
-	/**
-	 * Update conversation's output control override settings.
-	 */
-	async updateConversationOutputControl(params: {
-		conversationId: string;
-		outputControlOverride?: LLMOutputControlSettings;
-	}): Promise<void> {
-		await this.conversationService.updateConversationOutputControl(params);
-	}
-
-	/**
-	 * Upload files and create resource references.
-	 * Uploads files to vault and creates resourceRef for each file.
-	 */
-	async uploadFilesAndCreateResources(files: File[]): Promise<ChatResourceRef[]> {
-		return this.conversationService.uploadFilesAndCreateResources(files);
-	}
-
-	/**
-	 * Add a message to conversation and save it.
-	 */
-	async addMessage(params: {
-		conversationId: string;
-		message: ChatMessage;
-		model: string;
-		provider: string;
-		usage: LLMUsage;
-	}): Promise<void> {
-		this.conversationService.addMessage({
-			conversationId: params.conversationId,
-			message: params.message,
-			model: params.model,
-			provider: params.provider,
-			usage: params.usage,
-		});
-	}
-
-
-	/**
-	 * Toggle star status on a message.
-	 */
-	async toggleStar(params: {
-		messageId: string;
-		conversationId: string;
-		starred: boolean;
-	}): Promise<void> {
-		return this.conversationService.toggleStar(params);
-	}
-
-	/**
-	 * Load starred message records.
-	 */
-	async loadStarred(): Promise<StarredMessageRecord[]> {
-		return this.conversationService.loadStarred();
-	}
-
-	/**
-	 * List starred messages for a project.
-	 */
-	async listStarredMessagesByProject(projectId: string): Promise<{
-		messages: ChatMessage[];
-		messageToConversationId: Map<string, string>;
-	}> {
-		if (!this.storage) {
-			throw new Error('StorageService not initialized. Call init() first.');
-		}
-		return this.storage.listStarredMessagesByProject(projectId);
-	}
-
-	/**
-	 * Delete a project and all its conversations.
-	 */
-	async deleteProject(projectId: string): Promise<void> {
-		return this.projectService.deleteProject(projectId);
-	}
-
-	/**
-	 * Rename a project by renaming its folder.
-	 */
-	async renameProject(projectId: string, newName: string): Promise<ChatProject> {
-		return this.projectService.renameProject(projectId, newName);
 	}
 
 	async getPromptInfo<T extends PromptId>(

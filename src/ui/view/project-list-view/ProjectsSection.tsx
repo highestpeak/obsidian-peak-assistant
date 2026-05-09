@@ -95,7 +95,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				if (!newName || !newName.trim()) return;
 
 				try {
-					const updatedProject = await manager.renameProject(projectItem.meta.id, newName.trim());
+					const updatedProject = await manager.proj.renameProject(projectItem.meta.id, newName.trim());
 
 					// Update project in store
 					updateProject(updatedProject);
@@ -124,7 +124,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				if (!newTitle || !newTitle.trim()) return;
 
 				try {
-					await manager.updateConversationTitle({
+					await manager.conv.updateConversationTitle({
 						conversationId: conversation.meta.id,
 						title: newTitle.trim(),
 					});
@@ -159,7 +159,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 			title: 'Delete project',
 			icon: 'trash',
 			onClick: async () => {
-				await manager.deleteProject(projectItem.meta.id);
+				await manager.proj.deleteProject(projectItem.meta.id);
 				// Remove from store
 				const { projects: currentProjects, setProjects: updateProjects, activeProject: currentActive, setActiveProject: setActive } = useChatDataStore.getState();
 				const updated = Array.from(currentProjects.values()).filter(p => p.meta.id !== projectItem.meta.id);
@@ -190,7 +190,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 				title: 'Delete',
 				icon: 'trash',
 				onClick: async () => {
-					await manager.deleteConversation(conversation.meta.id);
+					await manager.conv.deleteConversation(conversation.meta.id);
 					const { conversations: current, setConversations: updateConversations, activeConversation: active, setActiveConversation: setActive } = useChatDataStore.getState();
 					const updated = Array.from(current.values()).filter(c => c.meta.id !== conversation.meta.id);
 					updateConversations(updated);
@@ -349,7 +349,7 @@ export const ProjectsSection: React.FC = () => {
 	// Load conversations for a project
 	const loadProjectConversations = useCallback(
 		async (project: ChatProject) => {
-			const conversations = await manager.listConversations(project.meta.id);
+			const conversations = await manager.conv.listConversations(project.meta.id);
 			conversations.sort((a, b) => {
 				const timeA = a.meta.createdAtTimestamp || 0;
 				const timeB = b.meta.createdAtTimestamp || 0;
@@ -451,7 +451,7 @@ export const ProjectsSection: React.FC = () => {
 			submitButtonText: 'Create project',
 			onSubmit: async (name: string | null) => {
 				if (!name || !name.trim()) return;
-				await manager.createProject({ name: name.trim() });
+				await manager.proj.createProject({ name: name.trim() });
 				await hydrateProjectsFromManager(manager);
 			},
 		});

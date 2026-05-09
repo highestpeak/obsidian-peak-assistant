@@ -167,7 +167,7 @@ export function useStreamChat() {
 
 		try {
 			// Start streaming
-			const stream = manager.streamChat({
+			const stream = manager.conv.streamChat({
 				conversation,
 				project,
 				userContent,

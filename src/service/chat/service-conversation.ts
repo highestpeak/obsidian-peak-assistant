@@ -502,6 +502,16 @@ export class ConversationService {
 	}
 
 	/**
+	 * List starred messages for a project.
+	 */
+	async listStarredMessagesByProject(projectId: string): Promise<{
+		messages: ChatMessage[];
+		messageToConversationId: Map<string, string>;
+	}> {
+		return this.storage.listStarredMessagesByProject(projectId);
+	}
+
+	/**
 	 * Add a message to conversation and save it.
 	 */
 	async addMessage(params: {

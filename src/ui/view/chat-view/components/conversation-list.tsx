@@ -61,7 +61,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 	// Load conversations function
 	const loadConversations = useCallback(async (page: number) => {
 		// Load current page + 1 extra to check if there's more
-		const conversationsWithExtra = await manager.listConversations(
+		const conversationsWithExtra = await manager.conv.listConversations(
 			projectId || null,
 			CONVERSATIONS_PAGE_SIZE + 1,
 			page * CONVERSATIONS_PAGE_SIZE
@@ -209,7 +209,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 									conversation={conversation}
 									onClick={() => loadConversation(conversation.meta.id)}
 									onDelete={async (c) => {
-										await manager.deleteConversation(c.meta.id);
+										await manager.conv.deleteConversation(c.meta.id);
 										setConversations((prev) => prev.filter((x) => x.meta.id !== c.meta.id));
 									}}
 									maxPreviewLength={maxPreviewLength}
