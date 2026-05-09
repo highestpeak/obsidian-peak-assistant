@@ -312,6 +312,7 @@ export class Reranker {
 		relatedPaths: Set<string>;
 		nowTs?: number;
 		pprActive?: boolean;
+		clickedPaths?: Set<string>;
 	}): SearchResultItem[] {
 		const now = params.nowTs ?? Date.now();
 		const items = params.items.map((i) => ({ ...i }));
@@ -329,12 +330,12 @@ export class Reranker {
 			}
 
 			// Frequency boost: logarithmic scaling of total open count
-			const freqBoost = Math.log1p(s.openCount) * 0.15;
+			const freqBoost = Math.log1p(s.openCount) * 0.10;
 
 			// Recency boost: linear decay based on days since last open
 			const dayMs = 1000 * 60 * 60 * 24;
 			const days = s.lastOpenTs ? Math.max(0, (now - s.lastOpenTs) / dayMs) : Infinity;
-			const recencyBoost = Number.isFinite(days) ? Math.max(0, 0.3 - days * 0.01) : 0;
+			const recencyBoost = Number.isFinite(days) ? Math.max(0, 0.2 - days * 0.005) : 0;
 
 			// Graph boost: fixed boost for files related to current file (within 2 hops)
 			const graphBoost = params.relatedPaths.has(item.path) ? 0.2 : 0;
@@ -365,11 +366,28 @@ export class Reranker {
 				anchorBoost *= PPR_GLOBAL_PR_DAMPENING;
 			}
 
-			item.finalScore = base + freqBoost + recencyBoost + graphBoost + anchorBoost;
+			const clickBoost = params.clickedPaths?.has(item.path) ? 0.15 : 0;
+			item.finalScore = base + freqBoost + recencyBoost + graphBoost + anchorBoost + clickBoost;
 		}
 
 		// Sort by final score (descending)
 		items.sort((a, b) => (b.finalScore ?? b.score ?? 0) - (a.finalScore ?? a.score ?? 0));
 		return items;
+	}
+
+	/**
+	 * Post-ranking exclude filter. Removes results whose content or title
+	 * contains any excluded term. Safety net for Vector/Fuzzy results
+	 * that don't support FTS5 NOT syntax.
+	 */
+	applyExcludeFilter(
+		items: SearchResultItem[],
+		excludes: string[],
+	): SearchResultItem[] {
+		if (excludes.length === 0) return items;
+		return items.filter(item => {
+			const text = ((item.title ?? '') + ' ' + (item.content ?? '')).toLowerCase();
+			return !excludes.some(ex => text.includes(ex));
+		});
 	}
 }
