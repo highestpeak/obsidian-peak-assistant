@@ -491,6 +491,42 @@ export const VISUAL_TYPE_LABELS: Record<string, string> = {
 	none: '',
 };
 
+/**
+ * Capability suggestion detection patterns.
+ * Used by CapabilitySuggestion component to detect when the assistant
+ * indicates it lacks a capability that could be enabled.
+ */
+export const CAPABILITY_SUGGESTION_PATTERNS = {
+	webSearch: [
+		/I don't have access to real-time/i,
+		/I can't browse/i,
+		/I don't have internet/i,
+		/no access to the internet/i,
+		/cannot access the internet/i,
+		/unable to access the internet/i,
+		/I cannot browse/i,
+		/unable to browse/i,
+		/I don't have access to the web/i,
+		/cannot access (?:the )?web/i,
+		/unable to search the web/i,
+		/I can't search the web/i,
+		/my training data/i,
+		/my knowledge cutoff/i,
+	],
+	vaultSearch: [
+		/I don't have access to your/i,
+		/I can't search your notes/i,
+		/I don't have access to your vault/i,
+		/I cannot search your notes/i,
+		/unable to search your notes/i,
+		/I can't access your vault/i,
+		/I cannot access your vault/i,
+		/unable to access your vault/i,
+		/I don't have access to your files/i,
+		/I can't read your notes/i,
+	],
+} as const;
+
 /** Mission role definitions for plan review section grouping. */
 export const MISSION_ROLES: Array<{ key: string; label: string; icon: string; color: string; bgColor: string; required: boolean }> = [
 	{ key: 'synthesis', label: 'Synthesis', icon: 'Microscope', color: 'pktw-text-emerald-700', bgColor: 'pktw-bg-emerald-50 pktw-border-emerald-200', required: true },

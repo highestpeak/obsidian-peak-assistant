@@ -25,6 +25,7 @@ import { MessageActionsList } from './MessageActionsList';
 import { MessageRoleAvatar } from '../MessageRoleAvatar';
 import { MessageStyleButtons } from '../MessageStyleButtons';
 import { SuggestedFollowups } from '../SuggestedFollowups';
+import { CapabilitySuggestion } from './CapabilitySuggestion';
 import { ModelInfoForSwitch } from '@/core/providers/types';
 
 interface StreamingState {
@@ -368,6 +369,11 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 								</StreamdownIsolated>
 							</div>
 						) : null}
+
+						{/* Capability suggestion — only on the last assistant message, not while streaming */}
+						{isLastMessage && !streamingState.isStreaming && !message.isErrorMessage && (
+							<CapabilitySuggestion message={message} />
+						)}
 
 						{/* Footer: visible on last message, hover-reveal on others */}
 						<div className={cn(

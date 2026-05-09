@@ -200,7 +200,14 @@ export const CONFIGURABLE_PROMPT_IDS: readonly PromptId[] = [
  * // todo some prompts may have expected output format, we should add it to the interface. maybe turn into an agent
  */
 export interface PromptVariables {
-	[PromptId.ConversationSystem]: Record<string, never>;
+	[PromptId.ConversationSystem]: {
+		capabilities?: {
+			webSearchAvailable: boolean;
+			webSearchEnabled: boolean;
+			vaultSearchAvailable: boolean;
+			vaultSearchEnabled: boolean;
+		};
+	};
 	[PromptId.ConversationSummaryShort]: {
 		messages: Array<{ role: string; content: string }>;
 		projectContext?: string;
